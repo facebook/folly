@@ -1495,7 +1495,7 @@ template <typename T>
 union consteval_immortal {
   T value;
   template <typename... A>
-  explicit FOLLY_CONSTEVAL consteval_immortal(folly::in_place_t, A&&... a)
+  explicit FOLLY_CONSTEVAL consteval_immortal(std::in_place_t, A&&... a)
       : value{static_cast<A&&>(a)...} {}
   ~consteval_immortal() {}
 };
@@ -1503,18 +1503,18 @@ union consteval_immortal {
 
 TEST(Function, ConstEvalEmpty) {
   static FOLLY_CONSTINIT consteval_immortal<Function<int()>> func{
-      folly::in_place};
+      std::in_place};
   EXPECT_THROW(func.value(), std::bad_function_call);
 }
 
 TEST(Function, ConstEvalNullptr) {
   static FOLLY_CONSTINIT consteval_immortal<Function<int()>> func{
-      folly::in_place, nullptr};
+      std::in_place, nullptr};
   EXPECT_THROW(func.value(), std::bad_function_call);
 }
 
 TEST(Function, ConstEvalStaticLambda) {
   static FOLLY_CONSTINIT consteval_immortal<Function<int()>> func{
-      folly::in_place, [] { return 3; }};
+      std::in_place, [] { return 3; }};
   EXPECT_EQ(3, func.value());
 }

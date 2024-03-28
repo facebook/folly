@@ -708,7 +708,7 @@ struct Synchronized : public SynchronizedBase<
    * instance `in_place` as the first argument.
    */
   template <typename... Args>
-  explicit constexpr Synchronized(in_place_t, Args&&... args)
+  explicit constexpr Synchronized(std::in_place_t, Args&&... args)
       : datum_(std::forward<Args>(args)...) {}
 
   /**

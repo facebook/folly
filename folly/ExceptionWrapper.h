@@ -112,7 +112,7 @@ class exception_wrapper final {
   std::exception_ptr ptr_;
 
   template <class Ex, typename... As>
-  exception_wrapper(PrivateCtor, in_place_type_t<Ex>, As&&... as);
+  exception_wrapper(PrivateCtor, std::in_place_type_t<Ex>, As&&... as);
 
   template <class T>
   struct IsRegularExceptionType
@@ -182,18 +182,18 @@ class exception_wrapper final {
   //! \post `type() == &typeid(ex)`
   //! \note Exceptions of types not derived from `std::exception` can still be
   //!     used to construct an `exception_wrapper`, but you must specify
-  //!     `folly::in_place` as the first parameter.
+  //!     `std::in_place` as the first parameter.
   template <
       class Ex,
       class Ex_ = std::decay_t<Ex>,
       FOLLY_REQUIRES(IsRegularExceptionType<Ex_>::value)>
-  exception_wrapper(in_place_t, Ex&& ex);
+  exception_wrapper(std::in_place_t, Ex&& ex);
 
   template <
       class Ex,
       typename... As,
       FOLLY_REQUIRES(IsRegularExceptionType<Ex>::value)>
-  exception_wrapper(in_place_type_t<Ex>, As&&... as);
+  exception_wrapper(std::in_place_type_t<Ex>, As&&... as);
 
   //! Swaps the value of `*this` with the value of `that`
   void swap(exception_wrapper& that) noexcept;
@@ -341,7 +341,7 @@ class exception_wrapper final {
  */
 template <class Ex, typename... As>
 exception_wrapper make_exception_wrapper(As&&... as) {
-  return exception_wrapper{in_place_type<Ex>, std::forward<As>(as)...};
+  return exception_wrapper{std::in_place_type<Ex>, std::forward<As>(as)...};
 }
 
 /**

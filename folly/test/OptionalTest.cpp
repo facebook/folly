@@ -266,14 +266,14 @@ TEST(Optional, EmptyConstruct) {
 
 TEST(Optional, InPlaceConstruct) {
   using A = std::pair<int, double>;
-  Optional<A> opt(in_place, 5, 3.2);
+  Optional<A> opt(std::in_place, 5, 3.2);
   EXPECT_TRUE(bool(opt));
   EXPECT_EQ(5, opt->first);
 }
 
 TEST(Optional, InPlaceNestedConstruct) {
   using A = std::pair<int, double>;
-  Optional<Optional<A>> opt(in_place, in_place, 5, 3.2);
+  Optional<Optional<A>> opt(std::in_place, std::in_place, 5, 3.2);
   EXPECT_TRUE(bool(opt));
   EXPECT_TRUE(bool(*opt));
   EXPECT_EQ(5, (*opt)->first);
@@ -685,7 +685,7 @@ TEST(Optional, MakeOptional) {
 
 TEST(Optional, InitializerListConstruct) {
   using Type = ConstructibleWithInitializerListAndArgsOnly;
-  auto&& optional = Optional<Type>{in_place, {int{}}, double{}};
+  auto&& optional = Optional<Type>{std::in_place, {int{}}, double{}};
   std::ignore = optional;
 }
 

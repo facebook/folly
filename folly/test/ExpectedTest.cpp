@@ -73,7 +73,7 @@ struct NoDefault {
 TEST(Expected, NoDefault) {
   static_assert(
       std::is_default_constructible<Expected<NoDefault, int>>::value, "");
-  Expected<NoDefault, int> x{in_place, 42, 42};
+  Expected<NoDefault, int> x{std::in_place, 42, 42};
   EXPECT_TRUE(bool(x));
   x.emplace(4, 5);
   EXPECT_TRUE(bool(x));
@@ -112,13 +112,13 @@ TEST(Expected, Const) {
   }
   { // copy-constructed
     const int x = 6;
-    Expected<const int, int> ex{in_place, x};
+    Expected<const int, int> ex{std::in_place, x};
     Expected<const int, int> ex2 = ex;
     EXPECT_EQ(6, *ex2);
   }
   { // move-constructed
     const int x = 7;
-    Expected<const int, int> ex{in_place, std::move(x)};
+    Expected<const int, int> ex{std::in_place, std::move(x)};
     Expected<const int, int> ex2 = std::move(ex);
     EXPECT_EQ(7, *ex2);
   }
@@ -207,14 +207,14 @@ struct ExpectingDeleter {
 
 TEST(Expected, valueMove) {
   auto ptr = Expected<std::unique_ptr<int, ExpectingDeleter>, int>(
-                 in_place, new int(42), ExpectingDeleter{1337})
+                 std::in_place, new int(42), ExpectingDeleter{1337})
                  .value();
   *ptr = 1337;
 }
 
 TEST(Expected, dereferenceMove) {
   auto ptr = *Expected<std::unique_ptr<int, ExpectingDeleter>, int>(
-      in_place, new int(42), ExpectingDeleter{1337});
+      std::in_place, new int(42), ExpectingDeleter{1337});
   *ptr = 1337;
 }
 
@@ -692,7 +692,7 @@ TEST(Expected, Then) {
   // Lifting
   {
     Expected<int, E> ex =
-        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.then(
+        Expected<std::unique_ptr<int>, E>{std::in_place, new int(42)}.then(
             [](std::unique_ptr<int> p) { return *p; });
     EXPECT_TRUE(bool(ex));
     EXPECT_EQ(42, *ex);
@@ -701,7 +701,7 @@ TEST(Expected, Then) {
   // Flattening
   {
     Expected<int, E> ex =
-        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.then(
+        Expected<std::unique_ptr<int>, E>{std::in_place, new int(42)}.then(
             [](std::unique_ptr<int> p) { return makeExpected<E>(*p); });
     EXPECT_TRUE(bool(ex));
     EXPECT_EQ(42, *ex);
@@ -710,7 +710,7 @@ TEST(Expected, Then) {
   // Void
   {
     Expected<Unit, E> ex =
-        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.then(
+        Expected<std::unique_ptr<int>, E>{std::in_place, new int(42)}.then(
             [](std::unique_ptr<int>) {});
     EXPECT_TRUE(bool(ex));
   }
@@ -718,7 +718,7 @@ TEST(Expected, Then) {
   // Non-flattening (different error codes)
   {
     Expected<Expected<int, int>, E> ex =
-        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.then(
+        Expected<std::unique_ptr<int>, E>{std::in_place, new int(42)}.then(
             [](std::unique_ptr<int> p) { return makeExpected<int>(*p); });
     EXPECT_TRUE(bool(ex));
     EXPECT_TRUE(bool(*ex));
@@ -740,7 +740,7 @@ TEST(Expected, Then) {
   // Chaining
   {
     Expected<std::string, E> ex =
-        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.then(
+        Expected<std::unique_ptr<int>, E>{std::in_place, new int(42)}.then(
             [](std::unique_ptr<int> p) { return makeExpected<E>(*p); },
             [](int i) { return i == 42 ? "yes" : "no"; });
     EXPECT_TRUE(bool(ex));
@@ -750,7 +750,7 @@ TEST(Expected, Then) {
   // Chaining with errors
   {
     Expected<std::string, E> ex =
-        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.then(
+        Expected<std::unique_ptr<int>, E>{std::in_place, new int(42)}.then(
             [](std::unique_ptr<int>) {
               return Expected<int, E>(unexpected, E::E1);
             },
@@ -762,9 +762,9 @@ TEST(Expected, Then) {
 
 TEST(Expected, ThenOrThrow) {
   {
-    int e =
-        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.thenOrThrow(
-            [](std::unique_ptr<int> p) { return *p; });
+    int e = //
+        Expected<std::unique_ptr<int>, E>{std::in_place, new int(42)}
+            .thenOrThrow([](std::unique_ptr<int> p) { return *p; });
     EXPECT_EQ(42, e);
   }
 
@@ -802,7 +802,8 @@ TEST(Expected, ThenOrThrow) {
 TEST(Expected, orElse) {
   {
     auto e =
-        Expected<std::unique_ptr<int>, E>{in_place, std::make_unique<int>(42)}
+        Expected<std::unique_ptr<int>, E>{
+            std::in_place, std::make_unique<int>(42)}
             .orElse([](E) { throw std::runtime_error(""); });
     EXPECT_EQ(42, *e.value());
   }
@@ -846,7 +847,7 @@ TEST(Expected, orElse) {
   }
   // Chaining without error, void returning
   {
-    auto e = Expected<std::string, E>{in_place, "Hello World"}.orElse(
+    auto e = Expected<std::string, E>{std::in_place, "Hello World"}.orElse(
         [](E) {
           EXPECT_TRUE(false);
           throw std::runtime_error("");
@@ -860,10 +861,11 @@ TEST(Expected, orElse) {
 
   // Chaining without error, non void returning
   {
-    auto e = Expected<std::string, E>{in_place, "Hello World"}.orElse([](E) {
-      EXPECT_TRUE(false);
-      return std::string("Goodbye World");
-    });
+    auto e =
+        Expected<std::string, E>{std::in_place, "Hello World"}.orElse([](E) {
+          EXPECT_TRUE(false);
+          return std::string("Goodbye World");
+        });
     EXPECT_EQ(std::string("Hello World"), e.value());
   }
 }

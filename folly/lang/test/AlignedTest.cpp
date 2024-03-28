@@ -110,7 +110,7 @@ TEST_F(AlignedTest, constructors) {
   }
 
   {
-    using P = folly::in_place_t;
+    using P = std::in_place_t;
     struct L {};
     struct M {};
     struct N {};

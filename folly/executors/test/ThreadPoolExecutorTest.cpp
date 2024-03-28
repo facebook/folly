@@ -209,7 +209,7 @@ static void destroy() {
 // taken back.
 template <>
 void destroy<IOThreadPoolExecutor>() {
-  Optional<IOThreadPoolExecutor> tpe(in_place, 1);
+  Optional<IOThreadPoolExecutor> tpe(std::in_place, 1);
   std::atomic<int> completed(0);
   auto f = [&]() {
     burnMs(10)();

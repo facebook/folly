@@ -97,7 +97,7 @@ class thread_cached_synchronized {
 
   template <typename... A>
   static constexpr bool nx = noexcept(truth_state{
-      in_place, FOLLY_DECLVAL(A)...});
+      std::in_place, FOLLY_DECLVAL(A)...});
 
   template <bool C>
   using if_ = std::enable_if_t<C, int>;
@@ -106,7 +106,7 @@ class thread_cached_synchronized {
 
  public:
   template <typename A = value_type, if_<std::is_constructible<A>{}> = 0>
-  thread_cached_synchronized() noexcept(nx<>) : truth_{in_place} {}
+  thread_cached_synchronized() noexcept(nx<>) : truth_{std::in_place} {}
   explicit thread_cached_synchronized(value_type const& a) //
       noexcept(nx<value_type const&>)
       : truth_{a} {}
@@ -116,7 +116,8 @@ class thread_cached_synchronized {
   explicit thread_cached_synchronized(A&& a) noexcept(nx<A&&>)
       : truth_{static_cast<A&&>(a)} {}
   template <typename... A, if_<std::is_constructible<value_type, A...>{}> = 0>
-  explicit thread_cached_synchronized(in_place_t, A&&... a) noexcept(nx<A&&...>)
+  explicit thread_cached_synchronized(std::in_place_t, A&&... a) noexcept(
+      nx<A&&...>)
       : truth_{static_cast<A&&>(a)...} {}
 
   template <typename A, if_<std::is_assignable<value_type&, A>{}> = 0>

@@ -320,7 +320,7 @@ class DynamicParser {
       ParserStack* stackPtr_;
     };
     struct PopGuard {
-      explicit PopGuard(ParserStack* sp) : pop_(in_place, sp) {}
+      explicit PopGuard(ParserStack* sp) : pop_(std::in_place, sp) {}
       ~PopGuard() { pop_ && ((*pop_)(), true); }
 
      private:

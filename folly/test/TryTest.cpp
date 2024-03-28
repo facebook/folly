@@ -70,13 +70,13 @@ TEST(Try, basic) {
 }
 
 TEST(Try, inPlace) {
-  Try<A> t_a(in_place, 5);
+  Try<A> t_a(std::in_place, 5);
 
   EXPECT_EQ(5, t_a.value().x());
 }
 
 TEST(Try, inPlaceNested) {
-  Try<Try<A>> t_t_a(in_place, in_place, 5);
+  Try<Try<A>> t_t_a(std::in_place, std::in_place, 5);
 
   EXPECT_EQ(5, t_t_a.value().value().x());
 }
@@ -103,8 +103,8 @@ TEST(Try, assignmentWithThrowingCopyConstructor) {
   int counter = 0;
 
   {
-    Try<ThrowingCopyConstructor> t1{in_place, counter};
-    Try<ThrowingCopyConstructor> t2{in_place, counter};
+    Try<ThrowingCopyConstructor> t1{std::in_place, counter};
+    Try<ThrowingCopyConstructor> t2{std::in_place, counter};
     EXPECT_EQ(2, counter);
     EXPECT_THROW(t2 = t1, MyException);
     EXPECT_EQ(1, counter);
@@ -113,7 +113,7 @@ TEST(Try, assignmentWithThrowingCopyConstructor) {
   }
   EXPECT_EQ(0, counter);
   {
-    Try<ThrowingCopyConstructor> t1{in_place, counter};
+    Try<ThrowingCopyConstructor> t1{std::in_place, counter};
     Try<ThrowingCopyConstructor> t2;
     EXPECT_EQ(1, counter);
     EXPECT_THROW(t2 = t1, MyException);
@@ -146,8 +146,8 @@ TEST(Try, assignmentWithThrowingMoveConstructor) {
   int counter = 0;
 
   {
-    Try<ThrowingMoveConstructor> t1{in_place, counter};
-    Try<ThrowingMoveConstructor> t2{in_place, counter};
+    Try<ThrowingMoveConstructor> t1{std::in_place, counter};
+    Try<ThrowingMoveConstructor> t2{std::in_place, counter};
     EXPECT_EQ(2, counter);
     EXPECT_THROW(t2 = std::move(t1), MyException);
     EXPECT_EQ(1, counter);
@@ -156,7 +156,7 @@ TEST(Try, assignmentWithThrowingMoveConstructor) {
   }
   EXPECT_EQ(0, counter);
   {
-    Try<ThrowingMoveConstructor> t1{in_place, counter};
+    Try<ThrowingMoveConstructor> t1{std::in_place, counter};
     Try<ThrowingMoveConstructor> t2;
     EXPECT_EQ(1, counter);
     EXPECT_THROW(t2 = std::move(t1), MyException);
@@ -200,7 +200,7 @@ TEST(Try, emplaceWithThrowingConstructor) {
   {
     // Initialise to value, then re-emplace with throwing constructor.
     // This should reset the object back to empty.
-    Try<ThrowingConstructor> t{in_place, false};
+    Try<ThrowingConstructor> t{std::in_place, false};
     EXPECT_TRUE(t.hasValue());
     EXPECT_THROW(t.emplace(true), MyException);
     EXPECT_FALSE(t.hasValue());
@@ -262,7 +262,7 @@ TEST(Try, emplaceVoidTry) {
   Try<void> t;
   t.emplace();
   EXPECT_TRUE(t.hasValue());
-  t.emplaceException(folly::in_place_type<MyException>);
+  t.emplaceException(std::in_place_type<MyException>);
   EXPECT_FALSE(t.hasValue());
   EXPECT_TRUE(t.hasException());
   EXPECT_TRUE(t.hasException<MyException>());
@@ -276,7 +276,7 @@ TEST(Try, tryEmplaceVoidTry) {
   Try<void> t;
   tryEmplace(t);
   EXPECT_TRUE(t.hasValue());
-  t.emplaceException(folly::in_place_type<MyException>);
+  t.emplaceException(std::in_place_type<MyException>);
   EXPECT_FALSE(t.hasValue());
   EXPECT_TRUE(t.hasException());
   EXPECT_TRUE(t.hasException<MyException>());
@@ -347,8 +347,10 @@ TEST(Try, nothrow) {
   EXPECT_TRUE((std::is_nothrow_constructible<Try<T>, T const&>::value));
 
   // emplacing ctor - no void
-  EXPECT_FALSE((std::is_nothrow_constructible<Try<F>, in_place_t, int>::value));
-  EXPECT_TRUE((std::is_nothrow_constructible<Try<T>, in_place_t, int>::value));
+  EXPECT_FALSE(
+      (std::is_nothrow_constructible<Try<F>, std::in_place_t, int>::value));
+  EXPECT_TRUE(
+      (std::is_nothrow_constructible<Try<T>, std::in_place_t, int>::value));
 
   // copy/move ctor/assign
   EXPECT_TRUE(std::is_nothrow_constructible<Try<void>>::value);
@@ -389,12 +391,12 @@ TEST(Try, MoveConstRvalue) {
   // where for example MutableContainer has a mutable memebr that is move only
   // and you want to fetch the value from the Try and move it into a member
   {
-    const Try<MutableContainer> t{in_place};
+    const Try<MutableContainer> t{std::in_place};
     auto val = MoveConstructOnly(std::move(t).value().val);
     static_cast<void>(val);
   }
   {
-    const Try<MutableContainer> t{in_place};
+    const Try<MutableContainer> t{std::in_place};
     auto val = (*(std::move(t))).val;
     static_cast<void>(val);
   }

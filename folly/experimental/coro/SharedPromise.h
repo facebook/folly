@@ -156,7 +156,7 @@ template <typename T>
 template <typename U>
 void SharedPromise<T>::setValue(U&& input) {
   state_.withWLock([&](auto& state) {
-    setTry(state, TryType{folly::in_place, std::forward<U>(input)});
+    setTry(state, TryType{std::in_place, std::forward<U>(input)});
   });
 }
 

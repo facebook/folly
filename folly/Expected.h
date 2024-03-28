@@ -1007,7 +1007,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   template <class... Ts FOLLY_REQUIRES_TRAILING(
       std::is_constructible<Value, Ts&&...>::value)>
-  explicit constexpr Expected(in_place_t, Ts&&... ts) noexcept(
+  explicit constexpr Expected(std::in_place_t, Ts&&... ts) noexcept(
       noexcept(Value(std::declval<Ts>()...)))
       : Base{expected_detail::ValueTag{}, static_cast<Ts&&>(ts)...} {}
 
@@ -1017,7 +1017,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
           std::is_constructible<Value, std::initializer_list<U>&, Ts&&...>::
               value)>
   explicit constexpr Expected(
-      in_place_t,
+      std::in_place_t,
       std::initializer_list<U> il,
       Ts&&... ts) noexcept(noexcept(Value(std::declval<Ts>()...)))
       : Base{expected_detail::ValueTag{}, il, static_cast<Ts&&>(ts)...} {}
@@ -1487,7 +1487,7 @@ template <class Error, class Value>
 FOLLY_NODISCARD constexpr Expected<typename std::decay<Value>::type, Error>
 makeExpected(Value&& val) {
   return Expected<typename std::decay<Value>::type, Error>{
-      in_place, static_cast<Value&&>(val)};
+      std::in_place, static_cast<Value&&>(val)};
 }
 
 // Suppress comparability of Optional<T> with T, despite implicit conversion.

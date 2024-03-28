@@ -365,7 +365,7 @@ struct LifoSemBase {
   constexpr explicit LifoSemBase(uint32_t initialValue = 0)
       : LifoSemBase({}, initialValue) {}
   constexpr explicit LifoSemBase(const Options&, uint32_t initialValue = 0)
-      : head_(in_place, LifoSemHead::fresh(initialValue)) {}
+      : head_(std::in_place, LifoSemHead::fresh(initialValue)) {}
 
   LifoSemBase(LifoSemBase const&) = delete;
   LifoSemBase& operator=(LifoSemBase const&) = delete;

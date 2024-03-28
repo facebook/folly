@@ -240,7 +240,7 @@ class EventBase : public TimeoutManager,
 
    private:
     Function<void(OnDestructionCallback&)> eraser_;
-    Synchronized<bool> scheduled_{in_place, false};
+    Synchronized<bool> scheduled_{std::in_place, false};
 
     using List = boost::intrusive::list<OnDestructionCallback>;
 

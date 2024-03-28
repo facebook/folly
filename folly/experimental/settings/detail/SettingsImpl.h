@@ -388,7 +388,7 @@ class SettingCore : public SettingCoreBase {
         localValue_([]() {
           return new cacheline_aligned<
               std::pair<Version, std::shared_ptr<Contents>>>(
-              in_place, 0, nullptr);
+              std::in_place, 0, nullptr);
         }) {
     forceResetToDefault(/* snapshot */ nullptr);
     registerSetting(*this);
@@ -409,7 +409,7 @@ class SettingCore : public SettingCoreBase {
 
   /* Thread local versions start at 0, this will force a read on first access.
    */
-  cacheline_aligned<std::atomic<Version>> settingVersion_{in_place, 1};
+  cacheline_aligned<std::atomic<Version>> settingVersion_{std::in_place, 1};
 
   ThreadLocal<cacheline_aligned<std::pair<Version, std::shared_ptr<Contents>>>>
       localValue_;

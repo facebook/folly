@@ -376,7 +376,7 @@ std::pair<std::string, LogHandlerConfig> parseHandlerConfig(StringPiece value) {
   }
 
   StringPiece handlerName;
-  Optional<StringPiece> handlerType(in_place);
+  Optional<StringPiece> handlerType(std::in_place);
   if (!splitNameValue(namePortion, &handlerName, &handlerType.value())) {
     handlerName = trimWhitespace(namePortion);
     handlerType = folly::none;

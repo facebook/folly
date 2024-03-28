@@ -566,8 +566,8 @@ class Core final : private ResultHolder<T>, public CoreBase {
   /// State will be OnlyResult
   /// Result held will be the `T` constructed from forwarded `args`
   template <typename... Args>
-  static Core<T>* make(in_place_t, Args&&... args) {
-    return new Core<T>(in_place, static_cast<Args&&>(args)...);
+  static Core<T>* make(std::in_place_t, Args&&... args) {
+    return new Core<T>(std::in_place, static_cast<Args&&>(args)...);
   }
 
   /// Call only from consumer thread (since the consumer thread can modify the
@@ -679,10 +679,10 @@ class Core final : private ResultHolder<T>, public CoreBase {
   }
 
   template <typename... Args>
-  explicit Core(in_place_t, Args&&... args) noexcept(
+  explicit Core(std::in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<T, Args&&...>::value)
       : CoreBase(State::OnlyResult, 1) {
-    new (&this->result_) Result(in_place, static_cast<Args&&>(args)...);
+    new (&this->result_) Result(std::in_place, static_cast<Args&&>(args)...);
   }
 
   ~Core() override {

@@ -150,8 +150,8 @@ class FutureBase {
       class... Args,
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
-  explicit FutureBase(in_place_t, Args&&... args)
-      : core_(Core::make(in_place, static_cast<Args&&>(args)...)) {}
+  explicit FutureBase(std::in_place_t, Args&&... args)
+      : core_(Core::make(std::in_place, static_cast<Args&&>(args)...)) {}
 
   FutureBase(FutureBase<T> const&) = delete;
   FutureBase(SemiFuture<T>&&) noexcept;
@@ -549,8 +549,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       class... Args,
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
-  explicit SemiFuture(in_place_t, Args&&... args)
-      : Base(in_place, static_cast<Args&&>(args)...) {}
+  explicit SemiFuture(std::in_place_t, Args&&... args)
+      : Base(std::in_place, static_cast<Args&&>(args)...) {}
 
   SemiFuture(SemiFuture<T> const&) = delete;
   // movable
@@ -1078,8 +1078,8 @@ class Future : private futures::detail::FutureBase<T> {
       class... Args,
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
-  explicit Future(in_place_t, Args&&... args)
-      : Base(in_place, static_cast<Args&&>(args)...) {}
+  explicit Future(std::in_place_t, Args&&... args)
+      : Base(std::in_place, static_cast<Args&&>(args)...) {}
 
   Future(Future<T> const&) = delete;
   // movable

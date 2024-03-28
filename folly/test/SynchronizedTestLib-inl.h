@@ -776,8 +776,8 @@ struct NotCopiableNotMovable {
 
 template <class Mutex>
 void testInPlaceConstruction() {
-  // This won't compile without in_place
-  folly::Synchronized<NotCopiableNotMovable> a(folly::in_place, 5, "a");
+  // This won't compile without std::in_place
+  folly::Synchronized<NotCopiableNotMovable> a(std::in_place, 5, "a");
 }
 
 template <class Mutex>

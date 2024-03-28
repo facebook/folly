@@ -156,18 +156,18 @@ class Optional {
   /**
    * Creates an Optional with a value, where that value is constructed in-place.
    *
-   * The in_place_t argument exists so that values can be default constructed
+   * The std::in_place argument exists so that values can be default constructed
    * (i.e. have no arguments), since this would otherwise be confused with
    * default-constructing an Optional, which in turn results in None.
    */
   template <typename... Args>
-  constexpr explicit Optional(in_place_t, Args&&... args) noexcept(
+  constexpr explicit Optional(std::in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<Value, Args...>::value)
       : Optional{PrivateConstructor{}, std::forward<Args>(args)...} {}
 
   template <typename U, typename... Args>
   constexpr explicit Optional(
-      in_place_t,
+      std::in_place_t,
       std::initializer_list<U> il,
       Args&&... args) noexcept(std::
                                    is_nothrow_constructible<

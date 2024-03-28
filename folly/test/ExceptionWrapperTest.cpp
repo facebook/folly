@@ -306,7 +306,7 @@ TEST(ExceptionWrapper, withExceptionPtrAnyTest) {
 }
 
 TEST(ExceptionWrapper, withNonStdExceptionTest) {
-  auto ew = exception_wrapper(folly::in_place, 42);
+  auto ew = exception_wrapper(std::in_place, 42);
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
@@ -622,7 +622,7 @@ TEST(ExceptionWrapper, handleNonStdExceptionSmall) {
   auto ep = std::make_exception_ptr(42);
   exception_wrapper const ew_eptr1(ep);
   exception_wrapper const ew_eptr2(ep);
-  exception_wrapper const ew_small(folly::in_place, 42);
+  exception_wrapper const ew_small(std::in_place, 42);
   bool handled = false;
 
   auto expect_int_yes_catch_all = [&](const exception_wrapper& ew) {
@@ -677,7 +677,7 @@ TEST(ExceptionWrapper, handleNonStdExceptionBig) {
   auto ep = std::make_exception_ptr(BigNonStdError{});
   exception_wrapper const ew_eptr1(ep);
   exception_wrapper const ew_eptr2(ep);
-  exception_wrapper const ew_big(folly::in_place, BigNonStdError{});
+  exception_wrapper const ew_big(std::in_place, BigNonStdError{});
   bool handled = false;
 
   auto expect_int_yes_catch_all = [&](const exception_wrapper& ew) {
@@ -729,7 +729,7 @@ TEST(ExceptionWrapper, handleNonStdExceptionBig) {
   handled = false;
 
   EXPECT_THROW(
-      expect_int_no_catch_all_2(exception_wrapper{folly::in_place, 42}), int);
+      expect_int_no_catch_all_2(exception_wrapper{std::in_place, 42}), int);
 }
 
 TEST(ExceptionWrapper, handleNonStdExceptionRethrowBaseDerived) {

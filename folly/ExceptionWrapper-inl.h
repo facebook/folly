@@ -65,7 +65,7 @@ struct exception_wrapper::with_exception_from_ex_ {
 
 template <class Ex, typename... As>
 inline exception_wrapper::exception_wrapper(
-    PrivateCtor, in_place_type_t<Ex>, As&&... as)
+    PrivateCtor, std::in_place_type_t<Ex>, As&&... as)
     : ptr_{std::make_exception_ptr(Ex(std::forward<As>(as)...))} {}
 
 namespace exception_wrapper_detail {
@@ -114,26 +114,27 @@ template <
 inline exception_wrapper::exception_wrapper(Ex&& ex)
     : exception_wrapper{
           PrivateCtor{},
-          in_place_type<Ex_>,
+          std::in_place_type<Ex_>,
           exception_wrapper_detail::dont_slice(std::forward<Ex>(ex))} {}
 
 template <
     class Ex,
     class Ex_,
     FOLLY_REQUIRES_DEF(exception_wrapper::IsRegularExceptionType<Ex_>::value)>
-inline exception_wrapper::exception_wrapper(in_place_t, Ex&& ex)
+inline exception_wrapper::exception_wrapper(std::in_place_t, Ex&& ex)
     : exception_wrapper{
           PrivateCtor{},
-          in_place_type<Ex_>,
+          std::in_place_type<Ex_>,
           exception_wrapper_detail::dont_slice(std::forward<Ex>(ex))} {}
 
 template <
     class Ex,
     typename... As,
     FOLLY_REQUIRES_DEF(exception_wrapper::IsRegularExceptionType<Ex>::value)>
-inline exception_wrapper::exception_wrapper(in_place_type_t<Ex>, As&&... as)
+inline exception_wrapper::exception_wrapper(
+    std::in_place_type_t<Ex>, As&&... as)
     : exception_wrapper{
-          PrivateCtor{}, in_place_type<Ex>, std::forward<As>(as)...} {}
+          PrivateCtor{}, std::in_place_type<Ex>, std::forward<As>(as)...} {}
 
 inline exception_wrapper& exception_wrapper::operator=(
     exception_wrapper&& that) noexcept {

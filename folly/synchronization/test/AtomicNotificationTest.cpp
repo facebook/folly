@@ -148,7 +148,7 @@ class SimpleBaton {
 
 template <typename Integer>
 void run_atomic_aliasing() {
-  auto&& atomic = folly::Optional<std::atomic<Integer>>{folly::in_place, 0};
+  auto&& atomic = folly::Optional<std::atomic<Integer>>{std::in_place, 0};
   auto&& one = SimpleBaton{};
   auto&& two = SimpleBaton{};
 

@@ -424,7 +424,7 @@ TYPED_TEST_P(TimekeeperTest, HowToCastDuration) {
 }
 
 TYPED_TEST_P(TimekeeperTest, Destruction) {
-  folly::Optional<TypeParam> tk{in_place};
+  folly::Optional<TypeParam> tk{std::in_place};
   auto f = tk->after(std::chrono::seconds(10));
   EXPECT_FALSE(f.isReady());
   tk.reset();
@@ -433,7 +433,7 @@ TYPED_TEST_P(TimekeeperTest, Destruction) {
 }
 
 TYPED_TEST_P(TimekeeperTest, ConcurrentDestructionAndCancellation) {
-  folly::Optional<TypeParam> tk{in_place};
+  folly::Optional<TypeParam> tk{std::in_place};
   auto f = tk->after(std::chrono::seconds(10));
   EXPECT_FALSE(f.isReady());
   std::thread t{[&] { f.cancel(); }};
@@ -450,13 +450,13 @@ void stressTest(
     std::chrono::microseconds duration, std::chrono::microseconds period) {
   using usec = std::chrono::microseconds;
 
-  folly::Optional<Tk> tk{in_place};
+  folly::Optional<Tk> tk{std::in_place};
   std::vector<std::thread> workers;
 
   // Run continuations on a serial executor so we don't need synchronization to
   // modify shared state.
   folly::Optional<VirtualExecutor> continuationsThread{
-      in_place, SerialExecutor::create(folly::getGlobalCPUExecutor())};
+      std::in_place, SerialExecutor::create(folly::getGlobalCPUExecutor())};
   size_t numCompletions = 0;
   usec sumDelay{0};
   usec maxDelay{0};

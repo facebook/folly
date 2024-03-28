@@ -383,13 +383,13 @@ constexpr Replaceable<std::decay_t<T>> make_replaceable(T&& t) {
 
 template <class T, class... Args>
 constexpr Replaceable<T> make_replaceable(Args&&... args) {
-  return Replaceable<T>(in_place, std::forward<Args>(args)...);
+  return Replaceable<T>(std::in_place, std::forward<Args>(args)...);
 }
 
 template <class T, class U, class... Args>
 constexpr Replaceable<T> make_replaceable(
     std::initializer_list<U> il, Args&&... args) {
-  return Replaceable<T>(in_place, il, std::forward<Args>(args)...);
+  return Replaceable<T>(std::in_place, il, std::forward<Args>(args)...);
 }
 
 template <class T>
@@ -433,7 +433,7 @@ class alignas(T) Replaceable
   template <
       class... Args,
       std::enable_if_t<std::is_constructible<T, Args&&...>::value, int> = 0>
-  constexpr explicit Replaceable(in_place_t, Args&&... args)
+  constexpr explicit Replaceable(std::in_place_t, Args&&... args)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
       // clang-format on
@@ -448,7 +448,7 @@ class alignas(T) Replaceable
           std::is_constructible<T, std::initializer_list<U>, Args&&...>::value,
           int> = 0>
   constexpr explicit Replaceable(
-      in_place_t, std::initializer_list<U> il, Args&&... args)
+      std::in_place_t, std::initializer_list<U> il, Args&&... args)
       // clang-format off
       noexcept(std::is_nothrow_constructible<
           T,
@@ -463,7 +463,7 @@ class alignas(T) Replaceable
       class U = T,
       std::enable_if_t<
           std::is_constructible<T, U&&>::value &&
-              !std::is_same<std::decay_t<U>, in_place_t>::value &&
+              !std::is_same<std::decay_t<U>, std::in_place_t>::value &&
               !std::is_same<Replaceable<T>, std::decay_t<U>>::value &&
               std::is_convertible<U&&, T>::value,
           int> = 0>
@@ -479,7 +479,7 @@ class alignas(T) Replaceable
       class U = T,
       std::enable_if_t<
           std::is_constructible<T, U&&>::value &&
-              !std::is_same<std::decay_t<U>, in_place_t>::value &&
+              !std::is_same<std::decay_t<U>, std::in_place_t>::value &&
               !std::is_same<Replaceable<T>, std::decay_t<U>>::value &&
               !std::is_convertible<U&&, T>::value,
           int> = 0>

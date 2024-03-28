@@ -79,7 +79,7 @@ class TryBase {
       : contains_(Contains::VALUE), value_(std::move(v)) {}
 
   template <typename... Args>
-  explicit TryBase(in_place_t, Args&&... args) noexcept(
+  explicit TryBase(std::in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<T, Args&&...>::value)
       : contains_(Contains::VALUE), value_(static_cast<Args&&>(args)...) {}
 
