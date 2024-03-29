@@ -68,14 +68,6 @@ TEST(alignedMalloc, examples) {
   EXPECT_EQ(0, trial(8192) % 8192);
 }
 
-TEST(makeUnique, compatibleWithStdMakeUnique) {
-  //  HACK: To enforce that `folly::` is imported here.
-  to_shared_ptr(std::unique_ptr<std::string>());
-
-  using namespace std;
-  make_unique<string>("hello, world");
-}
-
 TEST(toSharedPtrAliasing, example) {
   auto sp = folly::copy_to_shared_ptr(std::tuple{3, 4});
   auto a = folly::to_shared_ptr_aliasing(sp, &std::get<1>(*sp));
