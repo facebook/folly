@@ -49,44 +49,35 @@ struct isFuture<Future<T>> : std::true_type {
 template <typename T>
 struct isFutureOrSemiFuture : std::false_type {
   using Inner = lift_unit_t<T>;
-  using Return = Inner;
 };
 
 template <typename T>
 struct isFutureOrSemiFuture<Try<T>> : std::false_type {
   using Inner = lift_unit_t<T>;
-  using Return = Inner;
 };
 
 template <typename T>
 struct isFutureOrSemiFuture<Future<T>> : std::true_type {
   typedef T Inner;
-  using Return = Future<Inner>;
 };
 
 template <typename T>
 struct isFutureOrSemiFuture<Future<Try<T>>> : std::true_type {
   typedef T Inner;
-  using Return = Future<Inner>;
 };
 
 template <typename T>
 struct isFutureOrSemiFuture<SemiFuture<T>> : std::true_type {
   typedef T Inner;
-  using Return = SemiFuture<Inner>;
 };
 
 template <typename T>
 struct isFutureOrSemiFuture<SemiFuture<Try<T>>> : std::true_type {
   typedef T Inner;
-  using Return = SemiFuture<Inner>;
 };
 
 namespace futures {
 namespace detail {
-
-template <class>
-class Core;
 
 template <typename...>
 struct ArgType;
@@ -104,7 +95,6 @@ struct ArgType<> {
 
 template <bool isTry_, typename F, typename... Args>
 struct argResult {
-  using Function = F;
   using ArgList = ArgType<Args...>;
   using Result = invoke_result_t<F, Args...>;
   using ArgsSize = index_constant<sizeof...(Args)>;
@@ -112,52 +102,17 @@ struct argResult {
 };
 
 template <typename T, typename F>
-struct callableResult {
-  typedef typename std::conditional<
-      is_invocable_v<F>,
-      detail::argResult<false, F>,
-      typename std::conditional<
-          is_invocable_v<F, T&&>,
-          detail::argResult<false, F, T&&>,
-          detail::argResult<true, F, Try<T>&&>>::type>::type Arg;
-  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
-};
-
-template <typename T, typename F>
-struct executorCallableResult {
-  typedef typename std::conditional<
-      is_invocable_v<F, Executor::KeepAlive<>&&>,
-      detail::argResult<false, F, Executor::KeepAlive<>&&>,
-      typename std::conditional<
-          is_invocable_v<F, Executor::KeepAlive<>&&, T&&>,
-          detail::argResult<false, F, Executor::KeepAlive<>&&, T&&>,
-          detail::argResult<true, F, Executor::KeepAlive<>&&, Try<T>&&>>::
-          type>::type Arg;
-  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
-};
-
-template <
-    typename T,
-    typename F,
-    typename = std::enable_if_t<is_invocable_v<F, Try<T>&&>>>
 struct tryCallableResult {
   typedef detail::argResult<true, F, Try<T>&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
-  typedef Future<value_type> Return;
 };
 
-template <
-    typename T,
-    typename F,
-    typename = std::enable_if_t<is_invocable_v<F, Executor*, Try<T>&&>>>
+template <typename T, typename F>
 struct tryExecutorCallableResult {
   typedef detail::argResult<true, F, Executor::KeepAlive<>&&, Try<T>&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
-  typedef Future<value_type> Return;
 };
 
 template <typename T, typename F>
@@ -165,8 +120,6 @@ struct valueCallableResult {
   typedef detail::argResult<false, F, T&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
-  typedef typename Arg::ArgList::FirstArg FirstArg;
-  typedef Future<value_type> Return;
 };
 
 template <typename T, typename F>
@@ -174,8 +127,6 @@ struct valueExecutorCallableResult {
   typedef detail::argResult<false, F, Executor::KeepAlive<>&&, T&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
-  typedef typename Arg::ArgList::Tail::FirstArg ValueArg;
-  typedef Future<value_type> Return;
 };
 
 class DeferredExecutor;

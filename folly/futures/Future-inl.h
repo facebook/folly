@@ -89,12 +89,7 @@ struct InvokeResultWrapper<void> : InvokeResultWrapperBase<Try<Unit>> {
 
 template <typename T, typename F>
 auto wrapInvoke(folly::Try<T>&& t, F&& f) {
-  auto fn = [&]() {
-    return static_cast<F&&>(f)(
-        t.template get<
-            false,
-            typename futures::detail::valueCallableResult<T, F>::FirstArg>());
-  };
+  auto fn = [&]() { return static_cast<F&&>(f)(t.template get<false, T&&>()); };
   using FnResult = decltype(fn());
   using Wrapper = InvokeResultWrapper<FnResult>;
   if (t.hasException()) {
@@ -361,7 +356,9 @@ decltype(auto) tryInvoke(
 // e.g. f.then([](Try<T>&& t){ return t.value(); });
 template <class T>
 template <typename F, typename R>
-typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
+typename std::enable_if< //
+    !R::ReturnsFuture::value,
+    Future<typename R::value_type>>::type
 FutureBase<T>::thenImplementation(
     F&& func, R, futures::detail::InlineContinuation allowInline) {
   static_assert(R::Arg::ArgsSize::value == 2, "Then must take two arguments");
@@ -413,7 +410,9 @@ Future<T> chainExecutor(Executor::KeepAlive<> e, SemiFuture<T>&& f) {
 // e.g. f.then([](T&& t){ return makeFuture<T>(t); });
 template <class T>
 template <typename F, typename R>
-typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
+typename std::enable_if< //
+    R::ReturnsFuture::value,
+    Future<typename R::value_type>>::type
 FutureBase<T>::thenImplementation(
     F&& func, R, futures::detail::InlineContinuation allowInline) {
   static_assert(R::Arg::ArgsSize::value == 2, "Then must take two arguments");
@@ -805,12 +804,7 @@ SemiFuture<T>::deferExValue(F&& func) && {
   return std::move(*this).deferExTry(
       [f = static_cast<F&&>(func)](
           folly::Executor::KeepAlive<> ka, folly::Try<T>&& t) mutable {
-        return static_cast<F&&>(f)(
-            ka,
-            t.template get<
-                false,
-                typename futures::detail::valueExecutorCallableResult<T, F>::
-                    ValueArg>());
+        return static_cast<F&&>(f)(ka, t.template get<false, T&&>());
       });
 }
 
@@ -1043,12 +1037,7 @@ Future<T>::thenExValue(F&& func) && {
                         Executor::KeepAlive<>&& ka, folly::Try<T>&& t) mutable {
     // Enforce that executor cannot be null
     DCHECK(ka);
-    return static_cast<F&&>(f)(
-        std::move(ka),
-        t.template get<
-            false,
-            typename futures::detail::valueExecutorCallableResult<T, F>::
-                ValueArg>());
+    return static_cast<F&&>(f)(std::move(ka), t.template get<false, T&&>());
   };
   using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
   return this->thenImplementation(
@@ -1063,12 +1052,7 @@ Future<T>::thenExValueInline(F&& func) && {
                         Executor::KeepAlive<>&& ka, folly::Try<T>&& t) mutable {
     // Enforce that executor cannot be null
     DCHECK(ka);
-    return static_cast<F&&>(f)(
-        std::move(ka),
-        t.template get<
-            false,
-            typename futures::detail::valueExecutorCallableResult<T, F>::
-                ValueArg>());
+    return static_cast<F&&>(f)(std::move(ka), t.template get<false, T&&>());
   };
   using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
   return this->thenImplementation(

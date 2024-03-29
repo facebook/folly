@@ -415,13 +415,17 @@ class FutureBase {
   // Variant: returns a value
   // e.g. f.thenTry([](Try<T> t){ return t.value(); });
   template <typename F, typename R>
-  typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
+  typename std::enable_if< //
+      !R::ReturnsFuture::value,
+      Future<typename R::value_type>>::type
   thenImplementation(F&& func, R, InlineContinuation);
 
   // Variant: returns a Future
   // e.g. f.thenTry([](Try<T> t){ return makeFuture<T>(t); });
   template <typename F, typename R>
-  typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
+  typename std::enable_if< //
+      R::ReturnsFuture::value,
+      Future<typename R::value_type>>::type
   thenImplementation(F&& func, R, InlineContinuation);
 };
 template <class T>
