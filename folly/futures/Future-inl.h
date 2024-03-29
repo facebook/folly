@@ -107,7 +107,8 @@ class CoreCallbackState {
  public:
   CoreCallbackState(Promise<T>&& promise, F&& func) noexcept(
       noexcept(DF(std::declval<F&&>())))
-      : func_(static_cast<F&&>(func)), promise_(std::move(promise)) {
+      : func_(static_cast<F&&>(func)),
+        core_(std::exchange(promise.core_, nullptr)) {
     assert(before_barrier());
   }
 
@@ -115,7 +116,8 @@ class CoreCallbackState {
       noexcept(DF(std::declval<F&&>()))) {
     if (that.before_barrier()) {
       new (&func_) DF(static_cast<F&&>(that.func_));
-      promise_ = that.stealPromise();
+      that.func_.~DF();
+      core_ = std::exchange(that.core_, nullptr);
     }
   }
 
@@ -150,16 +152,17 @@ class CoreCallbackState {
   Promise<T> stealPromise() noexcept {
     assert(before_barrier());
     func_.~DF();
-    return std::move(promise_);
+    return Promise<T>{
+        MakeRetrievedFromStolenCoreTag{}, *std::exchange(core_, nullptr)};
   }
 
  private:
-  bool before_barrier() const noexcept { return !promise_.isFulfilled(); }
+  bool before_barrier() const noexcept { return core_ && !core_->hasResult(); }
 
   union {
     DF func_;
   };
-  Promise<T> promise_{Promise<T>::makeEmpty()};
+  Core<T>* core_ = nullptr; // Promise<T> is 2 ptrs but Core<T>* is 1 ptr wide
 };
 
 template <typename T, typename F>

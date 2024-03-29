@@ -91,6 +91,8 @@ template <typename T, typename F>
 class CoreCallbackState;
 template <typename T>
 void setTry(Promise<T>& p, Executor::KeepAlive<>&& ka, Try<T>&& t);
+
+struct MakeRetrievedFromStolenCoreTag {};
 } // namespace detail
 } // namespace futures
 
@@ -469,6 +471,9 @@ class Promise {
 
   void throwIfFulfilled() const;
   void detach();
+
+  Promise(futures::detail::MakeRetrievedFromStolenCoreTag, Core& core) noexcept
+      : retrieved_{true}, core_{&core} {}
 };
 
 } // namespace folly
