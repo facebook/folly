@@ -83,6 +83,7 @@ class Promise;
 
 namespace futures {
 namespace detail {
+class FutureBaseHelper;
 template <class T>
 class FutureBase;
 struct EmptyConstruct {};
@@ -423,6 +424,7 @@ class Promise {
   bool isFulfilled() const noexcept;
 
  private:
+  friend class futures::detail::FutureBaseHelper;
   template <class>
   friend class futures::detail::FutureBase;
   template <class>

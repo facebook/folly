@@ -112,6 +112,8 @@ class FutureSplitter;
 
 namespace futures {
 namespace detail {
+class FutureBaseHelper;
+
 template <class T>
 class FutureBase {
  protected:
@@ -349,6 +351,7 @@ class FutureBase {
   void cancel() { raise(FutureCancellation()); }
 
  protected:
+  friend class FutureBaseHelper;
   friend class Promise<T>;
   template <class>
   friend class SemiFuture;
@@ -955,6 +958,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
  private:
   friend class Promise<T>;
+  friend class futures::detail::FutureBaseHelper;
   template <class>
   friend class futures::detail::FutureBase;
   template <class>
@@ -1848,6 +1852,7 @@ class Future : private futures::detail::FutureBase<T> {
 
  protected:
   friend class Promise<T>;
+  friend class futures::detail::FutureBaseHelper;
   template <class>
   friend class futures::detail::FutureBase;
   template <class>

@@ -350,6 +350,27 @@ decltype(auto) tryInvoke(
 }
 } // namespace detail_msvc_15_7_workaround
 
+class FutureBaseHelper {
+ public:
+  // note: using std::pair instead would regress build speed
+  template <typename T>
+  struct FuturePromisePair {
+    Future<T> future;
+    Promise<T> promise;
+  };
+  template <typename T>
+  static FuturePromisePair<T> makePromiseContractForThen(
+      CoreBase& core, Executor* exec) {
+    Promise<T> p;
+    p.core_->initCopyInterruptHandlerFrom(core);
+    auto sf = p.getSemiFuture();
+    sf.setExecutor(folly::Executor::KeepAlive<>{exec});
+    auto f = Future<T>(sf.core_);
+    sf.core_ = nullptr;
+    return {std::move(f), std::move(p)};
+  }
+};
+
 // then
 
 // Variant: returns a value
@@ -362,20 +383,12 @@ typename std::enable_if< //
 FutureBase<T>::thenImplementation(
     F&& func, R, futures::detail::InlineContinuation allowInline) {
   static_assert(R::Arg::ArgsSize::value == 2, "Then must take two arguments");
-  typedef typename R::ReturnsFuture::Inner B;
-
-  Promise<B> p;
-  p.core_->initCopyInterruptHandlerFrom(this->getCore());
-
-  // grab the Future now before we lose our handle on the Promise
-  auto sf = p.getSemiFuture();
-  sf.setExecutor(folly::Executor::KeepAlive<>{this->getExecutor()});
-  auto f = Future<B>(sf.core_);
-  sf.core_ = nullptr;
-
+  using B = typename R::ReturnsFuture::Inner;
+  auto fp = FutureBaseHelper::makePromiseContractForThen<B>(
+      this->getCore(), this->getExecutor());
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
-           std::move(p), static_cast<F&&>(func))](
+           std::move(fp.promise), static_cast<F&&>(func))](
           Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
         if (!R::Arg::isTry() && t.hasException()) {
           state.setException(std::move(ka), std::move(t.exception()));
@@ -388,7 +401,7 @@ FutureBase<T>::thenImplementation(
         }
       },
       allowInline);
-  return f;
+  return std::move(fp.future);
 }
 
 // Pass through a simple future as it needs no deferral adaptation
@@ -416,21 +429,12 @@ typename std::enable_if< //
 FutureBase<T>::thenImplementation(
     F&& func, R, futures::detail::InlineContinuation allowInline) {
   static_assert(R::Arg::ArgsSize::value == 2, "Then must take two arguments");
-  typedef typename R::ReturnsFuture::Inner B;
-
-  Promise<B> p;
-  p.core_->initCopyInterruptHandlerFrom(this->getCore());
-
-  // grab the Future now before we lose our handle on the Promise
-  auto sf = p.getSemiFuture();
-  auto e = getKeepAliveToken(this->getExecutor());
-  sf.setExecutor(std::move(e));
-  auto f = Future<B>(sf.core_);
-  sf.core_ = nullptr;
-
+  using B = typename R::ReturnsFuture::Inner;
+  auto fp = FutureBaseHelper::makePromiseContractForThen<B>(
+      this->getCore(), this->getExecutor());
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
-           std::move(p), static_cast<F&&>(func))](
+           std::move(fp.promise), static_cast<F&&>(func))](
           Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
         if (!R::Arg::isTry() && t.hasException()) {
           state.setException(std::move(ka), std::move(t.exception()));
@@ -451,7 +455,7 @@ FutureBase<T>::thenImplementation(
       },
       allowInline);
 
-  return f;
+  return std::move(fp.future);
 }
 
 class WaitExecutor final : public folly::Executor {
