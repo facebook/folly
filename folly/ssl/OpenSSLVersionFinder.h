@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/Conv.h>
 #include <folly/portability/OpenSSL.h>
 
 // This is used to find the OpenSSL version at runtime. Just returning
@@ -25,11 +24,7 @@
 namespace folly {
 namespace ssl {
 inline std::string getOpenSSLLongVersion() {
-#ifdef OPENSSL_VERSION_TEXT
   return OpenSSL_version(OPENSSL_VERSION);
-#else
-  return folly::format("0x{:x}", OPENSSL_VERSION_NUMBER).str();
-#endif
 }
 
 inline uint64_t getOpenSSLNumericVersion() {
