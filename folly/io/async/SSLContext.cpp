@@ -164,7 +164,6 @@ void SSLContext::setSupportedGroups(const std::vector<std::string>& groups) {
 }
 
 void SSLContext::setServerECCurve(const std::string& curveName) {
-#if !defined(OPENSSL_NO_ECDH)
   EC_KEY* ecdh = nullptr;
   int nid;
 
@@ -186,9 +185,6 @@ void SSLContext::setServerECCurve(const std::string& curveName) {
 
   SSL_CTX_set_tmp_ecdh(ctx_, ecdh);
   EC_KEY_free(ecdh);
-#else
-  throw std::runtime_error("Elliptic curve encryption not allowed");
-#endif
 }
 
 SSLContext::SSLContext(SSL_CTX* ctx) : ctx_(ctx) {
