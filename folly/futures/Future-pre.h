@@ -180,26 +180,6 @@ struct valueExecutorCallableResult {
 
 class DeferredExecutor;
 
-template <class T, class F>
-auto makeExecutorLambda(
-    F&& func, typename std::enable_if<is_invocable_v<F>, int>::type = 0) {
-  return
-      [func = static_cast<F&&>(func)](Executor::KeepAlive<>&&, auto&&) mutable {
-        return static_cast<F&&>(func)();
-      };
-}
-
-template <class T, class F>
-auto makeExecutorLambda(
-    F&& func, typename std::enable_if<!is_invocable_v<F>, int>::type = 0) {
-  using R = futures::detail::callableResult<T, F&&>;
-  return [func_2 = static_cast<F&&>(func)](
-             Executor::KeepAlive<>&&,
-             typename R::Arg::ArgList::FirstArg&& param) mutable {
-    return static_cast<F&&>(func_2)(static_cast<decltype(param)>(param));
-  };
-}
-
 } // namespace detail
 } // namespace futures
 
