@@ -740,7 +740,7 @@ class invocable_to_convertible : private inheritable<F> {
 //
 //    But conversion, as done with this utility, makes this goal achievable.
 //
-//      list.emplace_back(folly::invoke_to([] {
+//      list.emplace_back(folly::invocable_to([] {
 //        stable obj;
 //        obj.value = 7;
 //        return obj;
