@@ -517,7 +517,6 @@ class SSLContext {
    */
   void setOptions(long options);
 
-#if FOLLY_OPENSSL_HAS_ALPN
   std::string getAdvertisedNextProtocols() const;
 
   /**
@@ -571,8 +570,6 @@ class SSLContext {
   void setAlpnAllowMismatch(bool allowMismatch) {
     alpnAllowMismatch_ = allowMismatch;
   }
-
-#endif // FOLLY_OPENSSL_HAS_ALPN
 
   /**
    * Gets the underlying SSL_CTX for advanced usage
@@ -682,8 +679,6 @@ class SSLContext {
   std::unique_ptr<SSLAcceptRunner> sslAcceptRunner_;
   std::unique_ptr<OpenSSLTicketHandler> ticketHandler_;
 
-#if FOLLY_OPENSSL_HAS_ALPN
-
   struct AdvertisedNextProtocolsItem {
     unsigned char* protocols;
     unsigned length;
@@ -710,8 +705,6 @@ class SSLContext {
   size_t pickNextProtocols();
 
   bool alpnAllowMismatch_{true};
-
-#endif // FOLLY_OPENSSL_HAS_ALPN
 
   static int passwordCallback(char* password, int size, int, void* data);
 

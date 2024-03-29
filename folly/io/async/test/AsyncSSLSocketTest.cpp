@@ -520,7 +520,6 @@ TEST(AsyncSSLSocketTest, SocketWithDelay) {
   cerr << "SocketWithDelay test completed" << endl;
 }
 
-#if FOLLY_OPENSSL_HAS_ALPN
 class NextProtocolTest : public Test {
   // For matching protos
  public:
@@ -672,8 +671,6 @@ TEST_F(NextProtocolTest, AlpnNotAllowMismatchWithoutOverlap) {
   expectHandshakeError();
   EXPECT_EQ(server->getClientAlpns(), std::vector<std::string>({"blub"}));
 }
-
-#endif
 
 #ifndef OPENSSL_NO_TLSEXT
 /**

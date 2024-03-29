@@ -151,9 +151,7 @@ SSLContext::~SSLContext() {
     ctx_ = nullptr;
   }
 
-#if FOLLY_OPENSSL_HAS_ALPN
   deleteNextProtocolsStrings();
-#endif
 }
 
 void SSLContext::ciphers(const std::string& ciphers) {
@@ -576,7 +574,6 @@ int SSLContext::baseServerNameOpenSSLCallback(SSL* ssl, int* al, void* data) {
   return SSL_TLSEXT_ERR_NOACK;
 }
 
-#if FOLLY_OPENSSL_HAS_ALPN
 int SSLContext::alpnSelectCallback(
     SSL* /* ssl */,
     const unsigned char** out,
@@ -706,8 +703,6 @@ size_t SSLContext::pickNextProtocols() {
   auto rng = ThreadLocalPRNG();
   return size_t(nextProtocolDistribution_(rng));
 }
-
-#endif // FOLLY_OPENSSL_HAS_ALPN
 
 SSL* SSLContext::createSSL() const {
   SSL* ssl = SSL_new(ctx_);
