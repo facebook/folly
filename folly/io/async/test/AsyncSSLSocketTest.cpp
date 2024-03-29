@@ -672,7 +672,6 @@ TEST_F(NextProtocolTest, AlpnNotAllowMismatchWithoutOverlap) {
   EXPECT_EQ(server->getClientAlpns(), std::vector<std::string>({"blub"}));
 }
 
-#ifndef OPENSSL_NO_TLSEXT
 /**
  * 1. Client sends TLSEXT_HOSTNAME in client hello.
  * 2. Server found a match SSL_CTX and use this SSL_CTX to
@@ -852,7 +851,6 @@ TEST(AsyncSSLSocketTest, SetSupportedApplicationProtocols) {
           server.getApplicationProtocol()) == 0);
 }
 
-#endif
 /**
  * Test SSL client socket
  */
