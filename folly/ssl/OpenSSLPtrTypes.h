@@ -156,7 +156,6 @@ FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(OcspCertId, OCSP_CERTID, OCSP_CERTID_free);
 // the appropriate destructor:
 //    * OwningStackOf* -> Invokes sk_T_free
 //    * BorrowingStackOf* -> Invokes sk_T_pop_free
-#if FOLLY_OPENSSL_PREREQ(1, 1, 0)
 namespace detail {
 template <
     class StackType,
@@ -184,31 +183,6 @@ struct OpenSSLBorrowedStackDestructor {
 
 #define FOLLY_SSL_DETAIL_BORROWING_STACK_DESTRUCTOR(T) \
   ::folly::ssl::detail::OpenSSLBorrowedStackDestructor<STACK_OF(T)>
-
-#else
-namespace detail {
-
-template <class ElementType, void (*ElementDestructor)(ElementType*)>
-struct OpenSSL102OwnedStackDestructor {
-  template <class T>
-  void operator()(T* stack) const {
-    sk_pop_free(
-        reinterpret_cast<_STACK*>(stack), ((void (*)(void*))ElementDestructor));
-  }
-};
-
-struct OpenSSL102BorrowedStackDestructor {
-  template <class T>
-  void operator()(T* stack) const {
-    sk_free(reinterpret_cast<_STACK*>(stack));
-  }
-};
-} // namespace detail
-#define FOLLY_SSL_DETAIL_OWNING_STACK_DESTRUCTOR(T) \
-  ::folly::ssl::detail::OpenSSL102OwnedStackDestructor<T, T##_free>
-#define FOLLY_SSL_DETAIL_BORROWING_STACK_DESTRUCTOR(T) \
-  ::folly::ssl::detail::OpenSSL102BorrowedStackDestructor
-#endif
 
 #define FOLLY_SSL_DETAIL_DEFINE_OWNING_STACK_PTR_TYPE(             \
     element_alias, element_type)                                   \
