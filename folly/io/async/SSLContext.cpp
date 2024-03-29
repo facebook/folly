@@ -885,10 +885,8 @@ void SSLContext::setAllowNoDheKex(bool flag) {
 
 void SSLContext::setTicketHandler(
     std::unique_ptr<OpenSSLTicketHandler> handler) {
-#ifdef SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB
   ticketHandler_ = std::move(handler);
   SSL_CTX_set_tlsext_ticket_key_cb(ctx_, dispatchTicketCrypto);
-#endif
 }
 
 } // namespace folly
