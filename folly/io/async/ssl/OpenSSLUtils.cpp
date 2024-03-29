@@ -149,9 +149,6 @@ static std::unordered_map<uint16_t, std::string> getOpenSSLCipherNames() {
   SSL* ssl = nullptr;
 
   const SSL_METHOD* meth = TLS_server_method();
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  OpenSSL_add_ssl_algorithms();
-#endif
 
   if ((ctx = SSL_CTX_new(meth)) == nullptr) {
     return ret;

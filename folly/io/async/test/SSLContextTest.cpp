@@ -233,7 +233,6 @@ TEST_F(SSLContextTest, TestGetFromSSLCtx) {
   SSL_CTX_free(randomCtx);
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
 TEST_F(SSLContextTest, TestInvalidSigAlgThrows) {
   {
     SSLContext tmpCtx;
@@ -247,7 +246,6 @@ TEST_F(SSLContextTest, TestInvalidSigAlgThrows) {
         std::runtime_error);
   }
 }
-#endif
 
 #if FOLLY_OPENSSL_PREREQ(1, 1, 1)
 TEST_F(SSLContextTest, TestSetCiphersuites) {

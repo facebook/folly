@@ -163,14 +163,12 @@ void SSLContext::setClientECCurvesList(
   if (ecCurves.empty()) {
     return;
   }
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
   std::string ecCurvesList;
   join(":", ecCurves, ecCurvesList);
   int rc = SSL_CTX_set1_curves_list(ctx_, ecCurvesList.c_str());
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set1_curves_list " + getErrors());
   }
-#endif
 }
 
 void SSLContext::setSupportedGroups(const std::vector<std::string>& groups) {
@@ -188,7 +186,7 @@ void SSLContext::setSupportedGroups(const std::vector<std::string>& groups) {
 }
 
 void SSLContext::setServerECCurve(const std::string& curveName) {
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL && !defined(OPENSSL_NO_ECDH)
+#if !defined(OPENSSL_NO_ECDH)
   EC_KEY* ecdh = nullptr;
   int nid;
 
@@ -241,12 +239,10 @@ void SSLContext::setCiphersOrThrow(const std::string& ciphers) {
 }
 
 void SSLContext::setSigAlgsOrThrow(const std::string& sigalgs) {
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
   int rc = SSL_CTX_set1_sigalgs_list(ctx_, sigalgs.c_str());
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set1_sigalgs_list " + getErrors());
   }
-#endif
 }
 
 void SSLContext::setVerificationOption(

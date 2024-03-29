@@ -685,7 +685,6 @@ class AsyncSSLSocket : public AsyncSocket {
     handshakeTimeout_.detachTimeoutManager();
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x009080bfL
   /**
    * This function will set the SSL context for this socket to the
    * argument. This should only be used on client SSL Sockets that have
@@ -697,7 +696,6 @@ class AsyncSSLSocket : public AsyncSocket {
    * Detaches the SSL context for this socket.
    */
   void detachSSLContext();
-#endif
 
   /**
    * Returns the original folly::SSLContext associated with this socket.

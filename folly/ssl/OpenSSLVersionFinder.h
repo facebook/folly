@@ -27,19 +27,13 @@ namespace ssl {
 inline std::string getOpenSSLLongVersion() {
 #ifdef OPENSSL_VERSION_TEXT
   return OpenSSL_version(OPENSSL_VERSION);
-#elif defined(OPENSSL_VERSION_NUMBER)
-  return folly::format("0x{:x}", OPENSSL_VERSION_NUMBER).str();
 #else
-  return "";
+  return folly::format("0x{:x}", OPENSSL_VERSION_NUMBER).str();
 #endif
 }
 
 inline uint64_t getOpenSSLNumericVersion() {
-#ifdef OPENSSL_VERSION_NUMBER
   return OpenSSL_version_num();
-#else
-  return 0;
-#endif
 }
 } // namespace ssl
 } // namespace folly
