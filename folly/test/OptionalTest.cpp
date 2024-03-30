@@ -836,7 +836,6 @@ TEST(Optional, NoneMatchesNullopt) {
   EXPECT_FALSE(op.has_value());
 }
 
-#if __cplusplus >= 201703L && __has_include(<optional>)
 TEST(Optional, StdOptionalConversions) {
   folly::Optional<int> f = 42;
   std::optional<int> s = static_cast<std::optional<int>>(f);
@@ -858,7 +857,6 @@ TEST(Optional, StdOptionalConversions) {
   EXPECT_EQ(**fp, 42);
   EXPECT_FALSE(sp);
 }
-#endif
 
 TEST(Optional, MovedFromOptionalIsEmpty) {
   // moved-from folly::Optional is empty, unlike std::optional!

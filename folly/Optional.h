@@ -62,13 +62,10 @@
 #include <cstddef>
 #include <functional>
 #include <new>
+#include <optional>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-#if __cplusplus >= 201703L && __has_include(<optional>)
-#define FOLLY_HAS_STD_OPTIONAL
-#include <optional>
-#endif
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
@@ -182,8 +179,8 @@ class Optional {
     p.promise_->value_ = this;
   }
 
-// Conversions to ease migration to std::optional
-#ifdef FOLLY_HAS_STD_OPTIONAL
+  // Conversions to ease migration to std::optional
+
   /// Allow construction of Optional from std::optional.
   template <
       typename U,
@@ -219,7 +216,6 @@ class Optional {
     return storage_.hasValue ? std::optional<Value>(storage_.value)
                              : std::nullopt;
   }
-#endif
 
   /// Set the Optional
   /// @methodset Modifiers
