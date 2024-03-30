@@ -2131,8 +2131,7 @@ auto mapTry(Executor& exec, Collection&& c, F&& func)
 /// thunk behaves like std::function<Future<T2>(void)> or
 /// std::function<SemiFuture<T2>(void)>
 template <class F>
-auto when(bool p, F&& thunk)
-    -> decltype(std::declval<invoke_result_t<F>>().unit());
+auto when(bool p, F&& thunk) -> decltype(static_cast<F&&>(thunk)().unit());
 
 SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton);
 SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton);
@@ -2331,8 +2330,9 @@ inline Future<Unit> via(Executor::KeepAlive<> executor, int8_t priority);
 /// This is semantically equivalent to via(executor).then(func), but
 /// easier to read and slightly more efficient.
 template <class Func>
-auto via(Executor::KeepAlive<>, Func&& func) -> Future<
-    typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner>;
+auto via(Executor::KeepAlive<>, Func&& func)
+    -> Future<typename isFutureOrSemiFuture<
+        decltype(static_cast<Func&&>(func)())>::Inner>;
 
 /** When all the input Futures complete, the returned Future will complete.
   Errors do not cause early termination; this Future will always succeed

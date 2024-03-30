@@ -106,14 +106,14 @@ class CoreCallbackState {
 
  public:
   CoreCallbackState(Promise<T>&& promise, F&& func) noexcept(
-      noexcept(DF(std::declval<F&&>())))
+      noexcept(DF(static_cast<F&&>(func))))
       : func_(static_cast<F&&>(func)),
         core_(std::exchange(promise.core_, nullptr)) {
     assert(before_barrier());
   }
 
   CoreCallbackState(CoreCallbackState&& that) noexcept(
-      noexcept(DF(std::declval<F&&>()))) {
+      noexcept(DF(static_cast<F&&>(that.func_)))) {
     if (that.before_barrier()) {
       new (&func_) DF(static_cast<F&&>(that.func_));
       that.func_.~DF();
@@ -131,7 +131,7 @@ class CoreCallbackState {
 
   template <typename... Args>
   auto invoke(Args&&... args) noexcept(
-      noexcept(std::declval<F&&>()(std::declval<Args&&>()...))) {
+      noexcept(FOLLY_DECLVAL(F&&)(static_cast<Args&&>(args)...))) {
     assert(before_barrier());
     return static_cast<F&&>(func_)(static_cast<Args&&>(args)...);
   }
@@ -167,8 +167,7 @@ class CoreCallbackState {
 
 template <typename T, typename F>
 auto makeCoreCallbackState(Promise<T>&& p, F&& f) noexcept(
-    noexcept(CoreCallbackState<T, F>(
-        std::declval<Promise<T>&&>(), std::declval<F&&>()))) {
+    noexcept(CoreCallbackState<T, F>(std::move(p), static_cast<F&&>(f)))) {
   return CoreCallbackState<T, F>(std::move(p), static_cast<F&&>(f));
 }
 
@@ -1302,8 +1301,9 @@ Future<T> Future<T>::onTimeout(
 }
 
 template <class Func>
-auto via(Executor::KeepAlive<> x, Func&& func) -> Future<
-    typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner> {
+auto via(Executor::KeepAlive<> x, Func&& func)
+    -> Future<typename isFutureOrSemiFuture<
+        decltype(static_cast<Func&&>(func)())>::Inner> {
   return via(std::move(x))
       .thenValue([f = static_cast<Func&&>(func)](auto&&) mutable {
         return static_cast<Func&&>(f)();
@@ -2535,8 +2535,7 @@ Future<T> Future<T>::filter(F&& predicate) && {
 }
 
 template <class F>
-auto when(bool p, F&& thunk)
-    -> decltype(std::declval<invoke_result_t<F>>().unit()) {
+auto when(bool p, F&& thunk) -> decltype(static_cast<F&&>(thunk)().unit()) {
   return p ? static_cast<F&&>(thunk)().unit() : makeFuture();
 }
 
