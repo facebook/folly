@@ -96,16 +96,11 @@ TEST(OpenSSLPortabilityTest, TestX509RevokedApi) {
 
   EXPECT_EQ(0, ASN1_INTEGER_cmp(serial, retrieved_serial));
 
-#if FOLLY_HAVE_OPENSSL_ASN1_TIME_DIFF
   int diff_days;
   int diff_secs;
   ASN1_TIME_diff(&diff_days, &diff_secs, revocation_date, retrieved_date);
   EXPECT_EQ(0, diff_days);
   EXPECT_EQ(0, diff_secs);
-#else
-  (void)revocation_date;
-  (void)retrieved_date;
-#endif
 
   ASN1_INTEGER_free(serial);
   ASN1_TIME_free(revocation_date);
