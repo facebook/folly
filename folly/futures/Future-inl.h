@@ -960,9 +960,10 @@ Future<T>::thenTry(F&& func) && {
                         folly::Try<T>&& t) mutable {
     return static_cast<F&&>(f)(std::move(t));
   };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
-  return this->thenImplementation(
-      std::move(lambdaFunc), R{}, futures::detail::InlineContinuation::forbid);
+  using W = decltype(lambdaFunc);
+  using R = futures::detail::tryExecutorCallableResult<T, W>;
+  auto policy = futures::detail::InlineContinuation::forbid;
+  return this->thenImplementation(static_cast<W&&>(lambdaFunc), R{}, policy);
 }
 
 template <class T>
@@ -974,9 +975,10 @@ Future<T>::thenTryInline(F&& func) && {
                         folly::Try<T>&& t) mutable {
     return static_cast<F&&>(f)(std::move(t));
   };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
-  return this->thenImplementation(
-      std::move(lambdaFunc), R{}, futures::detail::InlineContinuation::permit);
+  using W = decltype(lambdaFunc);
+  using R = futures::detail::tryExecutorCallableResult<T, W>;
+  auto policy = futures::detail::InlineContinuation::permit;
+  return this->thenImplementation(static_cast<W&&>(lambdaFunc), R{}, policy);
 }
 
 template <class T>
@@ -989,9 +991,10 @@ Future<T>::thenExTry(F&& func) && {
     DCHECK(ka);
     return static_cast<F&&>(f)(std::move(ka), std::move(t));
   };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
-  return this->thenImplementation(
-      std::move(lambdaFunc), R{}, futures::detail::InlineContinuation::forbid);
+  using W = decltype(lambdaFunc);
+  using R = futures::detail::tryExecutorCallableResult<T, W>;
+  auto policy = futures::detail::InlineContinuation::forbid;
+  return this->thenImplementation(static_cast<W&&>(lambdaFunc), R{}, policy);
 }
 
 template <class T>
@@ -1004,9 +1007,10 @@ Future<T>::thenExTryInline(F&& func) && {
     DCHECK(ka);
     return static_cast<F&&>(f)(std::move(ka), std::move(t));
   };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
-  return this->thenImplementation(
-      std::move(lambdaFunc), R{}, futures::detail::InlineContinuation::permit);
+  using W = decltype(lambdaFunc);
+  using R = futures::detail::tryExecutorCallableResult<T, W>;
+  auto policy = futures::detail::InlineContinuation::permit;
+  return this->thenImplementation(static_cast<W&&>(lambdaFunc), R{}, policy);
 }
 
 template <class T>
@@ -1017,9 +1021,10 @@ Future<T>::thenValue(F&& func) && {
                         Executor::KeepAlive<>&&, folly::Try<T>&& t) mutable {
     return futures::detail::wrapInvoke(std::move(t), static_cast<F&&>(f));
   };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
-  return this->thenImplementation(
-      std::move(lambdaFunc), R{}, futures::detail::InlineContinuation::forbid);
+  using W = decltype(lambdaFunc);
+  using R = futures::detail::tryExecutorCallableResult<T, W>;
+  auto policy = futures::detail::InlineContinuation::forbid;
+  return this->thenImplementation(static_cast<W&&>(lambdaFunc), R{}, policy);
 }
 
 template <class T>
@@ -1030,9 +1035,10 @@ Future<T>::thenValueInline(F&& func) && {
                         Executor::KeepAlive<>&&, folly::Try<T>&& t) mutable {
     return futures::detail::wrapInvoke(std::move(t), static_cast<F&&>(f));
   };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
-  return this->thenImplementation(
-      std::move(lambdaFunc), R{}, futures::detail::InlineContinuation::permit);
+  using W = decltype(lambdaFunc);
+  using R = futures::detail::tryExecutorCallableResult<T, W>;
+  auto policy = futures::detail::InlineContinuation::permit;
+  return this->thenImplementation(static_cast<W&&>(lambdaFunc), R{}, policy);
 }
 
 template <class T>
@@ -1045,9 +1051,10 @@ Future<T>::thenExValue(F&& func) && {
     DCHECK(ka);
     return static_cast<F&&>(f)(std::move(ka), t.template get<false, T&&>());
   };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
-  return this->thenImplementation(
-      std::move(lambdaFunc), R{}, futures::detail::InlineContinuation::forbid);
+  using W = decltype(lambdaFunc);
+  using R = futures::detail::tryExecutorCallableResult<T, W>;
+  auto policy = futures::detail::InlineContinuation::forbid;
+  return this->thenImplementation(static_cast<W&&>(lambdaFunc), R{}, policy);
 }
 
 template <class T>
@@ -1060,9 +1067,10 @@ Future<T>::thenExValueInline(F&& func) && {
     DCHECK(ka);
     return static_cast<F&&>(f)(std::move(ka), t.template get<false, T&&>());
   };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(lambdaFunc)>;
-  return this->thenImplementation(
-      std::move(lambdaFunc), R{}, futures::detail::InlineContinuation::permit);
+  using W = decltype(lambdaFunc);
+  using R = futures::detail::tryExecutorCallableResult<T, W>;
+  auto policy = futures::detail::InlineContinuation::permit;
+  return this->thenImplementation(static_cast<W&&>(lambdaFunc), R{}, policy);
 }
 
 template <class T>
