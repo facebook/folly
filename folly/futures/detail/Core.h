@@ -524,6 +524,24 @@ class CoreBase {
 
   void derefCallback() noexcept;
 
+  template <typename Self>
+  FOLLY_ERASE static Self& walkProxyChainImpl(Self& self) noexcept {
+    DCHECK(self.hasResult());
+    auto core = &self;
+    while (core->state_.load(std::memory_order_relaxed) == State::Proxy) {
+      core = core->proxy_;
+    }
+    return *core;
+  }
+  FOLLY_ERASE CoreBase& walkProxyChain() noexcept {
+    return walkProxyChainImpl(*this);
+  }
+  FOLLY_ERASE CoreBase const& walkProxyChain() const noexcept {
+    return walkProxyChainImpl(*this);
+  }
+
+  bool destroyDerived() noexcept;
+
   Callback callback_;
   std::atomic<State> state_;
   std::atomic<unsigned char> attached_;
@@ -590,20 +608,10 @@ class Core final : private ResultHolder<T>, public CoreBase {
   ///   possibly moved-out, depending on what the callback did; some but not
   ///   all callbacks modify (possibly move-out) the result.)
   Try<T>& getTry() {
-    DCHECK(hasResult());
-    auto core = this;
-    while (core->state_.load(std::memory_order_relaxed) == State::Proxy) {
-      core = static_cast<Core*>(core->proxy_);
-    }
-    return core->result_;
+    return static_cast<decltype(*this)&>(walkProxyChain()).result_;
   }
   Try<T> const& getTry() const {
-    DCHECK(hasResult());
-    auto core = this;
-    while (core->state_.load(std::memory_order_relaxed) == State::Proxy) {
-      core = static_cast<Core const*>(core->proxy_);
-    }
-    return core->result_;
+    return static_cast<decltype(*this)&>(walkProxyChain()).result_;
   }
 
   /// Call only from consumer thread.
@@ -682,28 +690,8 @@ class Core final : private ResultHolder<T>, public CoreBase {
   }
 
   ~Core() override {
-    DCHECK(attached_ == 0);
-    auto state = state_.load(std::memory_order_relaxed);
-    switch (state) {
-      case State::OnlyResult:
-        [[fallthrough]];
-
-      case State::Done:
-        this->result_.~Result();
-        break;
-
-      case State::Proxy:
-        proxy_->detachFuture();
-        break;
-
-      case State::Empty:
-        break;
-
-      case State::Start:
-      case State::OnlyCallback:
-      case State::OnlyCallbackAllowInline:
-      default:
-        terminate_with<std::logic_error>("~Core unexpected state");
+    if (destroyDerived()) {
+      this->result_.~Result();
     }
   }
 

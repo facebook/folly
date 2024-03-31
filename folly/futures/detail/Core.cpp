@@ -670,6 +670,31 @@ void CoreBase::derefCallback() noexcept {
   }
 }
 
+bool CoreBase::destroyDerived() noexcept {
+  DCHECK(attached_ == 0);
+  auto state = state_.load(std::memory_order_relaxed);
+  switch (state) {
+    case State::OnlyResult:
+      [[fallthrough]];
+
+    case State::Done:
+      return true;
+
+    case State::Proxy:
+      proxy_->detachFuture();
+      [[fallthrough]];
+
+    case State::Empty:
+      return false;
+
+    case State::Start:
+    case State::OnlyCallback:
+    case State::OnlyCallbackAllowInline:
+    default:
+      terminate_with<std::logic_error>("~Core unexpected state");
+  }
+}
+
 #if FOLLY_USE_EXTERN_FUTURE_UNIT
 template class Core<folly::Unit>;
 #endif
