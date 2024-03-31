@@ -102,7 +102,7 @@ auto wrapInvoke(folly::Try<T>&& t, F&& f) {
 //  may be fulfilled. Assumes the stored functor to be noexcept-destructible.
 template <typename T, typename F>
 class CoreCallbackState {
-  using DF = std::decay_t<F>;
+  using DF = folly::decay_t<F>;
 
  public:
   CoreCallbackState(Promise<T>&& promise, F&& func) noexcept(
