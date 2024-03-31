@@ -1096,7 +1096,6 @@ TEST(F14FastSet, moveOnly) {
   runMoveOnlyTest<F14FastSet<MoveOnlyTestInt>>();
 }
 
-#if FOLLY_F14_ERASE_INTO_AVAILABLE
 template <typename S>
 void runEraseIntoTest() {
   S t0;
@@ -1159,7 +1158,6 @@ TEST(F14VectorSet, eraseInto) {
 TEST(F14FastSet, eraseInto) {
   runEraseIntoTest<F14FastSet<MoveOnlyTestInt>>();
 }
-#endif
 
 TEST(F14ValueSet, heterogeneous) {
   // note: std::string is implicitly convertible to but not from StringPiece
@@ -1330,13 +1328,11 @@ void runHeterogeneousInsertTest() {
   EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
       << Tracked<1>::counts;
 
-#if FOLLY_F14_ERASE_INTO_AVAILABLE
   set.insert(10);
   resetTracking();
   set.eraseInto(10, [](auto&&) {});
   EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
       << Tracked<1>::counts;
-#endif
 }
 
 template <typename S>

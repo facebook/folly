@@ -290,7 +290,6 @@ class F14BasicSet
 
   //// PUBLIC - F14 Extensions
 
-#if FOLLY_F14_ERASE_INTO_AVAILABLE
  private:
   // converts const_iterator to iterator when they are different types
   // such as in libstdc++
@@ -352,7 +351,6 @@ class F14BasicSet
       K const& key, BeforeDestroy&& beforeDestroy) {
     return eraseIntoImpl(key, beforeDestroy);
   }
-#endif
 
   bool containsEqualValue(value_type const& value) const {
     // bucket is only valid if bucket_count is non-zero

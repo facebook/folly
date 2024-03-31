@@ -1470,7 +1470,6 @@ TEST(F14FastMap, moveOnly) {
   runMoveOnlyTest<F14FastMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
 }
 
-#if FOLLY_F14_ERASE_INTO_AVAILABLE
 template <typename M>
 void runEraseIntoTest() {
   M t0;
@@ -1600,8 +1599,6 @@ TEST(F14FastMap, eraseIntoEmptyFromReserve) {
       F14FastMap<MoveOnlyTestInt, MoveOnlyTestInt>>();
 }
 
-#endif
-
 template <typename M>
 void runPermissiveConstructorTest() {
   M t;
@@ -1616,14 +1613,12 @@ void runPermissiveConstructorTest() {
   EXPECT_EQ(t.size(), 8);
   t.erase(ct.find(30));
   EXPECT_EQ(t.size(), 7);
-#if FOLLY_F14_ERASE_INTO_AVAILABLE
   t.eraseInto(40, [](auto&&, auto&&) {});
   EXPECT_EQ(t.size(), 6);
   t.eraseInto(t.find(50), [](auto&&, auto&&) {});
   EXPECT_EQ(t.size(), 5);
   t.eraseInto(ct.find(60), [](auto&&, auto&&) {});
   EXPECT_EQ(t.size(), 4);
-#endif
 }
 
 TEST(F14ValueMap, permissiveConstructor) {
@@ -1827,14 +1822,12 @@ void runHeterogeneousInsertTest() {
   EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
       << Tracked<1>::counts();
 
-#if FOLLY_F14_ERASE_INTO_AVAILABLE
   map.emplace(10, 40);
   resetTracking();
   map.eraseInto(10, [](auto&&, auto&&) {});
   EXPECT_EQ(map.size(), 0);
   EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
       << Tracked<1>::counts();
-#endif
 
   const auto t = map.prehash(10);
   resetTracking();

@@ -434,9 +434,6 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
 
   //// PUBLIC - F14 Extensions
 
-#if FOLLY_F14_ERASE_INTO_AVAILABLE
-  // emulation of eraseInto requires unordered_map::extract
-
   template <typename BeforeDestroy>
   iterator eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
     iterator it = erase(pos, pos);
@@ -490,7 +487,6 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
       K2 const& key, BeforeDestroy&& beforeDestroy) {
     return eraseIntoImpl(key, beforeDestroy);
   }
-#endif
 
   bool containsEqualValue(value_type const& value) const {
     // bucket isn't valid if bucket_count is zero
