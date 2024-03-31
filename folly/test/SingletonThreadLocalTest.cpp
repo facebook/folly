@@ -83,29 +83,13 @@ TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   EXPECT_EQ(threads.size(), fooDeletedCount);
 }
 
-TEST(SingletonThreadLocalTest, DefaultMakeMoveConstructible) {
-  struct Foo {
-    int a = 4;
-    Foo() = default;
-    Foo(Foo&&) = default;
-    Foo& operator=(Foo&&) = default;
-  };
-  using Real = detail::DefaultMake<Foo>::type;
-  EXPECT_TRUE((std::is_same<Real, Foo>::value));
-  struct Tag {};
-  auto& single = SingletonThreadLocal<Foo, Tag>::get();
-  EXPECT_EQ(4, single.a);
-}
-
-TEST(SingletonThreadLocalTest, DefaultMakeNotMoveConstructible) {
+TEST(SingletonThreadLocalTest, DefaultMake) {
   struct Foo {
     int a = 4;
     Foo() = default;
     Foo(Foo&&) = delete;
     Foo& operator=(Foo&&) = delete;
   };
-  using Real = detail::DefaultMake<Foo>::type;
-  EXPECT_TRUE(((__cplusplus >= 201703ULL) == std::is_same<Real, Foo>::value));
   struct Tag {};
   auto& single = SingletonThreadLocal<Foo, Tag>::get();
   EXPECT_EQ(4, single.a);
@@ -237,8 +221,8 @@ TEST(SingletonThreadLocalDeathTest, Overload) {
 
   auto message = stripLeftMargin(R"MESSAGE(
     Overloaded unique instance over <int, DeathTag, ...> with differing trailing arguments:
-      folly::SingletonThreadLocal<int, DeathTag, Make1, DeathTag>
-      folly::SingletonThreadLocal<int, DeathTag, Make2, DeathTag>
+      folly::SingletonThreadLocal<int, DeathTag, folly::detail::DefaultMake<int>, TLTag1>
+      folly::SingletonThreadLocal<int, DeathTag, folly::detail::DefaultMake<int>, TLTag2>
   )MESSAGE");
   EXPECT_DEATH(dlopen(lib.string().c_str(), RTLD_LAZY), message);
 }

@@ -27,18 +27,7 @@ struct FOLLY_EXPORT DefaultTag {};
 
 template <typename T>
 struct DefaultMake {
-  struct Heap {
-    std::unique_ptr<T> ptr{std::make_unique<T>()};
-    /* implicit */ operator T&() { return *ptr; }
-  };
-
-  using is_returnable = StrictDisjunction<
-      bool_constant<__cplusplus >= 201703ULL>,
-      std::is_copy_constructible<T>,
-      std::is_move_constructible<T>>;
-  using type = std::conditional_t<is_returnable::value, T, Heap>;
-
-  type operator()() const { return type(); }
+  T operator()() const { return T(); }
 };
 
 } // namespace detail
