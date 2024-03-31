@@ -16,11 +16,12 @@
 
 #pragma once
 
+#include <new>
+
 #include <folly/Function.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
-#include <folly/lang/Launder.h>
 
 namespace folly {
 namespace detail {
@@ -206,7 +207,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
             std::is_function<std::remove_pointer_t<Func>>::value,
         "");
     return folly::invoke(
-        *folly::launder(reinterpret_cast<const Func*>(&object)),
+        *std::launder(reinterpret_cast<const Func*>(&object)),
         static_cast<Args&&>(args)...);
   }
 
@@ -217,7 +218,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
     // cast to a pointer and then to the pointee.
     static_assert(std::is_pointer<Func>::value, "");
     return folly::invoke(
-        **folly::launder(reinterpret_cast<const Func*>(&object)),
+        **std::launder(reinterpret_cast<const Func*>(&object)),
         static_cast<Args&&>(args)...);
   }
 

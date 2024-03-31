@@ -40,7 +40,6 @@
 #include <folly/lang/Align.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
-#include <folly/lang/Launder.h>
 #include <folly/lang/Pretty.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Builtins.h>
@@ -718,12 +717,12 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   Item& item(std::size_t i) {
     FOLLY_SAFE_DCHECK(this->occupied(i), "");
-    return *launder(itemAddr(i));
+    return *std::launder(itemAddr(i));
   }
 
   Item const& citem(std::size_t i) const {
     FOLLY_SAFE_DCHECK(this->occupied(i), "");
-    return *launder(itemAddr(i));
+    return *std::launder(itemAddr(i));
   }
 
   static F14Chunk& owner(Item& item, std::size_t index) {

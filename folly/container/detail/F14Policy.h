@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -625,7 +626,7 @@ class ValueContainerPolicy : public BasePolicy<
         // location), but it seems highly likely that it will also cause
         // the compiler to drop such assumptions that are violated due
         // to our UB const_cast in moveValue.
-        destroyItem(*launder(std::addressof(src)));
+        destroyItem(*std::launder(std::addressof(src)));
       } else {
         destroyItem(src);
       }
@@ -1246,7 +1247,7 @@ class VectorContainerPolicy : public BasePolicy<
         assume(dst != nullptr);
         AllocTraits::construct(a, dst, Super::moveValue(*src));
         if (kIsMap) {
-          AllocTraits::destroy(a, launder(src));
+          AllocTraits::destroy(a, std::launder(src));
         } else {
           AllocTraits::destroy(a, src);
         }

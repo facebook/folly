@@ -19,11 +19,11 @@
 #include <algorithm>
 #include <atomic>
 #include <mutex>
+#include <new>
 
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Mask.h>
 #include <folly/lang/Exception.h>
-#include <folly/lang/Launder.h>
 #include <folly/synchronization/Hazptr.h>
 
 #if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
@@ -944,7 +944,7 @@ class alignas(64) SIMDTable {
           const_cast<void*>(static_cast<void const*>(&rawItems_[i])));
     }
 
-    Atom<Node*>& item(size_t i) { return *launder(itemAddr(i)); }
+    Atom<Node*>& item(size_t i) { return *std::launder(itemAddr(i)); }
 
     static constexpr uint64_t kOutboundOverflowIndex = 7 * 8;
     static constexpr uint64_t kSaturatedOutboundOverflowCount = 0xffULL
