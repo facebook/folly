@@ -96,25 +96,7 @@ struct ApplyInvoke {
 
 //////////////////////////////////////////////////////////////////////
 
-//  libc++ v3.9 has std::apply
-//  android ndk r15c libc++ claims to be v3.9 but is missing std::apply
-#if __cpp_lib_apply >= 201603 ||                   \
-    (((__ANDROID__ && _LIBCPP_VERSION > 3900) ||   \
-      (!__ANDROID__ && _LIBCPP_VERSION > 3800)) && \
-     _LIBCPP_STD_VER > 14) ||                      \
-    (_MSC_VER && _HAS_CXX17)
-
 /* using override */ using std::apply;
-
-#else // __cpp_lib_apply >= 201603
-
-//  mimic: std::apply, C++17
-template <typename F, typename Tuple>
-constexpr decltype(auto) apply(F&& func, Tuple&& tuple) {
-  return ApplyInvoke{}(static_cast<F&&>(func), static_cast<Tuple&&>(tuple));
-}
-
-#endif // __cpp_lib_apply >= 201603
 
 /**
  * Get a tuple of references from the passed tuple, forwarding will be applied
@@ -217,32 +199,6 @@ auto uncurry(F&& f)
   return detail::apply_tuple::Uncurry<typename std::decay<F>::type>(
       std::forward<F>(f));
 }
-
-#if __cpp_lib_make_from_tuple || (_MSC_VER >= 1910 && _MSVC_LANG > 201402)
-
-/* using override */ using std::make_from_tuple;
-
-#else
-
-namespace detail {
-namespace apply_tuple {
-template <class T>
-struct Construct {
-  template <class... Args>
-  constexpr T operator()(Args&&... args) const {
-    return T(std::forward<Args>(args)...);
-  }
-};
-} // namespace apply_tuple
-} // namespace detail
-
-//  mimic: std::make_from_tuple, C++17
-template <class T, class Tuple>
-constexpr T make_from_tuple(Tuple&& t) {
-  return apply(detail::apply_tuple::Construct<T>(), std::forward<Tuple>(t));
-}
-
-#endif
 
 //////////////////////////////////////////////////////////////////////
 } // namespace folly

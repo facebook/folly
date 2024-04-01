@@ -379,27 +379,6 @@ struct S {
 };
 } // namespace
 
-TEST(MakeFromTupleTest, makeFromTuple) {
-  S expected{42, 1.0, "foobar"};
-
-  // const lvalue ref
-  auto s1 = folly::make_from_tuple<S>(expected.tuple_);
-  EXPECT_EQ(expected.tuple_, s1.tuple_);
-
-  // rvalue ref
-  S sCopy{expected.tuple_};
-  auto s2 = folly::make_from_tuple<S>(std::move(sCopy.tuple_));
-  EXPECT_EQ(expected.tuple_, s2.tuple_);
-  EXPECT_TRUE(std::get<2>(sCopy.tuple_).empty());
-
-  // forward
-  std::string str{"foobar"};
-  auto s3 =
-      folly::make_from_tuple<S>(std::forward_as_tuple(42, 1.0, std::move(str)));
-  EXPECT_EQ(expected.tuple_, s3.tuple_);
-  EXPECT_TRUE(str.empty());
-}
-
 TEST(MakeIndexSequenceFromTuple, Basic) {
   using folly::index_sequence_for_tuple;
   using OneElementTuple = std::tuple<int>;
