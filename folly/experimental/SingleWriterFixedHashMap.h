@@ -54,12 +54,10 @@ namespace folly {
 ///
 template <typename Key, typename Value>
 class SingleWriterFixedHashMap {
-#if __cpp_lib_atomic_is_always_lock_free
   static_assert(
       std::atomic<Value>::is_always_lock_free,
       "This implementation depends on having fast atomic "
       "data-race-free loads and stores of Value type.");
-#endif
   static_assert(
       std::is_trivial<Key>::value,
       "This implementation depends on using a single key instance "

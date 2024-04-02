@@ -147,10 +147,8 @@ static void fill_zero(char* out, size_t size, size_t index) {
 }
 
 template <typename... A>
-static void call_to_chars([[maybe_unused]] A... a) {
-#if __cpp_lib_to_chars >= 201611L
+static void call_to_chars(A... a) {
   std::to_chars(a...);
-#endif
 }
 
 template <uint64_t Base, typename F>
