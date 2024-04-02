@@ -55,12 +55,12 @@ TYPED_TEST(FollyCallOnce, Simple) {
   typename TestFixture::OnceFlag flag;
   auto fn = [&](int* outp) { ++*outp; };
   int out = 0;
-  ASSERT_FALSE(folly::test_once(folly::as_const(flag)));
+  ASSERT_FALSE(folly::test_once(std::as_const(flag)));
   folly::call_once(flag, fn, &out);
-  ASSERT_TRUE(folly::test_once(folly::as_const(flag)));
+  ASSERT_TRUE(folly::test_once(std::as_const(flag)));
   ASSERT_EQ(1, out);
   folly::call_once(flag, fn, &out);
-  ASSERT_TRUE(folly::test_once(folly::as_const(flag)));
+  ASSERT_TRUE(folly::test_once(std::as_const(flag)));
   ASSERT_EQ(1, out);
 }
 
@@ -76,10 +76,10 @@ TYPED_TEST(FollyCallOnce, Exception) {
             throw ExpectedException();
           }),
       ExpectedException);
-  ASSERT_FALSE(folly::test_once(folly::as_const(flag)));
+  ASSERT_FALSE(folly::test_once(std::as_const(flag)));
   EXPECT_EQ(1, numCalls);
   folly::call_once(flag, [&] { ++numCalls; });
-  ASSERT_TRUE(folly::test_once(folly::as_const(flag)));
+  ASSERT_TRUE(folly::test_once(std::as_const(flag)));
   EXPECT_EQ(2, numCalls);
 }
 

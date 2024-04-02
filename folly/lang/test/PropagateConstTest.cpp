@@ -82,9 +82,9 @@ TEST_F(PropagateConstTest, get) {
   auto pc_a = pc<int*>(a);
 
   EXPECT_EQ(a, pc_a.get());
-  EXPECT_EQ(a, as_const(pc_a).get());
+  EXPECT_EQ(a, std::as_const(pc_a).get());
   EXPECT_FALSE(is_const(*pc_a.get()));
-  EXPECT_TRUE(is_const(*as_const(pc_a).get()));
+  EXPECT_TRUE(is_const(*std::as_const(pc_a).get()));
 }
 
 TEST_F(PropagateConstTest, op_indirect) {
@@ -93,9 +93,9 @@ TEST_F(PropagateConstTest, op_indirect) {
   auto pc_a = pc<int*>(a);
 
   EXPECT_EQ(a, &*pc_a);
-  EXPECT_EQ(a, &*as_const(pc_a));
+  EXPECT_EQ(a, &*std::as_const(pc_a));
   EXPECT_FALSE(is_const(*pc_a));
-  EXPECT_TRUE(is_const(*as_const(pc_a)));
+  EXPECT_TRUE(is_const(*std::as_const(pc_a)));
 }
 
 TEST_F(PropagateConstTest, op_element_type_ptr) {
@@ -104,7 +104,7 @@ TEST_F(PropagateConstTest, op_element_type_ptr) {
   auto pc_a = pc<int*>(a);
 
   EXPECT_EQ(a, static_cast<int*>(pc_a));
-  EXPECT_EQ(a, static_cast<int const*>(as_const(pc_a)));
+  EXPECT_EQ(a, static_cast<int const*>(std::as_const(pc_a)));
 }
 
 TEST_F(PropagateConstTest, op_bool) {
@@ -123,10 +123,10 @@ TEST_F(PropagateConstTest, get_underlying) {
   auto pc_a = pc<int*>(a);
 
   EXPECT_EQ(a, get_underlying(pc_a));
-  EXPECT_EQ(a, get_underlying(as_const(pc_a)));
+  EXPECT_EQ(a, get_underlying(std::as_const(pc_a)));
   EXPECT_FALSE(is_const(get_underlying(pc_a)));
-  EXPECT_TRUE(is_const(get_underlying(as_const(pc_a))));
-  EXPECT_TRUE(&get_underlying(pc_a) == &get_underlying(as_const(pc_a)));
+  EXPECT_TRUE(is_const(get_underlying(std::as_const(pc_a))));
+  EXPECT_TRUE(&get_underlying(pc_a) == &get_underlying(std::as_const(pc_a)));
 }
 
 TEST_F(PropagateConstTest, swap) {

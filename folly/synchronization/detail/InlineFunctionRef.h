@@ -145,7 +145,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
         !std::is_reference<Func>{},
         "InlineFunctionRef cannot be used with lvalues");
     static_assert(std::is_rvalue_reference<Func&&>{}, "");
-    construct(ConstructMode<Func>{}, folly::as_const(func));
+    construct(ConstructMode<Func>{}, std::as_const(func));
   }
 
   /**

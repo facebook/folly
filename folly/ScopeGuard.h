@@ -115,7 +115,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
   explicit ScopeGuardImpl(FunctionType& fn) noexcept(
       std::is_nothrow_copy_constructible<FunctionType>::value)
       : ScopeGuardImpl(
-            folly::as_const(fn),
+            std::as_const(fn),
             makeFailsafe(
                 std::is_nothrow_copy_constructible<FunctionType>{}, &fn)) {}
 

@@ -1204,7 +1204,7 @@ TEST(F14ValueSet, heterogeneous) {
   };
 
   checks(set);
-  checks(as_const(set));
+  checks(std::as_const(set));
 }
 
 template <typename S>

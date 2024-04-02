@@ -508,9 +508,9 @@ TEST(ForwardTuple, Basic) {
                std::tuple<int&, double&>>::value));
   EXPECT_EQ(folly::forward_tuple(tuple), tuple);
   EXPECT_TRUE((std::is_same<
-               decltype(folly::forward_tuple(folly::as_const(tuple))),
+               decltype(folly::forward_tuple(std::as_const(tuple))),
                std::tuple<const int&, const double&>>::value));
-  EXPECT_EQ(folly::forward_tuple(folly::as_const(tuple)), tuple);
+  EXPECT_EQ(folly::forward_tuple(std::as_const(tuple)), tuple);
 
   EXPECT_TRUE((std::is_same<
                decltype(folly::forward_tuple(std::move(tuple))),
@@ -521,14 +521,13 @@ TEST(ForwardTuple, Basic) {
 #else
   constexpr bool before_lwg2485 = false;
 #endif
-  EXPECT_TRUE(
-      (std::is_same<
-          decltype(folly::forward_tuple(std::move(folly::as_const(tuple)))),
-          std::conditional_t<
-              before_lwg2485,
-              std::tuple<const int&, const double&>,
-              std::tuple<const int&&, const double&&>>>::value));
-  EXPECT_EQ(folly::forward_tuple(std::move(folly::as_const(tuple))), tuple);
+  EXPECT_TRUE((std::is_same<
+               decltype(folly::forward_tuple(std::move(std::as_const(tuple)))),
+               std::conditional_t<
+                   before_lwg2485,
+                   std::tuple<const int&, const double&>,
+                   std::tuple<const int&&, const double&&>>>::value));
+  EXPECT_EQ(folly::forward_tuple(std::move(std::as_const(tuple))), tuple);
 
   auto integer = 1;
   auto floating_point = 2.0;

@@ -88,7 +88,7 @@ TEST_F(ReentrantAllocatorTest, self_assignment) {
   auto& i = *a.allocate(1);
   ::new (&i) int(7);
   EXPECT_EQ(7, i);
-  a = folly::as_const(a);
+  a = std::as_const(a);
   EXPECT_EQ(7, i);
   a.deallocate(&i, 1);
 }

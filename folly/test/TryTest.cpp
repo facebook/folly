@@ -412,8 +412,8 @@ TEST(Try, ValueOverloads) {
     auto obj = Try<int>{};
     using ActualML = decltype(obj.value());
     using ActualMR = decltype(std::move(obj).value());
-    using ActualCL = decltype(as_const(obj).value());
-    using ActualCR = decltype(std::move(as_const(obj)).value());
+    using ActualCL = decltype(std::as_const(obj).value());
+    using ActualCR = decltype(std::move(std::as_const(obj)).value());
     EXPECT_TRUE((std::is_same<ML, ActualML>::value));
     EXPECT_TRUE((std::is_same<MR, ActualMR>::value));
     EXPECT_TRUE((std::is_same<CL, ActualCL>::value));
@@ -424,17 +424,17 @@ TEST(Try, ValueOverloads) {
     auto obj = Try<int>{3};
     EXPECT_EQ(obj.value(), 3);
     EXPECT_EQ(std::move(obj).value(), 3);
-    EXPECT_EQ(as_const(obj).value(), 3);
-    EXPECT_EQ(std::move(as_const(obj)).value(), 3);
+    EXPECT_EQ(std::as_const(obj).value(), 3);
+    EXPECT_EQ(std::move(std::as_const(obj)).value(), 3);
   }
 
   {
     auto obj = Try<int>{make_exception_wrapper<std::range_error>("oops")};
     EXPECT_THROW(obj.value(), std::range_error);
     EXPECT_THROW(std::ignore = std::move(obj.value()), std::range_error);
-    EXPECT_THROW(std::ignore = as_const(obj.value()), std::range_error);
+    EXPECT_THROW(std::ignore = std::as_const(obj.value()), std::range_error);
     EXPECT_THROW(
-        std::ignore = std::move(as_const(obj.value())), std::range_error);
+        std::ignore = std::move(std::as_const(obj.value())), std::range_error);
   }
 }
 
@@ -533,8 +533,8 @@ TEST(Try, exception) {
     auto obj = Try<int>();
     using ActualML = decltype(obj.exception());
     using ActualMR = decltype(std::move(obj).exception());
-    using ActualCL = decltype(as_const(obj).exception());
-    using ActualCR = decltype(std::move(as_const(obj)).exception());
+    using ActualCL = decltype(std::as_const(obj).exception());
+    using ActualCR = decltype(std::move(std::as_const(obj)).exception());
     EXPECT_TRUE((std::is_same<ML, ActualML>::value));
     EXPECT_TRUE((std::is_same<MR, ActualMR>::value));
     EXPECT_TRUE((std::is_same<CL, ActualCL>::value));
@@ -545,24 +545,25 @@ TEST(Try, exception) {
     auto obj = Try<int>(3);
     EXPECT_THROW(obj.exception(), TryException);
     EXPECT_THROW(std::move(obj).exception(), TryException);
-    EXPECT_THROW(as_const(obj).exception(), TryException);
-    EXPECT_THROW(std::move(as_const(obj)).exception(), TryException);
+    EXPECT_THROW(std::as_const(obj).exception(), TryException);
+    EXPECT_THROW(std::move(std::as_const(obj)).exception(), TryException);
   }
 
   {
     auto obj = Try<int>(make_exception_wrapper<int>(-3));
     EXPECT_EQ(-3, *obj.exception().get_exception<int>());
     EXPECT_EQ(-3, *std::move(obj).exception().get_exception<int>());
-    EXPECT_EQ(-3, *as_const(obj).exception().get_exception<int>());
-    EXPECT_EQ(-3, *std::move(as_const(obj)).exception().get_exception<int>());
+    EXPECT_EQ(-3, *std::as_const(obj).exception().get_exception<int>());
+    EXPECT_EQ(
+        -3, *std::move(std::as_const(obj)).exception().get_exception<int>());
   }
 
   {
     auto obj = Try<void>();
     using ActualML = decltype(obj.exception());
     using ActualMR = decltype(std::move(obj).exception());
-    using ActualCL = decltype(as_const(obj).exception());
-    using ActualCR = decltype(std::move(as_const(obj)).exception());
+    using ActualCL = decltype(std::as_const(obj).exception());
+    using ActualCR = decltype(std::move(std::as_const(obj)).exception());
     EXPECT_TRUE((std::is_same<ML, ActualML>::value));
     EXPECT_TRUE((std::is_same<MR, ActualMR>::value));
     EXPECT_TRUE((std::is_same<CL, ActualCL>::value));
@@ -573,16 +574,17 @@ TEST(Try, exception) {
     auto obj = Try<void>();
     EXPECT_THROW(obj.exception(), TryException);
     EXPECT_THROW(std::move(obj).exception(), TryException);
-    EXPECT_THROW(as_const(obj).exception(), TryException);
-    EXPECT_THROW(std::move(as_const(obj)).exception(), TryException);
+    EXPECT_THROW(std::as_const(obj).exception(), TryException);
+    EXPECT_THROW(std::move(std::as_const(obj)).exception(), TryException);
   }
 
   {
     auto obj = Try<void>(make_exception_wrapper<int>(-3));
     EXPECT_EQ(-3, *obj.exception().get_exception<int>());
     EXPECT_EQ(-3, *std::move(obj).exception().get_exception<int>());
-    EXPECT_EQ(-3, *as_const(obj).exception().get_exception<int>());
-    EXPECT_EQ(-3, *std::move(as_const(obj)).exception().get_exception<int>());
+    EXPECT_EQ(-3, *std::as_const(obj).exception().get_exception<int>());
+    EXPECT_EQ(
+        -3, *std::move(std::as_const(obj)).exception().get_exception<int>());
   }
 }
 
@@ -750,14 +752,14 @@ TEST(Try, TestUnwrapTuple) {
   auto original = std::make_tuple(Try<int>{1}, Try<int>{2});
   EXPECT_EQ(std::make_tuple(1, 2), unwrapTryTuple(original));
   EXPECT_EQ(std::make_tuple(1, 2), unwrapTryTuple(folly::copy(original)));
-  EXPECT_EQ(std::make_tuple(1, 2), unwrapTryTuple(folly::as_const(original)));
+  EXPECT_EQ(std::make_tuple(1, 2), unwrapTryTuple(std::as_const(original)));
 }
 
 TEST(Try, TestUnwrapPair) {
   auto original = std::make_pair(Try<int>{1}, Try<int>{2});
   EXPECT_EQ(std::make_pair(1, 2), unwrapTryTuple(original));
   EXPECT_EQ(std::make_pair(1, 2), unwrapTryTuple(folly::copy(original)));
-  EXPECT_EQ(std::make_pair(1, 2), unwrapTryTuple(folly::as_const(original)));
+  EXPECT_EQ(std::make_pair(1, 2), unwrapTryTuple(std::as_const(original)));
 }
 
 TEST(Try, TestUnwrapForward) {

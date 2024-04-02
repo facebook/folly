@@ -975,7 +975,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousLookup) {
   };
 
   checks(map);
-  checks(folly::as_const(map));
+  checks(std::as_const(map));
 }
 
 TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousInsert) {

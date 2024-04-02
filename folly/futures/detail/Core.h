@@ -471,7 +471,7 @@ class CoreBase {
         } else {
           // mimic constructing and invoking a handler: 1 copy; non-const invoke
           auto fn_ = static_cast<F&&>(fn);
-          fn_(as_const(*object));
+          fn_(std::as_const(*object));
         }
         delete object;
         return;

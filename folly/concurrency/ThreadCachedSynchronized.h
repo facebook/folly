@@ -155,7 +155,7 @@ class thread_cached_synchronized {
 
   value_type const& operator*() const { return ref(); }
   value_type const* operator->() const { return std::addressof(ref()); }
-  value_type load() const { return folly::as_const(ref()); }
+  value_type load() const { return std::as_const(ref()); }
   /* implicit */ operator value_type() const { return load(); }
 
  private:
@@ -190,13 +190,13 @@ class thread_cached_synchronized {
   template <typename A>
   bool mutate_cx(value_type& expected, A&& desired) {
     unique_lock<Mutex> lock{truth_.mutex};
-    auto const eq = folly::as_const(truth_.value) == folly::as_const(expected);
+    auto const eq = std::as_const(truth_.value) == std::as_const(expected);
     if (eq) {
       truth_.value = // value first: mutation may throw
           static_cast<A&&>(desired);
       invalidate_caches();
     } else {
-      expected = folly::as_const(truth_.value);
+      expected = std::as_const(truth_.value);
     }
     return eq;
   }

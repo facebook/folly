@@ -1687,7 +1687,7 @@ TEST(F14ValueMap, heterogeneousLookup) {
   };
 
   checks(map);
-  checks(folly::as_const(map));
+  checks(std::as_const(map));
 }
 
 template <typename M>

@@ -150,8 +150,8 @@ TEST(SharedPromise, interruptHandler) {
 
 TEST(SharedPromise, ConstMethods) {
   SharedPromise<int> p;
-  EXPECT_FALSE(folly::as_const(p).isFulfilled());
-  auto fut = folly::as_const(p).getFuture();
+  EXPECT_FALSE(std::as_const(p).isFulfilled());
+  auto fut = std::as_const(p).getFuture();
   EXPECT_FALSE(fut.isReady());
   p.setValue(42);
   EXPECT_TRUE(fut.isReady());

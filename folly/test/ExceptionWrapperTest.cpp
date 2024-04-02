@@ -92,7 +92,7 @@ TEST(ExceptionWrapper, members) {
   EXPECT_FALSE(bool(ew));
   EXPECT_EQ(ew.what(), "");
   EXPECT_EQ(ew.class_name(), "");
-  EXPECT_EQ(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   ew = make_exception_wrapper<std::runtime_error>("payload");
   EXPECT_TRUE(bool(ew));
@@ -169,7 +169,7 @@ TEST(ExceptionWrapper, fromExceptionPtrExn) {
   auto ep = std::make_exception_ptr(std::runtime_error("foo"));
   auto ew = exception_wrapper{ep};
   EXPECT_TRUE(bool(ew));
-  EXPECT_EQ(ep, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(ep, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_TRUE(ew.is_compatible_with<std::runtime_error>());
 }
@@ -178,7 +178,7 @@ TEST(ExceptionWrapper, fromExceptionPtrAny) {
   auto ep = std::make_exception_ptr<int>(12);
   auto ew = exception_wrapper{ep};
   EXPECT_TRUE(bool(ew));
-  EXPECT_EQ(ep, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(ep, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_TRUE(ew.is_compatible_with<int>());
 }
@@ -191,7 +191,7 @@ TEST(ExceptionWrapper, withExceptionPtrEmpty) {
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_FALSE(ew.has_exception_ptr());
-  EXPECT_EQ(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_FALSE(ew.has_exception_ptr());
@@ -211,7 +211,7 @@ TEST(ExceptionWrapper, withSharedPtrTest) {
   EXPECT_STREQ("foo", ew.get_exception<std::exception>()->what());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_NE(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_NE(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_NE(nullptr, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
@@ -228,7 +228,7 @@ TEST(ExceptionWrapper, withSharedPtrTest) {
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
-  EXPECT_EQ(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_EQ("", ew.class_name());
   EXPECT_EQ("", ew.what());
@@ -262,7 +262,7 @@ TEST(ExceptionWrapper, withExceptionPtrExnTest) {
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
-  EXPECT_EQ(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_EQ("", ew.class_name());
   EXPECT_EQ("", ew.what());
@@ -280,7 +280,7 @@ TEST(ExceptionWrapper, withExceptionPtrAnyTest) {
   EXPECT_NE(nullptr, ew.get_exception<int>());
   EXPECT_EQ(12, *ew.get_exception<int>());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_EQ(ep, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(ep, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(demangle(typeid(int)), ew.class_name());
@@ -295,7 +295,7 @@ TEST(ExceptionWrapper, withExceptionPtrAnyTest) {
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
-  EXPECT_EQ(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_EQ("", ew.class_name());
@@ -315,7 +315,7 @@ TEST(ExceptionWrapper, withNonStdExceptionTest) {
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(demangle(typeid(int)), ew.class_name());
   EXPECT_EQ(demangle(typeid(int)), ew.what());
-  EXPECT_NE(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_NE(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_NE(nullptr, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(demangle(typeid(int)), ew.class_name());
@@ -330,7 +330,7 @@ TEST(ExceptionWrapper, withNonStdExceptionTest) {
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
-  EXPECT_EQ(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_EQ("", ew.class_name());
@@ -348,7 +348,7 @@ TEST(ExceptionWrapper, withExceptionPtrAnyNilTest) {
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_NE(nullptr, ew.get_exception<int>());
   EXPECT_EQ(12, *ew.get_exception<int>());
-  EXPECT_EQ(ep, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(ep, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_EQ("int", ew.class_name());
   EXPECT_EQ("int", ew.what());
@@ -362,7 +362,7 @@ TEST(ExceptionWrapper, withExceptionPtrAnyNilTest) {
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
-  EXPECT_EQ(nullptr, folly::as_const(ew).to_exception_ptr());
+  EXPECT_EQ(nullptr, std::as_const(ew).to_exception_ptr());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_EQ("", ew.class_name());
   EXPECT_EQ("", ew.what());

@@ -19,8 +19,8 @@
 #include <folly/Utility.h>
 #include <folly/portability/GTest.h>
 
-using folly::as_const;
 using folly::down_cast;
+using std::as_const;
 
 class CastTest : public testing::Test {};
 
