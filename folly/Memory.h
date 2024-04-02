@@ -449,21 +449,6 @@ inline erased_unique_ptr empty_erased_unique_ptr() {
   return {nullptr, nullptr};
 }
 
-//  reinterpret_pointer_cast
-//
-//  import or backport
-#if __cpp_lib_shared_ptr_arrays >= 201611
-using std::reinterpret_pointer_cast;
-#else
-template <typename T, typename U>
-std::shared_ptr<T> reinterpret_pointer_cast(
-    const std::shared_ptr<U>& r) noexcept {
-  auto p =
-      reinterpret_cast<typename std::shared_ptr<T>::element_type*>(r.get());
-  return std::shared_ptr<T>{r, p};
-}
-#endif
-
 /**
  * SysAllocator
  *
