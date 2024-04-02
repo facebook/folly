@@ -22,10 +22,10 @@
 #include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 
-struct Key1 {};
-struct Key2 {};
-struct TagA {};
-struct TagB {};
+struct Key1;
+struct Key2;
+struct TagA;
+struct TagB;
 
 template <typename...>
 struct Template0 {};

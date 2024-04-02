@@ -59,7 +59,9 @@ std::string join(PtrRange types) {
     if (t != types.b) {
       ret << ", ";
     }
-    ret << demangle((*t)->name());
+    auto const str = demangle((*t)->name());
+    auto const off = str.find('<');
+    ret << str.substr(off + 1, str.size() - off - 2);
   }
   return ret.str();
 }

@@ -32,7 +32,8 @@ class UniqueInstance {
       tag_t<Z<Key..., Mapped...>>, tag_t<Key...>, tag_t<Mapped...>) noexcept {
     static Ptr const tmpl = FOLLY_TYPE_INFO_OF(key_t<Z>);
     static Ptr const ptrs[] = {
-        FOLLY_TYPE_INFO_OF(Key)..., FOLLY_TYPE_INFO_OF(Mapped)...};
+        FOLLY_TYPE_INFO_OF(tag_t<Key>)...,
+        FOLLY_TYPE_INFO_OF(tag_t<Mapped>)...};
     static Arg arg{
         {tmpl, ptrs, sizeof...(Key), sizeof...(Mapped)},
         {tag<Value, key_t<Z, Key...>>}};
