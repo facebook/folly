@@ -2706,16 +2706,18 @@ TEST_F(CollectAnyRangeTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
 
   auto generateTasks =
       [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
-    co_yield [&]() -> folly::coro::Task<int> {
+    auto t1 = [&]() -> folly::coro::Task<int> {
       task1Started = true;
       co_await baton1;
       co_return 42;
-    }();
-    co_yield [&]() -> folly::coro::Task<int> {
+    };
+    co_yield t1();
+    auto t2 = [&]() -> folly::coro::Task<int> {
       task2Started = true;
       co_await baton2;
       co_return 314;
-    }();
+    };
+    co_yield t2();
   };
 
   auto run = [&]() -> folly::coro::Task<void> {
@@ -3278,16 +3280,18 @@ TEST_F(CollectAnyNoDiscardRangeTest, DoesntCompleteUntilAllTasksComplete) {
   auto run = [&]() -> folly::coro::Task<void> {
     auto generateTasks =
         [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
-      co_yield [&]() -> folly::coro::Task<int> {
+      auto t1 = [&]() -> folly::coro::Task<int> {
         task1Started = true;
         co_await baton1;
         co_return 42;
-      }();
-      co_yield [&]() -> folly::coro::Task<int> {
+      };
+      co_yield t1();
+      auto t2 = [&]() -> folly::coro::Task<int> {
         task2Started = true;
         co_await baton2;
         co_return 314;
-      }();
+      };
+      co_yield t2();
     };
 
     auto result =
