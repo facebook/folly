@@ -55,8 +55,8 @@ class AtomicLinkedList {
    * @return True if the inserted element is the only one in the list
    *         after the call.
    */
-  bool insertHead(T t) {
-    auto wrapper = std::make_unique<Wrapper>(std::move(t));
+  bool insertHead(T&& t) {
+    auto wrapper = std::make_unique<Wrapper>(std::forward<T>(t));
 
     return list_.insertHead(wrapper.release());
   }
@@ -99,6 +99,7 @@ class AtomicLinkedList {
 
  private:
   struct Wrapper {
+    explicit Wrapper(const T& t) : data(t) {}
     explicit Wrapper(T&& t) : data(std::move(t)) {}
 
     AtomicIntrusiveLinkedListHook<Wrapper> hook;
