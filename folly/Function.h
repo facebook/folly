@@ -213,6 +213,7 @@
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/New.h>
 
 namespace folly {
 
@@ -233,7 +234,14 @@ namespace function {
 enum class Op { MOVE, NUKE, HEAP };
 
 union Data {
+  struct BigTrivialLayout {
+    void* big;
+    std::size_t size;
+    std::size_t align;
+  };
+
   void* big;
+  BigTrivialLayout bigt;
   std::aligned_storage<6 * sizeof(void*)>::type tiny;
 };
 
@@ -518,6 +526,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 // the alignof(Data), and to round up other sizes.
 struct DispatchSmallTrivial {
   static constexpr bool is_in_situ = true;
+  static constexpr bool is_trivial = true;
 
   template <typename Fun, typename Base>
   static constexpr auto call = Base::template callSmall<Fun>;
@@ -541,8 +550,57 @@ struct DispatchSmallTrivial {
   static constexpr auto exec = exec_<size_<sizeof(Fun)>>;
 };
 
+struct DispatchBigTrivial {
+  static constexpr bool is_in_situ = false;
+  static constexpr bool is_trivial = true;
+
+  template <typename Fun, typename Base>
+  static constexpr auto call = Base::template callBig<Fun>;
+
+  static constexpr bool is_align_large(size_t align) {
+    return align > __STDCPP_DEFAULT_NEW_ALIGNMENT__;
+  }
+
+  template <bool IsAlignLarge>
+  static std::size_t exec_(Op o, Data* src, Data* dst) noexcept {
+    switch (o) {
+      case Op::MOVE:
+        dst->bigt = src->bigt;
+        src->bigt = {};
+        break;
+      case Op::NUKE:
+        IsAlignLarge
+            ? operator_delete(
+                  src->big, src->bigt.size, std::align_val_t(src->bigt.align))
+            : operator_delete(src->big, src->bigt.size);
+        break;
+      case Op::HEAP:
+        break;
+    }
+    return src->bigt.size;
+  }
+  template <typename T>
+  static constexpr auto exec = exec_<is_align_large(alignof(T))>;
+
+  FOLLY_ALWAYS_INLINE static void ctor(
+      Data& data,
+      void const* fun,
+      std::size_t size,
+      std::size_t align) noexcept {
+    // cannot use type-specific new since type-specific new is overrideable
+    // in concert with type-specific delete
+    data.bigt.big = is_align_large(align)
+        ? operator_new(size, std::align_val_t(align))
+        : operator_new(size);
+    data.bigt.size = size;
+    data.bigt.align = align;
+    std::memcpy(data.bigt.big, fun, size);
+  }
+};
+
 struct DispatchSmall {
   static constexpr bool is_in_situ = true;
+  static constexpr bool is_trivial = false;
 
   template <typename Fun, typename Base>
   static constexpr auto call = Base::template callSmall<Fun>;
@@ -566,6 +624,7 @@ struct DispatchSmall {
 
 struct DispatchBig {
   static constexpr bool is_in_situ = false;
+  static constexpr bool is_trivial = false;
 
   template <typename Fun, typename Base>
   static constexpr auto call = Base::template callBig<Fun>;
@@ -594,7 +653,7 @@ struct Dispatch<true, true> : DispatchSmallTrivial {};
 template <>
 struct Dispatch<true, false> : DispatchSmall {};
 template <>
-struct Dispatch<false, true> : DispatchBig {};
+struct Dispatch<false, true> : DispatchBigTrivial {};
 template <>
 struct Dispatch<false, false> : DispatchBig {};
 
@@ -733,7 +792,11 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
         ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
       }
     } else {
-      data_.big = new Fun(static_cast<Fun&&>(fun));
+      if constexpr (Dispatch::is_trivial) {
+        Dispatch::ctor(data_, &fun, sizeof(Fun), alignof(Fun));
+      } else {
+        data_.big = new Fun(static_cast<Fun&&>(fun));
+      }
     }
     call_ = Dispatch::template call<Fun, Traits>;
     exec_ = Exec(Dispatch::template exec<Fun>);
@@ -886,7 +949,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * allocation because the callable is stored within the `Function` object.
    */
   std::size_t heapAllocatedMemory() const noexcept {
-    return exec(Op::HEAP, nullptr, nullptr);
+    return exec(Op::HEAP, &data_, nullptr);
   }
 
   using typename Traits::SharedProxy;

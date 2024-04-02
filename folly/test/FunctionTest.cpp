@@ -1435,8 +1435,13 @@ TEST(Function, AllocatedSize) {
 }
 
 TEST(Function, TrivialSmallBig) {
-  auto tl = [] { return 7; };
-  static_assert(std::is_trivially_copyable_v<decltype(tl)>);
+  auto tsl = [] { return 7; };
+  static_assert(std::is_trivially_copyable_v<decltype(tsl)>);
+  static_assert(sizeof(tsl) == 1);
+
+  auto thl = [x = std::array<int, 64>{{7}}] { return x[0]; };
+  static_assert(std::is_trivially_copyable_v<decltype(thl)>);
+  static_assert(sizeof(thl) >= sizeof(Function<int()>));
 
   struct move_nx {
     move_nx() {}
@@ -1458,19 +1463,23 @@ TEST(Function, TrivialSmallBig) {
   static_assert(!std::is_trivially_copyable_v<decltype(hl)>);
   static_assert(!std::is_nothrow_move_constructible_v<decltype(hl)>);
 
-  Function<int()> t{std::move(tl)};
+  Function<int()> ts{std::move(tsl)};
+  Function<int()> th{std::move(thl)};
   Function<int()> s{std::move(sl)};
   Function<int()> h{std::move(hl)};
 
-  EXPECT_EQ(7, t());
+  EXPECT_EQ(7, ts());
+  EXPECT_EQ(7, th());
   EXPECT_EQ(7, s());
   EXPECT_EQ(7, h());
 
-  auto t2 = std::move(t);
+  auto ts2 = std::move(ts);
+  auto th2 = std::move(th);
   auto s2 = std::move(s);
   auto h2 = std::move(h);
 
-  EXPECT_EQ(7, t2());
+  EXPECT_EQ(7, ts2());
+  EXPECT_EQ(7, th2());
   EXPECT_EQ(7, s2());
   EXPECT_EQ(7, h2());
 }
