@@ -224,7 +224,6 @@ testWithLock() {
     EXPECT_EQ(1002, lockedObj.size());
   });
 
-#if __cpp_generic_lambdas >= 201304
   obj.withWLock([](auto& lockedObj) { lockedObj.push_back(12); });
   obj.withWLock(
       [](const auto& lockedObj) { EXPECT_EQ(1003, lockedObj.size()); });
@@ -239,11 +238,9 @@ testWithLock() {
   constObj.withRLock(
       [](const auto& lockedObj) { EXPECT_EQ(1003, lockedObj.size()); });
   obj.withWLock([](auto& lockedObj) { lockedObj.pop_back(); });
-#endif
 
   // Test withWLockPtr() and withRLockPtr()
   using SynchType = folly::Synchronized<std::vector<int>, Mutex>;
-#if __cpp_generic_lambdas >= 201304
   obj.withWLockPtr([](auto&& lockedObj) { lockedObj->push_back(13); });
   obj.withRLockPtr([](auto&& lockedObj) {
     EXPECT_EQ(1003, lockedObj->size());
@@ -265,13 +262,6 @@ testWithLock() {
     EXPECT_EQ(1005, lockedObj->size());
     EXPECT_EQ(15, lockedObj->back());
   });
-#else
-  obj.withWLockPtr([](typename SynchType::LockedPtr&& lockedObj) {
-    lockedObj->push_back(13);
-    lockedObj->push_back(14);
-    lockedObj->push_back(15);
-  });
-#endif
 
   obj.withWLockPtr([](typename SynchType::LockedPtr&& lockedObj) {
     lockedObj->push_back(16);
@@ -311,16 +301,13 @@ testWithLock() {
     EXPECT_EQ(1002, lockedObj.size());
   });
 
-#if __cpp_generic_lambdas >= 201304
   obj.withLock([](auto& lockedObj) { lockedObj.push_back(12); });
   obj.withLock(
       [](const auto& lockedObj) { EXPECT_EQ(1003, lockedObj.size()); });
   obj.withLock([](auto& lockedObj) { lockedObj.pop_back(); });
-#endif
 
   // Test withLockPtr()
   using SynchType = folly::Synchronized<std::vector<int>, Mutex>;
-#if __cpp_generic_lambdas >= 201304
   obj.withLockPtr([](auto&& lockedObj) { lockedObj->push_back(13); });
   obj.withLockPtr([](auto&& lockedObj) {
     EXPECT_EQ(1003, lockedObj->size());
@@ -335,13 +322,6 @@ testWithLock() {
     EXPECT_EQ(1005, lockedObj->size());
     EXPECT_EQ(15, lockedObj->back());
   });
-#else
-  obj.withLockPtr([](typename SynchType::LockedPtr&& lockedObj) {
-    lockedObj->push_back(13);
-    lockedObj->push_back(14);
-    lockedObj->push_back(15);
-  });
-#endif
 
   obj.withLockPtr([](typename SynchType::LockedPtr&& lockedObj) {
     lockedObj->push_back(16);
