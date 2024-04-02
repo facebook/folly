@@ -164,7 +164,8 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
       std::is_nothrow_default_constructible<Alloc>::value;
 
   static constexpr bool kSwapIsNoexcept = kAllocIsAlwaysEqual &&
-      IsNothrowSwappable<Hasher>{} && IsNothrowSwappable<KeyEqual>{};
+      std::is_nothrow_swappable_v<Hasher> &&
+      std::is_nothrow_swappable_v<KeyEqual>;
 
   static constexpr bool isAvalanchingHasher() {
     return IsAvalanchingHasher<Hasher, Key>::value;

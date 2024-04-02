@@ -308,7 +308,7 @@ class Optional {
   void clear() noexcept { reset(); }
 
   /// @methodset Modifiers
-  void swap(Optional& that) noexcept(IsNothrowSwappable<Value>::value) {
+  void swap(Optional& that) noexcept(std::is_nothrow_swappable_v<Value>) {
     if (hasValue() && that.hasValue()) {
       using std::swap;
       swap(value(), that.value());

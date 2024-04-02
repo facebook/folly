@@ -1122,7 +1122,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
    * swap
    */
   void swap(Expected& that) noexcept(
-      expected_detail::StrictAllOf<IsNothrowSwappable, Value, Error>::value) {
+      std::is_nothrow_swappable_v<Value>&& std::is_nothrow_swappable_v<Error>) {
     if (this->uninitializedByException() || that.uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1459,7 +1459,7 @@ inline bool operator>=(
  */
 template <class Value, class Error>
 void swap(Expected<Value, Error>& lhs, Expected<Value, Error>& rhs) noexcept(
-    expected_detail::StrictAllOf<IsNothrowSwappable, Value, Error>::value) {
+    std::is_nothrow_swappable_v<Value>&& std::is_nothrow_swappable_v<Error>) {
   lhs.swap(rhs);
 }
 

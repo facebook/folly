@@ -680,7 +680,7 @@ class small_vector
    */
   void swap(small_vector& o) noexcept(
       std::is_nothrow_move_constructible<Value>::value&&
-          IsNothrowSwappable<Value>::value) {
+          std::is_nothrow_swappable_v<Value>) {
     using std::swap; // Allow ADL on swap for our value_type.
 
     if (this->isExtern() && o.isExtern()) {

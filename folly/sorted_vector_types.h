@@ -715,7 +715,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   void swap(sorted_vector_set& o) noexcept(
-      IsNothrowSwappable<Compare>::value&& noexcept(
+      std::is_nothrow_swappable_v<Compare>&& noexcept(
           std::declval<Container&>().swap(o.m_.cont_))) {
     using std::swap; // Allow ADL for swap(); fall back to std::swap().
     Compare& a = m_;
