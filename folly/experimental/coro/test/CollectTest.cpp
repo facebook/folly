@@ -2134,6 +2134,270 @@ TEST_F(CollectAnyTest, CancellationTokenRemainsActiveAfterReturn) {
   }());
 }
 
+class CollectAnyWithoutExceptionTest : public testing::Test {};
+
+TEST_F(CollectAnyWithoutExceptionTest, OneTaskWithValue) {
+  folly::coro::Baton baton;
+  auto f = [&]() -> folly::coro::Task<std::string> {
+    co_await baton;
+    co_return "hello";
+  };
+
+  bool completed = false;
+  auto run = [&]() -> folly::coro::Task<void> {
+    auto [index, result] =
+        co_await folly::coro::collectAnyWithoutException(f());
+    EXPECT_EQ("hello", result.value());
+    EXPECT_EQ(0, index);
+    completed = true;
+  };
+
+  folly::ManualExecutor executor;
+
+  auto future = run().scheduleOn(&executor).start();
+
+  executor.drain();
+
+  EXPECT_FALSE(completed);
+
+  baton.post();
+
+  // Posting the baton should have just scheduled the 'f()' coroutine
+  // for resumption on the executor but should not have executed
+  // until we drain the executor again.
+  EXPECT_FALSE(completed);
+
+  executor.drain();
+
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(future.isReady());
+}
+
+TEST_F(CollectAnyWithoutExceptionTest, OneVoidTask) {
+  bool completed = false;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    // Checks that the task actually runs and that 'void' results are
+    // promoted to folly::Unit when placed in a tuple.
+    std::pair<std::size_t, folly::Try<void>> result =
+        co_await folly::coro::collectAnyWithoutException(
+            [&]() -> folly::coro::Task<void> {
+              completed = true;
+              co_return;
+            }());
+    (void)result;
+  }());
+  EXPECT_TRUE(completed);
+}
+
+TEST_F(CollectAnyWithoutExceptionTest, MoveOnlyType) {
+  bool completed = false;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    // Checks that the task actually runs and that move only results
+    // can be correctly returned
+    std::pair<std::size_t, folly::Try<std::unique_ptr<int>>> result =
+        co_await folly::coro::collectAnyWithoutException(
+            [&]() -> folly::coro::Task<std::unique_ptr<int>> {
+              completed = true;
+              co_return std::make_unique<int>(1);
+            }());
+    (void)result;
+  }());
+  EXPECT_TRUE(completed);
+}
+
+TEST_F(CollectAnyWithoutExceptionTest, DoesntCompleteUntilAllTasksComplete) {
+  folly::coro::Baton baton1;
+  folly::coro::Baton baton2;
+  bool task1Started = false;
+  bool task2Started = false;
+  bool complete = false;
+  constexpr std::size_t taskTerminatingExpectedIndex = 1;
+
+  auto run = [&]() -> folly::coro::Task<void> {
+    auto [index, result] = co_await folly::coro::collectAnyWithoutException(
+        [&]() -> folly::coro::Task<int> {
+          task1Started = true;
+          co_await baton1;
+          co_return 42;
+        }(),
+        [&]() -> folly::coro::Task<int> {
+          task2Started = true;
+          co_await baton2;
+          co_return 314;
+        }());
+    complete = true;
+    EXPECT_EQ(taskTerminatingExpectedIndex, index);
+    EXPECT_EQ(result.value(), 314);
+  };
+
+  folly::ManualExecutor executor;
+
+  auto future = run().scheduleOn(&executor).start();
+
+  EXPECT_FALSE(task1Started);
+  EXPECT_FALSE(task2Started);
+
+  executor.drain();
+
+  EXPECT_TRUE(task1Started);
+  EXPECT_TRUE(task2Started);
+  EXPECT_FALSE(complete);
+  baton2.post();
+  executor.drain();
+  EXPECT_FALSE(complete);
+  baton1.post();
+  executor.drain();
+  EXPECT_TRUE(complete);
+  EXPECT_TRUE(future.isReady());
+}
+
+TEST_F(CollectAnyWithoutExceptionTest, ThrowsLastError) {
+  bool caughtException = false;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    bool throwError = true;
+    // Child tasks are started in-order.
+    // Since the third task fails last we should see its exception
+    // propagate out of collectAnyWithoutException().
+    auto [index, result] = co_await folly::coro::collectAnyWithoutException(
+        [&]() -> folly::coro::Task<int> {
+          if (throwError) {
+            throw ErrorA{};
+          }
+          co_return 1;
+        }(),
+        [&]() -> folly::coro::Task<int> {
+          if (throwError) {
+            throw ErrorB{};
+          }
+          co_return 2;
+        }(),
+        [&]() -> folly::coro::Task<int> {
+          if (throwError) {
+            throw ErrorC{};
+          }
+          co_return 3;
+        }());
+    EXPECT_EQ(2, index);
+    try {
+      result.value();
+      ADD_FAILURE() << "Hit unexpected codepath";
+    } catch (const ErrorC&) {
+      caughtException = true;
+    }
+  }());
+  EXPECT_TRUE(caughtException);
+}
+
+TEST_F(CollectAnyWithoutExceptionTest, ReturnsFirstValueWithoutException) {
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    // Child tasks are started in-order.
+    // Since the third task returns a value first ignore the exceptions and the
+    // last value and propagate the third value out of
+    // collectAnyWithoutException().
+    auto [index, result] = co_await folly::coro::collectAnyWithoutException(
+        []() -> folly::coro::Task<int> {
+          throw ErrorA{};
+          co_return 1;
+        }(),
+        []() -> folly::coro::Task<int> {
+          throw ErrorB{};
+          co_return 2;
+        }(),
+        []() -> folly::coro::Task<int> { co_return 3; }(),
+        []() -> folly::coro::Task<int> { co_return 4; }());
+    EXPECT_EQ(2, index);
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(3, result.value());
+  }());
+}
+
+TEST_F(CollectAnyWithoutExceptionTest, CancelsSubtasksWhenASubtaskCompletes) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+
+    auto [index, result] = co_await folly::coro::collectAnyWithoutException(
+        []() -> folly::coro::Task<int> {
+          co_await sleepThatShouldBeCancelled(10s);
+          co_return 42;
+        }(),
+        []() -> folly::coro::Task<int> {
+          co_await sleepThatShouldBeCancelled(5s);
+          co_return 314;
+        }(),
+        []() -> folly::coro::Task<int> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_return 1;
+        }());
+    EXPECT_EQ(2, index);
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(1, result.value());
+    auto end = std::chrono::steady_clock::now();
+
+    EXPECT_LT(end - start, 1s);
+  }());
+}
+
+TEST_F(CollectAnyWithoutExceptionTest, CancelsSubtasksWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+    folly::CancellationSource cancelSource;
+    auto [index, result] = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAnyWithoutException(
+            [&]() -> folly::coro::Task<int> {
+              co_await sleepThatShouldBeCancelled(10s);
+              co_return 42;
+            }(),
+            [&]() -> folly::coro::Task<int> {
+              co_await sleepThatShouldBeCancelled(5s);
+              co_return 314;
+            }(),
+            [&]() -> folly::coro::Task<int> {
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              cancelSource.requestCancellation();
+              co_await sleepThatShouldBeCancelled(15s);
+              co_return 123;
+            }()));
+    auto end = std::chrono::steady_clock::now();
+    EXPECT_LT(end - start, 1s);
+  }());
+}
+
+TEST_F(
+    CollectAnyWithoutExceptionTest, CancellationTokenRemainsActiveAfterReturn) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSource;
+    folly::coro::AsyncScope scope;
+    folly::coro::Baton baton;
+    auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+      auto token = co_await folly::coro::co_current_cancellation_token;
+      auto ex = co_await folly::coro::co_current_executor;
+      scope.add(
+          folly::coro::co_withCancellation(
+              token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+                auto innerToken =
+                    co_await folly::coro::co_current_cancellation_token;
+                co_await baton;
+                EXPECT_TRUE(innerToken.isCancellationRequested());
+              }))
+              .scheduleOn(ex));
+    });
+
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAnyWithoutException(std::move(task)));
+    cancelSource.requestCancellation();
+    baton.post();
+    co_await scope.joinAsync();
+  }());
+}
+
 class CollectAnyNoDiscardTest : public testing::Test {};
 
 TEST_F(CollectAnyNoDiscardTest, OneTask) {
@@ -2620,6 +2884,307 @@ TEST_F(CollectAnyRangeTest, CancellationTokenRemainsActiveAfterReturn) {
     co_await folly::coro::co_withCancellation(
         cancelSource.getToken(),
         folly::coro::collectAnyRange(std::move(tasks)));
+    cancelSource.requestCancellation();
+    baton.post();
+    co_await scope.joinAsync();
+  }());
+}
+
+class CollectAnyWithoutExceptionRangeTest : public testing::Test {};
+
+TEST_F(CollectAnyWithoutExceptionRangeTest, OneTaskWithValue) {
+  folly::coro::Baton baton;
+  auto f = [&]() -> folly::coro::Task<std::string> {
+    co_await baton;
+    co_return "hello";
+  };
+
+  bool completed = false;
+  auto run = [&]() -> folly::coro::Task<void> {
+    std::vector<folly::coro::Task<std::string>> tasks;
+    tasks.push_back(f());
+    auto [index, result] =
+        co_await folly::coro::collectAnyWithoutExceptionRange(std::move(tasks));
+    EXPECT_EQ("hello", result.value());
+    EXPECT_EQ(0, index);
+    completed = true;
+  };
+
+  folly::ManualExecutor executor;
+
+  auto future = run().scheduleOn(&executor).start();
+
+  executor.drain();
+
+  EXPECT_FALSE(completed);
+
+  baton.post();
+
+  // Posting the baton should have just scheduled the 'f()' coroutine
+  // for resumption on the executor but should not have executed
+  // until we drain the executor again.
+  EXPECT_FALSE(completed);
+
+  executor.drain();
+
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(future.isReady());
+}
+
+TEST_F(CollectAnyWithoutExceptionRangeTest, OneVoidTask) {
+  bool completed = false;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    // Checks that the task actually runs and that 'void' results are
+    // promoted to folly::Unit when placed in a tuple.
+    auto generateTasks =
+        [&]() -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      co_yield [&]() -> folly::coro::Task<void> {
+        completed = true;
+        co_return;
+      }();
+    };
+    std::pair<std::size_t, folly::Try<void>> result =
+        co_await folly::coro::collectAnyWithoutExceptionRange(generateTasks());
+    (void)result;
+  }());
+  EXPECT_TRUE(completed);
+}
+
+TEST_F(CollectAnyWithoutExceptionRangeTest, MoveOnlyType) {
+  bool completed = false;
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    // Checks that the task actually runs and that move only results
+    // can be correctly returned
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<std::unique_ptr<int>>&&> {
+      co_yield [&]() -> folly::coro::Task<std::unique_ptr<int>> {
+        completed = true;
+        co_return std::make_unique<int>(1);
+      }();
+    };
+    std::pair<std::size_t, folly::Try<std::unique_ptr<int>>> result =
+        co_await folly::coro::collectAnyWithoutExceptionRange(generateTasks());
+    (void)result;
+  }());
+  EXPECT_TRUE(completed);
+}
+
+TEST_F(
+    CollectAnyWithoutExceptionRangeTest, DoesntCompleteUntilAllTasksComplete) {
+  folly::coro::Baton baton1;
+  folly::coro::Baton baton2;
+  bool task1Started = false;
+  bool task2Started = false;
+  bool complete = false;
+  constexpr std::size_t taskTerminatingExpectedIndex = 1;
+
+  auto generateTasks =
+      [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
+    auto t1 = [&]() -> folly::coro::Task<int> {
+      task1Started = true;
+      co_await baton1;
+      co_return 42;
+    };
+    co_yield t1();
+    auto t2 = [&]() -> folly::coro::Task<int> {
+      task2Started = true;
+      co_await baton2;
+      co_return 314;
+    };
+    co_yield t2();
+  };
+
+  auto run = [&]() -> folly::coro::Task<void> {
+    auto [index, result] =
+        co_await folly::coro::collectAnyWithoutExceptionRange(generateTasks());
+    complete = true;
+    EXPECT_EQ(taskTerminatingExpectedIndex, index);
+    EXPECT_EQ(result.value(), 314);
+  };
+
+  folly::ManualExecutor executor;
+
+  auto future = run().scheduleOn(&executor).start();
+
+  EXPECT_FALSE(task1Started);
+  EXPECT_FALSE(task2Started);
+
+  executor.drain();
+
+  EXPECT_TRUE(task1Started);
+  EXPECT_TRUE(task2Started);
+  EXPECT_FALSE(complete);
+  baton2.post();
+  executor.drain();
+  EXPECT_FALSE(complete);
+  baton1.post();
+  executor.drain();
+  EXPECT_TRUE(complete);
+  EXPECT_TRUE(future.isReady());
+}
+
+TEST_F(CollectAnyWithoutExceptionRangeTest, ThrowsLastError) {
+  bool caughtException = false;
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    bool throwError = true;
+
+    auto generateTasks =
+        [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
+      co_yield [&]() -> folly::coro::Task<int> {
+        if (throwError) {
+          throw ErrorA{};
+        }
+        co_return 1;
+      }();
+      co_yield [&]() -> folly::coro::Task<int> {
+        if (throwError) {
+          throw ErrorB{};
+        }
+        co_return 2;
+      }();
+      co_yield [&]() -> folly::coro::Task<int> {
+        if (throwError) {
+          throw ErrorC{};
+        }
+        co_return 3;
+      }();
+    };
+    // Child tasks are started in-order.
+    // Since the third task fails last we should see its exception
+    // propagate out of collectAnyWithoutException().
+    auto [index, result] =
+        co_await folly::coro::collectAnyWithoutExceptionRange(generateTasks());
+    EXPECT_EQ(2, index);
+    try {
+      result.value();
+      ADD_FAILURE() << "Hit unexpected codepath";
+    } catch (const ErrorC&) {
+      caughtException = true;
+    }
+  }());
+  EXPECT_TRUE(caughtException);
+}
+
+TEST_F(CollectAnyWithoutExceptionRangeTest, ReturnsFirstValueWithoutException) {
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    auto generateTasks =
+        [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
+      co_yield []() -> folly::coro::Task<int> {
+        throw ErrorA{};
+        co_return 1;
+      }();
+      co_yield []() -> folly::coro::Task<int> {
+        throw ErrorB{};
+        co_return 2;
+      }();
+      co_yield []() -> folly::coro::Task<int> { co_return 3; }();
+      co_yield []() -> folly::coro::Task<int> { co_return 4; }();
+    };
+    // Child tasks are started in-order.
+    // Since the third task returns a value first ignore the exceptions and the
+    // last value and propagate the third value out of
+    // collectAnyWithoutException().
+    auto [index, result] =
+        co_await folly::coro::collectAnyWithoutExceptionRange(generateTasks());
+    EXPECT_EQ(2, index);
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(3, result.value());
+  }());
+}
+
+TEST_F(
+    CollectAnyWithoutExceptionRangeTest, CancelsSubtasksWhenASubtaskCompletes) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+    std::vector<folly::coro::Task<int>> tasks;
+    tasks.push_back([]() -> folly::coro::Task<int> {
+      co_await sleepThatShouldBeCancelled(10s);
+      co_return 42;
+    }());
+    tasks.push_back([]() -> folly::coro::Task<int> {
+      co_await sleepThatShouldBeCancelled(5s);
+      co_return 314;
+    }());
+    tasks.push_back([]() -> folly::coro::Task<int> {
+      co_await folly::coro::co_reschedule_on_current_executor;
+      co_return 1;
+    }());
+
+    auto [index, result] =
+        co_await folly::coro::collectAnyWithoutExceptionRange(std::move(tasks));
+    EXPECT_EQ(2, index);
+    EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(1, result.value());
+    auto end = std::chrono::steady_clock::now();
+
+    EXPECT_LT(end - start, 1s);
+  }());
+}
+
+TEST_F(
+    CollectAnyWithoutExceptionRangeTest,
+    CancelsSubtasksWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+    folly::CancellationSource cancelSource;
+    auto generateTasks =
+        [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
+      co_yield [&]() -> folly::coro::Task<int> {
+        co_await sleepThatShouldBeCancelled(10s);
+        co_return 42;
+      }();
+      co_yield [&]() -> folly::coro::Task<int> {
+        co_await sleepThatShouldBeCancelled(5s);
+        co_return 314;
+      }();
+      co_yield [&]() -> folly::coro::Task<int> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        cancelSource.requestCancellation();
+        co_await sleepThatShouldBeCancelled(15s);
+        co_return 123;
+      }();
+    };
+    auto [index, result] = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAnyWithoutExceptionRange(generateTasks()));
+    auto end = std::chrono::steady_clock::now();
+    EXPECT_LT(end - start, 1s);
+  }());
+}
+
+TEST_F(
+    CollectAnyWithoutExceptionRangeTest,
+    CancellationTokenRemainsActiveAfterReturn) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSource;
+    folly::coro::AsyncScope scope;
+    folly::coro::Baton baton;
+    auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+      auto token = co_await folly::coro::co_current_cancellation_token;
+      auto ex = co_await folly::coro::co_current_executor;
+      scope.add(
+          folly::coro::co_withCancellation(
+              token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+                auto innerToken =
+                    co_await folly::coro::co_current_cancellation_token;
+                co_await baton;
+                EXPECT_TRUE(innerToken.isCancellationRequested());
+              }))
+              .scheduleOn(ex));
+    });
+
+    std::vector<folly::coro::Task<void>> tasks;
+    tasks.push_back(std::move(task));
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAnyWithoutExceptionRange(std::move(tasks)));
     cancelSource.requestCancellation();
     baton.post();
     co_await scope.joinAsync();

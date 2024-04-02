@@ -456,6 +456,37 @@ auto collectAny(SemiAwaitable&& awaitable, SemiAwaitables&&... awaitables)
             SemiAwaitables...>>>>;
 
 ///////////////////////////////////////////////////////////////////////////
+// collectAnyWithoutException(SemiAwaitable<Ts>...)
+//    -> SemiAwaitable<std::pair<std::size_t, folly::Try<T>>>
+//
+// The collectAnyWithoutException() function is similar to collectAny() in that
+// it co_awaits multiple SemiAwaitables and cancels any outstanding operations
+// when complete. Unlike collectAny(), it returns the first success, or the last
+// exception if all of the SemiAwaitables fail.
+//
+// collectAnyWithoutException() is built on top of collectAll(), be aware of the
+// coroutine starting behavior described in collectAll() documentation.
+//
+// The result of the first successful SemiAwaitable, or the the exception from
+// the last SemiAwaitable is returned if none are successful. Any result of the
+// remaining SemiAwaitables will be discarded, independently of whether it's a
+// value or an exception.
+//
+// Example:
+//   folly::coro::Task<Foo> getDataOneWay();
+//   folly::coro::Task<Foo> getDataAnotherWay();
+//
+//   std::pair<std::size_t, Try<Foo>> result =
+//       co_await folly::coro::collectAnyWithoutException(
+//           getDataOneWay(), getDataAnotherWay());
+//
+template <typename... SemiAwaitables>
+auto collectAnyWithoutException(SemiAwaitables&&... awaitables)
+    -> folly::coro::Task<std::pair<
+        std::size_t,
+        folly::Try<detail::collect_any_component_t<SemiAwaitables...>>>>;
+
+///////////////////////////////////////////////////////////////////////////
 // collectAnyNoDiscard(SemiAwaitable<Ts>...) ->
 //   SemiAwaitable<std::tuple<folly::Try<Ts>...>>
 //
@@ -514,6 +545,37 @@ auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
         detail::range_reference_t<InputRange>>>>>;
 
 ///////////////////////////////////////////////////////////////////////////
+// collectAnyWithoutExceptionRange(RangeOf<SemiAwaitable<T>>&&)
+//   -> SemiAwaitable<std::pair<std::size_t, folly::Try<T>>>
+//
+// The collectAnyWithoutExceptionRange() function is similar to
+// collectAnyRange() in that it co_awaits multiple SemiAwaitables and cancels
+// any outstanding operations when complete. Unlike collectAnyRange(), it
+// returns the first success, or the last exception if all of the SemiAwaitables
+// fail.
+//
+// collectAnyWithoutExceptionRange() is built on top of collectAllRange(), be
+// aware of the coroutine starting behavior described in collectAll()
+// documentation.
+//
+// The result of the first successful SemiAwaitable, or the the exception from
+// the last SemiAwaitable is returned if none are successful. Any result of the
+// remaining SemiAwaitables will be discarded, independently of whether it's a
+// value or an exception.
+//
+// Example:
+//   std::vector<Task<T>> tasks = ...;
+//   std::pair<size_t, Try<T>> result =
+//       co_await collectAnyWithoutExceptionRange(tasks | ranges::views::move);
+//
+template <typename InputRange>
+auto collectAnyWithoutExceptionRange(InputRange awaitables)
+    -> folly::coro::Task<std::pair<
+        size_t,
+        folly::Try<detail::collect_all_range_component_t<
+            detail::range_reference_t<InputRange>>>>>;
+
+///////////////////////////////////////////////////////////////////////////
 // collectAnyNoDiscardRange(RangeOf<SemiAwaitable<T>>&&)
 //    -> SemiAwaitable<std::vector<folly::Try<T>>>
 //
@@ -541,8 +603,9 @@ auto collectAnyNoDiscardRange(InputRange awaitables)
     -> folly::coro::Task<std::vector<detail::collect_all_try_range_component_t<
         detail::range_reference_t<InputRange>>>>;
 
-// collectAnyRange()/collectAnyNoDiscardRange() overloads that simplifies the
-// common-case where an rvalue std::vector<SemiAwaitable> is passed.
+// collectAnyRange()/collectAnyWithoutExceptionRange()/collectAnyNoDiscardRange()
+// overloads that simplifies the common-case where an rvalue
+// std::vector<SemiAwaitable> is passed.
 //
 // This avoids the caller needing to pipe the input through ranges::views::move
 // transform to force the elements to be rvalue-references since the
@@ -552,6 +615,13 @@ template <typename SemiAwaitable>
 auto collectAnyRange(std::vector<SemiAwaitable> awaitables)
     -> decltype(collectAnyRange(detail::MoveRange(awaitables))) {
   co_return co_await collectAnyRange(detail::MoveRange(awaitables));
+}
+template <typename SemiAwaitable>
+auto collectAnyWithoutExceptionRange(std::vector<SemiAwaitable> awaitables)
+    -> decltype(collectAnyWithoutExceptionRange(
+        detail::MoveRange(awaitables))) {
+  co_return co_await collectAnyWithoutExceptionRange(
+      detail::MoveRange(awaitables));
 }
 template <typename SemiAwaitable>
 auto collectAnyNoDiscardRange(std::vector<SemiAwaitable> awaitables)
