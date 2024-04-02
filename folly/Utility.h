@@ -121,34 +121,6 @@ constexpr detail::decay_t<T> copy(T&& value) noexcept(
   return static_cast<T&&>(value);
 }
 
-/**
- * A simple helper for getting a constant reference to an object.
- *
- * Example:
- *
- *   std::vector<int> v{1,2,3};
- *   // The following two lines are equivalent:
- *   auto a = const_cast<const std::vector<int>&>(v).begin();
- *   auto b = folly::as_const(v).begin();
- *
- * Like C++17's std::as_const. See http://wg21.link/p0007
- */
-#if __cpp_lib_as_const || _LIBCPP_STD_VER > 14 || _MSC_VER
-
-/* using override */ using std::as_const;
-
-#else
-
-template <class T>
-constexpr T const& as_const(T& t) noexcept {
-  return t;
-}
-
-template <class T>
-void as_const(T const&&) = delete;
-
-#endif
-
 //  mimic: forward_like, p0847r0
 template <typename Src, typename Dst>
 constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
