@@ -659,6 +659,17 @@ struct BenchmarksToRun {
   std::vector<size_t> separatorsAfter;
 };
 
+void addSeparator(BenchmarksToRun& res) {
+  size_t separatorAfter = res.benchmarks.size();
+  if (separatorAfter == 0) {
+    return;
+  }
+  if (res.separatorsAfter.empty() ||
+      res.separatorsAfter.back() != separatorAfter) {
+    res.separatorsAfter.push_back(res.benchmarks.size() - 1);
+  }
+}
+
 BenchmarksToRun selectBenchmarksToRun(
     const std::vector<detail::BenchmarkRegistration>& benchmarks) {
   BenchmarksToRun res;
@@ -672,8 +683,8 @@ BenchmarksToRun selectBenchmarksToRun(
   }
 
   for (auto& bm : benchmarks) {
-    if (bm.name == "-") { // skip separators
-      res.separatorsAfter.push_back(res.benchmarks.size());
+    if (bm.name == "-") {
+      addSeparator(res);
       continue;
     }
 
