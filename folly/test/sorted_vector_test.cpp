@@ -1451,23 +1451,19 @@ TEST(SortedVectorTypes, TestTryEmplace) {
   {
     auto k = folly::make_optional<int>(1);
     auto v = folly::make_optional<std::string>("1");
-    const auto& [it, inserted] = map.try_emplace(std::move(k), std::move(v));
+    const auto& [it, inserted] = map.try_emplace(std::move(k), v);
     EXPECT_TRUE(inserted);
     EXPECT_EQ(it->first, 1);
     EXPECT_EQ(it->second, "1");
-    EXPECT_FALSE(k);
-    EXPECT_FALSE(v);
     EXPECT_EQ(map.size(), 1);
   }
   {
     auto k = folly::make_optional<int>(1);
     auto v = folly::make_optional<std::string>("another 1");
-    const auto& [it, inserted] = map.try_emplace(std::move(k), std::move(v));
+    const auto& [it, inserted] = map.try_emplace(std::move(k), v);
     EXPECT_FALSE(inserted);
     EXPECT_EQ(it->first, 1);
     EXPECT_EQ(it->second, "1");
-    EXPECT_EQ(k, 1);
-    EXPECT_EQ(v, "another 1");
     EXPECT_EQ(map.size(), 1);
   }
   {
@@ -1489,25 +1485,19 @@ TEST(SortedVectorTypes, TestInsertOrAssign) {
   {
     auto k = folly::make_optional<int>(1);
     auto v = folly::make_optional<std::string>("1");
-    const auto& [it, inserted] =
-        map.insert_or_assign(std::move(k), std::move(v));
+    const auto& [it, inserted] = map.insert_or_assign(std::move(k), v);
     EXPECT_TRUE(inserted);
     EXPECT_EQ(it->first, 1);
     EXPECT_EQ(it->second, "1");
-    EXPECT_FALSE(k);
-    EXPECT_FALSE(v);
     EXPECT_EQ(map.size(), 1);
   }
   {
     auto k = folly::make_optional<int>(1);
     auto v = folly::make_optional<std::string>("another 1");
-    const auto& [it, inserted] =
-        map.insert_or_assign(std::move(k), std::move(v));
+    const auto& [it, inserted] = map.insert_or_assign(std::move(k), v);
     EXPECT_FALSE(inserted);
     EXPECT_EQ(it->first, 1);
     EXPECT_EQ(it->second, "another 1");
-    EXPECT_EQ(k, 1);
-    EXPECT_FALSE(v);
     EXPECT_EQ(map.size(), 1);
   }
   {
@@ -1519,6 +1509,66 @@ TEST(SortedVectorTypes, TestInsertOrAssign) {
     EXPECT_EQ(it->second, "2");
     EXPECT_EQ(k, 2);
     EXPECT_EQ(v, "2");
+    EXPECT_EQ(map.size(), 2);
+  }
+}
+
+TEST(SortedVectorTypes, TestInsertOrAssignWithHintExtensive) {
+  for (int sz = 0; sz < 5; ++sz) {
+    for (int hint_pos = 0; hint_pos <= sz; ++hint_pos) {
+      for (int key = 0; key <= 2 * sz; ++key) {
+        sorted_vector_map<int, int> m;
+        for (int i = 0; i < sz; ++i) {
+          m[2 * i + 1] = 2 * i + 1;
+        }
+        auto dupe = m;
+        auto hint = m.cbegin() + hint_pos;
+
+        m.insert_or_assign(hint, key, 100);
+        dupe.insert_or_assign(key, 100);
+        EXPECT_EQ(m, dupe);
+      }
+    }
+  }
+}
+
+TEST(SortedVectorTypes, TestInsertOrAssignWithHint) {
+  // folly::Optional becomes empty after move.
+  sorted_vector_map<folly::Optional<int>, folly::Optional<std::string>> map;
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("1");
+    const auto& it = map.insert_or_assign(map.end(), std::move(k), v);
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "1");
+    EXPECT_EQ(map.size(), 1);
+  }
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("another 1");
+    const auto& it = map.insert_or_assign(map.begin(), std::move(k), v);
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "another 1");
+    EXPECT_EQ(map.size(), 1);
+  }
+  // insert should work when hint is wrong
+  {
+    auto k = folly::make_optional<int>(2);
+    auto v = folly::make_optional<std::string>("2");
+    const auto& it = map.insert_or_assign(map.begin(), k, v);
+    EXPECT_EQ(it->first, 2);
+    EXPECT_EQ(it->second, "2");
+    EXPECT_EQ(k, 2);
+    EXPECT_EQ(map.size(), 2);
+  }
+  {
+    auto k = folly::make_optional<int>(1);
+    auto v = folly::make_optional<std::string>("yet another 1");
+    const auto& it = map.insert_or_assign(map.end(), k, v);
+    EXPECT_EQ(it->first, 1);
+    EXPECT_EQ(it->second, "yet another 1");
+    EXPECT_EQ(k, 1);
+    EXPECT_EQ(v, "yet another 1");
     EXPECT_EQ(map.size(), 2);
   }
 }

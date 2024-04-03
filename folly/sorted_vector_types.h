@@ -1226,6 +1226,16 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return itAndInserted;
   }
 
+  template <class M>
+  iterator insert_or_assign(const_iterator hint, const key_type& k, M&& obj) {
+    return insert_or_assign_impl(hint, k, std::forward<M>(obj));
+  }
+
+  template <class M>
+  iterator insert_or_assign(const_iterator hint, key_type&& k, M&& obj) {
+    return insert_or_assign_impl(hint, std::move(k), std::forward<M>(obj));
+  }
+
   size_type erase(const key_type& key) {
     iterator it = find(key);
     if (it == end()) {
@@ -1564,6 +1574,34 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
           emplace_hint(it, std::forward<Args>(args)...), true);
     }
     return std::make_pair(it, false);
+  }
+
+  template <class K, class M>
+  iterator insert_or_assign_impl(const_iterator hint, K&& k, M&& obj) {
+    if (hint == end() || key_comp()(k, hint->first)) {
+      if (hint == begin() || key_comp()((hint - 1)->first, k)) {
+        auto it = get_growth_policy().increase_capacity(m_.cont_, hint);
+        return m_.cont_.emplace(
+            it, std::make_pair(std::forward<K>(k), std::forward<M>(obj)));
+      } else {
+        return insert_or_assign(std::forward<K>(k), std::forward<M>(obj)).first;
+      }
+    }
+
+    if (key_comp()(hint->first, k)) {
+      if (hint + 1 == end() || key_comp()(k, (hint + 1)->first)) {
+        auto it = get_growth_policy().increase_capacity(m_.cont_, hint + 1);
+        return m_.cont_.emplace(
+            it, std::make_pair(std::forward<K>(k), std::forward<M>(obj)));
+      } else {
+        return insert_or_assign(std::forward<K>(k), std::forward<M>(obj)).first;
+      }
+    }
+
+    // Value and *hint did not compare, so they are equal keys.
+    auto it = begin() + std::distance(cbegin(), hint);
+    it->second = std::forward<M>(obj);
+    return it;
   }
 };
 
