@@ -52,7 +52,7 @@ struct IndexedMemPoolTraits {
   /// Called when the element pointed to by ptr is allocated for the
   /// first time.
   static void initialize(T* ptr) {
-    if (!eagerRecycle()) {
+    if constexpr (!eagerRecycle()) {
       new (ptr) T();
     }
   }
@@ -60,7 +60,7 @@ struct IndexedMemPoolTraits {
   /// Called when the element pointed to by ptr is freed at the pool
   /// destruction time.
   static void cleanup(T* ptr) {
-    if (!eagerRecycle()) {
+    if constexpr (!eagerRecycle()) {
       ptr->~T();
     }
   }
