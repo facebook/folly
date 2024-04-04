@@ -154,35 +154,6 @@ EventBaseBackend::~EventBaseBackend() {
   event_base_free(evb_);
 }
 
-class ExecutionObserverScopeGuard {
- public:
-  ExecutionObserverScopeGuard(
-      folly::ExecutionObserver::List* observerList,
-      void* id,
-      folly::ExecutionObserver::CallbackType callbackType)
-      : observerList_(observerList),
-        id_{reinterpret_cast<uintptr_t>(id)},
-        callbackType_(callbackType) {
-    if (!observerList_->empty()) {
-      for (auto& observer : *observerList_) {
-        observer.starting(id_, callbackType_);
-      }
-    }
-  }
-
-  ~ExecutionObserverScopeGuard() {
-    if (!observerList_->empty()) {
-      for (auto& observer : *observerList_) {
-        observer.stopped(id_, callbackType_);
-      }
-    }
-  }
-
- private:
-  folly::ExecutionObserver::List* observerList_;
-  uintptr_t id_;
-  folly::ExecutionObserver::CallbackType callbackType_;
-};
 } // namespace
 
 namespace folly {

@@ -148,27 +148,15 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   assert(fd == handler->event_.eb_ev_fd());
   (void)fd; // prevent unused variable warnings
 
-  auto& observers = handler->eventBase_->getExecutionObserverList();
-  if (!observers.empty()) {
-    for (auto& observer : observers) {
-      observer.starting(
-          reinterpret_cast<uintptr_t>(handler),
-          folly::ExecutionObserver::CallbackType::Event);
-    }
-  }
-
   // this can't possibly fire if handler->eventBase_ is nullptr
   handler->eventBase_->bumpHandlingTime();
 
-  handler->handlerReady(uint16_t(events));
+  ExecutionObserverScopeGuard guard(
+      &handler->eventBase_->getExecutionObserverList(),
+      &handler->eventBase_,
+      folly::ExecutionObserver::CallbackType::Event);
 
-  if (!observers.empty()) {
-    for (auto& observer : observers) {
-      observer.stopped(
-          reinterpret_cast<uintptr_t>(handler),
-          folly::ExecutionObserver::CallbackType::Event);
-    }
-  }
+  handler->handlerReady(uint16_t(events));
 }
 
 void EventHandler::setEventBase(EventBase* eventBase) {
