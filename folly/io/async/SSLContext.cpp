@@ -445,6 +445,38 @@ void SSLContext::loadCertKeyPairFromFiles(
   }
 }
 
+void SSLContext::setCertChainKeyPair(
+    std::vector<ssl::X509UniquePtr>&& certChain, ssl::EvpPkeyUniquePtr&& key) {
+  if (certChain.empty()) {
+    throw std::invalid_argument("Empty certificate chain provided");
+  }
+
+  constexpr size_t kMaxCertChain = 65;
+  if (kMaxCertChain < certChain.size()) {
+    throw std::invalid_argument("Too many certificates in chain");
+  }
+
+  if (SSL_CTX_use_PrivateKey(ctx_, key.get()) == 0) {
+    throw std::runtime_error("SSL_CTX_use_PrivateKey: " + getErrors());
+  }
+
+  auto& leafCert = certChain.front();
+
+  if (SSL_CTX_use_certificate(ctx_, leafCert.get()) == 0) {
+    throw std::runtime_error("SSL_CTX_use_certificate: " + getErrors());
+  }
+
+  for (size_t i = 1; i < certChain.size(); ++i) {
+    if (SSL_CTX_add1_chain_cert(ctx_, certChain[i].get()) == 0) {
+      throw std::runtime_error("SSL_CTX_add0_chain_cert: " + getErrors());
+    }
+  }
+
+  if (!isCertKeyPairValid()) {
+    throw std::runtime_error("SSL certificate and private key do not match");
+  }
+}
+
 bool SSLContext::isCertKeyPairValid() const {
   return SSL_CTX_check_private_key(ctx_) == 1;
 }

@@ -21,6 +21,8 @@
 #include <folly/io/async/test/SSLUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/OpenSSLCertUtils.h>
+#include <folly/ssl/OpenSSLKeyUtils.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 #if !defined(FOLLY_CERTS_DIR)
@@ -196,6 +198,40 @@ TEST_F(SSLContextTest, TestLoadCertificateChain) {
   SSL_CTX_get0_chain_certs(sctx, &stack);
   ASSERT_NE(stack, nullptr);
   EXPECT_EQ(1, sk_X509_num(stack));
+}
+
+TEST_F(SSLContextTest, TestSetCertificateChainKeyPair) {
+  constexpr auto kCertChainPath = FOLLY_CERTS_DIR "/client_chain.pem";
+  constexpr auto kKeyPath = FOLLY_CERTS_DIR "/clienti_key.pem";
+  constexpr auto kAnotherKeyPath = FOLLY_CERTS_DIR "/tests-key.pem";
+  std::string certChainData, keyData, anotherKeyData;
+  folly::readFile(find_resource(kCertChainPath).c_str(), certChainData);
+  folly::readFile(find_resource(kKeyPath).c_str(), keyData);
+  folly::readFile(find_resource(kAnotherKeyPath).c_str(), anotherKeyData);
+
+  {
+    SCOPED_TRACE("Set valid cert chaing and key pair.");
+    auto certChain =
+        ssl::OpenSSLCertUtils::readCertsFromBuffer(ByteRange(certChainData));
+    auto pKey =
+        ssl::OpenSSLKeyUtils::readPrivateKeyFromBuffer(ByteRange(keyData));
+    SSLContext tmpCtx;
+    tmpCtx.setCertChainKeyPair(std::move(certChain), std::move(pKey));
+    EXPECT_TRUE(tmpCtx.isCertKeyPairValid());
+  }
+
+  {
+    auto certChain =
+        ssl::OpenSSLCertUtils::readCertsFromBuffer(ByteRange(certChainData));
+    auto anotherPKey = ssl::OpenSSLKeyUtils::readPrivateKeyFromBuffer(
+        ByteRange(anotherKeyData));
+    SCOPED_TRACE("setCertChainKeyPair() must throw when cert/key mismatch");
+    SSLContext tmpCtx;
+    EXPECT_THROW(
+        tmpCtx.setCertChainKeyPair(
+            std::move(certChain), std::move(anotherPKey)),
+        std::runtime_error);
+  }
 }
 
 TEST_F(SSLContextTest, TestSetSupportedClientCAs) {

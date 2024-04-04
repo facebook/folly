@@ -347,6 +347,16 @@ class SSLContext {
       folly::StringPiece cert, folly::StringPiece pkey);
 
   /**
+   * Sets cert chain and key. Guaranteed to throw if cert and private key
+   * mismatch.
+   *
+   * @param certChain A vector of X509 certificates.
+   * @param key A private key.
+   */
+  virtual void setCertChainKeyPair(
+      std::vector<ssl::X509UniquePtr>&& certChain, ssl::EvpPkeyUniquePtr&& key);
+
+  /**
    * Load cert and key from files. Guaranteed to throw if cert and key mismatch.
    * Equivalent to calling loadCertificate() and loadPrivateKey().
    *
