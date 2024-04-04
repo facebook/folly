@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/ProgramOptions.h>
+#include <folly/cli/ProgramOptions.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -258,7 +258,7 @@ po::options_description getGFlags(ProgramOptionsStyle style) {
       "tryfromenv",
       "undefok",
       "help",
-      "helpfull",
+      "helpful",
       "helpshort",
       "helpon",
       "helpmatch",
