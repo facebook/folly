@@ -1740,7 +1740,7 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(folly::Range)
 // Unfortunately it is not possible to forward declare enable_view under
 // MSVC 2019.8 due to compiler bugs, so we need to include the actual
 // definition if available.
-#if __has_include(<range/v3/range/concepts.hpp>) && defined(_MSC_VER) && _MSC_VER >= 1920
+#if __has_include(<range/v3/range/concepts.hpp>) && defined(_MSC_VER)
 #include <range/v3/range/concepts.hpp> // @manual
 #else
 namespace ranges {

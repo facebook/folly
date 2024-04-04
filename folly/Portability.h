@@ -38,6 +38,10 @@ static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 static_assert(__GNUC__ >= 8, "__GNUC__ >= 8");
 #endif
 
+#if defined(_MSC_VER)
+static_assert(_MSC_VER >= 1920);
+#endif
+
 #if defined(_MSC_VER) || defined(_CPPLIB_VER)
 static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 #endif

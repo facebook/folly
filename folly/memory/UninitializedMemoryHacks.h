@@ -384,11 +384,6 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 
 #elif defined(_MSC_VER)
 
-// require MSVC >= VS2019 or Windows clang/clang-cl
-#if _MSC_VER <= 1916 && !defined(__clang__)
-#error no implementation
-#endif
-
 template <
     typename Tag,
     typename T,

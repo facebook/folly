@@ -26,9 +26,7 @@
 
 // inner condition from:
 // https://github.com/ericniebler/range-v3/blob/0.11.0/include/range/v3/detail/config.hpp#L222
-#define FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3 \
-  __has_include(<range/v3/version.hpp>) && \
-    (!_MSC_VER || !(_MSC_VER < 1920 || _MSVC_LANG < 201703L))
+#define FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3 __has_include(<range/v3/version.hpp>)
 
 #if FOLLY_DETAIL_GEN_BASE_HAS_RANGEV3
 #include <range/v3/view/filter.hpp>
