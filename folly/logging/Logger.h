@@ -106,7 +106,7 @@
 #define FB_LOG_IMPL(logger, level, type, ...)                          \
   (!(logger).getCategory()->logCheck(level))                           \
       ? ::folly::logDisabledHelper(                                    \
-            ::folly::bool_constant<::folly::isLogLevelFatal(level)>{}) \
+            ::std::bool_constant<::folly::isLogLevelFatal(level)>{})   \
       : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} & \
           ::folly::LogStreamProcessor{                                 \
               (logger).getCategory(),                                  \

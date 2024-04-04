@@ -164,7 +164,7 @@ void baseFormatterCallImpl(
     Output& out,
     size_t nargs,
     const int widths[],
-    bool_constant<RecordUsedArg>(used)(const BaseFormatterBase&, size_t),
+    std::bool_constant<RecordUsedArg>(used)(const BaseFormatterBase&, size_t),
     BaseFormatterBase::DoFormatFn<Output>* const funs[],
     const BaseFormatterBase& base) {
   // Copy raw string (without format specifiers) to output;

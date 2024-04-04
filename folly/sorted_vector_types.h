@@ -862,7 +862,7 @@ inline constexpr bool is_sorted_vector_set_v =
     detail::is_instantiation_of_v<sorted_vector_set, T>;
 
 template <typename T>
-struct is_sorted_vector_set : bool_constant<is_sorted_vector_set_v<T>> {};
+struct is_sorted_vector_set : std::bool_constant<is_sorted_vector_set_v<T>> {};
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 
@@ -1617,7 +1617,7 @@ inline constexpr bool is_sorted_vector_map_v =
     detail::is_instantiation_of_v<sorted_vector_map, T>;
 
 template <typename T>
-struct is_sorted_vector_map : bool_constant<is_sorted_vector_map_v<T>> {};
+struct is_sorted_vector_map : std::bool_constant<is_sorted_vector_map_v<T>> {};
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 

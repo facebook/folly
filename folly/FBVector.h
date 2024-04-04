@@ -225,7 +225,7 @@ class fbvector {
 
   static constexpr bool usingStdAllocator =
       std::is_same<Allocator, std::allocator<T>>::value;
-  typedef bool_constant<
+  typedef std::bool_constant<
       usingStdAllocator || A::propagate_on_container_move_assignment::value>
       moveIsSwap;
 
@@ -643,10 +643,11 @@ class fbvector {
   }
 
   // dispatch type trait
-  typedef bool_constant<folly::IsRelocatable<T>::value && usingStdAllocator>
+  typedef std::bool_constant<
+      folly::IsRelocatable<T>::value && usingStdAllocator>
       relocate_use_memcpy;
 
-  typedef bool_constant<
+  typedef std::bool_constant<
       (std::is_nothrow_move_constructible<T>::value && usingStdAllocator) ||
       !std::is_copy_constructible<T>::value>
       relocate_use_move;

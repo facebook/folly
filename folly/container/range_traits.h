@@ -37,7 +37,7 @@ template <
     typename TD = decltype(FOLLY_DECLVAL(R&).data()),
     typename TCD = decltype(FOLLY_DECLVAL(R const&).data()),
     typename TCS = decltype(FOLLY_DECLVAL(R const&).size())>
-using is_contiguous_range_fallback_impl_ = bool_constant<(true
+using is_contiguous_range_fallback_impl_ = std::bool_constant<(true
     && (std::is_same_v<V*, TD> || std::is_same_v<V const*, TD>)
     && std::is_same_v<V const*, TCD>
     && std::is_same_v<S, TCS>)>;

@@ -69,7 +69,7 @@ inline constexpr bool is_coroutine_handle_v =
 /// implementations have particular requirements on the promise (eg. the
 /// stack-aware awaiters may require the .getAsyncFrame() method)
 template <typename T, typename = void>
-struct is_awaiter : bool_constant<!require_sizeof<T>> {};
+struct is_awaiter : std::bool_constant<!require_sizeof<T>> {};
 
 template <typename T>
 struct is_awaiter<T, std::enable_if_t<std::is_void_v<T>>> : std::false_type {};
@@ -89,7 +89,7 @@ namespace detail {
 
 template <typename Awaitable, typename = void>
 struct _has_member_operator_co_await
-    : bool_constant<!require_sizeof<Awaitable>> {};
+    : std::bool_constant<!require_sizeof<Awaitable>> {};
 
 template <typename T>
 struct _has_member_operator_co_await<T, std::enable_if_t<std::is_void_v<T>>>
@@ -102,8 +102,8 @@ struct _has_member_operator_co_await<
     : is_awaiter<decltype(std::declval<Awaitable>().operator co_await())> {};
 
 template <typename Awaitable, typename = void>
-struct _has_free_operator_co_await : bool_constant<!require_sizeof<Awaitable>> {
-};
+struct _has_free_operator_co_await
+    : std::bool_constant<!require_sizeof<Awaitable>> {};
 
 template <typename T>
 struct _has_free_operator_co_await<T, std::enable_if_t<std::is_void_v<T>>>

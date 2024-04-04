@@ -27,7 +27,7 @@ namespace detail {
 template <typename T>
 inline constexpr bool is_not_null_v = is_instantiation_of_v<not_null, T>;
 template <typename T>
-struct is_not_null : bool_constant<is_not_null_v<T>> {};
+struct is_not_null : std::bool_constant<is_not_null_v<T>> {};
 
 template <
     typename T,

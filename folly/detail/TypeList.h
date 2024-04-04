@@ -78,7 +78,7 @@ namespace detail {
  * Handy shortcuts for some standard facilities
  */
 template <bool B>
-using Bool = bool_constant<B>;
+using Bool = std::bool_constant<B>;
 using True = std::true_type;
 using False = std::false_type;
 

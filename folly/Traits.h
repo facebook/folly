@@ -118,7 +118,7 @@ inline constexpr bool is_unbounded_array_v = false;
 template <typename T>
 inline constexpr bool is_unbounded_array_v<T[]> = true;
 template <typename T>
-struct is_unbounded_array : bool_constant<is_unbounded_array_v<T>> {};
+struct is_unbounded_array : std::bool_constant<is_unbounded_array_v<T>> {};
 
 //  is_bounded_array_v
 //  is_bounded_array
@@ -131,7 +131,7 @@ inline constexpr bool is_bounded_array_v = false;
 template <typename T, std::size_t S>
 inline constexpr bool is_bounded_array_v<T[S]> = true;
 template <typename T>
-struct is_bounded_array : bool_constant<is_bounded_array_v<T>> {};
+struct is_bounded_array : std::bool_constant<is_bounded_array_v<T>> {};
 
 namespace detail {
 
@@ -149,7 +149,8 @@ inline constexpr bool is_instantiation_of_v = false;
 template <template <typename...> class C, typename... T>
 inline constexpr bool is_instantiation_of_v<C, C<T...>> = true;
 template <template <typename...> class C, typename... T>
-struct is_instantiation_of : bool_constant<is_instantiation_of_v<C, T...>> {};
+struct is_instantiation_of
+    : std::bool_constant<is_instantiation_of_v<C, T...>> {};
 
 template <typename, typename>
 inline constexpr bool is_similar_instantiation_v = false;
@@ -157,7 +158,7 @@ template <template <typename...> class C, typename... A, typename... B>
 inline constexpr bool is_similar_instantiation_v<C<A...>, C<B...>> = true;
 template <typename A, typename B>
 struct is_similar_instantiation
-    : bool_constant<is_similar_instantiation_v<A, B>> {};
+    : std::bool_constant<is_similar_instantiation_v<A, B>> {};
 
 } // namespace detail
 
@@ -210,7 +211,7 @@ inline constexpr bool is_constexpr_default_constructible_v =
     detail::is_constexpr_default_constructible_::apply<T>;
 template <typename T>
 struct is_constexpr_default_constructible
-    : bool_constant<is_constexpr_default_constructible_v<T>> {};
+    : std::bool_constant<is_constexpr_default_constructible_v<T>> {};
 
 /***
  *  _t
@@ -440,8 +441,8 @@ using detected_t = detected_or_t<nonesuch, T, A...>;
 //
 //  The trait variable is_detected_v<T, A...> is equivalent to
 //  detected_or<nonesuch, T, A...>::value_t::value.
-//  The trait type is_detected<T, A...> unambiguously inherits bool_constant<V>
-//  where V is is_detected_v<T, A...>.
+//  The trait type is_detected<T, A...> unambiguously inherits
+//  std::bool_constant<V> where V is is_detected_v<T, A...>.
 //
 //  mimic: std::experimental::is_detected, std::experimental::is_detected_v,
 //    Library Fundamentals TS v2
@@ -462,7 +463,8 @@ using aligned_storage_for_t =
 // Older versions of libstdc++ do not provide std::is_trivially_copyable
 #if defined(__clang__) && !defined(_LIBCPP_VERSION)
 template <class T>
-struct is_trivially_copyable : bool_constant<__is_trivially_copyable(T)> {};
+struct is_trivially_copyable : std::bool_constant<__is_trivially_copyable(T)> {
+};
 #else
 template <class T>
 using is_trivially_copyable = std::is_trivially_copyable<T>;
@@ -482,7 +484,7 @@ inline constexpr bool is_nothrow_convertible_v =
         std::is_nothrow_constructible<To, From>::value);
 template <typename From, typename To>
 struct is_nothrow_convertible
-    : bool_constant<is_nothrow_convertible_v<From, To>> {};
+    : std::bool_constant<is_nothrow_convertible_v<From, To>> {};
 } // namespace fallback
 
 //  is_nothrow_convertible
@@ -617,7 +619,7 @@ struct IsZeroInitializable
           !require_sizeof<T> ||
               is_detected_v<traits_detail::detect_IsZeroInitializable, T>,
           traits_detail::has_true_IsZeroInitializable<T>,
-          bool_constant< //
+          std::bool_constant< //
               !std::is_class<T>::value && //
               !std::is_union<T>::value && //
               !std::is_member_object_pointer<T>::value && // itanium
@@ -665,7 +667,7 @@ struct Disjunction<T, TList...>
     : std::conditional<T::value, T, Disjunction<TList...>>::type {};
 
 template <typename T>
-struct Negation : bool_constant<!T::value> {};
+struct Negation : std::bool_constant<!T::value> {};
 
 template <bool... Bs>
 struct Bools {
@@ -698,7 +700,7 @@ template <typename T>
 inline constexpr bool is_transparent_v =
     is_detected_v<detail::is_transparent_, T>;
 template <typename T>
-struct is_transparent : bool_constant<is_transparent_v<T>> {};
+struct is_transparent : std::bool_constant<is_transparent_v<T>> {};
 
 namespace detail {
 
@@ -724,7 +726,7 @@ inline constexpr bool is_allocator_<
 template <typename T>
 inline constexpr bool is_allocator_v = detail::is_allocator_<T>;
 template <typename T>
-struct is_allocator : bool_constant<is_allocator_v<T>> {};
+struct is_allocator : std::bool_constant<is_allocator_v<T>> {};
 
 } // namespace folly
 
@@ -804,7 +806,7 @@ namespace folly {
 // STL commonly-used types
 template <class T, class U>
 struct IsRelocatable<std::pair<T, U>>
-    : bool_constant<IsRelocatable<T>::value && IsRelocatable<U>::value> {};
+    : std::bool_constant<IsRelocatable<T>::value && IsRelocatable<U>::value> {};
 
 // Is T one of T1, T2, ..., Tn?
 template <typename T, typename... Ts>

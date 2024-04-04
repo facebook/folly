@@ -228,7 +228,7 @@ inline constexpr bool is_invocable_v =
 
 //  mimic: std::is_invocable, C++17
 template <typename F, typename... A>
-struct is_invocable : bool_constant<is_invocable_v<F, A...>> {};
+struct is_invocable : std::bool_constant<is_invocable_v<F, A...>> {};
 
 //  mimic: std::is_invocable_r_v, C++17
 template <typename R, typename F, typename... A>
@@ -237,7 +237,7 @@ inline constexpr bool is_invocable_r_v =
 
 //  mimic: std::is_invocable_r, C++17
 template <typename R, typename F, typename... A>
-struct is_invocable_r : bool_constant<is_invocable_r_v<R, F, A...>> {};
+struct is_invocable_r : std::bool_constant<is_invocable_r_v<R, F, A...>> {};
 
 //  mimic: std::is_nothrow_invocable_v, C++17
 template <typename F, typename... A>
@@ -246,7 +246,8 @@ inline constexpr bool is_nothrow_invocable_v =
 
 //  mimic: std::is_nothrow_invocable, C++17
 template <typename F, typename... A>
-struct is_nothrow_invocable : bool_constant<is_nothrow_invocable_v<F, A...>> {};
+struct is_nothrow_invocable
+    : std::bool_constant<is_nothrow_invocable_v<F, A...>> {};
 
 //  mimic: std::is_nothrow_invocable_r_v, C++17
 template <typename R, typename F, typename... Args>
@@ -256,7 +257,7 @@ inline constexpr bool is_nothrow_invocable_r_v =
 //  mimic: std::is_nothrow_invocable_r, C++17
 template <typename R, typename F, typename... A>
 struct is_nothrow_invocable_r
-    : bool_constant<is_nothrow_invocable_r_v<R, F, A...>> {};
+    : std::bool_constant<is_nothrow_invocable_r_v<R, F, A...>> {};
 
 } // namespace folly
 
@@ -326,25 +327,27 @@ struct invoke_traits : detail::invoke_traits_base<I> {
       invoke_detail::is_invocable_v<void, I, A...>;
   template <typename... A>
   struct is_invocable //
-      : bool_constant<invoke_detail::is_invocable_v<void, I, A...>> {};
+      : std::bool_constant<invoke_detail::is_invocable_v<void, I, A...>> {};
   template <typename R, typename... A>
   inline static constexpr bool is_invocable_r_v =
       invoke_detail::is_invocable_r_v<void, R, I, A...>;
   template <typename R, typename... A>
   struct is_invocable_r //
-      : bool_constant<invoke_detail::is_invocable_r_v<void, R, I, A...>> {};
+      : std::bool_constant< //
+            invoke_detail::is_invocable_r_v<void, R, I, A...>> {};
   template <typename... A>
   inline static constexpr bool is_nothrow_invocable_v =
       invoke_detail::is_nothrow_invocable_v<void, I, A...>;
   template <typename... A>
   struct is_nothrow_invocable //
-      : bool_constant<invoke_detail::is_nothrow_invocable_v<void, I, A...>> {};
+      : std::bool_constant<
+            invoke_detail::is_nothrow_invocable_v<void, I, A...>> {};
   template <typename R, typename... A>
   inline static constexpr bool is_nothrow_invocable_r_v =
       invoke_detail::is_nothrow_invocable_r_v<void, R, I, A...>;
   template <typename R, typename... A>
   struct is_nothrow_invocable_r //
-      : bool_constant<
+      : std::bool_constant<
             invoke_detail::is_nothrow_invocable_r_v<void, R, I, A...>> {};
 };
 
@@ -791,7 +794,8 @@ inline constexpr bool is_tag_invocable_v =
     decltype(detail_tag_invoke_fn::try_tag_invoke<Tag, Args...>(0))::value;
 
 template <typename Tag, typename... Args>
-struct is_tag_invocable : bool_constant<is_tag_invocable_v<Tag, Args...>> {};
+struct is_tag_invocable //
+    : std::bool_constant<is_tag_invocable_v<Tag, Args...>> {};
 
 // Query whether the 'folly::tag_invoke()' CPO can be invoked with a tag
 // and arguments of the specified type and that such an invocation is
@@ -803,7 +807,7 @@ inline constexpr bool is_nothrow_tag_invocable_v =
 
 template <typename Tag, typename... Args>
 struct is_nothrow_tag_invocable
-    : bool_constant<is_nothrow_tag_invocable_v<Tag, Args...>> {};
+    : std::bool_constant<is_nothrow_tag_invocable_v<Tag, Args...>> {};
 
 // Versions of the above that check in addition that the result is
 // convertible to the given return type R.

@@ -859,7 +859,7 @@ struct ModelsInterfaceFalse0_;
 template <>
 struct ModelsInterfaceFalse0_<false> {
   template <typename... T>
-  using apply = bool_constant<(!require_sizeof<T> || ...)>;
+  using apply = std::bool_constant<(!require_sizeof<T> || ...)>;
 };
 template <>
 struct ModelsInterfaceFalse0_<true> {

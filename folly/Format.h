@@ -162,7 +162,7 @@ class BaseFormatterImpl<
 
  private:
   template <typename T, typename D = typename std::decay<T>::type>
-  using IsSizeable = bool_constant<
+  using IsSizeable = std::bool_constant<
       std::is_integral<D>::value && !std::is_same<D, bool>::value>;
 
   template <class Callback>

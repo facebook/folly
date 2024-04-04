@@ -764,7 +764,7 @@ struct EstimateSpaceToReserveAll;
 template <size_t... I>
 struct EstimateSpaceToReserveAll<std::index_sequence<I...>> {
   template <size_t J, size_t N = sizeof...(I)>
-  using tag = bool_constant<J + 1 < N>;
+  using tag = std::bool_constant<J + 1 < N>;
   template <class... T>
   static size_t call(const T&... v) {
     const size_t sizes[] = {estimateSpaceToReserveOne(tag<I>{}, v)...};
@@ -818,7 +818,8 @@ struct ToAppendStrImplAll<std::index_sequence<I...>> {
   static void call(const T&... v) {
     using _ = int[];
     auto r = getLastElement(v...);
-    void(_{toAppendStrImplOne(bool_constant<I + 1 < sizeof...(T)>{}, v, r)...});
+    void(_{toAppendStrImplOne(
+        std::bool_constant<I + 1 < sizeof...(T)>{}, v, r)...});
   }
 };
 
@@ -1375,7 +1376,7 @@ inline std::string errorValue(const Src& value) {
 }
 
 template <typename Tgt, typename Src>
-using IsArithToArith = bool_constant<
+using IsArithToArith = std::bool_constant<
     !std::is_same<Tgt, Src>::value && !std::is_same<Tgt, bool>::value &&
     is_arithmetic_v<Src> && is_arithmetic_v<Tgt>>;
 

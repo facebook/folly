@@ -356,7 +356,7 @@ struct copy_assignment_mixin<T, true> {
 
 template <typename T>
 struct is_constructible_from_replaceable
-    : bool_constant<
+    : std::bool_constant<
           std::is_constructible<T, Replaceable<T>&>::value ||
           std::is_constructible<T, Replaceable<T>&&>::value ||
           std::is_constructible<T, const Replaceable<T>&>::value ||
@@ -364,7 +364,7 @@ struct is_constructible_from_replaceable
 
 template <typename T>
 struct is_convertible_from_replaceable
-    : bool_constant<
+    : std::bool_constant<
           std::is_convertible<Replaceable<T>&, T>::value ||
           std::is_convertible<Replaceable<T>&&, T>::value ||
           std::is_convertible<const Replaceable<T>&, T>::value ||

@@ -122,7 +122,7 @@ struct policy_size_type {
 
 template <bool Value>
 struct policy_in_situ_only {
-  using in_situ_only = bool_constant<Value>;
+  using in_situ_only = std::bool_constant<Value>;
 };
 
 } // namespace small_vector_policy

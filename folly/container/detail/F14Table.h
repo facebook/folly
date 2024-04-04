@@ -233,13 +233,13 @@ namespace detail {
 // Detection for folly_assume_32bit_hash
 
 template <typename Hasher, typename Void = void>
-struct ShouldAssume32BitHash : bool_constant<!require_sizeof<Hasher>> {};
+struct ShouldAssume32BitHash : std::bool_constant<!require_sizeof<Hasher>> {};
 
 template <typename Hasher>
 struct ShouldAssume32BitHash<
     Hasher,
     void_t<typename Hasher::folly_assume_32bit_hash>>
-    : bool_constant<Hasher::folly_assume_32bit_hash::value> {};
+    : std::bool_constant<Hasher::folly_assume_32bit_hash::value> {};
 
 //////// hash helpers
 

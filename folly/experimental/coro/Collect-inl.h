@@ -986,7 +986,7 @@ auto makeUnorderedAsyncGenerator(AsyncScope& scope, InputRange awaitables)
         InputRange,
         false>&&> {
   return detail::makeUnorderedAsyncGeneratorImpl(
-      scope, std::move(awaitables), bool_constant<false>{});
+      scope, std::move(awaitables), std::bool_constant<false>{});
 }
 
 template <typename InputRange>
@@ -995,7 +995,7 @@ auto makeUnorderedTryAsyncGenerator(AsyncScope& scope, InputRange awaitables)
         InputRange,
         true>&&> {
   return detail::makeUnorderedAsyncGeneratorImpl(
-      scope, std::move(awaitables), bool_constant<true>{});
+      scope, std::move(awaitables), std::bool_constant<true>{});
 }
 
 template <typename InputRange>
@@ -1005,7 +1005,7 @@ auto makeUnorderedAsyncGenerator(
         InputRange,
         false>&&> {
   return detail::makeUnorderedAsyncGeneratorImpl(
-      scope, std::move(awaitables), bool_constant<false>{});
+      scope, std::move(awaitables), std::bool_constant<false>{});
 }
 
 template <typename InputRange>
@@ -1015,7 +1015,7 @@ auto makeUnorderedTryAsyncGenerator(
         InputRange,
         true>&&> {
   return detail::makeUnorderedAsyncGeneratorImpl(
-      scope, std::move(awaitables), bool_constant<true>{});
+      scope, std::move(awaitables), std::bool_constant<true>{});
 }
 
 template <typename SemiAwaitable, typename... SemiAwaitables>

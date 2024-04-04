@@ -43,7 +43,7 @@ TEST_F(ProtocolTest, match_empty_function_protocol) {
   using sig = void();
   using mfnp = void (nada::*)();
 
-  EXPECT_FALSE((folly::bool_constant<empty_function(lambda)>{}));
+  EXPECT_FALSE((std::bool_constant<empty_function(lambda)>{}));
 
   EXPECT_TRUE(empty_function(static_cast<sig*>(nullptr)));
   EXPECT_FALSE(empty_function(static_cast<sig*>(lambda)));

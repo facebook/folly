@@ -85,7 +85,7 @@ FOLLY_ALWAYS_INLINE void compiler_must_not_predict_fn::operator()(
 namespace detail {
 
 template <typename T, typename D = std::decay_t<T>>
-using compiler_must_force_indirect = bool_constant<
+using compiler_must_force_indirect = std::bool_constant<
     !is_trivially_copyable_v<D> || //
     sizeof(long) < sizeof(D) || //
     std::is_pointer<D>::value>;

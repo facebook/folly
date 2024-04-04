@@ -482,7 +482,8 @@ class to_narrow_convertible {
   static_assert(std::is_integral<Src>::value, "not an integer");
 
   template <typename Dst>
-  struct to_ : bool_constant<detail::is_to_narrow_convertible_v<Src, Dst>> {};
+  struct to_
+      : std::bool_constant<detail::is_to_narrow_convertible_v<Src, Dst>> {};
 
  public:
   explicit constexpr to_narrow_convertible(Src const& value) noexcept
