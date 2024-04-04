@@ -353,6 +353,38 @@ using EnableCopyMove = std::conditional_t<
 using moveonly_::MoveOnly;
 using moveonly_::NonCopyableNonMovable;
 
+/// variadic_noop
+/// variadic_noop_fn
+///
+/// An invocable object and type that has no side-effects - that does nothing
+/// when invoked regardless of the arguments with which it is invoked - and that
+/// returns void.
+///
+/// May be invoked with any arguments. Returns void.
+struct variadic_noop_fn {
+  template <typename... A>
+  constexpr void operator()(A&&...) const noexcept {}
+};
+inline constexpr variadic_noop_fn variadic_noop;
+
+/// variadic_constant_of
+/// variadic_constant_of_fn
+///
+/// An invocable object and type that has no side-effects - that does nothing
+/// when invoked regardless of the arguments with which it is invoked - and that
+/// returns a constant value.
+template <auto Value>
+struct variadic_constant_of_fn {
+  using value_type = decltype(Value);
+  static inline constexpr value_type value = Value;
+  template <typename... A>
+  constexpr value_type operator()(A&&...) const noexcept {
+    return value;
+  }
+};
+template <auto Value>
+inline constexpr variadic_constant_of_fn<Value> variadic_constant_of;
+
 //  unsafe_default_initialized
 //  unsafe_default_initialized_cv
 //

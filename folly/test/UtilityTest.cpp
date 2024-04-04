@@ -254,6 +254,17 @@ TEST_F(UtilityTest, NonCopyableNonMovable) {
       "Should not be move constructible");
 }
 
+TEST_F(UtilityTest, noop) {
+  auto fn = folly::variadic_noop;
+  EXPECT_TRUE((std::is_nothrow_invocable_r_v<void, decltype(fn)>));
+}
+
+TEST_F(UtilityTest, constant_of) {
+  auto fn = folly::variadic_constant_of<3>;
+  EXPECT_TRUE((std::is_nothrow_invocable_r_v<int, decltype(fn)>));
+  EXPECT_EQ(3, fn());
+}
+
 TEST_F(UtilityTest, to_signed) {
   {
     constexpr auto actual = folly::to_signed(int32_t(-12));
