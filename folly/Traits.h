@@ -33,18 +33,6 @@ struct tag_t {};
 template <typename... T>
 inline constexpr tag_t<T...> tag{};
 
-#if __cpp_lib_bool_constant || _MSC_VER
-
-using std::bool_constant;
-
-#else
-
-//  mimic: std::bool_constant, C++17
-template <bool B>
-using bool_constant = std::integral_constant<bool, B>;
-
-#endif
-
 template <std::size_t I>
 using index_constant = std::integral_constant<std::size_t, I>;
 
