@@ -448,19 +448,6 @@ template <typename T>
 using aligned_storage_for_t =
     typename std::aligned_storage<sizeof(T), alignof(T)>::type;
 
-// Older versions of libstdc++ do not provide std::is_trivially_copyable
-#if defined(__clang__) && !defined(_LIBCPP_VERSION)
-template <class T>
-struct is_trivially_copyable : std::bool_constant<__is_trivially_copyable(T)> {
-};
-#else
-template <class T>
-using is_trivially_copyable = std::is_trivially_copyable<T>;
-#endif
-
-template <class T>
-inline constexpr bool is_trivially_copyable_v = is_trivially_copyable<T>::value;
-
 //  ----
 
 namespace fallback {

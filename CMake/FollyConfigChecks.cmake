@@ -106,12 +106,6 @@ check_cxx_source_compiles("
   int main() { return 0; }"
   FOLLY_HAVE_IFUNC
 )
-check_cxx_source_compiles("
-  #include <type_traits>
-  const bool val = std::is_trivially_copyable<bool>::value;
-  int main() { return 0; }"
-  FOLLY_HAVE_STD__IS_TRIVIALLY_COPYABLE
-)
 check_cxx_source_runs("
   int main(int, char**) {
     char buf[64] = {0};
