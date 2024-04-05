@@ -65,7 +65,6 @@
 #include <folly/Traits.h>
 #include <folly/detail/RangeCommon.h>
 #include <folly/detail/RangeSse42.h>
-#include <folly/lang/Byte.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_PUSH_WARNING
@@ -180,7 +179,7 @@ constexpr bool range_is_char_type_v_ =
 
 void range_is_byte_type_f_(unsigned char const*);
 void range_is_byte_type_f_(signed char const*);
-void range_is_byte_type_f_(byte const*);
+void range_is_byte_type_f_(std::byte const*);
 template <typename Iter>
 using range_is_byte_type_d_ =
     decltype(folly::detail::range_is_byte_type_f_(FOLLY_DECLVAL(Iter)));

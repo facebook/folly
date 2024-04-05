@@ -883,7 +883,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lang_aligned_test SOURCES AlignedTest.cpp
       TEST lang_badge_test SOURCES BadgeTest.cpp
       TEST lang_bits_test SOURCES BitsTest.cpp
-      TEST lang_byte_test SOURCES ByteTest.cpp
       TEST lang_c_string_test SOURCES CStringTest.cpp
       TEST lang_cast_test SOURCES CastTest.cpp
       TEST lang_checked_math_test SOURCES CheckedMathTest.cpp
