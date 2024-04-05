@@ -88,9 +88,9 @@ namespace invoke_detail {
 struct ok_one_ {
   template <typename T>
   static constexpr bool pass_v = ( //
-      std::is_void<T>::value || //
-      std::is_reference<T>::value || //
-      std::is_function<T>::value || //
+      std::is_void_v<T> || //
+      std::is_reference_v<T> || //
+      std::is_function_v<T> || //
       is_unbounded_array_v<T> || //
       false);
 
@@ -188,8 +188,8 @@ inline constexpr bool is_invocable_r_v = ok_<bool, R, F, A...>{false};
 template <typename R, typename F, typename... A>
 inline constexpr bool
     is_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
-        std::is_void<R>::value ||
-        std::is_convertible<invoke_result_t<F, A...>, R>::value;
+        std::is_void_v<R> ||
+        std::is_convertible_v<invoke_result_t<F, A...>, R>;
 // clang-format on
 
 template <typename Void, typename F, typename... A>
@@ -208,7 +208,7 @@ template <typename R, typename F, typename... A>
 inline constexpr bool
     is_nothrow_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
         traits<F>::template nothrow<A...> && (
-            std::is_void<R>::value ||
+            std::is_void_v<R> ||
             is_nothrow_convertible_v<invoke_result_t<F, A...>, R>);
 // clang-format on
 
