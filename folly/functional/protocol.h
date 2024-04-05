@@ -97,7 +97,7 @@ inline constexpr match_empty_function_protocol_fn
 template <typename F>
 static constexpr bool match_static_lambda_protocol_v = ( //
     std::is_empty<F>::value && //
-    is_trivially_copyable_v<F> && //
+    std::is_trivially_copyable_v<F> && //
     true);
 
 //  ----

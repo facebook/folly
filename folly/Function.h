@@ -664,7 +664,7 @@ template <
     bool InSituNoexcept = noexcept(Fun(FOLLY_DECLVAL(Fun)))>
 using DispatchOf = Dispatch<
     InSituSize && InSituAlign && InSituNoexcept,
-    is_trivially_copyable_v<Fun>>;
+    std::is_trivially_copyable_v<Fun>>;
 
 } // namespace function
 } // namespace detail
@@ -788,7 +788,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
     }
     if constexpr (Dispatch::is_in_situ) {
       if constexpr (
-          !std::is_empty<Fun>::value || !is_trivially_copyable_v<Fun>) {
+          !std::is_empty<Fun>::value || !std::is_trivially_copyable_v<Fun>) {
         ::new (&data_.tiny) Fun(static_cast<Fun&&>(fun));
       }
     } else {

@@ -879,10 +879,10 @@ TEST(Collect, collectNParallel) {
 /// Ensure that we can compile collectAll/Any with folly::small_vector
 TEST(Collect, smallVector) {
   static_assert(
-      !folly::is_trivially_copyable<Future<Unit>>::value,
+      !std::is_trivially_copyable<Future<Unit>>::value,
       "Futures should not be trivially copyable");
   static_assert(
-      !folly::is_trivially_copyable<Future<int>>::value,
+      !std::is_trivially_copyable<Future<int>>::value,
       "Futures should not be trivially copyable");
 
   {

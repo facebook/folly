@@ -172,21 +172,21 @@ TEST_F(InlineFunctionRefTest, TestTriviality) {
     auto lambda = []() {};
     auto fref = InlineFunctionRef<void(), 24>{std::move(lambda)};
     EXPECT_TRUE(std::is_trivially_destructible<decltype(fref)>{});
-    EXPECT_TRUE(folly::is_trivially_copyable<decltype(fref)>{});
+    EXPECT_TRUE(std::is_trivially_copyable<decltype(fref)>{});
   }
   {
     auto integer = std::uint64_t{0};
     auto lambda = [&]() { static_cast<void>(integer); };
     auto fref = InlineFunctionRef<void(), 24>{std::move(lambda)};
     EXPECT_TRUE(std::is_trivially_destructible<decltype(fref)>{});
-    EXPECT_TRUE(folly::is_trivially_copyable<decltype(fref)>{});
+    EXPECT_TRUE(std::is_trivially_copyable<decltype(fref)>{});
   }
   {
     auto data = std::array<std::uint8_t, 128>{};
     auto lambda = [data]() { static_cast<void>(data); };
     auto fref = InlineFunctionRef<void(), 24>{std::move(lambda)};
     EXPECT_TRUE(std::is_trivially_destructible<decltype(fref)>{});
-    EXPECT_TRUE(folly::is_trivially_copyable<decltype(fref)>{});
+    EXPECT_TRUE(std::is_trivially_copyable<decltype(fref)>{});
   }
 }
 

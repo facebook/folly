@@ -676,15 +676,18 @@ struct WithConstructor {
 TEST(Expected, TriviallyCopyable) {
   // These could all be static_asserts but EXPECT_* give much nicer output on
   // failure.
-  EXPECT_TRUE((is_trivially_copyable<Expected<int, E>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<char*, E>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<NoDestructor, E>>::value));
-  EXPECT_FALSE((is_trivially_copyable<Expected<WithDestructor, E>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<NoConstructor, E>>::value));
-  EXPECT_FALSE((is_trivially_copyable<Expected<std::string, E>>::value));
-  EXPECT_FALSE((is_trivially_copyable<Expected<int, std::string>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<WithConstructor, E>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<Expected<int, E>, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<int, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<char*, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<NoDestructor, E>>::value));
+  EXPECT_FALSE(
+      (std::is_trivially_copyable<Expected<WithDestructor, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<NoConstructor, E>>::value));
+  EXPECT_FALSE((std::is_trivially_copyable<Expected<std::string, E>>::value));
+  EXPECT_FALSE((std::is_trivially_copyable<Expected<int, std::string>>::value));
+  EXPECT_TRUE(
+      (std::is_trivially_copyable<Expected<WithConstructor, E>>::value));
+  EXPECT_TRUE(
+      (std::is_trivially_copyable<Expected<Expected<int, E>, E>>::value));
 }
 #endif
 

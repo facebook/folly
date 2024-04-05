@@ -86,7 +86,7 @@ namespace detail {
 
 template <typename T, typename D = std::decay_t<T>>
 using compiler_must_force_indirect = std::bool_constant<
-    !is_trivially_copyable_v<D> || //
+    !std::is_trivially_copyable_v<D> || //
     sizeof(long) < sizeof(D) || //
     std::is_pointer<D>::value>;
 

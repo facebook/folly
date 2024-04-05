@@ -111,7 +111,7 @@ static_assert(
 #endif
 
 static_assert(
-    !folly::is_trivially_copyable<std::unique_ptr<int>>::value,
+    !std::is_trivially_copyable<std::unique_ptr<int>>::value,
     "std::unique_ptr<> is trivially copyable");
 
 static_assert(
@@ -170,7 +170,7 @@ struct NontrivialType {
   int32_t a;
 };
 static_assert(
-    !folly::is_trivially_copyable<NontrivialType>::value,
+    !std::is_trivially_copyable<NontrivialType>::value,
     "NontrivialType is trivially copyable");
 
 int NontrivialType::ctored = 0;
@@ -231,7 +231,7 @@ struct NoncopyableCounter {
 int NoncopyableCounter::alive = 0;
 
 static_assert(
-    !folly::is_trivially_copyable<NoncopyableCounter>::value,
+    !std::is_trivially_copyable<NoncopyableCounter>::value,
     "NoncopyableCounter is trivially copyable");
 
 // Check that throws don't break the basic guarantee for some cases.

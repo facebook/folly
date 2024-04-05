@@ -47,7 +47,7 @@ constexpr std::size_t register_pass_max_size = kMscVer ? 8u : 16u;
 //  Approximate. Accuracy is not promised.
 template <typename T>
 constexpr bool is_register_pass_v =
-    (sizeof(T) <= register_pass_max_size) && is_trivially_copyable_v<T>;
+    (sizeof(T) <= register_pass_max_size) && std::is_trivially_copyable_v<T>;
 template <typename T>
 constexpr bool is_register_pass_v<T&> = true;
 template <typename T>

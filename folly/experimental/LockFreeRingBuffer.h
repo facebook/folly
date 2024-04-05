@@ -255,7 +255,7 @@ class RingBufferSlot {
 
 template <typename T>
 class RingBufferTrivialStorage {
-  static_assert(is_trivially_copyable_v<T>, "T must trivially copyable");
+  static_assert(std::is_trivially_copyable_v<T>, "T must trivially copyable");
 
   // Note: If T fits in 8 bytes, folly::AtomicStruct could be used instead.
 

@@ -77,7 +77,7 @@ using throw_exception_arg_ = //
         std::is_array<std::remove_reference_t<R>>::value,
         throw_exception_arg_array_,
         conditional_t<
-            is_trivially_copyable_v<remove_cvref_t<R>>,
+            std::is_trivially_copyable_v<remove_cvref_t<R>>,
             throw_exception_arg_trivial_,
             throw_exception_arg_base_>>;
 template <typename R>

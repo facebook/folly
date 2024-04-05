@@ -83,8 +83,8 @@ template <
     typename To,
     typename From,
     std::enable_if_t<
-        sizeof(From) == sizeof(To) && is_trivially_copyable<To>::value &&
-            is_trivially_copyable<From>::value,
+        sizeof(From) == sizeof(To) && std::is_trivially_copyable<To>::value &&
+            std::is_trivially_copyable<From>::value,
         int> = 0>
 To bit_cast(const From& src) noexcept {
   aligned_storage_for_t<To> storage;
