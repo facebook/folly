@@ -53,24 +53,32 @@ bool equal(PtrRange lhs, PtrRange rhs) {
   return std::equal(lhs.b, lhs.e, rhs.b, rhs.e, cmp);
 }
 
+std::string_view parse_demangled_tag_name(std::string_view str) {
+  auto off = std::string_view::npos;
+  // strip surrounding `folly::tag<{...}>`
+  off = str.find('<');
+  str = str.substr(off + 1, str.size() - off - 2);
+  // strip trailing spaces, if any
+  off = str.find_last_not_of(' ');
+  str = str.substr(0, off == std::string_view::npos ? off : off + 1);
+  // done
+  return str;
+}
+
 std::string join(PtrRange types) {
   std::ostringstream ret;
   for (auto t = types.b; t != types.e; ++t) {
     if (t != types.b) {
       ret << ", ";
     }
-    auto const str = demangle((*t)->name());
-    auto const off = str.find('<');
-    ret << str.substr(off + 1, str.size() - off - 2);
+    ret << parse_demangled_tag_name(demangle((*t)->name()));
   }
   return ret.str();
 }
 
 template <typename Value>
 fbstring render_tmpl(Value value) {
-  auto const str = demangle(value.tmpl->name());
-  auto const off = str.find('<');
-  return str.substr(off + 1, str.size() - off - 2);
+  return fbstring(parse_demangled_tag_name(demangle(value.tmpl->name())));
 }
 
 template <typename Value>
