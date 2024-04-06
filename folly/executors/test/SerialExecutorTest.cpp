@@ -215,7 +215,7 @@ TYPED_TEST(SerialExecutorTest, Stress) {
 
   size_t tasksRan = 0;
   constexpr size_t kNumProducers = 16;
-  constexpr size_t kNumIterations = 4096;
+  static constexpr size_t kNumIterations = 4096;
   folly::CPUThreadPoolExecutor producers{kNumProducers};
   for (size_t i = 0; i < kNumProducers; ++i) {
     producers.add([i, se, &tasksRan] {
