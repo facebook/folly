@@ -161,6 +161,33 @@ struct traits<M C::*&&> : traits_member_ptr<M C::*> {};
 template <typename M, typename C>
 struct traits<M C::*const&&> : traits_member_ptr<M C::*> {};
 
+template <bool IsVoid>
+struct conv_r_;
+template <>
+struct conv_r_<true> {
+  template <bool NX, typename R, typename FR>
+  using apply = std::true_type;
+};
+template <>
+struct conv_r_<false> {
+  template <typename R>
+  static void conv(R, decay_t<R>* = nullptr) noexcept;
+  template <
+      bool NX,
+      typename R,
+      typename FR,
+      bool C = noexcept(conv<R>(FOLLY_DECLVAL(FR)))>
+  static std::bool_constant<!NX || C> test(int);
+  template <bool NX, typename R, typename FR>
+  static std::false_type test(...);
+  template <bool NX, typename R, typename FR>
+  using apply = decltype(test<NX, R, FR>(0));
+};
+
+template <bool NX, typename R, typename FR>
+static inline constexpr bool conv_r_v_ =
+    conv_r_<std::is_void_v<R>>::template apply<NX, R, FR>::value;
+
 //  adapted from: http://en.cppreference.com/w/cpp/types/result_of, CC-BY-SA
 
 template <typename F, typename... A>
@@ -188,8 +215,7 @@ inline constexpr bool is_invocable_r_v = ok_<bool, R, F, A...>{false};
 template <typename R, typename F, typename... A>
 inline constexpr bool
     is_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
-        std::is_void_v<R> ||
-        std::is_convertible_v<invoke_result_t<F, A...>, R>;
+        conv_r_v_<false, R, invoke_result_t<F, A...>>;
 // clang-format on
 
 template <typename Void, typename F, typename... A>
@@ -207,9 +233,8 @@ inline constexpr bool is_nothrow_invocable_r_v = ok_<bool, R, F, A...>{false};
 template <typename R, typename F, typename... A>
 inline constexpr bool
     is_nothrow_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
-        traits<F>::template nothrow<A...> && (
-            std::is_void_v<R> ||
-            is_nothrow_convertible_v<invoke_result_t<F, A...>, R>);
+        traits<F>::template nothrow<A...> &&
+            conv_r_v_<true, R, invoke_result_t<F, A...>>;
 // clang-format on
 
 } // namespace invoke_detail
