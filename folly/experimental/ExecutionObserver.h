@@ -19,7 +19,6 @@
 #include <cstdint>
 
 #include <boost/intrusive/list.hpp>
-#include <folly/tracing/StaticTracepoint.h>
 
 namespace folly {
 
@@ -68,35 +67,9 @@ class ExecutionObserverScopeGuard {
   ExecutionObserverScopeGuard(
       folly::ExecutionObserver::List* observerList,
       void* id,
-      folly::ExecutionObserver::CallbackType callbackType)
-      : observerList_(observerList),
-        id_{reinterpret_cast<uintptr_t>(id)},
-        callbackType_(callbackType) {
-    FOLLY_SDT(
-        folly,
-        execution_observer_callbacks_starting,
-        id_,
-        static_cast<int>(callbackType_));
-    if (!observerList_->empty()) {
-      for (auto& observer : *observerList_) {
-        observer.starting(id_, callbackType_);
-      }
-    }
-  }
+      folly::ExecutionObserver::CallbackType callbackType);
 
-  ~ExecutionObserverScopeGuard() {
-    if (!observerList_->empty()) {
-      for (auto& observer : *observerList_) {
-        observer.stopped(id_, callbackType_);
-      }
-    }
-
-    FOLLY_SDT(
-        folly,
-        execution_observer_callbacks_stopped,
-        id_,
-        static_cast<int>(callbackType_));
-  }
+  ~ExecutionObserverScopeGuard();
 
  private:
   folly::ExecutionObserver::List* observerList_;
