@@ -32,18 +32,14 @@ ExecutionObserverScopeGuard::ExecutionObserverScopeGuard(
       execution_observer_callbacks_starting,
       id_,
       static_cast<int>(callbackType_));
-  if (!observerList_->empty()) {
-    for (auto& observer : *observerList_) {
-      observer.starting(id_, callbackType_);
-    }
+  for (auto& observer : *observerList_) {
+    observer.starting(id_, callbackType_);
   }
 }
 
 ExecutionObserverScopeGuard::~ExecutionObserverScopeGuard() {
-  if (!observerList_->empty()) {
-    for (auto& observer : *observerList_) {
-      observer.stopped(id_, callbackType_);
-    }
+  for (auto& observer : *observerList_) {
+    observer.stopped(id_, callbackType_);
   }
 
   FOLLY_SDT(

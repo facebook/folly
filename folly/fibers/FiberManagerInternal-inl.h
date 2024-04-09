@@ -136,13 +136,16 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
   (void)folly::exchangeCurrentAsyncStackRoot(
       std::exchange(fiber->asyncRoot_, nullptr));
 
-  if (!observerList_.empty()) {
-    for (auto& observer : observerList_) {
-      observer.starting(
-          reinterpret_cast<uintptr_t>(fiber),
-          folly::ExecutionObserver::CallbackType::Fiber);
-    }
-  }
+  folly::Optional<ExecutionObserverScopeGuard> observersGuard{
+      std::in_place,
+      &observerList_,
+      fiber,
+      folly::ExecutionObserver::CallbackType::Fiber};
+  SCOPE_EXIT {
+    // Ensure that the guard is explicitly destroyed for all terminal states, so
+    // that it is done at the right time.
+    assert(!observersGuard);
+  };
 
   while (fiber->state_ == Fiber::NOT_STARTED ||
          fiber->state_ == Fiber::READY_TO_RUN) {
@@ -161,11 +164,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
   if (fiber->state_ == Fiber::AWAITING) {
     awaitFunc_(*fiber);
     awaitFunc_ = nullptr;
-    for (auto& observer : observerList_) {
-      observer.stopped(
-          reinterpret_cast<uintptr_t>(fiber),
-          folly::ExecutionObserver::CallbackType::Fiber);
-    }
+    observersGuard.reset();
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
     fiber->asyncRoot_ = folly::exchangeCurrentAsyncStackRoot(nullptr);
@@ -186,13 +185,9 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       }
       fiber->finallyFunc_ = nullptr;
     }
-    // Make sure LocalData is not accessible from its destructor
-    for (auto& observer : observerList_) {
-      observer.stopped(
-          reinterpret_cast<uintptr_t>(fiber),
-          folly::ExecutionObserver::CallbackType::Fiber);
-    }
+    observersGuard.reset();
 
+    // Make sure LocalData is not accessible from its destructor
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
     // Async stack roots should have been popped by the time the
@@ -214,11 +209,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       --fibersAllocated_;
     }
   } else if (fiber->state_ == Fiber::YIELDED) {
-    for (auto& observer : observerList_) {
-      observer.stopped(
-          reinterpret_cast<uintptr_t>(fiber),
-          folly::ExecutionObserver::CallbackType::Fiber);
-    }
+    observersGuard.reset();
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
     fiber->asyncRoot_ = folly::exchangeCurrentAsyncStackRoot(nullptr);
