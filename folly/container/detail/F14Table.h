@@ -391,7 +391,9 @@ class F14HashedKey final {
 
   const TKeyType& getKey() const { return key_; }
   const F14HashToken& getHashToken() const { return hash_; }
-  explicit operator const TKeyType&() const { return key_; }
+  // We want the conversion to the key to be implicit - the hashed key should
+  // seamlessly behave as the key itself.
+  /* implicit */ operator const TKeyType&() const { return key_; }
   explicit operator const F14HashToken&() const { return hash_; }
 
   bool operator==(const F14HashedKey& other) const {
