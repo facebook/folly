@@ -49,6 +49,12 @@ uint32_t crc32c_hw(
 bool crc32c_hw_supported();
 
 /**
+ * Check whether an AVX512VL hardware-accelerated CRC-32C implementation is
+ * supported on the current CPU.
+ */
+bool crc32c_hw_supported_avx512();
+
+/**
  * Compute a CRC-32C checksum of a buffer using a portable,
  * software-only implementation.
  *

@@ -7,8 +7,7 @@
 #include <stdint.h>
 
 #define CRC_EXPORT extern
-
-#if !defined(__AVX512VL__) || !defined(__PCLMUL__) || !defined(__SSE4_2__) || !(defined(__x86_64__) || defined(_M_X64))
+#if !defined(FOLLY_ENABLE_AVX512_CRC32C_V8S3X4)
 #include <stdlib.h>
 namespace folly::detail {
 CRC_EXPORT uint32_t avx512_crc32c_v8s3x4(const uint8_t*, size_t, uint32_t) {
@@ -59,6 +58,7 @@ CRC_AINLINE __m128i crc_shift(uint32_t crc, size_t nbytes) {
   return clmul_scalar(crc, xnmodp(nbytes * 8 - 33));
 }
 
+FOLLY_TARGET_ATTRIBUTE("avx512f,avx512vl,sse4.2")
 CRC_EXPORT uint32_t avx512_crc32c_v8s3x4(const uint8_t* buf, size_t len, uint32_t crc0) {
   for (; len && ((uintptr_t)buf & 7); --len) {
     crc0 = _mm_crc32_u8(crc0, *buf++);
