@@ -579,9 +579,7 @@ class Range {
   }
 
   constexpr size_type size() const {
-#if __clang__ || !__GNUC__ || __GNUC__ >= 7
     assert(b_ <= e_);
-#endif
     return size_type(e_ - b_);
   }
   constexpr size_type walk_size() const {

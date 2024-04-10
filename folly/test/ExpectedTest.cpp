@@ -633,10 +633,8 @@ struct NoSelfAssign {
   }
 };
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpragmas"
-#endif
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wpragmas")
 
 TEST(Expected, NoSelfAssign) {
   folly::Expected<NoSelfAssign, int> e{NoSelfAssign{}};
@@ -644,9 +642,7 @@ TEST(Expected, NoSelfAssign) {
   e = static_cast<decltype(e)&&>(e); // suppress self-move warning
 }
 
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+FOLLY_POP_WARNING
 
 struct NoDestructor {};
 
@@ -670,9 +666,6 @@ struct WithConstructor {
   WithConstructor();
 };
 
-// libstdc++ with GCC 4.x doesn't have std::is_trivially_copyable
-#if (defined(__clang__) && !defined(_LIBCPP_VERSION)) || \
-    !(defined(__GNUC__) && !defined(__clang__))
 TEST(Expected, TriviallyCopyable) {
   // These could all be static_asserts but EXPECT_* give much nicer output on
   // failure.
@@ -689,7 +682,6 @@ TEST(Expected, TriviallyCopyable) {
   EXPECT_TRUE(
       (std::is_trivially_copyable<Expected<Expected<int, E>, E>>::value));
 }
-#endif
 
 TEST(Expected, Then) {
   // Lifting
