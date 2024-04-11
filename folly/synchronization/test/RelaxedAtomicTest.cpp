@@ -19,9 +19,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/AtomicUtil.h>
 
-// gcc7.5 appears to have trouble with these deductions
-#if !__GNUC__ || __GNUC__ >= 8 || __clang__
-
 static_assert( //
     std::is_same_v< //
         int,
@@ -62,8 +59,6 @@ TEST_F(RelaxedAtomicTest, deduce_ptr) {
   EXPECT_EQ(&f, v.load());
   EXPECT_TRUE((std::is_same_v<foo*, decltype(v)::value_type>));
 }
-
-#endif
 
 template <typename AtomicType>
 struct RelaxedAtomicBooleanTest : testing::Test {};

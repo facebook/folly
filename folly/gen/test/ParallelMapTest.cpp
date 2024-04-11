@@ -156,10 +156,6 @@ TEST(Pmap, Rvalues) {
 }
 
 TEST(Pmap, Exception) {
-#if __GNUC__ == 7 && __GNUC_MINOR__ == 5 && !__clang__
-  LOG(INFO) << "some versions of gcc miscompile the code below without this";
-#endif
-
   // Exception from source
   EXPECT_THROW(
       just("a") | eachTo<int>() | pmap(To<float>()) | sum, std::runtime_error);
