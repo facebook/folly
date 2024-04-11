@@ -482,8 +482,7 @@ void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) noexcept {
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
 PthreadKeyUnregister PthreadKeyUnregister::instance_;
-#if defined(__GLIBC__) && \
-    (__GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 18))
+#if defined(__GLIBC__)
 // Invoking thread_local dtor register early to fix issue
 // https://github.com/facebook/folly/issues/1252
 struct GlibcThreadLocalInit {
