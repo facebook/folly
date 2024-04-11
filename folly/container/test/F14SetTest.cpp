@@ -1061,9 +1061,10 @@ TEST(F14VectorSet, maxSize) {
   EXPECT_EQ(
       s.max_size(),
       std::min(
-          folly::f14::detail::SizeAndChunkShift::kMaxSize,
-          std::allocator_traits<decltype(s)::allocator_type>::max_size(
-              s.get_allocator())));
+          {folly::f14::detail::SizeAndChunkShift::kMaxSize,
+           std::size_t{std::numeric_limits<uint32_t>::max()},
+           std::allocator_traits<decltype(s)::allocator_type>::max_size(
+               s.get_allocator())}));
 }
 #endif
 

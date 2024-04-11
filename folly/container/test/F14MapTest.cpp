@@ -1426,9 +1426,10 @@ TEST(F14VectorMap, vectorMaxSize) {
   EXPECT_EQ(
       m.max_size(),
       std::min(
-          folly::f14::detail::SizeAndChunkShift::kMaxSize,
-          std::allocator_traits<decltype(m)::allocator_type>::max_size(
-              m.get_allocator())));
+          {folly::f14::detail::SizeAndChunkShift::kMaxSize,
+           std::size_t{std::numeric_limits<uint32_t>::max()},
+           std::allocator_traits<decltype(m)::allocator_type>::max_size(
+               m.get_allocator())}));
 }
 #endif
 
@@ -2505,4 +2506,15 @@ TEST(F14Map, reserveMoreNeverShrinks) {
   runReserveMoreTest<F14NodeMap<int, int>>(10);
   runReserveMoreTest<F14ValueMap<int, int>>(10);
   runReserveMoreTest<F14VectorMap<int, int>>(10);
+}
+
+TEST(F14Map, reserveBadAlloc) {
+  SKIP_IF(kFallback);
+  SKIP_IF(
+      std::numeric_limits<size_t>::max() <=
+      std::numeric_limits<uint32_t>::max());
+  EXPECT_THROW(
+      (F14VectorMap<int, int>().reserve(
+          std::size_t{std::numeric_limits<uint32_t>::max()} + 1)),
+      std::bad_alloc);
 }

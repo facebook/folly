@@ -1178,6 +1178,7 @@ class F14Table : public Policy {
   using Alloc = typename Policy::Alloc;
   using AllocTraits = typename Policy::AllocTraits;
   using Hasher = typename Policy::Hasher;
+  using InternalSizeType = typename Policy::InternalSizeType;
   using KeyEqual = typename Policy::KeyEqual;
 
   using Policy::kAllocIsAlwaysEqual;
@@ -1454,7 +1455,9 @@ class F14Table : public Policy {
   std::size_t max_size() const noexcept {
     auto& a = this->alloc();
     return std::min<std::size_t>(
-        SizeAndChunkShift::kMaxSize, AllocTraits::max_size(a));
+        {SizeAndChunkShift::kMaxSize,
+         std::numeric_limits<InternalSizeType>::max(),
+         AllocTraits::max_size(a)});
   }
 
   std::size_t bucket_count() const noexcept {
