@@ -329,6 +329,21 @@ class FunctionTraitsSharedProxy {
   }
 };
 
+template <
+    typename Fun,
+    bool Small,
+    bool Nx,
+    typename ReturnType,
+    typename... Args>
+ReturnType call_(Args... args, Data& p) noexcept(Nx) {
+  auto& fn = *static_cast<Fun*>(Small ? &p.tiny : p.big);
+  if constexpr (std::is_void<ReturnType>::value) {
+    fn(static_cast<Args&&>(args)...);
+  } else {
+    return fn(static_cast<Args&&>(args)...);
+  }
+}
+
 template <typename FunctionType>
 struct FunctionTraits;
 
@@ -342,25 +357,9 @@ struct FunctionTraits<ReturnType(Args...)> {
   template <typename F, typename R = CallableResult<F&, Args...>>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
-  template <typename Fun>
-  static ReturnType callSmall(CallArg<Args>... args, Data& p) {
-    auto& fn = *static_cast<Fun*>(static_cast<void*>(&p.tiny));
-    if constexpr (std::is_void<ReturnType>::value) {
-      fn(static_cast<Args&&>(args)...);
-    } else {
-      return fn(static_cast<Args&&>(args)...);
-    }
-  }
-
-  template <typename Fun>
-  static ReturnType callBig(CallArg<Args>... args, Data& p) {
-    auto& fn = *static_cast<Fun*>(p.big);
-    if constexpr (std::is_void<ReturnType>::value) {
-      fn(static_cast<Args&&>(args)...);
-    } else {
-      return fn(static_cast<Args&&>(args)...);
-    }
-  }
+  template <typename Fun, bool Small>
+  static constexpr Call call =
+      call_<Fun, Small, false, ReturnType, CallArg<Args>...>;
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) {
     throw_exception<std::bad_function_call>();
@@ -385,25 +384,9 @@ struct FunctionTraits<ReturnType(Args...) const> {
   template <typename F, typename R = CallableResult<const F&, Args...>>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
-  template <typename Fun>
-  static ReturnType callSmall(CallArg<Args>... args, Data& p) {
-    auto& fn = *static_cast<const Fun*>(static_cast<void*>(&p.tiny));
-    if constexpr (std::is_void<ReturnType>::value) {
-      fn(static_cast<Args&&>(args)...);
-    } else {
-      return fn(static_cast<Args&&>(args)...);
-    }
-  }
-
-  template <typename Fun>
-  static ReturnType callBig(CallArg<Args>... args, Data& p) {
-    auto& fn = *static_cast<const Fun*>(p.big);
-    if constexpr (std::is_void<ReturnType>::value) {
-      fn(static_cast<Args&&>(args)...);
-    } else {
-      return fn(static_cast<Args&&>(args)...);
-    }
-  }
+  template <typename Fun, bool Small>
+  static constexpr Call call =
+      call_<const Fun, Small, false, ReturnType, CallArg<Args>...>;
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) {
     throw_exception<std::bad_function_call>();
@@ -431,25 +414,9 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
       std::enable_if_t<CallableNoexcept<F&, Args...>, int> = 0>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
-  template <typename Fun>
-  static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
-    auto& fn = *static_cast<Fun*>(static_cast<void*>(&p.tiny));
-    if constexpr (std::is_void<ReturnType>::value) {
-      fn(static_cast<Args&&>(args)...);
-    } else {
-      return fn(static_cast<Args&&>(args)...);
-    }
-  }
-
-  template <typename Fun>
-  static ReturnType callBig(CallArg<Args>... args, Data& p) noexcept {
-    auto& fn = *static_cast<Fun*>(p.big);
-    if constexpr (std::is_void<ReturnType>::value) {
-      fn(static_cast<Args&&>(args)...);
-    } else {
-      return fn(static_cast<Args&&>(args)...);
-    }
-  }
+  template <typename Fun, bool Small>
+  static constexpr Call call =
+      call_<Fun, Small, true, ReturnType, CallArg<Args>...>;
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {
     terminate_with<std::bad_function_call>();
@@ -477,25 +444,9 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
       std::enable_if_t<CallableNoexcept<const F&, Args...>, int> = 0>
   using IfSafeResult = IfSafeResultImpl<R, ReturnType>;
 
-  template <typename Fun>
-  static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
-    auto& fn = *static_cast<const Fun*>(static_cast<void*>(&p.tiny));
-    if constexpr (std::is_void<ReturnType>::value) {
-      fn(static_cast<Args&&>(args)...);
-    } else {
-      return fn(static_cast<Args&&>(args)...);
-    }
-  }
-
-  template <typename Fun>
-  static ReturnType callBig(CallArg<Args>... args, Data& p) noexcept {
-    auto& fn = *static_cast<const Fun*>(p.big);
-    if constexpr (std::is_void<ReturnType>::value) {
-      fn(static_cast<Args&&>(args)...);
-    } else {
-      return fn(static_cast<Args&&>(args)...);
-    }
-  }
+  template <typename Fun, bool Small>
+  static constexpr Call call =
+      call_<const Fun, Small, true, ReturnType, CallArg<Args>...>;
 
   static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {
     terminate_with<std::bad_function_call>();
@@ -527,9 +478,6 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 struct DispatchSmallTrivial {
   static constexpr bool is_in_situ = true;
   static constexpr bool is_trivial = true;
-
-  template <typename Fun, typename Base>
-  static constexpr auto call = Base::template callSmall<Fun>;
 
   template <std::size_t Size>
   static std::size_t exec_(Op o, Data* src, Data* dst) noexcept {
@@ -602,9 +550,6 @@ struct DispatchSmall {
   static constexpr bool is_in_situ = true;
   static constexpr bool is_trivial = false;
 
-  template <typename Fun, typename Base>
-  static constexpr auto call = Base::template callSmall<Fun>;
-
   template <typename Fun>
   static std::size_t exec(Op o, Data* src, Data* dst) noexcept {
     switch (o) {
@@ -625,9 +570,6 @@ struct DispatchSmall {
 struct DispatchBig {
   static constexpr bool is_in_situ = false;
   static constexpr bool is_trivial = false;
-
-  template <typename Fun, typename Base>
-  static constexpr auto call = Base::template callBig<Fun>;
 
   template <typename Fun>
   static std::size_t exec(Op o, Data* src, Data* dst) noexcept {
@@ -707,7 +649,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
     using Fun = Function<Signature>;
     if (fun) {
       data_.big = new Fun(static_cast<Fun&&>(fun));
-      call_ = Traits::template callBig<Fun>;
+      call_ = Traits::template call<Fun, false>;
       exec_ = Exec(detail::function::DispatchBig::exec<Fun>);
     }
   }
@@ -798,7 +740,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
         data_.big = new Fun(static_cast<Fun&&>(fun));
       }
     }
-    call_ = Dispatch::template call<Fun, Traits>;
+    call_ = Traits::template call<Fun, Dispatch::is_in_situ>;
     exec_ = Exec(Dispatch::template exec<Fun>);
   }
 
