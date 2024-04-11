@@ -1692,14 +1692,12 @@ void attach(fbvector<T, A>& v, T* data, size_t sz, size_t cap) {
   v.impl_.z_ = data + cap;
 }
 
-#if __cpp_deduction_guides >= 201611
 template <
     class InputIt,
     class Allocator =
         std::allocator<typename std::iterator_traits<InputIt>::value_type>>
 fbvector(InputIt, InputIt, Allocator = Allocator())
     -> fbvector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
-#endif
 
 template <class T, class A, class U>
 void erase(fbvector<T, A>& v, U value) {

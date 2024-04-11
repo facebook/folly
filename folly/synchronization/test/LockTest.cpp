@@ -387,8 +387,6 @@ struct LockTestParam {
 
 template <typename Param>
 struct LockTest : testing::TestWithParam<Param> {
-#if __cpp_deduction_guides >= 201611
-
   template <typename... A>
   using deduction_unique = decltype(std::unique_lock{FOLLY_DECLVAL(A)...});
   template <typename... A>
@@ -456,12 +454,6 @@ struct LockTest : testing::TestWithParam<Param> {
               upgrade_lock_state>>();
     }
   }
-
-#else
-
-  static constexpr void check_deductions();
-
-#endif
 
   LockTest() { //
     check_deductions();

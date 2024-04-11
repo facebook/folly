@@ -333,10 +333,8 @@ TEST(ReplaceableTest, swapMemberFunctionDelegatesToUserSwap) {
   EXPECT_TRUE(r1->calledSwap);
 }
 
-#if __cpp_deduction_guides >= 201611
 TEST(ReplaceableTest, DeductionGuide) {
   Basic b{};
   Replaceable r{b};
   EXPECT_TRUE((std::is_same_v<Replaceable<Basic>, decltype(r)>));
 }
-#endif

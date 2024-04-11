@@ -217,7 +217,6 @@ TEST(AsyncTest, asyncTraits) {
       std::is_same<int&, async::async_inner_type_t<async::Async<int&>>>::value);
 }
 
-#if __cpp_deduction_guides >= 201611
 TEST(AsyncTest, asyncConstructorGuides) {
   auto getLiteral = []() { return async::Async(1); };
   // int&& -> int
@@ -245,7 +244,6 @@ TEST(AsyncTest, asyncConstructorGuides) {
   static_assert(
       std::is_same<int&, async::async_inner_type_t<decltype(getRef())>>::value);
 }
-#endif
 
 TEST(FiberManager, asyncFiberManager) {
   {

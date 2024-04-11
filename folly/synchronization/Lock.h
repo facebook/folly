@@ -521,10 +521,8 @@ class hybrid_lock_guard
   using base::base;
 };
 
-#if __cpp_deduction_guides >= 201611
 template <typename Mutex, typename... A>
 explicit hybrid_lock_guard(Mutex&, A const&...) -> hybrid_lock_guard<Mutex>;
-#endif
 
 //  make_unique_lock
 //
@@ -578,8 +576,6 @@ inline constexpr make_hybrid_lock_fn make_hybrid_lock{};
 
 FOLLY_NAMESPACE_STD_BEGIN
 
-#if __cpp_deduction_guides >= 201611
-
 template <typename Mutex, typename LockFn = ::folly::access::lock_fn>
 unique_lock(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
     -> unique_lock<Mutex>;
@@ -591,8 +587,6 @@ shared_lock(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
 template <typename Mutex, typename LockFn = ::folly::access::lock_upgrade_fn>
 lock_guard(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
     -> lock_guard<Mutex>;
-
-#endif
 
 FOLLY_NAMESPACE_STD_END
 
