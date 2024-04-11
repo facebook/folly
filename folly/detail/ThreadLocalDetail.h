@@ -34,6 +34,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/container/Foreach.h>
 #include <folly/detail/StaticSingletonManager.h>
+#include <folly/detail/UniqueInstance.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
@@ -386,6 +387,12 @@ struct StaticMetaBase {
   relaxed_atomic_int64_t totalElementWrappers_{0};
 };
 
+struct FakeUniqueInstance {
+  template <template <typename...> class Z, typename... Key, typename... Mapped>
+  FOLLY_ERASE constexpr explicit FakeUniqueInstance(
+      tag_t<Z<Key..., Mapped...>>, tag_t<Key...>, tag_t<Mapped...>) noexcept {}
+};
+
 // Held in a singleton to track our global instances.
 // We have one of these per "Tag", by default one for the whole system
 // (Tag=void).
@@ -395,10 +402,19 @@ struct StaticMetaBase {
 // StaticMeta; you can specify multiple Tag types to break that lock.
 template <class Tag, class AccessMode>
 struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
+ private:
+  static constexpr bool IsTagVoid = std::is_void_v<Tag>;
+  static constexpr bool IsAccessModeStrict =
+      std::is_same_v<AccessMode, AccessModeStrict>;
+  static_assert(!IsTagVoid || !IsAccessModeStrict);
+
+  using UniqueInstance =
+      conditional_t<IsTagVoid, FakeUniqueInstance, detail::UniqueInstance>;
+  static UniqueInstance unique;
+
+ public:
   StaticMeta()
-      : StaticMetaBase(
-            &StaticMeta::getThreadEntrySlow,
-            std::is_same<AccessMode, AccessModeStrict>::value) {
+      : StaticMetaBase(&StaticMeta::getThreadEntrySlow, IsAccessModeStrict) {
     AtFork::registerHandler(
         this,
         /*prepare*/ &StaticMeta::preFork,
@@ -407,6 +423,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
   }
 
   static StaticMeta<Tag, AccessMode>& instance() {
+    (void)unique; // force the object not to be thrown out as unused
     // Leak it on exit, there's only one per process and we don't have to
     // worry about synchronization with exiting threads.
     return detail::createGlobal<StaticMeta<Tag, AccessMode>, void>();
@@ -504,5 +521,14 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     instance().lock_.unlock();
   }
 };
+
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wglobal-constructors")
+template <typename Tag, typename AccessMode>
+typename StaticMeta<Tag, AccessMode>::UniqueInstance
+    StaticMeta<Tag, AccessMode>::unique{
+        tag<StaticMeta>, tag<Tag>, tag<AccessMode>};
+FOLLY_POP_WARNING
+
 } // namespace threadlocal_detail
 } // namespace folly
