@@ -24,6 +24,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
+#include <folly/experimental/coro/AutoCleanup-fwd.h>
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Invoke.h>
@@ -245,9 +246,12 @@ class FOLLY_NODISCARD AsyncGenerator {
 
   CleanupSemiAwaitable cleanup() && {
     static_assert(RequiresCleanup);
-    CHECK(coro_) << "cleanup() has been already called!";
-    SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
-    return CleanupSemiAwaitable{coro_.promise().scopeExit_};
+    if (coro_) {
+      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+      return CleanupSemiAwaitable{coro_.promise().scopeExit_};
+    } else {
+      return CleanupSemiAwaitable{{}};
+    }
   }
 
   AsyncGenerator& operator=(AsyncGenerator&& other) noexcept {
@@ -504,7 +508,14 @@ class AsyncGeneratorPromise final
   };
 
  public:
-  AsyncGeneratorPromise() noexcept {}
+  template <typename... Args>
+  AsyncGeneratorPromise(Args&... args) {
+    if constexpr (RequiresCleanup) {
+      scheduleAutoCleanupIfNeeded(
+          coroutine_handle<AsyncGeneratorPromise>::from_promise(*this),
+          args...);
+    }
+  }
 
   ~AsyncGeneratorPromise() {
     switch (state_) {
@@ -763,6 +774,13 @@ class AsyncGeneratorPromise final
 };
 
 } // namespace detail
+
+template <typename Reference, typename Value>
+auto tag_invoke(
+    cpo_t<co_cleanup>, CleanableAsyncGenerator<Reference, Value>&& gen) {
+  return std::move(gen).cleanup();
+}
+
 } // namespace coro
 } // namespace folly
 

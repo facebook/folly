@@ -16,6 +16,7 @@
 
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/AsyncScope.h>
+#include <folly/experimental/coro/AutoCleanup.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
@@ -35,6 +36,8 @@ class ScopeExitTest : public testing::Test {
 };
 
 class AsyncGeneratorScopeExitTest : public ScopeExitTest {};
+
+class AutoCleanupScopeExitTest : public ScopeExitTest {};
 } // namespace
 
 TEST_F(ScopeExitTest, OneExitAction) {
@@ -328,6 +331,75 @@ TEST_F(AsyncGeneratorScopeExitTest, NextAfterCancel) {
     EXPECT_EQ(count, 0);
     co_await std::move(gen).cleanup();
     EXPECT_EQ(count, 1);
+  }());
+}
+
+TEST_F(AutoCleanupScopeExitTest, AsyncGeneratorAutoCleanup) {
+  blockingWait([&]() -> Task<> {
+    auto gen = co_invoke([&]() -> CleanableAsyncGenerator<int> {
+      co_await co_scope_exit([&]() -> Task<> {
+        ++count;
+        co_return;
+      });
+      co_yield 1;
+    });
+    co_await gen.next();
+    gen = co_invoke(
+        [](auto&&, auto) -> CleanableAsyncGenerator<int> { co_return; },
+        AutoCleanup{std::move(gen)},
+        42);
+    co_await std::move(gen).cleanup();
+    EXPECT_EQ(count, 1);
+  }());
+}
+
+TEST_F(AutoCleanupScopeExitTest, AsyncGeneratorAutoCleanupMove) {
+  blockingWait([&]() -> Task<> {
+    auto gen = co_invoke([&]() -> CleanableAsyncGenerator<int> {
+      co_await co_scope_exit([&]() -> Task<> {
+        ++count;
+        co_return;
+      });
+      co_yield 1;
+    });
+    gen = co_invoke(
+        [](auto autoCleanupGen, auto) -> CleanableAsyncGenerator<int> {
+          co_await autoCleanupGen->next();
+        },
+        AutoCleanup{std::move(gen)},
+        42);
+    co_await gen.next();
+    co_await std::move(gen).cleanup();
+    EXPECT_EQ(count, 1);
+  }());
+}
+
+TEST_F(AsyncGeneratorScopeExitTest, AsyncGeneratorAutoCleanupFn) {
+  std::function cleanupFn{[&](int&&) -> folly::coro::Task<> {
+    ++count;
+    co_return;
+  }};
+  blockingWait([&]() -> Task<> {
+    auto gen = co_invoke(
+        [](auto) -> CleanableAsyncGenerator<int> { co_return; },
+        AutoCleanup{1, cleanupFn});
+    co_await std::move(gen).cleanup();
+    EXPECT_EQ(count, 1);
+  }());
+}
+
+TEST_F(AsyncGeneratorScopeExitTest, AsyncGeneratorAutoCleanupFnMove) {
+  std::function cleanupFn{[&](int&&) -> folly::coro::Task<> {
+    ++count;
+    co_return;
+  }};
+  blockingWait([&]() -> Task<> {
+    auto gen = co_invoke(
+        [](auto) -> CleanableAsyncGenerator<int> { co_return; },
+        AutoCleanup{1, cleanupFn});
+    co_await gen.next();
+    co_await std::move(gen).cleanup();
+    EXPECT_EQ(count, 2);
   }());
 }
 
