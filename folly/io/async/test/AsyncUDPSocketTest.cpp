@@ -86,7 +86,7 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
         writeSocket->setReusePort(true);
         writeSocket->bind(serverAddress_);
       }
-      writeSocket->setTosOrTrafficClass(1);
+      writeSocket->setTosOrTrafficClass(2);
       writeSocket->write(lastClient_, folly::IOBuf::copyBuffer(lastMsg_));
     } catch (const std::exception& ex) {
       VLOG(4) << "Failed to send PONG " << ex.what();

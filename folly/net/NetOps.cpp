@@ -290,101 +290,9 @@ ssize_t recv(NetworkSocket s, void* buf, size_t len, int flags) {
 #endif
 }
 
-ssize_t recvfrom(
-    NetworkSocket s,
-    void* buf,
-    size_t len,
-    int flags,
-    sockaddr* from,
-    socklen_t* fromlen) {
 #ifdef _WIN32
-  if ((flags & MSG_TRUNC) == MSG_TRUNC) {
-    SOCKET h = s.data;
-
-    WSABUF wBuf{};
-    wBuf.buf = (CHAR*)buf;
-    wBuf.len = (ULONG)len;
-    WSAMSG wMsg{};
-    wMsg.dwBufferCount = 1;
-    wMsg.lpBuffers = &wBuf;
-    wMsg.name = from;
-    if (fromlen != nullptr) {
-      wMsg.namelen = *fromlen;
-    }
-
-    // WSARecvMsg is an extension, so we don't get
-    // the convenience of being able to call it directly, even though
-    // WSASendMsg is part of the normal API -_-...
-    LPFN_WSARECVMSG WSARecvMsg;
-    GUID WSARecgMsg_GUID = WSAID_WSARECVMSG;
-    DWORD recMsgBytes;
-    WSAIoctl(
-        h,
-        SIO_GET_EXTENSION_FUNCTION_POINTER,
-        &WSARecgMsg_GUID,
-        sizeof(WSARecgMsg_GUID),
-        &WSARecvMsg,
-        sizeof(WSARecvMsg),
-        &recMsgBytes,
-        nullptr,
-        nullptr);
-
-    // Attempt to disable ICMP behavior which kills the socket.
-    BOOL connReset = false;
-    DWORD bytesReturned = 0;
-    WSAIoctl(
-        h,
-        SIO_UDP_CONNRESET,
-        &connReset,
-        sizeof(connReset),
-        nullptr,
-        0,
-        &bytesReturned,
-        nullptr,
-        nullptr);
-
-    DWORD bytesReceived;
-    int res = WSARecvMsg(h, &wMsg, &bytesReceived, nullptr, nullptr);
-    errno = translate_wsa_error(WSAGetLastError(), s, WSARecvMsg, res);
-    if (res == 0) {
-      return bytesReceived;
-    }
-    if (fromlen != nullptr) {
-      *fromlen = wMsg.namelen;
-    }
-    if ((wMsg.dwFlags & MSG_TRUNC) == MSG_TRUNC) {
-      return wBuf.len + 1;
-    }
-    return -1;
-  }
-  return wrapSocketFunction<ssize_t>(
-      ::recvfrom, s, (char*)buf, (int)len, flags, from, fromlen);
-#elif defined(__EMSCRIPTEN__)
-  throw std::logic_error("Not implemented!");
-#else
-  return wrapSocketFunction<ssize_t>(
-      ::recvfrom, s, buf, len, flags, from, fromlen);
-#endif
-}
-
-ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
-#ifdef _WIN32
-  (void)flags;
+ssize_t wsaRecvMesg(NetworkSocket s, WSAMSG* wsaMsg) {
   SOCKET h = s.data;
-
-  WSAMSG msg;
-  msg.name = (LPSOCKADDR)message->msg_name;
-  msg.namelen = message->msg_namelen;
-  msg.Control.buf = (CHAR*)message->msg_control;
-  msg.Control.len = (ULONG)message->msg_controllen;
-  msg.dwFlags = 0;
-  msg.dwBufferCount = (DWORD)message->msg_iovlen;
-  msg.lpBuffers = new WSABUF[message->msg_iovlen];
-  SCOPE_EXIT { delete[] msg.lpBuffers; };
-  for (size_t i = 0; i < message->msg_iovlen; i++) {
-    msg.lpBuffers[i].buf = (CHAR*)message->msg_iov[i].iov_base;
-    msg.lpBuffers[i].len = (ULONG)message->msg_iov[i].iov_len;
-  }
 
   // WSARecvMsg is an extension, so we don't get
   // the convenience of being able to call it directly, even though
@@ -418,9 +326,70 @@ ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
       nullptr);
 
   DWORD bytesReceived;
-  int res = WSARecvMsg(h, &msg, &bytesReceived, nullptr, nullptr);
+  int res = WSARecvMsg(h, wsaMsg, &bytesReceived, nullptr, nullptr);
   errno = translate_wsa_error(WSAGetLastError(), s, WSARecvMsg, res);
-  return res == 0 ? (ssize_t)bytesReceived : -1;
+
+  if (res == 0) {
+    return bytesReceived;
+  }
+  if ((wsaMsg->dwFlags & MSG_TRUNC) == MSG_TRUNC) {
+    return wsaMsg->lpBuffers[0].len + 1;
+  }
+  return -1;
+}
+#endif
+
+ssize_t recvfrom(
+    NetworkSocket s,
+    void* buf,
+    size_t len,
+    int flags,
+    sockaddr* from,
+    socklen_t* fromlen) {
+#ifdef _WIN32
+  if ((flags & MSG_TRUNC) == MSG_TRUNC) {
+    WSABUF wBuf{};
+    wBuf.buf = (CHAR*)buf;
+    wBuf.len = (ULONG)len;
+    WSAMSG wMsg{};
+    wMsg.dwBufferCount = 1;
+    wMsg.lpBuffers = &wBuf;
+    wMsg.name = from;
+    if (fromlen != nullptr) {
+      wMsg.namelen = *fromlen;
+    }
+
+    return wsaRecvMesg(s, &wMsg);
+  }
+  return wrapSocketFunction<ssize_t>(
+      ::recvfrom, s, (char*)buf, (int)len, flags, from, fromlen);
+#elif defined(__EMSCRIPTEN__)
+  throw std::logic_error("Not implemented!");
+#else
+  return wrapSocketFunction<ssize_t>(
+      ::recvfrom, s, buf, len, flags, from, fromlen);
+#endif
+}
+
+ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
+#ifdef _WIN32
+  (void)flags;
+
+  WSAMSG msg;
+  msg.name = (LPSOCKADDR)message->msg_name;
+  msg.namelen = message->msg_namelen;
+  msg.Control.buf = (CHAR*)message->msg_control;
+  msg.Control.len = (ULONG)message->msg_controllen;
+  msg.dwFlags = 0;
+  msg.dwBufferCount = (DWORD)message->msg_iovlen;
+  msg.lpBuffers = new WSABUF[message->msg_iovlen];
+  SCOPE_EXIT { delete[] msg.lpBuffers; };
+  for (size_t i = 0; i < message->msg_iovlen; i++) {
+    msg.lpBuffers[i].buf = (CHAR*)message->msg_iov[i].iov_base;
+    msg.lpBuffers[i].len = (ULONG)message->msg_iov[i].iov_len;
+  }
+
+  return wsaRecvMesg(s, &msg);
 #elif defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else

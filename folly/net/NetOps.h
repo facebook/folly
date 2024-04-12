@@ -321,6 +321,9 @@ int recvmmsg(
     unsigned int vlen,
     unsigned int flags,
     timespec* timeout);
+#ifdef _WIN32
+ssize_t wsaRecvMesg(NetworkSocket s, WSAMSG* wsaMsg);
+#endif
 ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags);
 ssize_t sendto(
     NetworkSocket s,

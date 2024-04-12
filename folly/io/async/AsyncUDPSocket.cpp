@@ -1283,6 +1283,40 @@ void AsyncUDPSocket::handleRead() noexcept {
     } else {
       bytesRead = netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
     }
+#elif _WIN32
+    WSABUF wBuf;
+    wBuf.buf = (CHAR*)buf;
+    wBuf.len = (ULONG)len;
+
+    WSAMSG wMsg{};
+    wMsg.dwBufferCount = 1;
+    wMsg.lpBuffers = &wBuf;
+    wMsg.name = rawAddr;
+    wMsg.namelen = addrLen;
+    wMsg.dwFlags = 0;
+
+    if (recvTos_) {
+      CHAR control[WSA_CMSG_SPACE(sizeof(INT))] = {0};
+      WSABUF controlBuf;
+      controlBuf.buf = control;
+      controlBuf.len = sizeof(control);
+      wMsg.Control = controlBuf;
+    }
+
+    bytesRead = netops::wsaRecvMesg(fd_, &wMsg);
+    if (recvTos_ && bytesRead > 0) {
+      int tosVal;
+      PCMSGHDR cmsg = WSA_CMSG_FIRSTHDR(&wMsg);
+      while (cmsg != NULL) {
+        if ((cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS) ||
+            (cmsg->cmsg_level == IPPROTO_IPV6 &&
+             cmsg->cmsg_type == IPV6_TCLASS)) {
+          params.tos = *(PINT)WSA_CMSG_DATA(cmsg);
+          break;
+        }
+        cmsg = WSA_CMSG_NXTHDR(&wMsg, cmsg);
+      }
+    }
 #else
     bytesRead = netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
 #endif
@@ -1520,6 +1554,12 @@ void AsyncUDPSocket::setTosOrTrafficClass(uint8_t tosOrTclass) {
           AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
     }
   }
+
+#ifdef _WIN32
+  folly::SocketCmsgMap cmsgs;
+  cmsgs[{IPPROTO_IP, IP_ECN}] = tosOrTclass;
+  appendCmsgs(cmsgs);
+#endif
 }
 
 void AsyncUDPSocket::applyOptions(
