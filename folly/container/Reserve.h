@@ -21,6 +21,7 @@
 #include <folly/Likely.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -51,7 +52,7 @@ struct grow_capacity_by_fn {
     const size_t sz = c.size();
 
     if (FOLLY_UNLIKELY(c.max_size() - sz < n)) {
-      throw std::length_error("max_size exceeded");
+      folly::throw_exception<std::length_error>("max_size exceeded");
     }
 
     if constexpr (folly::is_detected_v<detail::detect_capacity, C&>) {
