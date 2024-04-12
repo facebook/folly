@@ -218,7 +218,7 @@ struct IndexedMemPool {
   ~IndexedMemPool() {
     using A = Atom<uint32_t>;
     for (uint32_t i = maxAllocatedIndex(); i > 0; --i) {
-      Traits::cleanup(&slots_[i].elem);
+      Traits::cleanup(slots_[i].elemPtr());
       slots_[i].localNext.~A();
       slots_[i].globalNext.~A();
     }
@@ -250,7 +250,7 @@ struct IndexedMemPool {
     auto idx = localPop(localHead());
     if (idx != 0) {
       Slot& s = slot(idx);
-      Traits::onAllocate(&s.elem, std::forward<Args>(args)...);
+      Traits::onAllocate(s.elemPtr(), std::forward<Args>(args)...);
       markAllocated(s);
     }
     return idx;
@@ -263,7 +263,7 @@ struct IndexedMemPool {
   template <typename... Args>
   UniquePtr allocElem(Args&&... args) {
     auto idx = allocIndex(std::forward<Args>(args)...);
-    T* ptr = idx == 0 ? nullptr : &slot(idx).elem;
+    T* ptr = idx == 0 ? nullptr : slot(idx).elemPtr();
     return UniquePtr(ptr, typename UniquePtr::deleter_type(this));
   }
 
@@ -274,10 +274,10 @@ struct IndexedMemPool {
   }
 
   /// Provides access to the pooled element referenced by idx
-  T& operator[](uint32_t idx) { return slot(idx).elem; }
+  T& operator[](uint32_t idx) { return *(slot(idx).elemPtr()); }
 
   /// Provides access to the pooled element referenced by idx
-  const T& operator[](uint32_t idx) const { return slot(idx).elem; }
+  const T& operator[](uint32_t idx) const { return *(slot(idx).elemPtr()); }
 
   /// If elem == &pool[idx], then pool.locateElem(elem) == idx.  Also,
   /// pool.locateElem(nullptr) == 0
@@ -289,7 +289,7 @@ struct IndexedMemPool {
     static_assert(std::is_standard_layout<Slot>::value, "offsetof needs POD");
 
     auto slot = reinterpret_cast<const Slot*>(
-        reinterpret_cast<const char*>(elem) - offsetof(Slot, elem));
+        reinterpret_cast<const char*>(elem) - offsetof(Slot, elemStorage));
     auto rv = uint32_t(slot - slots_);
 
     // this assert also tests that rv is in range
@@ -306,11 +306,15 @@ struct IndexedMemPool {
   ///////////// types
 
   struct Slot {
-    T elem;
+    aligned_storage_for_t<T> elemStorage;
     Atom<uint32_t> localNext;
     Atom<uint32_t> globalNext;
 
     Slot() : localNext{}, globalNext{} {}
+    T* elemPtr() { return std::launder(reinterpret_cast<T*>(&elemStorage)); }
+    const T* elemPtr() const {
+      return std::launder(reinterpret_cast<const T*>(&elemStorage));
+    }
   };
 
   struct TaggedPtr {
@@ -423,7 +427,7 @@ struct IndexedMemPool {
     while (true) {
       s.localNext.store(h.idx, std::memory_order_release);
       if (!recycled) {
-        Traits::onRecycle(&slot(idx).elem);
+        Traits::onRecycle(slot(idx).elemPtr());
         recycled = true;
       }
 
@@ -490,7 +494,7 @@ struct IndexedMemPool {
         // stored-to before they are loaded-from
         new (&s.localNext) Atom<uint32_t>;
         new (&s.globalNext) Atom<uint32_t>;
-        Traits::initialize(&s.elem);
+        Traits::initialize(s.elemPtr());
         return idx;
       }
 
