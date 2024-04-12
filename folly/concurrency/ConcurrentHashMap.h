@@ -420,7 +420,7 @@ class ConcurrentHashMap {
     return std::move(res);
   }
 
-  // Assign to desired if and only if key k is equal to expected
+  // Assign to desired if and only if current value is equal to expected
   template <typename Key, typename Value>
   folly::Optional<ConstIterator> assign_if_equal(
       Key&& k, const ValueType& expected, Value&& desired) {
