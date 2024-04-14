@@ -250,8 +250,8 @@ auto QuotientMultiSet<Instructions>::equalRange(uint64_t key) const
 
 template <class Instructions>
 auto QuotientMultiSet<Instructions>::findRunend(
-    uint64_t occupiedRank, uint64_t firstRunend) const
-    -> std::pair<uint64_t, const Block*> {
+    uint64_t occupiedRank,
+    uint64_t firstRunend) const -> std::pair<uint64_t, const Block*> {
   // Look for the right runend.
   size_t slotBlockIndex = firstRunend / kBlockSize;
   auto block = getBlock(slotBlockIndex);

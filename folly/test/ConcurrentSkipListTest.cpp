@@ -108,7 +108,9 @@ static void randomRemoval(
 
 static void sumAllValues(SkipListAccessor skipList, int64_t* sum) {
   *sum = 0;
-  FOR_EACH (it, skipList) { *sum += *it; }
+  FOR_EACH (it, skipList) {
+    *sum += *it;
+  }
   VLOG(20) << "sum = " << sum;
 }
 
@@ -317,7 +319,9 @@ TEST(ConcurrentSkipList, ConcurrentAdd) {
   }
 
   SetType all;
-  FOR_EACH (s, verifiers) { all.insert(s->begin(), s->end()); }
+  FOR_EACH (s, verifiers) {
+    all.insert(s->begin(), s->end());
+  }
   verifyEqual(skipList, all);
 }
 
@@ -338,10 +342,14 @@ void testConcurrentRemoval(int numThreads, int maxValue) {
     LOG(WARNING) << "Caught " << exceptionStr(e) << ": could only create "
                  << threads.size() << " threads out of " << numThreads;
   }
-  FOR_EACH (t, threads) { (*t).join(); }
+  FOR_EACH (t, threads) {
+    (*t).join();
+  }
 
   SetType all;
-  FOR_EACH (s, verifiers) { all.insert(s->begin(), s->end()); }
+  FOR_EACH (s, verifiers) {
+    all.insert(s->begin(), s->end());
+  }
 
   CHECK_EQ(maxValue, all.size() + skipList.size());
   for (int i = 0; i < maxValue; ++i) {
@@ -396,7 +404,9 @@ static void testConcurrentAccess(
     }
   }
 
-  FOR_EACH (t, threads) { (*t).join(); }
+  FOR_EACH (t, threads) {
+    (*t).join();
+  }
   // just run through it, no need to verify the correctness.
 }
 

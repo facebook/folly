@@ -94,7 +94,9 @@ template <class String>
 void randomString(String* toFill, unsigned int maxSize = 1000) {
   assert(toFill);
   toFill->resize(random(0, maxSize));
-  FOR_EACH (i, *toFill) { *i = random('a', 'z'); }
+  FOR_EACH (i, *toFill) {
+    *i = random('a', 'z');
+  }
 }
 
 template <class String, class Integral>
@@ -220,7 +222,9 @@ void clause11_21_4_2_j(String& test) {
   auto size = random(0, 2000);
   String s(size, '\0');
   EXPECT_EQ(s.size(), size);
-  FOR_EACH_RANGE (i, 0, s.size()) { s[i] = random('a', 'z'); }
+  FOR_EACH_RANGE (i, 0, s.size()) {
+    s[i] = random('a', 'z');
+  }
   test = s;
 }
 template <class String>
@@ -229,7 +233,9 @@ void clause11_21_4_2_k(String& test) {
   auto size = random(0, 2000);
   String s(size, '\0');
   EXPECT_EQ(s.size(), size);
-  FOR_EACH_RANGE (i, 0, s.size()) { s[i] = random('a', 'z'); }
+  FOR_EACH_RANGE (i, 0, s.size()) {
+    s[i] = random('a', 'z');
+  }
   test = std::move(s);
   if (std::is_same<String, fbstring>::value) {
     EXPECT_LE(s.size(), 128);
@@ -334,7 +340,9 @@ void clause11_21_4_6_1(String& test) {
   auto len = test.size();
   test += test1;
   EXPECT_EQ(test.size(), test1.size() + len);
-  FOR_EACH_RANGE (i, 0, test1.size()) { EXPECT_EQ(test[len + i], test1[i]); }
+  FOR_EACH_RANGE (i, 0, test1.size()) {
+    EXPECT_EQ(test[len + i], test1[i]);
+  }
   // aliasing modifiers
   String test2 = test;
   auto dt = test2.data();
@@ -1125,8 +1133,8 @@ TEST(FBString, testAllClauses) {
       rng = RandomT(localSeed);
       f_fbstring(c);
       EXPECT_EQ(r, c) << "Lengths: " << r.size() << " vs. " << c.size()
-                      << "\nReference: '" << r << "'"
-                      << "\nActual:    '" << c.data()[0] << "'";
+                      << "\nReference: '" << r << "'" << "\nActual:    '"
+                      << c.data()[0] << "'";
 #if FOLLY_HAVE_WCHAR_SUPPORT
       rng = RandomT(localSeed);
       f_wfbstring(wc);

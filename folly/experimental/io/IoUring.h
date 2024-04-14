@@ -84,9 +84,7 @@ class IoUringOp : public AsyncBaseOp {
 
   void initBase() { init(); }
 
-  struct io_uring_sqe& getSqe() {
-    return sqe_.sqe;
-  }
+  struct io_uring_sqe& getSqe() { return sqe_.sqe; }
 
   size_t getSqeSize() const {
     return options_.sqe128 ? 128 : sizeof(struct io_uring_sqe);

@@ -727,11 +727,17 @@ TEST_F(TaskTest, CoAwaitNothrowDestructorOrdering) {
   int i = 0;
   folly::coro::blockingWait(co_awaitTry([&]() -> folly::coro::Task<> {
     co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
-      SCOPE_EXIT { i *= i; };
+      SCOPE_EXIT {
+        i *= i;
+      };
       co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
-        SCOPE_EXIT { i *= 3; };
+        SCOPE_EXIT {
+          i *= 3;
+        };
         co_await folly::coro::co_nothrow([&]() -> folly::coro::Task<> {
-          SCOPE_EXIT { i += 1; };
+          SCOPE_EXIT {
+            i += 1;
+          };
           co_return;
         }());
       }());
@@ -751,7 +757,9 @@ TEST_F(TaskTest, CoYieldCoErrorSameExecutor) {
     auto eb = dynamic_cast<folly::EventBase*>(
         co_await folly::coro::co_current_executor);
     CHECK(eb);
-    SCOPE_EXIT { CHECK(eb->inRunningEventBaseThread()); };
+    SCOPE_EXIT {
+      CHECK(eb->inRunningEventBaseThread());
+    };
     co_yield folly::coro::co_error(ExpectedException());
   };
   auto scopeAndThrowWrapper = [&]() -> folly::coro::Task<void> {

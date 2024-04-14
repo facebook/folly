@@ -151,7 +151,7 @@ template <
     typename... A,
     typename FD = std::remove_pointer_t<std::decay_t<F>>,
     std::enable_if_t<!std::is_function<FD>::value, int> = 0,
-    typename R = decltype(FOLLY_DECLVAL(F &&)(FOLLY_DECLVAL(A &&)...))>
+    typename R = decltype(FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(A&&)...))>
 FOLLY_NOINLINE FOLLY_COLD R invoke_cold(F&& f, A&&... a) //
     noexcept(noexcept(static_cast<F&&>(f)(static_cast<A&&>(a)...))) {
   return static_cast<F&&>(f)(static_cast<A&&>(a)...);
@@ -161,7 +161,7 @@ template <
     typename... A,
     typename FD = std::remove_pointer_t<std::decay_t<F>>,
     std::enable_if_t<std::is_function<FD>::value, int> = 0,
-    typename R = decltype(FOLLY_DECLVAL(F &&)(FOLLY_DECLVAL(A &&)...))>
+    typename R = decltype(FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(A&&)...))>
 FOLLY_ERASE R invoke_cold(F&& f, A&&... a) //
     noexcept(noexcept(f(static_cast<A&&>(a)...))) {
   return f(static_cast<A&&>(a)...);
@@ -233,8 +233,8 @@ template <
     typename Catch,
     typename... CatchA,
     typename R = std::common_type_t<
-        decltype(FOLLY_DECLVAL(Try &&)()),
-        decltype(FOLLY_DECLVAL(Catch &&)(
+        decltype(FOLLY_DECLVAL(Try&&)()),
+        decltype(FOLLY_DECLVAL(Catch&&)(
             FOLLY_DECLVAL(E&), FOLLY_DECLVAL(CatchA&&)...))>>
 FOLLY_ERASE_TRYCATCH R catch_exception(Try&& t, Catch&& c, CatchA&&... a) {
 #if FOLLY_HAS_EXCEPTIONS
@@ -276,8 +276,8 @@ template <
     typename Catch,
     typename... CatchA,
     typename R = std::common_type_t<
-        decltype(FOLLY_DECLVAL(Try &&)()),
-        decltype(FOLLY_DECLVAL(Catch &&)(FOLLY_DECLVAL(CatchA &&)...))>>
+        decltype(FOLLY_DECLVAL(Try&&)()),
+        decltype(FOLLY_DECLVAL(Catch&&)(FOLLY_DECLVAL(CatchA&&)...))>>
 FOLLY_ERASE_TRYCATCH R
 catch_exception(Try&& t, Catch&& c, CatchA&&... a) noexcept(
     noexcept(static_cast<Catch&&>(c)(static_cast<CatchA&&>(a)...))) {

@@ -647,7 +647,9 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
   FOLLY_CONSTEVAL inline StringPiece getXlogCategoryName(StringPiece, int) { \
     return category;                                                         \
   }                                                                          \
-  FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(int) { return true; } \
+  FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(int) {                \
+    return true;                                                             \
+  }                                                                          \
   }                                                                          \
   }                                                                          \
   }                                                                          \

@@ -496,8 +496,8 @@ struct GlibcThreadLocalInit {
     compiler_must_not_elide(glibcThreadLocalInit);
   }
 };
-__attribute__((__init_priority__(101)))
-GlibcThreadLocalInit glibcThreadLocalInit;
+__attribute__((
+    __init_priority__(101))) GlibcThreadLocalInit glibcThreadLocalInit;
 #endif
 } // namespace threadlocal_detail
 } // namespace folly

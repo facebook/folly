@@ -186,7 +186,9 @@ void printHex(uint64_t val) {
 }
 
 void dumpTimeInfo() {
-  SCOPE_EXIT { flush(); };
+  SCOPE_EXIT {
+    flush();
+  };
   time_t now = time(nullptr);
   print("*** Aborted at ");
   printDec(now);
@@ -348,7 +350,9 @@ const char* signal_reason(int signum, int si_code) {
 }
 
 void dumpSignalInfo(int signum, siginfo_t* siginfo) {
-  SCOPE_EXIT { flush(); };
+  SCOPE_EXIT {
+    flush();
+  };
   // Get the signal name, if possible.
   const char* name = nullptr;
   for (auto p = kFatalSignals; p->name; ++p) {

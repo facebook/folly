@@ -120,7 +120,9 @@ TEST(TestAutoTimer, MovedObjectDestructionDoesntLog) {
   const std::vector<std::string> expectedMsgs = {
       "BEFORE_MOVE", "AFTER_MOVE", "END"};
   int32_t current = 0;
-  SCOPE_EXIT { EXPECT_EQ(3, current); };
+  SCOPE_EXIT {
+    EXPECT_EQ(3, current);
+  };
 
   auto timer = [&expectedMsgs, &current] {
     auto oldTimer = folly::makeAutoTimer(

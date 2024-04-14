@@ -939,7 +939,9 @@ class EventBase : public TimeoutManager,
   /// Implements the DrivableExecutor interface
   void drive() override {
     loopKeepAliveCount_.fetch_add(1, std::memory_order_relaxed);
-    SCOPE_EXIT { loopKeepAliveCount_.fetch_sub(1, std::memory_order_relaxed); };
+    SCOPE_EXIT {
+      loopKeepAliveCount_.fetch_sub(1, std::memory_order_relaxed);
+    };
     loopOnce();
   }
 

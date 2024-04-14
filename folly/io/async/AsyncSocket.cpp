@@ -1774,7 +1774,9 @@ void AsyncSocket::writeImpl(
   auto* releaseIOBufCallback =
       callback ? callback->getReleaseIOBufCallback() : nullptr;
 
-  SCOPE_EXIT { releaseIOBuf(std::move(ioBuf), releaseIOBufCallback); };
+  SCOPE_EXIT {
+    releaseIOBuf(std::move(ioBuf), releaseIOBufCallback);
+  };
 
   totalAppBytesScheduledForWrite_ += totalBytes;
   if (ioBuf) {
@@ -3576,8 +3578,9 @@ void AsyncSocket::handleConnect() noexcept {
 }
 
 void AsyncSocket::timeoutExpired() noexcept {
-  VLOG(7) << "AsyncSocket " << this << ", fd " << fd_ << ": timeout expired: "
-          << "state=" << state_ << ", events=" << std::hex << eventFlags_;
+  VLOG(7) << "AsyncSocket " << this << ", fd " << fd_
+          << ": timeout expired: " << "state=" << state_
+          << ", events=" << std::hex << eventFlags_;
   DestructorGuard dg(this);
   eventBase_->dcheckIsInEventBaseThread();
 

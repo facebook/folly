@@ -383,7 +383,9 @@ ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
   msg.dwFlags = 0;
   msg.dwBufferCount = (DWORD)message->msg_iovlen;
   msg.lpBuffers = new WSABUF[message->msg_iovlen];
-  SCOPE_EXIT { delete[] msg.lpBuffers; };
+  SCOPE_EXIT {
+    delete[] msg.lpBuffers;
+  };
   for (size_t i = 0; i < message->msg_iovlen; i++) {
     msg.lpBuffers[i].buf = (CHAR*)message->msg_iov[i].iov_base;
     msg.lpBuffers[i].len = (ULONG)message->msg_iov[i].iov_len;
@@ -506,7 +508,9 @@ ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
   msg.dwFlags = flags;
   msg.dwBufferCount = (DWORD)message->msg_iovlen;
   msg.lpBuffers = new WSABUF[message->msg_iovlen];
-  SCOPE_EXIT { delete[] msg.lpBuffers; };
+  SCOPE_EXIT {
+    delete[] msg.lpBuffers;
+  };
   for (size_t i = 0; i < message->msg_iovlen; i++) {
     msg.lpBuffers[i].buf = (CHAR*)message->msg_iov[i].iov_base;
     msg.lpBuffers[i].len = (ULONG)message->msg_iov[i].iov_len;

@@ -74,7 +74,9 @@ TEST_F(MergeTest, TruncateStream) {
           co_invoke([&]() -> AsyncGenerator<AsyncGenerator<int>> {
             auto makeGenerator = [&]() -> AsyncGenerator<int> {
               ++started;
-              SCOPE_EXIT { ++completed; };
+              SCOPE_EXIT {
+                ++completed;
+              };
               co_yield 1;
               co_await co_reschedule_on_current_executor;
               co_yield 2;
@@ -282,7 +284,9 @@ TEST_F(MergeTest, SourcesAreDestroyedBeforeEof) {
   auto sourceGenerator =
       [&](bool shouldThrow) -> folly::coro::AsyncGenerator<int> {
     ++runningSourceGenerators;
-    SCOPE_EXIT { --runningSourceGenerators; };
+    SCOPE_EXIT {
+      --runningSourceGenerators;
+    };
     co_await folly::coro::co_reschedule_on_current_executor;
     co_yield 42;
     co_await folly::coro::co_reschedule_on_current_executor;

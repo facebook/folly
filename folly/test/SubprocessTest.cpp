@@ -231,9 +231,7 @@ TEST(
 
 TEST(SubprocessTest, FatalOnDestroy) {
   EXPECT_DEATH(
-      []() {
-        Subprocess proc(std::vector<std::string>{"/bin/sleep", "10"});
-      }(),
+      []() { Subprocess proc(std::vector<std::string>{"/bin/sleep", "10"}); }(),
       "Subprocess destroyed without reaping child");
 }
 

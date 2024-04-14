@@ -132,8 +132,8 @@ class MultiLevelTimeSeries {
       }
     }
     // We should always have an all-time level, so this is never reached.
-    LOG(FATAL) << "No level of timeseries covers internval"
-               << " from " << start.time_since_epoch().count() << " to now";
+    LOG(FATAL) << "No level of timeseries covers internval" << " from "
+               << start.time_since_epoch().count() << " to now";
     return levels_.back();
   }
 

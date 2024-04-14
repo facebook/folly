@@ -309,8 +309,7 @@ void benchmarkDtor(int runs, int size) {
 template <template <class, class> class Map, class K, class V>
 void benchmarkClear(int runs, int size) {
   for (int i = 0; i < runs; ++i) {
-    benchmarkFilledMap<Map, K, V>(
-        1, size, [&](Map<K, V>& m) { m.clear(); }, 1);
+    benchmarkFilledMap<Map, K, V>(1, size, [&](Map<K, V>& m) { m.clear(); }, 1);
   }
 }
 
@@ -318,8 +317,7 @@ template <template <class, class> class Map, class K, class V>
 void benchmarkCopyCtor(int runs, int size) {
   Map<K, V> n;
   for (int i = 0; i < runs; ++i) {
-    benchmarkFilledMap<Map, K, V>(
-        1, size, [&](Map<K, V>& m) { n = m; }, 1);
+    benchmarkFilledMap<Map, K, V>(1, size, [&](Map<K, V>& m) { n = m; }, 1);
     folly::doNotOptimizeAway(n);
   }
 }

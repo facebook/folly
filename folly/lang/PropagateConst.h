@@ -160,7 +160,7 @@ class propagate_const {
       typename = std::enable_if_t<
           std::is_pointer<OtherPointer>::value ||
           std::is_convertible<OtherPointer, element_type const*>::value>>
-  constexpr operator element_type const *() const {
+  constexpr operator element_type const*() const {
     return get();
   }
 

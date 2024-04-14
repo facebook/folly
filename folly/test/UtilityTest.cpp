@@ -352,7 +352,7 @@ static constexpr bool is_conv_v = std::is_convertible_v<S, D>;
 
 template <typename S, typename D>
 static constexpr bool is_nx_conv_v = //
-    is_conv_v<S, D>&& std::is_nothrow_constructible_v<D, S>;
+    is_conv_v<S, D> && std::is_nothrow_constructible_v<D, S>;
 
 static_assert(is_conv_v<of<int, 0, 0, 0>&, int>);
 static_assert(!is_conv_v<of<int, 0, 0, 0> const&, int>);

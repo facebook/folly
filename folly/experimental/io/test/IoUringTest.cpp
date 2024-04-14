@@ -59,7 +59,9 @@ TEST(IoUringTest, RegisteredBuffers) {
   if (fd == -1)
     fd = ::open(tempFile.path().c_str(), O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  SCOPE_EXIT {
+    ::close(fd);
+  };
 
   folly::test::async_base_test_lib_detail::TestUtil::ManagedBuffer
       regFdWriteBuf =

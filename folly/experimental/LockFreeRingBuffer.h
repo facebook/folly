@@ -296,7 +296,7 @@ class [[deprecated(
  public:
   void store(const T& src) { data_ = src; }
 
-  void load(T & dest) const { dest = data_; }
+  void load(T& dest) const { dest = data_; }
 
  private:
   T data_{};

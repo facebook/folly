@@ -230,11 +230,13 @@ namespace detail {
 template <size_t Size>
 struct uint_types_by_size;
 
-#define FB_GEN(sz, fn)                                                      \
-  static inline uint##sz##_t byteswap_gen(uint##sz##_t v) { return fn(v); } \
-  template <>                                                               \
-  struct uint_types_by_size<sz / 8> {                                       \
-    using type = uint##sz##_t;                                              \
+#define FB_GEN(sz, fn)                                      \
+  static inline uint##sz##_t byteswap_gen(uint##sz##_t v) { \
+    return fn(v);                                           \
+  }                                                         \
+  template <>                                               \
+  struct uint_types_by_size<sz / 8> {                       \
+    using type = uint##sz##_t;                              \
   };
 
 FB_GEN(8, uint8_t)
@@ -276,7 +278,9 @@ struct EndianInt {
 // ntohs, htons == big16
 // ntohl, htonl == big32
 #define FB_GEN1(fn, t, sz) \
-  static t fn##sz(t x) { return fn<t>(x); }
+  static t fn##sz(t x) {   \
+    return fn<t>(x);       \
+  }
 
 #define FB_GEN2(t, sz) \
   FB_GEN1(swap, t, sz) \

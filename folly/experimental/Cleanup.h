@@ -39,7 +39,7 @@ struct cleanup_fn {
       std::enable_if_t<std::is_same_v<R, folly::SemiFuture<folly::Unit>>, int> =
           0>
   R operator()(T&& t) const {
-    return ((T &&) t).cleanup();
+    return ((T&&)t).cleanup();
   }
 };
 } // namespace detail
@@ -166,7 +166,7 @@ class Cleanup {
       class OtherCleanup,
       std::enable_if_t<is_cleanup_v<OtherCleanup>, int> = 0>
   void addCleanup(OtherCleanup&& c) {
-    addCleanup(((OtherCleanup &&) c).cleanup());
+    addCleanup(((OtherCleanup&&)c).cleanup());
   }
 
  private:

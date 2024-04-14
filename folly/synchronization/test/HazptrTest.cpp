@@ -1601,8 +1601,7 @@ const int sizes[] = {10, 20};
 void benches() {
   for (int i : nthr) {
     std::cout << "================================ " << std::setw(2) << i
-              << " threads "
-              << "================================" << std::endl;
+              << " threads " << "================================" << std::endl;
     std::cout << "10x construct/destruct hazptr_holder          ";
     holder_bench("", i);
     std::cout << "10x construct/destruct hazptr_array<1>        ";

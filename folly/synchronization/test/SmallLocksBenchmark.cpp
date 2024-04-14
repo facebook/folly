@@ -426,8 +426,7 @@ struct VirtualBase {
 };
 
 struct VirtualImpl : VirtualBase {
-  void foo() override { /* noop */
-  }
+  void foo() override { /* noop */ }
   ~VirtualImpl() override {}
 };
 

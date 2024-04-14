@@ -165,7 +165,9 @@ struct BenchmarkSuspender : BenchmarkSuspenderBase {
 
   template <class F>
   auto dismissing(F f) -> invoke_result_t<F> {
-    SCOPE_EXIT { rehire(); };
+    SCOPE_EXIT {
+      rehire();
+    };
     dismiss();
     return f();
   }

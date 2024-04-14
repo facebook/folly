@@ -387,8 +387,9 @@ auto collectAnyNoDiscardImpl(
 } // namespace detail
 
 template <typename... SemiAwaitables>
-auto collectAll(SemiAwaitables&&... awaitables) -> folly::coro::Task<std::tuple<
-    detail::collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>> {
+auto collectAll(SemiAwaitables&&... awaitables)
+    -> folly::coro::Task<std::tuple<
+        detail::collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>> {
   return detail::collectAllImpl(
       std::make_index_sequence<sizeof...(SemiAwaitables)>{},
       static_cast<SemiAwaitables&&>(awaitables)...);
@@ -1051,10 +1052,11 @@ auto collectAnyNoDiscard(SemiAwaitables&&... awaitables)
 }
 
 template <typename InputRange>
-auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
-    size_t,
-    folly::Try<detail::collect_all_range_component_t<
-        detail::range_reference_t<InputRange>>>>> {
+auto collectAnyRange(InputRange awaitables)
+    -> folly::coro::Task<std::pair<
+        size_t,
+        folly::Try<detail::collect_all_range_component_t<
+            detail::range_reference_t<InputRange>>>>> {
   const CancellationToken& parentCancelToken =
       co_await co_current_cancellation_token;
   const CancellationSource cancelSource;

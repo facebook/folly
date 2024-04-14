@@ -278,7 +278,9 @@ BENCHMARK(ForEachKVNoMacroAssign, iters) {
   int sumKeys = 0;
   std::string sumValues;
 
-  BENCHMARK_SUSPEND { setupBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupBenchmark(iters);
+  }
 
   FOR_EACH (iter, bmMap) {
     const int k = iter->first;
@@ -292,7 +294,9 @@ BENCHMARK(ForEachKVNoMacroNoAssign, iters) {
   int sumKeys = 0;
   std::string sumValues;
 
-  BENCHMARK_SUSPEND { setupBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupBenchmark(iters);
+  }
 
   FOR_EACH (iter, bmMap) {
     sumKeys += iter->first;
@@ -310,7 +314,9 @@ BENCHMARK(ForEachManual, iters) {
 
 BENCHMARK(ForEachRange, iters) {
   int sum = 1;
-  FOR_EACH_RANGE (i, 1, iters) { sum *= i; }
+  FOR_EACH_RANGE (i, 1, iters) {
+    sum *= i;
+  }
   doNotOptimizeAway(sum);
 }
 
@@ -323,7 +329,9 @@ BENCHMARK(ForEachDescendingManual, iters) {
 }
 
 BENCHMARK(CharVecForRange, iters) {
-  BENCHMARK_SUSPEND { setupCharVecBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
   size_t sum = 0;
   for (auto& c : vec_char) {
     sum += c;
@@ -332,7 +340,9 @@ BENCHMARK(CharVecForRange, iters) {
 }
 
 BENCHMARK(CharVecForRangeExplicitIndex, iters) {
-  BENCHMARK_SUSPEND { setupCharVecBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
   size_t sum = 0;
   size_t index = 0;
   for (auto& c : vec_char) {
@@ -343,21 +353,27 @@ BENCHMARK(CharVecForRangeExplicitIndex, iters) {
 }
 
 BENCHMARK(CharVecForEach, iters) {
-  BENCHMARK_SUSPEND { setupCharVecBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
   size_t sum = 0;
   folly::for_each(vec_char, [&](auto& c) { sum += c; });
   doNotOptimizeAway(sum);
 }
 
 BENCHMARK(CharVecForEachIndex, iters) {
-  BENCHMARK_SUSPEND { setupCharVecBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
   size_t sum = 0;
   folly::for_each(vec_char, [&](auto& c, auto index) { sum += c * index; });
   doNotOptimizeAway(sum);
 }
 
 BENCHMARK(CharVecForRangeEnumerate, iters) {
-  BENCHMARK_SUSPEND { setupCharVecBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
   size_t sum = 0;
   for (auto&& it : enumerate(vec_char)) {
     sum += *it * it.index;

@@ -31,7 +31,7 @@ TEST_F(SanitizeAddressTest, asan_poison) {
   // malloc
 
   auto const addr =
-      static_cast<opaque*>(operator new (size, std::align_val_t{page}));
+      static_cast<opaque*>(operator new(size, std::align_val_t{page}));
 
   EXPECT_EQ(nullptr, folly::asan_region_is_poisoned(addr, size));
   EXPECT_EQ(0, folly::asan_address_is_poisoned(addr + offs));
@@ -58,7 +58,7 @@ TEST_F(SanitizeAddressTest, asan_poison) {
 
   // free
 
-  operator delete (addr, size, std::align_val_t{page});
+  operator delete(addr, size, std::align_val_t{page});
   EXPECT_EQ(
       folly::kIsSanitizeAddress ? addr : nullptr,
       folly::asan_region_is_poisoned(addr, size));

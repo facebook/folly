@@ -32,7 +32,9 @@ using namespace ::folly::crypto;
 void benchmarkBlake2b(size_t inputSize, size_t n) {
   std::array<uint8_t, crypto_generichash_blake2b_BYTES_MAX> result;
   std::vector<uint8_t> input;
-  BENCHMARK_SUSPEND { input.resize(inputSize); };
+  BENCHMARK_SUSPEND {
+    input.resize(inputSize);
+  };
   for (size_t i = 0; i < static_cast<size_t>(n); ++i) {
     int res = crypto_generichash_blake2b(
         result.data(), sizeof(result), input.data(), input.size(), nullptr, 0);

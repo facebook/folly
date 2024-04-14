@@ -238,7 +238,9 @@ BENCHMARK(lookup_int_int_hit, iters) {
     EXPECT_EQ(iter->second, k + 1);
   }
 
-  BENCHMARK_SUSPEND { ptr.reset(nullptr); }
+  BENCHMARK_SUSPEND {
+    ptr.reset(nullptr);
+  }
 }
 
 struct PairHash {
@@ -302,7 +304,9 @@ void contendedRW(
     thr.join();
   }
 
-  BENCHMARK_SUSPEND { ptr.reset(nullptr); }
+  BENCHMARK_SUSPEND {
+    ptr.reset(nullptr);
+  }
 }
 
 // clang-format off

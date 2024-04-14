@@ -33,8 +33,10 @@
 #include <folly/lang/CustomizationPoint.h>
 
 #define FOLLY_DETAIL_FORWARD_REF(a) static_cast<decltype(a)&&>(a)
-#define FOLLY_DETAIL_FORWARD_BODY(e) \
-  noexcept(noexcept(e))->decltype(e) { return e; }
+#define FOLLY_DETAIL_FORWARD_BODY(e)   \
+  noexcept(noexcept(e))->decltype(e) { \
+    return e;                          \
+  }
 
 /**
  *  include or backport:
@@ -134,7 +136,7 @@ template <typename F>
 struct traits {
   template <typename... A>
   using result = decltype( //
-      FOLLY_DECLVAL(F &&)(FOLLY_DECLVAL(A &&)...));
+      FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(A&&)...));
   template <typename... A>
   static constexpr bool nothrow = noexcept( //
       FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(A&&)...));
@@ -143,7 +145,7 @@ template <typename P>
 struct traits_member_ptr {
   template <typename... A>
   using result = decltype( //
-      std::mem_fn(FOLLY_DECLVAL(P))(FOLLY_DECLVAL(A &&)...));
+      std::mem_fn(FOLLY_DECLVAL(P))(FOLLY_DECLVAL(A&&)...));
   template <typename... A>
   static constexpr bool nothrow = noexcept( //
       std::mem_fn(FOLLY_DECLVAL(P))(FOLLY_DECLVAL(A&&)...));
@@ -759,10 +761,7 @@ using tag_invoke_result_t = decltype(tag_invoke(
 template <typename Tag, typename... Args>
 auto try_tag_invoke(int) noexcept(
     noexcept(tag_invoke(FOLLY_DECLVAL(Tag&&), FOLLY_DECLVAL(Args&&)...)))
-    -> decltype(
-        static_cast<void>(
-            tag_invoke(FOLLY_DECLVAL(Tag &&), FOLLY_DECLVAL(Args&&)...)),
-        std::true_type{});
+    -> decltype(static_cast<void>(tag_invoke(FOLLY_DECLVAL(Tag&&), FOLLY_DECLVAL(Args&&)...)), std::true_type{});
 
 template <typename Tag, typename... Args>
 std::false_type try_tag_invoke(...) noexcept(false);

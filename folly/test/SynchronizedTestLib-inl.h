@@ -449,9 +449,13 @@ template <class Mutex>
     EXPECT_EQ(1000, obj2.contextualLock()->size());
   }
 
-  SYNCHRONIZED_CONST(obj) { EXPECT_EQ(1001, obj.size()); }
+  SYNCHRONIZED_CONST(obj) {
+    EXPECT_EQ(1001, obj.size());
+  }
 
-  SYNCHRONIZED(lockedObj, *&obj) { lockedObj.front() = 2; }
+  SYNCHRONIZED(lockedObj, *&obj) {
+    lockedObj.front() = 2;
+  }
 
   EXPECT_EQ(1001, obj.contextualLock()->size());
   EXPECT_EQ(10, obj.contextualLock()->back());

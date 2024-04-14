@@ -162,7 +162,7 @@ THOUGHTS:
 #define VECTOR_ folly::fbvector
 #endif
 
-//#define USING_STD_VECTOR
+// #define USING_STD_VECTOR
 
 #include <climits>
 #include <cstddef>
@@ -392,7 +392,7 @@ int Ticker::TicksLeft = -1;
 
 template <Flags f>
 struct DataTicker : Ticker {
-  DataTicker() noexcept(f& DC_NOEXCEPT) {
+  DataTicker() noexcept(f & DC_NOEXCEPT) {
     if (!(f & DC_NOEXCEPT)) {
       Tick("Data()");
     }
@@ -1174,8 +1174,7 @@ struct PrettyType<Alloc<T>> {
   }                                                                   \
   if (ticks >= 0 && Ticker::CountTicks > ticks && !ticks_thrown)      \
     FAIL() << "CountTicks = " << Ticker::CountTicks << " > " << ticks \
-           << " = ticks"                                              \
-           << ", but no tick error was observed";                     \
+           << " = ticks" << ", but no tick error was observed";       \
   VERIFICATION
 #define CLOSER_ticks }
 

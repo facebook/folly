@@ -280,8 +280,8 @@ struct move_assignment_mixin<T, true> {
   move_assignment_mixin(move_assignment_mixin const&) = default;
   inline move_assignment_mixin&
   operator=(move_assignment_mixin&& other) noexcept(
-      std::is_nothrow_destructible<T>::value&&
-          std::is_nothrow_move_constructible<T>::value) {
+      std::is_nothrow_destructible<T>::value &&
+      std::is_nothrow_move_constructible<T>::value) {
     T* destruct_ptr = std::launder(reinterpret_cast<T*>(
         reinterpret_cast<Replaceable<T>*>(this)->storage_));
     destruct_ptr->~T();
@@ -344,8 +344,8 @@ struct copy_assignment_mixin<T, true> {
   copy_assignment_mixin& operator=(copy_assignment_mixin&&) = default;
   inline copy_assignment_mixin&
   operator=(copy_assignment_mixin const& other) noexcept(
-      std::is_nothrow_destructible<T>::value&&
-          std::is_nothrow_copy_constructible<T>::value) {
+      std::is_nothrow_destructible<T>::value &&
+      std::is_nothrow_copy_constructible<T>::value) {
     T* destruct_ptr = std::launder(reinterpret_cast<T*>(
         reinterpret_cast<Replaceable<T>*>(this)->storage_));
     destruct_ptr->~T();

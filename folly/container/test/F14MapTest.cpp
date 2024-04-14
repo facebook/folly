@@ -1390,9 +1390,8 @@ TEST(F14VectorMap, destructuringErase) {
 
   resetTracking();
   m.erase(p1.first);
-  LOG(INFO) << "erase -> "
-            << "key_type ops " << Tracked<0>::counts() << ", mapped_type ops "
-            << Tracked<1>::counts();
+  LOG(INFO) << "erase -> " << "key_type ops " << Tracked<0>::counts()
+            << ", mapped_type ops " << Tracked<1>::counts();
   // deleting p1 will cause p2 to be moved to the front of the values array
   EXPECT_EQ(
       Tracked<0>::counts().dist(Counts{0, 1, 0, 0}) +

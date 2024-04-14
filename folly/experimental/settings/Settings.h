@@ -194,13 +194,14 @@ class SettingWrapper {
   /* Fastpath optimization, see notes in FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__.   \
      Aggregate all off these together in a single section for better TLB       \
      and cache locality. */                                                    \
-  __attribute__((__section__(".folly.settings.cache")))::std::atomic<          \
+  __attribute__((__section__(".folly.settings.cache"))) ::std::atomic<         \
       ::folly::settings::detail::SettingCore<_Type>*>                          \
       FOLLY_SETTINGS_CACHE__##_project##_##_name;                              \
   /* Location for the small value cache (if _Type is small and trivial).       \
      Intentionally located right after the pointer cache above to take         \
      advantage of the prefetching */                                           \
-  __attribute__((__section__(".folly.settings.cache")))::std::atomic<uint64_t> \
+  __attribute__((                                                              \
+      __section__(".folly.settings.cache"))) ::std::atomic<uint64_t>           \
       FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                            \
   /* Meyers singleton to avoid SIOF */                                         \
   FOLLY_NOINLINE ::folly::settings::detail::SettingCore<_Type>&                \

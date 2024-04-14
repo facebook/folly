@@ -227,12 +227,8 @@ class IoUringBackend : public EventBaseBackendBase {
   bool isWaitingToSubmit() const {
     return waitingToSubmit_ || !submitList_.empty();
   }
-  struct io_uring* ioRingPtr() {
-    return &ioRing_;
-  }
-  struct io_uring_params const& params() const {
-    return params_;
-  }
+  struct io_uring* ioRingPtr() { return &ioRing_; }
+  struct io_uring_params const& params() const { return params_; }
   bool useReqBatching() const {
     return options_.timeout.count() > 0 && options_.batchSize > 0;
   }

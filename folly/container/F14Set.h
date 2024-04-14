@@ -879,11 +879,12 @@ template <
     typename Alloc,
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireAllocator<Alloc>>
-F14ValueSet(InputIt, InputIt, std::size_t, Alloc) -> F14ValueSet<
-    iterator_value_type_t<InputIt>,
-    f14::DefaultHasher<iterator_value_type_t<InputIt>>,
-    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
-    Alloc>;
+F14ValueSet(InputIt, InputIt, std::size_t, Alloc)
+    -> F14ValueSet<
+        iterator_value_type_t<InputIt>,
+        f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+        f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+        Alloc>;
 
 template <
     typename InputIt,
@@ -892,11 +893,12 @@ template <
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireNotAllocator<Hasher>,
     typename = detail::RequireAllocator<Alloc>>
-F14ValueSet(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14ValueSet<
-    iterator_value_type_t<InputIt>,
-    Hasher,
-    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
-    Alloc>;
+F14ValueSet(InputIt, InputIt, std::size_t, Hasher, Alloc)
+    -> F14ValueSet<
+        iterator_value_type_t<InputIt>,
+        Hasher,
+        f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+        Alloc>;
 
 template <
     typename Key,
@@ -917,11 +919,12 @@ template <
     typename Key,
     typename Alloc,
     typename = detail::RequireAllocator<Alloc>>
-F14ValueSet(std::initializer_list<Key>, std::size_t, Alloc) -> F14ValueSet<
-    Key,
-    f14::DefaultHasher<Key>,
-    f14::DefaultKeyEqual<Key>,
-    Alloc>;
+F14ValueSet(std::initializer_list<Key>, std::size_t, Alloc)
+    -> F14ValueSet<
+        Key,
+        f14::DefaultHasher<Key>,
+        f14::DefaultKeyEqual<Key>,
+        Alloc>;
 
 template <
     typename Key,
@@ -995,11 +998,12 @@ template <
     typename Alloc,
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireAllocator<Alloc>>
-F14NodeSet(InputIt, InputIt, std::size_t, Alloc) -> F14NodeSet<
-    iterator_value_type_t<InputIt>,
-    f14::DefaultHasher<iterator_value_type_t<InputIt>>,
-    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
-    Alloc>;
+F14NodeSet(InputIt, InputIt, std::size_t, Alloc)
+    -> F14NodeSet<
+        iterator_value_type_t<InputIt>,
+        f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+        f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+        Alloc>;
 
 template <
     typename InputIt,
@@ -1008,11 +1012,12 @@ template <
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireNotAllocator<Hasher>,
     typename = detail::RequireAllocator<Alloc>>
-F14NodeSet(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14NodeSet<
-    iterator_value_type_t<InputIt>,
-    Hasher,
-    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
-    Alloc>;
+F14NodeSet(InputIt, InputIt, std::size_t, Hasher, Alloc)
+    -> F14NodeSet<
+        iterator_value_type_t<InputIt>,
+        Hasher,
+        f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+        Alloc>;
 
 template <
     typename Key,
@@ -1033,11 +1038,12 @@ template <
     typename Key,
     typename Alloc,
     typename = detail::RequireAllocator<Alloc>>
-F14NodeSet(std::initializer_list<Key>, std::size_t, Alloc) -> F14NodeSet<
-    Key,
-    f14::DefaultHasher<Key>,
-    f14::DefaultKeyEqual<Key>,
-    Alloc>;
+F14NodeSet(std::initializer_list<Key>, std::size_t, Alloc)
+    -> F14NodeSet<
+        Key,
+        f14::DefaultHasher<Key>,
+        f14::DefaultKeyEqual<Key>,
+        Alloc>;
 
 template <
     typename Key,
@@ -1311,11 +1317,12 @@ template <
     typename Alloc,
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireAllocator<Alloc>>
-F14VectorSet(InputIt, InputIt, std::size_t, Alloc) -> F14VectorSet<
-    iterator_value_type_t<InputIt>,
-    f14::DefaultHasher<iterator_value_type_t<InputIt>>,
-    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
-    Alloc>;
+F14VectorSet(InputIt, InputIt, std::size_t, Alloc)
+    -> F14VectorSet<
+        iterator_value_type_t<InputIt>,
+        f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+        f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+        Alloc>;
 
 template <
     typename InputIt,
@@ -1324,11 +1331,12 @@ template <
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireNotAllocator<Hasher>,
     typename = detail::RequireAllocator<Alloc>>
-F14VectorSet(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14VectorSet<
-    iterator_value_type_t<InputIt>,
-    Hasher,
-    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
-    Alloc>;
+F14VectorSet(InputIt, InputIt, std::size_t, Hasher, Alloc)
+    -> F14VectorSet<
+        iterator_value_type_t<InputIt>,
+        Hasher,
+        f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+        Alloc>;
 
 template <
     typename Key,
@@ -1349,11 +1357,12 @@ template <
     typename Key,
     typename Alloc,
     typename = detail::RequireAllocator<Alloc>>
-F14VectorSet(std::initializer_list<Key>, std::size_t, Alloc) -> F14VectorSet<
-    Key,
-    f14::DefaultHasher<Key>,
-    f14::DefaultKeyEqual<Key>,
-    Alloc>;
+F14VectorSet(std::initializer_list<Key>, std::size_t, Alloc)
+    -> F14VectorSet<
+        Key,
+        f14::DefaultHasher<Key>,
+        f14::DefaultKeyEqual<Key>,
+        Alloc>;
 
 template <
     typename Key,
@@ -1413,11 +1422,12 @@ template <
     typename Alloc,
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireAllocator<Alloc>>
-F14FastSet(InputIt, InputIt, std::size_t, Alloc) -> F14FastSet<
-    iterator_value_type_t<InputIt>,
-    f14::DefaultHasher<iterator_value_type_t<InputIt>>,
-    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
-    Alloc>;
+F14FastSet(InputIt, InputIt, std::size_t, Alloc)
+    -> F14FastSet<
+        iterator_value_type_t<InputIt>,
+        f14::DefaultHasher<iterator_value_type_t<InputIt>>,
+        f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+        Alloc>;
 
 template <
     typename InputIt,
@@ -1426,11 +1436,12 @@ template <
     typename = detail::RequireInputIterator<InputIt>,
     typename = detail::RequireNotAllocator<Hasher>,
     typename = detail::RequireAllocator<Alloc>>
-F14FastSet(InputIt, InputIt, std::size_t, Hasher, Alloc) -> F14FastSet<
-    iterator_value_type_t<InputIt>,
-    Hasher,
-    f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
-    Alloc>;
+F14FastSet(InputIt, InputIt, std::size_t, Hasher, Alloc)
+    -> F14FastSet<
+        iterator_value_type_t<InputIt>,
+        Hasher,
+        f14::DefaultKeyEqual<iterator_value_type_t<InputIt>>,
+        Alloc>;
 
 template <
     typename Key,
@@ -1451,11 +1462,12 @@ template <
     typename Key,
     typename Alloc,
     typename = detail::RequireAllocator<Alloc>>
-F14FastSet(std::initializer_list<Key>, std::size_t, Alloc) -> F14FastSet<
-    Key,
-    f14::DefaultHasher<Key>,
-    f14::DefaultKeyEqual<Key>,
-    Alloc>;
+F14FastSet(std::initializer_list<Key>, std::size_t, Alloc)
+    -> F14FastSet<
+        Key,
+        f14::DefaultHasher<Key>,
+        f14::DefaultKeyEqual<Key>,
+        Alloc>;
 
 template <
     typename Key,

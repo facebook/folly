@@ -76,7 +76,9 @@ File::~File() {
   // make a temp file with tmpfile(), dup the fd, then return it in a File.
   FILE* tmpFile = tmpfile();
   checkFopenError(tmpFile, "tmpfile() failed");
-  SCOPE_EXIT { fclose(tmpFile); };
+  SCOPE_EXIT {
+    fclose(tmpFile);
+  };
 
   // TODO(nga): consider setting close-on-exec for the resulting FD
   int fd = ::dup(fileno(tmpFile));

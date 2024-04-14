@@ -633,7 +633,7 @@ class TryAwaitable : public CommutativeWrapperAwaitable<TryAwaitable, T> {
           int> = 0,
       typename T2 = like_t<Self, T>,
       std::enable_if_t<is_awaitable_v<T2>, int> = 0>
-  friend TryAwaiter<T2> operator co_await(Self&& self) {
+  friend TryAwaiter<T2> operator co_await(Self && self) {
     return TryAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
 };

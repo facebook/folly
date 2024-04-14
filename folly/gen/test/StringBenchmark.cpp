@@ -192,7 +192,9 @@ BENCHMARK_DRAW_LINE();
 void StringUnsplit_Gen(size_t iters, size_t joinSize) {
   std::vector<fbstring> v;
   BENCHMARK_SUSPEND {
-    FOR_EACH_RANGE (i, 0, joinSize) { v.push_back(to<fbstring>(rand())); }
+    FOR_EACH_RANGE (i, 0, joinSize) {
+      v.push_back(to<fbstring>(rand()));
+    }
   }
   size_t s = 0;
   fbstring buffer;

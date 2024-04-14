@@ -90,7 +90,9 @@ class ObserverManager {
 
     folly::fibers::runInMainContext([&] {
       auto inManagerThread = std::exchange(inManagerThread_, true);
-      SCOPE_EXIT { inManagerThread_ = inManagerThread; };
+      SCOPE_EXIT {
+        inManagerThread_ = inManagerThread;
+      };
 
       std::shared_lock rh(instance.versionMutex_);
 
@@ -140,7 +142,9 @@ class ObserverManager {
     template <typename F>
     static invoke_result_t<F> withDependencyRecordingDisabled(F f) {
       auto* const dependencies = std::exchange(currentDependencies_, nullptr);
-      SCOPE_EXIT { currentDependencies_ = dependencies; };
+      SCOPE_EXIT {
+        currentDependencies_ = dependencies;
+      };
 
       return f();
     }

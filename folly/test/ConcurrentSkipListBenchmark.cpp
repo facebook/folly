@@ -503,7 +503,9 @@ void BM_ContentionCSL(int iters, int size) {
     threads.push_back(
         std::thread(&ConcurrentAccessData::runSkipList, data, i, iters));
   }
-  FOR_EACH (t, threads) { (*t).join(); }
+  FOR_EACH (t, threads) {
+    (*t).join();
+  }
 }
 
 void BM_ContentionStdSet(int iters, int size) {
@@ -516,7 +518,9 @@ void BM_ContentionStdSet(int iters, int size) {
     threads.push_back(
         std::thread(&ConcurrentAccessData::runSet, data, i, iters));
   }
-  FOR_EACH (t, threads) { (*t).join(); }
+  FOR_EACH (t, threads) {
+    (*t).join();
+  }
   susp.rehire();
 }
 

@@ -256,8 +256,7 @@ void benches() {
       << std::endl;
   for (int i : nthr) {
     std::cout << "============================== " << std::setw(2) << i
-              << " threads "
-              << "==============================" << std::endl;
+              << " threads " << "==============================" << std::endl;
     const uint64_t ops = FLAGS_ops;
     std::cout << "hasContextData                  ";
     bench_hasContextData(i, ops, true);

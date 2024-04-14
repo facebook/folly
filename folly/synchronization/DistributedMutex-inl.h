@@ -400,7 +400,9 @@ class RequestWithReturn {
     // note that the invariant here is that this function is only called if the
     // requesting thread had it's critical section combined, and the value_
     // member constructed through detach()
-    SCOPE_EXIT { value_.~ReturnType(); };
+    SCOPE_EXIT {
+      value_.~ReturnType();
+    };
     return std::move(value_);
   }
 
@@ -1054,7 +1056,9 @@ auto DistributedMutex<Atomic, TimePublishing>::lock_combine(Func func)
     // to avoid having to play a return-value dance when the combinable
     // returns void, we use a scope exit to perform the unlock after the
     // function return has been processed
-    SCOPE_EXIT { unlock(std::move(state)); };
+    SCOPE_EXIT {
+      unlock(std::move(state));
+    };
     return func();
   }
 
@@ -1087,7 +1091,9 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_combine_for(
     const std::chrono::duration<Rep, Period>& duration, Func func) {
   auto state = try_lock_for(duration);
   if (state) {
-    SCOPE_EXIT { unlock(std::move(state)); };
+    SCOPE_EXIT {
+      unlock(std::move(state));
+    };
     return func();
   }
 
@@ -1101,7 +1107,9 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_combine_until(
     const std::chrono::time_point<Clock, Duration>& deadline, Func func) {
   auto state = try_lock_until(deadline);
   if (state) {
-    SCOPE_EXIT { unlock(std::move(state)); };
+    SCOPE_EXIT {
+      unlock(std::move(state));
+    };
     return func();
   }
 

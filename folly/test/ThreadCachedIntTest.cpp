@@ -226,7 +226,9 @@ TEST(ThreadCachedInt, MultiThreadedCached) {
     std::vector<std::thread> threads;
     for (int i = 0; i < FLAGS_numThreads; ++i) {
       threads.push_back(std::thread([&] {
-        FOR_EACH_RANGE (k, 0, numPerThread) { ++TCInt64; }
+        FOR_EACH_RANGE (k, 0, numPerThread) {
+          ++TCInt64;
+        }
         std::atomic_fetch_add(&threadsDone, 1);
         while (run.load()) {
           usleep(100);

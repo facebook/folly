@@ -72,9 +72,10 @@ template <
     std::size_t start = 0,
     std::size_t count = std::numeric_limits<std::size_t>::max(),
     typename tup>
-auto tupleRange(tup&& t) -> decltype(detail::tuple_ops_range_of_(
-    static_cast<tup&&>(t),
-    detail::tuple_ops_range_of_seq<start, count, tup>{})) {
+auto tupleRange(tup&& t)
+    -> decltype(detail::tuple_ops_range_of_(
+        static_cast<tup&&>(t),
+        detail::tuple_ops_range_of_seq<start, count, tup>{})) {
   return detail::tuple_ops_range_of_(
       static_cast<tup&&>(t),
       detail::tuple_ops_range_of_seq<start, count, tup>{});
@@ -83,7 +84,8 @@ auto tupleRange(tup&& t) -> decltype(detail::tuple_ops_range_of_(
 // Return a tuple obtained by prepending car to the tuple cdr.
 template <class T, class U>
 auto tuplePrepend(T&& car, U&& cdr) -> decltype(std::tuple_cat(
-    std::make_tuple(std::forward<T>(car)), std::forward<U>(cdr))) {
+                                        std::make_tuple(std::forward<T>(car)),
+                                        std::forward<U>(cdr))) {
   return std::tuple_cat(
       std::make_tuple(std::forward<T>(car)), std::forward<U>(cdr));
 }

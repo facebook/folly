@@ -441,7 +441,9 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
     // but the average fits in an int64_t
     BucketedTimeSeries<double> ts(60, seconds(600));
     uint64_t value = 0x3fffffffffffffff;
-    FOR_EACH_RANGE (i, 0, 16) { ts.addValue(seconds(0), value); }
+    FOR_EACH_RANGE (i, 0, 16) {
+      ts.addValue(seconds(0), value);
+    }
 
     EXPECT_DOUBLE_EQ(value, ts.avg());
     EXPECT_DOUBLE_EQ(value, ts.avg<float>());
@@ -454,7 +456,9 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
   {
     // Test BucketedTimeSeries with a smaller integer type
     BucketedTimeSeries<int16_t> ts(60, seconds(600));
-    FOR_EACH_RANGE (i, 0, 101) { ts.addValue(seconds(0), i); }
+    FOR_EACH_RANGE (i, 0, 101) {
+      ts.addValue(seconds(0), i);
+    }
 
     EXPECT_DOUBLE_EQ(50.0, ts.avg());
     EXPECT_DOUBLE_EQ(50.0, ts.avg<float>());

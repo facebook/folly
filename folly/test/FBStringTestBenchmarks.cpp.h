@@ -36,7 +36,9 @@ BENCHMARK_PARAM(BENCHFUN(defaultCtor), 0)
 
 void BENCHFUN(copyCtor)(size_t iters, size_t arg) {
   STRING s;
-  BENCHMARK_SUSPEND { randomString(&s, arg); }
+  BENCHMARK_SUSPEND {
+    randomString(&s, arg);
+  }
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s1 = s;
     doNotOptimizeAway(&s1);
@@ -87,7 +89,9 @@ BENCHMARK_PARAM(BENCHFUN(ctorFromChar), 1048576)
 
 void BENCHFUN(assignmentOp)(size_t iters, size_t arg) {
   STRING s;
-  BENCHMARK_SUSPEND { randomString(&s, arg); }
+  BENCHMARK_SUSPEND {
+    randomString(&s, arg);
+  }
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s1;
     BENCHMARK_SUSPEND {
@@ -184,7 +188,9 @@ expect to get a call for an interview.";
     s1 = "So how do you tackle that writing sample request?";
   }
 
-  FOR_EACH_RANGE (i, 0, iters) { doNotOptimizeAway(s.find(s1)); }
+  FOR_EACH_RANGE (i, 0, iters) {
+    doNotOptimizeAway(s.find(s1));
+  }
 }
 BENCHMARK_PARAM(BENCHFUN(findUnsuccessful), 524288)
 
@@ -207,7 +213,9 @@ BENCHMARK_PARAM(BENCHFUN(equality), 65536)
 
 void BENCHFUN(replace)(size_t iters, size_t arg) {
   STRING s;
-  BENCHMARK_SUSPEND { randomString(&s, arg); }
+  BENCHMARK_SUSPEND {
+    randomString(&s, arg);
+  }
   FOR_EACH_RANGE (i, 0, iters) {
     BenchmarkSuspender susp;
     doNotOptimizeAway(&s);
@@ -226,7 +234,9 @@ BENCHMARK_PARAM(BENCHFUN(replace), 256)
 void BENCHFUN(push_back)(size_t iters, size_t arg) {
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s;
-    FOR_EACH_RANGE (j, 0, arg) { s += ' '; }
+    FOR_EACH_RANGE (j, 0, arg) {
+      s += ' ';
+    }
   }
 }
 BENCHMARK_PARAM(BENCHFUN(push_back), 1)
@@ -237,7 +247,9 @@ BENCHMARK_PARAM(BENCHFUN(push_back), 1024)
 void BENCHFUN(short_append)(size_t iters, size_t arg) {
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s;
-    FOR_EACH_RANGE (j, 0, arg) { s += "012"; }
+    FOR_EACH_RANGE (j, 0, arg) {
+      s += "012";
+    }
   }
 }
 BENCHMARK_PARAM(BENCHFUN(short_append), 23)

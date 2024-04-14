@@ -38,7 +38,9 @@ class InitThreadFactory : public ThreadFactory {
     return threadFactory_->newThread(
         [func = std::move(func), threadInitFini = threadInitFini_]() mutable {
           threadInitFini->initializer();
-          SCOPE_EXIT { threadInitFini->finalizer(); };
+          SCOPE_EXIT {
+            threadInitFini->finalizer();
+          };
           func();
         });
   }

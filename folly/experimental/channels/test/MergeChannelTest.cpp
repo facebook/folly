@@ -477,9 +477,7 @@ class MergeChannelFixtureStress : public Test {
   static std::unique_ptr<StressTestProducer<ProducedValue>> makeProducer(
       int index) {
     return std::make_unique<StressTestProducer<ProducedValue>>(
-        [index, value = 0]() mutable {
-          return ProducedValue{index, value++};
-        });
+        [index, value = 0]() mutable { return ProducedValue{index, value++}; });
   }
 
   static std::unique_ptr<

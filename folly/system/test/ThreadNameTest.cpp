@@ -40,7 +40,9 @@ TEST(ThreadName, getCurrentThreadName) {
       EXPECT_EQ(kThreadName.toString(), *getCurrentThreadName());
     }
   });
-  SCOPE_EXIT { th.join(); };
+  SCOPE_EXIT {
+    th.join();
+  };
 }
 
 #if FOLLY_HAVE_PTHREAD
@@ -53,9 +55,13 @@ TEST(ThreadName, setThreadNameOtherPthread) {
     handle_set.post();
     let_thread_end.wait();
   });
-  SCOPE_EXIT { th.join(); };
+  SCOPE_EXIT {
+    th.join();
+  };
   handle_set.wait();
-  SCOPE_EXIT { let_thread_end.post(); };
+  SCOPE_EXIT {
+    let_thread_end.post();
+  };
   EXPECT_EQ(
       expectedSetOtherThreadNameResult, setThreadName(handle, kThreadName));
 }
@@ -64,8 +70,12 @@ TEST(ThreadName, setThreadNameOtherPthread) {
 TEST(ThreadName, setThreadNameOtherId) {
   Baton<> let_thread_end;
   thread th([&] { let_thread_end.wait(); });
-  SCOPE_EXIT { th.join(); };
-  SCOPE_EXIT { let_thread_end.post(); };
+  SCOPE_EXIT {
+    th.join();
+  };
+  SCOPE_EXIT {
+    let_thread_end.post();
+  };
   EXPECT_EQ(
       expectedSetOtherThreadNameResult,
       setThreadName(th.get_id(), kThreadName));

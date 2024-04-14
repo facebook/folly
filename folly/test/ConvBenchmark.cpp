@@ -319,7 +319,9 @@ void follyAtoiMeasure(unsigned int n, unsigned int digits) {
 void clibAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
-  FOR_EACH_RANGE (i, 0, n) { doNotOptimizeAway(atoll(p.begin())); }
+  FOR_EACH_RANGE (i, 0, n) {
+    doNotOptimizeAway(atoll(p.begin()));
+  }
 }
 
 void lexicalCastMeasure(unsigned int n, unsigned int digits) {
@@ -475,7 +477,9 @@ struct StringIdenticalToBM {
   StringIdenticalToBM() {}
   void operator()(unsigned int n, size_t len) const {
     String s;
-    BENCHMARK_SUSPEND { s.append(len, '0'); }
+    BENCHMARK_SUSPEND {
+      s.append(len, '0');
+    }
     FOR_EACH_RANGE (i, 0, n) {
       String result = to<String>(s);
       doNotOptimizeAway(result.size());
@@ -488,7 +492,9 @@ struct StringVariadicToBM {
   StringVariadicToBM() {}
   void operator()(unsigned int n, size_t len) const {
     String s;
-    BENCHMARK_SUSPEND { s.append(len, '0'); }
+    BENCHMARK_SUSPEND {
+      s.append(len, '0');
+    }
     FOR_EACH_RANGE (i, 0, n) {
       String result = to<String>(s, nullptr);
       doNotOptimizeAway(result.size());

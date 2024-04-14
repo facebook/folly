@@ -1264,9 +1264,9 @@ class F14Table : public Policy {
   }
 
   F14Table(F14Table&& rhs) noexcept(
-      std::is_nothrow_move_constructible<Hasher>::value&&
-          std::is_nothrow_move_constructible<KeyEqual>::value&&
-              std::is_nothrow_move_constructible<Alloc>::value)
+      std::is_nothrow_move_constructible<Hasher>::value &&
+      std::is_nothrow_move_constructible<KeyEqual>::value &&
+      std::is_nothrow_move_constructible<Alloc>::value)
       : Policy{std::move(rhs)} {
     swapContents(rhs);
   }
@@ -1296,8 +1296,8 @@ class F14Table : public Policy {
   }
 
   F14Table& operator=(F14Table&& rhs) noexcept(
-      std::is_nothrow_move_assignable<Hasher>::value&&
-          std::is_nothrow_move_assignable<KeyEqual>::value &&
+      std::is_nothrow_move_assignable<Hasher>::value &&
+      std::is_nothrow_move_assignable<KeyEqual>::value &&
       (kAllocIsAlwaysEqual ||
        (AllocTraits::propagate_on_container_move_assignment::value &&
         std::is_nothrow_move_assignable<Alloc>::value))) {

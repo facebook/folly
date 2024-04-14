@@ -64,8 +64,8 @@ inline constexpr empty_fn empty{};
 //  mimic: std::data, C++17
 struct data_fn {
   template <typename C>
-  FOLLY_ERASE constexpr auto operator()(C& c) const noexcept(noexcept(c.data()))
-      -> decltype(c.data()) {
+  FOLLY_ERASE constexpr auto operator()(C& c) const
+      noexcept(noexcept(c.data())) -> decltype(c.data()) {
     return c.data();
   }
   template <typename C>

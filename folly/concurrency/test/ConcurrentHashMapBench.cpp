@@ -214,8 +214,7 @@ void benches() {
             << std::endl;
   for (int nthr : {1, 10}) {
     std::cout << "========================= " << std::setw(2) << nthr
-              << " threads"
-              << " =========================" << std::endl;
+              << " threads" << " =========================" << std::endl;
     bench_ctor_dtor(nthr, 0, "CHM ctor/dtor -- empty          ");
     bench_ctor_dtor(nthr, 1, "CHM ctor/dtor -- 1 item         ");
     dottedLine();

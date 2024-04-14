@@ -140,7 +140,7 @@ class Indestructible final {
   T const* operator->() const noexcept { return get(); }
 
   /* implicit */ operator T&() noexcept { return *get(); }
-  /* implicit */ operator T const &() const noexcept { return *get(); }
+  /* implicit */ operator T const&() const noexcept { return *get(); }
 
  private:
   struct Storage {

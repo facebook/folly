@@ -464,7 +464,9 @@ void AsyncServerSocket::bind(uint16_t port) {
         "bad getaddrinfo");
   }
 
-  SCOPE_EXIT { freeaddrinfo(res0); };
+  SCOPE_EXIT {
+    freeaddrinfo(res0);
+  };
 
   auto setupAddress = [&](struct addrinfo* res) {
     auto s = netops::socket(res->ai_family, res->ai_socktype, res->ai_protocol);

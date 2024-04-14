@@ -96,8 +96,8 @@ class thread_cached_synchronized {
   using tlp_cache_state = ThreadLocalPtr<cache_state>;
 
   template <typename... A>
-  static constexpr bool nx = noexcept(truth_state{
-      std::in_place, FOLLY_DECLVAL(A)...});
+  static constexpr bool nx =
+      noexcept(truth_state{std::in_place, FOLLY_DECLVAL(A)...});
 
   template <bool C>
   using if_ = std::enable_if_t<C, int>;

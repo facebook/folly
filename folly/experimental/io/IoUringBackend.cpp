@@ -409,9 +409,8 @@ IoUringFdRegistrationRecord* IoUringBackend::FdRegistry::alloc(
     // this usually happens when we hit the file desc limit
     // and retrying this operation for every request is expensive
     err_ = true;
-    LOG(ERROR) << "io_uring_register_files(1) "
-               << "failed errno = " << errno << ":\"" << folly::errnoStr(errno)
-               << "\" " << this;
+    LOG(ERROR) << "io_uring_register_files(1) " << "failed errno = " << errno
+               << ":\"" << folly::errnoStr(errno) << "\" " << this;
     return nullptr;
   }
 
@@ -954,7 +953,9 @@ void IoUringBackend::processPollIo(
   if (ev) {
     if (flags & IORING_CQE_F_MORE) {
       ioSqe->useCount_++;
-      SCOPE_EXIT { ioSqe->useCount_--; };
+      SCOPE_EXIT {
+        ioSqe->useCount_--;
+      };
       if (ioSqe->cbData_.processCb(this, res, flags)) {
         return;
       }
@@ -1427,7 +1428,9 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   struct io_uring_cqe* cqe;
 
   setGetActiveEvents();
-  SCOPE_EXIT { doneGetActiveEvents(); };
+  SCOPE_EXIT {
+    doneGetActiveEvents();
+  };
 
   auto inner_do_wait = [&]() -> int {
     if (waitingToSubmit_) {
@@ -1931,7 +1934,9 @@ static bool doKernelSupportsSendZC() {
         << "doKernelSupportsSendZC: Unexpectedly io_uring_queue_init failed";
     return false;
   }
-  SCOPE_EXIT { io_uring_queue_exit(&ring); };
+  SCOPE_EXIT {
+    io_uring_queue_exit(&ring);
+  };
 
   auto* sqe = ::io_uring_get_sqe(&ring);
   if (!sqe) {

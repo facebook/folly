@@ -271,7 +271,9 @@ inline size_t FiberManager::recordStackPosition(size_t position) {
 
 inline void FiberManager::loopUntilNoReadyImpl() {
   runFibersHelper([&] {
-    SCOPE_EXIT { isLoopScheduled_ = false; };
+    SCOPE_EXIT {
+      isLoopScheduled_ = false;
+    };
 
     bool hadRemote = true;
     while (hadRemote) {
@@ -317,7 +319,9 @@ inline void FiberManager::runEagerFiber(Fiber* fiber) {
 inline void FiberManager::runEagerFiberImpl(Fiber* fiber) {
   folly::fibers::runInMainContext([&] {
     auto prevCurrentFiber = std::exchange(currentFiber_, fiber);
-    SCOPE_EXIT { currentFiber_ = prevCurrentFiber; };
+    SCOPE_EXIT {
+      currentFiber_ = prevCurrentFiber;
+    };
     runFibersHelper([&] { runReadyFiber(fiber); });
   });
 }

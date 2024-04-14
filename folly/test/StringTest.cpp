@@ -78,10 +78,14 @@ TEST(StringPrintf, Appending) {
 void vprintfCheck(const char* expected, const char* fmt, ...) {
   va_list apOrig;
   va_start(apOrig, fmt);
-  SCOPE_EXIT { va_end(apOrig); };
+  SCOPE_EXIT {
+    va_end(apOrig);
+  };
   va_list ap;
   va_copy(ap, apOrig);
-  SCOPE_EXIT { va_end(ap); };
+  SCOPE_EXIT {
+    va_end(ap);
+  };
 
   // Check both APIs for calling stringVPrintf()
   EXPECT_EQ(expected, stringVPrintf(fmt, ap));
@@ -105,7 +109,9 @@ void vprintfCheck(const char* expected, const char* fmt, ...) {
 void vprintfError(const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
-  SCOPE_EXIT { va_end(ap); };
+  SCOPE_EXIT {
+    va_end(ap);
+  };
 
 #ifdef HAVE_VSNPRINTF_ERRORS
   // OSX's sprintf family does not return a negative number on a bad format

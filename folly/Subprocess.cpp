@@ -153,8 +153,7 @@ SubprocessSpawnError::SubprocessSpawnError(
 namespace {
 
 // Copy pointers to the given strings in a format suitable for posix_spawn
-std::unique_ptr<const char* []> cloneStrings(
-    const std::vector<std::string>& s) {
+std::unique_ptr<const char*[]> cloneStrings(const std::vector<std::string>& s) {
   std::unique_ptr<const char*[]> d(new const char*[s.size() + 1]);
   for (size_t i = 0; i < s.size(); i++) {
     d[i] = s[i].c_str();

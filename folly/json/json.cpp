@@ -682,7 +682,7 @@ std::string parseString(Input& in) {
     if (*in == '\\') {
       ++in;
       switch (*in) {
-        // clang-format off
+          // clang-format off
         case '\"':    ret.push_back('\"'); ++in; break;
         case '\\':    ret.push_back('\\'); ++in; break;
         case '/':     ret.push_back('/');  ++in; break;
@@ -935,7 +935,7 @@ void escapeStringImpl(
       out.append(buf, 2);
     } else if (*p <= 0x1f) {
       switch (*p) {
-        // clang-format off
+          // clang-format off
         case '\b': out.append("\\b"); p++; break;
         case '\f': out.append("\\f"); p++; break;
         case '\n': out.append("\\n"); p++; break;

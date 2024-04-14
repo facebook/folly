@@ -31,7 +31,9 @@ TESTFUN(clause_23_3_6_1_3) {
   auto const n = random(0U, 10000U);
   VECTOR v(n);
   EXPECT_EQ(v.size(), n);
-  FOR_EACH (i, v) { EXPECT_EQ(*i, VECTOR::value_type()); }
+  FOR_EACH (i, v) {
+    EXPECT_EQ(*i, VECTOR::value_type());
+  }
 }
 
 TESTFUN(clause_23_3_6_1_9) {
@@ -85,7 +87,9 @@ TESTFUN(clause_23_3_6_1_12) {
   auto const obj = randomObject<VECTOR::value_type>();
   v.assign(n, obj);
   EXPECT_EQ(v.size(), n);
-  FOR_EACH (i, v) { EXPECT_EQ(*i, obj); }
+  FOR_EACH (i, v) {
+    EXPECT_EQ(*i, obj);
+  }
 }
 
 TESTFUN(clause_23_3_6_2_1) {
@@ -104,16 +108,24 @@ TESTFUN(clause_23_3_6_2_7) {
   v1.swap(v2);
   EXPECT_EQ(v1.size(), n2);
   EXPECT_EQ(v2.size(), n1);
-  FOR_EACH (i, v1) { EXPECT_EQ(*i, obj2); }
-  FOR_EACH (i, v2) { EXPECT_EQ(*i, obj1); }
+  FOR_EACH (i, v1) {
+    EXPECT_EQ(*i, obj2);
+  }
+  FOR_EACH (i, v2) {
+    EXPECT_EQ(*i, obj1);
+  }
 }
 
 TESTFUN(clause_23_3_6_2_9) {
   VECTOR v;
   auto const n1 = random(0U, 10000U);
   v.resize(n1);
-  FOR_EACH (i, v) { EXPECT_EQ(*i, VECTOR::value_type()); }
-  FOR_EACH (i, v) { EXPECT_EQ(*i, VECTOR::value_type()); }
+  FOR_EACH (i, v) {
+    EXPECT_EQ(*i, VECTOR::value_type());
+  }
+  FOR_EACH (i, v) {
+    EXPECT_EQ(*i, VECTOR::value_type());
+  }
 }
 
 TESTFUN(clause_23_3_6_2_11) {
@@ -121,12 +133,16 @@ TESTFUN(clause_23_3_6_2_11) {
   auto const n1 = random(0U, 10000U);
   auto const obj1 = randomObject<VECTOR::value_type>();
   v.resize(n1, obj1);
-  FOR_EACH (i, v) { EXPECT_EQ(*i, obj1); }
+  FOR_EACH (i, v) {
+    EXPECT_EQ(*i, obj1);
+  }
   auto const n2 = random(0U, 10000U);
   auto const obj2 = randomObject<VECTOR::value_type>();
   v.resize(n2, obj2);
   if (n1 < n2) {
-    FOR_EACH_RANGE (i, n1, n2) { EXPECT_EQ(v[i], obj2); }
+    FOR_EACH_RANGE (i, n1, n2) {
+      EXPECT_EQ(v[i], obj2);
+    }
   }
 }
 
@@ -172,8 +188,12 @@ TESTFUN(clause_23_3_6_4_1_a) {
   EXPECT_EQ(v.size(), w.size() + 1);
   EXPECT_EQ(r - v.begin(), n2);
   EXPECT_EQ(*r, obj2);
-  FOR_EACH_RANGE (i, 0, r - v.begin()) { EXPECT_EQ(v[i], w[i]); }
-  FOR_EACH_RANGE (i, r - v.begin() + 1, v.size()) { EXPECT_EQ(v[i], w[i - 1]); }
+  FOR_EACH_RANGE (i, 0, r - v.begin()) {
+    EXPECT_EQ(v[i], w[i]);
+  }
+  FOR_EACH_RANGE (i, r - v.begin() + 1, v.size()) {
+    EXPECT_EQ(v[i], w[i - 1]);
+  }
 }
 
 TESTFUN(clause_23_3_6_4_1_c) {
@@ -194,7 +214,9 @@ TESTFUN(clause_23_3_6_4_1_c) {
 
   EXPECT_EQ(v.size(), w.size() + n3);
   EXPECT_EQ(r - v.begin(), n2);
-  FOR_EACH_RANGE (i, 0, r - v.begin()) { EXPECT_EQ(v[i], w[i]); }
+  FOR_EACH_RANGE (i, 0, r - v.begin()) {
+    EXPECT_EQ(v[i], w[i]);
+  }
   FOR_EACH_RANGE (i, r - v.begin(), r - v.begin() + n3) {
     EXPECT_EQ(v[i], obj2);
   }
@@ -218,7 +240,9 @@ TESTFUN(clause_23_3_6_4_1_d) {
   EXPECT_EQ(v.back(), obj2);
   EXPECT_EQ(v.size(), w.size() + 1);
 
-  FOR_EACH_RANGE (i, 0, w.size()) { EXPECT_EQ(v[i], w[i]); }
+  FOR_EACH_RANGE (i, 0, w.size()) {
+    EXPECT_EQ(v[i], w[i]);
+  }
 }
 
 TESTFUN(clause_23_3_6_4_3) {
@@ -235,9 +259,13 @@ TESTFUN(clause_23_3_6_4_3) {
   auto it = v.erase(v.begin() + n2);
   EXPECT_EQ(v.size() + 1, w.size());
 
-  FOR_EACH_RANGE (i, 0, it - v.begin()) { EXPECT_EQ(v[i], w[i]); }
+  FOR_EACH_RANGE (i, 0, it - v.begin()) {
+    EXPECT_EQ(v[i], w[i]);
+  }
 
-  FOR_EACH_RANGE (i, it - v.begin(), v.size()) { EXPECT_EQ(v[i], w[i + 1]); }
+  FOR_EACH_RANGE (i, it - v.begin(), v.size()) {
+    EXPECT_EQ(v[i], w[i + 1]);
+  }
 }
 
 TESTFUN(clause_23_3_6_4_4) {
@@ -255,7 +283,9 @@ TESTFUN(clause_23_3_6_4_4) {
   auto it = v.erase(v.begin() + n2, v.begin() + n3);
   EXPECT_EQ(v.size() + (n3 - n2), w.size());
 
-  FOR_EACH_RANGE (i, 0, it - v.begin()) { EXPECT_EQ(v[i], w[i]); }
+  FOR_EACH_RANGE (i, 0, it - v.begin()) {
+    EXPECT_EQ(v[i], w[i]);
+  }
 
   FOR_EACH_RANGE (i, it - v.begin(), v.size()) {
     EXPECT_EQ(v[i], w[i + (n3 - n2)]);

@@ -157,7 +157,9 @@ void enableInvalidParameters(SavedState state);
 template <typename Func>
 auto msvcSuppressAbortOnInvalidParams(Func func) -> decltype(func()) {
   auto savedState = detail::disableInvalidParameters();
-  SCOPE_EXIT { detail::enableInvalidParameters(savedState); };
+  SCOPE_EXIT {
+    detail::enableInvalidParameters(savedState);
+  };
   return func();
 }
 

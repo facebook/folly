@@ -145,9 +145,7 @@ class EventBaseEvent {
 
   const struct event* getEvent() const { return &event_; }
 
-  struct event* getEvent() {
-    return &event_;
-  }
+  struct event* getEvent() { return &event_; }
 
   bool isEventRegistered() const {
     return EventUtil::isEventRegistered(&event_);

@@ -757,9 +757,8 @@ class hazptr_domain {
       uintptr_t ftag, size_t shard, int count) {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
-      LOG(WARNING) << "Hazptr retired list too large:"
-                   << " ftag=" << ftag << " shard=" << shard
-                   << " count=" << count;
+      LOG(WARNING) << "Hazptr retired list too large:" << " ftag=" << ftag
+                   << " shard=" << shard << " count=" << count;
     }
   }
 

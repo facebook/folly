@@ -62,8 +62,7 @@ namespace {
 
 struct CacheState {
   CacheState() {
-    AtFork::registerHandler(
-        this, [] { return true; }, [] {}, [] { ++epoch; });
+    AtFork::registerHandler(this, [] { return true; }, [] {}, [] { ++epoch; });
   }
   ~CacheState() { AtFork::unregisterHandler(this); }
 

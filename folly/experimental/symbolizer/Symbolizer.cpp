@@ -300,7 +300,9 @@ FastStackTracePrinter::FastStackTracePrinter(
 FastStackTracePrinter::~FastStackTracePrinter() = default;
 
 void FastStackTracePrinter::printStackTrace(bool symbolize) {
-  SCOPE_EXIT { printer_->flush(); };
+  SCOPE_EXIT {
+    printer_->flush();
+  };
 
   FrameArray<kMaxStackTraceDepth> addresses;
   auto printStack = [this, &addresses, &symbolize] {
@@ -399,7 +401,9 @@ void SafeStackTracePrinter::printUnsymbolizedStackTrace() {
 }
 
 void SafeStackTracePrinter::printStackTrace(bool symbolize) {
-  SCOPE_EXIT { flush(); };
+  SCOPE_EXIT {
+    flush();
+  };
 
   // Skip the getStackTrace frame
   if (!getStackTraceSafe(*addresses_)) {
@@ -550,8 +554,8 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
 
   makecontext(
       &alt,
-      (void (*)())(void (*)(
-          UnsafeSelfAllocateStackTracePrinter*))(contextStart),
+      (void (*)())(void (*)(UnsafeSelfAllocateStackTracePrinter*))(
+          contextStart),
       /* argc */ 1,
       /* arg */ this);
   void* currentFakestack;

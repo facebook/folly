@@ -314,7 +314,9 @@ TEST(ForEach, FetchTestPreferIterator) {
 TEST(Foreach, ForEachRvalue) {
   const char* const hello = "hello";
   int n = 0;
-  FOR_EACH (it, std::string(hello)) { ++n; }
+  FOR_EACH (it, std::string(hello)) {
+    ++n;
+  }
   EXPECT_EQ(strlen(hello), n);
   FOR_EACH_R (it, std::string(hello)) {
     --n;
@@ -327,7 +329,9 @@ TEST(Foreach, ForEachNested) {
   const std::string hello = "hello";
   size_t n = 0;
   FOR_EACH (i, hello) {
-    FOR_EACH (j, hello) { ++n; }
+    FOR_EACH (j, hello) {
+      ++n;
+    }
   }
   auto len = hello.size();
   EXPECT_EQ(len * len, n);

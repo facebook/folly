@@ -864,7 +864,7 @@ TEST(Function, ParameterCopyMoveCount) {
   EXPECT_LE(cmt.copyCount(), 0);
 
   // pass by rvalue reference
-  Function<size_t(CopyMoveTracker &&)> uf4 = [](CopyMoveTracker&& c) {
+  Function<size_t(CopyMoveTracker&&)> uf4 = [](CopyMoveTracker&& c) {
     return c.moveCount();
   };
 

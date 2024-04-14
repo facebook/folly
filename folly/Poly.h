@@ -217,7 +217,8 @@ template <
     typename... As,
     std::enable_if_t<detail::IsPoly<Poly>::value, int> = 0>
 auto poly_call(Poly&& _this, As&&... as) -> decltype(poly_call<N, I>(
-    static_cast<Poly&&>(_this).get(), static_cast<As&&>(as)...)) {
+                                             static_cast<Poly&&>(_this).get(),
+                                             static_cast<As&&>(as)...)) {
   return poly_call<N, I>(
       static_cast<Poly&&>(_this).get(), static_cast<As&&>(as)...);
 }

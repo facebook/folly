@@ -533,7 +533,9 @@ class TestServer {
           errno);
     }
 
-    SCOPE_EXIT { freeaddrinfo(res); };
+    SCOPE_EXIT {
+      freeaddrinfo(res);
+    };
 
     if (bufSize > 0) {
       folly::netops::setsockopt(

@@ -32,12 +32,10 @@ TEST(ParkingLot, multilot) {
   folly::Baton<> lb;
 
   std::thread small([&]() {
-    smalllot.park(
-        0, false, [] { return true; }, [&]() { sb.post(); });
+    smalllot.park(0, false, [] { return true; }, [&]() { sb.post(); });
   });
   std::thread large([&]() {
-    largelot.park(
-        0, true, [] { return true; }, [&]() { lb.post(); });
+    largelot.park(0, true, [] { return true; }, [&]() { lb.post(); });
   });
   sb.wait();
   lb.wait();
@@ -74,8 +72,7 @@ TEST(ParkingLot, StressTestPingPong) {
     while (!testDone.load(std::memory_order_relaxed)) {
       // wait while the atomic is still equal to c, the other thread unblocks us
       // because it signals before spinning itself
-      lot.park(
-          &one, -1, [&]() { return one.load() == local; }, []() {});
+      lot.park(&one, -1, [&]() { return one.load() == local; }, []() {});
       local = one.load(std::memory_order_acquire);
       two.store(local, std::memory_order_release);
     }
@@ -115,8 +112,7 @@ TEST(ParkingLot, LargeWord) {
   ParkingLot<uint64_t> lot;
   std::atomic<uint64_t> w{0};
 
-  lot.park(
-      0, false, [&]() { return w == 1; }, []() {});
+  lot.park(0, false, [&]() { return w == 1; }, []() {});
 
   // Validate should return false, will hang otherwise.
 }

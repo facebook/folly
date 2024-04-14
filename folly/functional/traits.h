@@ -308,56 +308,56 @@ struct function_traits<R(A...) const volatile noexcept>
       detail::function_traits_cvref_<int const volatile> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...)& noexcept>
+struct function_traits<R(A...) & noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...) const& noexcept>
+struct function_traits<R(A...) const & noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...) volatile& noexcept>
+struct function_traits<R(A...) volatile & noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int volatile&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...) const volatile& noexcept>
+struct function_traits<R(A...) const volatile & noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const volatile&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...)&& noexcept>
+struct function_traits<R(A...) && noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int&&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...) const&& noexcept>
+struct function_traits<R(A...) const && noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int const&&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...) volatile&& noexcept>
+struct function_traits<R(A...) volatile && noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<false>,
       detail::function_traits_cvref_<int volatile&&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...) const volatile&& noexcept>
+struct function_traits<R(A...) const volatile && noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<false>,
@@ -392,56 +392,56 @@ struct function_traits<R(A..., ...) const volatile noexcept>
       detail::function_traits_cvref_<int const volatile> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...)& noexcept>
+struct function_traits<R(A..., ...) & noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...) const& noexcept>
+struct function_traits<R(A..., ...) const & noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int const&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...) volatile& noexcept>
+struct function_traits<R(A..., ...) volatile & noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int volatile&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...) const volatile& noexcept>
+struct function_traits<R(A..., ...) const volatile & noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int const volatile&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...)&& noexcept>
+struct function_traits<R(A..., ...) && noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int&&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...) const&& noexcept>
+struct function_traits<R(A..., ...) const && noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int const&&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...) volatile&& noexcept>
+struct function_traits<R(A..., ...) volatile && noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<true>,
       detail::function_traits_cvref_<int volatile&&> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...) const volatile&& noexcept>
+struct function_traits<R(A..., ...) const volatile && noexcept>
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<true>,
       detail::function_traits_var_<true>,

@@ -255,8 +255,7 @@ TEST_F(LoggerTest, streamingArgs) {
   messages.clear();
 
   // Test with both function-style and streaming arguments
-  FB_LOG(logger_, WARN, "foo=", foo) << " hello, "
-                                     << "world: " << 34;
+  FB_LOG(logger_, WARN, "foo=", foo) << " hello, " << "world: " << 34;
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("foo=bar hello, world: 34", messages[0].first.getMessage());
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));

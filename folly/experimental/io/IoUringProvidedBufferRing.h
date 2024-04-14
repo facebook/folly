@@ -76,9 +76,7 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
       return 1LLU << std::max<int>(5, bufferShift);
     }
 
-    struct io_uring_buf_ring* ring() const noexcept {
-      return ringPtr_;
-    }
+    struct io_uring_buf_ring* ring() const noexcept { return ringPtr_; }
 
     struct io_uring_buf* ringBuf(int idx) const noexcept {
       return &ringPtr_->bufs[idx & ringMask_];

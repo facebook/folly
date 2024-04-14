@@ -679,8 +679,8 @@ class small_vector
    * of in-place vs. heap between this and o.
    */
   void swap(small_vector& o) noexcept(
-      std::is_nothrow_move_constructible<Value>::value&&
-          std::is_nothrow_swappable_v<Value>) {
+      std::is_nothrow_move_constructible<Value>::value &&
+      std::is_nothrow_swappable_v<Value>) {
     using std::swap; // Allow ADL on swap for our value_type.
 
     if (this->isExtern() && o.isExtern()) {
@@ -1171,8 +1171,7 @@ class small_vector
     if (newSize <= capacity()) {
       return;
     }
-    makeSizeInternal(
-        newSize, false, [](void*) { assume_unreachable(); }, 0);
+    makeSizeInternal(newSize, false, [](void*) { assume_unreachable(); }, 0);
   }
 
   template <typename EmplaceFunc>

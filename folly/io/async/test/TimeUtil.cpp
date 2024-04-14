@@ -121,7 +121,9 @@ static int64_t determineSchedstatUnits() {
                << configPath;
     return -1;
   }
-  SCOPE_EXIT { fclose(f); };
+  SCOPE_EXIT {
+    fclose(f);
+  };
 
   int64_t hz = -1;
   char buf[1024];

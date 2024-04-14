@@ -289,7 +289,7 @@ class BatonAwaitableWaiter : public Baton::Waiter {
 } // namespace detail
 
 inline detail::BatonAwaitableWaiter /* implicit */ operator co_await(
-    Baton& baton) {
+    Baton & baton) {
   return detail::BatonAwaitableWaiter(baton);
 }
 #endif

@@ -87,7 +87,9 @@ void testReadsSerially(
   if (fd == -1)
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  SCOPE_EXIT {
+    ::close(fd);
+  };
 
   for (size_t i = 0; i < specs.size(); i++) {
     auto buf = TestUtil::allocateAligned(specs[i].size);
@@ -126,7 +128,9 @@ void testReadsParallel(
   if (fd == -1)
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  SCOPE_EXIT {
+    ::close(fd);
+  };
 
   std::vector<std::thread> threads;
   if (multithreaded) {
@@ -197,7 +201,9 @@ void testReadsQueued(
   if (fd == -1)
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  SCOPE_EXIT {
+    ::close(fd);
+  };
   for (size_t i = 0; i < specs.size(); i++) {
     bufs.push_back(TestUtil::allocateAligned(specs[i].size));
     ops[i].pread(fd, bufs[i].get(), specs[i].size, specs[i].start);
@@ -389,7 +395,9 @@ TYPED_TEST_P(AsyncTest, NonBlockingWait) {
   if (fd == -1)
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  SCOPE_EXIT {
+    ::close(fd);
+  };
   size_t size = 2 * test::async_base_test_lib_detail::kODirectAlign;
   auto buf = test::async_base_test_lib_detail::TestUtil::allocateAligned(size);
   op.pread(fd, buf.get(), size, 0);
@@ -421,7 +429,9 @@ TYPED_TEST_P(AsyncTest, Cancel) {
   if (fd == -1)
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  SCOPE_EXIT {
+    ::close(fd);
+  };
 
   size_t completed = 0;
 
@@ -487,7 +497,9 @@ TYPED_TEST_P(AsyncBatchTest, BatchRead) {
   if (fd == -1)
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
-  SCOPE_EXIT { ::close(fd); };
+  SCOPE_EXIT {
+    ::close(fd);
+  };
 
   using OpPtr = folly::AsyncBaseOp*;
   std::unique_ptr<typename TypeParam::Op[]> ops(

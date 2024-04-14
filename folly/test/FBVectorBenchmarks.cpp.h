@@ -68,7 +68,9 @@ void BENCHFUN(insertFront)(int iters, int initialSize) {
   auto const obj = randomObject<VECTOR::value_type>();
   VECTOR v(initialSize, obj);
   braces.dismissing([&]() {
-    FOR_EACH_RANGE (i, 0, iters) { v.insert(v.begin(), obj); }
+    FOR_EACH_RANGE (i, 0, iters) {
+      v.insert(v.begin(), obj);
+    }
   });
 }
 
@@ -84,7 +86,9 @@ void BENCHFUN(pushBack)(int iters, int initialSize) {
   auto const obj = randomObject<VECTOR::value_type>();
   VECTOR v(initialSize, obj);
   braces.dismissing([&]() {
-    FOR_EACH_RANGE (i, 0, iters) { v.push_back(obj); }
+    FOR_EACH_RANGE (i, 0, iters) {
+      v.push_back(obj);
+    }
   });
 }
 

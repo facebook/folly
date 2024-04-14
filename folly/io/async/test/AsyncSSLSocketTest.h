@@ -764,9 +764,7 @@ class BlockingWriteClient : private AsyncSSLSocket::HandshakeCB,
     socket_->sslConn(this, std::chrono::milliseconds(100));
   }
 
-  struct iovec* getIovec() const {
-    return iov_.get();
-  }
+  struct iovec* getIovec() const { return iov_.get(); }
   uint32_t getIovecCount() const { return iovCount_; }
 
  private:
@@ -813,9 +811,9 @@ class BlockingWriteServer : private AsyncSSLSocket::HandshakeCB,
                << ": rc=" << rc;
       }
       if (iov[n].iov_len > bytesLeft) {
-        FAIL() << "server did not read enough data: "
-               << "ended at byte " << bytesLeft << "/" << iov[n].iov_len
-               << " in iovec " << n << "/" << count;
+        FAIL() << "server did not read enough data: " << "ended at byte "
+               << bytesLeft << "/" << iov[n].iov_len << " in iovec " << n << "/"
+               << count;
       }
 
       idx += iov[n].iov_len;

@@ -41,7 +41,7 @@ namespace adl {
 template <typename Awaitable>
 Awaitable&& co_withCancellation(
     const folly::CancellationToken&, Awaitable&& awaitable) noexcept {
-  return (Awaitable &&) awaitable;
+  return (Awaitable&&)awaitable;
 }
 
 struct WithCancellationFunction {
@@ -49,20 +49,19 @@ struct WithCancellationFunction {
   auto operator()(
       const folly::CancellationToken& cancelToken, Awaitable&& awaitable) const
       noexcept(
-          noexcept(co_withCancellation(cancelToken, (Awaitable &&) awaitable)))
+          noexcept(co_withCancellation(cancelToken, (Awaitable&&)awaitable)))
           -> decltype(co_withCancellation(
-              cancelToken, (Awaitable &&) awaitable)) {
-    return co_withCancellation(cancelToken, (Awaitable &&) awaitable);
+              cancelToken, (Awaitable&&)awaitable)) {
+    return co_withCancellation(cancelToken, (Awaitable&&)awaitable);
   }
 
   template <typename Awaitable>
   auto operator()(folly::CancellationToken&& cancelToken, Awaitable&& awaitable)
-      const noexcept(noexcept(co_withCancellation(
-          std::move(cancelToken), (Awaitable &&) awaitable)))
+      const noexcept(noexcept(
+          co_withCancellation(std::move(cancelToken), (Awaitable&&)awaitable)))
           -> decltype(co_withCancellation(
-              std::move(cancelToken), (Awaitable &&) awaitable)) {
-    return co_withCancellation(
-        std::move(cancelToken), (Awaitable &&) awaitable);
+              std::move(cancelToken), (Awaitable&&)awaitable)) {
+    return co_withCancellation(std::move(cancelToken), (Awaitable&&)awaitable);
   }
 };
 } // namespace adl

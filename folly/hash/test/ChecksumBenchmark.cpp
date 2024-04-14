@@ -23,8 +23,10 @@
 constexpr size_t kBufSize = 512 * 1024;
 uint8_t* buf;
 
-#define BENCH_CRC32(S) \
-  BENCHMARK(crc32_##S) { folly::doNotOptimizeAway(folly::crc32(buf, (S), 2)); }
+#define BENCH_CRC32(S)                                   \
+  BENCHMARK(crc32_##S) {                                 \
+    folly::doNotOptimizeAway(folly::crc32(buf, (S), 2)); \
+  }
 
 #define BENCH_CRC32C(S)                                   \
   BENCHMARK(crc32c_##S) {                                 \

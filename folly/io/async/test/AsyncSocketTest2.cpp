@@ -4819,7 +4819,9 @@ TEST_F(AsyncSocketByteEventTest, FailUnixSocket) {
   EXPECT_EQ(netops::socketpair(AF_UNIX, SOCK_STREAM, 0, fd), 0);
   ASSERT_NE(fd[0], NetworkSocket());
   ASSERT_NE(fd[1], NetworkSocket());
-  SCOPE_EXIT { netops::close(fd[1]); };
+  SCOPE_EXIT {
+    netops::close(fd[1]);
+  };
 
   EXPECT_EQ(netops::set_socket_non_blocking(fd[0]), 0);
   EXPECT_EQ(netops::set_socket_non_blocking(fd[1]), 0);
@@ -9391,7 +9393,9 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   // "Server" socket
   auto sfd = fds[1];
   ASSERT_NE(sfd, NetworkSocket());
-  SCOPE_EXIT { netops::close(sfd); };
+  SCOPE_EXIT {
+    netops::close(sfd);
+  };
 
   // Instantiate AsyncSocket object for the connected socket
   EventBase evb;
@@ -9468,7 +9472,9 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   int fd = 0;
   memcpy(&fd, CMSG_DATA(&r_u.cmh), sizeof(int));
   ASSERT_NE(fd, 0);
-  SCOPE_EXIT { close(fd); };
+  SCOPE_EXIT {
+    close(fd);
+  };
 
   std::vector<uint8_t> transferredMagicString(magicString.length() + 1, 0);
 
@@ -9616,7 +9622,9 @@ TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {
   EXPECT_EQ(netops::socketpair(AF_UNIX, SOCK_STREAM, 0, fd), 0);
   ASSERT_NE(fd[0], NetworkSocket());
   ASSERT_NE(fd[1], NetworkSocket());
-  SCOPE_EXIT { netops::close(fd[1]); };
+  SCOPE_EXIT {
+    netops::close(fd[1]);
+  };
 
   EXPECT_EQ(netops::set_socket_non_blocking(fd[0]), 0);
   EXPECT_EQ(netops::set_socket_non_blocking(fd[1]), 0);

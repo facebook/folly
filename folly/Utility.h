@@ -58,7 +58,7 @@ template <typename T>
 T* decay_1_(T*);
 
 template <typename T>
-auto decay_0_(int) -> decltype(detail::decay_1_(FOLLY_DECLVAL(T &&)));
+auto decay_0_(int) -> decltype(detail::decay_1_(FOLLY_DECLVAL(T&&)));
 template <typename T>
 auto decay_0_(short) -> void;
 
@@ -277,8 +277,8 @@ struct inheritable_contain_ {
       : v(static_cast<A&&>(a)...) {}
   FOLLY_ERASE operator T&() & noexcept { return v; }
   FOLLY_ERASE operator T&&() && noexcept { return static_cast<T&&>(v); }
-  FOLLY_ERASE operator T const &() const& noexcept { return v; }
-  FOLLY_ERASE operator T const &&() const&& noexcept {
+  FOLLY_ERASE operator T const&() const& noexcept { return v; }
+  FOLLY_ERASE operator T const&&() const&& noexcept {
     return static_cast<T const&&>(v);
   }
 };

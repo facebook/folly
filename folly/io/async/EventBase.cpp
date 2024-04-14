@@ -492,7 +492,9 @@ EventBase::LoopStatus EventBase::loopWithSuspension() {
   DCHECK_NE(evb_->getPollableFd(), -1)
       << "loopWithSuspension() is only supported for backends with pollable fd";
   loopMainSetup();
-  SCOPE_EXIT { loopMainCleanup(); };
+  SCOPE_EXIT {
+    loopMainCleanup();
+  };
   LoopOptions options;
   options.allowSuspension = true;
   return loopMain(EVLOOP_NONBLOCK, options);
@@ -873,7 +875,9 @@ void EventBase::runInEventBaseThreadAndWait(Func fn) noexcept {
 
   Baton<> ready;
   runInEventBaseThread([&ready, fn = std::move(fn)]() mutable {
-    SCOPE_EXIT { ready.post(); };
+    SCOPE_EXIT {
+      ready.post();
+    };
     // A trick to force the stored functor to be executed and then destructed
     // before posting the baton and waking the waiting thread.
     copy(std::move(fn))();

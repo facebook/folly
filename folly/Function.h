@@ -264,7 +264,7 @@ constexpr bool isEmptyFunction(T const& t) {
 }
 
 template <typename F, typename... Args>
-using CallableResult = decltype(FOLLY_DECLVAL(F &&)(FOLLY_DECLVAL(Args &&)...));
+using CallableResult = decltype(FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(Args&&)...));
 
 template <typename F, typename... Args>
 constexpr bool CallableNoexcept =

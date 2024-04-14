@@ -1738,8 +1738,9 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
 
 namespace detail {
 struct [[deprecated(
-    "use explicit lock(), wlock(), or rlock() instead")]] SYNCHRONIZED_macro_is_deprecated{};
-}
+    "use explicit lock(), wlock(), or rlock() instead")]] SYNCHRONIZED_macro_is_deprecated {
+};
+} // namespace detail
 
 /**
  * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock

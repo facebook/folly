@@ -1162,8 +1162,7 @@ TEST(CPQ, Accuracy) {
   for (auto s : test_sizes) {
     for (auto p : rates) {
       std::cout << "\n------ Size: " << s << "  Get top: " << 100. / p << "%"
-                << " (Num: " << s / p << ")"
-                << " ------" << std::endl;
+                << " (Num: " << s / p << ")" << " ------" << std::endl;
       accuracy_test<Queue<int>>("FIFO Q", s, p);
       accuracy_test<RelaxedConcurrentPriorityQueue<int, false, false, 0>>(
           "RCPQ(strict)", s, p);

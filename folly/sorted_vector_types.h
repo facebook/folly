@@ -715,8 +715,8 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   void swap(sorted_vector_set& o) noexcept(
-      std::is_nothrow_swappable_v<Compare>&& noexcept(
-          std::declval<Container&>().swap(o.m_.cont_))) {
+      std::is_nothrow_swappable_v<Compare> &&
+      noexcept(std::declval<Container&>().swap(o.m_.cont_))) {
     using std::swap; // Allow ADL for swap(); fall back to std::swap().
     Compare& a = m_;
     Compare& b = o.m_;
@@ -760,22 +760,22 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     explicit EBO(const Compare& c, const Allocator& alloc) noexcept(
         std::is_nothrow_default_constructible<Container>::value)
         : Compare(c), cont_(alloc) {}
-    EBO(const EBO& other, const Allocator& alloc)
-    noexcept(std::is_nothrow_constructible<
-             Container,
-             const Container&,
-             const Allocator&>::value)
+    EBO(const EBO& other, const Allocator& alloc) noexcept(
+        std::is_nothrow_constructible<
+            Container,
+            const Container&,
+            const Allocator&>::value)
         : Compare(static_cast<const Compare&>(other)),
           cont_(other.cont_, alloc) {}
-    EBO(EBO&& other, const Allocator& alloc)
-    noexcept(std::is_nothrow_constructible<
-             Container,
-             Container&&,
-             const Allocator&>::value)
+    EBO(EBO&& other, const Allocator& alloc) noexcept(
+        std::is_nothrow_constructible<
+            Container,
+            Container&&,
+            const Allocator&>::value)
         : Compare(static_cast<Compare&&>(other)),
           cont_(std::move(other.cont_), alloc) {}
-    EBO(const Compare& c, Container&& cont)
-    noexcept(std::is_nothrow_move_constructible<Container>::value)
+    EBO(const Compare& c, Container&& cont) noexcept(
+        std::is_nothrow_move_constructible<Container>::value)
         : Compare(c), cont_(std::move(cont)) {}
     Container cont_;
   } m_;
@@ -1450,22 +1450,22 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     explicit EBO(const value_compare& c, const Allocator& alloc) noexcept(
         std::is_nothrow_default_constructible<Container>::value)
         : value_compare(c), cont_(alloc) {}
-    EBO(const EBO& other, const Allocator& alloc)
-    noexcept(std::is_nothrow_constructible<
-             Container,
-             const Container&,
-             const Allocator&>::value)
+    EBO(const EBO& other, const Allocator& alloc) noexcept(
+        std::is_nothrow_constructible<
+            Container,
+            const Container&,
+            const Allocator&>::value)
         : value_compare(static_cast<const value_compare&>(other)),
           cont_(other.cont_, alloc) {}
-    EBO(EBO&& other, const Allocator& alloc)
-    noexcept(std::is_nothrow_constructible<
-             Container,
-             Container&&,
-             const Allocator&>::value)
+    EBO(EBO&& other, const Allocator& alloc) noexcept(
+        std::is_nothrow_constructible<
+            Container,
+            Container&&,
+            const Allocator&>::value)
         : value_compare(static_cast<value_compare&&>(other)),
           cont_(std::move(other.cont_), alloc) {}
-    EBO(const Compare& c, Container&& cont)
-    noexcept(std::is_nothrow_move_constructible<Container>::value)
+    EBO(const Compare& c, Container&& cont) noexcept(
+        std::is_nothrow_move_constructible<Container>::value)
         : value_compare(c), cont_(std::move(cont)) {}
     Container cont_;
   } m_;

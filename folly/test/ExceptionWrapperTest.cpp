@@ -766,6 +766,5 @@ TEST(ExceptionWrapper, selfSwapTest) {
 
 TEST(ExceptionWrapper, terminateWithTest) {
   auto ew = make_exception_wrapper<int>(42);
-  EXPECT_DEATH(
-      try { ew.terminate_with(); } catch (...){}, "int");
+  EXPECT_DEATH(try { ew.terminate_with(); } catch (...){}, "int");
 }

@@ -1124,7 +1124,7 @@ class Future : private futures::detail::FutureBase<T> {
           int>::type = 0>
   Future& operator=(Future<T2>&& other) {
     return operator=(
-        std::move(other).thenValue([](T2&& v) { return T(std::move(v)); }));
+        std::move(other).thenValue([](T2 && v) { return T(std::move(v)); }));
   }
 
   using Base::cancel;
@@ -2525,8 +2525,12 @@ Future<T> reduce(It first, It last, T&& initial, F&& func);
 
 /// Sugar for the most common case
 template <class Collection, class T, class F>
-auto reduce(Collection&& c, T&& initial, F&& func) -> decltype(folly::reduce(
-    c.begin(), c.end(), static_cast<T&&>(initial), static_cast<F&&>(func))) {
+auto reduce(Collection&& c, T&& initial, F&& func)
+    -> decltype(folly::reduce(
+        c.begin(),
+        c.end(),
+        static_cast<T&&>(initial),
+        static_cast<F&&>(func))) {
   return folly::reduce(
       c.begin(), c.end(), static_cast<T&&>(initial), static_cast<F&&>(func));
 }

@@ -660,10 +660,11 @@ struct ExpectedHelper {
       class... Fns,
       class E = ExpectedErrorType<This>,
       class T = ExpectedHelper>
-  static auto then_(This&& ex, Fn&& fn, Fns&&... fns) -> decltype(T::then_(
-      T::template return_<E>(
-          (std::declval<Fn>()(std::declval<This>().value()), unit)),
-      std::declval<Fns>()...)) {
+  static auto then_(This&& ex, Fn&& fn, Fns&&... fns)
+      -> decltype(T::then_(
+          T::template return_<E>(
+              (std::declval<Fn>()(std::declval<This>().value()), unit)),
+          std::declval<Fns>()...)) {
     if (FOLLY_LIKELY(ex.which_ == expected_detail::Which::eValue)) {
       return T::then_(
           T::template return_<E>(
@@ -1122,7 +1123,8 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
    * swap
    */
   void swap(Expected& that) noexcept(
-      std::is_nothrow_swappable_v<Value>&& std::is_nothrow_swappable_v<Error>) {
+      std::is_nothrow_swappable_v<Value> &&
+      std::is_nothrow_swappable_v<Error>) {
     if (this->uninitializedByException() || that.uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1249,7 +1251,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto then(Fns&&... fns)
       const& -> decltype(expected_detail::ExpectedHelper::then_(
-          std::declval<const Base&>(), std::declval<Fns>()...)) {
+                 std::declval<const Base&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1259,7 +1261,8 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto then(Fns&&... fns) & -> decltype(expected_detail::ExpectedHelper::then_(
-      std::declval<Base&>(), std::declval<Fns>()...)) {
+                                std::declval<Base&>(),
+                                std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1269,7 +1272,8 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto then(Fns&&... fns) && -> decltype(expected_detail::ExpectedHelper::then_(
-      std::declval<Base&&>(), std::declval<Fns>()...)) {
+                                 std::declval<Base&&>(),
+                                 std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1284,7 +1288,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto orElse(Fns&&... fns)
       const& -> decltype(expected_detail::ExpectedHelper::orElse_(
-          std::declval<const Base&>(), std::declval<Fns>()...)) {
+                 std::declval<const Base&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1295,7 +1299,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto
   orElse(Fns&&... fns) & -> decltype(expected_detail::ExpectedHelper::orElse_(
-      std::declval<Base&>(), std::declval<Fns>()...)) {
+                             std::declval<Base&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1306,7 +1310,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
   auto
   orElse(Fns&&... fns) && -> decltype(expected_detail::ExpectedHelper::orElse_(
-      std::declval<Base&&>(), std::declval<Fns>()...)) {
+                              std::declval<Base&&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1330,7 +1334,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   template <class Yes, class No = MakeBadExpectedAccess>
   auto thenOrThrow(Yes&& yes, No&& no = No{}) & -> decltype(std::declval<Yes>()(
-      std::declval<Value&>())) {
+                                                    std::declval<Value&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<Value&>()));
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
@@ -1459,7 +1463,7 @@ inline bool operator>=(
  */
 template <class Value, class Error>
 void swap(Expected<Value, Error>& lhs, Expected<Value, Error>& rhs) noexcept(
-    std::is_nothrow_swappable_v<Value>&& std::is_nothrow_swappable_v<Error>) {
+    std::is_nothrow_swappable_v<Value> && std::is_nothrow_swappable_v<Error>) {
   lhs.swap(rhs);
 }
 
