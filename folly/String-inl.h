@@ -20,6 +20,7 @@
 #include <stdexcept>
 
 #include <folly/CppAttributes.h>
+#include <folly/container/Reserve.h>
 
 #ifndef FOLLY_STRING_H_
 #error This file may only be included from String.h
@@ -39,7 +40,7 @@ template <class String>
 void cEscape(StringPiece str, String& out) {
   char esc[4];
   esc[0] = '\\';
-  out.reserve(out.size() + str.size());
+  grow_capacity_by(out, str.size());
   auto p = str.begin();
   auto last = p; // last regular character
   // We advance over runs of regular characters (printable, not double-quote or
@@ -84,7 +85,7 @@ extern const std::array<unsigned char, 256> hexTable;
 
 template <class String>
 void cUnescape(StringPiece str, String& out, bool strict) {
-  out.reserve(out.size() + str.size());
+  grow_capacity_by(out, str.size());
   auto p = str.begin();
   auto last = p; // last regular character (not part of an escape sequence)
   // We advance over runs of regular characters (not backslash) and copy them
@@ -169,7 +170,7 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
   char esc[3];
   esc[0] = '%';
   // Preallocate assuming that 25% of the input string will be escaped
-  out.reserve(out.size() + str.size() + 3 * (str.size() / 4));
+  grow_capacity_by(out, str.size() + 3 * (str.size() / 4));
   auto p = str.begin();
   auto last = p; // last regular character
   // We advance over runs of passthrough characters and copy them in one go;
@@ -200,7 +201,7 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
 
 template <class String>
 bool tryUriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
-  out.reserve(out.size() + str.size());
+  grow_capacity_by(out, str.size());
   auto p = str.begin();
   auto last = p;
   // We advance over runs of passthrough characters and copy them in one go;
