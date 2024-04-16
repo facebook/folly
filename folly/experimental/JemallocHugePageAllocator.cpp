@@ -27,15 +27,19 @@
 
 #if (defined(MADV_HUGEPAGE) || defined(MAP_ALIGNED_SUPER)) && \
     defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
+
 #if defined(__FreeBSD__) || (JEMALLOC_VERSION_MAJOR >= 5)
 #define FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED 1
-bool folly::JemallocHugePageAllocator::hugePagesSupported{true};
-#endif
+#else
+#define FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED 0
+#endif // defined(__FreeBSD__) || (JEMALLOC_VERSION_MAJOR >= 5)
 
+#else
+#define FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED 0
 #endif // MADV_HUGEPAGE || MAP_ALIGNED_SUPER && defined(FOLLY_USE_JEMALLOC) &&
        // !FOLLY_SANITIZE
 
-#ifndef FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
+#if !FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
 // Some mocks when jemalloc.h is not included or version too old
 // or when the system does not support the MADV_HUGEPAGE madvise flag
 #undef MALLOCX_ARENA
@@ -58,8 +62,6 @@ struct extent_hooks_s {
   extent_alloc_t* alloc;
 };
 #endif // JEMALLOC_VERSION_MAJOR
-
-bool folly::JemallocHugePageAllocator::hugePagesSupported{false};
 
 #endif // FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
 
@@ -391,11 +393,7 @@ bool JemallocHugePageAllocator::default_init() {
 }
 
 bool JemallocHugePageAllocator::init(int initial_nr_pages, int max_nr_pages) {
-  if (!usingJEMalloc()) {
-    LOG(ERROR) << "Not linked with jemalloc?";
-    hugePagesSupported = false;
-  }
-  if (hugePagesSupported) {
+  if (hugePagesAllocSupported()) {
     if (flags_ == 0) {
       flags_ = arena.init(initial_nr_pages, max_nr_pages);
     } else {
@@ -414,6 +412,12 @@ size_t JemallocHugePageAllocator::freeSpace() {
 
 bool JemallocHugePageAllocator::addressInArena(void* address) {
   return arena.addressInArena(address);
+}
+
+bool JemallocHugePageAllocator::hugePagesAllocSupported() {
+  static const bool kHugePagesAllocSupported{
+      FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED && folly::usingJEMalloc()};
+  return kHugePagesAllocSupported;
 }
 
 unsigned arenaIndex() {

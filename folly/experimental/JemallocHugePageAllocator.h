@@ -68,15 +68,16 @@ class JemallocHugePageAllocator {
   static void* allocate(size_t size) {
     // If uninitialized, flags_ will be 0 and the mallocx behavior
     // will match that of a regular malloc
-    return hugePagesSupported ? mallocx(size, flags_) : malloc(size);
+    return hugePagesAllocSupported() ? mallocx(size, flags_) : malloc(size);
   }
 
   static void* reallocate(void* p, size_t size) {
-    return hugePagesSupported ? rallocx(p, size, flags_) : realloc(p, size);
+    return hugePagesAllocSupported() ? rallocx(p, size, flags_)
+                                     : realloc(p, size);
   }
 
   static void deallocate(void* p, size_t = 0) {
-    hugePagesSupported ? dallocx(p, flags_) : free(p);
+    hugePagesAllocSupported() ? dallocx(p, flags_) : free(p);
   }
 
   static bool initialized() { return flags_ != 0; }
@@ -85,8 +86,9 @@ class JemallocHugePageAllocator {
   static bool addressInArena(void* address);
 
  private:
+  static bool hugePagesAllocSupported();
+
   static int flags_;
-  static bool hugePagesSupported;
 };
 
 // STL compatible huge page allocator, for use with STL-style containers
