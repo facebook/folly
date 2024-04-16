@@ -17,6 +17,7 @@ add_library(
     Benchmark.cpp
 )
 set_property(TARGET follybenchmark PROPERTY VERSION ${PACKAGE_VERSION})
+target_compile_definitions(follybenchmark PRIVATE BOOST_NO_AUTO_PTR)
 target_link_libraries(follybenchmark PUBLIC folly)
 apply_folly_compile_options_to_target(follybenchmark)
 install(
