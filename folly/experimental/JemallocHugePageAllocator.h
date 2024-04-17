@@ -18,12 +18,6 @@
 
 #pragma once
 
-#include <folly/CPortability.h>
-#include <folly/memory/Malloc.h>
-#include <folly/portability/Config.h>
-#include <folly/portability/Memory.h>
-#include <folly/portability/SysMman.h>
-
 #include <cstddef>
 #include <cstdint>
 
@@ -65,24 +59,16 @@ class JemallocHugePageAllocator {
 
   static bool init(int initial_nr_pages, int max_nr_pages = 0);
 
-  static void* allocate(size_t size) {
-    // If uninitialized, flags_ will be 0 and the mallocx behavior
-    // will match that of a regular malloc
-    return hugePagesAllocSupported() ? mallocx(size, flags_) : malloc(size);
-  }
+  static void* allocate(size_t size);
 
-  static void* reallocate(void* p, size_t size) {
-    return hugePagesAllocSupported() ? rallocx(p, size, flags_)
-                                     : realloc(p, size);
-  }
+  static void* reallocate(void* p, size_t size);
 
-  static void deallocate(void* p, size_t = 0) {
-    hugePagesAllocSupported() ? dallocx(p, flags_) : free(p);
-  }
+  static void deallocate(void* p, size_t = 0);
 
-  static bool initialized() { return flags_ != 0; }
+  static bool initialized();
 
   static size_t freeSpace();
+
   static bool addressInArena(void* address);
 
  private:

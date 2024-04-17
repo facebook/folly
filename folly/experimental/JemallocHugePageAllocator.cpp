@@ -18,6 +18,8 @@
 
 #include <sstream>
 
+#include <folly/CPortability.h>
+#include <folly/memory/Malloc.h>
 #include <folly/portability/Malloc.h>
 #include <folly/portability/String.h>
 #include <folly/portability/SysMman.h>
@@ -403,6 +405,25 @@ bool JemallocHugePageAllocator::init(int initial_nr_pages, int max_nr_pages) {
   } else {
     LOG(WARNING) << "Huge Page Allocator not supported";
   }
+  return flags_ != 0;
+}
+
+void* JemallocHugePageAllocator::allocate(size_t size) {
+  // If uninitialized, flags_ will be 0 and the mallocx behavior
+  // will match that of a regular malloc
+  return hugePagesAllocSupported() ? mallocx(size, flags_) : malloc(size);
+}
+
+void* JemallocHugePageAllocator::reallocate(void* p, size_t size) {
+  return hugePagesAllocSupported() ? rallocx(p, size, flags_)
+                                   : realloc(p, size);
+}
+
+void JemallocHugePageAllocator::deallocate(void* p, size_t) {
+  hugePagesAllocSupported() ? dallocx(p, flags_) : free(p);
+}
+
+bool JemallocHugePageAllocator::initialized() {
   return flags_ != 0;
 }
 
