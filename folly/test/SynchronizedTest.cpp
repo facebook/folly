@@ -710,7 +710,6 @@ void testTryLock(Func func) {
 
 class MutexTrack {
  public:
-  static int gId;
   static int gOrder;
 
   void lock_shared() {}
@@ -721,10 +720,8 @@ class MutexTrack {
     --gOrder;
   }
 
-  int current{gId++};
   int order{-1};
 };
-int MutexTrack::gId{0};
 int MutexTrack::gOrder{0};
 } // namespace
 
