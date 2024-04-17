@@ -108,6 +108,12 @@ template <class T>
 class SemiFuture;
 
 template <class T>
+using PromiseContract = std::pair<Promise<T>, Future<T>>;
+
+template <class T>
+using SemiPromiseContract = std::pair<Promise<T>, SemiFuture<T>>;
+
+template <class T>
 class FutureSplitter;
 
 namespace futures {
@@ -1002,10 +1008,10 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 };
 
 template <class T>
-std::pair<Promise<T>, SemiFuture<T>> makePromiseContract() {
+SemiPromiseContract<T> makePromiseContract() {
   auto p = Promise<T>();
   auto f = p.getSemiFuture();
-  return std::make_pair(std::move(p), std::move(f));
+  return {std::move(p), std::move(f)};
 }
 
 /// The interface (along with SemiFuture) for the consumer-side of a
@@ -1993,10 +1999,10 @@ class Timekeeper {
 };
 
 template <class T>
-std::pair<Promise<T>, Future<T>> makePromiseContract(Executor::KeepAlive<> e) {
+PromiseContract<T> makePromiseContract(Executor::KeepAlive<> e) {
   auto p = Promise<T>();
   auto f = p.getSemiFuture().via(std::move(e));
-  return std::make_pair(std::move(p), std::move(f));
+  return {std::move(p), std::move(f)};
 }
 
 template <class F>
