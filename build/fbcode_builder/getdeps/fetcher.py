@@ -683,15 +683,18 @@ def download_url_to_file_with_progress(url: str, file_name) -> None:
     start = time.time()
     try:
         if os.environ.get("GETDEPS_USE_WGET") is not None:
-            subprocess.run(
+            procargs = (
                 [
                     "wget",
+                ]
+                + os.environ.get("GETDEPS_WGET_ARGS", "").split()
+                + [
                     "-O",
                     file_name,
                     url,
                 ]
             )
-
+            subprocess.run(procargs, capture_output=True)
             headers = None
 
         elif os.environ.get("GETDEPS_USE_LIBCURL") is not None:
