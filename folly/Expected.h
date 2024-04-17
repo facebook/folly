@@ -107,6 +107,7 @@ class Unexpected final {
   Error& error() & { return error_; }
   const Error& error() const& { return error_; }
   Error&& error() && { return std::move(error_); }
+  const Error&& error() const&& { return std::move(error_); }
 
  private:
   Error error_;
@@ -351,9 +352,11 @@ struct ExpectedStorage {
   Value& value() & { return value_; }
   const Value& value() const& { return value_; }
   Value&& value() && { return std::move(value_); }
+  const Value&& value() const&& { return std::move(value_); }
   Error& error() & { return error_; }
   const Error& error() const& { return error_; }
   Error&& error() && { return std::move(error_); }
+  const Error&& error() const&& { return std::move(error_); }
 };
 
 template <class Value, class Error>
@@ -382,9 +385,11 @@ struct ExpectedUnion {
   Value& value() & { return value_; }
   const Value& value() const& { return value_; }
   Value&& value() && { return std::move(value_); }
+  const Value&& value() const&& { return std::move(value_); }
   Error& error() & { return error_; }
   const Error& error() const& { return error_; }
   Error&& error() && { return std::move(error_); }
+  const Error&& error() const&& { return std::move(error_); }
 };
 
 template <class Derived, bool, bool Noexcept>
@@ -613,9 +618,11 @@ struct ExpectedStorage<Value, Error, StorageType::ePODStruct> {
   Value& value() & { return value_; }
   const Value& value() const& { return value_; }
   Value&& value() && { return std::move(value_); }
+  const Value&& value() const&& { return std::move(value_); }
   Error& error() & { return error_; }
   const Error& error() const& { return error_; }
   Error&& error() && { return std::move(error_); }
+  const Error&& error() const&& { return std::move(error_); }
 };
 
 namespace expected_detail_ExpectedHelper {
@@ -1186,6 +1193,11 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     return this->Base::value();
   }
 
+  const Value&& value() const&& {
+    requireValueMove();
+    return std::move(this->Base::value());
+  }
+
   Value&& value() && {
     requireValueMove();
     return std::move(this->Base::value());
@@ -1199,6 +1211,11 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   Error& error() & {
     requireError();
     return this->Base::error();
+  }
+
+  const Error&& error() const&& {
+    requireError();
+    return std::move(this->Base::error());
   }
 
   Error&& error() && {
@@ -1375,14 +1392,18 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     }
   }
 
-  void requireValueMove() {
-    if (FOLLY_UNLIKELY(!hasValue())) {
-      if (FOLLY_LIKELY(hasError())) {
-        throw_exception<BadExpectedAccess<Error>>(std::move(this->error_));
+  template <typename Self>
+  static void requireValueMove(Self& self) {
+    if (FOLLY_UNLIKELY(!self.hasValue())) {
+      if (FOLLY_LIKELY(self.hasError())) {
+        throw_exception<BadExpectedAccess<Error>>(std::move(self.error_));
       }
       throw_exception<BadExpectedAccess<void>>();
     }
   }
+
+  void requireValueMove() { return requireValueMove(*this); }
+  void requireValueMove() const { return requireValueMove(*this); }
 
   void requireError() const {
     if (FOLLY_UNLIKELY(!hasError())) {
