@@ -26,6 +26,7 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 // clang-format on
 
 #include <chrono>
+#include <numeric>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -38,6 +39,7 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 #include <folly/FBString.h>
 #include <folly/container/test/F14TestUtil.h>
 #include <folly/container/test/TrackingTypes.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
@@ -45,6 +47,40 @@ using namespace folly;
 using namespace folly::f14;
 using namespace folly::string_piece_literals;
 using namespace folly::test;
+
+extern "C" FOLLY_KEEP int check_std_unordered_set_int_accumulate(
+    std::unordered_set<int> const& set) {
+  return std::accumulate(set.begin(), set.end(), 0);
+}
+extern "C" FOLLY_KEEP int check_folly_f14_node_set_int_accumulate(
+    folly::F14NodeSet<int> const& set) {
+  return std::accumulate(set.begin(), set.end(), 0);
+}
+extern "C" FOLLY_KEEP int check_folly_f14_vector_set_int_accumulate(
+    folly::F14VectorSet<int> const& set) {
+  return std::accumulate(set.begin(), set.end(), 0);
+}
+extern "C" FOLLY_KEEP int check_folly_f14_value_set_int_accumulate(
+    folly::F14ValueSet<int> const& set) {
+  return std::accumulate(set.begin(), set.end(), 0);
+}
+
+extern "C" FOLLY_KEEP size_t
+check_std_unordered_set_int_count(std::unordered_set<int> const& set, int key) {
+  return set.count(key);
+}
+extern "C" FOLLY_KEEP size_t
+check_folly_node_set_int_count(folly::F14NodeSet<int> const& set, int key) {
+  return set.count(key);
+}
+extern "C" FOLLY_KEEP size_t
+check_folly_vector_set_int_count(folly::F14VectorSet<int> const& set, int key) {
+  return set.count(key);
+}
+extern "C" FOLLY_KEEP size_t
+check_folly_value_set_int_count(folly::F14ValueSet<int> const& set, int key) {
+  return set.count(key);
+}
 
 static constexpr bool kFallback = folly::f14::detail::getF14IntrinsicsMode() ==
     folly::f14::detail::F14IntrinsicsMode::None;
