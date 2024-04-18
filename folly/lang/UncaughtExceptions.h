@@ -38,7 +38,9 @@ unsigned int* uncaught_exceptions_ptr() noexcept;
 //  mimic: std::uncaught_exceptions, c++17
 [[FOLLY_ATTR_PURE]] FOLLY_EXPORT FOLLY_ALWAYS_INLINE int
 uncaught_exceptions() noexcept {
-#if defined(_CPPLIB_VER)
+#if defined(__APPLE__)
+  return std::uncaught_exceptions();
+#elif defined(_CPPLIB_VER)
   return std::uncaught_exceptions();
 #elif defined(__has_feature) && !FOLLY_HAS_FEATURE(cxx_thread_local)
   return std::uncaught_exceptions();
