@@ -74,7 +74,7 @@ struct PicoSpinLock {
 
  public:
   static constexpr UIntType kLockBitMask_ = UIntType(1) << Bit;
-  mutable UIntType lock_;
+  alignas(atomic_ref<UIntType>::required_alignment) mutable UIntType lock_;
 
   /*
    * You must call this function before using this class, if you
