@@ -28,6 +28,7 @@
 #include <boost/random.hpp>
 #include <glog/logging.h>
 
+#include <folly/ConstexprMath.h>
 #include <folly/Memory.h>
 #include <folly/ThreadLocal.h>
 #include <folly/synchronization/MicroSpinLock.h>
@@ -213,9 +214,7 @@ class SkipListRandomHeight {
       p *= kProb;
       sizeLimit *= kProbInv;
       lookupTable_[i] = lookupTable_[i - 1] + p;
-      sizeLimitTable_[i] = sizeLimit > kMaxSizeLimit
-          ? kMaxSizeLimit
-          : static_cast<size_t>(sizeLimit);
+      sizeLimitTable_[i] = folly::constexpr_clamp_cast<size_t>(sizeLimit);
     }
     lookupTable_[kMaxHeight - 1] = 1;
     sizeLimitTable_[kMaxHeight - 1] = kMaxSizeLimit;
