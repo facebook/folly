@@ -223,6 +223,7 @@ std::string toJson(dynamic const&);
 
 /**
  * Serialize a dynamic into a json string with indentation.
+ * Note that the keys of all objects will be sorted.
  */
 std::string toPrettyJson(dynamic const&);
 
