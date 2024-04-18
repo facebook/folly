@@ -561,6 +561,10 @@ class BuildCmd(ProjectCmdBase):
         for m in projects:
             fetcher = loader.create_fetcher(m)
 
+            if args.build_skip_lfs_download and hasattr(fetcher, "skip_lfs_download"):
+                print("skipping lfs download for %s" % m.name)
+                fetcher.skip_lfs_download()
+
             if isinstance(fetcher, SystemPackageFetcher):
                 # We are guaranteed that if the fetcher is set to
                 # SystemPackageFetcher then this item is completely
@@ -652,7 +656,11 @@ class BuildCmd(ProjectCmdBase):
 
                     # Only populate the cache from continuous build runs, and
                     # only if we have a built_marker.
-                    if args.schedule_type == "continuous" and has_built_marker:
+                    if (
+                        not args.skip_upload
+                        and args.schedule_type == "continuous"
+                        and has_built_marker
+                    ):
                         cached_project.upload()
                 elif args.verbose:
                     print("found good %s" % built_marker)
@@ -1323,9 +1331,26 @@ def parse_args():
         default=False,
     )
     add_common_arg(
+        "-su",
+        "--skip-upload",
+        help="skip upload steps",
+        action="store_true",
+        default=False,
+    )
+    add_common_arg(
         "--lfs-path",
         help="Provide a parent directory for lfs when fbsource is unavailable",
         default=None,
+    )
+    add_common_arg(
+        "--build-skip-lfs-download",
+        action="store_true",
+        default=False,
+        help=(
+            "Download from the URL, rather than LFS. This is useful "
+            "in cases where the upstream project has uploaded a new "
+            "version of the archive with a different hash"
+        ),
     )
 
     ap = argparse.ArgumentParser(
