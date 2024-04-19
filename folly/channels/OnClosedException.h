@@ -14,4 +14,22 @@
  * limitations under the License.
  */
 
-#include <folly/channels/OnClosedException.h>
+#pragma once
+
+#include <exception>
+
+namespace folly {
+namespace channels {
+
+/**
+ * An OnClosedException passed to a transform or multiplex callback indicates
+ * that the input channel was closed. An OnClosedException can also be thrown by
+ * a transform or multiplex callback, which will close the output channel.
+ */
+struct OnClosedException : public std::exception {
+  const char* what() const noexcept override {
+    return "The channel has been closed.";
+  }
+};
+} // namespace channels
+} // namespace folly

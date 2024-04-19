@@ -14,38 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/experimental/channels/detail/ChannelBridge.h>
-
-#include <optional>
-
-namespace folly {
-namespace channels {
-
-template <typename TValue>
-class Receiver;
-
-template <typename TValue>
-class Sender;
-
-namespace detail {
-template <typename TValue>
-ChannelBridgePtr<TValue>& senderGetBridge(Sender<TValue>& sender);
-
-template <typename TValue>
-bool receiverWait(
-    Receiver<TValue>& receiver, detail::IChannelCallback* receiverCallback);
-
-template <typename TValue>
-detail::IChannelCallback* cancelReceiverWait(Receiver<TValue>& receiver);
-
-template <typename TValue>
-std::optional<Try<TValue>> receiverGetValue(Receiver<TValue>& receiver);
-
-template <typename TValue>
-std::pair<detail::ChannelBridgePtr<TValue>, detail::ReceiverQueue<TValue>>
-receiverUnbuffer(Receiver<TValue>&& receiver);
-} // namespace detail
-} // namespace channels
-} // namespace folly
+#include <folly/channels/Channel-fwd.h>

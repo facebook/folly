@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/channels/MaxConcurrentRateLimiter.h>
+#include <folly/channels/MaxConcurrentRateLimiter.h>
 
 namespace folly {
 namespace channels {
