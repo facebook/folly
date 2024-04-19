@@ -24,6 +24,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Function.h>
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>

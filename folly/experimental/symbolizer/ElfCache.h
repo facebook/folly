@@ -25,6 +25,7 @@
 
 #include <boost/intrusive/avl_set.hpp>
 
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/hash/Hash.h>

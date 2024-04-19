@@ -33,6 +33,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/experimental/io/IoUringBase.h>
 #include <folly/experimental/io/Liburing.h>
