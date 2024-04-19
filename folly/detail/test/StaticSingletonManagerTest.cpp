@@ -48,7 +48,7 @@ template <typename Impl>
 struct StaticSingletonManagerTest : public testing::TestWithParam<Impl> {};
 TYPED_TEST_SUITE_P(StaticSingletonManagerTest);
 
-template <typename T>
+template <typename Impl, typename T>
 struct Tag {};
 
 template <int I>
@@ -59,18 +59,18 @@ TYPED_TEST_P(StaticSingletonManagerTest, example) {
 
   using T = std::integral_constant<int, 3>;
 
-  auto& i = K::template create<T, Tag<char>>();
+  auto& i = K::template create<T, Tag<K, char>>();
   EXPECT_EQ(T::value, i);
 
-  auto& j = K::template create<T, Tag<char>>();
+  auto& j = K::template create<T, Tag<K, char>>();
   EXPECT_EQ(&i, &j);
   EXPECT_EQ(T::value, j);
 
-  auto& k = K::template create<T, Tag<char*>>();
+  auto& k = K::template create<T, Tag<K, char*>>();
   EXPECT_NE(&i, &k);
   EXPECT_EQ(T::value, k);
 
-  static typename K::template ArgCreate<true> m_arg{tag<T, Tag<int>>};
+  static typename K::template ArgCreate<true> m_arg{tag<T, Tag<K, int>>};
   auto& m = K::template create<T>(m_arg);
   EXPECT_NE(&i, &m);
   EXPECT_EQ(T::value, m);
@@ -86,22 +86,23 @@ INSTANTIATE_TYPED_TEST_SUITE_P(
 INSTANTIATE_TYPED_TEST_SUITE_P(
     with_rtti, StaticSingletonManagerTest, StaticSingletonManagerWithRtti);
 #endif
+struct StaticSingletonManagerTestType : StaticSingletonManager {};
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    selection, StaticSingletonManagerTest, StaticSingletonManager);
+    selection, StaticSingletonManagerTest, StaticSingletonManagerTestType);
 
 struct CreateGlobalTest : testing::Test {};
 
 TEST_F(CreateGlobalTest, example) {
   using T = std::integral_constant<int, 3>;
 
-  auto& i = createGlobal<T, Tag<char>>();
+  auto& i = createGlobal<T, Tag<void, char>>();
   EXPECT_EQ(T::value, i);
 
-  auto& j = createGlobal<T, Tag<char>>();
+  auto& j = createGlobal<T, Tag<void, char>>();
   EXPECT_EQ(&i, &j);
   EXPECT_EQ(T::value, j);
 
-  auto& k = createGlobal<T, Tag<char*>>();
+  auto& k = createGlobal<T, Tag<void, char*>>();
   EXPECT_NE(&i, &k);
   EXPECT_EQ(T::value, k);
 }
