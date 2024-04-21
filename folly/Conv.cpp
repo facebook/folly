@@ -18,6 +18,8 @@
 
 #include <array>
 
+#include <folly/lang/SafeAssert.h>
+
 namespace folly {
 namespace detail {
 
@@ -767,8 +769,9 @@ ConversionError makeConversionError(ConversionCode code, StringPiece input) {
   static_assert(
       std::is_unsigned<std::underlying_type<ConversionCode>::type>::value,
       "ConversionCode should be unsigned");
-  assert((std::size_t)code < kErrorStrings.size());
-  const ErrorString& err = kErrorStrings[(std::size_t)code];
+  auto index = static_cast<std::size_t>(code);
+  FOLLY_SAFE_CHECK(index < kErrorStrings.size(), "code=", uint64_t(index));
+  const ErrorString& err = kErrorStrings[index];
   if (code == ConversionCode::EMPTY_INPUT_STRING && input.empty()) {
     return {err.string, code};
   }
