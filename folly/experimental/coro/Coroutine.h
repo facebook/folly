@@ -225,23 +225,19 @@ struct detect_promise_return_object_eager_conversion_ {
 
   bool eager = false;
 
-// FIXME: when building against Apple SDKs using c++17, we hit this all over
-// the place on complex testing infrastructure for iOS. Since it's not clear
-// how to fix the issue properly right now, force ignore this warnings and help
-// unblock expected/optional coroutines. This should be removed once the build
-// configuration is changed to use -Wno-deprecated-experimental-coroutine.
+  static detect_promise_return_object_eager_conversion_ go() noexcept {
+    // FIXME: when building against Apple SDKs using c++17, we hit this all over
+    // the place on complex testing infrastructure for iOS. Since it's not clear
+    // how to fix the issue properly right now, force ignore this warnings and
+    // unblock expected/optional coroutines. This should be removed once the
+    // build config is changed to use -Wno-deprecated-experimental-coroutine.
+    FOLLY_PUSH_WARNING
 #if defined(__clang__) && (__clang_major__ < 17 && __clang_major__ > 13)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-experimental-coroutine"
-  static detect_promise_return_object_eager_conversion_ go() noexcept {
-    co_return;
-  }
-#pragma clang diagnostic pop
-#else
-  static detect_promise_return_object_eager_conversion_ go() noexcept {
-    co_return;
-  }
+    FOLLY_CLANG_DISABLE_WARNING("-Wdeprecated-experimental-coroutine")
 #endif
+    co_return;
+    FOLLY_POP_WARNING
+  }
 };
 
 } // namespace detail
