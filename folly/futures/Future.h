@@ -108,10 +108,16 @@ template <class T>
 class SemiFuture;
 
 template <class T>
-using PromiseContract = std::pair<Promise<T>, Future<T>>;
+struct PromiseContract {
+  Promise<T> promise;
+  Future<T> future;
+};
 
 template <class T>
-using SemiPromiseContract = std::pair<Promise<T>, SemiFuture<T>>;
+struct SemiPromiseContract {
+  Promise<T> promise;
+  SemiFuture<T> future;
+};
 
 template <class T>
 class FutureSplitter;
