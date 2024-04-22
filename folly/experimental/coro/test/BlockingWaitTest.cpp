@@ -318,21 +318,22 @@ TEST_F(BlockingWaitTest, DrivableExecutor) {
 
 TEST_F(BlockingWaitTest, ReleaseExecutorFromAnotherThread) {
   auto fn = []() {
-    auto c1 = folly::makePromiseContract<folly::Executor::KeepAlive<>>();
-    auto c2 = folly::makePromiseContract<folly::Unit>();
-    std::thread t{[&] {
-      auto e = std::move(c1.second).get();
-      c2.first.setValue(folly::Unit{});
+    auto [p1, f1] = folly::makePromiseContract<folly::Executor::KeepAlive<>>();
+    auto [p2, f2] = folly::makePromiseContract<folly::Unit>();
+    std::thread t{[&, &p2 = p2, &f1 = f1] {
+      auto e = std::move(f1).get();
+      p2.setValue(folly::Unit{});
       std::this_thread::sleep_for(std::chrono::microseconds(1));
       e = {};
     }};
     folly::ManualExecutor executor;
-    folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-      folly::Executor::KeepAlive<> taskExecutor =
-          co_await folly::coro::co_current_executor;
-      c1.first.setValue(std::move(taskExecutor));
-      co_await std::move(c2.second);
-    }());
+    folly::coro::blockingWait(
+        [&, &p1 = p1, &f2 = f2]() -> folly::coro::Task<void> {
+          folly::Executor::KeepAlive<> taskExecutor =
+              co_await folly::coro::co_current_executor;
+          p1.setValue(std::move(taskExecutor));
+          co_await std::move(f2);
+        }());
     t.join();
   };
   std::vector<std::thread> threads;

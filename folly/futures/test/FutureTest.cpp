@@ -1300,14 +1300,14 @@ TEST(Future, makePromiseContract) {
   };
 
   ManualExecutor e;
-  auto c = makePromiseContract<int>(&e);
-  c.second = std::move(c.second).thenValue([](int _) { return _ + 1; });
-  EXPECT_FALSE(c.second.isReady());
-  c.first.setValue(3);
-  EXPECT_FALSE(c.second.isReady());
+  auto [p, f] = makePromiseContract<int>(&e);
+  f = std::move(f).thenValue([](int _) { return _ + 1; });
+  EXPECT_FALSE(f.isReady());
+  p.setValue(3);
+  EXPECT_FALSE(f.isReady());
   e.drain();
-  ASSERT_TRUE(c.second.isReady());
-  EXPECT_EQ(4, std::move(c.second).get());
+  ASSERT_TRUE(f.isReady());
+  EXPECT_EQ(4, std::move(f).get());
 }
 
 TEST(Future, ThenRecursion) {

@@ -1258,7 +1258,8 @@ std::pair<
     folly::SemiFuture<std::vector<std::pair<int, uint32_t>>>,
     AsyncIoUringSocket::WriteSqe*>
 AsyncIoUringSocket::WriteSqe::detachEventBase() {
-  auto cont = makePromiseContract<std::vector<std::pair<int, uint32_t>>>();
+  auto [promise, future] =
+      makePromiseContract<std::vector<std::pair<int, uint32_t>>>();
   auto newSqe =
       new WriteSqe(parent_, callback_, std::move(buf_), flags_, zerocopy_);
 
@@ -1269,7 +1270,7 @@ AsyncIoUringSocket::WriteSqe::detachEventBase() {
   newSqe->refs_ = refs_;
 
   parent_ = nullptr;
-  detachedSignal_ = [prom = std::move(cont.first),
+  detachedSignal_ = [prom = std::move(promise),
                      ret = std::vector<std::pair<int, uint32_t>>{},
                      refs = refs_](int res, uint32_t flags) mutable -> bool {
     ret.emplace_back(res, flags);
@@ -1285,7 +1286,7 @@ AsyncIoUringSocket::WriteSqe::detachEventBase() {
     }
     return false;
   };
-  return std::make_pair(std::move(cont.second), newSqe);
+  return std::make_pair(std::move(future), newSqe);
 }
 
 void AsyncIoUringSocket::WriteSqe::callbackCancelled(

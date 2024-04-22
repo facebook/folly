@@ -21,16 +21,16 @@ namespace folly {
 ManualTimekeeper::ManualTimekeeper() : now_{std::chrono::steady_clock::now()} {}
 
 SemiFuture<Unit> ManualTimekeeper::after(HighResDuration dur) {
-  auto contract = folly::makePromiseContract<Unit>();
+  auto [promise, future] = folly::makePromiseContract<Unit>();
   if (dur.count() == 0) {
-    contract.first.setValue(folly::unit);
+    promise.setValue(folly::unit);
   } else {
-    auto handler = TimeoutHandler::create(std::move(contract.first));
+    auto handler = TimeoutHandler::create(std::move(promise));
     schedule_.withWLock([&handler, key = now_ + dur](auto& schedule) {
       schedule.emplace(key, std::move(handler));
     });
   }
-  return std::move(contract.second);
+  return std::move(future);
 }
 
 void ManualTimekeeper::advance(Duration dur) {

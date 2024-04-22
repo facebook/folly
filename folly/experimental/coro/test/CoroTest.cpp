@@ -272,16 +272,16 @@ TEST_F(CoroTest, TimedWaitFuture) {
             std::move(throwingFuture), std::chrono::milliseconds{100}),
         ExpectedException);
 
-    auto promiseFuturePair = folly::makePromiseContract<folly::Unit>(ex);
-    auto lifetimeFuture = std::move(promiseFuturePair.second);
+    auto [lifetimePromise, lifetimeFuture] =
+        folly::makePromiseContract<folly::Unit>(ex);
     auto slowFuture =
         futures::sleep(std::chrono::milliseconds{200})
             .via(ex)
-            .thenValue([lifetimePromise =
-                            std::move(promiseFuturePair.first)](Unit) mutable {
-              lifetimePromise.setValue();
-              return 42;
-            });
+            .thenValue(
+                [lifetimePromise = std::move(lifetimePromise)](Unit) mutable {
+                  lifetimePromise.setValue();
+                  return 42;
+                });
     auto slowResult = co_await coro::timed_wait(
         std::move(slowFuture), std::chrono::milliseconds{100});
     EXPECT_FALSE(slowResult);

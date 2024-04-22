@@ -911,10 +911,10 @@ TEST(SemiFuture, DeferError) {
 }
 
 TEST(SemiFuture, makePromiseContract) {
-  auto c = makePromiseContract<int>();
-  c.first.setValue(3);
-  c.second = std::move(c.second).deferValue([](int _) { return _ + 1; });
-  EXPECT_EQ(4, std::move(c.second).get());
+  auto [p, f] = makePromiseContract<int>();
+  p.setValue(3);
+  f = std::move(f).deferValue([](int _) { return _ + 1; });
+  EXPECT_EQ(4, std::move(f).get());
 }
 
 TEST(SemiFuture, invokeCallbackWithOriginalCVRef) {

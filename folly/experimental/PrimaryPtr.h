@@ -243,8 +243,9 @@ class PrimaryPtr {
         ptr.release(),
         [d = ptr.get_deleter(), rawPtr](T*) mutable { d(rawPtr); }};
 
-    auto referencesContract = folly::makePromiseContract<folly::Unit>();
-    unreferenced_ = std::move(std::get<1>(referencesContract));
+    auto [referencesPromise, referencesFuture] =
+        folly::makePromiseContract<folly::Unit>();
+    unreferenced_ = std::move(referencesFuture);
 
     // The deleter object needs to be copyable in std::shared_ptr on some
     // platform. To work around this limitation we can slightly tweak the
@@ -264,8 +265,7 @@ class PrimaryPtr {
       Promise<Unit> p_;
     };
     auto innerPtrShared = std::shared_ptr<T>(
-        innerPtr_.get(),
-        LastReference{std::move(std::get<0>(referencesContract))});
+        innerPtr_.get(), LastReference{std::move(referencesPromise)});
 
     outerPtrWeak_ = outerPtrShared_ =
         std::make_shared<std::shared_ptr<T>>(innerPtrShared);

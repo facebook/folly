@@ -65,18 +65,18 @@ static NullWriteCallback nullWriteCallback;
 class FutureWriteCallback : public AsyncWriter::WriteCallback {
  public:
   void writeSuccess() noexcept override {
-    promiseContract.first.setValue(Unit{});
+    auto& [promise, future] = promiseContract;
+    promise.setValue(Unit{});
   }
 
   void writeErr(
       size_t bytesWritten, const AsyncSocketException& ex) noexcept override {
-    promiseContract.first.setValue(
-        makeUnexpected(std::make_pair(bytesWritten, ex)));
+    auto& [promise, future] = promiseContract;
+    promise.setValue(makeUnexpected(std::make_pair(bytesWritten, ex)));
   }
 
   using TResult = Expected<Unit, std::pair<size_t, AsyncSocketException>>;
-  std::pair<Promise<TResult>, SemiFuture<TResult>> promiseContract =
-      makePromiseContract<TResult>();
+  SemiPromiseContract<TResult> promiseContract = makePromiseContract<TResult>();
 };
 
 } // namespace
@@ -578,10 +578,8 @@ TEST_P(AsyncIoUringSocketTest, DetachEventBase) {
   } while (true);
 
   // make sure write arrived, it should be on the new event base
-  ASSERT_TRUE(std::move(fwc.promiseContract.second)
-                  .via(&newBase)
-                  .getVia(&newBase)
-                  .hasValue());
+  auto& [promise, future] = fwc.promiseContract;
+  ASSERT_TRUE(std::move(future).via(&newBase).getVia(&newBase).hasValue());
 
   ASSERT_TRUE(transport->isDetachable());
   transport->detachEventBase();
@@ -783,8 +781,8 @@ TEST_P(AsyncIoUringSocketTestAll, SendTimeout) {
     conn.server->setSendTimeout(1);
     conn.server->writev(&ecb, iov.data(), iov.size());
   });
-  auto ex =
-      std::move(ecb.promiseContract.second).via(base.get()).getVia(base.get());
+  auto& [promise, future] = ecb.promiseContract;
+  auto ex = std::move(future).via(base.get()).getVia(base.get());
   ASSERT_TRUE(ex.hasError());
   EXPECT_EQ(AsyncSocketException::TIMED_OUT, ex.error().second.getType());
 }
