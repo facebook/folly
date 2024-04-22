@@ -28,47 +28,6 @@ constexpr auto kBigGrowthFactor = 1.7;
 namespace folly {
 namespace threadlocal_detail {
 
-void ThreadEntryNode::initIfZero(bool locked) {
-  if (FOLLY_UNLIKELY(isZero)) {
-    if (FOLLY_LIKELY(locked)) {
-      parent->meta->pushBackLocked(parent, id);
-    } else {
-      parent->meta->pushBackUnlocked(parent, id);
-    }
-  }
-}
-
-void ThreadEntryNode::push_back(ThreadEntry* head) {
-  // get the head prev and next nodes
-  ThreadEntryNode* hnode = &head->elements[id].node;
-
-  // update current
-  next = head;
-  prev = hnode->prev;
-  isZero = false;
-
-  // hprev
-  ThreadEntryNode* hprev = &hnode->prev->elements[id].node;
-  hprev->next = parent;
-  hnode->prev = parent;
-}
-
-void ThreadEntryNode::eraseZero() {
-  if (FOLLY_LIKELY(prev != nullptr)) {
-    // get the prev and next nodes
-    ThreadEntryNode* nprev = &prev->elements[id].node;
-    ThreadEntryNode* nnext = &next->elements[id].node;
-
-    // update the prev and next
-    nnext->prev = prev;
-    nprev->next = next;
-
-    // set the prev and next to nullptr
-    next = prev = nullptr;
-    isZero = true;
-  }
-}
-
 StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
     : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
   int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
@@ -145,9 +104,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       // mark it as removed
       threadEntry->removed_ = true;
       auto elementsCapacity = threadEntry->getElementsCapacity();
-      for (size_t i = 0u; i < elementsCapacity; ++i) {
-        threadEntry->elements[i].node.eraseZero();
-      }
+      meta.removeThreadEntryFromAllInMapLocked(threadEntry);
       auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
       DCHECK_GE(beforeCount, elementsCapacity);
       // No need to hold the lock any longer; the ThreadEntry is private to this
@@ -166,6 +123,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
           shouldRun = true;
         }
       }
+      DCHECK(threadEntry->meta->isThreadEntryRemovedFromAllInMap(threadEntry));
     }
     pthread_setspecific(meta.pthreadKey_, nullptr);
   }
@@ -195,6 +153,7 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
       if (meta.strict_) {
         rlock.lock();
       }
+
       for (bool shouldRunInner = true; shouldRunInner;) {
         shouldRunInner = false;
         auto elementsCapacity = tmp->getElementsCapacity();
@@ -222,6 +181,11 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
       tmp->elements = nullptr;
       tmp->setElementsCapacity(0);
     }
+
+    // Fail safe check to make sure that the ThreadEntry is not present
+    // before issuing a delete.
+    DCHECK(tmp->meta->isThreadEntryRemovedFromAllInMap(tmp));
+
     delete tmp;
   }
 
@@ -254,8 +218,6 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   uint32_t old_id = ent->value.exchange(id, std::memory_order_release);
   DCHECK_EQ(old_id, kEntryIDInvalid);
 
-  reserveHeadUnlocked(id);
-
   return id;
 }
 
@@ -287,16 +249,14 @@ void StaticMetaBase::destroy(EntryID* ent) {
           return;
         }
 
-        auto& node = meta.head_.elements[id].node;
-        while (!node.empty()) {
-          auto* next = node.getNext();
-          next->eraseZero();
-
-          ThreadEntry* e = next->parent;
+        auto threadEntrySet = get_ptr(meta.allThreadEntryMap_, id);
+        if (!threadEntrySet) {
+          return;
+        }
+        for (auto& e : *threadEntrySet) {
           auto elementsCapacity = e->getElementsCapacity();
           if (id < elementsCapacity && e->elements[id].ptr) {
             elements.push_back(e->elements[id]);
-
             /*
              * Writing another thread's ThreadEntry from here is fine;
              * the only other potential reader is the owning thread --
@@ -313,6 +273,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
             e->elements[id].ownsDeleter = false;
           }
         }
+        meta.clearSetforIdInMapLocked(id);
         meta.freeIds_.push_back(id);
       }
     }
@@ -337,8 +298,7 @@ ElementWrapper* StaticMetaBase::reallocate(
   auto bigCapacity = static_cast<size_t>((idval + 5) * kBigGrowthFactor);
 
   newCapacity =
-      (threadEntry->meta &&
-       (bigCapacity <= threadEntry->meta->head_.getElementsCapacity()))
+      (threadEntry->meta && (bigCapacity <= threadEntry->meta->nextId_))
       ? bigCapacity
       : smallCapacity;
 
@@ -430,10 +390,6 @@ void StaticMetaBase::reserve(EntryID* id) {
       std::swap(reallocated, threadEntry->elements);
     }
 
-    for (size_t i = prevCapacity; i < newCapacity; i++) {
-      threadEntry->elements[i].node.initZero(threadEntry, i);
-    }
-
     threadEntry->setElementsCapacity(newCapacity);
   }
 
@@ -441,42 +397,27 @@ void StaticMetaBase::reserve(EntryID* id) {
   free(reallocated);
 }
 
-void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
-  if (head_.getElementsCapacity() <= id) {
-    size_t prevCapacity = head_.getElementsCapacity();
-    size_t newCapacity;
-    ElementWrapper* reallocated = reallocate(&head_, id, newCapacity);
-
-    if (reallocated) {
-      if (prevCapacity != 0) {
-        memcpy(
-            reallocated, head_.elements, sizeof(*reallocated) * prevCapacity);
-      }
-      std::swap(reallocated, head_.elements);
-    }
-
-    for (size_t i = prevCapacity; i < newCapacity; i++) {
-      head_.elements[i].node.init(&head_, i);
-    }
-
-    head_.setElementsCapacity(newCapacity);
-    totalElementWrappers_ += (newCapacity - prevCapacity);
-    free(reallocated);
-  }
+/*
+ * Evict threadEntry for @id from allThreadEntryMap_
+ * ThreadEntry* set and release the element @id.
+ */
+void* ThreadEntry::releaseElement(uint32_t id) {
+  meta->removeThreadEntryFromIdInMapLocked(this, id);
+  return elements[id].release();
 }
 
-void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) noexcept {
-  if (FOLLY_LIKELY(!t->removed_)) {
-    std::lock_guard<std::mutex> g(lock_);
-    auto* node = &t->elements[id].node;
-    node->push_back(&head_);
-  }
-}
-
-void StaticMetaBase::pushBackUnlocked(ThreadEntry* t, uint32_t id) noexcept {
-  if (FOLLY_LIKELY(!t->removed_)) {
-    auto* node = &t->elements[id].node;
-    node->push_back(&head_);
+/*
+ * Cleanup the element and set the thread entry in the map, if valid.
+ */
+void ThreadEntry::cleanupElementAndSetThreadEntry(
+    uint32_t id, bool validThreadEntry) {
+  elements[id].dispose(TLPDestructionMode::THIS_THREAD);
+  // Cleanup
+  elements[id].cleanup();
+  // Add the allThreadEntryMap_ only iff newPtr is not nullptr and threadEntry
+  // is not marked as removed
+  if (validThreadEntry) {
+    meta->addThreadEntryToMap(this, id);
   }
 }
 

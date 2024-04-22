@@ -157,25 +157,22 @@ class ThreadLocalPtr {
 
   T* release() {
     auto rlock = getAccessAllThreadsLockReadHolderIfEnabled();
-
-    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
-
-    return static_cast<T*>(w.release());
+    threadlocal_detail::ThreadEntry* te = StaticMeta::getThreadEntry(&id_);
+    auto id = id_.getOrInvalid();
+    // Only valid index into the the elements array
+    DCHECK_NE(id, threadlocal_detail::kEntryIDInvalid);
+    return static_cast<T*>(te->releaseElement(id));
   }
 
   void reset(T* newPtr = nullptr) {
     auto rlock = getAccessAllThreadsLockReadHolderIfEnabled();
-
     auto guard = makeGuard([&] { delete newPtr; });
-    threadlocal_detail::ElementWrapper* w = &StaticMeta::get(&id_);
-
-    w->dispose(TLPDestructionMode::THIS_THREAD);
-    // need to get a new ptr since the
-    // ThreadEntry::elements array can be reallocated
-    w = &StaticMeta::get(&id_);
-    w->cleanup();
+    threadlocal_detail::ThreadEntry* te = StaticMeta::getThreadEntry(&id_);
+    uint32_t id = id_.getOrInvalid();
+    // Only valid index into the the elements array
+    DCHECK_NE(id, threadlocal_detail::kEntryIDInvalid);
+    te->resetElement(newPtr, id);
     guard.dismiss();
-    w->set(newPtr);
   }
 
   explicit operator bool() const { return get() != nullptr; }
@@ -217,20 +214,18 @@ class ThreadLocalPtr {
   template <class Deleter>
   void reset(T* newPtr, const Deleter& deleter) {
     auto rlock = getAccessAllThreadsLockReadHolderIfEnabled();
-
     auto guard = makeGuard([&] {
       if (newPtr) {
         deleter(newPtr, TLPDestructionMode::THIS_THREAD);
       }
     });
-    threadlocal_detail::ElementWrapper* w = &StaticMeta::get(&id_);
-    w->dispose(TLPDestructionMode::THIS_THREAD);
-    // need to get a new ptr since the
-    // ThreadEntry::elements array can be reallocated
-    w = &StaticMeta::get(&id_);
-    w->cleanup();
+
+    threadlocal_detail::ThreadEntry* te = StaticMeta::getThreadEntry(&id_);
+    uint32_t id = id_.getOrInvalid();
+    // Only valid index into the the elements array
+    DCHECK_NE(id, threadlocal_detail::kEntryIDInvalid);
+    te->resetElement(newPtr, deleter, id);
     guard.dismiss();
-    w->set(newPtr, deleter);
   }
 
   // Holds a global lock for iteration through all thread local child objects.
@@ -248,57 +243,53 @@ class ThreadLocalPtr {
     class Iterator;
     friend class Iterator;
 
-    // The iterators obtained from Accessor are bidirectional iterators.
+    // The iterators obtained from Accessor are forward iterators.
     class Iterator {
       friend class Accessor;
       const Accessor* accessor_{nullptr};
-      threadlocal_detail::ThreadEntryNode* e_{nullptr};
+      using InnerSet = threadlocal_detail::StaticMetaBase::ThreadEntrySet;
+      using InnerIterator = InnerSet::iterator;
+
+      InnerSet& set_;
+      InnerIterator iter_;
 
       void increment() {
-        e_ = e_->getNext();
-        incrementToValid();
-      }
-
-      void decrement() {
-        e_ = e_->getPrev();
-        decrementToValid();
-      }
-
-      const T& dereference() const {
-        return *static_cast<T*>(
-            e_->getThreadEntry()->elements[accessor_->id_].ptr);
-      }
-
-      T& dereference() {
-        return *static_cast<T*>(
-            e_->getThreadEntry()->elements[accessor_->id_].ptr);
-      }
-
-      bool equal(const Iterator& other) const {
-        return (accessor_->id_ == other.accessor_->id_ && e_ == other.e_);
-      }
-
-      explicit Iterator(const Accessor* accessor)
-          : accessor_(accessor),
-            e_(&accessor_->meta_.head_.elements[accessor_->id_].node) {}
-
-      // we just need to check the ptr since it can be set to nullptr
-      // even if the entry is part of the list
-      bool valid() const {
-        return (e_->getThreadEntry()->elements[accessor_->id_].ptr);
-      }
-
-      void incrementToValid() {
-        for (; e_ != &accessor_->meta_.head_.elements[accessor_->id_].node &&
-             !valid();
-             e_ = e_->getNext()) {
+        if (iter_ != set_.end()) {
+          ++iter_;
+          incrementToValid();
         }
       }
 
-      void decrementToValid() {
-        for (; e_ != &accessor_->meta_.head_.elements[accessor_->id_].node &&
-             !valid();
-             e_ = e_->getPrev()) {
+      const T& dereference() const {
+        return *static_cast<T*>((*iter_)->elements[accessor_->id_].ptr);
+      }
+
+      T& dereference() {
+        return *static_cast<T*>((*iter_)->elements[accessor_->id_].ptr);
+      }
+
+      bool equal(const Iterator& other) const {
+        return (accessor_->id_ == other.accessor_->id_ && iter_ == other.iter_);
+      }
+
+      void setToEnd() { iter_ = set_.end(); }
+
+      explicit Iterator(const Accessor* accessor, bool toEnd = false)
+          : accessor_(accessor),
+            set_(accessor_->meta_.allThreadEntryMap_[accessor_->id_]),
+            iter_(set_.begin()) {
+        if (toEnd) {
+          setToEnd();
+        }
+      }
+      // we just need to check the ptr since it can be set to nullptr
+      // even if the entry is part of the list
+      bool valid() const {
+        return (iter_ != set_.end() && (*iter_)->elements[accessor_->id_].ptr);
+      }
+
+      void incrementToValid() {
+        for (; iter_ != set_.end() && !valid(); ++iter_) {
         }
       }
 
@@ -307,7 +298,7 @@ class ThreadLocalPtr {
       using value_type = T;
       using reference = T const&;
       using pointer = T const*;
-      using iterator_category = std::bidirectional_iterator_tag;
+      using iterator_category = std::forward_iterator_tag;
 
       Iterator() = default;
 
@@ -319,17 +310,6 @@ class ThreadLocalPtr {
       Iterator& operator++(int) {
         Iterator copy(*this);
         increment();
-        return copy;
-      }
-
-      Iterator& operator--() {
-        decrement();
-        return *this;
-      }
-
-      Iterator& operator--(int) {
-        Iterator copy(*this);
-        decrement();
         return copy;
       }
 
@@ -345,18 +325,16 @@ class ThreadLocalPtr {
 
       bool operator!=(Iterator const& rhs) const { return !equal(rhs); }
 
-      std::thread::id getThreadId() const {
-        return e_->getThreadEntry()->tid();
-      }
+      std::thread::id getThreadId() const { return (*iter_)->tid(); }
 
-      uint64_t getOSThreadId() const { return e_->getThreadEntry()->tid_os; }
+      uint64_t getOSThreadId() const { return (*iter_)->tid_os; }
     };
 
     ~Accessor() { release(); }
 
-    Iterator begin() const { return ++Iterator(this); }
+    Iterator begin() const { return Iterator(this); }
 
-    Iterator end() const { return Iterator(this); }
+    Iterator end() const { return Iterator(this, true); }
 
     Accessor(const Accessor&) = delete;
     Accessor& operator=(const Accessor&) = delete;
