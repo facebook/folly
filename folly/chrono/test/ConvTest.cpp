@@ -16,6 +16,8 @@
 
 #include <folly/chrono/Conv.h>
 
+#include <limits>
+
 #include <glog/logging.h>
 
 #include <folly/portability/GTest.h>
@@ -401,7 +403,8 @@ TEST(Conv, stdChronoToTimespecOverflow) {
   } else {
     // Check for overflow converting from uint64_t seconds to time_t
     using sec_u64 = duration<uint64_t>;
-    ts = to<struct timespec>(sec_u64(9223372036854775807ULL));
+    ts =
+        to<struct timespec>(sec_u64(9223372036854775807ULL)); // largest int64_t
     EXPECT_EQ(ts.tv_sec, 9223372036854775807ULL);
     EXPECT_EQ(ts.tv_nsec, 0);
 
@@ -470,6 +473,93 @@ TEST(Conv, stdChronoToTimeval) {
   EXPECT_EQ(-4, tv.tv_sec);
   EXPECT_EQ(543211, tv.tv_usec);
 
+  // Try converting integrals with width less than int64_t
+  tv = to<struct timeval>(
+      duration<unsigned char>{std::numeric_limits<unsigned char>::max()});
+  EXPECT_EQ(std::numeric_limits<unsigned char>::max(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<unsigned char>{0});
+  EXPECT_EQ(0, tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<char>{std::numeric_limits<char>::max()});
+  EXPECT_EQ(std::numeric_limits<char>::max(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<char>{std::numeric_limits<char>::min()});
+  EXPECT_EQ(std::numeric_limits<char>::min(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(
+      duration<unsigned short>{std::numeric_limits<unsigned short>::max()});
+  EXPECT_EQ(std::numeric_limits<unsigned short>::max(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<short>{std::numeric_limits<short>::max()});
+  EXPECT_EQ(std::numeric_limits<short>::max(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<short>{std::numeric_limits<short>::min()});
+  EXPECT_EQ(std::numeric_limits<short>::min(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(
+      duration<unsigned int>{std::numeric_limits<unsigned int>::max()});
+  EXPECT_EQ(std::numeric_limits<unsigned int>::max(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<int>{std::numeric_limits<int>::max()});
+  EXPECT_EQ(std::numeric_limits<int>::max(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<int>{std::numeric_limits<int>::min()});
+  EXPECT_EQ(std::numeric_limits<int>::min(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  // Try converting integral types with a range that is greater than int64_t
+  tv = to<struct timeval>(duration<uint64_t>{9223372036854775807ULL});
+  EXPECT_EQ(9223372036854775807ULL, tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+#if FOLLY_HAVE_INT128_T
+  tv = to<struct timeval>(duration<folly::uint128_t>{9223372036854775807ULL});
+  EXPECT_EQ(9223372036854775807ULL, tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<folly::uint128_t>{0});
+  EXPECT_EQ(0, tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<folly::int128_t>{9223372036854775807ULL});
+  EXPECT_EQ(9223372036854775807ULL, tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(
+      duration<folly::int128_t>{std::numeric_limits<int64_t>::lowest()});
+  EXPECT_EQ(std::numeric_limits<int64_t>::lowest(), tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+#endif
+
+  // Try converting from the lowest floating point that int64_t can represent
+  tv = to<struct timeval>(duration<float>{-9223372036854775808.f});
+  EXPECT_EQ(-9223372036854775808.f, tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  tv = to<struct timeval>(duration<double>{-9223372036854775808.});
+  EXPECT_EQ(-9223372036854775808., tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  // Try converting the largest double that is in range of an int64_t
+  tv = to<struct timeval>(duration<double>{9223372036854774784.0});
+  EXPECT_EQ(9223372036854774784, tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
+  // Try converting the largest float that is in range of an int64_t
+  tv = to<struct timeval>(duration<float>{9223371487098961920.0f});
+  EXPECT_EQ(9223371487098961920, tv.tv_sec);
+  EXPECT_EQ(0, tv.tv_usec);
+
   // Try converting fractional hours
   tv = to<struct timeval>(duration<double, std::ratio<3600>>{3.456789});
   EXPECT_EQ(12444, tv.tv_sec);
@@ -506,4 +596,57 @@ TEST(Conv, stdChronoToTimeval) {
   tv = to<struct timeval>(createTimePoint<system_clock>(123us));
   EXPECT_EQ(0, tv.tv_sec);
   EXPECT_EQ(123, tv.tv_usec);
+}
+
+TEST(Conv, stdChronoToTimevalOverflow) {
+  // time_t max is 9223372036854775807
+  // converting it to a float or a double overflows to 9223372036854775808.0
+  EXPECT_THROW(
+      to<struct timeval>(duration<double>{9223372036854775808.}),
+      std::range_error);
+
+  EXPECT_THROW(
+      to<struct timeval>(duration<float>{9223372036854775808.f}),
+      std::range_error);
+
+  // Try the next float smaller than int64_t lowest
+  EXPECT_THROW(
+      to<struct timeval>(duration<double>{-9223372036854777856.}),
+      std::range_error);
+
+  // Try the next double smaller than int64_t lowest
+  EXPECT_THROW(
+      to<struct timeval>(duration<float>{-9223373136366403584.f}),
+      std::range_error);
+
+  // Test integrals with a larger range than time_t
+  EXPECT_THROW(
+      to<struct timeval>(duration<unsigned long>{9223372036854775808ULL}),
+      std::range_error);
+
+#if FOLLY_HAVE_INT128_T
+  EXPECT_THROW(
+      to<struct timeval>(duration<folly::uint128_t>{9223372036854775808ULL}),
+      std::range_error);
+
+  EXPECT_THROW(
+      to<struct timeval>(duration<folly::uint128_t>{
+          std::numeric_limits<folly::uint128_t>::max()}),
+      std::range_error);
+
+  EXPECT_THROW(
+      to<struct timeval>(duration<folly::int128_t>{9223372036854775808ULL}),
+      std::range_error);
+
+  EXPECT_THROW(
+      to<struct timeval>(duration<folly::int128_t>{
+          std::numeric_limits<folly::int128_t>::max()}),
+      std::range_error);
+
+  EXPECT_THROW(
+      to<struct timeval>(duration<folly::int128_t>{
+          static_cast<folly::int128_t>(std::numeric_limits<int64_t>::min()) -
+          1}),
+      std::range_error);
+#endif
 }

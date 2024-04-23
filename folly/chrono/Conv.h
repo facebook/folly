@@ -27,8 +27,10 @@
 #pragma once
 
 #include <chrono>
+#include <limits>
 #include <type_traits>
 
+#include <folly/ConstexprMath.h>
 #include <folly/Conv.h>
 #include <folly/Expected.h>
 #include <folly/Utility.h>
@@ -74,10 +76,36 @@ struct is_chrono_conversion {
  */
 template <typename Src>
 Expected<time_t, ConversionCode> chronoRangeCheck(Src value) {
-  if (value > std::numeric_limits<time_t>::max()) {
-    return makeUnexpected(ConversionCode::POSITIVE_OVERFLOW);
+  static_assert(
+      std::is_integral_v<time_t> && std::is_signed_v<time_t>,
+      "This function is only implemented for time_t that are signed integrals. Please update it if you need to support a different time_t type.");
+  if constexpr (std::is_floating_point_v<Src>) {
+    // time_t max converted to a floating point does not have
+    // an exact representation.
+    // 18446742974197923840 <- Largest float before time_t max
+    // 18446744073709549568 <- Largest double before time_t max
+    // 18446744073709551615 <- time_t max (when time_t is int64_t)
+    // 18446744073709551616 <- next representable float or double.
+    // The floating point value that gets chosen depends on the floating point
+    // implementation. IEEE arthimetic rounds to nearest.
+    static_assert(
+        std::numeric_limits<Src>::round_style == std::round_to_nearest,
+        "This function is only implemented for IEEE round to nearest. Please update it if you need other round styles.");
+    if (value >= static_cast<Src>(std::numeric_limits<time_t>::max())) {
+      return makeUnexpected(ConversionCode::POSITIVE_OVERFLOW);
+    }
+  } else {
+    constexpr bool isIntegralWithLargerRange = sizeof(Src) > sizeof(time_t) ||
+        (sizeof(Src) == sizeof(time_t) && std::is_unsigned_v<Src>);
+    if constexpr (isIntegralWithLargerRange) {
+      if (value > static_cast<Src>(std::numeric_limits<time_t>::max())) {
+        return makeUnexpected(ConversionCode::POSITIVE_OVERFLOW);
+      }
+    }
   }
   if (std::is_signed<Src>::value) {
+    // int64_t lowest converted to a floating point has
+    // has an exact representation because it is a power of 2.
     if (value < std::numeric_limits<time_t>::lowest()) {
       return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
     }
