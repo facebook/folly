@@ -59,7 +59,7 @@ struct to_ascii_array {
   static constexpr data_type_ data_() {
     data_type_ result{};
     Alphabet alpha;
-    for (size_t i = 0; i < Base; ++i) {
+    for (uint64_t i = 0; i < Base; ++i) {
       result.data[i] = alpha(static_cast<uint8_t>(i));
     }
     return result;
@@ -95,7 +95,7 @@ struct to_ascii_table {
   static constexpr data_type_ data_() {
     data_type_ result{};
     Alphabet alpha;
-    for (size_t i = 0; i < Base * Base; ++i) {
+    for (uint64_t i = 0; i < Base * Base; ++i) {
       result.data[i] = //
           (alpha(uint8_t(i / Base)) << (kIsLittleEndian ? 0 : 8)) |
           (alpha(uint8_t(i % Base)) << (kIsLittleEndian ? 8 : 0));
