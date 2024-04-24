@@ -944,6 +944,11 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
     def get_run_on(self, args):
         if args.run_on_all_branches:
             return self.RUN_ON_ALL
+        if args.cron:
+            return f"""
+  schedule:
+    - cron: '{args.cron}'"""
+
         return f"""
   push:
     branches:
@@ -1212,6 +1217,10 @@ jobs:
         )
         parser.add_argument(
             "--ubuntu-version", default="20.04", help="Version of Ubuntu to use"
+        )
+        parser.add_argument(
+            "--cron",
+            help="Specify that the job runs on a cron schedule instead of on pushes",
         )
         parser.add_argument(
             "--main-branch",

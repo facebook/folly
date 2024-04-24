@@ -10,18 +10,21 @@ on:
     branches:
     - main
 
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
 jobs:
   build:
     runs-on: windows-2019
     steps:
     - name: Export boost environment
-      run: "echo BOOST_ROOT=%BOOST_ROOT_1_78_0% >> %GITHUB_ENV%"
+      run: "echo BOOST_ROOT=%BOOST_ROOT_1_83_0% >> %GITHUB_ENV%"
       shell: cmd
     - name: Fix Git config
       run: git config --system core.longpaths true
     - name: Disable autocrlf
       run: git config --system core.autocrlf false
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Fetch boost
       run: python build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch libsodium
@@ -55,37 +58,37 @@ jobs:
     - name: Fetch libevent
       run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
     - name: Build boost
-      run: python build/fbcode_builder/getdeps.py build --no-tests boost
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests boost
     - name: Build libsodium
-      run: python build/fbcode_builder/getdeps.py build --no-tests libsodium
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libsodium
     - name: Build ninja
-      run: python build/fbcode_builder/getdeps.py build --no-tests ninja
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests ninja
     - name: Build cmake
-      run: python build/fbcode_builder/getdeps.py build --no-tests cmake
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests cmake
     - name: Build double-conversion
-      run: python build/fbcode_builder/getdeps.py build --no-tests double-conversion
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests double-conversion
     - name: Build fmt
-      run: python build/fbcode_builder/getdeps.py build --no-tests fmt
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests fmt
     - name: Build gflags
-      run: python build/fbcode_builder/getdeps.py build --no-tests gflags
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests gflags
     - name: Build glog
-      run: python build/fbcode_builder/getdeps.py build --no-tests glog
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests glog
     - name: Build googletest
-      run: python build/fbcode_builder/getdeps.py build --no-tests googletest
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests googletest
     - name: Build lz4
-      run: python build/fbcode_builder/getdeps.py build --no-tests lz4
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests lz4
     - name: Build perl
-      run: python build/fbcode_builder/getdeps.py build --no-tests perl
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests perl
     - name: Build openssl
-      run: python build/fbcode_builder/getdeps.py build --no-tests openssl
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests openssl
     - name: Build snappy
-      run: python build/fbcode_builder/getdeps.py build --no-tests snappy
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests snappy
     - name: Build zlib
-      run: python build/fbcode_builder/getdeps.py build --no-tests zlib
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests zlib
     - name: Build zstd
-      run: python build/fbcode_builder/getdeps.py build --no-tests zstd
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests zstd
     - name: Build libevent
-      run: python build/fbcode_builder/getdeps.py build --no-tests libevent
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libevent
     - name: Build folly
       run: python build/fbcode_builder/getdeps.py build --src-dir=. folly 
     - name: Copy artifacts
