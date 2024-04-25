@@ -25,9 +25,8 @@
 namespace folly {
 
 ThreadWheelTimekeeper::ThreadWheelTimekeeper()
-    : thread_([this] { eventBase_.loopForever(); }),
-      wheelTimer_(
-          HHWheelTimer::newTimer(&eventBase_, std::chrono::milliseconds(1))) {
+    : EventBaseThreadTimekeeper(eventBase_),
+      thread_([this] { eventBase_.loopForever(); }) {
   eventBase_.waitUntilRunning();
   eventBase_.runInEventBaseThread([this] {
     // 15 characters max
@@ -37,14 +36,14 @@ ThreadWheelTimekeeper::ThreadWheelTimekeeper()
 
 ThreadWheelTimekeeper::~ThreadWheelTimekeeper() {
   eventBase_.runInEventBaseThreadAndWait([this] {
-    wheelTimer_->cancelAll();
+    eventBase_.timer().cancelAll();
     eventBase_.terminateLoopSoon();
   });
   thread_.join();
 }
 
-SemiFuture<Unit> ThreadWheelTimekeeper::after(HighResDuration dur) {
-  auto [cob, sf] = WTCallback<HHWheelTimer>::create(&eventBase_);
+SemiFuture<Unit> EventBaseThreadTimekeeper::after(HighResDuration dur) {
+  auto [cob, sf] = WTCallback<HHWheelTimer>::create(&eventBaseRef_);
 
   // Even shared_ptr of cob is captured in lambda this is still somewhat *racy*
   // because it will be released once timeout is scheduled. So technically there
@@ -58,8 +57,8 @@ SemiFuture<Unit> ThreadWheelTimekeeper::after(HighResDuration dur) {
   // canceling timeout is executed in EventBase thread, the actual timeout
   // callback has either been executed, or will never be executed. So we are
   // fine here.
-  eventBase_.runInEventBaseThread([this, cob2 = std::move(cob), dur] {
-    wheelTimer_->scheduleTimeout(
+  eventBaseRef_.runInEventBaseThread([this, cob2 = std::move(cob), dur] {
+    eventBaseRef_.timer().scheduleTimeout(
         cob2.get(), folly::chrono::ceil<Duration>(dur));
   });
   return std::move(sf);

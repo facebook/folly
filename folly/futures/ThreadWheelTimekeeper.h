@@ -24,22 +24,33 @@
 
 namespace folly {
 
-/// The default Timekeeper implementation which uses a HHWheelTimer on an
-/// EventBase in a dedicated thread. Users needn't deal with this directly, it
-/// is used by default by Future methods that work with timeouts.
-class ThreadWheelTimekeeper : public Timekeeper {
+class EventBaseThreadTimekeeper : public Timekeeper {
  public:
-  /// But it doesn't *have* to be a singleton.
-  ThreadWheelTimekeeper();
-  ~ThreadWheelTimekeeper() override;
+  EventBaseThreadTimekeeper() = delete;
+  explicit EventBaseThreadTimekeeper(folly::EventBase& eventBase)
+      : eventBaseRef_(eventBase) {}
+  ~EventBaseThreadTimekeeper() override = default;
 
   /// Implement the Timekeeper interface
   SemiFuture<Unit> after(HighResDuration) override;
 
  protected:
-  folly::EventBase eventBase_;
+  folly::EventBase& eventBaseRef_;
+};
+
+/// The default Timekeeper implementation which uses a HHWheelTimer on an
+/// EventBase in a dedicated thread. Users needn't deal with this directly, it
+/// is used by default by Future methods that work with timeouts.
+class ThreadWheelTimekeeper : public EventBaseThreadTimekeeper {
+ public:
+  /// But it doesn't *have* to be a singleton.
+  ThreadWheelTimekeeper();
+  ~ThreadWheelTimekeeper() override;
+
+ protected:
+  folly::EventBase eventBase_{folly::EventBase::Options().setTimerTickInterval(
+      std::chrono::milliseconds(1))};
   std::thread thread_;
-  HHWheelTimer::UniquePtr wheelTimer_;
 };
 
 } // namespace folly
