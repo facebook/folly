@@ -21,6 +21,7 @@
 #pragma once
 
 #include <folly/CancellationToken.h>
+#include <folly/ConstexprMath.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Random.h>
 #include <folly/Try.h>
@@ -193,19 +194,16 @@ class ExponentialBackoffWithJitter {
     ++retryCount_;
 
     /// The jitter will be a value between [e^-stdev]
-    auto jitter = relativeJitterStdDev_ > 0
+    const auto jitter = relativeJitterStdDev_ > 0
         ? std::exp(dist{0., relativeJitterStdDev_}(randomGen_))
         : 1.;
-    auto backoffRep =
-        jitter * minBackoff_.count() * std::pow(2, retryCount_ - 1u);
+    // TODO T186551522 Calculate backoff in microseconds.
+    const auto backoffNominal =
+        Duration(folly::constexpr_clamp_cast<Duration::rep>(
+            jitter * minBackoff_.count() * std::pow(2, retryCount_ - 1u)));
 
-    Duration backoff;
-    if (backoffRep >= std::numeric_limits<Duration::rep>::max()) {
-      backoff = maxBackoff_;
-    } else {
-      backoff = std::min(Duration(Duration::rep(backoffRep)), maxBackoff_);
-    }
-    backoff = std::max(backoff, minBackoff_);
+    const Duration backoff =
+        std::clamp(backoffNominal, minBackoff_, maxBackoff_);
 
     co_await folly::coro::sleep(backoff, timeKeeper_);
 
