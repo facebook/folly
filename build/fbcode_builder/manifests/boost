@@ -105,6 +105,8 @@ pch=off
 
 [b2.args.os=darwin]
 toolset=clang
+# Since Xcode 15.3 std::piecewise_construct is only visible in C++17 and later modes
+cxxflags="-DBOOST_UNORDERED_HAVE_PIECEWISE_CONSTRUCT=0"
 
 [b2.args.all(os=windows,fb=on)]
 toolset=msvc-14.2
