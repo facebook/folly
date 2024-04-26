@@ -14,8 +14,9 @@
 
 # dwarf.h is typically installed in a libdwarf/ subdirectory on Debian-style
 # Linux distributions.  It is not installed in a libdwarf/ subdirectory on Mac
-# systems when installed with Homebrew.  Search for it in both locations.
-find_path(LIBDWARF_INCLUDE_DIR NAMES dwarf.h PATH_SUFFIXES libdwarf)
+# systems when installed with Homebrew.  Newer homebrew installations install
+# it in libdwarf-0.  Search for it in all locations.
+find_path(LIBDWARF_INCLUDE_DIR NAMES dwarf.h PATH_SUFFIXES libdwarf libdwarf-0)
 mark_as_advanced(LIBDWARF_INCLUDE_DIR)
 
 find_library(LIBDWARF_LIBRARY NAMES dwarf)

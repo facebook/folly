@@ -16,6 +16,7 @@ gflags
 glog
 googletest
 boost
+libdwarf
 libevent
 libsodium
 double-conversion
