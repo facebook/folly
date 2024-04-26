@@ -1,0 +1,142 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "bucketed_time_series",
+    headers = [
+        "BucketedTimeSeries.h",
+        "BucketedTimeSeries-inl.h",
+    ],
+    exported_deps = [
+        "//folly:likely",
+        "//folly/stats/detail:bucket",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "histogram",
+    headers = [
+        "Histogram.h",
+        "Histogram-inl.h",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:conv",
+        "//folly:traits",
+        "//folly/lang:exception",
+        "//folly/stats/detail:bucket",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "streaming_stats",
+    headers = [
+        "StreamingStats.h",
+    ],
+    exported_deps = [
+        "//folly/lang:exception",
+    ],
+)
+
+cpp_library(
+    name = "multi_level_time_series",
+    headers = [
+        "MultiLevelTimeSeries.h",
+        "MultiLevelTimeSeries-inl.h",
+    ],
+    exported_deps = [
+        ":bucketed_time_series",
+        "//folly:constexpr_math",
+        "//folly:string",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "quantile_estimator",
+    srcs = [
+        "QuantileEstimator.cpp",
+    ],
+    headers = [
+        "QuantileEstimator.h",
+        "QuantileEstimator-inl.h",
+    ],
+    exported_deps = [
+        ":tdigest",
+        "//folly/stats/detail:buffered_stat",
+    ],
+)
+
+cpp_library(
+    name = "quantile_histogram",
+    headers = [
+        "QuantileHistogram.h",
+        "QuantileHistogram-inl.h",
+    ],
+    exported_deps = [
+        ":digest_builder",
+        "//folly:conv",
+        "//folly:glog",
+        "//folly:likely",
+        "//folly:range",
+        "//folly:shared_mutex",
+        "//folly/lang:align",
+    ],
+)
+
+cpp_library(
+    name = "tdigest",
+    srcs = [
+        "TDigest.cpp",
+    ],
+    headers = [
+        "TDigest.h",
+    ],
+    deps = [
+        "//folly/stats/detail:double_radix_sort",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly:utility",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "digest_builder",
+    srcs = [],
+    headers = [
+        "DigestBuilder.h",
+        "DigestBuilder-inl.h",
+    ],
+    exported_deps = [
+        "//folly:memory",
+        "//folly:spin_lock",
+        "//folly/concurrency:cache_locality",
+        "//folly/lang:bits",
+        "//folly/synchronization:lock",
+    ],
+)
+
+cpp_library(
+    name = "timeseries_histogram",
+    headers = [
+        "TimeseriesHistogram.h",
+        "TimeseriesHistogram-inl.h",
+    ],
+    exported_deps = [
+        ":histogram",
+        ":multi_level_time_series",
+    ],
+)

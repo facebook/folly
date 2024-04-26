@@ -1,0 +1,21 @@
+# @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
+load(":defs.bzl", "protoc_distribution")
+
+protoc_distribution(
+    name = "distribution",
+    version = "21.4",
+)
+
+# @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
+alias(
+    name = "protoc",
+    actual = ":distribution[protoc]",
+    visibility = ["PUBLIC"],
+)
+
+# @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
+alias(
+    name = "google_protobuf",
+    actual = ":distribution[google_protobuf]",
+    visibility = ["PUBLIC"],
+)

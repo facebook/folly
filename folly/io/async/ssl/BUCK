@@ -1,0 +1,73 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "openssl",
+    exported_deps = [
+        "//folly/io/async/ssl:openssl_utils",  # @manual
+        "//folly/io/async/ssl:ssl_errors",  # @manual
+    ],
+)
+
+cpp_library(
+    name = "basic_transport_certificate",
+    headers = ["BasicTransportCertificate.h"],
+    exported_deps = [
+        ":openssl_transport_certificate",
+    ],
+)
+
+cpp_library(
+    name = "openssl_transport_certificate",
+    headers = ["OpenSSLTransportCertificate.h"],
+    exported_deps = [
+        "//folly/io/async:async_transport_certificate",
+        "//folly/portability:openssl",
+        "//folly/ssl:openssl_ptr_types",
+    ],
+)
+
+cpp_library(
+    name = "openssl_utils",
+    srcs = ["OpenSSLUtils.cpp"],
+    headers = ["OpenSSLUtils.h"],
+    deps = [
+        "//folly:scope_guard",
+        "//folly/portability:unistd",
+        "//folly/ssl/detail:openssl_session",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/io/async:async_socket_exception",
+        "//folly/net:network_socket",
+        "//folly/portability:openssl",
+        "//folly/portability:sockets",
+        "//folly/ssl:openssl_ptr_types",
+        "//folly/ssl:ssl_session",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "ssl_errors",
+    srcs = ["SSLErrors.cpp"],
+    headers = ["SSLErrors.h"],
+    deps = [
+        "//folly:range",
+        "//folly/portability:openssl",
+    ],
+    exported_deps = [
+        "//folly/io/async:async_socket_exception",
+    ],
+)
+
+cpp_library(
+    name = "tls_definitions",
+    headers = ["TLSDefinitions.h"],
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
+)

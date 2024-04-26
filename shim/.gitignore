@@ -1,0 +1,5 @@
+# We currently expect end users to run reindeer vendor themselves
+# so mark these things as to ignore
+/third-party/rust/.cargo/
+/third-party/rust/BUCK
+/third-party/rust/vendor/

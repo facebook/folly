@@ -1,0 +1,18 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "channel_test_util",
+    headers = ["ChannelTestUtil.h"],
+    exported_deps = [
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/coro:detach_on_cancel",
+        "//folly/experimental/coro:sleep",
+        "//folly/futures:shared_promise",
+        "//folly/portability:gmock",
+    ],
+)

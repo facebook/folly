@@ -1,0 +1,19 @@
+buildscript = []
+
+[[platform_fixup.'cfg(target_os = "linux")'.buildscript]]
+[platform_fixup.'cfg(target_os = "linux")'.buildscript.cxx_library]
+name = "linux"
+srcs = ["c/linux.c"]
+headers = ["c/*.h"]
+
+[[platform_fixup.'cfg(target_os = "macos")'.buildscript]]
+[platform_fixup.'cfg(target_os = "macos")'.buildscript.cxx_library]
+name = "macos"
+srcs = ["c/darwin.c"]
+headers = ["c/*.h"]
+
+[[platform_fixup.'cfg(target_os = "windows")'.buildscript]]
+[platform_fixup.'cfg(target_os = "windows")'.buildscript.cxx_library]
+name = "windows"
+srcs = ["c/windows.c"]
+headers = ["c/*.h"]

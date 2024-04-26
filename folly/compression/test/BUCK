@@ -1,0 +1,34 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "compression_test",
+    srcs = ["CompressionTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/zstd:zstd",
+        "//folly:random",
+        "//folly:varint",
+        "//folly/compression:compression",
+        "//folly/hash:hash",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "compression_context_pool_test",
+    srcs = [
+        "CompressionContextPoolTest.cpp",
+    ],
+    deps = [
+        "//folly/compression:compression_context_pool",
+        "//folly/compression:compression_context_pool_singletons",
+        "//folly/portability:gtest",
+    ],
+)

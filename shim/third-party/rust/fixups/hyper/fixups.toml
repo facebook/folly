@@ -1,0 +1,5 @@
+# reindeer cannot see through `cfg_proto!` macros and the like
+extra_srcs = ["src/**/*.rs"]
+
+[[buildscript]]
+[buildscript.rustc_flags]

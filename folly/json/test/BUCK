@@ -1,0 +1,147 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "dynamic_benchmark",
+    srcs = ["DynamicBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/init:init",
+        "//folly/json:dynamic",
+    ],
+)
+
+cpp_unittest(
+    name = "dynamic_converter_test",
+    srcs = ["DynamicConverterTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:expected",
+        "//folly:fbvector",
+        "//folly:optional",
+        "//folly/json:dynamic",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "dynamic_other_test",
+    srcs = ["DynamicOtherTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/gen:base",
+        "//folly/json:dynamic",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "dynamic_test",
+    srcs = ["DynamicTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:range",
+        "//folly/hash:hash",
+        "//folly/json:dynamic",
+        "//folly/portability:gtest",
+        "//folly/test:comparison_operator_test_util",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "json_benchmark",
+    srcs = ["JsonBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/json:dynamic",
+    ],
+)
+
+cpp_unittest(
+    name = "json_other_test",
+    srcs = ["JsonOtherTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/json:dynamic",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "json_patch_test",
+    srcs = ["json_patch_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly:json_patch",
+        "//folly:json_pointer",
+        "//folly/json:dynamic",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "json_test",
+    srcs = ["JsonTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/json:dynamic",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "json_pointer_test",
+    srcs = ["json_pointer_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly:json_pointer",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "json_schema_test",
+    srcs = ["JSONSchemaTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental:json_schema",
+        "//folly/json:dynamic",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "dynamic_parser_test",
+    srcs = ["DynamicParserTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:optional",
+        "//folly/experimental:dynamic_parser",
+        "//folly/experimental:test_util",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "json_test_util_test",
+    srcs = ["JsonTestUtilTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/test:json_mock_util",
+        "//folly/test:json_test_util",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

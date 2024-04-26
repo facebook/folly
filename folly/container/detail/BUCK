@@ -1,0 +1,115 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "bit_iterator_detail",
+    headers = ["BitIteratorDetail.h"],
+    exported_deps = [
+        "//folly/portability:sys_types",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "f14_intrinsics_availability",
+    headers = [
+        "F14IntrinsicsAvailability.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "f14_defaults",
+    headers = [
+        "F14Defaults.h",
+    ],
+    exported_deps = [
+        "//folly/container:heterogeneous_access_fwd",
+    ],
+)
+
+cpp_library(
+    name = "f14_hash_detail",
+    srcs = [
+        "F14Table.cpp",
+    ],
+    headers = [
+        "F14MapFallback.h",
+        "F14Policy.h",
+        "F14SetFallback.h",
+        "F14Table.h",
+    ],
+    exported_deps = [
+        ":f14_defaults",
+        ":f14_intrinsics_availability",
+        ":f14_mask",
+        ":util",
+        "//folly:bits",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:traits",
+        "//folly:unit",
+        "//folly/container:heterogeneous_access",
+        "//folly/functional:invoke",
+        "//folly/hash:hash",
+        "//folly/lang:align",
+        "//folly/lang:assume",
+        "//folly/lang:exception",
+        "//folly/lang:pretty",
+        "//folly/lang:safe_assert",
+        "//folly/memory:malloc",
+        "//folly/portability:builtins",
+    ],
+)
+
+cpp_library(
+    name = "f14_mask",
+    headers = [
+        "F14Mask.h",
+    ],
+    exported_deps = [
+        ":f14_intrinsics_availability",
+        "//folly:bits",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:portability",
+        "//folly/lang:assume",
+        "//folly/lang:safe_assert",
+    ],
+)
+
+cpp_library(
+    name = "tape_detail",
+    headers = [
+        "tape_detail.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:range",
+        "//folly/container:iterator",
+        "//folly/container:range_traits",
+        "//folly/lang:hint",
+        "//folly/memory:uninitialized_memory_hacks",
+    ],
+)
+
+cpp_library(
+    name = "util",
+    headers = [
+        "Util.h",
+    ],
+    exported_deps = [
+        "//folly:traits",
+        "//folly/container:iterator",
+        "//folly/functional:apply_tuple",
+    ],
+)

@@ -1,0 +1,457 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "access_test",
+    srcs = ["AccessTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:access",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "array_test",
+    srcs = ["ArrayTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "//folly/container:array",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "bit_iterator_bench",
+    srcs = ["BitIteratorBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:small_vector",
+        "//folly/container:bit_iterator",
+        "//folly/init:init",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "bit_iterator_test",
+    srcs = ["BitIteratorTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:bit_iterator",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "enumerate_test",
+    srcs = ["EnumerateTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:range",
+        "//folly/container:enumerate",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "evicting_cache_map_bench",
+    srcs = ["EvictingCacheMapBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/container:evicting_cache_map",
+    ],
+)
+
+cpp_unittest(
+    name = "evicting_cache_map_test",
+    srcs = ["EvictingCacheMapTest.cpp"],
+    headers = [],
+    allocator = "jemalloc_debug",
+    deps = [
+        "//folly/container:evicting_cache_map",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "f14_test_util",
+    headers = [
+        "F14TestUtil.h",
+    ],
+    exported_deps = [
+        "//folly/container/detail:f14_hash_detail",
+    ],
+)
+
+cpp_unittest(
+    name = "f14_fwd_test",
+    srcs = [
+        "F14FwdTest.cpp",
+    ],
+    deps = [
+        "//folly/container:f14_hash_fwd",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "f14_map_test",
+    srcs = [
+        "F14MapTest.cpp",
+    ],
+    deps = [
+        ":f14_test_util",
+        ":tracking_types",
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly:fbstring",
+        "//folly:portability",
+        "//folly/container:f14_hash",
+        "//folly/hash:hash",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "f14_map_fallback_test",
+    srcs = [
+        "F14MapTest.cpp",
+    ],
+    preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
+    deps = [
+        ":f14_test_util",
+        ":tracking_types",
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly:fbstring",
+        "//folly:portability",
+        "//folly/container:f14_hash",
+        "//folly/hash:hash",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "f14_policy_test",
+    srcs = [
+        "F14PolicyTest.cpp",
+    ],
+    deps = [
+        "//folly/container:f14_hash",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "f14_set_test",
+    srcs = [
+        "F14SetTest.cpp",
+    ],
+    deps = [
+        ":f14_test_util",
+        ":tracking_types",
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly:fbstring",
+        "//folly:portability",
+        "//folly/container:f14_hash",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "f14_set_fallback_test",
+    srcs = [
+        "F14SetTest.cpp",
+    ],
+    preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
+    deps = [
+        ":f14_test_util",
+        ":tracking_types",
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly:fbstring",
+        "//folly:portability",
+        "//folly/container:f14_hash",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "heap_vector_types_test",
+    srcs = ["heap_vector_types_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly:range",
+        "//folly:small_vector",
+        "//folly:sorted_vector_types",
+        "//folly:utility",
+        "//folly/container:heap_vector_types",
+        "//folly/memory:malloc",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "f14_interprocess_test",
+    srcs = [
+        "F14InterprocessTest.cpp",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:random",
+        "//folly:traits",
+        "//folly/container:f14_hash",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("boost", None, "boost_interprocess"),
+        ("glibc", None, "rt"),  # @manual
+    ],
+)
+
+cpp_binary(
+    name = "f14_small_overheads",
+    srcs = [
+        "F14SmallOverheads.cpp",
+    ],
+    deps = [
+        "//folly/container:f14_hash",
+    ],
+)
+
+cpp_unittest(
+    name = "f14_asan_support_test",
+    srcs = [
+        "F14AsanSupportTest.cpp",
+    ],
+    deps = [
+        "//folly:portability",
+        "//folly/container:f14_hash",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "foreach_benchmark",
+    srcs = ["ForeachBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/container:enumerate",
+        "//folly/container:foreach",
+        "//folly/init:init",
+    ],
+)
+
+cpp_unittest(
+    name = "foreach_test",
+    srcs = ["ForeachTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:foreach",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "heterogeneous_access_test",
+    srcs = [
+        "HeterogeneousAccessTest.cpp",
+    ],
+    deps = [
+        "//folly:fbstring",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:small_vector",
+        "//folly:traits",
+        "//folly/container:heterogeneous_access",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "iterator_test",
+    srcs = ["IteratorTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:iterator",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "merge_test",
+    srcs = ["MergeTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:merge",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "range_traits_test",
+    srcs = ["range_traits_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:range_traits",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "sparse_byte_set_benchmark",
+    srcs = ["SparseByteSetBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly:format",
+        "//folly/container:sparse_byte_set",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "sparse_byte_set_test",
+    srcs = ["SparseByteSetTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:sparse_byte_set",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "tracking_types",
+    headers = [
+        "TrackingTypes.h",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly/hash:hash",
+        "//folly/lang:safe_assert",
+        "//folly/portability:asm",
+    ],
+)
+
+cpp_unittest(
+    name = "tape_test",
+    srcs = ["tape_test.cpp"],
+    deps = [
+        "//folly:small_vector",
+        "//folly/container:tape",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "tape_bench",
+    srcs = ["tape_bench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/container:tape",
+        "//folly/init:init",
+    ],
+)
+
+cpp_unittest(
+    name = "util_test",
+    srcs = ["UtilTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:optional",
+        "//folly:range",
+        "//folly/container/detail:util",
+        "//folly/container/test:tracking_types",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "weighted_evicting_cache_map_test",
+    srcs = ["WeightedEvictingCacheMapTest.cpp"],
+    headers = [],
+    allocator = "jemalloc_debug",
+    deps = [
+        "//folly/container:weighted_evicting_cache_map",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "intrusive_heap_test",
+    srcs = ["IntrusiveHeapTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly/container:intrusive_heap",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_binary(
+    name = "hash_maps_bench",
+    srcs = ["HashMapsBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly:format",
+        "//folly:function",
+        "//folly/container:f14_hash",
+        "//folly/hash:hash",
+        "//folly/init:init",
+        "//folly/portability:gflags",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "reserve_test",
+    srcs = ["ReserveTest.cpp"],
+    deps = [
+        "//folly/container:f14_hash",
+        "//folly/container:reserve",
+        "//folly/portability:gtest",
+    ],
+)

@@ -1,0 +1,26 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_binary(
+    name = "example",
+    srcs = ["main.cpp"],
+    deps = [
+        ":lib",
+        "//folly/init:init",
+        "//folly/logging:init",
+        "//folly/logging:logging",
+    ],
+)
+
+cpp_library(
+    name = "lib",
+    srcs = ["lib.cpp"],
+    headers = ["lib.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:range",
+        "//folly/logging:logging",
+    ],
+)

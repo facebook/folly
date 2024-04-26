@@ -1,0 +1,37 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "core",
+    srcs = [
+        "Core.cpp",
+    ],
+    headers = [
+        "Core.h",
+        "Types.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+    exported_deps = [
+        "//folly:executor",
+        "//folly:function",
+        "//folly:optional",
+        "//folly:scope_guard",
+        "//folly:try",
+        "//folly:utility",
+        "//folly/io/async:request_context",
+        "//folly/lang:assume",
+        "//folly/lang:exception",
+        "//folly/synchronization:atomic_util",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "types",
+    headers = ["Types.h"],
+)

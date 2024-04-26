@@ -1,0 +1,341 @@
+load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "add_tasks",
+    headers = [
+        "AddTasks.h",
+        "AddTasks-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly:optional",
+        "//folly:try",
+    ],
+)
+
+cpp_library(
+    name = "atomic_batch_dispatcher",
+    headers = [
+        "AtomicBatchDispatcher.h",
+        "AtomicBatchDispatcher-inl.h",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:function",
+        "//folly:optional",
+        "//folly/fibers/detail:atomic_batch_dispatcher",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "batch_dispatcher",
+    headers = ["BatchDispatcher.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "boost_context_compatibility",
+    headers = ["BoostContextCompatibility.h"],
+    exported_deps = [
+        "//folly:function",
+    ],
+    exported_external_deps = [
+        "glog",
+        ("boost", None, "boost_context"),
+    ],
+)
+
+cpp_library(
+    name = "core",
+    srcs = [
+        "Baton.cpp",
+        "Fiber.cpp",
+        "FiberManager.cpp",
+    ],
+    auto_headers = AutoHeaders.NONE,
+    headers = [
+        "Baton.h",
+        "Baton-inl.h",
+        "Fiber.h",
+        "Fiber-inl.h",
+        "FiberManagerInternal.h",
+        "FiberManagerInternal-inl.h",
+        "Promise.h",
+        "Promise-inl.h",
+    ],
+    deps = [
+        "//folly:constexpr_math",
+        "//folly:singleton_thread_local",
+        "//folly/detail:memory_idler",
+        "//folly/memory:sanitize_address",
+        "//folly/portability:asm",
+        "//folly/portability:config",
+        "//folly/portability:sys_syscall",
+        "//folly/portability:unistd",
+        "//folly/synchronization:sanitize_thread",
+    ],
+    exported_deps = [
+        ":boost_context_compatibility",
+        ":guard_page_allocator",
+        ":loop_controller",
+        ":traits",
+        "//folly:atomic_linked_list",
+        "//folly:c_portability",
+        "//folly:executor",
+        "//folly:function",
+        "//folly:intrusive_list",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:try",
+        "//folly/detail:async_trace",
+        "//folly/detail:futex",
+        "//folly/experimental:execution_observer",
+        "//folly/experimental/coro:coroutine",
+        "//folly/functional:invoke",
+        "//folly/io/async:async_base",
+        "//folly/io/async:request_context",
+        "//folly/lang:thunk",
+        "//folly/portability:pthread",
+        "//folly/tracing:async_stack",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "core_manager",
+    headers = [
+        "FiberManager.h",
+        "FiberManager-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly/functional:invoke",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "event_base_loop_controller",
+    headers = [
+        "EventBaseLoopController.h",
+        "EventBaseLoopController-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":executor_based_loop_controller",
+        "//folly:cancellation_token",
+        "//folly:memory",
+        "//folly/io/async:async_base",
+    ],
+)
+
+cpp_library(
+    name = "executor_loop_controller",
+    headers = [
+        "ExecutorLoopController.h",
+        "ExecutorLoopController-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":executor_based_loop_controller",
+        "//folly:executor",
+        "//folly:scope_guard",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "fiber_manager_map",
+    headers = [
+        "FiberManagerMap.h",
+        "FiberManagerMap-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":event_base_loop_controller",
+        "//folly:function",
+        "//folly:scope_guard",
+        "//folly:singleton_thread_local",
+        "//folly:synchronized",
+        "//folly/container:f14_hash",
+        "//folly/io/async:async_base",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+)
+
+cpp_library(
+    name = "fibers",
+    exported_deps = [
+        ":add_tasks",  # @manual
+        ":atomic_batch_dispatcher",  # @manual
+        ":batch_dispatcher",  # @manual
+        ":batch_semaphore",  # @manual
+        ":boost_context_compatibility",  # @manual
+        ":core",  # @manual
+        ":core_manager",  # @manual
+        ":event_base_loop_controller",  # @manual
+        ":fiber_manager_map",  # @manual
+        ":for_each",  # @manual
+        ":generic_baton",  # @manual
+        ":guard_page_allocator",  # @manual
+        ":loop_controller",  # @manual
+        ":semaphore",  # @manual
+        ":semaphore_base",  # @manual
+        ":simple_loop_controller",  # @manual
+        ":timed_mutex",  # @manual
+        ":traits",  # @manual
+        ":when_n",  # @manual
+    ],
+)
+
+cpp_library(
+    name = "for_each",
+    headers = [
+        "ForEach.h",
+        "ForEach-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "generic_baton",
+    headers = ["GenericBaton.h"],
+    exported_deps = [
+        ":core",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_library(
+    name = "guard_page_allocator",
+    srcs = ["GuardPageAllocator.cpp"],
+    headers = ["GuardPageAllocator.h"],
+    deps = [
+        "//folly:singleton",
+        "//folly:spin_lock",
+        "//folly:synchronized",
+        "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        "glog",
+        ("glibc", None, "dl"),
+    ],
+)
+
+cpp_library(
+    name = "loop_controller",
+    headers = ["LoopController.h"],
+    exported_deps = [
+        "//folly/io/async:async_base_fwd",
+    ],
+)
+
+cpp_library(
+    name = "executor_based_loop_controller",
+    headers = ["ExecutorBasedLoopController.h"],
+    exported_deps = [
+        ":loop_controller",
+        "//folly:executor",
+    ],
+)
+
+cpp_library(
+    name = "semaphore",
+    srcs = ["Semaphore.cpp"],
+    headers = ["Semaphore.h"],
+    exported_deps = [
+        ":core",
+        "//folly:intrusive_list",
+        "//folly:synchronized",
+        "//folly/experimental/coro:task",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "batch_semaphore",
+    srcs = ["BatchSemaphore.cpp"],
+    headers = ["BatchSemaphore.h"],
+    exported_deps = [
+        ":semaphore_base",
+    ],
+)
+
+cpp_library(
+    name = "semaphore_base",
+    srcs = ["SemaphoreBase.cpp"],
+    headers = ["SemaphoreBase.h"],
+    exported_deps = [
+        ":core",
+        "//folly:intrusive_list",
+        "//folly:synchronized",
+        "//folly/experimental/coro:task",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "simple_loop_controller",
+    srcs = ["SimpleLoopController.cpp"],
+    headers = ["SimpleLoopController.h"],
+    deps = [
+        "//folly/io/async:async_base",
+    ],
+    exported_deps = [
+        ":core_manager",
+        ":loop_controller",
+        "//folly:function",
+        "//folly:likely",
+    ],
+)
+
+cpp_library(
+    name = "timed_mutex",
+    headers = [
+        "CallOnce.h",
+        "TimedMutex.h",
+        "TimedMutex-inl.h",
+    ],
+    exported_deps = [
+        ":generic_baton",
+        "//folly:intrusive_list",
+        "//folly:portability",
+        "//folly:spin_lock",
+        "//folly/synchronization:call_once",
+    ],
+)
+
+cpp_library(
+    name = "traits",
+    headers = ["traits.h"],
+)
+
+cpp_library(
+    name = "when_n",
+    headers = [
+        "WhenN.h",
+        "WhenN-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":for_each",
+        "//folly:optional",
+        "//folly/functional:invoke",
+    ],
+)

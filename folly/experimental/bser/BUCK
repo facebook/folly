@@ -1,0 +1,13 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "bser",
+    headers = [
+        "Bser.h",
+    ],
+    exported_deps = [
+        "//folly/json/bser:bser",
+    ],
+)

@@ -1,0 +1,13 @@
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_sh_binary")
+
+oncall("fbcode_entropy_wardens_folly")
+
+buck_sh_binary(
+    name = "build_html.py",
+    main = "build_html.py",
+)
+
+buck_sh_binary(
+    name = "copy.py",
+    main = "copy.py",
+)

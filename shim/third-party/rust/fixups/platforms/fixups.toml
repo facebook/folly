@@ -1,0 +1,26 @@
+# Buildscript sets TARGET in environment
+buildscript = []
+
+[platform_fixup.'cfg(all(target_os = "linux", target_arch = "aarch64"))']
+env = { TARGET = "aarch64-unknown-linux-gnu" }
+buildscript = []
+
+[platform_fixup.'cfg(all(target_os = "linux", target_arch = "x86_64"))']
+env = { TARGET = "x86_64-unknown-linux-gnu" }
+buildscript = []
+
+[platform_fixup.'cfg(all(target_os = "macos", target_arch = "aarch64"))']
+env = { TARGET = "aarch64-apple-darwin" }
+buildscript = []
+
+[platform_fixup.'cfg(all(target_os = "macos", target_arch = "x86_64"))']
+env = { TARGET = "x86_64-apple-darwin" }
+buildscript = []
+
+[platform_fixup.'cfg(all(target_os = "windows", target_env = "gnu"))']
+env = { TARGET = "x86_64-pc-windows-gnu" }
+buildscript = []
+
+[platform_fixup.'cfg(all(target_os = "windows", target_env = "msvc"))']
+env = { TARGET = "x86_64-pc-windows-msvc" }
+buildscript = []

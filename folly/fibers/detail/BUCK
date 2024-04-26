@@ -1,0 +1,12 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "atomic_batch_dispatcher",
+    srcs = ["AtomicBatchDispatcher.cpp"],
+    headers = ["AtomicBatchDispatcher.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+)

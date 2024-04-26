@@ -1,0 +1,26 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "async_fd_socket",
+    srcs = ["AsyncFdSocket.cpp"],
+    headers = ["AsyncFdSocket.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+    exported_deps = [
+        ":socket_fds",
+        "//folly/io/async:async_socket",
+    ],
+)
+
+cpp_library(
+    name = "socket_fds",
+    srcs = ["SocketFds.cpp"],
+    headers = ["SocketFds.h"],
+    exported_deps = ["//folly:file"],
+    exported_external_deps = [
+        "glog",
+    ],
+)

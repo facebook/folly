@@ -1,0 +1,36 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "avx512_crc32c_v8s3x4",
+    srcs = [
+        "avx512_crc32c_v8s3x4.cpp",
+    ],
+    headers = [
+        "avx512_crc32c_v8s3x4.h",
+    ],
+    arch_preprocessor_flags = {
+        "x86_64": [
+            "-mavx512f",
+            "-mavx512vl",
+            "-mpclmul",
+        ],
+    },
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "sse_crc32c_v8s3x3",
+    srcs = [
+        "sse_crc32c_v8s3x3.cpp",
+    ],
+    headers = [
+        "sse_crc32c_v8s3x3.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)

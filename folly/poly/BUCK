@@ -1,0 +1,14 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "basic_interfaces",
+    headers = [
+        "Nullable.h",
+        "Regular.h",
+    ],
+    exported_deps = [
+        "//folly:poly",
+    ],
+)

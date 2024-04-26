@@ -1,0 +1,51 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "flat_combining_examples",
+    headers = ["FlatCombiningExamples.h"],
+    exported_deps = [
+        "//folly/experimental/flat_combining:flat_combining",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_library(
+    name = "flat_combining_test_helpers",
+    headers = ["FlatCombiningTestHelpers.h"],
+    exported_deps = [
+        ":flat_combining_examples",
+        "//folly:benchmark",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "flat_combining_test",
+    srcs = ["FlatCombiningTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        ":flat_combining_test_helpers",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "flat_combining_benchmark",
+    srcs = ["FlatCombiningBenchmark.cpp"],
+    deps = [
+        ":flat_combining_test_helpers",
+        "//folly:benchmark",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

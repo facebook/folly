@@ -1,0 +1,14 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "double_radix_sort_test",
+    srcs = ["DoubleRadixSortTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly/portability:gtest",
+        "//folly/stats/detail:double_radix_sort",
+    ],
+)

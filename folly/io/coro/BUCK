@@ -1,0 +1,45 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "transport_callback_base",
+    headers = [
+        "TransportCallbackBase.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:task",
+        "//folly/io/async:async_transport",
+        "//folly/io/async/ssl:ssl_errors",
+    ],
+)
+
+cpp_library(
+    name = "socket",
+    srcs = [
+        "ServerSocket.cpp",
+        "Transport.cpp",
+    ],
+    headers = [
+        "ServerSocket.h",
+        "Transport.h",
+    ],
+    deps = [
+        ":transport_callback_base",
+        "//folly:portability",
+        "//folly/experimental/coro:baton",
+    ],
+    exported_deps = [
+        "//folly:exception_wrapper",
+        "//folly:expected",
+        "//folly:network_address",
+        "//folly:range",
+        "//folly/experimental/coro:task",
+        "//folly/io:iobuf",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:async_socket_exception",
+        "//folly/io/async:server_socket",
+    ],
+)

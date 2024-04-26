@@ -1,0 +1,71 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "fibers_benchmark",
+    srcs = ["FibersBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:fiber_manager_map",
+        "//folly/fibers:simple_loop_controller",
+        "//folly/init:init",
+        "//folly/io/async:async_base",
+    ],
+)
+
+cpp_unittest(
+    name = "fibers_test",
+    srcs = ["FibersTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:conv",
+        "//folly:memory",
+        "//folly:random",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/fibers:add_tasks",
+        "//folly/fibers:atomic_batch_dispatcher",
+        "//folly/fibers:batch_dispatcher",
+        "//folly/fibers:batch_semaphore",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:event_base_loop_controller",
+        "//folly/fibers:executor_loop_controller",
+        "//folly/fibers:fiber_manager_map",
+        "//folly/fibers:generic_baton",
+        "//folly/fibers:semaphore",
+        "//folly/fibers:simple_loop_controller",
+        "//folly/fibers:timed_mutex",
+        "//folly/fibers:when_n",
+        "//folly/futures:core",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/portability:gtest",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_binary(
+    name = "fibers_test_app",
+    srcs = ["FibersTestApp.cpp"],
+    headers = [],
+    deps = [
+        "//folly:memory",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:simple_loop_controller",
+    ],
+)
+
+cpp_binary(
+    name = "stack_overflow",
+    srcs = ["StackOverflow.cpp"],
+    headers = [],
+    compiler_flags = ["-Wno-infinite-recursion"],
+    deps = [
+        "//folly/fibers:fiber_manager_map",
+        "//folly/init:init",
+    ],
+)

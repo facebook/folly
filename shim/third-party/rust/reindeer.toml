@@ -1,0 +1,29 @@
+# Configuration for Reindeer to generate Buck targets from Cargo.toml
+#
+# Overview of available options:
+# https://github.com/facebookincubator/reindeer/blob/main/example/third-party/reindeer.toml
+
+# Parse Rust code to work out the precise set of source files for each crate.
+precise_srcs = true
+
+# Include a public top-level target which depends on all other targets.
+include_top_level = true
+
+[cargo]
+# Support Cargo's unstable "artifact dependencies" functionality, RFC 3028.
+bindeps = true
+
+[buck]
+# Name of the generated file.
+file_name = "BUCK"
+
+# Rules used for various kinds of targets.
+rust_library = "cargo.rust_library"
+rust_binary = "cargo.rust_binary"
+prebuilt_cxx_library = "third_party_rust_prebuilt_cxx_library"
+
+buckfile_imports = """
+load("@prelude//rust:cargo_buildscript.bzl", "buildscript_run")
+load("@prelude//rust:cargo_package.bzl", "cargo")
+load("//third-party/macros:rust_third_party.bzl", "third_party_rust_prebuilt_cxx_library")
+"""

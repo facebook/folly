@@ -1,0 +1,45 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "graph_cycle_detector",
+    headers = ["GraphCycleDetector.h"],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "observer_manager",
+    srcs = [
+        "Core.cpp",
+        "ObserverManager.cpp",
+    ],
+    headers = [
+        "Core.h",
+        "ObserverManager.h",
+    ],
+    deps = [
+        "//folly:exception_string",
+        "//folly:format",
+        "//folly:range",
+        "//folly:singleton",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/portability:gflags",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        ":graph_cycle_detector",
+        "//folly:function",
+        "//folly:portability",
+        "//folly:synchronized",
+        "//folly/fibers:core_manager",
+        "//folly/functional:invoke",
+        "//folly/futures:core",
+        "//folly/synchronization:sanitize_thread",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

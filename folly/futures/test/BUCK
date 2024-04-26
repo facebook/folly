@@ -1,0 +1,431 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "barrier_test",
+    srcs = ["BarrierTest.cpp"],
+    deps = [
+        "//folly:random",
+        "//folly/futures:barrier",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "callback_lifetime_test",
+    srcs = ["CallbackLifetimeTest.cpp"],
+    deps = [
+        ":test_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "collect_test",
+    srcs = ["CollectTest.cpp"],
+    deps = [
+        "//folly:default_keep_alive_executor",
+        "//folly:random",
+        "//folly:small_vector",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:manual_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_unittest(
+    name = "context_test",
+    srcs = ["ContextTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "core_test",
+    srcs = ["CoreTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/futures/detail:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "ensure_test",
+    srcs = ["EnsureTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "filter_test",
+    srcs = ["FilterTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "future_splitter_test",
+    srcs = ["FutureSplitterTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/futures:future_splitter",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "future_test",
+    srcs = ["FutureTest.cpp"],
+    deps = [
+        "//folly:executor",
+        "//folly:memory",
+        "//folly:unit",
+        "//folly/executors:manual_executor",
+        "//folly/futures:core",
+        "//folly/json:dynamic",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "semi_future_test",
+    srcs = ["SemiFutureTest.cpp"],
+    deps = [
+        "//folly:executor",
+        "//folly:memory",
+        "//folly:unit",
+        "//folly/executors:manual_executor",
+        "//folly/futures:core",
+        "//folly/io/async:async_base",
+        "//folly/json:dynamic",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_benchmark(
+    name = "futures_benchmark",
+    srcs = ["Benchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        ":test_executor",
+        "//folly:benchmark",
+        "//folly/executors:inline_executor",
+        "//folly/futures:core",
+        "//folly/portability:gflags",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:native_semaphore",
+    ],
+)
+
+cpp_unittest(
+    name = "header_compile_test",
+    srcs = ["HeaderCompileTest.cpp"],
+    deps = [
+        "//folly:try",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "interrupt_test",
+    srcs = ["InterruptTest.cpp"],
+    deps = [
+        ":test_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "manual_timekeeper_test",
+    srcs = ["ManualTimekeeperTest.cpp"],
+    deps = [
+        "//folly/futures:manual_timekeeper",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "map_test",
+    srcs = ["MapTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "non_copyable_lambda_test",
+    srcs = ["NonCopyableLambdaTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "poll_test",
+    srcs = ["PollTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "promise_test",
+    srcs = ["PromiseTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "reduce_test",
+    srcs = ["ReduceTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "retrying_test",
+    srcs = ["RetryingTest.cpp"],
+    deps = [
+        ":test_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_resource",
+    ],
+)
+
+cpp_unittest(
+    name = "self_destruct_test",
+    srcs = ["SelfDestructTest.cpp"],
+    deps = [
+        "//folly/executors:inline_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "shared_promise_test",
+    srcs = ["SharedPromiseTest.cpp"],
+    deps = [
+        "//folly/futures:shared_promise",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "test_executor",
+    srcs = ["TestExecutor.cpp"],
+    headers = ["TestExecutor.h"],
+    exported_deps = [
+        "//folly:executor",
+    ],
+)
+
+cpp_unittest(
+    name = "test_executor_test",
+    srcs = ["TestExecutorTest.cpp"],
+    deps = [
+        ":test_executor",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "then_compile_test",
+    srcs = ["ThenCompileTest.cpp"],
+    headers = ["ThenCompileTest.h"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "then_test",
+    srcs = ["ThenTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "timekeeper_test",
+    srcs = ["TimekeeperTest.cpp"],
+    deps = [
+        "//folly:singleton",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "timekeeper_test_lib",
+    headers = ["TimekeeperTestLib.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:default_keep_alive_executor",
+        "//folly:random",
+        "//folly:singleton",
+        "//folly:virtual_executor",
+        "//folly/executors:global_executor",
+        "//folly/executors:manual_executor",
+        "//folly/executors:serial_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "thread_wheel_timekeeper_test",
+    srcs = ["ThreadWheelTimekeeperTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        ":timekeeper_test_lib",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_unittest(
+    name = "heap_timekeeper_test",
+    srcs = ["HeapTimekeeperTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        ":timekeeper_test_lib",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_unittest(
+    name = "times_test",
+    srcs = ["TimesTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "unwrap_test",
+    srcs = ["UnwrapTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "via_test",
+    srcs = ["ViaTest.cpp"],
+    deps = [
+        "//folly:mpmc_queue",
+        "//folly/executors:drivable_executor",
+        "//folly/executors:inline_executor",
+        "//folly/executors:manual_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "wait_test",
+    srcs = ["WaitTest.cpp"],
+    deps = [
+        ":test_executor",
+        "//folly/executors:inline_executor",
+        "//folly/futures:core",
+        "//folly/io/async:async_base",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "when_test",
+    srcs = ["WhenTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "while_do_test",
+    srcs = ["WhileDoTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "will_equal_test",
+    srcs = ["WillEqualTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "window_test",
+    srcs = ["WindowTest.cpp"],
+    deps = [
+        "//folly:conv",
+        "//folly/executors:manual_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_unittest(
+    name = "conversion_operator",
+    srcs = ["ConversionOperatorTest.cpp"],
+    deps = [
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)

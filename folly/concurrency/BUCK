@@ -1,0 +1,156 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "cache_locality",
+    srcs = ["CacheLocality.cpp"],
+    headers = ["CacheLocality.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:conv",
+        "//folly:exception",
+        "//folly:indestructible",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:scope_guard",
+        "//folly/detail:static_singleton_manager",
+        "//folly/hash:hash",
+        "//folly/portability:unistd",
+        "//folly/system:thread_id",
+    ],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:portability",
+        "//folly/lang:align",
+        "//folly/lang:exception",
+        "//folly/synchronization:atomic_ref",
+    ],
+    external_deps = [
+        "glog",
+        ("glibc", None, "dl"),
+    ],
+)
+
+cpp_library(
+    name = "atomic_shared_ptr",
+    headers = [
+        "AtomicSharedPtr.h",
+        "detail/AtomicSharedPtr-detail.h",
+    ],
+    exported_deps = [
+        "//folly:packed_sync_ptr",
+        "//folly/lang:safe_assert",
+        "//folly/memory:sanitize_leak",
+        "//folly/synchronization:atomic_struct",
+        "//folly/synchronization/detail:atomic_utils",
+    ],
+)
+
+cpp_library(
+    name = "core_cached_shared_ptr",
+    headers = ["CoreCachedSharedPtr.h"],
+    exported_deps = [
+        ":cache_locality",
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly:unit",
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+cpp_library(
+    name = "concurrent_hash_map",
+    headers = [
+        "ConcurrentHashMap.h",
+        "detail/ConcurrentHashMap-detail.h",
+    ],
+    exported_deps = [
+        "//folly:optional",
+        "//folly/container:heterogeneous_access",
+        "//folly/container/detail:f14_mask",
+        "//folly/lang:exception",
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+cpp_library(
+    name = "dynamic_bounded_queue",
+    headers = [
+        "DynamicBoundedQueue.h",
+    ],
+    exported_deps = [
+        ":cache_locality",
+        ":unbounded_queue",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "priority_unbounded_queue_set",
+    headers = [
+        "PriorityUnboundedQueueSet.h",
+    ],
+    exported_deps = [
+        ":unbounded_queue",
+        "//folly:memory",
+        "//folly/lang:align",
+    ],
+)
+
+cpp_library(
+    name = "unbounded_queue",
+    headers = [
+        "UnboundedQueue.h",
+    ],
+    exported_deps = [
+        ":cache_locality",
+        "//folly:constexpr_math",
+        "//folly:optional",
+        "//folly:traits",
+        "//folly/lang:align",
+        "//folly/synchronization:hazptr",
+        "//folly/synchronization:saturating_semaphore",
+        "//folly/synchronization:wait_options",
+        "//folly/synchronization/detail:spin",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "deadlock_detector",
+    srcs = ["DeadlockDetector.cpp"],
+    headers = [
+        "DeadlockDetector.h",
+    ],
+    exported_deps = [
+        "//folly:executor",
+        "//folly/executors:queue_observer",
+    ],
+)
+
+cpp_library(
+    name = "thread_cached_synchronized",
+    headers = ["ThreadCachedSynchronized.h"],
+    exported_deps = [
+        "//folly:shared_mutex",
+        "//folly:thread_local",
+        "//folly:utility",
+        "//folly/lang:access",
+        "//folly/synchronization:lock",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+)
+
+cpp_library(
+    name = "process_local_unique_id",
+    srcs = ["ProcessLocalUniqueId.cpp"],
+    deps = [
+        "//folly:likely",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+)

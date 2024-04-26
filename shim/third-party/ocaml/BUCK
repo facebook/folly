@@ -1,0 +1,7 @@
+# @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
+prebuilt_cxx_library(
+    name = "ocaml-dev",
+    header_dirs = ["opam/lib/ocaml"],
+    header_only = True,
+    visibility = ["PUBLIC"],
+)

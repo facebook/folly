@@ -1,0 +1,16 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "socket_file_descriptor_map_test",
+    srcs = ["SocketFileDescriptorMapTest.cpp"],
+    deps = [
+        "//folly:portability",
+        "//folly/net/detail:socket_file_descriptor_map",
+        "//folly/portability:fcntl",
+        "//folly/portability:gtest",
+        "//folly/portability:sockets",
+        "//folly/portability:windows",
+    ],
+)

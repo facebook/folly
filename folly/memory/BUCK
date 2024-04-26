@@ -1,0 +1,191 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "arena",
+    headers = [
+        "Arena.h",
+        "Arena-inl.h",
+    ],
+    exported_deps = [
+        ":malloc",
+        "//folly:conv",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly/lang:align",
+        "//folly/lang:checked_math",
+        "//folly/lang:exception",
+        "//folly/lang:safe_assert",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "mallctl_helper",
+    srcs = ["MallctlHelper.cpp"],
+    headers = ["MallctlHelper.h"],
+    deps = [
+        "//folly:format",
+        "//folly:string",
+    ],
+    exported_deps = [
+        ":malloc",
+    ],
+)
+
+cpp_library(
+    name = "malloc",
+    headers = ["Malloc.h"],
+    os_deps = [(
+        "linux",
+        ["third-party//jemalloc:headers"],
+    )],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/lang:bits",
+        "//folly/lang:exception",
+        "//folly/memory/detail:malloc_impl",
+        "//folly/portability:malloc",
+    ],
+)
+
+cpp_library(
+    name = "memory_resource",
+    headers = ["MemoryResource.h"],
+)
+
+cpp_library(
+    name = "not_null",
+    srcs = [],
+    headers = [
+        "not_null.h",
+        "not_null-inl.h",
+    ],
+    exported_deps = [
+        "//folly:memory",
+        "//folly:portability",
+        "//folly/lang:exception",
+    ],
+)
+
+cpp_library(
+    name = "reentrant_allocator",
+    srcs = ["ReentrantAllocator.cpp"],
+    headers = ["ReentrantAllocator.h"],
+    deps = [
+        "//folly/lang:bits",
+        "//folly/lang:safe_assert",
+        "//folly/portability:sys_mman",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "sanitize_address",
+    srcs = ["SanitizeAddress.cpp"],
+    headers = ["SanitizeAddress.h"],
+    deps = [
+        "//folly/lang:extern",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "sanitize_leak",
+    srcs = ["SanitizeLeak.cpp"],
+    headers = ["SanitizeLeak.h"],
+    deps = [
+        "//folly/lang:extern",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "thread_cached_arena",
+    srcs = ["ThreadCachedArena.cpp"],
+    headers = ["ThreadCachedArena.h"],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:synchronized",
+        "//folly:thread_local",
+        "//folly/memory:arena",
+    ],
+)
+
+cpp_library(
+    name = "uninitialized_memory_hacks",
+    headers = ["UninitializedMemoryHacks.h"],
+)
+
+cpp_library(
+    name = "jemalloc_nodump_allocator",
+    srcs = ["JemallocNodumpAllocator.cpp"],
+    headers = ["JemallocNodumpAllocator.h"],
+    deps = [
+        "//folly:conv",
+        "//folly:string",
+        "//folly/memory:malloc",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly/portability:config",
+        "//folly/portability:malloc",
+        "//folly/portability:sys_mman",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "jemalloc_huge_page_allocator",
+    srcs = ["JemallocHugePageAllocator.cpp"],
+    headers = ["JemallocHugePageAllocator.h"],
+    deps = [
+        "//folly:c_portability",
+        "//folly/memory:malloc",
+        "//folly/portability:malloc",
+        "//folly/portability:string",
+        "//folly/portability:sys_mman",
+        "//folly/portability:sys_types",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "jemalloc_huge_page_allocator_test",
+    srcs = ["JemallocHugePageAllocatorTest.cpp"],
+    headers = [],
+    allocator = "jemalloc",
+    deps = [
+        "//folly/container:f14_hash",
+        "//folly/experimental:jemalloc_huge_page_allocator",
+        "//folly/memory:malloc",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "jemalloc_nodump_allocator_test",
+    srcs = ["JemallocNodumpAllocatorTest.cpp"],
+    headers = [],
+    allocator = "jemalloc",
+    deps = [
+        "//folly/experimental:jemalloc_nodump_allocator",
+        "//folly/io:iobuf",
+        "//folly/memory:malloc",
+        "//folly/portability:gtest",
+    ],
+)

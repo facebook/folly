@@ -1,0 +1,209 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    # @autodeps-skip
+    name = "dwarf",
+    srcs = [
+        "Dwarf.cpp",
+        "DwarfImpl.cpp",
+        "DwarfLineNumberVM.cpp",
+        "DwarfSection.cpp",
+        "DwarfUtil.cpp",
+    ],
+    headers = [
+        "Dwarf.h",
+        "DwarfImpl.h",
+        "DwarfLineNumberVM.h",
+        "DwarfSection.h",
+        "DwarfUtil.h",
+    ],
+    deps = [
+        "//folly:optional",
+        "//folly/lang:safe_assert",
+        "//folly/portability:config",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        "fbsource//third-party/libdwarf:dwarf",
+        ":elf",
+        ":elf_cache",
+        ":symbolized_frame",
+        "//folly:function",
+        "//folly:range",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "elf",
+    srcs = [
+        "Elf.cpp",
+    ],
+    headers = [
+        "Elf.h",
+        "Elf-inl.h",
+    ],
+    deps = [
+        "//folly:exception",
+        "//folly:scope_guard",
+        "//folly/lang:c_string",
+        "//folly/portability:sys_mman",
+    ],
+    exported_deps = [
+        "//folly:conv",
+        "//folly:likely",
+        "//folly:range",
+        "//folly/lang:safe_assert",
+        "//folly/portability:config",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "symbolized_frame",
+    srcs = ["SymbolizedFrame.cpp"],
+    headers = ["SymbolizedFrame.h"],
+    exported_deps = [
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "line_reader",
+    srcs = ["LineReader.cpp"],
+    headers = ["LineReader.h"],
+    deps = [
+        "//folly:file_util",
+    ],
+    exported_deps = [
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "stack_trace",
+    srcs = ["StackTrace.cpp"],
+    headers = ["StackTrace.h"],
+    deps = [
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly/portability:config",
+        "//folly/portability:libunwind",
+        "//folly/tracing:async_stack",
+    ],
+    exported_deps = [
+        "//folly/portability:sys_types",
+    ],
+)
+
+cpp_library(
+    name = "elf_cache",
+    srcs = [
+        "ElfCache.cpp",
+    ],
+    headers = [
+        "ElfCache.h",
+    ],
+    deps = [
+        "//folly:scope_guard",
+        "//folly/portability:sys_mman",
+    ],
+    exported_deps = [
+        ":elf",
+        "//folly:optional",
+        "//folly:range",
+        "//folly/hash:hash",
+        "//folly/memory:reentrant_allocator",
+        "//folly/portability:config",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "symbolize_printer",
+    srcs = [
+        "SymbolizePrinter.cpp",
+    ],
+    headers = [
+        "SymbolizePrinter.h",
+    ],
+    deps = [
+        "//folly:demangle",
+        "//folly:file_util",
+        "//folly:scope_guard",
+        "//folly/io:iobuf",
+        "//folly/lang:to_ascii",
+    ],
+    exported_deps = [
+        ":symbolized_frame",
+        "//folly:fbstring",
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "symbolizer",
+    srcs = [
+        "Symbolizer.cpp",
+    ],
+    headers = [
+        "Symbolizer.h",
+    ],
+    deps = [
+        ":elf",
+        ":line_reader",
+        "//folly:file_util",
+        "//folly:memory",
+        "//folly:scope_guard",
+        "//folly:synchronized",
+        "//folly/container:evicting_cache_map",
+        "//folly/experimental/symbolizer/detail:debug",
+        "//folly/lang:safe_assert",
+        "//folly/lang:to_ascii",
+        "//folly/memory:sanitize_address",
+        "//folly/portability:sys_mman",
+        "//folly/tracing:async_stack",
+    ],
+    exported_deps = [
+        ":dwarf",
+        ":elf_cache",
+        ":stack_trace",
+        ":symbolize_printer",
+        ":symbolized_frame",
+        "//folly:fbstring",
+        "//folly:optional",
+        "//folly:range",
+        "//folly:string",
+        "//folly/io:iobuf",
+        "//folly/portability:config",
+        "//folly/portability:unistd",
+    ],
+)
+
+cpp_library(
+    name = "signal_handler",
+    srcs = [
+        "SignalHandler.cpp",
+    ],
+    headers = [
+        "SignalHandler.h",
+    ],
+    deps = [
+        ":symbolizer",
+        "//folly:scope_guard",
+        "//folly/lang:to_ascii",
+        "//folly/portability:sys_syscall",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

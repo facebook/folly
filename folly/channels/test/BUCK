@@ -1,0 +1,156 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "channel_processor_test",
+    srcs = ["ChannelProcessorTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/experimental/channels:channel_processor",
+        "//folly/portability:gmock",
+    ],
+)
+
+cpp_unittest(
+    name = "channel_test",
+    srcs = ["ChannelTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "fanout_channel_test",
+    srcs = ["FanoutChannelTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/executors:serial_executor",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/channels:fanout_channel",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "fanout_sender_test",
+    srcs = ["FanoutSenderTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/executors:serial_executor",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/channels:fanout_sender",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "max_concurrent_rate_limiter_test",
+    srcs = [
+        "MaxConcurrentRateLimiterTest.cpp",
+    ],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/experimental/channels:max_concurrent_rate_limiter",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "merge_channel_test",
+    srcs = [
+        "MergeChannelTest.cpp",
+    ],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/executors:serial_executor",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/channels:merge_channel",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "merge_test",
+    srcs = ["MergeTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/executors:serial_executor",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/channels:merge",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "multiplex_channel_test",
+    srcs = ["MultiplexChannelTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/executors:serial_executor",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/channels:max_concurrent_rate_limiter",
+        "//folly/experimental/channels:multiplex_channel",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "producer_test",
+    srcs = ["ProducerTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/experimental/channels:producer",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "proxy_channel_test",
+    srcs = ["ProxyChannelTest.cpp"],
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/experimental/channels:proxy_channel",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "transform_test",
+    srcs = ["TransformTest.cpp"],
+    deps = [
+        "//folly:scope_guard",
+        "//folly:synchronized",
+        "//folly/executors:manual_executor",
+        "//folly/executors:serial_executor",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/channels:max_concurrent_rate_limiter",
+        "//folly/experimental/channels:transform",
+        "//folly/experimental/channels/test:channel_test_util",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:detach_on_cancel",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

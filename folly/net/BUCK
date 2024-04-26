@@ -1,0 +1,72 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "net_ops",
+    srcs = ["NetOps.cpp"],
+    headers = ["NetOps.h"],
+    deps = [
+        "//folly:scope_guard",
+        "//folly/net/detail:socket_file_descriptor_map",
+    ],
+    exported_deps = [
+        ":network_socket",
+        "//folly:portability",
+        "//folly/portability:iovec",
+        "//folly/portability:sys_types",
+        "//folly/portability:time",
+        "//folly/portability:windows",
+    ],
+)
+
+cpp_library(
+    name = "net_ops_dispatcher",
+    srcs = ["NetOpsDispatcher.cpp"],
+    headers = ["NetOpsDispatcher.h"],
+    exported_deps = [
+        ":net_ops",
+    ],
+)
+
+cpp_library(
+    name = "network_socket",
+    headers = ["NetworkSocket.h"],
+    exported_deps = [
+        "//folly/net/detail:socket_file_descriptor_map",
+        "//folly/portability:windows",
+    ],
+)
+
+cpp_library(
+    name = "tcpinfo",
+    srcs = ["TcpInfo.cpp"],
+    headers = [
+        "TcpInfo.h",
+        "TcpInfoTypes.h",
+    ],
+    deps = [
+        "//folly/portability:sockets",
+    ],
+    exported_deps = [
+        ":net_ops_dispatcher",
+        ":network_socket",
+        "//folly:expected",
+        "//folly:optional",
+        "//folly:string",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "tcpinfo_dispatcher",
+    srcs = ["TcpInfoDispatcher.cpp"],
+    headers = ["TcpInfoDispatcher.h"],
+    exported_deps = [
+        ":net_ops_dispatcher",
+        ":tcpinfo",
+        "//folly:expected",
+    ],
+)

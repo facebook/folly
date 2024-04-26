@@ -1,0 +1,153 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "async_trace_test",
+    srcs = ["AsyncTraceTest.cpp"],
+    deps = [
+        "//folly/detail:async_trace",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "static_singleton_manager_test",
+    srcs = ["StaticSingletonManagerTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/detail:static_singleton_manager",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "unique_instance_test",
+    srcs = ["UniqueInstanceTest.cpp"],
+    deps = [
+        "//folly:string",
+        "//folly:traits",
+        "//folly/detail:unique_instance",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "file_util_detail_test",
+    srcs = [
+        "FileUtilDetailTest.cpp",
+    ],
+    deps = [
+        "//folly/detail:file_util_detail",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "perf_scoped_test",
+    srcs = [
+        "PerfScopedTest.cpp",
+    ],
+    deps = [
+        "//folly/detail:perf_scoped",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+    ],
+)
+
+cpp_unittest(
+    name = "simd_any_of_test",
+    srcs = [
+        "SimdAnyOfTest.cpp",
+    ],
+    deps = [
+        "//folly:range",
+        "//folly/detail:simd_any_of",
+        "//folly/detail:simd_char_platform",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "simd_for_each_test",
+    srcs = [
+        "SimdForEachTest.cpp",
+    ],
+    deps = [
+        "//folly/detail:simd_for_each",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "simple_simd_string_utils_test",
+    srcs = [
+        "SimpleSimdStringUtilsTest.cpp",
+    ],
+    deps = [
+        "//folly/detail:simd_char_platform",
+        "//folly/detail:simple_simd_string_utils",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "split_string_simd_test",
+    srcs = [
+        "SplitStringSimdTest.cpp",
+    ],
+    deps = [
+        "//folly:fbstring",
+        "//folly:fbvector",
+        "//folly:range",
+        "//folly:small_vector",
+        "//folly/detail:split_string_simd",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "unroll_utils_test",
+    srcs = [
+        "UnrollUtilsTest.cpp",
+    ],
+    deps = [
+        "//folly/detail:unroll_utils",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "thread_local_detail_test",
+    srcs = [
+        "ThreadLocalDetailTest.cpp",
+    ],
+    deps = [
+        "//folly:synchronized",
+        "//folly:thread_local",
+        "//folly/portability:gtest",
+        "//folly/synchronization/test:barrier",
+    ],
+)
+
+cpp_benchmark(
+    name = "thread_local_benchmark",
+    srcs = ["ThreadLocalBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:thread_local",
+        "//folly/synchronization/test:barrier",
+    ],
+)
+
+cpp_unittest(
+    name = "traponavx512_test_negative",
+    srcs = ["TrapOnAvx512TestNegative.cpp"],
+    deps = [
+        "//folly/detail:traponavx512",
+        "//folly/portability:gtest",
+    ],
+)

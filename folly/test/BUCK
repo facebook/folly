@@ -1,0 +1,2030 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "ahm_int_stress_test",
+    srcs = ["AHMIntStressTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:atomic_hash_map",
+        "//folly:memory",
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "unicode_test",
+    srcs = ["UnicodeTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:range",
+        "//folly:unicode",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "arena_smart_ptr_test",
+    srcs = ["ArenaSmartPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:memory",
+        "//folly/memory:arena",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "ascii_case_insensitive_benchmark",
+    srcs = ["AsciiCaseInsensitiveBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:range",
+    ],
+)
+
+cpp_unittest(
+    name = "ascii_case_insensitive_test",
+    srcs = ["AsciiCaseInsensitiveTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:range",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "base64_test",
+    srcs = ["base64_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly:base64",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "concurrent_bit_set_test",
+    srcs = ["ConcurrentBitSetTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:concurrent_bit_set",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "buffered_atomic_test",
+    srcs = ["BufferedAtomicTest.cpp"],
+    headers = [],
+    deps = [
+        ":deterministic_schedule",
+        "//folly:singleton_thread_local",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_hash_array_test",
+    srcs = ["AtomicHashArrayTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:atomic_hash_array",
+        "//folly:conv",
+        "//folly:memory",
+        "//folly/hash:hash",
+        "//folly/portability:gtest",
+        "//folly/portability:string",
+        "//folly/portability:sys_mman",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_hash_map_test",
+    srcs = ["AtomicHashMapTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:atomic_hash_map",
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly/portability:atomic",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_time",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_linked_list_test",
+    srcs = ["AtomicLinkedListTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:atomic_linked_list",
+        "//folly:utility",
+        "//folly/portability:gtest",
+        "//folly/synchronization/test:barrier",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_unordered_map_test",
+    srcs = ["AtomicUnorderedMapTest.cpp"],
+    headers = [],
+    deps = [
+        ":deterministic_schedule",
+        "//folly:atomic_unordered_map",
+        "//folly:benchmark",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "benchmark_test",
+    srcs = ["BenchmarkTest.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/detail:perf_scoped",
+        "//folly/portability:gflags",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "benchmark_integration_test",
+    srcs = ["BenchmarkIntegrationTest.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:string",
+        "//folly/container:foreach",
+    ],
+)
+
+cpp_unittest(
+    name = "cancellation_token_test",
+    srcs = ["CancellationTokenTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:cancellation_token",
+        "//folly:optional",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_benchmark(
+    name = "chrono_bench",
+    srcs = ["ChronoBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:chrono",
+        "//folly/chrono:hardware",
+        "//folly/hash:hash",
+        "//folly/init:init",
+    ],
+)
+
+cpp_unittest(
+    name = "chrono_test",
+    srcs = ["ChronoTest.cpp"],
+    deps = [
+        "//folly:chrono",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "clock_gettime_wrappers_test",
+    srcs = ["ClockGettimeWrappersTest.cpp"],
+    headers = [],
+    deps = [
+        ":test_utils",
+        "//folly:clock_gettime_wrappers",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "concurrent_lazy_test",
+    srcs = ["ConcurrentLazyTest.cpp"],
+    deps = [
+        "//folly:concurrent_lazy",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "concurrent_skip_list_benchmark",
+    srcs = ["ConcurrentSkipListBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:concurrent_skip_list",
+        "//folly/hash:hash",
+        "//folly/portability:gflags",
+        "//folly/synchronization:rw_spin_lock",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "concurrent_skip_list_test",
+    srcs = ["ConcurrentSkipListTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:concurrent_skip_list",
+        "//folly:memory",
+        "//folly:string",
+        "//folly/container:foreach",
+        "//folly/memory:arena",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "constexpr_math_test",
+    srcs = ["ConstexprMathTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:constexpr_math",
+        "//folly/lang:bits",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "constructor_callback_list_test",
+    srcs = ["ConstructorCallbackListTest.cpp"],
+    headers = [],
+    compiler_flags = [
+        # many deps use this, so make sure the unittests pass
+        "-Werror",
+        "-Wglobal-constructor",
+    ],
+    deps = [
+        "//folly:constructor_callback_list",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "constexpr_math_benchmark",
+    srcs = ["ConstexprMathBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:constexpr_math",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "conv_benchmark",
+    srcs = ["ConvBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly:cpp_attributes",
+        "//folly/container:foreach",
+        "//folly/lang:to_ascii",
+    ],
+    external_deps = [
+        ("boost", None, "boost_lexical_cast"),
+    ],
+)
+
+cpp_unittest(
+    name = "conv_test",
+    srcs = ["ConvTest.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:conv",
+        "//folly:random",
+        "//folly/container:foreach",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "cpu_id_test",
+    srcs = ["CpuIdTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:cpu_id",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "demangle_test",
+    srcs = ["DemangleTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:demangle",
+        "//folly/lang:pretty",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "detail_typelist_test",
+    srcs = ["TypeListTest.cpp"],
+    deps = [
+        "//folly/detail:typelist",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "deterministic_schedule",
+    srcs = [
+        "BufferedAtomic.cpp",
+        "DeterministicSchedule.cpp",
+    ],
+    headers = [
+        "BufferedAtomic.h",
+        "DeterministicSchedule.h",
+    ],
+    deps = [
+        "//folly:random",
+        "//folly:singleton_thread_local",
+    ],
+    exported_deps = [
+        "//folly:scope_guard",
+        "//folly/concurrency:cache_locality",
+        "//folly/detail:futex",
+        "//folly/lang:customization_point",
+        "//folly/synchronization:atomic_notification",
+        "//folly/synchronization/detail:atomic_utils",
+        "//folly/synchronization/test:semaphore",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "deterministic_schedule_test",
+    srcs = ["DeterministicScheduleTest.cpp"],
+    headers = [],
+    deps = [
+        ":deterministic_schedule",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/synchronization:atomic_util",
+    ],
+)
+
+cpp_unittest(
+    name = "discriminated_ptr_test",
+    srcs = ["DiscriminatedPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:discriminated_ptr",
+        "//folly/portability:gtest",
+    ],
+)
+
+# This test depends only on :dynamic.  Tests which require other
+# dependencies should be added to dynamic_other_test.
+
+cpp_unittest(
+    name = "endian_test",
+    srcs = ["EndianTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/lang:bits",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "exception_string_test",
+    srcs = ["ExceptionStringTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:exception_string",
+        "//folly:portability",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "exception_test",
+    srcs = ["ExceptionTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:exception",
+        "//folly/experimental:test_util",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "exception_wrapper_benchmark",
+    srcs = ["ExceptionWrapperBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:exception_wrapper",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "exception_wrapper_test",
+    srcs = ["ExceptionWrapperTest.cpp"],
+    headers = [],
+    compiler_specific_flags = {
+        "gcc": [
+            "-Wno-shadow-compatible-local",
+        ],
+    },
+    deps = [
+        "//folly:conv",
+        "//folly:exception_wrapper",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "executor_test",
+    srcs = ["ExecutorTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:executor",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "expected_coroutines_bench",
+    srcs = ["ExpectedCoroutinesBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:exception_wrapper",
+        "//folly:expected",
+        "//folly/init:init",
+        "//folly/lang:keep",
+    ],
+)
+
+cpp_unittest(
+    name = "expected_coroutines_test",
+    srcs = ["ExpectedCoroutinesTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:expected",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "expected_test",
+    srcs = ["ExpectedTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:expected",
+        "//folly:portability",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "fbstring_benchmark",
+    srcs = ["FBStringBenchmark.cpp"],
+    headers = ["FBStringTestBenchmarks.cpp.h"],
+    allocator = "jemalloc",
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:fbstring",
+        "//folly:random",
+        "//folly/container:foreach",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "fbstring_test",
+    srcs = ["FBStringTest.cpp"],
+    headers = [],
+    allocator = "jemalloc",
+    deps = [
+        ":test_utils",
+        "//folly:conv",
+        "//folly:fbstring",
+        "//folly:portability",
+        "//folly:random",
+        "//folly:utility",
+        "//folly/container:foreach",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_algorithm"),
+    ],
+)
+
+cpp_library(
+    name = "fbvector_test_util",
+    srcs = [
+        "FBVectorTestUtil.cpp",
+    ],
+    exported_deps = [
+        "//folly:fbstring",
+        "//folly:random",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "fbvector_benchmark",
+    srcs = ["FBVectorBenchmark.cpp"],
+    headers = ["FBVectorBenchmarks.cpp.h"],
+    args = [
+        "--json",
+    ],
+    deps = [
+        ":fbvector_test_util",
+        "//folly:benchmark",
+        "//folly:fbvector",
+        "//folly:small_vector",
+        "//folly:traits",
+        "//folly/container:foreach",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "fbvector_test",
+    srcs = ["FBVectorTest.cpp"],
+    headers = [
+        "FBVectorTests.cpp.h",
+    ],
+    deps = [
+        ":fbvector_test_util",
+        "//folly:fbstring",
+        "//folly:fbvector",
+        "//folly:random",
+        "//folly:traits",
+        "//folly/container:foreach",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "file_test",
+    srcs = ["FileTest.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:file",
+        "//folly:string",
+        "//folly/portability:fcntl",
+        "//folly/portability:filesystem",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "file_lock_test",
+    srcs = ["FileLockTest.cpp"],
+    headers = [],
+    env = {
+        "FOLLY_FILE_LOCK_TEST_HELPER": "$(exe_target :file_test_lock_helper)",
+    },
+    deps = [
+        "//folly:file",
+        "//folly:string",
+        "//folly:subprocess",
+        "//folly/experimental:test_util",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "file_test_lock_helper",
+    srcs = ["FileTestLockHelper.cpp"],
+    headers = [],
+    deps = [
+        "//folly:file",
+        "//folly/portability:gflags",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "file_util_test",
+    srcs = ["FileUtilTest.cpp"],
+    headers = [],
+    extract_helper_lib = False,
+    deps = [
+        "//folly:exception",
+        "//folly:file",
+        "//folly:file_util",
+        "//folly:range",
+        "//folly:string",
+        "//folly/detail:file_util_detail",
+        "//folly/detail:file_util_vector_detail",
+        "//folly/experimental:test_util",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+        ("glibc", None, "dl"),
+    ],
+)
+
+cpp_benchmark(
+    name = "fingerprint_benchmark",
+    srcs = ["FingerprintBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:fingerprint",
+        "//folly:format",
+        "//folly/detail:slow_fingerprint",
+    ],
+)
+
+cpp_unittest(
+    name = "fingerprint_test",
+    srcs = ["FingerprintTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:fingerprint",
+        "//folly/detail:slow_fingerprint",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "fixed_string_test",
+    srcs = ["FixedStringTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:fixed_string",
+        "//folly:range",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "format_benchmark",
+    srcs = ["FormatBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    compiler_specific_flags = {
+        "clang": [
+            "-ftemplate-depth=512",
+        ],
+    },
+    deps = [
+        "//folly:benchmark",
+        "//folly:fbvector",
+        "//folly:format",
+        "//folly:utility",
+        "//folly/init:init",
+        "//folly/json:dynamic",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+# This test depends only on :format.  Tests for user-defined formatters
+# should be added to format_other_test.
+cpp_unittest(
+    name = "format_test",
+    srcs = ["FormatTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:format",
+        "//folly:utility",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "format_other_test",
+    srcs = ["FormatOtherTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:fbvector",
+        "//folly:file_util",
+        "//folly:format",
+        "//folly:portability",
+        "//folly:small_vector",
+        "//folly/json:dynamic",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "function_ref_test",
+    srcs = ["FunctionRefTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:function",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "function_ref_benchmark",
+    srcs = ["FunctionRefBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:function",
+        "//folly:random",
+        "//folly/synchronization/detail:inline_function_ref",
+    ],
+)
+
+cpp_unittest(
+    name = "function_test",
+    srcs = ["FunctionTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:function",
+        "//folly:memory",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "futex_test",
+    srcs = ["FutexTest.cpp"],
+    headers = [],
+    deps = [
+        ":deterministic_schedule",
+        "//folly:chrono",
+        "//folly/detail:futex",
+        "//folly/portability:gtest",
+        "//folly/portability:time",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "group_varint_test",
+    srcs = ["GroupVarintTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:group_varint",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "group_varint_test_ssse3",
+    srcs = ["GroupVarintTest.cpp"],
+    headers = [],
+    compiler_flags = ["-mssse3"],
+    deps = [
+        "//folly:group_varint",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "indestructible_test",
+    srcs = ["IndestructibleTest.cpp"],
+    deps = [
+        "//folly:indestructible",
+        "//folly:memory",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "indexed_mem_pool_test",
+    srcs = ["IndexedMemPoolTest.cpp"],
+    headers = [],
+    deps = [
+        ":deterministic_schedule",
+        "//folly:indexed_mem_pool",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+    ],
+)
+
+cpp_benchmark(
+    name = "ip_address_benchmark",
+    srcs = ["IPAddressBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly:network_address",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "ip_address_test",
+    srcs = ["IPAddressTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:network_address",
+        "//folly:string",
+        "//folly/container:bit_iterator",
+        "//folly/detail:ip_address_source",
+        "//folly/lang:bits",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "iterators_test",
+    srcs = ["IteratorsTest.cpp"],
+    deps = [
+        "//folly/container:array",
+        "//folly/detail:iterators",
+        "//folly/portability:gtest",
+    ],
+)
+
+# This test depends only on :json.  Tests which require other
+# dependencies should be added to json_other_test.
+
+cpp_unittest(
+    name = "lazy_test",
+    srcs = ["LazyTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:lazy",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_binary(
+    name = "glog_benchmark",
+    srcs = ["GLogBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:glog",
+    ],
+)
+
+cpp_unittest(
+    name = "glog_test",
+    srcs = ["GLogTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:glog",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "mac_address_test",
+    srcs = ["MacAddressTest.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:network_address",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "map_util_test",
+    srcs = ["MapUtilTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:map_util",
+        "//folly:sorted_vector_types",
+        "//folly:traits",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_binary(
+    name = "math_benchmark",
+    srcs = ["MathBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:math",
+    ],
+)
+
+cpp_unittest(
+    name = "math_test",
+    srcs = ["MathTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:math",
+        "//folly:portability",
+        "//folly/functional:invoke",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+# Test MaybeManagedPtr with default settings and on c++17 and c++20.
+# We test c++17 and c++20 explicitly since c++20 can synthesize `operator!=` whereas c++17 cannot.
+cpp_unittest(
+    name = "maybe_managed_ptr_test",
+    srcs = ["MaybeManagedPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:maybe_managed_ptr",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "maybe_managed_ptr_test_c++17",
+    srcs = ["MaybeManagedPtrTest.cpp"],
+    headers = [],
+    compiler_flags = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//folly:maybe_managed_ptr",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "maybe_managed_ptr_test_c++20",
+    srcs = ["MaybeManagedPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:maybe_managed_ptr",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "memset_test",
+    srcs = [
+        "MemsetTest.cpp",
+    ],
+    deps = [
+        "//folly:memset",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "memset_benchmark",
+    srcs = ["MemsetBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly:memset",
+        "//folly:preprocessor",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "memcpy_test",
+    srcs = ["MemcpyTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "//folly:memcpy",
+        "//folly:portability",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_binary(
+    name = "memcpy_benchmark",
+    srcs = ["MemcpyBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:memcpy",
+        "//folly/portability:unistd",
+    ],
+)
+
+cpp_unittest(
+    name = "memcpy_use_test",
+    srcs = ["MemcpyUseTest.cpp"],
+    deps = [
+        "//folly:memcpy-use",  # @manual
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "memory_test",
+    srcs = ["MemoryTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "//folly:constexpr_math",
+        "//folly:memory",
+        "//folly:string",
+        "//folly/lang:keep",
+        "//folly/memory:arena",
+        "//folly/portability:asm",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "memory_idler_benchmark",
+    srcs = ["MemoryIdlerBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/detail:memory_idler",
+    ],
+)
+
+cpp_unittest(
+    name = "memory_idler_test",
+    srcs = ["MemoryIdlerTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/detail:memory_idler",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "move_wrapper_test",
+    srcs = ["MoveWrapperTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:move_wrapper",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "mpmc_pipeline_test",
+    srcs = ["MPMCPipelineTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:conv",
+        "//folly:mpmc_pipeline",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "mpmc_queue_test",
+    srcs = ["MPMCQueueTest.cpp"],
+    headers = [],
+    deps = [
+        ":deterministic_schedule",
+        "//folly:format",
+        "//folly:memory",
+        "//folly:mpmc_queue",
+        "//folly:stop_watch",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_resource",
+        "//folly/portability:sys_time",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        "boost",
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_library(
+    name = "observer_container_test_util",
+    headers = ["ObserverContainerTestUtil.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly:optional",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "observer_container_test",
+    srcs = ["ObserverContainerTest.cpp"],
+    headers = [],
+    deps = [
+        ":observer_container_test_util",
+        "//folly:observer_container",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "optional_test",
+    srcs = ["OptionalTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:cpp_attributes",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "optional_coroutines_test",
+    srcs = ["OptionalCoroutinesTest.cpp"],
+    headers = [],
+    compiler_specific_flags = {
+        "clang": [
+            "-O1",  # BUGBUG https://bugs.llvm.org/show_bug.cgi?id=34289
+        ],
+    },
+    deps = [
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "replaceable_test",
+    srcs = ["ReplaceableTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:replaceable",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "overload_test",
+    srcs = ["OverloadTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:discriminated_ptr",
+        "//folly:overload",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("boost", None, "boost_variant"),
+    ],
+)
+
+cpp_unittest(
+    name = "packed_sync_ptr_test",
+    srcs = ["PackedSyncPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:packed_sync_ptr",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "padded_test",
+    srcs = ["PaddedTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:padded",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "poly_test",
+    srcs = ["PolyTest.cpp"],
+    deps = [
+        "//folly:conv",
+        "//folly:cpp_attributes",
+        "//folly:poly",
+        "//folly/poly:basic_interfaces",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "portability_test",
+    srcs = ["PortabilityTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:portability",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "producer_consumer_queue_benchmark",
+    srcs = ["ProducerConsumerQueueBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:producer_consumer_queue",
+        "//folly/portability:gflags",
+        "//folly/portability:pthread",
+        "//folly/stats:histogram",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "producer_consumer_queue_test",
+    srcs = ["ProducerConsumerQueueTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:producer_consumer_queue",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "random_benchmark",
+    srcs = ["RandomBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/container:foreach",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "random_test",
+    srcs = ["RandomTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "range_find_benchmark",
+    srcs = ["RangeFindBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:range",
+        "//folly/container:foreach",
+    ],
+)
+
+cpp_unittest(
+    name = "range_test",
+    srcs = ["RangeTest.cpp"],
+    headers = [],
+    compiler_specific_flags = {
+        "gcc": [
+            "-Wno-shadow-compatible-local",
+        ],
+    },
+    deps = [
+        "fbsource//third-party/range-v3:range-v3",
+        "//folly:cpp_attributes",
+        "//folly:memory",
+        "//folly:range",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_mman",
+    ],
+    external_deps = [
+        ("boost", None, "boost_algorithm"),
+        ("boost", None, "boost_range"),
+    ],
+)
+
+cpp_unittest(
+    name = "scope_guard_test",
+    srcs = ["ScopeGuardTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:scope_guard",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "shared_mutex_test",
+    srcs = ["SharedMutexTest.cpp"],
+    headers = [],
+    compiler_specific_flags = {
+        "gcc": [
+            "-Wno-shadow-compatible-local",
+        ],
+    },
+    deps = [
+        ":deterministic_schedule",
+        ":test_utils",
+        "//folly:benchmark",
+        "//folly:mpmc_queue",
+        "//folly:shared_mutex",
+        "//folly/fibers:core",
+        "//folly/fibers:timed_mutex",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/synchronization:rw_spin_lock",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_benchmark(
+    name = "singleton_benchmark",
+    srcs = ["SingletonBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:memory",
+        "//folly:singleton",
+        "//folly:singleton_thread_local",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "singleton_test",
+    srcs = ["SingletonTest.cpp"],
+    headers = [],
+    deps = [
+        ":singleton_test_structs",
+        ":test_utils",
+        "//folly:singleton",
+        "//folly/experimental/io:fs_util",
+        "//folly/io/async:async_base",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_unittest(
+    name = "singleton_test_global",
+    srcs = ["SingletonTestGlobal.cpp"],
+    headers = [],
+    deps = [
+        ":singleton_test_structs",
+        "//folly:benchmark",
+        "//folly:singleton",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "singleton_test_structs",
+    srcs = ["SingletonTestStructs.cpp"],
+    headers = ["SingletonTestStructs.h"],
+    exported_deps = [
+        "//folly/portability:gtest",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "singleton_thread_local_overload.so",
+    srcs = ["SingletonThreadLocalTestOverload.cpp"],
+    dlopen_enabled = True,
+    deps = [
+        "//folly:singleton_thread_local",
+    ],
+)
+
+cpp_unittest(
+    name = "singleton_thread_local_test",
+    srcs = ["SingletonThreadLocalTest.cpp"],
+    headers = [],
+    resources = [
+        ":singleton_thread_local_overload.so",
+    ],
+    deps = [
+        ":singleton_thread_local_overload.so",  # @manual
+        "//folly:singleton_thread_local",
+        "//folly:string",
+        "//folly:synchronized",
+        "//folly/experimental:test_util",
+        "//folly/experimental/io:fs_util",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+        ("glibc", None, "dl"),
+    ],
+)
+
+cpp_unittest(
+    name = "small_vector_test",
+    srcs = ["small_vector_test.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:conv",
+        "//folly:small_vector",
+        "//folly:sorted_vector_types",
+        "//folly:traits",
+        "//folly/container:iterator",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("boost", None, "boost_algorithm"),
+    ],
+)
+
+cpp_unittest(
+    name = "socket_address_test",
+    srcs = ["SocketAddressTest.cpp"],
+    deps = [
+        ":socket_address_test_helper",
+        "//folly:network_address",
+        "//folly:string",
+        "//folly/container:array",
+        "//folly/experimental:test_util",
+        "//folly/portability:gtest",
+        "//folly/portability:sockets",
+    ],
+)
+
+cpp_library(
+    name = "socket_address_test_helper",
+    srcs = ["SocketAddressTestHelper.cpp"],
+    headers = ["SocketAddressTestHelper.h"],
+    deps = [
+        "//folly/portability:sockets",
+    ],
+)
+
+cpp_unittest(
+    name = "sorted_vector_types_test",
+    srcs = ["sorted_vector_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly:optional",
+        "//folly:range",
+        "//folly:small_vector",
+        "//folly:sorted_vector_types",
+        "//folly:utility",
+        "//folly/memory:malloc",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "spin_lock_test",
+    srcs = ["SpinLockTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly:spin_lock",
+        "//folly:utility",
+        "//folly/portability:asm",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "string_benchmark",
+    srcs = ["StringBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly:format",
+        "//folly:random",
+        "//folly:string",
+    ],
+    external_deps = [("boost", None, "boost_algorithm")],
+)
+
+cpp_unittest(
+    name = "string_test",
+    srcs = ["StringTest.cpp"],
+    headers = [],
+    deps = [
+        ":test_utils",
+        "//folly:fbvector",
+        "//folly:string",
+        "//folly/container:array",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_regex"),
+    ],
+)
+
+cpp_benchmark(
+    name = "subprocess_bench",
+    srcs = ["SubprocessBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file",
+        "//folly:subprocess",
+    ],
+)
+
+cpp_unittest(
+    name = "subprocess_test",
+    srcs = ["SubprocessTest.cpp"],
+    headers = [],
+    resources = [
+        ":subprocess_test_parent_death_helper",
+    ],
+    deps = [
+        ":subprocess_test_parent_death_helper",  # @manual
+        "//folly:exception",
+        "//folly:file_util",
+        "//folly:format",
+        "//folly:string",
+        "//folly:subprocess",
+        "//folly/experimental:test_util",
+        "//folly/experimental/io:fs_util",
+        "//folly/gen:base",
+        "//folly/gen:file",
+        "//folly/gen:string",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_container"),
+    ],
+)
+
+cpp_binary(
+    name = "subprocess_test_parent_death_helper",
+    srcs = ["SubprocessTestParentDeathHelper.cpp"],
+    headers = [],
+    deps = [
+        "//folly:conv",
+        "//folly:subprocess",
+        "//folly/portability:gflags",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "synchronized_test",
+    srcs = ["SynchronizedTest.cpp"],
+    headers = [],
+    deps = [
+        ":synchronized_test_lib",
+        "//folly:function",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:shared_mutex",
+        "//folly:spin_lock",
+        "//folly:synchronized",
+        "//folly/portability:gtest",
+        "//folly/synchronization:distributed_mutex",
+        "//folly/synchronization:rw_spin_lock",
+    ],
+)
+
+cpp_benchmark(
+    name = "synchronized_benchmark",
+    srcs = ["SynchronizedBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:synchronized",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "synchronized_ptr_test",
+    srcs = ["SynchronizedPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:optional",
+        "//folly:replaceable",
+        "//folly:synchronized_ptr",
+        "//folly/portability:gtest",
+        "//folly/synchronization:rw_spin_lock",
+    ],
+)
+
+cpp_library(
+    name = "synchronized_test_lib",
+    headers = [
+        "SynchronizedTestLib.h",
+        "SynchronizedTestLib-inl.h",
+    ],
+    exported_deps = [
+        "//folly:random",
+        "//folly:synchronized",
+        "//folly/container:foreach",
+        "//folly/portability:gtest",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "test_utils",
+    headers = ["TestUtils.h"],
+    exported_deps = [
+        "//folly:conv",
+        "//folly:exception_string",
+        "//folly:fbstring",
+        "//folly:fixed_string",
+        "//folly:range",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "thread_cached_int_test",
+    srcs = ["ThreadCachedIntTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:thread_cached_int",
+        "//folly/container:foreach",
+        "//folly/hash:hash",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/system:thread_id",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "thread_local_benchmark",
+    srcs = ["ThreadLocalBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:thread_local",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:gflags",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_binary(
+    name = "thread_local_access_benchmark",
+    srcs = ["ThreadLocalAccessBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:thread_local",
+    ],
+)
+
+cpp_binary(
+    name = "thread_local_destroy_benchmark",
+    srcs = ["ThreadLocalDestroyBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:thread_local",
+    ],
+)
+
+cpp_binary(
+    name = "thread_local_test_lib.so",
+    srcs = ["ThreadLocalTestLib.cpp"],
+    headers = [],
+    dlopen_enabled = True,
+    deps = [
+        "//folly:thread_local",
+    ],
+)
+
+cpp_unittest(
+    name = "thread_local_test",
+    srcs = ["ThreadLocalTest.cpp"],
+    headers = [],
+    resources = [
+        ":thread_local_test_lib.so",
+    ],
+    deps = [
+        "//folly:memory",
+        "//folly:thread_local",
+        "//folly/experimental:test_util",
+        "//folly/experimental/io:fs_util",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+        "//folly/synchronization:baton",
+        "//folly/system:thread_id",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_thread"),
+        ("glibc", None, "dl"),
+    ],
+)
+
+cpp_unittest(
+    name = "timeout_queue_test",
+    srcs = ["TimeoutQueueTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:timeout_queue",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "token_bucket_test",
+    srcs = ["TokenBucketTest.cpp"],
+    headers = ["TokenBucketTest.h"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:string",
+        "//folly:token_bucket",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "traits_test",
+    srcs = ["TraitsTest.cpp"],
+    headers = [],
+    default_strip_mode = "full",
+    deps = [
+        "//folly:cpp_attributes",
+        "//folly:scope_guard",
+        "//folly:traits",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "try_test",
+    srcs = ["TryTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:memory",
+        "//folly:traits",
+        "//folly:try",
+        "//folly/lang:exception",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "unit_test",
+    srcs = ["UnitTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:unit",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "uri_benchmark",
+    srcs = ["UriBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:uri",
+        "//folly/init:init",
+    ],
+)
+
+cpp_unittest(
+    name = "uri_test",
+    srcs = ["UriTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:uri",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_algorithm"),
+    ],
+)
+
+cpp_unittest(
+    name = "utf8_string_test",
+    srcs = ["UTF8StringTest.cpp"],
+    headers = [],
+    deps = [
+        ":test_utils",
+        "//folly:range",
+        "//folly:utf8_string",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "utility_test",
+    srcs = ["UtilityTest.cpp"],
+    deps = [
+        "//folly:utility",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "varint_test",
+    srcs = ["VarintTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly:varint",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "json_mock_util",
+    headers = [
+        "JsonMockUtil.h",
+    ],
+    exported_deps = [
+        "//folly/json:json_mock_util",
+    ],
+)
+
+cpp_library(
+    name = "json_test_util",
+    headers = [
+        "JsonTestUtil.h",
+    ],
+    exported_deps = [
+        "//folly/json:json_test_util",
+    ],
+)
+
+cpp_unittest(
+    name = "test_utils_test",
+    srcs = ["TestUtilsTest.cpp"],
+    headers = [],
+    deps = [
+        ":test_utils",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "comparison_operator_test_util",
+    headers = ["ComparisonOperatorTestUtil.h"],
+    exported_deps = [
+        "//folly/portability:gtest",
+    ],
+)

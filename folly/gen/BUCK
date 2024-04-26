@@ -1,0 +1,112 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "base",
+    headers = [
+        "Base.h",
+        "Base-inl.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/range-v3:range-v3",
+        ":core",
+        "//folly:conv",
+        "//folly:function",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:utility",
+        "//folly/container:access",
+        "//folly/container:f14_hash",
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "combine",
+    headers = [
+        "Combine.h",
+        "Combine-inl.h",
+    ],
+    exported_deps = [":base"],
+)
+
+cpp_library(
+    name = "core",
+    headers = [
+        "Core.h",
+        "Core-inl.h",
+    ],
+    exported_deps = ["//folly:portability"],
+)
+
+cpp_library(
+    name = "file",
+    headers = [
+        "File.h",
+        "File-inl.h",
+    ],
+    exported_deps = [
+        ":base",
+        ":string",
+        "//folly:exception",
+        "//folly:file",
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "parallel",
+    headers = [
+        "Parallel.h",
+        "Parallel-inl.h",
+    ],
+    exported_deps = [
+        ":base",
+        "//folly:mpmc_queue",
+        "//folly:scope_guard",
+        "//folly/experimental:event_count",
+    ],
+)
+
+cpp_library(
+    name = "parallel_map",
+    headers = [
+        "ParallelMap.h",
+        "ParallelMap-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly:expected",
+        "//folly:mpmc_pipeline",
+        "//folly/experimental:event_count",
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "string",
+    headers = [
+        "String.h",
+        "String-inl.h",
+    ],
+    exported_deps = [
+        ":base",
+        "//folly:conv",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:string",
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "istream",
+    headers = [
+        "IStream.h",
+    ],
+    exported_deps = [
+        ":core",
+    ],
+)

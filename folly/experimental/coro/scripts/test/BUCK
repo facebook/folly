@@ -1,0 +1,11 @@
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+python_unittest(
+    name = "co_bt",
+    srcs = ["co_bt.py"],
+    deps = [
+        "//folly/experimental/coro/scripts:co_bt",
+    ],
+)

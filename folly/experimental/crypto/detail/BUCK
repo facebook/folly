@@ -1,0 +1,127 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "lt_hash_internal",
+    headers = [
+        "LtHashInternal.h",
+    ],
+    exported_deps = [
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "math_operation_simple",
+    srcs = [
+        "MathOperation_Simple.cpp",
+    ],
+    arch_compiler_flags = {
+        "x86_64": [
+            "-mno-avx",
+            "-mno-avx2",
+            "-mno-sse2",
+        ],
+    },
+    deps = [
+        ":lt_hash_internal",
+        "//folly:memory",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "math_operation_sse2",
+    srcs = [
+        "MathOperation_SSE2.cpp",
+    ],
+    arch_compiler_flags = {
+        "x86_64": [
+            "-mno-avx",
+            "-mno-avx2",
+            "-msse2",
+        ],
+    },
+    deps = [
+        ":lt_hash_internal",
+        "//folly:memory",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        "glog",
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_library(
+    name = "math_operation_avx2",
+    srcs = [
+        "MathOperation_AVX2.cpp",
+    ],
+    arch_compiler_flags = {
+        "x86_64": [
+            "-mavx",
+            "-mavx2",
+            "-msse2",
+        ],
+    },
+    deps = [
+        ":lt_hash_internal",
+        "//folly:memory",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        "glog",
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_library(
+    name = "math_operation_sse2_disable",
+    srcs = [
+        "MathOperation_SSE2.cpp",
+    ],
+    arch_compiler_flags = {
+        "x86_64": [
+            "-mno-avx",
+            "-mno-avx2",
+            "-mno-sse2",
+        ],
+    },
+    deps = [
+        ":lt_hash_internal",
+        "//folly:memory",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        "glog",
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_library(
+    name = "math_operation_avx2_disable",
+    srcs = [
+        "MathOperation_AVX2.cpp",
+    ],
+    arch_compiler_flags = {
+        "x86_64": [
+            "-mno-avx",
+            "-mno-avx2",
+            "-mno-sse2",
+        ],
+    },
+    deps = [
+        ":lt_hash_internal",
+        "//folly:memory",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        "glog",
+        ("libsodium", None, "sodium"),
+    ],
+)

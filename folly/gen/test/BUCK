@@ -1,0 +1,196 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "base_benchmark",
+    srcs = ["BaseBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/gen:base",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "base_test",
+    srcs = ["BaseTest.cpp"],
+    headers = [],
+    tags = [
+        "serialize_test_cases",
+    ],
+    deps = [
+        "//folly:fbvector",
+        "//folly:map_util",
+        "//folly:memory",
+        "//folly:string",
+        "//folly/experimental:test_util",
+        "//folly/gen:base",
+        "//folly/json:dynamic",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "combine_test",
+    srcs = ["CombineTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:fbvector",
+        "//folly:range",
+        "//folly/gen:base",
+        "//folly/gen:combine",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "file_benchmark",
+    srcs = ["FileBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file",
+        "//folly/gen:base",
+        "//folly/gen:file",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "file_test",
+    srcs = ["FileTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "//folly:file",
+        "//folly:range",
+        "//folly/container:array",
+        "//folly/experimental:test_util",
+        "//folly/gen:base",
+        "//folly/gen:file",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "parallel_benchmark",
+    srcs = ["ParallelBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":util",
+        "//folly/gen:base",
+        "//folly/gen:parallel",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "parallel_test",
+    srcs = ["ParallelTest.cpp"],
+    headers = [],
+    tags = [
+        "serialize",
+    ],
+    deps = [
+        "//folly/gen:base",
+        "//folly/gen:parallel",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "parallel_map_benchmark",
+    srcs = ["ParallelMapBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/gen:base",
+        "//folly/gen:parallel_map",
+        "//folly/portability:unistd",
+    ],
+)
+
+cpp_unittest(
+    name = "parallel_map_test",
+    srcs = ["ParallelMapTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:memory",
+        "//folly/gen:base",
+        "//folly/gen:parallel_map",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "string_benchmark",
+    srcs = ["StringBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:string",
+        "//folly/container:foreach",
+        "//folly/gen:base",
+        "//folly/gen:string",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "string_test",
+    srcs = ["StringTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/functional:apply_tuple",
+        "//folly/gen:string",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "istream_test",
+    srcs = ["IStreamTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/gen:base",
+        "//folly/gen:istream",
+        "//folly/gen:string",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "util",
+    headers = ["Bench.h"],
+    exported_deps = [
+        "//folly:benchmark",
+    ],
+)

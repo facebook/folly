@@ -1,0 +1,167 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "exception_abi",
+    headers = ["ExceptionAbi.h"],
+)
+
+cpp_library(
+    name = "exception_counter",
+    srcs = ["ExceptionCounterLib.cpp"],
+    headers = ["ExceptionCounterLib.h"],
+    link_whole = True,
+    deps = [
+        ":exception_tracer_callbacks",
+        ":stacktrace",
+        "//folly:range",
+        "//folly:synchronized",
+        "//folly:thread_local",
+        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/hash:spooky_hash_v2",
+        "//folly/synchronization:rw_spin_lock",
+    ],
+    exported_deps = [
+        ":exception_tracer_base",
+        ":exception_tracer_callbacks",
+    ],
+)
+
+cpp_library(
+    name = "exception_tracer",
+    srcs = ["ExceptionStackTraceLib.cpp"],
+    headers = [],
+    link_whole = True,
+    deps = [
+        ":exception_abi",
+        ":exception_tracer_base",
+        ":exception_tracer_callbacks",
+        ":stacktrace",
+        "//folly/experimental/symbolizer:symbolizer",
+    ],
+    exported_deps = [
+        ":exception_tracer_callbacks",
+    ],
+)
+
+cpp_library(
+    name = "exception_tracer_base",
+    srcs = ["ExceptionTracer.cpp"],
+    headers = ["ExceptionTracer.h"],
+    # Usage of dlsym(RTLD_NEXT, "symbol") does not always work with link groups
+    # due to relying on link order. Excluding all libs with `RTLD_NEXT` usage from any link group.
+    tags = ["EXCLUDED_FROM_LINK_GROUPS"],
+    deps = [
+        ":exception_abi",
+        ":stacktrace",
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly:string",
+        "//folly/experimental/symbolizer:symbolizer",
+    ],
+    exported_deps = [
+        "//folly/portability:config",
+    ],
+    external_deps = [
+        "glog",
+        ("glibc", None, "dl"),
+    ],
+)
+
+cpp_library(
+    name = "exception_tracer_callbacks",
+    srcs = ["ExceptionTracerLib.cpp"],
+    headers = ["ExceptionTracerLib.h"],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//third-party/libgcc:11.x": ["-DFOLLY_STATIC_LIBSTDCXX=1"],
+    }),
+    exported_linker_flags = select({
+        "DEFAULT": [],
+        "ovr_config//third-party/libgcc:11.x": [
+            "-Wl,--wrap=__cxa_throw",
+            "-Wl,--wrap=__cxa_rethrow",
+            "-Wl,--wrap=__cxa_begin_catch",
+            "-Wl,--wrap=__cxa_end_catch",
+            "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
+        ],
+    }),
+    link_whole = True,
+    supports_python_dlopen = True,
+    tags = ["EXCLUDED_FROM_LINK_GROUPS"],
+    deps = [
+        "//folly:indestructible",
+        "//folly:portability",
+        "//folly:shared_mutex",
+        "//folly:synchronized",
+    ],
+    external_deps = [
+        ("glibc", None, "dl"),
+    ],
+)
+
+cpp_library(
+    name = "stacktrace",
+    srcs = ["StackTrace.cpp"],
+    headers = ["StackTrace.h"],
+    deps = [
+        "//folly/experimental/symbolizer:stack_trace",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "smart_exception_tracer_singleton",
+    srcs = [
+        "SmartExceptionTracerSingleton.cpp",
+    ],
+    headers = [
+        "SmartExceptionTracerSingleton.h",
+    ],
+    exported_deps = [
+        ":stacktrace",
+        "//folly:synchronized",
+        "//folly/container:f14_hash",
+    ],
+)
+
+cpp_library(
+    name = "smart_exception_stack_trace_hooks",
+    srcs = [
+        "SmartExceptionStackTraceHooks.cpp",
+    ],
+    link_whole = True,
+    deps = [
+        ":exception_tracer_callbacks",
+        ":smart_exception_tracer_singleton",
+        "//folly/experimental/symbolizer:symbolizer",
+    ],
+)
+
+cpp_library(
+    name = "smart_exception_tracer",
+    srcs = ["SmartExceptionTracer.cpp"],
+    headers = ["SmartExceptionTracer.h"],
+    deps = [
+        ":exception_tracer_callbacks",
+        ":smart_exception_tracer_singleton",
+        ":stacktrace",
+        "//folly:map_util",
+        "//folly:scope_guard",
+        "//folly:synchronized",
+        "//folly/container:f14_hash",
+        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/lang:exception",
+    ],
+    exported_deps = [
+        ":exception_tracer_base",
+        ":exception_tracer_callbacks",
+        "//folly:exception_wrapper",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

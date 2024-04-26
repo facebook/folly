@@ -1,0 +1,57 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "apply_tuple",
+    headers = ["ApplyTuple.h"],
+    exported_deps = [
+        ":invoke",
+        "//folly:traits",
+        "//folly:utility",
+    ],
+)
+
+cpp_library(
+    name = "invoke",
+    headers = ["Invoke.h"],
+    exported_deps = [
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly:preprocessor",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/lang:customization_point",
+    ],
+    exported_external_deps = [
+        ("boost", None, "boost_preprocessor"),
+    ],
+)
+
+cpp_library(
+    name = "partial",
+    headers = ["Partial.h"],
+    exported_deps = [
+        ":invoke",
+        "//folly:utility",
+    ],
+)
+
+cpp_library(
+    name = "protocol",
+    headers = ["protocol.h"],
+    exported_deps = [
+        ":invoke",
+        ":traits",
+        "//folly:portability",
+        "//folly:traits",
+    ],
+)
+
+cpp_library(
+    name = "traits",
+    headers = ["traits.h"],
+    exported_deps = [
+        "//folly:traits",
+    ],
+)

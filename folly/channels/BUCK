@@ -1,0 +1,225 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "channel",
+    headers = [
+        "Channel.h",
+        "Channel-fwd.h",
+        "Channel-inl.h",
+    ],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:synchronized",
+        "//folly/experimental/channels/detail:channel_bridge",
+        "//folly/experimental/coro:coroutine",
+    ],
+)
+
+cpp_library(
+    name = "channel_callback_handle",
+    headers = [
+        "ChannelCallbackHandle.h",
+    ],
+    exported_deps = [
+        "//folly:intrusive_list",
+        "//folly:scope_guard",
+        "//folly/experimental/channels:channel",
+    ],
+)
+
+cpp_library(
+    name = "channel_processor",
+    headers = [
+        "ChannelProcessor.h",
+        "ChannelProcessor-inl.h",
+    ],
+    exported_deps = [
+        "//folly:executor",
+        "//folly/executors:serial_executor",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/channels:merge_channel",
+        "//folly/experimental/channels:rate_limiter",
+        "//folly/experimental/channels:transform",
+        "//folly/experimental/channels/detail:intrusive_ptr",
+    ],
+)
+
+cpp_library(
+    name = "consume_channel",
+    headers = [
+        "ConsumeChannel.h",
+        "ConsumeChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly:executor",
+        "//folly:format",
+        "//folly:intrusive_list",
+        "//folly:scope_guard",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels:channel_callback_handle",
+        "//folly/experimental/channels/detail:utility",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cpp_library(
+    name = "fanout_channel",
+    headers = [
+        "FanoutChannel.h",
+        "FanoutChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels:fanout_sender",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+cpp_library(
+    name = "fanout_sender",
+    headers = [
+        "FanoutSender.h",
+        "FanoutSender-inl.h",
+    ],
+    exported_deps = [
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels/detail:pointer_variant",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+cpp_library(
+    name = "merge",
+    headers = [
+        "Merge.h",
+        "Merge-inl.h",
+    ],
+    exported_deps = [
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+cpp_library(
+    name = "merge_channel",
+    headers = [
+        "MergeChannel.h",
+        "MergeChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+cpp_library(
+    name = "multiplex_channel",
+    headers = [
+        "MultiplexChannel.h",
+        "MultiplexChannel-inl.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/range-v3:range-v3",
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels:fanout_sender",
+        "//folly/experimental/channels:on_closed_exception",
+        "//folly/experimental/channels:rate_limiter",
+        "//folly/experimental/channels/detail:multiplexer_traits",
+        "//folly/experimental/channels/detail:utility",
+        "//folly/experimental/coro:future_util",
+        "//folly/experimental/coro:mutex",
+        "//folly/experimental/coro:promise",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cpp_library(
+    name = "on_closed_exception",
+    headers = [
+        "OnClosedException.h",
+    ],
+)
+
+cpp_library(
+    name = "producer",
+    headers = [
+        "Producer.h",
+        "Producer-inl.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:cancellation_token",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels:channel_callback_handle",
+        "//folly/experimental/channels:consume_channel",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cpp_library(
+    name = "proxy_channel",
+    headers = [
+        "ProxyChannel.h",
+        "ProxyChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+cpp_library(
+    name = "rate_limiter",
+    headers = [
+        "RateLimiter.h",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly/executors:sequenced_executor",
+    ],
+)
+
+cpp_library(
+    name = "max_concurrent_rate_limiter",
+    srcs = [
+        "MaxConcurrentRateLimiter.cpp",
+    ],
+    exported_deps = [
+        "//folly:synchronized",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:rate_limiter",
+    ],
+)
+
+cpp_library(
+    name = "transform",
+    headers = [
+        "Transform.h",
+        "Transform-inl.h",
+    ],
+    exported_deps = [
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels:on_closed_exception",
+        "//folly/experimental/channels:rate_limiter",
+        "//folly/experimental/channels/detail:utility",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:task",
+    ],
+)

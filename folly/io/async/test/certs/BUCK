@@ -1,0 +1,5 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
+
+oncall("fbcode_entropy_wardens_folly")
+
+export_files(files = glob(["*.pem"]))

@@ -1,0 +1,517 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "async_base_fwd",
+    headers = [
+        "HHWheelTimer-fwd.h",
+    ],
+)
+
+cpp_library(
+    name = "async_base",
+    srcs = [
+        "AsyncTimeout.cpp",
+        "EventBase.cpp",
+        "EventBaseBackendBase.cpp",
+        "EventBaseLocal.cpp",
+        "EventHandler.cpp",
+        "HHWheelTimer.cpp",
+        "TimeoutManager.cpp",
+        "VirtualEventBase.cpp",
+    ],
+    headers = [
+        "AsyncTimeout.h",
+        "AtomicNotificationQueue.h",
+        "AtomicNotificationQueue-inl.h",
+        "EventBase.h",
+        "EventBaseAtomicNotificationQueue.h",
+        "EventBaseAtomicNotificationQueue-inl.h",
+        "EventBaseBackendBase.h",
+        "EventBaseLocal.h",
+        "EventHandler.h",
+        "HHWheelTimer.h",
+        "NotificationQueue.h",
+        "TimeoutManager.h",
+        "VirtualEventBase.h",
+    ],
+    deps = [
+        "//folly:chrono",
+        "//folly:map_util",
+        "//folly:string",
+        "//folly/container:bit_iterator",
+        "//folly/experimental:event_count",
+        "//folly/lang:assume",
+        "//folly/lang:bits",
+        "//folly/system:thread_id",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        ":async_base_fwd",
+        ":delayed_destruction",
+        ":event_util",
+        ":request_context",
+        "//folly:exception",
+        "//folly:exception_string",
+        "//folly:executor",
+        "//folly:file_util",
+        "//folly:function",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:spin_lock",
+        "//folly:synchronized",
+        "//folly/container:f14_hash",
+        "//folly/executors:drivable_executor",
+        "//folly/executors:io_executor",
+        "//folly/executors:queue_observer",
+        "//folly/executors:scheduled_executor",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental:execution_observer",
+        "//folly/io:iobuf",
+        "//folly/lang:align",
+        "//folly/lang:thunk",
+        "//folly/net:net_ops",
+        "//folly/net:network_socket",
+        "//folly/portability:config",
+        "//folly/portability:event",
+        "//folly/portability:fcntl",
+        "//folly/portability:iovec",
+        "//folly/portability:sockets",
+        "//folly/portability:unistd",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:call_once",
+        "//folly/system:pid",
+    ],
+    exported_external_deps = [
+        "boost",
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "async_pipe",
+    srcs = ["AsyncPipe.cpp"],
+    headers = ["AsyncPipe.h"],
+    deps = [
+        ":async_socket_exception",
+        "//folly:file_util",
+        "//folly:utility",
+        "//folly/detail:file_util_detail",
+    ],
+    exported_deps = [
+        ":async_base",
+        ":async_transport",
+        ":delayed_destruction",
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "async_signal_handler",
+    srcs = ["AsyncSignalHandler.cpp"],
+    headers = ["AsyncSignalHandler.h"],
+    deps = [
+        "//folly:conv",
+    ],
+    exported_deps = [
+        ":async_base",
+        "//folly/portability:event",
+    ],
+)
+
+cpp_library(
+    name = "async_socket_transport",
+    srcs = ["AsyncSocketTransport.cpp"],
+    headers = ["AsyncSocketTransport.h"],
+    deps = [
+    ],
+    exported_deps = [
+        ":async_socket_exception",
+        ":async_transport",
+        "//folly:network_address",
+        "//folly/io:iobuf",
+        "//folly/io:socket_option_map",
+        "//folly/net:network_socket",
+    ],
+)
+
+cpp_library(
+    name = "async_socket",
+    srcs = ["AsyncSocket.cpp"],
+    headers = ["AsyncSocket.h"],
+    deps = [
+        "//folly:exception",
+        "//folly:exception_wrapper",
+        "//folly:format",
+        "//folly:portability",
+        "//folly:string",
+        "//folly/lang:checked_math",
+        "//folly/portability:fcntl",
+        "//folly/portability:sys_mman",
+        "//folly/portability:sys_uio",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        ":async_base",
+        ":async_socket_exception",
+        ":async_socket_transport",
+        ":async_transport",
+        ":delayed_destruction",
+        "//folly:constructor_callback_list",
+        "//folly:network_address",
+        "//folly:optional",
+        "//folly:small_vector",
+        "//folly/detail:socket_fast_open",
+        "//folly/io:iobuf",
+        "//folly/io:shutdown_socket_set",
+        "//folly/io:socket_option_map",
+        "//folly/io/async/observer:async_socket_observer_container",
+        "//folly/net:net_ops_dispatcher",
+        "//folly/net:tcpinfo",
+        "//folly/net:tcpinfo_dispatcher",
+        "//folly/portability:sockets",
+    ],
+    external_deps = [
+        ("boost", None, "boost_preprocessor"),
+    ],
+)
+
+cpp_library(
+    name = "async_socket_base",
+    headers = ["AsyncSocketBase.h"],
+    exported_deps = [
+        ":async_base",
+        "//folly:network_address",
+    ],
+)
+
+cpp_library(
+    name = "async_socket_exception",
+    srcs = ["AsyncSocketException.cpp"],
+    headers = ["AsyncSocketException.h"],
+    deps = [
+        "//folly:format",
+        "//folly:string",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "async_ssl_socket",
+    srcs = ["AsyncSSLSocket.cpp"],
+    headers = ["AsyncSSLSocket.h"],
+    deps = [
+        "//folly:format",
+        "//folly:indestructible",
+        "//folly:network_address",
+        "//folly:spin_lock",
+        "//folly/io/async/ssl:basic_transport_certificate",
+    ],
+    exported_deps = [
+        ":async_base",
+        ":async_pipe",
+        ":async_socket",
+        ":certificate_identity_verifier",
+        ":ssl_context",
+        "//folly:optional",
+        "//folly:string",
+        "//folly/io:iobuf",
+        "//folly/io:socket_option_map",
+        "//folly/io/async/ssl:openssl_utils",
+        "//folly/io/async/ssl:ssl_errors",
+        "//folly/io/async/ssl:tls_definitions",
+        "//folly/lang:bits",
+        "//folly/portability:openssl",
+        "//folly/portability:sockets",
+        "//folly/ssl:openssl_ptr_types",
+        "//folly/ssl:ssl_session",
+        "//folly/ssl:ssl_session_manager",
+    ],
+)
+
+cpp_library(
+    name = "async_transport",
+    headers = ["AsyncTransport.h"],
+    exported_deps = [
+        ":async_base",
+        ":async_socket_base",
+        ":async_transport_certificate",
+        ":delayed_destruction",
+        ":write_flags",
+        "//folly:optional",
+        "//folly/io:iobuf",
+        "//folly/portability:openssl",
+        "//folly/portability:sys_uio",
+        "//folly/ssl:openssl_ptr_types",
+    ],
+)
+
+cpp_library(
+    name = "async_transport_certificate",
+    headers = ["AsyncTransportCertificate.h"],
+    exported_deps = [],
+)
+
+cpp_library(
+    name = "certificate_identity_verifier",
+    headers = ["CertificateIdentityVerifier.h"],
+    exported_deps = [
+        ":async_transport_certificate",
+        "//folly:try",
+        "//folly:unit",
+    ],
+)
+
+cpp_library(
+    name = "async_udp_server_socket",
+    headers = ["AsyncUDPServerSocket.h"],
+    exported_deps = [
+        ":async_base",
+        ":async_udp_socket",
+        "//folly:memory",
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "async_udp_socket",
+    srcs = ["AsyncUDPSocket.cpp"],
+    headers = ["AsyncUDPSocket.h"],
+    deps = [
+        "//folly:likely",
+        "//folly:small_vector",
+        "//folly:utility",
+        "//folly/portability:fcntl",
+        "//folly/portability:sockets",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        ":async_base",
+        ":async_socket_base",
+        ":async_socket_exception",
+        "//folly:function",
+        "//folly:network_address",
+        "//folly:scope_guard",
+        "//folly/io:iobuf",
+        "//folly/io:socket_option_map",
+        "//folly/net:net_ops",
+        "//folly/net:net_ops_dispatcher",
+        "//folly/net:network_socket",
+    ],
+    external_deps = [
+        ("boost", None, "boost_preprocessor"),
+    ],
+)
+
+cpp_library(
+    name = "decorated_async_transport_wrapper",
+    headers = [
+        "DecoratedAsyncTransportWrapper.h",
+        "WriteChainAsyncTransportWrapper.h",
+    ],
+    exported_deps = [
+        ":async_transport",
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "delayed_destruction",
+    srcs = [
+        "DelayedDestruction.cpp",
+    ],
+    headers = [
+        "DelayedDestruction.h",
+        "DelayedDestructionBase.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "destructor_check",
+    headers = ["DestructorCheck.h"],
+)
+
+cpp_library(
+    name = "event_base_manager",
+    srcs = ["EventBaseManager.cpp"],
+    headers = ["EventBaseManager.h"],
+    exported_deps = [
+        ":async_base",
+        "//folly:optional",
+        "//folly:thread_local",
+    ],
+)
+
+cpp_library(
+    name = "event_base_thread",
+    srcs = ["EventBaseThread.cpp"],
+    headers = ["EventBaseThread.h"],
+    deps = [
+        ":scoped_event_base_thread",
+        "//folly:memory",
+    ],
+    exported_deps = [
+        ":async_base",
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "event_util",
+    headers = ["EventUtil.h"],
+    exported_deps = [
+        "//folly/portability:event",
+    ],
+)
+
+cpp_library(
+    name = "request_context",
+    srcs = ["Request.cpp"],
+    headers = ["Request.h"],
+    deps = [
+        "//folly:glog",
+        "//folly:map_util",
+        "//folly/experimental:single_writer_fixed_hash_map",
+        "//folly/tracing:static_tracepoint",
+    ],
+    exported_deps = [
+        "//folly:shared_mutex",
+        "//folly:singleton_thread_local",
+        "//folly:synchronized",
+        "//folly/concurrency:process_local_unique_id",
+        "//folly/container:f14_hash",
+        "//folly/detail:iterators",
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+cpp_library(
+    name = "scoped_event_base_thread",
+    srcs = ["ScopedEventBaseThread.cpp"],
+    headers = ["ScopedEventBaseThread.h"],
+    deps = [
+        ":event_base_manager",
+        "//folly:function",
+        "//folly:range",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        ":async_base",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_library(
+    name = "terminate_cancellation_token",
+    srcs = ["TerminateCancellationToken.cpp"],
+    headers = ["TerminateCancellationToken.h"],
+    deps = [
+        ":async_signal_handler",
+        ":scoped_event_base_thread",
+        "//folly:singleton",
+    ],
+    exported_deps = [
+        "//folly:cancellation_token",
+    ],
+)
+
+cpp_library(
+    name = "server_socket",
+    srcs = ["AsyncServerSocket.cpp"],
+    headers = ["AsyncServerSocket.h"],
+    deps = [
+        "//folly:file_util",
+        "//folly:glog",
+        "//folly:portability",
+        "//folly/detail:socket_fast_open",
+        "//folly/portability:fcntl",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        ":async_base",
+        ":async_socket_base",
+        ":delayed_destruction",
+        "//folly:exception_wrapper",
+        "//folly:network_address",
+        "//folly:string",
+        "//folly/experimental/observer:observer",
+        "//folly/io:shutdown_socket_set",
+        "//folly/net:net_ops",
+        "//folly/net:network_socket",
+        "//folly/portability:sockets",
+    ],
+)
+
+cpp_library(
+    name = "ssl_context",
+    srcs = ["SSLContext.cpp"],
+    headers = ["SSLContext.h"],
+    deps = [
+        "//folly:format",
+        "//folly:memory",
+        "//folly:random",
+        "//folly:shared_mutex",
+        "//folly:spin_lock",
+        "//folly/ssl:openssl_ticket_handler",
+        "//folly/ssl:password_collector",
+        "//folly/ssl:ssl_session_manager",
+        "//folly/system:thread_id",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:string",
+        "//folly/container:access",
+        "//folly/io/async/ssl:openssl_utils",
+        "//folly/portability:openssl",
+        "//folly/ssl:openssl_ptr_types",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "ssl_options",
+    srcs = ["SSLOptions.cpp"],
+    headers = ["SSLOptions.h"],
+    deps = [
+        "//folly:format",
+    ],
+    exported_deps = [
+        ":ssl_context",
+        "//folly/container:array",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "password_in_file",
+    srcs = ["PasswordInFile.cpp"],
+    headers = ["PasswordInFile.h"],
+    deps = [
+        "//folly:file_util",
+        "//folly/portability:openssl",
+    ],
+    exported_deps = [
+        "//folly/ssl:password_collector",
+    ],
+)
+
+cpp_library(
+    name = "write_flags",
+    headers = ["WriteFlags.h"],
+)

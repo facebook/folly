@@ -1,0 +1,46 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "static_tracepoint",
+    headers = [
+        "StaticTracepoint.h",
+        "StaticTracepoint-ELFx86.h",
+    ],
+    exported_deps = [
+        "//folly/portability:config",
+    ],
+)
+
+cpp_library(
+    name = "scoped_trace_section",
+    headers = [
+        "ScopedTraceSection.h",
+    ],
+)
+
+cpp_library(
+    name = "async_stack",
+    srcs = [
+        "AsyncStack.cpp",
+    ],
+    headers = [
+        "AsyncStack.h",
+        "AsyncStack-inl.h",
+    ],
+    deps = [
+        "//folly:likely",
+        "//folly/lang:hint",
+        "//folly/portability:pthread",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly/experimental/coro:coroutine",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

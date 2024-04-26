@@ -1,0 +1,102 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "base64_api",
+    srcs = ["Base64Api.cpp"],
+    headers = ["Base64Api.h"],
+    deps = [
+        ":base64_sse4_2",
+        ":base64_swar",
+        "//folly:cpu_id",
+    ],
+    exported_deps = [
+        ":base64_common",
+        ":base64_scalar",
+        "//folly:portability",
+        "//folly/portability:constexpr",
+    ],
+)
+
+cpp_library(
+    name = "base64_common",
+    headers = ["Base64Common.h"],
+)
+
+cpp_library(
+    name = "base64_constants",
+    headers = ["Base64Constants.h"],
+)
+
+cpp_library(
+    name = "base64_hidden_constants",
+    headers = ["Base64HiddenConstants.h"],
+    exported_deps = [
+        ":base64_constants",
+    ],
+)
+
+cpp_library(
+    name = "base64_scalar",
+    headers = ["Base64Scalar.h"],
+    exported_deps = [
+        ":base64_common",
+        ":base64_constants",
+    ],
+)
+
+cpp_library(
+    name = "base64_simd",
+    headers = ["Base64Simd.h"],
+    exported_deps = [
+        ":base64_common",
+        ":base64_constants",
+        ":base64_hidden_constants",
+        ":base64_scalar",
+        ":base64_swar",
+        "//folly:c_portability",
+    ],
+)
+
+cpp_library(
+    name = "base64_sse4_2_platform",
+    headers = ["Base64_SSE4_2_Platform.h"],
+    exported_deps = [
+        ":base64_hidden_constants",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "base64_sse4_2",
+    srcs = ["Base64_SSE4_2.cpp"],
+    headers = ["Base64_SSE4_2.h"],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": ["-msse4.2"],
+    }),
+    deps = [
+        ":base64_simd",
+        ":base64_sse4_2_platform",
+    ],
+    exported_deps = [
+        ":base64_common",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "base64_swar",
+    srcs = ["Base64SWAR.cpp"],
+    headers = ["Base64SWAR.h"],
+    deps = [
+        ":base64_constants",
+        ":base64_hidden_constants",
+        ":base64_scalar",
+        "//folly:portability",
+    ],
+    exported_deps = [
+        ":base64_common",
+    ],
+)

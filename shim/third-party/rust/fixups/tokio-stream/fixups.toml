@@ -1,0 +1,2 @@
+# reindeer cannot see through `cfg_sync!` macros and the like
+extra_srcs = ["src/**/*.rs"]

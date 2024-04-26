@@ -1,0 +1,178 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_binary(
+    name = "cache_locality_benchmark",
+    srcs = ["CacheLocalityBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/concurrency:cache_locality",
+        "//folly/lang:keep",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "cache_locality_test",
+    srcs = ["CacheLocalityTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/concurrency:cache_locality",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_resource",
+        "//folly/test:test_utils",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_shared_ptr_test",
+    srcs = ["AtomicSharedPtrTest.cpp"],
+    headers = ["AtomicSharedPtrCounted.h"],
+    deps = [
+        "//folly:portability",
+        "//folly/concurrency:atomic_shared_ptr",
+        "//folly/portability:config",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/test:deterministic_schedule",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "atomic_shared_ptr_performance",
+    srcs = ["AtomicSharedPtrPerformance.cpp"],
+    deps = [
+        "//folly/concurrency:atomic_shared_ptr",
+        "//folly/portability:config",
+    ],
+)
+
+cpp_unittest(
+    name = "core_cached_shared_ptr_test",
+    srcs = ["CoreCachedSharedPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:portability",
+        "//folly/concurrency:atomic_shared_ptr",
+        "//folly/concurrency:core_cached_shared_ptr",
+        "//folly/concurrency:thread_cached_synchronized",
+        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/portability:config",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "concurrent_hash_map_bench",
+    srcs = ["ConcurrentHashMapBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly/concurrency:concurrent_hash_map",
+        "//folly/synchronization/test:barrier",
+    ],
+)
+
+cpp_unittest(
+    name = "concurrent_hash_map_test",
+    srcs = ["ConcurrentHashMapTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:portability",
+        "//folly:traits",
+        "//folly/concurrency:concurrent_hash_map",
+        "//folly/container/test:tracking_types",
+        "//folly/hash:hash",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+cpp_unittest(
+    name = "dynamic_bounded_queue_test",
+    srcs = ["DynamicBoundedQueueTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:mpmc_queue",
+        "//folly:producer_consumer_queue",
+        "//folly/concurrency:dynamic_bounded_queue",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "priority_unbounded_queue_set_test",
+    srcs = ["PriorityUnboundedQueueSetTest.cpp"],
+    deps = [
+        "//folly/concurrency:priority_unbounded_queue_set",
+        "//folly/container:enumerate",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "unbounded_queue_test",
+    srcs = ["UnboundedQueueTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:mpmc_queue",
+        "//folly:producer_consumer_queue",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/lang:keep",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "thread_cached_synchronized_bench",
+    srcs = ["ThreadCachedSynchronizedBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:synchronized",
+        "//folly/concurrency:thread_cached_synchronized",
+        "//folly/lang:keep",
+    ],
+)
+
+cpp_unittest(
+    name = "thread_cached_synchronized_test",
+    srcs = ["ThreadCachedSynchronizedTest.cpp"],
+    deps = [
+        "//folly/concurrency:thread_cached_synchronized",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "process_local_unique_id_test",
+    srcs = ["ProcessLocalUniqueIdTest.cpp"],
+    deps = [
+        "//folly:synchronized",
+        "//folly/concurrency:process_local_unique_id",
+        "//folly/portability:gtest",
+    ],
+)

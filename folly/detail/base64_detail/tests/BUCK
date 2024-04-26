@@ -1,0 +1,36 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "base64_against_scalar_test",
+    srcs = ["Base64AgainstScalarTest.cpp"],
+    deps = [
+        "//folly/detail/base64_detail:base64_common",
+        "//folly/detail/base64_detail:base64_scalar",
+        "//folly/detail/base64_detail:base64_sse4_2",
+        "//folly/detail/base64_detail:base64_swar",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "base64_platform_test",
+    srcs = ["Base64PlatformTest.cpp"],
+    deps = [
+        "//folly/detail/base64_detail:base64_sse4_2_platform",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "base64_special_cases_test",
+    srcs = ["Base64SpecialCasesTest.cpp"],
+    deps = [
+        "//folly/detail/base64_detail:base64_scalar",
+        "//folly/detail/base64_detail:base64_simd",
+        "//folly/detail/base64_detail:base64_sse4_2",
+        "//folly/portability:constexpr",
+        "//folly/portability:gtest",
+    ],
+)

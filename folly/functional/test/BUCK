@@ -1,0 +1,57 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "apply_tuple_test",
+    srcs = ["ApplyTupleTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:overload",
+        "//folly/functional:apply_tuple",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "invoke_test",
+    srcs = ["InvokeTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:cpp_attributes",
+        "//folly/functional:invoke",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "partial_test",
+    srcs = ["PartialTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:function",
+        "//folly/functional:partial",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "protocol_test",
+    srcs = ["protocol_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly:traits",
+        "//folly/functional:protocol",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "traits_test",
+    srcs = ["traits_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly/functional:traits",
+        "//folly/portability:gtest",
+    ],
+)
