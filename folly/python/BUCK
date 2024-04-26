@@ -1,0 +1,406 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
+
+cpp_library(
+    name = "asyncio_executor",
+    headers = [
+        "AsyncioExecutor.h",
+    ],
+    modular_headers = False,
+    exported_deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        "//folly:exception_string",
+        "//folly:function",
+        "//folly/executors:drivable_executor",
+        "//folly/executors:sequenced_executor",
+        "//folly/io/async:async_base",
+    ],
+)
+
+cpp_library(
+    name = "gil_aware_manual_executor",
+    srcs = ["GILAwareManualExecutor.cpp"],
+    headers = ["GILAwareManualExecutor.h"],
+    deps = [
+        "fbsource//third-party/python:python",
+        "//folly:scope_guard",
+    ],
+    exported_deps = [
+        "//folly/executors:drivable_executor",
+        "//folly/executors:sequenced_executor",
+    ],
+)
+
+cython_library(
+    name = "folly",
+    headers = ["__init__.pxd"],
+    cpp_deps = [
+        "//folly/futures:core",
+        "//folly:exception_wrapper",
+        "//folly:executor",
+        "//folly:try",
+        "//folly:portability",
+        "//folly:unit",
+    ],
+    package = "folly",
+)
+
+cpp_library(
+    name = "executor_lib",
+    srcs = [
+        "executor.cpp",
+    ],
+    headers = [
+        "executor.h",
+        ":executor__executor_api.h",
+    ],
+    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
+    modular_headers = False,
+    deps = [
+        ":import",
+    ],
+    exported_deps = [
+        ":asyncio_executor",
+        "//folly:executor",
+    ],
+)
+
+cpp_library(
+    name = "proactor_executor",
+    srcs = [
+        "ProactorExecutor.cpp",
+    ],
+    headers = [
+        "ProactorExecutor.h",
+    ],
+    exported_deps = [
+        ":asyncio_executor",
+        "//folly/concurrency:concurrent_hash_map",
+        "//folly/portability:windows",
+    ],
+)
+
+cython_library(
+    # @autodeps-skip
+    name = "executor",
+    srcs = [
+        "executor.pyx",
+    ],
+    headers = [
+        "executor.pxd",
+    ],
+    api = ["executor"],
+    cpp_deps = [
+        ":asyncio_executor",
+        ":proactor_executor",
+        ":executor_lib",
+    ],
+    package = "folly",
+    deps = [
+        ":folly",
+    ],
+)
+
+cython_library(
+    name = "function",
+    headers = ["function.pxd"],
+    cpp_deps = [
+        "//folly:function",
+    ],
+    package = "folly",
+    deps = [
+        ":folly",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "futures_lib",
+    headers = [
+        "futures.h",
+    ],
+    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
+    modular_headers = False,
+    exported_deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        ":asyncio_executor",
+        ":executor__cython-lib",
+        "//folly:executor",
+        "//folly/futures:core",
+    ],
+)
+
+cython_library(
+    name = "futures",
+    headers = [
+        "futures.pxd",
+    ],
+    cpp_deps = [
+        ":futures_lib",
+    ],
+    package = "folly",
+    deps = [
+        ":executor",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip
+    name = "coro_lib",
+    headers = [
+        "coro.h",
+    ],
+    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
+    modular_headers = False,
+    exported_deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        ":asyncio_executor",
+        ":executor__cython-lib",
+        "//folly:cancellation_token",
+        "//folly:executor",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cython_library(
+    name = "coro",
+    headers = [
+        "coro.pxd",
+    ],
+    cpp_deps = [
+        "//folly:cancellation_token",
+        ":coro_lib",
+    ],
+    package = "folly",
+    deps = [
+        ":executor",
+    ],
+)
+
+cpp_library(
+    name = "fibers_lib",
+    srcs = ["fibers.cpp"],
+    headers = [
+        "fibers.h",
+        ":fibers__fiber_manager_api.h",
+    ],
+    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
+    modular_headers = False,
+    deps = [
+        ":import",
+    ],
+    exported_deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        "//folly:function",
+        "//folly/fibers:core",
+    ],
+)
+
+cython_library(
+    name = "fibers",
+    srcs = ["fiber_manager.pyx"],
+    headers = [
+        "fiber_manager.pxd",
+        "fibers.pxd",
+    ],
+    api = ["fiber_manager"],
+    cpp_deps = [
+        "//folly/fibers:core",
+        "//folly/fibers:executor_loop_controller",
+        "//folly/fibers:loop_controller",
+        ":fibers_lib",
+    ],
+    package = "folly",
+    deps = [
+        ":folly",
+        ":futures",
+    ],
+)
+
+cpp_library(
+    name = "import",
+    headers = [
+        "import.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":error",
+        "//folly:likely",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "iobuf_ext",
+    srcs = ["iobuf_ext.cpp"],
+    headers = ["iobuf_ext.h"],
+    exported_deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        "//folly:executor",
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "iobuf_lib",
+    srcs = ["iobuf.cpp"],
+    headers = [
+        "iobuf.h",
+        ":iobuf__iobuf_api.h",
+    ],
+    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
+    modular_headers = False,
+    deps = [
+        ":import",
+    ],
+    exported_deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        "//folly/io:iobuf",
+    ],
+)
+
+cython_library(
+    # @autodeps-skip
+    name = "iobuf",
+    srcs = ["iobuf.pyx"],
+    headers = [
+        "iobuf.pxd",
+    ],
+    api = ["iobuf"],
+    cpp_deps = [
+        ":iobuf_lib",
+        ":iobuf_ext",
+    ],
+    package = "folly",
+    tests = [
+        "//folly/python/test:iobuf",
+    ],
+    types = [
+        "iobuf.pyi",
+    ],
+    deps = [
+        ":folly",
+        ":futures",
+    ],
+)
+
+cython_library(
+    name = "range",
+    headers = ["range.pxd"],
+    cpp_deps = [
+        "//folly:range",
+    ],
+    package = "folly",
+    deps = [
+        ":folly",
+    ],
+)
+
+cython_library(
+    name = "optional",
+    headers = ["optional.pxd"],
+    cpp_deps = ["//folly:optional"],
+    package = "folly",
+    deps = [
+        ":folly",  # So we don't squash the "folly" package
+    ],
+)
+
+cython_library(
+    name = "expected",
+    headers = ["expected.pxd"],
+    cpp_deps = ["//folly:expected"],
+    package = "folly",
+    deps = [
+        ":folly",
+    ],
+)
+
+cpp_library(
+    name = "async_generator_lib",
+    headers = [
+        "async_generator.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cython_library(
+    name = "async_generator",
+    headers = [
+        "async_generator.pxd",
+    ],
+    cpp_deps = [
+        ":async_generator_lib",
+    ],
+    package = "folly",
+    deps = [
+        ":coro",
+        ":optional",
+    ],
+)
+
+cython_library(
+    name = "cast",
+    headers = ["cast.pxd"],
+    cpp_deps = [
+        "//folly/lang:cast",
+    ],
+    package = "folly",
+)
+
+cython_library(
+    name = "memory",
+    headers = ["memory.pxd"],
+    cpp_deps = [
+        "//folly:memory",
+    ],
+    package = "folly",
+)
+
+cpp_library(
+    name = "error",
+    srcs = [
+        "error.cpp",
+    ],
+    headers = [
+        "error.h",
+    ],
+    deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        "//folly:conv",
+        "//folly:scope_guard",
+    ],
+    exported_deps = [
+        "//folly:range",
+    ],
+)
+
+cython_library(
+    name = "fbstring",
+    headers = ["fbstring.pxd"],
+    cpp_deps = [
+        "//folly:fbstring",
+    ],
+    package = "folly",
+    deps = [
+        ":folly",
+    ],
+)
+
+cython_library(
+    name = "build_mode",
+    srcs = [
+        "build_mode.pyx",
+    ],
+    package = "folly",
+    types = [
+        "build_mode.pyi",
+    ],
+    deps = [
+        ":folly",
+    ],
+)

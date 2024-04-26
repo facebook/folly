@@ -1,0 +1,147 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "blake2xb_benchmark",
+    srcs = ["Blake2xbBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/experimental/crypto:blake2xb",
+        "//folly/init:init",
+        "//folly/io:iobuf",
+    ],
+    external_deps = [
+        "glog",
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_unittest(
+    name = "blake2xb_test",
+    srcs = ["Blake2xbTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:string",
+        "//folly/experimental/crypto:blake2xb",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_benchmark(
+    name = "lt_hash_benchmark",
+    srcs = [
+        "LtHashBenchmark.cpp",
+    ],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/experimental/crypto:lt_hash",
+        "//folly/init:init",
+        "//folly/io:iobuf",
+    ],
+    external_deps = [
+        "glog",
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_benchmark(
+    name = "lt_hash_benchmark_sse2",
+    srcs = [
+        "LtHashBenchmark.cpp",
+    ],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/experimental/crypto:lt_hash_sse2",  # @manual
+        "//folly/init:init",
+        "//folly/io:iobuf",
+    ],
+    external_deps = [
+        "glog",
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_benchmark(
+    name = "lt_hash_benchmark_avx2",
+    srcs = [
+        "LtHashBenchmark.cpp",
+    ],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/experimental/crypto:lt_hash_avx2",  # @manual
+        "//folly/init:init",
+        "//folly/io:iobuf",
+    ],
+    external_deps = [
+        "glog",
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_unittest(
+    name = "lt_hash_test",
+    srcs = [
+        "LtHashTest.cpp",
+    ],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly:string",
+        "//folly/experimental/crypto:lt_hash",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_unittest(
+    name = "lt_hash_test_sse2",
+    srcs = [
+        "LtHashTest.cpp",
+    ],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly:string",
+        "//folly/experimental/crypto:lt_hash_sse2",  # @manual
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_unittest(
+    name = "lt_hash_test_avx2",
+    srcs = [
+        "LtHashTest.cpp",
+    ],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly:string",
+        "//folly/experimental/crypto:lt_hash_avx2",  # @manual
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)

@@ -1,0 +1,104 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "atomic_utils",
+    headers = ["AtomicUtils.h"],
+    exported_deps = [
+        "//folly/lang:assume",
+    ],
+)
+
+cpp_library(
+    name = "hazptr_utils",
+    headers = [
+        "HazptrUtils.h",
+    ],
+    exported_deps = [
+        ":sleeper",
+        "//folly:portability",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "rcu-detail",
+    headers = [
+        "ThreadCachedLists.h",
+        "ThreadCachedReaders.h",
+        "ThreadCachedTag.h",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly:synchronized",
+        "//folly:thread_local",
+        "//folly/synchronization:asymmetric_thread_fence",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "sleeper",
+    srcs = ["Sleeper.cpp"],
+    headers = ["Sleeper.h"],
+    deps = [
+        "//folly:portability",
+    ],
+    exported_deps = [
+        "//folly/portability:asm",
+    ],
+)
+
+cpp_library(
+    name = "spin",
+    headers = ["Spin.h"],
+    exported_deps = [
+        "//folly/portability:asm",
+        "//folly/synchronization:wait_options",
+    ],
+)
+
+cpp_library(
+    name = "inline_function_ref",
+    headers = [
+        "InlineFunctionRef.h",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "hardware",
+    srcs = [
+        # Use source-specific flags so that these flags aren't applied to this
+        # rules headers when they're compiled as a module, as they don't contain
+        # any code that requires RTM and they'd conflict when imported by
+        # dependents that don't also set it.
+        (
+            "Hardware.cpp",
+            ["-mrtm"],
+        ),
+    ],
+    headers = ["Hardware.h"],
+    deps = [
+        "//folly:cpp_attributes",
+        "//folly/lang:assume",
+        "//folly/lang:exception",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+    external_deps = [
+        ("boost", None, "boost_preprocessor"),
+    ],
+)

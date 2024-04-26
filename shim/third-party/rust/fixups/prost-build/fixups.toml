@@ -1,0 +1,7 @@
+buildscript = []
+
+# These are here because the crate uses the env! macro
+# We override them at runtime.
+[env]
+PROTOC = ""
+PROTOC_INCLUDE = ""

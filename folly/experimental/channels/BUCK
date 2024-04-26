@@ -1,0 +1,165 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "channel",
+    headers = [
+        "Channel.h",
+        "Channel-fwd.h",
+        "Channel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel",
+    ],
+)
+
+cpp_library(
+    name = "channel_callback_handle",
+    headers = [
+        "ChannelCallbackHandle.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel_callback_handle",
+    ],
+)
+
+cpp_library(
+    name = "channel_processor",
+    headers = [
+        "ChannelProcessor.h",
+        "ChannelProcessor-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel_processor",
+    ],
+)
+
+cpp_library(
+    name = "consume_channel",
+    headers = [
+        "ConsumeChannel.h",
+        "ConsumeChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:consume_channel",
+    ],
+)
+
+cpp_library(
+    name = "fanout_channel",
+    headers = [
+        "FanoutChannel.h",
+        "FanoutChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:fanout_channel",
+    ],
+)
+
+cpp_library(
+    name = "fanout_sender",
+    headers = [
+        "FanoutSender.h",
+        "FanoutSender-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:fanout_sender",
+    ],
+)
+
+cpp_library(
+    name = "merge",
+    headers = [
+        "Merge.h",
+        "Merge-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:merge",
+    ],
+)
+
+cpp_library(
+    name = "merge_channel",
+    headers = [
+        "MergeChannel.h",
+        "MergeChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:merge_channel",
+    ],
+)
+
+cpp_library(
+    name = "multiplex_channel",
+    headers = [
+        "MultiplexChannel.h",
+        "MultiplexChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:multiplex_channel",
+    ],
+)
+
+cpp_library(
+    name = "on_closed_exception",
+    headers = [
+        "OnClosedException.h",
+    ],
+    exported_deps = [
+        "//folly/channels:on_closed_exception",
+    ],
+)
+
+cpp_library(
+    name = "producer",
+    headers = [
+        "Producer.h",
+        "Producer-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:producer",
+    ],
+)
+
+cpp_library(
+    name = "proxy_channel",
+    headers = [
+        "ProxyChannel.h",
+        "ProxyChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:proxy_channel",
+    ],
+)
+
+cpp_library(
+    name = "rate_limiter",
+    headers = [
+        "RateLimiter.h",
+    ],
+    exported_deps = [
+        "//folly/channels:rate_limiter",
+    ],
+)
+
+cpp_library(
+    name = "max_concurrent_rate_limiter",
+    headers = [
+        "MaxConcurrentRateLimiter.h",
+    ],
+    exported_deps = [
+        "//folly/channels:max_concurrent_rate_limiter",
+    ],
+)
+
+cpp_library(
+    name = "transform",
+    headers = [
+        "Transform.h",
+        "Transform-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:transform",
+    ],
+)

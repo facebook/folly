@@ -1,0 +1,104 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "observable",
+    headers = [
+        "Observable.h",
+        "Observable-inl.h",
+    ],
+    exported_deps = [
+        ":observer",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_library(
+    name = "observer",
+    headers = [
+        "Observer.h",
+        "Observer-inl.h",
+        "Observer-pre.h",
+    ],
+    exported_deps = [
+        "//folly:shared_mutex",
+        "//folly:synchronized",
+        "//folly:thread_local",
+        "//folly/experimental/observer/detail:observer_manager",
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "hazptr_observer",
+    headers = [
+        "HazptrObserver.h",
+    ],
+    exported_deps = [
+        ":observer",
+        "//folly:synchronized",
+        "//folly/experimental/observer/detail:observer_manager",
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+cpp_library(
+    name = "read_mostly_tl_observer",
+    headers = [
+        "ReadMostlyTLObserver.h",
+    ],
+    exported_deps = [
+        ":observer",
+        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/experimental/observer/detail:observer_manager",
+    ],
+)
+
+cpp_library(
+    name = "core_cached_observer",
+    headers = [
+        "CoreCachedObserver.h",
+    ],
+    exported_deps = [
+        ":observer",
+        "//folly/concurrency:core_cached_shared_ptr",
+        "//folly/experimental/observer/detail:observer_manager",
+    ],
+)
+
+cpp_library(
+    name = "simple_observable",
+    headers = [
+        "SimpleObservable.h",
+        "SimpleObservable-inl.h",
+    ],
+    exported_deps = [
+        ":observable",
+        ":observer",
+        "//folly:function",
+        "//folly:synchronized",
+        "//folly/synchronization:delayed_init",
+    ],
+)
+
+cpp_library(
+    name = "with_jitter",
+    headers = [
+        "WithJitter.h",
+        "WithJitter-inl.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":observable",
+        ":observer",
+        "//folly:default_keep_alive_executor",
+        "//folly:random",
+        "//folly:synchronized",
+        "//folly/executors:global_executor",
+        "//folly/futures:core",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

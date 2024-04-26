@@ -1,0 +1,26 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "clock_test",
+    srcs = ["ClockTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/chrono:clock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "conv_test",
+    srcs = ["ConvTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/chrono:conv",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

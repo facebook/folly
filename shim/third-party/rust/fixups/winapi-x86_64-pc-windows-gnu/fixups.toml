@@ -1,0 +1,9 @@
+buildscript = []
+
+[[platform_fixup.'cfg(target_os = "windows")'.buildscript]]
+[platform_fixup.'cfg(target_os = "windows")'.buildscript.prebuilt_cxx_library]
+name = "extra_libraries"
+# The static_libs this crate provides overlaps quite heavily with those in a default
+# MinGW install, and there are also many that are DirectX specific.
+# We list only those we actually need, since the others are more likely to cause problems.
+static_libs = ["lib/libwinapi_ole32.a", "lib/libwinapi_shell32.a"]

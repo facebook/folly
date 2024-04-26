@@ -1,0 +1,106 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "openssl_ptr_types",
+    headers = ["OpenSSLPtrTypes.h"],
+    exported_deps = [
+        "//folly:memory",
+        "//folly/portability:openssl",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "openssl_hash",
+    srcs = ["OpenSSLHash.cpp"],
+    headers = ["OpenSSLHash.h"],
+    deps = [
+        "//folly:format",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        "//folly:exception",
+        "//folly:range",
+        "//folly/io:iobuf",
+        "//folly/portability:openssl",
+    ],
+)
+
+cpp_library(
+    name = "openssl_cert_utils",
+    srcs = ["OpenSSLCertUtils.cpp"],
+    headers = ["OpenSSLCertUtils.h"],
+    deps = [
+        "//folly:file_util",
+        "//folly:scope_guard",
+        "//folly:string",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        "//folly:optional",
+        "//folly/io:iobuf",
+        "//folly/portability:openssl",
+    ],
+)
+
+cpp_library(
+    name = "openssl_version_finder",
+    headers = ["OpenSSLVersionFinder.h"],
+    exported_deps = [
+        "//folly/portability:openssl",
+    ],
+)
+
+cpp_library(
+    name = "openssl_ticket_handler",
+    headers = ["OpenSSLTicketHandler.h"],
+    exported_deps = [
+        "//folly/portability:openssl",
+    ],
+)
+
+cpp_library(
+    name = "ssl_session",
+    headers = ["SSLSession.h"],
+    exported_deps = [
+    ],
+)
+
+cpp_library(
+    name = "ssl_session_manager",
+    srcs = ["SSLSessionManager.cpp"],
+    headers = ["SSLSessionManager.h"],
+    deps = [
+        "//folly:overload",
+        "//folly/ssl/detail:openssl_session",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        ":ssl_session",
+        "//folly/portability:openssl",
+    ],
+)
+
+cpp_library(
+    name = "password_collector",
+    srcs = ["PasswordCollector.cpp"],
+    headers = ["PasswordCollector.h"],
+)
+
+cpp_library(
+    name = "openssl_key_utils",
+    srcs = ["OpenSSLKeyUtils.cpp"],
+    headers = ["OpenSSLKeyUtils.h"],
+    deps = [
+        ":password_collector",
+        "//folly/portability:openssl",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        "//folly:range",
+    ],
+)

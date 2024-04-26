@@ -1,0 +1,8 @@
+cfgs = ["tokio_unstable", "tokio_track_caller"]
+
+extra_srcs = ["src/**/*.rs"]
+
+buildscript = []
+features = ["tokio_track_caller"]
+
+extra_deps = [ ":tracing" ]

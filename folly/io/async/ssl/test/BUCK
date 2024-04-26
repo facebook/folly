@@ -1,0 +1,51 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("//folly/io/async/test/certs:defs.bzl", "alias_pem")
+
+oncall("fbcode_entropy_wardens_folly")
+
+alias_pem(pems = [
+    "tests-cert.pem",
+])
+
+cpp_unittest(
+    name = "ssl_errors_test",
+    srcs = ["SSLErrorsTest.cpp"],
+    headers = [],
+    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    deps = [
+        "//folly/io/async/ssl:ssl_errors",
+        "//folly/portability:gtest",
+        "//folly/portability:openssl",
+    ],
+)
+
+cpp_unittest(
+    name = "basic_transport_certificate_test",
+    srcs = ["BasicTransportCertificateTest.cpp"],
+    headers = [],
+    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    resources = [
+        ":tests-cert.pem",
+    ],
+    deps = [
+        "//folly:file_util",
+        "//folly/experimental:test_util",
+        "//folly/io/async/ssl:basic_transport_certificate",
+        "//folly/portability:gtest",
+        "//folly/ssl:openssl_cert_utils",
+    ],
+)
+
+cpp_unittest(
+    name = "openssl_utils_test",
+    srcs = ["OpenSSLUtilsTest.cpp"],
+    headers = [],
+    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    deps = [
+        "//folly:string",
+        "//folly/io/async/ssl:openssl_utils",
+        "//folly/portability:gtest",
+        "//folly/portability:openssl",
+        "//folly/ssl:openssl_ptr_types",
+    ],
+)

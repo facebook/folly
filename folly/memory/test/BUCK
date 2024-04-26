@@ -1,0 +1,144 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "arena_test",
+    srcs = ["ArenaTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:memory",
+        "//folly/memory:arena",
+        "//folly/memory:mallctl_helper",
+        "//folly/memory:malloc",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "mallctl_helper_test",
+    srcs = ["MallctlHelperTest.cpp"],
+    headers = [],
+    allocator = "jemalloc_debug",
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/jemalloc:headers",
+        "//folly:c_portability",
+        "//folly/init:init",
+        "//folly/memory:mallctl_helper",
+        "//folly/memory:malloc",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "malloc_test",
+    srcs = ["MallocTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/memory:malloc",
+        "//folly/portability:gtest",
+        "//folly/portability:malloc",
+        "//folly/test:test_utils",
+    ],
+)
+
+cpp_benchmark(
+    name = "malloc_benchmark",
+    srcs = ["MallocBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/memory:malloc",
+    ],
+)
+
+cpp_unittest(
+    name = "memory_resource_test",
+    srcs = ["MemoryResourceTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/memory:memory_resource",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "not_null_test",
+    srcs = [
+        "not_null_test.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/memory:not_null",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "reentrant_allocator_test",
+    srcs = ["ReentrantAllocatorTest.cpp"],
+    deps = [
+        "//folly:utility",
+        "//folly/functional:invoke",
+        "//folly/memory:reentrant_allocator",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "sanitize_address_test",
+    srcs = ["SanitizeAddressTest.cpp"],
+    deps = [
+        "//folly/memory:sanitize_address",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "sanitize_leak_test",
+    srcs = ["SanitizeLeakTest.cpp"],
+    deps = [
+        "//folly/memory:sanitize_leak",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "thread_cached_arena_test",
+    srcs = ["ThreadCachedArenaTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:memory",
+        "//folly:range",
+        "//folly/lang:align",
+        "//folly/memory:thread_cached_arena",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "uninitialized_memory_hacks_test",
+    srcs = [
+        "UninitializedMemoryHacksODR.cpp",
+        "UninitializedMemoryHacksTest.cpp",
+    ],
+    deps = [
+        "//folly:random",
+        "//folly/memory:uninitialized_memory_hacks",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

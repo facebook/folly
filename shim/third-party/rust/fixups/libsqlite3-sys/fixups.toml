@@ -1,0 +1,19 @@
+# libsqlite3-sys uses a bindgen binding to libsqlite.
+# We can't easily import bindgen because of its libclang dependency,
+# so in the meantime we need to use pre-generated bindgen files.
+
+extra_mapped_srcs = {"sqlite3/bindgen_bundled_version.rs" = "src/bindgen.rs"}
+
+[env]
+OUT_DIR = "."
+
+[[buildscript]]
+[buildscript.cxx_library]
+name = "sqlite3"
+srcs = ["sqlite3/sqlite3.c"]
+headers = ["sqlite3/*.h"]
+preprocessor_flags = [
+    "-DSQLITE_ENABLE_COLUMN_METADATA",
+    "-DSQLITE_ENABLE_FTS3",
+    "-DSQLITE_ENABLE_RTREE",
+]

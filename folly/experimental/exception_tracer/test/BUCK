@@ -1,0 +1,78 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "exception_counter_test",
+    srcs = ["ExceptionCounterTest.cpp"],
+    deps = [
+        "//folly/experimental/exception_tracer:exception_counter",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "exception_tracer_benchmark_main",
+    srcs = ["ExceptionTracerBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/experimental/exception_tracer:exception_tracer_base",
+        "//folly/portability:gflags",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "exception_tracer_base_benchmark",
+    deps = [
+        ":exception_tracer_benchmark_main",  # @manual
+    ],
+)
+
+cpp_benchmark(
+    name = "exception_tracer_benchmark",
+    deps = [
+        ":exception_tracer_benchmark_main",  # @manual
+        "//folly/experimental/exception_tracer:exception_tracer",  # @manual  # @manual
+    ],
+)
+
+cpp_library(
+    name = "exception_tracer_test_main",
+    srcs = ["ExceptionTracerTest.cpp"],
+    deps = [
+        "//folly/experimental/exception_tracer:exception_tracer_base",
+    ],
+)
+
+cpp_binary(
+    name = "exception_tracer_base_test",
+    deps = [
+        ":exception_tracer_test_main",  # @manual
+    ],
+)
+
+cpp_binary(
+    name = "exception_tracer_test",
+    deps = [
+        ":exception_tracer_test_main",  # @manual
+        "//folly/experimental/exception_tracer:exception_tracer",  # @manual  # @manual
+    ],
+)
+
+cpp_unittest(
+    name = "smart_exception_tracer_test",
+    srcs = ["SmartExceptionTracerTest.cpp"],
+    deps = [
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/exception_tracer:smart_exception_stack_trace_hooks",  # @manual
+        "//folly/experimental/exception_tracer:smart_exception_tracer",
+        "//folly/portability:gtest",
+    ],
+)

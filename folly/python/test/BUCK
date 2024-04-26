@@ -1,0 +1,178 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+python_unittest(
+    # @autodeps-skip
+    name = "futures",
+    srcs = ["futures.py"],
+    deps = [
+        ":simple_bridge",
+    ],
+)
+
+python_unittest(
+    # @autodeps-skip
+    name = "coro",
+    srcs = ["coro.py"],
+    deps = [
+        ":simple_bridge_coro",
+    ],
+)
+
+cython_library(
+    name = "simple_bridge",
+    srcs = ["simplebridge.pyx"],
+    headers = ["simple.h"],
+    cpp_deps = [
+        "//folly/futures:core",
+    ],
+    deps = [
+        "//folly/python:fibers",
+        "//folly/python:futures",
+    ],
+)
+
+cpp_library(
+    name = "iobuf_test_utils",
+    srcs = ["IOBufTestUtils.cpp"],
+    headers = ["IOBufTestUtils.h"],
+    deps = [
+        "//folly/python:iobuf_lib",
+    ],
+    exported_deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        "//folly/io:iobuf",
+    ],
+)
+
+cython_library(
+    name = "iobuf_helper",
+    srcs = [
+        "iobuf_helper.pyx",
+    ],
+    headers = ["iobuf_helper.pxd"],
+    cpp_deps = [":iobuf_test_utils"],
+    types = [
+        "iobuf_helper.pyi",
+    ],
+    deps = [
+        "//folly/python:iobuf",
+    ],
+)
+
+python_unittest(
+    name = "iobuf",
+    srcs = [
+        "iobuf.py",
+    ],
+    deps = [
+        ":iobuf_helper",
+        "//folly/python:iobuf",
+    ],
+)
+
+cython_library(
+    name = "simple_bridge_coro",
+    srcs = ["simplebridgecoro.pyx"],
+    headers = ["simplecoro.h"],
+    cpp_deps = [
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:task",
+        "//folly/futures:core",
+        "//folly:cancellation_token",
+    ],
+    deps = [
+        "//folly/python:coro",
+    ],
+)
+
+cython_library(
+    name = "simple_generator",
+    srcs = ["simplegenerator.pyx"],
+    headers = ["simplegenerator.h"],
+    cpp_deps = [
+        "//folly/experimental/coro:async_generator",
+    ],
+    deps = [
+        "//folly/python:async_generator",
+        "//folly/python:executor",
+    ],
+)
+
+python_unittest(
+    # @autodeps-skip
+    name = "generator",
+    srcs = ["generator.py"],
+    deps = [
+        ":simple_generator",
+    ],
+)
+
+cpp_unittest(
+    name = "AsyncGeneratorTest",
+    srcs = [
+        "AsyncGeneratorTest.cpp",
+    ],
+    deps = [
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:task",
+        "//folly/portability:gtest",
+        "//folly/python:async_generator_lib",
+    ],
+)
+
+cpp_unittest(
+    name = "ErrorTest",
+    srcs = [
+        "ErrorTest.cpp",
+    ],
+    deps = [
+        "fbsource//third-party/python:python",
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+        "//folly/python:error",
+    ],
+)
+
+python_unittest(
+    # @autodeps-skip
+    name = "teardown",
+    srcs = ["teardown.py"],
+    deps = [
+        ":simple_bridge",
+        ":simple_bridge_coro",
+    ],
+)
+
+python_unittest(
+    # @autodeps-skip
+    name = "test_set_executor",
+    srcs = ["test_set_executor.py"],
+    deps = [
+        ":test_set_executor_cython",
+    ],
+)
+
+cython_library(
+    name = "test_set_executor_cython",
+    srcs = ["test_set_executor_cython.pyx"],
+    cpp_deps = [
+        ":test_set_executor_cpplib",
+    ],
+    deps = [
+        "//folly/python:executor",
+    ],
+)
+
+cpp_library(
+    name = "test_set_executor_cpplib",
+    headers = ["test_set_executor.h"],
+    modular_headers = False,
+    exported_deps = [
+        "//folly/python:asyncio_executor",
+    ],
+)

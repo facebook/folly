@@ -1,0 +1,237 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_sh_binary")
+load(":validate_folly_symbolizer.bzl", "SPLIT_DWARF_FLAGS", "customized_unittest", "validate_folly_symbolizer", "validate_symbolizer_dwp")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_binary(
+    name = "crash",
+    srcs = ["Crash.cpp"],
+    compiler_specific_flags = {
+        "clang": [
+            "-gdwarf-aranges",
+        ],
+    },
+    deps = [
+        "//folly/experimental/symbolizer:signal_handler",
+    ],
+)
+
+cpp_binary(
+    name = "dwarf_benchmark",
+    srcs = ["DwarfBenchmark.cpp"],
+    compiler_specific_flags = {
+        "clang": [
+            "-g",
+        ],
+    },
+    deps = [
+        ":symbolizer_test_utils_dwarf4_dwarf32_noaaranges",
+        "//folly:benchmark",
+        "//folly:range",
+        "//folly/experimental/symbolizer:dwarf",
+        "//folly/experimental/symbolizer:symbolized_frame",
+        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_binary(
+    name = "small_sigaltstack_crash",
+    srcs = ["SmallSigAltStackCrash.cpp"],
+    compiler_specific_flags = {
+        "clang": [
+            "-gdwarf-aranges",
+        ],
+    },
+    deps = [
+        "//folly/experimental/symbolizer:signal_handler",
+    ],
+)
+
+cpp_unittest(
+    name = "symbolized_frame_test",
+    srcs = ["SymbolizedFrameTest.cpp"],
+    deps = [
+        "//folly/experimental/symbolizer:symbolized_frame",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "elf_test",
+    srcs = ["ElfTest.cpp"],
+    deps = [
+        "//folly:file_util",
+        "//folly/experimental:test_util",
+        "//folly/experimental/symbolizer:elf",
+        "//folly/experimental/symbolizer/detail:debug",
+        "//folly/portability:gtest",
+    ],
+)
+
+buck_sh_binary(
+    name = "gnu_debuglink_test.sh",
+    main = "gnu_debuglink_test.sh",
+)
+
+custom_unittest(
+    name = "gnu_debuglink_test",
+    command = [
+        "$(exe :gnu_debuglink_test.sh)",
+        "$(location :crash)",
+    ],
+    type = "json",
+    deps = [
+        ":crash",
+    ],
+)
+
+# This test consistently fails.
+# See https://www.internalfb.com/diff/D9846902?dst_version_fbid=724209254597440&transaction_fbid=918539549011564
+# custom_unittest(
+#     name = "gnu_debuglink_test_small_sigaltstack",
+#     command = [
+#         "folly/experimental/symbolizer/test/gnu_debuglink_test.sh",
+#         "$(location :small_sigaltstack_crash)",
+#     ],
+#     type = "json",
+#     deps = [
+#         ":small_sigaltstack_crash",
+#     ],
+# )
+
+cpp_unittest(
+    name = "line_reader_test",
+    srcs = ["LineReaderTest.cpp"],
+    deps = [
+        "//folly:file_util",
+        "//folly/experimental:test_util",
+        "//folly/experimental/symbolizer:line_reader",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "signal_handler_test",
+    srcs = ["SignalHandlerTest.cpp"],
+    headers = ["SignalHandlerTest.h"],
+    deps = [
+        "//folly:c_portability",
+        "//folly:file_util",
+        "//folly:range",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/symbolizer:signal_handler",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "stack_trace_benchmark",
+    srcs = ["StackTraceBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/experimental/symbolizer:stack_trace",
+        "//folly/init:init",
+    ],
+)
+
+cpp_unittest(
+    name = "stack_trace_size_limit_test",
+    srcs = ["StackTraceSizeLimitTest.cpp"],
+    deps = [
+        "//folly/experimental/symbolizer:stack_trace",
+        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:simple_loop_controller",
+        "//folly/init:init",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "stack_trace_test",
+    srcs = ["StackTraceTest.cpp"],
+    deps = [
+        "//folly/experimental:test_util",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/symbolizer:stack_trace",
+        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/lang:hint",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_regex"),
+    ],
+)
+
+customized_unittest(
+    available_dwarf_sizes = [
+        32,
+        64,
+    ],
+    available_dwarf_versions = [
+        "dwarf4",
+        "dwarf5",
+    ],
+    avilable_split_dwarf_keys = SPLIT_DWARF_FLAGS.keys(),
+    custom_suffix = "",
+    extra_compiler_flags = [],
+)
+
+customized_unittest(
+    available_dwarf_sizes = [
+        32,
+    ],
+    available_dwarf_versions = [
+        "dwarf5",
+    ],
+    avilable_split_dwarf_keys = ["none"],
+    custom_suffix = "_split-dwarf4-by-default",
+    extra_compiler_flags = ["-gdwarf-5"],
+)
+
+buck_sh_binary(
+    name = "compare-addr2line.sh",
+    main = "compare-addr2line.sh",
+)
+
+validate_folly_symbolizer(
+    name = "compare-addr2line-symbolizer_test_dwarf4",
+    binary = ":symbolizer_test_dwarf4_dwarf32_aaranges",
+)
+
+buck_sh_binary(
+    name = "symbolizer_dwp_compability.sh",
+    main = "symbolizer_dwp_compability.sh",
+)
+
+validate_symbolizer_dwp(
+    name = "validate_symbolizer_dwp_dwarf4_dwarf32_single_inlining_aaranges",
+    binary = ":symbolizer_test_dwarf4_dwarf32_single_inlining_aaranges",
+)
+
+validate_symbolizer_dwp(
+    name = "validate_symbolizer_dwp_dwarf5_dwarf32_single_inlining_aaranges",
+    # we cannot mix split-dwarf-4 with split-dwarf-5. fbcode enables split-dwarf4 by default
+    # unless -c fbcode.split-dwarf5=True is enabled, so let's disable split-dwarf in the test
+    # CU that is built with dwarf5
+    binary = ":symbolizer_test_dwarf5_dwarf32_aaranges_split-dwarf4-by-default",
+)

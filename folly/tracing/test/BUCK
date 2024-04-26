@@ -1,0 +1,48 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "async_stack_test",
+    srcs = ["AsyncStackTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/tracing:async_stack",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "static_tracepoint_test",
+    srcs = ["StaticTracepointTest.cpp"],
+    deps = [
+        ":static_tracepoint_test_module",
+        "//folly:conv",
+        "//folly:format",
+        "//folly:random",
+        "//folly:string",
+        "//folly:subprocess",
+        "//folly/experimental/symbolizer/detail:debug",
+        "//folly/lang:bits",
+        "//folly/portability:filesystem",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+        "//folly/tracing:static_tracepoint",
+    ],
+)
+
+cpp_library(
+    name = "static_tracepoint_test_module",
+    srcs = [
+        "StaticTracepointTestModule.cpp",
+    ],
+    headers = [
+        "StaticTracepointTestModule.h",
+    ],
+    deps = [
+        "//folly/tracing:static_tracepoint",
+    ],
+)

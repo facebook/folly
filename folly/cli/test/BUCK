@@ -1,0 +1,66 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "nested_command_line_app_test",
+    srcs = ["NestedCommandLineAppTest.cpp"],
+    headers = [],
+    env = {
+        "FOLLY_NESTED_CMDLINE_HELPER": "$(exe_target :nested_command_line_app_test_helper)",
+    },
+    resources = [
+    ],
+    deps = [
+        "//folly:subprocess",
+        "//folly/experimental:program_options",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "nested_command_line_app_test_helper",
+    srcs = ["NestedCommandLineAppTestHelper.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental:program_options",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "program_options_test",
+    srcs = ["ProgramOptionsTest.cpp"],
+    headers = [],
+    env = {
+        "FOLLY_PROGRAM_OPTIONS_TEST_HELPER": "$(exe_target :program_options_test_helper)",
+    },
+    deps = [
+        "//folly:file_util",
+        "//folly:subprocess",
+        "//folly/experimental:program_options",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_binary(
+    name = "program_options_test_helper",
+    srcs = ["ProgramOptionsTestHelper.cpp"],
+    headers = [],
+    deps = [
+        "//folly:conv",
+        "//folly/experimental:program_options",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

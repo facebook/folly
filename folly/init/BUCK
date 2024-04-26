@@ -1,0 +1,43 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "init",
+    srcs = ["Init.cpp"],
+    headers = ["Init.h"],
+    os_deps = [
+        (
+            "linux",
+            ["//folly/experimental/symbolizer:signal_handler"],
+        ),
+        (
+            "macos",
+            ["//folly/experimental/symbolizer:signal_handler"],
+        ),
+        (
+            "linux-sgx",
+            ["//folly/experimental/symbolizer:signal_handler"],
+        ),
+    ],
+    deps = [
+        ":phase",
+        "//folly:singleton",
+        "//folly/logging:init",
+        "//folly/portability:config",
+        "//folly/portability:gflags",
+        "//folly/synchronization:hazptr_thread_pool_executor",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "phase",
+    srcs = ["Phase.cpp"],
+    headers = ["Phase.h"],
+)

@@ -1,0 +1,47 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "named_thread_factory",
+    headers = ["NamedThreadFactory.h"],
+    exported_deps = [
+        ":thread_factory",
+        "//folly:conv",
+        "//folly:range",
+        "//folly/system:thread_name",
+    ],
+)
+
+cpp_library(
+    name = "priority_thread_factory",
+    srcs = ["PriorityThreadFactory.cpp"],
+    deps = [
+        "//folly:string",
+        "//folly/portability:sys_resource",
+        "//folly/portability:sys_time",
+    ],
+    exported_deps = [
+        ":init_thread_factory",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "init_thread_factory",
+    headers = ["InitThreadFactory.h"],
+    exported_deps = [
+        ":thread_factory",
+        "//folly:scope_guard",
+    ],
+)
+
+cpp_library(
+    name = "thread_factory",
+    headers = ["ThreadFactory.h"],
+    exported_deps = [
+        "//folly:executor",
+    ],
+)

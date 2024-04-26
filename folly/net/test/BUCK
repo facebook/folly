@@ -1,0 +1,65 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "mock_net_ops_dispatcher",
+    headers = [
+        "MockNetOpsDispatcher.h",
+    ],
+    exported_deps = [
+        "//folly/net:net_ops_dispatcher",
+        "//folly/portability:gmock",
+    ],
+)
+
+cpp_library(
+    name = "mock_tcpinfo_dispatcher",
+    headers = [
+        "MockTcpInfoDispatcher.h",
+    ],
+    exported_deps = [
+        "//folly/net:tcpinfo_dispatcher",
+        "//folly/portability:gmock",
+    ],
+)
+
+cpp_unittest(
+    name = "net_ops_test",
+    srcs = ["NetOpsTest.cpp"],
+    deps = [
+        "//folly/net:net_ops",
+        "//folly/net:network_socket",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "tcpinfo_test",
+    srcs = ["TcpInfoTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        ":tcpinfo_test_util",
+        "//folly/net:tcpinfo",
+        "//folly/net/test:mock_net_ops_dispatcher",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "tcpinfo_test_util",
+    headers = [
+        "TcpInfoTestUtil.h",
+    ],
+    exported_deps = [
+        "//folly/net:tcpinfo",
+        "//folly/net/test:mock_net_ops_dispatcher",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

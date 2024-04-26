@@ -1,0 +1,36 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "program_options",
+    srcs = [
+        "NestedCommandLineApp.cpp",
+        "ProgramOptions.cpp",
+    ],
+    headers = [
+        "NestedCommandLineApp.h",
+        "ProgramOptions.h",
+    ],
+    deps = [
+        "//folly:conv",
+        "//folly:file_util",
+        "//folly:format",
+        "//folly:portability",
+        "//folly/experimental/io:fs_util",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:optional",
+        "//folly:string",
+        "//folly/portability:gflags",
+    ],
+    external_deps = [
+        "boost",
+        "gflags",
+        "glog",
+    ],
+    exported_external_deps = [
+        ("boost", None, "boost_program_options"),
+    ],
+)

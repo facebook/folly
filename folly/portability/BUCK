@@ -1,0 +1,437 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "asm",
+    headers = ["Asm.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "atomic",
+    headers = ["Atomic.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "builtins",
+    srcs = ["Builtins.cpp"],
+    headers = ["Builtins.h"],
+    deps = [
+        ":windows",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "config",
+    headers = ["Config.h"],
+    exported_deps = [
+        "//folly:config",
+    ],
+)
+
+cpp_library(
+    name = "constexpr",
+    headers = ["Constexpr.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "dirent",
+    srcs = ["Dirent.cpp"],
+    headers = ["Dirent.h"],
+    deps = [
+        ":windows",
+    ],
+)
+
+cpp_library(
+    name = "event",
+    headers = ["Event.h"],
+    exported_deps = [
+        ":fcntl",
+        ":windows",
+        "//folly/net/detail:socket_file_descriptor_map",
+    ],
+    exported_external_deps = [
+        "libevent",
+    ],
+)
+
+cpp_library(
+    name = "fcntl",
+    srcs = ["Fcntl.cpp"],
+    headers = ["Fcntl.h"],
+    deps = [
+        ":sockets",
+        ":sys_stat",
+    ],
+    exported_deps = [
+        ":windows",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "filesystem",
+    srcs = ["Filesystem.cpp"],
+    headers = ["Filesystem.h"],
+    exported_deps = [
+        "fbsource//third-party/libgcc:stdc++fs",
+    ],
+)
+
+cpp_library(
+    name = "fmt_compile",
+    headers = ["FmtCompile.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+)
+
+cpp_library(
+    name = "gflags",
+    headers = ["GFlags.h"],
+    exported_deps = [
+        ":config",
+    ],
+    exported_external_deps = [
+        "gflags",
+    ],
+)
+
+cpp_library(
+    name = "gmock",
+    headers = ["GMock.h"],
+    exported_deps = [
+        "fbsource//third-party/googletest:gmock",
+        ":unistd",
+        ":windows",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "gtest",
+    headers = ["GTest.h"],
+    exported_deps = [
+        "fbsource//third-party/googletest:gtest",
+        ":unistd",
+        ":windows",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "iovec",
+    headers = ["IOVec.h"],
+)
+
+cpp_library(
+    name = "libgen",
+    srcs = ["Libgen.cpp"],
+    headers = ["Libgen.h"],
+)
+
+cpp_library(
+    name = "libunwind",
+    headers = ["Libunwind.h"],
+    os_deps = [
+        (
+            "linux",
+            ["fbsource//third-party/libunwind:unwind"],
+        ),
+    ],
+)
+
+cpp_library(
+    name = "malloc",
+    srcs = ["Malloc.cpp"],
+    headers = ["Malloc.h"],
+    os_deps = [
+        (
+            "linux",
+            ["third-party//jemalloc:headers"],
+        ),
+        (
+            "linux-sgx",
+            ["third-party//jemalloc:headers"],
+        ),
+    ],
+    exported_deps = [
+        ":config",
+        "//folly:c_portability",
+    ],
+)
+
+cpp_library(
+    name = "math",
+    headers = ["Math.h"],
+)
+
+cpp_library(
+    # @shim
+    name = "memory",
+    headers = ["Memory.h"],
+    exported_deps = ["//folly:memory"],
+)
+
+cpp_library(
+    name = "openat2",
+    srcs = ["openat2.c"],
+    headers = ["openat2.h"],
+    exported_deps = [
+        "//folly:config",
+    ],
+)
+
+cpp_library(
+    name = "openssl",
+    srcs = ["OpenSSL.cpp"],
+    headers = ["OpenSSL.h"],
+    exported_deps = [
+        ":windows",
+        "//folly:portability",
+    ],
+    exported_external_deps = [
+        ("openssl", None, "ssl"),
+        ("openssl", None, "crypto"),
+    ],
+)
+
+cpp_library(
+    name = "sched",
+    srcs = ["Sched.cpp"],
+    headers = ["Sched.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "pthread",
+    srcs = ["PThread.cpp"],
+    headers = ["PThread.h"],
+    deps = [
+        "//folly/lang:assume",
+    ],
+    exported_deps = [
+        ":config",
+        ":sched",
+        ":time",
+        ":windows",
+        "//folly:portability",
+    ],
+    external_deps = [
+        "boost",
+        ("boost", None, "boost_thread"),
+    ],
+    exported_external_deps = [
+        ("glibc", None, "pthread"),
+    ],
+)
+
+cpp_library(
+    name = "sockets",
+    srcs = ["Sockets.cpp"],
+    headers = ["Sockets.h"],
+    deps = [
+        "//folly:scope_guard",
+        "//folly/net:network_socket",
+        "//folly/net/detail:socket_file_descriptor_map",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/net:net_ops",
+    ],
+)
+
+cpp_library(
+    name = "source_location",
+    headers = ["SourceLocation.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+)
+
+cpp_library(
+    name = "stdio",
+    srcs = ["Stdio.cpp"],
+    headers = ["Stdio.h"],
+    deps = [
+        ":unistd",
+        "//folly:scope_guard",
+    ],
+)
+
+cpp_library(
+    name = "stdlib",
+    srcs = ["Stdlib.cpp"],
+    headers = ["Stdlib.h"],
+    deps = [
+        ":fcntl",
+        ":sys_stat",
+        ":windows",
+    ],
+    exported_deps = [
+        ":config",
+    ],
+)
+
+cpp_library(
+    name = "string",
+    srcs = ["String.cpp"],
+    headers = ["String.h"],
+    exported_deps = [":config"],
+)
+
+cpp_library(
+    name = "sys_file",
+    srcs = ["SysFile.cpp"],
+    headers = ["SysFile.h"],
+    deps = [
+        ":windows",
+    ],
+)
+
+cpp_library(
+    name = "sys_membarrier",
+    srcs = ["SysMembarrier.cpp"],
+    headers = ["SysMembarrier.h"],
+    deps = [
+        ":sys_syscall",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "sys_mman",
+    srcs = ["SysMman.cpp"],
+    headers = [
+        "SysMman.h",
+    ],
+    deps = [
+        ":windows",
+        "//folly:portability",
+    ],
+    exported_external_deps = [
+        ("glibc", None, "rt"),
+    ],
+)
+
+cpp_library(
+    name = "sys_resource",
+    srcs = ["SysResource.cpp"],
+    headers = ["SysResource.h"],
+    deps = [
+        ":windows",
+    ],
+    exported_deps = [
+        ":sys_time",
+    ],
+)
+
+cpp_library(
+    name = "sys_stat",
+    srcs = ["SysStat.cpp"],
+    headers = ["SysStat.h"],
+    deps = [
+        ":windows",
+    ],
+    exported_deps = [
+        ":sys_types",
+    ],
+)
+
+cpp_library(
+    name = "sys_syscall",
+    headers = ["SysSyscall.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "sys_time",
+    srcs = ["SysTime.cpp"],
+    headers = ["SysTime.h"],
+    exported_deps = [":windows"],
+)
+
+cpp_library(
+    name = "sys_types",
+    headers = ["SysTypes.h"],
+)
+
+cpp_library(
+    name = "sys_uio",
+    srcs = ["SysUio.cpp"],
+    headers = ["SysUio.h"],
+    deps = [
+        ":sockets",
+        ":sys_file",
+        ":unistd",
+        "//folly:scope_guard",
+    ],
+    exported_deps = [
+        ":config",
+        ":iovec",
+        ":sys_types",
+    ],
+)
+
+cpp_library(
+    name = "syslog",
+    headers = ["Syslog.h"],
+)
+
+cpp_library(
+    name = "time",
+    srcs = ["Time.cpp"],
+    headers = ["Time.h"],
+    deps = [
+        ":windows",
+        "//folly:c_portability",
+        "//folly:likely",
+        "//folly:utility",
+    ],
+    exported_deps = [
+        ":config",
+    ],
+    exported_external_deps = [
+        ("glibc", None, "rt"),
+    ],
+)
+
+cpp_library(
+    name = "unistd",
+    srcs = ["Unistd.cpp"],
+    headers = ["Unistd.h"],
+    deps = [
+        ":sockets",
+        ":windows",
+        "//folly:scope_guard",
+        "//folly/net/detail:socket_file_descriptor_map",
+    ],
+    exported_deps = [
+        ":sys_types",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "windows",
+    headers = ["Windows.h"],
+)

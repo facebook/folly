@@ -1,0 +1,19 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+oncall("data_compression")
+
+cpp_binary(
+    name = "compression_fuzz_test.so",
+    srcs = ["CompressionFuzzTest.cpp"],
+    headers = [],
+    dlopen_enabled = True,
+    deps = [
+        "//common/testing/fuzztest:fuzz_main",  # @manual
+        "//common/testing/fuzztest:headers",
+        "//folly:range",
+        "//folly/compression:compression",
+        "//folly/hash:hash",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+)

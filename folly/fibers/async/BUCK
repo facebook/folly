@@ -1,0 +1,129 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "wait_utils",
+    headers = [
+        "WaitUtils.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":fiber_manager",
+        "//folly/fibers:core",
+        "//folly/fibers:fiber_manager_map",
+    ],
+)
+
+cpp_library(
+    name = "core",
+    srcs = ["Async.cpp"],
+    headers = [
+        "Async.h",
+    ],
+    deps = [
+        "//folly/fibers:core",
+    ],
+    exported_deps = [
+        "//folly:traits",
+        "//folly:unit",
+        "//folly/functional:invoke",
+        "//folly/lang:customization_point",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "collect",
+    headers = [
+        "Collect.h",
+        "Collect-inl.h",
+    ],
+    exported_deps = [
+        ":baton",
+        ":core",
+        ":fiber_manager",
+        ":future",
+        "//folly:traits",
+        "//folly:try",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:when_n",
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "baton",
+    headers = ["Baton.h"],
+    exported_deps = [
+        ":core",
+        "//folly/fibers:core",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "fiber_manager",
+    headers = [
+        "FiberManager.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly/fibers:core_manager",
+    ],
+)
+
+cpp_library(
+    name = "future",
+    headers = [
+        "Future.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "promise",
+    headers = [
+        "Promise.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:traits",
+    ],
+)
+
+cpp_library(
+    name = "task",
+    headers = [
+        "Task.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cpp_library(
+    name = "stack_tracing",
+    headers = [
+        "AsyncStack.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly:c_portability",
+        "//folly:scope_guard",
+        "//folly/tracing:async_stack",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

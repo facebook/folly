@@ -1,0 +1,35 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "simple_simd_string_utils_bench",
+    srcs = [
+        "SimpleSimdStringUtilsBench.cpp",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:string",
+        "//folly/init:init",
+    ],
+)
+
+cpp_benchmark(
+    name = "string_split_bench",
+    srcs = [
+        "StringSplitBench.cpp",
+    ],
+    resources = [
+        "aggregator_string_split_data.json",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly:benchmark_util",
+        "//folly:singleton_thread_local",
+        "//folly:string",
+        "//folly/detail:split_string_simd",
+        "//folly/init:init",
+        "//folly/json:dynamic",
+    ],
+)

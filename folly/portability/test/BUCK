@@ -1,0 +1,59 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "constexpr_test",
+    srcs = ["ConstexprTest.cpp"],
+    deps = [
+        "//folly/portability:constexpr",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "filesystem_test",
+    srcs = ["FilesystemTest.cpp"],
+    deps = [
+        "//folly/portability:filesystem",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "libgen_test",
+    srcs = ["LibgenTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/portability:libgen",
+    ],
+)
+
+cpp_unittest(
+    name = "openssl_portability_test",
+    srcs = ["OpenSSLPortabilityTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/ssl:openssl_ptr_types",
+    ],
+)
+
+cpp_unittest(
+    name = "pthread_test",
+    srcs = ["PThreadTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/portability:pthread",
+    ],
+)
+
+cpp_unittest(
+    name = "time_test",
+    srcs = ["TimeTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/portability:time",
+        "//folly/test:test_utils",
+    ],
+)

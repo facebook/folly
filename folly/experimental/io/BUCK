@@ -1,0 +1,378 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "async_base",
+    srcs = ["AsyncBase.cpp"],
+    headers = ["AsyncBase.h"],
+    deps = [
+        "//folly:exception",
+        "//folly:format",
+        "//folly:likely",
+        "//folly:string",
+        "//folly/portability:filesystem",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/portability:sys_uio",
+    ],
+    external_deps = [
+        "boost",
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "async_io",
+    srcs = ["AsyncIO.cpp"],
+    headers = ["AsyncIO.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:exception",
+        "//folly:likely",
+        "//folly:small_vector",
+        "//folly:string",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        ":async_base",
+    ],
+    external_deps = [
+        "boost",
+        "glog",
+    ],
+    exported_external_deps = [
+        ("libaio", None, "aio"),
+    ],
+)
+
+cpp_library(
+    name = "liburing",
+    headers = ["Liburing.h"],
+    os_deps = [(
+        "linux",
+        select({
+            "DEFAULT": ["fbsource//third-party/liburing:uring"],
+            "ovr_config//os:linux-sgx": [],
+        }),
+    )],
+)
+
+cpp_library(
+    name = "async_io_uring_socket",
+    srcs = [
+        "AsyncIoUringSocket.cpp",
+    ],
+    headers = [
+        "AsyncIoUringSocket.h",
+        "AsyncIoUringSocketFactory.h",
+    ],
+    deps = [
+        ":io_uring_event_base_local",
+        "//folly:conv",
+        "//folly/detail:socket_fast_open",
+        "//folly/memory:malloc",
+        "//folly/portability:sys_uio",
+    ],
+    exported_deps = [
+        ":io_uring_backend",
+        ":liburing",
+        "//folly:network_address",
+        "//folly:optional",
+        "//folly:small_vector",
+        "//folly/futures:core",
+        "//folly/io:iobuf",
+        "//folly/io:socket_option_map",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:async_socket_exception",
+        "//folly/io/async:async_transport",
+        "//folly/io/async:delayed_destruction",
+        "//folly/net:net_ops_dispatcher",
+        "//folly/portability:sockets",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "simple_async_io",
+    srcs = ["SimpleAsyncIO.cpp"],
+    headers = ["SimpleAsyncIO.h"],
+    deps = [
+        ":async_io",
+        ":io_uring",
+        ":liburing",
+        "//folly:string",
+        "//folly/experimental/coro:baton",
+        "//folly/portability:sockets",
+    ],
+    exported_deps = [
+        ":async_base",
+        "//folly:synchronized",
+        "//folly/executors:global_executor",
+        "//folly/experimental/coro:task",
+        "//folly/io/async:async_base",
+        "//folly/io/async:scoped_event_base_thread",
+    ],
+    exported_external_deps = [
+    ],
+)
+
+cpp_library(
+    name = "epoll",
+    headers = [
+        "Epoll.h",
+    ],
+)
+
+cpp_library(
+    name = "epoll_backend",
+    srcs = [
+        "EpollBackend.cpp",
+    ],
+    headers = [
+        "Epoll.h",
+        "EpollBackend.h",
+    ],
+    modular_headers = False,
+    deps = [
+        "//folly:file_util",
+        "//folly:intrusive_list",
+        "//folly:map_util",
+        "//folly:string",
+    ],
+    exported_deps = [
+        "//folly/container:intrusive_heap",
+        "//folly/io/async:async_base",
+    ],
+)
+
+cpp_library(
+    name = "event_base_poller",
+    srcs = ["EventBasePoller.cpp"],
+    headers = ["EventBasePoller.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":epoll",
+        ":liburing",
+        "//folly:file_util",
+        "//folly:string",
+        "//folly/lang:align",
+        "//folly/portability:gflags",
+        "//folly/synchronization:baton",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly:range",
+        "//folly:synchronized",
+    ],
+    external_deps = [
+        "boost",
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "mux_io_thread_pool_executor",
+    srcs = ["MuxIOThreadPoolExecutor.cpp"],
+    headers = ["MuxIOThreadPoolExecutor.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":epoll_backend",
+        "//folly/container:enumerate",
+        "//folly/lang:align",
+        "//folly/synchronization:latch",
+    ],
+    exported_deps = [
+        ":event_base_poller",
+        "//folly:portability",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/executors:queue_observer",
+        "//folly/io/async:event_base_manager",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization:throttled_lifo_sem",
+        "//folly/synchronization:wait_options",
+    ],
+)
+
+cpp_library(
+    name = "io_uring",
+    srcs = ["IoUring.cpp"],
+    headers = ["IoUring.h"],
+    modular_headers = False,
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:exception",
+        "//folly:likely",
+        "//folly:string",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        ":async_base",
+        ":liburing",
+        "//folly:shared_mutex",
+    ],
+    external_deps = [
+        "boost",
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "io_uring_backend",
+    srcs = [
+        "IoUringBackend.cpp",
+    ],
+    headers = [
+        "IoUringBackend.h",
+        "IoUringBase.h",
+    ],
+    modular_headers = False,
+    deps = [
+        "//folly:demangle",
+        "//folly:file_util",
+        "//folly:glog",
+        "//folly:likely",
+        "//folly:spin_lock",
+        "//folly:string",
+        "//folly/container:f14_hash",
+        "//folly/experimental/io:io_uring_provided_buffer_ring",
+        "//folly/lang:bits",
+        "//folly/portability:gflags",
+        "//folly/portability:sockets",
+        "//folly/portability:sys_mman",
+        "//folly/portability:sys_syscall",
+        "//folly/synchronization:call_once",
+    ],
+    exported_deps = [
+        ":liburing",
+        "//folly:c_portability",
+        "//folly:conv",
+        "//folly:cpp_attributes",
+        "//folly:exception_string",
+        "//folly:function",
+        "//folly:optional",
+        "//folly:range",
+        "//folly:small_vector",
+        "//folly/io:iobuf",
+        "//folly/io/async:async_base",
+        "//folly/io/async:delayed_destruction",
+        "//folly/portability:asm",
+    ],
+    exported_external_deps = [
+        "boost",
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "io_uring_provided_buffer_ring",
+    srcs = [
+        "IoUringProvidedBufferRing.cpp",
+    ],
+    headers = [
+        "IoUringBase.h",
+        "IoUringProvidedBufferRing.h",
+    ],
+    modular_headers = False,
+    deps = [
+        "//folly:conv",
+        "//folly:exception_string",
+        "//folly:string",
+    ],
+    exported_deps = [
+        ":liburing",
+        "//folly/io:iobuf",
+        "//folly/io/async:delayed_destruction",
+        "//folly/portability:sys_mman",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "io_uring_event",
+    srcs = [
+        "IoUringEvent.cpp",
+    ],
+    headers = [
+        "IoUringEvent.h",
+    ],
+    modular_headers = False,
+    exported_deps = [
+        ":io_uring_backend",
+        ":liburing",
+        "//folly:file",
+        "//folly/io/async:async_base",
+    ],
+)
+
+cpp_library(
+    name = "io_uring_event_base_local",
+    srcs = [
+        "IoUringEventBaseLocal.cpp",
+    ],
+    headers = [
+        "IoUringEventBaseLocal.h",
+    ],
+    modular_headers = False,
+    deps = [
+        ":io_uring_event",
+        "//folly:singleton",
+    ],
+    exported_deps = [
+        ":io_uring_backend",
+        ":liburing",
+        "//folly/io/async:async_base",
+    ],
+    exported_external_deps = [
+    ],
+)
+
+cpp_library(
+    name = "fs_util",
+    srcs = ["FsUtil.cpp"],
+    headers = ["FsUtil.h"],
+    deps = [
+        "//folly:exception",
+    ],
+    exported_external_deps = [
+        ("boost", None, "boost_filesystem"),
+    ],
+)
+
+cpp_library(
+    name = "huge_pages",
+    srcs = ["HugePages.cpp"],
+    headers = ["HugePages.h"],
+    deps = [
+        "//folly:conv",
+        "//folly:cpp_attributes",
+        "//folly:format",
+        "//folly:string",
+        "//folly/gen:base",
+        "//folly/gen:file",
+        "//folly/gen:string",
+    ],
+    exported_deps = [
+        ":fs_util",
+        "//folly:range",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        ("boost", None, "boost_regex"),
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)

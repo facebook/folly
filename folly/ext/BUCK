@@ -1,0 +1,9 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "test_ext",
+    srcs = ["test_ext.cpp"],
+    headers = ["test_ext.h"],
+)

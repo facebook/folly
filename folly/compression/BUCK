@@ -1,0 +1,81 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "compression",
+    srcs = [
+        "Compression.cpp",
+        "Zlib.cpp",
+        "Zstd.cpp",
+    ],
+    headers = [
+        "Compression.h",
+        "Utils.h",
+        "Zlib.h",
+        "Zstd.h",
+    ],
+    compiler_flags = [
+        "-DLZ4_STATIC_LINKING_ONLY",
+        "-DLZ4_HC_STATIC_LINKING_ONLY",
+        "-DLZ4F_STATIC_LINKING_ONLY",
+    ],
+    deps = [
+        "fbsource//third-party/lz4:lz4",
+        ":compression_context_pool_singletons",
+        "//folly:conv",
+        "//folly:random",
+        "//folly:scope_guard",
+        "//folly:stop_watch",
+        "//folly:varint",
+        "//folly/portability:windows",
+    ],
+    exported_deps = [
+        "fbsource//third-party/zstd:zstd",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/io:iobuf",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        "glog",
+        "snappy",
+        ("bzip2", None, "bz2"),
+        ("xz", None, "lzma"),
+    ],
+    exported_external_deps = [
+        ("zlib", None, "z"),
+    ],
+)
+
+cpp_library(
+    name = "compression_context_pool",
+    srcs = [],
+    headers = [
+        "CompressionContextPool.h",
+        "CompressionCoreLocalContextPool.h",
+    ],
+    exported_deps = [
+        "//folly:memory",
+        "//folly:synchronized",
+        "//folly/concurrency:cache_locality",
+    ],
+)
+
+cpp_library(
+    name = "compression_context_pool_singletons",
+    srcs = ["CompressionContextPoolSingletons.cpp"],
+    headers = ["CompressionContextPoolSingletons.h"],
+    deps = [
+        "//folly:portability",
+        "//folly/experimental:jemalloc_huge_page_allocator",
+        "//folly/memory:malloc",
+    ],
+    exported_deps = [
+        "fbsource//third-party/zstd:zstd",
+        ":compression_context_pool",
+        "//folly:config",
+    ],
+)

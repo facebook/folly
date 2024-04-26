@@ -1,0 +1,63 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "blocking_queue",
+    headers = ["BlockingQueue.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:optional",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "lifo_sem_mpmc_queue",
+    headers = ["LifoSemMPMCQueue.h"],
+    exported_deps = [
+        ":blocking_queue",
+        "//folly:mpmc_queue",
+        "//folly/synchronization:lifo_sem",
+    ],
+)
+
+cpp_library(
+    name = "priority_lifo_sem_mpmc_queue",
+    headers = ["PriorityLifoSemMPMCQueue.h"],
+    exported_deps = [
+        ":blocking_queue",
+        "//folly:executor",
+        "//folly:mpmc_queue",
+        "//folly:range",
+        "//folly/synchronization:lifo_sem",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "priority_unbounded_blocking_queue",
+    headers = ["PriorityUnboundedBlockingQueue.h"],
+    exported_deps = [
+        ":blocking_queue",
+        "//folly:constexpr_math",
+        "//folly:executor",
+        "//folly/concurrency:priority_unbounded_queue_set",
+        "//folly/lang:exception",
+        "//folly/synchronization:lifo_sem",
+    ],
+)
+
+cpp_library(
+    name = "unbounded_blocking_queue",
+    headers = ["UnboundedBlockingQueue.h"],
+    exported_deps = [
+        ":blocking_queue",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/synchronization:lifo_sem",
+    ],
+)

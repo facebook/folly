@@ -1,0 +1,2 @@
+# Reindeer can't find the dependencies due to being confused by the feature! macro.
+extra_srcs = ["src/**/*.rs"]

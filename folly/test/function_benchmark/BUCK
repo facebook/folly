@@ -1,0 +1,29 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "function_benchmark",
+    srcs = [
+        "benchmark_impl.cpp",
+        "main.cpp",
+        "test_functions.cpp",
+    ],
+    headers = [
+        "benchmark_impl.h",
+        "test_functions.h",
+    ],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:function",
+        "//folly:scope_guard",
+        "//folly/lang:exception",
+        "//folly/portability:gflags",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

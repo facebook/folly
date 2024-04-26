@@ -1,0 +1,20 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "transport_test",
+    srcs = [
+        "TransportTest.cpp",
+    ],
+    deps = [
+        "//folly:portability",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:collect",
+        "//folly/io/async/test:async_socket_test_lib",
+        "//folly/io/async/test:mocks",
+        "//folly/io/async/test:scoped_bound_port",
+        "//folly/io/coro:socket",
+        "//folly/portability:gtest",
+    ],
+)

@@ -1,0 +1,23 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "checksum_detail",
+    srcs = [
+        "ChecksumDetail.cpp",
+        "Crc32CombineDetail.cpp",
+        "Crc32cDetail.cpp",
+    ],
+    headers = ["ChecksumDetail.h"],
+    deps = [
+        "//folly:bits",
+        "//folly:cpp_attributes",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+    external_deps = [
+        ("boost", None, "boost_preprocessor"),
+    ],
+)

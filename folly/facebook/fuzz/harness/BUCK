@@ -1,0 +1,234 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/security/lionhead:defs.bzl", "EXTERNAL_USERS", "Metadata", "Severity")
+load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "lionhead_wrapper",
+    headers = ["lionhead_wrapper.h"],
+    exported_deps = [
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+    ],
+)
+
+cpp_library(
+    name = "fuzz_utils",
+    headers = [
+        "FuzzUtils.h",
+    ],
+    exported_deps = [
+        ":lionhead_wrapper",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollyBase64EncodeDecode",
+    srcs = [
+        "FollyBase64Fuzzer.cpp",
+    ],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    ftest_name = ("FollyBase64", "EncodeDecode"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        ":lionhead_wrapper",
+        "//folly:base64",
+        "//folly:portability",
+        "//folly/detail/base64_detail:base64_scalar",
+        "//folly/detail/base64_detail:base64_sse4_2",
+        "//folly/detail/base64_detail:base64_swar",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollySimpleStringUtils_HasSpaceOrCntrl",
+    srcs = [
+        "FollySimpleStringUtilsFuzzer.cpp",
+    ],
+    context_task = "T153554388",
+    ftest_name = ("FollySimpleStringUtils", "HasSpaceOrCntrl"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        ":fuzz_utils",
+        ":lionhead_wrapper",
+        "//folly:string",
+        "//folly/detail:simd_char_platform",
+        "//folly/detail:simple_simd_string_utils",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollySplit_FuzzerSimple",
+    srcs = [
+        "FollyStringSplitFuzzer.cpp",
+    ],
+    context_task = "T147142742",
+    ftest_name = ("FollySplit", "FuzzerSimple"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        ":fuzz_utils",
+        ":lionhead_wrapper",
+        "//folly:string",
+        "//folly/detail:split_string_simd",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollySplit_FuzzerLarge",
+    srcs = [
+        "FollyStringSplitFuzzer.cpp",
+    ],
+    context_task = "T147142742",
+    ftest_name = ("FollySplit", "FuzzerLarge"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        ":fuzz_utils",
+        ":lionhead_wrapper",
+        "//folly:string",
+        "//folly/detail:split_string_simd",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollyBase64DecodeGarbage",
+    srcs = [
+        "FollyBase64Fuzzer.cpp",
+    ],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    ftest_name = ("FollyBase64", "DecodeGarbage"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        ":lionhead_wrapper",
+        "//folly:base64",
+        "//folly:portability",
+        "//folly/detail/base64_detail:base64_scalar",
+        "//folly/detail/base64_detail:base64_sse4_2",
+        "//folly/detail/base64_detail:base64_swar",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollyConversion",
+    srcs = ["FollyConversionFuzzer.cpp"],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+    ),
+    deps = [
+        "fbsource//xplat/security/lionhead:utils",
+        "//folly:conv",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollyCompression",
+    srcs = ["FollyCompressionFuzzer.cpp"],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    ftest_name = ("FollyCompression", "fuzz_compression"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+    ),
+    deps = [
+        "fbsource//xplat/security/lionhead:utils",
+        ":lionhead_wrapper",
+        "//folly/compression:compression",
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollyUri",  # keep this name for corpus continuity
+    srcs = ["FollyUriFuzzer.cpp"],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    ftest_name = ("FollyUri", "plain_buffer"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+    ),
+    deps = [
+        "fbsource//xplat/security/lionhead/utils/lib_ftest/fdp:lib",
+        ":lionhead_wrapper",
+        "//folly:uri",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollyUriRegex",
+    srcs = ["FollyUriFuzzer.cpp"],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    ftest_name = ("FollyUri", "structured_fuzzing"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+    ),
+    deps = [
+        "fbsource//xplat/security/lionhead/utils/lib_ftest/fdp:lib",
+        ":lionhead_wrapper",
+        "//folly:uri",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollyJson",
+    srcs = ["FollyJsonFuzzer.cpp"],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    dictionary = "//security/lionhead/dictionaries:json.dict",
+    enable_diff_time_signal = False,
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,  # missing severity, using default TODO: check and apply appropriate severity
+    ),
+    deps = [
+        "//folly/json:dynamic",
+        "//security/lionhead/utils:FuzzDataProducerGenerator",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "FollySocketAddress",
+    srcs = ["FollySocketAddressFuzzer.cpp"],
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "Folly",
+        severity_denial_of_service = Severity.FILE_LOW_PRI_TASK,
+        severity_service_takeover = Severity.FILE_HIGH_PRI_TASK,
+    ),
+    deps = ["//folly:network_address"],
+)

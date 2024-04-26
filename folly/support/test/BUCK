@@ -1,0 +1,38 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("//gdb/scripts/tests/common:gdb_unittest.bzl", "gdb_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "gdb_util",
+    headers = ["GdbUtil.h"],
+    exported_deps = [
+        "//folly:c_portability",
+    ],
+)
+
+cpp_binary(
+    name = "main",
+    srcs = ["main.cpp"],
+    modules = False,
+    deps = [
+        "//folly:network_address",
+        "//folly:range",
+        "//folly:small_vector",
+        "//folly/container:f14_hash",
+        "//folly/json:dynamic",
+        "//folly/support/test:gdb_util",
+    ],
+)
+
+# Test all of the printers in the folly gdb extension
+gdb_unittest(
+    name = "test",
+    binary = "main",
+    script = "runtest.gdb",
+    skip_modes = [
+        "dev",
+        "opt*",
+    ],
+)

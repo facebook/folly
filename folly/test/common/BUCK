@@ -1,0 +1,17 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_binary(
+    name = "test_main",
+    srcs = ["TestMain.cpp"],
+    deps = [
+        "//folly:portability",
+        "//folly/init:init",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

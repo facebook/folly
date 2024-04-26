@@ -1,0 +1,208 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/buck2:is_buck2.bzl", "is_buck2")
+
+oncall("fbcode_entropy_wardens_folly")
+
+# "logging" is the core of the logging library
+# If you want to log messages from your code, this is the library you should
+# depend on.
+cpp_library(
+    name = "logging",
+    srcs = [
+        "AsyncFileWriter.cpp",
+        "AsyncLogWriter.cpp",
+        "CustomLogFormatter.cpp",
+        "FileWriterFactory.cpp",
+        "GlogStyleFormatter.cpp",
+        "ImmediateFileWriter.cpp",
+        "LogCategory.cpp",
+        "LogCategoryConfig.cpp",
+        "LogConfig.cpp",
+        "LogMessage.cpp",
+        "LogStream.cpp",
+        "LogStreamProcessor.cpp",
+        "Logger.cpp",
+        "LoggerDB.cpp",
+        "ObjectToString.cpp",
+        "StandardLogHandler.cpp",
+        "StandardLogHandlerFactory.cpp",
+        "StreamHandlerFactory.cpp",
+        "xlog.cpp",
+    ],
+    headers = [
+        "AsyncFileWriter.h",
+        "AsyncLogWriter.h",
+        "CustomLogFormatter.h",
+        "FileWriterFactory.h",
+        "GlogStyleFormatter.h",
+        "ImmediateFileWriter.h",
+        "LogCategory.h",
+        "LogCategoryConfig.h",
+        "LogConfig.h",
+        "LogFormatter.h",
+        "LogMessage.h",
+        "LogStream.h",
+        "LogStreamProcessor.h",
+        "LogWriter.h",
+        "Logger.h",
+        "LoggerDB.h",
+        "ObjectToString.h",
+        "StandardLogHandler.h",
+        "StandardLogHandlerFactory.h",
+        "StreamHandlerFactory.h",
+        "xlog.h",
+    ],
+    preprocessor_flags = [
+        "-DFOLLY_XLOG_SUPPORT_BUCK2" if is_buck2() else "-DFOLLY_XLOG_SUPPORT_BUCK1",
+    ],
+    deps = [
+        "//folly:constexpr_math",
+        "//folly:demangle",
+        "//folly:exception",
+        "//folly:file_util",
+        "//folly:format",
+        "//folly:map_util",
+        "//folly:string",
+        "//folly/portability:fcntl",
+        "//folly/portability:pthread",
+        "//folly/portability:time",
+        "//folly/portability:unistd",
+        "//folly/system:at_fork",
+        "//folly/system:thread_id",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":log_handler",
+        ":log_level",
+        ":log_name",
+        ":rate_limiter",
+        "//folly:c_portability",
+        "//folly:conv",
+        "//folly:cpp_attributes",
+        "//folly:exception_string",
+        "//folly:file",
+        "//folly:likely",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:scope_guard",
+        "//folly:synchronized",
+        "//folly/detail:static_singleton_manager",
+        "//folly/lang:exception",
+        "//folly/lang:type_info",
+    ],
+)
+
+# "init" contains code needed to configure the logging library.
+# The main initialization code in your program should normally depend
+# on this to initialize the logging library.
+cpp_library(
+    name = "init",
+    srcs = [
+        "Init.cpp",
+        "LogConfigParser.cpp",
+    ],
+    headers = [
+        "Init.h",
+        "LogConfigParser.h",
+    ],
+    deps = [
+        ":log_name",
+        "//folly:conv",
+        "//folly:string",
+        "//folly/json:dynamic",
+        "//folly/lang:safe_assert",
+    ],
+    exported_deps = [
+        ":init_weak",  # @manual
+        ":logging",
+        "//folly:c_portability",
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "init_weak",
+    srcs = [
+        "InitWeak.cpp",
+    ],
+    deps = [
+        "//folly:c_portability",
+    ],
+)
+
+cpp_library(
+    name = "file_handler_factory",
+    srcs = ["FileHandlerFactory.cpp"],
+    headers = ["FileHandlerFactory.h"],
+    deps = [
+        ":logging",
+    ],
+    exported_deps = [
+        ":log_handler",
+    ],
+)
+
+cpp_library(
+    name = "log_handler",
+    srcs = [
+        "LogHandlerConfig.cpp",
+    ],
+    headers = [
+        "LogHandler.h",
+        "LogHandlerConfig.h",
+        "LogHandlerFactory.h",
+    ],
+    deps = [
+        "//folly/lang:safe_assert",
+    ],
+    exported_deps = [
+        ":log_level",
+        "//folly:cpp_attributes",
+        "//folly:optional",
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "log_level",
+    srcs = ["LogLevel.cpp"],
+    headers = ["LogLevel.h"],
+    deps = [
+        "//folly:conv",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "log_name",
+    srcs = ["LogName.cpp"],
+    headers = ["LogName.h"],
+    exported_deps = [
+        "//folly:range",
+    ],
+)
+
+cpp_library(
+    name = "rate_limiter",
+    srcs = ["RateLimiter.cpp"],
+    headers = ["RateLimiter.h"],
+    exported_deps = [
+        "//folly:chrono",
+    ],
+)
+
+cpp_library(
+    name = "glog_bridge",
+    srcs = ["BridgeFromGoogleLogging.cpp"],
+    headers = ["BridgeFromGoogleLogging.h"],
+    deps = [
+        ":logging",
+        "//folly:utility",
+    ],
+    exported_external_deps = ["glog"],
+)

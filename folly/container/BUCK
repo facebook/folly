@@ -1,0 +1,238 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "access",
+    headers = ["Access.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "array",
+    headers = ["Array.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:traits",
+        "//folly:utility",
+    ],
+)
+
+cpp_library(
+    name = "bit_iterator",
+    headers = ["BitIterator.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/container/detail:bit_iterator_detail",
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "iterator",
+    headers = ["Iterator.h"],
+    exported_deps = [
+        ":access",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/lang:rvalue_reference_wrapper",
+    ],
+)
+
+cpp_library(
+    name = "enumerate",
+    headers = ["Enumerate.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly/portability:sys_types",
+    ],
+)
+
+cpp_library(
+    name = "evicting_cache_map",
+    headers = ["EvictingCacheMap.h"],
+    exported_deps = [
+        "//folly/container:f14_hash",
+        "//folly/container:heterogeneous_access",
+        "//folly/lang:exception",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "f14_hash",
+    headers = [
+        "F14Map.h",
+        "F14Set.h",
+    ],
+    exported_deps = [
+        ":f14_hash_fwd",
+        ":iterator",
+        ":view",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:traits",
+        "//folly/container/detail:f14_hash_detail",
+        "//folly/container/detail:util",
+        "//folly/lang:exception",
+        "//folly/lang:safe_assert",
+    ],
+)
+
+cpp_library(
+    name = "f14_hash_fwd",
+    headers = [
+        "F14Map-fwd.h",
+        "F14Set-fwd.h",
+    ],
+    exported_deps = [
+        "//folly/container/detail:f14_defaults",
+        "//folly/memory:memory_resource",
+    ],
+)
+
+cpp_library(
+    name = "heap_vector_types",
+    headers = [
+        "heap_vector_types.h",
+    ],
+    exported_deps = [
+        ":iterator",
+        "//folly:range",
+        "//folly:scope_guard",
+        "//folly:small_vector",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/functional:invoke",
+        "//folly/lang:exception",
+        "//folly/memory:memory_resource",
+        "//folly/portability:builtins",
+    ],
+)
+
+cpp_library(
+    name = "foreach",
+    headers = [
+        "Foreach.h",
+        "Foreach-inl.h",
+    ],
+    exported_deps = [
+        ":access",
+        "//folly:portability",
+        "//folly:preprocessor",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "heterogeneous_access_fwd",
+    headers = [
+        "HeterogeneousAccess-fwd.h",
+    ],
+)
+
+cpp_library(
+    name = "heterogeneous_access",
+    headers = [
+        "HeterogeneousAccess.h",
+    ],
+    exported_deps = [
+        ":heterogeneous_access_fwd",
+        "//folly:range",
+        "//folly:traits",
+        "//folly/hash:hash",
+    ],
+)
+
+cpp_library(
+    name = "merge",
+    headers = ["Merge.h"],
+)
+
+cpp_library(
+    name = "range_traits",
+    headers = ["range_traits.h"],
+    exported_deps = [
+        "//folly:traits",
+        "//folly:utility",
+    ],
+)
+
+cpp_library(
+    name = "sparse_byte_set",
+    headers = ["SparseByteSet.h"],
+    exported_deps = [
+        "//folly:c_portability",
+    ],
+)
+
+cpp_library(
+    name = "tape",
+    headers = [
+        "tape.h",
+    ],
+    exported_deps = [
+        ":iterator",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/container/detail:tape_detail",
+        "//folly/memory:uninitialized_memory_hacks",
+    ],
+)
+
+cpp_library(
+    name = "view",
+    headers = ["View.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/functional:invoke",
+        "//folly/lang:customization_point",
+    ],
+)
+
+cpp_library(
+    name = "weighted_evicting_cache_map",
+    headers = [
+        "WeightedEvictingCacheMap.h",
+    ],
+    exported_deps = [
+        "//folly/container:evicting_cache_map",
+    ],
+)
+
+cpp_library(
+    name = "intrusive_heap",
+    headers = [
+        "IntrusiveHeap.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+    exported_external_deps = [
+        "boost",
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "reserve",
+    headers = [
+        "Reserve.h",
+    ],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/lang:exception",
+    ],
+)

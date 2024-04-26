@@ -1,0 +1,50 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "UnboundedBlockingQueueBench",
+    srcs = ["UnboundedBlockingQueueBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/executors/task_queue:unbounded_blocking_queue",
+        "//folly/init:init",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_unittest(
+    name = "PriorityUnboundedBlockingQueueTest",
+    srcs = ["PriorityUnboundedBlockingQueueTest.cpp"],
+    deps = [
+        "//folly/container:enumerate",
+        "//folly/executors/task_queue:priority_unbounded_blocking_queue",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "UnboundedBlockingQueueTest",
+    srcs = ["UnboundedBlockingQueueTest.cpp"],
+    deps = [
+        "//folly/executors/task_queue:unbounded_blocking_queue",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "PriorityLifoSemMPMCQueueTest",
+    srcs = ["PriorityLifoSemMPMCQueueTest.cpp"],
+    deps = [
+        "//folly:range",
+        "//folly/container:enumerate",
+        "//folly/executors/task_queue:priority_lifo_sem_mpmc_queue",
+        "//folly/portability:gtest",
+    ],
+)

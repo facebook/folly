@@ -1,0 +1,13 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "array_demo",
+    srcs = ["Array.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:array",
+        "//folly/portability:gtest",
+    ],
+)

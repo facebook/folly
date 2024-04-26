@@ -1,0 +1,434 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "atomic_notification_test",
+    srcs = [
+        "AtomicNotificationTest.cpp",
+    ],
+    deps = [
+        "//folly:optional",
+        "//folly/portability:gtest",
+        "//folly/synchronization:atomic_notification",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_ref_test",
+    srcs = ["AtomicRefTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:atomic_ref",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_struct_test",
+    srcs = ["AtomicStructTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:atomic_struct",
+    ],
+)
+
+cpp_benchmark(
+    name = "atomic_util_bench",
+    srcs = ["AtomicUtilBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:constexpr_math",
+        "//folly/init:init",
+        "//folly/lang:aligned",
+        "//folly/lang:assume",
+        "//folly/lang:keep",
+        "//folly/synchronization:atomic_util",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_util_test",
+    srcs = ["AtomicUtilTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:benchmark",
+        "//folly:portability",
+        "//folly:utility",
+        "//folly/functional:invoke",
+        "//folly/portability:gtest",
+        "//folly/synchronization:atomic_ref",
+        "//folly/synchronization:atomic_util",
+    ],
+)
+
+cpp_library(
+    name = "barrier",
+    headers = ["Barrier.h"],
+)
+
+cpp_unittest(
+    name = "barrier_test",
+    srcs = ["BarrierTest.cpp"],
+    deps = [
+        ":barrier",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "baton_benchmark",
+    srcs = ["BatonBenchmark.cpp"],
+    deps = [
+        ":baton_test_helpers",
+        "//folly:benchmark",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:native_semaphore",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+cpp_unittest(
+    name = "baton_test",
+    srcs = ["BatonTest.cpp"],
+    deps = [
+        ":baton_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+cpp_library(
+    name = "baton_test_helpers",
+    headers = ["BatonTestHelpers.h"],
+    exported_deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+cpp_binary(
+    name = "call_once_benchmark",
+    srcs = ["CallOnceBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/synchronization:call_once",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "call_once_test",
+    srcs = ["CallOnceTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:traits",
+        "//folly/portability:gtest",
+        "//folly/synchronization:call_once",
+    ],
+)
+
+cpp_unittest(
+    name = "delayed_init_test",
+    srcs = ["DelayedInitTest.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":barrier",
+        "//folly/portability:gtest",
+        "//folly/synchronization:delayed_init",
+    ],
+)
+
+cpp_unittest(
+    name = "distributed_mutex_test",
+    srcs = [
+        "DistributedMutexTest.cpp",
+    ],
+    deps = [
+        "//folly:map_util",
+        "//folly:synchronized",
+        "//folly/container:array",
+        "//folly/container:foreach",
+        "//folly/lang:customization_point",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:distributed_mutex",
+        "//folly/test:deterministic_schedule",
+        "//folly/test:test_utils",
+    ],
+)
+
+cpp_unittest(
+    name = "hazptr_test",
+    srcs = ["HazptrTest.cpp"],
+    deps = [
+        ":barrier",
+        "//folly:singleton",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/synchronization:hazptr",
+        "//folly/synchronization:hazptr_thread_pool_executor",
+        "//folly/synchronization/example:hazptr_lock_free_lifo",
+        "//folly/synchronization/example:hazptr_swmr_set",
+        "//folly/synchronization/example:hazptr_wide_cas",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+cpp_unittest(
+    name = "latch_test",
+    srcs = ["LatchTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:latch",
+    ],
+)
+
+cpp_unittest(
+    name = "lifo_sem_test",
+    srcs = ["LifoSemTests.cpp"],
+    headers = [],
+    allocator = "jemalloc_debug",
+    deps = [
+        "//folly:random",
+        "//folly/portability:asm",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/synchronization:lifo_sem",
+        "//folly/synchronization:native_semaphore",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+cpp_benchmark(
+    name = "lifo_sem_bench",
+    srcs = ["LifoSemBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/portability:asm",
+        "//folly/synchronization:lifo_sem",
+        "//folly/synchronization:native_semaphore",
+    ],
+)
+
+cpp_unittest(
+    name = "lock_test",
+    srcs = ["LockTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:lock",
+    ],
+)
+
+cpp_unittest(
+    name = "native_semaphore_test",
+    srcs = ["NativeSemaphoreTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:native_semaphore",
+    ],
+)
+
+cpp_binary(
+    name = "parking_lot_benchmark",
+    srcs = ["ParkingLotBenchmark.cpp"],
+    deps = [
+        ":barrier",
+        "//folly:benchmark",
+        "//folly/detail:futex",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:parking_lot",
+    ],
+)
+
+cpp_unittest(
+    name = "parking_lot_test",
+    srcs = ["ParkingLotTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:parking_lot",
+    ],
+)
+
+cpp_binary(
+    name = "rcu_bench",
+    srcs = ["RcuBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/synchronization:rcu",
+    ],
+)
+
+cpp_unittest(
+    name = "rcu_test",
+    srcs = ["RcuTest.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/synchronization:rcu",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "relaxed_atomic_test",
+    srcs = ["RelaxedAtomicTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:atomic_util",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+)
+
+cpp_unittest(
+    name = "rw_spin_lock_test",
+    srcs = ["RWSpinLockTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+        "//folly/synchronization:rw_spin_lock",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "saturating_semaphore_test",
+    srcs = ["SaturatingSemaphoreTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:saturating_semaphore",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+cpp_library(
+    name = "semaphore",
+    headers = ["Semaphore.h"],
+    exported_deps = [
+        "//folly:optional",
+        "//folly:scope_guard",
+        "//folly/lang:exception",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_unittest(
+    name = "semaphore_test",
+    srcs = ["SemaphoreTest.cpp"],
+    deps = [
+        ":barrier",
+        ":semaphore",
+        "//folly:traits",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_mman",
+        "//folly/synchronization:latch",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_benchmark(
+    name = "small_locks_benchmark",
+    srcs = ["SmallLocksBenchmark.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly:shared_mutex",
+        "//folly/experimental/flat_combining:flat_combining",
+        "//folly/lang:aligned",
+        "//folly/synchronization:distributed_mutex",
+        "//folly/synchronization:small_locks",
+    ],
+)
+
+cpp_unittest(
+    name = "small_locks_test",
+    srcs = ["SmallLocksTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly/portability:asm",
+        "//folly/portability:gflags",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/portability:pthread",
+        "//folly/portability:unistd",
+        "//folly/synchronization:small_locks",
+        "//folly/test:test_utils",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "thread_cached_epoch_bench_util",
+    headers = ["ThreadCachedEpochBench.h"],
+    exported_deps = [
+        "//folly:benchmark",
+        "//folly/synchronization/detail:rcu-detail",
+    ],
+)
+
+cpp_binary(
+    name = "thread_cached_readers_bench",
+    srcs = ["ThreadCachedReadersBench.cpp"],
+    headers = [],
+    deps = [
+        ":thread_cached_epoch_bench_util",
+        "//folly:benchmark",
+        "//folly/synchronization/detail:rcu-detail",
+    ],
+)
+
+cpp_unittest(
+    name = "thread_cached_readers_test",
+    srcs = ["ThreadCachedReadersTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:thread_local",
+        "//folly/portability:gtest",
+        "//folly/synchronization/detail:rcu-detail",
+    ],
+)
+
+cpp_unittest(
+    name = "throttled_lifo_sem_test",
+    srcs = [
+        "ThrottledLifoSemTest.cpp",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/portability:gtest",
+        "//folly/synchronization:saturating_semaphore",
+        "//folly/synchronization:throttled_lifo_sem",
+    ],
+)

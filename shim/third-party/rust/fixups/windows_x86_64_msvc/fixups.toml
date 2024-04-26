@@ -1,0 +1,8 @@
+buildscript = []
+
+[platform_fixup.'cfg(all(target_os = "windows", target_env = "msvc"))']
+version = "=0.48.0"
+[[platform_fixup.'cfg(all(target_os = "windows", target_env = "msvc"))'.buildscript]]
+[platform_fixup.'cfg(all(target_os = "windows", target_env = "msvc"))'.buildscript.prebuilt_cxx_library]
+name = "windows"
+static_libs = ["lib/windows.0.48.0.lib"]

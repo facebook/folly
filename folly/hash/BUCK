@@ -1,0 +1,60 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "checksum",
+    srcs = ["Checksum.cpp"],
+    headers = ["Checksum.h"],
+    deps = [
+        "//folly:cpu_id",
+        "//folly/detail:traponavx512",
+        "//folly/external/fast-crc32:avx512_crc32c_v8s3x4",  # @manual
+        "//folly/external/fast-crc32:sse_crc32c_v8s3x3",  # @manual
+        "//folly/hash/detail:checksum_detail",
+    ],
+    external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "farm_hash",
+    headers = ["FarmHash.h"],
+    exported_deps = [
+        "//folly/external/farmhash:farmhash",
+    ],
+)
+
+cpp_library(
+    name = "hash",
+    headers = ["Hash.h"],
+    exported_deps = [
+        ":spooky_hash_v1",
+        ":spooky_hash_v2",
+        "//folly:c_portability",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/functional:apply_tuple",
+        "//folly/lang:bits",
+    ],
+)
+
+cpp_library(
+    name = "spooky_hash_v1",
+    srcs = ["SpookyHashV1.cpp"],
+    headers = ["SpookyHashV1.h"],
+    deps = [
+        "//folly:cpp_attributes",
+    ],
+)
+
+cpp_library(
+    name = "spooky_hash_v2",
+    srcs = ["SpookyHashV2.cpp"],
+    headers = ["SpookyHashV2.h"],
+    deps = [
+        "//folly:cpp_attributes",
+        "//folly:portability",
+    ],
+)

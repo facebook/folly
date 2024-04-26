@@ -1,0 +1,23 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "async_socket_observer_interface",
+    headers = ["AsyncSocketObserverInterface.h"],
+    exported_deps = [
+        "//folly:cpp_attributes",
+        "//folly:glog",
+        "//folly:optional",
+        "//folly/io/async:write_flags",
+    ],
+)
+
+cpp_library(
+    name = "async_socket_observer_container",
+    headers = ["AsyncSocketObserverContainer.h"],
+    exported_deps = [
+        ":async_socket_observer_interface",
+        "//folly:observer_container",
+    ],
+)

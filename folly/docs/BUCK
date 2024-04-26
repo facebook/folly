@@ -1,0 +1,48 @@
+load("//folly/docs:defs.bzl", "copy", "html")
+
+#
+# Actual listing of source files
+#
+
+oncall("fbcode_entropy_wardens_folly")
+
+html("AtomicHashMap.md")
+
+html("Benchmark.md")
+
+html("Conv.md")
+
+html("Dynamic.md")
+
+html("FBString.md")
+
+html(
+    "FBVector.md",
+    support = ["Fbvector--graphical_solutions.png"],
+)
+
+html("Format.md")
+
+html("GroupVarint.md")
+
+html("Histogram.md")
+
+html("PackedSyncPtr.md")
+
+html("Poly.md")
+
+html("ProducerConsumerQueue.md")
+
+html("SmallLocks.md")
+
+html("small_vector.md")
+
+html("Synchronized.md")
+
+html("ThreadCachedInt.md")
+
+html("ThreadLocal.md")
+
+html("Traits.md")
+
+copy("style.css")

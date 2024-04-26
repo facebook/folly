@@ -1,0 +1,81 @@
+buildscript = []
+
+## The various X86 platform fixups
+
+[platform_fixup.'cfg(target_arch = "x86_64")']
+cfgs = ["blake3_sse2_ffi", "blake3_sse41_ffi", "blake3_avx2_ffi", "blake3_avx512_ffi"]
+buildscript = []
+
+# , any(target_env = "fbcode", target_env = "gnu")
+[[platform_fixup.'cfg(all(target_arch = "x86_64", any(target_os = "linux", target_os = "macos")))'.buildscript]]
+[platform_fixup.'cfg(all(target_arch = "x86_64", any(target_os = "linux", target_os = "macos")))'.buildscript.cxx_library]
+name = "simd_x86_unix"
+srcs = [
+    "c/blake3.c",
+    "c/blake3_dispatch.c",
+    "c/blake3_portable.c",
+    "c/blake3_sse2_x86-64_unix.S",
+    "c/blake3_sse41_x86-64_unix.S",
+    "c/blake3_avx2_x86-64_unix.S",
+    "c/blake3_avx512_x86-64_unix.S"
+]
+# Older versions of Clang require these flags, even for assembly. See
+# https://github.com/BLAKE3-team/BLAKE3/issues/79.
+compiler_flags = ["-mavx512f", "-mavx512vl"]
+headers = ["c/*.h"]
+compatible_with = [
+    "prelude//os/constraints:linux",
+    "prelude//os/constraints:macos",
+]
+
+[[platform_fixup.'cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "gnu"))'.buildscript]]
+[platform_fixup.'cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "gnu"))'.buildscript.cxx_library]
+name = "simd_x86_windows_gnu"
+srcs = [
+    "c/blake3.c",
+    "c/blake3_dispatch.c",
+    "c/blake3_portable.c",
+    "c/blake3_sse2_x86-64_windows_gnu.S",
+    "c/blake3_sse41_x86-64_windows_gnu.S",
+    "c/blake3_avx2_x86-64_windows_gnu.S",
+    "c/blake3_avx512_x86-64_windows_gnu.S"
+]
+# Older versions of Clang require these flags, even for assembly. See
+# https://github.com/BLAKE3-team/BLAKE3/issues/79.
+compiler_flags = ["-mavx512f", "-mavx512vl"]
+headers = ["c/*.h"]
+compatible_with = ["prelude//os/constraints:windows"]
+
+[[platform_fixup.'cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc"))'.buildscript]]
+[platform_fixup.'cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc"))'.buildscript.cxx_library]
+name = "simd_x86_windows_msvc"
+srcs = [
+    "c/blake3.c",
+    "c/blake3_dispatch.c",
+    "c/blake3_portable.c",
+    "c/blake3_sse2_x86-64_windows_msvc.asm",
+    "c/blake3_sse41_x86-64_windows_msvc.asm",
+    "c/blake3_avx2_x86-64_windows_msvc.asm",
+    "c/blake3_avx512_x86-64_windows_msvc.asm"
+]
+headers = ["c/*.h"]
+compatible_with = ["prelude//os/constraints:windows"]
+
+## ARM and AArch64 fixups
+
+[platform_fixup.'cfg(any(target_arch = "aarch64", target_arch = "arm"))']
+cfgs = ["blake3_neon"]
+buildscript = []
+
+[[platform_fixup.'cfg(target_arch = "aarch64")'.buildscript]]
+[platform_fixup.'cfg(target_arch = "aarch64")'.buildscript.cxx_library]
+name = "simd_neon-aarch64"
+srcs = ["c/blake3_neon.c"]
+headers = ["c/*.h"]
+
+[[platform_fixup.'cfg(target_arch = "arm")'.buildscript]]
+[platform_fixup.'cfg(target_arch = "arm")'.buildscript.cxx_library]
+name = "simd_neon-armv7"
+srcs = ["c/blake3_neon.c"]
+compiler_flags = ["-mfpu=neon-vfpv4", "-mfloat-abi=hard"]
+headers = ["c/*.h"]

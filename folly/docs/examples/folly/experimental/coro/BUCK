@@ -1,0 +1,90 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "promise_demo",
+    srcs = ["Promise.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental/coro:gtest_helpers",
+        "//folly/experimental/coro:promise",
+        "//folly/experimental/coro:task",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "detach_on_cancel_demo",
+    srcs = ["DetachOnCancel.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental/coro:detach_on_cancel",
+        "//folly/experimental/coro:gtest_helpers",
+        "//folly/experimental/coro:promise",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:timeout",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "with_cancellation_demo",
+    srcs = ["WithCancellation.cpp"],
+    headers = [],
+    deps = [
+        "//folly:cancellation_token",
+        "//folly/experimental/coro:gtest_helpers",
+        "//folly/experimental/coro:sleep",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:timeout",
+        "//folly/experimental/coro:with_cancellation",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "async_scope_demo",
+    srcs = ["AsyncScope.cpp"],
+    headers = [],
+    deps = [
+        "//folly/executors:global_executor",
+        "//folly/experimental/coro:async_scope",
+        "//folly/experimental/coro:gtest_helpers",
+    ],
+)
+
+cpp_unittest(
+    name = "cancellable_async_scope_demo",
+    srcs = ["CancellableAsyncScope.cpp"],
+    headers = [],
+    deps = [
+        "//folly/executors:global_executor",
+        "//folly/experimental/coro:async_scope",
+        "//folly/experimental/coro:gtest_helpers",
+    ],
+)
+
+cpp_unittest(
+    name = "task_demo",
+    srcs = ["Task.cpp"],
+    headers = [],
+    deps = [
+        "//folly/executors:global_executor",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:task",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "retry_demo",
+    srcs = ["Retry.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental/coro:gtest_helpers",
+        "//folly/experimental/coro:retry",
+        "//folly/portability:gtest",
+    ],
+)

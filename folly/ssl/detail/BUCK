@@ -1,0 +1,16 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "openssl_session",
+    srcs = ["OpenSSLSession.cpp"],
+    headers = ["OpenSSLSession.h"],
+    exported_deps = [
+        "//folly:shared_mutex",
+        "//folly:synchronized",
+        "//folly/portability:openssl",
+        "//folly/ssl:openssl_ptr_types",
+        "//folly/ssl:ssl_session",
+    ],
+)

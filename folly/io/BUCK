@@ -1,0 +1,134 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "iobuf",
+    srcs = [
+        "Cursor.cpp",
+        "IOBuf.cpp",
+        "IOBufIovecBuilder.cpp",
+        "IOBufQueue.cpp",
+    ],
+    headers = [
+        "Cursor.h",
+        "Cursor-inl.h",
+        "IOBuf.h",
+        "IOBufIovecBuilder.h",
+        "IOBufQueue.h",
+    ],
+    deps = [
+        "//folly:conv",
+        "//folly/hash:spooky_hash_v2",
+        "//folly/lang:align",
+        "//folly/memory:sanitize_address",
+        "//folly/portability:iovec",
+    ],
+    exported_deps = [
+        "//folly:fbstring",
+        "//folly:fbvector",
+        "//folly:function",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:scope_guard",
+        "//folly/detail:iterators",
+        "//folly/lang:bits",
+        "//folly/lang:checked_math",
+        "//folly/lang:exception",
+        "//folly/lang:ordering",
+        "//folly/memory:malloc",
+        "//folly/portability:sys_uio",
+        "//folly/synchronization:micro_spin_lock",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "global_shutdown_socket_set",
+    srcs = ["GlobalShutdownSocketSet.cpp"],
+    headers = ["GlobalShutdownSocketSet.h"],
+    deps = [
+        "//folly:singleton",
+    ],
+    exported_deps = [
+        ":shutdown_socket_set",
+        "//folly/experimental:read_mostly_shared_ptr",
+    ],
+)
+
+cpp_library(
+    name = "record_io",
+    srcs = [
+        "RecordIO.cpp",
+    ],
+    headers = [
+        "RecordIO.h",
+        "RecordIO-inl.h",
+    ],
+    supports_python_dlopen = True,
+    deps = [
+        "//folly:exception",
+        "//folly:file_util",
+        "//folly:memory",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:string",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        ":iobuf",
+        "//folly:file",
+        "//folly:range",
+        "//folly/detail:iterators",
+        "//folly/hash:spooky_hash_v2",
+        "//folly/system:memory_mapping",
+    ],
+)
+
+cpp_library(
+    name = "shutdown_socket_set",
+    srcs = ["ShutdownSocketSet.cpp"],
+    headers = ["ShutdownSocketSet.h"],
+    deps = [
+        "//folly:file_util",
+        "//folly/net:net_ops",
+        "//folly/portability:sockets",
+    ],
+    exported_deps = [
+        "//folly:file",
+        "//folly/net:network_socket",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "typed_io_buf",
+    headers = ["TypedIOBuf.h"],
+    exported_deps = [
+        ":iobuf",
+        "//folly/memory:malloc",
+    ],
+)
+
+cpp_library(
+    name = "socket_option_map",
+    srcs = [
+        "SocketOptionMap.cpp",
+        "SocketOptionValue.cpp",
+    ],
+    headers = [
+        "SocketOptionMap.h",
+        "SocketOptionValue.h",
+    ],
+    exported_deps = [
+        "//folly/net:network_socket",
+        "//folly/portability:sockets",
+    ],
+)
