@@ -85,11 +85,11 @@ TEST_F(ThreadLocalDetailTest, MultiThreadedTest) {
   ASSERT_GE(meta.totalElementWrappers_.load(), count);
 
   std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<test::Barrier>> threadBarriers;
+  std::vector<std::unique_ptr<test::Barrier>> threadBarriers(count);
   test::Barrier allThreadsBarriers{count + 1};
 
   for (int32_t i = 0; i < count; ++i) {
-    threadBarriers.push_back(std::make_unique<test::Barrier>(2));
+    threadBarriers[i] = std::make_unique<test::Barrier>(2);
     threads.push_back(std::thread([&, index = i]() {
       // This thread's vector will sized to have index elements at least.
       *helper.elements[index] = index;
@@ -112,13 +112,14 @@ TEST_F(ThreadLocalDetailTest, MultiThreadedTest) {
 
   auto upperBound = [](int32_t numThreads) { return (numThreads + 2) * count; };
 
+  int32_t threadBarriersIndex = count - 1;
   while (!threads.empty()) {
     ASSERT_GE(meta.totalElementWrappers_.load(), lowerBound(threads.size()));
     ASSERT_LE(meta.totalElementWrappers_.load(), upperBound(threads.size()));
-    threadBarriers.back()->wait();
+    threadBarriers[threadBarriersIndex]->wait();
     threads.back().join();
     threads.pop_back();
-    threadBarriers.pop_back();
+    threadBarriersIndex -= 1;
   }
 }
 
