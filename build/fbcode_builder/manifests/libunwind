@@ -1,0 +1,17 @@
+[manifest]
+name = libunwind
+
+[rpms]
+libunwind-devel
+libunwind
+
+[debs]
+libunwind-dev
+
+[download]
+url = https://github.com/libunwind/libunwind/releases/download/v1.8.1/libunwind-1.8.1.tar.gz
+sha256 = ddf0e32dd5fafe5283198d37e4bf9decf7ba1770b6e7e006c33e6df79e6a6157
+
+[build]
+builder = autoconf
+subdir = libunwind-1.8.1
