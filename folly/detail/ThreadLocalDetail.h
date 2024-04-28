@@ -244,6 +244,67 @@ class PthreadKeyUnregister {
   static PthreadKeyUnregister instance_;
 };
 
+// ThreadEntrySet is used to track all ThreadEntry that have a valid
+// ElementWrapper for a particular TL id. The class provides no internal locking
+// and caller must ensure safety of any access.
+struct ThreadEntrySet {
+  // Vector of ThreadEntry for fast iteration during accessAllThreads.
+  using EntryVector = std::vector<ThreadEntry*>;
+  EntryVector threadEntries;
+  // Map from ThreadEntry* to its slot in the threadEntries vector to be able
+  // to remove an entry quickly.
+  std::unordered_map<ThreadEntry*, EntryVector::size_type> entryToVectorSlot;
+
+  bool basicSanity() {
+    return threadEntries.size() == entryToVectorSlot.size();
+  }
+
+  void clear() {
+    DCHECK(basicSanity());
+    entryToVectorSlot.clear();
+    threadEntries.clear();
+  }
+
+  bool contains(ThreadEntry* entry) {
+    DCHECK(basicSanity());
+    return entryToVectorSlot.find(entry) != entryToVectorSlot.end();
+  }
+
+  bool insert(ThreadEntry* entry) {
+    DCHECK(basicSanity());
+    auto iter = entryToVectorSlot.find(entry);
+    if (iter != entryToVectorSlot.end()) {
+      // Entry already present. Sanity check and exit.
+      DCHECK_EQ(entry, threadEntries[iter->second]);
+      return false;
+    }
+    threadEntries.push_back(entry);
+    auto idx = threadEntries.size() - 1;
+    entryToVectorSlot[entry] = idx;
+    return true;
+  }
+
+  bool erase(ThreadEntry* entry) {
+    DCHECK(basicSanity());
+    auto iter = entryToVectorSlot.find(entry);
+    if (iter == entryToVectorSlot.end()) {
+      // Entry not present.
+      return false;
+    }
+    auto idx = iter->second;
+    DCHECK_LT(idx, threadEntries.size());
+    entryToVectorSlot.erase(iter);
+    if (idx != threadEntries.size() - 1) {
+      ThreadEntry* last = threadEntries.back();
+      threadEntries[idx] = last;
+      entryToVectorSlot[last] = idx;
+    }
+    threadEntries.pop_back();
+    DCHECK(basicSanity());
+    return true;
+  }
+};
+
 struct StaticMetaBase {
   // In general, emutls cleanup is not guaranteed to play nice with the way
   // StaticMeta mixes direct pthread calls and the use of __thread. This has
@@ -288,8 +349,6 @@ struct StaticMetaBase {
       return meta.allocate(this);
     }
   };
-
-  using ThreadEntrySet = std::unordered_set<ThreadEntry*>;
 
   StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict);
 
@@ -403,7 +462,7 @@ struct StaticMetaBase {
   FOLLY_ALWAYS_INLINE bool isThreadEntryRemovedFromAllInMap(ThreadEntry* te) {
     std::lock_guard<std::mutex> g(lock_);
     for (auto& [e, teSet] : allThreadEntryMap_) {
-      if (teSet.count(te)) {
+      if (teSet.contains(te)) {
         return false;
       }
     }
@@ -598,7 +657,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     // for ThreadEntry::elements that are still in use by the current thread.
     // Evict all of the ThreadEntry* from other threads.
     for (auto& [e, te] : meta.allThreadEntryMap_) {
-      if (te.find(threadEntry) != te.end()) {
+      if (te.contains(threadEntry)) {
         meta.clearSetforIdInMapLocked(e);
         meta.addThreadEntryToMapLocked(threadEntry, e);
       } else {

@@ -247,16 +247,23 @@ class ThreadLocalPtr {
     class Iterator {
       friend class Accessor;
       const Accessor* accessor_{nullptr};
-      using InnerSet = threadlocal_detail::StaticMetaBase::ThreadEntrySet;
-      using InnerIterator = InnerSet::iterator;
+      using InnerVector = threadlocal_detail::ThreadEntrySet::EntryVector;
+      using InnerIterator = InnerVector::iterator;
 
-      InnerSet& set_;
+      InnerVector& vec_;
       InnerIterator iter_;
 
       void increment() {
-        if (iter_ != set_.end()) {
+        if (iter_ != vec_.end()) {
           ++iter_;
           incrementToValid();
+        }
+      }
+
+      void decrement() {
+        if (iter_ != vec_.begin()) {
+          --iter_;
+          decrementToValid();
         }
       }
 
@@ -272,24 +279,31 @@ class ThreadLocalPtr {
         return (accessor_->id_ == other.accessor_->id_ && iter_ == other.iter_);
       }
 
-      void setToEnd() { iter_ = set_.end(); }
+      void setToEnd() { iter_ = vec_.end(); }
 
       explicit Iterator(const Accessor* accessor, bool toEnd = false)
           : accessor_(accessor),
-            set_(accessor_->meta_.allThreadEntryMap_[accessor_->id_]),
-            iter_(set_.begin()) {
+            vec_(accessor_->meta_.allThreadEntryMap_[accessor_->id_]
+                     .threadEntries),
+            iter_(vec_.begin()) {
         if (toEnd) {
           setToEnd();
         }
       }
+
       // we just need to check the ptr since it can be set to nullptr
       // even if the entry is part of the list
       bool valid() const {
-        return (iter_ != set_.end() && (*iter_)->elements[accessor_->id_].ptr);
+        return (iter_ != vec_.end() && (*iter_)->elements[accessor_->id_].ptr);
       }
 
       void incrementToValid() {
-        for (; iter_ != set_.end() && !valid(); ++iter_) {
+        for (; iter_ != vec_.end() && !valid(); ++iter_) {
+        }
+      }
+
+      void decrementToValid() {
+        for (; iter_ != vec_.begin() && !valid(); --iter_) {
         }
       }
 
@@ -298,7 +312,7 @@ class ThreadLocalPtr {
       using value_type = T;
       using reference = T const&;
       using pointer = T const*;
-      using iterator_category = std::forward_iterator_tag;
+      using iterator_category = std::bidirectional_iterator_tag;
 
       Iterator() = default;
 
@@ -310,6 +324,17 @@ class ThreadLocalPtr {
       Iterator& operator++(int) {
         Iterator copy(*this);
         increment();
+        return copy;
+      }
+
+      Iterator& operator--() {
+        decrement();
+        return *this;
+      }
+
+      Iterator& operator--(int) {
+        Iterator copy(*this);
+        decrement();
         return copy;
       }
 

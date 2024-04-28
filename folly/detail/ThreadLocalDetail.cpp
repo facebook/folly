@@ -253,7 +253,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
         if (!threadEntrySet) {
           return;
         }
-        for (auto& e : *threadEntrySet) {
+        for (auto& e : threadEntrySet->threadEntries) {
           auto elementsCapacity = e->getElementsCapacity();
           if (id < elementsCapacity && e->elements[id].ptr) {
             elements.push_back(e->elements[id]);
