@@ -1,0 +1,27 @@
+[manifest]
+name = libiberty
+
+[rpms]
+binutils-devel
+binutils
+
+[debs]
+binutils-dev
+
+[download]
+url = https://ftp.gnu.org/gnu/binutils/binutils-2.42.tar.xz
+sha256 = f6e4d41fd5fc778b06b7891457b3620da5ecea1006c6a4a41ae998109f85a800
+
+[dependencies]
+zlib
+
+[build]
+builder = autoconf
+subdir = binutils-2.42/libiberty
+
+# only build the parts needed for demangling
+# as we still want to use system linker and assembler etc
+[autoconf.args]
+--disable-shared
+--disable-testsuite
+--enable-install-libiberty
