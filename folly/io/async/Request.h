@@ -319,7 +319,7 @@ class RequestContext {
    private:
     using Inner = StaticContextThreadLocal::Accessor;
     using IteratorBase = Inner::Iterator;
-    using IteratorTag = std::bidirectional_iterator_tag;
+    using IteratorTag = typename IteratorBase::iterator_category;
 
     Inner inner_;
 
