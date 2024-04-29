@@ -1028,7 +1028,11 @@ TEST(ThreadPoolExecutorTest, AddPerf) {
       std::make_shared<NamedThreadFactory>("CPUThreadPool"));
   e.setThreadDeathTimeout(std::chrono::milliseconds(1));
   for (int i = 0; i < 10000; i++) {
-    e.add([&]() { e.add([]() { /* sleep override */ usleep(1000); }); });
+    e.add([&, ka = getKeepAliveToken(e)]() {
+      // holding a keep-alive here permits the following add()
+      // to occur safely, concurrently with the stop() below
+      e.add([]() { /* sleep override */ usleep(1000); });
+    });
   }
   e.stop();
 }
