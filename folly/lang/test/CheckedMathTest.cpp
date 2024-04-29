@@ -20,7 +20,48 @@
 #include <limits>
 #include <random>
 
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+
+namespace {
+
+template <typename T, typename T2>
+FOLLY_ERASE T check_folly_checked_add_(T const a, T2 const b) {
+  T r = 0;
+  if (FOLLY_UNLIKELY(!folly::checked_add(&r, a, b))) {
+    auto const ac = a;
+    auto const bc = b;
+    folly::detail::keep_sink_nx(ac, bc);
+  }
+  return r;
+}
+
+} // namespace
+
+extern "C" FOLLY_KEEP int //
+check_folly_checked_add_int(int a, int b) {
+  return check_folly_checked_add_(a, b);
+}
+
+extern "C" FOLLY_KEEP unsigned int //
+check_folly_checked_add_uint(unsigned int a, unsigned int b) {
+  return check_folly_checked_add_(a, b);
+}
+
+extern "C" FOLLY_KEEP int64_t
+check_folly_checked_add_int64(int64_t a, int64_t b) {
+  return check_folly_checked_add_(a, b);
+}
+
+extern "C" FOLLY_KEEP uint64_t
+check_folly_checked_add_uint64(uint64_t a, uint64_t b) {
+  return check_folly_checked_add_(a, b);
+}
+
+extern "C" FOLLY_KEEP double* //
+check_folly_checked_add_double_ptr_size(double* a, size_t b) {
+  return check_folly_checked_add_(a, b);
+}
 
 TEST(CheckedMath, checkedAddNoOverflow) {
   unsigned int a;
