@@ -18,6 +18,7 @@ builder = nop
 libcurl
 fizz
 fmt
+fbthrift
 folly
 googletest
 libsodium
