@@ -408,7 +408,14 @@ cpp_library(
 
 cpp_library(
     name = "retry",
+    srcs = ["Retry.cpp"],
     headers = ["Retry.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:portability",
+        "//folly/futures/detail:types",
+        "//folly/lang:exception",
+    ],
     exported_deps = [
         ":coroutine",
         ":result",

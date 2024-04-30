@@ -163,6 +163,10 @@ auto retryN(uint32_t maxRetries, Func&& func) {
 
 namespace detail {
 
+[[noreturn]]
+void throwExceptionForInvalidBackoffArgs(
+    const Duration& minBackoff, const Duration& maxBackoff);
+
 template <typename URNG, typename Decider>
 class ExponentialBackoffWithJitter {
  public:
@@ -182,7 +186,11 @@ class ExponentialBackoffWithJitter {
         maxBackoff_(maxBackoff),
         relativeJitterStdDev_(relativeJitterStdDev),
         randomGen_(static_cast<URNG2&&>(rng)),
-        decider_(static_cast<Decider2&&>(decider)) {}
+        decider_(static_cast<Decider2&&>(decider)) {
+    if (minBackoff_ > maxBackoff_) {
+      throwExceptionForInvalidBackoffArgs(minBackoff, maxBackoff);
+    }
+  }
 
   Task<void> operator()(exception_wrapper&& ew) & {
     using dist = std::normal_distribution<double>;
