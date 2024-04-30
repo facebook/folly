@@ -44,6 +44,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests glog
     - name: Fetch googletest
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests googletest
+    - name: Fetch libdwarf
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libdwarf
     - name: Fetch libevent
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libevent
     - name: Fetch lz4
@@ -80,6 +82,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests glog
     - name: Build googletest
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests googletest
+    - name: Build libdwarf
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libdwarf
     - name: Build libevent
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libevent
     - name: Build lz4
