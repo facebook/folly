@@ -223,3 +223,7 @@ zstd = "0.13.0"
 # For https://github.com/jimblandy/perf-event/pull/29
 perf-event = { git = "https://github.com/krallin/perf-event.git", rev = "86224a9bc025d5d19f719542f27c8c629a08b167", version = "0.4" }
 perf-event-open-sys = { git = "https://github.com/krallin/perf-event.git", rev = "86224a9bc025d5d19f719542f27c8c629a08b167", version = "4.0" }
+
+# Windows-specific dependencies
+[target."cfg(windows)".dependencies]
+winver = "1"
