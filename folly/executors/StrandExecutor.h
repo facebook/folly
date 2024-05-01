@@ -22,6 +22,7 @@
 #include <folly/Optional.h>
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/SerializedExecutor.h>
+#include <folly/io/async/Request.h>
 
 namespace folly {
 class StrandExecutor;
@@ -108,6 +109,7 @@ class StrandContext : public std::enable_shared_from_this<StrandContext> {
     Func func;
     Executor::KeepAlive<> executor;
     Optional<std::int8_t> priority;
+    std::shared_ptr<RequestContext> requestCtx;
   };
 
   void addImpl(QueueItem&& item);

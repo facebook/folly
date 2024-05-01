@@ -25,6 +25,7 @@
 #include <folly/CancellationToken.h>
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/ManualExecutor.h>
+#include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -117,4 +118,35 @@ TEST(StrandExecutor, ThreadSafetyTest) {
 
   t1.join();
   t2.join();
+}
+
+TEST(StrandExecutor, RequestContextPropagation) {
+  auto exec = StrandExecutor::create();
+  // Use a number larger than maxItemsToProcessSynchronously so we exercise
+  // worker reschedules.
+  constexpr size_t kNumTasks = 128;
+
+  size_t numTasksRan = 0;
+  for (size_t i = 0; i < kNumTasks; ++i) {
+    // Create a unique RequestContext for each task and verify that it is
+    // propagated correctly.
+    RequestContextScopeGuard ctxGuard;
+    auto f = [&, ctx = RequestContext::try_get()] {
+      EXPECT_EQ(ctx, RequestContext::try_get());
+      // Spend enough time that it is very likely that the queue is never empty.
+      burnTime(100us);
+      ++numTasksRan;
+    };
+    if (i % 2 == 0) {
+      exec->add(std::move(f));
+    } else {
+      exec->addWithPriority(std::move(f), -1);
+    }
+  }
+
+  folly::Baton baton;
+  exec->add([&] { baton.post(); });
+  baton.wait();
+
+  EXPECT_EQ(numTasksRan, kNumTasks);
 }

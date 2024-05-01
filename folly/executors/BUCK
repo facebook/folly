@@ -280,6 +280,7 @@ cpp_library(
         ":serialized_executor",
         "//folly:optional",
         "//folly/concurrency:unbounded_queue",
+        "//folly/io/async:request_context",
     ],
     external_deps = [
         "glog",

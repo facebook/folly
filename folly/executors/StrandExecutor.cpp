@@ -60,12 +60,20 @@ std::shared_ptr<StrandContext> StrandContext::create() {
 }
 
 void StrandContext::add(Func func, Executor::KeepAlive<> executor) {
-  addImpl(QueueItem{std::move(func), std::move(executor), folly::none});
+  addImpl(QueueItem{
+      std::move(func),
+      std::move(executor),
+      folly::none,
+      RequestContext::saveContext()});
 }
 
 void StrandContext::addWithPriority(
     Func func, Executor::KeepAlive<> executor, int8_t priority) {
-  addImpl(QueueItem{std::move(func), std::move(executor), priority});
+  addImpl(QueueItem{
+      std::move(func),
+      std::move(executor),
+      priority,
+      RequestContext::saveContext()});
 }
 
 void StrandContext::addImpl(QueueItem&& item) {
@@ -96,33 +104,37 @@ void StrandContext::executeNext(
   const QueueItem* nextItem = nullptr;
 
   std::size_t pendingCount = 0;
-  for (std::size_t i = 0; i < maxItemsToProcessSynchronously; ++i) {
-    QueueItem item = thisPtr->queue_.dequeue();
-    Executor::invokeCatchingExns(
-        "StrandExecutor: func", std::exchange(item.func, {}));
+  {
+    RequestContextSaverScopeGuard ctxGuard;
+    for (std::size_t i = 0; i < maxItemsToProcessSynchronously; ++i) {
+      QueueItem item = thisPtr->queue_.dequeue();
+      RequestContext::setContext(std::move(item.requestCtx));
+      Executor::invokeCatchingExns(
+          "StrandExecutor: func", std::exchange(item.func, {}));
 
-    ++pendingCount;
+      ++pendingCount;
 
-    if (pendingCount == queueSize) {
-      queueSize = thisPtr->scheduled_.fetch_sub(
-                      pendingCount, std::memory_order_acq_rel) -
-          pendingCount;
-      if (queueSize == 0) {
-        // Queue is now empty
-        return;
+      if (pendingCount == queueSize) {
+        queueSize = thisPtr->scheduled_.fetch_sub(
+                        pendingCount, std::memory_order_acq_rel) -
+            pendingCount;
+        if (queueSize == 0) {
+          // Queue is now empty
+          return;
+        }
+
+        pendingCount = 0;
       }
 
-      pendingCount = 0;
-    }
+      nextItem = thisPtr->queue_.try_peek();
+      DCHECK(nextItem != nullptr);
 
-    nextItem = thisPtr->queue_.try_peek();
-    DCHECK(nextItem != nullptr);
-
-    // Check if the next item has the same executor.
-    // If so we'll go around the loop again, otherwise
-    // we'll dispatch to the other executor and return.
-    if (nextItem->executor.get() != item.executor.get()) {
-      break;
+      // Check if the next item has the same executor.
+      // If so we'll go around the loop again, otherwise
+      // we'll dispatch to the other executor and return.
+      if (nextItem->executor.get() != item.executor.get()) {
+        break;
+      }
     }
   }
 
