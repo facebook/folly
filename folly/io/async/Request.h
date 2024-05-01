@@ -156,9 +156,6 @@ class ImmutableRequestData : public folly::RequestData {
 
 using RequestDataItem = std::pair<RequestToken, std::unique_ptr<RequestData>>;
 
-// If you do not call create() to create a unique request context,
-// this default request context will always be returned, and is never
-// copied between threads.
 class RequestContext {
  public:
   RequestContext();
@@ -171,15 +168,27 @@ class RequestContext {
       const RequestContext& ctx, intptr_t rootid);
   static std::shared_ptr<RequestContext> copyAsChild(const RequestContext& ctx);
 
-  // Create a unique request context for this request.
-  // It will be passed between queues / threads (where implemented),
-  // so it should be valid for the lifetime of the request.
-  static void create() { setContext(std::make_shared<RequestContext>()); }
+  // Creates a unique request context for this request, and sets it as current
+  // context. It will be propagated between queues / threads (where
+  // implemented).
+  //
+  // Whenever possible, prefer RequestContextScopeGuard instead of create() to
+  // make sure that RequestContext is reset to the original value when we exit
+  // the scope.
+  //
+  // Returns the previous request context.
+  static std::shared_ptr<RequestContext> create() {
+    return setContext(std::make_shared<RequestContext>());
+  }
 
-  // Get the current context.
+  // Returns the current context, if set, otherwise returns the default global
+  // request context.
+  //
+  // NOTE: This is a legacy method: there is almost never a good reason to use
+  // the default global request context. Prefer try_get() for new code.
   static RequestContext* get();
 
-  // Get the current context, if it has already been created, or nullptr.
+  // Get the current context, if it has already been set, or nullptr.
   static RequestContext* try_get();
 
   intptr_t getRootId() const { return rootId_; }
@@ -275,12 +284,14 @@ class RequestContext {
   // saveContext is called to get a shared_ptr to the context, and
   // setContext is used to reset it on the other side of the queue.
   //
-  // Whenever possible, use RequestContextScopeGuard instead of setContext
-  // to make sure that RequestContext is reset to the original value when
-  // we exit the scope.
+  // Whenever possible, prefer RequestContextScopeGuard instead of setContext to
+  // make sure that RequestContext is reset to the original value when we exit
+  // the scope.
   //
   // A shared_ptr is used, because many request may fan out across
   // multiple threads, or do post-send processing, etc.
+  //
+  // Returns the previous request context.
   static std::shared_ptr<RequestContext> setContext(
       std::shared_ptr<RequestContext> const& ctx);
   static std::shared_ptr<RequestContext> setContext(
@@ -479,33 +490,62 @@ class RequestContext {
 static_assert(sizeof(RequestContext) <= 64, "unexpected size");
 
 /**
+ * RequestContextSaverScopeGuard allows to replace the current context
+ * without switching back to original context, while ensuring that the original
+ * context is restored on guard destruction.
+ *
+ * The constructor saves the current context but does not replace it; instead,
+ * RequestContext::setContext() should be called directly. The original context
+ * will be restored on guard destruction. This is different from
+ * RequestContextScopeGuard which replaces the current context in construction.
+ *
+ * This enables taking advantage of the optimization in setContext() which skips
+ * invoking the RequestData callbacks if the new context is the the same as the
+ * current one. The use case is processing tasks in a loop which are likely to
+ * share the same context.
+ */
+class RequestContextSaverScopeGuard {
+ public:
+  RequestContextSaverScopeGuard()
+      : RequestContextSaverScopeGuard(RequestContext::saveContext()) {}
+
+  RequestContextSaverScopeGuard(const RequestContextSaverScopeGuard&) = delete;
+  RequestContextSaverScopeGuard& operator=(
+      const RequestContextSaverScopeGuard&) = delete;
+  RequestContextSaverScopeGuard(RequestContextSaverScopeGuard&&) = delete;
+  RequestContextSaverScopeGuard& operator=(RequestContextSaverScopeGuard&&) =
+      delete;
+
+  ~RequestContextSaverScopeGuard() {
+    RequestContext::setContext(std::move(prev_));
+  }
+
+ protected:
+  explicit RequestContextSaverScopeGuard(std::shared_ptr<RequestContext>&& ctx)
+      : prev_(std::move(ctx)) {}
+
+ private:
+  std::shared_ptr<RequestContext> prev_;
+};
+
+/**
  * Note: you probably want to use ShallowCopyRequestContextScopeGuard
  * This resets all other RequestData for the duration of the scope!
  */
-class RequestContextScopeGuard {
- private:
-  std::shared_ptr<RequestContext> prev_;
-
+class RequestContextScopeGuard : private RequestContextSaverScopeGuard {
  public:
-  RequestContextScopeGuard(const RequestContextScopeGuard&) = delete;
-  RequestContextScopeGuard& operator=(const RequestContextScopeGuard&) = delete;
-  RequestContextScopeGuard(RequestContextScopeGuard&&) = delete;
-  RequestContextScopeGuard& operator=(RequestContextScopeGuard&&) = delete;
-
   // Create a new RequestContext and reset to the original value when
   // this goes out of scope.
-  RequestContextScopeGuard() : prev_(RequestContext::saveContext()) {
-    RequestContext::create();
-  }
+  RequestContextScopeGuard()
+      : RequestContextSaverScopeGuard(RequestContext::create()) {}
 
   // Set a RequestContext that was previously captured by saveContext(). It will
   // be automatically reset to the original value when this goes out of scope.
   explicit RequestContextScopeGuard(std::shared_ptr<RequestContext> const& ctx)
-      : prev_(RequestContext::setContext(ctx)) {}
+      : RequestContextSaverScopeGuard(RequestContext::setContext(ctx)) {}
   explicit RequestContextScopeGuard(std::shared_ptr<RequestContext>&& ctx)
-      : prev_(RequestContext::setContext(std::move(ctx))) {}
-
-  ~RequestContextScopeGuard() { RequestContext::setContext(std::move(prev_)); }
+      : RequestContextSaverScopeGuard(
+            RequestContext::setContext(std::move(ctx))) {}
 };
 
 /**

@@ -113,10 +113,15 @@ void SerialExecutorImpl<Queue>::worker() {
   DCHECK_NE(queueSize, 0);
 
   std::size_t processed = 0;
+  RequestContextSaverScopeGuard ctxGuard;
   while (true) {
     Task task;
+    // This dequeue happens under the request context of the previous task, so
+    // that we can avoid switching context if the next task shares the same
+    // context. dequeue() is cheap, non-blocking, and doesn't run application
+    // logic, so it is fine to sneak it in the previous context.
     queue_.dequeue(task);
-    folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
+    RequestContext::setContext(std::move(task.ctx));
     invokeCatchingExns("SerialExecutor: func", std::exchange(task.func, {}));
 
     if (++processed == queueSize) {
@@ -136,10 +141,15 @@ void SerialExecutorImpl<Queue>::worker() {
 template <template <typename> typename Queue>
 void SerialExecutorImpl<Queue>::drain() {
   auto queueSize = scheduled_.load(std::memory_order_acquire);
+  if (queueSize == 0) {
+    return;
+  }
+
+  RequestContextSaverScopeGuard ctxGuard;
   while (queueSize != 0) {
     Task task;
     queue_.dequeue(task);
-    folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
+    RequestContext::setContext(std::move(task.ctx));
     task.func = {};
     queueSize = scheduled_.fetch_sub(1, std::memory_order_acq_rel) - 1;
   }
