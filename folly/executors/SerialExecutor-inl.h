@@ -139,6 +139,8 @@ void SerialExecutorImpl<Queue>::drain() {
   while (queueSize != 0) {
     Task task;
     queue_.dequeue(task);
+    folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
+    task.func = {};
     queueSize = scheduled_.fetch_sub(1, std::memory_order_acq_rel) - 1;
   }
 }

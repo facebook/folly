@@ -17,6 +17,7 @@
 #include <folly/executors/SerialExecutor.h>
 
 #include <chrono>
+#include <optional>
 
 #include <folly/Random.h>
 #include <folly/ScopeGuard.h>
@@ -198,14 +199,30 @@ TYPED_TEST(SerialExecutorTest, ExecutionThrows) {
 
 TYPED_TEST(SerialExecutorTest, ParentExecutorDiscardsFunc) {
   struct FakeExecutor : folly::Executor {
-    void add(folly::Func) override {}
+    void add(folly::Func f) override { queue.push_back(std::move(f)); }
+
+    std::vector<folly::Func> queue;
   };
 
-  FakeExecutor ex;
-  auto se = TypeParam::create(&ex);
+  std::optional<FakeExecutor> ex{std::in_place};
+  auto se = TypeParam::create(&*ex);
   bool ran = false;
-  se->add([&, ka = folly::getKeepAliveToken(se.get())] { ran = true; });
+  bool destructorRan = false;
+  {
+    folly::RequestContextScopeGuard ctxGuard;
+    auto destructionGuard = folly::makeGuard(
+        [&destructorRan, ctx = folly::RequestContext::try_get()] {
+          destructorRan = true;
+          EXPECT_EQ(ctx, folly::RequestContext::try_get());
+        });
+    se->add([&,
+             ka = folly::getKeepAliveToken(se.get()),
+             dg = std::move(destructionGuard)] { ran = true; });
+    EXPECT_FALSE(destructorRan); // Task is still stuck in the queue.
+  }
   se.reset();
+  ex.reset();
+  EXPECT_TRUE(destructorRan);
   ASSERT_FALSE(ran);
 }
 
