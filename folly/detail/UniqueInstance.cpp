@@ -17,6 +17,7 @@
 #include <folly/detail/UniqueInstance.h>
 
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -29,6 +30,16 @@ namespace folly {
 namespace detail {
 
 namespace {
+
+bool equal(std::type_info const& a, std::type_info const& b) {
+  if (kIsLibcpp) {
+    auto const an = a.name();
+    auto const bn = b.name();
+    return &a == &b || an == bn || 0 == std::strcmp(an, bn);
+  }
+
+  return a == b;
+}
 
 using Ptr = std::type_info const*;
 struct PtrRange {
@@ -49,7 +60,7 @@ PtrRange ptr_range_mapped(Value value) {
 }
 
 bool equal(PtrRange lhs, PtrRange rhs) {
-  auto const cmp = [](auto a, auto b) { return *a == *b; };
+  auto const cmp = [](auto a, auto b) { return equal(*a, *b); };
   return std::equal(lhs.b, lhs.e, rhs.b, rhs.e, cmp);
 }
 
@@ -101,7 +112,7 @@ void UniqueInstance::enforce(Arg& arg) noexcept {
     global = local;
     return;
   }
-  if (*global.tmpl != *local.tmpl) {
+  if (!equal(*global.tmpl, *local.tmpl)) {
     throw_exception<std::logic_error>("mismatched unique instance");
   }
   if (!equal(ptr_range_key(global), ptr_range_key(local))) {
