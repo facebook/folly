@@ -202,8 +202,8 @@ class ExponentialBackoffWithJitter {
         Duration(folly::constexpr_clamp_cast<Duration::rep>(
             jitter * minBackoff_.count() * std::pow(2, retryCount_ - 1u)));
 
-    const Duration backoff =
-        std::clamp(backoffNominal, minBackoff_, maxBackoff_);
+    const Duration backoff = std::clamp(
+        backoffNominal, minBackoff_, std::max(minBackoff_, maxBackoff_));
 
     co_await folly::coro::sleep(backoff, timeKeeper_);
 
