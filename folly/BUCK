@@ -223,16 +223,6 @@ cpp_library(
 cpp_library(
     name = "config",
     headers = ["folly-config.h"],
-    os_deps = [(
-        "linux",
-        select({
-            "DEFAULT": [],
-            "ovr_config//runtime:fbcode": ["fbsource//third-party/liburing:uring"],
-        }),
-    )],
-    exported_external_deps = [
-        ("glibc", None, "rt"),
-    ],
 )
 
 cpp_library(
