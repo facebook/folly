@@ -1,5 +1,6 @@
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +31,11 @@
 #if FOLLY_SSE_PREREQ(4, 2)
 #include <emmintrin.h>
 #include <nmmintrin.h>
+#endif
+
+#if FOLLY_ARM_FEATURE_CRC32
+#include <arm_acle.h>
+#include <stddef.h>
 #endif
 
 namespace folly {
@@ -86,7 +92,45 @@ bool crc32_hw_supported() {
   return id.sse42();
 }
 
-#else
+#elif FOLLY_ARM_FEATURE_CRC32
+uint32_t crc32_hw(const uint8_t* buf, size_t len, uint32_t crc) {
+  auto* buf_64 = reinterpret_cast<const uint64_t*>(buf);
+  while (len >= 8) {
+    crc = __crc32d(crc, *buf_64++);
+    len -= 8;
+  }
+
+  auto* buf_32 = reinterpret_cast<const uint32_t*>(buf_64);
+  if (len % 8 >= 4) {
+    crc = __crc32w(crc, *buf_32++);
+  }
+
+  auto* buf_16 = reinterpret_cast<const uint16_t*>(buf_32);
+  if (len % 4 >= 2) {
+    crc = __crc32h(crc, *buf_16++);
+  }
+
+  auto* buf_8 = reinterpret_cast<const uint8_t*>(buf_16);
+  if (len % 2 >= 1) {
+    crc = __crc32b(crc, *buf_8++);
+  }
+  return crc;
+}
+
+bool crc32c_hw_supported() {
+  return true;
+}
+
+bool crc32c_hw_supported_avx512() {
+  return false;
+}
+
+bool crc32_hw_supported() {
+  return true;
+}
+
+
+#else // FOLLY_ARM_FEATURE_CRC32
 
 uint32_t crc32_hw(
     const uint8_t* /* data */,

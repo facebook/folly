@@ -28,6 +28,9 @@
  * use intrinsics instead of inline asm
  * other code cleanup
  */
+/*
+ * Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ */
 
 #include <stdexcept>
 
@@ -37,6 +40,10 @@
 
 #include <folly/CppAttributes.h>
 #include <folly/hash/detail/ChecksumDetail.h>
+
+#if FOLLY_ARM_FEATURE_CRC32
+#include <arm_acle.h>
+#endif
 
 namespace folly {
 namespace detail {
@@ -286,7 +293,34 @@ uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
   return (uint32_t)crc0;
 }
 
-#else
+
+#elif FOLLY_ARM_FEATURE_CRC32 // defined(FOLLY_X64) && FOLLY_SSE_PREREQ(4, 2)
+
+uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
+  auto* buf_64 = reinterpret_cast<const uint64_t*>(buf);
+  while (len >= 8) {
+    crc = __crc32cd(crc, *buf_64++);
+    len -= 8;
+  }
+
+  auto* buf_32 = reinterpret_cast<const uint32_t*>(buf_64);
+  if (len % 8 >= 4) {
+    crc = __crc32cw(crc, *buf_32++);
+  }
+
+  auto* buf_16 = reinterpret_cast<const uint16_t*>(buf_32);
+  if (len % 4 >= 2) {
+    crc = __crc32ch(crc, *buf_16++);
+  }
+
+  auto* buf_8 = reinterpret_cast<const uint8_t*>(buf_16);
+  if (len % 2 >= 1) {
+    crc = __crc32cb(crc, *buf_8++);
+  }
+  return crc;
+}
+
+#else // FOLLY_ARM_FEATURE_CRC32
 
 uint32_t crc32c_hw(
     const uint8_t* /* buf */, size_t /* len */, uint32_t /* crc */) {
