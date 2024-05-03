@@ -471,6 +471,32 @@ TEST_F(TaskTest, StartInlineUnsafe) {
   }());
 }
 
+TEST_F(TaskTest, StartInlineUnsafePreservesRequestContext) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    RequestContextScopeGuard parentGuard;
+    auto* parentCtx = RequestContext::try_get();
+    auto executor = co_await folly::coro::co_current_executor;
+
+    bool hasStarted = false;
+    coro::Baton baton;
+
+    auto makeTask = [&]() -> folly::coro::Task<void> {
+      RequestContextScopeGuard childGuard;
+      auto* childCtx = RequestContext::try_get();
+      hasStarted = true;
+      co_await baton;
+      EXPECT_EQ(childCtx, RequestContext::try_get());
+    };
+    auto sf = makeTask().scheduleOn(executor).startInlineUnsafe();
+
+    EXPECT_TRUE(hasStarted);
+    EXPECT_EQ(parentCtx, RequestContext::try_get());
+
+    baton.post();
+    co_await std::move(sf);
+  }());
+}
+
 TEST_F(TaskTest, YieldTry) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto innerTaskVoid = []() -> folly::coro::Task<void> {

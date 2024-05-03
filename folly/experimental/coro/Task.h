@@ -454,6 +454,10 @@ class FOLLY_NODISCARD TaskWithExecutor {
       folly::CancellationToken cancelToken,
       void* returnAddress) && {
     coro_.promise().setCancelToken(std::move(cancelToken));
+    // If the task replaces the request context and reaches a suspension point,
+    // it will not have a chance to restore the previous context before we
+    // return, so we need to ensure it is restored. This simulates starting the
+    // coroutine in an actual executor, which would wrap the task with a guard.
     RequestContextScopeGuard contextScope{RequestContext::saveContext()};
     startInlineImpl(std::move(*this), static_cast<F&&>(tryCallback))
         .start(returnAddress);
