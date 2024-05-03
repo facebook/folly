@@ -69,7 +69,7 @@ void BM_IterateOverSet(int iters, int size) {
     }
   }
 
-  int64_t sum = 0;
+  [[maybe_unused]] int64_t sum = 0;
   auto iter = a_set.begin();
   for (int i = 0; i < iters; ++i) {
     sum += *iter++;
@@ -89,7 +89,7 @@ void BM_IterateSkipList(int iters, int size) {
   for (int i = 0; i < size; ++i) {
     skipList.add(rand() % kMaxValue);
   }
-  int64_t sum = 0;
+  [[maybe_unused]] int64_t sum = 0;
   susp.dismiss();
 
   auto iter = skipList.begin();
@@ -117,7 +117,7 @@ void BM_SetMerge(int iters, int size) {
   }
   susp.dismiss();
 
-  int64_t mergedSum = 0;
+  [[maybe_unused]] int64_t mergedSum = 0;
   FOR_EACH (it, a_set) {
     if (b_set.find(*it) != b_set.end()) {
       mergedSum += *it;
@@ -139,7 +139,7 @@ void BM_CSLMergeLookup(int iters, int size) {
   for (int i = 0; i < size; ++i) {
     skipList2.add(rand() % kMaxValue);
   }
-  int64_t mergedSum = 0;
+  [[maybe_unused]] int64_t mergedSum = 0;
   susp.dismiss();
 
   SkipListType::Skipper skipper(skipList2);
@@ -170,7 +170,7 @@ void BM_CSLMergeIntersection(int iters, int size) {
   SkipListType::Skipper s1(skipList);
   SkipListType::Skipper s2(skipList2);
 
-  int64_t mergedSum = 0;
+  [[maybe_unused]] int64_t mergedSum = 0;
 
   while (s1.good() && s2.good()) {
     int v1 = s1.data();
@@ -198,7 +198,7 @@ void BM_SetContainsNotFound(int iters, int size) {
   for (int i = 0; i < size; ++i) {
     aset.insert(2 * i);
   }
-  int64_t sum = 0;
+  [[maybe_unused]] int64_t sum = 0;
   susp.dismiss();
 
   for (int i = 0; i < iters; ++i) {
@@ -223,7 +223,7 @@ void BM_SetContainsFound(int iters, int size) {
   for (int i = 0; i < iters; ++i) {
     values.push_back(rand() % size);
   }
-  int64_t sum = 0;
+  [[maybe_unused]] int64_t sum = 0;
   susp.dismiss();
 
   for (int i = 0; i < iters; ++i) {
@@ -247,7 +247,7 @@ void BM_CSLContainsFound(int iters, int size) {
   for (int i = 0; i < iters; ++i) {
     values.push_back(rand() % size);
   }
-  int64_t sum = 0;
+  [[maybe_unused]] int64_t sum = 0;
   susp.dismiss();
 
   for (int i = 0; i < iters; ++i) {
@@ -267,7 +267,7 @@ void BM_CSLContainsNotFound(int iters, int size) {
   for (int i = 0; i < size; ++i) {
     skipList.add(2 * i);
   }
-  int64_t sum = 0;
+  [[maybe_unused]] int64_t sum = 0;
   susp.dismiss();
 
   for (int i = 0; i < iters; ++i) {
@@ -419,7 +419,7 @@ class ConcurrentAccessData {
   }
 
   void runSkipList(int id, size_t iters) {
-    int sum = 0;
+    [[maybe_unused]] int sum = 0;
     for (size_t i = 0; i < iters; ++i) {
       sum += accessSkipList(id, i);
     }
@@ -427,7 +427,7 @@ class ConcurrentAccessData {
   }
 
   void runSet(size_t id, size_t iters) {
-    int sum = 0;
+    [[maybe_unused]] int sum = 0;
     for (size_t i = 0; i < iters; ++i) {
       sum += accessSet(id, i);
     }
