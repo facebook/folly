@@ -1043,11 +1043,14 @@ class small_vector
   void moveInlineStorageRelocatable(small_vector&& o) {
     static_assert(IsRelocatable<Value>::value);
     const auto n = o.size();
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Wclass-memaccess")
     if constexpr (kMayCopyWholeInlineStorage) {
       std::memcpy(u.buffer(), o.u.buffer(), MaxInline * kSizeOfValue);
     } else {
       std::memcpy(u.buffer(), o.u.buffer(), n * kSizeOfValue);
     }
+    FOLLY_POP_WARNING
     this->setSize(n);
     o.resetSizePolicy();
   }
