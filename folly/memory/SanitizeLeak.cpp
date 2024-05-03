@@ -18,6 +18,7 @@
 
 #include <mutex>
 #include <numeric>
+#include <shared_mutex>
 #include <unordered_map>
 
 #include <folly/lang/Extern.h>
@@ -59,15 +60,29 @@ FOLLY_STORAGE_CONSTEXPR lsan_unregister_root_region_t* const //
     lsan_unregister_root_region_v = lsan_unregister_root_region_access_v<EnW>;
 
 namespace {
+
+struct fake_mutex {
+  [[maybe_unused]] void lock() {}
+  [[maybe_unused]] void unlock() {}
+};
+
+// some hardware targets may not have mutexes
+#if __cpp_lib_shared_mutex >= 201505L
+using mutex_type = std::mutex;
+#else
+using mutex_type = fake_mutex;
+#endif
+
 struct LeakedPtrs {
-  std::mutex mutex;
+  mutex_type mutex;
   std::unordered_map<void const*, size_t> map;
 
   static LeakedPtrs& instance() {
-    static auto* ptrs = new LeakedPtrs();
-    return *ptrs;
+    static auto& ptrs = *new LeakedPtrs();
+    return ptrs;
   }
 };
+
 } // namespace
 
 void annotate_object_leaked_impl(void const* ptr) {
@@ -75,7 +90,7 @@ void annotate_object_leaked_impl(void const* ptr) {
     return;
   }
   auto& ptrs = LeakedPtrs::instance();
-  std::lock_guard<std::mutex> lg(ptrs.mutex);
+  std::lock_guard lg(ptrs.mutex);
   ++ptrs.map[ptr];
 }
 
@@ -84,7 +99,7 @@ void annotate_object_collected_impl(void const* ptr) {
     return;
   }
   auto& ptrs = LeakedPtrs::instance();
-  std::lock_guard<std::mutex> lg(ptrs.mutex);
+  std::lock_guard lg(ptrs.mutex);
   if (!--ptrs.map[ptr]) {
     ptrs.map.erase(ptr);
   }
@@ -92,7 +107,7 @@ void annotate_object_collected_impl(void const* ptr) {
 
 size_t annotate_object_count_leaked_uncollected_impl() {
   auto& ptrs = LeakedPtrs::instance();
-  std::lock_guard<std::mutex> lg(ptrs.mutex);
+  std::lock_guard lg(ptrs.mutex);
   return std::accumulate(
       ptrs.map.begin(),
       ptrs.map.end(),
