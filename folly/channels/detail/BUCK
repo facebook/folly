@@ -1,0 +1,72 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "atomic_queue",
+    headers = [
+        "AtomicQueue.h",
+    ],
+    exported_deps = [
+        "//folly/lang:assume",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "channel_bridge",
+    headers = ["ChannelBridge.h"],
+    exported_deps = [
+        "//folly:try",
+        "//folly/experimental/channels/detail:atomic_queue",
+    ],
+)
+
+cpp_library(
+    name = "function_traits",
+    headers = ["FunctionTraits.h"],
+)
+
+cpp_library(
+    name = "intrusive_ptr",
+    headers = ["IntrusivePtr.h"],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "multiplexer_traits",
+    headers = ["MultiplexerTraits.h"],
+    exported_deps = [
+        "//folly/experimental/channels/detail:function_traits",
+    ],
+)
+
+cpp_library(
+    name = "pointer_variant",
+    headers = ["PointerVariant.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:demangle",
+    ],
+)
+
+cpp_library(
+    name = "utility",
+    headers = [
+        "Utility.h",
+    ],
+    exported_deps = [
+        "//folly:exception_wrapper",
+        "//folly:function",
+        "//folly:scope_guard",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels:channel",
+        "//folly/experimental/channels:rate_limiter",
+        "//folly/experimental/coro:promise",
+        "//folly/experimental/coro:task",
+    ],
+)

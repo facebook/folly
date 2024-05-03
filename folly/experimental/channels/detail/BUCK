@@ -8,49 +8,57 @@ cpp_library(
         "AtomicQueue.h",
     ],
     exported_deps = [
-        "//folly/lang:assume",
-    ],
-    exported_external_deps = [
-        "glog",
+        "//folly/channels/detail:atomic_queue",
     ],
 )
 
 cpp_library(
     name = "channel_bridge",
-    headers = ["ChannelBridge.h"],
+    headers = [
+        "ChannelBridge.h",
+    ],
     exported_deps = [
-        "//folly:try",
-        "//folly/experimental/channels/detail:atomic_queue",
+        "//folly/channels/detail:channel_bridge",
     ],
 )
 
 cpp_library(
     name = "function_traits",
-    headers = ["FunctionTraits.h"],
+    headers = [
+        "FunctionTraits.h",
+    ],
+    exported_deps = [
+        "//folly/channels/detail:function_traits",
+    ],
 )
 
 cpp_library(
     name = "intrusive_ptr",
-    headers = ["IntrusivePtr.h"],
-    exported_external_deps = [
-        "boost",
+    headers = [
+        "IntrusivePtr.h",
+    ],
+    exported_deps = [
+        "//folly/channels/detail:intrusive_ptr",
     ],
 )
 
 cpp_library(
     name = "multiplexer_traits",
-    headers = ["MultiplexerTraits.h"],
+    headers = [
+        "MultiplexerTraits.h",
+    ],
     exported_deps = [
-        ":function_traits",
+        "//folly/channels/detail:multiplexer_traits",
     ],
 )
 
 cpp_library(
     name = "pointer_variant",
-    headers = ["PointerVariant.h"],
+    headers = [
+        "PointerVariant.h",
+    ],
     exported_deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:demangle",
+        "//folly/channels/detail:pointer_variant",
     ],
 )
 
@@ -60,13 +68,6 @@ cpp_library(
         "Utility.h",
     ],
     exported_deps = [
-        "//folly:exception_wrapper",
-        "//folly:function",
-        "//folly:scope_guard",
-        "//folly/executors:sequenced_executor",
-        "//folly/experimental/channels:channel",
-        "//folly/experimental/channels:rate_limiter",
-        "//folly/experimental/coro:promise",
-        "//folly/experimental/coro:task",
+        "//folly/channels/detail:utility",
     ],
 )
