@@ -158,12 +158,11 @@ class BuilderBase(object):
                     os.remove(self.build_dir)
                 else:
                     shutil.rmtree(self.build_dir)
-
-        # On Windows, emit a wrapper script that can be used to run build artifacts
-        # directly from the build directory, without installing them.  On Windows $PATH
-        # needs to be updated to include all of the directories containing the runtime
-        # library dependencies in order to run the binaries.
-        if self.build_opts.is_windows():
+        elif self.build_opts.is_windows():
+            # On Windows, emit a wrapper script that can be used to run build artifacts
+            # directly from the build directory, without installing them.  On Windows $PATH
+            # needs to be updated to include all of the directories containing the runtime
+            # library dependencies in order to run the binaries.
             script_path = self.get_dev_run_script_path()
             dep_munger = create_dyn_dep_munger(self.build_opts, install_dirs)
             dep_dirs = self.get_dev_run_extra_path_dirs(install_dirs, dep_munger)
