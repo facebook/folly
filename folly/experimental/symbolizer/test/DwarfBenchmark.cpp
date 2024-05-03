@@ -30,7 +30,7 @@ using namespace folly::symbolizer;
 using namespace folly::symbolizer::test;
 
 FOLLY_NOINLINE void lexicalBlockBar() try {
-  size_t unused = 0;
+  [[maybe_unused]] size_t unused = 0;
   unused++;
   inlineB_inlineA_lfind();
 } catch (...) {
