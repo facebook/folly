@@ -7,7 +7,7 @@ cpp_binary(
     srcs = ["JSONSchemaTester.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:json_schema",
         "//folly/json:dynamic",
+        "//folly/json:json_schema",
     ],
 )

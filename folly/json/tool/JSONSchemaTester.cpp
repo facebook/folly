@@ -18,7 +18,7 @@
 #include <sstream>
 #include <string>
 
-#include <folly/experimental/JSONSchema.h>
+#include <folly/json/JSONSchema.h>
 #include <folly/json/json.h>
 
 /**
