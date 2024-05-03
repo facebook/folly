@@ -42,6 +42,9 @@ FOLLY_CREATE_EXTERN_ACCESSOR( //
 
 constexpr bool E = folly::kIsLibrarySanitizeAddress;
 
+// the Windows runtime libraries do not have lsan functions
+constexpr bool EnW = E && !folly::kIsWindows;
+
 } // namespace
 
 namespace folly {
@@ -49,11 +52,11 @@ namespace folly {
 namespace detail {
 
 FOLLY_STORAGE_CONSTEXPR lsan_ignore_object_t* const //
-    lsan_ignore_object_v = lsan_ignore_object_access_v<E>;
+    lsan_ignore_object_v = lsan_ignore_object_access_v<EnW>;
 FOLLY_STORAGE_CONSTEXPR lsan_register_root_region_t* const //
-    lsan_register_root_region_v = lsan_register_root_region_access_v<E>;
+    lsan_register_root_region_v = lsan_register_root_region_access_v<EnW>;
 FOLLY_STORAGE_CONSTEXPR lsan_unregister_root_region_t* const //
-    lsan_unregister_root_region_v = lsan_unregister_root_region_access_v<E>;
+    lsan_unregister_root_region_v = lsan_unregister_root_region_access_v<EnW>;
 
 namespace {
 struct LeakedPtrs {
