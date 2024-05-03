@@ -63,7 +63,7 @@ BENCHMARK(gun) {
 BENCHMARK_DRAW_LINE();
 
 BENCHMARK(optimizerCanDiscardTrivial, n) {
-  long x = 0;
+  [[maybe_unused]] long x = 0;
   for (long i = 0; i < n; ++i) {
     for (long j = 0; j < 10000; ++j) {
       x += j;
