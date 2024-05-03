@@ -8,6 +8,9 @@ cpp_library(
     autodeps_keep = True,
     # @lint-ignore BUCKLINT
     link_whole = True,
+    preprocessor_flags = [
+        "-DFOLLY_REPO=fbcode",
+    ],
     deps = [
         "//folly/experimental/io:fs_util",
         "//folly/ext:test_ext",
