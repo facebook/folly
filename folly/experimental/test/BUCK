@@ -454,20 +454,6 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "tuple_ops_test",
-    srcs = ["TupleOpsTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly:conv",
-        "//folly/experimental:tuple_ops",
-        "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
-    ],
-)
-
-cpp_unittest(
     name = "quotient_multiset_test",
     srcs = [
         "QuotientMultiSetTest.cpp",

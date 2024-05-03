@@ -426,16 +426,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "tuple_ops",
-    headers = ["TupleOps.h"],
-    exported_deps = [
-        "//folly:constexpr_math",
-        "//folly:portability",
-        "//folly:utility",
-    ],
-)
-
-cpp_library(
     name = "quotient_multiset",
     srcs = [
         "QuotientMultiSet.cpp",
