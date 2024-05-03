@@ -111,4 +111,29 @@ TEST(SanitizeLeak, Concurrent) {
     thread.join();
   }
 }
+
+TEST(SanitizeLeak, AnnotateCount) {
+  constexpr size_t size = 27;
+  constexpr auto count = annotate_object_count_leaked_uncollected;
+  auto const base = count();
+  std::vector<int> vec;
+  vec.resize(size);
+  for (auto const& item : vec) {
+    annotate_object_leaked(&item);
+  }
+  EXPECT_EQ(base + size * size_t(kIsSanitizeAddress), count());
+  for (auto const& item : vec) {
+    annotate_object_leaked(&item);
+  }
+  EXPECT_EQ(base + 2 * size * size_t(kIsSanitizeAddress), count());
+  for (auto const& item : vec) {
+    annotate_object_collected(&item);
+  }
+  EXPECT_EQ(base + size * size_t(kIsSanitizeAddress), count());
+  for (auto const& item : vec) {
+    annotate_object_collected(&item);
+  }
+  EXPECT_EQ(base, count());
+}
+
 } // namespace folly

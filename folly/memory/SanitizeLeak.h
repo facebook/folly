@@ -32,6 +32,7 @@ extern lsan_unregister_root_region_t* const lsan_unregister_root_region_v;
 
 void annotate_object_leaked_impl(void const* ptr);
 void annotate_object_collected_impl(void const* ptr);
+size_t annotate_object_count_leaked_uncollected_impl();
 
 } // namespace detail
 
@@ -91,4 +92,17 @@ void annotate_object_collected_impl(void const* ptr);
     detail::annotate_object_collected_impl(ptr);
   }
 }
+
+/**
+ * Count how many times objects have been passed to annotate_object_leaked() but
+ * not yet passed to annotate_object_collected().
+ */
+[[maybe_unused]] FOLLY_ALWAYS_INLINE static size_t
+annotate_object_count_leaked_uncollected() {
+  if (kIsSanitizeAddress) {
+    return detail::annotate_object_count_leaked_uncollected_impl();
+  }
+  return 0;
+}
+
 } // namespace folly

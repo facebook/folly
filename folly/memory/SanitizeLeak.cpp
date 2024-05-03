@@ -17,6 +17,7 @@
 #include <folly/memory/SanitizeLeak.h>
 
 #include <mutex>
+#include <numeric>
 #include <unordered_map>
 
 #include <folly/lang/Extern.h>
@@ -84,6 +85,16 @@ void annotate_object_collected_impl(void const* ptr) {
   if (!--ptrs.map[ptr]) {
     ptrs.map.erase(ptr);
   }
+}
+
+size_t annotate_object_count_leaked_uncollected_impl() {
+  auto& ptrs = LeakedPtrs::instance();
+  std::lock_guard<std::mutex> lg(ptrs.mutex);
+  return std::accumulate(
+      ptrs.map.begin(),
+      ptrs.map.end(),
+      size_t(0),
+      [](size_t accum, auto const& item) { return accum + item.second; });
 }
 
 } // namespace detail
