@@ -46,6 +46,7 @@
 #include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
+#include <folly/memory/SanitizeLeak.h>
 #include <folly/portability/Malloc.h>
 
 #if (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64 || FOLLY_RISCV64)
@@ -1262,6 +1263,7 @@ class small_vector
       }
       rollback.dismiss();
     }
+    annotate_object_leaked(newh);
     std::destroy(begin(), end());
     freeHeap();
     // Store shifted pointer if capacity is heapified
@@ -1385,9 +1387,12 @@ class small_vector
     if (hasCapacity()) {
       auto extraBytes = u.pdata_.allocationExtraBytes();
       auto vp = detail::unshiftPointer(u.pdata_.heap_, extraBytes);
+      annotate_object_collected(vp);
       sizedFree(vp, u.getCapacity() * sizeof(value_type) + extraBytes);
     } else {
-      free(u.pdata_.heap_);
+      auto vp = u.pdata_.heap_;
+      annotate_object_collected(vp);
+      free(vp);
     }
   }
 

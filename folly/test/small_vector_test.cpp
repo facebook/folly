@@ -365,6 +365,43 @@ TEST(smallVector, leakTest) {
   }
 }
 
+TEST(smallVector, leakTestWithTracking) {
+  constexpr size_t size = 97;
+  constexpr auto count = folly::annotate_object_count_leaked_uncollected;
+  auto const base = count();
+  small_vector<int> vec;
+  vec.resize(size);
+  EXPECT_EQ(size, vec.size());
+  EXPECT_EQ(base + size_t(folly::kIsSanitizeAddress), count());
+  vec.resize(0);
+  EXPECT_EQ(0, vec.size());
+  EXPECT_EQ(base + size_t(folly::kIsSanitizeAddress), count());
+  vec.shrink_to_fit();
+  EXPECT_LT(vec.capacity(), size);
+  EXPECT_EQ(base, count());
+}
+
+TEST(smallVector, leakTestWithLeakedObject) {
+  {
+    // this case does not actually need leak-tracking
+    using vec_t = folly::small_vector<int, 1>;
+    constexpr size_t size = 97;
+    static auto& vec = *new vec_t();
+    vec.resize(size);
+    EXPECT_EQ(size, vec.size());
+  }
+
+  {
+    // this case does need leak-tracking
+    using policy_t = folly::small_vector_policy::policy_size_type<uint32_t>;
+    using vec_t = folly::small_vector<int, 1, policy_t>;
+    constexpr size_t size = 97;
+    static auto& vec = *new vec_t();
+    vec.resize(size);
+    EXPECT_EQ(size, vec.size());
+  }
+}
+
 TEST(smallVector, InsertTrivial) {
   folly::small_vector<int> someVec(3, 3);
   someVec.insert(someVec.begin(), 12, 12);
