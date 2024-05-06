@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/JemallocNodumpAllocator.h>
+#include <folly/memory/JemallocNodumpAllocator.h>
 
 #include <folly/io/IOBuf.h>
 #include <folly/memory/Malloc.h>

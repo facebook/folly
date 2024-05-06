@@ -70,7 +70,7 @@ cpp_library(
     headers = ["CompressionContextPoolSingletons.h"],
     deps = [
         "//folly:portability",
-        "//folly/experimental:jemalloc_huge_page_allocator",
+        "//folly/memory:jemalloc_huge_page_allocator",
         "//folly/memory:malloc",
     ],
     exported_deps = [
