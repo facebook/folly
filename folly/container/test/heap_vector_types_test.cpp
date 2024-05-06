@@ -71,6 +71,11 @@ struct CountingAllocator : std::allocator<T> {
     return std::allocator<T>::allocate(n);
   }
   int nAllocations{0};
+
+  template <typename U>
+  struct rebind {
+    using other = CountingAllocator<U>;
+  };
 };
 
 struct CountCopyCtor {
