@@ -1,0 +1,142 @@
+name: Buck build and test
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  get-toolchains-to-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+      - uses: facebook/install-dotslash@latest
+      - name: get_buck_graph
+        run: |
+          BUCK_GRAPH=$(./buck2 cquery ... --output-attribute '^buck.type$|^name$')
+          echo "$BUCK_GRAPH" > buck_graph_results.json
+        shell: bash
+      - name: Check if rust_binary
+        id: check_rust
+        run: |
+          OUTPUT=$(cat buck_graph_results.json)
+          if [[ "$OUTPUT" == *"rust_binary"* ]]; then
+            echo "uses_rust=true" >> $GITHUB_ENV
+          fi
+        shell: bash
+      - name: Check if cxx_binary
+        id: check_cxx
+        run: |
+          OUTPUT=$(cat buck_graph_results.json)
+          if [[ "$OUTPUT" == *"cxx_binary"* ]]; then
+            echo "uses_cxx=true" >> $GITHUB_ENV
+          fi
+        shell: bash
+      - name: Check if ocaml_binary
+        id: check_ocaml
+        run: |
+          OUTPUT=$(cat buck_graph_results.json)
+          if [[ "$OUTPUT" == *"ocaml_binary"* ]]; then
+            echo "uses_ocaml=true" >> $GITHUB_ENV
+          fi
+        shell: bash
+      - name: Check if python_binary
+        id: check_python
+        run: |
+          OUTPUT=$(cat buck_graph_results.json)
+          if [[ "$OUTPUT" == *"python_binary"* ]]; then
+            echo "uses_python=true" >> $GITHUB_ENV
+          fi
+        shell: bash
+    outputs:
+      uses_rust: ${{ env.uses_rust }}
+      uses_cxx: ${{ env.uses_cxx }}
+      uses_ocaml: ${{env.uses_ocaml}}
+      uses_python: ${{env.uses_python}}
+
+  ubuntu-os-buck-build-and-test:
+      needs: get-toolchains-to-install
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: 'true'
+        - run: sudo apt-get update
+          shell: bash
+        - uses: facebook/install-dotslash@latest
+        - name: Install Rust toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
+          uses: dtolnay/rust-toolchain@stable
+        - name: Install C++ toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_cxx == 'true'
+          run: |
+            sudo apt-get install cmake llvm cppcheck python3-pip
+            sudo pip3 install conan==1.*
+          shell: bash
+        - name: Install OCaml toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
+          uses: ocaml/setup-ocaml@v2
+          with:
+            ocaml-compiler: "5.1"
+        - name: Install Python toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_python == 'true'
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.10'
+        - name: buck2 build and test
+          run: bash ./.github/scripts/buck_build_and_test.sh
+  windows-os-buck-build-and-test:
+      needs: get-toolchains-to-install
+      runs-on: windows-latest
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: 'true'
+        - uses: facebook/install-dotslash@latest
+        - name: Install Rust toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
+          uses: dtolnay/rust-toolchain@stable
+        - name: Install C++ toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_cxx == 'true'
+          run: |
+            choco install llvm cmake conan cppcheck -y
+            if ($LASTEXITCODE -eq 3010) { $LASTEXITCODE = 0 }
+          shell: pwsh
+        - name: Install OCaml toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
+          uses: ocaml/setup-ocaml@v2
+          with:
+            ocaml-compiler: "4.12.0"
+        - name: Install Python toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_python == 'true'
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.10'
+        - name: buck2 build and test
+          run: bash ./.github/scripts/buck_build_and_test.sh
+  mac-os-buck-build-and-test:
+      needs: get-toolchains-to-install
+      runs-on: macos-latest
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: 'true'
+        - uses: facebook/install-dotslash@latest
+        - name: Install Rust toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
+          uses: dtolnay/rust-toolchain@stable
+        - name: Install C++ toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_cxx == 'true'
+          run: |
+            brew install cmake llvm cppcheck python3
+            sudo pip3 install conan==1.*
+          shell: bash
+        - name: Install OCaml toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
+          uses: ocaml/setup-ocaml@v2
+          with:
+            ocaml-compiler: "5.1"
+        - name: Install Python toolchain
+          if: needs.get-toolchains-to-install.outputs.uses_python == 'true'
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.10'
+        - name: buck2 build and test
+          run: bash ./.github/scripts/buck_build_and_test.sh
