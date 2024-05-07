@@ -78,7 +78,6 @@ class IOBufTests(unittest.TestCase):
     def test_empty(self) -> None:
         x = b""
         xb = IOBuf(x)
-        # pyre-fixme[6]: For 1st argument expected `Buffer` but got `IOBuf`.
         self.assertEqual(memoryview(xb), x)
         self.assertEqual(bytes(xb), x)
         self.assertFalse(xb)
