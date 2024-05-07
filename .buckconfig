@@ -1,0 +1,17 @@
+[cells]
+root = .
+prelude = prelude
+toolchains = shim
+shim = shim
+none = none
+
+[cell_aliases]
+config = prelude
+ovr_config = prelude
+fbcode = none
+fbsource = none
+fbcode_macros = shim
+buck = none
+
+[parser]
+target_platform_detector_spec = target:root//...->prelude//platforms:default
