@@ -707,7 +707,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       #TEST ref_count_test SOURCES RefCountTest.cpp
       TEST select64_test SOURCES Select64Test.cpp
       TEST test_util_test SOURCES TestUtilTest.cpp
-      TEST tuple_ops_test SOURCES TupleOpsTest.cpp
 
     DIRECTORY experimental/io/test/
       TEST fs_util_test SOURCES FsUtilTest.cpp
