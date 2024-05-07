@@ -77,6 +77,10 @@ uint32_t crc32_hw(
 }
 
 bool crc32c_hw_supported() {
+  return crc32_hw_supported_sse42();
+}
+
+bool crc32c_hw_supported_sse42() {
   static folly::CpuId id;
   return id.sse42();
 }
@@ -121,6 +125,10 @@ bool crc32c_hw_supported() {
   return true;
 }
 
+bool crc32c_hw_supported_sse42() {
+  return false;
+}
+
 bool crc32c_hw_supported_avx512() {
   return false;
 }
@@ -142,6 +150,11 @@ uint32_t crc32_hw(
 bool crc32c_hw_supported() {
   return false;
 }
+
+bool crc32c_hw_supported_sse42() {
+  return false;
+}
+
 
 bool crc32c_hw_supported_avx512() {
   return false;
