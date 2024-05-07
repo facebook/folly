@@ -233,21 +233,14 @@ fs::path find_resource(const std::string& resource) {
   if (pos == std::string::npos) {
     throw std::invalid_argument("invalid: " + resource);
   }
-  auto const dir = resource.substr(0, pos);
-  auto const tgt = resource.substr(pos + 1);
-  auto const exe = fs::executable_path();
   auto const ext = folly::ext::test_find_resource;
-  auto const fns = std::vector<fs::path>{
-      ext == nullptr ? fs::path() : fs::path(ext(resource)),
-      exe.parent_path().parent_path() / tgt / tgt,
-      exe.parent_path() / tgt,
-  };
-  for (auto const& fn : fns) {
-    if (fs::exists(fn)) {
-      return fn;
-    }
+  auto fn = ext //
+      ? fs::path(ext(resource)) // hooked, eg via internal extension
+      : fs::executable_path().parent_path() / resource; // current cmake build
+  if (!fs::exists(fn)) {
+    throw std::runtime_error("missing: " + resource);
   }
-  throw std::runtime_error("missing: " + resource);
+  return fn;
 }
 
 } // namespace test

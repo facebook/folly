@@ -26,7 +26,7 @@
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 #if !defined(FOLLY_CERTS_DIR)
-#define FOLLY_CERTS_DIR "folly/io/async/test"
+#define FOLLY_CERTS_DIR "folly/io/async/test/certs"
 #endif
 
 using namespace std;

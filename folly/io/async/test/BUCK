@@ -25,18 +25,15 @@ cpp_library(
     headers = [
         "TestSSLServer.h",
     ],
-    preprocessor_flags = [
-        "-DFOLLY_CERTS_DIR=\"folly/io/async/test\"",
-    ],
-    resources = [
-        ":ca-cert.pem",
-        ":client_ca_cert.pem",
-        ":client_cert.pem",
-        ":client_chain.pem",
-        ":client_key.pem",
-        ":tests-cert.pem",
-        ":tests-key.pem",
-    ],
+    resources = {
+        "certs/ca-cert.pem": ":ca-cert.pem",
+        "certs/client_ca_cert.pem": ":client_ca_cert.pem",
+        "certs/client_cert.pem": ":client_cert.pem",
+        "certs/client_chain.pem": ":client_chain.pem",
+        "certs/client_key.pem": ":client_key.pem",
+        "certs/tests-cert.pem": ":tests-cert.pem",
+        "certs/tests-key.pem": ":tests-key.pem",
+    },
     deps = [
         "//folly/portability:openssl",
     ],
@@ -132,14 +129,14 @@ cpp_unittest(
     ],
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
     extract_helper_lib = False,
-    resources = [
-        ":ca-cert.pem",
-        ":client_ca_cert.pem",
-        ":client_cert.pem",
-        ":client_key.pem",
-        ":tests-cert.pem",
-        ":tests-key.pem",
-    ],
+    resources = {
+        "certs/ca-cert.pem": ":ca-cert.pem",
+        "certs/client_ca_cert.pem": ":client_ca_cert.pem",
+        "certs/client_cert.pem": ":client_cert.pem",
+        "certs/client_key.pem": ":client_key.pem",
+        "certs/tests-cert.pem": ":tests-cert.pem",
+        "certs/tests-key.pem": ":tests-key.pem",
+    },
     supports_static_listing = False,
     deps = [
         ":blocking_socket",
@@ -719,14 +716,11 @@ cpp_unittest(
     srcs = ["SSLSessionTest.cpp"],
     headers = [],
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
-    preprocessor_flags = [
-        "-DFOLLY_TEST_USE_RESOURCES=1",
-    ],
-    resources = [
-        ":ca-cert.pem",
-        ":tests-cert.pem",
-        ":tests-key.pem",
-    ],
+    resources = {
+        "certs/ca-cert.pem": ":ca-cert.pem",
+        "certs/tests-cert.pem": ":tests-cert.pem",
+        "certs/tests-key.pem": ":tests-key.pem",
+    },
     deps = [
         ":async_ssl_socket_test_lib",
         "//folly/experimental:test_util",
@@ -758,13 +752,13 @@ cpp_unittest(
     srcs = ["SSLContextTest.cpp"],
     headers = [],
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
-    resources = [
-        ":client_chain.pem",
-        ":client_key.pem",
-        ":clienti_key.pem",
-        ":tests-cert.pem",
-        ":tests-key.pem",
-    ],
+    resources = {
+        "certs/client_chain.pem": ":client_chain.pem",
+        "certs/client_key.pem": ":client_key.pem",
+        "certs/clienti_key.pem": ":clienti_key.pem",
+        "certs/tests-cert.pem": ":tests-cert.pem",
+        "certs/tests-key.pem": ":tests-key.pem",
+    },
     deps = [
         ":ssl_util",
         "//folly:file_util",
