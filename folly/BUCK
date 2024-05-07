@@ -1530,7 +1530,7 @@ cpp_library(
         "VirtualExecutor.h",
     ],
     exported_deps = [
-        ":default_keep_alive_executor",
+        "//folly/executors:virtual_executor",
     ],
 )
 

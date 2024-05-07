@@ -424,3 +424,13 @@ cpp_library(
         "//folly/portability:sys_types",
     ],
 )
+
+cpp_library(
+    name = "virtual_executor",
+    headers = [
+        "VirtualExecutor.h",
+    ],
+    exported_deps = [
+        "//folly:default_keep_alive_executor",
+    ],
+)
