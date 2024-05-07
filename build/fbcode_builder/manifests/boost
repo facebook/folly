@@ -55,10 +55,6 @@ boost169-python3
 boost169-serialization
 boost169-program-options
 
-[rpms.not(all(distro=centos_stream,distro_vers=8))]
-boost-devel
-boost-static
-
 [build]
 builder = boost
 job_weight_mib = 512
