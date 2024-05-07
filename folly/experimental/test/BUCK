@@ -120,34 +120,6 @@ cpp_unittest(
     ],
 )
 
-cpp_binary(
-    name = "env_util_subprocess",
-    srcs = ["EnvUtilSubprocess.cpp"],
-)
-
-cpp_unittest(
-    name = "env_util_test",
-    srcs = ["EnvUtilTest.cpp"],
-    headers = [],
-    args = [
-        "--env_util_subprocess_binary=$(location :env_util_subprocess)",
-    ],
-    deps = [
-        "//folly:memory",
-        "//folly:subprocess",
-        "//folly/container:array",
-        "//folly/experimental:env_util",
-        "//folly/portability:fcntl",
-        "//folly/portability:gflags",
-        "//folly/portability:gtest",
-        "//folly/portability:stdlib",
-    ],
-    external_deps = [
-        "glog",
-        ("boost", None, "boost_algorithm"),
-    ],
-)
-
 cpp_unittest(
     name = "event_count_test",
     srcs = ["EventCountTest.cpp"],

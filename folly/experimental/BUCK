@@ -101,19 +101,11 @@ cpp_library(
 
 cpp_library(
     name = "env_util",
-    srcs = ["EnvUtil.cpp"],
-    headers = ["EnvUtil.h"],
-    deps = [
-        "//folly:string",
-        "//folly/portability:stdlib",
-        "//folly/portability:unistd",
+    headers = [
+        "EnvUtil.h",
     ],
     exported_deps = [
-        "//folly:c_portability",
-        "//folly:memory",
-    ],
-    external_deps = [
-        "glog",
+        "//folly/system:env_util",
     ],
 )
 
