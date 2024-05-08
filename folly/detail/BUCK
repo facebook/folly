@@ -246,6 +246,7 @@ cpp_library(
     exported_deps = [
         ":simd_for_each",
         "//folly:portability",
+        "//folly/algorithm/simd:movemask",
         "//folly/lang:bits",
     ],
 )

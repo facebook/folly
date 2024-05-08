@@ -598,6 +598,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
   apply_folly_compile_options_to_target(folly_test_support)
 
   folly_define_tests(
+    DIRECTORY algorithm/simd/test/
+      TEST find_fixed_test SOURCES FindFixedTest.cpp
+
     DIRECTORY chrono/test/
       TEST chrono_conv_test WINDOWS_DISABLED
         SOURCES ConvTest.cpp

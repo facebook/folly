@@ -1,0 +1,38 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "momemask_test",
+    srcs = ["MovemaskTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:portability",
+        "//folly/algorithm/simd:movemask",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "findfixed_test",
+    srcs = ["FindFixedTest.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:portability",
+        "//folly/algorithm/simd:findFixed",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_benchmark(
+    name = "findfixed_bench",
+    srcs = ["FindFixedBenchmark.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly/algorithm/simd:findFixed",
+        "//folly/init:init",
+    ],
+)

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Portability.h>
+#include <folly/algorithm/simd/Movemask.h>
 #include <folly/detail/SimdForEach.h>
 #include <folly/lang/Bits.h>
 
@@ -76,9 +77,16 @@ namespace simd_detail {
  *
  */
 
+#if FOLLY_X64 || FOLLY_AARCH64
+
 template <typename Platform>
 struct SimdCharPlatformCommon : Platform {
-  using mmask_t = typename Platform::mmask_t;
+  using logical_t = typename Platform::logical_t;
+  using movemask_result_t =
+      decltype(folly::movemask<std::uint8_t>(logical_t{}));
+  using mmask_t = typename movemask_result_t::first_type;
+  static constexpr std::uint32_t kMmaskBitsPerElement =
+      typename movemask_result_t::second_type{}();
 
   template <typename Uint>
   FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static Uint setLowerNBits(int n) {
@@ -91,9 +99,9 @@ struct SimdCharPlatformCommon : Platform {
   FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static mmask_t clear(
       mmask_t mmask, simd_detail::ignore_extrema ignore) {
     mmask_t clearFirst =
-        ~setLowerNBits<mmask_t>(ignore.first * Platform::kMmaskBitsPerElement);
+        ~setLowerNBits<mmask_t>(ignore.first * kMmaskBitsPerElement);
     mmask_t clearLast = setLowerNBits<mmask_t>(
-        (Platform::kCardinal - ignore.last) * Platform::kMmaskBitsPerElement);
+        (Platform::kCardinal - ignore.last) * kMmaskBitsPerElement);
     return mmask & clearFirst & clearLast;
   }
 
@@ -114,12 +122,17 @@ struct SimdCharPlatformCommon : Platform {
     return Platform::unsafeLoadu(ptr, simd_detail::ignore_none{});
   }
 
+  FOLLY_ALWAYS_INLINE
+  static mmask_t movemask(logical_t log) {
+    return folly::movemask<std::uint8_t>(log).first;
+  }
+
   using Platform::any;
 
   FOLLY_ALWAYS_INLINE
   static bool any(
       typename Platform::logical_t log, simd_detail::ignore_extrema ignore) {
-    auto mmask = Platform::movemask(log);
+    auto mmask = movemask(log);
     mmask = clear(mmask, ignore);
     return mmask;
   }
@@ -131,15 +144,15 @@ struct SimdCharPlatformCommon : Platform {
   }
 };
 
+#endif
+
 #if FOLLY_X64
 
 struct SimdCharSse2PlatformSpecific {
   using reg_t = __m128i;
   using logical_t = reg_t;
-  using mmask_t = std::uint16_t;
 
   static constexpr int kCardinal = 16;
-  static constexpr int kMmaskBitsPerElement = 1;
 
   // Even for aligned loads intel people don't recommend using
   // aligned load instruction
@@ -173,11 +186,8 @@ struct SimdCharSse2PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
-  static mmask_t movemask(logical_t log) { return _mm_movemask_epi8(log); }
-
-  FOLLY_ALWAYS_INLINE
   static bool any(logical_t log, simd_detail::ignore_none) {
-    return movemask(log);
+    return folly::movemask<std::uint8_t>(log).first;
   }
 };
 
@@ -191,10 +201,8 @@ using SimdCharSse2Platform =
 struct SimdCharAvx2PlatformSpecific {
   using reg_t = __m256i;
   using logical_t = reg_t;
-  using mmask_t = std::uint32_t;
 
   static constexpr int kCardinal = 32;
-  static constexpr int kMmaskBitsPerElement = 1;
 
   // We can actually use aligned loads but our Intel people don't recommend
   FOLLY_ALWAYS_INLINE
@@ -226,11 +234,8 @@ struct SimdCharAvx2PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
-  static mmask_t movemask(logical_t log) { return _mm256_movemask_epi8(log); }
-
-  FOLLY_ALWAYS_INLINE
   static bool any(logical_t log, simd_detail::ignore_none) {
-    return movemask(log);
+    return folly::movemask<std::uint8_t>(log).first;
   }
 };
 
@@ -248,10 +253,8 @@ using SimdCharPlatform = SimdCharSse2Platform;
 struct SimdCharAarch64PlatformSpecific {
   using reg_t = uint8x16_t;
   using logical_t = reg_t;
-  using mmask_t = std::uint64_t;
 
   static constexpr int kCardinal = 16;
-  static constexpr int kMmaskBitsPerElement = 4;
 
   FOLLY_ALWAYS_INLINE
   static reg_t loadu(const char* p, simd_detail::ignore_none) {
@@ -277,20 +280,6 @@ struct SimdCharAarch64PlatformSpecific {
   FOLLY_ALWAYS_INLINE
   static logical_t logical_or(logical_t x, logical_t y) {
     return vorrq_u8(x, y);
-  }
-
-  FOLLY_ALWAYS_INLINE
-  static mmask_t movemask(logical_t log) {
-    // note: we tried doing any before movemask and it didn't help
-    // if you need movemask - do movemask.
-    //
-    // based on:
-    // https://github.com/jfalcou/eve/blob/5264e20c51aeca17675e67abf236ce1ead781c52/include/eve/detail/function/simd/arm/neon/movemask.hpp#L119
-    // pack 4 bits into uint64
-    uint16x8_t u16s = vreinterpretq_u16_u8(log);
-    u16s = vshrq_n_u16(u16s, 4);
-    uint8x8_t packed = vmovn_u16(u16s);
-    return vget_lane_u64(vreinterpret_u64_u8(packed), 0);
   }
 
   FOLLY_ALWAYS_INLINE

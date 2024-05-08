@@ -524,6 +524,11 @@ cpp_library(
 )
 
 cpp_library(
+    name = "findFixed",
+    headers = ["FindFixed.h"],
+)
+
+cpp_library(
     name = "fingerprint",
     srcs = ["Fingerprint.cpp"],
     headers = ["Fingerprint.h"],
