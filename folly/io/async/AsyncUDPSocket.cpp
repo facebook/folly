@@ -1070,13 +1070,6 @@ void AsyncUDPSocket::pauseRead() {
 void AsyncUDPSocket::close() {
   eventBase_->dcheckIsInEventBaseThread();
 
-  if (readCallback_) {
-    auto cob = readCallback_;
-    readCallback_ = nullptr;
-
-    cob->onReadClosed();
-  }
-
   // Unregister any events we are registered for
   unregisterHandler();
 
@@ -1085,6 +1078,12 @@ void AsyncUDPSocket::close() {
   }
 
   fd_ = NetworkSocket();
+
+  if (readCallback_) {
+    auto cob = readCallback_;
+    readCallback_ = nullptr;
+    cob->onReadClosed();
+  }
 }
 
 void AsyncUDPSocket::handlerReady(uint16_t events) noexcept {
@@ -1238,9 +1237,8 @@ void AsyncUDPSocket::handleRead() noexcept {
 
       auto cob = readCallback_;
       readCallback_ = nullptr;
-
-      cob->onReadError(ex);
       updateRegistration();
+      cob->onReadError(ex);
       return;
     }
 
@@ -1347,10 +1345,8 @@ void AsyncUDPSocket::handleRead() noexcept {
       // so that he can do some logging/stats collection if he wants.
       auto cob = readCallback_;
       readCallback_ = nullptr;
-
-      cob->onReadError(ex);
       updateRegistration();
-
+      cob->onReadError(ex);
       return;
     }
   }
