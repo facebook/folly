@@ -18,6 +18,7 @@
 #include <dlfcn.h>
 #endif
 
+#include <latch>
 #include <thread>
 #include <unordered_set>
 #include <vector>
@@ -59,15 +60,16 @@ TEST(SingletonThreadLocalTest, TryGet) {
 
 TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   static constexpr std::size_t targetThreadCount{64};
-  std::atomic<std::size_t> completedThreadCount{0};
+  std::latch allSingletonsCreated(targetThreadCount);
   Synchronized<std::unordered_set<Foo*>> fooAddresses{};
   std::vector<std::thread> threads{};
-  auto threadFunction = [&fooAddresses, &completedThreadCount] {
+  auto threadFunction = [&fooAddresses, &allSingletonsCreated] {
     fooAddresses.wlock()->emplace(&FooSingletonTL::get());
-    ++completedThreadCount;
-    while (completedThreadCount < targetThreadCount) {
-      std::this_thread::yield();
-    }
+    // Prevent SingletonThreadLocal's internal cache from re-using
+    // objects across threads by
+    // keeping each thread alive until all the threads have a
+    // SingletonThreadLocal.
+    allSingletonsCreated.arrive_and_wait();
   };
   {
     for (std::size_t threadCount{0}; threadCount < targetThreadCount;
