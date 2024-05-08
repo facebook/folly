@@ -51,6 +51,7 @@ cpp_library(
 )
 
 cpp_library(
+    # @autodeps-skip
     name = "liburing",
     headers = ["Liburing.h"],
     os_deps = [(

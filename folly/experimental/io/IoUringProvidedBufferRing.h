@@ -22,7 +22,7 @@
 
 #if FOLLY_HAS_LIBURING
 
-#include <liburing.h>
+#include <liburing.h> // @manual
 
 namespace folly {
 
