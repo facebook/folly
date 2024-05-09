@@ -28,6 +28,7 @@
 #include <utility>
 
 #include <folly/CPortability.h>
+#include <folly/CppAttributes.h>
 #include <folly/Likely.h>
 #include <folly/chrono/Hardware.h>
 #include <folly/concurrency/CacheLocality.h>
@@ -1204,6 +1205,7 @@ class SharedMutexImpl : std::conditional_t<
     }
   }
 
+  [[FOLLY_ATTR_GNU_USED]]
   void wakeRegisteredWaitersImpl(uint32_t& state, uint32_t wakeMask) {
     // If there are multiple lock() pending only one of them will actually
     // get to wake up, so issuing futexWakeAll will make a thundering herd.

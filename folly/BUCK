@@ -1153,6 +1153,7 @@ cpp_library(
     ],
     exported_deps = [
         ":c_portability",
+        ":cpp_attributes",
         ":likely",
         "//folly/chrono:hardware",
         "//folly/concurrency:cache_locality",
