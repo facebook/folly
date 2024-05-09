@@ -1532,6 +1532,17 @@ bool AsyncUDPSocket::setTxZeroChksum6([[maybe_unused]] bool bVal) {
 }
 
 void AsyncUDPSocket::setTosOrTrafficClass(uint8_t tosOrTclass) {
+#ifdef _WIN32
+  // For windows, we can only set the values 0 and 1 (for the ECN bits).
+  // Any DSCP values have to be set via the QoS Policy
+  auto level = address().getFamily() == AF_INET6 ? IPPROTO_IPV6 : IPPROTO_IP;
+  if (tosOrTclass == 0) {
+    // Remove ECN cmsgs if any exist
+    defaultCmsgs_.erase({level, IP_ECN});
+  } else {
+    defaultCmsgs_[{level, IP_ECN}] = tosOrTclass;
+  }
+#else
   int valInt = tosOrTclass;
   if (address().getFamily() == AF_INET6) {
     if (netops::setsockopt(
@@ -1550,11 +1561,6 @@ void AsyncUDPSocket::setTosOrTrafficClass(uint8_t tosOrTclass) {
           AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
     }
   }
-
-#ifdef _WIN32
-  folly::SocketCmsgMap cmsgs;
-  cmsgs[{IPPROTO_IP, IP_ECN}] = tosOrTclass;
-  appendCmsgs(cmsgs);
 #endif
 }
 
