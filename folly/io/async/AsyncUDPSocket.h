@@ -367,6 +367,13 @@ class AsyncUDPSocket : public EventHandler {
   virtual void setRecvTos(bool recvTos) { recvTos_ = recvTos; }
 
   /**
+   * Get IPV6_RECVTCLASS/IP_RECVTOS status of the socket. If true, the IPv6
+   * Traffic Class/IPv4 Type of Service field should be populated in
+   * OnDataAvailableParams.
+   */
+  virtual bool getRecvTos() { return recvTos_; }
+
+  /**
    * Set reuse port mode to call bind() on the same address multiple times
    */
   virtual void setReusePort(bool reusePort) { reusePort_ = reusePort; }

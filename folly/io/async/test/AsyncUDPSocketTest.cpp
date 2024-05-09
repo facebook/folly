@@ -197,6 +197,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     server_ = server;
     socket_ = std::make_unique<AsyncUDPSocket>(evb_);
     socket_->setRecvTos(recvTos_);
+    ASSERT_EQ(socket_->getRecvTos(), recvTos_);
 
     try {
       if (bindSocket_ == BindSocket::YES) {
