@@ -145,3 +145,9 @@
 #else
 #define FOLLY_ATTR_CLANG_PRESERVE_ALL
 #endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(gnu::used)
+#define FOLLY_ATTR_GNU_USED gnu::used
+#else
+#define FOLLY_ATTR_GNU_USED
+#endif
