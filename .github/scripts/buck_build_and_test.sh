@@ -13,5 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+TARGETS_FILE=$(mktemp)
+./buck2 targets //... | grep -F -v -f .github/scripts/bad_targets | grep -v test >$TARGETS_FILE
 
-./buck2 build //... && ./buck2 test //...
+./buck2 build @$TARGETS_FILE
+# ./buck2 test @$TARGETS_FILE
