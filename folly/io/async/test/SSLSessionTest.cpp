@@ -61,11 +61,11 @@ class SSLSessionTest : public testing::Test {
       std::shared_ptr<folly::SSLContext> clientCtx,
       std::shared_ptr<folly::SSLContext> serverCtx) {
     clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-    clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+    clientCtx->loadTrustedCertificates(find_resource(kTestCA).string().c_str());
 
     serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-    serverCtx->loadCertificate(find_resource(kTestCert).c_str());
-    serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+    serverCtx->loadCertificate(find_resource(kTestCert).string().c_str());
+    serverCtx->loadPrivateKey(find_resource(kTestKey).string().c_str());
   }
 
   folly::EventBase eventBase_;
