@@ -255,22 +255,25 @@ void StaticMetaBase::destroy(EntryID* ent) {
         }
         for (auto& e : threadEntrySet->threadEntries) {
           auto elementsCapacity = e->getElementsCapacity();
-          if (id < elementsCapacity && e->elements[id].ptr) {
-            elements.push_back(e->elements[id]);
-            /*
-             * Writing another thread's ThreadEntry from here is fine;
-             * the only other potential reader is the owning thread --
-             * from onThreadExit (which grabs the lock, so is properly
-             * synchronized with us) or from get(), which also grabs
-             * the lock if it needs to resize the elements vector.
-             *
-             * We can't conflict with reads for a get(id), because
-             * it's illegal to call get on a thread local that's
-             * destructing.
-             */
-            e->elements[id].ptr = nullptr;
-            e->elements[id].deleter1 = nullptr;
-            e->elements[id].ownsDeleter = false;
+          if (id < elementsCapacity) {
+            if (e->elements[id].ptr) {
+              elements.push_back(e->elements[id]);
+              /*
+               * Writing another thread's ThreadEntry from here is fine;
+               * the only other potential reader is the owning thread --
+               * from onThreadExit (which grabs the lock, so is properly
+               * synchronized with us) or from get(), which also grabs
+               * the lock if it needs to resize the elements vector.
+               *
+               * We can't conflict with reads for a get(id), because
+               * it's illegal to call get on a thread local that's
+               * destructing.
+               */
+              e->elements[id].ptr = nullptr;
+              e->elements[id].deleter1 = nullptr;
+              e->elements[id].ownsDeleter = false;
+            }
+            e->elements[id].isLinked = false;
           }
         }
         meta.clearSetforIdInMapLocked(id);
@@ -392,6 +395,9 @@ void StaticMetaBase::reserve(EntryID* id) {
 
     threadEntry->setElementsCapacity(newCapacity);
   }
+  for (size_t i = prevCapacity; i < newCapacity; ++i) {
+    threadEntry->elements[i].isLinked = false;
+  }
 
   meta.totalElementWrappers_ += (newCapacity - prevCapacity);
   free(reallocated);
@@ -402,7 +408,6 @@ void StaticMetaBase::reserve(EntryID* id) {
  * ThreadEntry* set and release the element @id.
  */
 void* ThreadEntry::releaseElement(uint32_t id) {
-  meta->removeThreadEntryFromIdInMapLocked(this, id);
   return elements[id].release();
 }
 

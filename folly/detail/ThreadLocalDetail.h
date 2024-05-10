@@ -131,6 +131,7 @@ struct ElementWrapper {
     std::function<DeleterFunType>* deleter2;
   };
   bool ownsDeleter;
+  bool isLinked{false};
 };
 
 struct StaticMetaBase;
@@ -395,12 +396,24 @@ struct StaticMetaBase {
   }
 
   /*
+   * Return true if given ThreadEntry is already present in the ThreadEntrySet
+   * for the given id.
+   */
+  FOLLY_ALWAYS_INLINE bool isThreadEntryInSet(ThreadEntry* te, uint32_t id) {
+    std::lock_guard<std::mutex> g(lock_);
+    return allThreadEntryMap_[id].contains(te);
+  }
+
+  /*
    * Add a ThreadEntry* to the map of allThreadEntryMap_
    * for a given slot @id in ThreadEntry::elements that is
    * used. This the locked version.
    */
   FOLLY_ALWAYS_INLINE void addThreadEntryToMap(ThreadEntry* te, uint32_t id) {
-    {
+    if (te->elements[id].isLinked) {
+      DCHECK(isThreadEntryInSet(te, id));
+    } else {
+      te->elements[id].isLinked = true;
       std::lock_guard<std::mutex> g(lock_);
       addThreadEntryToMapLocked(te, id);
     }
