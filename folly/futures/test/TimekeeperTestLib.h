@@ -24,10 +24,10 @@
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Random.h>
 #include <folly/Singleton.h>
-#include <folly/VirtualExecutor.h>
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/SerialExecutor.h>
+#include <folly/executors/VirtualExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 
