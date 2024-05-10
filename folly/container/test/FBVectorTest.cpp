@@ -36,10 +36,10 @@ using IntFBVector = fbvector<int>;
 using FBStringFBVector = fbvector<fbstring>;
 
 #define VECTOR IntFBVector
-#include <folly/test/FBVectorTests.cpp.h> // nolint
+#include <folly/container/test/FBVectorTests.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR FBStringFBVector
-#include <folly/test/FBVectorTests.cpp.h> // nolint
+#include <folly/container/test/FBVectorTests.cpp.h> // nolint
 #undef VECTOR
 
 TEST(fbvector, clause233613Ambiguity) {

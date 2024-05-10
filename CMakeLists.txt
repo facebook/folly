@@ -619,10 +619,18 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST f14_fwd_test SOURCES F14FwdTest.cpp
       TEST f14_map_test SOURCES F14MapTest.cpp
       TEST f14_set_test WINDOWS_DISABLED SOURCES F14SetTest.cpp
-      TEST heap_vector_types_test SOURCES heap_vector_types_test.cpp
+      BENCHMARK fbvector_benchmark
+        SOURCES FBVectorBenchmark.cpp
+        HEADERS FBVectorBenchmarks.cpp.h
+      TEST fbvector_test SOURCES FBVectorTest.cpp
       BENCHMARK foreach_benchmark SOURCES ForeachBenchmark.cpp
       TEST foreach_test SOURCES ForeachTest.cpp
+      TEST heap_vector_types_test SOURCES heap_vector_types_test.cpp
+      TEST map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
       TEST merge_test SOURCES MergeTest.cpp
+      TEST small_vector_test WINDOWS_DISABLED
+        SOURCES small_vector_test.cpp
+      TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
       BENCHMARK sparse_byte_set_benchmark WINDOWS_DISABLED
         SOURCES SparseByteSetBenchmark.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
@@ -1003,10 +1011,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES FBStringBenchmark.cpp
         HEADERS FBStringTestBenchmarks.cpp.h
       TEST fbstring_test WINDOWS_DISABLED SOURCES FBStringTest.cpp
-      BENCHMARK fbvector_benchmark
-        SOURCES FBVectorBenchmark.cpp
-        HEADERS FBVectorBenchmarks.cpp.h
-      TEST fbvector_test SOURCES FBVectorTest.cpp
       TEST file_test SOURCES FileTest.cpp
       # Open-source linux build can't handle running this.
       #TEST file_lock_test SOURCES FileLockTest.cpp
@@ -1032,7 +1036,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lazy_test SOURCES LazyTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
-      TEST map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
       TEST memcpy_test SOURCES MemcpyTest.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
       TEST memory_test WINDOWS_DISABLED
@@ -1067,9 +1070,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       # SingletonTest requires Subprocess
       #TEST singleton_test SOURCES SingletonTest.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
-      TEST small_vector_test WINDOWS_DISABLED
-        SOURCES small_vector_test.cpp
-      TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
       BENCHMARK string_benchmark WINDOWS_DISABLED SOURCES StringBenchmark.cpp
       TEST string_test WINDOWS_DISABLED SOURCES StringTest.cpp
       BENCHMARK synchronized_benchmark WINDOWS_DISABLED

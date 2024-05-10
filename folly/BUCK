@@ -461,16 +461,11 @@ cpp_library(
 
 cpp_library(
     name = "fbvector",
-    headers = ["FBVector.h"],
+    headers = [
+        "FBVector.h",
+    ],
     exported_deps = [
-        ":format_traits",
-        ":likely",
-        ":scope_guard",
-        ":traits",
-        "//folly/lang:checked_math",
-        "//folly/lang:exception",
-        "//folly/lang:hint",
-        "//folly/memory:malloc",
+        "//folly/container:fbvector",
     ],
 )
 
@@ -657,9 +652,11 @@ cpp_library(
 
 cpp_library(
     name = "intrusive_list",
-    headers = ["IntrusiveList.h"],
-    exported_external_deps = [
-        "boost",
+    headers = [
+        "IntrusiveList.h",
+    ],
+    exported_deps = [
+        "//folly/container:intrusive_list",
     ],
 )
 
@@ -720,12 +717,11 @@ cpp_library(
 
 cpp_library(
     name = "map_util",
-    headers = ["MapUtil.h"],
+    headers = [
+        "MapUtil.h",
+    ],
     exported_deps = [
-        ":conv",
-        ":optional",
-        ":range",
-        "//folly/functional:invoke",
+        "//folly/container:map_util",
     ],
 )
 
@@ -1225,26 +1221,11 @@ cpp_library(
 
 cpp_library(
     name = "small_vector",
-    headers = ["small_vector.h"],
-    exported_deps = [
-        ":constexpr_math",
-        ":format_traits",
-        ":likely",
-        ":portability",
-        ":scope_guard",
-        ":traits",
-        "//folly/functional:invoke",
-        "//folly/hash:hash",
-        "//folly/lang:align",
-        "//folly/lang:assume",
-        "//folly/lang:checked_math",
-        "//folly/lang:exception",
-        "//folly/memory:malloc",
-        "//folly/memory:sanitize_leak",
-        "//folly/portability:malloc",
+    headers = [
+        "small_vector.h",
     ],
-    exported_external_deps = [
-        "boost",
+    exported_deps = [
+        "//folly/container:small_vector",
     ],
 )
 
@@ -1254,12 +1235,7 @@ cpp_library(
         "sorted_vector_types.h",
     ],
     exported_deps = [
-        ":scope_guard",
-        ":traits",
-        ":utility",
-        "//folly/lang:access",
-        "//folly/lang:exception",
-        "//folly/memory:memory_resource",
+        "//folly/container:sorted_vector_types",
     ],
 )
 

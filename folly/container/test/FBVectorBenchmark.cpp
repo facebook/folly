@@ -47,50 +47,50 @@ using FBStringVector = vector<folly::fbstring>;
 using FBStringFBVector = fbvector<folly::fbstring>;
 
 #define VECTOR IntVector
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR IntFBVector
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR IntSmallVector
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR IntList
 #define SKIP_RESERVE
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef SKIP_RESERVE
 #undef VECTOR
 #define VECTOR IntDeque
 #define SKIP_RESERVE
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef SKIP_RESERVE
 #undef VECTOR
 
 #define VECTOR StringVector
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR StringFBVector
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR StringSmallVector
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR StringList
 #define SKIP_RESERVE
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef SKIP_RESERVE
 #undef VECTOR
 #define VECTOR StringDeque
 #define SKIP_RESERVE
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef SKIP_RESERVE
 #undef VECTOR
 
 #define VECTOR FBStringVector
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR FBStringFBVector
-#include <folly/test/FBVectorBenchmarks.cpp.h> // nolint
+#include <folly/container/test/FBVectorBenchmarks.cpp.h> // nolint
 #undef VECTOR
 
 int main(int argc, char** argv) {
@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
 // clang-format off
 /*
 ============================================================================
-buck-out/opt/gen/folly/test/fbvector_benchmark#gcc-5-glibc-2.23,private-headers/folly/test/FBVectorBenchmarks.cpp.hrelative  time/iter  iters/s
+buck-out/opt/gen/folly/test/fbvector_benchmark#gcc-5-glibc-2.23,private-headers/folly/container/test/FBVectorBenchmarks.cpp.hrelative  time/iter  iters/s
 ============================================================================
 BM_zzInitRNG_IntVector                                       1.05us  951.24K
 BM_defaultCtor_IntVector                                     1.31ns  765.93M
