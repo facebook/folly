@@ -8,10 +8,11 @@ none = none
 [cell_aliases]
 config = prelude
 ovr_config = prelude
-fbcode = none
-fbsource = none
+fbcode = shim
+fbsource = shim
 fbcode_macros = shim
 buck = none
+bazel_skylib = shim
 
 [parser]
 target_platform_detector_spec = target:root//...->prelude//platforms:default

@@ -52,7 +52,7 @@ cpp_library(
     ],
     headers = [
         "executor.h",
-        ":executor__executor_api.h",
+        # @fb-only: ":executor__executor_api.h", 
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
@@ -124,7 +124,7 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
-        ":executor__cython-lib",
+        # @fb-only: ":executor__cython-lib", 
         "//folly:executor",
         "//folly/futures:core",
     ],
@@ -155,7 +155,7 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
-        ":executor__cython-lib",
+        # @fb-only: ":executor__cython-lib", 
         "//folly:cancellation_token",
         "//folly:executor",
         "//folly/experimental/coro:task",
@@ -182,7 +182,7 @@ cpp_library(
     srcs = ["fibers.cpp"],
     headers = [
         "fibers.h",
-        ":fibers__fiber_manager_api.h",
+        # @fb-only: ":fibers__fiber_manager_api.h", 
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
@@ -246,7 +246,7 @@ cpp_library(
     srcs = ["iobuf.cpp"],
     headers = [
         "iobuf.h",
-        ":iobuf__iobuf_api.h",
+        # @fb-only: ":iobuf__iobuf_api.h", 
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
