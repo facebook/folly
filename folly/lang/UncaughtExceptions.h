@@ -36,7 +36,7 @@ unsigned int* uncaught_exceptions_ptr() noexcept;
 //  An accelerated version of std::uncaught_exceptions.
 //
 //  mimic: std::uncaught_exceptions, c++17
-[[FOLLY_ATTR_PURE]] FOLLY_EXPORT FOLLY_ALWAYS_INLINE int
+[[FOLLY_ATTR_GNU_PURE]] FOLLY_EXPORT FOLLY_ALWAYS_INLINE int
 uncaught_exceptions() noexcept {
 #if defined(__APPLE__)
   return std::uncaught_exceptions();

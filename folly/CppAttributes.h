@@ -129,9 +129,9 @@
 #endif
 
 #if FOLLY_HAS_CPP_ATTRIBUTE(gnu::pure)
-#define FOLLY_ATTR_PURE gnu::pure
+#define FOLLY_ATTR_GNU_PURE gnu::pure
 #else
-#define FOLLY_ATTR_PURE
+#define FOLLY_ATTR_GNU_PURE
 #endif
 
 #if FOLLY_HAS_CPP_ATTRIBUTE(clang::preserve_most)

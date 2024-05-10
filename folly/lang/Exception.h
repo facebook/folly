@@ -364,7 +364,7 @@ void* exception_ptr_get_object_(
 //  objects fails. This is likely to do with mismatch between the application
 //  ABI and the system-provided libstdc++/libc++/cxxabi ABI. May falsely return
 //  true on other platforms.
-[[FOLLY_ATTR_PURE]] inline bool exception_ptr_access() noexcept {
+[[FOLLY_ATTR_GNU_PURE]] inline bool exception_ptr_access() noexcept {
   return detail::exception_ptr_access_ct || detail::exception_ptr_access_rt();
 }
 
