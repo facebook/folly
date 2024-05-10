@@ -157,7 +157,7 @@ inline constexpr safe_assert_msg_cast_one_fn
     safe_assert_msg_cast_one{}; // a function object to prevent extensions
 
 template <bool P>
-[[noreturn]] FOLLY_COLD FOLLY_NOINLINE void safe_assert_terminate(
+[[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void safe_assert_terminate(
     safe_assert_arg const* arg, ...) noexcept; // the true backing function
 
 template <bool P>

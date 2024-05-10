@@ -277,7 +277,8 @@ std::unique_lock<std::mutex> annotationGuard(void* ptr);
 
 constexpr uint32_t kMaxDeferredReadersAllocated = 256 * 2;
 
-FOLLY_COLD uint32_t getMaxDeferredReadersSlow(relaxed_atomic<uint32_t>& cache);
+[[FOLLY_ATTR_GNU_COLD]] uint32_t getMaxDeferredReadersSlow(
+    relaxed_atomic<uint32_t>& cache);
 
 long getCurrentThreadInvoluntaryContextSwitchCount();
 

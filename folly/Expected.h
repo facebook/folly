@@ -81,9 +81,9 @@ class Unexpected final {
   Unexpected(Unexpected&&) = default;
   Unexpected& operator=(const Unexpected&) = default;
   Unexpected& operator=(Unexpected&&) = default;
-  FOLLY_COLD constexpr /* implicit */ Unexpected(const Error& err)
+  [[FOLLY_ATTR_GNU_COLD]] constexpr /* implicit */ Unexpected(const Error& err)
       : error_(err) {}
-  FOLLY_COLD constexpr /* implicit */ Unexpected(Error&& err)
+  [[FOLLY_ATTR_GNU_COLD]] constexpr /* implicit */ Unexpected(Error&& err)
       : error_(std::move(err)) {}
 
   template <class Other FOLLY_REQUIRES_TRAILING(

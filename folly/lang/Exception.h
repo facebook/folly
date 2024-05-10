@@ -38,7 +38,7 @@ namespace folly {
 /// Throw an exception if exceptions are enabled, or terminate if compiled with
 /// -fno-exceptions.
 template <typename Ex>
-[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception(Ex&& ex) {
+[[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void throw_exception(Ex&& ex) {
 #if FOLLY_HAS_EXCEPTIONS
   throw static_cast<Ex&&>(ex);
 #else
@@ -51,7 +51,8 @@ template <typename Ex>
 ///
 /// Terminates as if by forwarding to throw_exception but in a noexcept context.
 template <typename Ex>
-[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void terminate_with(Ex&& ex) noexcept {
+[[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void terminate_with(
+    Ex&& ex) noexcept {
   throw_exception(static_cast<Ex&&>(ex));
 }
 
@@ -85,11 +86,12 @@ using throw_exception_arg_t =
     typename throw_exception_arg_<R>::template apply<R>;
 
 template <typename Ex, typename... Args>
-[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception_(Args... args) {
+[[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void throw_exception_(
+    Args... args) {
   throw_exception(Ex(static_cast<Args>(args)...));
 }
 template <typename Ex, typename... Args>
-[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void terminate_with_(
+[[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void terminate_with_(
     Args... args) noexcept {
   throw_exception(Ex(static_cast<Args>(args)...));
 }
@@ -152,7 +154,7 @@ template <
     typename FD = std::remove_pointer_t<std::decay_t<F>>,
     std::enable_if_t<!std::is_function<FD>::value, int> = 0,
     typename R = decltype(FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(A&&)...))>
-FOLLY_NOINLINE FOLLY_COLD R invoke_cold(F&& f, A&&... a) //
+[[FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE R invoke_cold(F&& f, A&&... a) //
     noexcept(noexcept(static_cast<F&&>(f)(static_cast<A&&>(a)...))) {
   return static_cast<F&&>(f)(static_cast<A&&>(a)...);
 }
@@ -192,7 +194,7 @@ FOLLY_ERASE R invoke_cold(F&& f, A&&... a) //
 ///         i);
 ///   }
 template <typename F, typename... A>
-[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void
+[[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void
 invoke_noreturn_cold(F&& f, A&&... a) noexcept(
     /* formatting */ noexcept(static_cast<F&&>(f)(static_cast<A&&>(a)...))) {
   static_cast<F&&>(f)(static_cast<A&&>(a)...);
@@ -320,8 +322,8 @@ inline constexpr bool exception_ptr_access_ct = true;
 // 0 unknown, 1 true, -1 false
 extern std::atomic<int> exception_ptr_access_rt_cache_;
 
-FOLLY_COLD bool exception_ptr_access_rt_v_() noexcept;
-FOLLY_COLD bool exception_ptr_access_rt_() noexcept;
+[[FOLLY_ATTR_GNU_COLD]] bool exception_ptr_access_rt_v_() noexcept;
+[[FOLLY_ATTR_GNU_COLD]] bool exception_ptr_access_rt_() noexcept;
 
 inline bool exception_ptr_access_rt() noexcept {
   auto const& cache = exception_ptr_access_rt_cache_;

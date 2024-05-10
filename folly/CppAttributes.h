@@ -80,10 +80,10 @@
  * optimizer both when processing the function body and when analyzing
  * call-sites.
  */
-#if defined(__GNUC__) && __GNUC__
-#define FOLLY_COLD __attribute__((__cold__))
+#if FOLLY_HAS_CPP_ATTRIBUTE(gnu::cold)
+#define FOLLY_ATTR_GNU_COLD gnu::cold
 #else
-#define FOLLY_COLD
+#define FOLLY_ATTR_GNU_COLD
 #endif
 
 /**
