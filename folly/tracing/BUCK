@@ -6,7 +6,7 @@ cpp_library(
     name = "static_tracepoint",
     headers = [
         "StaticTracepoint.h",
-        "StaticTracepoint-ELFx86.h",
+        "StaticTracepoint-ELF.h",
     ],
     exported_deps = [
         "//folly/portability:config",

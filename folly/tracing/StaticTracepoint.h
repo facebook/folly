@@ -18,12 +18,14 @@
 
 #include <folly/portability/Config.h>
 
-#if FOLLY_HAVE_ELF && (defined(__x86_64__) || defined(__i386__)) && \
+#if FOLLY_HAVE_ELF &&                                                    \
+    (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) || \
+     defined(__arm__)) &&                                                \
     !FOLLY_DISABLE_SDT
 
 #define FOLLY_HAVE_SDT 1
 
-#include <folly/tracing/StaticTracepoint-ELFx86.h>
+#include <folly/tracing/StaticTracepoint-ELF.h>
 
 #define FOLLY_SDT(provider, name, ...) \
   FOLLY_SDT_PROBE_N(                   \
