@@ -19,14 +19,9 @@
 #include <sys/types.h>
 
 #include <cerrno>
-#include <climits>
 #include <sstream>
-#include <thread>
-
-#include <boost/preprocessor/control/if.hpp>
 
 #include <folly/Exception.h>
-#include <folly/ExceptionWrapper.h>
 #include <folly/Format.h>
 #include <folly/Portability.h>
 #include <folly/SocketAddress.h>

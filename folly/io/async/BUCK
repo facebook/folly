@@ -145,7 +145,6 @@ cpp_library(
     headers = ["AsyncSocket.h"],
     deps = [
         "//folly:exception",
-        "//folly:exception_wrapper",
         "//folly:format",
         "//folly:portability",
         "//folly:string",
@@ -174,9 +173,6 @@ cpp_library(
         "//folly/net:tcpinfo",
         "//folly/net:tcpinfo_dispatcher",
         "//folly/portability:sockets",
-    ],
-    external_deps = [
-        ("boost", None, "boost_preprocessor"),
     ],
 )
 
@@ -380,7 +376,6 @@ cpp_library(
     headers = ["Request.h"],
     deps = [
         "//folly:glog",
-        "//folly:map_util",
         "//folly/experimental:single_writer_fixed_hash_map",
         "//folly/tracing:static_tracepoint",
     ],
