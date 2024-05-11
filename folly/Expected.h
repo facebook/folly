@@ -213,7 +213,7 @@ using ExpectedErrorType =
 // Details...
 namespace expected_detail {
 
-template <typename Value, typename Error>
+template <typename Value, typename Error, typename = void>
 struct Promise;
 template <typename Value, typename Error>
 struct PromiseReturn;
@@ -1563,14 +1563,14 @@ bool operator>(const Value& other, const Expected<Value, Error>&) = delete;
 namespace folly {
 namespace expected_detail {
 template <typename Value, typename Error>
-struct Promise;
+struct PromiseBase;
 
 template <typename Value, typename Error>
 struct PromiseReturn {
   Expected<Value, Error> storage_{EmptyTag{}};
   Expected<Value, Error>*& pointer_;
 
-  /* implicit */ PromiseReturn(Promise<Value, Error>& p) noexcept
+  /* implicit */ PromiseReturn(PromiseBase<Value, Error>& p) noexcept
       : pointer_{p.value_} {
     pointer_ = &storage_;
   }
@@ -1592,25 +1592,48 @@ struct PromiseReturn {
 };
 
 template <typename Value, typename Error>
-struct Promise {
+struct PromiseBase {
   Expected<Value, Error>* value_ = nullptr;
 
-  Promise() = default;
-  Promise(Promise const&) = delete;
-  PromiseReturn<Value, Error> get_return_object() noexcept { return *this; }
-  coro::suspend_never initial_suspend() const noexcept { return {}; }
-  coro::suspend_never final_suspend() const noexcept { return {}; }
-  template <typename U = Value>
-  void return_value(U&& u) {
-    auto& v = *value_;
-    ExpectedHelper::assume_empty(v);
-    v = static_cast<U&&>(u);
+  PromiseBase() = default;
+  PromiseBase(PromiseBase const&) = delete;
+  void operator=(PromiseBase const&) = delete;
+
+  [[nodiscard]] coro::suspend_never initial_suspend() const noexcept {
+    return {};
   }
-  void unhandled_exception() {
+  [[nodiscard]] coro::suspend_never final_suspend() const noexcept {
+    return {};
+  }
+  [[noreturn]] void unhandled_exception() {
     // Technically, throwing from unhandled_exception is underspecified:
     // https://github.com/GorNishanov/CoroutineWording/issues/17
     rethrow_current_exception();
   }
+
+  PromiseReturn<Value, Error> get_return_object() noexcept { return *this; }
+};
+
+template <typename Value>
+inline constexpr bool ReturnsVoid =
+    std::is_trivial_v<Value> && std::is_empty_v<Value>;
+
+template <typename Value, typename Error>
+struct Promise<Value, Error, typename std::enable_if<!ReturnsVoid<Value>>::type>
+    : public PromiseBase<Value, Error> {
+  template <typename U = Value>
+  void return_value(U&& u) {
+    auto& v = *this->value_;
+    ExpectedHelper::assume_empty(v);
+    v = static_cast<U&&>(u);
+  }
+};
+
+template <typename Value, typename Error>
+struct Promise<Value, Error, typename std::enable_if<ReturnsVoid<Value>>::type>
+    : public PromiseBase<Value, Error> {
+  // When the coroutine uses `return;` you can fail via `co_await err`.
+  void return_void() { this->value_->emplace(Value{}); }
 };
 
 template <typename Error>

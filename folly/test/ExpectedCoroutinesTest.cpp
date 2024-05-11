@@ -121,6 +121,43 @@ TEST(Expected, CoroutineReturnUnexpected) {
   EXPECT_EQ(Err::badder(), r1.error());
 }
 
+TEST(Expected, CoroutineReturnsVoid) {
+  int x = 0;
+  auto r = [&]() -> Expected<folly::Unit, Err> {
+    x = co_await f1();
+    co_return;
+  }();
+  EXPECT_TRUE(r.hasValue());
+  EXPECT_EQ(folly::unit, *r);
+  EXPECT_EQ(7, x);
+}
+
+TEST(Expected, CoroutineReturnsVoidThrows) {
+  auto fnThrows = [&]() -> Expected<folly::Unit, Err> {
+    throws();
+    co_return;
+  };
+  ASSERT_THROW(({ fnThrows(); }), Exn);
+}
+
+TEST(Expected, CoroutineReturnsVoidError) {
+  auto fnErr = [&]() -> Expected<folly::Unit, Err> {
+    return makeUnexpected(Err::bad());
+  };
+  auto r = [&]() -> Expected<folly::Unit, Err> { co_await fnErr(); }();
+  EXPECT_TRUE(r.hasError());
+  EXPECT_EQ(Err::bad(), r.error());
+}
+
+TEST(Expected, VoidCoroutineAwaitsError) {
+  auto r = []() -> Expected<folly::Unit, Err> {
+    co_await makeUnexpected(Err::badder());
+    ADD_FAILURE();
+  }();
+  EXPECT_TRUE(r.hasError());
+  EXPECT_EQ(Err::badder(), r.error());
+}
+
 TEST(Expected, CoroutineException) {
   EXPECT_THROW(
       ([]() -> Expected<int, Err> {
