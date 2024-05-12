@@ -392,8 +392,8 @@ gen_pkgconfig_vars(FOLLY_PKGCONFIG folly_deps)
 target_include_directories(folly_deps
   BEFORE
   INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 target_include_directories(folly_deps
   INTERFACE
