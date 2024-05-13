@@ -17,7 +17,10 @@ openssl-libs
 url = https://www.openssl.org/source/openssl-1.1.1l.tar.gz
 sha256 = 0b7a3e5e59c34827fe0c3a74b7ec8baef302b98fa80088d7f9153aa16fa76bd1
 
-# We use the system openssl on linux
+# We use the system openssl on these platforms even without --allow-system-packages
+[build.any(os=linux, os=freebsd)]
+builder = nop
+
 [build.not(any(os=linux, os=freebsd))]
 builder = openssl
 subdir = openssl-1.1.1l
