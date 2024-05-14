@@ -57,9 +57,9 @@ class ThreadLocalPtr;
 template <class T, class Tag = void, class AccessMode = void>
 class ThreadLocal {
  public:
-  constexpr ThreadLocal() : constructor_([]() { return new T(); }) {}
+  constexpr ThreadLocal() : constructor_([]() { return T(); }) {}
 
-  template <typename F, std::enable_if_t<is_invocable_r_v<T*, F>, int> = 0>
+  template <typename F, std::enable_if_t<is_invocable_r_v<T, F>, int> = 0>
   explicit ThreadLocal(F&& constructor)
       : constructor_(std::forward<F>(constructor)) {}
 
@@ -90,13 +90,13 @@ class ThreadLocal {
   ThreadLocal& operator=(const ThreadLocal&) = delete;
 
   FOLLY_NOINLINE T* makeTlp() const {
-    auto const ptr = static_cast<T*>(constructor_());
+    auto const ptr = new T(constructor_());
     tlp_.reset(ptr);
     return ptr;
   }
 
   mutable ThreadLocalPtr<T, Tag, AccessMode> tlp_;
-  std::function<void*()> constructor_;
+  std::function<T()> constructor_;
 };
 
 /*

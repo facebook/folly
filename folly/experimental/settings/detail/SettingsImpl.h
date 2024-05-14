@@ -387,7 +387,7 @@ class SettingCore : public SettingCoreBase {
         defaultValue_(std::move(defaultValue)),
         trivialStorage_(trivialStorage),
         localValue_([]() {
-          return new cacheline_aligned<
+          return cacheline_aligned<
               std::pair<Version, std::shared_ptr<Contents>>>(
               std::in_place, 0, nullptr);
         }) {

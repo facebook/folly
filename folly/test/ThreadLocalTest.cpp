@@ -261,7 +261,7 @@ TEST(ThreadLocal, NotDefaultConstructible) {
     explicit Object(int v) : value{v} {}
   };
   std::atomic<int> a{};
-  ThreadLocal<Object> o{[&a] { return new Object(a++); }};
+  ThreadLocal<Object> o{[&a] { return Object(a++); }};
   EXPECT_EQ(0, o->value);
   std::thread([&] { EXPECT_EQ(1, o->value); }).join();
 }

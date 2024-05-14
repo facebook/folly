@@ -27,7 +27,7 @@ class TLRefCount {
   using Int = int64_t;
 
   TLRefCount()
-      : localCount_([&]() { return new LocalRefCount(*this); }),
+      : localCount_([&]() { return LocalRefCount(*this); }),
         collectGuard_(this, [](void*) {}) {}
 
   ~TLRefCount() noexcept {

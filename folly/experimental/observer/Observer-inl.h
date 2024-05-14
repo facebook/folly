@@ -163,7 +163,7 @@ T AtomicObserver<T>::get() const {
 template <typename T>
 TLObserver<T>::TLObserver(Observer<T> observer)
     : observer_(std::move(observer)),
-      snapshot_([&] { return new Snapshot<T>(observer_.getSnapshot()); }) {}
+      snapshot_([&] { return Snapshot<T>(observer_.getSnapshot()); }) {}
 
 template <typename T>
 TLObserver<T>::TLObserver(const TLObserver<T>& other)
