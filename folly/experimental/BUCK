@@ -4,19 +4,11 @@ oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
     name = "atomic_read_mostly_main_ptr",
-    srcs = [
-        "AtomicReadMostlyMainPtr.cpp",
-    ],
     headers = [
         "AtomicReadMostlyMainPtr.h",
     ],
-    deps = [
-        "//folly/executors:inline_executor",
-    ],
     exported_deps = [
-        ":read_mostly_shared_ptr",
-        "//folly:indestructible",
-        "//folly/synchronization:rcu",
+        "//folly/concurrency/memory:atomic_read_mostly_main_ptr",
     ],
 )
 

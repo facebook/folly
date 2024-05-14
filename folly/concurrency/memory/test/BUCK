@@ -1,0 +1,23 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "atomic_read_mostly_main_ptr_benchmark",
+    srcs = ["AtomicReadMostlyMainPtrBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/experimental:atomic_read_mostly_main_ptr",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "atomic_read_mostly_main_ptr_test",
+    srcs = ["AtomicReadMostlyMainPtrTest.cpp"],
+    deps = [
+        "//folly/experimental:atomic_read_mostly_main_ptr",
+        "//folly/portability:gtest",
+    ],
+)

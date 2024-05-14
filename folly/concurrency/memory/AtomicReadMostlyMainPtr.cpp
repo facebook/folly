@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/AtomicReadMostlyMainPtr.h>
+#include <folly/concurrency/memory/AtomicReadMostlyMainPtr.h>
 
 #include <folly/executors/InlineExecutor.h>
 
