@@ -73,20 +73,6 @@ cpp_unittest(
     ],
 )
 
-cpp_unittest(
-    name = "bitvector_test",
-    srcs = ["BitVectorCodingTest.cpp"],
-    headers = [],
-    deps = [
-        ":coding_test_utils",
-        "//folly:benchmark",
-        "//folly:portability",
-        "//folly/experimental:bit_vector_coding",
-        "//folly/experimental:select64",
-        "//folly/init:init",
-    ],
-)
-
 cpp_library(
     name = "coding_test_utils",
     srcs = ["CodingTestUtils.cpp"],
@@ -103,20 +89,6 @@ cpp_library(
     ],
     exported_external_deps = [
         "glog",
-    ],
-)
-
-cpp_unittest(
-    name = "eliasfano_test",
-    srcs = ["EliasFanoCodingTest.cpp"],
-    headers = [],
-    deps = [
-        ":coding_test_utils",
-        "//folly:benchmark",
-        "//folly:random",
-        "//folly/experimental:elias_fano_coding",
-        "//folly/experimental:select64",
-        "//folly/init:init",
     ],
 )
 

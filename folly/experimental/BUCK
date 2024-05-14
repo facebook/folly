@@ -36,19 +36,11 @@ cpp_library(
 
 cpp_library(
     name = "bit_vector_coding",
-    headers = ["BitVectorCoding.h"],
-    exported_deps = [
-        ":bits",
-        ":coding_detail",
-        ":instructions",
-        ":select64",
-        "//folly:likely",
-        "//folly:portability",
-        "//folly:range",
-        "//folly/lang:bits",
+    headers = [
+        "BitVectorCoding.h",
     ],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "//folly/compression/elias_fano:bit_vector_coding",
     ],
 )
 
@@ -67,7 +59,12 @@ cpp_library(
 
 cpp_library(
     name = "coding_detail",
-    headers = ["CodingDetail.h"],
+    headers = [
+        "CodingDetail.h",
+    ],
+    exported_deps = [
+        "//folly/compression/elias_fano:coding_detail",
+    ],
 )
 
 cpp_library(
@@ -83,19 +80,11 @@ cpp_library(
 
 cpp_library(
     name = "elias_fano_coding",
-    headers = ["EliasFanoCoding.h"],
-    exported_deps = [
-        ":coding_detail",
-        ":instructions",
-        ":select64",
-        "//folly:likely",
-        "//folly:portability",
-        "//folly:range",
-        "//folly/lang:assume",
-        "//folly/lang:bits",
+    headers = [
+        "EliasFanoCoding.h",
     ],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "//folly/compression/elias_fano:elias_fano_coding",
     ],
 )
 
