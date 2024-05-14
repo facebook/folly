@@ -432,3 +432,50 @@ cpp_unittest(
         "//folly/synchronization:throttled_lifo_sem",
     ],
 )
+
+cpp_library(
+    name = "flat_combining_examples",
+    headers = ["FlatCombiningExamples.h"],
+    exported_deps = [
+        "//folly/experimental/flat_combining:flat_combining",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_library(
+    name = "flat_combining_test_helpers",
+    headers = ["FlatCombiningTestHelpers.h"],
+    exported_deps = [
+        "//folly:benchmark",
+        "//folly/experimental/flat_combining/test:flat_combining_examples",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "flat_combining_benchmark",
+    srcs = ["FlatCombiningBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/experimental/flat_combining/test:flat_combining_test_helpers",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "flat_combining_test",
+    srcs = ["FlatCombiningTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/flat_combining/test:flat_combining_test_helpers",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
