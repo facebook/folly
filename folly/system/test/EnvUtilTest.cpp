@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/EnvUtil.h>
+#include <folly/system/EnvUtil.h>
 
 #include <spawn.h>
 

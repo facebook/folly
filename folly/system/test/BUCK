@@ -32,11 +32,11 @@ cpp_unittest(
         "//folly:memory",
         "//folly:subprocess",
         "//folly/container:array",
-        "//folly/experimental:env_util",
         "//folly/portability:fcntl",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/portability:stdlib",
+        "//folly/system:env_util",
     ],
     external_deps = [
         "glog",
