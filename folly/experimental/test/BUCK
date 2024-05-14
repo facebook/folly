@@ -137,20 +137,6 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "future_dag_test",
-    srcs = ["FutureDAGTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/executors:global_executor",
-        "//folly/experimental:future_dag",
-        "//folly/portability:gtest",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
-    ],
-)
-
-cpp_unittest(
     name = "hhwheel_timer_high_res_test",
     srcs = ["HHWheelTimerHighResTest.cpp"],
     headers = [],

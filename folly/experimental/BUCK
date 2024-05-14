@@ -169,16 +169,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "future_dag",
-    headers = ["FutureDAG.h"],
-    exported_deps = [
-        "//folly:executor",
-        "//folly/futures:core",
-        "//folly/futures:shared_promise",
-    ],
-)
-
-cpp_library(
     name = "instructions",
     headers = ["Instructions.h"],
     exported_deps = [
