@@ -360,13 +360,11 @@ void concurrentSizeTest(int ops) {
     auto fn = [&](uint32_t tid) {
       folly::Random::DefaultGenerator rng;
       rng.seed(tid);
-      uint64_t local_push = 0;
       int res;
 
       /// initialize the queue
       for (int i = tid; i < FLAGS_elems; i += nthreads) {
         int val = folly::Random::rand32(rng) % FLAGS_elems + 1;
-        local_push++;
         pq.push(val);
       }
 
