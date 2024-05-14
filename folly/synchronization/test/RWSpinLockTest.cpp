@@ -56,18 +56,13 @@ TYPED_TEST_SUITE(RWSpinLockTest, Implementations);
 
 template <typename RWSpinLockType>
 static void run(RWSpinLockType& lock) {
-  int64_t reads = 0;
-  int64_t writes = 0;
   while (!stopThread.load(std::memory_order_acquire)) {
     if (rand() % 10 == 0) { // write
       auto guard = make_unique_lock(lock);
-      ++writes;
     } else { // read
       auto guard = make_shared_lock(lock);
-      ++reads;
     }
   }
-  // VLOG(0) << "total reads: " << reads << "; total writes: " << writes;
 }
 
 TYPED_TEST(RWSpinLockTest, WriterWaitReaders) {
