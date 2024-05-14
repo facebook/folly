@@ -125,9 +125,8 @@ class SerialExecutorImpl : public SerializedExecutor {
 
   KeepAlive<Executor> parent_;
   std::atomic<std::size_t> scheduled_{0};
-  Queue<Task> queue_;
-
   std::atomic<ssize_t> keepAliveCounter_{1};
+  Queue<Task> queue_;
 };
 
 template <int LgQueueSegmentSize = 8>

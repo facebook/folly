@@ -174,8 +174,8 @@ class SerialExecutorMPSCQueue {
     CHECK_EQ(head_, tail_);
     CHECK_EQ(head_->readIdx.load(), head_->writeIdx.load());
     CHECK(head_->next == nullptr);
-    delete head_;
-    delete segmentCache_.load(std::memory_order_acquire);
+    deleteSegment(head_);
+    deleteSegment(segmentCache_.load(std::memory_order_acquire));
   }
 
   void enqueue(Task&& task) {
@@ -208,7 +208,8 @@ class SerialExecutorMPSCQueue {
       auto* oldSegment = std::exchange(head_, head_->next);
       // If there is already a segment in cache, replace it with the latest one,
       // as it is more likely to still be warm in cache for the producer.
-      delete segmentCache_.exchange(oldSegment, std::memory_order_release);
+      deleteSegment(
+          segmentCache_.exchange(oldSegment, std::memory_order_release));
       DCHECK_EQ(head_->readIdx.load(), 0);
       idx = 0;
     }
@@ -234,12 +235,23 @@ class SerialExecutorMPSCQueue {
   };
   static_assert(std::is_trivially_destructible_v<Segment>);
 
+  void deleteSegment(Segment* segment) {
+    if (segment == &inlineSegment_) {
+      return;
+    }
+    delete segment;
+  }
+
   folly::DistributedMutex mutex_;
-  Segment* tail_ = new Segment;
+  Segment* tail_ = &inlineSegment_;
   Segment* head_ = tail_;
   // Cache the allocation for exactly one segment, so that in the common case
   // where the consumer keeps up with the producer no allocations are needed.
   std::atomic<Segment*> segmentCache_{nullptr};
+
+  // Store the first segment inline. If this is a short-lived SerialExecutor
+  // which enqueues fewer than kSegmentSize tasks, this will save an allocation.
+  Segment inlineSegment_;
 };
 
 } // namespace folly::detail
