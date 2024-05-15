@@ -209,6 +209,7 @@ tracing = "0.1.22"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 triomphe = "0.1.11"
 trybuild = "1.0.56"
+typed-arena = "2.0"
 twox-hash = "1.6.1"
 unicode-segmentation = "1.7"
 uuid = { version = "1.2", features = ["v4"] }
