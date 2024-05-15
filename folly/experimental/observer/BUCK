@@ -9,8 +9,7 @@ cpp_library(
         "Observable-inl.h",
     ],
     exported_deps = [
-        ":observer",
-        "//folly/synchronization:baton",
+        "//folly/observer:observable",
     ],
 )
 
@@ -22,11 +21,7 @@ cpp_library(
         "Observer-pre.h",
     ],
     exported_deps = [
-        "//folly:shared_mutex",
-        "//folly:synchronized",
-        "//folly:thread_local",
-        "//folly/experimental/observer/detail:observer_manager",
-        "//folly/functional:invoke",
+        "//folly/observer:observer",
     ],
 )
 
@@ -36,10 +31,7 @@ cpp_library(
         "HazptrObserver.h",
     ],
     exported_deps = [
-        ":observer",
-        "//folly:synchronized",
-        "//folly/experimental/observer/detail:observer_manager",
-        "//folly/synchronization:hazptr",
+        "//folly/observer:hazptr_observer",
     ],
 )
 
@@ -49,9 +41,7 @@ cpp_library(
         "ReadMostlyTLObserver.h",
     ],
     exported_deps = [
-        ":observer",
-        "//folly/experimental:read_mostly_shared_ptr",
-        "//folly/experimental/observer/detail:observer_manager",
+        "//folly/observer:read_mostly_tl_observer",
     ],
 )
 
@@ -61,9 +51,7 @@ cpp_library(
         "CoreCachedObserver.h",
     ],
     exported_deps = [
-        ":observer",
-        "//folly/concurrency:core_cached_shared_ptr",
-        "//folly/experimental/observer/detail:observer_manager",
+        "//folly/observer:core_cached_observer",
     ],
 )
 
@@ -74,11 +62,7 @@ cpp_library(
         "SimpleObservable-inl.h",
     ],
     exported_deps = [
-        ":observable",
-        ":observer",
-        "//folly:function",
-        "//folly:synchronized",
-        "//folly/synchronization:delayed_init",
+        "//folly/observer:simple_observable",
     ],
 )
 
@@ -89,16 +73,6 @@ cpp_library(
         "WithJitter-inl.h",
     ],
     exported_deps = [
-        "fbsource//third-party/fmt:fmt",
-        ":observable",
-        ":observer",
-        "//folly:default_keep_alive_executor",
-        "//folly:random",
-        "//folly:synchronized",
-        "//folly/executors:global_executor",
-        "//folly/futures:core",
-    ],
-    exported_external_deps = [
-        "glog",
+        "//folly/observer:with_jitter",
     ],
 )
