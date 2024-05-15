@@ -201,7 +201,7 @@ class Optional {
       construct(*newValue);
     }
   }
-  /// Allow implict cast to std::optional
+  /// Allow explicit cast to std::optional
   /// @methodset Migration
   explicit operator std::optional<Value>() && noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
@@ -215,6 +215,14 @@ class Optional {
       std::is_nothrow_copy_constructible<Value>::value) {
     return storage_.hasValue ? std::optional<Value>(storage_.value)
                              : std::nullopt;
+  }
+
+  std::optional<Value> toStdOptional() && noexcept {
+    return static_cast<std::optional<Value>>(std::move(*this));
+  }
+
+  std::optional<Value> toStdOptional() const& noexcept {
+    return static_cast<std::optional<Value>>(*this);
   }
 
   /// Set the Optional
