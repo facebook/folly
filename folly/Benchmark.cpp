@@ -899,6 +899,12 @@ void runBenchmarks() {
         "WARNING: Running with constant number of iterations. Results might be jittery.\n");
   }
 
+  if (FLAGS_bm_min_iters >= FLAGS_bm_max_iters) {
+    std::cerr << "WARNING: bm_min_iters > bm_max_iters; increasing the max"
+              << std::endl;
+    FLAGS_bm_max_iters = FLAGS_bm_min_iters + 1;
+  }
+
   checkRunMode();
 
   auto& state = detail::globalBenchmarkState();
