@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/ProgramOptions.h>
+#include <folly/cli/ProgramOptions.h>
 
 #include <folly/FileUtil.h>
 #include <folly/Subprocess.h>

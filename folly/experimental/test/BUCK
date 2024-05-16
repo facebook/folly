@@ -189,7 +189,7 @@ cpp_binary(
     deps = [
         "//folly:scope_guard",
         "//folly:string",
-        "//folly/experimental:program_options",
+        "//folly/cli:program_options",
     ],
 )
 

@@ -21,8 +21,8 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
-#include <folly/experimental/NestedCommandLineApp.h>
-#include <folly/experimental/ProgramOptions.h>
+#include <folly/cli/NestedCommandLineApp.h>
+#include <folly/cli/ProgramOptions.h>
 
 namespace po = ::boost::program_options;
 
