@@ -479,3 +479,17 @@ cpp_unittest(
         "glog",
     ],
 )
+
+cpp_unittest(
+    name = "event_count_test",
+    srcs = ["EventCountTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly/experimental:event_count",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

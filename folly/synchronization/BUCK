@@ -398,3 +398,18 @@ cpp_library(
         "//folly/system:thread_name",
     ],
 )
+
+cpp_library(
+    name = "event_count",
+    headers = ["EventCount.h"],
+    exported_deps = [
+        "//folly:likely",
+        "//folly/detail:futex",
+        "//folly/lang:bits",
+        "//folly/portability:sys_time",
+        "//folly/portability:unistd",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

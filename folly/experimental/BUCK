@@ -92,16 +92,11 @@ cpp_library(
 
 cpp_library(
     name = "event_count",
-    headers = ["EventCount.h"],
-    exported_deps = [
-        "//folly:likely",
-        "//folly/detail:futex",
-        "//folly/lang:bits",
-        "//folly/portability:sys_time",
-        "//folly/portability:unistd",
+    headers = [
+        "EventCount.h",
     ],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "//folly/synchronization:event_count",
     ],
 )
 
