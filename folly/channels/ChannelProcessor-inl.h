@@ -17,10 +17,10 @@
 #pragma once
 
 #include <folly/channels/ChannelProcessor.h>
+#include <folly/channels/ConsumeChannel.h>
+#include <folly/channels/MergeChannel.h>
+#include <folly/channels/Transform.h>
 #include <folly/executors/SerialExecutor.h>
-#include <folly/experimental/channels/ConsumeChannel.h>
-#include <folly/experimental/channels/MergeChannel.h>
-#include <folly/experimental/channels/Transform.h>
 #include <folly/experimental/channels/detail/IntrusivePtr.h>
 
 namespace folly {

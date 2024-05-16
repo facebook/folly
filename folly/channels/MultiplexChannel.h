@@ -17,11 +17,11 @@
 #pragma once
 
 #include <range/v3/view/map.hpp>
+#include <folly/channels/Channel.h>
+#include <folly/channels/FanoutSender.h>
+#include <folly/channels/OnClosedException.h>
 #include <folly/container/F14Map.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/Channel.h>
-#include <folly/experimental/channels/FanoutSender.h>
-#include <folly/experimental/channels/OnClosedException.h>
 #include <folly/experimental/channels/detail/MultiplexerTraits.h>
 #include <folly/experimental/coro/Task.h>
 

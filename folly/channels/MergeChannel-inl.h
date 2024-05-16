@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <folly/channels/Channel.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/Channel.h>
 #include <folly/experimental/channels/detail/Utility.h>
 
 namespace folly {

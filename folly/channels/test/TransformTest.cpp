@@ -16,11 +16,11 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
+#include <folly/channels/ConsumeChannel.h>
+#include <folly/channels/MaxConcurrentRateLimiter.h>
+#include <folly/channels/Transform.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/SerialExecutor.h>
-#include <folly/experimental/channels/ConsumeChannel.h>
-#include <folly/experimental/channels/MaxConcurrentRateLimiter.h>
-#include <folly/experimental/channels/Transform.h>
 #include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/DetachOnCancel.h>

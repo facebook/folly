@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/channels/ProxyChannel.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/channels/ProxyChannel.h>
 #include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

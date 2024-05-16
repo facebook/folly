@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include <folly/channels/ChannelCallbackHandle.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/ChannelCallbackHandle.h>
 #include <folly/experimental/coro/Task.h>
 
 namespace folly {

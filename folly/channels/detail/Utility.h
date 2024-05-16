@@ -20,9 +20,9 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Function.h>
 #include <folly/ScopeGuard.h>
+#include <folly/channels/Channel.h>
+#include <folly/channels/RateLimiter.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/Channel.h>
-#include <folly/experimental/channels/RateLimiter.h>
 #include <folly/experimental/coro/Promise.h>
 #include <folly/experimental/coro/Task.h>
 

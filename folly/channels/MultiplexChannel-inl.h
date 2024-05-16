@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/channels/MultiplexChannel.h>
-#include <folly/experimental/channels/RateLimiter.h>
+#include <folly/channels/RateLimiter.h>
 #include <folly/experimental/channels/detail/Utility.h>
 #include <folly/experimental/coro/FutureUtil.h>
 #include <folly/experimental/coro/Mutex.h>

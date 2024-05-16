@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/channels/MaxConcurrentRateLimiter.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/channels/MaxConcurrentRateLimiter.h>
 
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

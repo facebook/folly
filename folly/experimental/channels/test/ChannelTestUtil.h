@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/channels/ConsumeChannel.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/ConsumeChannel.h>
 #include <folly/experimental/coro/DetachOnCancel.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/futures/SharedPromise.h>
