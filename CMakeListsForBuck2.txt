@@ -1,0 +1,132 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
+# We use the GoogleTest module if it is available (only in CMake 3.9+)
+# It requires CMP0054 and CMP0057 to be enabled.
+if (POLICY CMP0054)
+  cmake_policy(SET CMP0054 NEW)
+endif()
+if (POLICY CMP0057)
+  cmake_policy(SET CMP0057 NEW)
+endif()
+
+# CMP0075 Include file check macros honor CMAKE_REQUIRED_LIBRARIES
+if(POLICY CMP0075)
+  cmake_policy(SET CMP0075 NEW)
+endif()
+
+# includes
+set(CMAKE_MODULE_PATH
+  "${CMAKE_CURRENT_SOURCE_DIR}/CMake"
+  # for in-fbsource builds
+  "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/CMake"
+  # For shipit-transformed builds
+  "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/CMake"
+  ${CMAKE_MODULE_PATH})
+
+# package information
+set(PACKAGE_NAME      "folly")
+if (NOT DEFINED PACKAGE_VERSION)
+  set(PACKAGE_VERSION   "0.58.0-dev")
+endif()
+set(PACKAGE_STRING    "${PACKAGE_NAME} ${PACKAGE_VERSION}")
+set(PACKAGE_TARNAME   "${PACKAGE_NAME}-${PACKAGE_VERSION}")
+set(PACKAGE_BUGREPORT "https://github.com/facebook/folly/issues")
+
+# 150+ tests in the root folder anyone? No? I didn't think so.
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+project(${PACKAGE_NAME} CXX C ASM)
+
+set(INCLUDE_INSTALL_DIR include CACHE STRING
+    "The subdirectory where header files should be installed")
+set(LIB_INSTALL_DIR lib CACHE STRING
+    "The subdirectory where libraries should be installed")
+set(BIN_INSTALL_DIR bin CACHE STRING
+    "The subdirectory where binaries should be installed")
+set(CMAKE_INSTALL_DIR lib/cmake/folly CACHE STRING
+    "The subdirectory where CMake package config files should be installed")
+
+option(BUILD_SHARED_LIBS
+  "If enabled, build folly as a shared library.  \
+  This is generally discouraged, since folly does not commit to having \
+  a stable ABI."
+  OFF
+)
+# Mark BUILD_SHARED_LIBS as an "advanced" option, since enabling it
+# is generally discouraged.
+mark_as_advanced(BUILD_SHARED_LIBS)
+set(FOLLY_SUPPORT_SHARED_LIBRARY "${BUILD_SHARED_LIBS}")
+
+include(FBBuildOptions)
+fb_activate_static_library_option()
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  message(STATUS "setting C++ standard to C++${CMAKE_CXX_STANDARD}")
+endif()
+
+if(NOT DEFINED IS_X86_64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
+  set(IS_X86_64_ARCH TRUE)
+else()
+  set(IS_X86_64_ARCH FALSE)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  # Check target architecture
+  if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "Folly requires a 64bit target architecture.")
+  endif()
+
+  if (MSVC_VERSION LESS 1900)
+    message(
+      FATAL_ERROR
+      "This build script only supports building Folly on 64-bit Windows with "
+      "at least Visual Studio 2017. "
+      "MSVC version '${MSVC_VERSION}' is not supported."
+    )
+  endif()
+endif()
+
+set(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
+set(
+  FOLLY_DIR_PREFIXES
+  "${CMAKE_CURRENT_SOURCE_DIR}:${CMAKE_CURRENT_BINARY_DIR}"
+)
+
+include(GNUInstallDirs)
+
+set(CMAKE_THREAD_PREFER_PTHREAD ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+set(FOLLY_HAVE_PTHREAD "${CMAKE_USE_PTHREADS_INIT}")
+list(APPEND CMAKE_REQUIRED_LIBRARIES Threads::Threads)
+list(APPEND FOLLY_LINK_LIBRARIES Threads::Threads)
+
+if(MSVC)
+  include(FollyCompilerMSVC)
+else()
+  include(FollyCompilerUnix)
+endif()
+include(FollyFunctions)
+
+include(folly-deps) # Find the required packages
+include(FollyConfigChecks)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
+)
