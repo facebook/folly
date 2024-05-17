@@ -300,6 +300,7 @@ cpp_unittest(
     name = "request_context_test",
     srcs = ["RequestContextTest.cpp"],
     deps = [
+        "//folly/executors:manual_executor",
         "//folly/experimental/coro:async_generator",
         "//folly/experimental/coro:async_scope",
         "//folly/experimental/coro:baton",

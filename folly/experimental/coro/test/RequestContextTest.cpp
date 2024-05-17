@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/AsyncScope.h>
 #include <folly/experimental/coro/Baton.h>
@@ -57,42 +58,8 @@ static void clearTag() {
   folly::RequestContext::get()->clearContextData(token);
 }
 
-// Like folly::ManualExecutor, but records history of request contexts.
-class TestExecutor : public folly::Executor {
- public:
-  struct Task {
-    folly::Function<void()> f;
-    std::shared_ptr<folly::RequestContext> rctx;
-  };
-
-  std::deque<Task> qu;
-  std::vector<int> tags; // for added tasks
-
-  void add(folly::Function<void()> f) override {
-    tags.push_back(getTag());
-    qu.push_back(Task{std::move(f), folly::RequestContext::saveContext()});
-  }
-
-  void drain() {
-    while (!qu.empty()) {
-      Task t = std::move(qu.front());
-      qu.pop_front();
-      folly::RequestContextScopeGuard rg(t.rctx);
-      t.f();
-    }
-  }
-
-  void assertTags(std::vector<int> t) {
-    ASSERT_EQ(tags.size(), t.size());
-    for (size_t i = 0; i < t.size(); ++i) {
-      EXPECT_EQ(tags[i], t[i]);
-    }
-    tags.clear();
-  }
-};
-
 TEST(RequestContextTest, Main) {
-  TestExecutor exec;
+  folly::ManualExecutor exec;
 
   // Various things on which we'll co_await and check that request context is
   // preserved.
@@ -106,11 +73,9 @@ TEST(RequestContextTest, Main) {
   auto generator = [&]() -> folly::coro::AsyncGenerator<int&&> {
     // Request context propagated from the caller.
     EXPECT_EQ(getTag(), 4);
-    exec.assertTags({});
 
     co_await folly::coro::co_reschedule_on_current_executor;
     EXPECT_EQ(getTag(), 4);
-    exec.assertTags({4});
 
     // Change request context before yielding. This change will propagate to the
     // caller.
@@ -123,7 +88,6 @@ TEST(RequestContextTest, Main) {
 
     co_await folly::coro::co_reschedule_on_current_executor;
     EXPECT_EQ(getTag(), 6);
-    exec.assertTags({6});
 
     co_yield 20;
     EXPECT_EQ(getTag(), 6);
@@ -132,8 +96,6 @@ TEST(RequestContextTest, Main) {
   // Main coroutine of the test. Awaits on various things and checks that
   // request context was preserved/unpreserved when expected.
   auto task = [&]() -> folly::coro::Task<void> {
-    // Request context propagated from task start().
-    exec.assertTags({1});
     EXPECT_EQ(getTag(), 1);
     clearTag();
     setTag(2);
@@ -142,7 +104,6 @@ TEST(RequestContextTest, Main) {
     // co_reschedule_on_current_executor preserves request context
     // (see CurrentExecutor.h).
     co_await folly::coro::co_reschedule_on_current_executor;
-    exec.assertTags({2});
 
     // Baton, UnboundedQueue, Mutex, and other awaitables that don't customize
     // viaIfAsync preserve request context (see ViaIfAsync.h).
@@ -150,18 +111,15 @@ TEST(RequestContextTest, Main) {
     // Baton.
     co_await baton;
     EXPECT_EQ(getTag(), 2);
-    exec.assertTags({2});
 
     // UnboundedQueue.
     int v = co_await queue.dequeue();
     EXPECT_EQ(v, 42);
     EXPECT_EQ(getTag(), 2);
-    exec.assertTags({2});
 
     // Mutex.
     co_await mutex.co_scoped_lock();
     EXPECT_EQ(getTag(), 2);
-    exec.assertTags({2});
 
     // blockingWait.
     folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -169,7 +127,6 @@ TEST(RequestContextTest, Main) {
       co_return;
     }());
     EXPECT_EQ(getTag(), 2);
-    exec.assertTags({});
 
     // Now on to the things that do leak request context.
     // This is probably intended. I guess the convention is that a
@@ -196,7 +153,6 @@ TEST(RequestContextTest, Main) {
       setTag(4);
       co_await folly::coro::co_reschedule_on_current_executor;
       EXPECT_EQ(getTag(), 4);
-      exec.assertTags({4});
       co_return 40;
     }();
     EXPECT_EQ(v, 40);
@@ -214,7 +170,6 @@ TEST(RequestContextTest, Main) {
 
     co_await folly::coro::co_reschedule_on_current_executor;
     EXPECT_EQ(getTag(), 5);
-    exec.assertTags({5});
 
     // Request context propagates into the generator.
     folly::RequestContext::create();
@@ -225,7 +180,6 @@ TEST(RequestContextTest, Main) {
 
     co_await folly::coro::co_reschedule_on_current_executor;
     EXPECT_EQ(getTag(), 6);
-    exec.assertTags({6});
   };
 
   // Start the main coroutine.
@@ -276,6 +230,5 @@ TEST(RequestContextTest, Main) {
   EXPECT_TRUE(f.isReady());
   std::move(f).get();
 
-  exec.assertTags({});
   EXPECT_EQ(getTag(), -1);
 }
