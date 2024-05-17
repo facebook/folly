@@ -346,7 +346,7 @@ struct Input {
   }
 
   void skipWhitespace() {
-    std::size_t index = 0;
+    unsigned index = 0;
     while (true) {
       while (index < range_.size() && range_[index] == ' ') {
         index++;

@@ -53,7 +53,7 @@ using to_ascii_alphabet_upper = to_ascii_alphabet<true>;
 
 namespace detail {
 
-template <size_t Base, typename Alphabet>
+template <uint64_t Base, typename Alphabet>
 struct to_ascii_array {
   using data_type_ = c_array<uint8_t, Base>;
   static constexpr data_type_ data_() {
@@ -70,7 +70,7 @@ struct to_ascii_array {
     return data.data[index];
   }
 };
-template <size_t Base, typename Alphabet>
+template <uint64_t Base, typename Alphabet>
 alignas(kIsMobile ? sizeof(size_t) : hardware_constructive_interference_size)
     typename to_ascii_array<Base, Alphabet>::data_type_ const
     to_ascii_array<Base, Alphabet>::data =
@@ -89,7 +89,7 @@ extern template to_ascii_array<10, to_ascii_alphabet_upper>::data_type_ const
 extern template to_ascii_array<16, to_ascii_alphabet_upper>::data_type_ const
     to_ascii_array<16, to_ascii_alphabet_upper>::data;
 
-template <size_t Base, typename Alphabet>
+template <uint64_t Base, typename Alphabet>
 struct to_ascii_table {
   using data_type_ = c_array<uint16_t, Base * Base>;
   static constexpr data_type_ data_() {
@@ -105,7 +105,7 @@ struct to_ascii_table {
   // @lint-ignore CLANGTIDY
   static data_type_ const data;
 };
-template <size_t Base, typename Alphabet>
+template <uint64_t Base, typename Alphabet>
 alignas(hardware_constructive_interference_size)
     typename to_ascii_table<Base, Alphabet>::data_type_ const
     to_ascii_table<Base, Alphabet>::data =
@@ -124,7 +124,7 @@ extern template to_ascii_table<10, to_ascii_alphabet_upper>::data_type_ const
 extern template to_ascii_table<16, to_ascii_alphabet_upper>::data_type_ const
     to_ascii_table<16, to_ascii_alphabet_upper>::data;
 
-template <size_t Base, typename Int>
+template <uint64_t Base, typename Int>
 struct to_ascii_powers {
   static constexpr size_t size_(Int v) {
     return 1 + (v < Base ? 0 : size_(v / Base));
@@ -141,7 +141,7 @@ struct to_ascii_powers {
   // @lint-ignore CLANGTIDY
   static data_type_ const data;
 };
-template <size_t Base, typename Int>
+template <uint64_t Base, typename Int>
 alignas(hardware_constructive_interference_size)
     typename to_ascii_powers<Base, Int>::data_type_ const
     to_ascii_powers<Base, Int>::data = to_ascii_powers<Base, Int>::data_();
