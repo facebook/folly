@@ -43,7 +43,7 @@
 extern "C" {
 // Current pthread implementation has valid keys in range 0 .. 1023.
 // Initialise to some value that will be interpreted as an invalid key.
-pthread_key_t folly_async_stack_root_tls_key = 0xFFFF'FFFFu;
+inline pthread_key_t folly_async_stack_root_tls_key = 0xFFFF'FFFFu;
 }
 
 #endif // FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD
