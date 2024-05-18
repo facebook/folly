@@ -116,6 +116,7 @@ linked-hash-map = { version = "0.5", features = ["serde_impl"] }
 linkme = { version = "0.3.17", features = ["used_linker"] }
 log = "0.4"
 logos = "0.12"
+lru = "0.12.3"
 lsp-server = "0.7.2"
 lsp-types = "0.94.1"
 maplit = "1.0.2"
