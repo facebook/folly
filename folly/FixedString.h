@@ -2900,7 +2900,7 @@ constexpr const std::size_t& npos = detail::fixedstring::FixedStringBase::npos;
  *   `FixedString<8>`, `FixedString<16>`, etc.
  */
 template <class Char, Char... Cs>
-constexpr BasicFixedString<Char, sizeof...(Cs)> operator"" _fs() noexcept {
+constexpr BasicFixedString<Char, sizeof...(Cs)> operator""_fs() noexcept {
   const Char a[] = {Cs..., Char(0)};
   return {+a, sizeof...(Cs)};
 }
@@ -2909,7 +2909,7 @@ constexpr BasicFixedString<Char, sizeof...(Cs)> operator"" _fs() noexcept {
 #endif
 
 #define FOLLY_DEFINE_FIXED_STRING_UDL(N)                     \
-  constexpr FixedString<N> operator"" _fs##N(                \
+  constexpr FixedString<N> operator""_fs##N(                 \
       const char* that, std::size_t count) noexcept(false) { \
     return {that, count};                                    \
   }                                                          \
