@@ -5,27 +5,219 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@bazel_skylib//lib:new_sets.bzl", "sets")
+load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@prelude//utils:selects.bzl", "selects")
 # @lint-ignore-every FBCODEBZLADDLOADS
+
+load("@prelude//utils:type_defs.bzl", "is_list", "is_select", "is_tuple")
+load("@shim//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
 
 prelude = native
 
-_SELECT_TYPE = type(select({"DEFAULT": []}))
+_C_SOURCE_EXTS = (
+    ".c",
+)
 
-def is_select(thing):
-    return type(thing) == _SELECT_TYPE
+_CPP_SOURCE_EXTS = (
+    ".cc",
+    ".cpp",
+)
+
+_SOURCE_EXTS = _C_SOURCE_EXTS + _CPP_SOURCE_EXTS
+
+_HEADER_EXTS = (
+    ".h",
+    ".hh",
+    ".tcc",
+    ".hpp",
+    ".cuh",
+)
+
+# These header suffixes are used to logically group C/C++ source (e.g.
+# `foo/Bar.cpp`) with headers with the following suffixes (e.g. `foo/Bar.h` and
+# `foo/Bar-inl.tcc`), such that the source provides all implementation for
+# methods/classes declared in the headers.
+#
+# This is important for a couple reasons:
+# 1) Automatic dependencies: Tooling can use this property to automatically
+#    manage TARGETS dependencies by extracting `#include` references in sources
+#    and looking up the rules which "provide" them.
+# 2) Modules: This logical group can be combined into a standalone C/C++ module
+#    (when such support is available).
+_HEADER_SUFFIXES = (
+    ".h",
+    ".hpp",
+    ".tcc",
+    "-inl.h",
+    "-inl.hpp",
+    "-inl.tcc",
+    "-defs.h",
+    "-defs.hpp",
+    "-defs.tcc",
+)
+
+def _get_headers_from_sources(srcs):
+    """
+    Return the headers likely associated with the given sources
+
+    Args:
+        srcs: A list of strings representing files or build targets
+
+    Returns:
+        A list of header files corresponding to the list of sources. These files are
+        validated to exist based on glob()
+    """
+    split_srcs = [
+        paths.split_extension(src_filename)
+        for src_filename in [_get_src_filename(src) for src in srcs]
+        if "//" not in src_filename and not src_filename.startswith(":")
+    ]
+
+    # For e.g. foo.cpp grab a glob on foo.h, foo-inl.h, etc
+    headers = [
+        base + header_ext
+        for base, ext in split_srcs
+        if ext in _SOURCE_EXTS
+        for header_ext in _HEADER_SUFFIXES
+    ]
+
+    # Avoid a warning for an empty glob pattern if there are no headers.
+    return glob(headers) if headers else []
+
+def _get_src_filename(src):
+    """
+    Return filename from a potentilly tuple value entry in srcs attribute
+    """
+
+    if is_tuple(src):
+        s, _ = src
+        return s
+    return src
+
+def _update_headers_with_src_headers(src_headers, out_headers):
+    """
+    Helper function to update raw headers with headers from srcs
+    """
+    src_headers = sets.to_list(sets.difference(src_headers, sets.make(out_headers)))
+
+    # Looks simple, right? But if a header is explicitly added in, say, a
+    # dictionary mapping, we want to make sure to keep the original mapping
+    # and drop the F -> F mapping
+    if is_list(out_headers):
+        out_headers.extend(sorted(src_headers))
+    else:
+        # Let it throw AttributeError if update() can't be found neither
+        out_headers.update({k: k for k in src_headers})
+    return out_headers
+
+def prebuilt_cpp_library(
+        headers = None,
+        linker_flags = None,
+        private_linker_flags = None,
+        **kwargs):
+    prelude.prebuilt_cxx_library(
+        exported_headers = headers,
+        exported_linker_flags = linker_flags,
+        linker_flags = private_linker_flags,
+        **kwargs
+    )
 
 def cpp_library(
+        name,
         deps = [],
+        srcs = [],
         external_deps = [],
+        exported_deps = [],
+        exported_external_deps = [],
         undefined_symbols = None,
         visibility = ["PUBLIC"],
+        auto_headers = None,
+        arch_preprocessor_flags = None,
+        modular_headers = None,
+        os_deps = [],
+        arch_compiler_flags = None,
+        tags = None,
+        linker_flags = None,
+        private_linker_flags = None,
+        exported_linker_flags = None,
+        headers = None,
+        private_headers = None,
         **kwargs):
-    _unused = undefined_symbols  # @unused
+    _unused = (undefined_symbols, arch_preprocessor_flags, modular_headers, arch_compiler_flags, tags)  # @unused
+    if os_deps:
+        deps += _select_os_deps(_fix_dict_deps(os_deps))
+    if headers == None:
+        headers = []
+    if is_select(srcs) and auto_headers == AutoHeaders.SOURCES:
+        # Validate `srcs` and `auto_headers` before the config check
+        base_path = native.package_name()
+        fail(
+            "//{}:{}: `select` srcs cannot support AutoHeaders.SOURCES".format(base_path, name),
+        )
+    auto_headers = get_auto_headers(auto_headers)
+    if auto_headers == AutoHeaders.SOURCES and not is_select(srcs):
+        src_headers = sets.make(_get_headers_from_sources(srcs))
+        if private_headers:
+            src_headers = sets.difference(src_headers, sets.make(private_headers))
 
+        headers = selects.apply(
+            headers,
+            partial(_update_headers_with_src_headers, src_headers),
+        )
+    if not is_select(linker_flags):
+        linker_flags = linker_flags or []
+        linker_flags = list(linker_flags)
+        if exported_linker_flags != None:
+            linker_flags += exported_linker_flags
     prelude.cxx_library(
+        name = name,
+        srcs = srcs,
         deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
+        exported_deps = _maybe_select_map(exported_deps + external_deps_to_targets(exported_external_deps), _fix_deps),
         visibility = visibility,
         preferred_linkage = "static",
+        exported_headers = headers,
+        headers = private_headers,
+        exported_linker_flags = linker_flags,
+        linker_flags = private_linker_flags,
+        **kwargs
+    )
+
+def cpp_unittest(
+        deps = [],
+        external_deps = [],
+        visibility = ["PUBLIC"],
+        supports_static_listing = None,
+        allocator = None,
+        owner = None,
+        tags = None,
+        emails = None,
+        extract_helper_lib = None,
+        compiler_specific_flags = None,
+        default_strip_mode = None,
+        **kwargs):
+    _unused = (supports_static_listing, allocator, owner, tags, emails, extract_helper_lib, compiler_specific_flags, default_strip_mode)  # @unused
+    prelude.cxx_test(
+        deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
+        visibility = visibility,
+        **kwargs
+    )
+
+def cpp_binary(
+        deps = [],
+        external_deps = [],
+        visibility = ["PUBLIC"],
+        dlopen_enabled = None,
+        compiler_specific_flags = None,
+        os_linker_flags = None,
+        allocator = None,
+        modules = None,
+        **kwargs):
+    _unused = (dlopen_enabled, compiler_specific_flags, os_linker_flags, allocator, modules)  # @unused
+    prelude.cxx_binary(
+        deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
+        visibility = visibility,
         **kwargs
     )
 
@@ -180,10 +372,7 @@ def _maybe_select_map(v, mapper):
         return select_map(v, mapper)
     return mapper(v)
 
-def _select_os_deps(xss: list[(
-    str,
-    list[str],
-)]) -> Select:
+def _select_os_deps(xss) -> Select:
     d = {
         "prelude//os:" + os: xs
         for os, xs in xss
@@ -191,13 +380,7 @@ def _select_os_deps(xss: list[(
     d["DEFAULT"] = []
     return select(d)
 
-def _fix_dict_deps(xss: list[(
-    str,
-    list[str],
-)]) -> list[(
-    str,
-    list[str],
-)]:
+def _fix_dict_deps(xss):
     return [
         (k, _fix_deps(xs))
         for k, xs in xss
@@ -208,7 +391,9 @@ def _fix_mapped_srcs(xs: dict[str, str]):
     # it should be.
     return {_fix_dep(k): v for (k, v) in xs.items()}
 
-def _fix_deps(xs: list[str]) -> list[str]:
+def _fix_deps(xs):
+    if is_select(xs):
+        return xs
     return filter(None, map(_fix_dep, xs))
 
 def _fix_dep(x: str) -> [
@@ -231,6 +416,18 @@ def _fix_dep(x: str) -> [
         return "root//" + x.removeprefix("fbcode//common/ocaml/interop/")
     elif x.startswith("fbcode//third-party-buck/platform010/build/supercaml"):
         return "shim//third-party/ocaml" + x.removeprefix("fbcode//third-party-buck/platform010/build/supercaml")
+    elif x.startswith("fbcode//third-party-buck/platform010/build"):
+        return "shim//third-party" + x.removeprefix("fbcode//third-party-buck/platform010/build")
+    elif x.startswith("fbsource//third-party"):
+        return "shim//third-party" + x.removeprefix("fbsource//third-party")
+    elif x.startswith("third-party//"):
+        return "shim//third-party/" + x.removeprefix("third-party//")
+    elif x.startswith("//folly"):
+        return "root//" + x.removeprefix("//")
+    elif x.startswith("root//folly"):
+        return x
+    elif x.startswith("shim//"):
+        return x
     else:
         fail("Dependency is unaccounted for `{}`.\n".format(x) +
              "Did you forget 'oss-disable'?")
@@ -244,7 +441,10 @@ def _fix_dep_in_string(x: str) -> str:
 # 'fbcode//third-party-buck/platform010/build/supercaml:ocaml-dev'
 # (which will then get mapped to `shim//third-party/ocaml:ocaml-dev`).
 def external_dep_to_target(t):
-    return "fbcode//third-party-buck/platform010/build/{}:{}".format(t[0], t[2])
+    if type(t) == type(()):
+        return "fbcode//third-party-buck/platform010/build/{}:{}".format(t[0], t[2])
+    else:
+        return "fbcode//third-party-buck/platform010/build/{}:{}".format(t, t)
 
 def external_deps_to_targets(ts):
     return [external_dep_to_target(t) for t in ts]
