@@ -29,6 +29,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/lang/Thunk.h>
 #include <folly/lang/TypeInfo.h>
 
 namespace folly {
@@ -422,6 +423,104 @@ T* exception_ptr_get_object(std::exception_ptr const& ptr) noexcept {
   auto object = !target ? nullptr : exception_ptr_get_object(ptr, target);
   return static_cast<T*>(object);
 }
+
+namespace detail {
+
+struct make_exception_ptr_with_arg_ {
+  size_t size = 0;
+  std::type_info const* type = nullptr;
+  void (*ctor)(void*, void*) = nullptr;
+  void (*dtor)(void*) = nullptr;
+
+  template <typename F, typename E>
+  static void make(void* p, void* f) {
+    ::new (p) E((*static_cast<F*>(f))());
+  }
+
+  template <typename F, typename E = decltype(FOLLY_DECLVAL(F&)())>
+  FOLLY_ERASE explicit constexpr make_exception_ptr_with_arg_(tag_t<F>) noexcept
+      : size{sizeof(E)},
+        type{FOLLY_TYPE_INFO_OF(E)},
+        ctor{make<F, E>},
+        dtor{thunk::dtor<E>} {}
+};
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const&, void*) noexcept;
+
+template <typename F>
+struct make_exception_ptr_with_fn_ {
+  F& f_;
+  FOLLY_ERASE std::exception_ptr operator()() const noexcept {
+    return std::make_exception_ptr(f_());
+  }
+};
+
+} // namespace detail
+
+//  make_exception_ptr_with_fn
+//  make_exception_ptr_with
+//
+//  Constructs a std::exception_ptr. On some platforms, this form may be more
+//  efficient than std::make_exception_ptr. In particular, even when the latter
+//  is optimized not actually to throw, catch, and call std::current_exception
+//  internally, it remains specified to take its parameter by-value and to copy
+//  its parameter internally. Many in-practice exception types, including those
+//  which ship with standard libraries implementations, have copy constructors
+//  which may atomically modify refcounts; others may allocate and copy string
+//  data. In the best-case scenario, folly::make_exception_ptr_with may avoid
+//  these costs.
+//
+//  There are three overloads, with overload selection unambiguous.
+//  * A single invocable argument. The argument is invoked and its return value
+//    is the managed exception.
+//  * Variadic arguments, the first of which is in_place_type<E>. An exception
+//    of type E is created in-place with the remaining arguments forwarded to
+//    its constructor, and it is the managed exception.
+//  * Two arguments, the first of which is in_place. The argument is moved or
+//    copied and the result is the managed exception. This form is the closest
+//    to std::make_exception_ptr.
+struct make_exception_ptr_with_fn {
+ private:
+  template <typename R>
+  using make_arg_ = conditional_t<
+      std::is_array<std::remove_reference_t<R>>::value,
+      detail::throw_exception_arg_array_,
+      detail::throw_exception_arg_base_>;
+  template <typename R>
+  using make_arg_t = typename make_arg_<R>::template apply<R>;
+
+  template <typename E, typename... A>
+  auto make(A&&... a) const noexcept {
+    return [&] { return E(static_cast<A&&>(a)...); };
+  }
+
+ public:
+  template <typename F, decltype(FOLLY_DECLVAL(F&)())* = nullptr>
+  std::exception_ptr operator()(F f) const noexcept {
+    if ((kIsGlibcxx || kIsLibcpp) && kHasRtti && exception_ptr_access()) {
+      static const detail::make_exception_ptr_with_arg_ arg{tag<F>};
+      return detail::make_exception_ptr_with_(arg, &f);
+    }
+    if (kHasExceptions) {
+      return catch_exception(
+          detail::make_exception_ptr_with_fn_<F>{f}, std::current_exception);
+    }
+    return std::exception_ptr();
+  }
+  template <typename E, typename... A>
+  FOLLY_ERASE std::exception_ptr operator()(
+      std::in_place_type_t<E>, A&&... a) const noexcept {
+    return operator()(make<E, make_arg_t<A&&>...>(static_cast<A&&>(a)...));
+  }
+  template <typename E>
+  FOLLY_ERASE std::exception_ptr operator()(
+      std::in_place_t, E&& e) const noexcept {
+    constexpr auto tag = std::in_place_type<remove_cvref_t<E>>;
+    return operator()(tag, static_cast<E&&>(e));
+  }
+};
+inline constexpr make_exception_ptr_with_fn make_exception_ptr_with{};
 
 //  exception_shared_string
 //

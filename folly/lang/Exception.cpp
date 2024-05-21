@@ -40,17 +40,64 @@
 
 #if defined(__GLIBCXX__)
 
-//  nada
+//  https://github.com/gcc-mirror/gcc/blob/releases/gcc-10.2.0/libstdc++-v3/libsupc++/unwind-cxx.h
+
+#include <cxxabi.h>
+#include <unwind.h>
+
+namespace __cxxabiv1 {
+
+struct __cxa_exception {
+  std::type_info* exceptionType;
+  void(_GLIBCXX_CDTOR_CALLABI* exceptionDestructor)(void*);
+  std::unexpected_handler unexpectedHandler;
+  std::terminate_handler terminateHandler;
+  __cxa_exception* nextException;
+  int handlerCount;
+#ifdef __ARM_EABI_UNWINDER__
+  __cxa_exception* nextPropagatingException;
+  int propagationCount;
+#else
+  int handlerSwitchValue;
+  const unsigned char* actionRecord;
+  const unsigned char* languageSpecificData;
+  _Unwind_Ptr catchTemp;
+  void* adjustedPtr;
+#endif
+  _Unwind_Exception unwindHeader;
+};
+
+struct __cxa_refcounted_exception {
+  _Atomic_word referenceCount;
+  __cxa_exception exc;
+};
+
+} // namespace __cxxabiv1
 
 #endif // defined(__GLIBCXX__)
 
 #if defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
 
-//  https://github.com/llvm/llvm-project/blob/llvmorg-11.0.1/libcxxabi/src/cxa_exception.h
-//  https://github.com/llvm/llvm-project/blob/llvmorg-11.0.1/libcxxabi/src/private_typeinfo.h
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxx/include/exception
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/cxa_exception.h
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/cxa_exception.cpp
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/private_typeinfo.h
 
 #include <cxxabi.h>
 #include <unwind.h>
+
+namespace std {
+
+#if defined(_LIBCPP_FUNC_VIS) // llvm < 17
+#define FOLLY_DETAIL_EXN_FUNC_VIS _LIBCPP_FUNC_VIS
+#else // llvm >= 17
+#define FOLLY_DETAIL_EXN_FUNC_VIS _LIBCPP_EXPORTED_FROM_ABI
+#endif
+
+typedef void (*unexpected_handler)();
+FOLLY_DETAIL_EXN_FUNC_VIS unexpected_handler get_unexpected() _NOEXCEPT;
+
+} // namespace std
 
 namespace __cxxabiv1 {
 
@@ -109,6 +156,8 @@ struct __folly_cxa_exception_with_reserve {
   _Unwind_Exception unwindHeader;
 };
 
+static const uint64_t kOurExceptionClass = 0x434C4E47432B2B00; // CLNGC++\0
+
 //  named differently from the real shim type __shim_type_info and all members
 //  are pure virtual; as long as the vtable is the same, though, it should work
 class __folly_shim_type_info : public std::type_info {
@@ -135,6 +184,8 @@ namespace abi = __cxxabiv1;
 #include <cxxabi.h>
 
 namespace __cxxabiv1 {
+
+static const uint64_t kOurExceptionClass = 0x474E5543432B2B00; // GNUCC++\0
 
 class __folly_shim_type_info {
  public:
@@ -469,6 +520,66 @@ void* exception_ptr_get_object_(
 }
 
 #endif // defined(_WIN32)
+
+} // namespace detail
+
+namespace detail {
+
+#if defined(__GLIBCXX__)
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const& arg, void* func) noexcept {
+  auto type = const_cast<std::type_info*>(arg.type);
+  void* object = abi::__cxa_allocate_exception(arg.size);
+  (void)abi::__cxa_init_primary_exception(object, type, arg.dtor);
+  auto exception = static_cast<abi::__cxa_refcounted_exception*>(object) - 1;
+  exception->referenceCount = 1;
+  return catch_exception(
+      [&] {
+        arg.ctor(object, func);
+        return reinterpret_cast<std::exception_ptr&&>(object);
+      },
+      [&] {
+        abi::__cxa_free_exception(object);
+        return std::current_exception();
+      });
+}
+
+#elif defined(_LIBCPP_VERSION)
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const& arg, void* func) noexcept {
+  void* object = abi::__cxa_allocate_exception(arg.size);
+  cxxabi_with_cxa_exception(object, [&](auto exception) {
+    exception->unexpectedHandler = std::get_unexpected();
+    exception->terminateHandler = std::get_terminate();
+    exception->exceptionType = const_cast<std::type_info*>(arg.type);
+    exception->exceptionDestructor = arg.dtor;
+    exception->referenceCount = 1;
+    std::memcpy(
+        &exception->unwindHeader.exception_class,
+        &abi::kOurExceptionClass,
+        sizeof(abi::kOurExceptionClass));
+  });
+  return catch_exception(
+      [&] {
+        arg.ctor(object, func);
+        return reinterpret_cast<std::exception_ptr&&>(object);
+      },
+      [&] {
+        abi::__cxa_free_exception(object);
+        return std::current_exception();
+      });
+}
+
+#else
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const&, void*) noexcept {
+  return std::exception_ptr();
+}
+
+#endif
 
 } // namespace detail
 
