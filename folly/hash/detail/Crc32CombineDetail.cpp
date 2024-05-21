@@ -111,13 +111,15 @@ static uint32_t gf_multiply_crc32_hw(uint64_t crc1, uint64_t crc2, uint32_t) {
   return _mm_cvtsi128_si32(_mm_srli_si128(_mm_xor_si128(res3, res1), 4));
 }
 
-#elif FOLLY_NEON && FOLLY_ARM_FEATURE_CRC32 && FOLLY_ARM_FEATURE_AES && FOLLY_ARM_FEATURE_SHA2
+#elif FOLLY_NEON && FOLLY_ARM_FEATURE_CRC32 && FOLLY_ARM_FEATURE_AES && \
+    FOLLY_ARM_FEATURE_SHA2
 static uint32_t gf_multiply_crc32c_hw(uint64_t crc1, uint64_t crc2, uint32_t) {
   const uint64x2_t count = vsetq_lane_u64(0, vdupq_n_u64(1), 1);
 
   const poly128_t res0 = vmull_p64(crc2, crc1);
-  const uint64x2_t res1 = vshlq_u64(vreinterpretq_u64_p128(res0), vreinterpretq_s64_u64(count));
-  
+  const uint64x2_t res1 =
+      vshlq_u64(vreinterpretq_u64_p128(res0), vreinterpretq_s64_u64(count));
+
   // Use hardware crc32c to do reduction from 64 -> 32 bytes
   const uint64_t res2 = vgetq_lane_u64(res1, 0);
   const uint32_t res3 = __crc32cw(0, res2);
@@ -130,8 +132,9 @@ static uint32_t gf_multiply_crc32_hw(uint64_t crc1, uint64_t crc2, uint32_t) {
   const uint64x2_t count = vsetq_lane_u64(0, vdupq_n_u64(1), 1);
 
   const poly128_t res0 = vmull_p64(crc2, crc1);
-  const uint64x2_t res1 = vshlq_u64(vreinterpretq_u64_p128(res0), vreinterpretq_s64_u64(count));
-  
+  const uint64x2_t res1 =
+      vshlq_u64(vreinterpretq_u64_p128(res0), vreinterpretq_s64_u64(count));
+
   // Use hardware crc32 to do reduction from 64 -> 32 bytes
   const uint64_t res2 = vgetq_lane_u64(res1, 0);
   const uint32_t res3 = __crc32w(0, res2);

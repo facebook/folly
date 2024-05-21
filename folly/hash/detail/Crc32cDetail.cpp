@@ -293,7 +293,6 @@ uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
   return (uint32_t)crc0;
 }
 
-
 #elif FOLLY_ARM_FEATURE_CRC32 // defined(FOLLY_X64) && FOLLY_SSE_PREREQ(4, 2)
 
 uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
