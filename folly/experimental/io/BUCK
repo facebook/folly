@@ -58,7 +58,7 @@ cpp_library(
         "linux",
         select({
             "DEFAULT": ["fbsource//third-party/liburing:uring"],
-            "ovr_config//os:linux-sgx": [],
+            "ovr_config//os:linux-sgx": [], # @oss-disable
         }),
     )],
 )
