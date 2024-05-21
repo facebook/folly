@@ -26,14 +26,6 @@ _CPP_SOURCE_EXTS = (
 
 _SOURCE_EXTS = _C_SOURCE_EXTS + _CPP_SOURCE_EXTS
 
-_HEADER_EXTS = (
-    ".h",
-    ".hh",
-    ".tcc",
-    ".hpp",
-    ".cuh",
-)
-
 # These header suffixes are used to logically group C/C++ source (e.g.
 # `foo/Bar.cpp`) with headers with the following suffixes (e.g. `foo/Bar.h` and
 # `foo/Bar-inl.tcc`), such that the source provides all implementation for
