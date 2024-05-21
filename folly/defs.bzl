@@ -197,10 +197,17 @@ def folly_cxx_test(
         deps = [],
         contacts = [],
         **kwargs):
+    # resources is cherry picked because some of the other kwargs
+    # have issues that need to be investigated.
+    # e.g., Some args are duplicated. Some args cause TSAN errors.
+    # TODO(T188948036): Fix xplat/folly:folly-futures-test and folly_cxx_test
+    resources = kwargs.get("resources", [])
+
     fb_xplat_cxx_test(
         name = name,
         srcs = srcs,
         raw_headers = raw_headers,
+        resources = resources,
         include_directories = _compute_include_directories(),
         deps = deps + [
             "//xplat/folly/test/common:test_main",
