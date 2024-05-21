@@ -462,7 +462,6 @@ TEST(Expected, Conversions) {
   // Truthy tests work and are not ambiguous
   if (mbool && mshort && mstr && mint) { // only checks not-empty
     if (*mbool && *mshort && *mstr && *mint) { // only checks value
-      ;
     }
   }
 
