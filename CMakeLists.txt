@@ -608,6 +608,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY compression/test/
       TEST compression_test SLOW SOURCES CompressionTest.cpp
 
+    DIRECTORY compression/elias_fano/test/
+      TEST bitvector_test SOURCES BitVectorCodingTest.cpp
+      TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
+
     DIRECTORY container/test/
       TEST access_test SOURCES AccessTest.cpp
       TEST array_test SOURCES ArrayTest.cpp
@@ -702,13 +706,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY experimental/test/
       TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST bits_test_2 SOURCES BitsTest.cpp
-      TEST bitvector_test SOURCES BitVectorCodingTest.cpp
-      TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
-      TEST event_count_test SOURCES EventCountTest.cpp
       # FunctionSchedulerTest has a lot of timing-dependent checks,
       # and tends to fail on heavily loaded systems.
       TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
-      TEST future_dag_test SOURCES FutureDAGTest.cpp
       TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
       #TEST program_options_test SOURCES ProgramOptionsTest.cpp
@@ -954,6 +954,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK baton_benchmark SOURCES BatonBenchmark.cpp
       TEST baton_test SOURCES BatonTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
+      TEST event_count_test SOURCES EventCountTest.cpp
       TEST lifo_sem_test WINDOWS_DISABLED SOURCES LifoSemTests.cpp
       TEST relaxed_atomic_test WINDOWS_DISABLED SOURCES RelaxedAtomicTest.cpp
       TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
