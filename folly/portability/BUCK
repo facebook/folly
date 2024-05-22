@@ -164,10 +164,6 @@ cpp_library(
             "linux",
             ["third-party//jemalloc:headers"],
         ),
-        (
-            "linux-sgx",
-            ["third-party//jemalloc:headers"],
-        ),
     ],
     exported_deps = [
         ":config",
