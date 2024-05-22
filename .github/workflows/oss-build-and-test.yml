@@ -125,8 +125,7 @@ jobs:
         - name: Install C++ toolchain
           if: needs.get-toolchains-to-install.outputs.uses_cxx == 'true'
           run: |
-            brew install cmake llvm cppcheck python3
-            sudo pip3 install conan==1.*
+            brew install cmake llvm cppcheck python3 conan@1
           shell: bash
         - name: Install OCaml toolchain
           if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
