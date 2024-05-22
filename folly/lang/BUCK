@@ -122,7 +122,6 @@ cpp_library(
     ],
     exported_deps = [
         ":safe_assert",
-        ":thunk",
         ":type_info",
         "//folly:c_portability",
         "//folly:cpp_attributes",

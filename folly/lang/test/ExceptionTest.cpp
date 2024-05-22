@@ -64,28 +64,6 @@ extern "C" FOLLY_KEEP void check_cond_catch_exception_ptr_nx(bool c) {
   folly::catch_exception(try_, catch_);
 }
 
-extern "C" FOLLY_KEEP void check_std_make_exception_ptr(
-    std::exception_ptr* ptr) {
-  ::new (ptr) std::exception_ptr( //
-      std::make_exception_ptr(std::runtime_error("foo")));
-}
-extern "C" FOLLY_KEEP void check_folly_make_exception_ptr_with_in_place(
-    std::exception_ptr* ptr) {
-  ::new (ptr) std::exception_ptr(
-      folly::make_exception_ptr_with(std::in_place, std::runtime_error("foo")));
-}
-extern "C" FOLLY_KEEP void check_folly_make_exception_ptr_with_in_place_type(
-    std::exception_ptr* ptr) {
-  constexpr auto tag = std::in_place_type<std::runtime_error>;
-  ::new (ptr) std::exception_ptr( //
-      folly::make_exception_ptr_with(tag, "foo"));
-}
-extern "C" FOLLY_KEEP void check_folly_make_exception_ptr_with_invocable(
-    std::exception_ptr* ptr) {
-  ::new (ptr) std::exception_ptr(
-      folly::make_exception_ptr_with([] { return std::runtime_error("foo"); }));
-}
-
 template <typename Ex>
 static std::string message_for_terminate_with(std::string const& what) {
   auto const name = folly::pretty_name<Ex>();
@@ -243,26 +221,6 @@ TEST_F(ExceptionTest, exception_ptr_vmi) {
   EXPECT_EQ(1, *(A1*)(folly::exception_ptr_get_object(ptr, &typeid(A1))));
   EXPECT_EQ(1, folly::exception_ptr_get_object<A1>(ptr)->value);
   EXPECT_EQ(44, *(C*)(folly::exception_ptr_get_object(ptr)));
-}
-
-TEST_F(ExceptionTest, make_exception_ptr_with_invocable) {
-  auto ptr =
-      folly::make_exception_ptr_with([] { return std::string("hello world"); });
-  EXPECT_EQ(&typeid(std::string), folly::exception_ptr_get_type(ptr));
-  EXPECT_EQ("hello world", *folly::exception_ptr_get_object<std::string>(ptr));
-}
-
-TEST_F(ExceptionTest, make_exception_ptr_with_in_place_type) {
-  auto ptr = folly::make_exception_ptr_with(
-      std::in_place_type<std::string>, "hello world");
-  EXPECT_EQ(&typeid(std::string), folly::exception_ptr_get_type(ptr));
-  EXPECT_EQ("hello world", *folly::exception_ptr_get_object<std::string>(ptr));
-}
-
-TEST_F(ExceptionTest, make_exception_ptr_with_in_place) {
-  auto ptr = folly::make_exception_ptr_with(std::in_place, 17);
-  EXPECT_EQ(&typeid(int), folly::exception_ptr_get_type(ptr));
-  EXPECT_EQ(17, *folly::exception_ptr_get_object<int>(ptr));
 }
 
 TEST_F(ExceptionTest, exception_shared_string) {
