@@ -28,7 +28,7 @@ def homebrew_library(
         name = brew_headers,
         default_target_platform = default_target_platform,
         out = "out",
-        cmd = "cp -r `brew --prefix {}`/{} $OUT || echo Looks like you need to run: brew install {}".format(package_name, header_path or "include", package_name),
+        cmd = "echo \"-I`brew --prefix {}`/{}\" > $OUT".format(package_name, header_path or "include"),
     )
 
     # @lint-ignore BUCKLINT
@@ -46,8 +46,8 @@ def homebrew_library(
         name = name or package_name,
         default_target_platform = default_target_platform,
         visibility = visibility,
-        header_dirs = [":{}".format(brew_headers)],
         exported_deps = deps,
+        exported_preprocessor_flags = ["@$(location :{})".format(brew_headers)],
         linker_flags = linker_flags,
         labels = labels,
     )
