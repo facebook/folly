@@ -20,6 +20,7 @@
 #include <mutex>
 
 #include <folly/lang/Hint.h>
+#include <folly/memory/SanitizeLeak.h>
 #include <folly/synchronization/CallOnce.h>
 
 constexpr auto kSmallGrowthFactor = 1.1;
@@ -351,6 +352,13 @@ ElementWrapper* StaticMetaBase::reallocate(
     if (!reallocated) {
       throw_exception<std::bad_alloc>();
     }
+
+    // When the main thread exits, it will call functions registered with
+    // 'atexit' and then call 'exit()'. However, It will NOT call any functions
+    // registered via the 'TLS' feature of pthread_key_create.
+    // Reference:
+    // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_create.html
+    folly::lsan_ignore_object(reallocated);
   }
   return reallocated;
 }

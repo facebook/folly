@@ -339,6 +339,7 @@ cpp_library(
     headers = ["ThreadLocalDetail.h"],
     deps = [
         "//folly/lang:hint",
+        "//folly/memory:sanitize_leak",
         "//folly/synchronization:call_once",
     ],
     exported_deps = [
