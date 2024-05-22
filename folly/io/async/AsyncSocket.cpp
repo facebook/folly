@@ -1730,7 +1730,7 @@ void AsyncSocket::writeChain(
     // suppress "warning: variable length array 'vec' is used [-Wvla]"
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
-    iovec vec[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallIoVecSize)];
+    iovec vec[BOOST_PP_IIF(FOLLY_HAVE_VLA_01, count, kSmallIoVecSize)];
     FOLLY_POP_WARNING
 
     writeChainImpl(callback, vec, count, std::move(buf), flags);
@@ -3771,7 +3771,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     // suppress "warning: variable length array 'vec' is used [-Wvla]"
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
-    iovec tmpVec[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallIoVecSize)];
+    iovec tmpVec[BOOST_PP_IIF(FOLLY_HAVE_VLA_01, count, kSmallIoVecSize)];
     FOLLY_POP_WARNING
 
     size_t tmpVecCount = count;
