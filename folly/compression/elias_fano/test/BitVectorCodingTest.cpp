@@ -22,7 +22,7 @@
 #include <folly/Portability.h>
 #if FOLLY_X64
 #include <folly/Benchmark.h>
-#include <folly/experimental/BitVectorCoding.h>
+#include <folly/compression/elias_fano/BitVectorCoding.h>
 #include <folly/experimental/Select64.h>
 #include <folly/experimental/test/CodingTestUtils.h>
 #include <folly/init/Init.h>

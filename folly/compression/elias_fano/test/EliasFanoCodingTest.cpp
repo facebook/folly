@@ -22,7 +22,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
-#include <folly/experimental/EliasFanoCoding.h>
+#include <folly/compression/elias_fano/EliasFanoCoding.h>
 #include <folly/experimental/Select64.h>
 #include <folly/experimental/test/CodingTestUtils.h>
 #include <folly/init/Init.h>
