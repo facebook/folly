@@ -113,8 +113,8 @@ cpp_unittest(
     srcs = ["JSONSchemaTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:json_schema",
         "//folly/json:dynamic",
+        "//folly/json:json_schema",
         "//folly/portability:gtest",
     ],
 )
