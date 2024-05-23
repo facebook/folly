@@ -162,22 +162,28 @@ T AtomicObserver<T>::get() const {
 
 template <typename T>
 TLObserver<T>::TLObserver(Observer<T> observer)
-    : observer_(std::move(observer)),
-      snapshot_([&] { return Snapshot<T>(observer_.getSnapshot()); }) {}
+    : observer_(std::move(observer)) {}
 
 template <typename T>
 TLObserver<T>::TLObserver(const TLObserver<T>& other)
     : TLObserver(other.observer_) {}
 
 template <typename T>
+TLObserver<T>::TLObserver(TLObserver<T>&& other) noexcept = default;
+
+template <typename T>
 const Snapshot<T>& TLObserver<T>::getSnapshotRef() const {
-  auto& snapshot = *snapshot_;
-  if (observer_.needRefresh(snapshot) ||
+  Snapshot<T>* snapshot = snapshot_.get();
+  if (FOLLY_UNLIKELY(!snapshot)) {
+    snapshot = new Snapshot<T>(observer_.getSnapshot());
+    snapshot_.reset(snapshot);
+  }
+  if (observer_.needRefresh(*snapshot) ||
       observer_detail::ObserverManager::inManagerThread()) {
-    snapshot = observer_.getSnapshot();
+    *snapshot = observer_.getSnapshot();
   }
 
-  return snapshot;
+  return *snapshot;
 }
 
 template <typename T>

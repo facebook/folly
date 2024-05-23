@@ -271,6 +271,10 @@ TEST(Observer, TLObserver) {
   EXPECT_EQ(42, ***k);
   k = std::make_unique<folly::observer::TLObserver<int>>(createTLObserver(41));
   EXPECT_EQ(41, ***k);
+  k = std::make_unique<folly::observer::TLObserver<int>>( // copy-ctor
+      static_cast<folly::observer::TLObserver<int> const&>(
+          createTLObserver(40)));
+  EXPECT_EQ(40, ***k);
 }
 
 TEST(ReadMostlyTLObserver, ReadMostlyTLObserver) {

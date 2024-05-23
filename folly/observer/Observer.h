@@ -334,6 +334,7 @@ class TLObserver {
  public:
   explicit TLObserver(Observer<T> observer);
   TLObserver(const TLObserver<T>& other);
+  TLObserver(TLObserver<T>&& other) noexcept;
 
   const Snapshot<T>& getSnapshotRef() const;
   const Snapshot<T>& operator*() const { return getSnapshotRef(); }
@@ -342,7 +343,7 @@ class TLObserver {
 
  private:
   Observer<T> observer_;
-  ThreadLocal<Snapshot<T>> snapshot_;
+  mutable ThreadLocalPtr<Snapshot<T>> snapshot_;
 };
 
 template <typename T>
