@@ -11,5 +11,6 @@ oncall("open_source")
 
 third_party_library(
     name = "fmt",
+    homebrew_package_name = "fmt",
     pkgconfig_name = "fmt",
 )
