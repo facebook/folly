@@ -5,7 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("//build_defs:python_library.bzl", "python_library")
+load("@shim//build_defs:python_library.bzl", "python_library")
 
 def cython_library(name, visibility = ["PUBLIC"], **_):
     python_library(name = name, visibility = visibility)

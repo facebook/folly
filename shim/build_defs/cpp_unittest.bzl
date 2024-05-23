@@ -5,6 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("//:shims.bzl", _cpp_unittest = "cpp_unittest")
+load("@shim//:shims.bzl", _cpp_unittest = "cpp_unittest")
 
 cpp_unittest = _cpp_unittest

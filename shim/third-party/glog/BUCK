@@ -12,5 +12,5 @@ oncall("open_source")
 third_party_library(
     name = "glog",
     pkgconfig_name = "libglog",
-    deps = ["//third-party/gflags:gflags"],
+    deps = ["shim//third-party/gflags:gflags"],
 )

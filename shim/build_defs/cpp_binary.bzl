@@ -5,6 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("//:shims.bzl", _cpp_binary = "cpp_binary")
+load("@shim//:shims.bzl", _cpp_binary = "cpp_binary")
 
 cpp_binary = _cpp_binary

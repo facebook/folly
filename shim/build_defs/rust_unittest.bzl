@@ -5,6 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("//:shims.bzl", _rust_unittest = "rust_unittest")
+load("@shim//:shims.bzl", _rust_unittest = "rust_unittest")
 
 rust_unittest = _rust_unittest

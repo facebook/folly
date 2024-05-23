@@ -6,7 +6,7 @@
 # of this source tree.
 
 load(
-    "//:shims.bzl",
+    "@shim//:shims.bzl",
     _rust_binary = "rust_binary",
 )
 
