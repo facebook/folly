@@ -208,7 +208,6 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
 namespace {
 
 std::terminate_handler origTerminate = abort;
-std::unexpected_handler origUnexpected = abort;
 
 void dumpExceptionStack(const char* prefix) {
   auto exceptions = getCurrentExceptions();
@@ -227,19 +226,11 @@ void terminateHandler() {
   origTerminate();
 }
 
-void unexpectedHandler() {
-  dumpExceptionStack("Unexpected exception");
-  origUnexpected();
-}
-
 } // namespace
 
 void installHandlers() {
   struct Once {
-    Once() {
-      origTerminate = std::set_terminate(terminateHandler);
-      origUnexpected = std::set_unexpected(unexpectedHandler);
-    }
+    Once() { origTerminate = std::set_terminate(terminateHandler); }
   };
   static Once once;
 }
