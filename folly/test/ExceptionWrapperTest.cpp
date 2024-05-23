@@ -473,7 +473,7 @@ namespace {
 struct ThrownException {};
 struct InSituException : std::exception {
   InSituException() = default;
-  InSituException(const InSituException&) throw() {}
+  InSituException(const InSituException&) noexcept {}
 };
 struct OnHeapException : std::exception {
   OnHeapException() = default;
