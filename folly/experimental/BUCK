@@ -178,16 +178,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "jemalloc_nodump_allocator",
-    headers = [
-        "JemallocNodumpAllocator.h",
-    ],
-    exported_deps = [
-        "//folly/memory:jemalloc_nodump_allocator",
-    ],
-)
-
-cpp_library(
     name = "jemalloc_huge_page_allocator",
     headers = [
         "JemallocHugePageAllocator.h",
