@@ -11,5 +11,4 @@ oncall("open_source")
 
 third_party_library(
     name = "aio",
-    homebrew_package_name = "libaio",
 )
