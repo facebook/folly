@@ -15,8 +15,8 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/experimental/flat_combining/test/FlatCombiningTestHelpers.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/test/FlatCombiningTestHelpers.h>
 
 #include <glog/logging.h>
 

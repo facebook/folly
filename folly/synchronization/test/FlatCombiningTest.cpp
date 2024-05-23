@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/flat_combining/test/FlatCombiningTestHelpers.h>
+#include <folly/synchronization/test/FlatCombiningTestHelpers.h>
 
 #include <mutex>
 

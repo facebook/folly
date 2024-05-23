@@ -447,7 +447,7 @@ cpp_library(
     headers = ["FlatCombiningTestHelpers.h"],
     exported_deps = [
         "//folly:benchmark",
-        "//folly/experimental/flat_combining/test:flat_combining_examples",
+        "//folly/synchronization/test:flat_combining_examples",
     ],
     exported_external_deps = [
         "glog",
@@ -459,8 +459,8 @@ cpp_unittest(
     srcs = ["FlatCombiningBenchmark.cpp"],
     deps = [
         "//folly:benchmark",
-        "//folly/experimental/flat_combining/test:flat_combining_test_helpers",
         "//folly/portability:gtest",
+        "//folly/synchronization/test:flat_combining_test_helpers",
     ],
     external_deps = [
         "glog",
@@ -472,8 +472,8 @@ cpp_unittest(
     srcs = ["FlatCombiningTest.cpp"],
     supports_static_listing = False,
     deps = [
-        "//folly/experimental/flat_combining/test:flat_combining_test_helpers",
         "//folly/portability:gtest",
+        "//folly/synchronization/test:flat_combining_test_helpers",
     ],
     external_deps = [
         "glog",

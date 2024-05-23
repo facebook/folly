@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/experimental/flat_combining/test/FlatCombiningExamples.h>
+#include <folly/synchronization/test/FlatCombiningExamples.h>
 
 #include <atomic>
 #include <chrono>
