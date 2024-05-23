@@ -29,9 +29,9 @@
 #include <folly/Random.h>
 #include <folly/Synchronized.h>
 #include <folly/executors/GlobalExecutor.h>
-#include <folly/experimental/observer/Observable.h>
-#include <folly/experimental/observer/Observer.h>
 #include <folly/futures/Future.h>
+#include <folly/observer/Observable.h>
+#include <folly/observer/Observer.h>
 
 namespace folly {
 namespace observer {

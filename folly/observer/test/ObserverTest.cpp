@@ -21,14 +21,14 @@
 
 #include <utility>
 #include <folly/Singleton.h>
-#include <folly/experimental/observer/CoreCachedObserver.h>
-#include <folly/experimental/observer/HazptrObserver.h>
-#include <folly/experimental/observer/Observer.h>
-#include <folly/experimental/observer/ReadMostlyTLObserver.h>
-#include <folly/experimental/observer/SimpleObservable.h>
-#include <folly/experimental/observer/WithJitter.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
+#include <folly/observer/CoreCachedObserver.h>
+#include <folly/observer/HazptrObserver.h>
+#include <folly/observer/Observer.h>
+#include <folly/observer/ReadMostlyTLObserver.h>
+#include <folly/observer/SimpleObservable.h>
+#include <folly/observer/WithJitter.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 

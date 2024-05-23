@@ -18,7 +18,7 @@
 
 #include <folly/Function.h>
 #include <folly/Synchronized.h>
-#include <folly/experimental/observer/Observer.h>
+#include <folly/observer/Observer.h>
 #include <folly/synchronization/DelayedInit.h>
 
 namespace folly {

@@ -442,10 +442,10 @@ cpp_library(
         "//folly:exception_wrapper",
         "//folly:network_address",
         "//folly:string",
-        "//folly/experimental/observer:observer",
         "//folly/io:shutdown_socket_set",
         "//folly/net:net_ops",
         "//folly/net:network_socket",
+        "//folly/observer:observer",
         "//folly/portability:sockets",
     ],
 )

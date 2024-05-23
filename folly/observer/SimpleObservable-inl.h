@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/experimental/observer/Observable.h>
+#include <folly/observer/Observable.h>
 
 namespace folly {
 namespace observer {

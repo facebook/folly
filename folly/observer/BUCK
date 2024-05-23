@@ -9,7 +9,7 @@ cpp_library(
         "Observable-inl.h",
     ],
     exported_deps = [
-        "//folly/experimental/observer:observer",
+        "//folly/observer:observer",
         "//folly/synchronization:baton",
     ],
 )
@@ -37,8 +37,8 @@ cpp_library(
     ],
     exported_deps = [
         "//folly:synchronized",
-        "//folly/experimental/observer:observer",
         "//folly/experimental/observer/detail:observer_manager",
+        "//folly/observer:observer",
         "//folly/synchronization:hazptr",
     ],
 )
@@ -50,8 +50,8 @@ cpp_library(
     ],
     exported_deps = [
         "//folly/experimental:read_mostly_shared_ptr",
-        "//folly/experimental/observer:observer",
         "//folly/experimental/observer/detail:observer_manager",
+        "//folly/observer:observer",
     ],
 )
 
@@ -62,8 +62,8 @@ cpp_library(
     ],
     exported_deps = [
         "//folly/concurrency:core_cached_shared_ptr",
-        "//folly/experimental/observer:observer",
         "//folly/experimental/observer/detail:observer_manager",
+        "//folly/observer:observer",
     ],
 )
 
@@ -76,8 +76,8 @@ cpp_library(
     exported_deps = [
         "//folly:function",
         "//folly:synchronized",
-        "//folly/experimental/observer:observable",
-        "//folly/experimental/observer:observer",
+        "//folly/observer:observable",
+        "//folly/observer:observer",
         "//folly/synchronization:delayed_init",
     ],
 )
@@ -94,9 +94,9 @@ cpp_library(
         "//folly:random",
         "//folly:synchronized",
         "//folly/executors:global_executor",
-        "//folly/experimental/observer:observable",
-        "//folly/experimental/observer:observer",
         "//folly/futures:core",
+        "//folly/observer:observable",
+        "//folly/observer:observer",
     ],
     exported_external_deps = [
         "glog",

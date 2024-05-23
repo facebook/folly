@@ -18,7 +18,7 @@
 
 #include <chrono>
 
-#include <folly/experimental/observer/Observer.h>
+#include <folly/observer/Observer.h>
 
 namespace folly {
 namespace observer {
