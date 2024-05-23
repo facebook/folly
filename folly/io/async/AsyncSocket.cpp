@@ -1384,10 +1384,6 @@ void AsyncSocket::setZeroCopyReenableThreshold(size_t threshold) {
   zeroCopyReenableThreshold_ = threshold;
 }
 
-void AsyncSocket::setZeroCopyDrainConfig(const ZeroCopyDrainConfig& config) {
-  zeroCopyDrainConfig_ = config;
-}
-
 bool AsyncSocket::isZeroCopyRequest(WriteFlags flags) {
   return (zeroCopyEnabled_ && isSet(flags, WriteFlags::WRITE_MSG_ZEROCOPY));
 }
@@ -1439,46 +1435,6 @@ void AsyncSocket::releaseZeroCopyBuf(uint32_t id) {
   }
 
   idZeroCopyBufPtrMap_.erase(iter);
-}
-
-void AsyncSocket::drainZeroCopyQueue() {
-  // try to drain ZC writes if any - this is best effort
-  size_t prevSize = 0;
-  while (idZeroCopyBufPtrMap_.size() != prevSize) {
-    prevSize = idZeroCopyBufPtrMap_.size();
-    handleErrMessages();
-  }
-
-  if (!idZeroCopyBufPtrMap_.empty()) {
-    // Enable SO_LINGER, with the linger timeout set to 0.
-    struct linger optLinger = {1, 0};
-    if (setSockOpt(SOL_SOCKET, SO_LINGER, &optLinger) != 0) {
-      VLOG(2) << "AsyncSocket::drainZeroCopyQueue(): error setting SO_LINGER "
-              << "on " << fd_ << ": errno=" << errno;
-    }
-
-    idZeroCopyBufPtrMap_.clear();
-
-    if (eventBase_) {
-      idZeroCopyBufPtrMap_.clear();
-      // copy the buffers and adjust the allocatedBytesBuffered_
-      std::vector<std::unique_ptr<folly::IOBuf>> bufs;
-      for (auto& info : idZeroCopyBufInfoMap_) {
-        const size_t allocated = info.second.buf_->computeChainCapacity();
-        DCHECK_GE(allocatedBytesBuffered_, allocated);
-        allocatedBytesBuffered_ -= allocated;
-        bufs.emplace_back(std::move(info.second.buf_));
-      }
-      // enqueue for later destruction
-      eventBase_->scheduleAt(
-          [b = std::move(bufs)]() {},
-          std::chrono::steady_clock::now() + zeroCopyDrainConfig_.drainDelay);
-    } else {
-      while (!idZeroCopyBufPtrMap_.empty()) {
-        releaseZeroCopyBuf(idZeroCopyBufPtrMap_.begin()->first);
-      }
-    }
-  }
 }
 
 void AsyncSocket::setZeroCopyBuf(
@@ -2053,7 +2009,6 @@ void AsyncSocket::closeNow() {
       }
 
       if (fd_ != NetworkSocket()) {
-        drainZeroCopyQueue();
         ioHandler_.changeHandlerFD(NetworkSocket());
         doClose();
       }
@@ -4410,9 +4365,10 @@ void AsyncSocket::doClose() {
   }
   fd_ = NetworkSocket();
 
-  // we also want to check the zerocopy maps are empty
-  CHECK(idZeroCopyBufPtrMap_.empty());
-  CHECK(idZeroCopyBufInfoMap_.empty());
+  // we also want to clear the zerocopy maps
+  // if the fd has been closed
+  idZeroCopyBufPtrMap_.clear();
+  idZeroCopyBufInfoMap_.clear();
 }
 
 std::ostream& operator<<(
