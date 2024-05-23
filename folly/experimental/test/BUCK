@@ -88,25 +88,6 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "relaxed_concurrent_priority_queue_test",
-    srcs = ["RelaxedConcurrentPriorityQueueTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly:random",
-        "//folly:spin_lock",
-        "//folly/experimental:flat_combining_priority_queue",
-        "//folly/experimental:relaxed_concurrent_priority_queue",
-        "//folly/portability:gflags",
-        "//folly/portability:gtest",
-        "//folly/test:deterministic_schedule",
-    ],
-    external_deps = [
-        "glog",
-        ("boost", None, "boost_thread"),
-    ],
-)
-
-cpp_unittest(
     name = "function_scheduler_test",
     srcs = ["FunctionSchedulerTest.cpp"],
     headers = [],

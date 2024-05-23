@@ -1,0 +1,20 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "relaxed_concurrent_priority_queue",
+    headers = [
+        "RelaxedConcurrentPriorityQueue.h",
+    ],
+    exported_deps = [
+        "//folly:random",
+        "//folly:spin_lock",
+        "//folly:thread_local",
+        "//folly/detail:futex",
+        "//folly/lang:align",
+        "//folly/synchronization:hazptr",
+        "//folly/synchronization:wait_options",
+        "//folly/synchronization/detail:spin",
+    ],
+)
