@@ -139,7 +139,7 @@ jobs:
             python-version: '3.10'
         - name: Install homebrew deps
           run: |
-            BUCK_GRAPH=$(./buck2 cquery "attrregexfilter(labels, 'third-party:homebrew:', deps(//...))" --json --output-attribute=labels
+            BUCK_GRAPH=$(./buck2 cquery "attrregexfilter(labels, 'third-party:homebrew:', deps(//...))" --json --output-attribute=labels)
             HOMEBREW_PACKAGES=$(echo $BUCK_GRAPH | jq '[.[] | .labels] | flatten | unique | map(select(contains("third-party:homebrew:")) | sub("third-party:homebrew:"; "")) | .[] | @text')
             echo $HOMEBREW_PACKAGES | xargs brew install pkg-config
         - name: buck2 build and test
