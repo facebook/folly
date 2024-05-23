@@ -826,6 +826,12 @@ class AsyncSocket : public AsyncSocketTransport {
 
   void setZeroCopyReenableThreshold(size_t threshold);
 
+  struct ZeroCopyDrainConfig {
+    std::chrono::milliseconds drainDelay{1000};
+  };
+
+  void setZeroCopyDrainConfig(const ZeroCopyDrainConfig& config);
+
   void write(
       WriteCallback* callback,
       const void* buf,
@@ -1852,6 +1858,8 @@ class AsyncSocket : public AsyncSocketTransport {
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
 
+  void drainZeroCopyQueue();
+
   virtual void releaseIOBuf(
       std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback);
 
@@ -1885,6 +1893,8 @@ class AsyncSocket : public AsyncSocketTransport {
   // and another one that adds a ref count for a folly::IOBuf that is either
   // the original ptr or nullptr
   uint32_t zeroCopyBufId_{0};
+
+  ZeroCopyDrainConfig zeroCopyDrainConfig_;
 
   struct IOBufInfo {
     uint32_t count_{0};
