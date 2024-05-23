@@ -27,9 +27,9 @@
 
 #include <folly/Benchmark.h>
 #include <folly/SharedMutex.h>
-#include <folly/experimental/flat_combining/FlatCombining.h>
 #include <folly/lang/Aligned.h>
 #include <folly/synchronization/DistributedMutex.h>
+#include <folly/synchronization/FlatCombining.h>
 #include <folly/synchronization/SmallLocks.h>
 
 /* "Work cycle" is just an additional nop loop iteration.

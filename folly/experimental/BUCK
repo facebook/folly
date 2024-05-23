@@ -118,7 +118,7 @@ cpp_library(
     exported_deps = [
         "//folly:optional",
         "//folly/detail:futex",
-        "//folly/experimental/flat_combining:flat_combining",
+        "//folly/synchronization:flat_combining",
     ],
     exported_external_deps = [
         "glog",

@@ -361,9 +361,9 @@ cpp_benchmark(
         "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
         "//folly:shared_mutex",
-        "//folly/experimental/flat_combining:flat_combining",
         "//folly/lang:aligned",
         "//folly/synchronization:distributed_mutex",
+        "//folly/synchronization:flat_combining",
         "//folly/synchronization:small_locks",
     ],
 )
@@ -437,8 +437,8 @@ cpp_library(
     name = "flat_combining_examples",
     headers = ["FlatCombiningExamples.h"],
     exported_deps = [
-        "//folly/experimental/flat_combining:flat_combining",
         "//folly/synchronization:baton",
+        "//folly/synchronization:flat_combining",
     ],
 )
 

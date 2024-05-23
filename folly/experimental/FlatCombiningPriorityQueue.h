@@ -26,7 +26,7 @@
 
 #include <folly/Optional.h>
 #include <folly/detail/Futex.h>
-#include <folly/experimental/flat_combining/FlatCombining.h>
+#include <folly/synchronization/FlatCombining.h>
 
 namespace folly {
 
