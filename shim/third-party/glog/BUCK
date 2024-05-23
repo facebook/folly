@@ -12,5 +12,6 @@ oncall("open_source")
 third_party_library(
     name = "glog",
     pkgconfig_name = "libglog",
+    homebrew_package_name = "glog",
     deps = ["shim//third-party/gflags:gflags"],
 )
