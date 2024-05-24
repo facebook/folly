@@ -229,6 +229,7 @@ class exception_wrapper final {
   //! \return A `std::exception_ptr` that references the exception held by
   //!     `*this`.
   std::exception_ptr to_exception_ptr() const noexcept;
+  std::exception_ptr const& exception_ptr_ref() const noexcept;
 
   //! Returns the `typeid` of the wrapped exception object. If there is no
   //!     wrapped exception object, returns `nullptr`.

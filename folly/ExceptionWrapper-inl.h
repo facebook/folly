@@ -193,6 +193,11 @@ inline std::exception_ptr exception_wrapper::to_exception_ptr() const noexcept {
   return ptr_;
 }
 
+inline std::exception_ptr const& exception_wrapper::exception_ptr_ref()
+    const noexcept {
+  return ptr_;
+}
+
 inline std::type_info const* exception_wrapper::type() const noexcept {
   return exception_ptr_get_type(ptr_);
 }
