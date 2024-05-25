@@ -243,7 +243,12 @@ bool exception_ptr_access_rt_v_() noexcept {
 
 std::type_info const* exception_ptr_get_type_(
     std::exception_ptr const& ptr) noexcept {
-  return !ptr ? nullptr : ptr.__cxa_exception_type();
+  if (!ptr) {
+    return nullptr;
+  }
+  auto object = reinterpret_cast<void* const&>(ptr);
+  auto exception = static_cast<abi::__cxa_exception*>(object) - 1;
+  return exception->exceptionType;
 }
 
 void* exception_ptr_get_object_(
@@ -253,7 +258,7 @@ void* exception_ptr_get_object_(
     return nullptr;
   }
   auto object = reinterpret_cast<void* const&>(ptr);
-  auto type = ptr.__cxa_exception_type();
+  auto type = exception_ptr_get_type_(ptr);
   return !target || target->__do_catch(type, &object, 1) ? object : nullptr;
 }
 
