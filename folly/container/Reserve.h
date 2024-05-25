@@ -36,6 +36,13 @@ using detect_bucket_count = decltype(FOLLY_DECLVAL(C).bucket_count());
 template <typename C>
 using detect_max_load_factor = decltype(FOLLY_DECLVAL(C).max_load_factor());
 
+template <typename C, typename... A>
+using detect_reserve = decltype(FOLLY_DECLVAL(C).reserve(FOLLY_DECLVAL(A)...));
+
+template <typename C>
+using container_detect_reserve =
+    detect_reserve<C, typename remove_cvref_t<C>::size_type>;
+
 } // namespace detail
 
 /**
@@ -77,5 +84,27 @@ struct grow_capacity_by_fn {
 };
 
 inline constexpr grow_capacity_by_fn grow_capacity_by{};
+
+/**
+ * Useful when writing generic code that handles containers.
+ *
+ * Examples:
+ *  - std::unordered_map provides reserve(), but std::map does not
+ *  - std::vector provides reserve(), but std::deque and std::list do not
+ */
+struct reserve_if_available_fn {
+  template <typename C>
+  auto operator()(C& c, typename C::size_type const n) const
+      noexcept(!folly::is_detected_v<detail::container_detect_reserve, C&>) {
+    constexpr auto match =
+        folly::is_detected_v<detail::container_detect_reserve, C&>;
+    if constexpr (match) {
+      c.reserve(n);
+    }
+    return std::bool_constant<match>{};
+  }
+};
+
+inline constexpr reserve_if_available_fn reserve_if_available{};
 
 } // namespace folly
