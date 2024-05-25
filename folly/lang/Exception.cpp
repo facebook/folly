@@ -40,7 +40,47 @@
 
 #if defined(__GLIBCXX__)
 
-//  nada
+//  https://github.com/gcc-mirror/gcc/blob/releases/gcc-10.2.0/libstdc++-v3/libsupc++/unwind-cxx.h
+
+#include <cxxabi.h>
+#include <unwind.h>
+
+//  the definition of _Unwind_Ptr in libgcc/unwind-generic.h since unwind.h in
+//  libunwind does not have this typedef
+#if defined(__ia64__) && defined(__hpux__)
+typedef unsigned _Unwind_Ptr __attribute__((__mode__(__word__)));
+#else
+typedef unsigned _Unwind_Ptr __attribute__((__mode__(__pointer__)));
+#endif
+
+namespace __cxxabiv1 {
+
+struct __cxa_exception {
+  std::type_info* exceptionType;
+  void(_GLIBCXX_CDTOR_CALLABI* exceptionDestructor)(void*);
+  std::unexpected_handler unexpectedHandler;
+  std::terminate_handler terminateHandler;
+  __cxa_exception* nextException;
+  int handlerCount;
+#ifdef __ARM_EABI_UNWINDER__
+  __cxa_exception* nextPropagatingException;
+  int propagationCount;
+#else
+  int handlerSwitchValue;
+  const unsigned char* actionRecord;
+  const unsigned char* languageSpecificData;
+  _Unwind_Ptr catchTemp;
+  void* adjustedPtr;
+#endif
+  _Unwind_Exception unwindHeader;
+};
+
+struct __cxa_refcounted_exception {
+  _Atomic_word referenceCount;
+  __cxa_exception exc;
+};
+
+} // namespace __cxxabiv1
 
 #endif // defined(__GLIBCXX__)
 
