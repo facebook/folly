@@ -90,7 +90,9 @@ void SignalRegistry::notify(int sig) {
   int fd = notifyFd_.load();
   if (fd >= 0) {
     uint8_t sigNum = static_cast<uint8_t>(sig);
-    ::write(fd, &sigNum, 1);
+    if (::write(fd, &sigNum, 1) != 1) {
+      throw std::runtime_error("Failed to write all the byes.");
+    }
   }
 }
 

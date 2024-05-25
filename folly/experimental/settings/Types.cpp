@@ -16,6 +16,8 @@
 
 #include <folly/experimental/settings/Types.h>
 
+#include <string_view>
+
 namespace folly {
 namespace settings {
 
@@ -27,6 +29,8 @@ std::string_view toString(SetErrorCode code) {
       return "rejected";
     case SetErrorCode::FrozenImmutable:
       return "frozen immutable";
+    default:
+      throw std::invalid_argument("Code '" + std::to_string(static_cast<int>(code)) + "' had no string representation!");
   }
 }
 
