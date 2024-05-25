@@ -28,6 +28,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <fmt/core.h>
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Likely.h>
@@ -167,11 +168,18 @@ class FOLLY_EXPORT BadExpectedAccess<void> : public std::exception {
  * the caller tries to access the value within an Expected but when the Expected
  * instead contains an error.
  */
+
 template <class Error>
 class FOLLY_EXPORT BadExpectedAccess : public BadExpectedAccess<void> {
  public:
   explicit BadExpectedAccess(Error error)
-      : error_{static_cast<Error&&>(error)} {}
+      : error_{static_cast<Error&&>(error)} {
+#if FOLLY_HAS_IF_CONSTEXPR && FMT_VERSION > 80'000
+    if constexpr (fmt::is_formattable<Error>::value) {
+      errorStr_ = fmt::format("bad expected access: error: {}", error_);
+    }
+#endif
+  }
 
   /**
    * The error code that was held by the Expected object when the caller
@@ -182,8 +190,19 @@ class FOLLY_EXPORT BadExpectedAccess : public BadExpectedAccess<void> {
   Error&& error() && { return static_cast<Error&&>(error_); }
   Error const&& error() const&& { return static_cast<Error const&&>(error_); }
 
+  char const* what() const noexcept override {
+    // conditional compilation proves to be difficult due to
+    // different parts of the code compiling this file with different standards.
+    if (errorStr_.empty()) {
+      return BadExpectedAccess<void>::what();
+    } else {
+      return errorStr_.c_str();
+    }
+  }
+
  private:
   Error error_;
+  std::string errorStr_;
 };
 
 /**

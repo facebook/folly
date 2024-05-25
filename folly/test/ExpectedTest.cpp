@@ -27,8 +27,10 @@
 
 #include <glog/logging.h>
 
+#include <folly/ExceptionString.h>
 #include <folly/Portability.h>
 #include <folly/lang/Keep.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using std::shared_ptr;
@@ -578,9 +580,26 @@ TEST(Expected, AssignmentContained) {
   }
 }
 
+struct not_formattable {};
+
 TEST(Expected, Exceptions) {
   Expected<int, E> empty;
   EXPECT_THROW(empty.value(), BadExpectedAccess<E>);
+
+  EXPECT_THAT(
+      folly::exceptionStr(BadExpectedAccess<void>{}).toStdString(),
+      testing::HasSubstr("BadExpectedAccess"));
+
+  EXPECT_THAT(
+      folly::exceptionStr(BadExpectedAccess<not_formattable>{not_formattable{}})
+          .toStdString(),
+      testing::HasSubstr("BadExpectedAccess"));
+
+#if FOLLY_HAS_CONCEPTS
+  EXPECT_THAT(
+      folly::exceptionStr(BadExpectedAccess<int>{3}).toStdString(),
+      testing::HasSubstr("error: 3"));
+#endif
 }
 
 struct ThrowingBadness {
