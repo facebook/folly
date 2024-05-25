@@ -157,11 +157,6 @@
 
 #include <glog/logging.h>
 
-// use this guard to handleSingleton breaking change in 3rd party code
-#ifndef FOLLY_SINGLETON_TRY_GET
-#define FOLLY_SINGLETON_TRY_GET
-#endif
-
 namespace folly {
 
 // For actual usage, please see the Singleton<T> class at the bottom
