@@ -86,6 +86,17 @@
 #define FOLLY_ATTR_GNU_COLD
 #endif
 
+/// FOLLY_ATTR_MAYBE_UNUSED_IF_NDEBUG
+///
+/// When defined(NDEBUG), expands to maybe_unused; otherwise, expands to empty.
+/// Useful for marking variables that are used, in the sense checked for by the
+/// attribute maybe_unused, only in debug builds.
+#if defined(NDEBUG)
+#define FOLLY_ATTR_MAYBE_UNUSED_IF_NDEBUG maybe_unused
+#else
+#define FOLLY_ATTR_MAYBE_UNUSED_IF_NDEBUG
+#endif
+
 /**
  *  no_unique_address indicates that a member variable can be optimized to
  * occupy no space, rather than the minimum 1-byte used by default.
