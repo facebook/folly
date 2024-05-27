@@ -547,6 +547,17 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CXX20_CONSTEXPR
 #endif
 
+//  FOLLY_CXX23_CONSTEXPR
+//
+//  C++23 permits more cases to be marked constexpr, including definitions of
+//  variables of non-literal type in constexpr function as long as they are not
+//  constant-evaluated.
+#if FOLLY_CPLUSPLUS >= 202302L
+#define FOLLY_CXX23_CONSTEXPR constexpr
+#else
+#define FOLLY_CXX23_CONSTEXPR
+#endif
+
 // C++20 constinit
 #if defined(__cpp_constinit) && __cpp_constinit >= 201907L
 #define FOLLY_CONSTINIT constinit
