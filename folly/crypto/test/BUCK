@@ -10,7 +10,7 @@ cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:random",
-        "//folly/experimental/crypto:blake2xb",
+        "//folly/crypto:blake2xb",
         "//folly/init:init",
         "//folly/io:iobuf",
     ],
@@ -26,7 +26,7 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:string",
-        "//folly/experimental/crypto:blake2xb",
+        "//folly/crypto:blake2xb",
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],
@@ -44,7 +44,7 @@ cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:random",
-        "//folly/experimental/crypto:lt_hash",
+        "//folly/crypto:lt_hash",
         "//folly/init:init",
         "//folly/io:iobuf",
     ],
@@ -63,7 +63,7 @@ cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:random",
-        "//folly/experimental/crypto:lt_hash_sse2",  # @manual
+        "//folly/crypto:lt_hash_sse2",  # @manual
         "//folly/init:init",
         "//folly/io:iobuf",
     ],
@@ -82,7 +82,7 @@ cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:random",
-        "//folly/experimental/crypto:lt_hash_avx2",  # @manual
+        "//folly/crypto:lt_hash_avx2",  # @manual
         "//folly/init:init",
         "//folly/io:iobuf",
     ],
@@ -101,7 +101,7 @@ cpp_unittest(
     deps = [
         "//folly:random",
         "//folly:string",
-        "//folly/experimental/crypto:lt_hash",
+        "//folly/crypto:lt_hash",
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],
@@ -119,7 +119,7 @@ cpp_unittest(
     deps = [
         "//folly:random",
         "//folly:string",
-        "//folly/experimental/crypto:lt_hash_sse2",  # @manual
+        "//folly/crypto:lt_hash_sse2",  # @manual
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],
@@ -137,7 +137,7 @@ cpp_unittest(
     deps = [
         "//folly:random",
         "//folly:string",
-        "//folly/experimental/crypto:lt_hash_avx2",  # @manual
+        "//folly/crypto:lt_hash_avx2",  # @manual
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],

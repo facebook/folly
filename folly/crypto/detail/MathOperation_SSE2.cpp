@@ -16,7 +16,7 @@
 
 // Implementation of the MathOperation<MathEngine::SSE2> template
 // specializations.
-#include <folly/experimental/crypto/detail/LtHashInternal.h>
+#include <folly/crypto/detail/LtHashInternal.h>
 
 #include <glog/logging.h>
 

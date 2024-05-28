@@ -19,7 +19,7 @@
 
 #include <sodium.h>
 
-#include <folly/experimental/crypto/detail/LtHashInternal.h>
+#include <folly/crypto/detail/LtHashInternal.h>
 #include <folly/lang/Bits.h>
 
 namespace folly {

@@ -16,7 +16,7 @@
 
 #include <array>
 
-#include <folly/experimental/crypto/Blake2xb.h>
+#include <folly/crypto/Blake2xb.h>
 #include <folly/lang/Bits.h>
 
 namespace folly {

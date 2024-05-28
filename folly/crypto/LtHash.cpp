@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/crypto/LtHash.h>
+#include <folly/crypto/LtHash.h>
 
 #include <folly/CpuId.h>
 

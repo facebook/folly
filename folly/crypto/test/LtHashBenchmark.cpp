@@ -18,7 +18,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
-#include <folly/experimental/crypto/LtHash.h>
+#include <folly/crypto/LtHash.h>
 #include <folly/init/Init.h>
 #include <folly/io/IOBuf.h>
 
