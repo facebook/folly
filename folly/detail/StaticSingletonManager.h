@@ -43,8 +43,7 @@ class StaticSingletonManagerSansRtti {
 
     template <typename T, typename Tag>
     /* implicit */ constexpr Arg(tag_t<T, Tag>) noexcept
-        : make{thunk::make<T>},
-          debug{reinterpret_cast<void**>(&Self::debug<T, Tag>)} {}
+        : make{thunk::make<T>}, debug{&Self::debug<T, Tag>} {}
   };
 
   template <bool Noexcept>
@@ -54,7 +53,7 @@ class StaticSingletonManagerSansRtti {
   using Create = decltype(&create_<Noexcept>);
 
   template <typename T, typename Tag>
-  static T* debug; // visible to debugger
+  static void* debug; // visible to debugger
 
  public:
   template <bool Noexcept>
@@ -103,7 +102,7 @@ class StaticSingletonManagerSansRtti {
 };
 
 template <typename T, typename Tag>
-T* StaticSingletonManagerSansRtti::debug;
+void* StaticSingletonManagerSansRtti::debug;
 
 // This internal-use-only class is used to create all leaked Meyers singletons.
 // It guarantees that only one instance of every such singleton will ever be
@@ -131,7 +130,7 @@ class StaticSingletonManagerWithRtti {
     /* implicit */ constexpr Arg(tag_t<T, Tag>) noexcept
         : key{FOLLY_TYPE_INFO_OF(Src<T, Tag>)},
           make{thunk::make<T>},
-          debug{reinterpret_cast<void**>(&Self::debug<T, Tag>)} {}
+          debug{&Self::debug<T, Tag>} {}
   };
 
   template <bool Noexcept>
@@ -141,7 +140,7 @@ class StaticSingletonManagerWithRtti {
   using Create = decltype(&create_<Noexcept>);
 
   template <typename T, typename Tag>
-  static T* debug; // visible to debugger
+  static void* debug; // visible to debugger
 
  public:
   template <bool Noexcept>
@@ -181,7 +180,7 @@ class StaticSingletonManagerWithRtti {
 };
 
 template <typename T, typename Tag>
-T* StaticSingletonManagerWithRtti::debug;
+void* StaticSingletonManagerWithRtti::debug;
 
 using StaticSingletonManager = std::conditional_t<
     kHasRtti,
