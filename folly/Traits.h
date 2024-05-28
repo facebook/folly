@@ -586,7 +586,12 @@ struct IsRelocatable
           !require_sizeof<T> ||
               is_detected_v<traits_detail::detect_IsRelocatable, T>,
           traits_detail::has_true_IsRelocatable<T>,
-          std::is_trivially_copyable<T>>::type {};
+#if defined(__cpp_lib_is_trivially_relocatable) // P1144
+          std::is_trivially_relocatable<T>
+#else
+          std::is_trivially_copyable<T>
+#endif
+    >::type {};
 
 template <class T>
 struct IsZeroInitializable
