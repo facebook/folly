@@ -135,6 +135,7 @@ def cpp_library(
         exported_linker_flags = None,
         headers = None,
         private_headers = None,
+        propagated_pp_flags = (),
         **kwargs):
     _unused = (undefined_symbols, arch_preprocessor_flags, modular_headers, arch_compiler_flags, tags)  # @unused
     if os_deps:
@@ -415,9 +416,14 @@ def _fix_dep(x: str) -> [
     elif x.startswith("third-party//"):
         return "shim//third-party/" + x.removeprefix("third-party//")
     elif x.startswith("//folly"):
+        oss_depends_on_folly = read_config("oss_depends_on", "folly", False)
+        if oss_depends_on_folly:
+            return "root//folly/" + x.removeprefix("//")
         return "root//" + x.removeprefix("//")
     elif x.startswith("root//folly"):
         return x
+    elif x.startswith("//fizz"):
+        return "root//" + x.removeprefix("//")
     elif x.startswith("shim//"):
         return x
     else:
