@@ -264,6 +264,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void writeDone() noexcept;
   void doSubmitWrite() noexcept;
   void doReSubmitWrite() noexcept;
+  void failAllWrites() noexcept;
   void submitRead(bool now = false);
   void processConnectSubmit(
       struct io_uring_sqe* sqe, sockaddr_storage& storage);

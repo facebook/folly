@@ -419,6 +419,7 @@ void AsyncIoUringSocket::readEOF() {
 void AsyncIoUringSocket::readError() {
   VLOG(4) << " AsyncIoUringSocket::readError() this=" << this;
   state_ = State::Error;
+  failAllWrites();
 }
 
 void AsyncIoUringSocket::setReadCB(ReadCallback* callback) {
@@ -1221,8 +1222,11 @@ void AsyncIoUringSocket::processWriteQueue() noexcept {
     shutdownWriteNow();
     return;
   }
-  if (writeSqeActive_ || writeSqeQueue_.empty() ||
-      state_ != State::Established) {
+  if (state_ != State::Established) {
+    failAllWrites();
+    return;
+  }
+  if (writeSqeActive_ || writeSqeQueue_.empty()) {
     return;
   }
   writeSqeActive_ = &writeSqeQueue_.front();
@@ -1252,6 +1256,21 @@ void AsyncIoUringSocket::doReSubmitWrite() noexcept {
   DCHECK(writeSqeActive_);
   backend_->submitSoon(*writeSqeActive_);
   // do not update the send timeout for partial writes
+}
+
+void AsyncIoUringSocket::failAllWrites() noexcept {
+  while (!writeSqeQueue_.empty()) {
+    WriteSqe* w = &writeSqeQueue_.front();
+    CHECK(!w->inFlight());
+    writeSqeQueue_.pop_front();
+    if (w->callback_) {
+      w->callback_->writeErr(
+          0,
+          AsyncSocketException(
+              AsyncSocketException::INVALID_STATE, "socket in err state"));
+    }
+    delete w;
+  }
 }
 
 std::pair<
@@ -1451,6 +1470,15 @@ struct NullWriteCallback : AsyncWriter::WriteCallback {
 
 void AsyncIoUringSocket::writeChain(
     WriteCallback* callback, std::unique_ptr<IOBuf>&& buf, WriteFlags flags) {
+  if ((state_ == State::Closed || state_ == State::Error) && !connecting()) {
+    if (callback) {
+      AsyncSocketException ex(
+          AsyncSocketException::INVALID_STATE,
+          "trying to write with socket in invalid state");
+      callback->writeErr(0, ex);
+    }
+    return;
+  }
   auto canzc = canZC(buf);
   if (!callback) {
     callback = &sNullWriteCallback;
