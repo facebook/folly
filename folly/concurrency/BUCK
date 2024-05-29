@@ -154,3 +154,18 @@ cpp_library(
         "//folly/synchronization:relaxed_atomic",
     ],
 )
+
+cpp_library(
+    name = "singleton_relaxed_counter",
+    headers = [
+        "SingletonRelaxedCounter.h",
+    ],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:synchronized",
+        "//folly:utility",
+        "//folly/detail:static_singleton_manager",
+        "//folly/detail:thread_local_detail",
+    ],
+)

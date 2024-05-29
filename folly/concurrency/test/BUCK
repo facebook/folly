@@ -176,3 +176,35 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
+
+cpp_binary(
+    name = "singleton_relaxed_counter_bench",
+    srcs = [
+        "SingletonRelaxedCounterBench.cpp",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly/experimental:singleton_relaxed_counter",
+        "//folly/init:init",
+        "//folly/lang:keep",
+        "//folly/portability:gflags",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_unittest(
+    name = "singleton_relaxed_counter_test",
+    srcs = [
+        "SingletonRelaxedCounterTest.cpp",
+    ],
+    deps = [
+        "//folly:thread_local",
+        "//folly/experimental:singleton_relaxed_counter",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+    ],
+)

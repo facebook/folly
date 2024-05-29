@@ -275,12 +275,7 @@ cpp_library(
         "SingletonRelaxedCounter.h",
     ],
     exported_deps = [
-        "//folly:likely",
-        "//folly:portability",
-        "//folly:synchronized",
-        "//folly:utility",
-        "//folly/detail:static_singleton_manager",
-        "//folly/detail:thread_local_detail",
+        "//folly/concurrency:singleton_relaxed_counter",
     ],
 )
 
