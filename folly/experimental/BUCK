@@ -171,16 +171,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "jemalloc_huge_page_allocator",
-    headers = [
-        "JemallocHugePageAllocator.h",
-    ],
-    exported_deps = [
-        "//folly/memory:jemalloc_huge_page_allocator",
-    ],
-)
-
-cpp_library(
     name = "json_schema",
     headers = [
         "JSONSchema.h",
