@@ -660,6 +660,9 @@ struct ExpectedHelper {
   FOLLY_PUSH_WARNING
   // Don't warn about not using the overloaded comma operator.
   FOLLY_MSVC_DISABLE_WARNING(4913)
+  // On MSVC in optimized builds, the following functions can throw warning 4702
+  // Unreachable Code which will block builds which treat warnings as error.
+  FOLLY_MSVC_DISABLE_WARNING(4702)
   template <
       class This,
       class Fn,
