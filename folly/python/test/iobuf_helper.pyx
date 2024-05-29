@@ -14,10 +14,13 @@
 
 # distutils: language=c++
 
-from folly.iobuf cimport from_unique_ptr, createChain, IOBuf
+from folly.iobuf cimport from_unique_ptr, createChain, IOBuf, writable_from_unique_ptr
 
 def get_empty_chain():
     return from_unique_ptr(createChain(1024, 128))
+
+def get_empty_writable_chain():
+    return writable_from_unique_ptr(createChain(1024, 128))
 
 def make_chain(data):
     cdef IOBuf head = data.pop(0)

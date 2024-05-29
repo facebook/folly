@@ -93,7 +93,14 @@ cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view)
 cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] iobuf)
 cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf)
 cdef api cIOBuf from_python_iobuf(object iobuf) except *
+
+cdef WritableIOBuf writable_from_unique_ptr(unique_ptr[cIOBuf] ciobuf)
+cdef api object python_writable_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf)
 # Use to pass heap-allocated folly::IOBuf to cpp.
 # Passed as raw ptr to avoid expensive call to PyErr_Occurred from `except *`
 # Must be placed directly into std::unique_ptr to avoid leak
 cdef api cIOBuf* ptr_from_python_iobuf(object obj) except NULL
+
+cdef class WritableIOBuf(IOBuf):
+    @staticmethod
+    cdef WritableIOBuf create(cIOBuf* this, object parent)

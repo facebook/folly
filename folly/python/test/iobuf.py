@@ -17,12 +17,14 @@
 
 import array
 import struct
+import sys
 import unittest
 
-from folly.iobuf import IOBuf
+from folly.iobuf import IOBuf, WritableIOBuf
 
 from .iobuf_helper import (
     get_empty_chain,
+    get_empty_writable_chain,
     make_chain,
     to_uppercase_string,
     to_uppercase_string_heap,
@@ -136,3 +138,190 @@ class IOBufTests(unittest.TestCase):
             to_uppercase_string(not_an_iobuf)
         with self.assertRaises(TypeError):
             to_uppercase_string_heap(not_an_iobuf)
+
+
+class WritableIOBufTests(unittest.TestCase):
+    def test_bytes_writable(self) -> None:
+        x = bytearray(b"omgwtfbbq")
+        xb = WritableIOBuf(x)
+        self.assertEqual(bytes(xb), x)
+        self.assertEqual(xb.writable(), True)
+
+    def test_buffer_overwrite(self) -> None:
+        start = b"omgwtfbbq"
+        finish = b"123456789"
+        x = bytearray(start)
+        xb = WritableIOBuf(x)
+        buf = memoryview(xb)
+
+        self.assertEqual(bytes(buf), start)
+        buf[:] = finish
+        self.assertEqual(bytes(buf), finish)
+
+        self.assertNotEqual(bytes(buf), start)
+
+    def test_buffer_write_empty(self) -> None:
+        start = bytearray(9)
+        finish = b"123456789"
+        xb = WritableIOBuf(bytearray(9))
+        buf = memoryview(xb)
+
+        self.assertEqual(bytes(buf), start)
+        buf[:] = finish
+        self.assertEqual(bytes(buf), finish)
+        self.assertEqual(memoryview(xb), finish)
+
+        self.assertNotEqual(bytes(buf), start)
+
+    def test_buffer_update_in_place(self) -> None:
+        x = bytearray(b"123")
+        xb = WritableIOBuf(x)
+        memoryview(xb)[:] = b"456"
+        self.assertEqual(x, b"456")  # xb wrapped x, so by mutating xb we mutated x
+
+    def test_buffer_write_out_of_bounds(self) -> None:
+        start = bytearray(9)
+        finish = b"1234567890"
+        xb = WritableIOBuf(bytearray(9))
+        buf = memoryview(xb)
+
+        self.assertEqual(bytes(buf), start)
+        try:
+            buf[:] = finish
+            self.fail("Expected exception for writing out of bounds")
+        except ValueError as e:
+            self.assertEqual(
+                str(e),
+                "memoryview assignment: lvalue and rvalue have different structures",
+            )
+        self.assertEqual(bytes(buf), start)
+
+    def test_buffer_read_out_of_bounds(self) -> None:
+        start = bytearray(b"1234567890")
+        xb = WritableIOBuf(start)
+        buf = memoryview(xb)
+
+        self.assertEqual(bytes(buf), start)
+        try:
+            self.assertEqual(bytes(buf[10]), None)
+            self.fail("Expected exception for reading out of bounds")
+        except IndexError as e:
+            self.assertEqual(
+                str(e),
+                "index out of bounds on dimension 1",
+            )
+
+    def test_buffer_write_empty_pieces(self) -> None:
+        start = bytearray(9)
+        builder = bytearray(9)
+        piece_1 = b"123"
+        piece_2 = b"456"
+        piece_3 = b"789"
+        xb = WritableIOBuf(start)
+
+        buf = memoryview(xb)
+        buf[0:3] = piece_1
+        for i in range(3):
+            builder[i] = piece_1[i]
+        self.assertEqual(bytes(buf), builder)
+
+        buf = memoryview(xb)
+        buf[3:6] = piece_2
+        for i in range(3):
+            builder[i + 3] = piece_2[i]
+        self.assertEqual(bytes(buf), builder)
+
+        buf = memoryview(xb)
+        buf[6:9] = piece_3
+        for i in range(3):
+            builder[i + 6] = piece_3[i]
+        self.assertEqual(bytes(buf), builder)
+
+    def test_empty_writable_chain(self) -> None:
+        ebuf = get_empty_writable_chain()
+        self.assertFalse(ebuf)
+        self.assertTrue(ebuf.is_chained)
+        self.assertEqual(len(ebuf), 0)
+        self.assertEqual(ebuf.chain_size(), 0)
+        self.assertEqual(ebuf.chain_count(), 8)
+        self.assertEqual(b"".join(ebuf), b"")
+        self.assertEqual(b"", bytes(ebuf))
+
+    def test_appendable_writable_chain(self) -> None:
+        x = bytearray(b"omgwtfbbq")
+        xb = WritableIOBuf(x)
+        self.assertFalse(xb.is_chained)
+
+        y = bytearray(b"wtfbbqomg")
+        yb = WritableIOBuf(y)
+        xb.append_to_chain(yb)
+
+        self.assertTrue(xb.is_chained)
+        self.assertEqual(len(xb), 9)
+        self.assertEqual(xb.chain_size(), 18)
+        self.assertEqual(xb.chain_count(), 2)
+        self.assertEqual(b"".join(xb), b"".join([x, y]))
+
+    def test_appendable_writable_chain_overwrite(self) -> None:
+        start = bytearray(9)
+        x = bytearray(b"omgwtfbbq")
+        for i in range(9):
+            start[i] = x[i]
+
+        xb = WritableIOBuf(x)
+        self.assertFalse(xb.is_chained)
+
+        y = bytearray(b"wtfbbqomg")
+        yb = WritableIOBuf(y)
+        xb.append_to_chain(yb)
+
+        finish = b"123456789"
+        buf = memoryview(xb)
+        buf[:] = finish
+
+        self.assertTrue(xb.is_chained)
+        self.assertEqual(len(xb), 9)
+        self.assertEqual(xb.chain_size(), 18)
+        self.assertEqual(xb.chain_count(), 2)
+        self.assertEqual(b"".join(xb), b"".join([x, y]))
+        self.assertEqual(bytes(buf), x)
+
+        self.assertNotEqual(b"".join(xb), b"".join([start, y]))
+
+    def test_appendable_writable_chain_coalesce(self) -> None:
+        x = bytearray(b"omgwtfbbq")
+        xb = WritableIOBuf(x)
+        self.assertFalse(xb.is_chained)
+
+        y = bytearray(b"wtfbbqomg")
+        yb = WritableIOBuf(y)
+        xb.append_to_chain(yb)
+
+        xb.coalesce()
+        self.assertFalse(xb.is_chained)
+        self.assertEqual(len(xb), 18)
+        self.assertEqual(xb.chain_size(), 18)
+        self.assertEqual(xb.chain_count(), 1)
+
+        buf = memoryview(xb)
+        self.assertEqual(bytes(buf), b"".join([x, y]))
+
+    def test_appendable_writable_chain_coalesce_exception(self) -> None:
+        x = bytearray(b"omgwtfbbq")
+        xb = WritableIOBuf(x)
+        self.assertFalse(xb.is_chained)
+
+        y = bytearray(b"wtfbbqomg")
+        yb = WritableIOBuf(y)
+        xb.append_to_chain(yb)
+        test = xb
+
+        self.assertEqual(test, xb)
+        self.assertEqual(sys.getrefcount(xb), 3)
+        try:
+            xb.coalesce()
+            self.fail("Expected exception for too many references")
+        except RuntimeError as e:
+            self.assertEqual(
+                str(e), "Cannot coalesce IOBuf with more than one reference"
+            )
