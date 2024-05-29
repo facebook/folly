@@ -282,19 +282,19 @@ if (${LIBSODIUM_FOUND})
       "setting SSE2/AVX2 compile flags for LtHash SIMD code"
     )
     set_source_files_properties(
-      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_AVX2.cpp
+      ${FOLLY_DIR}/crypto/detail/MathOperation_AVX2.cpp
       PROPERTIES
       COMPILE_FLAGS
       -mavx -mavx2 -msse2
     )
     set_source_files_properties(
-      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_Simple.cpp
+      ${FOLLY_DIR}/crypto/detail/MathOperation_Simple.cpp
       PROPERTIES
       COMPILE_FLAGS
       -mno-avx -mno-avx2 -mno-sse2
     )
     set_source_files_properties(
-      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_SSE2.cpp
+      ${FOLLY_DIR}/crypto/detail/MathOperation_SSE2.cpp
       PROPERTIES
       COMPILE_FLAGS
       -mno-avx -mno-avx2 -msse2
@@ -302,17 +302,17 @@ if (${LIBSODIUM_FOUND})
   endif()
 else()
   list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/crypto/Blake2xb.cpp
-    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_AVX2.cpp
-    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_Simple.cpp
-    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_SSE2.cpp
-    ${FOLLY_DIR}/experimental/crypto/LtHash.cpp
+    ${FOLLY_DIR}/crypto/Blake2xb.cpp
+    ${FOLLY_DIR}/crypto/detail/MathOperation_AVX2.cpp
+    ${FOLLY_DIR}/crypto/detail/MathOperation_Simple.cpp
+    ${FOLLY_DIR}/crypto/detail/MathOperation_SSE2.cpp
+    ${FOLLY_DIR}/crypto/LtHash.cpp
   )
   list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/crypto/Blake2xb.h
-    ${FOLLY_DIR}/experimental/crypto/detail/LtHashInternal.h
-    ${FOLLY_DIR}/experimental/crypto/LtHash-inl.h
-    ${FOLLY_DIR}/experimental/crypto/LtHash.h
+    ${FOLLY_DIR}/crypto/Blake2xb.h
+    ${FOLLY_DIR}/crypto/detail/LtHashInternal.h
+    ${FOLLY_DIR}/crypto/LtHash-inl.h
+    ${FOLLY_DIR}/crypto/LtHash.h
   )
 endif()
 if (NOT ${LIBGFLAGS_FOUND})
@@ -1105,7 +1105,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
   if (${LIBSODIUM_FOUND})
     folly_define_tests(
-      DIRECTORY experimental/crypto/test/
+      DIRECTORY crypto/test/
         TEST blake2xb_test SOURCES Blake2xbTest.cpp
         TEST lt_hash_test SOURCES LtHashTest.cpp
     )
