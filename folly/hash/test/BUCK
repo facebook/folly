@@ -56,6 +56,7 @@ cpp_benchmark(
         "//folly:benchmark",
         "//folly:preprocessor",
         "//folly/hash:hash",
+        "//folly/hash:murmur_hash",
         "//folly/portability:gflags",
     ],
     external_deps = [
@@ -103,5 +104,15 @@ cpp_unittest(
     ],
     external_deps = [
         "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "murmur_hash_test",
+    srcs = ["MurmurHashTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:murmur_hash",
+        "//folly/portability:gtest",
     ],
 )
