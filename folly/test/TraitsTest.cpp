@@ -663,6 +663,20 @@ TEST(Traits, intBitsLg) {
 #endif // FOLLY_HAVE_INT128_T
 }
 
+TEST(Traits, isAllocator) {
+  static_assert(is_allocator_v<std::allocator<int>>, "");
+  static_assert(is_allocator<std::allocator<int>>::value, "");
+
+  static_assert(is_allocator_v<std::allocator<std::string>>, "");
+  static_assert(is_allocator<std::allocator<std::string>>::value, "");
+
+  static_assert(!is_allocator_v<int>, "");
+  static_assert(!is_allocator<int>::value, "");
+
+  static_assert(!is_allocator_v<std::string>, "");
+  static_assert(!is_allocator<std::string>::value, "");
+}
+
 struct type_pack_element_test {
   template <size_t I, typename... T>
   using fallback = traits_detail::type_pack_element_fallback<I, T...>;
@@ -675,7 +689,7 @@ struct type_pack_element_test {
   using native_ic = native<IC::value, T...>;
 };
 
-TEST(Traits, typePackElementT) {
+TEST(Traits, type_pack_element) {
   using test = type_pack_element_test;
 
   EXPECT_TRUE(( //
@@ -693,20 +707,6 @@ TEST(Traits, typePackElementT) {
   EXPECT_TRUE((std::is_same_v<test::native<0, int[1]>, int[1]>));
   EXPECT_TRUE((is_detected_v<test::native_ic, index_constant<0>, int>));
   EXPECT_FALSE((is_detected_v<test::native_ic, index_constant<0>>));
-}
-
-TEST(Traits, isAllocator) {
-  static_assert(is_allocator_v<std::allocator<int>>, "");
-  static_assert(is_allocator<std::allocator<int>>::value, "");
-
-  static_assert(is_allocator_v<std::allocator<std::string>>, "");
-  static_assert(is_allocator<std::allocator<std::string>>::value, "");
-
-  static_assert(!is_allocator_v<int>, "");
-  static_assert(!is_allocator<int>::value, "");
-
-  static_assert(!is_allocator_v<std::string>, "");
-  static_assert(!is_allocator<std::string>::value, "");
 }
 
 TEST(Traits, type_pack_size) {
