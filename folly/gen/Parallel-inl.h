@@ -24,7 +24,7 @@
 
 #include <folly/MPMCQueue.h>
 #include <folly/ScopeGuard.h>
-#include <folly/experimental/EventCount.h>
+#include <folly/synchronization/EventCount.h>
 
 namespace folly {
 namespace gen {

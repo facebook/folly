@@ -27,8 +27,8 @@
 
 #include <folly/Expected.h>
 #include <folly/MPMCPipeline.h>
-#include <folly/experimental/EventCount.h>
 #include <folly/functional/Invoke.h>
+#include <folly/synchronization/EventCount.h>
 
 namespace folly::gen::detail {
 

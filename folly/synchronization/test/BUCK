@@ -486,8 +486,8 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:random",
-        "//folly/experimental:event_count",
         "//folly/portability:gtest",
+        "//folly/synchronization:event_count",
     ],
     external_deps = [
         "glog",

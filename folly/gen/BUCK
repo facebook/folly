@@ -66,7 +66,7 @@ cpp_library(
         ":base",
         "//folly:mpmc_queue",
         "//folly:scope_guard",
-        "//folly/experimental:event_count",
+        "//folly/synchronization:event_count",
     ],
 )
 
@@ -80,8 +80,8 @@ cpp_library(
         ":core",
         "//folly:expected",
         "//folly:mpmc_pipeline",
-        "//folly/experimental:event_count",
         "//folly/functional:invoke",
+        "//folly/synchronization:event_count",
     ],
 )
 

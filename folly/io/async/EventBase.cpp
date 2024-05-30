@@ -29,7 +29,6 @@
 #include <folly/ExceptionString.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
-#include <folly/experimental/EventCount.h>
 #include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/EventBaseLocal.h>
@@ -37,6 +36,7 @@
 #include <folly/lang/Assume.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/EventCount.h>
 #include <folly/system/ThreadId.h>
 #include <folly/system/ThreadName.h>
 

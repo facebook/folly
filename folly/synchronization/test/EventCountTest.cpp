@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/EventCount.h>
+#include <folly/synchronization/EventCount.h>
 
 #include <algorithm>
 #include <atomic>
