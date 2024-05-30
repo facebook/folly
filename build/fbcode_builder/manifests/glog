@@ -21,5 +21,8 @@ WITH_PKGCONFIG=ON
 HAVE_TR1_UNORDERED_MAP=OFF
 HAVE_TR1_UNORDERED_SET=OFF
 
+[homebrew]
+glog
+
 [debs]
 libgoogle-glog-dev
