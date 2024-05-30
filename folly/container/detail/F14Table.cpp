@@ -42,11 +42,11 @@ bool tlsPendingSafeInserts(std::ptrdiff_t delta) {
   auto& value = kIsDebug || kIsLibrarySanitizeAddress ? value_tl : value_non_tl;
 
   FOLLY_SAFE_DCHECK(delta >= -1, "");
-  std::size_t v = value.load(std::memory_order_relaxed);
+  std::size_t v = value.load(std::memory_order_acquire);
   if (delta > 0 || (delta == -1 && v > 0)) {
     v += delta;
     v = std::min(std::numeric_limits<std::size_t>::max() / 2, v);
-    value.store(v, std::memory_order_relaxed);
+    value.store(v, std::memory_order_release);
   }
   return v != 0;
 }
@@ -58,7 +58,7 @@ std::size_t tlsMinstdRand(std::size_t n) {
 
   FOLLY_SAFE_DCHECK(n > 0, "");
 
-  auto s = state.load(std::memory_order_relaxed);
+  auto s = state.load(std::memory_order_acquire);
   if (s == 0) {
     uint64_t seed = static_cast<uint64_t>(
         std::chrono::steady_clock::now().time_since_epoch().count());
@@ -66,7 +66,7 @@ std::size_t tlsMinstdRand(std::size_t n) {
   }
 
   s = static_cast<uint32_t>((s * uint64_t{48271}) % uint64_t{2147483647});
-  state.store(s, std::memory_order_relaxed);
+  state.store(s, std::memory_order_release);
   return std::size_t{s} % n;
 }
 
