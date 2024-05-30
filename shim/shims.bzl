@@ -137,7 +137,7 @@ def cpp_library(
         private_headers = None,
         propagated_pp_flags = (),
         **kwargs):
-    _unused = (undefined_symbols, arch_preprocessor_flags, modular_headers, arch_compiler_flags, tags)  # @unused
+    _unused = (undefined_symbols, arch_preprocessor_flags, modular_headers, arch_compiler_flags, tags, propagated_pp_flags)  # @unused
     if os_deps:
         deps += _select_os_deps(_fix_dict_deps(os_deps))
     if headers == None:
