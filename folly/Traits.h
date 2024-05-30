@@ -27,6 +27,26 @@
 
 namespace folly {
 
+#if defined(__cpp_lib_type_identity) && __cpp_lib_type_identity >= 201806L
+
+using std::type_identity;
+using std::type_identity_t;
+
+#else
+
+/// type_identity_t
+/// type_identity
+///
+/// mimic: std::type_identity_t, std::type_identity, c++20
+template <typename T>
+struct type_identity {
+  using type = T;
+};
+template <typename T>
+using type_identity_t = typename type_identity<T>::type;
+
+#endif
+
 template <typename...>
 struct tag_t {};
 

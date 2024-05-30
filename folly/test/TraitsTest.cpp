@@ -30,6 +30,18 @@
 using namespace folly;
 using namespace std;
 
+struct type_identity_test {
+  template <typename A>
+  static A deduce(A, type_identity_t<A>);
+};
+
+TEST(Traits, type_identity) {
+  EXPECT_TRUE((std::is_same_v<int, folly::type_identity_t<int>>));
+  EXPECT_TRUE((std::is_same_v<int, folly::type_identity<int>::type>));
+  EXPECT_TRUE(( //
+      std::is_same_v<int, decltype(type_identity_test::deduce(0, '\0'))>));
+}
+
 namespace {
 
 struct T1 {}; // old-style IsRelocatable, below
