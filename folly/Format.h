@@ -58,7 +58,7 @@ class Formatter;
 template <class... Args>
 Formatter<false, Args...> format(StringPiece fmt, Args&&... args);
 template <class C>
-Formatter<true, C> vformat(StringPiece fmt, C&& container);
+std::string svformat(StringPiece fmt, C&& container);
 template <class T, class Enable = void>
 class FormatValue;
 
@@ -250,7 +250,7 @@ class Formatter : public BaseFormatter<
   template <class... A>
   friend std::string sformat(StringPiece fmt, A&&... arg);
   template <class C>
-  friend Formatter<true, C> vformat(StringPiece fmt, C&& container);
+  friend std::string svformat(StringPiece fmt, C&& container);
 };
 
 namespace detail {
@@ -308,24 +308,11 @@ inline std::string sformat(StringPiece fmt, Args&&... args) {
  * std::map<string, string> map { {"hello", "world"}, {"answer", "42"} };
  *
  * The following are equivalent:
- * format("{0[hello]} {0[answer]}", map);
+ * sformat("{0[hello]} {0[answer]}", map);
  *
- * vformat("{hello} {answer}", map);
+ * svformat("{hello} {answer}", map);
  *
  * but the latter is cleaner.
- */
-template <class Container>
-[[deprecated(
-    "Use fmt::format instead of folly::vformat for better performance, build "
-    "times and compatibility with std::format")]] //
-Formatter<true, Container>
-vformat(StringPiece fmt, Container&& container) {
-  return Formatter<true, Container>(fmt, static_cast<Container&&>(container));
-}
-
-/**
- * Like vformat(), but immediately returns the formatted string instead of an
- * intermediate format object.
  */
 template <class Container>
 [[deprecated(
@@ -333,7 +320,8 @@ template <class Container>
     "times and compatibility with std::format")]] //
 inline std::string
 svformat(StringPiece fmt, Container&& container) {
-  return vformat(fmt, static_cast<Container&&>(container)).str();
+  return Formatter<true, Container>(fmt, static_cast<Container&&>(container))
+      .str();
 }
 
 /**
@@ -393,15 +381,6 @@ template <class Str, class... Args>
 typename std::enable_if<IsSomeString<Str>::value>::type format(
     Str* out, StringPiece fmt, Args&&... args) {
   Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...).appendTo(*out);
-}
-
-/**
- * Append vformatted output to a string.
- */
-template <class Str, class Container>
-typename std::enable_if<IsSomeString<Str>::value>::type vformat(
-    Str* out, StringPiece fmt, Container&& container) {
-  vformat(fmt, static_cast<Container&&>(container)).appendTo(*out);
 }
 
 /**
