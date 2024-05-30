@@ -1095,6 +1095,44 @@ inline constexpr std::size_t type_pack_size_v = sizeof...(Ts);
 template <typename... Ts>
 using type_pack_size_t = index_constant<sizeof...(Ts)>;
 
+namespace traits_detail {
+
+template <std::size_t I, template <typename...> class List, typename... T>
+type_identity<type_pack_element_t<I, T...>> type_list_element_(
+    List<T...> const*);
+
+template <template <typename...> class List, typename... T>
+index_constant<sizeof...(T)> type_list_size_(List<T...> const*);
+
+} // namespace traits_detail
+
+/// type_list_element_t
+///
+/// In the type list List<T...>, where List has kind template <typename...> and
+/// T... is a type-pack, equivalent to type_pack_element_t<I, T...>.
+template <std::size_t I, typename List>
+using type_list_element_t = _t<decltype(traits_detail::type_list_element_<I>(
+    static_cast<List const*>(nullptr)))>;
+
+/// type_list_size_v
+///
+/// The size of a type list.
+///
+/// For List<T...>, equivalent to type_pack_size_v<T...>.
+template <typename List>
+inline constexpr std::size_t type_list_size_v =
+    decltype(traits_detail::type_list_size_(
+        static_cast<List const*>(nullptr)))::value;
+
+/// type_list_size_t
+///
+/// The size of a type list.
+///
+/// For List<T...>, equivalent to type_pack_size_t<T...>.
+template <typename List>
+using type_list_size_t =
+    decltype(traits_detail::type_list_size_(static_cast<List const*>(nullptr)));
+
 /**
  * Checks the requirements that the Hasher class must satisfy
  * in order to be used with the standard library containers,
