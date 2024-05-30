@@ -1325,6 +1325,9 @@ class AsyncSocket : public AsyncSocketTransport {
      * when observers are added / removed, based on the observer configuration.
      */
     struct Config {
+      Config() = default;
+      Config(const Config&) = default;
+      Config& operator=(const Config&) = default;
       virtual ~Config() = default;
 
       // receive ByteEvents
