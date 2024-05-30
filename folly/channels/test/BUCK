@@ -1,3 +1,4 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -152,5 +153,20 @@ cpp_unittest(
         "//folly/experimental/coro:detach_on_cancel",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "channel_test_util",
+    headers = ["ChannelTestUtil.h"],
+    exported_deps = [
+        "//folly/channels:consume_channel",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/coro:detach_on_cancel",
+        "//folly/experimental/coro:sleep",
+        "//folly/futures:shared_promise",
+        "//folly/portability:gmock",
     ],
 )
