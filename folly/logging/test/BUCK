@@ -366,3 +366,13 @@ cpp_unittest(
         "//folly/test:test_utils",
     ],
 )
+
+cpp_unittest(
+    name = "auto_timer_test",
+    srcs = ["AutoTimerTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental:auto_timer",
+        "//folly/portability:gtest",
+    ],
+)

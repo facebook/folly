@@ -5,16 +5,6 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-cpp_unittest(
-    name = "auto_timer_test",
-    srcs = ["AutoTimerTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/experimental:auto_timer",
-        "//folly/portability:gtest",
-    ],
-)
-
 cpp_binary(
     name = "bits_benchmark",
     srcs = ["BitsBenchmark.cpp"],

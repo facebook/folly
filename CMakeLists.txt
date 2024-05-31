@@ -707,7 +707,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
 
     DIRECTORY experimental/test/
-      TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST bits_test_2 SOURCES BitsTest.cpp
       # FunctionSchedulerTest has a lot of timing-dependent checks,
       # and tends to fail on heavily loaded systems.
@@ -730,6 +729,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY logging/test/
       TEST async_file_writer_test WINDOWS_DISABLED
         SOURCES AsyncFileWriterTest.cpp
+      TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST config_parser_test SOURCES ConfigParserTest.cpp
       TEST config_update_test SOURCES ConfigUpdateTest.cpp
       TEST file_handler_factory_test WINDOWS_DISABLED
