@@ -40,7 +40,7 @@ namespace folly {
 //
 //  This overload works on the static type of the template parameter.
 template <typename T>
-FOLLY_ALWAYS_INLINE static std::type_info const* type_info_of() {
+FOLLY_ERASE constexpr std::type_info const* type_info_of() {
   return FOLLY_TYPE_INFO_OF(T);
 }
 
@@ -50,7 +50,7 @@ FOLLY_ALWAYS_INLINE static std::type_info const* type_info_of() {
 //
 //  This overload works on the dynamic type of the non-template parameter.
 template <typename T>
-FOLLY_ALWAYS_INLINE static std::type_info const* type_info_of(
+FOLLY_ERASE constexpr std::type_info const* type_info_of(
     [[maybe_unused]] T const& t) {
   return FOLLY_TYPE_INFO_OF(t);
 }

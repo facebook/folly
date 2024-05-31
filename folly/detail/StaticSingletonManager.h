@@ -72,7 +72,7 @@ class StaticSingletonManagerSansRtti {
 
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
-    static Arg arg{tag<T, Tag>};
+    static FOLLY_CONSTINIT Arg arg{tag<T, Tag>};
     return create<T, Tag>(arg);
   }
 
@@ -159,7 +159,7 @@ class StaticSingletonManagerWithRtti {
 
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
-    static Arg arg{tag<T, Tag>};
+    static FOLLY_CONSTINIT Arg arg{tag<T, Tag>};
     return create<T, Tag>(arg);
   }
 
