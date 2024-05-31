@@ -133,22 +133,11 @@ cpp_library(
 
 cpp_library(
     name = "function_scheduler",
-    srcs = ["FunctionScheduler.cpp"],
-    headers = ["FunctionScheduler.h"],
-    deps = [
-        "//folly:conv",
-        "//folly:random",
-        "//folly:string",
-        "//folly/system:thread_name",
+    headers = [
+        "FunctionScheduler.h",
     ],
     exported_deps = [
-        "//folly:function",
-        "//folly:range",
-        "//folly/container:f14_hash",
-        "//folly/hash:hash",
-    ],
-    external_deps = [
-        "glog",
+        "//folly/executors:function_scheduler",
     ],
 )
 

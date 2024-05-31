@@ -691,6 +691,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES EDFThreadPoolExecutorBenchmark.cpp
       TEST executor_test SOURCES ExecutorTest.cpp
       TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
+      # FunctionSchedulerTest has a lot of timing-dependent checks,
+      # and tends to fail on heavily loaded systems.
+      TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
       TEST global_executor_test SOURCES GlobalExecutorTest.cpp
       TEST serial_executor_test SOURCES SerialExecutorTest.cpp
       # Fails in ThreadPoolExecutorTest.RequestContext:719 data2 != nullptr
@@ -708,9 +711,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY experimental/test/
       TEST bits_test_2 SOURCES BitsTest.cpp
-      # FunctionSchedulerTest has a lot of timing-dependent checks,
-      # and tends to fail on heavily loaded systems.
-      TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
       #TEST program_options_test SOURCES ProgramOptionsTest.cpp
       TEST quotient_multiset_test SOURCES QuotientMultiSetTest.cpp

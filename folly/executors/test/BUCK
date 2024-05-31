@@ -298,3 +298,19 @@ cpp_unittest(
         "//folly/executors:io_thread_pool_executor",
     ],
 )
+
+cpp_unittest(
+    name = "function_scheduler_test",
+    srcs = ["FunctionSchedulerTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly/experimental:function_scheduler",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_thread"),
+    ],
+)

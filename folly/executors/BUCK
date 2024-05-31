@@ -434,3 +434,24 @@ cpp_library(
         "//folly:default_keep_alive_executor",
     ],
 )
+
+cpp_library(
+    name = "function_scheduler",
+    srcs = ["FunctionScheduler.cpp"],
+    headers = ["FunctionScheduler.h"],
+    deps = [
+        "//folly:conv",
+        "//folly:random",
+        "//folly:string",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly:range",
+        "//folly/container:f14_hash",
+        "//folly/hash:hash",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

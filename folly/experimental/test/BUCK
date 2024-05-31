@@ -78,22 +78,6 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "function_scheduler_test",
-    srcs = ["FunctionSchedulerTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly:random",
-        "//folly/experimental:function_scheduler",
-        "//folly/portability:gtest",
-        "//folly/synchronization:baton",
-    ],
-    external_deps = [
-        "glog",
-        ("boost", None, "boost_thread"),
-    ],
-)
-
-cpp_unittest(
     name = "hhwheel_timer_high_res_test",
     srcs = ["HHWheelTimerHighResTest.cpp"],
     headers = [],

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/FunctionScheduler.h>
+#include <folly/executors/FunctionScheduler.h>
 
 #include <random>
 
