@@ -40,6 +40,13 @@ cdef extern from "folly/io/IOBuf.h" namespace "folly":
         cIOBuf cloneAsValue()
         void coalesce()
         void unshare()
+        size_t capacity()
+        void append(size_t amount)
+        void prepend(size_t amount)
+        void trimStart(size_t amount)
+        void trimEnd(size_t amount)
+        size_t headroom()
+        size_t tailroom()
 
 
 cdef extern from "folly/io/IOBuf.h" namespace "folly::IOBuf":
@@ -71,6 +78,7 @@ cdef extern from "folly/python/iobuf.h" namespace "folly::python":
 
 cdef extern from "folly/python/iobuf_ext.h" namespace "folly::python":
     unique_ptr[cIOBuf] iobuf_from_memoryview(cFollyExecutor*, PyObject*, void*, uint64_t)
+    unique_ptr[cIOBuf] create_iobuf(uint64_t)
 
 cdef extern from "Python.h":
     cdef int PyBUF_C_CONTIGUOUS

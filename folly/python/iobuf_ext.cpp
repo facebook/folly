@@ -82,4 +82,8 @@ std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
       pyUserData);
 }
 
+std::unique_ptr<folly::IOBuf> create_iobuf(std::size_t capacity) {
+  return folly::IOBuf::create(capacity);
+}
+
 } // namespace folly::python

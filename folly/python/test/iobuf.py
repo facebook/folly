@@ -139,6 +139,20 @@ class IOBufTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             to_uppercase_string_heap(not_an_iobuf)
 
+    def test_buffer_read_fail(self) -> None:
+        finish = bytearray(b"1234567890123456")
+        xb = IOBuf(finish)
+        buf = memoryview(xb)
+
+        try:
+            self.assertEqual(bytes(buf[17]), None)
+            self.fail("Expected exception for reading out of bounds")
+        except IndexError as e:
+            self.assertEqual(
+                str(e),
+                "index out of bounds on dimension 1",
+            )
+
 
 class WritableIOBufTests(unittest.TestCase):
     def test_bytes_writable(self) -> None:
@@ -325,3 +339,316 @@ class WritableIOBufTests(unittest.TestCase):
             self.assertEqual(
                 str(e), "Cannot coalesce IOBuf with more than one reference"
             )
+
+    def test_buffer_creation_with_size_write(self) -> None:
+        finish = bytearray(b"123456789012345")
+        xb = WritableIOBuf.create_unitialized(17)
+        buf = memoryview(xb)
+
+        self.assertEqual(len(xb), 0)
+        self.assertEqual(len(buf), 0)
+        self.assertEqual(bytes(buf), b"")
+        self.assertEqual(xb.length(), 0)
+        xb.append(15)
+        buf = memoryview(xb)
+        self.assertNotEqual(bytes(buf), b"")
+        buf[0:15] = finish
+        self.assertEqual(len(xb), 15)
+        self.assertEqual(len(memoryview(xb)), 15)
+        self.assertEqual(memoryview(xb), finish)
+        self.assertEqual(buf, finish)
+        self.assertEqual(xb.length(), 15)
+        self.assertEqual(bytes(xb), b"123456789012345")
+
+    def test_buffer_creation_with_size_write_fail(self) -> None:
+        finish = bytearray(b"12345678901234567")
+        xb = WritableIOBuf.create_unitialized(16)
+        xb.append(16)
+        buf = memoryview(xb)
+
+        self.assertEqual(xb.capacity(), 16)
+        try:
+            buf[:] = finish
+            self.fail("Expected exception for writing out of bounds")
+        except ValueError as e:
+            self.assertEqual(
+                str(e),
+                "memoryview assignment: lvalue and rvalue have different structures",
+            )
+
+    def test_buffer_creation_with_size_read_fail(self) -> None:
+        finish = bytearray(b"1234567890123456")
+        xb = WritableIOBuf.create_unitialized(16)
+        xb.append(16)
+        buf = memoryview(xb)
+
+        buf[:] = finish
+        try:
+            self.assertEqual(bytes(buf[17]), None)
+            self.fail("Expected exception for reading out of bounds")
+        except IndexError as e:
+            self.assertEqual(
+                str(e),
+                "index out of bounds on dimension 1",
+            )
+
+    def test_buffer_creation_with_size_append(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(16)
+        self.assertEqual(xb.length(), 16)
+
+    def test_buffer_creation_with_size_append_fail(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        try:
+            xb.append(17)
+            self.fail("Expected exception for appending more than capacity")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot append more than capacity")
+
+    def test_buffer_creation_with_size_append_fail_negative(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        try:
+            xb.append(-1)
+            self.fail("Expected exception for negative amount")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot append, amount must be positive")
+
+    def test_buffer_creation_with_size_multiple_append(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(15)
+        xb.append(1)
+        self.assertEqual(xb.length(), 16)
+
+    def test_buffer_creation_with_size_multiple_append_fail(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(16)
+        try:
+            xb.append(1)
+            self.fail("Expected exception for appending more than capacity")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot append more than capacity")
+
+    def test_buffer_creation_with_size_trim_start(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_start(5)
+        self.assertEqual(xb.length(), 0)
+
+    def test_buffer_creation_with_size_write_trim_start(self) -> None:
+        finish = bytearray(b"1234567890123456")
+        xb = WritableIOBuf.create_unitialized(16)
+        xb.append(16)
+        buf = memoryview(xb)
+
+        buf[0:16] = finish
+        self.assertEqual(memoryview(xb), finish)
+        self.assertEqual(buf, finish)
+        self.assertEqual(xb.length(), 16)
+        self.assertEqual(bytes(xb), b"1234567890123456")
+        xb.trim_start(6)
+        self.assertEqual(bytes(xb), b"7890123456")
+        self.assertEqual(xb.length(), 10)
+        xb.trim_start(6)
+        self.assertEqual(bytes(xb), b"3456")
+        self.assertEqual(xb.length(), 4)
+
+    def test_buffer_creation_with_size_trim_start_fail(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        try:
+            xb.trim_start(6)
+            self.fail("Expected exception for trimming more than length")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot trim more than length")
+
+    def test_buffer_creation_with_size_trim_start_multiple(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_start(4)
+        xb.trim_start(1)
+        self.assertEqual(xb.length(), 0)
+
+    def test_buffer_creation_with_size_trim_start_fail_multiple(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_start(5)
+        try:
+            xb.trim_start(1)
+            self.fail("Expected exception for trimming more than length")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot trim more than length")
+
+    def test_buffer_creation_with_size_trim_start_fail_negative(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+
+        try:
+            xb.trim_start(-1)
+            self.fail("Expected exception for negative amount")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot trim start, amount must be positive")
+
+    def test_buffer_creation_with_size_trim_end(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_end(5)
+        self.assertEqual(xb.length(), 0)
+
+    def test_buffer_creation_with_size_write_trim_end(self) -> None:
+        finish = bytearray(b"1234567890123456")
+        xb = WritableIOBuf.create_unitialized(16)
+        xb.append(16)
+        buf = memoryview(xb)
+
+        buf[0:16] = finish
+        self.assertEqual(memoryview(xb), finish)
+        self.assertEqual(buf, finish)
+        self.assertEqual(xb.length(), 16)
+        self.assertEqual(bytes(xb), b"1234567890123456")
+        xb.trim_end(6)
+        self.assertEqual(bytes(xb), b"1234567890")
+        self.assertEqual(xb.length(), 10)
+        xb.trim_end(6)
+        self.assertEqual(bytes(xb), b"1234")
+        self.assertEqual(xb.length(), 4)
+
+    def test_buffer_creation_with_size_trim_end_fail(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        try:
+            xb.trim_end(6)
+            self.fail("Expected exception for trimming more than length")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot trim more than length")
+
+    def test_buffer_creation_with_size_trim_end_multiple(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_end(4)
+        xb.trim_end(1)
+        self.assertEqual(xb.length(), 0)
+
+    def test_buffer_creation_with_size_trim_end_fail_multiple(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_end(5)
+        try:
+            xb.trim_end(1)
+            self.fail("Expected exception for trimming more than length")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot trim more than length")
+
+    def test_buffer_creation_with_size_trim_end_fail_negative(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+
+        try:
+            xb.trim_end(-1)
+            self.fail("Expected exception for negative amount")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot trim end, amount must be positive")
+
+    def test_buffer_creation_with_size_prepend(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_start(5)
+        self.assertEqual(xb.length(), 0)
+        xb.prepend(5)
+        self.assertEqual(xb.length(), 5)
+
+    def test_buffer_creation_with_size_write_prepend(self) -> None:
+        finish = bytearray(b"1234567890123456")
+        xb = WritableIOBuf.create_unitialized(16)
+        xb.append(16)
+        buf = memoryview(xb)
+
+        buf[0:16] = finish
+        self.assertEqual(memoryview(xb), finish)
+        self.assertEqual(buf, finish)
+        self.assertEqual(xb.length(), 16)
+        self.assertEqual(bytes(xb), b"1234567890123456")
+        xb.trim_start(6)
+        self.assertEqual(bytes(xb), b"7890123456")
+        self.assertEqual(xb.length(), 10)
+        xb.prepend(6)
+        self.assertEqual(bytes(xb), b"1234567890123456")
+        self.assertEqual(xb.length(), 16)
+
+    def test_buffer_creation_with_size_prepend_fail(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_start(5)
+        self.assertEqual(xb.length(), 0)
+        try:
+            xb.prepend(6)
+            self.fail("Expected exception for prepending more than headroom")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot prepend more than headroom")
+
+    def test_buffer_creation_with_size_prepend_fail_multiple(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+        xb.append(5)
+        self.assertEqual(xb.length(), 5)
+        xb.trim_start(5)
+        self.assertEqual(xb.length(), 0)
+        xb.prepend(5)
+        try:
+            xb.prepend(1)
+            self.fail("Expected exception for prepending more than headroom")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot prepend more than headroom")
+
+    def test_buffer_creation_with_size_prepend_fail_negative(self) -> None:
+        xb = WritableIOBuf.create_unitialized(16)
+        self.assertEqual(xb.length(), 0)
+        self.assertEqual(xb.capacity(), 16)
+
+        try:
+            xb.prepend(-1)
+            self.fail("Expected exception for negative amount")
+        except ValueError as e:
+            self.assertEqual(str(e), "Cannot prepend, amount must be positive")

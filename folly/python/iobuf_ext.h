@@ -28,4 +28,6 @@ namespace folly::python {
 std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
     folly::Executor* executor, PyObject* py_object, void* buf, uint64_t length);
 
+std::unique_ptr<folly::IOBuf> create_iobuf(std::size_t capacity);
+
 } // namespace folly::python

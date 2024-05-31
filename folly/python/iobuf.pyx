@@ -24,6 +24,10 @@ __cache = WeakValueDictionary()
 __all__ = ['IOBuf']
 
 
+cdef unique_ptr[cIOBuf] create_new_iobuf(ssize_t capacity):
+    """Create a new IOBuf with the given capacity"""
+    return move(create_iobuf(capacity))
+
 cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view):
     """Take a python object that supports buffer protocol"""
     if not view.is_c_contig() and not view.is_f_contig():
@@ -147,6 +151,9 @@ cdef class IOBuf:
         buffer.strides = self.strides
         buffer.suboffsets = NULL
 
+    def writable(self):
+        return False
+
     def __releasebuffer__(self, Py_buffer *buffer):
         # Read-only means we need no logic here
         pass
@@ -194,6 +201,10 @@ cdef class IOBuf:
             return NotImplemented
 
 cdef class WritableIOBuf(IOBuf):
+    @staticmethod
+    def create_unitialized(ssize_t size):
+        return writable_from_unique_ptr(create_new_iobuf(size))
+
     def __init__(self, buffer not None):
         # We don't support bytes here, because the python expectations
         # are that bytes are immutable.
@@ -201,7 +212,8 @@ cdef class WritableIOBuf(IOBuf):
             raise ValueError("Buffer must not be of type bytes.")
 
         cdef memoryview view = memoryview(buffer, PyBUF_C_CONTIGUOUS)
-        self._ours = move(from_python_buffer(view))
+        self._ours = from_python_buffer(view)
+
         self._this = self._ours.get()
         self._parent = None
         self._hash = None
@@ -215,7 +227,7 @@ cdef class WritableIOBuf(IOBuf):
         buffer.format = NULL
         buffer.internal = NULL
         buffer.itemsize = 1
-        buffer.len = self.shape[0]
+        buffer.len = self._this.length()
         buffer.ndim = 1
         buffer.obj = self
         buffer.readonly = 0
@@ -226,6 +238,42 @@ cdef class WritableIOBuf(IOBuf):
     def writable(self):
         return True
 
+    def append(self, ssize_t amount):
+        if amount < 0:
+            raise ValueError("Cannot append, amount must be positive")
+
+        if amount > self._this.tailroom():
+            raise ValueError("Cannot append more than capacity")
+
+        self._this.append(amount)
+
+    def prepend(self, ssize_t amount):
+        if amount < 0:
+            raise ValueError("Cannot prepend, amount must be positive")
+
+        if amount > self._this.headroom():
+            raise ValueError("Cannot prepend more than headroom")
+
+        self._this.prepend(amount)
+
+    def trim_start(self, ssize_t amount):
+        if amount < 0:
+            raise ValueError("Cannot trim start, amount must be positive")
+
+        if amount > self._this.length():
+            raise ValueError("Cannot trim more than length")
+
+        self._this.trimStart(amount)
+
+    def trim_end(self, ssize_t amount):
+        if amount < 0:
+            raise ValueError("Cannot trim end, amount must be positive")
+
+        if amount > self._this.length():
+            raise ValueError("Cannot trim more than length")
+
+        self._this.trimEnd(amount)
+
     def append_to_chain(self, WritableIOBuf other):
         self._this.appendToChain(move(other._ours))
 
@@ -233,6 +281,12 @@ cdef class WritableIOBuf(IOBuf):
         if sys.getrefcount(self) > 2:
             raise RuntimeError("Cannot coalesce IOBuf with more than one reference")
         self._this.coalesce()
+
+    def length(self):
+        return self._this.length()
+
+    def capacity(self):
+        return self._this.capacity()
 
     @staticmethod
     cdef WritableIOBuf create(cIOBuf* this, object parent):
