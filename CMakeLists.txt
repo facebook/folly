@@ -640,6 +640,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
       TEST util_test SOURCES UtilTest.cpp
 
+    DIRECTORY concurrency/container/test/
+      TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
+
     DIRECTORY concurrency/test/
       TEST atomic_shared_ptr_test SOURCES AtomicSharedPtrTest.cpp
       TEST cache_locality_test WINDOWS_DISABLED SOURCES CacheLocalityTest.cpp
@@ -709,7 +712,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       # FunctionSchedulerTest has a lot of timing-dependent checks,
       # and tends to fail on heavily loaded systems.
       TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
-      TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
       #TEST program_options_test SOURCES ProgramOptionsTest.cpp
       TEST quotient_multiset_test SOURCES QuotientMultiSetTest.cpp

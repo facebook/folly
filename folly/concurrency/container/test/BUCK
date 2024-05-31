@@ -20,3 +20,14 @@ cpp_unittest(
         ("boost", None, "boost_thread"),
     ],
 )
+
+cpp_unittest(
+    name = "lock_free_ring_buffer_test",
+    srcs = ["LockFreeRingBufferTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental:lock_free_ring_buffer",
+        "//folly/portability:gtest",
+        "//folly/test:deterministic_schedule",
+    ],
+)

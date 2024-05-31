@@ -18,3 +18,18 @@ cpp_library(
         "//folly/synchronization/detail:spin",
     ],
 )
+
+cpp_library(
+    name = "lock_free_ring_buffer",
+    headers = ["LockFreeRingBuffer.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:traits",
+        "//folly/detail:turn_sequencer",
+        "//folly/portability:unistd",
+        "//folly/synchronization:sanitize_thread",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)

@@ -140,17 +140,6 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "lock_free_ring_buffer_test",
-    srcs = ["LockFreeRingBufferTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/experimental:lock_free_ring_buffer",
-        "//folly/portability:gtest",
-        "//folly/test:deterministic_schedule",
-    ],
-)
-
-cpp_unittest(
     name = "primary_ptr_test",
     srcs = ["PrimaryPtrTest.cpp"],
     headers = [],
