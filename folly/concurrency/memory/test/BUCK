@@ -21,3 +21,40 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
+
+cpp_benchmark(
+    name = "read_mostly_shared_ptr_benchmark",
+    srcs = ["ReadMostlySharedPtrBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:memory",
+        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "read_mostly_shared_ptr_stress_test",
+    srcs = ["ReadMostlySharedPtrStressTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "read_mostly_shared_ptr_test",
+    srcs = ["ReadMostlySharedPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:memory",
+        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)

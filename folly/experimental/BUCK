@@ -212,10 +212,11 @@ cpp_library(
 
 cpp_library(
     name = "read_mostly_shared_ptr",
-    headers = ["ReadMostlySharedPtr.h"],
+    headers = [
+        "ReadMostlySharedPtr.h",
+    ],
     exported_deps = [
-        ":tl_ref_count",
-        "//folly:function",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
     ],
 )
 

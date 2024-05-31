@@ -19,3 +19,12 @@ cpp_library(
         "//folly/synchronization:rcu",
     ],
 )
+
+cpp_library(
+    name = "read_mostly_shared_ptr",
+    headers = ["ReadMostlySharedPtr.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly/experimental:tl_ref_count",
+    ],
+)
