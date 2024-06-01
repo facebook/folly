@@ -362,7 +362,9 @@ class AutoconfBuilder(BuilderBase):
                 self._run_cmd(["autoreconf", "-ivf"], cwd=self.src_dir, env=env)
         configure_cmd = [configure_path, "--prefix=" + self.inst_dir] + self.args
         self._run_cmd(configure_cmd, env=env)
-        self._run_cmd([self._make_binary, "-j%s" % self.num_jobs], env=env)
+        only_install = self.manifest.get("build", "only_install", "false", ctx=self.ctx)
+        if not only_install:
+            self._run_cmd([self._make_binary, "-j%s" % self.num_jobs], env=env)
         self._run_cmd([self._make_binary, "install"], env=env)
 
 

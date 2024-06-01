@@ -64,6 +64,7 @@ SCHEMA = {
             "subdir": OPTIONAL,
             "make_binary": OPTIONAL,
             "build_in_src_dir": OPTIONAL,
+            "only_install": OPTIONAL,
             "job_weight_mib": OPTIONAL,
             "patchfile": OPTIONAL,
             "patchfile_opts": OPTIONAL,
