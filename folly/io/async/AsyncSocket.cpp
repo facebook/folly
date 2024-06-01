@@ -3522,16 +3522,20 @@ void AsyncSocket::handleConnect() noexcept {
         AsyncSocketException::INTERNAL_ERROR,
         withAddr("error calling getsockopt() after connect"),
         errnoCopy);
-    VLOG(4) << "AsyncSocket::handleConnect(this=" << this << ", fd=" << fd_
-            << " host=" << addr_.describe() << ") exception:" << ex.what();
+    if (std::getenv("DISABLE_ASYNC_SOCKET_PRINT") == nullptr) {
+      VLOG(4) << "AsyncSocket::handleConnect(this=" << this << ", fd=" << fd_
+              << " host=" << addr_.describe() << ") exception:" << ex.what();
+    }
     return failConnect(__func__, ex);
   }
 
   if (error != 0) {
     AsyncSocketException ex(
         AsyncSocketException::NOT_OPEN, "connect failed", error);
-    VLOG(2) << "AsyncSocket::handleConnect(this=" << this << ", fd=" << fd_
-            << " host=" << addr_.describe() << ") exception: " << ex.what();
+    if (std::getenv("DISABLE_ASYNC_SOCKET_PRINT") == nullptr) {
+      VLOG(2) << "AsyncSocket::handleConnect(this=" << this << ", fd=" << fd_
+              << " host=" << addr_.describe() << ") exception: " << ex.what();
+    }
     return failConnect(__func__, ex);
   }
 
