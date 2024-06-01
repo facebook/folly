@@ -811,12 +811,6 @@ class BuildCmd(ProjectCmdBase):
             action="append",
         )
         parser.add_argument(
-            "--shared-libs",
-            help="Build shared libraries if possible",
-            action="store_true",
-            default=False,
-        )
-        parser.add_argument(
             "--free-up-disk",
             help="Remove unused tools and clean up intermediate files if possible to maximise space for the build",
             action="store_true",
@@ -1325,6 +1319,12 @@ def parse_args():
         help="Perform a non-FB internal build, even when in an fbsource repository",
         action="store_false",
         dest="facebook_internal",
+    )
+    add_common_arg(
+        "--shared-libs",
+        help="Build shared libraries if possible",
+        action="store_true",
+        default=False,
     )
     add_common_arg(
         "--allow-system-packages",
