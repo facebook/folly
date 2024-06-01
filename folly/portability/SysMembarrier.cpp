@@ -38,10 +38,19 @@ constexpr long linux_syscall_nr_membarrier_ = __NR_membarrier;
 constexpr long linux_syscall_nr_membarrier_ = -1;
 #endif
 
+#if defined(__aarch64__)
+constexpr long def_linux_syscall_nr_membarrier_ = 283;
+#elif defined(__x86_64__) || defined(_M_X64)
+constexpr long def_linux_syscall_nr_membarrier_ = 324;
+#else
+constexpr long def_linux_syscall_nr_membarrier_ = -1;
+#endif
+
 //  __NR_membarrier with hardcoded fallback where available or -1
 constexpr long linux_syscall_nr_membarrier =
     (kIsArchAmd64 || kIsArchAArch64) && !kIsMobile && kIsLinux //
-    ? linux_syscall_nr_(linux_syscall_nr_membarrier_, 324)
+    ? linux_syscall_nr_(
+          linux_syscall_nr_membarrier_, def_linux_syscall_nr_membarrier_)
     : -1;
 
 //  linux_membarrier_cmd
