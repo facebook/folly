@@ -1,0 +1,5 @@
+[manifest]
+name = xxhash
+
+[rpms]
+xxhash-devel
