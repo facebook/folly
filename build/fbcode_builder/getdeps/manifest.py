@@ -45,6 +45,7 @@ SCHEMA = {
             "fbsource_path": OPTIONAL,
             "shipit_project": OPTIONAL,
             "shipit_fbcode_builder": OPTIONAL,
+            "use_shipit": OPTIONAL,
         },
     },
     "dependencies": {"optional_section": True, "allow_values": False},
@@ -396,8 +397,9 @@ class ManifestParser(object):
         return self.get("git", "repo_url", ctx=ctx)
 
     def create_fetcher(self, build_options, ctx):
-        use_real_shipit = (
-            ShipitTransformerFetcher.available() and build_options.use_shipit
+        use_real_shipit = ShipitTransformerFetcher.available() and (
+            build_options.use_shipit
+            or self.get("manifest", "use_shipit", defval="false", ctx=ctx) == "true"
         )
         if (
             not use_real_shipit
