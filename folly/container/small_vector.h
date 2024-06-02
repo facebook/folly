@@ -1037,7 +1037,10 @@ class small_vector
 
   void copyWholeInlineStorageTrivial(small_vector const& o) {
     static_assert(std::is_trivially_copyable_v<Value>);
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Warray-bounds")
     std::copy(o.u.buffer(), o.u.buffer() + MaxInline, u.buffer());
+    FOLLY_POP_WARNING
     this->setSize(o.size());
   }
 
