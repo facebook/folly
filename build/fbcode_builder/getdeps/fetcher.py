@@ -588,7 +588,7 @@ class SimpleShipitTransformerFetcher(Fetcher):
 
 
 class ShipitTransformerFetcher(Fetcher):
-    SHIPIT = "/var/www/scripts/opensource/shipit/run_shipit.php"
+    SHIPIT = "/var/www/scripts/opensource/codesync"
 
     def __init__(self, build_options, project_name) -> None:
         self.build_options = build_options
@@ -614,12 +614,13 @@ class ShipitTransformerFetcher(Fetcher):
         try:
             if os.path.exists(tmp_path):
                 shutil.rmtree(tmp_path)
+            os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
 
             # Run shipit
             run_cmd(
                 [
-                    "php",
                     ShipitTransformerFetcher.SHIPIT,
+                    "shipit",
                     "--project=" + self.project_name,
                     "--create-new-repo",
                     "--source-repo-dir=" + self.build_options.fbsource_dir,
@@ -628,7 +629,6 @@ class ShipitTransformerFetcher(Fetcher):
                     "--skip-source-pull",
                     "--skip-source-clean",
                     "--skip-push",
-                    "--skip-reset",
                     "--destination-use-anonymous-https",
                     "--create-new-repo-output-path=" + tmp_path,
                 ]
