@@ -20,23 +20,47 @@ namespace folly {
 
 // ZeroCopyTest
 ZeroCopyTest::ZeroCopyTest(
-    size_t numClients, int numLoops, bool zeroCopy, size_t bufferSize)
+    size_t numClients,
+    int numLoops,
+    bool zeroCopy,
+    size_t bufferSize,
+    const folly::AsyncSocket::ZeroCopyDrainConfig& config)
     : numClients_(numClients),
       counter_(numClients),
       numLoops_(numLoops),
       zeroCopy_(zeroCopy),
       bufferSize_(bufferSize),
       listenSock_(new folly::AsyncServerSocket(&evb_)),
-      server_(&evb_, numLoops_, bufferSize_, zeroCopy) {
+      server_(&evb_, numLoops_, bufferSize_, zeroCopy, config) {
   clients_.reserve(numClients_);
 
   for (size_t i = 0; i < numClients_; i++) {
     clients_.emplace_back(std::make_unique<ZeroCopyTestAsyncSocket>(
-        &counter_, &evb_, numLoops_, bufferSize_, zeroCopy));
+        &counter_, &evb_, numLoops_, bufferSize_, zeroCopy, config));
   }
   if (listenSock_) {
     server_.addCallbackToServerSocket(*listenSock_);
   }
+}
+
+int ZeroCopyTest::setSendBufSize(size_t bufsize) {
+  int ret = 0;
+  for (const auto& c : clients_) {
+    if (c->setSendBufSize(bufsize) == 0) {
+      ++ret;
+    }
+  }
+  return ret;
+}
+
+void ZeroCopyTest::setCloseAfterSend(bool val) {
+  for (const auto& c : clients_) {
+    c->setCloseAfterSend(val);
+  }
+}
+
+void ZeroCopyTest::setCloseAfterAccept(bool val) {
+  server_.setCloseAfterAccept(val);
 }
 
 bool ZeroCopyTest::run() {

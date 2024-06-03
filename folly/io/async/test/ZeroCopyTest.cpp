@@ -22,8 +22,22 @@ using namespace folly;
 
 static auto constexpr kMaxLoops = 20;
 static auto constexpr kBufferSize = 4096;
+static auto constexpr kBufferSizeLarge = kBufferSize * 1024;
 
 TEST(ZeroCopyTest, zeroCopyInProgress) {
   ZeroCopyTest test(1, kMaxLoops, true, kBufferSize);
+  CHECK(test.run());
+}
+
+TEST(ZeroCopyTest, zeroCopyInProgressLargeClientClose) {
+  ZeroCopyTest test(1, 1, true, kBufferSize);
+  test.setSendBufSize(kBufferSizeLarge);
+  test.setCloseAfterSend(true);
+  CHECK(test.run());
+}
+
+TEST(ZeroCopyTest, zeroCopyInProgressLargeServerClose) {
+  ZeroCopyTest test(1, kMaxLoops, true, kBufferSize);
+  test.setCloseAfterAccept(true);
   CHECK(test.run());
 }
