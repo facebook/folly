@@ -29,29 +29,62 @@ namespace {
 
 class StaticSingletonManagerWithRttiImpl {
  public:
+  using Self = StaticSingletonManagerWithRttiImpl;
   using Make = void*();
+
+  static Self& instance() {
+    // This Leaky Meyers Singleton must always live in the .cpp file.
+    static Indestructible<StaticSingletonManagerWithRttiImpl> instance;
+    return instance;
+  }
+
+  template <typename Arg>
+  static void* get_existing(Arg& arg) {
+    auto const* const entry = instance().get_existing_entry(*arg.key);
+    auto const ptr = entry ? entry->get_existing() : nullptr;
+    if (ptr) {
+      arg.cache.store(ptr, std::memory_order_release);
+    }
+    return ptr;
+  }
 
   template <typename Arg>
   static void* create(Arg& arg) {
-    // This Leaky Meyers Singleton must always live in the .cpp file.
-    static Indestructible<StaticSingletonManagerWithRttiImpl> instance;
-    auto const ptr = instance->entry(*arg.key).get(*arg.make, arg.debug);
+    auto& entry = instance().create_entry(*arg.key);
+    auto const ptr = entry.create(*arg.make, *arg.debug);
     arg.cache.store(ptr, std::memory_order_release);
     return ptr;
   }
 
  private:
   struct Entry {
-    void* ptr{};
+    std::atomic<void*> ptr{};
     std::mutex mutex;
 
-    void* get(Make& make, void** debug) {
+    void* get_existing() const { return ptr.load(std::memory_order_acquire); }
+
+    void* create(Make& make, void*& debug) {
+      if (auto const v = ptr.load(std::memory_order_acquire)) {
+        return v;
+      }
       std::unique_lock<std::mutex> lock(mutex);
-      return ptr ? ptr : (*debug = ptr = make());
+      if (auto const v = ptr.load(std::memory_order_acquire)) {
+        return v;
+      }
+      auto const v = make();
+      ptr.store(v, std::memory_order_release);
+      debug = ptr;
+      return v;
     }
   };
 
-  Entry& entry(std::type_info const& key) {
+  Entry* get_existing_entry(std::type_info const& key) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    auto const it = map_.find(key);
+    return it == map_.end() ? nullptr : &it->second;
+  }
+
+  Entry& create_entry(std::type_info const& key) {
     std::unique_lock<std::mutex> lock(mutex_);
     return map_[key];
   }
@@ -69,6 +102,10 @@ class StaticSingletonManagerWithRttiImpl {
 };
 
 } // namespace
+
+void* StaticSingletonManagerWithRtti::get_existing_(Arg& arg) noexcept {
+  return StaticSingletonManagerWithRttiImpl::get_existing(arg);
+}
 
 template <bool Noexcept>
 void* StaticSingletonManagerWithRtti::create_(Arg& arg) noexcept(Noexcept) {
