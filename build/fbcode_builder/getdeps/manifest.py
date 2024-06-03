@@ -397,7 +397,8 @@ class ManifestParser(object):
         return self.get("git", "repo_url", ctx=ctx)
 
     def create_fetcher(self, build_options, ctx):
-        use_real_shipit = ShipitTransformerFetcher.available() and (
+        real_shipit_available = ShipitTransformerFetcher.available(build_options)
+        use_real_shipit = real_shipit_available and (
             build_options.use_shipit
             or self.get("manifest", "use_shipit", defval="false", ctx=ctx) == "true"
         )
@@ -413,7 +414,7 @@ class ManifestParser(object):
             self.fbsource_path
             and build_options.fbsource_dir
             and self.shipit_project
-            and ShipitTransformerFetcher.available()
+            and real_shipit_available
         ):
             # We can use the code from fbsource
             return ShipitTransformerFetcher(build_options, self.shipit_project)

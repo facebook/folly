@@ -588,12 +588,29 @@ class SimpleShipitTransformerFetcher(Fetcher):
 
 
 class ShipitTransformerFetcher(Fetcher):
-    SHIPIT = "/var/www/scripts/opensource/codesync"
+    @classmethod
+    def _shipit_paths(cls, build_options):
+        www_path = ["/var/www/scripts/opensource/codesync"]
+        if build_options.fbsource_dir:
+            fbcode_path = [
+                os.path.join(
+                    build_options.fbsource_dir,
+                    "fbcode/opensource/codesync/codesync-cli/codesync",
+                )
+            ]
+        else:
+            fbcode_path = []
+        return www_path + fbcode_path
 
     def __init__(self, build_options, project_name) -> None:
         self.build_options = build_options
         self.project_name = project_name
         self.repo_dir = os.path.join(build_options.scratch_dir, "shipit", project_name)
+        self.shipit = None
+        for path in ShipitTransformerFetcher._shipit_paths(build_options):
+            if os.path.exists(path):
+                self.shipit = path
+                break
 
     def update(self) -> ChangeStatus:
         if os.path.exists(self.repo_dir):
@@ -606,8 +623,11 @@ class ShipitTransformerFetcher(Fetcher):
             shutil.rmtree(self.repo_dir)
 
     @classmethod
-    def available(cls):
-        return os.path.exists(cls.SHIPIT)
+    def available(cls, build_options):
+        return any(
+            os.path.exists(path)
+            for path in ShipitTransformerFetcher._shipit_paths(build_options)
+        )
 
     def run_shipit(self) -> None:
         tmp_path = self.repo_dir + ".new"
@@ -619,7 +639,7 @@ class ShipitTransformerFetcher(Fetcher):
             # Run shipit
             run_cmd(
                 [
-                    ShipitTransformerFetcher.SHIPIT,
+                    self.shipit,
                     "shipit",
                     "--project=" + self.project_name,
                     "--create-new-repo",
