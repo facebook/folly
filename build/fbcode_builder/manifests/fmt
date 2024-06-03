@@ -12,3 +12,6 @@ subdir = fmt-9.1.0
 [cmake.defines]
 FMT_TEST = OFF
 FMT_DOC = OFF
+
+[homebrew]
+fmt

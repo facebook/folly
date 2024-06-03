@@ -1,6 +1,9 @@
 [manifest]
 name = snappy
 
+[homebrew]
+snappy
+
 [debs]
 libsnappy-dev
 
