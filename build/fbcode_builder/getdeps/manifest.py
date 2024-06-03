@@ -30,6 +30,7 @@ from .fetcher import (
     PreinstalledNopFetcher,
     ShipitTransformerFetcher,
     SimpleShipitTransformerFetcher,
+    SubFetcher,
     SystemPackageFetcher,
 )
 from .py_wheel_builder import PythonWheelBuilder
@@ -105,6 +106,7 @@ SCHEMA = {
     "shipit.pathmap": {"optional_section": True},
     "shipit.strip": {"optional_section": True},
     "install.files": {"optional_section": True},
+    "subprojects": {"optional_section": True},
     # fb-only
     "sandcastle": {"optional_section": True, "fields": {"run_tests": OPTIONAL}},
 }
@@ -396,7 +398,7 @@ class ManifestParser(object):
     def get_repo_url(self, ctx):
         return self.get("git", "repo_url", ctx=ctx)
 
-    def create_fetcher(self, build_options, ctx):
+    def _create_fetcher(self, build_options, ctx):
         real_shipit_available = ShipitTransformerFetcher.available(build_options)
         use_real_shipit = real_shipit_available and (
             build_options.use_shipit
@@ -455,6 +457,19 @@ class ManifestParser(object):
         raise KeyError(
             "project %s has no fetcher configuration matching %s" % (self.name, ctx)
         )
+
+    def create_fetcher(self, build_options, loader, ctx):
+        fetcher = self._create_fetcher(build_options, ctx)
+        subprojects = self.get_section_as_ordered_pairs("subprojects", ctx)
+        if subprojects:
+            subs = []
+            for project, subdir in subprojects:
+                submanifest = loader.load_manifest(project)
+                subfetcher = submanifest.create_fetcher(build_options, loader, ctx)
+                subs.append((subfetcher, subdir))
+            return SubFetcher(fetcher, subs)
+        else:
+            return fetcher
 
     def get_builder_name(self, ctx):
         builder = self.get("build", "builder", ctx=ctx)

@@ -587,6 +587,39 @@ class SimpleShipitTransformerFetcher(Fetcher):
         return self.repo_dir
 
 
+class SubFetcher(Fetcher):
+    """Fetcher for a project with subprojects"""
+
+    def __init__(self, base, subs) -> None:
+        self.base = base
+        self.subs = subs
+
+    def update(self) -> ChangeStatus:
+        base = self.base.update()
+        changed = base.build_changed() or base.sources_changed()
+        for fetcher, dir in self.subs:
+            stat = fetcher.update()
+            if stat.build_changed() or stat.sources_changed():
+                changed = True
+            link = self.base.get_src_dir() + "/" + dir
+            if not os.path.exists(link):
+                os.symlink(fetcher.get_src_dir(), link)
+        return ChangeStatus(changed)
+
+    def clean(self) -> None:
+        self.base.clean()
+        for fetcher, _ in self.subs:
+            fetcher.clean()
+
+    def hash(self) -> None:
+        hash = self.base.hash()
+        for fetcher, _ in self.subs:
+            hash += fetcher.hash()
+
+    def get_src_dir(self):
+        return self.base.get_src_dir()
+
+
 class ShipitTransformerFetcher(Fetcher):
     @classmethod
     def _shipit_paths(cls, build_options):

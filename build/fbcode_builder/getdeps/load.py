@@ -251,7 +251,7 @@ class ManifestLoader(object):
             return override
 
         ctx = self.ctx_gen.get_context(manifest.name)
-        return manifest.create_fetcher(self.build_opts, ctx)
+        return manifest.create_fetcher(self.build_opts, self, ctx)
 
     def get_project_hash(self, manifest):
         h = self._project_hashes.get(manifest.name)
