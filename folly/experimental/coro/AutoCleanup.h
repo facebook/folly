@@ -98,10 +98,11 @@ class AutoCleanup : MoveOnly {
   }
 
  private:
+  using BoolIfDebug = conditional_t<kIsDebug, bool, std::false_type>;
+
   T* ptr_;
   CleanupFn cleanupFn_;
-  FOLLY_ATTR_NO_UNIQUE_ADDRESS conditional_t<kIsDebug, bool, std::false_type>
-      scheduled_{};
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] BoolIfDebug scheduled_{};
 
   friend struct detail::ScopeExitArg<AutoCleanup<T, CleanupFn>>;
 };
