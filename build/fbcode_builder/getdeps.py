@@ -210,6 +210,31 @@ class ProjectCmdBase(SubCmd):
     def setup_project_cmd_parser(self, parser):
         pass
 
+    # For commands that don't build but need the full list of install_dirs from
+    # dependencies (test, debug).
+    def get_install_dirs(self, loader, manifest):
+        install_dirs = []
+        for m in loader.manifests_in_dependency_order():
+            if m != manifest:
+                install_dirs.append(loader.get_project_install_dir(m))
+        return install_dirs
+
+    def create_builder(self, loader, manifest):
+        fetcher = loader.create_fetcher(manifest)
+        src_dir = fetcher.get_src_dir()
+        ctx = loader.ctx_gen.get_context(manifest.name)
+        build_dir = loader.get_project_build_dir(manifest)
+        inst_dir = loader.get_project_install_dir(manifest)
+        return manifest.create_builder(
+            loader.build_opts, src_dir, build_dir, inst_dir, ctx, loader
+        )
+
+    def check_built(self, loader, manifest):
+        built_marker = os.path.join(
+            loader.get_project_install_dir(manifest), ".built-by-getdeps"
+        )
+        return os.path.exists(built_marker)
+
 
 class CachedProject(object):
     """A helper that allows calling the cache logic for a project
@@ -855,41 +880,20 @@ class FixupDeps(ProjectCmdBase):
 @cmd("test", "test a given project")
 class TestCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
-        projects = loader.manifests_in_dependency_order()
+        if not self.check_built(loader, manifest):
+            print("project %s has not been built" % manifest.name)
+            return 1
+        builder = self.create_builder(loader, manifest)
+        install_dirs = self.get_install_dirs(loader, manifest)
 
-        # Accumulate the install directories so that the test steps
-        # can find their dep installation
-        install_dirs = []
-
-        for m in projects:
-            inst_dir = loader.get_project_install_dir(m)
-
-            if m == manifest or args.test_dependencies:
-                built_marker = os.path.join(inst_dir, ".built-by-getdeps")
-                if not os.path.exists(built_marker):
-                    print("project %s has not been built" % m.name)
-                    # TODO: we could just go ahead and build it here, but I
-                    # want to tackle that as part of adding build-for-test
-                    # support.
-                    return 1
-                fetcher = loader.create_fetcher(m)
-                src_dir = fetcher.get_src_dir()
-                ctx = loader.ctx_gen.get_context(m.name)
-                build_dir = loader.get_project_build_dir(m)
-                builder = m.create_builder(
-                    loader.build_opts, src_dir, build_dir, inst_dir, ctx, loader
-                )
-
-                builder.run_tests(
-                    install_dirs,
-                    schedule_type=args.schedule_type,
-                    owner=args.test_owner,
-                    test_filter=args.filter,
-                    retry=args.retry,
-                    no_testpilot=args.no_testpilot,
-                )
-
-            install_dirs.append(inst_dir)
+        builder.run_tests(
+            install_dirs,
+            schedule_type=args.schedule_type,
+            owner=args.test_owner,
+            test_filter=args.filter,
+            retry=args.retry,
+            no_testpilot=args.no_testpilot,
+        )
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
@@ -909,6 +913,20 @@ class TestCmd(ProjectCmdBase):
             help="Do not use Test Pilot even when available",
             action="store_true",
         )
+
+
+@cmd(
+    "debug",
+    "start a shell in the given project's build dir with the correct environment for running the build",
+)
+class DebugCmd(ProjectCmdBase):
+    def run_project_cmd(self, args, loader, manifest):
+        if not self.check_built(loader, manifest):
+            print("project %s has not been built" % manifest.name)
+            return 1
+        install_dirs = self.get_install_dirs(loader, manifest)
+        builder = self.create_builder(loader, manifest)
+        builder.debug(install_dirs, reconfigure=False)
 
 
 @cmd("generate-github-actions", "generate a GitHub actions configuration")
