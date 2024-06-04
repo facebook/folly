@@ -121,6 +121,7 @@ cpp_library(
         ":new",
     ],
     exported_deps = [
+        ":assume",
         ":safe_assert",
         ":type_info",
         "//folly:c_portability",

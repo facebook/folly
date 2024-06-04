@@ -76,6 +76,16 @@ cpp_unittest(
     ],
 )
 
+cpp_binary(
+    name = "exception_bench",
+    srcs = ["ExceptionBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/lang:exception",
+        "//folly/lang:keep",
+    ],
+)
+
 cpp_unittest(
     name = "exception_test",
     srcs = ["ExceptionTest.cpp"],

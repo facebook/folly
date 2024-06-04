@@ -221,6 +221,37 @@ TEST_F(ExceptionTest, exception_ptr_vmi) {
   EXPECT_EQ(1, *(A1*)(folly::exception_ptr_get_object(ptr, &typeid(A1))));
   EXPECT_EQ(1, folly::exception_ptr_get_object<A1>(ptr)->value);
   EXPECT_EQ(44, *(C*)(folly::exception_ptr_get_object(ptr)));
+
+  EXPECT_EQ(
+      nullptr,
+      folly::exception_ptr_try_get_object_exact_fast<A0>(
+          nullptr, folly::tag<B1, B2>));
+  EXPECT_EQ(
+      nullptr,
+      folly::exception_ptr_try_get_object_exact_fast<A0>(
+          std::make_exception_ptr(17), folly::tag<B1, B2>));
+  EXPECT_EQ(
+      nullptr,
+      folly::exception_ptr_try_get_object_exact_fast<A0>(
+          ptr, folly::tag<B1, B2>));
+  EXPECT_EQ(
+      folly::exception_ptr_get_object<C>(ptr),
+      folly::exception_ptr_try_get_object_exact_fast<A0>(
+          ptr, folly::tag<B1, C, B2>));
+
+  EXPECT_EQ(
+      nullptr,
+      folly::exception_ptr_get_object_hint<A0>(nullptr, folly::tag<B1, B2>));
+  EXPECT_EQ(
+      nullptr,
+      folly::exception_ptr_get_object_hint<A0>(
+          std::make_exception_ptr(17), folly::tag<B1, B2>));
+  EXPECT_EQ(
+      folly::exception_ptr_get_object<C>(ptr),
+      folly::exception_ptr_get_object_hint<A0>(ptr, folly::tag<B1, B2>));
+  EXPECT_EQ(
+      folly::exception_ptr_get_object<C>(ptr),
+      folly::exception_ptr_get_object_hint<A0>(ptr, folly::tag<B1, C, B2>));
 }
 
 TEST_F(ExceptionTest, exception_shared_string) {

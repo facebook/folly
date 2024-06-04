@@ -28,6 +28,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/lang/Assume.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/lang/TypeInfo.h>
 
@@ -418,9 +419,53 @@ T* exception_ptr_get_object(std::exception_ptr const& ptr) noexcept {
     return detail::exception_ptr_catching<T&>(
         ptr, +[](T& ex) { return std::addressof(ex); });
   }
-  auto target = type_info_of<T>();
-  auto object = !target ? nullptr : exception_ptr_get_object(ptr, target);
+  auto const target = type_info_of<T>();
+  auto const object = !target ? nullptr : exception_ptr_get_object(ptr, target);
   return static_cast<T*>(object);
+}
+
+/// exception_ptr_try_get_object_exact_fast
+///
+/// Returns the address of the stored exception as if it were upcast to the
+/// given type, if its concrete type is exactly equal to one of the types passed
+/// in the tag.
+///
+/// May hypothetically fail in cases where multipe type-info objects exist for
+/// any of the given types. Positives are true but negatives may be either true
+/// or false.
+template <typename T, typename... S>
+T* exception_ptr_try_get_object_exact_fast(
+    std::exception_ptr const& ptr, tag_t<S...>) noexcept {
+  static_assert((std::is_convertible_v<S*, T*> && ...));
+  if (!kHasRtti || !ptr || !exception_ptr_access()) {
+    return nullptr;
+  }
+  auto const type = exception_ptr_get_type(ptr);
+  if (!type) {
+    return nullptr;
+  }
+  auto const object = exception_ptr_get_object(ptr);
+  auto const fun = [&](auto const phantom, std::type_info const* const target) {
+    assume(!!object);
+    return type == target ? static_cast<decltype(phantom)>(object) : nullptr;
+  };
+  T* out = nullptr;
+  ((out = fun(static_cast<S*>(nullptr), FOLLY_TYPE_INFO_OF(S))) || ...);
+  return out;
+}
+
+/// exception_ptr_get_object_hint
+///
+/// Returns the address of the stored exception as if it were upcast to the
+/// given type, if it could be upcast to that type.
+///
+/// If its concrete type is exactly equal to one of the types passed in the tag,
+/// this may be faster than exception_ptr_get_object without the hint.
+template <typename T, typename... S>
+T* exception_ptr_get_object_hint(
+    std::exception_ptr const& ptr, tag_t<S...> const hint) noexcept {
+  auto const val = exception_ptr_try_get_object_exact_fast<T>(ptr, hint);
+  return FOLLY_LIKELY(!!val) ? val : exception_ptr_get_object<T>(ptr);
 }
 
 //  exception_shared_string
