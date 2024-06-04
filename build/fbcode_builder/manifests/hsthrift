@@ -1,0 +1,5 @@
+[manifest]
+name = hsthrift
+fbsource_path = fbcode/common/hs
+shipit_project = facebookincubator/hsthrift
+use_shipit = true
