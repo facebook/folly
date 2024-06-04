@@ -60,7 +60,8 @@ constexpr std::uint64_t murmurHash64(
   const char* beg = key;
   const char* end = beg + (len & ~0x7);
   const std::size_t tail = len & 0x7;
-  std::uint64_t k;
+  // Dead store, but should be initialized for constexpr correctness.
+  std::uint64_t k = 0;
 
   for (const char* p = beg; p != end; p += 8) {
     if (folly::is_constant_evaluated_or(false)) {
