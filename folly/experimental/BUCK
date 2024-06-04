@@ -77,16 +77,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "env_util",
-    headers = [
-        "EnvUtil.h",
-    ],
-    exported_deps = [
-        "//folly/system:env_util",
-    ],
-)
-
-cpp_library(
     name = "event_count",
     headers = [
         "EventCount.h",
