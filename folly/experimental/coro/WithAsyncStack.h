@@ -48,8 +48,9 @@ class WithAsyncStackCoroutine {
       bool await_ready() noexcept { return false; }
       void await_suspend(coroutine_handle<promise_type> h) noexcept {
         auto& promise = h.promise();
+        folly::deactivateSuspendedLeaf(promise.getLeafFrame());
         folly::resumeCoroutineWithNewAsyncStackRoot(
-            promise.continuation_, *promise.parentFrame_);
+            promise.continuation_, *promise.getLeafFrame().getParentFrame());
       }
 
       [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
@@ -63,11 +64,13 @@ class WithAsyncStackCoroutine {
       folly::assume_unreachable();
     }
 
+    folly::AsyncStackFrame& getLeafFrame() noexcept { return leafFrame; }
+
    private:
     friend WithAsyncStackCoroutine;
 
     coroutine_handle<> continuation_;
-    folly::AsyncStackFrame* parentFrame_ = nullptr;
+    folly::AsyncStackFrame leafFrame;
   };
 
   WithAsyncStackCoroutine() noexcept : coro_() {}
@@ -90,11 +93,16 @@ class WithAsyncStackCoroutine {
 
   template <typename Promise>
   coroutine_handle<promise_type> getWrapperHandleFor(
-      coroutine_handle<Promise> h) noexcept {
+      coroutine_handle<Promise> h, void* returnAddress) noexcept {
     auto& promise = coro_.promise();
     promise.continuation_ = h;
-    promise.parentFrame_ = std::addressof(h.promise().getAsyncFrame());
+    promise.getLeafFrame().setParentFrame(h.promise().getAsyncFrame());
+    promise.getLeafFrame().setReturnAddress(returnAddress);
     return coro_;
+  }
+
+  folly::AsyncStackFrame& getLeafFrame() noexcept {
+    return coro_.promise().getLeafFrame();
   }
 
  private:
@@ -118,16 +126,19 @@ class WithAsyncStackAwaiter {
     return awaiter_.await_ready();
   }
 
+  // needs to be no-inline as return address is being captured for async stack
+  // tracing
   template <typename Promise>
-  FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES auto await_suspend(
-      coroutine_handle<Promise> h) {
+  FOLLY_NOINLINE auto await_suspend(coroutine_handle<Promise> h) {
     AsyncStackFrame& callerFrame = h.promise().getAsyncFrame();
     AsyncStackRoot* stackRoot = callerFrame.getStackRoot();
     assert(stackRoot != nullptr);
 
-    auto wrapperHandle = coroWrapper_.getWrapperHandleFor(h);
+    auto wrapperHandle =
+        coroWrapper_.getWrapperHandleFor(h, FOLLY_ASYNC_STACK_RETURN_ADDRESS());
 
     folly::deactivateAsyncStackFrame(callerFrame);
+    folly::activateSuspendedLeaf(coroWrapper_.getLeafFrame());
 
     using await_suspend_result_t =
         decltype(awaiter_.await_suspend(wrapperHandle));
@@ -136,6 +147,7 @@ class WithAsyncStackAwaiter {
       if constexpr (std::is_same_v<await_suspend_result_t, bool>) {
         if (!awaiter_.await_suspend(wrapperHandle)) {
           folly::activateAsyncStackFrame(*stackRoot, callerFrame);
+          folly::deactivateSuspendedLeaf(coroWrapper_.getLeafFrame());
           return false;
         }
         return true;
@@ -144,6 +156,7 @@ class WithAsyncStackAwaiter {
       }
     } catch (...) {
       folly::activateAsyncStackFrame(*stackRoot, callerFrame);
+      folly::deactivateSuspendedLeaf(coroWrapper_.getLeafFrame());
       throw;
     }
   }
