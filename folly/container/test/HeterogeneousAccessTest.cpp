@@ -16,6 +16,8 @@
 
 #include <folly/container/HeterogeneousAccess.h>
 
+#include <limits>
+#include <random>
 #include <set>
 #include <string_view>
 #include <vector>
@@ -50,6 +52,16 @@ struct StringVector {
     return {&data_[0], data_.size()};
   }
 };
+
+std::vector<uint8_t> randomBytes(
+    std::default_random_engine& rng, std::size_t n) {
+  std::vector<uint8_t> ret(n);
+  std::uniform_int_distribution<uint8_t> dist(
+      0, std::numeric_limits<uint8_t>::max());
+  std::generate(ret.begin(), ret.end(), [&]() { return dist(rng); });
+  return ret;
+}
+
 } // namespace
 
 namespace std {
@@ -208,4 +220,23 @@ TEST(HeterogeneousAccess, transparentMatches) {
   static_assert(
       std::is_convertible<small_vector<int, 2>, Range<int const*>>::value, "");
   runTestMatches<small_vector<int, 2>>({1, 2, 3, 4});
+}
+
+TEST(HeterogeneousAccess, Stress) {
+  constexpr std::size_t kMinLen = 1;
+  constexpr std::size_t kMaxLen = 2048;
+  constexpr std::size_t kEachLenAttempts = 16;
+
+  std::default_random_engine rng(0);
+
+  for (std::size_t len = kMinLen; len < kMaxLen; ++len) {
+    for (std::size_t attempt = 0; attempt < kEachLenAttempts; ++attempt) {
+      const std::vector<uint8_t> bytes = randomBytes(rng, len);
+      const std::string bytesAsStr{
+          reinterpret_cast<const char*>(bytes.data()), bytes.size()};
+      EXPECT_EQ(
+          HeterogeneousAccessHash<std::string>{}(bytesAsStr),
+          std::hash<std::string>{}(bytesAsStr));
+    }
+  }
 }

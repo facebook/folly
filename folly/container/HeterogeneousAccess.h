@@ -119,11 +119,13 @@ struct TransparentRangeHash<char> {
   // replacing std::hash<std::string> with HeterogeneousAccessHash<std::string>
   // is actually zero overhead in the case that the underlying implementations
   // make different optimality tradeoffs (short versus long string performance,
-  // for example).  If folly::hasher<std::string_view> dominated the performance
+  // for example). We use hash::stdCompatibleHash here as an alternative
+  // compatible implementation of std::hash.
+  // If folly::hasher<std::string_view> dominated the performance
   // of std::hash<std::string> then we should consider using it all of the time.
   template <typename U>
   std::size_t operator()(U const& stringish) const {
-    return std::hash<std::string_view>{}(StringPiece{stringish});
+    return hash::stdCompatibleHash(StringPiece{stringish});
   }
 };
 
