@@ -305,11 +305,20 @@ TEST(Settings, basic) {
       some_ns::UserDefinedType("b"));
   {
     std::string allFlags;
+    auto allMeta = folly::settings::getAllSettingsMeta();
+    size_t i = 0;
     folly::settings::Snapshot sn;
-    sn.forEachSetting([&allFlags](
-                          const folly::settings::SettingMetadata& meta,
+    sn.forEachSetting([&](const folly::settings::SettingMetadata& meta,
                           folly::StringPiece value,
                           folly::StringPiece reason) {
+      auto& foundMeta = allMeta.at(i++);
+      EXPECT_EQ(meta.project, foundMeta.project);
+      EXPECT_EQ(meta.name, foundMeta.name);
+      EXPECT_EQ(meta.typeStr, foundMeta.typeStr);
+      EXPECT_EQ(meta.defaultStr, foundMeta.defaultStr);
+      EXPECT_EQ(meta.description, foundMeta.description);
+      EXPECT_EQ(meta.mutability, foundMeta.mutability);
+
       if (meta.typeId == typeid(int)) {
         EXPECT_EQ(meta.typeStr, "int");
       } else if (meta.typeId == typeid(std::string)) {

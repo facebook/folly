@@ -60,6 +60,17 @@ Optional<SettingMetadata> getSettingsMeta(StringPiece settingName) {
   return it->second->meta();
 }
 
+std::vector<SettingMetadata> getAllSettingsMeta() {
+  std::vector<SettingMetadata> rv;
+  detail::settingsMap().withRLock([&rv](const auto& settingsMap) {
+    rv.reserve(settingsMap.size());
+    for (const auto& [_, corePtr] : settingsMap) {
+      rv.push_back(corePtr->meta());
+    }
+  });
+  return rv;
+}
+
 SetResult Snapshot::setFromString(
     StringPiece settingName, StringPiece newValue, StringPiece reason) {
   auto mapPtr = detail::settingsMap().rlock();

@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <folly/Likely.h>
 #include <folly/Range.h>
@@ -243,6 +244,11 @@ class SettingWrapper {
  *         Empty Optional otherwise.
  */
 Optional<SettingMetadata> getSettingsMeta(StringPiece settingName);
+
+/**
+ * @return SettingMetadata for all registered settings in the process.
+ */
+std::vector<SettingMetadata> getAllSettingsMeta();
 
 namespace detail {
 
