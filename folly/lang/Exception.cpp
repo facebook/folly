@@ -86,11 +86,26 @@ struct __cxa_refcounted_exception {
 
 #if defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
 
-//  https://github.com/llvm/llvm-project/blob/llvmorg-11.0.1/libcxxabi/src/cxa_exception.h
-//  https://github.com/llvm/llvm-project/blob/llvmorg-11.0.1/libcxxabi/src/private_typeinfo.h
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxx/include/exception
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/cxa_exception.h
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/cxa_exception.cpp
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/private_typeinfo.h
 
 #include <cxxabi.h>
 #include <unwind.h>
+
+namespace std {
+
+#if defined(_LIBCPP_FUNC_VIS) // llvm < 17
+#define FOLLY_DETAIL_EXN_FUNC_VIS _LIBCPP_FUNC_VIS
+#else // llvm >= 17
+#define FOLLY_DETAIL_EXN_FUNC_VIS _LIBCPP_EXPORTED_FROM_ABI
+#endif
+
+typedef void (*unexpected_handler)();
+FOLLY_DETAIL_EXN_FUNC_VIS unexpected_handler get_unexpected() _NOEXCEPT;
+
+} // namespace std
 
 namespace __cxxabiv1 {
 
@@ -149,6 +164,8 @@ struct __folly_cxa_exception_with_reserve {
   _Unwind_Exception unwindHeader;
 };
 
+static const uint64_t kOurExceptionClass = 0x434C4E47432B2B00; // CLNGC++\0
+
 //  named differently from the real shim type __shim_type_info and all members
 //  are pure virtual; as long as the vtable is the same, though, it should work
 class __folly_shim_type_info : public std::type_info {
@@ -175,6 +192,8 @@ namespace abi = __cxxabiv1;
 #include <cxxabi.h>
 
 namespace __cxxabiv1 {
+
+static const uint64_t kOurExceptionClass = 0x474E5543432B2B00; // GNUCC++\0
 
 class __folly_shim_type_info {
  public:
@@ -219,6 +238,22 @@ void* __GetExceptionInfo(_E); // builtin
 namespace folly {
 
 namespace detail {
+
+namespace {
+
+template <typename F>
+class scope_guard_ {
+ private:
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] F func_;
+  bool live_{true};
+
+ public:
+  explicit scope_guard_(F func) noexcept : func_{func} {}
+  ~scope_guard_() { live_ ? func_() : void(); }
+  void dismiss() { live_ = false; }
+};
+
+} // namespace
 
 std::atomic<int> exception_ptr_access_rt_cache_{0};
 
@@ -514,6 +549,82 @@ void* exception_ptr_get_object_(
 }
 
 #endif // defined(_WIN32)
+
+} // namespace detail
+
+namespace detail {
+
+template <typename Try>
+std::exception_ptr catch_current_exception_(Try&& t) noexcept {
+  return catch_exception(static_cast<Try&&>(t), std::current_exception);
+}
+
+#if defined(__GLIBCXX__)
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const& arg, void* func) noexcept {
+  auto type = const_cast<std::type_info*>(arg.type);
+  void* object = abi::__cxa_allocate_exception(arg.size);
+  (void)abi::__cxa_init_primary_exception(object, type, arg.dtor);
+  auto exception = static_cast<abi::__cxa_refcounted_exception*>(object) - 1;
+  exception->referenceCount = 1;
+  return catch_current_exception_([&] {
+    scope_guard_ rollback{std::bind(abi::__cxa_free_exception, object)};
+    arg.ctor(object, func);
+    rollback.dismiss();
+    return reinterpret_cast<std::exception_ptr&&>(object);
+  });
+}
+
+#elif defined(_LIBCPP_VERSION)
+
+[[maybe_unused]] static void exception_cleanup_(
+    _Unwind_Reason_Code reason, _Unwind_Exception* uwexception) {
+  if (reason == _URC_FOREIGN_EXCEPTION_CAUGHT) {
+    auto handler = cxxabi_with_cxa_exception(
+        uwexception + 1, [](auto exn) { return exn->terminateHandler; });
+    folly::catch_exception(handler, folly::variadic_noop);
+    std::abort();
+  }
+  abi::__cxa_decrement_exception_refcount(uwexception + 1);
+}
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const& arg, void* func) noexcept {
+  void* object = abi::__cxa_allocate_exception(arg.size);
+  auto type = const_cast<std::type_info*>(arg.type);
+#if _LIBCPP_VERSION >= 180000
+  (void)abi::__cxa_init_primary_exception(object, type, arg.dtor);
+#else
+  cxxabi_with_cxa_exception(object, [&](auto exception) {
+    exception->unexpectedHandler = std::get_unexpected();
+    exception->terminateHandler = std::get_terminate();
+    exception->exceptionType = type;
+    exception->exceptionDestructor = arg.dtor;
+    exception->referenceCount = 1;
+    std::memcpy(
+        &exception->unwindHeader.exception_class,
+        &abi::kOurExceptionClass,
+        sizeof(abi::kOurExceptionClass));
+    exception->unwindHeader.exception_cleanup = exception_cleanup_;
+  });
+#endif
+  return catch_current_exception_([&] {
+    scope_guard_ rollback{std::bind(abi::__cxa_free_exception, object)};
+    arg.ctor(object, func);
+    rollback.dismiss();
+    return reinterpret_cast<std::exception_ptr&&>(object);
+  });
+}
+
+#else
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const&, void*) noexcept {
+  return std::exception_ptr();
+}
+
+#endif
 
 } // namespace detail
 

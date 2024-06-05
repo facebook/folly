@@ -65,8 +65,8 @@ struct exception_wrapper::with_exception_from_ex_ {
 
 template <class Ex, typename... As>
 inline exception_wrapper::exception_wrapper(
-    PrivateCtor, std::in_place_type_t<Ex>, As&&... as)
-    : ptr_{std::make_exception_ptr(Ex(std::forward<As>(as)...))} {}
+    PrivateCtor, std::in_place_type_t<Ex> tag, As&&... as)
+    : ptr_{make_exception_ptr_with(tag, std::forward<As>(as)...)} {}
 
 namespace exception_wrapper_detail {
 template <class Ex>
