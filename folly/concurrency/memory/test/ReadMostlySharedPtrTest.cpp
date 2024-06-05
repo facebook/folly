@@ -20,7 +20,7 @@
 #include <thread>
 
 #include <folly/Memory.h>
-#include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 

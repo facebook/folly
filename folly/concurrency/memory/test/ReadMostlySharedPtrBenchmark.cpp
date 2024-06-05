@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 
 #include <iostream>
 #include <thread>

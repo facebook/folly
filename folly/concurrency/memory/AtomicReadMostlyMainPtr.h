@@ -22,7 +22,7 @@
 #include <mutex>
 
 #include <folly/Indestructible.h>
-#include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/synchronization/Rcu.h>
 
 namespace folly {

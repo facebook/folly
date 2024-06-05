@@ -31,7 +31,7 @@
 #include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/concurrency/ThreadCachedSynchronized.h>
-#include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/portability/GTest.h>
 
 namespace {

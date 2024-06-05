@@ -32,7 +32,7 @@ cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:memory",
-        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/portability:gflags",
     ],
 )
@@ -42,7 +42,7 @@ cpp_unittest(
     srcs = ["ReadMostlySharedPtrStressTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/portability:gtest",
     ],
 )
@@ -53,7 +53,7 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:memory",
-        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],

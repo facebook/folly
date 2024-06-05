@@ -69,7 +69,7 @@ cpp_unittest(
         "//folly/concurrency:atomic_shared_ptr",
         "//folly/concurrency:core_cached_shared_ptr",
         "//folly/concurrency:thread_cached_synchronized",
-        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/portability:config",
         "//folly/portability:gtest",
     ],

@@ -15,7 +15,7 @@ cpp_library(
     ],
     exported_deps = [
         "//folly:indestructible",
-        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/synchronization:rcu",
     ],
 )

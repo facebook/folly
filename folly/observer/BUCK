@@ -49,7 +49,7 @@ cpp_library(
         "ReadMostlyTLObserver.h",
     ],
     exported_deps = [
-        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/experimental/observer/detail:observer_manager",
         "//folly/observer:observer",
     ],

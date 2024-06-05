@@ -132,9 +132,9 @@
 #include <folly/Memory.h>
 #include <folly/Synchronized.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
+#include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/detail/Singleton.h>
 #include <folly/detail/StaticSingletonManager.h>
-#include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/SanitizeLeak.h>

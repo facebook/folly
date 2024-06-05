@@ -18,7 +18,7 @@
 #include <thread>
 #include <vector>
 
-#include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/portability/GTest.h>
 
 using folly::ReadMostlyMainPtr;

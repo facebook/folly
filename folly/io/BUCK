@@ -56,7 +56,7 @@ cpp_library(
     ],
     exported_deps = [
         ":shutdown_socket_set",
-        "//folly/experimental:read_mostly_shared_ptr",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
     ],
 )
 
