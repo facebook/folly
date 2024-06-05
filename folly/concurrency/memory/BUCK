@@ -28,3 +28,16 @@ cpp_library(
         "//folly/experimental:tl_ref_count",
     ],
 )
+
+cpp_library(
+    name = "primary_ptr",
+    headers = ["PrimaryPtr.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly/experimental:cleanup",
+        "//folly/futures:core",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

@@ -178,14 +178,11 @@ cpp_library(
 
 cpp_library(
     name = "primary_ptr",
-    headers = ["PrimaryPtr.h"],
-    exported_deps = [
-        ":cleanup",
-        "//folly:function",
-        "//folly/futures:core",
+    headers = [
+        "PrimaryPtr.h",
     ],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "//folly/concurrency/memory:primary_ptr",
     ],
 )
 
