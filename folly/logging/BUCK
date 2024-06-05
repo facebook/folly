@@ -211,8 +211,8 @@ cpp_library(
     name = "auto_timer",
     headers = ["AutoTimer.h"],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:conv",
-        "//folly:format",
         "//folly:optional",
         "//folly:string",
     ],
