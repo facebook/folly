@@ -4,6 +4,12 @@ fbsource_path = fbcode/glean
 shipit_project = facebookincubator/Glean
 use_shipit = true
 
+[shipit.pathmap]
+# These are only used by target determinator to trigger builds, the
+# real path mappings are in the ShipIt config.
+fbcode/glean = glean
+fbcode/common/hs = hsthrift
+
 [subprojects]
 hsthrift = hsthrift
 
