@@ -60,24 +60,18 @@ constexpr std::uint64_t murmurHash64(
   const char* beg = key;
   const char* end = beg + (len & ~0x7);
   const std::size_t tail = len & 0x7;
-  // Dead store, but should be initialized for constexpr correctness.
-  std::uint64_t k = 0;
 
   for (const char* p = beg; p != end; p += 8) {
-    if (folly::is_constant_evaluated_or(false)) {
-      k = detail::constexprLoad64(p, 8);
-    } else {
-      k = loadUnaligned<std::uint64_t>(p);
-    }
+    const std::uint64_t k = folly::is_constant_evaluated_or(false)
+        ? detail::constexprLoad64(p, 8)
+        : loadUnaligned<std::uint64_t>(p);
     hash = (hash ^ detail::shiftMix(k * kMul) * kMul) * kMul;
   }
 
   if (tail != 0) {
-    if (folly::is_constant_evaluated_or(false)) {
-      k = detail::constexprLoad64(end, tail);
-    } else {
-      k = partialLoadUnaligned<std::uint64_t>(end, tail);
-    }
+    const std::uint64_t k = folly::is_constant_evaluated_or(false)
+        ? detail::constexprLoad64(end, tail)
+        : partialLoadUnaligned<std::uint64_t>(end, tail);
     hash ^= k;
     hash *= kMul;
   }
