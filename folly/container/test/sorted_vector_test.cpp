@@ -1477,6 +1477,14 @@ TEST(SortedVectorTypes, TestTryEmplace) {
     EXPECT_EQ(v, "2");
     EXPECT_EQ(map.size(), 2);
   }
+  {
+    auto k = folly::make_optional<int>(3);
+    const auto& [it, inserted] = map.try_emplace(std::move(k));
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->first, 3);
+    EXPECT_EQ(it->second, folly::none);
+    EXPECT_EQ(map.size(), 3);
+  }
 }
 
 TEST(SortedVectorTypes, TestInsertOrAssign) {
