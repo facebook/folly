@@ -35,6 +35,7 @@ cpp_library(
 cpp_library(
     name = "config",
     headers = ["Config.h"],
+    header_namespace = "folly/portability",
     exported_deps = [
         "//folly:config",
     ],
@@ -204,6 +205,7 @@ cpp_library(
     srcs = ["OpenSSL.cpp"],
     headers = ["OpenSSL.h"],
     compiler_flags = roar_no_jit(),
+    header_namespace = "folly/portability",
     exported_deps = [
         ":windows",
         "//folly:portability",
@@ -453,4 +455,5 @@ cpp_library(
 cpp_library(
     name = "windows",
     headers = ["Windows.h"],
+    header_namespace = "folly/portability",
 )

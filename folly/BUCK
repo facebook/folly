@@ -1038,6 +1038,7 @@ cpp_library(
 cpp_library(
     name = "portability",
     headers = ["Portability.h"],
+    header_namespace = "folly",
     exported_deps = [
         ":c_portability",
         "//folly/portability:config",
