@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:roar.bzl", "roar_no_jit")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -22,6 +23,7 @@ cpp_library(
     name = "builtins",
     srcs = ["Builtins.cpp"],
     headers = ["Builtins.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":windows",
     ],
@@ -51,6 +53,7 @@ cpp_library(
     name = "dirent",
     srcs = ["Dirent.cpp"],
     headers = ["Dirent.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":windows",
     ],
@@ -73,6 +76,7 @@ cpp_library(
     name = "fcntl",
     srcs = ["Fcntl.cpp"],
     headers = ["Fcntl.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":sockets",
         ":sys_stat",
@@ -87,6 +91,7 @@ cpp_library(
     name = "filesystem",
     srcs = ["Filesystem.cpp"],
     headers = ["Filesystem.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         "fbsource//third-party/libgcc:stdc++fs",
     ],
@@ -142,6 +147,7 @@ cpp_library(
     name = "libgen",
     srcs = ["Libgen.cpp"],
     headers = ["Libgen.h"],
+    compiler_flags = roar_no_jit(),
 )
 
 cpp_library(
@@ -159,6 +165,7 @@ cpp_library(
     name = "malloc",
     srcs = ["Malloc.cpp"],
     headers = ["Malloc.h"],
+    compiler_flags = roar_no_jit(),
     os_deps = [
         (
             "linux",
@@ -196,6 +203,7 @@ cpp_library(
     name = "openssl",
     srcs = ["OpenSSL.cpp"],
     headers = ["OpenSSL.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":windows",
         "//folly:portability",
@@ -210,6 +218,7 @@ cpp_library(
     name = "sched",
     srcs = ["Sched.cpp"],
     headers = ["Sched.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         "//folly:portability",
     ],
@@ -219,6 +228,7 @@ cpp_library(
     name = "pthread",
     srcs = ["PThread.cpp"],
     headers = ["PThread.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/lang:assume",
     ],
@@ -242,6 +252,7 @@ cpp_library(
     name = "sockets",
     srcs = ["Sockets.cpp"],
     headers = ["Sockets.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly:scope_guard",
         "//folly/net:network_socket",
@@ -265,6 +276,7 @@ cpp_library(
     name = "stdio",
     srcs = ["Stdio.cpp"],
     headers = ["Stdio.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":unistd",
         "//folly:scope_guard",
@@ -275,6 +287,7 @@ cpp_library(
     name = "stdlib",
     srcs = ["Stdlib.cpp"],
     headers = ["Stdlib.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":fcntl",
         ":sys_stat",
@@ -289,6 +302,7 @@ cpp_library(
     name = "string",
     srcs = ["String.cpp"],
     headers = ["String.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [":config"],
 )
 
@@ -296,6 +310,7 @@ cpp_library(
     name = "sys_file",
     srcs = ["SysFile.cpp"],
     headers = ["SysFile.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":windows",
     ],
@@ -305,6 +320,7 @@ cpp_library(
     name = "sys_membarrier",
     srcs = ["SysMembarrier.cpp"],
     headers = ["SysMembarrier.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":sys_syscall",
         "//folly:portability",
@@ -317,6 +333,7 @@ cpp_library(
     headers = [
         "SysMman.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":windows",
         "//folly:portability",
@@ -330,6 +347,7 @@ cpp_library(
     name = "sys_resource",
     srcs = ["SysResource.cpp"],
     headers = ["SysResource.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":windows",
     ],
@@ -342,6 +360,7 @@ cpp_library(
     name = "sys_stat",
     srcs = ["SysStat.cpp"],
     headers = ["SysStat.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":windows",
     ],
@@ -363,6 +382,7 @@ cpp_library(
     name = "sys_time",
     srcs = ["SysTime.cpp"],
     headers = ["SysTime.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [":windows"],
 )
 
@@ -375,6 +395,7 @@ cpp_library(
     name = "sys_uio",
     srcs = ["SysUio.cpp"],
     headers = ["SysUio.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":sockets",
         ":sys_file",
@@ -397,6 +418,7 @@ cpp_library(
     name = "time",
     srcs = ["Time.cpp"],
     headers = ["Time.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":windows",
         "//folly:c_portability",
@@ -415,6 +437,7 @@ cpp_library(
     name = "unistd",
     srcs = ["Unistd.cpp"],
     headers = ["Unistd.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":sockets",
         ":windows",

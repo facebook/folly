@@ -3,6 +3,7 @@
 
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:roar.bzl", "roar_no_jit")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -100,6 +101,7 @@ cpp_library(
     name = "benchmark",
     srcs = ["Benchmark.cpp"],
     headers = ["Benchmark.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":file_util",
         ":map_util",
@@ -149,6 +151,7 @@ cpp_library(
         "CancellationToken.h",
         "CancellationToken-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":optional",
         "//folly/synchronization/detail:sleeper",
@@ -176,6 +179,7 @@ cpp_library(
     name = "clock_gettime_wrappers",
     srcs = ["ClockGettimeWrappers.cpp"],
     headers = ["ClockGettimeWrappers.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":c_portability",
         ":likely",
@@ -254,6 +258,7 @@ cpp_library(
     name = "conv",
     srcs = ["Conv.cpp"],
     headers = ["Conv.h"],
+    compiler_flags = roar_no_jit(),
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         "//folly/lang:safe_assert",
@@ -310,6 +315,7 @@ cpp_library(
     name = "demangle",
     srcs = ["Demangle.cpp"],
     headers = ["Demangle.h"],
+    compiler_flags = roar_no_jit(),
     os_deps = [(
         "linux",
         ["third-party//binutils:iberty"],
@@ -367,6 +373,7 @@ cpp_library(
     name = "exception_string",
     srcs = ["ExceptionString.cpp"],
     headers = ["ExceptionString.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":demangle",
         "//folly/lang:exception",
@@ -384,6 +391,7 @@ cpp_library(
         "ExceptionWrapper.h",
         "ExceptionWrapper-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         ":glog",
@@ -409,6 +417,7 @@ cpp_library(
     headers = [
         "Executor.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":exception_string",
         ":portability",
@@ -475,6 +484,7 @@ cpp_library(
     name = "file",
     srcs = ["File.cpp"],
     headers = ["File.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":exception",
         ":file_util",
@@ -500,6 +510,7 @@ cpp_library(
     name = "file_util",
     srcs = ["FileUtil.cpp"],
     headers = ["FileUtil.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/detail:file_util_detail",
         "//folly/detail:file_util_vector_detail",
@@ -524,6 +535,7 @@ cpp_library(
     name = "fingerprint",
     srcs = ["Fingerprint.cpp"],
     headers = ["Fingerprint.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":portability",
         ":utility",
@@ -558,6 +570,7 @@ cpp_library(
         "Format-inl.h",
         "FormatArg.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":constexpr_math",
         ":cpp_attributes",
@@ -608,6 +621,7 @@ cpp_library(
         "GroupVarint.cpp",
     ],
     headers = ["GroupVarint.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/container:array",
     ],
@@ -745,6 +759,7 @@ cpp_library(
             "-mavx2",
         ],
     },
+    compiler_flags = roar_no_jit(),
     modular_headers = False,
 )
 
@@ -772,6 +787,7 @@ cpp_library(
             "-mavx2",
         ],
     },
+    compiler_flags = roar_no_jit(),
     modular_headers = False,
 )
 
@@ -789,6 +805,7 @@ cpp_library(
             "-mavx2",
         ],
     },
+    compiler_flags = roar_no_jit(),
     modular_headers = False,
 )
 
@@ -817,6 +834,7 @@ cpp_library(
             "-march=haswell",
         ],
     },
+    compiler_flags = roar_no_jit(),
     modular_headers = False,
 )
 
@@ -843,6 +861,7 @@ cpp_library(
     name = "micro_lock",
     srcs = ["MicroLock.cpp"],
     headers = ["MicroLock.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/portability:asm",
     ],
@@ -905,6 +924,7 @@ cpp_library(
         "MacAddress.h",
         "SocketAddress.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":exception",
@@ -1074,6 +1094,7 @@ cpp_library(
         "Random.h",
         "Random-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     os_deps = [(
         "windows",
         [
@@ -1130,6 +1151,7 @@ cpp_library(
     name = "scope_guard",
     srcs = ["ScopeGuard.cpp"],
     headers = ["ScopeGuard.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":portability",
         ":preprocessor",
@@ -1143,6 +1165,7 @@ cpp_library(
     name = "shared_mutex",
     srcs = ["SharedMutex.cpp"],
     headers = ["SharedMutex.h"],
+    compiler_flags = roar_no_jit(),
     supports_python_dlopen = True,
     deps = [
         ":indestructible",
@@ -1173,6 +1196,7 @@ cpp_library(
         "Singleton.h",
         "Singleton-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":demangle",
@@ -1210,6 +1234,7 @@ cpp_library(
     name = "singleton_thread_local",
     srcs = ["SingletonThreadLocal.cpp"],
     headers = ["SingletonThreadLocal.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":scope_guard",
         ":thread_local",
@@ -1271,6 +1296,7 @@ cpp_library(
         "String.h",
         "String-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/container:array",
     ],
@@ -1297,6 +1323,7 @@ cpp_library(
     name = "subprocess",
     srcs = ["Subprocess.cpp"],
     headers = ["Subprocess.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":conv",
         ":scope_guard",
@@ -1384,6 +1411,7 @@ cpp_library(
     name = "timeout_queue",
     srcs = ["TimeoutQueue.cpp"],
     headers = ["TimeoutQueue.h"],
+    compiler_flags = roar_no_jit(),
     exported_external_deps = [
         "boost",
         ("boost", None, "boost_multi_index"),
@@ -1416,6 +1444,7 @@ cpp_library(
         "Try.h",
         "Try-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":exception_wrapper",
         ":likely",
@@ -1432,6 +1461,7 @@ cpp_library(
     name = "unicode",
     srcs = ["Unicode.cpp"],
     headers = ["Unicode.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":conv",
     ],
@@ -1454,6 +1484,7 @@ cpp_library(
         "Uri.h",
         "Uri-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":conv",
         ":expected",
