@@ -135,3 +135,14 @@ cpp_library(
         "//folly/lang:exception",
     ],
 )
+
+cpp_library(
+    name = "cleanup",
+    headers = ["Cleanup.h"],
+    exported_deps = [
+        "//folly/futures:core",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

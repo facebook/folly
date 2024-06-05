@@ -167,12 +167,11 @@ cpp_library(
 
 cpp_library(
     name = "cleanup",
-    headers = ["Cleanup.h"],
-    exported_deps = [
-        "//folly/futures:core",
+    headers = [
+        "Cleanup.h",
     ],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "//folly/futures:cleanup",
     ],
 )
 

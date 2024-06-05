@@ -429,3 +429,15 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
+
+cpp_unittest(
+    name = "cleanup_test",
+    srcs = ["CleanupTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:manual_executor",
+        "//folly/experimental:cleanup",
+        "//folly/portability:gtest",
+    ],
+)
