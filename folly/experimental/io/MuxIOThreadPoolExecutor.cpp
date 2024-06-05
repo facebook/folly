@@ -140,8 +140,8 @@ MuxIOThreadPoolExecutor::makeThread() {
 void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
 
-  const auto ioThread = std::static_pointer_cast<IOThread>(thread);
-  thisThread_.reset(new std::shared_ptr<IOThread>(ioThread));
+  const auto& ioThread = *thisThread_ =
+      std::static_pointer_cast<IOThread>(thread);
 
   auto tid = folly::getOSThreadID();
   if (threadIdCollector_) {

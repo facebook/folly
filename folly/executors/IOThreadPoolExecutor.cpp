@@ -214,9 +214,9 @@ std::shared_ptr<ThreadPoolExecutor::Thread> IOThreadPoolExecutor::makeThread() {
 void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
 
-  const auto ioThread = std::static_pointer_cast<IOThread>(thread);
+  const auto& ioThread = *thisThread_ =
+      std::static_pointer_cast<IOThread>(thread);
   ioThread->eventBase = eventBaseManager_->getEventBase();
-  thisThread_.reset(new std::shared_ptr<IOThread>(ioThread));
 
   auto tid = folly::getOSThreadID();
   if (threadIdCollector_) {
