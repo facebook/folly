@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/settings/test/a.h>
+#include <folly/settings/test/a.h>
 
-#include <folly/experimental/settings/Settings.h>
+#include <folly/settings/Settings.h>
 
 namespace a_ns {
 FOLLY_SETTING_DEFINE(

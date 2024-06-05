@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/settings/Settings.h>
+#include <folly/settings/Settings.h>
 
 #include <map>
 

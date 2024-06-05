@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/settings/Immutables.h>
+#include <folly/settings/Immutables.h>
 
 #include <folly/Indestructible.h>
 #include <folly/Synchronized.h>

@@ -14,21 +14,14 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/settings/Types.h>
+#pragma once
 
-namespace folly {
-namespace settings {
+#include <folly/settings/Settings.h>
 
-std::string_view toString(SetErrorCode code) {
-  switch (code) {
-    case SetErrorCode::NotFound:
-      return "not found";
-    case SetErrorCode::Rejected:
-      return "rejected";
-    case SetErrorCode::FrozenImmutable:
-      return "frozen immutable";
-  }
-}
+namespace b_ns {
 
-} // namespace settings
-} // namespace folly
+FOLLY_SETTING_DECLARE(follytest, public_flag_to_b, std::string);
+
+std::string b_func();
+
+} // namespace b_ns

@@ -15,12 +15,12 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/experimental/settings/Settings.h>
 #include <folly/init/Init.h>
+#include <folly/settings/Settings.h>
 
 /*
 ============================================================================
-folly/experimental/settings/test/SettingsBenchmarks.cpprelative  time/iter
+folly/settings/test/SettingsBenchmarks.cpprelative  time/iter
 iters/s
 ============================================================================
 settings_get_bench                                           1.73ns  577.36M

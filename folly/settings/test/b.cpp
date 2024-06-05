@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/settings/test/b.h>
+#include <folly/settings/test/b.h>
 
-#include <folly/experimental/settings/Settings.h>
+#include <folly/settings/Settings.h>
 
 namespace b_ns {
 

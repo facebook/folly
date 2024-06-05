@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/settings/Settings.h>
+#include <folly/settings/Settings.h>
 
 #include <folly/Format.h>
 #include <folly/String.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-#include <folly/experimental/settings/test/a.h>
-#include <folly/experimental/settings/test/b.h>
+#include <folly/settings/test/a.h>
+#include <folly/settings/test/b.h>
 
 namespace some_ns {
 FOLLY_SETTING_DEFINE(
