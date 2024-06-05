@@ -29,9 +29,12 @@ builder = make
 cabal-update
 all
 EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS
+CABAL_CONFIG_FLAGS=-f-clang-tests -f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests
 
 [make.install_args]
 install
 
-[sandcastle]
-run_tests = off
+[make.test_args]
+test
+EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS
+CABAL_CONFIG_FLAGS=-f-clang-tests -f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests
