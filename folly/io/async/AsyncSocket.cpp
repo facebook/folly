@@ -1464,10 +1464,12 @@ void AsyncSocket::drainZeroCopyQueue() {
     // copy the buffers and adjust the allocatedBytesBuffered_
     std::vector<std::unique_ptr<folly::IOBuf>> bufs;
     for (auto& info : std::exchange(idZeroCopyBufInfoMap_, {})) {
-      const size_t allocated = info.second.buf_->computeChainCapacity();
-      DCHECK_GE(allocatedBytesBuffered_, allocated);
-      allocatedBytesBuffered_ -= allocated;
-      bufs.emplace_back(std::move(info.second.buf_));
+      if (info.second.buf_) {
+        const size_t allocated = info.second.buf_->computeChainCapacity();
+        DCHECK_GE(allocatedBytesBuffered_, allocated);
+        allocatedBytesBuffered_ -= allocated;
+        bufs.emplace_back(std::move(info.second.buf_));
+      }
     }
     // enqueue for later destruction
     eventBase_->scheduleAt(
