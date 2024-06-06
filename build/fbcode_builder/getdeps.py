@@ -921,9 +921,6 @@ class TestCmd(ProjectCmdBase):
 )
 class DebugCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
-        if not self.check_built(loader, manifest):
-            print("project %s has not been built" % manifest.name)
-            return 1
         install_dirs = self.get_install_dirs(loader, manifest)
         builder = self.create_builder(loader, manifest)
         builder.debug(install_dirs, reconfigure=False)
