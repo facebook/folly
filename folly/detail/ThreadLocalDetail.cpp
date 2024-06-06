@@ -105,7 +105,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       // mark it as removed
       threadEntry->removed_ = true;
       auto elementsCapacity = threadEntry->getElementsCapacity();
-      meta.removeThreadEntryFromAllInMapLocked(threadEntry);
+      meta.removeThreadEntryFromAllInMap(threadEntry);
       auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
       DCHECK_GE(beforeCount, elementsCapacity);
       // No need to hold the lock any longer; the ThreadEntry is private to this
@@ -205,20 +205,29 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   std::lock_guard<std::mutex> g(meta.lock_);
 
   id = ent->value.load(std::memory_order_relaxed);
-  if (id != kEntryIDInvalid) {
-    return id;
+
+  if (id == kEntryIDInvalid) {
+    // At this point, a new @id is being allocated.
+    // This could be from the bank of freeIds or nextId_.
+    // ThreadEntrySet initialization is required when
+    // meta.freeIds_.empty(), since we don't remove but clear
+    // ThreadEntrySet from allThreadEntryMap_ on destroy()/threadExit.
+    // So all @ids in  meta.freeIds_ should have a clear ThreadEntrySet
+    // already. A new ThreadEntrySet initialization is needed only when
+    // nextId_ is used as the new @id.
+    auto wLockedMap = meta.allThreadEntryMap_.wlock();
+    if (!meta.freeIds_.empty()) {
+      id = meta.freeIds_.back();
+      meta.freeIds_.pop_back();
+      DCHECK((*wLockedMap)[id].rlock()->threadEntries.empty());
+    } else {
+      id = meta.nextId_++;
+      DCHECK(wLockedMap->find(id) == wLockedMap->end());
+      (void)(*wLockedMap)[id];
+    }
+    uint32_t old_id = ent->value.exchange(id, std::memory_order_release);
+    DCHECK_EQ(old_id, kEntryIDInvalid);
   }
-
-  if (!meta.freeIds_.empty()) {
-    id = meta.freeIds_.back();
-    meta.freeIds_.pop_back();
-  } else {
-    id = meta.nextId_++;
-  }
-
-  uint32_t old_id = ent->value.exchange(id, std::memory_order_release);
-  DCHECK_EQ(old_id, kEntryIDInvalid);
-
   return id;
 }
 
@@ -228,6 +237,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
 
     // Elements in other threads that use this id.
     std::vector<ElementWrapper> elements;
+    ThreadEntrySet tmpEntrySet;
 
     {
       std::unique_lock wlock(meta.accessAllThreadsLock_, std::defer_lock);
@@ -250,14 +260,18 @@ void StaticMetaBase::destroy(EntryID* ent) {
           return;
         }
 
-        auto threadEntrySet = get_ptr(meta.allThreadEntryMap_, id);
-        if (!threadEntrySet) {
-          return;
+        {
+          auto rlockedMap = meta.allThreadEntryMap_.rlock();
+          auto threadEntrySet = get_ptr(rlockedMap.asNonConstUnsafe(), id);
+          if (!threadEntrySet) {
+            return;
+          }
+          threadEntrySet->swap(tmpEntrySet);
         }
-        for (auto& e : threadEntrySet->threadEntries) {
+        for (auto& e : tmpEntrySet.threadEntries) {
           auto elementsCapacity = e->getElementsCapacity();
           if (id < elementsCapacity) {
-            if (e->elements[id].ptr) {
+            if (e->elements[id].isLinked) {
               elements.push_back(e->elements[id]);
               /*
                * Writing another thread's ThreadEntry from here is fine;
@@ -277,7 +291,6 @@ void StaticMetaBase::destroy(EntryID* ent) {
             e->elements[id].isLinked = false;
           }
         }
-        meta.clearSetforIdInMapLocked(id);
         meta.freeIds_.push_back(id);
       }
     }
