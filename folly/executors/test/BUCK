@@ -305,7 +305,7 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:random",
-        "//folly/experimental:function_scheduler",
+        "//folly/executors:function_scheduler",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],

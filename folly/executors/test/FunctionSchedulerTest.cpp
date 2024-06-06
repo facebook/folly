@@ -23,7 +23,7 @@
 #include <glog/logging.h>
 
 #include <folly/Random.h>
-#include <folly/experimental/FunctionScheduler.h>
+#include <folly/executors/FunctionScheduler.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
