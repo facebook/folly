@@ -180,16 +180,6 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "threaded_repeating_function_runner_test",
-    srcs = ["ThreadedRepeatingFunctionRunnerTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/experimental:threaded_repeating_function_runner",
-        "//folly/portability:gtest",
-    ],
-)
-
-cpp_unittest(
     name = "timerfd_timeout_manager_test",
     srcs = ["TimerFDTimeoutManagerTest.cpp"],
     headers = [],

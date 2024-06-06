@@ -295,16 +295,11 @@ cpp_library(
 
 cpp_library(
     name = "threaded_repeating_function_runner",
-    srcs = ["ThreadedRepeatingFunctionRunner.cpp"],
-    headers = ["ThreadedRepeatingFunctionRunner.h"],
-    deps = [
-        "//folly/system:thread_name",
+    headers = [
+        "ThreadedRepeatingFunctionRunner.h",
     ],
     exported_deps = [
-        "//folly:function",
-    ],
-    external_deps = [
-        "glog",
+        "//folly/executors:threaded_repeating_function_runner",
     ],
 )
 

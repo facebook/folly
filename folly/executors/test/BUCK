@@ -314,3 +314,13 @@ cpp_unittest(
         ("boost", None, "boost_thread"),
     ],
 )
+
+cpp_unittest(
+    name = "threaded_repeating_function_runner_test",
+    srcs = ["ThreadedRepeatingFunctionRunnerTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental:threaded_repeating_function_runner",
+        "//folly/portability:gtest",
+    ],
+)
