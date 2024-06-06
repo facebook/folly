@@ -19,9 +19,9 @@
 #include <folly/channels/ConsumeChannel.h>
 #include <folly/channels/MaxConcurrentRateLimiter.h>
 #include <folly/channels/Transform.h>
+#include <folly/channels/test/ChannelTestUtil.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/SerialExecutor.h>
-#include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/DetachOnCancel.h>
 #include <folly/portability/GMock.h>
