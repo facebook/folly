@@ -3,16 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
-    name = "atomic_read_mostly_main_ptr",
-    headers = [
-        "AtomicReadMostlyMainPtr.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/memory:atomic_read_mostly_main_ptr",
-    ],
-)
-
-cpp_library(
     name = "auto_timer",
     headers = [
         "AutoTimer.h",
