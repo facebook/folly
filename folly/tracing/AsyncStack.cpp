@@ -20,6 +20,7 @@
 #include <cassert>
 #include <exception>
 #include <mutex>
+#include <typeindex>
 
 #include <glog/logging.h>
 #include <glog/raw_logging.h>
@@ -48,13 +49,16 @@ inline pthread_key_t folly_async_stack_root_tls_key = 0xFFFF'FFFFu;
 
 #endif // FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD
 
+namespace {
+struct SuspendedFrameTag {};
+} // namespace
+
 extern "C" {
 // AsyncFrames whose stackRoot is set to this value are considered to be
 // "suspended" leaves. Debuggers may look up this symbol to
 // identify suspended leaves
-// A zero indicates that there are no suspended leaves.
 volatile uintptr_t __folly_suspended_frame_cookie{
-    reinterpret_cast<uintptr_t>(malloc(0))};
+    std::hash<std::type_index>{}(std::type_index(typeid(SuspendedFrameTag)))};
 }
 
 namespace folly {
