@@ -607,6 +607,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY compression/test/
       TEST compression_test SLOW SOURCES CompressionTest.cpp
+      TEST quotient_multiset_test SOURCES QuotientMultiSetTest.cpp
 
     DIRECTORY compression/elias_fano/test/
       TEST bitvector_test SOURCES BitVectorCodingTest.cpp
@@ -713,7 +714,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST bits_test_2 SOURCES BitsTest.cpp
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
       #TEST program_options_test SOURCES ProgramOptionsTest.cpp
-      TEST quotient_multiset_test SOURCES QuotientMultiSetTest.cpp
       # Depends on liburcu
       #TEST read_mostly_shared_ptr_test SOURCES ReadMostlySharedPtrTest.cpp
       #TEST ref_count_test SOURCES RefCountTest.cpp

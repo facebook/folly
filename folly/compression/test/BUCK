@@ -1,3 +1,4 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -29,6 +30,44 @@ cpp_unittest(
     deps = [
         "//folly/compression:compression_context_pool",
         "//folly/compression:compression_context_pool_singletons",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_binary(
+    name = "quotient_multiset_benchmark",
+    srcs = [
+        "QuotientMultiSetBenchmark.cpp",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:format",
+        "//folly:random",
+        "//folly:string",
+        "//folly/compression/elias_fano:elias_fano_coding",
+        "//folly/container:enumerate",
+        "//folly/container:f14_hash",
+        "//folly/container:foreach",
+        "//folly/experimental:quotient_multiset",
+        "//folly/experimental/test:coding_test_utils",
+        "//folly/init:init",
+    ],
+    external_deps = [
+        ("boost", None, "boost_sort"),
+    ],
+)
+
+cpp_unittest(
+    name = "quotient_multiset_test",
+    srcs = [
+        "QuotientMultiSetTest.cpp",
+    ],
+    deps = [
+        "//folly:format",
+        "//folly:random",
+        "//folly/container:enumerate",
+        "//folly/experimental:quotient_multiset",
+        "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],
 )
