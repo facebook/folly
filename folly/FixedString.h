@@ -2908,6 +2908,7 @@ constexpr BasicFixedString<Char, sizeof...(Cs)> operator""_fs() noexcept {
 #pragma GCC diagnostic pop
 #endif
 
+#ifndef NO_FIXED_STR_UDL
 #define FOLLY_DEFINE_FIXED_STRING_UDL(N)                     \
   constexpr FixedString<N> operator""_fs##N(                 \
       const char* that, std::size_t count) noexcept(false) { \
@@ -2924,6 +2925,7 @@ FOLLY_DEFINE_FIXED_STRING_UDL(64)
 FOLLY_DEFINE_FIXED_STRING_UDL(128)
 
 #undef FOLLY_DEFINE_FIXED_STRING_UDL
+#endif
 } // namespace string_literals
 } // namespace literals
 
