@@ -1,0 +1,7 @@
+cargo_env = [
+    "CARGO_PKG_NAME", # Needed by _buck1_handle_manifest_dir
+    "CARGO_MANIFEST_DIR",
+]
+
+[[buildscript]]
+[buildscript.gen_srcs]
