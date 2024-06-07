@@ -56,39 +56,39 @@ inline constexpr tag_t<T...> tag{};
 template <std::size_t I>
 using index_constant = std::integral_constant<std::size_t, I>;
 
-//  always_false
-//
-//  A variable template that is always false but requires template arguments to
-//  be provided (which are then ignored). This is useful in very specific cases
-//  where we want type-dependent expressions to defer static_assert's.
-//
-//  A common use-case is for exhaustive constexpr if branches:
-//
-//    template <typename T>
-//    void foo(T value) {
-//      if constexpr (std::is_integral_v<T>) foo_integral(value);
-//      else if constexpr (std::is_same_v<T, std::string>) foo_string(value);
-//      else static_assert(always_false<T>, "Unsupported type");
-//    }
-//
-//  If we had used static_assert(false), then this would always fail to compile,
-//  even if foo is never instantiated!
-//
-//  Another use case is if a template that is expected to always be specialized
-//  is erroneously instantiated with the base template.
-//
-//    template <typename T>
-//    struct Foo {
-//      static_assert(always_false<T>, "Unsupported type");
-//    };
-//    template <>
-//    struct Foo<int> {};
-//
-//    Foo<int> a;         // fine
-//    Foo<std::string> b; // fails! And you get a nice (custom) error message
-//
-//  This is similar to leaving the base template undefined but we get a nicer
-//  compiler error message with static_assert.
+/// always_false
+///
+/// A variable template that is always false but requires template arguments to
+/// be provided (which are then ignored). This is useful in very specific cases
+/// where we want type-dependent expressions to defer static_assert's.
+///
+/// A common use-case is for exhaustive constexpr if branches:
+///
+///   template <typename T>
+///   void foo(T value) {
+///     if constexpr (std::is_integral_v<T>) foo_integral(value);
+///     else if constexpr (std::is_same_v<T, std::string>) foo_string(value);
+///     else static_assert(always_false<T>, "Unsupported type");
+///   }
+///
+/// If we had used static_assert(false), then this would always fail to compile,
+/// even if foo is never instantiated!
+///
+/// Another use case is if a template that is expected to always be specialized
+/// is erroneously instantiated with the base template.
+///
+///   template <typename T>
+///   struct Foo {
+///     static_assert(always_false<T>, "Unsupported type");
+///   };
+///   template <>
+///   struct Foo<int> {};
+///
+///   Foo<int> a;         // fine
+///   Foo<std::string> b; // fails! And you get a nice (custom) error message
+///
+/// This is similar to leaving the base template undefined but we get a nicer
+/// compiler error message with static_assert.
 template <typename...>
 inline constexpr bool always_false = false;
 
@@ -108,19 +108,19 @@ struct require_sizeof_<decltype(void(sizeof(T))), T> {
 
 } // namespace detail
 
-//  require_sizeof
-//
-//  Equivalent to sizeof, but with a static_assert enforcing that application of
-//  sizeof would not fail substitution.
+/// require_sizeof
+///
+/// Equivalent to sizeof, but with a static_assert enforcing that application of
+/// sizeof would not fail substitution.
 template <typename T>
 constexpr std::size_t require_sizeof = detail::require_sizeof_<void, T>::size;
 
-//  is_unbounded_array_v
-//  is_unbounded_array
-//
-//  A trait variable and type to check if a given type is an unbounded array.
-//
-//  mimic: std::is_unbounded_array_d, std::is_unbounded_array (C++20)
+/// is_unbounded_array_v
+/// is_unbounded_array
+///
+/// A trait variable and type to check if a given type is an unbounded array.
+///
+/// mimic: std::is_unbounded_array_d, std::is_unbounded_array (C++20)
 template <typename T>
 inline constexpr bool is_unbounded_array_v = false;
 template <typename T>
@@ -128,12 +128,12 @@ inline constexpr bool is_unbounded_array_v<T[]> = true;
 template <typename T>
 struct is_unbounded_array : std::bool_constant<is_unbounded_array_v<T>> {};
 
-//  is_bounded_array_v
-//  is_bounded_array
-//
-//  A trait variable and type to check if a given type is a bounded array.
-//
-//  mimic: std::is_bounded_array_d, std::is_bounded_array (C++20)
+/// is_bounded_array_v
+/// is_bounded_array
+///
+/// A trait variable and type to check if a given type is a bounded array.
+///
+/// mimic: std::is_bounded_array_d, std::is_bounded_array (C++20)
 template <typename T>
 inline constexpr bool is_bounded_array_v = false;
 template <typename T, std::size_t S>
@@ -143,15 +143,15 @@ struct is_bounded_array : std::bool_constant<is_bounded_array_v<T>> {};
 
 namespace detail {
 
-//  is_instantiation_of_v
-//  is_instantiation_of
-//
-//  A trait variable and type to check if a given type is an instantiation of a
-//  class template.
-//
-//  Note that this only works with type template parameters. It does not work
-//  with non-type template parameters, template template parameters, or alias
-//  templates.
+/// is_instantiation_of_v
+/// is_instantiation_of
+///
+/// A trait variable and type to check if a given type is an instantiation of a
+/// class template.
+///
+/// Note that this only works with type template parameters. It does not work
+/// with non-type template parameters, template template parameters, or alias
+/// templates.
 template <template <typename...> class, typename>
 inline constexpr bool is_instantiation_of_v = false;
 template <template <typename...> class C, typename... T>
@@ -170,11 +170,11 @@ struct is_similar_instantiation
 
 } // namespace detail
 
-//  member_pointer_traits
-//
-//  For a member-pointer, reveals its constituent member-type and object-type.
-//
-//  Works for both member-object-pointer and member-function-pointer.
+/// member_pointer_traits
+///
+/// For a member-pointer, reveals its constituent member-type and object-type.
+///
+/// Works for both member-object-pointer and member-function-pointer.
 template <typename>
 struct member_pointer_traits;
 template <typename M, typename O>
@@ -190,14 +190,14 @@ struct is_constexpr_default_constructible_ {
   static constexpr auto make(tag_t<T>) -> decltype(void(T()), 0) {
     return (void(T()), 0);
   }
-  // second param should just be: int = (void(T()), 0)
-  // but under clang 10, crash: https://bugs.llvm.org/show_bug.cgi?id=47620
-  // and, with assertions disabled, expectation failures showing compiler
-  // deviation from the language spec
-  // xcode renumbers clang versions so detection is tricky, but, if detection
-  // were desired, a combination of __apple_build_version__ and __clang_major__
-  // may be used to reduce frontend overhead under correct compilers: clang 12
-  // under xcode and clang 10 otherwise
+  //  second param should just be: int = (void(T()), 0)
+  //  but under clang 10, crash: https://bugs.llvm.org/show_bug.cgi?id=47620
+  //  and, with assertions disabled, expectation failures showing compiler
+  //  deviation from the language spec
+  //  xcode renumbers clang versions so detection is tricky, but, if detection
+  //  were desired, a combination of __apple_build_version__ and __clang_major__
+  //  may be used to reduce frontend overhead under correct compilers: clang 12
+  //  under xcode and clang 10 otherwise
   template <typename T, int = make(tag<T>)>
   static std::true_type sfinae(T*);
   static std::false_type sfinae(void*);
@@ -208,12 +208,12 @@ struct is_constexpr_default_constructible_ {
 
 } // namespace detail
 
-//  is_constexpr_default_constructible_v
-//  is_constexpr_default_constructible
-//
-//  A trait variable and type which determines whether the type parameter is
-//  constexpr default-constructible, that is, default-constructible in a
-//  constexpr context.
+/// is_constexpr_default_constructible_v
+/// is_constexpr_default_constructible
+///
+/// A trait variable and type which determines whether the type parameter is
+/// constexpr default-constructible, that is, default-constructible in a
+/// constexpr context.
 template <typename T>
 inline constexpr bool is_constexpr_default_constructible_v =
     detail::is_constexpr_default_constructible_::apply<T>;
@@ -373,15 +373,15 @@ using type_t = typename traits_detail::type_t_<T, Ts...>::type;
 template <class... Ts>
 using void_t = type_t<void, Ts...>;
 
-//  nonesuch
-//
-//  A tag type which traits may use to indicate lack of a result type.
-//
-//  Similar to void in that no values of this type may be constructed. Different
-//  from void in that no functions may be defined with this return type and no
-//  complete expressions may evaluate with this expression type.
-//
-//  mimic: std::experimental::nonesuch, Library Fundamentals TS v2
+/// nonesuch
+///
+/// A tag type which traits may use to indicate lack of a result type.
+///
+/// Similar to void in that no values of this type may be constructed. Different
+/// from void in that no functions may be defined with this return type and no
+/// complete expressions may evaluate with this expression type.
+///
+/// mimic: std::experimental::nonesuch, Library Fundamentals TS v2
 struct nonesuch {
   ~nonesuch() = delete;
   nonesuch(nonesuch const&) = delete;
@@ -403,41 +403,41 @@ struct detected_<void_t<T<A...>>, D, T, A...> {
 
 } // namespace detail
 
-//  detected_or
-//
-//  If T<A...> substitutes, has member type alias value_t as std::true_type
-//  and has member type alias type as T<A...>. Otherwise, has member type
-//  alias value_t as std::false_type and has member type alias type as D.
-//
-//  mimic: std::experimental::detected_or, Library Fundamentals TS v2
-//
-//  Note: not resilient against incomplete types; may violate ODR.
+/// detected_or
+///
+/// If T<A...> substitutes, has member type alias value_t as std::true_type
+/// and has member type alias type as T<A...>. Otherwise, has member type
+/// alias value_t as std::false_type and has member type alias type as D.
+///
+/// mimic: std::experimental::detected_or, Library Fundamentals TS v2
+///
+/// Note: not resilient against incomplete types; may violate ODR.
 template <typename D, template <typename...> class T, typename... A>
 using detected_or = detail::detected_<void, D, T, A...>;
 
-//  detected_or_t
-//
-//  A trait type alias which results in T<A...> if substitution would succeed
-//  and in D otherwise.
-//
-//  Equivalent to detected_or<D, T, A...>::type.
-//
-//  mimic: std::experimental::detected_or_t, Library Fundamentals TS v2
-//
-//  Note: not resilient against incomplete types; may violate ODR.
+/// detected_or_t
+///
+/// A trait type alias which results in T<A...> if substitution would succeed
+/// and in D otherwise.
+///
+/// Equivalent to detected_or<D, T, A...>::type.
+///
+/// mimic: std::experimental::detected_or_t, Library Fundamentals TS v2
+///
+/// Note: not resilient against incomplete types; may violate ODR.
 template <typename D, template <typename...> class T, typename... A>
 using detected_or_t = typename detected_or<D, T, A...>::type;
 
-//  detected_t
-//
-//  A trait type alias which results in T<A...> if substitution would succeed
-//  and in nonesuch otherwise.
-//
-//  Equivalent to detected_or_t<nonesuch, T, A...>.
-//
-//  mimic: std::experimental::detected_t, Library Fundamentals TS v2
-//
-//  Note: not resilient against incomplete types; may violate ODR.
+/// detected_t
+///
+/// A trait type alias which results in T<A...> if substitution would succeed
+/// and in nonesuch otherwise.
+///
+/// Equivalent to detected_or_t<nonesuch, T, A...>.
+///
+/// mimic: std::experimental::detected_t, Library Fundamentals TS v2
+///
+/// Note: not resilient against incomplete types; may violate ODR.
 template <template <typename...> class T, typename... A>
 using detected_t = detected_or_t<nonesuch, T, A...>;
 
@@ -635,13 +635,13 @@ struct conditional_<true> {
 };
 } // namespace detail
 
-//  conditional_t
-//
-//  Like std::conditional_t but with only two total class template instances,
-//  rather than as many class template instances as there are uses.
-//
-//  As one effect, the result can be used in deducible contexts, allowing
-//  deduction of conditional_t<V, T, F> to work when T or F is a template param.
+/// conditional_t
+///
+/// Like std::conditional_t but with only two total class template instances,
+/// rather than as many class template instances as there are uses.
+///
+/// As one effect, the result can be used in deducible contexts, allowing
+/// deduction of conditional_t<V, T, F> to work when T or F is a template param.
 template <bool V, typename T, typename F>
 using conditional_t = typename detail::conditional_<V>::template apply<T, F>;
 
@@ -670,7 +670,7 @@ struct Bools {
   static constexpr std::size_t size() { return sizeof...(Bs); }
 };
 
-// Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.
+//  Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.
 template <class... Ts>
 struct StrictConjunction
     : std::is_same<Bools<Ts::value...>, Bools<(Ts::value || true)...>> {};
@@ -685,12 +685,12 @@ template <typename T>
 using is_transparent_ = typename T::is_transparent;
 } // namespace detail
 
-//  is_transparent_v
-//  is_transparent
-//
-//  A trait variable and type to test whether a less, equal-to, or hash type
-//  follows the is-transparent protocol used by containers with optional
-//  heterogeneous access.
+/// is_transparent_v
+/// is_transparent
+///
+/// A trait variable and type to test whether a less, equal-to, or hash type
+/// follows the is-transparent protocol used by containers with optional
+/// heterogeneous access.
 template <typename T>
 inline constexpr bool is_transparent_v =
     is_detected_v<detail::is_transparent_, T>;
@@ -713,11 +713,11 @@ inline constexpr bool is_allocator_<
 
 } // namespace detail
 
-//  is_allocator_v
-//  is_allocator
-//
-//  A trait variable and type to test whether a type is an allocator according
-//  to the minimum protocol required by std::allocator_traits.
+/// is_allocator_v
+/// is_allocator
+///
+/// A trait variable and type to test whether a type is an allocator according
+/// to the minimum protocol required by std::allocator_traits.
 template <typename T>
 inline constexpr bool is_allocator_v = detail::is_allocator_<T>;
 template <typename T>
@@ -840,10 +840,10 @@ constexpr bool is_non_negative(T x) {
 
 namespace detail {
 
-// folly::to integral specializations can end up generating code
-// inside what are really static ifs (not executed because of the templated
-// types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
-// in order to not prevent all calling code from using it.
+//  folly::to integral specializations can end up generating code
+//  inside what are really static ifs (not executed because of the templated
+//  types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
+//  in order to not prevent all calling code from using it.
 FOLLY_PUSH_WARNING
 FOLLY_GNU_DISABLE_WARNING("-Wsign-compare")
 FOLLY_GCC_DISABLE_WARNING("-Wbool-compare")
@@ -1056,16 +1056,16 @@ using type_pack_element_fallback = _t<decltype(type_pack_element_test<I>::impl(
 
 } // namespace traits_detail
 
-//  type_pack_element_t
-//
-//  In the type pack Ts..., the Ith element.
-//
-//  Wraps the builtin __type_pack_element where the builtin is available; where
-//  not, implemented directly.
-//
-//  Under gcc, the builtin is available but does not mangle. Therefore, this
-//  trait must not be used anywhere it might be subject to mangling, such as in
-//  a return-type expression.
+/// type_pack_element_t
+///
+/// In the type pack Ts..., the Ith element.
+///
+/// Wraps the builtin __type_pack_element where the builtin is available; where
+/// not, implemented directly.
+///
+/// Under gcc, the builtin is available but does not mangle. Therefore, this
+/// trait must not be used anywhere it might be subject to mangling, such as in
+/// a return-type expression.
 
 #if FOLLY_HAS_BUILTIN(__type_pack_element)
 
@@ -1079,19 +1079,19 @@ using type_pack_element_t = traits_detail::type_pack_element_fallback<I, Ts...>;
 
 #endif
 
-//  type_pack_size_v
-//
-//  The size of a type pack.
-//
-//  A metafunction around sizeof...(Ts).
+/// type_pack_size_v
+///
+/// The size of a type pack.
+///
+/// A metafunction around sizeof...(Ts).
 template <typename... Ts>
 inline constexpr std::size_t type_pack_size_v = sizeof...(Ts);
 
-//  type_pack_size_t
-//
-//  The size of a type pack.
-//
-//  A metafunction around index_constant<sizeof...(Ts)>.
+/// type_pack_size_t
+///
+/// The size of a type pack.
+///
+/// A metafunction around index_constant<sizeof...(Ts)>.
 template <typename... Ts>
 using type_pack_size_t = index_constant<sizeof...(Ts)>;
 
