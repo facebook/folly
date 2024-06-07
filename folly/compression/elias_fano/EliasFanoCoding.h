@@ -153,6 +153,8 @@ struct EliasFanoEncoder {
 
   void add(ValueType value) {
     CHECK_GE(value, lastValue_);
+    CHECK_LT(size_, result_.size)
+        << "add() called more times than the size specified in construction";
 
     const auto numLowerBits = result_.numLowerBits;
     const ValueType upperBits = value >> numLowerBits;
@@ -182,7 +184,8 @@ struct EliasFanoEncoder {
   }
 
   const MutableCompressedList& finish() {
-    CHECK_EQ(size_, result_.size);
+    CHECK_EQ(size_, result_.size)
+        << "Number of add()s must be equal to the size specified in construction";
     const ValueType upperBitsUniverse =
         (8 * result_.upperSizeBytes - result_.size);
     // Populate skip pointers up to the universe upper bound (inclusive).
