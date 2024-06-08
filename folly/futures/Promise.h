@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <array>
 #include <functional>
 
 #include <folly/Portability.h>
@@ -55,11 +56,13 @@ class FOLLY_EXPORT BrokenPromise : public PromiseException {
   static FOLLY_CONSTEVAL auto make_error_message() {
     constexpr auto prefix =
         detail::pretty_carray_from("Broken promise for type name `");
+    constexpr auto prefix_size = std::size(prefix.data);
     constexpr auto name = detail::pretty_name_carray<T>();
-    c_array<char, name.size() - 1 + prefix.size() - 1 + 2> ret{};
+    constexpr auto name_size = std::size(name.data);
+    c_array<char, name_size - 1 + prefix_size - 1 + 2> ret{};
     char* dest = ret.data;
-    dest = detail::pretty_carray_copy(dest, prefix.data, prefix.size() - 1);
-    dest = detail::pretty_carray_copy(dest, name.data, name.size() - 1);
+    dest = detail::pretty_carray_copy(dest, prefix.data, prefix_size - 1);
+    dest = detail::pretty_carray_copy(dest, name.data, name_size - 1);
     detail::pretty_carray_copy(dest, "`", 2);
     return ret;
   }
