@@ -1535,12 +1535,13 @@ void AsyncUDPSocket::setTosOrTrafficClass(uint8_t tosOrTclass) {
 #ifdef _WIN32
   // For windows, we can only set the values 0 and 1 (for the ECN bits).
   // Any DSCP values have to be set via the QoS Policy
+  auto ecn = tosOrTclass & 0x3;
   auto level = address().getFamily() == AF_INET6 ? IPPROTO_IPV6 : IPPROTO_IP;
-  if (tosOrTclass == 0) {
+  if (ecn == 0) {
     // Remove ECN cmsgs if any exist
     defaultCmsgs_.erase({level, IP_ECN});
   } else {
-    defaultCmsgs_[{level, IP_ECN}] = tosOrTclass;
+    defaultCmsgs_[{level, IP_ECN}] = ecn;
   }
 #else
   int valInt = tosOrTclass;
