@@ -7,9 +7,13 @@ zlib1g-dev
 [homebrew]
 zlib
 
-[rpms]
+[rpms.not(distro=fedora)]
 zlib-devel
 zlib-static
+
+[rpms.distro=fedora]
+zlib-ng-compat-devel
+zlib-ng-compat-static
 
 [download]
 url = https://zlib.net/zlib-1.3.1.tar.gz

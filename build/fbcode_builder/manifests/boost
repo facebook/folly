@@ -55,6 +55,10 @@ boost169-python3
 boost169-serialization
 boost169-program-options
 
+[rpms.distro=fedora]
+boost-devel
+boost-static
+
 [build]
 builder = boost
 job_weight_mib = 512

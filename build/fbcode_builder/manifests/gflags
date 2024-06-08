@@ -20,3 +20,6 @@ gflags
 
 [debs]
 libgflags-dev
+
+[rpms.distro=fedora]
+gflags-devel
