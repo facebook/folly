@@ -19,9 +19,18 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Chrono.h>
+#include <folly/ClockGettimeWrappers.h>
 #include <folly/chrono/Hardware.h>
 #include <folly/hash/Hash.h>
 #include <folly/init/Init.h>
+#include <folly/lang/Keep.h>
+
+extern "C" FOLLY_KEEP uint64_t check_folly_hardware_timestamp_measurement() {
+  auto const start = folly::hardware_timestamp_measurement_start();
+  folly::detail::keep_sink_nx();
+  auto const stop = folly::hardware_timestamp_measurement_stop();
+  return stop - start;
+}
 
 BENCHMARK(steady_clock_now, iters) {
   uint64_t r = 0;
@@ -63,10 +72,120 @@ BENCHMARK(coarse_system_clock_now, iters) {
   folly::doNotOptimizeAway(r);
 }
 
+#if defined(CLOCK_MONOTONIC)
+BENCHMARK(clock_gettime_monotonic, iters) {
+  int64_t r = 0;
+  while (iters--) {
+    timespec ts{};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    r = folly::hash::twang_mix64(r ^ ts.tv_sec ^ ts.tv_nsec);
+  }
+  folly::doNotOptimizeAway(r);
+}
+#endif
+
+#if defined(CLOCK_MONOTONIC_COARSE)
+BENCHMARK(clock_gettime_monotonic_coarse, iters) {
+  int64_t r = 0;
+  while (iters--) {
+    timespec ts{};
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
+    r = folly::hash::twang_mix64(r ^ ts.tv_sec ^ ts.tv_nsec);
+  }
+  folly::doNotOptimizeAway(r);
+}
+#endif
+
+#if defined(CLOCK_REALTIME)
+BENCHMARK(clock_gettime_realtime, iters) {
+  int64_t r = 0;
+  while (iters--) {
+    timespec ts{};
+    clock_gettime(CLOCK_REALTIME, &ts);
+    r = folly::hash::twang_mix64(r ^ ts.tv_sec ^ ts.tv_nsec);
+  }
+  folly::doNotOptimizeAway(r);
+}
+#endif
+
+#if defined(CLOCK_REALTIME_COARSE)
+BENCHMARK(clock_gettime_realtime_coarse, iters) {
+  int64_t r = 0;
+  while (iters--) {
+    timespec ts{};
+    clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    r = folly::hash::twang_mix64(r ^ ts.tv_sec ^ ts.tv_nsec);
+  }
+  folly::doNotOptimizeAway(r);
+}
+#endif
+
+#if defined(CLOCK_MONOTONIC)
+BENCHMARK(folly_chrono_clock_gettime_ns_monotonic, iters) {
+  int64_t r = 0;
+  while (iters--) {
+    auto const s = folly::chrono::clock_gettime_ns(CLOCK_MONOTONIC);
+    r = folly::hash::twang_mix64(r ^ s);
+  }
+  folly::doNotOptimizeAway(r);
+}
+#endif
+
+#if defined(CLOCK_MONOTONIC_COARSE)
+BENCHMARK(folly_chrono_clock_gettime_ns_monotonic_coarse, iters) {
+  int64_t r = 0;
+  while (iters--) {
+    auto const s = folly::chrono::clock_gettime_ns(CLOCK_MONOTONIC_COARSE);
+    r = folly::hash::twang_mix64(r ^ s);
+  }
+  folly::doNotOptimizeAway(r);
+}
+#endif
+
+#if defined(CLOCK_REALTIME)
+BENCHMARK(folly_chrono_clock_gettime_ns_realtime, iters) {
+  int64_t r = 0;
+  while (iters--) {
+    auto const s = folly::chrono::clock_gettime_ns(CLOCK_REALTIME);
+    r = folly::hash::twang_mix64(r ^ s);
+  }
+  folly::doNotOptimizeAway(r);
+}
+#endif
+
+#if defined(CLOCK_REALTIME_COARSE)
+BENCHMARK(folly_chrono_clock_gettime_ns_realtime_coarse, iters) {
+  int64_t r = 0;
+  while (iters--) {
+    auto const s = folly::chrono::clock_gettime_ns(CLOCK_REALTIME_COARSE);
+    r = folly::hash::twang_mix64(r ^ s);
+  }
+  folly::doNotOptimizeAway(r);
+}
+#endif
+
 BENCHMARK(hardware_timestamp_unserialized, iters) {
   uint64_t r = 0;
   while (iters--) {
     auto const s = folly::hardware_timestamp();
+    r = folly::hash::twang_mix64(r ^ s);
+  }
+  folly::doNotOptimizeAway(r);
+}
+
+BENCHMARK(hardware_timestamp_measurement_start, iters) {
+  uint64_t r = 0;
+  while (iters--) {
+    auto const s = folly::hardware_timestamp_measurement_start();
+    r = folly::hash::twang_mix64(r ^ s);
+  }
+  folly::doNotOptimizeAway(r);
+}
+
+BENCHMARK(hardware_timestamp_measurement_stop, iters) {
+  uint64_t r = 0;
+  while (iters--) {
+    auto const s = folly::hardware_timestamp_measurement_stop();
     r = folly::hash::twang_mix64(r ^ s);
   }
   folly::doNotOptimizeAway(r);

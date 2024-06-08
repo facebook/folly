@@ -200,9 +200,11 @@ cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:chrono",
+        "//folly:clock_gettime_wrappers",
         "//folly/chrono:hardware",
         "//folly/hash:hash",
         "//folly/init:init",
+        "//folly/lang:keep",
     ],
 )
 
