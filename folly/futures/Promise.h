@@ -51,26 +51,25 @@ class FOLLY_EXPORT FutureAlreadyRetrieved : public PromiseException {
 
 class FOLLY_EXPORT BrokenPromise : public PromiseException {
  private:
-  template <class T>
-  FOLLY_EXPORT static const char* error_message() {
-    static constexpr auto str = [] {
-      constexpr auto prefix =
-          detail::pretty_carray_from("Broken promise for type name `");
-      constexpr auto name = detail::pretty_name_carray<T>();
-      c_array<char, name.size() - 1 + prefix.size() - 1 + 2> ret{};
-      char* dest = ret.data;
-      dest = detail::pretty_carray_copy(dest, prefix.data, prefix.size() - 1);
-      dest = detail::pretty_carray_copy(dest, name.data, name.size() - 1);
-      detail::pretty_carray_copy(dest, "`", 2);
-      return ret;
-    }();
-    return str.data;
+  template <typename T>
+  static FOLLY_CONSTEVAL auto make_error_message() {
+    constexpr auto prefix =
+        detail::pretty_carray_from("Broken promise for type name `");
+    constexpr auto name = detail::pretty_name_carray<T>();
+    c_array<char, name.size() - 1 + prefix.size() - 1 + 2> ret{};
+    char* dest = ret.data;
+    dest = detail::pretty_carray_copy(dest, prefix.data, prefix.size() - 1);
+    dest = detail::pretty_carray_copy(dest, name.data, name.size() - 1);
+    detail::pretty_carray_copy(dest, "`", 2);
+    return ret;
   }
+  template <typename T>
+  static constexpr auto error_message = make_error_message<T>();
 
  public:
   template <typename T>
   explicit BrokenPromise(tag_t<T>)
-      : PromiseException(static_lifetime{}, error_message<T>()) {}
+      : PromiseException(static_lifetime{}, error_message<T>.data) {}
 };
 
 // forward declaration
