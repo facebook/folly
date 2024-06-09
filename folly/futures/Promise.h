@@ -27,27 +27,32 @@
 
 namespace folly {
 
-class FOLLY_EXPORT PromiseException
-    : public static_what_exception<std::logic_error> {
+class FOLLY_EXPORT PromiseException : public std::logic_error {
  public:
-  using static_what_exception<std::logic_error>::static_what_exception;
+  using std::logic_error::logic_error;
+  PromiseException() : std::logic_error{""} {}
 };
 
 class FOLLY_EXPORT PromiseInvalid : public PromiseException {
  public:
-  PromiseInvalid() : PromiseException(static_lifetime{}, "Promise invalid") {}
+  PromiseInvalid() = default;
+  char const* what() const noexcept override { return "Promise invalid"; }
 };
 
 class FOLLY_EXPORT PromiseAlreadySatisfied : public PromiseException {
  public:
-  PromiseAlreadySatisfied()
-      : PromiseException(static_lifetime{}, "Promise already satisfied") {}
+  PromiseAlreadySatisfied() = default;
+  char const* what() const noexcept override {
+    return "Promise already satisfied";
+  }
 };
 
 class FOLLY_EXPORT FutureAlreadyRetrieved : public PromiseException {
  public:
-  FutureAlreadyRetrieved()
-      : PromiseException(static_lifetime{}, "Future already retrieved") {}
+  FutureAlreadyRetrieved() = default;
+  char const* what() const noexcept override {
+    return "Future already retrieved";
+  }
 };
 
 class FOLLY_EXPORT BrokenPromise : public PromiseException {
@@ -69,10 +74,12 @@ class FOLLY_EXPORT BrokenPromise : public PromiseException {
   template <typename T>
   static constexpr auto error_message = make_error_message<T>();
 
+  const char* const what_{};
+
  public:
   template <typename T>
-  explicit BrokenPromise(tag_t<T>)
-      : PromiseException(static_lifetime{}, error_message<T>.data) {}
+  explicit BrokenPromise(tag_t<T>) : what_{error_message<T>.data} {}
+  char const* what() const noexcept override { return what_; }
 };
 
 // forward declaration
