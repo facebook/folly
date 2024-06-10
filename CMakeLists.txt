@@ -718,7 +718,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       #TEST read_mostly_shared_ptr_test SOURCES ReadMostlySharedPtrTest.cpp
       #TEST ref_count_test SOURCES RefCountTest.cpp
       TEST select64_test SOURCES Select64Test.cpp
-      TEST test_util_test SOURCES TestUtilTest.cpp
 
     DIRECTORY experimental/io/test/
       TEST fs_util_test SOURCES FsUtilTest.cpp
@@ -1090,6 +1089,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
       TEST uri_test SOURCES UriTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
+
+    DIRECTORY testing/test/
+      TEST test_util_test SOURCES TestUtilTest.cpp
 
     DIRECTORY json/test/
       TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
