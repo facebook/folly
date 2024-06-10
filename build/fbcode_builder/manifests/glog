@@ -26,3 +26,7 @@ glog
 
 [debs]
 libgoogle-glog-dev
+
+[rpms.distro=fedora]
+glog-devel
+

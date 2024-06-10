@@ -24,3 +24,7 @@ googletest
 [debs.not(all(distro=ubuntu,any(distro_vers="18.04",distro_vers="20.04",distro_vers="22.04")))]
 libgtest-dev
 libgmock-dev
+
+[rpms.distro=fedora]
+gmock-devel
+gtest-devel
