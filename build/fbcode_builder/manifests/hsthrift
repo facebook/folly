@@ -26,3 +26,6 @@ all
 
 [make.install_args]
 install
+
+[make.test_args]
+test
