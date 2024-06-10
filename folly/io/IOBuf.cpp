@@ -508,8 +508,7 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     throw_exception<std::bad_alloc>();
   }
 
-  size_t requiredStorage = sizeof(HeapFullStorage);
-  size_t mallocSize = goodMallocSize(requiredStorage);
+  size_t mallocSize = sizeof(HeapFullStorage);
   storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
 
   new (&storage->hs.prefix)
