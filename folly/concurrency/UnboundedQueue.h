@@ -255,6 +255,9 @@ class UnboundedQueue {
   alignas(Align) Producer p_;
 
  public:
+  using value_type = T;
+  using size_type = size_t;
+
   /** constructor */
   UnboundedQueue()
       : c_(new Segment(0)), p_(c_.head.load(std::memory_order_relaxed)) {}

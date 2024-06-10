@@ -324,6 +324,9 @@ class DynamicBoundedQueue {
       q_;
 
  public:
+  using value_type = T;
+  using size_type = size_t;
+
   /** constructor */
   explicit DynamicBoundedQueue(Weight capacity)
       : debit_(0),
