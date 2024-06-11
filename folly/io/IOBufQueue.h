@@ -436,7 +436,7 @@ class IOBufQueue {
    * @brief Get a pointer to the writable tail section.
    * @methodset Access
    */
-  void* writableTail() const {
+  void* writableTail() {
     dcheckCacheIntegrity();
     return cachePtr_->cachedRange.first;
   }
