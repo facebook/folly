@@ -289,6 +289,8 @@ void resumeCoroutineWithNewAsyncStackRoot(
  */
 void activateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept;
 
+bool isSuspendedLeafActive(AsyncStackFrame& leafFrame) noexcept;
+
 /**
  * Pop the dummy "leaf" frame off the stack to annotate the stack as
  * having resumed.
@@ -345,6 +347,7 @@ struct AsyncStackFrame {
   friend void popAsyncStackFrameCallee(folly::AsyncStackFrame&) noexcept;
 
   friend void activateSuspendedLeaf(folly::AsyncStackFrame&) noexcept;
+  friend bool isSuspendedLeafActive(folly::AsyncStackFrame&) noexcept;
   friend void deactivateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept;
 
   // Pointer to the async caller's stack-frame info.

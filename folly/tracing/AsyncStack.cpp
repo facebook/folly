@@ -201,6 +201,11 @@ void activateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept {
       reinterpret_cast<AsyncStackRoot*>(::__folly_suspended_frame_cookie);
 }
 
+bool isSuspendedLeafActive(AsyncStackFrame& leafFrame) noexcept {
+  return leafFrame.stackRoot ==
+      reinterpret_cast<AsyncStackRoot*>(::__folly_suspended_frame_cookie);
+}
+
 void deactivateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept {
   assert(
       leafFrame.stackRoot ==
