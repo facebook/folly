@@ -47,9 +47,14 @@ using type_identity_t = typename type_identity<T>::type;
 
 #endif
 
+/// tag_t
+/// tag
+///
+/// A generic type-list value type and value.
+///
+/// A type-list is a class template parameterized by a pack of types.
 template <typename...>
 struct tag_t {};
-
 template <typename... T>
 inline constexpr tag_t<T...> tag{};
 
