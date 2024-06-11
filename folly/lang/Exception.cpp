@@ -643,8 +643,18 @@ struct exception_shared_string::state {
     auto addr = operator_new(object_size(len), align);
     return new (addr) state(str, len);
   }
+  static state* make(std::size_t const len, format_sig_& ffun, void* fobj) {
+    constexpr auto align = std::align_val_t{alignof(state)};
+    auto addr = operator_new(object_size(len), align);
+    return new (addr) state(len, ffun, fobj);
+  }
   state(char const* const str, std::size_t const len) noexcept : size{len} {
     std::memcpy(static_cast<void*>(this + 1u), str, len + 1u);
+  }
+  state(std::size_t const len, format_sig_& ffun, void* fobj) : size{len} {
+    auto const buf = static_cast<char*>(static_cast<void*>(this + 1u));
+    ffun(fobj, buf, len);
+    buf[len] = 0;
   }
   char const* what() const noexcept {
     return static_cast<char const*>(static_cast<void const*>(this + 1u));
@@ -657,6 +667,10 @@ struct exception_shared_string::state {
     }
   }
 };
+
+exception_shared_string::exception_shared_string(
+    std::size_t const len, format_sig_& ffun, void* const fobj)
+    : state_{state::make(len, ffun, fobj)} {}
 
 exception_shared_string::exception_shared_string(char const* const str)
     : exception_shared_string{str, std::strlen(str)} {}

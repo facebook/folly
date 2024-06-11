@@ -595,14 +595,27 @@ inline constexpr make_exception_ptr_with_fn make_exception_ptr_with{};
 //  exception messages are best stored.
 class exception_shared_string {
  private:
+  using format_sig_ = void(void*, char*, std::size_t);
+
+  template <typename F>
+  using test_format_ =
+      decltype(FOLLY_DECLVAL(F)(static_cast<char*>(nullptr), std::size_t(0)));
+
   static void test_params_(char const*, std::size_t);
+  template <typename F>
+  static void ffun_(void* f, char* b, std::size_t l) {
+    (*static_cast<F*>(f))(b, l);
+  }
 
   struct state;
   state* const state_;
 
+  exception_shared_string(std::size_t, format_sig_&, void*);
+
  public:
   explicit exception_shared_string(char const*);
   exception_shared_string(char const*, std::size_t);
+
   template <
       typename String,
       typename = decltype(test_params_(
@@ -610,6 +623,12 @@ class exception_shared_string {
           FOLLY_DECLVAL(String const&).size()))>
   explicit exception_shared_string(String const& str)
       : exception_shared_string{str.data(), str.size()} {}
+
+  template <typename F, decltype((test_format_<F&>(), 0)) = 0>
+  exception_shared_string(std::size_t size, F func)
+      : exception_shared_string(
+            size, ffun_<F>, &reinterpret_cast<unsigned char&>(func)) {}
+
   exception_shared_string(exception_shared_string const&) noexcept;
   ~exception_shared_string();
   void operator=(exception_shared_string const&) = delete;

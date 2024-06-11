@@ -21,10 +21,15 @@
 #include <functional>
 #include <string>
 
+#include <fmt/format.h>
+
 #include <folly/Portability.h>
+#include <folly/lang/Align.h>
 #include <folly/lang/Keep.h>
 #include <folly/lang/Pretty.h>
 #include <folly/portability/GTest.h>
+
+using namespace std::literals;
 
 extern "C" FOLLY_KEEP void check_cond_std_terminate(bool c) {
   if (c) {
@@ -313,4 +318,30 @@ TEST_F(ExceptionTest, exception_shared_string) {
 
   EXPECT_STREQ(c, folly::exception_shared_string(std::string_view(c)).what());
   EXPECT_STREQ(c, folly::exception_shared_string(std::string(c)).what());
+}
+
+// example of how to do the in-place formatting efficiently
+struct format_param_fn {
+  template <typename A>
+  using arg_t = folly::conditional_t<folly::is_register_pass_v<A>, A, A const&>;
+
+  template <typename... A>
+  auto operator()(
+      fmt::format_string<arg_t<A>...> const& fmt, A const&... arg) const {
+    return std::pair{
+        fmt::formatted_size(fmt, static_cast<arg_t<A>>(arg)...),
+        [&](auto buf, auto len) {
+          auto res =
+              fmt::format_to_n(buf, len, fmt, static_cast<arg_t<A>>(arg)...);
+          FOLLY_SAFE_DCHECK(len == res.size);
+        }};
+  }
+};
+inline constexpr format_param_fn format_param{};
+
+TEST_F(ExceptionTest, exception_shared_string_format) {
+  auto s = std::invoke(
+      [](auto p) { return folly::exception_shared_string(p.first, p.second); },
+      format_param("a number {} and a string {}", 217, "flobber"s));
+  EXPECT_STREQ("a number 217 and a string flobber", s.what());
 }

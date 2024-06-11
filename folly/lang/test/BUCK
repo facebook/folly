@@ -90,7 +90,9 @@ cpp_unittest(
     name = "exception_test",
     srcs = ["ExceptionTest.cpp"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:portability",
+        "//folly/lang:align",
         "//folly/lang:exception",
         "//folly/lang:keep",
         "//folly/lang:pretty",
