@@ -1729,7 +1729,7 @@ TEST(IOBuf, FreeFn) {
     unique_ptr<IOBuf> iobuf(IOBuf::create(64 * 1024));
 
     EXPECT_TRUE(iobuf->appendSharedInfoObserver(observer));
-    auto str = iobuf->moveToFbString().toStdString();
+    auto str = iobuf->moveToFbString();
   }
   EXPECT_EQ(freeVal, 0);
   EXPECT_EQ(releaseVal, 1);

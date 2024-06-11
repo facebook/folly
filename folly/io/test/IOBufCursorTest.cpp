@@ -545,7 +545,7 @@ TEST(IOBuf, Printf) {
       "test32this string is longer than our original "
       "allocation size,and will therefore require a "
       "new allocation 0x12345678",
-      head.moveToFbString().toStdString());
+      head.to<std::string>());
 }
 
 TEST(IOBuf, Format) {

@@ -66,7 +66,7 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
       bool truncated,
       OnDataAvailableParams) noexcept override {
     lastClient_ = client;
-    lastMsg_ = data->clone()->moveToFbString().toStdString();
+    lastMsg_ = data->to<std::string>();
 
     auto len = data->computeChainDataLength();
     VLOG(4) << "Worker " << n_ << " read " << len << " bytes "
