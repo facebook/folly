@@ -742,3 +742,21 @@ TEST(Traits, type_list_size) {
   EXPECT_EQ(
       5, (type_list_size_t<tag_t<long long, long, int, short, char>>::value));
 }
+
+TEST(Traits, value_pack) {
+  EXPECT_EQ(3, (folly::value_pack_size_v<7u, 8, '9'>));
+  EXPECT_EQ(3, (folly::value_pack_size_t<7u, 8, '9'>::value));
+  EXPECT_TRUE(( //
+      std::is_same_v<int, folly::value_pack_element_type_t<1, 7u, 8, '9'>>));
+  EXPECT_EQ(8, (folly::value_pack_element_v<1, 7u, 8, '9'>));
+}
+
+TEST(Traits, value_list) {
+  EXPECT_EQ(3, (folly::value_list_size_v<vtag_t<7u, 8, '9'>>));
+  EXPECT_EQ(3, (folly::value_list_size_t<vtag_t<7u, 8, '9'>>::value));
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          int,
+          folly::value_list_element_type_t<1, vtag_t<7u, 8, '9'>>>));
+  EXPECT_EQ(8, (folly::value_list_element_v<1, vtag_t<7u, 8, '9'>>));
+}

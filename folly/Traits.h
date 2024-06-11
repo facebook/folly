@@ -1149,6 +1149,91 @@ template <typename List>
 using type_list_size_t =
     decltype(traits_detail::type_list_size_(static_cast<List const*>(nullptr)));
 
+namespace traits_detail {
+
+template <auto V>
+using value_pack_constant = std::integral_constant<decltype(V), V>;
+
+} // namespace traits_detail
+
+/// value_pack_size_v
+///
+/// The size of a value pack.
+///
+/// A metafunction around sizeof...(V).
+template <auto... V>
+inline constexpr std::size_t value_pack_size_v = sizeof...(V);
+
+/// value_pack_size_t
+///
+/// The size of a value pack.
+///
+/// A metafunction around index_constant<sizeof...(V)>.
+template <auto... V>
+using value_pack_size_t = index_constant<sizeof...(V)>;
+
+/// value_pack_element_type_t
+///
+/// In the value pack V..., the type of the Ith element.
+template <std::size_t I, auto... V>
+using value_pack_element_type_t = type_pack_element_t<I, decltype(V)...>;
+
+/// value_pack_element_type_t
+///
+/// In the value pack V..., the Ith element.
+template <std::size_t I, auto... V>
+inline constexpr value_pack_element_type_t<I, V...> const&
+    value_pack_element_v =
+        type_pack_element_t<I, traits_detail::value_pack_constant<V>...>::value;
+
+namespace traits_detail {
+
+template <typename List>
+struct value_list_traits_;
+template <template <auto...> class List, auto... V>
+struct value_list_traits_<List<V...>> {
+  static constexpr std::size_t size = sizeof...(V);
+  template <std::size_t I>
+  using element_type = value_pack_element_type_t<I, V...>;
+  template <std::size_t I>
+  static constexpr value_pack_element_type_t<I, V...> const& element =
+      value_pack_element_v<I, V...>;
+};
+
+} // namespace traits_detail
+
+/// value_list_size_v
+///
+/// The size of a value list.
+///
+/// For List<V...>, equivalent to value_pack_size_v<V...>.
+template <typename List>
+inline constexpr std::size_t value_list_size_v =
+    traits_detail::value_list_traits_<List>::size;
+
+/// value_list_size_t
+///
+/// The size of a value list.
+///
+/// For List<V...>, equivalent to value_pack_size_t<V...>.
+template <typename List>
+using value_list_size_t = index_constant<value_list_size_v<List>>;
+
+/// value_list_element_type_t
+///
+/// For List<V...>, the type of the Ith element.
+template <std::size_t I, typename List>
+using value_list_element_type_t =
+    typename traits_detail::value_list_traits_<List>::template element_type<I>;
+
+/// value_list_element_v
+///
+/// For List<V...>, the Ith element.
+template <std::size_t I, typename List>
+inline constexpr value_list_element_type_t<I, List> const&
+    value_list_element_v =
+        traits_detail::value_list_traits_<List>::template element<I>;
+
 /**
  * Checks the requirements that the Hasher class must satisfy
  * in order to be used with the standard library containers,
