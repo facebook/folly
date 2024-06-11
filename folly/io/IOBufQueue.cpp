@@ -302,10 +302,24 @@ void IOBufQueue::maybeReuseTail(folly::IOBuf& oldTail) {
       newTail = oldTail.unlink();
     }
   } else {
-    newTail = oldTail.maybeSplitTail();
-    if (!newTail) {
-      return;
-    }
+    auto freeFn = [](void*, void* p) { delete reinterpret_cast<IOBuf*>(p); };
+    // We know the tail is not shared, so we can clone it and wrap it in a
+    // new (unshared) IOBuf that owns its writable tail to reuse it.
+
+    // For the case when we're already dealing with a reused tail, we can
+    // use its parent IOBuf to avoid chaining IOBuf objects in the destructor.
+    auto tailBuf = oldTail.getFreeFn() == freeFn
+        ? reinterpret_cast<IOBuf*>(oldTail.getUserData())
+        : &oldTail;
+    DCHECK_EQ(tailBuf->bufferEnd(), oldTail.bufferEnd());
+    newTail = IOBuf::takeOwnership(
+        oldTail.writableTail(),
+        oldTail.tailroom(),
+        0,
+        freeFn,
+        tailBuf->cloneOne().release());
+    // Adjust the capacity of the old buffer to release ownership of its tail.
+    oldTail.trimWritableTail(oldTail.tailroom());
   }
   head_->appendToChain(std::move(newTail));
 }
