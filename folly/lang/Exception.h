@@ -624,7 +624,7 @@ class exception_shared_string {
   explicit exception_shared_string(String const& str)
       : exception_shared_string{str.data(), str.size()} {}
 
-  template <typename F, decltype((test_format_<F&>(), 0)) = 0>
+  template <typename F, decltype((void(test_format_<F&>()), 0)) = 0>
   exception_shared_string(std::size_t size, F func)
       : exception_shared_string(
             size, ffun_<F>, &reinterpret_cast<unsigned char&>(func)) {}
