@@ -182,31 +182,57 @@ TEST(IOBufQueue, AppendIOBufRef) {
   EXPECT_EQ("abcFooBar", queueToString(queue));
 }
 
+namespace {
+
+void appendWithPack(IOBufQueue& queue, IOBuf& chain, bool asRRef) {
+  if (asRRef) {
+    queue.append(std::move(chain), /* pack */ true);
+  } else {
+    queue.append(chain, /* pack */ true);
+  }
+}
+
+} // namespace
+
 TEST(IOBufQueue, AppendIOBufRefChain) {
-  IOBufQueue queue(clOptions);
-  queue.append(*stringToIOBuf("abc", 3), true);
-  queue.preallocate(10, 10, 10);
-  auto numElements = queue.front()->countChainElements();
-  auto chain = stringToIOBuf("Hello", 5);
-  chain->prependChain(stringToIOBuf("World", 5));
-  queue.append(*chain, true);
-  // Make sure that we performed a copy and not append chain.
-  EXPECT_EQ(numElements, queue.front()->countChainElements());
-  EXPECT_EQ("abcHelloWorld", queueToString(queue));
+  const auto test = [](bool asRRef) {
+    IOBufQueue queue(clOptions);
+    appendWithPack(queue, *stringToIOBuf("abc", 3), asRRef);
+
+    queue.preallocate(10, 10, 10);
+    auto numElements = queue.front()->countChainElements();
+    auto chain = stringToIOBuf("Hello", 5);
+    chain->appendToChain(stringToIOBuf("World", 5));
+    appendWithPack(queue, *chain, asRRef);
+
+    // Make sure that we performed a copy and not append chain.
+    EXPECT_EQ(numElements, queue.front()->countChainElements());
+    EXPECT_EQ("abcHelloWorld", queueToString(queue));
+  };
+
+  test(false);
+  test(true);
 }
 
 TEST(IOBufQueue, AppendIOBufRefChainPartial) {
-  IOBufQueue queue(clOptions);
-  queue.append(*stringToIOBuf("abc", 3), true);
-  queue.preallocate(16, 16, 16);
-  auto numElements = queue.front()->countChainElements();
-  auto chain = stringToIOBuf("This fits in 16B", 16);
-  chain->prependChain(stringToIOBuf("Hello ", 5));
-  chain->prependChain(stringToIOBuf("World", 5));
-  queue.append(*chain, true);
-  // Make sure that we performed a copy of first IOBuf and cloned the rest.
-  EXPECT_EQ(numElements + 2, queue.front()->countChainElements());
-  EXPECT_EQ("abcThis fits in 16BHelloWorld", queueToString(queue));
+  const auto test = [](bool asRRef) {
+    IOBufQueue queue(clOptions);
+    appendWithPack(queue, *stringToIOBuf("abc", 3), asRRef);
+
+    queue.preallocate(16, 16, 16);
+    auto numElements = queue.front()->countChainElements();
+    auto chain = stringToIOBuf("This fits in 16B", 16);
+    chain->appendToChain(stringToIOBuf("Hello ", 5));
+    chain->appendToChain(stringToIOBuf("World", 5));
+    appendWithPack(queue, *chain, asRRef);
+
+    // Make sure that we performed a copy of first IOBuf and chained the rest.
+    EXPECT_EQ(numElements + 2, queue.front()->countChainElements());
+    EXPECT_EQ("abcThis fits in 16BHelloWorld", queueToString(queue));
+  };
+
+  test(false);
+  test(true);
 }
 
 TEST(IOBufQueue, Split) {
@@ -570,9 +596,13 @@ TEST(IOBufQueue, Gather) {
 }
 
 TEST(IOBufQueue, ReuseTail) {
-  const auto test = [](bool asValue, bool withEmptyHead) {
-    SCOPED_TRACE(
-        fmt::format("asValue={}, withEmptyHead={}", asValue, withEmptyHead));
+  enum class AppendType { Ptr = 0, ConstRef = 1, RRef = 2 };
+
+  const auto test = [](AppendType appendType, bool withEmptyHead) {
+    SCOPED_TRACE(fmt::format(
+        "appendType={}, withEmptyHead={}",
+        static_cast<int>(appendType),
+        withEmptyHead));
 
     IOBufQueue queue;
     IOBufQueue::WritableRangeCache cache(&queue);
@@ -611,11 +641,18 @@ TEST(IOBufQueue, ReuseTail) {
     for (size_t i = 0; i < 2; ++i) {
       SCOPED_TRACE(fmt::format("i={}", i));
 
-      if (asValue) {
-        queue.append(
-            std::move(buf), /* pack */ true, /* allowTailReuse */ true);
-      } else {
-        queue.append(*buf, /* pack */ true, /* allowTailReuse */ true);
+      switch (appendType) {
+        case AppendType::Ptr:
+          queue.append(
+              std::move(buf), /* pack */ true, /* allowTailReuse */ true);
+          break;
+        case AppendType::ConstRef:
+          queue.append(*buf, /* pack */ true, /* allowTailReuse */ true);
+          break;
+        case AppendType::RRef:
+          queue.append(
+              std::move(*buf), /* pack */ true, /* allowTailReuse */ true);
+          break;
       }
 
       // We should be able to avoid allocating new memory because we still had
@@ -633,11 +670,11 @@ TEST(IOBufQueue, ReuseTail) {
     }
   };
 
-  // Test both unique_ptr and value overloads, and check that an empty head is
-  // handled correctly.
-  for (bool asValue : {false, true}) {
+  // Test all overloads, and check that an empty head is handled correctly.
+  for (auto appendType :
+       {AppendType::Ptr, AppendType::ConstRef, AppendType::RRef}) {
     for (bool withEmptyHead : {false, true}) {
-      test(asValue, withEmptyHead);
+      test(appendType, withEmptyHead);
     }
   }
 }

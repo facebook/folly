@@ -155,6 +155,7 @@ void IOBufQueue::append(
     chainLength_ += buf->computeChainDataLength();
   }
   appendToChain(head_, std::move(buf), pack);
+
   if (allowTailReuse) {
     maybeReuseTail();
   }
@@ -184,9 +185,49 @@ void IOBufQueue::append(
 
   // Clone the rest.
   do {
-    head_->prependChain(src->cloneOne());
+    head_->appendToChain(src->cloneOne());
     src = src->next();
   } while (src != &buf);
+
+  if (allowTailReuse) {
+    maybeReuseTail();
+  }
+}
+
+void IOBufQueue::append(folly::IOBuf&& buf, bool pack, bool allowTailReuse) {
+  // Equivalent to append(std::make_unique<folly::IOBuf>(std::move(buf)), ...)
+  // but that would make an unnecessary allocation if buf can be completely be
+  // packed into the tail, so we make sure to handle that case.
+  auto guard = updateGuard();
+  if (options_.cacheChainLength) {
+    chainLength_ += buf.computeChainDataLength();
+  }
+
+  std::unique_ptr<folly::IOBuf> rest;
+  if (head_ && pack) {
+    folly::IOBuf* src = &buf;
+    folly::IOBuf* tail = head_->prev();
+    packInto(tail, src, [&](auto* cur) {
+      rest = cur->pop();
+      return rest.get();
+    });
+    if (!src) {
+      return; // Consumed full input.
+    }
+    DCHECK(rest == nullptr || rest.get() == src);
+  }
+
+  if (!rest) {
+    // buf's head was not popped, so we need to heap-allocate it.
+    rest = std::make_unique<folly::IOBuf>(std::move(buf));
+  }
+
+  if (!head_) {
+    head_ = std::move(rest);
+  } else {
+    head_->appendToChain(std::move(rest));
+  }
+
   if (allowTailReuse) {
     maybeReuseTail();
   }
@@ -267,6 +308,7 @@ void IOBufQueue::maybeReuseTail() {
       reusableTail_->tailroom() <= head_->prev()->tailroom()) {
     return;
   }
+
   std::unique_ptr<IOBuf> newTail;
   if (reusableTail_->length() == 0) {
     // Nothing was written to the old tail, we can just move it to the end.
@@ -296,7 +338,7 @@ void IOBufQueue::maybeReuseTail() {
     reusableTail_->trimWritableTail(reusableTail_->tailroom());
     reusableTail_ = newTail.get();
   }
-  head_->prependChain(std::move(newTail));
+  head_->appendToChain(std::move(newTail));
 }
 
 unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {

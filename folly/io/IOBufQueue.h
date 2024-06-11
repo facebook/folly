@@ -317,6 +317,8 @@ class IOBufQueue {
       bool allowTailReuse = false);
   void append(
       const folly::IOBuf& buf, bool pack = false, bool allowTailReuse = false);
+  void append(
+      folly::IOBuf&& buf, bool pack = false, bool allowTailReuse = false);
 
   /**
    * Add a queue to the end of this queue. `this` takes ownership of
