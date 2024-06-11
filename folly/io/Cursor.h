@@ -1615,7 +1615,7 @@ class QueueAppender : public Writable<QueueAppender> {
    *
    * @methodset Capacity
    */
-  size_t length() { return queueCache_.length(); }
+  size_t length() const { return queueCache_.length(); }
 
   /**
    * Append n bytes.

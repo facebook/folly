@@ -199,7 +199,7 @@ class IOBufQueue {
      *
      * Note: doesn't populate cache.
      */
-    size_t length() {
+    size_t length() const {
       dcheckIntegrity();
       return data_.cachedRange.second - data_.cachedRange.first;
     }
@@ -238,7 +238,7 @@ class IOBufQueue {
 
     FOLLY_NOINLINE void appendSlow(size_t n) { queue_->postallocate(n); }
 
-    void dcheckIntegrity() {
+    void dcheckIntegrity() const {
       // Tail start should always be less than tail end.
       DCHECK_LE(
           (void*)data_.cachedRange.first, (void*)data_.cachedRange.second);
