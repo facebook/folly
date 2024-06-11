@@ -69,7 +69,7 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  * API Details
  * -----------
  *
- *  - The buffer is not neccesarily full of meaningful bytes - there may be
+ *  - The buffer is not necessarily full of meaningful bytes - there may be
  *    uninitialized bytes before and after the central "valid" range of data.
  *  - Buffers are refcounted, and can be shared by multiple IOBuf objects.
  *    - If you ever write to an IOBuf, first use unshare() to get a unique copy.
@@ -118,7 +118,7 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  * data() and tail() methods on each IOBuf may point to a different segment of
  * the data.  However, the buffer() and bufferEnd() methods will point to the
  * same location for all IOBufs sharing the same underlying buffer, unless the
- * tail was trimmed with trimWritableTail().
+ * tail was resized by trimWritableTail() or maybeSplitTail().
  *
  *           +-----------+     +---------+
  *           |  IOBuf 1  |     | IOBuf 2 |
@@ -1764,6 +1764,18 @@ class IOBuf {
    * @param[out] other  An IOBuf to assign the clone to
    */
   void cloneOneInto(IOBuf& other) const { other = cloneOneAsValue(); }
+
+  /**
+   * Returns a new IOBuf whose buffer is this buffer's tail. The latter is
+   * trimmed to 0 to relinquish ownership of it. The returned IOBuf is unshared,
+   * and it holds a shared reference to the IOBuf that originally owned the
+   * buffer, extending its lifetime.
+   *
+   * This method is best-effort and allowed to fail if the operation is not
+   * possible (for example, if the buffer is shared) or inefficient. In these
+   * cases, nullptr is returned and this IOBuf is unchanged.
+   */
+  std::unique_ptr<IOBuf> maybeSplitTail();
 
   /**
    * Append the chain data into the provided container.
