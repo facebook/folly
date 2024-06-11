@@ -58,6 +58,17 @@ struct tag_t {};
 template <typename... T>
 inline constexpr tag_t<T...> tag{};
 
+/// vtag_t
+/// vtag
+///
+/// A generic value-list value type and value.
+///
+/// A value-list is a class template parameterized by a pack of values.
+template <auto...>
+struct vtag_t {};
+template <auto... V>
+inline constexpr vtag_t<V...> vtag{};
+
 template <std::size_t I>
 using index_constant = std::integral_constant<std::size_t, I>;
 
