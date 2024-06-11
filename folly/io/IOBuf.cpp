@@ -139,13 +139,18 @@ struct IOBuf::HeapStorage {
   // This way operator new will work even if allocating a subclass of IOBuf
   // that requires more space.
   folly::IOBuf buf;
+
+ private:
+  // This function exists only to have a scope to do the static_asserts().
+  static void checkInvariants() {
+    // Make sure jemalloc allocates from the 64-byte class.
+    static_assert(sizeof(HeapPrefix) == 8);
+    static_assert(sizeof(IOBuf) <= 56);
+    static_assert(sizeof(HeapStorage) <= 64);
+  }
 };
 
 struct alignas(folly::max_align_v) IOBuf::HeapFullStorage {
-  // Make sure jemalloc allocates from the 64-byte class.  Putting this here
-  // because HeapStorage is private so it can't be at namespace level.
-  static_assert(sizeof(HeapStorage) <= 64, "IOBuf may not grow over 56 bytes!");
-
   HeapStorage hs;
   SharedInfo shared;
 };
@@ -840,6 +845,55 @@ IOBuf IOBuf::cloneCoalescedAsValueWithHeadroomTailroom(
   DCHECK_LE(newTailroom, newBuf.tailroom());
 
   return newBuf;
+}
+
+std::unique_ptr<IOBuf> IOBuf::maybeSplitTail() {
+  if (isSharedOne()) {
+    return nullptr;
+  }
+
+  const size_t tailSize = tailroom();
+
+  // If this is already a split tail, clone the (clone of the) original buffer
+  // instead of this wrapper, to avoid deep recursion in the free function.
+  static constexpr auto freeFn = [](void*, void* p) {
+    reinterpret_cast<IOBuf*>(p)->~IOBuf();
+  };
+  auto origBuf =
+      getFreeFn() == freeFn ? reinterpret_cast<IOBuf*>(getUserData()) : this;
+  DCHECK_EQ(
+      reinterpret_cast<const void*>(origBuf->bufferEnd()),
+      reinterpret_cast<const void*>(bufferEnd()));
+
+  struct SplitTailStorage : HeapFullStorage {
+    IOBuf parent;
+  };
+
+  size_t mallocSize = sizeof(SplitTailStorage);
+  auto* storage = static_cast<SplitTailStorage*>(checkedMalloc(mallocSize));
+
+  void* userData = new (&storage->parent) IOBuf(origBuf->cloneOneAsValue());
+  new (&storage->hs.prefix)
+      HeapPrefix(kIOBufInUse | kSharedInfoInUse, mallocSize);
+  new (&storage->shared)
+      SharedInfo(freeFn, userData, true /* useHeapFullStorage */);
+
+  // Release ownership of the tail.
+  trimWritableTail(tailSize);
+
+  auto result = std::unique_ptr<IOBuf>(new (&storage->hs.buf) IOBuf(
+      InternalConstructor(),
+      packFlagsAndSharedInfo(0, &storage->shared),
+      writableTail(),
+      tailSize,
+      writableTail(),
+      0));
+
+  if (io_buf_alloc_cb) {
+    io_buf_alloc_cb(storage, mallocSize);
+  }
+
+  return result;
 }
 
 void IOBuf::unshareOneSlow() {
