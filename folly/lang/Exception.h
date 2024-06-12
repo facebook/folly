@@ -582,7 +582,16 @@ struct make_exception_ptr_with_fn {
   FOLLY_ERASE std::exception_ptr operator()(
       std::in_place_t, E&& e) const noexcept {
     constexpr auto tag = std::in_place_type<remove_cvref_t<E>>;
+    check_(FOLLY_TYPE_INFO_OF(std::decay_t<E>), FOLLY_TYPE_INFO_OF(e));
     return operator()(tag, static_cast<E&&>(e));
+  }
+
+ private:
+  FOLLY_ALWAYS_INLINE void check_(
+      std::type_info const* s, std::type_info const* d) const noexcept {
+    FOLLY_SAFE_DCHECK(
+        !s || !d || *s == *d,
+        "mismatched static and dynamic types indicates object slicing");
   }
 };
 inline constexpr make_exception_ptr_with_fn make_exception_ptr_with{};

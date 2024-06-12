@@ -63,23 +63,6 @@ struct exception_wrapper::with_exception_from_ex_ {
   using apply = Ex;
 };
 
-template <class Ex, typename... As>
-inline exception_wrapper::exception_wrapper(
-    PrivateCtor, std::in_place_type_t<Ex> tag, As&&... as)
-    : ptr_{make_exception_ptr_with(tag, std::forward<As>(as)...)} {}
-
-namespace exception_wrapper_detail {
-template <class Ex>
-Ex&& dont_slice(Ex&& ex) {
-  assert(
-      (!type_info_of(ex) || !type_info_of<std::decay_t<Ex>>() ||
-       (*type_info_of(ex) == *type_info_of<std::decay_t<Ex>>())) &&
-      "Dynamic and static exception types don't match. Exception would "
-      "be sliced when storing in exception_wrapper.");
-  return std::forward<Ex>(ex);
-}
-} // namespace exception_wrapper_detail
-
 // The libc++ and cpplib implementations do not have a move constructor or a
 // move-assignment operator. To avoid refcount operations, we must improvise.
 // The libstdc++ implementation has a move constructor and a move-assignment
@@ -112,20 +95,14 @@ template <
                        exception_wrapper::IsStdException<Ex_>,
                        exception_wrapper::IsRegularExceptionType<Ex_>>::value)>
 inline exception_wrapper::exception_wrapper(Ex&& ex)
-    : exception_wrapper{
-          PrivateCtor{},
-          std::in_place_type<Ex_>,
-          exception_wrapper_detail::dont_slice(std::forward<Ex>(ex))} {}
+    : ptr_{make_exception_ptr_with(std::in_place, std::forward<Ex>(ex))} {}
 
 template <
     class Ex,
     class Ex_,
     FOLLY_REQUIRES_DEF(exception_wrapper::IsRegularExceptionType<Ex_>::value)>
 inline exception_wrapper::exception_wrapper(std::in_place_t, Ex&& ex)
-    : exception_wrapper{
-          PrivateCtor{},
-          std::in_place_type<Ex_>,
-          exception_wrapper_detail::dont_slice(std::forward<Ex>(ex))} {}
+    : ptr_{make_exception_ptr_with(std::in_place, std::forward<Ex>(ex))} {}
 
 template <
     class Ex,
@@ -133,8 +110,8 @@ template <
     FOLLY_REQUIRES_DEF(exception_wrapper::IsRegularExceptionType<Ex>::value)>
 inline exception_wrapper::exception_wrapper(
     std::in_place_type_t<Ex>, As&&... as)
-    : exception_wrapper{
-          PrivateCtor{}, std::in_place_type<Ex>, std::forward<As>(as)...} {}
+    : ptr_{make_exception_ptr_with(
+          std::in_place_type<Ex>, std::forward<As>(as)...)} {}
 
 inline exception_wrapper& exception_wrapper::operator=(
     exception_wrapper&& that) noexcept {
