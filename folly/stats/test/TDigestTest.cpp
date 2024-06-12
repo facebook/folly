@@ -305,6 +305,38 @@ TEST(TDigest, FloatingPointSortedTest) {
   EXPECT_EQ(std::is_sorted(centroids.begin(), centroids.end()), true);
 }
 
+TEST(TDigest, InlineMerge) {
+  // Whe ingest the same values on two different instance of a TDigest
+  // merging one inline and the other outline, the result should be the same.
+  TDigest digest(100);
+  TDigest digestInlined(100);
+  std::vector<double> values;
+  for (int i = 1; i <= 100; ++i) {
+    values.push_back(i);
+  }
+
+  TDigest::MergeWorkingBuffer workingBuffer;
+
+  digest = digest.merge(sorted_equivalent, values);
+  digestInlined.merge(sorted_equivalent, values, workingBuffer);
+
+  EXPECT_EQ(digest.sum(), digestInlined.sum());
+  EXPECT_EQ(digest.count(), digestInlined.count());
+  EXPECT_EQ(digest.min(), digestInlined.min());
+  EXPECT_EQ(digest.max(), digestInlined.max());
+
+  ASSERT_EQ(digest.getCentroids().size(), digestInlined.getCentroids().size());
+
+  for (size_t i = 0; i < digest.getCentroids().size(); ++i) {
+    EXPECT_EQ(
+        digest.getCentroids()[i].mean(),
+        digestInlined.getCentroids()[i].mean());
+    EXPECT_EQ(
+        digest.getCentroids()[i].weight(),
+        digestInlined.getCentroids()[i].weight());
+  }
+}
+
 class DistributionTest
     : public ::testing::TestWithParam<
           std::tuple<std::pair<bool, size_t>, double, bool>> {};
