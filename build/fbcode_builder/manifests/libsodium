@@ -20,7 +20,7 @@ builder = autoconf
 subdir = libsodium-1.0.17
 
 [download.os=windows]
-url = https://download.libsodium.org/libsodium/releases/old/libsodium-1.0.17-msvc.zip
+url = https://download.libsodium.org/libsodium/releases/old/unsupported/libsodium-1.0.17-msvc.zip
 sha256 = f0f32ad8ebd76eee99bb039f843f583f2babca5288a8c26a7261db9694c11467
 
 [build.os=windows]
