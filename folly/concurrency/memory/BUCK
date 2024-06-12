@@ -41,3 +41,13 @@ cpp_library(
         "glog",
     ],
 )
+
+cpp_library(
+    name = "tl_ref_count",
+    headers = ["TLRefCount.h"],
+    exported_deps = [
+        "//folly:thread_local",
+        "//folly/synchronization:asymmetric_thread_fence",
+        "//folly/synchronization/detail:sleeper",
+    ],
+)

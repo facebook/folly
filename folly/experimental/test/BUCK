@@ -1,4 +1,3 @@
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
@@ -109,28 +108,6 @@ cpp_binary(
         "//folly:scope_guard",
         "//folly:string",
         "//folly/cli:program_options",
-    ],
-)
-
-cpp_benchmark(
-    name = "ref_count_benchmark",
-    srcs = ["RefCountBenchmark.cpp"],
-    headers = [],
-    deps = [
-        "//folly:benchmark",
-        "//folly/experimental:tl_ref_count",
-    ],
-)
-
-cpp_unittest(
-    name = "ref_count_test",
-    srcs = ["RefCountTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/experimental:tl_ref_count",
-        "//folly/portability:gtest",
-        "//folly/synchronization:baton",
-        "//folly/synchronization/test:barrier",
     ],
 )
 

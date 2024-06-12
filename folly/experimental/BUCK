@@ -280,11 +280,11 @@ cpp_library(
 
 cpp_library(
     name = "tl_ref_count",
-    headers = ["TLRefCount.h"],
+    headers = [
+        "TLRefCount.h",
+    ],
     exported_deps = [
-        "//folly:thread_local",
-        "//folly/synchronization:asymmetric_thread_fence",
-        "//folly/synchronization/detail:sleeper",
+        "//folly/concurrency/memory:tl_ref_count",
     ],
 )
 

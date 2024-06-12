@@ -71,3 +71,25 @@ cpp_unittest(
         "//folly/synchronization:baton",
     ],
 )
+
+cpp_benchmark(
+    name = "ref_count_benchmark",
+    srcs = ["RefCountBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/experimental:tl_ref_count",
+    ],
+)
+
+cpp_unittest(
+    name = "ref_count_test",
+    srcs = ["RefCountTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental:tl_ref_count",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/synchronization/test:barrier",
+    ],
+)
