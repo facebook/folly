@@ -153,13 +153,22 @@ class CursorBase {
   }
 
   /**
+   * Get the Cursor position relative to the IOBuf chain's currentBuffer().
+   *
+   * @methodset Advanced
+   */
+  size_t getPositionInCurrentBuffer() const {
+    dcheckIntegrity();
+    return crtPos_ - crtBegin_;
+  }
+
+  /**
    * Get the current Cursor position relative to the head of IOBuf chain.
    *
    * @methodset Capacity
    */
   size_t getCurrentPosition() const {
-    dcheckIntegrity();
-    return (crtPos_ - crtBegin_) + absolutePos_;
+    return getPositionInCurrentBuffer() + absolutePos_;
   }
 
   /**
@@ -171,6 +180,13 @@ class CursorBase {
     dcheckIntegrity();
     return crtPos_;
   }
+
+  /**
+   * Get the buffer in the IOBuf chain this Cursor currently points into.
+   *
+   * @methodset Advanced
+   */
+  const folly::IOBuf* currentBuffer() const { return crtBuf_; }
 
   /**
    * Return the remaining space available in the current IOBuf.
@@ -570,8 +586,7 @@ class CursorBase {
    * @methodset Modifiers
    */
   size_t retreatAtMost(size_t len) {
-    dcheckIntegrity();
-    if (len <= static_cast<size_t>(crtPos_ - crtBegin_)) {
+    if (len <= getPositionInCurrentBuffer()) {
       crtPos_ -= len;
       return len;
     }
@@ -586,8 +601,7 @@ class CursorBase {
    * @throws out_of_range if the cursor doesn't have enough bytes to retreat.
    */
   void retreat(size_t len) {
-    dcheckIntegrity();
-    if (len <= static_cast<size_t>(crtPos_ - crtBegin_)) {
+    if (len <= getPositionInCurrentBuffer()) {
       crtPos_ -= len;
     } else {
       retreatSlow(len);
