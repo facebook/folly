@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/QuotientMultiSet.h>
+#include <folly/compression/QuotientMultiSet.h>
 
 #include <random>
 
