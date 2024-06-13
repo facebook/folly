@@ -375,9 +375,13 @@ size_t DwarfImpl::forEachChild(
     const CompilationUnit& cu,
     const Die& die,
     folly::FunctionRef<bool(const Die& die)> f) const {
-  size_t nextDieOffset =
-      forEachAttribute(cu, die, [&](const Attribute&) { return true; });
+  size_t nextDieOffset = die.nextOffset;
+  if (!nextDieOffset) {
+    nextDieOffset =
+        forEachAttribute(cu, die, [&](const Attribute&) { return true; });
+  }
   if (!die.abbr.hasChildren) {
+    die.nextSiblingOffset = nextDieOffset;
     return nextDieOffset;
   }
 
@@ -387,15 +391,20 @@ size_t DwarfImpl::forEachChild(
       return childDie.offset;
     }
 
-    // NOTE: Don't run `f` over grandchildren, just skip over them.
-    size_t siblingOffset =
-        forEachChild(cu, childDie, [](const Die&) { return true; });
+    // Use childDie.nextSiblingOffset to skip grandchildren if known
+    size_t siblingOffset = childDie.nextSiblingOffset;
+    if (!siblingOffset) {
+      // NOTE: Don't run `f` over grandchildren, just skip over them.
+      siblingOffset =
+          forEachChild(cu, childDie, [](const Die&) { return true; });
+    }
     childDie = getDieAtOffset(cu, siblingOffset);
   }
 
   // childDie is now a dummy die whose offset is to the code 0 marking the
   // end of the children. Need to add one to get the offset of the next die.
-  return childDie.offset + 1;
+  die.nextSiblingOffset = childDie.offset + 1;
+  return die.nextSiblingOffset;;
 }
 
 bool DwarfImpl::isAddrInRangeList(
