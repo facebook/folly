@@ -55,7 +55,7 @@ using container_detect_reserve =
  */
 struct grow_capacity_by_fn {
   template <typename C>
-  void operator()(C& c, typename C::size_type const n) const {
+  constexpr void operator()(C& c, typename C::size_type const n) const {
     const size_t sz = c.size();
 
     if (FOLLY_UNLIKELY(c.max_size() - sz < n)) {
@@ -76,8 +76,7 @@ struct grow_capacity_by_fn {
       static_assert(folly::always_false<C>, "unexpected container type");
     }
 
-    static constexpr size_t kGrowthFactor = 2;
-    auto const ra = sz * kGrowthFactor;
+    auto const ra = sz * 2;
     auto const rb = sz + n;
     c.reserve(rb < ra ? ra : rb);
   }
@@ -94,7 +93,7 @@ inline constexpr grow_capacity_by_fn grow_capacity_by{};
  */
 struct reserve_if_available_fn {
   template <typename C>
-  auto operator()(C& c, typename C::size_type const n) const
+  constexpr auto operator()(C& c, typename C::size_type const n) const
       noexcept(!folly::is_detected_v<detail::container_detect_reserve, C&>) {
     constexpr auto match =
         folly::is_detected_v<detail::container_detect_reserve, C&>;
