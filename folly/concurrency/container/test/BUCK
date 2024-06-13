@@ -26,7 +26,7 @@ cpp_unittest(
     srcs = ["LockFreeRingBufferTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:lock_free_ring_buffer",
+        "//folly/concurrency/container:lock_free_ring_buffer",
         "//folly/portability:gtest",
         "//folly/test:deterministic_schedule",
     ],

@@ -17,7 +17,7 @@
 #include <iostream>
 #include <thread>
 
-#include <folly/experimental/LockFreeRingBuffer.h>
+#include <folly/concurrency/container/LockFreeRingBuffer.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
 
