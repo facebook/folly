@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@shim//build_defs:export_files.bzl", "export_file")
 load("@shim//third-party:third_party.bzl", "third_party_library")
 
 oncall("open_source")
@@ -19,4 +20,8 @@ alias(
     name = "gmock",
     actual = ":gtest",
     visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "gtest_main.cpp",
 )
