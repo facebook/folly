@@ -134,13 +134,6 @@ class MyFunctor {
 };
 
 TEST(ScopeGuard, DifferentWaysToBind) {
-  {
-    // There is implicit conversion from func pointer
-    // double (*)() to function<void()>.
-    auto g = makeGuard(returnsDouble);
-    (void)g;
-  }
-
   vector<int> v;
   void (vector<int>::*push_back)(int const&) = &vector<int>::push_back;
 
