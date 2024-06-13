@@ -34,7 +34,7 @@ cpp_library(
     headers = ["PrimaryPtr.h"],
     exported_deps = [
         "//folly:function",
-        "//folly/experimental:cleanup",
+        "//folly/futures:cleanup",
         "//folly/futures:core",
     ],
     exported_external_deps = [

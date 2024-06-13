@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/Cleanup.h>
+#include <folly/futures/Cleanup.h>
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ManualExecutor.h>

@@ -437,7 +437,7 @@ cpp_unittest(
     deps = [
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:manual_executor",
-        "//folly/experimental:cleanup",
+        "//folly/futures:cleanup",
         "//folly/portability:gtest",
     ],
 )
