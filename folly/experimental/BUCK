@@ -123,15 +123,11 @@ cpp_library(
 
 cpp_library(
     name = "instructions",
-    headers = ["Instructions.h"],
-    exported_deps = [
-        "//folly:cpu_id",
-        "//folly:portability",
-        "//folly/lang:assume",
-        "//folly/portability:builtins",
+    headers = [
+        "Instructions.h",
     ],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "//folly/compression:instructions",
     ],
 )
 
@@ -198,18 +194,11 @@ cpp_library(
 
 cpp_library(
     name = "select64",
-    srcs = ["Select64.cpp"],
-    headers = ["Select64.h"],
-    deps = [
-        "//folly:constexpr_math",
-        "//folly:utility",
+    headers = [
+        "Select64.h",
     ],
     exported_deps = [
-        ":instructions",
-        "//folly:portability",
-    ],
-    exported_external_deps = [
-        "glog",
+        "//folly/compression:select64",
     ],
 )
 

@@ -87,19 +87,6 @@ cpp_binary(
     ],
 )
 
-cpp_unittest(
-    name = "instructions_test",
-    srcs = ["InstructionsTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/experimental:instructions",
-        "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
-    ],
-)
-
 cpp_binary(
     name = "nested_command_line_app_example",
     srcs = ["NestedCommandLineAppExample.cpp"],
@@ -108,16 +95,6 @@ cpp_binary(
         "//folly:scope_guard",
         "//folly:string",
         "//folly/cli:program_options",
-    ],
-)
-
-cpp_unittest(
-    name = "select64_test",
-    srcs = ["Select64Test.cpp"],
-    deps = [
-        "//folly/experimental:instructions",
-        "//folly/experimental:select64",
-        "//folly/portability:gtest",
     ],
 )
 
