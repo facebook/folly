@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/AutoTimer.h>
+#include <folly/logging/AutoTimer.h>
 
 #include <folly/portability/GTest.h>
 
