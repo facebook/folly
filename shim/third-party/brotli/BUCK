@@ -10,13 +10,13 @@ load("@shim//third-party:third_party.bzl", "third_party_library")
 oncall("open_source")
 
 third_party_library(
-    name = "brotlidec",
+    name = "brotli_decode",
     homebrew_package_name = "brotli",
     pkgconfig_name = "libbrotlidec",
 )
 
 third_party_library(
-    name = "brotlienc",
+    name = "brotli_encode",
     homebrew_package_name = "brotli",
     pkgconfig_name = "libbrotlienc",
 )
