@@ -13,7 +13,6 @@ oncall("open_source")
 boost_libs([
     "container",
     "range",
-    "thread",
     "algorithm",
     "regex",
     "program_options",
@@ -30,5 +29,10 @@ boost_libs([
 # Empty target to satisfy some build rules:
 third_party_library(
     name = "boost_preprocessor",
+    homebrew_package_name = "boost",
+)
+
+third_party_library(
+    name = "boost_thread",
     homebrew_package_name = "boost",
 )

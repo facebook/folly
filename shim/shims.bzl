@@ -198,11 +198,14 @@ def cpp_unittest(
         extract_helper_lib = None,
         compiler_specific_flags = None,
         default_strip_mode = None,
+        srcs = [],
         **kwargs):
     _unused = (supports_static_listing, allocator, owner, tags, emails, extract_helper_lib, compiler_specific_flags, default_strip_mode)  # @unused
+    srcs = srcs + ["shim//third-party/googletest:gtest_main.cpp"]
     prelude.cxx_test(
         deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
         visibility = visibility,
+        srcs = srcs,
         **kwargs
     )
 
