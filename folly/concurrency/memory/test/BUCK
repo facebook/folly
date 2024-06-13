@@ -64,9 +64,9 @@ cpp_unittest(
     srcs = ["PrimaryPtrTest.cpp"],
     headers = [],
     deps = [
+        "//folly/concurrency/memory:primary_ptr",
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:manual_executor",
-        "//folly/experimental:primary_ptr",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],
