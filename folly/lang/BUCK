@@ -265,8 +265,6 @@ cpp_library(
     srcs = ["UncaughtExceptions.cpp"],
     headers = ["UncaughtExceptions.h"],
     exported_deps = [
-        "//folly:cpp_attributes",
-        "//folly:likely",
-        "//folly:portability",
+        ":exception",
     ],
 )

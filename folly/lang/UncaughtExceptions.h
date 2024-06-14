@@ -16,38 +16,4 @@
 
 #pragma once
 
-#include <cassert>
-#include <exception>
-
-#include <folly/CppAttributes.h>
-#include <folly/Likely.h>
-#include <folly/Portability.h>
-
-namespace folly {
-
-namespace detail {
-
-unsigned int* uncaught_exceptions_ptr() noexcept;
-
-} // namespace detail
-
-//  uncaught_exceptions
-//
-//  An accelerated version of std::uncaught_exceptions.
-//
-//  mimic: std::uncaught_exceptions, c++17
-[[FOLLY_ATTR_GNU_PURE]] FOLLY_EXPORT FOLLY_ALWAYS_INLINE int
-uncaught_exceptions() noexcept {
-#if defined(__APPLE__)
-  return std::uncaught_exceptions();
-#elif defined(_CPPLIB_VER)
-  return std::uncaught_exceptions();
-#elif defined(__has_feature) && !FOLLY_HAS_FEATURE(cxx_thread_local)
-  return std::uncaught_exceptions();
-#else
-  thread_local unsigned int* ct;
-  return FOLLY_LIKELY(!!ct) ? *ct : *(ct = detail::uncaught_exceptions_ptr());
-#endif
-}
-
-} // namespace folly
+#include <folly/lang/Exception.h>

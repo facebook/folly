@@ -21,6 +21,14 @@
 #include <folly/Benchmark.h>
 #include <folly/lang/Keep.h>
 
+extern "C" FOLLY_KEEP int check_std_uncaught_exceptions() {
+  return std::uncaught_exceptions();
+}
+
+extern "C" FOLLY_KEEP int check_folly_uncaught_exceptions() {
+  return folly::uncaught_exceptions();
+}
+
 namespace {
 
 template <int I>
@@ -66,6 +74,26 @@ extern "C" FOLLY_KEEP A0* //
 check_folly_exception_ptr_get_object_hint_vmi( //
     std::exception_ptr const& ptr) {
   return folly::exception_ptr_get_object_hint<A0>(ptr, folly::tag<B1, C, B2>);
+}
+
+BENCHMARK(std_uncaught_exceptions, iters) {
+  int s = 0;
+  while (iters--) {
+    int u = std::uncaught_exceptions();
+    folly::compiler_must_not_predict(u);
+    s ^= u;
+  }
+  folly::compiler_must_not_elide(s);
+}
+
+BENCHMARK(folly_uncaught_exceptions, iters) {
+  int s = 0;
+  while (iters--) {
+    int u = folly::uncaught_exceptions();
+    folly::compiler_must_not_predict(u);
+    s ^= u;
+  }
+  folly::compiler_must_not_elide(s);
 }
 
 BENCHMARK(get_object_fail, iters) {

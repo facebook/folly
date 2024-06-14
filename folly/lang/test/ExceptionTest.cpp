@@ -208,6 +208,26 @@ TEST_F(ExceptionTest, rethrow_current_exception) {
       std::runtime_error);
 }
 
+TEST_F(ExceptionTest, uncaught_exception) {
+  struct dtor {
+    unsigned expected;
+    explicit dtor(unsigned e) noexcept : expected{e} {}
+    ~dtor() {
+      EXPECT_EQ(expected, std::uncaught_exceptions());
+      EXPECT_EQ(expected, folly::uncaught_exceptions());
+    }
+  };
+  try {
+    dtor obj{0};
+  } catch (...) {
+  }
+  try {
+    dtor obj{1};
+    throw std::exception();
+  } catch (...) {
+  }
+}
+
 TEST_F(ExceptionTest, exception_ptr_empty) {
   auto ptr = std::exception_ptr();
   EXPECT_EQ(nullptr, folly::exception_ptr_get_type(ptr));

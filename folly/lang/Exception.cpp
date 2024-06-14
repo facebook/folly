@@ -22,6 +22,41 @@
 
 #include <folly/lang/New.h>
 
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+
+namespace __cxxabiv1 {
+
+struct __cxa_eh_globals {
+  void* caught_exceptions_;
+  unsigned int uncaught_exceptions_;
+};
+
+#if defined(__GLIBCXX__)
+extern "C" [[gnu::const]] __cxa_eh_globals* __cxa_get_globals() noexcept;
+#else
+extern "C" __cxa_eh_globals* __cxa_get_globals();
+#endif
+
+} // namespace __cxxabiv1
+
+#endif
+
+namespace folly {
+
+namespace detail {
+
+unsigned int* uncaught_exceptions_ptr() noexcept {
+  assert(kIsGlibcxx || kIsLibcpp);
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+  return &__cxxabiv1::__cxa_get_globals()->uncaught_exceptions_;
+#endif
+  return nullptr;
+}
+
+} // namespace detail
+
+} // namespace folly
+
 //  Accesses std::type_info and std::exception_ptr internals. Since these vary
 //  by platform and library, import or copy the structure and function
 //  signatures from each platform and library.

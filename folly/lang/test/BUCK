@@ -220,27 +220,3 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
-
-cpp_benchmark(
-    name = "uncaught_exceptions_bench",
-    srcs = ["UncaughtExceptionsBench.cpp"],
-    deps = [
-        "//folly:benchmark",
-        "//folly/lang:hint",
-        "//folly/lang:keep",
-        "//folly/lang:uncaught_exceptions",
-    ],
-)
-
-cpp_unittest(
-    name = "uncaught_exceptions_test",
-    srcs = ["UncaughtExceptionsTest.cpp"],
-    headers = [],
-    supports_static_listing = False,
-    deps = [
-        "//folly:conv",
-        "//folly/functional:invoke",
-        "//folly/lang:uncaught_exceptions",
-        "//folly/portability:gtest",
-    ],
-)
