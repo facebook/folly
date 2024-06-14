@@ -21,6 +21,7 @@ cpp_library(
         "//folly:conv",
         "//folly/hash:spooky_hash_v2",
         "//folly/lang:align",
+        "//folly/lang:hint",
         "//folly/memory:sanitize_address",
         "//folly/portability:iovec",
     ],
