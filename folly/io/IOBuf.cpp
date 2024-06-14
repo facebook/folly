@@ -67,29 +67,19 @@ using std::unique_ptr;
 
 namespace {
 
-enum : uint16_t {
-  kHeapMagic = 0xa5a5,
-  // This memory segment contains an IOBuf that is still in use
-  kIOBufInUse = 0x01,
-  // This memory segment contains buffer data that is still in use
-  kDataInUse = 0x02,
-  // This memory segment contains a SharedInfo that is still in use
-  kSharedInfoInUse = 0x04,
-};
+constexpr uint16_t kHeapMagic = 0xa5a5;
 
-enum : std::size_t {
-  // When create() is called for buffers less than kDefaultCombinedBufSize,
-  // we allocate a single combined memory segment for the IOBuf and the data
-  // together.  See the comments for createCombined()/createSeparate() for more
-  // details.
-  //
-  // (The size of 1k is largely just a guess here.  We could could probably do
-  // benchmarks of real applications to see if adjusting this number makes a
-  // difference.  Callers that know their exact use case can also explicitly
-  // call createCombined() or createSeparate().)
-  kDefaultCombinedBufSize = 1024,
-  kMaxIOBufSize = std::numeric_limits<size_t>::max() >> 1,
-};
+// When create() is called for buffers less than kDefaultCombinedBufSize,
+// we allocate a single combined memory segment for the IOBuf and the data
+// together.  See the comments for createCombined()/createSeparate() for more
+// details.
+//
+// (The size of 1k is largely just a guess here.  We could could probably do
+// benchmarks of real applications to see if adjusting this number makes a
+// difference.  Callers that know their exact use case can also explicitly
+// call createCombined() or createSeparate().)
+constexpr size_t kDefaultCombinedBufSize = 1024;
+constexpr size_t kMaxIOBufSize = std::numeric_limits<size_t>::max() >> 1;
 
 // Helper function for IOBuf::takeOwnership()
 // The user's free function is not allowed to throw.
@@ -117,9 +107,9 @@ namespace folly {
 // use free for size >= 4GB
 // since we can store only 32 bits in the size var
 struct IOBuf::HeapPrefix {
-  HeapPrefix(uint16_t flg, size_t sz)
+  HeapPrefix(uint8_t rc, size_t sz)
       : magic(kHeapMagic),
-        flags(flg),
+        refcount(rc),
         size((sz == ((size_t)(uint32_t)sz)) ? static_cast<uint32_t>(sz) : 0) {}
   ~HeapPrefix() {
     // Reset magic to 0 on destruction.  This is solely for debugging purposes
@@ -129,7 +119,7 @@ struct IOBuf::HeapPrefix {
   }
 
   uint16_t magic;
-  std::atomic<uint16_t> flags;
+  std::atomic<uint8_t> refcount; // 1 for IOBuf and 1 for SharedInfo (+ data).
   uint32_t size;
 };
 
@@ -155,19 +145,15 @@ struct alignas(folly::max_align_v) IOBuf::HeapFullStorage {
   SharedInfo shared;
 };
 
-IOBuf::SharedInfo::SharedInfo()
-    : freeFn(nullptr), userData(nullptr), useHeapFullStorage(false) {
-  // Use relaxed memory ordering here.  Since we are creating a new SharedInfo,
-  // no other threads should be referring to it yet.
-  refcount.store(1, std::memory_order_relaxed);
-}
+// Only IOBuf is in use.
+constexpr uint8_t kHeapStorageRefcount = 1;
+// Both IOBuf and SharedInfo (possibly with attached data) are in use.
+constexpr uint8_t kHeapFullStorageRefcount = 2;
+
+IOBuf::SharedInfo::SharedInfo() = default;
 
 IOBuf::SharedInfo::SharedInfo(FreeFunction fn, void* arg, bool hfs)
-    : freeFn(fn), userData(arg), useHeapFullStorage(hfs) {
-  // Use relaxed memory ordering here.  Since we are creating a new SharedInfo,
-  // no other threads should be referring to it yet.
-  refcount.store(1, std::memory_order_relaxed);
-}
+    : freeFn(fn), userData(arg), useHeapFullStorage(hfs) {}
 
 void IOBuf::SharedInfo::invokeAndDeleteEachObserver(
     SharedInfoObserverEntryBase* observerListHead, ObserverCb cb) noexcept {
@@ -184,13 +170,23 @@ void IOBuf::SharedInfo::invokeAndDeleteEachObserver(
   }
 }
 
-void IOBuf::SharedInfo::releaseStorage(SharedInfo* info) noexcept {
-  if (info->useHeapFullStorage) {
-    auto storageAddr =
-        reinterpret_cast<uint8_t*>(info) - offsetof(HeapFullStorage, shared);
-    auto storage = reinterpret_cast<HeapFullStorage*>(storageAddr);
-    info->~SharedInfo();
-    IOBuf::releaseStorage(&storage->hs, kSharedInfoInUse);
+void IOBuf::SharedInfo::releaseStorage(
+    IOBuf* parent, SharedInfo* info) noexcept {
+  DCHECK(info->useHeapFullStorage);
+  auto storageAddr =
+      reinterpret_cast<uint8_t*>(info) - offsetof(HeapFullStorage, shared);
+  auto storage = reinterpret_cast<HeapFullStorage*>(storageAddr);
+  info->~SharedInfo();
+  if (&storage->hs.buf == parent) {
+    // We were called through the same IOBuf that owns the storage, so there
+    // cannot be a concurrent refcount decrement, and we can avoid an expensive
+    // atomic RMW operation.
+    DCHECK_EQ(
+        storage->hs.prefix.refcount.load(std::memory_order_relaxed),
+        kHeapFullStorageRefcount);
+    storage->hs.prefix.refcount.store(1, std::memory_order_relaxed);
+  } else {
+    IOBuf::decrementStorageRefcount(&storage->hs);
   }
 }
 
@@ -201,7 +197,7 @@ void* IOBuf::operator new(size_t size) {
   size_t fullSize = offsetof(HeapStorage, buf) + size;
   auto storage = static_cast<HeapStorage*>(checkedMalloc(fullSize));
 
-  new (&storage->prefix) HeapPrefix(kIOBufInUse, fullSize);
+  new (&storage->prefix) HeapPrefix(kHeapStorageRefcount, fullSize);
 
   if (io_buf_alloc_cb) {
     io_buf_alloc_cb(storage, fullSize);
@@ -217,7 +213,7 @@ void* IOBuf::operator new(size_t /* size */, void* ptr) {
 void IOBuf::operator delete(void* ptr) {
   auto storageAddr = static_cast<uint8_t*>(ptr) - offsetof(HeapStorage, buf);
   auto storage = reinterpret_cast<HeapStorage*>(storageAddr);
-  releaseStorage(storage, kIOBufInUse);
+  decrementStorageRefcount(storage);
 }
 
 void IOBuf::operator delete(void* /* ptr */, void* /* placement */) {
@@ -226,54 +222,27 @@ void IOBuf::operator delete(void* /* ptr */, void* /* placement */) {
   // constructor.
 }
 
-void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept {
+void IOBuf::decrementStorageRefcount(HeapStorage* storage) noexcept {
   CHECK_EQ(storage->prefix.magic, static_cast<uint16_t>(kHeapMagic));
 
-  // This function is effectively used as a memory barrier.  Logically, we can
-  // use relaxed memory order here.  If we are unlucky and happen to get
-  // out-of-date data the compare_exchange_weak() call below will catch it and
-  // load new data with memory_order_acq_rel.  However, changing this to be
-  // std::memory_order_relaxed will cause tsan to find problems with some
-  // caller code.
-  auto flags = storage->prefix.flags.load(std::memory_order_acquire);
-  DCHECK_EQ((flags & freeFlags), freeFlags);
-
-  while (true) {
-    auto newFlags = uint16_t(flags & ~freeFlags);
-    if (newFlags == 0) {
-      // save the size
-      size_t size = storage->prefix.size;
-      // The storage space is now unused.  Free it.
-      storage->prefix.HeapPrefix::~HeapPrefix();
-      if (FOLLY_LIKELY(size)) {
-        if (io_buf_free_cb) {
-          io_buf_free_cb(storage, size);
-        }
-        sizedFree(storage, size);
-      } else {
-        free(storage);
-      }
-      return;
-    }
-
-    // This storage segment still contains portions that are in use.
-    // Just clear the flags specified in freeFlags for now.
-    auto ret = storage->prefix.flags.compare_exchange_weak(
-        flags, newFlags, std::memory_order_acq_rel);
-    if (ret) {
-      // We successfully updated the flags.
-      return;
-    }
-
-    // We failed to update the flags.  Some other thread probably updated them
-    // and cleared some of the other bits.  Continue around the loop to see if
-    // we are the last user now, or if we need to try updating the flags again.
+  auto rc = storage->prefix.refcount.load(std::memory_order_acquire);
+  DCHECK_LE(rc, kHeapFullStorageRefcount);
+  if (rc > 1 &&
+      storage->prefix.refcount.fetch_sub(1, std::memory_order_acq_rel) > 1) {
+    return; // Storage still in use.
   }
-}
 
-void IOBuf::freeInternalBuf(void* /* buf */, void* userData) noexcept {
-  auto storage = static_cast<HeapStorage*>(userData);
-  releaseStorage(storage, kDataInUse);
+  // The storage space is now unused, we can free it.
+  size_t size = storage->prefix.size;
+  storage->prefix.HeapPrefix::~HeapPrefix();
+  if (FOLLY_LIKELY(size)) {
+    if (io_buf_free_cb) {
+      io_buf_free_cb(storage, size);
+    }
+    sizedFree(storage, size);
+  } else {
+    free(storage);
+  }
 }
 
 IOBuf::IOBuf(CreateOp, std::size_t capacity)
@@ -372,8 +341,11 @@ unique_ptr<IOBuf> IOBuf::createCombined(std::size_t capacity) {
   size_t mallocSize = goodMallocSize(requiredStorage);
   auto storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
 
-  new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kDataInUse, mallocSize);
-  new (&storage->shared) SharedInfo(freeInternalBuf, storage);
+  new (&storage->hs.prefix) HeapPrefix(kHeapFullStorageRefcount, mallocSize);
+  // No free function, data lifetime is tied to SharedInfo, whole storage will
+  // be deallocated when both IOBuf and SharedInfo are gone.
+  new (&storage->shared)
+      SharedInfo([](void*, void*) {}, nullptr, true /* useHeapFullStorage */);
 
   if (io_buf_alloc_cb) {
     io_buf_alloc_cb(storage, mallocSize);
@@ -516,10 +488,9 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
   size_t mallocSize = sizeof(HeapFullStorage);
   storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
 
-  new (&storage->hs.prefix)
-      HeapPrefix(kIOBufInUse | kSharedInfoInUse, mallocSize);
+  new (&storage->hs.prefix) HeapPrefix(kHeapFullStorageRefcount, mallocSize);
   new (&storage->shared)
-      SharedInfo(freeFn, userData, true /*useHeapFullStorage*/);
+      SharedInfo(freeFn, userData, true /* useHeapFullStorage */);
 
   auto result = unique_ptr<IOBuf>(new (&storage->hs.buf) IOBuf(
       InternalConstructor(),
@@ -873,8 +844,7 @@ std::unique_ptr<IOBuf> IOBuf::maybeSplitTail() {
   auto* storage = static_cast<SplitTailStorage*>(checkedMalloc(mallocSize));
 
   void* userData = new (&storage->parent) IOBuf(origBuf->cloneOneAsValue());
-  new (&storage->hs.prefix)
-      HeapPrefix(kIOBufInUse | kSharedInfoInUse, mallocSize);
+  new (&storage->hs.prefix) HeapPrefix(kHeapFullStorageRefcount, mallocSize);
   new (&storage->shared)
       SharedInfo(freeFn, userData, true /* useHeapFullStorage */);
 
@@ -1104,7 +1074,7 @@ void IOBuf::decrementRefcount() noexcept {
     delete info;
   } else {
     if (useHeapFullStorage) {
-      SharedInfo::releaseStorage(info);
+      SharedInfo::releaseStorage(this, info);
     }
   }
 }
@@ -1217,7 +1187,7 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
     delete sharedInfo();
   } else {
     if (useHeapFullStorage) {
-      SharedInfo::releaseStorage(sharedInfo());
+      SharedInfo::releaseStorage(this, sharedInfo());
     }
   }
 
@@ -1371,7 +1341,7 @@ fbstring IOBuf::moveToFbString() {
     delete sharedInfo();
   } else {
     if (useHeapFullStorage) {
-      SharedInfo::releaseStorage(sharedInfo());
+      SharedInfo::releaseStorage(this, sharedInfo());
     }
   }
 

@@ -2046,7 +2046,7 @@ class IOBuf {
     SharedInfo();
     SharedInfo(FreeFunction fn, void* arg, bool hfs = false);
 
-    static void releaseStorage(SharedInfo* info) noexcept;
+    static void releaseStorage(IOBuf* parent, SharedInfo* info) noexcept;
 
     using ObserverCb = folly::FunctionRef<void(SharedInfoObserverEntryBase&)>;
     static void invokeAndDeleteEachObserver(
@@ -2054,10 +2054,10 @@ class IOBuf {
 
     // A pointer to a function to call to free the buffer when the refcount
     // hits 0.  If this is null, free() will be used instead.
-    FreeFunction freeFn;
-    void* userData;
+    FreeFunction freeFn{nullptr};
+    void* userData{nullptr};
     SharedInfoObserverEntryBase* observerListHead{nullptr};
-    std::atomic<uint32_t> refcount;
+    std::atomic<uint32_t> refcount{1};
     bool externallyShared{false};
     bool useHeapFullStorage{false};
     MicroSpinLock observerListLock{0};
@@ -2110,8 +2110,7 @@ class IOBuf {
       uint8_t** bufReturn,
       SharedInfo** infoReturn,
       std::size_t* capacityReturn);
-  static void releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept;
-  static void freeInternalBuf(void* buf, void* userData) noexcept;
+  static void decrementStorageRefcount(HeapStorage* storage) noexcept;
 
   /*
    * Member variables
