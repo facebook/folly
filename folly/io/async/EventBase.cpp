@@ -902,16 +902,26 @@ void EventBase::runImmediatelyOrRunInEventBaseThread(Func fn) noexcept {
 }
 
 void EventBase::runLoopCallbacks(LoopCallbackList& currentCallbacks) {
-  while (!currentCallbacks.empty()) {
+  if (currentCallbacks.empty()) {
+    return;
+  }
+
+  RequestContextSaverScopeGuard ctxGuard;
+  do {
     LoopCallback* callback = &currentCallbacks.front();
     currentCallbacks.pop_front();
-    folly::RequestContextScopeGuard rctx(std::move(callback->context_));
+    // Use setContext() under a RequestContextSaverScopeGuard instead of a
+    // per-callback RequestContextScopeGuard to avoid switching context back and
+    // forth when consecutive callbacks have the same context. This runs the
+    // pop_front() in the previous callback's context, but that is non-blocking
+    // and doesn't run application logic.
+    RequestContext::setContext(std::move(callback->context_));
     ExecutionObserverScopeGuard guard(
         &executionObserverList_,
         callback,
         folly::ExecutionObserver::CallbackType::Loop);
     callback->runLoopCallback();
-  }
+  } while (!currentCallbacks.empty());
 }
 
 bool EventBase::runLoopCallbacks() {
