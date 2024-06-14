@@ -50,6 +50,7 @@ cpp_binary(
         "//folly:format",
         "//folly:range",
         "//folly/io:iobuf",
+        "//folly/lang:keep",
     ],
 )
 

@@ -1602,19 +1602,32 @@ class Appender : public Writable<Appender> {
 class QueueAppender : public Writable<QueueAppender> {
  public:
   /**
-   * Create an Appender that writes to a IOBufQueue.  When we allocate
-   * space in the queue, we grow no more than growth bytes at once
-   * (unless you call ensure() with a bigger value yourself).
+   * Create an Appender that writes to a IOBufQueue.  When we allocate space in
+   * the queue, each new buffer will be sized between minGrowth and maxGrowth,
+   * with an exponential schedule (unless you call ensure() with a bigger value
+   * yourself).
+   */
+  QueueAppender(IOBufQueue* queue, std::size_t minGrowth, std::size_t maxGrowth)
+      : queueCache_(queue) {
+    resetGrowth(minGrowth, maxGrowth);
+  }
+
+  /**
+   * Convenience constructor to use constant buffer growth.
    */
   QueueAppender(IOBufQueue* queue, std::size_t growth)
-      : queueCache_(queue), growth_(growth) {}
+      : QueueAppender(queue, growth, growth) {}
 
   /**
    * Resets this, as if constructed anew.
    */
-  void reset(IOBufQueue* queue, std::size_t growth) {
+  void reset(IOBufQueue* queue, std::size_t minGrowth, std::size_t maxGrowth) {
     queueCache_.reset(queue);
-    growth_ = growth;
+    resetGrowth(minGrowth, maxGrowth);
+  }
+
+  void reset(IOBufQueue* queue, std::size_t growth) {
+    reset(queue, growth, growth);
   }
 
   /**
@@ -1643,13 +1656,13 @@ class QueueAppender : public Writable<QueueAppender> {
    *
    * @methodset Modifiers
    *
-   * Can go above growth.
+   * Can go above maxGrowth.
    *
    * May throw if there isn't enough room.
    */
   void ensure(size_t n) {
     if (length() < n) {
-      ensureSlow(n);
+      ensureSlowNoinline(n);
     }
   }
 
@@ -1663,12 +1676,11 @@ class QueueAppender : public Writable<QueueAppender> {
       T value, size_t n = sizeof(T)) {
     // We can't fail.
     assert(n <= sizeof(T));
-    if (length() >= sizeof(T)) {
-      storeUnaligned(queueCache_.writableData(), value);
-      queueCache_.appendUnsafe(n);
-    } else {
-      writeSlow<T>(value, n);
+    if (FOLLY_UNLIKELY(length() < sizeof(T))) {
+      ensureSlowNoinline(sizeof(T));
     }
+    storeUnaligned(queueCache_.writableData(), value);
+    queueCache_.appendUnsafe(n);
   }
 
   using Writable<QueueAppender>::pushAtMost;
@@ -1683,12 +1695,12 @@ class QueueAppender : public Writable<QueueAppender> {
     size_t remaining = len - copyLength;
     // Allocate more buffers as necessary
     while (remaining != 0) {
-      auto p = queueCache_.queue()->preallocate(
-          std::min(remaining, growth_), growth_, remaining);
-      memcpy(p.first, buf, p.second);
-      queueCache_.queue()->postallocate(p.second);
-      buf += p.second;
-      remaining -= p.second;
+      ensureSlow(growth_);
+      auto avail = std::min(length(), remaining);
+      memcpy(writableData(), buf, avail);
+      queueCache_.appendUnsafe(avail);
+      buf += avail;
+      remaining -= avail;
     }
     return len;
   }
@@ -1743,21 +1755,26 @@ class QueueAppender : public Writable<QueueAppender> {
  private:
   folly::IOBufQueue::WritableRangeCache queueCache_{nullptr};
   size_t growth_{0};
+  size_t maxGrowth_{0};
 
-  FOLLY_NOINLINE void ensureSlow(size_t n) {
-    queueCache_.queue()->preallocate(n, growth_);
-    queueCache_.fillCache();
+  void resetGrowth(std::size_t minGrowth, std::size_t maxGrowth) {
+    CHECK_LE(growth_, maxGrowth_);
+    growth_ = minGrowth;
+    maxGrowth_ = maxGrowth;
   }
 
-  template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value>::type FOLLY_NOINLINE
-  writeSlow(T value, size_t n = sizeof(T)) {
-    assert(n <= sizeof(T));
-    queueCache_.queue()->preallocate(sizeof(T), growth_);
-    queueCache_.fillCache();
+  FOLLY_NOINLINE void ensureSlowNoinline(size_t n) { ensureSlow(n); }
 
-    storeUnaligned(queueCache_.writableData(), value);
-    queueCache_.appendUnsafe(n);
+  void ensureSlow(size_t n) {
+    // Reinstall our cache in case something else invalidated it.
+    queueCache_.fillCache();
+    // Recheck with updated cache, to avoid unnecessary allocation.
+    if (FOLLY_UNLIKELY(length() >= n)) {
+      return;
+    }
+    auto minBufSize = std::exchange(growth_, std::min(growth_ * 2, maxGrowth_));
+    queueCache_.queue()->append(IOBuf::create(std::max(n, minBufSize)));
+    DCHECK_GE(length(), n);
   }
 };
 
