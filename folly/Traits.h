@@ -332,7 +332,7 @@ struct like {
  *
  *  void_t
  *
- *  A type alias for `void`. `void_t` is useful for controling class-template
+ *  A type alias for `void`. `void_t` is useful for controlling class-template
  *  and function-template partial specialization.
  *
  *  Example:
