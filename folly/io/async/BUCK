@@ -174,9 +174,6 @@ cpp_library(
         "//folly/net:tcpinfo_dispatcher",
         "//folly/portability:sockets",
     ],
-    external_deps = [
-        ("boost", None, "boost_preprocessor"),
-    ],
 )
 
 cpp_library(
