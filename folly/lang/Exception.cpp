@@ -445,6 +445,13 @@ bool exception_ptr_access_rt_v_() noexcept {
   return true;
 }
 
+template <typename F>
+static decltype(auto) cxxabi_with_cxa_exception(void* object, F f) {
+  using cxa_exception = abi::__cxa_exception;
+  auto exception = object ? static_cast<cxa_exception*>(object) - 1 : nullptr;
+  return f(exception);
+}
+
 std::type_info const* exception_ptr_get_type_(
     std::exception_ptr const& ptr) noexcept {
   if (!ptr) {
