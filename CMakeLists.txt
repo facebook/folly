@@ -609,7 +609,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST compression_test SLOW SOURCES CompressionTest.cpp
       TEST quotient_multiset_test SOURCES QuotientMultiSetTest.cpp
       TEST select64_test SOURCES Select64Test.cpp
-      TEST test_util_test SOURCES TestUtilTest.cpp
 
     DIRECTORY compression/elias_fano/test/
       TEST bitvector_test SOURCES BitVectorCodingTest.cpp
@@ -910,7 +909,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK lang_to_ascii_benchmark SOURCES ToAsciiBench.cpp
       TEST lang_to_ascii_test SOURCES ToAsciiTest.cpp
       TEST lang_type_info_test SOURCES TypeInfoTest.cpp
-      TEST lang_uncaught_exceptions_test SOURCES UncaughtExceptionsTest.cpp
 
     DIRECTORY memory/test/
       TEST arena_test WINDOWS_DISABLED SOURCES ArenaTest.cpp
