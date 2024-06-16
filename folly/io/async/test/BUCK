@@ -486,6 +486,7 @@ cpp_library(
     ],
     exported_deps = [
         ":util",
+        "//folly:math",
         "//folly:memory",
         "//folly:scope_guard",
         "//folly/futures:core",

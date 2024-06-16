@@ -26,6 +26,7 @@
 #include <mutex>
 #include <thread>
 
+#include <folly/Chrono.h>
 #include <folly/ExceptionString.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
@@ -158,19 +159,55 @@ EventBaseBackend::~EventBaseBackend() {
 
 namespace folly {
 
+class EventBase::LoopCallbacksDeadline {
+ public:
+  void reset(EventBase& evb) {
+    if (auto timeslice = evb.loopCallbacksTimeslice_; timeslice.count() != 0) {
+      deadline_ = Clock::now() + timeslice;
+    } else {
+      deadline_ = {};
+    }
+  }
+
+  // Should be checked only after at least one callback has been processed, to
+  // guarantee forward progress.
+  bool expired() const {
+    return deadline_ != Clock::time_point{} && Clock::now() >= deadline_;
+  }
+
+ private:
+  // Use the fastest clock, here millisecond granularity is enough.
+  using Clock = folly::chrono::coarse_steady_clock;
+  Clock::time_point deadline_;
+};
+
 class EventBase::FuncRunner {
  public:
-  explicit FuncRunner(EventBase& eventBase) : eventBase_(eventBase) {}
-  void operator()(Func&& func) noexcept {
+  explicit FuncRunner(EventBase& eventBase)
+      : eventBase_(eventBase), curLoopCnt_(eventBase_.nextLoopCnt_) {}
+
+  AtomicNotificationQueueTaskStatus operator()(Func&& func) noexcept {
+    if (eventBase_.nextLoopCnt_ != curLoopCnt_) {
+      // We're the first callaback of this iteration, set a new deadline.
+      deadline_.reset(eventBase_);
+      curLoopCnt_ = eventBase_.nextLoopCnt_;
+    }
+
     ExecutionObserverScopeGuard guard(
         &eventBase_.getExecutionObserverList(),
         &func,
         folly::ExecutionObserver::CallbackType::NotificationQueue);
     std::exchange(func, {})();
+
+    return deadline_.expired()
+        ? AtomicNotificationQueueTaskStatus::CONSUMED_STOP
+        : AtomicNotificationQueueTaskStatus::CONSUMED;
   }
 
  private:
   EventBase& eventBase_;
+  LoopCallbacksDeadline deadline_;
+  size_t curLoopCnt_;
 };
 
 class EventBase::ThreadIdCollector : public WorkerProvider {
@@ -233,6 +270,7 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
 EventBase::EventBase(Options options)
     : intervalDuration_(options.timerTickInterval),
       enableTimeMeasurement_(!options.skipTimeMeasurement),
+      loopCallbacksTimeslice_(options.loopCallbacksTimeslice),
       runOnceCallbacks_(nullptr),
       stop_(false),
       queue_(nullptr),
@@ -552,7 +590,9 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
       // Run the before loop callbacks
       LoopCallbackList callbacks;
       callbacks.swap(runBeforeLoopCallbacks_);
-      runLoopCallbacks(callbacks);
+      // Before-loop callbacks must by definition all run regardless of
+      // timeslice, so do not pass a deadline.
+      runLoopCallbackList(callbacks, LoopCallbacksDeadline{});
     }
 
     // nobody can add loop callbacks from within this thread if
@@ -901,7 +941,8 @@ void EventBase::runImmediatelyOrRunInEventBaseThread(Func fn) noexcept {
   }
 }
 
-void EventBase::runLoopCallbacks(LoopCallbackList& currentCallbacks) {
+void EventBase::runLoopCallbackList(
+    LoopCallbackList& currentCallbacks, const LoopCallbacksDeadline& deadline) {
   if (currentCallbacks.empty()) {
     return;
   }
@@ -921,7 +962,7 @@ void EventBase::runLoopCallbacks(LoopCallbackList& currentCallbacks) {
         callback,
         folly::ExecutionObserver::CallbackType::Loop);
     callback->runLoopCallback();
-  } while (!currentCallbacks.empty());
+  } while (!currentCallbacks.empty() && !deadline.expired());
 }
 
 bool EventBase::runLoopCallbacks() {
@@ -939,7 +980,13 @@ bool EventBase::runLoopCallbacks() {
     currentCallbacks.swap(loopCallbacks_);
     runOnceCallbacks_ = &currentCallbacks;
 
-    runLoopCallbacks(currentCallbacks);
+    LoopCallbacksDeadline deadline;
+    deadline.reset(*this);
+    runLoopCallbackList(currentCallbacks, deadline);
+
+    // If the deadline expired before the list was fully consumed, prepend the
+    // leftover callbacks to the list to run on the next iteration.
+    loopCallbacks_.splice(loopCallbacks_.begin(), currentCallbacks);
 
     runOnceCallbacks_ = nullptr;
     return true;
