@@ -318,7 +318,7 @@ class EventBase : public TimeoutManager,
      * (each gets one timeslice per iteration). This can be used to prevent the
      * queues to starve event handling or each other.
      *
-     * Does not apply to runBeforeLoop() callbacks.
+     * Does not apply to runBeforeLoop() and runAfterLoop() callbacks.
      */
     std::chrono::milliseconds loopCallbacksTimeslice{0};
 
@@ -611,6 +611,13 @@ class EventBase : public TimeoutManager,
    * For example, this callback could be used to get loop times.
    */
   void runBeforeLoop(LoopCallback* callback);
+
+  /**
+   * Adds a callback that will run immediately *after* the event loop.
+   * This can be used to delay some processing until after all the normal loop
+   * callback have been processed for this iteration.
+   */
+  void runAfterLoop(LoopCallback* callback);
 
   /**
    * Run the specified function in the EventBase's thread.
@@ -1070,6 +1077,7 @@ class EventBase : public TimeoutManager,
 
   LoopCallbackList loopCallbacks_;
   LoopCallbackList runBeforeLoopCallbacks_;
+  LoopCallbackList runAfterLoopCallbacks_;
   Synchronized<OnDestructionCallback::List> onDestructionCallbacks_;
   Synchronized<OnDestructionCallback::List> preDestructionCallbacks_;
 

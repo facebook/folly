@@ -2207,6 +2207,17 @@ TYPED_TEST_P(EventBaseTest, RunBeforeLoopWait) {
   ASSERT_EQ(cb.getCount(), 0);
 }
 
+TYPED_TEST_P(EventBaseTest, RunAfterLoop) {
+  auto evb = this->makeEventBase();
+  bool cb2Ran = false;
+  // cbRan is set by a callback scheduled after cb, but cb runs last anyway.
+  CountedLoopCallback cb(evb.get(), 1, [&] { EXPECT_TRUE(cb2Ran); });
+  evb->runAfterLoop(&cb);
+  evb->runInLoop([&] { cb2Ran = true; });
+  evb->loop();
+  ASSERT_EQ(cb.getCount(), 0);
+}
+
 namespace {
 class PipeHandler : public EventHandler {
  public:
@@ -2857,6 +2868,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     EventBaseThreadName,
     RunBeforeLoop,
     RunBeforeLoopWait,
+    RunAfterLoop,
     StopBeforeLoop,
     RunCallbacksPreDestruction,
     RunCallbacksOnDestruction,

@@ -340,6 +340,7 @@ EventBase::~EventBase() {
   clearCobTimeouts();
 
   DCHECK_EQ(0u, runBeforeLoopCallbacks_.size());
+  DCHECK_EQ(0u, runAfterLoopCallbacks_.size());
 
   runLoopCallbacks();
 
@@ -587,7 +588,8 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
         applyLoopKeepAlive();
       }
       ++nextLoopCnt_;
-      // Run the before loop callbacks
+
+      // Run the before-loop callbacks
       LoopCallbackList callbacks;
       callbacks.swap(runBeforeLoopCallbacks_);
       // Before-loop callbacks must by definition all run regardless of
@@ -624,6 +626,13 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
     }
 
     bool ranLoopCallbacks = runLoopCallbacks();
+
+    // Run the after-loop callback. Like the before-loop, no deadline.
+    {
+      LoopCallbackList callbacks;
+      callbacks.swap(runAfterLoopCallbacks_);
+      runLoopCallbackList(callbacks, LoopCallbacksDeadline{});
+    }
 
     if (enableTimeMeasurement_) {
       auto now = std::chrono::steady_clock::now();
@@ -870,6 +879,12 @@ void EventBase::runBeforeLoop(LoopCallback* callback) {
   dcheckIsInEventBaseThread();
   callback->cancelLoopCallback();
   runBeforeLoopCallbacks_.push_back(*callback);
+}
+
+void EventBase::runAfterLoop(LoopCallback* callback) {
+  dcheckIsInEventBaseThread();
+  callback->cancelLoopCallback();
+  runAfterLoopCallbacks_.push_back(*callback);
 }
 
 void EventBase::runInEventBaseThread(Func fn) noexcept {
