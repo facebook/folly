@@ -177,3 +177,39 @@ TEST(AtomicNotificationQueueTest, PutMessage) {
     EXPECT_EQ(expected[i], actual[i]);
   }
 }
+
+TEST(AtomicNotificationQueueTest, ConsumeStop) {
+  struct Consumer {
+    size_t* consumed;
+    AtomicNotificationQueueTaskStatus operator()(bool&& stop) noexcept {
+      ++*consumed;
+      return stop ? AtomicNotificationQueueTaskStatus::CONSUMED_STOP
+                  : AtomicNotificationQueueTaskStatus::CONSUMED;
+    }
+  };
+
+  vector<bool> messages = {false, true, false, false, false, false};
+  size_t consumed = 0;
+  Consumer consumer{&consumed};
+
+  EventBaseAtomicNotificationQueue<bool, decltype(consumer)> queue{
+      std::move(consumer)};
+  queue.setMaxReadAtOnce(3);
+
+  EventBase eventBase;
+  queue.startConsuming(&eventBase);
+
+  for (auto t : messages) {
+    queue.putMessage(t);
+  }
+
+  EXPECT_EQ(consumed, 0);
+  eventBase.loopOnce();
+  // Second message stopped consuming.
+  EXPECT_EQ(std::exchange(consumed, 0), 2);
+  eventBase.loopOnce();
+  // setMaxReadAtOnce() still honored.
+  EXPECT_EQ(std::exchange(consumed, 0), 3);
+  eventBase.loopOnce();
+  EXPECT_EQ(std::exchange(consumed, 0), 1);
+}

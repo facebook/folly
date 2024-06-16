@@ -320,8 +320,9 @@ bool AtomicNotificationQueue<Task>::drive(Consumer&& consumer) {
     nextQueue = atomicQueue_.getTasks();
   }
   const bool wasAnyProcessed = !queue_.empty() || !nextQueue.empty();
+  bool stop = false;
   for (uint32_t numConsumed = 0;
-       maxReadAtOnce_ == 0 || numConsumed < maxReadAtOnce_;) {
+       !stop && (maxReadAtOnce_ == 0 || numConsumed < maxReadAtOnce_);) {
     if (queue_.empty()) {
       queue_ = std::move(nextQueue);
       if (queue_.empty()) {
@@ -340,8 +341,16 @@ bool AtomicNotificationQueue<Task>::drive(Consumer&& consumer) {
               std::forward<Consumer>(consumer),
               std::move(curNode.task),
               std::move(curNode.rctx));
-      if (consumeTaskStatus == AtomicNotificationQueueTaskStatus::CONSUMED) {
-        ++numConsumed;
+
+      switch (consumeTaskStatus) {
+        case AtomicNotificationQueueTaskStatus::CONSUMED_STOP:
+          stop = true;
+          [[fallthrough]];
+        case AtomicNotificationQueueTaskStatus::CONSUMED:
+          ++numConsumed;
+          break;
+        case AtomicNotificationQueueTaskStatus::DISCARD:
+          break;
       }
     }
     queue_.pop();
