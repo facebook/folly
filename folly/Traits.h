@@ -1151,8 +1151,10 @@ using type_list_size_t =
 
 namespace traits_detail {
 
-template <auto V>
-using value_pack_constant = std::integral_constant<decltype(V), V>;
+template <decltype(auto) V>
+struct value_pack_constant {
+  inline static constexpr decltype(V) value = V;
+};
 
 } // namespace traits_detail
 
@@ -1182,9 +1184,8 @@ using value_pack_element_type_t = type_pack_element_t<I, decltype(V)...>;
 ///
 /// In the value pack V..., the Ith element.
 template <std::size_t I, auto... V>
-inline constexpr value_pack_element_type_t<I, V...> const&
-    value_pack_element_v =
-        type_pack_element_t<I, traits_detail::value_pack_constant<V>...>::value;
+inline constexpr value_pack_element_type_t<I, V...> value_pack_element_v =
+    type_pack_element_t<I, traits_detail::value_pack_constant<V>...>::value;
 
 namespace traits_detail {
 
@@ -1196,7 +1197,7 @@ struct value_list_traits_<List<V...>> {
   template <std::size_t I>
   using element_type = value_pack_element_type_t<I, V...>;
   template <std::size_t I>
-  static constexpr value_pack_element_type_t<I, V...> const& element =
+  static constexpr value_pack_element_type_t<I, V...> element =
       value_pack_element_v<I, V...>;
 };
 
@@ -1230,9 +1231,8 @@ using value_list_element_type_t =
 ///
 /// For List<V...>, the Ith element.
 template <std::size_t I, typename List>
-inline constexpr value_list_element_type_t<I, List> const&
-    value_list_element_v =
-        traits_detail::value_list_traits_<List>::template element<I>;
+inline constexpr value_list_element_type_t<I, List> value_list_element_v =
+    traits_detail::value_list_traits_<List>::template element<I>;
 
 /**
  * Checks the requirements that the Hasher class must satisfy
