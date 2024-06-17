@@ -28,6 +28,7 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <string>
 #include <type_traits>
 
 #include <glog/logging.h>
@@ -1787,16 +1788,23 @@ class IOBuf {
   void appendTo(Container& container) const;
 
   /**
-   * Dump the chain data into a container.
+   * Returns a container containing the chain data.
    *
    * @copydetails appendTo(Container&) const
    *
    * @tparam Container  The type of container to return.
    *
-   * @returns  A Container whose data equals the coalseced data of this chain
+   * @returns  A Container whose data equals the coalesced data of this chain
    */
   template <class Container>
   Container to() const;
+
+  /**
+   * Convenience version of to<std::string>() that works when called
+   * on a dependent name in a template function without having to use
+   * the "template" keyword.
+   */
+  std::string toString() const { return to<std::string>(); }
 
   /**
    * Get an iovector suitable for e.g. writev()

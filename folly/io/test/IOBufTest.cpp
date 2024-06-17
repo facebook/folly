@@ -1805,6 +1805,7 @@ TEST(IOBuf, AppendTo) {
 
   IOBuf buf;
   EXPECT_EQ(buf.to<std::string>(), "");
+  EXPECT_EQ(buf.toString(), "");
 
   auto temp = &buf;
   temp->insertAfterThisOne(IOBuf::copyBuffer("Hello"));
