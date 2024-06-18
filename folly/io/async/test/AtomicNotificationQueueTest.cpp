@@ -181,14 +181,13 @@ TEST(AtomicNotificationQueueTest, PutMessage) {
 TEST(AtomicNotificationQueueTest, ConsumeStop) {
   struct Consumer {
     size_t* consumed;
-    AtomicNotificationQueueTaskStatus operator()(bool&& stop) noexcept {
+    auto operator()(bool&& stop) noexcept {
       ++*consumed;
       return stop ? AtomicNotificationQueueTaskStatus::CONSUMED_STOP
                   : AtomicNotificationQueueTaskStatus::CONSUMED;
     }
   };
 
-  vector<bool> messages = {false, true, false, false, false, false};
   size_t consumed = 0;
   Consumer consumer{&consumed};
 
@@ -199,17 +198,83 @@ TEST(AtomicNotificationQueueTest, ConsumeStop) {
   EventBase eventBase;
   queue.startConsuming(&eventBase);
 
-  for (auto t : messages) {
+  for (auto t : {false, true, false, false, false, false}) {
     queue.putMessage(t);
   }
 
-  EXPECT_EQ(consumed, 0);
-  eventBase.loopOnce();
+  ASSERT_EQ(consumed, 0);
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
   // Second message stopped consuming.
-  EXPECT_EQ(std::exchange(consumed, 0), 2);
-  eventBase.loopOnce();
+  ASSERT_EQ(std::exchange(consumed, 0), 2);
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
   // setMaxReadAtOnce() still honored.
-  EXPECT_EQ(std::exchange(consumed, 0), 3);
-  eventBase.loopOnce();
-  EXPECT_EQ(std::exchange(consumed, 0), 1);
+  ASSERT_EQ(std::exchange(consumed, 0), 3);
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
+  ASSERT_EQ(std::exchange(consumed, 0), 1);
+
+  for (auto t : {true, true, true}) {
+    queue.putMessage(t);
+  }
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
+  ASSERT_EQ(std::exchange(consumed, 0), 1);
+  // Local queue is still non-empty, add a message to the atomic queue.
+  queue.putMessage(true);
+
+  // All messages, including the one just added, should be consumed.
+  for (size_t i = 0; i < 3; ++i) {
+    eventBase.loopOnce(EVLOOP_NONBLOCK);
+    ASSERT_EQ(std::exchange(consumed, 0), 1);
+  }
+}
+
+// drive() should not process messages that were put during its execution.
+TEST(AtomicNotificationQueueTest, DriveSnapshot) {
+  struct Consumer {
+    size_t* consumed;
+    auto operator()(folly::Func f) noexcept {
+      f();
+      ++*consumed;
+      return AtomicNotificationQueueTaskStatus::CONSUMED;
+    }
+  };
+
+  size_t consumed = 0;
+  Consumer consumer{&consumed};
+  EventBaseAtomicNotificationQueue<folly::Func, decltype(consumer)> queue{
+      std::move(consumer)};
+
+  EventBase eventBase;
+  queue.startConsuming(&eventBase);
+
+  queue.setMaxReadAtOnce(0);
+  queue.putMessage([&] { queue.putMessage([] {}); });
+  ASSERT_EQ(consumed, 0);
+  // Atomic queue was empty when the second putMessage happened(), so the second
+  // message is not processed.
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
+  ASSERT_EQ(std::exchange(consumed, 0), 1);
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
+  ASSERT_EQ(std::exchange(consumed, 0), 1);
+
+  bool lastRan = false;
+  queue.putMessage([&] {});
+  queue.putMessage([&] { queue.putMessage([&] { lastRan = true; }); });
+
+  // Leave the second message in the local queue.
+  queue.setMaxReadAtOnce(1);
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
+  ASSERT_EQ(std::exchange(consumed, 0), 1);
+
+  // This will be in the atomic queue.
+  queue.putMessage([] {});
+  queue.setMaxReadAtOnce(0);
+  // We'll consume the local queue and part of the atomic queue, but stop at the
+  // message that was put in the callback.
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
+  ASSERT_EQ(std::exchange(consumed, 0), 2);
+
+  EXPECT_FALSE(lastRan);
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
+  ASSERT_EQ(std::exchange(consumed, 0), 1);
+  EXPECT_TRUE(lastRan);
 }

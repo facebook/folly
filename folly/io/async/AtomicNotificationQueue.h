@@ -219,6 +219,16 @@ class AtomicNotificationQueue {
     Queue getTasks();
 
     /*
+     * Returns a pointer to the last added node, or nullptr if the queue is
+     * empty. This pointer should not be dereferenced, it should only be used to
+     * mark a position in the queue.
+     */
+    Node* peekHead() const {
+      auto* n = head_.load(std::memory_order_relaxed);
+      return reinterpret_cast<intptr_t>(n) == kQueueArmedTag ? nullptr : n;
+    }
+
+    /*
      * Tries to arm the queue.
      * 1) If the queue was empty: the queue becomes armed and an empty queue is
      * returned.
