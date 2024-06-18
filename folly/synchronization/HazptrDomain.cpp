@@ -36,27 +36,24 @@ namespace {
 /// * Only a singleton and not otherwise instantiated.
 /// * Using keyword thread_local v.s. class ThreadLocal.
 struct HazptrDefaultExecutor final : InlineLikeExecutor {
-  using Func = Function<void()>;
-  using Queue = std::queue<Func>;
-
   void add(Func func) override {
-    thread_local Queue* current;
+    using Queue = std::queue<Func>;
+    thread_local Queue* current = nullptr;
 
-    std::optional<Queue> oqueue; // do not use this directly!
-    if (!current) {
-      current = &oqueue.emplace();
+    if (current != nullptr) {
+      current->push(std::move(func));
+      return;
     }
+
+    Queue queue;
+    current = &queue;
     auto cleanup = makeGuard([&] { current = nullptr; });
-    auto& queue = *current; // use this directly!
 
-    queue.push(std::move(func));
+    invokeCatchingExns("HazptrDefaultExecutor", std::exchange(func, {}));
 
-    if (queue.size() == 1) {
-      while (!queue.empty()) {
-        auto qfunc = std::ref(queue.front());
-        invokeCatchingExns("HazptrDefaultExecutor::run: ", qfunc);
-        queue.pop();
-      }
+    while (!queue.empty()) {
+      invokeCatchingExns("HazptrDefaultExecutor", std::ref(queue.front()));
+      queue.pop();
     }
   }
 };
