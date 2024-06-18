@@ -107,6 +107,9 @@ cpp_library(
     name = "manual_timekeeper",
     srcs = ["ManualTimekeeper.cpp"],
     headers = ["ManualTimekeeper.h"],
+    deps = [
+        "//folly/synchronization:atomic_util",
+    ],
     exported_deps = [
         "//folly:synchronized",
         "//folly/futures:core",

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <map>
 #include <memory>
@@ -68,7 +69,7 @@ class ManualTimekeeper : public folly::Timekeeper {
     bool canSet();
   };
 
-  std::chrono::steady_clock::time_point now_;
+  std::atomic<std::chrono::steady_clock::time_point> now_;
   folly::Synchronized<std::multimap<
       std::chrono::steady_clock::time_point,
       std::shared_ptr<TimeoutHandler>>>
