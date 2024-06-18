@@ -260,6 +260,15 @@ std::string getStackTraceStr();
  */
 std::string getAsyncStackTraceStr();
 
+/**
+ * Get the async stack traces (string representation) for suspended coroutines.
+ * Convenience function meant for debugging and logging, works only in some
+ * DEBUG builds
+ *
+ * Note: The returned traces will only have async frames (no normal frames).
+ */
+std::vector<std::string> getSuspendedStackTraces();
+
 #else
 // Define these in the header, as headers are always available, but not all
 // platforms can link against the symbolizer library cpp sources.
@@ -270,6 +279,10 @@ inline std::string getStackTraceStr() {
 
 inline std::string getAsyncStackTraceStr() {
   return "";
+}
+
+inline std::vector<std::string> getSuspendedStackTraces() {
+  return {};
 }
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 

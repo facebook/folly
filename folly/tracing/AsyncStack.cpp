@@ -21,11 +21,14 @@
 #include <exception>
 #include <mutex>
 #include <typeindex>
+#include <unordered_set>
 
 #include <glog/logging.h>
 #include <glog/raw_logging.h>
 
+#include <folly/Indestructible.h>
 #include <folly/Likely.h>
+#include <folly/Synchronized.h>
 #include <folly/lang/Hint.h>
 
 #if defined(__linux__)
@@ -195,10 +198,22 @@ FOLLY_NOINLINE void resumeCoroutineWithNewAsyncStackRoot(
 
 #endif // FOLLY_HAS_COROUTINES
 
+namespace {
+auto& suspendedLeafFrames() {
+  static folly::Indestructible<
+      folly::Synchronized<std::unordered_set<AsyncStackFrame*>>>
+      instance;
+  return *instance;
+}
+} // namespace
+
 void activateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept {
   assert(leafFrame.stackRoot == nullptr);
   leafFrame.stackRoot =
       reinterpret_cast<AsyncStackRoot*>(::__folly_suspended_frame_cookie);
+  if constexpr (folly::kIsDebug) {
+    suspendedLeafFrames().wlock()->insert(std::addressof(leafFrame));
+  }
 }
 
 bool isSuspendedLeafActive(AsyncStackFrame& leafFrame) noexcept {
@@ -211,6 +226,14 @@ void deactivateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept {
       leafFrame.stackRoot ==
       reinterpret_cast<AsyncStackRoot*>(::__folly_suspended_frame_cookie));
   leafFrame.stackRoot = nullptr;
+  if constexpr (folly::kIsDebug) {
+    suspendedLeafFrames().wlock()->erase(std::addressof(leafFrame));
+  }
+}
+
+void sweepSuspendedLeafFrames(folly::FunctionRef<void(AsyncStackFrame*)> fn) {
+  suspendedLeafFrames().withRLock(
+      [&](auto& frames) { std::for_each(frames.begin(), frames.end(), fn); });
 }
 
 } // namespace folly

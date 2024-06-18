@@ -22,6 +22,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
+#include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/experimental/coro/Coroutine.h>
 
@@ -290,6 +291,14 @@ void resumeCoroutineWithNewAsyncStackRoot(
 void activateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept;
 
 bool isSuspendedLeafActive(AsyncStackFrame& leafFrame) noexcept;
+
+/**
+ * Apply `fn` on all suspended leaf frames.
+ * Note: Avoid performing async work within `fn` as it may cause deadlocks.
+ *
+ * This API does nothing in non-debug-builds.
+ */
+void sweepSuspendedLeafFrames(folly::FunctionRef<void(AsyncStackFrame*)> fn);
 
 /**
  * Pop the dummy "leaf" frame off the stack to annotate the stack as

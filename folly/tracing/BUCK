@@ -30,13 +30,16 @@ cpp_library(
         "AsyncStack-inl.h",
     ],
     deps = [
+        "//folly:indestructible",
         "//folly:likely",
+        "//folly:synchronized",
         "//folly/lang:hint",
         "//folly/portability:pthread",
     ],
     exported_deps = [
         "//folly:c_portability",
         "//folly:cpp_attributes",
+        "//folly:function",
         "//folly:portability",
         "//folly/experimental/coro:coroutine",
     ],

@@ -457,6 +457,20 @@ std::string getAsyncStackTraceStr() {
   return getStackTraceStrImpl<kMaxStackTraceDepth>(
       getAsyncStackTraceSafe<kMaxStackTraceDepth>);
 }
+
+std::vector<std::string> getSuspendedStackTraces() {
+  std::vector<std::string> stacks;
+  sweepSuspendedLeafFrames([&](AsyncStackFrame* topFrame) {
+    stacks.emplace_back(
+        getStackTraceStrImpl<kMaxStackTraceDepth>([topFrame](auto& frameArray) {
+          return detail::fixFrameArray(
+              frameArray,
+              getAsyncStackTraceFromInitialFrame(
+                  topFrame, frameArray.addresses, kMaxStackTraceDepth));
+        }));
+  });
+  return stacks;
+}
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 #if FOLLY_HAVE_SWAPCONTEXT

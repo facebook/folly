@@ -7,6 +7,7 @@ cpp_unittest(
     name = "async_stack_test",
     srcs = ["AsyncStackTest.cpp"],
     deps = [
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/tracing:async_stack",
     ],

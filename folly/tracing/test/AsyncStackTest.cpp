@@ -16,8 +16,10 @@
 
 #include <folly/tracing/AsyncStack.h>
 
+#include <unordered_set>
 #include <glog/logging.h>
 
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 TEST(AsyncStack, ScopedAsyncStackRoot) {
@@ -104,4 +106,32 @@ TEST(AsyncStack, PushPop) {
 
   CHECK(root.getTopFrame() == nullptr);
   CHECK(frame1.getStackRoot() == nullptr);
+}
+
+static void checkNumFrames(size_t numFrames) {
+  struct Aggregator {
+    std::unordered_set<folly::AsyncStackFrame*> frames;
+    void operator()(folly::AsyncStackFrame* frame) { frames.insert(frame); }
+  } agg;
+  folly::sweepSuspendedLeafFrames(agg);
+
+  if constexpr (!folly::kIsDebug) {
+    // tracking doesn't work in non-debug-builds
+    CHECK_EQ(0, agg.frames.size());
+  } else {
+    CHECK_EQ(numFrames, agg.frames.size());
+  }
+}
+
+TEST(AsyncStack, suspendedLeafTracking) {
+  checkNumFrames(0);
+
+  folly::AsyncStackFrame leafFrame;
+  folly::activateSuspendedLeaf(leafFrame);
+  CHECK(folly::isSuspendedLeafActive(leafFrame));
+  checkNumFrames(1);
+
+  folly::deactivateSuspendedLeaf(leafFrame);
+  CHECK(!folly::isSuspendedLeafActive(leafFrame));
+  checkNumFrames(0);
 }

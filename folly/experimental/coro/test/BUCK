@@ -325,3 +325,20 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
+
+cpp_unittest(
+    name = "suspended_stack_test",
+    srcs = [
+        "SuspendedStackTest.cpp",
+    ],
+    deps = [
+        "//folly/experimental/coro:async_stack",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:gtest_helpers",
+        "//folly/experimental/coro:mutex",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
