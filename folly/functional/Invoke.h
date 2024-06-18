@@ -137,18 +137,30 @@ struct traits {
   template <typename... A>
   using result = decltype( //
       FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(A&&)...));
+#if defined(_MSC_VER) && defined(__NVCC__)
   template <typename... A>
-  static constexpr bool nothrow = noexcept( //
+  using nothrow_t = std::bool_constant<noexcept( //
+      FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(A&&)...))>;
+#else
+  template <typename... A>
+  static constexpr bool nothrow_v = noexcept( //
       FOLLY_DECLVAL(F&&)(FOLLY_DECLVAL(A&&)...));
+#endif
 };
 template <typename P>
 struct traits_member_ptr {
   template <typename... A>
   using result = decltype( //
       std::mem_fn(FOLLY_DECLVAL(P))(FOLLY_DECLVAL(A&&)...));
+#if defined(_MSC_VER) && defined(__NVCC__)
   template <typename... A>
-  static constexpr bool nothrow = noexcept( //
+  using nothrow_t = std::bool_constant<noexcept( //
+      std::mem_fn(FOLLY_DECLVAL(P))(FOLLY_DECLVAL(A&&)...))>;
+#else
+  template <typename... A>
+  static constexpr bool nothrow_v = noexcept( //
       std::mem_fn(FOLLY_DECLVAL(P))(FOLLY_DECLVAL(A&&)...));
+#endif
 };
 template <typename M, typename C>
 struct traits<M C::*> : traits_member_ptr<M C::*> {};
@@ -162,6 +174,14 @@ template <typename M, typename C>
 struct traits<M C::*&&> : traits_member_ptr<M C::*> {};
 template <typename M, typename C>
 struct traits<M C::*const&&> : traits_member_ptr<M C::*> {};
+
+#if defined(_MSC_VER) && defined(__NVCC__)
+template <typename P, typename... A>
+using is_nothrow = traits<P>::template nothrow_t<A...>;
+#else
+template <typename P, typename... A>
+using is_nothrow = std::bool_constant<traits<P>::template nothrow_v<A...>>;
+#endif
 
 template <bool IsVoid>
 struct conv_r_;
@@ -226,7 +246,7 @@ inline constexpr bool is_nothrow_invocable_v = ok_<bool, F, A...>{false};
 template <typename F, typename... A>
 inline constexpr bool
     is_nothrow_invocable_v<void_t<invoke_result_t<F, A...>>, F, A...> =
-        traits<F>::template nothrow<A...>;
+        is_nothrow<F, A...>::value;
 
 template <typename Void, typename R, typename F, typename... A>
 inline constexpr bool is_nothrow_invocable_r_v = ok_<bool, R, F, A...>{false};
@@ -235,7 +255,7 @@ inline constexpr bool is_nothrow_invocable_r_v = ok_<bool, R, F, A...>{false};
 template <typename R, typename F, typename... A>
 inline constexpr bool
     is_nothrow_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
-        traits<F>::template nothrow<A...> &&
+        is_nothrow<F, A...>::value &&
             conv_r_v_<true, R, invoke_result_t<F, A...>>;
 // clang-format on
 
