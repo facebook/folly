@@ -21,6 +21,8 @@
 #include <cerrno>
 #include <sstream>
 
+#include <boost/preprocessor/control/if.hpp>
+
 #include <folly/Exception.h>
 #include <folly/Format.h>
 #include <folly/Portability.h>
