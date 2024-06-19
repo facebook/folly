@@ -35,7 +35,7 @@
 static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 
 #if defined(__GNUC__) && !defined(__clang__)
-static_assert(__GNUC__ >= 8, "__GNUC__ >= 8");
+static_assert(__GNUC__ >= 10, "__GNUC__ >= 10");
 #endif
 
 #if defined(_MSC_VER)
