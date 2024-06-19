@@ -17,10 +17,12 @@
 #pragma once
 
 #include <queue>
+#include <utility>
 
 #include <folly/Executor.h>
 #include <folly/ThreadLocal.h>
 #include <folly/executors/InlineExecutor.h>
+#include <folly/io/async/Request.h>
 
 namespace folly {
 
@@ -33,10 +35,16 @@ class QueuedImmediateExecutor : public InlineLikeExecutor {
  public:
   static QueuedImmediateExecutor& instance();
 
-  void add(Func callback) override;
+  void add(Func func) override;
 
  private:
-  folly::ThreadLocal<std::queue<Func>> q_;
+  struct Task {
+    Func func;
+    std::shared_ptr<RequestContext> ctx;
+  };
+
+  using Queue = std::queue<Task>;
+  folly::ThreadLocal<std::pair</* running */ bool, Queue>> q_;
 };
 
 } // namespace folly

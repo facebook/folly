@@ -363,11 +363,13 @@ cpp_library(
     headers = ["QueuedImmediateExecutor.h"],
     deps = [
         "//folly:indestructible",
+        "//folly:scope_guard",
     ],
     exported_deps = [
         ":inline_executor",
         "//folly:executor",
         "//folly:thread_local",
+        "//folly/io/async:request_context",
     ],
 )
 

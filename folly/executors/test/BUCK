@@ -57,6 +57,7 @@ cpp_unittest(
         "//folly/executors:manual_executor",
         "//folly/executors:queued_immediate_executor",
         "//folly/futures:core",
+        "//folly/io/async:request_context",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],

@@ -18,6 +18,7 @@
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/Future.h>
+#include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -245,6 +246,20 @@ TEST(Executor, QueuedImmediateExecutor) {
     counter++;
   });
   EXPECT_EQ(2, counter);
+}
+
+TEST(Executor, QueuedImmediateExecutorRequestContext) {
+  QueuedImmediateExecutor x;
+  RequestContextScopeGuard guard1;
+  auto* ctx1 = RequestContext::try_get();
+  x.add([&] {
+    EXPECT_EQ(ctx1, RequestContext::try_get());
+    RequestContextScopeGuard guard2;
+    x.add([&, ctx2 = RequestContext::try_get()] {
+      EXPECT_EQ(ctx2, RequestContext::try_get());
+    });
+  });
+  EXPECT_EQ(ctx1, RequestContext::try_get());
 }
 
 TEST(Executor, Runnable) {
