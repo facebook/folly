@@ -522,7 +522,7 @@ std::exception_ptr make_exception_ptr_with_(
 template <typename F>
 struct make_exception_ptr_with_fn_ {
   F& f_;
-  FOLLY_ERASE std::exception_ptr operator()() const noexcept {
+  FOLLY_ERASE std::exception_ptr operator()() const {
     return std::make_exception_ptr(f_());
   }
 };
