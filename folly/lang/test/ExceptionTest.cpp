@@ -340,6 +340,17 @@ TEST_F(ExceptionTest, exception_shared_string) {
   EXPECT_STREQ(c, folly::exception_shared_string(std::string(c)).what());
 }
 
+#if FOLLY_CPLUSPLUS >= 202002
+
+TEST_F(ExceptionTest, exception_shared_string_literal) {
+  using namespace folly::string_literals;
+  auto s0 = folly::exception_shared_string("hello, world!"_litv);
+  auto s1 = s0;
+  auto s2 = s1;
+  EXPECT_STREQ("hello, world!", s2.what());
+}
+
+#endif
 // example of how to do the in-place formatting efficiently
 struct format_param_fn {
   template <typename A>

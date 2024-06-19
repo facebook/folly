@@ -713,22 +713,30 @@ struct exception_shared_string::state {
 
 exception_shared_string::exception_shared_string(
     std::size_t const len, format_sig_& ffun, void* const fobj)
-    : state_{state::make(len, ffun, fobj)} {}
+    : state_{reinterpret_cast<uintptr_t>(state::make(len, ffun, fobj))} {}
 
+exception_shared_string::exception_shared_string(
+    literal_state_base const& base) noexcept
+    : state_{reinterpret_cast<uintptr_t>(&base + 1)} {}
 exception_shared_string::exception_shared_string(char const* const str)
     : exception_shared_string{str, std::strlen(str)} {}
 exception_shared_string::exception_shared_string(
     char const* const str, std::size_t const len)
-    : state_{state::make(str, len)} {}
+    : state_{reinterpret_cast<uintptr_t>(state::make(str, len))} {}
 exception_shared_string::exception_shared_string(
     exception_shared_string const& that) noexcept
-    : state_{(that.state_->copy(), that.state_)} {}
+    : state_{
+          that.state_ & 1 //
+              ? that.state_
+              : (reinterpret_cast<state*>(that.state_)->copy(), that.state_)} {}
 exception_shared_string::~exception_shared_string() {
-  state_->ruin();
+  state_ & 1 ? void() : reinterpret_cast<state*>(state_)->ruin();
 }
 
 char const* exception_shared_string::what() const noexcept {
-  return state_->what();
+  return state_ & 1 //
+      ? reinterpret_cast<char const*>(state_)
+      : reinterpret_cast<state*>(state_)->what();
 }
 
 } // namespace folly

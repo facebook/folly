@@ -628,6 +628,10 @@ inline constexpr make_exception_ptr_with_fn make_exception_ptr_with{};
 //  for use in an exception. Exceptions are intended to cheaply nothrow-copy-
 //  constructible and mostly do not need to optimize moves, and this affects how
 //  exception messages are best stored.
+//
+//  May be constructed with a literal string in a very particular form. If so
+//  constructed, (a literal copy of) the literal string will be held with no
+//  refcount required.
 class exception_shared_string {
  private:
   using format_sig_ = void(void*, char*, std::size_t);
@@ -636,18 +640,48 @@ class exception_shared_string {
   using test_format_ =
       decltype(FOLLY_DECLVAL(F)(static_cast<char*>(nullptr), std::size_t(0)));
 
+  struct literal_state_base {
+    unsigned char pad{0};
+  };
+
+  //  a structure with a compile-time string buffer having an odd address
+  template <std::size_t N>
+  struct alignas(2) literal_state : literal_state_base {
+    using lit = literal_string<char, N>;
+    lit what; // address is offset +1 from alignment 2
+
+    literal_state() = delete;
+    explicit constexpr literal_state(lit const str) noexcept : what{str} {}
+  };
+
+  template <auto V>
+  static inline constexpr auto literal_state_instance = literal_state{V};
+
   static void test_params_(char const*, std::size_t);
   template <typename F>
   static void ffun_(void* f, char* b, std::size_t l) {
     (*static_cast<F*>(f))(b, l);
   }
 
-  struct state;
-  state* const state_;
+  struct state; // alignment is alignof(void*)
+
+  //  state_ can be either state* or char const*
+  //  - low bit 0: state*
+  //  - low bit 1: char const* to &literal_state::what
+  uintptr_t const state_;
+
+  //  private; the wrapping public ctor passes only static-lifetime constants
+  explicit exception_shared_string(literal_state_base const&) noexcept;
 
   exception_shared_string(std::size_t, format_sig_&, void*);
 
  public:
+#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
+  template <std::size_t N, literal_string<char, N> Str>
+  explicit exception_shared_string(vtag_t<Str>) noexcept
+      : exception_shared_string(literal_state_instance<Str>) {}
+#endif
+
   explicit exception_shared_string(char const*);
   exception_shared_string(char const*, std::size_t);
 
