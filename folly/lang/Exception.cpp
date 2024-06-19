@@ -23,12 +23,20 @@
 #include <folly/lang/New.h>
 
 #if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+#include <cxxabi.h>
+#if !defined(__FreeBSD__)
+#include <unwind.h>
+#endif
+#endif
+
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+#if !defined(__FreeBSD__) // cxxabi.h already declares these
 
 namespace __cxxabiv1 {
 
 struct __cxa_eh_globals {
-  void* caught_exceptions_;
-  unsigned int uncaught_exceptions_;
+  void* caughtExceptions;
+  unsigned int uncaughtExceptions;
 };
 
 #if defined(__GLIBCXX__)
@@ -40,6 +48,7 @@ extern "C" __cxa_eh_globals* __cxa_get_globals();
 } // namespace __cxxabiv1
 
 #endif
+#endif
 
 namespace folly {
 
@@ -48,7 +57,7 @@ namespace detail {
 unsigned int* uncaught_exceptions_ptr() noexcept {
   assert(kIsGlibcxx || kIsLibcpp);
 #if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
-  return &__cxxabiv1::__cxa_get_globals()->uncaught_exceptions_;
+  return &__cxxabiv1::__cxa_get_globals()->uncaughtExceptions;
 #endif
   return nullptr;
 }
@@ -76,9 +85,6 @@ unsigned int* uncaught_exceptions_ptr() noexcept {
 #if defined(__GLIBCXX__)
 
 //  https://github.com/gcc-mirror/gcc/blob/releases/gcc-10.2.0/libstdc++-v3/libsupc++/unwind-cxx.h
-
-#include <cxxabi.h>
-#include <unwind.h>
 
 //  the definition of _Unwind_Ptr in libgcc/unwind-generic.h since unwind.h in
 //  libunwind does not have this typedef
@@ -125,9 +131,6 @@ struct __cxa_refcounted_exception {
 //  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/cxa_exception.h
 //  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/cxa_exception.cpp
 //  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/private_typeinfo.h
-
-#include <cxxabi.h>
-#include <unwind.h>
 
 namespace std {
 
@@ -223,8 +226,6 @@ namespace abi = __cxxabiv1;
 
 //  https://github.com/freebsd/freebsd-src/blob/release/13.0.0/contrib/libcxxrt/cxxabi.h
 //  https://github.com/freebsd/freebsd-src/blob/release/13.0.0/contrib/libcxxrt/typeinfo.h
-
-#include <cxxabi.h>
 
 namespace __cxxabiv1 {
 
