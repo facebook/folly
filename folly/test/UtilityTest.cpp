@@ -191,6 +191,40 @@ TEST_F(UtilityTest, forward_like) {
   // folly::forward_like<const int&>(1);
 }
 
+TEST_F(UtilityTest, literal_string) {
+  constexpr auto s = folly::literal_string{"hello world"};
+  EXPECT_STREQ("hello world", s.c_str());
+  EXPECT_EQ(s.c_str(), s.data());
+  EXPECT_EQ(strlen(s.c_str()), s.size());
+  EXPECT_EQ(s.c_str(), std::string_view{s});
+  EXPECT_EQ(s.c_str(), std::string{s});
+}
+
+#if FOLLY_CPLUSPLUS >= 202002
+
+TEST_F(UtilityTest, literal_string_op_lit) {
+  using namespace folly::string_literals;
+  constexpr auto s = "hello world"_lit;
+  EXPECT_STREQ("hello world", s.c_str());
+  EXPECT_EQ(s.c_str(), s.data());
+  EXPECT_EQ(strlen(s.c_str()), s.size());
+  EXPECT_EQ(s.c_str(), std::string_view{s});
+  EXPECT_EQ(s.c_str(), std::string{s});
+}
+
+TEST_F(UtilityTest, literal_string_op_litv) {
+  using namespace folly::string_literals;
+  using t = decltype("hello world"_litv);
+  constexpr auto s = folly::value_list_element_v<0, t>;
+  EXPECT_STREQ("hello world", s.c_str());
+  EXPECT_EQ(s.c_str(), s.data());
+  EXPECT_EQ(strlen(s.c_str()), s.size());
+  EXPECT_EQ(s.c_str(), std::string_view{s});
+  EXPECT_EQ(s.c_str(), std::string{s});
+}
+
+#endif
+
 TEST_F(UtilityTest, inheritable) {
   struct foo : folly::index_constant<47> {};
   struct bar final : folly::index_constant<89> {};

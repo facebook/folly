@@ -253,6 +253,65 @@ struct identity_fn {
 using Identity = identity_fn;
 inline constexpr identity_fn identity{};
 
+/// literal_string
+///
+/// A structural type representing a literal string. A structural type may be
+/// a non-type template argument.
+///
+/// May at times be useful since language-level literal strings are not allowed
+/// as non-type template arguments.
+///
+/// This may typically be used with vtag for passing the literal string as a
+/// constant-expression via a non-type template argument.
+///
+/// Example:
+///
+///   template <size_t N, literal_string<char, N> Str>
+///   void do_something_with_literal_string(vtag_t<Str>);
+///
+///   void do_something() {
+///     do_something_with_literal_string(vtag<literal_string{"foobar"}>);
+///   }
+template <typename C, std::size_t N>
+struct literal_string {
+  C buffer[N];
+
+  FOLLY_CONSTEVAL /* implicit */ literal_string(C const (&buf)[N]) noexcept {
+    for (std::size_t i = 0; i < N; ++i) {
+      buffer[i] = buf[i];
+    }
+  }
+
+  constexpr std::size_t size() const noexcept { return N - 1; }
+  constexpr C const* data() const noexcept { return buffer; }
+  constexpr C const* c_str() const noexcept { return buffer; }
+
+  template <
+      typename String,
+      decltype((void(String(FOLLY_DECLVAL(C const*), N - 1)), 0)) = 0>
+  explicit operator String() const //
+      noexcept(noexcept(String(FOLLY_DECLVAL(C const*), N - 1))) {
+    return String(data(), N - 1);
+  }
+};
+
+inline namespace literals {
+inline namespace string_literals {
+
+#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
+template <literal_string Str>
+FOLLY_CONSTEVAL decltype(Str) operator""_lit() noexcept {
+  return Str;
+}
+template <literal_string Str>
+FOLLY_CONSTEVAL vtag_t<Str> operator""_litv() noexcept {
+  return vtag<Str>;
+}
+#endif
+
+} // namespace string_literals
+} // namespace literals
+
 namespace detail {
 
 template <typename T>
