@@ -431,7 +431,11 @@ class InstallSysDepsCmd(ProjectCmdBase):
                 all_packages[k] = merged
 
         cmd_args = None
-        if manager == "rpm":
+        if manager == "yum":
+            packages = sorted(set(all_packages["yum"]))
+            if packages:
+                cmd_args = ["yum", "install", "-y"] + packages
+        elif manager == "rpm":
             packages = sorted(set(all_packages["rpm"]))
             if packages:
                 cmd_args = ["sudo", "dnf", "install", "-y"] + packages
