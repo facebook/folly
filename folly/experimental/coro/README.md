@@ -155,9 +155,10 @@ folly::coro::Task<void> coro() {
 
 ## Concurrently awaiting multiple Tasks
 
-Normally, when you call another `folly::coro::Task`-returning coroutine it doesn't
-start executing until you `co_await` the returned task and doing so will suspend
-the awaiting coroutine until the operation completes.
+When you invoke a coroutine that returns a `folly::coro::Task`, the coroutine 
+doesn't begin execution immediately. It only starts when you apply `co_await` 
+to the returned task. Applying `co_await` also suspends the coroutine that is 
+awaiting, until the awaited operation is complete.
 
 This means that you cannot perform two operations concurrently by simply calling
 the two coroutines and later awaiting them both.
