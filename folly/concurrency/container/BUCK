@@ -3,6 +3,22 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
+    name = "atomic_grow_array",
+    headers = [
+        "atomic_grow_array.h",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:scope_guard",
+        "//folly/lang:align",
+        "//folly/lang:bits",
+        "//folly/lang:new",
+    ],
+)
+
+cpp_library(
     name = "relaxed_concurrent_priority_queue",
     headers = [
         "RelaxedConcurrentPriorityQueue.h",

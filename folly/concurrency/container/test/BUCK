@@ -3,6 +3,16 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_unittest(
+    name = "atomic_grow_array_test",
+    srcs = ["atomic_grow_array_test.cpp"],
+    deps = [
+        "//folly/concurrency/container:atomic_grow_array",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "relaxed_concurrent_priority_queue_test",
     srcs = ["RelaxedConcurrentPriorityQueueTest.cpp"],
     headers = [],
