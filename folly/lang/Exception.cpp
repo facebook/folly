@@ -636,7 +636,7 @@ std::exception_ptr make_exception_ptr_with_(
     make_exception_ptr_with_arg_ const& arg, void* func) noexcept {
   void* object = abi::__cxa_allocate_exception(arg.size);
   auto type = const_cast<std::type_info*>(arg.type);
-#if _LIBCPP_VERSION >= 180000
+#if _LIBCPP_VERSION >= 180000 && _LIBCPP_AVAILABILITY_HAS_INIT_PRIMARY_EXCEPTION
   (void)abi::__cxa_init_primary_exception(object, type, arg.dtor);
 #else
   cxxabi_with_cxa_exception(object, [&](auto exception) {
