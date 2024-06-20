@@ -178,6 +178,14 @@ TEST(CheckedMath, genericCheckedAddOverflow) {
   EXPECT_EQ(a, {});
 }
 
+TEST(CheckedMath, genericCheckedAddLimit) {
+  unsigned int a;
+
+  EXPECT_TRUE(folly::detail::generic_checked_add(
+      &a, std::numeric_limits<unsigned int>::max() - 7u, 7u));
+  EXPECT_EQ(a, std::numeric_limits<unsigned int>::max());
+}
+
 TEST(CheckedMath, genericCheckedAddUint64TOverflow) {
   uint64_t a;
 

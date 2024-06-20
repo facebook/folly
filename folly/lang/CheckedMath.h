@@ -47,7 +47,7 @@ bool generic_checked_add(T* result, T a, T b) {
     *result = a + b;
     return true;
   } else {
-    if (FOLLY_LIKELY(a < std::numeric_limits<T>::max() - b)) {
+    if (FOLLY_LIKELY(a <= std::numeric_limits<T>::max() - b)) {
       *result = a + b;
       return true;
     } else {
