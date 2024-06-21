@@ -33,13 +33,13 @@ static_assert(
     ZSTD_VERSION_NUMBER >= 10400,
     "zstd-1.4.0 is the minimum supported zstd version.");
 
-using folly::io::compression::detail::dataStartsWithLE;
-using folly::io::compression::detail::prefixToStringLE;
+using folly::compression::detail::dataStartsWithLE;
+using folly::compression::detail::prefixToStringLE;
 
 using namespace folly::compression::contexts;
 
 namespace folly {
-namespace io {
+namespace compression {
 namespace zstd {
 namespace {
 
@@ -244,7 +244,7 @@ std::unique_ptr<StreamCodec> getStreamCodec(Options options) {
 }
 
 } // namespace zstd
-} // namespace io
+} // namespace compression
 } // namespace folly
 
 #endif

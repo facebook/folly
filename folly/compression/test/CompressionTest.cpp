@@ -40,11 +40,11 @@
 #if FOLLY_HAVE_LIBZ
 #include <folly/compression/Zlib.h>
 
-namespace zlib = folly::io::zlib;
+namespace zlib = folly::compression::zlib;
 #endif
 
 namespace folly {
-namespace io {
+namespace compression {
 namespace test {
 
 class DataHolder {
@@ -887,7 +887,7 @@ TEST_P(StreamingCompressionTest, resetStream) {
 }
 
 void StreamingCompressionTest::runCompressStreamTest(
-    const folly::io::test::DataHolder& dh) {
+    const folly::compression::test::DataHolder& dh) {
   auto const inputs = split(dh.data(uncompressedLength_));
 
   IOBufQueue queue;
@@ -912,7 +912,7 @@ TEST_P(StreamingCompressionTest, compressStream) {
 }
 
 void StreamingCompressionTest::runUncompressStreamTest(
-    const folly::io::test::DataHolder& dh) {
+    const folly::compression::test::DataHolder& dh) {
   const auto flush =
       hasFlush() ? StreamCodec::FlushOp::FLUSH : StreamCodec::FlushOp::NONE;
   auto const data = IOBuf::wrapBuffer(dh.data(uncompressedLength_));
@@ -1578,5 +1578,5 @@ INSTANTIATE_TEST_SUITE_P(
 #endif // FOLLY_HAVE_LIBZ
 
 } // namespace test
-} // namespace io
+} // namespace compression
 } // namespace folly
