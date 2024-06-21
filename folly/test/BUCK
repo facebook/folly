@@ -1721,6 +1721,7 @@ cpp_binary(
         "//folly:benchmark",
         "//folly:thread_local",
         "//folly/experimental/io:fs_util",
+        "//folly/lang:keep",
         "//folly/portability:gflags",
     ],
     external_deps = [

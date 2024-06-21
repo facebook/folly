@@ -31,9 +31,19 @@
 
 #include <folly/Benchmark.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GFlags.h>
 
 using namespace folly;
+
+extern "C" FOLLY_KEEP int* check_folly_thread_local_ptr_get(
+    ThreadLocalPtr<int>* tlp) {
+  return tlp->get();
+}
+
+extern "C" FOLLY_KEEP int* check_folly_thread_local_get(ThreadLocal<int>* tl) {
+  return tl->get();
+}
 
 // Simple reference implementation using pthread_get_specific
 template <typename T>
