@@ -833,7 +833,7 @@ exception_wrapper SchemaValidator::try_validate(
       return make_exception_wrapper<SchemaError>(*se);
     }
   } catch (...) {
-    return exception_wrapper(std::current_exception());
+    return exception_wrapper(current_exception());
   }
   return exception_wrapper();
 }

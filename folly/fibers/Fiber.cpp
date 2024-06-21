@@ -157,7 +157,7 @@ void Fiber::recordStackPosition() {
       }
     } catch (...) {
       fiberManager_.exceptionCallback_(
-          std::current_exception(), "running Fiber func_/resultFunc_");
+          current_exception(), "running Fiber func_/resultFunc_");
     }
 
     if (FOLLY_UNLIKELY(recordStackUsed_)) {
@@ -183,7 +183,7 @@ void Fiber::preempt(State state) {
     DCHECK_EQ(state_, RUNNING);
     DCHECK_NE(state, RUNNING);
     if (state != AWAITING_IMMEDIATE) {
-      CHECK(fiberManager_.currentException_ == std::current_exception());
+      CHECK(fiberManager_.currentException_ == current_exception());
       CHECK_EQ(fiberManager_.numUncaughtExceptions_, uncaught_exceptions());
     }
 

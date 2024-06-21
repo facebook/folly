@@ -1319,8 +1319,8 @@ CombineFunction loadTask(Waiter* current, std::uintptr_t value) {
 
 template <typename Waiter>
 [[FOLLY_ATTR_GNU_COLD]] void transferCurrentException(Waiter* waiter) {
-  DCHECK(std::current_exception());
-  new (&waiter->storage_) std::exception_ptr{std::current_exception()};
+  DCHECK(current_exception());
+  new (&waiter->storage_) std::exception_ptr{current_exception()};
   waiter->futex_.store(kExceptionOccurred, std::memory_order_release);
 }
 

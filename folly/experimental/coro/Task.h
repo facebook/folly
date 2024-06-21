@@ -213,7 +213,7 @@ class TaskPromise final : public TaskPromiseBase,
   Task<T> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_.emplaceException(exception_wrapper{std::current_exception()});
+    result_.emplaceException(exception_wrapper{current_exception()});
   }
 
   template <typename U = T>
@@ -285,7 +285,7 @@ class TaskPromise<void> final
   Task<void> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_.emplaceException(exception_wrapper{std::current_exception()});
+    result_.emplaceException(exception_wrapper{current_exception()});
   }
 
   void return_void() noexcept { result_.emplace(); }
@@ -468,7 +468,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     try {
       cb(co_await folly::coro::co_awaitTry(std::move(task)));
     } catch (...) {
-      cb(Try<StorageType>(exception_wrapper(std::current_exception())));
+      cb(Try<StorageType>(exception_wrapper(current_exception())));
     }
   }
 
@@ -477,7 +477,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     try {
       cb(co_await InlineTryAwaitable{std::exchange(task.coro_, {})});
     } catch (...) {
-      cb(Try<StorageType>(exception_wrapper(std::current_exception())));
+      cb(Try<StorageType>(exception_wrapper(current_exception())));
     }
   }
 

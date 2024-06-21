@@ -99,7 +99,7 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeoutImpl(
 
     co_return std::move(resultTry).value();
   } catch (...) {
-    error = exception_wrapper{std::current_exception()};
+    error = exception_wrapper{current_exception()};
   }
 
   assert(error);

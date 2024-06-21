@@ -170,16 +170,16 @@ class AsyncScope {
             << (source.has_value() ? sourceLocationToString(source.value())
                                    : "")
             << "Unhandled exception thrown from task added to AsyncScope: "
-            << folly::exceptionStr(std::current_exception());
+            << folly::exceptionStr(current_exception());
         if (!exceptionRaised.exchange(true)) {
-          maybeException = folly::exception_wrapper(std::current_exception());
+          maybeException = folly::exception_wrapper(current_exception());
         }
       } else {
         LOG(DFATAL)
             << (source.has_value() ? sourceLocationToString(source.value())
                                    : "")
             << "Unhandled exception thrown from task added to AsyncScope: "
-            << folly::exceptionStr(std::current_exception());
+            << folly::exceptionStr(current_exception());
       }
     }
   }

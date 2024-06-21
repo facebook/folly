@@ -297,6 +297,7 @@ cpp_library(
     exported_deps = [
         ":coroutine",
         ":invoke",
+        "//folly/lang:exception",
     ],
 )
 

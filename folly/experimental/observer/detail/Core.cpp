@@ -76,7 +76,7 @@ size_t Core::refresh(size_t version) {
           }
         } catch (...) {
           LOG(ERROR) << "Exception while checking dependencies for updates: "
-                     << exceptionStr(std::current_exception());
+                     << exceptionStr(current_exception());
 
           needRefresh = true;
           break;
@@ -100,7 +100,7 @@ size_t Core::refresh(size_t version) {
       }
     } catch (...) {
       LOG(ERROR) << "Exception while refreshing Observer: "
-                 << exceptionStr(std::current_exception());
+                 << exceptionStr(current_exception());
 
       if (version_ == 0) {
         // Re-throw exception if this is the first time we run creator

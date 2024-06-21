@@ -91,7 +91,7 @@ auto retryWhen(Func func, RetryDelayFunc retryDelay)
         error = std::move(result.exception());
       }
     } catch (...) {
-      error = exception_wrapper(std::current_exception());
+      error = exception_wrapper(current_exception());
     }
 
     if (error.is_compatible_with<folly::OperationCancelled>()) {

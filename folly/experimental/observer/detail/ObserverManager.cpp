@@ -79,7 +79,7 @@ class ObserverManager::UpdatesManager::CurrentQueueProcessor {
             task();
           } catch (...) {
             LOG(ERROR) << "Exception while running CurrentQueue task: "
-                       << exceptionStr(std::current_exception());
+                       << exceptionStr(current_exception());
           }
         }
       });

@@ -59,7 +59,7 @@ inline void forEach(InputIterator first, InputIterator last, F&& f) {
       try {
         callFuncs(std::forward<FuncType>(func_), f, id);
       } catch (...) {
-        e = std::current_exception();
+        e = current_exception();
       }
       if (--tasksTodo == 0) {
         baton.post();

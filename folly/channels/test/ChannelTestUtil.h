@@ -112,8 +112,7 @@ class ChannelConsumerBase {
               resultTry = Try<TValue>();
             }
           } catch (...) {
-            resultTry =
-                Try<TValue>(exception_wrapper(std::current_exception()));
+            resultTry = Try<TValue>(exception_wrapper(current_exception()));
           }
         } else {
           LOG(FATAL) << "Unknown consumption mode";

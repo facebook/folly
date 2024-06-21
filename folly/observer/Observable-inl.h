@@ -76,7 +76,7 @@ class ObserverCreatorContext {
       }
     } catch (...) {
       LOG(ERROR) << "Observer update failed: "
-                 << folly::exceptionStr(std::current_exception());
+                 << folly::exceptionStr(current_exception());
     }
 
     return nullptr;

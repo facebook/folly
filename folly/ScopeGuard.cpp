@@ -25,5 +25,5 @@
   std::cerr
       << "This program will now terminate because a folly::ScopeGuard callback "
          "threw an \nexception.\n";
-  std::rethrow_exception(std::current_exception());
+  std::rethrow_exception(current_exception());
 }

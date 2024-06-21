@@ -97,8 +97,7 @@ class BlockingWaitPromise final : public BlockingWaitPromiseBase {
   BlockingWaitTask<T> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_->emplaceException(
-        folly::exception_wrapper{std::current_exception()});
+    result_->emplaceException(folly::exception_wrapper{current_exception()});
   }
 
   template <
@@ -125,8 +124,7 @@ class BlockingWaitPromise<T&> final : public BlockingWaitPromiseBase {
   BlockingWaitTask<T&> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_->emplaceException(
-        folly::exception_wrapper{std::current_exception()});
+    result_->emplaceException(folly::exception_wrapper{current_exception()});
   }
 
   auto yield_value(T&& value) noexcept {
@@ -171,7 +169,7 @@ class BlockingWaitPromise<void> final : public BlockingWaitPromiseBase {
   void return_void() noexcept {}
 
   void unhandled_exception() noexcept {
-    result_->emplaceException(exception_wrapper{std::current_exception()});
+    result_->emplaceException(exception_wrapper{current_exception()});
   }
 
   void setTry(folly::Try<void>* result) noexcept { result_ = result; }
@@ -426,7 +424,7 @@ struct blocking_wait_fn {
       try {
         return operator()(static_cast<SemiAwaitable&&>(awaitable), &executor);
       } catch (...) {
-        eptr = std::current_exception();
+        eptr = current_exception();
       }
     }
     std::rethrow_exception(eptr);

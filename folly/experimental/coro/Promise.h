@@ -169,7 +169,7 @@ class Promise {
     try {
       state_->result = Try<T>(std::forward<Func>(func)());
     } catch (...) {
-      state_->result.emplaceException(std::current_exception());
+      state_->result.emplaceException(current_exception());
     }
     state_->ready.post();
     return true;
@@ -193,7 +193,7 @@ class Promise {
     try {
       state_->result.emplaceException(std::forward<Func>(func)());
     } catch (...) {
-      state_->result.emplaceException(std::current_exception());
+      state_->result.emplaceException(current_exception());
     }
     state_->ready.post();
     return true;

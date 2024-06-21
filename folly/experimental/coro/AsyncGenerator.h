@@ -629,7 +629,7 @@ class AsyncGeneratorPromise final
 
   void unhandled_exception() noexcept {
     DCHECK(state_ == State::INVALID);
-    folly::coro::detail::activate(exceptionWrapper_, std::current_exception());
+    folly::coro::detail::activate(exceptionWrapper_, current_exception());
     state_ = State::EXCEPTION_WRAPPER;
   }
 

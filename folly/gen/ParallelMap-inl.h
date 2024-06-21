@@ -150,7 +150,7 @@ class PMap : public Operator<PMap<Predicate>> {
               pipeline_.template blockingWriteStage<0>(ticket, std::move(out));
             } catch (...) {
               pipeline_.template blockingWriteStage<0>(
-                  ticket, makeUnexpected(std::current_exception()));
+                  ticket, makeUnexpected(current_exception()));
             }
             continue;
           }

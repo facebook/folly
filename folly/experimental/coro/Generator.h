@@ -23,6 +23,7 @@
 
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Invoke.h>
+#include <folly/lang/Exception.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -49,9 +50,7 @@ class Generator {
 
     suspend_always final_suspend() noexcept { return {}; }
 
-    void unhandled_exception() noexcept {
-      m_exception = std::current_exception();
-    }
+    void unhandled_exception() noexcept { m_exception = current_exception(); }
 
     void return_void() noexcept {}
 

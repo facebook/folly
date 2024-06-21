@@ -90,7 +90,7 @@ BarrierTask makeCollectAllTryTask(
               cancelToken, static_cast<SemiAwaitable&&>(awaitable))));
     }
   } catch (...) {
-    result.emplaceException(std::current_exception());
+    result.emplaceException(current_exception());
   }
 }
 
@@ -181,7 +181,7 @@ auto collectAllImpl(
       } catch (...) {
         if (!cancelSource.requestCancellation()) {
           // This was the first failure, remember its error.
-          firstException = exception_wrapper{std::current_exception()};
+          firstException = exception_wrapper{current_exception()};
         }
       }
     };
@@ -435,7 +435,7 @@ auto collectAllRange(InputRange awaitables)
           co_withCancellation(cancelToken, std::move(semiAwaitable))));
     } catch (...) {
       if (!cancelSource.requestCancellation()) {
-        firstException = exception_wrapper{std::current_exception()};
+        firstException = exception_wrapper{current_exception()};
       }
     }
   };
@@ -501,7 +501,7 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
           co_withCancellation(cancelToken, std::move(semiAwaitable)));
     } catch (...) {
       if (!cancelSource.requestCancellation()) {
-        firstException = exception_wrapper{std::current_exception()};
+        firstException = exception_wrapper{current_exception()};
       }
     }
   };
@@ -563,7 +563,7 @@ auto collectAllTryRange(InputRange awaitables)
             co_withCancellation(cancelToken, std::move(semiAwaitable))));
       }
     } catch (...) {
-      result.emplaceException(std::current_exception());
+      result.emplaceException(current_exception());
     }
   };
 
@@ -639,7 +639,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
         awaitable.emplace(*iter);
         ++iter;
       } catch (...) {
-        iterationException = exception_wrapper{std::current_exception()};
+        iterationException = exception_wrapper{current_exception()};
         cancelSource.requestCancellation();
       }
 
@@ -654,7 +654,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
             executor.get_alias(),
             co_withCancellation(cancelToken, std::move(*awaitable)));
       } catch (...) {
-        trySetFirstException(exception_wrapper{std::current_exception()});
+        trySetFirstException(exception_wrapper{current_exception()});
       }
 
       lock =
@@ -696,7 +696,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
     }
   } catch (...) {
     if (workerTasks.empty()) {
-      iterationException = exception_wrapper{std::current_exception()};
+      iterationException = exception_wrapper{current_exception()};
     }
   }
 
@@ -761,7 +761,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
         awaitable.emplace(*iter);
         ++iter;
       } catch (...) {
-        iterationException = exception_wrapper{std::current_exception()};
+        iterationException = exception_wrapper{current_exception()};
         cancelSource.requestCancellation();
       }
 
@@ -781,7 +781,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
             co_withCancellation(
                 cancelToken, static_cast<awaitable_t&&>(*awaitable))));
       } catch (...) {
-        trySetFirstException(exception_wrapper{std::current_exception()});
+        trySetFirstException(exception_wrapper{current_exception()});
       }
 
       lock =
@@ -790,7 +790,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       try {
         tryResults[thisIndex] = std::move(tryResult);
       } catch (...) {
-        trySetFirstException(exception_wrapper{std::current_exception()});
+        trySetFirstException(exception_wrapper{current_exception()});
       }
     }
   };
@@ -833,7 +833,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
     // Only a fatal error if we failed to create any worker tasks.
     if (workerTasks.empty()) {
       // No need to synchronise here. There are no concurrent tasks running.
-      iterationException = exception_wrapper{std::current_exception()};
+      iterationException = exception_wrapper{current_exception()};
     }
   }
 
@@ -893,7 +893,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
         awaitable.emplace(*iter);
         ++iter;
       } catch (...) {
-        iterationException = exception_wrapper{std::current_exception()};
+        iterationException = exception_wrapper{current_exception()};
       }
 
       if (!awaitable) {
@@ -918,7 +918,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
               co_withCancellation(cancelToken, std::move(*awaitable))));
         }
       } catch (...) {
-        result.emplaceException(std::current_exception());
+        result.emplaceException(current_exception());
       }
 
       lock =
@@ -927,7 +927,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
       try {
         results[thisIndex] = std::move(result);
       } catch (...) {
-        results[thisIndex].emplaceException(std::current_exception());
+        results[thisIndex].emplaceException(current_exception());
       }
     }
   };
@@ -968,7 +968,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
     // to create _any_ workers. As long as we created one then
     // the algorithm should still be able to make forward progress.
     if (workerTasks.empty()) {
-      iterationException = exception_wrapper{std::current_exception()};
+      iterationException = exception_wrapper{current_exception()};
     }
   }
 

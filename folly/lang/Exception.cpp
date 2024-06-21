@@ -668,7 +668,7 @@ namespace detail {
 
 template <typename Try>
 std::exception_ptr catch_current_exception_(Try&& t) noexcept {
-  return catch_exception(static_cast<Try&&>(t), std::current_exception);
+  return catch_exception(static_cast<Try&&>(t), current_exception);
 }
 
 #if defined(__GLIBCXX__)

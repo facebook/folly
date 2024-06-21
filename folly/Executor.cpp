@@ -27,7 +27,7 @@
 namespace folly {
 
 void Executor::invokeCatchingExnsLog(char const* const prefix) noexcept {
-  auto ep = std::current_exception();
+  auto ep = current_exception();
   LOG(ERROR) << prefix << " threw unhandled " << exceptionStr(ep);
 }
 

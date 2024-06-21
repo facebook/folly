@@ -52,7 +52,7 @@ void VirtualEventBase::destroyImpl() noexcept {
 
     destroyPromise_.set_value();
   } catch (...) {
-    destroyPromise_.set_exception(std::current_exception());
+    destroyPromise_.set_exception(current_exception());
   }
 }
 

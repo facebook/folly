@@ -254,7 +254,7 @@ AsyncGenerator<Reference, Value> merge(
           }
         }
       } catch (...) {
-        ex = exception_wrapper{std::current_exception()};
+        ex = exception_wrapper{current_exception()};
       }
 
       if (ex) {
@@ -290,7 +290,7 @@ AsyncGenerator<Reference, Value> merge(
         RequestContext::setContext(context);
       }
     } catch (...) {
-      ex = exception_wrapper{std::current_exception()};
+      ex = exception_wrapper{current_exception()};
     }
 
     if (ex) {

@@ -602,7 +602,7 @@ struct make_exception_ptr_with_fn {
     }
     if (kHasExceptions) {
       return catch_exception(
-          detail::make_exception_ptr_with_fn_<F>{f}, std::current_exception);
+          detail::make_exception_ptr_with_fn_<F>{f}, current_exception);
     }
     return std::exception_ptr();
   }

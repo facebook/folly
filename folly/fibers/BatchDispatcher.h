@@ -124,7 +124,7 @@ class BatchDispatcher {
       }
     } catch (...) {
       for (size_t i = 0; i < promises.size(); i++) {
-        promises[i].setException(exception_wrapper(std::current_exception()));
+        promises[i].setException(exception_wrapper(current_exception()));
       }
     }
   }
