@@ -564,13 +564,14 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     auto& capacity = kUseThreadLocal ? capacityTL : capacityNonTL;
 
     if (FOLLY_UNLIKELY(capacity <= id)) {
-      getSlowReserveAndCache(ent, id, threadEntry, capacity);
+      getSlowReserveAndCache(ent, threadEntry, capacity);
     }
     return threadEntry;
   }
 
   FOLLY_NOINLINE static void getSlowReserveAndCache(
-      EntryID* ent, uint32_t& id, ThreadEntry*& threadEntry, size_t& capacity) {
+      EntryID* ent, ThreadEntry*& threadEntry, size_t& capacity) {
+    auto id = ent->getOrInvalid();
     auto& inst = instance();
     threadEntry = inst.threadEntry_();
     if (FOLLY_UNLIKELY(threadEntry->getElementsCapacity() <= id)) {
