@@ -36,6 +36,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
 #include <folly/Synchronized.h>
+#include <folly/concurrency/container/atomic_grow_array.h>
 #include <folly/container/Foreach.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/detail/UniqueInstance.h>
@@ -383,7 +384,7 @@ struct StaticMetaBase {
 
   /*
    * Helper inline methods to add/remove/clear ThreadEntry* from
-   * allThreadEntryMap_
+   * allId2ThreadEntrySets_
    */
 
   /*
@@ -391,12 +392,11 @@ struct StaticMetaBase {
    * for the given id.
    */
   FOLLY_ALWAYS_INLINE bool isThreadEntryInSet(ThreadEntry* te, uint32_t id) {
-    auto rLockedMap = allThreadEntryMap_.rlock();
-    return rLockedMap->at(id).rlock()->contains(te);
+    return allId2ThreadEntrySets_[id].rlock()->contains(te);
   }
 
   /*
-   * Add a ThreadEntry* to the map of allThreadEntryMap_
+   * Add a ThreadEntry* to the map of allId2ThreadEntrySets_
    * for a given slot @id in ThreadEntry::elements that is
    * used.
    */
@@ -409,20 +409,20 @@ struct StaticMetaBase {
       // StaticMetaBase::allocate() always initializes a ThreadEntrySet
       // when ever a new @id is allocated. Enabling faster and less contentious
       // addThreadEntryToMap.
-      (allThreadEntryMap_.rlock().asNonConstUnsafe())[id].wlock()->insert(te);
+      allId2ThreadEntrySets_[id].wlock()->insert(te);
     }
   }
 
   /*
-   * Remove a ThreadEntry* from the map of allThreadEntryMap_
+   * Remove a ThreadEntry* from the map of allId2ThreadEntrySets_
    * for all slot @id's in ThreadEntry::elements that are
    * used. This is essentially clearing out a ThreadEntry entirely
-   * from the allThreadEntryMap_.
+   * from the allId2ThreadEntrySets_.
    */
   FOLLY_ALWAYS_INLINE void removeThreadEntryFromAllInMap(ThreadEntry* te) {
-    auto rLockedMap = allThreadEntryMap_.rlock();
-    for (auto& [e, teSet] : rLockedMap.asNonConstUnsafe()) {
-      teSet.wlock()->erase(te);
+    uint32_t maxId = nextId_.load();
+    for (uint32_t i = 0; i < maxId; ++i) {
+      allId2ThreadEntrySets_[i].wlock()->erase(te);
     }
   }
 
@@ -430,9 +430,9 @@ struct StaticMetaBase {
    * Check if ThreadEntry* is present in the map for all slots of @ids.
    */
   FOLLY_ALWAYS_INLINE bool isThreadEntryRemovedFromAllInMap(ThreadEntry* te) {
-    auto rLockedMap = allThreadEntryMap_.rlock();
-    for (auto& [e, teSet] : *rLockedMap) {
-      if (teSet.rlock()->contains(te)) {
+    uint32_t maxId = nextId_.load();
+    for (uint32_t i = 0; i < maxId; ++i) {
+      if (allId2ThreadEntrySets_[i].rlock()->contains(te)) {
         return false;
       }
     }
@@ -461,8 +461,7 @@ struct StaticMetaBase {
   // This is a map of all thread entries mapped to index i with active
   // elements[i];
   using SynchronizedThreadEntrySet = folly::Synchronized<ThreadEntrySet>;
-  folly::Synchronized<std::unordered_map<uint32_t, SynchronizedThreadEntrySet>>
-      allThreadEntryMap_;
+  folly::atomic_grow_array<SynchronizedThreadEntrySet> allId2ThreadEntrySets_;
 };
 
 struct FakeUniqueInstance {
@@ -545,10 +544,10 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
 
   /*
    * In order to facilitate adding/clearing ThreadEntry* to
-   * StaticMetaBase::allThreadEntryMap_ during ThreadLocalPtr reset()/release()
-   * we need access to the ThreadEntry* directly. This allows for direct
-   * interaction with StaticMetaBase::allThreadEntryMap_. We keep
-   * StaticMetaBase::allThreadEntryMap_ updated with ThreadEntry* whenever a
+   * StaticMetaBase::allId2ThreadEntrySets_ during ThreadLocalPtr
+   * reset()/release() we need access to the ThreadEntry* directly. This allows
+   * for direct interaction with StaticMetaBase::allId2ThreadEntrySets_. We keep
+   * StaticMetaBase::allId2ThreadEntrySets_ updated with ThreadEntry* whenever a
    * ThreadLocal is set/released.
    */
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static ThreadEntry* getThreadEntry(
@@ -625,15 +624,15 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     // only the current thread survives
     auto& meta = instance();
     auto threadEntry = meta.threadEntry_();
-    // Loop through allThreadEntryMap_; Only keep ThreadEntry* in the map
+    // Loop through allId2ThreadEntrySets_; Only keep ThreadEntry* in the map
     // for ThreadEntry::elements that are still in use by the current thread.
     // Evict all of the ThreadEntry* from other threads.
     // Since the map structure is untouched and only map entries are modified,
     // rlock() with asNonConstUnsafe() access is used, so that an exclusive lock
     // can be acquired on the threadEntrySet.
-    auto rLockedMap = meta.allThreadEntryMap_.rlock();
-    for (auto& [id, te] : rLockedMap.asNonConstUnsafe()) {
-      auto wlockedSet = te.wlock();
+    uint32_t maxId = meta.nextId_.load();
+    for (uint32_t id = 0; id < maxId; ++id) {
+      auto wlockedSet = meta.allId2ThreadEntrySets_[id].wlock();
       if (wlockedSet->contains(threadEntry)) {
         DCHECK(threadEntry->elements[id].isLinked);
         wlockedSet->clear();

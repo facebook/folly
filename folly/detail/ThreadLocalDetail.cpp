@@ -207,23 +207,11 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   id = ent->value.load(std::memory_order_relaxed);
 
   if (id == kEntryIDInvalid) {
-    // At this point, a new @id is being allocated.
-    // This could be from the bank of freeIds or nextId_.
-    // ThreadEntrySet initialization is required when
-    // meta.freeIds_.empty(), since we don't remove but clear
-    // ThreadEntrySet from allThreadEntryMap_ on destroy()/threadExit.
-    // So all @ids in  meta.freeIds_ should have a clear ThreadEntrySet
-    // already. A new ThreadEntrySet initialization is needed only when
-    // nextId_ is used as the new @id.
-    auto wLockedMap = meta.allThreadEntryMap_.wlock();
     if (!meta.freeIds_.empty()) {
       id = meta.freeIds_.back();
       meta.freeIds_.pop_back();
-      DCHECK((*wLockedMap)[id].rlock()->threadEntries.empty());
     } else {
       id = meta.nextId_++;
-      DCHECK(wLockedMap->find(id) == wLockedMap->end());
-      (void)(*wLockedMap)[id];
     }
     uint32_t old_id = ent->value.exchange(id, std::memory_order_release);
     DCHECK_EQ(old_id, kEntryIDInvalid);
@@ -260,14 +248,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
           return;
         }
 
-        {
-          auto rlockedMap = meta.allThreadEntryMap_.rlock();
-          auto threadEntrySet = get_ptr(rlockedMap.asNonConstUnsafe(), id);
-          if (!threadEntrySet) {
-            return;
-          }
-          threadEntrySet->swap(tmpEntrySet);
-        }
+        meta.allId2ThreadEntrySets_[id].swap(tmpEntrySet);
         for (auto& e : tmpEntrySet.threadEntries) {
           auto elementsCapacity = e->getElementsCapacity();
           if (id < elementsCapacity) {
@@ -425,8 +406,7 @@ void StaticMetaBase::reserve(EntryID* id) {
 }
 
 /*
- * Evict threadEntry for @id from allThreadEntryMap_
- * ThreadEntry* set and release the element @id.
+ * release the element @id.
  */
 void* ThreadEntry::releaseElement(uint32_t id) {
   return elements[id].release();
@@ -440,8 +420,8 @@ void ThreadEntry::cleanupElementAndSetThreadEntry(
   elements[id].dispose(TLPDestructionMode::THIS_THREAD);
   // Cleanup
   elements[id].cleanup();
-  // Add the allThreadEntryMap_ only iff newPtr is not nullptr and threadEntry
-  // is not marked as removed
+  // Add the allId2ThreadEntrySets_ only iff newPtr is not nullptr and
+  // threadEntry is not marked as removed
   if (validThreadEntry) {
     meta->addThreadEntryToMap(this, id);
   }

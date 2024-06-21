@@ -239,16 +239,6 @@ class ThreadLocalPtr {
     std::mutex* lock_;
     uint32_t id_;
 
-    // Opting for asNonConstUnsafe() access to
-    // allThreadEntryMap_. The map is not being modified,
-    // only read, rlock() should suffice. This
-    // allows for rlock() to be acquired on
-    // the ThreadEntrySet which is crucial for the accessor's
-    // iterator to use asNonConstUnsafe() access to threadEntries
-    // as the iterator currently is not const;
-    // Can remove asNonConstUnsafe() once iterator is const
-    //
-
     threadlocal_detail::StaticMetaBase::SynchronizedThreadEntrySet::RLockedPtr
         rLockedThreadEntrySet_;
 
@@ -410,8 +400,7 @@ class ThreadLocalPtr {
           accessAllThreadsLock_(nullptr),
           lock_(nullptr),
           id_(0) {
-      rLockedThreadEntrySet_ =
-          (meta_.allThreadEntryMap_.rlock().asNonConstUnsafe())[id_].rlock();
+      rLockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].rlock();
     }
 
    private:
@@ -422,8 +411,7 @@ class ThreadLocalPtr {
       accessAllThreadsLock_->lock();
       lock_->lock();
       id_ = id;
-      rLockedThreadEntrySet_ =
-          (meta_.allThreadEntryMap_.rlock().asNonConstUnsafe())[id_].rlock();
+      rLockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].rlock();
     }
 
     void release() {
