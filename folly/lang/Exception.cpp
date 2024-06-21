@@ -96,6 +96,11 @@ typedef unsigned _Unwind_Ptr __attribute__((__mode__(__pointer__)));
 
 namespace __cxxabiv1 {
 
+static constexpr uint64_t __gxx_primary_exception_class =
+    0x474E5543432B2B00; // GNCUC++\0
+static constexpr uint64_t __gxx_dependent_exception_class =
+    0x474E5543432B2B01; // GNCUC++\1
+
 struct __cxa_exception {
   std::type_info* exceptionType;
   void(_GLIBCXX_CDTOR_CALLABI* exceptionDestructor)(void*);
@@ -310,6 +315,13 @@ std::type_info const* exception_ptr_exception_typeid(
 bool exception_ptr_access_rt_v_() noexcept {
   static_assert(exception_ptr_access_ct, "mismatch");
   return true;
+}
+
+template <typename F>
+static decltype(auto) cxxabi_with_cxa_exception(void* object, F f) {
+  using cxa_exception = abi::__cxa_exception;
+  auto exception = object ? static_cast<cxa_exception*>(object) - 1 : nullptr;
+  return f(exception);
 }
 
 std::type_info const* exception_ptr_get_type_(
@@ -597,6 +609,63 @@ void* exception_ptr_get_object_(
 
 namespace detail {
 
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+
+[[gnu::const]] abi::__cxa_eh_globals& cxa_get_globals() noexcept {
+#if !defined(__has_feature) || !FOLLY_HAS_FEATURE(cxx_thread_local)
+  return *abi::__cxa_get_globals();
+#elif defined(__XTENSA__)
+  return *abi::__cxa_get_globals();
+#else
+  thread_local abi::__cxa_eh_globals* cache;
+  return FOLLY_LIKELY(!!cache) ? *cache : *(cache = abi::__cxa_get_globals());
+#endif
+}
+
+#endif
+
+} // namespace detail
+
+std::exception_ptr current_exception() noexcept {
+#if defined(__APPLE__)
+  return std::current_exception();
+#elif defined(_CPPLIB_VER)
+  return std::current_exception();
+#elif defined(_LIBCPP_VERSION)
+  return std::current_exception();
+#else
+  auto const& globals = detail::cxa_get_globals();
+  auto const exception =
+      static_cast<abi::__cxa_exception*>(globals.caughtExceptions);
+  if (!exception) {
+    return std::exception_ptr();
+  }
+  uint64_t exn_class{};
+  std::memcpy( // exception_class may be uint64_t or char[8]
+      &exn_class,
+      &exception->unwindHeader.exception_class,
+      sizeof(exn_class));
+  switch (exn_class) {
+    case abi::__gxx_primary_exception_class: {
+      auto const object = static_cast<void const*>(exception + 1);
+      assume(!!object);
+      return std::exception_ptr(
+          reinterpret_cast<std::exception_ptr const&>(object));
+    }
+    case abi::__gxx_dependent_exception_class: {
+      auto const object = static_cast<void const*>(exception->exceptionType);
+      assume(!!object);
+      return std::exception_ptr(
+          reinterpret_cast<std::exception_ptr const&>(object));
+    }
+    default:
+      return std::exception_ptr();
+  }
+#endif
+}
+
+namespace detail {
+
 template <typename Try>
 std::exception_ptr catch_current_exception_(Try&& t) noexcept {
   return catch_exception(static_cast<Try&&>(t), std::current_exception);
@@ -645,7 +714,7 @@ std::exception_ptr make_exception_ptr_with_(
     exception->exceptionType = type;
     exception->exceptionDestructor = arg.dtor;
     exception->referenceCount = 1;
-    std::memcpy(
+    std::memcpy( // exception_class may be uint64_t or char[8]
         &exception->unwindHeader.exception_class,
         &abi::kOurExceptionClass,
         sizeof(abi::kOurExceptionClass));

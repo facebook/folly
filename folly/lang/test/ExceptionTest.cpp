@@ -228,6 +228,27 @@ TEST_F(ExceptionTest, uncaught_exception) {
   }
 }
 
+TEST_F(ExceptionTest, current_exception) {
+  EXPECT_EQ(nullptr, std::current_exception());
+  EXPECT_EQ(nullptr, folly::current_exception());
+  try {
+    throw std::exception();
+  } catch (...) {
+    // primary exception?
+    EXPECT_EQ(std::current_exception(), folly::current_exception());
+  }
+  try {
+    throw std::exception();
+  } catch (...) {
+    try {
+      throw;
+    } catch (...) {
+      // dependent exception?
+      EXPECT_EQ(std::current_exception(), folly::current_exception());
+    }
+  }
+}
+
 TEST_F(ExceptionTest, exception_ptr_empty) {
   auto ptr = std::exception_ptr();
   EXPECT_EQ(nullptr, folly::exception_ptr_get_type(ptr));

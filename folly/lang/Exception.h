@@ -336,6 +336,13 @@ uncaught_exceptions() noexcept {
 #endif
 }
 
+/// current_exception
+///
+/// An accelerated version of std::current_exception.
+///
+/// mimic: std::current_exception, c++11
+std::exception_ptr current_exception() noexcept;
+
 namespace detail {
 #if FOLLY_APPLE_IOS
 #if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_12_0
