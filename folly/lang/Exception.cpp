@@ -249,6 +249,9 @@ class __folly_shim_type_info {
       std::type_info const* target, void** thrown_object) const = 0;
 };
 
+extern "C" void* __cxa_allocate_exception(size_t thrown_size) noexcept;
+extern "C" void __cxa_free_exception(void* thrown_exception) noexcept;
+
 } // namespace __cxxabiv1
 
 namespace abi = __cxxabiv1;
@@ -709,7 +712,11 @@ std::exception_ptr make_exception_ptr_with_(
   (void)abi::__cxa_init_primary_exception(object, type, arg.dtor);
 #else
   cxxabi_with_cxa_exception(object, [&](auto exception) {
+#if defined(__FreeBSD__)
+    exception->unexpectedHandler = nullptr;
+#else
     exception->unexpectedHandler = std::get_unexpected();
+#endif
     exception->terminateHandler = std::get_terminate();
     exception->exceptionType = type;
     exception->exceptionDestructor = arg.dtor;
