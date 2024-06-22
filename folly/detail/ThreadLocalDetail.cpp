@@ -42,6 +42,19 @@ bool ThreadEntrySet::basicSanity() const {
           });
 }
 
+void ThreadEntrySet::compress() {
+  assert(compressible());
+  // compress the vector
+  threadEntries.shrink_to_fit();
+  // compress the index
+  EntryIndex newIndex;
+  newIndex.reserve(entryToVectorSlot.size());
+  while (!entryToVectorSlot.empty()) {
+    newIndex.insert(entryToVectorSlot.extract(entryToVectorSlot.begin()));
+  }
+  entryToVectorSlot = std::move(newIndex);
+}
+
 StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
     : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
   int ret = pthread_key_create(&pthreadKey_, &onThreadExit);

@@ -256,7 +256,8 @@ struct ThreadEntrySet {
   EntryVector threadEntries;
   // Map from ThreadEntry* to its slot in the threadEntries vector to be able
   // to remove an entry quickly.
-  std::unordered_map<ThreadEntry*, EntryVector::size_type> entryToVectorSlot;
+  using EntryIndex = std::unordered_map<ThreadEntry*, EntryVector::size_type>;
+  EntryIndex entryToVectorSlot;
 
   bool basicSanity() const;
 
@@ -302,8 +303,29 @@ struct ThreadEntrySet {
     }
     threadEntries.pop_back();
     DCHECK(basicSanity());
+    if (compressible()) {
+      compress();
+    }
+    DCHECK(basicSanity());
     return true;
   }
+
+  /// compressible
+  ///
+  /// If many elements have been removed, then size might be much less than
+  /// capacity and it becomes possible to reduce memory usage.
+  bool compressible() const {
+    // We choose a sufficiently-large multiplier so that there is no risk of a
+    // following insert growing the vector and then a following erase shrinking
+    // the vector, since that way lies non-amortized-O(N)-complexity costs for
+    // both insert and erase ops.
+    constexpr size_t const mult = 4;
+    return threadEntries.size() * mult <= threadEntries.capacity();
+  }
+  /// compress
+  ///
+  /// Attempt to reduce the memory usage of the data structure.
+  void compress();
 };
 
 struct StaticMetaBase {
