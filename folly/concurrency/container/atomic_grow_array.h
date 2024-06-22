@@ -296,6 +296,8 @@ class atomic_grow_array : private Policy {
     using base = basic_iterator<false, iterator>;
     friend base;
     friend const_iterator;
+    template <bool>
+    friend class basic_view;
 
    public:
     using typename base::difference_type;
@@ -320,6 +322,8 @@ class atomic_grow_array : private Policy {
   class const_iterator : private basic_iterator<true, const_iterator> {
     using base = basic_iterator<true, const_iterator>;
     friend base;
+    template <bool>
+    friend class basic_view;
 
    public:
     using typename base::difference_type;
