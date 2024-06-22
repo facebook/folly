@@ -291,6 +291,8 @@ class ThreadLocalPtr {
             iter_(vec_.begin()) {
         if (toEnd) {
           setToEnd();
+        } else {
+          incrementToValid();
         }
       }
 
