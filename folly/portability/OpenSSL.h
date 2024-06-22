@@ -50,6 +50,10 @@
 #include <openssl/ecdsa.h>
 #endif
 
+#ifndef OPENSSL_NO_DSA
+#include <openssl/dsa.h>
+#endif
+
 #ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
 #endif
