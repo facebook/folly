@@ -472,3 +472,15 @@ cpp_library(
         "glog",
     ],
 )
+
+cpp_library(
+    name = "execution_observer",
+    srcs = ["ExecutionObserver.cpp"],
+    headers = ["ExecutionObserver.h"],
+    deps = [
+        "//folly/tracing:static_tracepoint",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)

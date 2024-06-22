@@ -78,13 +78,11 @@ cpp_library(
 
 cpp_library(
     name = "execution_observer",
-    srcs = ["ExecutionObserver.cpp"],
-    headers = ["ExecutionObserver.h"],
-    deps = [
-        "//folly/tracing:static_tracepoint",
+    headers = [
+        "ExecutionObserver.h",
     ],
-    exported_external_deps = [
-        "boost",
+    exported_deps = [
+        "//folly/executors:execution_observer",
     ],
 )
 

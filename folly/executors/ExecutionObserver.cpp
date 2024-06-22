@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/ExecutionObserver.h>
+#include <folly/executors/ExecutionObserver.h>
 
 #include <folly/tracing/StaticTracepoint.h>
 
