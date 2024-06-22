@@ -12,25 +12,25 @@ libsodium-devel
 libsodium-static
 
 [download.not(os=windows)]
-url = https://github.com/jedisct1/libsodium/releases/download/1.0.17/libsodium-1.0.17.tar.gz
-sha256 = 0cc3dae33e642cc187b5ceb467e0ad0e1b51dcba577de1190e9ffa17766ac2b1
+url = https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
+sha256 = ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
 
 [build.not(os=windows)]
 builder = autoconf
-subdir = libsodium-1.0.17
+subdir = libsodium-1.0.20
 
 [download.os=windows]
-url = https://download.libsodium.org/libsodium/releases/old/unsupported/libsodium-1.0.17-msvc.zip
-sha256 = f0f32ad8ebd76eee99bb039f843f583f2babca5288a8c26a7261db9694c11467
+url = https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20-msvc.zip
+sha256 = 2ff97f9e3f5b341bdc808e698057bea1ae454f99e29ff6f9b62e14d0eb1b1baa
 
 [build.os=windows]
 builder = nop
 
 [install.files.os=windows]
-x64/Release/v141/dynamic/libsodium.dll = bin/libsodium.dll
-x64/Release/v141/dynamic/libsodium.lib = lib/libsodium.lib
-x64/Release/v141/dynamic/libsodium.exp = lib/libsodium.exp
-x64/Release/v141/dynamic/libsodium.pdb = lib/libsodium.pdb
-include = include
+libsodium/x64/Release/v143/dynamic/libsodium.dll = bin/libsodium.dll
+libsodium/x64/Release/v143/dynamic/libsodium.lib = lib/libsodium.lib
+libsodium/x64/Release/v143/dynamic/libsodium.exp = lib/libsodium.exp
+libsodium/x64/Release/v143/dynamic/libsodium.pdb = lib/libsodium.pdb
+libsodium/include = include
 
 [autoconf.args]
