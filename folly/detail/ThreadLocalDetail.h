@@ -646,10 +646,29 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
   }
 
   static bool preFork() {
-    return instance().lock_.try_lock(); // Make sure it's created
+    auto& meta = instance();
+    bool gotLock =
+        meta.accessAllThreadsLock_.try_lock(); // Make sure it's created
+    if (!gotLock) {
+      return false;
+    }
+    meta.lock_.lock();
+    size_t maxId = meta.allId2ThreadEntrySets_.size();
+    for (size_t id = 0; id < maxId; ++id) {
+      meta.allId2ThreadEntrySets_[id].unsafeGetMutex().lock();
+    }
+    return true;
   }
 
-  static void onForkParent() { instance().lock_.unlock(); }
+  static void onForkParent() {
+    auto& meta = instance();
+    size_t maxId = meta.allId2ThreadEntrySets_.size();
+    for (size_t id = 0; id < maxId; ++id) {
+      meta.allId2ThreadEntrySets_[id].unsafeGetMutex().unlock();
+    }
+    meta.lock_.unlock();
+    meta.accessAllThreadsLock_.unlock();
+  }
 
   static void onForkChild() {
     // only the current thread survives
@@ -658,16 +677,14 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     // Loop through allId2ThreadEntrySets_; Only keep ThreadEntry* in the map
     // for ThreadEntry::elements that are still in use by the current thread.
     // Evict all of the ThreadEntry* from other threads.
-    // Since the map structure is untouched and only map entries are modified,
-    // rlock() with asNonConstUnsafe() access is used, so that an exclusive lock
-    // can be acquired on the threadEntrySet.
-    uint32_t maxId = meta.nextId_.load();
-    for (uint32_t id = 0; id < maxId; ++id) {
-      auto wlockedSet = meta.allId2ThreadEntrySets_[id].wlock();
-      if (wlockedSet->contains(threadEntry)) {
+    size_t maxId = meta.allId2ThreadEntrySets_.size();
+    for (size_t id = 0; id < maxId; ++id) {
+      auto& teSet = meta.allId2ThreadEntrySets_[id];
+      auto& wlockedSet = teSet.unsafeGetUnlocked(); // locked in preFork
+      if (wlockedSet.contains(threadEntry)) {
         DCHECK(threadEntry->elements[id].isLinked);
-        wlockedSet->clear();
-        wlockedSet->insert(threadEntry);
+        wlockedSet.clear();
+        wlockedSet.insert(threadEntry);
       } else {
         // DCHECK if elements[id] is unlinked for this
         // threadEntry only (id < threadEntry->getElementsCapacity()).
@@ -675,10 +692,12 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
         if (id < threadEntry->getElementsCapacity()) {
           DCHECK(!threadEntry->elements[id].isLinked);
         }
-        wlockedSet->clear();
+        wlockedSet.clear();
       }
+      teSet.unsafeGetMutex().unlock();
     }
-    instance().lock_.unlock();
+    meta.lock_.unlock();
+    meta.accessAllThreadsLock_.unlock();
   }
 };
 

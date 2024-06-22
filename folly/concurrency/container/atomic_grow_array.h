@@ -184,8 +184,6 @@ class atomic_grow_array : private Policy {
   class basic_view {
    private:
     friend atomic_grow_array;
-    template <bool>
-    friend class basic_view;
 
     template <typename T>
     using maybe_add_const_t = conditional_t<Const, T const, T>;

@@ -646,8 +646,7 @@ TEST(ThreadLocal, Fork) {
   std::mutex mutex;
   bool started = false;
   std::condition_variable startedCond;
-  bool stopped = false;
-  std::condition_variable stoppedCond;
+  std::atomic<bool> stopped = false;
 
   std::thread t([&]() {
     EXPECT_EQ(1, ptr->value()); // ensure created
@@ -657,9 +656,12 @@ TEST(ThreadLocal, Fork) {
       startedCond.notify_all();
     }
     {
-      std::unique_lock<std::mutex> lock(mutex);
       while (!stopped) {
-        stoppedCond.wait(lock);
+        // Keep invoking accessAllThreads which will acquire
+        // the StaticMeta internal locks. The child() after fork should
+        // not deadlock on the locks being inconsistent.
+        EXPECT_EQ(2, totalValue());
+        usleep(100); /* sleep override */
       }
     }
   });
@@ -699,12 +701,7 @@ TEST(ThreadLocal, Fork) {
 
   EXPECT_EQ(2, totalValue());
 
-  {
-    std::unique_lock<std::mutex> lock(mutex);
-    stopped = true;
-    stoppedCond.notify_all();
-  }
-
+  stopped = true;
   t.join();
 
   EXPECT_EQ(1, totalValue());
