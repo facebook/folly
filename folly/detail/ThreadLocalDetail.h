@@ -530,6 +530,18 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     return detail::createGlobal<StaticMeta<Tag, AccessMode>, void>();
   }
 
+  struct LocalCache {
+    ThreadEntry* threadEntry;
+    size_t capacity;
+  };
+  static_assert(std::is_standard_layout_v<LocalCache>);
+  static_assert(std::is_trivial_v<LocalCache>);
+
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static LocalCache& getLocalCache() {
+    static thread_local LocalCache instance;
+    return instance;
+  }
+
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static ElementWrapper& get(EntryID* ent) {
     // Eliminate as many branches and as much extra code as possible in the
     // cached fast path, leaving only one branch here and one indirection
@@ -555,23 +567,21 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     // Eliminate as many branches and as much extra code as possible in the
     // cached fast path, leaving only one branch here and one indirection below.
     uint32_t id = ent->getOrInvalid();
-    static thread_local ThreadEntry* threadEntryTL{};
-    ThreadEntry* threadEntryNonTL{};
-    auto& threadEntry = kUseThreadLocal ? threadEntryTL : threadEntryNonTL;
+    LocalCache cacheNonTL{};
+    auto& cache = kUseThreadLocal ? getLocalCache() : cacheNonTL;
 
-    static thread_local size_t capacityTL{};
-    size_t capacityNonTL{};
-    auto& capacity = kUseThreadLocal ? capacityTL : capacityNonTL;
-
-    if (FOLLY_UNLIKELY(capacity <= id)) {
-      getSlowReserveAndCache(ent, threadEntry, capacity);
+    if (FOLLY_UNLIKELY(cache.capacity <= id)) {
+      getSlowReserveAndCache(ent, cache);
     }
-    return threadEntry;
+    return cache.threadEntry;
   }
 
   FOLLY_NOINLINE static void getSlowReserveAndCache(
-      EntryID* ent, ThreadEntry*& threadEntry, size_t& capacity) {
+      EntryID* ent, LocalCache& cache) {
     auto id = ent->getOrInvalid();
+    auto& threadEntry = cache.threadEntry;
+    auto& capacity = cache.capacity;
+
     auto& inst = instance();
     threadEntry = inst.threadEntry_();
     if (FOLLY_UNLIKELY(threadEntry->getElementsCapacity() <= id)) {
