@@ -258,9 +258,7 @@ struct ThreadEntrySet {
   // to remove an entry quickly.
   std::unordered_map<ThreadEntry*, EntryVector::size_type> entryToVectorSlot;
 
-  bool basicSanity() const {
-    return threadEntries.size() == entryToVectorSlot.size();
-  }
+  bool basicSanity() const;
 
   void clear() {
     DCHECK(basicSanity());

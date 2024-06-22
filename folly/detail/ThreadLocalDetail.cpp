@@ -16,6 +16,7 @@
 
 #include <folly/detail/ThreadLocalDetail.h>
 
+#include <algorithm>
 #include <list>
 #include <mutex>
 
@@ -28,6 +29,18 @@ constexpr auto kBigGrowthFactor = 1.7;
 
 namespace folly {
 namespace threadlocal_detail {
+
+bool ThreadEntrySet::basicSanity() const {
+  return //
+      threadEntries.size() == entryToVectorSlot.size() &&
+      std::all_of(
+          entryToVectorSlot.begin(),
+          entryToVectorSlot.end(),
+          [&](auto const& kvp) {
+            return kvp.second < threadEntries.size() &&
+                threadEntries[kvp.second] == kvp.first;
+          });
+}
 
 StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
     : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
