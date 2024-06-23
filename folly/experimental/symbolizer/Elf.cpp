@@ -16,6 +16,7 @@
 
 #include <folly/experimental/symbolizer/Elf.h>
 
+#include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
