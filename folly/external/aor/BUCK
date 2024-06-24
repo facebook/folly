@@ -36,3 +36,34 @@ cpp_library(
         "ovr_config//os:linux-arm64",
     ],
 )
+
+cpp_library(
+    name = "memset_aarch64",
+    srcs = [
+        "memset-advsimd.S",
+    ],
+    headers = [
+        "asmdefs.h",
+    ],
+    target_compatible_with = [
+        "ovr_config//os:linux-arm64",
+    ],
+)
+
+cpp_library(
+    name = "memset_aarch64-use",
+    srcs = [
+        "memset-advsimd.S",
+    ],
+    headers = [
+        "asmdefs.h",
+    ],
+    arch_preprocessor_flags = {
+        "aarch64": [
+            "-DFOLLY_MEMSET_IS_MEMSET",
+        ],
+    },
+    target_compatible_with = [
+        "ovr_config//os:linux-arm64",
+    ],
+)

@@ -750,8 +750,12 @@ cpp_library(
     name = "memset-impl",
     srcs = [
         "FollyMemset.cpp",
-        "memset.S",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
+            "memset.S",
+        ],
+    }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
     arch_preprocessor_flags = {
@@ -761,6 +765,12 @@ cpp_library(
     },
     compiler_flags = roar_no_jit(),
     modular_headers = False,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": [
+            "//folly/external/aor:memset_aarch64",  # @manual
+        ],
+    }),
 )
 
 # This exports the symbol __folly_memset to C++ via a header.
@@ -777,11 +787,18 @@ cpp_library(
     name = "memset-use",
     srcs = [
         "FollyMemset.cpp",
-        "memset.S",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
+            "memset.S",
+        ],
+    }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
     arch_preprocessor_flags = {
+        "aarch64": [
+            "-DFOLLY_MEMSET_IS_MEMSET",
+        ],
         "x86_64": [
             "-DFOLLY_MEMSET_IS_MEMSET",
             "-mavx2",
@@ -789,6 +806,12 @@ cpp_library(
     },
     compiler_flags = roar_no_jit(),
     modular_headers = False,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": [
+            "//folly/external/aor:memset_aarch64-use",  # @manual
+        ],
+    }),
 )
 
 # This adds the symbol __folly_memcpy but does not replace the default memcpy.
