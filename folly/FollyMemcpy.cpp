@@ -16,7 +16,7 @@
 
 #include <cstring>
 
-#if !defined(__AVX2__)
+#if !defined(__AVX2__) && !(defined(__linux__) && defined(__aarch64__))
 namespace folly {
 
 extern "C" void* __folly_memcpy(void* dst, const void* src, std::size_t size) {

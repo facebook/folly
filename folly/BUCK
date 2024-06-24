@@ -796,8 +796,14 @@ cpp_library(
     name = "memcpy-impl",
     srcs = [
         "FollyMemcpy.cpp",
-        "memcpy.S",
-    ],
+    ] + select({
+        "ovr_config//cpu:x86_64": [
+            "memcpy.S",
+        ],
+        "ovr_config//os:linux-arm64": [
+            "memcpy_select_aarch64.cpp",
+        ],
+    }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
     arch_preprocessor_flags = {
@@ -807,6 +813,12 @@ cpp_library(
     },
     compiler_flags = roar_no_jit(),
     modular_headers = False,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": [
+            "//folly/external/aor:memcpy_aarch64",  # @manual
+        ],
+    }),
 )
 
 # This exports the symbol __folly_memcpy to C++ via a header.
@@ -823,11 +835,21 @@ cpp_library(
     name = "memcpy-use",
     srcs = [
         "FollyMemcpy.cpp",
-        "memcpy.S",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
+            "memcpy.S",
+        ],
+        "ovr_config//os:linux-arm64": [
+            "memcpy_select_aarch64.cpp",
+        ],
+    }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
     arch_preprocessor_flags = {
+        "aarch64": [
+            "-DFOLLY_MEMCPY_IS_MEMCPY",
+        ],
         "x86_64": [
             "-DFOLLY_MEMCPY_IS_MEMCPY",
             "-mavx2",
@@ -836,6 +858,12 @@ cpp_library(
     },
     compiler_flags = roar_no_jit(),
     modular_headers = False,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": [
+            "//folly/external/aor:memcpy_aarch64-use",  # @manual
+        ],
+    }),
 )
 
 cpp_library(
