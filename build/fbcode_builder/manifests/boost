@@ -62,6 +62,7 @@ boost-static
 [build]
 builder = boost
 job_weight_mib = 512
+patchfile = boost_comparator_operator_fix.patch
 
 [b2.args]
 --with-atomic

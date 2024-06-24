@@ -1,0 +1,11 @@
+diff --git a/boost/serialization/strong_typedef.hpp b/boost/serialization/strong_typedef.hpp
+--- a/boost/serialization/strong_typedef.hpp
++++ b/boost/serialization/strong_typedef.hpp
+@@ -44,6 +44,7 @@
+     operator const T&() const {return t;}                                                                        \
+     operator T&() {return t;}                                                                                    \
+     bool operator==(const D& rhs) const {return t == rhs.t;}                                                     \
++    bool operator==(const T& lhs) const {return t == lhs;}                                                       \
+     bool operator<(const D& rhs) const {return t < rhs.t;}                                                       \
+ };
+
