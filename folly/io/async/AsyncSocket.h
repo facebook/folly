@@ -828,6 +828,7 @@ class AsyncSocket : public AsyncSocketTransport {
 
   struct ZeroCopyDrainConfig {
     std::chrono::milliseconds drainDelay{1000};
+    std::optional<unsigned short> linger;
   };
 
   void setZeroCopyDrainConfig(const ZeroCopyDrainConfig& config);

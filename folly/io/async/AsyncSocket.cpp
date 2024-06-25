@@ -1452,11 +1452,14 @@ void AsyncSocket::drainZeroCopyQueue() {
   if (idZeroCopyBufPtrMap_.empty()) {
     return;
   }
-  // Enable SO_LINGER, with the linger timeout set to 0.
-  struct linger optLinger = {1, 0};
-  if (setSockOpt(SOL_SOCKET, SO_LINGER, &optLinger) != 0) {
-    VLOG(2) << "AsyncSocket::drainZeroCopyQueue(): error setting SO_LINGER "
-            << "on " << fd_ << ": errno=" << errno;
+
+  // Enable SO_LINGER if requested.
+  if (zeroCopyDrainConfig_.linger.has_value()) {
+    struct linger optLinger = {1, zeroCopyDrainConfig_.linger.value()};
+    if (setSockOpt(SOL_SOCKET, SO_LINGER, &optLinger) != 0) {
+      VLOG(2) << "AsyncSocket::drainZeroCopyQueue(): error setting SO_LINGER "
+              << "on " << fd_ << ": errno=" << errno;
+    }
   }
 
   if (eventBase_) {
