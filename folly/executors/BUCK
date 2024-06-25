@@ -398,6 +398,7 @@ cpp_library(
     exported_deps = [
         ":queue_observer",
         "//folly:default_keep_alive_executor",
+        "//folly/concurrency:unbounded_queue",
         "//folly/io/async:async_base",
     ],
 )
