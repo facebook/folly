@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/observer/detail/Core.h>
+#include <folly/observer/detail/Core.h>
 
 #include <folly/ExceptionString.h>
-#include <folly/experimental/observer/detail/ObserverManager.h>
+#include <folly/observer/detail/ObserverManager.h>
 
 namespace folly {
 namespace observer_detail {

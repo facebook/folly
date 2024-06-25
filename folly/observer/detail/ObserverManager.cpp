@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/observer/detail/ObserverManager.h>
+#include <folly/observer/detail/ObserverManager.h>
 
 #include <future>
 
