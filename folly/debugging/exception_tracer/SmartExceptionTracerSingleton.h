@@ -14,26 +14,28 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/exception_tracer/SmartExceptionTracerSingleton.h>
+#pragma once
+
+#include <folly/Synchronized.h>
+#include <folly/container/F14Map.h>
+#include <folly/debugging/exception_tracer/StackTrace.h>
 
 namespace folly::exception_tracer::detail {
 
+struct ExceptionMeta {
+  void (*deleter)(void*);
+  // normal stack trace
+  StackTrace trace;
+  // async stack trace
+  StackTrace traceAsync;
+};
+
+using SynchronizedExceptionMeta = folly::Synchronized<ExceptionMeta>;
+
 Synchronized<F14FastMap<void*, std::unique_ptr<SynchronizedExceptionMeta>>>&
-getMetaMap() {
-  // Leaky Meyers Singleton
-  static Indestructible<Synchronized<
-      F14FastMap<void*, std::unique_ptr<SynchronizedExceptionMeta>>>>
-      meta;
-  return *meta;
-}
+getMetaMap();
 
-static std::atomic_bool hookEnabled{false};
-
-bool isSmartExceptionTracerHookEnabled() {
-  return hookEnabled.load(std::memory_order_relaxed);
-}
-void setSmartExceptionTracerHookEnabled(bool enabled) {
-  hookEnabled = enabled;
-}
+bool isSmartExceptionTracerHookEnabled();
+void setSmartExceptionTracerHookEnabled(bool enabled);
 
 } // namespace folly::exception_tracer::detail

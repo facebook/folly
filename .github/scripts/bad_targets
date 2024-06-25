@@ -1,5 +1,10 @@
 # This is a list of bad targets that do not build in OSS. Ideally this list goes away
 # with time.
+root//folly/debugging/exception_tracer:exception_counter
+root//folly/debugging/exception_tracer:exception_tracer
+root//folly/debugging/exception_tracer:exception_tracer_callbacks
+root//folly/debugging/exception_tracer:smart_exception_stack_trace_hooks
+root//folly/debugging/exception_tracer:smart_exception_tracer
 root//folly/docs/examples/folly:baton_demo
 root//folly/docs/examples/folly:cancellation_callback_demo
 root//folly/docs/examples/folly:cancellation_source_demo
@@ -30,11 +35,6 @@ root//folly/docs/examples/folly/experimental/coro:task_demo
 root//folly/docs/examples/folly/experimental/coro:with_cancellation_demo
 root//folly/docs/examples/folly/hash:hash_demo
 root//folly/docs/examples/folly/io:i_o_buf_demo
-root//folly/experimental/exception_tracer:exception_counter
-root//folly/experimental/exception_tracer:exception_tracer
-root//folly/experimental/exception_tracer:exception_tracer_callbacks
-root//folly/experimental/exception_tracer:smart_exception_stack_trace_hooks
-root//folly/experimental/exception_tracer:smart_exception_tracer
 root//folly/experimental/io:async_io
 root//folly/experimental/io:simple_async_io
 root//folly/experimental/symbolizer/tool:folly-addr2line

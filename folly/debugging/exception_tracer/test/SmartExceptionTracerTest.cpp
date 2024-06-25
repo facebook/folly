@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+#include <folly/debugging/exception_tracer/SmartExceptionTracer.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
-#include <folly/experimental/exception_tracer/SmartExceptionTracer.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

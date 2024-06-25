@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/exception_tracer/SmartExceptionTracer.h>
+#include <folly/debugging/exception_tracer/SmartExceptionTracer.h>
 
 #include <glog/logging.h>
 #include <folly/MapUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
 #include <folly/container/F14Map.h>
-#include <folly/experimental/exception_tracer/ExceptionTracerLib.h>
-#include <folly/experimental/exception_tracer/SmartExceptionTracerSingleton.h>
-#include <folly/experimental/exception_tracer/StackTrace.h>
+#include <folly/debugging/exception_tracer/ExceptionTracerLib.h>
+#include <folly/debugging/exception_tracer/SmartExceptionTracerSingleton.h>
+#include <folly/debugging/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/lang/Exception.h>
 

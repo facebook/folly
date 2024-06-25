@@ -9,7 +9,7 @@ cpp_unittest(
     name = "exception_counter_test",
     srcs = ["ExceptionCounterTest.cpp"],
     deps = [
-        "//folly/experimental/exception_tracer:exception_counter",
+        "//folly/debugging/exception_tracer:exception_counter",
         "//folly/portability:gtest",
     ],
 )
@@ -19,7 +19,7 @@ cpp_library(
     srcs = ["ExceptionTracerBenchmark.cpp"],
     deps = [
         "//folly:benchmark",
-        "//folly/experimental/exception_tracer:exception_tracer_base",
+        "//folly/debugging/exception_tracer:exception_tracer_base",
         "//folly/portability:gflags",
     ],
     external_deps = [
@@ -38,7 +38,7 @@ cpp_benchmark(
     name = "exception_tracer_benchmark",
     deps = [
         ":exception_tracer_benchmark_main",  # @manual
-        "//folly/experimental/exception_tracer:exception_tracer",  # @manual  # @manual
+        "//folly/debugging/exception_tracer:exception_tracer",  # @manual  # @manual
     ],
 )
 
@@ -46,7 +46,7 @@ cpp_library(
     name = "exception_tracer_test_main",
     srcs = ["ExceptionTracerTest.cpp"],
     deps = [
-        "//folly/experimental/exception_tracer:exception_tracer_base",
+        "//folly/debugging/exception_tracer:exception_tracer_base",
     ],
 )
 
@@ -61,7 +61,7 @@ cpp_binary(
     name = "exception_tracer_test",
     deps = [
         ":exception_tracer_test_main",  # @manual
-        "//folly/experimental/exception_tracer:exception_tracer",  # @manual  # @manual
+        "//folly/debugging/exception_tracer:exception_tracer",  # @manual  # @manual
     ],
 )
 
@@ -69,10 +69,10 @@ cpp_unittest(
     name = "smart_exception_tracer_test",
     srcs = ["SmartExceptionTracerTest.cpp"],
     deps = [
+        "//folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",  # @manual
+        "//folly/debugging/exception_tracer:smart_exception_tracer",
         "//folly/experimental/coro:blocking_wait",
         "//folly/experimental/coro:task",
-        "//folly/experimental/exception_tracer:smart_exception_stack_trace_hooks",  # @manual
-        "//folly/experimental/exception_tracer:smart_exception_tracer",
         "//folly/portability:gtest",
     ],
 )

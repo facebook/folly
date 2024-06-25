@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/exception_tracer/ExceptionTracer.h>
+#include <folly/debugging/exception_tracer/ExceptionTracer.h>
 
 #include <cstdlib>
 #include <exception>
@@ -25,8 +25,8 @@
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/String.h>
-#include <folly/experimental/exception_tracer/ExceptionAbi.h>
-#include <folly/experimental/exception_tracer/StackTrace.h>
+#include <folly/debugging/exception_tracer/ExceptionAbi.h>
+#include <folly/debugging/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

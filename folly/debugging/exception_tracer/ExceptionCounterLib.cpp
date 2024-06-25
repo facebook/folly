@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/exception_tracer/ExceptionCounterLib.h>
+#include <folly/debugging/exception_tracer/ExceptionCounterLib.h>
 
 #include <iosfwd>
 #include <unordered_map>
@@ -25,8 +25,8 @@
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/synchronization/RWSpinLock.h>
 
-#include <folly/experimental/exception_tracer/ExceptionTracerLib.h>
-#include <folly/experimental/exception_tracer/StackTrace.h>
+#include <folly/debugging/exception_tracer/ExceptionTracerLib.h>
+#include <folly/debugging/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

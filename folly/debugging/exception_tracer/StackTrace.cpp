@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/exception_tracer/StackTrace.h>
+#include <folly/debugging/exception_tracer/StackTrace.h>
 
 #include <cassert>
 #include <cstdlib>

@@ -14,37 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/ExceptionWrapper.h>
-#include <folly/experimental/exception_tracer/ExceptionTracer.h>
-
-#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-
-#if defined(__GLIBCXX__)
-
-#define FOLLY_HAVE_SMART_EXCEPTION_TRACER 1
-
-// These functions report stack traces if available.
-// To enable collecting stack traces your binary must also include the
-// smart_exception_stack_trace_hooks target.
-
-namespace folly::exception_tracer {
-
-ExceptionInfo getTrace(const std::exception_ptr& ex);
-
-ExceptionInfo getTrace(const std::exception& ex);
-
-ExceptionInfo getTrace(const exception_wrapper& ew);
-
-ExceptionInfo getAsyncTrace(const std::exception_ptr& ex);
-
-ExceptionInfo getAsyncTrace(const std::exception& ex);
-
-ExceptionInfo getAsyncTrace(const exception_wrapper& ew);
-
-} // namespace folly::exception_tracer
-
-#endif // defined(__GLIBCXX__)
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+#include <folly/debugging/exception_tracer/SmartExceptionTracer.h>

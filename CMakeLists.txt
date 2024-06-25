@@ -171,7 +171,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
 if (${FOLLY_NO_EXCEPTION_TRACER})
   REMOVE_MATCHES_FROM_LISTS(files hfiles
     MATCHES
-      "^${FOLLY_DIR}/experimental/exception_tracer/"
+      "^${FOLLY_DIR}/debugging/exception_tracer/"
   )
 endif()
 

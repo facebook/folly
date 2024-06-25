@@ -56,7 +56,7 @@ if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
       ExceptionTracerLib.h
       StackTrace.h
     DESTINATION
-      ${INCLUDE_INSTALL_DIR}/folly/experimental/exception_tracer
+      ${INCLUDE_INSTALL_DIR}/folly/debugging/exception_tracer
   )
   install(
     TARGETS

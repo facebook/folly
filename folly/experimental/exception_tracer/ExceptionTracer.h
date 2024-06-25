@@ -14,47 +14,4 @@
  * limitations under the License.
  */
 
-//
-// Exception tracer library.
-
-#pragma once
-
-#include <cstdint>
-#include <iosfwd>
-#include <typeinfo>
-#include <vector>
-
-#include <folly/portability/Config.h>
-
-namespace folly {
-namespace exception_tracer {
-
-struct ExceptionInfo {
-  const std::type_info* type{nullptr};
-  // The values in frames are IP (instruction pointer) addresses.
-  // They are only filled if the low-level exception tracer library is
-  // linked in or LD_PRELOADed.
-  std::vector<uintptr_t> frames; // front() is top of stack
-};
-
-#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-
-void printExceptionInfo(
-    std::ostream& out, const ExceptionInfo& info, int options);
-std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info);
-
-/**
- * Get current exceptions being handled.  front() is the most recent exception.
- * There should be at most one unless rethrowing.
- */
-std::vector<ExceptionInfo> getCurrentExceptions();
-
-/**
- * Install the terminate / unexpected handlers to dump exceptions.
- */
-void installHandlers();
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-
-} // namespace exception_tracer
-} // namespace folly
+#include <folly/debugging/exception_tracer/ExceptionTracer.h>
