@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/TimerFDTimeoutManager.h>
+#include <folly/io/async/TimerFDTimeoutManager.h>
 
 namespace folly {
 // TimerFDTimeoutManager

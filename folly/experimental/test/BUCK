@@ -115,14 +115,3 @@ cpp_unittest(
         "glog",
     ],
 )
-
-cpp_unittest(
-    name = "timerfd_timeout_manager_test",
-    srcs = ["TimerFDTimeoutManagerTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/experimental:timerfd",
-        "//folly/io/async/test:util",
-        "//folly/portability:gtest",
-    ],
-)

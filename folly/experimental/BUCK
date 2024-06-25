@@ -235,23 +235,13 @@ cpp_library(
 
 cpp_library(
     name = "timerfd",
-    srcs = [
-        "STTimerFDTimeoutManager.cpp",
-        "TimerFD.cpp",
-        "TimerFDTimeoutManager.cpp",
-    ],
     headers = [
         "STTimerFDTimeoutManager.h",
         "TimerFD.h",
         "TimerFDTimeoutManager.h",
     ],
-    deps = [
-        "//folly:file_util",
-        "//folly/io/async:event_util",
-    ],
     exported_deps = [
-        "//folly/io/async:async_base",
-        "//folly/io/async:delayed_destruction",
+        "//folly/io/async:timerfd",
     ],
 )
 

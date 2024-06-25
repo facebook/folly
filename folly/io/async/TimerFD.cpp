@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/TimerFD.h>
+#include <folly/io/async/TimerFD.h>
 
 #include <folly/FileUtil.h>
 

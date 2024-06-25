@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/STTimerFDTimeoutManager.h>
 #include <folly/io/async/EventUtil.h>
+#include <folly/io/async/STTimerFDTimeoutManager.h>
 
 namespace folly {
 // STTimerFDTimeoutManager
