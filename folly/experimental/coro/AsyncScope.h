@@ -63,9 +63,9 @@ namespace coro {
 //    }
 //
 //    folly::coro::AsyncScope scope;
-//    scope.add(processEvent(ev1));
-//    scope.add(processEvent(ev2));
-//    scope.add(processEvent(ev3));
+//    scope.add(processEvent(ev1).scheduleOn(folly::getGlobalCPUExecutor()));
+//    scope.add(processEvent(ev2).scheduleOn(folly::getGlobalCPUExecutor()));
+//    scope.add(processEvent(ev3).scheduleOn(folly::getGlobalCPUExecutor()));
 //    co_await scope.joinAsync();
 //
 class AsyncScope {
