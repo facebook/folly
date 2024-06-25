@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <folly/ExceptionString.h>
+#include <folly/ScopeGuard.h>
 
 namespace folly::detail {
 
@@ -155,6 +156,24 @@ void SerialExecutorImpl<Queue>::drain() {
   }
 }
 
+class NoopMutex {
+ public:
+  template <class F>
+  auto lock_combine(F&& f) {
+#ifndef NDEBUG
+    CHECK(!locked_.exchange(true, std::memory_order_acq_rel));
+    auto&& g = folly::makeGuard(
+        [this] { locked_.store(false, std::memory_order_release); });
+#endif
+    return f();
+  }
+
+ private:
+#ifndef NDEBUG
+  std::atomic<bool> locked_;
+#endif
+};
+
 /**
  * MPSC queue with the additional requirement that the queue must be non-empty
  * on dequeue(), and the enqueue() that makes the queue non-empty must complete
@@ -164,7 +183,7 @@ void SerialExecutorImpl<Queue>::drain() {
  * Producers are internally synchronized using a mutex, while the consumer
  * relies entirely on external synchronization.
  */
-template <class Task>
+template <class Task, class Mutex>
 class SerialExecutorMPSCQueue {
   static_assert(std::is_nothrow_move_constructible_v<Task>);
 
@@ -242,7 +261,7 @@ class SerialExecutorMPSCQueue {
     delete segment;
   }
 
-  folly::DistributedMutex mutex_;
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] Mutex mutex_;
   Segment* tail_ = &inlineSegment_;
   Segment* head_ = tail_;
   // Cache the allocation for exactly one segment, so that in the common case

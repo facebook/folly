@@ -139,8 +139,16 @@ struct SerialExecutorWithUnboundedQueue {
   using type = SerialExecutorImpl<queue>;
 };
 
-template <class Task>
+class NoopMutex;
+
+template <class Task, class Mutex = folly::DistributedMutex>
 class SerialExecutorMPSCQueue;
+
+template <typename Task>
+using SmallSerialExecutorQueue = SerialExecutorMPSCQueue<Task>;
+
+template <typename Task>
+using SPSerialExecutorQueue = SerialExecutorMPSCQueue<Task, NoopMutex>;
 
 } // namespace detail
 
@@ -160,7 +168,17 @@ using SerialExecutorWithLgSegmentSize =
  * issue, while memory overhead is.
  */
 using SmallSerialExecutor =
-    detail::SerialExecutorImpl<detail::SerialExecutorMPSCQueue>;
+    detail::SerialExecutorImpl<detail::SmallSerialExecutorQueue>;
+
+/**
+ * Single-producer version of SmallExecutor. It is the responsibility of the
+ * caller to guarantee that calls to add() are externally serialized, but it can
+ * be slightly faster.
+ *
+ * It is very unlikely that you need this.
+ */
+using SPSerialExecutor =
+    detail::SerialExecutorImpl<detail::SPSerialExecutorQueue>;
 
 } // namespace folly
 

@@ -290,3 +290,17 @@ TEST(SerialExecutorTest2, SerialExecutorMPSCQueue) {
   }
   consume(size);
 }
+
+TEST(SerialExecutorTest2, SPSerialExecutor) {
+  folly::CPUThreadPoolExecutor parent{1};
+  auto se = folly::SPSerialExecutor::create(&parent);
+  constexpr size_t kNumTasks = 100;
+  size_t numRan = 0;
+  folly::Baton<> done;
+  for (size_t i = 0; i < kNumTasks; ++i) {
+    se->add([&] { ++numRan; });
+  }
+  se->add([&] { done.post(); });
+  done.wait();
+  EXPECT_EQ(numRan, kNumTasks);
+}
