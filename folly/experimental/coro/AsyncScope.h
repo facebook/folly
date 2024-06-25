@@ -314,7 +314,7 @@ class CancellableAsyncScope {
    * See the documentation on AsyncScope::add.
    */
   template <typename Awaitable>
-  void add(
+  FOLLY_NOINLINE void add(
       Awaitable&& awaitable,
       std::optional<CancellationToken> token = std::nullopt,
       void* returnAddress = nullptr) {
@@ -327,7 +327,7 @@ class CancellableAsyncScope {
   }
 
   template <typename Awaitable>
-  void addWithSourceLoc(
+  FOLLY_NOINLINE void addWithSourceLoc(
       Awaitable&& awaitable,
       std::optional<CancellationToken> token,
       void* returnAddress = nullptr,
