@@ -88,14 +88,11 @@ cpp_library(
 
 cpp_library(
     name = "flat_combining_priority_queue",
-    headers = ["FlatCombiningPriorityQueue.h"],
-    exported_deps = [
-        "//folly:optional",
-        "//folly/detail:futex",
-        "//folly/synchronization:flat_combining",
+    headers = [
+        "FlatCombiningPriorityQueue.h",
     ],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "//folly/concurrency/container:flat_combining_priority_queue",
     ],
 )
 

@@ -41,3 +41,17 @@ cpp_unittest(
         "//folly/test:deterministic_schedule",
     ],
 )
+
+cpp_unittest(
+    name = "flat_combining_priority_queue_test",
+    srcs = ["FlatCombiningPriorityQueueTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/experimental:flat_combining_priority_queue",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

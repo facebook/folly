@@ -49,3 +49,16 @@ cpp_library(
         "boost",
     ],
 )
+
+cpp_library(
+    name = "flat_combining_priority_queue",
+    headers = ["FlatCombiningPriorityQueue.h"],
+    exported_deps = [
+        "//folly:optional",
+        "//folly/detail:futex",
+        "//folly/synchronization:flat_combining",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

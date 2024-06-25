@@ -51,20 +51,6 @@ cpp_library(
 )
 
 cpp_unittest(
-    name = "flat_combining_priority_queue_test",
-    srcs = ["FlatCombiningPriorityQueueTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly:benchmark",
-        "//folly/experimental:flat_combining_priority_queue",
-        "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
-    ],
-)
-
-cpp_unittest(
     name = "hhwheel_timer_high_res_test",
     srcs = ["HHWheelTimerHighResTest.cpp"],
     headers = [],
