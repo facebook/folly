@@ -57,6 +57,7 @@ cpp_benchmark(
         "//folly:preprocessor",
         "//folly/hash:hash",
         "//folly/hash:murmur_hash",
+        "//folly/lang:keep",
         "//folly/portability:gflags",
     ],
     external_deps = [

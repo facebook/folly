@@ -29,7 +29,18 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Preprocessor.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GFlags.h>
+
+extern "C" FOLLY_KEEP uint64_t
+check_folly_spooky_hash_v2_hash_32(void const* data, size_t size) {
+  return folly::hash::SpookyHashV2::Hash32(data, size, 0);
+}
+
+extern "C" FOLLY_KEEP uint64_t
+check_folly_spooky_hash_v2_hash_64(void const* data, size_t size) {
+  return folly::hash::SpookyHashV2::Hash64(data, size, 0);
+}
 
 namespace detail {
 
