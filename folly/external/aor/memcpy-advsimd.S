@@ -50,8 +50,8 @@
    The loop tail is handled by always copying 64 bytes from the end.
 */
 
-ENTRY_ALIAS (_ZN5folly6detail20memmove_aarch64_simdEPvPKvm)
-ENTRY (_ZN5folly6detail19memcpy_aarch64_simdEPvPKvm)
+ENTRY_ALIAS (__folly_memmove_aarch64_simd)
+ENTRY (__folly_memcpy_aarch64_simd)
 	PTR_ARG (0)
 	PTR_ARG (1)
 	SIZE_ARG (2)
@@ -208,5 +208,5 @@ L(copy64_from_start):
 	stp	A_q, B_q, [dstin]
 	ret
 
-END (_ZN5folly6detail19memcpy_aarch64_simdEPvPKvm)
+END (__folly_memcpy_aarch64_simd)
 

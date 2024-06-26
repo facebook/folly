@@ -56,58 +56,58 @@
 
 #include <asm/hwcap.h> // @manual
 
-namespace folly {
-namespace detail {
-
-void* memcpy_aarch64(void* dst, const void* src, std::size_t size);
-void* memcpy_aarch64_simd(void* dst, const void* src, std::size_t size);
-void* memcpy_aarch64_sve(void* dst, const void* src, std::size_t size);
-
-void* memmove_aarch64(void* dst, const void* src, std::size_t len);
-void* memmove_aarch64_simd(void* dst, const void* src, std::size_t len);
-void* memmove_aarch64_sve(void* dst, const void* src, std::size_t len);
-
-auto memcpy_resolve(uint64_t hwcaps) {
-  if (hwcaps & HWCAP_SVE) {
-    return memcpy_aarch64_sve;
-  }
-
-  if (hwcaps & HWCAP_ASIMD) {
-    return memcpy_aarch64_simd;
-  }
-
-  return memcpy_aarch64;
-}
-
-auto memmove_resolve(uint64_t hwcaps) {
-  if (hwcaps & HWCAP_SVE) {
-    return memmove_aarch64_sve;
-  }
-
-  if (hwcaps & HWCAP_ASIMD) {
-    return memmove_aarch64_simd;
-  }
-
-  return memmove_aarch64;
-}
-
-} // namespace detail
-} // namespace folly
-
 extern "C" {
-[[gnu::ifunc("_ZN5folly6detail14memcpy_resolveEm")]]
+
+void* __folly_memcpy_aarch64(void* dst, const void* src, std::size_t size);
+void* __folly_memcpy_aarch64_simd(void* dst, const void* src, std::size_t size);
+void* __folly_memcpy_aarch64_sve(void* dst, const void* src, std::size_t size);
+
+void* __folly_memmove_aarch64(void* dst, const void* src, std::size_t len);
+void* __folly_memmove_aarch64_simd(void* dst, const void* src, std::size_t len);
+void* __folly_memmove_aarch64_sve(void* dst, const void* src, std::size_t len);
+
+decltype(&__folly_memcpy_aarch64) __folly_detail_memcpy_resolve(
+    uint64_t hwcaps) {
+  if (hwcaps & HWCAP_SVE) {
+    return __folly_memcpy_aarch64_sve;
+  }
+
+  if (hwcaps & HWCAP_ASIMD) {
+    return __folly_memcpy_aarch64_simd;
+  }
+
+  return __folly_memcpy_aarch64;
+}
+
+decltype(&__folly_memmove_aarch64) __folly_detail_memmove_resolve(
+    uint64_t hwcaps) {
+  if (hwcaps & HWCAP_SVE) {
+    return __folly_memmove_aarch64_sve;
+  }
+
+  if (hwcaps & HWCAP_ASIMD) {
+    return __folly_memmove_aarch64_simd;
+  }
+
+  return __folly_memmove_aarch64;
+}
+
+[[gnu::ifunc("__folly_detail_memcpy_resolve")]]
 void* __folly_memcpy(void* dst, const void* src, std::size_t size);
 
-[[gnu::ifunc("_ZN5folly6detail15memmove_resolveEm")]]
+[[gnu::ifunc("__folly_detail_memmove_resolve")]]
 void* __folly_memmove(void* dst, const void* src, std::size_t size);
 
 #ifdef FOLLY_MEMCPY_IS_MEMCPY
+
 [[gnu::weak, gnu::alias("__folly_memcpy")]]
 void* memcpy(void* dst, const void* src, std::size_t size);
 
 [[gnu::weak, gnu::alias("__folly_memmove")]]
 void* memmove(void* dst, const void* src, std::size_t size);
+
 #endif
+
 } // extern "C"
 
 #endif // defined(__linux__) && defined(__aarch64__)
