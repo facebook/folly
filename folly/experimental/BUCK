@@ -203,10 +203,7 @@ cpp_library(
         "SingleWriterFixedHashMap.h",
     ],
     exported_deps = [
-        "//folly/lang:bits",
-    ],
-    exported_external_deps = [
-        "glog",
+        "//folly/concurrency/container:single_writer_fixed_hash_map",
     ],
 )
 

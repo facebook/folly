@@ -83,21 +83,3 @@ cpp_binary(
         "//folly/cli:program_options",
     ],
 )
-
-cpp_unittest(
-    name = "single_writer_fixed_hash_map_test",
-    srcs = ["SingleWriterFixedHashMapTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly:benchmark",
-        "//folly/container:array",
-        "//folly/experimental:single_writer_fixed_hash_map",
-        "//folly/portability:gflags",
-        "//folly/portability:gtest",
-        "//folly/synchronization/test:barrier",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
-        "glog",
-    ],
-)
