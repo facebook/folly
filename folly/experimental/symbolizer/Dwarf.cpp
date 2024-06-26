@@ -47,11 +47,15 @@ Dwarf::Dwarf(ElfCacheBase* elfCache, const ElfFile* elf)
           .debugRanges = getElfSection(elf, ".debug_ranges"),
           .debugRnglists = getElfSection(elf, ".debug_rnglists"),
           .debugStr = getElfSection(elf, ".debug_str"),
-          .debugStrOffsets = getElfSection(elf, ".debug_str_offsets")} {
+          .debugStrOffsets = getElfSection(elf, ".debug_str_offsets"),
+          .gdbIndex = getElfSection(elf, ".gdb_index")} {
   // Optional sections:
   //  - defaultDebugSections_.debugAranges: for fast address range lookup.
   //     If missing .debug_info can be used - but it's much slower (linear
   //     scan).
+  //  - defaultDebugSections_.gdbIndex: another alternative for fast address
+  //    range lookup (created with --gdb-index option to lld/gold/mold,
+  //    or with gdb-add-index after linking)
   //  - debugRanges_ (DWARF 4) / debugRnglists_ (DWARF 5): non-contiguous
   //    address ranges of debugging information entries.
   //    Used for inline function address lookup.
@@ -170,20 +174,88 @@ bool Dwarf::findAddress(
           inlineFrames,
           eachParameterName,
           false /*checkAddress*/);
-    } else if (mode == LocationInfoMode::FAST) {
-      // NOTE: Clang (when using -gdwarf-aranges) doesn't generate entries
-      // in .debug_aranges for some functions, but always generates
-      // .debug_info entries.  Scanning .debug_info is slow, so fall back to
-      // it only if such behavior is requested via LocationInfoMode.
-      return false;
-    } else {
-      FOLLY_SAFE_DCHECK(
-          mode == LocationInfoMode::FULL ||
-              mode == LocationInfoMode::FULL_WITH_INLINE,
-          "unexpected mode");
-      // Fall back to the linear scan.
     }
   }
+
+  if (!defaultDebugSections_.gdbIndex.empty()) {
+    // Look up compilation unit using the table in .gdb_index, described in
+    // https://sourceware.org/gdb/onlinedocs/gdb/Index-Section-Format.html
+    struct FileHeader {
+      uint32_t version;
+      uint32_t offsetOfCUList;
+      uint32_t offsetOfTypesCUList;
+      uint32_t offsetOfAddressArea;
+      uint32_t offsetOfSymbolTable;
+      uint32_t offsetOfConstantPool;
+    };
+    struct CUListEntry {
+      uint64_t offsetInDebugInfo;
+      uint64_t length;
+    };
+    FOLLY_PACK_PUSH
+    struct AddressEntry {
+      uint64_t addressLow;
+      uint64_t addressHigh; // one byte beyond the end
+      uint32_t cuIndex;
+    } FOLLY_PACK_ATTR;
+    FOLLY_PACK_POP
+    static_assert(sizeof(AddressEntry) == 20);
+
+    StringPiece sectionData = defaultDebugSections_.gdbIndex;
+    auto* hdr = reinterpret_cast<const FileHeader*>(sectionData.begin());
+    Range<const CUListEntry*> cuList{
+        reinterpret_cast<const CUListEntry*>(sectionData.begin() +
+                                             hdr->offsetOfCUList),
+        reinterpret_cast<const CUListEntry*>(sectionData.begin() +
+                                             hdr->offsetOfTypesCUList)};
+    Range<const AddressEntry*> addressArea{
+        reinterpret_cast<const AddressEntry*>(sectionData.begin() +
+                                              hdr->offsetOfAddressArea),
+        reinterpret_cast<const AddressEntry*>(sectionData.begin() +
+                                              hdr->offsetOfSymbolTable)};
+    if (hdr->version == 7 || hdr->version == 8) {
+      for (const AddressEntry& entry : addressArea) {
+        if (entry.addressLow <= address && address < entry.addressHigh) {
+          auto unit = getCompilationUnits(
+            elfCache_,
+            defaultDebugSections_,
+            cuList[entry.cuIndex].offsetInDebugInfo,
+            mode == LocationInfoMode::FULL_WITH_INLINE);
+          if (unit.mainCompilationUnit.unitType != DW_UT_compile &&
+              unit.mainCompilationUnit.unitType != DW_UT_skeleton) {
+            return false;
+          }
+          DwarfImpl impl(elfCache_, unit, mode);
+          return impl.findLocation(
+              address,
+              frame,
+              inlineFrames,
+              eachParameterName,
+              false /*checkAddress*/);
+        }
+      }
+      // If we found a usable .gdb_index, then assume it's complete.
+      // This is appropriate because it can only be added at or after
+      // link time, at which point presumably every object file is known.
+      // Some symbols (such as _start) come from compilation units without
+      // debug info, and we don't want to fall back to the linear CU search
+      // when presented with them.
+      return false;
+    }
+  }
+
+  if (mode == LocationInfoMode::FAST) {
+    // NOTE: Clang (when using -gdwarf-aranges) doesn't generate entries
+    // in .debug_aranges for some functions, but always generates
+    // .debug_info entries.  Scanning .debug_info is slow, so fall back to
+    // it only if such behavior is requested via LocationInfoMode.
+    return false;
+  }
+  FOLLY_SAFE_DCHECK(
+      mode == LocationInfoMode::FULL ||
+          mode == LocationInfoMode::FULL_WITH_INLINE,
+      "unexpected mode");
+  // Fall back to the linear scan.
 
   // Slow path (linear scan): Iterate over all .debug_info entries
   // and look for the address in each compilation unit.
