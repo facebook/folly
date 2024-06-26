@@ -474,6 +474,17 @@ struct StaticMetaBase {
   std::vector<uint32_t> freeIds_;
   std::mutex lock_;
   mutable SharedMutex accessAllThreadsLock_;
+  // As part of handling fork, we need to ensure no locks used by ThreadLocal
+  // implementation are held by threads other than the one forking. The total
+  // number of locks involved is large due to the per ThreadEntrySet lock. TSAN
+  // builds have to track each lock acquire and release. TSAN also has its own
+  // fork handler. Using a lot of locks in fork handler can end up deadlocking
+  // TSAN. To avoid that behavior, we the forkHandlerLock_. All code paths that
+  // acquire a lock on any ThreadEntrySet (accessAllThreads() or reset() calls)
+  // must also acquire a shared lock on forkHandlerLock_.
+  // Fork handler will acquire an exclusive lock on forkHandlerLock_,
+  // along with exclusive locks on accessAllThreadsLock_ and lock_.
+  mutable SharedMutex forkHandlerLock_;
   pthread_key_t pthreadKey_;
   ThreadEntry* (*threadEntry_)();
   bool strict_;
@@ -655,11 +666,11 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
 
   static bool preFork() {
     auto& meta = instance();
-    bool gotLock =
-        meta.accessAllThreadsLock_.try_lock(); // Make sure it's created
+    bool gotLock = meta.forkHandlerLock_.try_lock(); // Make sure it's created
     if (!gotLock) {
       return false;
     }
+    meta.accessAllThreadsLock_.lock();
     meta.lock_.lock();
     // Okay to not lock each set in meta.allId2ThreadEntrySets
     // as accessAllThreadsLock_ in held by calls to reset() and
@@ -671,6 +682,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     auto& meta = instance();
     meta.lock_.unlock();
     meta.accessAllThreadsLock_.unlock();
+    meta.forkHandlerLock_.unlock();
   }
 
   static void onForkChild() {
@@ -692,6 +704,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     }
     meta.lock_.unlock();
     meta.accessAllThreadsLock_.unlock();
+    meta.forkHandlerLock_.unlock();
   }
 };
 
