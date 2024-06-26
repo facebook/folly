@@ -203,7 +203,7 @@ void IOBuf::SharedInfo::releaseStorage(
     }
     case StorageType::kExtBuffer:
       break; // Storage was already freed.
-  };
+  }
 }
 
 void* IOBuf::operator new(size_t size) {
