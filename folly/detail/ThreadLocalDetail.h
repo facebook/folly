@@ -479,12 +479,16 @@ struct StaticMetaBase {
   // number of locks involved is large due to the per ThreadEntrySet lock. TSAN
   // builds have to track each lock acquire and release. TSAN also has its own
   // fork handler. Using a lot of locks in fork handler can end up deadlocking
-  // TSAN. To avoid that behavior, we the forkHandlerLock_. All code paths that
-  // acquire a lock on any ThreadEntrySet (accessAllThreads() or reset() calls)
-  // must also acquire a shared lock on forkHandlerLock_.
-  // Fork handler will acquire an exclusive lock on forkHandlerLock_,
-  // along with exclusive locks on accessAllThreadsLock_ and lock_.
-  mutable SharedMutex forkHandlerLock_;
+  // TSAN. To avoid that behavior, we use a special fork handler lock. All code
+  // paths that acquire a lock on any ThreadEntrySet (accessAllThreads() or
+  // reset() calls) must also acquire a shared lock on the fork lock. Fork
+  // handler will acquire an exclusive lock on it, along with exclusive locks on
+  // accessAllThreadsLock_ and lock_.
+  //
+  // Note: Since calls to accessAllThreads() or reset() can be nested, we use a
+  // SharedMutexReadPriority to allow recursive shared lock acquisition.
+  static SharedMutexReadPriority& getStaticMetaGlobalForkMutex();
+
   pthread_key_t pthreadKey_;
   ThreadEntry* (*threadEntry_)();
   bool strict_;
@@ -666,10 +670,6 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
 
   static bool preFork() {
     auto& meta = instance();
-    bool gotLock = meta.forkHandlerLock_.try_lock(); // Make sure it's created
-    if (!gotLock) {
-      return false;
-    }
     meta.accessAllThreadsLock_.lock();
     meta.lock_.lock();
     // Okay to not lock each set in meta.allId2ThreadEntrySets
@@ -682,7 +682,6 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     auto& meta = instance();
     meta.lock_.unlock();
     meta.accessAllThreadsLock_.unlock();
-    meta.forkHandlerLock_.unlock();
   }
 
   static void onForkChild() {
@@ -704,7 +703,6 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     }
     meta.lock_.unlock();
     meta.accessAllThreadsLock_.unlock();
-    meta.forkHandlerLock_.unlock();
   }
 };
 

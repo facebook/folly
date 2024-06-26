@@ -30,6 +30,44 @@ constexpr auto kBigGrowthFactor = 1.7;
 namespace folly {
 namespace threadlocal_detail {
 
+namespace {
+struct StaticMetaGlobalForkHandler {
+  struct PrivateTag {};
+  SharedMutexReadPriority mutex;
+  std::mutex locks_mutex;
+  std::atomic<std::make_signed_t<size_t>> locks;
+  static StaticMetaGlobalForkHandler& instance() {
+    return detail::createGlobal<StaticMetaGlobalForkHandler, PrivateTag>();
+  }
+  bool doPreFork() {
+    std::unique_lock lock{locks_mutex};
+    if (!locks++) { // postfix
+      mutex.lock();
+    }
+    return true;
+  }
+  void doPostFork() {
+    std::unique_lock lock{locks_mutex};
+    if (!--locks) { // prefix
+      mutex.unlock();
+    }
+  }
+  static bool preFork() { return instance().doPreFork(); }
+  static void postFork() { instance().doPostFork(); }
+  StaticMetaGlobalForkHandler() {
+    AtFork::registerHandler(
+        nullptr,
+        /* prepare = */ &preFork,
+        /* parent = */ &postFork,
+        /* child = */ &postFork);
+  }
+};
+} // namespace
+
+SharedMutexReadPriority& StaticMetaBase::getStaticMetaGlobalForkMutex() {
+  return StaticMetaGlobalForkHandler::instance().mutex;
+}
+
 bool ThreadEntrySet::basicSanity() const {
   return //
       threadEntries.size() == entryToVectorSlot.size() &&

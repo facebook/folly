@@ -246,7 +246,7 @@ class ThreadLocalPtr {
 
     threadlocal_detail::StaticMetaBase& meta_;
     SharedMutex* accessAllThreadsLock_;
-    SharedMutex* forkHandlerLock_;
+    SharedMutexReadPriority* forkHandlerLock_;
     std::mutex* lock_;
     uint32_t id_;
 
@@ -423,7 +423,7 @@ class ThreadLocalPtr {
     explicit Accessor(uint32_t id)
         : meta_(threadlocal_detail::StaticMeta<Tag, AccessMode>::instance()),
           accessAllThreadsLock_(&meta_.accessAllThreadsLock_),
-          forkHandlerLock_(&meta_.forkHandlerLock_),
+          forkHandlerLock_(&meta_.getStaticMetaGlobalForkMutex()),
           lock_(&meta_.lock_) {
       forkHandlerLock_->lock_shared();
       accessAllThreadsLock_->lock();
@@ -464,7 +464,7 @@ class ThreadLocalPtr {
   ThreadLocalPtr& operator=(const ThreadLocalPtr&) = delete;
 
   static auto getForkGuard() {
-    auto& mutex = StaticMeta::instance().forkHandlerLock_;
+    auto& mutex = StaticMeta::instance().getStaticMetaGlobalForkMutex();
     return std::shared_lock{mutex};
   }
 
