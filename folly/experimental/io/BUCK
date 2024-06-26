@@ -342,38 +342,20 @@ cpp_library(
 
 cpp_library(
     name = "fs_util",
-    srcs = ["FsUtil.cpp"],
-    headers = ["FsUtil.h"],
-    deps = [
-        "//folly:exception",
+    headers = [
+        "FsUtil.h",
     ],
-    exported_external_deps = [
-        ("boost", None, "boost_filesystem"),
+    exported_deps = [
+        "//folly/io:fs_util",
     ],
 )
 
 cpp_library(
     name = "huge_pages",
-    srcs = ["HugePages.cpp"],
-    headers = ["HugePages.h"],
-    deps = [
-        "//folly:conv",
-        "//folly:cpp_attributes",
-        "//folly:format",
-        "//folly:string",
-        "//folly/gen:base",
-        "//folly/gen:file",
-        "//folly/gen:string",
+    headers = [
+        "HugePages.h",
     ],
     exported_deps = [
-        ":fs_util",
-        "//folly:range",
-        "//folly/portability:unistd",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
-    ],
-    exported_external_deps = [
-        "boost",
+        "//folly/io:huge_pages",
     ],
 )

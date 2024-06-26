@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/HugePages.h>
+#include <folly/io/HugePages.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>

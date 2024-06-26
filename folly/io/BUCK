@@ -133,3 +133,41 @@ cpp_library(
         "//folly/portability:sockets",
     ],
 )
+
+cpp_library(
+    name = "huge_pages",
+    srcs = ["HugePages.cpp"],
+    headers = ["HugePages.h"],
+    deps = [
+        "//folly:conv",
+        "//folly:cpp_attributes",
+        "//folly:format",
+        "//folly:string",
+        "//folly/gen:base",
+        "//folly/gen:file",
+        "//folly/gen:string",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        ("boost", None, "boost_regex"),
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+cpp_library(
+    name = "fs_util",
+    srcs = ["FsUtil.cpp"],
+    headers = ["FsUtil.h"],
+    deps = [
+        "//folly:exception",
+    ],
+    exported_external_deps = [
+        ("boost", None, "boost_filesystem"),
+    ],
+)

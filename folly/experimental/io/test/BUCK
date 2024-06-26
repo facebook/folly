@@ -246,21 +246,6 @@ cpp_binary(
 )
 
 cpp_unittest(
-    name = "fs_util_test",
-    srcs = ["FsUtilTest.cpp"],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:string",
-        "//folly/experimental/io:fs_util",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
-    ],
-)
-
-cpp_unittest(
     name = "simple_async_io_test",
     srcs = ["SimpleAsyncIOTest.cpp"],
     supports_static_listing = False,
