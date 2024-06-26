@@ -50,6 +50,20 @@ std::shared_ptr<Executor> tryGetImmutableCPUPtr();
  */
 folly::Executor::KeepAlive<> getGlobalCPUExecutor();
 
+/**
+ * @methodset Executors
+ *
+ * Same as getGlobalCPUExecutor(), but returns a weak keepalive: holding this
+ * keepalive will not keep the global executor alive at shutdown, and tasks
+ * scheduled on it during or after shutdown will not be executed. This can be
+ * used for best-effort tasks, but it should not be used for future or coroutine
+ * continuations, as they expect a guarantee of forward progress and can
+ * deadlock if progress is not guaranteed.
+ *
+ * @copydetails getGlobalCPUExecutor()
+ */
+folly::Executor::KeepAlive<> getGlobalCPUExecutorWeakRef();
+
 struct GlobalCPUExecutorCounters {
   // Maximum number of threads that the executor can run concurrently.
   size_t numThreads;
