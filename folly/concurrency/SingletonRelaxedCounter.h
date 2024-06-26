@@ -65,8 +65,8 @@ class SingletonRelaxedCounterBase {
   //  a global fallback counter.
   struct Global {
     struct Tracking {
-      using CounterSet = std::unordered_set<Counter*>;
-      std::unordered_map<Counter*, size_t> locals; // for summing
+      using CounterSet = std::unordered_set<CounterAndCache*>;
+      std::unordered_map<CounterAndCache*, size_t> locals; // for summing
       std::unordered_map<LocalLifetime*, CounterSet> lifetimes;
     };
 
@@ -105,8 +105,10 @@ class SingletonRelaxedCounterBase {
         auto const it = tracking->locals.find(ctr);
         if (!--it->second) {
           tracking->locals.erase(it);
-          auto const current = ctr->load(std::memory_order_relaxed);
+          auto const current = ctr->counter.load(std::memory_order_relaxed);
           global.fallback.fetch_add(current, std::memory_order_relaxed);
+          ctr->counter.store(Signed(0), std::memory_order_relaxed);
+          ctr->cache = nullptr;
         }
       }
       tracking->lifetimes.erase(this);
@@ -118,8 +120,8 @@ class SingletonRelaxedCounterBase {
     FOLLY_NOINLINE void track_(Global& global, CounterAndCache& state) {
       state.cache = &state.counter;
       auto const tracking = global.tracking.wlock();
-      auto const inserted = tracking->lifetimes[this].insert(&state.counter);
-      tracking->locals[&state.counter] += inserted.second;
+      auto const inserted = tracking->lifetimes[this].insert(&state);
+      tracking->locals[&state] += inserted.second;
     }
   };
 
@@ -131,7 +133,7 @@ class SingletonRelaxedCounterBase {
     auto count = global.fallback.load(std::memory_order_relaxed);
     auto const tracking = global.tracking.rlock();
     for (auto const& kvp : tracking->locals) {
-      count += kvp.first->load(std::memory_order_relaxed);
+      count += kvp.first->counter.load(std::memory_order_relaxed);
     }
     return std::is_unsigned<Int>::value
         ? to_unsigned(std::max(Signed(0), count))
