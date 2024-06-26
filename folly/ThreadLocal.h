@@ -19,10 +19,20 @@
  * pthread_getspecific but only consumes a single pthread_key_t, and 4x faster
  * than boost::thread_specific_ptr).
  *
- * Also includes an accessor interface to walk all the thread local child
- * objects of a parent.  accessAllThreads() initializes an accessor which holds
- * a global lock *that blocks all creation and destruction of ThreadLocal
- * objects with the same Tag* and can be used as an iterable container.
+ * ThreadLocal objects can be grouped together logically under a tag. Within
+ * a tag, each object has a unique id. The combination of tag and id is used to
+ * locate the managed object corresponding to the current thread.
+ *
+ * Also includes an accessor interface to iterate all of the managed
+ * objects owned by a ThreadLocal object, each corresponding to a
+ * separate thread.  accessAllThreads() initializes an accessor
+ * which holds
+ * a lock *that blocks all creation and destruction of managed
+ * objects managed by the ThreadLocal. The accessor can be used
+ * as an iterable container. Note: for now, the accessor also happens to hold
+ * other per tag global locks and hence calls to accessAllThreads() are
+ * serialized at tag level.
+ *
  * accessAllThreads() can race with destruction of thread-local elements. We
  * provide a strict mode which is dangerous because it requires the access lock
  * to be held while destroying thread-local elements which could cause
@@ -156,7 +166,6 @@ class ThreadLocalPtr {
   T& operator*() const { return *get(); }
 
   T* release() {
-    auto rlock = getAccessAllThreadsLockReadHolderIfEnabled();
     threadlocal_detail::ThreadEntry* te = StaticMeta::getThreadEntry(&id_);
     auto id = id_.getOrInvalid();
     // Only valid index into the the elements array
@@ -165,7 +174,6 @@ class ThreadLocalPtr {
   }
 
   void reset(T* newPtr = nullptr) {
-    auto rlock = getAccessAllThreadsLockReadHolderIfEnabled();
     auto guard = makeGuard([&] { delete newPtr; });
     threadlocal_detail::ThreadEntry* te = StaticMeta::getThreadEntry(&id_);
     uint32_t id = id_.getOrInvalid();
@@ -213,7 +221,6 @@ class ThreadLocalPtr {
    */
   template <class Deleter>
   void reset(T* newPtr, const Deleter& deleter) {
-    auto rlock = getAccessAllThreadsLockReadHolderIfEnabled();
     auto guard = makeGuard([&] {
       if (newPtr) {
         deleter(newPtr, TLPDestructionMode::THIS_THREAD);
@@ -239,8 +246,10 @@ class ThreadLocalPtr {
     std::mutex* lock_;
     uint32_t id_;
 
-    threadlocal_detail::StaticMetaBase::SynchronizedThreadEntrySet::RLockedPtr
-        rLockedThreadEntrySet_;
+    // Prevent the entry set from changing while we are iterating over it.
+    // reset() calls to populate will acquire shared lock on the id's set.
+    threadlocal_detail::StaticMetaBase::SynchronizedThreadEntrySet::WLockedPtr
+        wlockedThreadEntrySet_;
 
    public:
     class Iterator;
@@ -286,8 +295,7 @@ class ThreadLocalPtr {
 
       explicit Iterator(const Accessor* accessor, bool toEnd = false)
           : accessor_(accessor),
-            vec_(accessor_->rLockedThreadEntrySet_.asNonConstUnsafe()
-                     .threadEntries),
+            vec_(accessor_->wlockedThreadEntrySet_->threadEntries),
             iter_(vec_.begin()) {
         if (toEnd) {
           setToEnd();
@@ -377,7 +385,7 @@ class ThreadLocalPtr {
       other.id_ = 0;
       other.accessAllThreadsLock_ = nullptr;
       other.lock_ = nullptr;
-      rLockedThreadEntrySet_ = std::move(other.rLockedThreadEntrySet_);
+      wlockedThreadEntrySet_ = std::move(other.wlockedThreadEntrySet_);
     }
 
     Accessor& operator=(Accessor&& other) noexcept {
@@ -393,8 +401,8 @@ class ThreadLocalPtr {
       swap(accessAllThreadsLock_, other.accessAllThreadsLock_);
       swap(lock_, other.lock_);
       swap(id_, other.id_);
-      rLockedThreadEntrySet_.unlock();
-      swap(rLockedThreadEntrySet_, other.rLockedThreadEntrySet_);
+      wlockedThreadEntrySet_.unlock();
+      swap(wlockedThreadEntrySet_, other.wlockedThreadEntrySet_);
     }
 
     Accessor()
@@ -402,7 +410,7 @@ class ThreadLocalPtr {
           accessAllThreadsLock_(nullptr),
           lock_(nullptr),
           id_(0) {
-      rLockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].rlock();
+      wlockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].wlock();
     }
 
    private:
@@ -413,7 +421,7 @@ class ThreadLocalPtr {
       accessAllThreadsLock_->lock();
       lock_->lock();
       id_ = id;
-      rLockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].rlock();
+      wlockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].wlock();
     }
 
     void release() {
@@ -443,13 +451,6 @@ class ThreadLocalPtr {
   // non-copyable
   ThreadLocalPtr(const ThreadLocalPtr&) = delete;
   ThreadLocalPtr& operator=(const ThreadLocalPtr&) = delete;
-
-  static auto getAccessAllThreadsLockReadHolderIfEnabled() {
-    auto& mutex = StaticMeta::instance().accessAllThreadsLock_;
-    return AccessAllThreadsEnabled::value
-        ? std::shared_lock{mutex}
-        : std::shared_lock{mutex, std::defer_lock};
-  }
 
   mutable typename StaticMeta::EntryID id_;
 };

@@ -133,7 +133,6 @@ struct ElementWrapper {
     std::function<DeleterFunType>* deleter2;
   };
   bool ownsDeleter;
-  bool isLinked{false};
 };
 
 struct StaticMetaBase;
@@ -175,7 +174,7 @@ struct ThreadEntry {
   /*
    * Clean up element from ThreadEntry::elements at index @id.
    */
-  void cleanupElementAndSetThreadEntry(uint32_t id, bool validThreadEntry);
+  void cleanupElement(uint32_t id);
 
   /*
    * Templated methods to deal with reset with and without a deleter
@@ -402,6 +401,8 @@ struct StaticMetaBase {
 
   ElementWrapper& getElement(EntryID* ent);
 
+  using SynchronizedThreadEntrySet = folly::Synchronized<ThreadEntrySet>;
+
   /*
    * Helper inline methods to add/remove/clear ThreadEntry* from
    * allId2ThreadEntrySets_
@@ -416,21 +417,24 @@ struct StaticMetaBase {
   }
 
   /*
-   * Add a ThreadEntry* to the map of allId2ThreadEntrySets_
-   * for a given slot @id in ThreadEntry::elements that is
-   * used.
+   * Ensure the given ThreadEntry* is present in the tracking set for the
+   * given id. Once added, we do not remove it until the thread exits or the
+   * whole set is reaped when the TL id itself is destroyed.
+   *
+   * Note: Call may drop and reacquire the read lock.
+   * If the provided entry is not already in the set, the given RLockedPtr will
+   * be released, entry added under a WLockedPtr, and RLockedPtr reacquired
+   * before returning.
    */
-  FOLLY_ALWAYS_INLINE void addThreadEntryToMap(ThreadEntry* te, uint32_t id) {
-    if (te->elements[id].isLinked) {
-      DCHECK(isThreadEntryInSet(te, id));
-    } else {
-      te->elements[id].isLinked = true;
-      DCHECK_NE(te->removed_, true);
-      // StaticMetaBase::allocate() always initializes a ThreadEntrySet
-      // when ever a new @id is allocated. Enabling faster and less contentious
-      // addThreadEntryToMap.
-      allId2ThreadEntrySets_[id].wlock()->insert(te);
+  FOLLY_ALWAYS_INLINE void ensureThreadEntryIsInSet(
+      ThreadEntry* te,
+      uint32_t id,
+      SynchronizedThreadEntrySet::RLockedPtr& rlocked) {
+    if (rlocked->contains(te)) {
+      return;
     }
+    auto scopedUnlock = rlocked.scopedUnlock();
+    allId2ThreadEntrySets_[id].wlock()->insert(te);
   }
 
   /*
@@ -480,7 +484,6 @@ struct StaticMetaBase {
   relaxed_atomic_int64_t totalElementWrappers_{0};
   // This is a map of all thread entries mapped to index i with active
   // elements[i];
-  using SynchronizedThreadEntrySet = folly::Synchronized<ThreadEntrySet>;
   folly::atomic_grow_array<SynchronizedThreadEntrySet> allId2ThreadEntrySets_;
 };
 
@@ -497,8 +500,11 @@ struct FakeUniqueInstance {
  */
 template <class Ptr>
 void ThreadEntry::resetElement(Ptr p, uint32_t id) {
-  auto validThreadEntry = (p != nullptr && !removed_);
-  cleanupElementAndSetThreadEntry(id, validThreadEntry);
+  auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
+  if (p != nullptr && !removed_) {
+    meta->ensureThreadEntryIsInSet(this, id, rlocked);
+  }
+  cleanupElement(id);
   elements[id].set(p);
 }
 
@@ -509,8 +515,11 @@ void ThreadEntry::resetElement(Ptr p, uint32_t id) {
  */
 template <class Ptr, class Deleter>
 void ThreadEntry::resetElement(Ptr p, Deleter& d, uint32_t id) {
-  auto validThreadEntry = (p != nullptr && !removed_);
-  cleanupElementAndSetThreadEntry(id, validThreadEntry);
+  auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
+  if (p != nullptr && !removed_) {
+    meta->ensureThreadEntryIsInSet(this, id, rlocked);
+  }
+  cleanupElement(id);
   elements[id].set(p, d);
 }
 
@@ -675,16 +684,9 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     for (uint32_t id = 0; id < maxId; ++id) {
       auto wlockedSet = meta.allId2ThreadEntrySets_[id].wlock();
       if (wlockedSet->contains(threadEntry)) {
-        DCHECK(threadEntry->elements[id].isLinked);
         wlockedSet->clear();
         wlockedSet->insert(threadEntry);
       } else {
-        // DCHECK if elements[id] is unlinked for this
-        // threadEntry only (id < threadEntry->getElementsCapacity()).
-        // The rest can be cleared regardless.
-        if (id < threadEntry->getElementsCapacity()) {
-          DCHECK(!threadEntry->elements[id].isLinked);
-        }
         wlockedSet->clear();
       }
     }

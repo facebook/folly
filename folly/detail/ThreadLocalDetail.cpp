@@ -278,7 +278,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
         for (auto& e : tmpEntrySet.threadEntries) {
           auto elementsCapacity = e->getElementsCapacity();
           if (id < elementsCapacity) {
-            if (e->elements[id].isLinked) {
+            if (e->elements[id].ptr) {
               elements.push_back(e->elements[id]);
               /*
                * Writing another thread's ThreadEntry from here is fine;
@@ -295,7 +295,6 @@ void StaticMetaBase::destroy(EntryID* ent) {
               e->elements[id].deleter1 = nullptr;
               e->elements[id].ownsDeleter = false;
             }
-            e->elements[id].isLinked = false;
           }
         }
         meta.freeIds_.push_back(id);
@@ -423,9 +422,6 @@ void StaticMetaBase::reserve(EntryID* id) {
 
     threadEntry->setElementsCapacity(newCapacity);
   }
-  for (size_t i = prevCapacity; i < newCapacity; ++i) {
-    threadEntry->elements[i].isLinked = false;
-  }
 
   meta.totalElementWrappers_ += (newCapacity - prevCapacity);
   free(reallocated);
@@ -435,22 +431,20 @@ void StaticMetaBase::reserve(EntryID* id) {
  * release the element @id.
  */
 void* ThreadEntry::releaseElement(uint32_t id) {
+  auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
   return elements[id].release();
 }
 
 /*
- * Cleanup the element and set the thread entry in the map, if valid.
+ * Cleanup the element. Caller is holding rlock on the ThreadEntrySet
+ * corresponding to the id. Running destructors of user objects isn't ideal
+ * under lock but this is the historical behavior. It should be possible to
+ * restructure this if a need for it arises.
  */
-void ThreadEntry::cleanupElementAndSetThreadEntry(
-    uint32_t id, bool validThreadEntry) {
+void ThreadEntry::cleanupElement(uint32_t id) {
   elements[id].dispose(TLPDestructionMode::THIS_THREAD);
   // Cleanup
   elements[id].cleanup();
-  // Add the allId2ThreadEntrySets_ only iff newPtr is not nullptr and
-  // threadEntry is not marked as removed
-  if (validThreadEntry) {
-    meta->addThreadEntryToMap(this, id);
-  }
 }
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
