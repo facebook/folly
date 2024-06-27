@@ -239,7 +239,8 @@ class Observer {
     return version < core_->getVersionLastChange();
   }
 
-  CallbackHandle addCallback(Function<void(Snapshot<T>)> callback) const;
+  [[nodiscard]] CallbackHandle addCallback(
+      Function<void(Snapshot<T>)> callback) const;
 
  private:
   template <typename Observable, typename Traits>
