@@ -26,7 +26,7 @@
 #include <folly/Synchronized.h>
 #include <folly/Utility.h>
 #include <folly/detail/StaticSingletonManager.h>
-#include <folly/detail/ThreadLocalDetail.h>
+#include <folly/detail/thread_local_globals.h>
 
 namespace folly {
 
@@ -157,7 +157,7 @@ class SingletonRelaxedCounterBase {
 
   FOLLY_NOINLINE static Counter& counter_slow(Arg const& arg) noexcept {
     auto& global = arg.global();
-    if (threadlocal_detail::StaticMetaBase::dying()) {
+    if (thread_is_dying()) {
       return global.fallback;
     }
     auto& state = arg.local();

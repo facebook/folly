@@ -338,6 +338,7 @@ cpp_library(
     srcs = ["ThreadLocalDetail.cpp"],
     headers = ["ThreadLocalDetail.h"],
     deps = [
+        ":thread_local_globals",
         "//folly/lang:hint",
         "//folly/memory:sanitize_leak",
         "//folly/synchronization:call_once",
@@ -364,6 +365,17 @@ cpp_library(
     ],
     exported_external_deps = [
         "glog",
+    ],
+)
+
+cpp_library(
+    name = "thread_local_globals",
+    srcs = ["thread_local_globals.cpp"],
+    headers = ["thread_local_globals.h"],
+    deps = [
+        ":static_singleton_manager",
+        "//folly/lang:exception",
+        "//folly/portability:pthread",
     ],
 )
 

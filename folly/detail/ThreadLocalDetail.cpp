@@ -20,6 +20,7 @@
 #include <list>
 #include <mutex>
 
+#include <folly/detail/thread_local_globals.h>
 #include <folly/lang/Hint.h>
 #include <folly/memory/SanitizeLeak.h>
 #include <folly/synchronization/CallOnce.h>
@@ -143,15 +144,11 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
 }
 
 bool StaticMetaBase::dying() {
-  for (auto te = getThreadEntryList()->head; te; te = te->listNext) {
-    if (te->removed_) {
-      return true;
-    }
-  }
-  return false;
+  return folly::detail::thread_is_dying();
 }
 
 void StaticMetaBase::onThreadExit(void* ptr) {
+  folly::detail::thread_is_dying_mark();
   auto threadEntry = static_cast<ThreadEntry*>(ptr);
 
   {
