@@ -19,8 +19,8 @@
 #include <glog/logging.h>
 
 #include <folly/FileUtil.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/portability/GTest.h>
+#include <folly/testing/TestUtil.h>
 
 namespace folly {
 namespace symbolizer {

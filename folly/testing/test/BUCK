@@ -8,10 +8,10 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:memory",
-        "//folly/experimental:test_util",
         "//folly/portability:fcntl",
         "//folly/portability:gtest",
         "//folly/portability:stdlib",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",

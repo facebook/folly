@@ -27,7 +27,6 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Random.h>
 #include <folly/SocketAddress.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -46,6 +45,7 @@
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/test/SocketAddressTestHelper.h>
+#include <folly/testing/TestUtil.h>
 
 using std::min;
 using std::string;

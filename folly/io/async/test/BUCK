@@ -41,7 +41,6 @@ cpp_library(
     exported_deps = [
         ":callback_state_enum",
         "//folly:network_address",
-        "//folly/experimental:test_util",
         "//folly/io/async:async_base",
         "//folly/io/async:async_socket",
         "//folly/io/async:async_ssl_socket",
@@ -51,6 +50,7 @@ cpp_library(
         "//folly/portability:gtest",
         "//folly/portability:sockets",
         "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -104,7 +104,6 @@ cpp_library(
         ":test_ssl_server",
         "//folly:exception_wrapper",
         "//folly:network_address",
-        "//folly/experimental:test_util",
         "//folly/fibers:fiber_manager_map",
         "//folly/io:socket_option_map",
         "//folly/io/async:async_base",
@@ -119,6 +118,7 @@ cpp_library(
         "//folly/portability:sockets",
         "//folly/portability:string",
         "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -147,7 +147,6 @@ cpp_unittest(
         "//folly:exception_wrapper",
         "//folly:network_address",
         "//folly:string",
-        "//folly/experimental:test_util",
         "//folly/fibers:fiber_manager_map",
         "//folly/futures:core",
         "//folly/init:init",
@@ -176,6 +175,7 @@ cpp_unittest(
         "//folly/portability:sockets",
         "//folly/portability:string",
         "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         ("glibc", None, "dl"),
@@ -267,7 +267,6 @@ cpp_unittest(
         "//folly:exception_wrapper",
         "//folly:network_address",
         "//folly:random",
-        "//folly/experimental:test_util",
         "//folly/io:iobuf",
         "//folly/io:socket_option_map",
         "//folly/io/async:async_base",
@@ -285,6 +284,7 @@ cpp_unittest(
         "//folly/synchronization:baton",
         "//folly/synchronization:rw_spin_lock",
         "//folly/test:socket_address_test_helper",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         ("glibc", None, "rt"),
@@ -342,7 +342,6 @@ cpp_unittest(
         "//folly:conv",
         "//folly:network_address",
         "//folly:string",
-        "//folly/experimental:test_util",
         "//folly/io:iobuf",
         "//folly/io:socket_option_map",
         "//folly/io/async:async_base",
@@ -352,6 +351,7 @@ cpp_unittest(
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/portability:sockets",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -725,7 +725,6 @@ cpp_unittest(
     },
     deps = [
         ":async_ssl_socket_test_lib",
-        "//folly/experimental:test_util",
         "//folly/net:net_ops",
         "//folly/net:network_socket",
         "//folly/portability:gtest",
@@ -733,6 +732,7 @@ cpp_unittest(
         "//folly/portability:sockets",
         "//folly/ssl:ssl_session",
         "//folly/ssl/detail:openssl_session",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -764,13 +764,13 @@ cpp_unittest(
     deps = [
         ":ssl_util",
         "//folly:file_util",
-        "//folly/experimental:test_util",
         "//folly/io/async:ssl_context",
         "//folly/portability:gtest",
         "//folly/portability:openssl",
         "//folly/ssl:openssl_cert_utils",
         "//folly/ssl:openssl_key_utils",
         "//folly/ssl:openssl_ptr_types",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -781,9 +781,9 @@ cpp_unittest(
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
     deps = [
         "//folly:file_util",
-        "//folly/experimental:test_util",
         "//folly/io/async:ssl_context",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
 )
 

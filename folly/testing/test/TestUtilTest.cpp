@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/TestUtil.h>
+#include <folly/testing/TestUtil.h>
 
 #include <system_error>
 

@@ -20,11 +20,11 @@
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/container/Enumerate.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Time.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
+#include <folly/testing/TestUtil.h>
 
 using namespace testing;
 using namespace folly;

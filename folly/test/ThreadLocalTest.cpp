@@ -39,13 +39,13 @@
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/system/ThreadId.h>
+#include <folly/testing/TestUtil.h>
 
 using namespace folly;
 

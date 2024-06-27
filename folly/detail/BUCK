@@ -157,8 +157,8 @@ cpp_library(
     ],
     deps = [
         "//folly:conv",
-        "//folly/experimental:test_util",
         "//folly/system:pid",
+        "//folly/testing:test_util",
     ],
 )
 

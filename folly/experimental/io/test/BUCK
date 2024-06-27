@@ -13,8 +13,8 @@ cpp_library(
         "//folly:string",
     ],
     exported_deps = [
-        "//folly/experimental:test_util",
         "//folly/experimental/io:fs_util",
+        "//folly/testing:test_util",
     ],
     exported_external_deps = [
         "glog",

@@ -69,10 +69,10 @@ cpp_unittest(
     srcs = ["ElfTest.cpp"],
     deps = [
         "//folly:file_util",
-        "//folly/experimental:test_util",
         "//folly/experimental/symbolizer:elf",
         "//folly/experimental/symbolizer/detail:debug",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -112,9 +112,9 @@ cpp_unittest(
     srcs = ["LineReaderTest.cpp"],
     deps = [
         "//folly:file_util",
-        "//folly/experimental:test_util",
         "//folly/experimental/symbolizer:line_reader",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",
@@ -167,7 +167,6 @@ cpp_unittest(
     name = "stack_trace_test",
     srcs = ["StackTraceTest.cpp"],
     deps = [
-        "//folly/experimental:test_util",
         "//folly/experimental/coro:blocking_wait",
         "//folly/experimental/coro:task",
         "//folly/experimental/symbolizer:stack_trace",
@@ -175,6 +174,7 @@ cpp_unittest(
         "//folly/lang:hint",
         "//folly/portability:gtest",
         "//folly/test:test_utils",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",

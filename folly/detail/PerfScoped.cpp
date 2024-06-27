@@ -20,8 +20,8 @@
 
 #if FOLLY_PERF_IS_SUPPORTED
 #include <folly/Subprocess.h> // @manual
-#include <folly/experimental/TestUtil.h>
 #include <folly/system/Pid.h>
+#include <folly/testing/TestUtil.h>
 #endif
 
 #include <stdexcept>

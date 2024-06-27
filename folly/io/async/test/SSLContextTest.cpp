@@ -17,13 +17,13 @@
 #include <folly/io/async/SSLContext.h>
 
 #include <folly/FileUtil.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/async/test/SSLUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
 #include <folly/ssl/OpenSSLKeyUtils.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
+#include <folly/testing/TestUtil.h>
 
 #if !defined(FOLLY_CERTS_DIR)
 #define FOLLY_CERTS_DIR "folly/io/async/test/certs"

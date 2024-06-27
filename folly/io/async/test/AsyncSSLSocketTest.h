@@ -27,7 +27,6 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSSLSocket.h>
@@ -44,6 +43,7 @@
 #include <folly/portability/Sockets.h>
 #include <folly/portability/String.h>
 #include <folly/portability/Unistd.h>
+#include <folly/testing/TestUtil.h>
 
 namespace folly::test {
 

@@ -28,10 +28,10 @@
 #include <folly/MapUtil.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/json/dynamic.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/testing/TestUtil.h>
 
 using namespace folly::gen;
 using namespace folly;

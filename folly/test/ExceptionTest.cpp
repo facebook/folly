@@ -19,8 +19,8 @@
 #include <cstdio>
 #include <memory>
 
-#include <folly/experimental/TestUtil.h>
 #include <folly/portability/GTest.h>
+#include <folly/testing/TestUtil.h>
 
 namespace folly {
 namespace test {

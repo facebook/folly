@@ -17,9 +17,9 @@
 #include <folly/experimental/symbolizer/Elf.h>
 
 #include <folly/FileUtil.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/portability/GTest.h>
+#include <folly/testing/TestUtil.h>
 
 #if FOLLY_HAVE_ELF
 

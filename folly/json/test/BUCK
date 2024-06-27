@@ -126,8 +126,8 @@ cpp_unittest(
     deps = [
         "//folly:optional",
         "//folly/experimental:dynamic_parser",
-        "//folly/experimental:test_util",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
 )
 

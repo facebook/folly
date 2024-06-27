@@ -22,7 +22,6 @@
 #include <folly/Conv.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
@@ -31,6 +30,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
+#include <folly/testing/TestUtil.h>
 
 using folly::AsyncTimeout;
 using folly::AsyncUDPServerSocket;

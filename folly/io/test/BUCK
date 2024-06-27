@@ -120,12 +120,12 @@ cpp_unittest(
         "//folly:conv",
         "//folly:fbstring",
         "//folly:random",
-        "//folly/experimental:test_util",
         "//folly/io:iobuf",
         "//folly/io:record_io",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",

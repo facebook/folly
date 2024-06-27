@@ -16,7 +16,6 @@ cpp_unittest(
         "//folly:file_util",
         "//folly:string",
         "//folly:synchronized",
-        "//folly/experimental:test_util",
         "//folly/futures:core",
         "//folly/init:init",
         "//folly/lang:safe_assert",
@@ -30,6 +29,7 @@ cpp_unittest(
         "//folly/system:thread_id",
         "//folly/system:thread_name",
         "//folly/test:test_utils",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -97,11 +97,11 @@ cpp_unittest(
     srcs = ["FileHandlerFactoryTest.cpp"],
     deps = [
         "//folly:exception",
-        "//folly/experimental:test_util",
         "//folly/logging:file_handler_factory",
         "//folly/logging:logging",
         "//folly/portability:gtest",
         "//folly/test:test_utils",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -137,10 +137,10 @@ cpp_unittest(
         "//folly:conv",
         "//folly:exception",
         "//folly:file_util",
-        "//folly/experimental:test_util",
         "//folly/logging:logging",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
 )
 

@@ -18,8 +18,8 @@
 
 #include <glog/logging.h>
 
-#include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/testing/TestUtil.h>
 
 namespace folly {
 namespace test {

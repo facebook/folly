@@ -29,11 +29,11 @@ cpp_unittest(
         "//folly:map_util",
         "//folly:memory",
         "//folly:string",
-        "//folly/experimental:test_util",
         "//folly/gen:base",
         "//folly/json:dynamic",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",
@@ -81,10 +81,10 @@ cpp_unittest(
         "//folly:file",
         "//folly:range",
         "//folly/container:array",
-        "//folly/experimental:test_util",
         "//folly/gen:base",
         "//folly/gen:file",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
 )
 
