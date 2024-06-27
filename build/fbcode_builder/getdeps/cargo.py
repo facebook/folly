@@ -20,6 +20,8 @@ if typing.TYPE_CHECKING:
 class CargoBuilder(BuilderBase):
     def __init__(
         self,
+        loader,
+        dep_manifests,  # manifests of dependencies
         build_opts: "BuildOptions",
         ctx,
         manifest,
@@ -29,11 +31,17 @@ class CargoBuilder(BuilderBase):
         build_doc,
         workspace_dir,
         manifests_to_build,
-        loader,
         cargo_config_file,
     ) -> None:
         super(CargoBuilder, self).__init__(
-            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+            loader,
+            dep_manifests,
+            build_opts,
+            ctx,
+            manifest,
+            src_dir,
+            build_dir,
+            inst_dir,
         )
         self.build_doc = build_doc
         self.ws_dir = workspace_dir
@@ -43,7 +51,7 @@ class CargoBuilder(BuilderBase):
 
     def run_cargo(self, install_dirs, operation, args=None) -> None:
         args = args or []
-        env = self._compute_env(install_dirs)
+        env = self._compute_env()
         # Enable using nightly features with stable compiler
         env["RUSTC_BOOTSTRAP"] = "1"
         env["LIBZ_SYS_STATIC"] = "1"
@@ -138,7 +146,7 @@ incremental = false
 
         return dep_to_git
 
-    def _prepare(self, install_dirs, reconfigure) -> None:
+    def _prepare(self, reconfigure) -> None:
         build_source_dir = self.build_source_dir()
         self.recreate_dir(self.src_dir, build_source_dir)
 
@@ -147,7 +155,7 @@ incremental = false
         if self.ws_dir is not None:
             self._patchup_workspace(dep_to_git)
 
-    def _build(self, install_dirs, reconfigure) -> None:
+    def _build(self, reconfigure) -> None:
         # _prepare has been run already. Actually do the build
         build_source_dir = self.build_source_dir()
 
@@ -162,14 +170,14 @@ incremental = false
 
         if self.manifests_to_build is None:
             self.run_cargo(
-                install_dirs,
+                self.install_dirs,
                 "build",
                 build_args,
             )
         else:
             for manifest in self.manifests_to_build:
                 self.run_cargo(
-                    install_dirs,
+                    self.install_dirs,
                     "build",
                     build_args
                     + [
@@ -180,24 +188,22 @@ incremental = false
 
         self.recreate_dir(build_source_dir, os.path.join(self.inst_dir, "source"))
 
-    def run_tests(
-        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
-    ) -> None:
+    def run_tests(self, schedule_type, owner, test_filter, retry, no_testpilot) -> None:
         if test_filter:
             args = ["--", test_filter]
         else:
             args = []
 
         if self.manifests_to_build is None:
-            self.run_cargo(install_dirs, "test", args)
+            self.run_cargo(self.install_dirs, "test", args)
             if self.build_doc:
-                self.run_cargo(install_dirs, "doc", ["--no-deps"])
+                self.run_cargo(self.install_dirs, "doc", ["--no-deps"])
         else:
             for manifest in self.manifests_to_build:
                 margs = ["--manifest-path", self.manifest_dir(manifest)]
-                self.run_cargo(install_dirs, "test", args + margs)
+                self.run_cargo(self.install_dirs, "test", args + margs)
                 if self.build_doc:
-                    self.run_cargo(install_dirs, "doc", ["--no-deps"] + margs)
+                    self.run_cargo(self.install_dirs, "doc", ["--no-deps"] + margs)
 
     def _patchup_workspace(self, dep_to_git) -> None:
         """

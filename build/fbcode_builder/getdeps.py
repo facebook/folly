@@ -210,15 +210,6 @@ class ProjectCmdBase(SubCmd):
     def setup_project_cmd_parser(self, parser):
         pass
 
-    # For commands that don't build but need the full list of install_dirs from
-    # dependencies (test, debug).
-    def get_install_dirs(self, loader, manifest):
-        install_dirs = []
-        for m in loader.manifests_in_dependency_order():
-            if m != manifest:
-                install_dirs.append(loader.get_project_install_dir(m))
-        return install_dirs
-
     def create_builder(self, loader, manifest):
         fetcher = loader.create_fetcher(manifest)
         src_dir = fetcher.get_src_dir()
@@ -226,7 +217,13 @@ class ProjectCmdBase(SubCmd):
         build_dir = loader.get_project_build_dir(manifest)
         inst_dir = loader.get_project_install_dir(manifest)
         return manifest.create_builder(
-            loader.build_opts, src_dir, build_dir, inst_dir, ctx, loader
+            loader.build_opts,
+            src_dir,
+            build_dir,
+            inst_dir,
+            ctx,
+            loader,
+            loader.dependencies_of(manifest),
         )
 
     def check_built(self, loader, manifest):
@@ -579,11 +576,11 @@ class BuildCmd(ProjectCmdBase):
 
         cache = cache_module.create_cache() if args.use_build_cache else None
 
-        # Accumulate the install directories so that the build steps
-        # can find their dep installation
-        install_dirs = []
+        dep_manifests = []
 
         for m in projects:
+            dep_manifests.append(m)
+
             fetcher = loader.create_fetcher(m)
 
             if args.build_skip_lfs_download and hasattr(fetcher, "skip_lfs_download"):
@@ -650,9 +647,10 @@ class BuildCmd(ProjectCmdBase):
                         build_dir,
                         inst_dir,
                         loader,
+                        dep_manifests,
                     )
                     for preparer in prepare_builders:
-                        preparer.prepare(install_dirs, reconfigure=reconfigure)
+                        preparer.prepare(reconfigure=reconfigure)
 
                     builder = m.create_builder(
                         loader.build_opts,
@@ -661,12 +659,13 @@ class BuildCmd(ProjectCmdBase):
                         inst_dir,
                         ctx,
                         loader,
+                        dep_manifests,
                         final_install_prefix=loader.get_project_install_prefix(m),
                         extra_cmake_defines=extra_cmake_defines,
                         cmake_target=args.cmake_target if m == manifest else "install",
                         extra_b2_args=extra_b2_args,
                     )
-                    builder.build(install_dirs, reconfigure=reconfigure)
+                    builder.build(reconfigure=reconfigure)
 
                     # If we are building the project (not dependency) and a specific
                     # cmake_target (not 'install') has been requested, then we don't
@@ -689,11 +688,6 @@ class BuildCmd(ProjectCmdBase):
                         cached_project.upload()
                 elif args.verbose:
                     print("found good %s" % built_marker)
-
-            # Paths are resolved from front. We prepend rather than append as
-            # the last project in topo order is the project itself, which
-            # should be first in the path, then its deps and so on.
-            install_dirs.insert(0, inst_dir)
 
     def compute_dep_change_status(self, m, built_marker, loader):
         reconfigure = False
@@ -883,11 +877,7 @@ class TestCmd(ProjectCmdBase):
         if not self.check_built(loader, manifest):
             print("project %s has not been built" % manifest.name)
             return 1
-        builder = self.create_builder(loader, manifest)
-        install_dirs = self.get_install_dirs(loader, manifest)
-
-        builder.run_tests(
-            install_dirs,
+        self.create_builder(loader, manifest).run_tests(
             schedule_type=args.schedule_type,
             owner=args.test_owner,
             test_filter=args.filter,
@@ -921,9 +911,7 @@ class TestCmd(ProjectCmdBase):
 )
 class DebugCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
-        install_dirs = self.get_install_dirs(loader, manifest)
-        builder = self.create_builder(loader, manifest)
-        builder.debug(install_dirs, reconfigure=False)
+        self.create_builder(loader, manifest).debug(reconfigure=False)
 
 
 @cmd("generate-github-actions", "generate a GitHub actions configuration")

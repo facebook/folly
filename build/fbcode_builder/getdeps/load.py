@@ -159,6 +159,14 @@ class ManifestLoader(object):
 
         return self.manifests_by_name
 
+    def dependencies_of(self, manifest):
+        """Returns the dependencies of the given project, not including the project itself, in topological order."""
+        return [
+            dep
+            for dep in self.manifests_in_dependency_order(manifest)
+            if dep != manifest
+        ]
+
     def manifests_in_dependency_order(self, manifest=None):
         """Compute all dependencies of the specified project.  Returns a list of the
         dependencies plus the project itself, in topologically sorted order.

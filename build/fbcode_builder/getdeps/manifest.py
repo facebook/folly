@@ -485,6 +485,7 @@ class ManifestParser(object):
         inst_dir,
         ctx,
         loader,
+        dep_manifests,
         final_install_prefix=None,
         extra_cmake_defines=None,
         cmake_target=None,
@@ -508,6 +509,8 @@ class ManifestParser(object):
             test_args = self.get_section_as_args("make.test_args", ctx)
             if builder == "cmakebootstrap":
                 return CMakeBootStrapBuilder(
+                    loader,
+                    dep_manifests,
                     build_options,
                     ctx,
                     self,
@@ -520,6 +523,8 @@ class ManifestParser(object):
                 )
             else:
                 return MakeBuilder(
+                    loader,
+                    dep_manifests,
                     build_options,
                     ctx,
                     self,
@@ -538,6 +543,8 @@ class ManifestParser(object):
             if ldflags_cmd:
                 conf_env_args["LDFLAGS"] = ldflags_cmd
             return AutoconfBuilder(
+                loader,
+                dep_manifests,
                 build_options,
                 ctx,
                 self,
@@ -552,11 +559,23 @@ class ManifestParser(object):
             args = self.get_section_as_args("b2.args", ctx)
             if extra_b2_args is not None:
                 args += extra_b2_args
-            return Boost(build_options, ctx, self, src_dir, build_dir, inst_dir, args)
+            return Boost(
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+                args,
+            )
 
         if builder == "cmake":
             defines = self.get_section_as_dict("cmake.defines", ctx)
             return CMakeBuilder(
+                loader,
+                dep_manifests,
                 build_options,
                 ctx,
                 self,
@@ -564,7 +583,6 @@ class ManifestParser(object):
                 build_dir,
                 inst_dir,
                 defines,
-                loader,
                 final_install_prefix,
                 extra_cmake_defines,
                 cmake_target,
@@ -572,39 +590,91 @@ class ManifestParser(object):
 
         if builder == "python-wheel":
             return PythonWheelBuilder(
-                build_options, ctx, self, src_dir, build_dir, inst_dir
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
             )
 
         if builder == "sqlite":
-            return SqliteBuilder(build_options, ctx, self, src_dir, build_dir, inst_dir)
+            return SqliteBuilder(
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+            )
 
         if builder == "ninja_bootstrap":
             return NinjaBootstrap(
-                build_options, ctx, self, build_dir, src_dir, inst_dir
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                build_dir,
+                src_dir,
+                inst_dir,
             )
 
         if builder == "nop":
-            return NopBuilder(build_options, ctx, self, src_dir, inst_dir)
+            return NopBuilder(
+                loader, dep_manifests, build_options, ctx, self, src_dir, inst_dir
+            )
 
         if builder == "openssl":
             return OpenSSLBuilder(
-                build_options, ctx, self, build_dir, src_dir, inst_dir
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                build_dir,
+                src_dir,
+                inst_dir,
             )
 
         if builder == "iproute2":
             return Iproute2Builder(
-                build_options, ctx, self, src_dir, build_dir, inst_dir
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
             )
 
         if builder == "cargo":
             return self.create_cargo_builder(
-                build_options, ctx, src_dir, build_dir, inst_dir, loader
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                src_dir,
+                build_dir,
+                inst_dir,
             )
 
         raise KeyError("project %s has no known builder" % (self.name))
 
     def create_prepare_builders(
-        self, build_options, ctx, src_dir, build_dir, inst_dir, loader
+        self,
+        build_options,
+        ctx,
+        src_dir,
+        build_dir,
+        inst_dir,
+        loader,
+        dep_manifests,
     ):
         """Create builders that have a prepare step run, e.g. to write config files"""
         prepare_builders = []
@@ -612,19 +682,27 @@ class ManifestParser(object):
         cargo = self.get_section_as_dict("cargo", ctx)
         if not builder == "cargo" and cargo:
             cargo_builder = self.create_cargo_builder(
-                build_options, ctx, src_dir, build_dir, inst_dir, loader
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                src_dir,
+                build_dir,
+                inst_dir,
             )
             prepare_builders.append(cargo_builder)
         return prepare_builders
 
     def create_cargo_builder(
-        self, build_options, ctx, src_dir, build_dir, inst_dir, loader
+        self, loader, dep_manifests, build_options, ctx, src_dir, build_dir, inst_dir
     ):
         build_doc = self.get("cargo", "build_doc", False, ctx)
         workspace_dir = self.get("cargo", "workspace_dir", None, ctx)
         manifests_to_build = self.get("cargo", "manifests_to_build", None, ctx)
         cargo_config_file = self.get("cargo", "cargo_config_file", None, ctx)
         return CargoBuilder(
+            loader,
+            dep_manifests,
             build_options,
             ctx,
             self,
@@ -634,7 +712,6 @@ class ManifestParser(object):
             build_doc,
             workspace_dir,
             manifests_to_build,
-            loader,
             cargo_config_file,
         )
 

@@ -104,7 +104,7 @@ class PythonWheelBuilder(BuilderBase):
     dist_info_dir: str
     template_format_dict: Dict[str, str]
 
-    def _build(self, install_dirs: List[str], reconfigure: bool) -> None:
+    def _build(self, reconfigure: bool) -> None:
         # When we are invoked, self.src_dir contains the unpacked wheel contents.
         #
         # Since a wheel file is just a zip file, the Fetcher code recognizes it as such
@@ -171,10 +171,12 @@ class PythonWheelBuilder(BuilderBase):
         self._write_cmake_config_template()
 
         # Run the build
-        self._run_cmake_build(install_dirs, reconfigure)
+        self._run_cmake_build(reconfigure)
 
-    def _run_cmake_build(self, install_dirs: List[str], reconfigure: bool) -> None:
+    def _run_cmake_build(self, reconfigure: bool) -> None:
         cmake_builder = CMakeBuilder(
+            loader=self.loader,
+            dep_manifests=self.dep_manifests,
             build_opts=self.build_opts,
             ctx=self.ctx,
             manifest=self.manifest,
@@ -183,11 +185,10 @@ class PythonWheelBuilder(BuilderBase):
             src_dir=self.build_dir,
             build_dir=self.build_dir,
             inst_dir=self.inst_dir,
-            loader=None,
             defines={},
             final_install_prefix=None,
         )
-        cmake_builder.build(install_dirs=install_dirs, reconfigure=reconfigure)
+        cmake_builder.build(reconfigure=reconfigure)
 
     def _write_cmakelists(self, path_mapping: Dict[str, str], dependencies) -> None:
         cmake_path = os.path.join(self.build_dir, "CMakeLists.txt")
