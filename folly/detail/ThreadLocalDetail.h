@@ -319,7 +319,8 @@ struct ThreadEntrySet {
     // the vector, since that way lies non-amortized-O(N)-complexity costs for
     // both insert and erase ops.
     constexpr size_t const mult = 4;
-    return threadEntries.size() * mult <= threadEntries.capacity();
+    auto& vec = threadEntries;
+    return std::max(size_t(1), vec.size()) * mult <= vec.capacity();
   }
   /// compress
   ///
