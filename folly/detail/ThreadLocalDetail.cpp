@@ -121,25 +121,20 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
     pthread_key_t pthreadKey_;
   };
 
-  static thread_local ThreadEntryList* threadEntryListTL{};
-  if (kUseThreadLocal && threadEntryListTL) {
-    return threadEntryListTL;
-  }
   auto& instance = detail::createGlobal<PthreadKey, void>();
 
   ThreadEntryList* threadEntryList =
       static_cast<ThreadEntryList*>(pthread_getspecific(instance.get()));
 
   if (FOLLY_UNLIKELY(!threadEntryList)) {
-    threadEntryList = new ThreadEntryList();
-    int ret = pthread_setspecific(instance.get(), threadEntryList);
+    auto uptr = std::make_unique<ThreadEntryList>();
+    int ret = pthread_setspecific(instance.get(), uptr.get());
     checkPosixError(ret, "pthread_setspecific failed");
+    threadEntryList = uptr.release();
     threadEntryList->count = 1; // Pin once for own onThreadExit callback.
+    lsan_ignore_object(threadEntryList);
   }
 
-  if (kUseThreadLocal) {
-    threadEntryListTL = threadEntryList;
-  }
   return threadEntryList;
 }
 
