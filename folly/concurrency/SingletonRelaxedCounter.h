@@ -27,6 +27,7 @@
 #include <folly/Utility.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/detail/thread_local_globals.h>
+#include <folly/synchronization/AtomicRef.h>
 
 namespace folly {
 
@@ -45,12 +46,13 @@ template <typename Int>
 class SingletonRelaxedCounterBase {
  protected:
   using Signed = std::make_signed_t<Int>;
-  using Counter = std::atomic<Signed>;
+  using Counter = Signed; // should be atomic but clang generates worse code
 
   struct CounterAndCache {
     Counter counter; // valid during LocalLifetime object lifetime
     Counter* cache; // points to counter when counter is valid
   };
+  static_assert(std::is_trivial_v<CounterAndCache>);
 
   struct CounterRefAndLocal {
     Counter* counter; // refers either to local counter or to global counter
@@ -99,15 +101,17 @@ class SingletonRelaxedCounterBase {
     }
     FOLLY_NOINLINE void destroy_(GetGlobal& get_global) {
       auto& global = get_global();
+      auto global_fallback = atomic_ref(global.fallback);
       auto const tracking = global.tracking.wlock();
       auto& lifetimes = tracking->lifetimes[this];
       for (auto ctr : lifetimes) {
         auto const it = tracking->locals.find(ctr);
         if (!--it->second) {
           tracking->locals.erase(it);
-          auto const current = ctr->counter.load(std::memory_order_relaxed);
-          global.fallback.fetch_add(current, std::memory_order_relaxed);
-          ctr->counter.store(Signed(0), std::memory_order_relaxed);
+          auto ctr_counter = atomic_ref(ctr->counter);
+          auto const current = ctr_counter.load(std::memory_order_relaxed);
+          global_fallback.fetch_add(current, std::memory_order_relaxed);
+          ctr_counter.store(Signed(0), std::memory_order_relaxed);
           ctr->cache = nullptr;
         }
       }
@@ -130,10 +134,10 @@ class SingletonRelaxedCounterBase {
   }
   FOLLY_NOINLINE static Int aggregate_(GetGlobal& get_global) {
     auto& global = get_global();
-    auto count = global.fallback.load(std::memory_order_relaxed);
+    auto count = atomic_ref(global.fallback).load(std::memory_order_relaxed);
     auto const tracking = global.tracking.rlock();
     for (auto const& kvp : tracking->locals) {
-      count += kvp.first->counter.load(std::memory_order_relaxed);
+      count += atomic_ref(kvp.first->counter).load(std::memory_order_relaxed);
     }
     return std::is_unsigned<Int>::value
         ? to_unsigned(std::max(Signed(0), count))
@@ -141,7 +145,7 @@ class SingletonRelaxedCounterBase {
   }
 
   FOLLY_ERASE static void mutate(Signed v, CounterRefAndLocal cl) {
-    auto& c = *cl.counter;
+    auto c = atomic_ref(*cl.counter);
     if (cl.local) {
       //  splitting load/store on the local counter is faster than fetch-and-add
       c.store(c.load(std::memory_order_relaxed) + v, std::memory_order_relaxed);

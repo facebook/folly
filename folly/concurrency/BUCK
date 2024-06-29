@@ -167,5 +167,6 @@ cpp_library(
         "//folly:utility",
         "//folly/detail:static_singleton_manager",
         "//folly/detail:thread_local_globals",
+        "//folly/synchronization:atomic_ref",
     ],
 )
