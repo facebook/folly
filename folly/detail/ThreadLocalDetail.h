@@ -64,7 +64,7 @@ constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
 struct ElementWrapper {
   using DeleterFunType = void(void*, TLPDestructionMode);
 
-  bool dispose(TLPDestructionMode mode) {
+  bool dispose(TLPDestructionMode mode) noexcept {
     if (ptr == nullptr) {
       return false;
     }
@@ -118,7 +118,7 @@ struct ElementWrapper {
     ptr = p;
   }
 
-  void cleanup() {
+  void cleanup() noexcept {
     if (ownsDeleter) {
       delete deleter2;
     }
@@ -454,7 +454,12 @@ struct StaticMetaBase {
   /*
    * Check if ThreadEntry* is present in the map for all slots of @ids.
    */
-  FOLLY_ALWAYS_INLINE bool isThreadEntryRemovedFromAllInMap(ThreadEntry* te) {
+  FOLLY_ALWAYS_INLINE bool isThreadEntryRemovedFromAllInMap(
+      ThreadEntry* te, bool needForkLock) {
+    std::shared_lock rlocked(forkHandlerLock_, std::defer_lock);
+    if (needForkLock) {
+      rlocked.lock();
+    }
     uint32_t maxId = nextId_.load();
     for (uint32_t i = 0; i < maxId; ++i) {
       if (allId2ThreadEntrySets_[i].rlock()->contains(te)) {
@@ -497,6 +502,17 @@ struct StaticMetaBase {
   // This is a map of all thread entries mapped to index i with active
   // elements[i];
   folly::atomic_grow_array<SynchronizedThreadEntrySet> allId2ThreadEntrySets_;
+
+  // Note on locking rules. There are 4 locks involved in managing StaticMeta:
+  // fork handler lock (getStaticMetaGlobalForkMutex(),
+  // access all threads lock (accessAllThreadsLock_),
+  // per thread entry set lock implicit in SynchronizedThreadEntrySet and
+  // meta lock (lock_)
+  //
+  // If multiple locks need to be acquired in a call path, the above is also
+  // the order in which they should be acquired. Additionally, if per
+  // ThreadEntrySet locks are the only ones that are acquired in a path, it
+  // must also acquire shared lock on the fork handler lock.
 };
 
 struct FakeUniqueInstance {
@@ -687,8 +703,10 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
   }
 
   static void onForkChild() {
-    // only the current thread survives
     auto& meta = instance();
+    // only the current thread survives
+    meta.lock_.unlock();
+    meta.accessAllThreadsLock_.unlock();
     auto threadEntry = meta.threadEntry_();
     // Loop through allId2ThreadEntrySets_; Only keep ThreadEntry* in the map
     // for ThreadEntry::elements that are still in use by the current thread.
@@ -703,8 +721,6 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
         wlockedSet->clear();
       }
     }
-    meta.lock_.unlock();
-    meta.accessAllThreadsLock_.unlock();
     meta.forkHandlerLock_.unlock();
   }
 };

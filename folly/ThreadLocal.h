@@ -196,7 +196,6 @@ class ThreadLocalPtr {
       typename = typename std::enable_if<
           std::is_convertible<SourceT*, T*>::value>::type>
   void reset(std::unique_ptr<SourceT, Deleter> source) {
-    auto rlocked = getForkGuard();
     auto deleter = [delegate = source.get_deleter()](
                        T* ptr, TLPDestructionMode) { delegate(ptr); };
     reset(source.release(), deleter);
@@ -230,6 +229,7 @@ class ThreadLocalPtr {
       }
     });
 
+    auto rlocked = getForkGuard();
     threadlocal_detail::ThreadEntry* te = StaticMeta::getThreadEntry(&id_);
     uint32_t id = id_.getOrInvalid();
     // Only valid index into the the elements array
@@ -427,9 +427,9 @@ class ThreadLocalPtr {
           lock_(&meta_.lock_) {
       forkHandlerLock_->lock_shared();
       accessAllThreadsLock_->lock();
-      lock_->lock();
       id_ = id;
       wlockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].wlock();
+      lock_->lock();
     }
 
     void release() {

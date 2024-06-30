@@ -114,16 +114,19 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     // Make sure this ThreadEntry is available if ThreadLocal A is accessed in
     // ThreadLocal B destructor.
     pthread_setspecific(meta.pthreadKey_, threadEntry);
+
+    std::shared_lock forkRlock(meta.forkHandlerLock_);
     std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
     if (meta.strict_) {
       rlock.lock();
     }
+    meta.removeThreadEntryFromAllInMap(threadEntry);
+    forkRlock.unlock();
     {
       std::lock_guard<std::mutex> g(meta.lock_);
       // mark it as removed
       threadEntry->removed_ = true;
       auto elementsCapacity = threadEntry->getElementsCapacity();
-      meta.removeThreadEntryFromAllInMap(threadEntry);
       auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
       DCHECK_GE(beforeCount, elementsCapacity);
       // No need to hold the lock any longer; the ThreadEntry is private to this
@@ -142,7 +145,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
           shouldRun = true;
         }
       }
-      DCHECK(threadEntry->meta->isThreadEntryRemovedFromAllInMap(threadEntry));
+      DCHECK(meta.isThreadEntryRemovedFromAllInMap(threadEntry, !meta.strict_));
     }
     pthread_setspecific(meta.pthreadKey_, nullptr);
   }
@@ -203,7 +206,7 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
 
     // Fail safe check to make sure that the ThreadEntry is not present
     // before issuing a delete.
-    DCHECK(tmp->meta->isThreadEntryRemovedFromAllInMap(tmp));
+    DCHECK(tmp->meta->isThreadEntryRemovedFromAllInMap(tmp, true));
 
     delete tmp;
   }
@@ -246,6 +249,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
     ThreadEntrySet tmpEntrySet;
 
     {
+      std::shared_lock forkRlock(meta.forkHandlerLock_);
       std::unique_lock wlock(meta.accessAllThreadsLock_, std::defer_lock);
       if (meta.strict_) {
         /*
@@ -258,15 +262,16 @@ void StaticMetaBase::destroy(EntryID* ent) {
         wlock.lock();
       }
 
+      uint32_t id =
+          ent->value.exchange(kEntryIDInvalid, std::memory_order_acquire);
+      if (id == kEntryIDInvalid) {
+        return;
+      }
+      meta.allId2ThreadEntrySets_[id].swap(tmpEntrySet);
+      forkRlock.unlock();
+
       {
         std::lock_guard<std::mutex> g(meta.lock_);
-        uint32_t id =
-            ent->value.exchange(kEntryIDInvalid, std::memory_order_relaxed);
-        if (id == kEntryIDInvalid) {
-          return;
-        }
-
-        meta.allId2ThreadEntrySets_[id].swap(tmpEntrySet);
         for (auto& e : tmpEntrySet.threadEntries) {
           auto elementsCapacity = e->getElementsCapacity();
           if (id < elementsCapacity) {
