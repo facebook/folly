@@ -252,6 +252,12 @@
 //  Semantically includes the inline specifier.
 #define FOLLY_ERASE FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN
 
+//  FOLLY_ERASE_NOINLINE
+//
+//  Like FOLLY_ERASE, but also noinline. The naming similarity with FOLLY_ERASE
+//  is specifically desirable.
+#define FOLLY_ERASE_NOINLINE FOLLY_NOINLINE FOLLY_ATTR_VISIBILITY_HIDDEN
+
 //  FOLLY_ERASE_HACK_GCC
 //
 //  Equivalent to FOLLY_ERASE, but without hiding under gcc. Useful when applied
