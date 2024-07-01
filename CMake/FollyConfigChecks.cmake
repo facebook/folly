@@ -92,8 +92,6 @@ check_symbol_exists(preadv sys/uio.h FOLLY_HAVE_PREADV)
 check_symbol_exists(pwritev sys/uio.h FOLLY_HAVE_PWRITEV)
 check_symbol_exists(clock_gettime time.h FOLLY_HAVE_CLOCK_GETTIME)
 check_symbol_exists(pipe2 unistd.h FOLLY_HAVE_PIPE2)
-check_symbol_exists(sendmmsg sys/socket.h FOLLY_HAVE_SENDMMSG)
-check_symbol_exists(recvmmsg sys/socket.h FOLLY_HAVE_RECVMMSG)
 
 check_function_exists(malloc_usable_size FOLLY_HAVE_MALLOC_USABLE_SIZE)
 
