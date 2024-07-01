@@ -620,12 +620,14 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
    * ThreadLocal is set/released.
    */
   FOLLY_ALWAYS_INLINE static ThreadEntry* getThreadEntry(EntryID* ent) {
+    if (!kUseThreadLocal) {
+      return getThreadEntrySlowReserve(ent);
+    }
+
     // Eliminate as many branches and as much extra code as possible in the
     // cached fast path, leaving only one branch here and one indirection below.
     uint32_t id = ent->getOrInvalid();
-    LocalCache cacheNonTL{};
-    auto& cache = kUseThreadLocal ? getLocalCache() : cacheNonTL;
-
+    auto& cache = getLocalCache();
     if (FOLLY_UNLIKELY(cache.capacity <= id)) {
       getSlowReserveAndCache(ent, cache);
     }
@@ -634,18 +636,22 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
 
   FOLLY_NOINLINE static void getSlowReserveAndCache(
       EntryID* ent, LocalCache& cache) {
-    auto id = ent->getOrInvalid();
-    auto& threadEntry = cache.threadEntry;
-    auto& capacity = cache.capacity;
+    auto threadEntry = getThreadEntrySlowReserve(ent);
+    cache.capacity = threadEntry->getElementsCapacity();
+    cache.threadEntry = threadEntry;
+  }
+
+  FOLLY_NOINLINE static ThreadEntry* getThreadEntrySlowReserve(EntryID* ent) {
+    uint32_t id = ent->getOrInvalid();
 
     auto& inst = instance();
-    threadEntry = inst.threadEntry_();
+    auto threadEntry = inst.threadEntry_();
     if (FOLLY_UNLIKELY(threadEntry->getElementsCapacity() <= id)) {
       inst.reserve(ent);
       id = ent->getOrInvalid();
     }
-    capacity = threadEntry->getElementsCapacity();
-    assert(capacity > id);
+    assert(threadEntry->getElementsCapacity() > id);
+    return threadEntry;
   }
 
   FOLLY_EXPORT FOLLY_NOINLINE static ThreadEntry* getThreadEntrySlow() {
