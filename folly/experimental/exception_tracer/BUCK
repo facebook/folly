@@ -13,6 +13,7 @@ cpp_library(
 cpp_library(
     name = "exception_counter",
     headers = ["ExceptionCounterLib.h"],
+    link_whole = True,
     exported_deps = [
         "//folly/debugging/exception_tracer:exception_counter",
     ],
@@ -21,6 +22,7 @@ cpp_library(
 cpp_library(
     name = "exception_tracer",
     headers = [],
+    link_whole = True,
     exported_deps = [
         "//folly/debugging/exception_tracer:exception_tracer",
     ],
@@ -37,6 +39,7 @@ cpp_library(
 cpp_library(
     name = "exception_tracer_callbacks",
     headers = ["ExceptionTracerLib.h"],
+    link_whole = True,
     exported_deps = [
         "//folly/debugging/exception_tracer:exception_tracer_callbacks",
     ],
@@ -62,6 +65,7 @@ cpp_library(
 
 cpp_library(
     name = "smart_exception_stack_trace_hooks",
+    link_whole = True,
     deps = [
         "//folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",
     ],
