@@ -911,7 +911,13 @@ class small_vector
   iterator insert(const_iterator p, value_type const& t) {
     // Make a copy and forward to the rvalue value_type&& overload
     // above.
-    return insert(p, value_type(t));
+    //
+    // std::move() is necessary to avoid an MSVC compiler bug which will
+    // issue this warning when used with unsigned int:
+    // warning C4717 : 'folly::small_vector<unsigned int,192,void>::insert':
+    // recursive on all control paths, function will cause runtime stack
+    // overflow
+    return insert(p, std::move(value_type(t)));
   }
 
   iterator insert(const_iterator pos, size_type n, value_type const& val) {
