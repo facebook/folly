@@ -179,7 +179,9 @@ class BuilderBase(object):
             # needs to be updated to include all of the directories containing the runtime
             # library dependencies in order to run the binaries.
             script_path = self.get_dev_run_script_path()
-            dep_munger = create_dyn_dep_munger(self.build_opts, self.install_dirs)
+            dep_munger = create_dyn_dep_munger(
+                self.build_opts, self._compute_env(), self.install_dirs
+            )
             dep_dirs = self.get_dev_run_extra_path_dirs(dep_munger)
             # pyre-fixme[16]: Optional type has no attribute `emit_dev_run_script`.
             dep_munger.emit_dev_run_script(script_path, dep_dirs)
@@ -227,7 +229,11 @@ class BuilderBase(object):
         # CMAKE_PREFIX_PATH is only respected when passed through the
         # environment, so we construct an appropriate path to pass down
         return self.build_opts.compute_env_for_install_dirs(
-            self.install_dirs, env=self.env, manifest=self.manifest
+            self.loader,
+            self.dep_manifests,
+            self.ctx,
+            env=self.env,
+            manifest=self.manifest,
         )
 
     def get_dev_run_script_path(self):
@@ -237,7 +243,9 @@ class BuilderBase(object):
     def get_dev_run_extra_path_dirs(self, dep_munger=None):
         assert self.build_opts.is_windows()
         if dep_munger is None:
-            dep_munger = create_dyn_dep_munger(self.build_opts, self.install_dirs)
+            dep_munger = create_dyn_dep_munger(
+                self.build_opts, self._compute_env(), self.install_dirs
+            )
         return dep_munger.compute_dependency_paths(self.build_dir)
 
 

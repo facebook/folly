@@ -26,9 +26,9 @@ def copyfile(src, dest) -> None:
 
 
 class DepBase(object):
-    def __init__(self, buildopts, install_dirs, strip) -> None:
+    def __init__(self, buildopts, env, install_dirs, strip) -> None:
         self.buildopts = buildopts
-        self.env = buildopts.compute_env_for_install_dirs(install_dirs)
+        self.env = env
         self.install_dirs = install_dirs
         self.strip = strip
 
@@ -168,8 +168,8 @@ class DepBase(object):
 
 
 class WinDeps(DepBase):
-    def __init__(self, buildopts, install_dirs, strip) -> None:
-        super(WinDeps, self).__init__(buildopts, install_dirs, strip)
+    def __init__(self, buildopts, env, install_dirs, strip) -> None:
+        super(WinDeps, self).__init__(buildopts, env, install_dirs, strip)
         self.dumpbin = self.find_dumpbin()
 
     def find_dumpbin(self) -> str:
@@ -334,8 +334,8 @@ try {{
 
 
 class ElfDeps(DepBase):
-    def __init__(self, buildopts, install_dirs, strip) -> None:
-        super(ElfDeps, self).__init__(buildopts, install_dirs, strip)
+    def __init__(self, buildopts, env, install_dirs, strip) -> None:
+        super(ElfDeps, self).__init__(buildopts, env, install_dirs, strip)
 
         # We need patchelf to rewrite deps, so ensure that it is built...
         args = [sys.executable, sys.argv[0]]
@@ -448,14 +448,14 @@ class MachDeps(DepBase):
 
 
 def create_dyn_dep_munger(
-    buildopts, install_dirs, strip: bool = False
+    buildopts, env, install_dirs, strip: bool = False
 ) -> Optional[DepBase]:
     if buildopts.is_linux():
-        return ElfDeps(buildopts, install_dirs, strip)
+        return ElfDeps(buildopts, env, install_dirs, strip)
     if buildopts.is_darwin():
-        return MachDeps(buildopts, install_dirs, strip)
+        return MachDeps(buildopts, env, install_dirs, strip)
     if buildopts.is_windows():
-        return WinDeps(buildopts, install_dirs, strip)
+        return WinDeps(buildopts, env, install_dirs, strip)
     if buildopts.is_freebsd():
-        return ElfDeps(buildopts, install_dirs, strip)
+        return ElfDeps(buildopts, env, install_dirs, strip)
     return None

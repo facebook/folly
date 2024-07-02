@@ -221,7 +221,7 @@ class BuildOptions(object):
         )
 
     def compute_env_for_install_dirs(
-        self, install_dirs, env=None, manifest=None
+        self, loader, dep_manifests, ctx, env=None, manifest=None
     ):  # noqa: C901
         if env is not None:
             env = env.copy()
@@ -300,8 +300,16 @@ class BuildOptions(object):
             env["FBSOURCE_DATE"] = hash_data.date
 
         # reverse as we are prepending to the PATHs
-        for d in reversed(install_dirs):
-            self.add_prefix_to_env(d, env, append=False)
+        for m in reversed(dep_manifests):
+            is_direct_dep = (
+                manifest is not None and m.name in manifest.get_dependencies(ctx)
+            )
+            self.add_prefix_to_env(
+                loader.get_project_install_dir(m),
+                env,
+                append=False,
+                is_direct_dep=is_direct_dep,
+            )
 
         # Linux is always system openssl
         system_openssl = self.is_linux()
@@ -336,7 +344,12 @@ class BuildOptions(object):
         return False
 
     def add_prefix_to_env(
-        self, d, env, append: bool = True, add_library_path: bool = False
+        self,
+        d,
+        env,
+        append: bool = True,
+        add_library_path: bool = False,
+        is_direct_dep: bool = False,
     ) -> bool:  # noqa: C901
         bindir = os.path.join(d, "bin")
         found = False
@@ -374,7 +387,7 @@ class BuildOptions(object):
                 add_flag(env, "CPPFLAGS", f"-I{includedir}", append=append)
             # For non-pkgconfig projects Cabal has no way to find the includes or
             # libraries, so we provide a set of extra Cabal flags in the env
-            if not has_pkgconfig:
+            if not has_pkgconfig and is_direct_dep:
                 add_flag(
                     env,
                     "GETDEPS_CABAL_FLAGS",
@@ -419,7 +432,7 @@ class BuildOptions(object):
                         add_flag(env, "LDFLAGS", f"-L{libdir}", append=append)
                     if add_library_path:
                         add_path_entry(env, "LIBRARY_PATH", libdir, append=append)
-                    if not has_pkgconfig:
+                    if not has_pkgconfig and is_direct_dep:
                         add_flag(
                             env,
                             "GETDEPS_CABAL_FLAGS",

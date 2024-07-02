@@ -16,6 +16,9 @@ gflags
 glog
 folly
 fbthrift
+wangle
+fizz
+boost
 
 [build]
 builder = make
