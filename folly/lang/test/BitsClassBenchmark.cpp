@@ -21,7 +21,7 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/experimental/Bits.h>
+#include <folly/lang/BitsClass.h>
 
 std::random_device rd;
 

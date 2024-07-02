@@ -711,8 +711,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES UnboundedBlockingQueueBench.cpp
       TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
 
-    DIRECTORY experimental/test/
-      TEST bits_test_2 SOURCES BitsTest.cpp
+    #DIRECTORY experimental/test/
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
       #TEST program_options_test SOURCES ProgramOptionsTest.cpp
       # Depends on liburcu
@@ -894,6 +893,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY lang/test/
       TEST lang_aligned_test SOURCES AlignedTest.cpp
       TEST lang_badge_test SOURCES BadgeTest.cpp
+      TEST lang_bits_class_test SOURCES BitsClassTest.cpp
       TEST lang_bits_test SOURCES BitsTest.cpp
       TEST lang_c_string_test SOURCES CStringTest.cpp
       TEST lang_cast_test SOURCES CastTest.cpp

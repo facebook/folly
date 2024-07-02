@@ -4,33 +4,6 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-cpp_binary(
-    name = "bits_benchmark",
-    srcs = ["BitsBenchmark.cpp"],
-    headers = [],
-    deps = [
-        "//folly:benchmark",
-        "//folly/experimental:bits",
-    ],
-    external_deps = [
-        "glog",
-    ],
-)
-
-cpp_unittest(
-    name = "bits_test",
-    srcs = ["BitsTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/experimental:bits",
-        "//folly/portability:gflags",
-        "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
-    ],
-)
-
 cpp_library(
     name = "coding_test_utils",
     srcs = ["CodingTestUtils.cpp"],

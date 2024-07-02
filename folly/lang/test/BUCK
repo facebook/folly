@@ -36,6 +36,33 @@ cpp_binary(
     ],
 )
 
+cpp_binary(
+    name = "bits_class_benchmark",
+    srcs = ["BitsClassBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/lang:bits_class",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "bits_class_test",
+    srcs = ["BitsClassTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/lang:bits_class",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
 cpp_unittest(
     name = "bits_test",
     srcs = ["BitsTest.cpp"],
