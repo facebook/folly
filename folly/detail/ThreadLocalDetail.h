@@ -63,14 +63,29 @@ constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
  */
 struct ElementWrapper {
   using DeleterFunType = void(void*, TLPDestructionMode);
+  using DeleterObjType = std::function<DeleterFunType>;
+
+  static inline constexpr auto deleter_obj_mask = uintptr_t(0b01);
+  static inline constexpr auto deleter_all_mask = uintptr_t(0) //
+      | deleter_obj_mask //
+      ;
+
+  static_assert(alignof(DeleterObjType) > deleter_all_mask);
 
   bool dispose(TLPDestructionMode mode) noexcept {
     if (ptr == nullptr) {
       return false;
     }
 
-    DCHECK(deleter1 != nullptr);
-    ownsDeleter ? (*deleter2)(ptr, mode) : (*deleter1)(ptr, mode);
+    DCHECK_NE(0, deleter);
+    auto const deleter_masked = deleter & ~deleter_all_mask;
+    if (deleter & deleter_obj_mask) {
+      auto& obj = *reinterpret_cast<DeleterObjType*>(deleter_masked);
+      obj(ptr, mode);
+    } else {
+      auto& fun = *reinterpret_cast<DeleterFunType*>(deleter_masked);
+      fun(ptr, mode);
+    }
     return true;
   }
 
@@ -86,53 +101,55 @@ struct ElementWrapper {
 
   template <class Ptr>
   void set(Ptr p) {
-    DCHECK(ptr == nullptr);
-    DCHECK(deleter1 == nullptr);
+    DCHECK_EQ(static_cast<void*>(nullptr), ptr);
+    DCHECK_EQ(0, deleter);
 
     if (!p) {
       return;
     }
-    deleter1 = [](void* pt, TLPDestructionMode) {
-      delete static_cast<Ptr>(pt);
-    };
-    ownsDeleter = false;
+    auto const fun =
+        +[](void* pt, TLPDestructionMode) { delete static_cast<Ptr>(pt); };
+    auto const raw = reinterpret_cast<uintptr_t>(fun);
+    if (raw & deleter_all_mask) {
+      return set(p, std::ref(*fun));
+    }
+    DCHECK_EQ(0, raw & deleter_all_mask);
+    deleter = raw;
     ptr = p;
   }
 
   template <class Ptr, class Deleter>
   void set(Ptr p, const Deleter& d) {
-    DCHECK(ptr == nullptr);
-    DCHECK(deleter2 == nullptr);
+    DCHECK_EQ(static_cast<void*>(nullptr), ptr);
+    DCHECK_EQ(0, deleter);
 
     if (!p) {
       return;
     }
 
     auto guard = makeGuard([&] { d(p, TLPDestructionMode::THIS_THREAD); });
-    deleter2 = new std::function<DeleterFunType>(
-        [d](void* pt, TLPDestructionMode mode) {
-          d(static_cast<Ptr>(pt), mode);
-        });
+    auto const obj = new DeleterObjType([d](void* pt, TLPDestructionMode mode) {
+      d(static_cast<Ptr>(pt), mode);
+    });
     guard.dismiss();
-    ownsDeleter = true;
+    auto const raw = reinterpret_cast<uintptr_t>(obj);
+    DCHECK_EQ(0, raw & deleter_all_mask);
+    deleter = raw | deleter_obj_mask;
     ptr = p;
   }
 
   void cleanup() noexcept {
-    if (ownsDeleter) {
-      delete deleter2;
+    if (deleter & deleter_obj_mask) {
+      auto const deleter_masked = deleter & ~deleter_all_mask;
+      auto const obj = reinterpret_cast<DeleterObjType*>(deleter_masked);
+      delete obj;
     }
     ptr = nullptr;
-    deleter1 = nullptr;
-    ownsDeleter = false;
+    deleter = 0;
   }
 
   void* ptr;
-  union {
-    DeleterFunType* deleter1;
-    std::function<DeleterFunType>* deleter2;
-  };
-  bool ownsDeleter;
+  uintptr_t deleter;
 };
 
 struct StaticMetaBase;
