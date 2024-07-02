@@ -35,7 +35,7 @@
 
 #if (defined(__linux__) && !defined(__ANDROID__)) ||                       \
     (defined(__ANDROID__) && __ANDROID_API__ >= 21 /* released 2014 */) || \
-    defined(__FreeBSD__) || defined(__SGX__)
+    defined(__FreeBSD__) || defined(__SGX__) || defined(__EMSCRIPTEN__)
 FOLLY_PUSH_WARNING
 FOLLY_GNU_DISABLE_WARNING("-Waddress")
 static_assert(!!&::recvmmsg);
