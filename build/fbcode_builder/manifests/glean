@@ -21,6 +21,9 @@ glog
 folly
 rocksdb
 xxhash
+llvm
+clang
+re2
 
 [build]
 builder = make
@@ -29,8 +32,9 @@ builder = make
 cabal-update
 all
 glass
+glean-clang
 EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS
-CABAL_CONFIG_FLAGS=-f-clang-tests -f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests
+CABAL_CONFIG_FLAGS=-f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests
 
 [make.install_args]
 install
@@ -38,4 +42,4 @@ install
 [make.test_args]
 test
 EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS
-CABAL_CONFIG_FLAGS=-f-clang-tests -f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests
+CABAL_CONFIG_FLAGS=-f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests

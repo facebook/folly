@@ -844,14 +844,20 @@ class FixupDeps(ProjectCmdBase):
         # Accumulate the install directories so that the build steps
         # can find their dep installation
         install_dirs = []
+        dep_manifests = []
 
         for m in projects:
             inst_dir = loader.get_project_install_dir_respecting_install_prefix(m)
             install_dirs.append(inst_dir)
+            dep_manifests.append(m)
 
             if m == manifest:
+                ctx = loader.ctx_gen.get_context(m.name)
+                env = loader.build_opts.compute_env_for_install_dirs(
+                    loader, dep_manifests, ctx
+                )
                 dep_munger = create_dyn_dep_munger(
-                    loader.build_opts, install_dirs, args.strip
+                    loader.build_opts, env, install_dirs, args.strip
                 )
                 if dep_munger is None:
                     print(f"dynamic dependency fixups not supported on {sys.platform}")
