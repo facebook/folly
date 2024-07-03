@@ -14,20 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/CPortability.h>
-
-#include <cstddef>
-
-extern "C" {
-
-// Heap allocations for coroutine-frames for all async coroutines
-// (Task, AsyncGenerator, etc.) should be funneled through these
-// functions to allow better tracing/profiling of coroutine allocations.
-FOLLY_NOINLINE
-void* folly_coro_async_malloc(std::size_t size);
-
-FOLLY_NOINLINE
-void folly_coro_async_free(void* ptr, std::size_t size);
-} // extern "C"
+#include <folly/coro/detail/Malloc.h>

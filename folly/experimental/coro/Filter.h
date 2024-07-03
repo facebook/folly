@@ -14,35 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/Coroutine.h>
-
-#if FOLLY_HAS_COROUTINES
-
-namespace folly {
-namespace coro {
-
-// Filter the Values from an input stream using an unary predicate.
-//
-// The input is a stream of Values.
-//
-// The output is a stream of Values that satisfy the predicate.
-//
-// Example:
-//   AsyncGenerator<int> getAllNumbers();
-//
-//   AsyncGenerator<int> getEvenNumbers(AsyncGenerator<int> allNumbers) {
-//     return filter(getAllNumbers(), [](int i){ return i % 2 == 0; });
-//   }
-template <typename FilterFn, typename Reference, typename Value>
-AsyncGenerator<Reference, Value> filter(
-    AsyncGenerator<Reference, Value> source, FilterFn filterFn);
-
-} // namespace coro
-} // namespace folly
-
-#endif // FOLLY_HAS_COROUTINES
-
-#include <folly/experimental/coro/Filter-inl.h>
+#include <folly/coro/Filter.h>

@@ -14,37 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/functional/Invoke.h>
-
-#if FOLLY_HAS_COROUTINES
-
-namespace folly::coro {
-
-/// A customization point that allows to provide an async cleanup function for a
-/// type. folly::coro::AutoCleanup uses co_cleanup_fn as the default cleanup
-/// function, so it is enough to define co_cleanup for a type to be able to use
-/// it with AutoCleanup.
-struct co_cleanup_fn {
-  template <
-      typename T,
-      std::enable_if_t<
-          folly::is_tag_invocable_v<co_cleanup_fn, T&&> &&
-              !std::is_lvalue_reference_v<T>,
-          int> = 0>
-  auto operator()(T&& object) const
-      noexcept(folly::is_nothrow_tag_invocable_v<co_cleanup_fn, T&&>)
-          -> folly::tag_invoke_result_t<co_cleanup_fn, T&&> {
-    return folly::tag_invoke(co_cleanup_fn{}, std::forward<T>(object));
-  }
-
-  template <typename T>
-  void operator()(T& object) = delete;
-};
-
-FOLLY_DEFINE_CPO(co_cleanup_fn, co_cleanup)
-
-} // namespace folly::coro
-
-#endif
+#include <folly/coro/Cleanup.h>

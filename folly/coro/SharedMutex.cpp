@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/SharedMutex.h>
+#include <folly/coro/SharedMutex.h>
 
 #if FOLLY_HAS_COROUTINES
 

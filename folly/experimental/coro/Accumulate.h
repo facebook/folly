@@ -14,45 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Task.h>
-
-#if FOLLY_HAS_COROUTINES
-
-namespace folly {
-namespace coro {
-
-// Accumulate the values from an input stream into a single value given
-// an optional binary accumulation operation, similar to std::accumulate.
-//
-// The input is a stream of values.
-//
-// The output is a Task containing the result of the accumulation
-//
-// Example:
-//   AsyncGenerator<int> stream();
-//
-//   Task<void> consumer() {
-//     auto sum = co_await accumulate(stream(), 0, std::plus{});
-//   }
-template <typename Reference, typename Value, typename Output>
-Task<Output> accumulate(
-    AsyncGenerator<Reference, Value> generator, Output init);
-
-template <
-    typename Reference,
-    typename Value,
-    typename Output,
-    typename BinaryOp>
-Task<Output> accumulate(
-    AsyncGenerator<Reference, Value> generator, Output init, BinaryOp op);
-
-} // namespace coro
-} // namespace folly
-
-#endif // FOLLY_HAS_COROUTINES
-
-#include <folly/experimental/coro/Accumulate-inl.h>
+#include <folly/coro/Accumulate.h>

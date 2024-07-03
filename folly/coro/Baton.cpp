@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/Baton.h>
+#include <folly/coro/Baton.h>
 
 #include <folly/experimental/coro/Coroutine.h>
 #include <folly/synchronization/AtomicUtil.h>

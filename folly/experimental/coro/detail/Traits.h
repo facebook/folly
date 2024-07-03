@@ -14,45 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/Traits.h>
-
-namespace folly {
-namespace coro {
-namespace detail {
-
-/**
- * A type trait that lifts lvalue references into std::reference_wrapper<T>
- * eg. so the value can be stored in std::optional or folly::Try.
- */
-template <typename T>
-struct lift_lvalue_reference {
-  using type = T;
-};
-
-template <typename T>
-struct lift_lvalue_reference<T&> {
-  using type = std::reference_wrapper<T>;
-};
-
-template <typename T>
-using lift_lvalue_reference_t = typename lift_lvalue_reference<T>::type;
-
-/**
- * A type trait to decay rvalue-reference types to a prvalue.
- */
-template <typename T>
-struct decay_rvalue_reference {
-  using type = T;
-};
-
-template <typename T>
-struct decay_rvalue_reference<T&&> : remove_cvref<T> {};
-
-template <typename T>
-using decay_rvalue_reference_t = typename decay_rvalue_reference<T>::type;
-
-} // namespace detail
-} // namespace coro
-} // namespace folly
+#include <folly/coro/detail/Traits.h>

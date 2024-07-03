@@ -14,30 +14,4 @@
  * limitations under the License.
  */
 
-#if FOLLY_HAS_COROUTINES
-
-namespace folly {
-namespace coro {
-
-template <typename Reference, typename Value, typename Output>
-Task<Output> accumulate(
-    AsyncGenerator<Reference, Value> generator, Output init) {
-  return accumulate(std::move(generator), std::move(init), std::plus{});
-}
-
-template <
-    typename Reference,
-    typename Value,
-    typename Output,
-    typename BinaryOp>
-Task<Output> accumulate(
-    AsyncGenerator<Reference, Value> generator, Output init, BinaryOp op) {
-  while (auto next = co_await generator.next()) {
-    init = op(std::move(init), std::move(next).value());
-  }
-  co_return init;
-}
-} // namespace coro
-} // namespace folly
-
-#endif // FOLLY_HAS_COROUTINES
+#include <folly/coro/Accumulate-inl.h>

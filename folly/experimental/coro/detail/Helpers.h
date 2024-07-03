@@ -14,40 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/Executor.h>
-#include <folly/SingletonThreadLocal.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/io/async/Request.h>
-#include <folly/tracing/AsyncStack.h>
-
-#if FOLLY_HAS_COROUTINES
-
-namespace folly {
-namespace coro {
-namespace detail {
-// Helper class that can be used to annotate Awaitable objects that will
-// guarantee that they will be resumed on the correct executor so that
-// when the object is awaited within a Task<T> it doesn't automatically
-// wrap the Awaitable in something that forces a reschedule onto the
-// executor.
-template <typename Awaitable>
-class UnsafeResumeInlineSemiAwaitable {
- public:
-  explicit UnsafeResumeInlineSemiAwaitable(Awaitable&& awaitable) noexcept
-      : awaitable_(awaitable) {}
-
-  Awaitable&& viaIfAsync(folly::Executor::KeepAlive<>) && noexcept {
-    return static_cast<Awaitable&&>(awaitable_);
-  }
-
- private:
-  Awaitable awaitable_;
-};
-
-} // namespace detail
-} // namespace coro
-} // namespace folly
-
-#endif // FOLLY_HAS_COROUTINES
+#include <folly/coro/detail/Helpers.h>

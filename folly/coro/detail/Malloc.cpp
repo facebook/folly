@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/detail/Malloc.h>
+#include <folly/coro/detail/Malloc.h>
 
 #include <folly/lang/Hint.h>
 #include <folly/lang/New.h>

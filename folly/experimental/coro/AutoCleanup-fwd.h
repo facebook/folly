@@ -14,40 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/experimental/coro/Cleanup.h>
-#include <folly/experimental/coro/Coroutine.h>
-
-#if FOLLY_HAS_COROUTINES
-
-namespace folly::coro {
-
-template <typename T, typename CleanupFn = co_cleanup_fn>
-class AutoCleanup;
-
-template <typename T>
-struct is_auto_cleanup : std::false_type {};
-
-template <typename T>
-constexpr bool is_auto_cleanup_v = is_auto_cleanup<T>::value;
-
-template <typename T, typename CleanupFn>
-struct is_auto_cleanup<AutoCleanup<T, CleanupFn>> : std::true_type {};
-
-namespace detail {
-template <typename Promise, typename... Args>
-void scheduleAutoCleanup(coroutine_handle<Promise> coro, Args&... args);
-} // namespace detail
-
-template <typename Promise, typename... Args>
-void scheduleAutoCleanupIfNeeded(
-    coroutine_handle<Promise> coro, Args&... args) {
-  if constexpr ((is_auto_cleanup_v<Args> || ...)) {
-    detail::scheduleAutoCleanup(coro, args...);
-  }
-}
-
-} // namespace folly::coro
-
-#endif
+#include <folly/coro/AutoCleanup-fwd.h>

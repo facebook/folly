@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/Mutex.h>
+#include <folly/coro/Mutex.h>
 
 #include <cassert>
 
