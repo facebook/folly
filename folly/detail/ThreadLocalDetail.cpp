@@ -289,7 +289,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
                * destructing.
                */
               e->elements[id].ptr = nullptr;
-              e->elements[id].deleter = 0; // also unsets isLinked
+              e->elements[id].deleter = 0;
             }
           }
         }
