@@ -669,6 +669,9 @@ struct VTable<I, PolyMembers<Arch...>, TypeList<S...>>
 
   State state_;
   void* (*ops_)(Op, Data*, void*);
+
+  std::tuple<SignatureOf<Arch, I>...>& tuple() { return *this; }
+  const std::tuple<SignatureOf<Arch, I>...>& tuple() const { return *this; }
 };
 
 template <class I>
@@ -757,12 +760,13 @@ struct PolyNode : Tail {
 
   template <std::size_t K, typename... As>
   decltype(auto) _polyCall_(As&&... as) {
-    return std::get<K>(select<I>(*PolyAccess::vtable(*this)))(
+    // Convert VTable to tuple explicitly to workaround an MSVC bug.
+    return std::get<K>(select<I>(*PolyAccess::vtable(*this)).tuple())(
         *PolyAccess::data(*this), static_cast<As&&>(as)...);
   }
   template <std::size_t K, typename... As>
   decltype(auto) _polyCall_(As&&... as) const {
-    return std::get<K>(select<I>(*PolyAccess::vtable(*this)))(
+    return std::get<K>(select<I>(*PolyAccess::vtable(*this)).tuple())(
         *PolyAccess::data(*this), static_cast<As&&>(as)...);
   }
 };
