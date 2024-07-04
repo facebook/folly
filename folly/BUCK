@@ -358,6 +358,15 @@ cpp_library(
 )
 
 cpp_library(
+    name = "elf_hwcaps",
+    headers = ["ElfHwCaps.h"],
+    exported_deps = [
+        ":portability",
+        ":preprocessor",
+    ],
+)
+
+cpp_library(
     name = "exception",
     headers = ["Exception.h"],
     exported_deps = [
