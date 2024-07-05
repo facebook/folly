@@ -19,12 +19,12 @@
 #include <cstdint>
 #include <cstring>
 
-#if defined(__linux__)
-#include <sys/auxv.h> // @manual
-#endif
-
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
+
+#if defined(__linux__) && !FOLLY_MOBILE
+#include <sys/auxv.h> // @manual
+#endif
 
 namespace folly {
 
@@ -47,8 +47,6 @@ namespace folly {
  * auxiliary vector entries. If you wish to use the class from an ifunc
  * resolver you should pass the hwcap and hwcap2 values received by your
  * resolver to the constructor.
- *
- * This class is safe for use on Android API level 18 or higher (early 2013).
  */
 class ElfHwCaps {
  public:
@@ -56,7 +54,7 @@ class ElfHwCaps {
       : hwcap_(hwcap), hwcap2_(hwcap2) {}
 
   FOLLY_ALWAYS_INLINE ElfHwCaps() {
-#if defined(__linux__)
+#if defined(__linux__) && !FOLLY_MOBILE
     hwcap_ = getauxval(AT_HWCAP);
     hwcap2_ = getauxval(AT_HWCAP2);
 #endif
@@ -139,8 +137,15 @@ class ElfHwCaps {
 #undef FOLLY_DETAIL_HWCAP_X
 
  private:
+  // GCC would not warn about maybe unused here, but will warn
+  // about the ignored attribute.
+#if defined(__clang__)
+  uint64_t hwcap_ [[maybe_unused]] = 0;
+  uint64_t hwcap2_ [[maybe_unused]] = 0;
+#else
   uint64_t hwcap_ = 0;
   uint64_t hwcap2_ = 0;
+#endif
 };
 
 } // namespace folly
