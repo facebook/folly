@@ -814,6 +814,7 @@ cpp_library(
         ],
     },
     compiler_flags = roar_no_jit(),
+    link_whole = True,  # Set link_whole to force linker to use __folly_memset
     modular_headers = False,
     exported_deps = select({
         "DEFAULT": [],
@@ -889,6 +890,7 @@ cpp_library(
         ],
     },
     compiler_flags = roar_no_jit(),
+    link_whole = True,  # Set link_whole to force linker to use __folly_memcpy
     modular_headers = False,
     exported_deps = select({
         "DEFAULT": [],
