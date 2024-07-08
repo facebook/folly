@@ -38,8 +38,6 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 
-#define FOLLY_EXCEPTION_WRAPPER_H_INCLUDED
-
 namespace folly {
 
 #define FOLLY_REQUIRES_DEF(...) \
