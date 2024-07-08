@@ -81,7 +81,6 @@ cpp_library(
 )
 
 cython_library(
-    # @autodeps-skip
     name = "executor",
     srcs = [
         "executor.pyx",
@@ -93,7 +92,6 @@ cython_library(
     cpp_deps = [
         ":asyncio_executor",
         ":proactor_executor",
-        ":executor_lib",
     ],
     package = "folly",
     deps = [
@@ -114,7 +112,6 @@ cython_library(
 )
 
 cpp_library(
-    # @autodeps-skip
     name = "futures_lib",
     headers = [
         "futures.h",
@@ -124,7 +121,7 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
-        # @fb-only: ":executor__cython-lib", 
+        ":executor_lib",
         "//folly:executor",
         "//folly/futures:core",
     ],
@@ -145,7 +142,6 @@ cython_library(
 )
 
 cpp_library(
-    # @autodeps-skip
     name = "coro_lib",
     headers = [
         "coro.h",
@@ -155,9 +151,10 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
-        # @fb-only: ":executor__cython-lib", 
+        ":executor_lib",
         "//folly:cancellation_token",
         "//folly:executor",
+        "//folly:portability",
         "//folly/experimental/coro:task",
     ],
 )
@@ -260,7 +257,6 @@ cpp_library(
 )
 
 cython_library(
-    # @autodeps-skip
     name = "iobuf",
     srcs = ["iobuf.pyx"],
     headers = [
@@ -268,8 +264,9 @@ cython_library(
     ],
     api = ["iobuf"],
     cpp_deps = [
-        ":iobuf_lib",
+        "//folly/io:iobuf",
         ":iobuf_ext",
+        ":iobuf_lib",
     ],
     package = "folly",
     tests = [
