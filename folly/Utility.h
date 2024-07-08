@@ -289,7 +289,7 @@ struct literal_string {
   template <
       typename String,
       decltype((void(String(FOLLY_DECLVAL(C const*), N - 1)), 0)) = 0>
-  explicit operator String() const //
+  constexpr explicit operator String() const //
       noexcept(noexcept(String(FOLLY_DECLVAL(C const*), N - 1))) {
     return String(data(), N - 1);
   }
