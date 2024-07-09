@@ -205,6 +205,8 @@ class BenchmarkingStateBase {
   void addBenchmarkImpl(
       const char* file, StringPiece name, BenchmarkFun, bool useCounter);
 
+  std::vector<std::string> getBenchmarkList();
+
  protected:
   // There is no need for this virtual but we overcome a check
   virtual ~BenchmarkingStateBase() = default;
