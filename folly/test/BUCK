@@ -426,16 +426,6 @@ cpp_unittest(
     ],
 )
 
-cpp_unittest(
-    name = "elf_hwcaps_test",
-    srcs = ["ElfHwCapsTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly:elf_hwcaps",
-        "//folly/portability:gtest",
-    ],
-)
-
 # This test depends only on :dynamic.  Tests which require other
 # dependencies should be added to dynamic_other_test.
 

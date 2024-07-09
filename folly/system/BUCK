@@ -19,6 +19,15 @@ cpp_library(
 )
 
 cpp_library(
+    name = "aux_vector",
+    headers = ["AuxVector.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:preprocessor",
+    ],
+)
+
+cpp_library(
     name = "env_util",
     srcs = ["EnvUtil.cpp"],
     headers = ["EnvUtil.h"],

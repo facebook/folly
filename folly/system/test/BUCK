@@ -16,6 +16,16 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "aux_vector_test",
+    srcs = ["AuxVectorTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/system:aux_vector",
+    ],
+)
+
 cpp_binary(
     name = "env_util_subprocess",
     srcs = ["EnvUtilSubprocess.cpp"],

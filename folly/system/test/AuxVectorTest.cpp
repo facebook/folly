@@ -18,7 +18,7 @@
 #include <sys/auxv.h> // @manual
 #endif
 
-#include <folly/ElfHwCaps.h>
+#include <folly/system/AuxVector.h>
 
 #include <folly/portability/GTest.h>
 
