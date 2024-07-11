@@ -85,6 +85,12 @@ else()
   set(IS_X86_64_ARCH FALSE)
 endif()
 
+if(NOT DEFINED IS_AARCH64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
+  set(IS_AARCH64_ARCH TRUE)
+else()
+  set(IS_AARCH64_ARCH FALSE)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Check target architecture
   if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -370,6 +376,25 @@ if (IS_X86_64_ARCH AND NOT MSVC)
   list(APPEND folly_base_files
     ${FOLLY_DIR}/memcpy.S
   )
+endif()
+
+set(ARM_AOR_ASM_FILES
+  ${FOLLY_DIR}/external/aor/memcpy-advsimd.S
+  ${FOLLY_DIR}/external/aor/memcpy-armv8.S
+  ${FOLLY_DIR}/external/aor/memcpy_sve.S
+  ${FOLLY_DIR}/external/aor/memset-advsimd.S
+)
+if (IS_AARCH64_ARCH)
+  foreach (AOR_FILE IN LISTS ARM_AOR_ASM_FILES)
+    set_property(
+      SOURCE
+      ${AOR_FILE}
+      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
+    )
+    list(APPEND folly_base_files
+      ${AOR_FILE}
+    )
+  endforeach()
 endif()
 
 add_library(folly_base OBJECT
