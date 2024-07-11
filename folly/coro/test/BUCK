@@ -309,3 +309,36 @@ cpp_benchmark(
         "//folly/experimental/coro:task",
     ],
 )
+
+cpp_unittest(
+    name = "RustAdaptorsTest",
+    srcs = [
+        "RustAdaptorsTest.cpp",
+    ],
+    deps = [
+        "//folly:cancellation_token",
+        "//folly:portability",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:rust_adaptors",
+        "//folly/experimental/coro:sleep",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_unittest(
+    name = "PromiseTest",
+    srcs = [
+        "PromiseTest.cpp",
+    ],
+    deps = [
+        "//folly:portability",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:collect",
+        "//folly/experimental/coro:gtest_helpers",
+        "//folly/experimental/coro:promise",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:with_cancellation",
+        "//folly/portability:gtest",
+    ],
+)
