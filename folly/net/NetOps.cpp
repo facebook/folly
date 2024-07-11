@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <stdexcept>
 
+#include <folly/CPortability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/net/detail/SocketFileDescriptorMap.h>
 
@@ -399,9 +400,12 @@ int recvmmsg(
 #if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
+  FOLLY_PUSH_WARNING
+  FOLLY_GCC_DISABLE_WARNING("-Waddress")
   if (reinterpret_cast<void*>(::recvmmsg) != nullptr) {
     return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
   }
+  FOLLY_POP_WARNING
   // implement via recvmsg
   for (unsigned int i = 0; i < vlen; i++) {
     ssize_t ret = recvmsg(s, &msgvec[i].msg_hdr, flags);

@@ -321,6 +321,7 @@ cpp_library(
         ["third-party//binutils:iberty"],
     )],
     deps = [
+        ":c_portability",
         ":cpp_attributes",
         "//folly/functional:invoke",
         "//folly/lang:c_string",
