@@ -915,3 +915,26 @@ cpp_binary(
         "//folly/portability:gflags",
     ],
 )
+
+cpp_unittest(
+    name = "hhwheel_timer_high_res_test",
+    srcs = ["HHWheelTimerHighResTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/experimental:timerfd",
+        "//folly/io/async:async_base",
+        "//folly/io/async/test:util",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_binary(
+    name = "hhwheel_timer_high_res_benchmark",
+    srcs = ["HHWheelTimerHighResBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/experimental:timerfd",
+        "//folly/io/async/test:util",
+    ],
+)
