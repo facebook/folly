@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 #if defined(__APPLE__) || defined(__EMSCRIPTEN__)
-using off64_t = off_t;
+typedef off_t off64_t;
 
 off64_t lseek64(int fh, off64_t off, int orig);
 
