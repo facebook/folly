@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# https://internalfb.com/code/fbsource/fbcode/target_determinator/macros/README.md
+
 def _lbl(*_args):
     return ""
 
