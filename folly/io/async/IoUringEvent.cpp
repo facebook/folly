@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/IoUringEvent.h>
+#include <folly/io/async/IoUringEvent.h>
 
 #if FOLLY_HAS_LIBURING
 

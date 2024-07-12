@@ -24,7 +24,7 @@
 #include <folly/String.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
-#include <folly/experimental/io/IoUringBackend.h>
+#include <folly/io/async/IoUringBackend.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Sockets.h>

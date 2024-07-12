@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/IoUringProvidedBufferRing.h>
+#include <folly/io/async/IoUringProvidedBufferRing.h>
 
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>

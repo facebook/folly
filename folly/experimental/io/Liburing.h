@@ -14,10 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#if defined(__linux__) && __has_include(<liburing.h>)
-#define FOLLY_HAS_LIBURING 1
-#else
-#define FOLLY_HAS_LIBURING 0
-#endif
+#include <folly/io/async/Liburing.h>

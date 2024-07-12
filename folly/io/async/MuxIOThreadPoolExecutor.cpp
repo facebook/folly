@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/MuxIOThreadPoolExecutor.h>
+#include <folly/io/async/MuxIOThreadPoolExecutor.h>
 
 #include <stdexcept>
 

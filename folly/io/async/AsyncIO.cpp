@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/AsyncIO.h>
+#include <folly/io/async/AsyncIO.h>
 
 #include <cerrno>
 #include <ostream>

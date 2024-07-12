@@ -14,4 +14,25 @@
  * limitations under the License.
  */
 
-#include <folly/io/async/IoUringEvent.h>
+#pragma once
+
+#include <folly/experimental/io/IoUringBackend.h>
+#include <folly/experimental/io/Liburing.h>
+#include <folly/io/async/EventBase.h>
+
+namespace folly {
+
+#if FOLLY_HAS_LIBURING
+
+class IoUringEventBaseLocal {
+ public:
+  static void attach(
+      EventBase* evb,
+      IoUringBackend::Options const& options,
+      bool use_eventfd = true);
+  static IoUringBackend* try_get(EventBase* evb);
+};
+
+#endif
+
+} // namespace folly

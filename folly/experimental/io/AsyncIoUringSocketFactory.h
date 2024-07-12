@@ -14,46 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/experimental/io/AsyncIoUringSocket.h>
-#include <folly/experimental/io/Liburing.h>
-
-namespace folly {
-
-class AsyncIoUringSocketFactory {
- public:
-  static bool supports([[maybe_unused]] folly::EventBase* eb) {
-#if FOLLY_HAS_LIBURING
-    return AsyncIoUringSocket::supports(eb);
-#else
-    return false;
-#endif
-  }
-
-  template <class TWrapper, class... Args>
-  static TWrapper create([[maybe_unused]] Args&&... args) {
-#if FOLLY_HAS_LIBURING
-    return TWrapper(new AsyncIoUringSocket(std::forward<Args>(args)...));
-#else
-    throw std::runtime_error("AsyncIoUringSocket not supported");
-#endif
-  }
-
-  static bool asyncDetachFd(
-      [[maybe_unused]] AsyncTransport& transport,
-      [[maybe_unused]] AsyncDetachFdCallback* callback) {
-#if FOLLY_HAS_LIBURING
-    AsyncIoUringSocket* socket =
-        transport.getUnderlyingTransport<AsyncIoUringSocket>();
-    if (socket) {
-      socket->asyncDetachFd(callback);
-      return true;
-    }
-#endif
-
-    return false;
-  }
-};
-
-} // namespace folly
+#include <folly/io/async/AsyncIoUringSocketFactory.h>

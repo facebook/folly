@@ -938,3 +938,179 @@ cpp_binary(
         "//folly/io/async/test:util",
     ],
 )
+
+cpp_unittest(
+    name = "async_io_test",
+    srcs = ["AsyncIOTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/io:async_io",
+        "//folly/experimental/io/test:async_base_test_lib",
+    ],
+)
+
+cpp_unittest(
+    name = "async_io_uring_socket_test",
+    srcs = ["AsyncIoUringSocketTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:file_util",
+        "//folly:subprocess",
+        "//folly/executors:global_executor",
+        "//folly/experimental/io:async_io_uring_socket",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/experimental/io:io_uring_event",
+        "//folly/futures:core",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:server_socket",
+        "//folly/portability:gtest",
+        "//folly/system:shell",
+        "//folly/test:socket_address_test_helper",
+    ],
+)
+
+cpp_unittest(
+    name = "epoll_backend_test",
+    srcs = ["EpollBackendTest.cpp"],
+    owner = "dmm@xmail.facebook.com",
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/io:epoll_backend",
+        "//folly/io/async/test:async_signal_handler_test_lib",
+        "//folly/io/async/test:event_base_test_lib",
+    ],
+)
+
+cpp_binary(
+    name = "io_benchmark",
+    srcs = ["IOBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file_util",
+        "//folly/experimental/io:async_io",
+        "//folly/experimental/io:io_uring",
+        "//folly/experimental/io/test:async_base_test_lib",
+        "//folly/experimental/io/test:io_test_temp_file_util_lib",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_binary(
+    name = "io_uring_backend_bench",
+    srcs = ["IoUringBackendBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file_util",
+        "//folly/experimental/io:epoll_backend",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/init:init",
+        "//folly/io/async:async_base",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_backend_setup_test",
+    srcs = ["IoUringBackendSetupTest.cpp"],
+    owner = "kvigor@xmail.facebook.com",
+    deps = [
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_backend_test",
+    srcs = ["IoUringBackendTest.cpp"],
+    headers = [],
+    owner = "dmm@xmail.facebook.com",
+    supports_static_listing = False,
+    deps = [
+        "//folly:file_util",
+        "//folly:function",
+        "//folly:string",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/experimental/io/test:io_test_temp_file_util_lib",
+        "//folly/init:init",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_udp_server_socket",
+        "//folly/io/async:async_udp_socket",
+        "//folly/io/async/test:async_signal_handler_test_lib",
+        "//folly/io/async/test:event_base_test_lib",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_event_base_local_test",
+    srcs = ["IoUringEventBaseLocalTest.cpp"],
+    owner = "dylany@xmail.facebook.com",
+    deps = [
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/experimental/io:io_uring_event_base_local",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_event_test",
+    srcs = ["IoUringEventTest.cpp"],
+    owner = "dylany@xmail.facebook.com",
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/experimental/io:io_uring_event",
+        "//folly/futures:core",
+        "//folly/io/async:async_base",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_test",
+    srcs = ["IoUringTest.cpp"],
+    owner = "dmm@xmail.facebook.com",
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/io:io_uring",
+        "//folly/experimental/io/test:async_base_test_lib",
+        "//folly/init:init",
+    ],
+)
+
+cpp_binary(
+    name = "registered_fd_benchmark",
+    srcs = ["RegisteredFdBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file_util",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/io/async:async_base",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "simple_async_io_test",
+    srcs = ["SimpleAsyncIOTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:file",
+        "//folly:random",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:collect",
+        "//folly/experimental/io:simple_async_io",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

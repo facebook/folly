@@ -16,9 +16,9 @@
 
 #include <folly/Conv.h>
 #include <folly/detail/SocketFastOpen.h>
-#include <folly/experimental/io/AsyncIoUringSocket.h>
 #include <folly/experimental/io/IoUringEventBaseLocal.h>
 #include <folly/io/Cursor.h>
+#include <folly/io/async/AsyncIoUringSocket.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/SysUio.h>

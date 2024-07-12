@@ -1141,12 +1141,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
   if (${LIBAIO_FOUND})
     folly_define_tests(
-      DIRECTORY experimental/io/test/
+      DIRECTORY io/async/test/
         TEST async_io_test
           SOURCES
             AsyncIOTest.cpp
-            AsyncBaseTestLib.cpp
-            IoTestTempFileUtil.cpp
+            ../../../experimental/io/test/AsyncBaseTestLib.cpp
+            ../../../experimental/io/test/IoTestTempFileUtil.cpp
     )
   endif()
 

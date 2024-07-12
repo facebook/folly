@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/AsyncBase.h>
+#include <folly/io/async/AsyncBase.h>
 
 #include <cerrno>
 #include <ostream>

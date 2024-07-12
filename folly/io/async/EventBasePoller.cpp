@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/EventBasePoller.h>
+#include <folly/io/async/EventBasePoller.h>
 
 #include <atomic>
 #include <stdexcept>

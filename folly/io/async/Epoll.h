@@ -14,4 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/io/async/IoUringEvent.h>
+#pragma once
+
+#if defined(__linux__) && __has_include(<sys/epoll.h>)
+#define FOLLY_HAS_EPOLL 1
+#else
+#define FOLLY_HAS_EPOLL 0
+#endif

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/Epoll.h> // @manual
+#include <folly/io/async/Epoll.h> // @manual
 
 #if FOLLY_HAS_EPOLL
 
@@ -25,7 +25,7 @@
 #include <folly/IntrusiveList.h>
 #include <folly/MapUtil.h>
 #include <folly/String.h>
-#include <folly/experimental/io/EpollBackend.h>
+#include <folly/io/async/EpollBackend.h>
 
 #include <folly/FileUtil.h>
 

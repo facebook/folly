@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/IoUring.h>
+#include <folly/io/async/IoUring.h>
 
 #include <cerrno>
 #include <ostream>
