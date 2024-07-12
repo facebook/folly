@@ -64,3 +64,14 @@ cpp_binary(
         "glog",
     ],
 )
+
+cpp_binary(
+    name = "nested_command_line_app_example",
+    srcs = ["NestedCommandLineAppExample.cpp"],
+    headers = [],
+    deps = [
+        "//folly:scope_guard",
+        "//folly:string",
+        "//folly/cli:program_options",
+    ],
+)
