@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/SymbolizePrinter.h>
+#include <folly/debugging/symbolizer/SymbolizePrinter.h>
 
 #include <folly/Demangle.h>
 #include <folly/FileUtil.h>

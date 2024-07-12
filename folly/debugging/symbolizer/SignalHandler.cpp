@@ -16,7 +16,7 @@
 
 // This is heavily inspired by the signal handler from google-glog
 
-#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/debugging/symbolizer/SignalHandler.h>
 
 #include <signal.h>
 #include <sys/types.h>

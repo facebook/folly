@@ -15,13 +15,13 @@
  */
 
 #include <folly/Range.h>
-#include <folly/experimental/symbolizer/DwarfImpl.h>
+#include <folly/debugging/symbolizer/DwarfImpl.h>
 
 #include <array>
 #include <type_traits>
 
 #include <folly/Optional.h>
-#include <folly/experimental/symbolizer/DwarfUtil.h>
+#include <folly/debugging/symbolizer/DwarfUtil.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Config.h>
 

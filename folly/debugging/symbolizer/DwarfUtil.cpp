@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/DwarfUtil.h>
+#include <folly/debugging/symbolizer/DwarfUtil.h>
 
 #include <array>
 #include <type_traits>

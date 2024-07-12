@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/ElfCache.h>
+#include <folly/debugging/symbolizer/ElfCache.h>
 
 #include <signal.h>
 

@@ -14,43 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/Range.h>
-
-#if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
-
-namespace folly {
-namespace symbolizer {
-
-/**
- * DWARF section made up of chunks, each prefixed with a length header. The
- * length indicates whether the chunk is DWARF-32 or DWARF-64, which guides
- * interpretation of "section offset" records. (yes, DWARF-32 and DWARF-64
- * sections may coexist in the same file).
- */
-class DwarfSection {
- public:
-  DwarfSection() : is64Bit_(false) {}
-
-  explicit DwarfSection(folly::StringPiece d);
-
-  /**
-   * Return next chunk, if any; the 4- or 12-byte length was already
-   * parsed and isn't part of the chunk.
-   */
-  bool next(folly::StringPiece& chunk);
-
-  /** Is the current chunk 64 bit? */
-  bool is64Bit() const { return is64Bit_; }
-
- private:
-  // Yes, 32- and 64- bit sections may coexist.  Yikes!
-  bool is64Bit_;
-  folly::StringPiece data_;
-};
-
-} // namespace symbolizer
-} // namespace folly
-
-#endif
+#include <folly/debugging/symbolizer/DwarfSection.h>

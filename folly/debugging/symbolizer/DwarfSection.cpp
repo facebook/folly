@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/DwarfSection.h>
+#include <folly/debugging/symbolizer/DwarfSection.h>
 
-#include <folly/experimental/symbolizer/DwarfUtil.h>
+#include <folly/debugging/symbolizer/DwarfUtil.h>
 
 #if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
 

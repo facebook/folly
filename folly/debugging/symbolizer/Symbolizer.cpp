@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 
 #include <climits>
 #include <cstdio>

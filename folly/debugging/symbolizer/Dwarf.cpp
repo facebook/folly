@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/Dwarf.h>
+#include <folly/debugging/symbolizer/Dwarf.h>
 
 #include <array>
 #include <type_traits>
 
 #include <folly/Optional.h>
-#include <folly/experimental/symbolizer/DwarfImpl.h>
-#include <folly/experimental/symbolizer/DwarfSection.h>
+#include <folly/debugging/symbolizer/DwarfImpl.h>
+#include <folly/debugging/symbolizer/DwarfSection.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Config.h>
 
