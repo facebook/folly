@@ -569,9 +569,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.h
+    ${FOLLY_DIR}/compression/test/CodingTestUtils.cpp
     ${FOLLY_DIR}/container/test/F14TestUtil.h
     ${FOLLY_DIR}/container/test/TrackingTypes.h
-    ${FOLLY_DIR}/experimental/test/CodingTestUtils.cpp
     ${FOLLY_DIR}/futures/test/TestExecutor.cpp
     ${FOLLY_DIR}/futures/test/TestExecutor.h
     ${FOLLY_DIR}/io/async/test/BlockingSocket.h

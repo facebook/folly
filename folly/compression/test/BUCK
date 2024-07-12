@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -92,5 +93,24 @@ cpp_unittest(
         "//folly/experimental:instructions",
         "//folly/experimental:select64",
         "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "coding_test_utils",
+    srcs = ["CodingTestUtils.cpp"],
+    headers = ["CodingTestUtils.h"],
+    deps = [
+        "//folly/portability:gflags",
+    ],
+    exported_deps = [
+        "//folly:benchmark",
+        "//folly:likely",
+        "//folly:optional",
+        "//folly/experimental:instructions",
+        "//folly/portability:gtest",
+    ],
+    exported_external_deps = [
+        "glog",
     ],
 )

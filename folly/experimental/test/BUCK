@@ -5,20 +5,11 @@ oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
     name = "coding_test_utils",
-    srcs = ["CodingTestUtils.cpp"],
-    headers = ["CodingTestUtils.h"],
-    deps = [
-        "//folly/portability:gflags",
+    headers = [
+        "CodingTestUtils.h",
     ],
     exported_deps = [
-        "//folly:benchmark",
-        "//folly:likely",
-        "//folly:optional",
-        "//folly/experimental:instructions",
-        "//folly/portability:gtest",
-    ],
-    exported_external_deps = [
-        "glog",
+        "//folly/compression/test:coding_test_utils",
     ],
 )
 

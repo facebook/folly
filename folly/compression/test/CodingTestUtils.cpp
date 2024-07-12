@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/test/CodingTestUtils.h>
+#include <folly/compression/test/CodingTestUtils.h>
 
 #include <folly/portability/GFlags.h>
 
