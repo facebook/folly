@@ -14,4 +14,33 @@
  * limitations under the License.
  */
 
-#include <folly/debugging/symbolizer/detail/Debug.h>
+#pragma once
+
+#include <folly/CppAttributes.h>
+
+#if FOLLY_HAVE_ELF
+#include <link.h>
+#endif
+
+namespace folly {
+namespace symbolizer {
+namespace detail {
+
+#if defined(__linux__) && FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+inline struct r_debug* get_r_debug() {
+  return &_r_debug;
+}
+#elif defined(__APPLE__)
+extern struct r_debug _r_debug;
+inline struct r_debug* get_r_debug() {
+  return &_r_debug;
+}
+#else
+inline struct r_debug* get_r_debug() {
+  return nullptr;
+}
+#endif
+
+} // namespace detail
+} // namespace symbolizer
+} // namespace folly
