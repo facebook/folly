@@ -1,88 +1,32 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
     name = "io_test_temp_file_util_lib",
-    srcs = ["IoTestTempFileUtil.cpp"],
-    headers = ["IoTestTempFileUtil.h"],
-    deps = [
-        "//folly:file_util",
-        "//folly:string",
+    headers = [
+        "IoTestTempFileUtil.h",
     ],
     exported_deps = [
-        "//folly/experimental/io:fs_util",
-        "//folly/testing:test_util",
-    ],
-    exported_external_deps = [
-        "glog",
+        "//folly/io/async/test:io_test_temp_file_util_lib",
     ],
 )
 
 cpp_library(
     name = "async_base_test_lib",
-    srcs = ["AsyncBaseTestLib.cpp"],
-    headers = ["AsyncBaseTestLib.h"],
-    exported_deps = [
-        ":io_test_temp_file_util_lib",
-        "//folly:scope_guard",
-        "//folly:string",
-        "//folly/experimental/io:async_base",
-        "//folly/experimental/io:fs_util",
-        "//folly/portability:gtest",
-        "//folly/portability:sockets",
-        "//folly/test:test_utils",
+    headers = [
+        "AsyncBaseTestLib.h",
     ],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "//folly/io/async/test:async_base_test_lib",
     ],
 )
 
 cpp_library(
     name = "mux_io_thread_pool_executor_test_lib",
-    srcs = ["MuxIOThreadPoolExecutorTest.cpp"],
-    link_whole = True,
-    deps = [
-        "//folly/executors/test:IOThreadPoolExecutorBaseTestLib",
-        "//folly/experimental/io:epoll",
-        "//folly/experimental/io:mux_io_thread_pool_executor",
-        "//folly/portability:gtest",
-        "//folly/synchronization:latch",
+    headers = [
     ],
-)
-
-cpp_unittest(
-    name = "mux_io_thread_pool_executor_test_epoll",
-    args = [
-        "--folly_event_base_poller_backend=epoll",
-        "--folly_event_base_poller_epoll_rearm_inline=false",
-    ],
-    supports_static_listing = False,
-    deps = [
-        ":mux_io_thread_pool_executor_test_lib",  # @manual
-    ],
-)
-
-cpp_unittest(
-    name = "mux_io_thread_pool_executor_test_epoll_rearm_inline",
-    args = [
-        "--folly_event_base_poller_backend=epoll",
-        "--folly_event_base_poller_epoll_rearm_inline=true",
-    ],
-    supports_static_listing = False,
-    deps = [
-        ":mux_io_thread_pool_executor_test_lib",  # @manual
-    ],
-)
-
-cpp_unittest(
-    name = "mux_io_thread_pool_executor_test_io_uring",
-    args = [
-        "--folly_event_base_poller_backend=io_uring",
-    ],
-    supports_static_listing = False,
-    deps = [
-        ":mux_io_thread_pool_executor_test_lib",  # @manual
+    exported_deps = [
+        "//folly/io/async/test:mux_io_thread_pool_executor_test_lib",
     ],
 )

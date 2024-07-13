@@ -1114,3 +1114,87 @@ cpp_unittest(
         "glog",
     ],
 )
+
+cpp_library(
+    name = "io_test_temp_file_util_lib",
+    srcs = ["IoTestTempFileUtil.cpp"],
+    headers = ["IoTestTempFileUtil.h"],
+    deps = [
+        "//folly:file_util",
+        "//folly:string",
+    ],
+    exported_deps = [
+        "//folly/experimental/io:fs_util",
+        "//folly/testing:test_util",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "async_base_test_lib",
+    srcs = ["AsyncBaseTestLib.cpp"],
+    headers = ["AsyncBaseTestLib.h"],
+    exported_deps = [
+        "//folly:scope_guard",
+        "//folly:string",
+        "//folly/experimental/io:async_base",
+        "//folly/experimental/io:fs_util",
+        "//folly/experimental/io/test:io_test_temp_file_util_lib",
+        "//folly/portability:gtest",
+        "//folly/portability:sockets",
+        "//folly/test:test_utils",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "mux_io_thread_pool_executor_test_lib",
+    srcs = ["MuxIOThreadPoolExecutorTest.cpp"],
+    link_whole = True,
+    deps = [
+        "//folly/executors/test:IOThreadPoolExecutorBaseTestLib",
+        "//folly/experimental/io:epoll",
+        "//folly/experimental/io:mux_io_thread_pool_executor",
+        "//folly/portability:gtest",
+        "//folly/synchronization:latch",
+    ],
+)
+
+cpp_unittest(
+    name = "mux_io_thread_pool_executor_test_epoll",
+    args = [
+        "--folly_event_base_poller_backend=epoll",
+        "--folly_event_base_poller_epoll_rearm_inline=false",
+    ],
+    supports_static_listing = False,
+    deps = [
+        ":mux_io_thread_pool_executor_test_lib",  # @manual
+    ],
+)
+
+cpp_unittest(
+    name = "mux_io_thread_pool_executor_test_epoll_rearm_inline",
+    args = [
+        "--folly_event_base_poller_backend=epoll",
+        "--folly_event_base_poller_epoll_rearm_inline=true",
+    ],
+    supports_static_listing = False,
+    deps = [
+        ":mux_io_thread_pool_executor_test_lib",  # @manual
+    ],
+)
+
+cpp_unittest(
+    name = "mux_io_thread_pool_executor_test_io_uring",
+    args = [
+        "--folly_event_base_poller_backend=io_uring",
+    ],
+    supports_static_listing = False,
+    deps = [
+        ":mux_io_thread_pool_executor_test_lib",  # @manual
+    ],
+)

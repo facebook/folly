@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/test/IoTestTempFileUtil.h>
+#include <folly/io/async/test/IoTestTempFileUtil.h>
 
 #include <random>
 

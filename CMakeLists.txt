@@ -1145,8 +1145,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         TEST async_io_test
           SOURCES
             AsyncIOTest.cpp
-            ../../../experimental/io/test/AsyncBaseTestLib.cpp
-            ../../../experimental/io/test/IoTestTempFileUtil.cpp
+            AsyncBaseTestLib.cpp
+            IoTestTempFileUtil.cpp
     )
   endif()
 
