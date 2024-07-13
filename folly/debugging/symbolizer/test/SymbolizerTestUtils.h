@@ -66,4 +66,4 @@ class ClassDifferentFile {
 } // namespace symbolizer
 } // namespace folly
 
-#include <folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h>
+#include <folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/test/SignalHandlerTest.h>
+#include <folly/debugging/symbolizer/test/SignalHandlerTest.h>
 
 #include <folly/experimental/symbolizer/SignalHandler.h>
 

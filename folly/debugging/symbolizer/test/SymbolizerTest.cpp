@@ -25,10 +25,10 @@
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
+#include <folly/debugging/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/experimental/symbolizer/detail/Debug.h>
-#include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
@@ -267,14 +267,14 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
       frames.frames[4],
       "inlineA_lfind",
       "folly::symbolizer::test::inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_lfind);
 
   expectFrameEq(
       frames.frames[5],
       "inlineB_inlineA_lfind",
       "folly::symbolizer::test::inlineB_inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_inlineA_lfind);
 
   FrameArray<100> frames2;
@@ -314,13 +314,13 @@ TEST(SymbolizerTest, InlineFunctionWithoutEnoughFrames) {
       limitedFrames[0],
       "inlineB_inlineA_lfind",
       "folly::symbolizer::test::inlineB_inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_inlineA_lfind);
   expectFrameEq(
       limitedFrames[1],
       "call_B_A_lfind",
       "folly::symbolizer::test::call_B_A_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      "folly/debugging/symbolizer/test/SymbolizerTest.cpp",
       kLineno_inlineB_inlineA_lfind);
 }
 
@@ -340,21 +340,21 @@ TEST(SymbolizerTest, InlineFunctionInLexicalBlock) {
       frames.frames[4],
       "inlineA_lfind",
       "folly::symbolizer::test::inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_lfind);
 
   expectFrameEq(
       frames.frames[5],
       "inlineB_inlineA_lfind",
       "folly::symbolizer::test::inlineB_inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_inlineA_lfind);
 
   expectFrameEq(
       frames.frames[6],
       "lexicalBlock_inlineB_inlineA_lfind",
       "folly::symbolizer::test::lexicalBlock_inlineB_inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils.cpp",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils.cpp",
       kLineno_inlineB_inlineA_lfind);
 
   printFrames(frames);
@@ -377,7 +377,7 @@ TEST(SymbolizerTest, InlineFunctionInDifferentCompilationUnit) {
       frames.frames[5],
       "inlineLTO_inlineA_lfind",
       "folly::symbolizer::test::inlineLTO_inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils.cpp",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils.cpp",
       kLineno_inlineA_lfind);
 }
 
@@ -397,14 +397,14 @@ TEST(SymbolizerTest, InlineClassMemberFunctionSameFile) {
       frames.frames[4],
       "inlineA_lfind",
       "folly::symbolizer::test::inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_lfind);
 
   expectFrameEq(
       frames.frames[5],
       "memberInline_inlineA_lfind",
       "folly::symbolizer::test::ClassSameFile::memberInline_inlineA_lfind() const",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils.cpp",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils.cpp",
       kLineno_inlineA_lfind);
 }
 
@@ -424,14 +424,14 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunctionSameFile) {
       frames.frames[4],
       "inlineA_lfind",
       "folly::symbolizer::test::inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_lfind);
 
   expectFrameEq(
       frames.frames[5],
       "staticMemberInline_inlineA_lfind",
       "folly::symbolizer::test::ClassSameFile::staticMemberInline_inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils.cpp",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils.cpp",
       kLineno_inlineA_lfind);
 }
 
@@ -451,14 +451,14 @@ TEST(SymbolizerTest, InlineClassMemberFunctionInDifferentFile) {
       frames.frames[4],
       "inlineA_lfind",
       "folly::symbolizer::test::inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_lfind);
 
   expectFrameEq(
       frames.frames[5],
       "memberInline_inlineA_lfind",
       "folly::symbolizer::test::ClassDifferentFile::memberInline_inlineA_lfind() const",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_inlineA_lfind);
 }
 
@@ -478,14 +478,14 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunctionInDifferentFile) {
       frames.frames[4],
       "inlineA_lfind",
       "folly::symbolizer::test::inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_lfind);
 
   expectFrameEq(
       frames.frames[5],
       "staticMemberInline_inlineA_lfind",
       "folly::symbolizer::test::ClassDifferentFile::staticMemberInline_inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_inlineA_lfind);
 }
 
@@ -528,14 +528,14 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
       frames.frames[4],
       "inlineA_lfind",
       "folly::symbolizer::test::inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_lfind);
 
   expectFrameEq(
       frames.frames[5],
       "inlineB_inlineA_lfind",
       "folly::symbolizer::test::inlineB_inlineA_lfind()",
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h",
       kLineno_inlineA_lfind);
 
   FrameArray<100> frames2;

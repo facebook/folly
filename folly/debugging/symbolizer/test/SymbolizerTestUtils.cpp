@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
+#include <folly/debugging/symbolizer/test/SymbolizerTestUtils.h>
 
 // NOTE: To simplify generated DWARF keep #includes to a minimum.
 

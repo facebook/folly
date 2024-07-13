@@ -105,8 +105,8 @@ def validate_folly_symbolizer(name, binary):
     custom_unittest(
         name = name,
         command = [
-            "$(exe //folly/experimental/symbolizer/test:compare-addr2line.sh)",
-            "$(location //folly/experimental/symbolizer/tool:folly-addr2line)",
+            "$(exe //folly/debugging/symbolizer/test:compare-addr2line.sh)",
+            "$(location //folly/debugging/symbolizer/tool:folly-addr2line)",
             "$(location //third-party-buck/platform010/build/llvm-fb/15:bin/llvm-addr2line)",
             "$(location {})".format(binary),
         ],
@@ -121,7 +121,7 @@ def validate_symbolizer_dwp(name, binary):
         custom_unittest(
             name = name,
             command = [
-                "$(exe //folly/experimental/symbolizer/test:symbolizer_dwp_compability.sh)",
+                "$(exe //folly/debugging/symbolizer/test:symbolizer_dwp_compability.sh)",
                 "$(location {})".format(binary),
                 "$(location {}[dwp])".format(binary),
                 config.get_build_mode(),

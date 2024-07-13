@@ -16,10 +16,10 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Range.h>
+#include <folly/debugging/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
-#include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/GFlags.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

@@ -98,7 +98,7 @@ custom_unittest(
 # custom_unittest(
 #     name = "gnu_debuglink_test_small_sigaltstack",
 #     command = [
-#         "folly/experimental/symbolizer/test/gnu_debuglink_test.sh",
+#         "folly/debugging/symbolizer/test/gnu_debuglink_test.sh",
 #         "$(location :small_sigaltstack_crash)",
 #     ],
 #     type = "json",

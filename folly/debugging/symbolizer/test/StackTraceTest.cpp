@@ -230,7 +230,7 @@ TEST(StackTraceTest, TerseFileAndLineStackTracePrinterOutput) {
   printer.println(addresses, 0);
 
   // Match a sequence of file+line results that should appear as:
-  // ./folly/experimental/symbolizer/test/StackTraceTest.cpp:202
+  // ./folly/debugging/symbolizer/test/StackTraceTest.cpp:202
   // or:
   // (unknown)
   boost::regex regex("((([^:]*:[0-9]*)|(\\(unknown\\)))\n)+");

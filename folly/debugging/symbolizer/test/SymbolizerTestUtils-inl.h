@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
+#include <folly/debugging/symbolizer/test/SymbolizerTestUtils.h>
 
 extern "C" {
 // Fwd declare instead of #include <stdlib.h> to minimize generated DWARF.

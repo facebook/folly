@@ -5,6 +5,8 @@ root//folly/debugging/exception_tracer:exception_tracer
 root//folly/debugging/exception_tracer:exception_tracer_callbacks
 root//folly/debugging/exception_tracer:smart_exception_stack_trace_hooks
 root//folly/debugging/exception_tracer:smart_exception_tracer
+root//folly/debugging/symbolizer/tool:folly-addr2line
+root//folly/debugging/symbolizer/tool:libFollySegFault.so
 root//folly/docs/examples/folly:baton_demo
 root//folly/docs/examples/folly:cancellation_callback_demo
 root//folly/docs/examples/folly:cancellation_source_demo
@@ -37,8 +39,6 @@ root//folly/docs/examples/folly/hash:hash_demo
 root//folly/docs/examples/folly/io:i_o_buf_demo
 root//folly/experimental/io:async_io
 root//folly/experimental/io:simple_async_io
-root//folly/experimental/symbolizer/tool:folly-addr2line
-root//folly/experimental/symbolizer/tool:libFollySegFault.so
 root//folly/logging/example:example
 root//folly/python:executor_lib
 root//folly/python:fibers_lib
