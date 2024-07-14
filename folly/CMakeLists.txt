@@ -31,6 +31,10 @@ install(
 add_subdirectory(debugging/exception_tracer)
 add_subdirectory(logging/example)
 
+if ('${CMAKE_CXX_COMPILER_ID}' MATCHES 'Clang' AND  BUILD_FUZZ_TESTS)
+    add_subdirectory(fuzz)
+endif()
+
 if (PYTHON_EXTENSIONS)
   # Create tree of symbolic links in structure required for successful
   # compliation by Cython.
