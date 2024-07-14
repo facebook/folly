@@ -100,6 +100,8 @@
 #elif defined(_MSC_VER)
 #define FOLLY_DISABLE_ADDRESS_SANITIZER __declspec(no_sanitize_address)
 #endif
+#elif defined(_MSC_VER)
+#define FOLLY_DISABLE_ADDRESS_SANITIZER __declspec(no_sanitize_address)
 #endif
 #ifndef FOLLY_DISABLE_ADDRESS_SANITIZER
 #define FOLLY_DISABLE_ADDRESS_SANITIZER
