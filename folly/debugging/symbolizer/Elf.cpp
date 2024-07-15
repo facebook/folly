@@ -17,6 +17,7 @@
 #include <folly/debugging/symbolizer/Elf.h>
 
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cstring>
