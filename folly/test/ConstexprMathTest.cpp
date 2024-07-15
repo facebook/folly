@@ -987,7 +987,13 @@ TEST_F(ConstexprMathTest, constexpr_exp_floating) {
   }
   {
     constexpr auto a = folly::constexpr_exp(471.L);
+#if defined(__APPLE__) && defined(FOLLY_AARCH64)
+    EXPECT_LT( // too inexact for expect-double-eq
+        std::exp(471.L) / a - 1,
+        16 * lim::epsilon());
+#else
     EXPECT_DOUBLE_EQ(std::exp(471.L), a);
+#endif
   }
   {
     constexpr auto a = folly::constexpr_exp(600.);
