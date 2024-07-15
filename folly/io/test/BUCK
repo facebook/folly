@@ -171,6 +171,7 @@ cpp_unittest(
         "//folly/experimental/io:fs_util",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",

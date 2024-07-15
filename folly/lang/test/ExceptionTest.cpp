@@ -235,7 +235,16 @@ TEST_F(ExceptionTest, current_exception) {
     throw std::exception();
   } catch (...) {
     // primary exception?
+#if defined(_CPPLIB_VER)
+    // As per
+    // https://learn.microsoft.com/en-us/cpp/standard-library/exception-functions?view=msvc-170
+    // current_exception() returns a new value each time, so its not directly
+    // comparable on MSVC
+    EXPECT_NE(nullptr, std::current_exception());
+    EXPECT_NE(nullptr, folly::current_exception());
+#else
     EXPECT_EQ(std::current_exception(), folly::current_exception());
+#endif
   }
   try {
     throw std::exception();
@@ -244,7 +253,12 @@ TEST_F(ExceptionTest, current_exception) {
       throw;
     } catch (...) {
       // dependent exception?
+#if defined(_CPPLIB_VER)
+      EXPECT_NE(nullptr, std::current_exception());
+      EXPECT_NE(nullptr, folly::current_exception());
+#else
       EXPECT_EQ(std::current_exception(), folly::current_exception());
+#endif
     }
   }
 }

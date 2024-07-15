@@ -166,6 +166,7 @@ cpp_library(
     headers = ["FsUtil.h"],
     deps = [
         "//folly:exception",
+        "//folly/portability:windows",
     ],
     exported_external_deps = [
         ("boost", None, "boost_filesystem"),
