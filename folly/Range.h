@@ -247,8 +247,7 @@ class Range {
   using size_type = std::size_t;
   using iterator = Iter;
   using const_iterator = Iter;
-  using value_type = typename std::remove_reference<
-      typename std::iterator_traits<Iter>::reference>::type;
+  using value_type = typename std::iterator_traits<Iter>::value_type;
   using difference_type = typename std::iterator_traits<Iter>::difference_type;
   using reference = typename std::iterator_traits<Iter>::reference;
 
@@ -592,11 +591,11 @@ class Range {
   constexpr Iter end() const { return e_; }
   constexpr Iter cbegin() const { return b_; }
   constexpr Iter cend() const { return e_; }
-  value_type& front() {
+  reference front() {
     assert(b_ < e_);
     return *b_;
   }
-  value_type& back() {
+  reference back() {
     assert(b_ < e_);
     return *std::prev(e_);
   }
@@ -745,7 +744,8 @@ class Range {
     return r;
   }
 
-  value_type& operator[](size_t i) {
+  std::enable_if_t<!std::is_const<reference>::value, reference>
+  operator[](size_t i) {
     assert(i < size());
     return b_[i];
   }
@@ -755,7 +755,8 @@ class Range {
     return b_[i];
   }
 
-  value_type& at(size_t i) {
+  std::enable_if_t<!std::is_const<reference>::value, reference>
+  at(size_t i) {
     if (i >= size()) {
       throw_exception<std::out_of_range>("index out of range");
     }
