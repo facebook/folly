@@ -10,6 +10,9 @@ ninja
 [rpms]
 ninja-build
 
+[pps]
+ninja
+
 [download.os=windows]
 url = https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-win.zip
 sha256 = bbde850d247d2737c5764c927d1071cbb1f1957dcabda4a130fa8547c12c695f

@@ -370,7 +370,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
         parser.add_argument(
             "--os-type",
             help="Filter to just this OS type to run",
-            choices=["linux", "darwin", "windows"],
+            choices=["linux", "darwin", "windows", "pacman-package"],
             action="store",
             dest="ostype",
             default=None,
@@ -440,7 +440,10 @@ class InstallSysDepsCmd(ProjectCmdBase):
             packages = sorted(set(all_packages["homebrew"]))
             if packages:
                 cmd_args = ["brew", "install"] + packages
-
+        elif manager == "pacman-package":
+            packages = sorted(list(set(all_packages["pacman-package"])))
+            if packages:
+                cmd_args = ["pacman", "-S"] + packages
         else:
             host_tuple = loader.build_opts.host_type.as_tuple_string()
             print(

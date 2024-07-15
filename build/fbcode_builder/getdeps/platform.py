@@ -274,6 +274,8 @@ class HostType(object):
             return "rpm"
         if self.distro.startswith(("debian", "ubuntu", "pop!_os", "mint")):
             return "deb"
+        if self.distro == "arch":
+            return "pacman-package"
         return None
 
     @staticmethod

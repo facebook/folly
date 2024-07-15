@@ -15,6 +15,9 @@ python3.8-dev
 [debs.not(all(distro=ubuntu,distro_vers="18.04"))]
 python3-all-dev
 
+[pps]
+python3
+
 [download]
 url = https://www.python.org/ftp/python/3.8.13/Python-3.8.13.tgz
 sha256 = 903b92d76354366b1d9c4434d0c81643345cef87c1600adfa36095d7b00eede4
