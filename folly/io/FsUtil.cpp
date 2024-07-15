@@ -24,6 +24,10 @@
 #include <mach-o/dyld.h> // @manual
 #endif
 
+#if defined(_WIN32)
+#include <folly/portability/Windows.h>
+#endif
+
 namespace bsys = ::boost::system;
 
 namespace folly {
@@ -82,6 +86,10 @@ path executable_path() {
   std::string buf(size - 1, '\0');
   auto data = const_cast<char*>(&*buf.data());
   _NSGetExecutablePath(data, &size);
+  return path(std::move(buf));
+#elif defined(_WIN32)
+  WCHAR buf[MAX_PATH];
+  GetModuleFileNameW(NULL, buf, MAX_PATH);
   return path(std::move(buf));
 #else
   return read_symlink("/proc/self/exe");

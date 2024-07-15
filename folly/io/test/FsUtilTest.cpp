@@ -26,6 +26,7 @@
 #include <folly/String.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/testing/TestUtil.h>
 
 using namespace folly;
 using namespace folly::fs;
@@ -100,11 +101,11 @@ TEST(Simple, UniquePath) {
   constexpr auto tags =
       std::array{"foo", "bar", "baz", "cat", "dog", "bat", "rat", "tar", "bar"};
   auto const model = join("-%%-", tags);
-  auto const match = testing::MatchesRegex(join("-[0-9a-f]{2}-", tags));
+  auto const pattern = join("-[0-9a-f]{2}-", tags);
   std::unordered_set<std::string> paths;
   for (size_t i = 0; i < size; ++i) {
     auto res = std_fs_unique_path(std_fs::path(model)).string();
-    EXPECT_THAT(res, match);
+    EXPECT_PCRE_MATCH(pattern, res);
     paths.insert(std::move(res));
   }
   EXPECT_EQ(size, paths.size());
@@ -112,11 +113,11 @@ TEST(Simple, UniquePath) {
 
 TEST(Simple, UniquePathDefaultModel) {
   constexpr auto size = size_t(1) << 10;
-  auto const match = testing::MatchesRegex("([0-9a-f]{4}-){3}[0-9a-f]{4}");
+  auto const pattern = "([0-9a-f]{4}-){3}[0-9a-f]{4}";
   std::unordered_set<std::string> paths;
   for (size_t i = 0; i < size; ++i) {
     auto res = std_fs_unique_path().string();
-    EXPECT_THAT(res, match);
+    EXPECT_PCRE_MATCH(pattern, res);
     paths.insert(std::move(res));
   }
   EXPECT_EQ(size, paths.size());
