@@ -52,14 +52,17 @@ def homebrew_library(
         labels = labels,
     )
 
-def third_party_library(name, visibility = ["PUBLIC"], deps = [], homebrew_package_name = None, pkgconfig_name = None, homebrew_header_path = None, default_target_platform = "prelude//platforms:default", homebrew_linker_flags = None):
+def third_party_library(name, visibility = ["PUBLIC"], deps = [], homebrew_package_name = None, ubuntu_package_name = None, pkgconfig_name = None, homebrew_header_path = None, default_target_platform = "prelude//platforms:default", homebrew_linker_flags = None):
     # Labels defined here are used to extract third-party libs so they can be installed:
     labels = []
     if homebrew_package_name != None:
         labels.append("third-party:homebrew:" + homebrew_package_name)
+    if ubuntu_package_name != None:
+        labels.append("third-party:ubuntu:" + ubuntu_package_name)
 
     if pkgconfig_name != None:
         labels.append("third-party:homebrew:pkg-config")
+        labels.append("third-party:ubuntu:pkg-config")
         external_pkgconfig_library(name = pkgconfig_name, visibility = visibility if name == pkgconfig_name else [], labels = labels, default_target_platform = default_target_platform, deps = deps)
         if name != pkgconfig_name:
             native.alias(name = name, actual = ":{}".format(pkgconfig_name), visibility = visibility)

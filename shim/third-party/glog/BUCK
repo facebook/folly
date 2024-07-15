@@ -13,5 +13,6 @@ third_party_library(
     name = "glog",
     homebrew_package_name = "glog",
     pkgconfig_name = "libglog",
+    ubuntu_package_name = "libgoogle-glog-dev",
     deps = ["shim//third-party/gflags:gflags"],
 )

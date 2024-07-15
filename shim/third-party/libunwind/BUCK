@@ -12,4 +12,5 @@ oncall("open_source")
 third_party_library(
     name = "unwind",
     pkgconfig_name = "libunwind",
+    ubuntu_package_name = "libunwind-dev",
 )

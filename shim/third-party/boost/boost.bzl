@@ -10,6 +10,7 @@ load("@shim//third-party:third_party.bzl", "third_party_library")
 def boost_libs(xs):
     third_party_library(
         name = "boost",
+        ubuntu_package_name = "libboost-all-dev",
         homebrew_package_name = "boost",
     )
     for x in xs:
