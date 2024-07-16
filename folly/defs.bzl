@@ -81,6 +81,7 @@ CLANG_CXX_FLAGS = [
     "-Wno-c++17-extensions",
     "-Wno-undef",
     "-Wno-unreachable-code",
+    "-Wno-deprecated-declarations",
 ]
 CXXFLAGS = select({
     "DEFAULT": [],
