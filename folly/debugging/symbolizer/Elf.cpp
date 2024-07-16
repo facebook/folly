@@ -30,6 +30,7 @@
 #include <folly/lang/CString.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
+#include <folly/portability/Unistd.h>
 
 #if FOLLY_HAVE_ELF
 

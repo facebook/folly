@@ -52,6 +52,7 @@ cpp_library(
         "//folly:scope_guard",
         "//folly/lang:c_string",
         "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
     ],
     exported_deps = [
         "//folly:conv",
