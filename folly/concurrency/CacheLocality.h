@@ -29,7 +29,6 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/lang/Align.h>
-#include <folly/lang/Exception.h>
 #include <folly/synchronization/AtomicRef.h>
 
 namespace folly {

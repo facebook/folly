@@ -8,14 +8,13 @@ cpp_library(
     headers = ["CacheLocality.h"],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:conv",
-        "//folly:exception",
         "//folly:indestructible",
         "//folly:memory",
         "//folly:optional",
         "//folly:scope_guard",
         "//folly/detail:static_singleton_manager",
         "//folly/hash:hash",
+        "//folly/lang:exception",
         "//folly/portability:unistd",
         "//folly/system:thread_id",
     ],
@@ -23,7 +22,6 @@ cpp_library(
         "//folly:likely",
         "//folly:portability",
         "//folly/lang:align",
-        "//folly/lang:exception",
         "//folly/synchronization:atomic_ref",
     ],
     external_deps = [

@@ -26,14 +26,13 @@
 #include <fmt/core.h>
 
 #include <glog/logging.h>
-#include <folly/Conv.h>
-#include <folly/Exception.h>
 #include <folly/Indestructible.h>
 #include <folly/Memory.h>
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/hash/Hash.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
 
@@ -105,8 +104,7 @@ static size_t parseLeadingNumber(const std::string& line) {
   char* end;
   unsigned long val = strtoul(raw, &end, 10);
   if (end == raw || (*end != ',' && *end != '-' && *end != '\n' && *end != 0)) {
-    throw std::runtime_error(
-        to<std::string>("error parsing list '", line, "'").c_str());
+    throw std::runtime_error(fmt::format("error parsing list '{}'", line));
   }
   return val;
 }
