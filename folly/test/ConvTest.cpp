@@ -1491,3 +1491,45 @@ TEST(conv, TryIntToScopedEnumAndBack) {
   EXPECT_EQ(ScopedEnum::Second, folly::tryTo<ScopedEnum>(1).value());
   EXPECT_EQ(1, folly::tryTo<int>(ScopedEnum::Second).value());
 }
+
+TEST(Conv, DtoaModeConverter) {
+  double_conversion::DoubleToStringConverter::DtoaMode shortest =
+      detail::convert(DtoaMode::SHORTEST);
+  EXPECT_EQ(shortest, double_conversion::DoubleToStringConverter::SHORTEST);
+
+  double_conversion::DoubleToStringConverter::DtoaMode precision =
+      detail::convert(DtoaMode::PRECISION);
+  EXPECT_EQ(precision, double_conversion::DoubleToStringConverter::PRECISION);
+}
+
+TEST(Conv, DtoaFlagsConverter) {
+  double_conversion::DoubleToStringConverter::Flags noFlags =
+      detail::convert(DtoaFlags::NO_FLAGS);
+  EXPECT_EQ(noFlags, double_conversion::DoubleToStringConverter::NO_FLAGS);
+
+  double_conversion::DoubleToStringConverter::Flags uniqueZero =
+      detail::convert(DtoaFlags::UNIQUE_ZERO);
+  EXPECT_EQ(
+      uniqueZero, double_conversion::DoubleToStringConverter::UNIQUE_ZERO);
+
+  double_conversion::DoubleToStringConverter::Flags combo = detail::convert(
+      DtoaFlags::EMIT_TRAILING_DECIMAL_POINT |
+      DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT);
+  EXPECT_EQ(
+      combo,
+      double_conversion::DoubleToStringConverter::EMIT_TRAILING_DECIMAL_POINT |
+          double_conversion::DoubleToStringConverter::
+              EMIT_TRAILING_ZERO_AFTER_POINT);
+}
+
+TEST(Conv, DtoaFlags) {
+  DtoaFlags combo = DtoaFlags::EMIT_TRAILING_DECIMAL_POINT |
+      DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT;
+  EXPECT_EQ(
+      combo & DtoaFlags::EMIT_TRAILING_DECIMAL_POINT,
+      DtoaFlags::EMIT_TRAILING_DECIMAL_POINT);
+  EXPECT_EQ(
+      combo & DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT,
+      DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT);
+  EXPECT_EQ(combo & DtoaFlags::UNIQUE_ZERO, DtoaFlags::NO_FLAGS);
+}

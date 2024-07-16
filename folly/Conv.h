@@ -638,12 +638,109 @@ estimateSpaceNeeded(Src value) {
  * Conversions from floating-point types to string types.
  */
 
+/// Operating mode for the floating point type version of
+/// `folly::ToAppend`. This is modeled after
+/// `double_conversion::DoubleToStringConverter::DtoaMode`.
+/// Dtoa is an acryonym for Double to ASCII.
+enum class DtoaMode {
+  /// Outputs the shortest representation of a `double`.
+  /// The output is either in decimal or exponential notation; which ever is
+  /// shortest.
+  SHORTEST,
+  /// Outputs the shortest representation of a `float`.
+  /// This outputs in either decimal or exponential notation, which ever is
+  /// shortest.
+  SHORTEST_SINGLE,
+  /// Outputs fixed precision after the decimal point. Similar to
+  /// `printf`'s %f.
+  /// The output is in decimal notation.
+  /// Use the `numDigits` parameter to specify the precision.
+  FIXED,
+  /// Outputs with a precision that is independent of the decimal point.
+  /// The outputs is either decimal or exponential notation, depending on the
+  /// value and the precision.
+  /// Similar to `printf`'s %g formating.
+  /// Use the `numDigits` parameter to specify the precision.
+  PRECISION,
+};
+
+/// Flags for the floating point type version of `folly::ToAppend`.
+/// This is modeled after `double_conversion::DoubleToStringConverter::Flags`.
+/// Dtoa is an acryonym for Double to ASCII.
+/// This enum is used to store bit wise flags, so a variable of this type may be
+/// a bitwise combination of these definitions.
+enum class DtoaFlags : std::underlying_type_t<
+    double_conversion::DoubleToStringConverter::Flags> {
+  NO_FLAGS = 0,
+  /// Emits a plus sign for positive exponents. e.g., 1.2e+3
+  EMIT_POSITIVE_EXPONENT_SIGN = 1,
+  /// Emits a trailing decimal point. e.g., 123.
+  EMIT_TRAILING_DECIMAL_POINT = 2,
+  /// Emits a trailing decimal point. e.g., 123.0
+  /// Requires `EMIT_TRAILING_DECIMAL_POINT` to be set.
+  EMIT_TRAILING_ZERO_AFTER_POINT = 4,
+  /// -0.0 outputs as 0.0
+  UNIQUE_ZERO = 8,
+  /// Trailing zeros are removed from the fractional portion
+  /// of the result in precision mode. Matches `printf`'s %g.
+  /// When `EMIT_TRAILING_ZERO_AFTER_POINT` is also given, one trailing zero is
+  /// preserved.
+  NO_TRAILING_ZERO = 16,
+};
+
 namespace detail {
 constexpr int kConvMaxDecimalInShortestLow = -6;
 constexpr int kConvMaxDecimalInShortestHigh = 21;
+
+/// Converts `DtoaMode` to
+/// `double_conversion::DoubleToStringConverter::DtoaMode`.
+/// This is temporary until
+/// `double_conversion::DoubleToStringConverter::DtoaMode` is removed.
+constexpr double_conversion::DoubleToStringConverter::DtoaMode convert(
+    DtoaMode mode) {
+  switch (mode) {
+    case DtoaMode::SHORTEST:
+      return double_conversion::DoubleToStringConverter::SHORTEST;
+    case DtoaMode::SHORTEST_SINGLE:
+      return double_conversion::DoubleToStringConverter::SHORTEST_SINGLE;
+    case DtoaMode::FIXED:
+      return double_conversion::DoubleToStringConverter::FIXED;
+    case DtoaMode::PRECISION:
+      return double_conversion::DoubleToStringConverter::PRECISION;
+  }
+
+  assert(false);
+  // Default to PRECISION per exising behavior.
+  return double_conversion::DoubleToStringConverter::PRECISION;
+}
+
+/// Converts `DtoaFlags` to
+/// `double_conversion::DoubleToStringConverter::DtoaFlags`.
+/// This is temporary until
+/// `double_conversion::DoubleToStringConverter::DtoaFlags` is removed.
+constexpr double_conversion::DoubleToStringConverter::Flags convert(
+    DtoaFlags flags) {
+  return static_cast<double_conversion::DoubleToStringConverter::Flags>(flags);
+}
+
 } // namespace detail
 
-/** Wrapper around DoubleToStringConverter */
+constexpr DtoaFlags operator|(DtoaFlags a, DtoaFlags b) {
+  using IntType = typename std::underlying_type<DtoaFlags>::type;
+  return static_cast<DtoaFlags>(
+      static_cast<IntType>(a) | static_cast<IntType>(b));
+}
+
+constexpr DtoaFlags operator&(DtoaFlags a, DtoaFlags b) {
+  using IntType = typename std::underlying_type<DtoaFlags>::type;
+  return static_cast<DtoaFlags>(
+      static_cast<IntType>(a) & static_cast<IntType>(b));
+}
+
+/**
+ * Wrapper around `double_conversion::DoubleToStringConverter`.
+ * `numDigits` is only used with `FIXED` && `PRECISION`.
+ */
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
@@ -688,6 +785,28 @@ toAppend(
   const size_t length = size_t(builder.position());
   builder.Finalize();
   result->append(buffer, length);
+}
+
+/**
+ * Wrapper around the `toAppend` version that uses
+ * `double_conversion::DoubleToStringConverter`. This is temporary until
+ * `double_conversion` is removed. `numDigits` is only used with
+ * `DtoaMode::FIXED` && `DtoaMode::PRECISION`.
+ */
+template <class Tgt, class Src>
+typename std::enable_if<
+    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
+toAppend(
+    Src value,
+    Tgt* result,
+    DtoaMode mode,
+    unsigned int numDigits,
+    DtoaFlags flags = DtoaFlags::NO_FLAGS) {
+  double_conversion::DoubleToStringConverter::DtoaMode dcMode =
+      detail::convert(mode);
+  double_conversion::DoubleToStringConverter::Flags dcFlags =
+      detail::convert(flags);
+  toAppend(value, result, dcMode, numDigits, dcFlags);
 }
 
 /**
