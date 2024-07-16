@@ -126,23 +126,25 @@ incremental = false
                 if override not in cargo_content:
                     new_content += override
 
+            if self.build_opts.fbsource_dir:
+                # Point to vendored crates.io if possible
+                try:
+                    from .facebook.rust import vendored_crates
+
+                    new_content = vendored_crates(
+                        self.build_opts.fbsource_dir, new_content
+                    )
+                except ImportError:
+                    # This FB internal module isn't shippped to github,
+                    # so just rely on cargo downloading crates on it's own
+                    pass
+
         if new_content != cargo_content:
             with open(cargo_config_file, "w") as f:
                 print(
                     f"Writing cargo config for {self.manifest.name} to {cargo_config_file}"
                 )
                 f.write(new_content)
-
-        if self.build_opts.fbsource_dir:
-            # Point to vendored crates.io if possible
-            try:
-                from .facebook.rust import vendored_crates
-
-                vendored_crates(self.build_opts.fbsource_dir, cargo_config_file)
-            except ImportError:
-                # This FB internal module isn't shippped to github,
-                # so just rely on cargo downloading crates on it's own
-                pass
 
         return dep_to_git
 
