@@ -708,9 +708,9 @@ class AsyncGeneratorPromise final
       state_ = State::INVALID;
       folly::coro::detail::deactivate(value_);
     } else {
-      DCHECK(state_ != State::DONE)
+      CHECK(state_ != State::DONE)
           << "Using generator after receiving completion.";
-      DCHECK(state_ != State::EXCEPTION_WRAPPER)
+      CHECK(state_ != State::EXCEPTION_WRAPPER)
           << "Using generator after receiving exception.";
     }
   }

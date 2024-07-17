@@ -508,7 +508,7 @@ TEST(AsyncGenerator, YieldCoError) {
     } catch (const SomeError&) {
     }
 
-    EXPECT_DEBUG_DEATH(
+    EXPECT_DEATH(
         co_await gen.next(), "Using generator after receiving exception.");
   }());
 }
