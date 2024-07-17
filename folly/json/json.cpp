@@ -103,7 +103,7 @@ struct Printer {
   }
   void operator()(dynamic const& v, const Context* context) const {
     switch (v.type()) {
-      case dynamic::DOUBLE:
+      case dynamic::DOUBLE: {
         if (!opts_.allow_nan_inf) {
           if (std::isnan(v.asDouble())) {
             throw json::print_error(
@@ -116,13 +116,17 @@ struct Printer {
                 contextDescription(context));
           }
         }
-        toAppend(
-            v.asDouble(),
-            &out_,
-            opts_.double_mode,
-            opts_.double_num_digits,
-            opts_.double_flags);
+        double_conversion::DoubleToStringConverter::DtoaMode mode =
+            opts_.dtoa_mode.has_value()
+            ? detail::convert(opts_.dtoa_mode.value())
+            : opts_.double_mode;
+        double_conversion::DoubleToStringConverter::Flags flags =
+            opts_.dtoa_flags.has_value()
+            ? detail::convert(opts_.dtoa_flags.value())
+            : opts_.double_flags;
+        toAppend(v.asDouble(), &out_, mode, opts_.double_num_digits, flags);
         break;
+      }
       case dynamic::INT64: {
         auto intval = v.asInt();
         if (opts_.javascript_safe) {
