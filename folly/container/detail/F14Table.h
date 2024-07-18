@@ -49,6 +49,10 @@
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 #include <folly/container/detail/F14Mask.h>
 
+#if __has_include(<concepts>)
+#include <concepts>
+#endif
+
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 #if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
@@ -206,13 +210,22 @@ class F14Table;
 
 class F14HashToken final {
  public:
-  F14HashToken() = default;
+  constexpr F14HashToken() = default;
+
+  friend constexpr bool operator==(
+      F14HashToken const& a, F14HashToken const& b) noexcept {
+    return a.hp_ == b.hp_;
+  }
+  friend constexpr bool operator!=(
+      F14HashToken const& a, F14HashToken const& b) noexcept {
+    return a.hp_ != b.hp_;
+  }
 
  private:
   using HashPair = std::pair<std::size_t, std::size_t>;
 
-  explicit F14HashToken(HashPair hp) : hp_(hp) {}
-  explicit operator HashPair() const { return hp_; }
+  constexpr explicit F14HashToken(HashPair hp) noexcept : hp_(hp) {}
+  constexpr explicit operator HashPair() const noexcept { return hp_; }
 
   HashPair hp_;
 
@@ -224,7 +237,20 @@ class F14HashToken final {
 };
 
 #else
-class F14HashToken final {};
+class F14HashToken final {
+  friend constexpr bool operator==(
+      F14HashToken const&, F14HashToken const&) noexcept {
+    return true;
+  }
+  friend constexpr bool operator!=(
+      F14HashToken const&, F14HashToken const&) noexcept {
+    return false;
+  }
+};
+#endif
+
+#if __cpp_concepts && __has_include(<concepts>)
+static_assert(std::regular<F14HashToken>);
 #endif
 
 namespace f14 {
