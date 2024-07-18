@@ -41,7 +41,6 @@ cpp_library(
         ":access",
         "//folly:traits",
         "//folly:utility",
-        "//folly/functional:invoke",
         "//folly/lang:rvalue_reference_wrapper",
     ],
 )

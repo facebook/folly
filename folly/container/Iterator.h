@@ -26,7 +26,6 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/container/Access.h>
-#include <folly/functional/Invoke.h>
 #include <folly/lang/RValueReferenceWrapper.h>
 
 namespace folly {
@@ -598,23 +597,7 @@ struct arrow_proxy {
   explicit arrow_proxy(Ref* ref) : res(*ref) {}
 };
 
-struct index_iterator_access_at {
-  template <typename Container, typename Index>
-  constexpr decltype(auto) operator()(Container& container, Index index) const {
-    if constexpr (folly::is_tag_invocable_v<
-                      index_iterator_access_at,
-                      Container&,
-                      Index>) {
-      return folly::tag_invoke(*this, container, index);
-    } else {
-      return container[index];
-    }
-  }
-};
-
 } // namespace detail
-
-FOLLY_DEFINE_CPO(detail::index_iterator_access_at, index_iterator_access_at)
 
 /**
  * index_iterator
@@ -642,20 +625,8 @@ FOLLY_DEFINE_CPO(detail::index_iterator_access_at, index_iterator_access_at)
  *  Note that `some_ref_type` can be any proxy reference, as long as the
  *  algorithms support that (for example from range-v3).
  *
- * NOTE: if `operator[]` doesn't work for you for some reason
- *       you can specify:
- *
- * ```
- *  friend some_ref_type tag_invoke(
- *    folly::cpo_t<index_iterator_access_at>,
- *    Container& c,
- *    std::size_t index);
- *
- *  friend some_cref_type tag_invoke(
- *    folly::cpo_t<index_iterator_access_at>,
- *    const Container& c,
- *    std::size_t index);
- * ```
+ * NOTE: there is no way to override `operator[]`, if that's needed
+ *       we recommend to wrap your data in a struct with `operator[]`.
  **/
 
 template <typename Container>
@@ -665,12 +636,6 @@ class index_iterator {
 
   template <typename T>
   using get_difference_type_t = typename std::remove_cv_t<T>::difference_type;
-
-  template <typename IndexType>
-  constexpr static decltype(auto) get_reference_by_index(
-      Container& container, IndexType index) {
-    return index_iterator_access_at(container, index);
-  }
 
  public:
   // index iterator specific types
@@ -682,8 +647,7 @@ class index_iterator {
 
   using value_type = typename std::remove_const_t<container_type>::value_type;
   using iterator_category = std::random_access_iterator_tag;
-  using reference = decltype(get_reference_by_index(
-      FOLLY_DECLVAL(container_type&), size_type{}));
+  using reference = decltype(FOLLY_DECLVAL(container_type&)[size_type{}]);
   using difference_type =
       detected_or_t<std::ptrdiff_t, get_difference_type_t, Container>;
 
@@ -719,9 +683,7 @@ class index_iterator {
 
   // access ---
 
-  constexpr reference operator*() const {
-    return get_reference_by_index(*container_, index_);
-  }
+  constexpr reference operator*() const { return (*container_)[index_]; }
 
   pointer operator->() const {
     // It's equivalent to pointer{&**this} but compiler stops
