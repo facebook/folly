@@ -679,15 +679,10 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     if (!threadEntry) {
       ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
       threadEntry = new ThreadEntry();
-      // if the ThreadEntry already exists
-      // but pthread_getspecific returns NULL
-      // do not add the same entry twice to the list
-      // since this would create a loop in the list
-      if (!threadEntry->list) {
-        threadEntry->list = threadEntryList;
-        threadEntry->listNext = threadEntryList->head;
-        threadEntryList->head = threadEntry;
-      }
+
+      threadEntry->list = threadEntryList;
+      threadEntry->listNext = threadEntryList->head;
+      threadEntryList->head = threadEntry;
 
       threadEntry->tid() = std::this_thread::get_id();
       threadEntry->tid_os = folly::getOSThreadID();
