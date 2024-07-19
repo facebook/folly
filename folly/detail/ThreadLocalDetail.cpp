@@ -208,6 +208,13 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
     // before issuing a delete.
     DCHECK(tmp->meta->isThreadEntryRemovedFromAllInMap(tmp, true));
 
+    // Fail safe check to make sure that the ThreadEntry's local-caches are
+    // all cleared. Failure would indicate that something is using ThreadLocal
+    // instances for a given tag for the first time in a pthread-thread-specific
+    // destructor, such as in the destructor of some other ThreadLocal.
+    DCHECK(tmp->caches->tracking.rlock()->empty());
+
+    delete tmp->caches;
     delete tmp;
   }
 
@@ -421,6 +428,16 @@ void StaticMetaBase::reserve(EntryID* id) {
 
   meta.totalElementWrappers_ += (newCapacity - prevCapacity);
   free(reallocated);
+
+  threadEntry->caches->tracking.withRLock([&](auto& tracking) {
+    for (auto [_, cachep] : tracking) {
+      DCHECK(cachep);
+      DCHECK(!cachep->poison);
+      DCHECK_EQ(threadEntry, cachep->threadEntry);
+      cachep->capacity = newCapacity;
+      cachep->elements = threadEntry->elements;
+    }
+  });
 }
 
 /*
