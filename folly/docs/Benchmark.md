@@ -187,6 +187,26 @@ measurements in any way.
     }
 ```
 
+If you want to print arbitrary text (e.g. a comment or for whatever
+reason), use `BENCHMARK_DRAW_TEXT("your text here")`. The output will
+be the literal value so escape codes like `\n` or `\t` will not work.
+To add multiple lines of output use multiple `BENCHMARK_DRAW_TEXT`
+calls.
+
+``` Cpp
+    BENCHMARK(foo) {
+      Foo foo;
+      foo.doSomething();
+    }
+
+    BENCHMARK_DRAW_TEXT("Note: bar is expected to be 2x more expensive.");
+
+    BENCHMARK(bar) {
+      Bar bar;
+      bar.doSomething();
+    }
+```
+
 ### Suspending a benchmark
 ***
 

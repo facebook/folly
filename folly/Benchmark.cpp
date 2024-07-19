@@ -456,7 +456,14 @@ class BenchmarkResultsPrinter {
 
       string s = datum.name;
       if (s == "-") {
+        // Simply draw a line across the benchmark results
         separator('-');
+        continue;
+      }
+      if (s[0] == '"') {
+        // Simply print some text. Strips implied quote characters
+        // from the beginning and end of the name.
+        printf("%s\n", s.substr(1, s.length() - 2).c_str());
         continue;
       }
       bool useBaseline = false;

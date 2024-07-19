@@ -653,6 +653,14 @@ void printResultComparison(
        true)
 
 /**
+ * Prints arbitrary text.
+ */
+#define BENCHMARK_DRAW_TEXT(text)                                              \
+  [[maybe_unused]] static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) =   \
+      (::folly::addBenchmark(__FILE__, #text, []() -> unsigned { return 0; }), \
+       true)
+
+/**
  * Allows execution of code that doesn't count torward the benchmark's
  * time budget. Example:
  *
