@@ -101,23 +101,23 @@ class ObserverManager {
   }
 
   static void waitForAllUpdates() {
-    tryWaitForAllUpdatesImpl([=](auto& m) { return make_unique_lock(m); });
+    tryWaitForAllUpdatesImpl([=](auto& m) { return std::unique_lock(m); });
   }
   static bool tryWaitForAllUpdates() {
     return tryWaitForAllUpdatesImpl(
-        [=](auto& m) { return make_unique_lock(m, std::try_to_lock); });
+        [=](auto& m) { return std::unique_lock(m, std::try_to_lock); });
   }
   template <typename Rep, typename Period>
   static bool tryWaitForAllUpdatesFor(
       std::chrono::duration<Rep, Period> timeout) {
     return tryWaitForAllUpdatesImpl(
-        [=](auto& m) { return make_unique_lock(m, timeout); });
+        [=](auto& m) { return std::unique_lock(m, timeout); });
   }
   template <typename Clock, typename Duration>
   static bool tryWaitForAllUpdatesUntil(
       std::chrono::time_point<Clock, Duration> deadline) {
     return tryWaitForAllUpdatesImpl(
-        [=](auto& m) { return make_unique_lock(m, deadline); });
+        [=](auto& m) { return std::unique_lock(m, deadline); });
   }
 
   class DependencyRecorder {

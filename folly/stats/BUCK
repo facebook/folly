@@ -125,7 +125,6 @@ cpp_library(
         "//folly:spin_lock",
         "//folly/concurrency:cache_locality",
         "//folly/lang:bits",
-        "//folly/synchronization:lock",
     ],
 )
 

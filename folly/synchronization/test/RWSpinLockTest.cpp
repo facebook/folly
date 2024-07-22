@@ -58,9 +58,9 @@ template <typename RWSpinLockType>
 static void run(RWSpinLockType& lock) {
   while (!stopThread.load(std::memory_order_acquire)) {
     if (rand() % 10 == 0) { // write
-      auto guard = make_unique_lock(lock);
+      auto guard = std::unique_lock(lock);
     } else { // read
-      auto guard = make_shared_lock(lock);
+      auto guard = std::shared_lock(lock);
     }
   }
 }
@@ -196,12 +196,12 @@ TEST(RWSpinLock, concurrentHolderTest) {
     while (!stop.load(std::memory_order_acquire)) {
       auto r = (uint32_t)(rand()) % 10;
       if (r < 3) { // starts from write lock
-        auto wg = make_unique_lock(lock);
+        auto wg = std::unique_lock(lock);
         auto ug = folly::transition_lock<folly::upgrade_lock>(wg);
         auto rg = folly::transition_lock<std::shared_lock>(ug);
         writes.fetch_add(1, std::memory_order_acq_rel);
       } else if (r < 6) { // starts from upgrade lock
-        auto ug = make_upgrade_lock(lock);
+        auto ug = folly::upgrade_lock(lock);
         if (r < 4) {
           auto wg = folly::transition_lock<std::unique_lock>(ug);
         } else {
@@ -209,7 +209,7 @@ TEST(RWSpinLock, concurrentHolderTest) {
         }
         upgrades.fetch_add(1, std::memory_order_acq_rel);
       } else {
-        auto rg = make_shared_lock(lock);
+        auto rg = std::shared_lock(lock);
         reads.fetch_add(1, std::memory_order_acq_rel);
       }
     }
