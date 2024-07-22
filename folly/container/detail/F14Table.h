@@ -214,11 +214,11 @@ class F14HashToken final {
 
   friend constexpr bool operator==(
       F14HashToken const& a, F14HashToken const& b) noexcept {
-    return a.hp_ == b.hp_;
+    return a.hp_.first == b.hp_.first; // processed hash but not tag
   }
   friend constexpr bool operator!=(
       F14HashToken const& a, F14HashToken const& b) noexcept {
-    return a.hp_ != b.hp_;
+    return !(a == b);
   }
 
  private:
