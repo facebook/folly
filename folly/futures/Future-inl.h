@@ -2104,6 +2104,17 @@ Future<T> Future<T>::within(HighResDuration dur, E e, Timekeeper* tk) && {
   return std::move(*this).semi().within(dur, e, tk).via(std::move(exe));
 }
 
+namespace futures {
+namespace detail {
+
+struct WithinInterruptHandler {
+  std::weak_ptr<CoreBase> ptr;
+  void operator()(exception_wrapper const& ew) const;
+};
+
+} // namespace detail
+} // namespace futures
+
 template <class T>
 template <typename E>
 SemiFuture<T> SemiFuture<T>::within(
@@ -2167,12 +2178,8 @@ SemiFuture<T> SemiFuture<T>::within(
       });
 
   // Properly propagate interrupt values through futures chained after within()
-  ctx->promise.setInterruptHandler(
-      [weakCtx = to_weak_ptr(ctx)](const exception_wrapper& ex) {
-        if (auto lockedCtx = weakCtx.lock()) {
-          lockedCtx->thisFuture.raise(ex);
-        }
-      });
+  ctx->promise.setInterruptHandler(futures::detail::WithinInterruptHandler{
+      to_weak_ptr_aliasing(ctx, ctx->thisFuture.core_)});
 
   // Construct the future to return, create a fresh DeferredExecutor and
   // nest the other two inside it, in case they already carry nested executors.

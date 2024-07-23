@@ -30,6 +30,16 @@ FOLLY_GFLAGS_DEFINE_bool(
 namespace folly {
 namespace futures {
 
+namespace detail {
+
+void WithinInterruptHandler::operator()(exception_wrapper const& ew) const {
+  if (auto locked = ptr.lock()) {
+    locked->raise(ew);
+  }
+}
+
+} // namespace detail
+
 SemiFuture<Unit> sleep(HighResDuration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;
   if (FOLLY_LIKELY(!tk)) {
