@@ -787,6 +787,7 @@ cpp_library(
         "//folly/portability:sys_mman",
         "//folly/portability:sys_syscall",
         "//folly/synchronization:call_once",
+        "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [
         "//folly:c_portability",

@@ -31,6 +31,7 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/synchronization/CallOnce.h>
+#include <folly/tracing/StaticTracepoint.h>
 
 #if __has_include(<sys/timerfd.h>)
 #include <sys/timerfd.h>
@@ -1583,6 +1584,14 @@ unsigned int IoUringBackend::internalProcessCqe(
   } while (true);
   numInsertedEvents_ -= (count - count_more);
   numSendEvents_ -= count_send;
+  FOLLY_SDT(
+      folly,
+      folly_io_uring_backend_post_process_all_cqes,
+      count,
+      count_more,
+      count_send,
+      numInsertedEvents_,
+      numSendEvents_);
   return count;
 }
 
@@ -1623,6 +1632,13 @@ int IoUringBackend::submitBusyCheck(
               options_.batchSize + numSendEvents_,
               &timeout,
               nullptr);
+          FOLLY_SDT(
+              folly,
+              folly_io_uring_backend_pre_submit_and_wait_timeout,
+              options_.timeout,
+              options_.batchSize,
+              numSendEvents_,
+              res);
         } else {
           res = ::io_uring_submit_and_wait(&ioRing_, 1);
         }
