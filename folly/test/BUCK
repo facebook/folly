@@ -1490,6 +1490,7 @@ cpp_unittest(
         "//folly/experimental/io:fs_util",
         "//folly/lang:keep",
         "//folly/portability:gtest",
+        "//folly/synchronization:latch",
         "//folly/testing:test_util",
     ],
     external_deps = [
@@ -1722,6 +1723,7 @@ cpp_binary(
         "//folly:thread_local",
         "//folly/lang:keep",
         "//folly/portability:gflags",
+        "//folly/synchronization:latch",
     ],
     external_deps = [
         "glog",

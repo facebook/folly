@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <latch>
 #include <numeric>
 #include <thread>
 
@@ -28,6 +27,7 @@
 #include <folly/Benchmark.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GFlags.h>
+#include <folly/synchronization/Latch.h>
 
 using namespace folly;
 
@@ -137,9 +137,9 @@ BENCHMARK(BM_tlp_access_all_threads_iterate, iters) {
   folly::ThreadLocalPtr<int, tag> var;
   folly::BenchmarkSuspender braces;
   std::vector<std::jthread> threads{folly::to_unsigned(FLAGS_num_threads)};
-  std::latch prep{FLAGS_num_threads};
-  std::latch work{FLAGS_num_threads + 1};
-  std::latch done{1};
+  folly::Latch prep(FLAGS_num_threads);
+  folly::Latch work(FLAGS_num_threads + 1);
+  folly::Latch done(1);
   for (auto& th : threads) {
     th = std::jthread([&] {
       var.reset(new int(3));

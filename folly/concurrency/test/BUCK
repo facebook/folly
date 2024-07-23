@@ -97,6 +97,7 @@ cpp_unittest(
         "//folly/hash:hash",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
+        "//folly/synchronization:latch",
         "//folly/test:deterministic_schedule",
     ],
 )
