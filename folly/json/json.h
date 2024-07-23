@@ -112,23 +112,11 @@ struct serialization_opts {
 
   // Options for how to print floating point values.  See Conv.h
   // toAppend implementation for floating point for more info
-  double_conversion::DoubleToStringConverter::DtoaMode double_mode{
-      double_conversion::DoubleToStringConverter::SHORTEST};
-
-  /// If set, use the specified DtoaMode and flags for double serialization.
-  /// This takes precedence over `double_mode`.
-  /// This is temporary until double_conversion is removed.
-  std::optional<folly::DtoaMode> dtoa_mode{};
+  folly::DtoaMode dtoa_mode{};
 
   unsigned int double_num_digits{0}; // ignored when mode is SHORTEST*
 
-  double_conversion::DoubleToStringConverter::Flags double_flags{
-      double_conversion::DoubleToStringConverter::NO_FLAGS};
-
-  /// If set, use the specified DtoaMode and flags for double serialization.
-  /// This takes precedence over `double_flags`.
-  /// This is temporary until double_conversion is removed.
-  std::optional<folly::DtoaFlags> dtoa_flags{};
+  folly::DtoaFlags dtoa_flags{};
 
   // Fallback to double when a value that looks like integer is too big to
   // fit in an int64_t. Can result in loss a of precision.

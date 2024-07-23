@@ -669,8 +669,7 @@ enum class DtoaMode {
 /// Dtoa is an acryonym for Double to ASCII.
 /// This enum is used to store bit wise flags, so a variable of this type may be
 /// a bitwise combination of these definitions.
-enum class DtoaFlags : std::underlying_type_t<
-    double_conversion::DoubleToStringConverter::Flags> {
+enum class DtoaFlags {
   NO_FLAGS = 0,
   /// Emits a plus sign for positive exponents. e.g., 1.2e+3
   EMIT_POSITIVE_EXPONENT_SIGN = 1,
@@ -747,13 +746,13 @@ typename std::enable_if<
 toAppend(
     Src value,
     Tgt* result,
-    double_conversion::DoubleToStringConverter::DtoaMode mode,
+    DtoaMode mode,
     unsigned int numDigits,
-    double_conversion::DoubleToStringConverter::Flags flags =
-        double_conversion::DoubleToStringConverter::NO_FLAGS) {
+    DtoaFlags flags = DtoaFlags::NO_FLAGS) {
   using namespace double_conversion;
+  DoubleToStringConverter::Flags dcFlags = detail::convert(flags);
   DoubleToStringConverter conv(
-      flags,
+      dcFlags,
       "Infinity",
       "NaN",
       'E',
@@ -763,9 +762,10 @@ toAppend(
       1); // max trailing padding zeros
   char buffer[256];
   StringBuilder builder(buffer, sizeof(buffer));
+  DoubleToStringConverter::DtoaMode dcMode = detail::convert(mode);
   FOLLY_PUSH_WARNING
   FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
-  switch (mode) {
+  switch (dcMode) {
     case DoubleToStringConverter::SHORTEST:
       conv.ToShortest(value, &builder);
       break;
@@ -777,7 +777,7 @@ toAppend(
       break;
     case DoubleToStringConverter::PRECISION:
     default:
-      assert(mode == DoubleToStringConverter::PRECISION);
+      assert(dcMode == DoubleToStringConverter::PRECISION);
       conv.ToPrecision(value, int(numDigits), &builder);
       break;
   }
@@ -788,36 +788,13 @@ toAppend(
 }
 
 /**
- * Wrapper around the `toAppend` version that uses
- * `double_conversion::DoubleToStringConverter`. This is temporary until
- * `double_conversion` is removed. `numDigits` is only used with
- * `DtoaMode::FIXED` && `DtoaMode::PRECISION`.
- */
-template <class Tgt, class Src>
-typename std::enable_if<
-    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
-toAppend(
-    Src value,
-    Tgt* result,
-    DtoaMode mode,
-    unsigned int numDigits,
-    DtoaFlags flags = DtoaFlags::NO_FLAGS) {
-  double_conversion::DoubleToStringConverter::DtoaMode dcMode =
-      detail::convert(mode);
-  double_conversion::DoubleToStringConverter::Flags dcFlags =
-      detail::convert(flags);
-  toAppend(value, result, dcMode, numDigits, dcFlags);
-}
-
-/**
  * As above, but for floating point
  */
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
 toAppend(Src value, Tgt* result) {
-  toAppend(
-      value, result, double_conversion::DoubleToStringConverter::SHORTEST, 0);
+  toAppend(value, result, DtoaMode::SHORTEST, 0);
 }
 
 /**

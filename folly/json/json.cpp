@@ -116,15 +116,12 @@ struct Printer {
                 contextDescription(context));
           }
         }
-        double_conversion::DoubleToStringConverter::DtoaMode mode =
-            opts_.dtoa_mode.has_value()
-            ? detail::convert(opts_.dtoa_mode.value())
-            : opts_.double_mode;
-        double_conversion::DoubleToStringConverter::Flags flags =
-            opts_.dtoa_flags.has_value()
-            ? detail::convert(opts_.dtoa_flags.value())
-            : opts_.double_flags;
-        toAppend(v.asDouble(), &out_, mode, opts_.double_num_digits, flags);
+        toAppend(
+            v.asDouble(),
+            &out_,
+            opts_.dtoa_mode,
+            opts_.double_num_digits,
+            opts_.dtoa_flags);
         break;
       }
       case dynamic::INT64: {
