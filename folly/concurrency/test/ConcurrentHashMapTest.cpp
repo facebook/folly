@@ -1146,8 +1146,10 @@ TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
   // one node.
 
   // Ensure all entries are mapped to a single segment.
-  auto constant_hash = [](unsigned long) -> uint64_t { return 0; };
-  CHM<unsigned long, unsigned long, decltype(constant_hash)> map;
+  struct constant_hash {
+    uint64_t operator()(unsigned long) const noexcept { return 0; }
+  };
+  CHM<unsigned long, unsigned long, constant_hash> map;
   static constexpr unsigned long key_prev =
       0; // A key that the test key has a link to - to guard against immediate
          // reclamation.
