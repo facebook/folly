@@ -549,9 +549,12 @@ int sendmmsg(
 #if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
+  FOLLY_PUSH_WARNING
+  FOLLY_GCC_DISABLE_WARNING("-Waddress")
   if (reinterpret_cast<void*>(::sendmmsg) != nullptr) {
     return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
   }
+  FOLLY_POP_WARNING
   // implement via sendmsg
   for (unsigned int i = 0; i < vlen; i++) {
     ssize_t ret = sendmsg(socket, &msgvec[i].msg_hdr, flags);
