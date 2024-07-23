@@ -807,11 +807,21 @@ class F14BasicMap {
   F14HashToken prehash(key_type const& key) const {
     return table_.prehash(key);
   }
+  /// @copydoc prehash
+  F14HashToken prehash(key_type const& key, std::size_t hash) const {
+    return table_.prehash(key, hash);
+  }
 
   /// @copydoc prehash
   template <typename K>
   EnableHeterogeneousFind<K, F14HashToken> prehash(K const& key) const {
     return table_.prehash(key);
+  }
+  /// @copydoc prehash
+  template <typename K>
+  EnableHeterogeneousFind<K, F14HashToken> prehash(
+      K const& key, std::size_t hash) const {
+    return table_.prehash(key, hash);
   }
 
   /**

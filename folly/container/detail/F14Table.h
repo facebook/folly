@@ -1600,6 +1600,12 @@ class F14Table : public Policy {
     return F14HashToken{splitHash(this->computeKeyHash(key))};
   }
 
+  template <typename K>
+  F14HashToken prehash(K const& key, std::size_t hash) const {
+    FOLLY_SAFE_DCHECK(hash == this->computeKeyHash(key));
+    return F14HashToken{splitHash(hash)};
+  }
+
   void prefetch(F14HashToken const& token) const {
     FOLLY_SAFE_DCHECK(chunks_ != nullptr, "");
     ChunkPtr firstChunk = chunks_ + moduloByChunkCount(token.hp_.first);

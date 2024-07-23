@@ -405,9 +405,17 @@ class F14BasicSet
   F14HashToken prehash(key_type const& /*key*/) const {
     return {}; // Ignored.
   }
+  F14HashToken prehash(key_type const& /*key*/, std::size_t /*hash*/) const {
+    return {}; // Ignored.
+  }
 
   template <typename K>
   EnableHeterogeneousFind<K, F14HashToken> prehash(K const& /*key*/) const {
+    return {};
+  }
+  template <typename K>
+  EnableHeterogeneousFind<K, F14HashToken> prehash(
+      K const& /*key*/, std::size_t /*hash*/) const {
     return {};
   }
 

@@ -891,6 +891,21 @@ void runPrehash() {
   EXPECT_TRUE(h.find(t1, s("def")) == h.end());
   EXPECT_FALSE(h.find(t2, s("abc")) == h.end());
   h.prefetch(t1);
+
+  {
+    auto const key3 = s("def");
+    auto hv3 = h.hash_function()(key3);
+    auto t3 = h.prehash(key3, hv3);
+    EXPECT_EQ(t3, h.prehash(key3));
+    EXPECT_TRUE(h.find(t3, key3) == h.end());
+  }
+  {
+    auto const key3 = s("abc");
+    auto hv3 = h.hash_function()(key3);
+    auto t3 = h.prehash(key3, hv3);
+    EXPECT_EQ(t3, h.prehash(key3));
+    EXPECT_FALSE(h.find(t3, key3) == h.end());
+  }
 }
 TEST(F14ValueMap, prehash) {
   runPrehash<F14ValueMap<std::string, std::string>>();
@@ -1666,6 +1681,15 @@ TEST(F14ValueMap, heterogeneousLookup) {
 
     const auto buddyHashToken = ref.prehash(buddy);
     const auto helloHashToken = ref.prehash(hello);
+
+    EXPECT_TRUE(
+        buddyHashToken == ref.prehash(buddy, ref.hash_function()(buddy)));
+    EXPECT_TRUE(
+        helloHashToken == ref.prehash(hello, ref.hash_function()(hello)));
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+    EXPECT_FALSE(
+        buddyHashToken == ref.prehash(hello, ref.hash_function()(hello)));
+#endif
 
     // prehash + find
     EXPECT_TRUE(ref.end() == ref.find(buddyHashToken, buddy));

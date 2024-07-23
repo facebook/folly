@@ -571,9 +571,17 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   F14HashToken prehash(key_type const&) const {
     return {}; // Ignored.
   }
+  F14HashToken prehash(key_type const&, std::size_t) const {
+    return {}; // Ignored.
+  }
 
   template <typename K2>
   EnableHeterogeneousFind<K2, F14HashToken> prehash(K2 const&) const {
+    return {}; // Ignored.
+  }
+  template <typename K2>
+  EnableHeterogeneousFind<K2, F14HashToken> prehash(
+      K2 const&, std::size_t) const {
     return {}; // Ignored.
   }
 

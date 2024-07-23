@@ -1221,6 +1221,15 @@ TEST(F14ValueSet, heterogeneous) {
     const auto buddyHashToken = ref.prehash(buddy);
     const auto helloHashToken = ref.prehash(hello);
 
+    EXPECT_TRUE(
+        buddyHashToken == ref.prehash(buddy, ref.hash_function()(buddy)));
+    EXPECT_TRUE(
+        helloHashToken == ref.prehash(hello, ref.hash_function()(hello)));
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+    EXPECT_FALSE(
+        buddyHashToken == ref.prehash(hello, ref.hash_function()(hello)));
+#endif
+
     // prehash + find
     EXPECT_TRUE(ref.end() == ref.find(buddyHashToken, buddy));
     EXPECT_EQ(hello, *ref.find(helloHashToken, hello));
