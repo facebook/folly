@@ -2112,6 +2112,23 @@ struct WithinInterruptHandler {
   void operator()(exception_wrapper const& ew) const;
 };
 
+struct WithinContextBase {
+  using PromiseSetExceptionSig = void(WithinContextBase&, exception_wrapper&&);
+  PromiseSetExceptionSig* doPromiseSetException{};
+  exception_wrapper exception;
+  SemiFuture<Unit> thisFuture{SemiFuture<Unit>::makeEmpty()};
+  SemiFuture<Unit> afterFuture{SemiFuture<Unit>::makeEmpty()};
+  std::atomic<bool> token{false};
+  explicit WithinContextBase(
+      PromiseSetExceptionSig* fun, exception_wrapper&& e) noexcept
+      : doPromiseSetException{fun}, exception{std::move(e)} {}
+};
+
+struct WithinAfterFutureCallback {
+  std::weak_ptr<WithinContextBase> ctx;
+  void operator()(Try<Unit>&& t);
+};
+
 } // namespace detail
 } // namespace futures
 
@@ -2123,13 +2140,14 @@ SemiFuture<T> SemiFuture<T>::within(
     return std::move(*this);
   }
 
-  struct Context {
-    explicit Context(E ex) : exception(std::move(ex)) {}
-    E exception;
-    SemiFuture<Unit> thisFuture{SemiFuture<Unit>::makeEmpty()};
-    SemiFuture<Unit> afterFuture{SemiFuture<Unit>::makeEmpty()};
+  struct Context : futures::detail::WithinContextBase {
+    using Base = futures::detail::WithinContextBase;
+    static void goPromiseSetException(Base& base, exception_wrapper&& e) {
+      static_cast<Context&>(base).promise.setException(std::move(e));
+    }
     Promise<T> promise;
-    std::atomic<bool> token{false};
+    explicit Context(E ex)
+        : Base(goPromiseSetException, exception_wrapper(std::move(ex))) {}
   };
 
   std::shared_ptr<Timekeeper> tks;
@@ -2154,28 +2172,7 @@ SemiFuture<T> SemiFuture<T>::within(
   // Have time keeper use a weak ptr to hold ctx,
   // so that ctx can be deallocated as soon as the future job finished.
   ctx->afterFuture =
-      tk->after(dur).defer([weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
-        if (t.hasException() &&
-            t.exception().is_compatible_with<FutureCancellation>()) {
-          // This got cancelled by thisFuture so we can just return.
-          return;
-        }
-
-        auto lockedCtx = weakCtx.lock();
-        if (!lockedCtx) {
-          // ctx already released. "this" completed first, cancel "after"
-          return;
-        }
-        // "after" completed first, cancel "this"
-        lockedCtx->thisFuture.raise(FutureTimeout());
-        if (!lockedCtx->token.exchange(true, std::memory_order_relaxed)) {
-          if (t.hasException()) {
-            lockedCtx->promise.setException(std::move(t.exception()));
-          } else {
-            lockedCtx->promise.setException(std::move(lockedCtx->exception));
-          }
-        }
-      });
+      tk->after(dur).defer(futures::detail::WithinAfterFutureCallback{ctx});
 
   // Properly propagate interrupt values through futures chained after within()
   ctx->promise.setInterruptHandler(futures::detail::WithinInterruptHandler{

@@ -38,6 +38,26 @@ void WithinInterruptHandler::operator()(exception_wrapper const& ew) const {
   }
 }
 
+void WithinAfterFutureCallback::operator()(Try<Unit>&& t) {
+  if (t.hasException() &&
+      t.exception().is_compatible_with<FutureCancellation>()) {
+    // This got cancelled by thisFuture so we can just return.
+    return;
+  }
+
+  auto lockedCtx = ctx.lock();
+  if (!lockedCtx) {
+    // ctx already released. "this" completed first, cancel "after"
+    return;
+  }
+  // "after" completed first, cancel "this"
+  lockedCtx->thisFuture.raise(FutureTimeout());
+  if (!lockedCtx->token.exchange(true, std::memory_order_relaxed)) {
+    auto& exn = t.hasException() ? t.exception() : lockedCtx->exception;
+    lockedCtx->doPromiseSetException(*lockedCtx, std::move(exn));
+  }
+}
+
 } // namespace detail
 
 SemiFuture<Unit> sleep(HighResDuration dur, Timekeeper* tk) {
