@@ -854,7 +854,7 @@ SemiFuture<T> SemiFuture<T>::deferEnsure(F&& func) && {
 
 template <class T>
 SemiFuture<Unit> SemiFuture<T>::unit() && {
-  return std::move(*this).deferValue([](T&&) {});
+  return std::move(*this).deferValue(variadic_noop);
 }
 
 template <typename T>
@@ -1273,7 +1273,7 @@ Future<T>::thenErrorImpl(
 
 template <class T>
 Future<Unit> Future<T>::then() && {
-  return std::move(*this).thenValue([](T&&) {});
+  return std::move(*this).thenValue(variadic_noop);
 }
 
 template <class T>
@@ -2185,8 +2185,8 @@ SemiFuture<T> SemiFuture<T>::within(
   nestedExecutors.emplace_back(ctx->thisFuture.stealDeferredExecutor());
   nestedExecutors.emplace_back(ctx->afterFuture.stealDeferredExecutor());
   // Set trivial callbacks to treat the futures as consumed
-  ctx->thisFuture.setCallback_([](Executor::KeepAlive<>&&, Try<Unit>&&) {});
-  ctx->afterFuture.setCallback_([](Executor::KeepAlive<>&&, Try<Unit>&&) {});
+  ctx->thisFuture.setCallback_(variadic_noop);
+  ctx->afterFuture.setCallback_(variadic_noop);
   futures::detail::getDeferredExecutor(fut)->setNestedExecutors(
       std::move(nestedExecutors));
   return fut;

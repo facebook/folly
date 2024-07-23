@@ -631,7 +631,7 @@ class F14BasicMap {
    * @methodset Modifiers
    */
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+    return eraseInto(pos, variadic_noop);
   }
 
   /**
@@ -641,23 +641,21 @@ class F14BasicMap {
    * that accepts const_iterator
    */
   FOLLY_ALWAYS_INLINE iterator erase(iterator pos) {
-    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+    return eraseInto(pos, variadic_noop);
   }
 
   /// Remove a range of elements.
   iterator erase(const_iterator first, const_iterator last) {
-    return eraseInto(first, last, [](key_type&&, mapped_type&&) {});
+    return eraseInto(first, last, variadic_noop);
   }
 
   /// Remove a specific key.
-  size_type erase(key_type const& key) {
-    return eraseInto(key, [](key_type&&, mapped_type&&) {});
-  }
+  size_type erase(key_type const& key) { return eraseInto(key, variadic_noop); }
 
   /// Remove a key, using a heterogeneous representation.
   template <typename K>
   EnableHeterogeneousErase<K, size_type> erase(K const& key) {
-    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+    return eraseInto(key, variadic_noop);
   }
 
  protected:
@@ -1537,29 +1535,29 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
    * @methodset Modifiers
    */
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+    return eraseInto(pos, variadic_noop);
   }
 
   // This form avoids ambiguity when key_type has a templated constructor
   // that accepts const_iterator
   FOLLY_ALWAYS_INLINE iterator erase(iterator pos) {
-    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+    return eraseInto(pos, variadic_noop);
   }
 
   /// Remove a range of elements.
   iterator erase(const_iterator first, const_iterator last) {
-    return eraseInto(first, last, [](key_type&&, mapped_type&&) {});
+    return eraseInto(first, last, variadic_noop);
   }
 
   /// Remove a specific key.
   std::size_t erase(key_type const& key) {
-    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+    return eraseInto(key, variadic_noop);
   }
 
   /// Remove a key, using a heterogeneous representation.
   template <typename K>
   EnableHeterogeneousVectorErase<K, std::size_t> erase(K const& key) {
-    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+    return eraseInto(key, variadic_noop);
   }
 
   /**
