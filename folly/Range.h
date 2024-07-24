@@ -104,8 +104,7 @@ inline size_t qfind(
  */
 template <class Iter>
 size_t qfind(
-    const Range<Iter>& haystack,
-    const typename Range<Iter>::value_type& needle);
+    const Range<Iter>& haystack, typename Range<Iter>::const_reference needle);
 
 /**
  * Finds the last occurrence of needle in haystack. The result is the
@@ -114,8 +113,7 @@ size_t qfind(
  */
 template <class Iter>
 size_t rfind(
-    const Range<Iter>& haystack,
-    const typename Range<Iter>::value_type& needle);
+    const Range<Iter>& haystack, typename Range<Iter>::const_reference needle);
 
 /**
  * Finds the first occurrence of any element of needle in
@@ -247,10 +245,10 @@ class Range {
   using size_type = std::size_t;
   using iterator = Iter;
   using const_iterator = Iter;
-  using value_type = typename std::remove_reference<
-      typename std::iterator_traits<Iter>::reference>::type;
-  using difference_type = typename std::iterator_traits<Iter>::difference_type;
   using reference = typename std::iterator_traits<Iter>::reference;
+  using const_reference = std::add_const_t<reference>;
+  using value_type = std::remove_cv_t<std::remove_reference_t<reference>>;
+  using difference_type = typename std::iterator_traits<Iter>::difference_type;
 
   /*
    * For MutableStringPiece and MutableByteRange we define StringPiece
@@ -592,19 +590,19 @@ class Range {
   constexpr Iter end() const { return e_; }
   constexpr Iter cbegin() const { return b_; }
   constexpr Iter cend() const { return e_; }
-  value_type& front() {
+  reference front() {
     assert(b_ < e_);
     return *b_;
   }
-  value_type& back() {
+  reference back() {
     assert(b_ < e_);
     return *std::prev(e_);
   }
-  const value_type& front() const {
+  const_reference front() const {
     assert(b_ < e_);
     return *b_;
   }
-  const value_type& back() const {
+  const_reference back() const {
     assert(b_ < e_);
     return *std::prev(e_);
   }
@@ -745,24 +743,24 @@ class Range {
     return r;
   }
 
-  value_type& operator[](size_t i) {
+  reference operator[](size_t i) {
     assert(i < size());
     return b_[i];
   }
 
-  const value_type& operator[](size_t i) const {
+  const_reference operator[](size_t i) const {
     assert(i < size());
     return b_[i];
   }
 
-  value_type& at(size_t i) {
+  reference at(size_t i) {
     if (i >= size()) {
       throw_exception<std::out_of_range>("index out of range");
     }
     return b_[i];
   }
 
-  const value_type& at(size_t i) const {
+  const_reference at(size_t i) const {
     if (i >= size()) {
       throw_exception<std::out_of_range>("index out of range");
     }
@@ -948,7 +946,7 @@ class Range {
     return find(other) != std::string::npos;
   }
 
-  bool contains(const value_type& other) const {
+  bool contains(const_reference other) const {
     return find(other) != std::string::npos;
   }
 
@@ -1560,16 +1558,14 @@ struct AsciiCaseInsensitive {
 
 template <class Iter>
 size_t qfind(
-    const Range<Iter>& haystack,
-    const typename Range<Iter>::value_type& needle) {
+    const Range<Iter>& haystack, typename Range<Iter>::const_reference needle) {
   auto pos = std::find(haystack.begin(), haystack.end(), needle);
   return pos == haystack.end() ? std::string::npos : pos - haystack.data();
 }
 
 template <class Iter>
 size_t rfind(
-    const Range<Iter>& haystack,
-    const typename Range<Iter>::value_type& needle) {
+    const Range<Iter>& haystack, typename Range<Iter>::const_reference needle) {
   for (auto i = haystack.size(); i-- > 0;) {
     if (haystack[i] == needle) {
       return i;
