@@ -18,7 +18,6 @@
 #include <dlfcn.h>
 #endif
 
-#include <latch>
 #include <thread>
 #include <unordered_set>
 #include <vector>
@@ -31,6 +30,7 @@
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Latch.h>
 #include <folly/testing/TestUtil.h>
 
 using namespace folly;
@@ -60,7 +60,7 @@ TEST(SingletonThreadLocalTest, TryGet) {
 
 TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   static constexpr std::size_t targetThreadCount{64};
-  std::latch allSingletonsCreated(targetThreadCount);
+  folly::Latch allSingletonsCreated(targetThreadCount);
   Synchronized<std::unordered_set<Foo*>> fooAddresses{};
   std::vector<std::thread> threads{};
   auto threadFunction = [&fooAddresses, &allSingletonsCreated] {
