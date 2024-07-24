@@ -18,7 +18,8 @@
 
 #include <folly/IntrusiveList.h>
 #include <folly/Synchronized.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Timeout.h>
 #include <folly/fibers/Baton.h>
 #include <folly/futures/Future.h>
 
@@ -99,6 +100,23 @@ class Semaphore {
    * of whether cancellation was requested.
    */
   coro::Task<void> co_wait();
+
+  /*
+   * Wait for capacity in the semaphore with a timeout.
+   *
+   * Same as co_wait() but with a timeout.
+   *
+   * The timeout just requests cancellation after a timer expires. It has the
+   * same effect as requesting cancellation.
+   *
+   * If cancellation or timeout happen after the semaphore was already in a
+   * signalled state, no exception will be thrown, and the method will just
+   * return as if no cancellation or timeout happened.
+   */
+  template <typename Duration>
+  coro::Task<void> co_try_wait_for(Duration timeout) {
+    co_await folly::coro::timeoutNoDiscard(co_wait(), timeout);
+  }
 
 #endif
 

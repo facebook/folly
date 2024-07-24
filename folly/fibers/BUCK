@@ -263,7 +263,8 @@ cpp_library(
         ":core",
         "//folly:intrusive_list",
         "//folly:synchronized",
-        "//folly/experimental/coro:task",
+        "//folly/coro:task",
+        "//folly/coro:timeout",
         "//folly/futures:core",
     ],
 )
