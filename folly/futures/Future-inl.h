@@ -2140,14 +2140,16 @@ SemiFuture<T> SemiFuture<T>::within(
     return std::move(*this);
   }
 
-  struct Context : futures::detail::WithinContextBase {
-    using Base = futures::detail::WithinContextBase;
-    static void goPromiseSetException(Base& base, exception_wrapper&& e) {
+  using ContextBase = futures::detail::WithinContextBase;
+  struct Context : ContextBase {
+    static void goPromiseSetException(
+        ContextBase& base, exception_wrapper&& e) {
       static_cast<Context&>(base).promise.setException(std::move(e));
     }
     Promise<T> promise;
     explicit Context(E ex)
-        : Base(goPromiseSetException, exception_wrapper(std::move(ex))) {}
+        : ContextBase(goPromiseSetException, exception_wrapper(std::move(ex))) {
+    }
   };
 
   std::shared_ptr<Timekeeper> tks;
