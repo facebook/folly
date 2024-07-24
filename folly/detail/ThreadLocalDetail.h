@@ -173,13 +173,31 @@ struct ThreadEntry {
 
   struct LocalLifetime;
 
-  struct LocalSet;
-  static LocalSet* newLocalSet();
+  struct LocalSet {
+    using Map = std::unordered_map<LocalLifetime const*, LocalCache*>;
+    Synchronized<Map> tracking;
+  };
 
   struct LocalLifetime {
     LocalSet& caches;
-    explicit LocalLifetime(LocalSet& set, LocalCache& cache) noexcept;
-    ~LocalLifetime();
+    explicit LocalLifetime(LocalSet& set, LocalCache& cache) noexcept
+        : caches{set} {
+      DCHECK(!cache.poison);
+      auto tracking = caches.tracking.wlock();
+      auto inserted = tracking->emplace(this, &cache).second;
+      DCHECK(inserted);
+    }
+    ~LocalLifetime() {
+      auto tracking = caches.tracking.wlock();
+      auto it = tracking->find(this);
+      DCHECK(it != tracking->end());
+      DCHECK(it->second);
+      auto& cache = *it->second;
+      tracking->erase(it);
+      DCHECK(!cache.poison);
+      cache = {};
+      cache.poison = true;
+    }
   };
 
   ElementWrapper* elements{nullptr};
@@ -757,7 +775,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
       int ret = pthread_setspecific(key, threadEntry);
       checkPosixError(ret, "pthread_setspecific failed");
 
-      threadEntry->caches = ThreadEntry::newLocalSet();
+      threadEntry->caches = new ThreadEntry::LocalSet();
     }
     return threadEntry;
   }

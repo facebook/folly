@@ -31,36 +31,6 @@ constexpr auto kBigGrowthFactor = 1.7;
 namespace folly {
 namespace threadlocal_detail {
 
-struct ThreadEntry::LocalSet {
-  using Map = std::unordered_map<LocalLifetime const*, LocalCache*>;
-  Synchronized<Map> tracking;
-};
-
-FOLLY_NOINLINE ThreadEntry::LocalSet* ThreadEntry::newLocalSet() {
-  return new ThreadEntry::LocalSet();
-}
-
-FOLLY_NOINLINE ThreadEntry::LocalLifetime::LocalLifetime(
-    LocalSet& set, LocalCache& cache) noexcept
-    : caches{set} {
-  DCHECK(!cache.poison);
-  auto tracking = caches.tracking.wlock();
-  auto inserted = tracking->emplace(this, &cache).second;
-  DCHECK(inserted);
-}
-
-FOLLY_NOINLINE ThreadEntry::LocalLifetime::~LocalLifetime() {
-  auto tracking = caches.tracking.wlock();
-  auto it = tracking->find(this);
-  DCHECK(it != tracking->end());
-  DCHECK(it->second);
-  auto& cache = *it->second;
-  tracking->erase(it);
-  DCHECK(!cache.poison);
-  cache = {};
-  cache.poison = true;
-}
-
 bool ThreadEntrySet::basicSanity() const {
   return //
       threadEntries.size() == entryToVectorSlot.size() &&
