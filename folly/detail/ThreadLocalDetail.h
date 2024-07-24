@@ -162,44 +162,6 @@ struct ThreadEntryList;
  * (under the lock).
  */
 struct ThreadEntry {
-  struct LocalCache {
-    size_t capacity;
-    ElementWrapper* elements;
-    ThreadEntry* threadEntry;
-    bool poison;
-  };
-  static_assert(std::is_standard_layout_v<LocalCache>);
-  static_assert(std::is_trivial_v<LocalCache>);
-
-  struct LocalLifetime;
-
-  struct LocalSet {
-    using Map = std::unordered_map<LocalLifetime const*, LocalCache*>;
-    Synchronized<Map> tracking;
-  };
-
-  struct LocalLifetime {
-    LocalSet& caches;
-    explicit LocalLifetime(LocalSet& set, LocalCache& cache) noexcept
-        : caches{set} {
-      DCHECK(!cache.poison);
-      auto tracking = caches.tracking.wlock();
-      auto inserted = tracking->emplace(this, &cache).second;
-      DCHECK(inserted);
-    }
-    ~LocalLifetime() {
-      auto tracking = caches.tracking.wlock();
-      auto it = tracking->find(this);
-      DCHECK(it != tracking->end());
-      DCHECK(it->second);
-      auto& cache = *it->second;
-      tracking->erase(it);
-      DCHECK(!cache.poison);
-      cache = {};
-      cache.poison = true;
-    }
-  };
-
   ElementWrapper* elements{nullptr};
   std::atomic<size_t> elementsCapacity{0};
   ThreadEntryList* list{nullptr};
@@ -208,7 +170,6 @@ struct ThreadEntry {
   bool removed_{false};
   uint64_t tid_os{};
   aligned_storage_for_t<std::thread::id> tid_data{};
-  LocalSet* caches{nullptr};
 
   size_t getElementsCapacity() const noexcept {
     return elementsCapacity.load(std::memory_order_relaxed);
@@ -643,22 +604,15 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     return detail::createGlobal<StaticMeta<Tag, AccessMode>, void>();
   }
 
-  //  All functions which participate in the local-cache/local-lifetime dance
-  //  must be marked as hidden and as not-exported from the DSO or DLL. This
-  //  covers all functions which may separately access the thread-locals or
-  //  which are part of separately accessing the thread-locals. This does not
-  //  cover a function which calls another function which separately accesses
-  //  the thread-locals, though.
+  struct LocalCache {
+    ThreadEntry* threadEntry;
+    size_t capacity;
+  };
+  static_assert(std::is_standard_layout_v<LocalCache>);
+  static_assert(std::is_trivial_v<LocalCache>);
 
-  using LocalCache = ThreadEntry::LocalCache;
-  using LocalSet = ThreadEntry::LocalSet;
-  using LocalLifetime = ThreadEntry::LocalLifetime;
-
-  //  Hidden: participates in the thread-local local-cache/local-lifetime dance.
-  FOLLY_ERASE static LocalCache& getLocalCache() {
-    constexpr auto align = // std::bit_ceil is c++20; nextPowTwo is !constexpr
-        size_t(1) << folly::constexpr_log2_ceil(sizeof(LocalCache));
-    /* library-local */ alignas(align) static thread_local LocalCache instance;
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static LocalCache& getLocalCache() {
+    static thread_local LocalCache instance;
     return instance;
   }
 
@@ -667,33 +621,11 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     // cached fast path, leaving only one branch here and one indirection
     // below.
 
-    ElementWrapper* vec = getThreadVector(ent);
+    ThreadEntry* te = getThreadEntry(ent);
     uint32_t id = ent->getOrInvalid();
     // Only valid index into the the elements array
     DCHECK_NE(id, kEntryIDInvalid);
-    return vec[id];
-  }
-
-  //  Hidden: participates in the thread-local local-cache/local-lifetime dance.
-  FOLLY_ERASE static ElementWrapper* getThreadVector(EntryID* ent) {
-    if (!kUseThreadLocal) {
-      return getThreadEntrySlowReserve(ent)->elements;
-    }
-
-    // Eliminate as many branches and as much extra code as possible in the
-    // cached fast path, leaving only one branch here and one indirection below.
-    uint32_t id = ent->getOrInvalid();
-    auto& cache = getLocalCache();
-    if (FOLLY_UNLIKELY(cache.capacity <= id)) {
-      return getThreadVectorSlowReserveAndCache(ent, cache);
-    }
-    return cache.elements;
-  }
-
-  //  Hidden: participates in the thread-local local-cache/local-lifetime dance.
-  FOLLY_ERASE_NOINLINE static ElementWrapper*
-  getThreadVectorSlowReserveAndCache(EntryID* ent, LocalCache& cache) {
-    return getSlowReserveAndCache(ent, cache)->elements;
+    return te->elements[id];
   }
 
   /*
@@ -704,8 +636,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
    * StaticMetaBase::allId2ThreadEntrySets_ updated with ThreadEntry* whenever a
    * ThreadLocal is set/released.
    */
-  //  Hidden: participates in the thread-local local-cache/local-lifetime dance.
-  FOLLY_ERASE static ThreadEntry* getThreadEntry(EntryID* ent) {
+  FOLLY_ALWAYS_INLINE static ThreadEntry* getThreadEntry(EntryID* ent) {
     if (!kUseThreadLocal) {
       return getThreadEntrySlowReserve(ent);
     }
@@ -715,26 +646,16 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     uint32_t id = ent->getOrInvalid();
     auto& cache = getLocalCache();
     if (FOLLY_UNLIKELY(cache.capacity <= id)) {
-      return getSlowReserveAndCache(ent, cache);
+      getSlowReserveAndCache(ent, cache);
     }
     return cache.threadEntry;
   }
 
-  //  Hidden: participates in the thread-local local-cache/local-lifetime dance.
-  FOLLY_ERASE_NOINLINE static ThreadEntry* getSlowReserveAndCache(
+  FOLLY_NOINLINE static void getSlowReserveAndCache(
       EntryID* ent, LocalCache& cache) {
     auto threadEntry = getThreadEntrySlowReserve(ent);
-    if (!cache.poison && !dying()) {
-      FOLLY_PUSH_WARNING
-      FOLLY_CLANG_DISABLE_WARNING("-Wexit-time-destructors")
-      /* library-local */ static thread_local LocalLifetime lifetime{
-          *threadEntry->caches, cache};
-      FOLLY_POP_WARNING
-      cache.capacity = threadEntry->getElementsCapacity();
-      cache.elements = threadEntry->elements;
-      cache.threadEntry = threadEntry;
-    }
-    return threadEntry;
+    cache.capacity = threadEntry->getElementsCapacity();
+    cache.threadEntry = threadEntry;
   }
 
   FOLLY_NOINLINE static ThreadEntry* getThreadEntrySlowReserve(EntryID* ent) {
@@ -774,8 +695,6 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
       threadEntry->meta = &meta;
       int ret = pthread_setspecific(key, threadEntry);
       checkPosixError(ret, "pthread_setspecific failed");
-
-      threadEntry->caches = new ThreadEntry::LocalSet();
     }
     return threadEntry;
   }
