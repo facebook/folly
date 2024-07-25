@@ -96,11 +96,11 @@ cpp_library(
         "//folly:format",
         "//folly:portability",
         "//folly:range",
-        "//folly/experimental:bits",
         "//folly/experimental:instructions",
         "//folly/experimental:select64",
         "//folly/io:iobuf",
         "//folly/lang:bits",
+        "//folly/lang:bits_class",
         "//folly/lang:safe_assert",
     ],
     exported_external_deps = [

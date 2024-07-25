@@ -15,10 +15,10 @@ cpp_library(
         "//folly:portability",
         "//folly:range",
         "//folly/compression/elias_fano:coding_detail",
-        "//folly/experimental:bits",
         "//folly/experimental:instructions",
         "//folly/experimental:select64",
         "//folly/lang:bits",
+        "//folly/lang:bits_class",
     ],
     exported_external_deps = [
         "glog",
