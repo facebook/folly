@@ -43,11 +43,11 @@
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/executors/DrivableExecutor.h>
+#include <folly/executors/ExecutionObserver.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/QueueObserver.h>
 #include <folly/executors/ScheduledExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/ExecutionObserver.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/Request.h>
