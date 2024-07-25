@@ -75,9 +75,7 @@ class SSLContext {
     SSLv3,
     TLSv1, // support TLS 1.0+
     TLSv1_2, // support for only TLS 1.2+
-#if FOLLY_OPENSSL_HAS_TLS13
     TLSv1_3,
-#endif
   };
 
   /**
@@ -646,7 +644,6 @@ class SSLContext {
   void setSessionLifecycleCallbacks(
       std::unique_ptr<SessionLifecycleCallbacks> cb);
 
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
   /**
    * Set the TLS 1.3 ciphersuites to be used in the SSL handshake, in
    * order of preference.
@@ -660,7 +657,6 @@ class SSLContext {
    * mode gives up forward secrecy on the resumed session.
    */
   void setAllowNoDheKex(bool flag);
-#endif
 
  protected:
   SSL_CTX* ctx_;

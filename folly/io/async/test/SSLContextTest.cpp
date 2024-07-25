@@ -283,7 +283,6 @@ TEST_F(SSLContextTest, TestInvalidSigAlgThrows) {
   }
 }
 
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
 TEST_F(SSLContextTest, TestSetCiphersuites) {
   std::vector<std::string> ciphersuitesList{
       "TLS_AES_128_CCM_SHA256",
@@ -301,15 +300,12 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
       ctx.setCiphersuitesOrThrow("ECDHE-ECDSA-AES256-GCM-SHA384"),
       std::runtime_error);
 }
-#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
 
-#if FOLLY_OPENSSL_HAS_TLS13
 TEST_F(SSLContextTest, TestTLS13MinVersion) {
   SSLContext sslContext{SSLContext::SSLVersion::TLSv1_3};
   int minProtoVersion = SSL_CTX_get_min_proto_version(sslContext.getSSLCtx());
   EXPECT_EQ(minProtoVersion, TLS1_3_VERSION);
 }
-#endif
 
 TEST_F(SSLContextTest, AdvertisedNextProtocols) {
   EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "");
