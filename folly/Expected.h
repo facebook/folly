@@ -65,7 +65,7 @@ struct ExpectedHelper;
  * Expected objects in the error state.
  */
 template <class Error>
-class Unexpected final {
+class FOLLY_NODISCARD Unexpected final {
   template <class E>
   friend class Unexpected;
   template <class V, class E>
@@ -139,8 +139,8 @@ inline bool operator!=(
  * }
  */
 template <class Error>
-FOLLY_NODISCARD constexpr Unexpected<typename std::decay<Error>::type>
-makeUnexpected(Error&& err) {
+constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(
+    Error&& err) {
   return Unexpected<typename std::decay<Error>::type>{
       static_cast<Error&&>(err)};
 }
