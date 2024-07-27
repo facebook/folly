@@ -1,0 +1,15 @@
+[manifest]
+name = xxhash
+
+[homebrew]
+xxhash
+
+[debs]
+libxxhash-dev
+
+[rpms]
+xxhash-devel
+
+[build]
+builder = cmake
+subdir = xxhash/build/cmake
