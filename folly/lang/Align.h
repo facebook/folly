@@ -34,7 +34,8 @@ namespace folly {
 //  implicitly by-reference to stack copies.
 //
 //  Approximate. Accuracy is not promised.
-constexpr std::size_t register_pass_max_size = kMscVer ? 8u : 16u;
+constexpr std::size_t register_pass_max_size =
+    (kMscVer ? 1u : 2u) * sizeof(void*);
 
 //  is_register_pass_v
 //
