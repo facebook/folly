@@ -81,7 +81,7 @@ class SparseByteSet {
     bool r = contains(i);
     if (r) {
       if (dense_[size_ - 1] != i) {
-        int last_element = dense_[size_ - 1];
+        uint8_t last_element = dense_[size_ - 1];
         dense_[sparse_[i]] = last_element;
         sparse_[last_element] = sparse_[i];
       }
