@@ -106,6 +106,13 @@ class SparseByteSet {
    */
   inline void clear() { size_ = 0; }
 
+  /***
+   *  size()
+   *
+   *  O(1), non-amortized.
+   */
+  inline uint16_t size() { return size_; }
+
  private:
   uint16_t size_; // can't use uint8_t because it would overflow if all
                   // possible values were inserted.
