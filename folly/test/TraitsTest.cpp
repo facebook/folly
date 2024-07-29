@@ -556,20 +556,6 @@ TEST(Traits, isInstantiationOf) {
   EXPECT_FALSE((detail::is_instantiation_of<A, B>::value));
 }
 
-TEST(Traits, isSimilarInstantiationV) {
-  EXPECT_TRUE((detail::is_similar_instantiation_v<A<int>, A<long>>));
-  EXPECT_FALSE((detail::is_similar_instantiation_v<A<int>, tag_t<int>>));
-  EXPECT_FALSE((detail::is_similar_instantiation_v<A<int>, B>));
-  EXPECT_FALSE((detail::is_similar_instantiation_v<B, B>));
-}
-
-TEST(Traits, isSimilarInstantiation) {
-  EXPECT_TRUE((detail::is_similar_instantiation<A<int>, A<long>>::value));
-  EXPECT_FALSE((detail::is_similar_instantiation<A<int>, tag_t<int>>::value));
-  EXPECT_FALSE((detail::is_similar_instantiation<A<int>, B>::value));
-  EXPECT_FALSE((detail::is_similar_instantiation<B, B>::value));
-}
-
 TEST(Traits, member_pointer_traits_data) {
   struct o {};
   using d = float;

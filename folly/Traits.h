@@ -176,14 +176,6 @@ template <template <typename...> class C, typename... T>
 struct is_instantiation_of
     : std::bool_constant<is_instantiation_of_v<C, T...>> {};
 
-template <typename, typename>
-inline constexpr bool is_similar_instantiation_v = false;
-template <template <typename...> class C, typename... A, typename... B>
-inline constexpr bool is_similar_instantiation_v<C<A...>, C<B...>> = true;
-template <typename A, typename B>
-struct is_similar_instantiation
-    : std::bool_constant<is_similar_instantiation_v<A, B>> {};
-
 } // namespace detail
 
 /// member_pointer_traits
