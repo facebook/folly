@@ -36,7 +36,7 @@ namespace folly {
 //  Approximate. Accuracy is not promised.
 constexpr std::size_t register_pass_max_size = kMscVer ? 8u : 16u;
 
-//  register_pass_v
+//  is_register_pass_v
 //
 //  Whether a value may be passed in a register.
 //
