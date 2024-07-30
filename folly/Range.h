@@ -240,17 +240,27 @@ using range_traits_t_ = typename range_traits_c_<Iter>::template apply<Value>;
 template <class Iter>
 class Range {
  private:
+  using iter_traits = std::iterator_traits<Iter>;
+
   template <typename Alloc>
   using string = std::basic_string<char, std::char_traits<char>, Alloc>;
 
  public:
+  using value_type = typename iter_traits::value_type;
   using size_type = std::size_t;
+  using difference_type = typename iter_traits::difference_type;
   using iterator = Iter;
   using const_iterator = Iter;
-  using value_type = typename std::remove_reference<
-      typename std::iterator_traits<Iter>::reference>::type;
-  using difference_type = typename std::iterator_traits<Iter>::difference_type;
-  using reference = typename std::iterator_traits<Iter>::reference;
+  using reference = typename iter_traits::reference;
+  using const_reference = conditional_t<
+      std::is_lvalue_reference_v<reference>,
+      std::add_lvalue_reference_t<
+          std::add_const_t<std::remove_reference_t<reference>>>,
+      conditional_t<
+          std::is_rvalue_reference_v<reference>,
+          std::add_rvalue_reference_t<
+              std::add_const_t<std::remove_reference_t<reference>>>,
+          reference>>;
 
   /*
    * For MutableStringPiece and MutableByteRange we define StringPiece
@@ -264,9 +274,7 @@ class Range {
       Range<const value_type*>,
       Range<Iter>>::type;
 
-  using traits_type = detail::range_traits_t_< //
-      Iter,
-      typename std::remove_const<value_type>::type>;
+  using traits_type = detail::range_traits_t_<Iter, value_type>;
 
   static const size_type npos;
 
@@ -592,19 +600,19 @@ class Range {
   constexpr Iter end() const { return e_; }
   constexpr Iter cbegin() const { return b_; }
   constexpr Iter cend() const { return e_; }
-  value_type& front() {
+  reference front() {
     assert(b_ < e_);
     return *b_;
   }
-  value_type& back() {
+  reference back() {
     assert(b_ < e_);
     return *std::prev(e_);
   }
-  const value_type& front() const {
+  const_reference front() const {
     assert(b_ < e_);
     return *b_;
   }
-  const value_type& back() const {
+  const_reference back() const {
     assert(b_ < e_);
     return *std::prev(e_);
   }
@@ -628,10 +636,10 @@ class Range {
   // std::string_view (when it is available).
   struct NotStringView {};
   template <typename ValueType>
-  struct StringViewType
+  struct StringViewType //
       : std::conditional<
-            std::is_trivial<std::remove_const_t<ValueType>>::value,
-            std::basic_string_view<std::remove_const_t<ValueType>>,
+            std::is_trivial<ValueType>::value,
+            std::basic_string_view<ValueType>,
             NotStringView> {};
 
   template <typename Target>
@@ -745,24 +753,24 @@ class Range {
     return r;
   }
 
-  value_type& operator[](size_t i) {
+  reference operator[](size_t i) {
     assert(i < size());
     return b_[i];
   }
 
-  const value_type& operator[](size_t i) const {
+  const_reference operator[](size_t i) const {
     assert(i < size());
     return b_[i];
   }
 
-  value_type& at(size_t i) {
+  reference at(size_t i) {
     if (i >= size()) {
       throw_exception<std::out_of_range>("index out of range");
     }
     return b_[i];
   }
 
-  const value_type& at(size_t i) const {
+  const_reference at(size_t i) const {
     if (i >= size()) {
       throw_exception<std::out_of_range>("index out of range");
     }
@@ -1167,10 +1175,7 @@ class Range {
 
     b_ = result.end() == e_
         ? e_
-        : std::next(
-              result.end(),
-              typename std::iterator_traits<Iter>::difference_type(
-                  delimiter.size()));
+        : std::next(result.end(), difference_type(delimiter.size()));
 
     return result;
   }
