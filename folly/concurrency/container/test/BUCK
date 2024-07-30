@@ -19,8 +19,8 @@ cpp_unittest(
     deps = [
         "//folly:random",
         "//folly:spin_lock",
+        "//folly/concurrency/container:relaxed_concurrent_priority_queue",
         "//folly/experimental:flat_combining_priority_queue",
-        "//folly/experimental:relaxed_concurrent_priority_queue",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/test:deterministic_schedule",
