@@ -363,6 +363,27 @@ else()
   )
 endif()
 
+if (IS_X86_64_ARCH AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  message(
+    STATUS
+    "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
+    "setting AVX512 compile flags for crc32c SIMD code"
+  )
+  set_property(
+    SOURCE
+    ${FOLLY_DIR}/external/fast-crc32/avx512_crc32c_v8s3x4.cpp
+    APPEND PROPERTY COMPILE_OPTIONS
+    "-mavx512f" "-mavx512vl"
+  )
+else()
+  # Windows doesn't nead the extra flags.
+  message(
+    STATUS
+    "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
+    "skipping setting AVX512 compile flags for crc32c SIMD code"
+  )
+endif()
+
 list(APPEND folly_base_files
   ${files} ${hfiles}
 )
