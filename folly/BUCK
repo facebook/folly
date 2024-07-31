@@ -323,6 +323,7 @@ cpp_library(
     deps = [
         ":c_portability",
         ":cpp_attributes",
+        ":utility",
         "//folly/functional:invoke",
         "//folly/lang:c_string",
     ],

@@ -7,7 +7,9 @@ cpp_library(
     srcs = ["NetOps.cpp"],
     headers = ["NetOps.h"],
     deps = [
+        "//folly:c_portability",
         "//folly:scope_guard",
+        "//folly:utility",
         "//folly/net/detail:socket_file_descriptor_map",
     ],
     exported_deps = [

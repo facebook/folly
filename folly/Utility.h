@@ -505,6 +505,26 @@ struct unsafe_default_initialized_cv {
 };
 inline constexpr unsafe_default_initialized_cv unsafe_default_initialized{};
 
+/// to_bool
+/// to_bool_fn
+///
+/// Constructs a boolean from the argument.
+///
+/// Particularly useful for testing sometimes-weak function declarations. They
+/// may be declared weak on some platforms but not on others. GCC likes to warn
+/// about them but the warning is unhelpful.
+struct to_bool_fn {
+  template <typename..., typename T>
+  FOLLY_ERASE constexpr auto operator()(T const& t) const noexcept
+      -> decltype(static_cast<bool>(t)) {
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Waddress")
+    return static_cast<bool>(t);
+    FOLLY_POP_WARNING
+  }
+};
+inline constexpr to_bool_fn to_bool{};
+
 struct to_signed_fn {
   template <typename..., typename T>
   constexpr auto operator()(T const& t) const noexcept ->

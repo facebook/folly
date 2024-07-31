@@ -28,6 +28,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/Utility.h>
 #include <folly/net/detail/SocketFileDescriptorMap.h>
 
 #ifdef _WIN32
@@ -37,11 +38,8 @@
 #if (defined(__linux__) && !defined(__ANDROID__)) ||                       \
     (defined(__ANDROID__) && __ANDROID_API__ >= 21 /* released 2014 */) || \
     defined(__FreeBSD__) || defined(__SGX__) || defined(__EMSCRIPTEN__)
-FOLLY_PUSH_WARNING
-FOLLY_GNU_DISABLE_WARNING("-Waddress")
-static_assert(!!&::recvmmsg);
-static_assert(!!&::sendmmsg);
-FOLLY_POP_WARNING
+static_assert(folly::to_bool(::recvmmsg));
+static_assert(folly::to_bool(::sendmmsg));
 #else
 static int (*recvmmsg)(...) = nullptr;
 static int (*sendmmsg)(...) = nullptr;
@@ -400,12 +398,9 @@ int recvmmsg(
 #if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
-  FOLLY_PUSH_WARNING
-  FOLLY_GCC_DISABLE_WARNING("-Waddress")
-  if (reinterpret_cast<void*>(::recvmmsg) != nullptr) {
+  if (to_bool(::recvmmsg)) {
     return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
   }
-  FOLLY_POP_WARNING
   // implement via recvmsg
   for (unsigned int i = 0; i < vlen; i++) {
     ssize_t ret = recvmsg(s, &msgvec[i].msg_hdr, flags);

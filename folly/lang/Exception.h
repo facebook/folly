@@ -453,10 +453,10 @@ T* exception_ptr_get_object(std::exception_ptr const& ptr) noexcept {
     return detail::exception_ptr_catching<T&>(
         ptr, +[](T& ex) { return std::addressof(ex); });
   }
-  if (!kHasRtti) {
-    return nullptr;
-  }
-  return static_cast<T*>(exception_ptr_get_object(ptr, type_info_of<T>()));
+  auto const target = type_info_of<T>();
+  auto const object =
+      !to_bool(target) ? nullptr : exception_ptr_get_object(ptr, target);
+  return static_cast<T*>(object);
 }
 
 /// exception_ptr_try_get_object_exact_fast

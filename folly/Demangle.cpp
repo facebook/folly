@@ -21,6 +21,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
+#include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/CString.h>
 
@@ -125,13 +126,9 @@ static constexpr auto liberty_demangle_options = 0;
 namespace folly {
 
 bool const demangle_build_has_cxxabi = cxxabi_demangle;
-//  reinterpret-cast currently evades -Waddress (not with newer GCCs, though)
-FOLLY_PUSH_WARNING
-FOLLY_GCC_DISABLE_WARNING("-Waddress")
-bool const demangle_build_has_liberty =
-    reinterpret_cast<void*>(liberty_cplus_demangle) &&
-    reinterpret_cast<void*>(liberty_rust_demangle);
-FOLLY_POP_WARNING
+bool const demangle_build_has_liberty = //
+    to_bool(liberty_cplus_demangle) && //
+    to_bool(liberty_rust_demangle);
 
 namespace {
 void demangleStringCallback(const char* str, size_t size, void* p) {
