@@ -351,13 +351,6 @@ def rust_protobuf_library(
         ] + (deps or []),
     )
 
-    # For python tests only
-    for proto in protos:
-        prelude.export_file(
-            name = proto,
-            visibility = ["PUBLIC"],
-        )
-
 def ocaml_binary(
         deps = [],
         visibility = ["PUBLIC"],
