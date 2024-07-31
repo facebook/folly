@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/ThreadedRepeatingFunctionRunner.h>
+#include <folly/executors/ThreadedRepeatingFunctionRunner.h>
 
 #include <atomic>
 

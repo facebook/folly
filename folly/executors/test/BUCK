@@ -324,7 +324,7 @@ cpp_unittest(
     srcs = ["ThreadedRepeatingFunctionRunnerTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:threaded_repeating_function_runner",
+        "//folly/executors:threaded_repeating_function_runner",
         "//folly/portability:gtest",
     ],
 )
