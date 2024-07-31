@@ -1353,15 +1353,21 @@ std::basic_ostream<C>& operator<<(std::basic_ostream<C>& os, Range<C*> piece) {
 
 template <class Iter>
 inline bool operator==(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  using value_type = typename Range<Iter>::value_type;
   if (lhs.size() != rhs.size()) {
     return false;
   }
-  for (size_t i = 0; i < lhs.size(); ++i) {
-    if (!Range<Iter>::traits_type::eq(lhs[i], rhs[i])) {
-      return false;
+  if constexpr (std::is_integral_v<value_type> || std::is_enum_v<value_type>) {
+    auto const size = lhs.size();
+    return 0 == size || 0 == std::memcmp(lhs.data(), rhs.data(), size);
+  } else {
+    for (size_t i = 0; i < lhs.size(); ++i) {
+      if (!Range<Iter>::traits_type::eq(lhs[i], rhs[i])) {
+        return false;
+      }
     }
+    return true;
   }
-  return true;
 }
 
 template <class Iter>

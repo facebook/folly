@@ -53,6 +53,27 @@ static_assert(std::is_same_v<char, typename Range<char*>::value_type>);
 
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
 
+#define EXPECT_CMP_(op, a_, b_, eq, ne, lt, le, gt, ge)  \
+  ::std::invoke(                                         \
+      [](auto const& a, auto const& b) {                 \
+        EXPECT_##op(a, b);                               \
+        EXPECT_THAT(a, ::testing::eq(::testing::Eq(b))); \
+        EXPECT_THAT(a, ::testing::ne(::testing::Ne(b))); \
+        EXPECT_THAT(a, ::testing::lt(::testing::Lt(b))); \
+        EXPECT_THAT(a, ::testing::le(::testing::Le(b))); \
+        EXPECT_THAT(a, ::testing::gt(::testing::Gt(b))); \
+        EXPECT_THAT(a, ::testing::ge(::testing::Ge(b))); \
+      },                                                 \
+      (a_),                                              \
+      (b_));
+
+#define EXPECT_CMP_EQ(a_, b_) \
+  EXPECT_CMP_(EQ, a_, b_, AllArgs, Not, Not, AllArgs, Not, AllArgs)
+#define EXPECT_CMP_LT(a_, b_) \
+  EXPECT_CMP_(LT, a_, b_, Not, AllArgs, AllArgs, AllArgs, Not, Not)
+#define EXPECT_CMP_GT(a_, b_) \
+  EXPECT_CMP_(GT, a_, b_, Not, AllArgs, Not, Not, AllArgs, AllArgs)
+
 TEST(StringPiece, All) {
   const char* foo = "foo";
   const char* foo2 = "foo";
@@ -1268,26 +1289,38 @@ TEST(Range, CompareChar) {
 
 TEST(Range, CompareByte) {
   auto br = [](auto sp) { return ByteRange(sp); };
-  EXPECT_EQ(br(""_sp), br(""_sp));
-  EXPECT_LT(br(""_sp), br("world"_sp));
-  EXPECT_GT(br("world"_sp), br(""_sp));
-  EXPECT_EQ(br("hello"_sp), br("hello"_sp));
-  EXPECT_LT(br("hello"_sp), br("world"_sp));
-  EXPECT_LT(br("hello"_sp), br("helloworld"_sp));
-  EXPECT_GT(br("world"_sp), br("hello"_sp));
-  EXPECT_GT(br("helloworld"_sp), br("hello"_sp));
+  EXPECT_CMP_EQ(br(""_sp), br(""_sp));
+  EXPECT_CMP_LT(br(""_sp), br("world"_sp));
+  EXPECT_CMP_GT(br("world"_sp), br(""_sp));
+  EXPECT_CMP_EQ(br("hello"_sp), br("hello"_sp));
+  EXPECT_CMP_LT(br("hello"_sp), br("world"_sp));
+  EXPECT_CMP_LT(br("hello"_sp), br("helloworld"_sp));
+  EXPECT_CMP_GT(br("world"_sp), br("hello"_sp));
+  EXPECT_CMP_GT(br("helloworld"_sp), br("hello"_sp));
 }
 
 TEST(Range, CompareFbck) {
   auto vr = [](std::vector<int> const& _) { return folly::range(_); };
-  EXPECT_EQ(vr({}), vr({}));
-  EXPECT_LT(vr({}), vr({1}));
-  EXPECT_GT(vr({1}), vr({}));
-  EXPECT_EQ(vr({1}), vr({1}));
-  EXPECT_LT(vr({1}), vr({2}));
-  EXPECT_LT(vr({1}), vr({1, 2}));
-  EXPECT_GT(vr({2}), vr({1}));
-  EXPECT_GT(vr({1, 1}), vr({1}));
+  EXPECT_CMP_EQ(vr({}), vr({}));
+  EXPECT_CMP_LT(vr({}), vr({1}));
+  EXPECT_CMP_GT(vr({1}), vr({}));
+  EXPECT_CMP_EQ(vr({1}), vr({1}));
+  EXPECT_CMP_LT(vr({1}), vr({2}));
+  EXPECT_CMP_LT(vr({1}), vr({1, 2}));
+  EXPECT_CMP_GT(vr({2}), vr({1}));
+  EXPECT_CMP_GT(vr({1, 1}), vr({1}));
+}
+
+TEST(Range, CompareDouble) {
+  auto vr = [](std::vector<float> const& _) { return folly::range(_); };
+  EXPECT_CMP_EQ(vr({}), vr({}));
+  EXPECT_CMP_LT(vr({}), vr({1.}));
+  EXPECT_CMP_GT(vr({1.}), vr({}));
+  EXPECT_CMP_EQ(vr({1.}), vr({1.}));
+  EXPECT_CMP_LT(vr({1.}), vr({2.}));
+  EXPECT_CMP_LT(vr({1.}), vr({1., 2.}));
+  EXPECT_CMP_GT(vr({2.}), vr({1.}));
+  EXPECT_CMP_GT(vr({1., 1.}), vr({1.}));
 }
 
 std::string get_rand_str(
