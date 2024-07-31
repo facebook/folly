@@ -157,8 +157,6 @@ inline constexpr bool is_bounded_array_v<T[S]> = true;
 template <typename T>
 struct is_bounded_array : std::bool_constant<is_bounded_array_v<T>> {};
 
-namespace detail {
-
 /// is_instantiation_of_v
 /// is_instantiation_of
 ///
@@ -175,8 +173,6 @@ inline constexpr bool is_instantiation_of_v<C, C<T...>> = true;
 template <template <typename...> class C, typename... T>
 struct is_instantiation_of
     : std::bool_constant<is_instantiation_of_v<C, T...>> {};
-
-} // namespace detail
 
 /// member_pointer_traits
 ///

@@ -859,7 +859,7 @@ inline void swap(
 
 template <typename T>
 inline constexpr bool is_sorted_vector_set_v =
-    detail::is_instantiation_of_v<sorted_vector_set, T>;
+    is_instantiation_of_v<sorted_vector_set, T>;
 
 template <typename T>
 struct is_sorted_vector_set : std::bool_constant<is_sorted_vector_set_v<T>> {};
@@ -1618,7 +1618,7 @@ inline void swap(
 
 template <typename T>
 inline constexpr bool is_sorted_vector_map_v =
-    detail::is_instantiation_of_v<sorted_vector_map, T>;
+    is_instantiation_of_v<sorted_vector_map, T>;
 
 template <typename T>
 struct is_sorted_vector_map : std::bool_constant<is_sorted_vector_map_v<T>> {};

@@ -547,13 +547,13 @@ TEST(Traits, isBoundedArrayV) {
 }
 
 TEST(Traits, isInstantiationOfV) {
-  EXPECT_TRUE((detail::is_instantiation_of_v<A, A<int>>));
-  EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
+  EXPECT_TRUE((is_instantiation_of_v<A, A<int>>));
+  EXPECT_FALSE((is_instantiation_of_v<A, B>));
 }
 
 TEST(Traits, isInstantiationOf) {
-  EXPECT_TRUE((detail::is_instantiation_of<A, A<int>>::value));
-  EXPECT_FALSE((detail::is_instantiation_of<A, B>::value));
+  EXPECT_TRUE((is_instantiation_of<A, A<int>>::value));
+  EXPECT_FALSE((is_instantiation_of<A, B>::value));
 }
 
 TEST(Traits, member_pointer_traits_data) {

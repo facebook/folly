@@ -373,7 +373,7 @@ struct is_convertible_from_replaceable
 } // namespace replaceable_detail
 
 template <class T>
-using is_replaceable = detail::is_instantiation_of<Replaceable, T>;
+using is_replaceable = is_instantiation_of<Replaceable, T>;
 
 // Function to make a Replaceable with a type deduced from its input
 template <class T>

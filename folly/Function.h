@@ -612,7 +612,7 @@ using DispatchOf = Dispatch<
 // `Function` there refers to the instantion and not the template.
 template <typename T>
 constexpr bool is_instantiation_of_folly_function_v =
-    detail::is_instantiation_of_v<Function, T>;
+    is_instantiation_of_v<Function, T>;
 
 } // namespace function
 } // namespace detail

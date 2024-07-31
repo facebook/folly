@@ -43,10 +43,9 @@ using remove_reference_wrapper_t = typename remove_reference_wrapper<T>::type;
 namespace detail {
 
 template <typename T>
-inline constexpr bool is_coroutine_handle_v =
-    folly::detail::is_instantiation_of_v< //
-        coroutine_handle,
-        T>;
+inline constexpr bool is_coroutine_handle_v = folly::is_instantiation_of_v< //
+    coroutine_handle,
+    T>;
 
 } // namespace detail
 

@@ -34,7 +34,7 @@ namespace folly {
 
 namespace array_detail {
 template <class T>
-using is_ref_wrapper = detail::is_instantiation_of<std::reference_wrapper, T>;
+using is_ref_wrapper = is_instantiation_of<std::reference_wrapper, T>;
 
 template <typename T>
 using not_ref_wrapper =
