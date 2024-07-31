@@ -184,7 +184,7 @@ cpp_binary(
     ],
     deps = [
         "//folly:benchmark",
-        "//folly/experimental:singleton_relaxed_counter",
+        "//folly/concurrency:singleton_relaxed_counter",
         "//folly/init:init",
         "//folly/lang:keep",
         "//folly/portability:gflags",
@@ -201,7 +201,7 @@ cpp_unittest(
     ],
     deps = [
         "//folly:thread_local",
-        "//folly/experimental:singleton_relaxed_counter",
+        "//folly/concurrency:singleton_relaxed_counter",
         "//folly/portability:gtest",
     ],
     external_deps = [

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/SingletonRelaxedCounter.h>
+#include <folly/concurrency/SingletonRelaxedCounter.h>
 
 #include <cstddef>
 #include <thread>
