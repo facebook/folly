@@ -90,8 +90,8 @@ cpp_unittest(
     name = "select64_test",
     srcs = ["Select64Test.cpp"],
     deps = [
+        "//folly/compression:select64",
         "//folly/experimental:instructions",
-        "//folly/experimental:select64",
         "//folly/portability:gtest",
     ],
 )

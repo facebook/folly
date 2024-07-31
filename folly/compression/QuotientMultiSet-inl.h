@@ -18,7 +18,7 @@
 
 #include <folly/Format.h>
 #include <folly/Portability.h>
-#include <folly/experimental/Select64.h>
+#include <folly/compression/Select64.h>
 #include <folly/lang/Bits.h>
 #include <folly/lang/BitsClass.h>
 #include <folly/lang/SafeAssert.h>

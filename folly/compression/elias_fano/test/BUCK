@@ -9,8 +9,8 @@ cpp_unittest(
     deps = [
         "//folly:benchmark",
         "//folly:portability",
+        "//folly/compression:select64",
         "//folly/compression/elias_fano:bit_vector_coding",
-        "//folly/experimental:select64",
         "//folly/experimental/test:coding_test_utils",
         "//folly/init:init",
     ],
@@ -23,8 +23,8 @@ cpp_unittest(
     deps = [
         "//folly:benchmark",
         "//folly:random",
+        "//folly/compression:select64",
         "//folly/compression/elias_fano:elias_fano_coding",
-        "//folly/experimental:select64",
         "//folly/experimental/test:coding_test_utils",
         "//folly/init:init",
     ],
