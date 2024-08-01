@@ -903,11 +903,13 @@ class Range {
     return ret == npos ? ret : ret + pos;
   }
 
-  size_type find(value_type c) const { return qfind(castToConst(), c); }
+  size_type find(const value_type& c) const { return qfind(castToConst(), c); }
 
-  size_type rfind(value_type c) const { return folly::rfind(castToConst(), c); }
+  size_type rfind(const value_type& c) const {
+    return folly::rfind(castToConst(), c);
+  }
 
-  size_type find(value_type c, size_t pos) const {
+  size_type find(const value_type& c, size_t pos) const {
     if (pos > size()) {
       return std::string::npos;
     }
@@ -941,9 +943,9 @@ class Range {
     return find_first_of(const_range_type(needles, n), pos);
   }
 
-  size_type find_first_of(value_type c) const { return find(c); }
+  size_type find_first_of(const value_type& c) const { return find(c); }
 
-  size_type find_first_of(value_type c, size_t pos) const {
+  size_type find_first_of(const value_type& c, size_t pos) const {
     return find(c, pos);
   }
 
@@ -972,7 +974,9 @@ class Range {
     return size() >= other.size() &&
         castToConst().subpiece(0, other.size()) == other;
   }
-  bool startsWith(value_type c) const { return !empty() && front() == c; }
+  bool startsWith(const value_type& c) const {
+    return !empty() && front() == c;
+  }
 
   template <class Comp>
   bool startsWith(const const_range_type& other, Comp&& eq) const {
@@ -987,7 +991,7 @@ class Range {
   bool starts_with(const_range_type other) const noexcept {
     return startsWith(other);
   }
-  bool starts_with(value_type c) const noexcept { return startsWith(c); }
+  bool starts_with(const value_type& c) const noexcept { return startsWith(c); }
   template <
       typename...,
       typename T = Iter,
@@ -1003,7 +1007,7 @@ class Range {
     return size() >= other.size() &&
         castToConst().subpiece(size() - other.size()) == other;
   }
-  bool endsWith(value_type c) const { return !empty() && back() == c; }
+  bool endsWith(const value_type& c) const { return !empty() && back() == c; }
 
   template <class Comp>
   bool endsWith(const const_range_type& other, Comp&& eq) const {
@@ -1024,7 +1028,7 @@ class Range {
   bool ends_with(const_range_type other) const noexcept {
     return endsWith(other);
   }
-  bool ends_with(value_type c) const noexcept { return endsWith(c); }
+  bool ends_with(const value_type& c) const noexcept { return endsWith(c); }
   template <
       typename...,
       typename T = Iter,
@@ -1056,7 +1060,7 @@ class Range {
   bool removePrefix(const const_range_type& prefix) {
     return startsWith(prefix) && (b_ += prefix.size(), true);
   }
-  bool removePrefix(value_type prefix) {
+  bool removePrefix(const value_type& prefix) {
     return startsWith(prefix) && (++b_, true);
   }
 
@@ -1067,7 +1071,7 @@ class Range {
   bool removeSuffix(const const_range_type& suffix) {
     return endsWith(suffix) && (e_ -= suffix.size(), true);
   }
-  bool removeSuffix(value_type suffix) {
+  bool removeSuffix(const value_type& suffix) {
     return endsWith(suffix) && (--e_, true);
   }
 
@@ -1160,7 +1164,7 @@ class Range {
    *  }
    *
    */
-  Range split_step(value_type delimiter) {
+  Range split_step(const value_type& delimiter) {
     auto i = find(delimiter);
     Range result(b_, i == std::string::npos ? size() : i);
 
@@ -1242,7 +1246,8 @@ class Range {
    *
    */
   template <typename TProcess, typename... Args>
-  auto split_step(value_type delimiter, TProcess&& process, Args&&... args)
+  auto split_step(
+      const value_type& delimiter, TProcess&& process, Args&&... args)
       -> decltype(process(std::declval<Range>(), std::forward<Args>(args)...)) {
     return process(split_step(delimiter), std::forward<Args>(args)...);
   }
