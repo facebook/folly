@@ -24,6 +24,7 @@
 #include <glog/logging.h>
 
 #include <atomic>
+#include <iomanip>
 #include <thread>
 
 DEFINE_bool(bench, false, "run benchmark");
