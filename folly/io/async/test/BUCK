@@ -819,7 +819,7 @@ cpp_unittest(
     srcs = ["TimerFDTimeoutManagerTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:timerfd",
+        "//folly/io/async:timerfd",
         "//folly/io/async/test:util",
         "//folly/portability:gtest",
     ],
@@ -921,8 +921,8 @@ cpp_unittest(
     srcs = ["HHWheelTimerHighResTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:timerfd",
         "//folly/io/async:async_base",
+        "//folly/io/async:timerfd",
         "//folly/io/async/test:util",
         "//folly/portability:gtest",
     ],
@@ -934,7 +934,7 @@ cpp_binary(
     headers = [],
     deps = [
         "//folly:benchmark",
-        "//folly/experimental:timerfd",
+        "//folly/io/async:timerfd",
         "//folly/io/async/test:util",
     ],
 )

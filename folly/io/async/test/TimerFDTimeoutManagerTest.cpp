@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/TimerFDTimeoutManager.h>
+#include <folly/io/async/TimerFDTimeoutManager.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>
 

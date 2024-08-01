@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/STTimerFDTimeoutManager.h>
 #include <folly/io/async/HHWheelTimer.h>
+#include <folly/io/async/STTimerFDTimeoutManager.h>
 #include <folly/io/async/test/UndelayedDestruction.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>

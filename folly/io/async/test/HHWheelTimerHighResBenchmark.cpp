@@ -15,8 +15,8 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/experimental/STTimerFDTimeoutManager.h>
-#include <folly/experimental/TimerFDTimeoutManager.h>
+#include <folly/io/async/STTimerFDTimeoutManager.h>
+#include <folly/io/async/TimerFDTimeoutManager.h>
 #include <folly/io/async/test/UndelayedDestruction.h>
 
 using namespace folly;
