@@ -70,6 +70,7 @@ digest = "0.10"
 dirs = "3.0.1"
 dunce = "1.0.2"
 either = "1.8"
+elf = "0.7.4"
 enum-iterator = "1.4.1"
 enum-map = "0.6.3"
 env_logger = "0.9.0"
@@ -208,7 +209,8 @@ tower = "0.4"
 tower-layer = "0.3.1"
 tower-service = "0.3.2"
 tracing = "0.1.22"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-core = "0.1.32"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 triomphe = "0.1.11"
 trybuild = "1.0.56"
 typed-arena = "2.0"
@@ -217,6 +219,7 @@ unicode-segmentation = "1.7"
 uuid = { version = "1.2", features = ["v4"] }
 walkdir = "2.3.2"
 which = "4.3.0"
+whoami = "1.5.1"
 windows_x86_64_msvc = "=0.48.0"  # our fixup only works if we are on precisely 0.48.0
 winapi = { version = "0.3", features = ["everything"] }
 x509-parser = { version = "0.14.0", features = ["verify"] }
