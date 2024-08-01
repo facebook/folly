@@ -16,7 +16,7 @@
 
 #include <thread>
 
-#include <folly/experimental/TLRefCount.h>
+#include <folly/concurrency/memory/TLRefCount.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/synchronization/test/Barrier.h>

@@ -78,7 +78,7 @@ cpp_benchmark(
     headers = [],
     deps = [
         "//folly:benchmark",
-        "//folly/experimental:tl_ref_count",
+        "//folly/concurrency/memory:tl_ref_count",
     ],
 )
 
@@ -87,7 +87,7 @@ cpp_unittest(
     srcs = ["RefCountTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:tl_ref_count",
+        "//folly/concurrency/memory:tl_ref_count",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
         "//folly/synchronization/test:barrier",

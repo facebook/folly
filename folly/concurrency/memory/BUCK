@@ -25,7 +25,7 @@ cpp_library(
     headers = ["ReadMostlySharedPtr.h"],
     exported_deps = [
         "//folly:function",
-        "//folly/experimental:tl_ref_count",
+        "//folly/concurrency/memory:tl_ref_count",
     ],
 )
 
