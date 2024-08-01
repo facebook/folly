@@ -179,7 +179,7 @@ struct tcp_info_legacy {
   __u32 tcpi_total_retrans;
 };
 
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > 101003
 #define FOLLY_HAVE_TCP_INFO 1
 using tcp_info = ::tcp_connection_info;
 const int tcp_info_sock_opt = TCP_CONNECTION_INFO;

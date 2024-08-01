@@ -40,9 +40,17 @@ namespace detail {
 
 uint64_t getOSThreadIDSlow() {
 #if __APPLE__
-  uint64_t tid;
-  pthread_threadid_np(nullptr, &tid);
-  return tid;
+  #if MAC_OS_X_VERSION_MAX_ALLOWED < 1070
+    uint64_t tid;
+    tid = pthread_mach_thread_np(pthread_self());
+  #elif MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+    uint64_t tid;
+    tid = pthread_mach_thread_np(pthread_self());
+  #else
+    uint64_t tid;
+    pthread_threadid_np(nullptr, &tid);
+    return tid;
+  #endif
 #elif defined(_WIN32)
   return uint64_t(GetCurrentThreadId());
 #elif defined(__FreeBSD__)
