@@ -48,6 +48,14 @@
  *    Endian::little(x)   little <-> native
  *    Endian::swap(x)     big <-> little
  *
+ * Alignment
+ *    Alignes sizes and pointers. The sizes alignment is constexpr.
+ *    Alinment is specified in bytes.
+ *
+ *    previousAligned(std::size_t x, std::size_t alignment)
+ *    previousAligned(auto* ptr, std::size_t alignment)
+ *    nextAligned(std::size_t x, std::size_t alignment)
+ *    nextAligned(auto* ptr, std::size_t alignment)
  */
 
 #pragma once

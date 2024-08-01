@@ -5,6 +5,15 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_unittest(
+    name = "align_test",
+    srcs = ["AlignTest.cpp"],
+    deps = [
+        "//folly/lang:align",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "aligned_test",
     srcs = ["AlignedTest.cpp"],
     deps = [

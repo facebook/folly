@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -178,5 +179,31 @@ constexpr std::size_t cacheline_align_v = has_extended_alignment
     ? hardware_constructive_interference_size
     : max_align_v;
 struct alignas(cacheline_align_v) cacheline_align_t {};
+
+constexpr std::size_t align_floor(std::size_t x, std::size_t alignment) {
+  assert(alignment > 0);
+  return x & ~(alignment - 1);
+}
+
+template <typename T>
+T* align_floor(T* x, std::size_t alignment) {
+  auto asUint = reinterpret_cast<std::uintptr_t>(x);
+  static_assert(sizeof(std::uintptr_t) <= sizeof(std::size_t));
+  asUint = static_cast<std::uintptr_t>(folly::align_floor(asUint, alignment));
+  return reinterpret_cast<T*>(asUint);
+}
+
+constexpr std::size_t align_ceil(std::size_t x, std::size_t alignment) {
+  assert(alignment > 0);
+  return (x + alignment - 1) & (-alignment);
+}
+
+template <typename T>
+T* align_ceil(T* x, std::size_t alignment) {
+  auto asUint = reinterpret_cast<std::uintptr_t>(x);
+  static_assert(sizeof(std::uintptr_t) <= sizeof(std::size_t));
+  asUint = static_cast<std::uintptr_t>(folly::align_ceil(asUint, alignment));
+  return reinterpret_cast<T*>(asUint);
+}
 
 } // namespace folly
