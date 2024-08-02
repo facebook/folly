@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <iomanip>
 #include <thread>
 
 #include <boost/thread.hpp>

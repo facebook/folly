@@ -17,6 +17,7 @@
 #include <folly/experimental/FlatCombiningPriorityQueue.h>
 
 #include <condition_variable>
+#include <iomanip>
 #include <mutex>
 #include <queue>
 
