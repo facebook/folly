@@ -399,6 +399,39 @@ class EvictingCacheMap {
   }
 
   /**
+   * Emplace a new key-value pair in the dictionary if no element exists for
+   * key, utilizing the configured prunehook
+   * @param key key to associate with value
+   * @param args args to construct TValue in place, to associate with the key
+   * @return a pair consisting of an iterator to the inserted element (or to the
+   *     element that prevented the insertion) and a bool denoting whether the
+   *     insertion took place.
+   */
+  template <typename K, typename... Args>
+  std::pair<iterator, bool> try_emplace(const K& key, Args&&... args) {
+    return emplaceWithPruneHook<K, Args...>(
+        key, std::forward<Args>(args)..., nullptr);
+  }
+
+  /**
+   * Emplace a new key-value pair in the dictionary if no element exists for key
+   * @param key key to associate with value
+   * @param args args to construct TValue in place, to associate with the key
+   * @param pruneHook eviction callback to use INSTEAD OF the configured one
+   * @return a pair consisting of an iterator to the inserted element (or to the
+   *     element that prevented the insertion) and a bool denoting whether the
+   *     insertion took place.
+   */
+  template <typename K, typename... Args>
+  std::pair<iterator, bool> emplaceWithPruneHook(
+      const K& key, Args&&... args, PruneHookCall pruneHook) {
+    return insertImpl<K>(
+        std::make_unique<Node>(
+            std::piecewise_construct, key, std::forward<Args>(args)...),
+        pruneHook);
+  }
+
+  /**
    * Get the number of elements in the dictionary
    * @return the size of the dictionary
    */
@@ -483,6 +516,12 @@ class EvictingCacheMap {
                     boost::intrusive::link_mode<boost::intrusive::safe_link>> {
     template <typename K>
     Node(const K& key, TValue&& value) : pr(key, std::move(value)) {}
+
+    template <typename Key, typename... Args>
+    explicit Node(std::piecewise_construct_t, Key&& k, Args&&... args)
+        : pr(std::piecewise_construct,
+             std::forward_as_tuple(std::forward<Key>(k)),
+             std::forward_as_tuple(std::forward<Args>(args)...)) {}
     TPair pr;
   };
   using NodePtr = Node*;
@@ -641,7 +680,12 @@ class EvictingCacheMap {
   template <typename K>
   auto insertImpl(const K& key, TValue&& value, PruneHookCall pruneHook) {
     auto node_owner = std::make_unique<Node>(key, std::move(value));
-    Node* node = node_owner.get();
+    return insertImpl<K>(std::move(node_owner), std::move(pruneHook));
+  }
+
+  template <typename K>
+  auto insertImpl(std::unique_ptr<Node> nodeOwner, PruneHookCall pruneHook) {
+    Node* node = nodeOwner.get();
     {
       auto pair = index_.insert(node);
       if (!pair.second) {
@@ -654,7 +698,7 @@ class EvictingCacheMap {
     }
 
     // Complete insertion
-    lru_.push_front(*node_owner.release());
+    lru_.push_front(*nodeOwner.release());
 
     // no evictions if maxSize_ is 0 i.e. unlimited capacity
     if (maxSize_ > 0 && size() > maxSize_) {

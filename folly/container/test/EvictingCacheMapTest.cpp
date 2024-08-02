@@ -832,3 +832,11 @@ TEST(EvictingCacheMap, ApproximateEntryMemUsage) {
            kApproximateEntryMemUsage),
       48U);
 }
+
+TEST(EvictingCacheMap, PiecewiseConstructTest) {
+  EvictingCacheMap<uint64_t, std::string> map(1);
+  uint64_t i = 1;
+  auto [iter, inserted] = map.try_emplace(i, "test");
+  EXPECT_TRUE(inserted);
+  EXPECT_EQ(iter->second, "test");
+}
