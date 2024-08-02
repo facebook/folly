@@ -1309,6 +1309,9 @@ TEST(Range, CompareFbck) {
   EXPECT_CMP_LT(vr({1}), vr({1, 2}));
   EXPECT_CMP_GT(vr({2}), vr({1}));
   EXPECT_CMP_GT(vr({1, 1}), vr({1}));
+  EXPECT_CMP_EQ(vr({2, 3, 4}), vr({2, 3, 4}));
+  EXPECT_CMP_LT(vr({2, 3, 4}), vr({2, 3, 5}));
+  EXPECT_CMP_GT(vr({2, 3, 5}), vr({2, 3, 4}));
 }
 
 TEST(Range, CompareDouble) {
@@ -1321,6 +1324,9 @@ TEST(Range, CompareDouble) {
   EXPECT_CMP_LT(vr({1.}), vr({1., 2.}));
   EXPECT_CMP_GT(vr({2.}), vr({1.}));
   EXPECT_CMP_GT(vr({1., 1.}), vr({1.}));
+  EXPECT_CMP_EQ(vr({2., 3., 4.}), vr({2., 3., 4.}));
+  EXPECT_CMP_LT(vr({2., 3., 4.}), vr({2., 3., 5.}));
+  EXPECT_CMP_GT(vr({2., 3., 5.}), vr({2., 3., 4.}));
 }
 
 std::string get_rand_str(

@@ -1362,7 +1362,9 @@ inline bool operator==(const Range<Iter>& lhs, const Range<Iter>& rhs) {
   if (lhs.size() != rhs.size()) {
     return false;
   }
-  if constexpr (std::is_integral_v<value_type> || std::is_enum_v<value_type>) {
+  if constexpr (
+      std::is_pointer_v<Iter> &&
+      (std::is_integral_v<value_type> || std::is_enum_v<value_type>)) {
     auto const size = lhs.size() * sizeof(value_type);
     return 0 == size || 0 == std::memcmp(lhs.data(), rhs.data(), size);
   } else {
