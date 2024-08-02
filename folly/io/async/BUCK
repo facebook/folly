@@ -379,7 +379,7 @@ cpp_library(
     headers = ["Request.h"],
     deps = [
         "//folly:glog",
-        "//folly/experimental:single_writer_fixed_hash_map",
+        "//folly/concurrency/container:single_writer_fixed_hash_map",
         "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [

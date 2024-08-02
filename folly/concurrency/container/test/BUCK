@@ -62,8 +62,8 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:benchmark",
+        "//folly/concurrency/container:single_writer_fixed_hash_map",
         "//folly/container:array",
-        "//folly/experimental:single_writer_fixed_hash_map",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/synchronization/test:barrier",

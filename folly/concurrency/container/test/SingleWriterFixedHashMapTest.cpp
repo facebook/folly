@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/SingleWriterFixedHashMap.h>
+#include <folly/concurrency/container/SingleWriterFixedHashMap.h>
 
 #include <folly/Benchmark.h>
 #include <folly/container/Array.h>

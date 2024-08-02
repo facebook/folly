@@ -17,7 +17,7 @@
 #include <folly/io/async/Request.h>
 
 #include <folly/GLog.h>
-#include <folly/experimental/SingleWriterFixedHashMap.h>
+#include <folly/concurrency/container/SingleWriterFixedHashMap.h>
 #include <folly/tracing/StaticTracepoint.h>
 
 namespace folly {
