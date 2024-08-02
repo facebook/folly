@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/UnrollUtils.h>
+#include <folly/algorithm/simd/detail/UnrollUtils.h>
 
 #include <folly/portability/GTest.h>
 

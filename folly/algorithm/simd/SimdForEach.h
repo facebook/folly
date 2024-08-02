@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/CPortability.h>
-#include <folly/detail/UnrollUtils.h>
+#include <folly/algorithm/simd/detail/UnrollUtils.h>
 
 #include <array>
 #include <cstdint>

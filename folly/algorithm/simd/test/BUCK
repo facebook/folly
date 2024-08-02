@@ -36,3 +36,12 @@ cpp_benchmark(
         "//folly/init:init",
     ],
 )
+
+cpp_unittest(
+    name = "simd_for_each_test",
+    srcs = ["SimdForEachTest.cpp"],
+    deps = [
+        "//folly/algorithm/simd:simd_for_each",
+        "//folly/portability:gtest",
+    ],
+)

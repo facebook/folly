@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/SimdForEach.h>
+#include <folly/algorithm/simd/SimdForEach.h>
 
 #include <folly/portability/GTest.h>
 

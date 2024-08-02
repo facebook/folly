@@ -1,0 +1,14 @@
+######################################################################
+# Libraries
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "unroll_utils",
+    headers = ["UnrollUtils.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)

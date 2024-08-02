@@ -644,8 +644,13 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
   apply_folly_compile_options_to_target(folly_test_support)
 
   folly_define_tests(
+    DIRECTORY algorithm/simd/detail/test/
+      TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
+
     DIRECTORY algorithm/simd/test/
       TEST find_fixed_test SOURCES FindFixedTest.cpp
+      TEST movemask_test SOURCES MovemaskTest.cpp
+      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
 
     DIRECTORY chrono/test/
       TEST chrono_conv_test WINDOWS_DISABLED
@@ -713,17 +718,11 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST static_singleton_manager_test SOURCES StaticSingletonManagerTest.cpp
 
     DIRECTORY detail/test/
-      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
-
-    DIRECTORY detail/test/
       TEST simple_simd_string_utils_test SOURCES SimpleSimdStringUtilsTest.cpp
 
     DIRECTORY detail/test/
       TEST split_string_simd_test WINDOWS_DISABLED
         SOURCES SplitStringSimdTest.cpp
-
-    DIRECTORY detail/test/
-      TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
       TEST base64_detail_test WINDOWS_DISABLED
