@@ -520,6 +520,7 @@ struct to_bool_fn {
       -> decltype(static_cast<bool>(t)) {
     FOLLY_PUSH_WARNING
     FOLLY_GCC_DISABLE_WARNING("-Waddress")
+    FOLLY_GCC_DISABLE_WARNING("-Wnonnull-compare")
     return static_cast<bool>(t);
     FOLLY_POP_WARNING
   }
