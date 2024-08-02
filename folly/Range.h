@@ -1363,7 +1363,7 @@ inline bool operator==(const Range<Iter>& lhs, const Range<Iter>& rhs) {
     return false;
   }
   if constexpr (std::is_integral_v<value_type> || std::is_enum_v<value_type>) {
-    auto const size = lhs.size();
+    auto const size = lhs.size() * sizeof(value_type);
     return 0 == size || 0 == std::memcmp(lhs.data(), rhs.data(), size);
   } else {
     for (size_t i = 0; i < lhs.size(); ++i) {
