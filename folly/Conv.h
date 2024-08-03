@@ -1002,6 +1002,8 @@ toAppendStdToChars(
   std::to_chars_result conv_result;
   char buffer[256];
   char* const bufferEnd = buffer + sizeof(buffer);
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
   switch (mode) {
     case DtoaMode::SHORTEST: {
       if (useShortestFixed) {
@@ -1029,12 +1031,13 @@ toAppendStdToChars(
           buffer, bufferEnd, value, std::chars_format::fixed, numDigits);
       break;
     case DtoaMode::PRECISION:
+    default:
+      assert(mode == DtoaMode::PRECISION);
       conv_result = std::to_chars(
           buffer, bufferEnd, value, std::chars_format::general, numDigits);
       break;
-    default:
-      folly::throw_exception<std::invalid_argument>("Unsupported DtoaMode");
   }
+  FOLLY_POP_WARNING
 
   auto [resultEnd, ec] = conv_result;
   if (ec != std::errc()) {
