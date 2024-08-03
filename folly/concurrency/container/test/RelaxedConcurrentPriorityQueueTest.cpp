@@ -21,8 +21,8 @@
 
 #include <folly/Random.h>
 #include <folly/SpinLock.h>
+#include <folly/concurrency/container/FlatCombiningPriorityQueue.h>
 #include <folly/concurrency/container/RelaxedConcurrentPriorityQueue.h>
-#include <folly/experimental/FlatCombiningPriorityQueue.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
