@@ -731,15 +731,11 @@ enum class DtoaFlags {
 };
 
 constexpr DtoaFlags operator|(DtoaFlags a, DtoaFlags b) {
-  using IntType = typename std::underlying_type<DtoaFlags>::type;
-  return static_cast<DtoaFlags>(
-      static_cast<IntType>(a) | static_cast<IntType>(b));
+  return static_cast<DtoaFlags>(to_underlying(a) | to_underlying(b));
 }
 
 constexpr DtoaFlags operator&(DtoaFlags a, DtoaFlags b) {
-  using IntType = typename std::underlying_type<DtoaFlags>::type;
-  return static_cast<DtoaFlags>(
-      static_cast<IntType>(a) & static_cast<IntType>(b));
+  return static_cast<DtoaFlags>(to_underlying(a) & to_underlying(b));
 }
 
 namespace detail {
