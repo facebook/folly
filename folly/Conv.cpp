@@ -896,7 +896,7 @@ struct Stream : std::istream {
   };
   CharBuf& buf_;
 
-  explicit Stream(CharBuf& buf_) : std::istream(&buf_), buf_(buf_) {}
+  explicit Stream(CharBuf& buf) : std::istream(&buf), buf_(buf) {}
 
   char* pos() { return buf_.pos(); }
 
