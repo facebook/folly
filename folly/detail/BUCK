@@ -262,11 +262,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "simd_for_each",
-    headers = ["SimdForEach.h"],
-)
-
-cpp_library(
     name = "simple_simd_string_utils",
     srcs = ["SimpleSimdStringUtils.cpp"],
     headers = [
