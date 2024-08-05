@@ -936,6 +936,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST ssl_errors_test SOURCES SSLErrorsTest.cpp
 
     DIRECTORY lang/test/
+      TEST lang_align_test SOURCES AlignTest.cpp
       TEST lang_aligned_test SOURCES AlignedTest.cpp
       TEST lang_badge_test SOURCES BadgeTest.cpp
       TEST lang_bits_class_test SOURCES BitsClassTest.cpp
