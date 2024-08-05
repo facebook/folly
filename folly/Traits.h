@@ -159,9 +159,11 @@ struct is_bounded_array : std::bool_constant<is_bounded_array_v<T>> {};
 
 /// is_instantiation_of_v
 /// is_instantiation_of
+/// instantiated_from
+/// uncvref_instantiated_from
 ///
 /// A trait variable and type to check if a given type is an instantiation of a
-/// class template.
+/// class template. And corresponding concepts.
 ///
 /// Note that this only works with type template parameters. It does not work
 /// with non-type template parameters, template template parameters, or alias
@@ -173,6 +175,17 @@ inline constexpr bool is_instantiation_of_v<C, C<T...>> = true;
 template <template <typename...> class C, typename... T>
 struct is_instantiation_of
     : std::bool_constant<is_instantiation_of_v<C, T...>> {};
+
+#if defined(__cpp_concepts)
+
+template <typename T, template <typename...> class Templ>
+concept instantiated_from = is_instantiation_of_v<Templ, T>;
+
+template <typename T, template <typename...> class Templ>
+concept uncvref_instantiated_from =
+    is_instantiation_of_v<Templ, std::remove_cvref_t<T>>;
+
+#endif
 
 /// member_pointer_traits
 ///
@@ -300,6 +313,23 @@ template <typename Src, typename Dst>
 struct like {
   using type = like_t<Src, Dst>;
 };
+
+#if defined(__cpp_concepts)
+
+/**
+ *  Concept to check that a type is same as a given type,
+ *  when stripping qualifiers and refernces.
+ *  Especially useful for perfect forwarding of a specific type.
+ *
+ *  Example:
+ *
+ *    void foo(folly::uncvref_same_as<std::vector<int>> auto&& vec);
+ *
+ */
+template <typename Ref, typename To>
+concept uncvref_same_as = std::is_same_v<std::remove_cvref_t<Ref>, To>;
+
+#endif
 
 /**
  *  type_t

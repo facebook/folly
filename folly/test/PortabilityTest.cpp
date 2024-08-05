@@ -51,7 +51,3 @@ TEST(Portability, Final) {
   EXPECT_EQ(3, fooBase(p.get()));
   EXPECT_EQ(3, fooDerived(p.get()));
 }
-
-#if __has_include(<range>)
-static_assert(std::ranges::random_access_range<std::vector<int>>);
-#endif

@@ -532,6 +532,27 @@ TEST(Traits, like) {
            value));
 }
 
+#if defined(__cpp_concepts)
+TEST(Traits, UncvrefSameAs) {
+  static_assert(folly::uncvref_same_as<std::vector<int>, std::vector<int>>);
+  static_assert(folly::uncvref_same_as<std::vector<int>&, std::vector<int>>);
+  static_assert(
+      folly::uncvref_same_as<const std::vector<int>&, std::vector<int>>);
+  static_assert(folly::uncvref_same_as<std::vector<int>&&, std::vector<int>>);
+
+  constexpr auto refersToExample =
+      [](folly::uncvref_same_as<std::vector<int>> auto&&) {};
+
+  static_assert(std::invocable<decltype(refersToExample), std::vector<int>>);
+  static_assert(
+      std::invocable<decltype(refersToExample), const std::vector<int>&>);
+  static_assert(std::invocable<decltype(refersToExample), std::vector<int>&&>);
+
+  static_assert(
+      !std::invocable<decltype(refersToExample), std::vector<char>&&>);
+}
+#endif
+
 TEST(Traits, isUnboundedArrayV) {
   EXPECT_FALSE((folly::is_unbounded_array_v<void>));
   EXPECT_FALSE((folly::is_unbounded_array_v<int>));
@@ -555,6 +576,25 @@ TEST(Traits, isInstantiationOf) {
   EXPECT_TRUE((is_instantiation_of<A, A<int>>::value));
   EXPECT_FALSE((is_instantiation_of<A, B>::value));
 }
+
+#if defined(__cpp_concepts)
+TEST(Traits, InstantiationOf) {
+  static_assert(folly::instantiated_from<A<int>, A>);
+  static_assert(!folly::instantiated_from<A<int>&, A>);
+  static_assert(!folly::instantiated_from<A<int>, std::vector>);
+
+  static_assert(folly::uncvref_instantiated_from<A<int>, A>);
+  static_assert(folly::uncvref_instantiated_from<A<int>&, A>);
+  static_assert(!folly::uncvref_instantiated_from<A<int>&, std::vector>);
+
+  auto example = [](folly::uncvref_instantiated_from<std::vector> auto&&) {};
+
+  static_assert(std::invocable<decltype(example), std::vector<int>&&>);
+  static_assert(std::invocable<decltype(example), std::vector<int>&>);
+  static_assert(std::invocable<decltype(example), const std::vector<int>&>);
+  static_assert(std::invocable<decltype(example), std::vector<int>>);
+}
+#endif
 
 TEST(Traits, member_pointer_traits_data) {
   struct o {};
