@@ -262,13 +262,36 @@ void AsyncIoUringSocket::connect(
     auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
     int one = 1;
-    if (setSockOpt(SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
-      auto errnoCopy = errno;
-      callback->connectErr(AsyncSocketException(
-          AsyncSocketException::NOT_OPEN,
-          "failed to setsockopt prior to bind on " + bindAddr.describe(),
-          errnoCopy));
-      return;
+#if defined(IP_BIND_ADDRESS_NO_PORT) && !FOLLY_MOBILE
+    // If the any port is specified with a non-any address this is typically
+    // a client socket. However, calling bind before connect without
+    // IP_BIND_ADDRESS_NO_PORT forces the OS to find a unique port relying
+    // on only the local tuple. This limits the range of available ephemeral
+    // ports.  Using the IP_BIND_ADDRESS_NO_PORT delays assigning a port until
+    // connect expanding the available port range.
+    if (bindAddr.getPort() == 0) {
+      if (setSockOpt(IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, &one, sizeof(one))) {
+        auto errnoCopy = errno;
+        callback->connectErr(AsyncSocketException(
+            AsyncSocketException::NOT_OPEN,
+            "failed to setsockopt IP_BIND_ADDRESS_NO_PORT prior to bind on " +
+                bindAddr.describe(),
+            errnoCopy));
+        return;
+      }
+    } else {
+#else
+    {
+#endif
+      if (setSockOpt(SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
+        auto errnoCopy = errno;
+        callback->connectErr(AsyncSocketException(
+            AsyncSocketException::NOT_OPEN,
+            "failed to setsockopt SO_REUSEADDR prior to bind on " +
+                bindAddr.describe(),
+            errnoCopy));
+        return;
+      }
     }
 
     bindAddr.getAddress(&addrStorage);
@@ -277,7 +300,7 @@ void AsyncIoUringSocket::connect(
       auto errnoCopy = errno;
       callback->connectErr(AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
-          "failed to bind to async socket: " + bindAddr.describe(),
+          "failed to bind to async io_uring socket: " + bindAddr.describe(),
           errnoCopy));
       return;
     }
