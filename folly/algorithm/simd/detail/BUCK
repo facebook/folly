@@ -10,5 +10,6 @@ cpp_library(
     headers = ["UnrollUtils.h"],
     exported_deps = [
         "//folly:portability",
+        "//folly:traits",
     ],
 )

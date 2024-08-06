@@ -17,14 +17,12 @@
 #pragma once
 
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 
 #include <array>
+#include <type_traits>
 
-namespace folly {
-namespace detail {
-
-template <int i>
-struct UnrollStep : std::integral_constant<int, i> {};
+namespace folly::detail {
 
 /**
  * UnrollUtils
@@ -67,13 +65,14 @@ struct UnrollUtils {
    * unrollUntil<N>(op)
    *
    *  Do operation N times or until it returns true to break.
-   *  Op accepts UnrollStep<i> so it can keep track of a step begin executed.
+   *  Op accepts integral_constant<i> so it can keep track of a step begin
+   * executed.
    *
    *  Returns wether true if it was interrupted (you can know if the op breaked)
    */
-  template <int N, typename Op>
+  template <std::size_t N, typename Op>
   FOLLY_ALWAYS_INLINE static constexpr bool unrollUntil(Op op) {
-    return unrollUntilImpl<N, 0>(op);
+    return unrollUntilImpl(op, std::make_index_sequence<N>{});
   }
 
  private:
@@ -117,18 +116,11 @@ struct UnrollUtils {
     return op(leftSum, rightSum);
   }
 
-  template <int N, int i, typename Op>
-  FOLLY_ALWAYS_INLINE static constexpr std::enable_if_t<i == N, bool>
-  unrollUntilImpl(Op) {
-    return false;
-  }
-
-  template <int N, int i, typename Op>
-  FOLLY_ALWAYS_INLINE static constexpr std::enable_if_t<i != N, bool>
-  unrollUntilImpl(Op op) {
-    return op(UnrollStep<i>{}) || unrollUntilImpl<N, i + 1>(op);
+  template <typename Op, std::size_t... i>
+  FOLLY_ALWAYS_INLINE static constexpr bool unrollUntilImpl(
+      Op op, std::index_sequence<i...>) {
+    return (... || op(index_constant<i>{}));
   }
 };
 
-} // namespace detail
-} // namespace folly
+} // namespace folly::detail
