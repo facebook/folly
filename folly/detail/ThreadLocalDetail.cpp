@@ -31,6 +31,16 @@ constexpr auto kBigGrowthFactor = 1.7;
 namespace folly {
 namespace threadlocal_detail {
 
+SharedPtrDeleter::SharedPtrDeleter(std::shared_ptr<void> const& ts) noexcept
+    : ts_{ts} {}
+SharedPtrDeleter::SharedPtrDeleter(SharedPtrDeleter const& that) noexcept
+    : ts_{that.ts_} {}
+SharedPtrDeleter::~SharedPtrDeleter() = default;
+void SharedPtrDeleter::operator()(
+    void* /* ptr */, folly::TLPDestructionMode) const {
+  ts_.reset();
+}
+
 bool ThreadEntrySet::basicSanity() const {
   return //
       threadEntries.size() == entryToVectorSlot.size() &&

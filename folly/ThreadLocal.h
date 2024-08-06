@@ -238,6 +238,10 @@ class ThreadLocalPtr {
     guard.dismiss();
   }
 
+  void reset(const std::shared_ptr<T>& newPtr) {
+    reset(newPtr.get(), threadlocal_detail::SharedPtrDeleter{newPtr});
+  }
+
   // Holds a global lock for iteration through all thread local child objects.
   // Can be used as an iterable container.
   // Use accessAllThreads() to obtain one.

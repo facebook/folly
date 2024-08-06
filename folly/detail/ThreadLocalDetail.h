@@ -57,6 +57,41 @@ namespace threadlocal_detail {
 
 constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
 
+//  as a memory-usage optimization, try to make this deleter fit in-situ in
+//  the deleter function storage rather than being heap-allocated separately
+//
+//  for libstdc++, specialization below of std::__is_location_invariant
+//
+//  TODO: ensure in-situ storage for other standard-library implementations
+struct SharedPtrDeleter {
+  mutable std::shared_ptr<void> ts_;
+  explicit SharedPtrDeleter(std::shared_ptr<void> const& ts) noexcept;
+  SharedPtrDeleter(SharedPtrDeleter const& that) noexcept;
+  void operator=(SharedPtrDeleter const& that) = delete;
+  ~SharedPtrDeleter();
+  void operator()(void* ptr, folly::TLPDestructionMode) const;
+};
+
+} // namespace threadlocal_detail
+
+} // namespace folly
+
+#if defined(__GLIBCXX__)
+
+namespace std {
+
+template <>
+struct __is_location_invariant<::folly::threadlocal_detail::SharedPtrDeleter>
+    : std::true_type {};
+
+} // namespace std
+
+#endif
+
+namespace folly {
+
+namespace threadlocal_detail {
+
 /**
  * POD wrapper around an element (a void*) and an associated deleter.
  * This must be POD, as we memset() it to 0 and memcpy() it around.
@@ -118,6 +153,18 @@ struct ElementWrapper {
     ptr = p;
   }
 
+  template <typename Ptr, typename Deleter>
+  static auto makeDeleter(const Deleter& d) {
+    return [d](void* pt, TLPDestructionMode mode) {
+      d(static_cast<Ptr>(pt), mode);
+    };
+  }
+
+  template <typename Ptr>
+  static decltype(auto) makeDeleter(const SharedPtrDeleter& d) {
+    return d;
+  }
+
   template <class Ptr, class Deleter>
   void set(Ptr p, const Deleter& d) {
     DCHECK_EQ(static_cast<void*>(nullptr), ptr);
@@ -128,9 +175,7 @@ struct ElementWrapper {
     }
 
     auto guard = makeGuard([&] { d(p, TLPDestructionMode::THIS_THREAD); });
-    auto const obj = new DeleterObjType([d](void* pt, TLPDestructionMode mode) {
-      d(static_cast<Ptr>(pt), mode);
-    });
+    auto const obj = new DeleterObjType(makeDeleter<Ptr>(d));
     guard.dismiss();
     auto const raw = reinterpret_cast<uintptr_t>(obj);
     DCHECK_EQ(0, raw & deleter_all_mask);

@@ -255,6 +255,18 @@ TEST(ThreadLocalPtr, CustomDeleter2) {
   EXPECT_EQ(1010, Widget::totalVal_);
 }
 
+TEST(ThreadLocalPtr, SharedPtr) {
+  ThreadLocalPtr<int> tlp;
+  auto sp = std::make_shared<int>(7);
+  EXPECT_EQ(1, sp.use_count());
+  tlp.reset(sp);
+  EXPECT_EQ(2, sp.use_count());
+  EXPECT_EQ(sp.get(), tlp.get());
+  tlp.reset();
+  EXPECT_EQ(1, sp.use_count());
+  EXPECT_EQ(static_cast<void*>(nullptr), tlp.get());
+}
+
 TEST(ThreadLocal, NotDefaultConstructible) {
   struct Object {
     int value;
