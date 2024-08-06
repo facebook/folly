@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <iomanip>
 #include <iostream>
 
 #include <folly/gen/Base.h>
