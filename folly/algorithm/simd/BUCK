@@ -27,6 +27,7 @@ cpp_library(
     headers = ["SimdForEach.h"],
     exported_deps = [
         "//folly:c_portability",
+        "//folly:traits",
         "//folly/algorithm/simd/detail:unroll_utils",
     ],
 )

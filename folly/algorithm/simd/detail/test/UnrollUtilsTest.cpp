@@ -51,20 +51,26 @@ TEST(UnrollUtilsTest, ArrayReduce) {
   static_assert(10 == reduceValues<1, 2, 3, 4>(), "");
 }
 
-template <int stopAt>
+template <std::size_t stopAt>
 struct UnrollUntilTestOp {
-  int* lastStep;
+  std::size_t* lastStep;
 
-  template <int i>
-  constexpr bool operator()(UnrollStep<i>) const {
+  template <std::size_t i>
+  constexpr bool operator()(folly::index_constant<i>) const {
     *lastStep = i;
     return i == stopAt;
   }
 };
 
-template <int N, int stopAt, bool expectedRes, int expectedLastStep>
+constexpr std::size_t kNoStop = std::numeric_limits<std::size_t>::max();
+
+template <
+    std::size_t N,
+    std::size_t stopAt,
+    bool expectedRes,
+    std::size_t expectedLastStep>
 constexpr bool unrollUntilTest() {
-  int lastStep = -1;
+  std::size_t lastStep = kNoStop;
   UnrollUntilTestOp<stopAt> op{&lastStep};
   bool res = UnrollUtils::unrollUntil<N>(op);
 
@@ -77,14 +83,14 @@ TEST(UnrollUtilsTest, UnrollUntil) {
           /*N*/ 0,
           /*stopAt*/ 0,
           /*expectedRes*/ false,
-          /*ExpectedLastStep*/ -1>(),
+          /*ExpectedLastStep*/ kNoStop>(),
       "");
   static_assert(
       unrollUntilTest<
           /*N*/ 0,
           /*stopAt*/ 1,
           /*expectedRes*/ false,
-          /*ExpectedLastStep*/ -1>(),
+          /*ExpectedLastStep*/ kNoStop>(),
       "");
   static_assert(
       unrollUntilTest<

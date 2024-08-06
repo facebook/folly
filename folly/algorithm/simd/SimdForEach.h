@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/CPortability.h>
+#include <folly/Traits.h>
 #include <folly/algorithm/simd/detail/UnrollUtils.h>
 
 #include <array>
@@ -110,10 +111,9 @@ FOLLY_ALWAYS_INLINE T* previousAlignedAddress(T* ptr, int to) {
 struct SimdForEachMainLoop {
   template <typename T, typename Delegate>
   FOLLY_ALWAYS_INLINE bool operator()(
-      int cardinal, T*& f, T* l, Delegate& delegate, detail::UnrollStep<1>)
-      const {
+      int cardinal, T*& f, T* l, Delegate& delegate, index_constant<1>) const {
     while (f != l) {
-      if (delegate.step(f, ignore_none{}, detail::UnrollStep<0>{}))
+      if (delegate.step(f, ignore_none{}, index_constant<0>{}))
         return true;
       f += cardinal;
     }
@@ -129,8 +129,8 @@ struct SimdForEachMainLoop {
     T* l;
     Delegate& delegate;
 
-    template <int i>
-    FOLLY_ALWAYS_INLINE bool operator()(detail::UnrollStep<i> unrollI) {
+    template <std::size_t i>
+    FOLLY_ALWAYS_INLINE bool operator()(index_constant<i> unrollI) {
       if (f == l)
         return true;
 
@@ -140,13 +140,10 @@ struct SimdForEachMainLoop {
     }
   };
 
-  template <typename T, typename Delegate, int unrolling>
+  template <typename T, typename Delegate, std::size_t unrolling>
   FOLLY_ALWAYS_INLINE bool operator()(
-      int cardinal,
-      T*& f,
-      T* l,
-      Delegate& delegate,
-      detail::UnrollStep<unrolling>) const {
+      int cardinal, T*& f, T* l, Delegate& delegate, index_constant<unrolling>)
+      const {
     // Not enough to fully unroll explanation.
     //
     // There are a few approaches to handle this:
@@ -206,14 +203,14 @@ FOLLY_ALWAYS_INLINE void simdForEachAligning(
   ignore_extrema ignore{static_cast<int>(f - af), 0};
   if (af != al) {
     // first chunk
-    if (delegate.step(af, ignore, detail::UnrollStep<0>{})) {
+    if (delegate.step(af, ignore, index_constant<0>{})) {
       return;
     }
     ignore.first = 0;
     af += cardinal;
 
     if (SimdForEachMainLoop{}(
-            cardinal, af, al, delegate, detail::UnrollStep<unrolling>{})) {
+            cardinal, af, al, delegate, index_constant<unrolling>{})) {
       return;
     }
 
@@ -224,7 +221,7 @@ FOLLY_ALWAYS_INLINE void simdForEachAligning(
   }
 
   ignore.last = static_cast<int>(af + cardinal - l);
-  delegate.step(af, ignore, detail::UnrollStep<0>{});
+  delegate.step(af, ignore, index_constant<0>{});
 }
 
 } // namespace simd_detail
