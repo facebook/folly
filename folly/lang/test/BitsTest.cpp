@@ -321,4 +321,26 @@ TEST(Bits, BitCastCompatibilityTest) {
   EXPECT_EQ(one, two);
 }
 
+TEST(Bits, LoadUnalignedUB) {
+  //  test case from: https://github.com/facebook/folly/issues/2150
+  auto func = [](uint8_t a, uint8_t b, uint64_t c, uint64_t d) -> uint32_t {
+    char buffer[1 + 1 + 8 + 8];
+    folly::storeUnaligned<uint8_t>(buffer + 0, a);
+    folly::storeUnaligned<uint8_t>(buffer + 1, b);
+    folly::storeUnaligned<uint64_t>(buffer + 2, c);
+    folly::storeUnaligned<uint64_t>(buffer + 2 + 8, d);
+
+    uint16_t ret = 0;
+    for (std::size_t i = 0; i < sizeof(buffer); i += 2) {
+      ret += folly::loadUnaligned<uint16_t>(buffer + i);
+    }
+    return ret;
+  };
+
+  uint8_t a = 0, b = 0;
+  uint64_t c = 0, d = 0;
+  uint16_t x = func(a, b, c, d);
+  EXPECT_EQ(0, x);
+}
+
 } // namespace folly
