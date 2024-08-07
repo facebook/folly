@@ -45,8 +45,13 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
+
+#include <folly/CPortability.h>
+#include <folly/Portability.h>
+#include <folly/lang/CString.h>
 
 namespace folly {
 namespace hash {
@@ -145,18 +150,19 @@ public:
         uint64_t &s4, uint64_t &s5, uint64_t &s6, uint64_t &s7,
         uint64_t &s8, uint64_t &s9, uint64_t &s10,uint64_t &s11)
     {
-      s0 += data[0];   s2 ^= s10; s11 ^= s0;  s0 = Rot64(s0,11);   s11 += s1;
-      s1 += data[1];   s3 ^= s11; s0 ^= s1;   s1 = Rot64(s1,32);   s0 += s2;
-      s2 += data[2];   s4 ^= s0;  s1 ^= s2;   s2 = Rot64(s2,43);   s1 += s3;
-      s3 += data[3];   s5 ^= s1;  s2 ^= s3;   s3 = Rot64(s3,31);   s2 += s4;
-      s4 += data[4];   s6 ^= s2;  s3 ^= s4;   s4 = Rot64(s4,17);   s3 += s5;
-      s5 += data[5];   s7 ^= s3;  s4 ^= s5;   s5 = Rot64(s5,28);   s4 += s6;
-      s6 += data[6];   s8 ^= s4;  s5 ^= s6;   s6 = Rot64(s6,39);   s5 += s7;
-      s7 += data[7];   s9 ^= s5;  s6 ^= s7;   s7 = Rot64(s7,57);   s6 += s8;
-      s8 += data[8];   s10 ^= s6; s7 ^= s8;   s8 = Rot64(s8,55);   s7 += s9;
-      s9 += data[9];   s11 ^= s7; s8 ^= s9;   s9 = Rot64(s9,54);   s8 += s10;
-      s10 += data[10]; s0 ^= s8;  s9 ^= s10;  s10 = Rot64(s10,22); s9 += s11;
-      s11 += data[11]; s1 ^= s9;  s10 ^= s11; s11 = Rot64(s11,46); s10 += s0;
+      auto read = [&](auto off) { return Read8(data, off); };
+      s0 += read(0);   s2 ^= s10; s11 ^= s0;  s0 = Rot64(s0,11);   s11 += s1;
+      s1 += read(1);   s3 ^= s11; s0 ^= s1;   s1 = Rot64(s1,32);   s0 += s2;
+      s2 += read(2);   s4 ^= s0;  s1 ^= s2;   s2 = Rot64(s2,43);   s1 += s3;
+      s3 += read(3);   s5 ^= s1;  s2 ^= s3;   s3 = Rot64(s3,31);   s2 += s4;
+      s4 += read(4);   s6 ^= s2;  s3 ^= s4;   s4 = Rot64(s4,17);   s3 += s5;
+      s5 += read(5);   s7 ^= s3;  s4 ^= s5;   s5 = Rot64(s5,28);   s4 += s6;
+      s6 += read(6);   s8 ^= s4;  s5 ^= s6;   s6 = Rot64(s6,39);   s5 += s7;
+      s7 += read(7);   s9 ^= s5;  s6 ^= s7;   s7 = Rot64(s7,57);   s6 += s8;
+      s8 += read(8);   s10 ^= s6; s7 ^= s8;   s8 = Rot64(s8,55);   s7 += s9;
+      s9 += read(9);   s11 ^= s7; s8 ^= s9;   s9 = Rot64(s9,54);   s8 += s10;
+      s10 += read(10); s0 ^= s8;  s9 ^= s10;  s10 = Rot64(s10,22); s9 += s11;
+      s11 += read(11); s1 ^= s9;  s10 ^= s11; s11 = Rot64(s11,46); s10 += s0;
     }
 
     //
@@ -281,6 +287,22 @@ private:
         size_t length,        // length of message (in bytes)
         uint64_t *hash1,        // in/out: in the seed, out the hash value
         uint64_t *hash2);       // in/out: in the seed, out the hash value
+
+    //
+    // Helper to read 8 consecutive bytes from a buffer
+    // If the platform has unaligned access, may be called with unaligned buf
+    // Otherwise, must be called only with aligned buf
+    //
+    FOLLY_ALWAYS_INLINE static uint64_t Read8(const uint64_t* buf, size_t off) {
+      if constexpr (kHasUnalignedAccess) {
+        uint64_t out;
+        FOLLY_BUILTIN_MEMCPY(&out, buf + off, sizeof(out));
+        return out;
+      } else {
+        assert(0 == reinterpret_cast<uintptr_t>(buf) % sizeof(*buf));
+        return buf[off];
+      }
+    }
 
     // number of uint64_t's in internal state
     static constexpr size_t sc_numVars = 12;

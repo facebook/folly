@@ -57,7 +57,11 @@ cpp_library(
     headers = ["SpookyHashV2.h"],
     deps = [
         "//folly:cpp_attributes",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
         "//folly:portability",
+        "//folly/lang:c_string",
     ],
 )
 
