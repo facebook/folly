@@ -154,30 +154,28 @@ class TeeStream(object):
 class CallbackStream(object):
     def __init__(self, callback, bytes_callback=None, orig=None):
         self._callback = callback
-        self._fileno = orig.fileno() if orig else None
-
-        # Python 3 APIs:
-        # - `encoding` is a string holding the encoding name
-        # - `errors` is a string holding the error-handling mode for encoding
-        # - `buffer` should look like an io.BufferedIOBase object
-
-        self.errors = orig.errors if orig else None
-        if bytes_callback:
-            # those members are only on the io.TextIOWrapper
-            self.encoding = orig.encoding if orig else "UTF-8"
-            self.buffer = CallbackStream(bytes_callback, orig=orig)
+        self._bytes_callback = bytes_callback
+        self._orig = orig
 
     def write(self, data):
         self._callback(data)
+        if self._bytes_callback and isinstance(data, bytes):
+            self._bytes_callback(data)
 
     def flush(self):
-        pass
+        if self._orig:
+            self._orig.flush()
 
     def isatty(self):
+        if self._orig:
+            return self._orig.isatty()
         return False
 
     def fileno(self):
-        return self._fileno
+        if self._orig:
+            return self._orig.fileno()
+        return -1
+
 
 
 class BuckTestResult(unittest.TextTestResult):
@@ -408,24 +406,22 @@ class StderrLogHandler(logging.StreamHandler):
 
 class RegexTestLoader(unittest.TestLoader):
     def __init__(self, regex=None):
+        super().__init__()
         self.regex = regex
-        super(RegexTestLoader, self).__init__()
 
     def getTestCaseNames(self, testCaseClass):
-        """
-        Return a sorted sequence of method names found within testCaseClass
-        """
-
-        testFnNames = super(RegexTestLoader, self).getTestCaseNames(testCaseClass)
+        test_method_names = super().getTestCaseNames(testCaseClass)
+        
         if self.regex is None:
-            return testFnNames
-        robj = re.compile(self.regex)
-        matched = []
-        for attrname in testFnNames:
-            fullname = _format_test_name(testCaseClass, attrname)
-            if robj.search(fullname):
-                matched.append(attrname)
-        return matched
+            return test_method_names
+        
+        compiled_regex = re.compile(self.regex)
+        matched_method_names = [
+            method_name for method_name in test_method_names 
+            if compiled_regex.search(_format_test_name(testCaseClass, method_name))
+        ]
+        
+        return sorted(matched_method_names)
 
 
 class Loader(object):
