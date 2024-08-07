@@ -50,6 +50,7 @@ cpp_library(
     headers = ["Bits.h"],
     exported_deps = [
         ":assume",
+        ":c_string",
         "//folly:constexpr_math",
         "//folly:portability",
         "//folly:traits",
@@ -91,6 +92,9 @@ cpp_library(
     deps = [
         "//folly:cpp_attributes",
         "//folly/functional:invoke",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
     ],
 )
 

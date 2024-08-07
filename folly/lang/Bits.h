@@ -64,6 +64,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/CString.h>
 #include <folly/portability/Builtins.h>
 
 #if __has_include(<bit>) && (__cplusplus >= 202002L || (defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L))
@@ -351,17 +352,10 @@ FOLLY_POP_WARNING
  */
 template <class T>
 inline constexpr T loadUnaligned(const void* p) {
-  static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
-  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  if constexpr (kHasUnalignedAccess) {
-    return static_cast<const Unaligned<T>*>(p)->value;
-  } else if constexpr (alignof(T) == 1) {
-    return *static_cast<const T*>(p);
-  } else {
-    T value{};
-    memcpy(&value, p, sizeof(T));
-    return value;
-  }
+  static_assert(std::is_trivial_v<T>);
+  T value{static_cast<T>(unsafe_default_initialized)};
+  FOLLY_BUILTIN_MEMCPY(&value, p, sizeof(T));
+  return value;
 }
 
 /**
@@ -407,23 +401,8 @@ inline T partialLoadUnaligned(const void* p, size_t l) {
  */
 template <class T>
 inline void storeUnaligned(void* p, T value) {
-  static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
-  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  if constexpr (kHasUnalignedAccess) {
-    // Prior to C++14, the spec says that a placement new like this
-    // is required to check that p is not nullptr, and to do nothing
-    // if p is a nullptr. By assuming it's not a nullptr, we get a
-    // nice loud segfault in optimized builds if p is nullptr, rather
-    // than just silently doing nothing.
-    assume(p != nullptr);
-    new (p) Unaligned<T>(value);
-  } else if constexpr (alignof(T) == 1) {
-    // See above comment about assuming not a nullptr
-    assume(p != nullptr);
-    new (p) T(value);
-  } else {
-    memcpy(p, &value, sizeof(T));
-  }
+  static_assert(std::is_trivial_v<T>);
+  FOLLY_BUILTIN_MEMCPY(p, &value, sizeof(T));
 }
 
 template <typename T>
