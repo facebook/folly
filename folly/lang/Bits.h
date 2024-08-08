@@ -326,9 +326,6 @@ class Endian {
 #undef FB_GEN2
 #undef FB_GEN1
 
-template <class T, class Enable = void>
-struct Unaligned;
-
 /**
  * Representation of an unaligned value of a POD type.
  */
@@ -336,13 +333,18 @@ FOLLY_PUSH_WARNING
 FOLLY_CLANG_DISABLE_WARNING("-Wpacked")
 FOLLY_PACK_PUSH
 template <class T>
-struct Unaligned<
-    T,
-    typename std::enable_if<
-        std::is_standard_layout<T>::value && std::is_trivial<T>::value>::type> {
+struct Unaligned {
+ public:
+  static_assert(std::is_standard_layout_v<T>);
+  static_assert(std::is_trivial_v<T>);
+
   Unaligned() = default; // uninitialized
-  /* implicit */ Unaligned(T v) : value(v) {}
-  T value;
+  /* implicit */ Unaligned(T v) noexcept : value_(v) {}
+
+  /* implicit */ operator T() const noexcept { return value_; }
+
+ private:
+  T value_; // it must be an error to get a reference to a packed member
 } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP
 FOLLY_POP_WARNING

@@ -58,13 +58,13 @@ struct BitsTraits<
     Unaligned<T>,
     typename std::enable_if<(std::is_integral<T>::value)>::type> {
   typedef T UnderlyingType;
-  static T load(const Unaligned<T>& x) { return x.value; }
-  static void store(Unaligned<T>& x, T v) { x.value = v; }
+  static T load(const Unaligned<T>& x) { return x; }
+  static void store(Unaligned<T>& x, T v) { x = v; }
   static T loadRMW(const Unaligned<T>& x) {
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
     FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
-    return x.value;
+    return x;
     FOLLY_POP_WARNING
   }
 };

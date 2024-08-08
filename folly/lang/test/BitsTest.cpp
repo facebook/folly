@@ -273,6 +273,13 @@ TEST(Bits, BitReverse) {
   }
 }
 
+static_assert(std::is_trivial_v<Unaligned<uint64_t>>);
+static_assert(std::is_trivially_copy_assignable_v<Unaligned<uint64_t>>);
+static_assert(std::is_nothrow_constructible_v<Unaligned<uint64_t>, uint64_t>);
+static_assert(std::is_nothrow_assignable_v<Unaligned<uint64_t>, uint64_t>);
+static_assert(sizeof(Unaligned<uint64_t>) == sizeof(uint64_t));
+static_assert(alignof(Unaligned<uint64_t>) == 1);
+
 TEST(Bits, PartialLoadUnaligned) {
   std::vector<char> buf(128);
   std::generate(
