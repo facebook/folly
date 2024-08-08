@@ -6,6 +6,27 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
+    name = "simd_any_of",
+    headers = ["SimdAnyOf.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly/algorithm/simd:simd_for_each",
+        "//folly/algorithm/simd/detail:unroll_utils",
+    ],
+)
+
+cpp_library(
+    name = "simd_char_platform",
+    headers = ["SimdCharPlatform.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/algorithm/simd:movemask",
+        "//folly/algorithm/simd:simd_for_each",
+        "//folly/lang:bits",
+    ],
+)
+
+cpp_library(
     name = "unroll_utils",
     headers = ["UnrollUtils.h"],
     exported_deps = [

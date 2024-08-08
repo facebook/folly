@@ -17,8 +17,8 @@
 #pragma once
 
 #include <folly/Range.h>
-#include <folly/detail/SimdAnyOf.h>
-#include <folly/detail/SimdCharPlatform.h>
+#include <folly/algorithm/simd/detail/SimdAnyOf.h>
+#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
 
 namespace folly {
 namespace detail {

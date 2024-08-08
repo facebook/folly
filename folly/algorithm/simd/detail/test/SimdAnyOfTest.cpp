@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/detail/SimdAnyOf.h>
+#include <folly/algorithm/simd/detail/SimdAnyOf.h>
 
 #include <folly/Range.h>
-#include <folly/detail/SimdCharPlatform.h>
+#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
 #include <folly/portability/GTest.h>
 
 #include <array>

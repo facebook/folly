@@ -645,6 +645,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
   folly_define_tests(
     DIRECTORY algorithm/simd/detail/test/
+      TEST simd_any_of_test SOURCES SimdAnyOfTest.cpp
       TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY algorithm/simd/test/

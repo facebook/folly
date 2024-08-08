@@ -241,27 +241,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "simd_char_platform",
-    headers = ["SimdCharPlatform.h"],
-    exported_deps = [
-        "//folly:portability",
-        "//folly/algorithm/simd:movemask",
-        "//folly/algorithm/simd:simd_for_each",
-        "//folly/lang:bits",
-    ],
-)
-
-cpp_library(
-    name = "simd_any_of",
-    headers = ["SimdAnyOf.h"],
-    exported_deps = [
-        "//folly:c_portability",
-        "//folly/algorithm/simd:simd_for_each",
-        "//folly/algorithm/simd/detail:unroll_utils",
-    ],
-)
-
-cpp_library(
     name = "simple_simd_string_utils",
     srcs = ["SimpleSimdStringUtils.cpp"],
     headers = [
@@ -269,9 +248,9 @@ cpp_library(
         "SimpleSimdStringUtilsImpl.h",
     ],
     exported_deps = [
-        ":simd_any_of",
-        ":simd_char_platform",
         "//folly:range",
+        "//folly/algorithm/simd/detail:simd_any_of",
+        "//folly/algorithm/simd/detail:simd_char_platform",
     ],
 )
 
@@ -288,10 +267,10 @@ cpp_library(
         "//folly:small_vector",
     ],
     exported_deps = [
-        ":simd_char_platform",
         "//folly:portability",
         "//folly:range",
         "//folly/algorithm/simd:simd_for_each",
+        "//folly/algorithm/simd/detail:simd_char_platform",
         "//folly/lang:bits",
     ],
 )

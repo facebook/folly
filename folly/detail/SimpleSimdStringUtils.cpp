@@ -16,7 +16,7 @@
 
 #include <folly/detail/SimpleSimdStringUtils.h>
 
-#include <folly/detail/SimdCharPlatform.h>
+#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
 #include <folly/detail/SimpleSimdStringUtilsImpl.h>
 
 namespace folly {
