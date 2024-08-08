@@ -147,7 +147,7 @@ TEST(Checksum, crc32cContinuationHardware) {
 }
 
 TEST(Checksum, crc32cHardwareSse42) {
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32c_hw_supported_sse42()) {
     testCRC32C(folly::detail::sse_crc32c_v8s3x3);
   } else {
     LOG(WARNING) << "skipping SSE4.2 hardware-accelerated CRC-32C tests"
@@ -156,7 +156,7 @@ TEST(Checksum, crc32cHardwareSse42) {
 }
 
 TEST(Checksum, crc32cHardwareEqSse42) {
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32c_hw_supported_sse42()) {
     for (size_t i = 0; i < 1000; i++) {
       auto sw = folly::detail::crc32c_sw(buffer, i, 0);
       auto hw = folly::detail::sse_crc32c_v8s3x3(buffer, i, 0);
@@ -169,7 +169,7 @@ TEST(Checksum, crc32cHardwareEqSse42) {
 }
 
 TEST(Checksum, crc32cContinuationHardwareSse42) {
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32c_hw_supported_sse42()) {
     testCRC32CContinuation(folly::detail::sse_crc32c_v8s3x3);
   } else {
     LOG(WARNING) << "skipping SSE4.2 hardware-accelerated CRC-32C tests"
@@ -220,7 +220,7 @@ TEST(Checksum, crc32clargeBuffers) {
 
   constexpr uint32_t kCrc = 2860399007;
 
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32c_hw_supported_sse42()) {
     auto crcSse42 = folly::detail::sse_crc32c_v8s3x3(bufp, kLargeBufSz, ~0);
     ASSERT_EQ(kCrc, crcSse42);
     auto crcHw = folly::detail::crc32c_hw(bufp, kLargeBufSz, ~0);
