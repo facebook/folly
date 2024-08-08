@@ -96,6 +96,7 @@ class F14BasicMap {
   using value_type = typename Policy::Value;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
+  using hash_token_type = F14HashToken;
   using hasher = typename Policy::Hasher;
   using key_equal = typename Policy::KeyEqual;
   using allocator_type = typename Policy::Alloc;
