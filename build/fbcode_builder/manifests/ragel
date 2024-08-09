@@ -1,0 +1,19 @@
+[manifest]
+name = ragel
+
+[debs]
+ragel
+
+[homebrew]
+ragel
+
+[rpms]
+ragel
+
+[download]
+url = https://www.colm.net/files/ragel/ragel-6.10.tar.gz
+sha256 = 5f156edb65d20b856d638dd9ee2dfb43285914d9aa2b6ec779dac0270cd56c3f
+
+[build]
+builder = autoconf
+subdir = ragel-6.10

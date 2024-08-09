@@ -1,0 +1,23 @@
+[manifest]
+name = mcrouter
+
+[git]
+repo_url = https://github.com/facebook/mcrouter.git
+
+[dependencies]
+folly
+wangle
+fizz
+fbthrift
+mvfst
+ragel
+
+[build]
+builder = cmake
+subdir = .
+
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
