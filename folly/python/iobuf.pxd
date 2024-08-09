@@ -51,6 +51,7 @@ cdef extern from "folly/io/IOBuf.h" namespace "folly":
 
 cdef extern from "folly/io/IOBuf.h" namespace "folly::IOBuf":
     unique_ptr[cIOBuf] wrapBuffer(const_uchar* buf, uint64_t capacity)
+    unique_ptr[cIOBuf] copyBuffer(const_uchar* buf, uint64_t capacity)
     unique_ptr[cIOBuf] createChain(size_t totalCapacity, size_t maxBufCapacity)
 
 
