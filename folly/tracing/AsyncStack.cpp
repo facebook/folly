@@ -62,6 +62,11 @@ extern "C" {
 // identify suspended leaves
 volatile uintptr_t __folly_suspended_frame_cookie{
     std::hash<std::type_index>{}(std::type_index(typeid(SuspendedFrameTag)))};
+
+volatile bool __folly_instrumented_frame_tracking_enabled = folly::kIsDebug;
+
+volatile std::unordered_set<folly::AsyncStackFrame*>* __folly_leaf_frame_store{
+    nullptr};
 }
 
 namespace folly {
@@ -200,10 +205,15 @@ FOLLY_NOINLINE void resumeCoroutineWithNewAsyncStackRoot(
 
 namespace {
 auto& suspendedLeafFrames() {
-  static folly::Indestructible<
-      folly::Synchronized<std::unordered_set<AsyncStackFrame*>>>
-      instance;
-  return *instance;
+  static folly::Indestructible<std::unique_ptr<
+      folly::Synchronized<std::unordered_set<AsyncStackFrame*>>>>
+      instance(folly::factory_constructor, []() {
+        auto ret = std::make_unique<
+            folly::Synchronized<std::unordered_set<AsyncStackFrame*>>>();
+        __folly_leaf_frame_store = &ret->unsafeGetUnlocked();
+        return ret;
+      });
+  return **instance;
 }
 } // namespace
 
