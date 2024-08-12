@@ -639,9 +639,6 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
     } else if (res < 0) {
       // assume ECANCELED is not an unrecoverable error state, but we do still
       // have to propogate to the callback as they presumably called the cancel.
-      if (parent_ && res != -ECANCELED) {
-        parent_->readError();
-      }
       AsyncSocketException::AsyncSocketExceptionType err;
       std::string error;
       switch (res) {
@@ -660,6 +657,9 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
           break;
       }
       readCallback_->readErr(AsyncSocketException(err, std::move(error)));
+      if (parent_ && res != -ECANCELED) {
+        parent_->readError();
+      }
     } else {
       uint64_t const cb_was = setReadCbCount_;
       bytesReceived_ += res;
