@@ -647,11 +647,11 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY algorithm/simd/detail/test/
       TEST simd_any_of_test SOURCES SimdAnyOfTest.cpp
       TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
+      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
 
     DIRECTORY algorithm/simd/test/
       TEST find_fixed_test SOURCES FindFixedTest.cpp
       TEST movemask_test SOURCES MovemaskTest.cpp
-      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
 
     DIRECTORY chrono/test/
       TEST chrono_conv_test WINDOWS_DISABLED

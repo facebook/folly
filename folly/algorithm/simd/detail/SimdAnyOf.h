@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/CPortability.h>
-#include <folly/algorithm/simd/SimdForEach.h>
+#include <folly/algorithm/simd/detail/SimdForEach.h>
 #include <folly/algorithm/simd/detail/UnrollUtils.h>
 
 namespace folly {

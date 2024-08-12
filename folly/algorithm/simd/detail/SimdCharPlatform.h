@@ -18,7 +18,7 @@
 
 #include <folly/Portability.h>
 #include <folly/algorithm/simd/Movemask.h>
-#include <folly/algorithm/simd/SimdForEach.h>
+#include <folly/algorithm/simd/detail/SimdForEach.h>
 #include <folly/lang/Bits.h>
 
 #include <array>

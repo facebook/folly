@@ -16,6 +16,15 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "simd_for_each_test",
+    srcs = ["SimdForEachTest.cpp"],
+    deps = [
+        "//folly/algorithm/simd/detail:simd_for_each",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "unroll_utils_test",
     srcs = [
         "UnrollUtilsTest.cpp",

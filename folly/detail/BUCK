@@ -269,8 +269,8 @@ cpp_library(
     exported_deps = [
         "//folly:portability",
         "//folly:range",
-        "//folly/algorithm/simd:simd_for_each",
         "//folly/algorithm/simd/detail:simd_char_platform",
+        "//folly/algorithm/simd/detail:simd_for_each",
         "//folly/lang:bits",
     ],
 )
