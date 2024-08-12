@@ -29,7 +29,7 @@ architectures.
 
 * 100% compatible with `std::string`.
 
-* Thread-safe reference counted copy-on-write for strings "large"
+* Thread-safe reference counted copy-on-write for "large"
   strings (> 255 chars).
 
 * Uses `malloc` instead of allocators.
