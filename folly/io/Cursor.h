@@ -670,8 +670,8 @@ class CursorBase {
   ByteRange peekBytes() {
     // Ensure that we're pointing to valid data
     size_t available = length();
-    while (FOLLY_UNLIKELY(available == 0 && tryAdvanceBuffer())) {
-      available = length();
+    if (FOLLY_UNLIKELY(!available)) {
+      available = peekBytesSlow();
     }
     return ByteRange{data(), available};
   }
@@ -1011,6 +1011,14 @@ class CursorBase {
   }
 
   void advanceDone() {}
+
+  FOLLY_NOINLINE size_t peekBytesSlow() {
+    size_t available = 0;
+    while (available == 0 && tryAdvanceBuffer()) {
+      available = length();
+    }
+    return available;
+  }
 };
 
 namespace detail {
