@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/Instructions.h>
+#include <folly/compression/Instructions.h>
 
 #include <glog/logging.h>
 

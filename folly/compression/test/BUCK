@@ -78,7 +78,7 @@ cpp_unittest(
     srcs = ["InstructionsTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental:instructions",
+        "//folly/compression:instructions",
         "//folly/portability:gtest",
     ],
     external_deps = [
@@ -90,8 +90,8 @@ cpp_unittest(
     name = "select64_test",
     srcs = ["Select64Test.cpp"],
     deps = [
+        "//folly/compression:instructions",
         "//folly/compression:select64",
-        "//folly/experimental:instructions",
         "//folly/portability:gtest",
     ],
 )
@@ -107,7 +107,7 @@ cpp_library(
         "//folly:benchmark",
         "//folly:likely",
         "//folly:optional",
-        "//folly/experimental:instructions",
+        "//folly/compression:instructions",
         "//folly/portability:gtest",
     ],
     exported_external_deps = [

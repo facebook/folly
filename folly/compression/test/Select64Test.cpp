@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include <folly/experimental/Instructions.h>
+#include <folly/compression/Instructions.h>
 #include <folly/portability/GTest.h>
 
 // for disassembling

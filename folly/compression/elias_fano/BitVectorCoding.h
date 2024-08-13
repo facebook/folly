@@ -25,9 +25,9 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/compression/Instructions.h>
 #include <folly/compression/Select64.h>
 #include <folly/compression/elias_fano/CodingDetail.h>
-#include <folly/experimental/Instructions.h>
 #include <folly/lang/Bits.h>
 #include <folly/lang/BitsClass.h>
 

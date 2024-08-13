@@ -29,7 +29,7 @@
 #include <folly/Benchmark.h>
 #include <folly/Likely.h>
 #include <folly/Optional.h>
-#include <folly/experimental/Instructions.h>
+#include <folly/compression/Instructions.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {

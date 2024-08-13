@@ -21,7 +21,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Range.h>
-#include <folly/experimental/Instructions.h>
+#include <folly/compression/Instructions.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
 
