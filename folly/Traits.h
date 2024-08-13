@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -24,6 +25,10 @@
 #include <type_traits>
 
 #include <folly/Portability.h>
+
+#if __cpp_lib_span
+#include <span>
+#endif
 
 namespace folly {
 
@@ -1346,5 +1351,26 @@ using enable_hasher_helper = detail::enable_hasher_helper_impl<
 template <typename T, typename... Dependencies>
 using enable_std_hash_helper =
     enable_hasher_helper<T, std::hash, Dependencies...>;
+
+#if __cpp_lib_span
+
+/**
+ * converting a span to a different span.
+ * treats everything is a just bytes.
+ */
+template <typename U, typename T, std::size_t Extend>
+constexpr auto span_cast(std::span<T, Extend> in) {
+  U* newData = (U*)in.data();
+  if constexpr (Extend == std::dynamic_extent) {
+    assert(in.size() * sizeof(T) % sizeof(U) == 0);
+    return std::span<U>(newData, in.size() * sizeof(T) / sizeof(U));
+  } else {
+    static_assert(in.size() * sizeof(T) % sizeof(U) == 0);
+    constexpr std::size_t kResSize = Extend * sizeof(T) / sizeof(U);
+    return std::span<U, kResSize>(newData, kResSize);
+  }
+}
+
+#endif
 
 } // namespace folly

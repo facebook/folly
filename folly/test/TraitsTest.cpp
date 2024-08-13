@@ -786,3 +786,73 @@ TEST(Traits, value_list) {
           folly::value_list_element_type_t<1, vtag_t<7u, 8, '9'>>>));
   EXPECT_EQ(8, (folly::value_list_element_v<1, vtag_t<7u, 8, '9'>>));
 }
+
+#if __cpp_lib_span
+
+template <typename To, typename From, std::size_t Extend>
+using span_cast_result_type =
+    decltype(folly::span_cast<To>(std::declval<std::span<From, Extend>>()));
+
+TEST(Traits, SpanCast) {
+  auto tstSpanCast = [](auto to, auto from) {
+    ASSERT_EQ(
+        static_cast<const void*>(from.data()),
+        static_cast<const void*>(to.data()));
+
+    ASSERT_EQ(
+        static_cast<const void*>(from.data() + from.size()),
+        static_cast<const void*>(to.data() + to.size()));
+  };
+
+  {
+    std::array<int, 4> a;
+    tstSpanCast(folly::span_cast<const char>(std::span(a)), std::span(a));
+    tstSpanCast(folly::span_cast<double>(std::span(a)), std::span(a));
+  }
+
+  {
+    std::vector<int> a(4u, 1);
+    tstSpanCast(folly::span_cast<const char>(std::span(a)), std::span(a));
+    tstSpanCast(folly::span_cast<double>(std::span(a)), std::span(a));
+  }
+
+  {
+    const std::vector<int> a(4u, 1);
+    tstSpanCast(folly::span_cast<char>(std::span(a)), std::span(a));
+  }
+
+  // types
+  {
+    static_assert(std::is_same_v<
+                  std::span<char>,
+                  span_cast_result_type<char, int, std::dynamic_extent>>);
+    static_assert(std::is_same_v<
+                  std::span<char>,
+                  span_cast_result_type<char, const int, std::dynamic_extent>>);
+    static_assert(std::is_same_v<
+                  std::span<char, 12>,
+                  span_cast_result_type<char, const int, 3>>);
+    static_assert(std::is_same_v<
+                  std::span<const char, 12>,
+                  span_cast_result_type<const char, char, 12>>);
+    static_assert(std::is_same_v<
+                  std::span<int, 3>,
+                  span_cast_result_type<int, const char, 12>>);
+  }
+
+  // constexpr
+  {
+    [[maybe_unused]] constexpr auto _ = [] {
+      std::array<int, 4> a{0, 1, 2, 3};
+      std::span<int, 4> mutableAFixed(a);
+      std::span<int> mutableADynamic(a);
+      auto resFixed = folly::span_cast<const int>(mutableAFixed);
+      (void)resFixed;
+      auto resDynamic = folly::span_cast<const int>(mutableADynamic);
+      (void)resDynamic;
+      return 0;
+    }();
+  }
+}
+
+#endif
