@@ -57,6 +57,9 @@ struct CacheLocality {
   /// by the processors.
   size_t numCpus;
 
+  /// NOTE: The information below may be a heuristic approximation based on the
+  /// available mechanisms to parse cpu topology.
+
   /// Holds the number of caches present at each cache level (0 is
   /// the closest to the cpu).  This is the number of AccessSpreader
   /// stripes needed to avoid cross-cache communication at the specified
@@ -72,6 +75,11 @@ struct CacheLocality {
   /// then cpus with a locality index < 16 will share one last-level
   /// cache and cpus with a locality index >= 16 will share the other.
   std::vector<size_t> localityIndexByCpu;
+
+  /// For each cpu, a list of cache identifiers following the same layout as
+  /// numCachesByLevel. The identifier itself is an arbitrary number: it only
+  /// signifies that cpus with the same identifier share a cache at that level.
+  std::vector<std::vector<size_t>> equivClassesByCpu;
 
   /// Returns the best CacheLocality information available for the current
   /// system, cached for fast access.  This will be loaded from sysfs if
@@ -121,6 +129,9 @@ struct CacheLocality {
   /// CacheLocality structure with the specified number of cpus and a
   /// single cache level that associates one cpu per cache.
   static CacheLocality uniform(size_t numCpus);
+
+ private:
+  explicit CacheLocality(std::vector<std::vector<size_t>> equivClasses);
 };
 
 /// Knows how to derive a function pointer to the VDSO implementation of

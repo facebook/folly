@@ -308,22 +308,21 @@ static std::unordered_map<std::string, std::string> fakeSysfsTree = {
      "9-16,24-31"},
     {"/sys/devices/system/cpu/cpu31/cache/index3/type", "Unified"}};
 
-/// This is the expected CacheLocality structure for fakeSysfsTree
-static const CacheLocality nonUniformExampleLocality = {
-    32, {16, 16, 2}, {0,  2,  4,  6,  8,  10, 11, 12, 14, 16, 18,
-                      20, 22, 24, 26, 28, 30, 1,  3,  5,  7,  9,
-                      13, 15, 17, 19, 21, 23, 25, 27, 29, 31}};
-
 TEST(CacheLocality, FakeSysfs) {
   auto parsed = CacheLocality::readFromSysfsTree([](std::string name) {
     auto iter = fakeSysfsTree.find(name);
     return iter == fakeSysfsTree.end() ? std::string() : iter->second;
   });
 
-  auto& expected = nonUniformExampleLocality;
-  EXPECT_EQ(expected.numCpus, parsed.numCpus);
-  EXPECT_EQ(expected.numCachesByLevel, parsed.numCachesByLevel);
-  EXPECT_EQ(expected.localityIndexByCpu, parsed.localityIndexByCpu);
+  size_t expectedNumCpus = 32;
+  std::vector<size_t> expectedNumCachesByLevel = {16, 16, 2};
+  std::vector<size_t> expectedLocalityIndexByCpu = {
+      0,  2, 4, 6, 8, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28,
+      30, 1, 3, 5, 7, 9,  13, 15, 17, 19, 21, 23, 25, 27, 29, 31};
+
+  EXPECT_EQ(expectedNumCpus, parsed.numCpus);
+  EXPECT_EQ(expectedNumCachesByLevel, parsed.numCachesByLevel);
+  EXPECT_EQ(expectedLocalityIndexByCpu, parsed.localityIndexByCpu);
 }
 
 static const std::vector<std::string> fakeProcCpuinfo = {
@@ -961,19 +960,20 @@ static const std::vector<std::string> fakeProcCpuinfo = {
     "power management:",
 };
 
-/// This is the expected CacheLocality structure for fakeProcCpuinfo
-static const CacheLocality fakeProcCpuinfoLocality = {
-    56, {28, 28, 2}, {0,  2,  4,  6,  8,  10, 12, 14, 16, 18, 20, 22, 24, 26,
-                      28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54,
-                      1,  3,  5,  7,  9,  11, 13, 15, 17, 19, 21, 23, 25, 27,
-                      29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55}};
-
 TEST(CacheLocality, ProcCpu) {
   auto parsed = CacheLocality::readFromProcCpuinfoLines(fakeProcCpuinfo);
-  auto& expected = fakeProcCpuinfoLocality;
-  EXPECT_EQ(expected.numCpus, parsed.numCpus);
-  EXPECT_EQ(expected.numCachesByLevel, parsed.numCachesByLevel);
-  EXPECT_EQ(expected.localityIndexByCpu, parsed.localityIndexByCpu);
+
+  size_t expectedNumCpus = 56;
+  std::vector<size_t> expectedNumCachesByLevel = {28, 28, 2};
+  std::vector<size_t> expectedLocalityIndexByCpu = {
+      0,  2,  4,  6,  8,  10, 12, 14, 16, 18, 20, 22, 24, 26,
+      28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54,
+      1,  3,  5,  7,  9,  11, 13, 15, 17, 19, 21, 23, 25, 27,
+      29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55};
+
+  EXPECT_EQ(expectedNumCpus, parsed.numCpus);
+  EXPECT_EQ(expectedNumCachesByLevel, parsed.numCachesByLevel);
+  EXPECT_EQ(expectedLocalityIndexByCpu, parsed.localityIndexByCpu);
 }
 
 TEST(CacheLocality, LinuxActual) {
@@ -995,6 +995,11 @@ TEST(CacheLocality, LinuxActual) {
   LOG(INFO) << fmt::format(
       "[sysfs] numCachesByLevel={}", parsed2.numCachesByLevel);
 
+  LOG(INFO) << fmt::format(
+      "[cpuinfo] equivClassesByCpu={}", parsed1.equivClassesByCpu);
+  LOG(INFO) << fmt::format(
+      "[sysfs] equivClassesByCpu={}", parsed2.equivClassesByCpu);
+
   EXPECT_EQ(parsed1.localityIndexByCpu, parsed2.localityIndexByCpu)
       << fmt::format(
              "\tcpuinfo: {}\n\tsysfs:   {}",
@@ -1007,6 +1012,7 @@ TEST(CacheLocality, LogSystem) {
   LOG(INFO) << fmt::format("numCpus={}", sys.numCpus);
   LOG(INFO) << fmt::format("numCachesByLevel={}", sys.numCachesByLevel);
   LOG(INFO) << fmt::format("localityIndexByCpu={}", sys.localityIndexByCpu);
+  LOG(INFO) << fmt::format("equivClassesByCpu={}", sys.equivClassesByCpu);
 }
 
 #ifdef RUSAGE_THREAD

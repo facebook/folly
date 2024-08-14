@@ -10,7 +10,6 @@ cpp_library(
         "fbsource//third-party/fmt:fmt",
         "//folly:indestructible",
         "//folly:memory",
-        "//folly:optional",
         "//folly:scope_guard",
         "//folly/detail:static_singleton_manager",
         "//folly/hash:hash",
