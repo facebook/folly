@@ -41,6 +41,12 @@ void SharedPtrDeleter::operator()(
   ts_.reset();
 }
 
+uintptr_t ElementWrapper::castForgetAlign(DeleterFunType* f) noexcept {
+  auto const p = reinterpret_cast<char const*>(f);
+  auto const q = std::launder(p);
+  return reinterpret_cast<uintptr_t>(q);
+}
+
 bool ThreadEntrySet::basicSanity() const {
   return //
       threadEntries.size() == entryToVectorSlot.size() &&

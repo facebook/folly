@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -107,6 +108,9 @@ struct ElementWrapper {
 
   static_assert(alignof(DeleterObjType) > deleter_all_mask);
 
+  //  must be noinline and must launder: https://godbolt.org/z/bo6f7f6v6
+  FOLLY_NOINLINE static uintptr_t castForgetAlign(DeleterFunType*) noexcept;
+
   bool dispose(TLPDestructionMode mode) noexcept {
     if (ptr == nullptr) {
       return false;
@@ -144,7 +148,7 @@ struct ElementWrapper {
     }
     auto const fun =
         +[](void* pt, TLPDestructionMode) { delete static_cast<Ptr>(pt); };
-    auto const raw = reinterpret_cast<uintptr_t>(fun);
+    auto const raw = castForgetAlign(fun);
     if (raw & deleter_all_mask) {
       return set(p, std::ref(*fun));
     }
