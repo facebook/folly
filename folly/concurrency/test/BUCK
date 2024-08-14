@@ -23,6 +23,7 @@ cpp_unittest(
     srcs = ["CacheLocalityTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly/concurrency:cache_locality",
         "//folly/portability:gtest",
         "//folly/portability:sys_resource",

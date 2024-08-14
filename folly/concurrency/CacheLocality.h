@@ -54,7 +54,7 @@ namespace folly {
 struct CacheLocality {
   /// 1 more than the maximum value that can be returned from sched_getcpu
   /// or getcpu.  This is the number of hardware thread contexts provided
-  /// by the processors
+  /// by the processors.
   size_t numCpus;
 
   /// Holds the number of caches present at each cache level (0 is
@@ -99,7 +99,7 @@ struct CacheLocality {
   /// /sys/devices/system/cpu/cpu*/cache/index*/{type,shared_cpu_list} .
   /// Throws an exception if no caches can be parsed at all.
   static CacheLocality readFromSysfsTree(
-      const std::function<std::string(std::string)>& mapping);
+      const std::function<std::string(std::string const&)>& mapping);
 
   /// Reads CacheLocality information from the real sysfs filesystem.
   /// Throws an exception if no cache information can be loaded.

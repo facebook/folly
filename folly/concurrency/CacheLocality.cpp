@@ -80,25 +80,23 @@ const CacheLocality& CacheLocality::system<std::atomic>() {
   return *value;
 }
 
-// Each level of cache has sharing sets, which are the set of cpus
-// that share a common cache at that level.  These are available in a
-// hex bitset form (/sys/devices/system/cpu/cpu0/index0/shared_cpu_map,
-// for example).  They are also available in a human-readable list form,
-// as in /sys/devices/system/cpu/cpu0/index0/shared_cpu_list.  The list
-// is a comma-separated list of numbers and ranges, where the ranges are
-// a pair of decimal numbers separated by a '-'.
+// Each level of cache has sharing sets, which are the set of cpus that share a
+// common cache at that level.  These are available in a hex bitset form
+// (/sys/devices/system/cpu/cpu0/cache/index0/shared_cpu_map, for example).
+// They are also available in human-readable form in the shared_cpu_list file in
+// the same directory.  The list is a comma-separated list of numbers and
+// ranges, where the ranges are pairs of decimal numbers separated by a '-'.
 //
-// To sort the cpus for optimum locality we don't really need to parse
-// the sharing sets, we just need a unique representative from the
-// equivalence class.  The smallest value works fine, and happens to be
-// the first decimal number in the file.  We load all of the equivalence
-// class information from all of the cpu*/index* directories, order the
-// cpus first by increasing last-level cache equivalence class, then by
-// the smaller caches.  Finally, we break ties with the cpu number itself.
+// To sort the cpus for optimum locality we don't really need to parse the
+// sharing sets, we just need a unique representative from the equivalence
+// class.  The smallest value works fine, and happens to be the first decimal
+// number in the file.  We load all of the equivalence class information from
+// all of the cpu*/index* directories, order the cpus first by increasing
+// last-level cache equivalence class, then by the smaller caches.  Finally, we
+// break ties with the cpu number itself.
 
-/// Returns the first decimal number in the string, or throws an exception
-/// if the string does not start with a number terminated by ',', '-',
-/// '\n', or eos.
+/// Returns the first decimal number in the line, or throws an exception if the
+/// line does not start with a number terminated by ',', '-', '\n', or EOS.
 static size_t parseLeadingNumber(const std::string& line) {
   auto raw = line.c_str();
   char* end;
@@ -110,11 +108,11 @@ static size_t parseLeadingNumber(const std::string& line) {
 }
 
 CacheLocality CacheLocality::readFromSysfsTree(
-    const std::function<std::string(std::string)>& mapping) {
+    const std::function<std::string(std::string const&)>& mapping) {
   // number of equivalence classes per level
   std::vector<size_t> numCachesByLevel;
 
-  // the list of cache equivalence classes, where equivalance classes
+  // the list of cache equivalence classes, where equivalence classes
   // are named by the smallest cpu in the class
   std::vector<std::vector<size_t>> equivClassesByCpu;
 
@@ -195,7 +193,7 @@ CacheLocality CacheLocality::readFromSysfsTree(
 }
 
 CacheLocality CacheLocality::readFromSysfs() {
-  return readFromSysfsTree([](std::string name) {
+  return readFromSysfsTree([](std::string const& name) {
     std::ifstream xi(name.c_str());
     std::string rv;
     std::getline(xi, rv);

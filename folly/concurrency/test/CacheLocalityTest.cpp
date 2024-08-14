@@ -21,6 +21,8 @@
 #include <thread>
 #include <unordered_map>
 
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
 #include <folly/test/TestUtils.h>
@@ -988,20 +990,23 @@ TEST(CacheLocality, LinuxActual) {
   auto parsed2 = CacheLocality::readFromSysfs();
   EXPECT_EQ(parsed2.numCpus, std::thread::hardware_concurrency());
 
-  EXPECT_EQ(parsed1.localityIndexByCpu, parsed2.localityIndexByCpu);
+  LOG(INFO) << fmt::format(
+      "[cpuinfo] numCachesByLevel={}", parsed1.numCachesByLevel);
+  LOG(INFO) << fmt::format(
+      "[sysfs] numCachesByLevel={}", parsed2.numCachesByLevel);
+
+  EXPECT_EQ(parsed1.localityIndexByCpu, parsed2.localityIndexByCpu)
+      << fmt::format(
+             "\tcpuinfo: {}\n\tsysfs:   {}",
+             parsed1.localityIndexByCpu,
+             parsed2.localityIndexByCpu);
 }
 
 TEST(CacheLocality, LogSystem) {
   auto& sys = CacheLocality::system<>();
-  LOG(INFO) << "numCpus= " << sys.numCpus;
-  LOG(INFO) << "numCachesByLevel= ";
-  for (std::size_t i = 0; i < sys.numCachesByLevel.size(); ++i) {
-    LOG(INFO) << "  [" << i << "]= " << sys.numCachesByLevel[i];
-  }
-  LOG(INFO) << "localityIndexByCpu= ";
-  for (std::size_t i = 0; i < sys.localityIndexByCpu.size(); ++i) {
-    LOG(INFO) << "  [" << i << "]= " << sys.localityIndexByCpu[i];
-  }
+  LOG(INFO) << fmt::format("numCpus={}", sys.numCpus);
+  LOG(INFO) << fmt::format("numCachesByLevel={}", sys.numCachesByLevel);
+  LOG(INFO) << fmt::format("localityIndexByCpu={}", sys.localityIndexByCpu);
 }
 
 #ifdef RUSAGE_THREAD
