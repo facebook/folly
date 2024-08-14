@@ -16,7 +16,6 @@
 
 #include <folly/concurrency/CacheLocality.h>
 
-#include <cstdlib>
 #include <memory>
 #include <thread>
 #include <unordered_map>
@@ -25,6 +24,7 @@
 #include <fmt/ranges.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
+#include <folly/portability/Unistd.h>
 #include <folly/test/TestUtils.h>
 
 #include <glog/logging.h>
@@ -981,14 +981,16 @@ TEST(CacheLocality, LinuxActual) {
     return;
   }
 
-  auto in_re = ::getenv("RE_PLATFORM");
-  SKIP_IF(in_re != nullptr);
+  // CacheLocality reports the topology for all cpus, even those that are not
+  // available in the current environment (for example a container with pinned
+  // CPUs), so we can't use _SC_NPROCESSORS_ONLN or std::hardware_concurrency().
+  auto expectedNumCpus = sysconf(_SC_NPROCESSORS_CONF);
 
   auto parsed1 = CacheLocality::readFromProcCpuinfo();
-  EXPECT_EQ(parsed1.numCpus, std::thread::hardware_concurrency());
+  EXPECT_EQ(parsed1.numCpus, expectedNumCpus);
 
   auto parsed2 = CacheLocality::readFromSysfs();
-  EXPECT_EQ(parsed2.numCpus, std::thread::hardware_concurrency());
+  EXPECT_EQ(parsed2.numCpus, expectedNumCpus);
 
   LOG(INFO) << fmt::format(
       "[cpuinfo] numCachesByLevel={}", parsed1.numCachesByLevel);

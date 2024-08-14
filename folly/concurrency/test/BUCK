@@ -27,6 +27,7 @@ cpp_unittest(
         "//folly/concurrency:cache_locality",
         "//folly/portability:gtest",
         "//folly/portability:sys_resource",
+        "//folly/portability:unistd",
         "//folly/test:test_utils",
     ],
     external_deps = [
