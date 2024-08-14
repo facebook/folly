@@ -21,7 +21,7 @@ path = "top/main.rs"
 [dependencies]
 
 gazebo = {version = "0.8.1", features = ["str_pattern_extensions"]}
-fbinit = "0.1"
+fbinit = "0.2"
 sorted_vector_map = "0.2"
 watchman_client = "0.8.0"
 
