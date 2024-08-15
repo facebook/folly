@@ -22,6 +22,7 @@
 #include <cstring>
 #include <memory>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 
 #include <folly/Likely.h>
@@ -674,6 +675,17 @@ class CursorBase {
       available = peekBytesSlow();
     }
     return ByteRange{data(), available};
+  }
+
+  /**
+   * Alternate version of peekBytes() that returns a std::basic_string_view
+   * instead of a ByteRage.
+   *
+   * @methodset Accessors
+   */
+  std::basic_string_view<uint8_t> peekView() {
+    auto bytes = peekBytes();
+    return {bytes.data(), bytes.size()};
   }
 
   /**
