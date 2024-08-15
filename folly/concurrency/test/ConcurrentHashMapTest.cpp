@@ -1230,7 +1230,7 @@ REGISTER_TYPED_TEST_SUITE_P(
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 
-#if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
+#if FOLLY_SSE_PREREQ(4, 2) && FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 using folly::detail::concurrenthashmap::simd::SIMDTable;
 typedef ::testing::Types<MapFactory<BucketTable>, MapFactory<SIMDTable>>
     MapFactoryTypes;

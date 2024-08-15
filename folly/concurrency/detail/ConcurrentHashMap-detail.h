@@ -777,7 +777,7 @@ class alignas(64) BucketTable {
 
 } // namespace bucket
 
-#if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
+#if FOLLY_SSE_PREREQ(4, 2) && FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 namespace simd {
 
@@ -1630,7 +1630,7 @@ class alignas(64) SIMDTable {
 };
 } // namespace simd
 
-#endif // FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
+#endif // FOLLY_SSE_PREREQ(4, 2) && FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 } // namespace concurrenthashmap
 
