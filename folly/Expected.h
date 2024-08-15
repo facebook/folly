@@ -213,7 +213,7 @@ using ExpectedErrorType =
 // Details...
 namespace expected_detail {
 
-template <typename Value, typename Error, typename = void>
+template <typename Value, typename Error>
 struct Promise;
 template <typename Value, typename Error>
 struct PromiseReturn;
@@ -1645,8 +1645,7 @@ inline constexpr bool ReturnsVoid =
     std::is_trivial_v<Value> && std::is_empty_v<Value>;
 
 template <typename Value, typename Error>
-struct Promise<Value, Error, typename std::enable_if<!ReturnsVoid<Value>>::type>
-    : public PromiseBase<Value, Error> {
+struct PromiseReturnsValue : public PromiseBase<Value, Error> {
   template <typename U = Value>
   void return_value(U&& u) {
     auto& v = *this->value_;
@@ -1656,11 +1655,17 @@ struct Promise<Value, Error, typename std::enable_if<!ReturnsVoid<Value>>::type>
 };
 
 template <typename Value, typename Error>
-struct Promise<Value, Error, typename std::enable_if<ReturnsVoid<Value>>::type>
-    : public PromiseBase<Value, Error> {
+struct PromiseReturnsVoid : public PromiseBase<Value, Error> {
   // When the coroutine uses `return;` you can fail via `co_await err`.
   void return_void() { this->value_->emplace(Value{}); }
 };
+
+template <typename Value, typename Error>
+struct Promise //
+    : conditional_t<
+          ReturnsVoid<Value>,
+          PromiseReturnsVoid<Value, Error>,
+          PromiseReturnsValue<Value, Error>> {};
 
 template <typename Error>
 struct UnexpectedAwaitable {
