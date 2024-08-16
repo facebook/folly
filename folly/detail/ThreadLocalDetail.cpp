@@ -41,7 +41,7 @@ void SharedPtrDeleter::operator()(
   ts_.reset();
 }
 
-uintptr_t ElementWrapper::castForgetAlign(DeleterFunType* f) noexcept {
+uintptr_t ElementDisposeInfo::castForgetAlign(DeleterFunType* f) noexcept {
   auto const p = reinterpret_cast<char const*>(f);
   auto const q = std::launder(p);
   return reinterpret_cast<uintptr_t>(q);
@@ -49,20 +49,20 @@ uintptr_t ElementWrapper::castForgetAlign(DeleterFunType* f) noexcept {
 
 bool ThreadEntrySet::basicSanity() const {
   return //
-      threadEntries.size() == entryToVectorSlot.size() &&
+      threadElements.size() == entryToVectorSlot.size() &&
       std::all_of(
           entryToVectorSlot.begin(),
           entryToVectorSlot.end(),
           [&](auto const& kvp) {
-            return kvp.second < threadEntries.size() &&
-                threadEntries[kvp.second] == kvp.first;
+            return kvp.second < threadElements.size() &&
+                threadElements[kvp.second].threadEntry == kvp.first;
           });
 }
 
 void ThreadEntrySet::compress() {
   assert(compressible());
   // compress the vector
-  threadEntries.shrink_to_fit();
+  threadElements.shrink_to_fit();
   // compress the index
   EntryIndex newIndex;
   newIndex.reserve(entryToVectorSlot.size());
@@ -131,37 +131,32 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     // ThreadLocal B destructor.
     pthread_setspecific(meta.pthreadKey_, threadEntry);
 
-    std::shared_lock forkRlock(meta.forkHandlerLock_);
-    std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
-    if (meta.strict_) {
-      rlock.lock();
-    }
-    meta.removeThreadEntryFromAllInMap(threadEntry);
-    forkRlock.unlock();
-    {
-      std::lock_guard<std::mutex> g(meta.lock_);
-      // mark it as removed
-      threadEntry->removed_ = true;
-      auto elementsCapacity = threadEntry->getElementsCapacity();
-      auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
-      DCHECK_GE(beforeCount, elementsCapacity);
-      // No need to hold the lock any longer; the ThreadEntry is private to this
-      // thread now that it's been removed from meta.
-    }
-    // NOTE: User-provided deleter / object dtor itself may be using ThreadLocal
-    // with the same Tag, so dispose() calls below may (re)create some of the
-    // elements or even increase elementsCapacity, thus multiple cleanup rounds
-    // may be required.
+    auto elementsCapacity = threadEntry->getElementsCapacity();
+    auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
+    DCHECK_GE(beforeCount, elementsCapacity);
     for (bool shouldRun = true; shouldRun;) {
+      std::shared_lock forkRlock(meta.forkHandlerLock_);
+      std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
+      if (meta.strict_) {
+        rlock.lock();
+      }
+      // NOTE: User-provided deleter / object dtor itself may be using
+      // ThreadLocal with the same Tag, so dispose() calls below may (re)create
+      // some of the elements or even increase elementsCapacity, thus multiple
+      // cleanup rounds may be required.
+      std::vector<ElementDisposeInfo> elements;
       shouldRun = false;
-      auto elementsCapacity = threadEntry->getElementsCapacity();
-      FOR_EACH_RANGE (i, 0, elementsCapacity) {
-        if (threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
-          threadEntry->elements[i].cleanup();
+      meta.removeThreadEntryAndCollectDisposeInfos(threadEntry, elements);
+      forkRlock.unlock();
+      for (auto& e : elements) {
+        if (e.dispose(TLPDestructionMode::THIS_THREAD)) {
+          e.cleanup();
           shouldRun = true;
         }
       }
-      DCHECK(meta.isThreadEntryRemovedFromAllInMap(threadEntry, !meta.strict_));
+      DCHECK(
+          shouldRun ||
+          meta.isThreadEntryRemovedFromAllInMap(threadEntry, !meta.strict_));
     }
     pthread_setspecific(meta.pthreadKey_, nullptr);
   }
@@ -187,17 +182,19 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
     while (tmp) {
       auto& meta = *tmp->meta;
       pthread_setspecific(meta.pthreadKey_, tmp);
-      std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
-      if (meta.strict_) {
-        rlock.lock();
-      }
-
       for (bool shouldRunInner = true; shouldRunInner;) {
+        std::shared_lock forkRlock(meta.forkHandlerLock_);
+        std::shared_lock rlock(meta.accessAllThreadsLock_, std::defer_lock);
+        if (meta.strict_) {
+          rlock.lock();
+        }
         shouldRunInner = false;
-        auto elementsCapacity = tmp->getElementsCapacity();
-        FOR_EACH_RANGE (i, 0, elementsCapacity) {
-          if (tmp->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
-            tmp->elements[i].cleanup();
+        std::vector<ElementDisposeInfo> elements;
+        meta.removeThreadEntryAndCollectDisposeInfos(tmp, elements);
+        forkRlock.unlock();
+        for (auto& e : elements) {
+          if (e.dispose(TLPDestructionMode::THIS_THREAD)) {
+            e.cleanup();
             shouldRunInner = true;
             shouldRunOuter = true;
           }
@@ -256,12 +253,40 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   return id;
 }
 
+ThreadEntrySet StaticMetaBase::popThreadEntrySetAndClearElementPtrs(
+    uint32_t id) {
+  ThreadEntrySet tmp;
+  auto wlocked = allId2ThreadEntrySets_[id].wlock();
+  std::swap(*wlocked, tmp);
+  std::lock_guard<std::mutex> g(lock_);
+  for (auto& e : tmp.threadElements) {
+    auto elementsCapacity = e.threadEntry->getElementsCapacity();
+    if (id < elementsCapacity) {
+      /*
+       * Writing another thread's ThreadEntry from here is fine;
+       * The TL object is being destroyed, so get(id), or reset()
+       * or accessAllThreads calls on it are illegal. Only other
+       * racing accesses would be from the owner thread itself
+       * either a) reallocating the elements array (guarded by lock_, so safe)
+       * or b) exiting and trying to clear the elements array or free the
+       * elements and ThreadEntry itself. The ThreadEntrySet lock synchronizes
+       * this part as the exiting thread will acquire it to remove itself from
+       * the set.
+       */
+      e.threadEntry->elements[id].ptr = nullptr;
+    }
+    // Destroy should not access thread entry after this call as racing
+    // exit call can make it invalid.
+    e.threadEntry = nullptr;
+  }
+  return tmp;
+}
+
 void StaticMetaBase::destroy(EntryID* ent) {
   try {
     auto& meta = *this;
 
     // Elements in other threads that use this id.
-    std::vector<ElementWrapper> elements;
     ThreadEntrySet tmpEntrySet;
 
     {
@@ -283,39 +308,18 @@ void StaticMetaBase::destroy(EntryID* ent) {
       if (id == kEntryIDInvalid) {
         return;
       }
-      meta.allId2ThreadEntrySets_[id].swap(tmpEntrySet);
+      tmpEntrySet = meta.popThreadEntrySetAndClearElementPtrs(id);
       forkRlock.unlock();
 
       {
         std::lock_guard<std::mutex> g(meta.lock_);
-        for (auto& e : tmpEntrySet.threadEntries) {
-          auto elementsCapacity = e->getElementsCapacity();
-          if (id < elementsCapacity) {
-            if (e->elements[id].ptr) {
-              elements.push_back(e->elements[id]);
-              /*
-               * Writing another thread's ThreadEntry from here is fine;
-               * the only other potential reader is the owning thread --
-               * from onThreadExit (which grabs the lock, so is properly
-               * synchronized with us) or from get(), which also grabs
-               * the lock if it needs to resize the elements vector.
-               *
-               * We can't conflict with reads for a get(id), because
-               * it's illegal to call get on a thread local that's
-               * destructing.
-               */
-              e->elements[id].ptr = nullptr;
-              e->elements[id].deleter = 0;
-            }
-          }
-        }
         meta.freeIds_.push_back(id);
       }
     }
     // Delete elements outside the locks.
-    for (ElementWrapper& elem : elements) {
-      if (elem.dispose(TLPDestructionMode::ALL_THREADS)) {
-        elem.cleanup();
+    for (auto& e : tmpEntrySet.threadElements) {
+      if (e.wrapper.dispose(TLPDestructionMode::ALL_THREADS)) {
+        e.wrapper.cleanup();
       }
     }
   } catch (...) { // Just in case we get a lock error or something anyway...
@@ -444,19 +448,14 @@ void StaticMetaBase::reserve(EntryID* id) {
  */
 void* ThreadEntry::releaseElement(uint32_t id) {
   auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
-  return elements[id].release();
-}
-
-/*
- * Cleanup the element. Caller is holding rlock on the ThreadEntrySet
- * corresponding to the id. Running destructors of user objects isn't ideal
- * under lock but this is the historical behavior. It should be possible to
- * restructure this if a need for it arises.
- */
-void ThreadEntry::cleanupElement(uint32_t id) {
-  elements[id].dispose(TLPDestructionMode::THIS_THREAD);
-  // Cleanup
-  elements[id].cleanup();
+  auto slot = rlocked->getIndexFor(this);
+  if (slot < 0) {
+    return nullptr;
+  }
+  auto ptr = rlocked.asNonConstUnsafe().threadElements[slot].wrapper.release();
+  DCHECK_EQ(ptr, elements[id].ptr);
+  elements[id].ptr = nullptr;
+  return ptr;
 }
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
