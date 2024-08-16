@@ -33,6 +33,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
+#include <folly/portability/Unistd.h>
 
 #if __has_include(<range/v3/range/concepts.hpp>)
 #include <range/v3/range/concepts.hpp>
@@ -1052,7 +1053,7 @@ TYPED_TEST(NeedleFinderTest, Base) {
   }
 }
 
-const size_t kPageSize = 4096;
+const size_t kPageSize = sysconf(_SC_PAGESIZE);
 // Updates contents so that any read accesses past the last byte will
 // cause a SIGSEGV.  It accomplishes this by changing access to the page that
 // begins immediately after the end of the contents (as allocators and mmap()

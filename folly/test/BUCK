@@ -1360,6 +1360,7 @@ cpp_unittest(
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
     ],
     external_deps = [
         ("boost", None, "boost_algorithm"),
