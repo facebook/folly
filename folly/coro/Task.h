@@ -168,10 +168,10 @@ class TaskPromiseBase {
   }
 
  private:
-  template <typename T>
+  template <typename>
   friend class folly::coro::TaskWithExecutor;
 
-  template <typename T>
+  template <typename>
   friend class folly::coro::Task;
 
   friend coroutine_handle<ScopeExitTaskPromiseBase> tag_invoke(
@@ -196,43 +196,17 @@ class TaskPromiseBase {
   } bypassExceptionThrowing_{BypassExceptionThrowing::INACTIVE};
 };
 
-template <typename T>
-class TaskPromise final : public TaskPromiseBase,
-                          public ExtendedCoroutinePromiseImpl<TaskPromise<T>> {
+// Separate from `TaskPromiseBase` so the compiler has less to specialize.
+template <typename Promise, typename T>
+class TaskPromiseCrtpBase : public TaskPromiseBase,
+                            public ExtendedCoroutinePromiseImpl<Promise> {
  public:
-  static_assert(
-      !std::is_rvalue_reference_v<T>,
-      "Task<T&&> is not supported. "
-      "Consider using Task<T> or Task<std::unique_ptr<T>> instead.");
-  friend class TaskPromiseBase;
-
   using StorageType = detail::lift_lvalue_reference_t<T>;
-
-  TaskPromise() noexcept = default;
 
   Task<T> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
     result_.emplaceException(exception_wrapper{current_exception()});
-  }
-
-  template <typename U = T>
-  void return_value(U&& value) {
-    if constexpr (std::is_same_v<remove_cvref_t<U>, Try<StorageType>>) {
-      DCHECK(value.hasValue() || (value.hasException() && value.exception()));
-      result_ = static_cast<U&&>(value);
-    } else if constexpr (
-        std::is_same_v<remove_cvref_t<U>, Try<void>> &&
-        std::is_same_v<remove_cvref_t<T>, Unit>) {
-      // special-case to make task -> semifuture -> task preserve void type
-      DCHECK(value.hasValue() || (value.hasException() && value.exception()));
-      result_ = static_cast<Try<Unit>>(static_cast<U&&>(value));
-    } else {
-      static_assert(
-          std::is_convertible<U&&, StorageType>::value,
-          "cannot convert return value to type T");
-      result_.emplace(static_cast<U&&>(value));
-    }
   }
 
   Try<StorageType>& result() { return result_; }
@@ -253,28 +227,65 @@ class TaskPromise final : public TaskPromiseBase,
     return do_safe_point(*this);
   }
 
+ protected:
+  TaskPromiseCrtpBase() noexcept = default;
+  ~TaskPromiseCrtpBase() = default;
+
   std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
       exception_wrapper& ex) override {
+    auto& me = *static_cast<Promise*>(this);
     if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
       auto finalAwaiter = yield_value(co_error(std::move(ex)));
       DCHECK(!finalAwaiter.await_ready());
       return {
           finalAwaiter.await_suspend(
-              coroutine_handle<TaskPromise>::from_promise(*this)),
+              coroutine_handle<Promise>::from_promise(me)),
           // finalAwaiter.await_suspend pops a frame
           getAsyncFrame().getParentFrame()};
     }
-    return {coroutine_handle<TaskPromise>::from_promise(*this), nullptr};
+    return {coroutine_handle<Promise>::from_promise(me), nullptr};
   }
 
- private:
   Try<StorageType> result_;
+};
+
+template <typename T>
+class TaskPromise final : public TaskPromiseCrtpBase<TaskPromise<T>, T> {
+ public:
+  static_assert(
+      !std::is_rvalue_reference_v<T>,
+      "Task<T&&> is not supported. "
+      "Consider using Task<T> or Task<std::unique_ptr<T>> instead.");
+  friend class TaskPromiseBase;
+
+  using StorageType =
+      typename TaskPromiseCrtpBase<TaskPromise<T>, T>::StorageType;
+
+  TaskPromise() noexcept = default;
+
+  template <typename U = T>
+  void return_value(U&& value) {
+    if constexpr (std::is_same_v<remove_cvref_t<U>, Try<StorageType>>) {
+      DCHECK(value.hasValue() || (value.hasException() && value.exception()));
+      this->result_ = static_cast<U&&>(value);
+    } else if constexpr (
+        std::is_same_v<remove_cvref_t<U>, Try<void>> &&
+        std::is_same_v<remove_cvref_t<T>, Unit>) {
+      // special-case to make task -> semifuture -> task preserve void type
+      DCHECK(value.hasValue() || (value.hasException() && value.exception()));
+      this->result_ = static_cast<Try<Unit>>(static_cast<U&&>(value));
+    } else {
+      static_assert(
+          std::is_convertible<U&&, StorageType>::value,
+          "cannot convert return value to type T");
+      this->result_.emplace(static_cast<U&&>(value));
+    }
+  }
 };
 
 template <>
 class TaskPromise<void> final
-    : public TaskPromiseBase,
-      public ExtendedCoroutinePromiseImpl<TaskPromise<void>> {
+    : public TaskPromiseCrtpBase<TaskPromise<void>, void> {
  public:
   friend class TaskPromiseBase;
 
@@ -282,52 +293,14 @@ class TaskPromise<void> final
 
   TaskPromise() noexcept = default;
 
-  Task<void> get_return_object() noexcept;
+  void return_void() noexcept { this->result_.emplace(); }
 
-  void unhandled_exception() noexcept {
-    result_.emplaceException(exception_wrapper{current_exception()});
-  }
+  using TaskPromiseCrtpBase<TaskPromise<void>, void>::yield_value;
 
-  void return_void() noexcept { result_.emplace(); }
-
-  Try<void>& result() { return result_; }
-
-  auto yield_value(co_error ex) {
-    result_.emplaceException(std::move(ex.exception()));
-    return final_suspend();
-  }
-
-  auto yield_value(co_result<void>&& result) {
-    result_ = std::move(result.result());
-    return final_suspend();
-  }
   auto yield_value(co_result<Unit>&& result) {
-    result_ = std::move(result.result());
+    this->result_ = std::move(result.result());
     return final_suspend();
   }
-
-  using TaskPromiseBase::await_transform;
-
-  auto await_transform(co_safe_point_t) noexcept {
-    return do_safe_point(*this);
-  }
-
-  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-      exception_wrapper& ex) override {
-    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
-      auto finalAwaiter = yield_value(co_error(std::move(ex)));
-      DCHECK(!finalAwaiter.await_ready());
-      return {
-          finalAwaiter.await_suspend(
-              coroutine_handle<TaskPromise>::from_promise(*this)),
-          // finalAwaiter.await_suspend pops a frame
-          getAsyncFrame().getParentFrame()};
-    }
-    return {coroutine_handle<TaskPromise>::from_promise(*this), nullptr};
-  }
-
- private:
-  Try<void> result_;
 };
 
 } // namespace detail
@@ -786,7 +759,7 @@ class FOLLY_NODISCARD Task {
 
  private:
   friend class detail::TaskPromiseBase;
-  friend class detail::TaskPromise<T>;
+  friend class detail::TaskPromiseCrtpBase<detail::TaskPromise<T>, T>;
   friend class TaskWithExecutor<T>;
 
   class Awaiter {
@@ -890,14 +863,11 @@ Task<drop_unit_t<T>> makeResultTask(Try<T> t) {
   co_yield co_result(std::move(t));
 }
 
-template <typename T>
-Task<T> detail::TaskPromise<T>::get_return_object() noexcept {
-  return Task<T>{coroutine_handle<detail::TaskPromise<T>>::from_promise(*this)};
-}
-
-inline Task<void> detail::TaskPromise<void>::get_return_object() noexcept {
-  return Task<void>{
-      coroutine_handle<detail::TaskPromise<void>>::from_promise(*this)};
+template <typename Promise, typename T>
+inline Task<T>
+detail::TaskPromiseCrtpBase<Promise, T>::get_return_object() noexcept {
+  return Task<T>{
+      coroutine_handle<Promise>::from_promise(*static_cast<Promise*>(this))};
 }
 
 } // namespace coro
