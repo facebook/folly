@@ -106,15 +106,16 @@ class lock_base {
   owner_type state_{};
 
  public:
-  lock_base() = default;
-  lock_base(lock_base&& that) noexcept
+  FOLLY_NODISCARD lock_base() = default;
+  FOLLY_NODISCARD lock_base(lock_base&& that) noexcept
       : mutex_{std::exchange(that.mutex_, nullptr)},
         state_{std::exchange(that.state_, owner_type{})} {}
   template <typename M = mutex_type, if_<!has_state_, M>* = nullptr>
-  lock_base(type_t<M>& mutex, std::adopt_lock_t)
+  FOLLY_NODISCARD lock_base(type_t<M>& mutex, std::adopt_lock_t)
       : mutex_{std::addressof(mutex)}, state_{owner_true_(tag<owner_type>)} {}
   template <typename M = mutex_type, if_<has_state_, M>* = nullptr>
-  lock_base(type_t<M>& mutex, std::adopt_lock_t, owner_type const& state)
+  FOLLY_NODISCARD lock_base(
+      type_t<M>& mutex, std::adopt_lock_t, owner_type const& state)
       : mutex_{std::addressof(mutex)}, state_{state} {
     state_ || (check_fail_<true>(), 0);
   }
