@@ -118,28 +118,27 @@ class lock_base {
       : mutex_{std::addressof(mutex)}, state_{state} {
     state_ || (check_fail_<true>(), 0);
   }
-  FOLLY_NODISCARD explicit lock_base(mutex_type& mutex) {
-    mutex_ = std::addressof(mutex);
+  FOLLY_NODISCARD explicit lock_base(mutex_type& mutex)
+      : mutex_{std::addressof(mutex)} {
     lock();
   }
-  lock_base(mutex_type& mutex, std::defer_lock_t) noexcept {
-    mutex_ = std::addressof(mutex);
-  }
-  FOLLY_NODISCARD lock_base(mutex_type& mutex, std::try_to_lock_t) {
-    mutex_ = std::addressof(mutex);
+  lock_base(mutex_type& mutex, std::defer_lock_t) noexcept
+      : mutex_{std::addressof(mutex)} {}
+  FOLLY_NODISCARD lock_base(mutex_type& mutex, std::try_to_lock_t)
+      : mutex_{std::addressof(mutex)} {
     try_lock();
   }
   template <typename Rep, typename Period>
   FOLLY_NODISCARD lock_base(
-      mutex_type& mutex, std::chrono::duration<Rep, Period> const& timeout) {
-    mutex_ = std::addressof(mutex);
+      mutex_type& mutex, std::chrono::duration<Rep, Period> const& timeout)
+      : mutex_{std::addressof(mutex)} {
     try_lock_for(timeout);
   }
   template <typename Clock, typename Duration>
   FOLLY_NODISCARD lock_base(
       mutex_type& mutex,
-      std::chrono::time_point<Clock, Duration> const& deadline) {
-    mutex_ = std::addressof(mutex);
+      std::chrono::time_point<Clock, Duration> const& deadline)
+      : mutex_{std::addressof(mutex)} {
     try_lock_until(deadline);
   }
 
