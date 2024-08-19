@@ -30,10 +30,6 @@ namespace detail {
 // everywhere or disabled everywhere.
 void F14LinkCheck<getF14IntrinsicsMode()>::check() noexcept {}
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-EmptyTagVectorType kEmptyTagVector = {};
-#endif
-
 //// Debug and ASAN stuff
 
 bool tlsPendingSafeInserts(std::ptrdiff_t delta) {

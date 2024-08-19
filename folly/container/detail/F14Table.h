@@ -474,11 +474,25 @@ using TagVector = __uint128_t;
 constexpr std::size_t kRequiredVectorAlignment =
     constexpr_max(std::size_t{16}, alignof(max_align_t));
 
-using EmptyTagVectorType = std::aligned_storage_t<
-    sizeof(TagVector) + kRequiredVectorAlignment,
-    alignof(max_align_t)>;
+struct alignas(kRequiredVectorAlignment) F14EmptyTagVector {
+  std::array<uint8_t, sizeof(void*)> tags_{};
+  FOLLY_CONSTEVAL F14EmptyTagVector() noexcept {
+    for (auto& t : tags_) {
+      t = 1;
+    }
+  }
+};
 
-FOLLY_EXPORT extern EmptyTagVectorType kEmptyTagVector;
+FOLLY_EXPORT inline F14EmptyTagVector& getF14EmptyTagVector() noexcept {
+  static constexpr F14EmptyTagVector instance;
+  auto const raw = reinterpret_cast<uintptr_t>(&instance);
+  FOLLY_SAFE_DCHECK(
+      (raw % kRequiredVectorAlignment) == 0,
+      raw,
+      " not aligned to ",
+      kRequiredVectorAlignment);
+  return const_cast<F14EmptyTagVector&>(instance);
+}
 
 template <typename ItemType>
 struct alignas(kRequiredVectorAlignment) F14Chunk {
@@ -524,20 +538,14 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   std::array<aligned_storage_for_t<Item>, kAllocatedCapacity> rawItems_;
 
-  static F14Chunk* emptyInstance() {
-    auto raw = reinterpret_cast<char*>(&kEmptyTagVector);
-    if constexpr (kRequiredVectorAlignment > alignof(max_align_t)) {
-      auto delta = kRequiredVectorAlignment -
-          (reinterpret_cast<uintptr_t>(raw) % kRequiredVectorAlignment);
-      raw += delta;
-    }
-    auto rv = reinterpret_cast<F14Chunk*>(raw);
-    FOLLY_SAFE_DCHECK(
-        (reinterpret_cast<uintptr_t>(rv) % kRequiredVectorAlignment) == 0,
-        reinterpret_cast<uintptr_t>(rv),
-        " not aligned to ",
-        kRequiredVectorAlignment);
-    return rv;
+  FOLLY_EXPORT static F14Chunk* getSomeEmptyInstance() noexcept {
+    return &reinterpret_cast<F14Chunk&>(getF14EmptyTagVector());
+  }
+
+  bool isEmptyInstance() const noexcept {
+    F14EmptyTagVector self;
+    std::memcpy(&self, this, sizeof(self));
+    return self.tags_ == F14EmptyTagVector{}.tags_;
   }
 
   void clear() {
@@ -577,7 +585,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   void setCapacityScale(std::size_t scale) {
     FOLLY_SAFE_DCHECK(
-        this != emptyInstance() && scale > 0 &&
+        !isEmptyInstance() && scale > 0 &&
             scale < (std::size_t{1} << kCapacityScaleBits),
         "");
     if constexpr (kCapacityScaleBits == 4) {
@@ -610,8 +618,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   std::size_t tag(std::size_t index) const { return tags_[index]; }
 
   void setTag(std::size_t index, std::size_t tag) {
-    FOLLY_SAFE_DCHECK(
-        this != emptyInstance() && tag >= 0x80 && tag <= 0xff, "");
+    FOLLY_SAFE_DCHECK(!isEmptyInstance() && tag >= 0x80 && tag <= 0xff, "");
     FOLLY_SAFE_CHECK(tags_[index] == 0, "");
     tags_[index] = static_cast<uint8_t>(tag);
   }
@@ -734,8 +741,9 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   }
 
   bool occupied(std::size_t index) const {
-    FOLLY_SAFE_DCHECK(tags_[index] == 0 || (tags_[index] & 0x80) != 0, "");
-    return tags_[index] != 0;
+    auto const tag = tags_[index];
+    FOLLY_SAFE_DCHECK((tag & ~1) == 0 || (tag & 0x80) != 0, "");
+    return to_signed(tag) < 0;
   }
 
   Item* itemAddr(std::size_t i) const {
@@ -1235,7 +1243,7 @@ class F14Table : public Policy {
  private:
   //////// begin fields
 
-  ChunkPtr chunks_{Chunk::emptyInstance()};
+  ChunkPtr chunks_{Chunk::getSomeEmptyInstance()};
   SizeAndChunkShiftAndPackedBegin<ItemIter, kEnableItemIteration>
       sizeAndChunkShiftAndPackedBegin_;
 
@@ -2052,7 +2060,8 @@ class F14Table : public Policy {
   void initialReserve(std::size_t desiredCapacity) {
     FOLLY_SAFE_DCHECK(size() == 0, "");
     FOLLY_SAFE_DCHECK(chunkShift() == 0, "");
-    FOLLY_SAFE_DCHECK(chunks_ == Chunk::emptyInstance(), "");
+    FOLLY_SAFE_DCHECK(!!chunks_);
+    FOLLY_SAFE_DCHECK(chunks_->isEmptyInstance(), "");
     if (desiredCapacity == 0) {
       return;
     }
@@ -2270,7 +2279,8 @@ class F14Table : public Policy {
     // We want to support the pattern
     //   map.reserve(map.size() + 2); auto& r1 = map[k1]; auto& r2 = map[k2];
     debugModeOnReserve(capacity);
-    if (chunks_ == Chunk::emptyInstance()) {
+    FOLLY_SAFE_DCHECK(!!chunks_);
+    if (chunks_->isEmptyInstance()) {
       initialReserve(capacity);
     } else {
       reserveImpl(capacity);
@@ -2354,7 +2364,8 @@ class F14Table : public Policy {
  private:
   template <bool Reset>
   void clearImpl() noexcept {
-    if (chunks_ == Chunk::emptyInstance()) {
+    FOLLY_SAFE_DCHECK(!!chunks_);
+    if (chunks_->isEmptyInstance()) {
       FOLLY_SAFE_DCHECK(empty() && bucket_count() == 0, "");
       return;
     }
@@ -2408,7 +2419,7 @@ class F14Table : public Policy {
       std::size_t rawSize =
           chunkAllocSize(chunkCount(), chunks_->capacityScale());
 
-      chunks_ = Chunk::emptyInstance();
+      chunks_ = Chunk::getSomeEmptyInstance();
       sizeAndChunkShiftAndPackedBegin_.setChunkCount(1);
 
       this->afterReset(origSize, origCapacity, rawAllocation, rawSize);
@@ -2566,7 +2577,7 @@ class F14Table : public Policy {
     }
 
     FOLLY_SAFE_DCHECK(
-        (chunks_ == Chunk::emptyInstance()) == (bucket_count() == 0), "");
+        (chunks_->isEmptyInstance()) == (bucket_count() == 0), "");
 
     std::size_t n1 = 0;
     std::size_t n2 = 0;
