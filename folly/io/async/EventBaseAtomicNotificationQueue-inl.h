@@ -30,10 +30,11 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
 #if __has_include(<sys/eventfd.h>)
   eventfd_ = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if (eventfd_ == -1) {
-    if (errno == ENOSYS || errno == EINVAL) {
+    auto errno_ = errno;
+    if (errno_ == ENOSYS || errno_ == EINVAL) {
       // eventfd not availalble
       LOG(ERROR) << "failed to create eventfd for AtomicNotificationQueue: "
-                 << errno << ", falling back to pipe mode (is your kernel "
+                 << errno_ << ", falling back to pipe mode (is your kernel "
                  << "> 2.6.30?)";
     } else {
       // some other error
@@ -221,30 +222,32 @@ void EventBaseAtomicNotificationQueue<Task, Consumer>::drainFd() {
   uint64_t message = 0;
   if (eventfd_ >= 0) {
     auto result = readNoInt(eventfd_, &message, sizeof(message));
+    auto errno_ = errno;
 #ifndef _WIN32
     CHECK(
-        result == (int)sizeof(message) || errno == EAGAIN ||
-        errno == EWOULDBLOCK)
+        result == (int)sizeof(message) || errno_ == EAGAIN ||
+        errno_ == EWOULDBLOCK)
 #else
     CHECK(
-        result == (int)sizeof(message) || errno == EAGAIN ||
-        errno == EWOULDBLOCK || errno == WSAECONNRESET)
+        result == (int)sizeof(message) || errno_ == EAGAIN ||
+        errno_ == EWOULDBLOCK || errno_ == WSAECONNRESET)
 #endif
-        << "result = " << result << "; errno = " << errno;
+        << "result = " << result << "; errno = " << errno_;
     writesObserved_ += message;
   } else {
     ssize_t result;
     while ((result = readNoInt(pipeFds_[0], &message, sizeof(message))) != -1) {
       writesObserved_ += result;
     }
+    auto errno_ = errno;
 #ifndef _WIN32
-    CHECK(result == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    CHECK(result == -1 && (errno_ == EAGAIN || errno_ == EWOULDBLOCK))
 #else
     CHECK(
-        result == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) ||
-        errno == WSAECONNRESET)
+        result == -1 && (errno_ == EAGAIN || errno_ == EWOULDBLOCK) ||
+        errno_ == WSAECONNRESET)
 #endif
-        << "result = " << result << "; errno = " << errno;
+        << "result = " << result << "; errno = " << errno_;
   }
 }
 
