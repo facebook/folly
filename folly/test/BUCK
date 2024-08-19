@@ -1554,6 +1554,20 @@ cpp_benchmark(
     external_deps = [("boost", None, "boost_algorithm")],
 )
 
+cpp_binary(
+    name = "string_to_float_benchmark",
+    srcs = ["StringToFloatBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fast_float:fast_float",
+        "//folly:benchmark",
+        "//folly:stop_watch",
+    ],
+    external_deps = [
+        "double_conversion",
+    ],
+)
+
 cpp_unittest(
     name = "string_test",
     srcs = ["StringTest.cpp"],

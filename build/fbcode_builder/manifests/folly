@@ -20,6 +20,7 @@ libdwarf
 libevent
 libsodium
 double-conversion
+fast_float
 fmt
 lz4
 snappy
