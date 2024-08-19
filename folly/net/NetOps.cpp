@@ -544,7 +544,7 @@ int sendmmsg(
 #if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
-  if (reinterpret_cast<void*>(::sendmmsg) != nullptr) {
+  if (to_bool(::sendmmsg)) {
     return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
   }
   // implement via sendmsg
