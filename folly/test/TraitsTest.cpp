@@ -786,3 +786,28 @@ TEST(Traits, value_list) {
           folly::value_list_element_type_t<1, vtag_t<7u, 8, '9'>>>));
   EXPECT_EQ(8, (folly::value_list_element_v<1, vtag_t<7u, 8, '9'>>));
 }
+
+TEST(Traits, type_pack_find) {
+  EXPECT_EQ(0, folly::type_pack_find_v<int>);
+  EXPECT_EQ(0, folly::type_pack_find_t<int>{});
+  EXPECT_EQ(4, (folly::type_pack_find_v<long, char, short, int, float>));
+  EXPECT_EQ(4, (folly::type_pack_find_t<long, char, short, int, float>{}));
+  EXPECT_EQ(2, (folly::type_pack_find_v<int, char, short, int, float>));
+  EXPECT_EQ(2, (folly::type_pack_find_t<int, char, short, int, float>{}));
+}
+
+TEST(Traits, type_list_find) {
+  EXPECT_EQ(0, (folly::type_list_find_v<int, folly::tag_t<>>));
+  EXPECT_EQ(0, (folly::type_list_find_t<int, folly::tag_t<>>{}));
+  EXPECT_EQ(
+      4,
+      (folly::type_list_find_v<long, folly::tag_t<char, short, int, float>>));
+  EXPECT_EQ(
+      4,
+      (folly::type_list_find_t<long, folly::tag_t<char, short, int, float>>{}));
+  EXPECT_EQ(
+      2, (folly::type_list_find_v<int, folly::tag_t<char, short, int, float>>));
+  EXPECT_EQ(
+      2,
+      (folly::type_list_find_t<int, folly::tag_t<char, short, int, float>>{}));
+}

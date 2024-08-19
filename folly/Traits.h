@@ -1258,6 +1258,59 @@ template <std::size_t I, typename List>
 inline constexpr value_list_element_type_t<I, List> value_list_element_v =
     traits_detail::value_list_traits_<List>::template element<I>;
 
+namespace detail {
+
+template <typename V, typename... T>
+constexpr std::size_t type_pack_find_() {
+  bool eq[] = {std::is_same_v<V, T>..., true};
+  for (size_t i = 0; i < sizeof...(T); ++i) {
+    if (eq[i]) {
+      return i;
+    }
+  }
+  return sizeof...(T);
+}
+
+template <typename>
+struct type_list_find_;
+template <template <typename...> class List, typename... T>
+struct type_list_find_<List<T...>> {
+  template <typename V>
+  static inline constexpr std::size_t apply = type_pack_find_<V, T...>();
+};
+
+} // namespace detail
+
+/// type_pack_find_v
+///
+/// The index of the element of the type pack which is identical to the given
+/// type, or the size of the pack if there is no such element.
+template <typename V, typename... T>
+inline constexpr std::size_t type_pack_find_v =
+    detail::type_pack_find_<V, T...>();
+
+/// type_pack_find_t
+///
+/// The index of the element of the type pack which is identical to the given
+/// type, or the size of the pack if there is no such element.
+template <typename V, typename... T>
+using type_pack_find_t = index_constant<type_pack_find_v<V, T...>>;
+
+/// type_list_find_v
+///
+/// The index of the element of the type list which is identical to the given
+/// type, or the size of the list if there is no such element.
+template <typename V, typename List>
+inline constexpr std::size_t type_list_find_v =
+    detail::type_list_find_<List>::template apply<V>;
+
+/// type_list_find_t
+///
+/// The index of the element of the type list which is identical to the given
+/// type, or the size of the list if there is no such element.
+template <typename V, typename List>
+using type_list_find_t = index_constant<type_list_find_v<V, List>>;
+
 /**
  * Checks the requirements that the Hasher class must satisfy
  * in order to be used with the standard library containers,
