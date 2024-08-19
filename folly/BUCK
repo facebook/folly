@@ -915,6 +915,7 @@ cpp_library(
         "//folly/lang:thunk",
         "//folly/memory:malloc",
         "//folly/portability:config",
+        "//folly/portability:constexpr",
         "//folly/portability:malloc",
     ],
 )
