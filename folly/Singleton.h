@@ -539,9 +539,17 @@ class SingletonVault {
     shutdownTimeout_ = std::chrono::milliseconds::zero();
   }
 
+  // For testing only.
+  //
+  // We want to be able to test the output messages outputted by
+  // folly::Singleton on failure to shutdown, but because of the way gtest death
+  // tests fork, we fail with an assertion failure complaining about accessing a
+  // singleton post-fork in the child process instead of the expected output log
+  void setShutdownLogOutputHandler(std::function<void(std::string)>);
+
   void addToShutdownLog(std::string message);
 
-  [[noreturn]] void fireShutdownTimer();
+  void fireShutdownTimer();
 
   void setFailOnUseAfterFork(bool failOnUseAfterFork) {
     failOnUseAfterFork_ = failOnUseAfterFork;
@@ -567,6 +575,8 @@ class SingletonVault {
   static void scheduleDestroyInstances();
 
   void startShutdownTimer();
+
+  [[noreturn]] static void defaultShutdownLogOutputHandler(std::string message);
 
   typedef std::unordered_map<
       detail::TypeDescriptor,
@@ -604,6 +614,8 @@ class SingletonVault {
   std::atomic<bool> shutdownTimerStarted_{false};
   std::chrono::milliseconds shutdownTimeout_{std::chrono::minutes{5}};
   Synchronized<std::vector<std::string>> shutdownLog_;
+  std::function<void(std::string)> shutdownLogOutputHandler_{
+      defaultShutdownLogOutputHandler};
   // We use a lock around CancellationSource to get the guarantee that all
   // cancellation callbacks that got triggered on requestCancellation() are done
   // executing by the time we start destruction.  This prevents silent callbacks
