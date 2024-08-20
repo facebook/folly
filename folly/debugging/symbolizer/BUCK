@@ -3,7 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
-    # @autodeps-skip
     name = "dwarf",
     srcs = [
         "Dwarf.cpp",
@@ -32,9 +31,6 @@ cpp_library(
         "//folly/experimental/symbolizer:elf",
         "//folly/experimental/symbolizer:elf_cache",
         "//folly/experimental/symbolizer:symbolized_frame",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
