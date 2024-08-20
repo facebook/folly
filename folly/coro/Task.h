@@ -227,24 +227,23 @@ class TaskPromiseCrtpBase : public TaskPromiseBase,
     return do_safe_point(*this);
   }
 
- protected:
-  TaskPromiseCrtpBase() noexcept = default;
-  ~TaskPromiseCrtpBase() = default;
-
-  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-      exception_wrapper& ex) override {
-    auto& me = *static_cast<Promise*>(this);
-    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
-      auto finalAwaiter = yield_value(co_error(std::move(ex)));
+  static ExtendedCoroutineHandle::ErrorHandle getErrorHandle(
+      Promise& me, exception_wrapper& ex) {
+    if (me.bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+      auto finalAwaiter = me.yield_value(co_error(std::move(ex)));
       DCHECK(!finalAwaiter.await_ready());
       return {
           finalAwaiter.await_suspend(
               coroutine_handle<Promise>::from_promise(me)),
           // finalAwaiter.await_suspend pops a frame
-          getAsyncFrame().getParentFrame()};
+          me.getAsyncFrame().getParentFrame()};
     }
     return {coroutine_handle<Promise>::from_promise(me), nullptr};
   }
+
+ protected:
+  TaskPromiseCrtpBase() noexcept = default;
+  ~TaskPromiseCrtpBase() = default;
 
   Try<StorageType> result_;
 };

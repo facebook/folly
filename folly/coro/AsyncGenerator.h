@@ -719,19 +719,18 @@ class AsyncGeneratorPromise final
 
   folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
 
-  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-      exception_wrapper& ex) override {
-    if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
-      auto yieldAwaiter = yield_value(co_error(std::move(ex)));
+  static ExtendedCoroutineHandle::ErrorHandle getErrorHandle(
+      AsyncGeneratorPromise& me, exception_wrapper& ex) {
+    if (me.bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+      auto yieldAwaiter = me.yield_value(co_error(std::move(ex)));
       DCHECK(!yieldAwaiter.await_ready());
       return {
           yieldAwaiter.await_suspend(
-              coroutine_handle<AsyncGeneratorPromise>::from_promise(*this)),
+              coroutine_handle<AsyncGeneratorPromise>::from_promise(me)),
           // yieldAwaiter.await_suspend pops a frame
-          getAsyncFrame().getParentFrame()};
+          me.getAsyncFrame().getParentFrame()};
     }
-    return {
-        coroutine_handle<AsyncGeneratorPromise>::from_promise(*this), nullptr};
+    return {coroutine_handle<AsyncGeneratorPromise>::from_promise(me), nullptr};
   }
 
  private:
