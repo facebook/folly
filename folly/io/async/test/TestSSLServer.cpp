@@ -16,8 +16,8 @@
 
 #include <folly/io/async/test/TestSSLServer.h>
 
-#include <folly/experimental/TestUtil.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/testing/TestUtil.h>
 
 namespace folly::test {
 

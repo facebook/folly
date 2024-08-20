@@ -18,12 +18,14 @@
 
 #include <folly/portability/Config.h>
 
-#if FOLLY_HAVE_ELF && (defined(__x86_64__) || defined(__i386__)) && \
+#if FOLLY_HAVE_ELF &&                                                    \
+    (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) || \
+     defined(__arm__)) &&                                                \
     !FOLLY_DISABLE_SDT
 
 #define FOLLY_HAVE_SDT 1
 
-#include <folly/tracing/StaticTracepoint-ELFx86.h>
+#include <folly/tracing/StaticTracepoint-ELF.h>
 
 #define FOLLY_SDT(provider, name, ...) \
   FOLLY_SDT_PROBE_N(                   \
@@ -40,14 +42,22 @@
 
 #define FOLLY_HAVE_SDT 0
 
-#define FOLLY_SDT(provider, name, ...) \
-  do {                                 \
+#define FOLLY_SDT(provider, name, ...)  \
+  do {                                  \
+    [](auto const&...) {}(__VA_ARGS__); \
   } while (0)
 #define FOLLY_SDT_WITH_SEMAPHORE(provider, name, ...) \
   do {                                                \
+    [](auto const&...) {}(__VA_ARGS__);               \
   } while (0)
 #define FOLLY_SDT_IS_ENABLED(provider, name) (false)
-#define FOLLY_SDT_DEFINE_SEMAPHORE(provider, name)
-#define FOLLY_SDT_DECLARE_SEMAPHORE(provider, name)
+#define FOLLY_SDT_SEMAPHORE(provider, name) \
+  folly_sdt_semaphore_##provider##_##name
+#define FOLLY_SDT_DEFINE_SEMAPHORE(provider, name)    \
+  extern "C" {                                        \
+  unsigned short FOLLY_SDT_SEMAPHORE(provider, name); \
+  }
+#define FOLLY_SDT_DECLARE_SEMAPHORE(provider, name) \
+  extern "C" unsigned short FOLLY_SDT_SEMAPHORE(provider, name)
 
 #endif

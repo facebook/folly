@@ -1,0 +1,5 @@
+[manifest]
+name = clang
+
+[rpms]
+clang15-devel

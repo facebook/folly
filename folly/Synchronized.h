@@ -960,6 +960,17 @@ struct Synchronized : public SynchronizedBase<
   T& unsafeGetUnlocked() { return datum_; }
   const T& unsafeGetUnlocked() const { return datum_; }
 
+  /**
+   * @brief Access underlying mutex_ directly.
+   *
+   * Provided as a backdoor for call-sites where the lock and unlock are paired
+   * in different calls. For example, in fork handlers. Use carefully as the
+   * caller is responsible to ensure it is paired with an unlock and there is
+   * nothing else in between that tries to implicitly or explicitly acquire the
+   * lock again.
+   */
+  Mutex& unsafeGetMutex() { return mutex_; }
+
  private:
   template <class LockedType, class MutexType, class LockPolicy>
   friend class folly::LockedPtrBase;

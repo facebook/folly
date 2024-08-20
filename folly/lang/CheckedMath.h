@@ -47,7 +47,7 @@ bool generic_checked_add(T* result, T a, T b) {
     *result = a + b;
     return true;
   } else {
-    if (FOLLY_LIKELY(a < std::numeric_limits<T>::max() - b)) {
+    if (FOLLY_LIKELY(a <= std::numeric_limits<T>::max() - b)) {
       *result = a + b;
       return true;
     } else {
@@ -240,10 +240,14 @@ template <
     typename = std::enable_if_t<std::is_pointer<T>::value>,
     typename = std::enable_if_t<std::is_unsigned<T2>::value>>
 bool checked_add(T* result, T a, T2 b) {
-  return checked_muladd(
-      reinterpret_cast<size_t*>(result),
-      size_t(b),
+  size_t out = 0;
+  bool ret = checked_muladd(
+      &out,
+      static_cast<size_t>(b),
       sizeof(std::remove_pointer_t<T>),
-      size_t(a));
+      reinterpret_cast<size_t>(a));
+
+  *result = reinterpret_cast<T>(out);
+  return ret;
 }
 } // namespace folly

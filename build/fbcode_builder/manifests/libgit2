@@ -7,6 +7,9 @@ libgit2
 [rpms]
 libgit2-devel
 
+[pps]
+libgit2
+
 # Ubuntu 18.04 libgit2 has clash with libcurl4-openssl-dev as it depends on
 # libcurl4-gnutls-dev.  Should be ok from 20.04 again
 # There is a description at https://github.com/r-hub/sysreqsdb/issues/77

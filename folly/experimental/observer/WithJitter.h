@@ -14,29 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <chrono>
-
-#include <folly/experimental/observer/Observer.h>
-
-namespace folly {
-namespace observer {
-
-/**
- * The returned Observer will proxy updates from the input observer but will
- * delay the propagation of each update by some duration between 0 ms and
- * lag + jitter. In addition, if an update arrives while no preceding jittered
- * updates are still in flight, then the delay applied to the latest update will
- * be a uniformly random duration between lag - jitter and lag + jitter.
- */
-template <typename T>
-Observer<T> withJitter(
-    Observer<T> observer,
-    std::chrono::milliseconds lag,
-    std::chrono::milliseconds jitter);
-
-} // namespace observer
-} // namespace folly
-
-#include <folly/experimental/observer/WithJitter-inl.h>
+#include <folly/observer/WithJitter.h>

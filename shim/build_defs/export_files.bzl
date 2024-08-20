@@ -8,3 +8,8 @@
 def export_file(visibility = ["PUBLIC"], **kwargs):
     # @lint-ignore BUCKLINT: avoid "native is forbidden in fbcode"
     native.export_file(visibility = visibility, **kwargs)
+
+def export_files(files, visibility = ["PUBLIC"], **kwargs):
+    # @lint-ignore BUCKLINT: avoid "native is forbidden in fbcode"
+    for file in files:
+        native.export_file(name = file, visibility = visibility, **kwargs)

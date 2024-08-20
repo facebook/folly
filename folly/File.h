@@ -75,7 +75,7 @@ class File {
     try {
       return File(std::forward<Args>(args)...);
     } catch (const std::system_error&) {
-      return makeUnexpected(exception_wrapper(std::current_exception()));
+      return makeUnexpected(exception_wrapper(current_exception()));
     }
   }
 

@@ -3,6 +3,7 @@
 
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:roar.bzl", "roar_no_jit")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -100,6 +101,7 @@ cpp_library(
     name = "benchmark",
     srcs = ["Benchmark.cpp"],
     headers = ["Benchmark.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":file_util",
         ":map_util",
@@ -149,6 +151,7 @@ cpp_library(
         "CancellationToken.h",
         "CancellationToken-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":optional",
         "//folly/synchronization/detail:sleeper",
@@ -176,6 +179,7 @@ cpp_library(
     name = "clock_gettime_wrappers",
     srcs = ["ClockGettimeWrappers.cpp"],
     headers = ["ClockGettimeWrappers.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":c_portability",
         ":likely",
@@ -222,17 +226,9 @@ cpp_library(
 
 cpp_library(
     name = "config",
-    headers = ["folly-config.h"],
-    os_deps = [(
-        "linux",
-        select({
-            "DEFAULT": [],
-            "ovr_config//runtime:fbcode": ["fbsource//third-party/liburing:uring"],
-        }),
-    )],
-    exported_external_deps = [
-        ("glibc", None, "rt"),
-    ],
+    # @fb-only: headers = ["folly-config.h"], 
+    headers = ["//:folly-config.h"], # @oss-only
+    tags = ["oss_dependency"], # @oss-only
 )
 
 cpp_library(
@@ -262,6 +258,14 @@ cpp_library(
     name = "conv",
     srcs = ["Conv.cpp"],
     headers = ["Conv.h"],
+    compiler_flags = roar_no_jit(),
+    propagated_pp_flags = select({
+        "//folly/buck_config:folly-conv-dtoa-to-chars": [
+            # Use std::to_chars instead of libdouble-conversion for Double-To-ASCII conversions
+            "-DFOLLY_CONV_DTOA_TO_CHARS=1",
+        ],
+        "DEFAULT": [],
+    }),
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         "//folly/lang:safe_assert",
@@ -318,12 +322,15 @@ cpp_library(
     name = "demangle",
     srcs = ["Demangle.cpp"],
     headers = ["Demangle.h"],
+    compiler_flags = roar_no_jit(),
     os_deps = [(
         "linux",
         ["third-party//binutils:iberty"],
     )],
     deps = [
+        ":c_portability",
         ":cpp_attributes",
+        ":utility",
         "//folly/functional:invoke",
         "//folly/lang:c_string",
     ],
@@ -375,6 +382,7 @@ cpp_library(
     name = "exception_string",
     srcs = ["ExceptionString.cpp"],
     headers = ["ExceptionString.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":demangle",
         "//folly/lang:exception",
@@ -392,6 +400,7 @@ cpp_library(
         "ExceptionWrapper.h",
         "ExceptionWrapper-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         ":glog",
@@ -417,6 +426,7 @@ cpp_library(
     headers = [
         "Executor.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":exception_string",
         ":portability",
@@ -471,16 +481,11 @@ cpp_library(
 
 cpp_library(
     name = "fbvector",
-    headers = ["FBVector.h"],
+    headers = [
+        "FBVector.h",
+    ],
     exported_deps = [
-        ":format_traits",
-        ":likely",
-        ":scope_guard",
-        ":traits",
-        "//folly/lang:checked_math",
-        "//folly/lang:exception",
-        "//folly/lang:hint",
-        "//folly/memory:malloc",
+        "//folly/container:fbvector",
     ],
 )
 
@@ -488,6 +493,7 @@ cpp_library(
     name = "file",
     srcs = ["File.cpp"],
     headers = ["File.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":exception",
         ":file_util",
@@ -513,6 +519,7 @@ cpp_library(
     name = "file_util",
     srcs = ["FileUtil.cpp"],
     headers = ["FileUtil.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/detail:file_util_detail",
         "//folly/detail:file_util_vector_detail",
@@ -537,6 +544,7 @@ cpp_library(
     name = "fingerprint",
     srcs = ["Fingerprint.cpp"],
     headers = ["Fingerprint.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":portability",
         ":utility",
@@ -571,6 +579,7 @@ cpp_library(
         "Format-inl.h",
         "FormatArg.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":constexpr_math",
         ":cpp_attributes",
@@ -621,6 +630,7 @@ cpp_library(
         "GroupVarint.cpp",
     ],
     headers = ["GroupVarint.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/container:array",
     ],
@@ -667,9 +677,11 @@ cpp_library(
 
 cpp_library(
     name = "intrusive_list",
-    headers = ["IntrusiveList.h"],
-    exported_external_deps = [
-        "boost",
+    headers = [
+        "IntrusiveList.h",
+    ],
+    exported_deps = [
+        "//folly/container:intrusive_list",
     ],
 )
 
@@ -730,12 +742,11 @@ cpp_library(
 
 cpp_library(
     name = "map_util",
-    headers = ["MapUtil.h"],
+    headers = [
+        "MapUtil.h",
+    ],
     exported_deps = [
-        ":conv",
-        ":optional",
-        ":range",
-        "//folly/functional:invoke",
+        "//folly/container:map_util",
     ],
 )
 
@@ -748,8 +759,12 @@ cpp_library(
     name = "memset-impl",
     srcs = [
         "FollyMemset.cpp",
-        "memset.S",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
+            "memset.S",
+        ],
+    }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
     arch_preprocessor_flags = {
@@ -757,7 +772,14 @@ cpp_library(
             "-mavx2",
         ],
     },
+    compiler_flags = roar_no_jit(),
     modular_headers = False,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": [
+            "//folly/external/aor:memset_aarch64",  # @manual
+        ],
+    }),
 )
 
 # This exports the symbol __folly_memset to C++ via a header.
@@ -774,17 +796,32 @@ cpp_library(
     name = "memset-use",
     srcs = [
         "FollyMemset.cpp",
-        "memset.S",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
+            "memset.S",
+        ],
+    }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
     arch_preprocessor_flags = {
+        "aarch64": [
+            "-DFOLLY_MEMSET_IS_MEMSET",
+        ],
         "x86_64": [
             "-DFOLLY_MEMSET_IS_MEMSET",
             "-mavx2",
         ],
     },
+    compiler_flags = roar_no_jit(),
+    link_whole = True,  # Set link_whole to force linker to use __folly_memset
     modular_headers = False,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": [
+            "//folly/external/aor:memset_aarch64-use",  # @manual
+        ],
+    }),
 )
 
 # This adds the symbol __folly_memcpy but does not replace the default memcpy.
@@ -792,8 +829,14 @@ cpp_library(
     name = "memcpy-impl",
     srcs = [
         "FollyMemcpy.cpp",
-        "memcpy.S",
-    ],
+    ] + select({
+        "ovr_config//cpu:x86_64": [
+            "memcpy.S",
+        ],
+        "ovr_config//os:linux-arm64": [
+            "memcpy_select_aarch64.cpp",
+        ],
+    }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
     arch_preprocessor_flags = {
@@ -801,7 +844,14 @@ cpp_library(
             "-mavx2",
         ],
     },
+    compiler_flags = roar_no_jit(),
     modular_headers = False,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": [
+            "//folly/external/aor:memcpy_aarch64",  # @manual
+        ],
+    }),
 )
 
 # This exports the symbol __folly_memcpy to C++ via a header.
@@ -818,18 +868,36 @@ cpp_library(
     name = "memcpy-use",
     srcs = [
         "FollyMemcpy.cpp",
-        "memcpy.S",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
+            "memcpy.S",
+        ],
+        "ovr_config//os:linux-arm64": [
+            "memcpy_select_aarch64.cpp",
+        ],
+    }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
     arch_preprocessor_flags = {
+        "aarch64": [
+            "-DFOLLY_MEMCPY_IS_MEMCPY",
+        ],
         "x86_64": [
             "-DFOLLY_MEMCPY_IS_MEMCPY",
             "-mavx2",
             "-march=haswell",
         ],
     },
+    compiler_flags = roar_no_jit(),
+    link_whole = True,  # Set link_whole to force linker to use __folly_memcpy
     modular_headers = False,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": [
+            "//folly/external/aor:memcpy_aarch64-use",  # @manual
+        ],
+    }),
 )
 
 cpp_library(
@@ -855,6 +923,7 @@ cpp_library(
     name = "micro_lock",
     srcs = ["MicroLock.cpp"],
     headers = ["MicroLock.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/portability:asm",
     ],
@@ -917,6 +986,7 @@ cpp_library(
         "MacAddress.h",
         "SocketAddress.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":exception",
@@ -1086,6 +1156,7 @@ cpp_library(
         "Random.h",
         "Random-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     os_deps = [(
         "windows",
         [
@@ -1142,6 +1213,7 @@ cpp_library(
     name = "scope_guard",
     srcs = ["ScopeGuard.cpp"],
     headers = ["ScopeGuard.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":portability",
         ":preprocessor",
@@ -1155,6 +1227,7 @@ cpp_library(
     name = "shared_mutex",
     srcs = ["SharedMutex.cpp"],
     headers = ["SharedMutex.h"],
+    compiler_flags = roar_no_jit(),
     supports_python_dlopen = True,
     deps = [
         ":indestructible",
@@ -1163,6 +1236,7 @@ cpp_library(
     ],
     exported_deps = [
         ":c_portability",
+        ":cpp_attributes",
         ":likely",
         "//folly/chrono:hardware",
         "//folly/concurrency:cache_locality",
@@ -1184,6 +1258,7 @@ cpp_library(
         "Singleton.h",
         "Singleton-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":demangle",
@@ -1200,9 +1275,9 @@ cpp_library(
         ":memory",
         ":synchronized",
         "//folly/concurrency:core_cached_shared_ptr",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/detail:singleton",
         "//folly/detail:static_singleton_manager",
-        "//folly/experimental:read_mostly_shared_ptr",
         "//folly/hash:hash",
         "//folly/lang:exception",
         "//folly/memory:sanitize_leak",
@@ -1221,6 +1296,7 @@ cpp_library(
     name = "singleton_thread_local",
     srcs = ["SingletonThreadLocal.cpp"],
     headers = ["SingletonThreadLocal.h"],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":scope_guard",
         ":thread_local",
@@ -1234,25 +1310,11 @@ cpp_library(
 
 cpp_library(
     name = "small_vector",
-    headers = ["small_vector.h"],
-    exported_deps = [
-        ":constexpr_math",
-        ":format_traits",
-        ":likely",
-        ":portability",
-        ":scope_guard",
-        ":traits",
-        "//folly/functional:invoke",
-        "//folly/hash:hash",
-        "//folly/lang:align",
-        "//folly/lang:assume",
-        "//folly/lang:checked_math",
-        "//folly/lang:exception",
-        "//folly/memory:malloc",
-        "//folly/portability:malloc",
+    headers = [
+        "small_vector.h",
     ],
-    exported_external_deps = [
-        "boost",
+    exported_deps = [
+        "//folly/container:small_vector",
     ],
 )
 
@@ -1262,12 +1324,7 @@ cpp_library(
         "sorted_vector_types.h",
     ],
     exported_deps = [
-        ":scope_guard",
-        ":traits",
-        ":utility",
-        "//folly/lang:access",
-        "//folly/lang:exception",
-        "//folly/memory:memory_resource",
+        "//folly/container:sorted_vector_types",
     ],
 )
 
@@ -1301,6 +1358,7 @@ cpp_library(
         "String.h",
         "String-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     deps = [
         "//folly/container:array",
     ],
@@ -1327,6 +1385,7 @@ cpp_library(
     name = "subprocess",
     srcs = ["Subprocess.cpp"],
     headers = ["Subprocess.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":conv",
         ":scope_guard",
@@ -1414,6 +1473,7 @@ cpp_library(
     name = "timeout_queue",
     srcs = ["TimeoutQueue.cpp"],
     headers = ["TimeoutQueue.h"],
+    compiler_flags = roar_no_jit(),
     exported_external_deps = [
         "boost",
         ("boost", None, "boost_multi_index"),
@@ -1446,6 +1506,7 @@ cpp_library(
         "Try.h",
         "Try-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":exception_wrapper",
         ":likely",
@@ -1462,6 +1523,7 @@ cpp_library(
     name = "unicode",
     srcs = ["Unicode.cpp"],
     headers = ["Unicode.h"],
+    compiler_flags = roar_no_jit(),
     deps = [
         ":conv",
     ],
@@ -1484,6 +1546,7 @@ cpp_library(
         "Uri.h",
         "Uri-inl.h",
     ],
+    compiler_flags = roar_no_jit(),
     exported_deps = [
         ":conv",
         ":expected",
@@ -1539,7 +1602,7 @@ cpp_library(
         "VirtualExecutor.h",
     ],
     exported_deps = [
-        ":default_keep_alive_executor",
+        "//folly/executors:virtual_executor",
     ],
 )
 

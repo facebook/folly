@@ -64,6 +64,20 @@ struct OneAtATimePolicy {
   }
 };
 
+template <typename T>
+struct CountingAllocator : std::allocator<T> {
+  T* allocate(std::size_t n) {
+    nAllocations += 1;
+    return std::allocator<T>::allocate(n);
+  }
+  int nAllocations{0};
+
+  template <typename U>
+  struct rebind {
+    using other = CountingAllocator<U>;
+  };
+};
+
 struct CountCopyCtor {
   explicit CountCopyCtor() : val_(0), count_(0) {}
 
@@ -820,7 +834,7 @@ TEST(HeapVectorTypes, GrowthPolicy) {
   using SetT = heap_vector_set<
       CountCopyCtor,
       std::less<CountCopyCtor>,
-      std::allocator<CountCopyCtor>,
+      CountingAllocator<CountCopyCtor>,
       OneAtATimePolicy>;
 
   SetT a;
@@ -829,13 +843,9 @@ TEST(HeapVectorTypes, GrowthPolicy) {
   }
   check_invariant(a);
   SetT::iterator it = a.begin();
-  EXPECT_FALSE(it == a.end());
-  if (it != a.end()) {
-    EXPECT_EQ(it->val_, 0);
-    // 1 copy for the initial insertion, 19 more for reallocs on the
-    // additional insertions.
-    EXPECT_EQ(it->count_, 20);
-  }
+  ASSERT_FALSE(it == a.end());
+  EXPECT_EQ(it->count_, 20);
+  EXPECT_EQ(a.get_container().get_allocator().nAllocations, 20);
 
   std::list<CountCopyCtor> v;
   for (int i = 0; i < 20; ++i) {
@@ -843,13 +853,7 @@ TEST(HeapVectorTypes, GrowthPolicy) {
   }
   a.insert(v.begin(), v.end());
   check_invariant(a);
-
-  it = a.begin();
-  EXPECT_FALSE(it == a.end());
-  if (it != a.end()) {
-    EXPECT_EQ(it->val_, 0);
-    EXPECT_EQ(it->count_, folly::kIsLibcpp ? 22 : 23);
-  }
+  EXPECT_EQ(a.get_container().get_allocator().nAllocations, 21);
 }
 
 TEST(HeapVectorTest, EmptyTest) {

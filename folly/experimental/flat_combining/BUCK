@@ -4,13 +4,10 @@ oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
     name = "flat_combining",
-    headers = ["FlatCombining.h"],
+    headers = [
+        "FlatCombining.h",
+    ],
     exported_deps = [
-        "//folly:function",
-        "//folly:indexed_mem_pool",
-        "//folly:portability",
-        "//folly/concurrency:cache_locality",
-        "//folly/synchronization:saturating_semaphore",
-        "//folly/system:thread_name",
+        "//folly/synchronization:flat_combining",
     ],
 )

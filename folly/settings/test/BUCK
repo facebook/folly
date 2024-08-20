@@ -1,0 +1,57 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_benchmark(
+    name = "settings_bench",
+    srcs = ["SettingsBenchmarks.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/init:init",
+        "//folly/settings:settings",
+    ],
+)
+
+cpp_unittest(
+    name = "settings_test",
+    srcs = [
+        "SettingsTest.cpp",
+    ],
+    deps = [
+        "//folly:format",
+        "//folly:string",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/settings:settings",
+        "//folly/settings/test:a",
+        "//folly/settings/test:b",
+    ],
+)
+
+cpp_library(
+    name = "a",
+    srcs = [
+        "a.cpp",
+    ],
+    headers = [
+        "a.h",
+    ],
+    exported_deps = [
+        "//folly/settings:settings",
+    ],
+)
+
+cpp_library(
+    name = "b",
+    srcs = [
+        "b.cpp",
+    ],
+    headers = [
+        "b.h",
+    ],
+    exported_deps = [
+        "//folly/settings:settings",
+    ],
+)

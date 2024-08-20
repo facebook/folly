@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/bser/Bser.h>
+#include <folly/json/bser/Bser.h>
 
 #include <folly/String.h>
 #include <folly/portability/GTest.h>

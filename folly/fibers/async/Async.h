@@ -157,7 +157,7 @@ inline void init_await(Async<void>&& async) {
 
 // is_async
 template <typename T>
-constexpr bool is_async_v = folly::detail::is_instantiation_of_v<Async, T>;
+constexpr bool is_async_v = folly::is_instantiation_of_v<Async, T>;
 
 // async_inner_type
 template <typename T>

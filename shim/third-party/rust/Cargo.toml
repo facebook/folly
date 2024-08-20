@@ -21,8 +21,8 @@ path = "top/main.rs"
 [dependencies]
 
 gazebo = {version = "0.8.1", features = ["str_pattern_extensions"]}
-fbinit = "0.1"
-sorted_vector_map = "0.1"
+fbinit = "0.2"
+sorted_vector_map = "0.2"
 watchman_client = "0.8.0"
 
 annotate-snippets = { version = "0.9.0", features = ["color"] }
@@ -50,6 +50,7 @@ bytesize = "1.1.0"
 chrono = "0.4.28"
 clap = { package = "clap", version = "4.5.4", features = ["derive", "env", "string"] }
 clap-3 = { package = "clap", version = "3.2.24", features = ["derive", "env", "regex", "unicode", "wrap_help"] }
+clap_complete = { package = "clap_complete", version = "4.5.1" }
 common-path = "1.0.0"
 compact_str = "0.6.1"
 constant_time_eq = "0.2.4"
@@ -69,6 +70,7 @@ digest = "0.10"
 dirs = "3.0.1"
 dunce = "1.0.2"
 either = "1.8"
+elf = "0.7.4"
 enum-iterator = "1.4.1"
 enum-map = "0.6.3"
 env_logger = "0.9.0"
@@ -115,6 +117,7 @@ linked-hash-map = { version = "0.5", features = ["serde_impl"] }
 linkme = { version = "0.3.17", features = ["used_linker"] }
 log = "0.4"
 logos = "0.12"
+lru = "0.12.3"
 lsp-server = "0.7.2"
 lsp-types = "0.94.1"
 maplit = "1.0.2"
@@ -132,6 +135,7 @@ num-traits = "0.2"
 num_cpus = "1.11"
 num_enum = "0.5"
 object = "0.29.0"
+oid-registry = "0.6.1"
 once_cell = "1.8"
 os_str_bytes = { version = "6.6.0", features = ["conversions"] }
 parking_lot = { version = "0.11.2", features = ["send_guard"] }
@@ -166,7 +170,7 @@ rustyline = "11.0"
 scopeguard = "1.0.0"
 sequence_trie = "0.3.6"
 serde = { version = "1.0.173", features = ["derive", "rc"] }
-serde_json = "1.0.48"
+serde_json = { version = "1.0.48", features = ["raw_value"] }
 sha1 = "0.10"
 sha2 = "0.10"
 shlex = "1.3"
@@ -178,12 +182,13 @@ smallvec = { version = "1.10", features = ["const_generics", "const_new", "serde
 static_assertions = "1.1.0"
 strsim = "0.10.0"
 structopt = "0.3.23"
+strum = { version = "0.26.2", features = ["derive", "strum_macros"] }
 syn = { version = "2", features = ["extra-traits", "full", "visit"] }
 syn1 = { package = "syn", version = "1.0.109", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 synstructure = "0.12"
 sync_wrapper = "0.1.0"
 sys-info = "0.9.1"
-sysinfo = "0.26.8"
+sysinfo = "0.30.11"
 take_mut = "0.2.2"
 tar = "0.4.38"
 tempfile = "3.1.0"
@@ -205,16 +210,20 @@ tower = "0.4"
 tower-layer = "0.3.1"
 tower-service = "0.3.2"
 tracing = "0.1.22"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-core = "0.1.32"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 triomphe = "0.1.11"
 trybuild = "1.0.56"
+typed-arena = "2.0"
 twox-hash = "1.6.1"
 unicode-segmentation = "1.7"
 uuid = { version = "1.2", features = ["v4"] }
 walkdir = "2.3.2"
 which = "4.3.0"
+whoami = "1.5.1"
 windows_x86_64_msvc = "=0.48.0"  # our fixup only works if we are on precisely 0.48.0
 winapi = { version = "0.3", features = ["everything"] }
+x509-parser = { version = "0.14.0", features = ["verify"] }
 xattr = "0.2.2"
 zip = "0.5"
 zstd = "0.13.0"
@@ -223,3 +232,7 @@ zstd = "0.13.0"
 # For https://github.com/jimblandy/perf-event/pull/29
 perf-event = { git = "https://github.com/krallin/perf-event.git", rev = "86224a9bc025d5d19f719542f27c8c629a08b167", version = "0.4" }
 perf-event-open-sys = { git = "https://github.com/krallin/perf-event.git", rev = "86224a9bc025d5d19f719542f27c8c629a08b167", version = "4.0" }
+
+# Windows-specific dependencies
+[target."cfg(windows)".dependencies]
+winver = "1"

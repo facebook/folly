@@ -43,11 +43,11 @@
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/executors/DrivableExecutor.h>
+#include <folly/executors/ExecutionObserver.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/QueueObserver.h>
 #include <folly/executors/ScheduledExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/ExecutionObserver.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/Request.h>
@@ -311,6 +311,21 @@ class EventBase : public TimeoutManager,
       timerTickInterval = interval;
       return *this;
     }
+
+    /**
+     * If non-zero, processing of loop callback and notification queue callbacks
+     * will only be allowed to run for this timeslice within each iteration
+     * (each gets one timeslice per iteration). This can be used to prevent the
+     * queues to starve event handling or each other.
+     *
+     * Does not apply to runBeforeLoop() and runAfterLoop() callbacks.
+     */
+    std::chrono::milliseconds loopCallbacksTimeslice{0};
+
+    Options& setLoopCallbacksTimeslice(std::chrono::milliseconds timeslice) {
+      loopCallbacksTimeslice = timeslice;
+      return *this;
+    }
   };
 
   /**
@@ -530,6 +545,9 @@ class EventBase : public TimeoutManager,
    *
    * Ideally we would not need thisIteration, and instead just use
    * runInLoop with loop() (instead of terminateLoopSoon).
+   *
+   * If loopCallbacksTimeslice is set, thisIteration is best-effort: if the
+   * timeslice expires, the callback is deferred to the next iteration.
    */
   void runInLoop(
       LoopCallback* callback,
@@ -593,6 +611,13 @@ class EventBase : public TimeoutManager,
    * For example, this callback could be used to get loop times.
    */
   void runBeforeLoop(LoopCallback* callback);
+
+  /**
+   * Adds a callback that will run immediately *after* the event loop.
+   * This can be used to delay some processing until after all the normal loop
+   * callback have been processed for this iteration.
+   */
+  void runAfterLoop(LoopCallback* callback);
 
   /**
    * Run the specified function in the EventBase's thread.
@@ -983,6 +1008,7 @@ class EventBase : public TimeoutManager,
   void keepAliveRelease() noexcept override;
 
  private:
+  class LoopCallbacksDeadline;
   class FuncRunner;
   class ThreadIdCollector;
 
@@ -1015,7 +1041,9 @@ class EventBase : public TimeoutManager,
   LoopStatus loopMain(int flags, LoopOptions options);
   void loopMainCleanup();
 
-  void runLoopCallbacks(LoopCallbackList& currentCallbacks);
+  void runLoopCallbackList(
+      LoopCallbackList& currentCallbacks,
+      const LoopCallbacksDeadline& deadline);
 
   // executes any callbacks queued by runInLoop(); returns false if none found
   bool runLoopCallbacks();
@@ -1026,6 +1054,7 @@ class EventBase : public TimeoutManager,
   const std::chrono::milliseconds intervalDuration_{
       HHWheelTimer::DEFAULT_TICK_INTERVAL};
   const bool enableTimeMeasurement_;
+  const std::chrono::milliseconds loopCallbacksTimeslice_;
   bool strictLoopThread_ = false;
 
   // Loop state that needs to survive suspension.
@@ -1048,6 +1077,7 @@ class EventBase : public TimeoutManager,
 
   LoopCallbackList loopCallbacks_;
   LoopCallbackList runBeforeLoopCallbacks_;
+  LoopCallbackList runAfterLoopCallbacks_;
   Synchronized<OnDestructionCallback::List> onDestructionCallbacks_;
   Synchronized<OnDestructionCallback::List> preDestructionCallbacks_;
 

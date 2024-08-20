@@ -608,6 +608,12 @@ using DispatchOf = Dispatch<
     InSituSize && InSituAlign && InSituNoexcept,
     std::is_trivially_copyable_v<Fun>>;
 
+// This cannot be done inseide `Function` class, because the word
+// `Function` there refers to the instantion and not the template.
+template <typename T>
+constexpr bool is_instantiation_of_folly_function_v =
+    is_instantiation_of_v<Function, T>;
+
 } // namespace function
 } // namespace detail
 
@@ -717,8 +723,8 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   template <
       typename Fun,
-      typename =
-          std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
+      typename = std::enable_if_t<
+          !detail::function::is_instantiation_of_folly_function_v<Fun>>,
       typename = typename Traits::template IfSafeResult<Fun>>
   /* implicit */ constexpr Function(Fun fun) noexcept(
       detail::function::DispatchOf<Fun>::is_in_situ) {

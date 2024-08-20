@@ -1,0 +1,31 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "bitvector_test",
+    srcs = ["BitVectorCodingTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:portability",
+        "//folly/compression:select64",
+        "//folly/compression/elias_fano:bit_vector_coding",
+        "//folly/experimental/test:coding_test_utils",
+        "//folly/init:init",
+    ],
+)
+
+cpp_unittest(
+    name = "eliasfano_test",
+    srcs = ["EliasFanoCodingTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/compression:select64",
+        "//folly/compression/elias_fano:elias_fano_coding",
+        "//folly/experimental/test:coding_test_utils",
+        "//folly/init:init",
+    ],
+)

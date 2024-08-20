@@ -14,22 +14,4 @@
  * limitations under the License.
  */
 
-#if FOLLY_HAS_COROUTINES
-
-namespace folly {
-namespace coro {
-
-template <typename FilterFn, typename Reference, typename Value>
-AsyncGenerator<Reference, Value> filter(
-    AsyncGenerator<Reference, Value> source, FilterFn filterFn) {
-  while (auto item = co_await source.next()) {
-    if (invoke(filterFn, item.value())) {
-      co_yield std::move(item).value();
-    }
-  }
-}
-
-} // namespace coro
-} // namespace folly
-
-#endif // FOLLY_HAS_COROUTINES
+#include <folly/coro/Filter-inl.h>

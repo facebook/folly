@@ -28,6 +28,7 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <string>
 #include <type_traits>
 
 #include <glog/logging.h>
@@ -69,7 +70,7 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  * API Details
  * -----------
  *
- *  - The buffer is not neccesarily full of meaningful bytes - there may be
+ *  - The buffer is not necessarily full of meaningful bytes - there may be
  *    uninitialized bytes before and after the central "valid" range of data.
  *  - Buffers are refcounted, and can be shared by multiple IOBuf objects.
  *    - If you ever write to an IOBuf, first use unshare() to get a unique copy.
@@ -118,7 +119,7 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
  * data() and tail() methods on each IOBuf may point to a different segment of
  * the data.  However, the buffer() and bufferEnd() methods will point to the
  * same location for all IOBufs sharing the same underlying buffer, unless the
- * tail was trimmed with trimWritableTail().
+ * tail was resized by trimWritableTail() or maybeSplitTail().
  *
  *           +-----------+     +---------+
  *           |  IOBuf 1  |     | IOBuf 2 |
@@ -1325,8 +1326,7 @@ class IOBuf {
    * @methodset Buffer Management
    */
   void* getUserData() const noexcept {
-    SharedInfo* info = sharedInfo();
-    return info ? info->userData : nullptr;
+    return sharedInfo_ ? sharedInfo_->userData : nullptr;
   }
 
   /**
@@ -1340,8 +1340,7 @@ class IOBuf {
    * @methodset Buffer Management
    */
   FreeFunction getFreeFn() const noexcept {
-    SharedInfo* info = sharedInfo();
-    return info ? info->freeFn : nullptr;
+    return sharedInfo_ ? sharedInfo_->freeFn : nullptr;
   }
 
   /**
@@ -1355,7 +1354,7 @@ class IOBuf {
    */
   template <typename Observer>
   bool appendSharedInfoObserver(Observer&& observer) {
-    SharedInfo* info = sharedInfo();
+    SharedInfo* info = sharedInfo_;
     if (!info) {
       return false;
     }
@@ -1411,7 +1410,7 @@ class IOBuf {
    *
    * @methodset Buffer Management
    */
-  bool isManagedOne() const noexcept { return sharedInfo(); }
+  bool isManagedOne() const noexcept { return sharedInfo_ != nullptr; }
 
   /**
    * Inconsistently get the reference count.
@@ -1448,15 +1447,15 @@ class IOBuf {
    */
   bool isSharedOne() const noexcept {
     // If this is a user-owned buffer, it is always considered shared
-    if (FOLLY_UNLIKELY(!sharedInfo())) {
+    if (FOLLY_UNLIKELY(!sharedInfo_)) {
       return true;
     }
 
-    if (FOLLY_UNLIKELY(sharedInfo()->externallyShared)) {
+    if (FOLLY_UNLIKELY(sharedInfo_->externallyShared)) {
       return true;
     }
 
-    return sharedInfo()->refcount.load(std::memory_order_acquire) > 1;
+    return sharedInfo_->refcount.load(std::memory_order_acquire) > 1;
   }
 
   /**
@@ -1539,9 +1538,8 @@ class IOBuf {
    * @methodset Buffer Management
    */
   void markExternallySharedOne() {
-    SharedInfo* info = sharedInfo();
-    if (info) {
-      info->externallyShared = true;
+    if (sharedInfo_) {
+      sharedInfo_->externallyShared = true;
     }
   }
 
@@ -1766,6 +1764,18 @@ class IOBuf {
   void cloneOneInto(IOBuf& other) const { other = cloneOneAsValue(); }
 
   /**
+   * Returns a new IOBuf whose buffer is this buffer's tail. The latter is
+   * trimmed to 0 to relinquish ownership of it. The returned IOBuf is unshared,
+   * and it holds a shared reference to the IOBuf that originally owned the
+   * buffer, extending its lifetime.
+   *
+   * This method is best-effort and allowed to fail if the operation is not
+   * possible (for example, if the buffer is shared) or inefficient. In these
+   * cases, nullptr is returned and this IOBuf is unchanged.
+   */
+  std::unique_ptr<IOBuf> maybeSplitTail();
+
+  /**
    * Append the chain data into the provided container.
    *
    * This is meant to be used with containers such as std::string or
@@ -1778,16 +1788,23 @@ class IOBuf {
   void appendTo(Container& container) const;
 
   /**
-   * Dump the chain data into a container.
+   * Returns a container containing the chain data.
    *
    * @copydetails appendTo(Container&) const
    *
    * @tparam Container  The type of container to return.
    *
-   * @returns  A Container whose data equals the coalseced data of this chain
+   * @returns  A Container whose data equals the coalesced data of this chain
    */
   template <class Container>
   Container to() const;
+
+  /**
+   * Convenience version of to<std::string>() that works when called
+   * on a dependent name in a template function without having to use
+   * the "template" keyword.
+   */
+  std::string toString() const { return to<std::string>(); }
 
   /**
    * Get an iovector suitable for e.g. writev()
@@ -1995,14 +2012,6 @@ class IOBuf {
       bool freeOnError,
       TakeOwnershipOption option);
 
-  enum FlagsEnum : uintptr_t {
-    // Adding any more flags would not work on 32-bit architectures,
-    // as these flags are stashed in the least significant 2 bits of a
-    // max-align-aligned pointer.
-    kFlagFreeSharedInfo = 0x1,
-    kFlagMask = (1 << 2 /* least significant bits */) - 1,
-  };
-
   struct SharedInfoObserverEntryBase {
     SharedInfoObserverEntryBase* prev{this};
     SharedInfoObserverEntryBase* next{this};
@@ -2031,10 +2040,17 @@ class IOBuf {
   };
 
   struct SharedInfo {
-    SharedInfo();
-    SharedInfo(FreeFunction fn, void* arg, bool hfs = false);
+    enum class StorageType : uint8_t {
+      kInvalid, // Sentinel value.
+      kAllocated,
+      kHeapFullStorage,
+      kExtBuffer,
+    };
 
-    static void releaseStorage(SharedInfo* info) noexcept;
+    SharedInfo(FreeFunction fn, void* arg, StorageType st);
+
+    static void releaseStorage(
+        IOBuf* parent, StorageType storageType, SharedInfo* info) noexcept;
 
     using ObserverCb = folly::FunctionRef<void(SharedInfoObserverEntryBase&)>;
     static void invokeAndDeleteEachObserver(
@@ -2042,12 +2058,12 @@ class IOBuf {
 
     // A pointer to a function to call to free the buffer when the refcount
     // hits 0.  If this is null, free() will be used instead.
-    FreeFunction freeFn;
-    void* userData;
+    FreeFunction freeFn{nullptr};
+    void* userData{nullptr};
     SharedInfoObserverEntryBase* observerListHead{nullptr};
-    std::atomic<uint32_t> refcount;
+    std::atomic<uint32_t> refcount{1};
     bool externallyShared{false};
-    bool useHeapFullStorage{false};
+    StorageType storageType = StorageType::kInvalid;
     MicroSpinLock observerListLock{0};
   };
   // Helper structs for use by operator new and delete
@@ -2065,7 +2081,7 @@ class IOBuf {
   struct InternalConstructor {}; // avoid conflicts
   IOBuf(
       InternalConstructor,
-      uintptr_t flagsAndSharedInfo,
+      SharedInfo* sharedInfo,
       uint8_t* buf,
       std::size_t capacity,
       uint8_t* data,
@@ -2098,8 +2114,7 @@ class IOBuf {
       uint8_t** bufReturn,
       SharedInfo** infoReturn,
       std::size_t* capacityReturn);
-  static void releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept;
-  static void freeInternalBuf(void* buf, void* userData) noexcept;
+  static void decrementStorageRefcount(HeapStorage* storage) noexcept;
 
   /*
    * Member variables
@@ -2127,46 +2142,7 @@ class IOBuf {
   IOBuf* next_{this};
   IOBuf* prev_{this};
 
-  // Pack flags in least significant 2 bits, sharedInfo in the rest
-  uintptr_t flagsAndSharedInfo_{0};
-
-  static inline uintptr_t packFlagsAndSharedInfo(
-      uintptr_t flags, SharedInfo* info) noexcept {
-    uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
-    DCHECK_EQ(flags & ~kFlagMask, 0u);
-    DCHECK_EQ(uinfo & kFlagMask, 0u);
-    return flags | uinfo;
-  }
-
-  inline SharedInfo* sharedInfo() const noexcept {
-    return reinterpret_cast<SharedInfo*>(flagsAndSharedInfo_ & ~kFlagMask);
-  }
-
-  inline void setSharedInfo(SharedInfo* info) noexcept {
-    uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
-    DCHECK_EQ(uinfo & kFlagMask, 0u);
-    flagsAndSharedInfo_ = (flagsAndSharedInfo_ & kFlagMask) | uinfo;
-  }
-
-  inline uintptr_t flags() const noexcept {
-    return flagsAndSharedInfo_ & kFlagMask;
-  }
-
-  // flags_ are changed from const methods
-  inline void setFlags(uintptr_t flags) noexcept {
-    DCHECK_EQ(flags & ~kFlagMask, 0u);
-    flagsAndSharedInfo_ |= flags;
-  }
-
-  inline void clearFlags(uintptr_t flags) noexcept {
-    DCHECK_EQ(flags & ~kFlagMask, 0u);
-    flagsAndSharedInfo_ &= ~flags;
-  }
-
-  inline void setFlagsAndSharedInfo(
-      uintptr_t flags, SharedInfo* info) noexcept {
-    flagsAndSharedInfo_ = packFlagsAndSharedInfo(flags, info);
-  }
+  SharedInfo* sharedInfo_{nullptr};
 
   struct DeleterBase {
     virtual ~DeleterBase() {}

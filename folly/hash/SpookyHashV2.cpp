@@ -78,18 +78,18 @@ void SpookyHashV2::Short(
         // handle all complete sets of 32 bytes
         for (; u.p64 < end; u.p64 += 4)
         {
-            c += u.p64[0];
-            d += u.p64[1];
+            c += Read8(u.p64, 0);
+            d += Read8(u.p64, 1);
             ShortMix(a,b,c,d);
-            a += u.p64[2];
-            b += u.p64[3];
+            a += Read8(u.p64, 2);
+            b += Read8(u.p64, 3);
         }
 
         //Handle the case of 16+ remaining bytes.
         if (remainder >= 16)
         {
-            c += u.p64[0];
-            d += u.p64[1];
+            c += Read8(u.p64, 0);
+            d += Read8(u.p64, 1);
             ShortMix(a,b,c,d);
             u.p64 += 2;
             remainder -= 16;

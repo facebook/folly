@@ -13,14 +13,17 @@ builder = nop
 
 [dependencies]
 boost
-libcurl
+double-conversion
 fizz
 fmt
 folly
 googletest
-libsodium
+libcurl
 libevent
-double-conversion
+libffi
+libsodium
+openssl
+sqlite3
 wangle
 zstd
 zlib

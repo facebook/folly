@@ -7,5 +7,6 @@
 InheritParentConfig: true
 Checks: '
 -bugprone-use-after-move,
+-facebook-expensive-flat-container-operation,
 '
 ...

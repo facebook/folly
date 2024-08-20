@@ -205,6 +205,8 @@ class BenchmarkingStateBase {
   void addBenchmarkImpl(
       const char* file, StringPiece name, BenchmarkFun, bool useCounter);
 
+  std::vector<std::string> getBenchmarkList();
+
  protected:
   // There is no need for this virtual but we overcome a check
   virtual ~BenchmarkingStateBase() = default;
@@ -648,6 +650,14 @@ void printResultComparison(
 #define BENCHMARK_DRAW_LINE()                                                \
   [[maybe_unused]] static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) = \
       (::folly::addBenchmark(__FILE__, "-", []() -> unsigned { return 0; }), \
+       true)
+
+/**
+ * Prints arbitrary text.
+ */
+#define BENCHMARK_DRAW_TEXT(text)                                              \
+  [[maybe_unused]] static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) =   \
+      (::folly::addBenchmark(__FILE__, #text, []() -> unsigned { return 0; }), \
        true)
 
 /**

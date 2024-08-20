@@ -42,7 +42,7 @@ class InlineExecutor : public InlineLikeExecutor {
   void add(Func f) override { f(); }
 
  private:
-  FOLLY_COLD static InlineExecutor& instance_slow() noexcept;
+  [[FOLLY_ATTR_GNU_COLD]] static InlineExecutor& instance_slow() noexcept;
 
   static std::atomic<InlineExecutor*> cache;
 };

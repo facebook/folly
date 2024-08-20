@@ -31,12 +31,12 @@ cpp_unittest(
         "//folly:range",
         "//folly:string",
         "//folly/container:enumerate",
-        "//folly/experimental:test_util",
         "//folly/portability:gtest",
         "//folly/portability:openssl",
         "//folly/portability:time",
         "//folly/ssl:openssl_cert_utils",
         "//folly/ssl:openssl_ptr_types",
+        "//folly/testing:test_util",
     ],
 )
 

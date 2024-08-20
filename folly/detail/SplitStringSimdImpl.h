@@ -18,8 +18,8 @@
 
 #include <folly/Portability.h>
 #include <folly/Range.h>
-#include <folly/detail/SimdCharPlatform.h>
-#include <folly/detail/SimdForEach.h>
+#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
+#include <folly/algorithm/simd/detail/SimdForEach.h>
 #include <folly/lang/Bits.h>
 
 #if FOLLY_X64

@@ -60,19 +60,20 @@
 #endif
 
 /* FOLLY_SANITIZE_ADDRESS is defined to 1 if the current compilation unit
- * is being compiled with ASAN enabled.
+ * is being compiled with ASAN or HWASAN enabled.
  *
  * Beware when using this macro in a header file: this macro may change values
- * across compilation units if some libraries are built with ASAN enabled
- * and some built with ASAN disabled.  For instance, this may occur, if folly
- * itself was compiled without ASAN but a downstream project that uses folly is
- * compiling with ASAN enabled.
+ * across compilation units if some libraries are built with ASAN/HWASAN enabled
+ * and some built with ASAN/HWSAN disabled. For instance, this may occur, if
+ * folly itself was compiled without ASAN/HWSAN but a downstream project that
+ * uses folly is compiling with ASAN/HWSAN enabled.
  *
  * Use FOLLY_LIBRARY_SANITIZE_ADDRESS (defined in folly-config.h) to check if
  * folly itself was compiled with ASAN enabled.
  */
 #ifndef FOLLY_SANITIZE_ADDRESS
-#if FOLLY_HAS_FEATURE(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+#if FOLLY_HAS_FEATURE(address_sanitizer) || defined(__SANITIZE_ADDRESS__) || \
+    FOLLY_HAS_FEATURE(hwaddress_sanitizer)
 #define FOLLY_SANITIZE_ADDRESS 1
 #endif
 #endif
@@ -83,8 +84,9 @@
 #ifdef FOLLY_SANITIZE_ADDRESS
 #if defined(__clang__)
 #if __has_attribute(__no_sanitize__)
-#define FOLLY_DISABLE_ADDRESS_SANITIZER \
-  __attribute__((__no_sanitize__("address"), __noinline__))
+#define FOLLY_DISABLE_ADDRESS_SANITIZER                     \
+  __attribute__((__no_sanitize__("address"), __noinline__)) \
+  __attribute__((__no_sanitize__("hwaddress"), __noinline__))
 #elif __has_attribute(__no_address_safety_analysis__)
 #define FOLLY_DISABLE_ADDRESS_SANITIZER \
   __attribute__((__no_address_safety_analysis__, __noinline__))
@@ -249,6 +251,12 @@
 //
 //  Semantically includes the inline specifier.
 #define FOLLY_ERASE FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN
+
+//  FOLLY_ERASE_NOINLINE
+//
+//  Like FOLLY_ERASE, but also noinline. The naming similarity with FOLLY_ERASE
+//  is specifically desirable.
+#define FOLLY_ERASE_NOINLINE FOLLY_NOINLINE FOLLY_ATTR_VISIBILITY_HIDDEN
 
 //  FOLLY_ERASE_HACK_GCC
 //

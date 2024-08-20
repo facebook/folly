@@ -30,7 +30,6 @@
 
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/AsyncSSLSocket.h>
@@ -51,6 +50,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Unistd.h>
+#include <folly/testing/TestUtil.h>
 
 #ifdef __linux__
 #include <dlfcn.h>
@@ -3194,7 +3194,6 @@ TEST(AsyncSSLSocketTest, TestNullConnectCallbackError) {
   EXPECT_FALSE(server.handshakeSuccess_);
 }
 
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
 TEST(AsyncSSLSocketTest, TestSSLSetClientOptionsP256) {
   EventBase evb;
   std::array<NetworkSocket, 2> fds;
@@ -3262,7 +3261,6 @@ TEST(AsyncSSLSocketTest, TestSSLSetClientOptionsX25519) {
   auto sharedGroupName = serverSocket->getNegotiatedGroup();
   EXPECT_THAT(sharedGroupName, testing::HasSubstr("X25519"));
 }
-#endif
 
 /**
  * Test overriding the flags passed to "sendmsg()" system call,

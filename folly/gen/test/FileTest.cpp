@@ -21,10 +21,10 @@
 
 #include <folly/Range.h>
 #include <folly/container/Array.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/File.h>
 #include <folly/portability/GTest.h>
+#include <folly/testing/TestUtil.h>
 
 using namespace folly::gen;
 using namespace folly;

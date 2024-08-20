@@ -104,7 +104,7 @@ typename Promise<T, BatonT>::value_type Promise<T, BatonT>::await_async(
     } catch (...) {
       // Save the exception, but still wait for baton to be posted by user code
       // or promise destructor.
-      funcException = std::current_exception();
+      funcException = current_exception();
     }
   });
 

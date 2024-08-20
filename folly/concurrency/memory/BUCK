@@ -1,0 +1,53 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "atomic_read_mostly_main_ptr",
+    srcs = [
+        "AtomicReadMostlyMainPtr.cpp",
+    ],
+    headers = [
+        "AtomicReadMostlyMainPtr.h",
+    ],
+    deps = [
+        "//folly/executors:inline_executor",
+    ],
+    exported_deps = [
+        "//folly:indestructible",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
+        "//folly/synchronization:rcu",
+    ],
+)
+
+cpp_library(
+    name = "read_mostly_shared_ptr",
+    headers = ["ReadMostlySharedPtr.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly/concurrency/memory:tl_ref_count",
+    ],
+)
+
+cpp_library(
+    name = "primary_ptr",
+    headers = ["PrimaryPtr.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly/futures:cleanup",
+        "//folly/futures:core",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "tl_ref_count",
+    headers = ["TLRefCount.h"],
+    exported_deps = [
+        "//folly:thread_local",
+        "//folly/synchronization:asymmetric_thread_fence",
+        "//folly/synchronization/detail:sleeper",
+    ],
+)

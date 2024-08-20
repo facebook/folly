@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/channels/ChannelProcessor.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/channels/ChannelProcessor.h>
 #include <folly/portability/GMock.h>
 
 namespace folly {

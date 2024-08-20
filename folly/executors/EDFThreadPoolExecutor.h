@@ -84,6 +84,8 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
   void add(Func f, std::size_t total, uint64_t deadline) override;
   void add(std::vector<Func> fs, uint64_t deadline) override;
 
+  size_t getTaskQueueSize() const;
+
  protected:
   void threadRun(ThreadPtr thread) override;
   void stopThreads(std::size_t numThreads) override;

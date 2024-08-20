@@ -64,7 +64,7 @@ void AsyncServerSocket::RemoteAcceptor::start(
     EventBase* eventBase, uint32_t maxAtOnce) {
   queue_.setMaxReadAtOnce(maxAtOnce);
 
-  eventBase->runInEventBaseThread([=]() {
+  eventBase->runInEventBaseThread([eventBase, this]() {
     callback_->acceptStarted();
     queue_.startConsuming(eventBase);
   });
@@ -72,7 +72,7 @@ void AsyncServerSocket::RemoteAcceptor::start(
 
 void AsyncServerSocket::RemoteAcceptor::stop(
     EventBase* eventBase, AcceptCallback* callback) {
-  eventBase->runInEventBaseThread([=]() {
+  eventBase->runInEventBaseThread([callback, this]() {
     callback->acceptStopped();
     delete this;
   });

@@ -126,33 +126,36 @@ TDigest TDigest::merge(Range<const double*> unsortedValues) const {
   return merge(sorted_equivalent, Range<const double*>(in, in + n));
 }
 
-TDigest TDigest::merge(
-    sorted_equivalent_t, Range<const double*> sortedValues) const {
+void TDigest::internalMerge(
+    TDigest& dst,
+    Range<const double*> sortedValues,
+    std::vector<Centroid>& workingBuffer) const {
   if (sortedValues.empty()) {
-    return *this;
+    return;
   }
 
-  TDigest result(maxSize_);
-
-  result.count_ = count_ + sortedValues.size();
+  double newSum = 0.0;
+  const double newCount = count_ + sortedValues.size();
+  double newMin = 0.0;
+  double newMax = 0.0;
 
   double maybeMin = *sortedValues.begin();
   double maybeMax = *(sortedValues.end() - 1);
+
   if (count_ > 0) {
     // We know that min_ and max_ are numbers
-    result.min_ = std::min(min_, maybeMin);
-    result.max_ = std::max(max_, maybeMax);
+    newMin = std::min(min_, maybeMin);
+    newMax = std::max(max_, maybeMax);
   } else {
     // We know that min_ and max_ are NaN.
-    result.min_ = maybeMin;
-    result.max_ = maybeMax;
+    newMin = maybeMin;
+    newMax = maybeMax;
   }
 
-  std::vector<Centroid> compressed;
-  compressed.reserve(maxSize_);
+  workingBuffer.resize(0);
 
   double k_limit = 1;
-  double q_limit_times_count = k_to_q(k_limit++, maxSize_) * result.count_;
+  double q_limit_times_count = k_to_q(k_limit++, maxSize_) * newCount;
 
   auto it_centroids = centroids_.begin();
   auto it_sortedValues = sortedValues.begin();
@@ -190,23 +193,56 @@ TDigest TDigest::merge(
       sumsToMerge += nextSum;
       weightsToMerge += next.weight();
     } else {
-      result.sum_ += cur.add(sumsToMerge, weightsToMerge);
+      newSum += cur.add(sumsToMerge, weightsToMerge);
       sumsToMerge = 0;
       weightsToMerge = 0;
-      compressed.push_back(cur);
-      q_limit_times_count = k_to_q(k_limit++, maxSize_) * result.count_;
+      workingBuffer.push_back(cur);
+      q_limit_times_count = k_to_q(k_limit++, maxSize_) * newCount;
       cur = next;
     }
   }
-  result.sum_ += cur.add(sumsToMerge, weightsToMerge);
-  compressed.push_back(cur);
-  compressed.shrink_to_fit();
+  newSum += cur.add(sumsToMerge, weightsToMerge);
+  workingBuffer.push_back(cur);
 
+  // Update all internal status.
   // Deal with floating point precision
-  std::sort(compressed.begin(), compressed.end());
+  std::sort(workingBuffer.begin(), workingBuffer.end());
+  dst.sum_ = newSum;
+  dst.count_ = newCount;
+  dst.max_ = newMax;
+  dst.min_ = newMin;
 
-  result.centroids_ = std::move(compressed);
+  std::swap(dst.centroids_, workingBuffer);
+}
+
+TDigest TDigest::merge(
+    sorted_equivalent_t, Range<const double*> sortedValues) const {
+  if (sortedValues.empty()) {
+    return *this;
+  }
+
+  TDigest result(maxSize_);
+
+  std::vector<Centroid> compressed;
+  compressed.reserve(maxSize_);
+
+  internalMerge(result, sortedValues, compressed);
+
+  result.centroids_.shrink_to_fit();
+
   return result;
+}
+
+void TDigest::merge(
+    sorted_equivalent_t,
+    Range<const double*> sortedValues,
+    MergeWorkingBuffer& workingBuffer) {
+  if (sortedValues.empty()) {
+    return;
+  }
+
+  workingBuffer.buf.reserve(maxSize_);
+  internalMerge(*this, sortedValues, workingBuffer.buf);
 }
 
 TDigest TDigest::merge(Range<const TDigest*> digests) {

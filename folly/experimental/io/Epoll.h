@@ -14,10 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#if defined(__linux__) && __has_include(<sys/epoll.h>)
-#define FOLLY_HAS_EPOLL 1
-#else
-#define FOLLY_HAS_EPOLL 0
-#endif
+#include <folly/io/async/Epoll.h>

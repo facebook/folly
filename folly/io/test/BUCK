@@ -50,6 +50,7 @@ cpp_binary(
         "//folly:format",
         "//folly:range",
         "//folly/io:iobuf",
+        "//folly/lang:keep",
     ],
 )
 
@@ -119,12 +120,12 @@ cpp_unittest(
         "//folly:conv",
         "//folly:fbstring",
         "//folly:random",
-        "//folly/experimental:test_util",
         "//folly/io:iobuf",
         "//folly/io:record_io",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",
@@ -155,6 +156,22 @@ cpp_unittest(
         "//folly:conv",
         "//folly/io:socket_option_map",
         "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "fs_util_test",
+    srcs = ["FsUtilTest.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:string",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",

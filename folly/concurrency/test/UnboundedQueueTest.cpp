@@ -26,6 +26,7 @@
 #include <glog/logging.h>
 
 #include <atomic>
+#include <iomanip>
 #include <thread>
 
 DEFINE_bool(bench, false, "run benchmark");
@@ -396,7 +397,7 @@ TEST(UnboundedQueue, enqDeq) {
 }
 
 template <typename RepFunc>
-uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
+uint64_t runBench(const std::string& name, uint64_t ops, const RepFunc& repFn) {
   uint64_t reps = FLAGS_reps;
   uint64_t min = UINTMAX_MAX;
   uint64_t max = 0;

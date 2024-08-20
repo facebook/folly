@@ -61,7 +61,7 @@ struct ShellCmdFormat {
 
 inline namespace literals {
 inline namespace shell_literals {
-constexpr detail::ShellCmdFormat operator"" _shellify(
+constexpr detail::ShellCmdFormat operator""_shellify(
     char const* name, std::size_t length) {
   return {folly::StringPiece(name, length)};
 }

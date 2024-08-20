@@ -59,36 +59,12 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "simd_any_of_test",
-    srcs = [
-        "SimdAnyOfTest.cpp",
-    ],
-    deps = [
-        "//folly:range",
-        "//folly/detail:simd_any_of",
-        "//folly/detail:simd_char_platform",
-        "//folly/portability:gtest",
-    ],
-)
-
-cpp_unittest(
-    name = "simd_for_each_test",
-    srcs = [
-        "SimdForEachTest.cpp",
-    ],
-    deps = [
-        "//folly/detail:simd_for_each",
-        "//folly/portability:gtest",
-    ],
-)
-
-cpp_unittest(
     name = "simple_simd_string_utils_test",
     srcs = [
         "SimpleSimdStringUtilsTest.cpp",
     ],
     deps = [
-        "//folly/detail:simd_char_platform",
+        "//folly/algorithm/simd/detail:simd_char_platform",
         "//folly/detail:simple_simd_string_utils",
         "//folly/portability:gtest",
     ],
@@ -105,17 +81,6 @@ cpp_unittest(
         "//folly:range",
         "//folly:small_vector",
         "//folly/detail:split_string_simd",
-        "//folly/portability:gtest",
-    ],
-)
-
-cpp_unittest(
-    name = "unroll_utils_test",
-    srcs = [
-        "UnrollUtilsTest.cpp",
-    ],
-    deps = [
-        "//folly/detail:unroll_utils",
         "//folly/portability:gtest",
     ],
 )

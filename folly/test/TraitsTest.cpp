@@ -30,6 +30,18 @@
 using namespace folly;
 using namespace std;
 
+struct type_identity_test {
+  template <typename A>
+  static A deduce(A, type_identity_t<A>);
+};
+
+TEST(Traits, type_identity) {
+  EXPECT_TRUE((std::is_same_v<int, folly::type_identity_t<int>>));
+  EXPECT_TRUE((std::is_same_v<int, folly::type_identity<int>::type>));
+  EXPECT_TRUE(( //
+      std::is_same_v<int, decltype(type_identity_test::deduce(0, '\0'))>));
+}
+
 namespace {
 
 struct T1 {}; // old-style IsRelocatable, below
@@ -520,6 +532,27 @@ TEST(Traits, like) {
            value));
 }
 
+#if defined(__cpp_concepts)
+TEST(Traits, UncvrefSameAs) {
+  static_assert(folly::uncvref_same_as<std::vector<int>, std::vector<int>>);
+  static_assert(folly::uncvref_same_as<std::vector<int>&, std::vector<int>>);
+  static_assert(
+      folly::uncvref_same_as<const std::vector<int>&, std::vector<int>>);
+  static_assert(folly::uncvref_same_as<std::vector<int>&&, std::vector<int>>);
+
+  constexpr auto refersToExample =
+      [](folly::uncvref_same_as<std::vector<int>> auto&&) {};
+
+  static_assert(std::invocable<decltype(refersToExample), std::vector<int>>);
+  static_assert(
+      std::invocable<decltype(refersToExample), const std::vector<int>&>);
+  static_assert(std::invocable<decltype(refersToExample), std::vector<int>&&>);
+
+  static_assert(
+      !std::invocable<decltype(refersToExample), std::vector<char>&&>);
+}
+#endif
+
 TEST(Traits, isUnboundedArrayV) {
   EXPECT_FALSE((folly::is_unbounded_array_v<void>));
   EXPECT_FALSE((folly::is_unbounded_array_v<int>));
@@ -535,28 +568,33 @@ TEST(Traits, isBoundedArrayV) {
 }
 
 TEST(Traits, isInstantiationOfV) {
-  EXPECT_TRUE((detail::is_instantiation_of_v<A, A<int>>));
-  EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
+  EXPECT_TRUE((is_instantiation_of_v<A, A<int>>));
+  EXPECT_FALSE((is_instantiation_of_v<A, B>));
 }
 
 TEST(Traits, isInstantiationOf) {
-  EXPECT_TRUE((detail::is_instantiation_of<A, A<int>>::value));
-  EXPECT_FALSE((detail::is_instantiation_of<A, B>::value));
+  EXPECT_TRUE((is_instantiation_of<A, A<int>>::value));
+  EXPECT_FALSE((is_instantiation_of<A, B>::value));
 }
 
-TEST(Traits, isSimilarInstantiationV) {
-  EXPECT_TRUE((detail::is_similar_instantiation_v<A<int>, A<long>>));
-  EXPECT_FALSE((detail::is_similar_instantiation_v<A<int>, tag_t<int>>));
-  EXPECT_FALSE((detail::is_similar_instantiation_v<A<int>, B>));
-  EXPECT_FALSE((detail::is_similar_instantiation_v<B, B>));
-}
+#if defined(__cpp_concepts)
+TEST(Traits, InstantiationOf) {
+  static_assert(folly::instantiated_from<A<int>, A>);
+  static_assert(!folly::instantiated_from<A<int>&, A>);
+  static_assert(!folly::instantiated_from<A<int>, std::vector>);
 
-TEST(Traits, isSimilarInstantiation) {
-  EXPECT_TRUE((detail::is_similar_instantiation<A<int>, A<long>>::value));
-  EXPECT_FALSE((detail::is_similar_instantiation<A<int>, tag_t<int>>::value));
-  EXPECT_FALSE((detail::is_similar_instantiation<A<int>, B>::value));
-  EXPECT_FALSE((detail::is_similar_instantiation<B, B>::value));
+  static_assert(folly::uncvref_instantiated_from<A<int>, A>);
+  static_assert(folly::uncvref_instantiated_from<A<int>&, A>);
+  static_assert(!folly::uncvref_instantiated_from<A<int>&, std::vector>);
+
+  auto example = [](folly::uncvref_instantiated_from<std::vector> auto&&) {};
+
+  static_assert(std::invocable<decltype(example), std::vector<int>&&>);
+  static_assert(std::invocable<decltype(example), std::vector<int>&>);
+  static_assert(std::invocable<decltype(example), const std::vector<int>&>);
+  static_assert(std::invocable<decltype(example), std::vector<int>>);
 }
+#endif
 
 TEST(Traits, member_pointer_traits_data) {
   struct o {};
@@ -651,6 +689,20 @@ TEST(Traits, intBitsLg) {
 #endif // FOLLY_HAVE_INT128_T
 }
 
+TEST(Traits, isAllocator) {
+  static_assert(is_allocator_v<std::allocator<int>>, "");
+  static_assert(is_allocator<std::allocator<int>>::value, "");
+
+  static_assert(is_allocator_v<std::allocator<std::string>>, "");
+  static_assert(is_allocator<std::allocator<std::string>>::value, "");
+
+  static_assert(!is_allocator_v<int>, "");
+  static_assert(!is_allocator<int>::value, "");
+
+  static_assert(!is_allocator_v<std::string>, "");
+  static_assert(!is_allocator<std::string>::value, "");
+}
+
 struct type_pack_element_test {
   template <size_t I, typename... T>
   using fallback = traits_detail::type_pack_element_fallback<I, T...>;
@@ -663,7 +715,7 @@ struct type_pack_element_test {
   using native_ic = native<IC::value, T...>;
 };
 
-TEST(Traits, typePackElementT) {
+TEST(Traits, type_pack_element) {
   using test = type_pack_element_test;
 
   EXPECT_TRUE(( //
@@ -683,20 +735,6 @@ TEST(Traits, typePackElementT) {
   EXPECT_FALSE((is_detected_v<test::native_ic, index_constant<0>>));
 }
 
-TEST(Traits, isAllocator) {
-  static_assert(is_allocator_v<std::allocator<int>>, "");
-  static_assert(is_allocator<std::allocator<int>>::value, "");
-
-  static_assert(is_allocator_v<std::allocator<std::string>>, "");
-  static_assert(is_allocator<std::allocator<std::string>>::value, "");
-
-  static_assert(!is_allocator_v<int>, "");
-  static_assert(!is_allocator<int>::value, "");
-
-  static_assert(!is_allocator_v<std::string>, "");
-  static_assert(!is_allocator<std::string>::value, "");
-}
-
 TEST(Traits, type_pack_size) {
   EXPECT_EQ(0, (type_pack_size_v<>));
   EXPECT_EQ(1, (type_pack_size_v<int>));
@@ -705,4 +743,46 @@ TEST(Traits, type_pack_size) {
   EXPECT_EQ(0, (type_pack_size_t<>::value));
   EXPECT_EQ(1, (type_pack_size_t<int>::value));
   EXPECT_EQ(5, (type_pack_size_t<long long, long, int, short, char>::value));
+}
+
+TEST(Traits, type_list_element) {
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          folly::type_list_element_t<
+              3,
+              folly::tag_t<int, int, int, double, int, int>>, //
+          double>));
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          folly::type_list_element_t<0, folly::tag_t<int[1]>>,
+          int[1]>));
+}
+
+TEST(Traits, type_list_size) {
+  EXPECT_EQ(0, (type_list_size_v<tag_t<>>));
+  EXPECT_EQ(1, (type_list_size_v<tag_t<int>>));
+  EXPECT_EQ(5, (type_list_size_v<tag_t<long long, long, int, short, char>>));
+
+  EXPECT_EQ(0, (type_list_size_t<tag_t<>>::value));
+  EXPECT_EQ(1, (type_list_size_t<tag_t<int>>::value));
+  EXPECT_EQ(
+      5, (type_list_size_t<tag_t<long long, long, int, short, char>>::value));
+}
+
+TEST(Traits, value_pack) {
+  EXPECT_EQ(3, (folly::value_pack_size_v<7u, 8, '9'>));
+  EXPECT_EQ(3, (folly::value_pack_size_t<7u, 8, '9'>::value));
+  EXPECT_TRUE(( //
+      std::is_same_v<int, folly::value_pack_element_type_t<1, 7u, 8, '9'>>));
+  EXPECT_EQ(8, (folly::value_pack_element_v<1, 7u, 8, '9'>));
+}
+
+TEST(Traits, value_list) {
+  EXPECT_EQ(3, (folly::value_list_size_v<vtag_t<7u, 8, '9'>>));
+  EXPECT_EQ(3, (folly::value_list_size_t<vtag_t<7u, 8, '9'>>::value));
+  EXPECT_TRUE(( //
+      std::is_same_v<
+          int,
+          folly::value_list_element_type_t<1, vtag_t<7u, 8, '9'>>>));
+  EXPECT_EQ(8, (folly::value_list_element_v<1, vtag_t<7u, 8, '9'>>));
 }

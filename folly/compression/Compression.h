@@ -31,7 +31,7 @@
  */
 
 namespace folly {
-namespace io {
+namespace compression {
 
 enum class CodecType {
   /**
@@ -537,5 +537,19 @@ bool hasStreamCodec(CodecType type);
  * therefore whether it can be included.
  */
 #define FOLLY_COMPRESSION_HAS_CONTEXT_POOL_SINGLETONS
-} // namespace io
+} // namespace compression
 } // namespace folly
+
+namespace folly::io {
+using folly::compression::Codec;
+using folly::compression::CodecType;
+using folly::compression::COMPRESSION_LEVEL_BEST;
+using folly::compression::COMPRESSION_LEVEL_DEFAULT;
+using folly::compression::COMPRESSION_LEVEL_FASTEST;
+using folly::compression::getAutoUncompressionCodec;
+using folly::compression::getCodec;
+using folly::compression::getStreamCodec;
+using folly::compression::hasCodec;
+using folly::compression::hasStreamCodec;
+using folly::compression::StreamCodec;
+} // namespace folly::io

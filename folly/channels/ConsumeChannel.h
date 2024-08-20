@@ -18,9 +18,9 @@
 
 #include <folly/Executor.h>
 #include <folly/IntrusiveList.h>
+#include <folly/channels/Channel.h>
+#include <folly/channels/ChannelCallbackHandle.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/Channel.h>
-#include <folly/experimental/channels/ChannelCallbackHandle.h>
 #include <folly/experimental/coro/Task.h>
 
 namespace folly {

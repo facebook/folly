@@ -15,31 +15,3 @@
  */
 
 #include <folly/lang/UncaughtExceptions.h>
-
-#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
-
-namespace __cxxabiv1 {
-struct __cxa_eh_globals {
-  void* caught_exceptions_;
-  unsigned int uncaught_exceptions_;
-};
-extern "C" __cxa_eh_globals* __cxa_get_globals();
-} // namespace __cxxabiv1
-
-#endif
-
-namespace folly {
-
-namespace detail {
-
-unsigned int* uncaught_exceptions_ptr() noexcept {
-  assert(kIsGlibcxx || kIsLibcpp);
-#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
-  return &__cxxabiv1::__cxa_get_globals()->uncaught_exceptions_;
-#endif
-  return nullptr;
-}
-
-} // namespace detail
-
-} // namespace folly

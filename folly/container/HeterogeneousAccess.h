@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
@@ -103,43 +104,28 @@ struct TransparentRangeHash {
   using is_transparent = void;
   using folly_is_avalanching = std::true_type;
 
- private:
-  template <typename U>
-  static std::size_t hashImpl(Range<U const*> piece) {
-    return hasher<Range<U const*>>{}(piece);
-  }
-
-  static std::size_t hashImpl(StringPiece piece) {
-#if defined(_GLIBCXX_STRING)
-    return std::_Hash_impl::hash(piece.begin(), piece.size());
-#elif defined(_LIBCPP_STRING)
-    return std::__do_string_hash(piece.begin(), piece.end());
-#else
-    return hasher<StringPiece>{}(piece);
-#endif
-  }
-
- public:
   template <typename U>
   std::size_t operator()(U const& stringish) const {
-    return hashImpl(Range<T const*>{stringish});
+    return hasher<Range<T const*>>{}(Range<T const*>{stringish});
   }
+};
 
-  // Neither this overload nor the platform-conditional compilation
-  // is required for functionality, but implementing it this
-  // way guarantees that replacing std::hash<std::string> with
-  // HeterogeneousAccessHash<std::string> is actually zero overhead
-  // in the case that the underlying implementations make different
-  // optimality tradeoffs (short versus long string performance, for
-  // example).  If folly::hasher<StringPiece> dominated the performance
-  // of std::hash<std::string> then we should consider using it all of
-  // the time.
-  std::size_t operator()(std::string const& str) const {
-#if defined(_GLIBCXX_STRING) || defined(_LIBCPP_STRING)
-    return std::hash<std::string>{}(str);
-#else
-    return hasher<StringPiece>{}(str);
-#endif
+template <>
+struct TransparentRangeHash<char> {
+  using is_transparent = void;
+  using folly_is_avalanching = std::true_type;
+
+  // Implementing this in terms of std::hash<std::string_view> guarantees that
+  // replacing std::hash<std::string> with HeterogeneousAccessHash<std::string>
+  // is actually zero overhead in the case that the underlying implementations
+  // make different optimality tradeoffs (short versus long string performance,
+  // for example). We use hash::stdCompatibleHash here as an alternative
+  // compatible implementation of std::hash.
+  // If folly::hasher<std::string_view> dominated the performance
+  // of std::hash<std::string> then we should consider using it all of the time.
+  template <typename U>
+  std::size_t operator()(U const& stringish) const {
+    return hash::stdCompatibleHash(StringPiece{stringish});
   }
 };
 

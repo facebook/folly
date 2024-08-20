@@ -50,12 +50,16 @@
 #include <openssl/ecdsa.h>
 #endif
 
+#ifndef OPENSSL_NO_DSA
+#include <openssl/dsa.h>
+#endif
+
 #ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-#error openssl < 1.1.0
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
+#error openssl < 1.1.1
 #endif
 
 // BoringSSL doesn't have notion of versioning although it defines
@@ -83,24 +87,11 @@
   (OPENSSL_VERSION_NUMBER >= FOLLY_OPENSSL_CALCULATE_VERSION(major, minor, fix))
 #endif
 
-/**
- * OpenSSL 1.1.1 specific checks.
- */
-#if OPENSSL_VERSION_NUMBER >= 0x1010100fL
-
-// TLS 1.3 was introduced in OpenSSL 1.1.1
-#define FOLLY_OPENSSL_HAS_TLS13 1
-
 // OpenSSL 1.1.1 introduced several new ciphers and digests. Unless they are
 // explicitly compiled out, they are assumed to be present
 #if !defined(OPENSSL_NO_BLAKE2)
 #define FOLLY_OPENSSL_HAS_BLAKE2B 1
 #else
-#define FOLLY_OPENSSL_HAS_BLAKE2B 0
-#endif
-
-#else
-#define FOLLY_OPENSSL_HAS_TLS13 0
 #define FOLLY_OPENSSL_HAS_BLAKE2B 0
 #endif
 

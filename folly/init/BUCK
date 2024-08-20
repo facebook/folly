@@ -15,10 +15,6 @@ cpp_library(
             "macos",
             ["//folly/experimental/symbolizer:signal_handler"],
         ),
-        (
-            "linux-sgx",
-            ["//folly/experimental/symbolizer:signal_handler"],
-        ),
     ],
     deps = [
         ":phase",

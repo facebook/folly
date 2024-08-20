@@ -1,0 +1,45 @@
+[manifest]
+name = glean
+fbsource_path = fbcode/glean
+shipit_project = facebookincubator/Glean
+use_shipit = true
+
+[shipit.pathmap]
+# These are only used by target determinator to trigger builds, the
+# real path mappings are in the ShipIt config.
+fbcode/glean = glean
+fbcode/common/hs = hsthrift
+
+[subprojects]
+hsthrift = hsthrift
+
+[dependencies]
+cabal
+ghc
+gflags
+glog
+folly
+rocksdb
+xxhash
+llvm
+clang
+re2
+
+[build]
+builder = make
+
+[make.build_args]
+cabal-update
+all
+glass
+glean-clang
+EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS
+CABAL_CONFIG_FLAGS=-f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests
+
+[make.install_args]
+install
+
+[make.test_args]
+test
+EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS
+CABAL_CONFIG_FLAGS=-f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests

@@ -219,6 +219,16 @@ class AtomicNotificationQueue {
     Queue getTasks();
 
     /*
+     * Returns a pointer to the last added node, or nullptr if the queue is
+     * empty. This pointer should not be dereferenced, it should only be used to
+     * mark a position in the queue.
+     */
+    Node* peekHead() const {
+      auto* n = head_.load(std::memory_order_relaxed);
+      return reinterpret_cast<intptr_t>(n) == kQueueArmedTag ? nullptr : n;
+    }
+
+    /*
      * Tries to arm the queue.
      * 1) If the queue was empty: the queue becomes armed and an empty queue is
      * returned.
@@ -248,12 +258,15 @@ class AtomicNotificationQueue {
  * to indicate if the provided task should be considered consumed or
  * discarded. Discarded tasks are not counted towards maxReadAtOnce_.
  */
-enum class AtomicNotificationQueueTaskStatus : bool {
+enum class AtomicNotificationQueueTaskStatus : uint8_t {
   // The dequeued task was consumed and should be counted as such
-  CONSUMED = true,
+  CONSUMED,
+  // Same as CONSUMED, but drive() will stop early even if maxReadAtOnce_ wasn't
+  // reached
+  CONSUMED_STOP,
   // The dequeued task should be discarded and the queue not count it as
   // consumed
-  DISCARD = false
+  DISCARD,
 };
 
 } // namespace folly

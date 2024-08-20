@@ -65,7 +65,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
           if (context->tasksTodo == 0) {
             return;
           }
-          context->e = std::current_exception();
+          context->e = current_exception();
         }
         if (--context->tasksTodo == 0) {
           context->promise->setValue();
@@ -119,7 +119,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
           if (context->tasksTodo == 0) {
             return;
           }
-          context->e = std::current_exception();
+          context->e = current_exception();
         }
         if (--context->tasksTodo == 0) {
           context->promise->setValue();

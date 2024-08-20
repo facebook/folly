@@ -30,7 +30,7 @@
 #endif
 
 #if FOLLY_COMPRESSION_USE_HUGEPAGES
-#include <folly/experimental/JemallocHugePageAllocator.h>
+#include <folly/memory/JemallocHugePageAllocator.h>
 #endif
 
 #if FOLLY_HAVE_LIBZSTD

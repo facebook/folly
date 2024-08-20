@@ -14,40 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <string>
-#include <string_view>
-
-#include <folly/container/F14Set.h>
-
-namespace folly {
-namespace settings {
-
-/**
- * Freezes immutable settings - preventing subsequent mutation attempts. It's up
- * to the caller to call this function after settings have been initialized.
- */
-void freezeImmutables(F14FastSet<std::string> projects);
-
-/**
- * @returns true if immutable settings can not be modified, false otherwise.
- */
-bool immutablesFrozen(std::string_view project);
-
-struct FrozenSettingProjects {
-  explicit FrozenSettingProjects(F14FastSet<std::string> projects);
-
-  bool contains(std::string_view project) const;
-
- private:
-  F14FastSet<std::string> projects_;
-};
-
-/**
- * @return a snapshot of the current set of frozen setting projects.
- */
-FrozenSettingProjects frozenSettingProjects();
-
-} // namespace settings
-} // namespace folly
+#include <folly/settings/Immutables.h>

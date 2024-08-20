@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/JSONSchema.h>
+#include <folly/json/JSONSchema.h>
 #include <folly/json/json.h>
 #include <folly/portability/GTest.h>
 

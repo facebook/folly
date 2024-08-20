@@ -24,8 +24,9 @@ namespace folly {
 
 class FOLLY_EXPORT FutureSplitterInvalid : public FutureException {
  public:
-  FutureSplitterInvalid()
-      : FutureException(static_lifetime{}, "No Future in this FutureSplitter") {
+  FutureSplitterInvalid() = default;
+  char const* what() const noexcept override {
+    return "No Future in this FutureSplitter";
   }
 };
 

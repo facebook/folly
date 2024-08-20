@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/JemallocHugePageAllocator.h>
+#include <folly/memory/JemallocHugePageAllocator.h>
 
 #include <folly/container/F14Map.h>
 

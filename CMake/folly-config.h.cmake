@@ -51,8 +51,6 @@
 #cmakedefine FOLLY_HAVE_PWRITEV 1
 #cmakedefine FOLLY_HAVE_CLOCK_GETTIME 1
 #cmakedefine FOLLY_HAVE_PIPE2 1
-#cmakedefine FOLLY_HAVE_SENDMMSG 1
-#cmakedefine FOLLY_HAVE_RECVMMSG 1
 
 #cmakedefine FOLLY_HAVE_IFUNC 1
 #cmakedefine FOLLY_HAVE_UNALIGNED_ACCESS 1

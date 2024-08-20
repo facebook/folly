@@ -50,11 +50,25 @@ cpp_library(
     headers = ["Bits.h"],
     exported_deps = [
         ":assume",
+        ":c_string",
         "//folly:constexpr_math",
         "//folly:portability",
         "//folly:traits",
         "//folly:utility",
         "//folly/portability:builtins",
+    ],
+)
+
+cpp_library(
+    name = "bits_class",
+    headers = ["BitsClass.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:range",
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        "glog",
     ],
 )
 
@@ -78,6 +92,9 @@ cpp_library(
     deps = [
         "//folly:cpp_attributes",
         "//folly/functional:invoke",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
     ],
 )
 
@@ -121,7 +138,9 @@ cpp_library(
         ":new",
     ],
     exported_deps = [
+        ":assume",
         ":safe_assert",
+        ":thunk",
         ":type_info",
         "//folly:c_portability",
         "//folly:cpp_attributes",
@@ -263,8 +282,6 @@ cpp_library(
     srcs = ["UncaughtExceptions.cpp"],
     headers = ["UncaughtExceptions.h"],
     exported_deps = [
-        "//folly:cpp_attributes",
-        "//folly:likely",
-        "//folly:portability",
+        ":exception",
     ],
 )

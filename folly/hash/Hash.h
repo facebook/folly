@@ -39,9 +39,11 @@
 #include <utility>
 
 #include <folly/CPortability.h>
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/functional/ApplyTuple.h>
+#include <folly/hash/MurmurHash.h>
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/lang/Bits.h>
@@ -780,6 +782,24 @@ struct IsAvalanchingHasher<hasher<std::tuple<T1, T2, Ts...>>, K>
     : std::true_type {};
 
 namespace hash {
+
+// Compatible with std::hash implementation of hashing for std::string_view.
+// We use hash::murmurHash64 as a replacement of libstdc++ implementation
+// for better performance, for other implementations of C++ Standard Libraries
+// we fallback to std::hash.
+#if defined(_GLIBCXX_STRING) && FOLLY_X64
+FOLLY_ALWAYS_INLINE size_t stdCompatibleHash(std::string_view sv) noexcept {
+  static_assert(sizeof(size_t) == sizeof(uint64_t));
+  constexpr uint64_t kSeed = 0xc70f6907ULL;
+  return hash::murmurHash64(sv.data(), sv.size(), kSeed);
+}
+#else
+FOLLY_ALWAYS_INLINE size_t stdCompatibleHash(std::string_view sv) noexcept(
+    noexcept(std::hash<std::string_view>{}(sv))) {
+  return std::hash<std::string_view>{}(sv);
+}
+#endif // defined(_GLIBCXX_STRING) && FOLLY_X64
+
 // Simply uses std::hash to hash.  Note that std::hash is not guaranteed
 // to be a very good hash function; provided std::hash doesn't collide on
 // the individual inputs, you are fine, but that won't be true for, say,
@@ -792,6 +812,16 @@ class StdHasher {
   template <typename T>
   size_t operator()(const T& t) const noexcept(noexcept(std::hash<T>()(t))) {
     return std::hash<T>()(t);
+  }
+
+  size_t operator()(std::string_view sv) const
+      noexcept(noexcept(stdCompatibleHash(sv))) {
+    return stdCompatibleHash(sv);
+  }
+
+  size_t operator()(const std::string& s) const
+      noexcept(noexcept(stdCompatibleHash(s))) {
+    return stdCompatibleHash(s);
   }
 };
 

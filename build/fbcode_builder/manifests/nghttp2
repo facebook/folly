@@ -8,6 +8,9 @@ libnghttp2
 [debs]
 libnghttp2-dev
 
+[pps]
+libnghttp2
+
 [download]
 url = https://github.com/nghttp2/nghttp2/releases/download/v1.47.0/nghttp2-1.47.0.tar.gz
 sha256 = 62f50f0e9fc479e48b34e1526df8dd2e94136de4c426b7680048181606832b7c

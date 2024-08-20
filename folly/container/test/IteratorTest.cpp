@@ -681,6 +681,42 @@ struct has_both_size_and_difference_type : just_operator {
   using difference_type = std::int32_t;
 };
 
+struct no_operator {
+  using value_type = int;
+
+  friend ref_type tag_invoke(
+      folly::cpo_t<index_iterator_access_at>, no_operator&, std::size_t) {
+    return {};
+  }
+
+  friend cref_type tag_invoke(
+      folly::cpo_t<index_iterator_access_at>, const no_operator&, std::size_t) {
+    return {};
+  }
+
+  [[maybe_unused]] int operator[](std::size_t);
+  [[maybe_unused]] int operator[](std::size_t) const;
+};
+
+struct no_operator_private {
+  using value_type = int;
+
+ private:
+  friend ref_type tag_invoke(
+      folly::cpo_t<index_iterator_access_at>,
+      no_operator_private&,
+      std::size_t) {
+    return {};
+  }
+
+  friend cref_type tag_invoke(
+      folly::cpo_t<index_iterator_access_at>,
+      const no_operator_private&,
+      std::size_t) {
+    return {};
+  }
+};
+
 template <typename T>
 using all_types = std::tuple<
     typename std::iterator_traits<folly::index_iterator<T>>::value_type,
@@ -719,6 +755,18 @@ TEST(IndexIterator, Types) {
   is_same_test(
       all_types<const has_both_size_and_difference_type>{},
       std::tuple<int, cref_type, std::int32_t, std::uint32_t>{});
+  is_same_test(
+      all_types<no_operator>{},
+      std::tuple<int, ref_type, std::ptrdiff_t, std::size_t>{});
+  is_same_test(
+      all_types<const no_operator>{},
+      std::tuple<int, cref_type, std::ptrdiff_t, std::size_t>{});
+  is_same_test(
+      all_types<no_operator_private>{},
+      std::tuple<int, ref_type, std::ptrdiff_t, std::size_t>{});
+  is_same_test(
+      all_types<const no_operator_private>{},
+      std::tuple<int, cref_type, std::ptrdiff_t, std::size_t>{});
 }
 
 } // namespace index_iterator_type_tests
@@ -832,6 +880,31 @@ struct IndexedVector {
   const_iterator cend() const { return {*this, v_.size()}; }
 };
 
+struct CustomMapWithIndexedIterator {
+ public:
+  using size_type = std::uint32_t;
+  using value_type = std::pair<int, int>;
+
+ public:
+  using iterator = folly::index_iterator<CustomMapWithIndexedIterator>;
+  using const_iterator =
+      folly::index_iterator<const CustomMapWithIndexedIterator>;
+
+  iterator begin() { return {*this, 0}; }
+  const_iterator cbegin() const { return {*this, 0}; }
+
+  std::vector<int> keys;
+  std::vector<int> values;
+
+ private:
+  friend std::pair<int, int> tag_invoke(
+      folly::cpo_t<index_iterator_access_at>,
+      const CustomMapWithIndexedIterator& self,
+      size_type idx) {
+    return {self.keys[idx], self.values[idx]};
+  }
+};
+
 } // namespace
 
 TEST(IndexIterator, UseProxyReferences) {
@@ -899,4 +972,18 @@ TEST(IndexIterator, OperatorArrowForNonProxies) {
   v_t expected{{1, 0}, {2, 0}, {3, 0}};
 
   ASSERT_EQ(expected, v);
+}
+
+TEST(IndexIterator, NoOperatorIntegration) {
+  CustomMapWithIndexedIterator m{.keys{1, 2, 3}, .values{4, 5, 6}};
+
+  auto it = m.begin();
+  ASSERT_EQ((std::pair{1, 4}), it[0]);
+  ASSERT_EQ((std::pair{2, 5}), it[1]);
+  ASSERT_EQ((std::pair{3, 6}), it[2]);
+
+  auto cit = m.cbegin();
+  ASSERT_EQ((std::pair{1, 4}), cit[0]);
+  ASSERT_EQ((std::pair{2, 5}), cit[1]);
+  ASSERT_EQ((std::pair{3, 6}), cit[2]);
 }

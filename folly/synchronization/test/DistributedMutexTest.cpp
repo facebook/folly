@@ -1983,7 +1983,7 @@ void concurrentBigValueReturnStress(
     threads.push_back(DSched::thread([&]() {
       auto&& value = std::atomic<std::uint64_t>{0};
 
-      for (auto j = 0; !stop.load(); ++j) {
+      while (!stop.load()) {
         auto returned = mutex.lock_combine([&]() {
           EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
           EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 1);

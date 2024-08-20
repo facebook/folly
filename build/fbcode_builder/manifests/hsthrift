@@ -1,0 +1,34 @@
+[manifest]
+name = hsthrift
+fbsource_path = fbcode/common/hs
+shipit_project = facebookincubator/hsthrift
+use_shipit = true
+
+[shipit.pathmap]
+# These are only used by target determinator to trigger builds, the
+# real path mappings are in the ShipIt config.
+fbcode/common/hs = .
+
+[dependencies]
+cabal
+ghc
+gflags
+glog
+folly
+fbthrift
+wangle
+fizz
+boost
+
+[build]
+builder = make
+
+[make.build_args]
+cabal-update
+all
+
+[make.install_args]
+install
+
+[make.test_args]
+test

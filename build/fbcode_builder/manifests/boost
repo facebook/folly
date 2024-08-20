@@ -22,6 +22,9 @@ boost
 # Boost cmake detection on homebrew adds this as requirement: https://github.com/Homebrew/homebrew-core/issues/67427#issuecomment-754187345
 icu4c
 
+[pps]
+boost
+
 [rpms.all(distro=centos_stream,distro_vers=8)]
 boost169
 boost169-math
@@ -55,13 +58,14 @@ boost169-python3
 boost169-serialization
 boost169-program-options
 
-[rpms.not(all(distro=centos_stream,distro_vers=8))]
+[rpms.distro=fedora]
 boost-devel
 boost-static
 
 [build]
 builder = boost
 job_weight_mib = 512
+patchfile = boost_comparator_operator_fix.patch
 
 [b2.args]
 --with-atomic

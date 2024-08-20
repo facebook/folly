@@ -4,59 +4,31 @@ oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
     name = "settings",
-    srcs = [
-        "Settings.cpp",
-    ],
     headers = [
+        "Settings.h",
         "detail/SettingsImpl.h",
     ],
-    deps = [
-        "//folly:synchronized",
-    ],
     exported_deps = [
-        ":immutables",
-        ":types",
-        "//folly:conv",
-        "//folly:function",
-        "//folly:likely",
-        "//folly:optional",
-        "//folly:range",
-        "//folly:shared_mutex",
-        "//folly:thread_local",
-        "//folly:utility",
-        "//folly/container:f14_hash",
-        "//folly/lang:aligned",
+        "//folly/settings:settings",
     ],
 )
 
 cpp_library(
     name = "types",
-    srcs = [
-        "Types.cpp",
-    ],
     headers = [
+        "Types.h",
     ],
     exported_deps = [
-        "//folly:conv",
-        "//folly:expected",
-        "//folly:range",
-        "//folly:unit",
-        "//folly:utility",
+        "//folly/settings:types",
     ],
 )
 
 cpp_library(
     name = "immutables",
-    srcs = [
-        "Immutables.cpp",
-    ],
     headers = [
-    ],
-    deps = [
-        "//folly:indestructible",
-        "//folly:synchronized",
+        "Immutables.h",
     ],
     exported_deps = [
-        "//folly/container:f14_hash",
+        "//folly/settings:immutables",
     ],
 )

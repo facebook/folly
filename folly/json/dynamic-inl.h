@@ -268,8 +268,6 @@ struct dynamic::const_item_iterator
   const_item_iterator() = default;
   /* implicit */ const_item_iterator(dynamic::ObjectImpl::const_iterator b)
       : Super(b) {}
-  /* implicit */ const_item_iterator(const_item_iterator const& i)
-      : Super(i.base()) {}
   /* implicit */ const_item_iterator(item_iterator i) : Super(i.base()) {}
 
   using object_type = dynamic::ObjectImpl const;

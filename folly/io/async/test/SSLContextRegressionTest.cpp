@@ -15,9 +15,9 @@
  */
 
 #include <folly/FileUtil.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/async/SSLContext.h>
 #include <folly/portability/GTest.h>
+#include <folly/testing/TestUtil.h>
 
 using namespace folly;
 using namespace folly::test;
@@ -25,9 +25,6 @@ using namespace folly::test;
  * This test is meant to verify that SSLContext correctly sets its minimum
  * protocol version and is not blocked by OpenSSL's default config.
  */
-// need OpenSSL version 1.1.1 for the SSL_CTX_get_min_proto_version function
-// should reduce this prereq's scope if new tests are added that don't need it
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
 
 /*
  * The default OpenSSL config file contents for version OpenSSL 1.1.1c FIPS  28
@@ -58,4 +55,3 @@ TEST_F(SSLContextRegressionTest, IsNotAffectedBySystemEnvironment) {
   auto ctx = std::make_shared<SSLContext>(SSLContext::SSLVersion::TLSv1);
   ASSERT_EQ(SSL_CTX_get_min_proto_version(ctx->getSSLCtx()), TLS1_VERSION);
 }
-#endif

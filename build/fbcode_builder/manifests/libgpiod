@@ -1,0 +1,10 @@
+[manifest]
+name = libgpiod
+
+[download]
+url = https://cdn.kernel.org/pub/software/libs/libgpiod/libgpiod-1.6.tar.xz
+sha256 = 62908023d59e8cbb9137ddd14deec50ced862d8f9b8749f288d3dbe7967151ef
+
+[build]
+builder = autoconf
+subdir = libgpiod-1.6

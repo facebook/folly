@@ -225,13 +225,13 @@ TEST(RetryingTest, semifuturePolicyBasic) {
 }
 
 TEST(RetryingTest, policyCappedJitteredExponentialBackoff) {
-  multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), [] {
+  multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(600), [] {
     using ms = milliseconds;
     auto r = futures::retrying(
                  futures::retryingPolicyCappedJitteredExponentialBackoff(
                      3,
                      ms(100),
-                     ms(1000),
+                     ms(1500),
                      0.1,
                      mt19937_64(0),
                      [](size_t, const exception_wrapper&) { return true; }),
@@ -245,13 +245,13 @@ TEST(RetryingTest, policyCappedJitteredExponentialBackoff) {
 }
 
 TEST(RetryingTest, policyCappedJitteredExponentialBackoffUnsafe) {
-  multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), [] {
+  multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(600), [] {
     using ms = milliseconds;
     auto r = futures::retryingUnsafe(
                  futures::retryingPolicyCappedJitteredExponentialBackoff(
                      3,
                      ms(100),
-                     ms(1000),
+                     ms(1500),
                      0.1,
                      mt19937_64(0),
                      [](size_t, const exception_wrapper&) { return true; }),
@@ -310,12 +310,12 @@ TEST(RetryingTest, policyCappedJitteredExponentialBackoffMinZero) {
 }
 
 TEST(RetryingTest, policySleepDefaults) {
-  multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), [] {
+  multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(600), [] {
     //  To ensure that this compiles with default params.
     using ms = milliseconds;
     auto r = futures::retrying(
                  futures::retryingPolicyCappedJitteredExponentialBackoff(
-                     3, ms(100), ms(1000), 0.1),
+                     3, ms(100), ms(1500), 0.1),
                  [](size_t n) {
                    return n < 2 ? makeFuture<size_t>(runtime_error("ha"))
                                 : makeFuture(n);

@@ -22,6 +22,50 @@
 
 #include <folly/lang/New.h>
 
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+#include <cxxabi.h>
+#if !defined(__FreeBSD__)
+#include <unwind.h>
+#endif
+#endif
+
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+#if !defined(__FreeBSD__) // cxxabi.h already declares these
+
+namespace __cxxabiv1 {
+
+struct __cxa_eh_globals {
+  void* caughtExceptions;
+  unsigned int uncaughtExceptions;
+};
+
+#if defined(__GLIBCXX__)
+extern "C" [[gnu::const]] __cxa_eh_globals* __cxa_get_globals() noexcept;
+#else
+extern "C" __cxa_eh_globals* __cxa_get_globals();
+#endif
+
+} // namespace __cxxabiv1
+
+#endif
+#endif
+
+namespace folly {
+
+namespace detail {
+
+unsigned int* uncaught_exceptions_ptr() noexcept {
+  assert(kIsGlibcxx || kIsLibcpp);
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+  return &__cxxabiv1::__cxa_get_globals()->uncaughtExceptions;
+#endif
+  return nullptr;
+}
+
+} // namespace detail
+
+} // namespace folly
+
 //  Accesses std::type_info and std::exception_ptr internals. Since these vary
 //  by platform and library, import or copy the structure and function
 //  signatures from each platform and library.
@@ -40,17 +84,71 @@
 
 #if defined(__GLIBCXX__)
 
-//  nada
+//  https://github.com/gcc-mirror/gcc/blob/releases/gcc-10.2.0/libstdc++-v3/libsupc++/unwind-cxx.h
+
+//  the definition of _Unwind_Ptr in libgcc/unwind-generic.h since unwind.h in
+//  libunwind does not have this typedef
+#if defined(__ia64__) && defined(__hpux__)
+typedef unsigned _Unwind_Ptr __attribute__((__mode__(__word__)));
+#else
+typedef unsigned _Unwind_Ptr __attribute__((__mode__(__pointer__)));
+#endif
+
+namespace __cxxabiv1 {
+
+static constexpr uint64_t __gxx_primary_exception_class =
+    0x474E5543432B2B00; // GNCUC++\0
+static constexpr uint64_t __gxx_dependent_exception_class =
+    0x474E5543432B2B01; // GNCUC++\1
+
+struct __cxa_exception {
+  std::type_info* exceptionType;
+  void(_GLIBCXX_CDTOR_CALLABI* exceptionDestructor)(void*);
+  std::unexpected_handler unexpectedHandler;
+  std::terminate_handler terminateHandler;
+  __cxa_exception* nextException;
+  int handlerCount;
+#ifdef __ARM_EABI_UNWINDER__
+  __cxa_exception* nextPropagatingException;
+  int propagationCount;
+#else
+  int handlerSwitchValue;
+  const unsigned char* actionRecord;
+  const unsigned char* languageSpecificData;
+  _Unwind_Ptr catchTemp;
+  void* adjustedPtr;
+#endif
+  _Unwind_Exception unwindHeader;
+};
+
+struct __cxa_refcounted_exception {
+  _Atomic_word referenceCount;
+  __cxa_exception exc;
+};
+
+} // namespace __cxxabiv1
 
 #endif // defined(__GLIBCXX__)
 
 #if defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
 
-//  https://github.com/llvm/llvm-project/blob/llvmorg-11.0.1/libcxxabi/src/cxa_exception.h
-//  https://github.com/llvm/llvm-project/blob/llvmorg-11.0.1/libcxxabi/src/private_typeinfo.h
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxx/include/exception
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/cxa_exception.h
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/cxa_exception.cpp
+//  https://github.com/llvm/llvm-project/blob/llvmorg-11.1.0/libcxxabi/src/private_typeinfo.h
 
-#include <cxxabi.h>
-#include <unwind.h>
+namespace std {
+
+#if defined(_LIBCPP_FUNC_VIS) // llvm < 17
+#define FOLLY_DETAIL_EXN_FUNC_VIS _LIBCPP_FUNC_VIS
+#else // llvm >= 17
+#define FOLLY_DETAIL_EXN_FUNC_VIS _LIBCPP_EXPORTED_FROM_ABI
+#endif
+
+typedef void (*unexpected_handler)();
+FOLLY_DETAIL_EXN_FUNC_VIS unexpected_handler get_unexpected() _NOEXCEPT;
+
+} // namespace std
 
 namespace __cxxabiv1 {
 
@@ -109,6 +207,8 @@ struct __folly_cxa_exception_with_reserve {
   _Unwind_Exception unwindHeader;
 };
 
+static const uint64_t kOurExceptionClass = 0x434C4E47432B2B00; // CLNGC++\0
+
 //  named differently from the real shim type __shim_type_info and all members
 //  are pure virtual; as long as the vtable is the same, though, it should work
 class __folly_shim_type_info : public std::type_info {
@@ -132,9 +232,9 @@ namespace abi = __cxxabiv1;
 //  https://github.com/freebsd/freebsd-src/blob/release/13.0.0/contrib/libcxxrt/cxxabi.h
 //  https://github.com/freebsd/freebsd-src/blob/release/13.0.0/contrib/libcxxrt/typeinfo.h
 
-#include <cxxabi.h>
-
 namespace __cxxabiv1 {
+
+static const uint64_t kOurExceptionClass = 0x474E5543432B2B00; // GNUCC++\0
 
 class __folly_shim_type_info {
  public:
@@ -148,6 +248,9 @@ class __folly_shim_type_info {
   virtual bool __do_upcast(
       std::type_info const* target, void** thrown_object) const = 0;
 };
+
+extern "C" void* __cxa_allocate_exception(size_t thrown_size) noexcept;
+extern "C" void __cxa_free_exception(void* thrown_exception) noexcept;
 
 } // namespace __cxxabiv1
 
@@ -180,6 +283,22 @@ namespace folly {
 
 namespace detail {
 
+namespace {
+
+template <typename F>
+class scope_guard_ {
+ private:
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] F func_;
+  bool live_{true};
+
+ public:
+  explicit scope_guard_(F func) noexcept : func_{func} {}
+  ~scope_guard_() { live_ ? func_() : void(); }
+  void dismiss() { live_ = false; }
+};
+
+} // namespace
+
 std::atomic<int> exception_ptr_access_rt_cache_{0};
 
 bool exception_ptr_access_rt_() noexcept {
@@ -201,9 +320,21 @@ bool exception_ptr_access_rt_v_() noexcept {
   return true;
 }
 
+template <typename F>
+static decltype(auto) cxxabi_with_cxa_exception(void* object, F f) {
+  using cxa_exception = abi::__cxa_exception;
+  auto exception = object ? static_cast<cxa_exception*>(object) - 1 : nullptr;
+  return f(exception);
+}
+
 std::type_info const* exception_ptr_get_type_(
     std::exception_ptr const& ptr) noexcept {
-  return !ptr ? nullptr : ptr.__cxa_exception_type();
+  if (!ptr) {
+    return nullptr;
+  }
+  auto object = reinterpret_cast<void* const&>(ptr);
+  auto exception = static_cast<abi::__cxa_exception*>(object) - 1;
+  return exception->exceptionType;
 }
 
 void* exception_ptr_get_object_(
@@ -213,7 +344,7 @@ void* exception_ptr_get_object_(
     return nullptr;
   }
   auto object = reinterpret_cast<void* const&>(ptr);
-  auto type = ptr.__cxa_exception_type();
+  auto type = exception_ptr_get_type_(ptr);
   return !target || target->__do_catch(type, &object, 1) ? object : nullptr;
 }
 
@@ -328,6 +459,13 @@ void* exception_ptr_get_object_(
 bool exception_ptr_access_rt_v_() noexcept {
   static_assert(exception_ptr_access_ct, "mismatch");
   return true;
+}
+
+template <typename F>
+static decltype(auto) cxxabi_with_cxa_exception(void* object, F f) {
+  using cxa_exception = abi::__cxa_exception;
+  auto exception = object ? static_cast<cxa_exception*>(object) - 1 : nullptr;
+  return f(exception);
 }
 
 std::type_info const* exception_ptr_get_type_(
@@ -472,6 +610,143 @@ void* exception_ptr_get_object_(
 
 } // namespace detail
 
+namespace detail {
+
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
+
+[[gnu::const]] abi::__cxa_eh_globals& cxa_get_globals() noexcept {
+#if !defined(__has_feature) || !FOLLY_HAS_FEATURE(cxx_thread_local)
+  return *abi::__cxa_get_globals();
+#elif defined(__XTENSA__)
+  return *abi::__cxa_get_globals();
+#else
+  thread_local abi::__cxa_eh_globals* cache;
+  return FOLLY_LIKELY(!!cache) ? *cache : *(cache = abi::__cxa_get_globals());
+#endif
+}
+
+#endif
+
+} // namespace detail
+
+std::exception_ptr current_exception() noexcept {
+#if defined(__APPLE__)
+  return std::current_exception();
+#elif defined(_CPPLIB_VER)
+  return std::current_exception();
+#elif defined(_LIBCPP_VERSION)
+  return std::current_exception();
+#else
+  auto const& globals = detail::cxa_get_globals();
+  auto const exception =
+      static_cast<abi::__cxa_exception*>(globals.caughtExceptions);
+  if (!exception) {
+    return std::exception_ptr();
+  }
+  uint64_t exn_class{};
+  std::memcpy( // exception_class may be uint64_t or char[8]
+      &exn_class,
+      &exception->unwindHeader.exception_class,
+      sizeof(exn_class));
+  switch (exn_class) {
+    case abi::__gxx_primary_exception_class: {
+      auto const object = static_cast<void const*>(exception + 1);
+      assume(!!object);
+      return std::exception_ptr(
+          reinterpret_cast<std::exception_ptr const&>(object));
+    }
+    case abi::__gxx_dependent_exception_class: {
+      auto const object = static_cast<void const*>(exception->exceptionType);
+      assume(!!object);
+      return std::exception_ptr(
+          reinterpret_cast<std::exception_ptr const&>(object));
+    }
+    default:
+      return std::exception_ptr();
+  }
+#endif
+}
+
+namespace detail {
+
+template <typename Try>
+std::exception_ptr catch_current_exception_(Try&& t) noexcept {
+  return catch_exception(static_cast<Try&&>(t), current_exception);
+}
+
+#if defined(__GLIBCXX__)
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const& arg, void* func) noexcept {
+  auto type = const_cast<std::type_info*>(arg.type);
+  void* object = abi::__cxa_allocate_exception(arg.size);
+  (void)abi::__cxa_init_primary_exception(object, type, arg.dtor);
+  auto exception = static_cast<abi::__cxa_refcounted_exception*>(object) - 1;
+  exception->referenceCount = 1;
+  return catch_current_exception_([&] {
+    scope_guard_ rollback{std::bind(abi::__cxa_free_exception, object)};
+    arg.ctor(object, func);
+    rollback.dismiss();
+    return reinterpret_cast<std::exception_ptr&&>(object);
+  });
+}
+
+#elif defined(_LIBCPP_VERSION)
+
+[[maybe_unused]] static void exception_cleanup_(
+    _Unwind_Reason_Code reason, _Unwind_Exception* uwexception) {
+  if (reason == _URC_FOREIGN_EXCEPTION_CAUGHT) {
+    auto handler = cxxabi_with_cxa_exception(
+        uwexception + 1, [](auto exn) { return exn->terminateHandler; });
+    folly::catch_exception(handler, folly::variadic_noop);
+    std::abort();
+  }
+  abi::__cxa_decrement_exception_refcount(uwexception + 1);
+}
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const& arg, void* func) noexcept {
+  void* object = abi::__cxa_allocate_exception(arg.size);
+  auto type = const_cast<std::type_info*>(arg.type);
+#if _LIBCPP_VERSION >= 180000 && _LIBCPP_AVAILABILITY_HAS_INIT_PRIMARY_EXCEPTION
+  (void)abi::__cxa_init_primary_exception(object, type, arg.dtor);
+#else
+  cxxabi_with_cxa_exception(object, [&](auto exception) {
+#if defined(__FreeBSD__)
+    exception->unexpectedHandler = nullptr;
+#else
+    exception->unexpectedHandler = std::get_unexpected();
+#endif
+    exception->terminateHandler = std::get_terminate();
+    exception->exceptionType = type;
+    exception->exceptionDestructor = arg.dtor;
+    exception->referenceCount = 1;
+    std::memcpy( // exception_class may be uint64_t or char[8]
+        &exception->unwindHeader.exception_class,
+        &abi::kOurExceptionClass,
+        sizeof(abi::kOurExceptionClass));
+    exception->unwindHeader.exception_cleanup = exception_cleanup_;
+  });
+#endif
+  return catch_current_exception_([&] {
+    scope_guard_ rollback{std::bind(abi::__cxa_free_exception, object)};
+    arg.ctor(object, func);
+    rollback.dismiss();
+    return reinterpret_cast<std::exception_ptr&&>(object);
+  });
+}
+
+#else
+
+std::exception_ptr make_exception_ptr_with_(
+    make_exception_ptr_with_arg_ const&, void*) noexcept {
+  return std::exception_ptr();
+}
+
+#endif
+
+} // namespace detail
+
 struct exception_shared_string::state {
   // refcount ops use relaxed order since the string is immutable: side-effects
   // need not be made visible to the destructor since there are none
@@ -487,8 +762,18 @@ struct exception_shared_string::state {
     auto addr = operator_new(object_size(len), align);
     return new (addr) state(str, len);
   }
+  static state* make(std::size_t const len, format_sig_& ffun, void* fobj) {
+    constexpr auto align = std::align_val_t{alignof(state)};
+    auto addr = operator_new(object_size(len), align);
+    return new (addr) state(len, ffun, fobj);
+  }
   state(char const* const str, std::size_t const len) noexcept : size{len} {
     std::memcpy(static_cast<void*>(this + 1u), str, len + 1u);
+  }
+  state(std::size_t const len, format_sig_& ffun, void* fobj) : size{len} {
+    auto const buf = static_cast<char*>(static_cast<void*>(this + 1u));
+    ffun(fobj, buf, len);
+    buf[len] = 0;
   }
   char const* what() const noexcept {
     return static_cast<char const*>(static_cast<void const*>(this + 1u));
@@ -502,20 +787,32 @@ struct exception_shared_string::state {
   }
 };
 
+exception_shared_string::exception_shared_string(
+    std::size_t const len, format_sig_& ffun, void* const fobj)
+    : state_{reinterpret_cast<uintptr_t>(state::make(len, ffun, fobj))} {}
+
+exception_shared_string::exception_shared_string(
+    literal_state_base const& base) noexcept
+    : state_{reinterpret_cast<uintptr_t>(&base + 1)} {}
 exception_shared_string::exception_shared_string(char const* const str)
     : exception_shared_string{str, std::strlen(str)} {}
 exception_shared_string::exception_shared_string(
     char const* const str, std::size_t const len)
-    : state_{state::make(str, len)} {}
+    : state_{reinterpret_cast<uintptr_t>(state::make(str, len))} {}
 exception_shared_string::exception_shared_string(
     exception_shared_string const& that) noexcept
-    : state_{(that.state_->copy(), that.state_)} {}
+    : state_{
+          that.state_ & 1 //
+              ? that.state_
+              : (reinterpret_cast<state*>(that.state_)->copy(), that.state_)} {}
 exception_shared_string::~exception_shared_string() {
-  state_->ruin();
+  state_ & 1 ? void() : reinterpret_cast<state*>(state_)->ruin();
 }
 
 char const* exception_shared_string::what() const noexcept {
-  return state_->what();
+  return state_ & 1 //
+      ? reinterpret_cast<char const*>(state_)
+      : reinterpret_cast<state*>(state_)->what();
 }
 
 } // namespace folly

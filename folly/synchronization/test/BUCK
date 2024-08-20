@@ -361,9 +361,9 @@ cpp_benchmark(
         "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
         "//folly:shared_mutex",
-        "//folly/experimental/flat_combining:flat_combining",
         "//folly/lang:aligned",
         "//folly/synchronization:distributed_mutex",
+        "//folly/synchronization:flat_combining",
         "//folly/synchronization:small_locks",
     ],
 )
@@ -430,5 +430,66 @@ cpp_unittest(
         "//folly/portability:gtest",
         "//folly/synchronization:saturating_semaphore",
         "//folly/synchronization:throttled_lifo_sem",
+    ],
+)
+
+cpp_library(
+    name = "flat_combining_examples",
+    headers = ["FlatCombiningExamples.h"],
+    exported_deps = [
+        "//folly/synchronization:baton",
+        "//folly/synchronization:flat_combining",
+    ],
+)
+
+cpp_library(
+    name = "flat_combining_test_helpers",
+    headers = ["FlatCombiningTestHelpers.h"],
+    exported_deps = [
+        "//folly:benchmark",
+        "//folly/synchronization/test:flat_combining_examples",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "flat_combining_benchmark",
+    srcs = ["FlatCombiningBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/portability:gtest",
+        "//folly/synchronization/test:flat_combining_test_helpers",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "flat_combining_test",
+    srcs = ["FlatCombiningTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization/test:flat_combining_test_helpers",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "event_count_test",
+    srcs = ["EventCountTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly/portability:gtest",
+        "//folly/synchronization:event_count",
+    ],
+    external_deps = [
+        "glog",
     ],
 )

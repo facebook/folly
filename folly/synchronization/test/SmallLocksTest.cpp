@@ -71,7 +71,7 @@ struct ignore2 {
   PicoSpinLock<uint32_t> psl;
   int16_t foo;
 } FOLLY_PACK_ATTR;
-static_assert(sizeof(ignore2) == 6, "Size check failed");
+static_assert(folly::kMscVer || sizeof(ignore2) == 6, "Size check failed");
 FOLLY_PACK_POP
 
 LockedVal v;

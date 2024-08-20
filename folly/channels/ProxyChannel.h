@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include <folly/channels/Channel.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/Channel.h>
 
 namespace folly {
 namespace channels {

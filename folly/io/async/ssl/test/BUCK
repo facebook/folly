@@ -29,10 +29,10 @@ cpp_unittest(
     ],
     deps = [
         "//folly:file_util",
-        "//folly/experimental:test_util",
         "//folly/io/async/ssl:basic_transport_certificate",
         "//folly/portability:gtest",
         "//folly/ssl:openssl_cert_utils",
+        "//folly/testing:test_util",
     ],
 )
 

@@ -1,0 +1,12 @@
+[manifest]
+name = cabal
+
+[download.os=linux]
+url = https://downloads.haskell.org/~cabal/cabal-install-3.6.2.0/cabal-install-3.6.2.0-x86_64-linux-deb10.tar.xz
+sha256 = 4759b56e9257e02f29fa374a6b25d6cb2f9d80c7e3a55d4f678a8e570925641c
+
+[build]
+builder = nop
+
+[install.files]
+cabal = bin/cabal

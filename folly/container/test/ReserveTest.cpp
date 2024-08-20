@@ -16,6 +16,7 @@
 
 #include <folly/container/Reserve.h>
 
+#include <list>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -156,4 +157,17 @@ TEST(ReserveUtil, F14NodeMapGrowBy) {
 
 TEST(ReserveUtil, UnorderedMapGrowBy) {
   testMapGrowBy<unordered_map>();
+}
+
+TEST(ReserveUtil, ReserveIfAvailableVector) {
+  std::vector<int> v;
+  auto r = folly::reserve_if_available(v, 42);
+  static_assert(std::is_same_v<decltype(r), std::true_type>);
+  EXPECT_GE(v.capacity(), 42);
+}
+
+TEST(ReserveUtil, ReserveIfAvailableList) {
+  std::list<int> l;
+  auto r = folly::reserve_if_available(l, 42);
+  static_assert(std::is_same_v<decltype(r), std::false_type>);
 }

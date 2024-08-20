@@ -29,7 +29,6 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
-#include <folly/experimental/observer/Observer.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -39,6 +38,7 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
+#include <folly/observer/Observer.h>
 #include <folly/portability/Sockets.h>
 
 // Due to the way kernel headers are included, this may or may not be defined.

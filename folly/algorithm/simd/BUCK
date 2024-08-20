@@ -1,0 +1,23 @@
+######################################################################
+# Libraries
+
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "movemask",
+    headers = ["Movemask.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
+    name = "findFixed",
+    headers = ["FindFixed.h"],
+    exported_deps = [
+        ":movemask",
+        "//folly:portability",
+    ],
+)

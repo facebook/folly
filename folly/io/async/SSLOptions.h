@@ -69,22 +69,16 @@ struct SSLOptionsCompatibility {
    */
   static constexpr auto sigalgs() {
     return folly::make_array(
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "rsa_pss_pss_sha512",
         "rsa_pss_rsae_sha512",
-#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA512",
         "ECDSA+SHA512",
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "rsa_pss_pss_sha384",
         "rsa_pss_rsae_sha384",
-#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA384",
         "ECDSA+SHA384",
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "rsa_pss_pss_sha256",
         "rsa_pss_rsae_sha256",
-#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA256",
         "ECDSA+SHA256",
         "RSA+SHA1",
@@ -171,22 +165,16 @@ struct SSLOptions2021 {
 
   static constexpr auto sigalgs() {
     return folly::make_array(
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "rsa_pss_pss_sha512",
         "rsa_pss_rsae_sha512",
-#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA512",
         "ECDSA+SHA512",
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "rsa_pss_pss_sha384",
         "rsa_pss_rsae_sha384",
-#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA384",
         "ECDSA+SHA384",
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "rsa_pss_pss_sha256",
         "rsa_pss_rsae_sha256",
-#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
         "RSA+SHA256",
         "ECDSA+SHA256");
   }
@@ -203,11 +191,9 @@ using SSLServerOptions = SSLOptions2021;
 template <typename TSSLOptions>
 void setCipherSuites(SSLContext& ctx) {
   try {
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
     std::string ciphersuites;
     folly::join(':', TSSLOptions::ciphersuites(), ciphersuites);
     ctx.setCiphersuitesOrThrow(std::move(ciphersuites));
-#endif
     ctx.setCipherList(TSSLOptions::ciphers());
   } catch (std::runtime_error const& e) {
     ssl_options_detail::logDfatal(e);

@@ -32,6 +32,7 @@ extern lsan_unregister_root_region_t* const lsan_unregister_root_region_v;
 
 void annotate_object_leaked_impl(void const* ptr);
 void annotate_object_collected_impl(void const* ptr);
+size_t annotate_object_count_leaked_uncollected_impl();
 
 } // namespace detail
 
@@ -39,7 +40,8 @@ void annotate_object_collected_impl(void const* ptr);
 //
 //  Marks an allocation to be treated as a root when Leak Sanitizer scans for
 //  leaked allocations.
-FOLLY_ALWAYS_INLINE static void lsan_ignore_object(void const* const ptr) {
+[[maybe_unused]] FOLLY_ALWAYS_INLINE static void lsan_ignore_object(
+    void const* const ptr) {
   auto fun = detail::lsan_ignore_object_v;
   return kIsSanitizeAddress && fun ? fun(ptr) : void();
 }
@@ -47,7 +49,7 @@ FOLLY_ALWAYS_INLINE static void lsan_ignore_object(void const* const ptr) {
 //  lsan_register_root_region
 //
 //  Marks a region as a root for Leak Sanitizer scans.
-FOLLY_ALWAYS_INLINE static void lsan_register_root_region(
+[[maybe_unused]] FOLLY_ALWAYS_INLINE static void lsan_register_root_region(
     void const* const ptr, std::size_t const size) {
   auto fun = detail::lsan_register_root_region_v;
   return kIsSanitizeAddress && fun ? fun(ptr, size) : void();
@@ -56,7 +58,7 @@ FOLLY_ALWAYS_INLINE static void lsan_register_root_region(
 //  lsan_unregister_root_region
 //
 //  Marks a region as a root for Leak Sanitizer scans.
-FOLLY_ALWAYS_INLINE static void lsan_unregister_root_region(
+[[maybe_unused]] FOLLY_ALWAYS_INLINE static void lsan_unregister_root_region(
     void const* const ptr, std::size_t const size) {
   auto fun = detail::lsan_unregister_root_region_v;
   return kIsSanitizeAddress && fun ? fun(ptr, size) : void();
@@ -71,7 +73,8 @@ FOLLY_ALWAYS_INLINE static void lsan_unregister_root_region(
  * compilation unit is being compiled with ASAN, independent of whether folly
  * itself was compiled with ASAN enabled.
  */
-FOLLY_ALWAYS_INLINE static void annotate_object_leaked(void const* ptr) {
+[[maybe_unused]] FOLLY_ALWAYS_INLINE static void annotate_object_leaked(
+    void const* ptr) {
   if (kIsSanitizeAddress) {
     detail::annotate_object_leaked_impl(ptr);
   }
@@ -83,9 +86,23 @@ FOLLY_ALWAYS_INLINE static void annotate_object_leaked(void const* ptr) {
  * This function is an inlinable no-op when ASAN is not enabled for the current
  * compilation unit.
  */
-FOLLY_ALWAYS_INLINE static void annotate_object_collected(void const* ptr) {
+[[maybe_unused]] FOLLY_ALWAYS_INLINE static void annotate_object_collected(
+    void const* ptr) {
   if (kIsSanitizeAddress) {
     detail::annotate_object_collected_impl(ptr);
   }
 }
+
+/**
+ * Count how many times objects have been passed to annotate_object_leaked() but
+ * not yet passed to annotate_object_collected().
+ */
+[[maybe_unused]] FOLLY_ALWAYS_INLINE static size_t
+annotate_object_count_leaked_uncollected() {
+  if (kIsSanitizeAddress) {
+    return detail::annotate_object_count_leaked_uncollected_impl();
+  }
+  return 0;
+}
+
 } // namespace folly

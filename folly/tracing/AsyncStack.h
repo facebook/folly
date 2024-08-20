@@ -22,6 +22,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
+#include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/experimental/coro/Coroutine.h>
 
@@ -280,6 +281,33 @@ void resumeCoroutineWithNewAsyncStackRoot(
 
 #endif // FOLLY_HAS_COROUTINES
 
+/**
+ * Push a dummy "leaf" frame into the stack to annotate the stack as
+ * "suspended".
+ *
+ * The leaf frame will be made discoverable to debugging tools
+ * which may use the leaves to walk the stack traces of suspended stacks.
+ */
+void activateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept;
+
+bool isSuspendedLeafActive(AsyncStackFrame& leafFrame) noexcept;
+
+/**
+ * Apply `fn` on all suspended leaf frames.
+ * Note: Avoid performing async work within `fn` as it may cause deadlocks.
+ *
+ * This API does nothing in non-debug-builds.
+ */
+void sweepSuspendedLeafFrames(folly::FunctionRef<void(AsyncStackFrame*)> fn);
+
+/**
+ * Pop the dummy "leaf" frame off the stack to annotate the stack as
+ * having resumed.
+ *
+ * The leaf frame will no longer be discoverable to debugging tools
+ */
+void deactivateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept;
+
 // An async stack frame contains information about a particular
 // invocation of an asynchronous operation.
 //
@@ -326,6 +354,10 @@ struct AsyncStackFrame {
   friend void checkAsyncStackFrameIsActive(
       const folly::AsyncStackFrame&) noexcept;
   friend void popAsyncStackFrameCallee(folly::AsyncStackFrame&) noexcept;
+
+  friend void activateSuspendedLeaf(folly::AsyncStackFrame&) noexcept;
+  friend bool isSuspendedLeafActive(folly::AsyncStackFrame&) noexcept;
+  friend void deactivateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept;
 
   // Pointer to the async caller's stack-frame info.
   //

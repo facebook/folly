@@ -103,3 +103,15 @@ TEST_F(SparseByteSetTest, remove_nop) {
   bool r = s.remove(12);
   EXPECT_FALSE(r);
 }
+
+TEST_F(SparseByteSetTest, size) {
+  EXPECT_EQ(s.size(), 0);
+
+  s.add(1);
+  s.add(2);
+  s.add(3);
+  EXPECT_EQ(s.size(), 3);
+
+  s.remove(1);
+  EXPECT_EQ(s.size(), 2);
+}

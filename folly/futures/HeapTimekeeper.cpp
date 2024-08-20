@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include <folly/Portability.h>
 #include <folly/container/IntrusiveHeap.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/synchronization/DistributedMutex.h>
@@ -71,6 +72,13 @@ class HeapTimekeeper::State {
 
   State() { clearAndAdjustCapacity(queue_); }
   ~State() {
+    // On some Windows configurations, threads may be (uncleanly) terminated on
+    // process exit before singleton destructors run, so we cannot guarantee any
+    // invariants on destruction.
+    if constexpr (kIsWindows) {
+      return;
+    }
+
     // State is shared with future, but it should only be destroyed once the
     // worker thread has drained it completely.
     CHECK_EQ(queue_.size(), 0);

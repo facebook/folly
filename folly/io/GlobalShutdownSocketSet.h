@@ -18,7 +18,7 @@
 
 #include <memory>
 
-#include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/io/ShutdownSocketSet.h>
 
 namespace folly {

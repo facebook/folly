@@ -16,7 +16,10 @@
 
 #include <folly/executors/QueuedImmediateExecutor.h>
 
+#include <functional>
+
 #include <folly/Indestructible.h>
+#include <folly/ScopeGuard.h>
 
 namespace folly {
 
@@ -25,14 +28,29 @@ QueuedImmediateExecutor& QueuedImmediateExecutor::instance() {
   return *instance;
 }
 
-void QueuedImmediateExecutor::add(Func callback) {
-  auto& q = *q_;
-  q.push(std::move(callback));
-  if (q.size() == 1) {
-    while (!q.empty()) {
-      q.front()();
-      q.pop();
-    }
+void QueuedImmediateExecutor::add(Func func) {
+  auto& [running, queue] = *q_;
+  if (running) {
+    queue.push(Task{std::move(func), RequestContext::saveContext()});
+    return;
+  }
+
+  running = true;
+  auto cleanup = makeGuard([&r = running] { r = false; });
+
+  // No need to save/restore request context if this is the first call.
+  invokeCatchingExns("QueuedImmediateExecutor", std::exchange(func, {}));
+
+  if (queue.empty()) {
+    return;
+  }
+
+  RequestContextSaverScopeGuard guard;
+  while (!queue.empty()) {
+    auto& task = queue.front();
+    RequestContext::setContext(std::move(task.ctx));
+    invokeCatchingExns("QueuedImmediateExecutor", std::ref(task.func));
+    queue.pop();
   }
 }
 

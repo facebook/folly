@@ -35,11 +35,15 @@ namespace folly {
 class FOLLY_EXPORT TryException : public std::logic_error {
  public:
   using std::logic_error::logic_error;
+  TryException() : std::logic_error{""} {}
 };
 
 class FOLLY_EXPORT UsingUninitializedTry : public TryException {
  public:
-  UsingUninitializedTry() : TryException("Using uninitialized try") {}
+  UsingUninitializedTry() = default;
+  char const* what() const noexcept override {
+    return "Using uninitialized try";
+  }
 };
 
 template <class T>

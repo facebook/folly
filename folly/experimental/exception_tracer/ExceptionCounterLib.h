@@ -14,38 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <ostream>
-#include <vector>
-
-#include <folly/experimental/exception_tracer/ExceptionTracer.h>
-
-#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-
-#if defined(__GLIBCXX__)
-
-namespace folly {
-namespace exception_tracer {
-
-struct ExceptionStats {
-  uint64_t count;
-  ExceptionInfo info;
-};
-
-/**
- * This function accumulates exception throwing statistics across all threads.
- * Please note, that during call to this function, other threads might block
- * on exception throws, so it should be called seldomly.
- * All pef-thread statistics is being reset by the call.
- */
-std::vector<ExceptionStats> getExceptionStatistics();
-
-std::ostream& operator<<(std::ostream& out, const ExceptionStats& stats);
-
-} // namespace exception_tracer
-} // namespace folly
-
-#endif // defined(__GLIBCXX__)
-
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+#include <folly/debugging/exception_tracer/ExceptionCounterLib.h>

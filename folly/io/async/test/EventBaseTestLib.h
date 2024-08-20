@@ -19,6 +19,7 @@
 #include <memory>
 #include <thread>
 
+#include <folly/Math.h>
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
 #include <folly/futures/Promise.h>
@@ -2206,6 +2207,17 @@ TYPED_TEST_P(EventBaseTest, RunBeforeLoopWait) {
   ASSERT_EQ(cb.getCount(), 0);
 }
 
+TYPED_TEST_P(EventBaseTest, RunAfterLoop) {
+  auto evb = this->makeEventBase();
+  bool cb2Ran = false;
+  // cbRan is set by a callback scheduled after cb, but cb runs last anyway.
+  CountedLoopCallback cb(evb.get(), 1, [&] { EXPECT_TRUE(cb2Ran); });
+  evb->runAfterLoop(&cb);
+  evb->runInLoop([&] { cb2Ran = true; });
+  evb->loop();
+  ASSERT_EQ(cb.getCount(), 0);
+}
+
 namespace {
 class PipeHandler : public EventHandler {
  public:
@@ -2740,6 +2752,67 @@ TYPED_TEST_P(EventBaseTest, Suspension) {
   EXPECT_FALSE(evbPtr->inRunningEventBaseThread());
 }
 
+TYPED_TEST_P(EventBaseTest, LoopCallbackTimeslice) {
+  const std::chrono::milliseconds kTimeslice{20};
+  const std::chrono::milliseconds kCbDuration{5};
+
+  // This bound should be tight, but we add some slack to account for clock
+  // resolution.
+  const size_t kMaxCbsPerIteration =
+      folly::divCeil(kTimeslice.count(), kCbDuration.count()) + 2;
+
+  auto evb = this->makeEventBase(
+      EventBase::Options().setLoopCallbacksTimeslice(kTimeslice));
+  // Disable count-based control of the notification queue, so it is only
+  // controlled by time.
+  evb->setMaxReadAtOnce(0);
+
+  // [0] is loop callbacks, [1] is notification queue callbacks.
+  size_t numCbsRun[2] = {0, 0};
+  size_t expectedNumCbsRun[2] = {0, 0};
+
+  auto cb = [&](size_t source) {
+    ++numCbsRun[source];
+    /* sleep override */ std::this_thread::sleep_for(kCbDuration);
+  };
+
+  evb->runInLoop([&] {
+    for (size_t i = 0; i < 10; ++i) {
+      evb->runInLoop([&] { cb(0); }, /* thisIteration */ true);
+      ++expectedNumCbsRun[0];
+    }
+  });
+
+  evb->loopOnce();
+  EXPECT_LE(numCbsRun[0], kMaxCbsPerIteration);
+  // At least one of the thisIteration cbs should have run in the iteration.
+  EXPECT_GE(numCbsRun[0], 1);
+  expectedNumCbsRun[0] -= numCbsRun[0];
+  numCbsRun[0] = 0;
+
+  for (size_t i = 0; i < 20; ++i) {
+    evb->runInLoop([&] { cb(0); });
+    ++expectedNumCbsRun[0];
+  }
+
+  for (size_t i = 0; i < 20; ++i) {
+    evb->runInEventBaseThreadAlwaysEnqueue([&] { cb(1); });
+    ++expectedNumCbsRun[1];
+  }
+
+  evb->loopOnce();
+  EXPECT_LE(numCbsRun[0], kMaxCbsPerIteration);
+  EXPECT_LE(numCbsRun[1], kMaxCbsPerIteration);
+  // At least one of each should have run.
+  EXPECT_GE(numCbsRun[0], 1);
+  EXPECT_GE(numCbsRun[1], 1);
+
+  // Eventually all cbs should run.
+  evb->loop();
+  EXPECT_EQ(numCbsRun[0], expectedNumCbsRun[0]);
+  EXPECT_EQ(numCbsRun[1], expectedNumCbsRun[1]);
+}
+
 struct BackendProviderBase {
   static bool isIoUringBackend() { return false; }
 };
@@ -2795,6 +2868,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     EventBaseThreadName,
     RunBeforeLoop,
     RunBeforeLoopWait,
+    RunAfterLoop,
     StopBeforeLoop,
     RunCallbacksPreDestruction,
     RunCallbacksOnDestruction,
@@ -2820,7 +2894,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     RunOnDestructionAddCallbackWithinCallback,
     InternalExternalCallbackOrderTest,
     PidCheck,
-    EventBaseExecutionObserver);
+    EventBaseExecutionObserver,
+    LoopCallbackTimeslice);
 
 } // namespace test
 } // namespace folly

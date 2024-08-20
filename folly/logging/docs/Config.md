@@ -159,6 +159,12 @@ Example log configuration strings:
   therefore be discarded, even though they are enabled for one of its parent
   categories.
 
+* `folly:=WARN`
+
+  Sets the folly category to WARN level and prevent it from inheriting the
+  default log level, which is likely INFO. This is a useful example for
+  silencing a spammy component while keeping everything else as is.
+
 * `ERROR:stderr, folly=INFO; stderr=stream:stream=stderr`
 
   Sets the root log category level to ERROR, and sets its handler list to

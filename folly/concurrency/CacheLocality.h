@@ -29,7 +29,6 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/lang/Align.h>
-#include <folly/lang/Exception.h>
 #include <folly/synchronization/AtomicRef.h>
 
 namespace folly {
@@ -55,8 +54,11 @@ namespace folly {
 struct CacheLocality {
   /// 1 more than the maximum value that can be returned from sched_getcpu
   /// or getcpu.  This is the number of hardware thread contexts provided
-  /// by the processors
+  /// by the processors.
   size_t numCpus;
+
+  /// NOTE: The information below may be a heuristic approximation based on the
+  /// available mechanisms to parse cpu topology.
 
   /// Holds the number of caches present at each cache level (0 is
   /// the closest to the cpu).  This is the number of AccessSpreader
@@ -73,6 +75,11 @@ struct CacheLocality {
   /// then cpus with a locality index < 16 will share one last-level
   /// cache and cpus with a locality index >= 16 will share the other.
   std::vector<size_t> localityIndexByCpu;
+
+  /// For each cpu, a list of cache identifiers following the same layout as
+  /// numCachesByLevel. The identifier itself is an arbitrary number: it only
+  /// signifies that cpus with the same identifier share a cache at that level.
+  std::vector<std::vector<size_t>> equivClassesByCpu;
 
   /// Returns the best CacheLocality information available for the current
   /// system, cached for fast access.  This will be loaded from sysfs if
@@ -100,7 +107,7 @@ struct CacheLocality {
   /// /sys/devices/system/cpu/cpu*/cache/index*/{type,shared_cpu_list} .
   /// Throws an exception if no caches can be parsed at all.
   static CacheLocality readFromSysfsTree(
-      const std::function<std::string(std::string)>& mapping);
+      const std::function<std::string(std::string const&)>& mapping);
 
   /// Reads CacheLocality information from the real sysfs filesystem.
   /// Throws an exception if no cache information can be loaded.
@@ -122,6 +129,9 @@ struct CacheLocality {
   /// CacheLocality structure with the specified number of cpus and a
   /// single cache level that associates one cpu per cache.
   static CacheLocality uniform(size_t numCpus);
+
+ private:
+  explicit CacheLocality(std::vector<std::vector<size_t>> equivClasses);
 };
 
 /// Knows how to derive a function pointer to the VDSO implementation of

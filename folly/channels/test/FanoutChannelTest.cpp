@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
+#include <folly/channels/ConsumeChannel.h>
+#include <folly/channels/FanoutChannel.h>
+#include <folly/channels/test/ChannelTestUtil.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/SerialExecutor.h>
-#include <folly/experimental/channels/ConsumeChannel.h>
-#include <folly/experimental/channels/FanoutChannel.h>
-#include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 

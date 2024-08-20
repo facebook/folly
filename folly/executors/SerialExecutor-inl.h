@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <folly/ExceptionString.h>
+#include <folly/ScopeGuard.h>
 
 namespace folly::detail {
 
@@ -113,10 +114,15 @@ void SerialExecutorImpl<Queue>::worker() {
   DCHECK_NE(queueSize, 0);
 
   std::size_t processed = 0;
+  RequestContextSaverScopeGuard ctxGuard;
   while (true) {
     Task task;
+    // This dequeue happens under the request context of the previous task, so
+    // that we can avoid switching context if the next task shares the same
+    // context. dequeue() is cheap, non-blocking, and doesn't run application
+    // logic, so it is fine to sneak it in the previous context.
     queue_.dequeue(task);
-    folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
+    RequestContext::setContext(std::move(task.ctx));
     invokeCatchingExns("SerialExecutor: func", std::exchange(task.func, {}));
 
     if (++processed == queueSize) {
@@ -136,12 +142,37 @@ void SerialExecutorImpl<Queue>::worker() {
 template <template <typename> typename Queue>
 void SerialExecutorImpl<Queue>::drain() {
   auto queueSize = scheduled_.load(std::memory_order_acquire);
+  if (queueSize == 0) {
+    return;
+  }
+
+  RequestContextSaverScopeGuard ctxGuard;
   while (queueSize != 0) {
     Task task;
     queue_.dequeue(task);
+    RequestContext::setContext(std::move(task.ctx));
+    task.func = {};
     queueSize = scheduled_.fetch_sub(1, std::memory_order_acq_rel) - 1;
   }
 }
+
+class NoopMutex {
+ public:
+  template <class F>
+  auto lock_combine(F&& f) {
+#ifndef NDEBUG
+    CHECK(!locked_.exchange(true, std::memory_order_acq_rel));
+    auto&& g = folly::makeGuard(
+        [this] { locked_.store(false, std::memory_order_release); });
+#endif
+    return f();
+  }
+
+ private:
+#ifndef NDEBUG
+  std::atomic<bool> locked_;
+#endif
+};
 
 /**
  * MPSC queue with the additional requirement that the queue must be non-empty
@@ -152,7 +183,7 @@ void SerialExecutorImpl<Queue>::drain() {
  * Producers are internally synchronized using a mutex, while the consumer
  * relies entirely on external synchronization.
  */
-template <class Task>
+template <class Task, class Mutex>
 class SerialExecutorMPSCQueue {
   static_assert(std::is_nothrow_move_constructible_v<Task>);
 
@@ -162,8 +193,8 @@ class SerialExecutorMPSCQueue {
     CHECK_EQ(head_, tail_);
     CHECK_EQ(head_->readIdx.load(), head_->writeIdx.load());
     CHECK(head_->next == nullptr);
-    delete head_;
-    delete segmentCache_.load(std::memory_order_acquire);
+    deleteSegment(head_);
+    deleteSegment(segmentCache_.load(std::memory_order_acquire));
   }
 
   void enqueue(Task&& task) {
@@ -196,7 +227,8 @@ class SerialExecutorMPSCQueue {
       auto* oldSegment = std::exchange(head_, head_->next);
       // If there is already a segment in cache, replace it with the latest one,
       // as it is more likely to still be warm in cache for the producer.
-      delete segmentCache_.exchange(oldSegment, std::memory_order_release);
+      deleteSegment(
+          segmentCache_.exchange(oldSegment, std::memory_order_release));
       DCHECK_EQ(head_->readIdx.load(), 0);
       idx = 0;
     }
@@ -222,12 +254,23 @@ class SerialExecutorMPSCQueue {
   };
   static_assert(std::is_trivially_destructible_v<Segment>);
 
-  folly::DistributedMutex mutex_;
-  Segment* tail_ = new Segment;
+  void deleteSegment(Segment* segment) {
+    if (segment == &inlineSegment_) {
+      return;
+    }
+    delete segment;
+  }
+
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] Mutex mutex_;
+  Segment* tail_ = &inlineSegment_;
   Segment* head_ = tail_;
   // Cache the allocation for exactly one segment, so that in the common case
   // where the consumer keeps up with the producer no allocations are needed.
   std::atomic<Segment*> segmentCache_{nullptr};
+
+  // Store the first segment inline. If this is a short-lived SerialExecutor
+  // which enqueues fewer than kSegmentSize tasks, this will save an allocation.
+  Segment inlineSegment_;
 };
 
 } // namespace folly::detail

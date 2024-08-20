@@ -14,39 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <boost/intrusive_ptr.hpp>
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
-
-namespace folly {
-namespace channels {
-namespace detail {
-
-/**
- * An intrusive_ptr is like an std::shared_ptr. However, unlike a shared_ptr,
- * the reference count for an intrusive_ptr lives on the object itself. This has
- * two advantages:
- *
- * 1. Each intrusive_ptr is 8 bytes instead of 16 bytes.
- *
- * 2. An intrusive_ptr can be created from a raw pointer/reference, unlike a
- *    shared_ptr.
- *
- * To use intrusive_ptr<T>, ensure that T inherits from IntrusivePtrBase<T>.
- */
-
-template <typename T>
-using intrusive_ptr = boost::intrusive_ptr<T>;
-
-template <typename T>
-using IntrusivePtrBase =
-    boost::intrusive_ref_counter<T, boost::thread_safe_counter>;
-
-template <typename T, typename... Args>
-intrusive_ptr<T> make_intrusive(Args&&... args) {
-  return intrusive_ptr<T>(new T(std::forward<Args>(args)...));
-}
-} // namespace detail
-} // namespace channels
-} // namespace folly
+#include <folly/channels/detail/IntrusivePtr.h>

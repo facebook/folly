@@ -107,6 +107,9 @@ cpp_library(
     name = "manual_timekeeper",
     srcs = ["ManualTimekeeper.cpp"],
     headers = ["ManualTimekeeper.h"],
+    deps = [
+        "//folly/synchronization:atomic_util",
+    ],
     exported_deps = [
         "//folly:synchronized",
         "//folly/futures:core",
@@ -133,5 +136,16 @@ cpp_library(
         "//folly:portability",
         "//folly/executors:inline_executor",
         "//folly/lang:exception",
+    ],
+)
+
+cpp_library(
+    name = "cleanup",
+    headers = ["Cleanup.h"],
+    exported_deps = [
+        "//folly/futures:core",
+    ],
+    exported_external_deps = [
+        "glog",
     ],
 )

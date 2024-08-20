@@ -1,0 +1,75 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "atomic_grow_array_test",
+    srcs = ["atomic_grow_array_test.cpp"],
+    deps = [
+        "//folly/concurrency/container:atomic_grow_array",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "relaxed_concurrent_priority_queue_test",
+    srcs = ["RelaxedConcurrentPriorityQueueTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly:spin_lock",
+        "//folly/concurrency/container:flat_combining_priority_queue",
+        "//folly/concurrency/container:relaxed_concurrent_priority_queue",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/test:deterministic_schedule",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+cpp_unittest(
+    name = "lock_free_ring_buffer_test",
+    srcs = ["LockFreeRingBufferTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/concurrency/container:lock_free_ring_buffer",
+        "//folly/portability:gtest",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+cpp_unittest(
+    name = "flat_combining_priority_queue_test",
+    srcs = ["FlatCombiningPriorityQueueTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/concurrency/container:flat_combining_priority_queue",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_unittest(
+    name = "single_writer_fixed_hash_map_test",
+    srcs = ["SingleWriterFixedHashMapTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/concurrency/container:single_writer_fixed_hash_map",
+        "//folly/container:array",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/synchronization/test:barrier",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+        "glog",
+    ],
+)

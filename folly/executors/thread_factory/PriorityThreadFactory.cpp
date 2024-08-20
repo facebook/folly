@@ -20,16 +20,34 @@
 #include <folly/String.h>
 #include <folly/portability/SysResource.h>
 #include <folly/portability/SysTime.h>
+#include <folly/system/ThreadName.h>
 
 namespace folly {
 
 PriorityThreadFactory::PriorityThreadFactory(
     std::shared_ptr<ThreadFactory> factory, int priority)
     : InitThreadFactory(std::move(factory), [priority] {
-        if (setpriority(PRIO_PROCESS, 0, priority) != 0) {
-          LOG(WARNING) << "setpriority failed (are you root?) with error "
-                       << errno << " " << errnoStr(errno);
+        if (setpriority(PRIO_PROCESS, 0, priority) == 0) {
+          return;
         }
+        int errnoCopy = errno;
+        auto message = [&](std::ostream& os) {
+          // Likely cause of failure is lacking the necessary permissions to
+          // change thread priority; note that we may need higher permissions
+          // even if trying to set the default priority while the current
+          // priority is lower (niced), for example if the thread is spawned
+          // from a lower-priority thread.
+          os << "setpriority(" << priority << ") on thread \""
+             << folly::getCurrentThreadName().value_or("<unknown>") << "\" "
+             << "failed with error " << errnoCopy << " (" << errnoStr(errnoCopy)
+             << ")";
+
+          errno = 0;
+          if (int p = getpriority(PRIO_PROCESS, 0); p != -1 || errno == 0) {
+            os << ". Current priority: " << p;
+          }
+        };
+        message(LOG(WARNING));
       }) {}
 
 } // namespace folly

@@ -275,7 +275,7 @@ BENCHMARK(ForLoopFetch, iters) {
 }
 
 BENCHMARK(ForEachKVNoMacroAssign, iters) {
-  int sumKeys = 0;
+  [[maybe_unused]] int sumKeys = 0;
   std::string sumValues;
 
   BENCHMARK_SUSPEND {
@@ -291,7 +291,7 @@ BENCHMARK(ForEachKVNoMacroAssign, iters) {
 }
 
 BENCHMARK(ForEachKVNoMacroNoAssign, iters) {
-  int sumKeys = 0;
+  [[maybe_unused]] int sumKeys = 0;
   std::string sumValues;
 
   BENCHMARK_SUSPEND {

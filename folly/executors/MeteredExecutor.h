@@ -16,11 +16,12 @@
 
 #pragma once
 
+#include <atomic>
 #include <optional>
 
 #include <folly/DefaultKeepAliveExecutor.h>
+#include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/QueueObserver.h>
-#include <folly/io/async/AtomicNotificationQueue.h>
 
 namespace folly {
 
@@ -51,6 +52,9 @@ class MeteredExecutorImpl : public DefaultKeepAliveExecutor {
     bool enableQueueObserver{false};
     size_t numPriorities{1};
     int8_t priority{0};
+    // Maximum number of tasks allowed in the wrapped executor's queue at any
+    // given time. This must be >= 1 and < 2^31.
+    uint32_t maxInQueue = 1;
   };
 
   using KeepAlive = Executor::KeepAlive<>;
@@ -64,7 +68,7 @@ class MeteredExecutorImpl : public DefaultKeepAliveExecutor {
 
   void add(Func func) override;
 
-  size_t pendingTasks() const { return queue_.size(); }
+  size_t pendingTasks() const { return state_ & kSizeMask; }
 
   // Pause executing tasks. Subsequent resume() necessary to
   // start executing tasks again. Can be invoked from any thread and only
@@ -83,7 +87,8 @@ class MeteredExecutorImpl : public DefaultKeepAliveExecutor {
    public:
     Task() = default;
 
-    explicit Task(Func&& func) : func_(std::move(func)) {}
+    explicit Task(Func&& func, std::shared_ptr<RequestContext>&& rctx)
+        : func_(std::move(func)), rctx_(std::move(rctx)) {}
 
     void setQueueObserverPayload(intptr_t newValue) {
       queueObserverPayload_ = newValue;
@@ -91,67 +96,43 @@ class MeteredExecutorImpl : public DefaultKeepAliveExecutor {
 
     intptr_t getQueueObserverPayload() const { return queueObserverPayload_; }
 
-    void run() { func_(); }
+    void run() &&;
 
-    bool hasFunc() { return func_ ? true : false; }
+    RequestContext* requestContext() const { return rctx_.get(); }
 
    private:
     Func func_;
+    std::shared_ptr<RequestContext> rctx_;
     intptr_t queueObserverPayload_;
   };
 
+  template <class F>
+  void modifyState(F f);
+
   std::unique_ptr<folly::QueueObserver> setupQueueObserver();
-  void loopCallback();
-  void scheduleCallback();
+  void worker();
+  void scheduleWorker();
 
-  // Atomically checks if we should scheduled loopCallback and records that
-  // such a callback was skipped so that a subsequent resume can schedule one.
-  bool shouldSkip();
-
-  class Consumer {
-    std::optional<Task> first_;
-    std::shared_ptr<RequestContext> firstRctx_;
-    MeteredExecutorImpl& self_;
-
-   public:
-    explicit Consumer(MeteredExecutorImpl& self) : self_(self) {}
-    void executeIfNotEmpty();
-    void operator()(Task&& task, std::shared_ptr<RequestContext>&& rctx);
-    ~Consumer();
-  };
-  Options options_;
-  folly::AtomicNotificationQueue<Task> queue_;
+  const Options options_;
   std::unique_ptr<Executor> ownedExecutor_;
-  KeepAlive kaInner_;
-  std::unique_ptr<folly::QueueObserver> queueObserver_{setupQueueObserver()};
+  const KeepAlive kaInner_;
+  const std::unique_ptr<folly::QueueObserver> queueObserver_{
+      setupQueueObserver()};
 
-  // RUNNING - default state where tasks can be enqueue and will be executed on
-  //           wrapped executor
-  // PAUSED - executor is paused so no tasks will be scheduled for executions
-  //          add() can still happen
-  // PAUSED_PENDING - Same as paused but records that we had skipped a
-  //                  loopCallback while paused
-  //
-  //                       resume()
-  //         |-------<--------------------------------------|
-  //         v                                              ^
-  //         |                                              |
-  //  +---------+ pause() +---------+ loopCallback() +--------------+
-  //  | Running |---->----| Paused  |------->--------|PausedPending |
-  //  +---------+         +---------+                +--------------+
-  //       |                   |
-  //       ^                   V
-  //       |---------<---------|
-  //             resume()
-  //
-  enum ExecutorState : uint8_t { RUNNING = 0, PAUSED = 1, PAUSED_PENDING = 2 };
-  struct State {
-    Atom<uint8_t> execState{RUNNING};
-    // We expect only one instance of loopCallback to be scheduled.
-    // callbackScheduled helps assert this invariant.
-    Atom<bool> callbackScheduled{false};
-  };
-  State state_;
+  // State is encoded in a 64-bit word so we can modify it atomically (using
+  // modifyState(), which verifies the invariants.
+  // Layout:
+  // [<workers in queue> 31 bits][<paused> 1 bit>][<pending tasks> 32 bits]
+  static constexpr uint64_t kSizeInc = 1;
+  static constexpr uint64_t kSizeMask = (uint64_t{1} << 32) - 1;
+  static constexpr uint64_t kPausedBit = uint64_t{1} << 32;
+  static constexpr uint64_t kInQueueShift = 33;
+  static constexpr uint64_t kInQueueInc = uint64_t{1} << kInQueueShift;
+  alignas(folly::cacheline_align_v) std::atomic<uint64_t> state_ = 0;
+  // Use a smaller segment size than default to limit memory usage in case there
+  // are a large number of MeteredExecutors instances in the process.
+  // The queue doesn't need blocking because we only dequeue when non-empty.
+  UMPMCQueue<Task, /* MayBlock */ false, /* LgSegmentSize */ 5> queue_;
 };
 
 } // namespace detail

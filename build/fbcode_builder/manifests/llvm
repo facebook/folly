@@ -1,0 +1,5 @@
+[manifest]
+name = llvm
+
+[rpms]
+llvm15-devel

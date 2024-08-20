@@ -1,0 +1,711 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "accumulate",
+    headers = [
+        "Accumulate.h",
+        "Accumulate-inl.h",
+    ],
+    exported_deps = [
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cpp_library(
+    name = "async_generator",
+    srcs = [],
+    headers = ["AsyncGenerator.h"],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:exception_wrapper",
+        "//folly:traits",
+        "//folly:try",
+        "//folly/experimental/coro:auto_cleanup_fwd",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:current_executor",
+        "//folly/experimental/coro:detail_malloc",
+        "//folly/experimental/coro:detail_manual_lifetime",
+        "//folly/experimental/coro:invoke",
+        "//folly/experimental/coro:result",
+        "//folly/experimental/coro:scope_exit",
+        "//folly/experimental/coro:via_if_async",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/experimental/coro:with_cancellation",
+        "//folly/tracing:async_stack",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "async_pipe",
+    srcs = [],
+    headers = ["AsyncPipe.h"],
+    exported_deps = [
+        "//folly:try",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:invoke",
+        "//folly/experimental/coro:small_unbounded_queue",
+        "//folly/experimental/coro:via_if_async",
+        "//folly/fibers:semaphore",
+    ],
+)
+
+cpp_library(
+    name = "async_scope",
+    srcs = [],
+    headers = ["AsyncScope.h"],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:exception_wrapper",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:current_executor",
+        "//folly/experimental/coro:detail_barrier",
+        "//folly/experimental/coro:detail_barrier_task",
+        "//folly/experimental/coro:task",
+        "//folly/futures:core",
+        "//folly/portability:source_location",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "async_stack",
+    headers = ["AsyncStack.h"],
+    exported_deps = [
+        "//folly:executor",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_library(
+    name = "baton",
+    srcs = ["Baton.cpp"],
+    headers = ["Baton.h"],
+    deps = [
+        "//folly/synchronization:atomic_util",
+    ],
+    exported_deps = [
+        "//folly/experimental/coro:coroutine",
+    ],
+)
+
+cpp_library(
+    name = "blocking_wait",
+    headers = ["BlockingWait.h"],
+    exported_deps = [
+        "//folly:try",
+        "//folly/executors:manual_executor",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_malloc",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:traits",
+        "//folly/experimental/coro:via_if_async",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/fibers:core",
+        "//folly/synchronization:baton",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_library(
+    name = "collect",
+    headers = [
+        "Collect.h",
+        "Collect-inl.h",
+    ],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:exception_wrapper",
+        "//folly:try",
+        "//folly:unit",
+        "//folly/container:access",
+        "//folly/container:iterator",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:async_pipe",
+        "//folly/experimental/coro:async_scope",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_barrier",
+        "//folly/experimental/coro:detail_barrier_task",
+        "//folly/experimental/coro:detail_current_async_frame",
+        "//folly/experimental/coro:detail_helpers",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/experimental/coro:mutex",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:via_if_async",
+    ],
+)
+
+cpp_library(
+    name = "concat",
+    headers = [
+        "Concat.h",
+        "Concat-inl.h",
+    ],
+    exported_deps = [
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:coroutine",
+    ],
+)
+
+cpp_library(
+    name = "coroutine",
+    headers = ["Coroutine.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:utility",
+    ],
+)
+
+cpp_library(
+    name = "current_executor",
+    headers = ["CurrentExecutor.h"],
+    exported_deps = [
+        "//folly:executor",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:via_if_async",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/io/async:request_context",
+    ],
+)
+
+cpp_library(
+    name = "detach_on_cancel",
+    headers = ["DetachOnCancel.h"],
+    exported_deps = [
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_helpers",
+        "//folly/experimental/coro:invoke",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:traits",
+    ],
+)
+
+cpp_library(
+    name = "detail_barrier",
+    headers = ["detail/Barrier.h"],
+    exported_deps = [
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_library(
+    name = "detail_barrier_task",
+    headers = ["detail/BarrierTask.h"],
+    exported_deps = [
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_barrier",
+        "//folly/experimental/coro:detail_malloc",
+        "//folly/experimental/coro:with_async_stack",
+    ],
+)
+
+cpp_library(
+    name = "detail_current_async_frame",
+    headers = ["detail/CurrentAsyncFrame.h"],
+    exported_deps = [
+        "//folly:executor",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_library(
+    name = "detail_helpers",
+    headers = ["detail/Helpers.h"],
+    exported_deps = [
+        "//folly:executor",
+        "//folly:singleton_thread_local",
+        "//folly/experimental/coro:coroutine",
+        "//folly/io/async:request_context",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_library(
+    name = "detail_malloc",
+    srcs = ["detail/Malloc.cpp"],
+    headers = ["detail/Malloc.h"],
+    deps = [
+        "//folly/lang:hint",
+        "//folly/lang:new",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+    ],
+)
+
+cpp_library(
+    name = "detail_manual_lifetime",
+    headers = ["detail/ManualLifetime.h"],
+    exported_deps = [
+        "//folly:scope_guard",
+    ],
+)
+
+cpp_library(
+    name = "detail_traits",
+    headers = ["detail/Traits.h"],
+    exported_deps = [
+        "//folly:traits",
+    ],
+)
+
+cpp_library(
+    name = "filter",
+    headers = [
+        "Filter.h",
+        "Filter-inl.h",
+    ],
+    exported_deps = [
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:coroutine",
+    ],
+)
+
+cpp_library(
+    name = "future_util",
+    headers = ["FutureUtil.h"],
+    exported_deps = [
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/experimental/coro:invoke",
+        "//folly/experimental/coro:task",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "generator",
+    headers = ["Generator.h"],
+    exported_deps = [
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:invoke",
+        "//folly/lang:exception",
+    ],
+)
+
+cpp_library(
+    name = "gmock_helpers",
+    headers = ["GmockHelpers.h"],
+    exported_deps = [
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:gtest_helpers",
+        "//folly/experimental/coro:result",
+        "//folly/experimental/coro:task",
+        "//folly/portability:gmock",
+    ],
+)
+
+cpp_library(
+    name = "gtest_helpers",
+    headers = ["GtestHelpers.h"],
+    exported_deps = [
+        "//folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",  # @manual
+        "//folly/debugging/exception_tracer:smart_exception_tracer",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:task",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_library(
+    name = "inline_task",
+    headers = ["detail/InlineTask.h"],
+    exported_deps = [
+        "//folly:scope_guard",
+        "//folly:try",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_malloc",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/lang:assume",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_library(
+    name = "invoke",
+    headers = ["Invoke.h"],
+    exported_deps = [
+        "//folly/functional:invoke",
+        "//folly/lang:customization_point",
+    ],
+)
+
+cpp_library(
+    name = "merge",
+    headers = [
+        "Merge.h",
+        "Merge-inl.h",
+    ],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:executor",
+        "//folly:scope_guard",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_barrier",
+        "//folly/experimental/coro:detail_barrier_task",
+        "//folly/experimental/coro:detail_current_async_frame",
+        "//folly/experimental/coro:detail_helpers",
+        "//folly/experimental/coro:mutex",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:via_if_async",
+        "//folly/experimental/coro:with_cancellation",
+    ],
+)
+
+cpp_library(
+    name = "mutex",
+    srcs = ["Mutex.cpp"],
+    headers = ["Mutex.h"],
+    exported_deps = [
+        "//folly:executor",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:via_if_async",
+    ],
+)
+
+cpp_library(
+    name = "promise",
+    headers = ["Promise.h"],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:try",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:coroutine",
+        "//folly/futures:core",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+)
+
+cpp_library(
+    name = "result",
+    headers = ["Result.h"],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:exception_wrapper",
+        "//folly:try",
+    ],
+)
+
+cpp_library(
+    name = "retry",
+    headers = ["Retry.h"],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:constexpr_math",
+        "//folly:exception_wrapper",
+        "//folly:random",
+        "//folly:try",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/experimental/coro:result",
+        "//folly/experimental/coro:sleep",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cpp_library(
+    name = "rust_adaptors",
+    headers = ["RustAdaptors.h"],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:executor",
+        "//folly:optional",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:task",
+        "//folly/futures:core",
+        "//folly/synchronization:baton",
+    ],
+)
+
+cpp_library(
+    name = "scope_exit",
+    headers = ["ScopeExit.h"],
+    exported_deps = [
+        "//folly:exception_wrapper",
+        "//folly:executor",
+        "//folly:scope_guard",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/experimental/coro:via_if_async",
+        "//folly/functional:invoke",
+        "//folly/lang:assume",
+        "//folly/lang:customization_point",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_library(
+    name = "shared_lock",
+    headers = ["SharedLock.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/experimental/coro:coroutine",
+    ],
+    exported_external_deps = ["glog"],
+)
+
+cpp_library(
+    name = "shared_mutex",
+    srcs = ["SharedMutex.cpp"],
+    headers = ["SharedMutex.h"],
+    exported_deps = [
+        "//folly:executor",
+        "//folly:spin_lock",
+        "//folly:synchronized",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:shared_lock",
+        "//folly/experimental/coro:via_if_async",
+    ],
+)
+
+cpp_library(
+    name = "sleep",
+    headers = [
+        "Sleep.h",
+        "Sleep-inl.h",
+    ],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:current_executor",
+        "//folly/experimental/coro:task",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "small_unbounded_queue",
+    srcs = [],
+    headers = ["SmallUnboundedQueue.h"],
+    exported_deps = [
+        "//folly/experimental/channels/detail:atomic_queue",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:mutex",
+        "//folly/experimental/coro:task",
+    ],
+)
+
+cpp_library(
+    name = "task",
+    headers = ["Task.h"],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:executor",
+        "//folly:glog",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:traits",
+        "//folly:try",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:current_executor",
+        "//folly/experimental/coro:detail_malloc",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/experimental/coro:inline_task",
+        "//folly/experimental/coro:invoke",
+        "//folly/experimental/coro:result",
+        "//folly/experimental/coro:scope_exit",
+        "//folly/experimental/coro:traits",
+        "//folly/experimental/coro:via_if_async",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/experimental/coro:with_cancellation",
+        "//folly/futures:core",
+        "//folly/io/async:request_context",
+        "//folly/lang:assume",
+        "//folly/tracing:async_stack",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "timed_wait",
+    headers = ["TimedWait.h"],
+    exported_deps = [
+        "//folly:optional",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_helpers",
+        "//folly/experimental/coro:invoke",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:traits",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "timeout",
+    headers = [
+        "Timeout.h",
+        "Timeout-inl.h",
+    ],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:with_cancellation",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "traits",
+    headers = ["Traits.h"],
+    exported_deps = [
+        "//folly:traits",
+        "//folly/experimental/coro:coroutine",
+    ],
+    exported_external_deps = [],
+)
+
+cpp_library(
+    name = "transform",
+    headers = [
+        "Transform.h",
+        "Transform-inl.h",
+    ],
+    exported_deps = [
+        "//folly:traits",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:coroutine",
+    ],
+)
+
+cpp_library(
+    name = "unbounded_queue",
+    srcs = [],
+    headers = ["UnboundedQueue.h"],
+    exported_deps = [
+        "//folly/concurrency:unbounded_queue",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:task",
+        "//folly/fibers:semaphore",
+    ],
+)
+
+cpp_library(
+    name = "via_if_async",
+    headers = ["ViaIfAsync.h"],
+    exported_deps = [
+        "//folly:executor",
+        "//folly:traits",
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_malloc",
+        "//folly/experimental/coro:traits",
+        "//folly/experimental/coro:with_async_stack",
+        "//folly/experimental/coro:with_cancellation",
+        "//folly/io/async:request_context",
+        "//folly/lang:customization_point",
+        "//folly/tracing:async_stack",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "with_async_stack",
+    headers = ["WithAsyncStack.h"],
+    exported_deps = [
+        "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:detail_traits",
+        "//folly/functional:invoke",
+        "//folly/lang:assume",
+        "//folly/lang:customization_point",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+cpp_library(
+    name = "with_cancellation",
+    headers = ["WithCancellation.h"],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly/experimental/coro:coroutine",
+        "//folly/lang:customization_point",
+    ],
+)
+
+cpp_library(
+    name = "bounded_queue",
+    srcs = [],
+    headers = ["BoundedQueue.h"],
+    exported_deps = [
+        "//folly:mpmc_queue",
+        "//folly:producer_consumer_queue",
+        "//folly/experimental/coro:task",
+        "//folly/fibers:semaphore",
+    ],
+)
+
+cpp_library(
+    name = "shared_promise",
+    headers = [
+        "SharedPromise.h",
+    ],
+    exported_deps = [
+        "//folly:small_vector",
+        "//folly:synchronized",
+        "//folly:utility",
+        "//folly/experimental/coro:promise",
+        "//folly/futures:core",
+    ],
+)
+
+cpp_library(
+    name = "cleanup",
+    headers = [
+        "Cleanup.h",
+    ],
+    exported_deps = [
+        "//folly/functional:invoke",
+    ],
+)
+
+cpp_library(
+    name = "auto_cleanup_fwd",
+    headers = [
+        "AutoCleanup-fwd.h",
+    ],
+    exported_deps = [
+        "//folly/experimental/coro:cleanup",
+        "//folly/experimental/coro:coroutine",
+    ],
+)
+
+cpp_library(
+    name = "auto_cleanup",
+    headers = [
+        "AutoCleanup.h",
+    ],
+    exported_deps = [
+        "//folly/experimental/coro:auto_cleanup_fwd",
+        "//folly/experimental/coro:collect",
+        "//folly/experimental/coro:task",
+    ],
+)

@@ -128,7 +128,7 @@ class PackedSyncPtr {
 
  private:
   PicoSpinLock<uintptr_t, 15> data_;
-} FOLLY_PACK_ATTR;
+};
 
 static_assert(
     std::is_standard_layout<PackedSyncPtr<void>>::value &&

@@ -8,14 +8,12 @@ cpp_library(
     headers = ["CacheLocality.h"],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:conv",
-        "//folly:exception",
         "//folly:indestructible",
         "//folly:memory",
-        "//folly:optional",
         "//folly:scope_guard",
         "//folly/detail:static_singleton_manager",
         "//folly/hash:hash",
+        "//folly/lang:exception",
         "//folly/portability:unistd",
         "//folly/system:thread_id",
     ],
@@ -23,7 +21,6 @@ cpp_library(
         "//folly:likely",
         "//folly:portability",
         "//folly/lang:align",
-        "//folly/lang:exception",
         "//folly/synchronization:atomic_ref",
     ],
     external_deps = [
@@ -152,5 +149,22 @@ cpp_library(
     deps = [
         "//folly:likely",
         "//folly/synchronization:relaxed_atomic",
+    ],
+)
+
+cpp_library(
+    name = "singleton_relaxed_counter",
+    headers = [
+        "SingletonRelaxedCounter.h",
+    ],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:synchronized",
+        "//folly:utility",
+        "//folly/detail:static_singleton_manager",
+        "//folly/detail:thread_local_globals",
+        "//folly/lang:safe_assert",
+        "//folly/synchronization:atomic_ref",
     ],
 )

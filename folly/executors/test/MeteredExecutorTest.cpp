@@ -15,14 +15,18 @@
  */
 
 #include <list>
+#include <thread>
 
+#include <folly/Benchmark.h>
 #include <folly/Synchronized.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/MeteredExecutor.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
+#include <folly/init/Init.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/Latch.h>
 #include <folly/synchronization/LifoSem.h>
 #include <folly/test/DeterministicSchedule.h>
 
@@ -160,15 +164,7 @@ TEST_F(MeteredExecutorTest, PreemptTest) {
   EXPECT_EQ(v, 14);
 }
 
-class MeteredExecutorTestP
-    : public MeteredExecutorTest,
-      public ::testing::WithParamInterface<std::tuple<int>> {
- protected:
-  int maxReadAtOnce;
-  void SetUp() override { std::tie(maxReadAtOnce) = GetParam(); }
-};
-
-TEST_P(MeteredExecutorTestP, TwoLevelsWithKeepAlives) {
+TEST_F(MeteredExecutorTest, TwoLevelsWithKeepAlives) {
   auto hipri_exec = std::make_unique<CPUThreadPoolExecutor>(1);
   auto hipri_ka = getKeepAliveToken(hipri_exec.get());
   auto mipri_exec = std::make_unique<MeteredExecutor>(hipri_ka);
@@ -202,7 +198,7 @@ TEST_P(MeteredExecutorTestP, TwoLevelsWithKeepAlives) {
   EXPECT_EQ(v, 17);
 }
 
-TEST_P(MeteredExecutorTestP, RequestContext) {
+TEST_F(MeteredExecutorTest, RequestContext) {
   createAdapter(3);
 
   folly::Baton baton;
@@ -234,9 +230,6 @@ TEST_P(MeteredExecutorTestP, RequestContext) {
   baton.post();
   join();
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    MeteredExecutorSuite, MeteredExecutorTestP, testing::Values(1, 3));
 
 TEST_F(MeteredExecutorTest, ResetJoins) {
   createAdapter(2);
@@ -291,36 +284,33 @@ TEST_F(MeteredExecutorTest, CostOfMeteredExecutors) {
   auto driveOnAdd = [exc = exc.get()] { exc->driveWhenAdded = true; };
   createAdapter(3, std::move(exc));
 
-  // When queues are empty, we will schedule as many tasks on the main
-  // executor as there are executors in the chain.
+  // Whether or not the queues are empty, we schedule exactly one task on the
+  // primary executor for each schedule task, regardless of the chain depth.
   add([&] {}, 0);
   drive();
   EXPECT_EQ(1, getCount());
 
   add([&] {}, 1);
   drive();
-  EXPECT_EQ(2, getCount());
+  EXPECT_EQ(1, getCount());
 
   add([&] {}, 2);
   drive();
+  EXPECT_EQ(1, getCount());
+
+  add([&] {}, 3);
+  drive();
+  EXPECT_EQ(1, getCount());
+
+  add([&] {}, 3);
+  drive();
+  EXPECT_EQ(1, getCount());
+
+  add([&] {}, 3);
+  add([&] {}, 3);
+  add([&] {}, 3);
+  drive();
   EXPECT_EQ(3, getCount());
-
-  add([&] {}, 3);
-  drive();
-  EXPECT_EQ(4, getCount());
-
-  add([&] {}, 3);
-  drive();
-  EXPECT_EQ(4, getCount());
-
-  // However, when queues are not empty, each additional task
-  // scheduled on any MeteredExecutor, results in a only one more
-  // task scheduled onto the main executor.
-  add([&] {}, 3);
-  add([&] {}, 3);
-  add([&] {}, 3);
-  drive();
-  EXPECT_EQ(6, getCount());
 
   // To allow shutting down properly
   driveOnAdd();
@@ -377,7 +367,7 @@ TEST_F(MeteredExecutorTest, PauseResume) {
   MeteredExecutor* metered =
       dynamic_cast<MeteredExecutor*>(getKeepAlive(1).get());
 
-  uint8_t executed = 0;
+  size_t executed = 0;
   add([&] { executed++; }, 1);
   add([&] { executed++; }, 1);
   manual->run();
@@ -392,6 +382,7 @@ TEST_F(MeteredExecutorTest, PauseResume) {
   ASSERT_EQ(2, metered->pendingTasks());
 
   ASSERT_TRUE(metered->resume());
+  ASSERT_FALSE(metered->resume()); // resuming a non-paused executor
   manual->drain();
   ASSERT_EQ(3, executed);
   ASSERT_EQ(0, metered->pendingTasks());
@@ -491,4 +482,105 @@ TEST_F(MeteredExecutorTest, PauseResumeStress) {
   }
 
   dexec->join();
+}
+
+namespace {
+
+// Simulate saturation regime (queue almost always non-empty) on a
+// high-concurrency executor to measure to what extent MeteredExecutor
+// artificially limits concurrency in a situation where it is the only producer
+// in the executor (so it should ideally not impose any overhead).
+void benchmarkSaturation(
+    size_t meteredExecutorChainDepth, uint32_t maxInQueue, size_t iters) {
+  const size_t numThreads = std::thread::hardware_concurrency();
+
+  BenchmarkSuspender suspender;
+
+  CPUThreadPoolExecutor producer(
+      std::make_pair(numThreads, numThreads),
+      CPUThreadPoolExecutor::makeThrottledLifoSemQueue());
+  CPUThreadPoolExecutor consumerParent(
+      std::make_pair(numThreads, numThreads),
+      CPUThreadPoolExecutor::makeThrottledLifoSemQueue());
+
+  Executor* consumer = &consumerParent;
+  std::unique_ptr<MeteredExecutor> lastMeteredExecutor;
+  for (size_t i = 0; i < meteredExecutorChainDepth; ++i) {
+    MeteredExecutor::Options options;
+    options.maxInQueue = maxInQueue;
+    if (lastMeteredExecutor == nullptr) {
+      lastMeteredExecutor = std::make_unique<MeteredExecutor>(
+          &consumerParent, std::move(options));
+    } else {
+      lastMeteredExecutor = std::make_unique<MeteredExecutor>(
+          std::move(lastMeteredExecutor), std::move(options));
+    }
+    consumer = lastMeteredExecutor.get();
+  }
+
+  suspender.dismiss();
+
+  Latch done{static_cast<ptrdiff_t>(iters * numThreads)};
+
+  for (size_t t = 0; t < numThreads; ++t) {
+    producer.add([&] {
+      for (size_t i = 0; i < iters; ++i) {
+        consumer->add([&] { done.count_down(); });
+      }
+    });
+  }
+
+  done.wait();
+  suspender.rehire(); // Do not measure destruction.
+}
+
+} // namespace
+
+BENCHMARK(Saturation_no_MeteredExecutor, iters) {
+  benchmarkSaturation(0, /* unused */ 0, iters);
+}
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(Saturation_MeteredExecutor_chain_1_maxInQueue_1, iters) {
+  benchmarkSaturation(1, 1, iters);
+}
+BENCHMARK(Saturation_MeteredExecutor_chain_1_maxInQueue_2, iters) {
+  benchmarkSaturation(1, 2, iters);
+}
+BENCHMARK(Saturation_MeteredExecutor_chain_1_maxInQueue_4, iters) {
+  benchmarkSaturation(1, 4, iters);
+}
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(Saturation_MeteredExecutor_chain_2_maxInQueue_1, iters) {
+  benchmarkSaturation(2, 1, iters);
+}
+BENCHMARK(Saturation_MeteredExecutor_chain_2_maxInQueue_2, iters) {
+  benchmarkSaturation(2, 2, iters);
+}
+BENCHMARK(Saturation_MeteredExecutor_chain_2_maxInQueue_4, iters) {
+  benchmarkSaturation(2, 4, iters);
+}
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(Saturation_MeteredExecutor_chain_3_maxInQueue_1, iters) {
+  benchmarkSaturation(3, 1, iters);
+}
+BENCHMARK(Saturation_MeteredExecutor_chain_3_maxInQueue_2, iters) {
+  benchmarkSaturation(3, 2, iters);
+}
+BENCHMARK(Saturation_MeteredExecutor_chain_3_maxInQueue_4, iters) {
+  benchmarkSaturation(3, 4, iters);
+}
+
+int main(int argc, char** argv) {
+  // Enable glog logging to stderr by default.
+  FLAGS_logtostderr = true;
+  ::testing::InitGoogleTest(&argc, argv);
+  folly::Init init(&argc, &argv);
+  folly::runBenchmarksOnFlag();
+  return RUN_ALL_TESTS();
 }

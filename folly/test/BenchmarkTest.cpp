@@ -291,6 +291,49 @@ TEST_F(BenchmarkingStateTest, SkipWarmUp) {
   }
 }
 
+TEST_F(BenchmarkingStateTest, ListTests) {
+  std::string output;
+
+  // --bm_list enabled with no benchmarks
+  {
+    gflags::FlagSaver _;
+    gflags::SetCommandLineOption("bm_list", "true");
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "");
+  }
+
+  addBenchmark(__FILE__, "a", [&] {
+    doBaseline();
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+  addBenchmark(__FILE__, "b", [&] {
+    doBaseline();
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  // --bm_list enabled with multiple benchmarks
+  {
+    gflags::FlagSaver _;
+    gflags::SetCommandLineOption("bm_list", "true");
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "a\nb\n");
+  }
+
+  // --bm_list disabled, benchmarks run as expected
+  {
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    ASSERT_THAT(output, ::testing::HasSubstr("iters/s"));
+  }
+}
+
 } // namespace
 } // namespace detail
 } // namespace folly

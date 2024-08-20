@@ -26,34 +26,24 @@
 #include <cstddef>
 #include <stdexcept>
 
+#include <folly/CPortability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/Utility.h>
 #include <folly/net/detail/SocketFileDescriptorMap.h>
 
 #ifdef _WIN32
 #include <MSWSock.h> // @manual
 #endif
 
-#if !FOLLY_HAVE_RECVMMSG
-#if FOLLY_HAVE_WEAK_SYMBOLS
-extern "C" FOLLY_ATTR_WEAK int recvmmsg(
-    int sockfd,
-    struct mmsghdr* msgvec,
-    unsigned int vlen,
-#if defined(__EMSCRIPTEN__)
-    unsigned int flags,
+#if (defined(__linux__) && !defined(__ANDROID__)) ||                       \
+    (defined(__ANDROID__) && __ANDROID_API__ >= 21 /* released 2014 */) || \
+    defined(__FreeBSD__) || defined(__SGX__) || defined(__EMSCRIPTEN__)
+static_assert(folly::to_bool(::recvmmsg));
+static_assert(folly::to_bool(::sendmmsg));
 #else
-    int flags,
+static int (*recvmmsg)(...) = nullptr;
+static int (*sendmmsg)(...) = nullptr;
 #endif
-    struct timespec* timeout);
-#else
-static int (*recvmmsg)(
-    int sockfd,
-    struct mmsghdr* msgvec,
-    unsigned int vlen,
-    int flags,
-    struct timespec* timeout) = nullptr;
-#endif // FOLLY_HAVE_WEAK_SYMBOLS
-#endif // FOLLY_HAVE_RECVMMSG
 
 namespace folly {
 namespace netops {
@@ -408,7 +398,7 @@ int recvmmsg(
 #if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
-  if (reinterpret_cast<void*>(::recvmmsg) != nullptr) {
+  if (to_bool(::recvmmsg)) {
     return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
   }
   // implement via recvmsg
@@ -551,11 +541,12 @@ ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
 
 int sendmmsg(
     NetworkSocket socket, mmsghdr* msgvec, unsigned int vlen, int flags) {
-#if FOLLY_HAVE_SENDMMSG
-  return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
-#elif defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
+  if (reinterpret_cast<void*>(::sendmmsg) != nullptr) {
+    return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
+  }
   // implement via sendmsg
   for (unsigned int i = 0; i < vlen; i++) {
     ssize_t ret = sendmsg(socket, &msgvec[i].msg_hdr, flags);

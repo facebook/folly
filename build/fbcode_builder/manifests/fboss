@@ -38,6 +38,7 @@ libyaml
 CLI11
 exprtk
 nlohmann-json
+libgpiod
 
 [shipit.pathmap]
 fbcode/fboss/github = .

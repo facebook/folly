@@ -33,6 +33,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
+#include <folly/portability/Unistd.h>
 
 #if __has_include(<range/v3/range/concepts.hpp>)
 #include <range/v3/range/concepts.hpp>
@@ -49,7 +50,30 @@ using namespace std;
 static_assert(folly::detail::range_is_char_type_v_<char*>, "");
 static_assert(folly::detail::range_is_byte_type_v_<unsigned char*>, "");
 
+static_assert(std::is_same_v<char, typename Range<char*>::value_type>);
+
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
+
+#define EXPECT_CMP_(op, a_, b_, eq, ne, lt, le, gt, ge)  \
+  ::std::invoke(                                         \
+      [](auto const& a, auto const& b) {                 \
+        EXPECT_##op(a, b);                               \
+        EXPECT_THAT(a, ::testing::eq(::testing::Eq(b))); \
+        EXPECT_THAT(a, ::testing::ne(::testing::Ne(b))); \
+        EXPECT_THAT(a, ::testing::lt(::testing::Lt(b))); \
+        EXPECT_THAT(a, ::testing::le(::testing::Le(b))); \
+        EXPECT_THAT(a, ::testing::gt(::testing::Gt(b))); \
+        EXPECT_THAT(a, ::testing::ge(::testing::Ge(b))); \
+      },                                                 \
+      (a_),                                              \
+      (b_));
+
+#define EXPECT_CMP_EQ(a_, b_) \
+  EXPECT_CMP_(EQ, a_, b_, AllArgs, Not, Not, AllArgs, Not, AllArgs)
+#define EXPECT_CMP_LT(a_, b_) \
+  EXPECT_CMP_(LT, a_, b_, Not, AllArgs, AllArgs, AllArgs, Not, Not)
+#define EXPECT_CMP_GT(a_, b_) \
+  EXPECT_CMP_(GT, a_, b_, Not, AllArgs, Not, Not, AllArgs, AllArgs)
 
 TEST(StringPiece, All) {
   const char* foo = "foo";
@@ -1029,7 +1053,7 @@ TYPED_TEST(NeedleFinderTest, Base) {
   }
 }
 
-const size_t kPageSize = 4096;
+const size_t kPageSize = sysconf(_SC_PAGESIZE);
 // Updates contents so that any read accesses past the last byte will
 // cause a SIGSEGV.  It accomplishes this by changing access to the page that
 // begins immediately after the end of the contents (as allocators and mmap()
@@ -1266,26 +1290,44 @@ TEST(Range, CompareChar) {
 
 TEST(Range, CompareByte) {
   auto br = [](auto sp) { return ByteRange(sp); };
-  EXPECT_EQ(br(""_sp), br(""_sp));
-  EXPECT_LT(br(""_sp), br("world"_sp));
-  EXPECT_GT(br("world"_sp), br(""_sp));
-  EXPECT_EQ(br("hello"_sp), br("hello"_sp));
-  EXPECT_LT(br("hello"_sp), br("world"_sp));
-  EXPECT_LT(br("hello"_sp), br("helloworld"_sp));
-  EXPECT_GT(br("world"_sp), br("hello"_sp));
-  EXPECT_GT(br("helloworld"_sp), br("hello"_sp));
+  EXPECT_CMP_EQ(br(""_sp), br(""_sp));
+  EXPECT_CMP_LT(br(""_sp), br("world"_sp));
+  EXPECT_CMP_GT(br("world"_sp), br(""_sp));
+  EXPECT_CMP_EQ(br("hello"_sp), br("hello"_sp));
+  EXPECT_CMP_LT(br("hello"_sp), br("world"_sp));
+  EXPECT_CMP_LT(br("hello"_sp), br("helloworld"_sp));
+  EXPECT_CMP_GT(br("world"_sp), br("hello"_sp));
+  EXPECT_CMP_GT(br("helloworld"_sp), br("hello"_sp));
 }
 
 TEST(Range, CompareFbck) {
   auto vr = [](std::vector<int> const& _) { return folly::range(_); };
-  EXPECT_EQ(vr({}), vr({}));
-  EXPECT_LT(vr({}), vr({1}));
-  EXPECT_GT(vr({1}), vr({}));
-  EXPECT_EQ(vr({1}), vr({1}));
-  EXPECT_LT(vr({1}), vr({2}));
-  EXPECT_LT(vr({1}), vr({1, 2}));
-  EXPECT_GT(vr({2}), vr({1}));
-  EXPECT_GT(vr({1, 1}), vr({1}));
+  EXPECT_CMP_EQ(vr({}), vr({}));
+  EXPECT_CMP_LT(vr({}), vr({1}));
+  EXPECT_CMP_GT(vr({1}), vr({}));
+  EXPECT_CMP_EQ(vr({1}), vr({1}));
+  EXPECT_CMP_LT(vr({1}), vr({2}));
+  EXPECT_CMP_LT(vr({1}), vr({1, 2}));
+  EXPECT_CMP_GT(vr({2}), vr({1}));
+  EXPECT_CMP_GT(vr({1, 1}), vr({1}));
+  EXPECT_CMP_EQ(vr({2, 3, 4}), vr({2, 3, 4}));
+  EXPECT_CMP_LT(vr({2, 3, 4}), vr({2, 3, 5}));
+  EXPECT_CMP_GT(vr({2, 3, 5}), vr({2, 3, 4}));
+}
+
+TEST(Range, CompareDouble) {
+  auto vr = [](std::vector<float> const& _) { return folly::range(_); };
+  EXPECT_CMP_EQ(vr({}), vr({}));
+  EXPECT_CMP_LT(vr({}), vr({1.}));
+  EXPECT_CMP_GT(vr({1.}), vr({}));
+  EXPECT_CMP_EQ(vr({1.}), vr({1.}));
+  EXPECT_CMP_LT(vr({1.}), vr({2.}));
+  EXPECT_CMP_LT(vr({1.}), vr({1., 2.}));
+  EXPECT_CMP_GT(vr({2.}), vr({1.}));
+  EXPECT_CMP_GT(vr({1., 1.}), vr({1.}));
+  EXPECT_CMP_EQ(vr({2., 3., 4.}), vr({2., 3., 4.}));
+  EXPECT_CMP_LT(vr({2., 3., 4.}), vr({2., 3., 5.}));
+  EXPECT_CMP_GT(vr({2., 3., 5.}), vr({2., 3., 4.}));
 }
 
 std::string get_rand_str(

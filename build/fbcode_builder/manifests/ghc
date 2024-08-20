@@ -1,0 +1,15 @@
+[manifest]
+name = ghc
+
+[download.os=linux]
+url = https://downloads.haskell.org/~ghc/8.10.7/ghc-8.10.7-x86_64-fedora27-linux.tar.xz
+sha256 = b6ed67049a23054a8042e65c9976d5e196e5ee4e83b29b2ee35c8a22ab1e5b73
+
+[build]
+builder = autoconf
+subdir = ghc-8.10.7
+build_in_src_dir = true
+only_install = true
+
+[make.install_args]
+install

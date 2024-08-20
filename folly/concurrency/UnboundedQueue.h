@@ -210,6 +210,13 @@ namespace folly {
 ///   may yield better results due to, for example, more favorable
 ///   producer-consumer balance or favorable timing for avoiding
 ///   costly blocking.
+///
+/// Guarantees:
+/// - The queues are linearizable:
+///   - For two enqueue operations q(A) and q(B), if q(A) < q(B) in
+///     the happens-before relation, then A precedes B in the queue.
+///   - For two dequeue operations d(A) and d(B), if d(A) < d(B) in
+///     the happens-before relation, then A preceded B in the queue.
 
 template <
     typename T,
@@ -255,6 +262,9 @@ class UnboundedQueue {
   alignas(Align) Producer p_;
 
  public:
+  using value_type = T;
+  using size_type = size_t;
+
   /** constructor */
   UnboundedQueue()
       : c_(new Segment(0)), p_(c_.head.load(std::memory_order_relaxed)) {}

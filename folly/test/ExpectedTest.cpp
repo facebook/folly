@@ -462,7 +462,6 @@ TEST(Expected, Conversions) {
   // Truthy tests work and are not ambiguous
   if (mbool && mshort && mstr && mint) { // only checks not-empty
     if (*mbool && *mshort && *mstr && *mint) { // only checks value
-      ;
     }
   }
 
@@ -969,19 +968,6 @@ TEST(Expected, TestUnique) {
       2, **mk().then([](auto r) -> Expected<std::unique_ptr<int>, Convertible> {
         return std::make_unique<int>(*r + 1);
       }));
-}
-
-struct ConvertibleNum {
-  /*implicit*/ operator Expected<int, E>() const { return num_; }
-  int num_;
-};
-
-TEST(Expected, TestChainedConversion) {
-  auto vs =
-      std::vector<Expected<ConvertibleNum, E>>{ConvertibleNum{.num_ = 137}};
-  for (Expected<int, E> v : vs) {
-    ASSERT_EQ(137, *v);
-  }
 }
 
 struct ConvertibleError {

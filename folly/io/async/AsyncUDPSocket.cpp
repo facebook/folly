@@ -1070,13 +1070,6 @@ void AsyncUDPSocket::pauseRead() {
 void AsyncUDPSocket::close() {
   eventBase_->dcheckIsInEventBaseThread();
 
-  if (readCallback_) {
-    auto cob = readCallback_;
-    readCallback_ = nullptr;
-
-    cob->onReadClosed();
-  }
-
   // Unregister any events we are registered for
   unregisterHandler();
 
@@ -1085,6 +1078,12 @@ void AsyncUDPSocket::close() {
   }
 
   fd_ = NetworkSocket();
+
+  if (readCallback_) {
+    auto cob = readCallback_;
+    readCallback_ = nullptr;
+    cob->onReadClosed();
+  }
 }
 
 void AsyncUDPSocket::handlerReady(uint16_t events) noexcept {
@@ -1238,9 +1237,8 @@ void AsyncUDPSocket::handleRead() noexcept {
 
       auto cob = readCallback_;
       readCallback_ = nullptr;
-
-      cob->onReadError(ex);
       updateRegistration();
+      cob->onReadError(ex);
       return;
     }
 
@@ -1347,10 +1345,8 @@ void AsyncUDPSocket::handleRead() noexcept {
       // so that he can do some logging/stats collection if he wants.
       auto cob = readCallback_;
       readCallback_ = nullptr;
-
-      cob->onReadError(ex);
       updateRegistration();
-
+      cob->onReadError(ex);
       return;
     }
   }
@@ -1536,6 +1532,18 @@ bool AsyncUDPSocket::setTxZeroChksum6([[maybe_unused]] bool bVal) {
 }
 
 void AsyncUDPSocket::setTosOrTrafficClass(uint8_t tosOrTclass) {
+#ifdef _WIN32
+  // For windows, we can only set the values 0 and 1 (for the ECN bits).
+  // Any DSCP values have to be set via the QoS Policy
+  auto ecn = tosOrTclass & 0x3;
+  auto level = address().getFamily() == AF_INET6 ? IPPROTO_IPV6 : IPPROTO_IP;
+  if (ecn == 0) {
+    // Remove ECN cmsgs if any exist
+    defaultCmsgs_.erase({level, IP_ECN});
+  } else {
+    defaultCmsgs_[{level, IP_ECN}] = ecn;
+  }
+#else
   int valInt = tosOrTclass;
   if (address().getFamily() == AF_INET6) {
     if (netops::setsockopt(
@@ -1554,11 +1562,6 @@ void AsyncUDPSocket::setTosOrTrafficClass(uint8_t tosOrTclass) {
           AsyncSocketException::NOT_OPEN, "Failed to set IP_TOS", errno);
     }
   }
-
-#ifdef _WIN32
-  folly::SocketCmsgMap cmsgs;
-  cmsgs[{IPPROTO_IP, IP_ECN}] = tosOrTclass;
-  appendCmsgs(cmsgs);
 #endif
 }
 

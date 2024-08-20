@@ -28,6 +28,7 @@
 #include <utility>
 
 #include <folly/CPortability.h>
+#include <folly/CppAttributes.h>
 #include <folly/Likely.h>
 #include <folly/chrono/Hardware.h>
 #include <folly/concurrency/CacheLocality.h>
@@ -276,7 +277,8 @@ std::unique_lock<std::mutex> annotationGuard(void* ptr);
 
 constexpr uint32_t kMaxDeferredReadersAllocated = 256 * 2;
 
-FOLLY_COLD uint32_t getMaxDeferredReadersSlow(relaxed_atomic<uint32_t>& cache);
+[[FOLLY_ATTR_GNU_COLD]] uint32_t getMaxDeferredReadersSlow(
+    relaxed_atomic<uint32_t>& cache);
 
 long getCurrentThreadInvoluntaryContextSwitchCount();
 
@@ -1204,6 +1206,7 @@ class SharedMutexImpl : std::conditional_t<
     }
   }
 
+  [[FOLLY_ATTR_GNU_USED]]
   void wakeRegisteredWaitersImpl(uint32_t& state, uint32_t wakeMask) {
     // If there are multiple lock() pending only one of them will actually
     // get to wake up, so issuing futexWakeAll will make a thundering herd.

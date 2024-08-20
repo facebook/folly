@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <version>
+
 #include <fmt/format.h>
 
 #if __has_include(<source_location>) && defined __cpp_lib_source_location

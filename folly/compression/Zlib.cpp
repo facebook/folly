@@ -26,11 +26,11 @@
 #include <folly/compression/Utils.h>
 #include <folly/io/Cursor.h>
 
-using folly::io::compression::detail::dataStartsWithLE;
-using folly::io::compression::detail::prefixToStringLE;
+using folly::compression::detail::dataStartsWithLE;
+using folly::compression::detail::prefixToStringLE;
 
 namespace folly {
-namespace io {
+namespace compression {
 namespace zlib {
 
 namespace {
@@ -161,7 +161,7 @@ bool ZlibStreamCodec::canUncompress(
     const IOBuf* data, Optional<uint64_t>) const {
   if (type() == CodecType::ZLIB) {
     uint16_t value;
-    Cursor cursor{data};
+    io::Cursor cursor{data};
     if (!cursor.tryReadBE(value)) {
       return false;
     }
@@ -408,7 +408,7 @@ std::unique_ptr<StreamCodec> getStreamCodec(Options options, int level) {
 }
 
 } // namespace zlib
-} // namespace io
+} // namespace compression
 } // namespace folly
 
 #endif // FOLLY_HAVE_LIBZ

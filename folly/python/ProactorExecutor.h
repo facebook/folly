@@ -58,7 +58,7 @@ class ProactorExecutorCallback {
 #ifdef WIN32
   _OVERLAPPED overlapped_{};
 #else
-  FOLLY_ATTR_NO_UNIQUE_ADDRESS tag_t<> overlapped_{};
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] tag_t<> overlapped_{};
 #endif
 };
 } // namespace detail

@@ -46,8 +46,10 @@ A const& as(B const& _) {
 } // namespace
 
 TEST_F(TypeInfoTest, exanples) {
-  EXPECT_EQ(ti{typeid(Foo)}, ti{*folly::type_info_of<Foo>()});
-  EXPECT_EQ(ti{typeid(Foo)}, ti{*folly::type_info_of(Foo())});
+  // constant
+  static_assert(&typeid(Foo) == folly::type_info_of<Foo>());
+  static_assert(&typeid(Foo) == folly::type_info_of(Foo()));
+  // runtime
   EXPECT_EQ(ti{typeid(Foo)}, ti{*folly::type_info_of(as<Foo>(Bar()))});
   EXPECT_EQ(ti{typeid(Bar)}, ti{*folly::type_info_of(as<Bar>(Bar()))});
   EXPECT_EQ(ti{typeid(Toc)}, ti{*folly::type_info_of(as<Bar>(Toc()))});

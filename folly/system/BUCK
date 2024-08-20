@@ -19,15 +19,26 @@ cpp_library(
 )
 
 cpp_library(
-    name = "pid",
-    srcs = ["Pid.cpp"],
-    headers = ["Pid.h"],
+    name = "aux_vector",
+    headers = ["AuxVector.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:preprocessor",
+    ],
+)
+
+cpp_library(
+    name = "env_util",
+    srcs = ["EnvUtil.cpp"],
+    headers = ["EnvUtil.h"],
     deps = [
-        ":at_fork",
+        "//folly:string",
+        "//folly/portability:stdlib",
         "//folly/portability:unistd",
     ],
     exported_deps = [
-        "//folly/portability:sys_types",
+        "//folly:c_portability",
+        "//folly:memory",
     ],
     external_deps = [
         "glog",
@@ -66,6 +77,22 @@ cpp_library(
         "//folly:file",
         "//folly:range",
         "//folly/portability:unistd",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "pid",
+    srcs = ["Pid.cpp"],
+    headers = ["Pid.h"],
+    deps = [
+        ":at_fork",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        "//folly/portability:sys_types",
     ],
     external_deps = [
         "glog",

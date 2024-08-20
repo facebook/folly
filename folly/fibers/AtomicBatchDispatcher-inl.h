@@ -102,7 +102,7 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
       }
     } catch (...) {
       // Set exceptions thrown when executing the user provided dispatch func
-      return setExceptionResults(exception_wrapper{std::current_exception()});
+      return setExceptionResults(exception_wrapper{current_exception()});
     }
   }
 

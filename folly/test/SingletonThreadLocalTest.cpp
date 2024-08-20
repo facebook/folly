@@ -27,10 +27,11 @@
 #include <folly/SingletonThreadLocal.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Latch.h>
+#include <folly/testing/TestUtil.h>
 
 using namespace folly;
 
@@ -59,15 +60,16 @@ TEST(SingletonThreadLocalTest, TryGet) {
 
 TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   static constexpr std::size_t targetThreadCount{64};
-  std::atomic<std::size_t> completedThreadCount{0};
+  folly::Latch allSingletonsCreated(targetThreadCount);
   Synchronized<std::unordered_set<Foo*>> fooAddresses{};
   std::vector<std::thread> threads{};
-  auto threadFunction = [&fooAddresses, &completedThreadCount] {
+  auto threadFunction = [&fooAddresses, &allSingletonsCreated] {
     fooAddresses.wlock()->emplace(&FooSingletonTL::get());
-    ++completedThreadCount;
-    while (completedThreadCount < targetThreadCount) {
-      std::this_thread::yield();
-    }
+    // Prevent SingletonThreadLocal's internal cache from re-using
+    // objects across threads by
+    // keeping each thread alive until all the threads have a
+    // SingletonThreadLocal.
+    allSingletonsCreated.arrive_and_wait();
   };
   {
     for (std::size_t threadCount{0}; threadCount < targetThreadCount;

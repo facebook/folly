@@ -64,6 +64,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/CString.h>
 #include <folly/portability/Builtins.h>
 
 #if __has_include(<bit>) && (__cplusplus >= 202002L || (defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L))
@@ -325,9 +326,6 @@ class Endian {
 #undef FB_GEN2
 #undef FB_GEN1
 
-template <class T, class Enable = void>
-struct Unaligned;
-
 /**
  * Representation of an unaligned value of a POD type.
  */
@@ -335,13 +333,18 @@ FOLLY_PUSH_WARNING
 FOLLY_CLANG_DISABLE_WARNING("-Wpacked")
 FOLLY_PACK_PUSH
 template <class T>
-struct Unaligned<
-    T,
-    typename std::enable_if<
-        std::is_standard_layout<T>::value && std::is_trivial<T>::value>::type> {
+struct Unaligned {
+ public:
+  static_assert(std::is_standard_layout_v<T>);
+  static_assert(std::is_trivial_v<T>);
+
   Unaligned() = default; // uninitialized
-  /* implicit */ Unaligned(T v) : value(v) {}
-  T value;
+  /* implicit */ Unaligned(T v) noexcept : value_(v) {}
+
+  /* implicit */ operator T() const noexcept { return value_; }
+
+ private:
+  T value_; // it must be an error to get a reference to a packed member
 } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP
 FOLLY_POP_WARNING
@@ -351,17 +354,10 @@ FOLLY_POP_WARNING
  */
 template <class T>
 inline constexpr T loadUnaligned(const void* p) {
-  static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
-  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  if constexpr (kHasUnalignedAccess) {
-    return static_cast<const Unaligned<T>*>(p)->value;
-  } else if constexpr (alignof(T) == 1) {
-    return *static_cast<const T*>(p);
-  } else {
-    T value{};
-    memcpy(&value, p, sizeof(T));
-    return value;
-  }
+  static_assert(std::is_trivial_v<T>);
+  T value{static_cast<T>(unsafe_default_initialized)};
+  FOLLY_BUILTIN_MEMCPY(&value, p, sizeof(T));
+  return value;
 }
 
 /**
@@ -407,23 +403,8 @@ inline T partialLoadUnaligned(const void* p, size_t l) {
  */
 template <class T>
 inline void storeUnaligned(void* p, T value) {
-  static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
-  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  if constexpr (kHasUnalignedAccess) {
-    // Prior to C++14, the spec says that a placement new like this
-    // is required to check that p is not nullptr, and to do nothing
-    // if p is a nullptr. By assuming it's not a nullptr, we get a
-    // nice loud segfault in optimized builds if p is nullptr, rather
-    // than just silently doing nothing.
-    assume(p != nullptr);
-    new (p) Unaligned<T>(value);
-  } else if constexpr (alignof(T) == 1) {
-    // See above comment about assuming not a nullptr
-    assume(p != nullptr);
-    new (p) T(value);
-  } else {
-    memcpy(p, &value, sizeof(T));
-  }
+  static_assert(std::is_trivial_v<T>);
+  FOLLY_BUILTIN_MEMCPY(p, &value, sizeof(T));
 }
 
 template <typename T>

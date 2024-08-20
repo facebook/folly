@@ -1,11 +1,17 @@
 [manifest]
 name = snappy
 
+[homebrew]
+snappy
+
 [debs]
 libsnappy-dev
 
 [rpms]
 snappy-devel
+
+[pps]
+snappy
 
 [download]
 url = https://github.com/google/snappy/archive/1.1.7.tar.gz

@@ -174,17 +174,10 @@ inline void interruptTest(
     int& interrupt,
     F& thunk) {
   folly::ManualExecutor executor;
-  bool complete = false;
-  bool failure = false;
 
   int i = 0;
   auto pred = makePred(i);
-  auto f = folly::whileDo(pred, thunk)
-               .via(&executor)
-               .thenValue([&](auto&&) mutable { complete = true; })
-               .thenError(folly::tag_t<FutureException>{}, [&](auto&& /* e */) {
-                 failure = true;
-               });
+  auto f = folly::whileDo(pred, thunk).via(&executor);
 
   executor.drain();
   EXPECT_EQ(0, interrupt);

@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Show disk space at start
@@ -46,8 +46,12 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests glog
     - name: Fetch googletest
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests googletest
+    - name: Fetch libdwarf
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libdwarf
     - name: Fetch libevent
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libevent
+    - name: Fetch zlib
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests zlib
     - name: Fetch lz4
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests lz4
     - name: Fetch snappy
@@ -60,8 +64,12 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests automake
     - name: Fetch libtool
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libtool
+    - name: Fetch libiberty
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libiberty
     - name: Fetch libsodium
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libsodium
+    - name: Fetch libunwind
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libunwind
     - name: Fetch xz
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests xz
     - name: Build boost
@@ -80,8 +88,12 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests glog
     - name: Build googletest
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests googletest
+    - name: Build libdwarf
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libdwarf
     - name: Build libevent
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libevent
+    - name: Build zlib
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests zlib
     - name: Build lz4
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests lz4
     - name: Build snappy
@@ -94,8 +106,12 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests automake
     - name: Build libtool
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libtool
+    - name: Build libiberty
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libiberty
     - name: Build libsodium
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libsodium
+    - name: Build libunwind
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libunwind
     - name: Build xz
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests xz
     - name: Build folly

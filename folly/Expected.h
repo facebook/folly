@@ -65,7 +65,7 @@ struct ExpectedHelper;
  * Expected objects in the error state.
  */
 template <class Error>
-class Unexpected final {
+class FOLLY_NODISCARD Unexpected final {
   template <class E>
   friend class Unexpected;
   template <class V, class E>
@@ -81,9 +81,9 @@ class Unexpected final {
   Unexpected(Unexpected&&) = default;
   Unexpected& operator=(const Unexpected&) = default;
   Unexpected& operator=(Unexpected&&) = default;
-  FOLLY_COLD constexpr /* implicit */ Unexpected(const Error& err)
+  [[FOLLY_ATTR_GNU_COLD]] constexpr /* implicit */ Unexpected(const Error& err)
       : error_(err) {}
-  FOLLY_COLD constexpr /* implicit */ Unexpected(Error&& err)
+  [[FOLLY_ATTR_GNU_COLD]] constexpr /* implicit */ Unexpected(Error&& err)
       : error_(std::move(err)) {}
 
   template <class Other FOLLY_REQUIRES_TRAILING(
@@ -139,8 +139,8 @@ inline bool operator!=(
  * }
  */
 template <class Error>
-FOLLY_NODISCARD constexpr Unexpected<typename std::decay<Error>::type>
-makeUnexpected(Error&& err) {
+constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(
+    Error&& err) {
   return Unexpected<typename std::decay<Error>::type>{
       static_cast<Error&&>(err)};
 }
@@ -660,6 +660,9 @@ struct ExpectedHelper {
   FOLLY_PUSH_WARNING
   // Don't warn about not using the overloaded comma operator.
   FOLLY_MSVC_DISABLE_WARNING(4913)
+  // On MSVC in optimized builds, the following functions can throw warning 4702
+  // Unreachable Code which will block builds which treat warnings as error.
+  FOLLY_MSVC_DISABLE_WARNING(4702)
   template <
       class This,
       class Fn,
@@ -805,6 +808,19 @@ struct ExpectedHelper {
     }
     static_cast<No&&>(no)(static_cast<This&&>(ex).error());
     return makeUnexpected(static_cast<decltype(ex)&&>(ex).error());
+  }
+
+  template <
+      class This,
+      class OnError,
+      class Err =
+          decltype(std::declval<OnError>()(std::declval<This>().error()))
+              FOLLY_REQUIRES_TRAILING(std::is_void<Err>::value)>
+  static This onError_(This&& ex, OnError&& onError) {
+    if (UNLIKELY(ex.which_ == expected_detail::Which::eError)) {
+      static_cast<OnError&&>(onError)(static_cast<This&&>(ex).error());
+    }
+    return ex;
   }
 
   FOLLY_POP_WARNING
@@ -972,27 +988,6 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
           std::is_constructible<Error, E&&>::value)>
   Expected(Expected<V, E> that) : Base{expected_detail::EmptyTag{}} {
     this->assign(std::move(that));
-  }
-
-  // Implicit then-chaining conversion: if `Expected<Value, Error>` can be
-  // constructed from `V`, then we can directly convert `Expected<V, E>` to
-  // `Expected<Value, Error>`.
-  //
-  // Specifically, this allows a user-defined conversions of `V` to
-  // `Expected<Value, Error>` to work as desired with range-based iteration
-  // over containers of `Expected<V, E>`.
-  template <
-      class V,
-      class E FOLLY_REQUIRES_TRAILING(
-          !std::is_same<Expected<V, E>, Expected>::value &&
-          !std::is_constructible<Value, V&&>::value &&
-          std::is_constructible<Expected<Value, Error>, V&&>::value &&
-          std::is_constructible<Error, E&&>::value)>
-  /* implicit */ Expected(Expected<V, E> that)
-      : Base{expected_detail::EmptyTag{}} {
-    this->assign(std::move(that).then([](V&& v) -> Expected<Value, Error> {
-      return Expected<Value, Error>{v};
-    }));
   }
 
   FOLLY_REQUIRES(std::is_copy_constructible<Value>::value)
@@ -1372,13 +1367,54 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
         std::move(base()), static_cast<Yes&&>(yes), static_cast<No&&>(no)));
   }
 
+  /**
+   * onError
+   */
+  template <class OnError>
+  auto onError(OnError&& onError) const& {
+    if (this->uninitializedByException()) {
+      throw_exception<BadExpectedAccess<void>>();
+    }
+
+    return expected_detail::ExpectedHelper::onError_(
+        *this, static_cast<OnError&&>(onError));
+  }
+
+  template <class OnError>
+  auto onError(OnError&& onError) & {
+    if (this->uninitializedByException()) {
+      throw_exception<BadExpectedAccess<void>>();
+    }
+    return expected_detail::ExpectedHelper::onError_(
+        *this, static_cast<OnError&&>(onError));
+  }
+
+  template <class OnError>
+  auto onError(OnError&& onError) && {
+    if (this->uninitializedByException()) {
+      throw_exception<BadExpectedAccess<void>>();
+    }
+    return expected_detail::ExpectedHelper::onError_(
+        std::move(*this), static_cast<OnError&&>(onError));
+  }
+
+  // Quasi-private, exposed only for implementing efficient short-circuiting
+  // coroutines on top of `Expected`.  Do NOT use this instead of
+  // `optional<Expected<>>`, for these reasons:
+  //   - This public ctor again become private in the future.
+  //   - It is incompatible with upcoming `std::expected`.
+  //   - It violates `folly::Expected`'s almost-never-empty guarantee.
+  //   - There's no native `empty()` test -- `uninitializedByException()` is
+  //     always `false` for some value types, and `!hasValue() && !hasError()`
+  //     is less efficient.
+  explicit Expected(expected_detail::EmptyTag tag) noexcept : Base{tag} {}
+
  private:
   friend struct expected_detail::PromiseReturn<Value, Error>;
-  using EmptyTag = expected_detail::EmptyTag;
 
-  explicit Expected(EmptyTag tag) noexcept : Base{tag} {}
   // for when coroutine promise return-object conversion is eager
-  Expected(EmptyTag tag, Expected*& pointer) noexcept : Base{tag} {
+  Expected(expected_detail::EmptyTag tag, Expected*& pointer) noexcept
+      : Base{tag} {
     pointer = this;
   }
 
@@ -1553,14 +1589,14 @@ bool operator>(const Value& other, const Expected<Value, Error>&) = delete;
 namespace folly {
 namespace expected_detail {
 template <typename Value, typename Error>
-struct Promise;
+struct PromiseBase;
 
 template <typename Value, typename Error>
 struct PromiseReturn {
   Expected<Value, Error> storage_{EmptyTag{}};
   Expected<Value, Error>*& pointer_;
 
-  /* implicit */ PromiseReturn(Promise<Value, Error>& p) noexcept
+  /* implicit */ PromiseReturn(PromiseBase<Value, Error>& p) noexcept
       : pointer_{p.value_} {
     pointer_ = &storage_;
   }
@@ -1582,26 +1618,54 @@ struct PromiseReturn {
 };
 
 template <typename Value, typename Error>
-struct Promise {
+struct PromiseBase {
   Expected<Value, Error>* value_ = nullptr;
 
-  Promise() = default;
-  Promise(Promise const&) = delete;
-  PromiseReturn<Value, Error> get_return_object() noexcept { return *this; }
-  coro::suspend_never initial_suspend() const noexcept { return {}; }
-  coro::suspend_never final_suspend() const noexcept { return {}; }
-  template <typename U = Value>
-  void return_value(U&& u) {
-    auto& v = *value_;
-    ExpectedHelper::assume_empty(v);
-    v = static_cast<U&&>(u);
+  PromiseBase() = default;
+  PromiseBase(PromiseBase const&) = delete;
+  void operator=(PromiseBase const&) = delete;
+
+  [[nodiscard]] coro::suspend_never initial_suspend() const noexcept {
+    return {};
   }
-  void unhandled_exception() {
+  [[nodiscard]] coro::suspend_never final_suspend() const noexcept {
+    return {};
+  }
+  [[noreturn]] void unhandled_exception() {
     // Technically, throwing from unhandled_exception is underspecified:
     // https://github.com/GorNishanov/CoroutineWording/issues/17
     rethrow_current_exception();
   }
+
+  PromiseReturn<Value, Error> get_return_object() noexcept { return *this; }
 };
+
+template <typename Value>
+inline constexpr bool ReturnsVoid =
+    std::is_trivial_v<Value> && std::is_empty_v<Value>;
+
+template <typename Value, typename Error>
+struct PromiseReturnsValue : public PromiseBase<Value, Error> {
+  template <typename U = Value>
+  void return_value(U&& u) {
+    auto& v = *this->value_;
+    ExpectedHelper::assume_empty(v);
+    v = static_cast<U&&>(u);
+  }
+};
+
+template <typename Value, typename Error>
+struct PromiseReturnsVoid : public PromiseBase<Value, Error> {
+  // When the coroutine uses `return;` you can fail via `co_await err`.
+  void return_void() { this->value_->emplace(Value{}); }
+};
+
+template <typename Value, typename Error>
+struct Promise //
+    : conditional_t<
+          ReturnsVoid<Value>,
+          PromiseReturnsVoid<Value, Error>,
+          PromiseReturnsValue<Value, Error>> {};
 
 template <typename Error>
 struct UnexpectedAwaitable {

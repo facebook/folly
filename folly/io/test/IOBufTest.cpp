@@ -1434,15 +1434,6 @@ std::unique_ptr<IOBuf> copy(const char* str) {
   return IOBuf::copyBuffer(str, strlen(str), 0, 1024);
 }
 
-std::string toString(const folly::IOBuf& buf) {
-  std::string result;
-  result.reserve(buf.computeChainDataLength());
-  for (auto& b : buf) {
-    result.append(reinterpret_cast<const char*>(b.data()), b.size());
-  }
-  return result;
-}
-
 char* writableStr(folly::IOBuf& buf) {
   return reinterpret_cast<char*>(buf.writableData());
 }
@@ -1519,7 +1510,7 @@ TEST(IOBuf, Managed) {
   buf1->prependChain(std::move(buf3UP));
   buf1->prependChain(std::move(buf4UP));
 
-  EXPECT_EQ("helloworldhelloworld", toString(*buf1));
+  EXPECT_EQ("helloworldhelloworld", buf1->to<std::string>());
   EXPECT_FALSE(buf1->isManaged());
 
   buf1->makeManaged();
@@ -1544,7 +1535,7 @@ TEST(IOBuf, Managed) {
   // change from buf2 is reflected in buf4.
   writableStr(*buf1)[0] = 'j';
   writableStr(*buf2)[0] = 'x';
-  EXPECT_EQ("jelloxorldhelloxorld", toString(*buf1));
+  EXPECT_EQ("jelloxorldhelloxorld", buf1->to<std::string>());
 }
 
 TEST(IOBuf, CoalesceEmptyBuffers) {
@@ -1738,7 +1729,7 @@ TEST(IOBuf, FreeFn) {
     unique_ptr<IOBuf> iobuf(IOBuf::create(64 * 1024));
 
     EXPECT_TRUE(iobuf->appendSharedInfoObserver(observer));
-    auto str = iobuf->moveToFbString().toStdString();
+    auto str = iobuf->moveToFbString();
   }
   EXPECT_EQ(freeVal, 0);
   EXPECT_EQ(releaseVal, 1);
@@ -1814,6 +1805,7 @@ TEST(IOBuf, AppendTo) {
 
   IOBuf buf;
   EXPECT_EQ(buf.to<std::string>(), "");
+  EXPECT_EQ(buf.toString(), "");
 
   auto temp = &buf;
   temp->insertAfterThisOne(IOBuf::copyBuffer("Hello"));
@@ -1872,4 +1864,42 @@ TEST(IOBuf, copyConstructBufferTooLarge) {
           57,
           (size_t)0xFFFF'FFFF'FFFF'FFFE),
       std::bad_alloc);
+}
+
+TEST(IOBuf, MaybeSplitTail) {
+  auto buf = IOBuf::create(256);
+  append(buf, "Hello ");
+
+  size_t tailroom1 = buf->tailroom();
+  auto buf1 = buf->maybeSplitTail();
+  EXPECT_EQ(buf->tailroom(), 0);
+  EXPECT_EQ(buf1->tailroom(), tailroom1);
+  EXPECT_EQ(
+      reinterpret_cast<const void*>(buf->bufferEnd()),
+      reinterpret_cast<const void*>(buf1->buffer()));
+  EXPECT_TRUE(buf->isSharedOne());
+  EXPECT_FALSE(buf1->isSharedOne());
+  append(buf1, "world");
+
+  size_t tailroom2 = buf1->tailroom();
+  auto buf2 = buf1->maybeSplitTail();
+  EXPECT_EQ(buf1->tailroom(), 0);
+  EXPECT_EQ(buf2->tailroom(), tailroom2);
+  EXPECT_EQ(
+      reinterpret_cast<const void*>(buf1->bufferEnd()),
+      reinterpret_cast<const void*>(buf2->buffer()));
+  // This maybeSplitTail() doesn't make buf1 shared because buf is the original
+  // owner, so buf2 refers to it as well.
+  EXPECT_FALSE(buf1->isSharedOne());
+  EXPECT_FALSE(buf2->isSharedOne());
+  append(buf2, "!");
+
+  buf = {};
+  EXPECT_EQ(buf1->to<std::string>(), "world");
+  buf1 = {};
+  EXPECT_EQ(buf2->to<std::string>(), "!");
+
+  // The original buffer is gone, but we can continue splitting its tail.
+  auto buf3 = buf2->maybeSplitTail();
+  append(buf3, "!!!1");
 }

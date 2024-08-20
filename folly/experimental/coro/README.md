@@ -91,7 +91,7 @@ void runCoroutine1() {
 }
 
 void runCoroutine2() {
-  folly::SemiFuture<folly::Unit> f = 
+  folly::SemiFuture<folly::Unit> f =
     checkArg(42).scheduleOn(folly::getCPUExecutor().get()).start();
 }
 ```
@@ -106,7 +106,7 @@ folly::coro::Task<int> task42Slow() {
   // This doesn't suspend the coroutine, just extracts the Executor*
   folly::Executor* startExecutor = co_await folly::coro::co_current_executor;
   co_await folly::futures::sleep(std::chrono::seconds{1});
-  folly::Executor* resumeExecutor = co_await folly::coro::co_current_executor; 
+  folly::Executor* resumeExecutor = co_await folly::coro::co_current_executor;
   CHECK_EQ(startExecutor, resumeExecutor);
 }
 ```
@@ -155,9 +155,10 @@ folly::coro::Task<void> coro() {
 
 ## Concurrently awaiting multiple Tasks
 
-Normally, when you call another `folly::coro::Task`-returning coroutine it doesn't
-start executing until you `co_await` the returned task and doing so will suspend
-the awaiting coroutine until the operation completes.
+When you invoke a coroutine that returns a `folly::coro::Task`, the coroutine
+doesn't begin execution immediately. It only starts when you apply `co_await`
+to the returned task. Applying `co_await` also suspends the coroutine that is
+awaiting, until the awaited operation is complete.
 
 This means that you cannot perform two operations concurrently by simply calling
 the two coroutines and later awaiting them both.

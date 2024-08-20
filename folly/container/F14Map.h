@@ -96,6 +96,7 @@ class F14BasicMap {
   using value_type = typename Policy::Value;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
+  using hash_token_type = F14HashToken;
   using hasher = typename Policy::Hasher;
   using key_equal = typename Policy::KeyEqual;
   using allocator_type = typename Policy::Alloc;
@@ -631,7 +632,7 @@ class F14BasicMap {
    * @methodset Modifiers
    */
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+    return eraseInto(pos, variadic_noop);
   }
 
   /**
@@ -641,23 +642,21 @@ class F14BasicMap {
    * that accepts const_iterator
    */
   FOLLY_ALWAYS_INLINE iterator erase(iterator pos) {
-    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+    return eraseInto(pos, variadic_noop);
   }
 
   /// Remove a range of elements.
   iterator erase(const_iterator first, const_iterator last) {
-    return eraseInto(first, last, [](key_type&&, mapped_type&&) {});
+    return eraseInto(first, last, variadic_noop);
   }
 
   /// Remove a specific key.
-  size_type erase(key_type const& key) {
-    return eraseInto(key, [](key_type&&, mapped_type&&) {});
-  }
+  size_type erase(key_type const& key) { return eraseInto(key, variadic_noop); }
 
   /// Remove a key, using a heterogeneous representation.
   template <typename K>
   EnableHeterogeneousErase<K, size_type> erase(K const& key) {
-    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+    return eraseInto(key, variadic_noop);
   }
 
  protected:
@@ -807,11 +806,21 @@ class F14BasicMap {
   F14HashToken prehash(key_type const& key) const {
     return table_.prehash(key);
   }
+  /// @copydoc prehash
+  F14HashToken prehash(key_type const& key, std::size_t hash) const {
+    return table_.prehash(key, hash);
+  }
 
   /// @copydoc prehash
   template <typename K>
   EnableHeterogeneousFind<K, F14HashToken> prehash(K const& key) const {
     return table_.prehash(key);
+  }
+  /// @copydoc prehash
+  template <typename K>
+  EnableHeterogeneousFind<K, F14HashToken> prehash(
+      K const& key, std::size_t hash) const {
+    return table_.prehash(key, hash);
   }
 
   /**
@@ -1527,29 +1536,29 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
    * @methodset Modifiers
    */
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+    return eraseInto(pos, variadic_noop);
   }
 
   // This form avoids ambiguity when key_type has a templated constructor
   // that accepts const_iterator
   FOLLY_ALWAYS_INLINE iterator erase(iterator pos) {
-    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+    return eraseInto(pos, variadic_noop);
   }
 
   /// Remove a range of elements.
   iterator erase(const_iterator first, const_iterator last) {
-    return eraseInto(first, last, [](key_type&&, mapped_type&&) {});
+    return eraseInto(first, last, variadic_noop);
   }
 
   /// Remove a specific key.
   std::size_t erase(key_type const& key) {
-    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+    return eraseInto(key, variadic_noop);
   }
 
   /// Remove a key, using a heterogeneous representation.
   template <typename K>
   EnableHeterogeneousVectorErase<K, std::size_t> erase(K const& key) {
-    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+    return eraseInto(key, variadic_noop);
   }
 
   /**

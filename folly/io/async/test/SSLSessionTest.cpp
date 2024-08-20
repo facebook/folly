@@ -18,7 +18,6 @@
 
 #include <memory>
 
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
@@ -26,6 +25,7 @@
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/detail/OpenSSLSession.h>
+#include <folly/testing/TestUtil.h>
 
 using folly::ssl::SSLSession;
 using folly::ssl::detail::OpenSSLSession;
@@ -61,20 +61,11 @@ class SSLSessionTest : public testing::Test {
       std::shared_ptr<folly::SSLContext> clientCtx,
       std::shared_ptr<folly::SSLContext> serverCtx) {
     clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-#if defined(FOLLY_TEST_USE_RESOURCES)
-    clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
-#else
-    clientCtx->loadTrustedCertificates(kTestCA);
-#endif
+    clientCtx->loadTrustedCertificates(find_resource(kTestCA).string().c_str());
 
     serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-#if defined(FOLLY_TEST_USE_RESOURCES)
-    serverCtx->loadCertificate(find_resource(kTestCert).c_str());
-    serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
-#else
-    serverCtx->loadCertificate(kTestCert);
-    serverCtx->loadPrivateKey(kTestKey);
-#endif
+    serverCtx->loadCertificate(find_resource(kTestCert).string().c_str());
+    serverCtx->loadPrivateKey(find_resource(kTestKey).string().c_str());
   }
 
   folly::EventBase eventBase_;

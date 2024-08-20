@@ -22,7 +22,6 @@
 #include <list>
 
 #include <folly/SocketAddress.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/AsyncSocket.h>
@@ -34,6 +33,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
+#include <folly/testing/TestUtil.h>
 
 namespace folly::test {
 

@@ -40,10 +40,18 @@ cdef extern from "folly/io/IOBuf.h" namespace "folly":
         cIOBuf cloneAsValue()
         void coalesce()
         void unshare()
+        size_t capacity()
+        void append(size_t amount)
+        void prepend(size_t amount)
+        void trimStart(size_t amount)
+        void trimEnd(size_t amount)
+        size_t headroom()
+        size_t tailroom()
 
 
 cdef extern from "folly/io/IOBuf.h" namespace "folly::IOBuf":
     unique_ptr[cIOBuf] wrapBuffer(const_uchar* buf, uint64_t capacity)
+    unique_ptr[cIOBuf] copyBuffer(const_uchar* buf, uint64_t capacity)
     unique_ptr[cIOBuf] createChain(size_t totalCapacity, size_t maxBufCapacity)
 
 
@@ -71,6 +79,7 @@ cdef extern from "folly/python/iobuf.h" namespace "folly::python":
 
 cdef extern from "folly/python/iobuf_ext.h" namespace "folly::python":
     unique_ptr[cIOBuf] iobuf_from_memoryview(cFollyExecutor*, PyObject*, void*, uint64_t)
+    unique_ptr[cIOBuf] create_iobuf(uint64_t)
 
 cdef extern from "Python.h":
     cdef int PyBUF_C_CONTIGUOUS
@@ -93,7 +102,14 @@ cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view)
 cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] iobuf)
 cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf)
 cdef api cIOBuf from_python_iobuf(object iobuf) except *
+
+cdef WritableIOBuf writable_from_unique_ptr(unique_ptr[cIOBuf] ciobuf)
+cdef api object python_writable_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf)
 # Use to pass heap-allocated folly::IOBuf to cpp.
 # Passed as raw ptr to avoid expensive call to PyErr_Occurred from `except *`
 # Must be placed directly into std::unique_ptr to avoid leak
 cdef api cIOBuf* ptr_from_python_iobuf(object obj) except NULL
+
+cdef class WritableIOBuf(IOBuf):
+    @staticmethod
+    cdef WritableIOBuf create(cIOBuf* this, object parent)

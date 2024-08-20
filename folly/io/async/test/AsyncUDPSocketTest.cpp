@@ -22,7 +22,6 @@
 #include <folly/Conv.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
@@ -31,6 +30,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
+#include <folly/testing/TestUtil.h>
 
 using folly::AsyncTimeout;
 using folly::AsyncUDPServerSocket;
@@ -66,7 +66,7 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
       bool truncated,
       OnDataAvailableParams) noexcept override {
     lastClient_ = client;
-    lastMsg_ = data->clone()->moveToFbString().toStdString();
+    lastMsg_ = data->to<std::string>();
 
     auto len = data->computeChainDataLength();
     VLOG(4) << "Worker " << n_ << " read " << len << " bytes "
@@ -197,6 +197,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     server_ = server;
     socket_ = std::make_unique<AsyncUDPSocket>(evb_);
     socket_->setRecvTos(recvTos_);
+    ASSERT_EQ(socket_->getRecvTos(), recvTos_);
 
     try {
       if (bindSocket_ == BindSocket::YES) {

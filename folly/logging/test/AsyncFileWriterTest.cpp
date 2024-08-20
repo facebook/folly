@@ -28,7 +28,6 @@
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <folly/init/Init.h>
@@ -44,6 +43,7 @@
 #include <folly/system/ThreadId.h>
 #include <folly/system/ThreadName.h>
 #include <folly/test/TestUtils.h>
+#include <folly/testing/TestUtil.h>
 
 DEFINE_int64(
     async_discard_num_normal_writers,

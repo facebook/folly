@@ -24,21 +24,33 @@
 
 namespace folly {
 
-template <
-    class Iterator = const char*,
-    class Base = folly::Range<boost::u8_to_u32_iterator<Iterator>>>
-class UTF8Range : public Base {
+class UTF8StringPiece {
  public:
-  /* implicit */ UTF8Range(const folly::Range<Iterator> baseRange)
-      : Base(
-            boost::u8_to_u32_iterator<Iterator>(
-                baseRange.begin(), baseRange.begin(), baseRange.end()),
-            boost::u8_to_u32_iterator<Iterator>(
-                baseRange.end(), baseRange.begin(), baseRange.end())) {}
-  /* implicit */ UTF8Range(const std::string& baseString)
-      : Base(folly::Range<Iterator>(baseString)) {}
-};
+  using iterator = boost::u8_to_u32_iterator<const char*>;
+  using size_type = std::size_t;
 
-using UTF8StringPiece = UTF8Range<const char*>;
+  /* implicit */ UTF8StringPiece(const folly::StringPiece piece)
+      : begin_{piece.begin(), piece.begin(), piece.end()},
+        end_{piece.end(), piece.begin(), piece.end()} {}
+  template <
+      typename T,
+      std::enable_if_t<std::is_convertible_v<T, folly::StringPiece>, int> = 0>
+  /* implicit */ UTF8StringPiece(const T& t)
+      : UTF8StringPiece(folly::StringPiece(t)) {}
+
+  iterator begin() const noexcept { return begin_; }
+  iterator cbegin() const noexcept { return begin_; }
+  iterator end() const noexcept { return end_; }
+  iterator cend() const noexcept { return end_; }
+
+  bool empty() const noexcept { return begin_ == end_; }
+  size_type walk_size() const {
+    return static_cast<size_type>(std::distance(begin_, end_));
+  }
+
+ private:
+  iterator begin_;
+  iterator end_;
+};
 
 } // namespace folly

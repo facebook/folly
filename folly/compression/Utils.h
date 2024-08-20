@@ -26,7 +26,6 @@
  * Helper functions for compression codecs.
  */
 namespace folly {
-namespace io {
 namespace compression {
 namespace detail {
 
@@ -41,7 +40,7 @@ dataStartsWithLE(const IOBuf* data, T prefix, uint64_t n = sizeof(T)) {
   DCHECK_GT(n, 0);
   DCHECK_LE(n, sizeof(T));
   T value;
-  Cursor cursor{data};
+  io::Cursor cursor{data};
   if (!cursor.tryReadLE(value)) {
     return false;
   }
@@ -63,5 +62,9 @@ prefixToStringLE(T prefix, uint64_t n = sizeof(T)) {
 
 } // namespace detail
 } // namespace compression
-} // namespace io
 } // namespace folly
+
+namespace folly::io::compression::detail {
+using folly::compression::detail::dataStartsWithLE;
+using folly::compression::detail::prefixToStringLE;
+} // namespace folly::io::compression::detail

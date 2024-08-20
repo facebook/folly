@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
+#include <folly/channels/ConsumeChannel.h>
+#include <folly/channels/MaxConcurrentRateLimiter.h>
+#include <folly/channels/MultiplexChannel.h>
+#include <folly/channels/test/ChannelTestUtil.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/SerialExecutor.h>
-#include <folly/experimental/channels/ConsumeChannel.h>
-#include <folly/experimental/channels/MaxConcurrentRateLimiter.h>
-#include <folly/experimental/channels/MultiplexChannel.h>
-#include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

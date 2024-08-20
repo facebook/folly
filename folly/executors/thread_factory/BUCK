@@ -20,6 +20,7 @@ cpp_library(
         "//folly:string",
         "//folly/portability:sys_resource",
         "//folly/portability:sys_time",
+        "//folly/system:thread_name",
     ],
     exported_deps = [
         ":init_thread_factory",

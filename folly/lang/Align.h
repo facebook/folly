@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -34,9 +35,10 @@ namespace folly {
 //  implicitly by-reference to stack copies.
 //
 //  Approximate. Accuracy is not promised.
-constexpr std::size_t register_pass_max_size = kMscVer ? 8u : 16u;
+constexpr std::size_t register_pass_max_size =
+    (kMscVer ? 1u : 2u) * sizeof(void*);
 
-//  register_pass_v
+//  is_register_pass_v
 //
 //  Whether a value may be passed in a register.
 //
@@ -52,6 +54,13 @@ template <typename T>
 constexpr bool is_register_pass_v<T&> = true;
 template <typename T>
 constexpr bool is_register_pass_v<T&&> = true;
+
+/// register_pass_t
+///
+/// Chooses an optimal argument type for passing values of type T based on
+/// whehter such values may be passed in registers.
+template <typename T>
+using register_pass_t = conditional_t<is_register_pass_v<T>, T const, T const&>;
 
 //  has_extended_alignment
 //
@@ -170,5 +179,55 @@ constexpr std::size_t cacheline_align_v = has_extended_alignment
     ? hardware_constructive_interference_size
     : max_align_v;
 struct alignas(cacheline_align_v) cacheline_align_t {};
+
+namespace detail {
+
+constexpr void validateAlignment(std::size_t alignment) {
+  [[maybe_unused]] bool isPowerOf2 = (alignment & (alignment - 1)) == 0;
+  [[maybe_unused]] bool lessThanLimit =
+      alignment < std::numeric_limits<std::uintptr_t>::max();
+  assert(isPowerOf2 && lessThanLimit);
+}
+
+} // namespace detail
+
+//  align_floor
+//  align_floor_fn
+//
+//  Returns pointer rounded down to the given alignment.
+struct align_floor_fn {
+  constexpr std::uintptr_t operator()(
+      std::uintptr_t x, std::size_t alignment) const {
+    detail::validateAlignment(alignment);
+    return x & ~(alignment - 1);
+  }
+
+  template <typename T>
+  T* operator()(T* x, std::size_t alignment) const {
+    auto asUint = reinterpret_cast<std::uintptr_t>(x);
+    asUint = (*this)(asUint, alignment);
+    return reinterpret_cast<T*>(asUint);
+  }
+
+} inline constexpr align_floor;
+
+//  align_ceil
+//  align_ceil_fn
+//
+//  Returns pointer rounded up to the given alignment.
+struct align_ceil_fn {
+  constexpr std::uintptr_t operator()(
+      std::uintptr_t x, std::size_t alignment) const {
+    detail::validateAlignment(alignment);
+    return (x + alignment - 1) & (-alignment);
+  }
+
+  template <typename T>
+  T* operator()(T* x, std::size_t alignment) const {
+    auto asUint = reinterpret_cast<std::uintptr_t>(x);
+    asUint = (*this)(asUint, alignment);
+    return reinterpret_cast<T*>(asUint);
+  }
+} inline constexpr align_ceil;
 
 } // namespace folly

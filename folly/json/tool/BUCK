@@ -1,0 +1,13 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_binary(
+    name = "json_schema_tester",
+    srcs = ["JSONSchemaTester.cpp"],
+    headers = [],
+    deps = [
+        "//folly/json:dynamic",
+        "//folly/json:json_schema",
+    ],
+)

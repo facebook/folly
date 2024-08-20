@@ -2,7 +2,8 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("//folly/io/async/test/certs:defs.bzl", "alias_pem")
+# @fb-only: load("//folly/io/async/test/certs:defs.bzl", "alias_pem") 
+load("@shim//folly/io/async/test/certs:defs.bzl", "alias_pem") # @oss-only
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -25,25 +26,21 @@ cpp_library(
     headers = [
         "TestSSLServer.h",
     ],
-    preprocessor_flags = [
-        "-DFOLLY_CERTS_DIR=\"folly/io/async/test\"",
-    ],
-    resources = [
-        ":ca-cert.pem",
-        ":client_ca_cert.pem",
-        ":client_cert.pem",
-        ":client_chain.pem",
-        ":client_key.pem",
-        ":tests-cert.pem",
-        ":tests-key.pem",
-    ],
+    resources = {
+        "certs/ca-cert.pem": ":ca-cert.pem",
+        "certs/client_ca_cert.pem": ":client_ca_cert.pem",
+        "certs/client_cert.pem": ":client_cert.pem",
+        "certs/client_chain.pem": ":client_chain.pem",
+        "certs/client_key.pem": ":client_key.pem",
+        "certs/tests-cert.pem": ":tests-cert.pem",
+        "certs/tests-key.pem": ":tests-key.pem",
+    },
     deps = [
         "//folly/portability:openssl",
     ],
     exported_deps = [
         ":callback_state_enum",
         "//folly:network_address",
-        "//folly/experimental:test_util",
         "//folly/io/async:async_base",
         "//folly/io/async:async_socket",
         "//folly/io/async:async_ssl_socket",
@@ -53,6 +50,7 @@ cpp_library(
         "//folly/portability:gtest",
         "//folly/portability:sockets",
         "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -106,7 +104,6 @@ cpp_library(
         ":test_ssl_server",
         "//folly:exception_wrapper",
         "//folly:network_address",
-        "//folly/experimental:test_util",
         "//folly/fibers:fiber_manager_map",
         "//folly/io:socket_option_map",
         "//folly/io/async:async_base",
@@ -121,6 +118,7 @@ cpp_library(
         "//folly/portability:sockets",
         "//folly/portability:string",
         "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -132,14 +130,14 @@ cpp_unittest(
     ],
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
     extract_helper_lib = False,
-    resources = [
-        ":ca-cert.pem",
-        ":client_ca_cert.pem",
-        ":client_cert.pem",
-        ":client_key.pem",
-        ":tests-cert.pem",
-        ":tests-key.pem",
-    ],
+    resources = {
+        "certs/ca-cert.pem": ":ca-cert.pem",
+        "certs/client_ca_cert.pem": ":client_ca_cert.pem",
+        "certs/client_cert.pem": ":client_cert.pem",
+        "certs/client_key.pem": ":client_key.pem",
+        "certs/tests-cert.pem": ":tests-cert.pem",
+        "certs/tests-key.pem": ":tests-key.pem",
+    },
     supports_static_listing = False,
     deps = [
         ":blocking_socket",
@@ -149,7 +147,6 @@ cpp_unittest(
         "//folly:exception_wrapper",
         "//folly:network_address",
         "//folly:string",
-        "//folly/experimental:test_util",
         "//folly/fibers:fiber_manager_map",
         "//folly/futures:core",
         "//folly/init:init",
@@ -178,6 +175,7 @@ cpp_unittest(
         "//folly/portability:sockets",
         "//folly/portability:string",
         "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         ("glibc", None, "dl"),
@@ -269,7 +267,6 @@ cpp_unittest(
         "//folly:exception_wrapper",
         "//folly:network_address",
         "//folly:random",
-        "//folly/experimental:test_util",
         "//folly/io:iobuf",
         "//folly/io:socket_option_map",
         "//folly/io/async:async_base",
@@ -287,6 +284,7 @@ cpp_unittest(
         "//folly/synchronization:baton",
         "//folly/synchronization:rw_spin_lock",
         "//folly/test:socket_address_test_helper",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         ("glibc", None, "rt"),
@@ -344,7 +342,6 @@ cpp_unittest(
         "//folly:conv",
         "//folly:network_address",
         "//folly:string",
-        "//folly/experimental:test_util",
         "//folly/io:iobuf",
         "//folly/io:socket_option_map",
         "//folly/io/async:async_base",
@@ -354,6 +351,7 @@ cpp_unittest(
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/portability:sockets",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -488,6 +486,7 @@ cpp_library(
     ],
     exported_deps = [
         ":util",
+        "//folly:math",
         "//folly:memory",
         "//folly:scope_guard",
         "//folly/futures:core",
@@ -719,17 +718,13 @@ cpp_unittest(
     srcs = ["SSLSessionTest.cpp"],
     headers = [],
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
-    preprocessor_flags = [
-        "-DFOLLY_TEST_USE_RESOURCES=1",
-    ],
-    resources = [
-        ":ca-cert.pem",
-        ":tests-cert.pem",
-        ":tests-key.pem",
-    ],
+    resources = {
+        "certs/ca-cert.pem": ":ca-cert.pem",
+        "certs/tests-cert.pem": ":tests-cert.pem",
+        "certs/tests-key.pem": ":tests-key.pem",
+    },
     deps = [
         ":async_ssl_socket_test_lib",
-        "//folly/experimental:test_util",
         "//folly/net:net_ops",
         "//folly/net:network_socket",
         "//folly/portability:gtest",
@@ -737,6 +732,7 @@ cpp_unittest(
         "//folly/portability:sockets",
         "//folly/ssl:ssl_session",
         "//folly/ssl/detail:openssl_session",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -758,23 +754,23 @@ cpp_unittest(
     srcs = ["SSLContextTest.cpp"],
     headers = [],
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
-    resources = [
-        ":client_chain.pem",
-        ":client_key.pem",
-        ":clienti_key.pem",
-        ":tests-cert.pem",
-        ":tests-key.pem",
-    ],
+    resources = {
+        "certs/client_chain.pem": ":client_chain.pem",
+        "certs/client_key.pem": ":client_key.pem",
+        "certs/clienti_key.pem": ":clienti_key.pem",
+        "certs/tests-cert.pem": ":tests-cert.pem",
+        "certs/tests-key.pem": ":tests-key.pem",
+    },
     deps = [
         ":ssl_util",
         "//folly:file_util",
-        "//folly/experimental:test_util",
         "//folly/io/async:ssl_context",
         "//folly/portability:gtest",
         "//folly/portability:openssl",
         "//folly/ssl:openssl_cert_utils",
         "//folly/ssl:openssl_key_utils",
         "//folly/ssl:openssl_ptr_types",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -785,9 +781,9 @@ cpp_unittest(
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
     deps = [
         "//folly:file_util",
-        "//folly/experimental:test_util",
         "//folly/io/async:ssl_context",
         "//folly/portability:gtest",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -815,6 +811,17 @@ cpp_library(
     ],
     exported_deps = [
         "//folly/ssl:openssl_ptr_types",
+    ],
+)
+
+cpp_unittest(
+    name = "timerfd_timeout_manager_test",
+    srcs = ["TimerFDTimeoutManagerTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/io/async:timerfd",
+        "//folly/io/async/test:util",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -906,5 +913,288 @@ cpp_binary(
         ":zero_copy_lib",
         "//folly:benchmark",
         "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "hhwheel_timer_high_res_test",
+    srcs = ["HHWheelTimerHighResTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/io/async:async_base",
+        "//folly/io/async:timerfd",
+        "//folly/io/async/test:util",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_binary(
+    name = "hhwheel_timer_high_res_benchmark",
+    srcs = ["HHWheelTimerHighResBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/io/async:timerfd",
+        "//folly/io/async/test:util",
+    ],
+)
+
+cpp_unittest(
+    name = "async_io_test",
+    srcs = ["AsyncIOTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/io:async_io",
+        "//folly/experimental/io/test:async_base_test_lib",
+    ],
+)
+
+cpp_unittest(
+    name = "async_io_uring_socket_test",
+    srcs = ["AsyncIoUringSocketTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:file_util",
+        "//folly:subprocess",
+        "//folly/executors:global_executor",
+        "//folly/experimental/io:async_io_uring_socket",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/experimental/io:io_uring_event",
+        "//folly/futures:core",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:server_socket",
+        "//folly/portability:gtest",
+        "//folly/system:shell",
+        "//folly/test:socket_address_test_helper",
+    ],
+)
+
+cpp_unittest(
+    name = "epoll_backend_test",
+    srcs = ["EpollBackendTest.cpp"],
+    owner = "dmm@xmail.facebook.com",
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/io:epoll_backend",
+        "//folly/io/async/test:async_signal_handler_test_lib",
+        "//folly/io/async/test:event_base_test_lib",
+    ],
+)
+
+cpp_binary(
+    name = "io_benchmark",
+    srcs = ["IOBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file_util",
+        "//folly/experimental/io:async_io",
+        "//folly/experimental/io:io_uring",
+        "//folly/experimental/io/test:async_base_test_lib",
+        "//folly/experimental/io/test:io_test_temp_file_util_lib",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_binary(
+    name = "io_uring_backend_bench",
+    srcs = ["IoUringBackendBench.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file_util",
+        "//folly/experimental/io:epoll_backend",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/init:init",
+        "//folly/io/async:async_base",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_backend_setup_test",
+    srcs = ["IoUringBackendSetupTest.cpp"],
+    owner = "kvigor@xmail.facebook.com",
+    deps = [
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_backend_test",
+    srcs = ["IoUringBackendTest.cpp"],
+    headers = [],
+    owner = "dmm@xmail.facebook.com",
+    supports_static_listing = False,
+    deps = [
+        "//folly:file_util",
+        "//folly:function",
+        "//folly:string",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/experimental/io/test:io_test_temp_file_util_lib",
+        "//folly/init:init",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_udp_server_socket",
+        "//folly/io/async:async_udp_socket",
+        "//folly/io/async/test:async_signal_handler_test_lib",
+        "//folly/io/async/test:event_base_test_lib",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_event_base_local_test",
+    srcs = ["IoUringEventBaseLocalTest.cpp"],
+    owner = "dylany@xmail.facebook.com",
+    deps = [
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/experimental/io:io_uring_event_base_local",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_event_test",
+    srcs = ["IoUringEventTest.cpp"],
+    owner = "dylany@xmail.facebook.com",
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/experimental/io:io_uring_event",
+        "//folly/futures:core",
+        "//folly/io/async:async_base",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "io_uring_test",
+    srcs = ["IoUringTest.cpp"],
+    owner = "dmm@xmail.facebook.com",
+    supports_static_listing = False,
+    deps = [
+        "//folly/experimental/io:io_uring",
+        "//folly/experimental/io/test:async_base_test_lib",
+        "//folly/init:init",
+    ],
+)
+
+cpp_binary(
+    name = "registered_fd_benchmark",
+    srcs = ["RegisteredFdBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file_util",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/io/async:async_base",
+        "//folly/portability:gflags",
+    ],
+)
+
+cpp_unittest(
+    name = "simple_async_io_test",
+    srcs = ["SimpleAsyncIOTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:file",
+        "//folly:random",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:collect",
+        "//folly/experimental/io:simple_async_io",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "io_test_temp_file_util_lib",
+    srcs = ["IoTestTempFileUtil.cpp"],
+    headers = ["IoTestTempFileUtil.h"],
+    deps = [
+        "//folly:file_util",
+        "//folly:string",
+    ],
+    exported_deps = [
+        "//folly/experimental/io:fs_util",
+        "//folly/testing:test_util",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "async_base_test_lib",
+    srcs = ["AsyncBaseTestLib.cpp"],
+    headers = ["AsyncBaseTestLib.h"],
+    exported_deps = [
+        "//folly:scope_guard",
+        "//folly:string",
+        "//folly/experimental/io:async_base",
+        "//folly/experimental/io:fs_util",
+        "//folly/experimental/io/test:io_test_temp_file_util_lib",
+        "//folly/portability:gtest",
+        "//folly/portability:sockets",
+        "//folly/test:test_utils",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "mux_io_thread_pool_executor_test_lib",
+    srcs = ["MuxIOThreadPoolExecutorTest.cpp"],
+    link_whole = True,
+    deps = [
+        "//folly/executors/test:IOThreadPoolExecutorBaseTestLib",
+        "//folly/experimental/io:epoll",
+        "//folly/experimental/io:mux_io_thread_pool_executor",
+        "//folly/portability:gtest",
+        "//folly/synchronization:latch",
+    ],
+)
+
+cpp_unittest(
+    name = "mux_io_thread_pool_executor_test_epoll",
+    args = [
+        "--folly_event_base_poller_backend=epoll",
+        "--folly_event_base_poller_epoll_rearm_inline=false",
+    ],
+    supports_static_listing = False,
+    deps = [
+        ":mux_io_thread_pool_executor_test_lib",  # @manual
+    ],
+)
+
+cpp_unittest(
+    name = "mux_io_thread_pool_executor_test_epoll_rearm_inline",
+    args = [
+        "--folly_event_base_poller_backend=epoll",
+        "--folly_event_base_poller_epoll_rearm_inline=true",
+    ],
+    supports_static_listing = False,
+    deps = [
+        ":mux_io_thread_pool_executor_test_lib",  # @manual
+    ],
+)
+
+cpp_unittest(
+    name = "mux_io_thread_pool_executor_test_io_uring",
+    args = [
+        "--folly_event_base_poller_backend=io_uring",
+    ],
+    supports_static_listing = False,
+    deps = [
+        ":mux_io_thread_pool_executor_test_lib",  # @manual
     ],
 )

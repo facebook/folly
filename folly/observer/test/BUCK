@@ -1,0 +1,22 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "observer_test",
+    srcs = ["ObserverTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:singleton",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:fiber_manager_map",
+        "//folly/observer:core_cached_observer",
+        "//folly/observer:hazptr_observer",
+        "//folly/observer:observer",
+        "//folly/observer:read_mostly_tl_observer",
+        "//folly/observer:simple_observable",
+        "//folly/observer:with_jitter",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)

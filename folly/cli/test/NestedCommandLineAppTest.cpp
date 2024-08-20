@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/NestedCommandLineApp.h>
+#include <folly/cli/NestedCommandLineApp.h>
 
 #include <folly/Subprocess.h>
 #include <folly/experimental/io/FsUtil.h>

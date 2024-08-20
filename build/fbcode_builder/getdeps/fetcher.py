@@ -587,13 +587,63 @@ class SimpleShipitTransformerFetcher(Fetcher):
         return self.repo_dir
 
 
+class SubFetcher(Fetcher):
+    """Fetcher for a project with subprojects"""
+
+    def __init__(self, base, subs) -> None:
+        self.base = base
+        self.subs = subs
+
+    def update(self) -> ChangeStatus:
+        base = self.base.update()
+        changed = base.build_changed() or base.sources_changed()
+        for fetcher, dir in self.subs:
+            stat = fetcher.update()
+            if stat.build_changed() or stat.sources_changed():
+                changed = True
+            link = self.base.get_src_dir() + "/" + dir
+            if not os.path.exists(link):
+                os.symlink(fetcher.get_src_dir(), link)
+        return ChangeStatus(changed)
+
+    def clean(self) -> None:
+        self.base.clean()
+        for fetcher, _ in self.subs:
+            fetcher.clean()
+
+    def hash(self) -> None:
+        hash = self.base.hash()
+        for fetcher, _ in self.subs:
+            hash += fetcher.hash()
+
+    def get_src_dir(self):
+        return self.base.get_src_dir()
+
+
 class ShipitTransformerFetcher(Fetcher):
-    SHIPIT = "/var/www/scripts/opensource/shipit/run_shipit.php"
+    @classmethod
+    def _shipit_paths(cls, build_options):
+        www_path = ["/var/www/scripts/opensource/codesync"]
+        if build_options.fbsource_dir:
+            fbcode_path = [
+                os.path.join(
+                    build_options.fbsource_dir,
+                    "fbcode/opensource/codesync/codesync-cli/codesync",
+                )
+            ]
+        else:
+            fbcode_path = []
+        return www_path + fbcode_path
 
     def __init__(self, build_options, project_name) -> None:
         self.build_options = build_options
         self.project_name = project_name
         self.repo_dir = os.path.join(build_options.scratch_dir, "shipit", project_name)
+        self.shipit = None
+        for path in ShipitTransformerFetcher._shipit_paths(build_options):
+            if os.path.exists(path):
+                self.shipit = path
+                break
 
     def update(self) -> ChangeStatus:
         if os.path.exists(self.repo_dir):
@@ -606,20 +656,24 @@ class ShipitTransformerFetcher(Fetcher):
             shutil.rmtree(self.repo_dir)
 
     @classmethod
-    def available(cls):
-        return os.path.exists(cls.SHIPIT)
+    def available(cls, build_options):
+        return any(
+            os.path.exists(path)
+            for path in ShipitTransformerFetcher._shipit_paths(build_options)
+        )
 
     def run_shipit(self) -> None:
         tmp_path = self.repo_dir + ".new"
         try:
             if os.path.exists(tmp_path):
                 shutil.rmtree(tmp_path)
+            os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
 
             # Run shipit
             run_cmd(
                 [
-                    "php",
-                    ShipitTransformerFetcher.SHIPIT,
+                    self.shipit,
+                    "shipit",
                     "--project=" + self.project_name,
                     "--create-new-repo",
                     "--source-repo-dir=" + self.build_options.fbsource_dir,
@@ -628,7 +682,6 @@ class ShipitTransformerFetcher(Fetcher):
                     "--skip-source-pull",
                     "--skip-source-clean",
                     "--skip-push",
-                    "--skip-reset",
                     "--destination-use-anonymous-https",
                     "--create-new-repo-output-path=" + tmp_path,
                 ]

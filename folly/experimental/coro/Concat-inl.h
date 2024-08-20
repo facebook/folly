@@ -14,27 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/Coroutine.h>
-
-namespace folly {
-namespace coro {
-
-template <
-    typename HReference,
-    typename... TReference,
-    typename HValue,
-    typename... TValue>
-AsyncGenerator<HReference, HValue> concat(
-    AsyncGenerator<HReference, HValue> head,
-    AsyncGenerator<TReference, TValue>... tail) {
-  static_assert((std::is_same_v<decltype(head), decltype(tail)> && ...));
-  using list = AsyncGenerator<HReference, HValue>[];
-  for (auto& gen : list{std::move(head), std::move(tail)...}) {
-    while (auto val = co_await gen.next()) {
-      co_yield std::move(val).value();
-    }
-  }
-}
-
-} // namespace coro
-} // namespace folly
+#include <folly/coro/Concat-inl.h>

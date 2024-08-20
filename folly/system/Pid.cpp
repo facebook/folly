@@ -63,7 +63,7 @@ class PidCache {
  private:
   bool valid() { return state_.load() == State::VALID; }
 
-  FOLLY_COLD pid_t init() {
+  [[FOLLY_ATTR_GNU_COLD]] pid_t init() {
     pid_t pid = getpid();
     auto s = state_.load();
     if (s == State::INVALID && state_.cas(s, State::LOCKED)) {

@@ -99,7 +99,7 @@ cpp_library(
         "//folly:try",
         "//folly/detail:async_trace",
         "//folly/detail:futex",
-        "//folly/experimental:execution_observer",
+        "//folly/executors:execution_observer",
         "//folly/experimental/coro:coroutine",
         "//folly/functional:invoke",
         "//folly/io/async:async_base",
@@ -263,7 +263,8 @@ cpp_library(
         ":core",
         "//folly:intrusive_list",
         "//folly:synchronized",
-        "//folly/experimental/coro:task",
+        "//folly/coro:task",
+        "//folly/coro:timeout",
         "//folly/futures:core",
     ],
 )

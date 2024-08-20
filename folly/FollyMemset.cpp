@@ -16,7 +16,7 @@
 
 #include <cstring>
 
-#if !defined(__AVX2__) || defined(__aarch64__)
+#if !defined(__AVX2__) && !(defined(__linux__) && defined(__aarch64__))
 
 namespace folly {
 

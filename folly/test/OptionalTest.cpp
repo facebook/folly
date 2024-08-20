@@ -577,7 +577,6 @@ TEST(Optional, Conversions) {
   // Truthy tests work and are not ambiguous
   if (mbool && mshort && mstr && mint) { // only checks not-empty
     if (*mbool && *mshort && *mstr && *mint) { // only checks value
-      ;
     }
   }
 
@@ -840,10 +839,16 @@ TEST(Optional, StdOptionalConversions) {
   folly::Optional<int> f = 42;
   std::optional<int> s = static_cast<std::optional<int>>(f);
   EXPECT_EQ(*s, 42);
+  EXPECT_EQ(s, f.toStdOptional());
   EXPECT_TRUE(f);
+
   f = static_cast<folly::Optional<int>>(s);
   EXPECT_EQ(*f, 42);
   EXPECT_TRUE(s);
+
+  folly::Optional<int> e;
+  EXPECT_FALSE(static_cast<std::optional<int>>(e));
+  EXPECT_FALSE(e.toStdOptional());
 
   const folly::Optional<int> fc = 12;
   s = static_cast<std::optional<int>>(fc);
@@ -856,6 +861,11 @@ TEST(Optional, StdOptionalConversions) {
   fp = static_cast<folly::Optional<std::unique_ptr<int>>>(std::move(sp));
   EXPECT_EQ(**fp, 42);
   EXPECT_FALSE(sp);
+
+  folly::Optional<std::unique_ptr<int>> fp2 = std::make_unique<int>(42);
+  auto sp2 = std::move(fp2).toStdOptional();
+  EXPECT_EQ(**sp2, 42);
+  EXPECT_FALSE(fp2);
 }
 
 TEST(Optional, MovedFromOptionalIsEmpty) {

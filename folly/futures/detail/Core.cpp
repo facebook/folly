@@ -621,7 +621,7 @@ void CoreBase::doCallback(
             core->callback_(*core, std::move(ka), nullptr);
           });
     } catch (...) {
-      ew = exception_wrapper(std::current_exception());
+      ew = exception_wrapper(current_exception());
     }
     if (ew) {
       RequestContextScopeGuard rctx(std::move(context_));

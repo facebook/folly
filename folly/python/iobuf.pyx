@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from builtins import memoryview as py_memoryview
 from folly.executor cimport get_running_executor
 from cpython cimport Py_buffer
@@ -22,6 +23,10 @@ from cython.operator cimport dereference as deref
 __cache = WeakValueDictionary()
 __all__ = ['IOBuf']
 
+
+cdef unique_ptr[cIOBuf] create_new_iobuf(ssize_t capacity):
+    """Create a new IOBuf with the given capacity"""
+    return move(create_iobuf(capacity))
 
 cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view):
     """Take a python object that supports buffer protocol"""
@@ -46,6 +51,17 @@ cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
 
 cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf):
     return from_unique_ptr(move(iobuf))
+
+cdef WritableIOBuf writable_from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
+    inst = <WritableIOBuf>WritableIOBuf.__new__(WritableIOBuf)
+    inst._ours = move(ciobuf)
+    inst._parent = None
+    inst._this = inst._ours.get()
+    __cache[(<unsigned long>inst._this, id(inst))] = inst
+    return inst
+
+cdef api object python_writable_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf):
+    return writable_from_unique_ptr(move(iobuf))
 
 cdef cIOBuf from_python_iobuf(object obj) except *:
     return deref((<IOBuf?>obj).c_clone())
@@ -135,6 +151,9 @@ cdef class IOBuf:
         buffer.strides = self.strides
         buffer.suboffsets = NULL
 
+    def writable(self):
+        return False
+
     def __releasebuffer__(self, Py_buffer *buffer):
         # Read-only means we need no logic here
         pass
@@ -180,3 +199,122 @@ cdef class IOBuf:
             return not(check_iobuf_less(self._this, othis))
         else:
             return NotImplemented
+
+cdef class WritableIOBuf(IOBuf):
+    @staticmethod
+    def create_unitialized(ssize_t size):
+        return writable_from_unique_ptr(create_new_iobuf(size))
+
+    def __init__(self, buffer not None):
+        # We don't support bytes here, because the python expectations
+        # are that bytes are immutable.
+        if isinstance(buffer, bytes):
+            raise ValueError("Buffer must not be of type bytes.")
+
+        cdef memoryview view = memoryview(buffer, PyBUF_C_CONTIGUOUS)
+        self._ours = from_python_buffer(view)
+
+        self._this = self._ours.get()
+        self._parent = None
+        self._hash = None
+        __cache[(<unsigned long>self._this, id(self))] = self
+
+    def __getbuffer__(self, Py_buffer *buffer, int flags):
+        self.shape[0] = self._this.length()
+        self.strides[0] = 1
+
+        buffer.buf = <void *>self._this.data()
+        buffer.format = NULL
+        buffer.internal = NULL
+        buffer.itemsize = 1
+        buffer.len = self._this.length()
+        buffer.ndim = 1
+        buffer.obj = self
+        buffer.readonly = 0
+        buffer.shape = self.shape
+        buffer.strides = self.strides
+        buffer.suboffsets = NULL
+
+    def writable(self):
+        return True
+
+    def append(self, ssize_t amount):
+        if amount < 0:
+            raise ValueError("Cannot append, amount must be positive")
+
+        if amount > self._this.tailroom():
+            raise ValueError("Cannot append more than capacity")
+
+        self._this.append(amount)
+
+    def prepend(self, ssize_t amount):
+        if amount < 0:
+            raise ValueError("Cannot prepend, amount must be positive")
+
+        if amount > self._this.headroom():
+            raise ValueError("Cannot prepend more than headroom")
+
+        self._this.prepend(amount)
+
+    def trim_start(self, ssize_t amount):
+        if amount < 0:
+            raise ValueError("Cannot trim start, amount must be positive")
+
+        if amount > self._this.length():
+            raise ValueError("Cannot trim more than length")
+
+        self._this.trimStart(amount)
+
+    def trim_end(self, ssize_t amount):
+        if amount < 0:
+            raise ValueError("Cannot trim end, amount must be positive")
+
+        if amount > self._this.length():
+            raise ValueError("Cannot trim more than length")
+
+        self._this.trimEnd(amount)
+
+    def append_to_chain(self, WritableIOBuf other):
+        self._this.appendToChain(move(other._ours))
+
+    def coalesce(self):
+        if sys.getrefcount(self) > 2:
+            raise RuntimeError("Cannot coalesce IOBuf with more than one reference")
+        self._this.coalesce()
+
+    def length(self):
+        return self._this.length()
+
+    def capacity(self):
+        return self._this.capacity()
+
+    @staticmethod
+    cdef WritableIOBuf create(cIOBuf* this, object parent):
+        key = (<unsigned long>this, id(parent))
+        cdef WritableIOBuf inst = __cache.get(key)
+        if inst is None:
+            inst = <WritableIOBuf>WritableIOBuf.__new__(WritableIOBuf)
+            inst._this = this
+            inst._parent = parent
+            __cache[key] = inst
+        return inst
+
+    def clone(self):
+        """ Clone the iobuf chain """
+        return writable_from_unique_ptr(self._this.clone())
+
+    @property
+    def next(self):
+        _next = self._this.next()
+        if _next == self._this:
+            return None
+
+        return WritableIOBuf.create(_next, self if self._parent is None else self._parent)
+
+    @property
+    def prev(self):
+        _prev = self._this.prev()
+        if _prev == self._this:
+            return None
+
+        return WritableIOBuf.create(_prev, self if self._parent is None else self._parent)

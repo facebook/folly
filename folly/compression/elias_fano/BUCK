@@ -1,0 +1,44 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "coding_detail",
+    headers = ["CodingDetail.h"],
+)
+
+cpp_library(
+    name = "bit_vector_coding",
+    headers = ["BitVectorCoding.h"],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/compression:instructions",
+        "//folly/compression:select64",
+        "//folly/compression/elias_fano:coding_detail",
+        "//folly/lang:bits",
+        "//folly/lang:bits_class",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+cpp_library(
+    name = "elias_fano_coding",
+    headers = ["EliasFanoCoding.h"],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/compression:instructions",
+        "//folly/compression:select64",
+        "//folly/compression/elias_fano:coding_detail",
+        "//folly/lang:assume",
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

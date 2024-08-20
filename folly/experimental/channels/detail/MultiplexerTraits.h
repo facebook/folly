@@ -14,45 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/experimental/channels/detail/FunctionTraits.h>
-
-namespace folly {
-namespace channels {
-namespace detail {
-
-template <typename MultiplexerType>
-struct MultiplexerTraits {
-  // First parameter type of MultiplexerType::onNewSubscription
-  using KeyType = std::tuple_element_t<
-      0,
-      typename FunctionTraits<
-          decltype(&MultiplexerType::onNewSubscription)>::Args>;
-
-  // Second parameter type for MultiplexerType::onNewSubscription
-  using KeyContextType = std::decay_t<typename std::tuple_element_t<
-      1,
-      typename FunctionTraits<
-          decltype(&MultiplexerType::onNewSubscription)>::Args>>;
-
-  // Third parameter type for MultiplexerType::onNewSubscription
-  using SubscriptionArgType = std::tuple_element_t<
-      2,
-      typename FunctionTraits<
-          decltype(&MultiplexerType::onNewSubscription)>::Args>;
-
-  // First parameter value type of MultiplexerType::onInputValue
-  using InputValueType = typename std::tuple_element_t<
-      0,
-      typename FunctionTraits<decltype(&MultiplexerType::onInputValue)>::Args>::
-      element_type;
-
-  // Element type of the returned vector from MultiplexerType::onNewSubscription
-  using OutputValueType =
-      typename FunctionTraits<decltype(&MultiplexerType::onNewSubscription)>::
-          Return::StorageType::value_type;
-};
-} // namespace detail
-} // namespace channels
-} // namespace folly
+#include <folly/channels/detail/MultiplexerTraits.h>

@@ -176,11 +176,9 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
   void* operator new(std::size_t) = delete;
 
   void execute() noexcept(InvokeNoexcept) {
-    if (InvokeNoexcept) {
-      using R = decltype(function_());
-      auto catcher_word = reinterpret_cast<uintptr_t>(&terminate);
-      auto catcher = reinterpret_cast<R (*)()>(catcher_word);
-      catch_exception(function_, catcher);
+    if constexpr (InvokeNoexcept) {
+      static_assert(std::is_same_v<void, decltype(function_())>);
+      catch_exception(function_, &terminate);
     } else {
       function_();
     }

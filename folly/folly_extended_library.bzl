@@ -20,7 +20,6 @@ def folly_extended_library(name, **kwargs):
             ],
         }),
         platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
-        xcode_public_headers_symlinks = True,
         deps = [
             "fbsource//xplat/folly:memory",
             "fbsource//third-party/glog:glog",

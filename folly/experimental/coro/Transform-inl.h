@@ -14,35 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/Traits.h>
-#include <folly/experimental/coro/Transform.h>
-
-#if FOLLY_HAS_COROUTINES
-
-namespace folly {
-namespace coro {
-
-template <
-    typename ReturnType,
-    typename TransformFn,
-    typename Reference,
-    typename Value,
-    typename ReturnReference>
-AsyncGenerator<ReturnReference> transform(
-    AsyncGenerator<Reference, Value> source, TransformFn transformFn) {
-  while (auto item = co_await source.next()) {
-    using InvokeResult = decltype(invoke(transformFn, std::move(item).value()));
-    if constexpr (std::is_constructible_v<ReturnReference&&, InvokeResult>) {
-      co_yield invoke(transformFn, std::move(item).value());
-    } else {
-      remove_cvref_t<ReturnReference> result =
-          invoke(transformFn, std::move(item).value());
-      co_yield std::forward<ReturnReference>(result);
-    }
-  }
-}
-
-} // namespace coro
-} // namespace folly
-
-#endif // FOLLY_HAS_COROUTINES
+#include <folly/coro/Transform-inl.h>

@@ -15,6 +15,9 @@ libdouble-conversion-dev
 double-conversion
 double-conversion-devel
 
+[pps]
+double-conversion
+
 [build]
 builder = cmake
 subdir = double-conversion-3.1.4

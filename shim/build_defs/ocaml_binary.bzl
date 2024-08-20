@@ -5,6 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("//:shims.bzl", _ocaml_binary = "ocaml_binary")
+load("@shim//:shims.bzl", _ocaml_binary = "ocaml_binary")
 
 ocaml_binary = _ocaml_binary

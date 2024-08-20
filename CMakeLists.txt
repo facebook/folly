@@ -85,6 +85,12 @@ else()
   set(IS_X86_64_ARCH FALSE)
 endif()
 
+if(NOT DEFINED IS_AARCH64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
+  set(IS_AARCH64_ARCH TRUE)
+else()
+  set(IS_AARCH64_ARCH FALSE)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Check target architecture
   if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -171,7 +177,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
 if (${FOLLY_NO_EXCEPTION_TRACER})
   REMOVE_MATCHES_FROM_LISTS(files hfiles
     MATCHES
-      "^${FOLLY_DIR}/experimental/exception_tracer/"
+      "^${FOLLY_DIR}/debugging/exception_tracer/"
   )
 endif()
 
@@ -282,19 +288,19 @@ if (${LIBSODIUM_FOUND})
       "setting SSE2/AVX2 compile flags for LtHash SIMD code"
     )
     set_source_files_properties(
-      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_AVX2.cpp
+      ${FOLLY_DIR}/crypto/detail/MathOperation_AVX2.cpp
       PROPERTIES
       COMPILE_FLAGS
       -mavx -mavx2 -msse2
     )
     set_source_files_properties(
-      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_Simple.cpp
+      ${FOLLY_DIR}/crypto/detail/MathOperation_Simple.cpp
       PROPERTIES
       COMPILE_FLAGS
       -mno-avx -mno-avx2 -mno-sse2
     )
     set_source_files_properties(
-      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_SSE2.cpp
+      ${FOLLY_DIR}/crypto/detail/MathOperation_SSE2.cpp
       PROPERTIES
       COMPILE_FLAGS
       -mno-avx -mno-avx2 -msse2
@@ -302,17 +308,17 @@ if (${LIBSODIUM_FOUND})
   endif()
 else()
   list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/crypto/Blake2xb.cpp
-    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_AVX2.cpp
-    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_Simple.cpp
-    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_SSE2.cpp
-    ${FOLLY_DIR}/experimental/crypto/LtHash.cpp
+    ${FOLLY_DIR}/crypto/Blake2xb.cpp
+    ${FOLLY_DIR}/crypto/detail/MathOperation_AVX2.cpp
+    ${FOLLY_DIR}/crypto/detail/MathOperation_Simple.cpp
+    ${FOLLY_DIR}/crypto/detail/MathOperation_SSE2.cpp
+    ${FOLLY_DIR}/crypto/LtHash.cpp
   )
   list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/crypto/Blake2xb.h
-    ${FOLLY_DIR}/experimental/crypto/detail/LtHashInternal.h
-    ${FOLLY_DIR}/experimental/crypto/LtHash-inl.h
-    ${FOLLY_DIR}/experimental/crypto/LtHash.h
+    ${FOLLY_DIR}/crypto/Blake2xb.h
+    ${FOLLY_DIR}/crypto/detail/LtHashInternal.h
+    ${FOLLY_DIR}/crypto/LtHash-inl.h
+    ${FOLLY_DIR}/crypto/LtHash.h
   )
 endif()
 if (NOT ${LIBGFLAGS_FOUND})
@@ -357,6 +363,27 @@ else()
   )
 endif()
 
+if (IS_X86_64_ARCH AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  message(
+    STATUS
+    "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
+    "setting AVX512 compile flags for crc32c SIMD code"
+  )
+  set_property(
+    SOURCE
+    ${FOLLY_DIR}/external/fast-crc32/avx512_crc32c_v8s3x4.cpp
+    APPEND PROPERTY COMPILE_OPTIONS
+    "-mavx512f" "-mavx512vl"
+  )
+else()
+  # Windows doesn't nead the extra flags.
+  message(
+    STATUS
+    "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
+    "skipping setting AVX512 compile flags for crc32c SIMD code"
+  )
+endif()
+
 list(APPEND folly_base_files
   ${files} ${hfiles}
 )
@@ -370,6 +397,25 @@ if (IS_X86_64_ARCH AND NOT MSVC)
   list(APPEND folly_base_files
     ${FOLLY_DIR}/memcpy.S
   )
+endif()
+
+set(ARM_AOR_ASM_FILES
+  ${FOLLY_DIR}/external/aor/memcpy-advsimd.S
+  ${FOLLY_DIR}/external/aor/memcpy-armv8.S
+  ${FOLLY_DIR}/external/aor/memcpy_sve.S
+  ${FOLLY_DIR}/external/aor/memset-advsimd.S
+)
+if (IS_AARCH64_ARCH)
+  foreach (AOR_FILE IN LISTS ARM_AOR_ASM_FILES)
+    set_property(
+      SOURCE
+      ${AOR_FILE}
+      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
+    )
+    list(APPEND folly_base_files
+      ${AOR_FILE}
+    )
+  endforeach()
 endif()
 
 add_library(folly_base OBJECT
@@ -544,9 +590,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.h
+    ${FOLLY_DIR}/compression/test/CodingTestUtils.cpp
     ${FOLLY_DIR}/container/test/F14TestUtil.h
     ${FOLLY_DIR}/container/test/TrackingTypes.h
-    ${FOLLY_DIR}/experimental/test/CodingTestUtils.cpp
     ${FOLLY_DIR}/futures/test/TestExecutor.cpp
     ${FOLLY_DIR}/futures/test/TestExecutor.h
     ${FOLLY_DIR}/io/async/test/BlockingSocket.h
@@ -598,12 +644,27 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
   apply_folly_compile_options_to_target(folly_test_support)
 
   folly_define_tests(
+    DIRECTORY algorithm/simd/detail/test/
+      TEST simd_any_of_test SOURCES SimdAnyOfTest.cpp
+      TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
+      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
+
+    DIRECTORY algorithm/simd/test/
+      TEST find_fixed_test SOURCES FindFixedTest.cpp
+      TEST movemask_test SOURCES MovemaskTest.cpp
+
     DIRECTORY chrono/test/
       TEST chrono_conv_test WINDOWS_DISABLED
         SOURCES ConvTest.cpp
 
     DIRECTORY compression/test/
       TEST compression_test SLOW SOURCES CompressionTest.cpp
+      TEST quotient_multiset_test SOURCES QuotientMultiSetTest.cpp
+      TEST select64_test SOURCES Select64Test.cpp
+
+    DIRECTORY compression/elias_fano/test/
+      TEST bitvector_test SOURCES BitVectorCodingTest.cpp
+      TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
 
     DIRECTORY container/test/
       TEST access_test SOURCES AccessTest.cpp
@@ -616,14 +677,25 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST f14_fwd_test SOURCES F14FwdTest.cpp
       TEST f14_map_test SOURCES F14MapTest.cpp
       TEST f14_set_test WINDOWS_DISABLED SOURCES F14SetTest.cpp
-      TEST heap_vector_types_test SOURCES heap_vector_types_test.cpp
+      BENCHMARK fbvector_benchmark
+        SOURCES FBVectorBenchmark.cpp
+        HEADERS FBVectorBenchmarks.cpp.h
+      TEST fbvector_test SOURCES FBVectorTest.cpp
       BENCHMARK foreach_benchmark SOURCES ForeachBenchmark.cpp
       TEST foreach_test SOURCES ForeachTest.cpp
+      TEST heap_vector_types_test SOURCES heap_vector_types_test.cpp
+      TEST map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
       TEST merge_test SOURCES MergeTest.cpp
+      TEST small_vector_test WINDOWS_DISABLED
+        SOURCES small_vector_test.cpp
+      TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
       BENCHMARK sparse_byte_set_benchmark WINDOWS_DISABLED
         SOURCES SparseByteSetBenchmark.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
       TEST util_test SOURCES UtilTest.cpp
+
+    DIRECTORY concurrency/container/test/
+      TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
 
     DIRECTORY concurrency/test/
       TEST atomic_shared_ptr_test SOURCES AtomicSharedPtrTest.cpp
@@ -647,17 +719,11 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST static_singleton_manager_test SOURCES StaticSingletonManagerTest.cpp
 
     DIRECTORY detail/test/
-      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
-
-    DIRECTORY detail/test/
       TEST simple_simd_string_utils_test SOURCES SimpleSimdStringUtilsTest.cpp
 
     DIRECTORY detail/test/
       TEST split_string_simd_test WINDOWS_DISABLED
         SOURCES SplitStringSimdTest.cpp
-
-    DIRECTORY detail/test/
-      TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
       TEST base64_detail_test WINDOWS_DISABLED
@@ -673,6 +739,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES EDFThreadPoolExecutorBenchmark.cpp
       TEST executor_test SOURCES ExecutorTest.cpp
       TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
+      # FunctionSchedulerTest has a lot of timing-dependent checks,
+      # and tends to fail on heavily loaded systems.
+      TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
       TEST global_executor_test SOURCES GlobalExecutorTest.cpp
       TEST serial_executor_test SOURCES SerialExecutorTest.cpp
       # Fails in ThreadPoolExecutorTest.RequestContext:719 data2 != nullptr
@@ -688,29 +757,14 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES UnboundedBlockingQueueBench.cpp
       TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
 
-    DIRECTORY experimental/test/
-      TEST autotimer_test SOURCES AutoTimerTest.cpp
-      TEST bits_test_2 SOURCES BitsTest.cpp
-      TEST bitvector_test SOURCES BitVectorCodingTest.cpp
-      TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
-      TEST event_count_test SOURCES EventCountTest.cpp
-      # FunctionSchedulerTest has a lot of timing-dependent checks,
-      # and tends to fail on heavily loaded systems.
-      TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
-      TEST future_dag_test SOURCES FutureDAGTest.cpp
-      TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
+    #DIRECTORY experimental/test/
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
       #TEST program_options_test SOURCES ProgramOptionsTest.cpp
-      TEST quotient_multiset_test SOURCES QuotientMultiSetTest.cpp
       # Depends on liburcu
       #TEST read_mostly_shared_ptr_test SOURCES ReadMostlySharedPtrTest.cpp
       #TEST ref_count_test SOURCES RefCountTest.cpp
-      TEST select64_test SOURCES Select64Test.cpp
-      TEST test_util_test SOURCES TestUtilTest.cpp
-      TEST tuple_ops_test SOURCES TupleOpsTest.cpp
 
-    DIRECTORY experimental/io/test/
-      TEST fs_util_test SOURCES FsUtilTest.cpp
+    #DIRECTORY experimental/io/test/
 
     DIRECTORY external/farmhash/test/
       TEST farmhash_test SOURCES farmhash_test.cpp
@@ -718,6 +772,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY logging/test/
       TEST async_file_writer_test WINDOWS_DISABLED
         SOURCES AsyncFileWriterTest.cpp
+      TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST config_parser_test SOURCES ConfigParserTest.cpp
       TEST config_update_test SOURCES ConfigUpdateTest.cpp
       TEST file_handler_factory_test WINDOWS_DISABLED
@@ -819,6 +874,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
 
     DIRECTORY io/test/
+      TEST fs_util_test SOURCES FsUtilTest.cpp
       TEST iobuf_test WINDOWS_DISABLED SOURCES IOBufTest.cpp
       TEST iobuf_cursor_test SOURCES IOBufCursorTest.cpp
       TEST iobuf_queue_test SOURCES IOBufQueueTest.cpp
@@ -881,8 +937,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST ssl_errors_test SOURCES SSLErrorsTest.cpp
 
     DIRECTORY lang/test/
+      TEST lang_align_test SOURCES AlignTest.cpp
       TEST lang_aligned_test SOURCES AlignedTest.cpp
       TEST lang_badge_test SOURCES BadgeTest.cpp
+      TEST lang_bits_class_test SOURCES BitsClassTest.cpp
       TEST lang_bits_test SOURCES BitsTest.cpp
       TEST lang_c_string_test SOURCES CStringTest.cpp
       TEST lang_cast_test SOURCES CastTest.cpp
@@ -898,7 +956,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK lang_to_ascii_benchmark SOURCES ToAsciiBench.cpp
       TEST lang_to_ascii_test SOURCES ToAsciiTest.cpp
       TEST lang_type_info_test SOURCES TypeInfoTest.cpp
-      TEST lang_uncaught_exceptions_test SOURCES UncaughtExceptionsTest.cpp
 
     DIRECTORY memory/test/
       TEST arena_test WINDOWS_DISABLED SOURCES ArenaTest.cpp
@@ -944,6 +1001,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK baton_benchmark SOURCES BatonBenchmark.cpp
       TEST baton_test SOURCES BatonTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
+      TEST event_count_test SOURCES EventCountTest.cpp
       TEST lifo_sem_test WINDOWS_DISABLED SOURCES LifoSemTests.cpp
       TEST relaxed_atomic_test WINDOWS_DISABLED SOURCES RelaxedAtomicTest.cpp
       TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
@@ -1001,10 +1059,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES FBStringBenchmark.cpp
         HEADERS FBStringTestBenchmarks.cpp.h
       TEST fbstring_test WINDOWS_DISABLED SOURCES FBStringTest.cpp
-      BENCHMARK fbvector_benchmark
-        SOURCES FBVectorBenchmark.cpp
-        HEADERS FBVectorBenchmarks.cpp.h
-      TEST fbvector_test SOURCES FBVectorTest.cpp
       TEST file_test SOURCES FileTest.cpp
       # Open-source linux build can't handle running this.
       #TEST file_lock_test SOURCES FileLockTest.cpp
@@ -1030,7 +1084,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lazy_test SOURCES LazyTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
-      TEST map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
       TEST memcpy_test SOURCES MemcpyTest.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
       TEST memory_test WINDOWS_DISABLED
@@ -1065,9 +1118,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       # SingletonTest requires Subprocess
       #TEST singleton_test SOURCES SingletonTest.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
-      TEST small_vector_test WINDOWS_DISABLED
-        SOURCES small_vector_test.cpp
-      TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
       BENCHMARK string_benchmark WINDOWS_DISABLED SOURCES StringBenchmark.cpp
       TEST string_test WINDOWS_DISABLED SOURCES StringTest.cpp
       BENCHMARK synchronized_benchmark WINDOWS_DISABLED
@@ -1086,6 +1136,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST uri_test SOURCES UriTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
 
+    DIRECTORY testing/test/
+      TEST test_util_test SOURCES TestUtilTest.cpp
+
     DIRECTORY json/test/
       TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
       TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
@@ -1102,7 +1155,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
   if (${LIBSODIUM_FOUND})
     folly_define_tests(
-      DIRECTORY experimental/crypto/test/
+      DIRECTORY crypto/test/
         TEST blake2xb_test SOURCES Blake2xbTest.cpp
         TEST lt_hash_test SOURCES LtHashTest.cpp
     )
@@ -1110,7 +1163,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
   if (${LIBAIO_FOUND})
     folly_define_tests(
-      DIRECTORY experimental/io/test/
+      DIRECTORY io/async/test/
         TEST async_io_test
           SOURCES
             AsyncIOTest.cpp

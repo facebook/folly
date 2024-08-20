@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/Executor.h>
-#include <folly/experimental/channels/RateLimiter.h>
+#include <folly/channels/RateLimiter.h>
 
 namespace folly {
 namespace channels {

@@ -35,26 +35,18 @@ class StaticSingletonManagerSansRtti {
  private:
   using Self = StaticSingletonManagerSansRtti;
   using Cache = std::atomic<void*>;
-  using Make = void*();
+  using Instance = void*(bool);
   struct Arg {
     Cache cache{}; // should be first field
-    Make* make;
-    void** debug;
+    Instance* instance;
 
     template <typename T, typename Tag>
     /* implicit */ constexpr Arg(tag_t<T, Tag>) noexcept
-        : make{thunk::make<T>},
-          debug{reinterpret_cast<void**>(&Self::debug<T, Tag>)} {}
+        : instance{instance_<T, Tag>} {}
   };
 
-  template <bool Noexcept>
-  static void* create_(Arg&) noexcept(Noexcept); // no defn; only for decltype
-
-  template <bool Noexcept>
-  using Create = decltype(&create_<Noexcept>);
-
   template <typename T, typename Tag>
-  static T* debug; // visible to debugger
+  static void* debug; // visible to debugger
 
  public:
   template <bool Noexcept>
@@ -62,48 +54,117 @@ class StaticSingletonManagerSansRtti {
     friend class StaticSingletonManagerSansRtti;
 
     template <typename T, typename Tag>
-    /* implicit */ constexpr ArgCreate(tag_t<T, Tag> t) noexcept
-        : Arg{t}, create{create_<T, Tag>} {
+    /* implicit */ constexpr ArgCreate(tag_t<T, Tag> t) noexcept : Arg{t} {
       static_assert(Noexcept == noexcept(T()), "mismatched noexcept");
     }
-
-   private:
-    Create<Noexcept> create;
   };
 
+  /// get_existing_cached
+  ///
+  /// Returns a pointer to the global if it has already been created and if it
+  /// is also already cached in the global arg.
   template <typename T, typename Tag>
-  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
-    static Arg arg{tag<T, Tag>};
-    return create<T, Tag>(arg);
+  FOLLY_ERASE static T* get_existing_cached() {
+    return get_existing_cached<T>(global<T, Tag>());
   }
 
+  /// get_existing
+  ///
+  /// Returns a pointer to the global if it has already been created. Caches it
+  /// in the global arg.
+  template <typename T, typename Tag>
+  FOLLY_ERASE static T* get_existing() {
+    return get_existing<T>(global<T, Tag>());
+  }
+
+  /// create
+  ///
+  /// Returns a pointer to the global if it has already been created, or creates
+  /// it. Caches it in the global arg.
+  template <typename T, typename Tag>
+  FOLLY_ERASE static T& create() {
+    return create<T>(global<T, Tag>());
+  }
+
+  /// get_existing_cached
+  ///
+  /// Returns a pointer to the global if it has already been created and if it
+  /// is also already cached in the given arg.
+  template <typename T, typename..., bool Noexcept = noexcept(T())>
+  FOLLY_ERASE static T* get_existing_cached(ArgCreate<Noexcept>& arg) {
+    auto const v = arg.cache.load(std::memory_order_acquire);
+    return static_cast<T*>(v);
+  }
+
+  /// get_existing
+  ///
+  /// Returns a pointer to the global if it has already been created. Caches it
+  /// in the given arg.
+  template <typename T, typename..., bool Noexcept = noexcept(T())>
+  FOLLY_ERASE static T* get_existing(ArgCreate<Noexcept>& arg) {
+    auto const v = arg.cache.load(std::memory_order_acquire);
+    auto const p = FOLLY_LIKELY(!!v) ? v : get_existing_(arg);
+    return static_cast<T*>(p);
+  }
+
+  /// create
+  ///
+  /// Returns a pointer to the global if it has already been created, or creates
+  /// it. Caches it in the given arg.
   template <typename T, typename..., bool Noexcept = noexcept(T())>
   FOLLY_ERASE static T& create(ArgCreate<Noexcept>& arg) {
     auto const v = arg.cache.load(std::memory_order_acquire);
-    auto const p = FOLLY_LIKELY(!!v) ? v : arg.create(arg);
+    auto const p = FOLLY_LIKELY(!!v) ? v : create_<noexcept(T())>(arg);
     return *static_cast<T*>(p);
   }
 
  private:
-  template <typename T, typename Tag>
-  FOLLY_ERASE static T& create(Arg& arg) {
-    auto const v = arg.cache.load(std::memory_order_acquire);
-    auto const p = FOLLY_LIKELY(!!v) ? v : create_<T, Tag>(arg);
-    return *static_cast<T*>(p);
+  template <typename T, typename Tag, typename R = ArgCreate<noexcept(T())>>
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static FOLLY_CXX23_CONSTEXPR R& global() {
+    static ArgCreate<noexcept(T())> arg{tag<T, Tag>};
+    return arg;
   }
 
   template <typename T, typename Tag>
-  FOLLY_EXPORT FOLLY_NOINLINE static void* create_(Arg& arg) noexcept(
-      noexcept(T())) {
-    static Indestructible<T> instance;
-    arg.cache.store(&*instance, std::memory_order_release);
-    *arg.debug = &*instance;
-    return &*instance;
+  FOLLY_EXPORT static void* instance_(bool create) {
+    static_assert(std::atomic<void*>::is_always_lock_free);
+    // the two static variables must be in the same function in order for them
+    // to be exported together and therefore to be structurally in sync
+    static std::atomic<void*> guard{nullptr};
+    if (!create) {
+      return guard.load(std::memory_order_acquire);
+    } else {
+      struct Holder {
+        T instance;
+        Holder() {
+          auto const ptr = &reinterpret_cast<unsigned char&>(instance);
+          guard.store(ptr, std::memory_order_release);
+          debug<T, Tag> = ptr;
+        }
+      };
+      static Indestructible<Holder> holder{};
+      return &holder->instance;
+    }
+  }
+
+  FOLLY_NOINLINE static void* get_existing_(Arg& arg) noexcept {
+    auto const v = arg.instance(false);
+    if (v) {
+      arg.cache.store(v, std::memory_order_release);
+    }
+    return v;
+  }
+
+  template <bool Noexcept>
+  FOLLY_NOINLINE static void* create_(Arg& arg) noexcept(Noexcept) {
+    auto const v = arg.instance(true);
+    arg.cache.store(v, std::memory_order_release);
+    return v;
   }
 };
 
 template <typename T, typename Tag>
-T* StaticSingletonManagerSansRtti::debug;
+void* StaticSingletonManagerSansRtti::debug;
 
 // This internal-use-only class is used to create all leaked Meyers singletons.
 // It guarantees that only one instance of every such singleton will ever be
@@ -131,17 +192,11 @@ class StaticSingletonManagerWithRtti {
     /* implicit */ constexpr Arg(tag_t<T, Tag>) noexcept
         : key{FOLLY_TYPE_INFO_OF(Src<T, Tag>)},
           make{thunk::make<T>},
-          debug{reinterpret_cast<void**>(&Self::debug<T, Tag>)} {}
+          debug{&Self::debug<T, Tag>} {}
   };
 
-  template <bool Noexcept>
-  FOLLY_NOINLINE static void* create_(Arg&) noexcept(Noexcept);
-
-  template <bool Noexcept>
-  using Create = decltype(&create_<Noexcept>);
-
   template <typename T, typename Tag>
-  static T* debug; // visible to debugger
+  static void* debug; // visible to debugger
 
  public:
   template <bool Noexcept>
@@ -149,39 +204,85 @@ class StaticSingletonManagerWithRtti {
     friend class StaticSingletonManagerWithRtti;
 
     template <typename T, typename Tag>
-    /* implicit */ constexpr ArgCreate(tag_t<T, Tag> t) noexcept
-        : Arg{t}, create{create_<Noexcept>} {
+    /* implicit */ constexpr ArgCreate(tag_t<T, Tag> t) noexcept : Arg{t} {
       static_assert(Noexcept == noexcept(T()), "mismatched noexcept");
     }
-
-   private:
-    Create<Noexcept> create;
   };
 
+  /// get_existing_cached
+  ///
+  /// Returns a pointer to the global if it has already been created and if it
+  /// is also already cached in the global arg.
   template <typename T, typename Tag>
-  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
-    static Arg arg{tag<T, Tag>};
-    return create<T, Tag>(arg);
+  FOLLY_ERASE static T* get_existing_cached() {
+    return get_existing_cached<T>(global<T, Tag>());
   }
 
+  /// get_existing
+  ///
+  /// Returns a pointer to the global if it has already been created. Caches it
+  /// in the global arg.
+  template <typename T, typename Tag>
+  FOLLY_ERASE static T* get_existing() {
+    return get_existing<T>(global<T, Tag>());
+  }
+
+  /// create
+  ///
+  /// Returns a pointer to the global if it has already been created, or creates
+  /// it. Caches it in the global arg.
+  template <typename T, typename Tag>
+  FOLLY_ERASE static T& create() {
+    return create<T>(global<T, Tag>());
+  }
+
+  /// get_existing_cached
+  ///
+  /// Returns a pointer to the global if it has already been created and if it
+  /// is also already cached in the given arg.
+  template <typename T, typename..., bool Noexcept = noexcept(T())>
+  FOLLY_ERASE static T* get_existing_cached(ArgCreate<Noexcept>& arg) {
+    auto const v = arg.cache.load(std::memory_order_acquire);
+    return static_cast<T*>(v);
+  }
+
+  /// get_existing
+  ///
+  /// Returns a pointer to the global if it has already been created. Caches it
+  /// in the given arg.
+  template <typename T, typename..., bool Noexcept = noexcept(T())>
+  FOLLY_ERASE static T* get_existing(ArgCreate<Noexcept>& arg) {
+    auto const v = arg.cache.load(std::memory_order_acquire);
+    auto const p = FOLLY_LIKELY(!!v) ? v : get_existing_(arg);
+    return static_cast<T*>(p);
+  }
+
+  /// create
+  ///
+  /// Returns a pointer to the global if it has already been created, or creates
+  /// it. Caches it in the given arg.
   template <typename T, typename..., bool Noexcept = noexcept(T())>
   FOLLY_ERASE static T& create(ArgCreate<Noexcept>& arg) {
-    auto const v = arg.cache.load(std::memory_order_acquire);
-    auto const p = FOLLY_LIKELY(!!v) ? v : arg.create(arg);
-    return *static_cast<T*>(p);
-  }
-
- private:
-  template <typename T, typename Tag>
-  FOLLY_ERASE static T& create(Arg& arg) {
     auto const v = arg.cache.load(std::memory_order_acquire);
     auto const p = FOLLY_LIKELY(!!v) ? v : create_<noexcept(T())>(arg);
     return *static_cast<T*>(p);
   }
+
+ private:
+  template <typename T, typename Tag, typename R = ArgCreate<noexcept(T())>>
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static FOLLY_CXX23_CONSTEXPR R& global() {
+    static ArgCreate<noexcept(T())> arg{tag<T, Tag>};
+    return arg;
+  }
+
+  FOLLY_NOINLINE static void* get_existing_(Arg& arg) noexcept;
+
+  template <bool Noexcept>
+  FOLLY_NOINLINE static void* create_(Arg& arg) noexcept(Noexcept);
 };
 
 template <typename T, typename Tag>
-T* StaticSingletonManagerWithRtti::debug;
+void* StaticSingletonManagerWithRtti::debug;
 
 using StaticSingletonManager = std::conditional_t<
     kHasRtti,

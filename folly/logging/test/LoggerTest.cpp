@@ -151,12 +151,12 @@ class FormattableButNoToString {
 namespace fmt {
 template <>
 struct formatter<ToStringFailure> : formatter<std::string> {
-  auto format(ToStringFailure, format_context& ctx) { return ctx.out(); }
+  auto format(ToStringFailure, format_context& ctx) const { return ctx.out(); }
 };
 
 template <>
 struct formatter<FormattableButNoToString> : formatter<std::string> {
-  auto format(FormattableButNoToString, format_context& ctx) {
+  auto format(FormattableButNoToString, format_context& ctx) const {
     throw std::runtime_error("test");
     return ctx.out();
   }

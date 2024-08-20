@@ -546,7 +546,7 @@ class WeightedEvictingCacheMap {
   }
 
   template <typename K>
-  bool set(const K& key, const TValue& value, std::size_t weight) {
+  void set(const K& key, const TValue& value, std::size_t weight) {
     TValue tmp{value}; // can't yet rely on C++17 temporary materialization
     return set(key, std::move(tmp), weight);
   }

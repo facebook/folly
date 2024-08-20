@@ -14,26 +14,4 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <glog/logging.h>
-
-#include <folly/experimental/TestUtil.h>
-#include <folly/experimental/io/FsUtil.h>
-
-namespace folly {
-namespace test {
-
-class TempFileUtil {
- public:
-  // Returns a temporary file that is NOT kept open
-  // but is deleted on destruction
-  // Generate random-looking but reproduceable data.
-  static TemporaryFile getTempFile(size_t size);
-
- private:
-  TempFileUtil() = delete;
-};
-
-} // namespace test
-} // namespace folly
+#include <folly/io/async/test/IoTestTempFileUtil.h>

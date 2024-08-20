@@ -87,7 +87,8 @@ class FastStaticBool {
   }
 
  private:
-  FOLLY_NOINLINE FOLLY_COLD FOLLY_EXPORT static bool getSlow() noexcept {
+  [[FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE FOLLY_EXPORT static bool
+  getSlow() noexcept {
     static bool rv = [] {
       auto v = Initializer{}();
       flag_.store(v ? 1 : -1, std::memory_order_release);

@@ -19,12 +19,59 @@
 #include <folly/Range.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/lang/Keep.h>
 
 DECLARE_bool(benchmark);
 
 using folly::IOBuf;
 using std::unique_ptr;
 using namespace folly::io;
+
+namespace {
+
+template <class T>
+FOLLY_ALWAYS_INLINE void check_QueueAppender_write_loop(
+    QueueAppender* out, const T* data, size_t len) {
+  for (size_t i = 0; i < len; ++i) {
+    out->write(data[i]);
+  }
+}
+
+} // namespace
+
+extern "C" FOLLY_KEEP FOLLY_NOINLINE void check_QueueAppender_write_loop_uint8(
+    QueueAppender* out, const uint8_t* data, size_t len) {
+  check_QueueAppender_write_loop(out, data, len);
+}
+
+extern "C" FOLLY_KEEP FOLLY_NOINLINE void check_QueueAppender_write_loop_uint16(
+    QueueAppender* out, const uint16_t* data, size_t len) {
+  check_QueueAppender_write_loop(out, data, len);
+}
+
+extern "C" FOLLY_KEEP FOLLY_NOINLINE void check_QueueAppender_write_loop_uint32(
+    QueueAppender* out, const uint32_t* data, size_t len) {
+  check_QueueAppender_write_loop(out, data, len);
+}
+
+extern "C" FOLLY_KEEP FOLLY_NOINLINE void check_QueueAppender_write_loop_uint64(
+    QueueAppender* out, const uint64_t* data, size_t len) {
+  check_QueueAppender_write_loop(out, data, len);
+}
+
+extern "C" FOLLY_KEEP FOLLY_NOINLINE void check_QueueAppender_write_mixed(
+    QueueAppender* out,
+    uint8_t a,
+    uint16_t b,
+    uint32_t c,
+    uint64_t d,
+    uint8_t e) {
+  out->write(a);
+  out->write(b);
+  out->write(c);
+  out->write(d);
+  out->write(e);
+}
 
 int benchmark_size = 1000;
 unique_ptr<IOBuf> iobuf_benchmark;

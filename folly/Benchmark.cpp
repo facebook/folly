@@ -108,6 +108,11 @@ FOLLY_GFLAGS_DEFINE_uint32(
     1000,
     "Maximum number of trials (iterations) executed for each benchmark.");
 
+FOLLY_GFLAGS_DEFINE_bool(
+    bm_list,
+    false,
+    "Print out list of all benchmark test names without running them.");
+
 namespace folly {
 namespace detail {
 
@@ -451,7 +456,14 @@ class BenchmarkResultsPrinter {
 
       string s = datum.name;
       if (s == "-") {
+        // Simply draw a line across the benchmark results
         separator('-');
+        continue;
+      }
+      if (s[0] == '"') {
+        // Simply print some text. Strips implied quote characters
+        // from the beginning and end of the name.
+        printf("%s\n", s.substr(1, s.length() - 2).c_str());
         continue;
       }
       bool useBaseline = false;
@@ -848,6 +860,16 @@ bool BenchmarkingStateBase::useCounters() const {
       });
 }
 
+std::vector<std::string> BenchmarkingStateBase::getBenchmarkList() {
+  std::vector<std::string> bmNames;
+  auto toRun = selectBenchmarksToRun(benchmarks_);
+  for (auto benchmarkRegistration : toRun.benchmarks) {
+    bmNames.push_back(benchmarkRegistration->name);
+  }
+
+  return bmNames;
+}
+
 // static
 folly::StringPiece BenchmarkingStateBase::getGlobalBaselineNameForTests() {
   return kGlobalBenchmarkBaseline;
@@ -894,14 +916,28 @@ std::vector<BenchmarkResult> runBenchmarksWithResults() {
 } // namespace detail
 
 void runBenchmarks() {
+  auto& state = detail::globalBenchmarkState();
+
+  if (FLAGS_bm_list) {
+    auto bmNames = state.getBenchmarkList();
+    for (auto testName : bmNames) {
+      std::cout << testName << std::endl;
+    }
+    return;
+  }
+
   if (FLAGS_bm_profile) {
     printf(
         "WARNING: Running with constant number of iterations. Results might be jittery.\n");
   }
 
-  checkRunMode();
+  if (FLAGS_bm_min_iters >= FLAGS_bm_max_iters) {
+    std::cerr << "WARNING: bm_min_iters > bm_max_iters; increasing the max"
+              << std::endl;
+    FLAGS_bm_max_iters = FLAGS_bm_min_iters + 1;
+  }
 
-  auto& state = detail::globalBenchmarkState();
+  checkRunMode();
 
   BenchmarkResultsPrinter printer;
   bool useCounter = state.useCounters();

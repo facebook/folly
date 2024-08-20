@@ -35,7 +35,7 @@
 static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 
 #if defined(__GNUC__) && !defined(__clang__)
-static_assert(__GNUC__ >= 8, "__GNUC__ >= 8");
+static_assert(__GNUC__ >= 10, "__GNUC__ >= 10");
 #endif
 
 #if defined(_MSC_VER)
@@ -561,6 +561,17 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CXX20_CONSTEXPR constexpr
 #else
 #define FOLLY_CXX20_CONSTEXPR
+#endif
+
+//  FOLLY_CXX23_CONSTEXPR
+//
+//  C++23 permits more cases to be marked constexpr, including definitions of
+//  variables of non-literal type in constexpr function as long as they are not
+//  constant-evaluated.
+#if FOLLY_CPLUSPLUS >= 202302L
+#define FOLLY_CXX23_CONSTEXPR constexpr
+#else
+#define FOLLY_CXX23_CONSTEXPR
 #endif
 
 // C++20 constinit

@@ -22,18 +22,13 @@
 #include <thread>
 #include <vector>
 
-#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/container/test/TrackingTypes.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Latch.h>
 #include <folly/test/DeterministicSchedule.h>
-
-#if FOLLY_CPLUSPLUS >= 202002L
-// std::latch becomes visible in C++20 mode
-#include <latch>
-#endif
 
 using namespace folly::test;
 using namespace folly;
@@ -1140,14 +1135,14 @@ TYPED_TEST_P(ConcurrentHashMapTest, ConcurrentInsertClear) {
 }
 
 TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
-// This needs C++20 for std::latch.
-#if FOLLY_CPLUSPLUS >= 202002L
   // Create a map where we keep reclaiming a lot of objects that are linked to
   // one node.
 
   // Ensure all entries are mapped to a single segment.
-  auto constant_hash = [](unsigned long) -> uint64_t { return 0; };
-  CHM<unsigned long, unsigned long, decltype(constant_hash)> map;
+  struct constant_hash {
+    uint64_t operator()(unsigned long) const noexcept { return 0; }
+  };
+  CHM<unsigned long, unsigned long, constant_hash> map;
   static constexpr unsigned long key_prev =
       0; // A key that the test key has a link to - to guard against immediate
          // reclamation.
@@ -1165,7 +1160,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
   // It should be uncommon to have more than 2^32 concurrent accesses.
   static constexpr uint64_t num_threads = std::numeric_limits<uint16_t>::max();
   static constexpr uint64_t iters = 100;
-  std::latch start{num_threads};
+  folly::Latch start(num_threads);
   for (uint64_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([t, &map, &start]() {
       start.arrive_and_wait();
@@ -1185,7 +1180,6 @@ TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
   for (auto& t : threads) {
     join;
   }
-#endif
 }
 
 REGISTER_TYPED_TEST_SUITE_P(
@@ -1236,7 +1230,7 @@ REGISTER_TYPED_TEST_SUITE_P(
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 
-#if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
+#if FOLLY_SSE_PREREQ(4, 2) && FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 using folly::detail::concurrenthashmap::simd::SIMDTable;
 typedef ::testing::Types<MapFactory<BucketTable>, MapFactory<SIMDTable>>
     MapFactoryTypes;

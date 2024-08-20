@@ -17,16 +17,16 @@
 #include <folly/io/async/SSLContext.h>
 
 #include <folly/FileUtil.h>
-#include <folly/experimental/TestUtil.h>
 #include <folly/io/async/test/SSLUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
 #include <folly/ssl/OpenSSLKeyUtils.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
+#include <folly/testing/TestUtil.h>
 
 #if !defined(FOLLY_CERTS_DIR)
-#define FOLLY_CERTS_DIR "folly/io/async/test"
+#define FOLLY_CERTS_DIR "folly/io/async/test/certs"
 #endif
 
 using namespace std;
@@ -283,7 +283,6 @@ TEST_F(SSLContextTest, TestInvalidSigAlgThrows) {
   }
 }
 
-#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
 TEST_F(SSLContextTest, TestSetCiphersuites) {
   std::vector<std::string> ciphersuitesList{
       "TLS_AES_128_CCM_SHA256",
@@ -301,15 +300,12 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
       ctx.setCiphersuitesOrThrow("ECDHE-ECDSA-AES256-GCM-SHA384"),
       std::runtime_error);
 }
-#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
 
-#if FOLLY_OPENSSL_HAS_TLS13
 TEST_F(SSLContextTest, TestTLS13MinVersion) {
   SSLContext sslContext{SSLContext::SSLVersion::TLSv1_3};
   int minProtoVersion = SSL_CTX_get_min_proto_version(sslContext.getSSLCtx());
   EXPECT_EQ(minProtoVersion, TLS1_3_VERSION);
 }
-#endif
 
 TEST_F(SSLContextTest, AdvertisedNextProtocols) {
   EXPECT_EQ(ctx.getAdvertisedNextProtocols(), "");

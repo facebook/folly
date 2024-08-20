@@ -304,30 +304,21 @@ AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
 template <typename Task>
 template <typename Consumer>
 bool AtomicNotificationQueue<Task>::drive(Consumer&& consumer) {
-  Queue nextQueue;
-  // Since we cannot know if a task will be discarded before trying to execute
-  // it, this check may cause this function to return early. That is, even
-  // though:
-  //   1. numConsumed < maxReadAtOnce_
-  //   2. atomicQueue_ is not empty
-  // This is not an issue in practice because these tasks will be executed in
-  // the next round.
-  //
-  // In short, if `size() > maxReadAtOnce_`:
-  //   * at least maxReadAtOnce_ tasks will be "processed"
-  //   * at most maxReadAtOnce_ tasks will be "executed" (rest being discarded)
-  if (maxReadAtOnce_ == 0 || queue_.size() < maxReadAtOnce_) {
-    nextQueue = atomicQueue_.getTasks();
-  }
-  const bool wasAnyProcessed = !queue_.empty() || !nextQueue.empty();
+  auto* atomicQueueLastTask = atomicQueue_.peekHead();
+  bool queueRefilled = false;
+  bool wasAnyProcessed = false;
+  bool stop = false;
   for (uint32_t numConsumed = 0;
-       maxReadAtOnce_ == 0 || numConsumed < maxReadAtOnce_;) {
+       !stop && (maxReadAtOnce_ == 0 || numConsumed < maxReadAtOnce_);) {
     if (queue_.empty()) {
-      queue_ = std::move(nextQueue);
+      queue_ = atomicQueue_.getTasks();
       if (queue_.empty()) {
         break;
       }
+      DCHECK(!queueRefilled); // We should have already stopped.
+      queueRefilled = true;
     }
+    wasAnyProcessed = true;
     // This is faster than fetch_add and is safe because only consumer thread
     // writes to taskExecuteCount_.
     taskExecuteCount_.store(
@@ -335,13 +326,28 @@ bool AtomicNotificationQueue<Task>::drive(Consumer&& consumer) {
         std::memory_order_relaxed);
     {
       auto& curNode = queue_.front();
+      // If we reached the last task in atomicQueue_ at the time drive() was
+      // called, stop after processing this task.
+      if (queueRefilled &&
+          (atomicQueueLastTask == nullptr || &curNode == atomicQueueLastTask)) {
+        stop = true;
+      }
+
       AtomicNotificationQueueTaskStatus consumeTaskStatus =
           detail::invokeConsumerWithTask(
               std::forward<Consumer>(consumer),
               std::move(curNode.task),
               std::move(curNode.rctx));
-      if (consumeTaskStatus == AtomicNotificationQueueTaskStatus::CONSUMED) {
-        ++numConsumed;
+
+      switch (consumeTaskStatus) {
+        case AtomicNotificationQueueTaskStatus::CONSUMED_STOP:
+          stop = true;
+          [[fallthrough]];
+        case AtomicNotificationQueueTaskStatus::CONSUMED:
+          ++numConsumed;
+          break;
+        case AtomicNotificationQueueTaskStatus::DISCARD:
+          break;
       }
     }
     queue_.pop();

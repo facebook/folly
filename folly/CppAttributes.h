@@ -80,10 +80,21 @@
  * optimizer both when processing the function body and when analyzing
  * call-sites.
  */
-#if defined(__GNUC__) && __GNUC__
-#define FOLLY_COLD __attribute__((__cold__))
+#if FOLLY_HAS_CPP_ATTRIBUTE(gnu::cold)
+#define FOLLY_ATTR_GNU_COLD gnu::cold
 #else
-#define FOLLY_COLD
+#define FOLLY_ATTR_GNU_COLD
+#endif
+
+/// FOLLY_ATTR_MAYBE_UNUSED_IF_NDEBUG
+///
+/// When defined(NDEBUG), expands to maybe_unused; otherwise, expands to empty.
+/// Useful for marking variables that are used, in the sense checked for by the
+/// attribute maybe_unused, only in debug builds.
+#if defined(NDEBUG)
+#define FOLLY_ATTR_MAYBE_UNUSED_IF_NDEBUG maybe_unused
+#else
+#define FOLLY_ATTR_MAYBE_UNUSED_IF_NDEBUG
 #endif
 
 /**
@@ -93,7 +104,7 @@
  *  class Empty {};
  *
  *  class NonEmpty1 {
- *    FOLLY_ATTR_NO_UNIQUE_ADDRESS Empty e;
+ *    [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] Empty e;
  *    int f;
  *  };
  *
@@ -106,7 +117,7 @@
  *  sizeof(NonEmpty2); // must be > sizeof(int)
  */
 #if FOLLY_HAS_CPP_ATTRIBUTE(no_unique_address)
-#define FOLLY_ATTR_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS no_unique_address
 #else
 #define FOLLY_ATTR_NO_UNIQUE_ADDRESS
 #endif
@@ -123,15 +134,15 @@
  * other type of objects, just like the char type.
  */
 #if FOLLY_HAS_CPP_ATTRIBUTE(gnu::may_alias)
-#define FOLLY_ATTR_MAY_ALIAS gnu::may_alias
+#define FOLLY_ATTR_GNU_MAY_ALIAS gnu::may_alias
 #else
-#define FOLLY_ATTR_MAY_ALIAS
+#define FOLLY_ATTR_GNU_MAY_ALIAS
 #endif
 
 #if FOLLY_HAS_CPP_ATTRIBUTE(gnu::pure)
-#define FOLLY_ATTR_PURE gnu::pure
+#define FOLLY_ATTR_GNU_PURE gnu::pure
 #else
-#define FOLLY_ATTR_PURE
+#define FOLLY_ATTR_GNU_PURE
 #endif
 
 #if FOLLY_HAS_CPP_ATTRIBUTE(clang::preserve_most)
@@ -144,4 +155,10 @@
 #define FOLLY_ATTR_CLANG_PRESERVE_ALL clang::preserve_all
 #else
 #define FOLLY_ATTR_CLANG_PRESERVE_ALL
+#endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(gnu::used)
+#define FOLLY_ATTR_GNU_USED gnu::used
+#else
+#define FOLLY_ATTR_GNU_USED
 #endif

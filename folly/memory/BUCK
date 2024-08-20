@@ -171,7 +171,7 @@ cpp_unittest(
     allocator = "jemalloc",
     deps = [
         "//folly/container:f14_hash",
-        "//folly/experimental:jemalloc_huge_page_allocator",
+        "//folly/memory:jemalloc_huge_page_allocator",
         "//folly/memory:malloc",
         "//folly/portability:gtest",
     ],
@@ -183,8 +183,8 @@ cpp_unittest(
     headers = [],
     allocator = "jemalloc",
     deps = [
-        "//folly/experimental:jemalloc_nodump_allocator",
         "//folly/io:iobuf",
+        "//folly/memory:jemalloc_nodump_allocator",
         "//folly/memory:malloc",
         "//folly/portability:gtest",
     ],

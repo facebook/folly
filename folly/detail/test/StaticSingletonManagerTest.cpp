@@ -70,10 +70,20 @@ TYPED_TEST_P(StaticSingletonManagerTest, example) {
   EXPECT_NE(&i, &k);
   EXPECT_EQ(T::value, k);
 
-  static typename K::template ArgCreate<true> m_arg{tag<T, Tag<K, int>>};
+  typename K::template ArgCreate<true> m_arg{tag<T, Tag<K, int>>};
+  EXPECT_EQ(nullptr, K::template get_existing_cached<T>(m_arg));
+  EXPECT_EQ(nullptr, K::template get_existing<T>(m_arg));
+
   auto& m = K::template create<T>(m_arg);
   EXPECT_NE(&i, &m);
   EXPECT_EQ(T::value, m);
+  EXPECT_EQ(&m, K::template get_existing_cached<T>(m_arg));
+  EXPECT_EQ(&m, K::template get_existing<T>(m_arg));
+
+  typename K::template ArgCreate<true> n_arg{tag<T, Tag<K, int>>};
+  EXPECT_EQ(nullptr, K::template get_existing_cached<T>(n_arg));
+  EXPECT_EQ(&m, K::template get_existing<T>(n_arg));
+  EXPECT_EQ(&m, &K::template create<T>(n_arg));
 }
 
 REGISTER_TYPED_TEST_SUITE_P( //

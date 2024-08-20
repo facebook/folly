@@ -20,8 +20,8 @@
 #include <folly/Format.h>
 #include <folly/IntrusiveList.h>
 #include <folly/ScopeGuard.h>
-#include <folly/experimental/channels/Channel.h>
-#include <folly/experimental/channels/ChannelCallbackHandle.h>
+#include <folly/channels/Channel.h>
+#include <folly/channels/ChannelCallbackHandle.h>
 #include <folly/experimental/channels/detail/Utility.h>
 #include <folly/experimental/coro/Task.h>
 

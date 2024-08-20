@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+#include <folly/channels/Channel.h>
+#include <folly/channels/test/ChannelTestUtil.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/channels/Channel.h>
-#include <folly/experimental/channels/test/ChannelTestUtil.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/portability/GTest.h>
 

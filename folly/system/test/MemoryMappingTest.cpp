@@ -90,7 +90,6 @@ namespace {
 void writeStringToFileOrDie(const std::string& str, int fd) {
   const char* b = str.c_str();
   size_t count = str.size();
-  ssize_t total_bytes = 0;
   ssize_t r;
   do {
     r = write(fd, b, count);
@@ -100,8 +99,6 @@ void writeStringToFileOrDie(const std::string& str, int fd) {
       }
       PCHECK(r) << "write";
     }
-
-    total_bytes += r;
     b += r;
     count -= r;
   } while (r != 0 && count);
