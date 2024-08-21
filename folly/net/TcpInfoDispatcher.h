@@ -57,7 +57,7 @@ class TcpInfoDispatcher {
 /**
  * Container for folly::TcpInfoDispatcher.
  *
- * Enables overriden Dispatcher to be installed for tests and special cases.
+ * Enables overridden Dispatcher to be installed for tests and special cases.
  * If no override is installed, returns default Dispatcher instance.
  */
 class TcpInfoDispatcherContainer {
