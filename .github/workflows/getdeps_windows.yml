@@ -35,6 +35,8 @@ jobs:
       run: python build/fbcode_builder/getdeps.py fetch --no-tests cmake
     - name: Fetch double-conversion
       run: python build/fbcode_builder/getdeps.py fetch --no-tests double-conversion
+    - name: Fetch fast_float
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fast_float
     - name: Fetch fmt
       run: python build/fbcode_builder/getdeps.py fetch --no-tests fmt
     - name: Fetch gflags
@@ -69,6 +71,8 @@ jobs:
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests cmake
     - name: Build double-conversion
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests double-conversion
+    - name: Build fast_float
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests fast_float
     - name: Build fmt
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests fmt
     - name: Build gflags

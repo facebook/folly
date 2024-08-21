@@ -13,7 +13,7 @@ subdir = fast_float-2.0.0
 FASTFLOAT_TEST = OFF
 FASTFLOAT_SANITIZE = OFF
 
-[debs]
+[debs.not(all(distro=ubuntu,any(distro_vers="18.04",distro_vers="20.04",distro_vers="22.04")))]
 libfast-float-dev
 
 [rpms.distro=fedora]
