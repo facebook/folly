@@ -1203,6 +1203,8 @@ void LZMA2StreamCodec::resetDStream() {
   }
 }
 
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wswitch-enum")
 lzma_ret lzmaThrowOnError(lzma_ret const rc) {
   switch (rc) {
     case LZMA_OK:
@@ -1223,6 +1225,7 @@ lzma_ret lzmaThrowOnError(lzma_ret const rc) {
           to<std::string>("LZMA2StreamCodec: error: ", rc));
   }
 }
+FOLLY_POP_WARNING
 
 lzma_action lzmaTranslateFlush(StreamCodec::FlushOp flush) {
   switch (flush) {
