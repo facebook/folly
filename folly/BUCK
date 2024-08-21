@@ -1268,8 +1268,6 @@ cpp_library(
         "//folly/lang:safe_assert",
         "//folly/portability:config",
         "//folly/portability:fmt_compile",
-        "//folly/system:pid",
-        "//folly/system:thread_name",
     ],
     exported_deps = [
         ":cancellation_token",

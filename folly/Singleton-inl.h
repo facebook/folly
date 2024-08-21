@@ -294,7 +294,6 @@ void SingletonHolder<T>::createInstance() {
       std::make_shared<std::atomic<bool>>(false);
 
   // Can't use make_shared -- no support for a custom deleter, sadly.
-  vault_.addToShutdownLog("Creating " + type().name());
   std::shared_ptr<T> instance(
       create_(),
       [destroy_baton, print_destructor_stack_trace, type = type()](T*) mutable {
@@ -303,7 +302,6 @@ void SingletonHolder<T>::createInstance() {
           detail::singletonPrintDestructionStackTrace(type);
         }
       });
-  vault_.addToShutdownLog(type().name() + " created.");
 
   // We should schedule destroyInstances() only after the singleton was
   // created. This will ensure it will be destroyed before singletons,
