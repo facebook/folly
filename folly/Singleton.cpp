@@ -36,6 +36,8 @@
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/FmtCompile.h>
+#include <folly/system/Pid.h>
+#include <folly/system/ThreadName.h>
 // Before registrationComplete() we cannot assume that glog has been
 // initialized, so we need to use RAW_LOG for any message that may be logged
 // before that.
@@ -455,12 +457,17 @@ void SingletonVault::addToShutdownLog(std::string message) {
   std::chrono::milliseconds millis =
       std::chrono::duration_cast<std::chrono::milliseconds>(
           now.time_since_epoch());
-  shutdownLog_.wlock()->push_back(fmt::format("{:%T} {}", millis, message));
+  shutdownLog_.wlock()->push_back(fmt::format(
+      "{:%T} {} on thread {}, pid {}",
+      millis,
+      message,
+      folly::getCurrentThreadName().value_or("{unset thread name}"),
+      folly::get_cached_pid()));
 }
 
 #if FOLLY_HAVE_LIBRT
 namespace {
-[[noreturn]] void fireShutdownSignalHelper(sigval_t sigval) {
+void fireShutdownSignalHelper(sigval_t sigval) {
   static_cast<SingletonVault*>(sigval.sival_ptr)->fireShutdownTimer();
 }
 } // namespace
@@ -495,7 +502,7 @@ void SingletonVault::startShutdownTimer() {
 #endif
 }
 
-[[noreturn]] void SingletonVault::fireShutdownTimer() {
+void SingletonVault::fireShutdownTimer() {
   std::string shutdownLog;
   for (auto& logMessage : shutdownLog_.copy()) {
     shutdownLog += logMessage + "\n";
@@ -506,7 +513,17 @@ void SingletonVault::startShutdownTimer() {
       std::chrono::milliseconds(shutdownTimeout_).count(),
       "ms. Shutdown log:\n",
       shutdownLog);
+  shutdownLogOutputHandler_(msg);
+}
+
+[[noreturn]] void SingletonVault::defaultShutdownLogOutputHandler(
+    std::string msg) {
   folly::terminate_with<std::runtime_error>(msg);
+}
+
+void SingletonVault::setShutdownLogOutputHandler(
+    std::function<void(std::string)> shutdownLogOutputHandlerIn) {
+  shutdownLogOutputHandler_ = std::move(shutdownLogOutputHandlerIn);
 }
 
 } // namespace folly

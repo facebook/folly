@@ -33,6 +33,7 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
 using namespace folly;
 using namespace std::chrono_literals;
+using namespace testing;
 
 TEST(Singleton, MissingSingleton) {
   EXPECT_DEATH(
@@ -1096,6 +1097,64 @@ TEST(Singleton, ShutdownTimerDisable) {
   vault.disableShutdownTimeout();
   SingletonObject::try_get()->shutdownDuration = 100ms;
   vault.destroyInstancesFinal();
+}
+
+TEST(Singleton, OutputShutdownLogConstruction) {
+  // TSAN will SIGSEGV if the shutdown timer activates (it spawns a new thread,
+  // which TSAN doesn't like).
+  SKIP_IF(folly::kIsSanitizeThread);
+
+  auto finishDestructionBaton = folly::Baton<>{};
+
+  struct VaultTag {};
+  struct PrivateTag {};
+  struct Object {
+    explicit Object(folly::Baton<>& finishDestructionBaton)
+        : finishDestructionBaton_{finishDestructionBaton} {}
+
+    ~Object() { finishDestructionBaton_.wait(); }
+
+    folly::Baton<>& finishDestructionBaton_;
+  };
+  using SingletonObject = Singleton<Object, PrivateTag, VaultTag>;
+  auto typeDescriptor =
+      detail::TypeDescriptor{typeid(Object), typeid(PrivateTag)};
+
+  auto& vault = *SingletonVault::singleton<VaultTag>();
+  SingletonObject object{[&]() { return new Object{finishDestructionBaton}; }};
+  vault.registrationComplete();
+
+  vault.setShutdownTimeout(5s);
+  SingletonObject::try_get();
+
+  auto testCompletedBaton = folly::Baton<>{};
+  auto testFinishBaton = folly::Baton<>{};
+  vault.setShutdownLogOutputHandler([&](auto msg) {
+    EXPECT_TRUE(
+        msg.find("Failed to complete shutdown within 5000ms") !=
+        std::string::npos)
+        << msg;
+    EXPECT_TRUE(
+        msg.find(fmt::format("Destroying {}", typeDescriptor.name())) !=
+        std::string::npos)
+        << msg;
+    EXPECT_TRUE(
+        msg.find(fmt::format("Creating {}", typeDescriptor.name())) !=
+        std::string::npos)
+        << msg;
+
+    // we want the test to get to this point, and actually run the above
+    // expectation
+    testCompletedBaton.post();
+  });
+
+  auto waitForSignalThread = std::thread{[&] {
+    testCompletedBaton.wait();
+    finishDestructionBaton.post();
+  }};
+
+  vault.destroyInstancesFinal();
+  waitForSignalThread.join();
 }
 
 TEST(Singleton, ForkInChild) {
