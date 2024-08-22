@@ -47,6 +47,57 @@
 
 namespace folly {
 
+namespace access {
+
+/// to_address_fn
+/// to_address
+///
+/// mimic: std::to_address (C++20)
+///
+/// adapted from: https://en.cppreference.com/w/cpp/memory/to_address, CC-BY-SA
+struct to_address_fn {
+ private:
+  template <template <typename...> typename T, typename A, typename... B>
+  static tag_t<A> get_first_arg(tag_t<T<A, B...>>);
+  template <typename T>
+  using first_arg_of = type_list_element_t<0, decltype(get_first_arg(tag<T>))>;
+  template <typename T>
+  using detect_element_type = typename T::element_type;
+  template <typename T>
+  using element_type_of =
+      detected_or_t<first_arg_of<T>, detect_element_type, T>;
+
+  template <typename T>
+  using detect_to_address =
+      decltype(std::pointer_traits<T>::to_address(FOLLY_DECLVAL(T const&)));
+
+  template <typename T>
+  static inline constexpr bool use_pointer_traits_to_address = Conjunction<
+      is_detected<element_type_of, T>,
+      is_detected<detect_to_address, T>>::value;
+
+ public:
+  template <typename T>
+  constexpr T* operator()(T* p) const noexcept {
+    static_assert(!std::is_function_v<T>);
+    return p;
+  }
+
+  template <typename T>
+  constexpr auto operator()(T const& p) const noexcept {
+    if constexpr (use_pointer_traits_to_address<T>) {
+      static_assert(noexcept(std::pointer_traits<T>::to_address(p)));
+      return std::pointer_traits<T>::to_address(p);
+    } else {
+      static_assert(noexcept(operator()(p.operator->())));
+      return operator()(p.operator->());
+    }
+  }
+};
+inline constexpr to_address_fn to_address;
+
+} // namespace access
+
 #if (defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L) || \
     (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE >= 600) ||         \
     (defined(__ANDROID__) && (__ANDROID_API__ > 16)) ||         \
