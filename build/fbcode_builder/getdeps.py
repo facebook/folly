@@ -1180,7 +1180,7 @@ jobs:
                 f"--final-install-prefix /usr/local\n"
             )
 
-            out.write("    - uses: actions/upload-artifact@v2\n")
+            out.write("    - uses: actions/upload-artifact@v4\n")
             out.write("      with:\n")
             out.write("        name: %s\n" % manifest.name)
             out.write("        path: _artifacts\n")
