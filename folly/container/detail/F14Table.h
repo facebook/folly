@@ -33,7 +33,6 @@
 #include <folly/Bits.h>
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
-#include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
@@ -475,22 +474,11 @@ using TagVector = __uint128_t;
 constexpr std::size_t kRequiredVectorAlignment =
     constexpr_max(std::size_t{16}, alignof(max_align_t));
 
-struct alignas(kRequiredVectorAlignment) F14EmptyTagVector {
-  std::array<uint8_t, 16> bytes_{1}; // special representation: 1 then 15x 0
-};
+using EmptyTagVectorType = std::aligned_storage_t<
+    sizeof(TagVector) + kRequiredVectorAlignment,
+    alignof(max_align_t)>;
 
-FOLLY_EXPORT inline F14EmptyTagVector& getF14EmptyTagVector() noexcept {
-  static constexpr F14EmptyTagVector instance;
-  static_assert(instance.bytes_[0] == 1);
-  static_assert(instance.bytes_[1] == 0);
-  auto const raw = reinterpret_cast<uintptr_t>(&instance);
-  FOLLY_SAFE_DCHECK(
-      (raw % kRequiredVectorAlignment) == 0,
-      raw,
-      " not aligned to ",
-      kRequiredVectorAlignment);
-  return const_cast<F14EmptyTagVector&>(instance);
-}
+FOLLY_EXPORT extern EmptyTagVectorType kEmptyTagVector;
 
 template <typename ItemType>
 struct alignas(kRequiredVectorAlignment) F14Chunk {
@@ -536,13 +524,20 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   std::array<aligned_storage_for_t<Item>, kAllocatedCapacity> rawItems_;
 
-  FOLLY_EXPORT static F14Chunk* getSomeEmptyInstance() noexcept {
-    return reinterpret_cast<F14Chunk*>(&getF14EmptyTagVector());
-  }
-
-  static bool isEmptyInstance(F14Chunk const* const chunk) noexcept {
-    auto const empty = reinterpret_cast<F14EmptyTagVector const*>(chunk);
-    return empty->bytes_[0] == 1; // not a valid tag byte for a real chunk
+  static F14Chunk* emptyInstance() {
+    auto raw = reinterpret_cast<char*>(&kEmptyTagVector);
+    if constexpr (kRequiredVectorAlignment > alignof(max_align_t)) {
+      auto delta = kRequiredVectorAlignment -
+          (reinterpret_cast<uintptr_t>(raw) % kRequiredVectorAlignment);
+      raw += delta;
+    }
+    auto rv = reinterpret_cast<F14Chunk*>(raw);
+    FOLLY_SAFE_DCHECK(
+        (reinterpret_cast<uintptr_t>(rv) % kRequiredVectorAlignment) == 0,
+        reinterpret_cast<uintptr_t>(rv),
+        " not aligned to ",
+        kRequiredVectorAlignment);
+    return rv;
   }
 
   void clear() {
@@ -568,22 +563,21 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   void adjustHostedOverflowCount(uint8_t op) { control_ += op; }
 
-  bool eof() const { return capacityScale(this) != 0; }
+  bool eof() const { return capacityScale() != 0; }
 
-  static std::size_t capacityScale(F14Chunk const* const chunk) {
-    auto const empty = reinterpret_cast<F14EmptyTagVector const*>(chunk);
+  std::size_t capacityScale() const {
     if constexpr (kCapacityScaleBits == 4) {
-      return empty->bytes_[offsetof(F14Chunk, control_)] & 0xf;
+      return control_ & 0xf;
     } else {
       uint16_t v;
-      std::memcpy(&v, &empty->bytes_[12], 2);
+      std::memcpy(&v, &tags_[12], 2);
       return v;
     }
   }
 
   void setCapacityScale(std::size_t scale) {
     FOLLY_SAFE_DCHECK(
-        !isEmptyInstance(this) && scale > 0 &&
+        this != emptyInstance() && scale > 0 &&
             scale < (std::size_t{1} << kCapacityScaleBits),
         "");
     if constexpr (kCapacityScaleBits == 4) {
@@ -616,7 +610,8 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   std::size_t tag(std::size_t index) const { return tags_[index]; }
 
   void setTag(std::size_t index, std::size_t tag) {
-    FOLLY_SAFE_DCHECK(!isEmptyInstance(this) && tag >= 0x80 && tag <= 0xff, "");
+    FOLLY_SAFE_DCHECK(
+        this != emptyInstance() && tag >= 0x80 && tag <= 0xff, "");
     FOLLY_SAFE_CHECK(tags_[index] == 0, "");
     tags_[index] = static_cast<uint8_t>(tag);
   }
@@ -739,9 +734,8 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   }
 
   bool occupied(std::size_t index) const {
-    auto const tag = tags_[index];
-    FOLLY_SAFE_DCHECK((tag & ~1) == 0 || (tag & 0x80) != 0, "");
-    return to_signed(tag) < 0;
+    FOLLY_SAFE_DCHECK(tags_[index] == 0 || (tags_[index] & 0x80) != 0, "");
+    return tags_[index] != 0;
   }
 
   Item* itemAddr(std::size_t i) const {
@@ -1241,7 +1235,7 @@ class F14Table : public Policy {
  private:
   //////// begin fields
 
-  ChunkPtr chunks_{Chunk::getSomeEmptyInstance()};
+  ChunkPtr chunks_{Chunk::emptyInstance()};
   SizeAndChunkShiftAndPackedBegin<ItemIter, kEnableItemIteration>
       sizeAndChunkShiftAndPackedBegin_;
 
@@ -1466,8 +1460,7 @@ class F14Table : public Policy {
 
   std::size_t itemCount() const noexcept {
     if (chunkShift() == 0) {
-      return computeCapacity(
-          1, Chunk::capacityScale(access::to_address(chunks_)));
+      return computeCapacity(1, chunks_->capacityScale());
     } else {
       return chunkCount() * Chunk::kCapacity;
     }
@@ -1494,8 +1487,7 @@ class F14Table : public Policy {
   }
 
   std::size_t bucket_count() const noexcept {
-    return computeCapacity(
-        chunkCount(), Chunk::capacityScale(access::to_address(chunks_)));
+    return computeCapacity(chunkCount(), chunks_->capacityScale());
   }
 
   std::size_t max_bucket_count() const noexcept { return max_size(); }
@@ -1788,7 +1780,7 @@ class F14Table : public Policy {
         !this->destroyItemOnClear() && itemCount() == src.itemCount()) {
       FOLLY_SAFE_DCHECK(chunkShift() == src.chunkShift(), "");
 
-      auto scale = Chunk::capacityScale(access::to_address(chunks_));
+      auto scale = chunks_->capacityScale();
 
       // most happy path
       auto n = chunkAllocSize(chunkCount(), scale);
@@ -1955,9 +1947,7 @@ class F14Table : public Policy {
 
     // Use the source's capacity, unless it is oversized.
     auto upperLimit = computeChunkCountAndScale(src.size(), false, false);
-    auto ccas = std::make_pair(
-        src.chunkCount(),
-        Chunk::capacityScale(access::to_address(src.chunks_)));
+    auto ccas = std::make_pair(src.chunkCount(), src.chunks_->capacityScale());
     FOLLY_SAFE_DCHECK(
         ccas.first >= upperLimit.first,
         "rounded chunk count can't be bigger than actual");
@@ -1981,7 +1971,7 @@ class F14Table : public Policy {
 
   void maybeRehash(std::size_t desiredCapacity, bool attemptExact) {
     auto origChunkCount = chunkCount();
-    auto origCapacityScale = Chunk::capacityScale(access::to_address(chunks_));
+    auto origCapacityScale = chunks_->capacityScale();
     auto origCapacity = computeCapacity(origChunkCount, origCapacityScale);
 
     std::size_t newChunkCount;
@@ -2062,8 +2052,7 @@ class F14Table : public Policy {
   void initialReserve(std::size_t desiredCapacity) {
     FOLLY_SAFE_DCHECK(size() == 0, "");
     FOLLY_SAFE_DCHECK(chunkShift() == 0, "");
-    FOLLY_SAFE_DCHECK(!!chunks_);
-    FOLLY_SAFE_DCHECK(Chunk::isEmptyInstance(access::to_address(chunks_)), "");
+    FOLLY_SAFE_DCHECK(chunks_ == Chunk::emptyInstance(), "");
     if (desiredCapacity == 0) {
       return;
     }
@@ -2230,7 +2219,7 @@ class F14Table : public Policy {
 
   void debugModeSpuriousRehash() {
     auto cc = chunkCount();
-    auto ss = Chunk::capacityScale(access::to_address(chunks_));
+    auto ss = chunks_->capacityScale();
     rehashImpl(size(), cc, ss, cc, ss);
   }
 
@@ -2281,8 +2270,7 @@ class F14Table : public Policy {
     // We want to support the pattern
     //   map.reserve(map.size() + 2); auto& r1 = map[k1]; auto& r2 = map[k2];
     debugModeOnReserve(capacity);
-    FOLLY_SAFE_DCHECK(!!chunks_);
-    if (Chunk::isEmptyInstance(access::to_address(chunks_))) {
+    if (chunks_ == Chunk::emptyInstance()) {
       initialReserve(capacity);
     } else {
       reserveImpl(capacity);
@@ -2294,7 +2282,7 @@ class F14Table : public Policy {
 
     auto needed = size() + incoming;
     auto chunkCount_ = chunkCount();
-    auto scale = Chunk::capacityScale(access::to_address(chunks_));
+    auto scale = chunks_->capacityScale();
     auto existing = computeCapacity(chunkCount_, scale);
     if (needed - 1 >= existing) {
       reserveForInsertImpl(needed - 1, chunkCount_, scale, existing);
@@ -2366,8 +2354,7 @@ class F14Table : public Policy {
  private:
   template <bool Reset>
   void clearImpl() noexcept {
-    FOLLY_SAFE_DCHECK(!!chunks_);
-    if (Chunk::isEmptyInstance(access::to_address(chunks_))) {
+    if (chunks_ == Chunk::emptyInstance()) {
       FOLLY_SAFE_DCHECK(empty() && bucket_count() == 0, "");
       return;
     }
@@ -2403,7 +2390,7 @@ class F14Table : public Policy {
         // It's okay to do this in a separate loop because we only do it
         // when the chunk count is small.  That avoids a branch when we
         // are promoting a clear to a reset for a large table.
-        auto scale = Chunk::capacityScale(access::to_address(chunks_));
+        auto scale = chunks_[0].capacityScale();
         for (std::size_t ci = 0; ci < chunkCount(); ++ci) {
           chunks_[ci].clear();
         }
@@ -2418,10 +2405,10 @@ class F14Table : public Policy {
     if (willReset) {
       BytePtr rawAllocation = std::pointer_traits<BytePtr>::pointer_to(
           *static_cast<uint8_t*>(static_cast<void*>(&*chunks_)));
-      std::size_t rawSize = chunkAllocSize(
-          chunkCount(), Chunk::capacityScale(access::to_address(chunks_)));
+      std::size_t rawSize =
+          chunkAllocSize(chunkCount(), chunks_->capacityScale());
 
-      chunks_ = Chunk::getSomeEmptyInstance();
+      chunks_ = Chunk::emptyInstance();
       sizeAndChunkShiftAndPackedBegin_.setChunkCount(1);
 
       this->afterReset(origSize, origCapacity, rawAllocation, rawSize);
@@ -2504,7 +2491,7 @@ class F14Table : public Policy {
   // be called with a zero allocationCount.
   template <typename V>
   void visitAllocationClasses(V&& visitor) const {
-    auto scale = Chunk::capacityScale(access::to_address(chunks_));
+    auto scale = chunks_->capacityScale();
     this->visitPolicyAllocationClasses(
         scale == 0 ? 0 : chunkAllocSize(chunkCount(), scale),
         size(),
@@ -2579,9 +2566,7 @@ class F14Table : public Policy {
     }
 
     FOLLY_SAFE_DCHECK(
-        (Chunk::isEmptyInstance(access::to_address(chunks_))) ==
-            (bucket_count() == 0),
-        "");
+        (chunks_ == Chunk::emptyInstance()) == (bucket_count() == 0), "");
 
     std::size_t n1 = 0;
     std::size_t n2 = 0;
