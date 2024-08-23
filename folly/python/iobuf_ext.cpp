@@ -27,8 +27,8 @@ namespace folly::python {
 namespace {
 
 struct PyBufferData {
+  folly::Executor* executor;
   PyObject* py_object;
-  folly::Executor::KeepAlive<Executor> executor;
 };
 
 } // namespace
@@ -39,7 +39,9 @@ std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
     void* buf,
     uint64_t length) {
   Py_INCREF(py_object);
-  auto* pyUserData = new PyBufferData{py_object, {executor}};
+  auto* pyUserData = new PyBufferData();
+  pyUserData->executor = executor;
+  pyUserData->py_object = py_object;
 
   return folly::IOBuf::takeOwnership(
       buf,
@@ -50,8 +52,7 @@ std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
         if (FOLLY_PYHON_PyGILState_Check()) {
           Py_DECREF(pyObject);
         } else if (py_data->executor) {
-          py_data->executor.get()->add(
-              [pyObject]() mutable { Py_DECREF(pyObject); });
+          py_data->executor->add([pyObject]() mutable { Py_DECREF(pyObject); });
         } else {
           /*
             This is the last ditch effort. We don't have the GIL and we have no
