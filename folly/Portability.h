@@ -35,7 +35,11 @@
 static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 
 #if defined(__GNUC__) && !defined(__clang__)
+#if defined(FOLLY_CONFIG_TEMPORARY_DOWNGRADE_GCC)
+static_assert(__GNUC__ >= 9, "__GNUC__ >= 9");
+#else
 static_assert(__GNUC__ >= 10, "__GNUC__ >= 10");
+#endif
 #endif
 
 #if defined(_MSC_VER)
