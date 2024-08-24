@@ -21,6 +21,8 @@
 
 #include <folly/lang/SafeAssert.h>
 
+#include <fast_float/fast_float.h> // @manual=fbsource//third-party/fast_float:fast_float
+
 namespace folly {
 namespace detail {
 
@@ -340,12 +342,11 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
   return result;
 }
 
-/**
- * StringPiece to double, with progress information. Alters the
- * StringPiece parameter to munch the already-parsed characters.
- */
+/// Uses `double_conversion` library to convert from string to a floating
+/// point.
 template <class Tgt>
-Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
+Expected<Tgt, ConversionCode> str_to_floating_double_conversion(
+    StringPiece* src) noexcept {
   using namespace double_conversion;
   static StringToDoubleConverter conv(
       StringToDoubleConverter::ALLOW_TRAILING_JUNK |
@@ -459,6 +460,63 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
   src->assign(b, e);
 
   return Tgt(result);
+}
+
+/// Uses `fast_float::from_chars` to convert from string to an integer.
+template <class Tgt>
+Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
+    StringPiece* src) noexcept {
+  if (src->empty()) {
+    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
+  }
+
+  // move through leading whitespace characters
+  auto* e = src->end();
+  auto* b = std::find_if_not(src->begin(), e, [](char c) {
+    return (c >= '\t' && c <= '\r') || c == ' ';
+  });
+  if (b == e) {
+    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
+  }
+
+  Tgt result;
+  auto [ptr, ec] = fast_float::from_chars(b, e, result);
+  bool isOutOfRange{ec == std::errc::result_out_of_range};
+  bool isOk{ec == std::errc()};
+  if (!isOk && !isOutOfRange) {
+    return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
+  }
+
+  auto numMatchedChars = ptr - src->data();
+  src->advance(numMatchedChars);
+
+  if (isOutOfRange) {
+    if (*b == '-') {
+      return -std::numeric_limits<Tgt>::infinity();
+    } else {
+      return std::numeric_limits<Tgt>::infinity();
+    }
+  }
+
+  return result;
+}
+
+template Expected<float, ConversionCode>
+str_to_floating_fast_float_from_chars<float>(StringPiece* src) noexcept;
+template Expected<double, ConversionCode>
+str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
+
+/**
+ * StringPiece to double, with progress information. Alters the
+ * StringPiece parameter to munch the already-parsed characters.
+ */
+template <class Tgt>
+Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
+#if defined(FOLLY_CONV_ATOD_MODE) && FOLLY_CONV_ATOD_MODE == 1
+  return detail::str_to_floating_fast_float_from_chars<Tgt>(src);
+#else
+  return detail::str_to_floating_double_conversion<Tgt>(src);
+#endif
 }
 
 template Expected<float, ConversionCode> str_to_floating<float>(
@@ -1014,8 +1072,8 @@ std::pair<char*, char*> formatAsDoubleConversion(
 
   unsigned int numTrailingZerosToAdd = 0;
   if (!flagsSet.noTrailingZero() && mode == DtoaMode::PRECISION) {
-    // std::to_chars outputs no trailing zeros, so if it's not set, add trailing
-    // zeros
+    // std::to_chars outputs no trailing zeros, so if it's not set, add
+    // trailing zeros
     unsigned int numPrecisionFigures = parsedDecimal.numPrecisionFigures();
     if (numDigits > numPrecisionFigures) {
       numTrailingZerosToAdd = numDigits - numPrecisionFigures;

@@ -265,9 +265,16 @@ cpp_library(
             "-DFOLLY_CONV_DTOA_TO_CHARS=1",
         ],
         "DEFAULT": [],
+    }) + select({
+        "//folly/buck_config:folly-conv-atod-mode-fastfloat": [
+            # Use fast_float::from_chars for ASCII-to-Double conversions
+            "-DFOLLY_CONV_ATOD_MODE=1",
+        ],
+        "DEFAULT": [],
     }),
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
+        "fbsource//third-party/fast_float:fast_float",
         "//folly/lang:safe_assert",
     ],
     exported_deps = [

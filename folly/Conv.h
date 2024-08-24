@@ -1461,6 +1461,15 @@ extern template Expected<float, ConversionCode> str_to_floating<float>(
 extern template Expected<double, ConversionCode> str_to_floating<double>(
     StringPiece* src) noexcept;
 
+template <typename T>
+Expected<T, ConversionCode> str_to_floating_fast_float_from_chars(
+    StringPiece* src) noexcept;
+
+extern template Expected<float, ConversionCode>
+str_to_floating_fast_float_from_chars<float>(StringPiece* src) noexcept;
+extern template Expected<double, ConversionCode>
+str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
+
 template <class Tgt>
 Expected<Tgt, ConversionCode> digits_to(const char* b, const char* e) noexcept;
 

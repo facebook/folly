@@ -3,10 +3,21 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 oncall("fbcode_entropy_wardens_folly")
 
+# Config setting to use std::to_chars instead of libdouble-conversion in //folly:conv
 fb_native.config_setting(
     name = "folly-conv-dtoa-to-chars",
     values = {
         "folly.conv_dtoa_to_chars": "true",
+    },
+    visibility = ["PUBLIC"],
+)
+
+# Config setting to change the implementation of folly::detail::str_to_float
+# to use fast_float::from_chars
+fb_native.config_setting(
+    name = "folly-conv-atod-mode-fastfloat",
+    values = {
+        "folly.conv_atod_mode": "fastfloat",
     },
     visibility = ["PUBLIC"],
 )

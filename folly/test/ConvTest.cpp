@@ -1606,23 +1606,55 @@ TEST(Conv, TryStringToEnum) {
   EXPECT_EQ(static_cast<A>(50), rv3.value());
 }
 
+namespace {
+/// Simple pure virtual class used by tests to change the function that converts
+/// string to float.
 template <class String>
-void tryStringToFloat() {
-  auto rv1 = folly::tryTo<float>(String(""));
+class StrToFloat {
+ public:
+  virtual ~StrToFloat() = default;
+  /// Converts a string to a float.
+  /// The input string is expected to be a number in
+  /// decimal or exponential notation (e.g., "3.14", "3.14e-2").
+  virtual Expected<float, ConversionCode> operator()(String src) const = 0;
+
+  /// Returns true if `operator()` returns an error when the input string has
+  /// trailing junk.
+  /// e.g., when the input string is "3.14junk", `operator()` returns an error.
+  virtual bool returnsErrorOnTrailingJunk() const = 0;
+};
+
+/// Uses `folly::TryTo` to convert a string to a float.
+template <class String>
+class StrToFloatTryTo : public StrToFloat<String> {
+ public:
+  Expected<float, ConversionCode> operator()(String src) const override {
+    return folly::tryTo<float>(src);
+  }
+
+  bool returnsErrorOnTrailingJunk() const override { return true; }
+};
+} // namespace
+
+/// `strToFloat` is used to test out different implementations of string
+/// to float conversions.
+template <class String>
+void tryStringToFloat(const StrToFloat<String>& strToFloat) {
+  auto rv1 = strToFloat(String(""));
   EXPECT_FALSE(rv1.hasValue());
-  auto rv2 = folly::tryTo<float>(String("3.14"));
+  auto rv2 = strToFloat(String("3.14"));
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-5);
   // No trailing '\0' to expose 1-byte buffer over-read
   char x = '-';
-  auto rv3 = folly::tryTo<float>(folly::StringPiece(&x, 1));
+  auto rv3 = strToFloat(String(&x, 1));
   EXPECT_FALSE(rv3.hasValue());
 
   // Exact conversion at numeric limits (8+ decimal digits)
-  auto rv4 = folly::tryTo<float>(String("-3.4028235E38"));
+  auto rv4 = strToFloat(String("-3.4028235E38"));
   EXPECT_TRUE(rv4.hasValue());
   EXPECT_EQ(rv4.value(), numeric_limits<float>::lowest());
-  auto rv5 = folly::tryTo<float>(String("3.40282346E38"));
+  auto rv5 = strToFloat(String("3.40282346E38"));
   EXPECT_TRUE(rv5.hasValue());
   EXPECT_EQ(rv5.value(), numeric_limits<float>::max());
 
@@ -1635,7 +1667,7 @@ void tryStringToFloat() {
       "-3.4028236E38",
   }};
   for (const auto& input : kOversizedInputs) {
-    auto rv = folly::tryTo<float>(input);
+    auto rv = strToFloat(input);
     EXPECT_EQ(rv.value(), -numeric_limits<float>::infinity()) << input;
   }
 
@@ -1649,15 +1681,116 @@ void tryStringToFloat() {
       "-NAN",
   }};
   for (const auto& input : kNanInputs) {
-    auto rv = folly::tryTo<float>(input);
+    auto rv = strToFloat(input);
     EXPECT_TRUE(std::isnan(rv.value())) << input;
+  }
+
+  const std::array<String, 6> kInfinityInputs{{
+      "-inf",
+      "-INF",
+      "-iNf",
+      "-infinity",
+      "-INFINITY",
+      "-INFInITY",
+  }};
+  for (const auto& input : kInfinityInputs) {
+    {
+      auto rv = strToFloat(input);
+      EXPECT_EQ(rv.value(), -numeric_limits<float>::infinity()) << input;
+    }
+
+    {
+      auto positiveInput = input.substr(1);
+      auto rv = strToFloat(positiveInput);
+      EXPECT_EQ(rv.value(), numeric_limits<float>::infinity()) << positiveInput;
+    }
+  }
+
+  const std::array<String, 11> kScientificNotation{{
+      "123.4560e0",
+      "123.4560e+0",
+      "123.4560e-0",
+      "123456.0e-3",
+      "123456.0E-3",
+      "0.123456e3",
+      "0.123456e+3",
+      "0.123456E+3",
+      ".123456e3",
+      ".123456e+3",
+      ".123456E+3",
+  }};
+  for (const auto& input : kScientificNotation) {
+    auto rv = strToFloat(input);
+    EXPECT_EQ(rv.value(), 123.456f) << input;
+  }
+
+  const std::array<String, 8> kSurroundingWhitespace{{
+      " 123.456",
+      "\n123.456",
+      "\r123.456",
+      "\t123.456",
+      "\n123.456",
+      "123.456 ",
+      "123.456\n",
+      " 123.456 ",
+  }};
+  for (const auto& input : kSurroundingWhitespace) {
+    EXPECT_EQ(strToFloat(input).value(), 123.456f);
+  }
+
+  EXPECT_EQ(strToFloat("   ").error(), ConversionCode::EMPTY_INPUT_STRING);
+
+  const std::array<String, 2> kJunkValues{{"junk", "a123.456"}};
+  for (const auto& input : kJunkValues) {
+    EXPECT_EQ(strToFloat(input).error(), ConversionCode::STRING_TO_FLOAT_ERROR);
+  }
+
+  const std::array<String, 8> kNonWhitespaceAfterEnd{{
+      "123.456X",
+      "123.456e",
+      "123.456E",
+      "123.456E-",
+      "123.456E+",
+      "123.456E-2f",
+      "123.456E-f",
+      "123.456E~2",
+  }};
+  for (const auto& input : kNonWhitespaceAfterEnd) {
+    auto rv = strToFloat(input);
+    EXPECT_EQ(strToFloat.returnsErrorOnTrailingJunk(), rv.hasError())
+        << "input: " << input << " value " << rv.value();
+    if (rv.hasError()) {
+      EXPECT_EQ(rv.error(), ConversionCode::NON_WHITESPACE_AFTER_END)
+          << "input: " << input;
+    }
   }
 }
 
 TEST(Conv, TryStringToFloat) {
-  tryStringToFloat<std::string>();
-  tryStringToFloat<std::string_view>();
-  tryStringToFloat<folly::StringPiece>();
+  tryStringToFloat<std::string>(StrToFloatTryTo<std::string>());
+  tryStringToFloat<std::string_view>(StrToFloatTryTo<std::string_view>());
+  tryStringToFloat<folly::StringPiece>(StrToFloatTryTo<folly::StringPiece>());
+}
+
+/// Uses `folly::detail::str_to_floating_fast_float_from_chars` to convert a
+/// string to a float.
+template <class String>
+class StrToFloatFastFloatFromChars : public StrToFloat<String> {
+ public:
+  Expected<float, ConversionCode> operator()(String src) const override {
+    StringPiece sp{src};
+    return folly::detail::str_to_floating_fast_float_from_chars<float>(&sp);
+  }
+
+  bool returnsErrorOnTrailingJunk() const override { return false; }
+};
+
+TEST(Conv, TryStringToFloat_FastFloatFromChars) {
+  tryStringToFloat<std::string>(StrToFloatFastFloatFromChars<std::string>());
+  tryStringToFloat<std::string_view>(
+      StrToFloatFastFloatFromChars<std::string_view>());
+  tryStringToFloat<folly::StringPiece>(
+      StrToFloatFastFloatFromChars<folly::StringPiece>());
 }
 
 template <class String>
