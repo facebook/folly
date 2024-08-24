@@ -222,7 +222,7 @@ walkdir = "2.3.2"
 which = "4.3.0"
 whoami = "1.5.1"
 windows_x86_64_msvc = "=0.48.0"  # our fixup only works if we are on precisely 0.48.0
-winapi = { version = "0.3", features = ["everything"] }
+winapi = { version = "0.3", features = ["everything", "std"] }
 x509-parser = { version = "0.14.0", features = ["verify"] }
 xattr = "0.2.2"
 zip = "0.5"
