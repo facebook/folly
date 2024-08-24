@@ -1,1 +1,2 @@
-buildscript = []
+[[buildscript]]
+[buildscript.rustc_flags]
