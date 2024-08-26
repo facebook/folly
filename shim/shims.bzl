@@ -398,6 +398,20 @@ def _fix_dep(x: str) -> [
     None,
     str,
 ]:
+    def remove_version(x: str) -> str:
+        # When upgrading libraries we either suffix them as `-old` or with a version, e.g. `-1-08`
+        # Strip those so we grab the right one in open source.
+        if x.endswith("/md-5"):  # md-5 is the one exception
+            return x
+        xs = x.split("-")
+        for i in range(len(xs)):
+            s = xs[i]
+            if s == "old" or isdigit(s):
+                xs.pop(i)
+            else:
+                break
+        return xs.join("-")
+
     if x == "//common/rust/shed/fbinit:fbinit":
         return "fbsource//third-party/rust:fbinit"
     elif x == "//common/rust/shed/sorted_vector_map:sorted_vector_map":
@@ -417,9 +431,9 @@ def _fix_dep(x: str) -> [
     elif x.startswith("fbcode//third-party-buck/platform010/build"):
         return "shim//third-party" + x.removeprefix("fbcode//third-party-buck/platform010/build")
     elif x.startswith("fbsource//third-party"):
-        return "shim//third-party" + x.removeprefix("fbsource//third-party")
+        return "shim//third-party" + remove_version(x.removeprefix("fbsource//third-party"))
     elif x.startswith("third-party//"):
-        return "shim//third-party/" + x.removeprefix("third-party//")
+        return "shim//third-party/" + remove_version(x.removeprefix("third-party//"))
     elif x.startswith("//folly"):
         oss_depends_on_folly = read_config("oss_depends_on", "folly", False)
         if oss_depends_on_folly:
@@ -451,3 +465,10 @@ def external_dep_to_target(t):
 
 def external_deps_to_targets(ts):
     return [external_dep_to_target(t) for t in ts]
+
+def _assert_eq(x, y):
+    if x != y:
+        fail("Expected {} == {}".format(x, y))
+
+def _test():
+    _assert_eq("fbsource//third-party/rust:derive_more-1", "shim//third-party/rust:derive_more")
