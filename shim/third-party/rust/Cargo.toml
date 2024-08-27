@@ -65,7 +65,7 @@ ctor = "0.1.16"
 dashmap = "5.5.3"
 debugserver-types = "0.5.0"
 derivative = "2.2"
-derive_more = "0.99.3"
+derive_more = { version = "1.0.0", features = ["full"] }
 digest = "0.10"
 dirs = "3.0.1"
 dunce = "1.0.2"
