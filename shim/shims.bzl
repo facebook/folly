@@ -401,16 +401,16 @@ def _fix_dep(x: str) -> [
     def remove_version(x: str) -> str:
         # When upgrading libraries we either suffix them as `-old` or with a version, e.g. `-1-08`
         # Strip those so we grab the right one in open source.
-        if x.endswith("/md-5"):  # md-5 is the one exception
+        if x.endswith(":md-5"):  # md-5 is the one exception
             return x
         xs = x.split("-")
-        for i in range(len(xs)):
+        for i in reversed(range(len(xs))):
             s = xs[i]
-            if s == "old" or isdigit(s):
+            if s == "old" or s.isdigit():
                 xs.pop(i)
             else:
                 break
-        return xs.join("-")
+        return "-".join(xs)
 
     if x == "//common/rust/shed/fbinit:fbinit":
         return "fbsource//third-party/rust:fbinit"
@@ -418,7 +418,9 @@ def _fix_dep(x: str) -> [
         return "fbsource//third-party/rust:sorted_vector_map"
     elif x == "//watchman/rust/watchman_client:watchman_client":
         return "fbsource//third-party/rust:watchman_client"
-    elif x.startswith("fbsource//third-party/rust:") or x.startswith(":"):
+    elif x.startswith("fbsource//third-party/rust:"):
+        return remove_version(x)
+    elif x.startswith(":"):
         return x
     elif x.startswith("//buck2/facebook/"):
         return None
@@ -431,9 +433,9 @@ def _fix_dep(x: str) -> [
     elif x.startswith("fbcode//third-party-buck/platform010/build"):
         return "shim//third-party" + x.removeprefix("fbcode//third-party-buck/platform010/build")
     elif x.startswith("fbsource//third-party"):
-        return "shim//third-party" + remove_version(x.removeprefix("fbsource//third-party"))
+        return "shim//third-party" + x.removeprefix("fbsource//third-party")
     elif x.startswith("third-party//"):
-        return "shim//third-party/" + remove_version(x.removeprefix("third-party//"))
+        return "shim//third-party/" + x.removeprefix("third-party//")
     elif x.startswith("//folly"):
         oss_depends_on_folly = read_config("oss_depends_on", "folly", False)
         if oss_depends_on_folly:
@@ -471,4 +473,6 @@ def _assert_eq(x, y):
         fail("Expected {} == {}".format(x, y))
 
 def _test():
-    _assert_eq("fbsource//third-party/rust:derive_more-1", "shim//third-party/rust:derive_more")
+    _assert_eq(_fix_dep("fbsource//third-party/rust:derive_more-1"), "fbsource//third-party/rust:derive_more")
+
+_test()
