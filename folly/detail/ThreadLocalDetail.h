@@ -493,16 +493,10 @@ struct StaticMetaBase {
    * be released, entry added under a WLockedPtr, and RLockedPtr reacquired
    * before returning.
    */
-  FOLLY_ALWAYS_INLINE void ensureThreadEntryIsInSet(
+  FOLLY_NOINLINE void ensureThreadEntryIsInSet(
       ThreadEntry* te,
-      uint32_t id,
-      SynchronizedThreadEntrySet::RLockedPtr& rlocked) {
-    if (rlocked->contains(te)) {
-      return;
-    }
-    auto scopedUnlock = rlocked.scopedUnlock();
-    allId2ThreadEntrySets_[id].wlock()->insert(te);
-  }
+      SynchronizedThreadEntrySet& set,
+      SynchronizedThreadEntrySet::RLockedPtr& rlock);
 
   /*
    * Remove a ThreadEntry* from the map of allId2ThreadEntrySets_
@@ -594,9 +588,10 @@ struct FakeUniqueInstance {
  */
 template <class Ptr>
 void ThreadEntry::resetElement(Ptr p, uint32_t id) {
-  auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
-  if (p != nullptr && !removed_) {
-    meta->ensureThreadEntryIsInSet(this, id, rlocked);
+  auto& set = meta->allId2ThreadEntrySets_[id];
+  auto rlock = set.rlock();
+  if (p != nullptr && !removed_ && !rlock->contains(this)) {
+    meta->ensureThreadEntryIsInSet(this, set, rlock);
   }
   cleanupElement(id);
   elements[id].set(p);
@@ -609,9 +604,10 @@ void ThreadEntry::resetElement(Ptr p, uint32_t id) {
  */
 template <class Ptr, class Deleter>
 void ThreadEntry::resetElement(Ptr p, Deleter& d, uint32_t id) {
-  auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
-  if (p != nullptr && !removed_) {
-    meta->ensureThreadEntryIsInSet(this, id, rlocked);
+  auto& set = meta->allId2ThreadEntrySets_[id];
+  auto rlock = set.rlock();
+  if (p != nullptr && !removed_ && !rlock->contains(this)) {
+    meta->ensureThreadEntryIsInSet(this, set, rlock);
   }
   cleanupElement(id);
   elements[id].set(p, d);

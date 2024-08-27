@@ -439,6 +439,16 @@ void StaticMetaBase::reserve(EntryID* id) {
   free(reallocated);
 }
 
+FOLLY_NOINLINE void StaticMetaBase::ensureThreadEntryIsInSet(
+    ThreadEntry* te,
+    SynchronizedThreadEntrySet& set,
+    SynchronizedThreadEntrySet::RLockedPtr& rlock) {
+  rlock.unlock();
+  auto wlock = set.wlock();
+  wlock->insert(te);
+  rlock = wlock.moveFromWriteToRead();
+}
+
 /*
  * release the element @id.
  */
