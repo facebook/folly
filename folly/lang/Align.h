@@ -219,7 +219,8 @@ struct align_ceil_fn {
   constexpr std::uintptr_t operator()(
       std::uintptr_t x, std::size_t alignment) const {
     detail::validateAlignment(alignment);
-    return (x + alignment - 1) & (-alignment);
+    auto alignmentAsInt = static_cast<std::intptr_t>(alignment);
+    return (x + alignmentAsInt - 1) & (-alignmentAsInt);
   }
 
   template <typename T>
