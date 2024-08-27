@@ -14,7 +14,7 @@ cpp_library(
 )
 
 cpp_library(
-    name = "findFixed",
+    name = "find_fixed",
     headers = ["FindFixed.h"],
     exported_deps = [
         ":movemask",

@@ -15,24 +15,24 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "findfixed_test",
+    name = "find_fixed_test",
     srcs = ["FindFixedTest.cpp"],
     headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:portability",
-        "//folly/algorithm/simd:findFixed",
+        "//folly/algorithm/simd:find_fixed",
         "//folly/portability:gtest",
     ],
 )
 
 cpp_benchmark(
-    name = "findfixed_bench",
+    name = "find_fixed_bench",
     srcs = ["FindFixedBenchmark.cpp"],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
-        "//folly/algorithm/simd:findFixed",
+        "//folly/algorithm/simd:find_fixed",
         "//folly/init:init",
     ],
 )
