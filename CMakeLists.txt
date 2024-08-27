@@ -645,117 +645,128 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
   folly_define_tests(
     DIRECTORY algorithm/simd/detail/test/
-      TEST simd_any_of_test SOURCES SimdAnyOfTest.cpp
-      TEST unroll_utils_test SOURCES UnrollUtilsTest.cpp
-      TEST simd_for_each_test SOURCES SimdForEachTest.cpp
+      TEST algorithm_simd_detail_simd_any_of_test SOURCES SimdAnyOfTest.cpp
+      TEST algorithm_simd_detail_unroll_utils_test SOURCES UnrollUtilsTest.cpp
+      TEST algorithm_simd_detail_simd_for_each_test SOURCES SimdForEachTest.cpp
 
     DIRECTORY algorithm/simd/test/
-      TEST find_fixed_test SOURCES FindFixedTest.cpp
-      TEST movemask_test SOURCES MovemaskTest.cpp
+      TEST algorithm_simd_find_fixed_test SOURCES FindFixedTest.cpp
+      TEST algorithm_simd_movemask_test SOURCES MovemaskTest.cpp
 
     DIRECTORY chrono/test/
       TEST chrono_conv_test WINDOWS_DISABLED
         SOURCES ConvTest.cpp
 
     DIRECTORY compression/test/
-      TEST compression_test SLOW SOURCES CompressionTest.cpp
-      TEST quotient_multiset_test SOURCES QuotientMultiSetTest.cpp
-      TEST select64_test SOURCES Select64Test.cpp
+      TEST compression_compression_test SLOW SOURCES CompressionTest.cpp
+      TEST compression_quotient_multiset_test SOURCES QuotientMultiSetTest.cpp
+      TEST compression_select64_test SOURCES Select64Test.cpp
 
     DIRECTORY compression/elias_fano/test/
-      TEST bitvector_test SOURCES BitVectorCodingTest.cpp
-      TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
+      TEST compression_alias_fano_bit_vector_coding_test
+        SOURCES BitVectorCodingTest.cpp
+      TEST compression_alias_fano_elias_fano_test
+        SOURCES EliasFanoCodingTest.cpp
 
     DIRECTORY container/test/
-      TEST access_test SOURCES AccessTest.cpp
-      TEST array_test SOURCES ArrayTest.cpp
-      BENCHMARK bit_iterator_benchmark SOURCES BitIteratorBench.cpp
-      TEST bit_iterator_test SOURCES BitIteratorTest.cpp
-      TEST enumerate_test SOURCES EnumerateTest.cpp
-      BENCHMARK evicting_cache_map_benchmark SOURCES EvictingCacheMapBench.cpp
-      TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
-      TEST f14_fwd_test SOURCES F14FwdTest.cpp
-      TEST f14_map_test SOURCES F14MapTest.cpp
-      TEST f14_set_test WINDOWS_DISABLED SOURCES F14SetTest.cpp
-      BENCHMARK fbvector_benchmark
+      TEST container_access_test SOURCES AccessTest.cpp
+      TEST container_array_test SOURCES ArrayTest.cpp
+      BENCHMARK container_bit_iterator_bench SOURCES BitIteratorBench.cpp
+      TEST container_bit_iterator_test SOURCES BitIteratorTest.cpp
+      TEST container_enumerate_test SOURCES EnumerateTest.cpp
+      BENCHMARK container_evicting_cache_map_bench
+        SOURCES EvictingCacheMapBench.cpp
+      TEST container_evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
+      TEST container_f14_fwd_test SOURCES F14FwdTest.cpp
+      TEST container_f14_map_test SOURCES F14MapTest.cpp
+      TEST container_f14_set_test WINDOWS_DISABLED SOURCES F14SetTest.cpp
+      BENCHMARK container_fbvector_benchmark
         SOURCES FBVectorBenchmark.cpp
         HEADERS FBVectorBenchmarks.cpp.h
-      TEST fbvector_test SOURCES FBVectorTest.cpp
-      BENCHMARK foreach_benchmark SOURCES ForeachBenchmark.cpp
-      TEST foreach_test SOURCES ForeachTest.cpp
-      TEST heap_vector_types_test SOURCES heap_vector_types_test.cpp
-      TEST map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
-      TEST merge_test SOURCES MergeTest.cpp
-      TEST small_vector_test WINDOWS_DISABLED
+      TEST container_fbvector_test SOURCES FBVectorTest.cpp
+      BENCHMARK container_foreach_benchmark SOURCES ForeachBenchmark.cpp
+      TEST container_foreach_test SOURCES ForeachTest.cpp
+      TEST container_heap_vector_types_test SOURCES heap_vector_types_test.cpp
+      TEST container_map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
+      TEST container_merge_test SOURCES MergeTest.cpp
+      TEST container_small_vector_test WINDOWS_DISABLED
         SOURCES small_vector_test.cpp
-      TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
-      BENCHMARK sparse_byte_set_benchmark WINDOWS_DISABLED
+      TEST container_sorted_vector_types_test SOURCES sorted_vector_test.cpp
+      BENCHMARK container_sparse_byte_set_benchmark WINDOWS_DISABLED
         SOURCES SparseByteSetBenchmark.cpp
-      TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
-      TEST util_test SOURCES UtilTest.cpp
+      TEST container_sparse_byte_set_test SOURCES SparseByteSetTest.cpp
+      TEST container_util_test SOURCES UtilTest.cpp
 
     DIRECTORY concurrency/container/test/
-      TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
+      TEST concurrency_container_lock_free_ring_buffer_test
+        SOURCES LockFreeRingBufferTest.cpp
 
     DIRECTORY concurrency/test/
-      TEST atomic_shared_ptr_test SOURCES AtomicSharedPtrTest.cpp
-      TEST cache_locality_test WINDOWS_DISABLED SOURCES CacheLocalityTest.cpp
-      TEST core_cached_shared_ptr_test SOURCES CoreCachedSharedPtrTest.cpp
-      BENCHMARK concurrent_hash_map_benchmark WINDOWS_DISABLED
+      TEST concurrency_atomic_shared_ptr_test SOURCES AtomicSharedPtrTest.cpp
+      TEST concurrency_cache_locality_test WINDOWS_DISABLED
+        SOURCES CacheLocalityTest.cpp
+      TEST concurrency_core_cached_shared_ptr_test
+        SOURCES CoreCachedSharedPtrTest.cpp
+      BENCHMARK concurrency_concurrent_hash_map_bench WINDOWS_DISABLED
         SOURCES ConcurrentHashMapBench.cpp
-      TEST concurrent_hash_map_test WINDOWS_DISABLED
+      TEST concurrency_concurrent_hash_map_test WINDOWS_DISABLED
         SOURCES ConcurrentHashMapTest.cpp
-      TEST dynamic_bounded_queue_test WINDOWS_DISABLED
+      TEST concurrency_dynamic_bounded_queue_test WINDOWS_DISABLED
         SOURCES DynamicBoundedQueueTest.cpp
-      TEST priority_unbounded_queue_set_test
+      TEST concurrency_priority_unbounded_queue_set_test
         SOURCES PriorityUnboundedQueueSetTest.cpp
-      BENCHMARK thread_cached_synchronized_benchmark
+      BENCHMARK concurrency_thread_cached_synchronized_bench
         SOURCES ThreadCachedSynchronizedBench.cpp
-      TEST thread_cached_synchronized_test
+      TEST concurrency_thread_cached_synchronized_test
         SOURCES ThreadCachedSynchronizedTest.cpp
-      TEST unbounded_queue_test SOURCES UnboundedQueueTest.cpp
+      TEST concurrency_unbounded_queue_test SOURCES UnboundedQueueTest.cpp
 
     DIRECTORY detail/test/
-      TEST static_singleton_manager_test SOURCES StaticSingletonManagerTest.cpp
+      TEST detail_static_singleton_manager_test
+        SOURCES StaticSingletonManagerTest.cpp
 
     DIRECTORY detail/test/
-      TEST simple_simd_string_utils_test SOURCES SimpleSimdStringUtilsTest.cpp
+      TEST detail_simple_simd_string_utils_test
+        SOURCES SimpleSimdStringUtilsTest.cpp
 
     DIRECTORY detail/test/
-      TEST split_string_simd_test WINDOWS_DISABLED
+      TEST detail_split_string_simd_test WINDOWS_DISABLED
         SOURCES SplitStringSimdTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
-      TEST base64_detail_test WINDOWS_DISABLED
+      TEST detail_base64_detail_test WINDOWS_DISABLED
       SOURCES
         Base64AgainstScalarTest.cpp
         Base64PlatformTest.cpp
         Base64SpecialCasesTest.cpp
 
     DIRECTORY executors/test/
-      TEST async_helpers_test SOURCES AsyncTest.cpp
-      TEST codel_test WINDOWS_DISABLED SOURCES CodelTest.cpp
-      BENCHMARK edf_thread_pool_executor_benchmark
+      TEST executors_async_helpers_test SOURCES AsyncTest.cpp
+      TEST executors_codel_test WINDOWS_DISABLED SOURCES CodelTest.cpp
+      BENCHMARK executors_edf_thread_pool_executor_benchmark
         SOURCES EDFThreadPoolExecutorBenchmark.cpp
-      TEST executor_test SOURCES ExecutorTest.cpp
-      TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
+      TEST executors_executor_test SOURCES ExecutorTest.cpp
+      TEST executors_fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
       # FunctionSchedulerTest has a lot of timing-dependent checks,
       # and tends to fail on heavily loaded systems.
-      TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
-      TEST global_executor_test SOURCES GlobalExecutorTest.cpp
-      TEST serial_executor_test SOURCES SerialExecutorTest.cpp
+      TEST executors_function_scheduler_test BROKEN
+        SOURCES FunctionSchedulerTest.cpp
+      TEST executors_global_executor_test SOURCES GlobalExecutorTest.cpp
+      TEST executors_serial_executor_test SOURCES SerialExecutorTest.cpp
       # Fails in ThreadPoolExecutorTest.RequestContext:719 data2 != nullptr
-      TEST thread_pool_executor_test BROKEN WINDOWS_DISABLED
+      TEST executors_thread_pool_executor_test BROKEN WINDOWS_DISABLED
         SOURCES ThreadPoolExecutorTest.cpp
-      TEST threaded_executor_test SOURCES ThreadedExecutorTest.cpp
-      TEST timed_drivable_executor_test SOURCES TimedDrivableExecutorTest.cpp
+      TEST executors_threaded_executor_test SOURCES ThreadedExecutorTest.cpp
+      TEST executors_timed_drivable_executor_test
+        SOURCES TimedDrivableExecutorTest.cpp
 
     DIRECTORY executors/task_queue/test/
-      TEST priority_unbounded_blocking_queue_test
+      TEST executors_task_queue_priority_unbounded_blocking_queue_test
         SOURCES PriorityUnboundedBlockingQueueTest.cpp
-      BENCHMARK unbounded_blocking_queue_benchmark
+      BENCHMARK executors_task_queue_unbounded_blocking_queue_bench
         SOURCES UnboundedBlockingQueueBench.cpp
-      TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
+      TEST executors_task_queue_unbounded_blocking_queue_test
+        SOURCES UnboundedBlockingQueueTest.cpp
 
     #DIRECTORY experimental/test/
       #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
@@ -767,28 +778,29 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     #DIRECTORY experimental/io/test/
 
     DIRECTORY external/farmhash/test/
-      TEST farmhash_test SOURCES farmhash_test.cpp
+      TEST external_farmhash_farmhash_test SOURCES farmhash_test.cpp
 
     DIRECTORY logging/test/
-      TEST async_file_writer_test WINDOWS_DISABLED
+      TEST logging_async_file_writer_test WINDOWS_DISABLED
         SOURCES AsyncFileWriterTest.cpp
-      TEST autotimer_test SOURCES AutoTimerTest.cpp
-      TEST config_parser_test SOURCES ConfigParserTest.cpp
-      TEST config_update_test SOURCES ConfigUpdateTest.cpp
-      TEST file_handler_factory_test WINDOWS_DISABLED
+      TEST logging_autotimer_test SOURCES AutoTimerTest.cpp
+      TEST logging_config_parser_test SOURCES ConfigParserTest.cpp
+      TEST logging_config_update_test SOURCES ConfigUpdateTest.cpp
+      TEST logging_file_handler_factory_test WINDOWS_DISABLED
         SOURCES FileHandlerFactoryTest.cpp
-      TEST glog_formatter_test SOURCES GlogFormatterTest.cpp
-      TEST immediate_file_writer_test SOURCES ImmediateFileWriterTest.cpp
-      TEST log_category_test SOURCES LogCategoryTest.cpp
-      TEST logger_db_test SOURCES LoggerDBTest.cpp
-      TEST logger_test WINDOWS_DISABLED SOURCES LoggerTest.cpp
-      TEST log_level_test SOURCES LogLevelTest.cpp
-      TEST log_message_test SOURCES LogMessageTest.cpp
-      TEST log_name_test SOURCES LogNameTest.cpp
-      TEST log_stream_test SOURCES LogStreamTest.cpp
-      TEST rate_limiter_test SOURCES RateLimiterTest.cpp
-      TEST standard_log_handler_test SOURCES StandardLogHandlerTest.cpp
-      TEST xlog_test WINDOWS_DISABLED
+      TEST logging_glog_formatter_test SOURCES GlogFormatterTest.cpp
+      TEST logging_immediate_file_writer_test
+        SOURCES ImmediateFileWriterTest.cpp
+      TEST logging_log_category_test SOURCES LogCategoryTest.cpp
+      TEST logging_logger_db_test SOURCES LoggerDBTest.cpp
+      TEST logging_logger_test WINDOWS_DISABLED SOURCES LoggerTest.cpp
+      TEST logging_log_level_test SOURCES LogLevelTest.cpp
+      TEST logging_log_message_test SOURCES LogMessageTest.cpp
+      TEST logging_log_name_test SOURCES LogNameTest.cpp
+      TEST logging_log_stream_test SOURCES LogStreamTest.cpp
+      TEST logging_rate_limiter_test SOURCES RateLimiterTest.cpp
+      TEST logging_standard_log_handler_test SOURCES StandardLogHandlerTest.cpp
+      TEST logging_xlog_test WINDOWS_DISABLED
         HEADERS
           XlogHeader1.h
           XlogHeader2.h
@@ -799,89 +811,89 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY fibers/test/
       # FiberManager swapWithException fails with segfault
-      BENCHMARK fibers_benchmark WINDOWS_DISABLED
+      BENCHMARK fibers_fibers_benchmark WINDOWS_DISABLED
         SOURCES FibersBenchmark.cpp
-      TEST fibers_test BROKEN SOURCES FibersTest.cpp
+      TEST fibers_fibers_test BROKEN SOURCES FibersTest.cpp
 
     DIRECTORY functional/test/
-      TEST apply_tuple_test WINDOWS_DISABLED
+      TEST functional_apply_tuple_test WINDOWS_DISABLED
         SOURCES ApplyTupleTest.cpp
       TEST functional_invoke_test WINDOWS_DISABLED
         SOURCES InvokeTest.cpp
-      TEST partial_test SOURCES PartialTest.cpp
+      TEST functional_partial_test SOURCES PartialTest.cpp
       TEST functional_protocol_test SOURCES protocol_test.cpp
       TEST functional_traits_test SOURCES traits_test.cpp
 
     DIRECTORY futures/test/
-      TEST barrier_test SOURCES BarrierTest.cpp
-      TEST callback_lifetime_test SOURCES CallbackLifetimeTest.cpp
-      TEST collect_test SOURCES CollectTest.cpp
-      TEST context_test SOURCES ContextTest.cpp
-      TEST core_test SOURCES CoreTest.cpp
-      TEST ensure_test SOURCES EnsureTest.cpp
-      TEST filter_test SOURCES FilterTest.cpp
-      TEST future_splitter_test SOURCES FutureSplitterTest.cpp
+      TEST futures_barrier_test SOURCES BarrierTest.cpp
+      TEST futures_callback_lifetime_test SOURCES CallbackLifetimeTest.cpp
+      TEST futures_collect_test SOURCES CollectTest.cpp
+      TEST futures_context_test SOURCES ContextTest.cpp
+      TEST futures_core_test SOURCES CoreTest.cpp
+      TEST futures_ensure_test SOURCES EnsureTest.cpp
+      TEST futures_filter_test SOURCES FilterTest.cpp
+      TEST futures_future_splitter_test SOURCES FutureSplitterTest.cpp
       BENCHMARK futures_benchmark WINDOWS_DISABLED
         SOURCES Benchmark.cpp
-      TEST future_test WINDOWS_DISABLED
+      TEST futures_future_test WINDOWS_DISABLED
         SOURCES FutureTest.cpp
-      TEST header_compile_test SOURCES HeaderCompileTest.cpp
-      TEST interrupt_test SOURCES InterruptTest.cpp
-      TEST map_test SOURCES MapTest.cpp
-      TEST non_copyable_lambda_test SOURCES NonCopyableLambdaTest.cpp
-      TEST poll_test SOURCES PollTest.cpp
-      TEST promise_test SOURCES PromiseTest.cpp
-      TEST reduce_test SOURCES ReduceTest.cpp
-      TEST retrying_test SOURCES RetryingTest.cpp
-      TEST self_destruct_test SOURCES SelfDestructTest.cpp
-      TEST shared_promise_test SOURCES SharedPromiseTest.cpp
-      TEST test_executor_test SOURCES TestExecutorTest.cpp
-      TEST then_compile_test
+      TEST futures_header_compile_test SOURCES HeaderCompileTest.cpp
+      TEST futures_interrupt_test SOURCES InterruptTest.cpp
+      TEST futures_map_test SOURCES MapTest.cpp
+      TEST futures_non_copyable_lambda_test SOURCES NonCopyableLambdaTest.cpp
+      TEST futures_poll_test SOURCES PollTest.cpp
+      TEST futures_promise_test SOURCES PromiseTest.cpp
+      TEST futures_reduce_test SOURCES ReduceTest.cpp
+      TEST futures_retrying_test SOURCES RetryingTest.cpp
+      TEST futures_self_destruct_test SOURCES SelfDestructTest.cpp
+      TEST futures_shared_promise_test SOURCES SharedPromiseTest.cpp
+      TEST futures_test_executor_test SOURCES TestExecutorTest.cpp
+      TEST futures_then_compile_test
         HEADERS
           ThenCompileTest.h
         SOURCES
           ThenCompileTest.cpp
-      TEST then_test SOURCES ThenTest.cpp
-      TEST timekeeper_test WINDOWS_DISABLED SOURCES TimekeeperTest.cpp
-      TEST times_test SOURCES TimesTest.cpp
-      TEST unwrap_test SOURCES UnwrapTest.cpp
-      TEST via_test SOURCES ViaTest.cpp
-      TEST wait_test SOURCES WaitTest.cpp
-      TEST when_test SOURCES WhenTest.cpp
-      TEST while_do_test SOURCES WhileDoTest.cpp
-      TEST will_equal_test SOURCES WillEqualTest.cpp
-      TEST window_test WINDOWS_DISABLED
+      TEST futures_then_test SOURCES ThenTest.cpp
+      TEST futures_timekeeper_test WINDOWS_DISABLED SOURCES TimekeeperTest.cpp
+      TEST futures_times_test SOURCES TimesTest.cpp
+      TEST futures_unwrap_test SOURCES UnwrapTest.cpp
+      TEST futures_via_test SOURCES ViaTest.cpp
+      TEST futures_wait_test SOURCES WaitTest.cpp
+      TEST futures_when_test SOURCES WhenTest.cpp
+      TEST futures_while_do_test SOURCES WhileDoTest.cpp
+      TEST futures_will_equal_test SOURCES WillEqualTest.cpp
+      TEST futures_window_test WINDOWS_DISABLED
         SOURCES WindowTest.cpp
 
     DIRECTORY gen/test/
       # MSVC bug can't resolve initializer_list constructor properly
-      #TEST base_test SOURCES BaseTest.cpp
-      TEST combine_test SOURCES CombineTest.cpp
-      BENCHMARK parallel_map_benchmark SOURCES ParallelMapBenchmark.cpp
-      TEST parallel_map_test SOURCES ParallelMapTest.cpp
-      BENCHMARK parallel_benchmark SOURCES ParallelBenchmark.cpp
-      TEST parallel_test SOURCES ParallelTest.cpp
+      #TEST gen_base_test SOURCES BaseTest.cpp
+      TEST gen_combine_test SOURCES CombineTest.cpp
+      BENCHMARK gen_parallel_map_benchmark SOURCES ParallelMapBenchmark.cpp
+      TEST gen_parallel_map_test SOURCES ParallelMapTest.cpp
+      BENCHMARK gen_parallel_benchmark SOURCES ParallelBenchmark.cpp
+      TEST gen_parallel_test SOURCES ParallelTest.cpp
 
     DIRECTORY hash/test/
-      BENCHMARK checksum_benchmark SOURCES ChecksumBenchmark.cpp
-      TEST checksum_test SOURCES ChecksumTest.cpp
-      TEST farm_hash_test SOURCES FarmHashTest.cpp
-      BENCHMARK hash_benchmark WINDOWS_DISABLED
+      BENCHMARK hash_checksum_benchmark SOURCES ChecksumBenchmark.cpp
+      TEST hash_checksum_test SOURCES ChecksumTest.cpp
+      TEST hash_farm_hash_test SOURCES FarmHashTest.cpp
+      BENCHMARK hash_hash_benchmark WINDOWS_DISABLED
         SOURCES HashBenchmark.cpp
-      TEST hash_test WINDOWS_DISABLED
+      TEST hash_hash_test WINDOWS_DISABLED
         SOURCES HashTest.cpp
-      TEST spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp
-      TEST spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
+      TEST hash_spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp
+      TEST hash_spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
 
     DIRECTORY io/test/
-      TEST fs_util_test SOURCES FsUtilTest.cpp
-      TEST iobuf_test WINDOWS_DISABLED SOURCES IOBufTest.cpp
-      TEST iobuf_cursor_test SOURCES IOBufCursorTest.cpp
-      TEST iobuf_queue_test SOURCES IOBufQueueTest.cpp
-      TEST record_io_test WINDOWS_DISABLED SOURCES RecordIOTest.cpp
-      TEST ShutdownSocketSetTest HANGING
+      TEST io_fs_util_test SOURCES FsUtilTest.cpp
+      TEST io_iobuf_test WINDOWS_DISABLED SOURCES IOBufTest.cpp
+      TEST io_iobuf_cursor_test SOURCES IOBufCursorTest.cpp
+      TEST io_iobuf_queue_test SOURCES IOBufQueueTest.cpp
+      TEST io_record_io_test WINDOWS_DISABLED SOURCES RecordIOTest.cpp
+      TEST io_shutdown_socket_set_test HANGING
         SOURCES ShutdownSocketSetTest.cpp
-      TEST SocketOptionValueTest HANGING
+      TEST io_socket_option_value_test HANGING
         SOURCES SocketOptionValueTest.cpp
 
     DIRECTORY io/async/test/
@@ -889,7 +901,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       # When run under Travis CI a number of the tests also hang (it looks
       # like they do not get expected socket accept events, causing them
       # to never break out of their event loops).
-      TEST async_test BROKEN
+      TEST io_async_async_test BROKEN
         CONTENT_DIR certs/
         HEADERS
           AsyncSocketTest.h
@@ -908,33 +920,37 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
           #EventHandlerTest.cpp
           # The async signal handler is not supported on Windows.
           #AsyncSignalHandlerTest.cpp
-      TEST async_timeout_test SOURCES AsyncTimeoutTest.cpp
-      TEST AsyncUDPSocketTest APPLE_DISABLED WINDOWS_DISABLED
+      TEST io_async_async_timeout_test SOURCES AsyncTimeoutTest.cpp
+      TEST io_async_async_udp_socket_test APPLE_DISABLED WINDOWS_DISABLED
         SOURCES AsyncUDPSocketTest.cpp
-      TEST DelayedDestructionTest SOURCES DelayedDestructionTest.cpp
-      TEST DelayedDestructionBaseTest SOURCES DelayedDestructionBaseTest.cpp
-      TEST DestructorCheckTest SOURCES DestructorCheckTest.cpp
+      TEST io_async_delayed_destruction_test SOURCES DelayedDestructionTest.cpp
+      TEST io_async_delayed_destruction_base_test
+        SOURCES DelayedDestructionBaseTest.cpp
+      TEST io_async_destructor_check_test SOURCES DestructorCheckTest.cpp
       # Fails with gtest macro error
-      TEST EventBaseTest BROKEN SOURCES EventBaseTest.cpp
-      TEST EventBaseLocalTest WINDOWS_DISABLED SOURCES EventBaseLocalTest.cpp
-      TEST HHWheelTimerTest SOURCES HHWheelTimerTest.cpp
-      TEST HHWheelTimerSlowTests SLOW
+      TEST io_async_event_base_test BROKEN SOURCES EventBaseTest.cpp
+      TEST io_async_event_base_local_test WINDOWS_DISABLED
+        SOURCES EventBaseLocalTest.cpp
+      TEST io_async_hh_wheel_timer_test SOURCES HHWheelTimerTest.cpp
+      TEST io_async_hh_wheel_timer_slow_tests SLOW
         SOURCES HHWheelTimerSlowTests.cpp
-      TEST NotificationQueueTest WINDOWS_DISABLED
+      TEST io_async_notification_queue_test WINDOWS_DISABLED
         SOURCES NotificationQueueTest.cpp
-      BENCHMARK request_context_benchmark WINDOWS_DISABLED
+      BENCHMARK io_async_request_context_benchmark WINDOWS_DISABLED
         SOURCES RequestContextBenchmark.cpp
         HEADERS RequestContextHelper.h
-      TEST RequestContextTest WINDOWS_DISABLED SOURCES RequestContextTest.cpp
-      TEST ScopedEventBaseThreadTest WINDOWS_DISABLED
+      TEST io_async_request_context_test WINDOWS_DISABLED
+        SOURCES RequestContextTest.cpp
+      TEST io_async_scoped_event_base_thread_test WINDOWS_DISABLED
         SOURCES ScopedEventBaseThreadTest.cpp
-      TEST ssl_session_test
+      TEST io_async_ssl_session_test
         CONTENT_DIR certs/
         SOURCES SSLSessionTest.cpp
-      TEST writechain_test SOURCES WriteChainAsyncTransportWrapperTest.cpp
+      TEST io_async_write_chain_async_transport_wrapper_test
+        SOURCES WriteChainAsyncTransportWrapperTest.cpp
 
     DIRECTORY io/async/ssl/test/
-      TEST ssl_errors_test SOURCES SSLErrorsTest.cpp
+      TEST io_async_ssl_ssl_errors_test SOURCES SSLErrorsTest.cpp
 
     DIRECTORY lang/test/
       TEST lang_align_test SOURCES AlignTest.cpp
@@ -958,70 +974,74 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lang_type_info_test SOURCES TypeInfoTest.cpp
 
     DIRECTORY memory/test/
-      TEST arena_test WINDOWS_DISABLED SOURCES ArenaTest.cpp
-      TEST reentrant_allocator_test WINDOWS_DISABLED
+      TEST memory_arena_test WINDOWS_DISABLED SOURCES ArenaTest.cpp
+      TEST memory_reentrant_allocator_test WINDOWS_DISABLED
         SOURCES ReentrantAllocatorTest.cpp
-      TEST thread_cached_arena_test WINDOWS_DISABLED
+      TEST memory_thread_cached_arena_test WINDOWS_DISABLED
         SOURCES ThreadCachedArenaTest.cpp
-      TEST mallctl_helper_test SOURCES MallctlHelperTest.cpp
-      TEST uninitialized_memory_hacks_test
+      TEST memory_mallctl_helper_test SOURCES MallctlHelperTest.cpp
+      TEST memory_uninitialized_memory_hacks_test
         SOURCES UninitializedMemoryHacksTest.cpp
 
     DIRECTORY net/detail/test/
-      TEST socket_file_descriptor_map_test SOURCES SocketFileDescriptorMapTest.cpp
+      TEST net_detail_socket_file_descriptor_map_test
+        SOURCES SocketFileDescriptorMapTest.cpp
 
     DIRECTORY portability/test/
-      TEST constexpr_test SOURCES ConstexprTest.cpp
-      TEST filesystem_test SOURCES FilesystemTest.cpp
-      TEST libgen-test SOURCES LibgenTest.cpp
-      TEST openssl_portability_test SOURCES OpenSSLPortabilityTest.cpp
-      TEST pthread_test SOURCES PThreadTest.cpp
-      TEST time-test WINDOWS_DISABLED
+      TEST portability_constexpr_test SOURCES ConstexprTest.cpp
+      TEST portability_filesystem_test SOURCES FilesystemTest.cpp
+      TEST portability_libgen_test SOURCES LibgenTest.cpp
+      TEST portability_openssl_portability_test
+        SOURCES OpenSSLPortabilityTest.cpp
+      TEST portability_pthread_test SOURCES PThreadTest.cpp
+      TEST portability_time_test WINDOWS_DISABLED
         SOURCES TimeTest.cpp
 
     DIRECTORY ssl/test/
-      TEST openssl_hash_test SOURCES OpenSSLHashTest.cpp
+      TEST ssl_openssl_hash_test SOURCES OpenSSLHashTest.cpp
 
     DIRECTORY stats/test/
-      TEST buffered_stat_test SOURCES BufferedStatTest.cpp
-      BENCHMARK digest_builder_benchmark SOURCES DigestBuilderBenchmark.cpp
-      TEST digest_builder_test SOURCES DigestBuilderTest.cpp
-      BENCHMARK histogram_benchmark SOURCES HistogramBenchmark.cpp
-      TEST histogram_test SOURCES HistogramTest.cpp
-      BENCHMARK quantile_histogram_benchmark
+      TEST stats_buffered_stat_test SOURCES BufferedStatTest.cpp
+      BENCHMARK stats_digest_builder_benchmark
+        SOURCES DigestBuilderBenchmark.cpp
+      TEST stats_digest_builder_test SOURCES DigestBuilderTest.cpp
+      BENCHMARK stats_histogram_benchmark SOURCES HistogramBenchmark.cpp
+      TEST stats_histogram_test SOURCES HistogramTest.cpp
+      BENCHMARK stats_quantile_histogram_benchmark
         SOURCES QuantileHistogramBenchmark.cpp
-      TEST quantile_estimator_test SOURCES QuantileEstimatorTest.cpp
-      TEST sliding_window_test SOURCES SlidingWindowTest.cpp
-      BENCHMARK tdigest_benchmark SOURCES TDigestBenchmark.cpp
-      TEST tdigest_test SOURCES TDigestTest.cpp
-      TEST timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
-      TEST timeseries_test SOURCES TimeSeriesTest.cpp
+      TEST stats_quantile_estimator_test SOURCES QuantileEstimatorTest.cpp
+      TEST stats_sliding_window_test SOURCES SlidingWindowTest.cpp
+      BENCHMARK stats_tdigest_benchmark SOURCES TDigestBenchmark.cpp
+      TEST stats_tdigest_test SOURCES TDigestTest.cpp
+      TEST stats_timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
+      TEST stats_timeseries_test SOURCES TimeSeriesTest.cpp
 
     DIRECTORY synchronization/test/
-      BENCHMARK baton_benchmark SOURCES BatonBenchmark.cpp
-      TEST baton_test SOURCES BatonTest.cpp
-      TEST call_once_test SOURCES CallOnceTest.cpp
-      TEST event_count_test SOURCES EventCountTest.cpp
-      TEST lifo_sem_test WINDOWS_DISABLED SOURCES LifoSemTests.cpp
-      TEST relaxed_atomic_test WINDOWS_DISABLED SOURCES RelaxedAtomicTest.cpp
-      TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
-      TEST semaphore_test WINDOWS_DISABLED SOURCES SemaphoreTest.cpp
+      TEST synchronization_atomic_util_test SOURCES AtomicUtilTest.cpp
+      TEST synchronization_atomic_struct_test SOURCES AtomicStructTest.cpp
+      BENCHMARK synchronization_baton_benchmark SOURCES BatonBenchmark.cpp
+      TEST synchronization_baton_test SOURCES BatonTest.cpp
+      TEST synchronization_call_once_test SOURCES CallOnceTest.cpp
+      TEST synchronization_event_count_test SOURCES EventCountTest.cpp
+      TEST synchronization_lifo_sem_test WINDOWS_DISABLED
+        SOURCES LifoSemTests.cpp
+      TEST synchronization_relaxed_atomic_test WINDOWS_DISABLED
+        SOURCES RelaxedAtomicTest.cpp
+      TEST synchronization_rw_spin_lock_test SOURCES RWSpinLockTest.cpp
+      TEST synchronization_semaphore_test WINDOWS_DISABLED
+        SOURCES SemaphoreTest.cpp
+      TEST synchronization_small_locks_test SOURCES SmallLocksTest.cpp
 
     DIRECTORY synchronization/detail/test/
-      TEST hardware_test SOURCES HardwareTest.cpp
+      TEST synchronization_detail_hardware_test SOURCES HardwareTest.cpp
 
     DIRECTORY system/test/
-      TEST memory_mapping_test SOURCES MemoryMappingTest.cpp
-      TEST shell_test SOURCES ShellTest.cpp
-      #TEST subprocess_test SOURCES SubprocessTest.cpp
-      TEST thread_id_test SOURCES ThreadIdTest.cpp
-      TEST thread_name_test WINDOWS_DISABLED
+      TEST system_memory_mapping_test SOURCES MemoryMappingTest.cpp
+      TEST system_shell_test SOURCES ShellTest.cpp
+      #TEST system_subprocess_test SOURCES SubprocessTest.cpp
+      TEST system_thread_id_test SOURCES ThreadIdTest.cpp
+      TEST system_thread_name_test WINDOWS_DISABLED
         SOURCES ThreadNameTest.cpp
-
-    DIRECTORY synchronization/test/
-      TEST atomic_struct_test SOURCES AtomicStructTest.cpp
-      TEST small_locks_test SOURCES SmallLocksTest.cpp
-      TEST atomic_util_test SOURCES AtomicUtilTest.cpp
 
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
@@ -1137,34 +1157,34 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST varint_test SOURCES VarintTest.cpp
 
     DIRECTORY testing/test/
-      TEST test_util_test SOURCES TestUtilTest.cpp
+      TEST testing_test_util_test SOURCES TestUtilTest.cpp
 
     DIRECTORY json/test/
-      TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
-      TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
-      TEST dynamic_parser_test SOURCES DynamicParserTest.cpp
-      TEST dynamic_test SOURCES DynamicTest.cpp
+      TEST json_dynamic_converter_test SOURCES DynamicConverterTest.cpp
+      TEST json_dynamic_other_test SOURCES DynamicOtherTest.cpp
+      TEST json_dynamic_parser_test SOURCES DynamicParserTest.cpp
+      TEST json_dynamic_test SOURCES DynamicTest.cpp
       # MSVC Preprocessor stringizing raw string literals bug
-      TEST json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
-      BENCHMARK json_benchmark SOURCES JsonBenchmark.cpp
-      TEST json_other_test SOURCES JsonOtherTest.cpp
-      TEST json_patch_test SOURCES json_patch_test.cpp
-      TEST json_pointer_test SOURCES json_pointer_test.cpp
-      TEST json_schema_test SOURCES JSONSchemaTest.cpp
+      TEST json_json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
+      BENCHMARK json_json_benchmark SOURCES JsonBenchmark.cpp
+      TEST json_json_other_test SOURCES JsonOtherTest.cpp
+      TEST json_json_patch_test SOURCES json_patch_test.cpp
+      TEST json_json_pointer_test SOURCES json_pointer_test.cpp
+      TEST json_json_schema_test SOURCES JSONSchemaTest.cpp
   )
 
   if (${LIBSODIUM_FOUND})
     folly_define_tests(
       DIRECTORY crypto/test/
-        TEST blake2xb_test SOURCES Blake2xbTest.cpp
-        TEST lt_hash_test SOURCES LtHashTest.cpp
+        TEST crypto_blake2xb_test SOURCES Blake2xbTest.cpp
+        TEST crypto_lt_hash_test SOURCES LtHashTest.cpp
     )
   endif()
 
   if (${LIBAIO_FOUND})
     folly_define_tests(
       DIRECTORY io/async/test/
-        TEST async_io_test
+        TEST io_async_async_io_test
           SOURCES
             AsyncIOTest.cpp
             AsyncBaseTestLib.cpp
