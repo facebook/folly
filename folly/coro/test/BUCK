@@ -85,10 +85,29 @@ cpp_benchmark(
 )
 
 cpp_unittest(
+    name = "async_generator_test",
+    srcs = ["AsyncGeneratorTest.cpp"],
+    deps = [
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:traits",
+        "//folly/experimental/coro:async_generator",
+        "//folly/experimental/coro:baton",
+        "//folly/experimental/coro:blocking_wait",
+        "//folly/experimental/coro:collect",
+        "//folly/experimental/coro:invoke",
+        "//folly/experimental/coro:sleep",
+        "//folly/experimental/coro:task",
+        "//folly/experimental/coro:with_cancellation",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "coro_test",
     srcs = [
         "AccumulateTest.cpp",
-        "AsyncGeneratorTest.cpp",
         "AsyncPipeTest.cpp",
         "AsyncScopeTest.cpp",
         "BatonTest.cpp",
@@ -121,7 +140,6 @@ cpp_unittest(
         "//folly:optional",
         "//folly:portability",
         "//folly:scope_guard",
-        "//folly:traits",
         "//folly:utility",
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:global_executor",

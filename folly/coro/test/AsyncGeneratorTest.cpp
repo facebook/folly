@@ -474,7 +474,8 @@ folly::coro::AsyncGenerator<int> range(int from, int to) {
 
 TEST_F(AsyncGeneratorTest, SymmetricTransfer) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
-    int max = 100000;
+    // Large enough to overflow Mac's 512KiB thread stack @ 4 bytes per item
+    int max = 1000000;
     auto g = range(1, max + 1);
     long long sum = 0;
     while (auto result = co_await g.next()) {
