@@ -199,7 +199,7 @@ class TaskPromiseBase {
 // Separate from `TaskPromiseBase` so the compiler has less to specialize.
 template <typename Promise, typename T>
 class TaskPromiseCrtpBase : public TaskPromiseBase,
-                            public ExtendedCoroutinePromiseImpl<Promise> {
+                            public ExtendedCoroutinePromise {
  public:
   using StorageType = detail::lift_lvalue_reference_t<T>;
 
@@ -232,7 +232,7 @@ class TaskPromiseCrtpBase : public TaskPromiseBase,
   ~TaskPromiseCrtpBase() = default;
 
   std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-      exception_wrapper& ex) override {
+      exception_wrapper& ex) final {
     auto& me = *static_cast<Promise*>(this);
     if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
       auto finalAwaiter = yield_value(co_error(std::move(ex)));

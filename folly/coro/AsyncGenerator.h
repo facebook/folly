@@ -486,10 +486,8 @@ struct BaseAsyncGeneratorPromise<true> {
 };
 
 template <typename Reference, typename Value, bool RequiresCleanup = false>
-class AsyncGeneratorPromise final
-    : public ExtendedCoroutinePromiseImpl<
-          AsyncGeneratorPromise<Reference, Value, RequiresCleanup>>,
-      BaseAsyncGeneratorPromise<RequiresCleanup> {
+class AsyncGeneratorPromise final : public ExtendedCoroutinePromise,
+                                    BaseAsyncGeneratorPromise<RequiresCleanup> {
   class YieldAwaiter {
    public:
     bool await_ready() noexcept { return false; }
@@ -720,7 +718,7 @@ class AsyncGeneratorPromise final
   folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
 
   std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-      exception_wrapper& ex) override {
+      exception_wrapper& ex) final {
     if (bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
       auto yieldAwaiter = yield_value(co_error(std::move(ex)));
       DCHECK(!yieldAwaiter.await_ready());

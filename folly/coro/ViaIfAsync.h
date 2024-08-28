@@ -112,7 +112,7 @@ template <bool IsStackAware>
 class ViaCoroutine {
  public:
   class promise_type final : public ViaCoroutinePromiseBase,
-                             public ExtendedCoroutinePromiseImpl<promise_type> {
+                             public ExtendedCoroutinePromise {
     struct FinalAwaiter {
       bool await_ready() noexcept { return false; }
 
@@ -154,13 +154,13 @@ class ViaCoroutine {
     folly::AsyncStackFrame& getLeafFrame() noexcept { return leafFrame_; }
 
     std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-        exception_wrapper& ex) override {
+        exception_wrapper& ex) final {
       auto [handle, frame] = continuation_.getErrorHandle(ex);
       setContinuation(handle);
       if (frame && IsStackAware) {
         leafFrame_.setParentFrame(*frame);
       }
-      return {promise_type::getHandle(), nullptr};
+      return {coroutine_handle<promise_type>::from_promise(*this), nullptr};
     }
   };
 
