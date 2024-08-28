@@ -29,6 +29,7 @@
 #include <folly/futures/Future.h>
 
 #include <folly/portability/GTest.h>
+#include <folly/portability/PThread.h>
 
 #include <chrono>
 #include <map>
@@ -466,23 +467,51 @@ TEST_F(AsyncGeneratorTest, BlockingWaitOnThrowingFinalNextDoesNotDeadlock) {
   }
 }
 
-folly::coro::AsyncGenerator<int> range(int from, int to) {
-  for (int i = from; i < to; ++i) {
+folly::coro::AsyncGenerator<size_t> sizeRange(size_t from, size_t to) {
+  for (size_t i = from; i < to; ++i) {
     co_yield i;
   }
 }
 
 TEST_F(AsyncGeneratorTest, SymmetricTransfer) {
-  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
-    // Large enough to overflow Mac's 512KiB thread stack @ 4 bytes per item
-    int max = 1000000;
-    auto g = range(1, max + 1);
-    long long sum = 0;
-    while (auto result = co_await g.next()) {
-      sum += *result;
-    }
-    EXPECT_EQ(((long long)max + 1) * max / 2, sum);
-  }());
+  // 512KiB is larger than we need, technically.  It comes from MacOS's
+  // default stack size for secondary threads.  The superstition behind
+  // using a realistic size is that even if someone stubs out `setstacksize`
+  // to be a no-op for a platform, we still have a chance of catching bugs.
+  constexpr size_t kStackSize = 1 << 19;
+  auto testFn = [](void* numItersPtr) -> void* {
+    size_t numIters = *reinterpret_cast<size_t*>(numItersPtr);
+    size_t sum = 0;
+    folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+      auto g = sizeRange(1, numIters + 1);
+      int* prevAddress = nullptr;
+      while (auto result = co_await g.next()) {
+        [[maybe_unused]] int stackVariable = 0;
+        if (!prevAddress) {
+          prevAddress = &stackVariable;
+        } else {
+          // If symmetric transfer is broken, this should fire before we
+          // overflow the stack. `EXPECT_EQ` hangs on Mac / Rosetta.
+          CHECK_EQ(prevAddress, &stackVariable);
+        }
+        sum += *result;
+      }
+      CHECK_EQ((numIters + 1) * numIters / 2, sum);
+    }());
+    static_assert(sizeof(size_t) <= sizeof(void*));
+    return reinterpret_cast<void*>(sum);
+  };
+  pthread_attr_t attr;
+  ASSERT_EQ(0, pthread_attr_init(&attr));
+  ASSERT_EQ(0, pthread_attr_setstacksize(&attr, kStackSize));
+  pthread_t thread;
+  // The goal is to overflow the stack with even 1 byte per item
+  size_t numIters = kStackSize + 1;
+  ASSERT_EQ(0, pthread_create(&thread, &attr, testFn, &numIters));
+  void* sumAsPtr;
+  ASSERT_EQ(0, pthread_join(thread, &sumAsPtr));
+  // Redundant with above, but ensures the thread actually ran!
+  EXPECT_EQ((numIters + 1) * numIters / 2, reinterpret_cast<size_t>(sumAsPtr));
 }
 
 TEST(AsyncGenerator, YieldCoError) {

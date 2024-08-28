@@ -101,6 +101,7 @@ cpp_unittest(
         "//folly/experimental/coro:with_cancellation",
         "//folly/futures:core",
         "//folly/portability:gtest",
+        "//folly/portability:pthread",
     ],
 )
 
