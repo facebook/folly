@@ -28,11 +28,7 @@
  * use intrinsics instead of inline asm
  * other code cleanup
  */
-/*
- * Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- */
 
-#include <cstring>
 #include <stdexcept>
 
 #include <boost/preprocessor/arithmetic/add.hpp>
@@ -41,10 +37,6 @@
 
 #include <folly/CppAttributes.h>
 #include <folly/hash/detail/ChecksumDetail.h>
-
-#if FOLLY_ARM_FEATURE_CRC32
-#include <arm_acle.h>
-#endif
 
 namespace folly {
 namespace detail {
@@ -294,46 +286,16 @@ uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
   return (uint32_t)crc0;
 }
 
-#elif FOLLY_ARM_FEATURE_CRC32 // defined(FOLLY_X64) && FOLLY_SSE_PREREQ(4, 2)
-
-uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
-  while (len >= 8) {
-    uint64_t val = 0;
-    std::memcpy(&val, buf, 8);
-    crc = __crc32cd(crc, val);
-    len -= 8;
-    buf += 8;
-  }
-
-  if (len % 8 >= 4) {
-    uint32_t val = 0;
-    std::memcpy(&val, buf, 4);
-    crc = __crc32cw(crc, val);
-    buf += 4;
-  }
-
-  if (len % 4 >= 2) {
-    uint16_t val = 0;
-    std::memcpy(&val, buf, 2);
-    crc = __crc32ch(crc, val);
-    buf += 2;
-  }
-
-  if (len % 2 >= 1) {
-    crc = __crc32cb(crc, *buf);
-  }
-
-  return crc;
-}
-
-#else // FOLLY_ARM_FEATURE_CRC32
+#elif defined(FOLLY_ARM_FEATURE_CRC32) // defined(FOLLY_X64) && FOLLY_SSE_PREREQ(4, 2)
+// crc32c_hw is defined in external/nvidia/hash/detail/Crc32cDetail.cpp
+#else
 
 uint32_t crc32c_hw(
     const uint8_t* /* buf */, size_t /* len */, uint32_t /* crc */) {
   throw std::runtime_error("crc32_hw is not implemented on this platform");
 }
 
-#endif
+#endif // !defined(FOLLY_ARM_FEATURE_CRC32)
 
 } // namespace detail
 } // namespace folly

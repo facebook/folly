@@ -1,6 +1,5 @@
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
- * Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +20,7 @@
 #include <folly/Bits.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 
-#if FOLLY_ARM_FEATURE_CRC32
-#include <arm_acle.h>
-#include <arm_neon.h>
-#endif
+#include <folly/external/nvidia/hash/detail/Crc32cCombineDetail-inl.h>
 
 namespace folly {
 
@@ -113,36 +109,10 @@ static uint32_t gf_multiply_crc32_hw(uint64_t crc1, uint64_t crc2, uint32_t) {
 
 #elif FOLLY_NEON && FOLLY_ARM_FEATURE_CRC32 && FOLLY_ARM_FEATURE_AES && \
     FOLLY_ARM_FEATURE_SHA2
-static uint32_t gf_multiply_crc32c_hw(uint64_t crc1, uint64_t crc2, uint32_t) {
-  const uint64x2_t count = vsetq_lane_u64(0, vdupq_n_u64(1), 1);
 
-  const poly128_t res0 = vmull_p64(crc2, crc1);
-  const uint64x2_t res1 =
-      vshlq_u64(vreinterpretq_u64_p128(res0), vreinterpretq_s64_u64(count));
-
-  // Use hardware crc32c to do reduction from 64 -> 32 bytes
-  const uint64_t res2 = vgetq_lane_u64(res1, 0);
-  const uint32_t res3 = __crc32cw(0, res2);
-  const uint32_t res4 = vgetq_lane_u32(vreinterpretq_u32_u64(res1), 1);
-
-  return res3 ^ res4;
-}
-
-static uint32_t gf_multiply_crc32_hw(uint64_t crc1, uint64_t crc2, uint32_t) {
-  const uint64x2_t count = vsetq_lane_u64(0, vdupq_n_u64(1), 1);
-
-  const poly128_t res0 = vmull_p64(crc2, crc1);
-  const uint64x2_t res1 =
-      vshlq_u64(vreinterpretq_u64_p128(res0), vreinterpretq_s64_u64(count));
-
-  // Use hardware crc32 to do reduction from 64 -> 32 bytes
-  const uint64_t res2 = vgetq_lane_u64(res1, 0);
-  const uint32_t res3 = __crc32w(0, res2);
-  const uint32_t res4 = vgetq_lane_u32(vreinterpretq_u32_u64(res1), 1);
-
-  return res3 ^ res4;
-}
-#else // FOLLY_ARM_FEATURE_CRC32
+// gf_multiply_crc32c_hw and fg_multiply_crc32_hw are defined in
+// external/nvidia/hash/detail/Crc32cCombineDetail-inl.h
+#else
 
 static uint32_t gf_multiply_crc32c_hw(uint64_t, uint64_t, uint32_t) {
   return 0;
