@@ -115,6 +115,8 @@ uint32_t headerHash(const Header& header) {
 
 std::pair<size_t, std::size_t> dataLengthAndHash(const IOBuf* buf) {
   size_t len = 0;
+  // TODO(cavalcanti): this could also be migrated to XXH3, similar
+  // to IOBuf, pending better understanding of its utests.
   hash::SpookyHashV2 hasher;
   hasher.Init(kHashSeed, kHashSeed);
   for (auto br : *buf) {
