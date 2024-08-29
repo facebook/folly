@@ -34,6 +34,7 @@ namespace folly {
 /// Assumes that higher level code:
 /// - Checks availability of empty slots before calling insert
 /// - Manages expansion and/or cleanup of tombstones
+/// - Ensures no concurrent mutations to the copy constructor argument
 ///
 /// Notes on algorithm:
 /// - Tombstones are used to mark previously occupied slots.

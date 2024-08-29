@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/io/async/Request.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -37,10 +38,11 @@ class TestData : public RequestData {
     onUnSetRctx = RequestContext::get();
   }
 
-  int set_ = 0, unset_ = 0;
-  int data_;
-  RequestContext* onSetRctx = nullptr;
-  RequestContext* onUnSetRctx = nullptr;
+  const int data_;
+  relaxed_atomic<int> set_ = 0;
+  relaxed_atomic<int> unset_ = 0;
+  relaxed_atomic<RequestContext*> onSetRctx = nullptr;
+  relaxed_atomic<RequestContext*> onUnSetRctx = nullptr;
 };
 
 } // namespace folly

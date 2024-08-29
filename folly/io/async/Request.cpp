@@ -161,6 +161,29 @@ struct RequestContext::State::Combined : hazptr_obj_base<Combined> {
     }
   }
 
+  void debugCheckConsistency() {
+    if constexpr (kIsDebug) {
+      size_t numRequestData = 0;
+      size_t numHasCallback = 0;
+      for (auto it = requestData_.begin(); it != requestData_.end(); ++it) {
+        ++numRequestData;
+        if (it.value() && it.value()->hasCallback()) {
+          ++numHasCallback;
+          CHECK(callbackData_.contains(it.value()))
+              << it.key().getDebugString();
+        }
+      }
+      CHECK_EQ(numRequestData, requestData_.size());
+      size_t numCallbackData = 0;
+      for (auto it = callbackData_.begin(); it != callbackData_.end(); ++it) {
+        ++numCallbackData;
+        CHECK(it.key());
+      }
+      CHECK_EQ(numHasCallback, numCallbackData);
+      CHECK_EQ(numCallbackData, callbackData_.size());
+    }
+  }
+
   /* needExpand */
   bool needExpand() {
     return needExpandRequestData() || needExpandCallbackData();
@@ -183,9 +206,14 @@ RequestContext::State::State() = default;
 
 FOLLY_ALWAYS_INLINE
 RequestContext::State::State(const State& o) {
+  // Even though Combined's maps can be individually iterated without
+  // synchronization, we need a consistent snapshot, so we have to synchronize
+  // with writers.
+  std::shared_lock lock(o.mutex_);
   Combined* oc = o.combined();
   if (oc) {
     auto p = new Combined(*oc);
+    p->debugCheckConsistency();
     p->acquireDataRefs();
     setCombined(p);
   }

@@ -644,6 +644,7 @@ cpp_benchmark(
         "//folly/container:array",
         "//folly/io/async:request_context",
         "//folly/portability:gflags",
+        "//folly/synchronization:relaxed_atomic",
         "//folly/synchronization/test:barrier",
     ],
 )
@@ -653,10 +654,13 @@ cpp_unittest(
     srcs = ["RequestContextTest.cpp"],
     headers = ["RequestContextHelper.h"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:memory",
+        "//folly/container:enumerate",
         "//folly/io/async:async_base",
         "//folly/io/async:request_context",
         "//folly/portability:gtest",
+        "//folly/synchronization:relaxed_atomic",
         "//folly/system:thread_name",
     ],
     external_deps = [

@@ -19,13 +19,16 @@
 #include <thread>
 
 #include <folly/Memory.h>
+#include <folly/container/Enumerate.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/Request.h>
 #include <folly/io/async/test/RequestContextHelper.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/system/ThreadName.h>
 
 #include <boost/thread/barrier.hpp>
+#include <fmt/format.h>
 
 using namespace folly;
 
@@ -362,6 +365,43 @@ TEST_F(RequestContextTest, ShallowCopyClear) {
   EXPECT_EQ(123, getData().data_);
   EXPECT_EQ(2, getData().set_);
   EXPECT_EQ(1, getData().unset_);
+}
+
+TEST_F(RequestContextTest, ShallowCopyWithConcurrentModifications) {
+  RequestContextScopeGuard g0;
+  auto ctx = getContext().saveContext();
+
+  relaxed_atomic<bool> done{false};
+  std::thread mutator([&] {
+    constexpr size_t kNumIters = 2;
+    constexpr size_t kNumKeys = 1000;
+    std::vector<RequestToken> keys(kNumKeys);
+    for (auto&& [i, key] : folly::enumerate(keys)) {
+      key = RequestToken{fmt::format("key-{}", i)};
+    }
+
+    for (size_t i = 0; i < kNumIters; ++i) {
+      for (const auto& key : keys) {
+        ctx->setContextData(key, std::make_unique<TestData>(0));
+      }
+      for (const auto& key : keys) {
+        ctx->clearContextData(key);
+      }
+    }
+    done = true;
+  });
+
+  std::thread copier([&] {
+    RequestContextScopeGuard g1(ctx);
+    while (!done) {
+      ShallowCopyRequestContextScopeGuard shallowGuard;
+      // Force unsetting and re-setting all the RequestDatas.
+      RequestContextScopeGuard nullptrGuard(nullptr);
+    }
+  });
+
+  mutator.join();
+  copier.join();
 }
 
 TEST_F(RequestContextTest, ShallowCopyMulti) {
