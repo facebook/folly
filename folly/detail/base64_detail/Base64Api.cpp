@@ -31,10 +31,16 @@ Base64RuntimeImpl base64EncodeSelectImplementation() {
         base64URLDecodeSWAR};
   }
 #endif
+#if defined(__POWERPC__) || (defined(__powerpc__) && defined(WORDS_BIGENDIAN)) // PowerPC BE
+  return {
+      base64EncodeScalar,
+      base64URLEncode};
+#else // Everything but PowerPC BE
   return {
       base64EncodeScalar,
       base64URLEncodeScalar,
       base64DecodeSWAR,
       base64URLDecodeSWAR};
+#endif
 }
 } // namespace folly::detail::base64_detail

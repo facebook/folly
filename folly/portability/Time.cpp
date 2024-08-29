@@ -37,11 +37,13 @@ static void duration_to_ts(
 #if !FOLLY_HAVE_CLOCK_GETTIME || FOLLY_FORCE_CLOCK_GETTIME_DEFINITION
 #if __MACH__
 #include <errno.h>
+#include <sys/types.h>
 #include <mach/mach_init.h> // @manual
 #include <mach/mach_port.h> // @manual
 #include <mach/mach_time.h> // @manual
 #include <mach/mach_types.h> // @manual
 #include <mach/task.h> // @manual
+#include <mach/task_info.h> // for MacOS <= Lion
 #include <mach/thread_act.h> // @manual
 #include <mach/vm_map.h> // @manual
 
@@ -64,6 +66,7 @@ static int clock_process_cputime(struct timespec* ts) {
   }
 
   // Get CPU usage for terminated threads.
+#ifdef MACH_TASK_BASIC_INFO
   mach_task_basic_info task_basic_info;
   mach_msg_type_number_t task_basic_info_count = MACH_TASK_BASIC_INFO_COUNT;
   kern_result = task_info(
@@ -74,6 +77,18 @@ static int clock_process_cputime(struct timespec* ts) {
   if (FOLLY_UNLIKELY(kern_result != KERN_SUCCESS)) {
     return -1;
   }
+#else
+  task_basic_info task_basic_info;
+  mach_msg_type_number_t task_basic_info_count = TASK_BASIC_INFO_COUNT;
+  kern_result = task_info(
+      mach_task_self(),
+      TASK_BASIC_INFO,
+      (thread_info_t)&task_basic_info,
+      &task_basic_info_count);
+  if (UNLIKELY(kern_result != KERN_SUCCESS)) {
+    return -1;
+  }
+#endif
 
   auto cputime = time_value_to_ns(thread_times_info.user_time) +
       time_value_to_ns(thread_times_info.system_time) +
@@ -99,6 +114,7 @@ static int clock_thread_cputime(struct timespec* ts) {
   return 0;
 }
 
+#if defined(__APPLE__) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101100
 FOLLY_ATTR_WEAK int clock_gettime(clockid_t clk_id, struct timespec* ts) {
   switch (folly::to_underlying(clk_id)) {
     case CLOCK_REALTIME: {
@@ -120,6 +136,7 @@ FOLLY_ATTR_WEAK int clock_gettime(clockid_t clk_id, struct timespec* ts) {
       return -1;
   }
 }
+#endif
 
 int clock_getres(clockid_t clk_id, struct timespec* ts) {
   if (clk_id != CLOCK_MONOTONIC) {
@@ -190,6 +207,7 @@ extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {
       res->tv_nsec = time_t(perSec * kNsPerSec);
       return 0;
     }
+#if defined(__APPLE__) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101100
     case CLOCK_PROCESS_CPUTIME_ID:
     case CLOCK_THREAD_CPUTIME_ID: {
       DWORD adj, timeIncrement;
@@ -198,12 +216,11 @@ extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {
         errno = EINVAL;
         return -1;
       }
-
       res->tv_sec = 0;
       res->tv_nsec = long(timeIncrement * 100);
       return 0;
     }
-
+#endif
     default:
       errno = EINVAL;
       return -1;
@@ -236,6 +253,7 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
       duration_to_ts(now, tp);
       return 0;
     }
+#if defined(__APPLE__) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101100
     case CLOCK_PROCESS_CPUTIME_ID: {
       if (!GetProcessTimes(
               GetCurrentProcess(),
@@ -268,7 +286,7 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
           filetimeToUnsignedNanos(kernalTime) +
               filetimeToUnsignedNanos(userTime));
     }
-
+#endif
     default:
       errno = EINVAL;
       return -1;

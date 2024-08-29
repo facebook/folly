@@ -262,6 +262,7 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
             "failed to set IPV6_RECVTCLASS on the socket",
             errno);
       }
+  #ifdef IP_RECVTOS
     } else if (family == AF_INET) {
       if (netops::setsockopt(
               socket, IPPROTO_IP, IP_RECVTOS, &flag, sizeof(flag)) != 0) {
@@ -270,6 +271,7 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
             "failed to set IP_RECVTOS on the socket",
             errno);
       }
+  #endif
     }
   }
 
