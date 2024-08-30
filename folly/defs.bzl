@@ -13,8 +13,6 @@ load(
     "FBCODE",
     "IOS",
     "MACOSX",
-    "VISIONOS",
-    "WATCHOS",
     "WINDOWS",
     "get_available_platforms",
 )
@@ -110,7 +108,7 @@ WINDOWS_CLANG_CXX_FLAGS = [
     "-D_ENABLE_EXTENDED_ALIGNED_STORAGE",
 ]
 
-DEFAULT_APPLE_SDKS = (IOS, MACOSX, VISIONOS, WATCHOS)
+DEFAULT_APPLE_SDKS = (IOS, MACOSX)
 DEFAULT_PLATFORMS = (CXX, ANDROID, APPLE, FBCODE, WINDOWS)
 
 def _compute_include_directories():
