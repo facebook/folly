@@ -331,6 +331,11 @@ void clause11_21_4_5(String& test) {
 
 template <class String>
 void clause11_21_4_6_1(String& test) {
+  using string_view_type = std::basic_string_view<
+      typename String::value_type,
+      typename String::traits_type>;
+  auto orig = test;
+
   // 21.3.5 modifiers (+=)
   String test1;
   randomString(&test1);
@@ -384,10 +389,23 @@ void clause11_21_4_6_1(String& test) {
   // initializer_list
   initializer_list<typename String::value_type> il{'a', 'b', 'c'};
   test += il;
+  // string_view
+  auto testsv = orig;
+  testsv += string_view_type{orig};
+  EXPECT_EQ(orig + orig, testsv);
+  // like string_view
+  auto testlsv = orig;
+  testlsv += invocable_to([&] { return string_view_type{orig}; });
+  EXPECT_EQ(orig + orig, testlsv);
 }
 
 template <class String>
 void clause11_21_4_6_2(String& test) {
+  using string_view_type = std::basic_string_view<
+      typename String::value_type,
+      typename String::traits_type>;
+  auto orig = test;
+
   // 21.3.5 modifiers (append, push_back)
   String s;
 
@@ -415,6 +433,14 @@ void clause11_21_4_6_2(String& test) {
   // initializer_list
   initializer_list<typename String::value_type> il{'a', 'b', 'c'};
   test.append(il);
+  // string_view
+  auto testsv = orig;
+  testsv.append(string_view_type{orig});
+  EXPECT_EQ(orig + orig, testsv);
+  // like string_view
+  auto testlsv = orig;
+  testlsv.append(folly::invocable_to([&] { return string_view_type{orig}; }));
+  EXPECT_EQ(orig + orig, testlsv);
 }
 
 template <class String>

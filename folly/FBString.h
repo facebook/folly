@@ -1014,6 +1014,15 @@ class basic_fbstring {
  private:
   using string_view_type = std::basic_string_view<value_type, traits_type>;
 
+  template <typename StringViewLike>
+  static inline constexpr bool is_string_view_like_v =
+      std::is_convertible_v<StringViewLike const&, string_view_type> &&
+      !std::is_convertible_v<StringViewLike const&, const_pointer>;
+
+  template <typename StringViewLike, typename Dummy>
+  using if_is_string_view_like_t =
+      std::enable_if_t<is_string_view_like_v<StringViewLike>, Dummy>;
+
   static void procrustes(size_type& n, size_type nmax) {
     if (n > nmax) {
       n = nmax;
@@ -1109,19 +1118,13 @@ class basic_fbstring {
 
   template <
       typename StringViewLike,
-      std::enable_if_t<
-          std::is_convertible_v<const StringViewLike&, string_view_type> &&
-              !std::is_convertible_v<const StringViewLike&, const value_type*>,
-          int> = 0>
+      if_is_string_view_like_t<StringViewLike, int> = 0>
   explicit basic_fbstring(const StringViewLike& view, const A& a = A())
       : basic_fbstring(string_view_type(view), a, string_view_ctor{}) {}
 
   template <
       typename StringViewLike,
-      std::enable_if_t<
-          std::is_convertible_v<const StringViewLike&, string_view_type> &&
-              !std::is_convertible_v<const StringViewLike&, const value_type*>,
-          int> = 0>
+      if_is_string_view_like_t<StringViewLike, int> = 0>
   basic_fbstring(
       const StringViewLike& view, size_type pos, size_type n, const A& a = A())
       : basic_fbstring(
@@ -1282,6 +1285,14 @@ class basic_fbstring {
     return *this;
   }
 
+  template <
+      typename StringViewLike,
+      if_is_string_view_like_t<StringViewLike, int> = 0>
+  basic_fbstring& operator+=(const StringViewLike& like) {
+    append(like);
+    return *this;
+  }
+
   basic_fbstring& append(const basic_fbstring& str);
 
   basic_fbstring& append(
@@ -1303,6 +1314,14 @@ class basic_fbstring {
 
   basic_fbstring& append(std::initializer_list<value_type> il) {
     return append(il.begin(), il.end());
+  }
+
+  template <
+      typename StringViewLike,
+      if_is_string_view_like_t<StringViewLike, int> = 0>
+  basic_fbstring& append(const StringViewLike& like) {
+    string_view_type view = like;
+    return append(view.begin(), view.end());
   }
 
   void push_back(const value_type c) { // primitive
