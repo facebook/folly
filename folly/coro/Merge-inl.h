@@ -267,7 +267,7 @@ AsyncGenerator<Reference, Value> merge(
               detail::callback_record_error, std::move(ex)};
           state_->recordPublished.post();
         }
-      };
+      }
     };
 
     detail::Barrier barrier{1};
