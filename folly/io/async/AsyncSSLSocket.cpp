@@ -61,6 +61,10 @@ SpinLock dummyCtxLock;
 // stack, otherwise it is allocated on heap
 const size_t MAX_STACK_BUF_SIZE = 2048;
 
+char const* str_or(char const* const str, char const* const def = "(unknown)") {
+  return str ? str : def;
+}
+
 void setup_SSL_CTX(SSL_CTX* ctx) {
 #ifdef SSL_MODE_RELEASE_BUFFERS
   SSL_CTX_set_mode(
@@ -1183,8 +1187,8 @@ bool AsyncSSLSocket::willBlock(
             << "errno: " << errno << ", " << "ret: " << ret << ", "
             << "read: " << BIO_number_read(SSL_get_rbio(ssl_.get())) << ", "
             << "written: " << BIO_number_written(SSL_get_wbio(ssl_.get()))
-            << ", " << "func: " << ERR_func_error_string(lastError) << ", "
-            << "reason: " << ERR_reason_error_string(lastError);
+            << ", " << "func: " << str_or(ERR_func_error_string(lastError))
+            << ", " << "reason: " << str_or(ERR_reason_error_string(lastError));
     return false;
   }
 }
@@ -1576,8 +1580,8 @@ AsyncSocket::ReadResult AsyncSSLSocket::performReadSingle(
               << "events=" << std::hex << eventFlags_
               << "): " << "bytes: " << bytes << ", " << "error: " << error
               << ", " << "errno: " << local_errno << ", "
-              << "func: " << ERR_func_error_string(errError) << ", "
-              << "reason: " << ERR_reason_error_string(errError);
+              << "func: " << str_or(ERR_func_error_string(errError)) << ", "
+              << "reason: " << str_or(ERR_reason_error_string(errError));
       return ReadResult(
           READ_ERROR,
           std::make_unique<SSLException>(error, errError, bytes, local_errno));
@@ -1692,8 +1696,8 @@ AsyncSocket::WriteResult AsyncSSLSocket::interpretSSLError(int rc, int error) {
     VLOG(3) << "ERROR: AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
             << ", sslState=" << sslState_ << ", events=" << eventFlags_
             << "): " << "SSL error: " << error << ", errno: " << errno
-            << ", func: " << ERR_func_error_string(errError)
-            << ", reason: " << ERR_reason_error_string(errError);
+            << ", func: " << str_or(ERR_func_error_string(errError))
+            << ", reason: " << str_or(ERR_reason_error_string(errError));
     return WriteResult(
         WRITE_ERROR,
         std::make_unique<SSLException>(error, errError, rc, errno));
