@@ -131,7 +131,7 @@
 // Structure of note section for the probe.
 #define FOLLY_SDT_NOTE_CONTENT(provider, name, has_semaphore, arg_template)    \
   FOLLY_SDT_ASM_1(990: FOLLY_SDT_NOP)                                          \
-  FOLLY_SDT_ASM_3(     .pushsection .note.stapsdt,"","note")                   \
+  FOLLY_SDT_ASM_3(     .pushsection .note.stapsdt,"?","note")                  \
   FOLLY_SDT_ASM_1(     .balign 4)                                              \
   FOLLY_SDT_ASM_3(     .4byte 992f-991f, 994f-993f, FOLLY_SDT_NOTE_TYPE)       \
   FOLLY_SDT_ASM_1(991: .asciz FOLLY_SDT_NOTE_NAME)                             \
