@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/folly-config.h>
+#include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_LIBZSTD
 #include <zstd.h>

@@ -76,7 +76,7 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/zstd:zstd",
         ":compression_context_pool",
-        "//folly:config",
+        "//folly/portability:config",
     ],
 )
 
