@@ -36,6 +36,10 @@
 #define FOLLY_HAVE_CLOCK_GETTIME 1
 #define FOLLY_FORCE_CLOCK_GETTIME_DEFINITION 1
 
+#else
+
+#define FOLLY_FORCE_CLOCK_GETTIME_DEFINITION 0
+
 #endif
 
 // These aren't generic implementations, so we can only declare them on
