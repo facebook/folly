@@ -191,6 +191,8 @@ TEST_F(UtilityTest, forward_like) {
   // folly::forward_like<const int&>(1);
 }
 
+static_assert(!std::is_default_constructible_v<folly::literal_string<char, 1>>);
+
 TEST_F(UtilityTest, literal_string) {
   constexpr auto s = folly::literal_string{"hello world"};
   EXPECT_STREQ("hello world", s.c_str());

@@ -1156,6 +1156,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST unit_test SOURCES UnitTest.cpp
       BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
       TEST uri_test SOURCES UriTest.cpp
+      TEST utility_test SOURCES UtilityTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
 
     DIRECTORY testing/test/
