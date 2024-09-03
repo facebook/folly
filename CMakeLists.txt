@@ -113,6 +113,8 @@ set(
   FOLLY_DIR_PREFIXES
   "${CMAKE_CURRENT_SOURCE_DIR}:${CMAKE_CURRENT_BINARY_DIR}"
 )
+# https://gitlab.kitware.com/cmake/cmake/-/issues/18580#note_1405108
+string(REGEX REPLACE "(.)" "\\\\\\1" FOLLY_DIR_REGEX_ESCAPED "${FOLLY_DIR}")
 
 include(GNUInstallDirs)
 
@@ -163,12 +165,12 @@ auto_sources(hfiles "*.h" "RECURSE" "${FOLLY_DIR}")
 # library sources.  Test sources are listed separately below.
 REMOVE_MATCHES_FROM_LISTS(files hfiles
   MATCHES
-    "^${FOLLY_DIR}/build/"
-    "^${FOLLY_DIR}/docs/examples/"
-    "^${FOLLY_DIR}/logging/example/"
-    "^${FOLLY_DIR}/(.*/)?test/"
-    "^${FOLLY_DIR}/(.*/)?tool/"
-    "^${FOLLY_DIR}/facebook/"
+    "^${FOLLY_DIR_REGEX_ESCAPED}/build/"
+    "^${FOLLY_DIR_REGEX_ESCAPED}/docs/examples/"
+    "^${FOLLY_DIR_REGEX_ESCAPED}/logging/example/"
+    "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?test/"
+    "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?tool/"
+    "^${FOLLY_DIR_REGEX_ESCAPED}/facebook/"
     "Benchmark.cpp$"
     "Test.cpp$"
 )
@@ -177,7 +179,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
 if (${FOLLY_NO_EXCEPTION_TRACER})
   REMOVE_MATCHES_FROM_LISTS(files hfiles
     MATCHES
-      "^${FOLLY_DIR}/debugging/exception_tracer/"
+      "^${FOLLY_DIR_REGEX_ESCAPED}/debugging/exception_tracer/"
   )
 endif()
 
