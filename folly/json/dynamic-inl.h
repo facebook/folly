@@ -387,7 +387,8 @@ dynamic::dynamic(T t) {
 }
 
 template <class Iterator>
-dynamic::dynamic(Iterator first, Iterator last) : type_(ARRAY) {
+dynamic::dynamic(array_range_construct_t, Iterator first, Iterator last)
+    : type_(ARRAY) {
   new (&u_.array) Array(first, last);
 }
 
