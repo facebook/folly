@@ -354,7 +354,10 @@ struct Bulky {
 
  private:
   std::string message_;
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wunused-private-field")
   std::array<int, 1024> ints_;
+  FOLLY_POP_WARNING
 };
 } // anonymous namespace
 
