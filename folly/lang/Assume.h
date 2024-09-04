@@ -70,3 +70,13 @@ FOLLY_ALWAYS_INLINE void assume(bool cond) {
 }
 
 } // namespace folly
+
+/**
+ * Inform the compiler that the statement is not reachable at runtime, and
+ * disable compiler warnings.
+ */
+#define FOLLY_ASSUME_UNREACHABLE()                  \
+  FOLLY_PUSH_WARNING                                \
+  FOLLY_CLANG_DISABLE_WARNING("-Wunreachable-code") \
+  ::folly::assume_unreachable();                    \
+  FOLLY_POP_WARNING
