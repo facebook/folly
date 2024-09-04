@@ -17,7 +17,6 @@
 #include <folly/memory/not_null.h>
 
 #include <memory>
-#include <strstream>
 #include <unordered_set>
 
 #include <folly/portability/GTest.h>
