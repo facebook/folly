@@ -21,7 +21,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
-#if defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
+#if defined(FOLLY_USE_JEMALLOC) && (!defined(FOLLY_SANITIZE) || !FOLLY_SANITIZE)
 #include <jemalloc/jemalloc.h>
 #endif
 

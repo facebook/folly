@@ -22,7 +22,7 @@
 #include <folly/portability/Config.h>
 #include <folly/portability/Malloc.h>
 
-#if defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
+#if defined(FOLLY_USE_JEMALLOC) && (!defined(FOLLY_SANITIZE) || !FOLLY_SANITIZE)
 
 #include <folly/portability/SysMman.h>
 

@@ -28,7 +28,8 @@
 #include <glog/logging.h>
 
 #if (defined(MADV_HUGEPAGE) || defined(MAP_ALIGNED_SUPER)) && \
-    defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
+    defined(FOLLY_USE_JEMALLOC) &&                            \
+    (!defined(FOLLY_SANITIZE) || !FOLLY_SANITIZE)
 
 #if defined(__FreeBSD__) || (JEMALLOC_VERSION_MAJOR >= 5)
 #define FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED 1
