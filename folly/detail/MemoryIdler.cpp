@@ -109,7 +109,7 @@ void MemoryIdler::flushLocalMallocCaches() {
 // and arithmetic (and bug compatibility) are not portable.  The set of
 // platforms could be increased if it was useful.
 #if defined(__GLIBC__) && defined(__linux__) && !FOLLY_MOBILE && \
-    !FOLLY_SANITIZE_ADDRESS
+    (!defined(FOLLY_SANITIZE_ADDRESS) || !FOLLY_SANITIZE_ADDRESS)
 
 static thread_local uintptr_t tls_stackLimit;
 static thread_local size_t tls_stackSize;
