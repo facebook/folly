@@ -370,7 +370,7 @@ std::size_t dynamic::hash() const {
       // keep consistent with detail::DynamicHasher
       return Hash()(getString());
   }
-  assume_unreachable();
+  FOLLY_ASSUME_UNREACHABLE();
 }
 
 char const* dynamic::typeName(Type t) {
