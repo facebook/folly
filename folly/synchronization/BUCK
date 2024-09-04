@@ -160,6 +160,7 @@ cpp_library(
         "//folly:traits",
         "//folly/concurrency:cache_locality",
         "//folly/container:f14_hash",
+        "//folly/portability:config",
         "//folly/synchronization/detail:hazptr_utils",
     ],
     exported_external_deps = [
