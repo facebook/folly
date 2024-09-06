@@ -638,7 +638,7 @@ class Range {
   template <typename ValueType>
   struct StringViewType //
       : std::conditional<
-            std::is_trivial<ValueType>::value,
+            detail::range_is_char_type_v_<Iter>,
             std::basic_string_view<ValueType>,
             NotStringView> {};
 
