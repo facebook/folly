@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/executors/GlobalExecutor.h>
-
 #include <memory>
 #include <thread>
+#include <folly/executors/GlobalExecutor.h>
 
 #include <folly/Function.h>
 #include <folly/SharedMutex.h>
