@@ -114,7 +114,9 @@ void toStream(std::ostream& os, const struct io_uring_sqe& sqe) {
 namespace folly {
 
 IoUringOp::IoUringOp(NotificationCallback cb, Options options)
-    : AsyncBaseOp(std::move(cb)), options_(options) {}
+    : AsyncBaseOp(std::move(cb)), options_(options) {
+  ::memset(iov_, 0, sizeof(iov_));
+}
 
 void IoUringOp::reset(NotificationCallback cb) {
   CHECK_NE(state_, State::PENDING);
