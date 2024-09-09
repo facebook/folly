@@ -202,13 +202,13 @@ TEST(Format, Simple) {
 
   // Test writing to stream
   std::ostringstream os;
-  os << format("{} {}", 42, 23);
+  os << folly::format("{} {}", 42, 23);
   EXPECT_EQ("42 23", os.str());
 
   // Test appending to string
   std::string s;
-  format(&s, "{} {}", 42, 23);
-  format(&s, " hello {:X<7}", "world");
+  folly::format(&s, "{} {}", 42, 23);
+  folly::format(&s, " hello {:X<7}", "world");
   EXPECT_EQ("42 23 hello worldXX", s);
 }
 
@@ -419,10 +419,10 @@ TEST(Format, Unformatted) {
 }
 
 TEST(Format, Nested) {
-  EXPECT_EQ("1 2 3 4", sformat("{} {} {}", 1, 2, format("{} {}", 3, 4)));
+  EXPECT_EQ("1 2 3 4", sformat("{} {} {}", 1, 2, folly::format("{} {}", 3, 4)));
   //
   // not copyable, must hold temporary in scope instead.
-  auto&& saved = format("{} {}", 3, 4);
+  auto&& saved = folly::format("{} {}", 3, 4);
   EXPECT_EQ("1 2 3 4", sformat("{} {} {}", 1, 2, saved));
 }
 
@@ -530,7 +530,7 @@ TEST(Format, Extending) {
 
 TEST(Format, Temporary) {
   constexpr StringPiece kStr = "A long string that should go on the heap";
-  auto fmt = format("{}", kStr.str()); // Pass a temporary std::string.
+  auto fmt = folly::format("{}", kStr.str()); // Pass a temporary std::string.
   EXPECT_EQ(fmt.str(), kStr);
   // The formatter can be reused.
   EXPECT_EQ(fmt.str(), kStr);
@@ -567,7 +567,7 @@ TEST(Format, NoncopyableArg) {
   {
     // Test that lvalues are held by reference.
     NoncopyableInt v(1);
-    auto fmt = format("{}", v);
+    auto fmt = folly::format("{}", v);
     EXPECT_EQ(fmt.str(), "1");
     // The formatter can be reused.
     EXPECT_EQ(fmt.str(), "1");
@@ -575,7 +575,7 @@ TEST(Format, NoncopyableArg) {
 
   {
     // Test that rvalues are moved.
-    auto fmt = format("{}", NoncopyableInt(1));
+    auto fmt = folly::format("{}", NoncopyableInt(1));
     EXPECT_EQ(fmt.str(), "1");
   }
 }
