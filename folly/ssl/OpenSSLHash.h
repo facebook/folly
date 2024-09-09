@@ -29,8 +29,6 @@
 namespace folly {
 namespace ssl {
 
-/// Warning:
-/// These functions are not thread-safe unless you initialize OpenSSL.
 class OpenSSLHash {
  public:
   class Digest {
@@ -94,6 +92,22 @@ class OpenSSLHash {
       check_libssl_result(1, EVP_DigestFinal_ex(ctx_.get(), out.data(), &len));
       check_libssl_result(size, int(len));
       hash_reset();
+    }
+
+    size_t hash_size() const {
+      if (nullptr == ctx_) {
+        throw_exception<std::runtime_error>(
+            "hash_size() called without hash_init()");
+      }
+      return EVP_MD_size(md_);
+    }
+
+    size_t block_size() const {
+      if (nullptr == ctx_) {
+        throw_exception<std::runtime_error>(
+            "block_size() called without hash_init()");
+      }
+      return EVP_MD_block_size(md_);
     }
 
    private:
