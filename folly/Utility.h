@@ -274,7 +274,7 @@ inline constexpr identity_fn identity{};
 ///   }
 template <typename C, std::size_t N>
 struct literal_string {
-  C buffer[N];
+  C buffer[N] = {};
 
   FOLLY_CONSTEVAL /* implicit */ literal_string(C const (&buf)[N]) noexcept {
     for (std::size_t i = 0; i < N; ++i) {
