@@ -47,9 +47,6 @@ ProgramExit::ProgramExit(int status, const std::string& msg)
   CHECK(status_ != 0 || msg.empty());
 }
 
-constexpr StringPiece const NestedCommandLineApp::kHelpCommand;
-constexpr StringPiece const NestedCommandLineApp::kVersionCommand;
-
 NestedCommandLineApp::NestedCommandLineApp(
     std::string programName,
     std::string version,

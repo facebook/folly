@@ -20,15 +20,6 @@
 
 namespace folly {
 
-constexpr const char* SocketAddressTestHelper::kLoopbackAddrIPv4;
-constexpr const char* SocketAddressTestHelper::kLoopbackAddrIPv6;
-constexpr const char* SocketAddressTestHelper::kGooglePublicDnsAName;
-constexpr const char* SocketAddressTestHelper::kGooglePublicDnsBName;
-constexpr const char* SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4;
-constexpr const char* SocketAddressTestHelper::kGooglePublicDnsBAddrIPv4;
-constexpr const char* SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6;
-constexpr const char* SocketAddressTestHelper::kGooglePublicDnsBAddrIPv6;
-
 bool SocketAddressTestHelper::isIPv4Enabled() {
   return isFamilyOfAddrEnabled(kLoopbackAddrIPv4);
 }
