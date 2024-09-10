@@ -34,6 +34,7 @@ namespace po = ::boost::program_options;
 
 namespace folly {
 
+#if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
 namespace {
 
 // Information about one GFlag. Handled via shared_ptr, as, in the case
@@ -285,6 +286,7 @@ po::options_description getGFlags(ProgramOptionsStyle style) {
 
   return desc;
 }
+#endif
 
 namespace {
 
