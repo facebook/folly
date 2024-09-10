@@ -121,7 +121,6 @@ def _compute_include_directories():
 def folly_library(
         name,
         srcs = (),
-        headers = (),
         exported_headers = (),
         raw_headers = (),
         deps = (),
@@ -153,7 +152,6 @@ def folly_library(
         name = name,
         srcs = srcs,
         header_namespace = "",
-        headers = headers,
         exported_headers = exported_headers,
         raw_headers = raw_headers,
         public_include_directories = _compute_include_directories(),
