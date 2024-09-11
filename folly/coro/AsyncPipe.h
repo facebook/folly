@@ -266,6 +266,12 @@ class BoundedAsyncPipe {
     return pipe_.write(std::forward<U>(u));
   }
 
+  size_t getAvailableSpace() { return semaphore_->getAvailableTokens(); }
+
+  size_t getOccupiedSpace() {
+    return semaphore_->getCapacity() - getAvailableSpace();
+  }
+
   void close(exception_wrapper&& w) && { std::move(pipe_).close(std::move(w)); }
   void close() && { std::move(pipe_).close(); }
 

@@ -353,6 +353,26 @@ TEST(BoundedAsyncPipeTest, PublishConsume) {
   }());
 }
 
+TEST(BoundedAsyncPipeTest, PipeCapacity) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 10);
+    EXPECT_EQ(pipe.getAvailableSpace(), 10);
+    EXPECT_EQ(pipe.getOccupiedSpace(), 0);
+    for (int i = 0; i < 7; ++i) {
+      EXPECT_TRUE(co_await pipe.write(i));
+    }
+    EXPECT_EQ(pipe.getAvailableSpace(), 3);
+    EXPECT_EQ(pipe.getOccupiedSpace(), 7);
+    for (int i = 0; i < 7; ++i) {
+      auto item = co_await generator.next();
+    }
+    EXPECT_EQ(pipe.getAvailableSpace(), 10);
+    EXPECT_EQ(pipe.getOccupiedSpace(), 0);
+    std::move(pipe).close();
+  }());
+}
+
 TEST(BoundedAsyncPipeTest, PublisherBlocks) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::ManualExecutor executor;
