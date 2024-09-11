@@ -86,6 +86,11 @@ void FanoutChannel<ValueType, ContextType>::close(exception_wrapper ex) && {
   processor_ = nullptr;
 }
 
+template <typename ValueType, typename ContextType>
+ContextType FanoutChannel<ValueType, ContextType>::getContext() const {
+  return processor_->getContext();
+}
+
 namespace detail {
 
 template <typename ValueType, typename ContextType>
@@ -100,6 +105,8 @@ class IFanoutChannelProcessor : public IChannelCallback {
   virtual void closeSubscribers(CloseResult closeResult) = 0;
 
   virtual void destroyHandle(CloseResult closeResult) = 0;
+
+  virtual ContextType getContext() = 0;
 };
 
 /**
@@ -209,6 +216,8 @@ class FanoutChannelProcessor
   bool anySubscribers() override {
     return state_.wlock()->fanoutSender.anySubscribers();
   }
+
+  ContextType getContext() { return state_.rlock()->context; }
 
  private:
   /**

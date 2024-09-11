@@ -94,6 +94,8 @@ TEST_F(FanoutChannelFixture, ReceiveValue_FanoutBroadcastsValues) {
   sender.write(2);
   executor_.drain();
 
+  EXPECT_EQ(fanoutChannel.getContext().version, 2);
+
   auto [handle3, callback3] = processValues(
       fanoutChannel.subscribe([](const LatestVersion& latestVersion) {
         EXPECT_EQ(latestVersion.numSubscribers, 2);

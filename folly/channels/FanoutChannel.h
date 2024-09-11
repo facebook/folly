@@ -125,6 +125,11 @@ class FanoutChannel {
    */
   void close(exception_wrapper ex = exception_wrapper()) &&;
 
+  /**
+   * Get the context
+   */
+  ContextType getContext() const;
+
  private:
   TProcessor* processor_;
 };
