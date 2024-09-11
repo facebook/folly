@@ -31,28 +31,21 @@ namespace coro {
 template <typename SemiAwaitable>
 Task<semi_await_result_t<SemiAwaitable>> toTask(SemiAwaitable&& a) {
   return co_invoke(
-      [a = std::forward<SemiAwaitable>(
-           a)]() mutable -> Task<semi_await_result_t<SemiAwaitable>> {
+      [a = std::forward<SemiAwaitable>(a)]() mutable //
+      -> Task<semi_await_result_t<SemiAwaitable>> {
         co_return co_await std::forward<SemiAwaitable>(a);
       });
 }
 template <typename SemiAwaitable>
 Task<semi_await_result_t<SemiAwaitable>> toTask(
     std::reference_wrapper<SemiAwaitable> a) {
-  return co_invoke(
-      [a = std::move(a)]() mutable -> Task<semi_await_result_t<SemiAwaitable>> {
-        co_return co_await a.get();
-      });
+  co_return co_await a.get();
 }
 inline Task<void> toTask(folly::Future<Unit> a) {
-  return co_invoke([a = std::move(a)]() mutable -> Task<void> {
-    co_yield co_result(co_await co_awaitTry(std::move(a)));
-  });
+  co_yield co_result(co_await co_awaitTry(std::move(a)));
 }
 inline Task<void> toTask(folly::SemiFuture<Unit> a) {
-  return co_invoke([a = std::move(a)]() mutable -> Task<void> {
-    co_yield co_result(co_await co_awaitTry(std::move(a)));
-  });
+  co_yield co_result(co_await co_awaitTry(std::move(a)));
 }
 
 // Converts the given SemiAwaitable to a SemiFuture (without starting it)
@@ -68,8 +61,9 @@ template <typename SemiAwaitable>
 folly::Future<
     lift_unit_t<semi_await_result_t<remove_reference_wrapper_t<SemiAwaitable>>>>
 toFuture(SemiAwaitable&& a, Executor::KeepAlive<> ex) {
+  auto excopy = ex;
   return toTask(std::forward<SemiAwaitable>(a))
-      .scheduleOn(ex)
+      .scheduleOn(std::move(excopy))
       .start()
       .via(std::move(ex));
 }
