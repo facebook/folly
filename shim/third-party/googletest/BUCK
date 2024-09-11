@@ -13,7 +13,7 @@ oncall("open_source")
 third_party_library(
     name = "gtest",
     homebrew_package_name = "googletest",
-    pkgconfig_name = "GTest",
+    pkgconfig_name = "gtest",
 )
 
 alias(
