@@ -590,7 +590,7 @@ class TryLockable {
   bool tryLockImpl(int lockableMask) {
     // if the lockable type of this instance is one of the possible options as
     // expressed in the mask go through the usual test code
-    if (kLockableType | lockableMask) {
+    if (kLockableType & lockableMask) {
       if (kShouldSucceed) {
         onLock();
         return true;
@@ -604,7 +604,7 @@ class TryLockable {
     return false;
   }
   void unlockImpl(int lockableMask) {
-    if (kLockableType | lockableMask) {
+    if (kLockableType & lockableMask) {
       onUnlock();
       return;
     }
