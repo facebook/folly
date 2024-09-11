@@ -1203,7 +1203,7 @@ TEST(Gen, Guard) {
 }
 
 // Disabled: guard currently can't catch exceptions thrown after a buffering op.
-TEST(Gen, DISABLEDGuardthroughbuffers) {
+TEST(Gen, DISABLED_Guardthroughbuffers) {
   using std::runtime_error;
   // clang-format off
   EXPECT_EQ(
