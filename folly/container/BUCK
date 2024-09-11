@@ -6,7 +6,6 @@ cpp_library(
     name = "access",
     headers = ["Access.h"],
     exported_deps = [
-        "//folly:portability",
         "//folly/functional:invoke",
     ],
 )

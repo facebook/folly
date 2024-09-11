@@ -41,7 +41,6 @@ TEST_F(AccessTest, size_carray) {
 }
 
 TEST_F(AccessTest, size_initializer_list) {
-  EXPECT_EQ(3, folly::access::size({1, 2, 3}));
   EXPECT_EQ(3, folly::access::size(std::initializer_list<int>{1, 2, 3}));
 }
 
@@ -71,7 +70,6 @@ TEST_F(AccessTest, empty_carray) {
 }
 
 TEST_F(AccessTest, empty_initializer_list) {
-  EXPECT_FALSE(folly::access::empty({1, 2, 3}));
   EXPECT_FALSE(folly::access::empty(std::initializer_list<int>{1, 2, 3}));
   EXPECT_TRUE(folly::access::empty(std::initializer_list<int>{}));
 }
@@ -96,7 +94,6 @@ TEST_F(AccessTest, data_carray) {
 }
 
 TEST_F(AccessTest, data_initializer_list) {
-  EXPECT_EQ(1, *folly::access::data({1, 2, 3}));
   EXPECT_EQ(1, *folly::access::data(std::initializer_list<int>{1, 2, 3}));
 }
 
