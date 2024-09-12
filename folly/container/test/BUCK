@@ -337,8 +337,8 @@ cpp_unittest(
     headers = [],
     supports_static_listing = False,
     deps = [
-        "fbcode//folly/container:span",
-        "fbcode//folly/portability:gtest",
+        "//folly/container:span",
+        "//folly/portability:gtest",
     ],
 )
 

@@ -113,8 +113,8 @@ cpp_unittest(
     srcs = ["traits_test.cpp"],
     headers = [],
     deps = [
-        "fbcode//folly/hash:traits",
-        "fbcode//folly/portability:gtest",
+        "//folly/hash:traits",
+        "//folly/portability:gtest",
     ],
 )
 

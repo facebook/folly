@@ -172,8 +172,8 @@ cpp_library(
     name = "span",
     headers = ["span.h"],
     exported_deps = [
-        "fbcode//folly:portability",
-        "fbcode//folly/portability:constexpr",
+        "//folly:portability",
+        "//folly/portability:constexpr",
     ],
 )
 
