@@ -5,7 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//build_defs:export_files.bzl", "export_file")
 load("@shim//third-party:third_party.bzl", "third_party_library")
 
 oncall("open_source")
@@ -16,12 +15,15 @@ third_party_library(
     pkgconfig_name = "gtest",
 )
 
-alias(
+third_party_library(
     name = "gmock",
-    actual = ":gtest",
-    visibility = ["PUBLIC"],
+    homebrew_package_name = "googletest",
+    pkgconfig_name = "gmock",
 )
 
-export_file(
-    name = "gtest_main.cpp",
+cxx_library(
+    name = "cpp_unittest_main",
+    srcs = ["gtest_main.cpp"],
+    visibility = ["PUBLIC"],
+    deps = [":gtest"],
 )
