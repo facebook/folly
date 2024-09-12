@@ -16,6 +16,7 @@ boost_libs([
     "program_options",
     "random",
     "regex",
+    "thread",
 ])
 
 boost_header_only([
@@ -26,6 +27,5 @@ boost_header_only([
     "preprocessor",
     "range",
     "sort",
-    "thread",
     "variant",
 ])
