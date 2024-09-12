@@ -694,6 +694,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST container_small_vector_test WINDOWS_DISABLED
         SOURCES small_vector_test.cpp
       TEST container_sorted_vector_types_test SOURCES sorted_vector_test.cpp
+      TEST container_span_test SOURCES span_test.cpp
       BENCHMARK container_sparse_byte_set_benchmark WINDOWS_DISABLED
         SOURCES SparseByteSetBenchmark.cpp
       TEST container_sparse_byte_set_test SOURCES SparseByteSetTest.cpp

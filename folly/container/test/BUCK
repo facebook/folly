@@ -331,6 +331,17 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "span_test",
+    srcs = ["span_test.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "fbcode//folly/container:span",
+        "fbcode//folly/portability:gtest",
+    ],
+)
+
 cpp_benchmark(
     name = "sparse_byte_set_benchmark",
     srcs = ["SparseByteSetBenchmark.cpp"],

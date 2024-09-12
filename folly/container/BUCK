@@ -169,6 +169,15 @@ cpp_library(
 )
 
 cpp_library(
+    name = "span",
+    headers = ["span.h"],
+    exported_deps = [
+        "fbcode//folly:portability",
+        "fbcode//folly/portability:constexpr",
+    ],
+)
+
+cpp_library(
     name = "sparse_byte_set",
     headers = ["SparseByteSet.h"],
     exported_deps = [
