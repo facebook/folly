@@ -16,9 +16,7 @@
 
 #pragma once
 
-#include <folly/CancellationToken.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
+#include <folly/experimental/coro/FutureUtil.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -26,31 +24,7 @@ namespace folly {
 namespace coro {
 
 inline Task<void> sleep(HighResDuration d, Timekeeper* tk) {
-  bool cancelled{false};
-  folly::coro::Baton baton;
-  Try<Unit> result;
-  auto future = folly::futures::sleep(d, tk).toUnsafeFuture();
-  future.setCallback_(
-      [&result, &baton](Executor::KeepAlive<>&&, Try<Unit>&& t) {
-        result = std::move(t);
-        baton.post();
-      },
-      // No user logic runs in the callback, we can avoid the cost of switching
-      // the context.
-      /* context */ nullptr);
-
-  {
-    CancellationCallback cancelCallback(
-        co_await co_current_cancellation_token, [&]() noexcept {
-          cancelled = true;
-          future.cancel();
-        });
-    co_await baton;
-  }
-  if (cancelled) {
-    co_yield co_cancelled;
-  }
-  co_yield co_result(std::move(result));
+  co_await co_nothrow(toTaskInterruptOnCancel(folly::futures::sleep(d, tk)));
 }
 
 inline Task<void> sleepReturnEarlyOnCancel(HighResDuration d, Timekeeper* tk) {
