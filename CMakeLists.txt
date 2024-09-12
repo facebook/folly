@@ -869,7 +869,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY gen/test/
       # MSVC bug can't resolve initializer_list constructor properly
-      #TEST gen_base_test SOURCES BaseTest.cpp
+      TEST gen_base_test WINDOWS_DISABLED SOURCES BaseTest.cpp
       TEST gen_combine_test SOURCES CombineTest.cpp
       BENCHMARK gen_parallel_map_benchmark SOURCES ParallelMapBenchmark.cpp
       TEST gen_parallel_map_test SOURCES ParallelMapTest.cpp
@@ -917,11 +917,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
           AsyncSSLSocketTest2.cpp
           AsyncSSLSocketWriteTest.cpp
           AsyncTransportTest.cpp
-          # This is disabled because it depends on things that don't exist
-          # on Windows.
-          #EventHandlerTest.cpp
-          # The async signal handler is not supported on Windows.
-          #AsyncSignalHandlerTest.cpp
+      # This is disabled because it depends on things that don't exist
+      # on Windows.
+      # TODO: Refactor EventHandlerTest to not use eventfd so it can work on Mac OS X.
+      #TEST io_async_event_handler_test WINDOWS_DISABLED SOURCES EventHandlerTest.cpp
       TEST io_async_async_timeout_test SOURCES AsyncTimeoutTest.cpp
       TEST io_async_async_udp_socket_test APPLE_DISABLED WINDOWS_DISABLED
         SOURCES AsyncUDPSocketTest.cpp
@@ -1038,6 +1037,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST synchronization_detail_hardware_test SOURCES HardwareTest.cpp
 
     DIRECTORY system/test/
+      TEST system_at_fork_test WINDOWS_DISABLED SOURCES AtForkTest.cpp
       TEST system_memory_mapping_test SOURCES MemoryMappingTest.cpp
       TEST system_shell_test SOURCES ShellTest.cpp
       #TEST system_subprocess_test SOURCES SubprocessTest.cpp
@@ -1057,24 +1057,28 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST atomic_linked_list_test SOURCES AtomicLinkedListTest.cpp
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
       TEST base64_test SOURCES base64_test.cpp
+      TEST buffered_atomic_test SOURCES BufferedAtomicTest.cpp
+      TEST cancellation_token_test SOURCES CancellationTokenTest.cpp
+      TEST chrono_test SOURCES ChronoTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_bit_set_test SOURCES ConcurrentBitSetTest.cpp
       BENCHMARK concurrent_skip_list_benchmark
         SOURCES ConcurrentSkipListBenchmark.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
-      TEST constexpr_math_test WINDOWS_DISABLED
-        SOURCES ConstexprMathTest.cpp
-      TEST conv_test WINDOWS_DISABLED SOURCES ConvTest.cpp
+      TEST constexpr_math_test SOURCES ConstexprMathTest.cpp
+      TEST conv_test SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp
       TEST deterministic_schedule_test SOURCES DeterministicScheduleTest.cpp
       TEST discriminated_ptr_test SOURCES DiscriminatedPtrTest.cpp
       TEST endian_test SOURCES EndianTest.cpp
+      TEST exception_string_test BROKEN SOURCES ExceptionStringTest.cpp
       TEST exception_test SOURCES ExceptionTest.cpp
       BENCHMARK exception_wrapper_benchmark WINDOWS_DISABLED
         SOURCES ExceptionWrapperBenchmark.cpp
       TEST exception_wrapper_test WINDOWS_DISABLED
         SOURCES ExceptionWrapperTest.cpp
+      TEST expected_coroutines_test SOURCES ExpectedCoroutinesTest.cpp
       TEST expected_test WINDOWS_DISABLED
         SOURCES ExpectedTest.cpp
       BENCHMARK fbstring_benchmark WINDOWS_DISABLED
@@ -1099,10 +1103,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST glog_test SOURCES GLogTest.cpp
       TEST group_varint_test SOURCES GroupVarintTest.cpp
       TEST group_varint_test_ssse3 SOURCES GroupVarintTest.cpp
-      TEST iterators_test SOURCES IteratorsTest.cpp
       TEST indestructible_test SOURCES IndestructibleTest.cpp
       TEST indexed_mem_pool_test BROKEN
         SOURCES IndexedMemPoolTest.cpp
+      TEST iterators_test SOURCES IteratorsTest.cpp
       TEST lazy_test SOURCES LazyTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
@@ -1119,6 +1123,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
           IPAddressTest.cpp
           MacAddressTest.cpp
           SocketAddressTest.cpp
+      TEST optional_coroutines_test SOURCES OptionalCoroutinesTest.cpp
       TEST optional_test SOURCES OptionalTest.cpp
       TEST packed_sync_ptr_test HANGING
         SOURCES PackedSyncPtrTest.cpp
@@ -1139,7 +1144,13 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
       # SingletonTest requires Subprocess
       #TEST singleton_test SOURCES SingletonTest.cpp
+      TEST singleton_double_registration_test BROKEN SOURCES
+        SingletonDoubleRegistration.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
+      TEST singleton_thread_local_test BROKEN SOURCES
+        SingletonThreadLocalTest.cpp
+        SingletonThreadLocalTestOverload.cpp
+      TEST spin_lock_test SOURCES SpinLockTest.cpp
       BENCHMARK string_benchmark WINDOWS_DISABLED SOURCES StringBenchmark.cpp
       TEST string_test WINDOWS_DISABLED SOURCES StringTest.cpp
       BENCHMARK synchronized_benchmark WINDOWS_DISABLED
@@ -1153,9 +1164,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST token_bucket_test SOURCES TokenBucketTest.cpp
       TEST traits_test SOURCES TraitsTest.cpp
       TEST try_test WINDOWS_DISABLED SOURCES TryTest.cpp
+      TEST type_list_test WINDOWS_DISABLED SOURCES TypeListTest.cpp
+      TEST unicode_test SOURCES UnicodeTest.cpp
       TEST unit_test SOURCES UnitTest.cpp
       BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
       TEST uri_test SOURCES UriTest.cpp
+      TEST utf8_string_test SOURCES UTF8StringTest.cpp
       TEST utility_test SOURCES UtilityTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
 
