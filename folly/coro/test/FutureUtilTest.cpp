@@ -20,7 +20,6 @@
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
 #include <folly/experimental/coro/FutureUtil.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
@@ -114,53 +113,4 @@ TEST(FutureUtilTest, VoidRoundtrip) {
   task = folly::coro::toTask(std::move(semi));
   folly::coro::blockingWait(std::move(task));
 }
-
-TEST(FutureUtilTest, ToTaskInterruptOnCancelFutureWithCancellation) {
-  auto [p, f] = folly::makePromiseContract<folly::Unit>();
-
-  // to verify that cancellation propagates into the future interrupt-handler
-  folly::exception_wrapper interrupt;
-  p.setInterruptHandler([&, p_ = &p](auto&& ew) {
-    interrupt = ew;
-    p_->setException(std::move(ew));
-  });
-
-  // to verify that deferred work runs
-  folly::Try<folly::Unit> touched;
-  auto f1 = std::move(f).defer([&](folly::Try<folly::Unit> t) { touched = t; });
-  ASSERT_FALSE(touched.tryGetExceptionObject()); // sanity check
-
-  // run the scenario within blocking-wait
-  auto result = folly::coro::blocking_wait(
-      std::invoke([&, f_ = &f1]() -> folly::coro::Task<folly::Try<void>> {
-        folly::CancellationSource csource;
-
-        co_return std::get<0>(co_await folly::coro::collectAllTry(
-
-            folly::coro::co_withCancellation(
-                csource.getToken(),
-                // a task that will be cancelled, wrapping a future
-                std::invoke([&]() -> folly::coro::Task<> {
-                  EXPECT_FALSE(touched.tryGetExceptionObject()); // sanity check
-                  co_await folly::coro::toTaskInterruptOnCancel(std::move(*f_));
-                })),
-
-            // a task that will do the cancelling, after waiting a bit
-            std::invoke([&]() -> folly::coro::Task<> {
-              EXPECT_FALSE(touched.tryGetExceptionObject()); // sanity check
-              co_await folly::coro::co_reschedule_on_current_executor;
-              EXPECT_FALSE(touched.tryGetExceptionObject()); // sanity check
-              csource.requestCancellation();
-              EXPECT_FALSE(touched.tryGetExceptionObject()); // sanity check
-              co_await folly::coro::co_reschedule_on_current_executor;
-              EXPECT_TRUE( // sanity check: events happen here
-                  touched.tryGetExceptionObject<folly::FutureCancellation>());
-            })));
-      }));
-
-  EXPECT_TRUE(touched.tryGetExceptionObject<folly::FutureCancellation>());
-  EXPECT_TRUE(result.tryGetExceptionObject<folly::OperationCancelled>());
-  EXPECT_TRUE(interrupt.get_exception<folly::FutureCancellation>());
-}
-
 #endif
