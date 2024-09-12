@@ -5,34 +5,27 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
-load("@shim//third-party/boost:boost.bzl", "boost_libs")
+load("@shim//third-party/boost:boost.bzl", "boost_header_only", "boost_libs")
 
 oncall("open_source")
 
 boost_libs([
     "container",
-    "range",
-    "algorithm",
-    "regex",
-    "program_options",
-    "filesystem",
-    "multi_index",
     "context",
-    "variant",
-    "lexical_cast",
+    "filesystem",
+    "program_options",
     "random",
-    "sort",
-    "interprocess",
+    "regex",
 ])
 
-# Empty target to satisfy some build rules:
-third_party_library(
-    name = "boost_preprocessor",
-    homebrew_package_name = "boost",
-)
-
-third_party_library(
-    name = "boost_thread",
-    homebrew_package_name = "boost",
-)
+boost_header_only([
+    "algorithm",
+    "interprocess",
+    "lexical_cast",
+    "multi_index",
+    "preprocessor",
+    "range",
+    "sort",
+    "thread",
+    "variant",
+])

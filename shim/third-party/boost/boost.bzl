@@ -19,3 +19,10 @@ def boost_libs(xs):
             homebrew_package_name = "boost",
             homebrew_linker_flags = ["-lboost_{}".format(x)],
         )
+
+def boost_header_only(xs):
+    for x in xs:
+        third_party_library(
+            name = "boost_{}".format(x),
+            homebrew_package_name = "boost",
+        )
