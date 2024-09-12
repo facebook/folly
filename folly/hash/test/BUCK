@@ -109,6 +109,16 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "traits_test",
+    srcs = ["traits_test.cpp"],
+    headers = [],
+    deps = [
+        "fbcode//folly/hash:traits",
+        "fbcode//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "murmur_hash_test",
     srcs = ["MurmurHashTest.cpp"],
     headers = [],

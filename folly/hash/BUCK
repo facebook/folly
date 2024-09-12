@@ -66,6 +66,14 @@ cpp_library(
 )
 
 cpp_library(
+    name = "traits",
+    headers = ["traits.h"],
+    exported_deps = [
+        "//folly:traits",
+    ],
+)
+
+cpp_library(
     name = "murmur_hash",
     headers = ["MurmurHash.h"],
     exported_deps = [

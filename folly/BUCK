@@ -1053,6 +1053,7 @@ cpp_library(
         ":traits",
         ":utility",
         "//folly/experimental/coro:coroutine",
+        "//folly/hash:traits",
         "//folly/lang:exception",
     ],
 )

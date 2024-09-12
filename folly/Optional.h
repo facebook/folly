@@ -70,6 +70,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/hash/traits.h>
 #include <folly/lang/Exception.h>
 
 namespace folly {

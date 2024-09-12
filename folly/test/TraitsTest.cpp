@@ -64,51 +64,7 @@ template <class>
 struct A {};
 struct B {};
 
-struct HashableStruct1 {};
-struct HashableStruct2 {};
-struct UnhashableStruct {};
-
-template <typename X, typename Y>
-struct CompositeStruct {
-  X x;
-  Y y;
-};
-
 } // namespace
-
-namespace std {
-
-template <>
-struct hash<HashableStruct1> {
-  [[maybe_unused]] size_t operator()(const HashableStruct1&) const noexcept {
-    return 0;
-  }
-};
-
-template <>
-struct hash<HashableStruct2> {
-  [[maybe_unused]] size_t operator()(const HashableStruct2&) const noexcept {
-    return 0;
-  }
-};
-
-template <typename X, typename Y>
-struct hash<enable_std_hash_helper<CompositeStruct<X, Y>, X, Y>> {
-  [[maybe_unused]] size_t operator()(
-      const CompositeStruct<X, Y>& value) const noexcept {
-    return std::hash<X>{}(value.x) + std::hash<Y>{}(value.y);
-  }
-};
-
-static_assert(is_hashable_v<HashableStruct1>);
-static_assert(is_hashable_v<HashableStruct2>);
-static_assert(!is_hashable_v<UnhashableStruct>);
-static_assert(is_hashable_v<CompositeStruct<HashableStruct1, HashableStruct1>>);
-static_assert(is_hashable_v<CompositeStruct<HashableStruct1, HashableStruct2>>);
-static_assert(
-    !is_hashable_v<CompositeStruct<HashableStruct1, UnhashableStruct>>);
-
-} // namespace std
 
 namespace folly {
 template <>
