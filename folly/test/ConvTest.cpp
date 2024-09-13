@@ -1845,7 +1845,7 @@ TEST(Conv, TryIntToFloat) {
 }
 
 template <class String>
-void tryTo() {
+void tryTo() noexcept {
   String sp1("1000000000000000000000000000000");
   auto rv1 = folly::tryTo<int>(sp1.begin(), sp1.end());
   EXPECT_FALSE(rv1.hasValue());

@@ -278,7 +278,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     std::is_same<Tgt, typename std::decay<Src>::type>::value,
     Expected<Tgt, ConversionCode>>::type
-tryTo(Src&& value) {
+tryTo(Src&& value) noexcept {
   return static_cast<Src&&>(value);
 }
 
@@ -307,7 +307,7 @@ typename std::enable_if<
     is_arithmetic_v<Src> && !std::is_same<Tgt, Src>::value &&
         std::is_same<Tgt, bool>::value,
     Expected<Tgt, ConversionCode>>::type
-tryTo(const Src& value) {
+tryTo(const Src& value) noexcept {
   return value != Src();
 }
 
@@ -1577,7 +1577,7 @@ template <typename Tgt>
 typename std::enable_if<
     is_integral_v<Tgt> && !std::is_same<Tgt, bool>::value,
     Expected<Tgt, ConversionCode>>::type
-tryTo(const char* b, const char* e) {
+tryTo(const char* b, const char* e) noexcept {
   return detail::digits_to<Tgt>(b, e);
 }
 
@@ -1913,7 +1913,7 @@ template <class Tgt>
 inline typename std::enable_if<
     !std::is_same<StringPiece, Tgt>::value,
     Expected<Tgt, detail::ParseToError<Tgt>>>::type
-tryTo(StringPiece src) {
+tryTo(StringPiece src) noexcept {
   Tgt result{};
   using Error = detail::ParseToError<Tgt>;
   using Check = typename std::conditional<
@@ -1961,7 +1961,7 @@ inline
  * check for trailing whitespace.
  */
 template <class Tgt>
-Expected<Tgt, detail::ParseToError<Tgt>> tryTo(StringPiece* src) {
+Expected<Tgt, detail::ParseToError<Tgt>> tryTo(StringPiece* src) noexcept {
   Tgt result;
   return parseTo(*src, result).then([&, src](StringPiece sp) -> Tgt {
     *src = sp;
@@ -1991,7 +1991,7 @@ typename std::enable_if<
     std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value &&
         !std::is_convertible<Tgt, StringPiece>::value,
     Expected<Tgt, ConversionCode>>::type
-tryTo(const Src& value) {
+tryTo(const Src& value) noexcept {
   return tryTo<Tgt>(to_underlying(value));
 }
 
@@ -2000,7 +2000,7 @@ typename std::enable_if<
     !std::is_convertible<Src, StringPiece>::value && std::is_enum<Tgt>::value &&
         !std::is_same<Src, Tgt>::value,
     Expected<Tgt, ConversionCode>>::type
-tryTo(const Src& value) {
+tryTo(const Src& value) noexcept {
   using I = typename std::underlying_type<Tgt>::type;
   return tryTo<I>(value).then([](I i) { return static_cast<Tgt>(i); });
 }
