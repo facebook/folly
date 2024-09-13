@@ -497,6 +497,7 @@ class SingletonVault {
   bool eagerInitComplete() const;
 
   size_t livingSingletonCount() const {
+    auto state = state_.rlock();
     auto singletons = singletons_.rlock();
 
     size_t ret = 0;
