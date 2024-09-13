@@ -338,6 +338,7 @@ cpp_unittest(
     supports_static_listing = False,
     deps = [
         "//folly/container:span",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
 )
