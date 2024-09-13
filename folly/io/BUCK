@@ -34,6 +34,7 @@ cpp_library(
         "//folly:portability",
         "//folly:range",
         "//folly:scope_guard",
+        "//folly/container:span",
         "//folly/detail:iterators",
         "//folly/lang:bits",
         "//folly/lang:checked_math",

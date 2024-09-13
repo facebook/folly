@@ -22,13 +22,13 @@
 #include <cstring>
 #include <memory>
 #include <stdexcept>
-#include <string_view>
 #include <type_traits>
 
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/container/span.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/lang/Bits.h>
@@ -678,27 +678,14 @@ class CursorBase {
   }
 
   /**
-   * Alternate version of peekBytes() that returns a std::basic_string_view
+   * Alternate version of peekBytes() that returns a std::span
    * instead of a ByteRage.
    *
    * @methodset Accessors
    */
-  std::basic_string_view<uint8_t> peekView() {
+  span<uint8_t const> peek() {
     auto bytes = peekBytes();
     return {bytes.data(), bytes.size()};
-  }
-
-  /**
-   * Alternate version of peekBytes() that returns a std::pair
-   * instead of a ByteRange.
-   *
-   * @methodset Accessors
-   *
-   * This function will eventually be deprecated.
-   */
-  std::pair<const uint8_t*, size_t> peek() {
-    auto bytes = peekBytes();
-    return std::make_pair(bytes.data(), bytes.size());
   }
 
   /**
