@@ -16,7 +16,10 @@
 
 #pragma once
 
+#include <folly/CancellationToken.h>
+#include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/Coroutine.h>
+#include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
@@ -46,6 +49,40 @@ inline Task<void> toTask(folly::Future<Unit> a) {
 }
 inline Task<void> toTask(folly::SemiFuture<Unit> a) {
   co_yield co_result(co_await co_awaitTry(std::move(a)));
+}
+
+template <typename V>
+Task<drop_unit_t<V>> toTaskInterruptOnCancel(folly::Future<V> f) {
+  bool cancelled{false};
+  Baton baton;
+  Try<V> result;
+  f.setCallback_(
+      [&result, &baton](Executor::KeepAlive<>&&, Try<V>&& t) {
+        result = std::move(t);
+        baton.post();
+      },
+      // No user logic runs in the callback, we can avoid the cost of switching
+      // the context.
+      /* context */ nullptr);
+
+  {
+    CancellationCallback cancelCallback(
+        co_await co_current_cancellation_token, [&]() noexcept {
+          cancelled = true;
+          f.cancel();
+        });
+    co_await baton;
+  }
+  if (cancelled) {
+    co_yield co_cancelled;
+  }
+  co_yield co_result(std::move(result));
+}
+
+template <typename V>
+Task<drop_unit_t<V>> toTaskInterruptOnCancel(folly::SemiFuture<V> f) {
+  auto ex = co_await co_current_executor;
+  co_await co_nothrow(toTaskInterruptOnCancel(std::move(f).via(ex)));
 }
 
 // Converts the given SemiAwaitable to a SemiFuture (without starting it)

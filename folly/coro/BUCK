@@ -283,7 +283,10 @@ cpp_library(
     name = "future_util",
     headers = ["FutureUtil.h"],
     exported_deps = [
+        "//folly:cancellation_token",
+        "//folly/experimental/coro:baton",
         "//folly/experimental/coro:coroutine",
+        "//folly/experimental/coro:current_executor",
         "//folly/experimental/coro:detail_traits",
         "//folly/experimental/coro:invoke",
         "//folly/experimental/coro:task",
@@ -486,10 +489,8 @@ cpp_library(
         "Sleep-inl.h",
     ],
     exported_deps = [
-        "//folly:cancellation_token",
-        "//folly/experimental/coro:baton",
         "//folly/experimental/coro:coroutine",
-        "//folly/experimental/coro:current_executor",
+        "//folly/experimental/coro:future_util",
         "//folly/experimental/coro:task",
         "//folly/futures:core",
     ],

@@ -20,7 +20,9 @@
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Collect.h>
 #include <folly/experimental/coro/FutureUtil.h>
+#include <folly/experimental/coro/GtestHelpers.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
@@ -113,4 +115,45 @@ TEST(FutureUtilTest, VoidRoundtrip) {
   task = folly::coro::toTask(std::move(semi));
   folly::coro::blockingWait(std::move(task));
 }
+
+CO_TEST(FutureUtilTest, ToTaskInterruptOnCancelFutureWithCancellation) {
+  auto [p, f] = folly::makePromiseContract<folly::Unit>();
+
+  // to verify that cancellation propagates into the future interrupt-handler
+  folly::exception_wrapper interrupt;
+  p.setInterruptHandler([&, p_ = &p](auto&& ew) {
+    interrupt = ew;
+    p_->setException(std::move(ew));
+  });
+
+  // to verify that deferred work runs
+  folly::Try<folly::Unit> touched;
+  auto f1 = std::move(f).defer([&](folly::Try<folly::Unit> t) { touched = t; });
+  CO_ASSERT_FALSE(touched.hasException()); // sanity check
+
+  // run the scenario
+  folly::CancellationSource csource;
+  auto result = std::get<0>(co_await folly::coro::collectAllTry(
+
+      // a task that will be cancelled, wrapping a future to be interrupted
+      folly::coro::co_withCancellation(
+          csource.getToken(),
+          std::invoke([&, f_ = &f1]() -> folly::coro::Task<> {
+            CO_ASSERT_FALSE(touched.hasException()); // sanity check
+            co_await folly::coro::toTaskInterruptOnCancel(std::move(*f_));
+          })),
+
+      // a task that will do the cancelling, after waiting a bit
+      std::invoke([&]() -> folly::coro::Task<> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        csource.requestCancellation();
+        CO_ASSERT_FALSE(touched.hasException()); // sanity check
+      })));
+
+  // verify that the future was interrupted
+  EXPECT_TRUE(touched.hasException<folly::FutureCancellation>());
+  EXPECT_TRUE(result.hasException<folly::OperationCancelled>());
+  EXPECT_TRUE(interrupt.get_exception<folly::FutureCancellation>());
+}
+
 #endif
