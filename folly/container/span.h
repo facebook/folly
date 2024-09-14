@@ -52,7 +52,7 @@ struct span_extent {
   constexpr span_extent(span_extent const&) = default;
   constexpr span_extent& operator=(span_extent const&) = default;
 
-  /* implicit */ operator std::size_t() const noexcept { return N; }
+  /* implicit */ constexpr operator std::size_t() const noexcept { return N; }
 };
 
 template <>
@@ -64,7 +64,9 @@ struct span_extent<dynamic_extent> {
   constexpr span_extent(span_extent const&) = default;
   constexpr span_extent& operator=(span_extent const&) = default;
 
-  /* implicit */ operator std::size_t() const noexcept { return extent; }
+  /* implicit */ constexpr operator std::size_t() const noexcept {
+    return extent;
+  }
 };
 
 /// span
