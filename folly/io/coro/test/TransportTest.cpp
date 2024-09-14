@@ -16,8 +16,8 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/MockAsyncTransport.h>
 #include <folly/io/async/test/ScopedBoundPort.h>

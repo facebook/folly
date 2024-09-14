@@ -641,7 +641,7 @@ cpp_library(
     headers = ["SimpleAsyncIO.h"],
     deps = [
         "//folly:string",
-        "//folly/experimental/coro:baton",
+        "//folly/coro:baton",
         "//folly/experimental/io:async_io",
         "//folly/experimental/io:io_uring",
         "//folly/experimental/io:liburing",
@@ -649,8 +649,8 @@ cpp_library(
     ],
     exported_deps = [
         "//folly:synchronized",
+        "//folly/coro:task",
         "//folly/executors:global_executor",
-        "//folly/experimental/coro:task",
         "//folly/experimental/io:async_base",
         "//folly/io/async:async_base",
         "//folly/io/async:scoped_event_base_thread",

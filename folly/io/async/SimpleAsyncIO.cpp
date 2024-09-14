@@ -17,7 +17,7 @@
 #include <folly/io/async/SimpleAsyncIO.h>
 
 #include <folly/String.h>
-#include <folly/experimental/coro/Baton.h>
+#include <folly/coro/Baton.h>
 #include <folly/experimental/io/AsyncIO.h>
 #include <folly/experimental/io/IoUring.h>
 #include <folly/experimental/io/Liburing.h>

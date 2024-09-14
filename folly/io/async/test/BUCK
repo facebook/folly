@@ -1107,8 +1107,8 @@ cpp_unittest(
     deps = [
         "//folly:file",
         "//folly:random",
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:collect",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:collect",
         "//folly/experimental/io:simple_async_io",
         "//folly/io:iobuf",
         "//folly/portability:gtest",

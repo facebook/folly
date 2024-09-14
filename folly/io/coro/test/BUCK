@@ -9,8 +9,8 @@ cpp_unittest(
     ],
     deps = [
         "//folly:portability",
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:collect",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:collect",
         "//folly/io/async/test:async_socket_test_lib",
         "//folly/io/async/test:mocks",
         "//folly/io/async/test:scoped_bound_port",
