@@ -21,9 +21,9 @@
 #include <folly/channels/FanoutSender.h>
 #include <folly/channels/OnClosedException.h>
 #include <folly/container/F14Map.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/detail/MultiplexerTraits.h>
-#include <folly/experimental/coro/Task.h>
 
 namespace folly {
 namespace channels {

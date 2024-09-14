@@ -22,8 +22,8 @@
 #include <folly/ScopeGuard.h>
 #include <folly/channels/Channel.h>
 #include <folly/channels/ChannelCallbackHandle.h>
+#include <folly/coro/Task.h>
 #include <folly/experimental/channels/detail/Utility.h>
-#include <folly/experimental/coro/Task.h>
 
 namespace folly {
 namespace channels {

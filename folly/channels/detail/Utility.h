@@ -22,9 +22,9 @@
 #include <folly/ScopeGuard.h>
 #include <folly/channels/Channel.h>
 #include <folly/channels/RateLimiter.h>
+#include <folly/coro/Promise.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/coro/Promise.h>
-#include <folly/experimental/coro/Task.h>
 
 namespace folly {
 namespace channels {

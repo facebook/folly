@@ -12,8 +12,8 @@ cpp_library(
     exported_deps = [
         "//folly:cancellation_token",
         "//folly:synchronized",
+        "//folly/coro:coroutine",
         "//folly/experimental/channels/detail:channel_bridge",
-        "//folly/experimental/coro:coroutine",
     ],
 )
 
@@ -59,9 +59,9 @@ cpp_library(
         "//folly:scope_guard",
         "//folly/channels:channel",
         "//folly/channels:channel_callback_handle",
+        "//folly/coro:task",
         "//folly/executors:sequenced_executor",
         "//folly/experimental/channels/detail:utility",
-        "//folly/experimental/coro:task",
     ],
 )
 
@@ -136,13 +136,13 @@ cpp_library(
         "//folly/channels:on_closed_exception",
         "//folly/channels:rate_limiter",
         "//folly/container:f14_hash",
+        "//folly/coro:future_util",
+        "//folly/coro:mutex",
+        "//folly/coro:promise",
+        "//folly/coro:task",
         "//folly/executors:sequenced_executor",
         "//folly/experimental/channels/detail:multiplexer_traits",
         "//folly/experimental/channels/detail:utility",
-        "//folly/experimental/coro:future_util",
-        "//folly/experimental/coro:mutex",
-        "//folly/experimental/coro:promise",
-        "//folly/experimental/coro:task",
     ],
 )
 
@@ -165,8 +165,8 @@ cpp_library(
         "//folly/channels:channel",
         "//folly/channels:channel_callback_handle",
         "//folly/channels:consume_channel",
+        "//folly/coro:task",
         "//folly/executors:sequenced_executor",
-        "//folly/experimental/coro:task",
     ],
 )
 
@@ -217,9 +217,9 @@ cpp_library(
         "//folly/channels:channel",
         "//folly/channels:on_closed_exception",
         "//folly/channels:rate_limiter",
+        "//folly/coro:async_generator",
+        "//folly/coro:task",
         "//folly/executors:sequenced_executor",
         "//folly/experimental/channels/detail:utility",
-        "//folly/experimental/coro:async_generator",
-        "//folly/experimental/coro:task",
     ],
 )

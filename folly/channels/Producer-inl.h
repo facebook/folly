@@ -21,7 +21,7 @@
 #include <folly/channels/Channel.h>
 #include <folly/channels/ConsumeChannel.h>
 #include <folly/channels/Producer.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/Task.h>
 
 namespace folly {
 namespace channels {

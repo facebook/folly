@@ -20,8 +20,8 @@
 #include <folly/IntrusiveList.h>
 #include <folly/channels/Channel.h>
 #include <folly/channels/ChannelCallbackHandle.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/coro/Task.h>
 
 namespace folly {
 namespace channels {

@@ -16,8 +16,8 @@
 
 #include <folly/channels/Channel.h>
 #include <folly/channels/test/ChannelTestUtil.h>
+#include <folly/coro/BlockingWait.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/BlockingWait.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {
