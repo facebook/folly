@@ -25,6 +25,7 @@
 #pragma once
 
 #include <functional>
+#include <utility>
 
 #include <boost/intrusive/parent_from_member.hpp>
 #include <boost/noncopyable.hpp>
