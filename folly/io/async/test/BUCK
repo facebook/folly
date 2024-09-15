@@ -140,6 +140,7 @@ cpp_unittest(
     },
     supports_static_listing = False,
     deps = [
+        ":async_ssl_socket_test_lib",  # @manual
         ":blocking_socket",
         ":mocks",
         ":test_ssl_server",
@@ -258,6 +259,7 @@ cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        ":async_socket_test_lib",  # @manual
         ":blocking_socket",
         ":callback_state_enum",
         ":conn_callback",
