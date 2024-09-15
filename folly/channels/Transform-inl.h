@@ -456,7 +456,7 @@ template <>
 class RateLimiterHolder<false> {
  public:
   explicit RateLimiterHolder(std::shared_ptr<RateLimiter> rateLimiter) {
-    CHECK_NULL(rateLimiter.get());
+    CHECK_EQ(rateLimiter.get(), static_cast<void*>(NULL));
   }
 
   std::shared_ptr<RateLimiter> getRateLimiter() { return nullptr; }
