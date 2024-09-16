@@ -12,6 +12,12 @@ oncall("open_source")
 system_cxx_toolchain(
     name = "cxx",
     cxx_flags = ["-std=c++20"],
+    link_flags = select({
+        "DEFAULT": [],
+        "prelude//os:linux": [
+            "-latomic",
+        ],
+    }),
     visibility = ["PUBLIC"],
 )
 
