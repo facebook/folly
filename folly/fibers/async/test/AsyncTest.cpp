@@ -29,8 +29,8 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Sleep.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Sleep.h>
 #include <folly/fibers/async/Task.h>
 
 using namespace ::testing;

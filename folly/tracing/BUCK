@@ -41,7 +41,7 @@ cpp_library(
         "//folly:cpp_attributes",
         "//folly:function",
         "//folly:portability",
-        "//folly/experimental/coro:coroutine",
+        "//folly/coro:coroutine",
     ],
     external_deps = [
         "glog",

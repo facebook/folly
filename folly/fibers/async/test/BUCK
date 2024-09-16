@@ -7,8 +7,8 @@ cpp_unittest(
     srcs = ["AsyncTest.cpp"],
     headers = [],
     deps = [
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:sleep",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:sleep",
         "//folly/fibers:core_manager",
         "//folly/fibers:fiber_manager_map",
         "//folly/fibers/async:baton",

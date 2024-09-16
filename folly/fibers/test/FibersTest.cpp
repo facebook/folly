@@ -23,11 +23,11 @@
 #include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/Random.h>
+#include <folly/coro/BlockingWait.h>
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Timeout.h>
 #include <folly/coro/WithCancellation.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/experimental/coro/BlockingWait.h>
 #include <folly/fibers/AddTasks.h>
 #include <folly/fibers/AtomicBatchDispatcher.h>
 #include <folly/fibers/BatchDispatcher.h>

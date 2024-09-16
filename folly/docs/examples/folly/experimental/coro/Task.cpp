@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/Task.h>
 
+#include <folly/coro/BlockingWait.h>
 #include <folly/executors/GlobalExecutor.h>
-#include <folly/experimental/coro/BlockingWait.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 

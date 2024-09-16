@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include <folly/experimental/coro/AsyncGenerator.h>
+#include <folly/coro/AsyncGenerator.h>
 
 namespace folly {
 namespace python {

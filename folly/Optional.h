@@ -667,7 +667,7 @@ FOLLY_NAMESPACE_STD_END
 // Enable the use of folly::Optional with `co_await`
 // Inspired by https://github.com/toby-allsopp/coroutine_monad
 #if FOLLY_HAS_COROUTINES
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 
 namespace folly {
 namespace detail {

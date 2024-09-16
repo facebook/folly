@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/AsyncScope.h>
+#include <folly/coro/AsyncScope.h>
 
+#include <folly/coro/GtestHelpers.h>
 #include <folly/executors/GlobalExecutor.h>
-#include <folly/experimental/coro/GtestHelpers.h>
 
 CO_TEST(AsyncScope, demo) {
   std::atomic<int> count = 0;

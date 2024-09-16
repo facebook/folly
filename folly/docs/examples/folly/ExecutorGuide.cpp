@@ -17,9 +17,9 @@
 #include <cassert>
 #include <iostream>
 #include <folly/Executor.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/futures/Future.h>
 
 class LoggingExecutor : public folly::Executor {

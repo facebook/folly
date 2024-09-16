@@ -69,10 +69,10 @@ cpp_unittest(
     name = "smart_exception_tracer_test",
     srcs = ["SmartExceptionTracerTest.cpp"],
     deps = [
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
         "//folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",  # @manual
         "//folly/debugging/exception_tracer:smart_exception_tracer",
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:task",
         "//folly/portability:gtest",
     ],
 )

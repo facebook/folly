@@ -18,11 +18,11 @@
 #include <thread>
 
 #include <folly/CancellationToken.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Sleep.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Timeout.h>
-#include <folly/experimental/coro/WithCancellation.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Sleep.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Timeout.h>
+#include <folly/coro/WithCancellation.h>
 #include <folly/portability/GTest.h>
 
 using namespace std::literals::chrono_literals;

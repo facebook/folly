@@ -107,8 +107,8 @@ cpp_library(
     ],
     exported_deps = [
         ":core",
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:task",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
     ],
 )
 

@@ -80,8 +80,8 @@ cython_library(
     srcs = ["simplebridgecoro.pyx"],
     headers = ["simplecoro.h"],
     cpp_deps = [
-        "//folly/experimental/coro:baton",
-        "//folly/experimental/coro:task",
+        "//folly/coro:baton",
+        "//folly/coro:task",
         "//folly/futures:core",
         "//folly:cancellation_token",
     ],
@@ -95,7 +95,7 @@ cython_library(
     srcs = ["simplegenerator.pyx"],
     headers = ["simplegenerator.h"],
     cpp_deps = [
-        "//folly/experimental/coro:async_generator",
+        "//folly/coro:async_generator",
     ],
     deps = [
         "//folly/python:async_generator",
@@ -118,8 +118,8 @@ cpp_unittest(
         "AsyncGeneratorTest.cpp",
     ],
     deps = [
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:task",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
         "//folly/portability:gtest",
         "//folly/python:async_generator_lib",
     ],

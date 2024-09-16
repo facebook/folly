@@ -16,8 +16,8 @@
 
 #include <cstring>
 
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Task.h>
 #include <folly/experimental/symbolizer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/lang/Hint.h>

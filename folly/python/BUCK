@@ -155,7 +155,7 @@ cpp_library(
         "//folly:cancellation_token",
         "//folly:executor",
         "//folly:portability",
-        "//folly/experimental/coro:task",
+        "//folly/coro:task",
     ],
 )
 
@@ -320,8 +320,8 @@ cpp_library(
     ],
     exported_deps = [
         "//folly:portability",
-        "//folly/experimental/coro:async_generator",
-        "//folly/experimental/coro:task",
+        "//folly/coro:async_generator",
+        "//folly/coro:task",
     ],
 )
 

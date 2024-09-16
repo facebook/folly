@@ -24,7 +24,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/Function.h>
 #include <folly/Portability.h>
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 
 namespace folly {
 

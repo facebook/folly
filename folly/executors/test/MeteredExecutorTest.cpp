@@ -19,10 +19,10 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Synchronized.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/MeteredExecutor.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/init/Init.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>

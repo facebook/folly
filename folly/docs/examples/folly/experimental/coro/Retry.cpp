@@ -17,8 +17,8 @@
 #include <chrono>
 #include <thread>
 
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Retry.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Retry.h>
 #include <folly/portability/GTest.h>
 
 using namespace std::literals::chrono_literals;

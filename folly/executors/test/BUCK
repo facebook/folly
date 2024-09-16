@@ -246,10 +246,10 @@ cpp_unittest(
     deps = [
         "//folly:benchmark",
         "//folly:synchronized",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:metered_executor",
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:task",
         "//folly/init:init",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",

@@ -30,9 +30,9 @@
 #include <folly/Try.h>
 #include <folly/Unit.h>
 #include <folly/Utility.h>
+#include <folly/coro/Traits.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
-#include <folly/experimental/coro/Traits.h>
 #include <folly/fibers/Baton.h>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Portability.h>
