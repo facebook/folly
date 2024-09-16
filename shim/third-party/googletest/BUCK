@@ -11,14 +11,20 @@ oncall("open_source")
 
 third_party_library(
     name = "gtest",
-    homebrew_package_name = "googletest",
     pkgconfig_name = "gtest",
+    repo_package_names = {
+        "fedora": "gtest-devel",
+        "homebrew": "googletest",
+    },
 )
 
 third_party_library(
     name = "gmock",
-    homebrew_package_name = "googletest",
     pkgconfig_name = "gmock",
+    repo_package_names = {
+        "fedora": "gmock-devel",
+        "homebrew": "googletest",
+    },
 )
 
 cxx_library(

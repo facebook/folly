@@ -10,19 +10,30 @@ load("@shim//third-party:third_party.bzl", "third_party_library")
 def boost_libs(xs):
     third_party_library(
         name = "boost",
-        ubuntu_package_name = "libboost-all-dev",
-        homebrew_package_name = "boost",
+        repo_package_names = {
+            "fedora": "boost-devel",
+            "homebrew": "boost",
+            "ubuntu": "libboost-all-dev",
+        },
     )
     for x in xs:
         third_party_library(
             name = "boost_{}".format(x),
-            homebrew_package_name = "boost",
-            homebrew_linker_flags = ["-lboost_{}".format(x)],
+            repo_package_names = {
+                "fedora": "boost-devel",
+                "homebrew": "boost",
+                "ubuntu": "libboost-all-dev",
+            },
+            linker_flags = ["-lboost_{}".format(x)],
         )
 
 def boost_header_only(xs):
     for x in xs:
         third_party_library(
             name = "boost_{}".format(x),
-            homebrew_package_name = "boost",
+            repo_package_names = {
+                "fedora": "boost-devel",
+                "homebrew": "boost",
+                "ubuntu": "libboost-all-dev",
+            },
         )

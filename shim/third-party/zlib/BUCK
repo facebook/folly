@@ -11,6 +11,9 @@ oncall("open_source")
 
 third_party_library(
     name = "z",
-    homebrew_package_name = "zlib",
     pkgconfig_name = "zlib",
+    repo_package_names = {
+        "fedora": "zlib-devel",
+        "homebrew": "zlib",
+    },
 )

@@ -9,4 +9,11 @@ load("@shim//third-party:third_party.bzl", "third_party_library")
 
 oncall("open_source")
 
-third_party_library(name = "snappy")
+third_party_library(
+    name = "snappy",
+    pkgconfig_name = "snappy",
+    repo_package_names = {
+        "fedora": "snappy-devel",
+        "homebrew": "snappy",
+    },
+)

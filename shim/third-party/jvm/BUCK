@@ -11,5 +11,7 @@ oncall("open_source")
 
 third_party_library(
     name = "jvm",
-    homebrew_package_name = "openjdk",
+    repo_package_names = {
+        "homebrew": "openjdk",
+    },
 )

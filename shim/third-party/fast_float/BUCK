@@ -11,4 +11,8 @@ oncall("open_source")
 
 third_party_library(
     name = "fast_float",
+    repo_package_names = {
+        "fedora": "fast_float-devel",
+        "homebrew": "fast_float",
+    },
 )

@@ -9,4 +9,10 @@ load("@shim//third-party:third_party.bzl", "third_party_library")
 
 oncall("open_source")
 
-third_party_library(name = "range-v3")
+third_party_library(
+    name = "range-v3",
+    repo_package_names = {
+        "fedora": "range-v3-devel",
+        "homebrew": "range-v3",
+    },
+)

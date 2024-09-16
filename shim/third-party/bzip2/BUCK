@@ -11,5 +11,9 @@ oncall("open_source")
 
 third_party_library(
     name = "bz2",
-    homebrew_package_name = "bzip2",
+    pkgconfig_name = "bzip2",
+    repo_package_names = {
+        "fedora": "bzip2-devel",
+        "homebrew": "bzip2",
+    },
 )

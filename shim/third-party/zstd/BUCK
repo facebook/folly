@@ -12,4 +12,8 @@ oncall("open_source")
 third_party_library(
     name = "zstd",
     pkgconfig_name = "libzstd",
+    repo_package_names = {
+        "fedora": "libzstd-devel",
+        "homebrew": "zstd",
+    },
 )

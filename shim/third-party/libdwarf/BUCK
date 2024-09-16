@@ -11,6 +11,9 @@ oncall("open_source")
 
 third_party_library(
     name = "dwarf",
-    homebrew_package_name = "libdwarf",
     pkgconfig_name = "libdwarf",
+    repo_package_names = {
+        "fedora": "libdwarf-devel",
+        "homebrew": "libdwarf",
+    },
 )

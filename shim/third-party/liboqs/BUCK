@@ -11,6 +11,9 @@ oncall("open_source")
 
 third_party_library(
     name = "oqs",
-    homebrew_package_name = "liboqs",
     pkgconfig_name = "liboqs",
+    repo_package_names = {
+        "fedora": "liboqs-devel",
+        "homebrew": "liboqs",
+    },
 )

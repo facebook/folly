@@ -12,5 +12,8 @@ oncall("open_source")
 third_party_library(
     name = "libevent",
     pkgconfig_name = "libevent",
-    ubuntu_package_name = "libevent-dev",
+    repo_package_names = {
+        "fedora": "libevent-devel",
+        "ubuntu": "libevent-dev",
+    },
 )

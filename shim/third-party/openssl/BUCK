@@ -11,8 +11,11 @@ oncall("open_source")
 
 third_party_library(
     name = "ssl",
-    homebrew_package_name = "openssl",
     pkgconfig_name = "openssl",
+    repo_package_names = {
+        "fedora": "openssl-devel",
+        "homebrew": "openssl",
+    },
 )
 
 alias(

@@ -11,6 +11,9 @@ oncall("open_source")
 
 third_party_library(
     name = "fmt",
-    homebrew_package_name = "fmt",
     pkgconfig_name = "fmt",
+    repo_package_names = {
+        "fedora": "fmt-devel",
+        "homebrew": "fmt",
+    },
 )

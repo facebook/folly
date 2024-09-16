@@ -11,6 +11,9 @@ oncall("open_source")
 
 third_party_library(
     name = "headers",
-    homebrew_package_name = "jemalloc",
     pkgconfig_name = "jemalloc",
+    repo_package_names = {
+        "fedora": "jemalloc-devel",
+        "homebrew": "jemalloc",
+    },
 )

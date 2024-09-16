@@ -12,6 +12,9 @@ oncall("open_source")
 third_party_library(
     name = "python",
     homebrew_header_path = "Frameworks/Python.framework/Headers",
-    homebrew_package_name = "python3",
     pkgconfig_name = "python3",
+    repo_package_names = {
+        "fedora": "python3-devel",
+        "homebrew": "python3",
+    },
 )

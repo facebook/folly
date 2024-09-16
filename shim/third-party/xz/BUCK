@@ -11,6 +11,9 @@ oncall("open_source")
 
 third_party_library(
     name = "lzma",
-    homebrew_package_name = "xz",
     pkgconfig_name = "liblzma",
+    repo_package_names = {
+        "fedora": "xz-devel",
+        "homebrew": "liblzma",
+    },
 )

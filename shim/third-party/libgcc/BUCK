@@ -11,5 +11,7 @@ oncall("open_source")
 
 third_party_library(
     name = "stdc++fs",
-    homebrew_package_name = "gcc",
+    repo_package_names = {
+        "homebrew": "gcc",
+    },
 )

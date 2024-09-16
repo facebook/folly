@@ -11,6 +11,9 @@ oncall("open_source")
 
 third_party_library(
     name = "double_conversion",
-    homebrew_linker_flags = ["-ldouble-conversion"],
-    homebrew_package_name = "double-conversion",
+    linker_flags = ["-ldouble-conversion"],
+    repo_package_names = {
+        "fedora": "double-conversion-devel",
+        "homebrew": "double-conversion",
+    },
 )

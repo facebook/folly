@@ -8,63 +8,86 @@
 load("@prelude//third-party:pkgconfig.bzl", "external_pkgconfig_library")
 load("@shim//build_defs:prebuilt_cpp_library.bzl", "prebuilt_cpp_library")
 
-def homebrew_library(
-        package_name,
-        name = None,
-        default_target_platform = "prelude//platforms:default",
+def third_party_library(
+        name,
         visibility = ["PUBLIC"],
-        deps = None,
-        header_path = None,
+        deps = [],
+        pkgconfig_name = None,
+        repo_package_names = {},
         linker_flags = None,
-        labels = []):
-    brew_headers = package_name + "__brew_headers"
-    brew_libs = package_name + "__brew_libs"
-    if name != None:
-        brew_headers = name + "__" + brew_headers
-        brew_libs = name + "__" + brew_libs
-
-    # @lint-ignore BUCKLINT
-    native.genrule(
-        name = brew_headers,
-        default_target_platform = default_target_platform,
-        out = "out",
-        cmd = "echo \"-I`brew --prefix {}`/{}\" > $OUT".format(package_name, header_path or "include"),
-    )
-
-    # @lint-ignore BUCKLINT
-    native.genrule(
-        name = brew_libs,
-        default_target_platform = default_target_platform,
-        out = "out",
-        cmd = "echo \"-L`brew --prefix {}`/lib\" > $OUT".format(package_name),
-    )
-
-    linker_flags = linker_flags or []
-    linker_flags.append("@$(location :{})".format(brew_libs))
-
-    prebuilt_cpp_library(
-        name = name or package_name,
-        default_target_platform = default_target_platform,
-        visibility = visibility,
-        exported_deps = deps,
-        exported_preprocessor_flags = ["@$(location :{})".format(brew_headers)],
-        linker_flags = linker_flags,
-        labels = labels,
-    )
-
-def third_party_library(name, visibility = ["PUBLIC"], deps = [], homebrew_package_name = None, ubuntu_package_name = None, pkgconfig_name = None, homebrew_header_path = None, default_target_platform = "prelude//platforms:default", homebrew_linker_flags = None):
-    # Labels defined here are used to extract third-party libs so they can be installed:
+        homebrew_header_path = None):
+    # Labels defined here are used to extract third-party libs so they can be installed
     labels = []
-    if homebrew_package_name != None:
-        labels.append("third-party:homebrew:" + homebrew_package_name)
-    if ubuntu_package_name != None:
-        labels.append("third-party:ubuntu:" + ubuntu_package_name)
+    for repo, package_name in repo_package_names.items():
+        labels.append("third-party:{}:{}".format(repo, package_name))
 
+    # Prefer pkgconfig
     if pkgconfig_name != None:
-        labels.append("third-party:homebrew:pkg-config")
-        labels.append("third-party:ubuntu:pkg-config")
-        external_pkgconfig_library(name = pkgconfig_name, visibility = visibility if name == pkgconfig_name else [], labels = labels, default_target_platform = default_target_platform, deps = deps)
+        for repo in repo_package_names.keys():
+            labels.append("third-party:{}:pkg-config".format(repo))
+
+        external_pkgconfig_library(
+            name = pkgconfig_name,
+            visibility = visibility if name == pkgconfig_name else [],
+            labels = labels,
+            deps = deps,
+        )
         if name != pkgconfig_name:
-            native.alias(name = name, actual = ":{}".format(pkgconfig_name), visibility = visibility)
-        return
-    homebrew_library(name = name, package_name = homebrew_package_name or name, visibility = visibility, deps = deps, header_path = homebrew_header_path, linker_flags = homebrew_linker_flags, default_target_platform = default_target_platform, labels = labels)
+            native.alias(
+                name = name,
+                actual = ":{}".format(pkgconfig_name),
+                visibility = visibility,
+            )
+    else:
+        linker_flags = linker_flags or []
+        exported_preprocessor_flags = []
+
+        os = host_info().os
+        if os.is_macos and "homebrew" in repo_package_names:
+            # Add brew lookup paths
+            homebrew_package_name = repo_package_names["homebrew"]
+            linker_flags += _homebrew_linker_flags(
+                name = name,
+                homebrew_package_name = homebrew_package_name,
+            )
+            exported_preprocessor_flags += _homebrew_preprocessor_flags(
+                name = name,
+                homebrew_package_name = homebrew_package_name,
+                homebrew_header_path = homebrew_header_path,
+            )
+
+        prebuilt_cpp_library(
+            name = name,
+            visibility = visibility,
+            exported_deps = deps,
+            exported_preprocessor_flags = exported_preprocessor_flags,
+            linker_flags = linker_flags,
+            labels = labels,
+        )
+
+def _homebrew_linker_flags(name, homebrew_package_name):
+    homebrew_libs = "{}__{}__homebrew_libs".format(name, homebrew_package_name)
+
+    # @lint-ignore BUCKLINT
+    native.genrule(
+        name = homebrew_libs,
+        out = "out",
+        cmd = "echo \"-L`brew --prefix {}`/lib\" > $OUT".format(homebrew_package_name),
+    )
+
+    return ["@$(location :{})".format(homebrew_libs)]
+
+def _homebrew_preprocessor_flags(name, homebrew_package_name, homebrew_header_path):
+    homebrew_headers = "{}__{}__homebrew_headers".format(name, homebrew_package_name)
+
+    # @lint-ignore BUCKLINT
+    native.genrule(
+        name = homebrew_headers,
+        out = "out",
+        cmd = "echo \"-I`brew --prefix {}`/{}\" > $OUT".format(
+            homebrew_package_name,
+            homebrew_header_path or "include",
+        ),
+    )
+
+    return ["@$(location :{})".format(homebrew_headers)]

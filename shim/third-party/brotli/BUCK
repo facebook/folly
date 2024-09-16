@@ -11,12 +11,18 @@ oncall("open_source")
 
 third_party_library(
     name = "brotli_decode",
-    homebrew_package_name = "brotli",
     pkgconfig_name = "libbrotlidec",
+    repo_package_names = {
+        "fedora": "brotli-devel",
+        "homebrew": "brotli",
+    },
 )
 
 third_party_library(
     name = "brotli_encode",
-    homebrew_package_name = "brotli",
     pkgconfig_name = "libbrotlienc",
+    repo_package_names = {
+        "fedora": "brotli-devel",
+        "homebrew": "brotli",
+    },
 )
