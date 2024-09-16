@@ -135,6 +135,12 @@ cdef class IOBuf:
     def __bool__(self):
         return not self._this.empty()
 
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        return self
+
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         self.shape[0] = self._this.length()
         self.strides[0] = 1
@@ -234,6 +240,12 @@ cdef class WritableIOBuf(IOBuf):
         buffer.shape = self.shape
         buffer.strides = self.strides
         buffer.suboffsets = NULL
+
+    def __copy__(self):
+        return self.clone()
+
+    def __deepcopy__(self, memo):
+        return self.clone()
 
     def writable(self):
         return True
