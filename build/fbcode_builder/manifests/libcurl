@@ -3,7 +3,7 @@ name = libcurl
 
 [rpms]
 libcurl-devel
-libcurl
+libcurl-minimal
 
 [debs]
 libcurl4-openssl-dev
