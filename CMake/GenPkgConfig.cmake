@@ -103,6 +103,14 @@ function(gen_pkgconfig_vars)
       "<COMPILE_LANG_AND_ID:CUDA,NVIDIA>" "<COMPILE_LANGUAGE:CUDA>"
       cflags "${cflags}"
     )
+
+  endif()
+  # patch for fmt's generator expression
+  if (MSVC)
+    # fmt 11.0.3 and above
+    string(REPLACE "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/utf-8>" "/utf-8" cflags "${cflags}")
+    # fmt 11.0.2 and below
+    string(REPLACE "$<$<COMPILE_LANGUAGE:CXX>:/utf-8>" "/utf-8" cflags "${cflags}")
   endif()
 
   set("${var_prefix}_CFLAGS" "${cflags}" PARENT_SCOPE)
