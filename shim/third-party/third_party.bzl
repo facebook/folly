@@ -15,7 +15,8 @@ def third_party_library(
         pkgconfig_name = None,
         repo_package_names = {},
         linker_flags = None,
-        homebrew_header_path = None):
+        homebrew_header_path = None,
+        pkgconfig_fallback = None):
     # Labels defined here are used to extract third-party libs so they can be installed
     labels = []
     for repo, package_name in repo_package_names.items():
@@ -31,6 +32,7 @@ def third_party_library(
             visibility = visibility if name == pkgconfig_name else [],
             labels = labels,
             deps = deps,
+            fallback = pkgconfig_fallback,
         )
         if name != pkgconfig_name:
             native.alias(

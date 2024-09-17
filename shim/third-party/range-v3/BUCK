@@ -14,5 +14,6 @@ third_party_library(
     repo_package_names = {
         "fedora": "range-v3-devel",
         "homebrew": "range-v3",
+        "ubuntu": "librange-v3-dev",
     },
 )

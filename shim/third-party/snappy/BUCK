@@ -15,5 +15,6 @@ third_party_library(
     repo_package_names = {
         "fedora": "snappy-devel",
         "homebrew": "snappy",
+        "ubuntu": "libsnappy-dev",
     },
 )

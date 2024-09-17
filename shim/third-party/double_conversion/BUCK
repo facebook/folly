@@ -15,5 +15,6 @@ third_party_library(
     repo_package_names = {
         "fedora": "double-conversion-devel",
         "homebrew": "double-conversion",
+        "ubuntu": "libdouble-conversion-dev",
     },
 )

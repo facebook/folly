@@ -16,5 +16,6 @@ third_party_library(
     repo_package_names = {
         "fedora": "python3-devel",
         "homebrew": "python3",
+        "ubuntu": "python3-dev",
     },
 )

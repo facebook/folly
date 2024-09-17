@@ -15,5 +15,6 @@ third_party_library(
     repo_package_names = {
         "fedora": "libaio-devel",
         "homebrew": "libaio",
+        "ubuntu": "libaio-dev",
     },
 )

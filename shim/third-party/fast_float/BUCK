@@ -14,5 +14,6 @@ third_party_library(
     repo_package_names = {
         "fedora": "fast_float-devel",
         "homebrew": "fast_float",
+        "ubuntu": "libfast-float-dev",
     },
 )

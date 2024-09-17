@@ -15,5 +15,6 @@ third_party_library(
     repo_package_names = {
         "fedora": "libzstd-devel",
         "homebrew": "zstd",
+        "ubuntu": "libzstd-dev",
     },
 )

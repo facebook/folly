@@ -14,5 +14,6 @@ third_party_library(
     pkgconfig_name = "liburing",
     repo_package_names = {
         "fedora": "liburing-devel",
+        "ubuntu": "liburing-dev",
     },
 )

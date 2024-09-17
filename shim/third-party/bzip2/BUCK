@@ -11,9 +11,13 @@ oncall("open_source")
 
 third_party_library(
     name = "bz2",
+    pkgconfig_fallback = struct(
+        linker_flags = ["-lbz2"],
+    ),
     pkgconfig_name = "bzip2",
     repo_package_names = {
         "fedora": "bzip2-devel",
         "homebrew": "bzip2",
+        "ubuntu": "libbz2-dev",
     },
 )

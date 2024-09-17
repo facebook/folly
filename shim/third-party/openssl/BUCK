@@ -15,6 +15,7 @@ third_party_library(
     repo_package_names = {
         "fedora": "openssl-devel",
         "homebrew": "openssl",
+        "ubuntu": "libssl-dev",
     },
 )
 

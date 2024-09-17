@@ -15,5 +15,6 @@ third_party_library(
     repo_package_names = {
         "fedora": "lz4-devel",
         "homebrew": "lz4",
+        "ubuntu": "liblz4-dev",
     },
 )
