@@ -283,7 +283,7 @@ TEST(Arena, Clear) {
   for (int i = 0; i < 10; ++i) {
     std::vector<size_t> sizes(1000);
     std::generate(sizes.begin(), sizes.end(), []() {
-      return std::rand() % blockSize * 2;
+      return Random::rand32(blockSize) * 2;
     });
 
     std::vector<void*> addresses;
