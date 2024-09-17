@@ -9,6 +9,7 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:memory",
+        "//folly:random",
         "//folly/memory:arena",
         "//folly/memory:mallctl_helper",
         "//folly/memory:malloc",
