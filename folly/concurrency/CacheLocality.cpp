@@ -43,8 +43,18 @@ namespace folly {
 /// Returns the CacheLocality information best for this machine
 static CacheLocality getSystemLocalityInfo() {
   if (kIsLinux) {
+    // First try to parse /proc/cpuinfo.
+    // If that fails, then try to parse /sys/devices/.
+    // The latter is slower but more accurate.
     try {
       return CacheLocality::readFromProcCpuinfo();
+    } catch (...) {
+      // /proc/cpuinfo might be non-standard
+      // lets try with sysfs /sys/devices/cpu
+    }
+
+    try {
+      return CacheLocality::readFromSysfs();
     } catch (...) {
       // keep trying
     }
@@ -221,6 +231,8 @@ std::vector<std::tuple<size_t, size_t, size_t>> parseProcCpuinfoLines(
   size_t physicalId = 0;
   size_t coreId = 0;
   size_t maxCpu = 0;
+  size_t numberOfPhysicalIds = 0;
+  size_t numberOfCoreIds = 0;
   for (auto iter = lines.rbegin(); iter != lines.rend(); ++iter) {
     auto& line = *iter;
     if (!procCpuinfoLineRelevant(line)) {
@@ -240,8 +252,10 @@ std::vector<std::tuple<size_t, size_t, size_t>> parseProcCpuinfoLines(
     // the reverse order then we can emit a record.
     if (line.find("physical id") == 0) {
       physicalId = parseLeadingNumber(arg);
+      ++numberOfPhysicalIds;
     } else if (line.find("core id") == 0) {
       coreId = parseLeadingNumber(arg);
+      ++numberOfCoreIds;
     } else if (line.find("processor") == 0) {
       auto cpu = parseLeadingNumber(arg);
       maxCpu = std::max(cpu, maxCpu);
@@ -255,6 +269,12 @@ std::vector<std::tuple<size_t, size_t, size_t>> parseProcCpuinfoLines(
   if (maxCpu != cpus.size() - 1) {
     throw std::runtime_error(
         "offline CPUs not supported for /proc/cpuinfo cache locality source");
+  }
+  if (numberOfPhysicalIds == 0) {
+    throw std::runtime_error("no physical ids found");
+  }
+  if (numberOfCoreIds == 0) {
+    throw std::runtime_error("no core ids found");
   }
 
   return cpus;

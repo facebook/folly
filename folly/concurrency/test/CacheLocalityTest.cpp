@@ -986,9 +986,39 @@ TEST(CacheLocality, LinuxActual) {
   // CPUs), so we can't use _SC_NPROCESSORS_ONLN or std::hardware_concurrency().
   auto expectedNumCpus = sysconf(_SC_NPROCESSORS_CONF);
 
+  if (kIsArchArm || kIsArchAArch64) {
+    // As of Linux v6.9, Arm CPU's have a very basic /proc/cpuinfo
+    // they are missing many fields typically included in x86.
+    // https://github.com/torvalds/linux/blob/77f587896757708780a7e8792efe62939f25a5ab/arch/arm64/kernel/cpuinfo.c#L193
+    //
+    // Example ARM /proc/cpuinfo
+    // processor  : 0
+    // BogoMIPS   : 2000.00
+    // Features   : [..omitted..]
+    // CPU implementer    : 0x41
+    // CPU architecture: 8
+    // CPU variant    : 0x0
+    // CPU part   : 0xd4f
+    // CPU revision   : 0
+    //
+    // ...
+    //
+
+    EXPECT_THROW(CacheLocality::readFromProcCpuinfo(), std::runtime_error);
+
+    auto parsed2 = CacheLocality::readFromSysfs();
+    EXPECT_EQ(parsed2.numCpus, expectedNumCpus);
+
+    LOG(INFO) << fmt::format(
+        "[sysfs] numCachesByLevel={}", parsed2.numCachesByLevel);
+    LOG(INFO) << fmt::format(
+        "[sysfs] equivClassesByCpu={}", parsed2.equivClassesByCpu);
+
+    return;
+  }
+
   auto parsed1 = CacheLocality::readFromProcCpuinfo();
   EXPECT_EQ(parsed1.numCpus, expectedNumCpus);
-
   auto parsed2 = CacheLocality::readFromSysfs();
   EXPECT_EQ(parsed2.numCpus, expectedNumCpus);
 
@@ -1042,6 +1072,8 @@ static void logRusageFor(std::string name, F func) {
 }
 
 TEST(CacheLocality, BenchmarkProcCpuinfo) {
+  // See note about Arm in LinuxActual test
+  SKIP_IF(kIsArchArm || kIsArchAArch64);
   logRusageFor("readFromProcCpuinfo", CacheLocality::readFromProcCpuinfo);
 }
 
