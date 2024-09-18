@@ -97,6 +97,7 @@ cpp_unittest(
     name = "sanitize_address_test",
     srcs = ["SanitizeAddressTest.cpp"],
     deps = [
+        "//folly/lang:new",
         "//folly/memory:sanitize_address",
         "//folly/portability:gtest",
     ],
