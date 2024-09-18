@@ -31,7 +31,7 @@ namespace {
 // PackedSyncPtr is a POD struct on gcc.
 FOLLY_PACK_PUSH
 struct ignore {
-  PackedSyncPtr<int> foo;
+  FOLLY_PACK_ATTR PackedSyncPtr<int> foo;
   char c;
 } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP
