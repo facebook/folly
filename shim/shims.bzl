@@ -451,6 +451,8 @@ def _fix_dep(x: str) -> [
         return "root//" + x.removeprefix("//")
     elif x.startswith("shim//"):
         return x
+    elif x.startswith("prelude//"):
+        return x
     else:
         fail("Dependency is unaccounted for `{}`.\n".format(x) +
              "Did you forget 'oss-disable'?")
