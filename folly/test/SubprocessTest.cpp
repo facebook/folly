@@ -542,6 +542,66 @@ TEST(AfterForkCallbackSubprocessTest, TestAfterForkCallbackError) {
   EXPECT_FALSE(fs::exists(write_cob.filename_));
 }
 
+// DANGER: This class runs after fork in a child processes. Be fast, the
+// parent thread is waiting, but remember that other parent threads are
+// running and may mutate your state.  Avoid mutating any data belonging to
+// the parent.  Avoid interacting with non-POD data that originated in the
+// parent.  Avoid any libraries that may internally reference non-POD data.
+// Especially beware parent mutexes -- for example, glog's LOG() uses one.
+struct UpdateEnvAfterFork
+    : public folly::Subprocess::DangerousPostForkPreExecCallback {
+ public:
+  // [pidDest, pidDest + pidSize) are all available to be written to;
+  // pidDest[pidSize] is additional room for '\0'
+  UpdateEnvAfterFork(char* pidDest, size_t pidSize)
+      : pidDest_{pidDest}, pidSize_{pidSize} {}
+
+  int operator()() override {
+    // set pid in the environment
+    const size_t allocatedSpace = pidSize_ + 1;
+    char staging[allocatedSpace];
+    size_t snprintfRes = snprintf(staging, allocatedSpace, "%d", getpid());
+    if (snprintfRes < 0) {
+      return errno;
+    }
+    if (snprintfRes >= allocatedSpace) {
+      return ERANGE;
+    }
+    unsanitaryStringCopy(pidDest_, staging);
+    return 0;
+  }
+
+  __attribute__((no_sanitize_address)) void unsanitaryStringCopy(
+      char* dest, const char* src) {
+    while (*src) {
+      *dest++ = *src++;
+    }
+    *dest = '\0';
+  }
+
+ private:
+  char* pidDest_;
+  size_t pidSize_;
+};
+
+TEST(SubprocessEnvTest, TestEnvPointerRemainsValid) {
+  // This seems to be the only way to get the pid of the child process
+  // included in the environment of the child process.
+  const std::string pidEnvVarName = "SUBPROCESS_TEST_PID";
+  constexpr int space = 15;
+  std::vector<std::string> env = {
+      pidEnvVarName + "=" + std::string(space, '\0')};
+  UpdateEnvAfterFork cb(env.back().data() + pidEnvVarName.size() + 1, space);
+  Subprocess proc(
+      std::vector<std::string>{"/bin/sh", "-c", "echo -n $SUBPROCESS_TEST_PID"},
+      Subprocess::Options().pipeStdout().dangerousPostForkPreExecCallback(&cb),
+      nullptr,
+      &env);
+  auto out = proc.communicate();
+  EXPECT_EQ(out.first, folly::to<std::string>(proc.pid()));
+  proc.waitChecked();
+}
+
 TEST(CommunicateSubprocessTest, SimpleRead) {
   Subprocess proc(
       std::vector<std::string>{"/bin/echo", "-n", "foo", "bar"},
