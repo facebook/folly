@@ -6,8 +6,13 @@ on:
 
 name: TagIt
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    permissions:
+      contents: write  # for actions/create-release to create a release
     name: Release
     runs-on: ubuntu-latest
     steps:
