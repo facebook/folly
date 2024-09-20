@@ -1,0 +1,68 @@
+[manifest]
+name = sapling
+fbsource_path = fbcode/eden
+shipit_project = eden
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/sapling.git
+
+[build.not(os=windows)]
+builder = make
+subdir = eden/scm
+
+[build.os=windows]
+# For now the biggest blocker is missing "make" on windows, but there are bound
+# to be more
+builder = nop
+
+[make.build_args]
+getdepsbuild
+
+[make.install_args]
+install-getdeps
+
+[make.test_args]
+test-getdeps
+
+[shipit.pathmap]
+fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
+fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg
+fbcode/eden/oss = .
+fbcode/eden = eden
+fbcode/eden/fs/public_autocargo = eden/fs
+fbcode/eden/mononoke/public_autocargo = eden/mononoke
+fbcode/eden/scm/public_autocargo = eden/scm
+fbcode/tools/lfs = tools/lfs
+
+[shipit.strip]
+^fbcode/configerator/structs/scm/hg(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/addons/.*$
+^fbcode/eden/fs/eden-config\.h$
+^fbcode/eden/fs/py/eden/config\.py$
+^fbcode/eden/hg-server/.*$
+^fbcode/eden/fs(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/mononoke(?!/public_autocargo).*/Cargo\.toml$
+^fbcode/eden/scm(?!/public_autocargo|/edenscmnative/bindings).*/Cargo\.toml$
+^fbcode/eden/scm/build/.*$
+^fbcode/eden/website/.*$
+^fbcode/eden/.*/\.cargo/.*$
+^.*/facebook/.*$
+^.*/fb/.*$
+/Cargo\.lock$
+\.pyc$
+
+[dependencies]
+fb303
+fbthrift
+rust-shed
+
+[dependencies.not(os=windows)]
+python
+
+# We use the system openssl on linux
+[dependencies.not(os=linux)]
+openssl
+
+[dependencies.fbsource=on]
+rust
