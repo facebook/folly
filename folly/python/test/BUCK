@@ -69,6 +69,7 @@ python_unittest(
     srcs = [
         "iobuf.py",
     ],
+    typing = True,
     deps = [
         ":iobuf_helper",
         "//folly/python:iobuf",
