@@ -551,47 +551,35 @@ TEST(AfterForkCallbackSubprocessTest, TestAfterForkCallbackError) {
 struct UpdateEnvAfterFork
     : public folly::Subprocess::DangerousPostForkPreExecCallback {
  public:
-  // [pidDest, pidDest + pidSize) are all available to be written to;
-  // pidDest[pidSize] is additional room for '\0'
-  UpdateEnvAfterFork(char* pidDest, size_t pidSize)
-      : pidDest_{pidDest}, pidSize_{pidSize} {}
+  // [pidDest, pidDest + pidSpace] must store PID plus NUL terminator.
+  UpdateEnvAfterFork(char* pidDest, size_t pidSpace)
+      : pidDest_{pidDest}, pidSpace_{pidSpace} {}
 
   int operator()() override {
-    // set pid in the environment
-    const size_t allocatedSpace = pidSize_ + 1;
-    char staging[allocatedSpace];
-    size_t snprintfRes = snprintf(staging, allocatedSpace, "%d", getpid());
+    size_t snprintfRes = snprintf(pidDest_, pidSpace_, "%d", getpid());
     if (snprintfRes < 0) {
       return errno;
     }
-    if (snprintfRes >= allocatedSpace) {
+    if (snprintfRes >= pidSpace_) {
       return ERANGE;
     }
-    unsanitaryStringCopy(pidDest_, staging);
     return 0;
-  }
-
-  __attribute__((no_sanitize_address)) void unsanitaryStringCopy(
-      char* dest, const char* src) {
-    while (*src) {
-      *dest++ = *src++;
-    }
-    *dest = '\0';
   }
 
  private:
   char* pidDest_;
-  size_t pidSize_;
+  size_t pidSpace_;
 };
 
 TEST(SubprocessEnvTest, TestEnvPointerRemainsValid) {
   // This seems to be the only way to get the pid of the child process
   // included in the environment of the child process.
   const std::string pidEnvVarName = "SUBPROCESS_TEST_PID";
-  constexpr int space = 15;
+  constexpr int nCharsBesidesNul = 15;
   std::vector<std::string> env = {
-      pidEnvVarName + "=" + std::string(space, '\0')};
-  UpdateEnvAfterFork cb(env.back().data() + pidEnvVarName.size() + 1, space);
+      pidEnvVarName + "=" + std::string(nCharsBesidesNul, '\0')};
+  UpdateEnvAfterFork cb(
+      env.back().data() + pidEnvVarName.size() + 1, nCharsBesidesNul + 1);
   Subprocess proc(
       std::vector<std::string>{"/bin/sh", "-c", "echo -n $SUBPROCESS_TEST_PID"},
       Subprocess::Options().pipeStdout().dangerousPostForkPreExecCallback(&cb),
