@@ -13,9 +13,14 @@ fbsource = shim
 fbcode_macros = shim
 buck = none
 bazel_skylib = shim
+folly = root
 
 [external_cells]
 prelude = bundled
 
 [parser]
 target_platform_detector_spec = target:root//...->prelude//platforms:default
+
+[oss]
+original_cell = fbcode
+mapped_dirs = folly
