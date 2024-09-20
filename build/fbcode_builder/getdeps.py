@@ -960,6 +960,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         build_opts = setup_build_options(args, platform)
         ctx_gen = build_opts.get_context_generator()
         loader = ManifestLoader(build_opts, ctx_gen)
+        self.process_project_dir_arguments(args, loader)
         manifest = loader.load_manifest(args.project)
         manifest_ctx = loader.ctx_gen.get_context(manifest.name)
         run_on = self.get_run_on(args)
@@ -1147,8 +1148,10 @@ jobs:
 
             project_prefix = ""
             if not build_opts.is_windows():
-                project_prefix = (
-                    " --project-install-prefix %s:/usr/local" % manifest.name
+                prefix = loader.get_project_install_prefix(manifest) or "/usr/local"
+                project_prefix = " --project-install-prefix %s:%s" % (
+                    manifest.name,
+                    prefix,
                 )
 
             # If we have dep from same repo, we already built it and don't want to rebuild it again
