@@ -12,6 +12,10 @@ buck_genrule(
     out = "folly-config.h",
     cmd = "cmake . && mv folly/folly-config.h $OUT",
     default_target_platform = "prelude//platforms:default",
-    labels = ["third-party:homebrew:cmake"],
+    labels = [
+        "third-party:fedora:cmake",
+        "third-party:homebrew:cmake",
+        "third-party:ubuntu:cmake",
+    ],
     remote = False,
 )
