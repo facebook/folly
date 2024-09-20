@@ -10,7 +10,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@prelude//utils:selects.bzl", "selects")
 # @lint-ignore-every FBCODEBZLADDLOADS
 
-load("@prelude//utils:type_defs.bzl", "is_list", "is_select", "is_tuple")
+load("@prelude//utils:type_defs.bzl", "is_dict", "is_list", "is_select", "is_tuple")
 load("@shim//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
 
 prelude = native
@@ -204,12 +204,14 @@ def cpp_unittest(
         extract_helper_lib = None,
         compiler_specific_flags = None,
         default_strip_mode = None,
+        resources = {},
         **kwargs):
     _unused = (supports_static_listing, allocator, owner, tags, emails, extract_helper_lib, compiler_specific_flags, default_strip_mode)  # @unused
     deps = deps + [CPP_UNITTEST_MAIN_DEP] + CPP_UNITTEST_LIB_DEPS
     prelude.cxx_test(
         deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
         visibility = visibility,
+        resources = _fix_resources(resources),
         **kwargs
     )
 
@@ -397,6 +399,15 @@ def _fix_deps(xs):
     if is_select(xs):
         return xs
     return filter(None, map(_fix_dep, xs))
+
+def _fix_resources(resources):
+    if is_list(resources):
+        return [_fix_dep(r) for r in resources]
+
+    if is_dict(resources):
+        return {k: _fix_dep(v) for k, v in resources.items()}
+
+    fail("Unexpected type {} for resources".format(type(resources)))
 
 def strip_third_party_rust_version(x: str) -> str:
     # When upgrading libraries we either suffix them as `-old` or with a version, e.g. `-1-08`
