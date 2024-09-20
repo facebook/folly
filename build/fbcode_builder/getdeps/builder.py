@@ -315,9 +315,22 @@ class MakeBuilder(BuilderBase):
             return
 
         env = self._compute_env()
+        if test_filter:
+            env["GETDEPS_TEST_FILTER"] = test_filter
+        else:
+            env["GETDEPS_TEST_FILTER"] = ""
 
-        cmd = [self._make_binary] + self.test_args + self._get_prefix()
-        self._run_cmd(cmd, env=env)
+        if retry:
+            env["GETDEPS_TEST_RETRY"] = retry
+        else:
+            env["GETDEPS_TEST_RETRY"] = 0
+
+        cmd = (
+            [self._make_binary, "-j%s" % self.num_jobs]
+            + self.test_args
+            + self._get_prefix()
+        )
+        self._run_cmd(cmd, allow_fail=False, env=env)
 
 
 class CMakeBootStrapBuilder(MakeBuilder):

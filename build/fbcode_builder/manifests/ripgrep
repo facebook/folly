@@ -1,0 +1,15 @@
+[manifest]
+name = ripgrep
+
+[rpms]
+ripgrep
+
+[debs]
+ripgrep
+
+[homebrew]
+ripgrep
+
+# only used from system packages currently
+[build]
+builder = nop

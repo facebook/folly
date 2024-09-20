@@ -1,0 +1,25 @@
+[manifest]
+name = jq
+
+[rpms.distro=fedora]
+jq
+
+[homebrew]
+jq
+
+[download.not(os=windows)]
+# we use jq-1.7+ to get fix for number truncation https://github.com/jqlang/jq/pull/1752
+url = https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-1.7.1.tar.gz
+sha256 = 478c9ca129fd2e3443fe27314b455e211e0d8c60bc8ff7df703873deeee580c2
+
+[build.not(os=windows)]
+builder = autoconf
+subdir = jq-1.7.1
+
+[build.os=windows]
+builder = nop
+
+[autoconf.args]
+# This argument turns off some developers tool and it is recommended in jq's
+# README
+--disable-maintainer-mode

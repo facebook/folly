@@ -1193,9 +1193,13 @@ jobs:
                 and manifest.get("github.actions", "run_tests", ctx=manifest_ctx)
                 != "off"
             ):
+                num_jobs_arg = ""
+                if args.num_jobs:
+                    num_jobs_arg = f"--num-jobs {args.num_jobs} "
+
                 out.write("    - name: Test %s\n" % manifest.name)
                 out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} test --src-dir=. {manifest.name} {project_prefix}\n"
+                    f"      run: {getdepscmd}{allow_sys_arg} test {num_jobs_arg}--src-dir=. {manifest.name} {project_prefix}\n"
                 )
             if build_opts.free_up_disk and not build_opts.is_windows():
                 out.write("    - name: Show disk space at end\n")
