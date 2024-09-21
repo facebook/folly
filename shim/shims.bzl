@@ -409,127 +409,64 @@ def _fix_resources(resources):
 
     fail("Unexpected type {} for resources".format(type(resources)))
 
-def strip_third_party_rust_version(x: str) -> str:
-    # When upgrading libraries we either suffix them as `-old` or with a version, e.g. `-1-08`
-    # Strip those so we grab the right one in open source.
-    if x.endswith(":md-5"):  # md-5 is the one exception
-        return x
-    xs = x.split("-")
-    for i in reversed(range(len(xs))):
-        s = xs[i]
-        if s == "old" or s.isdigit():
-            xs.pop(i)
-        else:
-            break
-    return "-".join(xs)
-
-def _recell_dep(newcell: str):
-    return lambda path, _d: newcell + "//" + path
-
-def _strip_dir(newprefix: str):
-    def _strip(path: str, d: str) -> str:
-        path = path.removeprefix(d).removeprefix("/")
-        if newprefix.endswith("/"):
-            return newprefix + path
-        else:
-            return newprefix + "/" + path
-
-    return _strip
-
-DEP_REWRITE_RULES = {
-    "fbcode": struct(
-        exact = {
-            "common/rust/shed/fbinit:fbinit": "shim//third-party/rust:fbinit",
-            "common/rust/shed/sorted_vector_map:sorted_vector_map": "shim//third-party/rust:sorted_vector_map",
-            "watchman/rust/watchman_client:watchman_client": "shim//third-party/rust:watchman_client",
-        },
-        dirs = [
-            ("buck2/facebook", lambda _path, _d: None),
-            ("buck2", _strip_dir("root//")),
-            ("common/ocaml/interop", _strip_dir("root//")),
-            ("third-party-buck/platform010/build/supercaml", _strip_dir("shim//third-party/ocaml")),
-            ("third-party-buck/platform010/build", _strip_dir("shim//third-party")),
-            ("folly", _recell_dep("folly")),
-        ],
-    ),
-    "fbsource": struct(
-        dirs = [
-            ("third-party/rust", lambda path, _pre: "shim//" + strip_third_party_rust_version(path)),
-            ("third-party", _recell_dep("shim")),
-        ],
-    ),
-    "root": struct(
-        dirs = [
-            ("folly", _recell_dep("folly")),
-        ],
-    ),
-    "third-party": struct(
-        dirs = [
-            ("", _strip_dir("shim//third-party")),
-        ],
-    ),
-}
-
-"""
-Modify a dependency target to account for being executed inside an OSS build.
-"""
-
-def _fix_dep(
-        x: str,
-        original_cell = None,
-        mapped_dirs = None) -> [
+def _fix_dep(x: str) -> [
     None,
     str,
 ]:
-    if "//" not in x:
-        # This is a local target, aka ":foo". Don't touch
+    def remove_version(x: str) -> str:
+        # When upgrading libraries we either suffix them as `-old` or with a version, e.g. `-1-08`
+        # Strip those so we grab the right one in open source.
+        if x.endswith(":md-5"):  # md-5 is the one exception
+            return x
+        xs = x.split("-")
+        for i in reversed(range(len(xs))):
+            s = xs[i]
+            if s == "old" or s.isdigit():
+                xs.pop(i)
+            else:
+                break
+        return "-".join(xs)
+
+    if x == "//common/rust/shed/fbinit:fbinit":
+        return "fbsource//third-party/rust:fbinit"
+    elif x == "//common/rust/shed/sorted_vector_map:sorted_vector_map":
+        return "fbsource//third-party/rust:sorted_vector_map"
+    elif x == "//watchman/rust/watchman_client:watchman_client":
+        return "fbsource//third-party/rust:watchman_client"
+    elif x.startswith("fbsource//third-party/rust:"):
+        return remove_version(x)
+    elif x.startswith(":"):
         return x
-
-    (cell, path) = x.split("//", 1)
-
-    if original_cell == None:
-        original_cell = read_config("oss", "original_cell", "fbcode")
-
-    if mapped_dirs == None:
-        mapped_dirs = filter(
-            lambda d: d != "",
-            read_config("oss", "mapped_dirs", "").split(" "),
-        )
-
-    if cell == original_cell:
-        # Absolute target (aka "cell//foo:bar") where the cell matches the cell the OSS project
-        # came from.
-        for d in mapped_dirs:
-            if path == d or path.startswith(d + "/") or path.startswith(d + ":"):
-                # Not only same cell, but one of this OSS project's directories!
-                # Map it to the root cell
-                return "root//" + path
-
-    if cell == "":
-        # Cell relative target (aka "//foo:bar") that may need to be mapped to a shim.
-        # Resolve the cell to properly apply rewrite rules
-        cell = native.get_cell_name()
-        if cell == "@":
-            cell = original_cell
-
-    rules = DEP_REWRITE_RULES.get(cell)
-
-    if rules == None:
-        # This cell does not have any associated rewrite rules
+    elif x.startswith("//buck2/facebook/"):
+        return None
+    elif x.startswith("//buck2/"):
+        return "root//" + x.removeprefix("//buck2/")
+    elif x.startswith("fbcode//common/ocaml/interop/"):
+        return "root//" + x.removeprefix("fbcode//common/ocaml/interop/")
+    elif x.startswith("fbcode//third-party-buck/platform010/build/supercaml"):
+        return "shim//third-party/ocaml" + x.removeprefix("fbcode//third-party-buck/platform010/build/supercaml")
+    elif x.startswith("fbcode//third-party-buck/platform010/build"):
+        return "shim//third-party" + x.removeprefix("fbcode//third-party-buck/platform010/build")
+    elif x.startswith("fbsource//third-party"):
+        return "shim//third-party" + x.removeprefix("fbsource//third-party")
+    elif x.startswith("third-party//"):
+        return "shim//third-party/" + x.removeprefix("third-party//")
+    elif x.startswith("//folly"):
+        oss_depends_on_folly = read_config("oss_depends_on", "folly", False)
+        if oss_depends_on_folly:
+            return "root//folly/" + x.removeprefix("//")
+        return "root//" + x.removeprefix("//")
+    elif x.startswith("root//folly"):
         return x
-
-    exact = getattr(rules, "exact", {}).get(path)
-    if exact != None:
-        # This cell has a direct rewrite mapping
-        return exact
-
-    for (d, f) in getattr(rules, "dirs", []):
-        if d == "" or path == d or path.startswith(d + "/") or path.startswith(d + ":"):
-            # The path matches the directory mapping, apply the rewrite rule
-            return f(path, d)
-
-    # No rules applied, do not rewrite the target
-    return x
+    elif x.startswith("//fizz"):
+        return "root//" + x.removeprefix("//")
+    elif x.startswith("shim//"):
+        return x
+    elif x.startswith("prelude//"):
+        return x
+    else:
+        fail("Dependency is unaccounted for `{}`.\n".format(x) +
+             "Did you forget 'oss-disable'?")
 
 def _fix_dep_in_string(x: str) -> str:
     """Replace internal labels in string values such as env-vars."""
@@ -553,16 +490,6 @@ def _assert_eq(x, y):
         fail("Expected {} == {}".format(x, y))
 
 def _test():
-    _assert_eq(_fix_dep("//:foo", "fbcode", []), "//:foo")
-    _assert_eq(_fix_dep("fbcode//common/rust/shed/fbinit:fbinit"), "shim//third-party/rust:fbinit")
-    _assert_eq(_fix_dep("fbcode//buck2/foo:bar"), "root//foo:bar")
-    _assert_eq(_fix_dep("fbcode//abc/foo:bar", "fbcode", []), "fbcode//abc/foo:bar")
-    _assert_eq(_fix_dep("fbcode//folly:bar", "fbcode", []), "folly//folly:bar")
-    _assert_eq(_fix_dep("fbcode//folly/foo:bar", "fbcode", []), "folly//folly/foo:bar")
-    _assert_eq(_fix_dep("fbcode//folly:bar", "fbcode", ["folly"]), "root//folly:bar")
-    _assert_eq(_fix_dep("fbcode//folly/foo:bar", "fbcode", ["folly"]), "root//folly/foo:bar")
-    _assert_eq(_fix_dep("fbsource//third-party/rust:derive_more-1"), "shim//third-party/rust:derive_more")
-    _assert_eq(_fix_dep("fbsource//third-party/foo:bar"), "shim//third-party/foo:bar")
-    _assert_eq(_fix_dep("third-party//foo:bar"), "shim//third-party/foo:bar")
+    _assert_eq(_fix_dep("fbsource//third-party/rust:derive_more-1"), "fbsource//third-party/rust:derive_more")
 
 _test()
