@@ -169,7 +169,7 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
     if (params.gro == -1) {
       socket->write(client, data->clone());
     } else {
-      int total = data->length();
+      int64_t total = data->length();
       size_t offset = 0;
       while (total > 0) {
         auto size = (total > params.gro) ? params.gro : total;

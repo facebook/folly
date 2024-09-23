@@ -2325,10 +2325,10 @@ STL_TEST(
     a,
     p) {
   DataState<Vector> dsa(a);
-  int idx = distance(a.begin(), p);
-  auto am = a.get_allocator();
+  const auto idx = distance(a.begin(), p);
+  const auto am = a.get_allocator();
 
-  auto q = a.emplace(p, 44);
+  const auto q = a.emplace(p, 44);
 
   ASSERT_TRUE(am == a.get_allocator());
   ASSERT_EQ(idx, distance(a.begin(), q)) << "incorrect iterator returned";
@@ -2349,12 +2349,12 @@ STL_TEST(
     SKIP();
   }
   DataState<Vector> dsa(a);
-  int idx = distance(a.begin(), p);
+  const auto idx = distance(a.begin(), p);
   int tval = convertToInt(t);
   auto am = a.get_allocator();
   const auto& ct = t;
 
-  auto q = a.insert(p, ct);
+  const auto q = a.insert(p, ct);
 
   ASSERT_TRUE(am == a.get_allocator());
   ASSERT_EQ(idx, distance(a.begin(), q)) << "incorrect iterator returned";

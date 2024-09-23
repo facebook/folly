@@ -112,7 +112,7 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
       doPrint(fileBuf);
 
       char buf[to_ascii_size_max_decimal<decltype(frame.location.line)>];
-      uint32_t n = to_ascii_decimal(buf, frame.location.line);
+      const auto n = to_ascii_decimal(buf, frame.location.line);
       doPrint(":");
       doPrint(StringPiece(buf, n));
     } else {

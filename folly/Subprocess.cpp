@@ -603,7 +603,7 @@ void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
 #endif
   // If not running on Linux or if we failed to open /proc/self/fd, try to close
   // all possible open file descriptors.
-  for (int fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
+  for (auto fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
     if (fdActions.count(fd) == 0) {
       ::close(fd);
     }

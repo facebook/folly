@@ -347,8 +347,8 @@ unsigned u64ToAsciiTable(uint64_t value, char* dst) {
       "80818283848586878889"
       "90919293949596979899";
 
-  uint32_t const length = to_ascii_size_decimal(value);
-  uint32_t next = length - 1;
+  auto const length = to_ascii_size_decimal(value);
+  auto next = length - 1;
   while (value >= 100) {
     auto const i = (value % 100) * 2;
     value /= 100;

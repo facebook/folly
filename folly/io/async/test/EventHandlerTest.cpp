@@ -278,7 +278,7 @@ class EventHandlerOobTest : public ::testing::Test {
 TEST_F(EventHandlerOobTest, EPOLLPRI) {
   auto clientOps = [](int fd) {
     char buffer[] = "banana";
-    int n = send(fd, buffer, strlen(buffer) + 1, MSG_OOB);
+    const auto n = send(fd, buffer, strlen(buffer) + 1, MSG_OOB);
     LOG(INFO) << "Client send finished";
     PCHECK(n > 0);
   };
@@ -293,7 +293,7 @@ TEST_F(EventHandlerOobTest, EPOLLPRI) {
     void handlerReady(uint16_t events) noexcept override {
       EXPECT_TRUE(EventHandler::EventFlags::PRI & events);
       std::array<char, 255> buffer;
-      int n = read(fd_, buffer.data(), buffer.size());
+      auto n = read(fd_, buffer.data(), buffer.size());
       //
       // NB: we sent 7 bytes, but only received 6. The last byte
       // has been stored in the OOB buffer.
@@ -322,13 +322,13 @@ TEST_F(EventHandlerOobTest, OOB_AND_NORMAL_DATA) {
     {
       // OOB buffer can only hold one byte in most implementations
       std::array<char, 2> buffer = {"X"};
-      int n = send(sockfd, buffer.data(), 1, MSG_OOB);
+      const auto n = send(sockfd, buffer.data(), 1, MSG_OOB);
       PCHECK(n > 0);
     }
 
     {
       std::array<char, 7> buffer = {"banana"};
-      int n = send(sockfd, buffer.data(), buffer.size(), 0);
+      const auto n = send(sockfd, buffer.data(), buffer.size(), 0);
       PCHECK(n > 0);
     }
   };
@@ -343,7 +343,7 @@ TEST_F(EventHandlerOobTest, OOB_AND_NORMAL_DATA) {
     void handlerReady(uint16_t events) noexcept override {
       std::array<char, 255> buffer;
       if (events & EventHandler::EventFlags::PRI) {
-        int n = recv(fd_, buffer.data(), buffer.size(), MSG_OOB);
+        const auto n = recv(fd_, buffer.data(), buffer.size(), MSG_OOB);
         EXPECT_EQ(1, n);
         EXPECT_EQ("X", std::string(buffer.data(), 1));
         registerHandler(EventHandler::EventFlags::READ);
@@ -351,7 +351,7 @@ TEST_F(EventHandlerOobTest, OOB_AND_NORMAL_DATA) {
       }
 
       if (events & EventHandler::EventFlags::READ) {
-        int n = recv(fd_, buffer.data(), buffer.size(), 0);
+        const auto n = recv(fd_, buffer.data(), buffer.size(), 0);
         EXPECT_EQ(7, n);
         EXPECT_EQ("banana", std::string(buffer.data()));
         eb_->terminateLoopSoon();
@@ -376,13 +376,13 @@ TEST_F(EventHandlerOobTest, SWALLOW_OOB) {
   auto clientOps = [](int sockfd) {
     {
       std::array<char, 2> buffer = {"X"};
-      int n = send(sockfd, buffer.data(), 1, MSG_OOB);
+      const auto n = send(sockfd, buffer.data(), 1, MSG_OOB);
       PCHECK(n > 0);
     }
 
     {
       std::array<char, 7> buffer = {"banana"};
-      int n = send(sockfd, buffer.data(), buffer.size(), 0);
+      const auto n = send(sockfd, buffer.data(), buffer.size(), 0);
       PCHECK(n > 0);
     }
   };
@@ -397,7 +397,7 @@ TEST_F(EventHandlerOobTest, SWALLOW_OOB) {
     void handlerReady(uint16_t events) noexcept override {
       std::array<char, 255> buffer;
       ASSERT_TRUE(events & EventHandler::EventFlags::READ);
-      int n = recv(fd_, buffer.data(), buffer.size(), 0);
+      const auto n = recv(fd_, buffer.data(), buffer.size(), 0);
       EXPECT_EQ(7, n);
       EXPECT_EQ("banana", std::string(buffer.data()));
     }

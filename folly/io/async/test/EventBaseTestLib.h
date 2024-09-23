@@ -80,7 +80,7 @@ FOLLY_ALWAYS_INLINE ssize_t writeToFD(int fd, size_t length) {
   auto bufv = std::vector<char>(length);
   auto buf = bufv.data();
   memset(buf, 'a', length);
-  ssize_t rc = write(fd, buf, length);
+  const auto rc = write(fd, buf, length);
   CHECK_EQ(rc, length);
   return rc;
 }
@@ -113,7 +113,7 @@ FOLLY_ALWAYS_INLINE size_t readUntilEmpty(int fd) {
   char buf[BUF_SIZE];
   size_t bytesRead = 0;
   while (true) {
-    int rc = read(fd, buf, sizeof(buf));
+    const auto rc = read(fd, buf, sizeof(buf));
     if (rc == 0) {
       CHECK(false) << "unexpected EOF";
     } else if (rc < 0) {

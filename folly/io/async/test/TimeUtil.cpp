@@ -49,20 +49,20 @@ namespace folly {
 
 #ifdef __linux__
 static int getLinuxVersion(StringPiece release) {
-  auto dot1 = release.find('.');
+  const auto dot1 = release.find('.');
   if (dot1 == StringPiece::npos) {
     throw std::invalid_argument("could not find first dot");
   }
-  auto v1 = folly::to<int>(release.subpiece(0, dot1));
+  const auto v1 = folly::to<int>(release.subpiece(0, dot1));
 
-  auto dot2 = release.find('.', dot1 + 1);
+  const auto dot2 = release.find('.', dot1 + 1);
   if (dot2 == StringPiece::npos) {
     throw std::invalid_argument("could not find second dot");
   }
-  auto v2 = folly::to<int>(release.subpiece(dot1 + 1, dot2 - (dot1 + 1)));
+  const auto v2 = folly::to<int>(release.subpiece(dot1 + 1, dot2 - (dot1 + 1)));
 
-  int dash = release.find('-', dot2 + 1);
-  auto v3 = folly::to<int>(release.subpiece(dot2 + 1, dash - (dot2 + 1)));
+  const auto dash = release.find('-', dot2 + 1);
+  const auto v3 = folly::to<int>(release.subpiece(dot2 + 1, dash - (dot2 + 1)));
 
   return ((v1 * 1000 + v2) * 1000) + v3;
 }

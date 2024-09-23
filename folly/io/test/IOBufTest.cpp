@@ -46,7 +46,7 @@ void prepend(std::unique_ptr<IOBuf>& buf, StringPiece str) {
 
 TEST(IOBuf, Simple) {
   unique_ptr<IOBuf> buf(IOBuf::create(100));
-  uint32_t cap = buf->capacity();
+  const auto cap = buf->capacity();
   EXPECT_LE(100, cap);
   EXPECT_EQ(0, buf->headroom());
   EXPECT_EQ(0, buf->length());

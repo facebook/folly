@@ -410,7 +410,7 @@ void printDefaultHeaderContents(std::string_view file, size_t columns) {
   } else {
     std::string truncatedFile = std::string(file.begin(), file.end());
     constexpr std::string_view overflowFilePrefix = "[...]";
-    const int overflow = truncatedFile.size() - maxFileNameChars;
+    const auto overflow = truncatedFile.size() - maxFileNameChars;
     truncatedFile.erase(0, overflow);
     truncatedFile.replace(0, overflowFilePrefix.size(), overflowFilePrefix);
     printHeaderContents(truncatedFile);

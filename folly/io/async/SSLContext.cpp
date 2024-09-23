@@ -70,7 +70,7 @@ void configureProtocolVersion(SSL_CTX* ctx, SSLContext::SSLVersion version) {
       // do nothing
       break;
   }
-  int setMinProtoResult = SSL_CTX_set_min_proto_version(ctx, minVersion);
+  const auto setMinProtoResult = SSL_CTX_set_min_proto_version(ctx, minVersion);
   DCHECK(setMinProtoResult == 1)
       << sformat("unsupported min TLS protocol version: 0x{:04x}", minVersion);
 }
@@ -141,7 +141,7 @@ void SSLContext::setClientECCurvesList(
   }
   std::string ecCurvesList;
   join(":", ecCurves, ecCurvesList);
-  int rc = SSL_CTX_set1_curves_list(ctx_, ecCurvesList.c_str());
+  const auto rc = SSL_CTX_set1_curves_list(ctx_, ecCurvesList.c_str());
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set1_curves_list " + getErrors());
   }
@@ -153,7 +153,7 @@ void SSLContext::setSupportedGroups(const std::vector<std::string>& groups) {
   }
   std::string groupsList;
   join(":", groups, groupsList);
-  int rc = SSL_CTX_set1_groups_list(ctx_, groupsList.c_str());
+  const auto rc = SSL_CTX_set1_groups_list(ctx_, groupsList.c_str());
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set1_curves " + getErrors());
   }
@@ -201,7 +201,7 @@ void SSLContext::setX509VerifyParam(
 }
 
 void SSLContext::setCiphersOrThrow(const std::string& ciphers) {
-  int rc = SSL_CTX_set_cipher_list(ctx_, ciphers.c_str());
+  const auto rc = SSL_CTX_set_cipher_list(ctx_, ciphers.c_str());
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set_cipher_list: " + getErrors());
   }
@@ -209,7 +209,7 @@ void SSLContext::setCiphersOrThrow(const std::string& ciphers) {
 }
 
 void SSLContext::setSigAlgsOrThrow(const std::string& sigalgs) {
-  int rc = SSL_CTX_set1_sigalgs_list(ctx_, sigalgs.c_str());
+  const auto rc = SSL_CTX_set1_sigalgs_list(ctx_, sigalgs.c_str());
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set1_sigalgs_list " + getErrors());
   }
