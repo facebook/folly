@@ -19,5 +19,6 @@ cpp_library(
     exported_deps = [
         ":movemask",
         "//folly:portability",
+        "//folly/algorithm/simd/detail:traits",
     ],
 )
