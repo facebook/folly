@@ -25,6 +25,16 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "traits_test",
+    srcs = ["TraitsTest.cpp"],
+    deps = [
+        "//folly/algorithm/simd/detail:traits",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "unroll_utils_test",
     srcs = [
         "UnrollUtilsTest.cpp",
