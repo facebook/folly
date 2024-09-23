@@ -36,3 +36,14 @@ cpp_benchmark(
         "//folly/init:init",
     ],
 )
+
+cpp_unittest(
+    name = "simd_contains_test",
+    srcs = ["SimdContainsTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/algorithm/simd:simd_contains",
+        "//folly/algorithm/simd/detail:simd_contains_impl",
+        "//folly/portability:gtest",
+    ],
+)
