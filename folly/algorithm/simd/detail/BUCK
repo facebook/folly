@@ -37,6 +37,16 @@ cpp_library(
 )
 
 cpp_library(
+    name = "traits",
+    headers = ["Traits.h"],
+    exported_deps = [
+        "//folly:memory",
+        "//folly:traits",
+        "//folly/container:span",
+    ],
+)
+
+cpp_library(
     name = "unroll_utils",
     headers = ["UnrollUtils.h"],
     exported_deps = [
