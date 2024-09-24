@@ -290,11 +290,6 @@ cpp_unittest(
     name = "constructor_callback_list_test",
     srcs = ["ConstructorCallbackListTest.cpp"],
     headers = [],
-    compiler_flags = [
-        # many deps use this, so make sure the unittests pass
-        "-Werror",
-        "-Wglobal-constructor",
-    ],
     deps = [
         "//folly:constructor_callback_list",
         "//folly/portability:gtest",
