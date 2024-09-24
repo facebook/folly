@@ -122,16 +122,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "json_schema",
-    headers = [
-        "JSONSchema.h",
-    ],
-    exported_deps = [
-        "//folly/json:json_schema",
-    ],
-)
-
-cpp_library(
     name = "lock_free_ring_buffer",
     headers = [
         "LockFreeRingBuffer.h",
