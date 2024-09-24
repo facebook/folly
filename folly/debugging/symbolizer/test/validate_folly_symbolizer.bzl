@@ -2,7 +2,6 @@ load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
-load("@fbsource//tools/build_defs/buck2:is_buck2.bzl", "is_buck2")
 
 SPLIT_DWARF_FLAGS = {
     "none": ["-gno-split-dwarf"],
@@ -32,7 +31,7 @@ def customized_unittest(
         for dwarf_size in available_dwarf_sizes:
             for split_dwarf_option in avilable_split_dwarf_keys:
                 # buck2 doesn't support split version yet.
-                if split_dwarf_option == "none" or split_dwarf_option == "single_inlining" or not is_buck2():
+                if split_dwarf_option == "none" or split_dwarf_option == "single_inlining":
                     for use_aaranges in [False, True]:
                         cpp_library(
                             name = "symbolizer_test_utils_" + dwarf_version +
