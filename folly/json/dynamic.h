@@ -285,14 +285,6 @@ struct dynamic {
   static dynamic array_range(Range&& range) {
     return dynamic(array_range_construct, std::forward<Range>(range));
   }
-  /**
-   * Create a dynamic that is an array of the values from the supplied
-   * iterator range. Deprecated constructor since it is too easily confused.
-   */
-  template <class Iterator>
-  [[deprecated("use array_range_construct ctor or array_range factory")]]
-  dynamic(Iterator first, Iterator last)
-      : dynamic(array_range_construct, first, last) {}
 
   dynamic(dynamic const&);
   dynamic(dynamic&&) noexcept;
