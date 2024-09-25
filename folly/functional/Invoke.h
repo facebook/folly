@@ -33,10 +33,6 @@
 #include <folly/lang/CustomizationPoint.h>
 
 #define FOLLY_DETAIL_FORWARD_REF(a) static_cast<decltype(a)&&>(a)
-#define FOLLY_DETAIL_FORWARD_BODY(e)   \
-  noexcept(noexcept(e))->decltype(e) { \
-    return e;                          \
-  }
 
 /**
  *  include or backport:

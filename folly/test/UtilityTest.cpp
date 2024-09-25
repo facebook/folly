@@ -463,3 +463,79 @@ static_assert(is_nx_conv_v<of<int, 1, 1, 1>&&, int>);
 static_assert(is_nx_conv_v<of<int, 1, 1, 1> const&&, int>);
 
 } // namespace folly::detail::invocable_to_test
+
+namespace folly::detail::method_overload_delegation_test {
+
+class MethodOverloadDelegation {
+ private:
+  int value_ = 0;
+
+  template <class Self>
+  static auto&& testForwardImpl(Self&& self) {
+    return std::forward<Self>(self).value_;
+  }
+
+  template <class Self, class T>
+  static void testNoexceptImpl(Self&&, T) noexcept(T::value) {}
+
+  template <class Self>
+  static constexpr int testConstexprImpl(Self&&) {
+    return 42;
+  }
+
+  template <class Self, class T>
+  static constexpr std::enable_if_t<T::value> testSfinaeImpl(Self&&, T) {}
+
+ public:
+  FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(
+      testForward, testForwardImpl);
+  FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(
+      testConstexpr, testConstexprImpl);
+  FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(
+      testNoexcept, testNoexceptImpl);
+  FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(
+      testSfinae, testSfinaeImpl);
+};
+
+template <class Self, class T>
+constexpr bool testForward =
+    std::is_same_v<decltype(std::declval<Self>().testForward()), T>;
+
+static_assert(testForward<MethodOverloadDelegation&, int&>);
+static_assert(testForward<MethodOverloadDelegation&&, int&&>);
+static_assert(testForward<const MethodOverloadDelegation&, const int&>);
+static_assert(testForward<const MethodOverloadDelegation&&, const int&&>);
+
+template <class Self>
+constexpr bool testConstexpr =
+    static_cast<Self>(std::array<std::remove_cvref_t<Self>, 1>{}[0])
+        .testConstexpr() == 42;
+
+static_assert(testConstexpr<MethodOverloadDelegation&>);
+static_assert(testConstexpr<MethodOverloadDelegation&&>);
+static_assert(testConstexpr<const MethodOverloadDelegation&>);
+static_assert(testConstexpr<const MethodOverloadDelegation&&>);
+
+template <class Self>
+constexpr bool testNoexcept =
+    noexcept(std::declval<Self>().testNoexcept(std::true_type{})) &&
+    !noexcept(std::declval<Self>().testNoexcept(std::false_type{}));
+
+static_assert(testNoexcept<MethodOverloadDelegation&>);
+static_assert(testNoexcept<MethodOverloadDelegation&&>);
+static_assert(testNoexcept<const MethodOverloadDelegation&>);
+static_assert(testNoexcept<const MethodOverloadDelegation&&>);
+
+template <class Self, class T>
+concept testSfinae = requires { std::declval<Self>().testSfinae(T{}); };
+
+static_assert(testSfinae<MethodOverloadDelegation&, std::true_type>);
+static_assert(testSfinae<const MethodOverloadDelegation&, std::true_type>);
+static_assert(testSfinae<MethodOverloadDelegation&&, std::true_type>);
+static_assert(testSfinae<const MethodOverloadDelegation&&, std::true_type>);
+static_assert(!testSfinae<MethodOverloadDelegation&, int>);
+static_assert(!testSfinae<const MethodOverloadDelegation&, int>);
+static_assert(!testSfinae<MethodOverloadDelegation&&, int>);
+static_assert(!testSfinae<const MethodOverloadDelegation&&, int>);
+
+} // namespace folly::detail::method_overload_delegation_test

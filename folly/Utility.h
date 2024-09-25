@@ -844,4 +844,89 @@ struct invocable_to_fn {
   }
 };
 inline constexpr invocable_to_fn invocable_to{};
+
+#define FOLLY_DETAIL_FORWARD_BODY(...)                     \
+  noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) { \
+    return __VA_ARGS__;                                    \
+  }
+
+/// FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE
+///
+/// Helper macro to add 4 delegated, qualifier-overloaded methods to a class
+///
+/// Example:
+///
+///     template <typename T>
+///     class optional {
+///      public:
+///       bool has_value() const;
+///
+///       T& value() & {
+///         if (!has_value()) { throw std::bad_optional_access(); }
+///         return m_value;
+///       }
+///
+///       const T& value() const& {
+///         if (!has_value()) { throw std::bad_optional_access(); }
+///         return m_value;
+///       }
+///
+///       T&& value() && {
+///         if (!has_value()) { throw std::bad_optional_access(); }
+///         return std::move(m_value);
+///       }
+///
+///       const T&& value() const&& {
+///         if (!has_value()) { throw std::bad_optional_access(); }
+///         return std::move(m_value);
+///       }
+///     };
+///
+/// This is equivalent to
+///
+///     template <typename T>
+///     class optional {
+///       template <typename Self>
+///       decltype(auto) value_impl(Self&& self) {
+///         if (!self.has_value()) {
+///           throw std::bad_optional_access();
+///         }
+///         return std::forward<Self>(self).m_value;
+///       }
+///       // ...
+///
+///      public:
+///       bool has_value() const;
+///
+///       FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(value,
+///       value_impl);
+///     };
+///
+/// Note: This can be migrated to C++23's deducing this:
+/// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r7.html
+///
+// clang-format off
+#define FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(MEMBER, DELEGATE) \
+  template <class... Args>                                                    \
+  [[maybe_unused]] FOLLY_ERASE_HACK_GCC                                       \
+  constexpr auto MEMBER(Args&&... args) & FOLLY_DETAIL_FORWARD_BODY(          \
+      ::folly::remove_cvref_t<decltype(*this)>::DELEGATE(                     \
+          *this, static_cast<Args&&>(args)...))                               \
+  template <class... Args>                                                    \
+  [[maybe_unused]] FOLLY_ERASE_HACK_GCC                                       \
+  constexpr auto MEMBER(Args&&... args) const& FOLLY_DETAIL_FORWARD_BODY(     \
+      ::folly::remove_cvref_t<decltype(*this)>::DELEGATE(                     \
+          *this, static_cast<Args&&>(args)...))                               \
+  template <class... Args>                                                    \
+  [[maybe_unused]] FOLLY_ERASE_HACK_GCC                                       \
+  constexpr auto MEMBER(Args&&... args) && FOLLY_DETAIL_FORWARD_BODY(         \
+      ::folly::remove_cvref_t<decltype(*this)>::DELEGATE(                     \
+          std::move(*this), static_cast<Args&&>(args)...))                    \
+  template <class... Args>                                                    \
+  [[maybe_unused]] FOLLY_ERASE_HACK_GCC                                       \
+  constexpr auto MEMBER(Args&&... args) const&& FOLLY_DETAIL_FORWARD_BODY(    \
+      ::folly::remove_cvref_t<decltype(*this)>::DELEGATE(                     \
+          std::move(*this), static_cast<Args&&>(args)...))                    \
+  /* enforce semicolon after macro */ static_assert(true)
+// clang-format on
 } // namespace folly
