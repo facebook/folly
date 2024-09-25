@@ -21,7 +21,7 @@
 #include <folly/algorithm/simd/detail/UnrollUtils.h>
 
 namespace folly {
-namespace simd_detail {
+namespace simd::detail {
 
 /**
  * AnyOfDelegate
@@ -79,5 +79,5 @@ FOLLY_ALWAYS_INLINE bool simdAnyOf(T* f, T* l, P p) {
   return delegate.res;
 }
 
-} // namespace simd_detail
+} // namespace simd::detail
 } // namespace folly

@@ -25,7 +25,7 @@
 #include <type_traits>
 
 namespace folly {
-namespace simd_detail {
+namespace simd::detail {
 
 // Based on
 // https://github.com/jfalcou/eve/blob/5264e20c51aeca17675e67abf236ce1ead781c52/include/eve/module/algo/algo/for_each_iteration.hpp#L148
@@ -165,9 +165,8 @@ struct SimdForEachMainLoop {
       bool shouldBreak = false;
 
       // single steps
-      if (detail::UnrollUtils::unrollUntil<unrolling>(
-              SmallStepsLambda<T, Delegate>{
-                  shouldBreak, cardinal, f, l, delegate})) {
+      if (UnrollUtils::unrollUntil<unrolling>(SmallStepsLambda<T, Delegate>{
+              shouldBreak, cardinal, f, l, delegate})) {
         return shouldBreak;
       }
 
@@ -176,7 +175,7 @@ struct SimdForEachMainLoop {
            --bigStepsCount) {
         std::array<T*, unrolling> arr;
         // Since there is no callback, we can rely on the inlining
-        detail::UnrollUtils::unrollUntil<unrolling>([&](auto idx) {
+        UnrollUtils::unrollUntil<unrolling>([&](auto idx) {
           arr[idx()] = f;
           f += cardinal;
           return false;
@@ -224,5 +223,5 @@ FOLLY_ALWAYS_INLINE void simdForEachAligning(
   delegate.step(af, ignore, index_constant<0>{});
 }
 
-} // namespace simd_detail
+} // namespace simd::detail
 } // namespace folly

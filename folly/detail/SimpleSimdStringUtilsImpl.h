@@ -41,7 +41,7 @@ struct SimpleSimdStringUtilsImpl {
 
   FOLLY_ALWAYS_INLINE
   static bool hasSpaceOrCntrlSymbols(folly::StringPiece s) {
-    return simd_detail::simdAnyOf<Platform, /*unrolling*/ 4>(
+    return simd::detail::simdAnyOf<Platform, /*unrolling*/ 4>(
         s.data(), s.data() + s.size(), HasSpaceOrCntrlSymbolsLambda{});
   }
 };

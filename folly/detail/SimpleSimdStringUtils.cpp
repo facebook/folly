@@ -24,7 +24,7 @@ namespace detail {
 
 bool simdHasSpaceOrCntrlSymbols(folly::StringPiece s) {
   return SimpleSimdStringUtilsImpl<
-      simd_detail::SimdCharPlatform>::hasSpaceOrCntrlSymbols(s);
+      simd::detail::SimdCharPlatform>::hasSpaceOrCntrlSymbols(s);
 }
 
 } // namespace detail

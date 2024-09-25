@@ -32,7 +32,7 @@
 #endif
 
 namespace folly {
-namespace simd_detail {
+namespace simd::detail {
 
 /**
  * SimdCharPlatform
@@ -97,7 +97,7 @@ struct SimdCharPlatformCommon : Platform {
   }
 
   FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static mmask_t clear(
-      mmask_t mmask, simd_detail::ignore_extrema ignore) {
+      mmask_t mmask, ignore_extrema ignore) {
     mmask_t clearFirst =
         ~setLowerNBits<mmask_t>(ignore.first * kMmaskBitsPerElement);
     mmask_t clearLast = setLowerNBits<mmask_t>(
@@ -106,20 +106,20 @@ struct SimdCharPlatformCommon : Platform {
   }
 
   FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static mmask_t clear(
-      mmask_t mmask, simd_detail::ignore_none) {
+      mmask_t mmask, ignore_none) {
     return mmask;
   }
 
   // These are aligned loads but there is no point in generating
   // aligned load instructions, so we call loadu.
   FOLLY_ALWAYS_INLINE
-  static auto loada(const char* ptr, simd_detail::ignore_none) {
-    return Platform::loadu(ptr, simd_detail::ignore_none{});
+  static auto loada(const char* ptr, ignore_none) {
+    return Platform::loadu(ptr, ignore_none{});
   }
 
   FOLLY_ALWAYS_INLINE
-  static auto loada(const char* ptr, simd_detail::ignore_extrema) {
-    return Platform::unsafeLoadu(ptr, simd_detail::ignore_none{});
+  static auto loada(const char* ptr, ignore_extrema) {
+    return Platform::unsafeLoadu(ptr, ignore_none{});
   }
 
   FOLLY_ALWAYS_INLINE
@@ -130,8 +130,7 @@ struct SimdCharPlatformCommon : Platform {
   using Platform::any;
 
   FOLLY_ALWAYS_INLINE
-  static bool any(
-      typename Platform::logical_t log, simd_detail::ignore_extrema ignore) {
+  static bool any(typename Platform::logical_t log, ignore_extrema ignore) {
     auto mmask = movemask(log);
     mmask = clear(mmask, ignore);
     return mmask;
@@ -157,13 +156,13 @@ struct SimdCharSse2PlatformSpecific {
   // Even for aligned loads intel people don't recommend using
   // aligned load instruction
   FOLLY_ALWAYS_INLINE
-  static reg_t loadu(const char* p, simd_detail::ignore_none) {
+  static reg_t loadu(const char* p, ignore_none) {
     return _mm_loadu_si128(reinterpret_cast<const reg_t*>(p));
   }
 
   FOLLY_DISABLE_SANITIZERS
   FOLLY_ALWAYS_INLINE
-  static reg_t unsafeLoadu(const char* p, simd_detail::ignore_none) {
+  static reg_t unsafeLoadu(const char* p, ignore_none) {
     return _mm_loadu_si128(reinterpret_cast<const reg_t*>(p));
   }
 
@@ -186,7 +185,7 @@ struct SimdCharSse2PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
-  static bool any(logical_t log, simd_detail::ignore_none) {
+  static bool any(logical_t log, ignore_none) {
     return folly::movemask<std::uint8_t>(log).first;
   }
 };
@@ -206,13 +205,13 @@ struct SimdCharAvx2PlatformSpecific {
 
   // We can actually use aligned loads but our Intel people don't recommend
   FOLLY_ALWAYS_INLINE
-  static reg_t loadu(const char* p, simd_detail::ignore_none) {
+  static reg_t loadu(const char* p, ignore_none) {
     return _mm256_loadu_si256(reinterpret_cast<const reg_t*>(p));
   }
 
   FOLLY_DISABLE_SANITIZERS
   FOLLY_ALWAYS_INLINE
-  static reg_t unsafeLoadu(const char* p, simd_detail::ignore_none) {
+  static reg_t unsafeLoadu(const char* p, ignore_none) {
     return _mm256_loadu_si256(reinterpret_cast<const reg_t*>(p));
   }
 
@@ -234,7 +233,7 @@ struct SimdCharAvx2PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
-  static bool any(logical_t log, simd_detail::ignore_none) {
+  static bool any(logical_t log, ignore_none) {
     return folly::movemask<std::uint8_t>(log).first;
   }
 };
@@ -257,13 +256,13 @@ struct SimdCharAarch64PlatformSpecific {
   static constexpr int kCardinal = 16;
 
   FOLLY_ALWAYS_INLINE
-  static reg_t loadu(const char* p, simd_detail::ignore_none) {
+  static reg_t loadu(const char* p, ignore_none) {
     return vld1q_u8(reinterpret_cast<const std::uint8_t*>(p));
   }
 
   FOLLY_DISABLE_SANITIZERS
   FOLLY_ALWAYS_INLINE
-  static reg_t unsafeLoadu(const char* p, simd_detail::ignore_none) {
+  static reg_t unsafeLoadu(const char* p, ignore_none) {
     return vld1q_u8(reinterpret_cast<const std::uint8_t*>(p));
   }
 
@@ -283,9 +282,7 @@ struct SimdCharAarch64PlatformSpecific {
   }
 
   FOLLY_ALWAYS_INLINE
-  static bool any(logical_t log, simd_detail::ignore_none) {
-    return vmaxvq_u8(log);
-  }
+  static bool any(logical_t log, ignore_none) { return vmaxvq_u8(log); }
 };
 
 #define FOLLY_DETAIL_HAS_SIMD_CHAR_PLATFORM 1
@@ -305,5 +302,5 @@ using SimdCharPlatform = void;
 
 #endif
 
-} // namespace simd_detail
+} // namespace simd::detail
 } // namespace folly

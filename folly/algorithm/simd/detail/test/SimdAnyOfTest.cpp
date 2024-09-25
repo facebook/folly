@@ -25,11 +25,11 @@
 #if FOLLY_DETAIL_HAS_SIMD_CHAR_PLATFORM
 
 namespace folly {
-namespace simd_detail {
+namespace simd::detail {
 
 template <typename Platform, int unrolling>
 void anySpacesTestForPlatformUnrolling(folly::StringPiece s, bool expected) {
-  bool actual = folly::simd_detail::simdAnyOf<Platform, unrolling>(
+  bool actual = simdAnyOf<Platform, unrolling>(
       s.data(), s.data() + s.size(), [](typename Platform::reg_t x) {
         return Platform::equal(x, ' ');
       });
@@ -111,7 +111,7 @@ TEST(SimdAnyOfSimple, BigChunk) {
   }
 }
 
-} // namespace simd_detail
+} // namespace simd::detail
 } // namespace folly
 
 #endif // FOLLY_DETAIL_HAS_SIMD_CHAR_PLATFORM

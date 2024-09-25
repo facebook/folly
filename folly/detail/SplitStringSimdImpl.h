@@ -120,7 +120,7 @@ struct PlatformSimdSplitByChar {
       char sep, folly::StringPiece what, Container& res) const {
     const char* prev = what.data();
     ForEachDelegate<Container> delegate{*this, sep, prev, res};
-    simd_detail::simdForEachAligning</*unrolling*/ 1>(
+    simd::detail::simdForEachAligning</*unrolling*/ 1>(
         Platform::kCardinal, what.data(), what.data() + what.size(), delegate);
     emplaceBack(res, prev, what.data() + what.size());
   }

@@ -32,7 +32,7 @@ bool hasSpaceOrCntrlSymbolsForPlatform(folly::StringPiece s) {
 void testHasSpaceOrCntrlSymbols(folly::StringPiece s, bool r) {
   ASSERT_EQ(r, simdHasSpaceOrCntrlSymbols(s)) << s;
 
-  using namespace simd_detail;
+  using namespace simd::detail;
   ASSERT_EQ(r, hasSpaceOrCntrlSymbolsForPlatform<void>(s)) << s;
 
 #if FOLLY_X64
