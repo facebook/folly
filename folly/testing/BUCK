@@ -13,7 +13,7 @@ cpp_library(
         "//folly:memory",
         "//folly:string",
         "//folly/ext:test_ext",
-        # @fb-only: "//folly/facebook:test_ext", 
+        "//folly/ext/buck2:test_ext",
         "//folly/portability:fcntl",
     ],
     exported_deps = [
