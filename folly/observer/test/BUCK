@@ -1,3 +1,4 @@
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -18,5 +19,15 @@ cpp_unittest(
         "//folly/observer:with_jitter",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
+    ],
+)
+
+cpp_benchmark(
+    name = "observer_benchmark",
+    srcs = ["ObserverBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/init:init",
+        "//folly/observer:observer",
     ],
 )
