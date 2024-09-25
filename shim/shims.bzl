@@ -180,8 +180,8 @@ def cpp_library(
     prelude.cxx_library(
         name = name,
         srcs = srcs,
-        deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
-        exported_deps = _maybe_select_map(exported_deps + external_deps_to_targets(exported_external_deps), _fix_deps),
+        deps = _fix_deps(deps + external_deps_to_targets(external_deps)),
+        exported_deps = _fix_deps(exported_deps + external_deps_to_targets(exported_external_deps)),
         visibility = visibility,
         preferred_linkage = "static",
         exported_headers = headers,
@@ -209,7 +209,7 @@ def cpp_unittest(
     _unused = (supports_static_listing, allocator, owner, tags, emails, extract_helper_lib, compiler_specific_flags, default_strip_mode)  # @unused
     deps = deps + [CPP_UNITTEST_MAIN_DEP] + CPP_UNITTEST_LIB_DEPS
     prelude.cxx_test(
-        deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
+        deps = _fix_deps(deps + external_deps_to_targets(external_deps)),
         visibility = visibility,
         resources = _fix_resources(resources),
         **kwargs
@@ -227,7 +227,7 @@ def cpp_binary(
         **kwargs):
     _unused = (dlopen_enabled, compiler_specific_flags, os_linker_flags, allocator, modules)  # @unused
     prelude.cxx_binary(
-        deps = _maybe_select_map(deps + external_deps_to_targets(external_deps), _fix_deps),
+        deps = _fix_deps(deps + external_deps_to_targets(external_deps)),
         visibility = visibility,
         **kwargs
     )
@@ -246,7 +246,7 @@ def rust_library(
         visibility = ["PUBLIC"],
         **kwargs):
     _unused = (test_deps, test_env, test_os_deps, named_deps, autocargo, unittests, visibility)  # @unused
-    deps = _maybe_select_map(deps, _fix_deps)
+    deps = _fix_deps(deps)
     mapped_srcs = _maybe_select_map(mapped_srcs, _fix_mapped_srcs)
     if os_deps:
         deps += _select_os_deps(_fix_dict_deps(os_deps))
@@ -272,7 +272,7 @@ def rust_binary(
         visibility = ["PUBLIC"],
         **kwargs):
     _unused = (unittests, allocator, default_strip_mode, autocargo)  # @unused
-    deps = _maybe_select_map(deps, _fix_deps)
+    deps = _fix_deps(deps)
 
     # @lint-ignore BUCKLINT: avoid "Direct usage of native rules is not allowed."
     prelude.rust_binary(
@@ -287,7 +287,7 @@ def rust_unittest(
         deps = [],
         visibility = ["PUBLIC"],
         **kwargs):
-    deps = _maybe_select_map(deps, _fix_deps)
+    deps = _fix_deps(deps)
 
     prelude.rust_test(
         rustc_flags = rustc_flags + [_CFG_BUCK_BUILD],
@@ -361,7 +361,7 @@ def ocaml_binary(
         deps = [],
         visibility = ["PUBLIC"],
         **kwargs):
-    deps = _maybe_select_map(deps, _fix_deps)
+    deps = _fix_deps(deps)
 
     prelude.ocaml_binary(
         deps = deps,
@@ -397,7 +397,7 @@ def _fix_mapped_srcs(xs: dict[str, str]):
 
 def _fix_deps(xs):
     if is_select(xs):
-        return xs
+        return select_map(xs, lambda child_targets: _fix_deps(child_targets))
     return map(_fix_dep, xs)
 
 def _fix_resources(resources):
