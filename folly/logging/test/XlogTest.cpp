@@ -602,16 +602,6 @@ TEST_F(XlogTest, getXlogCategoryName) {
 
   // Buck's directory prefixes for generated source files
   // should be stripped out
-#ifdef FOLLY_XLOG_SUPPORT_BUCK1
-  EXPECT_EQ(
-      "myproject.generated_header.h",
-      LogName::canonicalize(getXlogCategoryNameForFile(
-          "buck-out/gen/myproject#headers/myproject/generated_header.h")));
-  EXPECT_EQ(
-      "foo.bar.test.h",
-      LogName::canonicalize(getXlogCategoryNameForFile(
-          "buck-out/gen/foo/bar#header-map,headers/foo/bar/test.h")));
-#endif // FOLLY_XLOG_SUPPORT_BUCK1
 
 #ifdef FOLLY_XLOG_SUPPORT_BUCK2
   EXPECT_EQ(
