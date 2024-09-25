@@ -398,7 +398,7 @@ def _fix_mapped_srcs(xs: dict[str, str]):
 def _fix_deps(xs):
     if is_select(xs):
         return xs
-    return filter(None, map(_fix_dep, xs))
+    return map(_fix_dep, xs)
 
 def _fix_resources(resources):
     if is_list(resources):
@@ -409,10 +409,7 @@ def _fix_resources(resources):
 
     fail("Unexpected type {} for resources".format(type(resources)))
 
-def _fix_dep(x: str) -> [
-    None,
-    str,
-]:
+def _fix_dep(x: str) -> str:
     def remove_version(x: str) -> str:
         # When upgrading libraries we either suffix them as `-old` or with a version, e.g. `-1-08`
         # Strip those so we grab the right one in open source.
@@ -437,8 +434,6 @@ def _fix_dep(x: str) -> [
         return remove_version(x)
     elif x.startswith(":"):
         return x
-    elif x.startswith("//buck2/facebook/"):
-        return None
     elif x.startswith("//buck2/"):
         return "root//" + x.removeprefix("//buck2/")
     elif x.startswith("fbcode//common/ocaml/interop/"):
