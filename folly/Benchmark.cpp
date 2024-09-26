@@ -84,6 +84,11 @@ FOLLY_GFLAGS_DEFINE_string(
 FOLLY_GFLAGS_DEFINE_string(
     bm_regex, "", "Only benchmarks whose names match this regex will be run.");
 
+FOLLY_GFLAGS_DEFINE_string(
+    bm_file_regex,
+    "",
+    "Only benchmarks whose filenames match this regex will be run.");
+
 FOLLY_GFLAGS_DEFINE_int64(
     bm_min_usec,
     100,
@@ -687,11 +692,16 @@ BenchmarksToRun selectBenchmarksToRun(
   BenchmarksToRun res;
 
   folly::Optional<boost::regex> bmRegex;
+  folly::Optional<boost::regex> bmFileRegex;
 
   res.benchmarks.reserve(benchmarks.size());
 
   if (!FLAGS_bm_regex.empty()) {
     bmRegex.emplace(FLAGS_bm_regex);
+  }
+
+  if (!FLAGS_bm_file_regex.empty()) {
+    bmFileRegex.emplace(FLAGS_bm_file_regex);
   }
 
   for (auto& bm : benchmarks) {
@@ -705,7 +715,11 @@ BenchmarksToRun selectBenchmarksToRun(
       continue;
     }
 
-    if (!bmRegex || boost::regex_search(bm.name, *bmRegex)) {
+    bool matchedName = !bmRegex || boost::regex_search(bm.name, *bmRegex);
+    bool matchedFile =
+        !bmFileRegex || boost::regex_search(bm.file, *bmFileRegex);
+
+    if (matchedName && matchedFile) {
       res.benchmarks.push_back(&bm);
     }
   }
