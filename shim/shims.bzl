@@ -306,12 +306,6 @@ def rust_protobuf_library(
         deps = [],
         test_deps = None,
         doctests = True):
-    if build_env:
-        build_env = {
-            k: _fix_dep_in_string(v)
-            for k, v in build_env.items()
-        }
-
     build_name = name + "-build"
     proto_name = name + "-proto"
 
@@ -409,11 +403,6 @@ def _fix_resources(resources):
         return {k: translate_target(v) for k, v in resources.items()}
 
     fail("Unexpected type {} for resources".format(type(resources)))
-
-def _fix_dep_in_string(x: str) -> str:
-    """Replace internal labels in string values such as env-vars."""
-    return (x
-        .replace("//buck2/", "root//"))
 
 # Do a nasty conversion of e.g. ("supercaml", None, "ocaml-dev") to
 # 'fbcode//third-party-buck/platform010/build/supercaml:ocaml-dev'
