@@ -13,9 +13,12 @@ cpp_library(
     deps = [
         "//folly:bits",
         "//folly:cpp_attributes",
+        "//folly/external/nvidia/hash/detail:crc32c_detail",
     ],
     exported_deps = [
         "//folly:portability",
+        "//folly/external/nvidia/hash:checksum",  # @manual
+        "//folly/external/nvidia/hash/detail:crc32c_detail",  # @manual
     ],
     external_deps = [
         ("boost", None, "boost_preprocessor"),

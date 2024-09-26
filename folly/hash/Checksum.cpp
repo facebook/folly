@@ -71,6 +71,10 @@ uint32_t crc32_hw(
 }
 
 bool crc32c_hw_supported() {
+  return crc32c_hw_supported_sse42();
+}
+
+bool crc32c_hw_supported_sse42() {
   static folly::CpuId id;
   return id.sse42();
 }
@@ -86,7 +90,27 @@ bool crc32_hw_supported() {
   return id.sse42();
 }
 
-#else
+#elif FOLLY_ARM_FEATURE_CRC32
+
+// crc32_hw is defined in folly/external/nvidia/hash/Checksum.cpp
+
+bool crc32c_hw_supported() {
+  return true;
+}
+
+bool crc32c_hw_supported_sse42() {
+  return false;
+}
+
+bool crc32c_hw_supported_avx512() {
+  return false;
+}
+
+bool crc32_hw_supported() {
+  return true;
+}
+
+#else // FOLLY_ARM_FEATURE_CRC32
 
 uint32_t crc32_hw(
     const uint8_t* /* data */,
@@ -96,6 +120,10 @@ uint32_t crc32_hw(
 }
 
 bool crc32c_hw_supported() {
+  return false;
+}
+
+bool crc32c_hw_supported_sse42() {
   return false;
 }
 

@@ -1,0 +1,12 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "crc32c_detail",
+    srcs = ["Crc32cDetail.cpp"],
+    headers = ["Crc32cCombineDetail.h"],
+    deps = [
+        "//folly:portability",
+    ],
+)

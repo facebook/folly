@@ -18,6 +18,7 @@
 #include <utility>
 
 #include <folly/Bits.h>
+#include <folly/external/nvidia/hash/detail/Crc32cCombineDetail.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 
 namespace folly {
@@ -105,6 +106,11 @@ static uint32_t gf_multiply_crc32_hw(uint64_t crc1, uint64_t crc2, uint32_t) {
   return _mm_cvtsi128_si32(_mm_srli_si128(_mm_xor_si128(res3, res1), 4));
 }
 
+#elif FOLLY_NEON && FOLLY_ARM_FEATURE_CRC32 && FOLLY_ARM_FEATURE_AES && \
+    FOLLY_ARM_FEATURE_SHA2
+
+// gf_multiply_crc32c_hw and fg_multiply_crc32_hw are defined in
+// external/nvidia/hash/detail/Crc32cCombineDetail-inl.h
 #else
 
 static uint32_t gf_multiply_crc32c_hw(uint64_t, uint64_t, uint32_t) {
@@ -114,7 +120,7 @@ static uint32_t gf_multiply_crc32_hw(uint64_t, uint64_t, uint32_t) {
   return 0;
 }
 
-#endif
+#endif // FOLLY_SSE_PREREQ(4, 2)
 
 static constexpr uint32_t crc32c_m = 0x82f63b78;
 static constexpr uint32_t crc32_m = 0xedb88320;

@@ -46,6 +46,12 @@ uint32_t crc32c_hw(
  * Check whether a SSE4.2 hardware-accelerated CRC-32C implementation is
  * supported on the current CPU.
  */
+bool crc32c_hw_supported_sse42();
+
+/**
+ * Check whether a hardware-accelerated CRC-32C implementation is
+ * supported on the current CPU.
+ */
 bool crc32c_hw_supported();
 
 /**
