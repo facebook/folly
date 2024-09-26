@@ -324,9 +324,6 @@ cpp_binary(
 cpp_unittest(
     name = "xlog_test",
     srcs = ["XlogTest.cpp"],
-    preprocessor_flags = [
-        "-DFOLLY_XLOG_SUPPORT_BUCK2",
-    ],
     deps = [
         ":test_handler",
         ":xlog_test_lib",

@@ -25,6 +25,14 @@
 namespace folly {
 
 namespace detail {
+#ifdef FOLLY_XLOG_SUPPORT_BUCK2
+bool const xlog_support_buck2 = true;
+#else
+bool const xlog_support_buck2 = false;
+#endif
+} // namespace detail
+
+namespace detail {
 size_t& xlogEveryNThreadEntry(void const* const key) {
   using Map = std::unordered_map<void const*, size_t>;
 
@@ -101,11 +109,11 @@ StringPiece getXlogCategoryNameForFile(StringPiece filename) {
   //
   // If this path looks like a buck header directory, try to strip off the
   // buck-specific portion.
-#ifdef FOLLY_XLOG_SUPPORT_BUCK2
-  if (filename.startsWith("buck-out/v2/")) {
-    filename = stripBuckV2Prefix(filename);
+  if (detail::xlog_support_buck2) {
+    if (filename.startsWith("buck-out/v2/")) {
+      filename = stripBuckV2Prefix(filename);
+    }
   }
-#endif // FOLLY_XLOG_SUPPORT_BUCK2
 
   return filename;
 }

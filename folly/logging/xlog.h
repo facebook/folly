@@ -73,6 +73,11 @@
 #endif
 
 namespace folly {
+
+namespace detail {
+extern bool const xlog_support_buck2;
+}
+
 constexpr auto kLoggingMinLevel = LogLevel::FOLLY_XLOG_MIN_LEVEL;
 static_assert(
     !isLogLevelFatal(kLoggingMinLevel),
