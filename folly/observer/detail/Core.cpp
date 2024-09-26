@@ -124,7 +124,7 @@ size_t Core::refresh(size_t version) {
 
       for (const auto& dependency : dependencies) {
         if (!newDependencies.count(dependency)) {
-          dependency->removeStaleDependents();
+          dependency->maybeRemoveStaleDependents();
         }
       }
 
@@ -132,9 +132,9 @@ size_t Core::refresh(size_t version) {
     });
   }
 
-  auto dependents = dependents_.copy();
+  auto dstate = dependents_.copy();
 
-  for (const auto& dependentWeak : dependents) {
+  for (const auto& dependentWeak : dstate.deps) {
     if (auto dependent = dependentWeak.lock()) {
       ObserverManager::scheduleRefresh(std::move(dependent), version);
     }
@@ -153,7 +153,7 @@ Core::Core(folly::Function<std::shared_ptr<const void>()> creator)
 Core::~Core() {
   dependencies_.withWLock([](const Dependencies& dependencies) {
     for (const auto& dependecy : dependencies) {
-      dependecy->removeStaleDependents();
+      dependecy->maybeRemoveStaleDependents();
     }
   });
 }
@@ -164,16 +164,19 @@ Core::Ptr Core::create(folly::Function<std::shared_ptr<const void>()> creator) {
 }
 
 void Core::addDependent(Core::WeakPtr dependent) {
-  dependents_.withWLock([&](Dependents& dependents) {
-    dependents.push_back(std::move(dependent));
-  });
+  dependents_.withWLock(
+      [&](Dependents& dstate) { dstate.deps.push_back(std::move(dependent)); });
 }
 
-void Core::removeStaleDependents() {
-  // This is inefficient, the assumption is that we won't have many dependents
-  dependents_.withWLock([](Dependents& deps) {
+void Core::maybeRemoveStaleDependents() {
+  dependents_.withWLock([](Dependents& dstate) {
+    auto& deps = dstate.deps;
+    if (++dstate.numPotentiallyExpiredDependents < deps.size() / 4) {
+      return;
+    }
     auto const pred = [](auto const& d) { return d.expired(); };
     deps.erase(std::remove_if(deps.begin(), deps.end(), pred), deps.end());
+    dstate.numPotentiallyExpiredDependents = 0;
   });
 }
 } // namespace observer_detail
