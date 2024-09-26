@@ -67,6 +67,10 @@
 #include <folly/lang/CString.h>
 #include <folly/portability/Builtins.h>
 
+#ifdef __BMI2__
+#include <immintrin.h>
+#endif
+
 #if __has_include(<bit>) && (__cplusplus >= 202002L || (defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L))
 #include <bit>
 #endif
@@ -106,6 +110,11 @@ constexpr std::make_unsigned_t<Dst> bits_to_unsigned(Src const s) {
   static_assert(std::is_unsigned<Dst>::value, "signed type");
   return static_cast<Dst>(to_unsigned(s));
 }
+
+template <typename T>
+inline constexpr bool supported_in_bits_operations_v =
+    std::is_unsigned_v<T> && sizeof(T) <= 8;
+
 } // namespace detail
 
 /// findFirstSet
@@ -222,6 +231,147 @@ inline constexpr T strictPrevPowTwo(T const v) {
   static_assert(std::is_unsigned<T>::value, "signed type");
   return v > 1 ? prevPowTwo(T(v - 1)) : T(0);
 }
+
+/// make_maskr
+/// make_maskr_fn
+///
+/// Returns an unsigned integer of type T, where n
+/// least significant (right) bits are set and others are not.
+template <class T>
+struct make_maskr_fn {
+  static_assert(detail::supported_in_bits_operations_v<T>, "");
+
+  FOLLY_NODISCARD constexpr T operator()(std::uint32_t n) const {
+    if (!folly::is_constant_evaluated_or(true)) {
+      compiler_may_unsafely_assume(n <= sizeof(T) * 8);
+
+#ifdef __BMI2__
+      if constexpr (sizeof(T) <= 4) {
+        return static_cast<T>(_bzhi_u32(static_cast<std::uint32_t>(-1), n));
+      }
+      return static_cast<T>(_bzhi_u64(static_cast<std::uint64_t>(-1), n));
+#endif
+    }
+
+    if (sizeof(T) == 8 && n == 64) {
+      return static_cast<T>(-1);
+    }
+    return static_cast<T>((std::uint64_t{1} << n) - 1);
+  }
+};
+
+template <class T>
+inline constexpr make_maskr_fn<T> make_maskr;
+
+/// make_maskl
+/// make_maskl_fn
+///
+/// Returns an unsigned integer of type T, where n
+/// most significant bits (left) are set and others are not.
+template <class T>
+struct make_maskl_fn {
+  static_assert(detail::supported_in_bits_operations_v<T>, "");
+
+  FOLLY_NODISCARD constexpr T operator()(std::uint32_t n) const {
+    if (!folly::is_constant_evaluated_or(true)) {
+      compiler_may_unsafely_assume(n <= sizeof(T) * 8);
+
+#ifdef __BMI2__
+      // assembler looks smaller here, if we use bzhi from `set_lowest_n_bits`
+      if constexpr (sizeof(T) == 8) {
+        return static_cast<T>(~make_maskr<T>(64 - n));
+      }
+#endif
+    }
+
+    if (sizeof(T) == 8 && n == 0) {
+      return 0;
+    }
+    n = sizeof(T) * 8 - n;
+
+    std::uint64_t ones = static_cast<T>(~0);
+    return static_cast<T>(ones << n);
+  }
+};
+
+template <class T>
+inline constexpr make_maskl_fn<T> make_maskl;
+
+/// set_rzero
+/// set_rzero_fn
+///
+/// Clears n least significant (right) bits. Other bits stay the same.
+struct set_rzero_fn {
+  template <typename T>
+  FOLLY_NODISCARD constexpr T operator()(T x, std::uint32_t n) const {
+    static_assert(detail::supported_in_bits_operations_v<T>, "");
+
+    // alternative is to do two shifts but that has
+    // a dependency between them, so is likely worse
+    return x & make_maskl<T>(sizeof(T) * 8 - n);
+  }
+};
+
+inline constexpr set_rzero_fn set_rzero;
+
+/// set_rone
+/// set_rone_fn
+///
+/// Sets n least significant (right) bits. Other bits stay the same.
+struct set_rone_fn {
+  template <typename T>
+  FOLLY_NODISCARD constexpr T operator()(T x, std::uint32_t n) const {
+    static_assert(detail::supported_in_bits_operations_v<T>, "");
+
+    // alternative is to do two shifts but that has
+    // a dependency between them, so is likely worse
+    return x | make_maskr<T>(n);
+  }
+};
+
+inline constexpr set_rone_fn set_rone;
+
+/// set_lzero
+/// set_lzero_fn
+///
+/// Clears n most significant (left) bits. Other bits stay the same.
+struct set_lzero_fn {
+  template <typename T>
+  FOLLY_NODISCARD constexpr T operator()(T x, std::uint32_t n) const {
+    static_assert(detail::supported_in_bits_operations_v<T>, "");
+
+    if (!folly::is_constant_evaluated_or(true)) {
+      compiler_may_unsafely_assume(n <= sizeof(T) * 8);
+
+#ifdef __BMI2__
+      if constexpr (sizeof(T) <= 4) {
+        return static_cast<T>(_bzhi_u32(x, sizeof(T) * 8 - n));
+      }
+      return static_cast<T>(_bzhi_u64(x, sizeof(T) * 8 - n));
+#endif
+    }
+
+    // alternative is to do two shifts but that has
+    // a dependency between them, so is likely worse
+    return x & make_maskr<T>(sizeof(T) * 8 - n);
+  }
+};
+
+inline constexpr set_lzero_fn set_lzero;
+
+/// set_lone
+/// set_lone_fn
+///
+/// Sets n most significant (left) bits. Other bits stay the same.
+struct set_lone_fn {
+  template <typename T>
+  FOLLY_NODISCARD constexpr T operator()(T x, std::uint32_t n) const {
+    static_assert(detail::supported_in_bits_operations_v<T>, "");
+    return x | make_maskl<T>(n);
+  }
+};
+
+inline constexpr set_lone_fn set_lone;
 
 /**
  * Endianness detection and manipulation primitives.

@@ -74,6 +74,14 @@ void testEFS() {
   }
 }
 
+template <typename T>
+struct BitsAllUintsTest : ::testing::Test {};
+
+using UintsToTest =
+    ::testing::Types<std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t>;
+
+TYPED_TEST_SUITE(BitsAllUintsTest, UintsToTest);
+
 } // namespace
 
 TEST(Bits, FindFirstSet) {
@@ -348,6 +356,177 @@ TEST(Bits, LoadUnalignedUB) {
   uint64_t c = 0, d = 0;
   uint16_t x = func(a, b, c, d);
   EXPECT_EQ(0, x);
+}
+
+TYPED_TEST(BitsAllUintsTest, MakeMaskR) {
+  using T = TypeParam;
+
+  static_assert(make_maskr<T>(0) == 0b0, "");
+  static_assert(make_maskr<T>(1) == 0b1, "");
+  static_assert(make_maskr<T>(2) == 0b11, "");
+  static_assert(make_maskr<T>(3) == 0b111, "");
+  static_assert(make_maskr<T>(4) == 0b1111, "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= std::min(sizeof(T) * 8, 63UL); ++i) {
+      std::uint64_t expected = (std::uint64_t{1} << i) - 1;
+      T actual = make_maskr<T>(i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+      if (std::countr_one(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countr_one(expected)) << i;
+        return false;
+      }
+    }
+    return true;
+  };
+
+  static_assert(test(), "");
+
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, MakeMaskL) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(make_maskl<T>(kBitSize) == static_cast<T>(~0b0), "");
+  static_assert(make_maskl<T>(kBitSize - 1) == static_cast<T>(~0b1), "");
+  static_assert(make_maskl<T>(kBitSize - 2) == static_cast<T>(~0b11), "");
+  static_assert(make_maskl<T>(kBitSize - 3) == static_cast<T>(~0b111), "");
+  static_assert(make_maskl<T>(kBitSize - 4) == static_cast<T>(~0b1111), "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = ~make_maskr<T>(kBitSize - i);
+      T actual = make_maskl<T>(i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+      if (std::countl_one(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countl_one(expected)) << i;
+        return false;
+      }
+    }
+    return true;
+  };
+
+  static_assert(test(), "");
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, SetRzero) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(set_rzero(T{3U}, 1U) == 2U, "");
+  static_assert(set_rzero(T{5U}, 1U) == 4U, "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = make_maskl<T>(kBitSize - i);
+      T actual = set_rzero(static_cast<T>(-1), i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+      if (std::countr_zero(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countr_zero(expected)) << i;
+        return false;
+      }
+    }
+    return true;
+  };
+  static_assert(test(), "");
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, SetRone) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(set_rone(T{2U}, 1U) == 3U, "");
+  static_assert(set_rone(T{4U}, 1U) == 5U, "");
+  static_assert(set_rone(T{4U}, 2U) == 7U, "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = make_maskr<T>(i);
+      T actual = set_rone(T{}, i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+      if (std::countr_one(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countr_one(expected)) << i;
+        return false;
+      }
+    }
+    return true;
+  };
+  static_assert(test(), "");
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, SetLzero) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(set_lzero(T{3U}, kBitSize - 1) == 1U, "");
+  static_assert(set_lzero(T{0b1100U}, kBitSize - 3) == 0b100U, "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = make_maskr<T>(kBitSize - i);
+      T actual = set_lzero(static_cast<T>(-1), i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+      if (std::countl_zero(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countl_zero(expected)) << i;
+        return false;
+      }
+    }
+    return true;
+  };
+  static_assert(test(), "");
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, SetLone) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(set_lone(T{1}, kBitSize - 2) == static_cast<T>(~0b10), "");
+  static_assert(
+      set_lone(T{0b1100U}, kBitSize - 3) == static_cast<T>(~0b11), "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = make_maskl<T>(i);
+      T actual = set_lone(static_cast<T>(0), i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+      if (std::countl_one(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countl_one(expected)) << i;
+        return false;
+      }
+    }
+    return true;
+  };
+  static_assert(test(), "");
+  EXPECT_TRUE(test());
 }
 
 } // namespace folly
