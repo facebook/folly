@@ -25,6 +25,15 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "ignore_test",
+    srcs = ["IgnoreTest.cpp"],
+    deps = [
+        "//folly/algorithm/simd/detail:ignore",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "traits_test",
     srcs = ["TraitsTest.cpp"],
     deps = [

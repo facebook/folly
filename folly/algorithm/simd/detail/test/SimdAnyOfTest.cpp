@@ -83,7 +83,7 @@ TEST(SimdAnyOfSimple, Ignore) {
   buffer.fill(' ');
   for (auto& c : buffer) {
     c = 'a';
-    anySpacesTest({&c, 1}, false);
+    ASSERT_NO_FATAL_FAILURE(anySpacesTest({&c, 1}, false));
     c = ' ';
   }
 }

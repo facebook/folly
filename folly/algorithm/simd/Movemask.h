@@ -33,7 +33,7 @@
 FOLLY_PUSH_WARNING
 FOLLY_GCC_DISABLE_WARNING("-Wignored-attributes")
 
-namespace folly {
+namespace folly::simd {
 
 /*
  * This is a low level utility used for simd search algorithms.
@@ -43,7 +43,7 @@ namespace folly {
  * for both x86 and arm.
  *
  * Interface looks like this:
- * folly::movemask<-scalar type->(nativeRegister)
+ * folly::simd::movemask<-scalar type->(nativeRegister)
  *   -> std::pair<Bits, BitsPerElement>;
  *
  *  Bits - unsigned integral, containing the bitmask (first is lowest bit).
@@ -53,7 +53,7 @@ namespace folly {
  *
  *  std::optional<std::uint32_t> firstTrueUint16(auto simdRegister) {
  *    auto [bits, bitsPerElement] =
- *        folly::movemask<std::uint16_t>(simdRegister);
+ *        folly::simd::movemask<std::uint16_t>(simdRegister);
  *    if (!bits) {
  *      return std::nullopt;
  *    }
@@ -71,7 +71,11 @@ template <typename Scalar, typename Reg>
 auto movemask(Reg reg) {
   std::integral_constant<std::uint32_t, sizeof(Scalar) == 2 ? 2 : 1>
       bitsPerElement;
-  auto mmask = static_cast<std::uint32_t>([&] {
+
+  using uint_t = std::
+      conditional_t<std::is_same_v<Reg, __m128i>, std::uint16_t, std::uint32_t>;
+
+  auto mmask = static_cast<uint_t>([&] {
     if constexpr (std::is_same_v<Reg, __m128i>) {
       if constexpr (sizeof(Scalar) <= 2) {
         return _mm_movemask_epi8(reg);
@@ -142,6 +146,13 @@ auto movemask(Reg reg) {
 
 #endif
 
-} // namespace folly
+#if !FOLLY_X64 && !FOLLY_AARCH64
+
+template <typename Scalar, typename Reg>
+void movemask(Reg reg) = delete;
+
+#endif
+
+} // namespace folly::simd
 
 FOLLY_POP_WARNING

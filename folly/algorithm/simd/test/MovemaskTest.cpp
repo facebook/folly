@@ -55,11 +55,11 @@ void allOneTrueTests() {
   std::array<T, N> arr;
   arr.fill(kFalse);
 
-  ASSERT_EQ(0, folly::movemask<T>(loadReg<Reg>(arr)).first);
+  ASSERT_EQ(0, folly::simd::movemask<T>(loadReg<Reg>(arr)).first);
 
   for (std::size_t i = 0; i != N; ++i) {
     arr[i] = kTrue;
-    auto [bits, bitsPerElement] = folly::movemask<T>(loadReg<Reg>(arr));
+    auto [bits, bitsPerElement] = folly::simd::movemask<T>(loadReg<Reg>(arr));
     std::uint64_t oneElement = safeShift(1, bitsPerElement()) - 1;
     std::uint64_t expectedBits = safeShift(oneElement, i * bitsPerElement());
 
