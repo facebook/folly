@@ -25,11 +25,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "function_traits",
-    headers = ["FunctionTraits.h"],
-)
-
-cpp_library(
     name = "intrusive_ptr",
     headers = ["IntrusivePtr.h"],
     exported_external_deps = [
@@ -41,7 +36,8 @@ cpp_library(
     name = "multiplexer_traits",
     headers = ["MultiplexerTraits.h"],
     exported_deps = [
-        "//folly/experimental/channels/detail:function_traits",
+        "//folly:traits",
+        "//folly/functional:traits",
     ],
 )
 

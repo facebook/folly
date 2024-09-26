@@ -23,16 +23,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "function_traits",
-    headers = [
-        "FunctionTraits.h",
-    ],
-    exported_deps = [
-        "//folly/channels/detail:function_traits",
-    ],
-)
-
-cpp_library(
     name = "intrusive_ptr",
     headers = [
         "IntrusivePtr.h",
