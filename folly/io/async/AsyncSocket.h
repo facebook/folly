@@ -1550,6 +1550,9 @@ class AsyncSocket : public AsyncSocketTransport {
       iovec* dstVec,
       size_t& dstCount);
 
+  void applyOptions(
+      const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);
+
  protected:
   enum ReadResultEnum {
     READ_EOF = 0,
@@ -1843,9 +1846,6 @@ class AsyncSocket : public AsyncSocketTransport {
 
   void cacheLocalAddress() const;
   void cachePeerAddress() const;
-
-  void applyOptions(
-      const SocketOptionMap& options, SocketOptionKey::ApplyPos pos);
 
   bool isZeroCopyRequest(WriteFlags flags);
 
