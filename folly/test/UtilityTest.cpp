@@ -508,7 +508,7 @@ static_assert(testForward<const MethodOverloadDelegation&&, const int&&>);
 
 template <class Self>
 constexpr bool testConstexpr =
-    static_cast<Self>(std::array<std::remove_cvref_t<Self>, 1>{}[0])
+    static_cast<Self>(std::array<folly::remove_cvref_t<Self>, 1>{}[0])
         .testConstexpr() == 42;
 
 static_assert(testConstexpr<MethodOverloadDelegation&>);
@@ -527,7 +527,9 @@ static_assert(testNoexcept<const MethodOverloadDelegation&>);
 static_assert(testNoexcept<const MethodOverloadDelegation&&>);
 
 template <class Self, class T>
-concept testSfinae = requires { std::declval<Self>().testSfinae(T{}); };
+using testSfinaeDetect = decltype(void(std::declval<Self>().testSfinae(T{})));
+template <class Self, class T>
+constexpr bool testSfinae = is_detected_v<testSfinaeDetect, Self, T>;
 
 static_assert(testSfinae<MethodOverloadDelegation&, std::true_type>);
 static_assert(testSfinae<const MethodOverloadDelegation&, std::true_type>);
