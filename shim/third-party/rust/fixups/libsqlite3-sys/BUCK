@@ -1,0 +1,5 @@
+filegroup(
+    name = "out_dir",
+    srcs = ["bindgen.rs"],
+    visibility = ["//third-party/rust/..."],
+)
