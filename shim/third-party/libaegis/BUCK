@@ -5,11 +5,28 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@shim//build_defs:prebuilt_cpp_library.bzl", "prebuilt_cpp_library")
 
 oncall("open_source")
 
-third_party_library(
+git_fetch(
+    name = "libaegis.git",
+    repo = "https://github.com/jedisct1/libaegis.git",
+    rev = "9c7677d742aaae312e09b1574998acba620188d8",  # tag 0.1.23
+)
+
+genrule(
+    name = "libaegis-cmake",
+    out = "out",
+    cmd = "cmake -DCMAKE_INSTALL_PREFIX=$OUT $(location :libaegis.git) && make install",
+)
+
+prebuilt_cpp_library(
     name = "aegis",
-    pkgconfig_name = "libaegis",
+    exported_preprocessor_flags = ["-I$(location :libaegis-cmake)/include"],
+    linker_flags = [
+        "-L$(location :libaegis-cmake)/lib64",
+        "-laegis",
+    ],
+    visibility = ["PUBLIC"],
 )
