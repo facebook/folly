@@ -293,7 +293,8 @@ constexpr std::optional<std::size_t> findFixed(std::span<const T, N> where, U x)
     return find_fixed_detail::findFixedConstexpr(std::span<const T>(where), x);
   } else {
     return find_fixed_detail::findFixedDispatch(
-        detail::asSimdFriendlyUint(where), detail::asSimdFriendlyUint(x));
+        simd::detail::asSimdFriendlyUint(where),
+        simd::detail::asSimdFriendlyUint(x));
   }
 }
 

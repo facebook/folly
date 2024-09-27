@@ -19,9 +19,9 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-namespace folly::detail {
+namespace folly::simd::detail {
 
-struct FollySimdTraitsTest : testing::Test {};
+struct SimdTraitsTest : testing::Test {};
 
 namespace simd_friendly_equivalent_test {
 
@@ -98,7 +98,7 @@ static_assert(Overloading{}(SomeInt{}) == 2);
 
 } // namespace integral_simd_friendly_equivalent_test
 
-TEST_F(FollySimdTraitsTest, AsSimdFriendly) {
+TEST_F(SimdTraitsTest, AsSimdFriendly) {
   enum SomeEnum : int { Foo = 1, Bar, Baz };
 
   static_assert(asSimdFriendly(SomeEnum::Foo) == 1);
@@ -122,7 +122,7 @@ void asSimdFriendlyUintTypeTest() {
       asSimdFriendlyUint(std::span<const From>{}), std::span<const To>{});
 }
 
-TEST_F(FollySimdTraitsTest, AsSimdFriendlyUint) {
+TEST_F(SimdTraitsTest, AsSimdFriendlyUint) {
   enum SomeEnum : int { Foo = 1, Bar, Baz };
 
   static_assert(asSimdFriendlyUint(SomeEnum::Foo) == 1U);
@@ -136,4 +136,4 @@ TEST_F(FollySimdTraitsTest, AsSimdFriendlyUint) {
   asSimdFriendlyUintTypeTest<double, std::uint64_t>();
 }
 
-} // namespace folly::detail
+} // namespace folly::simd::detail

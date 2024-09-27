@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/CPortability.h>
 #include <folly/Memory.h>
 #include <folly/Traits.h>
 #include <folly/container/span.h>
@@ -23,7 +24,7 @@
 #include <concepts>
 #include <type_traits>
 
-namespace folly::detail {
+namespace folly::simd::detail {
 
 template <typename T>
 auto findSimdFriendlyEquivalent() {
@@ -36,25 +37,9 @@ auto findSimdFriendlyEquivalent() {
       return double{};
     }
   } else if constexpr (std::is_signed_v<T>) {
-    if constexpr (sizeof(T) == 1) {
-      return std::int8_t{};
-    } else if constexpr (sizeof(T) == 2) {
-      return std::int16_t{};
-    } else if constexpr (sizeof(T) == 4) {
-      return std::int32_t{};
-    } else if constexpr (sizeof(T) == 8) {
-      return std::int64_t{};
-    }
+    return int_bits_t<sizeof(T) * 8>{};
   } else if constexpr (std::is_unsigned_v<T>) {
-    if constexpr (sizeof(T) == 1) {
-      return std::uint8_t{};
-    } else if constexpr (sizeof(T) == 2) {
-      return std::uint16_t{};
-    } else if constexpr (sizeof(T) == 4) {
-      return std::uint32_t{};
-    } else if constexpr (sizeof(T) == 8) {
-      return std::uint64_t{};
-    }
+    return uint_bits_t<sizeof(T) * 8>{};
   }
 }
 
@@ -63,7 +48,7 @@ concept has_simd_friendly_equivalent =
     !std::is_same_v<void, decltype(findSimdFriendlyEquivalent<T>())>;
 
 template <has_simd_friendly_equivalent T>
-using simd_friendly_equivalent_t = folly::like_t< //
+using simd_friendly_equivalent_t = like_t< //
     T,
     decltype(findSimdFriendlyEquivalent<std::remove_const_t<T>>())>;
 
@@ -77,24 +62,23 @@ template <has_integral_simd_friendly_equivalent T>
 using integral_simd_friendly_equivalent = simd_friendly_equivalent_t<T>;
 
 template <has_simd_friendly_equivalent T, std::size_t Extend>
-auto asSimdFriendly(folly::span<T, Extend> s) {
-  return folly::reinterpret_span_cast<simd_friendly_equivalent_t<T>>(s);
+FOLLY_ERASE auto asSimdFriendly(folly::span<T, Extend> s) {
+  return reinterpret_span_cast<simd_friendly_equivalent_t<T>>(s);
 }
 
 template <has_simd_friendly_equivalent T>
-constexpr auto asSimdFriendly(T x) {
+FOLLY_ERASE constexpr auto asSimdFriendly(T x) {
   return static_cast<simd_friendly_equivalent_t<T>>(x);
 }
 
 template <has_simd_friendly_equivalent T, std::size_t Extend>
-auto asSimdFriendlyUint(folly::span<T, Extend> s) {
-  return folly::reinterpret_span_cast<
-      folly::like_t<T, uint_bits_t<sizeof(T) * 8>>>(s);
+FOLLY_ERASE auto asSimdFriendlyUint(folly::span<T, Extend> s) {
+  return reinterpret_span_cast<like_t<T, uint_bits_t<sizeof(T) * 8>>>(s);
 }
 
 template <has_simd_friendly_equivalent T>
-constexpr auto asSimdFriendlyUint(T x) {
+FOLLY_ERASE constexpr auto asSimdFriendlyUint(T x) {
   return static_cast<uint_bits_t<sizeof(T) * 8>>(x);
 }
 
-} // namespace folly::detail
+} // namespace folly::simd::detail
