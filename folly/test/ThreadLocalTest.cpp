@@ -313,6 +313,29 @@ TEST(ThreadLocal, BasicDestructor) {
   EXPECT_EQ(10, Widget::totalVal_);
 }
 
+TEST(ThreadLocal, MoveCtorFrom) {
+  int calls = 0;
+  ThreadLocal<int> src{[&] { return ++calls; }};
+  EXPECT_EQ(1, *src);
+  auto dst = static_cast<ThreadLocal<int>&&>(src);
+  EXPECT_THROW(*src, std::bad_function_call);
+  std::thread([&] { EXPECT_THROW(*src, std::bad_function_call); }).join();
+  EXPECT_EQ(1, *dst);
+  std::thread([&] { EXPECT_EQ(2, *dst); }).join();
+}
+
+TEST(ThreadLocal, MoveAssignFrom) {
+  int calls = 0;
+  ThreadLocal<int> src{[&] { return ++calls; }};
+  EXPECT_EQ(1, *src);
+  ThreadLocal<int> dst;
+  dst = static_cast<ThreadLocal<int>&&>(src);
+  EXPECT_THROW(*src, std::bad_function_call);
+  std::thread([&] { EXPECT_THROW(*src, std::bad_function_call); }).join();
+  EXPECT_EQ(1, *dst);
+  std::thread([&] { EXPECT_EQ(2, *dst); }).join();
+}
+
 // this should force a realloc of the ElementWrapper array
 TEST(ThreadLocal, ReallocDestructor) {
   ThreadLocal<MultiWidget> w;
