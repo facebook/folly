@@ -50,10 +50,12 @@ _HEADER_SUFFIXES = (
     "-defs.tcc",
 )
 
-CPP_UNITTEST_MAIN_DEP = "shim//third-party/googletest:cpp_unittest_main"
-CPP_UNITTEST_LIB_DEPS = [
-    "shim//third-party/googletest:gtest",
-    "shim//third-party/googletest:gmock",
+CPP_UNITTEST_DEPS = [
+    "shim//third-party/googletest:cpp_unittest_main",
+]
+CPP_FOLLY_UNITTEST_DEPS = [
+    "folly//folly/test/common:test_main_lib",
+    "folly//folly/ext/buck2:test_ext",
 ]
 
 def _get_headers_from_sources(srcs):
@@ -208,7 +210,11 @@ def cpp_unittest(
         resources = {},
         **kwargs):
     _unused = (supports_static_listing, allocator, owner, tags, emails, extract_helper_lib, compiler_specific_flags, default_strip_mode)  # @unused
-    deps = deps + [CPP_UNITTEST_MAIN_DEP] + CPP_UNITTEST_LIB_DEPS
+    if read_config("oss", "folly_cxx_tests", True):
+        deps = deps + CPP_FOLLY_UNITTEST_DEPS
+    else:
+        deps = deps + CPP_UNITTEST_DEPS
+
     prelude.cxx_test(
         deps = _fix_deps(deps + external_deps_to_targets(external_deps)),
         visibility = visibility,
