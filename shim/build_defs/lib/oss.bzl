@@ -10,7 +10,7 @@ def _filter_empty_strings(string_list):
 
 def _parse_prefix_mappings(raw_rules):
     rules = []
-    for raw_rule in rules:
+    for raw_rule in raw_rules:
         (match, replace) = raw_rule.split("->", 1)
 
         (cell, root_dir) = match.split("//")
