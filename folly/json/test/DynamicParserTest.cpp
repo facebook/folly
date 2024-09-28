@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/DynamicParser.h>
+#include <folly/json/DynamicParser.h>
 
 #include <folly/Optional.h>
 #include <folly/portability/GTest.h>

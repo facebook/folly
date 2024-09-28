@@ -125,7 +125,7 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:optional",
-        "//folly/experimental:dynamic_parser",
+        "//folly/json:dynamic_parser",
         "//folly/portability:gtest",
         "//folly/testing:test_util",
     ],
