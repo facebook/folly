@@ -2,9 +2,27 @@
 /* ./generate -i neon -p crc32c -a v3s4x2e_v2 */
 /* MIT licensed */
 
-#if 0
+#include "folly/external/fast-crc32/neon_crc32c_v3s4x2e_v2.h"
+#include <folly/system/AuxVector.h> // @manual
+#include <folly/Portability.h>
+
 #include <stddef.h>
 #include <stdint.h>
+
+#define CRC_EXPORT extern
+
+#if !(FOLLY_AARCH64 && FOLLY_NEON && FOLLY_ARM_FEATURE_CRYPTO && FOLLY_ARM_FEATURE_CRC32)
+#include <stdlib.h>
+namespace folly::detail {
+CRC_EXPORT uint32_t neon_crc32c_v3s4x2e_v2(const uint8_t*, size_t, uint32_t) {
+  abort(); // not implemented on this platform
+}
+
+CRC_EXPORT bool has_neon_crc32c_v3s4x2e_v2() {
+  return false;
+}
+}
+#else
 #include <arm_acle.h>
 #include <arm_neon.h>
 
@@ -15,8 +33,8 @@
 #define CRC_AINLINE static __inline __attribute__((always_inline))
 #define CRC_ALIGN(n) __attribute__((aligned(n)))
 #endif
-#define CRC_EXPORT extern
 
+namespace folly::detail {
 CRC_AINLINE uint64x2_t clmul_lo_e(uint64x2_t a, uint64x2_t b, uint64x2_t c) {
   uint64x2_t r;
   __asm("pmull %0.1q, %2.1d, %3.1d\neor %0.16b, %0.16b, %1.16b\n" : "=w"(r), "+w"(c) : "w"(a), "w"(b));
@@ -58,8 +76,15 @@ CRC_AINLINE uint64x2_t crc_shift(uint32_t crc, size_t nbytes) {
   return clmul_scalar(crc, xnmodp(nbytes * 8 - 33));
 }
 
-CRC_EXPORT uint32_t crc32_impl(uint32_t crc0, const char* buf, size_t len) {
-  crc0 = ~crc0;
+FOLLY_TARGET_ATTRIBUTE("crc")
+CRC_EXPORT bool has_neon_crc32c_v3s4x2e_v2() {
+  static ElfHwCaps caps;
+
+  return caps.aarch64_fp() && caps.aarch64_asimd() && caps.aarch64_pmull() &&
+      caps.aarch64_crc32();
+}
+
+CRC_EXPORT uint32_t neon_crc32c_v3s4x2e_v2(const uint8_t* buf, size_t len, uint32_t crc0) {
   for (; len && ((uintptr_t)buf & 7); --len) {
     crc0 = __crc32cb(crc0, *buf++);
   }
@@ -69,11 +94,11 @@ CRC_EXPORT uint32_t crc32_impl(uint32_t crc0, const char* buf, size_t len) {
     len -= 8;
   }
   if (len >= 112) {
-    const char* end = buf + len;
+    const uint8_t* end = buf + len;
     size_t blk = (len - 0) / 112;
     size_t klen = blk * 16;
-    const char* buf2 = buf + klen * 4;
-    const char* limit = buf + klen - 32;
+    const uint8_t* buf2 = buf + klen * 4;
+    const uint8_t* limit = buf + klen - 32;
     uint32_t crc1 = 0;
     uint32_t crc2 = 0;
     uint32_t crc3 = 0;
@@ -159,6 +184,7 @@ CRC_EXPORT uint32_t crc32_impl(uint32_t crc0, const char* buf, size_t len) {
   for (; len; --len) {
     crc0 = __crc32cb(crc0, *buf++);
   }
-  return ~crc0;
+  return crc0;
 }
+} // namespace folly::detail
 #endif
