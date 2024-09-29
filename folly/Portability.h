@@ -377,6 +377,14 @@ constexpr auto kHasWeakSymbols = false;
 #endif
 #endif
 
+#ifndef FOLLY_ARM_FEATURE_CRYPTO
+#ifdef __ARM_FEATURE_CRYPTO
+#define FOLLY_ARM_FEATURE_CRYPTO 1
+#else
+#define FOLLY_ARM_FEATURE_CRYPTO 0
+#endif
+#endif
+
 #ifndef FOLLY_ARM_FEATURE_AES
 #ifdef __ARM_FEATURE_AES
 #define FOLLY_ARM_FEATURE_AES 1
@@ -390,6 +398,14 @@ constexpr auto kHasWeakSymbols = false;
 #define FOLLY_ARM_FEATURE_SHA2 1
 #else
 #define FOLLY_ARM_FEATURE_SHA2 0
+#endif
+#endif
+
+#ifndef FOLLY_ARM_FEATURE_SHA3
+#ifdef __ARM_FEATURE_SHA3
+#define FOLLY_ARM_FEATURE_SHA3 1
+#else
+#define FOLLY_ARM_FEATURE_SHA3 0
 #endif
 #endif
 
