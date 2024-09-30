@@ -40,6 +40,7 @@ cpp_library(
     name = "traits",
     headers = ["Traits.h"],
     exported_deps = [
+        "//folly:c_portability",
         "//folly:memory",
         "//folly:traits",
         "//folly/container:span",

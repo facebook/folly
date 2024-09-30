@@ -324,6 +324,46 @@ TYPED_TEST_P(SpanTest, fix_as_bytes) {
   EXPECT_EQ(20, wbytes.size());
 }
 
+namespace fallback_span_ctad {
+
+namespace fallback = folly::detail::fallback_span;
+
+template <typename... Ts>
+using deduced_for = decltype(fallback::span(std::declval<Ts>()...));
+
+static_assert( //
+    std::is_same_v<
+        fallback::span<const int>,
+        deduced_for<const int*, std::size_t>>);
+
+static_assert( //
+    std::is_same_v<
+        fallback::span<const int>,
+        deduced_for<const std::vector<int>&>>);
+
+static_assert( //
+    std::is_same_v<fallback::span<int>, deduced_for<std::vector<int>&>>);
+
+static_assert(
+    std::is_same_v<fallback::span<int, 3>, deduced_for<std::array<int, 3>&>>);
+
+static_assert( //
+    std::is_same_v<
+        fallback::span<const int, 3>,
+        deduced_for<const std::array<int, 3>&>>);
+
+int arr1[3];
+static_assert( //
+    std::is_same_v<fallback::span<int, 3>, decltype(fallback::span(arr1))>);
+
+constexpr int arr2[3]{0, 1, 2};
+static_assert( //
+    std::is_same_v<
+        fallback::span<const int, 3>,
+        decltype(fallback::span(arr2))>);
+
+} // namespace fallback_span_ctad
+
 // clang-format off
 REGISTER_TYPED_TEST_SUITE_P(
     SpanTest

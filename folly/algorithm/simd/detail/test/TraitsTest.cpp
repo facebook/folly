@@ -19,84 +19,147 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-namespace folly::detail {
+#include <set>
+#include <vector>
+
+namespace folly::simd::detail {
 
 struct FollySimdTraitsTest : testing::Test {};
 
-namespace simd_friendly_equivalent_test {
+namespace simd_friendly_equivalent_scalar_test {
 
 // ints
-static_assert(
-    std::is_same_v<std::int8_t, simd_friendly_equivalent_t<signed char>>);
-static_assert(
-    std::is_same_v<std::uint8_t, simd_friendly_equivalent_t<unsigned char>>);
-
-static_assert(std::is_same_v<std::int16_t, simd_friendly_equivalent_t<short>>);
-static_assert(
-    std::is_same_v<std::uint16_t, simd_friendly_equivalent_t<unsigned short>>);
-
-static_assert(std::is_same_v<std::int32_t, simd_friendly_equivalent_t<int>>);
-static_assert(
-    std::is_same_v<std::uint32_t, simd_friendly_equivalent_t<unsigned int>>);
+static_assert(std::is_same_v<
+              std::int8_t,
+              simd_friendly_equivalent_scalar_t<signed char>>);
+static_assert(std::is_same_v<
+              std::uint8_t,
+              simd_friendly_equivalent_scalar_t<unsigned char>>);
 
 static_assert(
-    std::is_same_v<std::int64_t, simd_friendly_equivalent_t<std::int64_t>>);
+    std::is_same_v<std::int16_t, simd_friendly_equivalent_scalar_t<short>>);
+static_assert(std::is_same_v<
+              std::uint16_t,
+              simd_friendly_equivalent_scalar_t<unsigned short>>);
+
 static_assert(
-    std::is_same_v<std::uint64_t, simd_friendly_equivalent_t<std::uint64_t>>);
+    std::is_same_v<std::int32_t, simd_friendly_equivalent_scalar_t<int>>);
+static_assert(std::is_same_v<
+              std::uint32_t,
+              simd_friendly_equivalent_scalar_t<unsigned int>>);
+
+static_assert(std::is_same_v<
+              std::int64_t,
+              simd_friendly_equivalent_scalar_t<std::int64_t>>);
+static_assert(std::is_same_v<
+              std::uint64_t,
+              simd_friendly_equivalent_scalar_t<std::uint64_t>>);
 
 // floats
-static_assert(std::is_same_v<float, simd_friendly_equivalent_t<float>>);
-static_assert(std::is_same_v<double, simd_friendly_equivalent_t<double>>);
+static_assert(std::is_same_v<float, simd_friendly_equivalent_scalar_t<float>>);
+static_assert(
+    std::is_same_v<double, simd_friendly_equivalent_scalar_t<double>>);
 
 // enum
 enum SomeInt {};
 enum class SomeIntClass : std::int32_t {};
 
 static_assert(
-    std::is_same_v<std::uint32_t, simd_friendly_equivalent_t<SomeInt>>);
-static_assert(
-    std::is_same_v<std::int32_t, simd_friendly_equivalent_t<SomeIntClass>>);
+    std::is_same_v<std::uint32_t, simd_friendly_equivalent_scalar_t<SomeInt>>);
+static_assert(std::is_same_v<
+              std::int32_t,
+              simd_friendly_equivalent_scalar_t<SomeIntClass>>);
 
 // const
 
-static_assert(
-    std::is_same_v<const std::int32_t, simd_friendly_equivalent_t<const int>>);
+static_assert(std::is_same_v<
+              const std::int32_t,
+              simd_friendly_equivalent_scalar_t<const int>>);
 
 // sfinae
-constexpr auto sfinae_call =
-    []<typename T>(T) -> simd_friendly_equivalent_t<T> { return {}; };
 
-static_assert(std::invocable<decltype(sfinae_call), int>);
-
-struct NotSimdFriendly {};
-static_assert(!std::invocable<decltype(sfinae_call), NotSimdFriendly>);
-
-} // namespace simd_friendly_equivalent_test
-
-namespace integral_simd_friendly_equivalent_test {
-
-static_assert(std::is_same_v< //
-              std::int8_t,
-              integral_simd_friendly_equivalent<signed char>>);
-
-struct Overloading {
-  constexpr int operator()(auto) { return 0; }
-  constexpr int operator()(has_simd_friendly_equivalent auto) { return 1; }
-  constexpr int operator()(has_integral_simd_friendly_equivalent auto) {
-    return 2;
+struct sfinae_call {
+  template <typename T>
+  simd_friendly_equivalent_scalar_t<T> operator()(T) const {
+    return {};
   }
 };
 
-// Subsumption tests
+static_assert(std::is_invocable_v<sfinae_call, int>);
+
 struct NotSimdFriendly {};
-enum class SomeInt {};
+static_assert(!std::is_invocable_v<sfinae_call, NotSimdFriendly>);
 
-static_assert(Overloading{}(NotSimdFriendly{}) == 0);
-static_assert(Overloading{}(float{}) == 1);
-static_assert(Overloading{}(int{}) == 2);
-static_assert(Overloading{}(SomeInt{}) == 2);
+} // namespace simd_friendly_equivalent_scalar_test
 
-} // namespace integral_simd_friendly_equivalent_test
+namespace as_simd_friendly_type_test {
+
+template <typename T>
+using asSimdFriendlyResult = std::invoke_result_t<AsSimdFriendlyFn, T>;
+
+static_assert(std::is_same_v<
+              folly::span<std::int32_t>,
+              asSimdFriendlyResult<folly::span<std::int32_t>>>);
+
+static_assert(std::is_same_v<
+              folly::span<std::int32_t>,
+              asSimdFriendlyResult<folly::span<int>>>);
+
+static_assert(std::is_same_v<
+              folly::span<std::int32_t>,
+              asSimdFriendlyResult<std::vector<int>&>>);
+
+static_assert(std::is_same_v<
+              folly::span<const std::int32_t>,
+              asSimdFriendlyResult<const std::vector<int>&>>);
+
+static_assert(std::is_same_v<
+              folly::span<const double>,
+              asSimdFriendlyResult<const std::vector<double>&>>);
+
+static_assert(std::is_same_v<double, asSimdFriendlyResult<double>>);
+
+static_assert(!std::is_invocable_v<AsSimdFriendlyFn, std::set<int>>);
+
+} // namespace as_simd_friendly_type_test
+
+namespace as_simd_friendly_uint_type_test {
+
+template <typename T>
+using asSimdFriendlyUintResult = std::invoke_result_t<AsSimdFriendlyUintFn, T>;
+
+static_assert(std::is_same_v<
+              folly::span<std::uint32_t>,
+              asSimdFriendlyUintResult<folly::span<std::uint32_t>>>);
+
+static_assert(std::is_same_v<
+              folly::span<std::uint32_t>,
+              asSimdFriendlyUintResult<folly::span<std::int32_t>>>);
+
+static_assert(std::is_same_v<
+              folly::span<std::uint32_t>,
+              asSimdFriendlyUintResult<folly::span<int>>>);
+
+static_assert(std::is_same_v<
+              folly::span<std::uint32_t>,
+              asSimdFriendlyUintResult<std::vector<int>&>>);
+
+static_assert(std::is_same_v<
+              folly::span<const std::uint32_t>,
+              asSimdFriendlyUintResult<const std::vector<std::uint32_t>&>>);
+
+static_assert(
+    std::is_same_v<std::uint32_t, asSimdFriendlyUintResult<std::int32_t>>);
+
+static_assert(
+    !std::is_invocable_v<AsSimdFriendlyUintFn, const std::vector<double>&>);
+
+static_assert(
+    !std::is_invocable_v<AsSimdFriendlyUintFn, const std::vector<double>&>);
+
+static_assert(!std::is_invocable_v<AsSimdFriendlyUintFn, std::set<int>>);
+
+} // namespace as_simd_friendly_uint_type_test
 
 TEST_F(FollySimdTraitsTest, AsSimdFriendly) {
   enum SomeEnum : int { Foo = 1, Bar, Baz };
@@ -108,32 +171,14 @@ TEST_F(FollySimdTraitsTest, AsSimdFriendly) {
   ASSERT_THAT(castSpan, testing::ElementsAre(1, 2, 3));
 }
 
-template <typename T, typename U>
-void isSameTest(const T&, const U&) = delete;
-
-template <typename T>
-void isSameTest(const T&, const T&) {}
-
-template <typename From, typename To>
-void asSimdFriendlyUintTypeTest() {
-  isSameTest(asSimdFriendlyUint(From{}), To{});
-  isSameTest(asSimdFriendlyUint(std::span<From>{}), std::span<To>{});
-  isSameTest(
-      asSimdFriendlyUint(std::span<const From>{}), std::span<const To>{});
-}
-
 TEST_F(FollySimdTraitsTest, AsSimdFriendlyUint) {
   enum SomeEnum : int { Foo = 1, Bar, Baz };
 
   static_assert(asSimdFriendlyUint(SomeEnum::Foo) == 1U);
 
-  asSimdFriendlyUintTypeTest<char, std::uint8_t>();
-  asSimdFriendlyUintTypeTest<short, std::uint16_t>();
-  asSimdFriendlyUintTypeTest<int, std::uint32_t>();
-  asSimdFriendlyUintTypeTest<unsigned, std::uint32_t>();
-  asSimdFriendlyUintTypeTest<float, std::uint32_t>();
-  asSimdFriendlyUintTypeTest<int64_t, std::uint64_t>();
-  asSimdFriendlyUintTypeTest<double, std::uint64_t>();
+  std::array arr{SomeEnum::Foo, SomeEnum::Bar, SomeEnum::Baz};
+  folly::span<std::uint32_t, 3> castSpan = asSimdFriendlyUint(folly::span(arr));
+  ASSERT_THAT(castSpan, testing::ElementsAre(1, 2, 3));
 }
 
-} // namespace folly::detail
+} // namespace folly::simd::detail

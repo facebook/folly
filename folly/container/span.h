@@ -27,6 +27,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/container/Access.h>
+#include <folly/container/Iterator.h>
 #include <folly/functional/Invoke.h>
 #include <folly/portability/Constexpr.h>
 
@@ -246,6 +247,22 @@ class span {
     return {data_ + size() - count, count};
   }
 };
+
+template <typename T, typename EndOrSize>
+span(T*, EndOrSize) -> span<T>;
+
+template <typename T, std::size_t N>
+span(T (&)[N]) -> span<T, N>;
+
+template <typename T, std::size_t N>
+span(std::array<T, N>&) -> span<T, N>;
+
+template <typename T, std::size_t N>
+span(const std::array<T, N>&) -> span<const T, N>;
+
+template <typename R>
+span(R&&) -> span<std::remove_reference_t<
+              iterator_reference_t<decltype(std::begin(std::declval<R&>()))>>>;
 
 } // namespace fallback_span
 
