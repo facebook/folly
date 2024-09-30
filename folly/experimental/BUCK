@@ -13,16 +13,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "bit_vector_coding",
-    headers = [
-        "BitVectorCoding.h",
-    ],
-    exported_deps = [
-        "//folly/compression/elias_fano:bit_vector_coding",
-    ],
-)
-
-cpp_library(
     name = "bits",
     headers = ["Bits.h"],
     exported_deps = [
