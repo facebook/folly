@@ -74,6 +74,14 @@ void testEFS() {
   }
 }
 
+template <typename T>
+struct BitsAllUintsTest : ::testing::Test {};
+
+using UintsToTest =
+    ::testing::Types<std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t>;
+
+TYPED_TEST_SUITE(BitsAllUintsTest, UintsToTest);
+
 } // namespace
 
 TEST(Bits, FindFirstSet) {
@@ -348,6 +356,222 @@ TEST(Bits, LoadUnalignedUB) {
   uint64_t c = 0, d = 0;
   uint16_t x = func(a, b, c, d);
   EXPECT_EQ(0, x);
+}
+
+TYPED_TEST(BitsAllUintsTest, NLeastSignificantBits) {
+  using T = TypeParam;
+
+  static_assert(n_least_significant_bits<T>(0) == 0b0, "");
+  static_assert(n_least_significant_bits<T>(1) == 0b1, "");
+  static_assert(n_least_significant_bits<T>(2) == 0b11, "");
+  static_assert(n_least_significant_bits<T>(3) == 0b111, "");
+  static_assert(n_least_significant_bits<T>(4) == 0b1111, "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= std::min(sizeof(T) * 8, 63UL); ++i) {
+      std::uint64_t expected = (std::uint64_t{1} << i) - 1;
+      T actual = n_least_significant_bits<T>(i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+#ifdef __cpp_lib_bitops
+      if (std::countr_one(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countr_one(expected)) << i;
+        return false;
+      }
+#endif
+    }
+
+    if (sizeof(T) == 8) {
+      std::uint64_t expected = std::numeric_limits<std::uint64_t>::max();
+      T actual = n_least_significant_bits<T>(64);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << 64;
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  static_assert(test(), "");
+
+  // runtime can use a different implementation
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, NMostSignificantBits) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(
+      n_most_significant_bits<T>(kBitSize) == static_cast<T>(~0b0), "");
+  static_assert(
+      n_most_significant_bits<T>(kBitSize - 1) == static_cast<T>(~0b1), "");
+  static_assert(
+      n_most_significant_bits<T>(kBitSize - 2) == static_cast<T>(~0b11), "");
+  static_assert(
+      n_most_significant_bits<T>(kBitSize - 3) == static_cast<T>(~0b111), "");
+  static_assert(
+      n_most_significant_bits<T>(kBitSize - 4) == static_cast<T>(~0b1111), "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = ~n_least_significant_bits<T>(kBitSize - i);
+      T actual = n_most_significant_bits<T>(i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+#ifdef __cpp_lib_bitops
+      if (std::countl_one(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countl_one(expected)) << i;
+        return false;
+      }
+#endif
+    }
+    return true;
+  };
+
+  static_assert(test(), "");
+
+  // runtime can use a different implementation
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, ClearNLeastSignificantBits) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(clear_n_least_significant_bits(T{0b11U}, 1U) == 0b10U, "");
+  static_assert(clear_n_least_significant_bits(T{0b101U}, 1U) == 0b100U, "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = n_most_significant_bits<T>(kBitSize - i);
+      T actual = clear_n_least_significant_bits(static_cast<T>(-1), i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+#ifdef __cpp_lib_bitops
+      if (std::countr_zero(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countr_zero(expected)) << i;
+        return false;
+      }
+#endif
+    }
+    return true;
+  };
+  static_assert(test(), "");
+
+  // runtime can use a different implementation
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, SetNLeastSignificantBits) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(set_n_least_significant_bits(T{0b10U}, 1U) == 0b11U, "");
+  static_assert(set_n_least_significant_bits(T{0b100U}, 1U) == 0b101U, "");
+  static_assert(set_n_least_significant_bits(T{0b100U}, 2U) == 0b111U, "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = n_least_significant_bits<T>(i);
+      T actual = set_n_least_significant_bits(T{}, i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+#ifdef __cpp_lib_bitops
+      if (std::countr_one(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countr_one(expected)) << i;
+        return false;
+      }
+#endif
+    }
+    return true;
+  };
+  static_assert(test(), "");
+
+  // runtime can use a different implementation
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, ClearNMostSignificantBits) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(
+      clear_n_most_significant_bits(T{0b101U}, kBitSize - 1) == 0b1U, "");
+  static_assert(
+      clear_n_most_significant_bits(T{0b1100U}, kBitSize - 3) == 0b100U, "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = n_least_significant_bits<T>(kBitSize - i);
+      T actual = clear_n_most_significant_bits(static_cast<T>(-1), i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+#ifdef __cpp_lib_bitops
+      if (std::countl_zero(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countl_zero(expected)) << i;
+        return false;
+      }
+#endif
+    }
+    return true;
+  };
+  static_assert(test(), "");
+
+  // runtime can use a different implementation
+  EXPECT_TRUE(test());
+}
+
+TYPED_TEST(BitsAllUintsTest, SetNMostSignificantBits) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  static_assert(
+      set_n_most_significant_bits(T{0b1}, kBitSize - 2) ==
+          static_cast<T>(~0b10),
+      "");
+  static_assert(
+      set_n_most_significant_bits(T{0b1100U}, kBitSize - 3) ==
+          static_cast<T>(~0b11),
+      "");
+
+  auto test = [] {
+    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
+      T expected = n_most_significant_bits<T>(i);
+      T actual = set_n_most_significant_bits(static_cast<T>(0), i);
+      if (expected != actual) {
+        EXPECT_EQ(expected, actual) << i;
+        return false;
+      }
+#ifdef __cpp_lib_bitops
+      if (std::countl_one(expected) != static_cast<int>(i)) {
+        EXPECT_EQ(i, std::countl_one(expected)) << i;
+        return false;
+      }
+#endif
+    }
+    return true;
+  };
+  static_assert(test(), "");
+
+  // runtime can use a different implementation
+  EXPECT_TRUE(test());
 }
 
 } // namespace folly
