@@ -9,16 +9,12 @@ load("@prelude//utils:buckconfig.bzl", "read_choice")
 
 AutoHeaders = struct(
     NONE = "none",
-    # Uses a recursive glob to resolve all transitive headers under the given
-    # directory.
-    RECURSIVE_GLOB = "recursive_glob",
     # Infer headers from sources of the rule.
     SOURCES = "sources",
 )
 
 _VALUES = [
     AutoHeaders.NONE,
-    AutoHeaders.RECURSIVE_GLOB,
     AutoHeaders.SOURCES,
 ]
 
