@@ -79,7 +79,7 @@ class CursorBase {
   /**
    * Construct a cursor wrapping an IOBuf.
    */
-  explicit CursorBase(BufType* buf) : crtBuf_(buf), buffer_(buf) {
+  explicit CursorBase(BufType* buf) noexcept : crtBuf_(buf), buffer_(buf) {
     if (crtBuf_) {
       crtPos_ = crtBegin_ = crtBuf_->data();
       crtEnd_ = crtBuf_->tail();
@@ -91,7 +91,7 @@ class CursorBase {
    *
    * @param len An upper bound on the number of bytes available to this cursor.
    */
-  CursorBase(BufType* buf, size_t len) : crtBuf_(buf), buffer_(buf) {
+  CursorBase(BufType* buf, size_t len) noexcept : crtBuf_(buf), buffer_(buf) {
     if (crtBuf_) {
       crtPos_ = crtBegin_ = crtBuf_->data();
       crtEnd_ = crtBuf_->tail();
@@ -109,7 +109,7 @@ class CursorBase {
    * For instance, this allows constructing a Cursor from an RWPrivateCursor.
    */
   template <class OtherDerived, class OtherBuf>
-  explicit CursorBase(const CursorBase<OtherDerived, OtherBuf>& cursor)
+  explicit CursorBase(const CursorBase<OtherDerived, OtherBuf>& cursor) noexcept
       : crtBuf_(cursor.crtBuf_),
         buffer_(cursor.buffer_),
         crtBegin_(cursor.crtBegin_),
@@ -142,7 +142,7 @@ class CursorBase {
    *
    * @methodset Modifiers
    */
-  void reset(BufType* buf) {
+  void reset(BufType* buf) noexcept {
     crtBuf_ = buf;
     buffer_ = buf;
     absolutePos_ = 0;
@@ -158,7 +158,7 @@ class CursorBase {
    *
    * @methodset Advanced
    */
-  size_t getPositionInCurrentBuffer() const {
+  size_t getPositionInCurrentBuffer() const noexcept {
     dcheckIntegrity();
     return crtPos_ - crtBegin_;
   }
@@ -168,7 +168,7 @@ class CursorBase {
    *
    * @methodset Capacity
    */
-  size_t getCurrentPosition() const {
+  size_t getCurrentPosition() const noexcept {
     return getPositionInCurrentBuffer() + absolutePos_;
   }
 
@@ -177,7 +177,7 @@ class CursorBase {
    *
    * @methodset Accessors
    */
-  const uint8_t* data() const {
+  const uint8_t* data() const noexcept {
     dcheckIntegrity();
     return crtPos_;
   }
@@ -187,7 +187,7 @@ class CursorBase {
    *
    * @methodset Advanced
    */
-  const folly::IOBuf* currentBuffer() const { return crtBuf_; }
+  const folly::IOBuf* currentBuffer() const noexcept { return crtBuf_; }
 
   /**
    * Return the remaining space available in the current IOBuf.
@@ -199,7 +199,7 @@ class CursorBase {
    * non-empty IOBuf (up to the end of the chain) if the cursor is currently
    * pointing at the end of a buffer.
    */
-  size_t length() const {
+  size_t length() const noexcept {
     dcheckIntegrity();
     return crtEnd_ - crtPos_;
   }
@@ -211,7 +211,7 @@ class CursorBase {
    *
    * For bounded Cursors, return the available space until the boundary.
    */
-  size_t totalLength() const {
+  size_t totalLength() const noexcept {
     size_t len = 0;
     const IOBuf* buf = crtBuf_->next();
     while (buf != buffer_ && len < remainingLen_) {
@@ -231,7 +231,7 @@ class CursorBase {
    * catching exceptions and is more efficient than using totalLength as it
    * walks the minimal set of buffers in the chain to determine the result.
    */
-  bool canAdvance(size_t amount) const {
+  bool canAdvance(size_t amount) const noexcept {
     if (isBounded() && amount > remainingLen_ + length()) {
       return false;
     }
@@ -253,7 +253,7 @@ class CursorBase {
    *
    * @methodset Capacity
    */
-  bool isAtEnd() const {
+  bool isAtEnd() const noexcept {
     dcheckIntegrity();
     // Check for the simple cases first.
     if (crtPos_ != crtEnd_) {
@@ -1093,7 +1093,7 @@ class ThinCursor {
   void dcheckIntegrity() const { DCHECK(crtPos_ <= crtEnd_); }
 
   friend class Cursor;
-  ThinCursor(const uint8_t* crtPos, const uint8_t* crtEnd)
+  ThinCursor(const uint8_t* crtPos, const uint8_t* crtEnd) noexcept
       : crtPos_(crtPos), crtEnd_(crtEnd) {}
   // Note: these are the only fields we can have -- x86-64 calling convention
   // maxes out at returning 2 pointer-sized fields in registers, and we don't
@@ -1104,13 +1104,14 @@ class ThinCursor {
 
 class Cursor : public CursorBase<Cursor, const IOBuf> {
  public:
-  explicit Cursor(const IOBuf* buf) : CursorBase<Cursor, const IOBuf>(buf) {}
+  explicit Cursor(const IOBuf* buf) noexcept
+      : CursorBase<Cursor, const IOBuf>(buf) {}
 
-  explicit Cursor(const IOBuf* buf, size_t len)
+  explicit Cursor(const IOBuf* buf, size_t len) noexcept
       : CursorBase<Cursor, const IOBuf>(buf, len) {}
 
   template <class OtherDerived, class OtherBuf>
-  explicit Cursor(const CursorBase<OtherDerived, OtherBuf>& cursor)
+  explicit Cursor(const CursorBase<OtherDerived, OtherBuf>& cursor) noexcept
       : CursorBase<Cursor, const IOBuf>(cursor) {}
 
   template <class OtherDerived, class OtherBuf>
@@ -1264,10 +1265,10 @@ class RWCursor : public CursorBase<RWCursor<access>, IOBuf>,
   friend class CursorBase<RWCursor<access>, IOBuf>;
 
  public:
-  explicit RWCursor(IOBuf* buf)
+  explicit RWCursor(IOBuf* buf) noexcept
       : CursorBase<RWCursor<access>, IOBuf>(buf), maybeShared_(true) {}
 
-  explicit RWCursor(IOBufQueue& queue)
+  explicit RWCursor(IOBufQueue& queue) noexcept
       : RWCursor((queue.flushCache(), queue.head_.get())) {}
 
   // Efficient way to advance to position cursor to the end of the queue,
@@ -1276,7 +1277,7 @@ class RWCursor : public CursorBase<RWCursor<access>, IOBuf>,
   /**
    * Create the cursor initially pointing to the end of queue.
    */
-  RWCursor(IOBufQueue& queue, AtEnd) : RWCursor(queue) {
+  RWCursor(IOBufQueue& queue, AtEnd) noexcept : RWCursor(queue) {
     if (!queue.options().cacheChainLength) {
       this->advanceToEnd();
     } else {
@@ -1291,7 +1292,7 @@ class RWCursor : public CursorBase<RWCursor<access>, IOBuf>,
   }
 
   template <class OtherDerived, class OtherBuf>
-  explicit RWCursor(const CursorBase<OtherDerived, OtherBuf>& cursor)
+  explicit RWCursor(const CursorBase<OtherDerived, OtherBuf>& cursor) noexcept
       : CursorBase<RWCursor<access>, IOBuf>(cursor), maybeShared_(true) {
     CHECK(!cursor.isBounded())
         << "Creating RWCursor from bounded Cursor is not allowed";
@@ -1465,7 +1466,7 @@ typedef RWCursor<CursorAccess::UNSHARE> RWUnshareCursor;
  */
 class Appender : public Writable<Appender> {
  public:
-  Appender(IOBuf* buf, std::size_t growth)
+  Appender(IOBuf* buf, std::size_t growth) noexcept
       : buffer_(buf), crtBuf_(buf->prev()), growth_(growth) {}
 
   /**
@@ -1473,14 +1474,14 @@ class Appender : public Writable<Appender> {
    *
    * @methodset Accessors
    */
-  uint8_t* writableData() { return crtBuf_->writableTail(); }
+  uint8_t* writableData() noexcept { return crtBuf_->writableTail(); }
 
   /**
    * Get the amount of writable tailroom of the IOBuf this cursor points to.
    *
    * @methodset Capacity
    */
-  size_t length() const { return crtBuf_->tailroom(); }
+  size_t length() const noexcept { return crtBuf_->tailroom(); }
 
   /**
    * Mark n bytes (must be <= length()) as appended, as per the
@@ -1614,7 +1615,8 @@ class QueueAppender : public Writable<QueueAppender> {
    * with an exponential schedule (unless you call ensure() with a bigger value
    * yourself).
    */
-  QueueAppender(IOBufQueue* queue, std::size_t minGrowth, std::size_t maxGrowth)
+  QueueAppender(
+      IOBufQueue* queue, std::size_t minGrowth, std::size_t maxGrowth) noexcept
       : queueCache_(queue) {
     resetGrowth(minGrowth, maxGrowth);
   }
@@ -1622,18 +1624,21 @@ class QueueAppender : public Writable<QueueAppender> {
   /**
    * Convenience constructor to use constant buffer growth.
    */
-  QueueAppender(IOBufQueue* queue, std::size_t growth)
+  QueueAppender(IOBufQueue* queue, std::size_t growth) noexcept
       : QueueAppender(queue, growth, growth) {}
 
   /**
    * Resets this, as if constructed anew.
    */
-  void reset(IOBufQueue* queue, std::size_t minGrowth, std::size_t maxGrowth) {
+  void reset(
+      IOBufQueue* queue,
+      std::size_t minGrowth,
+      std::size_t maxGrowth) noexcept {
     queueCache_.reset(queue);
     resetGrowth(minGrowth, maxGrowth);
   }
 
-  void reset(IOBufQueue* queue, std::size_t growth) {
+  void reset(IOBufQueue* queue, std::size_t growth) noexcept {
     reset(queue, growth, growth);
   }
 
@@ -1642,14 +1647,14 @@ class QueueAppender : public Writable<QueueAppender> {
    *
    * @methodset Accessors
    */
-  uint8_t* writableData() { return queueCache_.writableData(); }
+  uint8_t* writableData() noexcept { return queueCache_.writableData(); }
 
   /**
    * Get the size of the writable tail.
    *
    * @methodset Capacity
    */
-  size_t length() const { return queueCache_.length(); }
+  size_t length() const noexcept { return queueCache_.length(); }
 
   /**
    * Append n bytes.
@@ -1764,7 +1769,7 @@ class QueueAppender : public Writable<QueueAppender> {
   size_t growth_{0};
   size_t maxGrowth_{0};
 
-  void resetGrowth(std::size_t minGrowth, std::size_t maxGrowth) {
+  void resetGrowth(std::size_t minGrowth, std::size_t maxGrowth) noexcept {
     CHECK_LE(growth_, maxGrowth_);
     growth_ = minGrowth;
     maxGrowth_ = maxGrowth;
