@@ -1,0 +1,20 @@
+[cells]
+shim = .
+prelude = prelude
+toolchains = .
+none = none
+
+[cell_aliases]
+config = prelude
+ovr_config = prelude
+fbcode = shim
+fbsource = shim
+fbcode_macros = shim
+bazel_skylib = shim
+buck = none
+
+[external_cells]
+prelude = bundled
+
+[parser]
+target_platform_detector_spec = target:shim//...->prelude//platforms:default

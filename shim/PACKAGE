@@ -1,0 +1,15 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under both the MIT license found in the
+# LICENSE-MIT file in the root directory of this source tree and the Apache
+# License, Version 2.0 found in the LICENSE-APACHE file in the root directory
+# of this source tree.
+
+load(":cfg.bzl", "SHIM_ALIASES", "set_cfg_constructor", "get_shim_modifiers")
+load("@prelude//cfg/modifier:set_cfg_modifiers.bzl", "set_cfg_modifiers")
+
+# Activate cfg modifiers from CLI / PACKAGE / targets
+set_cfg_constructor(SHIM_ALIASES)
+
+modifiers = get_shim_modifiers()
+set_cfg_modifiers(modifiers)
