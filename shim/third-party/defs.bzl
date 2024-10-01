@@ -123,7 +123,7 @@ def homebrew_library(
         brew: str,
         homebrew_header_path = "include",
         exported_preprocessor_flags = [],
-        linker_flags = [],
+        exported_linker_flags = [],
         target_compatible_with = ["//os:macos-homebrew"],
         **kwargs):
     preproc_flags_rule_name = "__{}__{}__preproc_flags".format(name, brew)
@@ -149,7 +149,7 @@ def homebrew_library(
         exported_preprocessor_flags = exported_preprocessor_flags + [
             "@$(location :{})/preproc_flags.txt".format(preproc_flags_rule_name),
         ],
-        linker_flags = linker_flags + [
+        exported_linker_flags = exported_linker_flags + [
             "@$(location :{})/linker_flags.txt".format(linker_flags_rule_name),
         ],
         target_compatible_with = target_compatible_with,

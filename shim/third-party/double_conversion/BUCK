@@ -11,7 +11,7 @@ oncall("open_source")
 
 system_library(
     name = "double_conversion",
-    linker_flags = ["-ldouble-conversion"],
+    exported_linker_flags = ["-ldouble-conversion"],
     packages = {
         "//os:linux-fedora": ["double-conversion-devel"],
         "//os:linux-ubuntu": ["libdouble-conversion-dev"],

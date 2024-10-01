@@ -11,7 +11,7 @@ oncall("open_source")
 
 system_library(
     name = "aio",
-    linker_flags = ["-laio"],
+    exported_linker_flags = ["-laio"],
     packages = {
         "//os:linux-fedora": ["libaio-devel"],
         "//os:linux-ubuntu": ["libaio-dev"],

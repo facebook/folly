@@ -11,7 +11,7 @@ oncall("open_source")
 
 prebuilt_cxx_library(
     name = "pkgconfig_unsupported",
-    linker_flags = select({
+    exported_linker_flags = select({
         "//os:linux-ubuntu": ["-lbz2"],
         "DEFAULT": [],
     }),

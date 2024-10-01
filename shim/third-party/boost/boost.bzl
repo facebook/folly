@@ -26,7 +26,7 @@ def boost_libs(libraries, header_only):
         boost_library(library, True)
 
 def boost_library(library: str, header_only: bool):
-    linker_flags = [] if header_only else ["-lboost_{}".format(library)]
+    exported_linker_flags = [] if header_only else ["-lboost_{}".format(library)]
 
     system_library(
         name = "boost_{}".format(library),
@@ -35,5 +35,5 @@ def boost_library(library: str, header_only: bool):
             "//os:linux-ubuntu": ["libboost-{}-dev".format(library)],
             "//os:macos-homebrew": ["boost"],
         },
-        linker_flags = [] if header_only else ["-lboost_{}".format(library)],
+        exported_linker_flags = exported_linker_flags,
     )

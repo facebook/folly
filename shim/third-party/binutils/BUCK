@@ -11,6 +11,7 @@ oncall("open_source")
 
 system_library(
     name = "iberty",
+    exported_linker_flags = ["-liberty"],
     packages = {
         "//os:linux-fedora": ["binutils-devel"],
         "//os:linux-ubuntu": ["libiberty-dev"],
