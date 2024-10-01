@@ -5,16 +5,16 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+pkgconfig_system_library(
     name = "zstd",
-    pkgconfig_name = "libzstd",
-    repo_package_names = {
-        "fedora": "libzstd-devel",
-        "homebrew": "zstd",
-        "ubuntu": "libzstd-dev",
+    packages = {
+        "//os:linux-fedora": ["libzstd-devel"],
+        "//os:linux-ubuntu": ["libzstd-dev"],
+        "//os:macos-homebrew": ["zstd"],
     },
+    pkgconfig_name = "libzstd",
 )

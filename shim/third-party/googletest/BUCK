@@ -5,27 +5,25 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+pkgconfig_system_library(
     name = "gtest",
-    pkgconfig_name = "gtest",
-    repo_package_names = {
-        "fedora": "gtest-devel",
-        "homebrew": "googletest",
-        "ubuntu": "libgtest-dev",
+    packages = {
+        "//os:linux-fedora": ["gtest-devel"],
+        "//os:linux-ubuntu": ["libgtest-dev"],
+        "//os:macos-homebrew": ["googletest"],
     },
 )
 
-third_party_library(
+pkgconfig_system_library(
     name = "gmock",
-    pkgconfig_name = "gmock",
-    repo_package_names = {
-        "fedora": "gmock-devel",
-        "homebrew": "googletest",
-        "ubuntu": "libgmock-dev",
+    packages = {
+        "//os:linux-fedora": ["gmock-devel"],
+        "//os:linux-ubuntu": ["libgmock-dev"],
+        "//os:macos-homebrew": ["googletest"],
     },
 )
 

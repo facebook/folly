@@ -5,15 +5,16 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+pkgconfig_system_library(
     name = "uring",
-    pkgconfig_name = "liburing",
-    repo_package_names = {
-        "fedora": "liburing-devel",
-        "ubuntu": "liburing-dev",
+    packages = {
+        "//os:linux-fedora": ["liburing-devel"],
+        "//os:linux-ubuntu": ["liburing-dev"],
+        "//os:macos-homebrew": ["liburing"],
     },
+    pkgconfig_name = "liburing",
 )

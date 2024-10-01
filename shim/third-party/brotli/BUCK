@@ -5,26 +5,24 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+PACKAGES = {
+    "//os:linux-fedora": ["brotli-devel"],
+    "//os:linux-ubuntu": ["libbrotli-dev"],
+    "//os:macos-homebrew": ["brotli"],
+}
+
+pkgconfig_system_library(
     name = "brotli_decode",
+    packages = PACKAGES,
     pkgconfig_name = "libbrotlidec",
-    repo_package_names = {
-        "fedora": "brotli-devel",
-        "homebrew": "brotli",
-        "ubuntu": "libbrotli-dev",
-    },
 )
 
-third_party_library(
+pkgconfig_system_library(
     name = "brotli_encode",
+    packages = PACKAGES,
     pkgconfig_name = "libbrotlienc",
-    repo_package_names = {
-        "fedora": "brotli-devel",
-        "homebrew": "brotli",
-        "ubuntu": "libbrotli-dev",
-    },
 )

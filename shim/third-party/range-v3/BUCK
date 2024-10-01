@@ -5,15 +5,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "system_library")
 
 oncall("open_source")
 
-third_party_library(
+system_library(
     name = "range-v3",
-    repo_package_names = {
-        "fedora": "range-v3-devel",
-        "homebrew": "range-v3",
-        "ubuntu": "librange-v3-dev",
+    packages = {
+        "//os:linux-fedora": ["range-v3-devel"],
+        "//os:linux-ubuntu": ["librange-v3-dev"],
+        "//os:macos-homebrew": ["range-v3"],
     },
 )

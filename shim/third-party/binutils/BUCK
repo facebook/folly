@@ -5,10 +5,14 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "system_library")
 
 oncall("open_source")
 
-third_party_library(
+system_library(
     name = "iberty",
+    packages = {
+        "//os:linux-fedora": ["binutils-devel"],
+        "//os:linux-ubuntu": ["libiberty-dev"],
+    },
 )

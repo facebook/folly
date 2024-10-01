@@ -5,16 +5,16 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "system_library")
 
 oncall("open_source")
 
-third_party_library(
+system_library(
     name = "double_conversion",
     linker_flags = ["-ldouble-conversion"],
-    repo_package_names = {
-        "fedora": "double-conversion-devel",
-        "homebrew": "double-conversion",
-        "ubuntu": "libdouble-conversion-dev",
+    packages = {
+        "//os:linux-fedora": ["double-conversion-devel"],
+        "//os:linux-ubuntu": ["libdouble-conversion-dev"],
+        "//os:macos-homebrew": ["double-conversion"],
     },
 )

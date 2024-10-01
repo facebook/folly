@@ -5,16 +5,16 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+pkgconfig_system_library(
     name = "z",
-    pkgconfig_name = "zlib",
-    repo_package_names = {
-        "fedora": "zlib-devel",
-        "homebrew": "zlib",
-        "ubuntu": "zlib1g",
+    packages = {
+        "//os:linux-fedora": ["zlib-devel"],
+        "//os:linux-ubuntu": ["zlib1g"],
+        "//os:macos-homebrew": ["zlib"],
     },
+    pkgconfig_name = "zlib",
 )

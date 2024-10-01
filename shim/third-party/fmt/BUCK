@@ -5,16 +5,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+pkgconfig_system_library(
     name = "fmt",
-    pkgconfig_name = "fmt",
-    repo_package_names = {
-        "fedora": "fmt-devel",
-        "homebrew": "fmt",
-        "ubuntu": "libfmt-dev",
+    packages = {
+        "//os:linux-fedora": ["fmt-devel"],
+        "//os:linux-ubuntu": ["libfmt-dev"],
+        "//os:macos-homebrew": ["fmt"],
     },
 )

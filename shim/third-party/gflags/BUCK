@@ -5,16 +5,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+pkgconfig_system_library(
     name = "gflags",
-    pkgconfig_name = "gflags",
-    repo_package_names = {
-        "fedora": "gflags-devel",
-        "homebrew": "gflags",
-        "ubuntu": "libgflags-dev",
+    packages = {
+        "//os:linux-fedora": ["gflags-devel"],
+        "//os:linux-ubuntu": ["libgflags-dev"],
+        "//os:macos-homebrew": ["gflags"],
     },
 )

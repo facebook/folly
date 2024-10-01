@@ -5,15 +5,26 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+prebuilt_cxx_library(
+    name = "pkgconfig_unsupported",
+    target_compatible_with = [
+        "//os:linux-ubuntu",
+    ],
+    visibility = [],
+)
+
+pkgconfig_system_library(
     name = "oqs",
+    packages = {
+        "//os:linux-fedora": ["liboqs-devel"],
+        "//os:macos-homebrew": ["liboqs"],
+    },
     pkgconfig_name = "liboqs",
-    repo_package_names = {
-        "fedora": "liboqs-devel",
-        "homebrew": "liboqs",
+    unsupported = {
+        "//os:linux-ubuntu": [":pkgconfig_unsupported"],
     },
 )

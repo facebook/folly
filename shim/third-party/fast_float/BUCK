@@ -5,15 +5,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "system_library")
 
 oncall("open_source")
 
-third_party_library(
+system_library(
     name = "fast_float",
-    repo_package_names = {
-        "fedora": "fast_float-devel",
-        "homebrew": "fast_float",
-        "ubuntu": "libfast-float-dev",
+    packages = {
+        "//os:linux-fedora": ["fast_float-devel"],
+        "//os:linux-ubuntu": ["libfast-float-dev"],
+        "//os:macos-homebrew": ["fast_float"],
     },
 )

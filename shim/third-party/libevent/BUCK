@@ -5,15 +5,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+pkgconfig_system_library(
     name = "libevent",
-    pkgconfig_name = "libevent",
-    repo_package_names = {
-        "fedora": "libevent-devel",
-        "ubuntu": "libevent-dev",
+    packages = {
+        "//os:linux-fedora": ["libevent-devel"],
+        "//os:linux-ubuntu": ["libevent-dev"],
+        "//os:macos-homebrew": ["libevent"],
     },
 )
