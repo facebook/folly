@@ -5,19 +5,31 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@shim//third-party:third_party.bzl", "third_party_library")
+load("@//third-party:defs.bzl", "pkgconfig_system_library")
 
 oncall("open_source")
 
-third_party_library(
+prebuilt_cxx_library(
+    name = "pkgconfig_unsupported",
+    exported_preprocessor_flags = select({
+        "//os:linux-ubuntu": ["-I/usr/include/libdwarf"],
+        "DEFAULT": [],
+    }),
+    target_compatible_with = [
+        "//os:linux-ubuntu",
+    ],
+    visibility = [],
+)
+
+pkgconfig_system_library(
     name = "dwarf",
-    pkgconfig_fallback = struct(
-        preprocessor_flags = ["-I/usr/include/libdwarf"],
-    ),
+    packages = {
+        "//os:linux-fedora": ["libdwarf-devel"],
+        "//os:linux-ubuntu": ["libdwarf-dev"],
+        "//os:macos-homebrew": ["libdwarf"],
+    },
     pkgconfig_name = "libdwarf",
-    repo_package_names = {
-        "fedora": "libdwarf-devel",
-        "homebrew": "libdwarf",
-        "ubuntu": "libdwarf-dev",
+    unsupported = {
+        "//os:linux-ubuntu": [":pkgconfig_unsupported"],
     },
 )

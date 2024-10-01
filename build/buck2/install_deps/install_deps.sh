@@ -30,26 +30,39 @@ if [ -z "${BUCK2_COMMAND}" ]; then
   fi
 fi
 
+__confirm() {
+  echo "Press \"y\" to continue"
+  read -r REPLY
+  expr "X$REPLY" : '^X[Yy]$' >/dev/null
+}
+
 PKG_FILE=$(mktemp /tmp/buck2-install-pkgs.XXXXXX)
 
-eval "$BUCK2_COMMAND \\
-    cquery \"attrregexfilter(labels, 'third-party:$ID:', deps(//...))\" \\
-    --json --output-attribute=labels 2>/dev/null \\
-  | grep -o \"third-party:$ID:[^\\\"]*\" \\
+if ! command -v jq >/dev/null; then
+  echo "Failed to find jq command, attempting to install with"
+  echo
+  echo "$INSTALL_COMMAND" jq
+  echo
+  if __confirm; then
+    eval "$INSTALL_COMMAND jq"
+  else
+    echo "Not confirmed, exiting";
+    exit 1
+  fi
+fi
+
+eval "$BUCK2_COMMAND cquery 'kind(system_packages, deps(//...))' \\
+    --output-attribute=packages --modifier $ID --json 2>/dev/null \\
+  | jq -r '.[].packages[]' \\
   | sort \\
   | uniq \\
-  | sed \"s/third-party:$ID://\" \\
   > $PKG_FILE"
 
 echo "About to install the project dependencies with the following command:"
 echo
 eval "cat $PKG_FILE | xargs echo $INSTALL_COMMAND"
 echo
-echo "Press \"y\" to continue"
-read -r REPLY
-echo
-
-if expr "X$REPLY" : '^X[Yy]$' >/dev/null; then
+if __confirm; then
   eval "cat $PKG_FILE | xargs -r $INSTALL_COMMAND"
 else
   echo "Not installing dependencies"
