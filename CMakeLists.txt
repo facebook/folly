@@ -649,11 +649,11 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY algorithm/simd/detail/test/
       TEST algorithm_simd_detail_simd_any_of_test SOURCES SimdAnyOfTest.cpp
       TEST algorithm_simd_detail_simd_for_each_test SOURCES SimdForEachTest.cpp
+      TEST algorithm_simd_detail_simd_traits_test SOURCES TraitsTest.cpp
       TEST algorithm_simd_detail_unroll_utils_test SOURCES UnrollUtilsTest.cpp
-      # disabled until C++20
-      # TEST algorithm_simd_detail_simd_traits_test SOURCES TraitsTest.cpp
 
     DIRECTORY algorithm/simd/test/
+      TEST algorithm_simd_contains_test SOURCES ContainsTest.cpp
       TEST algorithm_simd_find_fixed_test SOURCES FindFixedTest.cpp
       TEST algorithm_simd_movemask_test SOURCES MovemaskTest.cpp
 

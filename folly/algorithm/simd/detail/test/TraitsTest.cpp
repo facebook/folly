@@ -24,7 +24,7 @@
 
 namespace folly::simd::detail {
 
-struct FollySimdTraitsTest : testing::Test {};
+struct SimdTraitsTest : testing::Test {};
 
 namespace simd_friendly_equivalent_scalar_test {
 
@@ -161,7 +161,7 @@ static_assert(!std::is_invocable_v<AsSimdFriendlyUintFn, std::set<int>>);
 
 } // namespace as_simd_friendly_uint_type_test
 
-TEST_F(FollySimdTraitsTest, AsSimdFriendly) {
+TEST_F(SimdTraitsTest, AsSimdFriendly) {
   enum SomeEnum : int { Foo = 1, Bar, Baz };
 
   static_assert(asSimdFriendly(SomeEnum::Foo) == 1);
@@ -171,7 +171,7 @@ TEST_F(FollySimdTraitsTest, AsSimdFriendly) {
   ASSERT_THAT(castSpan, testing::ElementsAre(1, 2, 3));
 }
 
-TEST_F(FollySimdTraitsTest, AsSimdFriendlyUint) {
+TEST_F(SimdTraitsTest, AsSimdFriendlyUint) {
   enum SomeEnum : int { Foo = 1, Bar, Baz };
 
   static_assert(asSimdFriendlyUint(SomeEnum::Foo) == 1U);

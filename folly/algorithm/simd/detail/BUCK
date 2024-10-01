@@ -27,6 +27,17 @@ cpp_library(
 )
 
 cpp_library(
+    name = "simd_contains_impl",
+    headers = ["ContainsImpl.h"],
+    exported_deps = [
+        ":simd_any_of",
+        ":simd_char_platform",
+        "//folly:c_portability",
+        "//folly/container:span",
+    ],
+)
+
+cpp_library(
     name = "simd_for_each",
     headers = ["SimdForEach.h"],
     exported_deps = [
