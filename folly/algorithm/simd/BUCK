@@ -6,10 +6,20 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
+    name = "ignore",
+    headers = ["Ignore.h"],
+    exported_deps = [
+        "//folly/lang:bits",
+    ],
+)
+
+cpp_library(
     name = "movemask",
     headers = ["Movemask.h"],
     exported_deps = [
+        ":ignore",
         "//folly:portability",
+        "//folly/lang:bits",
     ],
 )
 

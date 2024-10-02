@@ -18,6 +18,8 @@
 
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/algorithm/simd/Ignore.h>
+#include <folly/algorithm/simd/Movemask.h>
 #include <folly/algorithm/simd/detail/SimdCharPlatform.h>
 #include <folly/algorithm/simd/detail/SimdForEach.h>
 #include <folly/lang/Bits.h>
@@ -78,17 +80,19 @@ struct PlatformSimdSplitByChar {
     res.emplace_back(f, l - f);
   }
 
-  template <typename Uint, typename Container>
+  template <typename Uint, typename BitsPerElement, typename Container>
   FOLLY_ALWAYS_INLINE void outputStringsFoMmask(
-      Uint mmask,
+      std::pair<Uint, BitsPerElement> mmask,
       const char* pos,
       const char*& prev,
       Container& res) const { // reserve was not beneficial on benchmarks.
-    while (mmask) {
-      auto counted = folly::findFirstSet(mmask) - 1;
-      mmask >>= counted;
-      mmask >>= Platform::kMmaskBitsPerElement;
-      auto firstSet = counted / Platform::kMmaskBitsPerElement;
+
+    Uint mmaskBits = mmask.first;
+    while (mmaskBits) {
+      auto counted = folly::findFirstSet(mmaskBits) - 1;
+      mmaskBits >>= counted;
+      mmaskBits >>= BitsPerElement{};
+      auto firstSet = counted / BitsPerElement{};
 
       const char* split = pos + firstSet;
       pos = split + 1;
@@ -108,8 +112,8 @@ struct PlatformSimdSplitByChar {
     FOLLY_ALWAYS_INLINE bool step(
         const char* ptr, Ignore ignore, UnrollIndex) const {
       reg_t loaded = Platform::loada(ptr, ignore);
-      auto mmask = Platform::movemask(Platform::equal(loaded, sep));
-      mmask = Platform::clear(mmask, ignore);
+      auto mmask =
+          simd::movemask<std::uint8_t>(Platform::equal(loaded, sep), ignore);
       self.outputStringsFoMmask(mmask, ptr, prev, res);
       return false;
     }

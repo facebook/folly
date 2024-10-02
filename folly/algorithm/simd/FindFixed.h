@@ -194,7 +194,7 @@ std::optional<std::size_t> findSplitFirstRegister(
 
 template <typename Scalar, typename Reg>
 std::optional<std::size_t> firstTrue(Reg reg) {
-  auto [bits, bitsPerElement] = folly::movemask<Scalar>(reg);
+  auto [bits, bitsPerElement] = folly::simd::movemask<Scalar>(reg);
   if (bits) {
     return std::countr_zero(bits) / bitsPerElement();
   }

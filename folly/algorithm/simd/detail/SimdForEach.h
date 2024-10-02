@@ -18,6 +18,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/Traits.h>
+#include <folly/algorithm/simd/Ignore.h>
 #include <folly/algorithm/simd/detail/UnrollUtils.h>
 
 #include <array>
@@ -34,23 +35,6 @@ namespace simd::detail {
 // function that does everything. Otherwise sometimes the compiler tends
 // to mess that up.
 //
-
-/**
- * ignore(_none/_extrema)
- *
- * Tag types for handling the tails.
- * ignore_none indicates that the whole register is used.
- * ignore_extrema.first, .last show how many elements are out of the data.
- *
- * For example 3 elements, starting from the second for an 8 element register
- * will be ignore_extrema{.first = 1, .last = 4}
- */
-struct ignore_extrema {
-  int first = 0;
-  int last = 0;
-};
-
-struct ignore_none {};
 
 /**
  * simdForEachAligning<unrolling>(cardinal, f, l, delegate);

@@ -17,8 +17,9 @@
 #pragma once
 
 #include <folly/Portability.h>
+#include <folly/algorithm/simd/Ignore.h>
 #include <folly/algorithm/simd/Movemask.h>
-#include <folly/algorithm/simd/detail/SimdForEach.h>
+#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
 #include <folly/lang/Bits.h>
 
 #include <array>
@@ -48,12 +49,9 @@ namespace simd::detail {
  * Nested types:
  * - reg_t - type of a simd register (__m128i)
  * - logical_t - type of a simd logical register (matches reg_t so far)
- * - mmask_t - type of an integer bitmask we can get from logical (similar to
- *             _mm_movemask_epi8).
  *
  * Nested constants:
  *  - kCardinal - number of elements in a register
- *  - kMmaskBitsPerElement - number of bits per element in a mmask_t
  *
  * loads:
  *  - loadu(const char*, ignore_none)
@@ -68,12 +66,8 @@ namespace simd::detail {
  *  - le_unsigned(reg_t, char) - by lane less than or equal to char.
  *
  * logical ops:
- *   - movemask - take a bitmask
  *   - any(logical_t, ignore) - return true if any the lanes are true
  *   - logical_or(logical_t, logical_t) - by lane logical or
- *
- * mmask ops:
- *   - clear(mmask, ignore) - sets ignored bits to 0
  *
  */
 
@@ -82,33 +76,6 @@ namespace simd::detail {
 template <typename Platform>
 struct SimdCharPlatformCommon : Platform {
   using logical_t = typename Platform::logical_t;
-  using movemask_result_t =
-      decltype(folly::movemask<std::uint8_t>(logical_t{}));
-  using mmask_t = typename movemask_result_t::first_type;
-  static constexpr std::uint32_t kMmaskBitsPerElement =
-      typename movemask_result_t::second_type{}();
-
-  template <typename Uint>
-  FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static Uint setLowerNBits(int n) {
-    if (sizeof(Uint) == 8 && n == 64) {
-      return static_cast<Uint>(-1);
-    }
-    return static_cast<Uint>((std::uint64_t{1} << n) - 1);
-  }
-
-  FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static mmask_t clear(
-      mmask_t mmask, ignore_extrema ignore) {
-    mmask_t clearFirst =
-        ~setLowerNBits<mmask_t>(ignore.first * kMmaskBitsPerElement);
-    mmask_t clearLast = setLowerNBits<mmask_t>(
-        (Platform::kCardinal - ignore.last) * kMmaskBitsPerElement);
-    return mmask & clearFirst & clearLast;
-  }
-
-  FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static mmask_t clear(
-      mmask_t mmask, ignore_none) {
-    return mmask;
-  }
 
   // These are aligned loads but there is no point in generating
   // aligned load instructions, so we call loadu.
@@ -122,18 +89,12 @@ struct SimdCharPlatformCommon : Platform {
     return Platform::unsafeLoadu(ptr, ignore_none{});
   }
 
-  FOLLY_ALWAYS_INLINE
-  static mmask_t movemask(logical_t log) {
-    return folly::movemask<std::uint8_t>(log).first;
-  }
-
   using Platform::any;
 
   FOLLY_ALWAYS_INLINE
   static bool any(typename Platform::logical_t log, ignore_extrema ignore) {
-    auto mmask = movemask(log);
-    mmask = clear(mmask, ignore);
-    return mmask;
+    std::pair mmask = movemask<std::uint8_t>(log, ignore);
+    return mmask.first;
   }
 
   static auto toArray(typename Platform::reg_t x) {
@@ -186,7 +147,7 @@ struct SimdCharSse2PlatformSpecific {
 
   FOLLY_ALWAYS_INLINE
   static bool any(logical_t log, ignore_none) {
-    return folly::movemask<std::uint8_t>(log).first;
+    return movemask<std::uint8_t>(log).first;
   }
 };
 
@@ -234,7 +195,7 @@ struct SimdCharAvx2PlatformSpecific {
 
   FOLLY_ALWAYS_INLINE
   static bool any(logical_t log, ignore_none) {
-    return folly::movemask<std::uint8_t>(log).first;
+    return simd::movemask<std::uint8_t>(log).first;
   }
 };
 
