@@ -22,3 +22,16 @@ cpp_library(
         "//folly/algorithm/simd/detail:traits",
     ],
 )
+
+cpp_library(
+    name = "contains",
+    srcs = ["Contains.cpp"],
+    headers = ["Contains.h"],
+    deps = [
+        "//folly/algorithm/simd/detail:simd_contains_impl",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly/algorithm/simd/detail:traits",
+    ],
+)
