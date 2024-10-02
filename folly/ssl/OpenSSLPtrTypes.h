@@ -160,8 +160,8 @@ FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(OcspCertId, OCSP_CERTID, OCSP_CERTID_free);
 //    * BorrowingStackOfX509NameUniquePtr
 // which corresponds to a unique_ptr of `STACK_OF(X509_NAME)` that will invoke
 // the appropriate destructor:
-//    * OwningStackOf* -> Invokes sk_T_free
-//    * BorrowingStackOf* -> Invokes sk_T_pop_free
+//    * OwningStackOf* -> Invokes sk_T_pop_free
+//    * BorrowingStackOf* -> Invokes sk_T_free
 namespace detail {
 template <
     class StackType,
@@ -208,6 +208,7 @@ struct OpenSSLBorrowedStackDestructor {
   FOLLY_SSL_DETAIL_DEFINE_OWNING_STACK_PTR_TYPE(element_alias, element_type)
 
 FOLLY_SSL_DETAIL_DEFINE_STACK_PTR_TYPE(X509Name, X509_NAME);
+FOLLY_SSL_DETAIL_DEFINE_STACK_PTR_TYPE(X509, X509);
 
 #undef FOLLY_SSL_DETAIL_BORROWING_STACK_DESTRUCTOR
 #undef FOLLY_SSL_DETAIL_OWNING_STACK_DESTRUCTOR
