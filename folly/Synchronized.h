@@ -829,6 +829,38 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
+   * @brief Access the datum under lock.
+   *
+   * deprecated
+   *
+   * This accessor offers a LockedPtr. In turn, LockedPtr offers
+   * operator-> returning a pointer to T. The operator-> keeps
+   * expanding until it reaches a pointer, so syncobj->foo() will lock
+   * the object and call foo() against it.
+   *
+   * NOTE: This API is planned to be deprecated in an upcoming diff.
+   * Prefer using lock(), wlock(), or rlock() instead.
+   */
+  [[deprecated("use explicit lock(), wlock(), or rlock() instead")]] LockedPtr
+  operator->() {
+    return LockedPtr(this);
+  }
+
+  /**
+   * deprecated
+   *
+   * Obtain a ConstLockedPtr.
+   *
+   * NOTE: This API is planned to be deprecated in an upcoming diff.
+   * Prefer using lock(), wlock(), or rlock() instead.
+   */
+  [[deprecated(
+      "use explicit lock(), wlock(), or rlock() instead")]] ConstLockedPtr
+  operator->() const {
+    return ConstLockedPtr(this);
+  }
+
+  /**
    * @brief Acquire a LockedPtr with timeout.
    *
    * Attempts to acquire for a given number of milliseconds. If
@@ -1007,38 +1039,6 @@ struct [[deprecated(
 
   using Base::Base;
   using Base::operator=;
-
-  /**
-   * @brief Access the datum under lock.
-   *
-   * deprecated
-   *
-   * This accessor offers a LockedPtr. In turn, LockedPtr offers
-   * operator-> returning a pointer to T. The operator-> keeps
-   * expanding until it reaches a pointer, so syncobj->foo() will lock
-   * the object and call foo() against it.
-   *
-   * NOTE: This API is planned to be deprecated in an upcoming diff.
-   * Prefer using lock(), wlock(), or rlock() instead.
-   */
-  [[deprecated("use explicit lock(), wlock(), or rlock() instead")]] LockedPtr
-  operator->() {
-    return LockedPtr(this);
-  }
-
-  /**
-   * deprecated
-   *
-   * Obtain a ConstLockedPtr.
-   *
-   * NOTE: This API is planned to be deprecated in an upcoming diff.
-   * Prefer using lock(), wlock(), or rlock() instead.
-   */
-  [[deprecated(
-      "use explicit lock(), wlock(), or rlock() instead")]] ConstLockedPtr
-  operator->() const {
-    return ConstLockedPtr(this);
-  }
 };
 
 template <class SynchronizedType, class LockPolicy>
