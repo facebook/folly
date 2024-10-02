@@ -31,6 +31,7 @@ FOLLY_SETTING_DEFINE(
     std::string,
     "default",
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Description");
 FOLLY_SETTING_DEFINE(
     follytest,
@@ -38,6 +39,7 @@ FOLLY_SETTING_DEFINE(
     std::string,
     "unused_default",
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Not used, but should still be in the list");
 FOLLY_SETTING_DEFINE(
     follytest,
@@ -45,6 +47,7 @@ FOLLY_SETTING_DEFINE(
     unsigned int,
     123,
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Test that multi-token type names can be used");
 // Enable to test runtime collision checking logic
 #if 0
@@ -54,6 +57,7 @@ FOLLY_SETTING_DEFINE(
     std::string,
     "collision_with_a",
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Collision_with_a");
 #endif
 
@@ -119,6 +123,7 @@ FOLLY_SETTING_DEFINE(
     UserDefinedType,
     "b",
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "User defined type constructed from string");
 FOLLY_SETTING_DEFINE(
     follytest,
@@ -126,6 +131,7 @@ FOLLY_SETTING_DEFINE(
     UserDefinedWithMeta,
     {"default"},
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "User defined type constructed from string and metadata");
 FOLLY_SETTING_DEFINE(
     follytest,
@@ -133,6 +139,7 @@ FOLLY_SETTING_DEFINE(
     UserDefinedType,
     "b",
     folly::settings::Mutability::Immutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "User defined type constructed from string");
 FOLLY_SETTING_DEFINE(
     otherproj,
@@ -140,6 +147,7 @@ FOLLY_SETTING_DEFINE(
     std::string,
     "default",
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Description");
 
 } // namespace some_ns

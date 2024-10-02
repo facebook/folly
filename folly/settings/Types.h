@@ -42,6 +42,10 @@ enum class Mutability {
   Mutable,
   Immutable,
 };
+enum class CommandLine {
+  AcceptOverrides,
+  RejectOverrides,
+};
 
 /**
  * Static information about the setting definition
@@ -77,6 +81,11 @@ struct SettingMetadata {
    * Determines if the setting can change after initialization.
    */
   Mutability mutability;
+
+  /**
+   * Determines if the setting can be set from the command line.
+   */
+  CommandLine commandLine;
 
   /**
    * Setting description field.

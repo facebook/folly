@@ -189,36 +189,44 @@ class SettingWrapper {
  * @param _Type  setting value type
  * @param _def   default value for the setting
  * @param _mut   mutability of the setting
+ * @param _cli   determines if a setting can be set through the command line
  * @param _desc  setting documentation
  */
-#define FOLLY_SETTING_DEFINE(_project, _name, _Type, _def, _mut, _desc)        \
-  /* Fastpath optimization, see notes in FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__.   \
-     Aggregate all off these together in a single section for better TLB       \
-     and cache locality. */                                                    \
-  __attribute__((__section__(".folly.settings.cache"))) ::std::atomic<         \
-      ::folly::settings::detail::SettingCore<_Type>*>                          \
-      FOLLY_SETTINGS_CACHE__##_project##_##_name;                              \
-  /* Location for the small value cache (if _Type is small and trivial).       \
-     Intentionally located right after the pointer cache above to take         \
-     advantage of the prefetching */                                           \
-  __attribute__((                                                              \
-      __section__(".folly.settings.cache"))) ::std::atomic<uint64_t>           \
-      FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                            \
-  /* Meyers singleton to avoid SIOF */                                         \
-  FOLLY_NOINLINE ::folly::settings::detail::SettingCore<_Type>&                \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name() {                            \
-    static ::folly::Indestructible<                                            \
-        ::folly::settings::detail::SettingCore<_Type>>                         \
-        setting(                                                               \
-            ::folly::settings::SettingMetadata{                                \
-                #_project, #_name, #_Type, typeid(_Type), #_def, _mut, _desc}, \
-            ::folly::type_t<_Type>{_def},                                      \
-            FOLLY_SETTINGS_TRIVIAL__##_project##_##_name);                     \
-    return *setting;                                                           \
-  }                                                                            \
-  /* Ensure the setting is registered even if not used in program */           \
-  auto& FOLLY_SETTINGS_INIT__##_project##_##_name =                            \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name();                             \
+#define FOLLY_SETTING_DEFINE(_project, _name, _Type, _def, _mut, _cli, _desc) \
+  /* Fastpath optimization, see notes in FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__.  \
+     Aggregate all off these together in a single section for better TLB      \
+     and cache locality. */                                                   \
+  __attribute__((__section__(".folly.settings.cache"))) ::std::atomic<        \
+      ::folly::settings::detail::SettingCore<_Type>*>                         \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name;                             \
+  /* Location for the small value cache (if _Type is small and trivial).      \
+     Intentionally located right after the pointer cache above to take        \
+     advantage of the prefetching */                                          \
+  __attribute__((                                                             \
+      __section__(".folly.settings.cache"))) ::std::atomic<uint64_t>          \
+      FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                           \
+  /* Meyers singleton to avoid SIOF */                                        \
+  FOLLY_NOINLINE ::folly::settings::detail::SettingCore<_Type>&               \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name() {                           \
+    static ::folly::Indestructible<                                           \
+        ::folly::settings::detail::SettingCore<_Type>>                        \
+        setting(                                                              \
+            ::folly::settings::SettingMetadata{                               \
+                #_project,                                                    \
+                #_name,                                                       \
+                #_Type,                                                       \
+                typeid(_Type),                                                \
+                #_def,                                                        \
+                _mut,                                                         \
+                _cli,                                                         \
+                _desc},                                                       \
+            ::folly::type_t<_Type>{_def},                                     \
+            FOLLY_SETTINGS_TRIVIAL__##_project##_##_name);                    \
+    return *setting;                                                          \
+  }                                                                           \
+  /* Ensure the setting is registered even if not used in program */          \
+  auto& FOLLY_SETTINGS_INIT__##_project##_##_name =                           \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name();                            \
   FOLLY_DETAIL_SETTINGS_DEFINE_LOCAL_FUNC__(_project, _name, _Type, char)
 
 /**

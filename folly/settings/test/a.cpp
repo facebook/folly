@@ -25,6 +25,7 @@ FOLLY_SETTING_DEFINE(
     int,
     456,
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Public flag to a");
 namespace {
 FOLLY_SETTING_DEFINE(
@@ -33,6 +34,7 @@ FOLLY_SETTING_DEFINE(
     int,
     789,
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Desc of int");
 }
 

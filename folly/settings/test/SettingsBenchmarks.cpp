@@ -33,6 +33,7 @@ FOLLY_SETTING_DEFINE(
     int,
     100,
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "desc");
 
 BENCHMARK(settings_get_bench, iters) {
