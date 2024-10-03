@@ -771,6 +771,9 @@ cpp_library(
         "ovr_config//cpu:x86_64": [
             "memset.S",
         ],
+        "ovr_config//os:linux-arm64": [
+            "memset_select_aarch64.cpp",
+        ],
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
@@ -807,6 +810,9 @@ cpp_library(
         "DEFAULT": [],
         "ovr_config//cpu:x86_64": [
             "memset.S",
+        ],
+        "ovr_config//os:linux-arm64": [
+            "memset_select_aarch64.cpp",
         ],
     }),
     auto_headers = AutoHeaders.NONE,

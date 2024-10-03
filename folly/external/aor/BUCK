@@ -7,7 +7,9 @@ cpp_library(
     srcs = [
         "memcpy-advsimd.S",
         "memcpy-armv8.S",
+        "memcpy-mops.S",
         "memcpy_sve.S",
+        "memmove-mops.S",
     ],
     headers = [
         "asmdefs.h",
@@ -22,7 +24,9 @@ cpp_library(
     srcs = [
         "memcpy-advsimd.S",
         "memcpy-armv8.S",
+        "memcpy-mops.S",
         "memcpy_sve.S",
+        "memmove-mops.S",
     ],
     headers = [
         "asmdefs.h",
@@ -41,6 +45,7 @@ cpp_library(
     name = "memset_aarch64",
     srcs = [
         "memset-advsimd.S",
+        "memset-mops.S",
     ],
     headers = [
         "asmdefs.h",
@@ -54,6 +59,7 @@ cpp_library(
     name = "memset_aarch64-use",
     srcs = [
         "memset-advsimd.S",
+        "memset-mops.S",
     ],
     headers = [
         "asmdefs.h",

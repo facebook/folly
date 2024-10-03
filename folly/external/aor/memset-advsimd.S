@@ -21,7 +21,7 @@
 #define dstend	x4
 #define zva_val	x5
 
-ENTRY (__folly_memset)
+ENTRY (__folly_memset_aarch64_simd)
 	PTR_ARG (0)
 	SIZE_ARG (2)
 
@@ -113,9 +113,4 @@ L(no_zva_loop):
 	stp	q0, q0, [dstend, -32]
 	ret
 
-END (__folly_memset)
-
-#ifdef FOLLY_MEMSET_IS_MEMSET
-.weak       memset
-memset = __folly_memset
-#endif
+END (__folly_memset_aarch64_simd)
