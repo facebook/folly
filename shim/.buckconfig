@@ -11,7 +11,7 @@ fbcode = shim
 fbsource = shim
 fbcode_macros = shim
 bazel_skylib = shim
-buck = none
+buck = shim
 
 [external_cells]
 prelude = bundled

@@ -328,15 +328,15 @@ def rust_protobuf_library(
     build_env = build_env or {}
     build_env.update(
         {
-            "PROTOC": "$(exe buck//third-party/proto:protoc)",
-            "PROTOC_INCLUDE": "$(location buck//third-party/proto:google_protobuf)",
+            "PROTOC": "$(exe shim//third-party/proto:protoc)",
+            "PROTOC_INCLUDE": "$(location shim//third-party/proto:google_protobuf)",
         },
     )
 
     prelude.genrule(
         name = proto_name,
         srcs = protos + [
-            "buck//third-party/proto:google_protobuf",
+            "shim//third-party/proto:google_protobuf",
         ],
         out = ".",
         cmd = "$(exe :" + build_name + ")",
