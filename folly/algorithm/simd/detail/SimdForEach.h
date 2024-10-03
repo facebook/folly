@@ -20,6 +20,7 @@
 #include <folly/Traits.h>
 #include <folly/algorithm/simd/Ignore.h>
 #include <folly/algorithm/simd/detail/UnrollUtils.h>
+#include <folly/lang/Align.h>
 
 #include <array>
 #include <cstdint>
@@ -67,15 +68,12 @@ FOLLY_ALWAYS_INLINE void simdForEachAligning(
 /**
  * previousAlignedAddress
  *
- * Given a pointer returns a closest pointer aligned to a given size.
- * (it just masks out some lower bits)
+ * Given a pointer returns a closest pointer aligned to a given size
+ * (in elements).
  */
 template <typename T>
 FOLLY_ALWAYS_INLINE T* previousAlignedAddress(T* ptr, int to) {
-  std::uintptr_t uptr = reinterpret_cast<std::uintptr_t>(ptr);
-  std::uintptr_t uto = static_cast<std::uintptr_t>(to);
-  uptr &= ~(uto - 1);
-  return reinterpret_cast<T*>(uptr);
+  return align_floor(ptr, sizeof(T) * to);
 }
 
 /**

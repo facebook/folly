@@ -16,8 +16,8 @@ cpp_library(
 )
 
 cpp_library(
-    name = "simd_char_platform",
-    headers = ["SimdCharPlatform.h"],
+    name = "simd_platform",
+    headers = ["SimdPlatform.h"],
     exported_deps = [
         "//folly:portability",
         "//folly/algorithm/simd:ignore",
@@ -31,7 +31,7 @@ cpp_library(
     headers = ["ContainsImpl.h"],
     exported_deps = [
         ":simd_any_of",
-        ":simd_char_platform",
+        ":simd_platform",
         "//folly:c_portability",
         "//folly/container:span",
     ],
@@ -45,6 +45,7 @@ cpp_library(
         "//folly:c_portability",
         "//folly:traits",
         "//folly/algorithm/simd:ignore",
+        "//folly/lang:align",
     ],
 )
 

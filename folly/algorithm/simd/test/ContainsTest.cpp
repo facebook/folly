@@ -64,7 +64,7 @@ void testSimdContainsVerify(folly::span<T> haystack, T needle, bool expected) {
     ASSERT_EQ(expected, actual2) << " haystack.size(): " << haystack.size();
   }
 
-  if constexpr (std::is_same_v<T, std::uint8_t>) {
+  if constexpr (simd::detail::hasHandwrittenContains<T>()) {
     bool actual3 =
         simd::detail::containsImplHandwritten(const_haystack, needle);
     ASSERT_EQ(expected, actual3) << " haystack.size(): " << haystack.size();
@@ -80,11 +80,13 @@ TYPED_TEST(ContainsTest, Basic) {
          ++offset) {
       folly::span<T> haystack(buf.data() + offset, buf.data() + buf.size());
       T needle{1};
-      testSimdContainsVerify(haystack, needle, /*expected*/ false);
+      ASSERT_NO_FATAL_FAILURE(
+          testSimdContainsVerify(haystack, needle, /*expected*/ false));
 
       for (auto& x : haystack) {
         x = needle;
-        testSimdContainsVerify(haystack, needle, /*expected*/ true);
+        ASSERT_NO_FATAL_FAILURE(
+            testSimdContainsVerify(haystack, needle, /*expected*/ true));
         x = 0;
       }
     }
