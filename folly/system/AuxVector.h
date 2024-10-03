@@ -56,7 +56,9 @@ class ElfHwCaps {
   FOLLY_ALWAYS_INLINE ElfHwCaps() {
 #if defined(__linux__) && !FOLLY_MOBILE
     hwcap_ = getauxval(AT_HWCAP);
+#if defined(AT_HWCAP2)
     hwcap2_ = getauxval(AT_HWCAP2);
+#endif
 #endif
   }
 
