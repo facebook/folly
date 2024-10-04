@@ -163,16 +163,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "select64",
-    headers = [
-        "Select64.h",
-    ],
-    exported_deps = [
-        "//folly/compression:select64",
-    ],
-)
-
-cpp_library(
     name = "single_writer_fixed_hash_map",
     headers = [
         "SingleWriterFixedHashMap.h",
