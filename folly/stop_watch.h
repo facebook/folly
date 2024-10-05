@@ -263,7 +263,9 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
   /**
    * Returns the current checkpoint
    */
-  typename clock_type::time_point getCheckpoint() const { return checkpoint_; }
+  typename clock_type::time_point getCheckpoint() const noexcept {
+    return checkpoint_;
+  }
 
  private:
   typename clock_type::time_point checkpoint_;
