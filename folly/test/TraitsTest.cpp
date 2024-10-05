@@ -725,6 +725,26 @@ TEST(Traits, type_list_size) {
       5, (type_list_size_t<tag_t<long long, long, int, short, char>>::value));
 }
 
+TEST(Traits, type_list_concat) {
+  static_assert(std::is_same_v<tag_t<>, type_list_concat_t<tag_t>>);
+  static_assert(std::is_same_v<tag_t<>, type_list_concat_t<tag_t, tag_t<>>>);
+  static_assert(
+      std::is_same_v<tag_t<>, type_list_concat_t<tag_t, tag_t<>, tag_t<>>>);
+  static_assert(
+      std::is_same_v<tag_t<int>, type_list_concat_t<tag_t, tag_t<int>>>);
+  static_assert(std::is_same_v<
+                tag_t<int, double>,
+                type_list_concat_t<tag_t, tag_t<int>, tag_t<double>>>);
+  static_assert( //
+      std::is_same_v<
+          tag_t<int, void, double, inspects_tag>,
+          type_list_concat_t<
+              tag_t,
+              std::tuple<int, void, double>,
+              tag_t<>,
+              tag_t<inspects_tag>>>);
+}
+
 TEST(Traits, value_pack) {
   EXPECT_EQ(3, (folly::value_pack_size_v<7u, 8, '9'>));
   EXPECT_EQ(3, (folly::value_pack_size_t<7u, 8, '9'>::value));
@@ -741,6 +761,29 @@ TEST(Traits, value_list) {
           int,
           folly::value_list_element_type_t<1, vtag_t<7u, 8, '9'>>>));
   EXPECT_EQ(8, (folly::value_list_element_v<1, vtag_t<7u, 8, '9'>>));
+}
+
+template <auto...>
+struct also_vtag_t {};
+
+TEST(Traits, value_list_concat) {
+  static_assert(std::is_same_v<vtag_t<>, value_list_concat_t<vtag_t>>);
+  static_assert(
+      std::is_same_v<vtag_t<>, value_list_concat_t<vtag_t, vtag_t<>>>);
+  static_assert(
+      std::
+          is_same_v<vtag_t<>, value_list_concat_t<vtag_t, vtag_t<>, vtag_t<>>>);
+  static_assert(
+      std::is_same_v<vtag_t<7>, value_list_concat_t<vtag_t, vtag_t<7>>>);
+  static_assert( //
+      std::is_same_v<
+          vtag_t<3, 1, 4, 1, 5, 9>,
+          value_list_concat_t<
+              vtag_t,
+              also_vtag_t<3, 1>,
+              vtag_t<>,
+              vtag_t<4>,
+              vtag_t<1, 5, 9>>>);
 }
 
 TEST(Traits, type_pack_find) {
