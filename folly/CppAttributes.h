@@ -128,6 +128,12 @@
 #define FOLLY_ATTR_CLANG_NO_DESTROY
 #endif
 
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::uninitialized)
+#define FOLLY_ATTR_CLANG_UNINITIALIZED clang::uninitialized
+#else
+#define FOLLY_ATTR_CLANG_UNINITIALIZED
+#endif
+
 /**
  * Accesses to objects with types with this attribute are not subjected to
  * type-based alias analysis, but are instead assumed to be able to alias any
