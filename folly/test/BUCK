@@ -2,6 +2,7 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -1958,5 +1959,25 @@ cpp_library(
     headers = ["ComparisonOperatorTestUtil.h"],
     exported_deps = [
         "//folly/portability:gtest",
+    ],
+)
+
+fb_native.filegroup(
+    name = "linker-scripts",
+    srcs = ["SdtTest.lds"],
+)
+
+cpp_unittest(
+    name = "sdt_test",
+    srcs = ["SdtTest.cpp"],
+    headers = [],
+    linker_flags = [
+        "--gc-sections",
+        "-T",
+        "$(location :linker-scripts)/SdtTest.lds",
+    ],
+    deps = [
+        "//folly/debugging/symbolizer:elf",
+        "//folly/tracing:static_tracepoint",
     ],
 )

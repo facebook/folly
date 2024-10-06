@@ -49,10 +49,22 @@
 
 // Assembler helper Macros.
 #define FOLLY_SDT_S(x)                #x
-#define FOLLY_SDT_ASM_1(x)            FOLLY_SDT_S(x) "\n"
-#define FOLLY_SDT_ASM_2(a, b)         FOLLY_SDT_S(a) "," FOLLY_SDT_S(b) "\n"
-#define FOLLY_SDT_ASM_3(a, b, c)      FOLLY_SDT_S(a) "," FOLLY_SDT_S(b) ","    \
-                                      FOLLY_SDT_S(c) "\n"
+
+#define FOLLY_SDT_ASM_1(x)                      \
+  FOLLY_SDT_S(x) "\n"
+#define FOLLY_SDT_ASM_2(a, b)                   \
+  FOLLY_SDT_S(a) "," FOLLY_SDT_S(b) "\n"
+#define FOLLY_SDT_ASM_3(a, b, c)                \
+  FOLLY_SDT_S(a) "," FOLLY_SDT_S(b) ","         \
+  FOLLY_SDT_S(c) "\n"
+#define FOLLY_SDT_ASM_4(a, b, c, d)             \
+  FOLLY_SDT_S(a) "," FOLLY_SDT_S(b) ","         \
+  FOLLY_SDT_S(c) "," FOLLY_SDT_S(d) "\n"
+#define FOLLY_SDT_ASM_5(a, b, c, d, e)          \
+  FOLLY_SDT_S(a) "," FOLLY_SDT_S(b) ","         \
+  FOLLY_SDT_S(c) "," FOLLY_SDT_S(d) ","         \
+  FOLLY_SDT_S(e) "\n"
+
 #define FOLLY_SDT_ASM_STRING(x)       FOLLY_SDT_ASM_1(.asciz FOLLY_SDT_S(x))
 
 // Helper to determine the size of an argument.
@@ -137,7 +149,7 @@
   FOLLY_SDT_ASM_1(991: .asciz FOLLY_SDT_NOTE_NAME)                             \
   FOLLY_SDT_ASM_1(992: .balign 4)                                              \
   FOLLY_SDT_ASM_1(993: FOLLY_SDT_ASM_ADDR 990b)                                \
-  FOLLY_SDT_ASM_1(     FOLLY_SDT_ASM_ADDR 0) /*Reserved for Base Address*/     \
+  FOLLY_SDT_ASM_1(     FOLLY_SDT_ASM_ADDR _.stapsdt.base)                      \
   FOLLY_SDT_SEMAPHORE_NOTE_##has_semaphore(provider, name)                     \
   FOLLY_SDT_ASM_STRING(provider)                                               \
   FOLLY_SDT_ASM_STRING(name)                                                   \
@@ -145,14 +157,31 @@
   FOLLY_SDT_ASM_1(994: .balign 4)                                              \
   FOLLY_SDT_ASM_1(     .popsection)
 
+// Structure of base section for the probe.
+#define FOLLY_SDT_BASE_CONTENT                                                 \
+  FOLLY_SDT_ASM_1(     .ifndef _.stapsdt.base)                                 \
+  FOLLY_SDT_ASM_5(     .pushsection .stapsdt.base, "aG", "progbits",           \
+                       .stapsdt.base,comdat)                                   \
+  FOLLY_SDT_ASM_1(     .weak _.stapsdt.base)                                   \
+  FOLLY_SDT_ASM_1(     .hidden _.stapsdt.base)                                 \
+  FOLLY_SDT_ASM_1(     _.stapsdt.base: .space 1)                               \
+  FOLLY_SDT_ASM_2(     .size _.stapsdt.base, 1)                                \
+  FOLLY_SDT_ASM_1(     .popsection)                                            \
+  FOLLY_SDT_ASM_1(     .endif)
+
 // Main probe Macro.
 #define FOLLY_SDT_PROBE(provider, name, has_semaphore, n, arglist)             \
+  do {                                                                         \
     __asm__ __volatile__ (                                                     \
       FOLLY_SDT_NOTE_CONTENT(                                                  \
         provider, name, has_semaphore, FOLLY_SDT_ARG_TEMPLATE_##n)             \
       :: FOLLY_SDT_SEMAPHORE_OPERAND_##has_semaphore(provider, name),          \
          FOLLY_SDT_OPERANDS_##n arglist                                        \
-    )                                                                          \
+    );                                                                         \
+    __asm__ __volatile__ (                                                     \
+      FOLLY_SDT_BASE_CONTENT                                                   \
+    );                                                                         \
+  } while (0)
 
 // Helper Macros to handle variadic arguments.
 #define FOLLY_SDT_NARG_(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
