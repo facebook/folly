@@ -100,6 +100,10 @@
 #else
 #define FB_ANONYMOUS_VARIABLE(str) FB_CONCATENATE(str, __LINE__)
 #endif
+// FB_ANONYMOUS_VARIABLE_ODR_SAFE doesn't rely on __COUNTER__ and is safe to use
+// in headers that should not violate the one-definition rule (ODR). It is
+// especially useful for C++ modules that check for ODR violations.
+#define FB_ANONYMOUS_VARIABLE_ODR_SAFE(str) FB_CONCATENATE(str, __LINE__)
 #endif
 
 /**
