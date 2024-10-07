@@ -64,7 +64,7 @@ cpp_unittest(
         "SimpleSimdStringUtilsTest.cpp",
     ],
     deps = [
-        "//folly/algorithm/simd/detail:simd_char_platform",
+        "//folly/algorithm/simd/detail:simd_platform",
         "//folly/detail:simple_simd_string_utils",
         "//folly/portability:gtest",
     ],

@@ -91,22 +91,7 @@ struct movemask_fn {
   auto operator()(Reg reg) const;
 
   template <typename Reg, typename Ignore>
-  FOLLY_ERASE auto operator()(Reg reg, Ignore ignore) const {
-    auto [bits, bitsPerElement] = operator()(reg);
-
-    if constexpr (std::is_same_v<Ignore, ignore_none>) {
-      return std::pair{bits, bitsPerElement};
-    } else {
-      static constexpr int kCardinal = sizeof(Reg) / sizeof(Scalar);
-
-      int bitsToKeep = (kCardinal - ignore.last) * bitsPerElement;
-
-      bits =
-          clear_n_least_significant_bits(bits, ignore.first * bitsPerElement);
-      bits = clear_n_most_significant_bits(bits, sizeof(bits) * 8 - bitsToKeep);
-      return std::pair{bits, bitsPerElement};
-    }
-  }
+  auto operator()(Reg reg, Ignore ignore) const;
 };
 
 template <typename Scalar>
@@ -116,7 +101,7 @@ inline constexpr movemask_fn<Scalar> movemask;
 
 template <typename Scalar>
 template <typename Reg>
-auto movemask_fn<Scalar>::operator()(Reg reg) const {
+FOLLY_ERASE auto movemask_fn<Scalar>::operator()(Reg reg) const {
   std::integral_constant<std::uint32_t, sizeof(Scalar) == 2 ? 2 : 1>
       bitsPerElement;
 
@@ -154,7 +139,7 @@ auto movemask_fn<Scalar>::operator()(Reg reg) const {
 
 namespace detail {
 
-inline auto movemaskChars16Aarch64(uint8x16_t reg) {
+FOLLY_ERASE auto movemaskChars16Aarch64(uint8x16_t reg) {
   uint16x8_t u16s = vreinterpretq_u16_u8(reg);
   u16s = vshrq_n_u16(u16s, 4);
   uint8x8_t packed = vmovn_u16(u16s);
@@ -163,7 +148,7 @@ inline auto movemaskChars16Aarch64(uint8x16_t reg) {
 }
 
 template <typename Reg>
-uint64x1_t asUint64x1Aarch64(Reg reg) {
+FOLLY_ERASE uint64x1_t asUint64x1Aarch64(Reg reg) {
   if constexpr (std::is_same_v<Reg, uint32x2_t>) {
     return vreinterpret_u64_u32(reg);
   } else if constexpr (std::is_same_v<Reg, uint16x4_t>) {
@@ -177,7 +162,7 @@ uint64x1_t asUint64x1Aarch64(Reg reg) {
 
 template <typename Scalar>
 template <typename Reg>
-auto movemask_fn<Scalar>::operator()(Reg reg) const {
+FOLLY_ERASE auto movemask_fn<Scalar>::operator()(Reg reg) const {
   if constexpr (std::is_same_v<Reg, uint64x2_t>) {
     return movemask<std::uint32_t>(vmovn_u64(reg));
   } else if constexpr (std::is_same_v<Reg, uint32x4_t>) {
@@ -190,6 +175,28 @@ auto movemask_fn<Scalar>::operator()(Reg reg) const {
     std::uint64_t mmask = vget_lane_u64(detail::asUint64x1Aarch64(reg), 0);
     return std::pair{
         mmask, std::integral_constant<std::uint32_t, sizeof(Scalar) * 8>{}};
+  }
+}
+
+#endif
+
+#if FOLLY_X64 || FOLLY_AARCH64
+
+template <typename Scalar>
+template <typename Reg, typename Ignore>
+FOLLY_ERASE auto movemask_fn<Scalar>::operator()(Reg reg, Ignore ignore) const {
+  auto [bits, bitsPerElement] = operator()(reg);
+
+  if constexpr (std::is_same_v<Ignore, ignore_none>) {
+    return std::pair{bits, bitsPerElement};
+  } else {
+    static constexpr int kCardinal = sizeof(Reg) / sizeof(Scalar);
+
+    int bitsToKeep = (kCardinal - ignore.last) * bitsPerElement;
+
+    bits = clear_n_least_significant_bits(bits, ignore.first * bitsPerElement);
+    bits = clear_n_most_significant_bits(bits, sizeof(bits) * 8 - bitsToKeep);
+    return std::pair{bits, bitsPerElement};
   }
 }
 

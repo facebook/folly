@@ -23,7 +23,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/algorithm/simd/detail/SimdAnyOf.h>
-#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
+#include <folly/algorithm/simd/detail/SimdPlatform.h>
 #include <folly/container/span.h>
 
 namespace folly::simd::detail {
@@ -62,20 +62,20 @@ FOLLY_ERASE bool containsImplStd(folly::span<const T> haystack, T needle) {
 
 template <typename T>
 constexpr bool hasHandwrittenContains() {
-  return std::is_same_v<T, std::uint8_t> &&
-      !std::is_same_v<SimdCharPlatform, void>;
+  return !std::is_same_v<SimdPlatform<T>, void> &&
+      (std::is_same_v<std::uint8_t, T> || std::is_same_v<std::uint16_t, T> ||
+       std::is_same_v<std::uint32_t, T> || std::is_same_v<std::uint64_t, T>);
 }
 
-template <typename T>
+template <typename T, typename Platform = SimdPlatform<T>>
 FOLLY_ERASE bool containsImplHandwritten(
     folly::span<const T> haystack, T needle) {
-  static_assert(std::is_same_v<T, std::uint8_t>, "");
-  auto as_chars = folly::reinterpret_span_cast<const char>(haystack);
-  return simdAnyOf<SimdCharPlatform, 4>(
-      as_chars.data(),
-      as_chars.data() + as_chars.size(),
-      [&](SimdCharPlatform::reg_t x) {
-        return SimdCharPlatform::equal(x, static_cast<char>(needle));
+  static_assert(!std::is_same_v<Platform, void>, "");
+  return simdAnyOf<Platform, 4>(
+      haystack.data(),
+      haystack.data() + haystack.size(),
+      [&](typename Platform::reg_t x) {
+        return Platform::equal(x, static_cast<T>(needle));
       });
 }
 

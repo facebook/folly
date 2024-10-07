@@ -10,7 +10,8 @@ cpp_unittest(
     deps = [
         "//folly:range",
         "//folly/algorithm/simd/detail:simd_any_of",
-        "//folly/algorithm/simd/detail:simd_char_platform",
+        "//folly/algorithm/simd/detail:simd_platform",
+        "//folly/container:span",
         "//folly/portability:gtest",
     ],
 )
