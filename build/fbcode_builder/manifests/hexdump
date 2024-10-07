@@ -1,0 +1,12 @@
+[manifest]
+name = hexdump
+
+[rpms]
+util-linux
+
+[debs]
+bsdmainutils
+
+# only used from system packages currently
+[build]
+builder = nop

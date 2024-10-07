@@ -963,6 +963,12 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         self.process_project_dir_arguments(args, loader)
         manifest = loader.load_manifest(args.project)
         manifest_ctx = loader.ctx_gen.get_context(manifest.name)
+        run_tests = (
+            args.enable_tests
+            and manifest.get("github.actions", "run_tests", ctx=manifest_ctx) != "off"
+        )
+        if run_tests:
+            manifest_ctx.set("test", "on")
         run_on = self.get_run_on(args)
 
         # Some projects don't do anything "useful" as a leaf project, only
@@ -1075,10 +1081,7 @@ jobs:
                 free_up_disk = ""
 
             allow_sys_arg = ""
-            if (
-                build_opts.allow_system_packages
-                and build_opts.host_type.get_package_manager()
-            ):
+            if run_tests:
                 sudo_arg = "sudo "
                 allow_sys_arg = " --allow-system-packages"
                 if build_opts.host_type.get_package_manager() == "deb":
@@ -1097,6 +1100,19 @@ jobs:
                     out.write(
                         f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf\n"
                     )
+                required_locales = manifest.get(
+                    "github.actions", "required_locales", ctx=manifest_ctx
+                )
+                if (
+                    build_opts.host_type.get_package_manager() == "deb"
+                    and required_locales
+                ):
+                    # ubuntu doesn't include this by default
+                    out.write("    - name: Install locale-gen\n")
+                    out.write(f"      run: {sudo_arg}apt-get install locales\n")
+                    for loc in required_locales.split():
+                        out.write(f"    - name: Ensure {loc} locale present\n")
+                        out.write(f"      run: {sudo_arg}locale-gen {loc}\n")
 
             projects = loader.manifests_in_dependency_order()
 
@@ -1188,11 +1204,7 @@ jobs:
             out.write("        name: %s\n" % manifest.name)
             out.write("        path: _artifacts\n")
 
-            if (
-                args.enable_tests
-                and manifest.get("github.actions", "run_tests", ctx=manifest_ctx)
-                != "off"
-            ):
+            if run_tests:
                 num_jobs_arg = ""
                 if args.num_jobs:
                     num_jobs_arg = f"--num-jobs {args.num_jobs} "
@@ -1203,6 +1215,7 @@ jobs:
                 )
             if build_opts.free_up_disk and not build_opts.is_windows():
                 out.write("    - name: Show disk space at end\n")
+                out.write("      if: always()\n")
                 out.write("      run: df -h\n")
 
     def setup_project_cmd_parser(self, parser):

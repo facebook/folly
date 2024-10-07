@@ -4,6 +4,9 @@ fbsource_path = fbcode/eden
 shipit_project = eden
 shipit_fbcode_builder = true
 
+[github.actions]
+required_locales = en_US.UTF-8
+
 [git]
 repo_url = https://github.com/facebook/sapling.git
 
@@ -56,6 +59,9 @@ fbcode/tools/lfs = tools/lfs
 fb303
 fbthrift
 rust-shed
+
+[dependencies.test=on]
+hexdump
 
 [dependencies.not(os=windows)]
 python
