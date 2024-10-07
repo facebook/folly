@@ -37,7 +37,7 @@ class FiberPrinter:
 
         state = self.val["state_"]
         d = gdb.types.make_enum_dict(state.type)
-        d = dict((v, k) for k, v in d.items())
+        d = {v: k for k, v in d.items()}
         self.state = d[int(state)]
 
     def state_to_string(self):
@@ -122,7 +122,7 @@ class GetFiberXMethodWorker(gdb.xmethod.XMethodWorker):
 
 class GetFiberXMethodMatcher(gdb.xmethod.XMethodMatcher):
     def __init__(self):
-        super(GetFiberXMethodMatcher, self).__init__("Fiber address method matcher")
+        super().__init__("Fiber address method matcher")
         self.worker = GetFiberXMethodWorker()
 
     def match(self, class_type, method_name):
@@ -147,7 +147,7 @@ class FiberXMethodWorker(gdb.xmethod.XMethodWorker):
 
 class FiberXMethodMatcher(gdb.xmethod.XMethodMatcher):
     def __init__(self):
-        super(FiberXMethodMatcher, self).__init__("Fiber method matcher")
+        super().__init__("Fiber method matcher")
         self.worker = FiberXMethodWorker()
 
     def match(self, class_type, method_name):
@@ -212,7 +212,7 @@ class FiberUnwinder(gdb.unwinder.Unwinder):
         )
 
     def __init__(self):
-        super(FiberUnwinder, self).__init__("Fiber unwinder")
+        super().__init__("Fiber unwinder")
         self.fiber_context_ptr = None
         self.fiber = None
 
@@ -319,7 +319,7 @@ class FiberCommand(gdb.Command):
     """
 
     def __init__(self):
-        super(FiberCommand, self).__init__("fiber", gdb.COMMAND_USER, prefix=True)
+        super().__init__("fiber", gdb.COMMAND_USER, prefix=True)
 
     @use_language("c++")
     def invoke(self, arg, from_tty):
@@ -331,7 +331,7 @@ class FiberCommand(gdb.Command):
                 print("No fiber selected")
             else:
                 info = FiberInfo(FiberUnwinder.instance.fiber)
-                print("[Current fiber is {id} ({info})]".format(id=info.id, info=info))
+                print(f"[Current fiber is {info.id} ({info})]")
             return
 
         # look up fiber
@@ -351,7 +351,7 @@ class FiberNameCommand(gdb.Command):
     If NAME is not given, then any existing name is removed"""
 
     def __init__(self):
-        super(FiberNameCommand, self).__init__("fiber name", gdb.COMMAND_USER)
+        super().__init__("fiber name", gdb.COMMAND_USER)
 
     def invoke(self, arg, from_tty):
         fiber = FiberUnwinder.get_fiber()
@@ -371,9 +371,7 @@ class FiberInfoCommand(gdb.Command):
     """
 
     def __init__(self):
-        super(FiberInfoCommand, self).__init__(
-            "info fibers", gdb.COMMAND_STATUS, prefix=True
-        )
+        super().__init__("info fibers", gdb.COMMAND_STATUS, prefix=True)
 
     def trace_info(self, fiber, skip=()):
         # get the fiber symbol info if we can
@@ -422,7 +420,7 @@ class FiberInfoCommand(gdb.Command):
         for (mid, fid), info in get_fiber_info(only, managers=True):
             # track that we've seen this fiber/manager
             if fid:
-                seen.add("{}.{}".format(mid, fid))
+                seen.add(f"{mid}.{fid}")
                 seen.add(str(mid))
 
             # If it's a manager, print the header and continue
@@ -468,7 +466,7 @@ class FiberApplyCommand(gdb.Command):
     """
 
     def __init__(self):
-        super(FiberApplyCommand, self).__init__("fiber apply", gdb.COMMAND_USER)
+        super().__init__("fiber apply", gdb.COMMAND_USER)
 
     def usage(self):
         raise gdb.Error("usage: fiber apply [ FIBER_FILTER [ ... ] | apply ] COMMAND")
@@ -497,7 +495,7 @@ class FiberApplyCommand(gdb.Command):
         try:
             # loop over, activating and running command in turn
             for _, info in get_fiber_info(targets):
-                print("Fiber {id} ({info})".format(id=info.id, info=info))
+                print(f"Fiber {info.id} ({info})")
                 fiber_activate(info.fiber)
                 gdb.execute(command, from_tty=from_tty)
         finally:
@@ -509,9 +507,7 @@ class FiberDeactivateCommand(gdb.Command):
     """Deactivates fiber processing, returning to normal thread processing"""
 
     def __init__(self):
-        super(FiberDeactivateCommand, self).__init__(
-            "fiber deactivate", gdb.COMMAND_USER
-        )
+        super().__init__("fiber deactivate", gdb.COMMAND_USER)
 
     def invoke(self, arg, from_tty):
         if arg:
@@ -529,9 +525,7 @@ class SetFiberCommand(gdb.Command):
     """Generic command for setting how fibers are handled"""
 
     def __init__(self):
-        super(SetFiberCommand, self).__init__(
-            "set fiber", gdb.COMMAND_DATA, prefix=True
-        )
+        super().__init__("set fiber", gdb.COMMAND_DATA, prefix=True)
 
     def invoke(self, arg, from_tty):
         print('"set fiber" must be followed by the name of a fiber subcommand')
@@ -544,9 +538,7 @@ class ShowFiberCommand(gdb.Command):
     REGISTRY = set()
 
     def __init__(self):
-        super(ShowFiberCommand, self).__init__(
-            "show fiber", gdb.COMMAND_DATA, prefix=True
-        )
+        super().__init__("show fiber", gdb.COMMAND_DATA, prefix=True)
 
     def invoke(self, arg, from_tty):
         for name in sorted(self.REGISTRY):
@@ -561,7 +553,7 @@ class FiberParameter(gdb.Parameter):
     """track fiber parameters to print all on "show fiber" command"""
 
     def __init__(self, name, *args, **kwds):
-        super(FiberParameter, self).__init__(name, *args, **kwds)
+        super().__init__(name, *args, **kwds)
         (category, _, parameter) = name.partition(" ")
         assert category == "fiber"
         ShowFiberCommand.REGISTRY.add(parameter)
@@ -574,7 +566,7 @@ class FiberManagerPrintLimitParameter(FiberParameter):
     set_doc = "Set limit of fibers of a fiber manager to print"
 
     def __init__(self):
-        super(FiberManagerPrintLimitParameter, self).__init__(
+        super().__init__(
             "fiber manager-print-limit", gdb.COMMAND_DATA, gdb.PARAM_UINTEGER
         )
         self.value = 100
@@ -596,7 +588,7 @@ class FiberInfoFrameSkipWordsParameter(FiberParameter):
     set_doc = "Set words to skip frames of in fiber info printing"
 
     def __init__(self):
-        super(FiberInfoFrameSkipWordsParameter, self).__init__(
+        super().__init__(
             "fiber info-frame-skip-words", gdb.COMMAND_DATA, gdb.PARAM_STRING
         )
         self.value = "folly::fibers wait"
@@ -604,7 +596,7 @@ class FiberInfoFrameSkipWordsParameter(FiberParameter):
 
 class Shortcut(gdb.Function):
     def __init__(self, function_name, value_lambda):
-        super(Shortcut, self).__init__(function_name)
+        super().__init__(function_name)
         self.value_lambda = value_lambda
 
     def invoke(self, *args):
@@ -631,7 +623,7 @@ class FiberInfo:
             return cached
 
         # otherwise create a new one
-        obj = super(FiberInfo, cls).__new__(cls)
+        obj = super().__new__(cls)
         obj.fiber = fiber
         obj._name = ""
         obj.mid = None
@@ -676,7 +668,7 @@ class FiberInfo:
         return "Fiber {address} ({state}){name}".format(
             address=self.fiber.address,
             state=FiberPrinter(self.fiber).state_to_string(),
-            name=' "{}"'.format(self._name) if self._name else "",
+            name=f' "{self._name}"' if self._name else "",
         )
 
     def __eq__(self, other):
@@ -737,7 +729,7 @@ def get_fiber_info(only=None, managers=False):
         # first check if pre-cached
         if mid in get_fiber_info.cache:
             for fid, info in get_fiber_info.cache[mid].items():
-                fiber_id = "{}.{}".format(mid, fid)
+                fiber_id = f"{mid}.{fid}"
                 if not only or str(mid) in only or fiber_id in only:
                     yield ((mid, fid), info)
             continue
@@ -753,7 +745,7 @@ def get_fiber_info(only=None, managers=False):
             info.fid = fid
             fibers[fid] = info
             # output only if matching the filter
-            fiber_id = "{}.{}".format(mid, fid)
+            fiber_id = f"{mid}.{fid}"
             if not only or str(mid) in only or fiber_id in only:
                 yield ((mid, fid), info)
             fid += 1

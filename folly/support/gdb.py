@@ -34,7 +34,7 @@ def escape_byte(b):
     else:
         # Escape non-printable bytes with octal, which is what GDB
         # uses when natively printing strings.
-        return "\\{0:03o}".format(b)
+        return f"\\{b:03o}"
 
 
 def repr_string(v, length):
@@ -158,11 +158,11 @@ class IPAddressPrinter:
         if self.val["family_"] == socket.AF_INET:
             addr = self.val["addr_"]["ipV4Addr"]["addr_"]["bytes_"]["_M_elems"]
             for i in range(0, 4):
-                result += "{:d}.".format(int(addr[i]))
+                result += f"{int(addr[i]):d}."
         elif self.val["family_"] == socket.AF_INET6:
             addr = self.val["addr_"]["ipV6Addr"]["addr_"]["bytes_"]["_M_elems"]
             for i in range(0, 8):
-                result += "{:02x}{:02x}:".format(int(addr[2 * i]), int(addr[2 * i + 1]))
+                result += f"{int(addr[2 * i]):02x}{int(addr[2 * i + 1]):02x}:"
         else:
             return "unknown address family {}".format(self.val["family_"])
         return result[:-1]
@@ -315,8 +315,7 @@ class F14Printer:
     @staticmethod
     def flatten(list):
         for elt in list:
-            for i in elt:
-                yield i
+            yield from elt
 
     def children(self):
         counter = map(self.format_count, itertools.count())

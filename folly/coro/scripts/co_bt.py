@@ -98,7 +98,7 @@ class DebuggerValue(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_file_name_and_line(self) -> Optional[Tuple[str, int]]:
+    def get_file_name_and_line(self) -> tuple[str, int] | None:
         """
         Returns the file name and line number of the value.
         Assumes the value is a pointer to an instruction.
@@ -107,7 +107,7 @@ class DebuggerValue(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_func_name(self) -> Optional[str]:
+    def get_func_name(self) -> str | None:
         """
         Returns the function name of the value. Returns None if the name could
         not be found
@@ -206,7 +206,7 @@ class StackFrame:
 
 
 def get_async_stack_root_addr(
-    debugger_value_class: Type[DebuggerValue],
+    debugger_value_class: type[DebuggerValue],
 ) -> DebuggerValue:
     """
     Returns a pointer to the top-most async stack root, or a nullptr if none
@@ -259,7 +259,7 @@ def get_async_stack_root_addr(
     return async_stack_root_holder.value
 
 
-def print_async_stack_addrs(addrs: List[DebuggerValue]) -> None:
+def print_async_stack_addrs(addrs: list[DebuggerValue]) -> None:
     if len(addrs) == 0:
         print("No async operation detected")
         return
@@ -282,11 +282,11 @@ def print_async_stack_addrs(addrs: List[DebuggerValue]) -> None:
 
 def get_async_stack_addrs_from_initial_frame(
     async_stack_frame_addr: DebuggerValue,
-) -> List[DebuggerValue]:
+) -> list[DebuggerValue]:
     """
     Gets the list of async stack frames rooted at the current frame
     """
-    addrs: List[DebuggerValue] = []
+    addrs: list[DebuggerValue] = []
     while not async_stack_frame_addr.is_nullptr():
         async_stack_frame = AsyncStackFrame.from_addr(async_stack_frame_addr)
         addrs.append(async_stack_frame.instruction_pointer)
@@ -297,12 +297,12 @@ def get_async_stack_addrs_from_initial_frame(
 def walk_normal_stack(
     normal_stack_frame_addr: DebuggerValue,
     normal_stack_frame_stop_addr: DebuggerValue,
-) -> List[DebuggerValue]:
+) -> list[DebuggerValue]:
     """
     Returns the list of return addresses in the normal stack.
     Does not include stop_addr
     """
-    addrs: List[DebuggerValue] = []
+    addrs: list[DebuggerValue] = []
     while not normal_stack_frame_addr.is_nullptr():
         normal_stack_frame = StackFrame.from_addr(normal_stack_frame_addr)
         if (
@@ -320,7 +320,7 @@ def walk_normal_stack(
 
 @dataclass
 class WalkAsyncStackResult:
-    addrs: List[DebuggerValue]
+    addrs: list[DebuggerValue]
     # Normal stack frame to start the next normal stack walk
     normal_stack_frame_addr: DebuggerValue
     normal_stack_frame_stop_addr: DebuggerValue
@@ -330,14 +330,14 @@ class WalkAsyncStackResult:
 
 
 def walk_async_stack(
-    debugger_value_class: Type[DebuggerValue],
+    debugger_value_class: type[DebuggerValue],
     async_stack_frame_addr: DebuggerValue,
 ) -> WalkAsyncStackResult:
     """
     Walks the async stack and returns the next normal stack and async stack
     addresses to walk.
     """
-    addrs: List[DebuggerValue] = []
+    addrs: list[DebuggerValue] = []
     normal_stack_frame_addr = debugger_value_class.nullptr()
     normal_stack_frame_stop_addr = debugger_value_class.nullptr()
     async_stack_frame_next_addr = debugger_value_class.nullptr()
@@ -390,8 +390,8 @@ def walk_async_stack(
 
 
 def get_async_stack_addrs(
-    debugger_value_class: Type[DebuggerValue],
-) -> List[DebuggerValue]:
+    debugger_value_class: type[DebuggerValue],
+) -> list[DebuggerValue]:
     """
     Gets the async stack trace, including normal stack frames with async
     stack frames.
@@ -414,7 +414,7 @@ def get_async_stack_addrs(
     async_stack_root = AsyncStackRoot.from_addr(async_stack_root_addr)
     normal_stack_frame_addr = debugger_value_class.get_register("rbp")
     normal_stack_frame_stop_addr = async_stack_root.stack_frame_ptr
-    addrs: List[DebuggerValue] = []
+    addrs: list[DebuggerValue] = []
     addrs.append(debugger_value_class.get_register("pc"))
     async_stack_frame_addr = async_stack_root.top_frame
 
@@ -437,7 +437,7 @@ def get_async_stack_addrs(
     return addrs
 
 
-def print_async_stack_root_addrs(addrs: List[DebuggerValue]) -> None:
+def print_async_stack_root_addrs(addrs: list[DebuggerValue]) -> None:
     if len(addrs) == 0:
         print("No async stack roots detected")
         return
@@ -468,12 +468,12 @@ def print_async_stack_root_addrs(addrs: List[DebuggerValue]) -> None:
 
 
 def get_async_stack_root_addrs(
-    debugger_value_class: Type[DebuggerValue],
-) -> List[DebuggerValue]:
+    debugger_value_class: type[DebuggerValue],
+) -> list[DebuggerValue]:
     """
     Gets all the async stack roots that exist for the current thread.
     """
-    addrs: List[DebuggerValue] = []
+    addrs: list[DebuggerValue] = []
     async_stack_root_addr = get_async_stack_root_addr(debugger_value_class)
     while not async_stack_root_addr.is_nullptr():
         addrs.append(async_stack_root_addr)
@@ -483,11 +483,11 @@ def get_async_stack_root_addrs(
 
 
 def backtrace_command(
-    debugger_value_class: Type[DebuggerValue],
-    stack_root: Optional[str],
+    debugger_value_class: type[DebuggerValue],
+    stack_root: str | None,
 ) -> None:
     try:
-        addrs: List[DebuggerValue] = []
+        addrs: list[DebuggerValue] = []
         if stack_root:
             async_stack_root_addr = debugger_value_class.parse_and_eval(stack_root)
             if not async_stack_root_addr.is_nullptr():
@@ -503,7 +503,7 @@ def backtrace_command(
         traceback.print_exception(*sys.exc_info())
 
 
-def async_stack_roots_command(debugger_value_class: Type[DebuggerValue]) -> None:
+def async_stack_roots_command(debugger_value_class: type[DebuggerValue]) -> None:
     addrs = get_async_stack_root_addrs(debugger_value_class)
     print_async_stack_root_addrs(addrs)
 
@@ -529,7 +529,7 @@ class DebuggerType(enum.Enum):
     LLDB = 1
 
 
-debugger_type: Optional[DebuggerType] = None
+debugger_type: DebuggerType | None = None
 if debugger_type is None:  # noqa: C901
     try:
         import gdb
@@ -592,7 +592,7 @@ if debugger_type is None:  # noqa: C901
             def to_hex(self) -> str:
                 return f"{int(self.value):#0{18}x}"
 
-            def get_file_name_and_line(self) -> Optional[Tuple[str, int]]:
+            def get_file_name_and_line(self) -> tuple[str, int] | None:
                 regex = re.compile(r"Line (\d+) of (.*) starts at.*")
                 output = GdbValue.execute(
                     f"info line *{self.to_hex()}",
@@ -606,7 +606,7 @@ if debugger_type is None:  # noqa: C901
                     else None
                 )
 
-            def get_func_name(self) -> Optional[str]:
+            def get_func_name(self) -> str | None:
                 regex = re.compile(r"(.*) \+ \d+ in section.* of .*")
                 output = GdbValue.execute(
                     f"info symbol {self.to_hex()}",
@@ -622,7 +622,7 @@ if debugger_type is None:  # noqa: C901
         class GdbCoroBacktraceCommand(gdb.Command):
             def __init__(self):
                 print(co_bt_info())
-                super(GdbCoroBacktraceCommand, self).__init__("co_bt", gdb.COMMAND_USER)
+                super().__init__("co_bt", gdb.COMMAND_USER)
 
             def invoke(self, arg: str, from_tty: bool):
                 backtrace_command(GdbValue, arg)
@@ -630,9 +630,7 @@ if debugger_type is None:  # noqa: C901
         class GdbCoroAsyncStackRootsCommand(gdb.Command):
             def __init__(self):
                 print(co_async_stack_root_info())
-                super(GdbCoroAsyncStackRootsCommand, self).__init__(
-                    "co_async_stack_roots", gdb.COMMAND_USER
-                )
+                super().__init__("co_async_stack_roots", gdb.COMMAND_USER)
 
             def invoke(self, arg: str, from_tty: bool):
                 async_stack_roots_command(GdbValue)
@@ -650,7 +648,7 @@ if debugger_type is None:  # noqa: C901
             LLDB implementation of a debugger value
             """
 
-            exe_ctx: ClassVar[Optional[lldb.SBExecutionContext]] = None
+            exe_ctx: ClassVar[lldb.SBExecutionContext | None] = None
             next_name_num: ClassVar[int] = 0
             value: lldb.SBValue
 
@@ -752,7 +750,7 @@ if debugger_type is None:  # noqa: C901
                     address, lldb.eSymbolContextEverything
                 )
 
-            def get_file_name_and_line(self) -> Optional[Tuple[str, int]]:
+            def get_file_name_and_line(self) -> tuple[str, int] | None:
                 symbol_context = self._get_symbol_context()
                 line_entry = symbol_context.GetLineEntry()
                 path = line_entry.GetFileSpec().fullpath
@@ -760,7 +758,7 @@ if debugger_type is None:  # noqa: C901
                     return (path, line_entry.GetLine())
                 return None
 
-            def get_func_name(self) -> Optional[str]:
+            def get_func_name(self) -> str | None:
                 symbol_context = self._get_symbol_context()
                 if symbol_context.GetFunction().IsValid():
                     return symbol_context.GetFunction().GetDisplayName()
