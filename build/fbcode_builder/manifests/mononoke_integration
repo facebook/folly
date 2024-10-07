@@ -45,9 +45,3 @@ zstd
 
 [dependencies.os=linux]
 sqlite3
-
-[dependencies.os=darwin]
-gnu-bash
-gnu-coreutils
-gnu-grep
-gnu-sed
