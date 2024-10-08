@@ -693,6 +693,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST container_heap_vector_types_test SOURCES heap_vector_types_test.cpp
       TEST container_map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
       TEST container_merge_test SOURCES MergeTest.cpp
+      TEST container_regex_match_cache_test SOURCES RegexMatchCacheTest.cpp
       TEST container_small_vector_test WINDOWS_DISABLED
         SOURCES small_vector_test.cpp
       TEST container_sorted_vector_types_test SOURCES sorted_vector_test.cpp

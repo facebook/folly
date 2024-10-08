@@ -169,6 +169,31 @@ cpp_library(
 )
 
 cpp_library(
+    name = "regex_match_cache",
+    srcs = ["RegexMatchCache.cpp"],
+    headers = ["RegexMatchCache.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":reserve",
+        "//folly:map_util",
+        "//folly:string",
+        "//folly/portability:windows",
+        "//folly/synchronization:atomic_util",
+    ],
+    exported_deps = [
+        ":f14_hash",
+        ":span",
+        "//folly:chrono",
+        "//folly:fbstring",
+        "//folly:function",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_regex"),
+    ],
+)
+
+cpp_library(
     name = "span",
     headers = ["span.h"],
     exported_deps = [
