@@ -22,6 +22,7 @@
 #include <iosfwd>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
@@ -32,6 +33,7 @@
 #include <folly/container/F14Set.h>
 #include <folly/container/Reserve.h>
 #include <folly/container/span.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 
@@ -45,95 +47,140 @@ namespace folly {
 ///
 /// Incomplete as a generic container.
 class RegexMatchCacheDynamicBitset {
+ private:
+  template <typename Word>
+  struct bit_span {
+    Word* data;
+    size_t size;
+
+    bit_span(Word* const data_, size_t const size_) noexcept
+        : data{data_}, size{size_} {}
+    bit_span(bit_span const&) = default;
+    bit_span& operator=(bit_span const&) = default;
+
+    auto as_tuple() const noexcept { return std::tuple{data, size}; }
+
+    friend bool operator==(bit_span const& a, bit_span const& b) noexcept {
+      return a.as_tuple() == b.as_tuple();
+    }
+    friend bool operator!=(bit_span const& a, bit_span const& b) noexcept {
+      return a.as_tuple() != b.as_tuple();
+    }
+  };
+
  public:
   RegexMatchCacheDynamicBitset() = default;
 
   RegexMatchCacheDynamicBitset(RegexMatchCacheDynamicBitset const&) = delete;
   RegexMatchCacheDynamicBitset(RegexMatchCacheDynamicBitset&& that) noexcept
-      : size_{std::exchange(that.size_, {})},
-        buffer_{std::exchange(that.buffer_, {})} {}
+      : data_{std::exchange(that.data_, {})} {}
 
-  ~RegexMatchCacheDynamicBitset() { reset(); }
+  ~RegexMatchCacheDynamicBitset() { reset_(); }
 
   void operator=(RegexMatchCacheDynamicBitset const&) = delete;
   RegexMatchCacheDynamicBitset& operator=(
       RegexMatchCacheDynamicBitset&& that) noexcept {
-    reset();
-    size_ = std::exchange(that.size_, {});
-    buffer_ = std::exchange(that.buffer_, {});
+    reset_();
+    data_ = std::exchange(that.data_, {});
     return *this;
   }
 
   bool get_value(size_t const index) const noexcept {
-    if (!(index < size_)) {
+    auto data = get_bit_span_();
+    if (!(index < data.size)) {
       return false;
     }
-    auto const& word = buffer_[index / 8];
-    auto const mask = uint8_t(1) << (index % 8);
-    return word & mask;
-  }
-  void set_value(size_t const index, bool const value) {
-    if (!(index < size_)) {
-      reserve(index);
-    }
-    assert(index < size_);
-    auto& word = buffer_[index / 8];
-    auto const mask = uint8_t(uint8_t(1) << (index % 8));
-    word = value ? word | mask : word & ~mask;
+    return get_value_(data, index);
   }
 
-  void reset() {
-    if (buffer_) {
-      delete[] buffer_;
-      size_ = {};
-      buffer_ = {};
+  void set_value(size_t const index, bool const value) {
+    constexpr auto wordbits = (sizeof(uintptr_t) * 8);
+    auto data = get_bit_span_();
+
+    if (!(index < data.size) ||
+        (data.size == wordbits && index == wordbits - 1)) {
+      if (!value) {
+        return;
+      }
+      data = reserve_(index);
     }
+    assert(index < data.size);
+    set_value_(data, index, value);
   }
+
+  void reset() noexcept { reset_(); }
 
   class index_set_view {
    private:
     friend RegexMatchCacheDynamicBitset;
-    RegexMatchCacheDynamicBitset const& bitset_;
+    bit_span<uintptr_t const> bitset_;
 
     explicit index_set_view(RegexMatchCacheDynamicBitset const& bitset) noexcept
-        : bitset_{bitset} {}
+        : bitset_{bitset.get_bit_span_()} {}
 
    public:
     using value_type = size_t;
 
-    struct const_iterator {
+    class const_iterator {
+     public:
       using value_type = size_t;
       using difference_type = ptrdiff_t;
       using pointer = void;
       using iterator_category = std::forward_iterator_tag;
+
       struct reference {
-        size_t index_;
-        RegexMatchCacheDynamicBitset const& bitset_;
+       private:
+        friend class const_iterator;
+
+        size_t const index_;
+
+        explicit reference(size_t const index) noexcept : index_{index} {}
+
+       public:
         operator size_t() const noexcept { return index_; }
       };
 
+     private:
+      using self = const_iterator;
+
+      bit_span<uintptr_t const> const data_;
       size_t index_;
-      RegexMatchCacheDynamicBitset const& bitset_;
-      reference operator*() const noexcept {
-        return reference{index_, bitset_};
+
+      size_t ceil_valid_index(size_t index) const noexcept {
+        constexpr auto wordbits = (sizeof(uintptr_t) * 8);
+        while (index < data_.size) {
+          auto const wordidx = index / wordbits;
+          auto const wordoff = index % wordbits;
+          if (auto const word = data_.data[wordidx] >> wordoff) {
+            return index + findFirstSet(word) - 1;
+          }
+          index = (wordidx + 1) * wordbits;
+        }
+        return index;
       }
-      friend bool operator==(const_iterator a, const_iterator b) noexcept {
+
+     public:
+      const_iterator(
+          bit_span<uintptr_t const> const data, size_t const index) noexcept
+          : data_{data}, index_{ceil_valid_index(index)} {}
+
+      reference operator*() const noexcept { return reference{index_}; }
+      const_iterator& operator++() noexcept {
+        index_ = ceil_valid_index(index_ + 1);
+        return *this;
+      }
+
+      friend bool operator==(self const& a, self const& b) noexcept {
         return a.index_ == b.index_;
       }
-      friend bool operator!=(const_iterator a, const_iterator b) noexcept {
+      friend bool operator!=(self const& a, self const& b) noexcept {
         return a.index_ != b.index_;
-      }
-      const_iterator& operator++() noexcept {
-        index_ = bitset_.ceil_valid_index(index_ + 1);
-        return *this;
       }
     };
 
-    const_iterator begin() const noexcept {
-      return const_iterator{bitset_.ceil_valid_index(0), bitset_};
-    }
+    const_iterator begin() const noexcept { return const_iterator{bitset_, 0}; }
     const_iterator end() const noexcept {
-      return const_iterator{bitset_.size_, bitset_};
+      return const_iterator{bitset_, bitset_.size};
     }
 
     bool empty() const noexcept { return begin() == end(); }
@@ -144,29 +191,89 @@ class RegexMatchCacheDynamicBitset {
   }
 
  private:
-  size_t ceil_valid_index(size_t index) const noexcept {
-    while (index < size_ && !get_value(index)) {
-      ++index;
-    }
-    return index;
+  bool has_capacity_(size_t const index) const noexcept {
+    auto const buf = get_bit_span_();
+    return index < buf.size;
   }
 
-  void reserve(size_t const index) {
-    auto const size = std::max(size_t(8), strictNextPowTwo(index));
-    auto const buffer = new uint8_t[size / 8];
-    if (size_) {
-      std::memcpy(buffer, buffer_, size_ / 8);
+  bit_span<uintptr_t> reserve_(size_t const index) {
+    assert(!has_capacity_(index));
+    constexpr auto wordsize = sizeof(uintptr_t) * 8;
+    constexpr auto minsize = wordsize * 2; // min growth from in-situ to on-heap
+    auto const newsize = std::max(strictNextPowTwo(index), minsize);
+    assert(newsize >= minsize);
+    assert(newsize % wordsize == 0);
+    auto const newdata = new uintptr_t[newsize / 8];
+    auto const buf = get_bit_span_();
+    auto const buf2size = nextPowTwo(buf.size);
+    std::memcpy(newdata, buf.data, buf2size / 8);
+    std::memset(newdata + buf2size / wordsize, 0, (newsize - buf2size) / 8);
+    if (!(to_signed(data_) < 0)) {
+      auto const data = new bit_span<uintptr_t>{newdata, newsize};
+      assert(!(reinterpret_cast<uintptr_t>(data) & 1));
+      data_ = (reinterpret_cast<uintptr_t>(data) >> 1) | ~(~uintptr_t(0) >> 1);
+      return *data;
+    } else {
+      auto const data = reinterpret_cast<bit_span<uintptr_t>*>(data_ << 1);
+      delete[] data->data;
+      *data = {newdata, newsize};
+      return *data;
     }
-    std::memset(buffer + size_ / 8, 0, (size - size_) / 8);
-    if (buffer_) {
-      delete[] buffer_;
-    }
-    size_ = size;
-    buffer_ = buffer;
   }
 
-  size_t size_{};
-  uint8_t* buffer_{};
+  void reset_() {
+    if (!(to_signed(data_) < 0)) {
+      data_ = 0;
+    } else {
+      auto const data = reinterpret_cast<bit_span<uintptr_t>*>(data_ << 1);
+      delete[] data->data;
+      delete data;
+      data_ = 0;
+    }
+  }
+
+  template <typename Word>
+  static bool get_value_(
+      bit_span<Word> const buf, size_t const index) noexcept {
+    assert(index < buf.size);
+    constexpr auto wordbits = (sizeof(Word) * 8);
+    auto const wordidx = index / wordbits;
+    auto const wordoff = index % wordbits;
+    auto const mask = Word(1) << wordoff;
+    auto& word = buf.data[wordidx];
+    return word & mask;
+  }
+
+  template <typename Word>
+  static void set_value_(
+      bit_span<Word> const buf, size_t const index, bool const value) noexcept {
+    assert(index < buf.size);
+    constexpr auto wordbits = (sizeof(Word) * 8);
+    assert(buf.size != wordbits || index != wordbits - 1);
+    auto const wordidx = index / wordbits;
+    auto const wordoff = index % wordbits;
+    auto const mask = Word(1) << wordoff;
+    auto& word = buf.data[wordidx];
+    word = value ? word | mask : word & ~mask;
+  }
+
+  bit_span<uintptr_t const> get_bit_span_() const noexcept {
+    if (!(to_signed(data_) < 0)) {
+      return {&data_, sizeof(data_) * 8};
+    } else {
+      return *reinterpret_cast<bit_span<uintptr_t const> const*>(data_ << 1);
+    }
+  }
+
+  bit_span<uintptr_t> get_bit_span_() noexcept {
+    if (!(to_signed(data_) < 0)) {
+      return {&data_, sizeof(data_) * 8};
+    } else {
+      return *reinterpret_cast<bit_span<uintptr_t> const*>(data_ << 1);
+    }
+  }
+
+  uintptr_t data_{};
 };
 
 /// RegexMatchCacheIndexedVector
@@ -182,7 +289,7 @@ class RegexMatchCacheIndexedVector {
  public:
   size_t size() const noexcept { return forward_.size(); }
 
-  bool contains_index(size_t const index) const noexcept {
+  bool contains_index(size_t index) const noexcept {
     return reverse_.contains(index);
   }
 
@@ -191,7 +298,7 @@ class RegexMatchCacheIndexedVector {
   }
 
   std::pair<size_t, bool> insert_value(Value const& value) {
-    auto const [iter, inserted] = forward_.try_emplace(value);
+    auto [iter, inserted] = forward_.try_emplace(value);
     if (inserted) {
       auto rollback_forward =
           makeGuard([&, iter_ = iter] { forward_.erase(iter_); });
@@ -214,12 +321,12 @@ class RegexMatchCacheIndexedVector {
   }
 
   bool erase_value(Value const& value) noexcept {
-    auto const iter = forward_.find(value);
+    auto iter = forward_.find(value);
     if (iter == forward_.end()) {
       return false;
     }
     assert(free_.size() < free_.capacity());
-    auto const index = iter->second;
+    auto index = iter->second;
     free_.push_back(index);
     forward_.erase(iter);
     reverse_.erase(index);
