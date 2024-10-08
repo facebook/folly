@@ -1,4 +1,4 @@
-load("@fbcode//antlir/fbpkg:fbpkg.bzl", "fbpkg")
+load("@fbcode//fbpkg:fbpkg.bzl", "fbpkg")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 
