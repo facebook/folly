@@ -25,12 +25,16 @@
 #include <fmt/ranges.h>
 
 #include <folly/Portability.h>
+#include <folly/Utility.h>
+#include <folly/container/F14Map.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace std::literals;
 
 using folly::RegexMatchCache;
+using folly::RegexMatchCacheKey;
+using folly::RegexMatchCacheKeyAndView;
 
 static_assert(
     !std::is_move_assignable_v<RegexMatchCache::ConsistencyReportMatcher>);
@@ -73,11 +77,28 @@ struct RegexMatchCacheTest : testing::Test {
   using clock = RegexMatchCache::clock;
   using time_point = RegexMatchCache::time_point;
 
+  class KeyMap final : public RegexMatchCache::KeyMap {
+   private:
+    folly::F14FastMap<regex_key, std::string> store_;
+
+   public:
+    void add(regex_key_and_view const& regex) {
+      auto const to_value = [&] { return std::string{regex}; };
+      store_.try_emplace(regex, folly::invocable_to(to_value));
+    }
+
+    std::string_view lookup(regex_key const& regex) const override {
+      return store_.at(regex);
+    }
+  };
+
+  KeyMap keys;
+
   class ConsistencyReportCache
       : public RegexMatchCache::ConsistencyReportMatcher {
    private:
     using base = RegexMatchCache::ConsistencyReportMatcher;
-    using key = std::tuple<regex_pointer, string_pointer>;
+    using key = std::tuple<regex_key, string_pointer>;
     using map = std::unordered_map<key, bool>;
     map cache_;
 
@@ -86,22 +107,25 @@ struct RegexMatchCacheTest : testing::Test {
 
     size_t size() const noexcept { return cache_.size(); }
 
-    bool match(regex_pointer const regex, string_pointer const string) final {
+    bool match(
+        RegexMatchCache::KeyMap const& keymap,
+        regex_key const regex,
+        string_pointer const string) final {
       auto const key = std::tuple{regex, string};
       auto const [iter, inserted] = cache_.try_emplace(key, false);
       auto& entry = iter->second;
-      return !inserted ? entry : (entry = base::match(regex, string));
+      return !inserted ? entry : (entry = base::match(keymap, regex, string));
     }
 
     void clear() { cache_.clear(); }
 
     map const& get_map() const noexcept { return cache_; }
 
-    void eraseRegex(std::string_view const regex) {
+    void eraseRegex(regex_key const regex) {
       auto const end = cache_.end();
       auto it = cache_.begin();
       while (it != end) {
-        auto const match = *std::get<0>(it->first) == regex;
+        auto const match = std::get<0>(it->first) == regex;
         it = match ? cache_.erase(it) : std::next(it);
       }
     }
@@ -140,30 +164,34 @@ struct RegexMatchCacheTest : testing::Test {
   };
 
   void checkConsistency(RegexMatchCache const& cache) {
-    cache.consistency(crcache, [&](auto const line) { //
+    cache.consistency(crcache, keys, [&](auto const line) { //
       throw std::logic_error(line);
     });
   }
   ConsistencyReport getConsistencyReport(RegexMatchCache const& cache) {
     ConsistencyReport out;
-    cache.consistency(crcache, [&](auto&& line) { //
+    cache.consistency(crcache, keys, [&](auto&& line) { //
       out.lines_.push_back(std::move(line));
     });
     return out;
   }
 
-  auto inspect(RegexMatchCache const& cache) const { return cache.inspect(); }
+  auto inspect(RegexMatchCache const& cache) const {
+    return cache.inspect(keys);
+  }
 
   auto getRegexList(RegexMatchCache const& cache) const {
-    return cache.getRegexList();
+    return cache.getRegexList(keys);
   }
 
   auto lookup(RegexMatchCache& cache, std::string_view regex, time_point now) {
+    auto key = RegexMatchCacheKeyAndView(regex);
+    keys.add(key);
     auto uncached = std::as_const(cache).findMatchesUncached(regex);
-    if (!std::as_const(cache).isReadyToFindMatches(regex)) {
-      cache.prepareToFindMatches(regex);
+    if (!std::as_const(cache).isReadyToFindMatches(key)) {
+      cache.prepareToFindMatches(key);
     }
-    auto matches = std::as_const(cache).findMatches(regex, now);
+    auto matches = std::as_const(cache).findMatches(key, now);
     EXPECT_THAT(matches, testing::UnorderedElementsAreArray(uncached));
     return matches;
   }
@@ -297,19 +325,20 @@ TEST_F(RegexMatchCacheTest, add_regex) {
   constexpr auto xFooOrBar = "foo|bar"sv;
   RegexMatchCache cache;
   checkConsistency(cache);
-  EXPECT_FALSE(cache.hasRegex(xFooOrBar));
+  EXPECT_FALSE(cache.hasRegex(RegexMatchCacheKey(xFooOrBar)));
   EXPECT_THAT(cache.getStringList(), testing::ElementsAre());
   EXPECT_THAT(getRegexList(cache), testing::ElementsAre());
 
-  cache.addRegex(xFooOrBar);
+  keys.add(RegexMatchCacheKeyAndView(xFooOrBar));
+  cache.addRegex(RegexMatchCacheKey(xFooOrBar));
   checkConsistency(cache);
-  EXPECT_TRUE(cache.hasRegex(xFooOrBar));
+  EXPECT_TRUE(cache.hasRegex(RegexMatchCacheKey(xFooOrBar)));
   EXPECT_THAT(cache.getStringList(), testing::ElementsAre());
   EXPECT_THAT(getRegexList(cache), testing::ElementsAre(xFooOrBar));
 
-  cache.eraseRegex(xFooOrBar);
+  cache.eraseRegex(RegexMatchCacheKey(xFooOrBar));
   checkConsistency(cache);
-  EXPECT_FALSE(cache.hasRegex(xFooOrBar));
+  EXPECT_FALSE(cache.hasRegex(RegexMatchCacheKey(xFooOrBar)));
   EXPECT_THAT(cache.getStringList(), testing::ElementsAre());
   EXPECT_THAT(getRegexList(cache), testing::ElementsAre());
 }
@@ -319,13 +348,14 @@ TEST_F(RegexMatchCacheTest, add_regex_add_string) {
   constexpr auto xFooOrBar = "foo|bar"sv;
   RegexMatchCache cache;
   checkConsistency(cache);
-  EXPECT_FALSE(cache.hasRegex(xFooOrBar));
+  EXPECT_FALSE(cache.hasRegex(RegexMatchCacheKey(xFooOrBar)));
   EXPECT_THAT(cache.getStringList(), testing::ElementsAre());
   EXPECT_THAT(getRegexList(cache), testing::ElementsAre());
 
-  cache.addRegex(xFooOrBar);
+  keys.add(RegexMatchCacheKeyAndView(xFooOrBar));
+  cache.addRegex(RegexMatchCacheKey(xFooOrBar));
   checkConsistency(cache);
-  EXPECT_TRUE(cache.hasRegex(xFooOrBar));
+  EXPECT_TRUE(cache.hasRegex(RegexMatchCacheKey(xFooOrBar)));
   EXPECT_THAT(cache.getStringList(), testing::ElementsAre());
   EXPECT_THAT(getRegexList(cache), testing::ElementsAre(xFooOrBar));
 
@@ -379,10 +409,11 @@ TEST_F(RegexMatchCacheTest, combinatorics) {
           auto dist = std::uniform_int_distribution<size_t>{0, nregexes - 1};
           auto const regex = std::string{regexes.at(dist(rng))};
 
-          ASSERT_TRUE(cache.hasRegex(regex));
-          crcache.eraseRegex(regex);
-          cache.eraseRegex(regex);
-          ASSERT_FALSE(cache.hasRegex(regex));
+          auto const key = RegexMatchCacheKey{regex};
+          ASSERT_TRUE(cache.hasRegex(key));
+          crcache.eraseRegex(key);
+          cache.eraseRegex(key);
+          ASSERT_FALSE(cache.hasRegex(key));
         }
       } else if (what < 8) {
         auto const str = rand_string();
@@ -397,15 +428,17 @@ TEST_F(RegexMatchCacheTest, combinatorics) {
       }
       auto const chosen_strings = rand_strings();
       auto const regex = fmt::format("{}", fmt::join(chosen_strings, "|"));
-      if (!cache.isReadyToFindMatches(regex)) {
-        cache.prepareToFindMatches(regex);
+      auto const key = RegexMatchCacheKeyAndView(regex);
+      keys.add(key);
+      if (!cache.isReadyToFindMatches(key)) {
+        cache.prepareToFindMatches(key);
       }
-      ASSERT_TRUE(cache.hasRegex(regex));
+      ASSERT_TRUE(cache.hasRegex(key));
       {
         auto const report = getConsistencyReport(cache);
         ASSERT_TRUE(report.consistent()) << inspect(cache) << report;
       }
-      auto const mlist = cache.findMatchesUnsafe(regex, now);
+      auto const mlist = cache.findMatchesUnsafe(key, now);
       for (auto const ref : chosen_strings) {
         ASSERT_EQ(cache.hasString(&ref.get()), contains(mlist, &ref.get()));
       }

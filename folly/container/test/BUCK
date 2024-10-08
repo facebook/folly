@@ -337,6 +337,8 @@ cpp_unittest(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:portability",
+        "//folly:utility",
+        "//folly/container:f14_hash",
         "//folly/container:regex_match_cache",
         "//folly/portability:gmock",
         "//folly/portability:gtest",

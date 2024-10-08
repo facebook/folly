@@ -178,13 +178,13 @@ cpp_library(
         "//folly:map_util",
         "//folly:string",
         "//folly/portability:windows",
+        "//folly/ssl:openssl_hash",
         "//folly/synchronization:atomic_util",
     ],
     exported_deps = [
         ":f14_hash",
         ":span",
         "//folly:chrono",
-        "//folly:fbstring",
         "//folly:function",
     ],
     external_deps = [

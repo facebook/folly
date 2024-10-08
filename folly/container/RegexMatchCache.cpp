@@ -27,12 +27,20 @@
 #include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/container/Reserve.h>
+#include <folly/ssl/OpenSSLHash.h>
 #include <folly/synchronization/AtomicUtil.h>
 
 namespace folly {
 
 static std::string quote(std::string_view const s) {
   return fmt::format("\"{}\"", cEscape<std::string>(s));
+}
+
+RegexMatchCacheKey::data_type RegexMatchCacheKey::init(
+    std::string_view const regex) noexcept {
+  data_type data;
+  folly::ssl::OpenSSLHash::sha256(range(data), StringPiece(regex));
+  return data;
 }
 
 class RegexMatchCache::RegexObject {
@@ -57,11 +65,16 @@ void RegexMatchCache::repair() noexcept {
   cacheRegexToMatch_.clear();
 }
 
+RegexMatchCache::KeyMap::~KeyMap() = default;
+
 void RegexMatchCache::InspectView::print(std::ostream& o) const {
+  auto regexToString = [&](auto const& regex) {
+    return quote(keys_.lookup(regex));
+  };
   o << "cache-regex-to-match[" << ref_.cacheRegexToMatch_.size()
     << "]:" << std::endl;
   for (auto const& [regex, entry] : ref_.cacheRegexToMatch_) {
-    o << "  " << quote(regex) << ":" << std::endl;
+    o << "  " << regexToString(regex) << ":" << std::endl;
     for (auto const match : entry.matches) {
       o << "    " << quote(*match) << std::endl;
     }
@@ -71,7 +84,7 @@ void RegexMatchCache::InspectView::print(std::ostream& o) const {
   for (auto const& [match, entry] : ref_.cacheMatchToRegex_) {
     o << "  " << quote(*match) << ":" << std::endl;
     for (auto const regex : entry.regexes) {
-      o << "    " << quote(*regex) << std::endl;
+      o << "    " << regexToString(*regex) << std::endl;
     }
   }
   o << "string-queue-forward[" << ref_.stringQueueForward_.size()
@@ -79,13 +92,13 @@ void RegexMatchCache::InspectView::print(std::ostream& o) const {
   for (auto const& [string, entry] : ref_.stringQueueForward_) {
     o << "  " << quote(*string) << ":" << std::endl;
     for (auto const regex : entry.regexes) {
-      o << "    " << quote(*regex) << std::endl;
+      o << "    " << regexToString(*regex) << std::endl;
     }
   }
   o << "string-queue-reverse[" << ref_.stringQueueReverse_.size()
     << "]:" << std::endl;
   for (auto const& [regex, entry] : ref_.stringQueueReverse_) {
-    o << "  " << quote(*regex) << ":" << std::endl;
+    o << "  " << regexToString(*regex) << ":" << std::endl;
     for (auto const string : entry.strings) {
       o << "    " << quote(*string) << std::endl;
     }
@@ -93,7 +106,7 @@ void RegexMatchCache::InspectView::print(std::ostream& o) const {
 }
 
 struct RegexMatchCache::ConsistencyReportMatcher::state {
-  std::unordered_map<fbstring, RegexObject> cache;
+  std::unordered_map<regex_key, RegexObject> cache;
 };
 
 RegexMatchCache::ConsistencyReportMatcher::ConsistencyReportMatcher()
@@ -103,8 +116,9 @@ RegexMatchCache::ConsistencyReportMatcher::~ConsistencyReportMatcher() =
     default;
 
 bool RegexMatchCache::ConsistencyReportMatcher::match(
-    regex_pointer const regex, string_pointer const string) {
-  auto const [iter, inserted] = state_->cache.try_emplace(*regex, *regex);
+    KeyMap const& keys, regex_key const regex, string_pointer const string) {
+  auto const [iter, inserted] =
+      state_->cache.try_emplace(regex, keys.lookup(regex));
   return iter->second(*string);
 }
 
@@ -112,11 +126,12 @@ RegexMatchCache::RegexMatchCache() noexcept = default;
 
 RegexMatchCache::~RegexMatchCache() = default;
 
-std::vector<std::string_view> RegexMatchCache::getRegexList() const {
+std::vector<std::string_view> RegexMatchCache::getRegexList(
+    KeyMap const& keys) const {
   std::vector<std::string_view> result;
   result.reserve(cacheRegexToMatch_.size());
   for (auto const& [regex, entry] : cacheRegexToMatch_) {
-    result.push_back(regex);
+    result.push_back(keys.lookup(regex));
   }
   return result;
 }
@@ -133,9 +148,12 @@ std::vector<RegexMatchCache::string_pointer> RegexMatchCache::getStringList()
 
 void RegexMatchCache::consistency(
     ConsistencyReportMatcher& matcher,
+    KeyMap const& keys,
     FunctionRef<void(std::string)> const report) const {
   auto const q = [](std::string_view const s) { return quote(s); };
   auto const h = report;
+
+  auto const r = [&](regex_key const r) { return keys.lookup(r); };
 
   if (cacheRegexToMatch_.empty() || cacheMatchToRegex_.empty()) {
     if (!stringQueueForward_.empty()) {
@@ -149,42 +167,42 @@ void RegexMatchCache::consistency(
   //  check that caches are accurate
   //  check that caches are bidi-consistent
   //  check that missing cache entries are found in string-queues
-  for (auto const& [regexs, rtmentry] : cacheRegexToMatch_) {
-    auto const regex = &regexs;
+  for (auto const& [regex, rtmentry] : cacheRegexToMatch_) {
+    auto const regexs = r(regex);
     for (auto const& [match, mtrentry] : cacheMatchToRegex_) {
       auto const rtmcontains = rtmentry.matches.count(match);
-      auto const mtrcontains = mtrentry.regexes.count(regex);
+      auto const mtrcontains = mtrentry.regexes.count(&regex);
       if (rtmcontains && !mtrcontains) {
         h(fmt::format( //
             "cache-regex-to-match[{}] wild {}",
-            q(*regex),
+            q(regexs),
             q(*match)));
       }
       if (mtrcontains && !rtmcontains) {
         h(fmt::format( //
             "cache-match-to-regex[{}] wild {}",
             q(*match),
-            q(*regex)));
+            q(regexs)));
       }
-      auto const result = matcher.match(regex, match);
+      auto const result = matcher.match(keys, regex, match);
       auto const queues = result && (!rtmcontains || !mtrcontains);
       auto const sqfptr =
           !queues ? nullptr : get_ptr(stringQueueForward_, match);
-      auto const sqfhas = sqfptr && sqfptr->regexes.contains(regex);
+      auto const sqfhas = sqfptr && sqfptr->regexes.contains(&regex);
       auto const sqrptr =
-          !queues ? nullptr : get_ptr(stringQueueReverse_, regex);
+          !queues ? nullptr : get_ptr(stringQueueReverse_, &regex);
       auto const sqrhas = sqrptr && sqrptr->strings.contains(match);
       if (rtmcontains && !result) {
         h(fmt::format( //
             "cache-regex-to-match[{}] wild {}",
-            q(*regex),
+            q(regexs),
             q(*match)));
       }
       if (result && !rtmcontains) {
         if (!sqfhas || !sqrhas) {
           h(fmt::format( //
               "cache-regex-to-match[{}] missing {}",
-              q(*regex),
+              q(regexs),
               q(*match)));
         }
       }
@@ -192,14 +210,14 @@ void RegexMatchCache::consistency(
         h(fmt::format( //
             "cache-match-to-regex[{}] wild {}",
             q(*match),
-            q(*regex)));
+            q(regexs)));
       }
       if (result && !mtrcontains) {
         if (!sqfhas || !sqrhas) {
           h(fmt::format( //
               "cache-match-to-regex[{}] missing {}",
               q(*match),
-              q(*regex)));
+              q(regexs)));
         }
       }
     }
@@ -220,11 +238,11 @@ void RegexMatchCache::consistency(
       if (!sqrptr) {
         h(fmt::format( //
             "string-queue-reverse none regex[{}]",
-            q(*regex)));
+            q(r(*regex))));
       } else if (!sqrptr->strings.count(string)) {
         h(fmt::format( //
             "string-queue-reverse[{}] none string[{}]",
-            q(*regex),
+            q(r(*regex)),
             q(*string)));
       }
       auto const mtrhas = mtrptr && mtrptr->regexes.count(regex);
@@ -234,7 +252,7 @@ void RegexMatchCache::consistency(
         h(fmt::format( //
             "string-queue-forward[{}] has regex[{}]",
             q(*string),
-            q(*regex)));
+            q(r(*regex))));
       }
     }
   }
@@ -250,7 +268,7 @@ void RegexMatchCache::consistency(
         h(fmt::format( //
             "string-queue-forward[{}] none regex[{}]",
             q(*string),
-            q(*regex)));
+            q(r(*regex))));
       }
       auto const mtrptr = get_ptr(cacheMatchToRegex_, string);
       auto const mtrhas = mtrptr && mtrptr->regexes.count(regex);
@@ -258,18 +276,18 @@ void RegexMatchCache::consistency(
       if (mtrhas || rtmhas) {
         h(fmt::format( //
             "string-queue-reverse[{}] has string[{}]",
-            q(*regex),
+            q(r(*regex)),
             q(*string)));
       }
     }
   }
 }
 
-bool RegexMatchCache::hasRegex(std::string_view const regex) const noexcept {
+bool RegexMatchCache::hasRegex(regex_key const& regex) const noexcept {
   return cacheRegexToMatch_.contains(regex);
 }
 
-void RegexMatchCache::addRegex(std::string_view const regex) {
+void RegexMatchCache::addRegex(regex_key const& regex) {
   auto const [rtmiter, rtminserted] = cacheRegexToMatch_.try_emplace(regex);
   if (!rtminserted) {
     return;
@@ -290,7 +308,7 @@ void RegexMatchCache::addRegex(std::string_view const regex) {
   guard.dismiss();
 }
 
-void RegexMatchCache::eraseRegex(std::string_view const regex) {
+void RegexMatchCache::eraseRegex(regex_key const& regex) {
   auto const rtmiter = cacheRegexToMatch_.find(regex);
   if (rtmiter == cacheRegexToMatch_.end()) {
     return;
@@ -384,14 +402,14 @@ std::vector<std::string const*> RegexMatchCache::findMatchesUncached(
 }
 
 bool RegexMatchCache::isReadyToFindMatches(
-    std::string_view const regex) const noexcept {
+    regex_key const& regex) const noexcept {
   auto const rtmiter = cacheRegexToMatch_.find(regex);
   return //
       rtmiter != cacheRegexToMatch_.end() &&
       !stringQueueReverse_.contains(&rtmiter->first);
 }
 
-void RegexMatchCache::prepareToFindMatches(std::string_view regex) {
+void RegexMatchCache::prepareToFindMatches(regex_key_and_view const& regex) {
   auto guard = makeGuard(std::bind(&RegexMatchCache::repair, this));
   auto const [rtmiter, inserted] = cacheRegexToMatch_.try_emplace(regex);
   auto const regexp = &rtmiter->first;
@@ -443,7 +461,7 @@ void RegexMatchCache::prepareToFindMatches(std::string_view regex) {
 }
 
 RegexMatchCache::FindMatchesUnsafeResult RegexMatchCache::findMatchesUnsafe(
-    std::string_view const regex, time_point const now) const {
+    regex_key const& regex, time_point const now) const {
   if (kIsDebug && !isReadyToFindMatches(regex)) {
     throw std::logic_error("not ready to find matches");
   }
@@ -456,7 +474,7 @@ RegexMatchCache::FindMatchesUnsafeResult RegexMatchCache::findMatchesUnsafe(
 }
 
 std::vector<RegexMatchCache::string_pointer> RegexMatchCache::findMatches(
-    std::string_view const regex, time_point const now) const {
+    regex_key const& regex, time_point const now) const {
   auto const matches = findMatchesUnsafe(regex, now);
   return {matches.begin(), matches.end()};
 }
@@ -469,14 +487,14 @@ void RegexMatchCache::clear() {
 }
 
 void RegexMatchCache::purge(time_point const expiry) {
-  std::vector<std::string_view> regexes;
+  std::vector<regex_key> regexes;
   for (auto const& [regex, entry] : cacheRegexToMatch_) {
     auto const accessed_at = entry.accessed_at.load(std::memory_order_relaxed);
     if (accessed_at <= expiry) {
       regexes.push_back(regex);
     }
   }
-  for (auto const regex : regexes) {
+  for (auto const& regex : regexes) {
     eraseRegex(regex);
   }
 }
