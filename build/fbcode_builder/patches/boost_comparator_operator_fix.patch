@@ -8,4 +8,4 @@ diff --git a/boost/serialization/strong_typedef.hpp b/boost/serialization/strong
 +    bool operator==(const T& lhs) const {return t == lhs;}                                                       \
      bool operator<(const D& rhs) const {return t < rhs.t;}                                                       \
  };
-
+ 
