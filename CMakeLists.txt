@@ -1159,6 +1159,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST spin_lock_test SOURCES SpinLockTest.cpp
       BENCHMARK string_benchmark WINDOWS_DISABLED SOURCES StringBenchmark.cpp
       TEST string_test WINDOWS_DISABLED SOURCES StringTest.cpp
+      BENCHMARK string_to_float_benchmark SOURCES StringToFloatBenchmark.cpp
       BENCHMARK synchronized_benchmark WINDOWS_DISABLED
         SOURCES SynchronizedBenchmark.cpp
       TEST synchronized_test WINDOWS_DISABLED
