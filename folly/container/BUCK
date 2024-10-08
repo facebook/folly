@@ -174,7 +174,6 @@ cpp_library(
     headers = ["RegexMatchCache.h"],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        ":reserve",
         "//folly:map_util",
         "//folly:string",
         "//folly/portability:windows",
@@ -183,6 +182,7 @@ cpp_library(
     ],
     exported_deps = [
         ":f14_hash",
+        ":reserve",
         ":span",
         "//folly:chrono",
         "//folly:function",

@@ -17,6 +17,7 @@
 #include <folly/container/RegexMatchCache.h>
 
 #include <chrono>
+#include <numeric>
 #include <random>
 #include <string>
 #include <string_view>
@@ -27,17 +28,28 @@
 #include <folly/Portability.h>
 #include <folly/Utility.h>
 #include <folly/container/F14Map.h>
+#include <folly/container/F14Set.h>
+#include <folly/container/sorted_vector_types.h>
+#include <folly/container/span.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace std::literals;
 
 using folly::RegexMatchCache;
+using folly::RegexMatchCacheDynamicBitset;
 using folly::RegexMatchCacheKey;
 using folly::RegexMatchCacheKeyAndView;
 
 static_assert(
     !std::is_move_assignable_v<RegexMatchCache::ConsistencyReportMatcher>);
+
+extern "C" FOLLY_KEEP size_t check_folly_regex_match_cache_dynamic_bitset_count(
+    RegexMatchCacheDynamicBitset const& bitset) {
+  auto const view = bitset.as_index_set_view();
+  return std::accumulate(view.begin(), view.end(), size_t(0));
+}
 
 /// test_ref
 ///
@@ -72,6 +84,178 @@ struct formatter<test_ref<T>> : private formatter<std::remove_const_t<T>> {
 #endif
 };
 } // namespace fmt
+
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+template <typename T>
+using unordered_vector_set_base = folly::F14VectorSet<T>;
+#else
+template <typename T>
+using unordered_vector_set_base = folly::sorted_vector_set<T>;
+#endif
+
+template <typename T>
+struct unordered_vector_set : private unordered_vector_set_base<T> {
+ private:
+  using base = unordered_vector_set_base<T>;
+
+  static folly::span<T const> to_span(
+      folly::F14VectorSet<T> const& set) noexcept {
+    auto const size = set.size();
+    auto const data = size ? &*set.begin() + 1 - size : nullptr;
+    return {data, size};
+  }
+  static folly::span<T const> to_span(
+      folly::sorted_vector_set<T> const& set) noexcept {
+    return {set.begin(), set.end()};
+  }
+  folly::span<T const> to_span() const noexcept { return to_span(*this); }
+
+ public:
+  using base::contains;
+  using base::empty;
+  using base::size;
+
+  auto begin() const noexcept { return to_span().begin(); }
+  auto end() const noexcept { return to_span().end(); }
+
+  using base::clear;
+
+  void insert(T const& value) { base::insert(value); }
+  void erase(T const& value) { base::erase(value); }
+};
+
+struct RegexMatchCacheDynamicBitsetTest : testing::Test {};
+
+TEST_F(RegexMatchCacheDynamicBitsetTest, example) {
+  folly::RegexMatchCacheDynamicBitset bitset;
+  EXPECT_FALSE(bitset.get_value(3));
+  EXPECT_FALSE(bitset.get_value(14));
+  EXPECT_TRUE(bitset.as_index_set_view().empty());
+  EXPECT_THAT(bitset.as_index_set_view(), testing::ElementsAre());
+
+  bitset.set_value(3, false);
+  EXPECT_FALSE(bitset.get_value(3));
+  EXPECT_FALSE(bitset.get_value(2));
+  EXPECT_FALSE(bitset.get_value(14));
+  EXPECT_FALSE(bitset.get_value(99));
+  EXPECT_TRUE(bitset.as_index_set_view().empty());
+  EXPECT_THAT(bitset.as_index_set_view(), testing::ElementsAre());
+
+  bitset.set_value(3, true);
+  EXPECT_TRUE(bitset.get_value(3));
+  EXPECT_FALSE(bitset.get_value(2));
+  EXPECT_FALSE(bitset.get_value(14));
+  EXPECT_FALSE(bitset.get_value(99));
+  EXPECT_FALSE(bitset.as_index_set_view().empty());
+  EXPECT_THAT(bitset.as_index_set_view(), testing::ElementsAre(3));
+
+  bitset.set_value(99, true);
+  EXPECT_TRUE(bitset.get_value(3));
+  EXPECT_FALSE(bitset.get_value(2));
+  EXPECT_FALSE(bitset.get_value(14));
+  EXPECT_TRUE(bitset.get_value(99));
+  EXPECT_FALSE(bitset.as_index_set_view().empty());
+  EXPECT_THAT(bitset.as_index_set_view(), testing::ElementsAre(3, 99));
+}
+
+TEST_F(RegexMatchCacheDynamicBitsetTest, combinatorics) {
+  constexpr size_t opt = folly::kIsOptimize;
+  constexpr size_t san = folly::kIsSanitize;
+  constexpr size_t rounds = 1u << (1 + size_t(opt) + size_t(!san));
+  constexpr size_t ops = 1u << (8 + size_t(opt) + size_t(!san));
+  std::mt19937 rng;
+  unordered_vector_set<size_t> set;
+  folly::RegexMatchCacheDynamicBitset dyn;
+  for (size_t r = 0; r < rounds; ++r) {
+    set.clear();
+    dyn.reset();
+    for (size_t op = 0; op < ops; ++op) {
+      auto const what = rng() % 128;
+      SCOPED_TRACE(fmt::format("round[{}] op[{}] what[{}]", r, op, what));
+      size_t value = 0;
+      if (what < 16) {
+        if (!set.empty()) {
+          auto dist = std::uniform_int_distribution<size_t>{0, set.size() - 1};
+          value = folly::span<size_t const>{set.begin(), set.end()}[dist(rng)];
+          ASSERT_TRUE(dyn.get_value(value));
+          set.erase(value);
+          dyn.set_value(value, false);
+          ASSERT_FALSE(dyn.get_value(value));
+        }
+      } else if (what < 48) {
+        auto dist = std::uniform_int_distribution<size_t>{0, op};
+        value = dist(rng);
+        ASSERT_EQ(set.contains(value), dyn.get_value(value));
+        set.erase(value);
+        ASSERT_FALSE(set.contains(value));
+        dyn.set_value(value, false);
+        ASSERT_FALSE(dyn.get_value(value));
+      } else {
+        auto dist = std::uniform_int_distribution<size_t>{0, op};
+        value = dist(rng);
+        ASSERT_EQ(set.contains(value), dyn.get_value(value));
+        set.insert(value);
+        ASSERT_TRUE(set.contains(value));
+        dyn.set_value(value, true);
+        ASSERT_TRUE(dyn.get_value(value));
+      }
+      ASSERT_EQ(set.size(), set.end() - set.begin());
+      std::vector<size_t> els{set.begin(), set.end()};
+      std::sort(els.begin(), els.end());
+      ASSERT_THAT(dyn.as_index_set_view(), testing::ElementsAreArray(els));
+    }
+  }
+}
+
+struct RegexMatchCacheIndexedVectorTest : testing::Test {};
+
+TEST_F(RegexMatchCacheIndexedVectorTest, example) {
+  folly::RegexMatchCacheIndexedVector<std::string> vec;
+  EXPECT_EQ(0, vec.size());
+
+  EXPECT_THAT(
+      vec.as_forward_view(),
+      testing::UnorderedElementsAreArray(
+          std::initializer_list<std::pair<std::string, size_t>>{
+              //
+          }));
+
+  EXPECT_EQ(std::pair(size_t(0), true), vec.insert_value("hello"));
+  EXPECT_THAT(
+      vec.as_forward_view(),
+      testing::UnorderedElementsAreArray(
+          std::initializer_list<std::pair<std::string, size_t>>{
+              {"hello", 0},
+          }));
+
+  EXPECT_EQ(std::pair(size_t(1), true), vec.insert_value("world"));
+  EXPECT_THAT(
+      vec.as_forward_view(),
+      testing::UnorderedElementsAreArray(
+          std::initializer_list<std::pair<std::string, size_t>>{
+              {"hello", 0},
+              {"world", 1},
+          }));
+
+  //  erase an element, leaving a hole in the index space to be filled
+  EXPECT_TRUE(vec.erase_value("hello"));
+  EXPECT_THAT(
+      vec.as_forward_view(),
+      testing::UnorderedElementsAreArray(
+          std::initializer_list<std::pair<std::string, size_t>>{
+              {"world", 1},
+          }));
+
+  //  fill the hole in the index space
+  EXPECT_EQ(std::pair(size_t(0), true), vec.insert_value("water"));
+  EXPECT_THAT(
+      vec.as_forward_view(),
+      testing::UnorderedElementsAreArray(
+          std::initializer_list<std::pair<std::string, size_t>>{
+              {"water", 0},
+              {"world", 1},
+          }));
+}
 
 struct RegexMatchCacheTest : testing::Test {
   using clock = RegexMatchCache::clock;

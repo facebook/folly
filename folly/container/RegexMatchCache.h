@@ -17,6 +17,7 @@
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <iosfwd>
 #include <string>
@@ -29,9 +30,238 @@
 #include <folly/Function.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
+#include <folly/container/Reserve.h>
 #include <folly/container/span.h>
 
 namespace folly {
+
+/// RegexMatchCacheDynamicBitset
+///
+/// A dynamic bitset for use within, and optimized for, RegexMatchCache.
+/// * Small, having the same size and alignment as a pointer.
+/// * Optimistically non-allocating, using in-situ storage for small bitsets.
+///
+/// Intended for use only within RegexMatchCache.
+///
+/// Incomplete as a generic container.
+class RegexMatchCacheDynamicBitset {
+ public:
+  RegexMatchCacheDynamicBitset() = default;
+
+  RegexMatchCacheDynamicBitset(RegexMatchCacheDynamicBitset const&) = delete;
+  RegexMatchCacheDynamicBitset(RegexMatchCacheDynamicBitset&& that) noexcept
+      : size_{std::exchange(that.size_, {})},
+        buffer_{std::exchange(that.buffer_, {})} {}
+
+  ~RegexMatchCacheDynamicBitset() { reset(); }
+
+  void operator=(RegexMatchCacheDynamicBitset const&) = delete;
+  RegexMatchCacheDynamicBitset& operator=(
+      RegexMatchCacheDynamicBitset&& that) noexcept {
+    reset();
+    size_ = std::exchange(that.size_, {});
+    buffer_ = std::exchange(that.buffer_, {});
+    return *this;
+  }
+
+  bool get_value(size_t const index) const noexcept {
+    if (!(index < size_)) {
+      return false;
+    }
+    auto const& word = buffer_[index / 8];
+    auto const mask = uint8_t(1) << (index % 8);
+    return word & mask;
+  }
+  void set_value(size_t const index, bool const value) {
+    if (!(index < size_)) {
+      reserve(index);
+    }
+    assert(index < size_);
+    auto& word = buffer_[index / 8];
+    auto const mask = uint8_t(uint8_t(1) << (index % 8));
+    word = value ? word | mask : word & ~mask;
+  }
+
+  void reset() {
+    if (buffer_) {
+      delete[] buffer_;
+      size_ = {};
+      buffer_ = {};
+    }
+  }
+
+  class index_set_view {
+   private:
+    friend RegexMatchCacheDynamicBitset;
+    RegexMatchCacheDynamicBitset const& bitset_;
+
+    explicit index_set_view(RegexMatchCacheDynamicBitset const& bitset) noexcept
+        : bitset_{bitset} {}
+
+   public:
+    using value_type = size_t;
+
+    struct const_iterator {
+      using value_type = size_t;
+      using difference_type = ptrdiff_t;
+      using pointer = void;
+      using iterator_category = std::forward_iterator_tag;
+      struct reference {
+        size_t index_;
+        RegexMatchCacheDynamicBitset const& bitset_;
+        operator size_t() const noexcept { return index_; }
+      };
+
+      size_t index_;
+      RegexMatchCacheDynamicBitset const& bitset_;
+      reference operator*() const noexcept {
+        return reference{index_, bitset_};
+      }
+      friend bool operator==(const_iterator a, const_iterator b) noexcept {
+        return a.index_ == b.index_;
+      }
+      friend bool operator!=(const_iterator a, const_iterator b) noexcept {
+        return a.index_ != b.index_;
+      }
+      const_iterator& operator++() noexcept {
+        index_ = bitset_.ceil_valid_index(index_ + 1);
+        return *this;
+      }
+    };
+
+    const_iterator begin() const noexcept {
+      return const_iterator{bitset_.ceil_valid_index(0), bitset_};
+    }
+    const_iterator end() const noexcept {
+      return const_iterator{bitset_.size_, bitset_};
+    }
+
+    bool empty() const noexcept { return begin() == end(); }
+  };
+
+  index_set_view as_index_set_view() const noexcept {
+    return index_set_view{*this};
+  }
+
+ private:
+  size_t ceil_valid_index(size_t index) const noexcept {
+    while (index < size_ && !get_value(index)) {
+      ++index;
+    }
+    return index;
+  }
+
+  void reserve(size_t const index) {
+    auto const size = std::max(size_t(8), strictNextPowTwo(index));
+    auto const buffer = new uint8_t[size / 8];
+    if (size_) {
+      std::memcpy(buffer, buffer_, size_ / 8);
+    }
+    std::memset(buffer + size_ / 8, 0, (size - size_) / 8);
+    if (buffer_) {
+      delete[] buffer_;
+    }
+    size_ = size;
+    buffer_ = buffer;
+  }
+
+  size_t size_{};
+  uint8_t* buffer_{};
+};
+
+/// RegexMatchCacheIndexedVector
+///
+/// An indexed vector, which is a vector for which the index of any element can
+/// be found efficiently.
+///
+/// Intended for use only within RegexMatchCache.
+///
+/// Incomplete as a generic container.
+template <typename Value>
+class RegexMatchCacheIndexedVector {
+ public:
+  size_t size() const noexcept { return forward_.size(); }
+
+  bool contains_index(size_t const index) const noexcept {
+    return reverse_.contains(index);
+  }
+
+  bool contains_value(Value const& value) const noexcept {
+    return forward_.contains(value);
+  }
+
+  std::pair<size_t, bool> insert_value(Value const& value) {
+    auto const [iter, inserted] = forward_.try_emplace(value);
+    if (inserted) {
+      auto rollback_forward =
+          makeGuard([&, iter_ = iter] { forward_.erase(iter_); });
+      if (free_.capacity() < forward_.size()) {
+        grow_capacity_by(free_, forward_.size() - free_.size());
+      }
+      assert(!(free_.capacity() < forward_.size()));
+      auto const from_free = !free_.empty();
+      auto const index = from_free ? free_.back() : forward_.size() - 1;
+      from_free ? free_.pop_back() : void();
+      iter->second = index;
+      auto rollback_free =
+          makeGuard([&] { from_free ? free_.push_back(index) : void(); });
+      assert(!reverse_.contains(index));
+      reverse_[index] = value;
+      rollback_free.dismiss();
+      rollback_forward.dismiss();
+    }
+    return {iter->second, inserted};
+  }
+
+  bool erase_value(Value const& value) noexcept {
+    auto const iter = forward_.find(value);
+    if (iter == forward_.end()) {
+      return false;
+    }
+    assert(free_.size() < free_.capacity());
+    auto const index = iter->second;
+    free_.push_back(index);
+    forward_.erase(iter);
+    reverse_.erase(index);
+    return true;
+  }
+
+  void clear() noexcept {
+    reverse_.clear();
+    forward_.clear();
+    free_.clear();
+  }
+
+  Value const& value_at_index(size_t index) const { return reverse_.at(index); }
+
+  size_t index_of_value(Value const& value) const { return forward_.at(value); }
+
+  class forward_view {
+   private:
+    friend RegexMatchCacheIndexedVector;
+    using map_t = folly::F14FastMap<Value, size_t>;
+    map_t const& map;
+    explicit forward_view(map_t const& map_) noexcept : map{map_} {}
+
+   public:
+    using value_type = typename map_t::value_type;
+    using size_type = typename map_t::size_type;
+    using iterator = typename map_t::const_iterator;
+
+    size_t size() const noexcept { return map.size(); }
+    iterator begin() const noexcept { return map.begin(); }
+    iterator end() const noexcept { return map.end(); }
+  };
+
+  forward_view as_forward_view() const noexcept {
+    return forward_view{forward_};
+  }
+
+ private:
+  std::vector<size_t> free_;
+  folly::F14FastMap<Value, size_t> forward_;
+  folly::F14FastMap<size_t, Value> reverse_;
+};
 
 /// RegexMatchCacheKey
 ///
@@ -199,16 +429,18 @@ class RegexMatchCache {
   };
 
   struct MatchToRegexEntry : MoveOnly {
-    folly::F14VectorSet<regex_pointer> regexes;
+    RegexMatchCacheDynamicBitset regexes;
   };
 
   struct StringQueueForwardEntry : MoveOnly {
-    folly::F14VectorSet<regex_pointer> regexes;
+    RegexMatchCacheDynamicBitset regexes;
   };
 
   struct StringQueueReverseEntry : MoveOnly {
     folly::F14VectorSet<string_pointer> strings;
   };
+
+  RegexMatchCacheIndexedVector<regex_pointer> regexVector_;
 
   /// cacheRegexToMatch_
   ///

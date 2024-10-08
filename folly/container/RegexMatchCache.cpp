@@ -60,9 +60,10 @@ void RegexMatchCache::repair() noexcept {
   stringQueueReverse_.clear();
   stringQueueForward_.clear();
   for (auto& [match, entry] : cacheMatchToRegex_) {
-    entry.regexes.clear();
+    entry.regexes.reset();
   }
   cacheRegexToMatch_.clear();
+  regexVector_.clear();
 }
 
 RegexMatchCache::KeyMap::~KeyMap() = default;
@@ -83,7 +84,8 @@ void RegexMatchCache::InspectView::print(std::ostream& o) const {
     << "]:" << std::endl;
   for (auto const& [match, entry] : ref_.cacheMatchToRegex_) {
     o << "  " << quote(*match) << ":" << std::endl;
-    for (auto const regex : entry.regexes) {
+    for (auto const regexi : entry.regexes.as_index_set_view()) {
+      auto const regex = ref_.regexVector_.value_at_index(regexi);
       o << "    " << regexToString(*regex) << std::endl;
     }
   }
@@ -91,7 +93,8 @@ void RegexMatchCache::InspectView::print(std::ostream& o) const {
     << "]:" << std::endl;
   for (auto const& [string, entry] : ref_.stringQueueForward_) {
     o << "  " << quote(*string) << ":" << std::endl;
-    for (auto const regex : entry.regexes) {
+    for (auto const regexi : entry.regexes.as_index_set_view()) {
+      auto const regex = ref_.regexVector_.value_at_index(regexi);
       o << "    " << regexToString(*regex) << std::endl;
     }
   }
@@ -169,9 +172,10 @@ void RegexMatchCache::consistency(
   //  check that missing cache entries are found in string-queues
   for (auto const& [regex, rtmentry] : cacheRegexToMatch_) {
     auto const regexs = r(regex);
+    auto const regexi = regexVector_.index_of_value(&regex);
     for (auto const& [match, mtrentry] : cacheMatchToRegex_) {
       auto const rtmcontains = rtmentry.matches.count(match);
-      auto const mtrcontains = mtrentry.regexes.count(&regex);
+      auto const mtrcontains = mtrentry.regexes.get_value(regexi);
       if (rtmcontains && !mtrcontains) {
         h(fmt::format( //
             "cache-regex-to-match[{}] wild {}",
@@ -188,7 +192,7 @@ void RegexMatchCache::consistency(
       auto const queues = result && (!rtmcontains || !mtrcontains);
       auto const sqfptr =
           !queues ? nullptr : get_ptr(stringQueueForward_, match);
-      auto const sqfhas = sqfptr && sqfptr->regexes.contains(&regex);
+      auto const sqfhas = sqfptr && sqfptr->regexes.get_value(regexi);
       auto const sqrptr =
           !queues ? nullptr : get_ptr(stringQueueReverse_, &regex);
       auto const sqrhas = sqrptr && sqrptr->strings.contains(match);
@@ -233,7 +237,8 @@ void RegexMatchCache::consistency(
           "string-queue-forward has string[{}]",
           q(*string)));
     }
-    for (auto const regex : entry.regexes) {
+    for (auto const regexi : entry.regexes.as_index_set_view()) {
+      auto const regex = regexVector_.value_at_index(regexi);
       auto const sqrptr = get_ptr(stringQueueReverse_, regex);
       if (!sqrptr) {
         h(fmt::format( //
@@ -245,7 +250,7 @@ void RegexMatchCache::consistency(
             q(r(*regex)),
             q(*string)));
       }
-      auto const mtrhas = mtrptr && mtrptr->regexes.count(regex);
+      auto const mtrhas = mtrptr && mtrptr->regexes.get_value(regexi);
       auto const rtmptr = get_ptr(cacheRegexToMatch_, *regex);
       auto const rtmhas = rtmptr && rtmptr->matches.count(string);
       if (mtrhas || rtmhas) {
@@ -257,6 +262,7 @@ void RegexMatchCache::consistency(
     }
   }
   for (auto const& [regex, entry] : stringQueueReverse_) {
+    auto const regexi = regexVector_.index_of_value(regex);
     auto const rtmptr = get_ptr(cacheRegexToMatch_, *regex);
     for (auto const string : entry.strings) {
       auto const sqfptr = get_ptr(stringQueueForward_, string);
@@ -264,14 +270,14 @@ void RegexMatchCache::consistency(
         h(fmt::format( //
             "string-queue-forward none string[{}]",
             q(*string)));
-      } else if (!sqfptr->regexes.count(regex)) {
+      } else if (!sqfptr->regexes.get_value(regexi)) {
         h(fmt::format( //
             "string-queue-forward[{}] none regex[{}]",
             q(*string),
             q(r(*regex))));
       }
       auto const mtrptr = get_ptr(cacheMatchToRegex_, string);
-      auto const mtrhas = mtrptr && mtrptr->regexes.count(regex);
+      auto const mtrhas = mtrptr && mtrptr->regexes.get_value(regexi);
       auto const rtmhas = rtmptr && rtmptr->matches.count(string);
       if (mtrhas || rtmhas) {
         h(fmt::format( //
@@ -294,6 +300,7 @@ void RegexMatchCache::addRegex(regex_key const& regex) {
   }
   auto guard = makeGuard(std::bind(&RegexMatchCache::repair, this));
   auto const regexp = &rtmiter->first;
+  auto const regexi = regexVector_.insert_value(regexp).first;
   if (cacheMatchToRegex_.empty()) {
     guard.dismiss();
     return;
@@ -302,7 +309,7 @@ void RegexMatchCache::addRegex(regex_key const& regex) {
   CHECK(sqrinserted) << "string already in string-queue-reverse";
   auto& sqrentry = sqriter->second;
   for (auto const& [string, mtrentry] : cacheMatchToRegex_) {
-    stringQueueForward_[string].regexes.insert(regexp);
+    stringQueueForward_[string].regexes.set_value(regexi, true);
     sqrentry.strings.insert(string);
   }
   guard.dismiss();
@@ -314,21 +321,24 @@ void RegexMatchCache::eraseRegex(regex_key const& regex) {
     return;
   }
   auto guard = makeGuard(std::bind(&RegexMatchCache::repair, this));
-  for (auto const match : rtmiter->second.matches) {
-    get_ptr(cacheMatchToRegex_, match)->regexes.erase(&rtmiter->first);
-  }
   auto const regexp = &rtmiter->first;
+  auto const regexi = regexVector_.index_of_value(regexp);
+  for (auto const match : rtmiter->second.matches) {
+    get_ptr(cacheMatchToRegex_, match)->regexes.set_value(regexi, false);
+  }
   auto const sqriter = stringQueueReverse_.find(regexp);
   if (sqriter != stringQueueReverse_.end()) {
     for (auto const string : sqriter->second.strings) {
       auto const sqfiter = stringQueueForward_.find(string);
-      sqfiter->second.regexes.erase(regexp);
-      if (sqfiter->second.regexes.empty()) {
+      CHECK(sqfiter != stringQueueForward_.end());
+      sqfiter->second.regexes.set_value(regexi, false);
+      if (sqfiter->second.regexes.as_index_set_view().empty()) {
         stringQueueForward_.erase(sqfiter);
       }
     }
     stringQueueReverse_.erase(sqriter);
   }
+  regexVector_.erase_value(regexp);
   cacheRegexToMatch_.erase(rtmiter);
   guard.dismiss();
 }
@@ -353,9 +363,9 @@ void RegexMatchCache::addString(string_pointer const string) {
 
   //  add to string-queue-forward and string-queue-reverse
   auto& sqfentry = sqfiter->second;
-  grow_capacity_by(sqfentry.regexes, cacheRegexToMatch_.size());
   for (auto const& [regex, entry] : cacheRegexToMatch_) {
-    sqfentry.regexes.insert(&regex);
+    auto regexi = regexVector_.index_of_value(&regex);
+    sqfentry.regexes.set_value(regexi, true);
     stringQueueReverse_[&regex].strings.insert(string);
   }
   guard.dismiss();
@@ -367,8 +377,9 @@ void RegexMatchCache::eraseString(string_pointer const string) {
   //  erase from string-queue-forward and string-queue-reverse
   auto const sqfiter = stringQueueForward_.find(string);
   if (sqfiter != stringQueueForward_.end()) {
-    for (auto const regex : sqfiter->second.regexes) {
-      auto const sqriter = stringQueueReverse_.find(regex);
+    for (auto const regexi : sqfiter->second.regexes.as_index_set_view()) {
+      auto const regexp = regexVector_.value_at_index(regexi);
+      auto const sqriter = stringQueueReverse_.find(regexp);
       sqriter->second.strings.erase(string);
       if (sqriter->second.strings.empty()) {
         stringQueueReverse_.erase(sqriter);
@@ -380,7 +391,8 @@ void RegexMatchCache::eraseString(string_pointer const string) {
   //  erase from cache-regex-to-match and cache-match-to-regex
   auto const mtriter = cacheMatchToRegex_.find(string);
   if (mtriter != cacheMatchToRegex_.end()) {
-    for (auto const regex : mtriter->second.regexes) {
+    for (auto const regexi : mtriter->second.regexes.as_index_set_view()) {
+      auto const regex = regexVector_.value_at_index(regexi);
       get_ptr(cacheRegexToMatch_, *regex)->matches.erase(string);
     }
     cacheMatchToRegex_.erase(mtriter);
@@ -414,6 +426,8 @@ void RegexMatchCache::prepareToFindMatches(regex_key_and_view const& regex) {
   auto const [rtmiter, inserted] = cacheRegexToMatch_.try_emplace(regex);
   auto const regexp = &rtmiter->first;
   auto& rtmentry = rtmiter->second;
+  auto const [regexi, rvinserted] = regexVector_.insert_value(regexp);
+  CHECK_EQ(rvinserted, inserted);
 
   if (inserted) {
     //  evaluate new regex over matches
@@ -428,7 +442,7 @@ void RegexMatchCache::prepareToFindMatches(regex_key_and_view const& regex) {
     for (auto& [string, mtrentry] : cacheMatchToRegex_) {
       if (robject(*string)) {
         rtmentry.matches.insert(string);
-        mtrentry.regexes.insert(regexp);
+        mtrentry.regexes.set_value(regexi, true);
       }
     }
   } else {
@@ -442,9 +456,9 @@ void RegexMatchCache::prepareToFindMatches(regex_key_and_view const& regex) {
     for (auto const string : strings) {
       auto const sqfiter = stringQueueForward_.find(string);
       CHECK(sqfiter != stringQueueForward_.end());
-      CHECK(sqfiter->second.regexes.contains(regexp));
-      sqfiter->second.regexes.erase(regexp);
-      if (sqfiter->second.regexes.empty()) {
+      CHECK(sqfiter->second.regexes.get_value(regexi));
+      sqfiter->second.regexes.set_value(regexi, false);
+      if (sqfiter->second.regexes.as_index_set_view().empty()) {
         stringQueueForward_.erase(sqfiter);
       }
 
@@ -453,7 +467,7 @@ void RegexMatchCache::prepareToFindMatches(regex_key_and_view const& regex) {
       auto& mtrentry = mtriter->second;
       if (robject(*string)) {
         rtmentry.matches.insert(string);
-        mtrentry.regexes.insert(regexp);
+        mtrentry.regexes.set_value(regexi, true);
       }
     }
   }
@@ -484,6 +498,7 @@ void RegexMatchCache::clear() {
   std::exchange(stringQueueForward_, {});
   std::exchange(cacheMatchToRegex_, {});
   std::exchange(cacheRegexToMatch_, {});
+  std::exchange(regexVector_, {});
 }
 
 void RegexMatchCache::purge(time_point const expiry) {
