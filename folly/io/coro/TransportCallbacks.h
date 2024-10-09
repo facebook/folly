@@ -72,10 +72,8 @@ class ReadCallback : public TransportCallbackBase,
       folly::AsyncTransport& transport,
       folly::MutableByteRange buf,
       std::chrono::milliseconds timeout)
-      : TransportCallbackBase(transport), buf_{buf} {
-    if (timeout.count() > 0) {
-      timer.scheduleTimeout(this, timeout);
-    }
+      : TransportCallbackBase(transport), buf_{buf}, timeout_(timeout) {
+    scheduleTimeout(timer);
   }
 
   ReadCallback(
@@ -88,9 +86,14 @@ class ReadCallback : public TransportCallbackBase,
       : TransportCallbackBase(transport),
         readBuf_(readBuf),
         minReadSize_(minReadSize),
-        newAllocationSize_(newAllocationSize) {
-    if (timeout.count() > 0) {
-      timer.scheduleTimeout(this, timeout);
+        newAllocationSize_(newAllocationSize),
+        timeout_(timeout) {
+    scheduleTimeout(timer);
+  }
+
+  void scheduleTimeout(folly::HHWheelTimer& timer) {
+    if (timeout_.count() > 0) {
+      timer.scheduleTimeout(this, timeout_);
     }
   }
 
@@ -104,6 +107,8 @@ class ReadCallback : public TransportCallbackBase,
   folly::IOBufQueue* readBuf_{nullptr};
   size_t minReadSize_{0};
   size_t newAllocationSize_{0};
+  // initial timeout configured on ReadCallback
+  std::chrono::milliseconds timeout_;
 
   void cancel() noexcept override {
     transport_.setReadCB(nullptr);
