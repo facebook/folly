@@ -179,7 +179,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor,
   static const size_t kDefaultMaxQueueSize;
 
  protected:
-  BlockingQueue<CPUTask>* getTaskQueue();
+  BlockingQueue<CPUTask>* FOLLY_NONNULL getTaskQueue();
   std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_{
       std::make_unique<ThreadIdWorkerProvider>()};
 
