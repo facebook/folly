@@ -21,19 +21,18 @@
 #include <folly/portability/GTest.h>
 
 namespace folly::simd {
-namespace not_invocable_tests {
 
-static_assert(!std::is_invocable_v< //
-              folly::simd::contains_fn,
-              std::vector<double>&,
-              double>);
+static_assert( //
+    !std::is_invocable_v< //
+        contains_fn,
+        std::vector<double>&,
+        double>);
 
-static_assert(std::is_invocable_v< //
-              folly::simd::contains_fn,
-              std::vector<int>&,
-              int>);
-
-} // namespace not_invocable_tests
+static_assert( //
+    std::is_invocable_v< //
+        contains_fn,
+        std::vector<int>&,
+        int>);
 
 template <typename T>
 struct ContainsTest : ::testing::Test {};
