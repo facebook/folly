@@ -17,6 +17,22 @@ cpp_library(
 )
 
 cpp_library(
+    name = "transport_callbacks",
+    headers = [
+        "TransportCallbacks.h",
+    ],
+    exported_deps = [
+        ":transport_callback_base",
+        "//folly:network_address",
+        "//folly:range",
+        "//folly/experimental/coro:task",
+        "//folly/io:iobuf",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:async_socket_exception",
+    ],
+)
+
+cpp_library(
     name = "socket",
     srcs = [
         "ServerSocket.cpp",
@@ -27,7 +43,7 @@ cpp_library(
         "Transport.h",
     ],
     deps = [
-        ":transport_callback_base",
+        ":transport_callbacks",
         "//folly:portability",
         "//folly/coro:baton",
     ],
