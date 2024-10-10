@@ -30,6 +30,10 @@ template <typename T>
 auto findSimdFriendlyEquivalent() {
   if constexpr (std::is_enum_v<T>) {
     return findSimdFriendlyEquivalent<std::underlying_type_t<T>>();
+  } else if constexpr (std::is_pointer_v<T>) {
+    // We use signed numbers for pointers because x86 support for signed
+    // numbers is better and we can get away with it, in terms of correctness.
+    return int_bits_t<sizeof(T) * 8>{};
   } else if constexpr (std::is_floating_point_v<T>) {
     if constexpr (sizeof(T) == 4) {
       return float{};
@@ -81,7 +85,12 @@ struct AsSimdFriendlyFn {
   template <typename T>
   FOLLY_ERASE constexpr auto operator()(T x) const
       -> simd_friendly_equivalent_scalar_t<T> {
-    return static_cast<simd_friendly_equivalent_scalar_t<T>>(x);
+    using res_t = simd_friendly_equivalent_scalar_t<T>;
+    if constexpr (!std::is_pointer_v<T>) {
+      return static_cast<res_t>(x);
+    } else {
+      return reinterpret_cast<res_t>(x);
+    }
   }
 };
 inline constexpr AsSimdFriendlyFn asSimdFriendly;
@@ -103,7 +112,12 @@ struct AsSimdFriendlyUintFn {
   template <typename T>
   FOLLY_ERASE constexpr auto operator()(T x) const
       -> unsigned_simd_friendly_equivalent_scalar_t<T> {
-    return static_cast<unsigned_simd_friendly_equivalent_scalar_t<T>>(x);
+    using res_t = unsigned_simd_friendly_equivalent_scalar_t<T>;
+    if constexpr (!std::is_pointer_v<T>) {
+      return static_cast<res_t>(x);
+    } else {
+      return reinterpret_cast<res_t>(x);
+    }
   }
 };
 inline constexpr AsSimdFriendlyUintFn asSimdFriendlyUint;

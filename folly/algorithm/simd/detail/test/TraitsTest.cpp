@@ -76,6 +76,12 @@ static_assert(std::is_same_v<
               const std::int32_t,
               simd_friendly_equivalent_scalar_t<const int>>);
 
+// pointers
+
+static_assert(
+    sizeof(std::int64_t) != sizeof(void*) ||
+    std::is_same_v<std::int64_t, simd_friendly_equivalent_scalar_t<void*>>);
+
 // sfinae
 
 struct sfinae_call {
@@ -169,6 +175,13 @@ TEST_F(SimdTraitsTest, AsSimdFriendly) {
   std::array arr{SomeEnum::Foo, SomeEnum::Bar, SomeEnum::Baz};
   folly::span<int, 3> castSpan = asSimdFriendly(folly::span(arr));
   ASSERT_THAT(castSpan, testing::ElementsAre(1, 2, 3));
+
+  // pointer
+  {
+    auto expected = folly::bit_cast<std::intptr_t>(arr.data());
+    auto actual = asSimdFriendly(arr.data());
+    ASSERT_EQ(expected, actual);
+  }
 }
 
 TEST_F(SimdTraitsTest, AsSimdFriendlyUint) {
@@ -179,6 +192,13 @@ TEST_F(SimdTraitsTest, AsSimdFriendlyUint) {
   std::array arr{SomeEnum::Foo, SomeEnum::Bar, SomeEnum::Baz};
   folly::span<std::uint32_t, 3> castSpan = asSimdFriendlyUint(folly::span(arr));
   ASSERT_THAT(castSpan, testing::ElementsAre(1, 2, 3));
+
+  // pointer
+  {
+    auto expected = folly::bit_cast<std::uintptr_t>(arr.data());
+    auto actual = asSimdFriendlyUint(arr.data());
+    ASSERT_EQ(expected, actual);
+  }
 }
 
 } // namespace folly::simd::detail

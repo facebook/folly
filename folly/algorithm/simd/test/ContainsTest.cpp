@@ -94,6 +94,8 @@ static_assert( //
 template <typename T>
 struct ContainsTest : ::testing::Test {};
 
+struct ContainsTestSpeicalCases : ::testing::Test {};
+
 using TypesToTest = ::testing::Types<
     std::int8_t,
     std::int16_t,
@@ -147,6 +149,13 @@ TYPED_TEST(ContainsTest, Basic) {
       }
     }
   }
+}
+
+TEST_F(ContainsTestSpeicalCases, Pointers) {
+  std::array ints = {0, 1, 2, 3};
+  std::array ptrs = {&ints[0], &ints[1], &ints[3]};
+  EXPECT_TRUE(folly::simd::contains(ptrs, &ints[1]));
+  EXPECT_FALSE(folly::simd::contains(ptrs, &ints[2]));
 }
 
 } // namespace folly::simd

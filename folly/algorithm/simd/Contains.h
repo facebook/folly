@@ -94,7 +94,7 @@ struct contains_fn {
     auto castR = detail::asSimdFriendlyUint(folly::span(r));
     using value_type = detail::std_range_value_t<decltype(castR)>;
 
-    auto castX = static_cast<value_type>(x);
+    auto castX = static_cast<value_type>(detail::asSimdFriendlyUint(x));
 
     if constexpr (std::is_same_v<value_type, std::uint8_t>) {
       return detail::containsU8(castR, castX);
