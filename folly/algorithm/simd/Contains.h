@@ -38,6 +38,40 @@ template <typename R>
 using std_range_value_t = typename std::iterator_traits<decltype(std::begin(
     std::declval<R&>()))>::value_type;
 
+// Constexpr check that we can always safely cast from From to To.
+// If we don't require this, we might silently get different semantics from
+// standard algorithms.
+template <typename From, typename To>
+constexpr bool convertible_with_no_loss() {
+  if (sizeof(From) > sizeof(To)) {
+    return false;
+  }
+  if (std::is_signed_v<From>) {
+    return std::is_signed_v<To>;
+  }
+
+  return std::is_unsigned_v<To> || sizeof(From) < sizeof(To);
+}
+
+// All the requirements to call contains(haystack, needle);
+//  * both are simd friendly (contigious range, primitive types)
+//  * integrals only
+//  * needle can be converted to the value_type of haystack and
+//    the result of equality comparison will be the same.
+template <typename R, typename T>
+constexpr bool contains_haystack_needle_test() {
+  if constexpr (!std::is_invocable_v<AsSimdFriendlyUintFn, R>) {
+    return false;
+  } else if constexpr (!has_integral_simd_friendly_equivalent_scalar_v<T>) {
+    return false;
+  } else {
+    using simd_haystack_value =
+        simd_friendly_equivalent_scalar_t<std_range_value_t<R>>;
+    using simd_needle = simd_friendly_equivalent_scalar_t<T>;
+    return convertible_with_no_loss<simd_needle, simd_haystack_value>();
+  }
+}
+
 } // namespace detail
 
 /**
@@ -53,23 +87,25 @@ using std_range_value_t = typename std::iterator_traits<decltype(std::begin(
 struct contains_fn {
   template <
       typename R,
-      typename = std::enable_if_t<
-          std::is_invocable_v<detail::AsSimdFriendlyUintFn, R>>>
-  FOLLY_ERASE bool operator()(R&& r, detail::std_range_value_t<R> x) const {
+      typename T,
+      typename =
+          std::enable_if_t<detail::contains_haystack_needle_test<R, T>()>>
+  FOLLY_ERASE bool operator()(R&& r, T x) const {
     auto castR = detail::asSimdFriendlyUint(folly::span(r));
-    auto castX = detail::asSimdFriendlyUint(x);
+    using value_type = detail::std_range_value_t<decltype(castR)>;
 
-    using T = decltype(castX);
+    auto castX = static_cast<value_type>(x);
 
-    if constexpr (std::is_same_v<T, std::uint8_t>) {
+    if constexpr (std::is_same_v<value_type, std::uint8_t>) {
       return detail::containsU8(castR, castX);
-    } else if constexpr (std::is_same_v<T, std::uint16_t>) {
+    } else if constexpr (std::is_same_v<value_type, std::uint16_t>) {
       return detail::containsU16(castR, castX);
-    } else if constexpr (std::is_same_v<T, std::uint32_t>) {
+    } else if constexpr (std::is_same_v<value_type, std::uint32_t>) {
       return detail::containsU32(castR, castX);
     } else {
       static_assert(
-          std::is_same_v<T, std::uint64_t>, "internal error, unknown type");
+          std::is_same_v<value_type, std::uint64_t>,
+          "internal error, unknown type");
       return detail::containsU64(castR, castX);
     }
   }
