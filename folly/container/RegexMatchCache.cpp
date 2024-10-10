@@ -448,7 +448,11 @@ void RegexMatchCache::prepareToFindMatches(regex_key_and_view const& regex) {
   } else {
     //  evaluate old regex over queue
     auto const sqriter = stringQueueReverse_.find(regexp);
-    CHECK(sqriter != stringQueueReverse_.end());
+    if (sqriter == stringQueueReverse_.end()) {
+      //  was actually ready-to-find-matches for regex
+      guard.dismiss();
+      return;
+    }
     auto const strings = std::move(sqriter->second.strings);
     CHECK(!strings.empty());
     stringQueueReverse_.erase(sqriter);
