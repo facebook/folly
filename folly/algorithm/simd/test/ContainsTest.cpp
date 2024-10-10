@@ -20,6 +20,9 @@
 
 #include <folly/portability/GTest.h>
 
+#include <list>
+#include <vector>
+
 namespace folly::simd {
 
 static_assert( //
@@ -33,6 +36,60 @@ static_assert( //
         contains_fn,
         std::vector<int>&,
         int>);
+
+static_assert( //
+    std::is_invocable_v< //
+        folly::simd::contains_fn,
+        std::vector<int>&,
+        int>);
+
+static_assert( //
+    std::is_invocable_v< //
+        folly::simd::contains_fn,
+        std::vector<int>&,
+        std::int16_t>);
+
+static_assert( //
+    std::is_invocable_v< //
+        folly::simd::contains_fn,
+        std::vector<int>&,
+        std::uint16_t>);
+
+static_assert( //
+    !std::is_invocable_v< //
+        folly::simd::contains_fn,
+        std::vector<int>&,
+        std::uint32_t>);
+
+static_assert( //
+    !std::is_invocable_v< //
+        folly::simd::contains_fn,
+        std::vector<int>&,
+        std::int64_t>);
+
+static_assert( //
+    !std::is_invocable_v< //
+        folly::simd::contains_fn,
+        std::vector<std::uint32_t>&,
+        std::int16_t>);
+
+static_assert( //
+    std::is_invocable_v< //
+        folly::simd::contains_fn,
+        std::vector<std::uint32_t>&,
+        std::uint16_t>);
+
+static_assert( //
+    !std::is_invocable_v< //
+        folly::simd::contains_fn,
+        std::list<std::int32_t>&,
+        std::int32_t>);
+
+static_assert( //
+    !std::is_invocable_v< //
+        folly::simd::contains_fn,
+        const std::vector<std::vector<std::int32_t>>&,
+        std::vector<std::int32_t>>);
 
 template <typename T>
 struct ContainsTest : ::testing::Test {};

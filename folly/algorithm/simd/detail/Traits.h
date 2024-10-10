@@ -53,13 +53,13 @@ using simd_friendly_equivalent_scalar_t = std::enable_if_t<
     like_t<T, decltype(findSimdFriendlyEquivalent<std::remove_const_t<T>>())>>;
 
 template <typename T>
-constexpr bool has_integral_simd_friendly_equivalent_scalar =
+constexpr bool has_integral_simd_friendly_equivalent_scalar_v =
     std::is_integral_v< // void will return false
         decltype(findSimdFriendlyEquivalent<std::remove_const_t<T>>())>;
 
 template <typename T>
 using unsigned_simd_friendly_equivalent_scalar_t = std::enable_if_t<
-    has_integral_simd_friendly_equivalent_scalar<T>,
+    has_integral_simd_friendly_equivalent_scalar_v<T>,
     like_t<T, uint_bits_t<sizeof(T) * 8>>>;
 
 template <typename R>
