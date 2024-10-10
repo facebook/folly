@@ -26,13 +26,14 @@ namespace detail {
 
 // no overloading for easier profiling.
 
-bool containsU8(folly::span<const std::uint8_t> haystack, std::uint8_t needle);
+bool containsU8(
+    folly::span<const std::uint8_t> haystack, std::uint8_t needle) noexcept;
 bool containsU16(
-    folly::span<const std::uint16_t> haystack, std::uint16_t needle);
+    folly::span<const std::uint16_t> haystack, std::uint16_t needle) noexcept;
 bool containsU32(
-    folly::span<const std::uint32_t> haystack, std::uint32_t needle);
+    folly::span<const std::uint32_t> haystack, std::uint32_t needle) noexcept;
 bool containsU64(
-    folly::span<const std::uint64_t> haystack, std::uint64_t needle);
+    folly::span<const std::uint64_t> haystack, std::uint64_t needle) noexcept;
 
 template <typename R>
 using std_range_value_t = typename std::iterator_traits<decltype(std::begin(
