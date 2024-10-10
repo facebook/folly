@@ -21,7 +21,9 @@
 
 #include <folly/lang/SafeAssert.h>
 
+#if FOLLY_HAVE_FASTFLOAT
 #include <fast_float/fast_float.h> // @manual=fbsource//third-party/fast_float:fast_float
+#endif
 
 namespace folly {
 namespace detail {
@@ -462,6 +464,7 @@ Expected<Tgt, ConversionCode> str_to_floating_double_conversion(
   return Tgt(result);
 }
 
+#if FOLLY_HAVE_FASTFLOAT
 /// Uses `fast_float::from_chars` to convert from string to an integer.
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
@@ -505,6 +508,7 @@ template Expected<float, ConversionCode>
 str_to_floating_fast_float_from_chars<float>(StringPiece* src) noexcept;
 template Expected<double, ConversionCode>
 str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
+#endif
 
 /**
  * StringPiece to double, with progress information. Alters the
@@ -512,7 +516,7 @@ str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
  */
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
-#if defined(FOLLY_CONV_ATOD_MODE) && FOLLY_CONV_ATOD_MODE == 1
+#if FOLLY_HAVE_FASTFLOAT && defined(FOLLY_CONV_ATOD_MODE) && FOLLY_CONV_ATOD_MODE == 1
   return detail::str_to_floating_fast_float_from_chars<Tgt>(src);
 #else
   return detail::str_to_floating_double_conversion<Tgt>(src);

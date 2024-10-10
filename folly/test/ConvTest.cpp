@@ -1772,6 +1772,7 @@ TEST(Conv, TryStringToFloat) {
   tryStringToFloat<folly::StringPiece>(StrToFloatTryTo<folly::StringPiece>());
 }
 
+#if FOLLY_HAVE_FASTFLOAT
 /// Uses `folly::detail::str_to_floating_fast_float_from_chars` to convert a
 /// string to a float.
 template <class String>
@@ -1792,6 +1793,7 @@ TEST(Conv, TryStringToFloat_FastFloatFromChars) {
   tryStringToFloat<folly::StringPiece>(
       StrToFloatFastFloatFromChars<folly::StringPiece>());
 }
+#endif
 
 template <class String>
 void tryToDouble() {
