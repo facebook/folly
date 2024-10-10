@@ -294,7 +294,7 @@ struct SimdSse42PlatformSpecific {
 #define FOLLY_DETAIL_HAS_SIMD_PLATFORM 1
 
 template <typename T>
-using SimdSse42Platform = SimdPlatformCommon<SimdSse42PlatformSpecific<T>>;
+struct SimdSse42Platform : SimdPlatformCommon<SimdSse42PlatformSpecific<T>> {};
 
 #if defined(__AVX2__)
 
@@ -371,7 +371,7 @@ struct SimdAvx2PlatformSpecific {
 };
 
 template <typename T>
-using SimdAvx2Platform = SimdPlatformCommon<SimdAvx2PlatformSpecific<T>>;
+struct SimdAvx2Platform : SimdPlatformCommon<SimdAvx2PlatformSpecific<T>> {};
 
 template <typename T>
 using SimdPlatform = SimdAvx2Platform<T>;
@@ -379,7 +379,7 @@ using SimdPlatform = SimdAvx2Platform<T>;
 #else
 
 template <typename T>
-using SimdPlatform = SimdPlatformCommon<SimdSse42PlatformSpecific<T>>;
+using SimdPlatform = SimdSse42Platform<T>;
 
 #endif
 
@@ -497,7 +497,8 @@ struct SimdAarch64PlatformSpecific {
 #define FOLLY_DETAIL_HAS_SIMD_PLATFORM 1
 
 template <typename T>
-using SimdAarch64Platform = SimdPlatformCommon<SimdAarch64PlatformSpecific<T>>;
+struct SimdAarch64Platform
+    : SimdPlatformCommon<SimdAarch64PlatformSpecific<T>> {};
 
 template <typename T>
 using SimdPlatform = SimdAarch64Platform<T>;
