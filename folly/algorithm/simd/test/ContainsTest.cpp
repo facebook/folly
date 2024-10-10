@@ -19,11 +19,14 @@
 #include <folly/algorithm/simd/detail/ContainsImpl.h>
 
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 #include <list>
 #include <vector>
 
 namespace folly::simd {
+
+//
 
 static_assert( //
     !std::is_invocable_v< //
@@ -156,6 +159,16 @@ TEST_F(ContainsTestSpeicalCases, Pointers) {
   std::array ptrs = {&ints[0], &ints[1], &ints[3]};
   EXPECT_TRUE(folly::simd::contains(ptrs, &ints[1]));
   EXPECT_FALSE(folly::simd::contains(ptrs, &ints[2]));
+}
+
+TEST_F(ContainsTestSpeicalCases, AsanShouldFindCrash) {
+  SKIP_IF(folly::kIsSanitizeAddress);
+
+  std::vector<int> v;
+  v.resize(3);
+  std::span<int> s(v.begin() + 1, v.begin() + 4);
+  EXPECT_DEATH(
+      (folly::simd::contains(s, 0)), "AddressSanitizer: heap-buffer-overflow");
 }
 
 } // namespace folly::simd

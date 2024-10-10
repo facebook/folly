@@ -11,6 +11,7 @@ cpp_unittest(
         "//folly/algorithm/simd:contains",
         "//folly/algorithm/simd/detail:simd_contains_impl",
         "//folly/portability:gtest",
+        "//folly/test:test_utils",
     ],
 )
 
