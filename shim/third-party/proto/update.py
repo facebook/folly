@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under both the MIT license found in the
+# LICENSE-MIT file in the root directory of this source tree and the Apache
+# License, Version 2.0 found in the LICENSE-APACHE file in the root directory
+# of this source tree.
+
 """Query recent Github release artifacts for protobuf.
 
 Use this script to update the releases.bzl file that contains metadata about
@@ -35,6 +42,14 @@ query {
     }
   }
 }
+"""
+COPYRIGHT_HEADER = """\
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under both the MIT license found in the
+# LICENSE-MIT file in the root directory of this source tree and the Apache
+# License, Version 2.0 found in the LICENSE-APACHE file in the root directory
+# of this source tree.
 """
 
 async def query_releases():
@@ -91,6 +106,7 @@ async def main():
     releases = await query_releases()
     formatted = format_releases(releases)
     with_sha256 = await hash_releases(formatted)
+    print(COPYRIGHT_HEADER)
     print("# @" + "generated")
     print("# Update with ./update.py > releases.bzl")
     print("releases = ", json.dumps(with_sha256, indent=4))
