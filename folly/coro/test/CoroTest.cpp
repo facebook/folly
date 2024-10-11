@@ -278,8 +278,8 @@ TEST_F(CoroTest, TimedWaitFuture) {
         futures::sleep(std::chrono::milliseconds{200})
             .via(ex)
             .thenValue(
-                [lifetimePromise = std::move(lifetimePromise)](Unit) mutable {
-                  lifetimePromise.setValue();
+                [lifetimePromise_ = std::move(lifetimePromise)](Unit) mutable {
+                  lifetimePromise_.setValue();
                   return 42;
                 });
     auto slowResult = co_await coro::timed_wait(
