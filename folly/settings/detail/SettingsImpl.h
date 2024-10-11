@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -113,16 +112,8 @@ class BoxedValue {
   template <class T>
   BoxedValue(const T& value, StringPiece reason, SettingCore<T>& core)
       : value_(std::make_shared<SettingContents<T>>(reason.str(), value)),
-        publish_([value = value_,
-                  &core](const FrozenSettingProjects& frozenProjects) {
-          if (core.meta().mutability == Mutability::Immutable &&
-              frozenProjects.contains(core.meta().project)) {
-            return;
-          }
-          auto& contents = BoxedValue::unboxImpl<T>(value.get());
-          core.setImpl(
-              contents.value, contents.updateReason, /* snapshot */ nullptr);
-        }) {}
+        core_{&core},
+        publish_{doPublish<T>} {}
 
   /**
    * Returns the reference to the stored value
@@ -137,18 +128,34 @@ class BoxedValue {
    */
   void publish(const FrozenSettingProjects& frozenProjects) {
     if (publish_) {
-      publish_(frozenProjects);
+      publish_(*this, frozenProjects);
     }
   }
 
  private:
-  std::shared_ptr<void> value_;
-  std::function<void(const FrozenSettingProjects&)> publish_;
+  using PublishFun = void(BoxedValue&, const FrozenSettingProjects&);
+
+  template <typename T>
+  static void doPublish(
+      BoxedValue& boxed, const FrozenSettingProjects& frozenProjects) {
+    auto& core = *static_cast<SettingCore<T>*>(boxed.core_);
+    if (core.meta().mutability == Mutability::Immutable &&
+        frozenProjects.contains(core.meta().project)) {
+      return;
+    }
+    auto& contents = BoxedValue::unboxImpl<T>(boxed.value_.get());
+    core.setImpl(
+        contents.value, contents.updateReason, /* snapshot = */ nullptr);
+  }
 
   template <class T>
   static const SettingContents<T>& unboxImpl(void* value) {
     return *static_cast<const SettingContents<T>*>(value);
   }
+
+  std::shared_ptr<void> value_;
+  SettingCoreBase* core_{};
+  PublishFun* publish_{};
 };
 
 /**
