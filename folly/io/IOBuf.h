@@ -776,14 +776,14 @@ class IOBuf {
    *
    * @methodset Chaining
    */
-  bool empty() const;
+  bool empty() const noexcept;
 
   /**
    * Get the pointer to the start of the data.
    *
    * @methodset Access
    */
-  const uint8_t* data() const { return data_; }
+  const uint8_t* data() const noexcept { return data_; }
 
   /**
    * Get a writable pointer to the start of the data.
@@ -793,14 +793,14 @@ class IOBuf {
    *
    * @methodset Access
    */
-  uint8_t* writableData() { return data_; }
+  uint8_t* writableData() noexcept { return data_; }
 
   /**
    * Get the pointer to the end of the data.
    *
    * @methodset Access
    */
-  const uint8_t* tail() const { return data_ + length_; }
+  const uint8_t* tail() const noexcept { return data_ + length_; }
 
   /**
    * Get a writable pointer to the end of the data.
@@ -810,7 +810,7 @@ class IOBuf {
    *
    * @methodset Access
    */
-  uint8_t* writableTail() { return data_ + length_; }
+  uint8_t* writableTail() noexcept { return data_ + length_; }
 
   /**
    * Get the size of the data for this individual IOBuf in the chain.
@@ -819,7 +819,7 @@ class IOBuf {
    *
    * @methodset Buffer Capacity
    */
-  std::size_t length() const { return length_; }
+  std::size_t length() const noexcept { return length_; }
 
   /**
    * Get the amount of head room.
@@ -828,7 +828,9 @@ class IOBuf {
    *
    * @methodset Buffer Capacity
    */
-  std::size_t headroom() const { return std::size_t(data_ - buffer()); }
+  std::size_t headroom() const noexcept {
+    return std::size_t(data_ - buffer());
+  }
 
   /**
    * Get the amount of tail room.
@@ -837,7 +839,9 @@ class IOBuf {
    *
    * @methodset Buffer Capacity
    */
-  std::size_t tailroom() const { return std::size_t(bufferEnd() - tail()); }
+  std::size_t tailroom() const noexcept {
+    return std::size_t(bufferEnd() - tail());
+  }
 
   /**
    * Get the pointer to the start of the buffer.
@@ -848,7 +852,7 @@ class IOBuf {
    *
    * @methodset Access
    */
-  const uint8_t* buffer() const { return buf_; }
+  const uint8_t* buffer() const noexcept { return buf_; }
 
   /**
    * Get a writable pointer to the start of the buffer.
@@ -858,7 +862,7 @@ class IOBuf {
    *
    * @methodset Access
    */
-  uint8_t* writableBuffer() { return buf_; }
+  uint8_t* writableBuffer() noexcept { return buf_; }
 
   /**
    * Get the pointer to the end of the buffer.
@@ -869,7 +873,7 @@ class IOBuf {
    *
    * @methodset Access
    */
-  const uint8_t* bufferEnd() const { return buf_ + capacity_; }
+  const uint8_t* bufferEnd() const noexcept { return buf_ + capacity_; }
 
   /**
    * Get the total size of the buffer.
@@ -879,25 +883,25 @@ class IOBuf {
    *
    * @methodset Buffer Capacity
    */
-  std::size_t capacity() const { return capacity_; }
+  std::size_t capacity() const noexcept { return capacity_; }
 
   /**
    * Get a pointer to the next IOBuf in this chain.
    *
    * @methodset Chaining
    */
-  IOBuf* next() { return next_; }
+  IOBuf* next() noexcept { return next_; }
   /// @copydoc next()
-  const IOBuf* next() const { return next_; }
+  const IOBuf* next() const noexcept { return next_; }
 
   /**
    * Get a pointer to the previous IOBuf in this chain.
    *
    * @methodset Chaining
    */
-  IOBuf* prev() { return prev_; }
+  IOBuf* prev() noexcept { return prev_; }
   /// @copydoc prev
-  const IOBuf* prev() const { return prev_; }
+  const IOBuf* prev() const noexcept { return prev_; }
 
   /**
    * Shift the data forwards in the buffer.
@@ -919,7 +923,7 @@ class IOBuf {
    *
    * @methodset Shifting
    */
-  void advance(std::size_t amount) {
+  void advance(std::size_t amount) noexcept {
     // In debug builds, assert if there is a problem.
     assert(amount <= tailroom());
 
@@ -948,7 +952,7 @@ class IOBuf {
    *
    * @methodset Shifting
    */
-  void retreat(std::size_t amount) {
+  void retreat(std::size_t amount) noexcept {
     // In debug builds, assert if there is a problem.
     assert(amount <= headroom());
 
@@ -973,7 +977,7 @@ class IOBuf {
    *
    * @methodset Shifting
    */
-  void prepend(std::size_t amount) {
+  void prepend(std::size_t amount) noexcept {
     DCHECK_LE(amount, headroom());
     data_ -= amount;
     length_ += amount;
@@ -994,7 +998,7 @@ class IOBuf {
    *
    * @methodset Shifting
    */
-  void append(std::size_t amount) {
+  void append(std::size_t amount) noexcept {
     DCHECK_LE(amount, tailroom());
     length_ += amount;
   }
@@ -1013,7 +1017,7 @@ class IOBuf {
    *
    * @methodset Shifting
    */
-  void trimStart(std::size_t amount) {
+  void trimStart(std::size_t amount) noexcept {
     DCHECK_LE(amount, length_);
     data_ += amount;
     length_ -= amount;
@@ -1033,7 +1037,7 @@ class IOBuf {
    *
    * @methodset Shifting
    */
-  void trimEnd(std::size_t amount) {
+  void trimEnd(std::size_t amount) noexcept {
     DCHECK_LE(amount, length_);
     length_ -= amount;
   }
@@ -1049,7 +1053,7 @@ class IOBuf {
    *
    * @methodset Shifting
    */
-  void trimWritableTail(std::size_t amount) {
+  void trimWritableTail(std::size_t amount) noexcept {
     DCHECK_LE(amount, tailroom());
     capacity_ -= amount;
   }
@@ -1060,7 +1064,7 @@ class IOBuf {
    * @post  data() == buffer()
    * @post  length() == 0
    */
-  void clear() {
+  void clear() noexcept {
     data_ = writableBuffer();
     length_ = 0;
   }
@@ -1109,7 +1113,7 @@ class IOBuf {
    *
    * @methodset Chaining
    */
-  bool isChained() const {
+  bool isChained() const noexcept {
     assert((next_ == this) == (prev_ == this));
     return next_ != this;
   }
@@ -1123,7 +1127,7 @@ class IOBuf {
    *
    * @methodset Chaining
    */
-  size_t countChainElements() const;
+  size_t countChainElements() const noexcept;
 
   /**
    * Get the length of all the data in this IOBuf chain.
@@ -1132,7 +1136,7 @@ class IOBuf {
    *
    * @methodset Chaining
    */
-  std::size_t computeChainDataLength() const;
+  std::size_t computeChainDataLength() const noexcept;
 
   /**
    * Get the capacity all IOBufs in the chain.
@@ -1141,7 +1145,7 @@ class IOBuf {
    *
    * @methodset Chaining
    */
-  std::size_t computeChainCapacity() const;
+  std::size_t computeChainCapacity() const noexcept;
 
   /**
    * Append another IOBuf chain to the end of this chain.
@@ -1302,7 +1306,7 @@ class IOBuf {
    *
    * @methodset Buffer Management
    */
-  bool isShared() const {
+  bool isShared() const noexcept {
     const IOBuf* current = this;
     while (true) {
       if (current->isSharedOne()) {
@@ -1385,7 +1389,7 @@ class IOBuf {
    *
    * @methodset Buffer Management
    */
-  bool isManaged() const {
+  bool isManaged() const noexcept {
     const IOBuf* current = this;
     while (true) {
       if (!current->isManagedOne()) {
@@ -1429,7 +1433,7 @@ class IOBuf {
    *
    * @methodset Buffer Management
    */
-  uint32_t approximateShareCountOne() const;
+  uint32_t approximateShareCountOne() const noexcept;
 
   /**
    * Check if the buffer is shared.

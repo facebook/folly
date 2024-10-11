@@ -670,7 +670,7 @@ IOBuf& IOBuf::operator=(const IOBuf& other) {
   return *this;
 }
 
-bool IOBuf::empty() const {
+bool IOBuf::empty() const noexcept {
   const IOBuf* current = this;
   do {
     if (current->length() != 0) {
@@ -681,7 +681,7 @@ bool IOBuf::empty() const {
   return true;
 }
 
-size_t IOBuf::countChainElements() const {
+size_t IOBuf::countChainElements() const noexcept {
   size_t numElements = 1;
   for (IOBuf* current = next_; current != this; current = current->next_) {
     ++numElements;
@@ -689,7 +689,7 @@ size_t IOBuf::countChainElements() const {
   return numElements;
 }
 
-std::size_t IOBuf::computeChainDataLength() const {
+std::size_t IOBuf::computeChainDataLength() const noexcept {
   std::size_t fullLength = length_;
   for (IOBuf* current = next_; current != this; current = current->next_) {
     fullLength += current->length_;
@@ -697,7 +697,7 @@ std::size_t IOBuf::computeChainDataLength() const {
   return fullLength;
 }
 
-std::size_t IOBuf::computeChainCapacity() const {
+std::size_t IOBuf::computeChainCapacity() const noexcept {
   std::size_t fullCapacity = capacity_;
   for (IOBuf* current = next_; current != this; current = current->next_) {
     fullCapacity += current->capacity_;
@@ -1411,7 +1411,7 @@ IOBuf::FillIovResult IOBuf::fillIov(struct iovec* iov, size_t len) const {
   return {0, 0};
 }
 
-uint32_t IOBuf::approximateShareCountOne() const {
+uint32_t IOBuf::approximateShareCountOne() const noexcept {
   if (FOLLY_UNLIKELY(!sharedInfo_)) {
     return 1U;
   }
