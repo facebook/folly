@@ -1811,6 +1811,15 @@ class IOBuf {
   std::string toString() const { return to<std::string>(); }
 
   /**
+   * Create an IOBuf from a std::string. Avoids copying the contents of the
+   * string, at the cost of an extra allocation.
+   */
+  static std::unique_ptr<IOBuf> fromString(std::unique_ptr<std::string>);
+  static std::unique_ptr<IOBuf> fromString(std::string s) {
+    return fromString(std::make_unique<std::string>(std::move(s)));
+  }
+
+  /**
    * Get an iovector suitable for e.g. writev()
    *
    *   auto iov = buf->getIov();

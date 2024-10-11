@@ -1328,6 +1328,16 @@ IOBuf::Iterator IOBuf::cend() const {
   return Iterator(nullptr, nullptr);
 }
 
+std::unique_ptr<IOBuf> IOBuf::fromString(std::unique_ptr<std::string> ptr) {
+  auto ret = takeOwnership(
+      ptr->data(),
+      ptr->size(),
+      [](void*, void* userData) { delete static_cast<std::string*>(userData); },
+      static_cast<void*>(ptr.get()));
+  std::ignore = ptr.release();
+  return ret;
+}
+
 folly::fbvector<struct iovec> IOBuf::getIov() const {
   folly::fbvector<struct iovec> iov;
   iov.reserve(countChainElements());

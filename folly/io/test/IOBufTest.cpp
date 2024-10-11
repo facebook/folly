@@ -1903,3 +1903,10 @@ TEST(IOBuf, MaybeSplitTail) {
   auto buf3 = buf2->maybeSplitTail();
   append(buf3, "!!!1");
 }
+
+TEST(IOBuf, FromString) {
+  EXPECT_EQ(folly::IOBuf::fromString("")->toString(), "");
+  EXPECT_EQ(folly::IOBuf::fromString("test")->toString(), "test");
+  auto longStr = std::string(1000, '0');
+  EXPECT_EQ(folly::IOBuf::fromString(longStr)->toString(), longStr);
+}
