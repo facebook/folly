@@ -207,7 +207,9 @@ struct __folly_cxa_exception_with_reserve {
   _Unwind_Exception unwindHeader;
 };
 
+#if _LIBCPP_VERSION < 180000 || !_LIBCPP_AVAILABILITY_HAS_INIT_PRIMARY_EXCEPTION
 static const uint64_t kOurExceptionClass = 0x434C4E47432B2B00; // CLNGC++\0
+#endif
 
 //  named differently from the real shim type __shim_type_info and all members
 //  are pure virtual; as long as the vtable is the same, though, it should work
@@ -234,7 +236,9 @@ namespace abi = __cxxabiv1;
 
 namespace __cxxabiv1 {
 
+#if _LIBCPP_VERSION < 180000 || !_LIBCPP_AVAILABILITY_HAS_INIT_PRIMARY_EXCEPTION
 static const uint64_t kOurExceptionClass = 0x474E5543432B2B00; // GNUCC++\0
+#endif
 
 class __folly_shim_type_info {
  public:
