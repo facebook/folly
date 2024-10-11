@@ -49,7 +49,7 @@ class SettingWrapper {
    * particular, a set() call might invalidate a reference obtained
    * here after some amount of time (on the order of minutes).
    */
-  std::conditional_t<IsSmallPOD<T>::value, T, const T&> operator*() const {
+  std::conditional_t<IsSmallPOD<T>, T, const T&> operator*() const {
     return core_.getWithHint(*TrivialPtr);
   }
   const T* operator->() const { return &core_.getSlow().value; }
@@ -58,7 +58,7 @@ class SettingWrapper {
    * Returns the setting's current value. Equivalent to dereference operator
    * above.
    */
-  std::conditional_t<IsSmallPOD<T>::value, T, const T&> value() const {
+  std::conditional_t<IsSmallPOD<T>, T, const T&> value() const {
     return operator*();
   }
 
@@ -69,7 +69,7 @@ class SettingWrapper {
    *   *snapshot(FOLLY_SETTING(proj, name)) ==
    *   FOLLY_SETTING(proj, name).value(snapshot);
    */
-  std::conditional_t<IsSmallPOD<T>::value, T, const T&> value(
+  std::conditional_t<IsSmallPOD<T>, T, const T&> value(
       const Snapshot& snapshot) const;
 
   /**
@@ -413,7 +413,7 @@ inline const T& SnapshotSettingWrapper<T>::operator*() const {
 }
 
 template <class T, std::atomic<uint64_t>* TrivialPtr>
-inline std::conditional_t<IsSmallPOD<T>::value, T, const T&>
+inline std::conditional_t<IsSmallPOD<T>, T, const T&>
 SettingWrapper<T, TrivialPtr>::value(const Snapshot& snapshot) const {
   return snapshot.get(core_).value;
 }

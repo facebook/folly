@@ -19,6 +19,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 
@@ -42,10 +43,8 @@ namespace detail {
  * Can we store T in a global atomic?
  */
 template <class T>
-struct IsSmallPOD
-    : std::integral_constant<
-          bool,
-          std::is_trivial<T>::value && sizeof(T) <= sizeof(uint64_t)> {};
+constexpr bool IsSmallPOD =
+    std::is_trivial_v<T> && sizeof(T) <= sizeof(uint64_t);
 
 template <class T>
 struct SettingContents {
@@ -321,9 +320,9 @@ class SettingCore : public SettingCoreBase {
    *   generate better inlined code since the address is known
    *   at compile time at the callsite.
    */
-  std::conditional_t<IsSmallPOD<T>::value, T, const T&> getWithHint(
+  std::conditional_t<IsSmallPOD<T>, T, const T&> getWithHint(
       std::atomic<uint64_t>& trivialStorage) const {
-    return getImpl(IsSmallPOD<T>(), trivialStorage);
+    return getImpl(std::bool_constant<IsSmallPOD<T>>{}, trivialStorage);
   }
   const SettingContents<T>& getSlow() const { return *tlValue(); }
   /***
@@ -459,7 +458,7 @@ class SettingCore : public SettingCoreBase {
             getKey(), *settingVersion_, BoxedValue(*globalValue_));
       }
       globalValue_ = std::make_shared<Contents>(reason.str(), t);
-      if constexpr (IsSmallPOD<T>::value) {
+      if constexpr (IsSmallPOD<T>) {
         uint64_t v = 0;
         std::memcpy(&v, &t, sizeof(T));
         trivialStorage_.store(v);
