@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -222,8 +223,8 @@ class SnapshotBase {
    * func(meta, to<string>(value), reason) for each.
    */
   virtual void forEachSetting(
-      const std::function<void(
-          const SettingMetadata&, StringPiece, StringPiece)>& func) const = 0;
+      FunctionRef<void(const SettingMetadata&, StringPiece, StringPiece)> func)
+      const = 0;
 
   virtual ~SnapshotBase();
 

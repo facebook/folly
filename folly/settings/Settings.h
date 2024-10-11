@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include <functional>
 #include <string>
 #include <vector>
 
+#include <folly/Function.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
 #include <folly/settings/Types.h>
@@ -394,9 +394,9 @@ class Snapshot final : public detail::SnapshotBase {
    * Iterates over all known settings and calls
    * func(meta, to<string>(value), reason) for each.
    */
-  void forEachSetting(const std::function<
-                      void(const SettingMetadata&, StringPiece, StringPiece)>&
-                          func) const override;
+  void forEachSetting(
+      FunctionRef<void(const SettingMetadata&, StringPiece, StringPiece)> func)
+      const override;
 
  private:
   template <typename T>

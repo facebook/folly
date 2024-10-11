@@ -122,8 +122,8 @@ SetResult Snapshot::forceResetToDefault(StringPiece settingName) {
 }
 
 void Snapshot::forEachSetting(
-    const std::function<void(const SettingMetadata&, StringPiece, StringPiece)>&
-        func) const {
+    FunctionRef<void(const SettingMetadata&, StringPiece, StringPiece)> func)
+    const {
   detail::SettingsMap map;
   /* Note that this won't hold the lock over the callback, which is
      what we want since the user might call other settings:: APIs */
