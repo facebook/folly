@@ -98,7 +98,7 @@ TEST(AtomicQueueTest, Basic) {
 }
 
 TEST(AtomicQueueTest, Canceled) {
-  struct Consumer {
+  struct alignas(int) Consumer {
     void consume(int*) { ADD_FAILURE() << "consume() shouldn't be called"; }
     void canceled(int* consumerParam) {
       EXPECT_EQ(consumerParam, getConsumerParam());
