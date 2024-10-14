@@ -661,7 +661,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 ///
 /// @refcode folly/docs/examples/folly/experimental/coro/Task.cpp
 template <typename T>
-class FOLLY_NODISCARD Task {
+class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] Task {
  public:
   using promise_type = detail::TaskPromise<T>;
   using StorageType = typename promise_type::StorageType;

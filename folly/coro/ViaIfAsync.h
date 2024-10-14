@@ -691,7 +691,7 @@ class NothrowAwaitable
 
 template <typename Awaitable>
 detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
-    Awaitable&& awaitable) {
+    [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable&& awaitable) {
   return detail::NothrowAwaitable<remove_cvref_t<Awaitable>>{
       static_cast<Awaitable&&>(awaitable)};
 }
