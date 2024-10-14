@@ -142,17 +142,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "program_options",
-    headers = [
-        "NestedCommandLineApp.h",
-        "ProgramOptions.h",
-    ],
-    exported_deps = [
-        "//folly/cli:program_options",
-    ],
-)
-
-cpp_library(
     name = "read_mostly_shared_ptr",
     headers = [
         "ReadMostlySharedPtr.h",
