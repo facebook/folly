@@ -193,18 +193,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "timerfd",
-    headers = [
-        "STTimerFDTimeoutManager.h",
-        "TimerFD.h",
-        "TimerFDTimeoutManager.h",
-    ],
-    exported_deps = [
-        "//folly/io/async:timerfd",
-    ],
-)
-
-cpp_library(
     name = "threaded_repeating_function_runner",
     headers = [
         "ThreadedRepeatingFunctionRunner.h",
