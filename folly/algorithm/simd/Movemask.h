@@ -42,9 +42,8 @@ namespace folly::simd {
  * movemask_fn
  *
  * This is a low level utility used for simd search algorithms.
- * At the moment used in folly::findFixed and folly::split.
  *
- * This is a logical extension of _mm_movemask_epi8 for different types
+ * It is a logical extension of _mm_movemask_epi8 for different types
  * for both x86 and arm.
  *
  * Main interface looks like this:
