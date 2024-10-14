@@ -382,12 +382,7 @@ class SettingCore : public SettingCoreBase {
       std::atomic<uint64_t>& trivialStorage)
       : meta_(std::move(meta)),
         defaultValue_(std::move(defaultValue)),
-        trivialStorage_(trivialStorage),
-        localValue_([]() {
-          return cacheline_aligned<
-              std::pair<Version, std::shared_ptr<Contents>>>(
-              std::in_place, 0, nullptr);
-        }) {
+        trivialStorage_(trivialStorage) {
     forceResetToDefault(/* snapshot */ nullptr);
     registerSetting(*this);
   }
@@ -409,18 +404,33 @@ class SettingCore : public SettingCoreBase {
    */
   cacheline_aligned<std::atomic<Version>> settingVersion_{std::in_place, 1};
 
-  ThreadLocal<cacheline_aligned<std::pair<Version, std::shared_ptr<Contents>>>>
-      localValue_;
+  using LocalValue = std::pair<Version, std::shared_ptr<Contents>>;
+  struct LocalValueTLP : cacheline_aligned<LocalValue> {
+    LocalValueTLP() noexcept
+        : cacheline_aligned<LocalValue>(std::in_place, 0, nullptr) {}
+  };
+
+  mutable ThreadLocalPtr<LocalValueTLP> localValue_;
+
+  FOLLY_ALWAYS_INLINE LocalValue& getLocalValue() const {
+    auto const ptr = localValue_.get();
+    return FOLLY_LIKELY(!!ptr) ? **ptr : getLocalValueSlow();
+  }
+  FOLLY_NOINLINE LocalValue& getLocalValueSlow() const {
+    auto const ptr = new LocalValueTLP();
+    localValue_.reset(ptr);
+    return **ptr;
+  }
 
   FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
-    auto& value = **localValue_;
+    auto& value = getLocalValue();
     if (FOLLY_LIKELY(value.first == *settingVersion_)) {
       return value.second;
     }
     return tlValueSlow();
   }
   FOLLY_NOINLINE const std::shared_ptr<Contents>& tlValueSlow() const {
-    auto& value = **localValue_;
+    auto& value = getLocalValue();
     while (value.first < *settingVersion_) {
       /* If this destroys the old value, do it without holding the lock */
       value.second.reset();
