@@ -20,7 +20,7 @@
 #include <folly/algorithm/simd/Ignore.h>
 #include <folly/algorithm/simd/Movemask.h>
 #include <folly/algorithm/simd/detail/SimdPlatform.h>
-#include <folly/lang/Bits.h>
+#include <folly/lang/SafeAssert.h>
 
 #include <array>
 
@@ -96,6 +96,9 @@ struct SimdPlatformCommon {
   template <typename Ignore>
   static bool any(logical_t logical, Ignore ignore);
 
+  template <typename Ignore>
+  static bool all(logical_t logical, Ignore ignore);
+
   /**
    * logical operations
    **/
@@ -110,7 +113,7 @@ struct SimdPlatformCommon {
 template <typename Platform>
 template <typename Ignore>
 FOLLY_ERASE auto SimdPlatformCommon<Platform>::loada(
-    const scalar_t* ptr, Ignore) -> reg_t {
+    const scalar_t* ptr, [[maybe_unused]] Ignore ignore) -> reg_t {
   if constexpr (std::is_same_v<ignore_none, Ignore>) {
     // There is not point to aligned load instructions
     // on modern cpus. Arm doesn't even have any.
@@ -122,7 +125,25 @@ FOLLY_ERASE auto SimdPlatformCommon<Platform>::loada(
     //
     // Here is an explanation from Stephen Canon:
     // https://stackoverflow.com/questions/25566302/vectorized-strlen-getting-away-with-reading-unallocated-memory
-    return unsafeLoadu(ptr, ignore_none{});
+    if constexpr (!kIsSanitizeAddress) {
+      return unsafeLoadu(ptr, ignore_none{});
+    } else {
+      // If the sanitizers are enabled, we want to trigger the issues.
+      // We also want to match the garbage values with/without asan,
+      // so that testing works on the same values as prod.
+      scalar_t buf[kCardinal];
+      std::memcpy(
+          buf + ignore.first,
+          ptr + ignore.first,
+          (kCardinal - ignore.first - ignore.last) * sizeof(scalar_t));
+
+      auto testAgainst = loadu(buf, ignore_none{});
+      auto res = unsafeLoadu(ptr, ignore_none{});
+
+      // Extra sanity check.
+      FOLLY_SAFE_CHECK(all(Platform::equal(res, testAgainst), ignore));
+      return res;
+    }
   }
 }
 
@@ -163,6 +184,24 @@ FOLLY_ERASE bool SimdPlatformCommon<Platform>::any(
 }
 
 template <typename Platform>
+template <typename Ignore>
+FOLLY_ERASE bool SimdPlatformCommon<Platform>::all(
+    logical_t logical, Ignore ignore) {
+  if constexpr (std::is_same_v<Ignore, ignore_none>) {
+    return Platform::all(logical);
+  } else {
+    auto [bits, bitsPerElement] = movemask<scalar_t>(logical, ignore_none{});
+
+    auto expected = n_least_significant_bits<decltype(bits)>(
+        bitsPerElement * (kCardinal - ignore.last));
+    expected =
+        clear_n_least_significant_bits(expected, ignore.first * bitsPerElement);
+
+    return (bits & expected) == expected;
+  }
+}
+
+template <typename Platform>
 FOLLY_ERASE auto SimdPlatformCommon<Platform>::logical_or(
     logical_t x, logical_t y) -> logical_t {
   return Platform::logical_or(x, y);
@@ -184,6 +223,8 @@ struct SimdSse42PlatformSpecific {
   using scalar_t = T;
   using reg_t = __m128i;
   using logical_t = reg_t;
+
+  static constexpr std::size_t kCardinal = sizeof(reg_t) / sizeof(scalar_t);
 
   FOLLY_ERASE
   static reg_t loadu(const scalar_t* p) {
@@ -238,7 +279,16 @@ struct SimdSse42PlatformSpecific {
   }
 
   FOLLY_ERASE
-  static bool any(logical_t log) { return movemask<std::uint8_t>(log).first; }
+  static bool any(logical_t log) { return movemask<scalar_t>(log).first; }
+
+#if 0 // disabled untill we have a test where this is relevant
+  FOLLY_ERASE
+  static bool all(logical_t log) {
+    auto [bits, bitsPerElement] = movemask<scalar_t>(log);
+    return movemask<scalar_t>(log) ==
+        n_least_significant_bits<decltype(bits)>(kCardinal * bitsPerElement);
+  }
+#endif
 };
 
 #define FOLLY_DETAIL_HAS_SIMD_PLATFORM 1
@@ -253,6 +303,8 @@ struct SimdAvx2PlatformSpecific {
   using scalar_t = T;
   using reg_t = __m256i;
   using logical_t = reg_t;
+
+  static constexpr std::size_t kCardinal = sizeof(reg_t) / sizeof(scalar_t);
 
   FOLLY_ERASE
   static reg_t loadu(const scalar_t* p) {
@@ -306,9 +358,16 @@ struct SimdAvx2PlatformSpecific {
   }
 
   FOLLY_ERASE
-  static bool any(logical_t log) {
-    return simd::movemask<std::uint8_t>(log).first;
+  static bool any(logical_t log) { return simd::movemask<scalar_t>(log).first; }
+
+#if 0 // disabled untill we have a test where this is relevant
+  FOLLY_ERASE
+  static bool all(logical_t log) {
+    auto [bits, bitsPerElement] = movemask<scalar_t>(log);
+    return movemask<scalar_t>(log) ==
+        n_least_significant_bits<decltype(bits)>(kCardinal * bitsPerElement);
   }
+#endif
 };
 
 template <typename T>
@@ -420,6 +479,19 @@ struct SimdAarch64PlatformSpecific {
     auto u64 = bit_cast<uint64x2_t>(u32);
     return vgetq_lane_u64(u64, 0);
   }
+
+#if 0 // disabled untill we have a test where this is relevant
+  FOLLY_ERASE
+  static bool all(logical_t log) {
+    // Not quite what they did in .Net runtime, but
+    // should be close.
+    // https://github.com/dotnet/runtime/pull/75864
+    auto u32 = bit_cast<uint32x4_t>(log);
+    u32 = vpminq_u32(u32, u32);
+    auto u64 = bit_cast<uint64x2_t>(u32);
+    return u64 == n_least_significant_bits<std::uint64_t>(64);
+  }
+#endif
 };
 
 #define FOLLY_DETAIL_HAS_SIMD_PLATFORM 1

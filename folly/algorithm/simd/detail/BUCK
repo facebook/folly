@@ -22,7 +22,7 @@ cpp_library(
         "//folly:portability",
         "//folly/algorithm/simd:ignore",
         "//folly/algorithm/simd:movemask",
-        "//folly/lang:bits",
+        "//folly/lang:safe_assert",
     ],
 )
 
