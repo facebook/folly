@@ -179,6 +179,14 @@ class SnapshotBase {
    */
   using SettingsInfo = std::pair<std::string, std::string>;
 
+  struct SettingVisitorInfo {
+    const SettingMetadata& meta;
+    std::string value;
+    std::string reason;
+
+    std::string fullName() const;
+  };
+
   /**
    * Apply all settings updates from this snapshot to the global state
    * unconditionally.
@@ -225,12 +233,10 @@ class SnapshotBase {
   virtual SetResult forceResetToDefault(StringPiece settingName) = 0;
 
   /**
-   * Iterates over all known settings and calls
-   * func(meta, to<string>(value), reason) for each.
+   * Iterates over all known settings and calls func(visitorInfo) for each.
    */
   virtual void forEachSetting(
-      FunctionRef<void(const SettingMetadata&, StringPiece, StringPiece)> func)
-      const = 0;
+      FunctionRef<void(SettingVisitorInfo)> func) const = 0;
 
   virtual ~SnapshotBase();
 

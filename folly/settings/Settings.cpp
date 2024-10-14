@@ -18,6 +18,8 @@
 
 #include <map>
 
+#include <fmt/format.h>
+
 #include <folly/Synchronized.h>
 
 namespace folly {
@@ -122,15 +124,19 @@ SetResult Snapshot::forceResetToDefault(StringPiece settingName) {
 }
 
 void Snapshot::forEachSetting(
-    FunctionRef<void(const SettingMetadata&, StringPiece, StringPiece)> func)
-    const {
+    FunctionRef<void(Snapshot::SettingVisitorInfo)> func) const {
   detail::SettingsMap map;
   /* Note that this won't hold the lock over the callback, which is
      what we want since the user might call other settings:: APIs */
   map = *detail::settingsMap().rlock();
   for (const auto& kv : map) {
-    auto value = kv.second->getAsString(this);
-    func(kv.second->meta(), value.first, value.second);
+    auto [value, reason] = kv.second->getAsString(this);
+    Snapshot::SettingVisitorInfo visitInfo{
+        .meta = kv.second->meta(),
+        .value = std::move(value),
+        .reason = std::move(reason),
+    };
+    func(std::move(visitInfo));
   }
 }
 
@@ -188,6 +194,10 @@ SnapshotBase::SnapshotBase() {
       std::forward_as_tuple(at_),
       std::forward_as_tuple());
   ++it.first->second.first;
+}
+
+std::string SnapshotBase::SettingVisitorInfo::fullName() const {
+  return fmt::format("{}_{}", meta.project, meta.name);
 }
 
 SnapshotBase::~SnapshotBase() {

@@ -391,12 +391,10 @@ class Snapshot final : public detail::SnapshotBase {
   SetResult forceResetToDefault(StringPiece settingName) override;
 
   /**
-   * Iterates over all known settings and calls
-   * func(meta, to<string>(value), reason) for each.
+   * Iterates over all known settings and calls func(visitorInfo) for each.
    */
   void forEachSetting(
-      FunctionRef<void(const SettingMetadata&, StringPiece, StringPiece)> func)
-      const override;
+      FunctionRef<void(SettingVisitorInfo)> func) const override;
 
  private:
   template <typename T>
