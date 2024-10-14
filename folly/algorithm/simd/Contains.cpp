@@ -22,20 +22,21 @@
 
 namespace folly::simd::detail {
 
-bool containsU8(folly::span<const std::uint8_t> haystack, std::uint8_t needle) {
+bool containsU8(
+    folly::span<const std::uint8_t> haystack, std::uint8_t needle) noexcept {
   return containsImpl(haystack, needle);
 }
 bool containsU16(
-    folly::span<const std::uint16_t> haystack, std::uint16_t needle) {
+    folly::span<const std::uint16_t> haystack, std::uint16_t needle) noexcept {
   return containsImpl(haystack, needle);
 }
 bool containsU32(
-    folly::span<const std::uint32_t> haystack, std::uint32_t needle) {
+    folly::span<const std::uint32_t> haystack, std::uint32_t needle) noexcept {
   return containsImpl(haystack, needle);
 }
 
 bool containsU64(
-    folly::span<const std::uint64_t> haystack, std::uint64_t needle) {
+    folly::span<const std::uint64_t> haystack, std::uint64_t needle) noexcept {
   return containsImpl(haystack, needle);
 }
 
