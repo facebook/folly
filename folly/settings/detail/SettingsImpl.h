@@ -322,26 +322,16 @@ class SettingCore : public SettingCoreBase {
    */
   std::conditional_t<IsSmallPOD<T>, T, const T&> getWithHint(
       std::atomic<uint64_t>& trivialStorage) const {
-    return getImpl(std::bool_constant<IsSmallPOD<T>>{}, trivialStorage);
+    if constexpr (IsSmallPOD<T>) {
+      uint64_t v = trivialStorage.load();
+      T t;
+      std::memcpy(&t, &v, sizeof(T));
+      return t;
+    } else {
+      return const_cast<SettingCore*>(this)->tlValue()->value;
+    }
   }
   const SettingContents<T>& getSlow() const { return *tlValue(); }
-  /***
-   * SmallPOD version: just read the global atomic
-   */
-  T getImpl(std::true_type, std::atomic<uint64_t>& trivialStorage) const {
-    uint64_t v = trivialStorage.load();
-    T t;
-    std::memcpy(&t, &v, sizeof(T));
-    return t;
-  }
-
-  /**
-   * Non-SmallPOD version: read the thread local shared_ptr
-   */
-  const T& getImpl(
-      std::false_type, std::atomic<uint64_t>& /* ignored */) const {
-    return const_cast<SettingCore*>(this)->tlValue()->value;
-  }
 
   SetResult set(
       const T& t, StringPiece reason, SnapshotBase* snapshot = nullptr) {
