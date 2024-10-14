@@ -8,6 +8,13 @@ sha256 = baee0c6afd4f03165de7a4e67988d16f0f2b257b51d0e3cb91909302a26a79c4
 [rpms]
 xxhash-devel
 
+[debs]
+libxxhash-dev
+xxhash
+
+[homebrew]
+xxhash
+
 [build.not(os=windows)]
 builder = make
 subdir = xxHash-0.8.2

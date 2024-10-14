@@ -959,6 +959,10 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
     def write_job_for_platform(self, platform, args):  # noqa: C901
         build_opts = setup_build_options(args, platform)
         ctx_gen = build_opts.get_context_generator()
+        if args.enable_tests:
+            ctx_gen.set_value_for_project(args.project, "test", "on")
+        else:
+            ctx_gen.set_value_for_project(args.project, "test", "off")
         loader = ManifestLoader(build_opts, ctx_gen)
         self.process_project_dir_arguments(args, loader)
         manifest = loader.load_manifest(args.project)
@@ -1081,7 +1085,10 @@ jobs:
                 free_up_disk = ""
 
             allow_sys_arg = ""
-            if run_tests:
+            if (
+                build_opts.allow_system_packages
+                and build_opts.host_type.get_package_manager()
+            ):
                 sudo_arg = "sudo "
                 allow_sys_arg = " --allow-system-packages"
                 if build_opts.host_type.get_package_manager() == "deb":
@@ -1092,13 +1099,16 @@ jobs:
                 if build_opts.is_darwin():
                     # brew is installed as regular user
                     sudo_arg = ""
+                tests_arg = "--no-tests "
+                if run_tests:
+                    tests_arg = ""
                 out.write(
-                    f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive {manifest.name}\n"
+                    f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps {tests_arg}--recursive {manifest.name}\n"
                 )
                 if build_opts.is_linux() or build_opts.is_freebsd():
                     out.write("    - name: Install packaging system deps\n")
                     out.write(
-                        f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf\n"
+                        f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps {tests_arg}--recursive patchelf\n"
                     )
                 required_locales = manifest.get(
                     "github.actions", "required_locales", ctx=manifest_ctx
@@ -1176,7 +1186,7 @@ jobs:
                 no_deps_arg = "--no-deps "
 
             no_tests_arg = ""
-            if not args.enable_tests:
+            if not run_tests:
                 no_tests_arg = "--no-tests "
 
             out.write(
