@@ -171,17 +171,15 @@
 
 // Main probe Macro.
 #define FOLLY_SDT_PROBE(provider, name, has_semaphore, n, arglist)             \
-  do {                                                                         \
-    __asm__ __volatile__ (                                                     \
-      FOLLY_SDT_NOTE_CONTENT(                                                  \
-        provider, name, has_semaphore, FOLLY_SDT_ARG_TEMPLATE_##n)             \
-      :: FOLLY_SDT_SEMAPHORE_OPERAND_##has_semaphore(provider, name),          \
-         FOLLY_SDT_OPERANDS_##n arglist                                        \
-    );                                                                         \
-    __asm__ __volatile__ (                                                     \
-      FOLLY_SDT_BASE_CONTENT                                                   \
-    );                                                                         \
-  } while (0)
+  __asm__ __volatile__ (                                                       \
+    FOLLY_SDT_NOTE_CONTENT(                                                    \
+      provider, name, has_semaphore, FOLLY_SDT_ARG_TEMPLATE_##n)               \
+    :: FOLLY_SDT_SEMAPHORE_OPERAND_##has_semaphore(provider, name),            \
+       FOLLY_SDT_OPERANDS_##n arglist                                          \
+  );                                                                           \
+  __asm__ __volatile__ (                                                       \
+    FOLLY_SDT_BASE_CONTENT                                                     \
+  );
 
 // Helper Macros to handle variadic arguments.
 #define FOLLY_SDT_NARG_(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
