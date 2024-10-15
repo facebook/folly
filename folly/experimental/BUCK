@@ -122,16 +122,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "cleanup",
-    headers = [
-        "Cleanup.h",
-    ],
-    exported_deps = [
-        "//folly/futures:cleanup",
-    ],
-)
-
-cpp_library(
     name = "primary_ptr",
     headers = [
         "PrimaryPtr.h",
