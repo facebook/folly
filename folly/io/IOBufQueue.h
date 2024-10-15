@@ -73,7 +73,7 @@ class IOBufQueue {
 
     WritableRangeCacheData(WritableRangeCacheData&& other) noexcept
         : cachedRange(other.cachedRange), attached(other.attached) {
-      other.cachedRange = {};
+      other.cachedRange = std::pair<uint8_t*, uint8_t*>{};
       other.attached = {};
     }
     WritableRangeCacheData& operator=(WritableRangeCacheData&& other) noexcept {
