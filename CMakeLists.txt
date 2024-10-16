@@ -325,12 +325,12 @@ else()
 endif()
 if (NOT ${LIBGFLAGS_FOUND})
   list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/NestedCommandLineApp.cpp
-    ${FOLLY_DIR}/experimental/ProgramOptions.cpp
+    ${FOLLY_DIR}/cli/NestedCommandLineApp.cpp
+    ${FOLLY_DIR}/cli/ProgramOptions.cpp
   )
   list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/NestedCommandLineApp.h
-    ${FOLLY_DIR}/experimental/ProgramOptions.h
+    ${FOLLY_DIR}/cli/NestedCommandLineApp.h
+    ${FOLLY_DIR}/cli/ProgramOptions.h
   )
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

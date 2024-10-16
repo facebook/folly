@@ -165,7 +165,7 @@ TEST_F(ContainsTestSpeicalCases, AsanShouldDetectInvalidRange) {
 
   std::vector<int> v;
   v.resize(3);
-  folly::span<int> s(v.begin() + 1, v.begin() + 4);
+  folly::span<int> s(v.data() + 1, v.data() + 4);
   EXPECT_DEATH(
       (folly::simd::contains(s, 0)), "AddressSanitizer: heap-buffer-overflow");
 }
