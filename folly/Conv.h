@@ -329,8 +329,8 @@ namespace detail {
 template <class... T>
 using LastElement = type_pack_element_t<sizeof...(T) - 1, T...>;
 
-#ifdef _MSC_VER
-// MSVC can't quite figure out the LastElementImpl::call() stuff
+#if defined(_MSC_VER) || defined(__CUDACC__)
+// MSVC and NVCC can't quite figure out the LastElementImpl::call() stuff
 // in the base implementation, so we have to use tuples instead,
 // which result in significantly more templates being compiled,
 // though the runtime performance is the same.
