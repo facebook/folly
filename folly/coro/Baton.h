@@ -18,6 +18,7 @@
 
 #include <atomic>
 
+#include <folly/Try.h>
 #include <folly/experimental/coro/Coroutine.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -106,6 +107,10 @@ class Baton {
     }
 
     void await_resume() noexcept {}
+
+    // Awaiting a baton doesn't throw, so supporting `co_awaitTry` here only
+    // serves to simplify generic code.
+    folly::Try<void> await_resume_try() noexcept { return {}; }
 
    protected:
     friend class Baton;

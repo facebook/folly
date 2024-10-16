@@ -90,7 +90,8 @@ TEST_F(BatonTest, MultiAwaitBaton) {
 
   auto makeTask2 = [&]() -> coro::Task<void> {
     reachedBeforeAwait2 = true;
-    co_await baton;
+    // Equivalent to `co_await baton`, we just want it to compile.
+    co_await co_awaitTry(baton.operator co_await());
     reachedAfterAwait2 = true;
   };
 

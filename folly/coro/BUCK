@@ -96,6 +96,7 @@ cpp_library(
         "//folly/synchronization:atomic_util",
     ],
     exported_deps = [
+        "//folly:try",
         "//folly/experimental/coro:coroutine",
     ],
 )
