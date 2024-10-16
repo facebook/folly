@@ -34,7 +34,8 @@ namespace folly::simd::detail {
  */
 
 template <typename T>
-FOLLY_ERASE bool containsImplStd(folly::span<const T> haystack, T needle) {
+FOLLY_ALWAYS_INLINE bool containsImplStd(
+    folly::span<const T> haystack, T needle) {
   static_assert(
       std::is_unsigned_v<T>, "we should only get here for uint8/16/32/64");
   if constexpr (sizeof(T) == 1) {
@@ -68,7 +69,7 @@ constexpr bool hasHandwrittenContains() {
 }
 
 template <typename T, typename Platform = SimdPlatform<T>>
-FOLLY_ERASE bool containsImplHandwritten(
+FOLLY_ALWAYS_INLINE bool containsImplHandwritten(
     folly::span<const T> haystack, T needle) {
   static_assert(!std::is_same_v<Platform, void>, "");
   return simdAnyOf<Platform, 4>(
@@ -80,7 +81,7 @@ FOLLY_ERASE bool containsImplHandwritten(
 }
 
 template <typename T>
-FOLLY_ERASE bool containsImpl(folly::span<const T> haystack, T needle) {
+FOLLY_ALWAYS_INLINE bool containsImpl(folly::span<const T> haystack, T needle) {
   if constexpr (hasHandwrittenContains<T>()) {
     return containsImplHandwritten(haystack, needle);
   } else {
