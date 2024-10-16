@@ -51,6 +51,7 @@ cpp_library(
         "StreamHandlerFactory.h",
         "xlog.h",
     ],
+    export_header_unit = "preload",
     preprocessor_flags = [
         "-DFOLLY_XLOG_SUPPORT_BUCK2",
     ],
