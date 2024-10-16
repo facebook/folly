@@ -115,7 +115,7 @@ internment = { version = "0.7", features = ["arc"] }
 inventory = "0.3.8"
 ipnetwork = "0.20.0"
 is_proc_translated = "0.1.1"
-itertools = "0.10.3"
+itertools = "0.13.0"
 jemallocator = { version = "0.5.0", features = ["profiling"] }
 lalrpop = { version = "0.19.7", artifact = "bin", features = ["pico-args"] }
 lalrpop-util = "0.19.7"
