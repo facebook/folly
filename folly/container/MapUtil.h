@@ -25,7 +25,8 @@
 
 #include <tuple>
 
-#include <folly/Conv.h>
+#include <fmt/format.h>
+
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/functional/Invoke.h>
@@ -86,7 +87,7 @@ const typename Map::mapped_type& get_or_throw(
   if (pos != map.end()) {
     return pos->second;
   }
-  throw_exception<E>(folly::to<std::string>(exceptionStrPrefix, key));
+  throw_exception<E>(fmt::format("{}{}", exceptionStrPrefix, key));
 }
 
 template <
@@ -101,7 +102,7 @@ typename Map::mapped_type& get_or_throw(
   if (pos != map.end()) {
     return pos->second;
   }
-  throw_exception<E>(folly::to<std::string>(exceptionStrPrefix, key));
+  throw_exception<E>(fmt::format("{}{}", exceptionStrPrefix, key));
 }
 
 /**

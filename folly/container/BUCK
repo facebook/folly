@@ -320,7 +320,7 @@ cpp_library(
     name = "map_util",
     headers = ["MapUtil.h"],
     exported_deps = [
-        "//folly:conv",
+        "fbsource//third-party/fmt:fmt",
         "//folly:optional",
         "//folly:range",
         "//folly/functional:invoke",
