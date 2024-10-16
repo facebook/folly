@@ -1023,7 +1023,7 @@ TEST(ThreadPoolExecutorTest, AddPerf) {
   auto queue = std::make_unique<
       UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>>();
   CPUThreadPoolExecutor e(
-      1000,
+      kIsSanitizeThread ? 25 : 1000,
       std::move(queue),
       std::make_shared<NamedThreadFactory>("CPUThreadPool"));
   e.setThreadDeathTimeout(std::chrono::milliseconds(1));
