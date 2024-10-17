@@ -129,7 +129,7 @@ GlobalThreadPoolList& GlobalThreadPoolList::instance() {
 
 void GlobalThreadPoolList::registerThreadPool(
     ThreadPoolListHook* threadPoolId, std::string name) {
-  globalListImpl_.wlock()->registerThreadPool(threadPoolId, name);
+  globalListImpl_.wlock()->registerThreadPool(threadPoolId, std::move(name));
 }
 
 void GlobalThreadPoolList::unregisterThreadPool(
@@ -159,9 +159,9 @@ void GlobalThreadPoolList::unregisterThreadPoolThread(
 void GlobalThreadPoolListImpl::registerThreadPool(
     ThreadPoolListHook* threadPoolId, std::string name) {
   PoolInfo info;
-  info.name = name;
+  info.name = std::move(name);
   info.addr = threadPoolId;
-  pools_.vector().push_back(info);
+  pools_.vector().push_back(std::move(info));
 }
 
 void GlobalThreadPoolListImpl::unregisterThreadPool(
@@ -225,7 +225,7 @@ ThreadListHook::~ThreadListHook() {
 
 ThreadPoolListHook::ThreadPoolListHook(std::string name) {
   debugger_detail::GlobalThreadPoolList::instance().registerThreadPool(
-      this, name);
+      this, std::move(name));
 }
 
 ThreadPoolListHook::~ThreadPoolListHook() {
