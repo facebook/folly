@@ -102,16 +102,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "instructions",
-    headers = [
-        "Instructions.h",
-    ],
-    exported_deps = [
-        "//folly/compression:instructions",
-    ],
-)
-
-cpp_library(
     name = "lock_free_ring_buffer",
     headers = [
         "LockFreeRingBuffer.h",
