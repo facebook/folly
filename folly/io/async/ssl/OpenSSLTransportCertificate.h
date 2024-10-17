@@ -36,6 +36,27 @@ class OpenSSLTransportCertificate : virtual public AsyncTransportCertificate {
    */
   virtual folly::ssl::X509UniquePtr getX509() const = 0;
 
+  virtual std::optional<std::string> getDER() const override {
+    auto x509 = getX509();
+    if (!x509) {
+      return std::nullopt;
+    }
+
+    int len = i2d_X509(x509.get(), nullptr);
+    if (len < 0) {
+      return std::nullopt;
+    }
+
+    std::string der(len, '\0');
+    auto derPtr = reinterpret_cast<unsigned char*>(der.data());
+
+    if (i2d_X509(x509.get(), &derPtr) < 0) {
+      return std::nullopt;
+    }
+
+    return der;
+  }
+
   static ssl::X509UniquePtr tryExtractX509(
       const AsyncTransportCertificate* cert) {
     auto opensslCert = dynamic_cast<const OpenSSLTransportCertificate*>(cert);

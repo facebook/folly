@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <folly/Optional.h>
 
 namespace folly {
 
@@ -37,5 +38,16 @@ class AsyncTransportCertificate {
    * implementations of AsyncTransport.
    */
   virtual std::string getIdentity() const = 0;
+
+  /**
+   * Returns the DER representation of this certificate, if available.
+   *
+   * NOTE: Not every AsyncTransportCertificate implementation will
+   * have a DER representation. Whenever possible, applications should
+   * prefer to structure logic around the _identity_ that the
+   * certificate conveys (with `getIdentity()`), rather than
+   * certificate itself.
+   */
+  virtual std::optional<std::string> getDER() const = 0;
 };
 } // namespace folly
