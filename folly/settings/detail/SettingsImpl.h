@@ -180,11 +180,20 @@ class SnapshotBase {
   using SettingsInfo = std::pair<std::string, std::string>;
 
   struct SettingVisitorInfo {
-    const SettingMetadata& meta;
-    std::string value;
-    std::string reason;
+    SettingVisitorInfo(
+        const std::string& fullName,
+        const SettingCoreBase& core,
+        const SnapshotBase& snapshot)
+        : fullName_(fullName), core_(core), snapshot_(snapshot) {}
 
-    std::string fullName() const;
+    const SettingMetadata& meta() const { return core_.meta(); }
+    std::pair<std::string, std::string> valueAndReason() const;
+    const std::string& fullName() const { return fullName_; }
+
+   private:
+    const std::string& fullName_;
+    const SettingCoreBase& core_;
+    const SnapshotBase& snapshot_;
   };
 
   /**
@@ -236,7 +245,7 @@ class SnapshotBase {
    * Iterates over all known settings and calls func(visitorInfo) for each.
    */
   virtual void forEachSetting(
-      FunctionRef<void(SettingVisitorInfo)> func) const = 0;
+      FunctionRef<void(const SettingVisitorInfo&)> func) const = 0;
 
   virtual ~SnapshotBase();
 

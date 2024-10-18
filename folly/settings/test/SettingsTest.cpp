@@ -316,8 +316,8 @@ TEST(Settings, basic) {
     auto allMeta = folly::settings::getAllSettingsMeta();
     size_t i = 0;
     folly::settings::Snapshot sn;
-    sn.forEachSetting([&](auto setting) {
-      auto meta = setting.meta;
+    sn.forEachSetting([&](const auto& setting) {
+      auto& meta = setting.meta();
       auto& foundMeta = allMeta.at(i++);
       EXPECT_EQ(meta.project, foundMeta.project);
       EXPECT_EQ(meta.name, foundMeta.name);
@@ -339,6 +339,7 @@ TEST(Settings, basic) {
       } else {
         FAIL() << "Unexpected type: " << meta.typeStr;
       }
+      auto [value, reason] = setting.valueAndReason();
       allFlags += folly::sformat(
           "{}/{}/{}/{}/{}/{}/{}\n",
           meta.project,
@@ -346,8 +347,8 @@ TEST(Settings, basic) {
           meta.typeStr,
           meta.defaultStr,
           meta.description,
-          setting.value,
-          setting.reason);
+          value,
+          reason);
     });
     auto allFlagsString = folly::stripLeftMargin(R"MESSAGE(
       follytest/immutable_setting/UserDefinedType/"b"/User defined type constructed from string/b_out/default

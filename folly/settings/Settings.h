@@ -394,7 +394,7 @@ class Snapshot final : public detail::SnapshotBase {
    * Iterates over all known settings and calls func(visitorInfo) for each.
    */
   void forEachSetting(
-      FunctionRef<void(SettingVisitorInfo)> func) const override;
+      FunctionRef<void(const SettingVisitorInfo&)> func) const override;
 
  private:
   template <typename T>

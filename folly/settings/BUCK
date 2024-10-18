@@ -12,7 +12,6 @@ cpp_library(
         "detail/SettingsImpl.h",
     ],
     deps = [
-        "fbsource//third-party/fmt:fmt",
         "//folly:synchronized",
     ],
     exported_deps = [
