@@ -112,9 +112,7 @@ target-dir = '''{}'''
 [profile.dev]
 debug = false
 incremental = false
-""".format(
-                self.build_dir.replace("\\", "\\\\")
-            )
+""".format(self.build_dir.replace("\\", "\\\\"))
 
         # Point to vendored sources from getdeps manifests
         for _dep, git_conf in dep_to_git.items():
