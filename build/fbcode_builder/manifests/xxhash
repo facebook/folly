@@ -25,3 +25,6 @@ all
 [make.install_args]
 install
 
+[build.os=windows]
+builder = cmake
+subdir = xxHash-0.8.2/cmake_unofficial
