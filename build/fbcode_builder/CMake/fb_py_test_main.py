@@ -6,7 +6,6 @@
 This file contains the main module code for Python test programs.
 """
 
-
 import contextlib
 import ctypes
 import fnmatch
@@ -50,7 +49,6 @@ EXIT_CODE_TEST_FAILURE = 70
 
 
 class TestStatus(object):
-
     ABORTED = "FAILURE"
     PASSED = "SUCCESS"
     FAILED = "FAILURE"
@@ -230,7 +228,6 @@ class BuckTestResult(unittest.TextTestResult):
         """
 
         for test in suite:
-
             # We identify test suites by test that are iterable (as is done in
             # the builtin python test harness).  If we see one, recurse on it.
             if hasattr(test, "__iter__"):
@@ -429,7 +426,6 @@ class RegexTestLoader(unittest.TestLoader):
 
 
 class Loader(object):
-
     suiteClass = unittest.TestSuite
 
     def __init__(self, modules, regex=None):
