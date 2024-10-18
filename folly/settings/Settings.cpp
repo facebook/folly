@@ -131,10 +131,10 @@ void Snapshot::forEachSetting(
   map = *detail::settingsMap().rlock();
   for (const auto& kv : map) {
     auto [value, reason] = kv.second->getAsString(this);
-    Snapshot::SettingVisitorInfo visitInfo{
-        .meta = kv.second->meta(),
-        .value = std::move(value),
-        .reason = std::move(reason),
+    Snapshot::SettingVisitorInfo visitInfo = {
+        kv.second->meta(),
+        std::move(value),
+        std::move(reason),
     };
     func(std::move(visitInfo));
   }

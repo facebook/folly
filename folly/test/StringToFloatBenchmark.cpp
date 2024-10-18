@@ -110,6 +110,10 @@ class PosixNumericLocale {
 };
 } // namespace
 
+#if defined(_WIN32)
+#define strtod_l _strtod_l
+#endif
+
 BENCHMARK(hardcoded_decimal_notation_STRTOFL_COPY, n) {
   char* end;
   for (unsigned int i = 0; i < n; ++i) {
