@@ -16,10 +16,16 @@
 
 #include <folly/settings/Settings.h>
 
+#include <thread>
+#include <vector>
+
+#include <fmt/format.h>
+
 #include <folly/Format.h>
 #include <folly/String.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/settings/test/a.h>
 #include <folly/settings/test/b.h>
@@ -117,6 +123,22 @@ void toAppend(const UserDefinedWithMeta& t, String* out) {
   out->append(t.value_);
 }
 
+struct TrivialUserDefinedType {
+  int value() const { return value_; }
+
+  int value_;
+};
+template <class String>
+void toAppend(const TrivialUserDefinedType& t, String* out) {
+  out->append(fmt::to_string(t.value_));
+}
+folly::Expected<folly::Unit, UserErrorCode> convertTo(
+    const folly::settings::SettingValueAndMetadata& src,
+    TrivialUserDefinedType& out) {
+  out.value_ = folly::to<int>(src.value);
+  return folly::unit;
+}
+
 FOLLY_SETTING_DEFINE(
     follytest,
     user_defined,
@@ -133,6 +155,14 @@ FOLLY_SETTING_DEFINE(
     folly::settings::Mutability::Mutable,
     folly::settings::CommandLine::AcceptOverrides,
     "User defined type constructed from string and metadata");
+FOLLY_SETTING_DEFINE(
+    follytest,
+    trivial_user_defined,
+    TrivialUserDefinedType,
+    TrivialUserDefinedType{123},
+    folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
+    "Trivial user defined type");
 FOLLY_SETTING_DEFINE(
     follytest,
     immutable_setting,
@@ -336,6 +366,8 @@ TEST(Settings, basic) {
         EXPECT_EQ(meta.typeStr, "UserDefinedType");
       } else if (meta.typeId == typeid(some_ns::UserDefinedWithMeta)) {
         EXPECT_EQ(meta.typeStr, "UserDefinedWithMeta");
+      } else if (meta.typeId == typeid(some_ns::TrivialUserDefinedType)) {
+        EXPECT_EQ(meta.typeStr, "TrivialUserDefinedType");
       } else {
         FAIL() << "Unexpected type: " << meta.typeStr;
       }
@@ -358,6 +390,7 @@ TEST(Settings, basic) {
       follytest/public_flag_to_a/int/456/Public flag to a/300/from_string
       follytest/public_flag_to_b/std::string/"basdf"/Public flag to b/basdf/default
       follytest/some_flag/std::string/"default"/Description/default/default
+      follytest/trivial_user_defined/TrivialUserDefinedType/TrivialUserDefinedType{123}/Trivial user defined type/123/default
       follytest/unused/std::string/"unused_default"/Not used, but should still be in the list/unused_default/default
       follytest/user_defined/UserDefinedType/"b"/User defined type constructed from string/b_out/default
       follytest/user_defined_with_meta/UserDefinedWithMeta/{"default"}/User defined type constructed from string and metadata/default/default
@@ -750,4 +783,85 @@ TEST(Settings, userDefinedConversionWithMetadata) {
   EXPECT_EQ(
       some_ns::FOLLY_SETTING(follytest, user_defined_with_meta)->value_,
       "follytest_user_defined_with_meta->new");
+}
+
+TEST(Settings, accessCount) {
+  {
+    folly::settings::Snapshot sn;
+    sn.forEachSetting(
+        [](auto setting) { EXPECT_EQ(setting.accessCount(), 0); });
+  }
+
+  // Check updateReason does not count as an access
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, multi_token_type).accessCount(), 0);
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, multi_token_type).updateReason(),
+      "default");
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, multi_token_type).accessCount(), 0);
+
+  {
+    // Check accessing a setting in a snapshot does not count as an access
+    EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, some_flag).accessCount(), 0);
+    folly::settings::Snapshot sn;
+    EXPECT_EQ(*sn(some_ns::FOLLY_SETTING(follytest, some_flag)), "default");
+    EXPECT_EQ(
+        some_ns::FOLLY_SETTING(follytest, some_flag).value(sn), "default");
+    EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, some_flag).accessCount(), 0);
+  }
+
+  // Check trivial setting access
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, multi_token_type), 123);
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, multi_token_type), 123);
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, multi_token_type).accessCount(), 2);
+
+  // Check non-trivial setting access
+  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, some_flag).accessCount(), 0);
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "default");
+  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, some_flag).accessCount(), 1);
+
+  // Check trival access via ->
+  static_assert(
+      folly::settings::detail::IsSmallPOD<some_ns::TrivialUserDefinedType>);
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, trivial_user_defined).accessCount(), 0);
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, trivial_user_defined)->value(), 123);
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, trivial_user_defined).accessCount(), 1);
+
+  folly::settings::Snapshot sn;
+  sn.forEachSetting([](const auto& setting) {
+    EXPECT_EQ(
+        setting.accessCount() > 0,
+        setting.fullName() == "follytest_multi_token_type" ||
+            setting.fullName() == "follytest_some_flag" ||
+            setting.fullName() == "follytest_trivial_user_defined")
+        << setting.fullName();
+  });
+}
+
+TEST(Settings, concurrentAccessCount) {
+  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, some_flag).accessCount(), 0);
+  const size_t numThreads = 16;
+  const size_t numAccessesPerThread = 10'000;
+  std::vector<std::thread> threads;
+  folly::test::Barrier barrier(numThreads + 1);
+  for (size_t i = 0; i < numThreads; ++i) {
+    threads.emplace_back([&]() {
+      barrier.wait();
+      for (size_t j = 0; j < numAccessesPerThread; ++j) {
+        EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "default");
+      }
+    });
+  }
+  barrier.wait();
+  for (auto& thread : threads) {
+    thread.join();
+  }
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, some_flag).accessCount(),
+      numThreads * numAccessesPerThread);
 }

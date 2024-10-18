@@ -25,6 +25,7 @@ cpp_library(
         "//folly:shared_mutex",
         "//folly:thread_local",
         "//folly:utility",
+        "//folly/concurrency:singleton_relaxed_counter",
         "//folly/container:f14_hash",
         "//folly/lang:aligned",
     ],

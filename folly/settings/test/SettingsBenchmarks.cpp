@@ -28,20 +28,20 @@ buck run @mode/opt folly/settings/test:settings_bench -- --bm_min_iters=10000000
 ============================================================================
 [...]/settings/test/SettingsBenchmarks.cpp     relative  time/iter   iters/s
 ============================================================================
-trivial_access                                            380.90fs     2.63T
-non_trivial_access                                          1.01ns   987.97M
+trivial_access                                            290.59ps     3.44G
+non_trivial_access                                          1.27ns   787.19M
 ----------------------------------------------------------------------------
-trival_access_parallel(1thr)                              138.92ps     7.20G
-trival_access_parallel(8thr)                              311.42ps     3.21G
-trival_access_parallel(24thr)                             451.58ps     2.21G
-trival_access_parallel(48thr)                             793.19ps     1.26G
-trival_access_parallel(72thr)                             749.04ps     1.34G
+trival_access_parallel(1thr)                              482.59ps     2.07G
+trival_access_parallel(8thr)                              530.65ps     1.88G
+trival_access_parallel(24thr)                             816.65ps     1.22G
+trival_access_parallel(48thr)                               1.10ns   911.76M
+trival_access_parallel(72thr)                               1.32ns   756.95M
 ----------------------------------------------------------------------------
-non_trival_access_parallel(1thr)                            1.22ns   819.36M
-non_trival_access_parallel(8thr)                            1.73ns   577.11M
-non_trival_access_parallel(24thr)                           2.05ns   488.47M
-non_trival_access_parallel(48thr)                           3.20ns   312.18M
-non_trival_access_parallel(72thr)                           3.73ns   267.76M
+non_trival_access_parallel(1thr)                            1.53ns   651.83M
+non_trival_access_parallel(8thr)                            1.60ns   623.54M
+non_trival_access_parallel(24thr)                           2.36ns   423.37M
+non_trival_access_parallel(48thr)                           3.09ns   323.19M
+non_trival_access_parallel(72thr)                           3.77ns   265.19M
 */
 
 FOLLY_SETTING_DEFINE(
