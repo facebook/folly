@@ -3,16 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
-    name = "auto_timer",
-    headers = [
-        "AutoTimer.h",
-    ],
-    exported_deps = [
-        "//folly/logging:auto_timer",
-    ],
-)
-
-cpp_library(
     name = "bits",
     headers = ["Bits.h"],
     exported_deps = [
