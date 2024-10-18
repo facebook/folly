@@ -180,14 +180,3 @@ cpp_library(
         "//folly/concurrency/memory:tl_ref_count",
     ],
 )
-
-cpp_library(
-    name = "quotient_multiset",
-    headers = [
-        "QuotientMultiSet.h",
-        "QuotientMultiSet-inl.h",
-    ],
-    exported_deps = [
-        "//folly/compression:quotient_multiset",
-    ],
-)
