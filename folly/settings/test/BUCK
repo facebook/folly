@@ -9,8 +9,10 @@ cpp_benchmark(
     srcs = ["SettingsBenchmarks.cpp"],
     deps = [
         "//folly:benchmark",
+        "//folly:c_portability",
         "//folly/init:init",
         "//folly/settings:settings",
+        "//folly/synchronization/test:barrier",
     ],
 )
 
