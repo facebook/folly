@@ -21,17 +21,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "dynamic_parser",
-    headers = [
-        "DynamicParser.h",
-        "DynamicParser-inl.h",
-    ],
-    exported_deps = [
-        "//folly/json:dynamic_parser",
-    ],
-)
-
-cpp_library(
     name = "elias_fano_coding",
     headers = [
         "EliasFanoCoding.h",
