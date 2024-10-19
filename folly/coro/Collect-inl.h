@@ -235,8 +235,17 @@ auto makeUnorderedAsyncGeneratorImpl(
   return [](AsyncScope& scopeParam,
             InputRange awaitablesParam) -> AsyncGenerator<Item&&> {
     auto [results, pipe] = AsyncPipe<Item, false>::create();
-    const CancellationSource cancelSource;
-    auto guard = folly::makeGuard([&] { cancelSource.requestCancellation(); });
+    struct SharedState {
+      explicit SharedState(AsyncPipe<Item, false>&& p) : pipe(std::move(p)) {}
+
+      AsyncPipe<Item, false> pipe;
+      const CancellationSource cancelSource;
+    };
+    auto sharedState = std::make_shared<SharedState>(std::move(pipe));
+    auto cancelToken = sharedState->cancelSource.getToken();
+
+    auto guard = folly::makeGuard(
+        [&] { sharedState->cancelSource.requestCancellation(); });
     auto ex = co_await co_current_executor;
     size_t expected = 0;
     // Save the initial context and restore it after starting each task
@@ -246,24 +255,19 @@ auto makeUnorderedAsyncGeneratorImpl(
     const auto context = RequestContext::saveContext();
 
     for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitablesParam)) {
-      auto task = [](auto semiAwaitableParam,
-                     auto& cancelSourceParam,
-                     auto& p) -> Task<void> {
+      auto task = [](auto semiAwaitableParam, auto state) -> Task<void> {
         auto result = co_await co_awaitTry(std::move(semiAwaitableParam));
         if (!result.hasValue() && !IsTry::value) {
-          cancelSourceParam.requestCancellation();
+          state->cancelSource.requestCancellation();
         }
-        p.write(std::move(result));
-      }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable),
-                              cancelSource,
-                              pipe);
+        state->pipe.write(std::move(result));
+      }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable), sharedState);
       if constexpr (std::is_same_v<AsyncScope, folly::coro::AsyncScope>) {
         scopeParam.add(
-            co_withCancellation(cancelSource.getToken(), std::move(task))
-                .scheduleOn(ex));
+            co_withCancellation(cancelToken, std::move(task)).scheduleOn(ex));
       } else {
         static_assert(std::is_same_v<AsyncScope, CancellableAsyncScope>);
-        scopeParam.add(std::move(task).scheduleOn(ex), cancelSource.getToken());
+        scopeParam.add(std::move(task).scheduleOn(ex), cancelToken);
       }
       ++expected;
       RequestContext::setContext(context);
@@ -272,7 +276,7 @@ auto makeUnorderedAsyncGeneratorImpl(
     while (expected > 0) {
       CancellationCallback cancelCallback(
           co_await co_current_cancellation_token,
-          [&]() noexcept { cancelSource.requestCancellation(); });
+          [&]() noexcept { sharedState->cancelSource.requestCancellation(); });
 
       if constexpr (!IsTry::value) {
         auto result = co_await co_awaitTry(results.next());

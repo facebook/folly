@@ -3457,3 +3457,31 @@ TEST_F(
     co_await scope.joinAsync();
   }());
 }
+
+TEST(MakeUnorderedAsyncGeneratorTest, GeneratorEarlyDestroy) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::coro::AsyncScope scope;
+    folly::CPUThreadPoolExecutor executor(2);
+
+    std::vector<folly::coro::TaskWithExecutor<int>> tasks;
+
+    tasks.push_back(folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+                      co_await folly::coro::co_reschedule_on_current_executor;
+                      std::this_thread::sleep_for(std::chrono::seconds{2});
+                      co_return 42;
+                    }).scheduleOn(&executor));
+    tasks.push_back(folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+                      co_await folly::coro::co_reschedule_on_current_executor;
+                      std::this_thread::sleep_for(std::chrono::seconds{1});
+                      co_return 43;
+                    }).scheduleOn(&executor));
+
+    {
+      auto gen =
+          folly::coro::makeUnorderedAsyncGenerator(scope, std::move(tasks));
+      EXPECT_EQ(43, *(co_await gen.next()));
+    }
+
+    co_await scope.joinAsync();
+  }());
+}
