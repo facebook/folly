@@ -61,14 +61,17 @@ static_assert(
     std::is_same_v<double, simd_friendly_equivalent_scalar_t<double>>);
 
 // enum
-enum SomeInt {};
-enum class SomeIntClass : std::int32_t {};
+enum SomeInt : std::int16_t {};
+enum class SomeIntClass : std::uint32_t {};
 
-static_assert(
-    std::is_same_v<std::uint32_t, simd_friendly_equivalent_scalar_t<SomeInt>>);
-static_assert(std::is_same_v<
-              std::int32_t,
-              simd_friendly_equivalent_scalar_t<SomeIntClass>>);
+static_assert( //
+    std::is_same_v< //
+        std::int16_t,
+        simd_friendly_equivalent_scalar_t<SomeInt>>);
+static_assert( //
+    std::is_same_v<
+        std::uint32_t,
+        simd_friendly_equivalent_scalar_t<SomeIntClass>>);
 
 // const
 
