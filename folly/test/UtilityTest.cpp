@@ -16,6 +16,7 @@
 
 #include <folly/Utility.h>
 
+#include <array>
 #include <type_traits>
 
 #include <folly/lang/Keep.h>
