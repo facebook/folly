@@ -138,8 +138,8 @@ TYPED_TEST(ContainsTest, Basic) {
 
   for (std::size_t size = 0; size != 100; ++size) {
     std::vector<T> buf(size, T{0});
-    for (std::size_t offset = 0; offset != std::min(32UL, buf.size());
-         ++offset) {
+    auto const bound = std::min(std::size_t(32), size);
+    for (std::size_t offset = 0; offset != bound; ++offset) {
       folly::span<T> haystack(buf.data() + offset, buf.data() + buf.size());
       T needle{1};
       testSimdContainsVerify(haystack, needle, /*expected*/ false);
