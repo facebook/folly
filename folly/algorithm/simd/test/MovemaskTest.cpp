@@ -147,16 +147,18 @@ TEST(Movemask, Sse2Example) {
   // This is a common thing during tail handling.
   // This is where ignore comes in.
 
+  simd::ignore_extrema ignore{};
+
   // Example: first 2 elements are irrelevant
-  bits = folly::simd::movemask<std::uint16_t>(
-             test, simd::ignore_extrema{.first = 2})
-             .first;
+  ignore = {};
+  ignore.first = 2;
+  bits = folly::simd::movemask<std::uint16_t>(test, ignore).first;
   ASSERT_EQ(0b00'00'11'00'00'00'00'00, bits);
 
   // Example: last 3 elements are irrelevant
-  bits = folly::simd::movemask<std::uint16_t>(
-             test, simd::ignore_extrema{.last = 3})
-             .first;
+  ignore = {};
+  ignore.last = 3;
+  bits = folly::simd::movemask<std::uint16_t>(test, ignore).first;
   ASSERT_EQ(0b00'00'00'00'00'00'11'00, bits);
 }
 
