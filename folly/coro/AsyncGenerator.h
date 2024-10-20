@@ -149,6 +149,62 @@ class AsyncGeneratorPromise;
  *
  * There is an alias CleanableAsyncGenerator for AsyncGenerator with
  * RequiresCleanup set to true.
+ *
+ * Drain safety
+ * ------------
+ * One significant difference between AsyncGenerator and folly::coro::Task is
+ * that AsyncGenerator may be destroyed between next() calls - i.e. destroyed
+ * without being fully drained.
+ *
+ * For example:
+ *
+ *   AsyncGenerator<int> gen() {
+ *     SCOPE_EXIT {
+ *       LOG(INFO) << "Step 4";
+ *     };
+ *     LOG(INFO) << "Step 1";
+ *     co_yield 41;
+ *     SCOPE_EXIT {
+ *       LOG(INFO) << "Step 3";
+ *     };
+ *     LOG(INFO) << "Step 2";
+ *     co_yield 42;
+ *     SCOPE_EXIT {
+ *       LOG(INFO) << "Never reached";
+ *     };
+ *     LOG(INFO) << "Never reached";
+ *     co_yield 43;
+ *   }
+ *
+ *   {
+ *     AsyncGenerator<int> g = gen();
+ *     while (auto next = co_await g.next()) {
+ *       LOG(INFO) << *next;
+ *       if (*next == 42) {
+ *         break;
+ *         // ^^^ this may trigger generator destruction before it is drained.
+ *       }
+ *     }
+ *   }
+ *
+ * This means that when writing an AsyncGenerator, you should always document
+ * whether such AsyncGenerator requires draining before destruction (drain
+ * unsafe). When possible you should always aim to make AsyncGenerator not
+ * require draining before destruction (drain safe).
+ *
+ * If an AsyncGenerator is drain unsafe, always mention this in the
+ * documentation and ideally include some assertions that help detect cases
+ * where such AsyncGenerator is destroyed without being fully drained.
+ *
+ * Example:
+ *
+ *   AsyncGenerator<int> gen() {
+ *     auto drainGuard = makeGuard([] { LOG(FATAL) << "I shall be drained!"; });
+ *     co_yield 41;
+ *     co_yield 42;
+ *     co_yield 43;
+ *     drainGuard.dismiss();
+ *   }
  */
 template <
     typename Reference,
