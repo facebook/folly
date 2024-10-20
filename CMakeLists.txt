@@ -555,6 +555,7 @@ install(
 )
 
 option(BUILD_TESTS "If enabled, compile the tests." OFF)
+option(BUILD_FUZZ_TESTS "If enabled, compile the fuzz tests." OFF)
 option(BUILD_BENCHMARKS "If enabled, compile the benchmarks." OFF)
 option(BUILD_BROKEN_TESTS "If enabled, compile tests that are known to be broken." OFF)
 option(BUILD_HANGING_TESTS "If enabled, compile tests that are known to hang." OFF)
