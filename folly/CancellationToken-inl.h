@@ -15,6 +15,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <tuple>
