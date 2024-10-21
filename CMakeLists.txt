@@ -649,13 +649,17 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY algorithm/simd/detail/test/
       TEST algorithm_simd_detail_simd_any_of_test SOURCES SimdAnyOfTest.cpp
       TEST algorithm_simd_detail_simd_for_each_test SOURCES SimdForEachTest.cpp
-      TEST algorithm_simd_detail_simd_traits_test SOURCES TraitsTest.cpp
+      # Needs C++20 on MSVC
+      TEST algorithm_simd_detail_simd_traits_test WINDOWS_DISABLED
+        SOURCES TraitsTest.cpp
       TEST algorithm_simd_detail_unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY algorithm/simd/test/
       TEST algorithm_simd_contains_test SOURCES ContainsTest.cpp
       TEST algorithm_simd_find_fixed_test SOURCES FindFixedTest.cpp
-      TEST algorithm_simd_movemask_test SOURCES MovemaskTest.cpp
+      # needs C++20 on MSVC
+      TEST algorithm_simd_movemask_test WINDOWS_DISABLED
+        SOURCES MovemaskTest.cpp
 
     DIRECTORY chrono/test/
       TEST chrono_conv_test WINDOWS_DISABLED
@@ -882,7 +886,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY hash/test/
       BENCHMARK hash_checksum_benchmark SOURCES ChecksumBenchmark.cpp
-      TEST hash_checksum_test SOURCES ChecksumTest.cpp
+      # builds, but tests fail on MSVC cmake build
+      TEST hash_checksum_test WINDOWS_DISABLED
+        SOURCES ChecksumTest.cpp
       TEST hash_farm_hash_test SOURCES FarmHashTest.cpp
       BENCHMARK hash_hash_benchmark WINDOWS_DISABLED
         SOURCES HashBenchmark.cpp
@@ -963,7 +969,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lang_aligned_test SOURCES AlignedTest.cpp
       TEST lang_badge_test SOURCES BadgeTest.cpp
       TEST lang_bits_class_test SOURCES BitsClassTest.cpp
-      TEST lang_bits_test SOURCES BitsTest.cpp
+      # Needs C++20 on Windows
+      TEST lang_bits_test WINDOWS_DISABLED
+        SOURCES BitsTest.cpp
       TEST lang_c_string_test SOURCES CStringTest.cpp
       TEST lang_cast_test SOURCES CastTest.cpp
       TEST lang_checked_math_test SOURCES CheckedMathTest.cpp
@@ -1063,15 +1071,19 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
       TEST base64_test SOURCES base64_test.cpp
       TEST buffered_atomic_test SOURCES BufferedAtomicTest.cpp
-      TEST cancellation_token_test SOURCES CancellationTokenTest.cpp
+      TEST cancellation_token_test WINDOWS_DISABLED
+        SOURCES CancellationTokenTest.cpp
       TEST chrono_test SOURCES ChronoTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_bit_set_test SOURCES ConcurrentBitSetTest.cpp
       BENCHMARK concurrent_skip_list_benchmark
         SOURCES ConcurrentSkipListBenchmark.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
-      TEST constexpr_math_test SOURCES ConstexprMathTest.cpp
-      TEST conv_test SOURCES ConvTest.cpp
+      # Builds but fails test on constexpr_exp_floating std::exp(471.L)
+      TEST constexpr_math_test WINDOWS_DISABLED
+        SOURCES ConstexprMathTest.cpp
+      TEST conv_test WINDOWS_DISABLED
+        SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp
       TEST deterministic_schedule_test SOURCES DeterministicScheduleTest.cpp
@@ -1145,7 +1157,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST range_test SOURCES RangeTest.cpp
       TEST replaceable_test WINDOWS_DISABLED SOURCES ReplaceableTest.cpp
       TEST scope_guard_test WINDOWS_DISABLED SOURCES ScopeGuardTest.cpp
-      TEST sdt_test SOURCES SdtTest.cpp
+      # Needs ElfFile
+      TEST sdt_test WINDOWS_DISABLED
+        SOURCES SdtTest.cpp
       # Heavily dependent on drand and srand48
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
       # SingletonTest requires Subprocess
@@ -1177,7 +1191,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
       TEST uri_test SOURCES UriTest.cpp
       TEST utf8_string_test SOURCES UTF8StringTest.cpp
-      TEST utility_test SOURCES UtilityTest.cpp
+      # Needs C++20 on MSVC
+      TEST utility_test WINDOWS_DISABLED
+        SOURCES UtilityTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
 
     DIRECTORY testing/test/

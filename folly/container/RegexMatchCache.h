@@ -391,15 +391,14 @@ class RegexMatchCacheKey {
   static data_type init(std::string_view regex) noexcept;
 
   template <typename T, typename V = std::remove_cv_t<T>>
-  static constexpr bool is_span_compatible(size_t const e) noexcept {
+  static constexpr bool is_span_compatible() noexcept {
     return //
         !std::is_volatile_v<T> && //
         std::is_integral_v<V> && //
         std::is_unsigned_v<V> && //
         !std::is_same_v<bool, V> && //
         !std::is_same_v<char, V> && //
-        alignof(V) <= data_align &&
-        (e == data_size / sizeof(V) || e == dynamic_extent);
+        alignof(V) <= data_align;
   }
 
  public:
@@ -409,7 +408,10 @@ class RegexMatchCacheKey {
   template <
       typename T,
       std::size_t E,
-      std::enable_if_t<is_span_compatible<T>(E), int> = 0>
+      std::enable_if_t<
+          is_span_compatible<T>() &&
+              (E == data_size / sizeof(T) || E == dynamic_extent),
+          int> = 0>
   explicit operator span<T const, E>() const noexcept {
     return {reinterpret_cast<T const*>(data_.data()), E};
   }
