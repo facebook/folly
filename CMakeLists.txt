@@ -655,9 +655,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY algorithm/simd/test/
       TEST algorithm_simd_contains_test SOURCES ContainsTest.cpp
       TEST algorithm_simd_find_fixed_test SOURCES FindFixedTest.cpp
-      # needs C++20 on MSVC
-      TEST algorithm_simd_movemask_test WINDOWS_DISABLED
-        SOURCES MovemaskTest.cpp
+      TEST algorithm_simd_movemask_test SOURCES MovemaskTest.cpp
 
     DIRECTORY chrono/test/
       TEST chrono_conv_test WINDOWS_DISABLED
