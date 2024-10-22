@@ -164,7 +164,7 @@ class span {
 
   template <typename Rng, if_<is_range_v<Rng&>> = 0>
   /* implicit */ constexpr span(Rng&& range)
-      : data_{range.data()}, extent_{range.size()} {}
+      : data_{access::data(range)}, extent_{access::size(range)} {}
 
   constexpr span(span const&) = default;
 
