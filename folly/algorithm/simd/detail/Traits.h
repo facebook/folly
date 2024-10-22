@@ -28,6 +28,7 @@ namespace folly::simd::detail {
 
 template <typename T>
 auto findSimdFriendlyEquivalent() {
+  static_assert(std::is_same_v<T, remove_cvref_t<T>>);
   if constexpr (std::is_enum_v<T>) {
     return findSimdFriendlyEquivalent<std::underlying_type_t<T>>();
   } else if constexpr (std::is_pointer_v<T>) {
@@ -48,8 +49,8 @@ auto findSimdFriendlyEquivalent() {
 }
 
 template <typename T>
-constexpr bool has_simd_friendly_equivalent_scalar =
-    !std::is_same_v<void, decltype(findSimdFriendlyEquivalent<T>())>;
+constexpr bool has_simd_friendly_equivalent_scalar = !std::is_void_v<
+    decltype(findSimdFriendlyEquivalent<std::remove_const_t<T>>())>;
 
 template <typename T>
 using simd_friendly_equivalent_scalar_t = std::enable_if_t<

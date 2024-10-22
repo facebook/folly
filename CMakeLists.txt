@@ -649,9 +649,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY algorithm/simd/detail/test/
       TEST algorithm_simd_detail_simd_any_of_test SOURCES SimdAnyOfTest.cpp
       TEST algorithm_simd_detail_simd_for_each_test SOURCES SimdForEachTest.cpp
-      # Needs C++20 on MSVC
-      TEST algorithm_simd_detail_simd_traits_test WINDOWS_DISABLED
-        SOURCES TraitsTest.cpp
+      TEST algorithm_simd_detail_simd_traits_test SOURCES TraitsTest.cpp
       TEST algorithm_simd_detail_unroll_utils_test SOURCES UnrollUtilsTest.cpp
 
     DIRECTORY algorithm/simd/test/
