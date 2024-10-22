@@ -361,44 +361,37 @@ TEST(Bits, LoadUnalignedUB) {
 TYPED_TEST(BitsAllUintsTest, NLeastSignificantBits) {
   using T = TypeParam;
 
+  static constexpr std::size_t kBitSize = sizeof(T) * 8;
+
   static_assert(n_least_significant_bits<T>(0) == 0b0, "");
   static_assert(n_least_significant_bits<T>(1) == 0b1, "");
   static_assert(n_least_significant_bits<T>(2) == 0b11, "");
   static_assert(n_least_significant_bits<T>(3) == 0b111, "");
   static_assert(n_least_significant_bits<T>(4) == 0b1111, "");
 
-  constexpr auto test = []() constexpr {
-    for (std::uint32_t i = 0; i <= std::min(sizeof(T) * 8, 63UL); ++i) {
-      std::uint64_t expected = (std::uint64_t{1} << i) - 1;
-      T actual = n_least_significant_bits<T>(i);
-      if (expected != actual) {
-        EXPECT_EQ(expected, actual) << i;
-        return false;
-      }
+  constexpr auto cactual = [] {
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      ret[i] = n_least_significant_bits<T>(i);
+    }
+    return ret;
+  }();
+  auto ractual = [] { // runtime can use a different implementation
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      compiler_must_not_predict(i); // runtime
+      ret[i] = n_least_significant_bits<T>(i);
+    }
+    return ret;
+  }();
+  for (std::size_t i = 0; i < kBitSize; ++i) {
+    std::uint64_t expected = (std::uint64_t{1} << i) - 1;
 #ifdef __cpp_lib_bitops
-      if (std::countr_one(expected) != static_cast<int>(i)) {
-        EXPECT_EQ(i, std::countr_one(expected)) << i;
-        return false;
-      }
+    EXPECT_EQ(static_cast<int>(i), std::countr_one(expected));
 #endif
-    }
-
-    if (sizeof(T) == 8) {
-      std::uint64_t expected = std::numeric_limits<std::uint64_t>::max();
-      T actual = n_least_significant_bits<T>(64);
-      if (expected != actual) {
-        EXPECT_EQ(expected, actual) << 64;
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  static_assert(test(), "");
-
-  // runtime can use a different implementation
-  EXPECT_TRUE(test());
+    EXPECT_EQ(expected, cactual[i]);
+    EXPECT_EQ(expected, ractual[i]);
+  }
 }
 
 TYPED_TEST(BitsAllUintsTest, NMostSignificantBits) {
@@ -417,28 +410,29 @@ TYPED_TEST(BitsAllUintsTest, NMostSignificantBits) {
   static_assert(
       n_most_significant_bits<T>(kBitSize - 4) == static_cast<T>(~0b1111), "");
 
-  constexpr auto test = []() constexpr {
-    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
-      T expected = ~n_least_significant_bits<T>(kBitSize - i);
-      T actual = n_most_significant_bits<T>(i);
-      if (expected != actual) {
-        EXPECT_EQ(expected, actual) << i;
-        return false;
-      }
-#ifdef __cpp_lib_bitops
-      if (std::countl_one(expected) != static_cast<int>(i)) {
-        EXPECT_EQ(i, std::countl_one(expected)) << i;
-        return false;
-      }
-#endif
+  constexpr auto cactual = [] {
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      ret[i] = n_most_significant_bits<T>(i);
     }
-    return true;
-  };
-
-  static_assert(test(), "");
-
-  // runtime can use a different implementation
-  EXPECT_TRUE(test());
+    return ret;
+  }();
+  auto ractual = [] { // runtime can use a different implementation
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      compiler_must_not_predict(i); // runtime
+      ret[i] = n_most_significant_bits<T>(i);
+    }
+    return ret;
+  }();
+  for (std::size_t i = 0; i < kBitSize; ++i) {
+    T expected = ~n_least_significant_bits<T>(kBitSize - i);
+#ifdef __cpp_lib_bitops
+    EXPECT_EQ(static_cast<int>(i), std::countl_one(expected));
+#endif
+    EXPECT_EQ(expected, cactual[i]);
+    EXPECT_EQ(expected, ractual[i]);
+  }
 }
 
 TYPED_TEST(BitsAllUintsTest, ClearNLeastSignificantBits) {
@@ -449,27 +443,29 @@ TYPED_TEST(BitsAllUintsTest, ClearNLeastSignificantBits) {
   static_assert(clear_n_least_significant_bits(T{0b11U}, 1U) == 0b10U, "");
   static_assert(clear_n_least_significant_bits(T{0b101U}, 1U) == 0b100U, "");
 
-  constexpr auto test = []() constexpr {
-    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
-      T expected = n_most_significant_bits<T>(kBitSize - i);
-      T actual = clear_n_least_significant_bits(static_cast<T>(-1), i);
-      if (expected != actual) {
-        EXPECT_EQ(expected, actual) << i;
-        return false;
-      }
-#ifdef __cpp_lib_bitops
-      if (std::countr_zero(expected) != static_cast<int>(i)) {
-        EXPECT_EQ(i, std::countr_zero(expected)) << i;
-        return false;
-      }
-#endif
+  constexpr auto cactual = [] {
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      ret[i] = clear_n_least_significant_bits(static_cast<T>(-1), i);
     }
-    return true;
-  };
-  static_assert(test(), "");
-
-  // runtime can use a different implementation
-  EXPECT_TRUE(test());
+    return ret;
+  }();
+  auto ractual = [] { // runtime can use a different implementation
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      compiler_must_not_predict(i); // runtime
+      ret[i] = clear_n_least_significant_bits(static_cast<T>(-1), i);
+    }
+    return ret;
+  }();
+  for (std::size_t i = 0; i < kBitSize; ++i) {
+    T expected = n_most_significant_bits<T>(kBitSize - i);
+#ifdef __cpp_lib_bitops
+    EXPECT_EQ(static_cast<int>(i), std::countr_zero(expected));
+#endif
+    EXPECT_EQ(expected, cactual[i]);
+    EXPECT_EQ(expected, ractual[i]);
+  }
 }
 
 TYPED_TEST(BitsAllUintsTest, SetNLeastSignificantBits) {
@@ -481,27 +477,29 @@ TYPED_TEST(BitsAllUintsTest, SetNLeastSignificantBits) {
   static_assert(set_n_least_significant_bits(T{0b100U}, 1U) == 0b101U, "");
   static_assert(set_n_least_significant_bits(T{0b100U}, 2U) == 0b111U, "");
 
-  constexpr auto test = [] {
-    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
-      T expected = n_least_significant_bits<T>(i);
-      T actual = set_n_least_significant_bits(T{}, i);
-      if (expected != actual) {
-        EXPECT_EQ(expected, actual) << i;
-        return false;
-      }
-#ifdef __cpp_lib_bitops
-      if (std::countr_one(expected) != static_cast<int>(i)) {
-        EXPECT_EQ(i, std::countr_one(expected)) << i;
-        return false;
-      }
-#endif
+  constexpr auto cactual = [] {
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      ret[i] = set_n_least_significant_bits(T{}, i);
     }
-    return true;
-  };
-  static_assert(test(), "");
-
-  // runtime can use a different implementation
-  EXPECT_TRUE(test());
+    return ret;
+  }();
+  auto ractual = [] { // runtime can use a different implementation
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      compiler_must_not_predict(i); // runtime
+      ret[i] = set_n_least_significant_bits(T{}, i);
+    }
+    return ret;
+  }();
+  for (std::size_t i = 0; i < kBitSize; ++i) {
+    T expected = n_least_significant_bits<T>(i);
+#ifdef __cpp_lib_bitops
+    EXPECT_EQ(static_cast<int>(i), std::countr_one(expected));
+#endif
+    EXPECT_EQ(expected, cactual[i]);
+    EXPECT_EQ(expected, ractual[i]);
+  }
 }
 
 TYPED_TEST(BitsAllUintsTest, ClearNMostSignificantBits) {
@@ -514,27 +512,29 @@ TYPED_TEST(BitsAllUintsTest, ClearNMostSignificantBits) {
   static_assert(
       clear_n_most_significant_bits(T{0b1100U}, kBitSize - 3) == 0b100U, "");
 
-  constexpr auto test = []() constexpr {
-    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
-      T expected = n_least_significant_bits<T>(kBitSize - i);
-      T actual = clear_n_most_significant_bits(static_cast<T>(-1), i);
-      if (expected != actual) {
-        EXPECT_EQ(expected, actual) << i;
-        return false;
-      }
-#ifdef __cpp_lib_bitops
-      if (std::countl_zero(expected) != static_cast<int>(i)) {
-        EXPECT_EQ(i, std::countl_zero(expected)) << i;
-        return false;
-      }
-#endif
+  constexpr auto cactual = [] {
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      ret[i] = clear_n_most_significant_bits(static_cast<T>(-1), i);
     }
-    return true;
-  };
-  static_assert(test(), "");
-
-  // runtime can use a different implementation
-  EXPECT_TRUE(test());
+    return ret;
+  }();
+  auto ractual = [] { // runtime can use a different implementation
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      compiler_must_not_predict(i); // runtime
+      ret[i] = clear_n_most_significant_bits(static_cast<T>(-1), i);
+    }
+    return ret;
+  }();
+  for (std::size_t i = 0; i < kBitSize; ++i) {
+    T expected = n_least_significant_bits<T>(kBitSize - i);
+#ifdef __cpp_lib_bitops
+    EXPECT_EQ(static_cast<int>(i), std::countl_zero(expected));
+#endif
+    EXPECT_EQ(expected, cactual[i]);
+    EXPECT_EQ(expected, ractual[i]);
+  }
 }
 
 TYPED_TEST(BitsAllUintsTest, SetNMostSignificantBits) {
@@ -551,27 +551,29 @@ TYPED_TEST(BitsAllUintsTest, SetNMostSignificantBits) {
           static_cast<T>(~0b11),
       "");
 
-  constexpr auto test = []() constexpr {
-    for (std::uint32_t i = 0; i <= kBitSize; ++i) {
-      T expected = n_most_significant_bits<T>(i);
-      T actual = set_n_most_significant_bits(static_cast<T>(0), i);
-      if (expected != actual) {
-        EXPECT_EQ(expected, actual) << i;
-        return false;
-      }
-#ifdef __cpp_lib_bitops
-      if (std::countl_one(expected) != static_cast<int>(i)) {
-        EXPECT_EQ(i, std::countl_one(expected)) << i;
-        return false;
-      }
-#endif
+  constexpr auto cactual = [] {
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      ret[i] = set_n_most_significant_bits(T{}, i);
     }
-    return true;
-  };
-  static_assert(test(), "");
-
-  // runtime can use a different implementation
-  EXPECT_TRUE(test());
+    return ret;
+  }();
+  auto ractual = [] { // runtime can use a different implementation
+    std::array<T, kBitSize> ret{};
+    for (std::size_t i = 0; i < kBitSize; ++i) {
+      compiler_must_not_predict(i); // runtime
+      ret[i] = set_n_most_significant_bits(T{}, i);
+    }
+    return ret;
+  }();
+  for (std::size_t i = 0; i < kBitSize; ++i) {
+    T expected = n_most_significant_bits<T>(i);
+#ifdef __cpp_lib_bitops
+    EXPECT_EQ(static_cast<int>(i), std::countl_one(expected));
+#endif
+    EXPECT_EQ(expected, cactual[i]);
+    EXPECT_EQ(expected, ractual[i]);
+  }
 }
 
 } // namespace folly
