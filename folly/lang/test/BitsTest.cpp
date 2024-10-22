@@ -367,7 +367,7 @@ TYPED_TEST(BitsAllUintsTest, NLeastSignificantBits) {
   static_assert(n_least_significant_bits<T>(3) == 0b111, "");
   static_assert(n_least_significant_bits<T>(4) == 0b1111, "");
 
-  auto test = [] {
+  constexpr auto test = [] {
     for (std::uint32_t i = 0; i <= std::min(sizeof(T) * 8, 63UL); ++i) {
       std::uint64_t expected = (std::uint64_t{1} << i) - 1;
       T actual = n_least_significant_bits<T>(i);
@@ -417,7 +417,7 @@ TYPED_TEST(BitsAllUintsTest, NMostSignificantBits) {
   static_assert(
       n_most_significant_bits<T>(kBitSize - 4) == static_cast<T>(~0b1111), "");
 
-  auto test = [] {
+  constexpr auto test = [] {
     for (std::uint32_t i = 0; i <= kBitSize; ++i) {
       T expected = ~n_least_significant_bits<T>(kBitSize - i);
       T actual = n_most_significant_bits<T>(i);
@@ -449,7 +449,7 @@ TYPED_TEST(BitsAllUintsTest, ClearNLeastSignificantBits) {
   static_assert(clear_n_least_significant_bits(T{0b11U}, 1U) == 0b10U, "");
   static_assert(clear_n_least_significant_bits(T{0b101U}, 1U) == 0b100U, "");
 
-  auto test = [] {
+  constexpr auto test = [] {
     for (std::uint32_t i = 0; i <= kBitSize; ++i) {
       T expected = n_most_significant_bits<T>(kBitSize - i);
       T actual = clear_n_least_significant_bits(static_cast<T>(-1), i);
@@ -481,7 +481,7 @@ TYPED_TEST(BitsAllUintsTest, SetNLeastSignificantBits) {
   static_assert(set_n_least_significant_bits(T{0b100U}, 1U) == 0b101U, "");
   static_assert(set_n_least_significant_bits(T{0b100U}, 2U) == 0b111U, "");
 
-  auto test = [] {
+  constexpr auto test = [] {
     for (std::uint32_t i = 0; i <= kBitSize; ++i) {
       T expected = n_least_significant_bits<T>(i);
       T actual = set_n_least_significant_bits(T{}, i);
@@ -514,7 +514,7 @@ TYPED_TEST(BitsAllUintsTest, ClearNMostSignificantBits) {
   static_assert(
       clear_n_most_significant_bits(T{0b1100U}, kBitSize - 3) == 0b100U, "");
 
-  auto test = [] {
+  constexpr auto test = [] {
     for (std::uint32_t i = 0; i <= kBitSize; ++i) {
       T expected = n_least_significant_bits<T>(kBitSize - i);
       T actual = clear_n_most_significant_bits(static_cast<T>(-1), i);
@@ -551,7 +551,7 @@ TYPED_TEST(BitsAllUintsTest, SetNMostSignificantBits) {
           static_cast<T>(~0b11),
       "");
 
-  auto test = [] {
+  constexpr auto test = [] {
     for (std::uint32_t i = 0; i <= kBitSize; ++i) {
       T expected = n_most_significant_bits<T>(i);
       T actual = set_n_most_significant_bits(static_cast<T>(0), i);
