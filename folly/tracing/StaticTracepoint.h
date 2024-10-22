@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/portability/Config.h>
+#include <folly/CPortability.h>
 
 #if FOLLY_HAVE_ELF &&                                                    \
     (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) || \

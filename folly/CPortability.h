@@ -243,6 +243,17 @@
 #endif
 #endif
 
+// FOLLY_NAME_RESOLVABLE
+//
+// An attribute that marks a function or variable as needing to be resolvable
+// by name. This generally is needed if inline assembly refers to the variable
+// by string name.
+#ifdef __roar__
+#define FOLLY_NAME_RESOLVABLE __attribute__((roar_resolvable_by_name))
+#else
+#define FOLLY_NAME_RESOLVABLE
+#endif
+
 //  FOLLY_ERASE
 //
 //  A conceptual attribute/syntax combo for erasing a function from the build

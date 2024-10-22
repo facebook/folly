@@ -121,12 +121,14 @@
 
 #define FOLLY_SDT_DEFINE_SEMAPHORE(provider, name)                             \
   extern "C" {                                                                 \
-    volatile unsigned short FOLLY_SDT_SEMAPHORE(provider, name)                \
-    __attribute__((section(FOLLY_SDT_SEMAPHORE_SECTION), used)) = 0;           \
+    FOLLY_NAME_RESOLVABLE volatile unsigned short                              \
+      FOLLY_SDT_SEMAPHORE(provider, name)                                      \
+      __attribute__((section(FOLLY_SDT_SEMAPHORE_SECTION), used)) = 0;         \
   }
 
 #define FOLLY_SDT_DECLARE_SEMAPHORE(provider, name)                            \
-  extern "C" volatile unsigned short FOLLY_SDT_SEMAPHORE(provider, name)
+  extern "C" FOLLY_NAME_RESOLVABLE volatile unsigned short                     \
+    FOLLY_SDT_SEMAPHORE(provider, name)
 
 #define FOLLY_SDT_SEMAPHORE_NOTE_0(provider, name)                             \
   FOLLY_SDT_ASM_1(     FOLLY_SDT_ASM_ADDR 0) /*No Semaphore*/                  \

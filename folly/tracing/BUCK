@@ -9,7 +9,7 @@ cpp_library(
         "StaticTracepoint-ELF.h",
     ],
     exported_deps = [
-        "//folly/portability:config",
+        "//folly:c_portability",
     ],
 )
 
