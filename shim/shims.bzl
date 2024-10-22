@@ -5,7 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@bazel_skylib//lib:new_sets.bzl", "sets")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@prelude//utils:selects.bzl", "selects")
 # @lint-ignore-every FBCODEBZLADDLOADS
@@ -100,7 +99,7 @@ def _update_headers_with_src_headers(src_headers, out_headers):
     """
     Helper function to update raw headers with headers from srcs
     """
-    src_headers = sets.to_list(sets.difference(src_headers, sets.make(out_headers)))
+    src_headers = list(src_headers.difference(out_headers))
 
     # Looks simple, right? But if a header is explicitly added in, say, a
     # dictionary mapping, we want to make sure to keep the original mapping
@@ -167,9 +166,9 @@ def cpp_library(
         )
     auto_headers = get_auto_headers(auto_headers)
     if auto_headers == AutoHeaders.SOURCES and not is_select(srcs):
-        src_headers = sets.make(_get_headers_from_sources(srcs))
+        src_headers = set(_get_headers_from_sources(srcs))
         if private_headers:
-            src_headers = sets.difference(src_headers, sets.make(private_headers))
+            src_headers = src_headers.difference(set(private_headers))
 
         headers = selects.apply(
             headers,
