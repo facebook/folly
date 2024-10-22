@@ -404,7 +404,7 @@ TYPED_TEST(BitsAllUintsTest, NLeastSignificantBits) {
 TYPED_TEST(BitsAllUintsTest, NMostSignificantBits) {
   using T = TypeParam;
 
-  constexpr std::size_t kBitSize = sizeof(T) * 8;
+  static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
   static_assert(
       n_most_significant_bits<T>(kBitSize) == static_cast<T>(~0b0), "");
@@ -444,7 +444,7 @@ TYPED_TEST(BitsAllUintsTest, NMostSignificantBits) {
 TYPED_TEST(BitsAllUintsTest, ClearNLeastSignificantBits) {
   using T = TypeParam;
 
-  constexpr std::size_t kBitSize = sizeof(T) * 8;
+  static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
   static_assert(clear_n_least_significant_bits(T{0b11U}, 1U) == 0b10U, "");
   static_assert(clear_n_least_significant_bits(T{0b101U}, 1U) == 0b100U, "");
@@ -475,7 +475,7 @@ TYPED_TEST(BitsAllUintsTest, ClearNLeastSignificantBits) {
 TYPED_TEST(BitsAllUintsTest, SetNLeastSignificantBits) {
   using T = TypeParam;
 
-  constexpr std::size_t kBitSize = sizeof(T) * 8;
+  static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
   static_assert(set_n_least_significant_bits(T{0b10U}, 1U) == 0b11U, "");
   static_assert(set_n_least_significant_bits(T{0b100U}, 1U) == 0b101U, "");
@@ -507,7 +507,7 @@ TYPED_TEST(BitsAllUintsTest, SetNLeastSignificantBits) {
 TYPED_TEST(BitsAllUintsTest, ClearNMostSignificantBits) {
   using T = TypeParam;
 
-  constexpr std::size_t kBitSize = sizeof(T) * 8;
+  static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
   static_assert(
       clear_n_most_significant_bits(T{0b101U}, kBitSize - 1) == 0b1U, "");
@@ -540,7 +540,7 @@ TYPED_TEST(BitsAllUintsTest, ClearNMostSignificantBits) {
 TYPED_TEST(BitsAllUintsTest, SetNMostSignificantBits) {
   using T = TypeParam;
 
-  constexpr std::size_t kBitSize = sizeof(T) * 8;
+  static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
   static_assert(
       set_n_most_significant_bits(T{0b1}, kBitSize - 2) ==
