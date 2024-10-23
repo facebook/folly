@@ -17,6 +17,8 @@
 #include <folly/debugging/symbolizer/Elf.h>
 #include <folly/tracing/StaticTracepoint.h>
 
+#if FOLLY_HAVE_ELF
+
 namespace {
 
 void init() {
@@ -49,3 +51,11 @@ int main(int /*argc*/, char* argv[]) {
   fini();
   return test(argv[0]) ? 0 : 1;
 }
+
+#else
+
+int main() {
+  return 0;
+}
+
+#endif

@@ -1152,8 +1152,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST replaceable_test WINDOWS_DISABLED SOURCES ReplaceableTest.cpp
       TEST scope_guard_test WINDOWS_DISABLED SOURCES ScopeGuardTest.cpp
       # Needs ElfFile
-      TEST sdt_test WINDOWS_DISABLED
-        SOURCES SdtTest.cpp
+      TEST sdt_test SOURCES SdtTest.cpp
       # Heavily dependent on drand and srand48
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
       # SingletonTest requires Subprocess
