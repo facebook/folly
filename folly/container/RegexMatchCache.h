@@ -192,8 +192,9 @@ class RegexMatchCacheDynamicBitset {
 
  private:
   bool has_capacity_(size_t const index) const noexcept {
+    constexpr auto wordsize = sizeof(uintptr_t) * 8;
     auto const buf = get_bit_span_();
-    return index < buf.size;
+    return index < buf.size && !(buf.size == wordsize && index == wordsize - 1);
   }
 
   bit_span<uintptr_t> reserve_(size_t const index) {
