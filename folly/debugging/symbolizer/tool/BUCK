@@ -65,6 +65,7 @@ cpp_binary(
             }),
         ),
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:range",
         "//folly/experimental/symbolizer:signal_handler",

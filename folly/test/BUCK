@@ -1467,6 +1467,7 @@ cpp_binary(
     name = "singleton_thread_local_overload.so",
     srcs = ["SingletonThreadLocalTestOverload.cpp"],
     dlopen_enabled = True,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:singleton_thread_local",
     ],
@@ -1479,6 +1480,7 @@ cpp_unittest(
     resources = [
         ":singleton_thread_local_overload.so",
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":singleton_thread_local_overload.so",  # @manual
         "//folly:singleton_thread_local",
@@ -1767,6 +1769,7 @@ cpp_binary(
     srcs = ["ThreadLocalTestLib.cpp"],
     headers = [],
     dlopen_enabled = True,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:thread_local",
     ],
@@ -1779,6 +1782,7 @@ cpp_unittest(
     resources = [
         ":thread_local_test_lib.so",
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:memory",
         "//folly:thread_local",
@@ -1976,6 +1980,7 @@ cpp_unittest(
         "-T",
         "$(location :linker-scripts)/SdtTest.lds",
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly/debugging/symbolizer:elf",
         "//folly/tracing:static_tracepoint",

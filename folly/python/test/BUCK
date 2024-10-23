@@ -40,6 +40,7 @@ cpp_library(
     name = "iobuf_test_utils",
     srcs = ["IOBufTestUtils.cpp"],
     headers = ["IOBufTestUtils.h"],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly/python:iobuf_lib",
     ],
@@ -131,6 +132,7 @@ cpp_unittest(
     srcs = [
         "ErrorTest.cpp",
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "fbsource//third-party/python:python",
         "//folly:scope_guard",

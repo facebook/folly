@@ -76,6 +76,7 @@ cpp_unittest(
         "not_null_test.cpp",
     ],
     supports_static_listing = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly/memory:not_null",
         "//folly/portability:gtest",

@@ -53,6 +53,7 @@ def customized_unittest(
                                              (["-gdwarf-aranges"] if use_aaranges else []) +
                                              extra_compiler_flags,
                             modular_headers = False,
+                            target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
                             private_linker_flags = [
                                 "--emit-relocs",  # makes linker ignore `--strip-debug-*` flags
                             ],
@@ -76,6 +77,7 @@ def customized_unittest(
                             linker_flags = [
                                 "--emit-relocs",  # makes linker ignore `--strip-debug-*` flags
                             ],
+                            target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
                             deps = [
                                 ":symbolizer_test_utils_" + dwarf_version +
                                 ("_dwarf{}".format(dwarf_size)) +

@@ -56,6 +56,7 @@ cpp_library(
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
@@ -118,6 +119,7 @@ cpp_library(
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
@@ -148,6 +150,7 @@ cpp_library(
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
@@ -183,6 +186,7 @@ cpp_library(
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
@@ -247,6 +251,7 @@ cpp_library(
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
