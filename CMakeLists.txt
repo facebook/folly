@@ -1182,9 +1182,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
       TEST uri_test SOURCES UriTest.cpp
       TEST utf8_string_test SOURCES UTF8StringTest.cpp
-      # Needs C++20 on MSVC
-      TEST utility_test WINDOWS_DISABLED
-        SOURCES UtilityTest.cpp
+      TEST utility_test SOURCES UtilityTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
 
     DIRECTORY testing/test/

@@ -138,8 +138,10 @@ static_assert(std::is_same_v<void, dec<void volatile>>);
 static_assert(std::is_same_v<void, dec<void const volatile>>);
 static_assert(std::is_same_v<incomplete, dec<incomplete>>);
 static_assert(std::is_same_v<incomplete, dec<incomplete const>>);
+#if !defined(_MSC_VER)
 static_assert(std::is_same_v<abstract, dec<abstract>>);
 static_assert(std::is_same_v<abstract, dec<abstract const>>);
+#endif
 static_assert(std::is_same_v<immobile, dec<immobile>>);
 static_assert(std::is_same_v<immobile, dec<immobile const>>);
 
