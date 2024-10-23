@@ -94,7 +94,7 @@ class RegexMatchCacheDynamicBitset {
   }
 
   void set_value(size_t const index, bool const value) {
-    constexpr auto wordbits = (sizeof(uintptr_t) * 8);
+    constexpr auto wordbits = sizeof(uintptr_t) * 8;
     auto data = get_bit_span_();
 
     if (!(index < data.size) ||
@@ -147,7 +147,7 @@ class RegexMatchCacheDynamicBitset {
       size_t index_;
 
       size_t ceil_valid_index(size_t index) const noexcept {
-        constexpr auto wordbits = (sizeof(uintptr_t) * 8);
+        constexpr auto wordbits = sizeof(uintptr_t) * 8;
         while (index < data_.size) {
           auto const wordidx = index / wordbits;
           auto const wordoff = index % wordbits;
@@ -192,23 +192,23 @@ class RegexMatchCacheDynamicBitset {
 
  private:
   bool has_capacity_(size_t const index) const noexcept {
-    constexpr auto wordsize = sizeof(uintptr_t) * 8;
+    constexpr auto wordbits = sizeof(uintptr_t) * 8;
     auto const buf = get_bit_span_();
-    return index < buf.size && !(buf.size == wordsize && index == wordsize - 1);
+    return index < buf.size && !(buf.size == wordbits && index == wordbits - 1);
   }
 
   bit_span<uintptr_t> reserve_(size_t const index) {
     assert(!has_capacity_(index));
-    constexpr auto wordsize = sizeof(uintptr_t) * 8;
-    constexpr auto minsize = wordsize * 2; // min growth from in-situ to on-heap
+    constexpr auto wordbits = sizeof(uintptr_t) * 8;
+    constexpr auto minsize = wordbits * 2; // min growth from in-situ to on-heap
     auto const newsize = std::max(strictNextPowTwo(index), minsize);
     assert(newsize >= minsize);
-    assert(newsize % wordsize == 0);
+    assert(newsize % wordbits == 0);
     auto const newdata = new uintptr_t[newsize / 8];
     auto const buf = get_bit_span_();
     auto const buf2size = nextPowTwo(buf.size);
     std::memcpy(newdata, buf.data, buf2size / 8);
-    std::memset(newdata + buf2size / wordsize, 0, (newsize - buf2size) / 8);
+    std::memset(newdata + buf2size / wordbits, 0, (newsize - buf2size) / 8);
     if (!(to_signed(data_) < 0)) {
       auto const data = new bit_span<uintptr_t>{newdata, newsize};
       assert(!(reinterpret_cast<uintptr_t>(data) & 1));
@@ -237,7 +237,7 @@ class RegexMatchCacheDynamicBitset {
   static bool get_value_(
       bit_span<Word> const buf, size_t const index) noexcept {
     assert(index < buf.size);
-    constexpr auto wordbits = (sizeof(Word) * 8);
+    constexpr auto wordbits = sizeof(Word) * 8;
     auto const wordidx = index / wordbits;
     auto const wordoff = index % wordbits;
     auto const mask = Word(1) << wordoff;
@@ -249,7 +249,7 @@ class RegexMatchCacheDynamicBitset {
   static void set_value_(
       bit_span<Word> const buf, size_t const index, bool const value) noexcept {
     assert(index < buf.size);
-    constexpr auto wordbits = (sizeof(Word) * 8);
+    constexpr auto wordbits = sizeof(Word) * 8;
     assert(buf.size != wordbits || index != wordbits - 1);
     auto const wordidx = index / wordbits;
     auto const wordoff = index % wordbits;
