@@ -1847,18 +1847,18 @@ TEST(Conv, TryIntToFloat) {
 template <class String>
 void tryTo() noexcept {
   String sp1("1000000000000000000000000000000");
-  auto rv1 = folly::tryTo<int>(sp1.begin(), sp1.end());
+  auto rv1 = folly::tryTo<int>(sp1.data(), sp1.data() + sp1.size());
   EXPECT_FALSE(rv1.hasValue());
   String sp2("4711");
-  auto rv2 = folly::tryTo<int>(sp2.begin(), sp2.end());
+  auto rv2 = folly::tryTo<int>(sp2.data(), sp2.data() + sp2.size());
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_EQ(rv2.value(), 4711);
   String sp3("-4711");
-  auto rv3 = folly::tryTo<int>(sp3.begin(), sp3.end());
+  auto rv3 = folly::tryTo<int>(sp3.data(), sp3.data() + sp3.size());
   EXPECT_TRUE(rv3.hasValue());
   EXPECT_EQ(rv3.value(), -4711);
   String sp4("4711");
-  auto rv4 = folly::tryTo<uint16_t>(sp4.begin(), sp4.end());
+  auto rv4 = folly::tryTo<uint16_t>(sp4.data(), sp4.data() + sp4.size());
   EXPECT_TRUE(rv4.hasValue());
   EXPECT_EQ(rv4.value(), 4711);
 }

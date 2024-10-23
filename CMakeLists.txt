@@ -1076,8 +1076,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       # Builds but fails test on constexpr_exp_floating std::exp(471.L)
       TEST constexpr_math_test WINDOWS_DISABLED
         SOURCES ConstexprMathTest.cpp
-      TEST conv_test WINDOWS_DISABLED
-        SOURCES ConvTest.cpp
+      TEST conv_test SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp
       TEST deterministic_schedule_test SOURCES DeterministicScheduleTest.cpp
