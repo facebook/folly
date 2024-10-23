@@ -53,8 +53,8 @@ CPP_UNITTEST_DEPS = [
     "shim//third-party/googletest:cpp_unittest_main",
 ]
 CPP_FOLLY_UNITTEST_DEPS = [
-    "folly//folly/test/common:test_main_lib",
-    "folly//folly/ext/buck2:test_ext",
+    "gh_facebook_folly//folly/test/common:test_main_lib",
+    "gh_facebook_folly//folly/ext/buck2:test_ext",
 ]
 
 def _get_headers_from_sources(srcs):

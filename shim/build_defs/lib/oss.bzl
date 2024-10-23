@@ -40,11 +40,11 @@ def _strip_third_party_rust_version(target: str) -> str:
 # Cell the BUCK file being processed belongs to
 ACTIVE_CELL = native.get_cell_name()
 
-# The root cell of this project, generally "root" and does not need to be set.
+# The root cell of this project, extracted from the "root" alias.
 # Targets that explicitly reference this cell will not be rewritten, and
 # targets that do not end up referencing a cell will be replaced with targets
 # that reference this cell
-ROOT_CELL = read_config("oss", "root_cell", "root")
+ROOT_CELL = read_config("cell_aliases", "root", "root")
 
 # The cell this file and the rest of the shim directory belong to, generally
 # "shim" and does not need to be set.
