@@ -115,7 +115,16 @@ class FixedMergingCancellationState : public CancellationState {
   FOLLY_NODISCARD static CancellationStateTokenPtr create(Ts&&... tokens);
 
  private:
-  std::array<CancellationCallback, N> callbacks_;
+  // MSVC < v19.31 does not correctly support std::array<T, 0>; so we improvise
+  template <typename, size_t>
+  struct EmptyArray {
+    explicit EmptyArray(std::initializer_list<int>) noexcept {}
+  };
+  using CancellationCallbackArray = conditional_t<
+      !N,
+      EmptyArray<CancellationCallback, N>,
+      std::array<CancellationCallback, N>>;
+  CancellationCallbackArray callbacks_;
 };
 
 template <typename... Data>

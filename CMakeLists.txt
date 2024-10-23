@@ -1065,8 +1065,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
       TEST base64_test SOURCES base64_test.cpp
       TEST buffered_atomic_test SOURCES BufferedAtomicTest.cpp
-      TEST cancellation_token_test WINDOWS_DISABLED
-        SOURCES CancellationTokenTest.cpp
+      TEST cancellation_token_test SOURCES CancellationTokenTest.cpp
       TEST chrono_test SOURCES ChronoTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_bit_set_test SOURCES ConcurrentBitSetTest.cpp
