@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -44,6 +45,27 @@ cpp_library(
         "StaticTracepointTestModule.h",
     ],
     deps = [
+        "//folly/tracing:static_tracepoint",
+    ],
+)
+
+fb_native.filegroup(
+    name = "static_tracepoint_section_test_lds",
+    srcs = ["StaticTracepointSectionTest.lds"],
+)
+
+cpp_unittest(
+    name = "static_tracepoint_section_test",
+    srcs = ["StaticTracepointSectionTest.cpp"],
+    headers = [],
+    linker_flags = [
+        "--gc-sections",
+        "-T",
+        "$(location :static_tracepoint_section_test_lds)/StaticTracepointSectionTest.lds",
+    ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "//folly/debugging/symbolizer:elf",
         "//folly/tracing:static_tracepoint",
     ],
 )

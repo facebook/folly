@@ -1151,8 +1151,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST range_test SOURCES RangeTest.cpp
       TEST replaceable_test WINDOWS_DISABLED SOURCES ReplaceableTest.cpp
       TEST scope_guard_test WINDOWS_DISABLED SOURCES ScopeGuardTest.cpp
-      # Needs ElfFile
-      TEST sdt_test SOURCES SdtTest.cpp
       # Heavily dependent on drand and srand48
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
       # SingletonTest requires Subprocess
@@ -1191,6 +1189,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY testing/test/
       TEST testing_test_util_test SOURCES TestUtilTest.cpp
+
+    DIRECTORY tracing/test/
+      TEST static_tracepoint_section_test
+        SOURCES StaticTracepointSectionTest.cpp
 
     DIRECTORY json/test/
       TEST json_dynamic_converter_test SOURCES DynamicConverterTest.cpp
