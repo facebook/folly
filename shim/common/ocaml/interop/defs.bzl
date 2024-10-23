@@ -5,6 +5,9 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@root//defs.bzl", _RUST_FLAGS_2018 = "RUST_FLAGS_2018")
-
-RUST_FLAGS_2018 = _RUST_FLAGS_2018
+# Try to keep in sync with all the client projects, like hack
+RUST_FLAGS_2018 = [
+    "-Drust-2018-idioms",
+    "-Dwarnings",
+    "-Dunused-crate-dependencies",
+]
