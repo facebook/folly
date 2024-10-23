@@ -1560,6 +1560,7 @@ cpp_binary(
         "fbsource//third-party/fast_float:fast_float",
         "//folly:benchmark",
         "//folly:stop_watch",
+        "//folly:traits",
     ],
     external_deps = [
         "double_conversion",

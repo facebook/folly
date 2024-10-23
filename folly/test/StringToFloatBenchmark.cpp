@@ -38,12 +38,32 @@
 #include <cmath>
 #include <iostream>
 #include <random>
+#include <utility>
 
 #include <folly/Benchmark.h>
+#include <folly/Traits.h>
 #include <folly/stop_watch.h>
 
 #include <double-conversion/double-conversion.h>
 #include <fast_float/fast_float.h> // @manual=fbsource//third-party/fast_float:fast_float
+
+template <typename T, typename... A>
+using detect_std_from_chars = decltype(void(std::from_chars(
+    nullptr, nullptr, std::declval<T&>(), std::declval<A const&>()...)));
+
+/// invoke_std_from_chars
+///
+/// Invokes std::from_chars if the requested overload is available.
+///
+/// Cannot use if-constexpr directly within benchmarks to accomplish this since
+/// benchmarks are not function templates.
+template <typename T, typename... A>
+void invoke_std_from_chars(
+    char const* first, char const* last, T& value, A const&... a) {
+  if constexpr (folly::is_detected_v<detect_std_from_chars, T, A...>) {
+    std::from_chars(first, last, value, a...);
+  }
+}
 
 const char* kInputZero = "0";
 
@@ -125,7 +145,7 @@ BENCHMARK(hardcoded_decimal_notation_STRTOFL_COPY, n) {
 BENCHMARK(hardcoded_decimal_notation_STD_FROM_CHARS, n) {
   double value{};
   for (unsigned int i = 0; i < n; ++i) {
-    std::from_chars(
+    invoke_std_from_chars(
         kDecimalStr.data(), kDecimalStr.data() + kDecimalStr.size(), value);
   }
 }
@@ -175,7 +195,7 @@ BENCHMARK(hardcoded_exponential_notation_STRTOFL_COPY, n) {
 BENCHMARK(hardcoded_exponential_notation_STD_FROM_CHARS, n) {
   for (unsigned int i = 0; i < n; ++i) {
     double value{};
-    std::from_chars(
+    invoke_std_from_chars(
         kexponentialNotationStr.data(),
         kexponentialNotationStr.data() + kexponentialNotationStr.size(),
         value);
