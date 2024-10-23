@@ -31,9 +31,11 @@ def get_shim_modifiers():
     modifiers = []
 
     linux_distro = read_config("linux", "distro")
-    pprint(linux_distro)
 
     if linux_distro:
         modifiers.append("shim//os/linux/distro/constraints:{}".format(linux_distro))
+
+    known_broken = read_config("oss", "known_broken", "disable")
+    modifiers.append("shim//opensource/macros/broken_in_oss/constraints:{}".format(known_broken))
 
     return modifiers
