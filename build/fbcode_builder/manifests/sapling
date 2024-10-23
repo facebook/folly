@@ -60,7 +60,7 @@ fb303
 fbthrift
 rust-shed
 
-[dependencies.test=on]
+[dependencies.all(test=on,not(os=darwin))]
 hexdump
 
 [dependencies.not(os=windows)]
