@@ -76,6 +76,23 @@ class AtomicLinkedList {
   }
 
   /**
+   * Sweeps the list a single time, as a single point in time swap with the
+   * current contents of the list.
+   *
+   * Unlike sweep() it does not loop to ensure the list is empty at some point
+   * after the last invocation.
+   *
+   * Returns false if the list is empty.
+   */
+  template <typename F>
+  bool sweepOnce(F&& func) {
+    return list_.sweepOnce([&](Wrapper* wrappedPtr) {
+      std::unique_ptr<Wrapper> wrapper(wrappedPtr);
+      func(std::move(wrapper->data));
+    });
+  }
+
+  /**
    * Similar to sweep() but calls func() on elements in LIFO order.
    *
    * func() is called for all elements in the list at the moment

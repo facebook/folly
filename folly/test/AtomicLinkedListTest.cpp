@@ -334,3 +334,26 @@ TEST(AtomicLinkedList, MoveAssignment) {
   EXPECT_TRUE(lastList.empty());
   EXPECT_EQ(0, TestObject::numInstances());
 }
+
+TEST(AtomicLinkedList, SweepOnce) {
+  folly::AtomicLinkedList<int> list;
+  int a(1), b(2), c(3);
+
+  list.insertHead(a);
+  list.insertHead(b);
+  list.insertHead(c);
+
+  size_t id = 1;
+  list.sweepOnce([&](int&& obj) {
+    EXPECT_EQ(id, obj);
+    ++id;
+  });
+
+  EXPECT_TRUE(list.empty());
+
+  // Test that we can still insert
+  list.insertHead(a);
+
+  EXPECT_FALSE(list.empty());
+  list.sweepOnce([](int&& obj) { EXPECT_EQ(1, obj); });
+}
