@@ -116,3 +116,12 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
+
+cpp_unittest(
+    name = "detail_typelist_test",
+    srcs = ["TypeListTest.cpp"],
+    deps = [
+        "//folly/detail:typelist",
+        "//folly/portability:gtest",
+    ],
+)

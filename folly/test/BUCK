@@ -362,15 +362,6 @@ cpp_unittest(
     ],
 )
 
-cpp_unittest(
-    name = "detail_typelist_test",
-    srcs = ["TypeListTest.cpp"],
-    deps = [
-        "//folly/detail:typelist",
-        "//folly/portability:gtest",
-    ],
-)
-
 cpp_library(
     name = "deterministic_schedule",
     srcs = [

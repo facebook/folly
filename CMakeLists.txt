@@ -734,6 +734,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES SplitStringSimdTest.cpp
       TEST detail_static_singleton_manager_test
         SOURCES StaticSingletonManagerTest.cpp
+      TEST detail_type_list_test WINDOWS_DISABLED SOURCES TypeListTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
       TEST detail_base64_detail_test WINDOWS_DISABLED
@@ -1170,7 +1171,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST token_bucket_test SOURCES TokenBucketTest.cpp
       TEST traits_test SOURCES TraitsTest.cpp
       TEST try_test WINDOWS_DISABLED SOURCES TryTest.cpp
-      TEST type_list_test WINDOWS_DISABLED SOURCES TypeListTest.cpp
       TEST unicode_test SOURCES UnicodeTest.cpp
       TEST unit_test SOURCES UnitTest.cpp
       BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
