@@ -81,16 +81,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "read_mostly_shared_ptr",
-    headers = [
-        "ReadMostlySharedPtr.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/memory:read_mostly_shared_ptr",
-    ],
-)
-
-cpp_library(
     name = "single_writer_fixed_hash_map",
     headers = [
         "SingleWriterFixedHashMap.h",
