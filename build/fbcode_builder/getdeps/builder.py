@@ -286,7 +286,6 @@ class MakeBuilder(BuilderBase):
         return ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
 
     def _build(self, reconfigure) -> None:
-
         env = self._compute_env()
 
         # Need to ensure that PREFIX is set prior to install because
