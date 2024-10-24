@@ -365,7 +365,11 @@ struct RegexMatchCacheTest : testing::Test {
   }
 
   auto getRegexList(RegexMatchCache const& cache) const {
-    return cache.getRegexList(keys);
+    std::vector<std::string> ret;
+    for (auto const item : cache.getRegexList(keys)) {
+      ret.emplace_back(item);
+    }
+    return ret;
   }
 
   auto lookup(RegexMatchCache& cache, std::string_view regex, time_point now) {
