@@ -31,16 +31,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "execution_observer",
-    headers = [
-        "ExecutionObserver.h",
-    ],
-    exported_deps = [
-        "//folly/executors:execution_observer",
-    ],
-)
-
-cpp_library(
     name = "flat_combining_priority_queue",
     headers = [
         "FlatCombiningPriorityQueue.h",
