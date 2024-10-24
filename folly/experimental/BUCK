@@ -11,16 +11,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "coding_detail",
-    headers = [
-        "CodingDetail.h",
-    ],
-    exported_deps = [
-        "//folly/compression/elias_fano:coding_detail",
-    ],
-)
-
-cpp_library(
     name = "elias_fano_coding",
     headers = [
         "EliasFanoCoding.h",
