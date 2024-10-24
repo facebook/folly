@@ -106,7 +106,7 @@ Observer<T> makeStaticObserver(T value) {
 }
 
 template <typename T>
-Observer<T> makeStaticObserver(std::shared_ptr<T> value) {
+Observer<std::decay_t<T>> makeStaticObserver(std::shared_ptr<T> value) {
   return makeObserver([value_2 = std::move(value)] { return value_2; });
 }
 

@@ -627,8 +627,17 @@ TEST(Observer, MakeStaticObserver) {
       makeStaticObserver<std::shared_ptr<int>>(std::make_shared<int>(5));
   EXPECT_EQ(***explicitSharedPtrObserver, 5);
 
+  auto explicitSharedPtrToConstObserver =
+      makeStaticObserver<std::shared_ptr<const int>>(
+          std::make_shared<const int>(5));
+  EXPECT_EQ(***explicitSharedPtrToConstObserver, 5);
+
   auto implicitSharedPtrObserver = makeStaticObserver(std::make_shared<int>(5));
   EXPECT_EQ(**implicitSharedPtrObserver, 5);
+
+  auto implicitSharedPtrToConstObserver =
+      makeStaticObserver(std::make_shared<const int>(5));
+  EXPECT_EQ(**implicitSharedPtrToConstObserver, 5);
 }
 
 TEST(Observer, AtomicObserver) {
