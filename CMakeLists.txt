@@ -728,16 +728,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST concurrency_unbounded_queue_test SOURCES UnboundedQueueTest.cpp
 
     DIRECTORY detail/test/
-      TEST detail_static_singleton_manager_test
-        SOURCES StaticSingletonManagerTest.cpp
-
-    DIRECTORY detail/test/
       TEST detail_simple_simd_string_utils_test
         SOURCES SimpleSimdStringUtilsTest.cpp
-
-    DIRECTORY detail/test/
       TEST detail_split_string_simd_test WINDOWS_DISABLED
         SOURCES SplitStringSimdTest.cpp
+      TEST detail_static_singleton_manager_test
+        SOURCES StaticSingletonManagerTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
       TEST detail_base64_detail_test WINDOWS_DISABLED
