@@ -734,7 +734,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES SplitStringSimdTest.cpp
       TEST detail_static_singleton_manager_test
         SOURCES StaticSingletonManagerTest.cpp
-      TEST detail_type_list_test WINDOWS_DISABLED SOURCES TypeListTest.cpp
+      TEST detail_type_list_test SOURCES TypeListTest.cpp
 
     DIRECTORY detail/base64_detail/tests/
       TEST detail_base64_detail_test WINDOWS_DISABLED
