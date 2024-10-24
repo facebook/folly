@@ -7,3 +7,9 @@ sha256 = dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc
 
 [build]
 builder = python-wheel
+
+[rpms]
+python3-click
+
+[debs]
+python3-click

@@ -304,12 +304,14 @@ class BuildOptions(object):
             is_direct_dep = (
                 manifest is not None and m.name in manifest.get_dependencies(ctx)
             )
-            self.add_prefix_to_env(
-                loader.get_project_install_dir(m),
-                env,
-                append=False,
-                is_direct_dep=is_direct_dep,
-            )
+            d = loader.get_project_install_dir(m)
+            if os.path.exists(d):
+                self.add_prefix_to_env(
+                    d,
+                    env,
+                    append=False,
+                    is_direct_dep=is_direct_dep,
+                )
 
         # Linux is always system openssl
         system_openssl = self.is_linux()
