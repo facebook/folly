@@ -67,11 +67,22 @@ class ThreadLocalPtr;
 template <class T, class Tag = void, class AccessMode = void>
 class ThreadLocal {
  public:
-  constexpr ThreadLocal() : constructor_([]() { return T(); }) {}
+  constexpr ThreadLocal() noexcept : constructor_([]() { return T(); }) {}
 
   template <typename F, std::enable_if_t<is_invocable_r_v<T, F>, int> = 0>
   explicit ThreadLocal(F&& constructor)
       : constructor_(std::forward<F>(constructor)) {}
+
+  ThreadLocal(ThreadLocal&& that) noexcept
+      : tlp_{std::move(that.tlp_)},
+        constructor_{std::exchange(that.constructor_, {})} {}
+
+  ThreadLocal& operator=(ThreadLocal&& that) noexcept {
+    assert(this != &that);
+    tlp_ = std::exchange(that.tlp_, {});
+    constructor_ = std::exchange(that.constructor_, {});
+    return *this;
+  }
 
   FOLLY_ERASE T* get() const {
     auto const ptr = tlp_.get();
@@ -89,10 +100,6 @@ class ThreadLocal {
 
   typedef typename ThreadLocalPtr<T, Tag, AccessMode>::Accessor Accessor;
   Accessor accessAllThreads() const { return tlp_.accessAllThreads(); }
-
-  // movable
-  ThreadLocal(ThreadLocal&&) = default;
-  ThreadLocal& operator=(ThreadLocal&&) = default;
 
  private:
   // non-copyable
@@ -143,13 +150,13 @@ class ThreadLocalPtr {
   using AccessAllThreadsEnabled = Negation<std::is_same<Tag, void>>;
 
  public:
-  constexpr ThreadLocalPtr() : id_() {}
+  constexpr ThreadLocalPtr() noexcept : id_() {}
 
   ThreadLocalPtr(ThreadLocalPtr&& other) noexcept : id_(std::move(other.id_)) {}
 
-  ThreadLocalPtr& operator=(ThreadLocalPtr&& other) {
+  ThreadLocalPtr& operator=(ThreadLocalPtr&& other) noexcept {
     assert(this != &other);
-    destroy();
+    destroy(); // user-provided dtors invoked within here must not throw
     id_ = std::move(other.id_);
     return *this;
   }
@@ -461,7 +468,13 @@ class ThreadLocalPtr {
   }
 
  private:
-  void destroy() { StaticMeta::instance().destroy(&id_); }
+  void destroy() noexcept {
+    auto const val = id_.value.load(std::memory_order_relaxed);
+    if (val == threadlocal_detail::kEntryIDInvalid) {
+      return;
+    }
+    StaticMeta::instance().destroy(&id_);
+  }
 
   // non-copyable
   ThreadLocalPtr(const ThreadLocalPtr&) = delete;
