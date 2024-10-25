@@ -1,6 +1,6 @@
 [cells]
 gh_facebook_folly = .
-gh_facebook_buck2_shims_meta = shim
+shim_DISABLED = shim
 
 [cell_aliases]
 root = gh_facebook_folly
