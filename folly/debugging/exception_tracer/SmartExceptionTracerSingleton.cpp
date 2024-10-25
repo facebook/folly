@@ -16,15 +16,22 @@
 
 #include <folly/debugging/exception_tracer/SmartExceptionTracerSingleton.h>
 
+extern "C" {
+
+folly::exception_tracer::detail::ExceptionMetaMap*
+    __folly_smart_exception_store{nullptr};
+}
+
 namespace folly::exception_tracer::detail {
 
-Synchronized<F14FastMap<void*, std::unique_ptr<SynchronizedExceptionMeta>>>&
-getMetaMap() {
-  // Leaky Meyers Singleton
-  static Indestructible<Synchronized<
-      F14FastMap<void*, std::unique_ptr<SynchronizedExceptionMeta>>>>
-      meta;
-  return *meta;
+Synchronized<ExceptionMetaMap>& getMetaMap() {
+  static Indestructible<std::unique_ptr<Synchronized<ExceptionMetaMap>>> meta(
+      folly::factory_constructor, []() {
+        auto ret = std::make_unique<folly::Synchronized<ExceptionMetaMap>>();
+        __folly_smart_exception_store = &ret->unsafeGetUnlocked();
+        return ret;
+      });
+  return **meta;
 }
 
 static std::atomic_bool hookEnabled{false};
