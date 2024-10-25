@@ -13,8 +13,8 @@ pkgconfig_system_library(
     name = "sodium",
     packages = {
         "//os:linux-fedora": ["libsodium-devel"],
-        "//os:linux-ubuntu": ["libsodium"],
-        "//os:macos-homebrew": ["libsodium-dev"],
+        "//os:linux-ubuntu": ["libsodium-dev"],
+        "//os:macos-homebrew": ["libsodium"],
     },
     pkgconfig_name = "libsodium",
 )

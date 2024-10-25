@@ -32,7 +32,9 @@ def boost_library(library: str, header_only: bool):
         name = "boost_{}".format(library),
         packages = {
             "//os:linux-fedora": ["boost-devel"],
-            "//os:linux-ubuntu": ["libboost-{}-dev".format(library)],
+            "//os:linux-ubuntu": [
+                "libboost-dev" if header_only else "libboost-{}-dev".format(library),
+            ],
             "//os:macos-homebrew": ["boost"],
         },
         exported_linker_flags = exported_linker_flags,
