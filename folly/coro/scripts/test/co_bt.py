@@ -37,6 +37,7 @@ class Lldb:
 
 class CoBt(unittest.TestCase):
     def setUp(self) -> None:
+        # pyre-fixme[6]: For 2nd argument expected `ModuleType` but got `Lldb`.
         sys.modules["lldb"] = Lldb()
 
     def test_null_eq(self) -> None:

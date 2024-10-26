@@ -500,6 +500,8 @@ def backtrace_command(
         print_async_stack_addrs(addrs)
     except Exception:
         print("Error collecting async stack trace:")
+        # pyre-fixme[6]: For 1st argument expected `BaseException` but got
+        #  `Union[None, Type[BaseException], BaseException, TracebackType]`.
         traceback.print_exception(*sys.exc_info())
 
 
@@ -532,6 +534,7 @@ class DebuggerType(enum.Enum):
 debugger_type: DebuggerType | None = None
 if debugger_type is None:  # noqa: C901
     try:
+        # pyre-fixme[21]: Could not find module `gdb`.
         import gdb
 
         class GdbValue(DebuggerValue):
@@ -539,6 +542,7 @@ if debugger_type is None:  # noqa: C901
             GDB implementation of a debugger value
             """
 
+            # pyre-fixme[11]: Annotation `Value` is not defined as a type.
             value: gdb.Value
 
             def __init__(self, value: gdb.Value) -> None:
@@ -619,6 +623,7 @@ if debugger_type is None:  # noqa: C901
             def __eq__(self, other) -> bool:
                 return self.int_value() == other.int_value()
 
+        # pyre-fixme[11]: Annotation `Command` is not defined as a type.
         class GdbCoroBacktraceCommand(gdb.Command):
             def __init__(self):
                 print(co_bt_info())
@@ -641,6 +646,7 @@ if debugger_type is None:  # noqa: C901
 
 if debugger_type is None:  # noqa: C901
     try:
+        # pyre-fixme[21]: Could not find module `lldb`.
         import lldb
 
         class LldbValue(DebuggerValue):
@@ -648,8 +654,10 @@ if debugger_type is None:  # noqa: C901
             LLDB implementation of a debugger value
             """
 
+            # pyre-fixme[11]: Annotation `SBExecutionContext` is not defined as a type.
             exe_ctx: ClassVar[lldb.SBExecutionContext | None] = None
             next_name_num: ClassVar[int] = 0
+            # pyre-fixme[11]: Annotation `SBValue` is not defined as a type.
             value: lldb.SBValue
 
             def __init__(self, value: lldb.SBValue) -> None:
@@ -742,6 +750,7 @@ if debugger_type is None:  # noqa: C901
 
             # Type must be in quotes because it breaks parsing
             # with conditional imports
+            # pyre-fixme[11]: Annotation `SBSymbolContext` is not defined as a type.
             def _get_symbol_context(self) -> "lldb.SBSymbolContext":
                 address = lldb.SBAddress(
                     self.int_value(), LldbValue.exe_ctx.GetTarget()

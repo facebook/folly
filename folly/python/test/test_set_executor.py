@@ -15,6 +15,7 @@
 
 import unittest
 
+# pyre-fixme[21]: Could not find name `test_set_executor_cython` in `folly.python.test`.
 from . import test_set_executor_cython
 
 
