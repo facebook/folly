@@ -15,6 +15,7 @@ import stat
 import subprocess
 import sys
 import typing
+from shlex import quote as shellquote
 from typing import Optional
 
 from .dyndeps import create_dyn_dep_munger
@@ -157,6 +158,29 @@ class BuilderBase(object):
         shell = ["powershell.exe"] if sys.platform == "win32" else ["/bin/sh", "-i"]
         self._run_cmd(shell, cwd=self.build_dir, env=env)
 
+    def printenv(self, reconfigure: bool) -> None:
+        """print the environment in a shell sourcable format"""
+        reconfigure = self._reconfigure(reconfigure)
+        self._apply_patchfile()
+        self._prepare(reconfigure=reconfigure)
+        env = self._compute_env(env=Env(src={}))
+        prefix = "export "
+        sep = ":"
+        expand = "$"
+        expandpost = ""
+        if self.build_opts.is_windows():
+            prefix = "SET "
+            sep = ";"
+            expand = "%"
+            expandpost = "%"
+        for k, v in sorted(env.items()):
+            existing = os.environ.get(k, None)
+            if k.endswith("PATH") and existing:
+                v = shellquote(v) + sep + f"{expand}{k}{expandpost}"
+            else:
+                v = shellquote(v)
+            print("%s%s=%s" % (prefix, k, v))
+
     def build(self, reconfigure: bool) -> None:
         print("Building %s..." % self.manifest.name)
         reconfigure = self._reconfigure(reconfigure)
@@ -225,14 +249,16 @@ class BuilderBase(object):
         system needs to regenerate its rules."""
         pass
 
-    def _compute_env(self):
+    def _compute_env(self, env=None) -> Env:
+        if env is None:
+            env = self.env
         # CMAKE_PREFIX_PATH is only respected when passed through the
         # environment, so we construct an appropriate path to pass down
         return self.build_opts.compute_env_for_install_dirs(
             self.loader,
             self.dep_manifests,
             self.ctx,
-            env=self.env,
+            env=env,
             manifest=self.manifest,
         )
 

@@ -8,6 +8,7 @@
 import configparser
 import io
 import os
+import sys
 from typing import List
 
 from .builder import (
@@ -391,7 +392,10 @@ class ManifestParser(object):
             return False
         for key in envs:
             val = os.environ.get(key, None)
-            print(f"Testing ENV[{key}]: {repr(val)}")
+            print(
+                f"Testing ENV[{key}]: {repr(val)}",
+                file=sys.stderr,
+            )
             if val is None:
                 return False
             if len(val) == 0:
