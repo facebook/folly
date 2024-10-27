@@ -155,6 +155,9 @@ class LocalDirFetcher(object):
     def get_src_dir(self):
         return self.path
 
+    def clean(self) -> None:
+        pass
+
 
 class SystemPackageFetcher(object):
     def __init__(self, build_options, packages) -> None:
