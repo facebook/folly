@@ -109,13 +109,3 @@ cpp_library(
         "//folly/executors:threaded_repeating_function_runner",
     ],
 )
-
-cpp_library(
-    name = "tl_ref_count",
-    headers = [
-        "TLRefCount.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/memory:tl_ref_count",
-    ],
-)
