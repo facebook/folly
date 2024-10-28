@@ -13,10 +13,10 @@ SHIM_ALIASES = {
     "ubuntu": "shim//os/linux/distro/constraints:ubuntu",
 }
 
-CFG_CONSTRUCTOR_INITIALIZED_KEY = "buck.cfg_constructor_initialized"
-
 def set_cfg_constructor(aliases = dict()):
-    if not read_parent_package_value(CFG_CONSTRUCTOR_INITIALIZED_KEY):
+    project_root_cell = read_root_config("cell_aliases", "root")
+    current_root_cell = read_config("cell_aliases", "root")
+    if project_root_cell == current_root_cell:
         native.set_cfg_constructor(
             stage0 = cfg_constructor_pre_constraint_analysis,
             stage1 = cfg_constructor_post_constraint_analysis,
@@ -24,8 +24,6 @@ def set_cfg_constructor(aliases = dict()):
             aliases = struct(**aliases),
             extra_data = struct(),
         )
-
-        write_package_value(CFG_CONSTRUCTOR_INITIALIZED_KEY, True)
 
 def get_shim_modifiers():
     modifiers = []
