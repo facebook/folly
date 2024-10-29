@@ -20,6 +20,7 @@
 #include <atomic>
 #include <type_traits>
 #include <unordered_set>
+#include <unordered_map>
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
