@@ -71,16 +71,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "single_writer_fixed_hash_map",
-    headers = [
-        "SingleWriterFixedHashMap.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/container:single_writer_fixed_hash_map",
-    ],
-)
-
-cpp_library(
     name = "singleton_relaxed_counter",
     headers = [
         "SingletonRelaxedCounter.h",
