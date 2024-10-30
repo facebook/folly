@@ -347,6 +347,17 @@ cpp_benchmark(
 )
 
 cpp_unittest(
+    name = "task_wrapper_test",
+    srcs = ["TaskWrapperTest.cpp"],
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:task_wrapper",
+        "//folly/coro:timeout",
+        "//folly/fibers:semaphore",
+    ],
+)
+
+cpp_unittest(
     name = "RustAdaptorsTest",
     srcs = [
         "RustAdaptorsTest.cpp",

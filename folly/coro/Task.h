@@ -62,7 +62,17 @@ class TaskWithExecutor;
 
 namespace detail {
 
+class TaskPromiseBase;
+
+class TaskPromisePrivate {
+ private:
+  friend TaskPromiseBase;
+  TaskPromisePrivate() = default;
+};
+
 class TaskPromiseBase {
+  static TaskPromisePrivate privateTag() { return TaskPromisePrivate{}; }
+
   class FinalAwaiter {
    public:
     bool await_ready() noexcept { return false; }
@@ -77,23 +87,26 @@ class TaskPromiseBase {
       //
       // This is a bit untidy, and hopefully something we can replace with
       // a virtual wrapper over coroutine_handle that handles the pop for us.
-      if (promise.scopeExit_) {
-        promise.scopeExit_.promise().setContext(
-            promise.continuation_,
-            &promise.asyncFrame_,
-            promise.executor_.get_alias(),
-            promise.result_.hasException() ? promise.result_.exception()
-                                           : exception_wrapper{});
-        return promise.scopeExit_;
+      if (promise.scopeExitRef(privateTag())) {
+        promise.scopeExitRef(privateTag())
+            .promise()
+            .setContext(
+                promise.continuationRef(privateTag()),
+                &promise.getAsyncFrame(),
+                promise.executorRef(privateTag()).get_alias(),
+                promise.result().hasException() ? promise.result().exception()
+                                                : exception_wrapper{});
+        return promise.scopeExitRef(privateTag());
       }
 
-      folly::popAsyncStackFrameCallee(promise.asyncFrame_);
-      if (promise.result_.hasException()) {
+      folly::popAsyncStackFrameCallee(promise.getAsyncFrame());
+      if (promise.result().hasException()) {
         auto [handle, frame] =
-            promise.continuation_.getErrorHandle(promise.result_.exception());
+            promise.continuationRef(privateTag())
+                .getErrorHandle(promise.result().exception());
         return handle.getHandle();
       }
-      return promise.continuation_.getHandle();
+      return promise.continuationRef(privateTag()).getHandle();
     }
 
     [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
@@ -166,6 +179,14 @@ class TaskPromiseBase {
   folly::Executor::KeepAlive<> getExecutor() const noexcept {
     return executor_;
   }
+
+  // These getters exist so that `FinalAwaiter` can interact with wrapped
+  // `TaskPromise`s, and not just `TaskPromiseBase` descendants.  We use a
+  // private tag to let `TaskWrapper` call them without becoming a `friend`.
+  auto& scopeExitRef(TaskPromisePrivate) { return scopeExit_; }
+  auto& continuationRef(TaskPromisePrivate) { return continuation_; }
+  // Unlike `getExecutor()`, does not copy an atomic.
+  auto& executorRef(TaskPromisePrivate) { return executor_; }
 
  private:
   template <typename>

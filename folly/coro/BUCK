@@ -544,6 +544,12 @@ cpp_library(
 )
 
 cpp_library(
+    name = "task_wrapper",
+    headers = ["TaskWrapper.h"],
+    exported_deps = [":task"],
+)
+
+cpp_library(
     name = "timed_wait",
     headers = ["TimedWait.h"],
     exported_deps = [
