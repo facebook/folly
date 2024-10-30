@@ -25,7 +25,7 @@ cpp_library(
         ":transport_callback_base",
         "//folly:network_address",
         "//folly:range",
-        "//folly/experimental/coro:task",
+        "//folly/coro:task",
         "//folly/io:iobuf",
         "//folly/io/async:async_socket",
         "//folly/io/async:async_socket_exception",
