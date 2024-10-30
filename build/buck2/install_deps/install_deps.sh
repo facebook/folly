@@ -1,5 +1,5 @@
 #!/bin/sh
-# (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+# Copyright (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 if [ -z "$INSTALL_COMMAND" ]; then
   if [ -f /etc/os-release ]; then
