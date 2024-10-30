@@ -683,7 +683,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST container_evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
       TEST container_f14_fwd_test SOURCES F14FwdTest.cpp
       TEST container_f14_map_test SOURCES F14MapTest.cpp
-      TEST container_f14_set_test WINDOWS_DISABLED SOURCES F14SetTest.cpp
+      TEST container_f14_set_test SOURCES F14SetTest.cpp
       BENCHMARK container_fbvector_benchmark
         SOURCES FBVectorBenchmark.cpp
         HEADERS FBVectorBenchmarks.cpp.h
