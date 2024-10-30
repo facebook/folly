@@ -448,12 +448,17 @@ std::pair<CancellationSource, std::tuple<Data...>*> CancellationSource::create(
 
 template <typename... Ts>
 inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
-  bool canBeCancelled = detail::variadicDisjunction(tokens.canBeCancelled()...);
-  return canBeCancelled
-      ? CancellationToken(
-            detail::FixedMergingCancellationState<sizeof...(Ts)>::create(
-                std::forward<Ts>(tokens)...))
-      : CancellationToken();
+  if constexpr (sizeof...(Ts) == 1) {
+    return (tokens, ...);
+  } else {
+    bool canBeCancelled =
+        detail::variadicDisjunction(tokens.canBeCancelled()...);
+    return canBeCancelled
+        ? CancellationToken(
+              detail::FixedMergingCancellationState<sizeof...(Ts)>::create(
+                  std::forward<Ts>(tokens)...))
+        : CancellationToken();
+  }
 }
 
 } // namespace folly

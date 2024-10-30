@@ -293,6 +293,12 @@ TEST(CancellationTokenTest, MergedToken) {
   EXPECT_FALSE(token.canBeCancelled());
 }
 
+TEST(CancellationTokenTest, Merging1TokenIsEfficient) {
+  CancellationSource src;
+  CancellationToken tok = src.getToken();
+  EXPECT_TRUE(tok == CancellationToken::merge(tok));
+}
+
 TEST(CancellationTokenTest, TokenWithData) {
   struct Guard {
     int& counter;
