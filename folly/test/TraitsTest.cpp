@@ -732,9 +732,10 @@ TEST(Traits, type_list_concat) {
       std::is_same_v<tag_t<>, type_list_concat_t<tag_t, tag_t<>, tag_t<>>>);
   static_assert(
       std::is_same_v<tag_t<int>, type_list_concat_t<tag_t, tag_t<int>>>);
-  static_assert(std::is_same_v<
-                tag_t<int, double>,
-                type_list_concat_t<tag_t, tag_t<int>, tag_t<double>>>);
+  static_assert( //
+      std::is_same_v<
+          tag_t<int, double>,
+          type_list_concat_t<tag_t, tag_t<int>, tag_t<double>>>);
   static_assert( //
       std::is_same_v<
           tag_t<int, void, double, inspects_tag>,
@@ -770,9 +771,10 @@ TEST(Traits, value_list_concat) {
   static_assert(std::is_same_v<vtag_t<>, value_list_concat_t<vtag_t>>);
   static_assert(
       std::is_same_v<vtag_t<>, value_list_concat_t<vtag_t, vtag_t<>>>);
-  static_assert(
-      std::
-          is_same_v<vtag_t<>, value_list_concat_t<vtag_t, vtag_t<>, vtag_t<>>>);
+  static_assert( //
+      std::is_same_v< //
+          vtag_t<>,
+          value_list_concat_t<vtag_t, vtag_t<>, vtag_t<>>>);
   static_assert(
       std::is_same_v<vtag_t<7>, value_list_concat_t<vtag_t, vtag_t<7>>>);
   static_assert( //
