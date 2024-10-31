@@ -406,6 +406,9 @@ set(ARM_AOR_ASM_FILES
   ${FOLLY_DIR}/external/aor/memcpy-armv8.S
   ${FOLLY_DIR}/external/aor/memcpy_sve.S
   ${FOLLY_DIR}/external/aor/memset-advsimd.S
+  ${FOLLY_DIR}/external/aor/memcpy-mops.S
+  ${FOLLY_DIR}/external/aor/memmove-mops.S
+  ${FOLLY_DIR}/external/aor/memset-mops.S
 )
 if (IS_AARCH64_ARCH)
   foreach (AOR_FILE IN LISTS ARM_AOR_ASM_FILES)
