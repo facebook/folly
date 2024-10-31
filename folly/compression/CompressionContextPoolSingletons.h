@@ -71,7 +71,7 @@ using ZSTD_DCtx_Pool = CompressionCoreLocalContextPool<
     ZSTD_DCtx_Creator,
     ZSTD_DCtx_Deleter,
     ZSTD_DCtx_Resetter,
-    4>;
+    16>;
 
 /**
  * Returns a clean ZSTD_CCtx.
