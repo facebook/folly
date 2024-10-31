@@ -78,7 +78,7 @@ Singleton<std::shared_ptr<ImmutableGlobalCPUExecutor>, GlobalTag>
               ? CPUThreadPoolExecutor::makeThrottledLifoSemQueue(
                     std::chrono::microseconds{
                         FLAGS_folly_global_cpu_executor_wake_up_interval_us})
-              : CPUThreadPoolExecutor::makeDefaultQueue(),
+              : CPUThreadPoolExecutor::makeLifoSemQueue(),
           std::make_shared<NamedThreadFactory>("GlobalCPUThreadPool")));
     });
 

@@ -85,10 +85,14 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor,
     Blocking blocking;
   };
 
-  // These function return unbounded blocking queues with the default semaphore
-  // (LifoSem).
+  // These function return unbounded blocking queues with the default semaphore.
   static std::unique_ptr<BlockingQueue<CPUTask>> makeDefaultQueue();
   static std::unique_ptr<BlockingQueue<CPUTask>> makeDefaultPriorityQueue(
+      int8_t numPriorities);
+
+  // These function return unbounded blocking queues with LifoSem.
+  static std::unique_ptr<BlockingQueue<CPUTask>> makeLifoSemQueue();
+  static std::unique_ptr<BlockingQueue<CPUTask>> makeLifoSemPriorityQueue(
       int8_t numPriorities);
 
   // These function return unbounded blocking queues with ThrottledLifoSem.

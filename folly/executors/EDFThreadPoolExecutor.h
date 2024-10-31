@@ -63,8 +63,8 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
   static constexpr uint64_t kLatestDeadline =
       std::numeric_limits<uint64_t>::max();
 
-  // Default semaphore is LifoSem.
   static std::unique_ptr<EDFThreadPoolSemaphore> makeDefaultSemaphore();
+  static std::unique_ptr<EDFThreadPoolSemaphore> makeLifoSemSemaphore();
   static std::unique_ptr<EDFThreadPoolSemaphore> makeThrottledLifoSemSemaphore(
       std::chrono::nanoseconds wakeUpInterval = {});
 

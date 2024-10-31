@@ -31,9 +31,15 @@
 #include <glog/logging.h>
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/ProcessLocalUniqueId.h>
+#include <folly/portability/GFlags.h>
 #include <folly/synchronization/LifoSem.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
 #include <folly/tracing/StaticTracepoint.h>
+
+FOLLY_GFLAGS_DEFINE_bool(
+    folly_edfthreadpoolexecutor_use_throttled_lifo_sem,
+    false,
+    "EDFThreadPoolExecutor will use ThrottledLifoSem by default");
 
 namespace folly {
 
@@ -256,6 +262,13 @@ class EDFThreadPoolExecutor::TaskQueue {
 
 /* static */ std::unique_ptr<EDFThreadPoolSemaphore>
 EDFThreadPoolExecutor::makeDefaultSemaphore() {
+  return FLAGS_folly_edfthreadpoolexecutor_use_throttled_lifo_sem
+      ? makeThrottledLifoSemSemaphore()
+      : makeLifoSemSemaphore();
+}
+
+/* static */ std::unique_ptr<EDFThreadPoolSemaphore>
+EDFThreadPoolExecutor::makeLifoSemSemaphore() {
   return std::make_unique<EDFThreadPoolSemaphoreImpl<LifoSem>>();
 }
 

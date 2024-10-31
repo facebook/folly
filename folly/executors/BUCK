@@ -79,6 +79,7 @@ cpp_library(
     deps = [
         "//folly:scope_guard",
         "//folly/concurrency:process_local_unique_id",
+        "//folly/portability:gflags",
         "//folly/synchronization:lifo_sem",
         "//folly/synchronization:throttled_lifo_sem",
         "//folly/tracing:static_tracepoint",
