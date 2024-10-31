@@ -608,12 +608,17 @@ constexpr auto kCpplibVer = 0;
 #if defined(__NVCC__)
 // For now, NVCC matches other compilers but does not offer coroutines.
 #define FOLLY_HAS_COROUTINES 0
-#elif defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES)
+#elif defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES) && \
+    !defined(LLVM_COROUTINES_CPP20)
 // LLVM and MSVC coroutines are ABI incompatible, so for the MSVC implementation
 // of <experimental/coroutine> on Windows we *don't* have coroutines.
 //
 // LLVM_COROUTINES indicates that LLVM compatible header is added to include
 // path and can be used.
+//
+// LLVM_COROUTINES_CPP20 indicates that an LLVM compatible header using
+// <coroutine> is added to the include path and can be used.
+
 //
 // Worse, if we define FOLLY_HAS_COROUTINES 1 we will include
 // <experimental/coroutine> which will conflict with anyone who wants to load
