@@ -17,11 +17,11 @@
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Generator.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Generator.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/ViaIfAsync.h>
 
 #include <folly/ExceptionWrapper.h>
 

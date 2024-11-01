@@ -18,13 +18,13 @@
 #include <folly/Portability.h>
 
 #include <folly/CancellationToken.h>
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Transform.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Transform.h>
 
 #include <folly/portability/GTest.h>
 

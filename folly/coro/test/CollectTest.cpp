@@ -16,17 +16,17 @@
 
 #include <folly/Portability.h>
 
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Generator.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/Sleep.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Generator.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/Sleep.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
 

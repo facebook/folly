@@ -16,12 +16,12 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/AsyncStack.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/AsyncStack.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/Task.h>
 #include <folly/tracing/AsyncStack.h>
 
 #include <cstdint>

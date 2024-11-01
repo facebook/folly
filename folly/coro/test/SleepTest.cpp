@@ -16,11 +16,11 @@
 
 #include <folly/Portability.h>
 
+#include <folly/coro/AsyncScope.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Sleep.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/AsyncScope.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Sleep.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/futures/ManualTimekeeper.h>
 #include <folly/portability/GTest.h>
 

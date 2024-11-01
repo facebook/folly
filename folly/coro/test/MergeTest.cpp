@@ -18,14 +18,14 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/ScopeGuard.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Merge.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Merge.h>
-#include <folly/experimental/coro/Task.h>
 
 #include <folly/portability/GTest.h>
 

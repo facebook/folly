@@ -18,11 +18,11 @@
 
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Invoke.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Invoke.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/portability/GTest.h>

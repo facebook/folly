@@ -15,11 +15,11 @@
  */
 
 #include <unordered_set>
-#include <folly/experimental/coro/AsyncStack.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/AsyncStack.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/Task.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>

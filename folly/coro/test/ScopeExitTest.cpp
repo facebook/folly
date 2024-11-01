@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/AsyncScope.h>
-#include <folly/experimental/coro/AutoCleanup.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/AsyncScope.h>
+#include <folly/coro/AutoCleanup.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Task.h>
 #include <folly/portability/GTest.h>
 
 #include <stdexcept>

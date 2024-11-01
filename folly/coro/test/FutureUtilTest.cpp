@@ -16,14 +16,14 @@
 
 #include <folly/Portability.h>
 
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/FutureUtil.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/FutureUtil.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES

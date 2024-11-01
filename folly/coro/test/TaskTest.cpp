@@ -17,15 +17,15 @@
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/SharedMutex.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/detail/InlineTask.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/SharedMutex.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>

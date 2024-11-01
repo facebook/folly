@@ -16,7 +16,7 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/Result.h>
+#include <folly/coro/Result.h>
 
 #include <type_traits>
 

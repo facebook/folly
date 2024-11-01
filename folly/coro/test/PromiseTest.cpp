@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/Promise.h>
+#include <folly/coro/Promise.h>
 
 #include <tuple>
 
 #include <folly/Portability.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/WithCancellation.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/WithCancellation.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES

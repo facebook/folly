@@ -16,10 +16,10 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/AsyncPipe.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/AsyncPipe.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Task.h>
 
 #include <folly/portability/GTest.h>
 
