@@ -72,12 +72,13 @@ void rand_bench(int iters, size_t size_add, size_t size_contains) {
   vector<uint8_t> seq_add;
   vector<uint8_t> seq_contains;
   mt19937 rng;
-  uniform_int_distribution<uint8_t> dist;
+  uniform_int_distribution<uint16_t> dist{
+      0, std::numeric_limits<uint8_t>::max()};
   for (size_t i = 0; i < size_add; ++i) {
-    seq_add.push_back(dist(rng));
+    seq_add.push_back(to_narrow(dist(rng)));
   }
   for (size_t i = 0; i < size_contains; ++i) {
-    seq_contains.push_back(dist(rng));
+    seq_contains.push_back(to_narrow(dist(rng)));
   }
   braces.dismissing([&] {
     while (iters--) {
