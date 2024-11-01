@@ -11,13 +11,3 @@ fb_native.config_setting(
     },
     visibility = ["PUBLIC"],
 )
-
-# Config setting to change the implementation of folly::detail::str_to_float
-# to use fast_float::from_chars
-fb_native.config_setting(
-    name = "folly-conv-atod-mode-fastfloat",
-    values = {
-        "folly.conv_atod_mode": "fastfloat",
-    },
-    visibility = ["PUBLIC"],
-)

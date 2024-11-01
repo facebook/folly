@@ -342,126 +342,6 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
   return result;
 }
 
-/// Uses `double_conversion` library to convert from string to a floating
-/// point.
-template <class Tgt>
-Expected<Tgt, ConversionCode> str_to_floating_double_conversion(
-    StringPiece* src) noexcept {
-  using namespace double_conversion;
-  static StringToDoubleConverter conv(
-      StringToDoubleConverter::ALLOW_TRAILING_JUNK |
-          StringToDoubleConverter::ALLOW_LEADING_SPACES,
-      0.0,
-      // return this for junk input string
-      std::numeric_limits<Tgt>::quiet_NaN(),
-      nullptr,
-      nullptr);
-
-  if (src->empty()) {
-    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
-  }
-
-  int length; // processed char count
-  auto result = std::is_same<Tgt, float>::value
-      ? conv.StringToFloat(src->data(), static_cast<int>(src->size()), &length)
-      : static_cast<Tgt>(conv.StringToDouble(
-            src->data(), static_cast<int>(src->size()), &length));
-
-  if (!std::isnan(result)) {
-    // If we get here with length = 0, the input string is empty.
-    // If we get here with result = 0.0, it's either because the string
-    // contained only whitespace, or because we had an actual zero value
-    // (with potential trailing junk). If it was only whitespace, we
-    // want to raise an error; length will point past the last character
-    // that was processed, so we need to check if that character was
-    // whitespace or not.
-    if (length == 0 ||
-        (result == 0.0 && std::isspace((*src)[size_t(length) - 1]))) {
-      return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
-    }
-    if (length >= 2) {
-      const char* suffix = src->data() + length - 1;
-      // double_conversion doesn't update length correctly when there is an
-      // incomplete exponent specifier. Converting "12e-f-g" shouldn't consume
-      // any more than "12", but it will consume "12e-".
-
-      // "123-" should only parse "123"
-      if (*suffix == '-' || *suffix == '+') {
-        --suffix;
-        --length;
-      }
-      // "12e-f-g" or "12euro" should only parse "12"
-      if (*suffix == 'e' || *suffix == 'E') {
-        --length;
-      }
-    }
-    src->advance(size_t(length));
-    return Tgt(result);
-  }
-
-  auto* e = src->end();
-  auto* b = std::find_if_not(src->begin(), e, [](char c) {
-    return (c >= '\t' && c <= '\r') || c == ' ';
-  });
-  if (b == e) {
-    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
-  }
-  auto size = size_t(e - b);
-
-  bool negative = false;
-  if (*b == '-') {
-    negative = true;
-    ++b;
-    --size;
-    if (size == 0) {
-      return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
-    }
-  }
-  assert(size > 0);
-
-  result = 0.0;
-
-  switch (tolower_ascii(*b)) {
-    case 'i':
-      if (size >= 3 && tolower_ascii(b[1]) == 'n' &&
-          tolower_ascii(b[2]) == 'f') {
-        if (size >= 8 && tolower_ascii(b[3]) == 'i' &&
-            tolower_ascii(b[4]) == 'n' && tolower_ascii(b[5]) == 'i' &&
-            tolower_ascii(b[6]) == 't' && tolower_ascii(b[7]) == 'y') {
-          b += 8;
-        } else {
-          b += 3;
-        }
-        result = std::numeric_limits<Tgt>::infinity();
-      }
-      break;
-
-    case 'n':
-      if (size >= 3 && tolower_ascii(b[1]) == 'a' &&
-          tolower_ascii(b[2]) == 'n') {
-        b += 3;
-        result = std::numeric_limits<Tgt>::quiet_NaN();
-      }
-      break;
-
-    default:
-      break;
-  }
-
-  if (result == 0.0) {
-    // All bets are off
-    return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
-  }
-
-  if (negative) {
-    result = -result;
-  }
-
-  src->assign(b, e);
-
-  return Tgt(result);
-}
-
 /// Uses `fast_float::from_chars` to convert from string to an integer.
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
@@ -512,11 +392,7 @@ str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
  */
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
-#if defined(FOLLY_CONV_ATOD_MODE) && FOLLY_CONV_ATOD_MODE == 1
   return detail::str_to_floating_fast_float_from_chars<Tgt>(src);
-#else
-  return detail::str_to_floating_double_conversion<Tgt>(src);
-#endif
 }
 
 template Expected<float, ConversionCode> str_to_floating<float>(
