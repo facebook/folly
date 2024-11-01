@@ -1,0 +1,6 @@
+[manifest]
+name = systemd
+
+[rpms]
+systemd
+systemd-devel
