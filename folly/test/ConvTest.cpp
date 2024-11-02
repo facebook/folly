@@ -1642,9 +1642,58 @@ template <class String>
 void tryStringToFloat(const StrToFloat<String>& strToFloat) {
   auto rv1 = strToFloat(String(""));
   EXPECT_FALSE(rv1.hasValue());
+
+  const std::array<String, 9> kZero{{
+      "0",
+      "+0",
+      "-0",
+      ".0",
+      "+.0",
+      "-.0",
+      "0.0",
+      "+0.0",
+      "-0.0",
+  }};
+  for (const auto& input : kZero) {
+    auto rv = strToFloat(input);
+    EXPECT_TRUE(rv.hasValue()) << input;
+    EXPECT_EQ(rv.value(), 0.0f) << input;
+  }
+
   auto rv2 = strToFloat(String("3.14"));
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-5);
+
+  auto rv2Positive = strToFloat(String("+3.14"));
+  EXPECT_TRUE(rv2Positive.hasValue());
+  EXPECT_NEAR(rv2Positive.value(), 3.14, 1e-5);
+
+  auto rv2PositiveLessThan1 = strToFloat(String("+.14"));
+  EXPECT_TRUE(rv2PositiveLessThan1.hasValue());
+  EXPECT_NEAR(rv2PositiveLessThan1.value(), .14, 1e-5);
+
+  const std::array<String, 6> kInvalidSigns{{
+      "-",
+      "+",
+      "--3.14",
+      "++3.14",
+      "+-3.14",
+      "-+3.14",
+  }};
+  for (const auto& input : kInvalidSigns) {
+    auto rv = strToFloat(input);
+    EXPECT_TRUE(rv.hasError()) << input;
+    EXPECT_EQ(rv.error(), ConversionCode::STRING_TO_FLOAT_ERROR) << input;
+  }
+
+  auto rv2Negative = strToFloat(String("-3.14"));
+  EXPECT_TRUE(rv2Negative.hasValue());
+  EXPECT_NEAR(rv2Negative.value(), -3.14, 1e-5);
+
+  auto rv2NegativeLessThan1 = strToFloat(String("-.14"));
+  EXPECT_TRUE(rv2NegativeLessThan1.hasValue());
+  EXPECT_NEAR(rv2NegativeLessThan1.value(), -.14, 1e-5);
+
   // No trailing '\0' to expose 1-byte buffer over-read
   char x = '-';
   auto rv3 = strToFloat(String(&x, 1));
@@ -1685,6 +1734,8 @@ void tryStringToFloat(const StrToFloat<String>& strToFloat) {
     EXPECT_TRUE(std::isnan(rv.value())) << input;
   }
 
+  EXPECT_EQ(strToFloat("+nan").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
+
   const std::array<String, 6> kInfinityInputs{{
       "-inf",
       "-INF",
@@ -1706,18 +1757,26 @@ void tryStringToFloat(const StrToFloat<String>& strToFloat) {
     }
   }
 
-  const std::array<String, 11> kScientificNotation{{
+  EXPECT_EQ(
+      strToFloat("+infinity").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
+  EXPECT_EQ(strToFloat("+inf").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
+
+  const std::array<String, 15> kScientificNotation{{
       "123.4560e0",
+      "+123.4560e0",
       "123.4560e+0",
       "123.4560e-0",
       "123456.0e-3",
       "123456.0E-3",
+      "+123456.0E-3",
       "0.123456e3",
       "0.123456e+3",
       "0.123456E+3",
+      "+0.123456E+3",
       ".123456e3",
       ".123456e+3",
       ".123456E+3",
+      "+.123456E+3",
   }};
   for (const auto& input : kScientificNotation) {
     auto rv = strToFloat(input);
