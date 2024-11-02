@@ -182,10 +182,18 @@ cpp_benchmark(
     ],
 )
 
+cpp_benchmark(
+    name = "cancellation_token_bench",
+    srcs = ["CancellationTokenBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:cancellation_token",
+    ],
+)
+
 cpp_unittest(
     name = "cancellation_token_test",
     srcs = ["CancellationTokenTest.cpp"],
-    headers = [],
     deps = [
         "//folly:cancellation_token",
         "//folly:optional",
