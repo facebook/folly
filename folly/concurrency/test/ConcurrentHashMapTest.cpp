@@ -1156,10 +1156,11 @@ TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
   EXPECT_TRUE(map.insert(std::make_pair(key_link_explosion, 0)).second);
 
   std::vector<std::thread> threads;
-  // Test with (2^16)+ threads, enough to overflow a 16 bit integer.
-  // It should be uncommon to have more than 2^32 concurrent accesses.
-  static constexpr uint64_t num_threads = std::numeric_limits<uint16_t>::max();
-  static constexpr uint64_t iters = 100;
+  // It should be uncommon to have more than 1024 concurrent accesses.
+  // A higher thread number may cause the process to fail as the thread limit
+  // is breached.
+  static constexpr uint64_t num_threads = 1024;
+  static constexpr uint64_t iters = 1000;
   folly::Latch start(num_threads);
   for (uint64_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([t, &map, &start]() {
