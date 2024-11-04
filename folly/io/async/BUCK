@@ -255,7 +255,9 @@ cpp_library(
 cpp_library(
     name = "async_transport_certificate",
     headers = ["AsyncTransportCertificate.h"],
-    exported_deps = [],
+    exported_deps = [
+        "//folly:optional",
+    ],
 )
 
 cpp_library(
@@ -592,6 +594,7 @@ cpp_library(
         "linux",
         select({
             "DEFAULT": ["fbsource//third-party/liburing:uring"],
+            # @fb-only: "ovr_config//distro/constraints:conda": [], 
             # @fb-only: "ovr_config//os:linux-sgx": [], 
         }),
     )],
