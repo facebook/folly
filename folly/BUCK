@@ -154,6 +154,9 @@ cpp_library(
     compiler_flags = roar_no_jit(),
     deps = [
         ":optional",
+        "//folly:scope_guard",
+        "//folly/lang:new",
+        "//folly/portability:memory",
         "//folly/synchronization/detail:sleeper",
     ],
     exported_deps = [

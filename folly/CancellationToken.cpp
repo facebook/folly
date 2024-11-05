@@ -16,6 +16,9 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/Optional.h>
+#include <folly/ScopeGuard.h>
+#include <folly/lang/New.h>
+#include <folly/portability/Memory.h>
 #include <folly/synchronization/detail/Sleeper.h>
 
 #include <glog/logging.h>
@@ -204,7 +207,12 @@ void CancellationState::unlockAndDecrementTokenCount() noexcept {
   auto oldState = state_.fetch_sub(
       kLockedFlag + kTokenReferenceCountIncrement, std::memory_order_acq_rel);
   if (oldState < (kLockedFlag + 2 * kTokenReferenceCountIncrement)) {
-    delete this;
+    // `MergedTokenDestroyedViaCallback` shows how this is triggered.
+    if (UNLIKELY(oldState & kMergingFlag)) {
+      static_cast<MergingCancellationState*>(this)->destroy();
+    } else {
+      delete this;
+    }
   }
 }
 
@@ -246,5 +254,101 @@ bool CancellationState::tryLock(Predicate predicate) noexcept {
   }
 }
 
+// CTOR EXCEPTION SAFETY: In case the `CancellationCallback` ctors below
+// throw, we increment `callbackEnd_` as we go.  This ensures that the dtor
+// unwinds only the ctors that succeeded.
+
+MergingCancellationState::MergingCancellationState()
+    : CancellationState(MergingCancellationStateTag{}),
+      callbackEnd_(reinterpret_cast<CancellationCallback*>(this + 1)) {}
+
+MergingCancellationState::MergingCancellationState(
+    CopyTag, size_t nCopy, const CancellationToken** copyToks)
+    : MergingCancellationState() {
+  for (size_t i = 0; i < nCopy; ++i, ++callbackEnd_) {
+    new (callbackEnd_)
+        CancellationCallback(*copyToks[i], [this] { requestCancellation(); });
+  }
+}
+
+MergingCancellationState::MergingCancellationState(
+    MoveTag, size_t nMove, CancellationToken** moveToks)
+    : MergingCancellationState() {
+  for (size_t i = 0; i < nMove; ++i, ++callbackEnd_) {
+    new (callbackEnd_) CancellationCallback(
+        std::move(*moveToks[i]), [this] { requestCancellation(); });
+  }
+}
+
+MergingCancellationState::MergingCancellationState(
+    CopyMoveTag,
+    size_t nCopy,
+    const CancellationToken** copyToks,
+    size_t nMove,
+    CancellationToken** moveToks)
+    : MergingCancellationState(CopyTag{}, nCopy, copyToks) {
+  for (size_t i = 0; i < nMove; ++i, ++callbackEnd_) {
+    new (callbackEnd_) CancellationCallback(
+        std::move(*moveToks[i]), [this] { requestCancellation(); });
+  }
+}
+
+namespace {
+template <typename... Args>
+auto allocAndConstructMergingState(size_t n, Args&&... ctorArgs) {
+  DCHECK_GE(n, 2); // `unlockAndDecrementTokenCount` assumes this
+  // The merging state uses `alignas` -- this makes the offset math easier.
+  static_assert(
+      alignof(MergingCancellationState) >= alignof(CancellationCallback));
+  // Future: If either type needs extended alignment, you must (1) use aligned
+  // `folly::operator_new`, (2) update the alignment math here and in `destroy`.
+  static_assert(alignof(MergingCancellationState) <= alignof(std::max_align_t));
+  static_assert(alignof(CancellationCallback) <= alignof(std::max_align_t));
+  void* p = operator_new( // fundamental alignment suffices per above
+      sizeof(MergingCancellationState) + n * sizeof(CancellationCallback));
+  // Free memory if the ctor throws. NB: Sized `delete` isn't worth it here.
+  auto guard = makeGuard(std::bind(operator_delete, p));
+  auto res = CancellationStateTokenPtr{
+      new (p) MergingCancellationState(std::forward<Args>(ctorArgs)...)};
+  guard.dismiss();
+  return res;
+}
+} // namespace
+
+CancellationStateTokenPtr MergingCancellationState::createCopy(
+    size_t nCopy, const CancellationToken** copyToks) {
+  return allocAndConstructMergingState(nCopy, CopyTag{}, nCopy, copyToks);
+}
+CancellationStateTokenPtr MergingCancellationState::createMove(
+    size_t nMove, CancellationToken** moveToks) {
+  return allocAndConstructMergingState(nMove, MoveTag{}, nMove, moveToks);
+}
+CancellationStateTokenPtr MergingCancellationState::createCopyMove(
+    size_t nCopy,
+    const CancellationToken** copyToks,
+    size_t nMove,
+    CancellationToken** moveToks) {
+  return allocAndConstructMergingState(
+      nCopy + nMove, CopyMoveTag{}, nCopy, copyToks, nMove, moveToks);
+}
+
+MergingCancellationState::~MergingCancellationState() {
+  // Arrays are expected to be destroyed in reverse order (although today's
+  // `MergeCancellationState` specific ctor does not require it).
+  auto callbackStart = reinterpret_cast<CancellationCallback*>(this + 1);
+  while (callbackEnd_ > callbackStart) {
+    (--callbackEnd_)->~CancellationCallback();
+  }
+}
+
+void MergingCancellationState::destroy() noexcept {
+  // `MergingCancellationState::create` used `operator_new` + in-place `new`
+  auto allocSize = reinterpret_cast<std::byte*>(callbackEnd_) -
+      reinterpret_cast<std::byte*>(this);
+  this->~MergingCancellationState();
+  operator_delete(this, allocSize); // Sized `delete` might be 1-2ns faster
+}
+
 } // namespace detail
+
 } // namespace folly

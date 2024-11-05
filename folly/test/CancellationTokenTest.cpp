@@ -299,6 +299,138 @@ TEST(CancellationTokenTest, Merging1TokenIsEfficient) {
   EXPECT_TRUE(tok == CancellationToken::merge(tok));
 }
 
+// The next bunch of `MergedToken_` tests aims to exercise the distinct
+// createMove / createCopy / createCopyMove construction paths.  They're all
+// supposed to behave the same.  The coverage isn't combinatorially
+// exhaustive to avoid exhausting the reader :)
+
+struct TestCallbackExecutedOnExit {
+  bool executed_{false};
+  CancellationCallback cb_;
+  explicit TestCallbackExecutedOnExit(const CancellationToken& token)
+      : cb_{token, [this] { executed_ = true; }} {}
+  ~TestCallbackExecutedOnExit() { CHECK(executed_); }
+};
+
+TEST(CancellationTokenTest, MergedToken_LValA_LValB_cancelA) {
+  CancellationSource srcA, srcB;
+  auto tokA = srcA.getToken(), tokB = srcB.getToken();
+  auto merged = CancellationToken::merge(tokA, tokB);
+  TestCallbackExecutedOnExit testCb{merged};
+  EXPECT_TRUE(tokA.canBeCancelled());
+  EXPECT_TRUE(tokB.canBeCancelled());
+  srcA.requestCancellation();
+  EXPECT_TRUE(merged.isCancellationRequested());
+}
+
+TEST(CancellationTokenTest, MergedToken_LValA_LValB_cancelB) {
+  CancellationSource srcA, srcB;
+  auto tokA = srcA.getToken(), tokB = srcB.getToken();
+  auto merged = CancellationToken::merge(tokA, tokB);
+  TestCallbackExecutedOnExit testCb{merged};
+  srcB.requestCancellation();
+  EXPECT_TRUE(merged.isCancellationRequested());
+}
+
+TEST(CancellationTokenTest, MergedToken_LValA_RValB_cancelA) {
+  CancellationSource srcA, srcB;
+  auto tokA = srcA.getToken(), tokB = srcB.getToken();
+  auto merged = CancellationToken::merge(tokA, std::move(tokB));
+  EXPECT_TRUE(tokA.canBeCancelled());
+  EXPECT_FALSE(tokB.canBeCancelled());
+  TestCallbackExecutedOnExit testCb{merged};
+  srcA.requestCancellation();
+  EXPECT_TRUE(merged.isCancellationRequested());
+}
+
+TEST(CancellationTokenTest, MergedToken_LValA_RValB_cancelB) {
+  CancellationSource srcA, srcB;
+  auto tokA = srcA.getToken(), tokB = srcB.getToken();
+  auto merged = CancellationToken::merge(tokA, std::move(tokB));
+  TestCallbackExecutedOnExit testCb{merged};
+  srcB.requestCancellation();
+  EXPECT_TRUE(merged.isCancellationRequested());
+}
+
+TEST(CancellationTokenTest, MergedToken_RValA_RValB_cancelA) {
+  CancellationSource srcA, srcB;
+  auto tokA = srcA.getToken(), tokB = srcB.getToken();
+  auto merged = CancellationToken::merge(std::move(tokA), std::move(tokB));
+  EXPECT_FALSE(tokA.canBeCancelled());
+  EXPECT_FALSE(tokB.canBeCancelled());
+  TestCallbackExecutedOnExit testCb{merged};
+  srcA.requestCancellation();
+  EXPECT_TRUE(merged.isCancellationRequested());
+}
+
+TEST(CancellationTokenTest, MergedTokenDeduplication) {
+  CancellationSource src1, src2;
+  auto tok1 = src1.getToken();
+
+  // None of these allocate a "merging state" because there's only one
+  // nonempty token.
+  EXPECT_TRUE(CancellationToken::merge(tok1) == tok1);
+  EXPECT_TRUE(CancellationToken::merge(CancellationToken(), tok1) == tok1);
+  EXPECT_TRUE(
+      CancellationToken::merge(
+          CancellationToken(), tok1, CancellationToken()) == tok1);
+  EXPECT_TRUE(
+      CancellationToken::merge(
+          CancellationToken(), tok1, CancellationToken(), tok1) == tok1);
+
+  // A new token with the same state is still deduplicated.
+  EXPECT_TRUE(src1.getToken() == tok1);
+  EXPECT_TRUE(
+      CancellationToken::merge(
+          src1.getToken(), tok1, CancellationToken(), tok1) == tok1);
+
+  // Combining multiple distinct tokens allocates a new state
+  auto tok2 = src2.getToken();
+  auto tok12 = CancellationToken::merge(tok2, tok1, CancellationToken(), tok1);
+  EXPECT_FALSE(tok12 == tok1);
+  EXPECT_FALSE(tok12 == tok2);
+}
+
+TEST(CancellationTokenTest, MergedTokenDeduplicationNotObservable_RValA_RValA) {
+  CancellationSource src;
+  auto tok1 = src.getToken(), tok2 = src.getToken();
+  EXPECT_TRUE(tok1.canBeCancelled());
+  EXPECT_TRUE(tok2.canBeCancelled());
+  auto merged = CancellationToken::merge(std::move(tok1), std::move(tok2));
+  EXPECT_TRUE(src.getToken() == merged);
+  // Both were moved out, even though only 1 was used.
+  EXPECT_FALSE(tok1.canBeCancelled());
+  EXPECT_FALSE(tok2.canBeCancelled());
+}
+
+TEST(
+    CancellationTokenTest,
+    MergedTokenDeduplicationNotObservable_RValA_LValA_RValA) {
+  CancellationSource src;
+  auto tok1 = src.getToken(), tok2 = src.getToken(), tok3 = src.getToken();
+  auto merged =
+      CancellationToken::merge(std::move(tok1), tok2, std::move(tok3));
+  EXPECT_TRUE(src.getToken() == merged);
+  // Both r-values were moved out, even though only 1 was used.
+  EXPECT_FALSE(tok1.canBeCancelled());
+  EXPECT_FALSE(tok3.canBeCancelled());
+}
+
+// Covers the "destroy merging state" branch in `unlockAndDecrementTokenCount`
+TEST(CancellationTokenTest, MergedTokenDestroyedViaCallback) {
+  CancellationToken mergedTwice;
+  CancellationSource srcOut;
+  {
+    CancellationSource srcIn;
+    auto merged = CancellationToken::merge(srcOut.getToken(), srcIn.getToken());
+    // This second merging state has a `CancellationCallback` that keeps the
+    // first merging state alive even after its own callbacks are dead.
+    // That causes the first state to be destroyed on an atypical branch.
+    mergedTwice = CancellationToken::merge(merged, srcIn.getToken());
+  }
+  EXPECT_TRUE(mergedTwice.canBeCancelled());
+}
+
 TEST(CancellationTokenTest, TokenWithData) {
   struct Guard {
     int& counter;
