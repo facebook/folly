@@ -678,9 +678,9 @@ class FOLLY_NODISCARD TaskWithExecutor {
 /// co_await expression.
 ///
 /// More documentation on how to use coroutines is available at
-/// https://github.com/facebook/folly/blob/main/folly/experimental/coro/README.md
+/// https://github.com/facebook/folly/blob/main/folly/coro/README.md
 ///
-/// @refcode folly/docs/examples/folly/experimental/coro/Task.cpp
+/// @refcode folly/docs/examples/folly/coro/Task.cpp
 template <typename T>
 class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] Task {
  public:

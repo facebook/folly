@@ -198,9 +198,9 @@ cpp_library(
     name = "detail_barrier",
     headers = ["detail/Barrier.h"],
     exported_deps = [
-        "//folly/experimental/coro:coroutine",
-        "//folly/experimental/coro:traits",
-        "//folly/experimental/coro:with_async_stack",
+        ":coroutine",
+        ":traits",
+        ":with_async_stack",
         "//folly/tracing:async_stack",
     ],
 )
@@ -209,10 +209,10 @@ cpp_library(
     name = "detail_barrier_task",
     headers = ["detail/BarrierTask.h"],
     exported_deps = [
-        "//folly/experimental/coro:coroutine",
-        "//folly/experimental/coro:detail_barrier",
-        "//folly/experimental/coro:detail_malloc",
-        "//folly/experimental/coro:with_async_stack",
+        ":coroutine",
+        ":detail_barrier",
+        ":detail_malloc",
+        ":with_async_stack",
     ],
 )
 
@@ -220,9 +220,9 @@ cpp_library(
     name = "detail_current_async_frame",
     headers = ["detail/CurrentAsyncFrame.h"],
     exported_deps = [
+        ":coroutine",
+        ":with_async_stack",
         "//folly:executor",
-        "//folly/experimental/coro:coroutine",
-        "//folly/experimental/coro:with_async_stack",
         "//folly/tracing:async_stack",
     ],
 )
@@ -231,9 +231,9 @@ cpp_library(
     name = "detail_helpers",
     headers = ["detail/Helpers.h"],
     exported_deps = [
+        ":coroutine",
         "//folly:executor",
         "//folly:singleton_thread_local",
-        "//folly/experimental/coro:coroutine",
         "//folly/io/async:request_context",
         "//folly/tracing:async_stack",
     ],
@@ -334,11 +334,11 @@ cpp_library(
     name = "inline_task",
     headers = ["detail/InlineTask.h"],
     exported_deps = [
+        ":coroutine",
+        ":detail_malloc",
+        ":with_async_stack",
         "//folly:scope_guard",
         "//folly:try",
-        "//folly/experimental/coro:coroutine",
-        "//folly/experimental/coro:detail_malloc",
-        "//folly/experimental/coro:with_async_stack",
         "//folly/lang:assume",
         "//folly/tracing:async_stack",
     ],
