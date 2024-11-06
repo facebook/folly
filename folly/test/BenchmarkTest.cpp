@@ -42,6 +42,10 @@ void doBaseline() {
   TestClock::advance(std::chrono::nanoseconds(1));
 }
 
+void doSuspenderBaseline() {
+  TestClock::advance(std::chrono::nanoseconds(10));
+}
+
 struct BenchmarkingStateForTests : BenchmarkingState<TestClock> {
 #if FOLLY_PERF_IS_SUPPORTED
   std::function<PerfScoped(const std::vector<std::string>&)> perfSetup;
@@ -62,6 +66,13 @@ struct BenchmarkingStateTest : ::testing::Test {
         BenchmarkingState<TestClock>::getGlobalBaselineNameForTests(),
         [] {
           doBaseline();
+          return 1;
+        });
+    state.addBenchmark(
+        __FILE__,
+        BenchmarkingState<TestClock>::getGlobalSuspenderBaselineNameForTests(),
+        [] {
+          doSuspenderBaseline();
           return 1;
         });
   }
@@ -121,6 +132,7 @@ TEST_F(BenchmarkingStateTest, Suspender) {
   state.addBenchmark(__FILE__, "1ns", [&] {
     doBaseline();
     {
+      doSuspenderBaseline();
       BenchmarkSuspender<TestClock> suspender;
       TestClock::advance(std::chrono::microseconds(1));
     }
