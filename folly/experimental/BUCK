@@ -61,16 +61,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "lock_free_ring_buffer",
-    headers = [
-        "LockFreeRingBuffer.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/container:lock_free_ring_buffer",
-    ],
-)
-
-cpp_library(
     name = "singleton_relaxed_counter",
     headers = [
         "SingletonRelaxedCounter.h",
