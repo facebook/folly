@@ -504,9 +504,11 @@ class FOLLY_NODISCARD AsyncGenerator {
   friend AsyncGenerator tag_invoke(
       tag_t<co_invoke_fn>, tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
     if constexpr (RequiresCleanup) {
-      auto&& [r] = co_await co_scope_exit(
-          [](auto&& gen) { return std::move(gen).cleanup(); },
-          invoke(static_cast<F&&>(f), static_cast<A&&>(a)...));
+      auto&& [fScoped, r] = co_await co_scope_exit(
+          [](auto&&, auto&& gen) { return std::move(gen).cleanup(); },
+          static_cast<F&&>(f),
+          AsyncGenerator{});
+      r = invoke(static_cast<F&&>(fScoped), static_cast<A&&>(a)...);
       while (true) {
         co_yield co_result(co_await co_awaitTry(r.next()));
       }
