@@ -83,6 +83,7 @@ cpp_benchmark(
     headers = [],
     deps = [
         "//folly/concurrency:concurrent_hash_map",
+        "//folly/portability:gflags",
         "//folly/synchronization/test:barrier",
     ],
 )
