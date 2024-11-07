@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_
-#error This file must be included from Elf.h
-#endif
-
 namespace folly {
 namespace symbolizer {
 

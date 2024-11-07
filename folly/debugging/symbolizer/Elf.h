@@ -17,7 +17,6 @@
 // ELF file parser
 
 #pragma once
-#define FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_
 
 #include <fcntl.h>
 #include <sys/types.h>
