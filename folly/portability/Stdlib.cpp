@@ -26,7 +26,9 @@
 #include <folly/portability/SysStat.h>
 #include <folly/portability/Windows.h>
 
-extern "C" {
+namespace folly {
+namespace portability {
+namespace stdlib {
 char* mktemp(char* tn) {
   return _mktemp(tn);
 }
@@ -138,7 +140,9 @@ int unsetenv(const char* name) {
   }
   return 0;
 }
-}
+} // namespace stdlib
+} // namespace portability
+} // namespace folly
 
 #endif
 
@@ -147,7 +151,7 @@ int unsetenv(const char* name) {
 #include <string>
 #include <vector>
 
-extern "C" int clearenv() {
+int folly::portability::stdlib::clearenv() {
   std::vector<std::string> data;
   for (auto it = environ; it && *it; ++it) {
     std::string entry(*it);

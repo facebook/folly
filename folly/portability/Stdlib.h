@@ -18,6 +18,7 @@
 
 #include <cstdlib>
 
+#include <folly/CPortability.h>
 #include <folly/portability/Config.h>
 
 #if defined(__APPLE__)
@@ -39,12 +40,6 @@ extern "C" {
 #define NAME_MAX _MAX_FNAME
 #define HOST_NAME_MAX 255
 
-char* mktemp(char* tn);
-char* mkdtemp(char* tn);
-int mkstemp(char* tn);
-char* realpath(const char* path, char* resolved_path);
-int setenv(const char* name, const char* value, int overwrite);
-int unsetenv(const char* name);
 #elif defined(__APPLE__)
 // environ doesn't work well with dylibs, so use _NSGetEnviron instead.
 #if !__has_include(<crt_externs.h>)
@@ -57,8 +52,30 @@ char*** _NSGetEnviron(void);
 // Needed to resolve linkage
 extern char** environ;
 #endif
+}
 
+namespace folly {
+namespace portability {
+namespace stdlib {
 #if !__linux__ && !FOLLY_MOBILE
 int clearenv();
 #endif
-}
+
+#ifdef _WIN32
+char* mktemp(char* tn);
+char* mkdtemp(char* tn);
+int mkstemp(char* tn);
+char* realpath(const char* path, char* resolved_path);
+int setenv(const char* name, const char* value, int overwrite);
+int unsetenv(const char* name);
+#endif
+} // namespace stdlib
+} // namespace portability
+} // namespace folly
+
+#if defined(_WIN32) || (!__linux__ && !FOLLY_MOBILE)
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
+/* using override */ using namespace folly::portability::stdlib;
+FOLLY_POP_WARNING
+#endif

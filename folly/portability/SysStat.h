@@ -18,6 +18,8 @@
 
 #include <sys/stat.h>
 
+#include <folly/CPortability.h>
+
 #ifdef _WIN32
 #include <folly/portability/SysTypes.h>
 
@@ -42,11 +44,20 @@
 // This isn't defined anywhere, so give a sane value.
 #define MAXSYMLINKS 255
 
-extern "C" {
+namespace folly {
+namespace portability {
+namespace sysstat {
 int chmod(char const* fn, int am);
 int fchmod(int fd, mode_t mode);
 int lstat(const char* path, struct stat* st);
 int mkdir(const char* fn, int mode);
 int umask(int md);
-}
+} // namespace sysstat
+} // namespace portability
+} // namespace folly
+
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
+/* using override */ using namespace folly::portability::sysstat;
+FOLLY_POP_WARNING
 #endif

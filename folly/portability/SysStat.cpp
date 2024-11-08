@@ -19,7 +19,9 @@
 #ifdef _WIN32
 #include <folly/portability/Windows.h>
 
-extern "C" {
+namespace folly {
+namespace portability {
+namespace sysstat {
 int chmod(char const* fn, int am) {
   return _chmod(fn, am);
 }
@@ -62,5 +64,7 @@ int mkdir(const char* fn, int /* mode */) {
 int umask(int md) {
   return _umask(md);
 }
-}
+} // namespace sysstat
+} // namespace portability
+} // namespace folly
 #endif

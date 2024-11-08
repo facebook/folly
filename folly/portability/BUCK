@@ -295,6 +295,7 @@ cpp_library(
     ],
     exported_deps = [
         ":config",
+        "//folly:c_portability",
     ],
 )
 
@@ -366,6 +367,7 @@ cpp_library(
     ],
     exported_deps = [
         ":sys_types",
+        "//folly:c_portability",
     ],
 )
 

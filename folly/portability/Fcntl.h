@@ -65,3 +65,13 @@ FOLLY_POP_WARNING
 #else
 #define FOLLY_PORT_WIN32_OPEN_BINARY 0
 #endif
+
+namespace folly {
+namespace fileops {
+#ifdef _WIN32
+using portability::fcntl::open;
+#else
+using ::open;
+#endif
+} // namespace fileops
+} // namespace folly

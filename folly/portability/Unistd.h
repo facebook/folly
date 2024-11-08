@@ -109,3 +109,19 @@ FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
 /* using override */ using namespace folly::portability::unistd;
 FOLLY_POP_WARNING
 #endif
+
+namespace folly {
+namespace fileops {
+#ifdef _WIN32
+using folly::portability::unistd::close;
+using folly::portability::unistd::pipe;
+using folly::portability::unistd::read;
+using folly::portability::unistd::write;
+#else
+using ::close;
+using ::pipe;
+using ::read;
+using ::write;
+#endif
+} // namespace fileops
+} // namespace folly
