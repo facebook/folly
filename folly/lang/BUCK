@@ -138,6 +138,7 @@ cpp_library(
         ":new",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         ":assume",
         ":safe_assert",
         ":thunk",

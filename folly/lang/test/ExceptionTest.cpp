@@ -136,6 +136,22 @@ class MyException : public std::exception {
   char const* what() const noexcept override { return what_; }
 };
 
+struct MyFmtFormatCStrException : std::exception {
+  std::runtime_error inner;
+  explicit MyFmtFormatCStrException(char const* const what) noexcept
+      : inner{what} {}
+  char const* what() const noexcept override { return inner.what(); }
+};
+
+struct MyFmtFormatStringException : std::exception {
+  std::runtime_error inner;
+  explicit MyFmtFormatStringException(std::string&& what) : inner{what} {}
+  explicit MyFmtFormatStringException(char const*) : inner{""} {
+    ADD_FAILURE();
+  }
+  char const* what() const noexcept override { return inner.what(); }
+};
+
 class ExceptionTest : public testing::Test {};
 
 TEST_F(ExceptionTest, throw_exception_direct) {
@@ -156,6 +172,26 @@ TEST_F(ExceptionTest, throw_exception_variadic) {
   }
 }
 
+TEST_F(ExceptionTest, throw_exception_fmt_format_c_str) {
+  try {
+    folly::throw_exception_fmt_format<MyFmtFormatCStrException>(
+        "{} {}", "hello", "world");
+    ADD_FAILURE();
+  } catch (MyFmtFormatCStrException const& ex) {
+    EXPECT_STREQ("hello world", ex.what());
+  }
+}
+
+TEST_F(ExceptionTest, throw_exception_fmt_format_string_view) {
+  try {
+    folly::throw_exception_fmt_format<MyFmtFormatStringException>(
+        "{} {}", "hello", "world");
+    ADD_FAILURE();
+  } catch (MyFmtFormatStringException const& ex) {
+    EXPECT_STREQ("hello world", ex.what());
+  }
+}
+
 TEST_F(ExceptionTest, terminate_with_direct) {
   EXPECT_DEATH(
       folly::terminate_with<MyException>("hello world"),
@@ -166,6 +202,20 @@ TEST_F(ExceptionTest, terminate_with_variadic) {
   EXPECT_DEATH(
       folly::terminate_with<MyException>("hello world", 6),
       message_for_terminate_with<MyException>("world"));
+}
+
+TEST_F(ExceptionTest, terminate_with_fmt_format_c_str) {
+  EXPECT_DEATH(
+      folly::terminate_with_fmt_format<MyFmtFormatCStrException>(
+          "{} {}", "hello", "world"),
+      message_for_terminate_with<MyFmtFormatCStrException>("hello world"));
+}
+
+TEST_F(ExceptionTest, terminate_with_fmt_format_string_view) {
+  EXPECT_DEATH(
+      folly::terminate_with_fmt_format<MyFmtFormatStringException>(
+          "{} {}", "hello", "world"),
+      message_for_terminate_with<MyFmtFormatStringException>("hello world"));
 }
 
 TEST_F(ExceptionTest, invoke_cold) {
