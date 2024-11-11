@@ -163,12 +163,24 @@ terminate_with_fmt_format_(Str str, Args&&... args) noexcept {
   }
 }
 
+#if FMT_VERSION >= 80000
+
+template <typename... Args>
+using fmt_format_string =
+    fmt::format_string<detail::throw_exception_arg_fmt_t<Args&&>...>;
+
+#else
+
+template <typename...>
+using fmt_format_string = fmt::string_view;
+
+#endif
+
 } // namespace detail
 
 template <typename Ex, typename... Args>
 [[noreturn]] FOLLY_ERASE void throw_exception_fmt_format(
-    fmt::format_string<detail::throw_exception_arg_fmt_t<Args&&>...> str,
-    Args&&... args) {
+    detail::fmt_format_string<Args...> str, Args&&... args) {
   detail::throw_exception_fmt_format_< //
       Ex,
       detail::throw_exception_arg_t<Args&&>...>(
@@ -177,8 +189,7 @@ template <typename Ex, typename... Args>
 
 template <typename Ex, typename... Args>
 [[noreturn]] FOLLY_ERASE void terminate_with_fmt_format(
-    fmt::format_string<detail::throw_exception_arg_fmt_t<Args&&>...> str,
-    Args&&... args) {
+    detail::fmt_format_string<Args...> str, Args&&... args) {
   detail::terminate_with_fmt_format_< //
       Ex,
       detail::throw_exception_arg_t<Args&&>...>(
