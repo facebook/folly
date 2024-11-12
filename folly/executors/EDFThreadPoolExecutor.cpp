@@ -38,7 +38,7 @@
 
 FOLLY_GFLAGS_DEFINE_bool(
     folly_edfthreadpoolexecutor_use_throttled_lifo_sem,
-    false,
+    true,
     "EDFThreadPoolExecutor will use ThrottledLifoSem by default");
 
 namespace folly {

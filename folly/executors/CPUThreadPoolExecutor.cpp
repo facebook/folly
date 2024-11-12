@@ -34,7 +34,7 @@ FOLLY_GFLAGS_DEFINE_bool(
 
 FOLLY_GFLAGS_DEFINE_bool(
     folly_cputhreadpoolexecutor_use_throttled_lifo_sem,
-    false,
+    true,
     "CPUThreadPoolExecutor will use ThrottledLifoSem by default");
 
 namespace folly {
