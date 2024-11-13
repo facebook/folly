@@ -1017,4 +1017,17 @@ TEST(Synchronized, ConstexprConstructor) {
   static folly::Synchronized<TestStruct> ts3{std::in_place, 1, 2};
 }
 
+TEST(Synchronized, TimeoutNull) {
+  folly::Synchronized<int> s(123);
+  auto locked = s.wlock();
+  ASSERT_TRUE(locked);
+  EXPECT_EQ(*locked, 123);
+
+  auto failedLock = s.wlock(std::chrono::milliseconds(1));
+  ASSERT_FALSE(failedLock);
+  ASSERT_TRUE(failedLock.isNull());
+
+  ASSERT_EQ(failedLock.operator->(), nullptr);
+}
+
 } // namespace folly

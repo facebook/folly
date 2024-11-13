@@ -1320,7 +1320,11 @@ class LockedPtr {
   LockedPtr(
       SynchronizedType* parent,
       const std::chrono::duration<Rep, Period>& timeout)
-      : lock_{parent ? LockType{parent->mutex_, timeout} : LockType{}} {}
+      : lock_{parent ? LockType{parent->mutex_, timeout} : LockType{}} {
+    if (isNull()) {
+      lock_ = {};
+    }
+  }
 
   /**
    * Move constructor.
