@@ -64,7 +64,7 @@ cpp_library(
     ],
     arch_preprocessor_flags = {
         "aarch64": [
-            "-march=armv8-a+crypto+crc+sha3",
+            "-march=armv8.2-a+crypto+crc+sha3",
         ],
     },
     deps = [

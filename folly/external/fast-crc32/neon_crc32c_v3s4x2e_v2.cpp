@@ -76,7 +76,7 @@ CRC_AINLINE uint64x2_t crc_shift(uint32_t crc, size_t nbytes) {
   return clmul_scalar(crc, xnmodp(nbytes * 8 - 33));
 }
 
-FOLLY_TARGET_ATTRIBUTE("crc")
+FOLLY_TARGET_ATTRIBUTE("+crc")
 CRC_EXPORT bool has_neon_crc32c_v3s4x2e_v2() {
   static ElfHwCaps caps;
 
