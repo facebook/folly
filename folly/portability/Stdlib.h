@@ -57,7 +57,7 @@ extern char** environ;
 namespace folly {
 namespace portability {
 namespace stdlib {
-#if !__linux__ && !FOLLY_MOBILE
+#if !__linux__ && !__FreeBSD__ && !FOLLY_MOBILE
 int clearenv();
 #endif
 
