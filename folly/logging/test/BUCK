@@ -139,6 +139,7 @@ cpp_unittest(
         "//folly/logging:logging",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/portability:unistd",
         "//folly/testing:test_util",
     ],
 )
