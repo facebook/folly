@@ -168,12 +168,12 @@ TEST(RecordIOTest, ExtraMagic) {
   }
   uint8_t buf[recordio_helpers::headerSize() + 5];
   EXPECT_EQ(0, lseek(file.fd(), 0, SEEK_SET));
-  EXPECT_EQ(sizeof(buf), read(file.fd(), buf, sizeof(buf)));
+  EXPECT_EQ(sizeof(buf), fileops::read(file.fd(), buf, sizeof(buf)));
   // Append an extra magic
   const uint32_t magic = recordio_helpers::recordio_detail::Header::kMagic;
-  EXPECT_EQ(sizeof(magic), write(file.fd(), &magic, sizeof(magic)));
+  EXPECT_EQ(sizeof(magic), fileops::write(file.fd(), &magic, sizeof(magic)));
   // and an extra record
-  EXPECT_EQ(sizeof(buf), write(file.fd(), buf, sizeof(buf)));
+  EXPECT_EQ(sizeof(buf), fileops::write(file.fd(), buf, sizeof(buf)));
   {
     RecordIOReader reader(File(file.fd()));
     auto it = reader.begin();

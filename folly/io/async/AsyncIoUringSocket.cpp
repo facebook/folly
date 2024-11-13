@@ -1647,7 +1647,7 @@ void AsyncIoUringSocket::closeNow() {
   state_ = State::Closed;
   if (!evb_) {
     // not attached after detach
-    ::close(fd_.toFd());
+    fileops::close(fd_.toFd());
     // the fd can be reused from this point
     takeFd();
     return;
@@ -1801,7 +1801,7 @@ void AsyncIoUringSocket::setFd(NetworkSocket ns) {
     registerFd();
   } catch (std::exception const& e) {
     LOG(ERROR) << "unable to setFd " << ns.toFd() << " : " << e.what();
-    ::close(ns.toFd());
+    fileops::close(ns.toFd());
     throw;
   }
 }

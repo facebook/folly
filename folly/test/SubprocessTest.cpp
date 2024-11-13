@@ -59,7 +59,7 @@ bool waitForAnyOutput(Subprocess& proc) {
   char buffer;
   ssize_t len;
   do {
-    len = ::read(proc.stdoutFd(), &buffer, 1);
+    len = fileops::read(proc.stdoutFd(), &buffer, 1);
   } while (len == -1 && errno == EINTR);
   LOG(INFO) << "Read " << buffer;
   return len == 1;
@@ -713,7 +713,7 @@ bool readToString(int fd, std::string& buf, size_t maxSize) {
 
   ssize_t n = -1;
   while (remaining) {
-    n = ::read(fd, dest, remaining);
+    n = fileops::read(fd, dest, remaining);
     if (n == -1) {
       if (errno == EINTR) {
         continue;
@@ -872,8 +872,8 @@ TEST(CommunicateSubprocessTest, RedirectStdioToDevNull) {
 TEST(CloseOtherDescriptorsSubprocessTest, ClosesFileDescriptors) {
   // Open another filedescriptor and check to make sure that it is not opened in
   // child process
-  int fd = ::open("/", O_RDONLY);
-  auto guard = makeGuard([fd] { ::close(fd); });
+  int fd = fileops::open("/", O_RDONLY);
+  auto guard = makeGuard([fd] { fileops::close(fd); });
   auto options = Subprocess::Options().closeOtherFds().pipeStdout();
   Subprocess proc(
       std::vector<std::string>{"/bin/ls", "/proc/self/fd"}, options);

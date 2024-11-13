@@ -535,7 +535,7 @@ TEST_P(AsyncIoUringSocketTest, Detach) {
     memset(buff, 0, sizeof(buff));
     int ret;
     do {
-      ret = read(res.first.toFd(), &buff, sizeof(buff));
+      ret = fileops::read(res.first.toFd(), &buff, sizeof(buff));
     } while (ret == -1 && errno == EINTR);
     ASSERT_EQ(5, ret);
     EXPECT_EQ("hello", std::string(buff));

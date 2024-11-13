@@ -95,7 +95,7 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
 
     if (fd_ > 0) {
       unregisterHandler();
-      ::close(fd_);
+      fileops::close(fd_);
       fd_ = -1;
     }
   }
@@ -115,7 +115,7 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
   ssize_t write(uint64_t val) {
     uint64_t data = val;
 
-    return ::write(fd_, &data, sizeof(data));
+    return fileops::write(fd_, &data, sizeof(data));
   }
 
   // from folly::EventHandler
@@ -125,7 +125,7 @@ class EventFD : public EventHandler, public folly::EventReadCallback {
         sReadTS0 = sNotifyTS = std::chrono::steady_clock::now();
       }
       uint64_t data = 0;
-      auto ret = ::read(fd_, &data, sizeof(data));
+      auto ret = fileops::read(fd_, &data, sizeof(data));
 
       if (FLAGS_run_tests) {
         sReadTS1 = std::chrono::steady_clock::now();
@@ -325,8 +325,8 @@ class SocketPair : public EventHandler, public folly::EventReadCallback {
 
     if (readFd_ > 0) {
       changeHandlerFD(NetworkSocket());
-      ::close(readFd_);
-      ::close(writeFd_);
+      fileops::close(readFd_);
+      fileops::close(writeFd_);
     }
   }
 
@@ -355,7 +355,7 @@ class SocketPair : public EventHandler, public folly::EventReadCallback {
   ssize_t write(uint8_t val) {
     uint8_t data = val;
 
-    return ::write(writeFd_, &data, sizeof(data));
+    return fileops::write(writeFd_, &data, sizeof(data));
   }
 
   // from folly::EventHandler
@@ -364,7 +364,7 @@ class SocketPair : public EventHandler, public folly::EventReadCallback {
       sReadTS0 = sNotifyTS = std::chrono::steady_clock::now();
     }
     uint8_t data = 0;
-    auto ret = ::read(readFd_, &data, sizeof(data));
+    auto ret = fileops::read(readFd_, &data, sizeof(data));
     if (FLAGS_run_tests) {
       sReadTS1 = std::chrono::steady_clock::now();
       printTS();
@@ -450,7 +450,7 @@ class TimerFD : public EventHandler, public folly::EventReadCallback {
 
     if (fd_ > 0) {
       changeHandlerFD(NetworkSocket());
-      ::close(fd_);
+      fileops::close(fd_);
       fd_ = -1;
     }
   }
@@ -479,7 +479,7 @@ class TimerFD : public EventHandler, public folly::EventReadCallback {
       sReadTS0 = sNotifyTS = std::chrono::steady_clock::now();
     }
     uint64_t data = 0;
-    auto ret = ::read(fd_, &data, sizeof(data));
+    auto ret = fileops::read(fd_, &data, sizeof(data));
     if (FLAGS_run_tests) {
       sReadTS1 = std::chrono::steady_clock::now();
       printTS();

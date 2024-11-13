@@ -75,13 +75,13 @@ void IoUringEvent::handlerReady(uint16_t events) noexcept {
     lastWasResignalled_ = true;
     if (edgeTriggered_) {
       uint64_t val = 1;
-      int ret = ::write(eventFd_->fd(), &val, sizeof(val));
+      int ret = fileops::write(eventFd_->fd(), &val, sizeof(val));
       DCHECK(ret == 8);
     }
   } else if (eventFd_) {
     if (!edgeTriggered_) {
       uint64_t val;
-      ::read(eventFd_->fd(), &val, sizeof(val));
+      fileops::read(eventFd_->fd(), &val, sizeof(val));
     }
     backend_.loopPoll();
 
@@ -89,7 +89,7 @@ void IoUringEvent::handlerReady(uint16_t events) noexcept {
     lastWasResignalled_ = io_uring_cq_ready(backend_.ioRingPtr()) > 0;
     if (lastWasResignalled_) {
       uint64_t val = 1;
-      int ret = ::write(eventFd_->fd(), &val, sizeof(val));
+      int ret = fileops::write(eventFd_->fd(), &val, sizeof(val));
       DCHECK(ret == 8);
     }
   } else {

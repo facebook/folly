@@ -35,7 +35,7 @@ class EventFD : public EventHandler {
 
     if (fd_ > 0) {
       changeHandlerFD(NetworkSocket());
-      ::close(fd_);
+      fileops::close(fd_);
       fd_ = -1;
     }
   }

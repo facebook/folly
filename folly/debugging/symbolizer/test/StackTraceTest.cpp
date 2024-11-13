@@ -118,7 +118,7 @@ ssize_t read_all(int fd, uint8_t* buffer, size_t size) {
   uint8_t* pos = buffer;
   ssize_t bytes_read;
   do {
-    bytes_read = read(fd, pos, size);
+    bytes_read = fileops::read(fd, pos, size);
     if (bytes_read < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
         continue;

@@ -64,7 +64,8 @@ TemporaryFile::TemporaryFile(
       closeOnDestruction_(closeOnDestruction),
       fd_(-1),
       path_(generateUniquePath(std::move(dir), namePrefix)) {
-  fd_ = open(path_.string().c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
+  fd_ = folly::fileops::open(
+      path_.string().c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
   checkUnixError(fd_, "open failed");
 
   if (scope_ == Scope::UNLINK_IMMEDIATELY) {
@@ -79,7 +80,7 @@ TemporaryFile::TemporaryFile(
 }
 
 void TemporaryFile::close() {
-  if (::close(fd_) == -1) {
+  if (fileops::close(fd_) == -1) {
     PLOG(ERROR) << "close failed";
   }
   fd_ = -1;
@@ -93,7 +94,7 @@ const fs::path& TemporaryFile::path() const {
 
 void TemporaryFile::reset() {
   if (fd_ != -1 && closeOnDestruction_) {
-    if (::close(fd_) == -1) {
+    if (fileops::close(fd_) == -1) {
       PLOG(ERROR) << "close failed (fd = " << fd_ << "): ";
     }
   }
@@ -188,10 +189,11 @@ CaptureFD::CaptureFD(int fd, ChunkCob chunk_cob)
   oldFDCopy_ = dup(fd_);
   PCHECK(oldFDCopy_ != -1) << "Could not copy FD " << fd_;
 
-  int file_fd = open(file_.path().string().c_str(), O_WRONLY | O_CREAT, 0600);
+  int file_fd = folly::fileops::open(
+      file_.path().string().c_str(), O_WRONLY | O_CREAT, 0600);
   PCHECK(dup2(file_fd, fd_) != -1)
       << "Could not replace FD " << fd_ << " with " << file_fd;
-  PCHECK(close(file_fd) != -1) << "Could not close " << file_fd;
+  PCHECK(fileops::close(file_fd) != -1) << "Could not close " << file_fd;
 }
 
 void CaptureFD::release() {
@@ -199,7 +201,8 @@ void CaptureFD::release() {
     readIncremental(); // Feed chunkCob_
     PCHECK(dup2(oldFDCopy_, fd_) != -1)
         << "Could not restore old FD " << oldFDCopy_ << " into " << fd_;
-    PCHECK(close(oldFDCopy_) != -1) << "Could not close " << oldFDCopy_;
+    PCHECK(fileops::close(oldFDCopy_) != -1)
+        << "Could not close " << oldFDCopy_;
     oldFDCopy_ = fd_; // Make this call idempotent
   }
 }

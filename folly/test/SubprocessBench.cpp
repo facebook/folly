@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Create 512 descriptors
-  int rootfd = ::open("/", O_RDONLY);
+  int rootfd = fileops::open("/", O_RDONLY);
   assert(rootfd != -1);
   std::vector<folly::File> descriptors;
   const bool kTakeOwnership = true;

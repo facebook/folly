@@ -44,7 +44,7 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
   }
 #endif
   if (eventfd_ == -1) {
-    if (pipe(pipeFds_)) {
+    if (fileops::pipe(pipeFds_)) {
       folly::throwSystemError(
           errno, "Failed to create pipe for AtomicNotificationQueue");
     }
@@ -63,8 +63,8 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
             "endpoint into non-blocking mode");
       }
     } catch (...) {
-      ::close(pipeFds_[0]);
-      ::close(pipeFds_[1]);
+      fileops::close(pipeFds_[0]);
+      fileops::close(pipeFds_[1]);
       throw;
     }
   }
@@ -95,15 +95,15 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
         (successfulArmCount_ - consumerDisarmedCount_) + writesLocal_);
   }
   if (eventfd_ >= 0) {
-    ::close(eventfd_);
+    fileops::close(eventfd_);
     eventfd_ = -1;
   }
   if (pipeFds_[0] >= 0) {
-    ::close(pipeFds_[0]);
+    fileops::close(pipeFds_[0]);
     pipeFds_[0] = -1;
   }
   if (pipeFds_[1] >= 0) {
-    ::close(pipeFds_[1]);
+    fileops::close(pipeFds_[1]);
     pipeFds_[1] = -1;
   }
 }
@@ -199,11 +199,11 @@ void EventBaseAtomicNotificationQueue<Task, Consumer>::notifyFd() {
       // eventfd(2) dictates that we must write a 64-bit integer
       uint64_t signal = 1;
       bytes_expected = sizeof(signal);
-      bytes_written = ::write(eventfd_, &signal, bytes_expected);
+      bytes_written = fileops::write(eventfd_, &signal, bytes_expected);
     } else {
       uint8_t signal = 1;
       bytes_expected = sizeof(signal);
-      bytes_written = ::write(pipeFds_[1], &signal, bytes_expected);
+      bytes_written = fileops::write(pipeFds_[1], &signal, bytes_expected);
     }
   } while (bytes_written == -1 && errno == EINTR);
 

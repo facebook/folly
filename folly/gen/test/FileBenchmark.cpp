@@ -31,12 +31,12 @@ BENCHMARK(ByLine_Pipes, iters) {
   int wfd;
   BENCHMARK_SUSPEND {
     int p[2];
-    CHECK_ERR(::pipe(p));
+    CHECK_ERR(folly::fileops::pipe(p));
     rfd = p[0];
     wfd = p[1];
     thread = std::thread([wfd, iters] {
       char x = 'x';
-      PCHECK(::write(wfd, &x, 1) == 1); // signal startup
+      PCHECK(folly::fileops::write(wfd, &x, 1) == 1); // signal startup
       FILE* f = fdopen(wfd, "w");
       PCHECK(f);
       for (size_t i = 1; i <= iters; ++i) {
@@ -45,7 +45,7 @@ BENCHMARK(ByLine_Pipes, iters) {
       fclose(f);
     });
     char buf;
-    PCHECK(::read(rfd, &buf, 1) == 1); // wait for startup
+    PCHECK(folly::fileops::read(rfd, &buf, 1) == 1); // wait for startup
   }
 
   CHECK_ERR(rfd);
@@ -53,7 +53,7 @@ BENCHMARK(ByLine_Pipes, iters) {
   folly::doNotOptimizeAway(s);
 
   BENCHMARK_SUSPEND {
-    ::close(rfd);
+    folly::fileops::close(rfd);
     CHECK_EQ(s, int64_t(iters) * (iters + 1) / 2);
     thread.join();
   }

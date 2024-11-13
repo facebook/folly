@@ -310,12 +310,12 @@ void Subprocess::spawn(
 #if FOLLY_HAVE_PIPE2
   checkUnixError(::pipe2(errFds, O_CLOEXEC), "pipe2");
 #else
-  checkUnixError(::pipe(errFds), "pipe");
+  checkUnixError(fileops::pipe(errFds), "pipe");
 #endif
   SCOPE_EXIT {
-    CHECK_ERR(::close(errFds[0]));
+    CHECK_ERR(fileops::close(errFds[0]));
     if (errFds[1] >= 0) {
-      CHECK_ERR(::close(errFds[1]));
+      CHECK_ERR(fileops::close(errFds[1]));
     }
   };
 
@@ -343,7 +343,7 @@ void Subprocess::spawn(
   // we have no way of cleaning up the child.
 
   // Close writable side of the errFd pipe in the parent process
-  CHECK_ERR(::close(errFds[1]));
+  CHECK_ERR(fileops::close(errFds[1]));
   errFds[1] = -1;
 
   // Read from the errFd pipe, to tell if the child ran into any errors before
@@ -378,7 +378,7 @@ void Subprocess::spawnInternal(
   SCOPE_EXIT {
     // These are only pipes, closing them shouldn't fail
     for (int cfd : childFds) {
-      CHECK_ERR(::close(cfd));
+      CHECK_ERR(fileops::close(cfd));
     }
   };
 
@@ -396,7 +396,7 @@ void Subprocess::spawnInternal(
       r = ::pipe2(fds, O_CLOEXEC);
       checkUnixError(r, "pipe2");
 #else
-      r = ::pipe(fds);
+      r = fileops::pipe(fds);
       checkUnixError(r, "pipe");
       r = fcntl(fds[0], F_SETFD, FD_CLOEXEC);
       checkUnixError(r, "set FD_CLOEXEC");
@@ -557,7 +557,7 @@ FOLLY_POP_WARNING
 // handler.
 void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
 #if defined(__linux__)
-  int dirfd = open("/proc/self/fd", O_RDONLY);
+  int dirfd = fileops::open("/proc/self/fd", O_RDONLY);
   if (dirfd != -1) {
     char buffer[32768];
     int res;
@@ -593,11 +593,11 @@ void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
           continue;
         }
         if ((fd != dirfd) && (fdActions.count(fd) == 0)) {
-          ::close(fd);
+          fileops::close(fd);
         }
       }
     }
-    ::close(dirfd);
+    fileops::close(dirfd);
     return;
   }
 #endif
@@ -605,7 +605,7 @@ void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
   // all possible open file descriptors.
   for (auto fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
     if (fdActions.count(fd) == 0) {
-      ::close(fd);
+      fileops::close(fd);
     }
   }
 }
@@ -653,17 +653,17 @@ int Subprocess::prepareChild(
     if (p.second == DEV_NULL) {
       // folly/portability/Fcntl provides an impl of open that will
       // map this to NUL on Windows.
-      auto devNull = ::open("/dev/null", O_RDWR | O_CLOEXEC);
+      auto devNull = fileops::open("/dev/null", O_RDWR | O_CLOEXEC);
       if (devNull == -1) {
         return errno;
       }
       // note: dup2 will not set CLOEXEC on the destination
       if (::dup2(devNull, p.first) == -1) {
         // explicit close on error to avoid leaking fds
-        ::close(devNull);
+        fileops::close(devNull);
         return errno;
       }
-      ::close(devNull);
+      fileops::close(devNull);
     } else if (p.second != p.first) {
       if (::dup2(p.second, p.first) == -1) {
         return errno;

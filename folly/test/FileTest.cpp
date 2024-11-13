@@ -66,7 +66,7 @@ TEST(File, Simple) {
   {
     File f(tmpf.string());
     EXPECT_NE(-1, f.fd());
-    EXPECT_EQ(1, ::read(f.fd(), &buf, 1));
+    EXPECT_EQ(1, fileops::read(f.fd(), &buf, 1));
     f.close();
     EXPECT_EQ(-1, f.fd());
   }
@@ -80,7 +80,7 @@ TEST(File, SimpleStringPiece) {
   char buf = 'x';
   File f(StringPiece(tmpf.string()));
   EXPECT_NE(-1, f.fd());
-  EXPECT_EQ(1, ::read(f.fd(), &buf, 1));
+  EXPECT_EQ(1, fileops::read(f.fd(), &buf, 1));
   f.close();
   EXPECT_EQ(-1, f.fd());
 }
@@ -93,11 +93,11 @@ TEST(File, OwnsFd) {
 
   char buf = 'x';
   int p[2];
-  expectOK(::pipe(p));
+  expectOK(fileops::pipe(p));
   int flags = ::fcntl(p[0], F_GETFL);
   expectOK(flags);
   expectOK(::fcntl(p[0], F_SETFL, flags | O_NONBLOCK));
-  expectWouldBlock(::read(p[0], &buf, 1));
+  expectWouldBlock(fileops::read(p[0], &buf, 1));
   {
     File f(p[1]);
     EXPECT_EQ(p[1], f.fd());
@@ -110,15 +110,15 @@ TEST(File, OwnsFd) {
     EXPECT_EQ(-1, f.fd());
     EXPECT_EQ(p[1], f1.fd());
   }
-  expectWouldBlock(::read(p[0], &buf, 1)); // not closed
+  expectWouldBlock(fileops::read(p[0], &buf, 1)); // not closed
   {
     File f(p[1], true);
     EXPECT_EQ(p[1], f.fd());
   }
-  ssize_t r = ::read(p[0], &buf, 1); // eof
+  ssize_t r = fileops::read(p[0], &buf, 1); // eof
   expectOK(r);
   EXPECT_EQ(0, r);
-  ::close(p[0]);
+  fileops::close(p[0]);
 }
 
 TEST(File, Release) {
@@ -193,7 +193,7 @@ TEST(File, HelperCtor) {
   File::makeFile(StringPiece(tmpf.string())).then([](File&& f) {
     char buf = 'x';
     EXPECT_NE(-1, f.fd());
-    EXPECT_EQ(1, ::read(f.fd(), &buf, 1));
+    EXPECT_EQ(1, fileops::read(f.fd(), &buf, 1));
     f.close();
     EXPECT_EQ(-1, f.fd());
   });

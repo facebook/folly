@@ -43,9 +43,10 @@ static folly::test::TemporaryFile& getTempFile(size_t num) {
 template <typename OP>
 struct BenchmarkData {
   BenchmarkData(size_t num, size_t& c) : numEntries(num), completed(c) {
-    fd = ::open(getTempFile(num).path().c_str(), O_DIRECT | O_RDONLY);
+    fd = folly::fileops::open(
+        getTempFile(num).path().c_str(), O_DIRECT | O_RDONLY);
     if (fd == -1)
-      fd = ::open(getTempFile(num).path().c_str(), O_RDONLY);
+      fd = folly::fileops::open(getTempFile(num).path().c_str(), O_RDONLY);
     CHECK_GE(fd, 0);
     ops.reserve(numEntries);
     bufs.reserve(numEntries);
@@ -56,7 +57,7 @@ struct BenchmarkData {
     }
   }
 
-  ~BenchmarkData() { ::close(fd); }
+  ~BenchmarkData() { folly::fileops::close(fd); }
 
   void reset(bool useRegisteredBuffers) {
     ops.clear();

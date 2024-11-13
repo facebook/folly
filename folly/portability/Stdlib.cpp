@@ -64,7 +64,7 @@ int mkstemp(char* tn) {
     if (ptr == nullptr || *ptr == '\0') {
       return -1;
     }
-    ret = open(ptr, O_RDWR | O_EXCL | O_CREAT, S_IRUSR | S_IWUSR);
+    ret = fileops::open(ptr, O_RDWR | O_EXCL | O_CREAT, S_IRUSR | S_IWUSR);
     if (ret == -1 && errno != EEXIST) {
       return -1;
     }

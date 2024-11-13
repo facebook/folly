@@ -210,7 +210,7 @@ void ElfFile::reset() noexcept {
   }
 
   if (fd_ != -1) {
-    close(fd_);
+    fileops::close(fd_);
     fd_ = -1;
   }
 
@@ -223,7 +223,8 @@ ElfFile::OpenResult ElfFile::init() noexcept {
   }
 
   std::array<char, 5> elfMagBuf = {{0, 0, 0, 0, 0}};
-  if (::lseek(fd_, 0, SEEK_SET) != 0 || ::read(fd_, elfMagBuf.data(), 4) != 4) {
+  if (::lseek(fd_, 0, SEEK_SET) != 0 ||
+      fileops::read(fd_, elfMagBuf.data(), 4) != 4) {
     return {kInvalidElfFile, "unable to read ELF file for magic number"};
   }
   if (std::strncmp(elfMagBuf.data(), ELFMAG, sizeof(ELFMAG)) != 0) {

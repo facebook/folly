@@ -1987,7 +1987,7 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
 }
 
 static void makeNonBlockingPipe(int pipefds[2]) {
-  if (pipe(pipefds) != 0) {
+  if (fileops::pipe(pipefds) != 0) {
     throw std::runtime_error("Cannot create pipe");
   }
   if (::fcntl(pipefds[0], F_SETFL, O_NONBLOCK) != 0) {

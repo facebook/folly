@@ -62,7 +62,7 @@ TEST(IndexedMemPool, noStarvation) {
 
   for (auto pass = 0; pass < 10; ++pass) {
     int fd[2];
-    EXPECT_EQ(pipe(fd), 0);
+    EXPECT_EQ(fileops::pipe(fd), 0);
 
     // makes sure we wait for available nodes, rather than fail allocIndex
     DeterministicSchedule::Sem allocSem(poolSize);
@@ -88,7 +88,7 @@ TEST(IndexedMemPool, noStarvation) {
       for (auto i = 0; i < count; ++i) {
         uint32_t idx;
         Sched::wait(&readSem);
-        EXPECT_EQ(read(fd[0], &idx, sizeof(idx)), sizeof(idx));
+        EXPECT_EQ(fileops::read(fd[0], &idx, sizeof(idx)), sizeof(idx));
         EXPECT_NE(idx, 0);
         EXPECT_GE(idx, 1u);
         EXPECT_LE(
@@ -101,8 +101,8 @@ TEST(IndexedMemPool, noStarvation) {
 
     Sched::join(produce);
     Sched::join(consume);
-    close(fd[0]);
-    close(fd[1]);
+    fileops::close(fd[0]);
+    fileops::close(fd[1]);
   }
 }
 

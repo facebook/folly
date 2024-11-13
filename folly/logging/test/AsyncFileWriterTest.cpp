@@ -134,12 +134,12 @@ TEST(AsyncFileWriter, ioError) {
 
   // Create an AsyncFileWriter that refers to a pipe whose read end is closed
   std::array<int, 2> fds;
-  auto rc = pipe(fds.data());
+  auto rc = fileops::pipe(fds.data());
   folly::checkUnixError(rc, "failed to create pipe");
 #ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
 #endif
-  ::close(fds[0]);
+  fileops::close(fds[0]);
 
   // Log a bunch of messages to the writer
   size_t numMessages = 100;
@@ -220,7 +220,7 @@ TEST(AsyncFileWriter, flush) {
   // Set up a pipe(), then write data to the write endpoint until it fills up
   // and starts blocking.
   std::array<int, 2> fds;
-  auto rc = pipe(fds.data());
+  auto rc = fileops::pipe(fds.data());
   folly::checkUnixError(rc, "failed to create pipe");
   File readPipe{fds[0], true};
   File writePipe{fds[1], true};
@@ -587,7 +587,7 @@ void writeThread(
 
 TEST(AsyncFileWriter, discard) {
   std::array<int, 2> fds;
-  auto pipeResult = pipe(fds.data());
+  auto pipeResult = fileops::pipe(fds.data());
   folly::checkUnixError(pipeResult, "pipe failed");
   folly::File readPipe{fds[0], true};
   folly::File writePipe{fds[1], true};

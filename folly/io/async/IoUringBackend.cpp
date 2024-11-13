@@ -110,7 +110,7 @@ void SignalRegistry::notify(int sig) {
     int fd = notifyFd_.load();
     if (fd >= 0) {
       uint8_t sigNum = static_cast<uint8_t>(sig);
-      ::write(fd, &sigNum, 1);
+      fileops::write(fd, &sigNum, 1);
     }
   }
 }
@@ -361,7 +361,7 @@ IoUringBackend::SocketPair::SocketPair() {
 IoUringBackend::SocketPair::~SocketPair() {
   for (auto fd : fds_) {
     if (fd >= 0) {
-      ::close(fd);
+      fileops::close(fd);
     }
   }
 }
@@ -625,7 +625,7 @@ IoUringBackend::~IoUringBackend() {
   CHECK(!signalReadEntry_);
   CHECK(freeList_.empty());
 
-  ::close(timerFd_);
+  fileops::close(timerFd_);
 }
 
 void IoUringBackend::cleanup() {
@@ -1872,12 +1872,12 @@ static bool doKernelSupportsRecvmsgMultishot() {
   try {
     struct S : IoSqeBase {
       explicit S(IoUringBufferProviderBase* bp) : bp_(bp) {
-        fd = open("/dev/null", O_RDONLY);
+        fd = fileops::open("/dev/null", O_RDONLY);
         memset(&msg, 0, sizeof(msg));
       }
       ~S() override {
         if (fd >= 0) {
-          close(fd);
+          fileops::close(fd);
         }
       }
       void processSubmit(struct io_uring_sqe* sqe) noexcept override {

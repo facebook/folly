@@ -41,7 +41,7 @@ int dprintf(int fd, const char* fmt, ...) {
     delete[] buf;
   };
   if (size_t(vsnprintf(buf, len + 1, fmt, args)) == len &&
-      write(fd, buf, len) == ssize_t(len)) {
+      folly::fileops::write(fd, buf, len) == ssize_t(len)) {
     return ret;
   }
 

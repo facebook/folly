@@ -38,7 +38,7 @@ TEST(TemporaryFile, Simple) {
     EXPECT_TRUE(f.path().is_absolute());
     fd = f.fd();
     EXPECT_LE(0, fd);
-    ssize_t r = write(fd, &c, 1);
+    ssize_t r = fileops::write(fd, &c, 1);
     EXPECT_EQ(1, r);
   }
 
@@ -46,7 +46,7 @@ TEST(TemporaryFile, Simple) {
     // The file must have been closed.  This assumes that no other thread
     // has opened another file in the meanwhile, which is a sane assumption
     // to make in this test.
-    ssize_t r = write(fd, &c, 1);
+    ssize_t r = fileops::write(fd, &c, 1);
     int savedErrno = errno;
     EXPECT_EQ(-1, r);
     EXPECT_EQ(EBADF, savedErrno);
@@ -125,9 +125,10 @@ void testTemporaryDirectory(TemporaryDirectory::Scope scope) {
     EXPECT_TRUE(fs::is_directory(path));
 
     fs::path fp = path / "bar";
-    int fd = open(fp.string().c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    int fd = folly::fileops::open(
+        fp.string().c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
     EXPECT_NE(fd, -1);
-    close(fd);
+    fileops::close(fd);
 
     TemporaryFile f("Foo", d.path());
     EXPECT_EQ(d.path(), f.path().parent_path());

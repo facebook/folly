@@ -183,7 +183,7 @@ static nanoseconds getSchedTimeWaiting(pid_t tid) {
     }
 
     char buf[512];
-    ssize_t bytesReadRet = read(fd, buf, sizeof(buf) - 1);
+    ssize_t bytesReadRet = fileops::read(fd, buf, sizeof(buf) - 1);
     if (bytesReadRet <= 0) {
       throw std::runtime_error(
           folly::to<string>("failed to read process schedstat file", errno));
@@ -209,11 +209,11 @@ static nanoseconds getSchedTimeWaiting(pid_t tid) {
       throw std::runtime_error("failed to parse schedstat data");
     }
 
-    close(fd);
+    fileops::close(fd);
     return nanoseconds(waitingJiffies * timeUnits);
   } catch (const std::runtime_error& e) {
     if (fd >= 0) {
-      close(fd);
+      fileops::close(fd);
     }
     LOG(ERROR) << "error determining process wait time: %s" << e.what();
     return nanoseconds(0);

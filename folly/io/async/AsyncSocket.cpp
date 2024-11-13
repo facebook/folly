@@ -80,7 +80,7 @@ class ZeroCopyMMapMemStoreReal : public ZeroCopyMemStore {
     if (fd >= 0) {
       void* addr =
           ::mmap(nullptr, entries * size, PROT_READ, MAP_SHARED, fd, 0);
-      ::close(fd);
+      folly::fileops::close(fd);
       if (addr != MAP_FAILED) {
         addr_ = addr;
         numEntries_ = entries;

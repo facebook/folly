@@ -2609,7 +2609,7 @@ TEST(AsyncSocketTest, DestroyCloseTest) {
 
   // Test that server socket was closed
   folly::test::msvcSuppressAbortOnInvalidParams([&] {
-    ssize_t sz = read(fd, simpleBuf, simpleBufLength);
+    ssize_t sz = fileops::read(fd, simpleBuf, simpleBufLength);
     ASSERT_EQ(sz, -1);
     ASSERT_EQ(errno, EBADF);
   });
@@ -9410,7 +9410,7 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   ASSERT_NE(tmpfd, -1) << "Failed to open a temporary file";
   std::string magicString("Magic string");
   ASSERT_EQ(
-      write(tmpfd, magicString.c_str(), magicString.length()),
+      fileops::write(tmpfd, magicString.c_str(), magicString.length()),
       magicString.length());
 
   // Send message
@@ -9473,7 +9473,7 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   memcpy(&fd, CMSG_DATA(&r_u.cmh), sizeof(int));
   ASSERT_NE(fd, 0);
   SCOPE_EXIT {
-    close(fd);
+    fileops::close(fd);
   };
 
   std::vector<uint8_t> transferredMagicString(magicString.length() + 1, 0);
@@ -9484,7 +9484,8 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   // Read the magic string back, and compare it with the original
   ASSERT_EQ(
       magicString.length(),
-      read(fd, transferredMagicString.data(), transferredMagicString.size()));
+      folly::fileops::read(
+          fd, transferredMagicString.data(), transferredMagicString.size()));
   ASSERT_TRUE(std::equal(
       magicString.begin(), magicString.end(), transferredMagicString.begin()));
 }

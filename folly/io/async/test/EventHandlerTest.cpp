@@ -69,16 +69,16 @@ class EventHandlerTest : public Test {
 
   void TearDown() override {
     if (efd > 0) {
-      close(efd);
+      fileops::close(efd);
     }
     efd = 0;
   }
 
-  void efd_write(uint64_t val) { write(efd, &val, sizeof(val)); }
+  void efd_write(uint64_t val) { fileops::write(efd, &val, sizeof(val)); }
 
   uint64_t efd_read() {
     uint64_t val = 0;
-    read(efd, &val, sizeof(val));
+    fileops::read(efd, &val, sizeof(val));
     return val;
   }
 };
@@ -203,7 +203,7 @@ class EventHandlerOobTest : public ::testing::Test {
                                 clientOps]() mutable {
       int clientFd = socket(AF_INET, SOCK_STREAM, 0);
       SCOPE_EXIT {
-        close(clientFd);
+        fileops::close(clientFd);
       };
       struct hostent* he{nullptr};
       struct sockaddr_in server;
@@ -235,7 +235,7 @@ class EventHandlerOobTest : public ::testing::Test {
     // make the server.
     int listenfd = socket(AF_INET, SOCK_STREAM, 0);
     SCOPE_EXIT {
-      close(listenfd);
+      fileops::close(listenfd);
     };
     PCHECK(listenfd != -1) << "unable to open socket";
 
@@ -263,7 +263,7 @@ class EventHandlerOobTest : public ::testing::Test {
 
   void TearDown() override {
     clientThread.join();
-    close(serverFd);
+    fileops::close(serverFd);
   }
 
   EventBase eb;
@@ -293,7 +293,7 @@ TEST_F(EventHandlerOobTest, EPOLLPRI) {
     void handlerReady(uint16_t events) noexcept override {
       EXPECT_TRUE(EventHandler::EventFlags::PRI & events);
       std::array<char, 255> buffer;
-      auto n = read(fd_, buffer.data(), buffer.size());
+      auto n = fileops::read(fd_, buffer.data(), buffer.size());
       //
       // NB: we sent 7 bytes, but only received 6. The last byte
       // has been stored in the OOB buffer.

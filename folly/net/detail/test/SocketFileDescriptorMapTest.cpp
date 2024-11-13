@@ -63,14 +63,14 @@ TEST(SocketFileDescriptorMap, noSocketReuse) {
     EXPECT_EQ(sock, sock3);
 
     // Now we mess up the order by creating a new FD.
-    int devNull = ::open("/dev/null", O_RDONLY);
+    int devNull = fileops::open("/dev/null", O_RDONLY);
     EXPECT_EQ(devNull, fdA);
 
     int fdC = SocketFileDescriptorMap::socketToFd(sock);
     EXPECT_NE(fdA, fdC);
 
     SocketFileDescriptorMap::close(sock3);
-    ::close(devNull);
+    fileops::close(devNull);
   }
 }
 
