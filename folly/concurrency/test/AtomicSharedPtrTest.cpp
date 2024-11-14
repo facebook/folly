@@ -14,24 +14,17 @@
  * limitations under the License.
  */
 
-// AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
-// other vendors
-// PackedSyncPtr requires x64, ppc64 or aarch64, skip these tests for
-// other arches
-#include <folly/Portability.h>
-#include <folly/portability/Config.h>
-#if defined(__GLIBCXX__) && (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64)
-
-#include <folly/concurrency/test/AtomicSharedPtrCounted.h>
+#include <folly/concurrency/AtomicSharedPtr.h>
 
 #include <atomic>
 #include <memory>
 #include <thread>
 
-#include <folly/concurrency/AtomicSharedPtr.h>
+#include <folly/Portability.h>
+#include <folly/concurrency/test/AtomicSharedPtrCounted.h>
+#include <folly/portability/Config.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
@@ -52,7 +45,9 @@ struct foo {
 
 TEST(AtomicSharedPtr, operators) {
   atomic_shared_ptr<int> fooptr;
+#if FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED
   EXPECT_TRUE(fooptr.is_lock_free());
+#endif
   auto i = new int(5);
   std::shared_ptr<int> s(i);
   fooptr.store(s);
@@ -90,6 +85,8 @@ TEST(AtomicSharedPtr, foo) {
   EXPECT_EQ(1, d_count);
 }
 
+#if FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED
+
 TEST(AtomicSharedPtr, counted) {
   c_count = 0;
   d_count = 0;
@@ -118,6 +115,8 @@ TEST(AtomicSharedPtr, counted2) {
   fooptr.store(foo);
   fooptr.load();
 }
+
+#endif
 
 TEST(AtomicSharedPtr, ConstTest) {
   const auto a(std::make_shared<foo>());
@@ -168,6 +167,8 @@ TEST(AtomicSharedPtr, AliasingWithNullptrConstructorTest) {
   EXPECT_EQ(d_count, 1);
 }
 
+#if FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED
+
 TEST(AtomicSharedPtr, MaxPtrs) {
   shared_ptr<long> p(new long);
   int max_atomic_shared_ptrs = 262144;
@@ -205,6 +206,8 @@ TEST(AtomicSharedPtr, DeterministicTest) {
     DSched::join(t);
   }
 }
+
+#endif
 
 TEST(AtomicSharedPtr, StressTest) {
   constexpr size_t kExternalOffset = 0x2000;
@@ -253,5 +256,3 @@ TEST(AtomicSharedPtr, Leak) {
   ptr.store(std::make_shared<int>(3), std::memory_order_relaxed);
   EXPECT_EQ(3, *ptr.load(std::memory_order_relaxed));
 }
-
-#endif // defined(__GLIBCXX__)

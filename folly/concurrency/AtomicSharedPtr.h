@@ -24,7 +24,16 @@
 #include <folly/concurrency/detail/AtomicSharedPtr-detail.h>
 #include <folly/memory/SanitizeLeak.h>
 #include <folly/synchronization/AtomicStruct.h>
+#include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/detail/AtomicUtils.h>
+
+#if defined(__GLIBCXX__) && FOLLY_HAS_PACKED_SYNC_PTR
+#define FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED 1
+#else
+#define FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED 0
+#endif
+
+#if FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED
 
 /*
  * This is an implementation of the std::atomic_shared_ptr TS
@@ -385,3 +394,91 @@ class atomic_shared_ptr {
 };
 
 } // namespace folly
+
+#else
+
+namespace folly {
+
+template <typename T>
+class atomic_shared_ptr {
+ private:
+  std::shared_ptr<T> rep_;
+
+ public:
+  using value_type = std::shared_ptr<T>;
+
+  atomic_shared_ptr() = default;
+  atomic_shared_ptr(std::nullptr_t) noexcept {}
+  atomic_shared_ptr(std::shared_ptr<T> desired) noexcept
+      : rep_{std::move(desired)} {}
+
+  atomic_shared_ptr(atomic_shared_ptr const&) = delete;
+  atomic_shared_ptr(atomic_shared_ptr&&) = delete;
+
+  void operator=(std::nullptr_t) noexcept { store(nullptr); }
+  void operator=(std::shared_ptr<T> desired) noexcept {
+    store(std::move(desired));
+  }
+
+  void operator=(atomic_shared_ptr const&) = delete;
+  void operator=(atomic_shared_ptr&&) = delete;
+
+  /* implicit */ operator std::shared_ptr<T>() const noexcept { return load(); }
+
+  bool is_lock_free() const noexcept { return atomic_is_lock_free(&rep_); }
+
+  std::shared_ptr<T> load(
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
+    return atomic_load_explicit(&rep_, order);
+  }
+
+  void store(
+      std::shared_ptr<T> desired,
+      std::memory_order order = std::memory_order_seq_cst) noexcept {
+    atomic_store_explicit(&rep_, std::move(desired), order);
+  }
+
+  std::shared_ptr<T> exchange(
+      std::shared_ptr<T> desired,
+      std::memory_order order = std::memory_order_seq_cst) noexcept {
+    return atomic_exchange_explicit(&rep_, std::move(desired), order);
+  }
+
+  bool compare_exchange_weak(
+      std::shared_ptr<T>& expected,
+      std::shared_ptr<T> desired,
+      std::memory_order success,
+      std::memory_order failure) noexcept {
+    return atomic_compare_exchange_weak_explicit(
+        &rep_, &expected, std::move(desired), success, failure);
+  }
+
+  bool compare_exchange_weak(
+      std::shared_ptr<T>& expected,
+      std::shared_ptr<T> desired,
+      std::memory_order order = std::memory_order_seq_cst) noexcept {
+    return atomic_compare_exchange_weak_explicit(
+        &rep_, &expected, std::move(desired), order, memory_order_load(order));
+  }
+
+  bool compare_exchange_strong(
+      std::shared_ptr<T>& expected,
+      std::shared_ptr<T> desired,
+      std::memory_order success,
+      std::memory_order failure) noexcept {
+    return atomic_compare_exchange_strong_explicit(
+        &rep_, &expected, std::move(desired), success, failure);
+  }
+
+  bool compare_exchange_strong(
+      std::shared_ptr<T>& expected,
+      std::shared_ptr<T> desired,
+      std::memory_order order = std::memory_order_seq_cst) noexcept {
+    return atomic_compare_exchange_strong_explicit(
+        &rep_, &expected, std::move(desired), order, memory_order_load(order));
+  }
+};
+
+} // namespace folly
+
+#endif // FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED
