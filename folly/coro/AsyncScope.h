@@ -22,11 +22,11 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/ExceptionWrapper.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/detail/Barrier.h>
-#include <folly/experimental/coro/detail/BarrierTask.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/detail/Barrier.h>
+#include <folly/coro/detail/BarrierTask.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/SourceLocation.h>
 

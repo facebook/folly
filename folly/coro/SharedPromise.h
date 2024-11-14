@@ -18,7 +18,7 @@
 
 #include <folly/Synchronized.h>
 #include <folly/Utility.h>
-#include <folly/experimental/coro/Promise.h>
+#include <folly/coro/Promise.h>
 #include <folly/futures/Promise.h>
 #include <folly/small_vector.h>
 

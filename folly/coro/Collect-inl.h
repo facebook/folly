@@ -19,13 +19,13 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/ExceptionWrapper.h>
-#include <folly/experimental/coro/AsyncPipe.h>
-#include <folly/experimental/coro/AsyncScope.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/detail/Barrier.h>
-#include <folly/experimental/coro/detail/BarrierTask.h>
-#include <folly/experimental/coro/detail/CurrentAsyncFrame.h>
-#include <folly/experimental/coro/detail/Helpers.h>
+#include <folly/coro/AsyncPipe.h>
+#include <folly/coro/AsyncScope.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/detail/Barrier.h>
+#include <folly/coro/detail/BarrierTask.h>
+#include <folly/coro/detail/CurrentAsyncFrame.h>
+#include <folly/coro/detail/Helpers.h>
 
 #if FOLLY_HAS_COROUTINES
 

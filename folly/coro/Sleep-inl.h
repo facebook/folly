@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/experimental/coro/FutureUtil.h>
+#include <folly/coro/FutureUtil.h>
 
 #if FOLLY_HAS_COROUTINES
 

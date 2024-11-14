@@ -21,8 +21,8 @@
 #include <type_traits>
 #include <utility>
 
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Invoke.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Invoke.h>
 #include <folly/lang/Exception.h>
 
 #if FOLLY_HAS_COROUTINES

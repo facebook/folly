@@ -18,12 +18,12 @@
 
 #include <type_traits>
 
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Traits.h>
-#include <folly/experimental/coro/detail/Helpers.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Traits.h>
+#include <folly/coro/detail/Helpers.h>
 
 #if FOLLY_HAS_COROUTINES
 

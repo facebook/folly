@@ -20,8 +20,8 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/Try.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/Coroutine.h>
 #include <folly/futures/Promise.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 

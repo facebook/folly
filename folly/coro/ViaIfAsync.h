@@ -20,11 +20,11 @@
 
 #include <folly/Executor.h>
 #include <folly/Traits.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Traits.h>
-#include <folly/experimental/coro/WithAsyncStack.h>
-#include <folly/experimental/coro/WithCancellation.h>
-#include <folly/experimental/coro/detail/Malloc.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Traits.h>
+#include <folly/coro/WithAsyncStack.h>
+#include <folly/coro/WithCancellation.h>
+#include <folly/coro/detail/Malloc.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/CustomizationPoint.h>
 #include <folly/tracing/AsyncStack.h>

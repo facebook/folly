@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Traits.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Traits.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/CustomizationPoint.h>

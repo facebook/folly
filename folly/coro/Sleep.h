@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Task.h>
 #include <folly/futures/Future.h>
 
 #if FOLLY_HAS_COROUTINES

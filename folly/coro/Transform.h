@@ -18,8 +18,8 @@
 
 #include <type_traits>
 
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/Coroutine.h>
 
 #if FOLLY_HAS_COROUTINES
 

@@ -20,15 +20,15 @@
 #include <folly/CancellationToken.h>
 #include <folly/Executor.h>
 #include <folly/ScopeGuard.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
-#include <folly/experimental/coro/WithCancellation.h>
-#include <folly/experimental/coro/detail/Barrier.h>
-#include <folly/experimental/coro/detail/BarrierTask.h>
-#include <folly/experimental/coro/detail/CurrentAsyncFrame.h>
-#include <folly/experimental/coro/detail/Helpers.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/ViaIfAsync.h>
+#include <folly/coro/WithCancellation.h>
+#include <folly/coro/detail/Barrier.h>
+#include <folly/coro/detail/BarrierTask.h>
+#include <folly/coro/detail/CurrentAsyncFrame.h>
+#include <folly/coro/detail/Helpers.h>
 
 #if FOLLY_HAS_COROUTINES
 

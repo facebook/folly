@@ -19,7 +19,7 @@
 #include <atomic>
 
 #include <folly/Try.h>
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 
 #if FOLLY_HAS_COROUTINES
 

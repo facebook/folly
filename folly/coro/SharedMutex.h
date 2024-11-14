@@ -25,9 +25,9 @@
 #include <folly/Executor.h>
 #include <folly/SpinLock.h>
 #include <folly/Synchronized.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/SharedLock.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/SharedLock.h>
+#include <folly/coro/ViaIfAsync.h>
 
 #if FOLLY_HAS_COROUTINES
 
