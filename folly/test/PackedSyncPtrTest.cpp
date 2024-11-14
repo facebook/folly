@@ -23,6 +23,8 @@
 
 #include <folly/portability/GTest.h>
 
+#if FOLLY_HAS_PACKED_SYNC_PTR
+
 using folly::PackedSyncPtr;
 
 namespace {
@@ -134,3 +136,5 @@ TEST(PackedSyncPtr, extraData) {
   EXPECT_EQ(p.get(), unaligned);
   p.unlock();
 }
+
+#endif
