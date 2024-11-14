@@ -654,6 +654,11 @@ class FOLLY_NODISCARD TaskWithExecutor {
   handle_t coro_;
 };
 
+// This macro makes it easier for `TaskWrapper.h` users to apply the correct
+// attributes for the wrapped `Task`s.
+#define FOLLY_CORO_TASK_ATTRS \
+  FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+
 /// Represents an allocated, but not-started coroutine, which is not yet
 /// been bound to an executor.
 ///
@@ -682,7 +687,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 ///
 /// @refcode folly/docs/examples/folly/coro/Task.cpp
 template <typename T>
-class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] Task {
+class FOLLY_CORO_TASK_ATTRS Task {
  public:
   using promise_type = detail::TaskPromise<T>;
   using StorageType = typename promise_type::StorageType;

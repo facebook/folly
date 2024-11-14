@@ -34,6 +34,12 @@
 /// You'll derive from `TaskWrapperPromise` -- which must reference a
 /// derived class of `TaskWrapperCrtp` that is your new user-facing coro.
 ///
+/// Please use `FOLLY_CORO_TASK_ATTRS` on your `Task` wrapper class.
+/// Caveat: this assumes that the coro's caller will outlive it.  That is
+/// true for `Task`, and almost certainly true of all sensible wrapper
+/// types.  If you have an analog of `TaskWithExecutor`, also mark that
+/// `FOLLY_NODISCARD`.
+///
 /// To discourage inheritance and object-slicing bugs, mark your derived
 /// wrappers `final` -- they can be wrapped recursively.
 ///

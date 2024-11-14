@@ -33,7 +33,8 @@ class TinyTaskPromise final
 } // namespace detail
 
 template <typename T>
-struct TinyTask final : public TaskWrapperCrtp<TinyTask<T>, T, Task<T>> {
+struct FOLLY_CORO_TASK_ATTRS TinyTask final
+    : public TaskWrapperCrtp<TinyTask<T>, T, Task<T>> {
   using promise_type = detail::TinyTaskPromise<T>;
   using TaskWrapperCrtp<TinyTask<T>, T, Task<T>>::TaskWrapperCrtp;
 };
