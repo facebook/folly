@@ -40,6 +40,26 @@ static_assert(
 
 namespace folly {
 
+class MemoryOrderTest : public testing::Test {};
+
+TEST_F(MemoryOrderTest, memory_order_load) {
+  EXPECT_EQ(relaxed, memory_order_load(relaxed));
+  EXPECT_EQ(relaxed, memory_order_load(release));
+  EXPECT_EQ(consume, memory_order_load(consume));
+  EXPECT_EQ(acquire, memory_order_load(acquire));
+  EXPECT_EQ(acquire, memory_order_load(acq_rel));
+  EXPECT_EQ(seq_cst, memory_order_load(seq_cst));
+}
+
+TEST_F(MemoryOrderTest, memory_order_store) {
+  EXPECT_EQ(relaxed, memory_order_store(relaxed));
+  EXPECT_EQ(release, memory_order_store(release));
+  EXPECT_EQ(relaxed, memory_order_store(consume));
+  EXPECT_EQ(relaxed, memory_order_store(acquire));
+  EXPECT_EQ(release, memory_order_store(acq_rel));
+  EXPECT_EQ(seq_cst, memory_order_store(seq_cst));
+}
+
 class AtomicCompareExchangeSuccTest : public testing::Test {};
 
 TEST_F(AtomicCompareExchangeSuccTest, examples) {
