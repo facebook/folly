@@ -3,14 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
-    name = "bits",
-    headers = ["Bits.h"],
-    exported_deps = [
-        "//folly/lang:bits_class",
-    ],
-)
-
-cpp_library(
     name = "elias_fano_coding",
     headers = [
         "EliasFanoCoding.h",
