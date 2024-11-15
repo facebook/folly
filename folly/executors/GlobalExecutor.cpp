@@ -40,17 +40,6 @@ FOLLY_GFLAGS_DEFINE_uint32(
     0,
     "Number of threads global CPUThreadPoolExecutor will create");
 
-FOLLY_GFLAGS_DEFINE_bool(
-    folly_global_cpu_executor_use_throttled_lifo_sem,
-    true,
-    "Use ThrottledLifoSem in global CPUThreadPoolExecutor");
-
-FOLLY_GFLAGS_DEFINE_uint32(
-    folly_global_cpu_executor_wake_up_interval_us,
-    0,
-    "If --folly_global_cpu_executor_use_throttled_lifo_sem is true, use this "
-    "wake-up interval (in microseconds) in ThrottledLifoSem");
-
 namespace {
 
 using ImmutableGlobalCPUExecutor = CPUThreadPoolExecutor;
@@ -71,15 +60,10 @@ Singleton<std::shared_ptr<ImmutableGlobalCPUExecutor>, GlobalTag>
     gImmutableGlobalCPUExecutor([] {
       size_t nthreads = FLAGS_folly_global_cpu_executor_threads;
       nthreads = nthreads ? nthreads : folly::hardware_concurrency();
-      return new std::shared_ptr<
-          ImmutableGlobalCPUExecutor>(new ImmutableGlobalCPUExecutor(
-          nthreads,
-          FLAGS_folly_global_cpu_executor_use_throttled_lifo_sem
-              ? CPUThreadPoolExecutor::makeThrottledLifoSemQueue(
-                    std::chrono::microseconds{
-                        FLAGS_folly_global_cpu_executor_wake_up_interval_us})
-              : CPUThreadPoolExecutor::makeLifoSemQueue(),
-          std::make_shared<NamedThreadFactory>("GlobalCPUThreadPool")));
+      return new std::shared_ptr<ImmutableGlobalCPUExecutor>(
+          new ImmutableGlobalCPUExecutor(
+              nthreads,
+              std::make_shared<NamedThreadFactory>("GlobalCPUThreadPool")));
     });
 
 Singleton<std::shared_ptr<IOThreadPoolExecutor>, GlobalTag>
