@@ -61,16 +61,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "singleton_relaxed_counter",
-    headers = [
-        "SingletonRelaxedCounter.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency:singleton_relaxed_counter",
-    ],
-)
-
-cpp_library(
     name = "test_util",
     headers = [
         "TestUtil.h",
