@@ -487,6 +487,61 @@ class Iproute2Builder(BuilderBase):
         self._run_cmd(install_cmd, env=env)
 
 
+class SystemdBuilder(BuilderBase):
+    # SystemdBuilder assumes that meson build tool has already been installed on
+    # the machine.
+    def __init__(
+        self,
+        loader,
+        dep_manifests,
+        build_opts,
+        ctx,
+        manifest,
+        src_dir,
+        build_dir,
+        inst_dir,
+    ) -> None:
+        super(SystemdBuilder, self).__init__(
+            loader,
+            dep_manifests,
+            build_opts,
+            ctx,
+            manifest,
+            src_dir,
+            build_dir,
+            inst_dir,
+        )
+
+    def _build(self, reconfigure) -> None:
+        env = self._compute_env()
+        meson = path_search(env, "meson")
+        if meson is None:
+            raise Exception("Failed to find Meson")
+
+        # Meson builds typically require setup, compile, and install steps.
+        # During this setup step we ensure that the static library is built and
+        # the prefix is empty.
+        self._run_cmd(
+            [
+                meson,
+                "setup",
+                "-Dstatic-libsystemd=true",
+                "-Dprefix=/",
+                self.build_dir,
+                self.src_dir,
+            ]
+        )
+
+        # Compile step needs to satisfy the build directory that was previously
+        # prepared during setup.
+        self._run_cmd([meson, "compile", "-C", self.build_dir])
+
+        # Install step
+        self._run_cmd(
+            [meson, "install", "-C", self.build_dir, "--destdir", self.inst_dir]
+        )
+
+
 class CMakeBuilder(BuilderBase):
     MANUAL_BUILD_SCRIPT = """\
 #!{sys.executable}

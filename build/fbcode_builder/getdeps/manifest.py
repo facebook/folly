@@ -22,6 +22,7 @@ from .builder import (
     NopBuilder,
     OpenSSLBuilder,
     SqliteBuilder,
+    SystemdBuilder,
 )
 from .cargo import CargoBuilder
 from .expr import parse_expr
@@ -651,6 +652,18 @@ class ManifestParser(object):
 
         if builder == "iproute2":
             return Iproute2Builder(
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+            )
+
+        if builder == "systemd":
+            return SystemdBuilder(
                 loader,
                 dep_manifests,
                 build_options,
