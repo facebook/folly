@@ -481,6 +481,9 @@ add_library(folly_test_util
   ${FOLLY_DIR}/test/DeterministicSchedule.cpp
   ${FOLLY_DIR}/json/JsonTestUtil.cpp
 )
+target_compile_definitions(folly_test_util PUBLIC
+  FOLLY_CERTS_DIR="${FOLLY_DIR}/io/async/test/certs"
+)
 set_property(TARGET folly_test_util PROPERTY VERSION ${PACKAGE_VERSION})
 target_link_libraries(folly_test_util
   PUBLIC
