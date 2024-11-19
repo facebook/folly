@@ -263,7 +263,7 @@ template class TestCopyMove<true, true>;
 
 TEST_F(UtilityTest, MoveOnly) {
   class FooBar : folly::MoveOnly {
-    int a;
+    [[maybe_unused]] int a = 0;
   };
 
   static_assert(
@@ -284,7 +284,7 @@ TEST_F(UtilityTest, MoveOnly) {
 
 TEST_F(UtilityTest, NonCopyableNonMovable) {
   class FooBar : folly::NonCopyableNonMovable {
-    int a;
+    [[maybe_unused]] int a = 0;
   };
 
   static_assert(
