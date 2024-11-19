@@ -54,6 +54,10 @@
 #include <execinfo.h>
 #endif
 
+#ifdef __roar__
+extern "C" char* _roar_upcall_symbolizeAddress(void* Address);
+#endif
+
 namespace folly {
 namespace symbolizer {
 
@@ -110,6 +114,14 @@ void setSymbolizedFrame(
   frame.addr = address;
   frame.file = file;
   frame.name = file->getSymbolName(file->getDefinitionByAddress(address));
+#ifdef __roar__
+  if (!frame.name) {
+    char* jit_name =
+        _roar_upcall_symbolizeAddress(reinterpret_cast<void*>(address));
+    if (jit_name && jit_name[0] != '\0')
+      frame.name = jit_name;
+  }
+#endif
 
   Dwarf(elfCache, file.get())
       .findAddress(address, mode, frame, extraInlineFrames);
