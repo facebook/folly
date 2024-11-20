@@ -251,7 +251,10 @@ class Optional {
 
   void assign(Value&& newValue) {
     if (hasValue()) {
+      FOLLY_PUSH_WARNING
+      FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
       storage_.value = std::move(newValue);
+      FOLLY_POP_WARNING
     } else {
       construct(std::move(newValue));
     }
@@ -259,7 +262,10 @@ class Optional {
 
   void assign(const Value& newValue) {
     if (hasValue()) {
+      FOLLY_PUSH_WARNING
+      FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
       storage_.value = newValue;
+      FOLLY_POP_WARNING
     } else {
       construct(newValue);
     }
@@ -476,7 +482,10 @@ class Optional {
     void clear() {
       if (hasValue) {
         hasValue = false;
+        FOLLY_PUSH_WARNING
+        FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
         value.~Value();
+        FOLLY_POP_WARNING
       }
     }
   };
