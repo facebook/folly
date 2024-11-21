@@ -378,7 +378,8 @@ class UDPNotifyClient : public UDPClient {
     SocketAddress addr;
     addr.setFromSockaddr(rawAddr, addrLen);
 
-    onDataAvailable(addr, size_t(read), false, OnDataAvailableParams());
+    onDataAvailable(
+        addr, size_t(folly::fileops::read), false, OnDataAvailableParams());
   }
 
   void onRecvMmsg(AsyncUDPSocket& sock) {

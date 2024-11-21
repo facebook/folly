@@ -79,7 +79,7 @@ TEST(IndexedMemPool, noStarvation) {
         EXPECT_LE(
             idx, poolSize + (pool.NumLocalLists - 1) * pool.LocalListLimit);
         pool[idx] = i;
-        EXPECT_EQ(write(fd[1], &idx, sizeof(idx)), sizeof(idx));
+        EXPECT_EQ(fileops::write(fd[1], &idx, sizeof(idx)), sizeof(idx));
         Sched::post(&readSem);
       }
     });
