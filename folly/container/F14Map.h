@@ -38,10 +38,13 @@
 
 #include <folly/container/F14Map-fwd.h>
 #include <folly/container/Iterator.h>
-#include <folly/container/detail/F14MapFallback.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/container/detail/Util.h>
+
+// If !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE, fallback definitions are exported
+// in this file
+#include <folly/container/detail/F14MapFallback.h> // IWYU pragma: export
 
 namespace folly {
 
