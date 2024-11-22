@@ -72,3 +72,15 @@ cpp_binary(
         "//folly/init:init",
     ],
 )
+
+cpp_unittest(
+    name = "semaphore_test",
+    srcs = ["SemaphoreTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/fibers:semaphore",
+        "//folly/portability:gtest",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization/detail:sleeper",
+    ],
+)

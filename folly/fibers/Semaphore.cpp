@@ -35,7 +35,7 @@ bool Semaphore::signalSlow() {
       // If the waitlist is now empty, ensure the token count increments
       // No need for CAS here as we will always be under the mutex
       CHECK(tokens_.compare_exchange_strong(
-          testVal, testVal + 1, std::memory_order_relaxed));
+          testVal, testVal + 1, std::memory_order_release));
       return true;
     }
     waiter = &waitList.front();
