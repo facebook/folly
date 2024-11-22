@@ -354,15 +354,18 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
     // with less than 16.7 million entries, it's safe to have a 32-bit hash,
     // and use the bottom 24 bits for the index and leave the top 8 for the
     // tag.
+    //
+    // | 0x80 sets the top bit in the tag.
+    // We need to avoid 0 tag for a non-empty value.
+    // In some places we also rely on the top bit
+    // being 1 for all non-empty values.
     if (ShouldAssume32BitHash<Hasher>::value) {
-      // we don't trust the top bit
       tag = ((hash >> 24) | 0x80) & 0xFF;
       // Explicitly mask off the top 32-bits so that the compiler can
       // optimize away whatever is populating the top 32-bits, which is likely
       // just the lower 32-bits duplicated.
       hash = hash & 0xFFFF'FFFF;
     } else {
-      // we don't trust the top bit
       tag = (hash >> 56) | 0x80;
     }
   }
@@ -394,7 +397,10 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
     tag = static_cast<uint8_t>(~(hash >> 25));
 #endif
   } else {
-    // we don't trust the top bit
+    // | 0x80 sets the top bit in the tag.
+    // We need to avoid 0 tag for a non-empty value.
+    // In some places we also rely on the top bit
+    // being 1 for all non-empty values.
     tag = (hash >> 24) | 0x80;
   }
   return std::make_pair(hash, tag);
