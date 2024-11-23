@@ -372,14 +372,18 @@ class UDPNotifyClient : public UDPClient {
       if (errno != EAGAIN || errno != EWOULDBLOCK) {
         onReadError(folly::AsyncSocketException(
             folly::AsyncSocketException::NETWORK_ERROR, "error"));
-        return;
       }
-    }
-    SocketAddress addr;
-    addr.setFromSockaddr(rawAddr, addrLen);
+    } else {
+      // Datagram sockets in various domains (e.g., the UNIX and Internet
+      // domains) permit zero-length datagrams.  When such a datagram is
+      // received, the return value is 0.
+      auto numBytesRecv{static_cast<size_t>(ret)};
 
-    onDataAvailable(
-        addr, size_t(folly::fileops::read), false, OnDataAvailableParams());
+      SocketAddress addr;
+      addr.setFromSockaddr(rawAddr, addrLen);
+
+      onDataAvailable(addr, numBytesRecv, false, OnDataAvailableParams());
+    }
   }
 
   void onRecvMmsg(AsyncUDPSocket& sock) {
