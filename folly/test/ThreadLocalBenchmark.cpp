@@ -163,9 +163,9 @@ BENCHMARK(BM_tlp_access_all_threads_iterate, iters) {
 BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_max_iters", "100000000", gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_max_iters", "100000000", folly::gflags::SET_FLAG_IF_DEFAULT);
   folly::runBenchmarks();
   return 0;
 }

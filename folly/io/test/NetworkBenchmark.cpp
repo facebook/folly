@@ -148,7 +148,7 @@ chainBenchmark                         100000  118.6 ms  1.186 us  823.2 k
 poolBenchmark                          100000   32.2 ms    322 ns  2.962 M
 */
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   setNumbers(10, 10);
   folly::runBenchmarks();

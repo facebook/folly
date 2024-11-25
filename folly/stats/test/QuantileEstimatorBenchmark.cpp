@@ -72,7 +72,7 @@ BENCHMARK_NAMED_PARAM(addValueMultithreaded, 16, 16)
 BENCHMARK_NAMED_PARAM(addValueMultithreaded, 32, 32)
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

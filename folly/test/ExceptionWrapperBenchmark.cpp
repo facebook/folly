@@ -263,7 +263,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_cast_concurrent, iters) {
 }
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

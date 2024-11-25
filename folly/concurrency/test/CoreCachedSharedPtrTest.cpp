@@ -321,7 +321,7 @@ BENCHMARK_MULTI(AtomicCoreCachedSharedPtrSingleThreadReset) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   auto ret = RUN_ALL_TESTS();
   if (ret == 0 && FLAGS_benchmark) {

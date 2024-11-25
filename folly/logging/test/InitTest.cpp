@@ -83,7 +83,7 @@ TEST(Init, checkConfig) {
 // not been called yet when we start running the tests.
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, /* remove_flags = */ true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, /* remove_flags = */ true);
 
   return RUN_ALL_TESTS();
 }

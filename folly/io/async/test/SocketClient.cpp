@@ -33,7 +33,7 @@ DEFINE_int32(sendtimeout_ms, 0, "send timeout");
 DEFINE_int32(num_writes, 1, "number of writes");
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   if (FLAGS_port == 0) {
     LOG(ERROR) << "Must specify port";

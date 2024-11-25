@@ -168,7 +168,7 @@ seq(1, fibs) | parallel(map([](int) { return fi 1698.07%    87.96ms    11.37
 ============================================================================
 #endif
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

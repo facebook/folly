@@ -48,7 +48,7 @@ namespace {
 template <class T>
 class GFlagInfo {
  public:
-  explicit GFlagInfo(gflags::CommandLineFlagInfo info)
+  explicit GFlagInfo(folly::gflags::CommandLineFlagInfo info)
       : info_(std::move(info)), isSet_(false) {}
 
   void set(const T& value) {
@@ -57,8 +57,8 @@ class GFlagInfo {
     }
 
     auto strValue = folly::to<std::string>(value);
-    auto msg =
-        gflags::SetCommandLineOption(info_.name.c_str(), strValue.c_str());
+    auto msg = folly::gflags::SetCommandLineOption(
+        info_.name.c_str(), strValue.c_str());
     if (msg.empty()) {
       throw po::invalid_option_value(strValue);
     }
@@ -67,14 +67,14 @@ class GFlagInfo {
 
   T get() const {
     std::string str;
-    CHECK(gflags::GetCommandLineOption(info_.name.c_str(), &str));
+    CHECK(folly::gflags::GetCommandLineOption(info_.name.c_str(), &str));
     return folly::to<T>(str);
   }
 
-  const gflags::CommandLineFlagInfo& info() const { return info_; }
+  const folly::gflags::CommandLineFlagInfo& info() const { return info_; }
 
  private:
-  gflags::CommandLineFlagInfo info_;
+  folly::gflags::CommandLineFlagInfo info_;
   bool isSet_;
 };
 
@@ -181,7 +181,7 @@ const std::string& getName(const std::string& name) {
 
 template <class T>
 void addGFlag(
-    gflags::CommandLineFlagInfo&& flag,
+    folly::gflags::CommandLineFlagInfo&& flag,
     po::options_description& desc,
     ProgramOptionsStyle style) {
   auto gflagInfo = std::make_shared<GFlagInfo<T>>(std::move(flag));
@@ -203,7 +203,7 @@ void addGFlag(
 
 template <>
 void addGFlag<bool>(
-    gflags::CommandLineFlagInfo&& flag,
+    folly::gflags::CommandLineFlagInfo&& flag,
     po::options_description& desc,
     ProgramOptionsStyle style) {
   auto gflagInfo = std::make_shared<GFlagInfo<bool>>(std::move(flag));
@@ -233,7 +233,7 @@ void addGFlag<bool>(
 }
 
 typedef void (*FlagAdder)(
-    gflags::CommandLineFlagInfo&&,
+    folly::gflags::CommandLineFlagInfo&&,
     po::options_description&,
     ProgramOptionsStyle);
 
@@ -272,8 +272,8 @@ po::options_description getGFlags(ProgramOptionsStyle style) {
 
   po::options_description desc("GFlags");
 
-  std::vector<gflags::CommandLineFlagInfo> allFlags;
-  gflags::GetAllFlags(&allFlags);
+  std::vector<folly::gflags::CommandLineFlagInfo> allFlags;
+  folly::gflags::GetAllFlags(&allFlags);
 
   for (auto& f : allFlags) {
     if (gSkipFlags.count(f.name)) {

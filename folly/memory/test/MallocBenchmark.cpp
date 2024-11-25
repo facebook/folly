@@ -84,7 +84,7 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
     uniform_0_128, goodMallocSize, folly::goodMallocSize)
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   folly::runBenchmarks();
   return 0;

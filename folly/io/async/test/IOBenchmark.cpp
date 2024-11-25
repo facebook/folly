@@ -223,7 +223,7 @@ BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
   getTempFile(kNumBlocks);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
 }
 

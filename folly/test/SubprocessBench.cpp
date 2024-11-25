@@ -40,7 +40,7 @@ BENCHMARK(spawn_without_close_fds, iters) {
 }
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Create 512 descriptors
   int rootfd = fileops::open("/", O_RDONLY);

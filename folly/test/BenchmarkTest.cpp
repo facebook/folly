@@ -78,7 +78,7 @@ struct BenchmarkingStateTest : ::testing::Test {
   }
 
   BenchmarkingStateForTests state;
-  gflags::FlagSaver flagSaver;
+  folly::gflags::FlagSaver flagSaver;
 };
 
 TEST_F(BenchmarkingStateTest, Basic) {
@@ -105,8 +105,8 @@ TEST_F(BenchmarkingStateTest, Basic) {
 
   // --bm_regex full match
   {
-    gflags::FlagSaver _;
-    gflags::SetCommandLineOption("bm_regex", "a1.*");
+    folly::gflags::FlagSaver _;
+    folly::gflags::SetCommandLineOption("bm_regex", "a1.*");
 
     const std::vector<BenchmarkResult> expected{
         {__FILE__, "a1ns", 1, {}},
@@ -117,8 +117,8 @@ TEST_F(BenchmarkingStateTest, Basic) {
 
   // --bm_regex part match
   {
-    gflags::FlagSaver _;
-    gflags::SetCommandLineOption("bm_regex", "1.");
+    folly::gflags::FlagSaver _;
+    folly::gflags::SetCommandLineOption("bm_regex", "1.");
 
     const std::vector<BenchmarkResult> expected{
         {__FILE__, "a1ns", 1, {}},
@@ -207,8 +207,8 @@ TEST_F(BenchmarkingStateTest, PerfBasic) {
   }
 
   {
-    gflags::FlagSaver _;
-    gflags::SetCommandLineOption(
+    folly::gflags::FlagSaver _;
+    folly::gflags::SetCommandLineOption(
         "bm_perf_args", "stat -e cache-misses,cache-references");
 
     setUpPerfCalled = 0;
@@ -234,8 +234,8 @@ TEST_F(BenchmarkingStateTest, PerfSkipsAnIteration) {
     return PerfScoped{};
   };
 
-  gflags::FlagSaver _;
-  gflags::SetCommandLineOption("bm_perf_args", "stat");
+  folly::gflags::FlagSaver _;
+  folly::gflags::SetCommandLineOption("bm_perf_args", "stat");
   (void)state.runBenchmarksWithResults();
 
   EXPECT_TRUE(perfIsCalled);
@@ -259,10 +259,10 @@ TEST_F(BenchmarkingStateTest, PerfIntegration) {
     return PerfScoped(args, &perfOuptut);
   };
 
-  gflags::FlagSaver _;
-  gflags::SetCommandLineOption("bm_perf_args", "stat");
-  gflags::SetCommandLineOption("bm_profile", "true");
-  gflags::SetCommandLineOption("bm_profile_iters", "1000000");
+  folly::gflags::FlagSaver _;
+  folly::gflags::SetCommandLineOption("bm_perf_args", "stat");
+  folly::gflags::SetCommandLineOption("bm_profile", "true");
+  folly::gflags::SetCommandLineOption("bm_profile_iters", "1000000");
   (void)state.runBenchmarksWithResults();
 
   ASSERT_THAT(
@@ -280,9 +280,9 @@ TEST_F(BenchmarkingStateTest, SkipWarmUp) {
     return iters;
   });
 
-  gflags::FlagSaver _;
-  gflags::SetCommandLineOption("bm_profile", "true");
-  gflags::SetCommandLineOption("bm_profile_iters", "1000");
+  folly::gflags::FlagSaver _;
+  folly::gflags::SetCommandLineOption("bm_profile", "true");
+  folly::gflags::SetCommandLineOption("bm_profile_iters", "1000");
 
   // Testing that warm up iteration is off by default and that
   // we get exactly the number of iterations passed in once.
@@ -295,7 +295,7 @@ TEST_F(BenchmarkingStateTest, SkipWarmUp) {
 
   iterNumPassed.clear();
 
-  gflags::SetCommandLineOption("bm_warm_up_iteration", "true");
+  folly::gflags::SetCommandLineOption("bm_warm_up_iteration", "true");
 
   {
     (void)state.runBenchmarksWithResults();
@@ -308,8 +308,8 @@ TEST_F(BenchmarkingStateTest, ListTests) {
 
   // --bm_list enabled with no benchmarks
   {
-    gflags::FlagSaver _;
-    gflags::SetCommandLineOption("bm_list", "true");
+    folly::gflags::FlagSaver _;
+    folly::gflags::SetCommandLineOption("bm_list", "true");
     ::testing::internal::CaptureStdout();
     runBenchmarks();
     output = ::testing::internal::GetCapturedStdout();
@@ -329,8 +329,8 @@ TEST_F(BenchmarkingStateTest, ListTests) {
 
   // --bm_list enabled with multiple benchmarks
   {
-    gflags::FlagSaver _;
-    gflags::SetCommandLineOption("bm_list", "true");
+    folly::gflags::FlagSaver _;
+    folly::gflags::SetCommandLineOption("bm_list", "true");
     ::testing::internal::CaptureStdout();
     runBenchmarks();
     output = ::testing::internal::GetCapturedStdout();

@@ -187,7 +187,7 @@ BENCHMARK_RELATIVE(ipv6_try_from_string_invalid, iters) {
 // ============================================================================
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   runBenchmarks();
   return 0;
 }

@@ -385,9 +385,9 @@ BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_min_usec", "10000", gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_min_usec", "10000", folly::gflags::SET_FLAG_IF_DEFAULT);
   if (FLAGS_benchmark) {
     folly::runBenchmarks();
   }

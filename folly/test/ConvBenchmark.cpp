@@ -1124,7 +1124,7 @@ FLOAT_TO_ARITH_BENCHMARK(int, Int, double2IntGood, double2IntBad)
 #undef FLOAT_TO_ARITH_BENCHMARK
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

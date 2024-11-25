@@ -178,30 +178,3 @@ check_cxx_source_runs("
   }"
   HAVE_VSNPRINTF_ERRORS
 )
-
-if (FOLLY_HAVE_LIBGFLAGS)
-  # Older releases of gflags used the namespace "gflags"; newer releases
-  # use "google" but also make symbols available in the deprecated "gflags"
-  # namespace too.  The folly code internally uses "gflags" unless we tell it
-  # otherwise.
-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${FOLLY_LIBGFLAGS_LIBRARY})
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${FOLLY_LIBGFLAGS_INCLUDE})
-  check_cxx_source_compiles("
-    #include <gflags/gflags.h>
-    int main() {
-      gflags::GetArgv();
-      return 0;
-    }
-    "
-    GFLAGS_NAMESPACE_IS_GFLAGS
-  )
-  list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${FOLLY_LIBGFLAGS_LIBRARY})
-  list(REMOVE_ITEM CMAKE_REQUIRED_INCLUDES ${FOLLY_LIBGFLAGS_INCLUDE})
-  if (GFLAGS_NAMESPACE_IS_GFLAGS)
-    set(FOLLY_UNUSUAL_GFLAGS_NAMESPACE OFF)
-    set(FOLLY_GFLAGS_NAMESPACE gflags)
-  else()
-    set(FOLLY_UNUSUAL_GFLAGS_NAMESPACE ON)
-    set(FOLLY_GFLAGS_NAMESPACE google)
-  endif()
-endif()

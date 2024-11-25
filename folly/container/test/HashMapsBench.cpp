@@ -444,12 +444,12 @@ void runAllHashMapTests() {
 
 int main(int argc, char** argv) {
   folly::Init init(&argc, &argv);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_max_iters", "100000", gflags::SET_FLAG_IF_DEFAULT);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_min_iters", "10000", gflags::SET_FLAG_IF_DEFAULT);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_max_secs", "1", gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_max_iters", "100000", folly::gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_min_iters", "10000", folly::gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_max_secs", "1", folly::gflags::SET_FLAG_IF_DEFAULT);
   LOG(INFO) << "Preparing benchmark...";
   runAllHashMapTests();
   LOG(INFO) << "Running benchmark, which could take tens of minutes...";

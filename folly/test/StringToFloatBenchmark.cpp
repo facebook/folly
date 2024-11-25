@@ -330,7 +330,7 @@ BENCHMARK(four_digit_percentages_FAST_FLOAT, n) {
 }
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   std::cout << "Generating input...";
   folly::stop_watch<std::chrono::milliseconds> stopwatch;

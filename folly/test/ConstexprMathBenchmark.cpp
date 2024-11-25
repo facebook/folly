@@ -193,7 +193,7 @@ BENCHMARK_DRAW_LINE();
 GENERATE_BENCHMARKS_FOR_TYPE(uint64_t)
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

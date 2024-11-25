@@ -1068,13 +1068,13 @@ void benchmarkSetup() {
   string numIters = folly::to<string>(
       std::min(1000000UL, (unsigned long)FLAGS_numBMElements));
 
-  gflags::SetCommandLineOptionWithMode(
-      "bm_max_iters", numIters.c_str(), gflags::SET_FLAG_IF_DEFAULT);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_min_iters", numIters.c_str(), gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_max_iters", numIters.c_str(), folly::gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_min_iters", numIters.c_str(), folly::gflags::SET_FLAG_IF_DEFAULT);
   string numCoresStr = folly::to<string>(numCores);
-  gflags::SetCommandLineOptionWithMode(
-      "numThreads", numCoresStr.c_str(), gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "numThreads", numCoresStr.c_str(), folly::gflags::SET_FLAG_IF_DEFAULT);
 
   std::cout << "\nRunning AHM benchmarks on machine with " << numCores
             << " logical cores.\n"
@@ -1086,7 +1086,7 @@ void benchmarkSetup() {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto ret = RUN_ALL_TESTS();
   if (!ret && FLAGS_benchmark) {
     benchmarkSetup();

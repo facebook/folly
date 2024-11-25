@@ -566,7 +566,7 @@ BENCHMARK(crc32c_combine_512KB_block, iters) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Populate a buffer with a deterministic pattern
   // on which to compute checksums

@@ -130,7 +130,7 @@ DEFINE_int32(port, 33130, "port");
 DEFINE_string(host, "::1", "host");
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   if (FLAGS_client) {
     runClient(

@@ -26,7 +26,7 @@
 using namespace folly;
 
 TEST(GlobalExecutorTest, IOThreadCountFlagSet) {
-  gflags::FlagSaver flagsaver;
+  folly::gflags::FlagSaver flagsaver;
 
   FLAGS_folly_global_io_executor_threads = 100;
   auto io_threadpool = dynamic_cast<folly::IOThreadPoolExecutor*>(

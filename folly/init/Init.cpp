@@ -82,7 +82,7 @@ void initImpl(int* argc, char*** argv, InitOptions options) {
   (void)options;
 #else
   if (options.use_gflags) {
-    gflags::ParseCommandLineFlags(argc, argv, options.remove_flags);
+    folly::gflags::ParseCommandLineFlags(argc, argv, options.remove_flags);
   }
 #endif
 

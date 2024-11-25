@@ -78,7 +78,7 @@ void addMemsetBenchmark(const std::string& name) {
 }
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
   assert(FLAGS_min_size <= FLAGS_max_size);
