@@ -528,7 +528,6 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:expected",
-        "//folly:portability",
         "//folly/lang:keep",
         "//folly/portability:gtest",
     ],
@@ -773,7 +772,6 @@ cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:function",
-        "//folly:random",
         "//folly/synchronization/detail:inline_function_ref",
     ],
 )
@@ -1173,7 +1171,6 @@ cpp_unittest(
     srcs = ["OptionalTest.cpp"],
     headers = [],
     deps = [
-        "//folly:cpp_attributes",
         "//folly:optional",
         "//folly:portability",
         "//folly/portability:gmock",
@@ -1250,7 +1247,6 @@ cpp_unittest(
     srcs = ["PolyTest.cpp"],
     deps = [
         "//folly:conv",
-        "//folly:cpp_attributes",
         "//folly:poly",
         "//folly/poly:basic_interfaces",
         "//folly/portability:gtest",
@@ -1411,7 +1407,6 @@ cpp_benchmark(
     ],
     deps = [
         "//folly:benchmark",
-        "//folly:memory",
         "//folly:singleton",
         "//folly:singleton_thread_local",
         "//folly/portability:gflags",
@@ -1426,7 +1421,6 @@ cpp_unittest(
         ":singleton_test_structs",
         ":test_utils",
         "//folly:singleton",
-        "//folly/experimental/io:fs_util",
         "//folly/io/async:async_base",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -1843,7 +1837,6 @@ cpp_unittest(
     srcs = ["TryTest.cpp"],
     headers = [],
     deps = [
-        "//folly:memory",
         "//folly:traits",
         "//folly:try",
         "//folly/lang:exception",

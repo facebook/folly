@@ -24,7 +24,6 @@
 
 #include <fcntl.h>
 #include <signal.h>
-#include <sys/types.h>
 
 #include <glog/logging.h>
 

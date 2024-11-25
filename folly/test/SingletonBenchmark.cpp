@@ -20,7 +20,6 @@
 #include <thread>
 
 #include <folly/Benchmark.h>
-#include <folly/Memory.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/portability/GFlags.h>
 

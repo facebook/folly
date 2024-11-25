@@ -21,7 +21,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <shared_mutex>
 #include <thread>
 
 #include <folly/Benchmark.h>

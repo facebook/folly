@@ -16,8 +16,6 @@
 
 #include <folly/test/function_benchmark/test_functions.h>
 
-#include <folly/lang/Exception.h>
-
 /*
  * These functions are defined in a separate file so that
  * gcc won't be able to inline them.

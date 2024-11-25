@@ -27,7 +27,6 @@
 
 #include <glog/logging.h>
 
-#include <folly/Portability.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 

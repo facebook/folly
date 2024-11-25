@@ -16,7 +16,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cstdint>
 #include <thread>
 #include <vector>
 

@@ -22,7 +22,6 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Function.h>
-#include <folly/Random.h>
 #include <folly/synchronization/detail/InlineFunctionRef.h>
 
 /**

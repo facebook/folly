@@ -27,7 +27,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

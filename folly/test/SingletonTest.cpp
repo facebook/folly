@@ -22,7 +22,6 @@
 #include <boost/thread/barrier.hpp>
 #include <glog/logging.h>
 
-#include <folly/experimental/io/FsUtil.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
