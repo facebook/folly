@@ -62,7 +62,6 @@ int clearenv();
 #endif
 
 #ifdef _WIN32
-char* mktemp(char* tn);
 char* mkdtemp(char* tn);
 int mkstemp(char* tn);
 char* realpath(const char* path, char* resolved_path);

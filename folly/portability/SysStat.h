@@ -47,11 +47,9 @@
 namespace folly {
 namespace portability {
 namespace sysstat {
-int chmod(char const* fn, int am);
 int fchmod(int fd, mode_t mode);
 int lstat(const char* path, struct stat* st);
 int mkdir(const char* fn, int mode);
-int umask(int md);
 } // namespace sysstat
 } // namespace portability
 } // namespace folly

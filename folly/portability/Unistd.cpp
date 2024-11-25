@@ -198,29 +198,6 @@ ProcessHandleWrapper getParentProcessHandle() {
 }
 } // namespace
 
-int access(char const* fn, int am) {
-  return _access(fn, am);
-}
-
-int chdir(const char* path) {
-  return _chdir(path);
-}
-
-int close(int fh) {
-  if (folly::portability::sockets::is_fh_socket(fh)) {
-    return netops::detail::SocketFileDescriptorMap::close(fh);
-  }
-  return _close(fh);
-}
-
-int dup(int fh) {
-  return _dup(fh);
-}
-
-int dup2(int fhs, int fhd) {
-  return _dup2(fhs, fhd);
-}
-
 int fsync(int fd) {
   HANDLE h = (HANDLE)_get_osfhandle(fd);
   if (h == INVALID_HANDLE_VALUE) {
@@ -254,10 +231,6 @@ int ftruncate(int fd, off_t len) {
   return 0;
 }
 
-char* getcwd(char* buf, int sz) {
-  return _getcwd(buf, sz);
-}
-
 int getdtablesize() {
   return _getmaxstdio();
 }
@@ -278,30 +251,12 @@ uid_t getuid() {
   return 1;
 }
 
-int isatty(int fh) {
-  return _isatty(fh);
-}
-
 int lockf(int fd, int cmd, off_t len) {
   return _locking(fd, cmd, len);
 }
 
-off_t lseek(int fh, off_t off, int orig) {
-  return _lseek(fh, off, orig);
-}
-
 off64_t lseek64(int fh, off64_t off, int orig) {
   return _lseeki64(fh, static_cast<int64_t>(off), orig);
-}
-
-int rmdir(const char* path) {
-  return _rmdir(path);
-}
-
-int pipe(int pth[2]) {
-  // We need to be able to listen to pipes with
-  // libevent, so they need to be actual sockets.
-  return socketpair(PF_UNIX, SOCK_STREAM, 0, pth);
 }
 
 ssize_t pread(int fd, void* buf, size_t count, off_t offset) {
@@ -317,27 +272,6 @@ ssize_t pread64(int fd, void* buf, size_t count, off64_t offset) {
 ssize_t pwrite(int fd, const void* buf, size_t count, off_t offset) {
   const bool is64Bit = false;
   return wrapPositional<is64Bit>(_write, fd, offset, buf, (unsigned int)count);
-}
-
-ssize_t read(int fh, void* buf, size_t count) {
-  if (folly::portability::sockets::is_fh_socket(fh)) {
-    SOCKET s = (SOCKET)_get_osfhandle(fh);
-    if (s != INVALID_SOCKET) {
-      auto r = folly::portability::sockets::recv(fh, buf, count, 0);
-      if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
-        errno = EAGAIN;
-      }
-      return r;
-    }
-  }
-  auto r = _read(fh, buf, static_cast<unsigned int>(count));
-  if (r == -1 && GetLastError() == ERROR_NO_DATA) {
-    // This only happens if the file was non-blocking and
-    // no data was present. We have to translate the error
-    // to a form that the rest of the world is expecting.
-    errno = EAGAIN;
-  }
-  return r;
 }
 
 ssize_t readlink(const char* path, char* buf, size_t buflen) {
@@ -411,6 +345,43 @@ int usleep(unsigned int ms) {
   Sleep((DWORD)(ms / 1000));
   return 0;
 }
+} // namespace unistd
+} // namespace portability
+
+namespace fileops {
+int close(int fh) {
+  if (folly::portability::sockets::is_fh_socket(fh)) {
+    return netops::detail::SocketFileDescriptorMap::close(fh);
+  }
+  return _close(fh);
+}
+
+ssize_t read(int fh, void* buf, size_t count) {
+  if (folly::portability::sockets::is_fh_socket(fh)) {
+    SOCKET s = (SOCKET)_get_osfhandle(fh);
+    if (s != INVALID_SOCKET) {
+      auto r = folly::portability::sockets::recv(fh, buf, count, 0);
+      if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
+        errno = EAGAIN;
+      }
+      return r;
+    }
+  }
+  auto r = _read(fh, buf, static_cast<unsigned int>(count));
+  if (r == -1 && GetLastError() == ERROR_NO_DATA) {
+    // This only happens if the file was non-blocking and
+    // no data was present. We have to translate the error
+    // to a form that the rest of the world is expecting.
+    errno = EAGAIN;
+  }
+  return r;
+}
+
+int pipe(int pth[2]) {
+  // We need to be able to listen to pipes with
+  // libevent, so they need to be actual sockets.
+  return socketpair(PF_UNIX, SOCK_STREAM, 0, pth);
+}
 
 ssize_t write(int fh, void const* buf, size_t count) {
   if (folly::portability::sockets::is_fh_socket(fh)) {
@@ -443,8 +414,7 @@ ssize_t write(int fh, void const* buf, size_t count) {
   }
   return r;
 }
-} // namespace unistd
-} // namespace portability
+} // namespace fileops
 } // namespace folly
 
 #endif

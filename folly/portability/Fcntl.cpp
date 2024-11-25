@@ -24,10 +24,6 @@
 namespace folly {
 namespace portability {
 namespace fcntl {
-int creat(char const* fn, int pm) {
-  return _creat(fn, pm);
-}
-
 int fcntl(int fd, int cmd, ...) {
   va_list args;
   int res = -1;
@@ -85,6 +81,15 @@ int fcntl(int fd, int cmd, ...) {
   return res;
 }
 
+int posix_fallocate(int fd, off_t offset, off_t len) {
+  // We'll pretend we always have enough space. We
+  // can't exactly pre-allocate on windows anyways.
+  return 0;
+}
+} // namespace fcntl
+} // namespace portability
+
+namespace fileops {
 int open(char const* fn, int of, int pm) {
   int fh;
   int realMode = _S_IREAD;
@@ -108,13 +113,6 @@ int open(char const* fn, int of, int pm) {
   errno_t res = _sopen_s(&fh, fn, of, _SH_DENYNO, realMode);
   return res ? -1 : fh;
 }
-
-int posix_fallocate(int fd, off_t offset, off_t len) {
-  // We'll pretend we always have enough space. We
-  // can't exactly pre-allocate on windows anyways.
-  return 0;
-}
-} // namespace fcntl
-} // namespace portability
+} // namespace fileops
 } // namespace folly
 #endif
