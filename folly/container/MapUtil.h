@@ -37,7 +37,7 @@ namespace folly {
  * Given a map and a key, return the value corresponding to the key in the map,
  * or a given default value if the key doesn't exist in the map.
  */
-template <typename Map, typename Key>
+template <typename Map, typename Key = typename Map::key_type>
 typename Map::mapped_type get_default(const Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end()) ? (pos->second) : (typename Map::mapped_type{});
