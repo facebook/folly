@@ -145,43 +145,6 @@
 #include <folly/lang/ToAscii.h>
 #include <folly/portability/Math.h>
 
-// FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT indicates that
-// std::to_chars for floating point is available
-#if (defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201611L)
-#define FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT 1
-#elif defined(_LIBCPP_HAS_NO_VENDOR_AVAILABILITY_ANNOTATIONS) && \
-    defined(_LIBCPP_AVAILABILITY_TO_CHARS_FLOATING_POINT)
-#define FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT 1
-#elif defined(__APPLE__) &&                                        \
-    ((defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) &&    \
-      __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 130300) ||  \
-     (defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__) &&   \
-      __ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__ >= 160300) || \
-     (defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) &&       \
-      __ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__ >= 160300) ||     \
-     (defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__) &&    \
-      __ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__ >= 90300))
-// Apple introduces std::to_chars & std::from_chars support for floating
-// point types for: macOS 13.3, iOS 16.3, tvOS 16.3, watchOS 9.3.
-// https://developer.apple.com/xcode/cpp/#c++17
-// __builtin_available(macOS 13.3, iOS 16.3, tvOS 16.3, watchOS 9.3, *)) {
-// The avaliability attributes are marked as strict, so preprocessor
-// conditionals must be used to check if it's available.
-#define FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT 1
-#else
-#define FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT 0
-#endif
-
-// FOLLY_CONV_USE_TO_CHARS set to 1 indicates that std::to_chars will be used
-// because it's available and it was requested.
-#if defined(FOLLY_CONV_DTOA_TO_CHARS) && FOLLY_CONV_DTOA_TO_CHARS == 1 && \
-    defined(FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT) &&           \
-    FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT == 1
-#define FOLLY_CONV_USE_TO_CHARS 1
-#else
-#define FOLLY_CONV_USE_TO_CHARS 0
-#endif
-
 namespace folly {
 
 // Keep this in sync with kErrorStrings in Conv.cpp
@@ -748,19 +711,6 @@ constexpr double kConvMaxDecimalInShortestHighValue =
     1'000'000'000'000'000'000'000.0;
 constexpr int kBase10MaximalLength = 17;
 
-enum class FloatToStringImpl {
-  LibDoubleConversion,
-  StdToChars,
-};
-
-#if defined(FOLLY_CONV_USE_TO_CHARS) && FOLLY_CONV_USE_TO_CHARS == 1
-constexpr FloatToStringImpl kConvFloatToStringImpl =
-    FloatToStringImpl::StdToChars;
-constexpr int kConvMaxFixedDigitsAfterPoint = 100;
-constexpr int kConvMaxPrecisionDigits = 120;
-#else
-constexpr FloatToStringImpl kConvFloatToStringImpl =
-    FloatToStringImpl::LibDoubleConversion;
 constexpr int kConvMaxFixedDigitsAfterPoint =
     double_conversion::DoubleToStringConverter::kMaxFixedDigitsAfterPoint;
 constexpr int kConvMaxPrecisionDigits =
@@ -796,14 +746,15 @@ constexpr double_conversion::DoubleToStringConverter::Flags convert(
     DtoaFlags flags) {
   return static_cast<double_conversion::DoubleToStringConverter::Flags>(flags);
 }
+} // namespace detail
 
 /**
- * Wrapper around `double_conversion::DoubleToStringConverter`.
+ * `numDigits` is only used with `FIXED` && `PRECISION`.
  */
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
-toAppendDoubleConversion(
+toAppend(
     Src value,
     Tgt* result,
     DtoaMode mode,
@@ -845,232 +796,6 @@ toAppendDoubleConversion(
   const size_t length = size_t(builder.position());
   builder.Finalize();
   result->append(buffer, length);
-}
-#endif // FOLLY_CONV_USE_TO_CHARS
-
-#if defined(FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT) && \
-    FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT == 1
-/// Holds a set of `DtoaFlags` as a bitwise OR of the flags.
-/// It has convience member functions to check if a flag is set.
-struct DtoaFlagsSet {
-  explicit DtoaFlagsSet(DtoaFlags flags);
-
-  bool isSet(DtoaFlags flag) const;
-
-  bool emitPositiveExponentSign() const;
-  bool emitTrailingDecimalPoint() const;
-  bool emitTrailingZeroAfterPoint() const;
-  bool uniqueZero() const;
-  bool noTrailingZero() const;
-
- private:
-  DtoaFlags flags_;
-};
-/// This parses a decimal string into a structured format.
-/// For example, given "123.456e+7", this will create pointers to the integer,
-/// fractional, exponentional parts.
-///
-/// The decimal string is passed in as a `char` buffer with begin and end
-/// pointers. The parsing will create pointers to parts of the decimal string.
-///
-/// e.g.,
-/// -123.456e+78
-/// ABCDEFGHIJK
-/// negativeSign points to address A
-/// integerBegin points to address B
-/// integerEnd points to address E
-/// and so on...
-///
-/// The is used to format the output of `std::to_chars` so that it is consistent
-/// with `double_conversion::DoubleToStringConverter`'s format.
-///
-/// This also has helper member functions to identify parts needed to apply
-/// `DtoaMode::PRECISION` formating.
-class ParsedDecimal {
- public:
-  char* negativeSign{};
-  char* integerBegin{};
-  char* integerEnd{};
-  char* decimalPoint{};
-  char* fractionalBegin{};
-  char* fractionalEnd{};
-  char* exponentSymbol{};
-  char* exponentSign{};
-  char* exponentBegin{};
-  char* exponentEnd{};
-
-  ParsedDecimal(char* begin, char* end);
-
-  /// Returns the number of figures that count in PRECISION/general mode.
-  /// This is needed to know how many more figures to add when NO_TRAILING_ZERO
-  /// is unset.
-  int numPrecisionFigures() const;
-
-  /// first is the begin pointer of the fractional suffix.
-  /// second is the end pointer of the fractional suffix.
-  using FractionalSuffix = std::pair<char*, char*>;
-
-  /// Returns pointers to the suffix after the fraction.
-  /// e.g., for "12.34-56" this returns pointers to "e-56".
-  /// Returns nothing if there is no suffix (e.g., "7.89").
-  std::optional<FractionalSuffix> fractionalSuffix() const;
-
-  /// Shifts the pointers of the fractional suffix by the given amount.
-  /// This is used when inserting additional figures for `DtoaMode::PRECISION`.
-  /// The pointers need to be updated after the fractional suffix is `memmove`'d
-  /// to accommodate the additional figures.
-  void shiftFractionalSuffixPtrs(size_t amount);
-};
-
-/// Formats the output from `std::to_chars` as if it came from
-/// `double_conversion::DoubleToStringConverter`.
-///
-/// Specifically it adds support for:
-/// - EMIT_POSITIVE_EXPONENT_SIGN
-/// - EMIT_TRAILING_DECIMAL_POINT
-/// - EMIT_TRAILING_ZERO_AFTER_POINT
-/// - UNIQUE_ZERO
-/// - NO_TRAILING_ZERO
-/// - Captial E exponent sign (e.g., 1.23e4 -> 1.23E4)
-/// - Removes leading zeros in exponent (e.g., 1.23e04 -> 1.23e4)
-///
-/// This modifies the result buffer in place to match the output format of
-/// `double_conversion::DoubleToStringConverter`.
-/// `resultBegin` is the begin pointer of the result from `std::to_chars`.
-/// `resultEnd` is the end pointer of the result from `std::to_chars`.
-/// `bufferEnd` is the end pointer of the buffer space given to `std::to_chars`.
-/// The extra buffer space is used to expand the result.
-/// `resultBegin`, `resultEnd`, and `bufferEnd` must point to the same buffer.
-///
-/// The first char* of the return type is the begin pointer of the newly
-/// formatted output. The second char* of the return type is the begin pointer
-/// of the newly formatted output.
-std::pair<char*, char*> formatAsDoubleConversion(
-    bool valueIsZero,
-    DtoaMode mode,
-    unsigned int numDigits,
-    DtoaFlags flags,
-    char* resultBegin,
-    char* resultEnd,
-    char* bufferEnd);
-
-template <class Tgt, class Src>
-typename std::enable_if<
-    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
-toAppendStdToChars(
-    Src value,
-    Tgt* result,
-    DtoaMode mode,
-    unsigned int numDigits,
-    DtoaFlags flags = DtoaFlags::NO_FLAGS) {
-  if (std::isnan(value)) {
-    // no signbit check because -nan outputs as NaN
-    result->append("NaN", 3);
-    return;
-  }
-
-  if (std::isinf(value)) {
-    if (std::signbit(value)) {
-      result->append("-", 1);
-    }
-    // std::to_chars returns "inf", this needs "Infinity"
-    result->append("Infinity", 8);
-    return;
-  }
-
-  if (mode == DtoaMode::PRECISION &&
-      (numDigits == 0 || numDigits > detail::kConvMaxPrecisionDigits)) {
-    // double_conversion outputs the empty string in this scenario
-    return;
-  }
-
-  if (mode == DtoaMode::FIXED &&
-      numDigits > detail::kConvMaxFixedDigitsAfterPoint) {
-    // double_conversion outputs the empty string in this scenario
-    return;
-  }
-
-  bool useShortestFixed{false};
-  if (mode == DtoaMode::SHORTEST || mode == DtoaMode::SHORTEST_SINGLE) {
-    Src absValue = std::abs(value);
-    // use fixed decimal notation (i.e., not exponential notation)
-    // for values in this range to match double-conversion formatting.
-    useShortestFixed = kConvMaxDecimalInShortestLowValue <= absValue &&
-        absValue < kConvMaxDecimalInShortestHighValue;
-  }
-
-  std::to_chars_result conv_result;
-  char buffer[256];
-  char* const bufferEnd = buffer + sizeof(buffer);
-  FOLLY_PUSH_WARNING
-  FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
-  switch (mode) {
-    case DtoaMode::SHORTEST: {
-      if (useShortestFixed) {
-        conv_result =
-            std::to_chars(buffer, bufferEnd, value, std::chars_format::fixed);
-      } else {
-        conv_result = std::to_chars(buffer, bufferEnd, value);
-      }
-      break;
-    }
-    case DtoaMode::SHORTEST_SINGLE:
-      if (useShortestFixed) {
-        conv_result = std::to_chars(
-            buffer,
-            bufferEnd,
-            static_cast<float>(value),
-            std::chars_format::fixed);
-      } else {
-        conv_result =
-            std::to_chars(buffer, bufferEnd, static_cast<float>(value));
-      }
-      break;
-    case DtoaMode::FIXED:
-      conv_result = std::to_chars(
-          buffer, bufferEnd, value, std::chars_format::fixed, numDigits);
-      break;
-    case DtoaMode::PRECISION:
-    default:
-      assert(mode == DtoaMode::PRECISION);
-      conv_result = std::to_chars(
-          buffer, bufferEnd, value, std::chars_format::general, numDigits);
-      break;
-  }
-  FOLLY_POP_WARNING
-
-  auto [resultEnd, ec] = conv_result;
-  if (ec != std::errc()) {
-    folly::throw_exception<std::system_error>(std::make_error_code(ec));
-  }
-
-  char* resultBegin = buffer;
-  bool valueIsZero = value == 0.0;
-  auto [formattedBegin, formattedEnd] = detail::formatAsDoubleConversion(
-      valueIsZero, mode, numDigits, flags, resultBegin, resultEnd, bufferEnd);
-
-  result->append(formattedBegin, formattedEnd - formattedBegin);
-}
-#endif // FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT
-} // namespace detail
-
-/**
- * `numDigits` is only used with `FIXED` && `PRECISION`.
- */
-template <class Tgt, class Src>
-typename std::enable_if<
-    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
-toAppend(
-    Src value,
-    Tgt* result,
-    DtoaMode mode,
-    unsigned int numDigits,
-    DtoaFlags flags = DtoaFlags::NO_FLAGS) {
-#if defined(FOLLY_CONV_USE_TO_CHARS) && FOLLY_CONV_USE_TO_CHARS == 1
-  detail::toAppendStdToChars(value, result, mode, numDigits, flags);
-#else
-  detail::toAppendDoubleConversion(value, result, mode, numDigits, flags);
-#endif
 }
 
 /**

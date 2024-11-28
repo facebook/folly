@@ -262,13 +262,6 @@ cpp_library(
     srcs = ["Conv.cpp"],
     headers = ["Conv.h"],
     compiler_flags = roar_no_jit(),
-    propagated_pp_flags = select({
-        "//folly/buck_config:folly-conv-dtoa-to-chars": [
-            # Use std::to_chars instead of libdouble-conversion for Double-To-ASCII conversions
-            "-DFOLLY_CONV_DTOA_TO_CHARS=1",
-        ],
-        "DEFAULT": [],
-    }),
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         "fbsource//third-party/fast_float:fast_float",
