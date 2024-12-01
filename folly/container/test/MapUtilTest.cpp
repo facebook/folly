@@ -106,6 +106,11 @@ TEST(MapUtil, getOptionalStd) {
   EXPECT_TRUE(get_optional<std::optional>(m, 1).has_value());
   EXPECT_EQ(2, get_optional<std::optional>(m, 1).value());
   EXPECT_FALSE(get_optional<std::optional>(m, 2).has_value());
+
+  std::map<int, std::map<int, int>> m2{{1, {{2, 3}}}};
+  EXPECT_TRUE(get_optional<std::optional>(m2, 1, 2).has_value());
+  EXPECT_EQ(3, get_optional<std::optional>(m2, 1, 2).value());
+  EXPECT_FALSE(get_optional<std::optional>(m2, 1, 3).has_value());
 }
 
 TEST(MapUtil, getRefDefault) {
