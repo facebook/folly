@@ -5,7 +5,7 @@ name = openssl
 libssl-dev
 
 [homebrew]
-openssl@1.1
+openssl
 # on homebrew need the matching curl and ca-
 
 [rpms]
@@ -16,9 +16,11 @@ openssl-libs
 [pps]
 openssl
 
-[download]
-url = https://www.openssl.org/source/openssl-1.1.1l.tar.gz
-sha256 = 0b7a3e5e59c34827fe0c3a74b7ec8baef302b98fa80088d7f9153aa16fa76bd1
+# no need to download on the systems where we always use the system libs
+[download.not(any(os=linux, os=freebsd))]
+# match the openssl version packages in ubuntu LTS folly current supports
+url = https://www.openssl.org/source/openssl-3.0.15.tar.gz
+sha256 = 23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533
 
 # We use the system openssl on these platforms even without --allow-system-packages
 [build.any(os=linux, os=freebsd)]
@@ -26,7 +28,7 @@ builder = nop
 
 [build.not(any(os=linux, os=freebsd))]
 builder = openssl
-subdir = openssl-1.1.1l
+subdir = openssl-3.0.15
 
 [dependencies.os=windows]
 perl

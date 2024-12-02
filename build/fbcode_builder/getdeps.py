@@ -333,6 +333,12 @@ class FetchCmd(ProjectCmdBase):
 
         cache = cache_module.create_cache()
         for m in projects:
+            fetcher = loader.create_fetcher(m)
+            if isinstance(fetcher, SystemPackageFetcher):
+                # We are guaranteed that if the fetcher is set to
+                # SystemPackageFetcher then this item is completely
+                # satisfied by the appropriate system packages
+                continue
             cached_project = CachedProject(cache, loader, m)
             if cached_project.download():
                 continue
@@ -348,7 +354,6 @@ class FetchCmd(ProjectCmdBase):
                     continue
 
             # We need to fetch the sources
-            fetcher = loader.create_fetcher(m)
             fetcher.update()
 
 
