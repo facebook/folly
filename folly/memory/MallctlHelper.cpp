@@ -18,6 +18,7 @@
 
 #include <folly/Format.h>
 #include <folly/String.h>
+#include <folly/lang/Exception.h>
 
 #include <stdexcept>
 
@@ -28,7 +29,7 @@ namespace detail {
 [[noreturn]] void handleMallctlError(const char* fn, const char* cmd, int err) {
   assert(err != 0);
   cmd = cmd ? cmd : "<none>";
-  throw std::runtime_error(
+  throw_exception<std::runtime_error>(
       sformat("mallctl[{}] {}: {} ({})", fn, cmd, errnoStr(err), err));
 }
 
