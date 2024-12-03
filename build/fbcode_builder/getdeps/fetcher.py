@@ -868,6 +868,7 @@ class ArchiveFetcher(Fetcher):
 
         if not os.path.exists(self.file_name):
             self._download()
+            self._verify_hash()
 
         if tarfile.is_tarfile(self.file_name):
             opener = tarfile.open
@@ -877,19 +878,20 @@ class ArchiveFetcher(Fetcher):
             raise Exception("don't know how to extract %s" % self.file_name)
         os.makedirs(self.src_dir)
         print("Extract %s -> %s" % (self.file_name, self.src_dir))
-        t = opener(self.file_name)
         if is_windows():
             # Ensure that we don't fall over when dealing with long paths
             # on windows
             src = r"\\?\%s" % os.path.normpath(self.src_dir)
         else:
             src = self.src_dir
-        # The `str` here is necessary to ensure that we don't pass a unicode
-        # object down to tarfile.extractall on python2.  When extracting
-        # the boost tarball it makes some assumptions and tries to convert
-        # a non-ascii path to ascii and throws.
-        src = str(src)
-        t.extractall(src)
+
+        with opener(self.file_name) as t:
+            # The `str` here is necessary to ensure that we don't pass a unicode
+            # object down to tarfile.extractall on python2.  When extracting
+            # the boost tarball it makes some assumptions and tries to convert
+            # a non-ascii path to ascii and throws.
+            src = str(src)
+            t.extractall(src)
 
         with open(self.hash_file, "w") as f:
             f.write(self.sha256)

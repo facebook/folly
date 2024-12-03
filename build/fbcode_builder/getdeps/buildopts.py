@@ -523,7 +523,8 @@ def find_unused_drive_letter():
     return available[-1]
 
 
-def create_subst_path(path: str) -> str:
+def map_subst_path(path: str) -> str:
+    """find a short drive letter mapping for a path"""
     for _attempt in range(0, 24):
         drive = find_existing_win32_subst_for_path(
             path, subst_mapping=list_win32_subst_letters()
@@ -544,9 +545,11 @@ def create_subst_path(path: str) -> str:
         # other processes on the same host, so this may not succeed.
         try:
             subprocess.check_call(["subst", "%s:" % available, path])
-            return "%s:\\" % available
+            subst = "%s:\\" % available
+            print("Mapped scratch dir %s -> %s" % (path, subst), file=sys.stderr)
+            return subst
         except Exception:
-            print("Failed to map %s -> %s" % (available, path))
+            print("Failed to map %s -> %s" % (available, path), file=sys.stderr)
 
     raise Exception("failed to set up a subst path for %s" % path)
 
@@ -619,10 +622,7 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
             os.makedirs(scratch_dir)
 
         if is_windows():
-            subst = create_subst_path(scratch_dir)
-            print(
-                "Mapping scratch dir %s -> %s" % (scratch_dir, subst), file=sys.stderr
-            )
+            subst = map_subst_path(scratch_dir)
             scratch_dir = subst
     else:
         if not os.path.exists(scratch_dir):
