@@ -127,21 +127,33 @@ TEST_F(AtomicGrowArrayTest, empty) {
   auto const count = [](auto& v) {
     return std::accumulate(v.begin(), v.end(), 0);
   };
+  auto const countp = [](auto& v) {
+    auto const sum = [](auto a, auto* b) { return a + *b; };
+    return std::accumulate(v.begin(), v.end(), 0, sum);
+  };
   {
     auto view = array.as_view();
     EXPECT_EQ(expected, count(view));
+    auto span = array.as_ptr_span();
+    EXPECT_EQ(expected, countp(span));
   }
   {
     auto const view = array.as_view();
     EXPECT_EQ(expected, count(view));
+    auto const span = array.as_ptr_span();
+    EXPECT_EQ(expected, countp(span));
   }
   {
     auto view = std::as_const(array).as_view();
     EXPECT_EQ(expected, count(view));
+    auto span = std::as_const(array).as_ptr_span();
+    EXPECT_EQ(expected, countp(span));
   }
   {
     auto const view = std::as_const(array).as_view();
     EXPECT_EQ(expected, count(view));
+    auto const span = std::as_const(array).as_ptr_span();
+    EXPECT_EQ(expected, countp(span));
   }
 }
 

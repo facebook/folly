@@ -25,6 +25,7 @@
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
 #include <folly/ScopeGuard.h>
+#include <folly/container/span.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Bits.h>
 #include <folly/lang/New.h>
@@ -79,6 +80,9 @@ class atomic_grow_array : private Policy {
  public:
   using size_type = std::size_t;
   using value_type = Item;
+
+  using pointer_span = span<value_type* const>;
+  using const_pointer_span = span<value_type const* const>;
 
   class iterator;
   class const_iterator;
@@ -206,6 +210,8 @@ class atomic_grow_array : private Policy {
     using size_type = typename atomic_grow_array::size_type;
     using reference = maybe_add_const_t<value_type>&;
     using const_reference = value_type const&;
+    using pointer = maybe_add_const_t<value_type>*;
+    using const_pointer = value_type const*;
     using iterator = conditional_t<Const, up::const_iterator, up::iterator>;
     using const_iterator = up::const_iterator;
 
@@ -226,6 +232,15 @@ class atomic_grow_array : private Policy {
     }
     const_reference operator[](size_type index) const noexcept {
       return *array_->list[index];
+    }
+
+    span<pointer const> as_ptr_span() noexcept {
+      using type = span<pointer const>;
+      return array_ ? type{array_->list, array_->size} : type{};
+    }
+    span<const_pointer const> as_ptr_span() const noexcept {
+      using type = span<const_pointer const>;
+      return array_ ? type{array_->list, array_->size} : type{};
     }
   };
 
@@ -361,6 +376,7 @@ class atomic_grow_array : private Policy {
     using typename base::size_type;
     using typename base::value_type;
 
+    using base::as_ptr_span;
     using base::base;
     using base::begin;
     using base::cbegin;
@@ -390,6 +406,7 @@ class atomic_grow_array : private Policy {
     using typename base::size_type;
     using typename base::value_type;
 
+    using base::as_ptr_span;
     using base::base;
     using base::begin;
     using base::cbegin;
@@ -424,6 +441,14 @@ class atomic_grow_array : private Policy {
   ///   size(), even when size() is gotten once and then cached.
   view as_view() noexcept { return view{array_.load(mo_acquire)}; }
   const_view as_view() const noexcept { return view{array_.load(mo_acquire)}; }
+
+  /// as_ptr_span
+  ///
+  /// Convenience wrapper for view::as_ptr_span.
+  pointer_span as_ptr_span() noexcept { return as_view().as_ptr_span(); }
+  const_pointer_span as_ptr_span() const noexcept {
+    return as_view().as_ptr_span();
+  }
 
  private:
   static constexpr auto mo_acquire = std::memory_order_acquire;

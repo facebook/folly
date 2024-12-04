@@ -12,6 +12,7 @@ cpp_library(
         "//folly:constexpr_math",
         "//folly:likely",
         "//folly:scope_guard",
+        "//folly/container:span",
         "//folly/lang:align",
         "//folly/lang:bits",
         "//folly/lang:new",
