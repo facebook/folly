@@ -96,6 +96,26 @@ CO_TEST(SuspendedStacksTest, testBaton) {
   expectSuspendedFrames(0);
 }
 
+CO_TEST(SuspendedStacksTest, testFibersBaton) {
+  auto currentDepth =
+      (co_await folly::coro::co_current_async_stack_trace).size();
+  auto* ex = co_await folly::coro::co_current_executor;
+
+  expectSuspendedFrames(0);
+
+  folly::fibers::Baton b;
+  waitOn<coroDepth>(b).scheduleOn(ex).start();
+  co_await folly::coro::co_reschedule_on_current_executor;
+  expectSuspendedFrames(1, currentDepth + coroDepth);
+
+  // Only one fiber/coro can wait on a fibers::Baton
+
+  b.post();
+  co_await folly::coro::co_reschedule_on_current_executor;
+
+  expectSuspendedFrames(0);
+}
+
 CO_TEST(SuspendedStacksTest, testLock) {
   auto currentDepth =
       (co_await folly::coro::co_current_async_stack_trace).size();
