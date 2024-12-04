@@ -397,7 +397,7 @@ def get_async_stack_addrs(
     stack frames.
 
     See C++ implementation in `getAsyncStackTraceSafe` in
-    folly/experimental/symbolizer/StackTrace.cpp
+    folly/debugging/symbolizer/StackTrace.cpp
     """
     async_stack_root_addr = get_async_stack_root_addr(debugger_value_class)
 
