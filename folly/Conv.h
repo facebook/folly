@@ -760,9 +760,9 @@ toAppend(
     DtoaMode mode,
     unsigned int numDigits,
     DtoaFlags flags = DtoaFlags::NO_FLAGS) {
-  using namespace double_conversion;
-  DoubleToStringConverter::Flags dcFlags = detail::convert(flags);
-  DoubleToStringConverter conv(
+  double_conversion::DoubleToStringConverter::Flags dcFlags =
+      detail::convert(flags);
+  double_conversion::DoubleToStringConverter conv(
       dcFlags,
       "Infinity",
       "NaN",
@@ -772,23 +772,24 @@ toAppend(
       6, // max leading padding zeros
       1); // max trailing padding zeros
   char buffer[256];
-  StringBuilder builder(buffer, sizeof(buffer));
-  DoubleToStringConverter::DtoaMode dcMode = detail::convert(mode);
+  double_conversion::StringBuilder builder(buffer, sizeof(buffer));
+  double_conversion::DoubleToStringConverter::DtoaMode dcMode =
+      detail::convert(mode);
   FOLLY_PUSH_WARNING
   FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
   switch (dcMode) {
-    case DoubleToStringConverter::SHORTEST:
+    case double_conversion::DoubleToStringConverter::SHORTEST:
       conv.ToShortest(value, &builder);
       break;
-    case DoubleToStringConverter::SHORTEST_SINGLE:
+    case double_conversion::DoubleToStringConverter::SHORTEST_SINGLE:
       conv.ToShortestSingle(static_cast<float>(value), &builder);
       break;
-    case DoubleToStringConverter::FIXED:
+    case double_conversion::DoubleToStringConverter::FIXED:
       conv.ToFixed(value, int(numDigits), &builder);
       break;
-    case DoubleToStringConverter::PRECISION:
+    case double_conversion::DoubleToStringConverter::PRECISION:
     default:
-      assert(dcMode == DoubleToStringConverter::PRECISION);
+      assert(dcMode == double_conversion::DoubleToStringConverter::PRECISION);
       conv.ToPrecision(value, int(numDigits), &builder);
       break;
   }
