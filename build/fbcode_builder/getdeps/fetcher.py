@@ -366,10 +366,8 @@ def copy_if_different(src_name, dest_name) -> bool:
             if exc.errno != errno.ENOENT:
                 raise
         target = os.readlink(src_name)
-        print("Symlinking %s -> %s" % (dest_name, target))
         os.symlink(target, dest_name)
     else:
-        print("Copying %s -> %s" % (src_name, dest_name))
         shutil.copy2(src_name, dest_name)
 
     return True
@@ -474,7 +472,7 @@ class ShipitPathMap(object):
                 raise Exception(
                     "%s doesn't exist; check your sparse profile!" % dir_to_mirror
                 )
-
+            update_count = 0
             for root, dirs, files in os.walk(dir_to_mirror):
                 dirs[:] = [d for d in dirs if root_dev == st_dev(os.path.join(root, d))]
 
@@ -488,6 +486,13 @@ class ShipitPathMap(object):
                         full_file_list.add(target_name)
                         if copy_if_different(full_name, target_name):
                             change_status.record_change(target_name)
+                            if update_count < 10:
+                                print("Updated %s -> %s" % (full_name, target_name))
+                            elif update_count == 10:
+                                print("...")
+                            update_count += 1
+            if update_count:
+                print("Updated %s for %s" % (update_count, fbsource_subdir))
 
         # Compare the list of previously shipped files; if a file is
         # in the old list but not the new list then it has been
