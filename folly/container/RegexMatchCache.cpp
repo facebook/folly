@@ -497,6 +497,16 @@ std::vector<RegexMatchCache::string_pointer> RegexMatchCache::findMatches(
   return {matches.begin(), matches.end()};
 }
 
+bool RegexMatchCache::hasItemsToPurge(time_point const expiry) const noexcept {
+  for (auto const& [regex, entry] : cacheRegexToMatch_) {
+    auto const accessed_at = entry.accessed_at.load(std::memory_order_relaxed);
+    if (accessed_at <= expiry) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void RegexMatchCache::clear() {
   std::exchange(stringQueueReverse_, {});
   std::exchange(stringQueueForward_, {});

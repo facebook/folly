@@ -691,6 +691,8 @@ class RegexMatchCache {
   std::vector<string_pointer> findMatches(
       regex_key const& regex, time_point now) const;
 
+  bool hasItemsToPurge(time_point expiry) const noexcept;
+
   void clear();
   void purge(time_point expiry);
 };
