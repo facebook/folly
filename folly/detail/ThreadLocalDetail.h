@@ -505,9 +505,9 @@ struct StaticMetaBase {
    * from the allId2ThreadEntrySets_.
    */
   FOLLY_ALWAYS_INLINE void removeThreadEntryFromAllInMap(ThreadEntry* te) {
-    uint32_t maxId = nextId_.load();
-    for (uint32_t i = 0; i < maxId; ++i) {
-      allId2ThreadEntrySets_[i].wlock()->erase(te);
+    for (const auto ptr : getThreadEntrySetsPtrSpan()) {
+      auto& set = *ptr;
+      set.wlock()->erase(te);
     }
   }
 
@@ -520,9 +520,9 @@ struct StaticMetaBase {
     if (needForkLock) {
       rlocked.lock();
     }
-    uint32_t maxId = nextId_.load();
-    for (uint32_t i = 0; i < maxId; ++i) {
-      if (allId2ThreadEntrySets_[i].rlock()->contains(te)) {
+    for (const auto ptr : getThreadEntrySetsPtrSpan()) {
+      auto& set = *ptr;
+      if (set.rlock()->contains(te)) {
         return false;
       }
     }
@@ -535,6 +535,12 @@ struct StaticMetaBase {
   // and throws stdd:bad_alloc if memory cannot be allocated
   static ElementWrapper* reallocate(
       ThreadEntry* threadEntry, uint32_t idval, size_t& newCapacity);
+
+  span<SynchronizedThreadEntrySet* const> getThreadEntrySetsPtrSpan() {
+    const auto sets = allId2ThreadEntrySets_.as_view().as_ptr_span();
+    const size_t nextId = nextId_.load();
+    return sets.subspan(0, std::min(sets.size(), nextId));
+  }
 
   relaxed_atomic_uint32_t nextId_;
   std::vector<uint32_t> freeIds_;
@@ -774,9 +780,9 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     // Loop through allId2ThreadEntrySets_; Only keep ThreadEntry* in the map
     // for ThreadEntry::elements that are still in use by the current thread.
     // Evict all of the ThreadEntry* from other threads.
-    uint32_t maxId = meta.nextId_.load();
-    for (uint32_t id = 0; id < maxId; ++id) {
-      auto wlockedSet = meta.allId2ThreadEntrySets_[id].wlock();
+    for (const auto ptr : meta.getThreadEntrySetsPtrSpan()) {
+      auto& set = *ptr;
+      auto wlockedSet = set.wlock();
       if (wlockedSet->contains(threadEntry)) {
         wlockedSet->clear();
         wlockedSet->insert(threadEntry);
