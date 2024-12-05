@@ -107,7 +107,7 @@ BENCHMARK(asyncGeneratorYieldErrorAwaitTry, iters) {
 Comparing just the "hot paths" of the two generator coroutines:
 
 11/08/23 16:25$ buck2 run @mode/opt \
-  //folly/experimental/coro/test:async_generator_bench -- \
+  //folly/coro/test:async_generator_bench -- \
     -bm_regex '.*YieldValue.*'
 ============================================================================
 [...]coro/test/AsyncGeneratorBenchmark.cpp     relative  time/iter   iters/s
