@@ -1823,6 +1823,14 @@ void IoUringBackend::queueStatx(
   submitImmediateIoSqe(*ioSqe);
 }
 
+void IoUringBackend::queueRename(
+    const char* oldPath, const char* newPath, FileOpCallback&& cb) {
+  auto* ioSqe = new FRenameIoSqe(this, oldPath, newPath, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
 void IoUringBackend::queueFallocate(
     int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb) {
   auto* ioSqe = new FAllocateIoSqe(this, fd, mode, offset, len, std::move(cb));

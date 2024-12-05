@@ -696,6 +696,112 @@ TEST(IoUringBackend, OpenAtAbsolutePath) {
   evbPtr->loopForever();
 }
 
+TEST(IoUringBackend, Rename) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto oldName = folly::fs::unique_path();
+  auto newName = folly::fs::unique_path();
+  auto oldPath = dirPath / oldName;
+  auto newPath = dirPath / newName;
+
+  int fd = folly::fileops::open(
+      oldPath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  CHECK_GE(fd, 0);
+
+  SCOPE_EXIT {
+    folly::fileops::close(fd);
+    ::unlink(oldPath.string().c_str());
+    ::unlink(newPath.string().c_str());
+  };
+
+  folly::IoUringBackend::FileOpCallback renameCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+    EXPECT_TRUE(folly::fs::exists(newPath));
+    EXPECT_FALSE(folly::fs::exists(oldPath));
+  };
+
+  backendPtr->queueRename(
+      oldPath.string().c_str(), newPath.string().c_str(), std::move(renameCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, RenameDstExists) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto oldName = folly::fs::unique_path();
+  auto newName = folly::fs::unique_path();
+  auto oldPath = dirPath / oldName;
+  auto newPath = dirPath / newName;
+
+  {
+    int oldFd = folly::fileops::open(
+        oldPath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+    CHECK_GE(oldFd, 0);
+    folly::fileops::close(oldFd);
+  }
+
+  SCOPE_EXIT {
+    ::unlink(oldPath.string().c_str());
+  };
+
+  {
+    int newFd = folly::fileops::open(
+        newPath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+    CHECK_GE(newFd, 0);
+    folly::fileops::close(newFd);
+  }
+
+  folly::IoUringBackend::FileOpCallback renameCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+    EXPECT_TRUE(folly::fs::exists(newPath));
+    EXPECT_FALSE(folly::fs::exists(oldPath));
+  };
+
+  backendPtr->queueRename(
+      oldPath.string().c_str(), newPath.string().c_str(), std::move(renameCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, RenameSrcDoesntExist) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto oldName = folly::fs::unique_path();
+  auto newName = folly::fs::unique_path();
+  auto oldPath = dirPath / oldName;
+  auto newPath = dirPath / newName;
+
+  folly::IoUringBackend::FileOpCallback renameCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_LT(res, 0);
+    EXPECT_FALSE(folly::fs::exists(newPath));
+    EXPECT_FALSE(folly::fs::exists(oldPath));
+  };
+
+  backendPtr->queueRename(
+      oldPath.string().c_str(), newPath.string().c_str(), std::move(renameCb));
+
+  evbPtr->loopForever();
+}
+
 TEST(IoUringBackend, Statx) {
   auto evbPtr = getEventBase();
   SKIP_IF(!evbPtr) << "Backend not available";
