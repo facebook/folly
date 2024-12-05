@@ -1,0 +1,15 @@
+# jom is compatible with MSVC nmake, but adds the /j<number of jobs> argment which 
+# speeds up openssl build a lot
+[manifest]
+name = jom
+
+# see https://download.qt.io/official_releases/jom/changelog.txt for latest version
+[download.os=windows]
+url = https://download.qt.io/official_releases/jom/jom_1_1_4.zip
+sha256 = d533c1ef49214229681e90196ed2094691e8c4a0a0bef0b2c901debcb562682b
+
+[build.os=windows]
+builder = nop
+
+[install.files.os=windows]
+. = bin

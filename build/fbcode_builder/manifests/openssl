@@ -31,4 +31,5 @@ builder = openssl
 subdir = openssl-3.0.15
 
 [dependencies.os=windows]
+jom
 perl

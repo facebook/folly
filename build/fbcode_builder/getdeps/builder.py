@@ -1165,9 +1165,14 @@ class OpenSSLBuilder(BuilderBase):
         perl = typing.cast(str, path_search(env, "perl", "perl"))
 
         make_j_args = []
+        extra_args = []
         if self.build_opts.is_windows():
-            make = "nmake.exe"
+            # jom is compatible with nmake, adds the /j argument for parallel build
+            make = "jom.exe"
+            make_j_args = ["/j%s" % self.num_jobs]
             args = ["VC-WIN64A-masm", "-utf-8"]
+            # fixes "if multiple CL.EXE write to the same .PDB file, please use /FS"
+            extra_args = ["/FS"]
         elif self.build_opts.is_darwin():
             make = "make"
             make_j_args = ["-j%s" % self.num_jobs]
@@ -1200,11 +1205,14 @@ class OpenSSLBuilder(BuilderBase):
                 "no-unit-test",
                 "no-tests",
             ]
+            + extra_args
         )
+        # show the config produced
+        self._run_cmd([perl, "configdata.pm", "--dump"], env=env)
         make_build = [make] + make_j_args
-        self._run_cmd(make_build)
+        self._run_cmd(make_build, env=env)
         make_install = [make, "install_sw", "install_ssldirs"]
-        self._run_cmd(make_install)
+        self._run_cmd(make_install, env=env)
 
 
 class Boost(BuilderBase):
