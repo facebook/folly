@@ -38,7 +38,7 @@
 #if FOLLY_HAS_COROUTINES
 
 /**
- * \file experimental/coro/Retry.h
+ * \file coro/Retry.h
  *
  * Coroutine implementation of futures/Retrying.h
  *
