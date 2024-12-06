@@ -10,6 +10,7 @@ import shutil
 import subprocess
 
 from .platform import is_windows
+from .runcmd import run_cmd
 
 
 PREFETCHED_DIRS = set()
@@ -65,18 +66,34 @@ def prefetch_dir_if_eden(dirpath) -> None:
     PREFETCHED_DIRS.add(dirpath)
 
 
-# pyre-fixme[9]: ignore has type `bool`; used as `None`.
-def copytree(src_dir, dest_dir, ignore: bool = None):
-    """Recursively copy the src_dir to the dest_dir, filtering
-    out entries using the ignore lambda.  The behavior of the
-    ignore lambda must match that described by `shutil.copytree`.
-    This `copytree` function knows how to prefetch data when
-    running in an eden repo.
-    TODO: I'd like to either extend this or add a variant that
-    uses watchman to mirror src_dir into dest_dir.
-    """
-    prefetch_dir_if_eden(src_dir)
-    # pyre-fixme[6]: For 3rd param expected
-    #  `Union[typing.Callable[[Union[PathLike[str], str], List[str]], Iterable[str]],
-    #  typing.Callable[[str, List[str]], Iterable[str]], None]` but got `bool`.
-    return shutil.copytree(src_dir, dest_dir, ignore=ignore)
+def simple_copytree(src_dir, dest_dir, symlinks=False):
+    """A simple version of shutil.copytree() that can delegate to native tools if faster"""
+    if is_windows():
+        os.makedirs(dest_dir, exist_ok=True)
+        cmd = [
+            "robocopy.exe",
+            src_dir,
+            dest_dir,
+            # copy directories, including empty ones
+            "/E",
+            # Ignore Extra files in destination
+            "/XX",
+            # enable parallel copy
+            "/MT",
+            # be quiet
+            "/NFL",
+            "/NDL",
+            "/NJH",
+            "/NJS",
+            "/NP",
+        ]
+        if symlinks:
+            cmd.append("/SL")
+        # robocopy exits with code 1 if it copied ok, hence allow_fail
+        # https://learn.microsoft.com/en-us/troubleshoot/windows-server/backup-and-storage/return-codes-used-robocopy-utility
+        exit_code = run_cmd(cmd, allow_fail=True)
+        if exit_code > 1:
+            raise subprocess.CalledProcessError(exit_code, cmd)
+        return dest_dir
+    else:
+        return shutil.copytree(src_dir, dest_dir, symlinks=symlinks)

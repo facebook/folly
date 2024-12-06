@@ -18,6 +18,7 @@ import typing
 from shlex import quote as shellquote
 from typing import Optional
 
+from .copytree import simple_copytree
 from .dyndeps import create_dyn_dep_munger
 from .envfuncs import add_path_entry, Env, path_search
 from .fetcher import copy_if_different
@@ -1329,7 +1330,7 @@ class NopBuilder(BuilderBase):
                     os.makedirs(dest_parent)
                 if os.path.isdir(full_src):
                     if not os.path.exists(full_dest):
-                        shutil.copytree(full_src, full_dest)
+                        simple_copytree(full_src, full_dest)
                 else:
                     shutil.copyfile(full_src, full_dest)
                     shutil.copymode(full_src, full_dest)
@@ -1341,7 +1342,7 @@ class NopBuilder(BuilderBase):
                         os.chmod(full_dest, st.st_mode | stat.S_IXUSR)
         else:
             if not os.path.exists(self.inst_dir):
-                shutil.copytree(self.src_dir, self.inst_dir)
+                simple_copytree(self.src_dir, self.inst_dir)
 
 
 class SqliteBuilder(BuilderBase):

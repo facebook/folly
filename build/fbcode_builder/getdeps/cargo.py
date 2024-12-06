@@ -13,6 +13,7 @@ import sys
 import typing
 
 from .builder import BuilderBase
+from .copytree import simple_copytree
 
 if typing.TYPE_CHECKING:
     from .buildopts import BuildOptions
@@ -79,7 +80,7 @@ class CargoBuilder(BuilderBase):
                 os.remove(dst)
             else:
                 shutil.rmtree(dst)
-        shutil.copytree(src, dst)
+        simple_copytree(src, dst)
 
     def cargo_config_file(self):
         build_source_dir = self.build_dir
