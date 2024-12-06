@@ -612,7 +612,6 @@ class Shortcut(gdb.Function):
 # Creating a FiberInfo object adds it to the cache, and trying to create one
 # for a cached fiber will just return the same cached FiberInfo.
 class FiberInfo:
-
     NAMES = {}
 
     # Lookup of fiber address/name to (mid, fid)

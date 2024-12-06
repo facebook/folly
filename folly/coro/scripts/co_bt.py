@@ -600,9 +600,7 @@ if debugger_type is None:  # noqa: C901
                 regex = re.compile(r"Line (\d+) of (.*) starts at.*")
                 output = GdbValue.execute(
                     f"info line *{self.to_hex()}",
-                ).split(
-                    "\n"
-                )[0]
+                ).split("\n")[0]
                 groups = regex.match(output)
                 return (
                     (groups.group(2).strip('"'), int(groups.group(1)))
@@ -614,9 +612,7 @@ if debugger_type is None:  # noqa: C901
                 regex = re.compile(r"(.*) \+ \d+ in section.* of .*")
                 output = GdbValue.execute(
                     f"info symbol {self.to_hex()}",
-                ).split(
-                    "\n"
-                )[0]
+                ).split("\n")[0]
                 groups = regex.match(output)
                 return groups.group(1) if groups else None
 
