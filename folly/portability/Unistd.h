@@ -103,6 +103,14 @@ namespace fileops {
 #ifdef _WIN32
 int close(int fh);
 ssize_t read(int fh, void* buf, size_t mcc);
+
+/// Create a pipe, returning the file descriptors in `pth`.
+///
+/// On windows this has different behavior than the traditional posix pipe.
+/// The returned file descriptors are unix sockets for compatibility with
+/// libevent. Also, they allow bidirectional reads and writes,
+/// unlike posix which only supports a single direction.
+/// @file
 int pipe(int pth[2]);
 ssize_t write(int fh, void const* buf, size_t count);
 #else
