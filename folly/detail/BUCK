@@ -311,6 +311,8 @@ cpp_library(
     headers = ["ThreadLocalDetail.h"],
     deps = [
         ":thread_local_globals",
+        "//folly:constexpr_math",
+        "//folly:utility",
         "//folly/lang:hint",
         "//folly/memory:sanitize_leak",
         "//folly/synchronization:call_once",
