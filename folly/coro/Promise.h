@@ -297,7 +297,7 @@ class Future {
  * with this makePromiseContract to handle long running (longer than your
  * timeout) tasks that don't handle cancellation properly.
  *
- * \refcode folly/docs/examples/folly/experimental/coro/Promise.cpp
+ * \refcode folly/docs/examples/folly/coro/Promise.cpp
  */
 template <typename T>
 std::pair<Promise<T>, Future<T>> makePromiseContract() {

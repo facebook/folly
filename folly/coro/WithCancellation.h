@@ -27,7 +27,7 @@
  * co_withCancellation allows caller to pass in a cancellation token to a
  * awaitable
  *
- * \refcode folly/docs/examples/folly/experimental/coro/WithCancellation.cpp
+ * \refcode folly/docs/examples/folly/coro/WithCancellation.cpp
  */
 
 namespace folly {

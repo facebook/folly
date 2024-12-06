@@ -38,7 +38,7 @@ namespace coro {
  * cancellation and return immediately. However, the background task still runs
  * until the thread join.
  *
- * \refcode folly/docs/examples/folly/experimental/coro/DetachOnCancel.cpp
+ * \refcode folly/docs/examples/folly/coro/DetachOnCancel.cpp
  *
  * It is important to manage the scope of each variable. If the long running
  * task references any variable that is created in the scope of detachOnCancel,

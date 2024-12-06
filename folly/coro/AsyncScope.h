@@ -49,7 +49,7 @@ namespace coro {
  * Tasks added to an AsyncScope must have a void or folly::Unit result-type
  * and must handle any errors prior to completing.
  *
- * @refcode folly/docs/examples/folly/experimental/coro/AsyncScope.cpp
+ * @refcode folly/docs/examples/folly/coro/AsyncScope.cpp
  * @class folly::coro::AsyncScope
  */
 //
@@ -277,7 +277,7 @@ inline folly::SemiFuture<folly::Unit> AsyncScope::cleanup() noexcept {
  * constructor or to add() instead of attaching it to the Awaitable.
  *
  * @refcode
- * folly/docs/examples/folly/experimental/coro/CancellableAsyncScope.cpp
+ * folly/docs/examples/folly/coro/CancellableAsyncScope.cpp
  * @class folly::coro::CancellableAsyncScope
  */
 class CancellableAsyncScope {
