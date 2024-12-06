@@ -33,7 +33,7 @@
 #include <folly/coro/Traits.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
-#include <folly/fibers/Baton.h>
+#include <folly/synchronization/Baton.h>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Portability.h>
 #include <folly/futures/Promise.h>
@@ -2159,8 +2159,8 @@ auto mapTry(Executor& exec, Collection&& c, F&& func)
 template <class F>
 auto when(bool p, F&& thunk) -> decltype(static_cast<F&&>(thunk)().unit());
 
-SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton);
-SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton);
+SemiFuture<Unit> wait(std::unique_ptr<Baton<>> baton);
+SemiFuture<Unit> wait(std::shared_ptr<Baton<>> baton);
 
 /**
  * Returns a lazy SemiFuture constructed by f, which also ensures that ensure is
