@@ -1021,6 +1021,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         if build_opts.is_linux():
             artifacts = "linux"
             runs_on = f"ubuntu-{args.ubuntu_version}"
+            if args.cpu_cores:
+                runs_on = f"{args.cpu_cores}-core-ubuntu-{args.ubuntu_version}"
         elif build_opts.is_windows():
             artifacts = "windows"
             runs_on = "windows-2019"
@@ -1271,6 +1273,10 @@ jobs:
         )
         parser.add_argument(
             "--ubuntu-version", default="22.04", help="Version of Ubuntu to use"
+        )
+        parser.add_argument(
+            "--cpu-cores",
+            help="Number of CPU cores to use (applicable for Linux OS)",
         )
         parser.add_argument(
             "--cron",
