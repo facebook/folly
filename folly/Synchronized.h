@@ -1794,7 +1794,7 @@ struct [[deprecated(
              (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).contextualLock(); \
          !SYNCHRONIZED_VAR(state);                                        \
          SYNCHRONIZED_VAR(state) = true)                                  \
-      for (auto& FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =                    \
+      for ([[maybe_unused]] auto& FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =   \
                *SYNCHRONIZED_VAR(lockedPtr).operator->();                 \
            !SYNCHRONIZED_VAR(state);                                      \
            SYNCHRONIZED_VAR(state) = true)                                \
