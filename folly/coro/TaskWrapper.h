@@ -169,12 +169,14 @@ class TaskPromiseWrapper<void, SemiAwaitable, Promise>
 
 } // namespace detail
 
+// Inherit from this instead of `TaskWrapperCrtp` if you don't want your
+// wrapped task to be awaitable without being `unwrap()`ped first.
 template <typename Derived, typename T, typename SemiAwaitable>
-class TaskWrapperCrtp {
+class OpaqueTaskWrapperCrtp {
  private:
   static_assert(
       detail::is_task_or_wrapper_v<SemiAwaitable, T>,
-      "TaskWrapperCrtp must wrap a sequence of wrappers ending in Task<T>");
+      "*TaskWrapperCrtp must wrap a sequence of wrappers ending in Task<T>");
 
   SemiAwaitable task_;
 
@@ -182,30 +184,41 @@ class TaskWrapperCrtp {
   template <typename, typename, typename>
   friend class ::folly::coro::detail::TaskPromiseWrapperBase;
 
-  explicit TaskWrapperCrtp(SemiAwaitable t) : task_(std::move(t)) {}
+  explicit OpaqueTaskWrapperCrtp(SemiAwaitable t) : task_(std::move(t)) {}
 
   SemiAwaitable unwrap() && { return std::move(task_); }
 
  public:
   using TaskWrapperUnderlyingSemiAwaitable = SemiAwaitable;
+};
 
+template <typename Derived, typename T, typename SemiAwaitable>
+class TaskWrapperCrtp
+    : public OpaqueTaskWrapperCrtp<Derived, T, SemiAwaitable> {
+ protected:
+  template <typename, typename, typename>
+  friend class ::folly::coro::detail::TaskPromiseWrapperBase;
+
+  using OpaqueTaskWrapperCrtp<Derived, T, SemiAwaitable>::OpaqueTaskWrapperCrtp;
+
+ public:
   // NB: In the future, this might ALSO produce a wrapped object.
   FOLLY_NODISCARD
   TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
-    return std::move(task_).scheduleOn(std::move(executor));
+    return std::move(*this).unwrap().scheduleOn(std::move(executor));
   }
 
-  FOLLY_NOINLINE auto semi() && { return std::move(task_).semi(); }
+  FOLLY_NOINLINE auto semi() && { return std::move(*this).unwrap().semi(); }
 
   friend Derived co_withCancellation(
       folly::CancellationToken cancelToken, Derived&& tw) noexcept {
     return Derived{
-        co_withCancellation(std::move(cancelToken), std::move(tw.task_))};
+        co_withCancellation(std::move(cancelToken), std::move(tw).unwrap())};
   }
 
   friend auto co_viaIfAsync(
       folly::Executor::KeepAlive<> executor, Derived&& tw) noexcept {
-    return co_viaIfAsync(std::move(executor), std::move(tw.task_));
+    return co_viaIfAsync(std::move(executor), std::move(tw).unwrap());
   }
   // At least in Clang 15, the `static_assert` isn't enough to get a usable
   // error message (it is instantiated too late), but the deprecation
