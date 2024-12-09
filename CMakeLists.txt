@@ -179,9 +179,19 @@ add_library(folly STATIC
 
   # for velox
   folly/io/IOBuf.cpp
+  folly/Random.cpp
+
+  # for velox compression
+  folly/compression/Compression.cpp
 
   # for futures
   folly/futures/detail/Core.cpp
+  folly/futures/Future.cpp
+  folly/futures/HeapTimekeeper.cpp
+  folly/synchronization/DistributedMutex.cpp
+  folly/Try.cpp
+  folly/synchronization/AtomicNotification.cpp
+  folly/system/ThreadName.cpp
 
   # for executor
   folly/io/async/Request.cpp
@@ -197,6 +207,7 @@ add_library(folly STATIC
 
   # everything else
   folly/ExceptionString.cpp
+  folly/ExceptionWrapper.cpp
   folly/CancellationToken.cpp
   folly/concurrency/CacheLocality.cpp
   folly/concurrency/ProcessLocalUniqueId.cpp
