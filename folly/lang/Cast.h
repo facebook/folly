@@ -30,8 +30,11 @@ namespace folly {
 //  Unchecked polymorphic down-cast using static_cast. Only works for pairs of
 //  types where the cvref-unqualified source type is polymorphic and a base of
 //  the target type. The target type, which is passed as an explicit template
-//  param, must be cvref-unqualified. The return type is the target type with
-//  the same cvref-qualifiers or cvptr-qualifiers as the source type.
+//  param, must be cvref-unqualified. The return type is the target type
+//  following C++23 `std::forward_like` semantics, i.e.
+//  - Same reference category as `S`.
+//  - If the `S` is const-qualified, then `const` is added to the
+//    underlying type of the result.
 //
 //  Checked with an assertion in debug builds.
 template <typename T, typename S>

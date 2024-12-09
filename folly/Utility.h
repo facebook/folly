@@ -121,7 +121,7 @@ constexpr detail::decay_t<T> copy(T&& value) noexcept(
   return static_cast<T&&>(value);
 }
 
-//  mimic: forward_like, p0847r0
+//  mimic: `std::forward_like`, C++23 / p2445r0.
 template <typename Src, typename Dst>
 constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
   return std::forward<like_t<Src, Dst>>(static_cast<Dst&&>(dst));
