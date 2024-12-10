@@ -167,8 +167,8 @@ BENCHMARK(FindFirstOf1NeedlesBase, n) {
   findFirstOfRange(delims1, detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(FindFirstOf1NeedlesNoSSE, n) {
-  findFirstOfRange(delims1, detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(FindFirstOf1NeedlesNoSIMD, n) {
+  findFirstOfRange(delims1, detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf1NeedlesStd, n) {
@@ -191,8 +191,8 @@ BENCHMARK(FindFirstOf2NeedlesBase, n) {
   findFirstOfRange(delims2, detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(FindFirstOf2NeedlesNoSSE, n) {
-  findFirstOfRange(delims2, detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(FindFirstOf2NeedlesNoSIMD, n) {
+  findFirstOfRange(delims2, detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf2NeedlesStd, n) {
@@ -215,8 +215,8 @@ BENCHMARK(FindFirstOf4NeedlesBase, n) {
   findFirstOfRange(delims4, detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(FindFirstOf4NeedlesNoSSE, n) {
-  findFirstOfRange(delims4, detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(FindFirstOf4NeedlesNoSIMD, n) {
+  findFirstOfRange(delims4, detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf4NeedlesStd, n) {
@@ -239,8 +239,8 @@ BENCHMARK(FindFirstOf8NeedlesBase, n) {
   findFirstOfRange(delims8, detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(FindFirstOf8NeedlesNoSSE, n) {
-  findFirstOfRange(delims8, detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(FindFirstOf8NeedlesNoSIMD, n) {
+  findFirstOfRange(delims8, detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf8NeedlesStd, n) {
@@ -263,8 +263,8 @@ BENCHMARK(FindFirstOf16NeedlesBase, n) {
   findFirstOfRange(delims16, detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(FindFirstOf16NeedlesNoSSE, n) {
-  findFirstOfRange(delims16, detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(FindFirstOf16NeedlesNoSIMD, n) {
+  findFirstOfRange(delims16, detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf16NeedlesStd, n) {
@@ -287,8 +287,8 @@ BENCHMARK(FindFirstOf32NeedlesBase, n) {
   findFirstOfRange(delims32, detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(FindFirstOf32NeedlesNoSSE, n) {
-  findFirstOfRange(delims32, detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(FindFirstOf32NeedlesNoSIMD, n) {
+  findFirstOfRange(delims32, detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf32NeedlesStd, n) {
@@ -313,8 +313,8 @@ BENCHMARK(FindFirstOf64NeedlesBase, n) {
   findFirstOfRange(delims64, detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(FindFirstOf64NeedlesNoSSE, n) {
-  findFirstOfRange(delims64, detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(FindFirstOf64NeedlesNoSIMD, n) {
+  findFirstOfRange(delims64, detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf64NeedlesStd, n) {
@@ -344,8 +344,8 @@ BENCHMARK(FindFirstOfRandomBase, n) {
   findFirstOfRandom(detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(FindFirstOfRandomNoSSE, n) {
-  findFirstOfRandom(detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(FindFirstOfRandomNoSIMD, n) {
+  findFirstOfRandom(detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOfRandomStd, n) {
@@ -366,8 +366,8 @@ BENCHMARK(CountDelimsBase, n) {
   countHits(detail::qfind_first_byte_of, n);
 }
 
-BENCHMARK_RELATIVE(CountDelimsNoSSE, n) {
-  countHits(detail::qfind_first_byte_of_nosse, n);
+BENCHMARK_RELATIVE(CountDelimsNoSIMD, n) {
+  countHits(detail::qfind_first_byte_of_nosimd, n);
 }
 
 BENCHMARK_RELATIVE(CountDelimsStd, n) {

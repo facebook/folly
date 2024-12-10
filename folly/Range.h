@@ -64,7 +64,7 @@
 #include <folly/Likely.h>
 #include <folly/Traits.h>
 #include <folly/detail/RangeCommon.h>
-#include <folly/detail/RangeSse42.h>
+#include <folly/detail/RangeSimd.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_PUSH_WARNING
@@ -1537,10 +1537,9 @@ namespace detail {
 
 inline size_t qfind_first_byte_of(
     const StringPiece haystack, const StringPiece needles) {
-  static auto const qfind_first_byte_of_fn = folly::CpuId().sse42()
-      ? qfind_first_byte_of_sse42
-      : qfind_first_byte_of_nosse;
-  return qfind_first_byte_of_fn(haystack, needles);
+  // Let's default to the SIMD implementation. Internally, if that's not
+  // available, the _nosimd version gets picked instead.
+  return qfind_first_byte_of_simd(haystack, needles);
 }
 
 } // namespace detail

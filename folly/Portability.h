@@ -409,6 +409,14 @@ constexpr auto kHasWeakSymbols = false;
 #endif
 #endif
 
+#ifndef FOLLY_ARM_FEATURE_SVE2
+#ifdef __ARM_FEATURE_SVE2
+#define FOLLY_ARM_FEATURE_SVE2 1
+#else
+#define FOLLY_ARM_FEATURE_SVE2 0
+#endif
+#endif
+
 // RTTI may not be enabled for this compilation unit.
 #if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
     (defined(_MSC_VER) && defined(_CPPRTTI))

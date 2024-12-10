@@ -1199,7 +1199,7 @@ cpp_library(
         ":portability",
         ":traits",
         "//folly/detail:range_common",
-        "//folly/detail:range_sse42",
+        "//folly/detail:range_simd",
         "//folly/hash:spooky_hash_v2",
         "//folly/lang:c_string",
         "//folly/lang:exception",

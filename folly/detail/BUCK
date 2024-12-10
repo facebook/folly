@@ -199,6 +199,21 @@ cpp_library(
 )
 
 cpp_library(
+    name = "range_simd",
+    srcs = ["RangeSimd.cpp"],
+    headers = ["RangeSimd.h"],
+    undefined_symbols = True,
+    deps = [
+        ":range_sse42",
+        "//folly:portability",
+        "//folly/external/nvidia/detail:range_sve2",
+    ],
+    exported_deps = [
+        ":range_common",
+    ],
+)
+
+cpp_library(
     name = "range_sse42",
     srcs = ["RangeSse42.cpp"],
     headers = ["RangeSse42.h"],
