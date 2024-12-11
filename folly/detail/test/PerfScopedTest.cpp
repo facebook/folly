@@ -19,7 +19,9 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
+#include <folly/test/TestUtils.h>
 
+#include <filesystem>
 #include <thread>
 
 #if FOLLY_PERF_IS_SUPPORTED
@@ -43,6 +45,7 @@ void retryWithTimeOuts(Test test) {
 }
 
 TEST(PerfScopedTest, Stat) {
+  SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
   std::string output;
 
   retryWithTimeOuts([&](auto timeOut) {
@@ -58,6 +61,7 @@ TEST(PerfScopedTest, Stat) {
 }
 
 TEST(PerfScopedTest, Move) {
+  SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
   std::string output;
 
   retryWithTimeOuts([&](auto timeOut) {
@@ -81,6 +85,7 @@ TEST(PerfScopedTest, Move) {
 }
 
 TEST(PerfScopedTest, Record) {
+  SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
   std::string output;
 
   retryWithTimeOuts([&](auto timeOut) {
@@ -95,6 +100,7 @@ TEST(PerfScopedTest, Record) {
 }
 
 TEST(PerfScopedTest, StatNoOutput) {
+  SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
   // Just verifying that this doesn't crash.
   PerfScoped perf{{"stat"}};
   std::this_thread::sleep_for(std::chrono::seconds(1));

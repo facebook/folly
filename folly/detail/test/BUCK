@@ -55,6 +55,7 @@ cpp_unittest(
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/portability:unistd",
+        "//folly/test:test_utils",
     ],
 )
 

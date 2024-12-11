@@ -38,7 +38,7 @@ constexpr std::chrono::milliseconds kTerminateTimeout{500};
 
 std::vector<std::string> prependCommonArgs(
     const std::vector<std::string>& passed, const test::TemporaryFile* output) {
-  std::vector<std::string> res{"/usr/bin/perf"};
+  std::vector<std::string> res{std::string(kPerfBinaryPath)};
   res.insert(res.end(), passed.begin(), passed.end());
 
   res.push_back("-p");
