@@ -1006,7 +1006,7 @@ class F14BasicMap {
    * This function is provided for compliance with C++'s requirements for
    * hashtables, but is no better than a simple `reserve` call for F14.
    *
-   * @param bucketCapcity  The desired capacity across all buckets.
+   * @param bucketCapacity  The desired capacity across all buckets.
    */
   void rehash(std::size_t bucketCapacity) {
     // The standard's rehash() requires understanding the max load factor,
