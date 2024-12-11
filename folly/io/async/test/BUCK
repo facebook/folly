@@ -658,6 +658,7 @@ cpp_unittest(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:memory",
+        "//folly:singleton",
         "//folly/container:enumerate",
         "//folly/io/async:async_base",
         "//folly/io/async:request_context",

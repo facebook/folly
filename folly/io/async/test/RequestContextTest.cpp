@@ -19,6 +19,7 @@
 #include <thread>
 
 #include <folly/Memory.h>
+#include <folly/Singleton.h>
 #include <folly/container/Enumerate.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/Request.h>
@@ -53,6 +54,11 @@ class RequestContextTest : public ::testing::Test {
     // We ideally want to clear out data for any keys that may be set, not just
     // the "test" key, but there also isn't a RequestContext API to do this.
     clearData();
+  }
+
+  void TearDown() override {
+    folly::SingletonVault::singleton()->destroyInstances();
+    folly::SingletonVault::singleton()->reenableInstances();
   }
 
   RequestContext& getContext() {
