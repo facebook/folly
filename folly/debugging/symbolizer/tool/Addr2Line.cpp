@@ -95,10 +95,10 @@ void addr2line(std::shared_ptr<ElfFile> elfFile, uintptr_t address) {
   for (size_t i = 0; i < n; i++) {
     const auto& f = frames[i];
     if (FLAGS_f) {
-      std::cout << (f.name
-                        ? (shouldDemangle() ? folly::demangle(f.name) : f.name)
-                        : "??")
-                << '\n';
+      std::cout
+          << (f.name ? (shouldDemangle() ? folly::demangle(f.name) : f.name)
+                     : "??")
+          << '\n';
     }
     auto path = f.location.file.toString();
     path = path.empty() ? "??" : path;

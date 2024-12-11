@@ -127,10 +127,11 @@ TEST_F(ScopeExitTest, NonMoveableState) {
         std::make_unique<AsyncScope>());
 
     auto ex = co_await co_current_executor;
-    asyncScope->add(co_invoke([this]() -> Task<> {
-                      ++count;
-                      co_return;
-                    }).scheduleOn(ex));
+    asyncScope->add(
+        co_invoke([this]() -> Task<> {
+          ++count;
+          co_return;
+        }).scheduleOn(ex));
   }());
   EXPECT_EQ(count, 2);
 }

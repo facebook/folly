@@ -45,8 +45,9 @@ class ExecutorTimeoutManager : public TimeoutManager {
   }
 
   bool scheduleTimeout(AsyncTimeout* obj, timeout_type timeout) final {
-    folly::futures::sleep(timeout).via(executor_).thenValue(
-        [obj](folly::Unit) { obj->timeoutExpired(); });
+    folly::futures::sleep(timeout).via(executor_).thenValue([obj](folly::Unit) {
+      obj->timeoutExpired();
+    });
     return true;
   }
 

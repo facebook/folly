@@ -66,8 +66,9 @@ TEST(Observer, Observable) {
 TEST(Observer, MakeObserver) {
   SimpleObservable<int> observable(42);
 
-  auto observer = makeObserver(
-      [child = observable.getObserver()]() { return **child + 1; });
+  auto observer = makeObserver([child = observable.getObserver()]() {
+    return **child + 1;
+  });
 
   EXPECT_EQ(43, **observer);
 
@@ -89,15 +90,17 @@ TEST(Observer, MakeObserver) {
 TEST(Observer, MakeObserverDiamond) {
   SimpleObservable<int> observable(42);
 
-  auto observer1 = makeObserver(
-      [child = observable.getObserver()]() { return **child + 1; });
+  auto observer1 = makeObserver([child = observable.getObserver()]() {
+    return **child + 1;
+  });
 
   auto observer2 = makeObserver([child = observable.getObserver()]() {
     return std::make_shared<int>(**child + 2);
   });
 
-  auto observer = makeObserver(
-      [observer1, observer2]() { return (**observer1) * (**observer2); });
+  auto observer = makeObserver([observer1, observer2]() {
+    return (**observer1) * (**observer2);
+  });
 
   EXPECT_EQ(43 * 44, *observer.getSnapshot());
 
@@ -119,13 +122,15 @@ TEST(Observer, MakeObserverDiamond) {
 TEST(Observer, CreateException) {
   struct ExpectedException {};
   EXPECT_THROW(
-      auto observer = makeObserver(
-          []() -> std::shared_ptr<int> { throw ExpectedException(); }),
+      auto observer = makeObserver([]() -> std::shared_ptr<int> {
+        throw ExpectedException();
+      }),
       ExpectedException);
 
   EXPECT_THROW(
-      auto observer =
-          makeObserver([]() -> std::shared_ptr<int> { return nullptr; }),
+      auto observer = makeObserver([]() -> std::shared_ptr<int> {
+        return nullptr;
+      }),
       std::logic_error);
 }
 
@@ -403,8 +408,9 @@ TEST(Observer, CallbackCalledOncePerSnapshot) {
 
   int value = 1;
   SimpleObservable<int> intObservable(value);
-  auto squareObserver =
-      makeObserver([o = intObservable.getObserver()] { return **o * **o; });
+  auto squareObserver = makeObserver([o = intObservable.getObserver()] {
+    return **o * **o;
+  });
 
   folly::Baton baton;
   size_t callbackCallsCount = 0;
@@ -487,10 +493,10 @@ TEST(Observer, WaitForAllUpdates) {
 TEST(Observer, IgnoreUpdates) {
   int callbackCalled = 0;
   folly::observer::SimpleObservable<int> observable(42);
-  auto observer =
-      folly::observer::makeObserver([even = std::make_shared<bool>(true),
-                                     odd = std::make_shared<bool>(false),
-                                     observer = observable.getObserver()] {
+  auto observer = folly::observer::makeObserver(
+      [even = std::make_shared<bool>(true),
+       odd = std::make_shared<bool>(false),
+       observer = observable.getObserver()] {
         if (**observer % 2 == 0) {
           return even;
         }
@@ -578,12 +584,14 @@ TEST(Observer, MakeValueObserver) {
   std::vector<int> observedValues;
   std::vector<int> observedValues2;
 
-  auto ch1 = observable.getObserver().addCallback(
-      [&](auto snapshot) { observedIds.push_back(snapshot->id_); });
-  auto ch2 = makeValueObserver(observable.getObserver())
-                 .addCallback([&](auto snapshot) {
-                   observedValues.push_back(snapshot->value_);
-                 });
+  auto ch1 = observable.getObserver().addCallback([&](auto snapshot) {
+    observedIds.push_back(snapshot->id_);
+  });
+  auto ch2 =
+      makeValueObserver(observable.getObserver())
+          .addCallback([&](auto snapshot) {
+            observedValues.push_back(snapshot->value_);
+          });
   auto ch3 = makeValueObserver([observer = observable.getObserver()] {
                return **observer;
              }).addCallback([&](auto snapshot) {
@@ -665,8 +673,9 @@ TEST(Observer, AtomicObserver) {
   observerCopy = observer;
   EXPECT_EQ(*observerCopy, 15);
 
-  auto dependentObserver =
-      makeAtomicObserver([o = observer] { return *o + 1; });
+  auto dependentObserver = makeAtomicObserver([o = observer] {
+    return *o + 1;
+  });
   EXPECT_EQ(*dependentObserver, 16);
   observable2.setValue(20);
   folly::observer_detail::ObserverManager::waitForAllUpdates();
@@ -861,14 +870,15 @@ TEST(Observer, Unwrap) {
   SimpleObservable<int> trueObservable{1};
   SimpleObservable<int> falseObservable{2};
 
-  auto observer = makeObserver([selectorO = selectorObservable.getObserver(),
-                                trueO = trueObservable.getObserver(),
-                                falseO = falseObservable.getObserver()] {
-    if (**selectorO) {
-      return trueO;
-    }
-    return falseO;
-  });
+  auto observer = makeObserver(
+      [selectorO = selectorObservable.getObserver(),
+       trueO = trueObservable.getObserver(),
+       falseO = falseObservable.getObserver()] {
+        if (**selectorO) {
+          return trueO;
+        }
+        return falseO;
+      });
 
   EXPECT_EQ(**observer, 1);
 
@@ -961,8 +971,9 @@ TEST(Observer, WithJitterNoEarlyRefresh) {
   auto copy = makeObserver([base] { return **base; });
   auto laggingObserver = withJitter(
       base, std::chrono::seconds{10}, std::chrono::milliseconds::zero());
-  auto delta = makeObserver(
-      [copy, laggingObserver] { return **copy - **laggingObserver; });
+  auto delta = makeObserver([copy, laggingObserver] {
+    return **copy - **laggingObserver;
+  });
 
   EXPECT_EQ(0, **base);
   EXPECT_EQ(0, **copy);
@@ -1012,20 +1023,25 @@ TEST(Observer, MakeObserverUpdatesTracking) {
 
   auto tlObserverCheck = makeObserver([&]() mutable { return **tlObserver; });
 
-  auto rmtlObserverCheck =
-      makeObserver([&]() mutable { return *(rmtlObserver.getShared()); });
+  auto rmtlObserverCheck = makeObserver([&]() mutable {
+    return *(rmtlObserver.getShared());
+  });
 
-  auto atomicObserverCheck =
-      makeObserver([&]() mutable { return *atomicObserver; });
+  auto atomicObserverCheck = makeObserver([&]() mutable {
+    return *atomicObserver;
+  });
 
-  auto rmatomicObserverCheck =
-      makeObserver([&]() mutable { return *rmatomicObserver; });
+  auto rmatomicObserverCheck = makeObserver([&]() mutable {
+    return *rmatomicObserver;
+  });
 
-  auto hazptrObserverGetSnapshotCheck =
-      makeObserver([&]() mutable { return *(hazptrObserver.getSnapshot()); });
+  auto hazptrObserverGetSnapshotCheck = makeObserver([&]() mutable {
+    return *(hazptrObserver.getSnapshot());
+  });
 
-  auto hazptrObserverGetLocalSnapshotCheck = makeObserver(
-      [&]() mutable { return *(hazptrObserver.getLocalSnapshot()); });
+  auto hazptrObserverGetLocalSnapshotCheck = makeObserver([&]() mutable {
+    return *(hazptrObserver.getLocalSnapshot());
+  });
 
   for (size_t i = 1; i <= 10; ++i) {
     observable.setValue(i);

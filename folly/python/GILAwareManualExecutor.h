@@ -31,8 +31,9 @@ namespace python {
  * A simple ManualExecutor intended to be run directly on a Python thread.
  * It releases Python GIL while waiting for tasks to execute.
  */
-class GILAwareManualExecutor : public DrivableExecutor,
-                               public SequencedExecutor {
+class GILAwareManualExecutor
+    : public DrivableExecutor,
+      public SequencedExecutor {
  public:
   void add(Func) override;
 

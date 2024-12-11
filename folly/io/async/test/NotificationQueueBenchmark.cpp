@@ -91,29 +91,31 @@ void multiProducerMultiConsumer(
   // during warm up producers produce kProducerWarmup tasks each and consumers
   // try to consume as much as possible
   for (size_t i = 0; i < numProducers; ++i) {
-    producerThreads.emplace_back(std::thread([numProducers,
-                                              &warmUpBaton,
-                                              &queue,
-                                              &producersWarmedUp,
-                                              &itemsToProcess,
-                                              &stop_producing,
-                                              &finishedBaton]() mutable {
-      size_t num_produced{0};
-      while (!stop_producing.load(std::memory_order_relaxed)) {
-        burn(kBusyLoopSize);
-        if (num_produced++ == kProducerWarmup &&
-            numProducers ==
-                producersWarmedUp.fetch_add(1, std::memory_order_relaxed) + 1) {
-          warmUpBaton.post();
-        }
-        queue.putMessage([&itemsToProcess, &finishedBaton]() {
-          burn(kBusyLoopSize);
-          if (itemsToProcess.fetch_sub(1, std::memory_order_relaxed) == 0) {
-            finishedBaton.post();
+    producerThreads.emplace_back(std::thread(
+        [numProducers,
+         &warmUpBaton,
+         &queue,
+         &producersWarmedUp,
+         &itemsToProcess,
+         &stop_producing,
+         &finishedBaton]() mutable {
+          size_t num_produced{0};
+          while (!stop_producing.load(std::memory_order_relaxed)) {
+            burn(kBusyLoopSize);
+            if (num_produced++ == kProducerWarmup &&
+                numProducers ==
+                    producersWarmedUp.fetch_add(1, std::memory_order_relaxed) +
+                        1) {
+              warmUpBaton.post();
+            }
+            queue.putMessage([&itemsToProcess, &finishedBaton]() {
+              burn(kBusyLoopSize);
+              if (itemsToProcess.fetch_sub(1, std::memory_order_relaxed) == 0) {
+                finishedBaton.post();
+              }
+            });
           }
-        });
-      }
-    }));
+        }));
   }
   warmUpBaton.wait();
   susp.dismiss();

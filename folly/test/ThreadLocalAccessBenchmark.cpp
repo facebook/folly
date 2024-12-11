@@ -50,37 +50,38 @@ void runTest(int iters, int numThreads) {
 
   std::vector<std::thread> threads;
   for (int i = 0; i < numThreads; i++) {
-    threads.push_back(std::thread([i,
-                                   numThreads,
-                                   &stci,
-                                   &m,
-                                   &mw,
-                                   &cv,
-                                   &cvw,
-                                   &running,
-                                   &numRunning]() mutable {
-      stci[i].set();
+    threads.push_back(std::thread(
+        [i,
+         numThreads,
+         &stci,
+         &m,
+         &mw,
+         &cv,
+         &cvw,
+         &running,
+         &numRunning]() mutable {
+          stci[i].set();
 
-      // notify if all the threads have created the
-      // thread local var
-      bool notify = false;
-      {
-        std::lock_guard<std::mutex> lk(m);
-        if (++numRunning == numThreads) {
-          notify = true;
-        }
-      }
+          // notify if all the threads have created the
+          // thread local var
+          bool notify = false;
+          {
+            std::lock_guard<std::mutex> lk(m);
+            if (++numRunning == numThreads) {
+              notify = true;
+            }
+          }
 
-      if (notify) {
-        cv.notify_one();
-      }
+          if (notify) {
+            cv.notify_one();
+          }
 
-      // now wait
-      {
-        std::unique_lock<std::mutex> lk(mw);
-        cvw.wait(lk, [&]() { return !running; });
-      }
-    }));
+          // now wait
+          {
+            std::unique_lock<std::mutex> lk(mw);
+            cvw.wait(lk, [&]() { return !running; });
+          }
+        }));
   }
 
   // wait for the threads to create the thread locals

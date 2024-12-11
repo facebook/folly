@@ -164,8 +164,9 @@ Core::Ptr Core::create(folly::Function<std::shared_ptr<const void>()> creator) {
 }
 
 void Core::addDependent(Core::WeakPtr dependent) {
-  dependents_.withWLock(
-      [&](Dependents& dstate) { dstate.deps.push_back(std::move(dependent)); });
+  dependents_.withWLock([&](Dependents& dstate) {
+    dstate.deps.push_back(std::move(dependent));
+  });
 }
 
 void Core::maybeRemoveStaleDependents() {

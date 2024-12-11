@@ -26,8 +26,9 @@ void addDependenciesBenchmark(int numDependencies, size_t iters) {
     dependencies.reserve(numDependencies);
     suspender.dismiss();
     for (int d = 0; d < numDependencies; ++d) {
-      dependencies.push_back(folly::observer::makeObserver(
-          [d, rootObserver] { return **rootObserver + d; }));
+      dependencies.push_back(folly::observer::makeObserver([d, rootObserver] {
+        return **rootObserver + d;
+      }));
     }
     // exclude dependency destruction from benchmark
     suspender.rehire();
@@ -42,8 +43,9 @@ void removeDependenciesBenchmark(int numDependencies, size_t iters) {
     std::vector<folly::observer::Observer<int>> dependencies;
     dependencies.reserve(numDependencies);
     for (int d = 0; d < numDependencies; ++d) {
-      dependencies.push_back(folly::observer::makeObserver(
-          [d, rootObserver] { return **rootObserver + d; }));
+      dependencies.push_back(folly::observer::makeObserver([d, rootObserver] {
+        return **rootObserver + d;
+      }));
     }
     // Measure dependency removal
     suspender.dismiss();

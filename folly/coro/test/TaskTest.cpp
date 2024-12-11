@@ -163,12 +163,14 @@ static coro::Task<void> parentRequest(int id) {
   coro::Baton baton1;
   coro::Baton baton2;
 
-  auto fut1 = childRequest(mutex, baton1)
-                  .scheduleOn(co_await coro::co_current_executor)
-                  .start();
-  auto fut2 = childRequest(mutex, baton1)
-                  .scheduleOn(co_await coro::co_current_executor)
-                  .start();
+  auto fut1 =
+      childRequest(mutex, baton1)
+          .scheduleOn(co_await coro::co_current_executor)
+          .start();
+  auto fut2 =
+      childRequest(mutex, baton1)
+          .scheduleOn(co_await coro::co_current_executor)
+          .start();
 
   CHECK_EQ(contextData, RequestContext::get()->getContextData(testToken1));
 
@@ -344,8 +346,9 @@ TEST_F(TaskTest, FutureTailCall) {
       42,
       folly::coro::blockingWait(
           folly::coro::co_invoke([&]() -> folly::coro::Task<int> {
-            co_return co_await folly::makeSemiFuture().deferValue(
-                [](auto) { return folly::makeSemiFuture(42); });
+            co_return co_await folly::makeSemiFuture().deferValue([](auto) {
+              return folly::makeSemiFuture(42);
+            });
           })));
 }
 

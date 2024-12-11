@@ -114,8 +114,9 @@ CO_TEST(TaskWrapper, throws) {
 }
 
 CO_TEST(TaskWrapper, co_awaitTry) {
-  auto res = co_await co_awaitTry(
-      []() -> TinyTask<void> { co_yield co_error(MyError{}); }());
+  auto res = co_await co_awaitTry([]() -> TinyTask<void> {
+    co_yield co_error(MyError{});
+  }());
   EXPECT_TRUE(res.hasException<MyError>());
 }
 

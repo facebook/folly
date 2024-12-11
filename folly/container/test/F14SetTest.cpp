@@ -1583,8 +1583,9 @@ void runRandomInsertOrderTest(F&& func) {
 TEST(F14Set, randomInsertOrder) {
   runRandomInsertOrderTest<F14ValueSet<char>>([](char x) { return x; });
   runRandomInsertOrderTest<F14FastSet<char>>([](char x) { return x; });
-  runRandomInsertOrderTest<F14FastSet<std::string>>(
-      [](char x) { return std::string{std::size_t{1}, x}; });
+  runRandomInsertOrderTest<F14FastSet<std::string>>([](char x) {
+    return std::string{std::size_t{1}, x};
+  });
 }
 
 template <template <class...> class TSet>

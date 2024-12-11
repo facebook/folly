@@ -284,8 +284,9 @@ class ElfFile {
     }
     size_t seenCount = 0;
 
-    auto findSymbol = [&](const folly::symbolizer::ElfShdr& section,
-                          const folly::symbolizer::ElfSym& sym) -> bool {
+    auto findSymbol =
+        [&](const folly::symbolizer::ElfShdr& section,
+            const folly::symbolizer::ElfSym& sym) -> bool {
       auto symbol = folly::symbolizer::ElfFile::Symbol(&section, &sym);
       auto name = getSymbolName(symbol);
       if (name == nullptr) {

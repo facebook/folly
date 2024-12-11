@@ -148,12 +148,12 @@ namespace detail {
 SavedState disableInvalidParameters() {
 #ifdef _WIN32
   SavedState ret;
-  ret.previousThreadLocalHandler =
-      _set_thread_local_invalid_parameter_handler([](const wchar_t*,
-                                                     const wchar_t*,
-                                                     const wchar_t*,
-                                                     unsigned int,
-                                                     uintptr_t) {});
+  ret.previousThreadLocalHandler = _set_thread_local_invalid_parameter_handler(
+      [](const wchar_t*,
+         const wchar_t*,
+         const wchar_t*,
+         unsigned int,
+         uintptr_t) {});
   ret.previousCrtReportMode = _CrtSetReportMode(_CRT_ASSERT, 0);
   return ret;
 #else

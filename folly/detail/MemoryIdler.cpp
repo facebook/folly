@@ -152,8 +152,8 @@ static void fetchStackLimits() {
     //
     // Very large stack size is a bug (hence the assert), but we can
     // carry on if we are in prod.
-    FB_LOG_ONCE(ERROR) << "pthread_attr_getstack returned insane stack size "
-                       << rawSize;
+    FB_LOG_ONCE(ERROR)
+        << "pthread_attr_getstack returned insane stack size " << rawSize;
     assert(false);
     tls_stackSize = 1;
     return;

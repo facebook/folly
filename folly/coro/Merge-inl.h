@@ -215,8 +215,9 @@ AsyncGenerator<Reference, Value> merge(
       [](std::shared_ptr<SharedState> state,
          AsyncGenerator<AsyncGenerator<Reference, Value>> sources_)
       -> Task<void> {
-    auto makeWorkerTask = [](std::shared_ptr<SharedState> state_,
-                             AsyncGenerator<Reference, Value> generator)
+    auto makeWorkerTask =
+        [](std::shared_ptr<SharedState> state_,
+           AsyncGenerator<Reference, Value> generator)
         -> detail::DetachedBarrierTask {
       exception_wrapper ex;
       auto cancelToken = state_->cancelSource.getToken();

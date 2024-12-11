@@ -1809,8 +1809,9 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   constexpr size_t kSendSize = 100 * 1024;
   auto const sendBuf = std::vector<char>(kSendSize, 'a');
 
-  senderEvb.runInEventBaseThreadAndWait(
-      [&]() { socket->write(&wcb, sendBuf.data(), kSendSize); });
+  senderEvb.runInEventBaseThreadAndWait([&]() {
+    socket->write(&wcb, sendBuf.data(), kSendSize);
+  });
 
   // Read 20KB of data from the socket to allow the sender to send a bit more
   // data after it initially blocks.
@@ -1836,8 +1837,8 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   // that the send side has a chance to fill the send buffer past.
   using clock = std::chrono::steady_clock;
   auto const deadline = clock::now() + std::chrono::seconds(2);
-  while (wcb.bytesWritten < kMinExpectedBytesWritten &&
-         clock::now() < deadline) {
+  while (
+      wcb.bytesWritten < kMinExpectedBytesWritten && clock::now() < deadline) {
     std::this_thread::yield();
   }
   acceptedSocket->closeWithReset();
@@ -2508,8 +2509,9 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
         ASSERT_EQ(thread_id, std::this_thread::get_id());
         serverSocket->removeAcceptCallback(&cb1, &eventBase);
       });
-  cb1.setAcceptStoppedFn(
-      [&]() { ASSERT_EQ(thread_id, std::this_thread::get_id()); });
+  cb1.setAcceptStoppedFn([&]() {
+    ASSERT_EQ(thread_id, std::this_thread::get_id());
+  });
 
   // Test having callbacks remove other callbacks before them on the list,
   serverSocket->addAcceptCallback(&cb1, &eventBase);
@@ -2828,11 +2830,13 @@ TEST(AsyncSocketTest, CallbackInPrimaryEventBase) {
     serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
   });
   bool acceptStartedFlag{false};
-  acceptCallback.setAcceptStartedFn(
-      [&acceptStartedFlag]() { acceptStartedFlag = true; });
+  acceptCallback.setAcceptStartedFn([&acceptStartedFlag]() {
+    acceptStartedFlag = true;
+  });
   bool acceptStoppedFlag{false};
-  acceptCallback.setAcceptStoppedFn(
-      [&acceptStoppedFlag]() { acceptStoppedFlag = true; });
+  acceptCallback.setAcceptStoppedFn([&acceptStoppedFlag]() {
+    acceptStoppedFlag = true;
+  });
   serverSocket->addAcceptCallback(&acceptCallback, nullptr);
   serverSocket->startAccepting();
 
@@ -2879,8 +2883,9 @@ TEST(AsyncSocketTest, CallbackInSecondaryEventBase) {
         });
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
-    eventBase.runInEventBaseThread(
-        [&] { serverSocket->removeAcceptCallback(&acceptCallback, nullptr); });
+    eventBase.runInEventBaseThread([&] {
+      serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
+    });
   });
   std::atomic<bool> acceptStartedFlag{false};
   acceptCallback.setAcceptStartedFn([&]() { acceptStartedFlag = true; });
@@ -2941,8 +2946,9 @@ TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
         }
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
-    eventBase.runInEventBaseThread(
-        [&] { serverSocket->removeAcceptCallback(&acceptCallback, nullptr); });
+    eventBase.runInEventBaseThread([&] {
+      serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
+    });
   });
   serverSocket->addAcceptCallback(&acceptCallback, cobThread.getEventBase());
   serverSocket->startAccepting();
@@ -7801,17 +7807,18 @@ class AsyncSocketByteEventRawOffsetTest
 
   // values returned by sendBufInUseBytes()
   static std::vector<size_t> getTestingValues() {
-    std::vector<size_t> vals{/* Values for sendBufInUseBytes */
-                             0,
-                             1,
-                             10,
-                             kRawByteOffsetWhenByteEventsEnabled,
-                             // simulate cases where bytes have already been
-                             // written to the kernel socket prior to the
-                             // AsyncSocket being initialized and are still
-                             // in the sendbuf (either not sent, or not ACKed).
-                             kRawByteOffsetWhenByteEventsEnabled + 1,
-                             kRawByteOffsetWhenByteEventsEnabled + 10};
+    std::vector<size_t> vals{
+        /* Values for sendBufInUseBytes */
+        0,
+        1,
+        10,
+        kRawByteOffsetWhenByteEventsEnabled,
+        // simulate cases where bytes have already been
+        // written to the kernel socket prior to the
+        // AsyncSocket being initialized and are still
+        // in the sendbuf (either not sent, or not ACKed).
+        kRawByteOffsetWhenByteEventsEnabled + 1,
+        kRawByteOffsetWhenByteEventsEnabled + 10};
     return vals;
   }
 };
@@ -9705,17 +9712,18 @@ TEST(AsyncSocketTest, V6TosReflectTest) {
   serverSocket->startAccepting();
 
   // Create a client socket, setsockopt() the TOS before connecting
-  auto clientThread = [](std::shared_ptr<AsyncSocket>& clientSock,
-                         ConnCallback* ccb,
-                         EventBase* evb,
-                         folly::SocketAddress sAddr) {
-    clientSock = AsyncSocket::newSocket(evb);
-    SocketOptionKey v6Opts = {IPPROTO_IPV6, IPV6_TCLASS};
-    SocketOptionMap optionMap;
-    optionMap.insert({v6Opts, 0x2c});
-    SocketAddress bindAddr("0.0.0.0", 0);
-    clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
-  };
+  auto clientThread =
+      [](std::shared_ptr<AsyncSocket>& clientSock,
+         ConnCallback* ccb,
+         EventBase* evb,
+         folly::SocketAddress sAddr) {
+        clientSock = AsyncSocket::newSocket(evb);
+        SocketOptionKey v6Opts = {IPPROTO_IPV6, IPV6_TCLASS};
+        SocketOptionMap optionMap;
+        optionMap.insert({v6Opts, 0x2c});
+        SocketAddress bindAddr("0.0.0.0", 0);
+        clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
+      };
 
   std::shared_ptr<AsyncSocket> socket(nullptr);
   ConnCallback cb;
@@ -9789,17 +9797,18 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
   serverSocket->startAccepting();
 
   // Create a client socket, setsockopt() the TOS before connecting
-  auto clientThread = [](std::shared_ptr<AsyncSocket>& clientSock,
-                         ConnCallback* ccb,
-                         EventBase* evb,
-                         folly::SocketAddress sAddr) {
-    clientSock = AsyncSocket::newSocket(evb);
-    SocketOptionKey v4Opts = {IPPROTO_IP, IP_TOS};
-    SocketOptionMap optionMap;
-    optionMap.insert({v4Opts, 0x2c});
-    SocketAddress bindAddr("0.0.0.0", 0);
-    clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
-  };
+  auto clientThread =
+      [](std::shared_ptr<AsyncSocket>& clientSock,
+         ConnCallback* ccb,
+         EventBase* evb,
+         folly::SocketAddress sAddr) {
+        clientSock = AsyncSocket::newSocket(evb);
+        SocketOptionKey v4Opts = {IPPROTO_IP, IP_TOS};
+        SocketOptionMap optionMap;
+        optionMap.insert({v4Opts, 0x2c});
+        SocketAddress bindAddr("0.0.0.0", 0);
+        clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
+      };
 
   std::shared_ptr<AsyncSocket> socket(nullptr);
   ConnCallback cb;
@@ -9851,17 +9860,18 @@ TEST(AsyncSocketTest, V6AcceptedTosTest) {
   serverSocket->startAccepting();
 
   // Create a client socket, setsockopt() the TOS before connecting
-  auto clientThread = [](std::shared_ptr<AsyncSocket>& clientSock,
-                         ConnCallback* ccb,
-                         EventBase* evb,
-                         folly::SocketAddress sAddr) {
-    clientSock = AsyncSocket::newSocket(evb);
-    SocketOptionKey v6Opts = {IPPROTO_IPV6, IPV6_TCLASS};
-    SocketOptionMap optionMap;
-    optionMap.insert({v6Opts, 0x2c});
-    SocketAddress bindAddr("0.0.0.0", 0);
-    clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
-  };
+  auto clientThread =
+      [](std::shared_ptr<AsyncSocket>& clientSock,
+         ConnCallback* ccb,
+         EventBase* evb,
+         folly::SocketAddress sAddr) {
+        clientSock = AsyncSocket::newSocket(evb);
+        SocketOptionKey v6Opts = {IPPROTO_IPV6, IPV6_TCLASS};
+        SocketOptionMap optionMap;
+        optionMap.insert({v6Opts, 0x2c});
+        SocketAddress bindAddr("0.0.0.0", 0);
+        clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
+      };
 
   std::shared_ptr<AsyncSocket> socket(nullptr);
   ConnCallback cb;
@@ -9914,17 +9924,18 @@ TEST(AsyncSocketTest, V4AcceptedTosTest) {
   serverSocket->startAccepting();
 
   // Create a client socket, setsockopt() the TOS before connecting
-  auto clientThread = [](std::shared_ptr<AsyncSocket>& clientSock,
-                         ConnCallback* ccb,
-                         EventBase* evb,
-                         folly::SocketAddress sAddr) {
-    clientSock = AsyncSocket::newSocket(evb);
-    SocketOptionKey v4Opts = {IPPROTO_IP, IP_TOS};
-    SocketOptionMap optionMap;
-    optionMap.insert({v4Opts, 0x2c});
-    SocketAddress bindAddr("0.0.0.0", 0);
-    clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
-  };
+  auto clientThread =
+      [](std::shared_ptr<AsyncSocket>& clientSock,
+         ConnCallback* ccb,
+         EventBase* evb,
+         folly::SocketAddress sAddr) {
+        clientSock = AsyncSocket::newSocket(evb);
+        SocketOptionKey v4Opts = {IPPROTO_IP, IP_TOS};
+        SocketOptionMap optionMap;
+        optionMap.insert({v4Opts, 0x2c});
+        SocketAddress bindAddr("0.0.0.0", 0);
+        clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
+      };
 
   std::shared_ptr<AsyncSocket> socket(nullptr);
   ConnCallback cb;
@@ -10009,24 +10020,23 @@ TEST(AsyncSocketTest, QueueTimeout) {
   serverSocket->setQueueTimeout(kConnectionTimeout);
 
   TestAcceptCallback acceptCb;
-  acceptCb.setConnectionAcceptedFn(
-      [&, called = false](auto&&...) mutable {
-        ASSERT_FALSE(called)
-            << "Only the first connection should have been dequeued";
-        called = true;
-        // Allow plenty of time for the AsyncSocketServer's event loop to run.
-        // This should leave no doubt that the acceptor thread has enough time
-        // to dequeue. If the dequeue succeeds, then our expiry code is broken.
-        static constexpr auto kEventLoopTime = kConnectionTimeout * 5;
-        eventBase.runInEventBaseThread([&]() {
-          eventBase.tryRunAfterDelay(
-              [&]() { serverSocket->removeAcceptCallback(&acceptCb, nullptr); },
-              milliseconds(kEventLoopTime).count());
-        });
-        // After the first message is enqueued, sleep long enough so that the
-        // second message expires before it has a chance to dequeue.
-        std::this_thread::sleep_for(kConnectionTimeout);
-      });
+  acceptCb.setConnectionAcceptedFn([&, called = false](auto&&...) mutable {
+    ASSERT_FALSE(called)
+        << "Only the first connection should have been dequeued";
+    called = true;
+    // Allow plenty of time for the AsyncSocketServer's event loop to run.
+    // This should leave no doubt that the acceptor thread has enough time
+    // to dequeue. If the dequeue succeeds, then our expiry code is broken.
+    static constexpr auto kEventLoopTime = kConnectionTimeout * 5;
+    eventBase.runInEventBaseThread([&]() {
+      eventBase.tryRunAfterDelay(
+          [&]() { serverSocket->removeAcceptCallback(&acceptCb, nullptr); },
+          milliseconds(kEventLoopTime).count());
+    });
+    // After the first message is enqueued, sleep long enough so that the
+    // second message expires before it has a chance to dequeue.
+    std::this_thread::sleep_for(kConnectionTimeout);
+  });
   ScopedEventBaseThread acceptThread("ioworker_test");
 
   TestConnectionEventCallback connectionEventCb;

@@ -139,8 +139,9 @@ CalledProcessError::CalledProcessError(ProcessReturnCode rc)
 
 static inline std::string toSubprocessSpawnErrorMessage(
     char const* executable, int errCode, int errnoValue) {
-  auto prefix = errCode == kExecFailure ? "failed to execute "
-                                        : "error preparing to execute ";
+  auto prefix = errCode == kExecFailure
+      ? "failed to execute "
+      : "error preparing to execute ";
   return to<std::string>(prefix, executable, ": ", errnoStr(errnoValue));
 }
 
@@ -707,10 +708,8 @@ int Subprocess::prepareChild(
 }
 
 int Subprocess::runChild(
-    const char* executable,
-    char** argv,
-    char** env,
-    const Options& options) const {
+    const char* executable, char** argv, char** env, const Options& options)
+    const {
   // Now, finally, exec.
   if (options.usePath_) {
     ::execvp(executable, argv);

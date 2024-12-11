@@ -544,8 +544,9 @@ struct BaseAsyncGeneratorPromise<true> {
 };
 
 template <typename Reference, typename Value, bool RequiresCleanup = false>
-class AsyncGeneratorPromise final : public ExtendedCoroutinePromise,
-                                    BaseAsyncGeneratorPromise<RequiresCleanup> {
+class AsyncGeneratorPromise final
+    : public ExtendedCoroutinePromise,
+      BaseAsyncGeneratorPromise<RequiresCleanup> {
   class YieldAwaiter {
    public:
     bool await_ready() noexcept { return false; }

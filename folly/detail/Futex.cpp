@@ -177,8 +177,9 @@ int emulatedFutexWake(const void* addr, int count, uint32_t waitMask) {
     assert(count > 0);
     count--;
     woken++;
-    return count > 0 ? UnparkControl::RemoveContinue
-                     : UnparkControl::RemoveBreak;
+    return count > 0
+        ? UnparkControl::RemoveContinue
+        : UnparkControl::RemoveBreak;
   });
   return woken;
 }

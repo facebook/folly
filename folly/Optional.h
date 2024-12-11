@@ -214,8 +214,9 @@ class Optional {
   }
   explicit operator std::optional<Value>() const& noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
-    return storage_.hasValue ? std::optional<Value>(storage_.value)
-                             : std::nullopt;
+    return storage_.hasValue
+        ? std::optional<Value>(storage_.value)
+        : std::nullopt;
   }
 
   std::optional<Value> toStdOptional() && noexcept {

@@ -290,8 +290,9 @@ static_assert(alignof(Unaligned<uint64_t>) == 1);
 
 TEST(Bits, PartialLoadUnaligned) {
   std::vector<char> buf(128);
-  std::generate(
-      buf.begin(), buf.end(), [] { return folly::Random::rand32(255); });
+  std::generate(buf.begin(), buf.end(), [] {
+    return folly::Random::rand32(255);
+  });
   for (size_t l = 0; l < 8; ++l) {
     for (size_t pos = 0; pos <= buf.size() - l; ++pos) {
       auto p = buf.data() + pos;

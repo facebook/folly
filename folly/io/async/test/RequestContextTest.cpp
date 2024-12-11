@@ -116,9 +116,10 @@ TEST_F(RequestContextTest, SimpleTest) {
   RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
   base.runInEventBaseThread([&]() {
     EXPECT_TRUE(RequestContext::get() != nullptr);
-    auto data = dynamic_cast<TestData*>(
-                    RequestContext::get()->getContextData(testtoken))
-                    ->data_;
+    auto data =
+        dynamic_cast<TestData*>(
+            RequestContext::get()->getContextData(testtoken))
+            ->data_;
     EXPECT_EQ(10, data);
     rootids = getRootIdsFromAllThreads();
     EXPECT_EQ(2, rootids.size());
@@ -625,8 +626,9 @@ TEST_F(RequestContextTest, GetThreadCachedContextData) {
   };
 
   auto getData = [](auto traits) {
-    auto* data = RequestContext::try_get()
-                     ->getThreadCachedContextData<decltype(traits)>();
+    auto* data =
+        RequestContext::try_get()
+            ->getThreadCachedContextData<decltype(traits)>();
     CHECK(data != nullptr);
     auto* idata = dynamic_cast<ImmutableRequestData<int>*>(data);
     CHECK(idata != nullptr);

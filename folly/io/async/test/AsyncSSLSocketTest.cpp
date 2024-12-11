@@ -2043,20 +2043,21 @@ static int customRsaPrivEnc(
     LOG(INFO) << "Got a socket passed in, closing it...";
     socket->closeNow();
   }
-  asyncJobEvb->runInEventBaseThread([retptr = retptr,
-                                     flen = flen,
-                                     from = from,
-                                     to = to,
-                                     padding = padding,
-                                     actualRSA = actualRSA,
-                                     writer = std::move(asyncPipeWriter)]() {
-    LOG(INFO) << "Running job";
-    *retptr = RSA_meth_get_priv_enc(RSA_PKCS1_OpenSSL())(
-        flen, from, to, actualRSA, padding);
-    LOG(INFO) << "Finished job, writing to pipe";
-    uint8_t byte = *retptr > 0 ? 1 : 0;
-    writer->write(nullptr, &byte, 1);
-  });
+  asyncJobEvb->runInEventBaseThread(
+      [retptr = retptr,
+       flen = flen,
+       from = from,
+       to = to,
+       padding = padding,
+       actualRSA = actualRSA,
+       writer = std::move(asyncPipeWriter)]() {
+        LOG(INFO) << "Running job";
+        *retptr = RSA_meth_get_priv_enc(RSA_PKCS1_OpenSSL())(
+            flen, from, to, actualRSA, padding);
+        LOG(INFO) << "Finished job, writing to pipe";
+        uint8_t byte = *retptr > 0 ? 1 : 0;
+        writer->write(nullptr, &byte, 1);
+      });
 
   LOG(INFO) << "About to pause job";
 

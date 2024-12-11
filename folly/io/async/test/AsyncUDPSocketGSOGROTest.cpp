@@ -394,8 +394,9 @@ class AsyncSocketGSOIntegrationTest : public Test {
         &sevb, folly::SocketAddress("127.0.0.1", 0), 1);
 
     // Start event loop in a separate thread
-    serverThread =
-        std::make_unique<std::thread>([this]() { sevb.loopForever(); });
+    serverThread = std::make_unique<std::thread>([this]() {
+      sevb.loopForever();
+    });
 
     // Wait for event loop to start
     sevb.waitUntilRunning();

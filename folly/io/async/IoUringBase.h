@@ -112,8 +112,9 @@ class IoUringBufferProviderBase {
   virtual void destroy() noexcept = 0;
 };
 
-struct IoUringFdRegistrationRecord : public boost::intrusive::slist_base_hook<
-                                         boost::intrusive::cache_last<false>> {
+struct IoUringFdRegistrationRecord
+    : public boost::intrusive::slist_base_hook<
+          boost::intrusive::cache_last<false>> {
   int count_{0};
   int fd_{-1};
   int idx_{0};

@@ -301,8 +301,9 @@ TEST(Wait, WaitPlusThen) {
     EXPECT_EQ(f.value(), 42);
     f.wait();
     auto continuation = 0;
-    EXPECT_NO_THROW(
-        std::move(f).thenValue([&](auto&& v) { continuation = v; }));
+    EXPECT_NO_THROW(std::move(f).thenValue([&](auto&& v) {
+      continuation = v;
+    }));
     EXPECT_EQ(continuation, 42);
   }
 
@@ -324,8 +325,9 @@ TEST(Wait, WaitPlusThen) {
     f.wait();
     EXPECT_TRUE(f.isReady());
     auto continuation = 0;
-    EXPECT_NO_THROW(
-        std::move(f).thenValue([&](auto&& v) { continuation = v; }));
+    EXPECT_NO_THROW(std::move(f).thenValue([&](auto&& v) {
+      continuation = v;
+    }));
     EXPECT_EQ(continuation, 42);
     t.join();
   }
@@ -340,8 +342,9 @@ TEST(Wait, WaitPlusThen) {
     EXPECT_EQ(f.value(), 42);
     f.wait(std::chrono::seconds(10));
     auto continuation = 0;
-    EXPECT_NO_THROW(
-        std::move(f).thenValue([&](auto&& v) { continuation = v; }));
+    EXPECT_NO_THROW(std::move(f).thenValue([&](auto&& v) {
+      continuation = v;
+    }));
     EXPECT_EQ(continuation, 42);
   }
 
@@ -363,8 +366,9 @@ TEST(Wait, WaitPlusThen) {
     f.wait(std::chrono::seconds(10));
     EXPECT_TRUE(f.isReady()); // deterministically passes in practice
     auto continuation = 0;
-    EXPECT_NO_THROW(
-        std::move(f).thenValue([&](auto&& v) { continuation = v; }));
+    EXPECT_NO_THROW(std::move(f).thenValue([&](auto&& v) {
+      continuation = v;
+    }));
     EXPECT_EQ(continuation, 42);
     t.join();
   }
@@ -376,8 +380,9 @@ TEST(Wait, WaitPlusThen) {
     auto f = p.getFuture();
     f.wait(milliseconds(1));
     auto continuation = 0;
-    EXPECT_NO_THROW(
-        std::move(f).thenValue([&](auto&& v) { continuation = v; }));
+    EXPECT_NO_THROW(std::move(f).thenValue([&](auto&& v) {
+      continuation = v;
+    }));
     EXPECT_EQ(continuation, 0);
   }
 
@@ -393,8 +398,9 @@ TEST(Wait, WaitPlusThen) {
     auto continuation = 0;
     InlineExecutor e;
     auto f2 = std::move(f).via(&e);
-    EXPECT_NO_THROW(
-        std::move(f2).thenValue([&](auto&& v) { continuation = v; }));
+    EXPECT_NO_THROW(std::move(f2).thenValue([&](auto&& v) {
+      continuation = v;
+    }));
     EXPECT_EQ(continuation, 42);
   }
 
@@ -418,8 +424,9 @@ TEST(Wait, WaitPlusThen) {
     auto continuation = 0;
     InlineExecutor e;
     auto f2 = std::move(f).via(&e);
-    EXPECT_NO_THROW(
-        std::move(f2).thenValue([&](auto&& v) { continuation = v; }));
+    EXPECT_NO_THROW(std::move(f2).thenValue([&](auto&& v) {
+      continuation = v;
+    }));
     EXPECT_EQ(continuation, 42);
     t.join();
   }

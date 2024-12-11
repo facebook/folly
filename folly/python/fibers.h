@@ -47,15 +47,16 @@ void bridgeFibers(
   // to make sure it isn't removed by python in that time.
   Py_INCREF(userData);
   auto guard = folly::makeGuard([=] { Py_DECREF(userData); });
-  fiberManager->addTask([function = std::move(function),
-                         callback = std::move(callback),
-                         userData,
-                         guard = std::move(guard)]() mutable {
-    // This will run from inside the gil, called by the asyncio add_reader
-    auto res = folly::makeTryWith([&] { return function(); });
-    callback(std::move(res), userData);
-    // guard goes out of scope here, and its stored function is called
-  });
+  fiberManager->addTask(
+      [function = std::move(function),
+       callback = std::move(callback),
+       userData,
+       guard = std::move(guard)]() mutable {
+        // This will run from inside the gil, called by the asyncio add_reader
+        auto res = folly::makeTryWith([&] { return function(); });
+        callback(std::move(res), userData);
+        // guard goes out of scope here, and its stored function is called
+      });
 }
 
 } // namespace python

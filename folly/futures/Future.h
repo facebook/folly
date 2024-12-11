@@ -1125,8 +1125,9 @@ class Future : private futures::detail::FutureBase<T> {
               std::is_convertible<T2&&, T>::value,
           int>::type = 0>
   /* implicit */ Future(Future<T2>&& other)
-      : Future(std::move(other).thenValue(
-            [](T2&& v) { return T(std::move(v)); })) {}
+      : Future(std::move(other).thenValue([](T2&& v) {
+          return T(std::move(v));
+        })) {}
 
   template <
       class T2,
@@ -1136,8 +1137,9 @@ class Future : private futures::detail::FutureBase<T> {
               !std::is_convertible<T2&&, T>::value,
           int>::type = 0>
   explicit Future(Future<T2>&& other)
-      : Future(std::move(other).thenValue(
-            [](T2&& v) { return T(std::move(v)); })) {}
+      : Future(std::move(other).thenValue([](T2&& v) {
+          return T(std::move(v));
+        })) {}
 
   template <
       class T2,
@@ -1146,8 +1148,9 @@ class Future : private futures::detail::FutureBase<T> {
               std::is_constructible<T, T2&&>::value,
           int>::type = 0>
   Future& operator=(Future<T2>&& other) {
-    return operator=(
-        std::move(other).thenValue([](T2 && v) { return T(std::move(v)); }));
+    return operator=(std::move(other).thenValue([](T2 && v) {
+      return T(std::move(v));
+    }));
   }
 
   using Base::cancel;

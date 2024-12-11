@@ -234,8 +234,9 @@ TEST(RcuTest, ThreadLocalList) {
   while (done > 0) {
     folly::detail::ThreadCachedLists::ListHead list{};
     lists.collect(list);
-    list.forEach(
-        [](folly::detail::ThreadCachedLists::Node* node) { delete node; });
+    list.forEach([](folly::detail::ThreadCachedLists::Node* node) {
+      delete node;
+    });
   }
   for (auto& thread : threads) {
     thread.join();
@@ -243,8 +244,9 @@ TEST(RcuTest, ThreadLocalList) {
   // Run cleanup pass one more time to make ASAN happy
   folly::detail::ThreadCachedLists::ListHead list{};
   lists.collect(list);
-  list.forEach(
-      [](folly::detail::ThreadCachedLists::Node* node) { delete node; });
+  list.forEach([](folly::detail::ThreadCachedLists::Node* node) {
+    delete node;
+  });
 }
 
 TEST(RcuTest, ThreadDeath) {

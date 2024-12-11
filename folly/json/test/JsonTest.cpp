@@ -899,11 +899,11 @@ TEST(Json, SortKeys) {
   opts_off.sort_keys = false;
 
   opts_custom_sort.sort_keys = false; // should not be required
-  opts_custom_sort.sort_keys_by = [](folly::dynamic const& a,
-                                     folly::dynamic const& b) {
-    // just an inverse sort
-    return b < a;
-  };
+  opts_custom_sort.sort_keys_by =
+      [](folly::dynamic const& a, folly::dynamic const& b) {
+        // just an inverse sort
+        return b < a;
+      };
 
   // clang-format off
   dynamic value = dynamic::object

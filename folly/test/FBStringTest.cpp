@@ -1158,9 +1158,9 @@ TEST(FBString, testAllClauses) {
       f_string(r);
       rng = RandomT(localSeed);
       f_fbstring(c);
-      EXPECT_EQ(r, c) << "Lengths: " << r.size() << " vs. " << c.size()
-                      << "\nReference: '" << r << "'" << "\nActual:    '"
-                      << c.data()[0] << "'";
+      EXPECT_EQ(r, c)
+          << "Lengths: " << r.size() << " vs. " << c.size() << "\nReference: '"
+          << r << "'" << "\nActual:    '" << c.data()[0] << "'";
 #if FOLLY_HAVE_WCHAR_SUPPORT
       rng = RandomT(localSeed);
       f_wfbstring(wc);

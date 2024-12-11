@@ -390,8 +390,9 @@ void printResultComparison(
              return rv;                                                      \
            }),                                                               \
        true);                                                                \
-  static void funName([[maybe_unused]] ::folly::UserCounters& counters       \
-                          FOLLY_PP_DETAIL_APPEND_VA_ARG(paramType paramName))
+  static void funName(                                                       \
+      [[maybe_unused]] ::folly::UserCounters& counters                       \
+          FOLLY_PP_DETAIL_APPEND_VA_ARG(paramType paramName))
 
 /**
  * Introduces a benchmark function with support for returning the actual

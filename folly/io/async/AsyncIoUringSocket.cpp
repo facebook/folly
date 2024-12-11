@@ -368,9 +368,8 @@ void AsyncIoUringSocket::allowReads() {
 }
 
 void AsyncIoUringSocket::previousReadDone() {
-  VLOG(4) << "AsyncIoUringSocket::previousReadDone( " << this
-          << ") cb=" << readSqe_->readCallback()
-          << " in flight=" << readSqe_->inFlight();
+  VLOG(4) << "AsyncIoUringSocket::previousReadDone( " << this << ") cb="
+          << readSqe_->readCallback() << " in flight=" << readSqe_->inFlight();
   allowReads();
 }
 
@@ -525,12 +524,12 @@ bool AsyncIoUringSocket::hangup() const {
 
 void AsyncIoUringSocket::ReadSqe::setReadCallback(
     ReadCallback* callback, bool submitNow) {
-  VLOG(5) << "AsyncIoUringSocket::setReadCB() this=" << this
-          << " cb=" << callback << " cbWas=" << readCallback_
-          << " count=" << setReadCbCount_ << " movable="
-          << (callback && callback->isBufferMovable() ? "YES" : "NO")
-          << " inflight=" << inFlight() << " good_=" << parent_->good()
-          << " submitNow=" << submitNow;
+  VLOG(5)
+      << "AsyncIoUringSocket::setReadCB() this=" << this << " cb=" << callback
+      << " cbWas=" << readCallback_ << " count=" << setReadCbCount_
+      << " movable=" << (callback && callback->isBufferMovable() ? "YES" : "NO")
+      << " inflight=" << inFlight() << " good_=" << parent_->good()
+      << " submitNow=" << submitNow;
 
   if (callback == readCallback_) {
     // copied from AsyncSocket
@@ -1195,14 +1194,14 @@ void AsyncIoUringSocket::ReadSqe::attachEventBase() {
   }
   auto* evb = parent_->evb_;
   alive_ = std::make_shared<folly::Unit>();
-  folly::Func deferred = [p = parent_,
-                          a = std::weak_ptr<folly::Unit>(alive_)]() {
-    if (a.lock()) {
-      p->previousReadDone();
-    } else {
-      VLOG(5) << "unable to lock for " << p;
-    }
-  };
+  folly::Func deferred =
+      [p = parent_, a = std::weak_ptr<folly::Unit>(alive_)]() {
+        if (a.lock()) {
+          p->previousReadDone();
+        } else {
+          VLOG(5) << "unable to lock for " << p;
+        }
+      };
   oldEventBaseRead_ =
       std::move(*oldEventBaseRead_)
           .via(evb)
@@ -1312,9 +1311,10 @@ AsyncIoUringSocket::WriteSqe::detachEventBase() {
   newSqe->refs_ = refs_;
 
   parent_ = nullptr;
-  detachedSignal_ = [prom = std::move(promise),
-                     ret = std::vector<std::pair<int, uint32_t>>{},
-                     refs = refs_](int res, uint32_t flags) mutable -> bool {
+  detachedSignal_ =
+      [prom = std::move(promise),
+       ret = std::vector<std::pair<int, uint32_t>>{},
+       refs = refs_](int res, uint32_t flags) mutable -> bool {
     ret.emplace_back(res, flags);
     VLOG(5) << "DetachedSignal, now refs=" << refs;
     if (flags & IORING_CQE_F_NOTIF) {
@@ -1349,12 +1349,12 @@ void AsyncIoUringSocket::WriteSqe::callback(const io_uring_cqe* cqe) noexcept {
   auto res = cqe->res;
   auto flags = cqe->flags;
 
-  VLOG(5) << "write sqe callback " << this << " res=" << res
-          << " flags=" << flags << " iovStart=" << iov_.size()
-          << " iovRemaining=" << iov_.size() << " length=" << totalLength_
-          << " refs_=" << refs_ << " more=" << !!(flags & IORING_CQE_F_MORE)
-          << " notif=" << !!(flags & IORING_CQE_F_NOTIF)
-          << " parent_=" << parent_;
+  VLOG(5)
+      << "write sqe callback " << this << " res=" << res << " flags=" << flags
+      << " iovStart=" << iov_.size() << " iovRemaining=" << iov_.size()
+      << " length=" << totalLength_ << " refs_=" << refs_
+      << " more=" << !!(flags & IORING_CQE_F_MORE)
+      << " notif=" << !!(flags & IORING_CQE_F_NOTIF) << " parent_=" << parent_;
 
   if (!parent_) {
     // parent_ was detached, queue this up and signal.
@@ -1541,11 +1541,11 @@ class UnregisterFdSqe : public IoSqeBase {
     }
     auto end = std::chrono::steady_clock::now();
     if (end - start > std::chrono::milliseconds(1)) {
-      LOG(INFO) << "unregistering fd took "
-                << std::chrono::duration_cast<std::chrono::microseconds>(
-                       end - start)
-                       .count()
-                << "us";
+      LOG(INFO)
+          << "unregistering fd took "
+          << std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                 .count()
+          << "us";
     }
     delete this;
   }
@@ -1585,8 +1585,9 @@ bool AsyncIoUringSocket::setZeroCopy(bool enable) {
   if (!enable) {
     options_.zeroCopyEnable.reset();
   } else if (!options_.zeroCopyEnable) {
-    options_.zeroCopyEnable =
-        AsyncWriter::ZeroCopyEnableFunc([](auto&&) { return true; });
+    options_.zeroCopyEnable = AsyncWriter::ZeroCopyEnableFunc([](auto&&) {
+      return true;
+    });
   }
   return true;
 }
@@ -1771,11 +1772,11 @@ void AsyncIoUringSocket::registerFd() {
   fdRegistered_ = backend_->registerFd(fd_.toFd());
   auto end = std::chrono::steady_clock::now();
   if (end - start > std::chrono::milliseconds(1)) {
-    LOG(INFO) << "registering fd took "
-              << std::chrono::duration_cast<std::chrono::microseconds>(
-                     end - start)
-                     .count()
-              << "us";
+    LOG(INFO)
+        << "registering fd took "
+        << std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+               .count()
+        << "us";
   }
   if (fdRegistered_) {
     usedFd_ = fdRegistered_->idx_;

@@ -387,8 +387,9 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
   });
 
   // Test where the exec call fails()
-  checkFdLeak(
-      [] { EXPECT_SPAWN_ERROR(ENOENT, "failed to execute", "/no/such/file"); });
+  checkFdLeak([] {
+    EXPECT_SPAWN_ERROR(ENOENT, "failed to execute", "/no/such/file");
+  });
   // Test where the exec call fails() with pipes
   checkFdLeak([] {
     try {
@@ -845,11 +846,12 @@ TEST(CommunicateSubprocessTest, RedirectStdioToDevNull) {
       "/dev/stdin",
       "/dev/stderr",
   });
-  auto options = Subprocess::Options()
-                     .pipeStdout()
-                     .stdinFd(folly::Subprocess::DEV_NULL)
-                     .stderrFd(folly::Subprocess::DEV_NULL)
-                     .usePath();
+  auto options =
+      Subprocess::Options()
+          .pipeStdout()
+          .stdinFd(folly::Subprocess::DEV_NULL)
+          .stderrFd(folly::Subprocess::DEV_NULL)
+          .usePath();
   Subprocess proc(cmd, options);
   auto out = proc.communicateIOBuf();
 

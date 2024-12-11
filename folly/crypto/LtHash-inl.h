@@ -109,8 +109,9 @@ constexpr size_t getElementsPerUint64() {
   // how many elements fit into a 64-bit int? If padding is needed, assumes that
   // there is 1 padding bit between elements and any partial space is not used.
   // If padding is not needed, the computation is a trivial division.
-  return detail::Bits<B>::needsPadding() ? ((sizeof(uint64_t) * 8) / (B + 1))
-                                         : ((sizeof(uint64_t) * 8) / B);
+  return detail::Bits<B>::needsPadding()
+      ? ((sizeof(uint64_t) * 8) / (B + 1))
+      : ((sizeof(uint64_t) * 8) / B);
 }
 
 // Compile-time computation of the checksum size for a hash with given B and N.

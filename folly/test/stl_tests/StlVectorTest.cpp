@@ -348,11 +348,12 @@ struct D4<true> {
 };
 
 template <Flags f>
-struct Delete : D0<(f & DC_DELETE) != 0>,
-                D1<(f & CC_DELETE) != 0>,
-                D2<(f & MC_DELETE) != 0>,
-                D3<(f & CA_DELETE) != 0>,
-                D4<(f & MA_DELETE) != 0> {
+struct Delete
+    : D0<(f & DC_DELETE) != 0>,
+      D1<(f & CC_DELETE) != 0>,
+      D2<(f & MC_DELETE) != 0>,
+      D3<(f & CA_DELETE) != 0>,
+      D4<(f & MA_DELETE) != 0> {
   Delete() = default;
   Delete(const Delete&) = default;
   Delete(Delete&&) = default;
@@ -585,10 +586,11 @@ bool Tracker::Print = false;
 // Data
 
 template <Flags f = 0, size_t pad = 0>
-struct Data : DataTracker<(f & IS_RELOCATABLE) != 0>,
-              Counter,
-              DataTicker<f>,
-              Delete<f> {
+struct Data
+    : DataTracker<(f & IS_RELOCATABLE) != 0>,
+      Counter,
+      DataTicker<f>,
+      Delete<f> {
   static const Flags flags = f;
   char spacehog[pad ? pad : 1];
 
@@ -780,10 +782,11 @@ void isSane() {
 
   int altTot = 0;
   for (const auto& kv : Tracker::UIDCount) {
-    ASSERT_TRUE(kv.second >= 0) << "there exists " << kv.second
-                                << " Data "
-                                   "with uid "
-                                << kv.first;
+    ASSERT_TRUE(kv.second >= 0)
+        << "there exists " << kv.second
+        << " Data "
+           "with uid "
+        << kv.first;
     altTot += kv.second;
   }
   ASSERT_EQ(tot, altTot) << "UIDCount corrupted";
@@ -1444,10 +1447,11 @@ void verifyAllocator(int ele, int cap) {
       tot += kv.second;
     }
   }
-  ASSERT_EQ(cap, tot) << "the allocator counts " << tot
-                      << " space, "
-                         "but the vector(s) have (combined) capacity "
-                      << cap;
+  ASSERT_EQ(cap, tot)
+      << "the allocator counts " << tot
+      << " space, "
+         "but the vector(s) have (combined) capacity "
+      << cap;
 }
 
 // Master verifier
@@ -1566,11 +1570,12 @@ class DataState {
 
 // downgrade iterators
 template <typename It, class tag>
-class Transformer : public boost::iterator_adaptor<
-                        Transformer<It, tag>,
-                        It,
-                        typename iterator_traits<It>::value_type,
-                        tag> {
+class Transformer
+    : public boost::iterator_adaptor<
+          Transformer<It, tag>,
+          It,
+          typename iterator_traits<It>::value_type,
+          tag> {
   friend class boost::iterator_core_access;
   shared_ptr<set<It>> dereferenced;
 

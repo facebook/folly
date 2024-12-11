@@ -911,8 +911,9 @@ class ResumableTransformFixtureStress : public Test {
             })) {}
 
   std::unique_ptr<StressTestProducer<int>> makeProducer() {
-    return std::make_unique<StressTestProducer<int>>(
-        [value = 0]() mutable { return value++; });
+    return std::make_unique<StressTestProducer<int>>([value = 0]() mutable {
+      return value++;
+    });
   }
 
   void setProducer(std::unique_ptr<StressTestProducer<int>> producer) {
@@ -983,8 +984,9 @@ TEST_F(ResumableTransformFixtureStress, CancelDuringReinitialization) {
   auto initializationStarted = folly::SharedPromise<Unit>();
   auto initializationWait = folly::SharedPromise<Unit>();
   auto resumableTransformDestroyed = folly::SharedPromise<Unit>();
-  auto guard =
-      folly::makeGuard([&]() { resumableTransformDestroyed.setValue(); });
+  auto guard = folly::makeGuard([&]() {
+    resumableTransformDestroyed.setValue();
+  });
   consumer_->startConsuming(resumableTransform(
       folly::SerialExecutor::create(&transformExecutor),
       toVector("start"s),

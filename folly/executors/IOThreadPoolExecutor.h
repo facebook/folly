@@ -30,9 +30,10 @@ FOLLY_PUSH_WARNING
 // keepAliveAcquire/keepAliveRelease via dominance"
 FOLLY_MSVC_DISABLE_WARNING(4250)
 
-class IOThreadPoolExecutorBase : public ThreadPoolExecutor,
-                                 public IOExecutor,
-                                 public GetThreadIdCollector {
+class IOThreadPoolExecutorBase
+    : public ThreadPoolExecutor,
+      public IOExecutor,
+      public GetThreadIdCollector {
  public:
   using ThreadPoolExecutor::ThreadPoolExecutor;
 

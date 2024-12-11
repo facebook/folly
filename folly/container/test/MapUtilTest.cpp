@@ -130,8 +130,9 @@ TEST(MapUtil, getRefDefaultFunction) {
   EXPECT_EQ(42, get_ref_default(m, 2, [&i]() -> const int& { return i; }));
   EXPECT_EQ(
       std::addressof(i),
-      std::addressof(
-          get_ref_default(m, 2, [&i]() -> const int& { return i; })));
+      std::addressof(get_ref_default(m, 2, [&i]() -> const int& {
+        return i;
+      })));
   // statically disallowed:
   // get_ref_default(m, 2, [] { return 7; });
 }

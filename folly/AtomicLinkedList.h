@@ -39,8 +39,9 @@ class AtomicLinkedList {
   AtomicLinkedList& operator=(const AtomicLinkedList&) = delete;
   AtomicLinkedList(AtomicLinkedList&& other) noexcept = default;
   AtomicLinkedList& operator=(AtomicLinkedList&& other) noexcept {
-    list_.reverseSweepAndAssign(
-        std::move(other.list_), [](Wrapper* node) { delete node; });
+    list_.reverseSweepAndAssign(std::move(other.list_), [](Wrapper* node) {
+      delete node;
+    });
     return *this;
   }
 

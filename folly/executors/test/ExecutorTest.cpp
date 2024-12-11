@@ -157,10 +157,11 @@ TEST(ManualExecutor, advanceNeg) {
 TEST(ManualExecutor, waitForDoesNotDeadlock) {
   ManualExecutor east, west;
   folly::Baton<> baton;
-  auto f = makeFuture()
-               .via(&east)
-               .then([](Try<Unit>) { return makeFuture(); })
-               .via(&west);
+  auto f =
+      makeFuture()
+          .via(&east)
+          .then([](Try<Unit>) { return makeFuture(); })
+          .via(&west);
   std::thread t([&] {
     baton.post();
     west.waitFor(f);
@@ -173,10 +174,11 @@ TEST(ManualExecutor, waitForDoesNotDeadlock) {
 TEST(ManualExecutor, getViaDoesNotDeadlock) {
   ManualExecutor east, west;
   folly::Baton<> baton;
-  auto f = makeFuture()
-               .via(&east)
-               .then([](Try<Unit>) { return makeFuture(); })
-               .via(&west);
+  auto f =
+      makeFuture()
+          .via(&east)
+          .then([](Try<Unit>) { return makeFuture(); })
+          .via(&west);
   std::thread t([&] {
     baton.post();
     std::move(f).getVia(&west);
@@ -277,8 +279,9 @@ TEST(Executor, Runnable) {
 
 TEST(Executor, ThrowableThen) {
   InlineExecutor x;
-  auto f = Future<Unit>().thenValue(
-      [](auto&&) { throw std::runtime_error("Faildog"); });
+  auto f = Future<Unit>().thenValue([](auto&&) {
+    throw std::runtime_error("Faildog");
+  });
 
   /*
   auto f = Future<Unit>().via(&x).then([](){

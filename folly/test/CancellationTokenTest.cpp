@@ -196,8 +196,9 @@ TEST(CancellationTokenTest, ManyCallbacks) {
     int counter = 0;
     std::vector<std::unique_ptr<CancellationCallback>> callbacks;
     for (int i = 0; i < 100; ++i) {
-      callbacks.push_back(
-          std::make_unique<CancellationCallback>(t, [&] { ++counter; }));
+      callbacks.push_back(std::make_unique<CancellationCallback>(t, [&] {
+        ++counter;
+      }));
     }
 
     Baton<> baton;

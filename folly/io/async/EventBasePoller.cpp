@@ -144,8 +144,9 @@ class EventBasePollerImpl : public EventBasePoller {
  protected:
   void startLoop() {
     Baton<> started;
-    loopThread_ =
-        std::make_unique<std::thread>([this, &started]() { loop(started); });
+    loopThread_ = std::make_unique<std::thread>([this, &started]() {
+      loop(started);
+    });
     started.wait();
   }
 

@@ -434,8 +434,9 @@ class SignedValueHandler<T, true> {
   }
 
   ConversionCode overflow() {
-    return negative_ ? ConversionCode::NEGATIVE_OVERFLOW
-                     : ConversionCode::POSITIVE_OVERFLOW;
+    return negative_
+        ? ConversionCode::NEGATIVE_OVERFLOW
+        : ConversionCode::POSITIVE_OVERFLOW;
   }
 
   template <typename U>
@@ -658,8 +659,9 @@ Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
 
   if (FOLLY_UNLIKELY(!tmp.hasValue())) {
     return makeUnexpected(
-        tmp.error() == ConversionCode::POSITIVE_OVERFLOW ? sgn.overflow()
-                                                         : tmp.error());
+        tmp.error() == ConversionCode::POSITIVE_OVERFLOW
+            ? sgn.overflow()
+            : tmp.error());
   }
 
   auto res = sgn.finalize(tmp.value());

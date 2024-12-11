@@ -34,10 +34,11 @@ TEST_F(CoErrorTest, constructible) {
 
   EXPECT_TRUE((std::is_constructible_v<co_error, exception_wrapper>));
   EXPECT_TRUE((std::is_constructible_v<co_error, std::runtime_error>));
-  EXPECT_TRUE((std::is_constructible_v<
-               co_error,
-               std::in_place_type_t<std::runtime_error>,
-               std::string>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<
+          co_error,
+          std::in_place_type_t<std::runtime_error>,
+          std::string>));
   EXPECT_FALSE((std::is_constructible_v<co_error, int>));
 }
 

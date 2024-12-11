@@ -561,8 +561,9 @@ typename std::enable_if<
     sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt* result) {
   char buffer[to_ascii_size_max_decimal<uint64_t>];
-  auto uvalue = value < 0 ? ~static_cast<uint64_t>(value) + 1
-                          : static_cast<uint64_t>(value);
+  auto uvalue = value < 0
+      ? ~static_cast<uint64_t>(value) + 1
+      : static_cast<uint64_t>(value);
   if (value < 0) {
     result->push_back('-');
   }
@@ -575,8 +576,9 @@ typename std::enable_if<
         sizeof(Src) < 16,
     size_t>::type
 estimateSpaceNeeded(Src value) {
-  auto uvalue = value < 0 ? ~static_cast<uint64_t>(value) + 1
-                          : static_cast<uint64_t>(value);
+  auto uvalue = value < 0
+      ? ~static_cast<uint64_t>(value) + 1
+      : static_cast<uint64_t>(value);
   return size_t(value < 0) + to_ascii_size_decimal(uvalue);
 }
 
@@ -1329,8 +1331,9 @@ FOLLY_NODISCARD inline typename std::enable_if< //
     is_arithmetic_v<Tgt>,
     Expected<StringPiece, ConversionCode>>::type
 parseTo(StringPiece src, Tgt& out) {
-  return detail::convertTo<Tgt>(&src).then(
-      [&](Tgt res) { return void(out = res), src; });
+  return detail::convertTo<Tgt>(&src).then([&](Tgt res) {
+    return void(out = res), src;
+  });
 }
 
 /**

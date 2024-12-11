@@ -575,12 +575,13 @@ TEST(Gen, DistinctBy) { //  0  1  4  9  6  5  6  9  4  1  0
 
 TEST(Gen, DistinctMove) { //  0  1  4  9  6  5  6  9  4  1  0
   auto expected = vector<int>{0, 1, 2, 3, 4, 5};
-  auto actual = seq(0, 100) |
+  auto actual =
+      seq(0, 100) |
       mapped([](int i) { return std::make_unique<int>(i); })
       // see comment below about selector parameters for Distinct
       | distinctBy([](const std::unique_ptr<int>& pi) {
-                  return *pi * *pi % 10;
-                }) |
+          return *pi * *pi % 10;
+        }) |
       mapped([](std::unique_ptr<int> pi) { return *pi; }) | as<vector>();
 
   // NOTE(tjackson): the following line intentionally doesn't work:
@@ -1246,15 +1247,15 @@ TEST(Gen, Batch) {
 
 TEST(Gen, BatchMove) {
   auto expected = vector<vector<int>>{{0, 1}, {2, 3}, {4}};
-  auto actual = seq(0, 4) |
-      mapped([](int i) { return std::make_unique<int>(i); }) | batch(2) |
-      mapped([](std::vector<std::unique_ptr<int>>& pVector) {
-                  std::vector<int> iVector;
-                  for (const auto& p : pVector) {
-                    iVector.push_back(*p);
-                  };
-                  return iVector;
-                }) |
+  auto actual =
+      seq(0, 4) | mapped([](int i) { return std::make_unique<int>(i); }) |
+      batch(2) | mapped([](std::vector<std::unique_ptr<int>>& pVector) {
+        std::vector<int> iVector;
+        for (const auto& p : pVector) {
+          iVector.push_back(*p);
+        };
+        return iVector;
+      }) |
       as<vector>();
   EXPECT_EQ(expected, actual);
 }

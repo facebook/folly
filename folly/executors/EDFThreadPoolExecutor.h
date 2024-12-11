@@ -53,8 +53,9 @@ class EDFThreadPoolSemaphoreImpl : public EDFThreadPoolSemaphore {
  * earliest-deadline-first scheduling policy. Deadline ties are resolved by
  * submission order.
  */
-class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
-                              public ThreadPoolExecutor {
+class EDFThreadPoolExecutor
+    : public SoftRealTimeExecutor,
+      public ThreadPoolExecutor {
  public:
   class Task;
   class TaskQueue;

@@ -117,8 +117,8 @@ void testReadsParallel(
   auto aioReader = getAIO<TAsync>(specs.size(), pollMode);
   SKIP_IF(!aioReader) << "TAsync not available";
 
-  std::unique_ptr<typename TAsync::Op[]> ops(new
-                                             typename TAsync::Op[specs.size()]);
+  std::unique_ptr<typename TAsync::Op[]> ops(
+      new typename TAsync::Op[specs.size()]);
   uintptr_t sizeOf = sizeof(typename TAsync::Op);
   std::vector<TestUtil::ManagedBuffer> bufs;
   bufs.reserve(specs.size());
@@ -191,8 +191,8 @@ void testReadsQueued(
   auto aioReader = getAIO<TAsync>(readerCapacity, pollMode);
   SKIP_IF(!aioReader) << "TAsync not available";
   folly::AsyncBaseQueue aioQueue(aioReader.get());
-  std::unique_ptr<typename TAsync::Op[]> ops(new
-                                             typename TAsync::Op[specs.size()]);
+  std::unique_ptr<typename TAsync::Op[]> ops(
+      new typename TAsync::Op[specs.size()]);
   uintptr_t sizeOf = sizeof(typename TAsync::Op);
   std::vector<TestUtil::ManagedBuffer> bufs;
 

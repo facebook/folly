@@ -303,8 +303,9 @@ CheckResult checkThrowRegex(
         << "Expected: " << statementStr << " throws a " << excTypeStr
         << ")\nActual: it throws a non-exception type";
   }
-  return CheckResult(false) << "Expected: " << statementStr << " throws a "
-                            << excTypeStr << ")\nActual: it throws nothing";
+  return CheckResult(false)
+      << "Expected: " << statementStr << " throws a " << excTypeStr
+      << ")\nActual: it throws nothing";
 }
 
 } // namespace detail

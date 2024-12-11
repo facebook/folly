@@ -185,8 +185,9 @@ class InlineTask {
     }
 
     T await_resume() {
-      auto destroyOnExit =
-          folly::makeGuard([this] { std::exchange(coro_, {}).destroy(); });
+      auto destroyOnExit = folly::makeGuard([this] {
+        std::exchange(coro_, {}).destroy();
+      });
       return coro_.promise().result();
     }
 

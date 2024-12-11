@@ -81,8 +81,9 @@ class FutureWriteCallback : public AsyncWriter::WriteCallback {
 
 } // namespace
 
-class EchoTransport : public AsyncReader::ReadCallback,
-                      public AsyncWriter::WriteCallback {
+class EchoTransport
+    : public AsyncReader::ReadCallback,
+      public AsyncWriter::WriteCallback {
  public:
   explicit EchoTransport(AsyncSocketTransport::UniquePtr s, bool bm)
       : transport(std::move(s)), bufferMovable(bm) {}
@@ -251,9 +252,10 @@ struct ConnectedOptions {
   }
 };
 
-class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
-                               public AsyncServerSocket::AcceptCallback,
-                               public AsyncSocket::ConnectCallback {
+class AsyncIoUringSocketTest
+    : public ::testing::TestWithParam<TestParams>,
+      public AsyncServerSocket::AcceptCallback,
+      public AsyncSocket::ConnectCallback {
  public:
   static IoUringBackend::Options ioOptions(TestParams const& p) {
     auto options =
@@ -354,10 +356,11 @@ class AsyncIoUringSocketTest : public ::testing::TestWithParam<TestParams>,
           &nullWriteCallback, IOBuf::copyBuffer(options.fastOpenInitial));
     }
 
-    auto fd = fdPromise.getFuture()
-                  .within(kTimeout)
-                  .via(base.get())
-                  .getVia(base.get());
+    auto fd =
+        fdPromise.getFuture()
+            .within(kTimeout)
+            .via(base.get())
+            .getVia(base.get());
     fdPromise = {};
     auto c = std::make_unique<EchoTransport>(
         std::move(client), GetParam().supportBufferMovable);
@@ -418,10 +421,11 @@ TEST_P(AsyncIoUringSocketTest, ConnectTimeout) {
   socket->connect(
       &cb, SocketAddress{host, 65535}, std::chrono::milliseconds(1));
 
-  auto res = cb.prom.getSemiFuture()
-                 .within(kTimeout)
-                 .via(base.get())
-                 .getVia(base.get());
+  auto res =
+      cb.prom.getSemiFuture()
+          .within(kTimeout)
+          .via(base.get())
+          .getVia(base.get());
   ASSERT_FALSE(res);
   if (res.error().getType() == AsyncSocketException::NOT_OPEN) {
     // This can happen if we could not route to the IP address picked above.
@@ -466,21 +470,23 @@ TEST_P(AsyncIoUringSocketTest, EoF) {
     c.server->setReadCB(&cb_eof);
     c.client->transport->closeNow();
     c.client.reset();
-    EXPECT_TRUE(cb_eof.prom.getSemiFuture()
-                    .within(kTimeout)
-                    .via(base.get())
-                    .getVia(base.get())
-                    .hasValue());
+    EXPECT_TRUE(
+        cb_eof.prom.getSemiFuture()
+            .within(kTimeout)
+            .via(base.get())
+            .getVia(base.get())
+            .hasValue());
     c.server->setReadCB(nullptr);
   }
   EXPECT_FALSE(c.server->good());
   {
     CB cb_invalid;
     c.server->setReadCB(&cb_invalid);
-    auto ex = cb_invalid.prom.getSemiFuture()
-                  .within(kTimeout)
-                  .via(base.get())
-                  .getVia(base.get());
+    auto ex =
+        cb_invalid.prom.getSemiFuture()
+            .within(kTimeout)
+            .via(base.get())
+            .getVia(base.get());
     ASSERT_TRUE(ex.hasError());
     auto er = ex.error();
     EXPECT_EQ(AsyncSocketException::NOT_OPEN, er.getType());
@@ -521,10 +527,11 @@ TEST_P(AsyncIoUringSocketTest, Detach) {
   was->asyncDetachFd(&cb);
   ASSERT_FALSE(cb.promise.isFulfilled()) << "must wait for read to finish";
 
-  auto res = cb.promise.getSemiFuture()
-                 .within(kTimeout)
-                 .via(base.get())
-                 .getVia(base.get());
+  auto res =
+      cb.promise.getSemiFuture()
+          .within(kTimeout)
+          .via(base.get())
+          .getVia(base.get());
   EXPECT_GE(res.first.toFd(), 0);
   if (res.second) {
     // did not cancel in time

@@ -44,14 +44,15 @@ namespace gen {
  * ArgumentReference - For determining ideal argument type to receive a value.
  */
 template <class T>
-struct ArgumentReference : public std::conditional<
-                               std::is_reference<T>::value,
-                               T, // T& -> T&, T&& -> T&&, const T& -> const T&
-                               typename std::conditional<
-                                   std::is_const<T>::value,
-                                   T&, // const int -> const int&
-                                   T&& // int -> int&&
-                                   >::type> {};
+struct ArgumentReference
+    : public std::conditional<
+          std::is_reference<T>::value,
+          T, // T& -> T&, T&& -> T&&, const T& -> const T&
+          typename std::conditional<
+              std::is_const<T>::value,
+              T&, // const int -> const int&
+              T&& // int -> int&&
+              >::type> {};
 
 /**
  * Group - The output objects from the GroupBy operator
@@ -237,9 +238,10 @@ class CopiedSource
  * Reminder: Be careful not to invalidate iterators when using ranges like this.
  */
 template <class Iterator>
-class RangeSource : public GenImpl<
-                        typename Range<Iterator>::reference,
-                        RangeSource<Iterator>> {
+class RangeSource
+    : public GenImpl<
+          typename Range<Iterator>::reference,
+          RangeSource<Iterator>> {
   Range<Iterator> range_;
 
  public:
@@ -513,8 +515,9 @@ class Map : public Operator<Map<Predicate>> {
 
     template <class Body>
     void foreach(Body&& body) const {
-      source_.foreach(
-          [&](Value value) { body(pred_(std::forward<Value>(value))); });
+      source_.foreach([&](Value value) {
+        body(pred_(std::forward<Value>(value)));
+      });
     }
 
     template <class Handler>
@@ -860,9 +863,10 @@ class Sample : public Operator<Sample<Random>> {
       class Source,
       class Rand,
       class StorageType = typename std::decay<Value>::type>
-  class Generator : public GenImpl<
-                        StorageType&&,
-                        Generator<Value, Source, Rand, StorageType>> {
+  class Generator
+      : public GenImpl<
+            StorageType&&,
+            Generator<Value, Source, Rand, StorageType>> {
     static_assert(!Source::infinite, "Cannot sample infinite source!");
     // It's too easy to bite ourselves if random generator is only 16-bit
     static_assert(
@@ -1032,9 +1036,10 @@ class Order : public Operator<Order<Selector, Comparer>> {
       class Source,
       class StorageType = typename std::decay<Value>::type,
       class Result = invoke_result_t<Selector, Value>>
-  class Generator : public GenImpl<
-                        StorageType&&,
-                        Generator<Value, Source, StorageType, Result>> {
+  class Generator
+      : public GenImpl<
+            StorageType&&,
+            Generator<Value, Source, StorageType, Result>> {
     static_assert(!Source::infinite, "Cannot sort infinite source!");
     Source source_;
     Selector selector_;
@@ -1435,9 +1440,10 @@ class Batch : public Operator<Batch> {
       class Source,
       class StorageType = typename std::decay<Value>::type,
       class VectorType = std::vector<StorageType>>
-  class Generator : public GenImpl<
-                        VectorType&,
-                        Generator<Value, Source, StorageType, VectorType>> {
+  class Generator
+      : public GenImpl<
+            VectorType&,
+            Generator<Value, Source, StorageType, VectorType>> {
     Source source_;
     size_t batchSize_;
 
@@ -1619,8 +1625,9 @@ class Concat : public Operator<Concat> {
 
     template <class Body>
     void foreach(Body&& body) const {
-      source_.foreach(
-          [&](Inner inner) { inner.foreach(std::forward<Body>(body)); });
+      source_.foreach([&](Inner inner) {
+        inner.foreach(std::forward<Body>(body));
+      });
     }
 
     // Resulting concatenation is only finite if both Source and Inner are also
@@ -1855,8 +1862,9 @@ class Indirect : public Operator<Indirect> {
 
     template <class Body>
     void foreach(Body&& body) const {
-      source_.foreach(
-          [&](Value value) { return body(&std::forward<Value>(value)); });
+      source_.foreach([&](Value value) {
+        return body(&std::forward<Value>(value));
+      });
     }
 
     template <class Handler>

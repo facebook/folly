@@ -384,28 +384,28 @@ struct Opaque {
 
 } // namespace
 
-#define EXPECT_THROW_STR(code, type, str)                                 \
-  do {                                                                    \
-    bool caught = false;                                                  \
-    try {                                                                 \
-      code;                                                               \
-    } catch (const type& e) {                                             \
-      caught = true;                                                      \
-      EXPECT_TRUE(strstr(e.what(), (str)) != nullptr)                     \
-          << "Expected message [" << (str) << "], actual message ["       \
-          << e.what();                                                    \
-    } catch (const std::exception& e) {                                   \
-      caught = true;                                                      \
-      ADD_FAILURE() << "Caught different exception type; expected " #type \
-                       ", caught "                                        \
-                    << folly::demangle(typeid(e));                        \
-    } catch (...) {                                                       \
-      caught = true;                                                      \
-      ADD_FAILURE() << "Caught unknown exception type; expected " #type;  \
-    }                                                                     \
-    if (!caught) {                                                        \
-      ADD_FAILURE() << "Expected exception " #type ", caught nothing";    \
-    }                                                                     \
+#define EXPECT_THROW_STR(code, type, str)                                   \
+  do {                                                                      \
+    bool caught = false;                                                    \
+    try {                                                                   \
+      code;                                                                 \
+    } catch (const type& e) {                                               \
+      caught = true;                                                        \
+      EXPECT_TRUE(strstr(e.what(), (str)) != nullptr)                       \
+          << "Expected message [" << (str) << "], actual message ["         \
+          << e.what();                                                      \
+    } catch (const std::exception& e) {                                     \
+      caught = true;                                                        \
+      ADD_FAILURE()                                                         \
+          << "Caught different exception type; expected " #type ", caught " \
+          << folly::demangle(typeid(e));                                    \
+    } catch (...) {                                                         \
+      caught = true;                                                        \
+      ADD_FAILURE() << "Caught unknown exception type; expected " #type;    \
+    }                                                                       \
+    if (!caught) {                                                          \
+      ADD_FAILURE() << "Expected exception " #type ", caught nothing";      \
+    }                                                                       \
   } while (false)
 
 #define EXPECT_FORMAT_ERROR(code, str) \

@@ -70,8 +70,9 @@ TEST_F(FilterTest, ThrowingStream) {
     throw Exception{};
   };
 
-  auto throwingStreamFiltered =
-      filter(throwingStream(), [](int) { return true; });
+  auto throwingStreamFiltered = filter(throwingStream(), [](int) {
+    return true;
+  });
   EXPECT_EQ(0, blockingWait(throwingStreamFiltered.next()).value());
   EXPECT_EQ(1, blockingWait(throwingStreamFiltered.next()).value());
   EXPECT_THROW(blockingWait(throwingStreamFiltered.next()), Exception);

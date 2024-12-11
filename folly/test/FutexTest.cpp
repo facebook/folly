@@ -137,8 +137,9 @@ void run_wake_blocked_test() {
   for (auto delay = std::chrono::milliseconds(1);; delay *= 2) {
     bool success = false;
     Futex<Atom> f(0);
-    auto thr = DSched::thread(
-        [&] { success = FutexResult::AWOKEN == futexWait(&f, 0); });
+    auto thr = DSched::thread([&] {
+      success = FutexResult::AWOKEN == futexWait(&f, 0);
+    });
     /* sleep override */ std::this_thread::sleep_for(delay);
     f.store(1);
     futexWake(&f, 1);

@@ -88,8 +88,9 @@ class PointerVariant {
           "Incorrect type specified. Given: {}, Stored: {}",
           secondType ? folly::demangle(typeid(SecondType).name())
                      : folly::demangle(typeid(FirstType).name()),
-          storage_ & kTypeMask ? folly::demangle(typeid(SecondType).name())
-                               : folly::demangle(typeid(FirstType).name())));
+          storage_ & kTypeMask
+              ? folly::demangle(typeid(SecondType).name())
+              : folly::demangle(typeid(FirstType).name())));
     }
   }
 

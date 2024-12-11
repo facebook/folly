@@ -259,10 +259,11 @@ enum class atomic_fetch_bit_op_native_instr_suff { w, l, q };
           : "=@ccc"(out), [ptr] "+m"(*ptr)                                    \
           : [bit] "ri"(bit));                                                 \
     } else {                                                                  \
-      asm volatile("lock " #mnem #suff " %[bit], (%[ptr])"                    \
-                   : "=@ccc"(out)                                             \
-                   : [bit] "ri"(bit), [ptr] "r"(ptr)                          \
-                   : "memory");                                               \
+      asm volatile(                                                           \
+          "lock " #mnem #suff " %[bit], (%[ptr])"                             \
+          : "=@ccc"(out)                                                      \
+          : [bit] "ri"(bit), [ptr] "r"(ptr)                                   \
+          : "memory");                                                        \
     }                                                                         \
   }
 

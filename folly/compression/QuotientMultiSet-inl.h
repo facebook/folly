@@ -66,8 +66,9 @@ FOLLY_ALWAYS_INLINE std::pair<uint64_t, uint64_t> getQuotientAndRemainder(
 
 // Max value for given bits.
 FOLLY_ALWAYS_INLINE uint64_t maxValue(uint32_t nbits) {
-  return nbits == 64 ? std::numeric_limits<uint64_t>::max()
-                     : (uint64_t(1) << nbits) - 1;
+  return nbits == 64
+      ? std::numeric_limits<uint64_t>::max()
+      : (uint64_t(1) << nbits) - 1;
 }
 
 } // namespace qms_detail

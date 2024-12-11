@@ -1072,13 +1072,14 @@ template <
     typename KeyEqual,
     typename Alloc,
     typename EligibleForPerturbedInsertionOrder>
-class F14VectorSetImpl : public F14BasicSet<SetPolicyWithDefaults<
-                             VectorContainerPolicy,
-                             Key,
-                             Hasher,
-                             KeyEqual,
-                             Alloc,
-                             EligibleForPerturbedInsertionOrder>> {
+class F14VectorSetImpl
+    : public F14BasicSet<SetPolicyWithDefaults<
+          VectorContainerPolicy,
+          Key,
+          Hasher,
+          KeyEqual,
+          Alloc,
+          EligibleForPerturbedInsertionOrder>> {
  protected:
   using Policy = SetPolicyWithDefaults<
       VectorContainerPolicy,

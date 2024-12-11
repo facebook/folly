@@ -336,15 +336,15 @@ TEST(Traits, typeT) {
   EXPECT_TRUE((::std::is_same<folly::type_t<float>, float>::value));
   EXPECT_TRUE((::std::is_same<folly::type_t<float, int>, float>::value));
   EXPECT_TRUE((::std::is_same<folly::type_t<float, int, short>, float>::value));
-  EXPECT_TRUE(
-      (::std::is_same<folly::type_t<float, int, short, std::string>, float>::
-           value));
+  EXPECT_TRUE((
+      ::std::is_same<folly::type_t<float, int, short, std::string>, float>::
+          value));
   EXPECT_TRUE((
       ::std::is_constructible<::container<std::string>, some_tag, std::string>::
           value));
-  EXPECT_FALSE(
-      (::std::is_constructible<::container<std::string>, some_tag, float>::
-           value));
+  EXPECT_FALSE((
+      ::std::is_constructible<::container<std::string>, some_tag, float>::
+          value));
 }
 
 namespace {

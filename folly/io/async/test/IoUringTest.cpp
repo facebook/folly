@@ -89,14 +89,16 @@ TEST(IoUringTest, RegisteredBuffers) {
   IoUring::Op regFdWriteOp, readOp, regFdReadOp;
   size_t completed = 0;
 
-  regFdWriteOp.setNotificationCallback(
-      [&](folly::AsyncBaseOp*) { ++completed; });
+  regFdWriteOp.setNotificationCallback([&](folly::AsyncBaseOp*) {
+    ++completed;
+  });
   regFdWriteOp.pwrite(fd, regFdWriteBuf.get(), kBufSize, 0, 0 /*buf_index*/);
 
   readOp.setNotificationCallback([&](folly::AsyncBaseOp*) { ++completed; });
   readOp.pread(fd, readBuf.get(), kBufSize, 0);
-  regFdReadOp.setNotificationCallback(
-      [&](folly::AsyncBaseOp*) { ++completed; });
+  regFdReadOp.setNotificationCallback([&](folly::AsyncBaseOp*) {
+    ++completed;
+  });
   regFdReadOp.pread(fd, regFdReadBuf.get(), kBufSize, 0, 1 /*buf_index*/);
 
   // write

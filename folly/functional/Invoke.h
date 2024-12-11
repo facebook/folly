@@ -624,12 +624,11 @@ struct invoke_first_match : private Invoker... {
 #define FOLLY_CREATE_MEMBER_INVOKER(classname, membername)                 \
   struct classname {                                                       \
     template <typename O, typename... Args>                                \
-    [[maybe_unused]] FOLLY_ERASE_HACK_GCC constexpr auto operator()(       \
-        O&& o, Args&&... args) const                                       \
-        noexcept(noexcept(                                                 \
-            static_cast<O&&>(o).membername(static_cast<Args&&>(args)...))) \
-            -> decltype(static_cast<O&&>(o).membername(                    \
-                static_cast<Args&&>(args)...)) {                           \
+    [[maybe_unused]] FOLLY_ERASE_HACK_GCC constexpr auto                   \
+    operator()(O&& o, Args&&... args) const noexcept(noexcept(             \
+        static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)))     \
+        -> decltype(static_cast<O&&>(o).membername(                        \
+            static_cast<Args&&>(args)...)) {                               \
       return static_cast<O&&>(o).membername(static_cast<Args&&>(args)...); \
     }                                                                      \
   }

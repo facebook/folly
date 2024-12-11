@@ -58,8 +58,9 @@ void testPartialLoadUnaligned(F f, size_t iters) {
   std::vector<char> buf;
   BENCHMARK_SUSPEND {
     buf.resize(kBufSize + 7); // Allow unguarded tail reads.
-    std::generate(
-        buf.begin(), buf.end(), [] { return folly::Random::rand32(255); });
+    std::generate(buf.begin(), buf.end(), [] {
+      return folly::Random::rand32(255);
+    });
   }
 
   uint64_t ret = 0;

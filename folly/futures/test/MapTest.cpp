@@ -54,8 +54,9 @@ TEST(Map, basicTry) {
   fs.push_back(p3.getFuture());
 
   int c = 0;
-  std::vector<Future<Unit>> fs2 =
-      futures::mapTry(fs, [&](folly::Try<int> i) { c += i.value(); });
+  std::vector<Future<Unit>> fs2 = futures::mapTry(fs, [&](folly::Try<int> i) {
+    c += i.value();
+  });
 
   // Ensure we call the callbacks as the futures complete regardless of order
   p2.setValue(1);
@@ -80,8 +81,9 @@ TEST(Map, executor) {
   fs.push_back(p3.getFuture());
 
   int c = 0;
-  std::vector<Future<Unit>> fs2 =
-      futures::mapValue(exec, fs, [&](int i) { c += i; });
+  std::vector<Future<Unit>> fs2 = futures::mapValue(exec, fs, [&](int i) {
+    c += i;
+  });
 
   // Ensure we call the callbacks as the futures complete regardless of order
   p2.setValue(1);
@@ -132,8 +134,9 @@ TEST(Map, semifuture) {
   fs.push_back(p3.getSemiFuture());
 
   int c = 0;
-  std::vector<Future<Unit>> fs2 =
-      futures::mapValue(exec, fs, [&](int i) { c += i; });
+  std::vector<Future<Unit>> fs2 = futures::mapValue(exec, fs, [&](int i) {
+    c += i;
+  });
 
   // Ensure we call the callbacks as the futures complete regardless of order
   p2.setValue(1);

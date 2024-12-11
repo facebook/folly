@@ -1197,8 +1197,9 @@ void IOBuf::freeExtBuffer() noexcept {
       free(buf_);
     }
   }
-  SharedInfo::invokeAndDeleteEachObserver(
-      observerListHead, [](auto& entry) { entry.afterFreeExtBuffer(); });
+  SharedInfo::invokeAndDeleteEachObserver(observerListHead, [](auto& entry) {
+    entry.afterFreeExtBuffer();
+  });
 
   if (kIsMobile) {
     buf_ = nullptr;
@@ -1306,8 +1307,9 @@ fbstring IOBuf::moveToFbString() {
         writableData(), reinterpret_cast<size_t>(sharedInfo_->userData));
   }
 
-  SharedInfo::invokeAndDeleteEachObserver(
-      observerListHead, [](auto& entry) { entry.afterReleaseExtBuffer(); });
+  SharedInfo::invokeAndDeleteEachObserver(observerListHead, [](auto& entry) {
+    entry.afterReleaseExtBuffer();
+  });
 
   if (infoStorageType != SharedInfo::StorageType::kInvalid) {
     SharedInfo::releaseStorage(this, infoStorageType, sharedInfo_);

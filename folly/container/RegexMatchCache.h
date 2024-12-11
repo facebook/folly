@@ -301,8 +301,9 @@ class RegexMatchCacheIndexedVector {
   std::pair<size_t, bool> insert_value(Value const& value) {
     auto [iter, inserted] = forward_.try_emplace(value);
     if (inserted) {
-      auto rollback_forward =
-          makeGuard([&, iter_ = iter] { forward_.erase(iter_); });
+      auto rollback_forward = makeGuard([&, iter_ = iter] {
+        forward_.erase(iter_);
+      });
       if (free_.capacity() < forward_.size()) {
         grow_capacity_by(free_, forward_.size() - free_.size());
       }
@@ -311,8 +312,9 @@ class RegexMatchCacheIndexedVector {
       auto const index = from_free ? free_.back() : forward_.size() - 1;
       from_free ? free_.pop_back() : void();
       iter->second = index;
-      auto rollback_free =
-          makeGuard([&] { from_free ? free_.push_back(index) : void(); });
+      auto rollback_free = makeGuard([&] {
+        from_free ? free_.push_back(index) : void();
+      });
       assert(!reverse_.contains(index));
       reverse_[index] = value;
       rollback_free.dismiss();

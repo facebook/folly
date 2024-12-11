@@ -235,8 +235,9 @@ void benchmarkInsertGrow(int runs, int size) {
 
 template <template <class, class> class Map, class K, class V>
 void benchmarkInsertSqBr(int runs, int size) {
-  benchmarkFromEmptyArgs<Map, K, V>(
-      runs, size, [](Map<K, V>& m, int i) { m[key<K>(i)] = value<V>(i); });
+  benchmarkFromEmptyArgs<Map, K, V>(runs, size, [](Map<K, V>& m, int i) {
+    m[key<K>(i)] = value<V>(i);
+  });
 }
 
 template <template <class, class> class Map, class K, class V>

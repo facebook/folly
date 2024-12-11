@@ -25,9 +25,10 @@ namespace channels {
 
 using namespace testing;
 
-class ChannelFixture : public Test,
-                       public WithParamInterface<ConsumptionMode>,
-                       public ChannelConsumerBase<int> {
+class ChannelFixture
+    : public Test,
+      public WithParamInterface<ConsumptionMode>,
+      public ChannelConsumerBase<int> {
  protected:
   ChannelFixture() : ChannelConsumerBase(GetParam()) {}
 
@@ -268,8 +269,9 @@ INSTANTIATE_TEST_SUITE_P(
     ChannelFixture,
     testing::Values(ConsumptionMode::CallbackWithHandle));
 
-class ChannelFixtureStress : public Test,
-                             public WithParamInterface<ConsumptionMode> {
+class ChannelFixtureStress
+    : public Test,
+      public WithParamInterface<ConsumptionMode> {
  protected:
   ChannelFixtureStress()
       : producer_(std::make_unique<StressTestProducer<int>>(

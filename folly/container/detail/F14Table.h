@@ -2497,8 +2497,9 @@ class F14Table : public Policy {
   // Get memory footprint, not including sizeof(*this).
   std::size_t getAllocatedMemorySize() const {
     std::size_t sum = 0;
-    visitAllocationClasses(
-        [&sum](std::size_t bytes, std::size_t n) { sum += bytes * n; });
+    visitAllocationClasses([&sum](std::size_t bytes, std::size_t n) {
+      sum += bytes * n;
+    });
     return sum;
   }
 

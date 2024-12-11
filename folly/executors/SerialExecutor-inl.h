@@ -162,8 +162,9 @@ class NoopMutex {
   auto lock_combine(F&& f) {
 #ifndef NDEBUG
     CHECK(!locked_.exchange(true, std::memory_order_acq_rel));
-    auto&& g = folly::makeGuard(
-        [this] { locked_.store(false, std::memory_order_release); });
+    auto&& g = folly::makeGuard([this] {
+      locked_.store(false, std::memory_order_release);
+    });
 #endif
     return f();
   }

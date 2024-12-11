@@ -53,8 +53,9 @@ static void bserEncodeInt(int64_t ival, QueueAppender& appender) {
   auto size =
       ((ival == ((int8_t)ival))        ? 1
            : (ival == ((int16_t)ival)) ? 2
-           : (ival == ((int32_t)ival)) ? 4
-                                       : 8);
+           : (ival == ((int32_t)ival))
+           ? 4
+           : 8);
 
   switch (size) {
     case 1:

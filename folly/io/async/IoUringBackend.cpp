@@ -559,19 +559,18 @@ IoUringBackend::IoUringBackend(Options options)
       if (ret) {
         options.capacity /= 2;
         if (options.minCapacity && (options.capacity >= options.minCapacity)) {
-          LOG(INFO) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
-                    << "," << params.cq_entries << ") "
-                    << "failed errno = " << errno << ":\""
-                    << folly::errnoStr(errno) << "\" " << this
-                    << " retrying with capacity = " << options.capacity;
+          LOG(INFO)
+              << "io_uring_queue_init_params(" << 2 * options_.maxSubmit << ","
+              << params.cq_entries << ") " << "failed errno = " << errno
+              << ":\"" << folly::errnoStr(errno) << "\" " << this
+              << " retrying with capacity = " << options.capacity;
 
           params_.cq_entries = options.capacity;
           numEntries_ = options.capacity;
         } else {
           LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
-                     << "," << params.cq_entries << ") "
-                     << "failed ret = " << ret << ":\"" << folly::errnoStr(ret)
-                     << "\" " << this;
+                     << "," << params.cq_entries << ") " << "failed ret = "
+                     << ret << ":\"" << folly::errnoStr(ret) << "\" " << this;
 
           if (ret == -ENOMEM) {
             throw std::runtime_error("io_uring_queue_init error out of memory");
@@ -798,9 +797,8 @@ void IoUringBackend::addTimerEvent(
   auto expire = getTimerExpireTime(*timeout);
 
   TimerUserData* td = (TimerUserData*)event.getUserData();
-  VLOG(6) << "addTimerEvent this=" << this << " event=" << &event
-          << " td=" << td << " changed_=" << timerChanged_
-          << " u=" << timeout->tv_usec;
+  VLOG(6) << "addTimerEvent this=" << this << " event=" << &event << " td="
+          << td << " changed_=" << timerChanged_ << " u=" << timeout->tv_usec;
   if (td) {
     CHECK_EQ(event.getFreeFunction(), timerUserDataFreeFunction);
     if (td->iter == timers_.end()) {

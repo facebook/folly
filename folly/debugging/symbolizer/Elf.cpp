@@ -300,8 +300,9 @@ ElfFile::OpenResult ElfFile::init() noexcept {
   // Program headers are sorted by load address, so the first PT_LOAD
   // header gives us the base address.
   if (elfHeader.e_type != ET_REL) {
-    const ElfPhdr* programHeader =
-        iterateProgramHeaders([](auto& h) { return h.p_type == PT_LOAD; });
+    const ElfPhdr* programHeader = iterateProgramHeaders([](auto& h) {
+      return h.p_type == PT_LOAD;
+    });
 
     if (!programHeader) {
       return {kInvalidElfFile, "could not find base address"};

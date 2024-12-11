@@ -95,15 +95,17 @@ auto CoInvoke(Class* obj_ptr, MethodPtr method_ptr) {
 //         }));
 template <typename F>
 auto CoInvokeWithoutArgs(F&& f) {
-  return ::testing::InvokeWithoutArgs(
-      [f = static_cast<F&&>(f)]() { return co_invoke(f); });
+  return ::testing::InvokeWithoutArgs([f = static_cast<F&&>(f)]() {
+    return co_invoke(f);
+  });
 }
 
 // Member function overload
 template <class Class, typename MethodPtr>
 auto CoInvokeWithoutArgs(Class* obj_ptr, MethodPtr method_ptr) {
-  return ::testing::InvokeWithoutArgs(
-      [=]() { return co_invoke(method_ptr, obj_ptr); });
+  return ::testing::InvokeWithoutArgs([=]() {
+    return co_invoke(method_ptr, obj_ptr);
+  });
 }
 
 namespace detail {
@@ -238,8 +240,9 @@ auto CoReturnByMove(T&& ret) {
 
 template <typename T, typename Ex>
 auto CoThrow(Ex&& e) {
-  return detail::makeCoAction(
-      [ex = std::forward<Ex>(e)]() -> Task<T> { co_yield co_error(ex); });
+  return detail::makeCoAction([ex = std::forward<Ex>(e)]() -> Task<T> {
+    co_yield co_error(ex);
+  });
 }
 
 } // namespace gmock_helpers

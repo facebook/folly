@@ -75,17 +75,17 @@ namespace coro {
 //      }, std::move(name)); // passed as &&
 struct co_invoke_fn {
   template <typename F, typename... A>
-  FOLLY_ERASE constexpr auto operator()(F&& f, A&&... a) const
-      noexcept(noexcept(tag_invoke(
+  FOLLY_ERASE constexpr auto
+  operator()(F&& f, A&&... a) const noexcept(noexcept(tag_invoke(
+      tag<co_invoke_fn>,
+      tag<invoke_result_t<F, A...>, F, A...>,
+      static_cast<F&&>(f),
+      static_cast<A&&>(a)...)))
+      -> decltype(tag_invoke(
           tag<co_invoke_fn>,
           tag<invoke_result_t<F, A...>, F, A...>,
           static_cast<F&&>(f),
-          static_cast<A&&>(a)...)))
-          -> decltype(tag_invoke(
-              tag<co_invoke_fn>,
-              tag<invoke_result_t<F, A...>, F, A...>,
-              static_cast<F&&>(f),
-              static_cast<A&&>(a)...)) {
+          static_cast<A&&>(a)...)) {
     return tag_invoke(
         tag<co_invoke_fn>,
         tag<invoke_result_t<F, A...>, F, A...>,

@@ -278,8 +278,9 @@ class ConcurrentSkipList {
     bool valid = true;
     for (int layer = 0; valid && layer < nodeHeight; ++layer) {
       pred = preds[layer];
-      DCHECK(pred != nullptr) << "layer=" << layer << " height=" << height()
-                              << " nodeheight=" << nodeHeight;
+      DCHECK(pred != nullptr)
+          << "layer=" << layer << " height=" << height()
+          << " nodeheight=" << nodeHeight;
       succ = succs[layer];
       if (pred != prevPred) {
         guards[layer] = pred->acquireGuard();
@@ -414,8 +415,9 @@ class ConcurrentSkipList {
         }
       } while (node != nullptr);
     }
-    return pred == head_.load(std::memory_order_relaxed) ? nullptr
-                                                         : &pred->data();
+    return pred == head_.load(std::memory_order_relaxed)
+        ? nullptr
+        : &pred->data();
   }
 
   static bool okToDelete(NodeType* candidate, int layer) {
@@ -665,10 +667,11 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
 
 // implements forward iterator concept.
 template <typename ValT, typename NodeT>
-class detail::csl_iterator : public detail::IteratorFacade<
-                                 csl_iterator<ValT, NodeT>,
-                                 ValT,
-                                 std::forward_iterator_tag> {
+class detail::csl_iterator
+    : public detail::IteratorFacade<
+          csl_iterator<ValT, NodeT>,
+          ValT,
+          std::forward_iterator_tag> {
  public:
   typedef ValT value_type;
   typedef value_type& reference;
@@ -685,8 +688,9 @@ class detail::csl_iterator : public detail::IteratorFacade<
       : node_(other.node_) {}
 
   size_t nodeSize() const {
-    return node_ == nullptr ? 0
-                            : node_->height() * sizeof(NodeT*) + sizeof(*this);
+    return node_ == nullptr
+        ? 0
+        : node_->height() * sizeof(NodeT*) + sizeof(*this);
   }
 
   bool good() const { return node_ != nullptr; }

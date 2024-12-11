@@ -178,8 +178,9 @@ class FanoutChannelProcessor
       folly::Function<std::vector<ValueType>(const ContextType&)>
           getInitialValues) override {
     auto state = state_.wlock();
-    auto initialValues = getInitialValues ? getInitialValues(state->context)
-                                          : std::vector<ValueType>();
+    auto initialValues = getInitialValues
+        ? getInitialValues(state->context)
+        : std::vector<ValueType>();
     if (!state->receiver) {
       auto [receiver, sender] = Channel<ValueType>::create();
       for (auto&& value : initialValues) {
@@ -198,8 +199,9 @@ class FanoutChannelProcessor
     auto state = state_.wlock();
     std::move(state->fanoutSender)
         .close(
-            closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : exception_wrapper());
+            closeResult.exception.has_value()
+                ? closeResult.exception.value()
+                : exception_wrapper());
   }
 
   /**
@@ -311,8 +313,9 @@ class FanoutChannelProcessor
     state->receiver = nullptr;
     std::move(state->fanoutSender)
         .close(
-            closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : exception_wrapper());
+            closeResult.exception.has_value()
+                ? closeResult.exception.value()
+                : exception_wrapper());
     maybeDelete(state);
   }
 
@@ -328,8 +331,9 @@ class FanoutChannelProcessor
     }
     std::move(state->fanoutSender)
         .close(
-            closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : exception_wrapper());
+            closeResult.exception.has_value()
+                ? closeResult.exception.value()
+                : exception_wrapper());
     maybeDelete(state);
   }
 

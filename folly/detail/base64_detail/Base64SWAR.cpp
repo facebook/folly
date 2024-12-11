@@ -96,9 +96,9 @@ char* base64URLDecodeTailSWAR(
 }
 
 template <bool isURL>
-constexpr auto kBase64SwarDecodeTable =
-    isURL ? constants::kBase64SwarURLDecodeTable
-          : constants::kBase64SwarDecodeTable;
+constexpr auto kBase64SwarDecodeTable = isURL
+    ? constants::kBase64SwarURLDecodeTable
+    : constants::kBase64SwarDecodeTable;
 
 template <bool isURL>
 std::uint32_t base64DecodeSWARMainLoop(

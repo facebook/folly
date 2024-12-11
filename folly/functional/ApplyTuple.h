@@ -45,9 +45,8 @@ using std::get;
 template <std::size_t I>
 struct invoke_get_fn {
   template <typename T>
-  constexpr auto operator()(T&& t) const
-      noexcept(noexcept(get<I>(static_cast<T&&>(t))))
-          -> decltype(get<I>(static_cast<T&&>(t))) {
+  constexpr auto operator()(T&& t) const noexcept(noexcept(
+      get<I>(static_cast<T&&>(t)))) -> decltype(get<I>(static_cast<T&&>(t))) {
     return get<I>(static_cast<T&&>(t));
   }
 };

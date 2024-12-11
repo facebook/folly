@@ -40,8 +40,9 @@ class AsyncSignalHandlerTest : public ::testing::Test {
 
   std::unique_ptr<EventBase> makeEventBase(
       folly::EventBase::Options opts = folly::EventBase::Options()) {
-    return std::make_unique<EventBase>(
-        opts.setBackendFactory([] { return T::getBackend(); }));
+    return std::make_unique<EventBase>(opts.setBackendFactory([] {
+      return T::getBackend();
+    }));
   }
 };
 

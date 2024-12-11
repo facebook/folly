@@ -1058,13 +1058,14 @@ TEST(CPQ, ThroughtputBench) {
   std::vector<int> test_sizes = {64, 512, 65536};
   std::vector<int> nthrs = {1, 2, 4, 8, 12, 14, 16, 28, 32, 56};
 
-  std::cout << "Threads have equal chance to push and pop. \n"
-            << "The bench caculates the avg execution time for\n"
-            << "one operation (push OR pop).\n"
-            << "GL : std::priority_queue protected by global lock\n"
-            << "FL : flatcombinning priority queue\n"
-            << "RCPQ: the relaxed concurrent priority queue\n"
-            << std::endl;
+  std::cout
+      << "Threads have equal chance to push and pop. \n"
+      << "The bench caculates the avg execution time for\n"
+      << "one operation (push OR pop).\n"
+      << "GL : std::priority_queue protected by global lock\n"
+      << "FL : flatcombinning priority queue\n"
+      << "RCPQ: the relaxed concurrent priority queue\n"
+      << std::endl;
   std::cout << "\nTest_name, Max time, Avg time, Min time" << std::endl;
   for (auto s : test_sizes) {
     std::cout << "\n ------ Initial size: " << s << " ------" << std::endl;
@@ -1085,14 +1086,15 @@ TEST(CPQ, ProducerConsumerBench) {
   std::vector<int> test_sizes = {0, 512, 65536};
   std::vector<int> nthrs = {1, 2, 4, 8, 12, 16, 24};
 
-  std::cout << "<Producer, Consumer> pattern \n"
-            << "The bench caculates the avg execution time for\n"
-            << "push AND pop pair(two operations).\n"
-            << "GL : std::priority_queue protected by global lock\n"
-            << "FL : flatcombinning priority queue\n"
-            << "RCPQ SPN: RCPQ spinning\n"
-            << "RCPQ BLK: RCPQ blocking\n"
-            << std::endl;
+  std::cout
+      << "<Producer, Consumer> pattern \n"
+      << "The bench caculates the avg execution time for\n"
+      << "push AND pop pair(two operations).\n"
+      << "GL : std::priority_queue protected by global lock\n"
+      << "FL : flatcombinning priority queue\n"
+      << "RCPQ SPN: RCPQ spinning\n"
+      << "RCPQ BLK: RCPQ blocking\n"
+      << std::endl;
   for (int s : test_sizes) {
     std::cout << "\n ------ Scalability ------" << std::endl;
     for (int m : nthrs) {

@@ -113,19 +113,22 @@ TEST(ExceptionWrapper, withExceptionTest) {
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(ew.what(), kIntExceptionClassName + ": int == 23");
   EXPECT_EQ(ew.class_name(), kIntExceptionClassName);
-  EXPECT_TRUE(ew.with_exception(
-      [&](const IntException& ie) { EXPECT_EQ(ie.getInt(), expected); }));
+  EXPECT_TRUE(ew.with_exception([&](const IntException& ie) {
+    EXPECT_EQ(ie.getInt(), expected);
+  }));
 
   // Test with const this.  If this compiles and does not crash due to
   // infinite loop when it runs, it succeeds.
   const exception_wrapper& cew = ew;
-  EXPECT_TRUE(
-      cew.with_exception([&](const IntException& /* ie */) { SUCCEED(); }));
+  EXPECT_TRUE(cew.with_exception([&](const IntException& /* ie */) {
+    SUCCEED();
+  }));
 
   // Test with empty ew.
   exception_wrapper empty_ew;
-  EXPECT_FALSE(
-      empty_ew.with_exception([&](const std::exception& /* ie */) { FAIL(); }));
+  EXPECT_FALSE(empty_ew.with_exception([&](const std::exception& /* ie */) {
+    FAIL();
+  }));
 
   // Testing with const exception_wrapper; sanity check first:
   EXPECT_FALSE(cew.with_exception([&](const std::runtime_error&) {}));

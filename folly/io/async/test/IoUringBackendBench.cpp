@@ -51,24 +51,25 @@ void printTS() {
       std::chrono::duration_cast<std::chrono::nanoseconds>(sReadTS1 - sWriteTS0)
           .count();
   sNum++;
-  LOG(INFO) << "backend: " << ((FLAGS_backend_type == 0) ? "epoll" : "io_uring")
-            << " async read: " << FLAGS_async_read << " write time: "
-            << std::chrono::duration_cast<std::chrono::nanoseconds>(
-                   sWriteTS1 - sWriteTS0)
-                   .count()
-            << " notify time: "
-            << std::chrono::duration_cast<std::chrono::nanoseconds>(
-                   sNotifyTS - sWriteTS0)
-                   .count()
-            << " read time "
-            << std::chrono::duration_cast<std::chrono::nanoseconds>(
-                   sReadTS1 - sReadTS0)
-                   .count()
-            << " total time "
-            << std::chrono::duration_cast<std::chrono::nanoseconds>(
-                   sReadTS1 - sWriteTS0)
-                   .count()
-            << " avg time " << (sTotal / sNum);
+  LOG(INFO)
+      << "backend: " << ((FLAGS_backend_type == 0) ? "epoll" : "io_uring")
+      << " async read: " << FLAGS_async_read << " write time: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(
+             sWriteTS1 - sWriteTS0)
+             .count()
+      << " notify time: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(
+             sNotifyTS - sWriteTS0)
+             .count()
+      << " read time "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(
+             sReadTS1 - sReadTS0)
+             .count()
+      << " total time "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(
+             sReadTS1 - sWriteTS0)
+             .count()
+      << " avg time " << (sTotal / sNum);
 }
 
 class EventFD;
@@ -469,8 +470,9 @@ class TimerFD : public EventHandler, public folly::EventReadCallback {
     val.it_value.tv_sec = 0;
     val.it_value.tv_nsec = 1000;
 
-    return (0 == ::timerfd_settime(fd_, 0, &val, nullptr)) ? sizeof(uint64_t)
-                                                           : -1;
+    return (0 == ::timerfd_settime(fd_, 0, &val, nullptr))
+        ? sizeof(uint64_t)
+        : -1;
   }
 
   // from folly::EventHandler
@@ -625,8 +627,9 @@ void runBM(
 
 void runTestsEFD() {
   auto evb = EventBaseProvider::getEventBase(
-      FLAGS_backend_type ? EventBaseProvider::Type::IO_URING
-                         : EventBaseProvider::DEFAULT);
+      FLAGS_backend_type
+          ? EventBaseProvider::Type::IO_URING
+          : EventBaseProvider::DEFAULT);
   uint64_t total = (uint64_t)(-1);
   EventFDRefillInfo refillInfo;
   EventFD evFd(0, total, true, evb.get(), &refillInfo);
@@ -645,8 +648,9 @@ void runTestsEFD() {
 
 void runTestsTimerFD() {
   auto evb = EventBaseProvider::getEventBase(
-      FLAGS_backend_type ? EventBaseProvider::Type::IO_URING
-                         : EventBaseProvider::DEFAULT);
+      FLAGS_backend_type
+          ? EventBaseProvider::Type::IO_URING
+          : EventBaseProvider::DEFAULT);
   uint64_t total = (uint64_t)(-1);
   TimerFD timerFd(total, true, evb.get());
   timerFd.useAsyncReadCallback(FLAGS_async_read);
@@ -664,8 +668,9 @@ void runTestsTimerFD() {
 
 void runTestsSP() {
   auto evb = EventBaseProvider::getEventBase(
-      FLAGS_backend_type ? EventBaseProvider::Type::IO_URING
-                         : EventBaseProvider::DEFAULT);
+      FLAGS_backend_type
+          ? EventBaseProvider::Type::IO_URING
+          : EventBaseProvider::DEFAULT);
   uint64_t total = (uint64_t)(-1);
   int readFd = -1, writeFd = -1;
   CHECK_EQ(SocketPair::socketpair(readFd, writeFd), 0);

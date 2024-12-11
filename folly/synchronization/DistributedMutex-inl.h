@@ -872,8 +872,9 @@ std::uint64_t publish(
   // timestamp to force the waking thread to skip us
   auto now = ((waitMode == kCombineWaiting) && !spins)
       ? std::numeric_limits<CpuTicks>::max()
-      : (elapsed < kMaxSpinTime) ? current
-                                 : CpuTicks{0};
+      : (elapsed < kMaxSpinTime)
+      ? current
+      : CpuTicks{0};
   // the wait mode information is published in the bottom 8 bits of the futex
   // word, the rest contains time information as computed above.  Overflows are
   // not really a correctness concern because time publishing is only a

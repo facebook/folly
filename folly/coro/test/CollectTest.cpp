@@ -2419,8 +2419,8 @@ TEST_F(CollectAnyNoDiscardTest, MultipleTasksWithValues) {
   std::atomic_size_t count{0};
 
   // Busy wait until all threads have started before returning
-  auto busyWait = [](std::atomic_size_t& count,
-                     size_t num) -> folly::coro::Task<void> {
+  auto busyWait =
+      [](std::atomic_size_t& count, size_t num) -> folly::coro::Task<void> {
     count.fetch_add(1);
     while (count.load() < num) {
       // Need to yield because collectAnyNoDiscard() won't start the second and
@@ -3228,8 +3228,8 @@ TEST_F(CollectAnyNoDiscardRangeTest, MultipleTasksWithValues) {
   std::atomic_size_t count{0};
 
   // Busy wait until all threads have started before returning
-  auto busyWait = [](std::atomic_size_t& count,
-                     size_t num) -> folly::coro::Task<void> {
+  auto busyWait =
+      [](std::atomic_size_t& count, size_t num) -> folly::coro::Task<void> {
     count.fetch_add(1);
     while (count.load() < num) {
       // Need to yield because collectAnyNoDiscard() won't start the second and
@@ -3465,16 +3465,18 @@ TEST(MakeUnorderedAsyncGeneratorTest, GeneratorEarlyDestroy) {
 
     std::vector<folly::coro::TaskWithExecutor<int>> tasks;
 
-    tasks.push_back(folly::coro::co_invoke([]() -> folly::coro::Task<int> {
-                      co_await folly::coro::co_reschedule_on_current_executor;
-                      std::this_thread::sleep_for(std::chrono::seconds{2});
-                      co_return 42;
-                    }).scheduleOn(&executor));
-    tasks.push_back(folly::coro::co_invoke([]() -> folly::coro::Task<int> {
-                      co_await folly::coro::co_reschedule_on_current_executor;
-                      std::this_thread::sleep_for(std::chrono::seconds{1});
-                      co_return 43;
-                    }).scheduleOn(&executor));
+    tasks.push_back(
+        folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          std::this_thread::sleep_for(std::chrono::seconds{2});
+          co_return 42;
+        }).scheduleOn(&executor));
+    tasks.push_back(
+        folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          std::this_thread::sleep_for(std::chrono::seconds{1});
+          co_return 43;
+        }).scheduleOn(&executor));
 
     {
       auto gen =

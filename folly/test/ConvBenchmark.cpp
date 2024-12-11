@@ -596,73 +596,77 @@ uint64_t u64s[] = {
 
 BENCHMARK(preallocateTestInt8, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(to<std::string>(
-                          i8s[0],
-                          ',',
-                          u8s[0],
-                          ',',
-                          i8s[1],
-                          ',',
-                          u8s[1],
-                          ',',
-                          i8s[2],
-                          ',',
-                          u8s[2])
-                          .size());
+    doNotOptimizeAway(
+        to<std::string>(
+            i8s[0],
+            ',',
+            u8s[0],
+            ',',
+            i8s[1],
+            ',',
+            u8s[1],
+            ',',
+            i8s[2],
+            ',',
+            u8s[2])
+            .size());
   }
 }
 
 BENCHMARK(preallocateTestInt16, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(to<std::string>(
-                          i16s[0],
-                          ',',
-                          u16s[0],
-                          ',',
-                          i16s[1],
-                          ',',
-                          u16s[1],
-                          ',',
-                          i16s[2],
-                          ',',
-                          u16s[2])
-                          .size());
+    doNotOptimizeAway(
+        to<std::string>(
+            i16s[0],
+            ',',
+            u16s[0],
+            ',',
+            i16s[1],
+            ',',
+            u16s[1],
+            ',',
+            i16s[2],
+            ',',
+            u16s[2])
+            .size());
   }
 }
 
 BENCHMARK(preallocateTestInt32, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(to<std::string>(
-                          i32s[0],
-                          ',',
-                          u32s[0],
-                          ',',
-                          i32s[1],
-                          ',',
-                          u32s[1],
-                          ',',
-                          i32s[2],
-                          ',',
-                          u32s[2])
-                          .size());
+    doNotOptimizeAway(
+        to<std::string>(
+            i32s[0],
+            ',',
+            u32s[0],
+            ',',
+            i32s[1],
+            ',',
+            u32s[1],
+            ',',
+            i32s[2],
+            ',',
+            u32s[2])
+            .size());
   }
 }
 
 BENCHMARK(preallocateTestInt64, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(to<std::string>(
-                          i64s[0],
-                          ',',
-                          u64s[0],
-                          ',',
-                          i64s[1],
-                          ',',
-                          u64s[1],
-                          ',',
-                          i64s[2],
-                          ',',
-                          u64s[2])
-                          .size());
+    doNotOptimizeAway(
+        to<std::string>(
+            i64s[0],
+            ',',
+            u64s[0],
+            ',',
+            i64s[1],
+            ',',
+            u64s[1],
+            ',',
+            i64s[2],
+            ',',
+            u64s[2])
+            .size());
   }
 }
 
@@ -684,19 +688,20 @@ unsigned __int128 u128s[] = {
 
 BENCHMARK(preallocateTestInt128, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(to<std::string>(
-                          i128s[0],
-                          ',',
-                          u128s[0],
-                          ',',
-                          i128s[1],
-                          ',',
-                          u128s[1],
-                          ',',
-                          i128s[2],
-                          ',',
-                          u128s[2])
-                          .size());
+    doNotOptimizeAway(
+        to<std::string>(
+            i128s[0],
+            ',',
+            u128s[0],
+            ',',
+            i128s[1],
+            ',',
+            u128s[1],
+            ',',
+            i128s[2],
+            ',',
+            u128s[2])
+            .size());
   }
 }
 

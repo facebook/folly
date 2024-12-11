@@ -57,8 +57,8 @@ struct FunctionClassType {
 // You cannot derive from a pointer to function, so wrap it in a class
 
 template <FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return, typename... Args>
-struct FunctionClassType<Return (*)(Args...)
-                             FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+struct FunctionClassType<Return (*)(
+    Args...) FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
   using Ptr = Return (*)(Args...) FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
   struct type {
     /* implicit */ constexpr type(Ptr function) noexcept
@@ -83,8 +83,8 @@ template <
     FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return,
     typename Self,
     typename... Args>
-struct FunctionClassType<Return (Self::*)(Args...)
-                             FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+struct FunctionClassType<Return (Self::*)(
+    Args...) FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
   using Ptr = Return (Self::*)(Args...) FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
   struct type {
     /* implicit */ constexpr type(Ptr memberPointer) noexcept
@@ -107,8 +107,8 @@ template <
     FOLLY_DETAIL_NOEXCEPT_DECLARATION typename Return,
     typename Self,
     typename... Args>
-struct FunctionClassType<Return (Self::*)(Args...)
-                             const FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
+struct FunctionClassType<Return (Self::*)(
+    Args...) const FOLLY_DETAIL_NOEXCEPT_SPECIFICATION> {
   using Ptr =
       Return (Self::*)(Args...) const FOLLY_DETAIL_NOEXCEPT_SPECIFICATION;
   struct type {

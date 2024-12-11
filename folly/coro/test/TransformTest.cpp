@@ -69,8 +69,9 @@ TEST_F(TransformTest, SimpleStream) {
   };
 
   auto test = [&](int index) -> Task<void> {
-    auto generator =
-        transform(selectStream(index), [](int i) { return i * 1.0f; });
+    auto generator = transform(selectStream(index), [](int i) {
+      return i * 1.0f;
+    });
     try {
       while (auto item = co_await generator.next()) {
         ++totalEventCount;
@@ -124,8 +125,9 @@ TEST_F(TransformTest, CancellationTokenPropagatesFromConsumer) {
         folly::coro::co_withCancellation(
             cancelSource.getToken(),
             [&]() -> folly::coro::Task<void> {
-              auto stream =
-                  transform(neverStream<float>(), [](float) { return 42; });
+              auto stream = transform(neverStream<float>(), [](float) {
+                return 42;
+              });
               suspended = true;
               auto result = co_await stream.next();
               CHECK(!result.has_value());

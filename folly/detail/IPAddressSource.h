@@ -100,8 +100,8 @@ struct Bytes {
     // kMasks array holds the mask for masking the MSb in this byte.
     // We could instead make it hold so that no 0th entry masks no
     // bits but thats a useless iteration.
-    while (bitIndex < mask &&
-           ((one[bI] & kMasks[bM]) == (two[bI] & kMasks[bM]))) {
+    while (
+        bitIndex < mask && ((one[bI] & kMasks[bM]) == (two[bI] & kMasks[bM]))) {
       ba[bI] = uint8_t(one[bI] & kMasks[bM]);
       ++bitIndex;
       bI = uint8_t(bitIndex / 8);

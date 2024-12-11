@@ -450,8 +450,9 @@ class WriteErrorCallback : public ReadCallback {
     wcb_->setSocket(socket_);
 
     // Write back the same data.
-    folly::test::msvcSuppressAbortOnInvalidParams(
-        [&] { socket_->write(wcb_, currentBuffer.buffer, len); });
+    folly::test::msvcSuppressAbortOnInvalidParams([&] {
+      socket_->write(wcb_, currentBuffer.buffer, len);
+    });
 
     if (wcb_->state == STATE_FAILED) {
       setState(STATE_SUCCEEDED);
@@ -739,8 +740,9 @@ class ConnectTimeoutCallback : public SSLServerAcceptCallbackBase {
   }
 };
 
-class BlockingWriteClient : private AsyncSSLSocket::HandshakeCB,
-                            private AsyncTransport::WriteCallback {
+class BlockingWriteClient
+    : private AsyncSSLSocket::HandshakeCB,
+      private AsyncTransport::WriteCallback {
  public:
   explicit BlockingWriteClient(AsyncSSLSocket::UniquePtr socket)
       : socket_(std::move(socket)), bufLen_(2500), iovCount_(2000) {
@@ -789,8 +791,9 @@ class BlockingWriteClient : private AsyncSSLSocket::HandshakeCB,
   std::unique_ptr<struct iovec[]> iov_;
 };
 
-class BlockingWriteServer : private AsyncSSLSocket::HandshakeCB,
-                            private AsyncTransport::ReadCallback {
+class BlockingWriteServer
+    : private AsyncSSLSocket::HandshakeCB,
+      private AsyncTransport::ReadCallback {
  public:
   explicit BlockingWriteServer(AsyncSSLSocket::UniquePtr socket)
       : socket_(std::move(socket)), bufSize_(2500 * 2000), bytesRead_(0) {
@@ -855,8 +858,9 @@ class BlockingWriteServer : private AsyncSSLSocket::HandshakeCB,
   std::unique_ptr<uint8_t[]> buf_;
 };
 
-class AlpnClient : private AsyncSSLSocket::HandshakeCB,
-                   private AsyncTransport::WriteCallback {
+class AlpnClient
+    : private AsyncSSLSocket::HandshakeCB,
+      private AsyncTransport::WriteCallback {
  public:
   explicit AlpnClient(AsyncSSLSocket::UniquePtr socket)
       : nextProto(nullptr), nextProtoLength(0), socket_(std::move(socket)) {
@@ -885,8 +889,9 @@ class AlpnClient : private AsyncSSLSocket::HandshakeCB,
   AsyncSSLSocket::UniquePtr socket_;
 };
 
-class AlpnServer : private AsyncSSLSocket::HandshakeCB,
-                   private AsyncTransport::ReadCallback {
+class AlpnServer
+    : private AsyncSSLSocket::HandshakeCB,
+      private AsyncTransport::ReadCallback {
  public:
   explicit AlpnServer(AsyncSSLSocket::UniquePtr socket)
       : nextProto(nullptr), nextProtoLength(0), socket_(std::move(socket)) {
@@ -921,8 +926,9 @@ class AlpnServer : private AsyncSSLSocket::HandshakeCB,
   AsyncSSLSocket::UniquePtr socket_;
 };
 
-class RenegotiatingServer : public AsyncSSLSocket::HandshakeCB,
-                            public AsyncTransport::ReadCallback {
+class RenegotiatingServer
+    : public AsyncSSLSocket::HandshakeCB,
+      public AsyncTransport::ReadCallback {
  public:
   explicit RenegotiatingServer(AsyncSSLSocket::UniquePtr socket)
       : socket_(std::move(socket)) {
@@ -960,8 +966,9 @@ class RenegotiatingServer : public AsyncSSLSocket::HandshakeCB,
   bool renegotiationError_{false};
 };
 
-class SNIClient : private AsyncSSLSocket::HandshakeCB,
-                  private AsyncTransport::WriteCallback {
+class SNIClient
+    : private AsyncSSLSocket::HandshakeCB,
+      private AsyncTransport::WriteCallback {
  public:
   explicit SNIClient(AsyncSSLSocket::UniquePtr socket)
       : serverNameMatch(false), socket_(std::move(socket)) {
@@ -992,8 +999,9 @@ class SNIClient : private AsyncSSLSocket::HandshakeCB,
   AsyncSSLSocket::UniquePtr socket_;
 };
 
-class SNIServer : private AsyncSSLSocket::HandshakeCB,
-                  private AsyncTransport::ReadCallback {
+class SNIServer
+    : private AsyncSSLSocket::HandshakeCB,
+      private AsyncTransport::ReadCallback {
  public:
   explicit SNIServer(
       AsyncSSLSocket::UniquePtr socket,
@@ -1048,9 +1056,10 @@ class SNIServer : private AsyncSSLSocket::HandshakeCB,
   std::string expectedServerName_;
 };
 
-class SSLClient : public AsyncSocket::ConnectCallback,
-                  public AsyncTransport::WriteCallback,
-                  public AsyncTransport::ReadCallback {
+class SSLClient
+    : public AsyncSocket::ConnectCallback,
+      public AsyncTransport::WriteCallback,
+      public AsyncTransport::ReadCallback {
  private:
   EventBase* eventBase_;
   std::shared_ptr<AsyncSSLSocket> sslSocket_;
@@ -1190,8 +1199,9 @@ class SSLClient : public AsyncSocket::ConnectCallback,
   }
 };
 
-class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
-                         private AsyncTransport::WriteCallback {
+class SSLHandshakeBase
+    : public AsyncSSLSocket::HandshakeCB,
+      private AsyncTransport::WriteCallback {
  public:
   explicit SSLHandshakeBase(
       AsyncSSLSocket::UniquePtr socket, bool preverifyResult, bool verifyResult)
@@ -1388,8 +1398,9 @@ class SSLAcceptErrorRunner : public SSLAcceptEvbRunner {
 
   void run(Function<int()> /*acceptFunc*/, Function<void(int)> finallyFunc)
       const override {
-    evb_->runInLoop(
-        [finallyFunc = std::move(finallyFunc)]() mutable { finallyFunc(-1); });
+    evb_->runInLoop([finallyFunc = std::move(finallyFunc)]() mutable {
+      finallyFunc(-1);
+    });
   }
 };
 
@@ -1401,13 +1412,14 @@ class SSLAcceptCloseRunner : public SSLAcceptEvbRunner {
 
   void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
       const override {
-    evb_->runInLoop([acceptFunc = std::move(acceptFunc),
-                     finallyFunc = std::move(finallyFunc),
-                     sock = socket_]() mutable {
-      auto ret = acceptFunc();
-      sock->closeNow();
-      finallyFunc(ret);
-    });
+    evb_->runInLoop(
+        [acceptFunc = std::move(acceptFunc),
+         finallyFunc = std::move(finallyFunc),
+         sock = socket_]() mutable {
+          auto ret = acceptFunc();
+          sock->closeNow();
+          finallyFunc(ret);
+        });
   }
 
  private:
@@ -1422,13 +1434,14 @@ class SSLAcceptDestroyRunner : public SSLAcceptEvbRunner {
 
   void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
       const override {
-    evb_->runInLoop([acceptFunc = std::move(acceptFunc),
-                     finallyFunc = std::move(finallyFunc),
-                     sslBase = sslBase_]() mutable {
-      auto ret = acceptFunc();
-      std::move(*sslBase).moveSocket();
-      finallyFunc(ret);
-    });
+    evb_->runInLoop(
+        [acceptFunc = std::move(acceptFunc),
+         finallyFunc = std::move(finallyFunc),
+         sslBase = sslBase_]() mutable {
+          auto ret = acceptFunc();
+          std::move(*sslBase).moveSocket();
+          finallyFunc(ret);
+        });
   }
 
  private:

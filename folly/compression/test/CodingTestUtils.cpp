@@ -45,8 +45,9 @@ folly::Optional<instructions::Type> instructionsOverride() {
                << FLAGS_coding_test_utils_instructions;
   }
 
-  instructions::dispatch(
-      type, [](auto instructions) { CHECK(instructions.supported()); });
+  instructions::dispatch(type, [](auto instructions) {
+    CHECK(instructions.supported());
+  });
 
   return type;
 }

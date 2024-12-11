@@ -151,12 +151,10 @@ TEST(AtomicNotificationQueueTest, PutMessage) {
     vector<Data>& data;
   };
 
-  vector<Data> expected =
-                   {Data(10, false),
-                    Data(20, true),
-                    Data(-8, true),
-                    Data(0, false)},
-               actual;
+  vector<Data>
+      expected =
+          {Data(10, false), Data(20, true), Data(-8, true), Data(0, false)},
+      actual;
   Consumer consumer{actual};
 
   EventBaseAtomicNotificationQueue<Data, decltype(consumer)> queue{
@@ -183,8 +181,9 @@ TEST(AtomicNotificationQueueTest, ConsumeStop) {
     size_t* consumed;
     auto operator()(bool&& stop) noexcept {
       ++*consumed;
-      return stop ? AtomicNotificationQueueTaskStatus::CONSUMED_STOP
-                  : AtomicNotificationQueueTaskStatus::CONSUMED;
+      return stop
+          ? AtomicNotificationQueueTaskStatus::CONSUMED_STOP
+          : AtomicNotificationQueueTaskStatus::CONSUMED;
     }
   };
 

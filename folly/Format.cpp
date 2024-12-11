@@ -115,12 +115,14 @@ void FormatValue<double>::formatHelper(
   }
 
   // 2+: for null terminator and optional sign shenanigans.
-  constexpr int bufLen = 2 +
-      constexpr_max(2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
-                        DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
-                    constexpr_max(
-                        8 + DoubleToStringConverter::kMaxExponentialDigits,
-                        7 + DoubleToStringConverter::kMaxPrecisionDigits));
+  constexpr int bufLen =
+      2 +
+      constexpr_max(
+          2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
+              DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
+          constexpr_max(
+              8 + DoubleToStringConverter::kMaxExponentialDigits,
+              7 + DoubleToStringConverter::kMaxPrecisionDigits));
   char buf[bufLen];
   StringBuilder builder(buf + 1, bufLen - 1);
 
