@@ -73,7 +73,7 @@ cdef extern from '<utility>' namespace 'std':
     unique_ptr[cIOBuf] move(unique_ptr[cIOBuf])
 
 
-cdef extern from "folly/python/iobuf.h" namespace "folly::python":
+cdef extern from "folly/python/iobuf_intf.h" namespace "folly::python":
     bint check_iobuf_equal(cIOBuf*, cIOBuf*)
     bint check_iobuf_less(cIOBuf*, cIOBuf*)
 

@@ -28,13 +28,32 @@ Options.fast_fail = True
 exts = [
     Extension(
         "folly.executor",
-        sources=["folly/executor.pyx"],
-        libraries=["folly", "glog", "double-conversion", "iberty"],
+        sources=["folly/executor.pyx","folly/executor_intf.cpp"],
+        libraries=["folly", "glog", "double-conversion"],
+        extra_compile_args=["-std=c++20"],  # C++20 for coroutines
+        include_dirs=[".", "../.."],  # cython generated code
+        library_dirs=[
+            "/usr/lib",
+            "/usr/lib/x86_64-linux-gnu"  # Common location on Debian/Ubuntu
+        ],
     ),
     Extension(
         "folly.iobuf",
-        sources=["folly/iobuf.pyx"],
-        libraries=["folly", "glog", "double-conversion", "iberty"],
+        sources=["folly/iobuf.pyx","folly/iobuf_intf.cpp"],
+        libraries=["folly", "glog", "double-conversion"],
+        extra_compile_args=["-std=c++20"],  # C++20 for coroutines
+        include_dirs=[".","../.."],  # cython generated code
+        library_dirs=[
+            "/usr/lib",
+            "/usr/lib/x86_64-linux-gnu"  # Common location on Debian/Ubuntu
+        ],
+    ),
+    Extension(
+        "folly.fiber_manager",
+        sources=["folly/fiber_manager.pyx","folly/fibers.cpp"],
+        libraries=["folly", "glog", "double-conversion"],
+        extra_compile_args=["-std=c++20"],  # C++20 for coroutines
+        include_dirs=[".","../.."],  # cython generated code
     ),
 ]
 
