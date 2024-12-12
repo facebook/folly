@@ -42,8 +42,6 @@ if (PYTHON_EXTENSIONS)
   file(GLOB BindingFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pyx"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.cpp"
   )
   file(MAKE_DIRECTORY "${_cybld}/folly/")
 
@@ -64,9 +62,22 @@ if (PYTHON_EXTENSIONS)
   endforeach()
 
   # Tell setup.py where to find includes and libfolly.so
+  # set(prop "$<TARGET_PROPERTY:folly_base,INCLUDE_DIRECTORIES>")
+  # set(incs "$<$<BOOL:${prop}>:-I$<JOIN:${prop},:>>")
+  # set(libs "-L${CMAKE_BINARY_DIR}")
+
   set(prop "$<TARGET_PROPERTY:folly_base,INCLUDE_DIRECTORIES>")
   set(incs "$<$<BOOL:${prop}>:-I$<JOIN:${prop},:>>")
-  set(libs "-L${CMAKE_BINARY_DIR}")
+  # set(link_prop "$<TARGET_PROPERTY:folly_base,LINK_DIRECTORIES>")
+  # set(libs "$<$<BOOL:${link_prop}>:-L$<JOIN:${link_prop},:>>")
+  # set(libs "-L$<JOIN:${link_prop},:>")
+  # set(libs "-L${CMAKE_BINARY_DIR}:${libs}")
+  message(STATUS "[jmswen] ${FOLLY_LINK_LIBRARIES}")
+  message(STATUS "[jmswen] ${CMAKE_REQUIRED_LINK_DIRECTORIES}")
+  #  set(libs "-L$<JOIN:${FOLLY_LINK_LIBRARIES},:>")
+  set(glog_lib "${GLOG_LIBRARY}")
+  cmake_path(REMOVE_FILENAME glog_lib)
+  set(libs "-L${CMAKE_BINARY_DIR}:${glog_lib}")
 
   add_custom_target(folly_python_bindings ALL
     DEPENDS folly create_binding_symlink
@@ -80,12 +91,16 @@ if (PYTHON_EXTENSIONS)
     WORKING_DIRECTORY ${_cybld}
   )
 
+  message(STATUS "[jmswen] HERE!")
+
   add_custom_command(TARGET folly_python_bindings POST_BUILD
     COMMAND
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       bdist_wheel
     WORKING_DIRECTORY ${_cybld}
   )
+
+  message(STATUS "[jmswen] HERE 2!")
 
   install(
     FILES ${_cybld}/folly/executor_api.h

@@ -27,14 +27,16 @@ Options.fast_fail = True
 
 exts = [
     Extension(
-        "folly.executor",
-        sources=["folly/executor.pyx"],
-        libraries=["folly", "glog", "double-conversion", "iberty"],
-    ),
-    Extension(
         "folly.iobuf",
         sources=["folly/iobuf.pyx"],
-        libraries=["folly", "glog", "double-conversion", "iberty"],
+        libraries=["folly", "glog"],
+        extra_compile_args=["-std=c++17"],
+    ),
+    Extension(
+        "folly.executor",
+        sources=["folly/executor.pyx"],
+        libraries=["folly", "glog"],
+        extra_compile_args=["-std=c++17"],
     ),
 ]
 
@@ -45,5 +47,9 @@ setup(
     package_data={"": ["*.pxd", "*.h"]},
     setup_requires=["cython"],
     zip_safe=False,
-    ext_modules=cythonize(exts, compiler_directives={"language_level": 3}),
+    ext_modules=cythonize(
+        exts,
+        compiler_directives={"language_level": 3},
+        # build_dir="build",
+    ),
 )
