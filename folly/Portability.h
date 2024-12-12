@@ -564,6 +564,16 @@ constexpr auto kCpplibVer = 0;
 #endif
 } // namespace folly
 
+#define FOLLY_PRAGMA_DETAIL_STR(X) #X
+
+#if defined(_MSC_VER)
+#define FOLLY_PRAGMA_UNROLL_N(N)
+#elif defined(__GNUC__)
+#define FOLLY_PRAGMA_UNROLL_N(N) _Pragma(FOLLY_PRAGMA_DETAIL_STR(GCC unroll(N)))
+#else
+#define FOLLY_PRAGMA_UNROLL_N(N) _Pragma(FOLLY_PRAGMA_DETAIL_STR(unroll(N)))
+#endif
+
 //  MSVC does not permit:
 //
 //    extern int const num;
