@@ -707,7 +707,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
     FOLLY_PRAGMA_UNROLL_N(16)
-    for (int i = 0; i < kCapacity; i++) {
+    for (auto i = 0u; i < kCapacity; i++) {
       mask |= ((tagV[i] == static_cast<uint8_t>(needle)) ? 1 : 0) << i;
     }
     return SparseMaskIter{mask & kFullMask};
@@ -717,7 +717,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
     FOLLY_PRAGMA_UNROLL_N(16)
-    for (int i = 0; i < kCapacity; i++) {
+    for (auto i = 0u; i < kCapacity; i++) {
       mask |= ((tagV[i] & 0x80) ? 1 : 0) << i;
     }
     return mask & kFullMask;
