@@ -160,6 +160,7 @@ cpp_unittest(
     name = "benchmark_test",
     srcs = ["BenchmarkTest.cpp"],
     deps = [
+        ":test_utils",
         "//folly:benchmark",
         "//folly/detail:perf_scoped",
         "//folly/portability:gflags",
