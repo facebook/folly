@@ -20,7 +20,7 @@ from weakref import WeakValueDictionary
 from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
 from cython.operator cimport dereference as deref
 
-__cache = WeakValueDictionary()
+_cache = WeakValueDictionary()
 __all__ = ['IOBuf']
 
 
@@ -46,7 +46,7 @@ cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
     inst._ours = move(ciobuf)
     inst._parent = None
     inst._this = inst._ours.get()
-    __cache[(<unsigned long>inst._this, id(inst))] = inst
+    _cache[(<unsigned long>inst._this, id(inst))] = inst
     return inst
 
 cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf):
@@ -57,7 +57,7 @@ cdef WritableIOBuf writable_from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
     inst._ours = move(ciobuf)
     inst._parent = None
     inst._this = inst._ours.get()
-    __cache[(<unsigned long>inst._this, id(inst))] = inst
+    _cache[(<unsigned long>inst._this, id(inst))] = inst
     return inst
 
 cdef api object python_writable_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf):
@@ -77,7 +77,7 @@ cdef class IOBuf:
         self._this = self._ours.get()
         self._parent = None
         self._hash = None
-        __cache[(<unsigned long>self._this, id(self))] = self
+        _cache[(<unsigned long>self._this, id(self))] = self
 
     def __dealloc__(self):
         self._ours.reset()
@@ -85,12 +85,12 @@ cdef class IOBuf:
     @staticmethod
     cdef IOBuf create(cIOBuf* this, object parent):
         key = (<unsigned long>this, id(parent))
-        cdef IOBuf inst = __cache.get(key)
+        cdef IOBuf inst = _cache.get(key)
         if inst is None:
             inst = <IOBuf>IOBuf.__new__(IOBuf)
             inst._this = this
             inst._parent = parent
-            __cache[key] = inst
+            _cache[key] = inst
         return inst
 
     cdef void cleanup(self):
@@ -223,7 +223,7 @@ cdef class WritableIOBuf(IOBuf):
         self._this = self._ours.get()
         self._parent = None
         self._hash = None
-        __cache[(<unsigned long>self._this, id(self))] = self
+        _cache[(<unsigned long>self._this, id(self))] = self
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         self.shape[0] = self._this.length()
@@ -303,12 +303,12 @@ cdef class WritableIOBuf(IOBuf):
     @staticmethod
     cdef WritableIOBuf create(cIOBuf* this, object parent):
         key = (<unsigned long>this, id(parent))
-        cdef WritableIOBuf inst = __cache.get(key)
+        cdef WritableIOBuf inst = _cache.get(key)
         if inst is None:
             inst = <WritableIOBuf>WritableIOBuf.__new__(WritableIOBuf)
             inst._this = this
             inst._parent = parent
-            __cache[key] = inst
+            _cache[key] = inst
         return inst
 
     def clone(self):

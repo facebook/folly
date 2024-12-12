@@ -22,7 +22,6 @@ from Cython.Build import cythonize
 from Cython.Compiler import Options
 from setuptools import Extension, setup
 
-
 Options.fast_fail = True
 
 exts = [
@@ -54,14 +53,14 @@ exts = [
         libraries=["folly", "glog", "double-conversion"],
         extra_compile_args=["-std=c++20"],  # C++20 for coroutines
         include_dirs=[".","../.."],  # cython generated code
-    ),
+    )
 ]
 
 setup(
     name="folly",
     version="0.0.1",
     packages=["folly"],
-    package_data={"": ["*.pxd", "*.h"]},
+    package_data={"": ["*.pxd", "*.pyi", "*.h"]},
     setup_requires=["cython"],
     zip_safe=False,
     ext_modules=cythonize(exts, compiler_directives={"language_level": 3}),
