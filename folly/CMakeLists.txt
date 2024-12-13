@@ -109,17 +109,27 @@ if (PYTHON_EXTENSIONS)
   )
 
   # Install Folly Python Bindings
-  if (NOT ${PYTHON_INSTALL_DIR} STREQUAL "")
-    set(INSTALL_ROOT_DIR "--root ${PYTHON_INSTALL_DIR}")
-  ENDIF ()
-
   install(CODE "
     execute_process(
       COMMAND
         python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install
-        --prefix ${CMAKE_INSTALL_PREFIX} ${INSTALL_ROOT_DIR}
+        --prefix ${CMAKE_INSTALL_PREFIX}
       COMMAND_ECHO STDOUT
       WORKING_DIRECTORY ${_cybld}
     )"
   )
+
+  # Install to a second directory. Unfrotunately, setting CMAKE_INSTALL_PREFIX
+  # directly does not play nicely with getdeps.py.
+  if (NOT ${PYTHON_INSTALL_DIR} STREQUAL "")
+    install(CODE "
+      execute_process(
+        COMMAND
+          python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install
+          --prefix ${PYTHON_INSTALL_DIR}
+        COMMAND_ECHO STDOUT
+        WORKING_DIRECTORY ${_cybld}
+      )"
+    )
+  endif()
 endif ()
