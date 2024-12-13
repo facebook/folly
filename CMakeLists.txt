@@ -466,6 +466,10 @@ option(PYTHON_EXTENSIONS
   "Build Python Bindings for Folly, requires Cython and (BUILD_SHARED_LIBS=ON)"
   OFF
 )
+set(PYTHON_INSTALL_DIR "" CACHE STRING
+  "The subdirectory where folly Python library should be installed, if non-empty and PYTHON_EXTENSIONS=ON."
+)
+
 
 add_library(folly
   $<TARGET_OBJECTS:folly_base>
