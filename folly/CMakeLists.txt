@@ -109,15 +109,15 @@ if (PYTHON_EXTENSIONS)
   )
 
   # Install Folly Python Bindings
-  if (UNIX)
-    set(ROOT_ARG "--root \$DESTDIR/")
-  endif ()
+  # if (UNIX)
+  #   set(ROOT_ARG "--root \$DESTDIR/")
+  # endif ()
 
   install(CODE "
     execute_process(
       COMMAND
         python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install
-        --prefix ${CMAKE_INSTALL_PREFIX} ${ROOT_ARG}
+        --prefix ${CMAKE_INSTALL_PREFIX}
       COMMAND_ECHO STDOUT
       WORKING_DIRECTORY ${_cybld}
     )"
