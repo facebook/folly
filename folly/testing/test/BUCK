@@ -11,6 +11,7 @@ cpp_unittest(
         "//folly/portability:fcntl",
         "//folly/portability:gtest",
         "//folly/portability:stdlib",
+        "//folly/portability:unistd",
         "//folly/testing:test_util",
     ],
     external_deps = [

@@ -33,6 +33,7 @@
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/Unistd.h>
 #include <folly/test/TestUtils.h>
 
 #include <folly/experimental/io/AsyncBase.h>

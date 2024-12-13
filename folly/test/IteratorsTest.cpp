@@ -20,6 +20,7 @@
 
 #include <folly/container/Array.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysTypes.h>
 
 using namespace folly::detail;
 

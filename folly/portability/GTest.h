@@ -16,20 +16,4 @@
 
 #pragma once
 
-// These _must_ be included before gtest.h, because
-// it tries to include <io.h> on it's own, but we
-// override all of those functions in Unistd.h :(
-#include <folly/portability/Unistd.h>
-#include <folly/portability/Windows.h>
-
-#include <folly/Portability.h>
-
-// Disable a couple of warnings due to GTest exporting classes
-// that derive from stdlib classes which aren't explicitly exported.
-FOLLY_PUSH_WARNING
-FOLLY_MSVC_DISABLE_WARNING(4251)
-FOLLY_MSVC_DISABLE_WARNING(4275)
-// IWYU pragma: begin_exports
 #include <gtest/gtest.h>
-// IWYU pragma: end_exports
-FOLLY_POP_WARNING

@@ -25,6 +25,7 @@
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Stdlib.h>
+#include <folly/portability/Unistd.h>
 
 using namespace folly;
 using namespace folly::test;

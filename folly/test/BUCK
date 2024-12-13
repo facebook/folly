@@ -895,6 +895,7 @@ cpp_unittest(
         "//folly/container:array",
         "//folly/detail:iterators",
         "//folly/portability:gtest",
+        "//folly/portability:sys_types",
     ],
 )
 
@@ -1037,6 +1038,7 @@ cpp_unittest(
         "//folly:memcpy",
         "//folly:portability",
         "//folly/portability:gtest",
+        "//folly/portability:sys_types",
     ],
 )
 

@@ -1174,6 +1174,7 @@ cpp_library(
         "//folly/experimental/io/test:io_test_temp_file_util_lib",
         "//folly/portability:gtest",
         "//folly/portability:sockets",
+        "//folly/portability:unistd",
         "//folly/test:test_utils",
     ],
     exported_external_deps = [
