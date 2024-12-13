@@ -20,6 +20,7 @@ cpp_unittest(
 cpp_unittest(
     name = "static_tracepoint_test",
     srcs = ["StaticTracepointTest.cpp"],
+    labels = ["oss-broken"],
     deps = [
         ":static_tracepoint_test_module",
         "//folly:conv",

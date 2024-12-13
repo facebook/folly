@@ -21,6 +21,7 @@ cpp_unittest(
     srcs = [
         "SettingsTest.cpp",
     ],
+    labels = ["case-isolation-failure"],
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":a",

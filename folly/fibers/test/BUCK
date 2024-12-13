@@ -22,6 +22,7 @@ cpp_unittest(
     name = "fibers_test",
     srcs = ["FibersTest.cpp"],
     headers = [],
+    labels = ["heavyweight"],
     deps = [
         "//folly:conv",
         "//folly:memory",

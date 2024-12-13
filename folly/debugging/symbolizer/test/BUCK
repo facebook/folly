@@ -126,6 +126,7 @@ cpp_unittest(
     name = "signal_handler_test",
     srcs = ["SignalHandlerTest.cpp"],
     headers = ["SignalHandlerTest.h"],
+    labels = ["broken-test"],
     deps = [
         "//folly:c_portability",
         "//folly:file_util",
@@ -154,6 +155,7 @@ cpp_benchmark(
 cpp_unittest(
     name = "stack_trace_size_limit_test",
     srcs = ["StackTraceSizeLimitTest.cpp"],
+    labels = ["oss-broken"],
     deps = [
         "//folly/experimental/symbolizer:stack_trace",
         "//folly/experimental/symbolizer:symbolizer",
@@ -167,6 +169,7 @@ cpp_unittest(
 cpp_unittest(
     name = "stack_trace_test",
     srcs = ["StackTraceTest.cpp"],
+    labels = ["oss-broken"],
     deps = [
         "//folly/coro:blocking_wait",
         "//folly/coro:task",

@@ -29,6 +29,7 @@ cpp_unittest(
     srcs = [
         "CompressionContextPoolTest.cpp",
     ],
+    labels = ["case-isolation-failure"],
     deps = [
         "//folly/compression:compression_context_pool",
         "//folly/compression:compression_context_pool_singletons",

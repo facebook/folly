@@ -170,6 +170,7 @@ cpp_unittest(
     srcs = ["JemallocHugePageAllocatorTest.cpp"],
     headers = [],
     allocator = "jemalloc",
+    labels = ["oss-broken"],
     deps = [
         "//folly/container:f14_hash",
         "//folly/memory:jemalloc_huge_page_allocator",

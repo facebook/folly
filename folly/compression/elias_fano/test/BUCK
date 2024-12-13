@@ -20,6 +20,7 @@ cpp_unittest(
     name = "eliasfano_test",
     srcs = ["EliasFanoCodingTest.cpp"],
     headers = [],
+    labels = ["slow"],
     deps = [
         "//folly:benchmark",
         "//folly:random",

@@ -118,6 +118,7 @@ cpp_unittest(
     name = "atomic_hash_map_test",
     srcs = ["AtomicHashMapTest.cpp"],
     headers = [],
+    labels = ["heavyweight"],
     deps = [
         "//folly:atomic_hash_map",
         "//folly:benchmark",
@@ -269,6 +270,10 @@ cpp_unittest(
     name = "concurrent_skip_list_test",
     srcs = ["ConcurrentSkipListTest.cpp"],
     headers = [],
+    labels = [
+        "heavyweight",
+        "slow",
+    ],
     deps = [
         "//folly:concurrent_skip_list",
         "//folly:memory",
@@ -1127,6 +1132,7 @@ cpp_unittest(
     name = "mpmc_queue_test",
     srcs = ["MPMCQueueTest.cpp"],
     headers = [],
+    labels = ["heavyweight"],
     deps = [
         ":deterministic_schedule",
         "//folly:format",
@@ -1159,6 +1165,7 @@ cpp_unittest(
     name = "observer_container_test",
     srcs = ["ObserverContainerTest.cpp"],
     headers = [],
+    labels = ["case-isolation-failure"],
     deps = [
         ":observer_container_test_util",
         "//folly:observer_container",
@@ -1382,6 +1389,7 @@ cpp_unittest(
             "-Wno-shadow-compatible-local",
         ],
     },
+    labels = ["heavyweight"],
     deps = [
         ":deterministic_schedule",
         ":test_utils",
@@ -1418,6 +1426,7 @@ cpp_unittest(
     name = "singleton_test",
     srcs = ["SingletonTest.cpp"],
     headers = [],
+    labels = ["case-isolation-failure"],
     deps = [
         ":singleton_test_structs",
         ":test_utils",

@@ -7,6 +7,7 @@ cpp_unittest(
     name = "arena_test",
     srcs = ["ArenaTest.cpp"],
     headers = [],
+    labels = ["oss-broken"],
     deps = [
         "//folly:memory",
         "//folly:random",

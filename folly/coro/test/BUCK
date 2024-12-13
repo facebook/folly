@@ -133,6 +133,7 @@ cpp_unittest(
         "TransformTest.cpp",
         "UnboundedQueueTest.cpp",
     ],
+    labels = ["case-isolation-failure"],
     deps = [
         "//folly:cancellation_token",
         "//folly:chrono",

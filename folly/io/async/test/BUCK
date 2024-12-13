@@ -130,6 +130,7 @@ cpp_unittest(
     ],
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
     extract_helper_lib = False,
+    labels = ["oss-broken"],
     resources = {
         "certs/ca-cert.pem": ":ca-cert.pem",
         "certs/client_ca_cert.pem": ":client_ca_cert.pem",
@@ -223,6 +224,7 @@ cpp_unittest(
     srcs = [
         "AsyncSocketObserverTest.cpp",
     ],
+    labels = ["case-isolation-failure"],
     supports_static_listing = False,
     deps = [
         ":async_socket_test_lib",
@@ -257,6 +259,7 @@ cpp_unittest(
         "AsyncSocketTest.cpp",
         "AsyncSocketTest2.cpp",
     ],
+    labels = ["case-isolation-failure"],
     supports_static_listing = False,
     deps = [
         ":async_socket_test_lib",  # @manual
@@ -339,6 +342,7 @@ cpp_unittest(
     srcs = ["AsyncUDPSocketTest.cpp"],
     headers = [],
     emails = ["oncall+thrift@xmail.facebook.com"],
+    labels = ["heavyweight"],
     supports_static_listing = False,
     deps = [
         "//folly:conv",
@@ -508,6 +512,10 @@ cpp_unittest(
     headers = [],
     allocator = "malloc",
     emails = ["oncall+thrift@xmail.facebook.com"],
+    labels = [
+        "heavyweight",
+        "load-sensitive-timing-test",
+    ],
     supports_static_listing = False,
     deps = [
         ":async_signal_handler_test_lib",
@@ -548,6 +556,7 @@ cpp_unittest(
     srcs = ["HHWheelTimerSlowTests.cpp"],
     headers = [],
     emails = ["oncall+thrift@xmail.facebook.com"],
+    labels = ["load-sensitive-timing-test"],
     tags = [
         "extended",
     ],
@@ -564,6 +573,7 @@ cpp_unittest(
     srcs = ["HHWheelTimerTest.cpp"],
     headers = [],
     emails = ["oncall+thrift@xmail.facebook.com"],
+    labels = ["slow"],
     deps = [
         ":util",
         "//folly/io/async:async_base",
@@ -825,6 +835,7 @@ cpp_unittest(
     name = "timerfd_timeout_manager_test",
     srcs = ["TimerFDTimeoutManagerTest.cpp"],
     headers = [],
+    labels = ["load-sensitive-timing-test"],
     deps = [
         "//folly/io/async:timerfd",
         "//folly/io/async/test:util",
@@ -927,6 +938,7 @@ cpp_unittest(
     name = "hhwheel_timer_high_res_test",
     srcs = ["HHWheelTimerHighResTest.cpp"],
     headers = [],
+    labels = ["load-sensitive-timing-test"],
     deps = [
         "//folly/io/async:async_base",
         "//folly/io/async:timerfd",
@@ -959,6 +971,7 @@ cpp_unittest(
 cpp_unittest(
     name = "async_io_uring_socket_test",
     srcs = ["AsyncIoUringSocketTest.cpp"],
+    labels = ["heavyweight"],
     supports_static_listing = False,
     deps = [
         "//folly:file_util",
@@ -980,6 +993,10 @@ cpp_unittest(
 cpp_unittest(
     name = "epoll_backend_test",
     srcs = ["EpollBackendTest.cpp"],
+    labels = [
+        "heavyweight",
+        "load-sensitive-timing-test",
+    ],
     owner = "dmm@xmail.facebook.com",
     supports_static_listing = False,
     deps = [
@@ -1034,6 +1051,11 @@ cpp_unittest(
     name = "io_uring_backend_test",
     srcs = ["IoUringBackendTest.cpp"],
     headers = [],
+    labels = [
+        "heavyweight",
+        "load-sensitive-timing-test",
+        "slow",
+    ],
     owner = "dmm@xmail.facebook.com",
     supports_static_listing = False,
     deps = [
@@ -1081,6 +1103,7 @@ cpp_unittest(
 cpp_unittest(
     name = "io_uring_test",
     srcs = ["IoUringTest.cpp"],
+    labels = ["oss-broken"],
     owner = "dmm@xmail.facebook.com",
     supports_static_listing = False,
     deps = [
