@@ -250,7 +250,7 @@ class F14HashToken final {
 };
 #endif
 
-#if __cpp_concepts && __has_include(<concepts>)
+#if defined(__cpp_concepts) && __cpp_concepts && __has_include(<concepts>)
 static_assert(std::regular<F14HashToken>);
 #endif
 
