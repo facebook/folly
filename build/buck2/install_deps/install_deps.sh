@@ -1,5 +1,8 @@
 #!/bin/sh
-# Copyright (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the LICENSE file found in the root
+# directory of this source tree.
 
 if [ -z "$INSTALL_COMMAND" ]; then
   if [ -f /etc/os-release ]; then
