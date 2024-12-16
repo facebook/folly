@@ -87,7 +87,7 @@ if (PYTHON_EXTENSIONS)
   add_custom_command(TARGET folly_python_bindings POST_BUILD
     COMMAND
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
-      build_ext -f ${incs} ${libs} -lfolly_python_cpp
+      build_ext -f ${incs} ${libs}
     BYPRODUCTS
       ${_cybld}/folly/executor_api.h
       ${_cybld}/folly/iobuf_api.h
