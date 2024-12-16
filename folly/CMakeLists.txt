@@ -42,6 +42,7 @@ if (PYTHON_EXTENSIONS)
   file(GLOB BindingFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pyx"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
   )
   file(MAKE_DIRECTORY "${_cybld}/folly/")
 
@@ -89,7 +90,6 @@ if (PYTHON_EXTENSIONS)
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
       ${_cybld}/folly/executor_api.h
-      ${_cybld}/folly/iobuf_ext.h
     WORKING_DIRECTORY ${_cybld}
   )
 
