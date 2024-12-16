@@ -87,7 +87,9 @@ if (PYTHON_EXTENSIONS)
     COMMAND
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       build_ext -f ${incs} ${libs}
-    BYPRODUCTS ${_cybld}/folly/executor_api.h
+    BYPRODUCTS
+      ${_cybld}/folly/executor_api.h
+      ${_cybld}/folly/iobuf_ext.h
     WORKING_DIRECTORY ${_cybld}
   )
 

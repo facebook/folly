@@ -50,6 +50,5 @@ setup(
     ext_modules=cythonize(
         exts,
         compiler_directives={"language_level": 3},
-        # build_dir="build",
     ),
 )
