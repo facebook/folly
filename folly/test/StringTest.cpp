@@ -29,6 +29,7 @@
 
 #include <folly/FBVector.h>
 #include <folly/container/Array.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
@@ -1465,4 +1466,25 @@ TEST(String, hasSpaceOrCntrlSymbolsTest) {
   hasCntrl[0] = 1;
   ASSERT_TRUE(std::iscntrl(1));
   ASSERT_TRUE(hasSpaceOrCntrlSymbols(hasCntrl));
+}
+
+TEST(String, format_string_for_each_named_arg) {
+  auto const fn = [](std::string_view str) {
+    std::vector<std::string> out;
+    folly::format_string_for_each_named_arg(str, [&](auto sub) {
+      out.push_back(std::string(sub));
+    });
+    return out;
+  };
+  EXPECT_THAT(fn(""), testing::ElementsAre());
+  EXPECT_THAT(fn("hello"), testing::ElementsAre());
+  EXPECT_THAT(fn("{{}}"), testing::ElementsAre());
+  EXPECT_THAT(fn("hello{{}}world"), testing::ElementsAre());
+  EXPECT_THAT(fn("hello{}world"), testing::ElementsAre());
+  EXPECT_THAT(fn("hello{3}world"), testing::ElementsAre());
+  EXPECT_THAT(fn("hello{34}world"), testing::ElementsAre());
+  EXPECT_THAT(fn("hello{bob}world"), testing::ElementsAre("bob"));
+  EXPECT_THAT(fn("hello{3}world{bob}go"), testing::ElementsAre("bob"));
+  EXPECT_THAT(fn("hello{bob}world{3}go"), testing::ElementsAre("bob"));
+  EXPECT_THAT(fn("hello{bob}world{sam}go"), testing::ElementsAre("bob", "sam"));
 }

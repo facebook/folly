@@ -1580,6 +1580,7 @@ cpp_unittest(
         "//folly:fbvector",
         "//folly:string",
         "//folly/container:array",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
     external_deps = [
