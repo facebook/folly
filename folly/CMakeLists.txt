@@ -32,6 +32,28 @@ add_subdirectory(debugging/exception_tracer)
 add_subdirectory(logging/example)
 
 if (PYTHON_EXTENSIONS)
+  add_library(
+    folly_python_cpp
+      python/error.cpp
+      python/executor.cpp
+      python/fibers.cpp
+      python/iobuf.cpp
+      python/iobuf_ext.cpp
+      python/GILAwareManualExecutor.cpp
+      python/ProactorExecutor.cpp
+  )
+  set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
+  target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
+  target_link_libraries(folly_python_cpp PUBLIC folly)
+  apply_folly_compile_options_to_target(folly_python_cpp)
+  install(
+    TARGETS folly_python_cpp
+    EXPORT folly
+    RUNTIME DESTINATION ${BIN_INSTALL_DIR}
+    LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+    ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
+  )
+
   # Create tree of symbolic links in structure required for successful
   # compliation by Cython.
   #   - must be in path named same as extension
@@ -87,7 +109,7 @@ if (PYTHON_EXTENSIONS)
   add_custom_command(TARGET folly_python_bindings POST_BUILD
     COMMAND
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
-      build_ext -f ${incs} ${libs}
+      build_ext -f ${incs} ${libs} -lfolly_python_cpp
     BYPRODUCTS
       ${_cybld}/folly/executor_api.h
     WORKING_DIRECTORY ${_cybld}
