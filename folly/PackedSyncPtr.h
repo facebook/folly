@@ -23,9 +23,13 @@
 #include <folly/Portability.h>
 #include <folly/synchronization/SmallLocks.h>
 
-#if !FOLLY_X64 && !FOLLY_PPC64 && !FOLLY_AARCH64
-#error "PackedSyncPtr is x64, ppc64 or aarch64 specific code."
+#if FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64
+#define FOLLY_HAS_PACKED_SYNC_PTR 1
+#else
+#define FOLLY_HAS_PACKED_SYNC_PTR 0
 #endif
+
+#if FOLLY_HAS_PACKED_SYNC_PTR
 
 /*
  * An 8-byte pointer with an integrated spin lock and 15-bit integer
@@ -144,4 +148,7 @@ std::ostream& operator<<(std::ostream& os, const PackedSyncPtr<T>& ptr) {
   os << "PackedSyncPtr(" << ptr.get() << ", " << ptr.extra() << ")";
   return os;
 }
+
 } // namespace folly
+
+#endif

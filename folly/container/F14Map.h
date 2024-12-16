@@ -38,10 +38,13 @@
 
 #include <folly/container/F14Map-fwd.h>
 #include <folly/container/Iterator.h>
-#include <folly/container/detail/F14MapFallback.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/container/detail/Util.h>
+
+// If !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE, fallback definitions are exported
+// in this file
+#include <folly/container/detail/F14MapFallback.h> // IWYU pragma: export
 
 namespace folly {
 
@@ -1003,7 +1006,7 @@ class F14BasicMap {
    * This function is provided for compliance with C++'s requirements for
    * hashtables, but is no better than a simple `reserve` call for F14.
    *
-   * @param bucketCapcity  The desired capacity across all buckets.
+   * @param bucketCapacity  The desired capacity across all buckets.
    */
   void rehash(std::size_t bucketCapacity) {
     // The standard's rehash() requires understanding the max load factor,
@@ -1043,8 +1046,9 @@ class F14BasicMap {
    * (the opposite is allowed).
    */
   bool containsEqualValue(value_type const& value) const {
-    auto it = table_.findMatching(
-        value.first, [&](auto& key) { return value.first == key; });
+    auto it = table_.findMatching(value.first, [&](auto& key) {
+      return value.first == key;
+    });
     return !it.atEnd() && value.second == table_.valueAtItem(it.citem()).second;
   }
 
@@ -1421,14 +1425,15 @@ template <
     typename KeyEqual,
     typename Alloc,
     typename EligibleForPerturbedInsertionOrder>
-class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
-                             VectorContainerPolicy,
-                             Key,
-                             Mapped,
-                             Hasher,
-                             KeyEqual,
-                             Alloc,
-                             EligibleForPerturbedInsertionOrder>> {
+class F14VectorMapImpl
+    : public F14BasicMap<MapPolicyWithDefaults<
+          VectorContainerPolicy,
+          Key,
+          Mapped,
+          Hasher,
+          KeyEqual,
+          Alloc,
+          EligibleForPerturbedInsertionOrder>> {
  protected:
   using Policy = MapPolicyWithDefaults<
       VectorContainerPolicy,
@@ -1641,13 +1646,14 @@ template <
     typename Hasher,
     typename KeyEqual,
     typename Alloc>
-class F14VectorMap : public f14::detail::F14VectorMapImpl<
-                         Key,
-                         Mapped,
-                         Hasher,
-                         KeyEqual,
-                         Alloc,
-                         std::false_type> {
+class F14VectorMap
+    : public f14::detail::F14VectorMapImpl<
+          Key,
+          Mapped,
+          Hasher,
+          KeyEqual,
+          Alloc,
+          std::false_type> {
   using Super = f14::detail::
       F14VectorMapImpl<Key, Mapped, Hasher, KeyEqual, Alloc, std::false_type>;
 
@@ -1832,16 +1838,17 @@ template <
     typename Hasher,
     typename KeyEqual,
     typename Alloc>
-class F14FastMap : public std::conditional_t<
-                       (sizeof(std::pair<Key const, Mapped>) < 24),
-                       F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
-                       f14::detail::F14VectorMapImpl<
-                           Key,
-                           Mapped,
-                           Hasher,
-                           KeyEqual,
-                           Alloc,
-                           std::true_type>> {
+class F14FastMap
+    : public std::conditional_t<
+          (sizeof(std::pair<Key const, Mapped>) < 24),
+          F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
+          f14::detail::F14VectorMapImpl<
+              Key,
+              Mapped,
+              Hasher,
+              KeyEqual,
+              Alloc,
+              std::true_type>> {
   using Super = std::conditional_t<
       sizeof(std::pair<Key const, Mapped>) < 24,
       F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,

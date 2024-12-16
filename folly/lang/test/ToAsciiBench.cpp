@@ -460,7 +460,7 @@ BENCHMARK_GROUP(16)
 #undef BENCHMARK_GROUP
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

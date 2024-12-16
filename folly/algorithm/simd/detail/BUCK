@@ -16,13 +16,24 @@ cpp_library(
 )
 
 cpp_library(
-    name = "simd_char_platform",
-    headers = ["SimdCharPlatform.h"],
+    name = "simd_platform",
+    headers = ["SimdPlatform.h"],
     exported_deps = [
-        ":simd_for_each",
         "//folly:portability",
+        "//folly/algorithm/simd:ignore",
         "//folly/algorithm/simd:movemask",
-        "//folly/lang:bits",
+        "//folly/lang:safe_assert",
+    ],
+)
+
+cpp_library(
+    name = "simd_contains_impl",
+    headers = ["ContainsImpl.h"],
+    exported_deps = [
+        ":simd_any_of",
+        ":simd_platform",
+        "//folly:c_portability",
+        "//folly/container:span",
     ],
 )
 
@@ -30,9 +41,22 @@ cpp_library(
     name = "simd_for_each",
     headers = ["SimdForEach.h"],
     exported_deps = [
+        ":unroll_utils",
         "//folly:c_portability",
         "//folly:traits",
-        "//folly/algorithm/simd/detail:unroll_utils",
+        "//folly/algorithm/simd:ignore",
+        "//folly/lang:align",
+    ],
+)
+
+cpp_library(
+    name = "traits",
+    headers = ["Traits.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:memory",
+        "//folly:traits",
+        "//folly/container:span",
     ],
 )
 

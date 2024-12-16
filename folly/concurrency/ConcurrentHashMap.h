@@ -489,14 +489,16 @@ class ConcurrentHashMap {
 
   // Erase if and only if key k is equal to expected
   size_type erase_if_equal(const key_type& k, const ValueType& expected) {
-    return erase_key_if(
-        k, [&expected](const ValueType& v) { return v == expected; });
+    return erase_key_if(k, [&expected](const ValueType& v) {
+      return v == expected;
+    });
   }
 
   template <typename K, EnableHeterogeneousErase<K, int> = 0>
   size_type erase_if_equal(const K& k, const ValueType& expected) {
-    return erase_key_if(
-        k, [&expected](const ValueType& v) { return v == expected; });
+    return erase_key_if(k, [&expected](const ValueType& v) {
+      return v == expected;
+    });
   }
 
   // Erase if predicate evaluates to true on the existing value

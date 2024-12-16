@@ -286,6 +286,10 @@ uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
   return (uint32_t)crc0;
 }
 
+#elif FOLLY_ARM_FEATURE_CRC32
+
+// crc32c_hw is defined in external/nvidia/hash/detail/Crc32cDetail.cpp
+
 #else
 
 uint32_t crc32c_hw(
@@ -293,7 +297,7 @@ uint32_t crc32c_hw(
   throw std::runtime_error("crc32_hw is not implemented on this platform");
 }
 
-#endif
+#endif // !defined(FOLLY_ARM_FEATURE_CRC32)
 
 } // namespace detail
 } // namespace folly

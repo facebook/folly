@@ -181,10 +181,11 @@ template <
     typename ValueType,
     typename Allocator,
     template <typename> class Atom = std::atomic>
-class NodeT : public hazptr_obj_base_linked<
-                  NodeT<KeyType, ValueType, Allocator, Atom>,
-                  Atom,
-                  concurrenthashmap::HazptrDeleter<Allocator>> {
+class NodeT
+    : public hazptr_obj_base_linked<
+          NodeT<KeyType, ValueType, Allocator, Atom>,
+          Atom,
+          concurrenthashmap::HazptrDeleter<Allocator>> {
  public:
   typedef std::pair<const KeyType, ValueType> value_type;
 
@@ -497,10 +498,11 @@ class alignas(64) BucketTable {
  private:
   // Could be optimized to avoid an extra pointer dereference by
   // allocating buckets_ at the same time.
-  class Buckets : public hazptr_obj_base<
-                      Buckets,
-                      Atom,
-                      concurrenthashmap::HazptrTableDeleter> {
+  class Buckets
+      : public hazptr_obj_base<
+            Buckets,
+            Atom,
+            concurrenthashmap::HazptrTableDeleter> {
     using BucketRoot = hazptr_root<Node, Atom>;
 
     Buckets() {}
@@ -795,10 +797,11 @@ template <
     typename ValueType,
     typename Allocator,
     template <typename> class Atom = std::atomic>
-class NodeT : public hazptr_obj_base<
-                  NodeT<KeyType, ValueType, Allocator, Atom>,
-                  Atom,
-                  HazptrDeleter<Allocator>> {
+class NodeT
+    : public hazptr_obj_base<
+          NodeT<KeyType, ValueType, Allocator, Atom>,
+          Atom,
+          HazptrDeleter<Allocator>> {
  public:
   typedef std::pair<const KeyType, ValueType> value_type;
 
@@ -1868,8 +1871,9 @@ class alignas(64) ConcurrentHashMapSegment {
   // Listed separately because we need a prev pointer.
   template <typename K>
   size_type erase(size_t h, const K& key) {
-    return erase_internal(
-        h, key, nullptr, [](const ValueType&) { return true; });
+    return erase_internal(h, key, nullptr, [](const ValueType&) {
+      return true;
+    });
   }
 
   template <typename K, typename Predicate>

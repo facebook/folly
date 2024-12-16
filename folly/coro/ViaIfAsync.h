@@ -20,11 +20,11 @@
 
 #include <folly/Executor.h>
 #include <folly/Traits.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Traits.h>
-#include <folly/experimental/coro/WithAsyncStack.h>
-#include <folly/experimental/coro/WithCancellation.h>
-#include <folly/experimental/coro/detail/Malloc.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Traits.h>
+#include <folly/coro/WithAsyncStack.h>
+#include <folly/coro/WithCancellation.h>
+#include <folly/coro/detail/Malloc.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/CustomizationPoint.h>
 #include <folly/tracing/AsyncStack.h>
@@ -111,8 +111,9 @@ class ViaCoroutinePromiseBase {
 template <bool IsStackAware>
 class ViaCoroutine {
  public:
-  class promise_type final : public ViaCoroutinePromiseBase,
-                             public ExtendedCoroutinePromise {
+  class promise_type final
+      : public ViaCoroutinePromiseBase,
+        public ExtendedCoroutinePromise {
     struct FinalAwaiter {
       bool await_ready() noexcept { return false; }
 
@@ -599,11 +600,11 @@ class CommutativeWrapperAwaitable {
           std::declval<const folly::CancellationToken&>(), std::declval<T2>()))>
   friend Derived<Result> co_withCancellation(
       const folly::CancellationToken& cancelToken, Derived<T>&& awaitable) {
-    return Derived<Result>{std::in_place, [&]() -> decltype(auto) {
-                             return folly::coro::co_withCancellation(
-                                 cancelToken,
-                                 static_cast<T&&>(awaitable.inner_));
-                           }};
+    return Derived<Result>{
+        std::in_place, [&]() -> decltype(auto) {
+          return folly::coro::co_withCancellation(
+              cancelToken, static_cast<T&&>(awaitable.inner_));
+        }};
   }
 
   template <
@@ -613,10 +614,11 @@ class CommutativeWrapperAwaitable {
   friend Derived<Result>
   tag_invoke(cpo_t<co_withAsyncStack>, Derived<T>&& awaitable) noexcept(
       noexcept(folly::coro::co_withAsyncStack(std::declval<T2>()))) {
-    return Derived<Result>{std::in_place, [&]() -> decltype(auto) {
-                             return folly::coro::co_withAsyncStack(
-                                 static_cast<T&&>(awaitable.inner_));
-                           }};
+    return Derived<Result>{
+        std::in_place, [&]() -> decltype(auto) {
+          return folly::coro::co_withAsyncStack(
+              static_cast<T&&>(awaitable.inner_));
+        }};
   }
 
   template <
@@ -631,11 +633,11 @@ class CommutativeWrapperAwaitable {
                                                std::declval<folly::Executor::
                                                                 KeepAlive<>>(),
                                                std::declval<T2>()))) {
-    return Derived<Result>{std::in_place, [&]() -> decltype(auto) {
-                             return folly::coro::co_viaIfAsync(
-                                 std::move(executor),
-                                 static_cast<T&&>(awaitable.inner_));
-                           }};
+    return Derived<Result>{
+        std::in_place, [&]() -> decltype(auto) {
+          return folly::coro::co_viaIfAsync(
+              std::move(executor), static_cast<T&&>(awaitable.inner_));
+        }};
   }
 
  protected:
@@ -691,7 +693,7 @@ class NothrowAwaitable
 
 template <typename Awaitable>
 detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
-    Awaitable&& awaitable) {
+    [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable&& awaitable) {
   return detail::NothrowAwaitable<remove_cvref_t<Awaitable>>{
       static_cast<Awaitable&&>(awaitable)};
 }

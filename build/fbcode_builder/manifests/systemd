@@ -1,0 +1,15 @@
+[manifest]
+name = systemd
+
+[rpms]
+systemd
+systemd-devel
+
+[download]
+url = https://github.com/systemd/systemd/archive/refs/tags/v256.7.tar.gz 
+sha256 = 896d76ff65c88f5fd9e42f90d152b0579049158a163431dd77cdc57748b1d7b0 
+
+
+[build]
+builder = systemd
+subdir = systemd-256.7

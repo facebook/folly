@@ -28,6 +28,7 @@ cpp_binary(
             "-g",
         ],
     },
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":symbolizer_test_utils_dwarf4_dwarf32_noaaranges",
         "//folly:benchmark",
@@ -125,13 +126,14 @@ cpp_unittest(
     name = "signal_handler_test",
     srcs = ["SignalHandlerTest.cpp"],
     headers = ["SignalHandlerTest.h"],
+    labels = ["broken-test"],
     deps = [
         "//folly:c_portability",
         "//folly:file_util",
         "//folly:range",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
         "//folly/executors:io_thread_pool_executor",
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:task",
         "//folly/experimental/symbolizer:signal_handler",
         "//folly/portability:gtest",
     ],
@@ -153,6 +155,7 @@ cpp_benchmark(
 cpp_unittest(
     name = "stack_trace_size_limit_test",
     srcs = ["StackTraceSizeLimitTest.cpp"],
+    labels = ["oss-broken"],
     deps = [
         "//folly/experimental/symbolizer:stack_trace",
         "//folly/experimental/symbolizer:symbolizer",
@@ -166,9 +169,10 @@ cpp_unittest(
 cpp_unittest(
     name = "stack_trace_test",
     srcs = ["StackTraceTest.cpp"],
+    labels = ["oss-broken"],
     deps = [
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:task",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
         "//folly/experimental/symbolizer:stack_trace",
         "//folly/experimental/symbolizer:symbolizer",
         "//folly/lang:hint",

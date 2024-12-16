@@ -47,9 +47,6 @@ ProgramExit::ProgramExit(int status, const std::string& msg)
   CHECK(status_ != 0 || msg.empty());
 }
 
-constexpr StringPiece const NestedCommandLineApp::kHelpCommand;
-constexpr StringPiece const NestedCommandLineApp::kVersionCommand;
-
 NestedCommandLineApp::NestedCommandLineApp(
     std::string programName,
     std::string version,
@@ -326,9 +323,10 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
   auto& cmd = p.first;
   auto& info = p.second;
 
-  auto parser = po::command_line_parser(parsed.rest)
-                    .options(info.options)
-                    .style(optionStyle_);
+  auto parser =
+      po::command_line_parser(parsed.rest)
+          .options(info.options)
+          .style(optionStyle_);
   if (info.positionalOptions) {
     parser = parser.positional(*info.positionalOptions);
   }

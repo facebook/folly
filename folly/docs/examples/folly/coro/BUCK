@@ -1,0 +1,90 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_unittest(
+    name = "promise_demo",
+    srcs = ["Promise.cpp"],
+    headers = [],
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:promise",
+        "//folly/coro:task",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "detach_on_cancel_demo",
+    srcs = ["DetachOnCancel.cpp"],
+    headers = [],
+    deps = [
+        "//folly/coro:detach_on_cancel",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:promise",
+        "//folly/coro:task",
+        "//folly/coro:timeout",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "with_cancellation_demo",
+    srcs = ["WithCancellation.cpp"],
+    headers = [],
+    deps = [
+        "//folly:cancellation_token",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:sleep",
+        "//folly/coro:task",
+        "//folly/coro:timeout",
+        "//folly/coro:with_cancellation",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "async_scope_demo",
+    srcs = ["AsyncScope.cpp"],
+    headers = [],
+    deps = [
+        "//folly/coro:async_scope",
+        "//folly/coro:gtest_helpers",
+        "//folly/executors:global_executor",
+    ],
+)
+
+cpp_unittest(
+    name = "cancellable_async_scope_demo",
+    srcs = ["CancellableAsyncScope.cpp"],
+    headers = [],
+    deps = [
+        "//folly/coro:async_scope",
+        "//folly/coro:gtest_helpers",
+        "//folly/executors:global_executor",
+    ],
+)
+
+cpp_unittest(
+    name = "task_demo",
+    srcs = ["Task.cpp"],
+    headers = [],
+    deps = [
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
+        "//folly/executors:global_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "retry_demo",
+    srcs = ["Retry.cpp"],
+    headers = [],
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:retry",
+        "//folly/portability:gtest",
+    ],
+)

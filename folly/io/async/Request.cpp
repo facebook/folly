@@ -690,8 +690,9 @@ RequestContext::getRootIdsFromAllThreads() {
 /* static */ std::shared_ptr<RequestContext>
 RequestContext::setShallowCopyContext() {
   auto& parent = getStaticContext().requestContext;
-  auto child = parent ? RequestContext::copyAsChild(*parent)
-                      : std::make_shared<RequestContext>();
+  auto child = parent
+      ? RequestContext::copyAsChild(*parent)
+      : std::make_shared<RequestContext>();
   if (!parent) {
     child->rootId_ = 0;
   }

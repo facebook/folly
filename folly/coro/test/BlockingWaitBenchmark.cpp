@@ -17,8 +17,8 @@
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Coroutine.h>
 
 #include <string>
 
@@ -78,7 +78,7 @@ BENCHMARK(blockingWaitRVO, iters) {
 #endif
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

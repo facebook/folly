@@ -360,16 +360,12 @@ class TimeseriesHistogram {
 
   void computeAvgData(ValueType* total, uint64_t* nsamples, size_t level) const;
   void computeAvgData(
-      ValueType* total,
-      uint64_t* nsamples,
-      TimePoint start,
-      TimePoint end) const;
+      ValueType* total, uint64_t* nsamples, TimePoint start, TimePoint end)
+      const;
   void computeRateData(ValueType* total, Duration* elapsed, size_t level) const;
   void computeRateData(
-      ValueType* total,
-      Duration* elapsed,
-      TimePoint start,
-      TimePoint end) const;
+      ValueType* total, Duration* elapsed, TimePoint start, TimePoint end)
+      const;
 
   folly::detail::HistogramBuckets<ValueType, ContainerType> buckets_;
   ValueType firstValue_;

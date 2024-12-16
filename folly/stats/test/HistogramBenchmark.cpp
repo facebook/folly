@@ -39,7 +39,7 @@ BENCHMARK_NAMED_PARAM(addValue, 0_to_1000, 10, 0, 1000)
 BENCHMARK_NAMED_PARAM(addValue, 5k_to_20k, 250, 5000, 20000)
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

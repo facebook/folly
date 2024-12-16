@@ -16,7 +16,7 @@
 
 #include <folly/coro/Baton.h>
 
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 #include <folly/synchronization/AtomicUtil.h>
 
 #include <cassert>

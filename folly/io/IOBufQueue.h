@@ -66,23 +66,19 @@ class IOBufQueue {
   }
 
   struct WritableRangeCacheData {
-    std::pair<uint8_t*, uint8_t*> cachedRange;
-    bool attached{false};
+    std::pair<uint8_t*, uint8_t*> cachedRange{};
+    bool attached{};
 
     WritableRangeCacheData() = default;
 
-    WritableRangeCacheData(WritableRangeCacheData&& other)
+    WritableRangeCacheData(WritableRangeCacheData&& other) noexcept
         : cachedRange(other.cachedRange), attached(other.attached) {
-      other.cachedRange = {nullptr, nullptr};
-      other.attached = false;
+      other.cachedRange = std::pair<uint8_t*, uint8_t*>{};
+      other.attached = {};
     }
-    WritableRangeCacheData& operator=(WritableRangeCacheData&& other) {
-      cachedRange = other.cachedRange;
-      attached = other.attached;
-
-      other.cachedRange = {nullptr, nullptr};
-      other.attached = false;
-
+    WritableRangeCacheData& operator=(WritableRangeCacheData&& other) noexcept {
+      cachedRange = std::exchange(other.cachedRange, {});
+      attached = std::exchange(other.attached, {});
       return *this;
     }
 
@@ -133,7 +129,7 @@ class IOBufQueue {
      * Move constructor/assignment can move the cached range, but must update
      * the reference in IOBufQueue.
      */
-    WritableRangeCache(WritableRangeCache&& other)
+    WritableRangeCache(WritableRangeCache&& other) noexcept
         : data_(std::move(other.data_)), queue_(other.queue_) {
       if (data_.attached) {
         queue_->updateCacheRef(data_);
@@ -218,7 +214,7 @@ class IOBufQueue {
     /**
      * Mark n bytes as occupied (e.g. postallocate).
      */
-    void append(size_t n) {
+    void append(size_t n) noexcept {
       dcheckIntegrity();
       // This can happen only if somebody is misusing the interface.
       // E.g. calling append after touching IOBufQueue or without checking
@@ -426,7 +422,7 @@ class IOBufQueue {
    *       invoke any other non-const methods on this IOBufQueue between
    *       the call to preallocate and the call to postallocate().
    */
-  void postallocate(std::size_t n) {
+  void postallocate(std::size_t n) noexcept {
     dcheckCacheIntegrity();
     DCHECK_LE(
         (void*)(cachePtr_->cachedRange.first + n),
@@ -632,7 +628,7 @@ class IOBufQueue {
 
   /** Movable */
   IOBufQueue(IOBufQueue&&) noexcept;
-  IOBufQueue& operator=(IOBufQueue&&);
+  IOBufQueue& operator=(IOBufQueue&&) noexcept;
 
   static constexpr size_t kMaxPackCopy = 4096;
 
@@ -661,7 +657,7 @@ class IOBufQueue {
   WritableRangeCacheData* cachePtr_{nullptr};
   WritableRangeCacheData localCache_;
 
-  void dcheckCacheIntegrity() const {
+  void dcheckCacheIntegrity() const noexcept {
     // Tail start should always be less than tail end.
     DCHECK_LE((void*)tailStart_, (void*)cachePtr_->cachedRange.first);
     DCHECK_LE(
@@ -689,7 +685,7 @@ class IOBufQueue {
   /**
    * Populate dest with writable tail range cache.
    */
-  void fillWritableRangeCache(WritableRangeCacheData& dest) {
+  void fillWritableRangeCache(WritableRangeCacheData& dest) noexcept {
     dcheckCacheIntegrity();
     if (cachePtr_ != &dest) {
       dest = std::move(*cachePtr_);
@@ -700,7 +696,7 @@ class IOBufQueue {
   /**
    * Clear current writable tail cache and reset it to localCache_
    */
-  void clearWritableRangeCache() {
+  void clearWritableRangeCache() noexcept {
     flushCache();
 
     if (cachePtr_ != &localCache_) {
@@ -714,7 +710,7 @@ class IOBufQueue {
   /**
    * Commit any pending changes to the tail of the queue.
    */
-  void flushCache() const {
+  void flushCache() const noexcept {
     dcheckCacheIntegrity();
 
     if (tailStart_ != cachePtr_->cachedRange.first) {
@@ -730,12 +726,14 @@ class IOBufQueue {
   }
 
   // For WritableRangeCache move assignment/construction.
-  void updateCacheRef(WritableRangeCacheData& newRef) { cachePtr_ = &newRef; }
+  void updateCacheRef(WritableRangeCacheData& newRef) noexcept {
+    cachePtr_ = &newRef;
+  }
 
   /**
    * Update cached writable tail range. Called by updateGuard()
    */
-  void updateWritableTailCache() {
+  void updateWritableTailCache() noexcept {
     if (FOLLY_LIKELY(head_ != nullptr)) {
       IOBuf* buf = head_->prev();
       if (FOLLY_LIKELY(!buf->isSharedOne())) {

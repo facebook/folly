@@ -15,6 +15,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <tuple>
@@ -26,7 +27,7 @@ namespace folly {
 
 namespace detail {
 
-struct FixedMergingCancellationStateTag {};
+struct MergingCancellationStateTag {};
 
 // Internal cancellation state object.
 class CancellationState {
@@ -37,7 +38,7 @@ class CancellationState {
   // Constructed initially with a CancellationSource reference count of 1.
   CancellationState() noexcept;
   // Constructed initially with a CancellationToken reference count of 1.
-  explicit CancellationState(FixedMergingCancellationStateTag) noexcept;
+  explicit CancellationState(MergingCancellationStateTag) noexcept;
 
   virtual ~CancellationState();
 
@@ -102,19 +103,6 @@ class CancellationState {
   std::atomic<std::uint64_t> state_;
   CancellationCallback* head_{nullptr};
   std::thread::id signallingThreadId_;
-};
-
-template <size_t N>
-class FixedMergingCancellationState : public CancellationState {
-  template <typename... Ts>
-  FixedMergingCancellationState(Ts&&... tokens);
-
- public:
-  template <typename... Ts>
-  FOLLY_NODISCARD static CancellationStateTokenPtr create(Ts&&... tokens);
-
- private:
-  std::array<CancellationCallback, N> callbacks_;
 };
 
 template <typename... Data>
@@ -318,7 +306,7 @@ inline CancellationStateSourcePtr CancellationState::create() {
 inline CancellationState::CancellationState() noexcept
     : state_(kSourceReferenceCountIncrement) {}
 inline CancellationState::CancellationState(
-    FixedMergingCancellationStateTag) noexcept
+    MergingCancellationStateTag) noexcept
     : state_(kTokenReferenceCountIncrement | kMergingFlag) {}
 
 inline CancellationStateTokenPtr
@@ -327,13 +315,56 @@ CancellationState::addTokenReference() noexcept {
   return CancellationStateTokenPtr{this};
 }
 
+// This `alignas()` is here because "create" will going to allocate this
+// back-to-back with our `CancellationCallback` array.
+class alignas(CancellationCallback) MergingCancellationState
+    : public CancellationState {
+  // There's a noticeable perf gain from specializing the constructors
+  struct CopyTag {};
+  struct MoveTag {};
+  struct CopyMoveTag {};
+
+  explicit MergingCancellationState();
+
+  CancellationCallback* callbackEnd_; // byte after the last callback
+
+ public:
+  // Ctors are a private implementation detail of the create*() factory funcs
+  explicit MergingCancellationState(
+      CopyTag, size_t nCopy, const CancellationToken** copyToks);
+  explicit MergingCancellationState(
+      MoveTag, size_t nMove, CancellationToken** moveToks);
+  explicit MergingCancellationState(
+      CopyMoveTag,
+      size_t nCopy,
+      const CancellationToken** copyToks,
+      size_t nMove,
+      CancellationToken** moveToks);
+  ~MergingCancellationState() override;
+
+  static CancellationStateTokenPtr createCopy(
+      size_t nCopy, const CancellationToken** copyToks);
+  static CancellationStateTokenPtr createMove(
+      size_t nMove, CancellationToken** moveToks);
+  static CancellationStateTokenPtr createCopyMove(
+      size_t nCopy,
+      const CancellationToken** copyToks,
+      size_t nMove,
+      CancellationToken** moveToks);
+  void destroy() noexcept;
+};
+
 inline void CancellationState::removeTokenReference() noexcept {
   const auto oldState = state_.fetch_sub(
       kTokenReferenceCountIncrement, std::memory_order_acq_rel);
   DCHECK(
       (oldState & kTokenReferenceCountMask) >= kTokenReferenceCountIncrement);
   if (oldState < (2 * kTokenReferenceCountIncrement)) {
-    delete this;
+    if (oldState & kMergingFlag) {
+      static_cast<MergingCancellationState*>(this)->destroy();
+    } else {
+      delete this;
+    }
   }
 }
 
@@ -350,6 +381,8 @@ inline void CancellationState::removeSourceReference() noexcept {
       (oldState & kSourceReferenceCountMask) >= kSourceReferenceCountIncrement);
   if (oldState <
       (kSourceReferenceCountIncrement + kTokenReferenceCountIncrement)) {
+    // No "free()" branch because "merging" state has no source pointers.
+    DCHECK(!(oldState & kMergingFlag));
     delete this;
   }
 }
@@ -378,24 +411,8 @@ inline bool CancellationState::isLocked(std::uint64_t state) noexcept {
   return (state & kLockedFlag) != 0;
 }
 
-template <size_t N>
-template <typename... Ts>
-inline CancellationStateTokenPtr FixedMergingCancellationState<N>::create(
-    Ts&&... tokens) {
-  return CancellationStateTokenPtr{
-      new FixedMergingCancellationState<N>(std::forward<Ts>(tokens)...)};
-}
-
 template <typename... Data>
 struct WithDataTag {};
-
-template <size_t N>
-template <typename... Ts>
-inline FixedMergingCancellationState<N>::FixedMergingCancellationState(
-    Ts&&... tokens)
-    : CancellationState(FixedMergingCancellationStateTag{}),
-      callbacks_{
-          {{std::forward<Ts>(tokens), [this] { requestCancellation(); }}...}} {}
 
 template <typename... Data>
 template <typename... Args>
@@ -411,18 +428,6 @@ CancellationStateWithData<Data...>::create(Args&&... data) {
   return {CancellationStateSourcePtr{state}, &state->data_};
 }
 
-inline bool variadicDisjunction() {
-  return false;
-}
-
-inline bool variadicDisjunction(bool first) {
-  return first;
-}
-
-template <typename... Bools>
-bool variadicDisjunction(bool first, Bools... bools) {
-  return first || variadicDisjunction(bools...);
-}
 } // namespace detail
 
 template <typename... Data, typename... Args>
@@ -438,12 +443,62 @@ std::pair<CancellationSource, std::tuple<Data...>*> CancellationSource::create(
 
 template <typename... Ts>
 inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
-  bool canBeCancelled = detail::variadicDisjunction(tokens.canBeCancelled()...);
-  return canBeCancelled
-      ? CancellationToken(
-            detail::FixedMergingCancellationState<sizeof...(Ts)>::create(
-                std::forward<Ts>(tokens)...))
-      : CancellationToken();
+  if constexpr (sizeof...(Ts) == 0) {
+    return CancellationToken();
+  } else if constexpr (sizeof...(Ts) == 1) {
+    return (tokens, ...);
+  } else {
+    constexpr size_t N = sizeof...(Ts);
+    constexpr size_t NCopy =
+        ((std::is_reference_v<Ts> || std::is_const_v<Ts>)+...);
+    std::array<const CancellationToken*, NCopy> copyToks;
+    std::array<CancellationToken*, N - NCopy> moveToks;
+    const detail::CancellationState* prevState = nullptr;
+    size_t copyIdx = 0, moveIdx = 0;
+    (
+        [&] {
+          constexpr bool mustCopy =
+              std::is_reference_v<Ts> || std::is_const_v<Ts>;
+          auto* state = tokens.state_.get();
+          if (!state) {
+            return; // Omit empties
+          }
+          if (state == prevState) {
+            if constexpr (!mustCopy) {
+              // Move out the input token, although we didn't use it.  The
+              // goal is to make deduplication non-observable by the user.
+              std::exchange(tokens, {});
+            }
+            return; // Omit adjacent duplicates
+          }
+          prevState = state;
+          if constexpr (mustCopy) {
+            copyToks[copyIdx++] = &tokens;
+          } else {
+            moveToks[moveIdx++] = &tokens;
+          }
+        }(),
+        ...);
+
+    size_t n = copyIdx + moveIdx;
+    if (n == 0) {
+      return CancellationToken();
+    } else if (n == 1) {
+      if (moveIdx) { // A ternary would have type `const CT*` and NOT move!
+        return std::move(*moveToks[0]);
+      }
+      return *copyToks[0];
+    } else if constexpr (NCopy == N) {
+      return CancellationToken(detail::MergingCancellationState::createCopy(
+          copyIdx, copyToks.data()));
+    } else if constexpr (NCopy == 0) {
+      return CancellationToken(detail::MergingCancellationState::createMove(
+          moveIdx, moveToks.data()));
+    } else {
+      return CancellationToken(detail::MergingCancellationState::createCopyMove(
+          copyIdx, copyToks.data(), moveIdx, moveToks.data()));
+    }
+  }
 }
 
 } // namespace folly

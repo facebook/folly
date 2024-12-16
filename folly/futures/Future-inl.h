@@ -288,8 +288,9 @@ void FutureBase<T>::throwIfContinued() const {
 template <class T>
 Optional<Try<T>> FutureBase<T>::poll() {
   auto& core = getCore();
-  return core.hasResult() ? Optional<Try<T>>(std::move(core.getTry()))
-                          : Optional<Try<T>>();
+  return core.hasResult()
+      ? Optional<Try<T>>(std::move(core.getTry()))
+      : Optional<Try<T>>();
 }
 
 template <class T>
@@ -592,8 +593,9 @@ typename std::enable_if<
     SemiFuture<lift_unit_t<invoke_result_t<F>>>>::type
 makeSemiFutureWith(F&& func) {
   using LiftedResult = lift_unit_t<invoke_result_t<F>>;
-  return makeSemiFuture<LiftedResult>(
-      makeTryWith([&func]() mutable { return static_cast<F&&>(func)(); }));
+  return makeSemiFuture<LiftedResult>(makeTryWith([&func]() mutable {
+    return static_cast<F&&>(func)();
+  }));
 }
 
 template <class T>
@@ -775,14 +777,16 @@ SemiFuture<T>::deferExTry(F&& func) && {
     }
   }();
 
-  auto sf = Future<T>(this->core_)
-                .thenExTryInline([func_2 = static_cast<F&&>(func)](
-                                     folly::Executor::KeepAlive<>&& keepAlive,
-                                     folly::Try<T>&& val) mutable {
-                  return static_cast<F&&>(func_2)(
-                      std::move(keepAlive), static_cast<decltype(val)>(val));
-                })
-                .semi();
+  auto sf =
+      Future<T>(this->core_)
+          .thenExTryInline(
+              [func_2 = static_cast<F&&>(func)](
+                  folly::Executor::KeepAlive<>&& keepAlive,
+                  folly::Try<T>&& val) mutable {
+                return static_cast<F&&>(func_2)(
+                    std::move(keepAlive), static_cast<decltype(val)>(val));
+              })
+          .semi();
   this->core_ = nullptr;
   // Carry deferred executor through chain as constructor from Future will
   // nullify it
@@ -819,8 +823,9 @@ SemiFuture<T> SemiFuture<T>::deferError(tag_t<ExceptionType>, F&& func) && {
   return std::move(*this).defer(
       [func_2 = static_cast<F&&>(func)](Try<T>&& t) mutable {
         if (auto e = t.template tryGetExceptionObject<ExceptionType>()) {
-          return makeSemiFutureWith(
-              [&]() mutable { return static_cast<F&&>(func_2)(*e); });
+          return makeSemiFutureWith([&]() mutable {
+            return static_cast<F&&>(func_2)(*e);
+          });
         } else {
           return makeSemiFuture<T>(std::move(t));
         }
@@ -918,10 +923,10 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor) & {
   this->throwIfInvalid();
   Promise<T> p;
   auto sf = p.getSemiFuture();
-  auto func = [p_2 = std::move(p)](
-                  Executor::KeepAlive<>&&, Try<T>&& t) mutable {
-    p_2.setTry(std::move(t));
-  };
+  auto func =
+      [p_2 = std::move(p)](Executor::KeepAlive<>&&, Try<T>&& t) mutable {
+        p_2.setTry(std::move(t));
+      };
   using R = futures::detail::tryExecutorCallableResult<T, decltype(func)>;
   this->thenImplementation(
       std::move(func), R{}, futures::detail::InlineContinuation::forbid);
@@ -954,11 +959,11 @@ template <class T>
 template <typename F>
 Future<typename futures::detail::tryCallableResult<T, F>::value_type>
 Future<T>::thenTry(F&& func) && {
-  auto lambdaFunc = [f = static_cast<F&&>(func)](
-                        folly::Executor::KeepAlive<>&&,
-                        folly::Try<T>&& t) mutable {
-    return static_cast<F&&>(f)(std::move(t));
-  };
+  auto lambdaFunc =
+      [f = static_cast<F&&>(func)](
+          folly::Executor::KeepAlive<>&&, folly::Try<T>&& t) mutable {
+        return static_cast<F&&>(f)(std::move(t));
+      };
   using W = decltype(lambdaFunc);
   using R = futures::detail::tryExecutorCallableResult<T, W>;
   auto policy = futures::detail::InlineContinuation::forbid;
@@ -969,11 +974,11 @@ template <class T>
 template <typename F>
 Future<typename futures::detail::tryCallableResult<T, F>::value_type>
 Future<T>::thenTryInline(F&& func) && {
-  auto lambdaFunc = [f = static_cast<F&&>(func)](
-                        folly::Executor::KeepAlive<>&&,
-                        folly::Try<T>&& t) mutable {
-    return static_cast<F&&>(f)(std::move(t));
-  };
+  auto lambdaFunc =
+      [f = static_cast<F&&>(func)](
+          folly::Executor::KeepAlive<>&&, folly::Try<T>&& t) mutable {
+        return static_cast<F&&>(f)(std::move(t));
+      };
   using W = decltype(lambdaFunc);
   using R = futures::detail::tryExecutorCallableResult<T, W>;
   auto policy = futures::detail::InlineContinuation::permit;
@@ -1166,9 +1171,9 @@ Future<T>::thenErrorImpl(
           Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
         if (auto ex = t.template tryGetExceptionObject<
                       std::remove_reference_t<ExceptionType>>()) {
-          state.setTry(std::move(ka), makeTryWith([&] {
-                         return state.invoke(std::move(*ex));
-                       }));
+          state.setTry(
+              std::move(ka),
+              makeTryWith([&] { return state.invoke(std::move(*ex)); }));
         } else {
           state.setTry(std::move(ka), std::move(t));
         }
@@ -1349,8 +1354,9 @@ typename std::enable_if<
     Future<lift_unit_t<invoke_result_t<F>>>>::type
 makeFutureWith(F&& func) {
   using LiftedResult = lift_unit_t<invoke_result_t<F>>;
-  return makeFuture<LiftedResult>(
-      makeTryWith([&func]() mutable { return static_cast<F&&>(func)(); }));
+  return makeFuture<LiftedResult>(makeTryWith([&func]() mutable {
+    return static_cast<F&&>(func)();
+  }));
 }
 
 template <class T>
@@ -1927,8 +1933,8 @@ std::vector<Future<Result>> window(
                    }).via(ctx->executor.get());
 
         fut.setCallback_(
-            [ctx_2 = std::move(ctx), i](
-                Executor::KeepAlive<>&& ka, Try<Result>&& t) mutable {
+            [ctx_2 = std::move(ctx),
+             i](Executor::KeepAlive<>&& ka, Try<Result>&& t) mutable {
               // Use futures::detail::setTry() with the KeepAlive to correctly
               // propagate the executor down the chain for callback inlining
               // purposes.
@@ -2302,8 +2308,9 @@ void waitViaImpl(
     return;
   }
   // Chain operations, ensuring that the executor is kept alive for the duration
-  f = std::move(f).via(e).thenValue(
-      [keepAlive = getKeepAliveToken(e)](T&& t) { return std::move(t); });
+  f = std::move(f).via(e).thenValue([keepAlive = getKeepAliveToken(e)](T&& t) {
+    return std::move(t);
+  });
   auto now = std::chrono::steady_clock::now();
   auto deadline = now + timeout;
   while (!f.isReady() && (now < deadline)) {

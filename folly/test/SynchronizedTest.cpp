@@ -590,7 +590,7 @@ class TryLockable {
   bool tryLockImpl(int lockableMask) {
     // if the lockable type of this instance is one of the possible options as
     // expressed in the mask go through the usual test code
-    if (kLockableType | lockableMask) {
+    if (kLockableType & lockableMask) {
       if (kShouldSucceed) {
         onLock();
         return true;
@@ -604,7 +604,7 @@ class TryLockable {
     return false;
   }
   void unlockImpl(int lockableMask) {
-    if (kLockableType | lockableMask) {
+    if (kLockableType & lockableMask) {
       onUnlock();
       return;
     }
@@ -726,23 +726,27 @@ int MutexTrack::gOrder{0};
 } // namespace
 
 TEST_F(SynchronizedLockTest, TestTryLock) {
-  testTryLock<kLockable>(
-      [](auto& synchronized) { return synchronized.tryLock(); });
+  testTryLock<kLockable>([](auto& synchronized) {
+    return synchronized.tryLock();
+  });
 }
 
 TEST_F(SynchronizedLockTest, TestTryWLock) {
-  testTryLock<kWLockable>(
-      [](auto& synchronized) { return synchronized.tryWLock(); });
+  testTryLock<kWLockable>([](auto& synchronized) {
+    return synchronized.tryWLock();
+  });
 }
 
 TEST_F(SynchronizedLockTest, TestTryRLock) {
-  testTryLock<kRLockable>(
-      [](auto& synchronized) { return synchronized.tryRLock(); });
+  testTryLock<kRLockable>([](auto& synchronized) {
+    return synchronized.tryRLock();
+  });
 }
 
 TEST_F(SynchronizedLockTest, TestTryULock) {
-  testTryLock<kULockable>(
-      [](auto& synchronized) { return synchronized.tryULock(); });
+  testTryLock<kULockable>([](auto& synchronized) {
+    return synchronized.tryULock();
+  });
 }
 
 template <typename LockPolicy>
@@ -755,18 +759,22 @@ void testLockedPtrCompatibilityExclusive() {
                LPtr<detail::SynchronizedLockPolicyExclusive>,
                LPtr<detail::SynchronizedLockPolicyTryExclusive>&&>::value));
 
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyExclusive>&,
-                LPtr<detail::SynchronizedLockPolicyShared>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyExclusive>,
-                LPtr<detail::SynchronizedLockPolicyTryShared>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyExclusive>,
-                LPtr<detail::SynchronizedLockPolicyUpgrade>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyExclusive>,
-                LPtr<detail::SynchronizedLockPolicyTryUpgrade>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyExclusive>&,
+          LPtr<detail::SynchronizedLockPolicyShared>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyExclusive>,
+          LPtr<detail::SynchronizedLockPolicyTryShared>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyExclusive>,
+          LPtr<detail::SynchronizedLockPolicyUpgrade>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyExclusive>,
+          LPtr<detail::SynchronizedLockPolicyTryUpgrade>&&>::value));
 }
 
 template <template <typename...> class Trait>
@@ -775,18 +783,22 @@ void testLockedPtrCompatibilityShared() {
                LPtr<detail::SynchronizedLockPolicyShared>,
                LPtr<detail::SynchronizedLockPolicyTryShared>&&>::value));
 
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyShared>,
-                LPtr<detail::SynchronizedLockPolicyExclusive>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyShared>,
-                LPtr<detail::SynchronizedLockPolicyTryExclusive>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyShared>,
-                LPtr<detail::SynchronizedLockPolicyUpgrade>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyShared>,
-                LPtr<detail::SynchronizedLockPolicyTryUpgrade>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyShared>,
+          LPtr<detail::SynchronizedLockPolicyExclusive>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyShared>,
+          LPtr<detail::SynchronizedLockPolicyTryExclusive>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyShared>,
+          LPtr<detail::SynchronizedLockPolicyUpgrade>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyShared>,
+          LPtr<detail::SynchronizedLockPolicyTryUpgrade>&&>::value));
 }
 
 template <template <typename...> class Trait>
@@ -795,18 +807,22 @@ void testLockedPtrCompatibilityUpgrade() {
                LPtr<detail::SynchronizedLockPolicyUpgrade>,
                LPtr<detail::SynchronizedLockPolicyTryUpgrade>&&>::value));
 
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyUpgrade>,
-                LPtr<detail::SynchronizedLockPolicyExclusive>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyUpgrade>,
-                LPtr<detail::SynchronizedLockPolicyTryExclusive>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyUpgrade>,
-                LPtr<detail::SynchronizedLockPolicyShared>&&>::value));
-  EXPECT_FALSE((Trait<
-                LPtr<detail::SynchronizedLockPolicyUpgrade>,
-                LPtr<detail::SynchronizedLockPolicyTryShared>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyUpgrade>,
+          LPtr<detail::SynchronizedLockPolicyExclusive>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyUpgrade>,
+          LPtr<detail::SynchronizedLockPolicyTryExclusive>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyUpgrade>,
+          LPtr<detail::SynchronizedLockPolicyShared>&&>::value));
+  EXPECT_FALSE(
+      (Trait<
+          LPtr<detail::SynchronizedLockPolicyUpgrade>,
+          LPtr<detail::SynchronizedLockPolicyTryShared>&&>::value));
 }
 } // namespace
 
@@ -1015,6 +1031,19 @@ TEST(Synchronized, ConstexprConstructor) {
 
   // Not constinit, since this TestStruct constructor is not constexpr
   static folly::Synchronized<TestStruct> ts3{std::in_place, 1, 2};
+}
+
+TEST(Synchronized, TimeoutNull) {
+  folly::Synchronized<int> s(123);
+  auto locked = s.wlock();
+  ASSERT_TRUE(locked);
+  EXPECT_EQ(*locked, 123);
+
+  auto failedLock = s.wlock(std::chrono::milliseconds(1));
+  ASSERT_FALSE(failedLock);
+  ASSERT_TRUE(failedLock.isNull());
+
+  ASSERT_EQ(failedLock.operator->(), nullptr);
 }
 
 } // namespace folly

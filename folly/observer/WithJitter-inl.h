@@ -58,31 +58,32 @@ Observer<T> withJitter(
     std::shared_ptr<const T> get() { return state_->lock()->laggingValue; }
 
     void subscribe(std::function<void()> callback) {
-      handle_ = observer_.addCallback([state = state_,
-                                       observer = observer_,
-                                       callback = std::move(callback),
-                                       lag = lag_,
-                                       jitter = jitter_](auto /* snapshot */) {
-        if (std::exchange(state->lock()->delayedRefreshPending, true)) {
-          return;
-        }
+      handle_ = observer_.addCallback(
+          [state = state_,
+           observer = observer_,
+           callback = std::move(callback),
+           lag = lag_,
+           jitter = jitter_](auto /* snapshot */) {
+            if (std::exchange(state->lock()->delayedRefreshPending, true)) {
+              return;
+            }
 
-        const auto sleepFor = lag - jitter +
-            std::chrono::milliseconds{Random::rand64(2 * jitter.count())};
+            const auto sleepFor = lag - jitter +
+                std::chrono::milliseconds{Random::rand64(2 * jitter.count())};
 
-        auto* executor = dynamic_cast<DefaultKeepAliveExecutor*>(
-            getGlobalCPUExecutor().get());
-        CHECK(executor);
-        futures::sleep(sleepFor)
-            .via(executor->weakRef())
-            .thenValue([callback, observer, state](auto&&) mutable {
-              state->withLock([&](auto& s) {
-                s.laggingValue = observer.getSnapshot().getShared();
-                s.delayedRefreshPending = false;
-              });
-              callback();
-            });
-      });
+            auto* executor = dynamic_cast<DefaultKeepAliveExecutor*>(
+                getGlobalCPUExecutor().get());
+            CHECK(executor);
+            futures::sleep(sleepFor)
+                .via(executor->weakRef())
+                .thenValue([callback, observer, state](auto&&) mutable {
+                  state->withLock([&](auto& s) {
+                    s.laggingValue = observer.getSnapshot().getShared();
+                    s.delayedRefreshPending = false;
+                  });
+                  callback();
+                });
+          });
     }
 
     void unsubscribe() { handle_.cancel(); }

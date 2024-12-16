@@ -22,15 +22,16 @@ cpp_unittest(
     name = "fibers_test",
     srcs = ["FibersTest.cpp"],
     headers = [],
+    labels = ["heavyweight"],
     deps = [
         "//folly:conv",
         "//folly:memory",
         "//folly:random",
+        "//folly/coro:blocking_wait",
         "//folly/coro:gtest_helpers",
         "//folly/coro:timeout",
         "//folly/coro:with_cancellation",
         "//folly/executors:cpu_thread_pool_executor",
-        "//folly/experimental/coro:blocking_wait",
         "//folly/fibers:add_tasks",
         "//folly/fibers:atomic_batch_dispatcher",
         "//folly/fibers:batch_dispatcher",
@@ -70,5 +71,17 @@ cpp_binary(
     deps = [
         "//folly/fibers:fiber_manager_map",
         "//folly/init:init",
+    ],
+)
+
+cpp_unittest(
+    name = "semaphore_test",
+    srcs = ["SemaphoreTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/fibers:semaphore",
+        "//folly/portability:gtest",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization/detail:sleeper",
     ],
 )

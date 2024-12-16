@@ -711,7 +711,7 @@ class F14BasicSet {
    * This function is provided for compliance with C++'s requirements for
    * hashtables, but is no better than a simple `reserve` call for F14.
    *
-   * @param bucketCapcity  The desired capacity across all buckets.
+   * @param bucketCapacity  The desired capacity across all buckets.
    *
    * @methodset Hash policy
    */
@@ -1072,13 +1072,14 @@ template <
     typename KeyEqual,
     typename Alloc,
     typename EligibleForPerturbedInsertionOrder>
-class F14VectorSetImpl : public F14BasicSet<SetPolicyWithDefaults<
-                             VectorContainerPolicy,
-                             Key,
-                             Hasher,
-                             KeyEqual,
-                             Alloc,
-                             EligibleForPerturbedInsertionOrder>> {
+class F14VectorSetImpl
+    : public F14BasicSet<SetPolicyWithDefaults<
+          VectorContainerPolicy,
+          Key,
+          Hasher,
+          KeyEqual,
+          Alloc,
+          EligibleForPerturbedInsertionOrder>> {
  protected:
   using Policy = SetPolicyWithDefaults<
       VectorContainerPolicy,

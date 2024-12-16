@@ -340,11 +340,12 @@ class RequestContext {
    public:
     friend class RequestContext;
 
-    class Iterator : public detail::IteratorAdaptor<
-                         Iterator,
-                         IteratorBase,
-                         StaticContext,
-                         IteratorTag> {
+    class Iterator
+        : public detail::IteratorAdaptor<
+              Iterator,
+              IteratorBase,
+              StaticContext,
+              IteratorTag> {
       using Super = detail::
           IteratorAdaptor<Iterator, IteratorBase, StaticContext, IteratorTag>;
 

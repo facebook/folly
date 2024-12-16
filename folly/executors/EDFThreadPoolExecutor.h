@@ -53,8 +53,9 @@ class EDFThreadPoolSemaphoreImpl : public EDFThreadPoolSemaphore {
  * earliest-deadline-first scheduling policy. Deadline ties are resolved by
  * submission order.
  */
-class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
-                              public ThreadPoolExecutor {
+class EDFThreadPoolExecutor
+    : public SoftRealTimeExecutor,
+      public ThreadPoolExecutor {
  public:
   class Task;
   class TaskQueue;
@@ -63,8 +64,8 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
   static constexpr uint64_t kLatestDeadline =
       std::numeric_limits<uint64_t>::max();
 
-  // Default semaphore is LifoSem.
   static std::unique_ptr<EDFThreadPoolSemaphore> makeDefaultSemaphore();
+  static std::unique_ptr<EDFThreadPoolSemaphore> makeLifoSemSemaphore();
   static std::unique_ptr<EDFThreadPoolSemaphore> makeThrottledLifoSemSemaphore(
       std::chrono::nanoseconds wakeUpInterval = {});
 

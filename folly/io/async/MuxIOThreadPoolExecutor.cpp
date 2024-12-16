@@ -48,8 +48,9 @@ struct MuxIOThreadPoolExecutor::EvbState {
  private:
   static const EventBase::Options& evbOptions() {
 #if FOLLY_HAS_EPOLL
-    static const auto options = EventBase::Options{}.setBackendFactory(
-        [] { return std::make_unique<EpollBackend>(EpollBackend::Options{}); });
+    static const auto options = EventBase::Options{}.setBackendFactory([] {
+      return std::make_unique<EpollBackend>(EpollBackend::Options{});
+    });
     return options;
 #else
     throw std::invalid_argument("EpollBackend not supported");

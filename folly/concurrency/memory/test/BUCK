@@ -41,6 +41,7 @@ cpp_unittest(
     name = "read_mostly_shared_ptr_stress_test",
     srcs = ["ReadMostlySharedPtrStressTest.cpp"],
     headers = [],
+    labels = ["heavyweight"],
     deps = [
         "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/portability:gtest",
@@ -63,6 +64,7 @@ cpp_unittest(
     name = "primary_ptr_test",
     srcs = ["PrimaryPtrTest.cpp"],
     headers = [],
+    labels = ["oss-broken"],
     deps = [
         "//folly/concurrency/memory:primary_ptr",
         "//folly/executors:cpu_thread_pool_executor",

@@ -132,8 +132,9 @@ TEST_F(ElfTest, SymbolsByNameEmpty) {
 }
 
 TEST_F(ElfTest, iterateProgramHeaders) {
-  auto phdr = elfFile_.iterateProgramHeaders(
-      [](auto& h) { return h.p_type == PT_LOAD; });
+  auto phdr = elfFile_.iterateProgramHeaders([](auto& h) {
+    return h.p_type == PT_LOAD;
+  });
   EXPECT_NE(nullptr, phdr);
   EXPECT_GE(phdr->p_filesz, 0);
 }

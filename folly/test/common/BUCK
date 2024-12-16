@@ -1,9 +1,17 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_binary(
     name = "test_main",
+    deps = [
+        ":test_main_lib",
+    ],
+)
+
+cpp_library(
+    name = "test_main_lib",
     srcs = ["TestMain.cpp"],
     deps = [
         "//folly:portability",

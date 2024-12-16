@@ -27,7 +27,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -243,9 +242,10 @@ struct ExpectingDeleter {
 };
 
 TEST(Optional, valueMove) {
-  auto ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
-                 {new int(42), ExpectingDeleter{1337}})
-                 .value();
+  auto ptr =
+      Optional<std::unique_ptr<int, ExpectingDeleter>>(
+          {new int(42), ExpectingDeleter{1337}})
+          .value();
   *ptr = 1337;
 }
 

@@ -591,12 +591,12 @@ void runMtProdConsDeterministicDynamic(
 }
 
 // This is a benchmark, not a test
-TEST(MPMCQueue, DISABLEDMtProdConsDeterministic) {
+TEST(MPMCQueue, DISABLED_MtProdConsDeterministic) {
   runMtProdConsDeterministic(0);
 }
 
 // This is a benchmark, not a test
-TEST(MPMCQueue, DISABLEDMtProdConsDeterministicDynamic) {
+TEST(MPMCQueue, DISABLED_MtProdConsDeterministicDynamic) {
   runMtProdConsDeterministic<true>(0);
 }
 
@@ -609,7 +609,7 @@ void setFromEnv(T& var, const char* envvar) {
 }
 
 // This is a benchmark, not a test
-TEST(MPMCQueue, DISABLEDMtProdConsDeterministicDynamicWithArguments) {
+TEST(MPMCQueue, DISABLED_MtProdConsDeterministicDynamicWithArguments) {
   long seed = 0;
   uint32_t prods = 10;
   uint32_t cons = 10;
@@ -659,12 +659,12 @@ void runMtProdCons() {
 }
 
 // This is a benchmark, not a test
-TEST(MPMCQueue, DISABLEDMtProdCons) {
+TEST(MPMCQueue, DISABLED_MtProdCons) {
   runMtProdCons();
 }
 
 // This is a benchmark, not a test
-TEST(MPMCQueue, DISABLEDMtProdConsDynamic) {
+TEST(MPMCQueue, DISABLED_MtProdConsDynamic) {
   runMtProdCons</* Dynamic = */ true>();
 }
 

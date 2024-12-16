@@ -21,9 +21,9 @@
 #include <folly/channels/FanoutSender.h>
 #include <folly/channels/OnClosedException.h>
 #include <folly/container/F14Map.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/detail/MultiplexerTraits.h>
-#include <folly/experimental/coro/Task.h>
 
 namespace folly {
 namespace channels {
@@ -131,14 +131,13 @@ class MultiplexChannelProcessor;
 template <typename MultiplexerType>
 class MultiplexChannel {
   using TProcessor = detail::MultiplexChannelProcessor<MultiplexerType>;
+  using MultiplexerTypeTraits = detail::MultiplexerTraits<MultiplexerType>;
 
-  using KeyType = typename detail::MultiplexerTraits<MultiplexerType>::KeyType;
-  using KeyContextType =
-      typename detail::MultiplexerTraits<MultiplexerType>::KeyContextType;
+  using KeyType = typename MultiplexerTypeTraits::KeyType;
+  using KeyContextType = typename MultiplexerTypeTraits::KeyContextType;
   using SubscriptionArgType =
-      typename detail::MultiplexerTraits<MultiplexerType>::SubscriptionArgType;
-  using OutputValueType =
-      typename detail::MultiplexerTraits<MultiplexerType>::OutputValueType;
+      typename MultiplexerTypeTraits::SubscriptionArgType;
+  using OutputValueType = typename MultiplexerTypeTraits::OutputValueType;
 
  public:
   MultiplexChannel(MultiplexChannel&& other) noexcept;
@@ -194,11 +193,10 @@ class MultiplexChannel {
 template <typename MultiplexerType>
 class MultiplexedSubscriptions {
  public:
-  using KeyType = typename detail::MultiplexerTraits<MultiplexerType>::KeyType;
-  using KeyContextType =
-      typename detail::MultiplexerTraits<MultiplexerType>::KeyContextType;
-  using OutputValueType =
-      typename detail::MultiplexerTraits<MultiplexerType>::OutputValueType;
+  using MultiplexerTypeTraits = detail::MultiplexerTraits<MultiplexerType>;
+  using KeyType = typename MultiplexerTypeTraits::KeyType;
+  using KeyContextType = typename MultiplexerTypeTraits::KeyContextType;
+  using OutputValueType = typename MultiplexerTypeTraits::OutputValueType;
 
   friend class detail::MultiplexChannelProcessor<MultiplexerType>;
 

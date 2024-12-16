@@ -675,17 +675,17 @@ TEST(Hash, SharedPtr) {
 TEST(Hash, Pointer) {
   pointerTestWithFollyHash<Pointer>();
 
-  EXPECT_TRUE(
-      (std::is_same<
+  EXPECT_TRUE((
+      std::is_same<
           folly::hasher<std::string*>::folly_is_avalanching,
           folly::hasher<std::unique_ptr<std::string>>::folly_is_avalanching>::
-           value));
+          value));
 
-  EXPECT_TRUE(
-      (std::is_same<
+  EXPECT_TRUE((
+      std::is_same<
           folly::hasher<std::string*>::folly_is_avalanching,
           folly::hasher<std::shared_ptr<std::string>>::folly_is_avalanching>::
-           value));
+          value));
 }
 
 struct FNVTestParam {
@@ -950,8 +950,8 @@ void verifyAvalanching(T initialValue, F const& advance) {
     }
 
     // we should actually only need a couple hundred
-    ASSERT_LT(steps, 1000) << unseenCount << " of " << (N * (N - 1))
-                           << " pair transitions unseen";
+    ASSERT_LT(steps, 1000)
+        << unseenCount << " of " << (N * (N - 1)) << " pair transitions unseen";
   }
 }
 } // namespace
@@ -984,8 +984,9 @@ TEST(Traits, follyHashUint64Avalances) {
 }
 
 TEST(Traits, follyHasherInt64Avalances) {
-  verifyAvalanching<folly::hasher<int64_t>>(
-      int64_t{0}, [](int64_t& v) { v++; });
+  verifyAvalanching<folly::hasher<int64_t>>(int64_t{0}, [](int64_t& v) {
+    v++;
+  });
 }
 
 TEST(Traits, follyHasherFloatAvalanches) {

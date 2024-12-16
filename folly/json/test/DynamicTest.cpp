@@ -260,6 +260,45 @@ TEST(Dynamic, ArrayInsertRange) {
   }
 }
 
+TEST(Dynamic, ArrayRangeConstruct) {
+  {
+    std::vector nums{0, 1, 2, 3};
+    auto arr =
+        dynamic(dynamic::array_range_construct, nums.begin(), nums.end());
+    EXPECT_EQ(nums.size(), arr.size());
+    for (size_t i = 0; i < nums.size(); ++i) {
+      EXPECT_EQ(nums[i], arr[i].asInt());
+    }
+  }
+  {
+    std::vector nums{0, 1, 2, 3};
+    auto arr = dynamic(dynamic::array_range_construct, nums);
+    EXPECT_EQ(nums.size(), arr.size());
+    for (size_t i = 0; i < nums.size(); ++i) {
+      EXPECT_EQ(nums[i], arr[i].asInt());
+    }
+  }
+}
+
+TEST(Dynamic, ArrayRangeFactory) {
+  {
+    std::vector nums{0, 1, 2, 3};
+    auto arr = dynamic::array_range(nums.begin(), nums.end());
+    EXPECT_EQ(nums.size(), arr.size());
+    for (size_t i = 0; i < nums.size(); ++i) {
+      EXPECT_EQ(nums[i], arr[i].asInt());
+    }
+  }
+  {
+    std::vector nums{0, 1, 2, 3};
+    auto arr = dynamic::array_range(nums);
+    EXPECT_EQ(nums.size(), arr.size());
+    for (size_t i = 0; i < nums.size(); ++i) {
+      EXPECT_EQ(nums[i], arr[i].asInt());
+    }
+  }
+}
+
 namespace {
 
 struct StaticStrings {

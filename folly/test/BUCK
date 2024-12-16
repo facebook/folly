@@ -118,6 +118,7 @@ cpp_unittest(
     name = "atomic_hash_map_test",
     srcs = ["AtomicHashMapTest.cpp"],
     headers = [],
+    labels = ["heavyweight"],
     deps = [
         "//folly:atomic_hash_map",
         "//folly:benchmark",
@@ -160,6 +161,7 @@ cpp_unittest(
     name = "benchmark_test",
     srcs = ["BenchmarkTest.cpp"],
     deps = [
+        ":test_utils",
         "//folly:benchmark",
         "//folly/detail:perf_scoped",
         "//folly/portability:gflags",
@@ -182,10 +184,18 @@ cpp_benchmark(
     ],
 )
 
+cpp_benchmark(
+    name = "cancellation_token_bench",
+    srcs = ["CancellationTokenBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:cancellation_token",
+    ],
+)
+
 cpp_unittest(
     name = "cancellation_token_test",
     srcs = ["CancellationTokenTest.cpp"],
-    headers = [],
     deps = [
         "//folly:cancellation_token",
         "//folly:optional",
@@ -260,6 +270,10 @@ cpp_unittest(
     name = "concurrent_skip_list_test",
     srcs = ["ConcurrentSkipListTest.cpp"],
     headers = [],
+    labels = [
+        "heavyweight",
+        "slow",
+    ],
     deps = [
         "//folly:concurrent_skip_list",
         "//folly:memory",
@@ -290,11 +304,6 @@ cpp_unittest(
     name = "constructor_callback_list_test",
     srcs = ["ConstructorCallbackListTest.cpp"],
     headers = [],
-    compiler_flags = [
-        # many deps use this, so make sure the unittests pass
-        "-Werror",
-        "-Wglobal-constructor",
-    ],
     deps = [
         "//folly:constructor_callback_list",
         "//folly/portability:gtest",
@@ -363,15 +372,6 @@ cpp_unittest(
     deps = [
         "//folly:demangle",
         "//folly/lang:pretty",
-        "//folly/portability:gtest",
-    ],
-)
-
-cpp_unittest(
-    name = "detail_typelist_test",
-    srcs = ["TypeListTest.cpp"],
-    deps = [
-        "//folly/detail:typelist",
         "//folly/portability:gtest",
     ],
 )
@@ -534,7 +534,6 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:expected",
-        "//folly:portability",
         "//folly/lang:keep",
         "//folly/portability:gtest",
     ],
@@ -779,7 +778,6 @@ cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:function",
-        "//folly:random",
         "//folly/synchronization/detail:inline_function_ref",
     ],
 )
@@ -897,6 +895,7 @@ cpp_unittest(
         "//folly/container:array",
         "//folly/detail:iterators",
         "//folly/portability:gtest",
+        "//folly/portability:sys_types",
     ],
 )
 
@@ -1039,6 +1038,7 @@ cpp_unittest(
         "//folly:memcpy",
         "//folly:portability",
         "//folly/portability:gtest",
+        "//folly/portability:sys_types",
     ],
 )
 
@@ -1134,6 +1134,7 @@ cpp_unittest(
     name = "mpmc_queue_test",
     srcs = ["MPMCQueueTest.cpp"],
     headers = [],
+    labels = ["heavyweight"],
     deps = [
         ":deterministic_schedule",
         "//folly:format",
@@ -1166,6 +1167,7 @@ cpp_unittest(
     name = "observer_container_test",
     srcs = ["ObserverContainerTest.cpp"],
     headers = [],
+    labels = ["case-isolation-failure"],
     deps = [
         ":observer_container_test_util",
         "//folly:observer_container",
@@ -1179,7 +1181,6 @@ cpp_unittest(
     srcs = ["OptionalTest.cpp"],
     headers = [],
     deps = [
-        "//folly:cpp_attributes",
         "//folly:optional",
         "//folly:portability",
         "//folly/portability:gmock",
@@ -1256,7 +1257,6 @@ cpp_unittest(
     srcs = ["PolyTest.cpp"],
     deps = [
         "//folly:conv",
-        "//folly:cpp_attributes",
         "//folly:poly",
         "//folly/poly:basic_interfaces",
         "//folly/portability:gtest",
@@ -1391,6 +1391,7 @@ cpp_unittest(
             "-Wno-shadow-compatible-local",
         ],
     },
+    labels = ["heavyweight"],
     deps = [
         ":deterministic_schedule",
         ":test_utils",
@@ -1417,7 +1418,6 @@ cpp_benchmark(
     ],
     deps = [
         "//folly:benchmark",
-        "//folly:memory",
         "//folly:singleton",
         "//folly:singleton_thread_local",
         "//folly/portability:gflags",
@@ -1428,11 +1428,11 @@ cpp_unittest(
     name = "singleton_test",
     srcs = ["SingletonTest.cpp"],
     headers = [],
+    labels = ["case-isolation-failure"],
     deps = [
         ":singleton_test_structs",
         ":test_utils",
         "//folly:singleton",
-        "//folly/experimental/io:fs_util",
         "//folly/io/async:async_base",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -1471,6 +1471,7 @@ cpp_binary(
     name = "singleton_thread_local_overload.so",
     srcs = ["SingletonThreadLocalTestOverload.cpp"],
     dlopen_enabled = True,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:singleton_thread_local",
     ],
@@ -1483,6 +1484,7 @@ cpp_unittest(
     resources = [
         ":singleton_thread_local_overload.so",
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":singleton_thread_local_overload.so",  # @manual
         "//folly:singleton_thread_local",
@@ -1562,6 +1564,7 @@ cpp_binary(
         "fbsource//third-party/fast_float:fast_float",
         "//folly:benchmark",
         "//folly:stop_watch",
+        "//folly:traits",
     ],
     external_deps = [
         "double_conversion",
@@ -1577,6 +1580,7 @@ cpp_unittest(
         "//folly:fbvector",
         "//folly:string",
         "//folly/container:array",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
     external_deps = [
@@ -1771,6 +1775,7 @@ cpp_binary(
     srcs = ["ThreadLocalTestLib.cpp"],
     headers = [],
     dlopen_enabled = True,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:thread_local",
     ],
@@ -1783,6 +1788,7 @@ cpp_unittest(
     resources = [
         ":thread_local_test_lib.so",
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:memory",
         "//folly:thread_local",
@@ -1844,7 +1850,6 @@ cpp_unittest(
     srcs = ["TryTest.cpp"],
     headers = [],
     deps = [
-        "//folly:memory",
         "//folly:traits",
         "//folly:try",
         "//folly/lang:exception",

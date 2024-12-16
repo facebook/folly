@@ -30,8 +30,9 @@ TEST(Unwrap, simpleScenario) {
 // Makes sure that unwrap() works when chaning Future's commands.
 TEST(Unwrap, chainCommands) {
   Future<Future<int>> future = makeFuture(makeFuture(5484));
-  auto unwrapped =
-      std::move(future).unwrap().thenValue([](int i) { return i; });
+  auto unwrapped = std::move(future).unwrap().thenValue([](int i) {
+    return i;
+  });
   EXPECT_EQ(5484, unwrapped.value());
 }
 

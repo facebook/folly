@@ -28,8 +28,9 @@
 
 namespace folly::test {
 
-class WriteCallback : public folly::AsyncTransport::WriteCallback,
-                      public folly::AsyncWriter::ReleaseIOBufCallback {
+class WriteCallback
+    : public folly::AsyncTransport::WriteCallback,
+      public folly::AsyncWriter::ReleaseIOBufCallback {
  public:
   explicit WriteCallback(bool enableReleaseIOBufCallback = false)
       : state(STATE_WAITING),
@@ -60,8 +61,8 @@ class WriteCallback : public folly::AsyncTransport::WriteCallback,
 
   void writeStarting() noexcept override { writeStartingInvocations++; }
 
-  folly::AsyncWriter::ReleaseIOBufCallback* getReleaseIOBufCallback() noexcept
-      override {
+  folly::AsyncWriter::ReleaseIOBufCallback*
+  getReleaseIOBufCallback() noexcept override {
     return releaseIOBufCallback;
   }
 

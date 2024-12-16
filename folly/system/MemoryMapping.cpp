@@ -314,8 +314,9 @@ bool MemoryMapping::mlock(LockMode mode, LockFlags flags) {
       [flags](void* addr, size_t len) -> int {
         // If no flags are set, mlock2() behaves exactly the same as
         // mlock(). Prefer the portable variant.
-        return flags == LockFlags{} ? ::mlock(addr, len)
-                                    : mlock2wrapper(addr, len, flags);
+        return flags == LockFlags{}
+            ? ::mlock(addr, len)
+            : mlock2wrapper(addr, len, flags);
       },
       mapStart_,
       size_t(mapLength_),

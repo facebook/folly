@@ -84,6 +84,11 @@ FOLLY_GFLAGS_DEFINE_string(
 FOLLY_GFLAGS_DEFINE_string(
     bm_regex, "", "Only benchmarks whose names match this regex will be run.");
 
+FOLLY_GFLAGS_DEFINE_string(
+    bm_file_regex,
+    "",
+    "Only benchmarks whose filenames match this regex will be run.");
+
 FOLLY_GFLAGS_DEFINE_int64(
     bm_min_usec,
     100,
@@ -126,10 +131,15 @@ BenchmarkingState<std::chrono::high_resolution_clock>& globalBenchmarkState() {
 using BenchmarkFun = std::function<detail::TimeIterData(unsigned int)>;
 
 #define FB_FOLLY_GLOBAL_BENCHMARK_BASELINE fbFollyGlobalBenchmarkBaseline
+#define FB_FOLLY_GLOBAL_BENCHMARK_SUSPENDER_BASELINE \
+  fbFollyGlobalBenchmarkSuspenderBaseline
 #define FB_STRINGIZE_X2(x) FOLLY_PP_STRINGIZE(x)
 
 constexpr const char kGlobalBenchmarkBaseline[] =
     FB_STRINGIZE_X2(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE);
+
+constexpr const char kGlobalBenchmarkSuspenderBaseline[] =
+    FB_STRINGIZE_X2(FB_FOLLY_GLOBAL_BENCHMARK_SUSPENDER_BASELINE);
 
 // Add the global baseline
 BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE) {
@@ -138,6 +148,11 @@ BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE) {
 #else
   asm volatile("");
 #endif
+}
+
+// Add the suspender overhead baseline
+BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_SUSPENDER_BASELINE) {
+  BENCHMARK_SUSPEND {}
 }
 
 #undef FB_STRINGIZE_X2
@@ -410,7 +425,7 @@ void printDefaultHeaderContents(std::string_view file, size_t columns) {
   } else {
     std::string truncatedFile = std::string(file.begin(), file.end());
     constexpr std::string_view overflowFilePrefix = "[...]";
-    const int overflow = truncatedFile.size() - maxFileNameChars;
+    const auto overflow = truncatedFile.size() - maxFileNameChars;
     truncatedFile.erase(0, overflow);
     truncatedFile.replace(0, overflowFilePrefix.size(), overflowFilePrefix);
     printHeaderContents(truncatedFile);
@@ -667,6 +682,7 @@ namespace {
 
 struct BenchmarksToRun {
   const detail::BenchmarkRegistration* baseline = nullptr;
+  const detail::BenchmarkRegistration* suspenderBaseline = nullptr;
   std::vector<const detail::BenchmarkRegistration*> benchmarks;
   std::vector<size_t> separatorsAfter;
 };
@@ -687,11 +703,16 @@ BenchmarksToRun selectBenchmarksToRun(
   BenchmarksToRun res;
 
   folly::Optional<boost::regex> bmRegex;
+  folly::Optional<boost::regex> bmFileRegex;
 
   res.benchmarks.reserve(benchmarks.size());
 
   if (!FLAGS_bm_regex.empty()) {
     bmRegex.emplace(FLAGS_bm_regex);
+  }
+
+  if (!FLAGS_bm_file_regex.empty()) {
+    bmFileRegex.emplace(FLAGS_bm_file_regex);
   }
 
   for (auto& bm : benchmarks) {
@@ -705,7 +726,16 @@ BenchmarksToRun selectBenchmarksToRun(
       continue;
     }
 
-    if (!bmRegex || boost::regex_search(bm.name, *bmRegex)) {
+    if (bm.name == kGlobalBenchmarkSuspenderBaseline) {
+      res.suspenderBaseline = &bm;
+      continue;
+    }
+
+    bool matchedName = !bmRegex || boost::regex_search(bm.name, *bmRegex);
+    bool matchedFile =
+        !bmFileRegex || boost::regex_search(bm.file, *bmFileRegex);
+
+    if (matchedName && matchedFile) {
       res.benchmarks.push_back(&bm);
     }
   }
@@ -770,6 +800,13 @@ runBenchmarksWithPrinterImpl(
 
   auto const globalBaseline =
       runBenchmarkGetNSPerIteration(toRun.baseline->func, 0);
+
+  auto const globalSuspenderBaseline =
+      runBenchmarkGetNSPerIteration(toRun.suspenderBaseline->func, 0);
+
+  BenchmarkSuspender::suspenderOverhead =
+      chrono::nanoseconds(static_cast<chrono::high_resolution_clock::rep>(
+          globalSuspenderBaseline.first));
 
   std::set<std::string> counterNames;
   ShouldDrawLineTracker shouldDrawLineTracker(toRun);
@@ -845,6 +882,8 @@ bool operator==(const BenchmarkResult& x, const BenchmarkResult& y) {
 }
 
 std::chrono::high_resolution_clock::duration BenchmarkSuspenderBase::timeSpent;
+std::chrono::high_resolution_clock::duration
+    BenchmarkSuspenderBase::suspenderOverhead;
 
 void BenchmarkingStateBase::addBenchmarkImpl(
     const char* file, StringPiece name, BenchmarkFun fun, bool useCounter) {
@@ -873,6 +912,11 @@ std::vector<std::string> BenchmarkingStateBase::getBenchmarkList() {
 // static
 folly::StringPiece BenchmarkingStateBase::getGlobalBaselineNameForTests() {
   return kGlobalBenchmarkBaseline;
+}
+
+folly::StringPiece
+BenchmarkingStateBase::getGlobalSuspenderBaselineNameForTests() {
+  return kGlobalBenchmarkSuspenderBaseline;
 }
 
 PerfScoped BenchmarkingStateBase::doSetUpPerfScoped(

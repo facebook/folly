@@ -164,8 +164,9 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
       taskInfo.waitTime.count(),
       taskInfo.runTime.count(),
       taskInfo.taskId);
-  forEachTaskObserver(
-      [&](auto& observer) { observer.taskProcessed(taskInfo); });
+  forEachTaskObserver([&](auto& observer) {
+    observer.taskProcessed(taskInfo);
+  });
 
   thread->idle.store(true, std::memory_order_relaxed);
   thread->lastActiveTime.store(
@@ -368,8 +369,9 @@ void ThreadPoolExecutor::subscribeToTaskStats(TaskStatsCallback cb) {
         : cob_(std::move(cob)) {}
 
     void taskProcessed(const ProcessedTaskInfo& info) noexcept override {
-      invokeCatchingExns(
-          "ThreadPoolExecutor: task stats callback", [&] { cob_(info); });
+      invokeCatchingExns("ThreadPoolExecutor: task stats callback", [&] {
+        cob_(info);
+      });
     }
 
    private:

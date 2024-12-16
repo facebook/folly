@@ -342,126 +342,6 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
   return result;
 }
 
-/// Uses `double_conversion` library to convert from string to a floating
-/// point.
-template <class Tgt>
-Expected<Tgt, ConversionCode> str_to_floating_double_conversion(
-    StringPiece* src) noexcept {
-  using namespace double_conversion;
-  static StringToDoubleConverter conv(
-      StringToDoubleConverter::ALLOW_TRAILING_JUNK |
-          StringToDoubleConverter::ALLOW_LEADING_SPACES,
-      0.0,
-      // return this for junk input string
-      std::numeric_limits<Tgt>::quiet_NaN(),
-      nullptr,
-      nullptr);
-
-  if (src->empty()) {
-    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
-  }
-
-  int length; // processed char count
-  auto result = std::is_same<Tgt, float>::value
-      ? conv.StringToFloat(src->data(), static_cast<int>(src->size()), &length)
-      : static_cast<Tgt>(conv.StringToDouble(
-            src->data(), static_cast<int>(src->size()), &length));
-
-  if (!std::isnan(result)) {
-    // If we get here with length = 0, the input string is empty.
-    // If we get here with result = 0.0, it's either because the string
-    // contained only whitespace, or because we had an actual zero value
-    // (with potential trailing junk). If it was only whitespace, we
-    // want to raise an error; length will point past the last character
-    // that was processed, so we need to check if that character was
-    // whitespace or not.
-    if (length == 0 ||
-        (result == 0.0 && std::isspace((*src)[size_t(length) - 1]))) {
-      return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
-    }
-    if (length >= 2) {
-      const char* suffix = src->data() + length - 1;
-      // double_conversion doesn't update length correctly when there is an
-      // incomplete exponent specifier. Converting "12e-f-g" shouldn't consume
-      // any more than "12", but it will consume "12e-".
-
-      // "123-" should only parse "123"
-      if (*suffix == '-' || *suffix == '+') {
-        --suffix;
-        --length;
-      }
-      // "12e-f-g" or "12euro" should only parse "12"
-      if (*suffix == 'e' || *suffix == 'E') {
-        --length;
-      }
-    }
-    src->advance(size_t(length));
-    return Tgt(result);
-  }
-
-  auto* e = src->end();
-  auto* b = std::find_if_not(src->begin(), e, [](char c) {
-    return (c >= '\t' && c <= '\r') || c == ' ';
-  });
-  if (b == e) {
-    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
-  }
-  auto size = size_t(e - b);
-
-  bool negative = false;
-  if (*b == '-') {
-    negative = true;
-    ++b;
-    --size;
-    if (size == 0) {
-      return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
-    }
-  }
-  assert(size > 0);
-
-  result = 0.0;
-
-  switch (tolower_ascii(*b)) {
-    case 'i':
-      if (size >= 3 && tolower_ascii(b[1]) == 'n' &&
-          tolower_ascii(b[2]) == 'f') {
-        if (size >= 8 && tolower_ascii(b[3]) == 'i' &&
-            tolower_ascii(b[4]) == 'n' && tolower_ascii(b[5]) == 'i' &&
-            tolower_ascii(b[6]) == 't' && tolower_ascii(b[7]) == 'y') {
-          b += 8;
-        } else {
-          b += 3;
-        }
-        result = std::numeric_limits<Tgt>::infinity();
-      }
-      break;
-
-    case 'n':
-      if (size >= 3 && tolower_ascii(b[1]) == 'a' &&
-          tolower_ascii(b[2]) == 'n') {
-        b += 3;
-        result = std::numeric_limits<Tgt>::quiet_NaN();
-      }
-      break;
-
-    default:
-      break;
-  }
-
-  if (result == 0.0) {
-    // All bets are off
-    return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
-  }
-
-  if (negative) {
-    result = -result;
-  }
-
-  src->assign(b, e);
-
-  return Tgt(result);
-}
-
 /// Uses `fast_float::from_chars` to convert from string to an integer.
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
@@ -477,6 +357,14 @@ Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
   });
   if (b == e) {
     return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
+  }
+
+  if (*b == '+') {
+    // This function supports a leading + sign, but fast_float does not.
+    b += 1;
+    if (b == e || (!std::isdigit(*b) && *b != '.')) {
+      return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
+    }
   }
 
   Tgt result;
@@ -512,11 +400,7 @@ str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
  */
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
-#if defined(FOLLY_CONV_ATOD_MODE) && FOLLY_CONV_ATOD_MODE == 1
   return detail::str_to_floating_fast_float_from_chars<Tgt>(src);
-#else
-  return detail::str_to_floating_double_conversion<Tgt>(src);
-#endif
 }
 
 template Expected<float, ConversionCode> str_to_floating<float>(
@@ -550,8 +434,9 @@ class SignedValueHandler<T, true> {
   }
 
   ConversionCode overflow() {
-    return negative_ ? ConversionCode::NEGATIVE_OVERFLOW
-                     : ConversionCode::POSITIVE_OVERFLOW;
+    return negative_
+        ? ConversionCode::NEGATIVE_OVERFLOW
+        : ConversionCode::POSITIVE_OVERFLOW;
   }
 
   template <typename U>
@@ -774,8 +659,9 @@ Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
 
   if (FOLLY_UNLIKELY(!tmp.hasValue())) {
     return makeUnexpected(
-        tmp.error() == ConversionCode::POSITIVE_OVERFLOW ? sgn.overflow()
-                                                         : tmp.error());
+        tmp.error() == ConversionCode::POSITIVE_OVERFLOW
+            ? sgn.overflow()
+            : tmp.error());
   }
 
   auto res = sgn.finalize(tmp.value());
@@ -820,361 +706,6 @@ template Expected<__int128, ConversionCode> str_to_integral<__int128>(
 template Expected<unsigned __int128, ConversionCode>
 str_to_integral<unsigned __int128>(StringPiece* src) noexcept;
 #endif
-
-#if defined(FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT) && \
-    FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT == 1
-DtoaFlagsSet::DtoaFlagsSet(DtoaFlags flags) : flags_(flags) {}
-
-bool DtoaFlagsSet::isSet(DtoaFlags flag) const {
-  return (flags_ & flag) == flag;
-}
-
-bool DtoaFlagsSet::emitPositiveExponentSign() const {
-  return isSet(DtoaFlags::EMIT_POSITIVE_EXPONENT_SIGN);
-}
-
-bool DtoaFlagsSet::emitTrailingDecimalPoint() const {
-  return isSet(DtoaFlags::EMIT_TRAILING_DECIMAL_POINT);
-}
-
-bool DtoaFlagsSet::emitTrailingZeroAfterPoint() const {
-  return isSet(DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT);
-}
-
-bool DtoaFlagsSet::uniqueZero() const {
-  return isSet(DtoaFlags::UNIQUE_ZERO);
-}
-
-bool DtoaFlagsSet::noTrailingZero() const {
-  return isSet(DtoaFlags::NO_TRAILING_ZERO);
-}
-
-int ParsedDecimal::numPrecisionFigures() const {
-  int numInts = 0;
-
-  bool intIsZero = true;
-  int numLeadingIntZeros = 0;
-  bool isLeadingIntZero = true;
-  for (char* p = integerBegin; p && p != integerEnd; p++) {
-    if (*p == '0') {
-      if (isLeadingIntZero) {
-        numLeadingIntZeros += 1;
-      } else {
-        numInts += 1;
-      }
-    } else if (std::isdigit(*p)) {
-      intIsZero = false;
-      isLeadingIntZero = false;
-      numInts += 1;
-    } else {
-      folly::throw_exception<std::runtime_error>("non-numeric int");
-    }
-  }
-
-  bool fractionalIsZero = true;
-  int numFractional = 0;
-  int numLeadingFractionalZeros = 0;
-  bool isLeadingFractionalZero = true;
-  for (char* p = fractionalBegin; p && p != fractionalEnd; p++) {
-    if (*p == '0') {
-      if (isLeadingFractionalZero) {
-        numLeadingFractionalZeros += 1;
-      } else {
-        numFractional += 1;
-      }
-    } else if (std::isdigit(*p)) {
-      fractionalIsZero = false;
-      isLeadingFractionalZero = false;
-      numFractional += 1;
-    } else {
-      folly::throw_exception<std::runtime_error>("non-numeric frac");
-    }
-  }
-
-  if (intIsZero && fractionalIsZero) {
-    return numLeadingIntZeros + numLeadingFractionalZeros;
-  } else if (intIsZero) {
-    return numLeadingFractionalZeros + numFractional;
-  } else if (fractionalIsZero) {
-    return numInts + numLeadingFractionalZeros + numFractional;
-  } else {
-    return numInts + numLeadingFractionalZeros + numFractional;
-  }
-}
-
-std::optional<detail::ParsedDecimal::FractionalSuffix>
-ParsedDecimal::fractionalSuffix() const {
-  if (exponentSymbol) {
-    if (exponentEnd) {
-      return std::make_pair(exponentSymbol, exponentEnd);
-    } else if (exponentSign) {
-      return std::make_pair(exponentSymbol, exponentSign);
-    } else {
-      return std::make_pair(exponentSymbol, exponentSymbol + 1);
-    }
-  } else if (exponentSign) {
-    if (exponentEnd) {
-      return std::make_pair(exponentSign, exponentEnd);
-    } else {
-      return std::make_pair(exponentSign, exponentSign + 1);
-    }
-  } else if (exponentBegin) {
-    if (exponentEnd) {
-      return std::make_pair(exponentEnd, exponentEnd);
-    } else {
-      return std::make_pair(exponentBegin, exponentSign + 1);
-    }
-  } else {
-    return std::nullopt;
-  }
-}
-
-void ParsedDecimal::shiftFractionalSuffixPtrs(size_t amount) {
-  if (exponentSymbol) {
-    exponentSymbol += amount;
-  }
-  if (exponentSign) {
-    exponentSign += amount;
-  }
-  if (exponentBegin) {
-    exponentBegin += amount;
-  }
-  if (exponentEnd) {
-    exponentEnd += amount;
-  }
-}
-
-namespace {
-
-struct Stream : std::istream {
-  struct CharBuf : std::streambuf {
-    CharBuf(char* begin, char* end) { setg(begin, begin, end); }
-
-    char* pos() const { return gptr(); }
-  };
-  CharBuf& buf_;
-
-  explicit Stream(CharBuf& buf) : std::istream(&buf), buf_(buf) {}
-
-  char* pos() { return buf_.pos(); }
-
-  void advance() { get(); }
-};
-
-} // namespace
-
-ParsedDecimal::ParsedDecimal(char* begin, char* end) {
-  if (!begin || !end || begin >= end) {
-    folly::throw_exception<std::invalid_argument>("invalid args");
-  }
-
-  Stream::CharBuf buf(begin, end);
-  Stream stream(buf);
-  if (stream.peek() == '-') {
-    negativeSign = stream.pos();
-    stream.advance();
-  }
-
-  if (char c = stream.peek(); std::isdigit(c)) {
-    integerBegin = stream.pos();
-
-    while (!stream.eof() && std::isdigit(stream.peek())) {
-      stream.advance();
-    }
-
-    integerEnd = stream.pos();
-  }
-
-  if (stream.eof()) {
-    if (!integerBegin) {
-      folly::throw_exception<std::invalid_argument>("no int part");
-    }
-
-    return;
-  }
-
-  if (stream.peek() == '.') {
-    decimalPoint = stream.pos();
-    stream.advance();
-  }
-
-  if (stream.eof()) {
-    if (!integerBegin) {
-      folly::throw_exception<std::invalid_argument>("no int part");
-    }
-    return;
-  }
-
-  if (char c = stream.peek(); std::isdigit(c)) {
-    fractionalBegin = stream.pos();
-
-    while (!stream.eof() && std::isdigit(stream.peek())) {
-      stream.advance();
-    }
-
-    fractionalEnd = stream.pos();
-  }
-
-  if (!integerBegin && !fractionalBegin) {
-    // there was no integer or fractional part.
-    folly::throw_exception<std::invalid_argument>("no int or frac part");
-  }
-
-  if (stream.eof()) {
-    return;
-  }
-
-  if (stream.peek() == 'e') {
-    exponentSymbol = stream.pos();
-    stream.advance();
-
-    if (stream.eof()) {
-      return;
-    }
-
-    if (char c = stream.peek(); c == '-' || c == '+') {
-      exponentSign = stream.pos();
-      stream.advance();
-    }
-
-    if (char c = stream.peek(); std::isdigit(c)) {
-      exponentBegin = stream.pos();
-      while (!stream.eof() && std::isdigit(stream.peek())) {
-        stream.advance();
-      }
-
-      exponentEnd = stream.pos();
-    }
-  }
-
-  while (!stream.eof()) {
-    int c = stream.get();
-    if (c != '\0' && !std::isspace(c)) {
-      folly::throw_exception<std::invalid_argument>("unexpected chars");
-    }
-  }
-}
-
-std::pair<char*, char*> formatAsDoubleConversion(
-    bool valueIsZero,
-    DtoaMode mode,
-    unsigned int numDigits,
-    DtoaFlags flags,
-    char* resultBegin,
-    char* resultEnd,
-    char* bufferEnd) {
-  detail::ParsedDecimal parsedDecimal(resultBegin, resultEnd);
-  detail::DtoaFlagsSet flagsSet{flags};
-  if (parsedDecimal.negativeSign && flagsSet.uniqueZero() && valueIsZero) {
-    // skip the negative sign (-) if it's a zero and UNIQUE_ZERO is set
-    resultBegin += 1;
-  }
-
-  unsigned int numTrailingZerosToAdd = 0;
-  if (!flagsSet.noTrailingZero() && mode == DtoaMode::PRECISION) {
-    // std::to_chars outputs no trailing zeros, so if it's not set, add
-    // trailing zeros
-    unsigned int numPrecisionFigures = parsedDecimal.numPrecisionFigures();
-    if (numDigits > numPrecisionFigures) {
-      numTrailingZerosToAdd = numDigits - numPrecisionFigures;
-    }
-  }
-
-  bool insertDecimalPoint = false;
-  char* insertionPoint;
-  if (parsedDecimal.fractionalEnd) {
-    insertionPoint = parsedDecimal.fractionalEnd;
-  } else if (parsedDecimal.decimalPoint) {
-    insertionPoint = parsedDecimal.decimalPoint + 1;
-  } else {
-    insertionPoint = parsedDecimal.integerEnd;
-    if (flagsSet.emitTrailingDecimalPoint() || numTrailingZerosToAdd > 0) {
-      insertDecimalPoint = true;
-    }
-
-    if (flagsSet.emitTrailingZeroAfterPoint()) {
-      numTrailingZerosToAdd += 1;
-    }
-  }
-
-  unsigned int numCharsToInsert =
-      numTrailingZerosToAdd + (insertDecimalPoint ? 1 : 0);
-
-  if (numCharsToInsert > 0) {
-    if (resultEnd + numCharsToInsert > bufferEnd) {
-      folly::throw_exception<std::invalid_argument>("buffer too small");
-    }
-
-    std::optional<detail::ParsedDecimal::FractionalSuffix> fractionalsuffix =
-        parsedDecimal.fractionalSuffix();
-    if (fractionalsuffix.has_value()) {
-      auto [fractionalSuffixBegin, fractionalSuffixEnd] = *fractionalsuffix;
-      std::memmove(
-          insertionPoint + numCharsToInsert,
-          fractionalSuffixBegin,
-          fractionalSuffixEnd - fractionalSuffixBegin);
-      parsedDecimal.shiftFractionalSuffixPtrs(numCharsToInsert);
-    }
-
-    resultEnd += numCharsToInsert;
-  }
-
-  if (insertDecimalPoint) {
-    *insertionPoint++ = '.';
-  }
-
-  while (numTrailingZerosToAdd) {
-    *insertionPoint++ = '0';
-    numTrailingZerosToAdd -= 1;
-  }
-
-  if (parsedDecimal.exponentSymbol) {
-    // std::tochars outputs a lowercase e and it needs to be uppercase.
-    *parsedDecimal.exponentSymbol = 'E';
-  }
-
-  size_t charsToRemove = 0;
-  char* removalBegin = nullptr;
-  if (!flagsSet.emitPositiveExponentSign() && parsedDecimal.exponentSign &&
-      *parsedDecimal.exponentSign == '+') {
-    // std::to_chars outputs a + sign, remove it if the flag wasn't set.
-    // e.g., 1.23e+45 -> 1.23e45
-    removalBegin = parsedDecimal.exponentSign;
-    charsToRemove += 1;
-  }
-
-  if (char* p = parsedDecimal.exponentBegin; p && *p == '0') {
-    // std::to_chars outputs a leading zero, remove it to match
-    // double_conversion formating. e.g., 1.23e+04 -> 1.23e4
-    if (!removalBegin) {
-      removalBegin = p;
-    }
-
-    while (p != parsedDecimal.exponentEnd && *p == '0') {
-      charsToRemove += 1;
-      p += 1;
-    }
-
-    if (p == parsedDecimal.exponentEnd) {
-      // they all were 0 digits. keep a single 0.
-      charsToRemove -= 1;
-      p -= 1;
-      if (p == removalBegin) {
-        // there was only one 0, keep it.
-        removalBegin = nullptr;
-      }
-    }
-  }
-
-  if (charsToRemove && removalBegin) {
-    size_t len = resultEnd - (removalBegin + charsToRemove);
-    std::memmove(removalBegin, removalBegin + charsToRemove, len);
-    resultEnd -= charsToRemove;
-  }
-
-  return std::pair{resultBegin, resultEnd};
-}
-#endif // FOLLY_CONV_AVALIABILITY_TO_CHARS_FLOATING_POINT
 } // namespace detail
 
 ConversionError makeConversionError(ConversionCode code, StringPiece input) {

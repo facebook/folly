@@ -378,10 +378,10 @@ TEST_F(TraitsTest, function_traits) {
   EXPECT_TRUE((is_cvref_t < int&&, int, void()&& noexcept >));
   EXPECT_TRUE((is_cvref_t < int const&&, int, void() const&& noexcept >));
   EXPECT_TRUE((is_cvref_t < int volatile&&, int, void() volatile&& noexcept >));
-  EXPECT_TRUE(
-      (is_cvref_t < int const volatile&&,
-       int,
-       void() const volatile&& noexcept >));
+  EXPECT_TRUE((
+      is_cvref_t < int const volatile&&,
+      int,
+      void() const volatile&& noexcept >));
   EXPECT_TRUE((is_cvref_t<int, int, void(...) noexcept>));
   EXPECT_TRUE((is_cvref_t<int const, int, void(...) const noexcept>));
   EXPECT_TRUE((is_cvref_t<int volatile, int, void(...) volatile noexcept>));

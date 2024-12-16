@@ -46,7 +46,7 @@ void prepend(std::unique_ptr<IOBuf>& buf, StringPiece str) {
 
 TEST(IOBuf, Simple) {
   unique_ptr<IOBuf> buf(IOBuf::create(100));
-  uint32_t cap = buf->capacity();
+  const auto cap = buf->capacity();
   EXPECT_LE(100, cap);
   EXPECT_EQ(0, buf->headroom());
   EXPECT_EQ(0, buf->length());
@@ -187,11 +187,11 @@ TEST(IOBuf, TakeOwnershipFreeOnErrorBugfix) {
   static void* freedBuf = nullptr;
   static void* freedUserData = nullptr;
 
-  folly::IOBuf::FreeFunction freeFn = [](void* calledBuf,
-                                         void* calledUserData) {
-    freedBuf = calledBuf;
-    freedUserData = calledUserData;
-  };
+  folly::IOBuf::FreeFunction freeFn =
+      [](void* calledBuf, void* calledUserData) {
+        freedBuf = calledBuf;
+        freedUserData = calledUserData;
+      };
 
   int userData = 0;
   char buf[1024];
@@ -1902,4 +1902,11 @@ TEST(IOBuf, MaybeSplitTail) {
   // The original buffer is gone, but we can continue splitting its tail.
   auto buf3 = buf2->maybeSplitTail();
   append(buf3, "!!!1");
+}
+
+TEST(IOBuf, FromString) {
+  EXPECT_EQ(folly::IOBuf::fromString("")->toString(), "");
+  EXPECT_EQ(folly::IOBuf::fromString("test")->toString(), "test");
+  auto longStr = std::string(1000, '0');
+  EXPECT_EQ(folly::IOBuf::fromString(longStr)->toString(), longStr);
 }

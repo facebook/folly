@@ -180,25 +180,30 @@ constexpr std::size_t cacheline_align_v = has_extended_alignment
     : max_align_v;
 struct alignas(cacheline_align_v) cacheline_align_t {};
 
-namespace detail {
+/// valid_align_value
+///
+/// Returns whether an alignment value is valid. Valid alignment values are
+/// powers of two representable as std::uintptr_t, with possibly additional
+/// context-specific restrictions that are not checked here.
+struct valid_align_value_fn {
+  static_assert(sizeof(std::size_t) <= sizeof(std::uintptr_t));
+  constexpr bool operator()(std::size_t align) const noexcept {
+    return align && !(align & (align - 1));
+  }
+  constexpr bool operator()(std::align_val_t align) const noexcept {
+    return operator()(static_cast<std::size_t>(align));
+  }
+};
+inline constexpr valid_align_value_fn valid_align_value;
 
-constexpr void validateAlignment(std::size_t alignment) {
-  [[maybe_unused]] bool isPowerOf2 = (alignment & (alignment - 1)) == 0;
-  [[maybe_unused]] bool lessThanLimit =
-      alignment < std::numeric_limits<std::uintptr_t>::max();
-  assert(isPowerOf2 && lessThanLimit);
-}
-
-} // namespace detail
-
-//  align_floor
-//  align_floor_fn
-//
-//  Returns pointer rounded down to the given alignment.
+/// align_floor
+/// align_floor_fn
+///
+/// Returns pointer rounded down to the given alignment.
 struct align_floor_fn {
   constexpr std::uintptr_t operator()(
       std::uintptr_t x, std::size_t alignment) const {
-    detail::validateAlignment(alignment);
+    assert(valid_align_value(alignment));
     return x & ~(alignment - 1);
   }
 
@@ -208,17 +213,17 @@ struct align_floor_fn {
     asUint = (*this)(asUint, alignment);
     return reinterpret_cast<T*>(asUint);
   }
+};
+inline constexpr align_floor_fn align_floor;
 
-} inline constexpr align_floor;
-
-//  align_ceil
-//  align_ceil_fn
-//
-//  Returns pointer rounded up to the given alignment.
+/// align_ceil
+/// align_ceil_fn
+///
+/// Returns pointer rounded up to the given alignment.
 struct align_ceil_fn {
   constexpr std::uintptr_t operator()(
       std::uintptr_t x, std::size_t alignment) const {
-    detail::validateAlignment(alignment);
+    assert(valid_align_value(alignment));
     auto alignmentAsInt = static_cast<std::intptr_t>(alignment);
     return (x + alignmentAsInt - 1) & (-alignmentAsInt);
   }
@@ -229,6 +234,7 @@ struct align_ceil_fn {
     asUint = (*this)(asUint, alignment);
     return reinterpret_cast<T*>(asUint);
   }
-} inline constexpr align_ceil;
+};
+inline constexpr align_ceil_fn align_ceil;
 
 } // namespace folly

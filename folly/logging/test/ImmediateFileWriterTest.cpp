@@ -18,9 +18,7 @@
 
 #include <signal.h>
 
-#ifndef _WIN32
-#include <unistd.h>
-#endif
+#include <folly/portability/Unistd.h>
 
 #include <folly/Conv.h>
 #include <folly/Exception.h>
@@ -92,7 +90,7 @@ void handleLoggingError(
 
 TEST(ImmediateFileWriter, ioError) {
   std::array<int, 2> fds;
-  auto rc = pipe(fds.data());
+  auto rc = fileops::pipe(fds.data());
   folly::checkUnixError(rc, "failed to create pipe");
   signal(SIGPIPE, SIG_IGN);
 
@@ -103,7 +101,7 @@ TEST(ImmediateFileWriter, ioError) {
 
   // Create an ImmediateFileWriter that refers to a pipe whose read end is
   // closed, then log a bunch of messages to it.
-  ::close(fds[0]);
+  fileops::close(fds[0]);
 
   size_t numMessages = 100;
   {

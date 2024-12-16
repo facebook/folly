@@ -27,7 +27,7 @@
 namespace folly {
 
 uint64_t getCurrentThreadID() {
-#if __APPLE__
+#if defined(__APPLE__)
   return uint64_t(pthread_mach_thread_np(pthread_self()));
 #elif defined(_WIN32)
   return uint64_t(GetCurrentThreadId());
@@ -39,7 +39,7 @@ uint64_t getCurrentThreadID() {
 namespace detail {
 
 uint64_t getOSThreadIDSlow() {
-#if __APPLE__
+#if defined(__APPLE__)
   uint64_t tid;
   pthread_threadid_np(nullptr, &tid);
   return tid;

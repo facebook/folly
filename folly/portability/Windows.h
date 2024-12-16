@@ -32,24 +32,8 @@
 // disabled to ensure all of the normal names get declared properly.
 #include <stdio.h>
 
-#ifndef __STDC__
-/* nolint */
-#define __STDC__ 1
-#pragma push_macro("_CRT_DECLARE_NONSTDC_NAMES")
-#ifdef _CRT_DECLARE_NONSTDC_NAMES
-#undef _CRT_DECLARE_NONSTDC_NAMES
-#endif
-#pragma push_macro("_CRT_INTERNAL_NONSTDC_NAMES")
-#undef _CRT_INTERNAL_NONSTDC_NAMES
 #include <direct.h> // @manual nolint
 #include <io.h> // @manual nolint
-#undef __STDC__
-#pragma pop_macro("_CRT_INTERNAL_NONSTDC_NAMES")
-#pragma pop_macro("_CRT_DECLARE_NONSTDC_NAMES")
-#else
-#include <direct.h> // @manual nolint
-#include <io.h> // @manual nolint
-#endif
 
 #if defined(min) || defined(max)
 #error Windows.h needs to be included by this header, or else NOMINMAX needs \

@@ -32,6 +32,11 @@ FOLLY_GFLAGS_DEFINE_bool(
     true,
     "CPUThreadPoolExecutor will dynamically create and destroy threads");
 
+FOLLY_GFLAGS_DEFINE_bool(
+    folly_cputhreadpoolexecutor_use_throttled_lifo_sem,
+    true,
+    "CPUThreadPoolExecutor will use ThrottledLifoSem by default");
+
 namespace folly {
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
@@ -50,13 +55,27 @@ CPUThreadPoolExecutor::CPUTask::CPUTask()
 
 /* static */ auto CPUThreadPoolExecutor::makeDefaultQueue()
     -> std::unique_ptr<BlockingQueue<CPUTask>> {
-  return std::make_unique<UnboundedBlockingQueue<CPUTask>>();
+  return FLAGS_folly_cputhreadpoolexecutor_use_throttled_lifo_sem
+      ? makeThrottledLifoSemQueue()
+      : makeLifoSemQueue();
 }
 
 /* static */ auto CPUThreadPoolExecutor::makeDefaultPriorityQueue(
     int8_t numPriorities) -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  return FLAGS_folly_cputhreadpoolexecutor_use_throttled_lifo_sem
+      ? makeThrottledLifoSemPriorityQueue(numPriorities)
+      : makeLifoSemPriorityQueue(numPriorities);
+}
+
+/* static */ auto CPUThreadPoolExecutor::makeLifoSemQueue()
+    -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  return std::make_unique<UnboundedBlockingQueue<CPUTask, LifoSem>>();
+}
+
+/* static */ auto CPUThreadPoolExecutor::makeLifoSemPriorityQueue(
+    int8_t numPriorities) -> std::unique_ptr<BlockingQueue<CPUTask>> {
   CHECK_GT(numPriorities, 0) << "Number of priorities should be positive";
-  return std::make_unique<PriorityUnboundedBlockingQueue<CPUTask>>(
+  return std::make_unique<PriorityUnboundedBlockingQueue<CPUTask, LifoSem>>(
       numPriorities);
 }
 
@@ -98,7 +117,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     Options opt)
     : ThreadPoolExecutor(
           numThreads.first, numThreads.second, std::move(threadFactory)),
-      taskQueue_(taskQueue.release()),
+      taskQueue_(std::move(taskQueue)),
       prohibitBlockingOnThreadPools_{opt.blocking} {
   setNumThreads(numThreads.first);
   if (numThreads.second == 0) {
@@ -121,16 +140,11 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::pair<size_t, size_t> numThreads,
     std::shared_ptr<ThreadFactory> threadFactory,
     Options opt)
-    : ThreadPoolExecutor(
-          numThreads.first, numThreads.second, std::move(threadFactory)),
-      taskQueue_(makeDefaultQueue()),
-      prohibitBlockingOnThreadPools_{opt.blocking} {
-  setNumThreads(numThreads.first);
-  if (numThreads.second == 0) {
-    minThreads_.store(1, std::memory_order_relaxed);
-  }
-  registerThreadPoolExecutor(this);
-}
+    : CPUThreadPoolExecutor(
+          numThreads,
+          makeDefaultQueue(),
+          std::move(threadFactory),
+          std::move(opt)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads, Options opt)
     : CPUThreadPoolExecutor(

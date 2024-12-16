@@ -67,8 +67,9 @@ namespace folly {
  */
 template <typename MessageT>
 class NotificationQueue {
-  struct Node : public boost::intrusive::slist_base_hook<
-                    boost::intrusive::cache_last<true>> {
+  struct Node
+      : public boost::intrusive::slist_base_hook<
+            boost::intrusive::cache_last<true>> {
     template <typename MessageTT>
     Node(MessageTT&& msg, std::shared_ptr<RequestContext> ctx)
         : msg_(std::forward<MessageTT>(msg)), ctx_(std::move(ctx)) {}
@@ -272,9 +273,9 @@ class NotificationQueue {
       if (eventfd_ == -1) {
         if (errno == ENOSYS || errno == EINVAL) {
           // eventfd not availalble
-          LOG(ERROR) << "failed to create eventfd for NotificationQueue: "
-                     << errno << ", falling back to pipe mode (is your kernel "
-                     << "> 2.6.30?)";
+          LOG(ERROR)
+              << "failed to create eventfd for NotificationQueue: " << errno
+              << ", falling back to pipe mode (is your kernel " << "> 2.6.30?)";
           fdType = FdType::PIPE;
         } else {
           // some other error
@@ -288,7 +289,7 @@ class NotificationQueue {
 #endif
 
     if (fdType == FdType::PIPE) {
-      if (pipe(pipeFds_)) {
+      if (fileops::pipe(pipeFds_)) {
         folly::throwSystemError(
             "Failed to create pipe for NotificationQueue", errno);
       }
@@ -307,8 +308,8 @@ class NotificationQueue {
               errno);
         }
       } catch (...) {
-        ::close(pipeFds_[0]);
-        ::close(pipeFds_[1]);
+        fileops::close(pipeFds_[0]);
+        fileops::close(pipeFds_[1]);
         throw;
       }
     }
@@ -321,15 +322,15 @@ class NotificationQueue {
       queue_.pop_front();
     }
     if (eventfd_ >= 0) {
-      ::close(eventfd_);
+      fileops::close(eventfd_);
       eventfd_ = -1;
     }
     if (pipeFds_[0] >= 0) {
-      ::close(pipeFds_[0]);
+      fileops::close(pipeFds_[0]);
       pipeFds_[0] = -1;
     }
     if (pipeFds_[1] >= 0) {
-      ::close(pipeFds_[1]);
+      fileops::close(pipeFds_[1]);
       pipeFds_[1] = -1;
     }
   }
@@ -503,11 +504,11 @@ class NotificationQueue {
         // eventfd(2) dictates that we must write a 64-bit integer
         uint64_t signal = 1;
         bytes_expected = sizeof(signal);
-        bytes_written = ::write(eventfd_, &signal, bytes_expected);
+        bytes_written = fileops::write(eventfd_, &signal, bytes_expected);
       } else {
         uint8_t signal = 1;
         bytes_expected = sizeof(signal);
-        bytes_written = ::write(pipeFds_[1], &signal, bytes_expected);
+        bytes_written = fileops::write(pipeFds_[1], &signal, bytes_expected);
       }
     } while (bytes_written == -1 && errno == EINTR);
 
@@ -532,8 +533,8 @@ class NotificationQueue {
       // still drain.
       uint8_t message[32];
       ssize_t result;
-      while ((result = readNoInt(pipeFds_[0], &message, sizeof(message))) !=
-             -1) {
+      while (
+          (result = readNoInt(pipeFds_[0], &message, sizeof(message))) != -1) {
         bytes_read += result;
       }
       CHECK(result == -1 && errno == EAGAIN);

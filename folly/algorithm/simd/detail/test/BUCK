@@ -10,7 +10,8 @@ cpp_unittest(
     deps = [
         "//folly:range",
         "//folly/algorithm/simd/detail:simd_any_of",
-        "//folly/algorithm/simd/detail:simd_char_platform",
+        "//folly/algorithm/simd/detail:simd_platform",
+        "//folly/container:span",
         "//folly/portability:gtest",
     ],
 )
@@ -20,6 +21,17 @@ cpp_unittest(
     srcs = ["SimdForEachTest.cpp"],
     deps = [
         "//folly/algorithm/simd/detail:simd_for_each",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "traits_test",
+    srcs = ["TraitsTest.cpp"],
+    compiler_flags = ["--std=c++17"],
+    deps = [
+        "//folly/algorithm/simd/detail:traits",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
 )

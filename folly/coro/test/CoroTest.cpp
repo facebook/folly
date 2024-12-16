@@ -18,18 +18,18 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/Chrono.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/DetachOnCancel.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Sleep.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/TimedWait.h>
+#include <folly/coro/WithCancellation.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/DetachOnCancel.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Sleep.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/TimedWait.h>
-#include <folly/experimental/coro/WithCancellation.h>
 #include <folly/fibers/Semaphore.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
@@ -243,17 +243,19 @@ TEST_F(CoroTest, CurrentExecutor) {
   };
 
   ScopedEventBaseThread evbThread;
-  auto task = taskGetCurrentExecutor(evbThread.getEventBase())
-                  .scheduleOn(evbThread.getEventBase());
+  auto task =
+      taskGetCurrentExecutor(evbThread.getEventBase())
+          .scheduleOn(evbThread.getEventBase());
   EXPECT_EQ(42, coro::blockingWait(std::move(task)));
 }
 
 TEST_F(CoroTest, TimedWaitFuture) {
   auto taskTimedWaitFuture = []() -> coro::Task<void> {
     auto ex = co_await coro::co_current_executor;
-    auto fastFuture = futures::sleep(std::chrono::milliseconds{50})
-                          .via(ex)
-                          .thenValue([](Unit) { return 42; });
+    auto fastFuture =
+        futures::sleep(std::chrono::milliseconds{50})
+            .via(ex)
+            .thenValue([](Unit) { return 42; });
     auto fastResult = co_await coro::timed_wait(
         std::move(fastFuture), std::chrono::milliseconds{100});
     EXPECT_TRUE(fastResult);
@@ -278,8 +280,8 @@ TEST_F(CoroTest, TimedWaitFuture) {
         futures::sleep(std::chrono::milliseconds{200})
             .via(ex)
             .thenValue(
-                [lifetimePromise = std::move(lifetimePromise)](Unit) mutable {
-                  lifetimePromise.setValue();
+                [lifetimePromise_ = std::move(lifetimePromise)](Unit) mutable {
+                  lifetimePromise_.setValue();
                   return 42;
                 });
     auto slowResult = co_await coro::timed_wait(
@@ -773,8 +775,9 @@ TEST_F(CoroTest, SemiNoReschedule) {
   };
   EXPECT_EQ(
       2, // One extra for keepAlive release logic of ManualExecutor
-      runAndCountExecutorAdd(folly::coro::co_invoke(
-          [&]() -> coro::Task<void> { EXPECT_EQ(42, co_await task42()); })));
+      runAndCountExecutorAdd(folly::coro::co_invoke([&]() -> coro::Task<void> {
+        EXPECT_EQ(42, co_await task42());
+      })));
   EXPECT_EQ(
       2, // One extra for keepAlive release logic of ManualExecutor
       runAndCountExecutorAdd(folly::coro::co_invoke([&]() -> coro::Task<void> {

@@ -25,7 +25,8 @@
 
 #include <tuple>
 
-#include <folly/Conv.h>
+#include <fmt/format.h>
+
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/functional/Invoke.h>
@@ -36,7 +37,7 @@ namespace folly {
  * Given a map and a key, return the value corresponding to the key in the map,
  * or a given default value if the key doesn't exist in the map.
  */
-template <typename Map, typename Key>
+template <typename Map, typename Key = typename Map::key_type>
 typename Map::mapped_type get_default(const Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end()) ? (pos->second) : (typename Map::mapped_type{});
@@ -50,8 +51,9 @@ typename Map::mapped_type get_default(
     const Map& map, const Key& key, Value&& dflt) {
   using M = typename Map::mapped_type;
   auto pos = map.find(key);
-  return (pos != map.end()) ? pos->second
-                            : static_cast<M>(static_cast<Value&&>(dflt));
+  return (pos != map.end())
+      ? pos->second
+      : static_cast<M>(static_cast<Value&&>(dflt));
 }
 
 /**
@@ -86,7 +88,7 @@ const typename Map::mapped_type& get_or_throw(
   if (pos != map.end()) {
     return pos->second;
   }
-  throw_exception<E>(folly::to<std::string>(exceptionStrPrefix, key));
+  throw_exception<E>(fmt::format("{}{}", exceptionStrPrefix, key));
 }
 
 template <
@@ -101,7 +103,7 @@ typename Map::mapped_type& get_or_throw(
   if (pos != map.end()) {
     return pos->second;
   }
-  throw_exception<E>(folly::to<std::string>(exceptionStrPrefix, key));
+  throw_exception<E>(fmt::format("{}{}", exceptionStrPrefix, key));
 }
 
 /**
@@ -146,9 +148,8 @@ const typename Map::mapped_type& get_ref_default(
 
 template <class Map, typename Key = typename Map::key_type>
 const typename Map::mapped_type& get_ref_default(
-    const Map& map,
-    const Key& key,
-    const typename Map::mapped_type&& dflt) = delete;
+    const Map& map, const Key& key, const typename Map::mapped_type&& dflt) =
+    delete;
 
 /**
  * Given a map and a key, return a reference to the value corresponding to the
@@ -174,18 +175,29 @@ const typename Map::mapped_type& get_ref_default(
  * the key in the map, or nullptr if the key doesn't exist in the map.
  */
 template <class Map, typename Key = typename Map::key_type>
-const auto* get_ptr(const Map& map, const Key& key) {
+auto get_ptr(const Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end() ? &pos->second : nullptr);
+}
+template <class Map, typename Key = typename Map::key_type>
+const typename Map::mapped_type* FOLLY_NULLABLE
+get_ptr(const Map* FOLLY_NULLABLE map, const Key& key) {
+  return map ? get_ptr(*map, key) : nullptr;
 }
 
 /**
  * Non-const overload of the above.
  */
 template <class Map, typename Key = typename Map::key_type>
-auto* get_ptr(Map& map, const Key& key) {
+auto get_ptr(Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end() ? &pos->second : nullptr);
+}
+
+template <class Map, typename Key = typename Map::key_type>
+typename Map::mapped_type* FOLLY_NULLABLE
+get_ptr(Map* FOLLY_NULLABLE map, const Key& key) {
+  return map ? get_ptr(*map, key) : nullptr;
 }
 
 /**
@@ -226,7 +238,9 @@ template <
     size_t pathLength,
     class = typename std::enable_if<(pathLength > 0)>::type>
 struct NestedMapType {
-  using type = typename NestedMapType<T, pathLength - 1>::type::mapped_type;
+  using type =
+      typename NestedMapType<std::remove_pointer_t<T>, pathLength - 1>::type::
+          mapped_type;
 };
 
 template <class T>
@@ -258,14 +272,22 @@ auto extract_default(const KeysDefault&... keysDefault) ->
  * Given a map of maps and a path of keys, return a Optional<V> if the nested
  * key exists and None if the nested keys does not exist in the map.
  */
-template <class Map, class Key1, class Key2, class... Keys>
+template <
+    template <typename> class Optional = folly::Optional,
+    class Map,
+    class Key1,
+    class Key2,
+    class... Keys>
 auto get_optional(
     const Map& map, const Key1& key1, const Key2& key2, const Keys&... keys)
-    -> folly::Optional<
+    -> Optional<
         typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type> {
   auto pos = map.find(key1);
-  return pos != map.end() ? get_optional(pos->second, key2, keys...)
-                          : folly::none;
+  if (pos != map.end()) {
+    return get_optional<Optional>(pos->second, key2, keys...);
+  } else {
+    return {};
+  }
 }
 
 /**
@@ -275,16 +297,40 @@ auto get_optional(
 template <class Map, class Key1, class Key2, class... Keys>
 auto get_ptr(
     const Map& map, const Key1& key1, const Key2& key2, const Keys&... keys) ->
-    typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type const* {
+    typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type
+    const* FOLLY_NULLABLE {
   auto pos = map.find(key1);
   return pos != map.end() ? get_ptr(pos->second, key2, keys...) : nullptr;
 }
 
 template <class Map, class Key1, class Key2, class... Keys>
+auto get_ptr(
+    const Map* FOLLY_NULLABLE map,
+    const Key1& key1,
+    const Key2& key2,
+    const Keys&... keys) ->
+    typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type
+    const* FOLLY_NULLABLE {
+  return map ? get_ptr(*map, key1, key2, keys...) : nullptr;
+}
+
+template <class Map, class Key1, class Key2, class... Keys>
 auto get_ptr(Map& map, const Key1& key1, const Key2& key2, const Keys&... keys)
-    -> typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type* {
+    -> typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::
+        type* FOLLY_NULLABLE {
   auto pos = map.find(key1);
   return pos != map.end() ? get_ptr(pos->second, key2, keys...) : nullptr;
+}
+
+template <class Map, class Key1, class Key2, class... Keys>
+auto get_ptr(
+    Map* FOLLY_NULLABLE map,
+    const Key1& key1,
+    const Key2& key2,
+    const Keys&... keys) ->
+    typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::
+        type* FOLLY_NULLABLE {
+  return map ? get_ptr(*map, key1, key2, keys...) : nullptr;
 }
 
 /**

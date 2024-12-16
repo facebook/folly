@@ -90,8 +90,9 @@ LogLevel stringToLogLevel(StringPiece name) {
     auto remainder = lowerName.subpiece(info.lowerPrefix.size());
     auto level = folly::tryTo<int>(remainder).value_or(-1);
     if (level < 0 ||
-        static_cast<unsigned int>(level) > (static_cast<uint32_t>(info.max) -
-                                            static_cast<uint32_t>(info.min))) {
+        static_cast<unsigned int>(level) >
+            (static_cast<uint32_t>(info.max) -
+             static_cast<uint32_t>(info.min))) {
       throw std::range_error(to<string>(
           "invalid ", info.lowerPrefix, " logger level: ", name.str()));
     }

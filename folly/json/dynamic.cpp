@@ -50,14 +50,14 @@ const char* dynamic::typeName() const {
 
 TypeError::TypeError(const std::string& expected, dynamic::Type actual)
     : std::runtime_error(sformat(
-          "TypeError: expected dynamic type `{}', but had type `{}'",
+          "TypeError: expected dynamic type '{}', but had type '{}'",
           expected,
           dynamic::typeName(actual))) {}
 
 TypeError::TypeError(
     const std::string& expected, dynamic::Type actual1, dynamic::Type actual2)
     : std::runtime_error(sformat(
-          "TypeError: expected dynamic types `{}, but had types `{}' and `{}'",
+          "TypeError: expected dynamic types '{}', but had types '{}' and '{}'",
           expected,
           dynamic::typeName(actual1),
           dynamic::typeName(actual2))) {}
@@ -370,7 +370,7 @@ std::size_t dynamic::hash() const {
       // keep consistent with detail::DynamicHasher
       return Hash()(getString());
   }
-  assume_unreachable();
+  FOLLY_ASSUME_UNREACHABLE();
 }
 
 char const* dynamic::typeName(Type t) {

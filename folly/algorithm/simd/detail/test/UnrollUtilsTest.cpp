@@ -20,7 +20,7 @@
 
 #include <array>
 
-namespace folly::detail {
+namespace folly::simd::detail {
 
 TEST(UnrollUtilsTest, ArrayMap) {
   constexpr std::array<int, 3> in = {1, 2, 3};
@@ -115,4 +115,4 @@ TEST(UnrollUtilsTest, UnrollUntil) {
       "");
 }
 
-} // namespace folly::detail
+} // namespace folly::simd::detail

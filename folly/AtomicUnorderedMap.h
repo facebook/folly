@@ -321,8 +321,9 @@ struct AtomicUnorderedInsertMap {
   /// http://functionalcpp.wordpress.com/2013/08/28/tuple-forwarding/).
   template <class K, class V>
   std::pair<const_iterator, bool> emplace(const K& key, V&& value) {
-    return findOrConstruct(
-        key, [&](void* raw) { new (raw) Value(std::forward<V>(value)); });
+    return findOrConstruct(key, [&](void* raw) {
+      new (raw) Value(std::forward<V>(value));
+    });
   }
 
   const_iterator find(const Key& key) const {

@@ -602,29 +602,19 @@ TEST_F(XlogTest, getXlogCategoryName) {
 
   // Buck's directory prefixes for generated source files
   // should be stripped out
-#ifdef FOLLY_XLOG_SUPPORT_BUCK1
-  EXPECT_EQ(
-      "myproject.generated_header.h",
-      LogName::canonicalize(getXlogCategoryNameForFile(
-          "buck-out/gen/myproject#headers/myproject/generated_header.h")));
-  EXPECT_EQ(
-      "foo.bar.test.h",
-      LogName::canonicalize(getXlogCategoryNameForFile(
-          "buck-out/gen/foo/bar#header-map,headers/foo/bar/test.h")));
-#endif // FOLLY_XLOG_SUPPORT_BUCK1
 
-#ifdef FOLLY_XLOG_SUPPORT_BUCK2
-  EXPECT_EQ(
-      "dirA.dirB.Foo.h",
-      LogName::canonicalize(getXlogCategoryNameForFile(
-          "buck-out/v2/gen/fbcode/bfcdfe5fb8e2f7e1/dirA/dirB/__some_lib_rule__/"
-          "buck-headers/dirA/dirB/Foo.h")));
-  EXPECT_EQ(
-      "abc.xyz.def.h",
-      LogName::canonicalize(getXlogCategoryNameForFile(
-          "buck-out/v2/gen/fbcode/bfcdfe5fb8e2f7e1/dirA/dirB/__some_lib_rule__/"
-          "buck-private-headers/abc/xyz/def.h")));
-#endif // FOLLY_XLOG_SUPPORT_BUCK2
+  if (folly::detail::xlog_support_buck2) {
+    EXPECT_EQ(
+        "dirA.dirB.Foo.h",
+        LogName::canonicalize(getXlogCategoryNameForFile(
+            "buck-out/v2/gen/fbcode/bfcdfe5fb8e2f7e1/dirA/dirB/__some_lib_rule__/"
+            "buck-headers/dirA/dirB/Foo.h")));
+    EXPECT_EQ(
+        "abc.xyz.def.h",
+        LogName::canonicalize(getXlogCategoryNameForFile(
+            "buck-out/v2/gen/fbcode/bfcdfe5fb8e2f7e1/dirA/dirB/__some_lib_rule__/"
+            "buck-private-headers/abc/xyz/def.h")));
+  }
 }
 
 TEST(Xlog, xlogStripFilename) {

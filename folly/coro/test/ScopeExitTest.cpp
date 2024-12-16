@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/AsyncScope.h>
-#include <folly/experimental/coro/AutoCleanup.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/AsyncScope.h>
+#include <folly/coro/AutoCleanup.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Task.h>
 #include <folly/portability/GTest.h>
 
 #include <stdexcept>
@@ -127,10 +127,11 @@ TEST_F(ScopeExitTest, NonMoveableState) {
         std::make_unique<AsyncScope>());
 
     auto ex = co_await co_current_executor;
-    asyncScope->add(co_invoke([this]() -> Task<> {
-                      ++count;
-                      co_return;
-                    }).scheduleOn(ex));
+    asyncScope->add(
+        co_invoke([this]() -> Task<> {
+          ++count;
+          co_return;
+        }).scheduleOn(ex));
   }());
   EXPECT_EQ(count, 2);
 }

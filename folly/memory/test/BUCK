@@ -7,8 +7,10 @@ cpp_unittest(
     name = "arena_test",
     srcs = ["ArenaTest.cpp"],
     headers = [],
+    labels = ["oss-broken"],
     deps = [
         "//folly:memory",
+        "//folly:random",
         "//folly/memory:arena",
         "//folly/memory:mallctl_helper",
         "//folly/memory:malloc",
@@ -33,6 +35,7 @@ cpp_unittest(
         "//folly/memory:mallctl_helper",
         "//folly/memory:malloc",
         "//folly/portability:gtest",
+        "//folly/portability:sys_types",
     ],
 )
 
@@ -75,6 +78,7 @@ cpp_unittest(
         "not_null_test.cpp",
     ],
     supports_static_listing = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly/memory:not_null",
         "//folly/portability:gtest",
@@ -96,6 +100,7 @@ cpp_unittest(
     name = "sanitize_address_test",
     srcs = ["SanitizeAddressTest.cpp"],
     deps = [
+        "//folly/lang:new",
         "//folly/memory:sanitize_address",
         "//folly/portability:gtest",
     ],

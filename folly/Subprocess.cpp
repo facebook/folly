@@ -139,8 +139,9 @@ CalledProcessError::CalledProcessError(ProcessReturnCode rc)
 
 static inline std::string toSubprocessSpawnErrorMessage(
     char const* executable, int errCode, int errnoValue) {
-  auto prefix = errCode == kExecFailure ? "failed to execute "
-                                        : "error preparing to execute ";
+  auto prefix = errCode == kExecFailure
+      ? "failed to execute "
+      : "error preparing to execute ";
   return to<std::string>(prefix, executable, ": ", errnoStr(errnoValue));
 }
 
@@ -310,12 +311,12 @@ void Subprocess::spawn(
 #if FOLLY_HAVE_PIPE2
   checkUnixError(::pipe2(errFds, O_CLOEXEC), "pipe2");
 #else
-  checkUnixError(::pipe(errFds), "pipe");
+  checkUnixError(fileops::pipe(errFds), "pipe");
 #endif
   SCOPE_EXIT {
-    CHECK_ERR(::close(errFds[0]));
+    CHECK_ERR(fileops::close(errFds[0]));
     if (errFds[1] >= 0) {
-      CHECK_ERR(::close(errFds[1]));
+      CHECK_ERR(fileops::close(errFds[1]));
     }
   };
 
@@ -343,7 +344,7 @@ void Subprocess::spawn(
   // we have no way of cleaning up the child.
 
   // Close writable side of the errFd pipe in the parent process
-  CHECK_ERR(::close(errFds[1]));
+  CHECK_ERR(fileops::close(errFds[1]));
   errFds[1] = -1;
 
   // Read from the errFd pipe, to tell if the child ran into any errors before
@@ -378,7 +379,7 @@ void Subprocess::spawnInternal(
   SCOPE_EXIT {
     // These are only pipes, closing them shouldn't fail
     for (int cfd : childFds) {
-      CHECK_ERR(::close(cfd));
+      CHECK_ERR(fileops::close(cfd));
     }
   };
 
@@ -396,7 +397,7 @@ void Subprocess::spawnInternal(
       r = ::pipe2(fds, O_CLOEXEC);
       checkUnixError(r, "pipe2");
 #else
-      r = ::pipe(fds);
+      r = fileops::pipe(fds);
       checkUnixError(r, "pipe");
       r = fcntl(fds[0], F_SETFD, FD_CLOEXEC);
       checkUnixError(r, "set FD_CLOEXEC");
@@ -557,7 +558,7 @@ FOLLY_POP_WARNING
 // handler.
 void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
 #if defined(__linux__)
-  int dirfd = open("/proc/self/fd", O_RDONLY);
+  int dirfd = fileops::open("/proc/self/fd", O_RDONLY);
   if (dirfd != -1) {
     char buffer[32768];
     int res;
@@ -571,6 +572,8 @@ void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
       // We do not use the POSIX interfaces (opendir, readdir, etc..) for
       // reading a directory since they may allocate memory / grab a lock, which
       // is unsafe in this context.
+      FOLLY_PUSH_WARNING
+      FOLLY_CLANG_DISABLE_WARNING("-Wzero-length-array")
       struct linux_dirent64 {
         uint64_t d_ino;
         int64_t d_off;
@@ -578,6 +581,7 @@ void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
         unsigned char d_type;
         char d_name[0];
       } const* entry;
+      FOLLY_POP_WARNING
       for (int offset = 0; offset < res; offset += entry->d_reclen) {
         entry = reinterpret_cast<struct linux_dirent64*>(buffer + offset);
         if (entry->d_type != DT_LNK) {
@@ -590,19 +594,19 @@ void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
           continue;
         }
         if ((fd != dirfd) && (fdActions.count(fd) == 0)) {
-          ::close(fd);
+          fileops::close(fd);
         }
       }
     }
-    ::close(dirfd);
+    fileops::close(dirfd);
     return;
   }
 #endif
   // If not running on Linux or if we failed to open /proc/self/fd, try to close
   // all possible open file descriptors.
-  for (int fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
+  for (auto fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
     if (fdActions.count(fd) == 0) {
-      ::close(fd);
+      fileops::close(fd);
     }
   }
 }
@@ -650,17 +654,17 @@ int Subprocess::prepareChild(
     if (p.second == DEV_NULL) {
       // folly/portability/Fcntl provides an impl of open that will
       // map this to NUL on Windows.
-      auto devNull = ::open("/dev/null", O_RDWR | O_CLOEXEC);
+      auto devNull = fileops::open("/dev/null", O_RDWR | O_CLOEXEC);
       if (devNull == -1) {
         return errno;
       }
       // note: dup2 will not set CLOEXEC on the destination
       if (::dup2(devNull, p.first) == -1) {
         // explicit close on error to avoid leaking fds
-        ::close(devNull);
+        fileops::close(devNull);
         return errno;
       }
-      ::close(devNull);
+      fileops::close(devNull);
     } else if (p.second != p.first) {
       if (::dup2(p.second, p.first) == -1) {
         return errno;
@@ -704,10 +708,8 @@ int Subprocess::prepareChild(
 }
 
 int Subprocess::runChild(
-    const char* executable,
-    char** argv,
-    char** env,
-    const Options& options) const {
+    const char* executable, char** argv, char** env, const Options& options)
+    const {
   // Now, finally, exec.
   if (options.usePath_) {
     ::execvp(executable, argv);

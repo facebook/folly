@@ -85,8 +85,9 @@ TEST(Via, thenValue) {
 }
 
 TEST(Via, thenFuture) {
-  auto future = makeFuture(1).thenTry(
-      [](Try<int>&& t) { return makeFuture(t.value() == 1); });
+  auto future = makeFuture(1).thenTry([](Try<int>&& t) {
+    return makeFuture(t.value() == 1);
+  });
   EXPECT_TRUE(future.value());
 }
 
@@ -104,57 +105,60 @@ TEST(Via, thenFunction) {
     }
   } w;
 
-  auto f = makeFuture(std::string("start"))
-               .thenTry(doWorkStatic)
-               .thenTry(Worker::doWorkStatic)
-               .then(&Worker::doWork, &w);
+  auto f =
+      makeFuture(std::string("start"))
+          .thenTry(doWorkStatic)
+          .thenTry(Worker::doWorkStatic)
+          .then(&Worker::doWork, &w);
 
   EXPECT_EQ(f.value(), "start;static;class-static;class");
 }
 
 TEST_F(ViaFixture, threadHops) {
   auto westThreadId = std::this_thread::get_id();
-  auto f = via(eastExecutor.get())
-               .thenTry([=](Try<Unit>&& /* t */) {
-                 EXPECT_NE(std::this_thread::get_id(), westThreadId);
-                 return makeFuture<int>(1);
-               })
-               .via(westExecutor.get())
-               .thenTry([=](Try<int>&& t) {
-                 EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-                 return t.value();
-               });
+  auto f =
+      via(eastExecutor.get())
+          .thenTry([=](Try<Unit>&& /* t */) {
+            EXPECT_NE(std::this_thread::get_id(), westThreadId);
+            return makeFuture<int>(1);
+          })
+          .via(westExecutor.get())
+          .thenTry([=](Try<int>&& t) {
+            EXPECT_EQ(std::this_thread::get_id(), westThreadId);
+            return t.value();
+          });
   EXPECT_EQ(std::move(f).getVia(waiter.get()), 1);
 }
 
 TEST_F(ViaFixture, chainVias) {
   auto westThreadId = std::this_thread::get_id();
-  auto f = via(eastExecutor.get())
-               .thenValue([=](auto&&) {
-                 EXPECT_NE(std::this_thread::get_id(), westThreadId);
-                 return 1;
-               })
-               .thenValue([=](int val) {
-                 return makeFuture(val)
-                     .via(westExecutor.get())
-                     .thenValue([=](int v) mutable {
-                       EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-                       return v + 1;
-                     });
-               })
-               .thenValue([=](int val) {
-                 // even though ultimately the future that triggers this one
-                 // executed in the west thread, this thenValue() inherited the
-                 // executor from its predecessor, ie the eastExecutor.
-                 EXPECT_NE(std::this_thread::get_id(), westThreadId);
-                 return val + 1;
-               })
-               .via(westExecutor.get())
-               .thenValue([=](int val) {
-                 // go back to west, so we can wait on it
-                 EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-                 return val + 1;
-               });
+  auto f =
+      via(eastExecutor.get())
+          .thenValue([=](auto&&) {
+            EXPECT_NE(std::this_thread::get_id(), westThreadId);
+            return 1;
+          })
+          .thenValue([=](int val) {
+            return makeFuture(val)
+                .via(westExecutor.get())
+                .thenValue([=](int v) mutable {
+                  EXPECT_EQ(std::this_thread::get_id(), westThreadId);
+                  return v + 1;
+                });
+          })
+          .thenValue([=](int val) {
+            // even though ultimately the future that triggers this one
+            // executed in the west thread, this thenValue() inherited the
+            // executor from its predecessor, ie the eastExecutor.
+            EXPECT_NE(std::this_thread::get_id(), westThreadId);
+            return val + 1;
+          })
+          .via(westExecutor.get())
+          .thenValue([=](int val) {
+            // go back to west, so we can wait on it
+            EXPECT_EQ(std::this_thread::get_id(), westThreadId);
+            return val + 1;
+          });
 
   EXPECT_EQ(std::move(f).getVia(waiter.get()), 4);
 }
@@ -174,8 +178,9 @@ struct PriorityExecutor : public Executor {
 
   void addWithPriority(Func f, int8_t priority) override {
     int mid = getNumPriorities() / 2;
-    int p = priority < 0 ? std::max(0, mid + priority)
-                         : std::min(getNumPriorities() - 1, mid + priority);
+    int p = priority < 0
+        ? std::max(0, mid + priority)
+        : std::min(getNumPriorities() - 1, mid + priority);
     EXPECT_LT(p, 3);
     EXPECT_GE(p, 0);
     if (p == 0) {
@@ -201,8 +206,8 @@ TEST(Via, priority) {
   via(&exe, 0).thenValue([](auto&&) {});
   via(&exe, 1).thenValue([](auto&&) {});
   via(&exe, 42).thenValue([](auto&&) {}); // overflow should go to max priority
-  via(&exe, -42).thenValue(
-      [](auto&&) {}); // underflow should go to min priority
+  via(&exe, -42).thenValue([](auto&&) {
+  }); // underflow should go to min priority
   via(&exe).thenValue([](auto&&) {}); // default to mid priority
   via(&exe, Executor::LO_PRI).thenValue([](auto&&) {});
   via(&exe, Executor::HI_PRI).thenValue([](auto&&) {});
@@ -515,10 +520,12 @@ TEST(Via, viaRaces) {
   std::thread t1([&] {
     p.getFuture()
         .via(&x)
-        .thenTry(
-            [&](Try<Unit>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
-        .thenTry(
-            [&](Try<Unit>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+        .thenTry([&](Try<Unit>&&) {
+          EXPECT_EQ(tid, std::this_thread::get_id());
+        })
+        .thenTry([&](Try<Unit>&&) {
+          EXPECT_EQ(tid, std::this_thread::get_id());
+        })
         .thenTry([&](Try<Unit>&&) { done = true; });
   });
 

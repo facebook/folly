@@ -89,9 +89,8 @@ auto compute_total_tape_len_if_possible(I f, S l) {
   }
   // We have to special case StringPiece to special case `const char*` and
   // `char[]`
-  else if constexpr (std::is_convertible_v<
-                         iterator_value_type_t<I>,
-                         folly::StringPiece>) {
+  else if constexpr (
+      std::is_convertible_v<iterator_value_type_t<I>, folly::StringPiece>) {
     std::size_t records_size = 0U;
     std::size_t flat_size = 0U;
 

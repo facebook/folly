@@ -75,6 +75,6 @@ BENCHMARK_PARAM(insertCache, 1754650) // 1.75M
 BENCHMARK_PARAM(insertCache, 11356334) // 11.3M
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   runBenchmarks();
 }

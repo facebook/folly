@@ -20,7 +20,6 @@
 #include <string>
 
 #include <folly/FBString.h>
-#include <folly/Random.h>
 
 namespace folly {
 namespace test {

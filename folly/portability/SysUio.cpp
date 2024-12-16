@@ -134,12 +134,12 @@ static ssize_t doVecOperation(int fd, const iovec* iov, int count) {
   while (curIov < count) {
     ssize_t res = 0;
     if (isRead) {
-      res = read(fd, curBase, (unsigned int)curLen);
+      res = folly::fileops::read(fd, curBase, (unsigned int)curLen);
       if (res == 0 && curLen != 0) {
         break; // End of File
       }
     } else {
-      res = write(fd, curBase, (unsigned int)curLen);
+      res = folly::fileops::write(fd, curBase, (unsigned int)curLen);
       // Write of zero bytes is fine.
     }
 

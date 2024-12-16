@@ -115,8 +115,9 @@ void StrandContext::executeNext(
       ++pendingCount;
 
       if (pendingCount == queueSize) {
-        queueSize = thisPtr->scheduled_.fetch_sub(
-                        pendingCount, std::memory_order_acq_rel) -
+        queueSize =
+            thisPtr->scheduled_.fetch_sub(
+                pendingCount, std::memory_order_acq_rel) -
             pendingCount;
         if (queueSize == 0) {
           // Queue is now empty

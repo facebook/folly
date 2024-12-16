@@ -1,0 +1,13 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+cpp_library(
+    name = "range_sve2",
+    srcs = ["RangeSve2.cpp"],
+    headers = ["RangeSve2.h"],
+    deps = [
+        "//folly:portability",
+        "//folly/detail:range_common",
+    ],
+)

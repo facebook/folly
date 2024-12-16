@@ -263,14 +263,14 @@ TEST_F(CompressionCoreLocalContextPoolTest, testSwap) {
   EXPECT_NE(ptr1.get(), ptr2.get());
   auto tmp1 = ptr1.get();
   auto tmp2 = ptr2.get();
-  ptr2.reset();
   ptr1.reset();
+  ptr2.reset();
   ptr2 = pool_->get();
   EXPECT_EQ(ptr2.get(), tmp2);
   ptr1 = pool_->get();
   EXPECT_EQ(ptr1.get(), tmp1);
-  ptr1.reset();
   ptr2.reset();
+  ptr1.reset();
   ptr1 = pool_->get();
   EXPECT_EQ(ptr1.get(), tmp1);
   ptr2 = pool_->get();
@@ -326,8 +326,8 @@ TEST_F(CompressionCoreLocalContextPoolTest, testReset) {
     auto ptr2 = pool_->get();
     ptr1->use();
     ptr2->use();
-    EXPECT_EQ(ptr1.get(), tmp2);
-    EXPECT_EQ(ptr2.get(), tmp1);
+    EXPECT_EQ(ptr1.get(), tmp1);
+    EXPECT_EQ(ptr2.get(), tmp2);
   }
 }
 

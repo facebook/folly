@@ -547,8 +547,9 @@ class UnboundedQueue {
         auto deadline = std::chrono::steady_clock::now() + dur;
         WaitOptions opt;
         opt.spin_max(dur);
-        detail::spin_pause_until(
-            deadline, opt, [s] { return s->nextSegment(); });
+        detail::spin_pause_until(deadline, opt, [s] {
+          return s->nextSegment();
+        });
         next = s->nextSegment();
         if (next) {
           return next;

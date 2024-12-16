@@ -19,8 +19,11 @@
 #include <boost/crc.hpp>
 
 #include <folly/Benchmark.h>
+#include <folly/Portability.h>
 #include <folly/Random.h>
 #include <folly/external/fast-crc32/avx512_crc32c_v8s3x4.h>
+#include <folly/external/fast-crc32/neon_crc32c_v3s4x2e_v2.h>
+#include <folly/external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.h>
 #include <folly/external/fast-crc32/sse_crc32c_v8s3x3.h>
 #include <folly/hash/Hash.h>
 #include <folly/hash/detail/ChecksumDetail.h>
@@ -119,8 +122,10 @@ TEST(Checksum, crc32cHardware) {
   if (folly::detail::crc32c_hw_supported()) {
     testCRC32C(folly::detail::crc32c_hw);
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
   }
 }
 
@@ -132,8 +137,10 @@ TEST(Checksum, crc32cHardwareEq) {
       EXPECT_EQ(sw, hw);
     }
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
   }
 }
 
@@ -141,39 +148,47 @@ TEST(Checksum, crc32cContinuationHardware) {
   if (folly::detail::crc32c_hw_supported()) {
     testCRC32CContinuation(folly::detail::crc32c_hw);
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
   }
 }
 
 TEST(Checksum, crc32cHardwareSse42) {
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32c_hw_supported_sse42()) {
     testCRC32C(folly::detail::sse_crc32c_v8s3x3);
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping SSE4.2 hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
   }
 }
 
 TEST(Checksum, crc32cHardwareEqSse42) {
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32c_hw_supported_sse42()) {
     for (size_t i = 0; i < 1000; i++) {
       auto sw = folly::detail::crc32c_sw(buffer, i, 0);
       auto hw = folly::detail::sse_crc32c_v8s3x3(buffer, i, 0);
       ASSERT_EQ(sw, hw);
     }
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping SSE4.2 hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
   }
 }
 
 TEST(Checksum, crc32cContinuationHardwareSse42) {
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32c_hw_supported_sse42()) {
     testCRC32CContinuation(folly::detail::sse_crc32c_v8s3x3);
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping SSE4.2 hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
   }
 }
 
@@ -181,8 +196,10 @@ TEST(Checksum, crc32cHardwareAvx512) {
   if (folly::detail::crc32c_hw_supported_avx512()) {
     testCRC32C(folly::detail::avx512_crc32c_v8s3x4);
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping AVX512 hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
   }
 }
 
@@ -194,8 +211,10 @@ TEST(Checksum, crc32cHardwareEqAvx512) {
       ASSERT_EQ(sw, hw);
     }
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping AVX512 hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
   }
 }
 
@@ -203,8 +222,84 @@ TEST(Checksum, crc32cContinuationHardwareAvx512) {
   if (folly::detail::crc32c_hw_supported_avx512()) {
     testCRC32CContinuation(folly::detail::avx512_crc32c_v8s3x4);
   } else {
+#if FOLLY_X64
     LOG(WARNING) << "skipping AVX512 hardware-accelerated CRC-32C tests"
                  << " (not supported on this CPU)";
+#endif
+  }
+}
+
+TEST(Checksum, crc32cHardwareNeon) {
+  if (folly::detail::crc32c_hw_supported_neon()) {
+    testCRC32C(folly::detail::neon_crc32c_v3s4x2e_v2);
+  } else {
+#if FOLLY_AARCH64
+    LOG(WARNING) << "skipping NEON hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+#endif
+  }
+}
+
+TEST(Checksum, crc32cHardwareEqNeon) {
+  if (folly::detail::crc32c_hw_supported_neon()) {
+    for (size_t i = 0; i < 1000; i++) {
+      auto sw = folly::detail::crc32c_sw(buffer, i, 0);
+      auto hw = folly::detail::neon_crc32c_v3s4x2e_v2(buffer, i, 0);
+      ASSERT_EQ(sw, hw);
+    }
+  } else {
+#if FOLLY_AARCH64
+    LOG(WARNING) << "skipping NEON hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+#endif
+  }
+}
+
+TEST(Checksum, crc32cContinuationHardwareNeon) {
+  if (folly::detail::crc32c_hw_supported_neon()) {
+    testCRC32CContinuation(folly::detail::neon_crc32c_v3s4x2e_v2);
+  } else {
+#if FOLLY_AARCH64
+    LOG(WARNING) << "skipping NEON hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+#endif
+  }
+}
+
+TEST(Checksum, crc32cHardwareNeonEor3Sha3) {
+  if (folly::detail::crc32c_hw_supported_neon_eor3_sha3()) {
+    testCRC32C(folly::detail::neon_eor3_crc32c_v8s2x4_s3);
+  } else {
+#if FOLLY_AARCH64
+    LOG(WARNING) << "skipping NEON+EOR3+SHA3 hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+#endif
+  }
+}
+
+TEST(Checksum, crc32cHardwareEqNeonEor3Sha3) {
+  if (folly::detail::crc32c_hw_supported_neon_eor3_sha3()) {
+    for (size_t i = 0; i < 1000; i++) {
+      auto sw = folly::detail::crc32c_sw(buffer, i, 0);
+      auto hw = folly::detail::neon_eor3_crc32c_v8s2x4_s3(buffer, i, 0);
+      ASSERT_EQ(sw, hw);
+    }
+  } else {
+#if FOLLY_AARCH64
+    LOG(WARNING) << "skipping NEON+EOR3+SHA3 hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+#endif
+  }
+}
+
+TEST(Checksum, crc32cContinuationHardwareNeonEor3Sha3) {
+  if (folly::detail::crc32c_hw_supported_neon_eor3_sha3()) {
+    testCRC32CContinuation(folly::detail::neon_eor3_crc32c_v8s2x4_s3);
+  } else {
+#if FOLLY_AARCH64
+    LOG(WARNING) << "skipping NEON+EOR3+SHA3 hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+#endif
   }
 }
 
@@ -220,7 +315,7 @@ TEST(Checksum, crc32clargeBuffers) {
 
   constexpr uint32_t kCrc = 2860399007;
 
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32c_hw_supported_sse42()) {
     auto crcSse42 = folly::detail::sse_crc32c_v8s3x3(bufp, kLargeBufSz, ~0);
     ASSERT_EQ(kCrc, crcSse42);
     auto crcHw = folly::detail::crc32c_hw(bufp, kLargeBufSz, ~0);
@@ -229,6 +324,15 @@ TEST(Checksum, crc32clargeBuffers) {
   if (folly::detail::crc32c_hw_supported_avx512()) {
     auto crcAvx = folly::detail::avx512_crc32c_v8s3x4(bufp, kLargeBufSz, ~0);
     ASSERT_EQ(kCrc, crcAvx);
+  }
+  if (folly::detail::crc32c_hw_supported_neon()) {
+    auto crcHw = folly::detail::neon_crc32c_v3s4x2e_v2(bufp, kLargeBufSz, ~0);
+    ASSERT_EQ(kCrc, crcHw);
+  }
+  if (folly::detail::crc32c_hw_supported_neon_eor3_sha3()) {
+    auto crcHw =
+        folly::detail::neon_eor3_crc32c_v8s2x4_s3(bufp, kLargeBufSz, ~0);
+    ASSERT_EQ(kCrc, crcHw);
   }
 }
 #endif
@@ -242,7 +346,7 @@ TEST(Checksum, crc32cContinuationAutodetect) {
 }
 
 TEST(Checksum, crc32) {
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32_hw_supported()) {
     // Just check that sw and hw match
     for (auto expected : expectedResults) {
       uint32_t sw_res =
@@ -258,7 +362,7 @@ TEST(Checksum, crc32) {
 }
 
 TEST(Checksum, crc32Continuation) {
-  if (folly::detail::crc32c_hw_supported()) {
+  if (folly::detail::crc32_hw_supported()) {
     // Just check that sw and hw match
     for (auto expected : expectedResults) {
       auto halflen = expected.length / 2;
@@ -462,7 +566,7 @@ BENCHMARK(crc32c_combine_512KB_block, iters) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Populate a buffer with a deterministic pattern
   // on which to compute checksums

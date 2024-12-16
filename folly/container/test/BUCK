@@ -331,6 +331,35 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "regex_match_cache_test",
+    srcs = ["RegexMatchCacheTest.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:portability",
+        "//folly:utility",
+        "//folly/container:f14_hash",
+        "//folly/container:regex_match_cache",
+        "//folly/container:sorted_vector_types",
+        "//folly/container:span",
+        "//folly/lang:keep",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "span_test",
+    srcs = ["span_test.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "//folly/container:span",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
 cpp_benchmark(
     name = "sparse_byte_set_benchmark",
     srcs = ["SparseByteSetBenchmark.cpp"],

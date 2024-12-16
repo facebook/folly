@@ -23,7 +23,7 @@
 #include <folly/synchronization/Baton.h>
 
 TEST(GlobalCPUExecutorTest, CPUThreadCountFlagSet) {
-  gflags::FlagSaver flagsaver;
+  folly::gflags::FlagSaver flagsaver;
 
   FLAGS_folly_global_cpu_executor_threads = 100;
   auto cpu_threadpool = dynamic_cast<folly::CPUThreadPoolExecutor*>(

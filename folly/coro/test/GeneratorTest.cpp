@@ -19,7 +19,7 @@
 #include <algorithm>
 
 #include <folly/ScopeGuard.h>
-#include <folly/experimental/coro/Generator.h>
+#include <folly/coro/Generator.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES

@@ -403,7 +403,6 @@ slowDefaultNumLowerBits                                     10.88ns   91.90M
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   folly::Init init(&argc, &argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   auto ret = RUN_ALL_TESTS();
   if (ret == 0 && FLAGS_benchmark) {

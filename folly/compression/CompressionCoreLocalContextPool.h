@@ -120,10 +120,9 @@ class CompressionCoreLocalContextPool {
   void store(T* ptr) {
     DCHECK(ptr);
     pool_.get_resetter()(ptr);
-    T* expected = nullptr;
-    const bool stored = local().ptr.compare_exchange_weak(expected, ptr);
-    if (!stored) {
-      return_to_backing_pool(ptr);
+    auto other = local().ptr.exchange(ptr);
+    if (other != nullptr) {
+      return_to_backing_pool(other);
     }
   }
 

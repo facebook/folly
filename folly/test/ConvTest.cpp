@@ -538,20 +538,10 @@ void testDoubleToString() {
   EXPECT_EQ(to<String>(10.25), "10.25");
   EXPECT_EQ(to<String>(0.000001), "0.000001");
   EXPECT_EQ(to<String>(0.0000001), "1E-7");
-  EXPECT_EQ(
-      to<String>(111111111111111111111.0),
-      // These decimal strings both represent the same IEEE-754 value
-      detail::kConvFloatToStringImpl == detail::FloatToStringImpl::StdToChars
-          ? "111111111111111114752"
-          : "111111111111111110000");
+  EXPECT_EQ(to<String>(111111111111111111111.0), "111111111111111110000");
   EXPECT_EQ(to<String>(100000000000000000000.0), "100000000000000000000");
   EXPECT_EQ(to<String>(100000000000000000000.1), "100000000000000000000");
-  EXPECT_EQ(
-      to<String>(1111111111111111111111.0),
-      // These decimal strings both represent the same IEEE-754 value
-      detail::kConvFloatToStringImpl == detail::FloatToStringImpl::StdToChars
-          ? "1111111111111111081984"
-          : "1.1111111111111111E21");
+  EXPECT_EQ(to<String>(1111111111111111111111.0), "1.1111111111111111E21");
   EXPECT_EQ(to<String>(1.123e10), "11230000000");
   EXPECT_EQ(to<String>(1E22), "1E22");
 
@@ -757,13 +747,7 @@ TEST(Conv, DoubleToAppendFixedNoTrailingZero) {
 /// Tests for DtoaMode::PRECISION with various flags and numDigits.
 TEST(Conv, DoubleToAppendPrecisionFlags) {
   EXPECT_EQ_TO_APPEND(
-      detail::kConvFloatToStringImpl == detail::FloatToStringImpl::StdToChars
-          ? "1.2E-6"
-          : "0.0000012",
-      0.0000012345,
-      DtoaMode::PRECISION,
-      2,
-      DtoaFlags::NO_FLAGS);
+      "0.0000012", 0.0000012345, DtoaMode::PRECISION, 2, DtoaFlags::NO_FLAGS);
 
   EXPECT_EQ_TO_APPEND(
       "1.2E9", 1234567890.0, DtoaMode::PRECISION, 2, DtoaFlags::NO_FLAGS);
@@ -863,9 +847,7 @@ TEST(Conv, DoubleToAppendPrecisionNoTrailingZero) {
           DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT);
 
   EXPECT_EQ_TO_APPEND(
-      detail::kConvFloatToStringImpl == detail::FloatToStringImpl::StdToChars
-          ? "1.2E-6"
-          : "0.0000012",
+      "0.0000012",
       0.0000012345,
       DtoaMode::PRECISION,
       2,
@@ -1642,9 +1624,58 @@ template <class String>
 void tryStringToFloat(const StrToFloat<String>& strToFloat) {
   auto rv1 = strToFloat(String(""));
   EXPECT_FALSE(rv1.hasValue());
+
+  const std::array<String, 9> kZero{{
+      "0",
+      "+0",
+      "-0",
+      ".0",
+      "+.0",
+      "-.0",
+      "0.0",
+      "+0.0",
+      "-0.0",
+  }};
+  for (const auto& input : kZero) {
+    auto rv = strToFloat(input);
+    EXPECT_TRUE(rv.hasValue()) << input;
+    EXPECT_EQ(rv.value(), 0.0f) << input;
+  }
+
   auto rv2 = strToFloat(String("3.14"));
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-5);
+
+  auto rv2Positive = strToFloat(String("+3.14"));
+  EXPECT_TRUE(rv2Positive.hasValue());
+  EXPECT_NEAR(rv2Positive.value(), 3.14, 1e-5);
+
+  auto rv2PositiveLessThan1 = strToFloat(String("+.14"));
+  EXPECT_TRUE(rv2PositiveLessThan1.hasValue());
+  EXPECT_NEAR(rv2PositiveLessThan1.value(), .14, 1e-5);
+
+  const std::array<String, 6> kInvalidSigns{{
+      "-",
+      "+",
+      "--3.14",
+      "++3.14",
+      "+-3.14",
+      "-+3.14",
+  }};
+  for (const auto& input : kInvalidSigns) {
+    auto rv = strToFloat(input);
+    EXPECT_TRUE(rv.hasError()) << input;
+    EXPECT_EQ(rv.error(), ConversionCode::STRING_TO_FLOAT_ERROR) << input;
+  }
+
+  auto rv2Negative = strToFloat(String("-3.14"));
+  EXPECT_TRUE(rv2Negative.hasValue());
+  EXPECT_NEAR(rv2Negative.value(), -3.14, 1e-5);
+
+  auto rv2NegativeLessThan1 = strToFloat(String("-.14"));
+  EXPECT_TRUE(rv2NegativeLessThan1.hasValue());
+  EXPECT_NEAR(rv2NegativeLessThan1.value(), -.14, 1e-5);
+
   // No trailing '\0' to expose 1-byte buffer over-read
   char x = '-';
   auto rv3 = strToFloat(String(&x, 1));
@@ -1685,6 +1716,8 @@ void tryStringToFloat(const StrToFloat<String>& strToFloat) {
     EXPECT_TRUE(std::isnan(rv.value())) << input;
   }
 
+  EXPECT_EQ(strToFloat("+nan").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
+
   const std::array<String, 6> kInfinityInputs{{
       "-inf",
       "-INF",
@@ -1706,18 +1739,26 @@ void tryStringToFloat(const StrToFloat<String>& strToFloat) {
     }
   }
 
-  const std::array<String, 11> kScientificNotation{{
+  EXPECT_EQ(
+      strToFloat("+infinity").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
+  EXPECT_EQ(strToFloat("+inf").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
+
+  const std::array<String, 15> kScientificNotation{{
       "123.4560e0",
+      "+123.4560e0",
       "123.4560e+0",
       "123.4560e-0",
       "123456.0e-3",
       "123456.0E-3",
+      "+123456.0E-3",
       "0.123456e3",
       "0.123456e+3",
       "0.123456E+3",
+      "+0.123456E+3",
       ".123456e3",
       ".123456e+3",
       ".123456E+3",
+      "+.123456E+3",
   }};
   for (const auto& input : kScientificNotation) {
     auto rv = strToFloat(input);
@@ -1845,20 +1886,20 @@ TEST(Conv, TryIntToFloat) {
 }
 
 template <class String>
-void tryTo() {
+void tryTo() noexcept {
   String sp1("1000000000000000000000000000000");
-  auto rv1 = folly::tryTo<int>(sp1.begin(), sp1.end());
+  auto rv1 = folly::tryTo<int>(sp1.data(), sp1.data() + sp1.size());
   EXPECT_FALSE(rv1.hasValue());
   String sp2("4711");
-  auto rv2 = folly::tryTo<int>(sp2.begin(), sp2.end());
+  auto rv2 = folly::tryTo<int>(sp2.data(), sp2.data() + sp2.size());
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_EQ(rv2.value(), 4711);
   String sp3("-4711");
-  auto rv3 = folly::tryTo<int>(sp3.begin(), sp3.end());
+  auto rv3 = folly::tryTo<int>(sp3.data(), sp3.data() + sp3.size());
   EXPECT_TRUE(rv3.hasValue());
   EXPECT_EQ(rv3.value(), -4711);
   String sp4("4711");
-  auto rv4 = folly::tryTo<uint16_t>(sp4.begin(), sp4.end());
+  auto rv4 = folly::tryTo<uint16_t>(sp4.data(), sp4.data() + sp4.size());
   EXPECT_TRUE(rv4.hasValue());
   EXPECT_EQ(rv4.value(), 4711);
 }

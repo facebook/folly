@@ -112,14 +112,14 @@ class IoUringOp : public AsyncBaseOp {
   union {
     struct io_uring_sqe sqe;
     uint8_t data[128];
-  } sqe_;
+  } sqe_ = {};
 
   // we have to use a union here because of -Wgnu-variable-sized-type-not-at-end
   //__u64 big_cqe[];
   union {
     __u64 user_data; // first member from from io_uring_cqe
     uint8_t data[32];
-  } cqe_;
+  } cqe_ = {};
 
   struct iovec iov_[1];
 };

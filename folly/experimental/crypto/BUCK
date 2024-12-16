@@ -7,7 +7,7 @@ cpp_library(
     headers = [
         "Blake2xb.h",
     ],
-    deps = [
+    exported_deps = [
         "//folly/crypto:blake2xb",
     ],
 )
@@ -17,7 +17,7 @@ cpp_library(
     headers = [
         "LtHash.h",
     ],
-    deps = [
+    exported_deps = [
         "//folly/crypto:lt_hash",
     ],
 )
@@ -27,8 +27,8 @@ cpp_library(
     headers = [
         "LtHash.h",
     ],
-    deps = [
-        "//folly/crypto:lt_hash_sse2",
+    exported_deps = [
+        "//folly/crypto:lt_hash_sse2",  # @manual
     ],
 )
 
@@ -37,7 +37,7 @@ cpp_library(
     headers = [
         "LtHash.h",
     ],
-    deps = [
-        "//folly/crypto:lt_hash_avx2",
+    exported_deps = [
+        "//folly/crypto:lt_hash_avx2",  # @manual
     ],
 )

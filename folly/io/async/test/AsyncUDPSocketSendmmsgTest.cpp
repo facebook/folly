@@ -284,8 +284,9 @@ class AsyncSocketSendmmsgIntegrationTest : public Test {
         &sevb, folly::SocketAddress("127.0.0.1", 0), 1);
 
     // Start event loop in a separate thread
-    serverThread =
-        std::make_unique<std::thread>([this]() { sevb.loopForever(); });
+    serverThread = std::make_unique<std::thread>([this]() {
+      sevb.loopForever();
+    });
 
     // Wait for event loop to start
     sevb.waitUntilRunning();
@@ -346,9 +347,9 @@ AsyncSocketSendmmsgIntegrationTest::performPingPongTest(
 }
 
 TEST_F(AsyncSocketSendmmsgIntegrationTest, PingPongRequest) {
-  SizeVec in{1,   2,   3,   4,   5,   8,   8,   9,   10,  11,
-             22,  33,  44,  55,  66,  77,  88,  99,  110, 120,
-             220, 320, 420, 520, 620, 720, 820, 920, 1020};
+  SizeVec in{
+      1,  2,  3,  4,   5,   8,   8,   9,   10,  11,  22,  33,  44,  55,  66,
+      77, 88, 99, 110, 120, 220, 320, 420, 520, 620, 720, 820, 920, 1020};
 
   TestData testData(in);
   startServer();

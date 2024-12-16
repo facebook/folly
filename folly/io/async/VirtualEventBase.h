@@ -39,8 +39,9 @@ namespace folly {
  * and all tasks scheduled through it are complete. EventBase destructor also
  * blocks until all VirtualEventBases backed by it are released.
  */
-class VirtualEventBase : public folly::TimeoutManager,
-                         public folly::SequencedExecutor {
+class VirtualEventBase
+    : public folly::TimeoutManager,
+      public folly::SequencedExecutor {
  public:
   explicit VirtualEventBase(EventBase& evb);
 
@@ -75,8 +76,9 @@ class VirtualEventBase : public folly::TimeoutManager,
     // KeepAlive token has to be released in the EventBase thread. If
     // runInEventBaseThread() fails, we can't extract the KeepAlive token
     // from the callback to properly release it.
-    evb_->runInEventBaseThread([keepAliveToken = getKeepAliveToken(this),
-                                f = std::forward<F>(f)]() mutable { f(); });
+    evb_->runInEventBaseThread(
+        [keepAliveToken = getKeepAliveToken(this),
+         f = std::forward<F>(f)]() mutable { f(); });
   }
 
   HHWheelTimer& timer() { return evb_->timer(); }

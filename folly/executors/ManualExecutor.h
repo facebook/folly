@@ -35,9 +35,10 @@ namespace folly {
 ///
 /// NB No attempt has been made to make anything other than add and schedule
 /// threadsafe.
-class ManualExecutor : public DrivableExecutor,
-                       public ScheduledExecutor,
-                       public SequencedExecutor {
+class ManualExecutor
+    : public DrivableExecutor,
+      public ScheduledExecutor,
+      public SequencedExecutor {
  public:
   ~ManualExecutor() override;
 

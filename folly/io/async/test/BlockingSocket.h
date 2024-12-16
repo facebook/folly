@@ -24,9 +24,10 @@
 
 namespace folly::test {
 
-class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
-                       public folly::AsyncTransport::ReadCallback,
-                       public folly::AsyncTransport::WriteCallback {
+class BlockingSocket
+    : public folly::AsyncSocket::ConnectCallback,
+      public folly::AsyncTransport::ReadCallback,
+      public folly::AsyncTransport::WriteCallback {
  public:
   explicit BlockingSocket(folly::NetworkSocket fd)
       : sock_(new folly::AsyncSocket(&eventBase_, fd)) {}

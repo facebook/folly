@@ -241,7 +241,7 @@ json_patch::apply(dynamic& obj) const {
   using error_code = patch_application_error_code;
   using error = patch_application_error;
 
-  for (const auto& [index, op] : enumerate(ops_)) {
+  for (auto&& [index, op] : enumerate(ops_)) {
     auto resolved_path = obj.try_get_ptr(op.path);
 
     switch (op.op_code) {

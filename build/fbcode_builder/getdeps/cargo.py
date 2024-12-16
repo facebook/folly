@@ -9,9 +9,11 @@
 import os
 import re
 import shutil
+import sys
 import typing
 
 from .builder import BuilderBase
+from .copytree import simple_copytree
 
 if typing.TYPE_CHECKING:
     from .buildopts import BuildOptions
@@ -78,7 +80,7 @@ class CargoBuilder(BuilderBase):
                 os.remove(dst)
             else:
                 shutil.rmtree(dst)
-        shutil.copytree(src, dst)
+        simple_copytree(src, dst)
 
     def cargo_config_file(self):
         build_source_dir = self.build_dir
@@ -97,7 +99,7 @@ class CargoBuilder(BuilderBase):
 
         if os.path.isfile(cargo_config_file):
             with open(cargo_config_file, "r") as f:
-                print(f"Reading {cargo_config_file}")
+                print(f"Reading {cargo_config_file}", file=sys.stderr)
                 cargo_content = f.read()
         else:
             cargo_content = ""
@@ -142,7 +144,8 @@ incremental = false
         if new_content != cargo_content:
             with open(cargo_config_file, "w") as f:
                 print(
-                    f"Writing cargo config for {self.manifest.name} to {cargo_config_file}"
+                    f"Writing cargo config for {self.manifest.name} to {cargo_config_file}",
+                    file=sys.stderr,
                 )
                 f.write(new_content)
 
@@ -270,7 +273,10 @@ path = "{null_file}"
             new_content += "\n".join(config)
             if new_content != manifest_content:
                 with open(patch_cargo, "w") as f:
-                    print(f"writing patch to {patch_cargo}")
+                    print(
+                        f"writing patch to {patch_cargo}",
+                        file=sys.stderr,
+                    )
                     f.write(new_content)
 
     def _resolve_config(self, dep_to_git) -> typing.Dict[str, typing.Dict[str, str]]:
@@ -296,7 +302,8 @@ path = "{null_file}"
                     if c in crate_source_map and c not in crates_to_patch_path:
                         crates_to_patch_path[c] = crate_source_map[c]
                         print(
-                            f"{self.manifest.name}: Patching crate {c} via virtual manifest in {self.workspace_dir()}"
+                            f"{self.manifest.name}: Patching crate {c} via virtual manifest in {self.workspace_dir()}",
+                            file=sys.stderr,
                         )
                 if crates_to_patch_path:
                     git_url_to_crates_and_paths[git_url] = crates_to_patch_path
@@ -352,7 +359,8 @@ path = "{null_file}"
                             subpath = subpath.replace("/", "\\")
                         crate_path = os.path.join(dep_source_dir, subpath)
                         print(
-                            f"{self.manifest.name}: Mapped crate {crate} to dep {dep} dir {crate_path}"
+                            f"{self.manifest.name}: Mapped crate {crate} to dep {dep} dir {crate_path}",
+                            file=sys.stderr,
                         )
                         crate_source_map[crate] = crate_path
             elif dep_cargo_conf:
@@ -367,7 +375,8 @@ path = "{null_file}"
                                 crate = match.group(1)
                                 if crate:
                                     print(
-                                        f"{self.manifest.name}: Discovered crate {crate} in dep {dep} dir {crate_root}"
+                                        f"{self.manifest.name}: Discovered crate {crate} in dep {dep} dir {crate_root}",
+                                        file=sys.stderr,
                                     )
                                     crate_source_map[crate] = crate_root
 
@@ -414,7 +423,8 @@ path = "{null_file}"
                         for c in crates:
                             if c not in existing_crates:
                                 print(
-                                    f"Patch {self.manifest.name} uses {dep_name} crate {crates}"
+                                    f"Patch {self.manifest.name} uses {dep_name} crate {crates}",
+                                    file=sys.stderr,
                                 )
                                 existing_crates.add(c)
                         dep_to_crates.setdefault(name, set()).update(existing_crates)

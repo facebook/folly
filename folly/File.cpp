@@ -36,7 +36,7 @@ File::File(int fd, bool ownsFd) noexcept : fd_(fd), ownsFd_(ownsFd) {
 }
 
 File::File(const char* name, int flags, mode_t mode)
-    : fd_(::open(name, flags, mode)), ownsFd_(false) {
+    : fd_(fileops::open(name, flags, mode)), ownsFd_(false) {
   if (fd_ == -1) {
     throwSystemError(fmt::format(
         FOLLY_FMT_COMPILE("open(\"{}\", {:#o}, 0{:#o}) failed"),
@@ -138,7 +138,7 @@ void File::close() {
 }
 
 bool File::closeNoThrow() {
-  int r = ownsFd_ ? ::close(fd_) : 0;
+  int r = ownsFd_ ? fileops::close(fd_) : 0;
   release();
   return r == 0;
 }

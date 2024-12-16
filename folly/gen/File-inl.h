@@ -39,7 +39,8 @@ class FileReader : public GenImpl<ByteRange, FileReader> {
     for (;;) {
       ssize_t n;
       do {
-        n = ::read(file_.fd(), buffer_->writableTail(), buffer_->capacity());
+        n = folly::fileops::read(
+            file_.fd(), buffer_->writableTail(), buffer_->capacity());
       } while (n == -1 && errno == EINTR);
       if (n == -1) {
         throw std::system_error(
@@ -99,7 +100,7 @@ class FileWriter : public Operator<FileWriter> {
     ssize_t n;
     while (!v.empty()) {
       do {
-        n = ::write(file_.fd(), v.data(), v.size());
+        n = fileops::write(file_.fd(), v.data(), v.size());
       } while (n == -1 && errno == EINTR);
       if (n == -1) {
         throw std::system_error(

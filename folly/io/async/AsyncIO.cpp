@@ -173,7 +173,7 @@ AsyncIO::~AsyncIO() {
   }
 
   if (pollFd_ != -1) {
-    CHECK_ERR(close(pollFd_));
+    CHECK_ERR(fileops::close(pollFd_));
     pollFd_ = -1;
   }
 }
@@ -214,7 +214,7 @@ int AsyncIO::drainPollFd() {
   // http://www.kernel.org/doc/man-pages/online/pages/man2/eventfd.2.html
   ssize_t rc;
   do {
-    rc = ::read(pollFd_, &numEvents, 8);
+    rc = fileops::read(pollFd_, &numEvents, 8);
   } while (rc == -1 && errno == EINTR);
   if (FOLLY_UNLIKELY(rc == -1 && errno == EAGAIN)) {
     return 0;
@@ -288,8 +288,8 @@ Range<AsyncBase::Op**> AsyncIO::doWait(
           /* timeout */ nullptr); // wait forever
     } while (ret == -EINTR);
     // Check as may not be able to recover without leaking events.
-    CHECK_GE(ret, 0) << "AsyncIO: io_getevents failed with error "
-                     << errnoStr(-ret);
+    CHECK_GE(ret, 0)
+        << "AsyncIO: io_getevents failed with error " << errnoStr(-ret);
     count += ret;
   } while (count < minRequests);
   DCHECK_LE(count, maxRequests);

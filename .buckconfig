@@ -1,21 +1,10 @@
 [cells]
-root = .
-prelude = prelude
-toolchains = shim
-shim = shim
-none = none
+gh_facebook_folly = .
+shim_DISABLED = shim
 
 [cell_aliases]
-config = prelude
-ovr_config = prelude
-fbcode = shim
-fbsource = shim
-fbcode_macros = shim
-buck = none
-bazel_skylib = shim
+root = gh_facebook_folly
 
-[external_cells]
-prelude = bundled
-
-[parser]
-target_platform_detector_spec = target:root//...->prelude//platforms:default
+[oss]
+internal_cell = fbcode
+project_dirs = folly

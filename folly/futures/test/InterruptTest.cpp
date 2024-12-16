@@ -196,8 +196,9 @@ TEST(Interrupt, semiFutureDeferErrorSemiFuture) {
   bool flag = false;
   p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
   p.getSemiFuture()
-      .deferError(
-          [](const exception_wrapper& /* e */) { return makeSemiFuture(); })
+      .deferError([](const exception_wrapper& /* e */) {
+        return makeSemiFuture();
+      })
       .cancel();
   EXPECT_TRUE(flag);
 }

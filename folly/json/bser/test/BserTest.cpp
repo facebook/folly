@@ -65,10 +65,11 @@ TEST(Bser, RoundTrip) {
 
       EXPECT_EQ(decoded, dyn);
     } catch (const std::exception& err) {
-      LOG(ERROR) << err.what() << "\nInput: " << dyn.typeName() << ": " << dyn
-                 << " decoded back as " << decoded.typeName() << ": " << decoded
-                 << "\n"
-                 << folly::hexDump(str.data(), str.size());
+      LOG(ERROR)
+          << err.what() << "\nInput: " << dyn.typeName() << ": " << dyn
+          << " decoded back as " << decoded.typeName() << ": " << decoded
+          << "\n"
+          << folly::hexDump(str.data(), str.size());
       throw;
     }
   }

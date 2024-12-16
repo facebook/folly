@@ -15,8 +15,10 @@ import stat
 import subprocess
 import sys
 import typing
+from shlex import quote as shellquote
 from typing import Optional
 
+from .copytree import simple_copytree
 from .dyndeps import create_dyn_dep_munger
 from .envfuncs import add_path_entry, Env, path_search
 from .fetcher import copy_if_different
@@ -157,6 +159,29 @@ class BuilderBase(object):
         shell = ["powershell.exe"] if sys.platform == "win32" else ["/bin/sh", "-i"]
         self._run_cmd(shell, cwd=self.build_dir, env=env)
 
+    def printenv(self, reconfigure: bool) -> None:
+        """print the environment in a shell sourcable format"""
+        reconfigure = self._reconfigure(reconfigure)
+        self._apply_patchfile()
+        self._prepare(reconfigure=reconfigure)
+        env = self._compute_env(env=Env(src={}))
+        prefix = "export "
+        sep = ":"
+        expand = "$"
+        expandpost = ""
+        if self.build_opts.is_windows():
+            prefix = "SET "
+            sep = ";"
+            expand = "%"
+            expandpost = "%"
+        for k, v in sorted(env.items()):
+            existing = os.environ.get(k, None)
+            if k.endswith("PATH") and existing:
+                v = shellquote(v) + sep + f"{expand}{k}{expandpost}"
+            else:
+                v = shellquote(v)
+            print("%s%s=%s" % (prefix, k, v))
+
     def build(self, reconfigure: bool) -> None:
         print("Building %s..." % self.manifest.name)
         reconfigure = self._reconfigure(reconfigure)
@@ -225,14 +250,16 @@ class BuilderBase(object):
         system needs to regenerate its rules."""
         pass
 
-    def _compute_env(self):
+    def _compute_env(self, env=None) -> Env:
+        if env is None:
+            env = self.env
         # CMAKE_PREFIX_PATH is only respected when passed through the
         # environment, so we construct an appropriate path to pass down
         return self.build_opts.compute_env_for_install_dirs(
             self.loader,
             self.dep_manifests,
             self.ctx,
-            env=self.env,
+            env=env,
             manifest=self.manifest,
         )
 
@@ -315,9 +342,22 @@ class MakeBuilder(BuilderBase):
             return
 
         env = self._compute_env()
+        if test_filter:
+            env["GETDEPS_TEST_FILTER"] = test_filter
+        else:
+            env["GETDEPS_TEST_FILTER"] = ""
 
-        cmd = [self._make_binary] + self.test_args + self._get_prefix()
-        self._run_cmd(cmd, env=env)
+        if retry:
+            env["GETDEPS_TEST_RETRY"] = retry
+        else:
+            env["GETDEPS_TEST_RETRY"] = 0
+
+        cmd = (
+            [self._make_binary, "-j%s" % self.num_jobs]
+            + self.test_args
+            + self._get_prefix()
+        )
+        self._run_cmd(cmd, allow_fail=False, env=env)
 
 
 class CMakeBootStrapBuilder(MakeBuilder):
@@ -446,6 +486,61 @@ class Iproute2Builder(BuilderBase):
                 )
 
         self._run_cmd(install_cmd, env=env)
+
+
+class SystemdBuilder(BuilderBase):
+    # SystemdBuilder assumes that meson build tool has already been installed on
+    # the machine.
+    def __init__(
+        self,
+        loader,
+        dep_manifests,
+        build_opts,
+        ctx,
+        manifest,
+        src_dir,
+        build_dir,
+        inst_dir,
+    ) -> None:
+        super(SystemdBuilder, self).__init__(
+            loader,
+            dep_manifests,
+            build_opts,
+            ctx,
+            manifest,
+            src_dir,
+            build_dir,
+            inst_dir,
+        )
+
+    def _build(self, reconfigure) -> None:
+        env = self._compute_env()
+        meson = path_search(env, "meson")
+        if meson is None:
+            raise Exception("Failed to find Meson")
+
+        # Meson builds typically require setup, compile, and install steps.
+        # During this setup step we ensure that the static library is built and
+        # the prefix is empty.
+        self._run_cmd(
+            [
+                meson,
+                "setup",
+                "-Dstatic-libsystemd=true",
+                "-Dprefix=/",
+                self.build_dir,
+                self.src_dir,
+            ]
+        )
+
+        # Compile step needs to satisfy the build directory that was previously
+        # prepared during setup.
+        self._run_cmd([meson, "compile", "-C", self.build_dir])
+
+        # Install step
+        self._run_cmd(
+            [meson, "install", "-C", self.build_dir, "--destdir", self.inst_dir]
+        )
 
 
 class CMakeBuilder(BuilderBase):
@@ -1071,9 +1166,14 @@ class OpenSSLBuilder(BuilderBase):
         perl = typing.cast(str, path_search(env, "perl", "perl"))
 
         make_j_args = []
+        extra_args = []
         if self.build_opts.is_windows():
-            make = "nmake.exe"
+            # jom is compatible with nmake, adds the /j argument for parallel build
+            make = "jom.exe"
+            make_j_args = ["/j%s" % self.num_jobs]
             args = ["VC-WIN64A-masm", "-utf-8"]
+            # fixes "if multiple CL.EXE write to the same .PDB file, please use /FS"
+            extra_args = ["/FS"]
         elif self.build_opts.is_darwin():
             make = "make"
             make_j_args = ["-j%s" % self.num_jobs]
@@ -1106,11 +1206,14 @@ class OpenSSLBuilder(BuilderBase):
                 "no-unit-test",
                 "no-tests",
             ]
+            + extra_args
         )
+        # show the config produced
+        self._run_cmd([perl, "configdata.pm", "--dump"], env=env)
         make_build = [make] + make_j_args
-        self._run_cmd(make_build)
+        self._run_cmd(make_build, env=env)
         make_install = [make, "install_sw", "install_ssldirs"]
-        self._run_cmd(make_install)
+        self._run_cmd(make_install, env=env)
 
 
 class Boost(BuilderBase):
@@ -1227,7 +1330,7 @@ class NopBuilder(BuilderBase):
                     os.makedirs(dest_parent)
                 if os.path.isdir(full_src):
                     if not os.path.exists(full_dest):
-                        shutil.copytree(full_src, full_dest)
+                        simple_copytree(full_src, full_dest)
                 else:
                     shutil.copyfile(full_src, full_dest)
                     shutil.copymode(full_src, full_dest)
@@ -1239,7 +1342,7 @@ class NopBuilder(BuilderBase):
                         os.chmod(full_dest, st.st_mode | stat.S_IXUSR)
         else:
             if not os.path.exists(self.inst_dir):
-                shutil.copytree(self.src_dir, self.inst_dir)
+                simple_copytree(self.src_dir, self.inst_dir)
 
 
 class SqliteBuilder(BuilderBase):

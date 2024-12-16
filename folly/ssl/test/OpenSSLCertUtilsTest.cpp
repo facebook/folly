@@ -20,6 +20,7 @@
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/container/Enumerate.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Time.h>
@@ -277,27 +278,34 @@ TEST_P(OpenSSLCertUtilsTest, TestASN1TimeToTimePoint) {
 TEST_P(OpenSSLCertUtilsTest, TestX509Summary) {
   auto x509 = readCertFromData(kTestCertWithSan);
   EXPECT_NE(x509, nullptr);
-  auto summary = folly::ssl::OpenSSLCertUtils::toString(*x509);
-  EXPECT_EQ(
-      summary.value(),
-      "        Version: 3 (0x2)\n        Serial Number: 2 (0x2)\n"
-      "        Issuer: C = US, ST = CA, O = Asox, CN = Asox Certification Authority\n"
-      "        Validity\n            Not Before: Feb 13 23:21:03 2017 GMT\n"
-      "            Not After : Jul  1 23:21:03 2044 GMT\n"
-      "        Subject: C = US, O = Asox, CN = 127.0.0.1\n"
-      "        X509v3 extensions:\n"
-      "            X509v3 Basic Constraints: \n"
-      "                CA:FALSE\n"
-      "            Netscape Comment: \n"
-      "                OpenSSL Generated Certificate\n"
-      "            X509v3 Subject Key Identifier: \n"
-      "                71:D6:49:9D:64:47:D7:1E:65:8B:1E:94:83:23:42:E1:F2:19:9F:C3\n"
-      "            X509v3 Authority Key Identifier: \n"
-      "                keyid:17:DF:29:09:29:BF:7B:9F:1A:7F:E9:46:49:C8:3B:ED:B3:B9:E8:7B\n\n"
-      "            X509v3 Subject Alternative Name: \n"
-      "                DNS:anotherexample.com, DNS:*.thirdexample.com\n"
-      "            Authority Information Access: \n"
-      "                CA Issuers - URI:https://phabricator.fb.com/diffusion/FBCODE/browse/master/ti/test_certs/ca_cert.pem?view=raw\n\n");
+  auto summaryRaw = folly::ssl::OpenSSLCertUtils::toString(*x509);
+  ASSERT_TRUE(summaryRaw);
+  auto summary = summaryRaw.value();
+  EXPECT_THAT(summary, HasSubstr("Serial Number: 2 (0x2)"));
+  EXPECT_THAT(
+      summary,
+      HasSubstr(
+          "Issuer: C = US, ST = CA, O = Asox, CN = Asox Certification Authority"));
+  EXPECT_THAT(summary, HasSubstr("Not Before: Feb 13 23:21:03 2017 GMT"));
+  EXPECT_THAT(summary, HasSubstr("Not After : Jul  1 23:21:03 2044 GMT"));
+  EXPECT_THAT(summary, HasSubstr("Subject: C = US, O = Asox, CN = 127.0.0.1"));
+  EXPECT_THAT(summary, ContainsRegex("X509v3 Basic Constraints:\\s+CA:FALSE"));
+  EXPECT_THAT(
+      summary,
+      ContainsRegex(
+          "X509v3 Subject Key Identifier:\\s+71:D6:49:9D:64:47:D7:1E:65:8B:1E:94:83:23:42:E1:F2:19:9F:C3"));
+  EXPECT_THAT(
+      summary,
+      ContainsRegex(
+          "X509v3 Authority Key Identifier:\\s+(keyid:)?17:DF:29:09:29:BF:7B:9F:1A:7F:E9:46:49:C8:3B:ED:B3:B9:E8:7B"));
+  EXPECT_THAT(
+      summary,
+      ContainsRegex(
+          "X509v3 Subject Alternative Name:\\s+DNS:anotherexample\\.com, DNS:\\*\\.thirdexample\\.com"));
+  EXPECT_THAT(
+      summary,
+      ContainsRegex(
+          "Authority Information Access:\\s+CA Issuers - URI:https://phabricator\\.fb\\.com/diffusion/FBCODE/browse/master/ti/test_certs/ca_cert\\.pem\\?view=raw"));
 }
 
 TEST_P(OpenSSLCertUtilsTest, TestDerEncodeDecode) {

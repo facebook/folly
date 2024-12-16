@@ -19,13 +19,13 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/ExceptionWrapper.h>
-#include <folly/experimental/coro/AsyncPipe.h>
-#include <folly/experimental/coro/AsyncScope.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/detail/Barrier.h>
-#include <folly/experimental/coro/detail/BarrierTask.h>
-#include <folly/experimental/coro/detail/CurrentAsyncFrame.h>
-#include <folly/experimental/coro/detail/Helpers.h>
+#include <folly/coro/AsyncPipe.h>
+#include <folly/coro/AsyncScope.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/detail/Barrier.h>
+#include <folly/coro/detail/BarrierTask.h>
+#include <folly/coro/detail/CurrentAsyncFrame.h>
+#include <folly/coro/detail/Helpers.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -129,10 +129,10 @@ auto collectAllTryImpl(
     // want to make sure the next task is started with the same initial
     // context.
     const auto context = RequestContext::saveContext();
-    (void)std::initializer_list<int>{
-        (tasks[Indices].start(&barrier, asyncFrame),
-         RequestContext::setContext(context),
-         0)...};
+    (void)std::initializer_list<int>{(
+        tasks[Indices].start(&barrier, asyncFrame),
+        RequestContext::setContext(context),
+        0)...};
 
     // Wait for all of the sub-tasks to finish execution.
     // Should be safe to avoid an executor transition here even if the
@@ -206,10 +206,10 @@ auto collectAllImpl(
 
     // Use std::initializer_list to ensure that the sub-tasks are launched
     // in the order they appear in the parameter pack.
-    (void)std::initializer_list<int>{
-        (tasks[Indices].start(&barrier, asyncFrame),
-         RequestContext::setContext(context),
-         0)...};
+    (void)std::initializer_list<int>{(
+        tasks[Indices].start(&barrier, asyncFrame),
+        RequestContext::setContext(context),
+        0)...};
 
     // Wait for all of the sub-tasks to finish execution.
     // Should be safe to avoid an executor transition here even if the
@@ -235,8 +235,18 @@ auto makeUnorderedAsyncGeneratorImpl(
   return [](AsyncScope& scopeParam,
             InputRange awaitablesParam) -> AsyncGenerator<Item&&> {
     auto [results, pipe] = AsyncPipe<Item, false>::create();
-    const CancellationSource cancelSource;
-    auto guard = folly::makeGuard([&] { cancelSource.requestCancellation(); });
+    struct SharedState {
+      explicit SharedState(AsyncPipe<Item, false>&& p) : pipe(std::move(p)) {}
+
+      AsyncPipe<Item, false> pipe;
+      const CancellationSource cancelSource;
+    };
+    auto sharedState = std::make_shared<SharedState>(std::move(pipe));
+    auto cancelToken = sharedState->cancelSource.getToken();
+
+    auto guard = folly::makeGuard([&] {
+      sharedState->cancelSource.requestCancellation();
+    });
     auto ex = co_await co_current_executor;
     size_t expected = 0;
     // Save the initial context and restore it after starting each task
@@ -246,24 +256,19 @@ auto makeUnorderedAsyncGeneratorImpl(
     const auto context = RequestContext::saveContext();
 
     for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitablesParam)) {
-      auto task = [](auto semiAwaitableParam,
-                     auto& cancelSourceParam,
-                     auto& p) -> Task<void> {
+      auto task = [](auto semiAwaitableParam, auto state) -> Task<void> {
         auto result = co_await co_awaitTry(std::move(semiAwaitableParam));
         if (!result.hasValue() && !IsTry::value) {
-          cancelSourceParam.requestCancellation();
+          state->cancelSource.requestCancellation();
         }
-        p.write(std::move(result));
-      }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable),
-                              cancelSource,
-                              pipe);
+        state->pipe.write(std::move(result));
+      }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable), sharedState);
       if constexpr (std::is_same_v<AsyncScope, folly::coro::AsyncScope>) {
         scopeParam.add(
-            co_withCancellation(cancelSource.getToken(), std::move(task))
-                .scheduleOn(ex));
+            co_withCancellation(cancelToken, std::move(task)).scheduleOn(ex));
       } else {
         static_assert(std::is_same_v<AsyncScope, CancellableAsyncScope>);
-        scopeParam.add(std::move(task).scheduleOn(ex), cancelSource.getToken());
+        scopeParam.add(std::move(task).scheduleOn(ex), cancelToken);
       }
       ++expected;
       RequestContext::setContext(context);
@@ -272,7 +277,7 @@ auto makeUnorderedAsyncGeneratorImpl(
     while (expected > 0) {
       CancellationCallback cancelCallback(
           co_await co_current_cancellation_token,
-          [&]() noexcept { cancelSource.requestCancellation(); });
+          [&]() noexcept { sharedState->cancelSource.requestCancellation(); });
 
       if constexpr (!IsTry::value) {
         auto result = co_await co_awaitTry(results.next());
@@ -425,8 +430,8 @@ auto collectAllRange(InputRange awaitables)
   exception_wrapper firstException;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      std::size_t index) -> detail::BarrierTask {
+  auto makeTask = [&](awaitable_type semiAwaitable, std::size_t index)
+      -> detail::BarrierTask {
     assert(index < tryResults.size());
 
     try {
@@ -493,8 +498,8 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
   exception_wrapper firstException;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      std::size_t) -> detail::BarrierTask {
+  auto makeTask =
+      [&](awaitable_type semiAwaitable, std::size_t) -> detail::BarrierTask {
     try {
       co_await co_viaIfAsync(
           executor.get_alias(),
@@ -546,8 +551,8 @@ auto collectAllTryRange(InputRange awaitables)
   const CancellationToken& cancelToken = co_await co_current_cancellation_token;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      std::size_t index) -> detail::BarrierTask {
+  auto makeTask = [&](awaitable_type semiAwaitable, std::size_t index)
+      -> detail::BarrierTask {
     assert(index < results.size());
     auto& result = results[index];
     try {
@@ -1071,8 +1076,8 @@ auto collectAnyRange(InputRange awaitables)
   firstCompletion.first = size_t(-1);
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      size_t index) -> folly::coro::Task<void> {
+  auto makeTask = [&](awaitable_type semiAwaitable, size_t index)
+      -> folly::coro::Task<void> {
     auto result = co_await folly::coro::co_awaitTry(std::move(semiAwaitable));
     if (!cancelSource.requestCancellation()) {
       // This is first entity to request cancellation.
@@ -1111,8 +1116,8 @@ auto collectAnyWithoutExceptionRange(InputRange awaitables)
   firstValueOrLastException.first = std::numeric_limits<size_t>::max();
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      size_t index) -> folly::coro::Task<void> {
+  auto makeTask = [&](awaitable_type semiAwaitable, size_t index)
+      -> folly::coro::Task<void> {
     auto result = co_await folly::coro::co_awaitTry(std::move(semiAwaitable));
     if ((result.hasValue() ||
          nAwaited.fetch_add(1, std::memory_order_relaxed) == nAwaitables) &&
@@ -1145,8 +1150,8 @@ auto collectAnyNoDiscardRange(InputRange awaitables)
       results;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      size_t index) -> folly::coro::Task<void> {
+  auto makeTask = [&](awaitable_type semiAwaitable, size_t index)
+      -> folly::coro::Task<void> {
     auto result = co_await folly::coro::co_awaitTry(std::move(semiAwaitable));
     cancelSource.requestCancellation();
     results[index] = std::move(result);

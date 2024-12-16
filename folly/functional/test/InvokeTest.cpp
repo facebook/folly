@@ -125,9 +125,9 @@ TEST_F(InvokeTest, invoke) {
 TEST_F(InvokeTest, invoke_result) {
   EXPECT_TRUE(
       (std::is_same<char, folly::invoke_result_t<Fn, int, char>>::value));
-  EXPECT_TRUE(
-      (std::is_same<int volatile&&, folly::invoke_result_t<Fn, int, char*>>::
-           value));
+  EXPECT_TRUE((
+      std::is_same<int volatile&&, folly::invoke_result_t<Fn, int, char*>>::
+          value));
 }
 
 TEST_F(InvokeTest, is_invocable) {
@@ -306,9 +306,9 @@ TEST_F(InvokeTest, member_invoke_result) {
 
   EXPECT_TRUE(
       (std::is_same<char, traits::invoke_result_t<Obj, int, char>>::value));
-  EXPECT_TRUE(
-      (std::is_same<int volatile&&, traits::invoke_result_t<Obj, int, char*>>::
-           value));
+  EXPECT_TRUE((
+      std::is_same<int volatile&&, traits::invoke_result_t<Obj, int, char*>>::
+          value));
 }
 
 TEST_F(InvokeTest, member_is_invocable) {

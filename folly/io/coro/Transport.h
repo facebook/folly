@@ -18,7 +18,7 @@
 
 #include <folly/Range.h>
 #include <folly/SocketAddress.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/Task.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncSocketException.h>
@@ -69,6 +69,10 @@ class TransportIf {
   virtual void closeWithReset() = 0;
   virtual folly::AsyncTransport* getTransport() const = 0;
   virtual const AsyncTransportCertificate* getPeerCertificate() const = 0;
+  virtual void detachEventBase() { LOG(FATAL) << "not implemented"; }
+  virtual void attachEventBase(folly::EventBase*) {
+    LOG(FATAL) << "not implemented";
+  }
 };
 
 class Transport : public TransportIf {
@@ -146,13 +150,15 @@ class Transport : public TransportIf {
     return transport_->getPeerCertificate();
   }
 
+ protected:
+  EventBase* eventBase_;
+  AsyncTransport::UniquePtr transport_;
+
  private:
   // non-copyable
   Transport(const Transport&) = delete;
   Transport& operator=(const Transport&) = delete;
 
-  EventBase* eventBase_;
-  AsyncTransport::UniquePtr transport_;
   bool deferredReadEOF_{false};
 };
 

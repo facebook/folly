@@ -487,3 +487,18 @@ TEST_F(OpenSSLHashTest, hmac_final_without_init_throws) {
   std::array<uint8_t, 32> out;
   EXPECT_THROW(hmac.hash_final(range(out)), std::runtime_error);
 }
+
+TEST_F(OpenSSLHashTest, HashAndBlockSizes) {
+  OpenSSLHash::Digest d;
+  d.hash_init(EVP_sha256());
+  EXPECT_EQ(d.hash_size(), 32);
+  EXPECT_EQ(d.block_size(), 64);
+
+  d.hash_init(EVP_sha384());
+  EXPECT_EQ(d.hash_size(), 48);
+  EXPECT_EQ(d.block_size(), 128);
+
+  d.hash_init(EVP_sha512());
+  EXPECT_EQ(d.hash_size(), 64);
+  EXPECT_EQ(d.block_size(), 128);
+}

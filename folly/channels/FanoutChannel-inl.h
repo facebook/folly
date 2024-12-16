@@ -86,6 +86,11 @@ void FanoutChannel<ValueType, ContextType>::close(exception_wrapper ex) && {
   processor_ = nullptr;
 }
 
+template <typename ValueType, typename ContextType>
+ContextType FanoutChannel<ValueType, ContextType>::getContext() const {
+  return processor_->getContext();
+}
+
 namespace detail {
 
 template <typename ValueType, typename ContextType>
@@ -100,6 +105,8 @@ class IFanoutChannelProcessor : public IChannelCallback {
   virtual void closeSubscribers(CloseResult closeResult) = 0;
 
   virtual void destroyHandle(CloseResult closeResult) = 0;
+
+  virtual ContextType getContext() = 0;
 };
 
 /**
@@ -171,8 +178,9 @@ class FanoutChannelProcessor
       folly::Function<std::vector<ValueType>(const ContextType&)>
           getInitialValues) override {
     auto state = state_.wlock();
-    auto initialValues = getInitialValues ? getInitialValues(state->context)
-                                          : std::vector<ValueType>();
+    auto initialValues = getInitialValues
+        ? getInitialValues(state->context)
+        : std::vector<ValueType>();
     if (!state->receiver) {
       auto [receiver, sender] = Channel<ValueType>::create();
       for (auto&& value : initialValues) {
@@ -191,8 +199,9 @@ class FanoutChannelProcessor
     auto state = state_.wlock();
     std::move(state->fanoutSender)
         .close(
-            closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : exception_wrapper());
+            closeResult.exception.has_value()
+                ? closeResult.exception.value()
+                : exception_wrapper());
   }
 
   /**
@@ -209,6 +218,8 @@ class FanoutChannelProcessor
   bool anySubscribers() override {
     return state_.wlock()->fanoutSender.anySubscribers();
   }
+
+  ContextType getContext() { return state_.rlock()->context; }
 
  private:
   /**
@@ -302,8 +313,9 @@ class FanoutChannelProcessor
     state->receiver = nullptr;
     std::move(state->fanoutSender)
         .close(
-            closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : exception_wrapper());
+            closeResult.exception.has_value()
+                ? closeResult.exception.value()
+                : exception_wrapper());
     maybeDelete(state);
   }
 
@@ -319,8 +331,9 @@ class FanoutChannelProcessor
     }
     std::move(state->fanoutSender)
         .close(
-            closeResult.exception.has_value() ? closeResult.exception.value()
-                                              : exception_wrapper());
+            closeResult.exception.has_value()
+                ? closeResult.exception.value()
+                : exception_wrapper());
     maybeDelete(state);
   }
 

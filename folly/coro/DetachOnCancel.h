@@ -18,12 +18,12 @@
 
 #include <type_traits>
 
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Traits.h>
-#include <folly/experimental/coro/detail/Helpers.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Traits.h>
+#include <folly/coro/detail/Helpers.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -38,7 +38,7 @@ namespace coro {
  * cancellation and return immediately. However, the background task still runs
  * until the thread join.
  *
- * \refcode folly/docs/examples/folly/experimental/coro/DetachOnCancel.cpp
+ * \refcode folly/docs/examples/folly/coro/DetachOnCancel.cpp
  *
  * It is important to manage the scope of each variable. If the long running
  * task references any variable that is created in the scope of detachOnCancel,

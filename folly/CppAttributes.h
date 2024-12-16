@@ -118,6 +118,8 @@
  */
 #if FOLLY_HAS_CPP_ATTRIBUTE(no_unique_address)
 #define FOLLY_ATTR_NO_UNIQUE_ADDRESS no_unique_address
+#elif FOLLY_HAS_CPP_ATTRIBUTE(msvc::no_unique_address)
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS msvc::no_unique_address
 #else
 #define FOLLY_ATTR_NO_UNIQUE_ADDRESS
 #endif
@@ -126,6 +128,12 @@
 #define FOLLY_ATTR_CLANG_NO_DESTROY clang::no_destroy
 #else
 #define FOLLY_ATTR_CLANG_NO_DESTROY
+#endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::uninitialized)
+#define FOLLY_ATTR_CLANG_UNINITIALIZED clang::uninitialized
+#else
+#define FOLLY_ATTR_CLANG_UNINITIALIZED
 #endif
 
 /**
@@ -161,4 +169,17 @@
 #define FOLLY_ATTR_GNU_USED gnu::used
 #else
 #define FOLLY_ATTR_GNU_USED
+#endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::coro_await_elidable)
+#define FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE clang::coro_await_elidable
+#else
+#define FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE
+#endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::coro_await_elidable_argument)
+#define FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT \
+  clang::coro_await_elidable_argument
+#else
+#define FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT
 #endif

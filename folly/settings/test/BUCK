@@ -9,8 +9,10 @@ cpp_benchmark(
     srcs = ["SettingsBenchmarks.cpp"],
     deps = [
         "//folly:benchmark",
+        "//folly:c_portability",
         "//folly/init:init",
         "//folly/settings:settings",
+        "//folly/synchronization/test:barrier",
     ],
 )
 
@@ -19,14 +21,17 @@ cpp_unittest(
     srcs = [
         "SettingsTest.cpp",
     ],
+    labels = ["case-isolation-failure"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":a",
+        ":b",
         "//folly:format",
         "//folly:string",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/settings:settings",
-        "//folly/settings/test:a",
-        "//folly/settings/test:b",
+        "//folly/synchronization/test:barrier",
     ],
 )
 

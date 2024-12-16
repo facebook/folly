@@ -69,11 +69,10 @@ class RecordBuffer {
     size_t selected = DeterministicSchedule::getRandNumber(oldestAllowed + 1);
 
     FOLLY_TEST_DSCHED_VLOG(
-        "buffered load, mo: " << folly::detail::memory_order_to_str(mo)
-                              << " index " << selected << "/" << oldestAllowed
-                              << " allowed."
-                              << " current value: " << loadDirect()
-                              << " return value: " << history_[selected].val_);
+        "buffered load, mo: "
+        << folly::detail::memory_order_to_str(mo) << " index " << selected
+        << "/" << oldestAllowed << " allowed." << " current value: "
+        << loadDirect() << " return value: " << history_[selected].val_);
 
     Record& rec = history_[selected];
     DSchedTimestamp ts = threadInfo.acqRelOrder_.advance(tid);
@@ -348,8 +347,8 @@ struct BufferedAtomic {
     ThreadInfo& threadInfo = DeterministicSchedule::getCurrentThreadInfo();
     getBuf().store(threadInfo, val, mo, rmw);
     FOLLY_TEST_DSCHED_VLOG(
-        "\tstore mo: " << folly::detail::memory_order_to_str(mo)
-                       << " rmw: " << rmw);
+        "\tstore mo: "
+        << folly::detail::memory_order_to_str(mo) << " rmw: " << rmw);
   }
 
   T doReadModifyWrite(Modification mod, std::memory_order mo) {

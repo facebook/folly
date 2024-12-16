@@ -15,12 +15,12 @@
  */
 
 #include <unordered_set>
-#include <folly/experimental/coro/AsyncStack.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/coro/AsyncStack.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/Task.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
@@ -89,6 +89,26 @@ CO_TEST(SuspendedStacksTest, testBaton) {
   waitOn<coroDepth>(b).scheduleOn(ex).start();
   co_await folly::coro::co_reschedule_on_current_executor;
   expectSuspendedFrames(2, currentDepth + coroDepth);
+
+  b.post();
+  co_await folly::coro::co_reschedule_on_current_executor;
+
+  expectSuspendedFrames(0);
+}
+
+CO_TEST(SuspendedStacksTest, testFibersBaton) {
+  auto currentDepth =
+      (co_await folly::coro::co_current_async_stack_trace).size();
+  auto* ex = co_await folly::coro::co_current_executor;
+
+  expectSuspendedFrames(0);
+
+  folly::fibers::Baton b;
+  waitOn<coroDepth>(b).scheduleOn(ex).start();
+  co_await folly::coro::co_reschedule_on_current_executor;
+  expectSuspendedFrames(1, currentDepth + coroDepth);
+
+  // Only one fiber/coro can wait on a fibers::Baton
 
   b.post();
   co_await folly::coro::co_reschedule_on_current_executor;

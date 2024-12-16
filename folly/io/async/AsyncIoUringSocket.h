@@ -124,10 +124,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void write(WriteCallback*, const void*, size_t, WriteFlags = WriteFlags::NONE)
       override;
   void writev(
-      WriteCallback*,
-      const iovec*,
-      size_t,
-      WriteFlags = WriteFlags::NONE) override;
+      WriteCallback*, const iovec*, size_t, WriteFlags = WriteFlags::NONE)
+      override;
   void writeChain(
       WriteCallback* callback,
       std::unique_ptr<IOBuf>&& buf,

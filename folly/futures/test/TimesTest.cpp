@@ -40,8 +40,9 @@ inline std::function<Future<Unit>(void)> makeThunk(
     std::mutex& ps_mutex) {
   return [&]() mutable {
     auto p = std::make_shared<Promise<Unit>>();
-    p->setInterruptHandler(
-        [&](exception_wrapper const& /* e */) { ++interrupt; });
+    p->setInterruptHandler([&](exception_wrapper const& /* e */) {
+      ++interrupt;
+    });
     ps_mutex.lock();
     ps.push(p);
     ps_mutex.unlock();
@@ -67,12 +68,13 @@ inline void successTest(
   bool complete = false;
   bool failure = false;
 
-  auto f = folly::times(3, thunk)
-               .via(&executor)
-               .thenValue([&](auto&&) mutable { complete = true; })
-               .thenError(folly::tag_t<FutureException>{}, [&](auto&& /* e */) {
-                 failure = true;
-               });
+  auto f =
+      folly::times(3, thunk)
+          .via(&executor)
+          .thenValue([&](auto&&) mutable { complete = true; })
+          .thenError(folly::tag_t<FutureException>{}, [&](auto&& /* e */) {
+            failure = true;
+          });
 
   executor.drain();
   popAndFulfillPromise(ps, ps_mutex);
@@ -120,12 +122,13 @@ inline void failureTest(
   bool complete = false;
   bool failure = false;
 
-  auto f = folly::times(3, thunk)
-               .via(&executor)
-               .thenValue([&](auto&&) mutable { complete = true; })
-               .thenError(folly::tag_t<FutureException>{}, [&](auto&& /* e */) {
-                 failure = true;
-               });
+  auto f =
+      folly::times(3, thunk)
+          .via(&executor)
+          .thenValue([&](auto&&) mutable { complete = true; })
+          .thenError(folly::tag_t<FutureException>{}, [&](auto&& /* e */) {
+            failure = true;
+          });
 
   executor.drain();
   popAndFulfillPromise(ps, ps_mutex);

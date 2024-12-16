@@ -240,8 +240,9 @@ bool setThreadNameWindowsViaDebugger(DWORD id, StringPiece name) noexcept {
   __try {
     RaiseException(kMSVCException, 0, 4, tniUnion.upArray);
   } __except (
-      GetExceptionCode() == kMSVCException ? EXCEPTION_CONTINUE_EXECUTION
-                                           : EXCEPTION_EXECUTE_HANDLER) {
+      GetExceptionCode() == kMSVCException
+          ? EXCEPTION_CONTINUE_EXECUTION
+          : EXCEPTION_EXECUTE_HANDLER) {
     // Swallow the exception when a debugger isn't attached.
   }
   return true;

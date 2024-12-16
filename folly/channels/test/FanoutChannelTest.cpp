@@ -94,6 +94,8 @@ TEST_F(FanoutChannelFixture, ReceiveValue_FanoutBroadcastsValues) {
   sender.write(2);
   executor_.drain();
 
+  EXPECT_EQ(fanoutChannel.getContext().version, 2);
+
   auto [handle3, callback3] = processValues(
       fanoutChannel.subscribe([](const LatestVersion& latestVersion) {
         EXPECT_EQ(latestVersion.numSubscribers, 2);
@@ -291,8 +293,9 @@ class FanoutChannelFixtureStress : public Test {
         consumers_(toVector(makeConsumer(), makeConsumer(), makeConsumer())) {}
 
   static std::unique_ptr<StressTestProducer<int>> makeProducer() {
-    return std::make_unique<StressTestProducer<int>>(
-        [value = 0]() mutable { return value++; });
+    return std::make_unique<StressTestProducer<int>>([value = 0]() mutable {
+      return value++;
+    });
   }
 
   static std::unique_ptr<StressTestConsumer<int>> makeConsumer() {

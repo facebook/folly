@@ -18,7 +18,7 @@
 
 #include <folly/Range.h>
 #include <folly/algorithm/simd/detail/SimdAnyOf.h>
-#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
+#include <folly/algorithm/simd/detail/SimdPlatform.h>
 
 namespace folly {
 namespace detail {
@@ -35,14 +35,16 @@ struct SimpleSimdStringUtilsImpl {
     logical_t operator()(reg_t reg) {
       // This happens to be equivalent to std::isspace(c) || std::iscntrl(c)
       return Platform::logical_or(
-          Platform::le_unsigned(reg, 0x20), Platform::equal(reg, 0x7F));
+          Platform::less_equal(reg, 0x20), Platform::equal(reg, 0x7F));
     }
   };
 
   FOLLY_ALWAYS_INLINE
   static bool hasSpaceOrCntrlSymbols(folly::StringPiece s) {
-    return simd_detail::simdAnyOf<Platform, /*unrolling*/ 4>(
-        s.data(), s.data() + s.size(), HasSpaceOrCntrlSymbolsLambda{});
+    return simd::detail::simdAnyOf<Platform, /*unrolling*/ 4>(
+        reinterpret_cast<const std::uint8_t*>(s.data()),
+        reinterpret_cast<const std::uint8_t*>(s.data() + s.size()),
+        HasSpaceOrCntrlSymbolsLambda{});
   }
 };
 

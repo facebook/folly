@@ -9,3 +9,6 @@ sha256 = 376376615dbba43d3bef75aa590931431ecb49eb36d07bb726a19f680c75e20c
 [build]
 builder = cmake
 subdir = range-v3-0.11.0
+
+[cmake.defines]
+RANGE_V3_EXAMPLES=OFF

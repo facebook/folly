@@ -1,0 +1,47 @@
+[manifest]
+name = mononoke_integration
+fbsource_path = fbcode/eden
+shipit_project = eden
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/sapling.git
+
+[build.not(os=windows)]
+builder = make
+subdir = eden/mononoke/tests/integration
+
+[build.os=windows]
+# building Mononoke on windows is not supported
+builder = nop
+
+[make.build_args]
+build-getdeps
+
+[make.install_args]
+install-getdeps
+
+[make.test_args]
+test-getdeps
+
+[shipit.pathmap]
+fbcode/eden/mononoke/tests/integration = eden/mononoke/tests/integration
+
+[shipit.strip]
+^.*/facebook/.*$
+^.*/fb/.*$
+
+[dependencies]
+git-lfs
+jq
+mononoke
+nmap
+python
+python-click
+ripgrep
+sapling
+tree
+zstd
+
+[dependencies.os=linux]
+sqlite3

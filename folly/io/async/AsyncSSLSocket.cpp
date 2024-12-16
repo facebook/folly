@@ -110,8 +110,9 @@ void* initsslBioMethod() {
 
 namespace folly {
 
-class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
-                                public AsyncSSLSocket::HandshakeCB {
+class AsyncSSLSocketConnector
+    : public AsyncSocket::ConnectCallback,
+      public AsyncSSLSocket::HandshakeCB {
  private:
   AsyncSSLSocket* sslSocket_;
   AsyncSSLSocket::ConnectCallback* callback_;
@@ -341,10 +342,9 @@ AsyncSSLSocket::AsyncSSLSocket(
 }
 
 AsyncSSLSocket::~AsyncSSLSocket() {
-  VLOG(3) << "actual destruction of AsyncSSLSocket(this=" << this
-          << ", evb=" << eventBase_ << ", fd=" << fd_
-          << ", state=" << int(state_) << ", sslState=" << sslState_
-          << ", events=" << eventFlags_ << ")";
+  VLOG(3) << "actual destruction of AsyncSSLSocket(this=" << this << ", evb="
+          << eventBase_ << ", fd=" << fd_ << ", state=" << int(state_)
+          << ", sslState=" << sslState_ << ", events=" << eventFlags_ << ")";
 }
 
 void AsyncSSLSocket::init() {
@@ -524,12 +524,13 @@ size_t AsyncSSLSocket::getRawBytesReceived() const {
 }
 
 void AsyncSSLSocket::invalidState(HandshakeCB* callback) {
-  LOG(ERROR) << "AsyncSSLSocket(this=" << this << ", fd=" << fd_
-             << ", state=" << int(state_) << ", sslState=" << sslState_ << ", "
-             << "events=" << eventFlags_ << ", server=" << short(server_)
-             << "): " << "sslAccept/Connect() called in invalid "
-             << "state, handshake callback " << handshakeCallback_
-             << ", new callback " << callback;
+  LOG(ERROR)
+      << "AsyncSSLSocket(this=" << this << ", fd=" << fd_
+      << ", state=" << int(state_) << ", sslState=" << sslState_ << ", "
+      << "events=" << eventFlags_ << ", server=" << short(server_)
+      << "): " << "sslAccept/Connect() called in invalid "
+      << "state, handshake callback " << handshakeCallback_ << ", new callback "
+      << callback;
   assert(!handshakeTimeout_.isScheduled());
   sslState_ = STATE_ERROR;
 
@@ -1181,14 +1182,15 @@ bool AsyncSSLSocket::willBlock(
     // Clear the rest.
     unsigned long lastError = *errErrorOut = ERR_get_error();
     ERR_clear_error();
-    VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", " << "state=" << state_ << ", "
-            << "sslState=" << sslState_ << ", " << "events=" << std::hex
-            << eventFlags_ << "): " << "SSL error: " << error << ", "
-            << "errno: " << errno << ", " << "ret: " << ret << ", "
-            << "read: " << BIO_number_read(SSL_get_rbio(ssl_.get())) << ", "
-            << "written: " << BIO_number_written(SSL_get_wbio(ssl_.get()))
-            << ", " << "func: " << str_or(ERR_func_error_string(lastError))
-            << ", " << "reason: " << str_or(ERR_reason_error_string(lastError));
+    VLOG(6)
+        << "AsyncSSLSocket(fd=" << fd_ << ", " << "state=" << state_ << ", "
+        << "sslState=" << sslState_ << ", " << "events=" << std::hex
+        << eventFlags_ << "): " << "SSL error: " << error << ", "
+        << "errno: " << errno << ", " << "ret: " << ret << ", "
+        << "read: " << BIO_number_read(SSL_get_rbio(ssl_.get())) << ", "
+        << "written: " << BIO_number_written(SSL_get_wbio(ssl_.get())) << ", "
+        << "func: " << str_or(ERR_func_error_string(lastError)) << ", "
+        << "reason: " << str_or(ERR_reason_error_string(lastError));
     return false;
   }
 }
@@ -1543,11 +1545,11 @@ AsyncSocket::ReadResult AsyncSSLSocket::performReadSingle(
         // Peer has closed the connection for writing by sending the
         // close_notify alert. The underlying transport might not be closed, but
         // assume it is and return EOF.
-        VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", " << "state=" << state_
-                << ", " << "sslState=" << sslState_ << ", "
-                << "events=" << std::hex << eventFlags_
-                << "): " << "bytes: " << bytes << ", " << "error: " << error
-                << ", " << "received close_notify alert";
+        VLOG(6)
+            << "AsyncSSLSocket(fd=" << fd_ << ", " << "state=" << state_ << ", "
+            << "sslState=" << sslState_ << ", " << "events=" << std::hex
+            << eventFlags_ << "): " << "bytes: " << bytes << ", "
+            << "error: " << error << ", " << "received close_notify alert";
         // AsyncSSLSocket interprets this as a READ_EOF.
         return ReadResult(0);
       }
@@ -1575,13 +1577,13 @@ AsyncSocket::ReadResult AsyncSSLSocket::performReadSingle(
       // return the head. Clear the rest.
       auto errError = ERR_get_error();
       ERR_clear_error();
-      VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", " << "state=" << state_
-              << ", " << "sslState=" << sslState_ << ", "
-              << "events=" << std::hex << eventFlags_
-              << "): " << "bytes: " << bytes << ", " << "error: " << error
-              << ", " << "errno: " << local_errno << ", "
-              << "func: " << str_or(ERR_func_error_string(errError)) << ", "
-              << "reason: " << str_or(ERR_reason_error_string(errError));
+      VLOG(6)
+          << "AsyncSSLSocket(fd=" << fd_ << ", " << "state=" << state_ << ", "
+          << "sslState=" << sslState_ << ", " << "events=" << std::hex
+          << eventFlags_ << "): " << "bytes: " << bytes << ", "
+          << "error: " << error << ", " << "errno: " << local_errno << ", "
+          << "func: " << str_or(ERR_func_error_string(errError)) << ", "
+          << "reason: " << str_or(ERR_reason_error_string(errError));
       return ReadResult(
           READ_ERROR,
           std::make_unique<SSLException>(error, errError, bytes, local_errno));
@@ -1716,11 +1718,11 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
         vec, count, flags, countWritten, partialWritten, std::move(writeTag));
   }
   if (sslState_ != STATE_ESTABLISHED) {
-    LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
-               << ", sslState=" << sslState_ << ", events=" << eventFlags_
-               << "): "
-               << "TODO: AsyncSSLSocket currently does not support calling "
-               << "write() before the handshake has fully completed";
+    LOG(ERROR)
+        << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
+        << ", sslState=" << sslState_ << ", events=" << eventFlags_
+        << "): " << "TODO: AsyncSSLSocket currently does not support calling "
+        << "write() before the handshake has fully completed";
     return WriteResult(
         WRITE_ERROR, std::make_unique<SSLException>(SSLError::EARLY_WRITE));
   }

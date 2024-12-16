@@ -3,12 +3,14 @@ name = bz2
 
 [debs]
 libbz2-dev
+bzip2
 
 [homebrew]
 bzip2
 
 [rpms]
 bzip2-devel
+bzip2
 
 [download]
 url = https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz

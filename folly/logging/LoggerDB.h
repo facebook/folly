@@ -366,8 +366,9 @@ FOLLY_ALWAYS_INLINE LoggerDB& LoggerDB::get() {
       initializeLoggerDB(*this);
       // This allows log handlers to flush any buffered messages before
       // the program exits.
-      /* library-local */ static auto guard =
-          makeGuard([this] { cleanupHandlers(); });
+      /* library-local */ static auto guard = makeGuard([this] {
+        cleanupHandlers();
+      });
     }
   };
 

@@ -585,8 +585,9 @@ TEST(NotificationQueueTest, UseAfterFork) {
   {
     // Start a separate thread consuming from the queue
     ScopedEventBaseThread t1;
-    t1.getEventBase()->runInEventBaseThread(
-        [&] { consumer.startConsuming(t1.getEventBase(), &queue); });
+    t1.getEventBase()->runInEventBaseThread([&] {
+      consumer.startConsuming(t1.getEventBase(), &queue);
+    });
 
     // Send a message to it, just for sanity checking
     queue.putMessage(1234);
@@ -639,8 +640,9 @@ TEST(NotificationQueueConsumer, make) {
   EventBase evb;
   NotificationQueue<int> queue(32);
 
-  auto consumer =
-      decltype(queue)::Consumer::make([&](int&& msg) noexcept { value = msg; });
+  auto consumer = decltype(queue)::Consumer::make([&](int&& msg) noexcept {
+    value = msg;
+  });
 
   consumer->startConsuming(&evb, &queue);
 

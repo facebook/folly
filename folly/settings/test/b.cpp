@@ -26,6 +26,7 @@ FOLLY_SETTING_DEFINE(
     std::string,
     "basdf",
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Public flag to b");
 
 namespace {
@@ -35,6 +36,7 @@ FOLLY_SETTING_DEFINE(
     std::string,
     "test",
     folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
     "Desc of str");
 }
 

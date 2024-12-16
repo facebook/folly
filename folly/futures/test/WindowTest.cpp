@@ -31,12 +31,13 @@ static eggs_t eggs("eggs");
 TEST(Window, basic) {
   // int -> Future<int>
   auto fn = [](std::vector<int> input, size_t window_size, size_t expect) {
-    auto res = reduce(
-                   window(
-                       input, [](int i) { return makeFuture(i); }, window_size),
-                   0,
-                   [](int sum, const Try<int>& b) { return sum + *b; })
-                   .get();
+    auto res =
+        reduce(
+            window(
+                input, [](int i) { return makeFuture(i); }, window_size),
+            0,
+            [](int sum, const Try<int>& b) { return sum + *b; })
+            .get();
     EXPECT_EQ(expect, res);
   };
   {
@@ -56,45 +57,48 @@ TEST(Window, basic) {
   }
   {
     // int -> Future<Unit>
-    auto res = reduce(
-                   window(
-                       std::vector<int>({1, 2, 3}),
-                       [](int /* i */) { return makeFuture(); },
-                       2),
-                   0,
-                   [](int sum, const Try<Unit>& b) {
-                     EXPECT_TRUE(b.hasValue());
-                     return sum + 1;
-                   })
-                   .get();
+    auto res =
+        reduce(
+            window(
+                std::vector<int>({1, 2, 3}),
+                [](int /* i */) { return makeFuture(); },
+                2),
+            0,
+            [](int sum, const Try<Unit>& b) {
+              EXPECT_TRUE(b.hasValue());
+              return sum + 1;
+            })
+            .get();
     EXPECT_EQ(3, res);
   }
   {
     // string -> return Future<int>
-    auto res = reduce(
-                   window(
-                       std::vector<std::string>{"1", "2", "3"},
-                       [](std::string s) {
-                         return makeFuture<int>(folly::to<int>(s));
-                       },
-                       2),
-                   0,
-                   [](int sum, const Try<int>& b) { return sum + *b; })
-                   .get();
+    auto res =
+        reduce(
+            window(
+                std::vector<std::string>{"1", "2", "3"},
+                [](std::string s) {
+                  return makeFuture<int>(folly::to<int>(s));
+                },
+                2),
+            0,
+            [](int sum, const Try<int>& b) { return sum + *b; })
+            .get();
     EXPECT_EQ(6, res);
   }
   {
     // string -> return SemiFuture<int>
-    auto res = reduce(
-                   window(
-                       std::vector<std::string>{"1", "2", "3"},
-                       [](std::string s) {
-                         return makeSemiFuture<int>(folly::to<int>(s));
-                       },
-                       2),
-                   0,
-                   [](int sum, const Try<int>& b) { return sum + *b; })
-                   .get();
+    auto res =
+        reduce(
+            window(
+                std::vector<std::string>{"1", "2", "3"},
+                [](std::string s) {
+                  return makeSemiFuture<int>(folly::to<int>(s));
+                },
+                2),
+            0,
+            [](int sum, const Try<int>& b) { return sum + *b; })
+            .get();
     EXPECT_EQ(6, res);
   }
   {
@@ -116,13 +120,15 @@ TEST(Window, inline) {
   // inline future collection on same executor
   {
     ManualExecutor x;
-    auto allf = collectAll(window(
-                               &x,
-                               std::vector<int>{42, 42, 42},
-                               [&](int i) { return makeFuture(i).via(&x); },
-                               2))
-                    .via(&x)
-                    .thenTryInline([](auto&&) {});
+    auto allf =
+        collectAll(
+            window(
+                &x,
+                std::vector<int>{42, 42, 42},
+                [&](int i) { return makeFuture(i).via(&x); },
+                2))
+            .via(&x)
+            .thenTryInline([](auto&&) {});
     EXPECT_FALSE(allf.isReady());
     EXPECT_EQ(2, x.run());
     EXPECT_FALSE(allf.isReady());

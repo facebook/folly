@@ -16,7 +16,7 @@
 
 #include <folly/Benchmark.h>
 
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 
 #include <future>
 #include <thread>
@@ -195,7 +195,7 @@ BENCHMARK(NRVOTenAwaits, iters) {
 }
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

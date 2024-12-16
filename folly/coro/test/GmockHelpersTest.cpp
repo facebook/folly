@@ -22,11 +22,11 @@
 
 #include <gtest/gtest-death-test.h>
 
-#include <folly/experimental/coro/GmockHelpers.h>
-#include <folly/experimental/coro/GtestHelpers.h>
+#include <folly/coro/GmockHelpers.h>
+#include <folly/coro/GtestHelpers.h>
 
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Task.h>
 
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

@@ -51,6 +51,18 @@ struct atomic_value_type {
   using type = atomic_value_type_t<Atomic>;
 };
 
+/// memory_order_load
+///
+/// The load part of a possibly-composite memory-order.
+constexpr std::memory_order memory_order_load( //
+    std::memory_order order) noexcept;
+
+/// memory_order_store
+///
+/// The store part of a possibly-composite memory-order.
+constexpr std::memory_order memory_order_store(
+    std::memory_order order) noexcept;
+
 //  atomic_compare_exchange_weak_explicit
 //
 //  Fix TSAN bug in std::atomic_compare_exchange_weak_explicit.

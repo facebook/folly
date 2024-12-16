@@ -1144,8 +1144,9 @@ class RelaxedConcurrentPriorityQueue {
       const std::chrono::time_point<Clock, Duration>& deadline,
       const folly::WaitOptions& opt = wait_options()) {
     // Fast path, by quick check the status
-    switch (folly::detail::spin_pause_until(
-        deadline, opt, [=] { return !isEmpty(); })) {
+    switch (folly::detail::spin_pause_until(deadline, opt, [=] {
+      return !isEmpty();
+    })) {
       case folly::detail::spin_result::success:
         return true;
       case folly::detail::spin_result::timeout:
@@ -1156,8 +1157,9 @@ class RelaxedConcurrentPriorityQueue {
 
     // Spinning strategy
     while (true) {
-      auto res =
-          folly::detail::spin_yield_until(deadline, [=] { return !isEmpty(); });
+      auto res = folly::detail::spin_yield_until(deadline, [=] {
+        return !isEmpty();
+      });
       if (res == folly::detail::spin_result::success) {
         return true;
       } else if (res == folly::detail::spin_result::timeout) {

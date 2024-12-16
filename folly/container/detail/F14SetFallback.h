@@ -370,8 +370,9 @@ class F14BasicSet
   // exact for libstdc++, approximate for others
   std::size_t getAllocatedMemorySize() const {
     std::size_t rv = 0;
-    visitAllocationClasses(
-        [&](std::size_t bytes, std::size_t n) { rv += bytes * n; });
+    visitAllocationClasses([&](std::size_t bytes, std::size_t n) {
+      rv += bytes * n;
+    });
     return rv;
   }
 

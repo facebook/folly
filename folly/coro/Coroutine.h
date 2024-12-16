@@ -232,7 +232,8 @@ struct detect_promise_return_object_eager_conversion_ {
     // unblock expected/optional coroutines. This should be removed once the
     // build config is changed to use -Wno-deprecated-experimental-coroutine.
     FOLLY_PUSH_WARNING
-#if defined(__clang__) && (__clang_major__ < 17 && __clang_major__ > 13)
+#if defined(__clang__) && \
+    (13 < __clang_major__ && __clang_major__ < 17 - defined(__APPLE__))
     FOLLY_CLANG_DISABLE_WARNING("-Wdeprecated-experimental-coroutine")
 #endif
     co_return;

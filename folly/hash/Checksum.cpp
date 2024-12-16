@@ -24,6 +24,8 @@
 #include <folly/CpuId.h>
 #include <folly/detail/TrapOnAvx512.h>
 #include <folly/external/fast-crc32/avx512_crc32c_v8s3x4.h> // @manual
+#include <folly/external/fast-crc32/neon_crc32c_v3s4x2e_v2.h> // @manual
+#include <folly/external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.h> // @manual
 #include <folly/external/fast-crc32/sse_crc32c_v8s3x3.h> // @manual
 #include <folly/hash/detail/ChecksumDetail.h>
 
@@ -71,6 +73,10 @@ uint32_t crc32_hw(
 }
 
 bool crc32c_hw_supported() {
+  return crc32c_hw_supported_sse42();
+}
+
+bool crc32c_hw_supported_sse42() {
   static folly::CpuId id;
   return id.sse42();
 }
@@ -86,7 +92,45 @@ bool crc32_hw_supported() {
   return id.sse42();
 }
 
-#else
+bool crc32c_hw_supported_neon() {
+  return false;
+}
+
+bool crc32c_hw_supported_neon_eor3_sha3() {
+  return false;
+}
+
+#elif FOLLY_ARM_FEATURE_CRC32
+
+// crc32_hw is defined in folly/external/nvidia/hash/Checksum.cpp
+
+bool crc32c_hw_supported() {
+  return true;
+}
+
+bool crc32c_hw_supported_sse42() {
+  return false;
+}
+
+bool crc32c_hw_supported_avx512() {
+  return false;
+}
+
+bool crc32c_hw_supported_neon() {
+  static bool has_neon = has_neon_crc32c_v3s4x2e_v2();
+  return has_neon;
+}
+
+bool crc32c_hw_supported_neon_eor3_sha3() {
+  static bool has_neon_eor3 = has_neon_eor3_crc32c_v8s2x4_s3();
+  return has_neon_eor3;
+}
+
+bool crc32_hw_supported() {
+  return true;
+}
+
+#else // FOLLY_ARM_FEATURE_CRC32
 
 uint32_t crc32_hw(
     const uint8_t* /* data */,
@@ -99,11 +143,23 @@ bool crc32c_hw_supported() {
   return false;
 }
 
+bool crc32c_hw_supported_sse42() {
+  return false;
+}
+
 bool crc32c_hw_supported_avx512() {
   return false;
 }
 
 bool crc32_hw_supported() {
+  return false;
+}
+
+bool crc32c_hw_supported_neon() {
+  return false;
+}
+
+bool crc32c_hw_supported_neon_eor3_sha3() {
   return false;
 }
 #endif
@@ -148,6 +204,16 @@ uint32_t crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
 #if defined(FOLLY_ENABLE_AVX512_CRC32C_V8S3X4)
   if (detail::crc32c_hw_supported_avx512() && nbytes > 4096) {
     return detail::avx512_crc32c_v8s3x4(data, nbytes, startingChecksum);
+  }
+#endif
+
+#if FOLLY_AARCH64
+  if (nbytes >= 2048 && detail::crc32c_hw_supported_neon_eor3_sha3()) {
+    return detail::neon_eor3_crc32c_v8s2x4_s3(data, nbytes, startingChecksum);
+  }
+
+  if (nbytes >= 4096 && detail::crc32c_hw_supported_neon()) {
+    return detail::neon_crc32c_v3s4x2e_v2(data, nbytes, startingChecksum);
   }
 #endif
 

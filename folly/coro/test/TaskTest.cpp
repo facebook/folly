@@ -17,15 +17,15 @@
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/SharedMutex.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/detail/InlineTask.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/SharedMutex.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
@@ -163,12 +163,14 @@ static coro::Task<void> parentRequest(int id) {
   coro::Baton baton1;
   coro::Baton baton2;
 
-  auto fut1 = childRequest(mutex, baton1)
-                  .scheduleOn(co_await coro::co_current_executor)
-                  .start();
-  auto fut2 = childRequest(mutex, baton1)
-                  .scheduleOn(co_await coro::co_current_executor)
-                  .start();
+  auto fut1 =
+      childRequest(mutex, baton1)
+          .scheduleOn(co_await coro::co_current_executor)
+          .start();
+  auto fut2 =
+      childRequest(mutex, baton1)
+          .scheduleOn(co_await coro::co_current_executor)
+          .start();
 
   CHECK_EQ(contextData, RequestContext::get()->getContextData(testToken1));
 
@@ -344,8 +346,9 @@ TEST_F(TaskTest, FutureTailCall) {
       42,
       folly::coro::blockingWait(
           folly::coro::co_invoke([&]() -> folly::coro::Task<int> {
-            co_return co_await folly::makeSemiFuture().deferValue(
-                [](auto) { return folly::makeSemiFuture(42); });
+            co_return co_await folly::makeSemiFuture().deferValue([](auto) {
+              return folly::makeSemiFuture(42);
+            });
           })));
 }
 

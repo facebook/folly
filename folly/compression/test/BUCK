@@ -9,6 +9,7 @@ cpp_unittest(
     srcs = ["CompressionTest.cpp"],
     headers = [],
     supports_static_listing = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "fbsource//third-party/zstd:zstd",
         "//folly:random",
@@ -28,6 +29,7 @@ cpp_unittest(
     srcs = [
         "CompressionContextPoolTest.cpp",
     ],
+    labels = ["case-isolation-failure"],
     deps = [
         "//folly/compression:compression_context_pool",
         "//folly/compression:compression_context_pool_singletons",

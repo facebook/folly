@@ -18,9 +18,9 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/WithAsyncStack.h>
-#include <folly/experimental/coro/detail/Malloc.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/WithAsyncStack.h>
+#include <folly/coro/detail/Malloc.h>
 #include <folly/lang/Assume.h>
 #include <folly/tracing/AsyncStack.h>
 
@@ -185,8 +185,9 @@ class InlineTask {
     }
 
     T await_resume() {
-      auto destroyOnExit =
-          folly::makeGuard([this] { std::exchange(coro_, {}).destroy(); });
+      auto destroyOnExit = folly::makeGuard([this] {
+        std::exchange(coro_, {}).destroy();
+      });
       return coro_.promise().result();
     }
 

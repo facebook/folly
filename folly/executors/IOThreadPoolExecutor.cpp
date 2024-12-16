@@ -231,8 +231,9 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   auto idler = std::make_unique<MemoryIdlerTimeout>(ioThread->eventBase);
   ioThread->eventBase->runBeforeLoop(idler.get());
 
-  ioThread->eventBase->runInEventBaseThread(
-      [thread] { thread->startupBaton.post(); });
+  ioThread->eventBase->runInEventBaseThread([thread] {
+    thread->startupBaton.post();
+  });
   {
     ExecutorBlockingGuard guard{
         ExecutorBlockingGuard::TrackTag{}, this, getName()};

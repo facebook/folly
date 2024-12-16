@@ -365,8 +365,9 @@ template <
     class Instructions,
     class SizeType,
     bool kUnchecked = false>
-class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
-                        SkipPointers<Encoder::skipQuantum> {
+class UpperBitsReader
+    : ForwardPointers<Encoder::forwardQuantum>,
+      SkipPointers<Encoder::skipQuantum> {
   using SkipValueType = typename Encoder::SkipValueType;
 
  public:

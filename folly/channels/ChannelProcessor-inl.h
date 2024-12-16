@@ -260,8 +260,9 @@ class ChannelProcessorImpl {
 
     folly::coro::Task<void> onUpdate(Try<InputValueType> value) {
       if constexpr (std::is_same_v<ChannelState, NoChannelState>) {
-        co_await catchNonCoroException(
-            [&] { return std::get<OnUpdateFunc>(*this)(std::move(value)); });
+        co_await catchNonCoroException([&] {
+          return std::get<OnUpdateFunc>(*this)(std::move(value));
+        });
       } else {
         co_await catchNonCoroException([&] {
           return std::get<OnUpdateFunc>(*this)(

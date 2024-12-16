@@ -1,3 +1,0 @@
-# the build script for lock_api is a version check for rust 1.61.
-[[buildscript]]
-[buildscript.rustc_flags]

@@ -16,6 +16,7 @@
 
 #include <folly/Utility.h>
 
+#include <array>
 #include <type_traits>
 
 #include <folly/lang/Keep.h>
@@ -57,10 +58,12 @@ namespace my_type {
 
 struct MoveInt : folly::MoveOnly {
   int x = 0;
+  explicit MoveInt(int x_) noexcept : x{x_} {}
 };
 
 struct NoMoveInt : folly::NonCopyableNonMovable {
   int x = 0;
+  explicit NoMoveInt(int x_) noexcept : x{x_} {}
 };
 
 template <class M>
@@ -73,11 +76,11 @@ int square(const M& m) {
 TEST_F(UtilityTest, NonCopyableAggregateInit) {
   // Ensure classes inheriting from folly::MoveOnly, etc, do not find all of
   // folly::* by ADL.
-  EXPECT_EQ(16, square(my_type::MoveInt{.x = 4}));
-  EXPECT_EQ(25, square(my_type::NoMoveInt{.x = 5}));
+  EXPECT_EQ(16, square(my_type::MoveInt{4}));
+  EXPECT_EQ(25, square(my_type::NoMoveInt{5}));
   using folly::square;
   EXPECT_EQ(36, square(6));
-  // Ambiguous: EXPECT_EQ(16, square(my_type::MoveInt{.x = 4}));
+  // Ambiguous: EXPECT_EQ(16, square(my_type::MoveInt{4}));
 }
 
 // Tests for FOLLY_DECLVAL macro:
@@ -135,8 +138,10 @@ static_assert(std::is_same_v<void, dec<void volatile>>);
 static_assert(std::is_same_v<void, dec<void const volatile>>);
 static_assert(std::is_same_v<incomplete, dec<incomplete>>);
 static_assert(std::is_same_v<incomplete, dec<incomplete const>>);
+#if !defined(_MSC_VER)
 static_assert(std::is_same_v<abstract, dec<abstract>>);
 static_assert(std::is_same_v<abstract, dec<abstract const>>);
+#endif
 static_assert(std::is_same_v<immobile, dec<immobile>>);
 static_assert(std::is_same_v<immobile, dec<immobile const>>);
 
@@ -190,6 +195,8 @@ TEST_F(UtilityTest, forward_like) {
   // std::forward<const int&>(1);
   // folly::forward_like<const int&>(1);
 }
+
+static_assert(!std::is_default_constructible_v<folly::literal_string<char, 1>>);
 
 TEST_F(UtilityTest, literal_string) {
   constexpr auto s = folly::literal_string{"hello world"};
@@ -256,7 +263,7 @@ template class TestCopyMove<true, true>;
 
 TEST_F(UtilityTest, MoveOnly) {
   class FooBar : folly::MoveOnly {
-    int a;
+    [[maybe_unused]] int a = 0;
   };
 
   static_assert(
@@ -277,7 +284,7 @@ TEST_F(UtilityTest, MoveOnly) {
 
 TEST_F(UtilityTest, NonCopyableNonMovable) {
   class FooBar : folly::NonCopyableNonMovable {
-    int a;
+    [[maybe_unused]] int a = 0;
   };
 
   static_assert(
@@ -461,3 +468,81 @@ static_assert(is_nx_conv_v<of<int, 1, 1, 1>&&, int>);
 static_assert(is_nx_conv_v<of<int, 1, 1, 1> const&&, int>);
 
 } // namespace folly::detail::invocable_to_test
+
+namespace folly::detail::method_overload_delegation_test {
+
+class MethodOverloadDelegation {
+ private:
+  int value_ = 0;
+
+  template <class Self>
+  static auto&& testForwardImpl(Self&& self) {
+    return std::forward<Self>(self).value_;
+  }
+
+  template <class Self, class T>
+  static void testNoexceptImpl(Self&&, T) noexcept(T::value) {}
+
+  template <class Self>
+  static constexpr int testConstexprImpl(Self&&) {
+    return 42;
+  }
+
+  template <class Self, class T>
+  static constexpr std::enable_if_t<T::value> testSfinaeImpl(Self&&, T) {}
+
+ public:
+  FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(
+      testForward, testForwardImpl);
+  FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(
+      testConstexpr, testConstexprImpl);
+  FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(
+      testNoexcept, testNoexceptImpl);
+  FOLLY_FOR_EACH_THIS_OVERLOAD_IN_CLASS_BODY_DELEGATE(
+      testSfinae, testSfinaeImpl);
+};
+
+template <class Self, class T>
+constexpr bool testForward =
+    std::is_same_v<decltype(std::declval<Self>().testForward()), T>;
+
+static_assert(testForward<MethodOverloadDelegation&, int&>);
+static_assert(testForward<MethodOverloadDelegation&&, int&&>);
+static_assert(testForward<const MethodOverloadDelegation&, const int&>);
+static_assert(testForward<const MethodOverloadDelegation&&, const int&&>);
+
+template <class Self>
+constexpr bool testConstexpr =
+    static_cast<Self>(std::array<folly::remove_cvref_t<Self>, 1>{}[0])
+        .testConstexpr() == 42;
+
+static_assert(testConstexpr<MethodOverloadDelegation&>);
+static_assert(testConstexpr<MethodOverloadDelegation&&>);
+static_assert(testConstexpr<const MethodOverloadDelegation&>);
+static_assert(testConstexpr<const MethodOverloadDelegation&&>);
+
+template <class Self>
+constexpr bool testNoexcept =
+    noexcept(std::declval<Self>().testNoexcept(std::true_type{})) &&
+    !noexcept(std::declval<Self>().testNoexcept(std::false_type{}));
+
+static_assert(testNoexcept<MethodOverloadDelegation&>);
+static_assert(testNoexcept<MethodOverloadDelegation&&>);
+static_assert(testNoexcept<const MethodOverloadDelegation&>);
+static_assert(testNoexcept<const MethodOverloadDelegation&&>);
+
+template <class Self, class T>
+using testSfinaeDetect = decltype(void(std::declval<Self>().testSfinae(T{})));
+template <class Self, class T>
+constexpr bool testSfinae = is_detected_v<testSfinaeDetect, Self, T>;
+
+static_assert(testSfinae<MethodOverloadDelegation&, std::true_type>);
+static_assert(testSfinae<const MethodOverloadDelegation&, std::true_type>);
+static_assert(testSfinae<MethodOverloadDelegation&&, std::true_type>);
+static_assert(testSfinae<const MethodOverloadDelegation&&, std::true_type>);
+static_assert(!testSfinae<MethodOverloadDelegation&, int>);
+static_assert(!testSfinae<const MethodOverloadDelegation&, int>);
+static_assert(!testSfinae<MethodOverloadDelegation&&, int>);
+static_assert(!testSfinae<const MethodOverloadDelegation&&, int>);
+
+} // namespace folly::detail::method_overload_delegation_test

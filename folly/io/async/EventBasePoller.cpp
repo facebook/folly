@@ -136,7 +136,7 @@ class EventBasePollerImpl : public EventBasePoller {
   ~EventBasePollerImpl() override {
     CHECK_EQ(numGroups_.load(), 0)
         << "All groups must be destroyed before EventBasePoller";
-    ::close(notificationEv_.fd);
+    fileops::close(notificationEv_.fd);
   }
 
   std::unique_ptr<FdGroup> makeFdGroup(ReadyCallback readyCallback) override;
@@ -144,8 +144,9 @@ class EventBasePollerImpl : public EventBasePoller {
  protected:
   void startLoop() {
     Baton<> started;
-    loopThread_ =
-        std::make_unique<std::thread>([this, &started]() { loop(started); });
+    loopThread_ = std::make_unique<std::thread>([this, &started]() {
+      loop(started);
+    });
     started.wait();
   }
 
@@ -394,7 +395,7 @@ class EventBasePollerEpoll final : public EventBasePollerImpl {
     PCHECK(epFd_ > 0);
   }
 
-  void teardown() override { ::close(epFd_); }
+  void teardown() override { fileops::close(epFd_); }
 
   void addEvent(Event* event) override {
     if (event->isNotificationFd() && event->registered) {
@@ -478,7 +479,7 @@ void enableFlagsIfSupported(
   tmpParams.flags = desiredFlags;
   int fd = ::io_uring_setup(1, &tmpParams);
   if (fd >= 0) {
-    ::close(fd);
+    fileops::close(fd);
     VLOG(1) << "io_uring flags " << msg << " supported";
     params.flags |= desiredFlags;
   } else if (fd == -EINVAL) {

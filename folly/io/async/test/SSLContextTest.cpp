@@ -303,7 +303,8 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
 
 TEST_F(SSLContextTest, TestTLS13MinVersion) {
   SSLContext sslContext{SSLContext::SSLVersion::TLSv1_3};
-  int minProtoVersion = SSL_CTX_get_min_proto_version(sslContext.getSSLCtx());
+  const auto minProtoVersion =
+      SSL_CTX_get_min_proto_version(sslContext.getSSLCtx());
   EXPECT_EQ(minProtoVersion, TLS1_3_VERSION);
 }
 

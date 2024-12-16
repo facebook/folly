@@ -1,2 +1,0 @@
-extra_srcs = ["src/schema.json"]
-cargo_env = true

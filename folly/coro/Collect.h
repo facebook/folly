@@ -20,12 +20,12 @@
 #include <folly/Unit.h>
 #include <folly/container/Access.h>
 #include <folly/container/Iterator.h>
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/AsyncScope.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
-#include <folly/experimental/coro/detail/Traits.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/AsyncScope.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/ViaIfAsync.h>
+#include <folly/coro/detail/Traits.h>
 
 #include <functional>
 #include <iterator>

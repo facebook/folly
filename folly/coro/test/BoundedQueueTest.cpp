@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/BoundedQueue.h>
+#include <folly/coro/BoundedQueue.h>
 
 #include <chrono>
 #include <optional>
@@ -23,10 +23,10 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/Portability.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Sleep.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Sleep.h>
 #include <folly/portability/GTest.h>
 #if FOLLY_HAS_COROUTINES
 
@@ -295,8 +295,9 @@ TEST(BoundedQueueTest, UnorderedDequeueCompletion) {
   // The producer will get the ticket for the slow moving slot which will still
   // be in the process of dequeuing, so the producer needs to block until it
   // finishes and the slot becomes available.
-  std::thread producer(
-      [&] { folly::coro::blockingWait(queue.enqueue(SlowMover(false))); });
+  std::thread producer([&] {
+    folly::coro::blockingWait(queue.enqueue(SlowMover(false)));
+  });
 
   producer.join();
   for (auto& consumer : consumers) {

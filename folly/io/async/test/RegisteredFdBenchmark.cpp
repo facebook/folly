@@ -35,7 +35,7 @@ class EventFD : public EventHandler {
 
     if (fd_ > 0) {
       changeHandlerFD(NetworkSocket());
-      ::close(fd_);
+      fileops::close(fd_);
       fd_ = -1;
     }
   }
@@ -85,11 +85,12 @@ class EventFD : public EventHandler {
 class BackendEventBase : public EventBase {
  public:
   explicit BackendEventBase(bool useRegisteredFds, size_t capacity = 32 * 1024)
-      : EventBase(EventBase::Options()
-                      .setBackendFactory([useRegisteredFds, capacity] {
-                        return getBackend(useRegisteredFds, capacity);
-                      })
-                      .setSkipTimeMeasurement(true)) {}
+      : EventBase(
+            EventBase::Options()
+                .setBackendFactory([useRegisteredFds, capacity] {
+                  return getBackend(useRegisteredFds, capacity);
+                })
+                .setSkipTimeMeasurement(true)) {}
 
  private:
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend(
@@ -141,6 +142,6 @@ BENCHMARK_RELATIVE_NAMED_PARAM(
 BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   runBenchmarks();
 }

@@ -27,8 +27,9 @@ class Cleaned : public folly::Cleanup {
 
  public:
   Cleaned() : pool_(4) {
-    addCleanup(
-        folly::makeSemiFuture().defer([this](auto&&) { this->pool_.join(); }));
+    addCleanup(folly::makeSemiFuture().defer([this](auto&&) {
+      this->pool_.join();
+    }));
   }
 
   using folly::Cleanup::addCleanup;
@@ -94,8 +95,9 @@ TEST(CleanupTest, EnsureCleanupAfterTaskBasic) {
 TEST(CleanupTest, Errors) {
   auto cleaned = std::make_unique<Cleaned>();
 
-  cleaned->addCleanup(folly::makeSemiFuture().deferValue(
-      [](folly::Unit) { EXPECT_TRUE(false); }));
+  cleaned->addCleanup(folly::makeSemiFuture().deferValue([](folly::Unit) {
+    EXPECT_TRUE(false);
+  }));
 
   cleaned->addCleanup(
       folly::makeSemiFuture<folly::Unit>(std::runtime_error("failed cleanup")));
@@ -120,8 +122,9 @@ TEST(CleanupTest, Invariants) {
   Cleaned cleaned;
 
   auto ranCleanup = false;
-  cleaned.addCleanup(folly::makeSemiFuture().deferValue(
-      [&](folly::Unit) { ranCleanup = true; }));
+  cleaned.addCleanup(folly::makeSemiFuture().deferValue([&](folly::Unit) {
+    ranCleanup = true;
+  }));
 
   EXPECT_FALSE(ranCleanup);
 
@@ -136,8 +139,9 @@ TEST(CleanupTest, Invariants) {
   EXPECT_TRUE(ranCleanup);
 
   EXPECT_EXIT(
-      cleaned.addCleanup(folly::makeSemiFuture().deferValue(
-          [](folly::Unit) { EXPECT_TRUE(false); })),
+      cleaned.addCleanup(folly::makeSemiFuture().deferValue([](folly::Unit) {
+        EXPECT_TRUE(false);
+      })),
       testing::KilledBySignal(SIGABRT),
       ".*addCleanup.*");
 

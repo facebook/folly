@@ -40,6 +40,7 @@ cpp_library(
     name = "iobuf_test_utils",
     srcs = ["IOBufTestUtils.cpp"],
     headers = ["IOBufTestUtils.h"],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly/python:iobuf_lib",
     ],
@@ -69,6 +70,7 @@ python_unittest(
     srcs = [
         "iobuf.py",
     ],
+    typing = True,
     deps = [
         ":iobuf_helper",
         "//folly/python:iobuf",
@@ -80,8 +82,8 @@ cython_library(
     srcs = ["simplebridgecoro.pyx"],
     headers = ["simplecoro.h"],
     cpp_deps = [
-        "//folly/experimental/coro:baton",
-        "//folly/experimental/coro:task",
+        "//folly/coro:baton",
+        "//folly/coro:task",
         "//folly/futures:core",
         "//folly:cancellation_token",
     ],
@@ -95,7 +97,7 @@ cython_library(
     srcs = ["simplegenerator.pyx"],
     headers = ["simplegenerator.h"],
     cpp_deps = [
-        "//folly/experimental/coro:async_generator",
+        "//folly/coro:async_generator",
     ],
     deps = [
         "//folly/python:async_generator",
@@ -118,8 +120,8 @@ cpp_unittest(
         "AsyncGeneratorTest.cpp",
     ],
     deps = [
-        "//folly/experimental/coro:blocking_wait",
-        "//folly/experimental/coro:task",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
         "//folly/portability:gtest",
         "//folly/python:async_generator_lib",
     ],
@@ -130,6 +132,7 @@ cpp_unittest(
     srcs = [
         "ErrorTest.cpp",
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "fbsource//third-party/python:python",
         "//folly:scope_guard",

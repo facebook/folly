@@ -238,8 +238,9 @@ template <
     class Encoder,
     class Instructions = instructions::Default,
     bool kUnchecked = false>
-class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
-                        detail::SkipPointers<Encoder::skipQuantum> {
+class BitVectorReader
+    : detail::ForwardPointers<Encoder::forwardQuantum>,
+      detail::SkipPointers<Encoder::skipQuantum> {
  public:
   typedef Encoder EncoderType;
   typedef typename Encoder::ValueType ValueType;

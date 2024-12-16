@@ -10,14 +10,10 @@ import select
 import subprocess
 import sys
 
+from shlex import quote as shellquote
+
 from .envfuncs import Env
 from .platform import is_windows
-
-
-try:
-    from shlex import quote as shellquote
-except ImportError:
-    from pipes import quote as shellquote
 
 
 class RunCommandError(Exception):

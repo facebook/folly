@@ -17,9 +17,9 @@
 #include <cassert>
 #include <iostream>
 #include <folly/Executor.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/futures/Future.h>
 
 class LoggingExecutor : public folly::Executor {
@@ -105,11 +105,12 @@ int main() {
                  " this isn't ready to run, hence is not added.\n";
     auto f2 = std::move(f1).thenValue(bar);
 
-    std::cout << "5. Stepping the executor.\n"
-              << "   This will run the defered computation.\n"
-              << "   Furthermore, this unblocks the second part of the Future"
-                 " (the .thenValue() continuation), so more work will be added"
-                 " to the executor.\n";
+    std::cout
+        << "5. Stepping the executor.\n"
+        << "   This will run the defered computation.\n"
+        << "   Furthermore, this unblocks the second part of the Future"
+           " (the .thenValue() continuation), so more work will be added"
+           " to the executor.\n";
     executor->step();
 
     std::cout << "6. Stepping the executor.\n"

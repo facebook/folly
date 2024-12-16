@@ -24,7 +24,7 @@ class LogAfterMain(unittest.TestCase):
         if path:
             if not os.access(path, os.X_OK):
                 raise Exception(
-                    "path specified by $%s does not exist: %r" % (env_var, path)
+                    "path specified by ${} does not exist: {!r}".format(env_var, path)
                 )
             return path
 
@@ -39,13 +39,12 @@ class LogAfterMain(unittest.TestCase):
             path = os.path.join(d, name)
             if os.access(path, os.X_OK):
                 return path
-        raise Exception("unable to find helper program %r" % (name,))
+        raise Exception("unable to find helper program {!r}".format(name))
 
     def run_helper(self, cmd):
         return subprocess.run(
             cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             encoding="utf-8",
             errors="surrogateescape",
         )
@@ -55,7 +54,7 @@ class LogAfterMain(unittest.TestCase):
         proc = self.run_helper([helper])
         self.assertEqual(proc.stdout, "")
         self.assertIn("main running", proc.stderr)
-        self.assertEqual(proc.returncode, 0, "stderr: %s" % (proc.stderr,))
+        self.assertEqual(proc.returncode, 0, "stderr: {}".format(proc.stderr))
 
     def test_log_after_main_no_init(self):
         helper = self.find_helper(
@@ -63,4 +62,4 @@ class LogAfterMain(unittest.TestCase):
         )
         proc = self.run_helper([helper])
         self.assertEqual(proc.stdout, "")
-        self.assertEqual(proc.returncode, 0, "stderr: %s" % (proc.stderr,))
+        self.assertEqual(proc.returncode, 0, "stderr: {}".format(proc.stderr))

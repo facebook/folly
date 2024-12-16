@@ -161,8 +161,9 @@ ObserverCreator<Observable, Traits>::getObserver() && {
   // callback gets derived weak_ptr.
   ContextPrimaryPtr contextPrimary(context_);
   auto contextWeak = contextPrimary.get_weak();
-  auto observer = makeObserver(
-      [context = std::move(contextPrimary)]() { return context->get(); });
+  auto observer = makeObserver([context = std::move(contextPrimary)]() {
+    return context->get();
+  });
 
   context_->setCore(observer.core_);
 

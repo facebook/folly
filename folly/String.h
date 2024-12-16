@@ -762,6 +762,37 @@ inline bool hasSpaceOrCntrlSymbols(folly::StringPiece s) {
   return detail::simdHasSpaceOrCntrlSymbols(s);
 }
 
+struct format_string_for_each_named_arg_fn {
+  template <typename C, typename CT, typename Fn>
+  constexpr void operator()(std::basic_string_view<C, CT> str, Fn fn) const
+      noexcept(noexcept(fn(str))) {
+    using view = std::basic_string_view<C, CT>;
+    while (true) {
+      auto const pos = str.find('{');
+      auto const beg = pos == view::npos ? str.size() : pos + 1;
+      if (beg == str.size()) {
+        return; // malformed
+      }
+      if (str[beg] == '{') {
+        str = str.substr(beg + 1);
+        continue; // escaped
+      }
+      auto const end = std::min(str.find('}', pos), str.find(':', pos));
+      if (end == view::npos) {
+        return; // malformed
+      }
+      auto const arg = str.substr(beg, end - beg);
+      if (!arg.empty() && (arg[0] == '_' || std::isalpha(arg[0]))) {
+        fn(arg);
+      }
+      str = str.substr(beg);
+    }
+  }
+};
+
+inline constexpr format_string_for_each_named_arg_fn
+    format_string_for_each_named_arg{};
+
 } // namespace folly
 
 #include <folly/String-inl.h>

@@ -21,10 +21,14 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
-/*
+/**
  * This is the recommended main function for all tests.
+ * Before running all the tests, it initializes GoogleTest and folly.
+ * By default, this configures Google Logging (glog) to output to stderr.
+ *
  * The Makefile links it into all of the test programs so that tests do not need
  * to - and indeed should typically not - define their own main() functions
+ * @file
  */
 FOLLY_ATTR_WEAK int main(int argc, char** argv);
 

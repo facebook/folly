@@ -8,6 +8,7 @@
 import configparser
 import io
 import os
+import sys
 from typing import List
 
 from .builder import (
@@ -21,6 +22,7 @@ from .builder import (
     NopBuilder,
     OpenSSLBuilder,
     SqliteBuilder,
+    SystemdBuilder,
 )
 from .cargo import CargoBuilder
 from .expr import parse_expr
@@ -87,6 +89,7 @@ SCHEMA = {
         "optional_section": True,
         "fields": {
             "run_tests": OPTIONAL,
+            "required_locales": OPTIONAL,
         },
     },
     "crate.pathmap": {"optional_section": True},
@@ -390,7 +393,10 @@ class ManifestParser(object):
             return False
         for key in envs:
             val = os.environ.get(key, None)
-            print(f"Testing ENV[{key}]: {repr(val)}")
+            print(
+                f"Testing ENV[{key}]: {repr(val)}",
+                file=sys.stderr,
+            )
             if val is None:
                 return False
             if len(val) == 0:
@@ -424,23 +430,27 @@ class ManifestParser(object):
             # We can use the code from fbsource
             return ShipitTransformerFetcher(build_options, self.shipit_project)
 
+        # If both of these are None, the package can only be coming from
+        # preinstalled toolchain or system packages
+        repo_url = self.get_repo_url(ctx)
+        url = self.get("download", "url", ctx=ctx)
+
         # Can we satisfy this dep with system packages?
-        if build_options.allow_system_packages:
+        if (repo_url is None and url is None) or build_options.allow_system_packages:
             if self._is_satisfied_by_preinstalled_environment(ctx):
                 return PreinstalledNopFetcher()
 
-            packages = self.get_required_system_packages(ctx)
-            package_fetcher = SystemPackageFetcher(build_options, packages)
-            if package_fetcher.packages_are_installed():
-                return package_fetcher
+            if build_options.host_type.get_package_manager():
+                packages = self.get_required_system_packages(ctx)
+                package_fetcher = SystemPackageFetcher(build_options, packages)
+                if package_fetcher.packages_are_installed():
+                    return package_fetcher
 
-        repo_url = self.get_repo_url(ctx)
         if repo_url:
             rev = self.get("git", "rev")
             depth = self.get("git", "depth")
             return GitFetcher(build_options, self, repo_url, rev, depth)
 
-        url = self.get("download", "url", ctx=ctx)
         if url:
             # We need to defer this import until now to avoid triggering
             # a cycle when the facebook/__init__.py is loaded.
@@ -458,7 +468,8 @@ class ManifestParser(object):
                 )
 
         raise KeyError(
-            "project %s has no fetcher configuration matching %s" % (self.name, ctx)
+            "project %s has no fetcher configuration or system packages matching %s"
+            % (self.name, ctx)
         )
 
     def create_fetcher(self, build_options, loader, ctx):
@@ -646,6 +657,18 @@ class ManifestParser(object):
 
         if builder == "iproute2":
             return Iproute2Builder(
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+            )
+
+        if builder == "systemd":
+            return SystemdBuilder(
                 loader,
                 dep_manifests,
                 build_options,

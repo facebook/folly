@@ -16,7 +16,7 @@
 
 #include <folly/detail/SimpleSimdStringUtils.h>
 
-#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
+#include <folly/algorithm/simd/detail/SimdPlatform.h>
 #include <folly/detail/SimpleSimdStringUtilsImpl.h>
 #include <folly/portability/GTest.h>
 
@@ -32,18 +32,24 @@ bool hasSpaceOrCntrlSymbolsForPlatform(folly::StringPiece s) {
 void testHasSpaceOrCntrlSymbols(folly::StringPiece s, bool r) {
   ASSERT_EQ(r, simdHasSpaceOrCntrlSymbols(s)) << s;
 
-  using namespace simd_detail;
+  using namespace simd::detail;
   ASSERT_EQ(r, hasSpaceOrCntrlSymbolsForPlatform<void>(s)) << s;
 
-#if FOLLY_X64
-  ASSERT_EQ(r, hasSpaceOrCntrlSymbolsForPlatform<SimdCharSse2Platform>(s)) << s;
+#if FOLLY_SSE_PREREQ(4, 2)
+  ASSERT_EQ(
+      r, hasSpaceOrCntrlSymbolsForPlatform<SimdSse42Platform<std::uint8_t>>(s))
+      << s;
 #if defined(__AVX2__)
-  ASSERT_EQ(r, hasSpaceOrCntrlSymbolsForPlatform<SimdCharAvx2Platform>(s)) << s;
+  ASSERT_EQ(
+      r, hasSpaceOrCntrlSymbolsForPlatform<SimdAvx2Platform<std::uint8_t>>(s))
+      << s;
 #endif
 #endif
 
 #if FOLLY_AARCH64
-  ASSERT_EQ(r, hasSpaceOrCntrlSymbolsForPlatform<SimdCharAarch64Platform>(s))
+  ASSERT_EQ(
+      r,
+      hasSpaceOrCntrlSymbolsForPlatform<SimdAarch64Platform<std::uint8_t>>(s))
       << s;
 #endif
 }

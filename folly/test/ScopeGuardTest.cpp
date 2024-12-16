@@ -216,8 +216,9 @@ TEST(ScopeGuard, DifferentWaysToBind) {
 
 TEST(ScopeGuard, GuardException) {
   EXPECT_DEATH(
-      (void)makeGuard(
-          [] { throw std::runtime_error("dtors should never throw!"); }),
+      (void)makeGuard([] {
+        throw std::runtime_error("dtors should never throw!");
+      }),
       "dtors should never throw!");
 }
 

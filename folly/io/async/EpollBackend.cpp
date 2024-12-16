@@ -90,7 +90,7 @@ void SignalRegistry::notify(int sig) {
   int fd = notifyFd_.load();
   if (fd >= 0) {
     uint8_t sigNum = static_cast<uint8_t>(sig);
-    ::write(fd, &sigNum, 1);
+    fileops::write(fd, &sigNum, 1);
   }
 }
 
@@ -168,7 +168,7 @@ EpollBackend::SocketPair::SocketPair() {
 EpollBackend::SocketPair::~SocketPair() {
   for (auto fd : fds_) {
     if (fd >= 0) {
-      ::close(fd);
+      fileops::close(fd);
     }
   }
 }
@@ -184,7 +184,7 @@ EpollBackend::EpollBackend(Options options) : options_(options) {
     timerFd_ = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (timerFd_ == -1) {
       auto errnoCopy = errno;
-      ::close(epollFd_);
+      fileops::close(epollFd_);
       throw std::runtime_error(folly::errnoStr(errnoCopy));
     }
     struct epoll_event epev = {};
@@ -208,8 +208,8 @@ EpollBackend::EpollBackend(Options options) : options_(options) {
 }
 
 EpollBackend::~EpollBackend() {
-  ::close(epollFd_);
-  ::close(timerFd_);
+  fileops::close(epollFd_);
+  fileops::close(timerFd_);
 }
 
 int EpollBackend::eb_event_base_loop(int flags) {

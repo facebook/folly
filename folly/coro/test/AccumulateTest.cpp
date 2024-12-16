@@ -16,8 +16,8 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/Accumulate.h>
-#include <folly/experimental/coro/BlockingWait.h>
+#include <folly/coro/Accumulate.h>
+#include <folly/coro/BlockingWait.h>
 
 #include <folly/portability/GTest.h>
 

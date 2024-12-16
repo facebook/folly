@@ -80,9 +80,10 @@ class SkipListNode {
   }
 
   template <typename NodeAlloc>
-  struct DestroyIsNoOp : StrictConjunction<
-                             AllocatorHasTrivialDeallocate<NodeAlloc>,
-                             std::is_trivially_destructible<SkipListNode>> {};
+  struct DestroyIsNoOp
+      : StrictConjunction<
+            AllocatorHasTrivialDeallocate<NodeAlloc>,
+            std::is_trivially_destructible<SkipListNode>> {};
 
   // copy the head node to a new head node assuming lock acquired
   SkipListNode* copyHead(SkipListNode* node) {

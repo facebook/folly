@@ -56,7 +56,6 @@ def cpp_flags():
 FBANDROID_CPPFLAGS = [
     "-DFOLLY_HAVE_IFUNC=0",
     "-DFOLLY_HAVE_INT128_T=0",
-    "-DFOLLY_DISABLE_SDT=1",
     "-DSSLCONTEXT_NO_REFCOUNT",
     "-D__STDC_FORMAT_MACROS",
     "-D__STDC_LIMIT_MACROS",
@@ -121,7 +120,6 @@ def _compute_include_directories():
 def folly_library(
         name,
         srcs = (),
-        headers = (),
         exported_headers = (),
         raw_headers = (),
         deps = (),
@@ -153,7 +151,6 @@ def folly_library(
         name = name,
         srcs = srcs,
         header_namespace = "",
-        headers = headers,
         exported_headers = exported_headers,
         raw_headers = raw_headers,
         public_include_directories = _compute_include_directories(),

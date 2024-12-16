@@ -16,17 +16,17 @@
 
 #include <folly/Portability.h>
 
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Generator.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Mutex.h>
+#include <folly/coro/Sleep.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Generator.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/Sleep.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
 
@@ -2419,8 +2419,8 @@ TEST_F(CollectAnyNoDiscardTest, MultipleTasksWithValues) {
   std::atomic_size_t count{0};
 
   // Busy wait until all threads have started before returning
-  auto busyWait = [](std::atomic_size_t& count,
-                     size_t num) -> folly::coro::Task<void> {
+  auto busyWait =
+      [](std::atomic_size_t& count, size_t num) -> folly::coro::Task<void> {
     count.fetch_add(1);
     while (count.load() < num) {
       // Need to yield because collectAnyNoDiscard() won't start the second and
@@ -3228,8 +3228,8 @@ TEST_F(CollectAnyNoDiscardRangeTest, MultipleTasksWithValues) {
   std::atomic_size_t count{0};
 
   // Busy wait until all threads have started before returning
-  auto busyWait = [](std::atomic_size_t& count,
-                     size_t num) -> folly::coro::Task<void> {
+  auto busyWait =
+      [](std::atomic_size_t& count, size_t num) -> folly::coro::Task<void> {
     count.fetch_add(1);
     while (count.load() < num) {
       // Need to yield because collectAnyNoDiscard() won't start the second and
@@ -3454,6 +3454,36 @@ TEST_F(
         folly::coro::collectAnyNoDiscardRange(std::move(tasks)));
     cancelSource.requestCancellation();
     baton.post();
+    co_await scope.joinAsync();
+  }());
+}
+
+TEST(MakeUnorderedAsyncGeneratorTest, GeneratorEarlyDestroy) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::coro::AsyncScope scope;
+    folly::CPUThreadPoolExecutor executor(2);
+
+    std::vector<folly::coro::TaskWithExecutor<int>> tasks;
+
+    tasks.push_back(
+        folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          std::this_thread::sleep_for(std::chrono::seconds{2});
+          co_return 42;
+        }).scheduleOn(&executor));
+    tasks.push_back(
+        folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          std::this_thread::sleep_for(std::chrono::seconds{1});
+          co_return 43;
+        }).scheduleOn(&executor));
+
+    {
+      auto gen =
+          folly::coro::makeUnorderedAsyncGenerator(scope, std::move(tasks));
+      EXPECT_EQ(43, *(co_await gen.next()));
+    }
+
     co_await scope.joinAsync();
   }());
 }

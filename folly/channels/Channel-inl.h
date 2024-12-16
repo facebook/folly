@@ -18,8 +18,8 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/Synchronized.h>
+#include <folly/coro/Coroutine.h>
 #include <folly/experimental/channels/detail/ChannelBridge.h>
-#include <folly/experimental/coro/Coroutine.h>
 
 namespace folly {
 namespace channels {
@@ -79,8 +79,9 @@ class Receiver<TValue>::Waiter : public detail::IChannelCallback {
 
   bool await_ready() const noexcept {
     // We are ready immediately if the receiver is either cancelled or closed.
-    return state_.withRLock(
-        [&](const State& state) { return state.cancelled || !state.receiver; });
+    return state_.withRLock([&](const State& state) {
+      return state.cancelled || !state.receiver;
+    });
   }
 
   bool await_suspend(folly::coro::coroutine_handle<> awaitingCoroutine) {

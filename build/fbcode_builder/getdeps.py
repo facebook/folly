@@ -333,6 +333,12 @@ class FetchCmd(ProjectCmdBase):
 
         cache = cache_module.create_cache()
         for m in projects:
+            fetcher = loader.create_fetcher(m)
+            if isinstance(fetcher, SystemPackageFetcher):
+                # We are guaranteed that if the fetcher is set to
+                # SystemPackageFetcher then this item is completely
+                # satisfied by the appropriate system packages
+                continue
             cached_project = CachedProject(cache, loader, m)
             if cached_project.download():
                 continue
@@ -348,7 +354,6 @@ class FetchCmd(ProjectCmdBase):
                     continue
 
             # We need to fetch the sources
-            fetcher = loader.create_fetcher(m)
             fetcher.update()
 
 
@@ -923,6 +928,27 @@ class DebugCmd(ProjectCmdBase):
         self.create_builder(loader, manifest).debug(reconfigure=False)
 
 
+@cmd(
+    "env",
+    "print the environment in a shell sourceable format",
+)
+class EnvCmd(ProjectCmdBase):
+    def setup_project_cmd_parser(self, parser):
+        parser.add_argument(
+            "--os-type",
+            help="Filter to just this OS type to run",
+            choices=["linux", "darwin", "windows"],
+            action="store",
+            dest="ostype",
+            default=None,
+        )
+
+    def run_project_cmd(self, args, loader, manifest):
+        if args.ostype:
+            loader.build_opts.host_type.ostype = args.ostype
+        self.create_builder(loader, manifest).printenv(reconfigure=False)
+
+
 @cmd("generate-github-actions", "generate a GitHub actions configuration")
 class GenerateGitHubActionsCmd(ProjectCmdBase):
     RUN_ON_ALL = """ [push, pull_request]"""
@@ -959,9 +985,20 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
     def write_job_for_platform(self, platform, args):  # noqa: C901
         build_opts = setup_build_options(args, platform)
         ctx_gen = build_opts.get_context_generator()
+        if args.enable_tests:
+            ctx_gen.set_value_for_project(args.project, "test", "on")
+        else:
+            ctx_gen.set_value_for_project(args.project, "test", "off")
         loader = ManifestLoader(build_opts, ctx_gen)
+        self.process_project_dir_arguments(args, loader)
         manifest = loader.load_manifest(args.project)
         manifest_ctx = loader.ctx_gen.get_context(manifest.name)
+        run_tests = (
+            args.enable_tests
+            and manifest.get("github.actions", "run_tests", ctx=manifest_ctx) != "off"
+        )
+        if run_tests:
+            manifest_ctx.set("test", "on")
         run_on = self.get_run_on(args)
 
         # Some projects don't do anything "useful" as a leaf project, only
@@ -984,6 +1021,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         if build_opts.is_linux():
             artifacts = "linux"
             runs_on = f"ubuntu-{args.ubuntu_version}"
+            if args.cpu_cores:
+                runs_on = f"{args.cpu_cores}-core-ubuntu-{args.ubuntu_version}"
         elif build_opts.is_windows():
             artifacts = "windows"
             runs_on = "windows-2019"
@@ -1088,14 +1127,30 @@ jobs:
                 if build_opts.is_darwin():
                     # brew is installed as regular user
                     sudo_arg = ""
+                tests_arg = "--no-tests "
+                if run_tests:
+                    tests_arg = ""
                 out.write(
-                    f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive {manifest.name}\n"
+                    f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps {tests_arg}--recursive {manifest.name}\n"
                 )
                 if build_opts.is_linux() or build_opts.is_freebsd():
                     out.write("    - name: Install packaging system deps\n")
                     out.write(
-                        f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf\n"
+                        f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps {tests_arg}--recursive patchelf\n"
                     )
+                required_locales = manifest.get(
+                    "github.actions", "required_locales", ctx=manifest_ctx
+                )
+                if (
+                    build_opts.host_type.get_package_manager() == "deb"
+                    and required_locales
+                ):
+                    # ubuntu doesn't include this by default
+                    out.write("    - name: Install locale-gen\n")
+                    out.write(f"      run: {sudo_arg}apt-get install locales\n")
+                    for loc in required_locales.split():
+                        out.write(f"    - name: Ensure {loc} locale present\n")
+                        out.write(f"      run: {sudo_arg}locale-gen {loc}\n")
 
             projects = loader.manifests_in_dependency_order()
 
@@ -1147,8 +1202,10 @@ jobs:
 
             project_prefix = ""
             if not build_opts.is_windows():
-                project_prefix = (
-                    " --project-install-prefix %s:/usr/local" % manifest.name
+                prefix = loader.get_project_install_prefix(manifest) or "/usr/local"
+                project_prefix = " --project-install-prefix %s:%s" % (
+                    manifest.name,
+                    prefix,
                 )
 
             # If we have dep from same repo, we already built it and don't want to rebuild it again
@@ -1157,7 +1214,7 @@ jobs:
                 no_deps_arg = "--no-deps "
 
             no_tests_arg = ""
-            if not args.enable_tests:
+            if not run_tests:
                 no_tests_arg = "--no-tests "
 
             out.write(
@@ -1185,17 +1242,18 @@ jobs:
             out.write("        name: %s\n" % manifest.name)
             out.write("        path: _artifacts\n")
 
-            if (
-                args.enable_tests
-                and manifest.get("github.actions", "run_tests", ctx=manifest_ctx)
-                != "off"
-            ):
+            if run_tests:
+                num_jobs_arg = ""
+                if args.num_jobs:
+                    num_jobs_arg = f"--num-jobs {args.num_jobs} "
+
                 out.write("    - name: Test %s\n" % manifest.name)
                 out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} test --src-dir=. {manifest.name} {project_prefix}\n"
+                    f"      run: {getdepscmd}{allow_sys_arg} test {num_jobs_arg}--src-dir=. {manifest.name} {project_prefix}\n"
                 )
             if build_opts.free_up_disk and not build_opts.is_windows():
                 out.write("    - name: Show disk space at end\n")
+                out.write("      if: always()\n")
                 out.write("      run: df -h\n")
 
     def setup_project_cmd_parser(self, parser):
@@ -1215,6 +1273,10 @@ jobs:
         )
         parser.add_argument(
             "--ubuntu-version", default="22.04", help="Version of Ubuntu to use"
+        )
+        parser.add_argument(
+            "--cpu-cores",
+            help="Number of CPU cores to use (applicable for Linux OS)",
         )
         parser.add_argument(
             "--cron",

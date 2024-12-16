@@ -62,7 +62,7 @@ void list() {
 } // namespace
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_cp) {
     if (argc != 3) {
       usage(argv[0]);

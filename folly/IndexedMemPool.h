@@ -45,8 +45,9 @@ template <
     bool EagerRecycleWhenNotTrivial = true>
 struct IndexedMemPoolTraits {
   static constexpr bool eagerRecycle() {
-    return std::is_trivial<T>::value ? EagerRecycleWhenTrivial
-                                     : EagerRecycleWhenNotTrivial;
+    return std::is_trivial<T>::value
+        ? EagerRecycleWhenTrivial
+        : EagerRecycleWhenNotTrivial;
   }
 
   /// Called when the element pointed to by ptr is allocated for the

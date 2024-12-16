@@ -70,6 +70,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/hash/traits.h>
 #include <folly/lang/Exception.h>
 
 namespace folly {
@@ -213,8 +214,9 @@ class Optional {
   }
   explicit operator std::optional<Value>() const& noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
-    return storage_.hasValue ? std::optional<Value>(storage_.value)
-                             : std::nullopt;
+    return storage_.hasValue
+        ? std::optional<Value>(storage_.value)
+        : std::nullopt;
   }
 
   std::optional<Value> toStdOptional() && noexcept {
@@ -250,7 +252,10 @@ class Optional {
 
   void assign(Value&& newValue) {
     if (hasValue()) {
+      FOLLY_PUSH_WARNING
+      FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
       storage_.value = std::move(newValue);
+      FOLLY_POP_WARNING
     } else {
       construct(std::move(newValue));
     }
@@ -258,7 +263,10 @@ class Optional {
 
   void assign(const Value& newValue) {
     if (hasValue()) {
+      FOLLY_PUSH_WARNING
+      FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
       storage_.value = newValue;
+      FOLLY_POP_WARNING
     } else {
       construct(newValue);
     }
@@ -475,7 +483,10 @@ class Optional {
     void clear() {
       if (hasValue) {
         hasValue = false;
+        FOLLY_PUSH_WARNING
+        FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
         value.~Value();
+        FOLLY_POP_WARNING
       }
     }
   };
@@ -666,7 +677,7 @@ FOLLY_NAMESPACE_STD_END
 // Enable the use of folly::Optional with `co_await`
 // Inspired by https://github.com/toby-allsopp/coroutine_monad
 #if FOLLY_HAS_COROUTINES
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 
 namespace folly {
 namespace detail {

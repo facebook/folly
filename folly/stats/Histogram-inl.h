@@ -72,10 +72,8 @@ uint64_t HistogramBuckets<T, BucketType>::computeTotalCount(
 template <typename T, typename BucketType>
 template <typename CountFn>
 size_t HistogramBuckets<T, BucketType>::getPercentileBucketIdx(
-    double pct,
-    CountFn countFromBucket,
-    double* lowPct,
-    double* highPct) const {
+    double pct, CountFn countFromBucket, double* lowPct, double* highPct)
+    const {
   CHECK_GE(pct, 0.0);
   CHECK_LE(pct, 1.0);
 

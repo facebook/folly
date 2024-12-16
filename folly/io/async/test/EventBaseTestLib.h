@@ -66,8 +66,9 @@ class EventBaseTest : public EventBaseTestBase {
 
   std::unique_ptr<EventBase> makeEventBase(
       folly::EventBase::Options opts = folly::EventBase::Options()) {
-    return std::make_unique<EventBase>(
-        opts.setBackendFactory([] { return T::getBackend(); }));
+    return std::make_unique<EventBase>(opts.setBackendFactory([] {
+      return T::getBackend();
+    }));
   }
 };
 
@@ -80,7 +81,7 @@ FOLLY_ALWAYS_INLINE ssize_t writeToFD(int fd, size_t length) {
   auto bufv = std::vector<char>(length);
   auto buf = bufv.data();
   memset(buf, 'a', length);
-  ssize_t rc = write(fd, buf, length);
+  const auto rc = fileops::write(fd, buf, length);
   CHECK_EQ(rc, length);
   return rc;
 }
@@ -91,7 +92,7 @@ FOLLY_ALWAYS_INLINE size_t writeUntilFull(int fd) {
   char buf[BUF_SIZE];
   memset(buf, 'a', sizeof(buf));
   while (true) {
-    ssize_t rc = write(fd, buf, sizeof(buf));
+    ssize_t rc = fileops::write(fd, buf, sizeof(buf));
     if (rc < 0) {
       CHECK_EQ(errno, EAGAIN);
       break;
@@ -105,7 +106,7 @@ FOLLY_ALWAYS_INLINE size_t writeUntilFull(int fd) {
 FOLLY_ALWAYS_INLINE ssize_t readFromFD(int fd, size_t length) {
   // write an arbitrary amount of data to the fd
   auto buf = std::vector<char>(length);
-  return read(fd, buf.data(), length);
+  return fileops::read(fd, buf.data(), length);
 }
 
 FOLLY_ALWAYS_INLINE size_t readUntilEmpty(int fd) {
@@ -113,7 +114,7 @@ FOLLY_ALWAYS_INLINE size_t readUntilEmpty(int fd) {
   char buf[BUF_SIZE];
   size_t bytesRead = 0;
   while (true) {
-    int rc = read(fd, buf, sizeof(buf));
+    const auto rc = fileops::read(fd, buf, sizeof(buf));
     if (rc == 0) {
       CHECK(false) << "unexpected EOF";
     } else if (rc < 0) {
@@ -1829,8 +1830,9 @@ TYPED_TEST_P(EventBaseTest, CancelRunInLoop) {
 }
 
 namespace {
-class TerminateTestCallback : public EventBase::LoopCallback,
-                              public EventHandler {
+class TerminateTestCallback
+    : public EventBase::LoopCallback,
+      public EventHandler {
  public:
   TerminateTestCallback(EventBase* eventBase, int fd)
       : EventHandler(eventBase, NetworkSocket::fromFd(fd)),
@@ -1899,9 +1901,9 @@ TYPED_TEST_P(EventBaseTest, LoopTermination) {
   // Open a pipe and close the write end,
   // so the read endpoint will be readable
   int pipeFds[2];
-  int rc = pipe(pipeFds);
+  int rc = fileops::pipe(pipeFds);
   ASSERT_EQ(rc, 0);
-  close(pipeFds[1]);
+  fileops::close(pipeFds[1]);
   TerminateTestCallback callback(&eventBase, pipeFds[0]);
 
   // Test once where the callback will exit after a loop callback
@@ -1918,7 +1920,7 @@ TYPED_TEST_P(EventBaseTest, LoopTermination) {
   ASSERT_EQ(callback.getLoopInvocations(), 7);
   ASSERT_EQ(callback.getEventInvocations(), 7);
 
-  close(pipeFds[0]);
+  fileops::close(pipeFds[0]);
 }
 
 TYPED_TEST_P(EventBaseTest, CallbackOrderTest) {
@@ -2234,7 +2236,7 @@ TYPED_TEST_P(EventBaseTest, StopBeforeLoop) {
 
   // Give the evb something to do.
   int p[2];
-  ASSERT_EQ(0, pipe(p));
+  ASSERT_EQ(0, fileops::pipe(p));
   PipeHandler handler(&evb, p[0]);
   handler.registerHandler(EventHandler::READ);
 
@@ -2246,8 +2248,8 @@ TYPED_TEST_P(EventBaseTest, StopBeforeLoop) {
   t.join();
 
   handler.unregisterHandler();
-  close(p[0]);
-  close(p[1]);
+  fileops::close(p[0]);
+  fileops::close(p[1]);
 
   SUCCEED();
 }
@@ -2335,8 +2337,9 @@ TYPED_TEST_P(EventBaseTest, LoopKeepAliveWithLoopForever) {
   {
     auto* ev = evbPtr.get();
     Executor::KeepAlive<EventBase> keepAlive;
-    ev->runInEventBaseThreadAndWait(
-        [&ev, &keepAlive] { keepAlive = getKeepAliveToken(ev); });
+    ev->runInEventBaseThreadAndWait([&ev, &keepAlive] {
+      keepAlive = getKeepAliveToken(ev);
+    });
     ASSERT_FALSE(done) << "Loop finished before we asked it to";
     ev->terminateLoopSoon();
     /* sleep override */
@@ -2354,14 +2357,15 @@ TYPED_TEST_P(EventBaseTest, LoopKeepAliveShutdown) {
 
   bool done = false;
 
-  std::thread t([&done,
-                 loopKeepAlive = getKeepAliveToken(evbPtr.get()),
-                 evbPtrRaw = evbPtr.get()]() mutable {
-    /* sleep override */ std::this_thread::sleep_for(
-        std::chrono::milliseconds(100));
-    evbPtrRaw->runInEventBaseThread(
-        [&done, loopKeepAlive = std::move(loopKeepAlive)] { done = true; });
-  });
+  std::thread t(
+      [&done,
+       loopKeepAlive = getKeepAliveToken(evbPtr.get()),
+       evbPtrRaw = evbPtr.get()]() mutable {
+        /* sleep override */ std::this_thread::sleep_for(
+            std::chrono::milliseconds(100));
+        evbPtrRaw->runInEventBaseThread(
+            [&done, loopKeepAlive = std::move(loopKeepAlive)] { done = true; });
+      });
 
   evbPtr.reset();
 
@@ -2385,23 +2389,23 @@ TYPED_TEST_P(EventBaseTest, LoopKeepAliveAtomic) {
   }
 
   for (size_t i = 0; i < kNumThreads; ++i) {
-    ts.emplace_back([evbPtrRaw = evbPtr.get(),
-                     batonPtr = batons[i].get(),
-                     &done] {
-      std::vector<Executor::KeepAlive<EventBase>> keepAlives;
-      for (size_t j = 0; j < kNumTasks; ++j) {
-        keepAlives.emplace_back(getKeepAliveToken(evbPtrRaw));
-      }
+    ts.emplace_back(
+        [evbPtrRaw = evbPtr.get(), batonPtr = batons[i].get(), &done] {
+          std::vector<Executor::KeepAlive<EventBase>> keepAlives;
+          for (size_t j = 0; j < kNumTasks; ++j) {
+            keepAlives.emplace_back(getKeepAliveToken(evbPtrRaw));
+          }
 
-      batonPtr->post();
+          batonPtr->post();
 
-      /* sleep override */ std::this_thread::sleep_for(std::chrono::seconds(1));
+          /* sleep override */ std::this_thread::sleep_for(
+              std::chrono::seconds(1));
 
-      for (auto& keepAlive : keepAlives) {
-        evbPtrRaw->runInEventBaseThread(
-            [&done, keepAlive = std::move(keepAlive)]() { ++done; });
-      }
-    });
+          for (auto& keepAlive : keepAlives) {
+            evbPtrRaw->runInEventBaseThread(
+                [&done, keepAlive = std::move(keepAlive)]() { ++done; });
+          }
+        });
   }
 
   for (auto& baton : batons) {
@@ -2619,8 +2623,9 @@ TYPED_TEST_P(EventBaseTest, EventBaseExecutionObserver) {
   CountedLoopCallback cb(&base, 1, [&]() { ranBeforeLoop = true; });
   base.runBeforeLoop(&cb);
 
-  base.runInEventBaseThread(
-      [&]() { base.runInEventBaseThread([&]() { ran = true; }); });
+  base.runInEventBaseThread([&]() {
+    base.runInEventBaseThread([&]() { ran = true; });
+  });
   base.loop();
 
   ASSERT_TRUE(ranBeforeLoop);

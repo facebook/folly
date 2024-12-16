@@ -1,2 +1,0 @@
-buildscript = []
-cfgs = ["has_std"]

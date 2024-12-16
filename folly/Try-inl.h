@@ -100,9 +100,9 @@ void TryBase<T>::destroy() noexcept {
 
 template <class T>
 template <class T2>
-TryBase<T>::TryBase(typename std::enable_if<
-                    std::is_same<Unit, T2>::value,
-                    Try<void> const&>::type t) noexcept
+TryBase<T>::TryBase(
+    typename std::enable_if<std::is_same<Unit, T2>::value, Try<void> const&>::
+        type t) noexcept
     : contains_(Contains::NOTHING) {
   if (t.hasValue()) {
     contains_ = Contains::VALUE;
@@ -184,8 +184,9 @@ T Try<T>::value_or(U&& defaultValue) const& {
 template <class T>
 template <class U>
 T Try<T>::value_or(U&& defaultValue) && {
-  return hasValue() ? std::move(**this)
-                    : static_cast<T>(static_cast<U&&>(defaultValue));
+  return hasValue()
+      ? std::move(**this)
+      : static_cast<T>(static_cast<U&&>(defaultValue));
 }
 
 template <class T>
@@ -248,7 +249,7 @@ template <typename F>
 typename std::enable_if<
     !std::is_same<invoke_result_t<F>, void>::value,
     Try<invoke_result_t<F>>>::type
-makeTryWithNoUnwrap(F&& f) {
+makeTryWithNoUnwrap(F&& f) noexcept {
   using ResultType = invoke_result_t<F>;
   try {
     return Try<ResultType>(f());
@@ -260,7 +261,7 @@ makeTryWithNoUnwrap(F&& f) {
 template <typename F>
 typename std::
     enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
-    makeTryWithNoUnwrap(F&& f) {
+    makeTryWithNoUnwrap(F&& f) noexcept {
   try {
     f();
     return Try<void>();
@@ -272,14 +273,14 @@ typename std::
 template <typename F>
 typename std::
     enable_if<!isTry<invoke_result_t<F>>::value, Try<invoke_result_t<F>>>::type
-    makeTryWith(F&& f) {
+    makeTryWith(F&& f) noexcept {
   return makeTryWithNoUnwrap(std::forward<F>(f));
 }
 
 template <typename F>
 typename std::enable_if<isTry<invoke_result_t<F>>::value, invoke_result_t<F>>::
     type
-    makeTryWith(F&& f) {
+    makeTryWith(F&& f) noexcept {
   using ResultType = invoke_result_t<F>;
   try {
     return f();

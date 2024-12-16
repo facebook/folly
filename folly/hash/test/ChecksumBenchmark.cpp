@@ -58,7 +58,7 @@ BENCH_CRC32C(262144)
 BENCH_CRC32C(524288)
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
   buf = static_cast<uint8_t*>(folly::aligned_malloc(kBufSize + 64, 4096));

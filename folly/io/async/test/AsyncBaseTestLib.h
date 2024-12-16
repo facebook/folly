@@ -33,6 +33,7 @@
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/Unistd.h>
 #include <folly/test/TestUtils.h>
 
 #include <folly/experimental/io/AsyncBase.h>
@@ -88,7 +89,7 @@ void testReadsSerially(
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
-    ::close(fd);
+    fileops::close(fd);
   };
 
   for (size_t i = 0; i < specs.size(); i++) {
@@ -117,8 +118,8 @@ void testReadsParallel(
   auto aioReader = getAIO<TAsync>(specs.size(), pollMode);
   SKIP_IF(!aioReader) << "TAsync not available";
 
-  std::unique_ptr<typename TAsync::Op[]> ops(new
-                                             typename TAsync::Op[specs.size()]);
+  std::unique_ptr<typename TAsync::Op[]> ops(
+      new typename TAsync::Op[specs.size()]);
   uintptr_t sizeOf = sizeof(typename TAsync::Op);
   std::vector<TestUtil::ManagedBuffer> bufs;
   bufs.reserve(specs.size());
@@ -129,7 +130,7 @@ void testReadsParallel(
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
-    ::close(fd);
+    fileops::close(fd);
   };
 
   std::vector<std::thread> threads;
@@ -191,8 +192,8 @@ void testReadsQueued(
   auto aioReader = getAIO<TAsync>(readerCapacity, pollMode);
   SKIP_IF(!aioReader) << "TAsync not available";
   folly::AsyncBaseQueue aioQueue(aioReader.get());
-  std::unique_ptr<typename TAsync::Op[]> ops(new
-                                             typename TAsync::Op[specs.size()]);
+  std::unique_ptr<typename TAsync::Op[]> ops(
+      new typename TAsync::Op[specs.size()]);
   uintptr_t sizeOf = sizeof(typename TAsync::Op);
   std::vector<TestUtil::ManagedBuffer> bufs;
 
@@ -202,7 +203,7 @@ void testReadsQueued(
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
-    ::close(fd);
+    fileops::close(fd);
   };
   for (size_t i = 0; i < specs.size(); i++) {
     bufs.push_back(TestUtil::allocateAligned(specs[i].size));
@@ -396,7 +397,7 @@ TYPED_TEST_P(AsyncTest, NonBlockingWait) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
-    ::close(fd);
+    fileops::close(fd);
   };
   size_t size = 2 * test::async_base_test_lib_detail::kODirectAlign;
   auto buf = test::async_base_test_lib_detail::TestUtil::allocateAligned(size);
@@ -430,7 +431,7 @@ TYPED_TEST_P(AsyncTest, Cancel) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
-    ::close(fd);
+    fileops::close(fd);
   };
 
   size_t completed = 0;
@@ -498,7 +499,7 @@ TYPED_TEST_P(AsyncBatchTest, BatchRead) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
-    ::close(fd);
+    fileops::close(fd);
   };
 
   using OpPtr = folly::AsyncBaseOp*;

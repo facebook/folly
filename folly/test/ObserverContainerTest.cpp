@@ -1200,8 +1200,9 @@ TEST_F(ObserverContainerTest, CtrInvokeAddObserverOnInvoke) {
 
   EXPECT_CALL(*obs1, specialMock(obj1.get()))
       .Times(1)
-      .WillOnce(InvokeWithoutArgs(
-          [&obj1, &obs3]() { obj1->observerCtr.addObserver(obs3.get()); }));
+      .WillOnce(InvokeWithoutArgs([&obj1, &obs3]() {
+        obj1->observerCtr.addObserver(obs3.get());
+      }));
   EXPECT_CALL(*obs3, addedToObserverContainerMock(&obj1->observerCtr));
   EXPECT_CALL(*obs3, attachedMock(obj1.get()));
 
@@ -1340,16 +1341,18 @@ TEST_F(ObserverContainerTest, CtrInvokeAddTwoObserversOnInvokeFirstSecond) {
   // observer 3 and 4 will be added by observers 1 and 3 respectively
   EXPECT_CALL(*obs1, specialMock(obj1.get()))
       .Times(1)
-      .WillOnce(InvokeWithoutArgs(
-          [&obj1, &obs3]() { obj1->observerCtr.addObserver(obs3.get()); }));
+      .WillOnce(InvokeWithoutArgs([&obj1, &obs3]() {
+        obj1->observerCtr.addObserver(obs3.get());
+      }));
   EXPECT_CALL(*obs3, addedToObserverContainerMock(&obj1->observerCtr));
   EXPECT_CALL(*obs3, attachedMock(obj1.get()));
 
   EXPECT_CALL(*obs2, specialMock(obj1.get()));
   EXPECT_CALL(*obs3, specialMock(obj1.get()))
       .Times(1)
-      .WillOnce(InvokeWithoutArgs(
-          [&obj1, &obs4]() { obj1->observerCtr.addObserver(obs4.get()); }));
+      .WillOnce(InvokeWithoutArgs([&obj1, &obs4]() {
+        obj1->observerCtr.addObserver(obs4.get());
+      }));
   EXPECT_CALL(*obs4, addedToObserverContainerMock(&obj1->observerCtr));
   EXPECT_CALL(*obs4, attachedMock(obj1.get()));
   EXPECT_CALL(*obs4, specialMock(obj1.get()));
@@ -1418,8 +1421,9 @@ TEST_F(ObserverContainerTest, CtrInvokeAddObserverOnPostInvoke) {
   // observer 3 will be added during post processing by observer 1
   EXPECT_CALL(*obs1, postInvokeInterfaceMethodMock(obj1.get()))
       .Times(1)
-      .WillOnce(InvokeWithoutArgs(
-          [&obj1, &obs3]() { obj1->observerCtr.addObserver(obs3.get()); }));
+      .WillOnce(InvokeWithoutArgs([&obj1, &obs3]() {
+        obj1->observerCtr.addObserver(obs3.get());
+      }));
   EXPECT_CALL(*obs3, addedToObserverContainerMock(&obj1->observerCtr));
   EXPECT_CALL(*obs3, attachedMock(obj1.get()));
   EXPECT_CALL(*obs2, postInvokeInterfaceMethodMock(obj1.get()));
@@ -1481,8 +1485,9 @@ TEST_F(ObserverContainerTest, CtrInvokeRemoveObserverOnInvoke) {
   // observer 3 will be removed during processing of the event by observer 1
   EXPECT_CALL(*obs1, specialMock(obj1.get()))
       .Times(1)
-      .WillOnce(InvokeWithoutArgs(
-          [&obj1, &obs3]() { obj1->observerCtr.removeObserver(obs3.get()); }));
+      .WillOnce(InvokeWithoutArgs([&obj1, &obs3]() {
+        obj1->observerCtr.removeObserver(obs3.get());
+      }));
   EXPECT_CALL(*obs3, detachedMock(obj1.get()));
   EXPECT_CALL(*obs3, removedFromObserverContainerMock(&obj1->observerCtr));
 
@@ -1627,8 +1632,9 @@ TEST_F(ObserverContainerTest, CtrInvokeRemoveObserverOnPostInvoke) {
   // observer 3 will be removed during post processing by observer 1
   EXPECT_CALL(*obs1, postInvokeInterfaceMethodMock(obj1.get()))
       .Times(1)
-      .WillOnce(InvokeWithoutArgs(
-          [&obj1, &obs3]() { obj1->observerCtr.removeObserver(obs3.get()); }));
+      .WillOnce(InvokeWithoutArgs([&obj1, &obs3]() {
+        obj1->observerCtr.removeObserver(obs3.get());
+      }));
   EXPECT_CALL(*obs3, detachedMock(obj1.get()));
   EXPECT_CALL(*obs3, removedFromObserverContainerMock(&obj1->observerCtr));
   EXPECT_CALL(*obs2, postInvokeInterfaceMethodMock(obj1.get()));
@@ -2486,11 +2492,9 @@ TEST_F(ObserverContainerTest, ObserverAttachedEventsUseBuilder) {
 
   // observer 4 is subscribed to all events via enableAllEvents()
   {
-    observers.emplace_back(
-        std::make_unique<StrictMock<MockTestSubjectObserver>>(
-            MockTestSubjectObserver::EventSetBuilder()
-                .enableAllEvents()
-                .build()));
+    observers.emplace_back(std::make_unique<
+                           StrictMock<MockTestSubjectObserver>>(
+        MockTestSubjectObserver::EventSetBuilder().enableAllEvents().build()));
   }
 
   // observer 5 is subscribed to just SpecialEvent

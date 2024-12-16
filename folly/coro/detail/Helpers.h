@@ -18,7 +18,7 @@
 
 #include <folly/Executor.h>
 #include <folly/SingletonThreadLocal.h>
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 #include <folly/io/async/Request.h>
 #include <folly/tracing/AsyncStack.h>
 

@@ -216,7 +216,6 @@ class HostType(object):
                 ostype = "darwin"
             elif is_windows():
                 ostype = "windows"
-                # pyre-fixme[16]: Module `sys` has no attribute `getwindowsversion`.
                 distrovers = str(sys.getwindowsversion().major)
             elif sys.platform.startswith("freebsd"):
                 ostype = "freebsd"

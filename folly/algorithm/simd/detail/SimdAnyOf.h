@@ -21,7 +21,7 @@
 #include <folly/algorithm/simd/detail/UnrollUtils.h>
 
 namespace folly {
-namespace simd_detail {
+namespace simd::detail {
 
 /**
  * AnyOfDelegate
@@ -47,8 +47,9 @@ struct AnyOfDelegate {
   template <std::size_t N>
   FOLLY_ALWAYS_INLINE bool unrolledStep(std::array<I, N> arr) {
     // Don't have to forceinline - no user code dependency
-    auto loaded = detail::UnrollUtils::arrayMap(
-        arr, [](I it) { return Platform::loada(it, ignore_none{}); });
+    auto loaded = detail::UnrollUtils::arrayMap(arr, [](I it) {
+      return Platform::loada(it, ignore_none{});
+    });
     auto tests = detail::UnrollUtils::arrayMap(loaded, p);
     auto test = detail::UnrollUtils::arrayReduce(tests, Platform::logical_or);
     res = Platform::any(test, ignore_none{});
@@ -79,5 +80,5 @@ FOLLY_ALWAYS_INLINE bool simdAnyOf(T* f, T* l, P p) {
   return delegate.res;
 }
 
-} // namespace simd_detail
+} // namespace simd::detail
 } // namespace folly

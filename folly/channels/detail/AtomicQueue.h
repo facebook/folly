@@ -82,7 +82,7 @@ class AtomicQueue {
  public:
   using MessageQueue = Queue<Message>;
 
-  AtomicQueue() {}
+  AtomicQueue() { static_assert(alignof(Consumer) > kTypeMask); }
   ~AtomicQueue() {
     auto storage = storage_.load(std::memory_order_acquire);
     auto type = static_cast<Type>(storage & kTypeMask);

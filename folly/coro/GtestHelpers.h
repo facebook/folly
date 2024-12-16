@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Task.h>
 #include <folly/debugging/exception_tracer/SmartExceptionTracer.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES

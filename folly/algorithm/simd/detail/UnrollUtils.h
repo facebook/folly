@@ -22,7 +22,7 @@
 #include <array>
 #include <type_traits>
 
-namespace folly::detail {
+namespace folly::simd::detail {
 
 /**
  * UnrollUtils
@@ -123,4 +123,4 @@ struct UnrollUtils {
   }
 };
 
-} // namespace folly::detail
+} // namespace folly::simd::detail

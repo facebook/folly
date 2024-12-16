@@ -36,8 +36,9 @@
  * safe.  Non-positive intervals will always log.
  */
 #define FB_LOG_EVERY_MS(severity, milli_interval)                              \
-  for (decltype(milli_interval) FB_LEM_once = 1,                               \
-                                FB_LEM_interval = (milli_interval);            \
+  for (decltype(milli_interval)                                                \
+           FB_LEM_once = 1,                                                    \
+           FB_LEM_interval = (milli_interval);                                 \
        FB_LEM_once;)                                                           \
     for (::std::chrono::milliseconds::rep FB_LEM_prev,                         \
          FB_LEM_now = FB_LEM_interval <= 0                                     \

@@ -53,8 +53,9 @@ std::vector<uint64_t> uniform;
 string qmsData;
 
 uint64_t maxValue(uint32_t nbits) {
-  return nbits == 64 ? std::numeric_limits<uint64_t>::max()
-                     : (uint64_t(1) << nbits) - 1;
+  return nbits == 64
+      ? std::numeric_limits<uint64_t>::max()
+      : (uint64_t(1) << nbits) - 1;
 }
 
 // Hash 64 bits into 1.
@@ -236,8 +237,9 @@ BENCHMARK_MULTI(QuotientMultiSetGetHitsSmallWorkingSet) {
   size_t ret = 0;
   folly::compression::dispatchInstructions([&](auto instructions) {
     auto reader = folly::QuotientMultiSet<decltype(instructions)>(qmsData);
-    ret = benchmarkHitsSmallWorkingSet(
-        [&](uint64_t key) { return reader.equalRange(key); });
+    ret = benchmarkHitsSmallWorkingSet([&](uint64_t key) {
+      return reader.equalRange(key);
+    });
   });
   return ret;
 }
@@ -246,8 +248,9 @@ BENCHMARK_MULTI(QuotientMultiSetGetMixtureSerialized) {
   size_t ret = 0;
   folly::compression::dispatchInstructions([&](auto instructions) {
     auto reader = folly::QuotientMultiSet<decltype(instructions)>(qmsData);
-    ret = benchmarkMixtureSerialized(
-        [&](uint64_t key) { return reader.equalRange(key); });
+    ret = benchmarkMixtureSerialized([&](uint64_t key) {
+      return reader.equalRange(key);
+    });
   });
   return ret;
 }
@@ -256,8 +259,9 @@ BENCHMARK_MULTI(QuotientMultiSetGetHitsSerialized) {
   size_t ret = 0;
   folly::compression::dispatchInstructions([&](auto instructions) {
     auto reader = folly::QuotientMultiSet<decltype(instructions)>(qmsData);
-    ret = benchmarkHitsSerialized(
-        [&](uint64_t key) { return reader.equalRange(key).begin; });
+    ret = benchmarkHitsSerialized([&](uint64_t key) {
+      return reader.equalRange(key).begin;
+    });
   });
   return ret;
 }
@@ -279,26 +283,30 @@ BENCHMARK_DRAW_LINE();
 
 BENCHMARK_MULTI(F14MapHits) {
   const auto& baseline = getF14Baseline();
-  return benchmarkHits(
-      [&](uint64_t key) { return baseline.find(key) != baseline.end(); });
+  return benchmarkHits([&](uint64_t key) {
+    return baseline.find(key) != baseline.end();
+  });
 }
 
 BENCHMARK_MULTI(F14MapRandom) {
   const auto& baseline = getF14Baseline();
-  return benchmarkRandom(
-      [&](uint64_t key) { return baseline.find(key) != baseline.end(); });
+  return benchmarkRandom([&](uint64_t key) {
+    return baseline.find(key) != baseline.end();
+  });
 }
 
 BENCHMARK_MULTI(F14MapHitsSmallWorkingSet) {
   const auto& baseline = getF14Baseline();
-  return benchmarkHitsSmallWorkingSet(
-      [&](uint64_t key) { return baseline.find(key) != baseline.end(); });
+  return benchmarkHitsSmallWorkingSet([&](uint64_t key) {
+    return baseline.find(key) != baseline.end();
+  });
 }
 
 BENCHMARK_MULTI(F14MapMixtureSerialized) {
   const auto& baseline = getF14Baseline();
-  return benchmarkMixtureSerialized(
-      [&](uint64_t key) { return baseline.find(key) != baseline.end(); });
+  return benchmarkMixtureSerialized([&](uint64_t key) {
+    return baseline.find(key) != baseline.end();
+  });
 }
 
 BENCHMARK_MULTI(F14MapHitsSerialized) {

@@ -152,10 +152,8 @@ void TimeseriesHistogram<T, CT, C>::computeAvgData(
 
 template <class T, class CT, class C>
 void TimeseriesHistogram<T, CT, C>::computeAvgData(
-    ValueType* total,
-    uint64_t* nsamples,
-    TimePoint start,
-    TimePoint end) const {
+    ValueType* total, uint64_t* nsamples, TimePoint start, TimePoint end)
+    const {
   for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& levelObj = buckets_.getByIndex(b).getLevel(start);
     *total += levelObj.sum(start, end);

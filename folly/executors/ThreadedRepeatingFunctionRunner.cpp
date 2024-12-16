@@ -58,13 +58,14 @@ bool ThreadedRepeatingFunctionRunner::stopImpl() {
 
 void ThreadedRepeatingFunctionRunner::add(
     std::string name, RepeatingFn fn, std::chrono::milliseconds initialSleep) {
-  threads_.emplace_back([name = std::move(name),
-                         fn = std::move(fn),
-                         initialSleep,
-                         this]() mutable {
-    setThreadName(name);
-    executeInLoop(std::move(fn), initialSleep);
-  });
+  threads_.emplace_back(
+      [name = std::move(name),
+       fn = std::move(fn),
+       initialSleep,
+       this]() mutable {
+        setThreadName(name);
+        executeInLoop(std::move(fn), initialSleep);
+      });
 }
 
 bool ThreadedRepeatingFunctionRunner::waitFor(
@@ -72,8 +73,9 @@ bool ThreadedRepeatingFunctionRunner::waitFor(
   using clock = std::chrono::steady_clock;
   const auto deadline = clock::now() + duration;
   std::unique_lock<std::mutex> lock(stopMutex_);
-  stopCv_.wait_until(
-      lock, deadline, [&] { return stopping_ || clock::now() > deadline; });
+  stopCv_.wait_until(lock, deadline, [&] {
+    return stopping_ || clock::now() > deadline;
+  });
   return !stopping_;
 }
 

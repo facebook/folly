@@ -16,12 +16,12 @@
 
 #include <folly/Portability.h>
 
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/SharedMutex.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/SharedMutex.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
 #include <mutex>

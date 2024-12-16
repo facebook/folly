@@ -325,8 +325,8 @@ class ProxyChannelProcessor : public IChannelCallback {
    */
   void maybeDelete(WLockedStatePtr state) {
     if (state->refCount == 0) {
-      CHECK_NULL(state->sender.get());
-      CHECK_NULL(state->receiver);
+      CHECK_EQ(state->sender.get(), static_cast<void*>(NULL));
+      CHECK_EQ(state->receiver, static_cast<void*>(NULL));
       state.unlock();
       delete this;
     }

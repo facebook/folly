@@ -207,7 +207,7 @@ BENCHMARK_RELATIVE(prefix, iters) {
  */
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   iobuf_benchmark = IOBuf::create(benchmark_size);
   iobuf_benchmark->append(benchmark_size);
 

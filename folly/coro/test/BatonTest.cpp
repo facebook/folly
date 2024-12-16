@@ -16,9 +16,9 @@
 
 #include <folly/Portability.h>
 
+#include <folly/coro/Baton.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
 #include <stdio.h>
@@ -90,7 +90,8 @@ TEST_F(BatonTest, MultiAwaitBaton) {
 
   auto makeTask2 = [&]() -> coro::Task<void> {
     reachedBeforeAwait2 = true;
-    co_await baton;
+    // Equivalent to `co_await baton`, we just want it to compile.
+    co_await co_awaitTry(baton.operator co_await());
     reachedAfterAwait2 = true;
   };
 

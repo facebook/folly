@@ -17,11 +17,11 @@
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Generator.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Generator.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/ViaIfAsync.h>
 
 #include <folly/ExceptionWrapper.h>
 
@@ -107,7 +107,7 @@ BENCHMARK(asyncGeneratorYieldErrorAwaitTry, iters) {
 Comparing just the "hot paths" of the two generator coroutines:
 
 11/08/23 16:25$ buck2 run @mode/opt \
-  //folly/experimental/coro/test:async_generator_bench -- \
+  //folly/coro/test:async_generator_bench -- \
     -bm_regex '.*YieldValue.*'
 ============================================================================
 [...]coro/test/AsyncGeneratorBenchmark.cpp     relative  time/iter   iters/s
@@ -145,7 +145,7 @@ BENCHMARK(compareToSynchronousGeneratorYieldValues, iters) {
 #endif
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

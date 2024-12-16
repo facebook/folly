@@ -16,15 +16,15 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/AsyncScope.h>
+#include <folly/coro/AsyncScope.h>
 
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Sleep.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/GlobalExecutor.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Sleep.h>
-#include <folly/experimental/coro/Task.h>
 
 #include <folly/portability/GTest.h>
 

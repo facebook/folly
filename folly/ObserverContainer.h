@@ -850,10 +850,11 @@ template <
     typename ContainerPolicy,
     typename StorePolicy = ObserverContainerStorePolicyDefault<>,
     std::size_t MaxConstructorCallbacks = 4>
-class ObserverContainer : public ObserverContainerBase<
-                              ObserverInterface,
-                              Observed,
-                              ContainerPolicy> {
+class ObserverContainer
+    : public ObserverContainerBase<
+          ObserverInterface,
+          Observed,
+          ContainerPolicy> {
  public:
   using ContainerBase =
       ObserverContainerBase<ObserverInterface, Observed, ContainerPolicy>;

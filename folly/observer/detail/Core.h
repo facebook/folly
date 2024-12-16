@@ -96,9 +96,12 @@ class Core : public std::enable_shared_from_this<Core> {
   explicit Core(folly::Function<std::shared_ptr<const void>()> creator);
 
   void addDependent(Core::WeakPtr dependent);
-  void removeStaleDependents();
+  void maybeRemoveStaleDependents();
 
-  using Dependents = std::vector<WeakPtr>;
+  struct Dependents {
+    size_t numPotentiallyExpiredDependents{0};
+    std::vector<WeakPtr> deps;
+  };
   using Dependencies = std::unordered_set<Ptr>;
 
   folly::Synchronized<Dependents> dependents_;

@@ -1494,10 +1494,10 @@ void runEraseIntoTest() {
     EXPECT_FALSE(key.destroyed);
     t0.emplace(std::move(key), std::move(value));
   };
-  auto emplaceIntoT0Mut = [&](typename M::key_type&& key,
-                              typename M::mapped_type&& value) mutable {
-    emplaceIntoT0(std::move(key), std::move(value));
-  };
+  auto emplaceIntoT0Mut =
+      [&](typename M::key_type&& key, typename M::mapped_type&& value) mutable {
+        emplaceIntoT0(std::move(key), std::move(value));
+      };
 
   t0.emplace(10, 0);
   t1.emplace(20, 0);

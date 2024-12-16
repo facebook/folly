@@ -19,10 +19,10 @@
 #include <atomic>
 #include <type_traits>
 
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/GtestHelpers.h>
-#include <folly/experimental/coro/Result.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/GtestHelpers.h>
+#include <folly/coro/Result.h>
+#include <folly/coro/Task.h>
 #include <folly/portability/GMock.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -95,15 +95,17 @@ auto CoInvoke(Class* obj_ptr, MethodPtr method_ptr) {
 //         }));
 template <typename F>
 auto CoInvokeWithoutArgs(F&& f) {
-  return ::testing::InvokeWithoutArgs(
-      [f = static_cast<F&&>(f)]() { return co_invoke(f); });
+  return ::testing::InvokeWithoutArgs([f = static_cast<F&&>(f)]() {
+    return co_invoke(f);
+  });
 }
 
 // Member function overload
 template <class Class, typename MethodPtr>
 auto CoInvokeWithoutArgs(Class* obj_ptr, MethodPtr method_ptr) {
-  return ::testing::InvokeWithoutArgs(
-      [=]() { return co_invoke(method_ptr, obj_ptr); });
+  return ::testing::InvokeWithoutArgs([=]() {
+    return co_invoke(method_ptr, obj_ptr);
+  });
 }
 
 namespace detail {
@@ -238,8 +240,9 @@ auto CoReturnByMove(T&& ret) {
 
 template <typename T, typename Ex>
 auto CoThrow(Ex&& e) {
-  return detail::makeCoAction(
-      [ex = std::forward<Ex>(e)]() -> Task<T> { co_yield co_error(ex); });
+  return detail::makeCoAction([ex = std::forward<Ex>(e)]() -> Task<T> {
+    co_yield co_error(ex);
+  });
 }
 
 } // namespace gmock_helpers

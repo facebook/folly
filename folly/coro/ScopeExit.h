@@ -25,9 +25,9 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Executor.h>
 #include <folly/ScopeGuard.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Traits.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Traits.h>
+#include <folly/coro/ViaIfAsync.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/CustomizationPoint.h>
@@ -48,11 +48,12 @@ struct AttachScopeExitFn {
               ParentPromise&,
               coroutine_handle<ChildPromise>>,
           int> = 0>
-  auto operator()(ParentPromise& parent, coroutine_handle<ChildPromise> action)
-      const noexcept(folly::is_nothrow_tag_invocable_v<
-                     AttachScopeExitFn,
-                     ParentPromise&,
-                     coroutine_handle<ChildPromise>>)
+  auto operator()(
+      ParentPromise& parent, coroutine_handle<ChildPromise> action) const
+      noexcept(folly::is_nothrow_tag_invocable_v<
+               AttachScopeExitFn,
+               ParentPromise&,
+               coroutine_handle<ChildPromise>>)
           -> folly::tag_invoke_result_t<
               AttachScopeExitFn,
               ParentPromise&,

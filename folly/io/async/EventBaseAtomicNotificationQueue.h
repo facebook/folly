@@ -36,8 +36,9 @@ namespace folly {
  * thread can be listening to the queue. Tasks are processed in FIFO order.
  */
 template <typename Task, typename Consumer>
-class EventBaseAtomicNotificationQueue : private EventBase::LoopCallback,
-                                         private EventHandler {
+class EventBaseAtomicNotificationQueue
+    : private EventBase::LoopCallback,
+      private EventHandler {
   static_assert(
       noexcept(std::declval<Consumer>()(std::declval<Task&&>())),
       "Consumer::operator()(Task&&) should be noexcept.");

@@ -367,15 +367,16 @@ BENCHMARK(BenchmarkSuspender_dismissing_value, iter) {
     shuffle(v.begin(), v.end(), rng);
     auto s = braces.dismissing([&] {
       sort(v.begin(), v.end());
-      return accumulate(
-          v.begin(), v.end(), 0, [](size_t a, size_t e) { return a + e; });
+      return accumulate(v.begin(), v.end(), 0, [](size_t a, size_t e) {
+        return a + e;
+      });
     });
     doNotOptimizeAway(s);
   }
 }
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::addBenchmark("-", std::string("string_name"), [] { return 0; });
   runBenchmarks();
   runBenchmarksOnFlag();

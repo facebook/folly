@@ -17,9 +17,9 @@
 #include <folly/Portability.h>
 
 #include <folly/CancellationToken.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/SmallUnboundedQueue.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/SmallUnboundedQueue.h>
 
 #include <folly/portability/GTest.h>
 

@@ -72,8 +72,9 @@ TEST(StrandExecutor, ThreadSafetyTest) {
   CancellationSource cancelSrc;
 
   auto runUntilStopped = [&](ManualExecutor& ex) {
-    CancellationCallback cb(
-        cancelSrc.getToken(), [&]() noexcept { ex.add([] {}); });
+    CancellationCallback cb(cancelSrc.getToken(), [&]() noexcept {
+      ex.add([] {});
+    });
     while (!cancelSrc.isCancellationRequested()) {
       ex.makeProgress();
     }

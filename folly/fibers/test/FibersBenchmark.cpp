@@ -37,36 +37,37 @@ void runBenchmark(size_t numAwaits, size_t toSend, bool logRunningTime) {
   std::queue<Promise<int>> pendingRequests;
   static const size_t maxOutstanding = 5;
 
-  auto loop = [&fiberManager,
-               &loopController,
-               &pendingRequests,
-               &toSend,
-               logRunningTime]() {
-    TaskOptions tOpt;
-    tOpt.logRunningTime = logRunningTime;
-    if (pendingRequests.size() == maxOutstanding || toSend == 0) {
-      if (pendingRequests.empty()) {
-        return;
-      }
-      pendingRequests.front().setValue(0);
-      pendingRequests.pop();
-    } else {
-      fiberManager.addTask(
-          [&pendingRequests]() {
-            for (size_t i = 0; i < sNumAwaits; ++i) {
-              auto result = await([&pendingRequests](Promise<int> promise) {
-                pendingRequests.push(std::move(promise));
-              });
-              DCHECK_EQ(result, 0);
-            }
-          },
-          std::move(tOpt));
+  auto loop =
+      [&fiberManager,
+       &loopController,
+       &pendingRequests,
+       &toSend,
+       logRunningTime]() {
+        TaskOptions tOpt;
+        tOpt.logRunningTime = logRunningTime;
+        if (pendingRequests.size() == maxOutstanding || toSend == 0) {
+          if (pendingRequests.empty()) {
+            return;
+          }
+          pendingRequests.front().setValue(0);
+          pendingRequests.pop();
+        } else {
+          fiberManager.addTask(
+              [&pendingRequests]() {
+                for (size_t i = 0; i < sNumAwaits; ++i) {
+                  auto result = await([&pendingRequests](Promise<int> promise) {
+                    pendingRequests.push(std::move(promise));
+                  });
+                  DCHECK_EQ(result, 0);
+                }
+              },
+              std::move(tOpt));
 
-      if (--toSend == 0) {
-        loopController.stop();
-      }
-    }
-  };
+          if (--toSend == 0) {
+            loopController.stop();
+          }
+        }
+      };
 
   loopController.loop(std::move(loop));
 }

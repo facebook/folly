@@ -59,7 +59,7 @@ json_pointer json_pointer::parse(StringPiece const str) {
       throw json_pointer::parse_exception(
           "Invalid escape sequence in JSON pointer string");
     default:
-      assume_unreachable();
+      FOLLY_ASSUME_UNREACHABLE();
   }
 }
 

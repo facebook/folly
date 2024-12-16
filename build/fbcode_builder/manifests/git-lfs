@@ -1,0 +1,15 @@
+[manifest]
+name = git-lfs
+
+[rpms]
+git-lfs
+
+[debs]
+git-lfs
+
+[homebrew]
+git-lfs
+
+# only used from system packages currently
+[build]
+builder = nop

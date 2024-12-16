@@ -70,6 +70,7 @@
 #include <folly/Expected.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
+#include <folly/container/Access.h>
 #include <folly/container/F14Map.h>
 #include <folly/json_pointer.h>
 
@@ -165,6 +166,16 @@ struct dynamic {
 
  public:
   /**
+   * @brief Used with the array-range ctor.
+   */
+  struct array_range_construct_t {
+   private: // forbid implicit construction with {}
+    friend dynamic;
+    constexpr array_range_construct_t() = default;
+  };
+  static inline constexpr array_range_construct_t array_range_construct{};
+
+  /**
    * Do not use.
    *
    * @methodset Array
@@ -249,10 +260,31 @@ struct dynamic {
 
   /**
    * Create a dynamic that is an array of the values from the supplied
-   * iterator range.
+   * iterator range. Used to construct a dynamic of array type from a supplied
+   * pair of iterators or from a range-like object. Four equivalent forms - see
+   * examples.
+   *
+   * Examples:
+   *
+   *   auto arr1 = dynamic(
+   *       dynamic::array_range_construct, rng.begin(), rng.end());
+   *   auto arr2 = dynamic(dynamic::array_range_construct, rng);
+   *   auto arr3 = dynamic::array_range(rng.begin(), rng.end());
+   *   auto arr4 = dynamic::array_range(rng);
    */
   template <class Iterator>
-  explicit dynamic(Iterator first, Iterator last);
+  dynamic(array_range_construct_t, Iterator first, Iterator last);
+  template <class Range>
+  dynamic(array_range_construct_t tag, Range&& range)
+      : dynamic(tag, access::begin(range), access::end(range)) {}
+  template <class Iterator>
+  static dynamic array_range(Iterator first, Iterator last) {
+    return dynamic(array_range_construct, first, last);
+  }
+  template <class Range>
+  static dynamic array_range(Range&& range) {
+    return dynamic(array_range_construct, std::forward<Range>(range));
+  }
 
   dynamic(dynamic const&);
   dynamic(dynamic&&) noexcept;

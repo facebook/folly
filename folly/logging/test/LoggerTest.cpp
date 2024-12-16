@@ -114,10 +114,11 @@ TEST_F(LoggerTest, formatError) {
   // differently on different platforms.
   EXPECT_THAT(
       messages[0].first.getMessage(),
-      MatchesRegex(R"(error formatting log message: )"
-                   R"(.*invalid .* specifier; )"
-                   R"(format string: "param1: \{:06d\}, param2: \{:6.3f\}", )"
-                   R"(arguments: 1234, hello world!)"));
+      MatchesRegex(
+          R"(error formatting log message: )"
+          R"(.*invalid .* specifier; )"
+          R"(format string: "param1: \{:06d\}, param2: \{:6.3f\}", )"
+          R"(arguments: 1234, hello world!)"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
@@ -205,10 +206,11 @@ TEST_F(LoggerTest, formatFallbackError) {
   ASSERT_EQ(1, messages.size());
   EXPECT_THAT(
       messages[0].first.getMessage(),
-      MatchesRegex(R"(error formatting log message: .*format_error.*; )"
-                   R"(format string: "param1: \{\}, param2: \{\}, \{\}", )"
-                   R"(arguments: 1234, )"
-                   R"(\[(.*ToStringFailure.*|object) of size (.*):.*\])"));
+      MatchesRegex(
+          R"(error formatting log message: .*format_error.*; )"
+          R"(format string: "param1: \{\}, param2: \{\}, \{\}", )"
+          R"(arguments: 1234, )"
+          R"(\[(.*ToStringFailure.*|object) of size (.*):.*\])"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());

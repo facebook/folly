@@ -78,11 +78,12 @@ class EvictingCacheMap {
 
   // iterator base : returns TPair on dereference
   template <typename Value, typename TIterator>
-  class iterator_base : public boost::iterator_adaptor<
-                            iterator_base<Value, TIterator>,
-                            TIterator,
-                            Value,
-                            boost::bidirectional_traversal_tag> {
+  class iterator_base
+      : public boost::iterator_adaptor<
+            iterator_base<Value, TIterator>,
+            TIterator,
+            Value,
+            boost::bidirectional_traversal_tag> {
    public:
     iterator_base() {}
 
@@ -512,8 +513,9 @@ class EvictingCacheMap {
   }
 
  private:
-  struct Node : public boost::intrusive::list_base_hook<
-                    boost::intrusive::link_mode<boost::intrusive::safe_link>> {
+  struct Node
+      : public boost::intrusive::list_base_hook<
+            boost::intrusive::link_mode<boost::intrusive::safe_link>> {
     template <typename K>
     Node(const K& key, TValue&& value) : pr(key, std::move(value)) {}
 
@@ -548,8 +550,9 @@ class EvictingCacheMap {
 
    private:
     void clear_nodes() {
-      boost::intrusive::list<Node>::clear_and_dispose(
-          [](Node* ptr) { delete ptr; });
+      boost::intrusive::list<Node>::clear_and_dispose([](Node* ptr) {
+        delete ptr;
+      });
     }
   };
 
@@ -628,8 +631,9 @@ class EvictingCacheMap {
   template <typename Self, typename K>
   static auto findWithoutPromotionImpl(Self& self, const K& key) {
     Node* ptr = self.findInIndex(key);
-    return ptr ? self_iterator_t<Self>(self.lru_.iterator_to(*ptr))
-               : self.end();
+    return ptr
+        ? self_iterator_t<Self>(self.lru_.iterator_to(*ptr))
+        : self.end();
   }
 
   typename NodeList::iterator eraseImpl(

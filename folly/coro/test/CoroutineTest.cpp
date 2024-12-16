@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>

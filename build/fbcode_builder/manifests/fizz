@@ -25,6 +25,7 @@ BUILD_TESTS = OFF
 
 [dependencies]
 folly
+liboqs
 libsodium
 zlib
 zstd

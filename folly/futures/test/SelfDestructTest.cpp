@@ -65,15 +65,16 @@ TEST(SelfDestruct, throwingInlineExecutor) {
   InlineExecutor executor;
 
   auto* p = new Promise<int>();
-  auto future = p->getFuture()
-                    .via(&executor)
-                    .thenValue([p](auto&&) -> int {
-                      delete p;
-                      throw ThrowingExecutorError("callback throws");
-                    })
-                    .thenError(
-                        folly::tag_t<ThrowingExecutorError>{},
-                        [](auto const&) { return 456; });
+  auto future =
+      p->getFuture()
+          .via(&executor)
+          .thenValue([p](auto&&) -> int {
+            delete p;
+            throw ThrowingExecutorError("callback throws");
+          })
+          .thenError(folly::tag_t<ThrowingExecutorError>{}, [](auto const&) {
+            return 456;
+          });
   p->setValue(123);
   EXPECT_EQ(456, std::move(future).get());
 }

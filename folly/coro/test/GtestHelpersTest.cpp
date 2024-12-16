@@ -16,7 +16,7 @@
 
 #include <folly/portability/GTest.h>
 
-#include <folly/experimental/coro/GtestHelpers.h>
+#include <folly/coro/GtestHelpers.h>
 
 using namespace ::testing;
 

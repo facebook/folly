@@ -241,8 +241,9 @@ struct ConstexprTester {
     }
 
 #ifndef GCC_CONSTEXPR_BUG_ACTIVE
-    EXPECT_EQ(test.encodedURL, actual) << "URL encoding mismatch. Input data:\n"
-                                       << byteRangeToString(test.data);
+    EXPECT_EQ(test.encodedURL, actual)
+        << "URL encoding mismatch. Input data:\n"
+        << byteRangeToString(test.data);
 #endif
 
     return false;
@@ -334,8 +335,9 @@ struct SimdTester {
     if (test.encodedURL == actual) {
       return true;
     }
-    EXPECT_EQ(test.encodedStd, actual) << "URL encoding mismatch. Input data:\n"
-                                       << byteRangeToString(test.data);
+    EXPECT_EQ(test.encodedStd, actual)
+        << "URL encoding mismatch. Input data:\n"
+        << byteRangeToString(test.data);
     return false;
   }
 
@@ -407,9 +409,9 @@ TEST(Base64, SpecialCases) {
 }
 
 constexpr char kHasNegative0[] = {'A', 'b', 'c', -15, '\0'};
-constexpr char kHasNegative1[] = {'a', 'b', 'c', 'd', 'a', -15, 'c',
-                                  'd', 'a', 'b', 'c', 'd', 'a', 'b',
-                                  'c', 'd', 'a', 'b', 'c', 'd', '\0'};
+constexpr char kHasNegative1[] = {
+    'a', 'b', 'c', 'd', 'a', -15, 'c', 'd', 'a', 'b', 'c',
+    'd', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', '\0'};
 
 struct DecodingErrorDetectionTest {
   bool isSuccess;

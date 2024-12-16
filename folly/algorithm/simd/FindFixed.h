@@ -28,6 +28,7 @@
 
 #include <folly/Portability.h>
 #include <folly/algorithm/simd/Movemask.h>
+#include <folly/algorithm/simd/detail/Traits.h>
 
 #if FOLLY_X64
 #include <immintrin.h>
@@ -82,11 +83,6 @@ constexpr std::optional<std::size_t> findFixed(std::span<const T, N> where, U x)
 // implementation ---------------------------------------------------------
 
 namespace find_fixed_detail {
-template <typename U, typename T, std::size_t N>
-std::optional<std::size_t> findFixedCast(std::span<const T, N>& where, T x) {
-  std::span<const U, N> whereU{reinterpret_cast<const U*>(where.data()), N};
-  return findFixed(whereU, static_cast<U>(x));
-}
 
 template <typename T>
 constexpr std::optional<std::size_t> findFixedConstexpr(
@@ -198,7 +194,7 @@ std::optional<std::size_t> findSplitFirstRegister(
 
 template <typename Scalar, typename Reg>
 std::optional<std::size_t> firstTrue(Reg reg) {
-  auto [bits, bitsPerElement] = folly::movemask<Scalar>(reg);
+  auto [bits, bitsPerElement] = folly::simd::movemask<Scalar>(reg);
   if (bits) {
     return std::countr_zero(bits) / bitsPerElement();
   }
@@ -295,13 +291,10 @@ constexpr std::optional<std::size_t> findFixed(std::span<const T, N> where, U x)
     return findFixed(where, static_cast<T>(x));
   } else if (std::is_constant_evaluated()) {
     return find_fixed_detail::findFixedConstexpr(std::span<const T>(where), x);
-  } else if constexpr (std::is_enum_v<T>) {
-    return find_fixed_detail::findFixedCast<std::underlying_type_t<T>>(
-        where, x);
-  } else if constexpr (std::is_signed_v<T>) {
-    return find_fixed_detail::findFixedCast<std::make_unsigned_t<T>>(where, x);
   } else {
-    return find_fixed_detail::findFixedDispatch(where, x);
+    return find_fixed_detail::findFixedDispatch(
+        simd::detail::asSimdFriendlyUint(where),
+        simd::detail::asSimdFriendlyUint(x));
   }
 }
 

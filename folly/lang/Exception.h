@@ -18,9 +18,14 @@
 
 #include <atomic>
 #include <exception>
+#include <functional>
 #include <string>
 #include <type_traits>
 #include <utility>
+
+#if __has_include(<fmt/format.h>)
+#include <fmt/format.h>
+#endif
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
@@ -86,6 +91,9 @@ using throw_exception_arg_ = //
 template <typename R>
 using throw_exception_arg_t =
     typename throw_exception_arg_<R>::template apply<R>;
+template <typename R>
+using throw_exception_arg_fmt_t =
+    remove_cvref_t<typename throw_exception_arg_<R>::template apply<R>>;
 
 template <typename Ex, typename... Args>
 [[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void throw_exception_(
@@ -128,6 +136,67 @@ template <typename Ex, typename... Args>
   detail::terminate_with_<Ex, detail::throw_exception_arg_t<Args&&>...>(
       static_cast<Args&&>(args)...);
 }
+
+#if __has_include(<fmt/format.h>)
+
+namespace detail {
+
+template <typename Ex, typename... Args, typename Str>
+[[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void
+throw_exception_fmt_format_(Str str, Args&&... args) {
+  auto what = [&] { return fmt::format(str, static_cast<Args&&>(args)...); };
+  if constexpr (std::is_constructible_v<Ex, std::string&&>) {
+    throw_exception<Ex>(what());
+  } else {
+    throw_exception<Ex>(what().c_str());
+  }
+}
+
+template <typename Ex, typename... Args, typename Str>
+[[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void
+terminate_with_fmt_format_(Str str, Args&&... args) noexcept {
+  auto what = [&] { return fmt::format(str, static_cast<Args&&>(args)...); };
+  if constexpr (std::is_constructible_v<Ex, std::string&&>) {
+    throw_exception<Ex>(what());
+  } else {
+    throw_exception<Ex>(what().c_str());
+  }
+}
+
+#if FMT_VERSION >= 80000
+
+template <typename... Args>
+using fmt_format_string =
+    fmt::format_string<detail::throw_exception_arg_fmt_t<Args&&>...>;
+
+#else
+
+template <typename...>
+using fmt_format_string = fmt::string_view;
+
+#endif
+
+} // namespace detail
+
+template <typename Ex, typename... Args>
+[[noreturn]] FOLLY_ERASE void throw_exception_fmt_format(
+    detail::fmt_format_string<Args...> str, Args&&... args) {
+  detail::throw_exception_fmt_format_< //
+      Ex,
+      detail::throw_exception_arg_t<Args&&>...>(
+      str, static_cast<Args&&>(args)...);
+}
+
+template <typename Ex, typename... Args>
+[[noreturn]] FOLLY_ERASE void terminate_with_fmt_format(
+    detail::fmt_format_string<Args...> str, Args&&... args) {
+  detail::terminate_with_fmt_format_< //
+      Ex,
+      detail::throw_exception_arg_t<Args&&>...>(
+      str, static_cast<Args&&>(args)...);
+}
+
+#endif
 
 /// invoke_cold
 ///

@@ -77,7 +77,8 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
    * Return the number of bytes used to encode these four values.
    */
   static size_t size(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
-    return kHeaderSize + kGroupSize + key(a) + key(b) + key(c) + key(d);
+    return (size_t)kHeaderSize + (size_t)kGroupSize + key(a) + key(b) + key(c) +
+        key(d);
   }
 
   /**
@@ -132,8 +133,8 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
    * return the number of bytes used by the encoding.
    */
   static size_t encodedSize(const char* p) {
-    return kHeaderSize + kGroupSize + b0key(uint8_t(*p)) + b1key(uint8_t(*p)) +
-        b2key(uint8_t(*p)) + b3key(uint8_t(*p));
+    return (size_t)kHeaderSize + (size_t)kGroupSize + b0key(uint8_t(*p)) +
+        b1key(uint8_t(*p)) + b2key(uint8_t(*p)) + b3key(uint8_t(*p));
   }
 
   /**
@@ -277,8 +278,8 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
    */
   static size_t size(
       uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e) {
-    return kHeaderSize + kGroupSize + key(a) + key(b) + key(c) + key(d) +
-        key(e);
+    return (size_t)kHeaderSize + (size_t)kGroupSize + key(a) + key(b) + key(c) +
+        key(d) + key(e);
   }
 
   /**
@@ -340,8 +341,8 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
    */
   static size_t encodedSize(const char* p) {
     uint16_t n = loadUnaligned<uint16_t>(p);
-    return kHeaderSize + kGroupSize + b0key(n) + b1key(n) + b2key(n) +
-        b3key(n) + b4key(n);
+    return (size_t)kHeaderSize + (size_t)kGroupSize + b0key(n) + b1key(n) +
+        b2key(n) + b3key(n) + b4key(n);
   }
 
   /**

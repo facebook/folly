@@ -313,6 +313,29 @@ TEST(ThreadLocal, BasicDestructor) {
   EXPECT_EQ(10, Widget::totalVal_);
 }
 
+TEST(ThreadLocal, MoveCtorFrom) {
+  int calls = 0;
+  ThreadLocal<int> src{[&] { return ++calls; }};
+  EXPECT_EQ(1, *src);
+  auto dst = static_cast<ThreadLocal<int>&&>(src);
+  EXPECT_THROW(*src, std::bad_function_call);
+  std::thread([&] { EXPECT_THROW(*src, std::bad_function_call); }).join();
+  EXPECT_EQ(1, *dst);
+  std::thread([&] { EXPECT_EQ(2, *dst); }).join();
+}
+
+TEST(ThreadLocal, MoveAssignFrom) {
+  int calls = 0;
+  ThreadLocal<int> src{[&] { return ++calls; }};
+  EXPECT_EQ(1, *src);
+  ThreadLocal<int> dst;
+  dst = static_cast<ThreadLocal<int>&&>(src);
+  EXPECT_THROW(*src, std::bad_function_call);
+  std::thread([&] { EXPECT_THROW(*src, std::bad_function_call); }).join();
+  EXPECT_EQ(1, *dst);
+  std::thread([&] { EXPECT_EQ(2, *dst); }).join();
+}
+
 // this should force a realloc of the ElementWrapper array
 TEST(ThreadLocal, ReallocDestructor) {
   ThreadLocal<MultiWidget> w;
@@ -407,19 +430,20 @@ TEST(ThreadLocalPtr, AccessAllThreadsCounter) {
   // thread i will increment all the thread locals
   // in the range 0..i
   for (int i = 0; i < kNumThreads; ++i) {
-    threads.push_back(std::thread([i, // i needs to be captured by value
-                                   &stci,
-                                   &run,
-                                   &totalAtomic]() {
-      for (int j = 0; j <= i; j++) {
-        stci[j].add(1);
-      }
+    threads.push_back(std::thread(
+        [i, // i needs to be captured by value
+         &stci,
+         &run,
+         &totalAtomic]() {
+          for (int j = 0; j <= i; j++) {
+            stci[j].add(1);
+          }
 
-      totalAtomic.fetch_add(1);
-      while (run.load()) {
-        usleep(100);
-      }
-    }));
+          totalAtomic.fetch_add(1);
+          while (run.load()) {
+            usleep(100);
+          }
+        }));
   }
   while (totalAtomic.load() != kNumThreads) {
     usleep(100);

@@ -62,8 +62,9 @@ WorkerProvider::KeepAlive::~KeepAlive() {}
     const std::string& context,
     size_t numPriorities,
     WorkerProvider* workerProvider) {
-  auto f = make_queue_observer_factory ? make_queue_observer_factory
-                                       : make_queue_observer_factory_fallback;
+  auto f = make_queue_observer_factory
+      ? make_queue_observer_factory
+      : make_queue_observer_factory_fallback;
   return f(context, numPriorities, workerProvider);
 }
 } // namespace folly

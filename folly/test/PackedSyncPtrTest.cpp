@@ -23,6 +23,8 @@
 
 #include <folly/portability/GTest.h>
 
+#if FOLLY_HAS_PACKED_SYNC_PTR
+
 using folly::PackedSyncPtr;
 
 namespace {
@@ -31,7 +33,7 @@ namespace {
 // PackedSyncPtr is a POD struct on gcc.
 FOLLY_PACK_PUSH
 struct ignore {
-  PackedSyncPtr<int> foo;
+  FOLLY_PACK_ATTR PackedSyncPtr<int> foo;
   char c;
 } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP
@@ -134,3 +136,5 @@ TEST(PackedSyncPtr, extraData) {
   EXPECT_EQ(p.get(), unaligned);
   p.unlock();
 }
+
+#endif

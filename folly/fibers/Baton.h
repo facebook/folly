@@ -19,8 +19,8 @@
 #include <atomic>
 
 #include <folly/Portability.h>
+#include <folly/coro/Coroutine.h>
 #include <folly/detail/Futex.h>
-#include <folly/experimental/coro/Coroutine.h>
 #include <folly/io/async/HHWheelTimer.h>
 
 namespace folly {

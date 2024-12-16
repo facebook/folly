@@ -22,6 +22,8 @@
 
 #include <folly/lang/SafeAssert.h>
 
+#if defined(__GLIBCXX__)
+
 namespace folly {
 namespace detail {
 
@@ -210,3 +212,5 @@ shared_ptr_internals::get_shared_ptr_from_counted_base(
 
 } // namespace detail
 } // namespace folly
+
+#endif // defined(__GLIBCXX__)

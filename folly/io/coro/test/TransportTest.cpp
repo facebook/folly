@@ -16,8 +16,8 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/MockAsyncTransport.h>
 #include <folly/io/async/test/ScopedBoundPort.h>
@@ -378,8 +378,9 @@ TEST_F(MockTransportTest, readSuccessCanceled) {
     constexpr auto kBufSize = 65536;
     std::array<uint8_t, kBufSize> rcvBuf;
     EXPECT_CALL(*mockTransport, setReadCB(testing::_))
-        .WillOnce(testing::Invoke(
-            [](AsyncReader::ReadCallback* rcb) { rcb->readEOF(); }));
+        .WillOnce(testing::Invoke([](AsyncReader::ReadCallback* rcb) {
+          rcb->readEOF();
+        }));
     EXPECT_CALL(*mockTransport, setReadCB(nullptr)).Times(2);
     folly::CancellationSource cancellationSource;
     auto readFut =

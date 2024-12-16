@@ -16,8 +16,8 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/detail/InlineTask.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/detail/InlineTask.h>
 #include <folly/portability/GTest.h>
 
 #include <tuple>

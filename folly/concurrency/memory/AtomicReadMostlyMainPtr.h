@@ -149,9 +149,10 @@ class AtomicReadMostlyMainPtr {
     // improve its error detection here). We get our "acquire-y-ness" from the
     // mutex.
     auto realOrder =
-        (order == std::memory_order_acq_rel       ? std::memory_order_release
-             : order == std::memory_order_acquire ? std::memory_order_relaxed
-                                                  : order);
+        (order == std::memory_order_acq_rel ? std::memory_order_release
+             : order == std::memory_order_acquire
+             ? std::memory_order_relaxed
+             : order);
     // After this, read-side critical sections can access both versions, but
     // new ones will use newMain.
     // This is also synchronization point with loads.

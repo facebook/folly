@@ -23,6 +23,7 @@
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
+#include <folly/Random.h>
 #include <folly/memory/MallctlHelper.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GFlags.h>
@@ -253,6 +254,28 @@ TEST(Arena, ExtremeSize) {
   EXPECT_THROW(arena.allocate(SIZE_MAX - 2), std::bad_alloc);
 }
 
+TEST(Arena, MaxAlign) {
+  // Results are still aligned with nonstandard size and allocations
+  static const size_t blockSize = 123;
+
+  for (const size_t maxAlign : {4, 8, 16, 32, 64}) {
+    SCOPED_TRACE(maxAlign);
+    SysArena arena(blockSize, SysArena::kNoSizeLimit, maxAlign);
+
+    for (int i = 0; i < 100; i++) {
+      void* ptr = arena.allocate(Random::rand32(100));
+      EXPECT_EQ(reinterpret_cast<uintptr_t>(ptr) & (maxAlign - 1), 0);
+    }
+
+    // Reusing blocks also respects alignment
+    arena.clear();
+    for (int i = 0; i < 100; i++) {
+      void* ptr = arena.allocate(Random::rand32(100));
+      EXPECT_EQ(reinterpret_cast<uintptr_t>(ptr) & (maxAlign - 1), 0);
+    }
+  }
+}
+
 TEST(Arena, Clear) {
   static const size_t blockSize = 1024;
   SysArena arena(blockSize);
@@ -260,7 +283,7 @@ TEST(Arena, Clear) {
   for (int i = 0; i < 10; ++i) {
     std::vector<size_t> sizes(1000);
     std::generate(sizes.begin(), sizes.end(), []() {
-      return std::rand() % blockSize * 2;
+      return Random::rand32(blockSize) * 2;
     });
 
     std::vector<void*> addresses;
@@ -325,7 +348,7 @@ TEST(Arena, Merge) {
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto ret = RUN_ALL_TESTS();
   return ret;
 }

@@ -31,6 +31,30 @@
 
 namespace folly {
 
+constexpr std::memory_order memory_order_load(
+    std::memory_order const order) noexcept {
+  constexpr auto relaxed = std::memory_order_relaxed;
+  constexpr auto release = std::memory_order_release;
+  constexpr auto acquire = std::memory_order_acquire;
+  constexpr auto acq_rel = std::memory_order_acq_rel;
+  return order == acq_rel ? acquire : order == release ? relaxed : order;
+}
+
+constexpr std::memory_order memory_order_store(
+    std::memory_order const order) noexcept {
+  constexpr auto relaxed = std::memory_order_relaxed;
+  constexpr auto release = std::memory_order_release;
+  constexpr auto consume = std::memory_order_consume;
+  constexpr auto acquire = std::memory_order_acquire;
+  constexpr auto acq_rel = std::memory_order_acq_rel;
+  // clang-format off
+  return
+      order == acq_rel ? release :
+      order == acquire || order == consume ? relaxed :
+      order;
+  // clang-format on
+}
+
 template <typename T>
 class atomic_ref;
 
@@ -235,10 +259,11 @@ enum class atomic_fetch_bit_op_native_instr_suff { w, l, q };
           : "=@ccc"(out), [ptr] "+m"(*ptr)                                    \
           : [bit] "ri"(bit));                                                 \
     } else {                                                                  \
-      asm volatile("lock " #mnem #suff " %[bit], (%[ptr])"                    \
-                   : "=@ccc"(out)                                             \
-                   : [bit] "ri"(bit), [ptr] "r"(ptr)                          \
-                   : "memory");                                               \
+      asm volatile(                                                           \
+          "lock " #mnem #suff " %[bit], (%[ptr])"                             \
+          : "=@ccc"(out)                                                      \
+          : [bit] "ri"(bit), [ptr] "r"(ptr)                                   \
+          : "memory");                                                        \
     }                                                                         \
   }
 

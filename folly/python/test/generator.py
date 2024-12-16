@@ -16,6 +16,7 @@
 import asyncio
 import unittest
 
+# pyre-fixme[21]: Could not find module `folly.python.test.simplegenerator`.
 from .simplegenerator import SimpleGenerator
 
 
@@ -24,6 +25,7 @@ class GeneratorTest(unittest.TestCase):
         loop = asyncio.get_event_loop()
 
         async def wrapper() -> None:
+            # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
             gen = SimpleGenerator("normal")
             expected = 1
             async for v in gen:
@@ -37,6 +39,7 @@ class GeneratorTest(unittest.TestCase):
         loop = asyncio.get_event_loop()
 
         async def wrapper() -> None:
+            # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
             gen = SimpleGenerator("empty")
             async for _ in gen:  # noqa: F841
                 self.assertFalse(True, "this should never run")
@@ -51,6 +54,7 @@ class GeneratorTest(unittest.TestCase):
         loop = asyncio.get_event_loop()
 
         async def wrapper() -> None:
+            # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
             gen = SimpleGenerator("error")
             async for v in gen:
                 self.assertEqual(v, 42)

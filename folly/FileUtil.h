@@ -215,7 +215,7 @@ bool writeFile(
     mode_t mode = 0666) {
   static_assert(
       sizeof(data[0]) == 1, "writeFile works with element size equal to 1");
-  int fd = open(filename, flags, mode);
+  int fd = fileops::open(filename, flags, mode);
   if (fd == -1) {
     return false;
   }

@@ -1,7 +1,8 @@
 [manifest]
 name = xz
 
-[debs]
+# ubuntu's package causes watchman's tests to hang
+[debs.not(distro=ubuntu)]
 liblzma-dev
 
 [homebrew]

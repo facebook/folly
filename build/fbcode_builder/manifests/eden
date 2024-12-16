@@ -55,6 +55,10 @@ python
 # TODO: teach getdeps to compile lmdb on Windows.
 lmdb
 
+[dependencies.test=on]
+# sapling CLI is needed to run the tests
+sapling
+
 [shipit.pathmap.fb=on]
 # for internal builds that use getdeps
 fbcode/fb303 = fb303

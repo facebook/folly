@@ -17,6 +17,8 @@ import asyncio
 import unittest
 from sys import platform
 
+# pyre-fixme[21]: Could not find name `simplebridge` in `folly.python.test`.
+# pyre-fixme[21]: Could not find name `simplebridgecoro` in `folly.python.test`.
 from . import simplebridge, simplebridgecoro
 
 
@@ -47,9 +49,11 @@ class Teardown(unittest.TestCase):
 
         async def test() -> None:
             # Sanity check
+            # pyre-fixme[16]: Module `test` has no attribute `simplebridgecoro`.
             self.assertEqual(123, await simplebridgecoro.sleep_then_echo(1, 123))
 
             # Schedule a sleep for 1s and the immediately exit
+            # pyre-fixme[16]: Module `test` has no attribute `simplebridgecoro`.
             asyncio.ensure_future(simplebridgecoro.sleep_then_echo(10, 0))
 
         loop = asyncio.new_event_loop()

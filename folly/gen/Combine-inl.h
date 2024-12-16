@@ -164,9 +164,9 @@ auto add_to_tuple(Type1&& t1, std::tuple<Types2...> t2)
 }
 
 template <class Type1, class Type2>
-auto add_to_tuple(Type1&& t1, Type2&& t2) -> decltype(std::make_tuple(
-                                              std::forward<Type1>(t1),
-                                              std::forward<Type2>(t2))) {
+auto add_to_tuple(Type1&& t1, Type2&& t2)
+    -> decltype(std::make_tuple(
+        std::forward<Type1>(t1), std::forward<Type2>(t2))) {
   return std::make_tuple(std::forward<Type1>(t1), std::forward<Type2>(t2));
 }
 

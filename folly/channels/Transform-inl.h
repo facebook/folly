@@ -17,10 +17,10 @@
 #pragma once
 
 #include <folly/channels/Channel.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/Task.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/channels/detail/Utility.h>
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/Task.h>
 
 namespace folly {
 namespace channels {
@@ -301,10 +301,11 @@ template <
     typename InputValueType,
     typename OutputValueType,
     typename TransformerType>
-class TransformProcessor : public TransformProcessorBase<
-                               InputValueType,
-                               OutputValueType,
-                               TransformerType> {
+class TransformProcessor
+    : public TransformProcessorBase<
+          InputValueType,
+          OutputValueType,
+          TransformerType> {
  public:
   using Base =
       TransformProcessorBase<InputValueType, OutputValueType, TransformerType>;
@@ -339,10 +340,11 @@ template <
     typename InputValueType,
     typename OutputValueType,
     typename TransformerType>
-class ResumableTransformProcessor : public TransformProcessorBase<
-                                        InputValueType,
-                                        OutputValueType,
-                                        TransformerType> {
+class ResumableTransformProcessor
+    : public TransformProcessorBase<
+          InputValueType,
+          OutputValueType,
+          TransformerType> {
  public:
   using Base =
       TransformProcessorBase<InputValueType, OutputValueType, TransformerType>;
@@ -456,7 +458,7 @@ template <>
 class RateLimiterHolder<false> {
  public:
   explicit RateLimiterHolder(std::shared_ptr<RateLimiter> rateLimiter) {
-    CHECK_NULL(rateLimiter.get());
+    CHECK_EQ(rateLimiter.get(), static_cast<void*>(NULL));
   }
 
   std::shared_ptr<RateLimiter> getRateLimiter() { return nullptr; }
@@ -497,11 +499,12 @@ template <
     typename InitializeTransformFunc,
     typename TransformValueFunc,
     bool RateLimiterEnabled>
-class DefaultResumableTransformer : public DefaultTransformer<
-                                        InputValueType,
-                                        OutputValueType,
-                                        TransformValueFunc,
-                                        RateLimiterEnabled> {
+class DefaultResumableTransformer
+    : public DefaultTransformer<
+          InputValueType,
+          OutputValueType,
+          TransformValueFunc,
+          RateLimiterEnabled> {
  public:
   using Base = DefaultTransformer<
       InputValueType,

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/DynamicParser.h>
+#include <folly/json/DynamicParser.h>
 
 #include <folly/Optional.h>
 #include <folly/portability/GTest.h>
@@ -273,7 +273,7 @@ TEST(TestDynamicParser, TestRequiredOptionalParseErrors) {
   };
   // clang-format off
   EXPECT_EQ(dynamic(dynamic::object("nested", dynamic::object
-    ("x", get_expected_error_fn("x", "TypeError: .* but had type `array'"))
+    ("x", get_expected_error_fn("x", "TypeError: .* but had type 'array'"))
     ("y", get_expected_error_fn("y", ".*Invalid leading character.*"))
     ("z", get_expected_error_fn("z", "CUSTOM")))), errors);
   // clang-format on
@@ -311,7 +311,7 @@ TEST(TestDynamicParser, TestItemParseErrors) {
       },
       "string",
       "string",
-      "TypeError: .* but had type `array'");
+      "TypeError: .* but had type 'array'");
   checkItemParseError(
       dynamic::array("this is not a bool"),
       [&](DynamicParser& p) { p.arrayItems([&](int64_t, bool) {}); },
@@ -353,12 +353,13 @@ TEST(TestDynamicParser, TestErrorNesting) {
   auto& base = errors.at("nested").at("x").at("nested").at("0");
   auto inner_key_err =
       base.at("nested").at("y").at("key_errors").at("not a key");
-  auto innermost_key_err = base.at("nested")
-                               .at("y")
-                               .at("nested")
-                               .at("z")
-                               .at("key_errors")
-                               .at("akey");
+  auto innermost_key_err =
+      base.at("nested")
+          .at("y")
+          .at("nested")
+          .at("z")
+          .at("key_errors")
+          .at("akey");
   auto outer_key_err = base.at("key_errors").at("also not a key");
   auto root_key_err = errors.at("key_errors").at("non-key");
   auto k_parse_err = errors.at("nested").at("k").at("error");

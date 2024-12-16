@@ -55,6 +55,7 @@ cpp_unittest(
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/portability:unistd",
+        "//folly/test:test_utils",
     ],
 )
 
@@ -64,7 +65,7 @@ cpp_unittest(
         "SimpleSimdStringUtilsTest.cpp",
     ],
     deps = [
-        "//folly/algorithm/simd/detail:simd_char_platform",
+        "//folly/algorithm/simd/detail:simd_platform",
         "//folly/detail:simple_simd_string_utils",
         "//folly/portability:gtest",
     ],
@@ -113,6 +114,15 @@ cpp_unittest(
     srcs = ["TrapOnAvx512TestNegative.cpp"],
     deps = [
         "//folly/detail:traponavx512",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
+    name = "detail_typelist_test",
+    srcs = ["TypeListTest.cpp"],
+    deps = [
+        "//folly/detail:typelist",
         "//folly/portability:gtest",
     ],
 )

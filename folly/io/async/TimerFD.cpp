@@ -47,7 +47,7 @@ void TimerFD::close() {
   if (fd_ > 0) {
     detachEventBase();
     changeHandlerFD(NetworkSocket());
-    ::close(fd_);
+    fileops::close(fd_);
     fd_ = -1;
   }
 }

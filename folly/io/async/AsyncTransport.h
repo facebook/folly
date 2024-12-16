@@ -433,10 +433,11 @@ class AsyncWriter {
  * timeout, since most callers want to give up if the remote end stops
  * responding and no further progress can be made sending the data.
  */
-class AsyncTransport : public DelayedDestruction,
-                       public AsyncSocketBase,
-                       public AsyncReader,
-                       public AsyncWriter {
+class AsyncTransport
+    : public DelayedDestruction,
+      public AsyncSocketBase,
+      public AsyncReader,
+      public AsyncWriter {
  public:
   typedef std::unique_ptr<AsyncTransport, Destructor> UniquePtr;
 

@@ -3,55 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
-    name = "auto_timer",
-    headers = [
-        "AutoTimer.h",
-    ],
-    exported_deps = [
-        "//folly/logging:auto_timer",
-    ],
-)
-
-cpp_library(
-    name = "bit_vector_coding",
-    headers = [
-        "BitVectorCoding.h",
-    ],
-    exported_deps = [
-        "//folly/compression/elias_fano:bit_vector_coding",
-    ],
-)
-
-cpp_library(
-    name = "bits",
-    headers = ["Bits.h"],
-    exported_deps = [
-        "//folly/lang:bits_class",
-    ],
-)
-
-cpp_library(
-    name = "coding_detail",
-    headers = [
-        "CodingDetail.h",
-    ],
-    exported_deps = [
-        "//folly/compression/elias_fano:coding_detail",
-    ],
-)
-
-cpp_library(
-    name = "dynamic_parser",
-    headers = [
-        "DynamicParser.h",
-        "DynamicParser-inl.h",
-    ],
-    exported_deps = [
-        "//folly/json:dynamic_parser",
-    ],
-)
-
-cpp_library(
     name = "elias_fano_coding",
     headers = [
         "EliasFanoCoding.h",
@@ -68,16 +19,6 @@ cpp_library(
     ],
     exported_deps = [
         "//folly/synchronization:event_count",
-    ],
-)
-
-cpp_library(
-    name = "execution_observer",
-    headers = [
-        "ExecutionObserver.h",
-    ],
-    exported_deps = [
-        "//folly/executors:execution_observer",
     ],
 )
 
@@ -112,107 +53,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "instructions",
-    headers = [
-        "Instructions.h",
-    ],
-    exported_deps = [
-        "//folly/compression:instructions",
-    ],
-)
-
-cpp_library(
-    name = "json_schema",
-    headers = [
-        "JSONSchema.h",
-    ],
-    exported_deps = [
-        "//folly/json:json_schema",
-    ],
-)
-
-cpp_library(
-    name = "lock_free_ring_buffer",
-    headers = [
-        "LockFreeRingBuffer.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/container:lock_free_ring_buffer",
-    ],
-)
-
-cpp_library(
-    name = "cleanup",
-    headers = [
-        "Cleanup.h",
-    ],
-    exported_deps = [
-        "//folly/futures:cleanup",
-    ],
-)
-
-cpp_library(
-    name = "primary_ptr",
-    headers = [
-        "PrimaryPtr.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/memory:primary_ptr",
-    ],
-)
-
-cpp_library(
-    name = "program_options",
-    headers = [
-        "NestedCommandLineApp.h",
-        "ProgramOptions.h",
-    ],
-    exported_deps = [
-        "//folly/cli:program_options",
-    ],
-)
-
-cpp_library(
-    name = "read_mostly_shared_ptr",
-    headers = [
-        "ReadMostlySharedPtr.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/memory:read_mostly_shared_ptr",
-    ],
-)
-
-cpp_library(
-    name = "select64",
-    headers = [
-        "Select64.h",
-    ],
-    exported_deps = [
-        "//folly/compression:select64",
-    ],
-)
-
-cpp_library(
-    name = "single_writer_fixed_hash_map",
-    headers = [
-        "SingleWriterFixedHashMap.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/container:single_writer_fixed_hash_map",
-    ],
-)
-
-cpp_library(
-    name = "singleton_relaxed_counter",
-    headers = [
-        "SingletonRelaxedCounter.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency:singleton_relaxed_counter",
-    ],
-)
-
-cpp_library(
     name = "test_util",
     headers = [
         "TestUtil.h",
@@ -223,44 +63,11 @@ cpp_library(
 )
 
 cpp_library(
-    name = "timerfd",
-    headers = [
-        "STTimerFDTimeoutManager.h",
-        "TimerFD.h",
-        "TimerFDTimeoutManager.h",
-    ],
-    exported_deps = [
-        "//folly/io/async:timerfd",
-    ],
-)
-
-cpp_library(
     name = "threaded_repeating_function_runner",
     headers = [
         "ThreadedRepeatingFunctionRunner.h",
     ],
     exported_deps = [
         "//folly/executors:threaded_repeating_function_runner",
-    ],
-)
-
-cpp_library(
-    name = "tl_ref_count",
-    headers = [
-        "TLRefCount.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/memory:tl_ref_count",
-    ],
-)
-
-cpp_library(
-    name = "quotient_multiset",
-    headers = [
-        "QuotientMultiSet.h",
-        "QuotientMultiSet-inl.h",
-    ],
-    exported_deps = [
-        "//folly/compression:quotient_multiset",
     ],
 )

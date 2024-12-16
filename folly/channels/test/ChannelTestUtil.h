@@ -15,11 +15,11 @@
  */
 
 #include <folly/channels/ConsumeChannel.h>
+#include <folly/coro/DetachOnCancel.h>
+#include <folly/coro/Sleep.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/coro/DetachOnCancel.h>
-#include <folly/experimental/coro/Sleep.h>
 #include <folly/futures/SharedPromise.h>
 #include <folly/portability/GMock.h>
 

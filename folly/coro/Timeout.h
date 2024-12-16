@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Traits.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Traits.h>
 #include <folly/futures/Future.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -44,7 +44,7 @@ namespace folly::coro {
 /// otherwise uses the process' default TimeKeeper if 'tk' is null.
 ///
 /// \throws folly::FutureTimeout
-/// \refcode folly/docs/examples/folly/experimental/coro/DetachOnCancel.cpp
+/// \refcode folly/docs/examples/folly/coro/DetachOnCancel.cpp
 template <typename SemiAwaitable, typename Duration>
 Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
     SemiAwaitable semiAwaitable,

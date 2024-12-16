@@ -242,8 +242,9 @@ void deactivateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept {
 }
 
 void sweepSuspendedLeafFrames(folly::FunctionRef<void(AsyncStackFrame*)> fn) {
-  suspendedLeafFrames().withRLock(
-      [&](auto& frames) { std::for_each(frames.begin(), frames.end(), fn); });
+  suspendedLeafFrames().withRLock([&](auto& frames) {
+    std::for_each(frames.begin(), frames.end(), fn);
+  });
 }
 
 } // namespace folly

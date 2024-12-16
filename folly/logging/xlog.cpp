@@ -25,6 +25,14 @@
 namespace folly {
 
 namespace detail {
+#ifdef FOLLY_XLOG_SUPPORT_BUCK2
+bool const xlog_support_buck2 = true;
+#else
+bool const xlog_support_buck2 = false;
+#endif
+} // namespace detail
+
+namespace detail {
 size_t& xlogEveryNThreadEntry(void const* const key) {
   using Map = std::unordered_map<void const*, size_t>;
 
@@ -54,41 +62,7 @@ size_t& xlogEveryNThreadEntry(void const* const key) {
 } // namespace detail
 
 namespace {
-#ifdef FOLLY_XLOG_SUPPORT_BUCK1
-/**
- * buck copies header files from their original location in the source tree
- * and places them under buck-out/ with a path like
- * buck-out/<rule-name-components>/<original-path>
- *
- * We want to strip off the buck-out/<rule-name-components> portion,
- * so that the filename we use is just the original path in the source tree.
- *
- * The <rule-name-component> section should always end in a path component that
- * includes a '#': it's format is <rule-name>#<parameters>, where <parameters>
- * is a comma separated list that never includes '/'.
- *
- * Search for the first path component with a '#', and strip off everything up
- * to this component.
- */
-StringPiece stripBuckOutPrefix(StringPiece filename) {
-  size_t idx = 0;
-  while (true) {
-    auto end = filename.find('/', idx);
-    if (end == StringPiece::npos) {
-      // We were unable to find where the buck-out prefix should end.
-      return filename;
-    }
 
-    auto component = filename.subpiece(idx, end - idx);
-    if (component.find('#') != StringPiece::npos) {
-      return filename.subpiece(end + 1);
-    }
-    idx = end + 1;
-  }
-}
-#endif // FOLLY_XLOG_SUPPORT_BUCK1
-
-#ifdef FOLLY_XLOG_SUPPORT_BUCK2
 /**
  * buck2 copies header files from their original location in the source tree
  * and places them under buck-out/ with a path like
@@ -97,7 +71,7 @@ StringPiece stripBuckOutPrefix(StringPiece filename) {
  * We want to strip off everything up to and including the "buck-headers" or
  * "buck-private-headers" component.
  */
-StringPiece stripBuckV2Prefix(StringPiece filename) {
+[[maybe_unused]] StringPiece stripBuckV2Prefix(StringPiece filename) {
   static constexpr StringPiece commonPrefix("/buck-");
   static constexpr StringPiece headerPrefix("headers/");
   static constexpr StringPiece privatePrefix("private-headers/");
@@ -125,7 +99,6 @@ StringPiece stripBuckV2Prefix(StringPiece filename) {
     idx = end + 1;
   }
 }
-#endif // FOLLY_XLOG_SUPPORT_BUCK2
 
 } // namespace
 
@@ -136,16 +109,11 @@ StringPiece getXlogCategoryNameForFile(StringPiece filename) {
   //
   // If this path looks like a buck header directory, try to strip off the
   // buck-specific portion.
-#ifdef FOLLY_XLOG_SUPPORT_BUCK1
-  if (filename.startsWith("buck-out/")) {
-    filename = stripBuckOutPrefix(filename);
+  if (detail::xlog_support_buck2) {
+    if (filename.startsWith("buck-out/v2/")) {
+      filename = stripBuckV2Prefix(filename);
+    }
   }
-#endif // FOLLY_XLOG_SUPPORT_BUCK1
-#ifdef FOLLY_XLOG_SUPPORT_BUCK2
-  if (filename.startsWith("buck-out/v2/")) {
-    filename = stripBuckV2Prefix(filename);
-  }
-#endif // FOLLY_XLOG_SUPPORT_BUCK2
 
   return filename;
 }

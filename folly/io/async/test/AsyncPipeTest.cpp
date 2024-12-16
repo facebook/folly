@@ -94,7 +94,7 @@ class AsyncPipeTest : public Test {
     writer_.reset();
     writeCallback_.reset();
 
-    int rc = pipe(pipeFds_);
+    int rc = folly::fileops::pipe(pipeFds_);
     EXPECT_EQ(rc, 0);
 
     EXPECT_EQ(::fcntl(pipeFds_[0], F_SETFL, O_NONBLOCK), 0);

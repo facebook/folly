@@ -1,5 +1,4 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//tools/build_defs/buck2:is_buck2.bzl", "is_buck2")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -52,8 +51,9 @@ cpp_library(
         "StreamHandlerFactory.h",
         "xlog.h",
     ],
+    export_header_unit = "preload",
     preprocessor_flags = [
-        "-DFOLLY_XLOG_SUPPORT_BUCK2" if is_buck2() else "-DFOLLY_XLOG_SUPPORT_BUCK1",
+        "-DFOLLY_XLOG_SUPPORT_BUCK2",
     ],
     deps = [
         "//folly:constexpr_math",

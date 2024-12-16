@@ -259,9 +259,10 @@ class hazptr_domain {
   uint64_t load_due_time() { return due_time_.load(std::memory_order_acquire); }
 
   void set_due_time() {
-    uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        std::chrono::steady_clock::now().time_since_epoch())
-                        .count();
+    uint64_t time =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
     due_time_.store(time + kSyncTimePeriod, std::memory_order_release);
   }
 
@@ -379,9 +380,10 @@ class hazptr_domain {
 
   /** check_due_time */
   int check_due_time() {
-    uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        std::chrono::steady_clock::now().time_since_epoch())
-                        .count();
+    uint64_t time =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
     auto due = load_due_time();
     if (time < due || !cas_due_time(due, time + kSyncTimePeriod))
       return 0;

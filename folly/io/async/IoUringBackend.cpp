@@ -110,7 +110,7 @@ void SignalRegistry::notify(int sig) {
     int fd = notifyFd_.load();
     if (fd >= 0) {
       uint8_t sigNum = static_cast<uint8_t>(sig);
-      ::write(fd, &sigNum, 1);
+      fileops::write(fd, &sigNum, 1);
     }
   }
 }
@@ -361,7 +361,7 @@ IoUringBackend::SocketPair::SocketPair() {
 IoUringBackend::SocketPair::~SocketPair() {
   for (auto fd : fds_) {
     if (fd >= 0) {
-      ::close(fd);
+      fileops::close(fd);
     }
   }
 }
@@ -559,19 +559,18 @@ IoUringBackend::IoUringBackend(Options options)
       if (ret) {
         options.capacity /= 2;
         if (options.minCapacity && (options.capacity >= options.minCapacity)) {
-          LOG(INFO) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
-                    << "," << params.cq_entries << ") "
-                    << "failed errno = " << errno << ":\""
-                    << folly::errnoStr(errno) << "\" " << this
-                    << " retrying with capacity = " << options.capacity;
+          LOG(INFO)
+              << "io_uring_queue_init_params(" << 2 * options_.maxSubmit << ","
+              << params.cq_entries << ") " << "failed errno = " << errno
+              << ":\"" << folly::errnoStr(errno) << "\" " << this
+              << " retrying with capacity = " << options.capacity;
 
           params_.cq_entries = options.capacity;
           numEntries_ = options.capacity;
         } else {
           LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
-                     << "," << params.cq_entries << ") "
-                     << "failed ret = " << ret << ":\"" << folly::errnoStr(ret)
-                     << "\" " << this;
+                     << "," << params.cq_entries << ") " << "failed ret = "
+                     << ret << ":\"" << folly::errnoStr(ret) << "\" " << this;
 
           if (ret == -ENOMEM) {
             throw std::runtime_error("io_uring_queue_init error out of memory");
@@ -625,7 +624,7 @@ IoUringBackend::~IoUringBackend() {
   CHECK(!signalReadEntry_);
   CHECK(freeList_.empty());
 
-  ::close(timerFd_);
+  fileops::close(timerFd_);
 }
 
 void IoUringBackend::cleanup() {
@@ -798,9 +797,8 @@ void IoUringBackend::addTimerEvent(
   auto expire = getTimerExpireTime(*timeout);
 
   TimerUserData* td = (TimerUserData*)event.getUserData();
-  VLOG(6) << "addTimerEvent this=" << this << " event=" << &event
-          << " td=" << td << " changed_=" << timerChanged_
-          << " u=" << timeout->tv_usec;
+  VLOG(6) << "addTimerEvent this=" << this << " event=" << &event << " td="
+          << td << " changed_=" << timerChanged_ << " u=" << timeout->tv_usec;
   if (td) {
     CHECK_EQ(event.getFreeFunction(), timerUserDataFreeFunction);
     if (td->iter == timers_.end()) {
@@ -1823,6 +1821,14 @@ void IoUringBackend::queueStatx(
   submitImmediateIoSqe(*ioSqe);
 }
 
+void IoUringBackend::queueRename(
+    const char* oldPath, const char* newPath, FileOpCallback&& cb) {
+  auto* ioSqe = new FRenameIoSqe(this, oldPath, newPath, std::move(cb));
+  ioSqe->backendCb_ = processFileOpCB;
+
+  submitImmediateIoSqe(*ioSqe);
+}
+
 void IoUringBackend::queueFallocate(
     int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb) {
   auto* ioSqe = new FAllocateIoSqe(this, fd, mode, offset, len, std::move(cb));
@@ -1872,12 +1878,12 @@ static bool doKernelSupportsRecvmsgMultishot() {
   try {
     struct S : IoSqeBase {
       explicit S(IoUringBufferProviderBase* bp) : bp_(bp) {
-        fd = open("/dev/null", O_RDONLY);
+        fd = fileops::open("/dev/null", O_RDONLY);
         memset(&msg, 0, sizeof(msg));
       }
       ~S() override {
         if (fd >= 0) {
-          close(fd);
+          fileops::close(fd);
         }
       }
       void processSubmit(struct io_uring_sqe* sqe) noexcept override {

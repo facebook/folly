@@ -402,6 +402,8 @@ int recvmmsg(
     return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
   }
   // implement via recvmsg
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wunreachable-code")
   for (unsigned int i = 0; i < vlen; i++) {
     ssize_t ret = recvmsg(s, &msgvec[i].msg_hdr, flags);
     // in case of an error
@@ -417,6 +419,7 @@ int recvmmsg(
     }
   }
   return static_cast<int>(vlen);
+  FOLLY_POP_WARNING
 #endif
 }
 
@@ -548,6 +551,8 @@ int sendmmsg(
     return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
   }
   // implement via sendmsg
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wunreachable-code")
   for (unsigned int i = 0; i < vlen; i++) {
     ssize_t ret = sendmsg(socket, &msgvec[i].msg_hdr, flags);
     // in case of an error
@@ -565,6 +570,7 @@ int sendmmsg(
   }
 
   return static_cast<int>(vlen);
+  FOLLY_POP_WARNING
 #endif
 }
 
@@ -787,6 +793,8 @@ int set_socket_close_on_exec(NetworkSocket s) {
 }
 
 void Msgheader::setName(sockaddr_storage* addrStorage, size_t len) {
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wundef")
 #ifdef _WIN32
   msg_.name = reinterpret_cast<LPSOCKADDR>(addrStorage);
   msg_.namelen = len;
@@ -796,6 +804,7 @@ void Msgheader::setName(sockaddr_storage* addrStorage, size_t len) {
   msg_.msg_name = reinterpret_cast<void*>(addrStorage);
   msg_.msg_namelen = len;
 #endif
+  FOLLY_POP_WARNING
 }
 
 void Msgheader::setIovecs(const struct iovec* vec, size_t iovec_len) {
@@ -838,6 +847,8 @@ void Msgheader::setFlags(int flags) {
 }
 
 void Msgheader::incrCmsgLen(size_t val) {
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wundef")
 #ifdef _WIN32
   msg_.Control.len += WSA_CMSG_SPACE(val);
 #elif __EMSCRIPTEN__
@@ -845,6 +856,7 @@ void Msgheader::incrCmsgLen(size_t val) {
 #else
   msg_.msg_controllen += CMSG_SPACE(val);
 #endif
+  FOLLY_POP_WARNING
 }
 
 XPLAT_CMSGHDR* Msgheader::getFirstOrNextCmsgHeader(XPLAT_CMSGHDR* cm) {
@@ -856,6 +868,8 @@ XPLAT_MSGHDR* Msgheader::getMsg() {
 }
 
 XPLAT_CMSGHDR* Msgheader::cmsgNextHrd(XPLAT_CMSGHDR* cm) {
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wundef")
 #ifdef _WIN32
   return WSA_CMSG_NXTHDR(&msg_, cm);
 #elif __EMSCRIPTEN__
@@ -863,9 +877,12 @@ XPLAT_CMSGHDR* Msgheader::cmsgNextHrd(XPLAT_CMSGHDR* cm) {
 #else
   return CMSG_NXTHDR(&msg_, cm);
 #endif
+  FOLLY_POP_WARNING
 }
 
 XPLAT_CMSGHDR* Msgheader::cmsgFirstHrd() {
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wundef")
 #ifdef _WIN32
   return WSA_CMSG_FIRSTHDR(&msg_);
 #elif __EMSCRIPTEN__
@@ -873,6 +890,7 @@ XPLAT_CMSGHDR* Msgheader::cmsgFirstHrd() {
 #else
   return CMSG_FIRSTHDR(&msg_);
 #endif
+  FOLLY_POP_WARNING
 }
 } // namespace netops
 } // namespace folly

@@ -6,7 +6,6 @@ cpp_library(
     name = "access",
     headers = ["Access.h"],
     exported_deps = [
-        "//folly:portability",
         "//folly/functional:invoke",
     ],
 )
@@ -170,6 +169,47 @@ cpp_library(
 )
 
 cpp_library(
+    name = "regex_match_cache",
+    srcs = ["RegexMatchCache.cpp"],
+    headers = ["RegexMatchCache.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:map_util",
+        "//folly:string",
+        "//folly/portability:windows",
+        "//folly/ssl:openssl_hash",
+        "//folly/synchronization:atomic_util",
+    ],
+    exported_deps = [
+        ":f14_hash",
+        ":reserve",
+        ":span",
+        "//folly:chrono",
+        "//folly:function",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_regex"),
+    ],
+)
+
+cpp_library(
+    name = "span",
+    headers = ["span.h"],
+    exported_deps = [
+        ":access",
+        ":iterator",
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/functional:invoke",
+        "//folly/portability:constexpr",
+    ],
+)
+
+cpp_library(
     name = "sparse_byte_set",
     headers = ["SparseByteSet.h"],
     exported_deps = [
@@ -280,7 +320,7 @@ cpp_library(
     name = "map_util",
     headers = ["MapUtil.h"],
     exported_deps = [
-        "//folly:conv",
+        "fbsource//third-party/fmt:fmt",
         "//folly:optional",
         "//folly:range",
         "//folly/functional:invoke",

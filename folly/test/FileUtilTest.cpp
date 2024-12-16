@@ -267,7 +267,9 @@ TEST(FileUtilTest2, wrapv) {
 #ifndef _WIN32
   EXPECT_EQ(sum, wrapvFull(writev, tempFile.fd(), iov.data(), iov.size()));
 #else
-  EXPECT_EQ(sum, wrapvFull(write, tempFile.fd(), iov.data(), iov.size()));
+  EXPECT_EQ(
+      sum,
+      wrapvFull(folly::fileops::write, tempFile.fd(), iov.data(), iov.size()));
 #endif
 }
 
@@ -375,8 +377,9 @@ TEST_F(ReadFileFd, InvalidFd) {
   File f(aFile.path().string());
   f.close();
   std::string contents;
-  msvcSuppressAbortOnInvalidParams(
-      [&] { EXPECT_FALSE(readFile(f.fd(), contents)); });
+  msvcSuppressAbortOnInvalidParams([&] {
+    EXPECT_FALSE(readFile(f.fd(), contents));
+  });
   PLOG(INFO);
 }
 

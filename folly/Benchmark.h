@@ -116,6 +116,7 @@ struct BenchmarkSuspenderBase {
    * Accumulates time spent outside benchmark.
    */
   static std::chrono::high_resolution_clock::duration timeSpent;
+  static std::chrono::high_resolution_clock::duration suspenderOverhead;
 };
 
 template <typename Clock>
@@ -181,7 +182,7 @@ struct BenchmarkSuspender : BenchmarkSuspenderBase {
  private:
   void tally() {
     auto end = Clock::now();
-    timeSpent += end - start;
+    timeSpent += (end - start) + suspenderOverhead;
     start = end;
   }
 
@@ -199,6 +200,7 @@ class BenchmarkingStateBase {
   std::vector<BenchmarkResult> runBenchmarksWithResults() const;
 
   static folly::StringPiece getGlobalBaselineNameForTests();
+  static folly::StringPiece getGlobalSuspenderBaselineNameForTests();
 
   bool useCounters() const;
 
@@ -388,8 +390,9 @@ void printResultComparison(
              return rv;                                                      \
            }),                                                               \
        true);                                                                \
-  static void funName([[maybe_unused]] ::folly::UserCounters& counters       \
-                          FOLLY_PP_DETAIL_APPEND_VA_ARG(paramType paramName))
+  static void funName(                                                       \
+      [[maybe_unused]] ::folly::UserCounters& counters                       \
+          FOLLY_PP_DETAIL_APPEND_VA_ARG(paramType paramName))
 
 /**
  * Introduces a benchmark function with support for returning the actual

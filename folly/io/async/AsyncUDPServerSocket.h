@@ -35,8 +35,9 @@ namespace folly {
  *       more than 1 packet will not work because they will end up with
  *       different event base to process.
  */
-class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
-                             public AsyncSocketBase {
+class AsyncUDPServerSocket
+    : private AsyncUDPSocket::ReadCallback,
+      public AsyncSocketBase {
  public:
   class Callback {
    public:
@@ -170,8 +171,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     for (auto& listener : listeners_) {
       auto callback = listener.second;
 
-      listener.first->runInEventBaseThread(
-          [callback]() mutable { callback->onListenStarted(); });
+      listener.first->runInEventBaseThread([callback]() mutable {
+        callback->onListenStarted();
+      });
     }
 
     socket_->resumeRead(this);
@@ -205,8 +207,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     for (auto& listener : listeners_) {
       auto callback = listener.second;
 
-      listener.first->runInEventBaseThread(
-          [callback]() mutable { callback->onListenPaused(); });
+      listener.first->runInEventBaseThread([callback]() mutable {
+        callback->onListenPaused();
+      });
     }
   }
 
@@ -218,8 +221,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     for (auto& listener : listeners_) {
       auto callback = listener.second;
 
-      listener.first->runInEventBaseThread(
-          [callback]() mutable { callback->onAcceptNewPeerPaused(); });
+      listener.first->runInEventBaseThread([callback]() mutable {
+        callback->onAcceptNewPeerPaused();
+      });
     }
   }
 
@@ -231,8 +235,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     for (auto& listener : listeners_) {
       auto callback = listener.second;
 
-      listener.first->runInEventBaseThread(
-          [callback]() mutable { callback->onListenResumed(); });
+      listener.first->runInEventBaseThread([callback]() mutable {
+        callback->onListenResumed();
+      });
     }
   }
 
@@ -244,8 +249,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     for (auto& listener : listeners_) {
       auto callback = listener.second;
 
-      listener.first->runInEventBaseThread(
-          [callback]() mutable { callback->onAcceptNewPeerResumed(); });
+      listener.first->runInEventBaseThread([callback]() mutable {
+        callback->onAcceptNewPeerResumed();
+      });
     }
   }
 
@@ -307,15 +313,16 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
 
     // Schedule it in the listener's eventbase
     // XXX: Speed this up
-    auto f = [socket = socket_,
-              client = clientAddress,
-              callback,
-              data_2 = std::move(data),
-              truncated,
-              params]() mutable {
-      callback->onDataAvailable(
-          socket, client, std::move(data_2), truncated, params);
-    };
+    auto f =
+        [socket = socket_,
+         client = clientAddress,
+         callback,
+         data_2 = std::move(data),
+         truncated,
+         params]() mutable {
+          callback->onDataAvailable(
+              socket, client, std::move(data_2), truncated, params);
+        };
 
     listeners_[listenerId].first->runInEventBaseThread(std::move(f));
   }
@@ -331,8 +338,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     for (auto& listener : listeners_) {
       auto callback = listener.second;
 
-      listener.first->runInEventBaseThread(
-          [callback]() mutable { callback->onListenStopped(); });
+      listener.first->runInEventBaseThread([callback]() mutable {
+        callback->onListenStopped();
+      });
     }
   }
 

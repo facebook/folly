@@ -18,14 +18,14 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Sleep.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/WithCancellation.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Sleep.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/WithCancellation.h>
 #include <folly/futures/Future.h>
 
 #include <folly/portability/GTest.h>
@@ -363,9 +363,10 @@ TEST_F(AsyncGeneratorTest, ExplicitValueType) {
   items["foo"] = "hello";
   items["bar"] = "goodbye";
 
-  auto makeGenerator = [&]() -> folly::coro::AsyncGenerator<
-                                 std::tuple<const std::string&, std::string&>,
-                                 std::tuple<std::string, std::string>> {
+  auto makeGenerator = [&]()
+      -> folly::coro::AsyncGenerator<
+          std::tuple<const std::string&, std::string&>,
+          std::tuple<std::string, std::string>> {
     for (auto& [k, v] : items) {
       co_yield {k, v};
     }
@@ -392,8 +393,11 @@ TEST_F(AsyncGeneratorTest, InvokeLambda) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto ptr = std::make_unique<int>(123);
     auto gen = folly::coro::co_invoke(
-        [p = std::move(ptr)]() mutable
+        [p = std::move(ptr), str = std::string("test")]() mutable
         -> folly::coro::AsyncGenerator<std::unique_ptr<int>&&> {
+          SCOPE_EXIT {
+            CHECK_EQ(str, "test");
+          };
           co_yield std::move(p);
         });
 
@@ -402,6 +406,27 @@ TEST_F(AsyncGeneratorTest, InvokeLambda) {
     ptr = *result;
     CHECK(ptr);
     CHECK(*ptr == 123);
+  }());
+}
+
+TEST_F(AsyncGeneratorTest, InvokeLambdaRequiresCleanup) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto ptr = std::make_unique<int>(123);
+    auto gen = folly::coro::co_invoke(
+        [p = std::move(ptr), str = std::string("test")]() mutable
+        -> folly::coro::CleanableAsyncGenerator<std::unique_ptr<int>&&> {
+          SCOPE_EXIT {
+            CHECK_EQ(str, "test");
+          };
+          co_yield std::move(p);
+        });
+
+    auto result = co_await gen.next();
+    CHECK(result);
+    ptr = *result;
+    CHECK(ptr);
+    CHECK(*ptr == 123);
+    co_await std::move(gen).cleanup();
   }());
 }
 

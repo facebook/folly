@@ -310,7 +310,7 @@ template <typename T>
 Observer<T> makeStaticObserver(T value);
 
 template <typename T>
-Observer<T> makeStaticObserver(std::shared_ptr<T> value);
+Observer<std::decay_t<T>> makeStaticObserver(std::shared_ptr<T> value);
 
 template <typename T>
 class AtomicObserver {

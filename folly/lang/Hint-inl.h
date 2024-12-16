@@ -51,7 +51,7 @@ FOLLY_ALWAYS_INLINE void compiler_may_unsafely_assume_separate_storage(
     void const* const a, void const* const b) {
   FOLLY_SAFE_DCHECK(
       a != b, "compiler-hint separate storage assumption fails at runtime");
-#if FOLLY_HAS_BUILTIN(__builtin_assume_separate_storage)
+#if FOLLY_HAS_BUILTIN(__builtin_assume_separate_storage) && !defined(__CUDACC__)
   __builtin_assume_separate_storage(a, b);
 #endif
 }

@@ -106,6 +106,11 @@ TEST(MapUtil, getOptionalStd) {
   EXPECT_TRUE(get_optional<std::optional>(m, 1).has_value());
   EXPECT_EQ(2, get_optional<std::optional>(m, 1).value());
   EXPECT_FALSE(get_optional<std::optional>(m, 2).has_value());
+
+  std::map<int, std::map<int, int>> m2{{1, {{2, 3}}}};
+  EXPECT_TRUE(get_optional<std::optional>(m2, 1, 2).has_value());
+  EXPECT_EQ(3, get_optional<std::optional>(m2, 1, 2).value());
+  EXPECT_FALSE(get_optional<std::optional>(m2, 1, 3).has_value());
 }
 
 TEST(MapUtil, getRefDefault) {
@@ -125,8 +130,9 @@ TEST(MapUtil, getRefDefaultFunction) {
   EXPECT_EQ(42, get_ref_default(m, 2, [&i]() -> const int& { return i; }));
   EXPECT_EQ(
       std::addressof(i),
-      std::addressof(
-          get_ref_default(m, 2, [&i]() -> const int& { return i; })));
+      std::addressof(get_ref_default(m, 2, [&i]() -> const int& {
+        return i;
+      })));
   // statically disallowed:
   // get_ref_default(m, 2, [] { return 7; });
 }
@@ -138,6 +144,10 @@ TEST(MapUtil, getPtr) {
   EXPECT_TRUE(get_ptr(m, 2) == nullptr);
   *get_ptr(m, 1) = 4;
   EXPECT_EQ(4, m.at(1));
+  EXPECT_EQ(4, *get_ptr(&m, 1));
+
+  std::map<int, int>* nullMap = nullptr;
+  EXPECT_EQ(nullptr, get_ptr(nullMap, 2));
 }
 
 TEST(MapUtil, getPtr2) {
@@ -184,6 +194,11 @@ TEST(MapUtil, getPtrPathSimple) {
   EXPECT_EQ(6, *get_ptr(cm, 1, 2, 3, 4));
   EXPECT_TRUE(get_ptr(cm, 1, 2, 3, 4));
   EXPECT_FALSE(get_ptr(cm, 1, 2, 3, 0));
+
+  EXPECT_EQ(6, *get_ptr(&cm, 1, 2, 3, 4));
+
+  map<int, map<int, map<int, map<int, int>>>>* nullMap = nullptr;
+  EXPECT_EQ(nullptr, get_ptr(nullMap, 1, 2, 3, 4));
 }
 
 TEST(MapUtil, getPtrPathMixed) {

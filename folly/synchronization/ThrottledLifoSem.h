@@ -266,8 +266,9 @@ class ThrottledLifoSem {
 
       // Same as the other timeout, need to give last look at value.
       const bool timedout = Clock::now() >= deadline;
-      const bool success = timedout ? tryWaitOnTimeout()
-                                    : tryWaitImpl<DecrNumWaiters::OnSuccess>();
+      const bool success = timedout
+          ? tryWaitOnTimeout()
+          : tryWaitImpl<DecrNumWaiters::OnSuccess>();
       if (success || timedout) {
         // We are the waking thread, ensure we pass the waking state to another
         // thread if the value is still > 0 before returning control.

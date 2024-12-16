@@ -119,14 +119,15 @@ std::string TypeDescriptor::name() const {
 
 void singletonWarnDestroyInstanceLeak(
     const TypeDescriptor& type, const void* ptr) {
-  LOG(ERROR) << "Singleton of type " << type.name() << " has a "
-             << "living reference at destroyInstances time; beware! Raw "
-             << "pointer is " << ptr << ". It is very likely "
-             << "that some other singleton is holding a shared_ptr to it. "
-             << "This singleton will be leaked (even if a shared_ptr to it "
-             << "is eventually released)."
-             << "Make sure dependencies between these singletons are "
-             << "properly defined.";
+  LOG(ERROR)
+      << "Singleton of type " << type.name() << " has a "
+      << "living reference at destroyInstances time; beware! Raw "
+      << "pointer is " << ptr << ". It is very likely "
+      << "that some other singleton is holding a shared_ptr to it. "
+      << "This singleton will be leaked (even if a shared_ptr to it "
+      << "is eventually released)."
+      << "Make sure dependencies between these singletons are "
+      << "properly defined.";
 }
 
 [[noreturn]] void singletonWarnCreateCircularDependencyAndAbort(
@@ -189,11 +190,12 @@ struct FatalHelper {
       for (const auto& singleton : leakedSingletons_) {
         leakedTypes += "\t" + singleton.name() + "\n";
       }
-      LOG(DFATAL) << "Singletons of the following types had living references "
-                  << "after destroyInstances was finished:\n"
-                  << leakedTypes
-                  << "beware! It is very likely that those singleton instances "
-                  << "are leaked.";
+      LOG(DFATAL)
+          << "Singletons of the following types had living references "
+          << "after destroyInstances was finished:\n"
+          << leakedTypes
+          << "beware! It is very likely that those singleton instances "
+          << "are leaked.";
     }
   }
 

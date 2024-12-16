@@ -65,8 +65,9 @@ namespace folly {
  * priority tasks could still hog all the threads. (at last check pthreads
  * thread priorities didn't work very well).
  */
-class CPUThreadPoolExecutor : public ThreadPoolExecutor,
-                              public GetThreadIdCollector {
+class CPUThreadPoolExecutor
+    : public ThreadPoolExecutor,
+      public GetThreadIdCollector {
  public:
   struct CPUTask;
   struct Options {
@@ -85,10 +86,14 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor,
     Blocking blocking;
   };
 
-  // These function return unbounded blocking queues with the default semaphore
-  // (LifoSem).
+  // These function return unbounded blocking queues with the default semaphore.
   static std::unique_ptr<BlockingQueue<CPUTask>> makeDefaultQueue();
   static std::unique_ptr<BlockingQueue<CPUTask>> makeDefaultPriorityQueue(
+      int8_t numPriorities);
+
+  // These function return unbounded blocking queues with LifoSem.
+  static std::unique_ptr<BlockingQueue<CPUTask>> makeLifoSemQueue();
+  static std::unique_ptr<BlockingQueue<CPUTask>> makeLifoSemPriorityQueue(
       int8_t numPriorities);
 
   // These function return unbounded blocking queues with ThrottledLifoSem.
@@ -179,7 +184,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor,
   static const size_t kDefaultMaxQueueSize;
 
  protected:
-  BlockingQueue<CPUTask>* getTaskQueue();
+  BlockingQueue<CPUTask>* FOLLY_NONNULL getTaskQueue();
   std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_{
       std::make_unique<ThreadIdWorkerProvider>()};
 

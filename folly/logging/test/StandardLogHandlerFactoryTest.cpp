@@ -163,10 +163,10 @@ TEST_F(StandardLogHandlerFactoryTest, MultipleLoggerTest) {
   // log category level is DBG4
   // log handler "default" level is DBG3
   // log handler "other" level is WARN
-  db.resetConfig(
-      parseLogConfig("test=DBG4:default:other;"
-                     "default=test:level=DBG3;"
-                     "other=test:level=WARN"));
+  db.resetConfig(parseLogConfig(
+      "test=DBG4:default:other;"
+      "default=test:level=DBG3;"
+      "other=test:level=WARN"));
 
   FB_LOG(logger, DBG9) << "DBG9"; // no handler should log this
   FB_LOG(logger, DBG3) << "DBG3"; // only "default" logs this

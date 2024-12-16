@@ -129,4 +129,5 @@ jobs:
     - name: Test folly
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Show disk space at end
+      if: always()
       run: df -h

@@ -134,12 +134,12 @@ TEST(AsyncFileWriter, ioError) {
 
   // Create an AsyncFileWriter that refers to a pipe whose read end is closed
   std::array<int, 2> fds;
-  auto rc = pipe(fds.data());
+  auto rc = fileops::pipe(fds.data());
   folly::checkUnixError(rc, "failed to create pipe");
 #ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
 #endif
-  ::close(fds[0]);
+  fileops::close(fds[0]);
 
   // Log a bunch of messages to the writer
   size_t numMessages = 100;
@@ -220,7 +220,7 @@ TEST(AsyncFileWriter, flush) {
   // Set up a pipe(), then write data to the write endpoint until it fills up
   // and starts blocking.
   std::array<int, 2> fds;
-  auto rc = pipe(fds.data());
+  auto rc = fileops::pipe(fds.data());
   folly::checkUnixError(rc, "failed to create pipe");
   File readPipe{fds[0], true};
   File writePipe{fds[1], true};
@@ -238,8 +238,9 @@ TEST(AsyncFileWriter, flush) {
   Promise<Unit> promise;
   auto future = promise.getFuture();
   auto flushFunction = [&] { writer.flush(); };
-  std::thread flushThread{
-      [&]() { promise.setTry(makeTryWith(flushFunction)); }};
+  std::thread flushThread{[&]() {
+    promise.setTry(makeTryWith(flushFunction));
+  }};
   // Detach the flush thread now rather than joining it at the end of the
   // function.  This way if something goes wrong during the test we will fail
   // with the real error, rather than crashing due to the std::thread
@@ -361,9 +362,9 @@ class ReadStats {
     EXPECT_GT(numDiscarded_, 0);
     EXPECT_EQ(nDiscarded, numDiscarded_);
 
-    XLOG(DBG1) << totalMessagesWritten << " messages written, "
-               << totalMessagesRead << " messages read, " << numDiscarded_
-               << " messages discarded";
+    XLOG(DBG1)
+        << totalMessagesWritten << " messages written, " << totalMessagesRead
+        << " messages read, " << numDiscarded_ << " messages discarded";
   }
 
   void messageReceived(StringPiece msg) {
@@ -587,7 +588,7 @@ void writeThread(
 
 TEST(AsyncFileWriter, discard) {
   std::array<int, 2> fds;
-  auto pipeResult = pipe(fds.data());
+  auto pipeResult = fileops::pipe(fds.data());
   folly::checkUnixError(pipeResult, "pipe failed");
   folly::File readPipe{fds[0], true};
   folly::File writePipe{fds[1], true};

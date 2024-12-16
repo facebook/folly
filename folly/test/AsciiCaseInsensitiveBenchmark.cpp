@@ -94,12 +94,13 @@ inline void test_operator_on_search(int iters) {
   Cmp cmp;
   int dummy = 0;
   for (int i = 0; i < iters; ++i) {
-    dummy += std::search(
-                 lorem_ipsum.begin(),
-                 lorem_ipsum.end(),
-                 needle.begin(),
-                 needle.end(),
-                 cmp) -
+    dummy +=
+        std::search(
+            lorem_ipsum.begin(),
+            lorem_ipsum.end(),
+            needle.begin(),
+            needle.end(),
+            cmp) -
         lorem_ipsum.begin();
   }
   doNotOptimizeAway(dummy);
@@ -114,7 +115,7 @@ BENCHMARK(CurrentCaseInsensitiveCheck, iters) {
 }
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   if (FLAGS_benchmark) {
     folly::runBenchmarks();

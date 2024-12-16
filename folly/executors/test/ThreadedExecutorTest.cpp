@@ -30,10 +30,11 @@ class ThreadedExecutorTest : public testing::Test {};
 
 TEST_F(ThreadedExecutorTest, example) {
   folly::ThreadedExecutor x;
-  auto ret = folly::via(&x)
-                 .thenValue([&](auto&&) { return 42; })
-                 .thenValue([&](int n) { return folly::to<std::string>(n); })
-                 .get();
+  auto ret =
+      folly::via(&x)
+          .thenValue([&](auto&&) { return 42; })
+          .thenValue([&](int n) { return folly::to<std::string>(n); })
+          .get();
 
   EXPECT_EQ("42", ret);
 }

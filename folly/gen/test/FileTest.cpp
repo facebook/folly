@@ -49,7 +49,8 @@ TEST(FileGen, ByLine) {
 
   for (auto& lines : cases) {
     test::TemporaryFile file("ByLine");
-    EXPECT_EQ(lines.size(), write(file.fd(), lines.data(), lines.size()));
+    EXPECT_EQ(
+        lines.size(), fileops::write(file.fd(), lines.data(), lines.size()));
 
     auto expected = from({lines}) | resplit('\n') | collect;
     auto found = byLine(file.path().string().c_str()) | collect;
@@ -77,7 +78,8 @@ TEST(FileGen, ByLineFull) {
 
   for (auto& lines : cases) {
     test::TemporaryFile file("ByLineFull");
-    EXPECT_EQ(lines.size(), write(file.fd(), lines.data(), lines.size()));
+    EXPECT_EQ(
+        lines.size(), fileops::write(file.fd(), lines.data(), lines.size()));
 
     auto found =
         byLineFull(file.path().string().c_str()) | unsplit<std::string>("");

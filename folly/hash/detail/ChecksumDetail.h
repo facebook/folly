@@ -46,6 +46,12 @@ uint32_t crc32c_hw(
  * Check whether a SSE4.2 hardware-accelerated CRC-32C implementation is
  * supported on the current CPU.
  */
+bool crc32c_hw_supported_sse42();
+
+/**
+ * Check whether a hardware-accelerated CRC-32C implementation is
+ * supported on the current CPU.
+ */
 bool crc32c_hw_supported();
 
 /**
@@ -53,6 +59,18 @@ bool crc32c_hw_supported();
  * supported on the current CPU.
  */
 bool crc32c_hw_supported_avx512();
+
+/**
+ * Check whether a NEON hardware-accelerated CRC-32C implementation is
+ * supported on the current CPU.
+ */
+bool crc32c_hw_supported_neon();
+
+/**
+ * Check whether a NEON+EOR3+SHA3 hardware-accelerated CRC-32C implementation
+ * is supported on the current CPU.
+ */
+bool crc32c_hw_supported_neon_eor3_sha3();
 
 /**
  * Compute a CRC-32C checksum of a buffer using a portable,

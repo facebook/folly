@@ -95,13 +95,14 @@ endif()
 # something like the following pip3 command:
 #   pip3 --isolated install --no-cache-dir --no-index --system \
 #       --target <install_dir> <wheel_file>
-# pyre-fixme[13] fields initialized in _build
 class PythonWheelBuilder(BuilderBase):
     """This Builder can take Python wheel archives and install them as python libraries
     that can be used by add_fb_python_library()/add_fb_python_executable() CMake rules.
     """
 
+    # pyre-fixme[13]: Attribute `dist_info_dir` is never initialized.
     dist_info_dir: str
+    # pyre-fixme[13]: Attribute `template_format_dict` is never initialized.
     template_format_dict: Dict[str, str]
 
     def _build(self, reconfigure: bool) -> None:

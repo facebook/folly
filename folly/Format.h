@@ -219,10 +219,11 @@ using BaseFormatter = BaseFormatterImpl<
     Args...>;
 
 template <bool containerMode, class... Args>
-class Formatter : public BaseFormatter<
-                      Formatter<containerMode, Args...>,
-                      containerMode,
-                      Args...> {
+class Formatter
+    : public BaseFormatter<
+          Formatter<containerMode, Args...>,
+          containerMode,
+          Args...> {
   using self = Formatter<containerMode, Args...>;
   using base = BaseFormatter<self, containerMode, Args...>;
 

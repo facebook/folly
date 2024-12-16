@@ -18,7 +18,6 @@
 
 #include <glog/logging.h>
 
-#include <folly/Memory.h>
 #include <folly/Traits.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/GTest.h>

@@ -16,6 +16,7 @@
 import asyncio
 import unittest
 
+# pyre-fixme[21]: Could not find name `simplebridgecoro` in `folly.python.test`.
 from . import simplebridgecoro
 
 

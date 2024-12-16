@@ -511,9 +511,10 @@ TEST(BucketedTimeSeries, forEachBucket) {
     BucketedTimeSeries<int64_t> ts(data.numBuckets, seconds(data.duration));
 
     vector<BucketInfo> info;
-    auto fn = [&](const BucketSeries& bucket,
-                  TimePoint bucketStart,
-                  TimePoint bucketEnd) -> bool {
+    auto fn =
+        [&](const BucketSeries& bucket,
+            TimePoint bucketStart,
+            TimePoint bucketEnd) -> bool {
       info.emplace_back(&bucket, bucketStart, bucketEnd);
       return true;
     };

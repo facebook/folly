@@ -144,21 +144,24 @@ void runTestStringSplitOneType(folly::StringPiece s) {
   actuals.emplace_back();
   simdSplitByChar(',', s, actuals.back(), ignoreEmpty);
 
-#if FOLLY_X64
+#if FOLLY_SSE_PREREQ(4, 2)
   actuals.emplace_back();
-  PlatformSimdSplitByChar<simd_detail::SimdCharSse2Platform, ignoreEmpty>{}(
-      ',', s, actuals.back());
+  PlatformSimdSplitByChar<
+      simd::detail::SimdSse42Platform<std::uint8_t>,
+      ignoreEmpty>{}(',', s, actuals.back());
 #if defined(__AVX2__)
   actuals.emplace_back();
-  PlatformSimdSplitByChar<simd_detail::SimdCharAvx2Platform, ignoreEmpty>{}(
-      ',', s, actuals.back());
+  PlatformSimdSplitByChar<
+      simd::detail::SimdAvx2Platform<std::uint8_t>,
+      ignoreEmpty>{}(',', s, actuals.back());
 #endif
 #endif
 
 #if FOLLY_AARCH64
   actuals.emplace_back();
-  PlatformSimdSplitByChar<simd_detail::SimdCharAarch64Platform, ignoreEmpty>{}(
-      ',', s, actuals.back());
+  PlatformSimdSplitByChar<
+      simd::detail::SimdAarch64Platform<std::uint8_t>,
+      ignoreEmpty>{}(',', s, actuals.back());
 #endif
 
   for (const auto& actual : actuals) {

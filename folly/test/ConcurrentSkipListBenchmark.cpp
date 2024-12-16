@@ -370,9 +370,8 @@ class ConcurrentAccessData {
       cslMemorySize += it.nodeSize();
     }
 
-    LOG(INFO) << "size=" << sets_[0].size()
-              << "; std::set memory size=" << setMemorySize
-              << "; csl memory size=" << cslMemorySize;
+    LOG(INFO) << "size=" << sets_[0].size() << "; std::set memory size="
+              << setMemorySize << "; csl memory size=" << cslMemorySize;
 #endif
 
     readValues_.reserve(size);
@@ -605,7 +604,7 @@ BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   initData();
   runBenchmarks();

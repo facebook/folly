@@ -17,9 +17,9 @@
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Task.h>
 
 #include <memory>
 
@@ -161,7 +161,7 @@ BENCHMARK(NestedCallsWithCancellation10, iters) {
 #endif // FOLLY_HAS_COROUTINES
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

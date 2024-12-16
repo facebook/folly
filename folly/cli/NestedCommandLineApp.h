@@ -91,12 +91,14 @@ class NestedCommandLineApp {
       std::string programHelpFooter = std::string(),
       InitFunction initFunction = InitFunction());
 
+#if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
   /**
    * Add GFlags to the list of supported options with the given style.
    */
   void addGFlags(ProgramOptionsStyle style = ProgramOptionsStyle::GNU) {
     globalOptions_.add(getGFlags(style));
   }
+#endif
 
   /**
    * Return the global options object, so you can add options.

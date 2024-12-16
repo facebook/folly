@@ -28,7 +28,8 @@
 #include <glog/logging.h>
 
 #if (defined(MADV_HUGEPAGE) || defined(MAP_ALIGNED_SUPER)) && \
-    defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
+    defined(FOLLY_USE_JEMALLOC) &&                            \
+    (!defined(FOLLY_SANITIZE) || !FOLLY_SANITIZE)
 
 #if defined(__FreeBSD__) || (JEMALLOC_VERSION_MAJOR >= 5)
 #define FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED 1
@@ -53,13 +54,14 @@
 
 #if !defined(JEMALLOC_VERSION_MAJOR) || (JEMALLOC_VERSION_MAJOR < 5)
 typedef struct extent_hooks_s extent_hooks_t;
-typedef void*(extent_alloc_t)(extent_hooks_t*,
-                              void*,
-                              size_t,
-                              size_t,
-                              bool*,
-                              bool*,
-                              unsigned);
+typedef void*(
+    extent_alloc_t)(extent_hooks_t*,
+                    void*,
+                    size_t,
+                    size_t,
+                    bool*,
+                    bool*,
+                    unsigned);
 struct extent_hooks_s {
   extent_alloc_t* alloc;
 };
@@ -415,8 +417,9 @@ void* JemallocHugePageAllocator::allocate(size_t size) {
 }
 
 void* JemallocHugePageAllocator::reallocate(void* p, size_t size) {
-  return hugePagesAllocSupported() ? rallocx(p, size, flags_)
-                                   : realloc(p, size);
+  return hugePagesAllocSupported()
+      ? rallocx(p, size, flags_)
+      : realloc(p, size);
 }
 
 void JemallocHugePageAllocator::deallocate(void* p, size_t) {

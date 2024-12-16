@@ -184,10 +184,8 @@ struct Printer {
 
   template <typename Iterator>
   void printKVPairs(
-      dynamic const& o,
-      Iterator begin,
-      Iterator end,
-      const Context* context) const {
+      dynamic const& o, Iterator begin, Iterator end, const Context* context)
+      const {
     printKV(o, *begin, context);
     for (++begin; begin != end; ++begin) {
       out_ += ',';
@@ -503,8 +501,9 @@ dynamic parseObject(Input& in, json::metadata_map* map) {
       key = key.asString();
     } else if (!opts.allow_non_string_keys && !key.isString()) {
       in.error(
-          opts.convert_int_keys ? "expected string or integer for object key"
-                                : "expected string for object key");
+          opts.convert_int_keys
+              ? "expected string or integer for object key"
+              : "expected string for object key");
     }
     parseObjectKeyValue(in, ret, std::move(key), map, distinct);
 

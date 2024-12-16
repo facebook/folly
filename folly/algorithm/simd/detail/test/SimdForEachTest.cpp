@@ -21,7 +21,7 @@
 #include <array>
 
 namespace folly {
-namespace simd_detail {
+namespace simd::detail {
 
 constexpr int kCardinal = 4;
 
@@ -270,5 +270,5 @@ TEST(SimdForEachAligningTest, UnrollIndexes) {
       run<4>(0, 37, -1));
 }
 
-} // namespace simd_detail
+} // namespace simd::detail
 } // namespace folly

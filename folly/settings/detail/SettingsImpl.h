@@ -19,6 +19,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 
@@ -29,6 +30,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
 #include <folly/Utility.h>
+#include <folly/concurrency/SingletonRelaxedCounter.h>
 #include <folly/container/F14Set.h>
 #include <folly/lang/Aligned.h>
 #include <folly/settings/Immutables.h>
@@ -42,10 +44,8 @@ namespace detail {
  * Can we store T in a global atomic?
  */
 template <class T>
-struct IsSmallPOD
-    : std::integral_constant<
-          bool,
-          std::is_trivial<T>::value && sizeof(T) <= sizeof(uint64_t)> {};
+constexpr bool IsSmallPOD =
+    std::is_trivial_v<T> && sizeof(T) <= sizeof(uint64_t);
 
 template <class T>
 struct SettingContents {
@@ -73,6 +73,7 @@ class SettingCoreBase {
   virtual SetResult resetToDefault(SnapshotBase* snapshot) = 0;
   virtual void forceResetToDefault(SnapshotBase* snapshot) = 0;
   virtual const SettingMetadata& meta() const = 0;
+  virtual uint64_t accessCount() const = 0;
   virtual ~SettingCoreBase() {}
 
   /**
@@ -88,7 +89,7 @@ void registerSetting(SettingCoreBase& core);
  */
 SettingCoreBase::Version nextGlobalVersion();
 
-template <class T>
+template <class T, typename Tag>
 class SettingCore;
 
 /**
@@ -109,19 +110,11 @@ class BoxedValue {
    * Stores a value that can be both retrieved later and optionally
    * applied globally
    */
-  template <class T>
-  BoxedValue(const T& value, StringPiece reason, SettingCore<T>& core)
+  template <class T, typename Tag>
+  BoxedValue(const T& value, StringPiece reason, SettingCore<T, Tag>& core)
       : value_(std::make_shared<SettingContents<T>>(reason.str(), value)),
-        publish_([value = value_,
-                  &core](const FrozenSettingProjects& frozenProjects) {
-          if (core.meta().mutability == Mutability::Immutable &&
-              frozenProjects.contains(core.meta().project)) {
-            return;
-          }
-          auto& contents = BoxedValue::unboxImpl<T>(value.get());
-          core.setImpl(
-              contents.value, contents.updateReason, /* snapshot */ nullptr);
-        }) {}
+        core_{&core},
+        publish_{doPublish<T, Tag>} {}
 
   /**
    * Returns the reference to the stored value
@@ -136,18 +129,34 @@ class BoxedValue {
    */
   void publish(const FrozenSettingProjects& frozenProjects) {
     if (publish_) {
-      publish_(frozenProjects);
+      publish_(*this, frozenProjects);
     }
   }
 
  private:
-  std::shared_ptr<void> value_;
-  std::function<void(const FrozenSettingProjects&)> publish_;
+  using PublishFun = void(BoxedValue&, const FrozenSettingProjects&);
+
+  template <typename T, typename Tag>
+  static void doPublish(
+      BoxedValue& boxed, const FrozenSettingProjects& frozenProjects) {
+    auto& core = *static_cast<SettingCore<T, Tag>*>(boxed.core_);
+    if (core.meta().mutability == Mutability::Immutable &&
+        frozenProjects.contains(core.meta().project)) {
+      return;
+    }
+    auto& contents = BoxedValue::unboxImpl<T>(boxed.value_.get());
+    core.setImpl(
+        contents.value, contents.updateReason, /* snapshot = */ nullptr);
+  }
 
   template <class T>
   static const SettingContents<T>& unboxImpl(void* value) {
     return *static_cast<const SettingContents<T>*>(value);
   }
+
+  std::shared_ptr<void> value_;
+  SettingCoreBase* core_{};
+  PublishFun* publish_{};
 };
 
 /**
@@ -171,6 +180,24 @@ class SnapshotBase {
    * Type that encapsulates the current pair of (to<string>(value), reason)
    */
   using SettingsInfo = std::pair<std::string, std::string>;
+
+  struct SettingVisitorInfo {
+    SettingVisitorInfo(
+        const std::string& fullName,
+        const SettingCoreBase& core,
+        const SnapshotBase& snapshot)
+        : fullName_(fullName), core_(core), snapshot_(snapshot) {}
+
+    const SettingMetadata& meta() const { return core_.meta(); }
+    std::pair<std::string, std::string> valueAndReason() const;
+    const std::string& fullName() const { return fullName_; }
+    uint64_t accessCount() const { return core_.accessCount(); }
+
+   private:
+    const std::string& fullName_;
+    const SettingCoreBase& core_;
+    const SnapshotBase& snapshot_;
+  };
 
   /**
    * Apply all settings updates from this snapshot to the global state
@@ -218,12 +245,10 @@ class SnapshotBase {
   virtual SetResult forceResetToDefault(StringPiece settingName) = 0;
 
   /**
-   * Iterates over all known settings and calls
-   * func(meta, to<string>(value), reason) for each.
+   * Iterates over all known settings and calls func(visitorInfo) for each.
    */
   virtual void forEachSetting(
-      const std::function<void(
-          const SettingMetadata&, StringPiece, StringPiece)>& func) const = 0;
+      FunctionRef<void(const SettingVisitorInfo&)> func) const = 0;
 
   virtual ~SnapshotBase();
 
@@ -232,7 +257,7 @@ class SnapshotBase {
   std::unordered_map<detail::SettingCoreBase::Key, detail::BoxedValue>
       snapshotValues_;
 
-  template <typename T>
+  template <typename T, typename Tag>
   friend class SettingCore;
 
   SnapshotBase();
@@ -242,8 +267,8 @@ class SnapshotBase {
   SnapshotBase(SnapshotBase&&) = delete;
   SnapshotBase& operator=(SnapshotBase&&) = delete;
 
-  template <class T>
-  const SettingContents<T>& get(const detail::SettingCore<T>& core) const {
+  template <class T, typename Tag>
+  const SettingContents<T>& get(const detail::SettingCore<T, Tag>& core) const {
     auto it = snapshotValues_.find(core.getKey());
     if (it != snapshotValues_.end()) {
       return it->second.template unbox<T>();
@@ -255,16 +280,17 @@ class SnapshotBase {
     return core.getSlow();
   }
 
-  template <class T>
-  void set(detail::SettingCore<T>& core, const T& t, StringPiece reason) {
+  template <class T, typename Tag>
+  void set(detail::SettingCore<T, Tag>& core, const T& t, StringPiece reason) {
     snapshotValues_[core.getKey()] = detail::BoxedValue(t, reason, core);
   }
 };
 
-template <class T>
+template <class T, typename Tag>
 class SettingCore : public SettingCoreBase {
  public:
   using Contents = SettingContents<T>;
+  using AccessCounter = SingletonRelaxedCounter<uint64_t, Tag>;
 
   SetResult setFromString(
       StringPiece newValue,
@@ -307,34 +333,26 @@ class SettingCore : public SettingCoreBase {
 
   const SettingMetadata& meta() const override { return meta_; }
 
+  uint64_t accessCount() const override { return AccessCounter::count(); }
+
   /**
    * @param trivialStorage must refer to the same location
    *   as the internal trivialStorage_.  This hint will
    *   generate better inlined code since the address is known
    *   at compile time at the callsite.
    */
-  std::conditional_t<IsSmallPOD<T>::value, T, const T&> getWithHint(
+  std::conditional_t<IsSmallPOD<T>, T, const T&> getWithHint(
       std::atomic<uint64_t>& trivialStorage) const {
-    return getImpl(IsSmallPOD<T>(), trivialStorage);
+    if constexpr (IsSmallPOD<T>) {
+      uint64_t v = trivialStorage.load();
+      T t;
+      std::memcpy(&t, &v, sizeof(T));
+      return t;
+    } else {
+      return const_cast<SettingCore*>(this)->tlValue()->value;
+    }
   }
   const SettingContents<T>& getSlow() const { return *tlValue(); }
-  /***
-   * SmallPOD version: just read the global atomic
-   */
-  T getImpl(std::true_type, std::atomic<uint64_t>& trivialStorage) const {
-    uint64_t v = trivialStorage.load();
-    T t;
-    std::memcpy(&t, &v, sizeof(T));
-    return t;
-  }
-
-  /**
-   * Non-SmallPOD version: read the thread local shared_ptr
-   */
-  const T& getImpl(
-      std::false_type, std::atomic<uint64_t>& /* ignored */) const {
-    return const_cast<SettingCore*>(this)->tlValue()->value;
-  }
 
   SetResult set(
       const T& t, StringPiece reason, SnapshotBase* snapshot = nullptr) {
@@ -351,7 +369,7 @@ class SettingCore : public SettingCoreBase {
   class CallbackHandle {
    public:
     CallbackHandle(
-        std::shared_ptr<UpdateCallback> callback, SettingCore<T>& setting)
+        std::shared_ptr<UpdateCallback> callback, SettingCore<T, Tag>& setting)
         : callback_(std::move(callback)), setting_(setting) {}
     ~CallbackHandle() {
       if (callback_) {
@@ -366,7 +384,7 @@ class SettingCore : public SettingCoreBase {
 
    private:
     std::shared_ptr<UpdateCallback> callback_;
-    SettingCore<T>& setting_;
+    SettingCore<T, Tag>& setting_;
   };
   CallbackHandle addCallback(UpdateCallback callback) {
     auto callbackPtr = copy_to_shared_ptr(std::move(callback));
@@ -385,12 +403,7 @@ class SettingCore : public SettingCoreBase {
       std::atomic<uint64_t>& trivialStorage)
       : meta_(std::move(meta)),
         defaultValue_(std::move(defaultValue)),
-        trivialStorage_(trivialStorage),
-        localValue_([]() {
-          return cacheline_aligned<
-              std::pair<Version, std::shared_ptr<Contents>>>(
-              std::in_place, 0, nullptr);
-        }) {
+        trivialStorage_(trivialStorage) {
     forceResetToDefault(/* snapshot */ nullptr);
     registerSetting(*this);
   }
@@ -412,18 +425,33 @@ class SettingCore : public SettingCoreBase {
    */
   cacheline_aligned<std::atomic<Version>> settingVersion_{std::in_place, 1};
 
-  ThreadLocal<cacheline_aligned<std::pair<Version, std::shared_ptr<Contents>>>>
-      localValue_;
+  using LocalValue = std::pair<Version, std::shared_ptr<Contents>>;
+  struct LocalValueTLP : cacheline_aligned<LocalValue> {
+    LocalValueTLP() noexcept
+        : cacheline_aligned<LocalValue>(std::in_place, 0, nullptr) {}
+  };
+
+  mutable ThreadLocalPtr<LocalValueTLP> localValue_;
+
+  FOLLY_ALWAYS_INLINE LocalValue& getLocalValue() const {
+    auto const ptr = localValue_.get();
+    return FOLLY_LIKELY(!!ptr) ? **ptr : getLocalValueSlow();
+  }
+  FOLLY_NOINLINE LocalValue& getLocalValueSlow() const {
+    auto const ptr = new LocalValueTLP();
+    localValue_.reset(ptr);
+    return **ptr;
+  }
 
   FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
-    auto& value = **localValue_;
+    auto& value = getLocalValue();
     if (FOLLY_LIKELY(value.first == *settingVersion_)) {
       return value.second;
     }
     return tlValueSlow();
   }
   FOLLY_NOINLINE const std::shared_ptr<Contents>& tlValueSlow() const {
-    auto& value = **localValue_;
+    auto& value = getLocalValue();
     while (value.first < *settingVersion_) {
       /* If this destroys the old value, do it without holding the lock */
       value.second.reset();
@@ -451,7 +479,7 @@ class SettingCore : public SettingCoreBase {
             getKey(), *settingVersion_, BoxedValue(*globalValue_));
       }
       globalValue_ = std::make_shared<Contents>(reason.str(), t);
-      if constexpr (IsSmallPOD<T>::value) {
+      if constexpr (IsSmallPOD<T>) {
         uint64_t v = 0;
         std::memcpy(&v, &t, sizeof(T));
         trivialStorage_.store(v);

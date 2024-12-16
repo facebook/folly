@@ -374,9 +374,10 @@ class rcu_domain {
     // Note that it's likely we hold a read lock here,
     // so we can only half_sync(false).  half_sync(true)
     // or a synchronize() call might block forever.
-    uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now().time_since_epoch())
-                        .count();
+    uint64_t time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
     auto syncTime = syncTime_.load(std::memory_order_relaxed);
     if (time > syncTime + syncTimePeriod_ &&
         syncTime_.compare_exchange_strong(
@@ -387,8 +388,9 @@ class rcu_domain {
         half_sync(false, finished);
       }
       // callbacks are called outside of syncMutex_
-      finished.forEach(
-          [&](list_node* item) { executor_->add(std::move(item->cb_)); });
+      finished.forEach([&](list_node* item) {
+        executor_->add(std::move(item->cb_));
+      });
     }
   }
 
@@ -414,8 +416,9 @@ class rcu_domain {
           }
         }
         // callbacks are called outside of syncMutex_
-        finished.forEach(
-            [&](list_node* node) { executor_->add(std::move(node->cb_)); });
+        finished.forEach([&](list_node* node) {
+          executor_->add(std::move(node->cb_));
+        });
         return;
       } else {
         if (version_.load(std::memory_order_acquire) >= target) {

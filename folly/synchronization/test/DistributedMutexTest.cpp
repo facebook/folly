@@ -1998,8 +1998,9 @@ void concurrentBigValueReturnStress(
         });
 
         auto expected = value.load() - 1;
-        folly::for_each(
-            returned, [&](auto& element) { EXPECT_EQ(element, expected++); });
+        folly::for_each(returned, [&](auto& element) {
+          EXPECT_EQ(element, expected++);
+        });
       }
     }));
   }

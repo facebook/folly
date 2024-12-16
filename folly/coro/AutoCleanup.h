@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/experimental/coro/AutoCleanup-fwd.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/AutoCleanup-fwd.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/Task.h>
 
 #if FOLLY_HAS_COROUTINES
 

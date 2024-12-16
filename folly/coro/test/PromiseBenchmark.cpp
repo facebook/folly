@@ -16,11 +16,11 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/FutureUtil.h>
-#include <folly/experimental/coro/Promise.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/FutureUtil.h>
+#include <folly/coro/Promise.h>
+#include <folly/coro/Task.h>
 #include <folly/futures/Future.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -124,7 +124,7 @@ BENCHMARK_COUNTERS(FuturesFutureSuspend, counters, iters) {
 #endif
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

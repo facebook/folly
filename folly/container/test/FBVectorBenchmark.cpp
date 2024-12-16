@@ -94,13 +94,13 @@ using FBStringFBVector = fbvector<folly::fbstring>;
 #undef VECTOR
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_max_iters", "1000000", gflags::SET_FLAG_IF_DEFAULT);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_min_iters", "100000", gflags::SET_FLAG_IF_DEFAULT);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_max_secs", "1", gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_max_iters", "1000000", folly::gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_min_iters", "100000", folly::gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_max_secs", "1", folly::gflags::SET_FLAG_IF_DEFAULT);
 
   folly::runBenchmarks();
   return 0;

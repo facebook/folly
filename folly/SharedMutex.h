@@ -339,10 +339,11 @@ template <
     typename Tag_ = void,
     template <typename> class Atom = std::atomic,
     typename Policy = SharedMutexPolicyDefault>
-class SharedMutexImpl : std::conditional_t<
-                            Policy::track_thread_id,
-                            shared_mutex_detail::ThreadIdOwnershipTracker,
-                            shared_mutex_detail::NopOwnershipTracker> {
+class SharedMutexImpl
+    : std::conditional_t<
+          Policy::track_thread_id,
+          shared_mutex_detail::ThreadIdOwnershipTracker,
+          shared_mutex_detail::NopOwnershipTracker> {
  private:
   static constexpr bool AnnotateForThreadSanitizer =
       kIsSanitizeThread && !ReaderPriority && !Policy::skip_annotate_rwlock;

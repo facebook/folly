@@ -69,7 +69,7 @@ class FatalTests(unittest.TestCase):
         elif out.strip() == b"DEBUG=0":
             return False
         else:
-            self.fail("unexpected output from --check_debug: {}".format(out))
+            self.fail(f"unexpected output from --check_debug: {out}")
 
     def get_crash_regex(self, msg=b"test program crashing!", glog=True):
         if glog:
@@ -232,7 +232,7 @@ class FatalTests(unittest.TestCase):
         args = ["--crash=no", "--" + flag, str(value)]
         if expect_failure:
             err = self.run_helper(*args)
-            expected_msg = "Check failed: FLAGS_%s %s 0 (%s vs. 0)%s" % (
+            expected_msg = "Check failed: FLAGS_{} {} 0 ({} vs. 0){}".format(
                 flag,
                 op,
                 value,

@@ -114,26 +114,25 @@
 
 #endif
 
-#if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
-namespace FOLLY_GFLAGS_NAMESPACE {}
-namespace gflags {
-using namespace FOLLY_GFLAGS_NAMESPACE;
-} // namespace gflags
-#endif
-
 namespace folly {
 
 #if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
 
-using FlagSaver = gflags::FlagSaver;
+#if !defined(GFLAGS_NAMESPACE)
+#error expecting definition of GFLAGS_NAMESPACE
+#endif
+namespace gflags = ::GFLAGS_NAMESPACE;
 
 #else
 
-namespace detail {
-struct GflagsFlagSaver {};
-} // namespace detail
-using FlagSaver = detail::GflagsFlagSaver;
+namespace gflags {
+
+struct FlagSaver {};
+
+} // namespace gflags
 
 #endif
+
+using gflags::FlagSaver;
 
 } // namespace folly

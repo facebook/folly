@@ -17,17 +17,17 @@
 #pragma once
 
 #include <folly/CancellationToken.h>
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 #include <folly/lang/CustomizationPoint.h>
 
 #if FOLLY_HAS_COROUTINES
 
 /**
- * \file experimental/coro/WithCancellation.h
+ * \file coro/WithCancellation.h
  * co_withCancellation allows caller to pass in a cancellation token to a
  * awaitable
  *
- * \refcode folly/docs/examples/folly/experimental/coro/WithCancellation.cpp
+ * \refcode folly/docs/examples/folly/coro/WithCancellation.cpp
  */
 
 namespace folly {

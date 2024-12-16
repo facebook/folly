@@ -17,14 +17,14 @@
 #pragma once
 
 #include <folly/Try.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Traits.h>
+#include <folly/coro/ViaIfAsync.h>
+#include <folly/coro/WithAsyncStack.h>
+#include <folly/coro/detail/Malloc.h>
+#include <folly/coro/detail/Traits.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Traits.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
-#include <folly/experimental/coro/WithAsyncStack.h>
-#include <folly/experimental/coro/detail/Malloc.h>
-#include <folly/experimental/coro/detail/Traits.h>
 #include <folly/fibers/Baton.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/tracing/AsyncStack.h>

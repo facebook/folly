@@ -22,13 +22,6 @@
 namespace folly {
 namespace crypto {
 
-// static
-constexpr size_t Blake2xb::kMinOutputLength;
-// static
-constexpr size_t Blake2xb::kMaxOutputLength;
-// static
-constexpr size_t Blake2xb::kUnknownOutputLength;
-
 namespace {
 
 // In libsodium 1.0.17, the crypto_generichash_blake2b_state struct was made

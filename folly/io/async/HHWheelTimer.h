@@ -127,8 +127,9 @@ struct HHWheelTimerDurationConst<std::chrono::microseconds> {
  * time.
  */
 template <class Duration>
-class HHWheelTimerBase : private folly::AsyncTimeout,
-                         public folly::DelayedDestruction {
+class HHWheelTimerBase
+    : private folly::AsyncTimeout,
+      public folly::DelayedDestruction {
  public:
   using UniquePtr = std::unique_ptr<HHWheelTimerBase, Destructor>;
   using SharedPtr = std::shared_ptr<HHWheelTimerBase>;

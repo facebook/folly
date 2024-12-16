@@ -52,7 +52,7 @@ int openNoInt(const char* name, int flags, mode_t mode) {
   // The solution is referenced from
   // https://github.com/llvm/llvm-project/commit/0a0e411204a2baa520fd73a8d69b664f98b428ba
   //
-  auto openWrapper = [&] { return open(name, flags, mode); };
+  auto openWrapper = [&] { return fileops::open(name, flags, mode); };
   return int(wrapNoInt(openWrapper));
 }
 
@@ -73,7 +73,7 @@ static int filterCloseReturn(int r) {
 }
 
 int closeNoInt(int fd) {
-  return filterCloseReturn(close(fd));
+  return filterCloseReturn(fileops::close(fd));
 }
 
 int closeNoInt(NetworkSocket fd) {
@@ -119,7 +119,7 @@ int shutdownNoInt(NetworkSocket fd, int how) {
 }
 
 ssize_t readNoInt(int fd, void* buf, size_t count) {
-  return wrapNoInt(read, fd, buf, count);
+  return wrapNoInt(folly::fileops::read, fd, buf, count);
 }
 
 ssize_t preadNoInt(int fd, void* buf, size_t count, off_t offset) {
@@ -135,7 +135,7 @@ ssize_t preadvNoInt(int fd, const iovec* iov, int count, off_t offset) {
 }
 
 ssize_t writeNoInt(int fd, const void* buf, size_t count) {
-  return wrapNoInt(write, fd, buf, count);
+  return wrapNoInt(folly::fileops::write, fd, buf, count);
 }
 
 ssize_t pwriteNoInt(int fd, const void* buf, size_t count, off_t offset) {
@@ -151,7 +151,7 @@ ssize_t pwritevNoInt(int fd, const iovec* iov, int count, off_t offset) {
 }
 
 ssize_t readFull(int fd, void* buf, size_t count) {
-  return wrapFull(read, fd, buf, count);
+  return wrapFull(folly::fileops::read, fd, buf, count);
 }
 
 ssize_t preadFull(int fd, void* buf, size_t count, off_t offset) {
@@ -159,7 +159,7 @@ ssize_t preadFull(int fd, void* buf, size_t count, off_t offset) {
 }
 
 ssize_t writeFull(int fd, const void* buf, size_t count) {
-  return wrapFull(write, fd, const_cast<void*>(buf), count);
+  return wrapFull(folly::fileops::write, fd, const_cast<void*>(buf), count);
 }
 
 ssize_t pwriteFull(int fd, const void* buf, size_t count, off_t offset) {
@@ -191,7 +191,7 @@ ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset) {
 // guarantees, so we can avoid the locking logic.
 
 ssize_t readvFull(int fd, iovec* iov, int count) {
-  return wrapvFull(read, fd, iov, count);
+  return wrapvFull(folly::fileops::read, fd, iov, count);
 }
 
 ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset) {
@@ -199,7 +199,7 @@ ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset) {
 }
 
 ssize_t writevFull(int fd, iovec* iov, int count) {
-  return wrapvFull(write, fd, iov, count);
+  return wrapvFull(folly::fileops::write, fd, iov, count);
 }
 
 ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset) {
@@ -258,7 +258,7 @@ int writeFileAtomicNoThrowImpl(
   bool success = false;
   SCOPE_EXIT {
     if (tmpFD != -1) {
-      close(tmpFD);
+      fileops::close(tmpFD);
     }
     if (!success) {
       unlink(temporaryFilePathString.c_str());
@@ -286,7 +286,7 @@ int writeFileAtomicNoThrowImpl(
 
   // Close the file before renaming to make sure all data has
   // been successfully written.
-  rc = close(tmpFD);
+  rc = fileops::close(tmpFD);
   tmpFD = -1;
   if (rc == -1) {
     return errno;

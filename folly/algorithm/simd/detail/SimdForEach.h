@@ -18,14 +18,16 @@
 
 #include <folly/CPortability.h>
 #include <folly/Traits.h>
+#include <folly/algorithm/simd/Ignore.h>
 #include <folly/algorithm/simd/detail/UnrollUtils.h>
+#include <folly/lang/Align.h>
 
 #include <array>
 #include <cstdint>
 #include <type_traits>
 
 namespace folly {
-namespace simd_detail {
+namespace simd::detail {
 
 // Based on
 // https://github.com/jfalcou/eve/blob/5264e20c51aeca17675e67abf236ce1ead781c52/include/eve/module/algo/algo/for_each_iteration.hpp#L148
@@ -34,23 +36,6 @@ namespace simd_detail {
 // function that does everything. Otherwise sometimes the compiler tends
 // to mess that up.
 //
-
-/**
- * ignore(_none/_extrema)
- *
- * Tag types for handling the tails.
- * ignore_none indicates that the whole register is used.
- * ignore_extrema.first, .last show how many elements are out of the data.
- *
- * For example 3 elements, starting from the second for an 8 element register
- * will be ignore_extrema{.first = 1, .last = 4}
- */
-struct ignore_extrema {
-  int first = 0;
-  int last = 0;
-};
-
-struct ignore_none {};
 
 /**
  * simdForEachAligning<unrolling>(cardinal, f, l, delegate);
@@ -83,15 +68,12 @@ FOLLY_ALWAYS_INLINE void simdForEachAligning(
 /**
  * previousAlignedAddress
  *
- * Given a pointer returns a closest pointer aligned to a given size.
- * (it just masks out some lower bits)
+ * Given a pointer returns a closest pointer aligned to a given size
+ * (in elements).
  */
 template <typename T>
 FOLLY_ALWAYS_INLINE T* previousAlignedAddress(T* ptr, int to) {
-  std::uintptr_t uptr = reinterpret_cast<std::uintptr_t>(ptr);
-  std::uintptr_t uto = static_cast<std::uintptr_t>(to);
-  uptr &= ~(uto - 1);
-  return reinterpret_cast<T*>(uptr);
+  return align_floor(ptr, sizeof(T) * to);
 }
 
 /**
@@ -165,9 +147,8 @@ struct SimdForEachMainLoop {
       bool shouldBreak = false;
 
       // single steps
-      if (detail::UnrollUtils::unrollUntil<unrolling>(
-              SmallStepsLambda<T, Delegate>{
-                  shouldBreak, cardinal, f, l, delegate})) {
+      if (UnrollUtils::unrollUntil<unrolling>(SmallStepsLambda<T, Delegate>{
+              shouldBreak, cardinal, f, l, delegate})) {
         return shouldBreak;
       }
 
@@ -176,7 +157,7 @@ struct SimdForEachMainLoop {
            --bigStepsCount) {
         std::array<T*, unrolling> arr;
         // Since there is no callback, we can rely on the inlining
-        detail::UnrollUtils::unrollUntil<unrolling>([&](auto idx) {
+        UnrollUtils::unrollUntil<unrolling>([&](auto idx) {
           arr[idx()] = f;
           f += cardinal;
           return false;
@@ -224,5 +205,5 @@ FOLLY_ALWAYS_INLINE void simdForEachAligning(
   delegate.step(af, ignore, index_constant<0>{});
 }
 
-} // namespace simd_detail
+} // namespace simd::detail
 } // namespace folly

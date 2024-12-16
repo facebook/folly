@@ -4,13 +4,25 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_unittest(
-    name = "momemask_test",
-    srcs = ["MovemaskTest.cpp"],
+    name = "contains_test",
+    srcs = ["ContainsTest.cpp"],
     headers = [],
     deps = [
-        "//folly:portability",
-        "//folly/algorithm/simd:movemask",
+        "//folly/algorithm/simd:contains",
+        "//folly/algorithm/simd/detail:simd_contains_impl",
         "//folly/portability:gtest",
+        "//folly/test:test_utils",
+    ],
+)
+
+cpp_benchmark(
+    name = "find_fixed_bench",
+    srcs = ["FindFixedBenchmark.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly/algorithm/simd:find_fixed",
+        "//folly/init:init",
     ],
 )
 
@@ -26,13 +38,13 @@ cpp_unittest(
     ],
 )
 
-cpp_benchmark(
-    name = "find_fixed_bench",
-    srcs = ["FindFixedBenchmark.cpp"],
+cpp_unittest(
+    name = "momemask_test",
+    srcs = ["MovemaskTest.cpp"],
+    headers = [],
     deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:benchmark",
-        "//folly/algorithm/simd:find_fixed",
-        "//folly/init:init",
+        "//folly:portability",
+        "//folly/algorithm/simd:movemask",
+        "//folly/portability:gtest",
     ],
 )

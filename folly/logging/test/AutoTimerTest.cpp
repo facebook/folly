@@ -128,8 +128,8 @@ TEST(TestAutoTimer, MovedObjectDestructionDoesntLog) {
     auto oldTimer = folly::makeAutoTimer(
         "END",
         std::chrono::duration<double>::zero(),
-        [&expectedMsgs, &current](
-            StringPiece msg, const std::chrono::duration<double>&) {
+        [&expectedMsgs,
+         &current](StringPiece msg, const std::chrono::duration<double>&) {
           EXPECT_EQ(expectedMsgs.at(current), msg);
           current++;
         });

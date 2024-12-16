@@ -479,10 +479,10 @@ TEST(Ahm, collisionTest) {
 
   float sizeFactor = 0.46f;
   size_t entrySize = sizeof(KeyT) + sizeof(ValueT);
-  VLOG(1) << "Testing " << numInserts << " unique " << entrySize
-          << " Byte entries replicated in " << FLAGS_numThreads
-          << " threads with " << FLAGS_maxLoadFactor * 100.0
-          << "% max load factor.";
+  VLOG(1)
+      << "Testing " << numInserts << " unique " << entrySize
+      << " Byte entries replicated in " << FLAGS_numThreads << " threads with "
+      << FLAGS_maxLoadFactor * 100.0 << "% max load factor.";
 
   globalAHM = std::make_unique<AHMapT>(size_t(numInserts * sizeFactor), config);
 
@@ -503,10 +503,10 @@ TEST(Ahm, collisionTest) {
   size_t sizeAHM = globalAHM->size();
   VLOG(1) << elapsed / sizeAHM << " usec per " << FLAGS_numThreads
           << " duplicate inserts (atomic).";
-  VLOG(1) << "  Final capacity: " << finalCap << " in "
-          << globalAHM->numSubMaps() << " sub maps ("
-          << sizeAHM * 100 / finalCap << "% load factor, "
-          << (finalCap - sizeInit) * 100 / sizeInit << "% growth).";
+  VLOG(1)
+      << "  Final capacity: " << finalCap << " in " << globalAHM->numSubMaps()
+      << " sub maps (" << sizeAHM * 100 / finalCap << "% load factor, "
+      << (finalCap - sizeInit) * 100 / sizeInit << "% growth).";
 
   // check correctness
   EXPECT_EQ(sizeAHM, numInserts);
@@ -1068,25 +1068,26 @@ void benchmarkSetup() {
   string numIters = folly::to<string>(
       std::min(1000000UL, (unsigned long)FLAGS_numBMElements));
 
-  gflags::SetCommandLineOptionWithMode(
-      "bm_max_iters", numIters.c_str(), gflags::SET_FLAG_IF_DEFAULT);
-  gflags::SetCommandLineOptionWithMode(
-      "bm_min_iters", numIters.c_str(), gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_max_iters", numIters.c_str(), folly::gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "bm_min_iters", numIters.c_str(), folly::gflags::SET_FLAG_IF_DEFAULT);
   string numCoresStr = folly::to<string>(numCores);
-  gflags::SetCommandLineOptionWithMode(
-      "numThreads", numCoresStr.c_str(), gflags::SET_FLAG_IF_DEFAULT);
+  folly::gflags::SetCommandLineOptionWithMode(
+      "numThreads", numCoresStr.c_str(), folly::gflags::SET_FLAG_IF_DEFAULT);
 
-  std::cout << "\nRunning AHM benchmarks on machine with " << numCores
-            << " logical cores.\n"
-               "  num elements per map: "
-            << FLAGS_numBMElements << "\n"
-            << "  num threads for mt tests: " << FLAGS_numThreads << "\n"
-            << "  AHM load factor: " << FLAGS_targetLoadFactor << "\n\n";
+  std::cout
+      << "\nRunning AHM benchmarks on machine with " << numCores
+      << " logical cores.\n"
+         "  num elements per map: "
+      << FLAGS_numBMElements << "\n"
+      << "  num threads for mt tests: " << FLAGS_numThreads << "\n"
+      << "  AHM load factor: " << FLAGS_targetLoadFactor << "\n\n";
 }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto ret = RUN_ALL_TESTS();
   if (!ret && FLAGS_benchmark) {
     benchmarkSetup();

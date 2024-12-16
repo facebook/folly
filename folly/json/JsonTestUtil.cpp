@@ -94,7 +94,7 @@ bool compareDynamicWithNestedJson(
       return false;
   }
 
-  assume_unreachable();
+  FOLLY_ASSUME_UNREACHABLE();
 }
 
 namespace {
@@ -154,7 +154,7 @@ bool compareDynamicWithTolerance(
       return obj1.getString() == obj2.getString();
   }
 
-  assume_unreachable();
+  FOLLY_ASSUME_UNREACHABLE();
 }
 
 bool compareJsonWithTolerance(

@@ -155,6 +155,9 @@ class LocalDirFetcher(object):
     def get_src_dir(self):
         return self.path
 
+    def clean(self) -> None:
+        pass
+
 
 class SystemPackageFetcher(object):
     def __init__(self, build_options, packages) -> None:
@@ -363,10 +366,8 @@ def copy_if_different(src_name, dest_name) -> bool:
             if exc.errno != errno.ENOENT:
                 raise
         target = os.readlink(src_name)
-        print("Symlinking %s -> %s" % (dest_name, target))
         os.symlink(target, dest_name)
     else:
-        print("Copying %s -> %s" % (src_name, dest_name))
         shutil.copy2(src_name, dest_name)
 
     return True
@@ -471,7 +472,7 @@ class ShipitPathMap(object):
                 raise Exception(
                     "%s doesn't exist; check your sparse profile!" % dir_to_mirror
                 )
-
+            update_count = 0
             for root, dirs, files in os.walk(dir_to_mirror):
                 dirs[:] = [d for d in dirs if root_dev == st_dev(os.path.join(root, d))]
 
@@ -485,6 +486,13 @@ class ShipitPathMap(object):
                         full_file_list.add(target_name)
                         if copy_if_different(full_name, target_name):
                             change_status.record_change(target_name)
+                            if update_count < 10:
+                                print("Updated %s -> %s" % (full_name, target_name))
+                            elif update_count == 10:
+                                print("...")
+                            update_count += 1
+            if update_count:
+                print("Updated %s for %s" % (update_count, fbsource_subdir))
 
         # Compare the list of previously shipped files; if a file is
         # in the old list but not the new list then it has been
@@ -865,6 +873,7 @@ class ArchiveFetcher(Fetcher):
 
         if not os.path.exists(self.file_name):
             self._download()
+            self._verify_hash()
 
         if tarfile.is_tarfile(self.file_name):
             opener = tarfile.open
@@ -874,19 +883,20 @@ class ArchiveFetcher(Fetcher):
             raise Exception("don't know how to extract %s" % self.file_name)
         os.makedirs(self.src_dir)
         print("Extract %s -> %s" % (self.file_name, self.src_dir))
-        t = opener(self.file_name)
         if is_windows():
             # Ensure that we don't fall over when dealing with long paths
             # on windows
             src = r"\\?\%s" % os.path.normpath(self.src_dir)
         else:
             src = self.src_dir
-        # The `str` here is necessary to ensure that we don't pass a unicode
-        # object down to tarfile.extractall on python2.  When extracting
-        # the boost tarball it makes some assumptions and tries to convert
-        # a non-ascii path to ascii and throws.
-        src = str(src)
-        t.extractall(src)
+
+        with opener(self.file_name) as t:
+            # The `str` here is necessary to ensure that we don't pass a unicode
+            # object down to tarfile.extractall on python2.  When extracting
+            # the boost tarball it makes some assumptions and tries to convert
+            # a non-ascii path to ascii and throws.
+            src = str(src)
+            t.extractall(src)
 
         with open(self.hash_file, "w") as f:
             f.write(self.sha256)

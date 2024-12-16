@@ -162,8 +162,9 @@ class MergeProcessor : public IChannelCallback {
     auto closeResult =
         getReceiverState(receiver) == ChannelState::CancellationTriggered
         ? CloseResult()
-        : buffer.has_value() ? processValues(std::move(buffer.value()))
-                             : std::nullopt;
+        : buffer.has_value()
+        ? processValues(std::move(buffer.value()))
+        : std::nullopt;
     while (!closeResult.has_value()) {
       if (receiver->receiverWait(this)) {
         // There are no more values available right now. We will stop processing

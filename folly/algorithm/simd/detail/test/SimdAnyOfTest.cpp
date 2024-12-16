@@ -17,27 +17,31 @@
 #include <folly/algorithm/simd/detail/SimdAnyOf.h>
 
 #include <folly/Range.h>
-#include <folly/algorithm/simd/detail/SimdCharPlatform.h>
+#include <folly/algorithm/simd/detail/SimdPlatform.h>
+#include <folly/container/span.h>
 #include <folly/portability/GTest.h>
 
 #include <array>
 
-#if FOLLY_DETAIL_HAS_SIMD_CHAR_PLATFORM
+#if FOLLY_DETAIL_HAS_SIMD_PLATFORM
 
 namespace folly {
-namespace simd_detail {
+namespace simd::detail {
 
 template <typename Platform, int unrolling>
-void anySpacesTestForPlatformUnrolling(folly::StringPiece s, bool expected) {
-  bool actual = folly::simd_detail::simdAnyOf<Platform, unrolling>(
+void anySpacesTestForPlatformUnrolling(
+    folly::span<const std::uint8_t> s, bool expected) {
+  bool actual = simdAnyOf<Platform, unrolling>(
       s.data(), s.data() + s.size(), [](typename Platform::reg_t x) {
         return Platform::equal(x, ' ');
       });
-  ASSERT_EQ(expected, actual) << s;
+  ASSERT_EQ(expected, actual)
+      << folly::StringPiece(folly::reinterpret_span_cast<const char>(s));
 }
 
 template <typename Platform>
-void anySpacesTestForPlatform(folly::StringPiece s, bool expected) {
+void anySpacesTestForPlatform(
+    folly::span<const std::uint8_t> s, bool expected) {
   ASSERT_NO_FATAL_FAILURE(
       (anySpacesTestForPlatformUnrolling<Platform, 1>(s, expected)));
   ASSERT_NO_FATAL_FAILURE(
@@ -48,20 +52,23 @@ void anySpacesTestForPlatform(folly::StringPiece s, bool expected) {
       (anySpacesTestForPlatformUnrolling<Platform, 4>(s, expected)));
 }
 
-void anySpacesTest(folly::StringPiece s, bool expected) {
+void anySpacesTest(folly::StringPiece sChars, bool expected) {
+  auto s =
+      folly::reinterpret_span_cast<const std::uint8_t>(folly::span(sChars));
+
   ASSERT_NO_FATAL_FAILURE(
-      anySpacesTestForPlatform<SimdCharPlatform>(s, expected));
-#if FOLLY_X64
+      anySpacesTestForPlatform<SimdPlatform<std::uint8_t>>(s, expected));
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
   ASSERT_NO_FATAL_FAILURE(
-      anySpacesTestForPlatform<SimdCharSse2Platform>(s, expected));
+      anySpacesTestForPlatform<SimdSse42Platform<std::uint8_t>>(s, expected));
 #if defined(__AVX2__)
   ASSERT_NO_FATAL_FAILURE(
-      anySpacesTestForPlatform<SimdCharAvx2Platform>(s, expected));
+      anySpacesTestForPlatform<SimdAvx2Platform<std::uint8_t>>(s, expected));
 #endif
 #endif
 #if FOLLY_AARCH64
   ASSERT_NO_FATAL_FAILURE(
-      anySpacesTestForPlatform<SimdCharAarch64Platform>(s, expected));
+      anySpacesTestForPlatform<SimdAarch64Platform<std::uint8_t>>(s, expected));
 #endif
 }
 
@@ -83,7 +90,7 @@ TEST(SimdAnyOfSimple, Ignore) {
   buffer.fill(' ');
   for (auto& c : buffer) {
     c = 'a';
-    anySpacesTest({&c, 1}, false);
+    ASSERT_NO_FATAL_FAILURE(anySpacesTest({&c, 1}, false));
     c = ' ';
   }
 }
@@ -111,7 +118,7 @@ TEST(SimdAnyOfSimple, BigChunk) {
   }
 }
 
-} // namespace simd_detail
+} // namespace simd::detail
 } // namespace folly
 
-#endif // FOLLY_DETAIL_HAS_SIMD_CHAR_PLATFORM
+#endif // FOLLY_DETAIL_HAS_SIMD_PLATFORM

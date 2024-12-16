@@ -729,9 +729,10 @@ namespace detail {
 template <typename U>
 constexpr std::size_t constexpr_find_first_set_(
     std::size_t s, std::size_t a, U const u) {
-  return s == 0 ? a
-                : constexpr_find_first_set_(
-                      s / 2, a + s * bool((u >> a) % (U(1) << s) == U(0)), u);
+  return s == 0
+      ? a
+      : constexpr_find_first_set_(
+            s / 2, a + s * bool((u >> a) % (U(1) << s) == U(0)), u);
 }
 } // namespace detail
 

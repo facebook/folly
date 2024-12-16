@@ -25,7 +25,6 @@
 #include <folly/Utility.h>
 #include <folly/init/Init.h>
 #include <folly/json/dynamic.h>
-#include <folly/json/json.h>
 
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 

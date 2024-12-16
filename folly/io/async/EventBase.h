@@ -132,12 +132,13 @@ class VirtualEventBase;
  * EventBase from other threads.  When it is safe to call a method from
  * another thread it is explicitly listed in the method comments.
  */
-class EventBase : public TimeoutManager,
-                  public DrivableExecutor,
-                  public IOExecutor,
-                  public SequencedExecutor,
-                  public ScheduledExecutor,
-                  public GetThreadIdCollector {
+class EventBase
+    : public TimeoutManager,
+      public DrivableExecutor,
+      public IOExecutor,
+      public SequencedExecutor,
+      public ScheduledExecutor,
+      public GetThreadIdCollector {
  public:
   friend class ScopedEventBaseThread;
 

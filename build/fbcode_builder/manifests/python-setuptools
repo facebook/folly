@@ -7,3 +7,12 @@ sha256 = 02fa291a0471b3a18b2b2481ed902af520c69e8ae0919c13da936542754b4c56
 
 [build]
 builder = python-wheel
+
+[rpms]
+python3-setuptools
+
+[homebrew]
+python-setuptools
+
+[debs]
+python3-setuptools

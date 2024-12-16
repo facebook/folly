@@ -199,6 +199,21 @@ cpp_library(
 )
 
 cpp_library(
+    name = "range_simd",
+    srcs = ["RangeSimd.cpp"],
+    headers = ["RangeSimd.h"],
+    undefined_symbols = True,
+    deps = [
+        ":range_sse42",
+        "//folly:portability",
+        "//folly/external/nvidia/detail:range_sve2",
+    ],
+    exported_deps = [
+        ":range_common",
+    ],
+)
+
+cpp_library(
     name = "range_sse42",
     srcs = ["RangeSse42.cpp"],
     headers = ["RangeSse42.h"],
@@ -250,7 +265,7 @@ cpp_library(
     exported_deps = [
         "//folly:range",
         "//folly/algorithm/simd/detail:simd_any_of",
-        "//folly/algorithm/simd/detail:simd_char_platform",
+        "//folly/algorithm/simd/detail:simd_platform",
     ],
 )
 
@@ -269,8 +284,10 @@ cpp_library(
     exported_deps = [
         "//folly:portability",
         "//folly:range",
-        "//folly/algorithm/simd/detail:simd_char_platform",
+        "//folly/algorithm/simd:ignore",
+        "//folly/algorithm/simd:movemask",
         "//folly/algorithm/simd/detail:simd_for_each",
+        "//folly/algorithm/simd/detail:simd_platform",
         "//folly/lang:bits",
     ],
 )
@@ -309,6 +326,8 @@ cpp_library(
     headers = ["ThreadLocalDetail.h"],
     deps = [
         ":thread_local_globals",
+        "//folly:constexpr_math",
+        "//folly:utility",
         "//folly/lang:hint",
         "//folly/memory:sanitize_leak",
         "//folly/synchronization:call_once",

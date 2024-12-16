@@ -39,9 +39,9 @@ cpp_binary(
     headers = [],
     deps = [
         "//folly:executor",
+        "//folly/coro:baton",
+        "//folly/coro:task",
         "//folly/executors:manual_executor",
-        "//folly/experimental/coro:baton",
-        "//folly/experimental/coro:task",
         "//folly/futures:core",
     ],
 )

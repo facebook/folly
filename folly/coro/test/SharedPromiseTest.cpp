@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/DetachOnCancel.h>
+#include <folly/coro/SharedPromise.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/DetachOnCancel.h>
-#include <folly/experimental/coro/SharedPromise.h>
 
 #include <folly/portability/GTest.h>
 

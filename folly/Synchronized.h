@@ -85,8 +85,9 @@ template <typename Mutex>
 inline constexpr SynchronizedMutexLevel kSynchronizedMutexLevel =
     kSynchronizedMutexIsUpgrade<void, Mutex>  ? SynchronizedMutexLevel::Upgrade
     : kSynchronizedMutexIsShared<void, Mutex> ? SynchronizedMutexLevel::Shared
-    : kSynchronizedMutexIsUnique<void, Mutex> ? SynchronizedMutexLevel::Unique
-                                              : SynchronizedMutexLevel::Unknown;
+    : kSynchronizedMutexIsUnique<void, Mutex>
+    ? SynchronizedMutexLevel::Unique
+    : SynchronizedMutexLevel::Unknown;
 
 enum class SynchronizedMutexMethod { Lock, TryLock };
 
@@ -633,9 +634,10 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
  * @refcode folly/docs/examples/folly/Synchronized.cpp
  */
 template <class T, class Mutex = SharedMutex>
-struct Synchronized : public SynchronizedBase<
-                          Synchronized<T, Mutex>,
-                          detail::kSynchronizedMutexLevel<Mutex>> {
+struct Synchronized
+    : public SynchronizedBase<
+          Synchronized<T, Mutex>,
+          detail::kSynchronizedMutexLevel<Mutex>> {
  private:
   using Base = SynchronizedBase<
       Synchronized<T, Mutex>,
@@ -672,10 +674,11 @@ struct Synchronized : public SynchronizedBase<
    *
    * deprecated
    */
-  /* implicit */ Synchronized(typename std::conditional<
-                              std::is_copy_constructible<T>::value,
-                              const Synchronized&,
-                              NonImplementedType>::type rhs) /* may throw */
+  /* implicit */ Synchronized(
+      typename std::conditional<
+          std::is_copy_constructible<T>::value,
+          const Synchronized&,
+          NonImplementedType>::type rhs) /* may throw */
       : Synchronized(rhs.copy()) {}
 
   /**
@@ -743,11 +746,12 @@ struct Synchronized : public SynchronizedBase<
    *
    * deprecated
    */
-  Synchronized& operator=(typename std::conditional<
-                          std::is_copy_constructible<T>::value &&
-                              std::is_move_assignable<T>::value,
-                          const Synchronized&,
-                          NonImplementedType>::type rhs) {
+  Synchronized& operator=(
+      typename std::conditional<
+          std::is_copy_constructible<T>::value &&
+              std::is_move_assignable<T>::value,
+          const Synchronized&,
+          NonImplementedType>::type rhs) {
     return *this = rhs.copy();
   }
 
@@ -826,38 +830,6 @@ struct Synchronized : public SynchronizedBase<
   ConstLockedPtr contextualRLock(
       const std::chrono::duration<Rep, Period>& timeout) const {
     return ConstLockedPtr(this, timeout);
-  }
-
-  /**
-   * @brief Access the datum under lock.
-   *
-   * deprecated
-   *
-   * This accessor offers a LockedPtr. In turn, LockedPtr offers
-   * operator-> returning a pointer to T. The operator-> keeps
-   * expanding until it reaches a pointer, so syncobj->foo() will lock
-   * the object and call foo() against it.
-   *
-   * NOTE: This API is planned to be deprecated in an upcoming diff.
-   * Prefer using lock(), wlock(), or rlock() instead.
-   */
-  [[deprecated("use explicit lock(), wlock(), or rlock() instead")]] LockedPtr
-  operator->() {
-    return LockedPtr(this);
-  }
-
-  /**
-   * deprecated
-   *
-   * Obtain a ConstLockedPtr.
-   *
-   * NOTE: This API is planned to be deprecated in an upcoming diff.
-   * Prefer using lock(), wlock(), or rlock() instead.
-   */
-  [[deprecated(
-      "use explicit lock(), wlock(), or rlock() instead")]] ConstLockedPtr
-  operator->() const {
-    return ConstLockedPtr(this);
   }
 
   /**
@@ -1039,6 +1011,38 @@ struct [[deprecated(
 
   using Base::Base;
   using Base::operator=;
+
+  /**
+   * @brief Access the datum under lock.
+   *
+   * deprecated
+   *
+   * This accessor offers a LockedPtr. In turn, LockedPtr offers
+   * operator-> returning a pointer to T. The operator-> keeps
+   * expanding until it reaches a pointer, so syncobj->foo() will lock
+   * the object and call foo() against it.
+   *
+   * NOTE: This API is planned to be deprecated in an upcoming diff.
+   * Prefer using lock(), wlock(), or rlock() instead.
+   */
+  [[deprecated("use explicit lock(), wlock(), or rlock() instead")]] LockedPtr
+  operator->() {
+    return LockedPtr(this);
+  }
+
+  /**
+   * deprecated
+   *
+   * Obtain a ConstLockedPtr.
+   *
+   * NOTE: This API is planned to be deprecated in an upcoming diff.
+   * Prefer using lock(), wlock(), or rlock() instead.
+   */
+  [[deprecated(
+      "use explicit lock(), wlock(), or rlock() instead")]] ConstLockedPtr
+  operator->() const {
+    return ConstLockedPtr(this);
+  }
 };
 
 template <class SynchronizedType, class LockPolicy>
@@ -1320,7 +1324,11 @@ class LockedPtr {
   LockedPtr(
       SynchronizedType* parent,
       const std::chrono::duration<Rep, Period>& timeout)
-      : lock_{parent ? LockType{parent->mutex_, timeout} : LockType{}} {}
+      : lock_{parent ? LockType{parent->mutex_, timeout} : LockType{}} {
+    if (isNull()) {
+      lock_ = {};
+    }
+  }
 
   /**
    * Move constructor.
@@ -1790,7 +1798,7 @@ struct [[deprecated(
              (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).contextualLock(); \
          !SYNCHRONIZED_VAR(state);                                        \
          SYNCHRONIZED_VAR(state) = true)                                  \
-      for (auto& FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =                    \
+      for ([[maybe_unused]] auto& FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =   \
                *SYNCHRONIZED_VAR(lockedPtr).operator->();                 \
            !SYNCHRONIZED_VAR(state);                                      \
            SYNCHRONIZED_VAR(state) = true)                                \

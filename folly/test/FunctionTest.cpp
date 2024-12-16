@@ -1280,10 +1280,11 @@ std::array<int, 3> badCopierF(BadCopier a, const BadCopier& b, BadCopier&& c) {
 }
 TEST(Function, asSharedProxyForwarding) {
   folly::Function<decltype(badCopierF)> ff(badCopierF);
-  EXPECT_TRUE((std::is_same_v<
-               decltype(ff),
-               folly::Function<std::array<int, 3>(
-                   BadCopier a, const BadCopier& b, BadCopier&& c)>>));
+  EXPECT_TRUE(
+      (std::is_same_v<
+          decltype(ff),
+          folly::Function<std::array<int, 3>(
+              BadCopier a, const BadCopier& b, BadCopier&& c)>>));
   auto sp = std::move(ff).asSharedProxy();
 
   BadCopier bca(100);
@@ -1424,8 +1425,9 @@ TEST(Function, AllocatedSize) {
   // On any platform this has to allocate heap storage, because the captures are
   // larger than the inline size of the Function object:
   constexpr size_t kCaptureBytes = sizeof(Function<void(int)>) + 1;
-  Function<void(int)> fromLambda{
-      [x = std::array<char, kCaptureBytes>()](int) { (void)x; }};
+  Function<void(int)> fromLambda{[x = std::array<char, kCaptureBytes>()](int) {
+    (void)x;
+  }};
   // I can't assert much about the size because it's permitted to vary from
   // platform to platform or as optimization levels change, but we can be sure
   // that the lambda must be at least as large as its captures

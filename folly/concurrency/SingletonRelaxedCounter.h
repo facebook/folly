@@ -19,7 +19,7 @@
 #include <array>
 #include <atomic>
 #include <type_traits>
-#include <unordered_set>
+#include <unordered_map>
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
@@ -231,8 +231,10 @@ class SingletonRelaxedCounter
   using typename Base::LocalLifetime;
   using typename Base::Signed;
 
-  struct MonoLocalLifetime : LocalLifetime {
-    ~MonoLocalLifetime() noexcept(false) { LocalLifetime::destroy(global); }
+  struct MonoLocalLifetime : Base::LocalLifetime {
+    ~MonoLocalLifetime() noexcept(false) {
+      Base::LocalLifetime::destroy(global);
+    }
   };
 
   //  It is an invariant that in a single call to mutate which calls mutate_slow

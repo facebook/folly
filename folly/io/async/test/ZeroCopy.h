@@ -102,8 +102,9 @@ class ZeroCopyTestAsyncSocket {
     readBuffer_ = new char[bufferSize_];
   }
 
-  class Callback : public folly::AsyncSocket::ReadCallback,
-                   public folly::AsyncSocket::ConnectCallback {
+  class Callback
+      : public folly::AsyncSocket::ReadCallback,
+        public folly::AsyncSocket::ConnectCallback {
    public:
     explicit Callback(ZeroCopyTestAsyncSocket* parent) : parent_(parent) {}
 
@@ -251,7 +252,7 @@ class ZeroCopyTestServer : public folly::AsyncServerSocket::AcceptCallback {
       const folly::SocketAddress& /* unused */,
       AcceptInfo /* info */) noexcept override {
     if (closeAfterAccept_) {
-      ::close(fd.toFd());
+      fileops::close(fd.toFd());
     } else {
       auto client = std::make_shared<ZeroCopyTestAsyncSocket>(
           nullptr,

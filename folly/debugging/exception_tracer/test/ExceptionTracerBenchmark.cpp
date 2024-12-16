@@ -59,7 +59,7 @@ BENCHMARK(ExceptionTracer, iters) {
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   folly::runBenchmarks();
   return 0;

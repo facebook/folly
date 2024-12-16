@@ -61,7 +61,7 @@ namespace {
 #endif
 
 int nativeFutexWake(const void* addr, int count, uint32_t wakeMask) {
-  int rv = syscall(
+  const auto rv = syscall(
       __NR_futex,
       addr, /* addr1 */
       FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG, /* op */
@@ -123,7 +123,7 @@ FutexResult nativeFutexWaitImpl(
 
   // Unlike FUTEX_WAIT, FUTEX_WAIT_BITSET requires an absolute timeout
   // value - http://locklessinc.com/articles/futex_cheat_sheet/
-  int rv = syscall(
+  const auto rv = syscall(
       __NR_futex,
       addr, /* addr1 */
       op, /* op */
@@ -177,8 +177,9 @@ int emulatedFutexWake(const void* addr, int count, uint32_t waitMask) {
     assert(count > 0);
     count--;
     woken++;
-    return count > 0 ? UnparkControl::RemoveContinue
-                     : UnparkControl::RemoveBreak;
+    return count > 0
+        ? UnparkControl::RemoveContinue
+        : UnparkControl::RemoveBreak;
   });
   return woken;
 }

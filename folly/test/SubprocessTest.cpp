@@ -59,7 +59,7 @@ bool waitForAnyOutput(Subprocess& proc) {
   char buffer;
   ssize_t len;
   do {
-    len = ::read(proc.stdoutFd(), &buffer, 1);
+    len = fileops::read(proc.stdoutFd(), &buffer, 1);
   } while (len == -1 && errno == EINTR);
   LOG(INFO) << "Read " << buffer;
   return len == 1;
@@ -387,8 +387,9 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
   });
 
   // Test where the exec call fails()
-  checkFdLeak(
-      [] { EXPECT_SPAWN_ERROR(ENOENT, "failed to execute", "/no/such/file"); });
+  checkFdLeak([] {
+    EXPECT_SPAWN_ERROR(ENOENT, "failed to execute", "/no/such/file");
+  });
   // Test where the exec call fails() with pipes
   checkFdLeak([] {
     try {
@@ -542,6 +543,54 @@ TEST(AfterForkCallbackSubprocessTest, TestAfterForkCallbackError) {
   EXPECT_FALSE(fs::exists(write_cob.filename_));
 }
 
+// DANGER: This class runs after fork in a child processes. Be fast, the
+// parent thread is waiting, but remember that other parent threads are
+// running and may mutate your state.  Avoid mutating any data belonging to
+// the parent.  Avoid interacting with non-POD data that originated in the
+// parent.  Avoid any libraries that may internally reference non-POD data.
+// Especially beware parent mutexes -- for example, glog's LOG() uses one.
+struct UpdateEnvAfterFork
+    : public folly::Subprocess::DangerousPostForkPreExecCallback {
+ public:
+  // [pidDest, pidDest + pidSpace] must store PID plus NUL terminator.
+  UpdateEnvAfterFork(char* pidDest, size_t pidSpace)
+      : pidDest_{pidDest}, pidSpace_{pidSpace} {}
+
+  int operator()() override {
+    size_t snprintfRes = snprintf(pidDest_, pidSpace_, "%d", getpid());
+    if (snprintfRes < 0) {
+      return errno;
+    }
+    if (snprintfRes >= pidSpace_) {
+      return ERANGE;
+    }
+    return 0;
+  }
+
+ private:
+  char* pidDest_;
+  size_t pidSpace_;
+};
+
+TEST(SubprocessEnvTest, TestEnvPointerRemainsValid) {
+  // This seems to be the only way to get the pid of the child process
+  // included in the environment of the child process.
+  const std::string pidEnvVarName = "SUBPROCESS_TEST_PID";
+  constexpr int nCharsBesidesNul = 15;
+  std::vector<std::string> env = {
+      pidEnvVarName + "=" + std::string(nCharsBesidesNul, '\0')};
+  UpdateEnvAfterFork cb(
+      env.back().data() + pidEnvVarName.size() + 1, nCharsBesidesNul + 1);
+  Subprocess proc(
+      std::vector<std::string>{"/bin/sh", "-c", "echo -n $SUBPROCESS_TEST_PID"},
+      Subprocess::Options().pipeStdout().dangerousPostForkPreExecCallback(&cb),
+      nullptr,
+      &env);
+  auto out = proc.communicate();
+  EXPECT_EQ(out.first, folly::to<std::string>(proc.pid()));
+  proc.waitChecked();
+}
+
 TEST(CommunicateSubprocessTest, SimpleRead) {
   Subprocess proc(
       std::vector<std::string>{"/bin/echo", "-n", "foo", "bar"},
@@ -665,7 +714,7 @@ bool readToString(int fd, std::string& buf, size_t maxSize) {
 
   ssize_t n = -1;
   while (remaining) {
-    n = ::read(fd, dest, remaining);
+    n = fileops::read(fd, dest, remaining);
     if (n == -1) {
       if (errno == EINTR) {
         continue;
@@ -797,11 +846,12 @@ TEST(CommunicateSubprocessTest, RedirectStdioToDevNull) {
       "/dev/stdin",
       "/dev/stderr",
   });
-  auto options = Subprocess::Options()
-                     .pipeStdout()
-                     .stdinFd(folly::Subprocess::DEV_NULL)
-                     .stderrFd(folly::Subprocess::DEV_NULL)
-                     .usePath();
+  auto options =
+      Subprocess::Options()
+          .pipeStdout()
+          .stdinFd(folly::Subprocess::DEV_NULL)
+          .stderrFd(folly::Subprocess::DEV_NULL)
+          .usePath();
   Subprocess proc(cmd, options);
   auto out = proc.communicateIOBuf();
 
@@ -824,8 +874,8 @@ TEST(CommunicateSubprocessTest, RedirectStdioToDevNull) {
 TEST(CloseOtherDescriptorsSubprocessTest, ClosesFileDescriptors) {
   // Open another filedescriptor and check to make sure that it is not opened in
   // child process
-  int fd = ::open("/", O_RDONLY);
-  auto guard = makeGuard([fd] { ::close(fd); });
+  int fd = fileops::open("/", O_RDONLY);
+  auto guard = makeGuard([fd] { fileops::close(fd); });
   auto options = Subprocess::Options().closeOtherFds().pipeStdout();
   Subprocess proc(
       std::vector<std::string>{"/bin/ls", "/proc/self/fd"}, options);

@@ -81,8 +81,9 @@ TEST(
   auto executor = std::make_shared<IOThreadPoolExecutor>(
       1, std::make_shared<folly::NamedThreadFactory>("TestPool"));
   pid_t thid;
-  executor->getEventBase()->runInEventBaseThreadAndWait(
-      [&] { thid = folly::getOSThreadID(); });
+  executor->getEventBase()->runInEventBaseThreadAndWait([&] {
+    thid = folly::getOSThreadID();
+  });
 
   auto observer = std::make_shared<folly::IOThreadPoolDeadlockDetectorObserver>(
       deadlockDetectorFactory.get(), "TestPool");

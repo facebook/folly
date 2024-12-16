@@ -26,7 +26,7 @@
 #include <folly/Portability.h>
 
 #include <folly/CancellationToken.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/Task.h>
 #include <folly/python/AsyncioExecutor.h>
 #include <folly/python/executor.h>
 

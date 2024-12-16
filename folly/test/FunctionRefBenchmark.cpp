@@ -22,7 +22,6 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Function.h>
-#include <folly/Random.h>
 #include <folly/synchronization/detail/InlineFunctionRef.h>
 
 /**
@@ -135,8 +134,9 @@ BENCHMARK(SmallFunctionFunctionPointerInvoke, iters) {
   runSmallInvokeBenchmark(iters, [](auto& f) { return FPtr{f}; });
 }
 BENCHMARK(SmallFunctionStdFunctionInvoke, iters) {
-  runSmallInvokeBenchmark(
-      iters, [](auto& f) { return std::function<size_t(size_t&)>{f}; });
+  runSmallInvokeBenchmark(iters, [](auto& f) {
+    return std::function<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(SmallFunctionStdFunctionWithReferenceWrapperInvoke, iters) {
   runSmallInvokeBenchmark(iters, [](auto& f) {
@@ -144,12 +144,14 @@ BENCHMARK(SmallFunctionStdFunctionWithReferenceWrapperInvoke, iters) {
   });
 }
 BENCHMARK(SmallFunctionFollyFunctionInvoke, iters) {
-  runSmallInvokeBenchmark(
-      iters, [](auto& f) { return folly::Function<size_t(size_t&)>{f}; });
+  runSmallInvokeBenchmark(iters, [](auto& f) {
+    return folly::Function<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(SmallFunctionFollyFunctionRefInvoke, iters) {
-  runSmallInvokeBenchmark(
-      iters, [](auto& f) { return folly::FunctionRef<size_t(size_t&)>{f}; });
+  runSmallInvokeBenchmark(iters, [](auto& f) {
+    return folly::FunctionRef<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(SmallFunctionFollyInlineFunctionRefInvoke, iters) {
   runSmallInvokeBenchmark(iters, [](auto f) {
@@ -163,8 +165,9 @@ BENCHMARK(SmallFunctionFunctionPointerCreateInvoke, iters) {
   runSmallCreateAndInvokeBenchmark(iters, [](auto& f) { return FPtr{f}; });
 }
 BENCHMARK(SmallFunctionStdFunctionCreateInvoke, iters) {
-  runSmallCreateAndInvokeBenchmark(
-      iters, [](auto& f) { return std::function<size_t(size_t&)>{f}; });
+  runSmallCreateAndInvokeBenchmark(iters, [](auto& f) {
+    return std::function<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(SmallFunctionStdFunctionReferenceWrapperCreateInvoke, iters) {
   runSmallCreateAndInvokeBenchmark(iters, [](auto& f) {
@@ -172,12 +175,14 @@ BENCHMARK(SmallFunctionStdFunctionReferenceWrapperCreateInvoke, iters) {
   });
 }
 BENCHMARK(SmallFunctionFollyFunctionCreateInvoke, iters) {
-  runSmallCreateAndInvokeBenchmark(
-      iters, [](auto& f) { return folly::Function<size_t(size_t&)>{f}; });
+  runSmallCreateAndInvokeBenchmark(iters, [](auto& f) {
+    return folly::Function<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(SmallFunctionFollyFunctionRefCreateInvoke, iters) {
-  runSmallCreateAndInvokeBenchmark(
-      iters, [](auto& f) { return folly::FunctionRef<size_t(size_t&)>{f}; });
+  runSmallCreateAndInvokeBenchmark(iters, [](auto& f) {
+    return folly::FunctionRef<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(SmallFunctionFollyInlineFunctionRefCreateInvoke, iters) {
   runSmallInvokeBenchmark(iters, [](auto f) {
@@ -187,8 +192,9 @@ BENCHMARK(SmallFunctionFollyInlineFunctionRefCreateInvoke, iters) {
 
 BENCHMARK_DRAW_LINE();
 BENCHMARK(BigFunctionStdFunctionInvoke, iters) {
-  runBigAndInvokeBenchmark(
-      iters, [](auto& f) { return std::function<size_t(size_t&)>{f}; });
+  runBigAndInvokeBenchmark(iters, [](auto& f) {
+    return std::function<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(BigFunctionStdFunctionReferenceWrapperInvoke, iters) {
   runBigAndInvokeBenchmark(iters, [](auto& f) {
@@ -196,12 +202,14 @@ BENCHMARK(BigFunctionStdFunctionReferenceWrapperInvoke, iters) {
   });
 }
 BENCHMARK(BigFunctionFollyFunctionInvoke, iters) {
-  runBigAndInvokeBenchmark(
-      iters, [](auto& f) { return folly::Function<size_t(size_t&)>{f}; });
+  runBigAndInvokeBenchmark(iters, [](auto& f) {
+    return folly::Function<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(BigFunctionFollyFunctionRefInvoke, iters) {
-  runBigAndInvokeBenchmark(
-      iters, [](auto& f) { return folly::FunctionRef<size_t(size_t&)>{f}; });
+  runBigAndInvokeBenchmark(iters, [](auto& f) {
+    return folly::FunctionRef<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(BigFunctionFollyInlineFunctionRefInvoke, iters) {
   runSmallInvokeBenchmark(iters, [](auto f) {
@@ -211,8 +219,9 @@ BENCHMARK(BigFunctionFollyInlineFunctionRefInvoke, iters) {
 
 BENCHMARK_DRAW_LINE();
 BENCHMARK(BigFunctionStdFunctionCreateInvoke, iters) {
-  runBigCreateAndInvokeBenchmark(
-      iters, [](auto& f) { return std::function<size_t(size_t&)>{f}; });
+  runBigCreateAndInvokeBenchmark(iters, [](auto& f) {
+    return std::function<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(BigFunctionStdFunctionReferenceWrapperCreateInvoke, iters) {
   runBigCreateAndInvokeBenchmark(iters, [](auto& f) {
@@ -220,12 +229,14 @@ BENCHMARK(BigFunctionStdFunctionReferenceWrapperCreateInvoke, iters) {
   });
 }
 BENCHMARK(BigFunctionFollyFunctionCreateInvoke, iters) {
-  runBigCreateAndInvokeBenchmark(
-      iters, [](auto& f) { return folly::Function<size_t(size_t&)>{f}; });
+  runBigCreateAndInvokeBenchmark(iters, [](auto& f) {
+    return folly::Function<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(BigFunctionFollyFunctionRefCreateInvoke, iters) {
-  runBigCreateAndInvokeBenchmark(
-      iters, [](auto& f) { return folly::FunctionRef<size_t(size_t&)>{f}; });
+  runBigCreateAndInvokeBenchmark(iters, [](auto& f) {
+    return folly::FunctionRef<size_t(size_t&)>{f};
+  });
 }
 BENCHMARK(BigFunctionFollyInlineFunctionRefCreateInvoke, iters) {
   runSmallInvokeBenchmark(iters, [](auto f) {
@@ -235,6 +246,6 @@ BENCHMARK(BigFunctionFollyInlineFunctionRefCreateInvoke, iters) {
 } // namespace folly
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
 }

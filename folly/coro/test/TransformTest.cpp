@@ -18,13 +18,13 @@
 #include <folly/Portability.h>
 
 #include <folly/CancellationToken.h>
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Collect.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Transform.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/Baton.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Collect.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Transform.h>
 
 #include <folly/portability/GTest.h>
 
@@ -69,8 +69,9 @@ TEST_F(TransformTest, SimpleStream) {
   };
 
   auto test = [&](int index) -> Task<void> {
-    auto generator =
-        transform(selectStream(index), [](int i) { return i * 1.0f; });
+    auto generator = transform(selectStream(index), [](int i) {
+      return i * 1.0f;
+    });
     try {
       while (auto item = co_await generator.next()) {
         ++totalEventCount;
@@ -124,8 +125,9 @@ TEST_F(TransformTest, CancellationTokenPropagatesFromConsumer) {
         folly::coro::co_withCancellation(
             cancelSource.getToken(),
             [&]() -> folly::coro::Task<void> {
-              auto stream =
-                  transform(neverStream<float>(), [](float) { return 42; });
+              auto stream = transform(neverStream<float>(), [](float) {
+                return 42;
+              });
               suspended = true;
               auto result = co_await stream.next();
               CHECK(!result.has_value());

@@ -19,6 +19,7 @@
 #include <folly/FollyMemcpy.h>
 #include <folly/Portability.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysTypes.h>
 
 namespace {
 

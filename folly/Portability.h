@@ -377,6 +377,46 @@ constexpr auto kHasWeakSymbols = false;
 #endif
 #endif
 
+#ifndef FOLLY_ARM_FEATURE_CRYPTO
+#ifdef __ARM_FEATURE_CRYPTO
+#define FOLLY_ARM_FEATURE_CRYPTO 1
+#else
+#define FOLLY_ARM_FEATURE_CRYPTO 0
+#endif
+#endif
+
+#ifndef FOLLY_ARM_FEATURE_AES
+#ifdef __ARM_FEATURE_AES
+#define FOLLY_ARM_FEATURE_AES 1
+#else
+#define FOLLY_ARM_FEATURE_AES 0
+#endif
+#endif
+
+#ifndef FOLLY_ARM_FEATURE_SHA2
+#ifdef __ARM_FEATURE_SHA2
+#define FOLLY_ARM_FEATURE_SHA2 1
+#else
+#define FOLLY_ARM_FEATURE_SHA2 0
+#endif
+#endif
+
+#ifndef FOLLY_ARM_FEATURE_SHA3
+#ifdef __ARM_FEATURE_SHA3
+#define FOLLY_ARM_FEATURE_SHA3 1
+#else
+#define FOLLY_ARM_FEATURE_SHA3 0
+#endif
+#endif
+
+#ifndef FOLLY_ARM_FEATURE_SVE2
+#ifdef __ARM_FEATURE_SVE2
+#define FOLLY_ARM_FEATURE_SVE2 1
+#else
+#define FOLLY_ARM_FEATURE_SVE2 0
+#endif
+#endif
+
 // RTTI may not be enabled for this compilation unit.
 #if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
     (defined(_MSC_VER) && defined(_CPPRTTI))
@@ -524,6 +564,16 @@ constexpr auto kCpplibVer = 0;
 #endif
 } // namespace folly
 
+#define FOLLY_PRAGMA_DETAIL_STR(X) #X
+
+#if defined(_MSC_VER)
+#define FOLLY_PRAGMA_UNROLL_N(N)
+#elif defined(__GNUC__)
+#define FOLLY_PRAGMA_UNROLL_N(N) _Pragma(FOLLY_PRAGMA_DETAIL_STR(GCC unroll(N)))
+#else
+#define FOLLY_PRAGMA_UNROLL_N(N) _Pragma(FOLLY_PRAGMA_DETAIL_STR(unroll(N)))
+#endif
+
 //  MSVC does not permit:
 //
 //    extern int const num;
@@ -576,12 +626,17 @@ constexpr auto kCpplibVer = 0;
 #if defined(__NVCC__)
 // For now, NVCC matches other compilers but does not offer coroutines.
 #define FOLLY_HAS_COROUTINES 0
-#elif defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES)
+#elif defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES) && \
+    !defined(LLVM_COROUTINES_CPP20)
 // LLVM and MSVC coroutines are ABI incompatible, so for the MSVC implementation
 // of <experimental/coroutine> on Windows we *don't* have coroutines.
 //
 // LLVM_COROUTINES indicates that LLVM compatible header is added to include
 // path and can be used.
+//
+// LLVM_COROUTINES_CPP20 indicates that an LLVM compatible header using
+// <coroutine> is added to the include path and can be used.
+
 //
 // Worse, if we define FOLLY_HAS_COROUTINES 1 we will include
 // <experimental/coroutine> which will conflict with anyone who wants to load

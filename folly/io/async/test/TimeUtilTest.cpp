@@ -52,12 +52,13 @@ void runThread(nanoseconds duration, nanoseconds* timeWaiting) {
       // Time to quit
       // Report how long we spent waiting to be scheduled on the CPU.
       *timeWaiting = (now.getTimeWaiting() - start.getTimeWaiting());
-      VLOG(1) << "thread " << start.getTid() << ": elapsed "
-              << duration_cast<milliseconds>(
-                     now.getTimeStart() - start.getTimeStart())
-                     .count()
-              << "ms, time waiting: "
-              << duration_cast<milliseconds>(*timeWaiting).count() << "ms";
+      VLOG(1)
+          << "thread " << start.getTid() << ": elapsed "
+          << duration_cast<milliseconds>(
+                 now.getTimeStart() - start.getTimeStart())
+                 .count()
+          << "ms, time waiting: "
+          << duration_cast<milliseconds>(*timeWaiting).count() << "ms";
       break;
     }
   }

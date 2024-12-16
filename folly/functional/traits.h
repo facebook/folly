@@ -49,7 +49,7 @@ struct function_traits_var_ {
 template <typename T>
 struct function_traits_cvref_ {
   template <typename D>
-  using value_like = like_t<T, D>;
+  using value_like = copy_cvref_t<T, D>;
 };
 
 } // namespace detail
@@ -87,8 +87,8 @@ struct function_traits_cvref_ {
 //          function_traits<S>::arguments<std::tuple>;
 //
 //  Member value_like is a metafunction allowing access to the const-,
-//  volatile-, and reference-qualifiers using like_t to transport all these
-//  qualifiers to a destination type which may then be queried:
+//  volatile-, and reference-qualifiers using copy_cvref_t to transport all
+//  these qualifiers to a destination type which may then be queried:
 //
 //      constexpr bool is_rvalue_reference = std::is_rvalue_reverence_v<
 //          function_traits<S>::value_like<int>>;

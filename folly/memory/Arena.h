@@ -73,7 +73,7 @@ class Arena {
         bytesUsed_(0),
         sizeLimit_(sizeLimit),
         maxAlign_(maxAlign) {
-    if ((maxAlign_ & (maxAlign_ - 1)) || maxAlign_ > alignof(Block)) {
+    if (!valid_align_value(maxAlign_)) {
       throw_exception<std::invalid_argument>(
           folly::to<std::string>("Invalid maxAlign: ", maxAlign_));
     }
@@ -99,9 +99,9 @@ class Arena {
 
     if (canReuseExistingBlock(size)) {
       currentBlock_++;
-      char* r = currentBlock_->start();
+      char* r = align(currentBlock_->start());
       ptr_ = r + size;
-      end_ = r + blockGoodAllocSize() - sizeof(Block);
+      end_ = currentBlock_->start() + blockGoodAllocSize() - sizeof(Block);
       assert(ptr_ <= end_);
       assert(isAligned(r));
       return r;
@@ -127,9 +127,8 @@ class Arena {
       return;
     }
     currentBlock_ = blocks_.begin();
-    char* start = currentBlock_->start();
-    ptr_ = start;
-    end_ = start + blockGoodAllocSize() - sizeof(Block);
+    ptr_ = align(currentBlock_->start());
+    end_ = currentBlock_->start() + blockGoodAllocSize() - sizeof(Block);
     assert(ptr_ <= end_);
   }
 
@@ -229,6 +228,8 @@ class Arena {
     }
     return realSize & ~maxAl;
   }
+
+  char* align(char* ptr) { return align_ceil(ptr, maxAlign_); }
 
   // cache_last<true> makes the list keep a pointer to the last element, so we
   // have push_back() and constant time splice_after()

@@ -644,8 +644,9 @@ class small_vector
   }
 
   static constexpr size_type max_size() {
-    return !BaseType::kShouldUseHeap ? static_cast<size_type>(MaxInline)
-                                     : BaseType::policyMaxSize();
+    return !BaseType::kShouldUseHeap
+        ? static_cast<size_type>(MaxInline)
+        : BaseType::policyMaxSize();
   }
 
   allocator_type get_allocator() const { return {}; }
@@ -764,8 +765,9 @@ class small_vector
     }
     auto extra = sz - size();
     makeSize(sz);
-    detail::populateMemForward(
-        begin() + size(), extra, [&](void* p) { new (p) value_type(); });
+    detail::populateMemForward(begin() + size(), extra, [&](void* p) {
+      new (p) value_type();
+    });
     this->incrementSize(extra);
   }
 
@@ -776,8 +778,9 @@ class small_vector
     }
     auto extra = sz - size();
     makeSize(sz);
-    detail::populateMemForward(
-        begin() + size(), extra, [&](void* p) { new (p) value_type(v); });
+    detail::populateMemForward(begin() + size(), extra, [&](void* p) {
+      new (p) value_type(v);
+    });
     this->incrementSize(extra);
   }
 
@@ -1135,16 +1138,18 @@ class small_vector
     size_type distance = std::distance(first, last);
     if (distance <= MaxInline) {
       this->incrementSize(distance);
-      detail::populateMemForward(
-          u.buffer(), distance, [&](void* p) { new (p) value_type(*first++); });
+      detail::populateMemForward(u.buffer(), distance, [&](void* p) {
+        new (p) value_type(*first++);
+      });
       return;
     }
     makeSize(distance);
     this->incrementSize(distance);
     {
       auto rollback = makeGuard([&] { freeHeap(); });
-      detail::populateMemForward(
-          u.heap(), distance, [&](void* p) { new (p) value_type(*first++); });
+      detail::populateMemForward(u.heap(), distance, [&](void* p) {
+        new (p) value_type(*first++);
+      });
       rollback.dismiss();
     }
   }
@@ -1316,9 +1321,10 @@ class small_vector
     value_type* heap_;
 
     InternalSizeType getCapacity() const {
-      return heap_ ? *static_cast<InternalSizeType*>(
-                         detail::unshiftPointer(heap_, kHeapifyCapacitySize))
-                   : 0;
+      return heap_
+          ? *static_cast<InternalSizeType*>(
+                detail::unshiftPointer(heap_, kHeapifyCapacitySize))
+          : 0;
     }
     void setCapacity(InternalSizeType c) {
       *static_cast<InternalSizeType*>(

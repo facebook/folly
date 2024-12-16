@@ -20,7 +20,6 @@ cpp_benchmark(
         "//folly:benchmark",
         "//folly:function",
         "//folly:scope_guard",
-        "//folly/lang:exception",
         "//folly/portability:gflags",
     ],
     external_deps = [

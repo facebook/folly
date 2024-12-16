@@ -16,10 +16,10 @@
 
 #include <folly/Portability.h>
 
-#include <folly/experimental/coro/AsyncGenerator.h>
-#include <folly/experimental/coro/AsyncPipe.h>
-#include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Task.h>
+#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/AsyncPipe.h>
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/Task.h>
 
 #include <folly/portability/GTest.h>
 
@@ -163,13 +163,14 @@ TEST(AsyncPipeTest, WriteWhileBlocking) {
   auto pipe = folly::coro::AsyncPipe<int>::create();
   folly::ManualExecutor ex;
 
-  auto fut = folly::coro::co_invoke(
-                 [&]() -> folly::coro::Task<
-                           folly::coro::AsyncGenerator<int&&>::NextResult> {
-                   co_return co_await pipe.first.next();
-                 })
-                 .scheduleOn(&ex)
-                 .start();
+  auto fut =
+      folly::coro::co_invoke(
+          [&]() -> folly::coro::Task<
+                    folly::coro::AsyncGenerator<int&&>::NextResult> {
+            co_return co_await pipe.first.next();
+          })
+          .scheduleOn(&ex)
+          .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
 
@@ -183,13 +184,14 @@ TEST(AsyncPipeTest, CloseWhileBlocking) {
   auto pipe = folly::coro::AsyncPipe<int>::create();
   folly::ManualExecutor ex;
 
-  auto fut = folly::coro::co_invoke(
-                 [&]() -> folly::coro::Task<
-                           folly::coro::AsyncGenerator<int&&>::NextResult> {
-                   co_return co_await pipe.first.next();
-                 })
-                 .scheduleOn(&ex)
-                 .start();
+  auto fut =
+      folly::coro::co_invoke(
+          [&]() -> folly::coro::Task<
+                    folly::coro::AsyncGenerator<int&&>::NextResult> {
+            co_return co_await pipe.first.next();
+          })
+          .scheduleOn(&ex)
+          .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
 
@@ -203,13 +205,14 @@ TEST(AsyncPipeTest, DestroyWhileBlocking) {
   auto pipe = folly::coro::AsyncPipe<int>::create();
   folly::ManualExecutor ex;
 
-  auto fut = folly::coro::co_invoke(
-                 [&]() -> folly::coro::Task<
-                           folly::coro::AsyncGenerator<int&&>::NextResult> {
-                   co_return co_await pipe.first.next();
-                 })
-                 .scheduleOn(&ex)
-                 .start();
+  auto fut =
+      folly::coro::co_invoke(
+          [&]() -> folly::coro::Task<
+                    folly::coro::AsyncGenerator<int&&>::NextResult> {
+            co_return co_await pipe.first.next();
+          })
+          .scheduleOn(&ex)
+          .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
 
@@ -221,21 +224,23 @@ TEST(AsyncPipeTest, DestroyWhileBlocking) {
 
 TEST(AsyncPipeTest, OnClosedCallbackCalledWhenGeneratorDestroyed) {
   auto onCloseCallbackBaton = folly::Baton<>();
-  auto pipe = folly::coro::AsyncPipe<int>::create(
-      [&]() { onCloseCallbackBaton.post(); } /* onClosed */);
+  auto pipe = folly::coro::AsyncPipe<int>::create([&]() {
+    onCloseCallbackBaton.post();
+  } /* onClosed */);
 
   auto ex = folly::ManualExecutor();
   auto cancellationSource = folly::CancellationSource();
-  auto fut = folly::coro::co_withCancellation(
-                 cancellationSource.getToken(),
-                 folly::coro::co_invoke(
-                     [gen = std::move(pipe.first)]() mutable
-                     -> folly::coro::Task<
-                         folly::coro::AsyncGenerator<int&&>::NextResult> {
-                       co_return co_await gen.next();
-                     }))
-                 .scheduleOn(&ex)
-                 .start();
+  auto fut =
+      folly::coro::co_withCancellation(
+          cancellationSource.getToken(),
+          folly::coro::co_invoke(
+              [gen = std::move(pipe.first)]() mutable
+              -> folly::coro::Task<
+                  folly::coro::AsyncGenerator<int&&>::NextResult> {
+                co_return co_await gen.next();
+              }))
+          .scheduleOn(&ex)
+          .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
   EXPECT_FALSE(onCloseCallbackBaton.ready());
@@ -248,8 +253,9 @@ TEST(AsyncPipeTest, OnClosedCallbackCalledWhenGeneratorDestroyed) {
 
 TEST(AsyncPipeTest, OnClosedCallbackCalledWhenPublisherClosesPipe) {
   auto onCloseCallbackBaton = folly::Baton<>();
-  auto pipe = folly::coro::AsyncPipe<int>::create(
-      [&]() { onCloseCallbackBaton.post(); } /* onClosed */);
+  auto pipe = folly::coro::AsyncPipe<int>::create([&]() {
+    onCloseCallbackBaton.post();
+  } /* onClosed */);
 
   EXPECT_FALSE(onCloseCallbackBaton.ready());
 
@@ -260,8 +266,9 @@ TEST(AsyncPipeTest, OnClosedCallbackCalledWhenPublisherClosesPipe) {
 
 TEST(AsyncPipeTest, OnClosedCallbackCalledWhenPublisherClosesPipeWithError) {
   auto onCloseCallbackExecuted = folly::Promise<folly::Unit>();
-  auto pipe = folly::coro::AsyncPipe<int>::create(
-      [&]() { onCloseCallbackExecuted.setValue(); } /* onClosed */);
+  auto pipe = folly::coro::AsyncPipe<int>::create([&]() {
+    onCloseCallbackExecuted.setValue();
+  } /* onClosed */);
 
   EXPECT_FALSE(onCloseCallbackExecuted.isFulfilled());
 
@@ -282,16 +289,17 @@ TEST(
 
   auto ex = folly::ManualExecutor();
   auto cancellationSource = folly::CancellationSource();
-  auto fut = folly::coro::co_withCancellation(
-                 cancellationSource.getToken(),
-                 folly::coro::co_invoke(
-                     [gen = std::move(pipe.first)]() mutable
-                     -> folly::coro::Task<
-                         folly::coro::AsyncGenerator<int&&>::NextResult> {
-                       co_return co_await gen.next();
-                     }))
-                 .scheduleOn(&ex)
-                 .start();
+  auto fut =
+      folly::coro::co_withCancellation(
+          cancellationSource.getToken(),
+          folly::coro::co_invoke(
+              [gen = std::move(pipe.first)]() mutable
+              -> folly::coro::Task<
+                  folly::coro::AsyncGenerator<int&&>::NextResult> {
+                co_return co_await gen.next();
+              }))
+          .scheduleOn(&ex)
+          .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
   EXPECT_FALSE(onCloseCallbackStartedBaton.ready());
@@ -328,8 +336,8 @@ TEST(AsyncPipeTest, PublisherMustCloseIfCallbackSetAndGeneratorAlive) {
 
   EXPECT_DEATH(
       ([&]() {
-        auto pipe1 =
-            folly::coro::AsyncPipe<int>::create([]() {} /* onClosed */);
+        auto pipe1 = folly::coro::AsyncPipe<int>::create([]() {
+        } /* onClosed */);
         auto pipe2 = folly::coro::AsyncPipe<int>::create();
         pipe1.second = std::move(pipe2.second);
       })(),
@@ -350,6 +358,26 @@ TEST(BoundedAsyncPipeTest, PublishConsume) {
     }
     std::move(pipe).close();
     EXPECT_FALSE(co_await generator.next());
+  }());
+}
+
+TEST(BoundedAsyncPipeTest, PipeCapacity) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto [generator, pipe] =
+        folly::coro::BoundedAsyncPipe<int>::create(/* tokens */ 10);
+    EXPECT_EQ(pipe.getAvailableSpace(), 10);
+    EXPECT_EQ(pipe.getOccupiedSpace(), 0);
+    for (int i = 0; i < 7; ++i) {
+      EXPECT_TRUE(co_await pipe.write(i));
+    }
+    EXPECT_EQ(pipe.getAvailableSpace(), 3);
+    EXPECT_EQ(pipe.getOccupiedSpace(), 7);
+    for (int i = 0; i < 7; ++i) {
+      auto item = co_await generator.next();
+    }
+    EXPECT_EQ(pipe.getAvailableSpace(), 10);
+    EXPECT_EQ(pipe.getOccupiedSpace(), 0);
+    std::move(pipe).close();
   }());
 }
 
@@ -459,14 +487,15 @@ TEST(BoundedAsyncPipeTest, BlockingPublisherCancelsWithParent) {
     }
 
     folly::CancellationSource cs;
-    auto future = folly::coro::co_withCancellation(
-                      cs.getToken(),
-                      folly::coro::co_invoke(
-                          [&pipe_2 = pipe]() -> folly::coro::Task<bool> {
-                            co_return co_await pipe_2.write(100);
-                          }))
-                      .scheduleOn(&executor)
-                      .start();
+    auto future =
+        folly::coro::co_withCancellation(
+            cs.getToken(),
+            folly::coro::co_invoke(
+                [&pipe_2 = pipe]() -> folly::coro::Task<bool> {
+                  co_return co_await pipe_2.write(100);
+                }))
+            .scheduleOn(&executor)
+            .start();
     executor.drain();
     EXPECT_FALSE(future.isReady());
 

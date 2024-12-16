@@ -94,7 +94,7 @@ IOBufQueue::IOBufQueue(IOBufQueue&& other) noexcept
   localCache_.attached = true;
 }
 
-IOBufQueue& IOBufQueue::operator=(IOBufQueue&& other) {
+IOBufQueue& IOBufQueue::operator=(IOBufQueue&& other) noexcept {
   if (&other != this) {
     other.clearWritableRangeCache();
     clearWritableRangeCache();

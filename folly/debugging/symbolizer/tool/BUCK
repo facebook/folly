@@ -1,4 +1,3 @@
-load("@fbcode//antlir/fbpkg:fbpkg.bzl", "fbpkg")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 
@@ -66,19 +65,9 @@ cpp_binary(
             }),
         ),
     ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:range",
         "//folly/experimental/symbolizer:signal_handler",
     ],
-)
-
-fbpkg.builder(
-    name = "folly.symbolizer",
-    buck_opts = fbpkg.buck_opts(
-        config = {"fbcode.platform": "centos8"},
-    ),
-    path_actions = {
-        "folly-addr2line": ":folly-addr2line",
-        "libFollySegFault.so": ":libFollySegFault.so",
-    },
 )

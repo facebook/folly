@@ -112,6 +112,12 @@ inline constexpr bool iterator_category_matches_v =
 template <typename Iter>
 using iterator_value_type_t = typename std::iterator_traits<Iter>::value_type;
 
+//  iterator_reference_type_t
+//
+//  Extracts reference from an iterator (C++20 iter_reference_t backported)
+template <typename Iter>
+using iterator_reference_t = decltype(*std::declval<Iter&>());
+
 //  iterator_key_type_t
 //
 //  Extracts a key type from an iterator, leverages the knowledge that

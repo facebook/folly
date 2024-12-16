@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/WithAsyncStack.h>
-#include <folly/experimental/coro/detail/Barrier.h>
-#include <folly/experimental/coro/detail/Malloc.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/WithAsyncStack.h>
+#include <folly/coro/detail/Barrier.h>
+#include <folly/coro/detail/Malloc.h>
 
 #include <cassert>
 #include <utility>

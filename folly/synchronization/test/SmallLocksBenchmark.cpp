@@ -735,7 +735,7 @@ void fairnessTest(std::string type, std::size_t numThreads) {
 }
 
 int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   if (FLAGS_run_fairness) {
     for (auto numThreads : {2, 4, 8, 16, 32, 64}) {

@@ -20,6 +20,7 @@
 #include <iostream>
 #include <thread>
 
+#include <folly/portability/GFlags.h>
 #include <folly/synchronization/test/Barrier.h>
 
 DEFINE_int32(reps, 10, "number of reps");

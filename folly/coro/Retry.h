@@ -25,11 +25,11 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Random.h>
 #include <folly/Try.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/Result.h>
-#include <folly/experimental/coro/Sleep.h>
-#include <folly/experimental/coro/Task.h>
-#include <folly/experimental/coro/Traits.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/Result.h>
+#include <folly/coro/Sleep.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/Traits.h>
 
 #include <cstdint>
 #include <random>
@@ -38,7 +38,7 @@
 #if FOLLY_HAS_COROUTINES
 
 /**
- * \file experimental/coro/Retry.h
+ * \file coro/Retry.h
  *
  * Coroutine implementation of futures/Retrying.h
  *
@@ -53,7 +53,7 @@
  * - retryWithExponentialBackoff: the retries will be restarted with
  * exponiential backoff.
  *
- * \refcode folly/docs/examples/folly/experimental/coro/Retry.cpp
+ * \refcode folly/docs/examples/folly/coro/Retry.cpp
  */
 
 namespace folly::coro {

@@ -35,14 +35,15 @@ class MockDispatcher : public Dispatcher {
     ON_CALL(
         *this,
         getsockopt(testing::_, testing::_, testing::_, testing::_, testing::_))
-        .WillByDefault(testing::Invoke([this](
-                                           NetworkSocket s,
-                                           int level,
-                                           int optname,
-                                           void* optval,
-                                           socklen_t* optlen) {
-          return Dispatcher::getsockopt(s, level, optname, optval, optlen);
-        }));
+        .WillByDefault(testing::Invoke(
+            [this](
+                NetworkSocket s,
+                int level,
+                int optname,
+                void* optval,
+                socklen_t* optlen) {
+              return Dispatcher::getsockopt(s, level, optname, optval, optlen);
+            }));
 
     ON_CALL(*this, sendmsg(testing::_, testing::_, testing::_))
         .WillByDefault(testing::Invoke(
@@ -59,14 +60,15 @@ class MockDispatcher : public Dispatcher {
     ON_CALL(
         *this,
         setsockopt(testing::_, testing::_, testing::_, testing::_, testing::_))
-        .WillByDefault(testing::Invoke([this](
-                                           NetworkSocket s,
-                                           int level,
-                                           int optname,
-                                           const void* optval,
-                                           socklen_t optlen) {
-          return Dispatcher::setsockopt(s, level, optname, optval, optlen);
-        }));
+        .WillByDefault(testing::Invoke(
+            [this](
+                NetworkSocket s,
+                int level,
+                int optname,
+                const void* optval,
+                socklen_t optlen) {
+              return Dispatcher::setsockopt(s, level, optname, optval, optlen);
+            }));
   }
 
   MOCK_METHOD(

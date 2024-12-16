@@ -31,9 +31,10 @@ class AsyncSocketException;
 /**
  * Read from a pipe in an async manner.
  */
-class AsyncPipeReader : public EventHandler,
-                        public AsyncReader,
-                        public DelayedDestruction {
+class AsyncPipeReader
+    : public EventHandler,
+      public AsyncReader,
+      public DelayedDestruction {
  public:
   using UniquePtr = folly::DelayedDestructionUniquePtr<AsyncPipeReader>;
 
@@ -90,9 +91,10 @@ class AsyncPipeReader : public EventHandler,
 /**
  * Write to a pipe in an async manner.
  */
-class AsyncPipeWriter : public EventHandler,
-                        public AsyncWriter,
-                        public DelayedDestruction {
+class AsyncPipeWriter
+    : public EventHandler,
+      public AsyncWriter,
+      public DelayedDestruction {
  public:
   using UniquePtr = folly::DelayedDestructionUniquePtr<AsyncPipeWriter>;
 

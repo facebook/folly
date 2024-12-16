@@ -2,13 +2,21 @@ load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
-load("@fbsource//tools/build_defs/buck2:is_buck2.bzl", "is_buck2")
 
 SPLIT_DWARF_FLAGS = {
     "none": ["-gno-split-dwarf"],
-    "single_inlining": ["-gsplit-dwarf=single", "-fsplit-dwarf-inlining"],
-    "single_no_inlining": ["-gsplit-dwarf=single", "-fno-split-dwarf-inlining"],
-    "split_no_inlining": ["-gsplit-dwarf=split", "-fno-split-dwarf-inlining"],
+    "single_inlining": [
+        "-gsplit-dwarf=single",
+        "-fsplit-dwarf-inlining",
+    ],
+    "single_no_inlining": [
+        "-gsplit-dwarf=single",
+        "-fno-split-dwarf-inlining",
+    ],
+    "split_no_inlining": [
+        "-gsplit-dwarf=split",
+        "-fno-split-dwarf-inlining",
+    ],
 }
 
 def _dwarf_size_flag(size):
@@ -32,11 +40,11 @@ def customized_unittest(
         for dwarf_size in available_dwarf_sizes:
             for split_dwarf_option in avilable_split_dwarf_keys:
                 # buck2 doesn't support split version yet.
-                if split_dwarf_option == "none" or split_dwarf_option == "single_inlining" or not is_buck2():
+                if split_dwarf_option == "none" or split_dwarf_option == "single_inlining":
                     for use_aaranges in [False, True]:
                         cpp_library(
                             name = "symbolizer_test_utils_" + dwarf_version +
-                                   ("_dwarf{}".format(dwarf_size)) +
+                                   "_dwarf{}".format(dwarf_size) +
                                    ("" if split_dwarf_option == "none" else "_" + split_dwarf_option) +
                                    ("_aaranges" if use_aaranges else "_noaaranges") + custom_suffix,
                             srcs = ["SymbolizerTestUtils.cpp"],
@@ -49,7 +57,7 @@ def customized_unittest(
                             # flags from dropping debug info.
                             compiler_flags = ["-g"] +
                                              (["-gdwarf-5"] if dwarf_version == "dwarf5" else ["-gdwarf-4"]) +
-                                             (_dwarf_size_flag(dwarf_size)) +
+                                             _dwarf_size_flag(dwarf_size) +
                                              SPLIT_DWARF_FLAGS[split_dwarf_option] +
                                              (["-gdwarf-aranges"] if use_aaranges else []) +
                                              extra_compiler_flags,
@@ -57,29 +65,31 @@ def customized_unittest(
                             private_linker_flags = [
                                 "--emit-relocs",  # makes linker ignore `--strip-debug-*` flags
                             ],
+                            target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
                         )
                         cpp_unittest(
                             name = "symbolizer_test_" + dwarf_version +
-                                   ("_dwarf{}".format(dwarf_size)) +
+                                   "_dwarf{}".format(dwarf_size) +
                                    ("" if split_dwarf_option == "none" else "_" + split_dwarf_option) +
                                    ("_aaranges" if use_aaranges else "_noaaranges") + custom_suffix,
                             srcs = ["SymbolizerTest.cpp"],
-                            supports_static_listing = True,
-                            tags = ["dwp"] if split_dwarf_option == "single_inlining" and use_aaranges else [],
                             # This tests requires full debug info, so use `-g` to override the platform
                             # default, and use `--emit-relocs` to prevent `--strip-debug-*` flags from
                             # dropping debug info.
                             compiler_flags = ["-g"] +
                                              (["-gdwarf-5"] if dwarf_version == "dwarf5" else ["-gdwarf-4"]) +
-                                             (_dwarf_size_flag(dwarf_size)) +
+                                             _dwarf_size_flag(dwarf_size) +
                                              SPLIT_DWARF_FLAGS[split_dwarf_option] +
                                              (["-gdwarf-aranges"] if use_aaranges else []) + extra_compiler_flags,
+                            labels = ["dwp"] if split_dwarf_option == "single_inlining" and use_aaranges else [],
                             linker_flags = [
                                 "--emit-relocs",  # makes linker ignore `--strip-debug-*` flags
                             ],
+                            supports_static_listing = True,
+                            target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
                             deps = [
                                 ":symbolizer_test_utils_" + dwarf_version +
-                                ("_dwarf{}".format(dwarf_size)) +
+                                "_dwarf{}".format(dwarf_size) +
                                 ("" if split_dwarf_option == "none" else "_" + split_dwarf_option) +
                                 ("_aaranges" if use_aaranges else "_noaaranges"),  # @manual
                                 "//folly:demangle",

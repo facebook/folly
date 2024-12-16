@@ -74,8 +74,9 @@ typename std::enable_if<
     !std::is_same<invoke_result_t<T>, Async<void>>::value,
     Async<void>>::type
 executeAndMaybeAssign(Out& outref, T&& task) {
-  tryEmplaceWith(
-      outref, [task = static_cast<T&&>(task)] { return init_await(task()); });
+  tryEmplaceWith(outref, [task = static_cast<T&&>(task)] {
+    return init_await(task());
+  });
   return {};
 }
 

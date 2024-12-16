@@ -727,11 +727,12 @@ struct ExpectedHelper {
       class E = ExpectedErrorType<This>,
       class V = ExpectedValueType<This>,
       class T = ExpectedHelper,
-      class RetValue = decltype(T::then_(
-                                    T::template return_<E>((std::declval<No>()(
-                                        std::declval<This>().error()))),
-                                    std::declval<AndFns>()...)
-                                    .value()),
+      class RetValue =
+          decltype(T::then_(
+                       T::template return_<E>(
+                           (std::declval<No>()(std::declval<This>().error()))),
+                       std::declval<AndFns>()...)
+                       .value()),
       typename std::enable_if<!std::is_same<
           std::remove_reference<RetValue>,
           std::remove_reference<folly::Unit&&>>::value>::type* = nullptr,
@@ -763,11 +764,12 @@ struct ExpectedHelper {
       class... AndFns,
       class E = ExpectedErrorType<This>,
       class T = ExpectedHelper,
-      class RetValue = decltype(T::then_(
-                                    T::template return_<E>((std::declval<No>()(
-                                        std::declval<This>().error()))),
-                                    std::declval<AndFns>()...)
-                                    .value()),
+      class RetValue =
+          decltype(T::then_(
+                       T::template return_<E>(
+                           (std::declval<No>()(std::declval<This>().error()))),
+                       std::declval<AndFns>()...)
+                       .value()),
       typename std::enable_if<std::is_same<
           std::remove_reference<RetValue>,
           std::remove_reference<folly::Unit&&>>::value>::type* = nullptr,
@@ -1271,9 +1273,9 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
-  auto then(Fns&&... fns) & -> decltype(expected_detail::ExpectedHelper::then_(
-                                std::declval<Base&>(),
-                                std::declval<Fns>()...)) {
+  auto
+  then(Fns&&... fns) & -> decltype(expected_detail::ExpectedHelper::then_(
+                           std::declval<Base&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1282,9 +1284,9 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   template <class... Fns FOLLY_REQUIRES_TRAILING(sizeof...(Fns) >= 1)>
-  auto then(Fns&&... fns) && -> decltype(expected_detail::ExpectedHelper::then_(
-                                 std::declval<Base&&>(),
-                                 std::declval<Fns>()...)) {
+  auto
+  then(Fns&&... fns) && -> decltype(expected_detail::ExpectedHelper::then_(
+                            std::declval<Base&&>(), std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
     }
@@ -1344,8 +1346,10 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   template <class Yes, class No = MakeBadExpectedAccess>
-  auto thenOrThrow(Yes&& yes, No&& no = No{}) & -> decltype(std::declval<Yes>()(
-                                                    std::declval<Value&>())) {
+  auto thenOrThrow(
+      Yes&& yes,
+      No&& no =
+          No{}) & -> decltype(std::declval<Yes>()(std::declval<Value&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<Value&>()));
     if (this->uninitializedByException()) {
       throw_exception<BadExpectedAccess<void>>();
@@ -1584,7 +1588,7 @@ bool operator>(const Value& other, const Expected<Value, Error>&) = delete;
 // Enable the use of folly::Expected with `co_await`
 // Inspired by https://github.com/toby-allsopp/coroutine_monad
 #if FOLLY_HAS_COROUTINES
-#include <folly/experimental/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h>
 
 namespace folly {
 namespace expected_detail {

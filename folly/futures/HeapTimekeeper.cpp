@@ -260,8 +260,9 @@ void HeapTimekeeper::State::worker() {
               ? std::chrono::nanoseconds{0}
               : wo.spin_max());
       if (!wakeUp->try_wait_until(nextWakeUp_)) {
-        if (mutex_.lock_combine(
-                [&] { return std::exchange(wakeUp_, nullptr) == nullptr; })) {
+        if (mutex_.lock_combine([&] {
+              return std::exchange(wakeUp_, nullptr) == nullptr;
+            })) {
           // Someone stole the reference to the semaphore, we must wait for them
           // to post it so we can destroy it.
           wakeUp->wait();

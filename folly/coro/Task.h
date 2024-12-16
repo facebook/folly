@@ -32,18 +32,18 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Result.h>
-#include <folly/experimental/coro/ScopeExit.h>
-#include <folly/experimental/coro/Traits.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
-#include <folly/experimental/coro/WithAsyncStack.h>
-#include <folly/experimental/coro/WithCancellation.h>
-#include <folly/experimental/coro/detail/InlineTask.h>
-#include <folly/experimental/coro/detail/Malloc.h>
-#include <folly/experimental/coro/detail/Traits.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Result.h>
+#include <folly/coro/ScopeExit.h>
+#include <folly/coro/Traits.h>
+#include <folly/coro/ViaIfAsync.h>
+#include <folly/coro/WithAsyncStack.h>
+#include <folly/coro/WithCancellation.h>
+#include <folly/coro/detail/InlineTask.h>
+#include <folly/coro/detail/Malloc.h>
+#include <folly/coro/detail/Traits.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/Assume.h>
@@ -62,7 +62,17 @@ class TaskWithExecutor;
 
 namespace detail {
 
+class TaskPromiseBase;
+
+class TaskPromisePrivate {
+ private:
+  friend TaskPromiseBase;
+  TaskPromisePrivate() = default;
+};
+
 class TaskPromiseBase {
+  static TaskPromisePrivate privateTag() { return TaskPromisePrivate{}; }
+
   class FinalAwaiter {
    public:
     bool await_ready() noexcept { return false; }
@@ -77,23 +87,27 @@ class TaskPromiseBase {
       //
       // This is a bit untidy, and hopefully something we can replace with
       // a virtual wrapper over coroutine_handle that handles the pop for us.
-      if (promise.scopeExit_) {
-        promise.scopeExit_.promise().setContext(
-            promise.continuation_,
-            &promise.asyncFrame_,
-            promise.executor_.get_alias(),
-            promise.result_.hasException() ? promise.result_.exception()
-                                           : exception_wrapper{});
-        return promise.scopeExit_;
+      if (promise.scopeExitRef(privateTag())) {
+        promise.scopeExitRef(privateTag())
+            .promise()
+            .setContext(
+                promise.continuationRef(privateTag()),
+                &promise.getAsyncFrame(),
+                promise.executorRef(privateTag()).get_alias(),
+                promise.result().hasException()
+                    ? promise.result().exception()
+                    : exception_wrapper{});
+        return promise.scopeExitRef(privateTag());
       }
 
-      folly::popAsyncStackFrameCallee(promise.asyncFrame_);
-      if (promise.result_.hasException()) {
+      folly::popAsyncStackFrameCallee(promise.getAsyncFrame());
+      if (promise.result().hasException()) {
         auto [handle, frame] =
-            promise.continuation_.getErrorHandle(promise.result_.exception());
+            promise.continuationRef(privateTag())
+                .getErrorHandle(promise.result().exception());
         return handle.getHandle();
       }
-      return promise.continuation_.getHandle();
+      return promise.continuationRef(privateTag()).getHandle();
     }
 
     [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
@@ -167,6 +181,14 @@ class TaskPromiseBase {
     return executor_;
   }
 
+  // These getters exist so that `FinalAwaiter` can interact with wrapped
+  // `TaskPromise`s, and not just `TaskPromiseBase` descendants.  We use a
+  // private tag to let `TaskWrapper` call them without becoming a `friend`.
+  auto& scopeExitRef(TaskPromisePrivate) { return scopeExit_; }
+  auto& continuationRef(TaskPromisePrivate) { return continuation_; }
+  // Unlike `getExecutor()`, does not copy an atomic.
+  auto& executorRef(TaskPromisePrivate) { return executor_; }
+
  private:
   template <typename>
   friend class folly::coro::TaskWithExecutor;
@@ -198,8 +220,9 @@ class TaskPromiseBase {
 
 // Separate from `TaskPromiseBase` so the compiler has less to specialize.
 template <typename Promise, typename T>
-class TaskPromiseCrtpBase : public TaskPromiseBase,
-                            public ExtendedCoroutinePromise {
+class TaskPromiseCrtpBase
+    : public TaskPromiseBase,
+      public ExtendedCoroutinePromise {
  public:
   using StorageType = detail::lift_lvalue_reference_t<T>;
 
@@ -633,6 +656,11 @@ class FOLLY_NODISCARD TaskWithExecutor {
   handle_t coro_;
 };
 
+// This macro makes it easier for `TaskWrapper.h` users to apply the correct
+// attributes for the wrapped `Task`s.
+#define FOLLY_CORO_TASK_ATTRS \
+  FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+
 /// Represents an allocated, but not-started coroutine, which is not yet
 /// been bound to an executor.
 ///
@@ -657,11 +685,11 @@ class FOLLY_NODISCARD TaskWithExecutor {
 /// co_await expression.
 ///
 /// More documentation on how to use coroutines is available at
-/// https://github.com/facebook/folly/blob/main/folly/experimental/coro/README.md
+/// https://github.com/facebook/folly/blob/main/folly/coro/README.md
 ///
-/// @refcode folly/docs/examples/folly/experimental/coro/Task.cpp
+/// @refcode folly/docs/examples/folly/coro/Task.cpp
 template <typename T>
-class FOLLY_NODISCARD Task {
+class FOLLY_CORO_TASK_ATTRS Task {
  public:
   using promise_type = detail::TaskPromise<T>;
   using StorageType = typename promise_type::StorageType;

@@ -1,2 +1,0 @@
-cargo_env = true
-extra_srcs = ["src/**/*.pest"]

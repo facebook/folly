@@ -92,7 +92,7 @@ void writeStringToFileOrDie(const std::string& str, int fd) {
   size_t count = str.size();
   ssize_t r;
   do {
-    r = write(fd, b, count);
+    r = fileops::write(fd, b, count);
     if (r == -1) {
       if (errno == EINTR) {
         continue;

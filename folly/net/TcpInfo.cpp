@@ -134,12 +134,14 @@ Optional<std::chrono::microseconds> TcpInfo::srtt() const {
   return folly::none;
 #elif defined(__linux__)
   const auto ptr = getFieldAsPtr(&tcp_info::tcpi_rtt);
-  return (ptr) ? us(*CHECK_NOTNULL(ptr)) // __linux__ stores in us
-               : folly::Optional<us>();
+  return (ptr)
+      ? us(*CHECK_NOTNULL(ptr)) // __linux__ stores in us
+      : folly::Optional<us>();
 #elif defined(__APPLE__)
   const auto ptr = getFieldAsPtr(&tcp_info::tcpi_srtt);
-  return (ptr) ? us(ms(*CHECK_NOTNULL(ptr))) // __APPLE__ stores in ms
-               : folly::Optional<us>();
+  return (ptr)
+      ? us(ms(*CHECK_NOTNULL(ptr))) // __APPLE__ stores in ms
+      : folly::Optional<us>();
 #else
   return folly::none;
 #endif

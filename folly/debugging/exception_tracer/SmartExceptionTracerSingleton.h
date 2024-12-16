@@ -32,8 +32,10 @@ struct ExceptionMeta {
 
 using SynchronizedExceptionMeta = folly::Synchronized<ExceptionMeta>;
 
-Synchronized<F14FastMap<void*, std::unique_ptr<SynchronizedExceptionMeta>>>&
-getMetaMap();
+using ExceptionMetaMap =
+    folly::F14VectorMap<void*, std::unique_ptr<SynchronizedExceptionMeta>>;
+
+Synchronized<ExceptionMetaMap>& getMetaMap();
 
 bool isSmartExceptionTracerHookEnabled();
 void setSmartExceptionTracerHookEnabled(bool enabled);

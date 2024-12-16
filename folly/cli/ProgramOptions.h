@@ -23,6 +23,7 @@
 
 namespace folly {
 
+#if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
 enum class ProgramOptionsStyle {
   GFLAGS,
   GNU,
@@ -55,6 +56,7 @@ enum class ProgramOptionsStyle {
 // and "--flying_pigs=false" are not allowed, to prevent ambiguity.
 boost::program_options::options_description getGFlags(
     ProgramOptionsStyle style = ProgramOptionsStyle::GNU);
+#endif
 
 // Helper when parsing nested command lines:
 //

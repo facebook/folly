@@ -105,30 +105,32 @@ void retryingImpl(size_t k, Policy&& p, FF&& ff, Prom prom) {
   using F = invoke_result_t<FF, size_t>;
   using T = typename F::value_type;
   auto f = makeFutureWith([&] { return ff(k++); });
-  std::move(f).thenTry([k,
-                        prom = std::move(prom),
-                        pm = static_cast<Policy&&>(p),
-                        ffm = static_cast<FF&&>(ff)](Try<T>&& t) mutable {
-    if (t.hasValue()) {
-      prom.setValue(std::move(t).value());
-      return;
-    }
-    auto& x = t.exception();
-    auto q = makeFutureWith([&] { return pm(k, x); });
-    std::move(q).thenTry([k,
-                          prom = std::move(prom),
-                          xm = std::move(x),
-                          pm = std::move(pm),
-                          ffm = std::move(ffm)](Try<bool> shouldRetry) mutable {
-      if (shouldRetry.hasValue() && shouldRetry.value()) {
-        retryingImpl(k, std::move(pm), std::move(ffm), std::move(prom));
-      } else if (shouldRetry.hasValue()) {
-        prom.setException(std::move(xm));
-      } else {
-        prom.setException(std::move(shouldRetry.exception()));
-      }
-    });
-  });
+  std::move(f).thenTry(
+      [k,
+       prom = std::move(prom),
+       pm = static_cast<Policy&&>(p),
+       ffm = static_cast<FF&&>(ff)](Try<T>&& t) mutable {
+        if (t.hasValue()) {
+          prom.setValue(std::move(t).value());
+          return;
+        }
+        auto& x = t.exception();
+        auto q = makeFutureWith([&] { return pm(k, x); });
+        std::move(q).thenTry(
+            [k,
+             prom = std::move(prom),
+             xm = std::move(x),
+             pm = std::move(pm),
+             ffm = std::move(ffm)](Try<bool> shouldRetry) mutable {
+              if (shouldRetry.hasValue() && shouldRetry.value()) {
+                retryingImpl(k, std::move(pm), std::move(ffm), std::move(prom));
+              } else if (shouldRetry.hasValue()) {
+                prom.setException(std::move(xm));
+              } else {
+                prom.setException(std::move(shouldRetry.exception()));
+              }
+            });
+      });
 }
 
 template <class Policy, class FF>
@@ -149,14 +151,14 @@ SemiFuture<typename invoke_result_t<FF, size_t>::value_type> retryingSemiFuture(
   auto sf = folly::makeSemiFuture().deferExValue(
       [k, p = static_cast<Policy&&>(p), ff = static_cast<FF&&>(ff)](
           Executor::KeepAlive<> ka, auto&&) mutable {
-        auto futureP = [p = static_cast<Policy&&>(p), ka](
-                           size_t kk, exception_wrapper e) mutable {
+        auto futureP = [p = static_cast<Policy&&>(p),
+                        ka](size_t kk, exception_wrapper e) mutable {
           return p(kk, std::move(e)).via(ka);
         };
-        auto futureFF = [ff = static_cast<FF&&>(ff),
-                         ka = std::move(ka)](size_t v) mutable {
-          return ff(std::move(v)).via(ka);
-        };
+        auto futureFF =
+            [ff = static_cast<FF&&>(ff), ka = std::move(ka)](size_t v) mutable {
+              return ff(std::move(v)).via(ka);
+            };
         return retryingFuture(k, std::move(futureP), std::move(futureFF));
       });
   return sf;
@@ -225,28 +227,29 @@ retryingPolicyCappedJitteredExponentialBackoff(
     double jitter_param,
     URNG&& rng,
     Policy&& p) {
-  return [pm = static_cast<Policy&&>(p),
-          max_tries,
-          backoff_min,
-          backoff_max,
-          jitter_param,
-          rngp = static_cast<URNG&&>(rng)](
-             size_t n, const exception_wrapper& ex) mutable {
-    if (n == max_tries) {
-      return makeFuture(false);
-    }
-    return pm(n, ex).thenValue(
-        [n, backoff_min, backoff_max, jitter_param, rngp = std::move(rngp)](
-            bool v) mutable {
-          if (!v) {
-            return makeFuture(false);
-          }
-          auto backoff = detail::retryingJitteredExponentialBackoffDur(
-              n, backoff_min, backoff_max, jitter_param, rngp);
-          return futures::sleep(backoff).toUnsafeFuture().thenValue(
-              [](auto&&) { return true; });
-        });
-  };
+  return
+      [pm = static_cast<Policy&&>(p),
+       max_tries,
+       backoff_min,
+       backoff_max,
+       jitter_param,
+       rngp = static_cast<URNG&&>(rng)](
+          size_t n, const exception_wrapper& ex) mutable {
+        if (n == max_tries) {
+          return makeFuture(false);
+        }
+        return pm(n, ex).thenValue(
+            [n, backoff_min, backoff_max, jitter_param, rngp = std::move(rngp)](
+                bool v) mutable {
+              if (!v) {
+                return makeFuture(false);
+              }
+              auto backoff = detail::retryingJitteredExponentialBackoffDur(
+                  n, backoff_min, backoff_max, jitter_param, rngp);
+              return futures::sleep(backoff).toUnsafeFuture().thenValue(
+                  [](auto&&) { return true; });
+            });
+      };
 }
 
 template <class Policy, class URNG>
@@ -259,10 +262,10 @@ retryingPolicyCappedJitteredExponentialBackoff(
     URNG&& rng,
     Policy&& p,
     retrying_policy_raw_tag) {
-  auto q = [pm = static_cast<Policy&&>(p)](
-               size_t n, const exception_wrapper& e) {
-    return makeFuture(pm(n, e));
-  };
+  auto q =
+      [pm = static_cast<Policy&&>(p)](size_t n, const exception_wrapper& e) {
+        return makeFuture(pm(n, e));
+      };
   return retryingPolicyCappedJitteredExponentialBackoff(
       max_tries,
       backoff_min,

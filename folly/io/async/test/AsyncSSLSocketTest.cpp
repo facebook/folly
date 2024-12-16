@@ -1987,7 +1987,7 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
 }
 
 static void makeNonBlockingPipe(int pipefds[2]) {
-  if (pipe(pipefds) != 0) {
+  if (fileops::pipe(pipefds) != 0) {
     throw std::runtime_error("Cannot create pipe");
   }
   if (::fcntl(pipefds[0], F_SETFL, O_NONBLOCK) != 0) {
@@ -2043,20 +2043,21 @@ static int customRsaPrivEnc(
     LOG(INFO) << "Got a socket passed in, closing it...";
     socket->closeNow();
   }
-  asyncJobEvb->runInEventBaseThread([retptr = retptr,
-                                     flen = flen,
-                                     from = from,
-                                     to = to,
-                                     padding = padding,
-                                     actualRSA = actualRSA,
-                                     writer = std::move(asyncPipeWriter)]() {
-    LOG(INFO) << "Running job";
-    *retptr = RSA_meth_get_priv_enc(RSA_PKCS1_OpenSSL())(
-        flen, from, to, actualRSA, padding);
-    LOG(INFO) << "Finished job, writing to pipe";
-    uint8_t byte = *retptr > 0 ? 1 : 0;
-    writer->write(nullptr, &byte, 1);
-  });
+  asyncJobEvb->runInEventBaseThread(
+      [retptr = retptr,
+       flen = flen,
+       from = from,
+       to = to,
+       padding = padding,
+       actualRSA = actualRSA,
+       writer = std::move(asyncPipeWriter)]() {
+        LOG(INFO) << "Running job";
+        *retptr = RSA_meth_get_priv_enc(RSA_PKCS1_OpenSSL())(
+            flen, from, to, actualRSA, padding);
+        LOG(INFO) << "Finished job, writing to pipe";
+        uint8_t byte = *retptr > 0 ? 1 : 0;
+        writer->write(nullptr, &byte, 1);
+      });
 
   LOG(INFO) << "About to pause job";
 

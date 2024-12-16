@@ -26,7 +26,9 @@
 #include <folly/portability/SysStat.h>
 #include <folly/portability/Windows.h>
 
-extern "C" {
+namespace folly {
+namespace portability {
+namespace stdlib {
 char* mktemp(char* tn) {
   return _mktemp(tn);
 }
@@ -62,7 +64,7 @@ int mkstemp(char* tn) {
     if (ptr == nullptr || *ptr == '\0') {
       return -1;
     }
-    ret = open(ptr, O_RDWR | O_EXCL | O_CREAT, S_IRUSR | S_IWUSR);
+    ret = fileops::open(ptr, O_RDWR | O_EXCL | O_CREAT, S_IRUSR | S_IWUSR);
     if (ret == -1 && errno != EEXIST) {
       return -1;
     }
@@ -138,16 +140,18 @@ int unsetenv(const char* name) {
   }
   return 0;
 }
-}
+} // namespace stdlib
+} // namespace portability
+} // namespace folly
 
 #endif
 
-#if !__linux__ && !FOLLY_MOBILE && !defined(__wasm32__)
+#if !__linux__ && !defined(__FreeBSD__) && !FOLLY_MOBILE && !defined(__wasm32__)
 
 #include <string>
 #include <vector>
 
-extern "C" int clearenv() {
+int folly::portability::stdlib::clearenv() {
   std::vector<std::string> data;
   for (auto it = environ; it && *it; ++it) {
     std::string entry(*it);

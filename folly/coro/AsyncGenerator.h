@@ -24,17 +24,17 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
-#include <folly/experimental/coro/AutoCleanup-fwd.h>
-#include <folly/experimental/coro/Coroutine.h>
-#include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Invoke.h>
-#include <folly/experimental/coro/Result.h>
-#include <folly/experimental/coro/ScopeExit.h>
-#include <folly/experimental/coro/ViaIfAsync.h>
-#include <folly/experimental/coro/WithAsyncStack.h>
-#include <folly/experimental/coro/WithCancellation.h>
-#include <folly/experimental/coro/detail/Malloc.h>
-#include <folly/experimental/coro/detail/ManualLifetime.h>
+#include <folly/coro/AutoCleanup-fwd.h>
+#include <folly/coro/Coroutine.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Invoke.h>
+#include <folly/coro/Result.h>
+#include <folly/coro/ScopeExit.h>
+#include <folly/coro/ViaIfAsync.h>
+#include <folly/coro/WithAsyncStack.h>
+#include <folly/coro/WithCancellation.h>
+#include <folly/coro/detail/Malloc.h>
+#include <folly/coro/detail/ManualLifetime.h>
 #include <folly/tracing/AsyncStack.h>
 
 #include <glog/logging.h>
@@ -149,6 +149,62 @@ class AsyncGeneratorPromise;
  *
  * There is an alias CleanableAsyncGenerator for AsyncGenerator with
  * RequiresCleanup set to true.
+ *
+ * Drain safety
+ * ------------
+ * One significant difference between AsyncGenerator and folly::coro::Task is
+ * that AsyncGenerator may be destroyed between next() calls - i.e. destroyed
+ * without being fully drained.
+ *
+ * For example:
+ *
+ *   AsyncGenerator<int> gen() {
+ *     SCOPE_EXIT {
+ *       LOG(INFO) << "Step 4";
+ *     };
+ *     LOG(INFO) << "Step 1";
+ *     co_yield 41;
+ *     SCOPE_EXIT {
+ *       LOG(INFO) << "Step 3";
+ *     };
+ *     LOG(INFO) << "Step 2";
+ *     co_yield 42;
+ *     SCOPE_EXIT {
+ *       LOG(INFO) << "Never reached";
+ *     };
+ *     LOG(INFO) << "Never reached";
+ *     co_yield 43;
+ *   }
+ *
+ *   {
+ *     AsyncGenerator<int> g = gen();
+ *     while (auto next = co_await g.next()) {
+ *       LOG(INFO) << *next;
+ *       if (*next == 42) {
+ *         break;
+ *         // ^^^ this may trigger generator destruction before it is drained.
+ *       }
+ *     }
+ *   }
+ *
+ * This means that when writing an AsyncGenerator, you should always document
+ * whether such AsyncGenerator requires draining before destruction (drain
+ * unsafe). When possible you should always aim to make AsyncGenerator not
+ * require draining before destruction (drain safe).
+ *
+ * If an AsyncGenerator is drain unsafe, always mention this in the
+ * documentation and ideally include some assertions that help detect cases
+ * where such AsyncGenerator is destroyed without being fully drained.
+ *
+ * Example:
+ *
+ *   AsyncGenerator<int> gen() {
+ *     auto drainGuard = makeGuard([] { LOG(FATAL) << "I shall be drained!"; });
+ *     co_yield 41;
+ *     co_yield 42;
+ *     co_yield 43;
+ *     drainGuard.dismiss();
+ *   }
  */
 template <
     typename Reference,
@@ -448,9 +504,11 @@ class FOLLY_NODISCARD AsyncGenerator {
   friend AsyncGenerator tag_invoke(
       tag_t<co_invoke_fn>, tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
     if constexpr (RequiresCleanup) {
-      auto&& [r] = co_await co_scope_exit(
-          [](auto&& gen) { return std::move(gen).cleanup(); },
-          invoke(static_cast<F&&>(f), static_cast<A&&>(a)...));
+      auto&& [fScoped, r] = co_await co_scope_exit(
+          [](auto&&, auto&& gen) { return std::move(gen).cleanup(); },
+          static_cast<F&&>(f),
+          AsyncGenerator{});
+      r = invoke(static_cast<F&&>(fScoped), static_cast<A&&>(a)...);
       while (true) {
         co_yield co_result(co_await co_awaitTry(r.next()));
       }
@@ -486,8 +544,9 @@ struct BaseAsyncGeneratorPromise<true> {
 };
 
 template <typename Reference, typename Value, bool RequiresCleanup = false>
-class AsyncGeneratorPromise final : public ExtendedCoroutinePromise,
-                                    BaseAsyncGeneratorPromise<RequiresCleanup> {
+class AsyncGeneratorPromise final
+    : public ExtendedCoroutinePromise,
+      BaseAsyncGeneratorPromise<RequiresCleanup> {
   class YieldAwaiter {
    public:
     bool await_ready() noexcept { return false; }

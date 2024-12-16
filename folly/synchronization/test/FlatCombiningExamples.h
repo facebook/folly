@@ -148,11 +148,12 @@ template <
     typename Req,
     typename Mutex = std::mutex,
     template <typename> class Atom = std::atomic>
-class FcCustomExample : public FlatCombining<
-                            FcCustomExample<Req, Mutex, Atom>,
-                            Mutex,
-                            Atom,
-                            Req> {
+class FcCustomExample
+    : public FlatCombining<
+          FcCustomExample<Req, Mutex, Atom>,
+          Mutex,
+          Atom,
+          Req> {
   using FC = FlatCombining<FcCustomExample<Req, Mutex, Atom>, Mutex, Atom, Req>;
   using Rec = typename FC::Rec;
 
