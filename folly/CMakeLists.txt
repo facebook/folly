@@ -103,7 +103,9 @@ if (PYTHON_EXTENSIONS)
   message(STATUS "[jmswen] HERE 2!")
 
   install(
-    FILES ${_cybld}/folly/executor_api.h
+    FILES
+      ${_cybld}/folly/executor_api.h
+      ${_cybld}/folly/iobuf_ext.h
     DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
     COMPONENT dev
   )
