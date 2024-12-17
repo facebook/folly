@@ -18,73 +18,79 @@
 # Cython requires source files in a specific structure, the structure is
 # created as tree of links to the real source files.
 
-import sys, platform
+import os, sys, platform
 from Cython.Build import cythonize
 from Cython.Compiler import Options
 from setuptools import Extension, setup
-import os
-import json
 
-Options.fast_fail = True
-
-if sys.platform == "darwin" and platform.machine() == "arm64":
+if sys.platform == 'darwin' and platform.machine() == 'arm64':
     # Macos (arm64, homebrew path is different than intel)
-    library_dirs = ["/opt/homebrew/lib"]
+    library_dirs = ['/opt/homebrew/lib']
 else:
     # Debian/Ubuntu
-    library_dirs = ["/usr/lib", "/usr/lib/x86_64-linux-gnu"]
+    library_dirs = ['/usr/lib', '/usr/lib/x86_64-linux-gnu']
     
-# Add library paths from CMAKE_PREFIX_PATH
-if cmake_prefix_path := os.environ.get("CMAKE_PREFIX_PATH"):
-    library_dirs.extend(p + "/lib" for p in cmake_prefix_path.split(":"))
+# Add (prepend) library paths from CMAKE_PREFIX_PATH
+if cmake_prefix_path := os.environ.get('CMAKE_PREFIX_PATH'):
+    library_dirs[:0] = list(os.path.join(p, 'lib') for p in cmake_prefix_path.split(':'))
+
+# Set up the Python path   
+if cmake_install_prefix := os.environ.get('CMAKE_INSTALL_PREFIX'):
+    site_packages = os.path.join(cmake_prefix_path, 'lib',
+        f'python{sys.version_info.major}.{sys.version_info.minor}',
+        'site-packages'
+    )
+    os.environ['PYTHONPATH'] = site_packages
 
 exts = [
     Extension(
-        "folly.executor",
+        'folly.executor',
         sources=[
-            "folly/executor.pyx",
-            "folly/executor_intf.cpp",
-            "folly/ProactorExecutor.cpp",
-            "folly/error.cpp",
+            'folly/executor.pyx',
+            'folly/executor_intf.cpp',
+            'folly/ProactorExecutor.cpp',
+            'folly/error.cpp',
         ],
-        libraries=["folly", "glog", "double-conversion"],
-        extra_compile_args=["-std=c++20"],  # C++20 for coroutines
-        include_dirs=[".", "../.."],  # cython generated code
+        libraries=['folly', 'glog', 'double-conversion','fmt'],
+        extra_compile_args=['-std=c++20'],  # C++20 for coroutines
+        include_dirs=['.', '../..'],  # cython generated code
         library_dirs=library_dirs,
     ),
     Extension(
-        "folly.iobuf",
+        'folly.iobuf',
         sources=[
-            "folly/iobuf.pyx",
-            "folly/iobuf_intf.cpp",
-            "folly/iobuf_ext.cpp",
-            "folly/error.cpp",
+            'folly/iobuf.pyx',
+            'folly/iobuf_intf.cpp',
+            'folly/iobuf_ext.cpp',
+            'folly/error.cpp',
         ],
-        libraries=["folly", "glog", "double-conversion", "fmt"],
-        extra_compile_args=["-std=c++20"],  # C++20 for coroutines
-        include_dirs=[".","../.."],  # cython generated code
+        libraries=['folly', 'glog', 'double-conversion', 'fmt'],
+        extra_compile_args=['-std=c++20'],  # C++20 for coroutines
+        include_dirs=['.', '../..'],  # cython generated code
         library_dirs=library_dirs,
     ),
     Extension(
-        "folly.fiber_manager",
+        'folly.fiber_manager',
         sources=[
-            "folly/fiber_manager.pyx",
-            "folly/fibers.cpp",
-            "folly/error.cpp",
+            'folly/fiber_manager.pyx',
+            'folly/fibers.cpp',
+            'folly/error.cpp',
         ],
-        libraries=["folly", "glog", "double-conversion", "fmt", "event"],
-        extra_compile_args=["-std=c++20"],  # C++20 for coroutines
-        include_dirs=[".","../.."],  # cython generated code
+        libraries=['folly', "boost_coroutine", "boost_context",
+                   'glog', 'double-conversion', 'fmt', 'event'],
+        extra_compile_args=['-std=c++20'],  # C++20 for coroutines
+        include_dirs=['.', '../..'],  # cython generated code
         library_dirs=library_dirs,
     )
 ]
 
+Options.fast_fail = True
 setup(
-    name="folly",
-    version="0.0.1",
-    packages=["folly"],
-    package_data={"": ["*.pxd", "*.pyi", "*.h"]},
-    setup_requires=["cython"],
+    name='folly',
+    version='0.0.1',
+    packages=['folly'],
+    setup_requires=['cython'],
     zip_safe=False,
-    ext_modules=cythonize(exts, compiler_directives={"language_level": 3}),
+    package_data={'': ['*.pxd', '*.pyi', '*.h', '__init__.py']},
+    ext_modules=cythonize(exts, compiler_directives={'language_level': 3}),
 )

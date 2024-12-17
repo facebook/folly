@@ -101,8 +101,8 @@ if (PYTHON_EXTENSIONS)
 install(CODE "
   execute_process(
     COMMAND
-      python3 -c \"import sys,os; os.environ['PYTHONPATH'] = f'${CMAKE_INSTALL_PREFIX}/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages'\"
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install --prefix ${CMAKE_INSTALL_PREFIX} --verbose --single-version-externally-managed --record=installed_files.txt
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install --prefix ${CMAKE_INSTALL_PREFIX} 
+      --verbose --single-version-externally-managed --record=installed_files.txt
     COMMAND_ECHO STDOUT
     WORKING_DIRECTORY ${_cybld}
   )"
