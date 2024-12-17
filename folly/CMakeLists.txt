@@ -45,6 +45,7 @@ if (PYTHON_EXTENSIONS)
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
   )
   file(MAKE_DIRECTORY "${_cybld}/folly/")
+  file(MAKE_DIRECTORY "${_cybld}/folly/python/")
 
   foreach(_src ${BindingFiles})
     get_filename_component(_target_file "${_src}" NAME)
