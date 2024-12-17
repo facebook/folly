@@ -29,7 +29,7 @@ exts = [
     Extension(
         "folly.iobuf",
         sources=["folly/iobuf.pyx"],
-        libraries=["folly", "glog", "folly_python_cpp"],
+        libraries=["folly", "glog"],
         extra_compile_args=["-std=c++17"],
     ),
     Extension(
