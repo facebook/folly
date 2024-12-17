@@ -49,17 +49,17 @@ if (PYTHON_EXTENSIONS)
   foreach(_src ${BindingFiles})
     get_filename_component(_target_file "${_src}" NAME)
 
-  message(
-    STATUS
-    "Linking ${_src} "
-    "to ${_cybld}/folly/${_target_file}"
-  )
-  add_custom_command(TARGET create_binding_symlink PRE_BUILD
-    COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_src}"
-      "${_cybld}/folly/${_target_file}"
-  )
+    message(
+      STATUS
+      "Linking ${_src} "
+      "to ${_cybld}/folly/${_target_file}"
+    )
+    add_custom_command(TARGET create_binding_symlink PRE_BUILD
+      COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "${_src}"
+        "${_cybld}/folly/${_target_file}"
+    )
   endforeach()
 
   # Tell setup.py where to find includes and libfolly.so
@@ -151,7 +151,7 @@ if (PYTHON_EXTENSIONS)
   add_dependencies(folly_python_cpp folly_python_bindings)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
-  target_include_directories(folly_python_cpp PRIVATE ${_cybld})
+  target_include_directories(folly_python_cpp PRIVATE ${CMAKE_SOURCE_DIR})
   target_link_libraries(folly_python_cpp PUBLIC folly)
   apply_folly_compile_options_to_target(folly_python_cpp)
   install(
