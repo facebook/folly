@@ -94,6 +94,7 @@ if (PYTHON_EXTENSIONS)
     WORKING_DIRECTORY ${_cybld}
   )
 
+  add_custom_target(create_post_binding_symlink ALL)
   add_custom_command(TARGET create_post_binding_symlink POST_BUILD
     COMMAND
       ${CMAKE_COMMAND} -E create_symlink
