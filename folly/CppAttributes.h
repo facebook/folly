@@ -171,6 +171,12 @@
 #define FOLLY_ATTR_GNU_USED
 #endif
 
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::lifetimebound)
+#define FOLLY_ATTR_CLANG_LIFETIMEBOUND clang::lifetimebound
+#else
+#define FOLLY_ATTR_CLANG_LIFETIMEBOUND
+#endif
+
 #if FOLLY_HAS_CPP_ATTRIBUTE(clang::coro_await_elidable)
 #define FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE clang::coro_await_elidable
 #else
