@@ -93,18 +93,18 @@ if (PYTHON_EXTENSIONS)
     COMPONENT dev
   )
 
-  # Install Folly Python Bindings
-  if (UNIX)
-    set(ROOT_ARG "--root \$DESTDIR/")
-  endif ()
+# Install Folly Python Bindings - vestigial - remove
+# if (UNIX)
+#   set(ROOT_ARG "--root \$DESTDIR/")
+# endif ()
 
-  install(CODE "
-    execute_process(
-      COMMAND
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install
-        --prefix ${CMAKE_INSTALL_PREFIX} ${ROOT_ARG}
-      COMMAND_ECHO STDOUT
-      WORKING_DIRECTORY ${_cybld}
-    )"
-  )
+install(CODE "
+  execute_process(
+    COMMAND
+      python3 -c \"import sys,os; os.environ['PYTHONPATH'] = f'${CMAKE_INSTALL_PREFIX}/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages'\"
+      ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install --prefix ${CMAKE_INSTALL_PREFIX} --verbose --single-version-externally-managed --record=installed_files.txt
+    COMMAND_ECHO STDOUT
+    WORKING_DIRECTORY ${_cybld}
+  )"
+)
 endif ()
