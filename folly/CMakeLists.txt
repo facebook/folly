@@ -90,6 +90,7 @@ if (PYTHON_EXTENSIONS)
 
   add_custom_command(TARGET folly_python_bindings POST_BUILD
     COMMAND
+      CFLAGS="${CMAKE_C_FLAGS}" CXXFLAGS="${CMAKE_CXX_FLAGS}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
