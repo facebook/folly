@@ -91,6 +91,7 @@ if (PYTHON_EXTENSIONS)
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
       ${_cybld}/folly/executor_api.h
+      ${_cybld}/folly/fiber_manager_api.h
       ${_cybld}/folly/iobuf_api.h
     WORKING_DIRECTORY ${_cybld}
   )
