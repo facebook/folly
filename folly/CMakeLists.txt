@@ -42,6 +42,7 @@ if (PYTHON_EXTENSIONS)
   file(GLOB BindingFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/python/executor.pyx"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf_ext.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
   )
