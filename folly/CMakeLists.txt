@@ -151,7 +151,7 @@ if (PYTHON_EXTENSIONS)
   add_dependencies(folly_python_cpp folly_python_bindings)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
-  target_include_directories(folly_python_cpp PRIVATE ${CMAKE_SOURCE_DIR})
+  target_include_directories(folly_python_cpp PRIVATE ${CMAKE_SOURCE_DIR}/folly)
   target_link_libraries(folly_python_cpp PUBLIC folly)
   apply_folly_compile_options_to_target(folly_python_cpp)
   install(
