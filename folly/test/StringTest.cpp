@@ -1487,4 +1487,5 @@ TEST(String, format_string_for_each_named_arg) {
   EXPECT_THAT(fn("hello{3}world{bob}go"), testing::ElementsAre("bob"));
   EXPECT_THAT(fn("hello{bob}world{3}go"), testing::ElementsAre("bob"));
   EXPECT_THAT(fn("hello{bob}world{sam}go"), testing::ElementsAre("bob", "sam"));
+  EXPECT_THAT(fn("{bob}world{sam}"), testing::ElementsAre("bob", "sam"));
 }

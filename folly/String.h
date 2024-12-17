@@ -771,7 +771,7 @@ struct format_string_for_each_named_arg_fn {
       auto const pos = str.find('{');
       auto const beg = pos == view::npos ? str.size() : pos + 1;
       if (beg == str.size()) {
-        return; // malformed
+        return; // completed
       }
       if (str[beg] == '{') {
         str = str.substr(beg + 1);
@@ -782,10 +782,11 @@ struct format_string_for_each_named_arg_fn {
         return; // malformed
       }
       auto const arg = str.substr(beg, end - beg);
-      if (!arg.empty() && (arg[0] == '_' || std::isalpha(arg[0]))) {
+      auto const c = arg.empty() ? 0 : arg[0];
+      if (c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
         fn(arg);
       }
-      str = str.substr(beg);
+      str = str.substr(end);
     }
   }
 };
