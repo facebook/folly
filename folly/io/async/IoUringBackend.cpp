@@ -55,7 +55,7 @@ extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
 #endif
 
 #if FOLLY_IO_URING_UP_TO_DATE
-#include <folly/experimental/io/IoUringProvidedBufferRing.h>
+#include <folly/io/async/IoUringProvidedBufferRing.h>
 #endif
 
 namespace folly {

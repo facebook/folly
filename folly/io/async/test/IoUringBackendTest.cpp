@@ -20,12 +20,12 @@
 #include <folly/FileUtil.h>
 #include <folly/Function.h>
 #include <folly/String.h>
-#include <folly/experimental/io/IoUringBackend.h>
 #include <folly/experimental/io/test/IoTestTempFileUtil.h>
 #include <folly/init/Init.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
 #include <folly/io/async/AsyncUDPSocket.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/IoUringBackend.h>
 #include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
 #include <folly/io/async/test/EventBaseTestLib.h>
 #include <folly/portability/GTest.h>

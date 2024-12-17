@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/experimental/io/IoUringBackend.h>
-#include <folly/experimental/io/Liburing.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/IoUringBackend.h>
+#include <folly/io/async/Liburing.h>
 
 namespace folly {
 

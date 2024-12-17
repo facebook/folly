@@ -25,7 +25,7 @@
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/experimental/io/Epoll.h>
-#include <folly/experimental/io/Liburing.h>
+#include <folly/io/async/Liburing.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>

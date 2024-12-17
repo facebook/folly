@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/experimental/io/Liburing.h>
 #include <folly/io/async/IoUringBase.h>
+#include <folly/io/async/Liburing.h>
 #include <folly/portability/SysMman.h>
 
 #if FOLLY_HAS_LIBURING

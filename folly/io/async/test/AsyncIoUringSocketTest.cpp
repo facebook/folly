@@ -23,14 +23,14 @@
 #include <folly/FileUtil.h>
 #include <folly/Subprocess.h>
 #include <folly/executors/GlobalExecutor.h>
-#include <folly/experimental/io/AsyncIoUringSocket.h>
-#include <folly/experimental/io/IoUringBackend.h>
-#include <folly/experimental/io/IoUringEvent.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+#include <folly/io/async/AsyncIoUringSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/IoUringBackend.h>
+#include <folly/io/async/IoUringEvent.h>
 #include <folly/portability/GTest.h>
 #include <folly/system/Shell.h>
 #include <folly/test/SocketAddressTestHelper.h>

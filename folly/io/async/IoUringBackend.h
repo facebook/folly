@@ -35,10 +35,10 @@
 #include <folly/Function.h>
 #include <folly/Optional.h>
 #include <folly/Range.h>
-#include <folly/experimental/io/Liburing.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/IoUringBase.h>
+#include <folly/io/async/Liburing.h>
 #include <folly/portability/Asm.h>
 #include <folly/small_vector.h>
 

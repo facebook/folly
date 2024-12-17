@@ -19,11 +19,11 @@
 #include <map>
 #include <vector>
 
-#include <folly/experimental/io/IoUringBackend.h>
-#include <folly/experimental/io/IoUringEvent.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/IoUringBackend.h>
+#include <folly/io/async/IoUringEvent.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {
