@@ -124,6 +124,29 @@ if (PYTHON_EXTENSIONS)
     COMPONENT dev
   )
 
+  add_library(
+    folly_python_cpp
+      python/error.cpp
+      python/executor.cpp
+      python/iobuf.cpp
+      python/iobuf_ext.cpp
+  )
+  add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
+  set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
+  target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
+  target_include_directories(folly_python_cpp PRIVATE "${_cybld}")
+  target_link_libraries(folly_python_cpp PUBLIC folly)
+  apply_folly_compile_options_to_target(folly_python_cpp)
+  install(
+    TARGETS folly_python_cpp
+    EXPORT folly
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+  )
+  install(
+    TARGETS folly_python_cpp
+    DESTINATION ${PYTHON_INSTALL_DIR}
+  )
+
   # Install Folly Python Bindings
   install(CODE "
     execute_process(
@@ -148,27 +171,4 @@ if (PYTHON_EXTENSIONS)
       )"
     )
   endif()
-
-  add_library(
-    folly_python_cpp
-      python/error.cpp
-      python/executor.cpp
-      python/iobuf.cpp
-      python/iobuf_ext.cpp
-  )
-  add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
-  set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
-  target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
-  target_include_directories(folly_python_cpp PRIVATE "${_cybld}")
-  target_link_libraries(folly_python_cpp PUBLIC folly)
-  apply_folly_compile_options_to_target(folly_python_cpp)
-  install(
-    TARGETS folly_python_cpp
-    EXPORT folly
-    DESTINATION ${CMAKE_INSTALL_PREFIX}
-  )
-  install(
-    TARGETS folly_python_cpp
-    DESTINATION ${PYTHON_INSTALL_DIR}
-  )
 endif ()
