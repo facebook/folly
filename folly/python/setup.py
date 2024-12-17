@@ -34,7 +34,7 @@ exts = [
     ),
     Extension(
         "folly.executor",
-        sources=["folly/executor.pyx"],
+        sources=["folly/executor.pyx", "folly/ProactorExecutor.cpp"],
         libraries=["folly", "glog"],
         extra_compile_args=["-std=c++17"],
     ),
