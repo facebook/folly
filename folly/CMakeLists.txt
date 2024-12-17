@@ -94,7 +94,18 @@ if (PYTHON_EXTENSIONS)
     WORKING_DIRECTORY ${_cybld}
   )
 
-  message(STATUS "[jmswen] HERE!")
+  add_custom_command(TARGET create_post_binding_symlink POST_BUILD
+    COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      "${_cybld}/folly/executor_api.h"
+      "${_cybld}/folly/python/executor_api.h"
+  )
+  add_custom_command(TARGET create_post_binding_symlink POST_BUILD
+    COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      "${_cybld}/folly/iobuf_api.h"
+      "${_cybld}/folly/python/iobuf_api.h"
+  )
 
   add_custom_command(TARGET folly_python_bindings POST_BUILD
     COMMAND
@@ -102,8 +113,6 @@ if (PYTHON_EXTENSIONS)
       bdist_wheel
     WORKING_DIRECTORY ${_cybld}
   )
-
-  message(STATUS "[jmswen] HERE 2!")
 
   install(
     FILES
@@ -151,7 +160,7 @@ if (PYTHON_EXTENSIONS)
   add_dependencies(folly_python_cpp folly_python_bindings)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
-  target_include_directories(folly_python_cpp PRIVATE ${CMAKE_SOURCE_DIR}/folly)
+  # target_include_directories(folly_python_cpp PRIVATE ${CMAKE_SOURCE_DIR}/folly)
   target_link_libraries(folly_python_cpp PUBLIC folly)
   apply_folly_compile_options_to_target(folly_python_cpp)
   install(
