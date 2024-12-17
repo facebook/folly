@@ -96,20 +96,25 @@ if (PYTHON_EXTENSIONS)
   )
 
   add_custom_target(create_post_binding_symlink ALL)
-  add_custom_command(TARGET create_post_binding_symlink POST_BUILD
+  add_custom_command(TARGET create_post_binding_symlink
     COMMAND
       ${CMAKE_COMMAND} -E create_symlink
       "${_cybld}/folly/executor_api.h"
       "${_cybld}/folly/python/executor_api.h"
   )
-  add_custom_command(TARGET create_post_binding_symlink POST_BUILD
+  add_custom_command(TARGET create_post_binding_symlink
     COMMAND
       ${CMAKE_COMMAND} -E create_symlink
       "${_cybld}/folly/iobuf_api.h"
       "${_cybld}/folly/python/iobuf_api.h"
   )
-
-  add_custom_command(TARGET folly_python_bindings POST_BUILD
+  add_custom_command(TARGET create_post_binding_symlink
+    COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      "${_cybld}/folly/fiber_manager_api.h"
+      "${_cybld}/folly/python/fiber_manager_api.h"
+  )
+  add_custom_command(TARGET folly_python_bindings
     COMMAND
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       bdist_wheel
