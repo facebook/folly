@@ -164,7 +164,7 @@ if (PYTHON_EXTENSIONS)
       python/GILAwareManualExecutor.cpp
       python/ProactorExecutor.cpp
   )
-  add_dependencies(folly_python_cpp folly_python_bindings)
+  add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
   target_include_directories(folly_python_cpp PRIVATE ${_cybld})
