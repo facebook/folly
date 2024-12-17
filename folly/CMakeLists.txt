@@ -40,7 +40,8 @@ if (PYTHON_EXTENSIONS)
 
   add_custom_target(create_binding_symlink ALL)
   file(GLOB BindingFiles
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/executor.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pyx"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
   )
@@ -91,7 +92,6 @@ if (PYTHON_EXTENSIONS)
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
       ${_cybld}/folly/executor_api.h
-      ${_cybld}/folly/fiber_manager_api.h
       ${_cybld}/folly/iobuf_api.h
     WORKING_DIRECTORY ${_cybld}
   )
@@ -108,12 +108,6 @@ if (PYTHON_EXTENSIONS)
       ${CMAKE_COMMAND} -E create_symlink
       "${_cybld}/folly/iobuf_api.h"
       "${_cybld}/folly/python/iobuf_api.h"
-  )
-  add_custom_command(TARGET create_post_binding_symlink
-    COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_cybld}/folly/fiber_manager_api.h"
-      "${_cybld}/folly/python/fiber_manager_api.h"
   )
   add_custom_command(TARGET folly_python_bindings
     COMMAND
@@ -159,11 +153,8 @@ if (PYTHON_EXTENSIONS)
     folly_python_cpp
       python/error.cpp
       python/executor.cpp
-      python/fibers.cpp
       python/iobuf.cpp
       python/iobuf_ext.cpp
-      python/GILAwareManualExecutor.cpp
-      python/ProactorExecutor.cpp
   )
   add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
