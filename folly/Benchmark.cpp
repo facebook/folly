@@ -263,11 +263,11 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIterationEstimate(
   size_t actualTrials = 0;
   const unsigned int estimateCount = to_integral(max(1.0, 5e+7 / estPerIter));
   std::vector<TrialResultType> trialResults(FLAGS_bm_max_trials);
-  const auto maxRunTime = seconds(5);
+  const auto maxRunTime = seconds(max(5, FLAGS_bm_max_secs));
   auto globalStart = high_resolution_clock::now();
 
   // Run benchmark up to trial times with at least 0.5 sec each
-  // Or until we run out of alowed time (5sec)
+  // Or until we run out of allowed time (max(5, FLAGS_bm_max_secs))
   for (size_t tryId = 0; tryId < FLAGS_bm_max_trials; tryId++) {
     detail::TimeIterData timeIterData = fun(estimateCount);
     auto nsecs = duration_cast<nanoseconds>(timeIterData.duration);
