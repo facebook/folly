@@ -169,7 +169,6 @@ if (PYTHON_EXTENSIONS)
   )
   install(
     TARGETS folly_python_cpp
-    EXPORT folly
     DESTINATION ${PYTHON_INSTALL_DIR}
   )
 endif ()
