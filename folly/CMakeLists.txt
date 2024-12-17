@@ -109,28 +109,13 @@ if (PYTHON_EXTENSIONS)
       "${_cybld}/folly/iobuf_api.h"
       "${_cybld}/folly/python/iobuf_api.h"
   )
-  add_custom_command(TARGET folly_python_bindings
-    COMMAND
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
-      bdist_wheel
-    WORKING_DIRECTORY ${_cybld}
-  )
-
-  install(
-    FILES
-      ${_cybld}/folly/executor_api.h
-      ${_cybld}/folly/iobuf_api.h
-    DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
-    COMPONENT dev
-  )
 
   add_library(
     folly_python_cpp
-      python/error.cpp
       python/executor.cpp
       python/iobuf.cpp
-      python/iobuf_ext.cpp
   )
+
   add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
@@ -145,6 +130,21 @@ if (PYTHON_EXTENSIONS)
   install(
     TARGETS folly_python_cpp
     DESTINATION ${PYTHON_INSTALL_DIR}
+  )
+
+  add_custom_command(TARGET folly_python_bindings
+    COMMAND
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
+      bdist_wheel
+    WORKING_DIRECTORY ${_cybld}
+  )
+
+  install(
+    FILES
+      ${_cybld}/folly/executor_api.h
+      ${_cybld}/folly/iobuf_api.h
+    DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
+    COMPONENT dev
   )
 
   # Install Folly Python Bindings

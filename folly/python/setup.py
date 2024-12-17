@@ -28,7 +28,7 @@ Options.fast_fail = True
 exts = [
     Extension(
         "folly.iobuf",
-        sources=["folly/iobuf.pyx"],
+        sources=["folly/iobuf.pyx", "python/iobuf_ext.cpp"],
         libraries=["folly", "glog"],
         extra_compile_args=["-std=c++17"],
     ),
