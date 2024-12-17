@@ -32,15 +32,20 @@ else:
     
 # Add (prepend) library paths from CMAKE_PREFIX_PATH
 if cmake_prefix_path := os.environ.get('CMAKE_PREFIX_PATH'):
-    library_dirs[:0] = list(os.path.join(p, 'lib') for p in cmake_prefix_path.split(':'))
+    cmake_lib_dirs = list(os.path.join(p, 'lib') for p in cmake_prefix_path.split(':'))
+    library_dirs[:0] = cmake_lib_dirs
+    print(f"export LD_LIBRARY_PATH=\"{':'.join(cmake_lib_dirs)}:$LD_LIBRARY_PATH\"")
 
 # Set up the Python path   
 if cmake_install_prefix := os.environ.get('CMAKE_INSTALL_PREFIX'):
-    site_packages = os.path.join(cmake_prefix_path, 'lib',
+    site_packages = os.path.join(cmake_install_prefix, 'lib',
         f'python{sys.version_info.major}.{sys.version_info.minor}',
         'site-packages'
     )
     os.environ['PYTHONPATH'] = site_packages
+    print(f"# Python package directory: {site_packages}")
+    print(f"# Directory exists: {os.path.exists(site_packages)}")
+    print(f"export PYTHONPATH=\"{site_packages}\"")
 
 exts = [
     Extension(
@@ -51,7 +56,7 @@ exts = [
             'folly/ProactorExecutor.cpp',
             'folly/error.cpp',
         ],
-        libraries=['folly', 'glog', 'double-conversion','fmt'],
+        libraries=['folly', 'unwind', 'glog', 'double-conversion','fmt'],
         extra_compile_args=['-std=c++20'],  # C++20 for coroutines
         include_dirs=['.', '../..'],  # cython generated code
         library_dirs=library_dirs,
@@ -64,7 +69,7 @@ exts = [
             'folly/iobuf_ext.cpp',
             'folly/error.cpp',
         ],
-        libraries=['folly', 'glog', 'double-conversion', 'fmt'],
+        libraries=['folly', 'unwind', 'glog', 'double-conversion', 'fmt'],
         extra_compile_args=['-std=c++20'],  # C++20 for coroutines
         include_dirs=['.', '../..'],  # cython generated code
         library_dirs=library_dirs,
@@ -76,7 +81,7 @@ exts = [
             'folly/fibers.cpp',
             'folly/error.cpp',
         ],
-        libraries=['folly', "boost_coroutine", "boost_context",
+        libraries=['folly', 'unwind', 'boost_coroutine', 'boost_context',
                    'glog', 'double-conversion', 'fmt', 'event'],
         extra_compile_args=['-std=c++20'],  # C++20 for coroutines
         include_dirs=['.', '../..'],  # cython generated code
