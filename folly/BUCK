@@ -567,6 +567,17 @@ cpp_library(
 )
 
 cpp_library(
+    name = "fmt_utility",
+    headers = [
+        "FmtUtility.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":cpp_attributes",
+    ],
+)
+
+cpp_library(
     name = "format",
     srcs = [
         "Format.cpp",

@@ -704,6 +704,14 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "fmt_utility_test",
+    srcs = ["FmtUtilityTest.cpp"],
+    deps = [
+        "//folly:fmt_utility",
+    ],
+)
+
 cpp_benchmark(
     name = "format_benchmark",
     srcs = ["FormatBenchmark.cpp"],

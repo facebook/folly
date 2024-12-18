@@ -1104,6 +1104,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       BENCHMARK fingerprint_benchmark SOURCES FingerprintBenchmark.cpp
       TEST fingerprint_test SOURCES FingerprintTest.cpp
       TEST fixed_string_test SOURCES FixedStringTest.cpp
+      TEST fmt_utility_test SOURCES FmtUtilityTest.cpp
       TEST format_other_test SOURCES FormatOtherTest.cpp
       BENCHMARK format_benchmark SOURCES FormatBenchmark.cpp
       TEST format_test SOURCES FormatTest.cpp
