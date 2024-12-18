@@ -32,6 +32,18 @@ cpp_library(
 )
 
 cpp_library(
+    name = "observer",
+    headers = [
+        "Observer.h",
+    ],
+    exported_deps = [
+        ":settings",
+        "//folly/observer:observer",
+        "//folly/observer:simple_observable",
+    ],
+)
+
+cpp_library(
     name = "types",
     srcs = [
         "Types.cpp",

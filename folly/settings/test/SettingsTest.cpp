@@ -23,8 +23,10 @@
 
 #include <folly/Format.h>
 #include <folly/String.h>
+#include <folly/experimental/observer/detail/ObserverManager.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/settings/Observer.h>
 #include <folly/synchronization/test/Barrier.h>
 
 #include <folly/settings/test/a.h>
@@ -643,6 +645,22 @@ TEST(SettingsTest, callback) {
   some_ns::FOLLY_SETTING(follytest, some_flag).set("e");
   EXPECT_EQ(callbackInvocations, 4);
   EXPECT_EQ(lastCallbackValue, "d");
+}
+
+TEST(SettingsTest, observers) {
+  auto observer = folly::settings::getObserver(
+      some_ns::FOLLY_SETTING(follytest, some_flag));
+  std::string updatedFromCallback;
+  auto callbackHandle = observer.addCallback([&](auto snapshot) {
+    updatedFromCallback = *snapshot;
+  });
+  EXPECT_EQ(**observer, "default");
+  EXPECT_EQ(updatedFromCallback, "default");
+
+  some_ns::FOLLY_SETTING(follytest, some_flag).set("new value");
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(**observer, "new value");
+  EXPECT_EQ(updatedFromCallback, "new value");
 }
 
 TEST(Settings, immutables) {
