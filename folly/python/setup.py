@@ -22,27 +22,23 @@ from Cython.Build import cythonize
 from Cython.Compiler import Options
 from setuptools import Extension, setup
 
-
 Options.fast_fail = True
+
+print("Building Cython extensions")
+extra_compile_args = ["-std=c++20", "-msse4.2", "-D_GLIBCXX_USE_CXX11_ABI=0", "-fcoroutines"]
 
 exts = [
     Extension(
         "folly.iobuf",
         sources=["folly/iobuf.pyx", "folly/iobuf_ext.cpp"],
         libraries=["folly", "glog"],
-        extra_compile_args=[
-            "-std=c++17",
-            "-msse4.2",
-        ],
+        extra_compile_args=extra_compile_args,
     ),
     Extension(
         "folly.executor",
         sources=["folly/executor.pyx", "folly/ProactorExecutor.cpp"],
         libraries=["folly", "glog"],
-        extra_compile_args=[
-            "-std=c++17",
-            "-msse4.2",
-        ],
+        extra_compile_args=extra_compile_args,
     ),
 ]
 

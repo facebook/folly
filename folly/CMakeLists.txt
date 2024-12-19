@@ -46,6 +46,7 @@ if (PYTHON_EXTENSIONS)
     "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pyx"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf_ext.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/ProactorExecutor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/error.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
     "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
   )
@@ -92,8 +93,6 @@ if (PYTHON_EXTENSIONS)
 
   add_custom_command(TARGET folly_python_bindings POST_BUILD
     COMMAND
-      CFLAGS="${CMAKE_C_FLAGS}" CXXFLAGS="${CMAKE_CXX_FLAGS}"
-      CXX="/bin/c++" CC="/bin/cc"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
@@ -115,11 +114,32 @@ if (PYTHON_EXTENSIONS)
       "${_cybld}/folly/iobuf_api.h"
       "${_cybld}/folly/python/iobuf_api.h"
   )
+  add_custom_command(TARGET create_post_binding_symlink
+    COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      "${_cybld}/folly/iobuf_ext.h"
+      "${_cybld}/folly/python/iobuf_ext.h"
+  )
+  add_custom_command(TARGET create_post_binding_symlink
+    COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      "${_cybld}/folly/error.h"
+      "${_cybld}/folly/python/error.h"
+  )
+  add_custom_command(TARGET create_post_binding_symlink
+    COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      "${_cybld}/folly/ProactorExecutor.h"
+      "${_cybld}/folly/python/ProactorExecutor.h"
+  )
 
   add_library(
     folly_python_cpp
       python/executor.cpp
       python/iobuf.cpp
+      python/iobuf_ext.cpp
+      python/error.cpp
+      python/ProactorExecutor.cpp
   )
 
   add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
@@ -149,6 +169,10 @@ if (PYTHON_EXTENSIONS)
     FILES
       ${_cybld}/folly/executor_api.h
       ${_cybld}/folly/iobuf_api.h
+      ${_cybld}/folly/iobuf_ext.h
+      ${_cybld}/folly/import.h
+      ${_cybld}/folly/error.h
+      ${_cybld}/folly/ProactorExecutor.h
     DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
     COMPONENT dev
   )
@@ -158,7 +182,7 @@ if (PYTHON_EXTENSIONS)
     execute_process(
       COMMAND
         python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install
-        --prefix ${CMAKE_INSTALL_PREFIX}
+        --prefix ${CMAKE_INSTALL_PREFIX} -v
       COMMAND_ECHO STDOUT
       WORKING_DIRECTORY ${_cybld}
     )"
