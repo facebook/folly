@@ -568,8 +568,16 @@ cpp_library(
 
 cpp_library(
     name = "fmt_utility",
+    srcs = [
+        "FmtUtility.cpp",
+    ],
     headers = [
         "FmtUtility.h",
+    ],
+    deps = [
+        ":range",
+        ":string",
+        "//folly/ssl:openssl_hash",
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",

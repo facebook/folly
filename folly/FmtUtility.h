@@ -44,4 +44,27 @@ struct fmt_make_format_args_from_map_fn {
 inline constexpr fmt_make_format_args_from_map_fn
     fmt_make_format_args_from_map{};
 
+/// fmt_vformat_mangle_name_fn
+/// fmt_vformat_mangle_name
+///
+/// A helper function-object type and variable for mangling vformat named-arg
+/// names which fmt::vformat might not otherwise permit.
+struct fmt_vformat_mangle_name_fn {
+  std::string operator()(std::string_view const str) const;
+  void operator()(std::string& out, std::string_view const str) const;
+};
+inline constexpr fmt_vformat_mangle_name_fn fmt_vformat_mangle_name{};
+
+/// fmt_vformat_mangle_format_string_fn
+/// fmt_vformat_mangle_format_string
+///
+/// A helper function-object type and variable for mangling the content of
+/// vformat format-strings containing named-arg names which fmt::vformat might
+/// not otherwise permit.
+struct fmt_vformat_mangle_format_string_fn {
+  std::string operator()(std::string_view const str) const;
+};
+inline constexpr fmt_vformat_mangle_format_string_fn
+    fmt_vformat_mangle_format_string{};
+
 } // namespace folly

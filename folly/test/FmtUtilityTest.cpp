@@ -37,3 +37,16 @@ TEST_F(FmtUtilityTest, fmt_make_format_args_from_map_fn) {
                   {"adj"s, "silly"sv},
               })));
 }
+
+TEST_F(FmtUtilityTest, fmt_vformat_mangle) {
+  EXPECT_EQ(
+      "hello bob you silly goose",
+      fmt::vformat(
+          folly::fmt_vformat_mangle_format_string(
+              "hello {@pre-key|name} you {@pre-key|adj} goose"),
+          folly::fmt_make_format_args_from_map(
+              std::map<std::string, std::string_view>{
+                  {folly::fmt_vformat_mangle_name("@pre-key|name"), "bob"sv},
+                  {folly::fmt_vformat_mangle_name("@pre-key|adj"), "silly"sv},
+              })));
+}

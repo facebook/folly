@@ -783,7 +783,7 @@ struct format_string_for_each_named_arg_fn {
       }
       auto const arg = str.substr(beg, end - beg);
       auto const c = arg.empty() ? 0 : arg[0];
-      if (c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+      if (c && !(c >= '0' && c <= '9')) {
         fn(arg);
       }
       str = str.substr(end);
