@@ -20,6 +20,8 @@
 #include <memory>
 
 #include <folly/portability/Config.h>
+#include <folly/portability/GFlags.h>
+FOLLY_GFLAGS_DECLARE_bool(folly_hazptr_use_executor);
 
 ///
 /// Forward declatations and implicit documentation of all hazptr
