@@ -21,7 +21,7 @@ cpp_unittest(
     name = "base_test",
     srcs = ["BaseTest.cpp"],
     headers = [],
-    tags = [
+    labels = [
         "serialize_test_cases",
     ],
     deps = [
@@ -106,7 +106,7 @@ cpp_unittest(
     name = "parallel_test",
     srcs = ["ParallelTest.cpp"],
     headers = [],
-    tags = [
+    labels = [
         "serialize",
     ],
     deps = [
