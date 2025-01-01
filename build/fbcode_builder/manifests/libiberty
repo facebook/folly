@@ -22,6 +22,6 @@ subdir = binutils-2.42/libiberty
 # only build the parts needed for demangling
 # as we still want to use system linker and assembler etc
 [autoconf.args]
---disable-shared
---disable-testsuite
 --enable-install-libiberty
+CFLAGS = -fPIC
+CXXFLAGS = -fPIC
