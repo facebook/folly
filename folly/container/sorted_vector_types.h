@@ -387,11 +387,12 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   sorted_vector_set(
       sorted_unique_t,
       Container&& container,
-      const Compare& comp = Compare()) noexcept(std::
-                                                    is_nothrow_constructible<
-                                                        EBO,
-                                                        const Compare&,
-                                                        Container&&>::value)
+      const Compare& comp =
+          Compare()) noexcept(std::
+                                  is_nothrow_constructible<
+                                      EBO,
+                                      const Compare&,
+                                      Container&&>::value)
       : m_(comp, std::move(container)) {
     assert(detail::is_sorted_unique(
         m_.cont_.begin(), m_.cont_.end(), value_comp()));
@@ -521,8 +522,9 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     auto a = get_allocator();
     std::allocator_traits<allocator_type>::construct(
         a, p, std::forward<Args>(args)...);
-    auto g = makeGuard(
-        [&]() { std::allocator_traits<allocator_type>::destroy(a, p); });
+    auto g = makeGuard([&]() {
+      std::allocator_traits<allocator_type>::destroy(a, p);
+    });
     return insert(std::move(*p));
   }
 
@@ -543,8 +545,9 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     auto a = get_allocator();
     std::allocator_traits<allocator_type>::construct(
         a, p, std::forward<Args>(args)...);
-    auto g = makeGuard(
-        [&]() { std::allocator_traits<allocator_type>::destroy(a, p); });
+    auto g = makeGuard([&]() {
+      std::allocator_traits<allocator_type>::destroy(a, p);
+    });
     return insert(hint, std::move(*p));
   }
 
@@ -1027,11 +1030,12 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   sorted_vector_map(
       sorted_unique_t,
       Container&& container,
-      const Compare& comp = Compare()) noexcept(std::
-                                                    is_nothrow_constructible<
-                                                        EBO,
-                                                        value_compare,
-                                                        Container&&>::value)
+      const Compare& comp =
+          Compare()) noexcept(std::
+                                  is_nothrow_constructible<
+                                      EBO,
+                                      value_compare,
+                                      Container&&>::value)
       : m_(value_compare(comp), std::move(container)) {
     assert(detail::is_sorted_unique(
         m_.cont_.begin(), m_.cont_.end(), value_comp()));
@@ -1163,8 +1167,9 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     auto a = get_allocator();
     std::allocator_traits<allocator_type>::construct(
         a, p, std::forward<Args>(args)...);
-    auto g = makeGuard(
-        [&]() { std::allocator_traits<allocator_type>::destroy(a, p); });
+    auto g = makeGuard([&]() {
+      std::allocator_traits<allocator_type>::destroy(a, p);
+    });
     return insert(std::move(*p));
   }
 
@@ -1185,8 +1190,9 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     auto a = get_allocator();
     std::allocator_traits<allocator_type>::construct(
         a, p, std::forward<Args>(args)...);
-    auto g = makeGuard(
-        [&]() { std::allocator_traits<allocator_type>::destroy(a, p); });
+    auto g = makeGuard([&]() {
+      std::allocator_traits<allocator_type>::destroy(a, p);
+    });
     return insert(hint, std::move(*p));
   }
 

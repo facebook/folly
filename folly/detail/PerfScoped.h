@@ -29,6 +29,8 @@ namespace detail {
 #define FOLLY_PERF_IS_SUPPORTED 0
 #endif
 
+constexpr std::string_view kPerfBinaryPath = "/usr/bin/perf";
+
 /*
  * A folly::benchmark helper for attaching `perf` profiler
  * to a given block of code.

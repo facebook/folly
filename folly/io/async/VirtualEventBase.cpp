@@ -69,8 +69,9 @@ void VirtualEventBase::runOnDestruction(
   callback.schedule(
       [this](auto& cb) { onDestructionCallbacks_.wlock()->push_back(cb); },
       [this](auto& cb) {
-        onDestructionCallbacks_.withWLock(
-            [&](auto& list) { list.erase(list.iterator_to(cb)); });
+        onDestructionCallbacks_.withWLock([&](auto& list) {
+          list.erase(list.iterator_to(cb));
+        });
       });
 }
 

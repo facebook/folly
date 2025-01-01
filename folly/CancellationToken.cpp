@@ -266,8 +266,9 @@ MergingCancellationState::MergingCancellationState(
     CopyTag, size_t nCopy, const CancellationToken** copyToks)
     : MergingCancellationState() {
   for (size_t i = 0; i < nCopy; ++i, ++callbackEnd_) {
-    new (callbackEnd_)
-        CancellationCallback(*copyToks[i], [this] { requestCancellation(); });
+    new (callbackEnd_) CancellationCallback(*copyToks[i], [this] {
+      requestCancellation();
+    });
   }
 }
 
@@ -275,8 +276,9 @@ MergingCancellationState::MergingCancellationState(
     MoveTag, size_t nMove, CancellationToken** moveToks)
     : MergingCancellationState() {
   for (size_t i = 0; i < nMove; ++i, ++callbackEnd_) {
-    new (callbackEnd_) CancellationCallback(
-        std::move(*moveToks[i]), [this] { requestCancellation(); });
+    new (callbackEnd_) CancellationCallback(std::move(*moveToks[i]), [this] {
+      requestCancellation();
+    });
   }
 }
 
@@ -288,8 +290,9 @@ MergingCancellationState::MergingCancellationState(
     CancellationToken** moveToks)
     : MergingCancellationState(CopyTag{}, nCopy, copyToks) {
   for (size_t i = 0; i < nMove; ++i, ++callbackEnd_) {
-    new (callbackEnd_) CancellationCallback(
-        std::move(*moveToks[i]), [this] { requestCancellation(); });
+    new (callbackEnd_) CancellationCallback(std::move(*moveToks[i]), [this] {
+      requestCancellation();
+    });
   }
 }
 

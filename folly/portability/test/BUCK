@@ -1,5 +1,5 @@
-load("@fbcode//target_determinator/macros:ci.bzl", "ci")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 
 oncall("fbcode_entropy_wardens_folly")
 

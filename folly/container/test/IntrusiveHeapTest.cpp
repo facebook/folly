@@ -48,9 +48,10 @@ struct TaskBase {
   int pri = 0;
 };
 
-struct Task : public TaskBase,
-              public IntrusiveHeapNode<A>,
-              public IntrusiveHeapNode<B> {
+struct Task
+    : public TaskBase,
+      public IntrusiveHeapNode<A>,
+      public IntrusiveHeapNode<B> {
   using TaskBase::TaskBase;
 };
 

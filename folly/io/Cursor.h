@@ -1260,8 +1260,9 @@ class Writable {
 enum class CursorAccess { PRIVATE, UNSHARE };
 
 template <CursorAccess access>
-class RWCursor : public CursorBase<RWCursor<access>, IOBuf>,
-                 public Writable<RWCursor<access>> {
+class RWCursor
+    : public CursorBase<RWCursor<access>, IOBuf>,
+      public Writable<RWCursor<access>> {
   friend class CursorBase<RWCursor<access>, IOBuf>;
 
  public:

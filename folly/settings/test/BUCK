@@ -21,14 +21,17 @@ cpp_unittest(
     srcs = [
         "SettingsTest.cpp",
     ],
+    labels = ["case-isolation-failure"],
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":a",
         ":b",
         "//folly:format",
         "//folly:string",
+        "//folly/experimental/observer/detail:observer_manager",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/settings:observer",
         "//folly/settings:settings",
         "//folly/synchronization/test:barrier",
     ],

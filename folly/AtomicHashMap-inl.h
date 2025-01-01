@@ -44,8 +44,9 @@ AtomicHashMap<
     ProbeFcn,
     KeyConvertFcn>::AtomicHashMap(size_t finalSizeEst, const Config& config)
     : kGrowthFrac_(
-          config.growthFactor < 0 ? 1.0f - config.maxLoadFactor
-                                  : config.growthFactor) {
+          config.growthFactor < 0
+              ? 1.0f - config.maxLoadFactor
+              : config.growthFactor) {
   CHECK(config.maxLoadFactor > 0.0f && config.maxLoadFactor < 1.0f);
   subMaps_[0].store(
       SubMap::create(finalSizeEst, config).release(),

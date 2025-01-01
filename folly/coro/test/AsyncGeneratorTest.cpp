@@ -363,9 +363,10 @@ TEST_F(AsyncGeneratorTest, ExplicitValueType) {
   items["foo"] = "hello";
   items["bar"] = "goodbye";
 
-  auto makeGenerator = [&]() -> folly::coro::AsyncGenerator<
-                                 std::tuple<const std::string&, std::string&>,
-                                 std::tuple<std::string, std::string>> {
+  auto makeGenerator = [&]()
+      -> folly::coro::AsyncGenerator<
+          std::tuple<const std::string&, std::string&>,
+          std::tuple<std::string, std::string>> {
     for (auto& [k, v] : items) {
       co_yield {k, v};
     }

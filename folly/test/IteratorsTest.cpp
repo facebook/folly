@@ -20,6 +20,7 @@
 
 #include <folly/container/Array.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysTypes.h>
 
 using namespace folly::detail;
 
@@ -63,11 +64,12 @@ TEST(IteratorsTest, SimpleIteratorFacade) {
 
 namespace {
 // Simple iterator adaptor: wraps an int pointer.
-struct IntPointerIter : IteratorAdaptor<
-                            IntPointerIter,
-                            int const*,
-                            int const,
-                            std::forward_iterator_tag> {
+struct IntPointerIter
+    : IteratorAdaptor<
+          IntPointerIter,
+          int const*,
+          int const,
+          std::forward_iterator_tag> {
   using Super = IteratorAdaptor<
       IntPointerIter,
       int const*,
@@ -107,11 +109,12 @@ TEST(IteratorsTest, IterAdaptorWithPointer) {
 namespace {
 // More complex case: wrap a map iterator, but these provide either the key or
 // value.
-struct IntMapKeyIter : IteratorAdaptor<
-                           IntMapKeyIter,
-                           std::map<int, int>::iterator,
-                           int const,
-                           std::forward_iterator_tag> {
+struct IntMapKeyIter
+    : IteratorAdaptor<
+          IntMapKeyIter,
+          std::map<int, int>::iterator,
+          int const,
+          std::forward_iterator_tag> {
   using Super = IteratorAdaptor<
       IntMapKeyIter,
       std::map<int, int>::iterator,
@@ -121,11 +124,12 @@ struct IntMapKeyIter : IteratorAdaptor<
   int const& dereference() const { return base()->first; }
 };
 
-struct IntMapValueIter : IteratorAdaptor<
-                             IntMapValueIter,
-                             std::map<int, int>::iterator,
-                             int,
-                             std::forward_iterator_tag> {
+struct IntMapValueIter
+    : IteratorAdaptor<
+          IntMapValueIter,
+          std::map<int, int>::iterator,
+          int,
+          std::forward_iterator_tag> {
   using Super = IteratorAdaptor<
       IntMapValueIter,
       std::map<int, int>::iterator,
@@ -168,11 +172,12 @@ TEST(IteratorsTest, IterAdaptorOfOtherIter) {
 }
 
 namespace {
-struct IntMapValueIterConst : IteratorAdaptor<
-                                  IntMapValueIterConst,
-                                  std::map<int, int>::const_iterator,
-                                  int const,
-                                  std::forward_iterator_tag> {
+struct IntMapValueIterConst
+    : IteratorAdaptor<
+          IntMapValueIterConst,
+          std::map<int, int>::const_iterator,
+          int const,
+          std::forward_iterator_tag> {
   using Super = IteratorAdaptor<
       IntMapValueIterConst,
       std::map<int, int>::const_iterator,

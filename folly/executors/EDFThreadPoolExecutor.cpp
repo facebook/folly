@@ -379,8 +379,9 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
         taskInfo.enqueueTime.time_since_epoch().count(),
         taskInfo.waitTime.count(),
         taskInfo.taskId);
-    forEachTaskObserver(
-        [&](auto& observer) { observer.taskDequeued(taskInfo); });
+    forEachTaskObserver([&](auto& observer) {
+      observer.taskDequeued(taskInfo);
+    });
 
     invokeCatchingExns("EDFThreadPoolExecutor: func", [&] {
       std::exchange(task, {})->run(iter);
@@ -396,8 +397,9 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
         taskInfo.waitTime.count(),
         taskInfo.runTime.count(),
         taskInfo.taskId);
-    forEachTaskObserver(
-        [&](auto& observer) { observer.taskProcessed(taskInfo); });
+    forEachTaskObserver([&](auto& observer) {
+      observer.taskProcessed(taskInfo);
+    });
 
     thread->idle.store(true, std::memory_order_relaxed);
     thread->lastActiveTime.store(

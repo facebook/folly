@@ -51,8 +51,9 @@ typename Map::mapped_type get_default(
     const Map& map, const Key& key, Value&& dflt) {
   using M = typename Map::mapped_type;
   auto pos = map.find(key);
-  return (pos != map.end()) ? pos->second
-                            : static_cast<M>(static_cast<Value&&>(dflt));
+  return (pos != map.end())
+      ? pos->second
+      : static_cast<M>(static_cast<Value&&>(dflt));
 }
 
 /**
@@ -147,9 +148,8 @@ const typename Map::mapped_type& get_ref_default(
 
 template <class Map, typename Key = typename Map::key_type>
 const typename Map::mapped_type& get_ref_default(
-    const Map& map,
-    const Key& key,
-    const typename Map::mapped_type&& dflt) = delete;
+    const Map& map, const Key& key, const typename Map::mapped_type&& dflt) =
+    delete;
 
 /**
  * Given a map and a key, return a reference to the value corresponding to the

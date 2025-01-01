@@ -1001,10 +1001,8 @@ class Subprocess {
       const sigset_t* sigmask,
       const char* childDir) const;
   int runChild(
-      const char* executable,
-      char** argv,
-      char** env,
-      const Options& options) const;
+      const char* executable, char** argv, char** env, const Options& options)
+      const;
 
   // Closes fds inherited from parent in child process
   static void closeInheritedFds(const Options::FdMap& fdActions);

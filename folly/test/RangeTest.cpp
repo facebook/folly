@@ -948,7 +948,7 @@ class NeedleFinderTest : public ::testing::Test {
   }
 };
 
-struct SseNeedleFinder {
+struct SimdNeedleFinder {
   static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
     // This will only use the SSE version if it is supported on this CPU
     // (selected using ifunc).
@@ -956,9 +956,9 @@ struct SseNeedleFinder {
   }
 };
 
-struct NoSseNeedleFinder {
+struct NoSimdNeedleFinder {
   static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
-    return detail::qfind_first_byte_of_nosse(haystack, needles);
+    return detail::qfind_first_byte_of_nosimd(haystack, needles);
   }
 };
 
@@ -969,7 +969,7 @@ struct ByteSetNeedleFinder {
 };
 
 using NeedleFinders =
-    ::testing::Types<SseNeedleFinder, NoSseNeedleFinder, ByteSetNeedleFinder>;
+    ::testing::Types<SimdNeedleFinder, NoSimdNeedleFinder, ByteSetNeedleFinder>;
 TYPED_TEST_SUITE(NeedleFinderTest, NeedleFinders);
 
 TYPED_TEST(NeedleFinderTest, Null) {

@@ -67,8 +67,9 @@ namespace folly {
  */
 template <typename MessageT>
 class NotificationQueue {
-  struct Node : public boost::intrusive::slist_base_hook<
-                    boost::intrusive::cache_last<true>> {
+  struct Node
+      : public boost::intrusive::slist_base_hook<
+            boost::intrusive::cache_last<true>> {
     template <typename MessageTT>
     Node(MessageTT&& msg, std::shared_ptr<RequestContext> ctx)
         : msg_(std::forward<MessageTT>(msg)), ctx_(std::move(ctx)) {}
@@ -272,9 +273,9 @@ class NotificationQueue {
       if (eventfd_ == -1) {
         if (errno == ENOSYS || errno == EINVAL) {
           // eventfd not availalble
-          LOG(ERROR) << "failed to create eventfd for NotificationQueue: "
-                     << errno << ", falling back to pipe mode (is your kernel "
-                     << "> 2.6.30?)";
+          LOG(ERROR)
+              << "failed to create eventfd for NotificationQueue: " << errno
+              << ", falling back to pipe mode (is your kernel " << "> 2.6.30?)";
           fdType = FdType::PIPE;
         } else {
           // some other error
@@ -532,8 +533,8 @@ class NotificationQueue {
       // still drain.
       uint8_t message[32];
       ssize_t result;
-      while ((result = readNoInt(pipeFds_[0], &message, sizeof(message))) !=
-             -1) {
+      while (
+          (result = readNoInt(pipeFds_[0], &message, sizeof(message))) != -1) {
         bytes_read += result;
       }
       CHECK(result == -1 && errno == EAGAIN);

@@ -198,9 +198,10 @@ class LogCategory {
    * This is used when the LogHandler configuration is changed requiring one or
    * more LogHandler objects to be replaced with new ones.
    */
-  void updateHandlers(const std::unordered_map<
-                      std::shared_ptr<LogHandler>,
-                      std::shared_ptr<LogHandler>>& handlerMap);
+  void updateHandlers(
+      const std::unordered_map<
+          std::shared_ptr<LogHandler>,
+          std::shared_ptr<LogHandler>>& handlerMap);
 
   /* Internal methods for use by other parts of the logging library code */
 

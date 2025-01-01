@@ -314,8 +314,9 @@ class Baton {
               deadline - Clock::now()));
     }
 
-    switch (
-        detail::spin_pause_until(deadline, opt, [this] { return ready(); })) {
+    switch (detail::spin_pause_until(deadline, opt, [this] {
+      return ready();
+    })) {
       case detail::spin_result::success:
         return true;
       case detail::spin_result::timeout:

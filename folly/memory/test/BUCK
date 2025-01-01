@@ -7,6 +7,7 @@ cpp_unittest(
     name = "arena_test",
     srcs = ["ArenaTest.cpp"],
     headers = [],
+    labels = ["oss-broken"],
     deps = [
         "//folly:memory",
         "//folly:random",
@@ -34,6 +35,7 @@ cpp_unittest(
         "//folly/memory:mallctl_helper",
         "//folly/memory:malloc",
         "//folly/portability:gtest",
+        "//folly/portability:sys_types",
     ],
 )
 

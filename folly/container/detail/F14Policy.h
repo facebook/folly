@@ -503,13 +503,14 @@ template <
     typename HasherOrVoid,
     typename KeyEqualOrVoid,
     typename AllocOrVoid>
-class ValueContainerPolicy : public BasePolicy<
-                                 Key,
-                                 MappedTypeOrVoid,
-                                 HasherOrVoid,
-                                 KeyEqualOrVoid,
-                                 AllocOrVoid,
-                                 SetOrMapValueType<Key, MappedTypeOrVoid>> {
+class ValueContainerPolicy
+    : public BasePolicy<
+          Key,
+          MappedTypeOrVoid,
+          HasherOrVoid,
+          KeyEqualOrVoid,
+          AllocOrVoid,
+          SetOrMapValueType<Key, MappedTypeOrVoid>> {
  public:
   using Super = BasePolicy<
       Key,
@@ -999,13 +1000,14 @@ template <
     typename KeyEqualOrVoid,
     typename AllocOrVoid,
     typename EligibleForPerturbedInsertionOrder>
-class VectorContainerPolicy : public BasePolicy<
-                                  Key,
-                                  MappedTypeOrVoid,
-                                  HasherOrVoid,
-                                  KeyEqualOrVoid,
-                                  AllocOrVoid,
-                                  uint32_t> {
+class VectorContainerPolicy
+    : public BasePolicy<
+          Key,
+          MappedTypeOrVoid,
+          HasherOrVoid,
+          KeyEqualOrVoid,
+          AllocOrVoid,
+          uint32_t> {
  public:
   using Super = BasePolicy<
       Key,
@@ -1298,8 +1300,9 @@ class VectorContainerPolicy : public BasePolicy<
 
   bool beforeBuild(
       std::size_t size, std::size_t /*capacity*/, VectorContainerPolicy&& rhs) {
-    return beforeBuildImpl(
-        size, rhs, [](Value& v) { return Super::moveValue(v); });
+    return beforeBuildImpl(size, rhs, [](Value& v) {
+      return Super::moveValue(v);
+    });
   }
 
   template <typename P>
@@ -1442,8 +1445,9 @@ class VectorContainerPolicy : public BasePolicy<
   // Iterator stuff
 
   Iter linearBegin(std::size_t size) const {
-    return size > 0 ? Iter{values_ + size - 1, values_}
-                    : Iter{nullptr, nullptr};
+    return size > 0
+        ? Iter{values_ + size - 1, values_}
+        : Iter{nullptr, nullptr};
   }
 
   Iter linearEnd() const { return Iter{nullptr, nullptr}; }

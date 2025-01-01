@@ -66,8 +66,9 @@ class EventBaseTest : public EventBaseTestBase {
 
   std::unique_ptr<EventBase> makeEventBase(
       folly::EventBase::Options opts = folly::EventBase::Options()) {
-    return std::make_unique<EventBase>(
-        opts.setBackendFactory([] { return T::getBackend(); }));
+    return std::make_unique<EventBase>(opts.setBackendFactory([] {
+      return T::getBackend();
+    }));
   }
 };
 
@@ -1829,8 +1830,9 @@ TYPED_TEST_P(EventBaseTest, CancelRunInLoop) {
 }
 
 namespace {
-class TerminateTestCallback : public EventBase::LoopCallback,
-                              public EventHandler {
+class TerminateTestCallback
+    : public EventBase::LoopCallback,
+      public EventHandler {
  public:
   TerminateTestCallback(EventBase* eventBase, int fd)
       : EventHandler(eventBase, NetworkSocket::fromFd(fd)),
@@ -2335,8 +2337,9 @@ TYPED_TEST_P(EventBaseTest, LoopKeepAliveWithLoopForever) {
   {
     auto* ev = evbPtr.get();
     Executor::KeepAlive<EventBase> keepAlive;
-    ev->runInEventBaseThreadAndWait(
-        [&ev, &keepAlive] { keepAlive = getKeepAliveToken(ev); });
+    ev->runInEventBaseThreadAndWait([&ev, &keepAlive] {
+      keepAlive = getKeepAliveToken(ev);
+    });
     ASSERT_FALSE(done) << "Loop finished before we asked it to";
     ev->terminateLoopSoon();
     /* sleep override */
@@ -2354,14 +2357,15 @@ TYPED_TEST_P(EventBaseTest, LoopKeepAliveShutdown) {
 
   bool done = false;
 
-  std::thread t([&done,
-                 loopKeepAlive = getKeepAliveToken(evbPtr.get()),
-                 evbPtrRaw = evbPtr.get()]() mutable {
-    /* sleep override */ std::this_thread::sleep_for(
-        std::chrono::milliseconds(100));
-    evbPtrRaw->runInEventBaseThread(
-        [&done, loopKeepAlive = std::move(loopKeepAlive)] { done = true; });
-  });
+  std::thread t(
+      [&done,
+       loopKeepAlive = getKeepAliveToken(evbPtr.get()),
+       evbPtrRaw = evbPtr.get()]() mutable {
+        /* sleep override */ std::this_thread::sleep_for(
+            std::chrono::milliseconds(100));
+        evbPtrRaw->runInEventBaseThread(
+            [&done, loopKeepAlive = std::move(loopKeepAlive)] { done = true; });
+      });
 
   evbPtr.reset();
 
@@ -2385,23 +2389,23 @@ TYPED_TEST_P(EventBaseTest, LoopKeepAliveAtomic) {
   }
 
   for (size_t i = 0; i < kNumThreads; ++i) {
-    ts.emplace_back([evbPtrRaw = evbPtr.get(),
-                     batonPtr = batons[i].get(),
-                     &done] {
-      std::vector<Executor::KeepAlive<EventBase>> keepAlives;
-      for (size_t j = 0; j < kNumTasks; ++j) {
-        keepAlives.emplace_back(getKeepAliveToken(evbPtrRaw));
-      }
+    ts.emplace_back(
+        [evbPtrRaw = evbPtr.get(), batonPtr = batons[i].get(), &done] {
+          std::vector<Executor::KeepAlive<EventBase>> keepAlives;
+          for (size_t j = 0; j < kNumTasks; ++j) {
+            keepAlives.emplace_back(getKeepAliveToken(evbPtrRaw));
+          }
 
-      batonPtr->post();
+          batonPtr->post();
 
-      /* sleep override */ std::this_thread::sleep_for(std::chrono::seconds(1));
+          /* sleep override */ std::this_thread::sleep_for(
+              std::chrono::seconds(1));
 
-      for (auto& keepAlive : keepAlives) {
-        evbPtrRaw->runInEventBaseThread(
-            [&done, keepAlive = std::move(keepAlive)]() { ++done; });
-      }
-    });
+          for (auto& keepAlive : keepAlives) {
+            evbPtrRaw->runInEventBaseThread(
+                [&done, keepAlive = std::move(keepAlive)]() { ++done; });
+          }
+        });
   }
 
   for (auto& baton : batons) {
@@ -2619,8 +2623,9 @@ TYPED_TEST_P(EventBaseTest, EventBaseExecutionObserver) {
   CountedLoopCallback cb(&base, 1, [&]() { ranBeforeLoop = true; });
   base.runBeforeLoop(&cb);
 
-  base.runInEventBaseThread(
-      [&]() { base.runInEventBaseThread([&]() { ran = true; }); });
+  base.runInEventBaseThread([&]() {
+    base.runInEventBaseThread([&]() { ran = true; });
+  });
   base.loop();
 
   ASSERT_TRUE(ranBeforeLoop);

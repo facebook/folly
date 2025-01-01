@@ -18,9 +18,9 @@
 
 #include <folly/Benchmark.h>
 #include <folly/FileUtil.h>
-#include <folly/experimental/io/IoUringBackend.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/IoUringBackend.h>
 #include <folly/portability/GFlags.h>
 
 using namespace folly;
@@ -85,11 +85,12 @@ class EventFD : public EventHandler {
 class BackendEventBase : public EventBase {
  public:
   explicit BackendEventBase(bool useRegisteredFds, size_t capacity = 32 * 1024)
-      : EventBase(EventBase::Options()
-                      .setBackendFactory([useRegisteredFds, capacity] {
-                        return getBackend(useRegisteredFds, capacity);
-                      })
-                      .setSkipTimeMeasurement(true)) {}
+      : EventBase(
+            EventBase::Options()
+                .setBackendFactory([useRegisteredFds, capacity] {
+                  return getBackend(useRegisteredFds, capacity);
+                })
+                .setSkipTimeMeasurement(true)) {}
 
  private:
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend(

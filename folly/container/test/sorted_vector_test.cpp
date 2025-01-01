@@ -55,12 +55,13 @@ static_assert(
     !folly::is_sorted_vector_map_v<std::vector<std::pair<int, double>>>);
 
 static_assert(folly::is_sorted_vector_set_v<folly::sorted_vector_set<int>>);
-static_assert(folly::is_sorted_vector_set_v<folly::sorted_vector_set<
-                  int,
-                  /* Compare */ std::greater<int>,
-                  /* Allocator */ std::allocator<int>,
-                  /* GrowthPolicy */ void,
-                  /* Container */ folly::small_vector<int, 20>>>);
+static_assert(
+    folly::is_sorted_vector_set_v<folly::sorted_vector_set<
+        int,
+        /* Compare */ std::greater<int>,
+        /* Allocator */ std::allocator<int>,
+        /* GrowthPolicy */ void,
+        /* Container */ folly::small_vector<int, 20>>>);
 static_assert(!folly::is_sorted_vector_set_v<std::set<int>>);
 static_assert(!folly::is_sorted_vector_set_v<std::unordered_set<int>>);
 static_assert(!folly::is_sorted_vector_set_v<std::vector<int>>);

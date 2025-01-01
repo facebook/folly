@@ -635,8 +635,9 @@ TEST(Collect, collectAnyWithoutException) {
       std::vector<SemiFuture<int>> futures;
 
       for (auto& p : promises) {
-        futures.push_back(
-            p.getSemiFuture().deferValue([](auto v) { return v; }));
+        futures.push_back(p.getSemiFuture().deferValue([](auto v) {
+          return v;
+        }));
       }
       return collectAnyWithoutException(futures);
     }();
@@ -657,8 +658,9 @@ TEST(Collect, alreadyCompleted) {
       fs.push_back(makeFuture());
     }
 
-    collectAllUnsafe(fs).thenValue(
-        [&](std::vector<Try<Unit>> ts) { EXPECT_EQ(fs.size(), ts.size()); });
+    collectAllUnsafe(fs).thenValue([&](std::vector<Try<Unit>> ts) {
+      EXPECT_EQ(fs.size(), ts.size());
+    });
   }
   {
     std::vector<Future<Unit>> fs;
@@ -666,8 +668,9 @@ TEST(Collect, alreadyCompleted) {
       fs.push_back(makeFuture());
     }
 
-    collectAllUnsafe(fs).thenValue(
-        [&](std::vector<Try<Unit>> ts) { EXPECT_EQ(fs.size(), ts.size()); });
+    collectAllUnsafe(fs).thenValue([&](std::vector<Try<Unit>> ts) {
+      EXPECT_EQ(fs.size(), ts.size());
+    });
   }
   {
     std::vector<Future<int>> fs;
@@ -1085,14 +1088,15 @@ TEST(Collect, CollectRangeWithDestroyedWeakRef) {
 
   auto futures = std::vector<folly::SemiFuture<folly::Unit>>{};
   futures.push_back(folly::makeSemiFuture());
-  futures.push_back(folly::makeSemiFuture()
-                        .via(one.get())
-                        .thenValue([&](auto) {
-                          reachedFirstCallback.post();
-                          hasExecutorBeenDestroyed.wait();
-                        })
-                        .via(two->weakRef())
-                        .thenValue([](auto) {}));
+  futures.push_back(
+      folly::makeSemiFuture()
+          .via(one.get())
+          .thenValue([&](auto) {
+            reachedFirstCallback.post();
+            hasExecutorBeenDestroyed.wait();
+          })
+          .via(two->weakRef())
+          .thenValue([](auto) {}));
   futures.push_back(folly::makeSemiFuture());
   auto future = folly::collect(futures.begin(), futures.end());
 

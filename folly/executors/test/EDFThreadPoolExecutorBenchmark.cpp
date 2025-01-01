@@ -126,14 +126,14 @@ void multiThreaded(uint32_t n, std::unique_ptr<ThreadPoolExecutor> ex) {
     mallocQueue.write(&workItems[i]);
   }
 
-  auto maybeFinishState = [](WorkItem* workItem,
-                             folly::MPMCQueue<WorkItem*>& nextQueue) {
-    int tasksDone = workItem->tasksDone.fetch_add(1);
-    if (tasksDone + 1 == kNumTasks) {
-      workItem->tasksDone.store(0);
-      nextQueue.write(workItem);
-    }
-  };
+  auto maybeFinishState =
+      [](WorkItem* workItem, folly::MPMCQueue<WorkItem*>& nextQueue) {
+        int tasksDone = workItem->tasksDone.fetch_add(1);
+        if (tasksDone + 1 == kNumTasks) {
+          workItem->tasksDone.store(0);
+          nextQueue.write(workItem);
+        }
+      };
 
   auto mallocThread = std::thread([&]() {
     for (uint32_t i = 0; i < n; i++) {

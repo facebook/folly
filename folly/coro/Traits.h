@@ -127,10 +127,11 @@ struct _has_free_operator_co_await<
 /// member operator co_await() or a free-function operator co_await() that
 /// returns an Awaiter.
 template <typename T>
-struct is_awaitable : folly::Disjunction<
-                          detail::_has_member_operator_co_await<T>,
-                          detail::_has_free_operator_co_await<T>,
-                          is_awaiter<T>> {};
+struct is_awaitable
+    : folly::Disjunction<
+          detail::_has_member_operator_co_await<T>,
+          detail::_has_free_operator_co_await<T>,
+          is_awaiter<T>> {};
 
 template <typename T>
 constexpr bool is_awaitable_v = is_awaitable<T>::value;

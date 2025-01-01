@@ -203,8 +203,10 @@ class ThreadLocalPtr {
       typename = typename std::enable_if<
           std::is_convertible<SourceT*, T*>::value>::type>
   void reset(std::unique_ptr<SourceT, Deleter> source) {
-    auto deleter = [delegate = source.get_deleter()](
-                       T* ptr, TLPDestructionMode) { delegate(ptr); };
+    auto deleter =
+        [delegate = source.get_deleter()](T* ptr, TLPDestructionMode) {
+          delegate(ptr);
+        };
     reset(source.release(), deleter);
   }
 

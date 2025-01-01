@@ -213,19 +213,21 @@ template <typename T>
 CallbackHandle::CallbackHandle(
     Observer<T> observer, Function<void(Snapshot<T>)> callback) {
   context_ = std::make_shared<Context>();
-  context_->observer = makeObserver([observer_2 = std::move(observer),
-                                     callback_2 = std::move(callback),
-                                     context = context_]() mutable {
-    auto rCanceled = context->canceled.rlock();
-    if (*rCanceled) {
-      return folly::unit;
-    }
-    auto snapshot = *observer_2;
-    observer_detail::ObserverManager::DependencyRecorder::
-        withDependencyRecordingDisabled(
-            [&] { callback_2(std::move(snapshot)); });
-    return folly::unit;
-  });
+  context_->observer = makeObserver(
+      [observer_2 = std::move(observer),
+       callback_2 = std::move(callback),
+       context = context_]() mutable {
+        auto rCanceled = context->canceled.rlock();
+        if (*rCanceled) {
+          return folly::unit;
+        }
+        auto snapshot = *observer_2;
+        observer_detail::ObserverManager::DependencyRecorder::
+            withDependencyRecordingDisabled([&] {
+              callback_2(std::move(snapshot));
+            });
+        return folly::unit;
+      });
 }
 
 inline CallbackHandle& CallbackHandle::operator=(
@@ -256,8 +258,9 @@ CallbackHandle Observer<T>::addCallback(
 
 template <typename T>
 Observer<T> makeValueObserver(Observer<T> observer) {
-  return makeValueObserver(
-      [observer] { return observer.getSnapshot().getShared(); });
+  return makeValueObserver([observer] {
+    return observer.getSnapshot().getShared();
+  });
 }
 
 template <typename F>

@@ -95,8 +95,9 @@ struct Primed : folly::Cleanup, folly::EnablePrimaryFromThis<Primed> {
   folly::CPUThreadPoolExecutor pool_;
   Primed() : nested_(std::make_unique<int>(42)), pool_(4) {
     addCleanup(nested_);
-    addCleanup(
-        folly::makeSemiFuture().defer([this](auto&&) { this->pool_.join(); }));
+    addCleanup(folly::makeSemiFuture().defer([this](auto&&) {
+      this->pool_.join();
+    }));
   }
   using folly::Cleanup::addCleanup;
   std::shared_ptr<Primed> get_shared() { return masterLockFromThis(); }
@@ -171,14 +172,16 @@ TEST(PrimaryPtrTest, Invariants) {
   struct BadDerived : Primed {
     ~BadDerived() {
       EXPECT_EXIT(
-          addCleanup(folly::makeSemiFuture().deferValue(
-              [](folly::Unit) { EXPECT_TRUE(false); })),
+          addCleanup(folly::makeSemiFuture().deferValue([](folly::Unit) {
+            EXPECT_TRUE(false);
+          })),
           testing::KilledBySignal(SIGABRT),
           ".*addCleanup.*");
 
       EXPECT_EXIT(
-          addCleanup(folly::makeSemiFuture().deferValue(
-              [](folly::Unit) { EXPECT_TRUE(false); })),
+          addCleanup(folly::makeSemiFuture().deferValue([](folly::Unit) {
+            EXPECT_TRUE(false);
+          })),
           testing::KilledBySignal(SIGABRT),
           ".*addCleanup.*");
     }

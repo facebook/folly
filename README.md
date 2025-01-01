@@ -42,10 +42,6 @@ with `FOLLY_`. Namespace `folly` defines other internal namespaces
 such as `internal` or `detail`. User code should not depend on symbols
 in those namespaces.
 
-Folly has an `experimental` directory as well. This designation connotes
-primarily that we feel the API may change heavily over time. This code,
-typically, is still in heavy use and is well tested.
-
 # Physical Design
 
 At the top level Folly uses the classic "stuttering" scheme

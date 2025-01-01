@@ -129,10 +129,10 @@ auto collectAllTryImpl(
     // want to make sure the next task is started with the same initial
     // context.
     const auto context = RequestContext::saveContext();
-    (void)std::initializer_list<int>{
-        (tasks[Indices].start(&barrier, asyncFrame),
-         RequestContext::setContext(context),
-         0)...};
+    (void)std::initializer_list<int>{(
+        tasks[Indices].start(&barrier, asyncFrame),
+        RequestContext::setContext(context),
+        0)...};
 
     // Wait for all of the sub-tasks to finish execution.
     // Should be safe to avoid an executor transition here even if the
@@ -206,10 +206,10 @@ auto collectAllImpl(
 
     // Use std::initializer_list to ensure that the sub-tasks are launched
     // in the order they appear in the parameter pack.
-    (void)std::initializer_list<int>{
-        (tasks[Indices].start(&barrier, asyncFrame),
-         RequestContext::setContext(context),
-         0)...};
+    (void)std::initializer_list<int>{(
+        tasks[Indices].start(&barrier, asyncFrame),
+        RequestContext::setContext(context),
+        0)...};
 
     // Wait for all of the sub-tasks to finish execution.
     // Should be safe to avoid an executor transition here even if the
@@ -244,8 +244,9 @@ auto makeUnorderedAsyncGeneratorImpl(
     auto sharedState = std::make_shared<SharedState>(std::move(pipe));
     auto cancelToken = sharedState->cancelSource.getToken();
 
-    auto guard = folly::makeGuard(
-        [&] { sharedState->cancelSource.requestCancellation(); });
+    auto guard = folly::makeGuard([&] {
+      sharedState->cancelSource.requestCancellation();
+    });
     auto ex = co_await co_current_executor;
     size_t expected = 0;
     // Save the initial context and restore it after starting each task
@@ -429,8 +430,8 @@ auto collectAllRange(InputRange awaitables)
   exception_wrapper firstException;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      std::size_t index) -> detail::BarrierTask {
+  auto makeTask = [&](awaitable_type semiAwaitable, std::size_t index)
+      -> detail::BarrierTask {
     assert(index < tryResults.size());
 
     try {
@@ -497,8 +498,8 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
   exception_wrapper firstException;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      std::size_t) -> detail::BarrierTask {
+  auto makeTask =
+      [&](awaitable_type semiAwaitable, std::size_t) -> detail::BarrierTask {
     try {
       co_await co_viaIfAsync(
           executor.get_alias(),
@@ -550,8 +551,8 @@ auto collectAllTryRange(InputRange awaitables)
   const CancellationToken& cancelToken = co_await co_current_cancellation_token;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      std::size_t index) -> detail::BarrierTask {
+  auto makeTask = [&](awaitable_type semiAwaitable, std::size_t index)
+      -> detail::BarrierTask {
     assert(index < results.size());
     auto& result = results[index];
     try {
@@ -1075,8 +1076,8 @@ auto collectAnyRange(InputRange awaitables)
   firstCompletion.first = size_t(-1);
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      size_t index) -> folly::coro::Task<void> {
+  auto makeTask = [&](awaitable_type semiAwaitable, size_t index)
+      -> folly::coro::Task<void> {
     auto result = co_await folly::coro::co_awaitTry(std::move(semiAwaitable));
     if (!cancelSource.requestCancellation()) {
       // This is first entity to request cancellation.
@@ -1115,8 +1116,8 @@ auto collectAnyWithoutExceptionRange(InputRange awaitables)
   firstValueOrLastException.first = std::numeric_limits<size_t>::max();
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      size_t index) -> folly::coro::Task<void> {
+  auto makeTask = [&](awaitable_type semiAwaitable, size_t index)
+      -> folly::coro::Task<void> {
     auto result = co_await folly::coro::co_awaitTry(std::move(semiAwaitable));
     if ((result.hasValue() ||
          nAwaited.fetch_add(1, std::memory_order_relaxed) == nAwaitables) &&
@@ -1149,8 +1150,8 @@ auto collectAnyNoDiscardRange(InputRange awaitables)
       results;
 
   using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable,
-                      size_t index) -> folly::coro::Task<void> {
+  auto makeTask = [&](awaitable_type semiAwaitable, size_t index)
+      -> folly::coro::Task<void> {
     auto result = co_await folly::coro::co_awaitTry(std::move(semiAwaitable));
     cancelSource.requestCancellation();
     results[index] = std::move(result);

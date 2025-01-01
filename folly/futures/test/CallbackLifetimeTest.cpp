@@ -201,8 +201,9 @@ TEST_F(CallbackLifetimeTest, thenErrorTakesWrapReturnsFuture) {
   auto c = mkC();
   via(&executor)
       .thenValue(raise)
-      .thenError(
-          [_ = mkCGuard(c)](exception_wrapper&&) { return makeFuture(); })
+      .thenError([_ = mkCGuard(c)](exception_wrapper&&) {
+        return makeFuture();
+      })
       .wait();
   EXPECT_EQ(1, *c);
 }

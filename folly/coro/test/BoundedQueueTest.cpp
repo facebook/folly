@@ -295,8 +295,9 @@ TEST(BoundedQueueTest, UnorderedDequeueCompletion) {
   // The producer will get the ticket for the slow moving slot which will still
   // be in the process of dequeuing, so the producer needs to block until it
   // finishes and the slot becomes available.
-  std::thread producer(
-      [&] { folly::coro::blockingWait(queue.enqueue(SlowMover(false))); });
+  std::thread producer([&] {
+    folly::coro::blockingWait(queue.enqueue(SlowMover(false)));
+  });
 
   producer.join();
   for (auto& consumer : consumers) {

@@ -700,8 +700,9 @@ std::exception_ptr make_exception_ptr_with_(
 [[maybe_unused]] static void exception_cleanup_(
     _Unwind_Reason_Code reason, _Unwind_Exception* uwexception) {
   if (reason == _URC_FOREIGN_EXCEPTION_CAUGHT) {
-    auto handler = cxxabi_with_cxa_exception(
-        uwexception + 1, [](auto exn) { return exn->terminateHandler; });
+    auto handler = cxxabi_with_cxa_exception(uwexception + 1, [](auto exn) {
+      return exn->terminateHandler;
+    });
     folly::catch_exception(handler, folly::variadic_noop);
     std::abort();
   }

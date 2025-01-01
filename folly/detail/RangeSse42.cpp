@@ -30,7 +30,7 @@ namespace folly {
 namespace detail {
 size_t qfind_first_byte_of_sse42(
     const StringPieceLite haystack, const StringPieceLite needles) {
-  return qfind_first_byte_of_nosse(haystack, needles);
+  return qfind_first_byte_of_nosimd(haystack, needles);
 }
 } // namespace detail
 } // namespace folly
@@ -79,7 +79,7 @@ size_t qfind_first_byte_of_needles16(
        page_for(haystack.end() - 1) != page_for(haystack.data() + 15)) ||
       // can't load needles into SSE register if it could cross page boundary
       page_for(needles.end() - 1) != page_for(needles.data() + 15)) {
-    return detail::qfind_first_byte_of_nosse(haystack, needles);
+    return detail::qfind_first_byte_of_nosimd(haystack, needles);
   }
 
   auto arr2 = _mm_loadu_si128_unchecked(

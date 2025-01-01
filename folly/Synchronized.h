@@ -85,8 +85,9 @@ template <typename Mutex>
 inline constexpr SynchronizedMutexLevel kSynchronizedMutexLevel =
     kSynchronizedMutexIsUpgrade<void, Mutex>  ? SynchronizedMutexLevel::Upgrade
     : kSynchronizedMutexIsShared<void, Mutex> ? SynchronizedMutexLevel::Shared
-    : kSynchronizedMutexIsUnique<void, Mutex> ? SynchronizedMutexLevel::Unique
-                                              : SynchronizedMutexLevel::Unknown;
+    : kSynchronizedMutexIsUnique<void, Mutex>
+    ? SynchronizedMutexLevel::Unique
+    : SynchronizedMutexLevel::Unknown;
 
 enum class SynchronizedMutexMethod { Lock, TryLock };
 
@@ -633,9 +634,10 @@ class SynchronizedBase<Subclass, detail::SynchronizedMutexLevel::Unique> {
  * @refcode folly/docs/examples/folly/Synchronized.cpp
  */
 template <class T, class Mutex = SharedMutex>
-struct Synchronized : public SynchronizedBase<
-                          Synchronized<T, Mutex>,
-                          detail::kSynchronizedMutexLevel<Mutex>> {
+struct Synchronized
+    : public SynchronizedBase<
+          Synchronized<T, Mutex>,
+          detail::kSynchronizedMutexLevel<Mutex>> {
  private:
   using Base = SynchronizedBase<
       Synchronized<T, Mutex>,
@@ -672,10 +674,11 @@ struct Synchronized : public SynchronizedBase<
    *
    * deprecated
    */
-  /* implicit */ Synchronized(typename std::conditional<
-                              std::is_copy_constructible<T>::value,
-                              const Synchronized&,
-                              NonImplementedType>::type rhs) /* may throw */
+  /* implicit */ Synchronized(
+      typename std::conditional<
+          std::is_copy_constructible<T>::value,
+          const Synchronized&,
+          NonImplementedType>::type rhs) /* may throw */
       : Synchronized(rhs.copy()) {}
 
   /**
@@ -743,11 +746,12 @@ struct Synchronized : public SynchronizedBase<
    *
    * deprecated
    */
-  Synchronized& operator=(typename std::conditional<
-                          std::is_copy_constructible<T>::value &&
-                              std::is_move_assignable<T>::value,
-                          const Synchronized&,
-                          NonImplementedType>::type rhs) {
+  Synchronized& operator=(
+      typename std::conditional<
+          std::is_copy_constructible<T>::value &&
+              std::is_move_assignable<T>::value,
+          const Synchronized&,
+          NonImplementedType>::type rhs) {
     return *this = rhs.copy();
   }
 

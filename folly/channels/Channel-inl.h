@@ -79,8 +79,9 @@ class Receiver<TValue>::Waiter : public detail::IChannelCallback {
 
   bool await_ready() const noexcept {
     // We are ready immediately if the receiver is either cancelled or closed.
-    return state_.withRLock(
-        [&](const State& state) { return state.cancelled || !state.receiver; });
+    return state_.withRLock([&](const State& state) {
+      return state.cancelled || !state.receiver;
+    });
   }
 
   bool await_suspend(folly::coro::coroutine_handle<> awaitingCoroutine) {

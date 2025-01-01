@@ -33,9 +33,9 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
     auto errno_ = errno;
     if (errno_ == ENOSYS || errno_ == EINVAL) {
       // eventfd not availalble
-      LOG(ERROR) << "failed to create eventfd for AtomicNotificationQueue: "
-                 << errno_ << ", falling back to pipe mode (is your kernel "
-                 << "> 2.6.30?)";
+      LOG(ERROR)
+          << "failed to create eventfd for AtomicNotificationQueue: " << errno_
+          << ", falling back to pipe mode (is your kernel " << "> 2.6.30?)";
     } else {
       // some other error
       folly::throwSystemError(
@@ -74,8 +74,9 @@ template <typename Task, typename Consumer>
 EventBaseAtomicNotificationQueue<Task, Consumer>::
     ~EventBaseAtomicNotificationQueue() {
   // discard pending tasks and disarm the queue
-  while (drive(
-      [](Task&&) { return AtomicNotificationQueueTaskStatus::DISCARD; })) {
+  while (drive([](Task&&) {
+    return AtomicNotificationQueueTaskStatus::DISCARD;
+  })) {
   }
 
   // We must unregister before closing the fd. Otherwise the base class

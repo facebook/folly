@@ -106,8 +106,9 @@ TEST(DelayedInit, TryEmplaceWithPreservesValueCategory) {
   {
     counts.reset();
     DelayedInit<CtorCounts::Tracker> lazy;
-    auto& trackerMoved = lazy.try_emplace_with(
-        [&]() -> CtorCounts::Tracker&& { return std::move(tracker); });
+    auto& trackerMoved = lazy.try_emplace_with([&]() -> CtorCounts::Tracker&& {
+      return std::move(tracker);
+    });
     EXPECT_EQ(counts, CtorCounts(0, 0, 1));
     EXPECT_EQ(trackerMoved.value, 12);
   }
@@ -161,10 +162,12 @@ TEST(DelayedInit, CalledOnce) {
   CtorCounts counts;
   DelayedInit<CtorCounts::Tracker> lazy;
 
-  auto& tracker1 =
-      lazy.try_emplace_with([&]() { return CtorCounts::Tracker(counts, 1); });
-  auto& tracker2 =
-      lazy.try_emplace_with([&]() { return CtorCounts::Tracker(counts, 2); });
+  auto& tracker1 = lazy.try_emplace_with([&]() {
+    return CtorCounts::Tracker(counts, 1);
+  });
+  auto& tracker2 = lazy.try_emplace_with([&]() {
+    return CtorCounts::Tracker(counts, 2);
+  });
 
   EXPECT_EQ(counts, CtorCounts(1, 0, 0));
   EXPECT_EQ(tracker1.value, 1);

@@ -19,8 +19,10 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 #include <algorithm>
+#include <filesystem>
 
 namespace folly {
 namespace detail {
@@ -243,6 +245,7 @@ TEST_F(BenchmarkingStateTest, PerfSkipsAnIteration) {
 
 #if FOLLY_PERF_IS_SUPPORTED
 TEST_F(BenchmarkingStateTest, PerfIntegration) {
+  SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
   std::vector<int> in(1000, 0);
 
   state.addBenchmark(__FILE__, "a", [&](unsigned n) {

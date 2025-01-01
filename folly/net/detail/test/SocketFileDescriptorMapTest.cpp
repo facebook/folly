@@ -20,6 +20,7 @@
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/Unistd.h>
 #include <folly/portability/Windows.h>
 
 namespace folly {

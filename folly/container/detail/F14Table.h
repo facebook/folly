@@ -250,7 +250,7 @@ class F14HashToken final {
 };
 #endif
 
-#if __cpp_concepts && __has_include(<concepts>)
+#if defined(__cpp_concepts) && __cpp_concepts && __has_include(<concepts>)
 static_assert(std::regular<F14HashToken>);
 #endif
 
@@ -706,12 +706,8 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
-#if defined(__GNUC__)
-#pragma GCC unroll 16
-#else
-#pragma unroll 16
-#endif
-    for (int i = 0; i < kCapacity; i++) {
+    FOLLY_PRAGMA_UNROLL_N(16)
+    for (auto i = 0u; i < kCapacity; i++) {
       mask |= ((tagV[i] == static_cast<uint8_t>(needle)) ? 1 : 0) << i;
     }
     return SparseMaskIter{mask & kFullMask};
@@ -720,12 +716,8 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   MaskType occupiedMask() const {
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
-#if defined(__GNUC__)
-#pragma GCC unroll 16
-#else
-#pragma unroll 16
-#endif
-    for (int i = 0; i < kCapacity; i++) {
+    FOLLY_PRAGMA_UNROLL_N(16)
+    for (auto i = 0u; i < kCapacity; i++) {
       mask |= ((tagV[i] & 0x80) ? 1 : 0) << i;
     }
     return mask & kFullMask;
@@ -2497,8 +2489,9 @@ class F14Table : public Policy {
   // Get memory footprint, not including sizeof(*this).
   std::size_t getAllocatedMemorySize() const {
     std::size_t sum = 0;
-    visitAllocationClasses(
-        [&sum](std::size_t bytes, std::size_t n) { sum += bytes * n; });
+    visitAllocationClasses([&sum](std::size_t bytes, std::size_t n) {
+      sum += bytes * n;
+    });
     return sum;
   }
 

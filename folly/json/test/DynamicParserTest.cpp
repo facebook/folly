@@ -353,12 +353,13 @@ TEST(TestDynamicParser, TestErrorNesting) {
   auto& base = errors.at("nested").at("x").at("nested").at("0");
   auto inner_key_err =
       base.at("nested").at("y").at("key_errors").at("not a key");
-  auto innermost_key_err = base.at("nested")
-                               .at("y")
-                               .at("nested")
-                               .at("z")
-                               .at("key_errors")
-                               .at("akey");
+  auto innermost_key_err =
+      base.at("nested")
+          .at("y")
+          .at("nested")
+          .at("z")
+          .at("key_errors")
+          .at("akey");
   auto outer_key_err = base.at("key_errors").at("also not a key");
   auto root_key_err = errors.at("key_errors").at("non-key");
   auto k_parse_err = errors.at("nested").at("k").at("error");

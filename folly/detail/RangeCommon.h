@@ -75,7 +75,7 @@ size_t qfind_first_byte_of_bitset(
 size_t qfind_first_byte_of_byteset(
     const StringPieceLite haystack, const StringPieceLite needles);
 
-inline size_t qfind_first_byte_of_nosse(
+inline size_t qfind_first_byte_of_nosimd(
     const StringPieceLite haystack, const StringPieceLite needles) {
   if (FOLLY_UNLIKELY(needles.empty() || haystack.empty())) {
     return std::string::npos;

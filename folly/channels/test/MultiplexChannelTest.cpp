@@ -235,9 +235,10 @@ TEST_F(MultiplexChannelFixture, ClearUnusedSubscriptions) {
   EXPECT_CALL(*callback2, onValue(200));
   executor_.drain();
 
-  auto clearedSubscriptions1Task = multiplexChannel.clearUnusedSubscriptions()
-                                       .scheduleOn(&executor_)
-                                       .start();
+  auto clearedSubscriptions1Task =
+      multiplexChannel.clearUnusedSubscriptions()
+          .scheduleOn(&executor_)
+          .start();
   executor_.drain();
   auto clearedSubscriptions1 =
       folly::coro::blockingWait(std::move(clearedSubscriptions1Task));
@@ -250,9 +251,10 @@ TEST_F(MultiplexChannelFixture, ClearUnusedSubscriptions) {
   handle2.reset();
   executor_.drain();
 
-  auto clearedSubscriptions2Task = multiplexChannel.clearUnusedSubscriptions()
-                                       .scheduleOn(&executor_)
-                                       .start();
+  auto clearedSubscriptions2Task =
+      multiplexChannel.clearUnusedSubscriptions()
+          .scheduleOn(&executor_)
+          .start();
   executor_.drain();
   auto clearedSubscriptions2 =
       folly::coro::blockingWait(std::move(clearedSubscriptions2Task));
@@ -267,9 +269,10 @@ TEST_F(MultiplexChannelFixture, ClearUnusedSubscriptions) {
 
   EXPECT_TRUE(multiplexChannel.anySubscribers());
 
-  auto clearedSubscriptions3Task = multiplexChannel.clearUnusedSubscriptions()
-                                       .scheduleOn(&executor_)
-                                       .start();
+  auto clearedSubscriptions3Task =
+      multiplexChannel.clearUnusedSubscriptions()
+          .scheduleOn(&executor_)
+          .start();
   executor_.drain();
   auto clearedSubscriptions3 =
       folly::coro::blockingWait(std::move(clearedSubscriptions3Task));
@@ -390,8 +393,9 @@ class MultiplexChannelFixtureStress : public Test {
             toVector(makeConsumer(0), makeConsumer(1), makeConsumer(2))) {}
 
   static std::unique_ptr<StressTestProducer<int>> makeProducer() {
-    return std::make_unique<StressTestProducer<int>>(
-        [value = 0]() mutable { return value++; });
+    return std::make_unique<StressTestProducer<int>>([value = 0]() mutable {
+      return value++;
+    });
   }
 
   static std::unique_ptr<StressTestConsumer<int>> makeConsumer(int remainder) {

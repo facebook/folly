@@ -41,8 +41,9 @@ inline void EventBaseLoopController::attachEventBase(
 
   CancellationSource source;
   eventBaseShutdownToken_ = source.getToken();
-  eventBase_->runOnDestruction(
-      [source = std::move(source)] { source.requestCancellation(); });
+  eventBase_->runOnDestruction([source = std::move(source)] {
+    source.requestCancellation();
+  });
 
   if (awaitingScheduling_) {
     schedule();

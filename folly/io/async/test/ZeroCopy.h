@@ -102,8 +102,9 @@ class ZeroCopyTestAsyncSocket {
     readBuffer_ = new char[bufferSize_];
   }
 
-  class Callback : public folly::AsyncSocket::ReadCallback,
-                   public folly::AsyncSocket::ConnectCallback {
+  class Callback
+      : public folly::AsyncSocket::ReadCallback,
+        public folly::AsyncSocket::ConnectCallback {
    public:
     explicit Callback(ZeroCopyTestAsyncSocket* parent) : parent_(parent) {}
 

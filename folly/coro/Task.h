@@ -94,8 +94,9 @@ class TaskPromiseBase {
                 promise.continuationRef(privateTag()),
                 &promise.getAsyncFrame(),
                 promise.executorRef(privateTag()).get_alias(),
-                promise.result().hasException() ? promise.result().exception()
-                                                : exception_wrapper{});
+                promise.result().hasException()
+                    ? promise.result().exception()
+                    : exception_wrapper{});
         return promise.scopeExitRef(privateTag());
       }
 
@@ -219,8 +220,9 @@ class TaskPromiseBase {
 
 // Separate from `TaskPromiseBase` so the compiler has less to specialize.
 template <typename Promise, typename T>
-class TaskPromiseCrtpBase : public TaskPromiseBase,
-                            public ExtendedCoroutinePromise {
+class TaskPromiseCrtpBase
+    : public TaskPromiseBase,
+      public ExtendedCoroutinePromise {
  public:
   using StorageType = detail::lift_lvalue_reference_t<T>;
 

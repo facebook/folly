@@ -65,8 +65,9 @@ namespace folly {
  * priority tasks could still hog all the threads. (at last check pthreads
  * thread priorities didn't work very well).
  */
-class CPUThreadPoolExecutor : public ThreadPoolExecutor,
-                              public GetThreadIdCollector {
+class CPUThreadPoolExecutor
+    : public ThreadPoolExecutor,
+      public GetThreadIdCollector {
  public:
   struct CPUTask;
   struct Options {

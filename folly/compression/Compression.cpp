@@ -343,8 +343,9 @@ std::unique_ptr<IOBuf> StreamCodec::doCompress(IOBuf const* data) {
   MutableByteRange output;
   auto buffer = addOutputBuffer(
       output,
-      maxCompressedLen <= kMaxSingleStepLength ? maxCompressedLen
-                                               : kDefaultBufferLength);
+      maxCompressedLen <= kMaxSingleStepLength
+          ? maxCompressedLen
+          : kDefaultBufferLength);
 
   // Compress the entire IOBuf chain into the IOBuf chain pointed to by buffer
   IOBuf const* current = data;
@@ -1671,8 +1672,9 @@ bool Bzip2StreamCodec::doUncompressStream(
 
 zlib::Options getZlibOptions(CodecType type) {
   DCHECK(type == CodecType::GZIP || type == CodecType::ZLIB);
-  return type == CodecType::GZIP ? zlib::defaultGzipOptions()
-                                 : zlib::defaultZlibOptions();
+  return type == CodecType::GZIP
+      ? zlib::defaultGzipOptions()
+      : zlib::defaultZlibOptions();
 }
 
 std::unique_ptr<Codec> getZlibCodec(int level, CodecType type) {
@@ -1809,12 +1811,13 @@ AutomaticCodec::AutomaticCodec(
 
   bool const terminalNeedsUncompressedLength =
       terminalCodec_ && terminalCodec_->needsUncompressedLength();
-  needsUncompressedLength_ = std::any_of(
-                                 codecs_.begin(),
-                                 codecs_.end(),
-                                 [](std::unique_ptr<Codec> const& codec) {
-                                   return codec->needsUncompressedLength();
-                                 }) ||
+  needsUncompressedLength_ =
+      std::any_of(
+          codecs_.begin(),
+          codecs_.end(),
+          [](std::unique_ptr<Codec> const& codec) {
+            return codec->needsUncompressedLength();
+          }) ||
       terminalNeedsUncompressedLength;
 
   const auto it = std::max_element(
@@ -1904,71 +1907,71 @@ struct Factory {
   StreamCodecFactory stream;
 };
 
-constexpr Factory
-    codecFactories[static_cast<size_t>(CodecType::NUM_CODEC_TYPES)] = {
-        {}, // USER_DEFINED
-        {NoCompressionCodec::create, nullptr},
+constexpr Factory codecFactories[static_cast<size_t>(
+    CodecType::NUM_CODEC_TYPES)] = {
+    {}, // USER_DEFINED
+    {NoCompressionCodec::create, nullptr},
 
 #if FOLLY_HAVE_LIBLZ4
-        {LZ4Codec::create, nullptr},
+    {LZ4Codec::create, nullptr},
 #else
-        {},
+    {},
 #endif
 
 #if FOLLY_HAVE_LIBSNAPPY
-        {SnappyCodec::create, nullptr},
+    {SnappyCodec::create, nullptr},
 #else
-        {},
+    {},
 #endif
 
 #if FOLLY_HAVE_LIBZ
-        {getZlibCodec, getZlibStreamCodec},
+    {getZlibCodec, getZlibStreamCodec},
 #else
-        {},
+    {},
 #endif
 
 #if FOLLY_HAVE_LIBLZ4
-        {LZ4Codec::create, nullptr},
+    {LZ4Codec::create, nullptr},
 #else
-        {},
+    {},
 #endif
 
 #if FOLLY_HAVE_LIBLZMA
-        {LZMA2StreamCodec::createCodec, LZMA2StreamCodec::createStream},
-        {LZMA2StreamCodec::createCodec, LZMA2StreamCodec::createStream},
+    {LZMA2StreamCodec::createCodec, LZMA2StreamCodec::createStream},
+    {LZMA2StreamCodec::createCodec, LZMA2StreamCodec::createStream},
 #else
-        {},
-        {},
+    {},
+    {},
 #endif
 
 #if FOLLY_HAVE_LIBZSTD
-        {getZstdCodec, getZstdStreamCodec},
+    {getZstdCodec, getZstdStreamCodec},
 #else
-        {},
+    {},
 #endif
 
 #if FOLLY_HAVE_LIBZ
-        {getZlibCodec, getZlibStreamCodec},
+    {getZlibCodec, getZlibStreamCodec},
 #else
-        {},
+    {},
 #endif
 
 #if (FOLLY_HAVE_LIBLZ4 && LZ4_VERSION_NUMBER >= 10301)
-        {LZ4FrameCodec::create, nullptr},
+    {LZ4FrameCodec::create, nullptr},
 #else
-        {},
+    {},
 #endif
 
 #if FOLLY_HAVE_LIBBZ2
-        {Bzip2StreamCodec::createCodec, Bzip2StreamCodec::createStream},
+    {Bzip2StreamCodec::createCodec, Bzip2StreamCodec::createStream},
 #else
-        {},
+    {},
 #endif
 
 #if FOLLY_HAVE_LIBZSTD
-        {getZstdFastCodec, getZstdFastStreamCodec},
+    {getZstdFastCodec, getZstdFastStreamCodec},
 #else
-        {},
+    {},
 #endif
 };
 

@@ -105,8 +105,9 @@ class DispatcherContainer {
    * If no override installed, returns default Dispatcher instance.
    */
   netops::Dispatcher* getDispatcher() const {
-    return overrideDispatcher_ ? overrideDispatcher_.get()
-                               : Dispatcher::getDefaultInstance();
+    return overrideDispatcher_
+        ? overrideDispatcher_.get()
+        : Dispatcher::getDefaultInstance();
   }
 
   /**

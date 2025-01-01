@@ -288,8 +288,8 @@ Range<AsyncBase::Op**> AsyncIO::doWait(
           /* timeout */ nullptr); // wait forever
     } while (ret == -EINTR);
     // Check as may not be able to recover without leaking events.
-    CHECK_GE(ret, 0) << "AsyncIO: io_getevents failed with error "
-                     << errnoStr(-ret);
+    CHECK_GE(ret, 0)
+        << "AsyncIO: io_getevents failed with error " << errnoStr(-ret);
     count += ret;
   } while (count < minRequests);
   DCHECK_LE(count, maxRequests);

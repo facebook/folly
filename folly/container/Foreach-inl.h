@@ -170,8 +170,8 @@ template <typename Sequence, typename Func>
 void for_each_range_impl(index_constant<2>, Sequence&& range, Func& func) {
   // make a three arg adaptor for the function passed in so that the main
   // implementation function can be used
-  auto three_arg_adaptor = [&func](
-                               auto&& ele, auto index, auto) -> decltype(auto) {
+  auto three_arg_adaptor =
+      [&func](auto&& ele, auto index, auto) -> decltype(auto) {
     return func(std::forward<decltype(ele)>(ele), index);
   };
   for_each_range_impl(
@@ -207,14 +207,14 @@ void for_each_tuple_impl(
   //
   // if func does not return loop-control, expect the optimizer to see through
   // invoke_returning_loop_control always returning loop_continue
-  void(
-      _{(((control == loop_continue)
-              ? (control = invoke_returning_loop_control(
-                     func,
-                     get_impl<Indices>(std::forward<Sequence>(seq)),
-                     index_constant<Indices>{}))
-              : (loop_continue)),
-         0)...});
+  void(_{(
+      ((control == loop_continue)
+           ? (control = invoke_returning_loop_control(
+                  func,
+                  get_impl<Indices>(std::forward<Sequence>(seq)),
+                  index_constant<Indices>{}))
+           : (loop_continue)),
+      0)...});
 }
 
 /**

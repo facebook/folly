@@ -184,9 +184,8 @@ class MultiplexChannelProcessor : public IChannelCallback {
    */
   void start(Receiver<InputValueType> inputReceiver) {
     executeWithMutexWhenReady(
-        [this,
-         inputReceiver =
-             std::move(inputReceiver)]() mutable -> folly::coro::Task<void> {
+        [this, inputReceiver = std::move(inputReceiver)]() mutable
+        -> folly::coro::Task<void> {
           co_await processStart(std::move(inputReceiver));
         });
   }
@@ -225,9 +224,8 @@ class MultiplexChannelProcessor : public IChannelCallback {
    */
   void destroyHandle(CloseResult closeResult) {
     executeWithMutexWhenReady(
-        [this,
-         closeResult =
-             std::move(closeResult)]() mutable -> folly::coro::Task<void> {
+        [this, closeResult = std::move(closeResult)]() mutable
+        -> folly::coro::Task<void> {
           co_await processHandleDestroyed(std::move(closeResult));
         });
   }
@@ -472,8 +470,9 @@ class MultiplexChannelProcessor : public IChannelCallback {
     for (auto& [key, subscription] : subscriptions_) {
       auto& sender = std::get<FanoutSender<OutputValueType>>(subscription);
       std::move(sender).close(
-          closeResult.exception.has_value() ? closeResult.exception.value()
-                                            : exception_wrapper());
+          closeResult.exception.has_value()
+              ? closeResult.exception.value()
+              : exception_wrapper());
     }
     totalSubscriptions_.fetch_sub(subscriptions_.size());
     subscriptions_.clear();

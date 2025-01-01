@@ -698,13 +698,14 @@ std::unique_ptr<std::string> XCheckOpImpl(
 } // namespace detail
 } // namespace folly
 
-#define XCHECK_OP(op, arg1, arg2, ...)                                        \
-  while (auto _folly_logging_check_result = ::folly::detail::XCheckOpImpl(    \
-             #arg1 " " #op " " #arg2,                                         \
-             (arg1),                                                          \
-             (arg2),                                                          \
-             [](const auto& _folly_check_arg1, const auto& _folly_check_arg2) \
-                 -> bool { return _folly_check_arg1 op _folly_check_arg2; })) \
+#define XCHECK_OP(op, arg1, arg2, ...)                                     \
+  while (                                                                  \
+      auto _folly_logging_check_result = ::folly::detail::XCheckOpImpl(    \
+          #arg1 " " #op " " #arg2,                                         \
+          (arg1),                                                          \
+          (arg2),                                                          \
+          [](const auto& _folly_check_arg1, const auto& _folly_check_arg2) \
+              -> bool { return _folly_check_arg1 op _folly_check_arg2; })) \
   XLOG(FATAL, *_folly_logging_check_result, ##__VA_ARGS__)
 
 /**

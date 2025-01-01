@@ -53,8 +53,9 @@ void setupBenchmark(size_t iters) {
 
 void setupCharVecBenchmark(size_t iters) {
   vec_char.resize(iters);
-  std::generate(
-      vec_char.begin(), vec_char.end(), [] { return Random::rand32(128); });
+  std::generate(vec_char.begin(), vec_char.end(), [] {
+    return Random::rand32(128);
+  });
 }
 
 BENCHMARK(ForEachFunctionNoAssign, iters) {

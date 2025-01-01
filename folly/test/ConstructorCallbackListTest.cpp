@@ -19,79 +19,84 @@
 #include <folly/portability/GTest.h>
 
 namespace {
-class Foo {
+
+constexpr std::size_t kMaxCallbacksDefault =
+    folly::ConstructorCallbackList<void>::kMaxCallbacks;
+constexpr std::size_t kExpandedOverflowSize = kMaxCallbacksDefault + 3;
+
+template <class T, std::size_t MaxCallbacks = kMaxCallbacksDefault>
+class ConstructorCallbackListTestStruct {
  public:
   int i_;
-  explicit Foo(int i) : i_{i} {}
+  explicit ConstructorCallbackListTestStruct(int i) : i_{i} {}
 
  private:
-  folly::ConstructorCallbackList<Foo> constructorCallbackList_{this};
+  folly::ConstructorCallbackList<
+      ConstructorCallbackListTestStruct<T, MaxCallbacks>,
+      MaxCallbacks>
+      constructorCallbackList_{this};
 };
 
-constexpr int kBarSize = 7;
-class Bar {
- public:
-  int i_;
-  explicit Bar(int i) : i_{i} {}
-
- private:
-  // same as Foo but with non-default Callback size
-  folly::ConstructorCallbackList<Bar, kBarSize> constructorCallbackList_{this};
-};
 } // namespace
 
 TEST(ConstructorCallbackListTest, basic) {
+  struct Tag {};
+  using Object = ConstructorCallbackListTestStruct<Tag>;
   int count = 0;
   int lastI = -1;
-  auto callbackF = [&](Foo* f) {
+  auto callbackF = [&](Object* f) {
     count++;
     lastI = f->i_;
   };
 
-  Foo f1{88}; // no call back called
+  Object f1{88}; // no call back called
   EXPECT_EQ(count, 0);
   EXPECT_EQ(lastI, -1);
 
   // add callback, verify call
-  folly::ConstructorCallbackList<Foo>::addCallback(callbackF);
-  Foo f2{99};
+  folly::ConstructorCallbackList<Object>::addCallback(callbackF);
+  Object f2{99};
 
   EXPECT_EQ(count, 1);
   EXPECT_EQ(lastI, 99);
 }
 
 TEST(ConstructorCallbackListTest, overflow) {
+  struct Tag {};
+  using Object = ConstructorCallbackListTestStruct<Tag>;
   int count = 0;
   int lastI = -1;
-  auto callbackF = [&](Foo* f) {
+  auto callbackF = [&](Object* f) {
     count++;
     lastI = f->i_;
   };
 
   // add one too many to the call backs
   for (std::size_t i = 0;
-       i < folly::ConstructorCallbackList<Foo>::kMaxCallbacks + 1;
+       i < folly::ConstructorCallbackList<Object>::kMaxCallbacks + 1;
        i++) {
     // add callback multiple times
-    if (i < folly::ConstructorCallbackList<Foo>::kMaxCallbacks) {
+    if (i < folly::ConstructorCallbackList<Object>::kMaxCallbacks) {
       // every other time should work without throwing the exception
-      folly::ConstructorCallbackList<Foo>::addCallback(callbackF);
+      folly::ConstructorCallbackList<Object>::addCallback(callbackF);
     } else {
       // last add should fail
       EXPECT_THROW(
-          folly::ConstructorCallbackList<Foo>::addCallback(callbackF),
+          folly::ConstructorCallbackList<Object>::addCallback(callbackF),
           std::length_error);
     }
   }
-  Foo f{99};
-  EXPECT_EQ(count, folly::ConstructorCallbackList<Foo>::kMaxCallbacks);
+  Object f{99};
+  EXPECT_EQ(count, folly::ConstructorCallbackList<Object>::kMaxCallbacks);
   EXPECT_EQ(lastI, 99);
 }
 
 TEST(ConstructorCallbackListTest, overflow7) {
+  struct Tag {};
+  using Object = ConstructorCallbackListTestStruct<Tag, kExpandedOverflowSize>;
   int count = 0;
   int lastI = -1;
-  auto callbackF = [&](Bar* b) {
+  auto callbackF = [&](Object* b) {
     count++;
     lastI = b->i_;
   };
@@ -101,23 +106,30 @@ TEST(ConstructorCallbackListTest, overflow7) {
 
   // add one too many to the call backs
   for (std::size_t i = 0;
-       i < folly::ConstructorCallbackList<Bar, kBarSize>::kMaxCallbacks + 1;
+       i < folly::ConstructorCallbackList<Object, kExpandedOverflowSize>::
+               kMaxCallbacks +
+           1;
        i++) {
     // add callback multiple times
-    if (i == (folly::ConstructorCallbackList<Bar, kBarSize>::kMaxCallbacks)) {
+    if (i ==
+        (folly::ConstructorCallbackList<Object, kExpandedOverflowSize>::
+             kMaxCallbacks)) {
       // last add should fail
       EXPECT_THROW(
-          (folly::ConstructorCallbackList<Bar, kBarSize>::addCallback(
-              callbackF)),
+          (folly::ConstructorCallbackList<Object, kExpandedOverflowSize>::
+               addCallback(callbackF)),
           std::length_error);
     } else {
       // every other time should work;
-      folly::ConstructorCallbackList<Bar, kBarSize>::addCallback(callbackF);
+      folly::ConstructorCallbackList<Object, kExpandedOverflowSize>::
+          addCallback(callbackF);
     }
   }
-  Bar b{99};
+  Object b{99};
   EXPECT_EQ(
-      count, (folly::ConstructorCallbackList<Bar, kBarSize>::kMaxCallbacks));
+      count,
+      (folly::ConstructorCallbackList<Object, kExpandedOverflowSize>::
+           kMaxCallbacks));
   EXPECT_EQ(lastI, 99);
 }
 

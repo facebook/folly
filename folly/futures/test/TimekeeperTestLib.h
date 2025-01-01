@@ -42,8 +42,9 @@ class TimekeeperTest : public testing::Test {
   void SetUp() override {
     // Replace the default timekeeper with the class under test, and verify that
     // the replacement was successful.
-    Singleton<Timekeeper, detail::TimekeeperSingletonTag>::make_mock(
-        [] { return new Tk; });
+    Singleton<Timekeeper, detail::TimekeeperSingletonTag>::make_mock([] {
+      return new Tk;
+    });
     ASSERT_TRUE(
         dynamic_cast<Tk*>(detail::getTimekeeperSingleton().get()) != nullptr);
   }
@@ -119,21 +120,23 @@ FOLLY_POP_WARNING
 
 TYPED_TEST_P(TimekeeperTest, FutureDelayed) {
   auto t1 = steady_clock::now();
-  auto dur = makeFuture()
-                 .delayed(1ms)
-                 .thenValue([=](auto&&) { return steady_clock::now() - t1; })
-                 .get();
+  auto dur =
+      makeFuture()
+          .delayed(1ms)
+          .thenValue([=](auto&&) { return steady_clock::now() - t1; })
+          .get();
 
   EXPECT_GE(dur, 1ms);
 }
 
 TYPED_TEST_P(TimekeeperTest, SemiFutureDelayed) {
   auto t1 = steady_clock::now();
-  auto dur = makeSemiFuture()
-                 .delayed(1ms)
-                 .toUnsafeFuture()
-                 .thenValue([=](auto&&) { return steady_clock::now() - t1; })
-                 .get();
+  auto dur =
+      makeSemiFuture()
+          .delayed(1ms)
+          .toUnsafeFuture()
+          .thenValue([=](auto&&) { return steady_clock::now() - t1; })
+          .get();
 
   EXPECT_GE(dur, 1ms);
 }
@@ -151,13 +154,14 @@ TYPED_TEST_P(TimekeeperTest, FutureDelayedStickyExecutor) {
             .thenValue([](auto&&) { return std::this_thread::get_id(); })
             .get();
     std::thread::id task_thread_id{};
-    auto dur = makeFuture()
-                   .delayed(1ms)
-                   .thenValue([=, &task_thread_id](auto&&) {
-                     task_thread_id = std::this_thread::get_id();
-                     return steady_clock::now() - t1;
-                   })
-                   .get();
+    auto dur =
+        makeFuture()
+            .delayed(1ms)
+            .thenValue([=, &task_thread_id](auto&&) {
+              task_thread_id = std::this_thread::get_id();
+              return steady_clock::now() - t1;
+            })
+            .get();
 
     EXPECT_GE(dur, 1ms);
     EXPECT_EQ(timekeeper_thread_id, task_thread_id);
@@ -178,17 +182,18 @@ TYPED_TEST_P(TimekeeperTest, FutureDelayedStickyExecutor) {
         me.run();
       }
     }};
-    auto dur = makeSemiFuture()
-                   .via(&me)
-                   .thenValue([&first_task_thread_id](auto&&) {
-                     first_task_thread_id = std::this_thread::get_id();
-                   })
-                   .delayed(1ms)
-                   .thenValue([=, &second_task_thread_id](auto&&) {
-                     second_task_thread_id = std::this_thread::get_id();
-                     return steady_clock::now() - t1;
-                   })
-                   .get();
+    auto dur =
+        makeSemiFuture()
+            .via(&me)
+            .thenValue([&first_task_thread_id](auto&&) {
+              first_task_thread_id = std::this_thread::get_id();
+            })
+            .delayed(1ms)
+            .thenValue([=, &second_task_thread_id](auto&&) {
+              second_task_thread_id = std::this_thread::get_id();
+              return steady_clock::now() - t1;
+            })
+            .get();
     stop_signal = true;
     me_driver.join();
     EXPECT_GE(dur, 1ms);
@@ -229,9 +234,10 @@ TYPED_TEST_P(TimekeeperTest, SemiFutureWithinAlreadyComplete) {
 
 TYPED_TEST_P(TimekeeperTest, FutureWithinFinishesInTime) {
   Promise<int> p;
-  auto f = p.getFuture()
-               .within(std::chrono::minutes(1))
-               .thenError(tag_t<FutureTimeout>{}, [&](auto&&) { return -1; });
+  auto f =
+      p.getFuture()
+          .within(std::chrono::minutes(1))
+          .thenError(tag_t<FutureTimeout>{}, [&](auto&&) { return -1; });
   p.setValue(42);
 
   EXPECT_EQ(42, std::move(f).get());
@@ -239,10 +245,11 @@ TYPED_TEST_P(TimekeeperTest, FutureWithinFinishesInTime) {
 
 TYPED_TEST_P(TimekeeperTest, SemiFutureWithinFinishesInTime) {
   Promise<int> p;
-  auto f = p.getSemiFuture()
-               .within(std::chrono::minutes(1))
-               .toUnsafeFuture()
-               .thenError(tag_t<FutureTimeout>{}, [&](auto&&) { return -1; });
+  auto f =
+      p.getSemiFuture()
+          .within(std::chrono::minutes(1))
+          .toUnsafeFuture()
+          .thenError(tag_t<FutureTimeout>{}, [&](auto&&) { return -1; });
   p.setValue(42);
 
   EXPECT_EQ(42, std::move(f).get());
@@ -311,8 +318,9 @@ TYPED_TEST_P(TimekeeperTest, OnTimeoutReturnsFuture) {
 
 TYPED_TEST_P(TimekeeperTest, OnTimeoutVoid) {
   makeFuture().delayed(1ms).onTimeout(0ms, [&] {});
-  makeFuture().delayed(1ms).onTimeout(
-      0ms, [&] { return makeFuture<Unit>(std::runtime_error("expected")); });
+  makeFuture().delayed(1ms).onTimeout(0ms, [&] {
+    return makeFuture<Unit>(std::runtime_error("expected"));
+  });
   // just testing compilation here
 }
 
@@ -333,8 +341,9 @@ TYPED_TEST_P(TimekeeperTest, FutureWithinChainedInterruptTest) {
   bool test = false;
   Promise<Unit> p;
   p.setInterruptHandler([&test, &p](const exception_wrapper& ex) {
-    ex.handle(
-        [&test](const FutureCancellation& /* cancellation */) { test = true; });
+    ex.handle([&test](const FutureCancellation& /* cancellation */) {
+      test = true;
+    });
     p.setException(ex);
   });
   auto f = p.getFuture().within(100ms);
@@ -348,8 +357,9 @@ TYPED_TEST_P(TimekeeperTest, SemiFutureWithinChainedInterruptTest) {
   bool test = false;
   Promise<Unit> p;
   p.setInterruptHandler([&test, &p](const exception_wrapper& ex) {
-    ex.handle(
-        [&test](const FutureCancellation& /* cancellation */) { test = true; });
+    ex.handle([&test](const FutureCancellation& /* cancellation */) {
+      test = true;
+    });
     p.setException(ex);
   });
   auto f = p.getSemiFuture().within(100ms);
@@ -373,10 +383,11 @@ TYPED_TEST_P(TimekeeperTest, Executor) {
   {
     Promise<Unit> p;
     ExecutorTester tester;
-    auto f = p.getFuture()
-                 .via(&tester)
-                 .within(std::chrono::seconds(10))
-                 .thenValue([&](auto&&) {});
+    auto f =
+        p.getFuture()
+            .via(&tester)
+            .within(std::chrono::seconds(10))
+            .thenValue([&](auto&&) {});
     p.setValue();
     std::move(f).get();
     tester.join();
@@ -386,10 +397,11 @@ TYPED_TEST_P(TimekeeperTest, Executor) {
   {
     Promise<Unit> p;
     ExecutorTester tester;
-    auto f = p.getFuture()
-                 .via(&tester)
-                 .within(std::chrono::milliseconds(10))
-                 .thenValue([&](auto&&) {});
+    auto f =
+        p.getFuture()
+            .via(&tester)
+            .within(std::chrono::milliseconds(10))
+            .thenValue([&](auto&&) {});
     EXPECT_THROW(std::move(f).get(), FutureTimeout);
     p.setValue();
     tester.join();

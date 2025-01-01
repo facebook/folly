@@ -90,8 +90,9 @@ TEST(Singleton, BasicUsage) {
 
     SingletonBasicUsage<ChildWatchdog>::apply([](auto*) {});
     SUCCEED();
-    auto w3 =
-        SingletonBasicUsage<ChildWatchdog>::apply([](auto* v) { return v; });
+    auto w3 = SingletonBasicUsage<ChildWatchdog>::apply([](auto* v) {
+      return v;
+    });
     EXPECT_NE(w3, nullptr);
     EXPECT_NE(w2, w3);
 
@@ -178,17 +179,20 @@ TEST(Singleton, NamedUsage) {
     EXPECT_NE(s3, s1);
     EXPECT_NE(s3, s2);
 
-    auto w1 = SingletonNamedUsage<Watchdog, Watchdog1>::apply(
-        [](auto* v) { return v; });
+    auto w1 = SingletonNamedUsage<Watchdog, Watchdog1>::apply([](auto* v) {
+      return v;
+    });
     auto wd1 = watchdog1_singleton.apply([](auto* v) { return v; });
     EXPECT_EQ(w1, wd1);
-    auto w2 = SingletonNamedUsage<Watchdog, Watchdog2>::apply(
-        [](auto* v) { return v; });
+    auto w2 = SingletonNamedUsage<Watchdog, Watchdog2>::apply([](auto* v) {
+      return v;
+    });
     auto wd2 = watchdog2_singleton.apply([](auto* v) { return v; });
     EXPECT_EQ(w2, wd2);
     EXPECT_NE(w1, w2);
-    auto w3 = SingletonNamedUsage<Watchdog, Watchdog3>::apply(
-        [](auto* v) { return v; });
+    auto w3 = SingletonNamedUsage<Watchdog, Watchdog3>::apply([](auto* v) {
+      return v;
+    });
     auto wd3 = watchdog3_singleton.apply([](auto* v) { return v; });
     EXPECT_EQ(w3, wd3);
     EXPECT_NE(w3, w1);
@@ -336,8 +340,9 @@ TEST(Singleton, SharedPtrUsage) {
   // We should release externally locked shared_ptr, otherwise it will be
   // considered a leak
   watchdog_holder_singleton.try_get()->watchdog = shared_s1;
-  watchdog_holder_singleton.apply(
-      [&](auto* v) { v->watchdog = std::move(shared_s1); });
+  watchdog_holder_singleton.apply([&](auto* v) {
+    v->watchdog = std::move(shared_s1);
+  });
 
   LOG(ERROR) << "The following log message regarding shared_ptr is expected";
   {
@@ -359,8 +364,9 @@ TEST(Singleton, SharedPtrUsage) {
   {
     // Singleton should be re-created only after reenableInstances() was called.
     auto new_s1 = SingletonSharedPtrUsage<Watchdog>::try_get();
-    auto new_w1 =
-        SingletonSharedPtrUsage<Watchdog>::apply([](auto* v) { return v; });
+    auto new_w1 = SingletonSharedPtrUsage<Watchdog>::apply([](auto* v) {
+      return v;
+    });
     // Track serial number rather than pointer since the memory could be
     // re-used when we create new_s1.
     EXPECT_NE(new_s1->serial_number, old_serial);
@@ -399,8 +405,9 @@ struct NeedySingleton {
     auto unused1 = SingletonNeedy<NeededSingleton>::try_get();
     EXPECT_NE(unused1, nullptr);
 
-    auto unused2 =
-        SingletonNeedy<NeededSingleton>::apply([](auto* v) { return v; });
+    auto unused2 = SingletonNeedy<NeededSingleton>::apply([](auto* v) {
+      return v;
+    });
     EXPECT_NE(unused2, nullptr);
   }
 };
@@ -415,8 +422,9 @@ struct SelfNeedySingleton {
     auto unused1 = SingletonSelfNeedy<SelfNeedySingleton>::try_get();
     EXPECT_NE(unused1, nullptr);
 
-    auto unused2 =
-        SingletonSelfNeedy<SelfNeedySingleton>::apply([](auto v) { return v; });
+    auto unused2 = SingletonSelfNeedy<SelfNeedySingleton>::apply([](auto v) {
+      return v;
+    });
     EXPECT_NE(unused2, nullptr);
   }
 };
@@ -434,8 +442,9 @@ TEST(Singleton, SingletonDependencies) {
   auto needy = SingletonNeedy<NeedySingleton>::try_get();
   EXPECT_EQ(needy_vault.livingSingletonCount(), 2);
 
-  auto another_needy =
-      SingletonNeedy<NeedySingleton>::apply([](auto* v) { return v; });
+  auto another_needy = SingletonNeedy<NeedySingleton>::apply([](auto* v) {
+    return v;
+  });
   (void)another_needy;
   EXPECT_EQ(needy_vault.livingSingletonCount(), 2);
 
@@ -447,8 +456,9 @@ TEST(Singleton, SingletonDependencies) {
       []() { SingletonSelfNeedy<SelfNeedySingleton>::try_get(); }(), "");
   EXPECT_DEATH(
       []() {
-        SingletonSelfNeedy<SelfNeedySingleton>::apply(
-            [](auto* v) { return v; });
+        SingletonSelfNeedy<SelfNeedySingleton>::apply([](auto* v) {
+          return v;
+        });
       }(),
       "");
 }
@@ -476,8 +486,9 @@ TEST(Singleton, SingletonConcurrency) {
     gatekeeper.lock();
     gatekeeper.unlock();
     auto unused1 = SingletonConcurrency<Slowpoke>::try_get();
-    auto unused2 =
-        SingletonConcurrency<Slowpoke>::apply([](auto* v) { return v; });
+    auto unused2 = SingletonConcurrency<Slowpoke>::apply([](auto* v) {
+      return v;
+    });
     EXPECT_EQ(unused1.get(), unused2);
   };
 
@@ -564,10 +575,11 @@ using SingletonEagerInitSync = Singleton<T, Tag, EagerInitSyncTag>;
 TEST(Singleton, SingletonEagerInitSync) {
   auto& vault = *SingletonVault::singleton<EagerInitSyncTag>();
   bool didEagerInit = false;
-  auto sing = SingletonEagerInitSync<std::string>([&] {
-                didEagerInit = true;
-                return new std::string("foo");
-              }).shouldEagerInit();
+  auto sing =
+      SingletonEagerInitSync<std::string>([&] {
+        didEagerInit = true;
+        return new std::string("foo");
+      }).shouldEagerInit();
   vault.registrationComplete();
   EXPECT_FALSE(didEagerInit);
   vault.doEagerInit();
@@ -583,10 +595,11 @@ using SingletonEagerInitAsync = Singleton<T, Tag, EagerInitAsyncTag>;
 TEST(Singleton, SingletonEagerInitAsync) {
   auto& vault = *SingletonVault::singleton<EagerInitAsyncTag>();
   bool didEagerInit = false;
-  auto sing = SingletonEagerInitAsync<std::string>([&] {
-                didEagerInit = true;
-                return new std::string("foo");
-              }).shouldEagerInit();
+  auto sing =
+      SingletonEagerInitAsync<std::string>([&] {
+        didEagerInit = true;
+        return new std::string("foo");
+      }).shouldEagerInit();
   folly::EventBase eb;
   folly::Baton<> done;
   vault.registrationComplete();
@@ -607,8 +620,9 @@ class TestEagerInitParallelExecutor : public folly::Executor {
     for (size_t i = 0; i < threadCount; i++) {
       eventBases_.push_back(std::make_shared<folly::EventBase>());
       auto eb = eventBases_.back();
-      threads_.emplace_back(
-          std::make_shared<std::thread>([eb] { eb->loopForever(); }));
+      threads_.emplace_back(std::make_shared<std::thread>([eb] {
+        eb->loopForever();
+      }));
     }
   }
 
@@ -646,10 +660,11 @@ TEST(Singleton, SingletonEagerInitParallel) {
 
   auto& vault = *SingletonVault::singleton<EagerInitParallelTag>();
 
-  auto sing = SingletonEagerInitParallel<std::string>([&] {
-                ++initCounter;
-                return new std::string("");
-              }).shouldEagerInit();
+  auto sing =
+      SingletonEagerInitParallel<std::string>([&] {
+        ++initCounter;
+        return new std::string("");
+      }).shouldEagerInit();
 
   for (size_t i = 0; i < kIters; i++) {
     SCOPE_EXIT {
@@ -767,15 +782,17 @@ TEST(Singleton, MockTestWithApply) {
   // Registring singletons after registrationComplete called works
   // with make_mock (but not with Singleton ctor).
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
-  int serial_count_first =
-      SingletonMock<Watchdog>::apply([](auto* v) { return v->serial_number; });
+  int serial_count_first = SingletonMock<Watchdog>::apply([](auto* v) {
+    return v->serial_number;
+  });
 
   // Override existing mock using make_mock.
   SingletonMock<Watchdog>::make_mock();
 
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
-  int serial_count_mock =
-      SingletonMock<Watchdog>::apply([](auto* v) { return v->serial_number; });
+  int serial_count_mock = SingletonMock<Watchdog>::apply([](auto* v) {
+    return v->serial_number;
+  });
 
   // If serial_count value is the same, then singleton was not replaced.
   EXPECT_NE(serial_count_first, serial_count_mock);
@@ -784,8 +801,9 @@ TEST(Singleton, MockTestWithApply) {
   SingletonMock<Watchdog>::make_mock();
 
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
-  int serial_count_mock2 =
-      SingletonMock<Watchdog>::apply([](auto* v) { return v->serial_number; });
+  int serial_count_mock2 = SingletonMock<Watchdog>::apply([](auto* v) {
+    return v->serial_number;
+  });
 
   // If serial_count value is the same, then singleton was not replaced.
   EXPECT_NE(serial_count_first, serial_count_mock2);
@@ -855,8 +873,9 @@ TEST(Singleton, ConcurrentCreationDestruction) {
   SingletonConcurrentCreationDestruction<SlowpokeNeedySingleton> needySingleton;
   vault.registrationComplete();
 
-  std::thread needyThread(
-      [&] { needySingleton.apply([](auto* v) { return v; }); });
+  std::thread needyThread([&] {
+    needySingleton.apply([](auto* v) { return v; });
+  });
 
   slowpokeNeedySingletonBaton.wait();
 

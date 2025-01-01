@@ -39,6 +39,7 @@ cpp_unittest(
     name = "atomic_shared_ptr_test",
     srcs = ["AtomicSharedPtrTest.cpp"],
     headers = ["AtomicSharedPtrCounted.h"],
+    labels = ["case-isolation-failure"],
     deps = [
         "//folly:portability",
         "//folly/concurrency:atomic_shared_ptr",
@@ -91,6 +92,10 @@ cpp_benchmark(
 cpp_unittest(
     name = "concurrent_hash_map_test",
     srcs = ["ConcurrentHashMapTest.cpp"],
+    labels = [
+        "heavyweight",
+        "slow",
+    ],
     supports_static_listing = False,
     deps = [
         "//folly:traits",
@@ -107,6 +112,10 @@ cpp_unittest(
 cpp_unittest(
     name = "concurrent_hash_map_test_no_simd",
     srcs = ["ConcurrentHashMapTest.cpp"],
+    labels = [
+        "heavyweight",
+        "slow",
+    ],
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
     supports_static_listing = False,
     deps = [

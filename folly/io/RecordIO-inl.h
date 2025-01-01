@@ -23,10 +23,11 @@
 
 namespace folly {
 
-class RecordIOReader::Iterator : public detail::IteratorFacade<
-                                     RecordIOReader::Iterator,
-                                     const std::pair<ByteRange, off_t>,
-                                     std::forward_iterator_tag> {
+class RecordIOReader::Iterator
+    : public detail::IteratorFacade<
+          RecordIOReader::Iterator,
+          const std::pair<ByteRange, off_t>,
+          std::forward_iterator_tag> {
   friend class detail::
       IteratorFacade<Iterator, value_type, std::forward_iterator_tag>;
   friend class RecordIOReader;

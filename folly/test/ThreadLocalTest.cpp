@@ -430,19 +430,20 @@ TEST(ThreadLocalPtr, AccessAllThreadsCounter) {
   // thread i will increment all the thread locals
   // in the range 0..i
   for (int i = 0; i < kNumThreads; ++i) {
-    threads.push_back(std::thread([i, // i needs to be captured by value
-                                   &stci,
-                                   &run,
-                                   &totalAtomic]() {
-      for (int j = 0; j <= i; j++) {
-        stci[j].add(1);
-      }
+    threads.push_back(std::thread(
+        [i, // i needs to be captured by value
+         &stci,
+         &run,
+         &totalAtomic]() {
+          for (int j = 0; j <= i; j++) {
+            stci[j].add(1);
+          }
 
-      totalAtomic.fetch_add(1);
-      while (run.load()) {
-        usleep(100);
-      }
-    }));
+          totalAtomic.fetch_add(1);
+          while (run.load()) {
+            usleep(100);
+          }
+        }));
   }
   while (totalAtomic.load() != kNumThreads) {
     usleep(100);

@@ -293,8 +293,9 @@ class FanoutChannelFixtureStress : public Test {
         consumers_(toVector(makeConsumer(), makeConsumer(), makeConsumer())) {}
 
   static std::unique_ptr<StressTestProducer<int>> makeProducer() {
-    return std::make_unique<StressTestProducer<int>>(
-        [value = 0]() mutable { return value++; });
+    return std::make_unique<StressTestProducer<int>>([value = 0]() mutable {
+      return value++;
+    });
   }
 
   static std::unique_ptr<StressTestConsumer<int>> makeConsumer() {

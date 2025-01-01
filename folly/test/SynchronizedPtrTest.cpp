@@ -74,9 +74,9 @@ TEST(SynchronizedPtrTest, Replaceable) {
   folly::SynchronizedPtr<folly::Replaceable<int>> pInt{0};
   folly::SynchronizedPtr<folly::Replaceable<int const>> pcInt{2};
   basics(pInt);
-  EXPECT_TRUE(
-      (std::is_same<folly::Replaceable<int>&, decltype(*pInt.wlockPointer())>::
-           value));
+  EXPECT_TRUE((
+      std::is_same<folly::Replaceable<int>&, decltype(*pInt.wlockPointer())>::
+          value));
   EXPECT_TRUE((std::is_same<
                folly::Replaceable<int const>&,
                decltype(*pcInt.wlockPointer())>::value));
@@ -91,9 +91,9 @@ TEST(SynchronizedPtrTest, Replaceable) {
 TEST(SynchronizedPtrTest, Optional) {
   folly::SynchronizedPtr<folly::Optional<int>, folly::RWSpinLock> pInt{0};
   basics(pInt);
-  EXPECT_TRUE(
-      (std::is_same<folly::Optional<int>&, decltype(*pInt.wlockPointer())>::
-           value));
+  EXPECT_TRUE((
+      std::is_same<folly::Optional<int>&, decltype(*pInt.wlockPointer())>::
+          value));
   EXPECT_TRUE(static_cast<bool>(pInt.rlock()));
   pInt.withWLockPointer([](auto&& ptr) {
     EXPECT_TRUE((std::is_same<folly::Optional<int>&, decltype(ptr)>::value));

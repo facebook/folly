@@ -70,13 +70,14 @@ class ObserverManager {
 
     std::shared_lock rh(instance.versionMutex_);
 
-    instance.scheduleCurrent([coreWeak = folly::to_weak_ptr(std::move(core)),
-                              &instance,
-                              rh_2 = std::move(rh)]() {
-      if (auto coreShared = coreWeak.lock()) {
-        coreShared->refresh(instance.version_);
-      }
-    });
+    instance.scheduleCurrent(
+        [coreWeak = folly::to_weak_ptr(std::move(core)),
+         &instance,
+         rh_2 = std::move(rh)]() {
+          if (auto coreShared = coreWeak.lock()) {
+            coreShared->refresh(instance.version_);
+          }
+        });
   }
 
   static void scheduleRefreshNewVersion(Function<Core::Ptr()> coreFunc) {
@@ -104,20 +105,23 @@ class ObserverManager {
     tryWaitForAllUpdatesImpl([=](auto& m) { return std::unique_lock(m); });
   }
   static bool tryWaitForAllUpdates() {
-    return tryWaitForAllUpdatesImpl(
-        [=](auto& m) { return std::unique_lock(m, std::try_to_lock); });
+    return tryWaitForAllUpdatesImpl([=](auto& m) {
+      return std::unique_lock(m, std::try_to_lock);
+    });
   }
   template <typename Rep, typename Period>
   static bool tryWaitForAllUpdatesFor(
       std::chrono::duration<Rep, Period> timeout) {
-    return tryWaitForAllUpdatesImpl(
-        [=](auto& m) { return std::unique_lock(m, timeout); });
+    return tryWaitForAllUpdatesImpl([=](auto& m) {
+      return std::unique_lock(m, timeout);
+    });
   }
   template <typename Clock, typename Duration>
   static bool tryWaitForAllUpdatesUntil(
       std::chrono::time_point<Clock, Duration> deadline) {
-    return tryWaitForAllUpdatesImpl(
-        [=](auto& m) { return std::unique_lock(m, deadline); });
+    return tryWaitForAllUpdatesImpl([=](auto& m) {
+      return std::unique_lock(m, deadline);
+    });
   }
 
   class DependencyRecorder {
@@ -208,9 +212,8 @@ class ObserverManager {
   };
 
  private:
-  using TryWaitForAllUpdatesImplOp =
-      FunctionRef<std::unique_lock<SharedMutexReadPriority>(
-          SharedMutexReadPriority&)>;
+  using TryWaitForAllUpdatesImplOp = FunctionRef<
+      std::unique_lock<SharedMutexReadPriority>(SharedMutexReadPriority&)>;
   ObserverManager() {}
 
   static bool tryWaitForAllUpdatesImpl(TryWaitForAllUpdatesImplOp op);

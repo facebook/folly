@@ -237,8 +237,9 @@ AtomicNotificationQueue<Task>::tryPush(Task&& task, uint32_t maxSize) {
       break;
     }
   }
-  return atomicQueue_.push(std::move(task)) ? TryPushResult::SUCCESS_AND_ARMED
-                                            : TryPushResult::SUCCESS;
+  return atomicQueue_.push(std::move(task))
+      ? TryPushResult::SUCCESS_AND_ARMED
+      : TryPushResult::SUCCESS;
 }
 
 namespace detail {

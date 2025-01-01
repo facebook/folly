@@ -269,8 +269,9 @@ void ZlibStreamCodec::resetDeflateStream() {
   // The automatic header detection format is only for inflation.
   // Use zlib for deflation if the format is auto.
   int const windowBits = getWindowBits(
-      options_.format == Options::Format::AUTO ? Options::Format::ZLIB
-                                               : options_.format,
+      options_.format == Options::Format::AUTO
+          ? Options::Format::ZLIB
+          : options_.format,
       options_.windowSize);
 
   int const rc = deflateInit2(

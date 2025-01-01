@@ -17,8 +17,8 @@
 #pragma once
 
 #include <folly/SharedMutex.h>
-#include <folly/experimental/io/AsyncBase.h>
-#include <folly/experimental/io/Liburing.h>
+#include <folly/io/async/AsyncBase.h>
+#include <folly/io/async/Liburing.h>
 
 #if FOLLY_HAS_LIBURING
 

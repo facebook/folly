@@ -653,8 +653,9 @@ TEST(InitThreadFactoryTest, InitializerCalled) {
       std::make_shared<NamedThreadFactory>("test"),
       [&initializerCalledCount] { initializerCalledCount++; });
   factory
-      .newThread(
-          [&initializerCalledCount]() { EXPECT_EQ(initializerCalledCount, 1); })
+      .newThread([&initializerCalledCount]() {
+        EXPECT_EQ(initializerCalledCount, 1);
+      })
       .join();
   EXPECT_EQ(initializerCalledCount, 1);
 }
@@ -895,11 +896,13 @@ template <typename TPE>
 void keepAliveTest() {
   auto executor = std::make_unique<TPE>(4);
 
-  auto f = futures::sleep(std::chrono::milliseconds{100})
-               .via(executor.get())
-               .thenValue([keepAlive = getKeepAliveToken(executor.get())](
-                              auto&&) { return 42; })
-               .semi();
+  auto f =
+      futures::sleep(std::chrono::milliseconds{100})
+          .via(executor.get())
+          .thenValue([keepAlive = getKeepAliveToken(executor.get())](auto&&) {
+            return 42;
+          })
+          .semi();
 
   executor.reset();
 
@@ -1209,8 +1212,9 @@ static void virtualExecutorTest() {
   EXPECT_EQ(2, counter);
 }
 
-class SingleThreadedCPUThreadPoolExecutor : public CPUThreadPoolExecutor,
-                                            public SequencedExecutor {
+class SingleThreadedCPUThreadPoolExecutor
+    : public CPUThreadPoolExecutor,
+      public SequencedExecutor {
  public:
   explicit SingleThreadedCPUThreadPoolExecutor(size_t)
       : CPUThreadPoolExecutor(1) {}

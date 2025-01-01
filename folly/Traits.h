@@ -647,10 +647,11 @@ namespace traits_detail {
   template <class T>                                                         \
   struct name##_is_true : std::is_same<typename T::name, std::true_type> {}; \
   template <class T>                                                         \
-  struct has_true_##name : std::conditional<                                 \
-                               is_detected_v<detect_##name, T>,              \
-                               name##_is_true<T>,                            \
-                               std::false_type>::type {}
+  struct has_true_##name                                                     \
+      : std::conditional<                                                    \
+            is_detected_v<detect_##name, T>,                                 \
+            name##_is_true<T>,                                               \
+            std::false_type>::type {}
 
 FOLLY_HAS_TRUE_XXX(IsRelocatable);
 FOLLY_HAS_TRUE_XXX(IsZeroInitializable);

@@ -375,8 +375,9 @@ size_t DwarfImpl::forEachChild(
     const CompilationUnit& cu,
     const Die& die,
     folly::FunctionRef<bool(const Die& die)> f) const {
-  size_t nextDieOffset =
-      forEachAttribute(cu, die, [&](const Attribute&) { return true; });
+  size_t nextDieOffset = forEachAttribute(cu, die, [&](const Attribute&) {
+    return true;
+  });
   if (!die.abbr.hasChildren) {
     return nextDieOffset;
   }
@@ -388,8 +389,9 @@ size_t DwarfImpl::forEachChild(
     }
 
     // NOTE: Don't run `f` over grandchildren, just skip over them.
-    size_t siblingOffset =
-        forEachChild(cu, childDie, [](const Die&) { return true; });
+    size_t siblingOffset = forEachChild(cu, childDie, [](const Die&) {
+      return true;
+    });
     childDie = getDieAtOffset(cu, siblingOffset);
   }
 
@@ -415,8 +417,9 @@ bool DwarfImpl::isAddrInRangeList(
       return false;
     }
     sp.advance(offset);
-    const uint64_t maxAddr = is64BitAddr ? std::numeric_limits<uint64_t>::max()
-                                         : std::numeric_limits<uint32_t>::max();
+    const uint64_t maxAddr = is64BitAddr
+        ? std::numeric_limits<uint64_t>::max()
+        : std::numeric_limits<uint32_t>::max();
     while (sp.size() >= 2 * addrSize) {
       uint64_t begin = readOffset(sp, is64BitAddr);
       uint64_t end = readOffset(sp, is64BitAddr);

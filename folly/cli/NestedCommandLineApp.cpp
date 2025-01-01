@@ -323,9 +323,10 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
   auto& cmd = p.first;
   auto& info = p.second;
 
-  auto parser = po::command_line_parser(parsed.rest)
-                    .options(info.options)
-                    .style(optionStyle_);
+  auto parser =
+      po::command_line_parser(parsed.rest)
+          .options(info.options)
+          .style(optionStyle_);
   if (info.positionalOptions) {
     parser = parser.positional(*info.positionalOptions);
   }

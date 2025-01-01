@@ -283,8 +283,9 @@ inline void FiberManager::loopUntilNoReadyImpl() {
         runReadyFiber(&fiber);
       }
 
-      auto hadRemoteFiber = remoteReadyQueue_.sweepOnce(
-          [this](Fiber* fiber) { runReadyFiber(fiber); });
+      auto hadRemoteFiber = remoteReadyQueue_.sweepOnce([this](Fiber* fiber) {
+        runReadyFiber(fiber);
+      });
 
       if (hadRemoteFiber) {
         ++remoteCount_;

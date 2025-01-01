@@ -567,6 +567,25 @@ cpp_library(
 )
 
 cpp_library(
+    name = "fmt_utility",
+    srcs = [
+        "FmtUtility.cpp",
+    ],
+    headers = [
+        "FmtUtility.h",
+    ],
+    deps = [
+        ":range",
+        ":string",
+        "//folly/ssl:openssl_hash",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":cpp_attributes",
+    ],
+)
+
+cpp_library(
     name = "format",
     srcs = [
         "Format.cpp",
@@ -1199,7 +1218,7 @@ cpp_library(
         ":portability",
         ":traits",
         "//folly/detail:range_common",
-        "//folly/detail:range_sse42",
+        "//folly/detail:range_simd",
         "//folly/hash:spooky_hash_v2",
         "//folly/lang:c_string",
         "//folly/lang:exception",

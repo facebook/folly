@@ -679,27 +679,27 @@ TEST_P(StreamingUnitTest, stateTransitions) {
     auto output = empty ? MutableByteRange{} : out;
     return codec_->compressStream(input, output, flushOp);
   };
-  auto compress_all = [&](bool expect,
-                          StreamCodec::FlushOp flushOp =
-                              StreamCodec::FlushOp::NONE,
-                          bool empty = false) {
-    auto input = in;
-    auto output = empty ? MutableByteRange{} : out;
-    while (!input.empty()) {
-      if (expect) {
-        EXPECT_TRUE(codec_->compressStream(input, output, flushOp));
-      } else {
-        EXPECT_FALSE(codec_->compressStream(input, output, flushOp));
-      }
-    }
-  };
-  auto uncompress = [&](StreamCodec::FlushOp flushOp =
-                            StreamCodec::FlushOp::NONE,
-                        bool empty = false) {
-    auto input = in;
-    auto output = empty ? MutableByteRange{} : out;
-    return codec_->uncompressStream(input, output, flushOp);
-  };
+  auto compress_all =
+      [&](bool expect,
+          StreamCodec::FlushOp flushOp = StreamCodec::FlushOp::NONE,
+          bool empty = false) {
+        auto input = in;
+        auto output = empty ? MutableByteRange{} : out;
+        while (!input.empty()) {
+          if (expect) {
+            EXPECT_TRUE(codec_->compressStream(input, output, flushOp));
+          } else {
+            EXPECT_FALSE(codec_->compressStream(input, output, flushOp));
+          }
+        }
+      };
+  auto uncompress =
+      [&](StreamCodec::FlushOp flushOp = StreamCodec::FlushOp::NONE,
+          bool empty = false) {
+        auto input = in;
+        auto output = empty ? MutableByteRange{} : out;
+        return codec_->uncompressStream(input, output, flushOp);
+      };
 
   // compression flow
   if (!codec_->needsDataLength()) {

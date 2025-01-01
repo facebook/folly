@@ -326,20 +326,20 @@ void heapify(Container& cont) {
   offsets.resize(size);
   getOffsets(size, offsets);
 
-  std::function<void(size_type, size_type)> rotate = [&](size_type next,
-                                                         size_type index) {
-    std::vector<size_type> worklist;
-    while (index != next) {
-      worklist.push_back(next);
-      next = offsets[next];
-    }
-    while (!worklist.empty()) {
-      auto cur = worklist.back();
-      worklist.pop_back();
-      cont[offsets[cur]] = std::move(cont[cur]);
-      offsets[cur] = size;
-    }
-  };
+  std::function<void(size_type, size_type)> rotate =
+      [&](size_type next, size_type index) {
+        std::vector<size_type> worklist;
+        while (index != next) {
+          worklist.push_back(next);
+          next = offsets[next];
+        }
+        while (!worklist.empty()) {
+          auto cur = worklist.back();
+          worklist.pop_back();
+          cont[offsets[cur]] = std::move(cont[cur]);
+          offsets[cur] = size;
+        }
+      };
 
   for (size_type index = 0; index < size; index++) {
     // already moved
@@ -902,11 +902,12 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
 
   heap_vector_container(
       heap_vector_container&& other,
-      const Allocator& alloc) noexcept(std::
-                                           is_nothrow_constructible<
-                                               EBO,
-                                               EBO&&,
-                                               const Allocator&>::value)
+      const Allocator&
+          alloc) noexcept(std::
+                              is_nothrow_constructible<
+                                  EBO,
+                                  EBO&&,
+                                  const Allocator&>::value)
       : m_(std::move(other.m_), alloc) {}
 
   explicit heap_vector_container(const Allocator& alloc)
@@ -956,11 +957,12 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   // copy.
   explicit heap_vector_container(
       Container&& container,
-      const Compare& comp = Compare()) noexcept(std::
-                                                    is_nothrow_constructible<
-                                                        EBO,
-                                                        value_compare,
-                                                        Container&&>::value)
+      const Compare& comp =
+          Compare()) noexcept(std::
+                                  is_nothrow_constructible<
+                                      EBO,
+                                      value_compare,
+                                      Container&&>::value)
       : heap_vector_container(
             sorted_unique,
             heap_vector_detail::as_sorted_unique(
@@ -977,11 +979,12 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   heap_vector_container(
       sorted_unique_t /* unused */,
       Container&& container,
-      const Compare& comp = Compare()) noexcept(std::
-                                                    is_nothrow_constructible<
-                                                        EBO,
-                                                        value_compare,
-                                                        Container&&>::value)
+      const Compare& comp =
+          Compare()) noexcept(std::
+                                  is_nothrow_constructible<
+                                      EBO,
+                                      value_compare,
+                                      Container&&>::value)
       : m_(value_compare(comp), std::move(container)) {
     assert(heap_vector_detail::is_sorted_unique(m_.cont_, value_comp()));
     heap_vector_detail::heapify(m_.cont_);
@@ -1121,8 +1124,9 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
     auto a = get_allocator();
     std::allocator_traits<allocator_type>::construct(
         a, p, std::forward<Args>(args)...);
-    auto g = makeGuard(
-        [&]() { std::allocator_traits<allocator_type>::destroy(a, p); });
+    auto g = makeGuard([&]() {
+      std::allocator_traits<allocator_type>::destroy(a, p);
+    });
     return insert(std::move(*p));
   }
 
@@ -1591,13 +1595,14 @@ template <
         folly::small_vector_policy::policy_size_type<SizeType>>,
     typename = std::enable_if_t<
         std::is_integral<Key>::value || std::is_enum<Key>::value>>
-class small_heap_vector_map : public folly::heap_vector_map<
-                                  Key,
-                                  Value,
-                                  std::less<Key>,
-                                  typename Container::allocator_type,
-                                  void,
-                                  Container> {
+class small_heap_vector_map
+    : public folly::heap_vector_map<
+          Key,
+          Value,
+          std::less<Key>,
+          typename Container::allocator_type,
+          void,
+          Container> {
  public:
   using key_type = Key;
   using mapped_type = Value;

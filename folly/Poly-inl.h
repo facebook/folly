@@ -122,8 +122,9 @@ template <class I>
 constexpr RefType PolyRef<I>::refType() noexcept {
   using J = std::remove_reference_t<I>;
   return std::is_rvalue_reference<I>::value ? RefType::eRvalue
-      : std::is_const<J>::value             ? RefType::eConstLvalue
-                                            : RefType::eLvalue;
+      : std::is_const<J>::value
+      ? RefType::eConstLvalue
+      : RefType::eLvalue;
 }
 
 template <class I>

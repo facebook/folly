@@ -164,8 +164,9 @@ TEST(Overload, StdVariant) {
       std::move(two), [](One&&) { return false; }, [](Two&&) { return true; }));
 
   auto toString = [](const auto& variant) {
-    return variant_match(
-        variant, [](const auto& value) { return value.toString(); });
+    return variant_match(variant, [](const auto& value) {
+      return value.toString();
+    });
   };
   EXPECT_EQ(toString(one), "One");
   EXPECT_EQ(toString(two), "Two");
@@ -186,8 +187,9 @@ TEST(Overload, BoostVariant) {
       std::move(two), [](One&&) { return false; }, [](Two&&) { return true; }));
 
   auto toString = [](const auto& variant) {
-    return variant_match(
-        variant, [](const auto& value) { return value.toString(); });
+    return variant_match(variant, [](const auto& value) {
+      return value.toString();
+    });
   };
   EXPECT_EQ(toString(one), "One");
   EXPECT_EQ(toString(two), "Two");
@@ -210,8 +212,9 @@ TEST(Overload, DiscriminatedPtr) {
       [](const Two*) { return true; }));
 
   auto toString = [](const auto& variant) {
-    return variant_match(
-        variant, [](const auto* value) { return value->toString(); });
+    return variant_match(variant, [](const auto* value) {
+      return value->toString();
+    });
   };
   EXPECT_EQ(toString(one_ptr), "One");
   EXPECT_EQ(toString(two_ptr), "Two");

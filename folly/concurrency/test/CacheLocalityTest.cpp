@@ -1061,14 +1061,14 @@ static void logRusageFor(std::string name, F func) {
   auto afterNow = std::chrono::steady_clock::now();
   struct rusage after;
   getrusage(RUSAGE_THREAD, &after);
-  LOG(INFO) << name << ": real: "
-            << std::chrono::duration_cast<std::chrono::microseconds>(
-                   afterNow - beforeNow)
-                   .count()
-            << " usec, user: "
-            << (micros(after.ru_utime) - micros(before.ru_utime))
-            << " usec, sys: "
-            << (micros(after.ru_stime) - micros(before.ru_stime)) << " usec";
+  LOG(INFO)
+      << name << ": real: "
+      << std::chrono::duration_cast<std::chrono::microseconds>(
+             afterNow - beforeNow)
+             .count()
+      << " usec, user: " << (micros(after.ru_utime) - micros(before.ru_utime))
+      << " usec, sys: " << (micros(after.ru_stime) - micros(before.ru_stime))
+      << " usec";
 }
 
 TEST(CacheLocality, BenchmarkProcCpuinfo) {

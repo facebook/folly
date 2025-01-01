@@ -15,8 +15,8 @@
  */
 
 #include <folly/Singleton.h>
-#include <folly/experimental/io/IoUringEvent.h>
 #include <folly/io/async/EventBaseLocal.h>
+#include <folly/io/async/IoUringEvent.h>
 #include <folly/io/async/IoUringEventBaseLocal.h>
 
 #if FOLLY_HAS_LIBURING

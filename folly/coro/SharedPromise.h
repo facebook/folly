@@ -106,8 +106,9 @@ template <typename T>
 SharedPromise<T>& SharedPromise<T>::operator=(SharedPromise&& other) noexcept {
   // unlike folly::SharedPromise, we synchronize here
   state_.withWLock([&](auto& state) {
-    other.state_.withWLock(
-        [&](auto& otherState) { state = std::exchange(otherState, {}); });
+    other.state_.withWLock([&](auto& otherState) {
+      state = std::exchange(otherState, {});
+    });
   });
 
   return *this;
@@ -148,8 +149,9 @@ bool SharedPromise<T>::isFulfilled() const {
 
 template <typename T>
 void SharedPromise<T>::setException(folly::exception_wrapper&& exception) {
-  state_.withWLock(
-      [&](auto& state) { setTry(state, TryType{std::move(exception)}); });
+  state_.withWLock([&](auto& state) {
+    setTry(state, TryType{std::move(exception)});
+  });
 }
 
 template <typename T>

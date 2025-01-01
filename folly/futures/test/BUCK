@@ -154,6 +154,7 @@ cpp_unittest(
 cpp_unittest(
     name = "interrupt_test",
     srcs = ["InterruptTest.cpp"],
+    labels = ["load-sensitive-timing-test"],
     deps = [
         ":test_executor",
         "//folly/futures:core",
@@ -434,6 +435,7 @@ cpp_unittest(
     name = "cleanup_test",
     srcs = ["CleanupTest.cpp"],
     headers = [],
+    labels = ["case-isolation-failure"],
     deps = [
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:manual_executor",

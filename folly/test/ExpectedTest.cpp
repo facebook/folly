@@ -205,9 +205,10 @@ struct ExpectingDeleter {
 };
 
 TEST(Expected, valueMove) {
-  auto ptr = Expected<std::unique_ptr<int, ExpectingDeleter>, int>(
-                 std::in_place, new int(42), ExpectingDeleter{1337})
-                 .value();
+  auto ptr =
+      Expected<std::unique_ptr<int, ExpectingDeleter>, int>(
+          std::in_place, new int(42), ExpectingDeleter{1337})
+          .value();
   *ptr = 1337;
 }
 
@@ -803,8 +804,9 @@ TEST(Expected, orElse) {
 
   {
     EXPECT_THROW(
-        (Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.orElse(
-            [](E) { throw std::runtime_error(""); })),
+        (Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.orElse([](E) {
+          throw std::runtime_error("");
+        })),
         std::runtime_error);
   }
 
@@ -956,8 +958,9 @@ TEST(Expected, TestUnique) {
     return std::make_unique<int>(1);
   };
 
-  EXPECT_EQ(
-      2, **mk().then([](auto r) { return std::make_unique<int>(*r + 1); }));
+  EXPECT_EQ(2, **mk().then([](auto r) {
+    return std::make_unique<int>(*r + 1);
+  }));
 
   // Test converting errors works
   struct Convertible {

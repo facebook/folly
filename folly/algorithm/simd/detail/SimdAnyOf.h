@@ -47,8 +47,9 @@ struct AnyOfDelegate {
   template <std::size_t N>
   FOLLY_ALWAYS_INLINE bool unrolledStep(std::array<I, N> arr) {
     // Don't have to forceinline - no user code dependency
-    auto loaded = detail::UnrollUtils::arrayMap(
-        arr, [](I it) { return Platform::loada(it, ignore_none{}); });
+    auto loaded = detail::UnrollUtils::arrayMap(arr, [](I it) {
+      return Platform::loada(it, ignore_none{});
+    });
     auto tests = detail::UnrollUtils::arrayMap(loaded, p);
     auto test = detail::UnrollUtils::arrayReduce(tests, Platform::logical_or);
     res = Platform::any(test, ignore_none{});

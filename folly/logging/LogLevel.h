@@ -146,7 +146,8 @@ std::ostream& operator<<(std::ostream& os, LogLevel level);
  * Returns true if and only if a LogLevel is fatal.
  */
 inline constexpr bool isLogLevelFatal(LogLevel level) {
-  return folly::kIsDebug ? (level >= LogLevel::DFATAL)
-                         : (level >= LogLevel::FATAL);
+  return folly::kIsDebug
+      ? (level >= LogLevel::DFATAL)
+      : (level >= LogLevel::FATAL);
 }
 } // namespace folly

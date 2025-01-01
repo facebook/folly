@@ -16,6 +16,7 @@ cpp_unittest(
 cpp_unittest(
     name = "channel_test",
     srcs = ["ChannelTest.cpp"],
+    labels = ["slow"],
     supports_static_listing = False,
     deps = [
         "//folly/channels:channel",

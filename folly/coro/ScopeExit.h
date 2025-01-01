@@ -48,11 +48,12 @@ struct AttachScopeExitFn {
               ParentPromise&,
               coroutine_handle<ChildPromise>>,
           int> = 0>
-  auto operator()(ParentPromise& parent, coroutine_handle<ChildPromise> action)
-      const noexcept(folly::is_nothrow_tag_invocable_v<
-                     AttachScopeExitFn,
-                     ParentPromise&,
-                     coroutine_handle<ChildPromise>>)
+  auto operator()(
+      ParentPromise& parent, coroutine_handle<ChildPromise> action) const
+      noexcept(folly::is_nothrow_tag_invocable_v<
+               AttachScopeExitFn,
+               ParentPromise&,
+               coroutine_handle<ChildPromise>>)
           -> folly::tag_invoke_result_t<
               AttachScopeExitFn,
               ParentPromise&,

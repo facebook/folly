@@ -1,0 +1,13 @@
+[manifest]
+name = numa
+
+[download]
+url = https://github.com/numactl/numactl/releases/download/v2.0.19/numactl-2.0.19.tar.gz
+sha256 = f2672a0381cb59196e9c246bf8bcc43d5568bc457700a697f1a1df762b9af884
+
+[build]
+builder = autoconf
+subdir = numactl-2.0.19
+
+[rpms.distro=centos_stream]
+numactl-devel

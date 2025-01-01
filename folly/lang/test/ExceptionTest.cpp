@@ -87,8 +87,9 @@ extern "C" FOLLY_KEEP void check_folly_make_exception_ptr_with_in_place_type(
 }
 extern "C" FOLLY_KEEP void check_folly_make_exception_ptr_with_invocable(
     std::exception_ptr* ptr) {
-  ::new (ptr) std::exception_ptr(
-      folly::make_exception_ptr_with([] { return std::runtime_error("foo"); }));
+  ::new (ptr) std::exception_ptr(folly::make_exception_ptr_with([] {
+    return std::runtime_error("foo");
+  }));
 }
 
 template <typename Ex>

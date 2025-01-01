@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/IoUringBackend.h>
-#include <folly/experimental/io/IoUringEventBaseLocal.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+#include <folly/io/async/IoUringBackend.h>
+#include <folly/io/async/IoUringEventBaseLocal.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {

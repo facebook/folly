@@ -19,9 +19,9 @@
 #include <folly/Benchmark.h>
 #include <folly/FileUtil.h>
 #include <folly/experimental/io/AsyncIO.h>
-#include <folly/experimental/io/IoUring.h>
 #include <folly/experimental/io/test/AsyncBaseTestLib.h>
 #include <folly/experimental/io/test/IoTestTempFileUtil.h>
+#include <folly/io/async/IoUring.h>
 #include <folly/portability/GFlags.h>
 
 namespace {

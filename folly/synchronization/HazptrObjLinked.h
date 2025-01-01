@@ -220,8 +220,9 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
  *   link, and ConcurrentHashMap NodeT has a mutable link.
  */
 template <typename T, template <typename> class Atom, typename D>
-class hazptr_obj_base_linked : public hazptr_obj_linked<Atom>,
-                               public hazptr_deleter<T, D> {
+class hazptr_obj_base_linked
+    : public hazptr_obj_linked<Atom>,
+      public hazptr_deleter<T, D> {
   using Stack = std::stack<hazptr_obj_base_linked<T, Atom, D>*>;
 
  public:

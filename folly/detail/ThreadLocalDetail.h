@@ -146,8 +146,9 @@ struct ElementWrapper {
     if (!p) {
       return;
     }
-    auto const fun =
-        +[](void* pt, TLPDestructionMode) { delete static_cast<Ptr>(pt); };
+    auto const fun = +[](void* pt, TLPDestructionMode) {
+      delete static_cast<Ptr>(pt);
+    };
     auto const raw = castForgetAlign(fun);
     if (raw & deleter_all_mask) {
       return set(p, std::ref(*fun));

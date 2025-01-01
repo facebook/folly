@@ -225,8 +225,9 @@ class EventBase::ThreadIdCollector : public WorkerProvider {
   }
 
   void awaitOutstandingKeepAlives() {
-    wakeUp_.await(
-        [&] { return keepAlives_.load(std::memory_order_acquire) == 0; });
+    wakeUp_.await([&] {
+      return keepAlives_.load(std::memory_order_acquire) == 0;
+    });
   }
 
  private:
@@ -261,11 +262,12 @@ EventBase::EventBase(bool enableTimeMeasurement)
 
 // takes ownership of the event_base
 EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
-    : EventBase(Options()
-                    .setBackendFactory([evb] {
-                      return std::make_unique<EventBaseBackend>(evb);
-                    })
-                    .setSkipTimeMeasurement(!enableTimeMeasurement)) {}
+    : EventBase(
+          Options()
+              .setBackendFactory([evb] {
+                return std::make_unique<EventBaseBackend>(evb);
+              })
+              .setSkipTimeMeasurement(!enableTimeMeasurement)) {}
 
 EventBase::EventBase(Options options)
     : intervalDuration_(options.timerTickInterval),
@@ -285,8 +287,9 @@ EventBase::EventBase(Options options)
       observer_(nullptr),
       observerSampleCount_(0),
       evb_(
-          options.backendFactory ? options.backendFactory()
-                                 : getDefaultBackend()),
+          options.backendFactory
+              ? options.backendFactory()
+              : getDefaultBackend()),
       threadIdCollector_(std::make_unique<ThreadIdCollector>(*this)) {
   initNotificationQueue();
 }
@@ -652,15 +655,15 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
         }
       }
 
-      VLOG(11) << "EventBase " << this << " did not timeout "
-               << " loop time guess: " << loop_time.count()
-               << " idle time: " << idle.count()
-               << " busy time: " << busy.count()
-               << " avgLoopTime: " << avgLoopTime_.get()
-               << " maxLatencyLoopTime: " << maxLatencyLoopTime_.get()
-               << " maxLatency_: " << maxLatency_.count() << "us"
-               << " notificationQueueSize: " << getNotificationQueueSize()
-               << " nothingHandledYet(): " << nothingHandledYet();
+      VLOG(11)
+          << "EventBase " << this << " did not timeout "
+          << " loop time guess: " << loop_time.count()
+          << " idle time: " << idle.count() << " busy time: " << busy.count()
+          << " avgLoopTime: " << avgLoopTime_.get()
+          << " maxLatencyLoopTime: " << maxLatencyLoopTime_.get()
+          << " maxLatency_: " << maxLatency_.count() << "us"
+          << " notificationQueueSize: " << getNotificationQueueSize()
+          << " nothingHandledYet(): " << nothingHandledYet();
 
       if (maxLatency_ > std::chrono::microseconds::zero()) {
         // see if our average loop time has exceeded our limit
@@ -851,8 +854,9 @@ void EventBase::runOnDestruction(OnDestructionCallback& callback) {
   callback.schedule(
       [this](auto& cb) { onDestructionCallbacks_.wlock()->push_back(cb); },
       [this](auto& cb) {
-        onDestructionCallbacks_.withWLock(
-            [&](auto& list) { list.erase(list.iterator_to(cb)); });
+        onDestructionCallbacks_.withWLock([&](auto& list) {
+          list.erase(list.iterator_to(cb));
+        });
       });
 }
 
@@ -865,8 +869,9 @@ void EventBase::runOnDestructionStart(OnDestructionCallback& callback) {
   callback.schedule(
       [this](auto& cb) { preDestructionCallbacks_.wlock()->push_back(cb); },
       [this](auto& cb) {
-        preDestructionCallbacks_.withWLock(
-            [&](auto& list) { list.erase(list.iterator_to(cb)); });
+        preDestructionCallbacks_.withWLock([&](auto& list) {
+          list.erase(list.iterator_to(cb));
+        });
       });
 }
 

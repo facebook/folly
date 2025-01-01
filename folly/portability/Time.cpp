@@ -29,9 +29,10 @@ static void duration_to_ts(
     std::chrono::duration<_Rep, _Period> d, struct timespec* ts) {
   ts->tv_sec =
       time_t(std::chrono::duration_cast<std::chrono::seconds>(d).count());
-  ts->tv_nsec = long(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                         d % std::chrono::seconds(1))
-                         .count());
+  ts->tv_nsec = long(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          d % std::chrono::seconds(1))
+          .count());
 }
 
 #if !FOLLY_HAVE_CLOCK_GETTIME || FOLLY_FORCE_CLOCK_GETTIME_DEFINITION

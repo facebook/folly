@@ -108,8 +108,9 @@ struct Initializer {
       }
     });
 
-    registerRethrowExceptionCallback(
-        [](std::exception_ptr) noexcept { addActiveException(); });
+    registerRethrowExceptionCallback([](std::exception_ptr) noexcept {
+      addActiveException();
+    });
 
     try {
       ::folly::exception_tracer::installHandlers();

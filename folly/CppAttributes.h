@@ -118,6 +118,8 @@
  */
 #if FOLLY_HAS_CPP_ATTRIBUTE(no_unique_address)
 #define FOLLY_ATTR_NO_UNIQUE_ADDRESS no_unique_address
+#elif FOLLY_HAS_CPP_ATTRIBUTE(msvc::no_unique_address)
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS msvc::no_unique_address
 #else
 #define FOLLY_ATTR_NO_UNIQUE_ADDRESS
 #endif
@@ -167,6 +169,12 @@
 #define FOLLY_ATTR_GNU_USED gnu::used
 #else
 #define FOLLY_ATTR_GNU_USED
+#endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::lifetimebound)
+#define FOLLY_ATTR_CLANG_LIFETIMEBOUND clang::lifetimebound
+#else
+#define FOLLY_ATTR_CLANG_LIFETIMEBOUND
 #endif
 
 #if FOLLY_HAS_CPP_ATTRIBUTE(clang::coro_await_elidable)

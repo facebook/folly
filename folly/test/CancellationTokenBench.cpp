@@ -68,8 +68,9 @@ BENCHMARK(merge2_Empty_Empty, iters) {
 BENCHMARK_DRAW_LINE();
 
 BENCHMARK(merge2_RValA_Empty, iters) {
-  benchMerge(
-      iters, [](auto& c) { return c.merge(copy(c.t1), CancellationToken()); });
+  benchMerge(iters, [](auto& c) {
+    return c.merge(copy(c.t1), CancellationToken());
+  });
 }
 BENCHMARK(merge2_LValA_Empty, iters) {
   benchMerge(iters, [](auto& c) { return c.merge(c.t1, CancellationToken()); });
@@ -121,8 +122,9 @@ BENCHMARK(merge3_LValA_Empty_RValA, iters) {
   });
 }
 BENCHMARK(merge3_LValA_Empty_LValA, iters) {
-  benchMerge(
-      iters, [](auto& c) { return c.merge(c.t1, CancellationToken(), c.t1); });
+  benchMerge(iters, [](auto& c) {
+    return c.merge(c.t1, CancellationToken(), c.t1);
+  });
 }
 BENCHMARK_DRAW_LINE();
 

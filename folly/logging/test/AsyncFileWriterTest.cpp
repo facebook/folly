@@ -238,8 +238,9 @@ TEST(AsyncFileWriter, flush) {
   Promise<Unit> promise;
   auto future = promise.getFuture();
   auto flushFunction = [&] { writer.flush(); };
-  std::thread flushThread{
-      [&]() { promise.setTry(makeTryWith(flushFunction)); }};
+  std::thread flushThread{[&]() {
+    promise.setTry(makeTryWith(flushFunction));
+  }};
   // Detach the flush thread now rather than joining it at the end of the
   // function.  This way if something goes wrong during the test we will fail
   // with the real error, rather than crashing due to the std::thread
@@ -361,9 +362,9 @@ class ReadStats {
     EXPECT_GT(numDiscarded_, 0);
     EXPECT_EQ(nDiscarded, numDiscarded_);
 
-    XLOG(DBG1) << totalMessagesWritten << " messages written, "
-               << totalMessagesRead << " messages read, " << numDiscarded_
-               << " messages discarded";
+    XLOG(DBG1)
+        << totalMessagesWritten << " messages written, " << totalMessagesRead
+        << " messages read, " << numDiscarded_ << " messages discarded";
   }
 
   void messageReceived(StringPiece msg) {

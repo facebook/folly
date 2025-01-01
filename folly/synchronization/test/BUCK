@@ -153,6 +153,10 @@ cpp_unittest(
     srcs = [
         "DistributedMutexTest.cpp",
     ],
+    labels = [
+        "heavyweight",
+        "slow",
+    ],
     deps = [
         "//folly:map_util",
         "//folly:synchronized",

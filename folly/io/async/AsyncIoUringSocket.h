@@ -24,8 +24,6 @@
 #include <boost/intrusive/slist.hpp>
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
-#include <folly/experimental/io/IoUringBase.h>
-#include <folly/experimental/io/Liburing.h>
 #include <folly/futures/Future.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufIovecBuilder.h>
@@ -36,6 +34,8 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/IoUringBase.h>
+#include <folly/io/async/Liburing.h>
 #include <folly/net/NetOpsDispatcher.h>
 #include <folly/portability/Sockets.h>
 #include <folly/small_vector.h>
@@ -124,10 +124,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void write(WriteCallback*, const void*, size_t, WriteFlags = WriteFlags::NONE)
       override;
   void writev(
-      WriteCallback*,
-      const iovec*,
-      size_t,
-      WriteFlags = WriteFlags::NONE) override;
+      WriteCallback*, const iovec*, size_t, WriteFlags = WriteFlags::NONE)
+      override;
   void writeChain(
       WriteCallback* callback,
       std::unique_ptr<IOBuf>&& buf,

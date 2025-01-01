@@ -53,9 +53,10 @@ struct EvbAndContext {
   std::shared_ptr<SSLContext> ctx_;
 };
 
-class AttachDetachClient : public AsyncSocket::ConnectCallback,
-                           public AsyncTransport::WriteCallback,
-                           public AsyncTransport::ReadCallback {
+class AttachDetachClient
+    : public AsyncSocket::ConnectCallback,
+      public AsyncTransport::WriteCallback,
+      public AsyncTransport::ReadCallback {
  private:
   // two threads here - we'll create the socket in one, connect
   // in the other, and then read/write in the initial one

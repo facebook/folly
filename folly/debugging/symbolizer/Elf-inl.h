@@ -58,8 +58,9 @@ const ElfShdr* ElfFile::iterateSections(Fn fn) const
 template <class Fn>
 const ElfShdr* ElfFile::iterateSectionsWithType(uint32_t type, Fn fn) const
     noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>) {
-  return iterateSections(
-      [&](const ElfShdr& sh) { return sh.sh_type == type && fn(sh); });
+  return iterateSections([&](const ElfShdr& sh) {
+    return sh.sh_type == type && fn(sh);
+  });
 }
 
 template <class Fn>

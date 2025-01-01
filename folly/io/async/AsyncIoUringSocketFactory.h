@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/experimental/io/Liburing.h>
 #include <folly/io/async/AsyncIoUringSocket.h>
+#include <folly/io/async/Liburing.h>
 
 namespace folly {
 

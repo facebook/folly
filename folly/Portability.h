@@ -409,6 +409,14 @@ constexpr auto kHasWeakSymbols = false;
 #endif
 #endif
 
+#ifndef FOLLY_ARM_FEATURE_SVE2
+#ifdef __ARM_FEATURE_SVE2
+#define FOLLY_ARM_FEATURE_SVE2 1
+#else
+#define FOLLY_ARM_FEATURE_SVE2 0
+#endif
+#endif
+
 // RTTI may not be enabled for this compilation unit.
 #if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
     (defined(_MSC_VER) && defined(_CPPRTTI))
@@ -555,6 +563,16 @@ constexpr auto kCpplibVer = _CPPLIB_VER;
 constexpr auto kCpplibVer = 0;
 #endif
 } // namespace folly
+
+#define FOLLY_PRAGMA_DETAIL_STR(X) #X
+
+#if defined(_MSC_VER)
+#define FOLLY_PRAGMA_UNROLL_N(N)
+#elif defined(__GNUC__)
+#define FOLLY_PRAGMA_UNROLL_N(N) _Pragma(FOLLY_PRAGMA_DETAIL_STR(GCC unroll(N)))
+#else
+#define FOLLY_PRAGMA_UNROLL_N(N) _Pragma(FOLLY_PRAGMA_DETAIL_STR(unroll(N)))
+#endif
 
 //  MSVC does not permit:
 //

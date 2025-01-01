@@ -301,10 +301,11 @@ template <
     typename InputValueType,
     typename OutputValueType,
     typename TransformerType>
-class TransformProcessor : public TransformProcessorBase<
-                               InputValueType,
-                               OutputValueType,
-                               TransformerType> {
+class TransformProcessor
+    : public TransformProcessorBase<
+          InputValueType,
+          OutputValueType,
+          TransformerType> {
  public:
   using Base =
       TransformProcessorBase<InputValueType, OutputValueType, TransformerType>;
@@ -339,10 +340,11 @@ template <
     typename InputValueType,
     typename OutputValueType,
     typename TransformerType>
-class ResumableTransformProcessor : public TransformProcessorBase<
-                                        InputValueType,
-                                        OutputValueType,
-                                        TransformerType> {
+class ResumableTransformProcessor
+    : public TransformProcessorBase<
+          InputValueType,
+          OutputValueType,
+          TransformerType> {
  public:
   using Base =
       TransformProcessorBase<InputValueType, OutputValueType, TransformerType>;
@@ -497,11 +499,12 @@ template <
     typename InitializeTransformFunc,
     typename TransformValueFunc,
     bool RateLimiterEnabled>
-class DefaultResumableTransformer : public DefaultTransformer<
-                                        InputValueType,
-                                        OutputValueType,
-                                        TransformValueFunc,
-                                        RateLimiterEnabled> {
+class DefaultResumableTransformer
+    : public DefaultTransformer<
+          InputValueType,
+          OutputValueType,
+          TransformValueFunc,
+          RateLimiterEnabled> {
  public:
   using Base = DefaultTransformer<
       InputValueType,

@@ -1780,10 +1780,11 @@ class basic_fbstring {
 template <typename E, class T, class A, class S>
 FOLLY_NOINLINE typename basic_fbstring<E, T, A, S>::size_type
 basic_fbstring<E, T, A, S>::traitsLength(const value_type* s) {
-  return s ? traits_type::length(s)
-           : (throw_exception<std::logic_error>(
-                  "basic_fbstring: null pointer initializer not valid"),
-              0);
+  return s
+      ? traits_type::length(s)
+      : (throw_exception<std::logic_error>(
+             "basic_fbstring: null pointer initializer not valid"),
+         0);
 }
 
 template <typename E, class T, class A, class S>

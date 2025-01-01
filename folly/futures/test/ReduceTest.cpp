@@ -32,8 +32,9 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(0);
 
-    Future<double> f1 =
-        reduce(fs, 1.2, [](double a, Try<int>&& b) { return a + *b + 0.1; });
+    Future<double> f1 = reduce(fs, 1.2, [](double a, Try<int>&& b) {
+      return a + *b + 0.1;
+    });
     EXPECT_EQ(1.2, std::move(f1).get());
   }
 
@@ -41,8 +42,9 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(1);
 
-    Future<double> f1 =
-        reduce(fs, 0.0, [](double a, Try<int>&& b) { return a + *b + 0.1; });
+    Future<double> f1 = reduce(fs, 0.0, [](double a, Try<int>&& b) {
+      return a + *b + 0.1;
+    });
     EXPECT_EQ(1.1, std::move(f1).get());
   }
 
@@ -50,8 +52,9 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f1 =
-        reduce(fs, 0.0, [](double a, Try<int>&& b) { return a + *b + 0.1; });
+    Future<double> f1 = reduce(fs, 0.0, [](double a, Try<int>&& b) {
+      return a + *b + 0.1;
+    });
     EXPECT_EQ(6.3, std::move(f1).get());
   }
 
@@ -59,8 +62,9 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f1 =
-        reduce(fs, 0.0, [](double a, int&& b) { return a + b + 0.1; });
+    Future<double> f1 = reduce(fs, 0.0, [](double a, int&& b) {
+      return a + b + 0.1;
+    });
     EXPECT_EQ(6.3, std::move(f1).get());
   }
 
@@ -95,9 +99,10 @@ TEST(Reduce, chain) {
   };
 
   {
-    auto f = collectAll(makeFutures(3))
-                 .toUnsafeFuture()
-                 .reduce(0, [](int a, Try<int>&& b) { return a + *b; });
+    auto f =
+        collectAll(makeFutures(3))
+            .toUnsafeFuture()
+            .reduce(0, [](int a, Try<int>&& b) { return a + *b; });
     EXPECT_EQ(6, std::move(f).get());
   }
   {

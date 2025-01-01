@@ -390,8 +390,9 @@ class AtomicHashMap {
   }
 
   inline uint32_t recToIdx(value_type&& r, bool mayInsert = true) {
-    SimpleRetT ret = mayInsert ? insertInternal(r.first, std::move(r.second))
-                               : findInternal(r.first);
+    SimpleRetT ret = mayInsert
+        ? insertInternal(r.first, std::move(r.second))
+        : findInternal(r.first);
     return encodeIndex(ret.i, ret.j);
   }
 

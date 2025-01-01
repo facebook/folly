@@ -296,13 +296,14 @@ FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
   }
 
   auto before = state_.load(std::memory_order_relaxed);
-  while (before == NOTREADY &&
-         !folly::atomic_compare_exchange_weak_explicit<Atom>(
-             &state_,
-             &before,
-             BLOCKED,
-             std::memory_order_relaxed,
-             std::memory_order_acquire)) {
+  while (
+      before == NOTREADY &&
+      !folly::atomic_compare_exchange_weak_explicit<Atom>(
+          &state_,
+          &before,
+          BLOCKED,
+          std::memory_order_relaxed,
+          std::memory_order_acquire)) {
     if (before == READY) {
       return true;
     }

@@ -31,9 +31,10 @@
 namespace folly {
 #ifdef FOLLY_HAVE_TIMERFD
 // timerfd wrapper
-class TimerFD : public folly::EventHandler,
-                public folly::EventReadCallback,
-                public DelayedDestruction {
+class TimerFD
+    : public folly::EventHandler,
+      public folly::EventReadCallback,
+      public DelayedDestruction {
  public:
   explicit TimerFD(folly::EventBase* eventBase);
   ~TimerFD() override;

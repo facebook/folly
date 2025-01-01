@@ -794,8 +794,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // Make sure Objective C blocks are copied
   template <class ReturnType, class... Args>
   /* implicit */ Function& operator=(ReturnType (^objCBlock)(Args... args)) {
-    (*this) = [blockCopy = (ReturnType(^)(Args...))[objCBlock copy]](
-                  Args... args) { return blockCopy(args...); };
+    (*this) =
+        [blockCopy = (ReturnType(^)(Args...))[objCBlock copy]](Args... args) {
+          return blockCopy(args...);
+        };
     return *this;
   }
 #endif

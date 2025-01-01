@@ -347,8 +347,9 @@ TEST(ApplyTuple, Uncurry) {
   std::string long2 = "and here is another one!";
   std::string expected = long1 + long2;
 
-  auto cat = folly::uncurry(
-      [](std::string a, std::string b) { return std::move(a) + std::move(b); });
+  auto cat = folly::uncurry([](std::string a, std::string b) {
+    return std::move(a) + std::move(b);
+  });
 
   EXPECT_EQ(expected, cat(std::make_pair(long1, long2)));
   EXPECT_FALSE(long1.empty());
@@ -416,12 +417,12 @@ TEST(ApplyResult, Basic) {
 
     EXPECT_TRUE(
         (std::is_same<folly::apply_result_t<F, std::tuple<int>>, void>::value));
-    EXPECT_TRUE(
-        (std::is_same<folly::apply_result_t<F, std::tuple<double>>, double>::
-             value));
-    EXPECT_TRUE(
-        (std::is_same<folly::apply_result_t<F, std::tuple<int, int>>, int>::
-             value));
+    EXPECT_TRUE((
+        std::is_same<folly::apply_result_t<F, std::tuple<double>>, double>::
+            value));
+    EXPECT_TRUE((
+        std::is_same<folly::apply_result_t<F, std::tuple<int, int>>, int>::
+            value));
   }
 }
 
@@ -521,12 +522,13 @@ TEST(ForwardTuple, Basic) {
 #else
   constexpr bool before_lwg2485 = false;
 #endif
-  EXPECT_TRUE((std::is_same<
-               decltype(folly::forward_tuple(std::move(std::as_const(tuple)))),
-               std::conditional_t<
-                   before_lwg2485,
-                   std::tuple<const int&, const double&>,
-                   std::tuple<const int&&, const double&&>>>::value));
+  EXPECT_TRUE(
+      (std::is_same<
+          decltype(folly::forward_tuple(std::move(std::as_const(tuple)))),
+          std::conditional_t<
+              before_lwg2485,
+              std::tuple<const int&, const double&>,
+              std::tuple<const int&&, const double&&>>>::value));
   EXPECT_EQ(folly::forward_tuple(std::move(std::as_const(tuple))), tuple);
 
   auto integer = 1;
@@ -541,9 +543,10 @@ TEST(ForwardTuple, Basic) {
                decltype(folly::forward_tuple(std::move(ref_tuple))),
                std::tuple<int&, double&&>>::value));
 
-  EXPECT_TRUE((std::is_same<
-               decltype(std::tuple_cat(
-                   folly::forward_tuple(tuple),
-                   folly::forward_tuple(std::move(tuple)))),
-               std::tuple<int&, double&, int&&, double&&>>::value));
+  EXPECT_TRUE(
+      (std::is_same<
+          decltype(std::tuple_cat(
+              folly::forward_tuple(tuple),
+              folly::forward_tuple(std::move(tuple)))),
+          std::tuple<int&, double&, int&&, double&&>>::value));
 }

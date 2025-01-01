@@ -187,11 +187,11 @@ TEST(IOBuf, TakeOwnershipFreeOnErrorBugfix) {
   static void* freedBuf = nullptr;
   static void* freedUserData = nullptr;
 
-  folly::IOBuf::FreeFunction freeFn = [](void* calledBuf,
-                                         void* calledUserData) {
-    freedBuf = calledBuf;
-    freedUserData = calledUserData;
-  };
+  folly::IOBuf::FreeFunction freeFn =
+      [](void* calledBuf, void* calledUserData) {
+        freedBuf = calledBuf;
+        freedUserData = calledUserData;
+      };
 
   int userData = 0;
   char buf[1024];

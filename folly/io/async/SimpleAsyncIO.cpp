@@ -19,8 +19,8 @@
 #include <folly/String.h>
 #include <folly/coro/Baton.h>
 #include <folly/experimental/io/AsyncIO.h>
-#include <folly/experimental/io/IoUring.h>
-#include <folly/experimental/io/Liburing.h>
+#include <folly/io/async/IoUring.h>
+#include <folly/io/async/Liburing.h>
 #include <folly/portability/Sockets.h>
 
 namespace folly {

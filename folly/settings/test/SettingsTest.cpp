@@ -23,8 +23,10 @@
 
 #include <folly/Format.h>
 #include <folly/String.h>
+#include <folly/experimental/observer/detail/ObserverManager.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/settings/Observer.h>
 #include <folly/synchronization/test/Barrier.h>
 
 #include <folly/settings/test/a.h>
@@ -184,8 +186,8 @@ FOLLY_SETTING_DEFINE(
 namespace {
 MATCHER(IsOk, "success but got error") {
   if (arg.hasError()) {
-    *result_listener << "which is: '"
-                     << ::folly::settings::toString(arg.error()) << "'";
+    *result_listener
+        << "which is: '" << ::folly::settings::toString(arg.error()) << "'";
     return false;
   }
   return true;
@@ -199,8 +201,8 @@ MATCHER_P(
     return false;
   }
   if (arg.error() != error_code) {
-    *result_listener << "which is: '"
-                     << ::folly::settings::toString(arg.error()) << "'";
+    *result_listener
+        << "which is: '" << ::folly::settings::toString(arg.error()) << "'";
   }
   return true;
 }
@@ -603,11 +605,12 @@ TEST(SettingsTest, callback) {
 
   EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "default");
   {
-    auto handle = some_ns::FOLLY_SETTING(follytest, some_flag)
-                      .addCallback([&](const auto& contents) {
-                        ++callbackInvocations;
-                        lastCallbackValue = contents.value;
-                      });
+    auto handle =
+        some_ns::FOLLY_SETTING(follytest, some_flag)
+            .addCallback([&](const auto& contents) {
+              ++callbackInvocations;
+              lastCallbackValue = contents.value;
+            });
 
     some_ns::FOLLY_SETTING(follytest, some_flag).set("a");
     EXPECT_EQ(callbackInvocations, 1);
@@ -616,10 +619,11 @@ TEST(SettingsTest, callback) {
     size_t secondCallbackInvocations = 0;
     // Test adding multiple callbacks and letting the handle go out of scope
     {
-      auto secondHandle = some_ns::FOLLY_SETTING(follytest, some_flag)
-                              .addCallback([&](const auto& /* contents */) {
-                                ++secondCallbackInvocations;
-                              });
+      auto secondHandle =
+          some_ns::FOLLY_SETTING(follytest, some_flag)
+              .addCallback([&](const auto& /* contents */) {
+                ++secondCallbackInvocations;
+              });
       some_ns::FOLLY_SETTING(follytest, some_flag).set("b");
       EXPECT_EQ(callbackInvocations, 2);
       EXPECT_EQ(lastCallbackValue, "b");
@@ -641,6 +645,22 @@ TEST(SettingsTest, callback) {
   some_ns::FOLLY_SETTING(follytest, some_flag).set("e");
   EXPECT_EQ(callbackInvocations, 4);
   EXPECT_EQ(lastCallbackValue, "d");
+}
+
+TEST(SettingsTest, observers) {
+  auto observer = folly::settings::getObserver(
+      some_ns::FOLLY_SETTING(follytest, some_flag));
+  std::string updatedFromCallback;
+  auto callbackHandle = observer.addCallback([&](auto snapshot) {
+    updatedFromCallback = *snapshot;
+  });
+  EXPECT_EQ(**observer, "default");
+  EXPECT_EQ(updatedFromCallback, "default");
+
+  some_ns::FOLLY_SETTING(follytest, some_flag).set("new value");
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(**observer, "new value");
+  EXPECT_EQ(updatedFromCallback, "new value");
 }
 
 TEST(Settings, immutables) {
@@ -788,8 +808,9 @@ TEST(Settings, userDefinedConversionWithMetadata) {
 TEST(Settings, accessCount) {
   {
     folly::settings::Snapshot sn;
-    sn.forEachSetting(
-        [](auto setting) { EXPECT_EQ(setting.accessCount(), 0); });
+    sn.forEachSetting([](auto setting) {
+      EXPECT_EQ(setting.accessCount(), 0);
+    });
   }
 
   // Check updateReason does not count as an access

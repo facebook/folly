@@ -5,6 +5,7 @@ oncall("fbcode_entropy_wardens_folly")
 cpp_unittest(
     name = "stl_vector_test",
     srcs = ["StlVectorTest.cpp"],
+    labels = ["slow"],
     deps = [
         "//folly:conv",
         "//folly:fbvector",

@@ -54,13 +54,14 @@
 
 #if !defined(JEMALLOC_VERSION_MAJOR) || (JEMALLOC_VERSION_MAJOR < 5)
 typedef struct extent_hooks_s extent_hooks_t;
-typedef void*(extent_alloc_t)(extent_hooks_t*,
-                              void*,
-                              size_t,
-                              size_t,
-                              bool*,
-                              bool*,
-                              unsigned);
+typedef void*(
+    extent_alloc_t)(extent_hooks_t*,
+                    void*,
+                    size_t,
+                    size_t,
+                    bool*,
+                    bool*,
+                    unsigned);
 struct extent_hooks_s {
   extent_alloc_t* alloc;
 };
@@ -416,8 +417,9 @@ void* JemallocHugePageAllocator::allocate(size_t size) {
 }
 
 void* JemallocHugePageAllocator::reallocate(void* p, size_t size) {
-  return hugePagesAllocSupported() ? rallocx(p, size, flags_)
-                                   : realloc(p, size);
+  return hugePagesAllocSupported()
+      ? rallocx(p, size, flags_)
+      : realloc(p, size);
 }
 
 void JemallocHugePageAllocator::deallocate(void* p, size_t) {

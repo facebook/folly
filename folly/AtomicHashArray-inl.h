@@ -245,8 +245,9 @@ AtomicHashArray<
     }
     DCHECK(relaxedLoadKey(*cell) != kEmptyKey_);
     if (kLockedKey_ == acquireLoadKey(*cell)) {
-      detail::atomic_hash_spin_wait(
-          [&] { return kLockedKey_ == acquireLoadKey(*cell); });
+      detail::atomic_hash_spin_wait([&] {
+        return kLockedKey_ == acquireLoadKey(*cell);
+      });
     }
 
     const KeyT thisKey = acquireLoadKey(*cell);

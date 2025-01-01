@@ -167,11 +167,12 @@ dynamic numericOp(dynamic const& a, dynamic const& b) {
  * Note: Later we may add separate order tracking here (a multi-index
  * type of thing.)
  */
-struct dynamic::ObjectImpl : F14NodeMap<
-                                 dynamic,
-                                 dynamic,
-                                 detail::DynamicHasher,
-                                 detail::DynamicKeyEqual> {};
+struct dynamic::ObjectImpl
+    : F14NodeMap<
+          dynamic,
+          dynamic,
+          detail::DynamicHasher,
+          detail::DynamicKeyEqual> {};
 
 //////////////////////////////////////////////////////////////////////
 
@@ -220,11 +221,12 @@ inline dynamic::ObjectMaker dynamic::object(dynamic a, dynamic b) {
 
 //////////////////////////////////////////////////////////////////////
 
-struct dynamic::item_iterator : detail::IteratorAdaptor<
-                                    dynamic::item_iterator,
-                                    dynamic::ObjectImpl::iterator,
-                                    std::pair<dynamic const, dynamic>,
-                                    std::forward_iterator_tag> {
+struct dynamic::item_iterator
+    : detail::IteratorAdaptor<
+          dynamic::item_iterator,
+          dynamic::ObjectImpl::iterator,
+          std::pair<dynamic const, dynamic>,
+          std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::item_iterator,
       dynamic::ObjectImpl::iterator,
@@ -236,11 +238,12 @@ struct dynamic::item_iterator : detail::IteratorAdaptor<
   using object_type = dynamic::ObjectImpl;
 };
 
-struct dynamic::value_iterator : detail::IteratorAdaptor<
-                                     dynamic::value_iterator,
-                                     dynamic::ObjectImpl::iterator,
-                                     dynamic,
-                                     std::forward_iterator_tag> {
+struct dynamic::value_iterator
+    : detail::IteratorAdaptor<
+          dynamic::value_iterator,
+          dynamic::ObjectImpl::iterator,
+          dynamic,
+          std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::value_iterator,
       dynamic::ObjectImpl::iterator,
@@ -273,11 +276,12 @@ struct dynamic::const_item_iterator
   using object_type = dynamic::ObjectImpl const;
 };
 
-struct dynamic::const_key_iterator : detail::IteratorAdaptor<
-                                         dynamic::const_key_iterator,
-                                         dynamic::ObjectImpl::const_iterator,
-                                         dynamic const,
-                                         std::forward_iterator_tag> {
+struct dynamic::const_key_iterator
+    : detail::IteratorAdaptor<
+          dynamic::const_key_iterator,
+          dynamic::ObjectImpl::const_iterator,
+          dynamic const,
+          std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::const_key_iterator,
       dynamic::ObjectImpl::const_iterator,
@@ -292,11 +296,12 @@ struct dynamic::const_key_iterator : detail::IteratorAdaptor<
   dynamic const& dereference() const { return base()->first; }
 };
 
-struct dynamic::const_value_iterator : detail::IteratorAdaptor<
-                                           dynamic::const_value_iterator,
-                                           dynamic::ObjectImpl::const_iterator,
-                                           dynamic const,
-                                           std::forward_iterator_tag> {
+struct dynamic::const_value_iterator
+    : detail::IteratorAdaptor<
+          dynamic::const_value_iterator,
+          dynamic::ObjectImpl::const_iterator,
+          dynamic const,
+          std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::const_value_iterator,
       dynamic::ObjectImpl::const_iterator,

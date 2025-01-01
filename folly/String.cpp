@@ -440,8 +440,9 @@ double prettyToDouble(
         "Unable to parse suffix \"", *prettyString, "\""));
   }
   prettyString->advance(size_t(longestPrefixLen));
-  return suffixes[bestPrefixId].val != 0. ? value * suffixes[bestPrefixId].val
-                                          : value;
+  return suffixes[bestPrefixId].val != 0.
+      ? value * suffixes[bestPrefixId].val
+      : value;
 }
 
 double prettyToDouble(folly::StringPiece prettyString, const PrettyType type) {

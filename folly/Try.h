@@ -89,9 +89,9 @@ class TryBase {
 
   /// Implicit conversion from Try<void> to Try<Unit>
   template <class T2 = T>
-  /* implicit */ TryBase(typename std::enable_if<
-                         std::is_same<Unit, T2>::value,
-                         Try<void> const&>::type t) noexcept;
+  /* implicit */ TryBase(
+      typename std::enable_if<std::is_same<Unit, T2>::value, Try<void> const&>::
+          type t) noexcept;
 
   /*
    * Construct a Try with an exception_wrapper
@@ -135,10 +135,11 @@ class TryBase {
  * To represent success or a captured exception, use Try<Unit>.
  */
 template <class T>
-class Try : detail::TryBase<T>,
-            moveonly_::EnableCopyMove<
-                std::is_copy_constructible<T>::value,
-                std::is_move_constructible<T>::value> {
+class Try
+    : detail::TryBase<T>,
+      moveonly_::EnableCopyMove<
+          std::is_copy_constructible<T>::value,
+          std::is_move_constructible<T>::value> {
   static_assert(
       !std::is_reference<T>::value, "Try may not be used with reference types");
   using typename detail::TryBase<T>::Contains;
