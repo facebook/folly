@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/Hazptr.h>
 
 #include <atomic>
