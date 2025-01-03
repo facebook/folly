@@ -37,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& xo, Histo const& histo) {
   for (auto v : histo.data) {
     sum += v;
   }
+  auto const dsum = static_cast<double>(sum);
   size_t partial = 0;
   for (size_t i = 0; i < histo.data.size(); ++i) {
     if (i > 0) {
@@ -45,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& xo, Histo const& histo) {
     partial += histo.data[i];
     if (histo.data[i] > 0) {
       xo << i << ": " << histo.data[i] << " ("
-         << (static_cast<double>(partial) * 100.0 / sum) << "%)";
+         << (static_cast<double>(partial) * 100.0 / dsum) << "%)";
     }
   }
   xo << "]";

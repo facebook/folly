@@ -351,7 +351,7 @@ constexpr uint64_t fnv64(
  * @methodset fnv
  */
 inline uint64_t fnv64(
-    const std::string& str, uint64_t hash = fnv64_hash_start) noexcept {
+    std::string_view str, uint64_t hash = fnv64_hash_start) noexcept {
   return fnv64_buf(str.data(), str.size(), hash);
 }
 
