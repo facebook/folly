@@ -645,7 +645,8 @@ class CommutativeWrapperAwaitable {
 };
 
 template <typename T>
-class TryAwaitable : public CommutativeWrapperAwaitable<TryAwaitable, T> {
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] TryAwaitable
+    : public CommutativeWrapperAwaitable<TryAwaitable, T> {
  public:
   using CommutativeWrapperAwaitable<TryAwaitable, T>::
       CommutativeWrapperAwaitable;
@@ -680,7 +681,7 @@ using semi_await_try_result_t =
 namespace detail {
 
 template <typename T>
-class NothrowAwaitable
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable
     : public CommutativeWrapperAwaitable<NothrowAwaitable, T> {
  public:
   using CommutativeWrapperAwaitable<NothrowAwaitable, T>::
