@@ -108,6 +108,7 @@ cpp_unittest(
     name = "custom_log_formatter_test",
     srcs = ["CustomLogFormatterTest.cpp"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:format",
         "//folly/init:init",
         "//folly/logging:logging",
@@ -120,6 +121,7 @@ cpp_unittest(
     name = "glog_formatter_test",
     srcs = ["GlogFormatterTest.cpp"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:format",
         "//folly/init:init",
         "//folly/logging:logging",
