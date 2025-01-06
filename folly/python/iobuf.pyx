@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# distutils: language=c++
+# cython: language_level=3, c_string_encoding=utf8
+
 import sys
 from builtins import memoryview as py_memoryview
 from folly.executor cimport get_running_executor
@@ -254,37 +257,37 @@ cdef class WritableIOBuf(IOBuf):
         if amount < 0:
             raise ValueError("Cannot append, amount must be positive")
 
-        if amount > self._this.tailroom():
+        if (<size_t>amount) > self._this.tailroom():
             raise ValueError("Cannot append more than capacity")
 
-        self._this.append(amount)
+        self._this.append(<size_t>amount)
 
     def prepend(self, ssize_t amount):
         if amount < 0:
             raise ValueError("Cannot prepend, amount must be positive")
 
-        if amount > self._this.headroom():
+        if (<size_t>amount) > self._this.headroom():
             raise ValueError("Cannot prepend more than headroom")
 
-        self._this.prepend(amount)
+        self._this.prepend(<size_t>amount)
 
     def trim_start(self, ssize_t amount):
         if amount < 0:
             raise ValueError("Cannot trim start, amount must be positive")
 
-        if amount > self._this.length():
+        if (<size_t>amount) > self._this.length():
             raise ValueError("Cannot trim more than length")
 
-        self._this.trimStart(amount)
+        self._this.trimStart(<size_t>amount)
 
     def trim_end(self, ssize_t amount):
         if amount < 0:
             raise ValueError("Cannot trim end, amount must be positive")
 
-        if amount > self._this.length():
+        if (<size_t>amount) > self._this.length():
             raise ValueError("Cannot trim more than length")
 
-        self._this.trimEnd(amount)
+        self._this.trimEnd(<size_t>amount)
 
     def append_to_chain(self, WritableIOBuf other):
         self._this.appendToChain(move(other._ours))

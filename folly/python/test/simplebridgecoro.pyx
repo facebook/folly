@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# distutils: language=c++
+# cython: language_level=3, c_string_encoding=utf8
+
 import asyncio
 from folly.coro cimport cFollyCoroTask, bridgeCoroTask, bridgeCoroTaskWithCancellation, cFollyCancellationSource
 from folly cimport cFollyTry
@@ -65,7 +68,7 @@ def sleep_then_echo(int sleep_ms, int echo_val):
     return fut
 
 
-cdef void handle_uint64_t(cFollyTry[uint64_t]&& res, PyObject* userData):
+cdef void handle_uint64_t(cFollyTry[uint64_t]&& res, PyObject* userData) noexcept:
     future = <object> userData
     if res.hasException():
         try:

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # distutils: language = c++
+# cython: language_level=3, c_string_encoding=utf8
 
 from libcpp.string cimport string
 from libc.stdint cimport uint64_t
@@ -34,9 +35,9 @@ cdef extern from "folly/io/IOBuf.h" namespace "folly":
         unique_ptr[cIOBuf] clone()
         cIOBuf* prev()
         cIOBuf* next()
-        void insertAfterThisOne(unique_ptr[cIOBuf]&& ciobuf)
-        void appendToChain(unique_ptr[cIOBuf]&& ciobuf)
-        void appendChain(unique_ptr[cIOBuf]&& ciobuf)  # deprecated
+        void insertAfterThisOne(unique_ptr[cIOBuf] ciobuf) # removed &&
+        void appendToChain(unique_ptr[cIOBuf] ciobuf) # removed &&
+        void appendChain(unique_ptr[cIOBuf] ciobuf)  # deprecated # removed &&
         cIOBuf cloneAsValue()
         void coalesce()
         void unshare()
@@ -66,7 +67,7 @@ cdef extern from "folly/io/IOBufQueue.h" namespace "folly":
         cIOBufQueue(cIOBufQueueOptions)
         cIOBufQueue()
         unique_ptr[cIOBuf] move()
-        void append(unique_ptr[cIOBuf]&& buf)
+        void append(unique_ptr[cIOBuf] buf) # removed &&
 
 
 cdef extern from '<utility>' namespace 'std':

@@ -28,7 +28,7 @@
 #include <folly/CancellationToken.h>
 #include <folly/coro/Task.h>
 #include <folly/python/AsyncioExecutor.h>
-#include <folly/python/executor.h>
+#include <folly/python/executor_intf.h>
 
 #if FOLLY_HAS_COROUTINES
 

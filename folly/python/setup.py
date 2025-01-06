@@ -23,6 +23,16 @@ from Cython.Build import cythonize
 from Cython.Compiler import Options
 from setuptools import Extension, setup
 
+# https://github.com/cython/cython/issues/3262 deadlock with spawned multiprocessing even with nthreads=1
+# import multiprocessing
+# multiprocessing.set_start_method('fork', force=True)
+
+# c=++20 for coroutines
+compile_args = ['-std=c++20']
+
+# using local and folly includes
+include_dirs = ['.', '../..']
+
 # Define base libraries needed across all platforms
 base_libraries = ['folly', 'glog', 'double-conversion', 'fmt']
 
@@ -42,23 +52,26 @@ else:
     library_dirs = ['/usr/lib', '/usr/lib/x86_64-linux-gnu']
     # add libunwind explicitly
     base_libraries.append('unwind')
-    
-# Add (prepend) library paths from CMAKE_PREFIX_PATH
-if cmake_prefix_path := os.environ.get('CMAKE_PREFIX_PATH'):
-    cmake_lib_dirs = list(os.path.join(p, 'lib') for p in cmake_prefix_path.split(':'))
-    library_dirs[:0] = cmake_lib_dirs
-    print(f"export LD_LIBRARY_PATH=\"{':'.join(cmake_lib_dirs)}:$LD_LIBRARY_PATH\"")
 
-# Set up the Python path   
-if cmake_install_prefix := os.environ.get('CMAKE_INSTALL_PREFIX'):
-    site_packages = os.path.join(cmake_install_prefix, 'lib',
-        f'python{sys.version_info.major}.{sys.version_info.minor}',
+# Set Python path from GETDEPS_INSTALL_DIR
+folly_lib = None
+if install_dir := os.environ.get('GETDEPS_INSTALL_DIR'):
+    folly_lib = os.path.join(install_dir, 'folly', 'lib')
+    pypath = os.path.join(
+        folly_lib, 
+        f'python{sys.version_info.major}.{sys.version_info.minor}', 
         'site-packages'
     )
-    os.environ['PYTHONPATH'] = site_packages
-    print(f"# Python package directory: {site_packages}")
-    print(f"# Directory exists: {os.path.exists(site_packages)}")
-    print(f"export PYTHONPATH=\"{site_packages}\"")
+    print(f"\nexport PYTHONPATH=\"{pypath}\"\n")
+    os.environ['PYTHONPATH'] = pypath
+
+# Add (prepend) library paths from LD_LIBRARY_PATHs
+if ldpath := os.environ.get('LD_LIBRARY_PATH'):
+    library_dirs[:0] = ldpath.split(':')
+    if folly_lib and folly_lib not in ldpath.split(':'):
+        print(f'export LD_LIBRARY_PATH="{folly_lib}:{ldpath}"\n')
+    else:
+        print(f'export LD_LIBRARY_PATH="{ldpath}"\n')
 
 exts = [
     Extension(
@@ -69,10 +82,11 @@ exts = [
             'folly/ProactorExecutor.cpp',
             'folly/error.cpp',
         ],
-        libraries=base_libraries,
-        extra_compile_args=['-std=c++20'],  # C++20 for coroutines
-        include_dirs=['.', '../..'],  # cython generated code
+        language='c++',
+        extra_compile_args=compile_args,
+        include_dirs=include_dirs,
         library_dirs=library_dirs,
+        libraries=base_libraries,
     ),
     Extension(
         'folly.iobuf',
@@ -82,10 +96,11 @@ exts = [
             'folly/iobuf_ext.cpp',
             'folly/error.cpp',
         ],
-        libraries=base_libraries,
-        extra_compile_args=['-std=c++20'],  # C++20 for coroutines
-        include_dirs=['.', '../..'],  # cython generated code
+        language='c++',
+        extra_compile_args=compile_args,
+        include_dirs=include_dirs,
         library_dirs=library_dirs,
+        libraries=base_libraries,
     ),
     Extension(
         'folly.fiber_manager',
@@ -94,20 +109,40 @@ exts = [
             'folly/fibers.cpp',
             'folly/error.cpp',
         ],
-        libraries=base_libraries+['boost_coroutine', 'boost_context', 'event'],
-        extra_compile_args=['-std=c++20'],  # C++20 for coroutines
-        include_dirs=['.', '../..'],  # cython generated code
+        language='c++',
+        extra_compile_args=compile_args,
+        include_dirs=include_dirs,
         library_dirs=library_dirs,
-    )
+        libraries=base_libraries+['boost_coroutine', 'boost_context', 'event'],
+    ),
+    Extension(
+        'folly.build_mode',
+        sources=['folly/build_mode.pyx'],
+        extra_compile_args=compile_args,
+        include_dirs=include_dirs,
+        library_dirs=library_dirs,
+        libraries=base_libraries,
+    ),
 ]
 
+# os.environ['CYTHON_DEBUG']='1'
+
 Options.fast_fail = True
-setup(
-    name='folly',
-    version='0.0.1',
-    packages=['folly'],
-    setup_requires=['cython'],
-    zip_safe=False,
-    package_data={'': ['*.pxd', '*.pyi', '*.h', '__init__.py']},
-    ext_modules=cythonize(exts, compiler_directives={'language_level': 3}),
-)
+if __name__ == '__main__':
+    setup(
+        name='folly',
+        version='0.0.1',
+        packages=['folly'],
+        setup_requires=['cython'],
+        zip_safe=False,
+        package_data={'': ['*.pxd', '*.pyi', '*.h', '__init__.py']},
+        ext_modules=cythonize(
+            exts, 
+            verbose=True,
+            show_all_warnings=True,
+            compiler_directives={
+                'language_level': 3,
+                'c_string_encoding': 'utf8'
+            }
+        ),
+    )

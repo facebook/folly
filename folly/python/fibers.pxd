@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# distutils: language=c++
+# cython: language_level=3, c_string_encoding=utf8
+
 from cpython.ref cimport PyObject
 from folly cimport cFollyTry
 

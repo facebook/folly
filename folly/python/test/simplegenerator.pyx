@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# distutils: language=c++
+# cython: language_level=3, c_string_encoding=utf8
+
 import asyncio
 from cpython.ref cimport PyObject
 
@@ -52,7 +55,7 @@ cdef class SimpleGenerator:
     cdef void callback(
         cFollyTry[cNextResult[int]]&& res,
         PyObject* py_future,
-    ):
+    ) noexcept:
         future = <object> py_future
         if res.hasException():
             try:

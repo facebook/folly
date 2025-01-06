@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# distutils: language=c++
+# cython: language_level=3, c_string_encoding=utf8
+
 import asyncio
 from folly.futures cimport bridgeFuture, bridgeSemiFuture
 from folly.fibers cimport bridgeFibers
@@ -23,7 +26,7 @@ from cython.operator cimport dereference as deref
 cdef extern from "folly/python/test/simple.h" namespace "folly::python::test":
     cdef cFollyFuture[uint64_t] future_getValueX5(uint64_t val)
     cdef cFollySemiFuture[uint64_t] semiFuture_getValueX5(uint64_t val)
-    cdef (uint64_t(*)()) getValueX5Fibers(uint64_t val)
+    cdef (uint64_t(*)() noexcept) getValueX5Fibers(uint64_t val)
 
 
 def get_value_x5(int val):
@@ -57,7 +60,7 @@ def get_value_x5_fibers(int val):
     return fut
 
 
-cdef void handle_uint64_t(cFollyTry[uint64_t]&& res, PyObject* userData):
+cdef void handle_uint64_t(cFollyTry[uint64_t]&& res, PyObject* userData) noexcept: 
     future = <object> userData
     if res.hasException():
         try:
