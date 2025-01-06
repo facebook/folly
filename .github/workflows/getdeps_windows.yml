@@ -21,85 +21,129 @@ jobs:
       run: "echo BOOST_ROOT=%BOOST_ROOT_1_83_0% >> %GITHUB_ENV%"
       shell: cmd
     - name: Fix Git config
-      run: git config --system core.longpaths true
-    - name: Disable autocrlf
-      run: git config --system core.autocrlf false
+      run: >
+        git config --system core.longpaths true &&
+        git config --system core.autocrlf false &&
+        git config --system core.symlinks true
+      shell: cmd
     - uses: actions/checkout@v4
+    - id: paths
+      name: Query paths
+      run: python build/fbcode_builder/getdeps.py query-paths --recursive --src-dir=. folly  >> $env:GITHUB_OUTPUT
+      shell: pwsh
     - name: Fetch boost
+      if: ${{ steps.paths.outputs.boost_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch libsodium
+      if: ${{ steps.paths.outputs.libsodium_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests libsodium
     - name: Fetch ninja
+      if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests ninja
     - name: Fetch cmake
+      if: ${{ steps.paths.outputs.cmake_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests cmake
     - name: Fetch double-conversion
+      if: ${{ steps.paths.outputs.double-conversion_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests double-conversion
     - name: Fetch fast_float
+      if: ${{ steps.paths.outputs.fast_float_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests fast_float
     - name: Fetch fmt
+      if: ${{ steps.paths.outputs.fmt_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests fmt
     - name: Fetch gflags
+      if: ${{ steps.paths.outputs.gflags_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests gflags
     - name: Fetch glog
+      if: ${{ steps.paths.outputs.glog_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests glog
     - name: Fetch googletest
+      if: ${{ steps.paths.outputs.googletest_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests googletest
     - name: Fetch libdwarf
+      if: ${{ steps.paths.outputs.libdwarf_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests libdwarf
     - name: Fetch lz4
+      if: ${{ steps.paths.outputs.lz4_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests lz4
     - name: Fetch jom
+      if: ${{ steps.paths.outputs.jom_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests jom
     - name: Fetch perl
+      if: ${{ steps.paths.outputs.perl_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests perl
     - name: Fetch openssl
+      if: ${{ steps.paths.outputs.openssl_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests openssl
     - name: Fetch snappy
+      if: ${{ steps.paths.outputs.snappy_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests snappy
     - name: Fetch zlib
+      if: ${{ steps.paths.outputs.zlib_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests zlib
     - name: Fetch zstd
+      if: ${{ steps.paths.outputs.zstd_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests zstd
     - name: Fetch libevent
+      if: ${{ steps.paths.outputs.libevent_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
     - name: Build boost
+      if: ${{ steps.paths.outputs.boost_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests boost
     - name: Build libsodium
+      if: ${{ steps.paths.outputs.libsodium_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libsodium
     - name: Build ninja
+      if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests ninja
     - name: Build cmake
+      if: ${{ steps.paths.outputs.cmake_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests cmake
     - name: Build double-conversion
+      if: ${{ steps.paths.outputs.double-conversion_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests double-conversion
     - name: Build fast_float
+      if: ${{ steps.paths.outputs.fast_float_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests fast_float
     - name: Build fmt
+      if: ${{ steps.paths.outputs.fmt_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests fmt
     - name: Build gflags
+      if: ${{ steps.paths.outputs.gflags_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests gflags
     - name: Build glog
+      if: ${{ steps.paths.outputs.glog_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests glog
     - name: Build googletest
+      if: ${{ steps.paths.outputs.googletest_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests googletest
     - name: Build libdwarf
+      if: ${{ steps.paths.outputs.libdwarf_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libdwarf
     - name: Build lz4
+      if: ${{ steps.paths.outputs.lz4_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests lz4
     - name: Build jom
+      if: ${{ steps.paths.outputs.jom_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests jom
     - name: Build perl
+      if: ${{ steps.paths.outputs.perl_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests perl
     - name: Build openssl
+      if: ${{ steps.paths.outputs.openssl_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests openssl
     - name: Build snappy
+      if: ${{ steps.paths.outputs.snappy_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests snappy
     - name: Build zlib
+      if: ${{ steps.paths.outputs.zlib_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests zlib
     - name: Build zstd
+      if: ${{ steps.paths.outputs.zstd_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests zstd
     - name: Build libevent
+      if: ${{ steps.paths.outputs.libevent_SOURCE }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libevent
     - name: Build folly
       run: python build/fbcode_builder/getdeps.py build --src-dir=. folly 

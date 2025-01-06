@@ -552,6 +552,33 @@ class ShowInstDirCmd(ProjectCmdBase):
         )
 
 
+@cmd("query-paths", "print the paths for tooling to use")
+class QueryPathsCmd(ProjectCmdBase):
+    def run_project_cmd(self, args, loader, manifest):
+        if args.recursive:
+            manifests = loader.manifests_in_dependency_order()
+        else:
+            manifests = [manifest]
+
+        for m in manifests:
+            fetcher = loader.create_fetcher(m)
+            if isinstance(fetcher, SystemPackageFetcher):
+                # We are guaranteed that if the fetcher is set to
+                # SystemPackageFetcher then this item is completely
+                # satisfied by the appropriate system packages
+                continue
+            src_dir = fetcher.get_src_dir()
+            print(f"{m.name}_SOURCE={src_dir}")
+
+    def setup_project_cmd_parser(self, parser):
+        parser.add_argument(
+            "--recursive",
+            help="print the transitive deps also",
+            action="store_true",
+            default=False,
+        )
+
+
 @cmd("show-source-dir", "print the source dir for a given project")
 class ShowSourceDirCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
@@ -1001,6 +1028,10 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             manifest_ctx.set("test", "on")
         run_on = self.get_run_on(args)
 
+        tests_arg = "--no-tests "
+        if run_tests:
+            tests_arg = ""
+
         # Some projects don't do anything "useful" as a leaf project, only
         # as a dep for a leaf project. Check for those here; we don't want
         # to waste the effort scheduling them on CI.
@@ -1086,12 +1117,14 @@ jobs:
                 )
                 out.write("      shell: cmd\n")
 
-                # The git installation may not like long filenames, so tell it
-                # that we want it to use them!
                 out.write("    - name: Fix Git config\n")
-                out.write("      run: git config --system core.longpaths true\n")
-                out.write("    - name: Disable autocrlf\n")
-                out.write("      run: git config --system core.autocrlf false\n")
+                out.write("      run: >\n")
+                out.write("        git config --system core.longpaths true &&\n")
+                out.write("        git config --system core.autocrlf false &&\n")
+                # cxx crate needs symlinks enabled
+                out.write("        git config --system core.symlinks true\n")
+                # && is not supported on default windows powershell, so use cmd
+                out.write("      shell: cmd\n")
 
             out.write("    - uses: actions/checkout@v4\n")
 
@@ -1127,17 +1160,12 @@ jobs:
                 if build_opts.is_darwin():
                     # brew is installed as regular user
                     sudo_arg = ""
-                tests_arg = "--no-tests "
-                if run_tests:
-                    tests_arg = ""
-                out.write(
-                    f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps {tests_arg}--recursive {manifest.name}\n"
-                )
+
+                system_deps_cmd = f"{sudo_arg}{getdepscmd}{allow_sys_arg} install-system-deps {tests_arg}--recursive {manifest.name}"
                 if build_opts.is_linux() or build_opts.is_freebsd():
-                    out.write("    - name: Install packaging system deps\n")
-                    out.write(
-                        f"      run: {sudo_arg}python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps {tests_arg}--recursive patchelf\n"
-                    )
+                    system_deps_cmd += f" && {sudo_arg}{getdepscmd}{allow_sys_arg} install-system-deps {tests_arg}--recursive patchelf"
+                out.write(f"      run: {system_deps_cmd}\n")
+
                 required_locales = manifest.get(
                     "github.actions", "required_locales", ctx=manifest_ctx
                 )
@@ -1151,6 +1179,18 @@ jobs:
                     for loc in required_locales.split():
                         out.write(f"    - name: Ensure {loc} locale present\n")
                         out.write(f"      run: {sudo_arg}locale-gen {loc}\n")
+
+            out.write("    - id: paths\n")
+            out.write("      name: Query paths\n")
+            if build_opts.is_windows():
+                out.write(
+                    f"      run: {getdepscmd}{allow_sys_arg} query-paths {tests_arg}--recursive --src-dir=. {manifest.name}  >> $env:GITHUB_OUTPUT\n"
+                )
+                out.write("      shell: pwsh\n")
+            else:
+                out.write(
+                    f'      run: {getdepscmd}{allow_sys_arg} query-paths {tests_arg}--recursive --src-dir=. {manifest.name}  >> "$GITHUB_OUTPUT"\n'
+                )
 
             projects = loader.manifests_in_dependency_order()
 
@@ -1179,24 +1219,31 @@ jobs:
                 if m.get_repo_url(ctx) != main_repo_url:
                     out.write("    - name: Fetch %s\n" % m.name)
                     out.write(
+                        f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
+                    )
+                    out.write(
                         f"      run: {getdepscmd}{allow_sys_arg} fetch --no-tests {m.name}\n"
                     )
 
             for m in projects:
-                if m != manifest:
-                    if m.name == "rust":
-                        continue
-                    else:
-                        src_dir_arg = ""
-                        ctx = loader.ctx_gen.get_context(m.name)
-                        if main_repo_url and m.get_repo_url(ctx) == main_repo_url:
-                            # Its in the same repo, so src-dir is also .
-                            src_dir_arg = "--src-dir=. "
-                            has_same_repo_dep = True
-                        out.write("    - name: Build %s\n" % m.name)
-                        out.write(
-                            f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
-                        )
+                if m == manifest or m.name == "rust":
+                    continue
+                src_dir_arg = ""
+                ctx = loader.ctx_gen.get_context(m.name)
+                if main_repo_url and m.get_repo_url(ctx) == main_repo_url:
+                    # Its in the same repo, so src-dir is also .
+                    src_dir_arg = "--src-dir=. "
+                    has_same_repo_dep = True
+
+                out.write("    - name: Build %s\n" % m.name)
+                if not src_dir_arg:
+                    # only run the step if needed
+                    out.write(
+                        f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
+                    )
+                out.write(
+                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
+                )
 
             out.write("    - name: Build %s\n" % manifest.name)
 
@@ -1213,12 +1260,8 @@ jobs:
             if has_same_repo_dep:
                 no_deps_arg = "--no-deps "
 
-            no_tests_arg = ""
-            if not run_tests:
-                no_tests_arg = "--no-tests "
-
             out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{no_tests_arg}{no_deps_arg}--src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name} {project_prefix}\n"
             )
 
             out.write("    - name: Copy artifacts\n")

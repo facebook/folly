@@ -26,85 +26,128 @@ jobs:
       run: df -h
     - name: Install system deps
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive folly
+    - id: paths
+      name: Query paths
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. folly  >> "$GITHUB_OUTPUT"
     - name: Fetch boost
+      if: ${{ steps.paths.outputs.boost_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests boost
     - name: Fetch openssl
+      if: ${{ steps.paths.outputs.openssl_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests openssl
     - name: Fetch ninja
+      if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests ninja
     - name: Fetch cmake
+      if: ${{ steps.paths.outputs.cmake_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests cmake
     - name: Fetch double-conversion
+      if: ${{ steps.paths.outputs.double-conversion_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests double-conversion
     - name: Fetch fast_float
+      if: ${{ steps.paths.outputs.fast_float_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests fast_float
     - name: Fetch fmt
+      if: ${{ steps.paths.outputs.fmt_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests fmt
     - name: Fetch gflags
+      if: ${{ steps.paths.outputs.gflags_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests gflags
     - name: Fetch glog
+      if: ${{ steps.paths.outputs.glog_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests glog
     - name: Fetch googletest
+      if: ${{ steps.paths.outputs.googletest_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests googletest
     - name: Fetch libdwarf
+      if: ${{ steps.paths.outputs.libdwarf_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libdwarf
     - name: Fetch libevent
+      if: ${{ steps.paths.outputs.libevent_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libevent
     - name: Fetch lz4
+      if: ${{ steps.paths.outputs.lz4_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests lz4
     - name: Fetch snappy
+      if: ${{ steps.paths.outputs.snappy_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests snappy
     - name: Fetch zstd
+      if: ${{ steps.paths.outputs.zstd_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests zstd
     - name: Fetch autoconf
+      if: ${{ steps.paths.outputs.autoconf_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests autoconf
     - name: Fetch automake
+      if: ${{ steps.paths.outputs.automake_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests automake
     - name: Fetch libtool
+      if: ${{ steps.paths.outputs.libtool_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libtool
     - name: Fetch libsodium
+      if: ${{ steps.paths.outputs.libsodium_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libsodium
     - name: Fetch xz
+      if: ${{ steps.paths.outputs.xz_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests xz
     - name: Build boost
+      if: ${{ steps.paths.outputs.boost_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests boost
     - name: Build openssl
+      if: ${{ steps.paths.outputs.openssl_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests openssl
     - name: Build ninja
+      if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests ninja
     - name: Build cmake
+      if: ${{ steps.paths.outputs.cmake_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests cmake
     - name: Build double-conversion
+      if: ${{ steps.paths.outputs.double-conversion_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests double-conversion
     - name: Build fast_float
+      if: ${{ steps.paths.outputs.fast_float_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests fast_float
     - name: Build fmt
+      if: ${{ steps.paths.outputs.fmt_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests fmt
     - name: Build gflags
+      if: ${{ steps.paths.outputs.gflags_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests gflags
     - name: Build glog
+      if: ${{ steps.paths.outputs.glog_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests glog
     - name: Build googletest
+      if: ${{ steps.paths.outputs.googletest_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests googletest
     - name: Build libdwarf
+      if: ${{ steps.paths.outputs.libdwarf_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libdwarf
     - name: Build libevent
+      if: ${{ steps.paths.outputs.libevent_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libevent
     - name: Build lz4
+      if: ${{ steps.paths.outputs.lz4_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests lz4
     - name: Build snappy
+      if: ${{ steps.paths.outputs.snappy_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests snappy
     - name: Build zstd
+      if: ${{ steps.paths.outputs.zstd_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests zstd
     - name: Build autoconf
+      if: ${{ steps.paths.outputs.autoconf_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests autoconf
     - name: Build automake
+      if: ${{ steps.paths.outputs.automake_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests automake
     - name: Build libtool
+      if: ${{ steps.paths.outputs.libtool_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libtool
     - name: Build libsodium
+      if: ${{ steps.paths.outputs.libsodium_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests libsodium
     - name: Build xz
+      if: ${{ steps.paths.outputs.xz_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests xz
     - name: Build folly
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. folly  --project-install-prefix folly:/usr/local
