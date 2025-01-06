@@ -49,6 +49,8 @@ jobs:
       run: python build/fbcode_builder/getdeps.py fetch --no-tests libdwarf
     - name: Fetch lz4
       run: python build/fbcode_builder/getdeps.py fetch --no-tests lz4
+    - name: Fetch jom
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests jom
     - name: Fetch perl
       run: python build/fbcode_builder/getdeps.py fetch --no-tests perl
     - name: Fetch openssl
@@ -85,6 +87,8 @@ jobs:
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libdwarf
     - name: Build lz4
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests lz4
+    - name: Build jom
+      run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests jom
     - name: Build perl
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests perl
     - name: Build openssl
