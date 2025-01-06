@@ -88,63 +88,310 @@ jobs:
     - name: Fetch libevent
       if: ${{ steps.paths.outputs.libevent_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
-    - name: Build boost
+    - name: Restore boost from cache
+      id: restore_boost
       if: ${{ steps.paths.outputs.boost_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.boost_INSTALL }}
+       key: ${{ steps.paths.outputs.boost_CACHE_KEY }}-install
+    - name: Build boost
+      if: ${{ steps.paths.outputs.boost_SOURCE && ! steps.restore_boost.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests boost
-    - name: Build libsodium
+    - name: Save boost to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.boost_SOURCE && ! steps.restore_boost.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.boost_INSTALL }}
+       key: ${{ steps.paths.outputs.boost_CACHE_KEY }}-install
+    - name: Restore libsodium from cache
+      id: restore_libsodium
       if: ${{ steps.paths.outputs.libsodium_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.libsodium_INSTALL }}
+       key: ${{ steps.paths.outputs.libsodium_CACHE_KEY }}-install
+    - name: Build libsodium
+      if: ${{ steps.paths.outputs.libsodium_SOURCE && ! steps.restore_libsodium.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libsodium
-    - name: Build ninja
+    - name: Save libsodium to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.libsodium_SOURCE && ! steps.restore_libsodium.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.libsodium_INSTALL }}
+       key: ${{ steps.paths.outputs.libsodium_CACHE_KEY }}-install
+    - name: Restore ninja from cache
+      id: restore_ninja
       if: ${{ steps.paths.outputs.ninja_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.ninja_INSTALL }}
+       key: ${{ steps.paths.outputs.ninja_CACHE_KEY }}-install
+    - name: Build ninja
+      if: ${{ steps.paths.outputs.ninja_SOURCE && ! steps.restore_ninja.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests ninja
-    - name: Build cmake
+    - name: Save ninja to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.ninja_SOURCE && ! steps.restore_ninja.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.ninja_INSTALL }}
+       key: ${{ steps.paths.outputs.ninja_CACHE_KEY }}-install
+    - name: Restore cmake from cache
+      id: restore_cmake
       if: ${{ steps.paths.outputs.cmake_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.cmake_INSTALL }}
+       key: ${{ steps.paths.outputs.cmake_CACHE_KEY }}-install
+    - name: Build cmake
+      if: ${{ steps.paths.outputs.cmake_SOURCE && ! steps.restore_cmake.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests cmake
-    - name: Build double-conversion
+    - name: Save cmake to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.cmake_SOURCE && ! steps.restore_cmake.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.cmake_INSTALL }}
+       key: ${{ steps.paths.outputs.cmake_CACHE_KEY }}-install
+    - name: Restore double-conversion from cache
+      id: restore_double-conversion
       if: ${{ steps.paths.outputs.double-conversion_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.double-conversion_INSTALL }}
+       key: ${{ steps.paths.outputs.double-conversion_CACHE_KEY }}-install
+    - name: Build double-conversion
+      if: ${{ steps.paths.outputs.double-conversion_SOURCE && ! steps.restore_double-conversion.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests double-conversion
-    - name: Build fast_float
+    - name: Save double-conversion to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.double-conversion_SOURCE && ! steps.restore_double-conversion.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.double-conversion_INSTALL }}
+       key: ${{ steps.paths.outputs.double-conversion_CACHE_KEY }}-install
+    - name: Restore fast_float from cache
+      id: restore_fast_float
       if: ${{ steps.paths.outputs.fast_float_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.fast_float_INSTALL }}
+       key: ${{ steps.paths.outputs.fast_float_CACHE_KEY }}-install
+    - name: Build fast_float
+      if: ${{ steps.paths.outputs.fast_float_SOURCE && ! steps.restore_fast_float.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests fast_float
-    - name: Build fmt
+    - name: Save fast_float to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.fast_float_SOURCE && ! steps.restore_fast_float.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.fast_float_INSTALL }}
+       key: ${{ steps.paths.outputs.fast_float_CACHE_KEY }}-install
+    - name: Restore fmt from cache
+      id: restore_fmt
       if: ${{ steps.paths.outputs.fmt_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.fmt_INSTALL }}
+       key: ${{ steps.paths.outputs.fmt_CACHE_KEY }}-install
+    - name: Build fmt
+      if: ${{ steps.paths.outputs.fmt_SOURCE && ! steps.restore_fmt.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests fmt
-    - name: Build gflags
+    - name: Save fmt to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.fmt_SOURCE && ! steps.restore_fmt.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.fmt_INSTALL }}
+       key: ${{ steps.paths.outputs.fmt_CACHE_KEY }}-install
+    - name: Restore gflags from cache
+      id: restore_gflags
       if: ${{ steps.paths.outputs.gflags_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.gflags_INSTALL }}
+       key: ${{ steps.paths.outputs.gflags_CACHE_KEY }}-install
+    - name: Build gflags
+      if: ${{ steps.paths.outputs.gflags_SOURCE && ! steps.restore_gflags.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests gflags
-    - name: Build glog
+    - name: Save gflags to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.gflags_SOURCE && ! steps.restore_gflags.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.gflags_INSTALL }}
+       key: ${{ steps.paths.outputs.gflags_CACHE_KEY }}-install
+    - name: Restore glog from cache
+      id: restore_glog
       if: ${{ steps.paths.outputs.glog_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.glog_INSTALL }}
+       key: ${{ steps.paths.outputs.glog_CACHE_KEY }}-install
+    - name: Build glog
+      if: ${{ steps.paths.outputs.glog_SOURCE && ! steps.restore_glog.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests glog
-    - name: Build googletest
+    - name: Save glog to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.glog_SOURCE && ! steps.restore_glog.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.glog_INSTALL }}
+       key: ${{ steps.paths.outputs.glog_CACHE_KEY }}-install
+    - name: Restore googletest from cache
+      id: restore_googletest
       if: ${{ steps.paths.outputs.googletest_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.googletest_INSTALL }}
+       key: ${{ steps.paths.outputs.googletest_CACHE_KEY }}-install
+    - name: Build googletest
+      if: ${{ steps.paths.outputs.googletest_SOURCE && ! steps.restore_googletest.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests googletest
-    - name: Build libdwarf
+    - name: Save googletest to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.googletest_SOURCE && ! steps.restore_googletest.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.googletest_INSTALL }}
+       key: ${{ steps.paths.outputs.googletest_CACHE_KEY }}-install
+    - name: Restore libdwarf from cache
+      id: restore_libdwarf
       if: ${{ steps.paths.outputs.libdwarf_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.libdwarf_INSTALL }}
+       key: ${{ steps.paths.outputs.libdwarf_CACHE_KEY }}-install
+    - name: Build libdwarf
+      if: ${{ steps.paths.outputs.libdwarf_SOURCE && ! steps.restore_libdwarf.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libdwarf
-    - name: Build lz4
+    - name: Save libdwarf to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.libdwarf_SOURCE && ! steps.restore_libdwarf.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.libdwarf_INSTALL }}
+       key: ${{ steps.paths.outputs.libdwarf_CACHE_KEY }}-install
+    - name: Restore lz4 from cache
+      id: restore_lz4
       if: ${{ steps.paths.outputs.lz4_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.lz4_INSTALL }}
+       key: ${{ steps.paths.outputs.lz4_CACHE_KEY }}-install
+    - name: Build lz4
+      if: ${{ steps.paths.outputs.lz4_SOURCE && ! steps.restore_lz4.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests lz4
-    - name: Build jom
+    - name: Save lz4 to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.lz4_SOURCE && ! steps.restore_lz4.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.lz4_INSTALL }}
+       key: ${{ steps.paths.outputs.lz4_CACHE_KEY }}-install
+    - name: Restore jom from cache
+      id: restore_jom
       if: ${{ steps.paths.outputs.jom_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.jom_INSTALL }}
+       key: ${{ steps.paths.outputs.jom_CACHE_KEY }}-install
+    - name: Build jom
+      if: ${{ steps.paths.outputs.jom_SOURCE && ! steps.restore_jom.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests jom
-    - name: Build perl
+    - name: Save jom to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.jom_SOURCE && ! steps.restore_jom.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.jom_INSTALL }}
+       key: ${{ steps.paths.outputs.jom_CACHE_KEY }}-install
+    - name: Restore perl from cache
+      id: restore_perl
       if: ${{ steps.paths.outputs.perl_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.perl_INSTALL }}
+       key: ${{ steps.paths.outputs.perl_CACHE_KEY }}-install
+    - name: Build perl
+      if: ${{ steps.paths.outputs.perl_SOURCE && ! steps.restore_perl.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests perl
-    - name: Build openssl
+    - name: Save perl to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.perl_SOURCE && ! steps.restore_perl.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.perl_INSTALL }}
+       key: ${{ steps.paths.outputs.perl_CACHE_KEY }}-install
+    - name: Restore openssl from cache
+      id: restore_openssl
       if: ${{ steps.paths.outputs.openssl_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.openssl_INSTALL }}
+       key: ${{ steps.paths.outputs.openssl_CACHE_KEY }}-install
+    - name: Build openssl
+      if: ${{ steps.paths.outputs.openssl_SOURCE && ! steps.restore_openssl.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests openssl
-    - name: Build snappy
+    - name: Save openssl to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.openssl_SOURCE && ! steps.restore_openssl.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.openssl_INSTALL }}
+       key: ${{ steps.paths.outputs.openssl_CACHE_KEY }}-install
+    - name: Restore snappy from cache
+      id: restore_snappy
       if: ${{ steps.paths.outputs.snappy_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.snappy_INSTALL }}
+       key: ${{ steps.paths.outputs.snappy_CACHE_KEY }}-install
+    - name: Build snappy
+      if: ${{ steps.paths.outputs.snappy_SOURCE && ! steps.restore_snappy.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests snappy
-    - name: Build zlib
+    - name: Save snappy to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.snappy_SOURCE && ! steps.restore_snappy.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.snappy_INSTALL }}
+       key: ${{ steps.paths.outputs.snappy_CACHE_KEY }}-install
+    - name: Restore zlib from cache
+      id: restore_zlib
       if: ${{ steps.paths.outputs.zlib_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.zlib_INSTALL }}
+       key: ${{ steps.paths.outputs.zlib_CACHE_KEY }}-install
+    - name: Build zlib
+      if: ${{ steps.paths.outputs.zlib_SOURCE && ! steps.restore_zlib.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests zlib
-    - name: Build zstd
+    - name: Save zlib to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.zlib_SOURCE && ! steps.restore_zlib.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.zlib_INSTALL }}
+       key: ${{ steps.paths.outputs.zlib_CACHE_KEY }}-install
+    - name: Restore zstd from cache
+      id: restore_zstd
       if: ${{ steps.paths.outputs.zstd_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.zstd_INSTALL }}
+       key: ${{ steps.paths.outputs.zstd_CACHE_KEY }}-install
+    - name: Build zstd
+      if: ${{ steps.paths.outputs.zstd_SOURCE && ! steps.restore_zstd.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests zstd
-    - name: Build libevent
+    - name: Save zstd to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.zstd_SOURCE && ! steps.restore_zstd.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.zstd_INSTALL }}
+       key: ${{ steps.paths.outputs.zstd_CACHE_KEY }}-install
+    - name: Restore libevent from cache
+      id: restore_libevent
       if: ${{ steps.paths.outputs.libevent_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.libevent_INSTALL }}
+       key: ${{ steps.paths.outputs.libevent_CACHE_KEY }}-install
+    - name: Build libevent
+      if: ${{ steps.paths.outputs.libevent_SOURCE && ! steps.restore_libevent.outputs.cache-hit }}
       run: python build/fbcode_builder/getdeps.py build --free-up-disk --no-tests libevent
+    - name: Save libevent to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.libevent_SOURCE && ! steps.restore_libevent.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.libevent_INSTALL }}
+       key: ${{ steps.paths.outputs.libevent_CACHE_KEY }}-install
     - name: Build folly
       run: python build/fbcode_builder/getdeps.py build --src-dir=. folly 
     - name: Copy artifacts

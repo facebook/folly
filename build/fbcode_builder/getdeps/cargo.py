@@ -82,6 +82,14 @@ class CargoBuilder(BuilderBase):
                 shutil.rmtree(dst)
         simple_copytree(src, dst)
 
+    def recreate_linked_dir(self, src, dst) -> None:
+        if os.path.isdir(dst):
+            if os.path.islink(dst):
+                os.remove(dst)
+            elif os.path.isdir(dst):
+                shutil.rmtree(dst)
+        os.symlink(src, dst)
+
     def cargo_config_file(self):
         build_source_dir = self.build_dir
         if self.cargo_config_file_subdir:
@@ -191,7 +199,9 @@ incremental = false
                     ],
                 )
 
-        self.recreate_dir(build_source_dir, os.path.join(self.inst_dir, "source"))
+        self.recreate_linked_dir(
+            build_source_dir, os.path.join(self.inst_dir, "source")
+        )
 
     def run_tests(self, schedule_type, owner, test_filter, retry, no_testpilot) -> None:
         if test_filter:

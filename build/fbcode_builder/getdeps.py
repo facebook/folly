@@ -245,16 +245,16 @@ class CachedProject(object):
         self.loader = loader
         self.cache = cache
 
-        self.cache_file_name = "-".join(
+        self.cache_key = "-".join(
             (
                 m.name,
                 self.ctx.get("os"),
                 self.ctx.get("distro") or "none",
                 self.ctx.get("distro_vers") or "none",
                 self.project_hash,
-                "buildcache.tgz",
             )
         )
+        self.cache_file_name = self.cache_key + "-buildcache.tgz"
 
     def is_cacheable(self):
         """We only cache third party projects"""
@@ -560,6 +560,7 @@ class QueryPathsCmd(ProjectCmdBase):
         else:
             manifests = [manifest]
 
+        cache = cache_module.create_cache()
         for m in manifests:
             fetcher = loader.create_fetcher(m)
             if isinstance(fetcher, SystemPackageFetcher):
@@ -569,6 +570,10 @@ class QueryPathsCmd(ProjectCmdBase):
                 continue
             src_dir = fetcher.get_src_dir()
             print(f"{m.name}_SOURCE={src_dir}")
+            inst_dir = loader.get_project_install_dir_respecting_install_prefix(m)
+            print(f"{m.name}_INSTALL={inst_dir}")
+            cached_project = CachedProject(cache, loader, m)
+            print(f"{m.name}_CACHE_KEY={cached_project.cache_key}")
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
@@ -1235,15 +1240,49 @@ jobs:
                     src_dir_arg = "--src-dir=. "
                     has_same_repo_dep = True
 
-                out.write("    - name: Build %s\n" % m.name)
-                if not src_dir_arg:
-                    # only run the step if needed
+                if args.use_build_cache and not src_dir_arg:
+                    out.write(f"    - name: Restore {m.name} from cache\n")
+                    out.write(f"      id: restore_{m.name}\n")
+                    # only need to restore if would build it
                     out.write(
                         f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
                     )
+                    out.write("      uses: actions/cache/restore@v4\n")
+                    out.write("      with:\n")
+                    out.write(
+                        f"       path: ${{{{ steps.paths.outputs.{m.name}_INSTALL }}}}\n"
+                    )
+                    out.write(
+                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}-install\n"
+                    )
+
+                out.write("    - name: Build %s\n" % m.name)
+                if not src_dir_arg:
+                    if args.use_build_cache:
+                        out.write(
+                            f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE && ! steps.restore_{m.name}.outputs.cache-hit }}}}\n"
+                        )
+                    else:
+                        out.write(
+                            f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
+                        )
                 out.write(
                     f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
                 )
+
+                if args.use_build_cache and not src_dir_arg:
+                    out.write(f"    - name: Save {m.name} to cache\n")
+                    out.write("      uses: actions/cache/save@v4\n")
+                    out.write(
+                        f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE && ! steps.restore_{m.name}.outputs.cache-hit }}}}\n"
+                    )
+                    out.write("      with:\n")
+                    out.write(
+                        f"       path: ${{{{ steps.paths.outputs.{m.name}_INSTALL }}}}\n"
+                    )
+                    out.write(
+                        f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}-install\n"
+                    )
 
             out.write("    - name: Build %s\n" % manifest.name)
 
@@ -1362,6 +1401,13 @@ jobs:
             choices=["Debug", "Release", "RelWithDebInfo", "MinSizeRel"],
             action="store",
             default=None,
+        )
+        parser.add_argument(
+            "--no-build-cache",
+            action="store_false",
+            default=True,
+            dest="use_build_cache",
+            help="Do not attempt to use the build cache.",
         )
 
 
