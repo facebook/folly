@@ -1763,7 +1763,7 @@ TEST(FiberManager, nestedFiberManagersSameEvb) {
 
   // Use frozen options
   FiberManager::Options used;
-  used.stackSize = 1024;
+  used.stackSize = 2048;
   FiberManager::FrozenOptions options{used};
   auto& fm2 = getFiberManager(evb, options);
   EXPECT_NE(&fm1, &fm2);
@@ -1772,12 +1772,12 @@ TEST(FiberManager, nestedFiberManagersSameEvb) {
   EXPECT_EQ(&fm2, &getFiberManager(evb, options));
   EXPECT_EQ(&fm2, &getFiberManager(evb, FiberManager::FrozenOptions{used}));
   FiberManager::Options same;
-  same.stackSize = 1024;
+  same.stackSize = 2048;
   EXPECT_EQ(&fm2, &getFiberManager(evb, FiberManager::FrozenOptions{same}));
 
   // Different option
   FiberManager::Options differ;
-  differ.stackSize = 2048;
+  differ.stackSize = 4096;
   auto& fm3 = getFiberManager(evb, FiberManager::FrozenOptions{differ});
   EXPECT_NE(&fm1, &fm3);
   EXPECT_NE(&fm2, &fm3);
