@@ -556,9 +556,9 @@ cpp_unittest(
     srcs = ["HHWheelTimerSlowTests.cpp"],
     headers = [],
     emails = ["oncall+thrift@xmail.facebook.com"],
-    labels = ["load-sensitive-timing-test"],
-    tags = [
+    labels = [
         "extended",
+        "load-sensitive-timing-test",
     ],
     deps = [
         ":util",
