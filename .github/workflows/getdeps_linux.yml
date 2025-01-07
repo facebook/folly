@@ -25,9 +25,9 @@ jobs:
     - name: Show disk space after freeing up
       run: df -h
     - name: Update system package info
-      run: sudo apt-get update
+      run: sudo --preserve-env=http_proxy apt-get update
     - name: Install system deps
-      run: sudo python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive folly && sudo python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf
+      run: sudo --preserve-env=http_proxy python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive folly && sudo --preserve-env=http_proxy python3 build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive patchelf
     - id: paths
       name: Query paths
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. folly  >> "$GITHUB_OUTPUT"
