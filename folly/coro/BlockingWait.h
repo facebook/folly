@@ -137,12 +137,6 @@ class BlockingWaitPromise<T&> final : public BlockingWaitPromiseBase {
     return final_suspend();
   }
 
-#if 0
-  void return_value(T& value) noexcept {
-    result_->emplace(std::ref(value));
-  }
-#endif
-
   void return_void() {
     // This should never be reachable.
     // The coroutine should either have suspended at co_yield or should have
@@ -257,24 +251,6 @@ inline BlockingWaitTask<void>
 BlockingWaitPromise<void>::get_return_object() noexcept {
   return BlockingWaitTask<void>{
       coroutine_handle<BlockingWaitPromise<void>>::from_promise(*this)};
-}
-
-template <
-    typename Awaitable,
-    typename Result = await_result_t<Awaitable>,
-    std::enable_if_t<!std::is_lvalue_reference<Result>::value, int> = 0>
-auto makeBlockingWaitTask(Awaitable&& awaitable)
-    -> BlockingWaitTask<detail::decay_rvalue_reference_t<Result>> {
-  co_return co_await static_cast<Awaitable&&>(awaitable);
-}
-
-template <
-    typename Awaitable,
-    typename Result = await_result_t<Awaitable>,
-    std::enable_if_t<std::is_lvalue_reference<Result>::value, int> = 0>
-auto makeBlockingWaitTask(Awaitable&& awaitable)
-    -> BlockingWaitTask<detail::decay_rvalue_reference_t<Result>> {
-  co_yield co_await static_cast<Awaitable&&>(awaitable);
 }
 
 template <
