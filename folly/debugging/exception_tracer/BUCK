@@ -51,7 +51,7 @@ cpp_library(
     headers = ["ExceptionTracer.h"],
     # Usage of dlsym(RTLD_NEXT, "symbol") does not always work with link groups
     # due to relying on link order. Excluding all libs with `RTLD_NEXT` usage from any link group.
-    tags = ["EXCLUDED_FROM_LINK_GROUPS"],
+    labels = ["EXCLUDED_FROM_LINK_GROUPS"],
     deps = [
         ":exception_abi",
         ":stacktrace",
@@ -90,7 +90,7 @@ cpp_library(
     }),
     link_whole = True,
     supports_python_dlopen = True,
-    tags = ["EXCLUDED_FROM_LINK_GROUPS"],
+    labels = ["EXCLUDED_FROM_LINK_GROUPS"],
     deps = [
         "//folly:indestructible",
         "//folly:portability",
