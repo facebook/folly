@@ -2,12 +2,15 @@
 name = liboqs
 
 [download]
-url = https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.10.1.tar.gz
-sha256 = 00ca8aba65cd8c8eac00ddf978f4cac9dd23bb039f357448b60b7e3eed8f02da
+url = https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.12.0.tar.gz
+sha256 = df999915204eb1eba311d89e83d1edd3a514d5a07374745d6a9e5b2dd0d59c08
 
 [build]
 builder = cmake
-subdir = liboqs-0.10.1
+subdir = liboqs-0.12.0
+
+[cmake.defines]
+OQS_MINIMAL_BUILD = KEM_kyber_512;KEM_kyber_768;KEM_kyber_1024;KEM_ml_kem_512;KEM_ml_kem_768;KEM_ml_kem_1024
 
 [dependencies]
 openssl
