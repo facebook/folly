@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# distutils: language=c++
-# cython: language_level=3, c_string_encoding=utf8
 
 import asyncio
+from cpython cimport PyObject
 from cython.operator cimport dereference as deref
 from cpython.weakref cimport PyWeakref_NewRef, PyWeakref_GetObject
-from cpython cimport PyObject
+
 from libcpp.memory cimport unique_ptr
 from folly.executor cimport get_executor
 from libcpp.cast cimport (
@@ -76,9 +75,10 @@ cdef cFiberManager* get_fiber_manager(const cFiberManagerOptions& opts):
 
     loop = asyncio.get_event_loop()
     cdef FiberManager manager = None
-
+    # deprecated: PyWeakref_GetObject - migrate to PyWeakref_GetRef
     if last_loop is not None and <PyObject*>loop is PyWeakref_GetObject(last_loop):
         manager = last_manager
+
     if manager is None:
         try:
             manager = <FiberManager>(loop_to_controller[loop])

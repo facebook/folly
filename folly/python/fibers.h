@@ -23,7 +23,6 @@
 
 #include <Python.h>
 #include <folly/Function.h>
-#include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/fibers/FiberManagerInternal.h>
 
 namespace folly {

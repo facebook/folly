@@ -41,9 +41,9 @@ exts = [
         'simplebridge',
         sources=[
             'simplebridge.pyx',
-            '../executor_intf.cpp',
+        #    '../executor_intf.cpp',
             '../error.cpp', 
-            '../fibers.cpp'
+        #    '../fibers.cpp'
         ],
         depends=['simple.h'],
         language='c++', 
@@ -74,7 +74,7 @@ exts = [
         'simplebridgecoro',
         sources=[
             'simplebridgecoro.pyx',
-            '../executor_intf.cpp',
+        #    '../executor_intf.cpp',
             '../error.cpp', 
         ],
         depends=['simplecoro.h'],
@@ -111,8 +111,6 @@ Options.fast_fail = True
 setup(
     name='folly_test',
     setup_requires=['cython'],
-    zip_safe=False,
-    package_data={'': ['*.pxd', '*.pyi', '*.h']},
     ext_modules=cythonize(
         exts, 
         verbose=True,

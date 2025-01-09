@@ -67,8 +67,9 @@ if install_dir := os.environ.get('GETDEPS_INSTALL_DIR'):
 
 # Add (prepend) library paths from LD_LIBRARY_PATHs
 if ldpath := os.environ.get('LD_LIBRARY_PATH'):
-    library_dirs[:0] = ldpath.split(':')
-    if folly_lib and folly_lib not in ldpath.split(':'):
+    ldpaths = ldpath.split(':')
+    library_dirs[:0] = ldpaths
+    if folly_lib and folly_lib not in ldpaths:
         print(f'export LD_LIBRARY_PATH="{folly_lib}:{ldpath}"\n')
     else:
         print(f'export LD_LIBRARY_PATH="{ldpath}"\n')
@@ -81,6 +82,10 @@ exts = [
             'folly/executor_intf.cpp',
             'folly/ProactorExecutor.cpp',
             'folly/error.cpp',
+        ],
+        headers=[
+            'folly/python/AsyncioExecutor.h',
+            'folly/python/ProactorExecutor.h',
         ],
         language='c++',
         extra_compile_args=compile_args,
@@ -96,6 +101,11 @@ exts = [
             'folly/iobuf_ext.cpp',
             'folly/error.cpp',
         ],
+        headers=[
+            'folly/python/iobuf_intf.h',
+            'folly/python/iobuf_ext.h',
+        ],
+        
         language='c++',
         extra_compile_args=compile_args,
         include_dirs=include_dirs,
@@ -118,6 +128,7 @@ exts = [
     Extension(
         'folly.build_mode',
         sources=['folly/build_mode.pyx'],
+        language='c++',
         extra_compile_args=compile_args,
         include_dirs=include_dirs,
         library_dirs=library_dirs,
@@ -135,7 +146,7 @@ if __name__ == '__main__':
         packages=['folly'],
         setup_requires=['cython'],
         zip_safe=False,
-        package_data={'': ['*.pxd', '*.pyi', '*.h', '__init__.py']},
+        package_data={'': ['*.pxd', '*.pyi', '__init__.py', '*_api.h']},
         ext_modules=cythonize(
             exts, 
             verbose=True,
