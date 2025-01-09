@@ -69,6 +69,7 @@ if install_dir := os.environ.get('GETDEPS_INSTALL_DIR'):
 if ldpath := os.environ.get('LD_LIBRARY_PATH'):
     ldpaths = ldpath.split(':')
     library_dirs[:0] = ldpaths
+    # make sure folly library path is included
     if folly_lib and folly_lib not in ldpaths:
         print(f'export LD_LIBRARY_PATH="{folly_lib}:{ldpath}"\n')
     else:
@@ -134,21 +135,9 @@ if __name__ == '__main__':
     setup(
         name='folly',
         zip_safe=False,
-        version='0.1.1',
+        version='0.0.1',
         packages=['folly'],
         setup_requires=['cython'],
-        headers=[
-            'folly/AsyncioExecutor.h',
-            'folly/ProactorExecutor.h',
-            'folly/coro.h',
-            'folly/futures.h',
-            'folly/async_generator.h',
-            'folly/executor_intf.h',
-            'folly/iobuf_intf.h',
-            'folly/iobuf_ext.h',
-            'folly/error.h',
-            'folly/import.h',
-        ],
         package_data={'': ['*.pxd', '*.pyi', '__init__.py', '*_api.h']},
         ext_modules=cythonize(
             exts, 
