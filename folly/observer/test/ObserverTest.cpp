@@ -20,6 +20,7 @@
 #include <thread>
 
 #include <utility>
+#include <folly/Demangle.h>
 #include <folly/Singleton.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
@@ -29,11 +30,12 @@
 #include <folly/observer/ReadMostlyTLObserver.h>
 #include <folly/observer/SimpleObservable.h>
 #include <folly/observer/WithJitter.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
 using namespace std::literals;
-using namespace folly::observer;
+using ::testing::StartsWith;
 
 namespace {
 
@@ -41,6 +43,9 @@ template <typename T>
 struct AltAtomic : std::atomic<T> {};
 
 } // namespace
+
+namespace folly {
+namespace observer {
 
 TEST(Observer, Observable) {
   SimpleObservable<int> observable(42);
@@ -1209,3 +1214,84 @@ TEST(Observer, ReenableSingletonWithPendingUpdate) {
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
   EXPECT_EQ(42, **observer);
 }
+
+TEST(Observer, TestMakeObserverWithTypeInfo) {
+  const std::string prefix =
+      "folly::observer::Observer_TestMakeObserverWithTypeInfo_Test";
+  {
+    auto observer = folly::observer::makeObserver([] { return 42; });
+    EXPECT_EQ(42, **observer);
+    EXPECT_THAT(
+        folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
+        StartsWith(prefix));
+  }
+  {
+    auto observer = folly::observer::makeObserver([] {
+      return std::make_shared<int>(42);
+    });
+    EXPECT_EQ(42, **observer);
+    EXPECT_THAT(
+        folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
+        StartsWith(prefix));
+  }
+  {
+    auto observer1 = folly::observer::makeObserver([] { return 1; });
+    auto observer = folly::observer::makeObserver([observer1] {
+      return observer1;
+    });
+    EXPECT_EQ(1, **observer);
+    EXPECT_THAT(
+        folly::demangle(*observer1.getCreatorTypeInfo()).toStdString(),
+        StartsWith(prefix));
+    EXPECT_THAT(
+        folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
+        StartsWith("folly::observer::unwrap"));
+  }
+}
+
+TEST(Observer, TestMakeValueObserverWithTypeInfo) {
+  const std::string prefix =
+      "folly::observer::Observer_TestMakeValueObserverWithTypeInfo_Test";
+  {
+    auto observer = folly::observer::makeValueObserver([] { return 42; });
+    EXPECT_EQ(42, **observer);
+    EXPECT_THAT(
+        folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
+        StartsWith(prefix));
+  }
+  {
+    auto observer = folly::observer::makeValueObserver([] {
+      return std::make_shared<int>(42);
+    });
+    EXPECT_EQ(42, **observer);
+    EXPECT_THAT(
+        folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
+        StartsWith(prefix));
+  }
+  {
+    auto observer1 = folly::observer::makeValueObserver([] { return 1; });
+    auto observer = folly::observer::makeValueObserver([observer1] {
+      return observer1;
+    });
+    EXPECT_EQ(1, **observer);
+    EXPECT_THAT(
+        folly::demangle(*observer1.getCreatorTypeInfo()).toStdString(),
+        StartsWith(prefix));
+    EXPECT_THAT(
+        folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
+        StartsWith("folly::observer::unwrap"));
+  }
+}
+
+TEST(Observer, TestSimpleObservableWithTypeInfo) {
+  const std::string prefix = "folly::observer::ObserverCreator";
+  folly::observer::SimpleObservable<int> observable{42};
+  auto observer = observable.getObserver();
+  EXPECT_EQ(42, **observer);
+  EXPECT_THAT(
+      folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
+      StartsWith(prefix));
+}
+
+} // namespace observer
+} // namespace folly

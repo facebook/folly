@@ -41,10 +41,15 @@ class Core : public std::enable_shared_from_this<Core> {
   using Ptr = std::shared_ptr<Core>;
   using WeakPtr = std::weak_ptr<Core>;
 
+  struct CreatorContext {
+    const std::type_info* typeInfo;
+  };
   /**
    * Blocks until creator is successfully run by ObserverManager
    */
-  static Ptr create(folly::Function<std::shared_ptr<const void>()> creator);
+  static Ptr create(
+      folly::Function<std::shared_ptr<const void>()> creator,
+      CreatorContext creatorContext);
 
   /**
    * View of the observed object and its version
@@ -90,10 +95,14 @@ class Core : public std::enable_shared_from_this<Core> {
    */
   void setForceRefresh();
 
+  const CreatorContext& getCreatorContext() const { return creatorContext_; }
+
   ~Core();
 
  private:
-  explicit Core(folly::Function<std::shared_ptr<const void>()> creator);
+  Core(
+      folly::Function<std::shared_ptr<const void>()> creator,
+      CreatorContext creatorContext);
 
   void addDependent(Core::WeakPtr dependent);
   void maybeRemoveStaleDependents();
@@ -113,6 +122,8 @@ class Core : public std::enable_shared_from_this<Core> {
   folly::Synchronized<VersionedData> data_;
 
   folly::Function<std::shared_ptr<const void>()> creator_;
+
+  CreatorContext creatorContext_;
 
   mutable SharedMutex refreshMutex_;
 

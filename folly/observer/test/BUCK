@@ -9,6 +9,7 @@ cpp_unittest(
     headers = [],
     labels = ["oss-broken"],
     deps = [
+        "//folly:demangle",
         "//folly:singleton",
         "//folly/fibers:core_manager",
         "//folly/fibers:fiber_manager_map",
@@ -18,6 +19,7 @@ cpp_unittest(
         "//folly/observer:read_mostly_tl_observer",
         "//folly/observer:simple_observable",
         "//folly/observer:with_jitter",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],

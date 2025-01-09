@@ -246,6 +246,10 @@ class Observer {
   [[nodiscard]] CallbackHandle addCallback(
       Function<void(Snapshot<T>)> callback) const;
 
+  const std::type_info* getCreatorTypeInfo() const {
+    return core_->getCreatorContext().typeInfo;
+  }
+
  private:
   template <typename Observable, typename Traits>
   friend class ObserverCreator;

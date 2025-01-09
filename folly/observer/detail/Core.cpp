@@ -147,8 +147,11 @@ void Core::setForceRefresh() {
   forceRefresh_ = true;
 }
 
-Core::Core(folly::Function<std::shared_ptr<const void>()> creator)
-    : creator_(std::move(creator)) {}
+Core::Core(
+    folly::Function<std::shared_ptr<const void>()> creator,
+    CreatorContext creatorContext)
+    : creator_(std::move(creator)),
+      creatorContext_(std::move(creatorContext)) {}
 
 Core::~Core() {
   dependencies_.withWLock([](const Dependencies& dependencies) {
@@ -158,8 +161,11 @@ Core::~Core() {
   });
 }
 
-Core::Ptr Core::create(folly::Function<std::shared_ptr<const void>()> creator) {
-  auto core = Core::Ptr(new Core(std::move(creator)));
+Core::Ptr Core::create(
+    folly::Function<std::shared_ptr<const void>()> creator,
+    CreatorContext creatorContext) {
+  auto core =
+      Core::Ptr(new Core(std::move(creator), std::move(creatorContext)));
   return core;
 }
 
