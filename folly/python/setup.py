@@ -83,10 +83,6 @@ exts = [
             'folly/ProactorExecutor.cpp',
             'folly/error.cpp',
         ],
-        headers=[
-            'folly/python/AsyncioExecutor.h',
-            'folly/python/ProactorExecutor.h',
-        ],
         language='c++',
         extra_compile_args=compile_args,
         include_dirs=include_dirs,
@@ -97,15 +93,10 @@ exts = [
         'folly.iobuf',
         sources=[
             'folly/iobuf.pyx',
-            'folly/iobuf_intf.cpp',
             'folly/iobuf_ext.cpp',
+            'folly/iobuf_intf.cpp',
             'folly/error.cpp',
         ],
-        headers=[
-            'folly/python/iobuf_intf.h',
-            'folly/python/iobuf_ext.h',
-        ],
-        
         language='c++',
         extra_compile_args=compile_args,
         include_dirs=include_dirs,
@@ -142,10 +133,22 @@ Options.fast_fail = True
 if __name__ == '__main__':
     setup(
         name='folly',
-        version='0.0.1',
+        zip_safe=False,
+        version='0.1.1',
         packages=['folly'],
         setup_requires=['cython'],
-        zip_safe=False,
+        headers=[
+            'folly/AsyncioExecutor.h',
+            'folly/ProactorExecutor.h',
+            'folly/coro.h',
+            'folly/futures.h',
+            'folly/async_generator.h',
+            'folly/executor_intf.h',
+            'folly/iobuf_intf.h',
+            'folly/iobuf_ext.h',
+            'folly/error.h',
+            'folly/import.h',
+        ],
         package_data={'': ['*.pxd', '*.pyi', '__init__.py', '*_api.h']},
         ext_modules=cythonize(
             exts, 
