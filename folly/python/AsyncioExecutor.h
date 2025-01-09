@@ -23,6 +23,11 @@
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/io/async/NotificationQueue.h>
 
+
+#if PY_VERSION_HEX < 0x030d0000 // Check if the python version is less than 3.13
+#define Py_IsFinalizing _Py_IsFinalizing
+#endif
+
 namespace folly {
 namespace python {
 
@@ -79,7 +84,7 @@ class AsyncioExecutor : public DrivableExecutor {
 #if PY_VERSION_HEX <= 0x03070000
     return false;
 #else
-    return _Py_IsFinalizing();
+    return Py_IsFinalizing(); // change _PY_IsFinalizing to Py_IsFinalizing
 #endif
   }
 
