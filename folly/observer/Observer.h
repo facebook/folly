@@ -249,6 +249,7 @@ class Observer {
   const std::type_info* getCreatorTypeInfo() const {
     return core_->getCreatorContext().typeInfo;
   }
+  folly::observer_detail::Core& getCore() const { return *core_; }
 
  private:
   template <typename Observable, typename Traits>

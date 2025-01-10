@@ -128,6 +128,11 @@ class Core : public std::enable_shared_from_this<Core> {
   mutable SharedMutex refreshMutex_;
 
   bool forceRefresh_{false};
+
+ public:
+  Dependencies getSnapshotOfDependencies() const {
+    return dependencies_.copy();
+  }
 };
 } // namespace observer_detail
 } // namespace folly
