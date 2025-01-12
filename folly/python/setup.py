@@ -36,17 +36,21 @@ include_dirs = ['.', '../..']
 # Define base libraries needed across all platforms
 base_libraries = ['folly', 'glog', 'double-conversion', 'fmt']
 
+LD_PATH = 'LD_LIBRARY_PATH'
 if sys.platform == 'darwin':
     from distutils import sysconfig
     cfg_vars = sysconfig.get_config_vars()
     for key in ('CFLAGS', 'CCSHARED', 'LDSHARED', 'LDCXXSHARED', 'PY_LDFLAGS', 'PY_CFLAGS', 'PY_CPPFLAGS'):
         if key in cfg_vars:
             cfg_vars[key] = cfg_vars[key].replace('-mmacosx-version-min=10.9', '-mmacosx-version-min=12')
+
     if platform.machine() == 'arm64':
         # Macos (arm64, homebrew path is different than intel)
         library_dirs = ['/opt/homebrew/lib']
     else:
         library_dirs = ['/usr/local/lib', '/usr/lib']
+
+    LD_PATH='DYLD_LIBRARY_PATH'
 else:
     # Debian/Ubuntu
     library_dirs = ['/usr/lib', '/usr/lib/x86_64-linux-gnu']
@@ -66,14 +70,14 @@ if install_dir := os.environ.get('GETDEPS_INSTALL_DIR'):
     os.environ['PYTHONPATH'] = pypath
 
 # Add (prepend) library paths from LD_LIBRARY_PATHs
-if ldpath := os.environ.get('LD_LIBRARY_PATH'):
+if ldpath := os.environ.get(LD_PATH):
     ldpaths = ldpath.split(':')
     library_dirs[:0] = ldpaths
     # make sure folly library path is included
     if folly_lib and folly_lib not in ldpaths:
-        print(f'export LD_LIBRARY_PATH="{folly_lib}:{ldpath}"\n')
+        print(f'export {LD_PATH}="{folly_lib}:{ldpath}"\n')
     else:
-        print(f'export LD_LIBRARY_PATH="{ldpath}"\n')
+        print(f'export {LD_PATH}="{ldpath}"\n')
 
 exts = [
     Extension(
