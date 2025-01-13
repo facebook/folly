@@ -17,4 +17,4 @@ sha256 = 4ff5c335c02d225491d6c885db827fb5fa505fee4e68b4d7e866efc0087e7264
 
 [build]
 builder = autoconf
-subdir = libunwind-081cf42917bdd5c428b77850b473f31f81767cf
+subdir = libunwind-f081cf42917bdd5c428b77850b473f31f81767cf
