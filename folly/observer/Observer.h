@@ -35,10 +35,12 @@ namespace observer {
  * Given an Observer, you can get a snapshot of the current version of the
  * object it holds:
  *
- *   Observer<int> myObserver = ...;
- *   Snapshot<int> mySnapshot = myObserver.getSnapshot();
+ *     Observer<int> myObserver = ...;
+ *     Snapshot<int> mySnapshot = myObserver.getSnapshot();
+ *
  * or simply
- *   Snapshot<int> mySnapshot = *myObserver;
+ *
+ *     Snapshot<int> mySnapshot = *myObserver;
  *
  * Snapshot will hold a view of the object, even if object in the Observer
  * gets updated.
@@ -48,20 +50,20 @@ namespace observer {
  * Observers. Imagine we have two separate Observers A and B which hold
  * integers.
  *
- *   Observer<int> observerA = ...;
- *   Observer<int> observerB = ...;
+ *     Observer<int> observerA = ...;
+ *     Observer<int> observerB = ...;
  *
  * To compute a sum of A and B we can create a new Observer which would track
  * updates to A and B and re-compute the sum only when necessary.
  *
- *   Observer<int> sumObserver = makeObserver(
- *       [observerA, observerB] {
- *         int a = **observerA;
- *         int b = **observerB;
- *         return a + b;
- *       });
+ *     Observer<int> sumObserver = makeObserver(
+ *         [observerA, observerB] {
+ *           int a = **observerA;
+ *           int b = **observerB;
+ *           return a + b;
+ *         });
  *
- *   int sum = **sumObserver;
+ *     int sum = **sumObserver;
  *
  * Notice that a + b will be only called when either a or b is changed. Getting
  * a snapshot from sumObserver won't trigger any re-computation.
