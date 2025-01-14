@@ -249,6 +249,11 @@ class Observer {
   const std::type_info* getCreatorTypeInfo() const {
     return core_->getCreatorContext().typeInfo;
   }
+
+  const std::string& getCreatorName() const {
+    return core_->getCreatorContext().name;
+  }
+
   folly::observer_detail::Core& getCore() const { return *core_; }
 
  private:

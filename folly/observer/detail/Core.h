@@ -30,6 +30,17 @@
 namespace folly {
 namespace observer_detail {
 
+#define DEFINE_HAS_MEMBER_FUNC(Member)                                         \
+  template <typename T, typename = std::void_t<>>                              \
+  struct Has_##Member##T : std::false_type {};                                 \
+  template <typename T>                                                        \
+  struct Has_##Member##T<T, std::void_t<decltype(std::declval<T>().Member())>> \
+      : std::true_type {};                                                     \
+  template <typename T>                                                        \
+  constexpr bool Has_##Member##T_v = Has_##Member##T<T>::value;
+
+DEFINE_HAS_MEMBER_FUNC(getName)
+
 class ObserverManager;
 
 /**
@@ -43,6 +54,17 @@ class Core : public std::enable_shared_from_this<Core> {
 
   struct CreatorContext {
     const std::type_info* typeInfo;
+    std::string name;
+
+    template <typename F>
+    static CreatorContext create(const F& creator) {
+      CreatorContext context;
+      context.typeInfo = &typeid(F);
+      if constexpr (Has_getNameT_v<F>) {
+        context.name = creator.getName();
+      }
+      return context;
+    }
   };
   /**
    * Blocks until creator is successfully run by ObserverManager

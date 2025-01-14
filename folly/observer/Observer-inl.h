@@ -26,7 +26,7 @@ observer::Observer<ResultOfUnwrapSharedPtr<F>> makeObserver(
     F&& creator,
     std::optional<Core::CreatorContext> creatorContext = std::nullopt) {
   if (!creatorContext) {
-    creatorContext = Core::CreatorContext{&typeid(F)};
+    creatorContext = Core::CreatorContext::create(std::forward<F>(creator));
   }
   auto core = Core::create(
       [creator_2 = std::forward<F>(creator)]() mutable {
@@ -41,11 +41,12 @@ observer::Observer<ResultOfUnwrapSharedPtr<F>> makeObserver(
 
 template <typename F>
 observer::Observer<ResultOfNoObserverUnwrap<F>> makeObserver(F&& creator) {
+  auto creatorContext = Core::CreatorContext::create(std::forward<F>(creator));
   return makeObserver(
       [creator_2 = std::forward<F>(creator)]() mutable {
         return std::make_shared<ResultOfNoObserverUnwrap<F>>(creator_2());
       },
-      Core::CreatorContext{&typeid(F)});
+      std::move(creatorContext));
 }
 
 template <typename F>
@@ -53,7 +54,7 @@ observer::Observer<ResultOfUnwrapSharedPtr<F>> makeValueObserver(
     F&& creator,
     std::optional<Core::CreatorContext> creatorContext = std::nullopt) {
   if (!creatorContext) {
-    creatorContext = Core::CreatorContext{&typeid(F)};
+    creatorContext = Core::CreatorContext::create(std::forward<F>(creator));
   }
   return makeObserver(
       [activeValue = std::shared_ptr<const ResultOfUnwrapSharedPtr<F>>(),
@@ -69,11 +70,12 @@ observer::Observer<ResultOfUnwrapSharedPtr<F>> makeValueObserver(
 
 template <typename F>
 observer::Observer<ResultOfNoObserverUnwrap<F>> makeValueObserver(F&& creator) {
+  auto creatorContext = Core::CreatorContext::create(std::forward<F>(creator));
   return makeValueObserver(
       [creator_2 = std::forward<F>(creator)]() mutable {
         return std::make_shared<ResultOfNoObserverUnwrap<F>>(creator_2());
       },
-      Core::CreatorContext{&typeid(F)});
+      std::move(creatorContext));
 }
 } // namespace observer_detail
 

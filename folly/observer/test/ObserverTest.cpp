@@ -42,6 +42,18 @@ namespace {
 template <typename T>
 struct AltAtomic : std::atomic<T> {};
 
+template <typename F>
+struct NamedCreator {
+  std::string name;
+  F creator;
+
+  NamedCreator(std::string nameP, F&& creatorP)
+      : name(std::move(nameP)), creator(std::forward<F>(creatorP)) {}
+
+  const std::string& getName() const { return name; }
+
+  auto operator()() const { return creator(); }
+};
 } // namespace
 
 namespace folly {
@@ -1291,6 +1303,22 @@ TEST(Observer, TestSimpleObservableWithTypeInfo) {
   EXPECT_THAT(
       folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
       StartsWith(prefix));
+}
+
+TEST(Observer, TestObserverWithNamedCreator) {
+  {
+    auto observer =
+        folly::observer::makeObserver(NamedCreator("foo", [] { return 42; }));
+    EXPECT_EQ(42, **observer);
+    EXPECT_EQ(observer.getCreatorName(), "foo");
+  }
+  {
+    auto observer = folly::observer::makeValueObserver(NamedCreator("foo", [] {
+      return 42;
+    }));
+    EXPECT_EQ(42, **observer);
+    EXPECT_EQ(observer.getCreatorName(), "foo");
+  }
 }
 
 } // namespace observer
