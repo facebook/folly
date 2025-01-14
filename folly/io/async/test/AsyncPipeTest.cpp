@@ -21,6 +21,7 @@
 #include <folly/Memory.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Unistd.h>
 
 using namespace testing;
 

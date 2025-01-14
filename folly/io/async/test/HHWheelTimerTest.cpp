@@ -20,6 +20,7 @@
 #include <folly/io/async/test/UndelayedDestruction.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Unistd.h>
 
 using namespace folly;
 using std::chrono::milliseconds;

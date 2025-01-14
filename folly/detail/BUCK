@@ -80,7 +80,6 @@ cpp_library(
         "//folly/portability:sys_syscall",
     ],
     exported_deps = [
-        "//folly/portability:unistd",
         "//folly/synchronization:parking_lot",
     ],
 )
