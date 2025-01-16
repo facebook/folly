@@ -205,6 +205,25 @@ static_assert(
 #define XLOGF_EVERY_MS(level, ms, fmt, ...) \
   XLOGF_EVERY_MS_IF(level, true, ms, fmt, ##__VA_ARGS__)
 
+/**
+ * Similar to XLOGF(...) except log a message if the specified condition
+ * predicate evaluates to true or every @param ms milliseconds
+ *
+ * Note that this is threadsafe.
+ */
+#define XLOGF_EVERY_MS_OR(level, cond, ms, fmt, ...)                         \
+  XLOGF_IF(                                                                  \
+      level,                                                                 \
+      (cond) ||                                                              \
+          [__folly_detail_xlog_ms = ms] {                                    \
+            static ::folly::logging::IntervalRateLimiter                     \
+                folly_detail_xlog_limiter(                                   \
+                    1, ::std::chrono::milliseconds(__folly_detail_xlog_ms)); \
+            return folly_detail_xlog_limiter.check();                        \
+          }(),                                                               \
+      fmt,                                                                   \
+      ##__VA_ARGS__)
+
 namespace folly {
 namespace detail {
 
@@ -298,6 +317,23 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
   XLOGF_IF(                                                                   \
       level,                                                                  \
       (cond) &&                                                               \
+          [&] {                                                               \
+            struct folly_detail_xlog_tag {};                                  \
+            return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
+          }(),                                                                \
+      fmt,                                                                    \
+      ##__VA_ARGS__)
+
+/**
+ * Similar to XLOGF(...) except it logs a message if the condition predicate
+ * evalutes to true or approximately every @param n invocations
+ *
+ * See concurrency discussion for XLOG_EVERY_N which applies here as well.
+ */
+#define XLOGF_EVERY_N_OR(level, cond, n, fmt, ...)                            \
+  XLOGF_IF(                                                                   \
+      level,                                                                  \
+      (cond) ||                                                               \
           [&] {                                                               \
             struct folly_detail_xlog_tag {};                                  \
             return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
