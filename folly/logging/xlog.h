@@ -223,8 +223,8 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
  * Similar to XLOG(...) except only log a message every @param n
  * invocations, approximately.
  *
- * The internal counter is process-global and threadsafe but, to
- * to avoid the performance degradation of atomic-rmw operations,
+ * The internal counter is process-global and threadsafe, but to
+ * avoid the performance degradation of atomic-rmw operations,
  * increments are non-atomic. Some increments may be missed under
  * contention, leading to possible over-logging or under-logging
  * effects.
@@ -242,11 +242,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
  * Similar to XLOGF(...) except only log a message every @param n
  * invocations, approximately.
  *
- * The internal counter is process-global and threadsafe but, to
- * to avoid the performance degradation of atomic-rmw operations,
- * increments are non-atomic. Some increments may be missed under
- * contention, leading to possible over-logging or under-logging
- * effects.
+ * See concurrency discussion for XLOG_EVERY_N which applies here as well.
  */
 #define XLOGF_EVERY_N(level, n, fmt, ...)                                 \
   XLOGF_IF(                                                               \
@@ -263,11 +259,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
  * invocations, approximately, and if the specified condition predicate
  * evaluates to true.
  *
- * The internal counter is process-global and threadsafe but, to
- * to avoid the performance degradation of atomic-rmw operations,
- * increments are non-atomic. Some increments may be missed under
- * contention, leading to possible over-logging or under-logging
- * effects.
+ * See concurrency discussion for XLOG_EVERY_N which applies here as well.
  */
 #define XLOG_EVERY_N_IF(level, cond, n, ...)                                  \
   XLOG_IF(                                                                    \
@@ -283,11 +275,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
  * Similar to XLOG(...) except it logs a message if the condition predicate
  * evalutes to true or approximately every @param n invocations
  *
- * The internal counter is process-global and threadsafe but, to
- * to avoid the performance degradation of atomic-rmw operations,
- * increments are non-atomic. Some increments may be missed under
- * contention, leading to possible over-logging or under-logging
- * effects.
+ * See concurrency discussion for XLOG_EVERY_N which applies here as well.
  */
 #define XLOG_EVERY_N_OR(level, cond, n, ...)                                  \
   XLOG_IF(                                                                    \
@@ -304,11 +292,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
  * invocations, approximately, and if the specified condition predicate
  * evaluates to true.
  *
- * The internal counter is process-global and threadsafe but, to
- * to avoid the performance degradation of atomic-rmw operations,
- * increments are non-atomic. Some increments may be missed under
- * contention, leading to possible over-logging or under-logging
- * effects.
+ * See concurrency discussion for XLOG_EVERY_N which applies here as well.
  */
 #define XLOGF_EVERY_N_IF(level, cond, n, fmt, ...)                            \
   XLOGF_IF(                                                                   \
