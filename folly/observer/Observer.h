@@ -45,6 +45,9 @@ namespace observer {
  * Snapshot will hold a view of the object, even if object in the Observer
  * gets updated.
  *
+ * Note: fetching a snapshot from Observer will never block/fail. And returned
+ * snapshow will never contain a nullptr.
+ *
  *
  * What makes Observer powerful is its ability to track updates to other
  * Observers. Imagine we have two separate Observers A and B which hold
@@ -168,12 +171,24 @@ class Snapshot {
  public:
   const T& operator*() const { return *get(); }
 
+  /**
+   * Never returns nullptr
+   */
   const T* operator->() const { return get(); }
 
+  /**
+   * Never returns nullptr
+   */
   const T* get() const { return data_.get(); }
 
+  /**
+   * Never returns nullptr
+   */
   std::shared_ptr<const T> getShared() const& { return data_; }
 
+  /**
+   * Never returns nullptr
+   */
   std::shared_ptr<const T> getShared() && { return std::move(data_); }
 
   /**
@@ -225,8 +240,12 @@ class Observer {
  public:
   explicit Observer(observer_detail::Core::Ptr core);
 
-  Snapshot<T> getSnapshot() const;
-  Snapshot<T> operator*() const { return getSnapshot(); }
+  /**
+   * Never throws or blocks
+   * Never returns an empty snapshot
+   */
+  Snapshot<T> getSnapshot() const noexcept;
+  Snapshot<T> operator*() const noexcept { return getSnapshot(); }
 
   /**
    * Check if we have a newer version of the observed object than the snapshot.

@@ -82,7 +82,7 @@ observer::Observer<ResultOfNoObserverUnwrap<F>> makeValueObserver(F&& creator) {
 namespace observer {
 
 template <typename T>
-Snapshot<T> Observer<T>::getSnapshot() const {
+Snapshot<T> Observer<T>::getSnapshot() const noexcept {
   auto data = core_->getData();
   return Snapshot<T>(
       *core_,
