@@ -466,6 +466,12 @@ option(PYTHON_EXTENSIONS
   "Build Python Bindings for Folly, requires Cython and (BUILD_SHARED_LIBS=ON)"
   OFF
 )
+set(PYTHON_PACKAGE_INSTALL_DIR "" CACHE STRING
+  "Installation directory for folly Python packages. \
+  If empty, CMAKE_INSTALL_PREFIX will be used. \
+  No effect if PYTHON_EXTENSIONS=OFF."
+)
+
 
 add_library(folly
   $<TARGET_OBJECTS:folly_base>
