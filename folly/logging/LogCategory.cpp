@@ -47,7 +47,8 @@ LogCategory::LogCategory(StringPiece name, LogCategory* parent)
   parent_->firstChild_ = this;
 }
 
-void LogCategory::admitMessage(const LogMessage& message) const {
+void LogCategory::admitMessage(
+    const LogMessage& message, bool skipAbortOnFatal) const {
   processMessageWalker(this, message);
 
   // If this is a fatal message, flush the handlers to make sure the log
@@ -68,7 +69,9 @@ void LogCategory::admitMessage(const LogMessage& message) const {
           "\n");
       folly::writeFull(STDERR_FILENO, msg.data(), msg.size());
     }
-    std::abort();
+    if (!skipAbortOnFatal) {
+      std::abort();
+    }
   }
 }
 
