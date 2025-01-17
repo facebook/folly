@@ -1,0 +1,13 @@
+diff --git a/Makefile.in b/Makefile.in
+index b77a41c..cbe71fe 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -389,7 +389,7 @@ MULTIOSDIR = `$(CC) $(CFLAGS) -print-multi-os-directory`
+ install_to_libdir: all
+        if test -n "${target_header_dir}"; then \
+                ${mkinstalldirs} $(DESTDIR)$(libdir)/$(MULTIOSDIR); \
+-               $(INSTALL_DATA) $(TARGETLIB) $(DESTDIR)$(libdir)/$(MULTIOSDIR)/$(TARGETLIB)n; \
++               $(INSTALL_DATA) pic/$(TARGETLIB) $(DESTDIR)$(libdir)/$(MULTIOSDIR)/$(TARGETLIB)n; \
+                ( cd $(DESTDIR)$(libdir)/$(MULTIOSDIR) ; chmod 644 $(TARGETLIB)n ;$(RANLIB) $(TARGETLIB)n ); \
+                mv -f $(DESTDIR)$(libdir)/$(MULTIOSDIR)/$(TARGETLIB)n $(DESTDIR)$(libdir)/$(MULTIOSDIR)/$(TARGETLIB); \
+                case "${target_header_dir}" in \

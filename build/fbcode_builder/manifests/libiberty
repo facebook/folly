@@ -9,19 +9,18 @@ binutils
 binutils-dev
 
 [download]
-url = https://ftp.gnu.org/gnu/binutils/binutils-2.42.tar.xz
-sha256 = f6e4d41fd5fc778b06b7891457b3620da5ecea1006c6a4a41ae998109f85a800
+url = https://ftp.gnu.org/gnu/binutils/binutils-2.43.tar.xz
+sha256 = b53606f443ac8f01d1d5fc9c39497f2af322d99e14cea5c0b4b124d630379365
 
 [dependencies]
 zlib
 
 [build]
 builder = autoconf
-subdir = binutils-2.42/libiberty
+subdir = binutils-2.43/libiberty
+patchfile = libiberty_install_pic_lib.patch
 
 # only build the parts needed for demangling
 # as we still want to use system linker and assembler etc
 [autoconf.args]
---disable-shared
---disable-testsuite
 --enable-install-libiberty
