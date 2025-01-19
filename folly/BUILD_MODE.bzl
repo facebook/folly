@@ -53,9 +53,6 @@ _extra_asan_options = {
     "detect_odr_violation": "2",
 }
 
-_tags = [
-]
-
 _modes = extend_build_modes(
     get_parent_modes(),
     asan_options = _extra_asan_options,
@@ -64,7 +61,6 @@ _modes = extend_build_modes(
     cxx_flags = _extra_cxxflags,
     cxx_modular_headers = True,
     gcc_flags = _extra_gcc_flags,
-    tags = _tags,
 )
 
 def get_modes():

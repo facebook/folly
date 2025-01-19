@@ -35,33 +35,38 @@ namespace observer {
  * Given an Observer, you can get a snapshot of the current version of the
  * object it holds:
  *
- *   Observer<int> myObserver = ...;
- *   Snapshot<int> mySnapshot = myObserver.getSnapshot();
+ *     Observer<int> myObserver = ...;
+ *     Snapshot<int> mySnapshot = myObserver.getSnapshot();
+ *
  * or simply
- *   Snapshot<int> mySnapshot = *myObserver;
+ *
+ *     Snapshot<int> mySnapshot = *myObserver;
  *
  * Snapshot will hold a view of the object, even if object in the Observer
  * gets updated.
+ *
+ * Note: fetching a snapshot from Observer will never block/fail. And returned
+ * snapshow will never contain a nullptr.
  *
  *
  * What makes Observer powerful is its ability to track updates to other
  * Observers. Imagine we have two separate Observers A and B which hold
  * integers.
  *
- *   Observer<int> observerA = ...;
- *   Observer<int> observerB = ...;
+ *     Observer<int> observerA = ...;
+ *     Observer<int> observerB = ...;
  *
  * To compute a sum of A and B we can create a new Observer which would track
  * updates to A and B and re-compute the sum only when necessary.
  *
- *   Observer<int> sumObserver = makeObserver(
- *       [observerA, observerB] {
- *         int a = **observerA;
- *         int b = **observerB;
- *         return a + b;
- *       });
+ *     Observer<int> sumObserver = makeObserver(
+ *         [observerA, observerB] {
+ *           int a = **observerA;
+ *           int b = **observerB;
+ *           return a + b;
+ *         });
  *
- *   int sum = **sumObserver;
+ *     int sum = **sumObserver;
  *
  * Notice that a + b will be only called when either a or b is changed. Getting
  * a snapshot from sumObserver won't trigger any re-computation.
@@ -166,12 +171,24 @@ class Snapshot {
  public:
   const T& operator*() const { return *get(); }
 
+  /**
+   * Never returns nullptr
+   */
   const T* operator->() const { return get(); }
 
+  /**
+   * Never returns nullptr
+   */
   const T* get() const { return data_.get(); }
 
+  /**
+   * Never returns nullptr
+   */
   std::shared_ptr<const T> getShared() const& { return data_; }
 
+  /**
+   * Never returns nullptr
+   */
   std::shared_ptr<const T> getShared() && { return std::move(data_); }
 
   /**
@@ -223,8 +240,12 @@ class Observer {
  public:
   explicit Observer(observer_detail::Core::Ptr core);
 
-  Snapshot<T> getSnapshot() const;
-  Snapshot<T> operator*() const { return getSnapshot(); }
+  /**
+   * Never throws or blocks
+   * Never returns an empty snapshot
+   */
+  Snapshot<T> getSnapshot() const noexcept;
+  Snapshot<T> operator*() const noexcept { return getSnapshot(); }
 
   /**
    * Check if we have a newer version of the observed object than the snapshot.
@@ -245,6 +266,16 @@ class Observer {
    */
   [[nodiscard]] CallbackHandle addCallback(
       Function<void(Snapshot<T>)> callback) const;
+
+  const std::type_info* getCreatorTypeInfo() const {
+    return core_->getCreatorContext().typeInfo;
+  }
+
+  const std::string& getCreatorName() const {
+    return core_->getCreatorContext().name;
+  }
+
+  folly::observer_detail::Core& getCore() const { return *core_; }
 
  private:
   template <typename Observable, typename Traits>

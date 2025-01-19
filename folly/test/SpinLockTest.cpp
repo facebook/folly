@@ -23,6 +23,7 @@
 #include <folly/portability/Asm.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Unistd.h>
 
 namespace {
 

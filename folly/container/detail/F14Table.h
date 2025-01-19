@@ -458,7 +458,15 @@ using Defaulted =
 template <typename T>
 FOLLY_ALWAYS_INLINE static void prefetchAddr(T const* ptr) {
 #ifndef _WIN32
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Warray-bounds")
+  /// The argument ptr is permitted to be wild, since wild pointers are allowed
+  /// for prefetching on every architecture. While this behavior is technically
+  /// undefined (forbidden) in C and C++, we need this behavior in order to
+  /// avoid extra cost in the callers. Recent versions of GCC warn when they
+  /// detect uses of pointers which may be wild. So we suppress the warning.
   __builtin_prefetch(static_cast<void const*>(ptr));
+  FOLLY_POP_WARNING
 #elif FOLLY_NEON
   __prefetch(static_cast<void const*>(ptr));
 #elif FOLLY_SSE >= 2
@@ -745,6 +753,11 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     return tags_[index] != 0;
   }
 
+  /// Permitted to return a wild pointer, which is allowed for prefetching on
+  /// every architecture. This behavior is technically undefined (forbidden) in
+  /// C and C++, but we violate the rule in order to avoid extra cost in the
+  /// prefetch paths. The wild pointer that may be returned is whatever follows
+  /// any empty-instance global in the memory of any DSO.
   Item* itemAddr(std::size_t i) const {
     return static_cast<Item*>(
         const_cast<void*>(static_cast<void const*>(&rawItems_[i])));
@@ -752,6 +765,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   Item& item(std::size_t i) {
     FOLLY_SAFE_DCHECK(this->occupied(i), "");
+    compiler_may_unsafely_assume(this != getSomeEmptyInstance());
     return *std::launder(itemAddr(i));
   }
 

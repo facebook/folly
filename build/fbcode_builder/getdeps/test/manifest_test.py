@@ -231,4 +231,4 @@ name = bar
     if sys.version_info < (3, 2):
 
         def assertRaisesRegex(self, *args, **kwargs):
-            return self.assertRaisesRegexp(*args, **kwargs)
+            return self.assertRaisesRegex(*args, **kwargs)

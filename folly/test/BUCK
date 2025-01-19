@@ -1544,6 +1544,7 @@ cpp_unittest(
         "//folly/portability:asm",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/portability:unistd",
     ],
 )
 

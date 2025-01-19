@@ -16,6 +16,8 @@
 
 #include <cstdlib>
 
+#include <fmt/format.h>
+
 #include <folly/Format.h>
 #include <folly/init/Init.h>
 #include <folly/logging/GlogStyleFormatter.h>
@@ -28,6 +30,7 @@
 
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
+using namespace fmt::literals;
 using namespace folly;
 
 namespace {
@@ -166,20 +169,19 @@ TEST(GlogFormatter, filename) {
 
 TEST(GlogFormatter, multiline) {
   auto tid = getOSThreadID();
-  std::map<std::string, std::string> formatMap{
-      {"tid", folly::to<std::string>(tid)}};
 
   // Log a multi-line message
-  auto expected = folly::svformat(
-      "V0417 13:45:56.123456 {tid:>5s} rodent.cpp:777] Eeek, a mouse!\n"
-      "V0417 13:45:56.123456 {tid:>5s} rodent.cpp:777]    .   .\n"
-      "V0417 13:45:56.123456 {tid:>5s} rodent.cpp:777]   ( ).( )\n"
-      "V0417 13:45:56.123456 {tid:>5s} rodent.cpp:777]    (o o) .-._.'\n"
-      "V0417 13:45:56.123456 {tid:>5s} rodent.cpp:777]   (  -  )\n"
-      "V0417 13:45:56.123456 {tid:>5s} rodent.cpp:777]    mm mm\n"
-      "V0417 13:45:56.123456 {tid:>5s} rodent.cpp:777] \n"
-      "V0417 13:45:56.123456 {tid:>5s} rodent.cpp:777] =============\n",
-      formatMap);
+  auto expected = fmt::format(
+      "V0417 13:45:56.123456 {tid:>5} rodent.cpp:777] Eeek, a mouse!\n"
+      "V0417 13:45:56.123456 {tid:>5} rodent.cpp:777]    .   .\n"
+      "V0417 13:45:56.123456 {tid:>5} rodent.cpp:777]   ( ).( )\n"
+      "V0417 13:45:56.123456 {tid:>5} rodent.cpp:777]    (o o) .-._.'\n"
+      "V0417 13:45:56.123456 {tid:>5} rodent.cpp:777]   (  -  )\n"
+      "V0417 13:45:56.123456 {tid:>5} rodent.cpp:777]    mm mm\n"
+      "V0417 13:45:56.123456 {tid:>5} rodent.cpp:777] \n"
+      "V0417 13:45:56.123456 {tid:>5} rodent.cpp:777] =============\n",
+
+      "tid"_a = tid);
   EXPECT_EQ(
       expected,
       formatMsg(
@@ -199,14 +201,13 @@ TEST(GlogFormatter, multiline) {
 
 TEST(GlogFormatter, singleNewline) {
   auto tid = getOSThreadID();
-  std::map<std::string, std::string> formatMap{
-      {"tid", folly::to<std::string>(tid)}};
 
   // Logging a single newline is basically two empty strings.
-  auto expected = folly::svformat(
-      "V0417 13:45:56.123456 {tid:>5s} foo.txt:123] \n"
-      "V0417 13:45:56.123456 {tid:>5s} foo.txt:123] \n",
-      formatMap);
+  auto expected = fmt::format(
+      "V0417 13:45:56.123456 {tid:>5} foo.txt:123] \n"
+      "V0417 13:45:56.123456 {tid:>5} foo.txt:123] \n",
+
+      "tid"_a = tid);
   EXPECT_EQ(
       expected,
       formatMsg(LogLevel::DBG9, "\n", "foo.txt", 123, "testFunction"));

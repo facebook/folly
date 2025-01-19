@@ -23,8 +23,6 @@
 #include <limits>
 #include <type_traits>
 
-#include <folly/portability/Unistd.h>
-
 namespace folly {
 namespace detail {
 

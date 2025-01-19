@@ -19,7 +19,7 @@
 #include <folly/Portability.h>
 
 #include <folly/detail/RangeSse42.h>
-#include <folly/external/nvidia/detail/RangeSve2.h> // @manual
+#include <folly/external/nvidia/detail/RangeSve2.h>
 
 namespace folly {
 namespace detail {

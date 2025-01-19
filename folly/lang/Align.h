@@ -19,6 +19,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <new>
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
@@ -144,6 +145,13 @@ using max_align_v_ = max_align_t_<
 constexpr std::size_t max_align_v = detail::max_align_v_::value();
 struct alignas(max_align_v) max_align_t {};
 
+#if defined(__cpp_lib_hardware_interference_size)
+
+using std::hardware_constructive_interference_size;
+using std::hardware_destructive_interference_size;
+
+#else
+
 //  Memory locations within the same cache line are subject to destructive
 //  interference, also known as false sharing, which is when concurrent
 //  accesses to these different memory locations from different cores, where at
@@ -171,6 +179,8 @@ static_assert(hardware_destructive_interference_size >= max_align_v, "math?");
 //  mimic: std::hardware_constructive_interference_size, C++17
 constexpr std::size_t hardware_constructive_interference_size = 64;
 static_assert(hardware_constructive_interference_size >= max_align_v, "math?");
+
+#endif
 
 //  A value corresponding to hardware_constructive_interference_size but which
 //  may be used with alignas, since hardware_constructive_interference_size may

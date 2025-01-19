@@ -70,7 +70,9 @@ void BridgeFromGoogleLogging::send(
         static_cast<unsigned>(line),
         {},
         std::string{message, message_len}};
-    logger.getCategory()->admitMessage(logMessage);
+    // Make sure we don't abort on fatal messages and let glog library to
+    // handle it. As this call is done under lock, this could lead to a deadlock
+    logger.getCategory()->admitMessage(logMessage, /* skipAbortOnFatal */ true);
   }
 }
 

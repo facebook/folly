@@ -20,6 +20,3 @@ sha256 = 0d2b89629f13dd1a0602810529327195eff5f62a0142ccd65b903bc16a4ac78a
 [build]
 builder = autoconf
 subdir = xz-5.2.5
-
-[autoconf.args]
---disable-shared

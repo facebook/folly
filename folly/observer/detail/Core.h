@@ -30,6 +30,17 @@
 namespace folly {
 namespace observer_detail {
 
+#define DEFINE_HAS_MEMBER_FUNC(Member)                                         \
+  template <typename T, typename = std::void_t<>>                              \
+  struct Has_##Member##T : std::false_type {};                                 \
+  template <typename T>                                                        \
+  struct Has_##Member##T<T, std::void_t<decltype(std::declval<T>().Member())>> \
+      : std::true_type {};                                                     \
+  template <typename T>                                                        \
+  constexpr bool Has_##Member##T_v = Has_##Member##T<T>::value;
+
+DEFINE_HAS_MEMBER_FUNC(getName)
+
 class ObserverManager;
 
 /**
@@ -41,10 +52,26 @@ class Core : public std::enable_shared_from_this<Core> {
   using Ptr = std::shared_ptr<Core>;
   using WeakPtr = std::weak_ptr<Core>;
 
+  struct CreatorContext {
+    const std::type_info* typeInfo;
+    std::string name;
+
+    template <typename F>
+    static CreatorContext create(const F& creator) {
+      CreatorContext context;
+      context.typeInfo = &typeid(F);
+      if constexpr (Has_getNameT_v<F>) {
+        context.name = creator.getName();
+      }
+      return context;
+    }
+  };
   /**
    * Blocks until creator is successfully run by ObserverManager
    */
-  static Ptr create(folly::Function<std::shared_ptr<const void>()> creator);
+  static Ptr create(
+      folly::Function<std::shared_ptr<const void>()> creator,
+      CreatorContext creatorContext);
 
   /**
    * View of the observed object and its version
@@ -90,10 +117,14 @@ class Core : public std::enable_shared_from_this<Core> {
    */
   void setForceRefresh();
 
+  const CreatorContext& getCreatorContext() const { return creatorContext_; }
+
   ~Core();
 
  private:
-  explicit Core(folly::Function<std::shared_ptr<const void>()> creator);
+  Core(
+      folly::Function<std::shared_ptr<const void>()> creator,
+      CreatorContext creatorContext);
 
   void addDependent(Core::WeakPtr dependent);
   void maybeRemoveStaleDependents();
@@ -114,9 +145,16 @@ class Core : public std::enable_shared_from_this<Core> {
 
   folly::Function<std::shared_ptr<const void>()> creator_;
 
+  CreatorContext creatorContext_;
+
   mutable SharedMutex refreshMutex_;
 
   bool forceRefresh_{false};
+
+ public:
+  Dependencies getSnapshotOfDependencies() const {
+    return dependencies_.copy();
+  }
 };
 } // namespace observer_detail
 } // namespace folly

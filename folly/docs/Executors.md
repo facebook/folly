@@ -2,7 +2,7 @@
 
 <h3 id="how-do-i-use-the-thread">How do I use the thread pools? <a href="#how-do-i-use-the-thread" class="headerLink">#</a></h3>
 
-<p>Wangle provides two concrete thread pools (IOThreadPoolExecutor, CPUThreadPoolExecutor) as well as building them in as part of a complete async framework.  Generally you might want to grab the global executor, and use it with a future, like this:</p>
+<p>Folly provides two concrete thread pools (IOThreadPoolExecutor, CPUThreadPoolExecutor) as well as building them in as part of a complete async framework.  Generally you might want to grab the global executor, and use it with a future, like this:</p>
 
 <div class="remarkup-code-block" data-code-lang="php"><pre class="remarkup-code"><span class="no">auto</span> <span class="no">f</span> <span class="o">=</span> <span class="nf" data-symbol-name="someFutureFunction">someFutureFunction</span><span class="o">().</span><span class="nf" data-symbol-name="via">via</span><span class="o">(</span><span class="nf" data-symbol-name="getCPUExecutor">getCPUExecutor</span><span class="o">()).</span><span class="nf" data-symbol-name="then">then</span><span class="o">(...)</span></pre></div>
 
@@ -16,7 +16,7 @@
 
 <p>The current C++11 std::launch only has two modes: async or deferred.  In a production system, neither is what you want:  async will launch a new thread for every launch without limit, while deferred will defer the work until it is needed lazily, but then do the work <strong>in the current thread synchronously</strong> when it is needed.</p>
 
-<p>Wangle&#039;s thread pools always launch work as soon as possible, have limits to the maximum number of tasks / threads allowed, so we will never use more threads than absolutely needed.  See implementation details below about each type of executor.</p>
+<p>Folly&#039;s thread pools always launch work as soon as possible, have limits to the maximum number of tasks / threads allowed, so we will never use more threads than absolutely needed.  See implementation details below about each type of executor.</p>
 
 <h3 id="why-do-we-need-yet-anoth">Why do we need yet another set of thread pools? <a href="#why-do-we-need-yet-anoth" class="headerLink">#</a></h3>
 

@@ -244,7 +244,9 @@ class GitFetcher(Fetcher):
                     if not m:
                         raise Exception("Failed to parse rev from %s" % hash_file)
                     rev = m.group(1)
-                    print("Using pinned rev %s for %s" % (rev, repo_url))
+                    print(
+                        "Using pinned rev %s for %s" % (rev, repo_url), file=sys.stderr
+                    )
 
         self.rev = rev or "main"
         self.origin_repo = repo_url

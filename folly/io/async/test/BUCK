@@ -92,6 +92,7 @@ cpp_unittest(
         "//folly/io/async:async_base",
         "//folly/io/async:async_pipe",
         "//folly/portability:gtest",
+        "//folly/portability:unistd",
     ],
 )
 
@@ -556,9 +557,9 @@ cpp_unittest(
     srcs = ["HHWheelTimerSlowTests.cpp"],
     headers = [],
     emails = ["oncall+thrift@xmail.facebook.com"],
-    labels = ["load-sensitive-timing-test"],
-    tags = [
+    labels = [
         "extended",
+        "load-sensitive-timing-test",
     ],
     deps = [
         ":util",
@@ -578,6 +579,7 @@ cpp_unittest(
         ":util",
         "//folly/io/async:async_base",
         "//folly/portability:gtest",
+        "//folly/portability:unistd",
     ],
 )
 

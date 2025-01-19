@@ -70,3 +70,10 @@ TEST_F(BridgeFromGoogleLoggingTest, bridge) {
   EXPECT_EQ(LogLevel::INFO, messages[0].first.getLevel());
   messages.clear();
 }
+
+TEST_F(BridgeFromGoogleLoggingTest, bridgeFatal) {
+  auto handler = make_shared<TestLogHandler>();
+  logging::BridgeFromGoogleLogging test_bridge{};
+  LoggerDB::get().getCategory("")->addHandler(handler);
+  ASSERT_DEATH([] { LOG(FATAL) << "test crash"; }(), "");
+}

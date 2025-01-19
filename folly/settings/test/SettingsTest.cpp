@@ -645,6 +645,11 @@ TEST(SettingsTest, callback) {
   some_ns::FOLLY_SETTING(follytest, some_flag).set("e");
   EXPECT_EQ(callbackInvocations, 4);
   EXPECT_EQ(lastCallbackValue, "d");
+
+  folly::settings::Snapshot snapshot;
+  snapshot.forEachSetting([](const auto& s) {
+    EXPECT_EQ(s.hasHadCallbacks(), s.fullName() == "follytest_some_flag");
+  });
 }
 
 TEST(SettingsTest, observers) {
@@ -661,6 +666,11 @@ TEST(SettingsTest, observers) {
   folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(**observer, "new value");
   EXPECT_EQ(updatedFromCallback, "new value");
+
+  folly::settings::Snapshot snapshot;
+  snapshot.forEachSetting([](const auto& s) {
+    EXPECT_EQ(s.hasHadCallbacks(), s.fullName() == "follytest_some_flag");
+  });
 }
 
 TEST(Settings, immutables) {

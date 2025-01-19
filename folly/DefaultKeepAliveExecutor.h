@@ -65,7 +65,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
 
  private:
   struct ControlBlock {
-    std::atomic<ssize_t> keepAliveCount_{1};
+    std::atomic<ptrdiff_t> keepAliveCount_{1};
   };
 
   template <typename ExecutorT = Executor>

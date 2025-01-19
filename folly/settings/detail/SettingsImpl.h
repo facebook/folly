@@ -74,6 +74,7 @@ class SettingCoreBase {
   virtual void forceResetToDefault(SnapshotBase* snapshot) = 0;
   virtual const SettingMetadata& meta() const = 0;
   virtual uint64_t accessCount() const = 0;
+  virtual bool hasHadCallbacks() const = 0;
   virtual ~SettingCoreBase() {}
 
   /**
@@ -192,6 +193,7 @@ class SnapshotBase {
     std::pair<std::string, std::string> valueAndReason() const;
     const std::string& fullName() const { return fullName_; }
     uint64_t accessCount() const { return core_.accessCount(); }
+    bool hasHadCallbacks() const { return core_.hasHadCallbacks(); }
 
    private:
     const std::string& fullName_;
@@ -335,6 +337,8 @@ class SettingCore : public SettingCoreBase {
 
   uint64_t accessCount() const override { return AccessCounter::count(); }
 
+  bool hasHadCallbacks() const override { return hasHadCallbacks_.load(); }
+
   /**
    * @param trivialStorage must refer to the same location
    *   as the internal trivialStorage_.  This hint will
@@ -387,6 +391,7 @@ class SettingCore : public SettingCoreBase {
     SettingCore<T, Tag>& setting_;
   };
   CallbackHandle addCallback(UpdateCallback callback) {
+    hasHadCallbacks_.store(true);
     auto callbackPtr = copy_to_shared_ptr(std::move(callback));
 
     auto copiedPtr = callbackPtr;
@@ -420,6 +425,7 @@ class SettingCore : public SettingCoreBase {
   std::atomic<uint64_t>& trivialStorage_;
 
   F14FastSet<std::shared_ptr<UpdateCallback>> callbacks_;
+  std::atomic<bool> hasHadCallbacks_{false};
 
   /* Thread local versions start at 0, this will force a read on first access.
    */

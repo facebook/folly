@@ -1,6 +1,6 @@
 [manifest]
 name = fbthrift
-fbsource_path = fbcode/thrift
+fbsource_path = xplat/thrift
 shipit_project = fbthrift
 shipit_fbcode_builder = true
 
@@ -37,11 +37,11 @@ xxhash
 python
 
 [shipit.pathmap]
-fbcode/thrift/public_tld = .
-fbcode/thrift = thrift
+xplat/thrift/public_tld = .
+xplat/thrift = thrift
 
 [shipit.strip]
-^fbcode/thrift/thrift-config\.h$
-^fbcode/thrift/perf/canary.py$
-^fbcode/thrift/perf/loadtest.py$
-^fbcode/thrift/.castle/.*
+^xplat/thrift/thrift-config\.h$
+^xplat/thrift/perf/canary.py$
+^xplat/thrift/perf/loadtest.py$
+^xplat/thrift/.castle/.*
