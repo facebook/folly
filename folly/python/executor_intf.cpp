@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/python/executor.h>
+#include <folly/python/executor_intf.h>
 
 #include <stdexcept>
 
-#include <folly/python/executor_api.h> // @manual
+#include <folly/executor_api.h> // @manual
 #include <folly/python/import.h>
 
 namespace folly {

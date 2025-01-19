@@ -18,7 +18,7 @@
 
 #include <stdexcept>
 
-#include <folly/python/fiber_manager_api.h>
+#include <folly/fiber_manager_api.h>
 #include <folly/python/import.h>
 
 namespace folly {

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 cdef extern from "folly/Function.h" namespace "folly" nogil:
     cdef cppclass cFunction "folly::Function"[T]:
         cFunction()
