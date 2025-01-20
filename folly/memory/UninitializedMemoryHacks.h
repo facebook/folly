@@ -243,7 +243,7 @@ struct MakeUnsafeStringSetLargerSize {
 
 #elif defined(_MSC_VER)
 
-#if !defined(_M_CEE_PURE) && !defined(_DISABLE_STRING_ANNOTATION)
+#if defined(_ANNOTATE_STRING) || !defined(_DISABLE_STRING_ANNOTATION)
 #ifdef __SANITIZE_ADDRESS__
 #define _INSERT_STRING_ANNOTATION
 #elif defined(__clang__)
@@ -403,7 +403,7 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 
 #elif defined(_MSC_VER)
 
-#if !defined(_M_CEE_PURE) && !defined(_DISABLE_VECTOR_ANNOTATION)
+#if defined(_ANNOTATE_VECTOR) || !defined(_DISABLE_VECTOR_ANNOTATION)
 #ifdef __SANITIZE_ADDRESS__
 #define _INSERT_VECTOR_ANNOTATION
 #elif defined(__clang__)
