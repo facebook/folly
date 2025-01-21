@@ -147,8 +147,25 @@ struct alignas(max_align_v) max_align_t {};
 
 #if defined(__cpp_lib_hardware_interference_size)
 
-using std::hardware_constructive_interference_size;
-using std::hardware_destructive_interference_size;
+//  GCC unconditionally warns about uses of the std's interference-size
+//  constants, on the basis that their uses in public ABIs is likely broken:
+//
+//    its value can vary between compiler versions or with different ‘-mtune’
+//    or ‘-mcpu’ flags; if this use is part of a public ABI, change it to
+//    instead use a constant variable you define
+//
+//  For now, these remain theoretical concerns in the expected scenario, where
+//  all of the application is built together with the same compiler options.
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Winterference-size")
+
+constexpr std::size_t hardware_constructive_interference_size =
+    std::hardware_constructive_interference_size;
+
+constexpr std::size_t hardware_destructive_interference_size =
+    std::hardware_destructive_interference_size;
+
+FOLLY_POP_WARNING
 
 #else
 
