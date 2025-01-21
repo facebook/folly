@@ -96,6 +96,17 @@ typedef unsigned _Unwind_Ptr __attribute__((__mode__(__pointer__)));
 
 namespace __cxxabiv1 {
 
+//  libsupc++ itanium-abi __cxa_exception assumes that _Unwind_Exception is
+//  maximally-aligned, and indeed libgcc itanium-abi _Unwind_Exception is so;
+//  but libunwind itanium-abi _Unwind_Exception is not maximally-aligned
+#ifdef __ARM_EABI_UNWINDER__
+//  https://github.com/gcc-mirror/gcc/blob/releases/gcc-14.2.0/gcc/ginclude/unwind-arm-common.h#L119
+static constexpr size_t __folly_unwind_exception_align = 8;
+#else
+//  https://github.com/gcc-mirror/gcc/blob/releases/gcc-14.2.0/libgcc/unwind-generic.h#L106
+static constexpr size_t __folly_unwind_exception_align = alignof(max_align_t);
+#endif
+
 static constexpr uint64_t __gxx_primary_exception_class =
     0x474E5543432B2B00; // GNCUC++\0
 static constexpr uint64_t __gxx_dependent_exception_class =
@@ -118,7 +129,7 @@ struct __cxa_exception {
   _Unwind_Ptr catchTemp;
   void* adjustedPtr;
 #endif
-  _Unwind_Exception unwindHeader;
+  alignas(__folly_unwind_exception_align) _Unwind_Exception unwindHeader;
 };
 
 struct __cxa_refcounted_exception {
