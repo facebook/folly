@@ -288,10 +288,12 @@ class ConcurrentHashMap {
     return true;
   }
 
-  ConstIterator find(const KeyType& k) const { return findImpl(k); }
+  FOLLY_ALWAYS_INLINE ConstIterator find(const KeyType& k) const {
+    return findImpl(k);
+  }
 
   template <typename K, EnableHeterogeneousFind<K, int> = 0>
-  ConstIterator find(const K& k) const {
+  FOLLY_ALWAYS_INLINE ConstIterator find(const K& k) const {
     return findImpl(k);
   }
 
@@ -604,7 +606,8 @@ class ConcurrentHashMap {
           segment_(std::exchange(o.segment_, uint64_t(NumShards))),
           parent_(std::exchange(o.parent_, nullptr)) {}
 
-    ConstIterator(const ConcurrentHashMap* parent, uint64_t segment)
+    FOLLY_ALWAYS_INLINE ConstIterator(
+        const ConcurrentHashMap* parent, uint64_t segment)
         : segment_(segment), parent_(parent) {}
 
    private:
@@ -656,7 +659,7 @@ class ConcurrentHashMap {
 
  private:
   template <typename K>
-  ConstIterator findImpl(const K& k) const {
+  FOLLY_ALWAYS_INLINE ConstIterator findImpl(const K& k) const {
     auto h = HashFn{}(k);
     auto segment = pickSegment(h);
     ConstIterator res(this, segment);
