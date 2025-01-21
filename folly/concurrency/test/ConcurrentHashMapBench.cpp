@@ -21,6 +21,7 @@
 #include <thread>
 
 #include <folly/synchronization/test/Barrier.h>
+#include <folly/BenchmarkUtil.h>
 
 DEFINE_int32(reps, 10, "number of reps");
 DEFINE_int32(ops, 1000 * 1000, "number of operations per rep");
@@ -92,7 +93,7 @@ uint64_t bench_ctor_dtor(
       for (int i = 0; i < ops; ++i) {
         folly::ConcurrentHashMap<int, int> m;
         for (int j = 0; j < size; ++j) {
-          m.insert(j, j);
+          folly::doNotOptimizeAway(m.insert(j, j));
         }
       }
     };
@@ -114,11 +115,11 @@ uint64_t bench_find(
     auto fn = [&](int) {
       if (sameItem) {
         for (int i = 0; i < ops; ++i) {
-          m.find(key);
+          folly::doNotOptimizeAway(m.find(key));
         }
       } else {
         for (int i = 0; i < ops; ++i) {
-          m.find(i);
+          folly::doNotOptimizeAway(m.find(i));
         }
       }
     };
@@ -138,7 +139,7 @@ uint64_t bench_iter(const int nthr, int size, const std::string& name) {
   auto repFn = [&] {
     auto fn = [&](int) {
       for (int i = 0; i < reps; ++i) {
-        for (auto it = m.begin(); it != m.end(); ++it) {
+        for (auto it = m.begin(); it != m.end(); doNotOptimizeAway(++it)) {
         }
       }
     };
@@ -157,7 +158,7 @@ uint64_t bench_begin(const int nthr, int size, const std::string& name) {
   auto repFn = [&] {
     auto fn = [&](int) {
       for (int i = 0; i < ops; ++i) {
-        auto it = m.begin();
+        folly::doNotOptimizeAway(m.begin());
       }
     };
     auto endfn = [&] {};
@@ -175,7 +176,7 @@ uint64_t bench_empty(const int nthr, int size, const std::string& name) {
   auto repFn = [&] {
     auto fn = [&](int) {
       for (int i = 0; i < ops; ++i) {
-        m.empty();
+        folly::doNotOptimizeAway(m.empty());
       }
     };
     auto endfn = [&] {};
@@ -193,7 +194,7 @@ uint64_t bench_size(const int nthr, int size, const std::string& name) {
   auto repFn = [&] {
     auto fn = [&](int) {
       for (int i = 0; i < ops; ++i) {
-        m.size();
+        folly::doNotOptimizeAway(m.size());
       }
     };
     auto endfn = [&] {};
