@@ -125,11 +125,3 @@ std::unique_ptr<StreamCodec> getStreamCodec(
 } // namespace folly
 
 #endif // FOLLY_HAVE_LIBZ
-
-namespace folly::io::zlib {
-using folly::compression::zlib::defaultGzipOptions;
-using folly::compression::zlib::defaultZlibOptions;
-using folly::compression::zlib::getCodec;
-using folly::compression::zlib::getStreamCodec;
-using folly::compression::zlib::Options;
-} // namespace folly::io::zlib
