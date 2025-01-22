@@ -89,10 +89,4 @@ std::unique_ptr<StreamCodec> getStreamCodec(Options options);
 } // namespace compression
 } // namespace folly
 
-namespace folly::io::zstd {
-using folly::compression::zstd::getCodec;
-using folly::compression::zstd::getStreamCodec;
-using folly::compression::zstd::Options;
-} // namespace folly::io::zstd
-
 #endif
