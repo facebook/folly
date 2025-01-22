@@ -560,11 +560,17 @@ class small_vector
   }
 
   explicit small_vector(size_type n) {
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Warray-bounds")
     doConstruct(n, [&](void* p) { new (p) value_type(); });
+    FOLLY_POP_WARNING
   }
 
   small_vector(size_type n, value_type const& t) {
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Warray-bounds")
     doConstruct(n, [&](void* p) { new (p) value_type(t); });
+    FOLLY_POP_WARNING
   }
 
   template <class Arg>
@@ -773,7 +779,10 @@ class small_vector
 
   void resize(size_type sz, value_type const& v) {
     if (sz < size()) {
+      FOLLY_PUSH_WARNING
+      FOLLY_GCC_DISABLE_WARNING("-Warray-bounds")
       erase(begin() + sz, end());
+      FOLLY_POP_WARNING
       return;
     }
     auto extra = sz - size();
@@ -1169,7 +1178,10 @@ class small_vector
   // The true_type means we should forward to the size_t,value_type
   // overload.
   void constructImpl(size_type n, value_type const& val, std::true_type) {
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Warray-bounds")
     doConstruct(n, [&](void* p) { new (p) value_type(val); });
+    FOLLY_POP_WARNING
   }
 
   /*
