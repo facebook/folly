@@ -868,11 +868,13 @@ int AsyncUDPSocket::writemGSO(
 void AsyncUDPSocket::fillIoVec(
     const std::unique_ptr<folly::IOBuf>* bufs,
     struct iovec* iov,
+    size_t* messageIovLens,
     size_t count,
     size_t iov_count) {
   size_t remaining = iov_count;
   size_t iov_pos = 0;
   for (size_t i = 0; i < count; i++) {
+    messageIovLens[i] = bufs[i]->countChainElements();
     auto ret = bufs[i]->fillIov(&iov[iov_pos], remaining);
     size_t iovec_len = ret.numIovecs;
     remaining -= iovec_len;
@@ -882,7 +884,7 @@ void AsyncUDPSocket::fillIoVec(
 
 void AsyncUDPSocket::fillMsgVec(
     Range<full_sockaddr_storage*> addrs,
-    const std::unique_ptr<folly::IOBuf>* bufs,
+    size_t* messageIovLens,
     size_t count,
     struct mmsghdr* msgvec,
     struct iovec* iov,
@@ -905,7 +907,7 @@ void AsyncUDPSocket::fillMsgVec(
       msg.msg_namelen = addrs[addr_count - 1].len;
     }
     msg.msg_iov = &iov[iov_pos];
-    msg.msg_iovlen = bufs[i]->countChainElements();
+    msg.msg_iovlen = messageIovLens[i];
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
     size_t controlBufSize = 1 +
         cmsgs_->size() *
@@ -982,7 +984,7 @@ void AsyncUDPSocket::fillMsgVec(
 
     msgvec[i].msg_len = 0;
 
-    iov_pos += bufs[i]->countChainElements();
+    iov_pos += messageIovLens[i];
   }
 }
 
@@ -1015,15 +1017,30 @@ int AsyncUDPSocket::writeImpl(
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
     iovec iov[BOOST_PP_IF(FOLLY_HAVE_VLA_01, iov_count, kSmallSizeMax)];
+    size_t messageIovLens[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallSizeMax)];
     FOLLY_POP_WARNING
-    fillIoVec(bufs, iov, count, iov_count);
-    fillMsgVec(range(addrStorage), bufs, count, msgvec, iov, options, control);
+    fillIoVec(bufs, iov, messageIovLens, count, iov_count);
+    fillMsgVec(
+        range(addrStorage),
+        messageIovLens,
+        count,
+        msgvec,
+        iov,
+        options,
+        control);
     ret = sendmmsg(fd_, msgvec, count, 0);
   } else {
     std::unique_ptr<iovec[]> iov(new iovec[iov_count]);
-    fillIoVec(bufs, iov.get(), count, iov_count);
+    std::unique_ptr<size_t[]> messageIovLens(new size_t[count]);
+    fillIoVec(bufs, iov.get(), messageIovLens.get(), count, iov_count);
     fillMsgVec(
-        range(addrStorage), bufs, count, msgvec, iov.get(), options, control);
+        range(addrStorage),
+        messageIovLens.get(),
+        count,
+        msgvec,
+        iov.get(),
+        options,
+        control);
     ret = sendmmsg(fd_, msgvec, count, 0);
   }
 

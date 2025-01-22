@@ -544,12 +544,13 @@ class AsyncUDPSocket : public EventHandler {
   void fillIoVec(
       const std::unique_ptr<folly::IOBuf>* bufs,
       struct iovec* iov,
+      size_t* messageIovLens,
       size_t count,
       size_t iov_count);
 
   void fillMsgVec(
       Range<full_sockaddr_storage*> addrs,
-      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t* messageIovLens,
       size_t count,
       struct mmsghdr* msgvec,
       struct iovec* iov,
