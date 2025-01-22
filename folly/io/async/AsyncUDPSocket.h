@@ -541,13 +541,18 @@ class AsyncUDPSocket : public EventHandler {
     return netops_->sendmmsg(socket, msgvec, vlen, flags);
   }
 
+  void fillIoVec(
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      struct iovec* iov,
+      size_t count,
+      size_t iov_count);
+
   void fillMsgVec(
       Range<full_sockaddr_storage*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
       size_t count,
       struct mmsghdr* msgvec,
       struct iovec* iov,
-      size_t iov_count,
       const WriteOptions* options,
       char* control);
 

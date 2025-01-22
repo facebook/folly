@@ -865,25 +865,35 @@ int AsyncUDPSocket::writemGSO(
   return ret;
 }
 
+void AsyncUDPSocket::fillIoVec(
+    const std::unique_ptr<folly::IOBuf>* bufs,
+    struct iovec* iov,
+    size_t count,
+    size_t iov_count) {
+  size_t remaining = iov_count;
+  size_t iov_pos = 0;
+  for (size_t i = 0; i < count; i++) {
+    auto ret = bufs[i]->fillIov(&iov[iov_pos], remaining);
+    size_t iovec_len = ret.numIovecs;
+    remaining -= iovec_len;
+    iov_pos += iovec_len;
+  }
+}
+
 void AsyncUDPSocket::fillMsgVec(
     Range<full_sockaddr_storage*> addrs,
     const std::unique_ptr<folly::IOBuf>* bufs,
     size_t count,
     struct mmsghdr* msgvec,
     struct iovec* iov,
-    size_t iov_count,
     const WriteOptions* options,
     char* control) {
   auto addr_count = addrs.size();
   DCHECK(addr_count);
-  size_t remaining = iov_count;
 
   size_t iov_pos = 0;
   for (size_t i = 0; i < count; i++) {
     // we can use remaining here to avoid calling countChainElements() again
-    auto ret = bufs[i]->fillIov(&iov[iov_pos], remaining);
-    size_t iovec_len = ret.numIovecs;
-    remaining -= iovec_len;
     auto& msg = msgvec[i].msg_hdr;
     // if we have less addrs compared to count
     // we use the last addr
@@ -895,7 +905,7 @@ void AsyncUDPSocket::fillMsgVec(
       msg.msg_namelen = addrs[addr_count - 1].len;
     }
     msg.msg_iov = &iov[iov_pos];
-    msg.msg_iovlen = iovec_len;
+    msg.msg_iovlen = bufs[i]->countChainElements();
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
     size_t controlBufSize = 1 +
         cmsgs_->size() *
@@ -972,7 +982,7 @@ void AsyncUDPSocket::fillMsgVec(
 
     msgvec[i].msg_len = 0;
 
-    iov_pos += iovec_len;
+    iov_pos += bufs[i]->countChainElements();
   }
 }
 
@@ -1006,27 +1016,14 @@ int AsyncUDPSocket::writeImpl(
     FOLLY_GNU_DISABLE_WARNING("-Wvla")
     iovec iov[BOOST_PP_IF(FOLLY_HAVE_VLA_01, iov_count, kSmallSizeMax)];
     FOLLY_POP_WARNING
-    fillMsgVec(
-        range(addrStorage),
-        bufs,
-        count,
-        msgvec,
-        iov,
-        iov_count,
-        options,
-        control);
+    fillIoVec(bufs, iov, count, iov_count);
+    fillMsgVec(range(addrStorage), bufs, count, msgvec, iov, options, control);
     ret = sendmmsg(fd_, msgvec, count, 0);
   } else {
     std::unique_ptr<iovec[]> iov(new iovec[iov_count]);
+    fillIoVec(bufs, iov.get(), count, iov_count);
     fillMsgVec(
-        range(addrStorage),
-        bufs,
-        count,
-        msgvec,
-        iov.get(),
-        iov_count,
-        options,
-        control);
+        range(addrStorage), bufs, count, msgvec, iov.get(), options, control);
     ret = sendmmsg(fd_, msgvec, count, 0);
   }
 
