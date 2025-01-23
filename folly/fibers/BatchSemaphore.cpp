@@ -38,7 +38,7 @@ bool BatchSemaphore::try_wait(int64_t tokens) {
 #if FOLLY_HAS_COROUTINES
 
 coro::Task<void> BatchSemaphore::co_wait(int64_t tokens) {
-  co_await co_wait_common(tokens);
+  return co_wait_common(tokens);
 }
 
 #endif
