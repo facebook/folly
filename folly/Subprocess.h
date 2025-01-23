@@ -409,7 +409,9 @@ class Subprocess {
      * "EXITED" state when the constructor returns.  The caller should not call
      * wait() or poll() on the Subprocess, and pid() will return -1.
      */
-    Options& detach() {
+    [[deprecated(
+        "detach() forks the current process, which is considered dangerous")]] Options&
+    detach() {
       detach_ = true;
       return *this;
     }
