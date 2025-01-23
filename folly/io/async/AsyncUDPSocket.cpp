@@ -865,6 +865,57 @@ int AsyncUDPSocket::writemGSO(
   return ret;
 }
 
+int AsyncUDPSocket::writemGSOv(
+    Range<SocketAddress const*> addrs,
+    iovec* iov,
+    size_t* numIovecsInBuffer,
+    size_t count,
+    const WriteOptions* options) {
+  int ret;
+  constexpr size_t kSmallSizeMax = 40;
+  char* controlPtr = nullptr;
+#ifndef FOLLY_HAVE_MSG_ERRQUEUE
+  CHECK(!options) << "GSO not supported";
+#endif
+  maybeUpdateDynamicCmsgs();
+  size_t singleControlBufSize = 1;
+  singleControlBufSize +=
+      cmsgs_->size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
+  size_t controlBufSize = count * singleControlBufSize;
+  if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
+    // suppress "warning: variable length array 'vec' is used [-Wvla]"
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wvla")
+    mmsghdr vec[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallSizeMax)];
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+    // we will allocate this on the stack anyway even if we do not use it
+    char control
+        [(BOOST_PP_IF(FOLLY_HAVE_VLA_01, controlBufSize, kSmallSizeMax)) *
+         (CMSG_SPACE(sizeof(uint16_t)))];
+    memset(control, 0, sizeof(control));
+    controlPtr = control;
+#endif
+    FOLLY_POP_WARNING
+    ret = writeImpl(
+        addrs, numIovecsInBuffer, iov, count, vec, options, controlPtr);
+  } else {
+    std::unique_ptr<mmsghdr[]> vec(new mmsghdr[count]);
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+    controlBufSize *= (CMSG_SPACE(sizeof(uint16_t)));
+    for (const auto& itr : nontrivialCmsgs_) {
+      controlBufSize += CMSG_SPACE(itr.second.size());
+    }
+    std::unique_ptr<char[]> control(new char[controlBufSize]);
+    memset(control.get(), 0, controlBufSize);
+    controlPtr = control.get();
+#endif
+    ret = writeImpl(
+        addrs, numIovecsInBuffer, iov, count, vec.get(), options, controlPtr);
+  }
+
+  return ret;
+}
+
 void AsyncUDPSocket::fillIoVec(
     const std::unique_ptr<folly::IOBuf>* bufs,
     struct iovec* iov,
