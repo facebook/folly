@@ -104,7 +104,11 @@ namespace __cxxabiv1 {
 static constexpr size_t __folly_unwind_exception_align = 8;
 #else
 //  https://github.com/gcc-mirror/gcc/blob/releases/gcc-14.2.0/libgcc/unwind-generic.h#L106
-static constexpr size_t __folly_unwind_exception_align = alignof(max_align_t);
+struct __folly_unwind_exception_align_t {
+  [[gnu::aligned]] int data;
+};
+static constexpr size_t __folly_unwind_exception_align =
+    alignof(__folly_unwind_exception_align_t);
 #endif
 
 static constexpr uint64_t __gxx_primary_exception_class =
