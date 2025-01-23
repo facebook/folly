@@ -557,9 +557,18 @@ class AsyncUDPSocket : public EventHandler {
       const WriteOptions* options,
       char* control);
 
-  virtual int writeImpl(
+  virtual int writeImplIOBufs(
       Range<SocketAddress const*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t count,
+      struct mmsghdr* msgvec,
+      const WriteOptions* options,
+      char* control);
+
+  virtual int writeImpl(
+      Range<SocketAddress const*> addrs,
+      size_t* messageIovLens,
+      struct iovec* iov,
       size_t count,
       struct mmsghdr* msgvec,
       const WriteOptions* options,

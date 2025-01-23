@@ -847,7 +847,7 @@ int AsyncUDPSocket::writemGSO(
     controlPtr = control;
 #endif
     FOLLY_POP_WARNING
-    ret = writeImpl(addrs, bufs, count, vec, options, controlPtr);
+    ret = writeImplIOBufs(addrs, bufs, count, vec, options, controlPtr);
   } else {
     std::unique_ptr<mmsghdr[]> vec(new mmsghdr[count]);
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
@@ -859,7 +859,7 @@ int AsyncUDPSocket::writemGSO(
     memset(control.get(), 0, controlBufSize);
     controlPtr = control.get();
 #endif
-    ret = writeImpl(addrs, bufs, count, vec.get(), options, controlPtr);
+    ret = writeImplIOBufs(addrs, bufs, count, vec.get(), options, controlPtr);
   }
 
   return ret;
@@ -988,9 +988,48 @@ void AsyncUDPSocket::fillMsgVec(
   }
 }
 
-int AsyncUDPSocket::writeImpl(
+int AsyncUDPSocket::writeImplIOBufs(
     Range<SocketAddress const*> addrs,
     const std::unique_ptr<folly::IOBuf>* bufs,
+    size_t count,
+    struct mmsghdr* msgvec,
+    const WriteOptions* options,
+    char* control) {
+  size_t iov_count = 0;
+  for (size_t i = 0; i < count; i++) {
+    iov_count += bufs[i]->countChainElements();
+  }
+
+  constexpr size_t kSmallSizeMax = 8;
+  if (iov_count <= kSmallSizeMax) {
+    // suppress "warning: variable length array 'vec' is used [-Wvla]"
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wvla")
+    iovec iov[BOOST_PP_IF(FOLLY_HAVE_VLA_01, iov_count, kSmallSizeMax)];
+    size_t messageIovLens[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallSizeMax)];
+    FOLLY_POP_WARNING
+    fillIoVec(bufs, iov, messageIovLens, count, iov_count);
+    return writeImpl(
+        addrs, messageIovLens, iov, count, msgvec, options, control);
+  } else {
+    std::unique_ptr<iovec[]> iov(new iovec[iov_count]);
+    std::unique_ptr<size_t[]> messageIovLens(new size_t[count]);
+    fillIoVec(bufs, iov.get(), messageIovLens.get(), count, iov_count);
+    return writeImpl(
+        addrs,
+        messageIovLens.get(),
+        iov.get(),
+        count,
+        msgvec,
+        options,
+        control);
+  }
+}
+
+int AsyncUDPSocket::writeImpl(
+    Range<SocketAddress const*> addrs,
+    size_t* messageIovLens,
+    struct iovec* iov,
     size_t count,
     struct mmsghdr* msgvec,
     const WriteOptions* options,
@@ -1005,46 +1044,9 @@ int AsyncUDPSocket::writeImpl(
     addrStorage[i].len = folly::to_narrow(addrs[i].getActualSize());
   }
 
-  size_t iov_count = 0;
-  for (size_t i = 0; i < count; i++) {
-    iov_count += bufs[i]->countChainElements();
-  }
-
-  int ret;
-  constexpr size_t kSmallSizeMax = 8;
-  if (iov_count <= kSmallSizeMax) {
-    // suppress "warning: variable length array 'vec' is used [-Wvla]"
-    FOLLY_PUSH_WARNING
-    FOLLY_GNU_DISABLE_WARNING("-Wvla")
-    iovec iov[BOOST_PP_IF(FOLLY_HAVE_VLA_01, iov_count, kSmallSizeMax)];
-    size_t messageIovLens[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallSizeMax)];
-    FOLLY_POP_WARNING
-    fillIoVec(bufs, iov, messageIovLens, count, iov_count);
-    fillMsgVec(
-        range(addrStorage),
-        messageIovLens,
-        count,
-        msgvec,
-        iov,
-        options,
-        control);
-    ret = sendmmsg(fd_, msgvec, count, 0);
-  } else {
-    std::unique_ptr<iovec[]> iov(new iovec[iov_count]);
-    std::unique_ptr<size_t[]> messageIovLens(new size_t[count]);
-    fillIoVec(bufs, iov.get(), messageIovLens.get(), count, iov_count);
-    fillMsgVec(
-        range(addrStorage),
-        messageIovLens.get(),
-        count,
-        msgvec,
-        iov.get(),
-        options,
-        control);
-    ret = sendmmsg(fd_, msgvec, count, 0);
-  }
-
-  return ret;
+  fillMsgVec(
+      range(addrStorage), messageIovLens, count, msgvec, iov, options, control);
+  return sendmmsg(fd_, msgvec, count, 0);
 }
 
 ssize_t AsyncUDPSocket::recvmsg(struct msghdr* msg, int flags) {
