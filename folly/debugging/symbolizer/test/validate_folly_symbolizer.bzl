@@ -127,14 +127,14 @@ def validate_symbolizer_dwp(name, binary):
     # Only test in opt mode.
     # In dev mode, the test still depends on the shared libraries except
     # binary + dwp file.
-    if config.get_build_mode().startswith("opt"):
+    if config.get_non_selectified_build_mode().startswith("opt"):
         custom_unittest(
             name = name,
             command = [
                 "$(exe //folly/debugging/symbolizer/test:symbolizer_dwp_compability.sh)",
                 "$(location {})".format(binary),
                 "$(location {}[dwp])".format(binary),
-                config.get_build_mode(),
+                config.get_non_selectified_build_mode(),
             ],
             type = "simple",
         )
