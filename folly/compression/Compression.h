@@ -547,6 +547,5 @@ using folly::compression::getAutoUncompressionCodec;
 using folly::compression::getCodec;
 using folly::compression::getStreamCodec;
 using folly::compression::hasCodec;
-using folly::compression::hasStreamCodec;
 using folly::compression::StreamCodec;
 } // namespace folly::io
