@@ -1258,6 +1258,7 @@ int IoUringBackend::eb_event_add(Event& event, const struct timeval* timeout) {
     auto* ioSqe = allocIoSqe(event.getCallback());
     CHECK(ioSqe);
     ioSqe->event_ = &event;
+    ioSqe->setEventBase(event.eb_ev_base());
 
     // just append it
     submitList_.push_back(*ioSqe);

@@ -141,6 +141,7 @@ AsyncIoUringSocket::ReadSqe::ReadSqe(AsyncIoUringSocket* parent)
     : IoSqeBase(IoSqeBase::Type::Read), parent_(parent) {
   supportsMultishotRecv_ = parent->options_.multishotRecv &&
       parent->backend_->kernelSupportsRecvmsgMultishot();
+  setEventBase(parent->evb_);
 }
 
 AsyncIoUringSocket::~AsyncIoUringSocket() {
@@ -868,6 +869,8 @@ AsyncIoUringSocket::WriteSqe::WriteSqe(
   msg_.msg_control = nullptr;
   msg_.msg_controllen = 0;
   msg_.msg_flags = 0;
+
+  setEventBase(parent->evb_);
 }
 
 int AsyncIoUringSocket::WriteSqe::sendMsgFlags() const {
@@ -1019,8 +1022,8 @@ void AsyncIoUringSocket::attachEventBase(EventBase* evb) {
     std::move(*detachedWriteResult_)
         .via(evb)
         .thenValue(
-            [w = writeSqeActive_,
-             a = std::weak_ptr<folly::Unit>(alive_)](auto&& resFlagsPairs) {
+            [w = writeSqeActive_, a = std::weak_ptr<folly::Unit>(alive_), evb](
+                auto&& resFlagsPairs) {
               VLOG(5) << "attached write done, " << resFlagsPairs.size();
               if (!a.lock()) {
                 return;
@@ -1031,6 +1034,7 @@ void AsyncIoUringSocket::attachEventBase(EventBase* evb) {
                 cqe.res = res;
                 cqe.flags = flags;
 
+                evb->bumpHandlingTime();
                 if (w->cancelled()) {
                   w->callbackCancelled(&cqe);
                 } else {
@@ -1138,6 +1142,7 @@ void AsyncIoUringSocket::detachEventBase() {
   }
   readSqe_ = ReadSqe::UniquePtr(new ReadSqe(this));
   readSqe_->setReadCallback(oldReadCallback, false);
+  readSqe_->setEventBase(nullptr);
 
   unregisterFd();
   if (!drc) {
@@ -1178,6 +1183,7 @@ folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
 AsyncIoUringSocket::ReadSqe::detachEventBase() {
   alive_ = nullptr;
   parent_ = nullptr;
+  setEventBase(nullptr);
   return std::move(oldEventBaseRead_);
 }
 
@@ -1193,6 +1199,7 @@ void AsyncIoUringSocket::ReadSqe::attachEventBase() {
     return;
   }
   auto* evb = parent_->evb_;
+  setEventBase(evb);
   alive_ = std::make_shared<folly::Unit>();
   folly::Func deferred =
       [p = parent_, a = std::weak_ptr<folly::Unit>(alive_)]() {
@@ -1219,6 +1226,7 @@ AsyncIoUringSocket::FastOpenSqe::FastOpenSqe(
       parent_(parent),
       initialWrite(std::move(i)) {
   addrLen_ = addr.getAddress(&addrStorage);
+  setEventBase(parent->evb_);
 }
 
 void AsyncIoUringSocket::FastOpenSqe::cleanupMsg() noexcept {
@@ -1311,6 +1319,7 @@ AsyncIoUringSocket::WriteSqe::detachEventBase() {
   newSqe->refs_ = refs_;
 
   parent_ = nullptr;
+  setEventBase(nullptr);
   detachedSignal_ =
       [prom = std::move(promise),
        ret = std::vector<std::pair<int, uint32_t>>{},

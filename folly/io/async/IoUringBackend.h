@@ -522,6 +522,7 @@ class IoUringBackend : public EventBaseBackendBase {
     FOLLY_ALWAYS_INLINE void resetEvent() {
       // remove it from the list
       unlink();
+      setEventBase(nullptr);
       if (event_) {
         event_->setUserData(nullptr);
         event_ = nullptr;
