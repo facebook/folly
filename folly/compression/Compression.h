@@ -544,5 +544,4 @@ namespace folly::io {
 using folly::compression::Codec;
 using folly::compression::CodecType;
 using folly::compression::getCodec;
-using folly::compression::hasCodec;
 } // namespace folly::io
