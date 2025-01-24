@@ -477,6 +477,9 @@ void IoSqeBase::internalCallback(const io_uring_cqe* cqe) noexcept {
   if (!(cqe->flags & IORING_CQE_F_MORE)) {
     inFlight_ = false;
   }
+  if (evb_) {
+    evb_->bumpHandlingTime();
+  }
   if (cancelled_) {
     callbackCancelled(cqe);
   } else {

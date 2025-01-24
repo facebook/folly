@@ -27,6 +27,7 @@ struct io_uring_cqe;
 namespace folly {
 
 class IoUringBackend;
+class EventBase;
 
 struct IoSqeBase
     : boost::intrusive::list_base_hook<
@@ -57,6 +58,7 @@ struct IoSqeBase
   bool inFlight() const { return inFlight_; }
   bool cancelled() const { return cancelled_; }
   void markCancelled() { cancelled_ = true; }
+  void setEventBase(EventBase* evb) { evb_ = evb; }
 
  protected:
   // This is used if you want to prepare this sqe for reuse, but will manage the
@@ -72,6 +74,7 @@ struct IoSqeBase
 
   bool inFlight_ = false;
   bool cancelled_ = false;
+  EventBase* evb_ = nullptr;
   Type type_;
 };
 
