@@ -34,7 +34,7 @@ bool SemaphoreBase::signalSlow(int64_t tokens) {
         // waitlist, ensure the token count increments. No need for CAS here as
         // we will always be under the mutex
         if (tokens_.compare_exchange_strong(
-                testVal, testVal + tokens, std::memory_order_relaxed)) {
+                testVal, testVal + tokens, std::memory_order_release)) {
           return true;
         }
         continue;
