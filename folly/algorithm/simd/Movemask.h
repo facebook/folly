@@ -148,7 +148,9 @@ FOLLY_ERASE auto movemaskChars16Aarch64(uint8x16_t reg) {
 
 template <typename Reg>
 FOLLY_ERASE uint64x1_t asUint64x1Aarch64(Reg reg) {
-  if constexpr (std::is_same_v<Reg, uint32x2_t>) {
+  if constexpr (std::is_same_v<Reg, uint64x1_t>) {
+    return reg;
+  } else if constexpr (std::is_same_v<Reg, uint32x2_t>) {
     return vreinterpret_u64_u32(reg);
   } else if constexpr (std::is_same_v<Reg, uint16x4_t>) {
     return vreinterpret_u64_u16(reg);
