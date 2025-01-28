@@ -1,6 +1,6 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-# @fb-only: load("//gdb/scripts/tests/common:gdb_unittest.bzl", "gdb_unittest") 
+# @fb-only[end= ]: load("//gdb/scripts/tests/common:gdb_unittest.bzl", "gdb_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -30,11 +30,11 @@ cpp_binary(
 
 # Test all of the printers in the folly gdb extension
 # @fb-only: gdb_unittest(
-    # @fb-only: name = "test", 
-    # @fb-only: binary = "main", 
-    # @fb-only: script = "runtest.gdb", 
+    # @fb-only[end= ]: name = "test",
+    # @fb-only[end= ]: binary = "main",
+    # @fb-only[end= ]: script = "runtest.gdb",
     # @fb-only: skip_modes = [
-        # @fb-only: "dev", 
-        # @fb-only: "opt*", 
-    # @fb-only: ], 
-# @fb-only: ) 
+        # @fb-only[end= ]: "dev",
+        # @fb-only[end= ]: "opt*",
+    # @fb-only[end= ]: ],
+# @fb-only[end= ]: )

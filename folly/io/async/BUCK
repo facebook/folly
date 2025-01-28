@@ -594,8 +594,8 @@ cpp_library(
         "linux",
         select({
             "DEFAULT": ["fbsource//third-party/liburing:uring"],
-            # @fb-only: "ovr_config//distro/constraints:conda": [], 
-            # @fb-only: "ovr_config//os:linux-sgx": [], 
+            # @fb-only[end= ]: "ovr_config//distro/constraints:conda": [],
+            # @fb-only[end= ]: "ovr_config//os:linux-sgx": [],
         }),
     )],
 )
