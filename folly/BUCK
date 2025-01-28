@@ -229,7 +229,7 @@ cpp_library(
 
 cpp_library(
     name = "config",
-    # @fb-only: headers = ["folly-config.h"], 
+    # @fb-only[end= ]: headers = ["folly-config.h"],
     headers = ["//:folly-config.h"], # @oss-only
     labels = ["oss_dependency"], # @oss-only
 )
