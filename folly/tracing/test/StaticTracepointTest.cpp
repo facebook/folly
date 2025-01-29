@@ -28,7 +28,7 @@
 #include <folly/Random.h>
 #include <folly/String.h>
 #include <folly/Subprocess.h>
-#include <folly/experimental/symbolizer/detail/Debug.h>
+#include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>

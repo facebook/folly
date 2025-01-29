@@ -28,7 +28,7 @@ cpp_unittest(
         "//folly:random",
         "//folly:string",
         "//folly:subprocess",
-        "//folly/experimental/symbolizer/detail:debug",
+        "//folly/debugging/symbolizer/detail:debug",
         "//folly/lang:bits",
         "//folly/portability:filesystem",
         "//folly/portability:gtest",

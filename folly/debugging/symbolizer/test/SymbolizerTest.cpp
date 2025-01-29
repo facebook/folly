@@ -25,10 +25,10 @@
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
+#include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/debugging/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
-#include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
