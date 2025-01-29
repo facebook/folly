@@ -59,7 +59,6 @@ _modes = extend_build_modes(
     c_flags = _extra_cflags,
     clang_flags = _extra_clang_flags,
     cxx_flags = _extra_cxxflags,
-    cxx_modular_headers = True,
     gcc_flags = _extra_gcc_flags,
 )
 
