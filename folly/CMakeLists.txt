@@ -83,10 +83,11 @@ if (PYTHON_EXTENSIONS)
       CC="${CMAKE_C_COMPILER}" CXX="${CMAKE_CXX_COMPILER}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       build_ext -f ${incs} ${libs}
-    BYPRODUCTS
-      ${_cybld}/folly/executor_api.h
-      ${_cybld}/folly/iobuf_api.h
-    WORKING_DIRECTORY ${_cybld}
+      BYPRODUCTS 
+        ${_cybld}/folly/executor_api.h
+        ${_cybld}/folly/iobuf_api.h
+        ${_cybld}/folly/fiber_manager_api.h
+      WORKING_DIRECTORY ${_cybld}
   )
 
   add_custom_target(create_post_binding_symlink ALL)
@@ -160,4 +161,8 @@ if (PYTHON_EXTENSIONS)
       WORKING_DIRECTORY ${_cybld}
     )"
   )
+  if(result)
+    message(FATAL_ERROR \"Setup.py failed with error code \${result}:\n\${error}\")
+  endif()
+")
 endif ()

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# distutils: language=c++
 
 from folly.iobuf cimport from_unique_ptr, createChain, IOBuf, WritableIOBuf, writable_from_unique_ptr
 

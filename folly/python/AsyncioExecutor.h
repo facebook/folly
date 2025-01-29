@@ -76,8 +76,10 @@ class AsyncioExecutor : public DrivableExecutor {
 
  private:
   static bool isPyFinalizing() noexcept {
-#if PY_VERSION_HEX <= 0x03070000
+#if PY_VERSION_HEX <= 0x03070000     // unsupported anyway - can remove
     return false;
+#elif PY_VERSION_HEX >= 0x030D0000  // Python 3.13+
+    return Py_IsFinalizing();
 #else
     return _Py_IsFinalizing();
 #endif

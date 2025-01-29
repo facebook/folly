@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/python/iobuf.h>
+#include <folly/python/iobuf_intf.h>
 
 #include <folly/python/import.h>
-#include <folly/python/iobuf_api.h> // @manual
+#include <folly/iobuf_api.h> // @manual
 
 namespace folly::python {
 

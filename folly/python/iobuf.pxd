@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# distutils: language = c++
 
 from libcpp.string cimport string
 from libc.stdint cimport uint64_t
@@ -34,9 +33,9 @@ cdef extern from "folly/io/IOBuf.h" namespace "folly":
         unique_ptr[cIOBuf] clone()
         cIOBuf* prev()
         cIOBuf* next()
-        void insertAfterThisOne(unique_ptr[cIOBuf]&& ciobuf)
-        void appendToChain(unique_ptr[cIOBuf]&& ciobuf)
-        void appendChain(unique_ptr[cIOBuf]&& ciobuf)  # deprecated
+        void insertAfterThisOne(unique_ptr[cIOBuf] ciobuf) # removed &&
+        void appendToChain(unique_ptr[cIOBuf] ciobuf) # removed &&
+        void appendChain(unique_ptr[cIOBuf] ciobuf)  # deprecated # removed &&
         cIOBuf cloneAsValue()
         void coalesce()
         void unshare()
@@ -66,14 +65,14 @@ cdef extern from "folly/io/IOBufQueue.h" namespace "folly":
         cIOBufQueue(cIOBufQueueOptions)
         cIOBufQueue()
         unique_ptr[cIOBuf] move()
-        void append(unique_ptr[cIOBuf]&& buf)
+        void append(unique_ptr[cIOBuf] buf) # removed &&
 
 
 cdef extern from '<utility>' namespace 'std':
     unique_ptr[cIOBuf] move(unique_ptr[cIOBuf])
 
 
-cdef extern from "folly/python/iobuf.h" namespace "folly::python":
+cdef extern from "folly/python/iobuf_intf.h" namespace "folly::python":
     bint check_iobuf_equal(cIOBuf*, cIOBuf*)
     bint check_iobuf_less(cIOBuf*, cIOBuf*)
 

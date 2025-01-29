@@ -652,3 +652,7 @@ class WritableIOBufTests(unittest.TestCase):
             self.fail("Expected exception for negative amount")
         except ValueError as e:
             self.assertEqual(str(e), "Cannot prepend, amount must be positive")
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
