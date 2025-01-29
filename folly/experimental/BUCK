@@ -33,16 +33,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "relaxed_concurrent_priority_queue",
-    headers = [
-        "RelaxedConcurrentPriorityQueue.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/container:relaxed_concurrent_priority_queue",
-    ],
-)
-
-cpp_library(
     name = "function_scheduler",
     headers = [
         "FunctionScheduler.h",
