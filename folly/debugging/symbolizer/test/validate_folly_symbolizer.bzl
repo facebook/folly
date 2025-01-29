@@ -61,7 +61,6 @@ def customized_unittest(
                                              SPLIT_DWARF_FLAGS[split_dwarf_option] +
                                              (["-gdwarf-aranges"] if use_aaranges else []) +
                                              extra_compiler_flags,
-                            modular_headers = False,
                             private_linker_flags = [
                                 "--emit-relocs",  # makes linker ignore `--strip-debug-*` flags
                             ],
