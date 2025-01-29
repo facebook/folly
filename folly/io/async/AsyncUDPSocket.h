@@ -271,6 +271,19 @@ class AsyncUDPSocket : public EventHandler {
       size_t count);
 
   /**
+   * Send the data in buffers to destination. Returns the return code from
+   * ::sendmmsg.
+   * iov is an array of iovecs, which is composed of "count" messages that
+   * need to be sent. Each message can have multiple iovecs. The number of
+   * iovecs per message is specified in numIovecsInBuffer.
+   */
+  virtual int writemv(
+      Range<SocketAddress const*> addrs,
+      iovec* iov,
+      size_t* numIovecsInBuffer,
+      size_t count);
+
+  /**
    * Send the data in buffer to destination. Returns the return code from
    * ::sendmsg.
    *  gso is the generic segmentation offload value

@@ -865,6 +865,14 @@ int AsyncUDPSocket::writemGSO(
   return ret;
 }
 
+int AsyncUDPSocket::writemv(
+    Range<SocketAddress const*> addrs,
+    iovec* iov,
+    size_t* numIovecsInBuffer,
+    size_t count) {
+  return writemGSOv(addrs, iov, numIovecsInBuffer, count, nullptr);
+}
+
 int AsyncUDPSocket::writemGSOv(
     Range<SocketAddress const*> addrs,
     iovec* iov,
