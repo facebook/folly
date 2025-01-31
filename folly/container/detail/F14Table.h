@@ -1556,8 +1556,6 @@ class F14Table : public Policy {
 
   std::size_t probeDelta(HashPair hp) const { return 2 * hp.second + 1; }
 
-#if FOLLY_NEON
-
   // TRICKY!  It may seem strange to have a std::size_t needle and narrow
   // it at the last moment, rather than making HashPair::second be a
   // uint8_t, but the latter choice sometimes leads to a performance
@@ -1575,18 +1573,15 @@ class F14Table : public Policy {
   // a microbenchmark).  Keeping needle >= 4 bytes avoids the problem
   // and also happens to result in slightly more compact assembly.
 
-  FOLLY_ALWAYS_INLINE uint8x16_t loadNeedleV(std::size_t needle) const {
+  FOLLY_ALWAYS_INLINE auto loadNeedleV(std::size_t needle) const {
+#if FOLLY_NEON
     return vdupq_n_u8(static_cast<uint8_t>(needle));
-  }
 #elif FOLLY_SSE >= 2
-  FOLLY_ALWAYS_INLINE __m128i loadNeedleV(std::size_t needle) const {
     return _mm_set1_epi8(static_cast<uint8_t>(needle));
-  }
 #else
-  FOLLY_ALWAYS_INLINE std::size_t loadNeedleV(std::size_t needle) const {
     return needle;
-  }
 #endif
+  }
 
   enum class Prefetch { DISABLED, ENABLED };
 
