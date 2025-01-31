@@ -30,8 +30,7 @@
 // libc++'s <coroutine> header only provides its declarations for C++20 and
 // above, so we need to fall back to <experimental/coroutine> when building with
 // C++17.
-#if __has_include(<coroutine>) && !defined(LLVM_COROUTINES) && \
-    (!defined(_LIBCPP_VERSION) || __cplusplus > 201703L)
+#if (__has_include(<coroutine>) && !defined(LLVM_COROUTINES)) || defined(__cpp_impl_coroutine)
 #define FOLLY_USE_STD_COROUTINE 1
 #else
 #define FOLLY_USE_STD_COROUTINE 0
