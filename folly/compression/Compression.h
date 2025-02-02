@@ -543,5 +543,4 @@ bool hasStreamCodec(CodecType type);
 namespace folly::io {
 using folly::compression::Codec;
 using folly::compression::CodecType;
-using folly::compression::getCodec;
 } // namespace folly::io
