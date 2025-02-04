@@ -1592,7 +1592,7 @@ class F14Table : public Policy {
     std::size_t index = hp.first;
     std::size_t step = probeDelta(hp);
     auto needleV = loadNeedleV(hp.second);
-    for (std::size_t tries = 0; tries >> chunkShift() == 0; ++tries) {
+    for (std::size_t tries = chunkCount(); tries > 0; --tries) {
       ChunkPtr chunk = chunks_ + moduloByChunkCount(index);
       if (prefetch == Prefetch::ENABLED && sizeof(Chunk) > 64) {
         prefetchAddr(chunk->itemAddr(8));
@@ -1669,7 +1669,7 @@ class F14Table : public Policy {
     std::size_t index = hp.first;
     auto needleV = loadNeedleV(hp.second);
     std::size_t step = probeDelta(hp);
-    for (std::size_t tries = 0; tries >> chunkShift() == 0; ++tries) {
+    for (std::size_t tries = chunkCount(); tries > 0; --tries) {
       ChunkPtr chunk = chunks_ + moduloByChunkCount(index);
       if (sizeof(Chunk) > 64) {
         prefetchAddr(chunk->itemAddr(8));
