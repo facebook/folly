@@ -140,11 +140,13 @@ void checkFopenErrorExplicit(FILE* fp, int savedErrno, Args&&... args) {
  * If cond is not true, raise an exception of type E.  E must have a ctor that
  * works with const char* (a description of the failure).
  */
-#define CHECK_THROW(cond, E)                             \
-  do {                                                   \
-    if (!(cond)) {                                       \
-      folly::throw_exception<E>("Check failed: " #cond); \
-    }                                                    \
+#define CHECK_THROW(cond, E)                       \
+  do {                                             \
+    if (!(cond)) {                                 \
+      folly::throw_exception<E>(                   \
+          "Check failed: " #cond ", in " __FILE__  \
+          ":" FOLLY_PP_STRINGIZE_MACRO(__LINE__)); \
+    }                                              \
   } while (0)
 
 } // namespace folly
