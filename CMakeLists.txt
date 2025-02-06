@@ -994,6 +994,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST memory_arena_test WINDOWS_DISABLED SOURCES ArenaTest.cpp
       TEST memory_reentrant_allocator_test WINDOWS_DISABLED
         SOURCES ReentrantAllocatorTest.cpp
+      TEST memory_shared_from_this_ptr_test
+        SOURCES shared_from_this_ptr_test.cpp
       TEST memory_thread_cached_arena_test WINDOWS_DISABLED
         SOURCES ThreadCachedArenaTest.cpp
       TEST memory_mallctl_helper_test SOURCES MallctlHelperTest.cpp

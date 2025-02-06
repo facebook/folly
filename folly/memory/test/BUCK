@@ -116,6 +116,15 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "shared_from_this_ptr_test",
+    srcs = ["shared_from_this_ptr_test.cpp"],
+    deps = [
+        "//folly/memory:shared_from_this_ptr",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "thread_cached_arena_test",
     srcs = ["ThreadCachedArenaTest.cpp"],
     headers = [],

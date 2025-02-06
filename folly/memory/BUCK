@@ -112,6 +112,14 @@ cpp_library(
 )
 
 cpp_library(
+    name = "shared_from_this_ptr",
+    headers = ["shared_from_this_ptr.h"],
+    exported_deps = [
+        "//folly:traits",
+    ],
+)
+
+cpp_library(
     name = "thread_cached_arena",
     srcs = ["ThreadCachedArena.cpp"],
     headers = ["ThreadCachedArena.h"],
