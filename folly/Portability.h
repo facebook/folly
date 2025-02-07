@@ -621,6 +621,7 @@ constexpr auto kCpplibVer = 0;
 
 #if defined(FOLLY_CFG_NO_COROUTINES)
 #define FOLLY_HAS_COROUTINES 0
+#define FOLLY_HAS_IMMOVABLE_COROUTINES 0
 #else
 // folly::coro requires C++17 support
 #if defined(__NVCC__)
@@ -656,6 +657,23 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES FOLLY_NOINLINE
 #else
 #define FOLLY_HAS_COROUTINES 0
+#endif
+// This logic is written as "good until proven broken" because it's possible
+// that there's a good compiler older than the oldest good version I checked.
+#if defined(__clang_major__) && __clang_major__ <= 14
+//  - 12.0.1 is bad: https://godbolt.org/z/6s489xE8P
+//  - 14 is still bad: https://godbolt.org/z/nW1W8cWvb
+//  - 15.0.0 is good: https://godbolt.org/z/Tco4c9hbq and sEaKKTf8r
+#define FOLLY_HAS_IMMOVABLE_COROUTINES 0
+// BEWARE: Older versions of Clang pretend to be MSVC and define
+// `_MSC_FULL_VER`, but fortunately none of clang 15, 16, 17, 18, 19 do this,
+// so this branch should not result in a false-negative.
+#elif defined(_MSC_FULL_VER) && _MSC_FULL_VER <= 192930040
+//  - 192930040 is bad: https://godbolt.org/z/E797W8xTT
+//  - 192930153 is good: https://godbolt.org/z/cM4nW5rTK
+#define FOLLY_HAS_IMMOVABLE_COROUTINES 0
+#else
+#define FOLLY_HAS_IMMOVABLE_COROUTINES 1 // good until proven broken
 #endif
 #endif // FOLLY_CFG_NO_COROUTINES
 

@@ -543,7 +543,7 @@ constexpr bool is_semi_awaitable_v = is_semi_awaitable<T>::value;
 
 template <typename T>
 using semi_await_result_t = await_result_t<decltype(folly::coro::co_viaIfAsync(
-    std::declval<folly::Executor::KeepAlive<>>(), std::declval<T>()))>;
+    std::declval<folly::Executor::KeepAlive<>>(), FOLLY_DECLVAL(T)))>;
 
 namespace detail {
 

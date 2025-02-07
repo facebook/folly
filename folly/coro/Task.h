@@ -785,6 +785,8 @@ class FOLLY_CORO_TASK_ATTRS Task {
         invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
   }
 
+  using PrivateAwaiterTypeForTests = Awaiter;
+
  private:
   friend class detail::TaskPromiseBase;
   friend class detail::TaskPromiseCrtpBase<detail::TaskPromise<T>, T>;
