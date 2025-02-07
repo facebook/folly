@@ -345,6 +345,10 @@ TEST_F(InvokeTest, member_is_nothrow_invocable_r) {
 
 TEST_F(InvokeTest, invoke_member) {
   auto test = FOLLY_INVOKE_MEMBER(test);
+  static_assert( //
+      folly::is_instantiation_of_v<
+          folly::invoke_member_wrapper_fn,
+          decltype(test)>);
 
   Obj fn;
 
