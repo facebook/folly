@@ -409,6 +409,14 @@ constexpr auto kHasWeakSymbols = false;
 #endif
 #endif
 
+#ifndef FOLLY_ARM_FEATURE_SVE
+#ifdef __ARM_FEATURE_SVE
+#define FOLLY_ARM_FEATURE_SVE 1
+#else
+#define FOLLY_ARM_FEATURE_SVE 0
+#endif
+#endif
+
 #ifndef FOLLY_ARM_FEATURE_SVE2
 #ifdef __ARM_FEATURE_SVE2
 #define FOLLY_ARM_FEATURE_SVE2 1
