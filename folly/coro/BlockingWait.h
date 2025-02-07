@@ -368,7 +368,9 @@ struct blocking_wait_fn {
             .get(frame));
   }
 
-  template <typename SemiAwaitable>
+  template <
+      typename SemiAwaitable,
+      std::enable_if_t<!is_must_await_immediately_v<SemiAwaitable>, int> = 0>
   FOLLY_NOINLINE auto operator()(
       SemiAwaitable&& awaitable, folly::DrivableExecutor* executor) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
@@ -388,10 +390,33 @@ struct blocking_wait_fn {
                 static_cast<SemiAwaitable&&>(awaitable)))
             .getVia(executor, frame));
   }
+  template <
+      typename SemiAwaitable,
+      std::enable_if_t<is_must_await_immediately_v<SemiAwaitable>, int> = 0>
+  FOLLY_NOINLINE auto operator()(
+      SemiAwaitable awaitable, folly::DrivableExecutor* executor) const
+      -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
+    folly::AsyncStackFrame frame;
+    frame.setReturnAddress();
+
+    folly::AsyncStackRoot stackRoot;
+    stackRoot.setNextRoot(folly::tryGetCurrentAsyncStackRoot());
+    stackRoot.setStackFrameContext();
+    stackRoot.setTopFrame(frame);
+
+    return static_cast<
+        std::add_rvalue_reference_t<semi_await_result_t<SemiAwaitable>>>(
+        detail::makeRefBlockingWaitTask(
+            folly::coro::co_viaIfAsync(
+                folly::getKeepAliveToken(executor),
+                std::move(awaitable).unsafeMoveMustAwaitImmediately()))
+            .getVia(executor, frame));
+  }
 
   template <
       typename SemiAwaitable,
-      std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0>
+      std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0,
+      std::enable_if_t<!is_must_await_immediately_v<SemiAwaitable>, int> = 0>
   auto operator()(SemiAwaitable&& awaitable) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
     std::exception_ptr eptr;
@@ -399,6 +424,24 @@ struct blocking_wait_fn {
       detail::BlockingWaitExecutor executor;
       try {
         return operator()(static_cast<SemiAwaitable&&>(awaitable), &executor);
+      } catch (...) {
+        eptr = current_exception();
+      }
+    }
+    std::rethrow_exception(eptr);
+  }
+  template <
+      typename SemiAwaitable,
+      std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0,
+      std::enable_if_t<is_must_await_immediately_v<SemiAwaitable>, int> = 0>
+  auto operator()(SemiAwaitable awaitable) const
+      -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
+    std::exception_ptr eptr;
+    {
+      detail::BlockingWaitExecutor executor;
+      try {
+        return operator()(
+            std::move(awaitable).unsafeMoveMustAwaitImmediately(), &executor);
       } catch (...) {
         eptr = current_exception();
       }

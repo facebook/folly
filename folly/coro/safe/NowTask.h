@@ -45,8 +45,7 @@ class BackgroundTask;
 // IMPORTANT: This omits `start()` because that would destroy reference
 // lifetime guarantees expected of `NowTask`. Use `BackgroundTask.h`.
 template <typename T>
-class FOLLY_NODISCARD NowTaskWithExecutor final
-    : private NonCopyableNonMovable {
+class FOLLY_NODISCARD NowTaskWithExecutor final : private MustAwaitImmediately {
  protected:
   template <safe_alias, typename>
   friend class BackgroundTask; // see `CanUnwrapNowTask` below
@@ -86,8 +85,8 @@ class FOLLY_NODISCARD NowTaskWithExecutor final
 ///     present-day C++.
 template <typename T>
 class FOLLY_CORO_TASK_ATTRS NowTask final
-    : public TaskWrapperCrtp<NowTask<T>, T, Task<T>>,
-      private NonCopyableNonMovable {
+    : public OpaqueTaskWrapperCrtp<NowTask<T>, T, Task<T>>,
+      private MustAwaitImmediately {
  public:
   using promise_type = detail::NowTaskPromise<T>;
 
@@ -99,7 +98,27 @@ class FOLLY_CORO_TASK_ATTRS NowTask final
   }
 
   explicit NowTask(Task<T> t)
-      : TaskWrapperCrtp<NowTask<T>, T, Task<T>>(std::move(t)) {}
+      : OpaqueTaskWrapperCrtp<NowTask<T>, T, Task<T>>(std::move(t)) {}
+
+  friend auto co_withCancellation(
+      folly::CancellationToken cancelToken, NowTask tw) noexcept {
+    return NowTask{
+        co_withCancellation(std::move(cancelToken), std::move(tw).unwrap())};
+  }
+
+  friend auto co_viaIfAsync(
+      folly::Executor::KeepAlive<> executor, NowTask tw) noexcept {
+    return co_viaIfAsync(std::move(executor), std::move(tw).unwrap());
+  }
+
+  // IMPORTANT: If you add support for any more customization points here,
+  // you must be sure to branch each callable on `is_must_await_immediately_v`
+  // as is done for those above.  The key point is that
+  // `MustAwaitImmediately` types MUST be taken by value, never by `&&`.
+
+  auto unsafeMoveMustAwaitImmediately() && {
+    return NowTask{std::move(*this).unwrap()};
+  }
 
  protected:
   // These 3 `friend`s (+ 1 above) are for `unwrap()`.  If this list grows,

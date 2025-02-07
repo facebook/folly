@@ -141,7 +141,9 @@ class TaskPromiseBase {
 
   FinalAwaiter final_suspend() noexcept { return {}; }
 
-  template <typename Awaitable>
+  template <
+      typename Awaitable,
+      std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -153,11 +155,35 @@ class TaskPromiseBase {
         folly::coro::co_withCancellation(
             cancelToken_, static_cast<Awaitable&&>(awaitable))));
   }
+  template <
+      typename Awaitable,
+      std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+  auto await_transform(Awaitable awaitable) {
+    bypassExceptionThrowing_ =
+        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
+        ? BypassExceptionThrowing::ACTIVE
+        : BypassExceptionThrowing::INACTIVE;
 
-  template <typename Awaitable>
+    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
+        executor_.get_alias(),
+        folly::coro::co_withCancellation(
+            cancelToken_,
+            std::move(awaitable).unsafeMoveMustAwaitImmediately())));
+  }
+
+  template <
+      typename Awaitable,
+      std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
   auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
     return await_transform(awaitable.unwrap());
+  }
+  template <
+      typename Awaitable,
+      std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+  auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
+    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
+    return await_transform(awaitable.unwrap().unsafeMoveMustAwaitImmediately());
   }
 
   auto await_transform(co_current_executor_t) noexcept {
