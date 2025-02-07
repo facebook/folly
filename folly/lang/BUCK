@@ -197,6 +197,15 @@ cpp_library(
 )
 
 cpp_library(
+    name = "pretty",
+    headers = ["Pretty.h"],
+    exported_deps = [
+        ":c_array",
+        "//folly:portability",
+    ],
+)
+
+cpp_library(
     name = "propagate_const",
     headers = ["PropagateConst.h"],
     exported_deps = [
@@ -265,15 +274,6 @@ cpp_library(
     headers = ["TypeInfo.h"],
     exported_deps = [
         "//folly:cpp_attributes",
-        "//folly:portability",
-    ],
-)
-
-cpp_library(
-    name = "pretty",
-    headers = ["Pretty.h"],
-    exported_deps = [
-        ":c_array",
         "//folly:portability",
     ],
 )
