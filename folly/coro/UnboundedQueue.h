@@ -37,8 +37,29 @@ class UnboundedQueue {
     sem_.signal();
   }
 
+  // Dequeue a value from the queue.
+  // Note that this operation can be safely cancelled by requesting cancellation
+  // on the awaiting coroutine's associated CancellationToken.
+  // If the operation is successfully cancelled then it will complete with
+  // an error of type folly::OperationCancelled.
+  // WARNING: It is not safe to wrap this with folly::coro::timeout(). Wrap with
+  // folly::coro::timeoutNoDiscard(), or use co_try_dequeue_for() instead.
   folly::coro::Task<T> dequeue() {
     folly::Try<void> result = co_await folly::coro::co_awaitTry(sem_.co_wait());
+    if (result.hasException()) {
+      co_yield co_error(std::move(result).exception());
+    }
+
+    co_return queue_.dequeue();
+  }
+
+  // Try to dequeue a value from the queue with a timeout. The operation will
+  // either successfully dequeue an item from the queue, or else be cancelled
+  // and complete with an error of type folly::OperationCancelled.
+  template <typename Duration>
+  folly::coro::Task<T> co_try_dequeue_for(Duration timeout) {
+    folly::Try<void> result =
+        co_await folly::coro::co_awaitTry(sem_.co_try_wait_for(timeout));
     if (result.hasException()) {
       co_yield co_error(std::move(result).exception());
     }
