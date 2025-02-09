@@ -768,7 +768,7 @@ template <
     class IsEmpty = detail::IsEmpty<true>,
     class Composed = detail::Composed<Filter, IsEmpty>>
 Composed all(Predicate pred = Predicate()) {
-  return Composed(Filter(std::move(negate(pred))), IsEmpty());
+  return Composed(Filter(negate(pred)), IsEmpty());
 }
 
 template <class Seed, class Fold, class FoldLeft = detail::FoldLeft<Seed, Fold>>

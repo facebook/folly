@@ -116,8 +116,18 @@ class TaskPromiseWrapperBase {
   auto initial_suspend() noexcept { return promise_.initial_suspend(); }
   auto final_suspend() noexcept { return promise_.final_suspend(); }
 
-  auto await_transform(auto&& what) {
-    return promise_.await_transform(std::forward<decltype(what)>(what));
+  template <
+      typename Awaitable,
+      std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
+  auto await_transform(Awaitable&& what) {
+    return promise_.await_transform(std::forward<Awaitable>(what));
+  }
+  template <
+      typename Awaitable,
+      std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+  auto await_transform(Awaitable what) {
+    return promise_.await_transform(
+        std::move(what).unsafeMoveMustAwaitImmediately());
   }
 
   auto yield_value(auto&& v)

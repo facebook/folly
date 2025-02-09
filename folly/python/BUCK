@@ -52,7 +52,7 @@ cpp_library(
     ],
     headers = [
         "executor.h",
-        # @fb-only: ":executor__executor_api.h", 
+        # @fb-only[end= ]: ":executor__executor_api.h",
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
@@ -182,7 +182,7 @@ cpp_library(
     srcs = ["fibers.cpp"],
     headers = [
         "fibers.h",
-        # @fb-only: ":fibers__fiber_manager_api.h", 
+        # @fb-only[end= ]: ":fibers__fiber_manager_api.h",
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
@@ -247,7 +247,7 @@ cpp_library(
     srcs = ["iobuf.cpp"],
     headers = [
         "iobuf.h",
-        # @fb-only: ":iobuf__iobuf_api.h", 
+        # @fb-only[end= ]: ":iobuf__iobuf_api.h",
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,

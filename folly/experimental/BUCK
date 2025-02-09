@@ -3,16 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
-    name = "elias_fano_coding",
-    headers = [
-        "EliasFanoCoding.h",
-    ],
-    exported_deps = [
-        "//folly/compression/elias_fano:elias_fano_coding",
-    ],
-)
-
-cpp_library(
     name = "event_count",
     headers = [
         "EventCount.h",
@@ -29,16 +19,6 @@ cpp_library(
     ],
     exported_deps = [
         "//folly/concurrency/container:flat_combining_priority_queue",
-    ],
-)
-
-cpp_library(
-    name = "relaxed_concurrent_priority_queue",
-    headers = [
-        "RelaxedConcurrentPriorityQueue.h",
-    ],
-    exported_deps = [
-        "//folly/concurrency/container:relaxed_concurrent_priority_queue",
     ],
 )
 

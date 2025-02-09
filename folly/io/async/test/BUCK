@@ -2,7 +2,7 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-# @fb-only: load("//folly/io/async/test/certs:defs.bzl", "alias_pem") 
+# @fb-only[end= ]: load("//folly/io/async/test/certs:defs.bzl", "alias_pem")
 load("@shim//folly/io/async/test/certs:defs.bzl", "alias_pem") # @oss-only
 
 oncall("fbcode_entropy_wardens_folly")

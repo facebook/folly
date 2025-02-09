@@ -28,6 +28,8 @@ std::string_view toString(SetErrorCode code) {
     case SetErrorCode::FrozenImmutable:
       return "frozen immutable";
   }
+  // no default case in the switch above! to force the compiler to warn
+  return "<unknown>"; // this is not a switch default case
 }
 
 } // namespace settings

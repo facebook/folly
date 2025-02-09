@@ -351,7 +351,10 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
   struct CloseSqe : IoSqeBase {
     explicit CloseSqe(AsyncIoUringSocket* parent)
-        : IoSqeBase(IoSqeBase::Type::Close), parent_(parent) {}
+        : IoSqeBase(IoSqeBase::Type::Close), parent_(parent) {
+      setEventBase(parent->evb_);
+    }
+
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       parent_->closeProcessSubmit(sqe);
     }
@@ -417,7 +420,10 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     explicit ConnectSqe(AsyncIoUringSocket* parent)
         : IoSqeBase(IoSqeBase::Type::Connect),
           AsyncTimeout(parent->evb_),
-          parent_(parent) {}
+          parent_(parent) {
+      setEventBase(parent->evb_);
+    }
+
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       parent_->processConnectSubmit(sqe, addrStorage);
     }

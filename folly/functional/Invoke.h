@@ -646,6 +646,23 @@ struct invoke_first_match : private Invoker... {
   FOLLY_CREATE_MEMBER_INVOKER(membername##_fn, membername); \
   [[maybe_unused]] inline constexpr membername##_fn membername {}
 
+namespace folly {
+// Power users can call `is_instantiation_of<invoke_member_wrapper_fn, T>`
+// to ascertain that a callable was made via `FOLLY_INVOKE_MEMBER`.  This
+// can be important e.g. when you want to be sure that the first argument
+// of the callable becomes the implicit object parameter of the class.
+template <typename F>
+struct invoke_member_wrapper_fn : private F {
+  template <typename G, typename = decltype(F(FOLLY_DECLVAL(G&&)))>
+  constexpr explicit invoke_member_wrapper_fn(G&& f) noexcept(
+      noexcept(F(static_cast<G&&>(f))))
+      : F(static_cast<G&&>(f)) {}
+  using F::operator();
+};
+template <typename F>
+invoke_member_wrapper_fn(F) -> invoke_member_wrapper_fn<F>;
+} // namespace folly
+
 /***
  *  FOLLY_INVOKE_MEMBER
  *
@@ -664,16 +681,17 @@ struct invoke_first_match : private Invoker... {
  *
  *    std::invoke(FOLLY_INVOKE_MEMBER(find), map, key)
  *
- *  As an implementation detail, the resulting callable is a lambda. This has
- *  two observable consequences.
+ *  As an implementation detail, the resulting callable uses a lambda.  This
+ *  has two observable consequences.
  *  * Since C++17 only, lambda invocations may be marked constexpr.
  *  * Since C++20 only, lambda definitions may appear in an unevaluated context,
  *    namely, in an operand to decltype, noexcept, sizeof, or typeid.
  */
-#define FOLLY_INVOKE_MEMBER(membername)                                                      \
-  [](auto&& __folly_param_o, auto&&... __folly_param_a) constexpr FOLLY_DETAIL_FORWARD_BODY( \
-      FOLLY_DETAIL_FORWARD_REF(__folly_param_o)                                              \
-          .membername(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...))
+#define FOLLY_INVOKE_MEMBER(membername)                                                          \
+  ::folly::invoke_member_wrapper_fn(                                                             \
+      [](auto&& __folly_param_o, auto&&... __folly_param_a) constexpr FOLLY_DETAIL_FORWARD_BODY( \
+          FOLLY_DETAIL_FORWARD_REF(__folly_param_o)                                              \
+              .membername(FOLLY_DETAIL_FORWARD_REF(__folly_param_a)...)))
 
 /***
  *  FOLLY_CREATE_STATIC_MEMBER_INVOKER

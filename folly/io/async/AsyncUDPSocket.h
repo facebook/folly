@@ -271,6 +271,19 @@ class AsyncUDPSocket : public EventHandler {
       size_t count);
 
   /**
+   * Send the data in buffers to destination. Returns the return code from
+   * ::sendmmsg.
+   * iov is an array of iovecs, which is composed of "count" messages that
+   * need to be sent. Each message can have multiple iovecs. The number of
+   * iovecs per message is specified in numIovecsInBuffer.
+   */
+  virtual int writemv(
+      Range<SocketAddress const*> addrs,
+      iovec* iov,
+      size_t* numIovecsInBuffer,
+      size_t count);
+
+  /**
    * Send the data in buffer to destination. Returns the return code from
    * ::sendmsg.
    *  gso is the generic segmentation offload value
@@ -301,6 +314,23 @@ class AsyncUDPSocket : public EventHandler {
   virtual int writemGSO(
       Range<SocketAddress const*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t count,
+      const WriteOptions* options);
+
+  /**
+   * Send the data in buffers to destination. Returns the return code from
+   * ::sendmmsg.
+   * iov is an array of iovecs, which is composed of "count" messages that
+   * need to be sent. Each message can have multiple iovecs. The number of
+   * iovecs per message is specified in numIovecsInBuffer.
+   * options is an array of WriteOptions or nullptr
+   * Before calling writeGSO with a positive value
+   * verify GSO is supported on this platform by calling getGSO
+   */
+  virtual int writemGSOv(
+      Range<SocketAddress const*> addrs,
+      iovec* iov,
+      size_t* numIovecsInBuffer,
       size_t count,
       const WriteOptions* options);
 
@@ -541,19 +571,34 @@ class AsyncUDPSocket : public EventHandler {
     return netops_->sendmmsg(socket, msgvec, vlen, flags);
   }
 
+  void fillIoVec(
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      struct iovec* iov,
+      size_t* messageIovLens,
+      size_t count,
+      size_t iov_count);
+
   void fillMsgVec(
       Range<full_sockaddr_storage*> addrs,
-      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t* messageIovLens,
       size_t count,
       struct mmsghdr* msgvec,
       struct iovec* iov,
-      size_t iov_count,
+      const WriteOptions* options,
+      char* control);
+
+  virtual int writeImplIOBufs(
+      Range<SocketAddress const*> addrs,
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t count,
+      struct mmsghdr* msgvec,
       const WriteOptions* options,
       char* control);
 
   virtual int writeImpl(
       Range<SocketAddress const*> addrs,
-      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t* messageIovLens,
+      struct iovec* iov,
       size_t count,
       struct mmsghdr* msgvec,
       const WriteOptions* options,

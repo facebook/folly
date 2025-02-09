@@ -5,7 +5,7 @@ oncall("fbcode_entropy_wardens_folly")
 cpp_library(
     name = "test_ext",
     srcs = ["test_ext.cpp"],
-    # @fb-only: autodeps_keep = True, 
+    # @fb-only[end= ]: autodeps_keep = True,
     # @lint-ignore BUCKLINT
     link_whole = True,
     deps = [

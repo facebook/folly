@@ -62,8 +62,28 @@ class BoundedQueue {
     return true;
   }
 
+  // Dequeue a value from the queue.
+  // Note that this operation can be safely cancelled by requesting cancellation
+  // on the awaiting coroutine's associated CancellationToken.
+  // If the operation is successfully cancelled then it will complete with
+  // an error of type folly::OperationCancelled.
+  // WARNING: It is not safe to wrap this with folly::coro::timeout(). Wrap with
+  // folly::coro::timeoutNoDiscard(), or use co_try_dequeue_for() instead.
   folly::coro::Task<T> dequeue() {
     co_await folly::coro::co_nothrow(dequeueSemaphore_.co_wait());
+    T item;
+    dequeueReady(item);
+    enqueueSemaphore_.signal();
+    co_return item;
+  }
+
+  // Try to dequeue a value from the queue with a timeout. The operation will
+  // either successfully dequeue an item from the queue, or else be cancelled
+  // and complete with an error of type folly::OperationCancelled.
+  template <typename Duration>
+  folly::coro::Task<T> co_try_dequeue_for(Duration timeout) {
+    co_await folly::coro::co_nothrow(
+        dequeueSemaphore_.co_try_wait_for(timeout));
     T item;
     dequeueReady(item);
     enqueueSemaphore_.signal();

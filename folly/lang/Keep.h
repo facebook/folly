@@ -56,13 +56,13 @@
 //  This way, the linker will see at least one reference to the kept section,
 //  and so will not throw it out.
 #if __GNUC__ && __linux__
-#define FOLLY_KEEP [[gnu::section(".text.folly.keep")]]
+#define FOLLY_KEEP [[gnu::section(".text.folly.keep"), gnu::used, gnu::retain]]
 #else
 #define FOLLY_KEEP
 #endif
 
 #if __GNUC__ && __linux__
-#if defined(__clang__) || FOLLY_ARM || FOLLY_AARCH64
+#if defined(__clang__) || FOLLY_X64 || (FOLLY_ARM && !FOLLY_AARCH64)
 #define FOLLY_KEEP_DETAIL_ATTR_NAKED [[gnu::naked]]
 #else
 #define FOLLY_KEEP_DETAIL_ATTR_NAKED

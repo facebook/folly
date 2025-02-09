@@ -112,6 +112,13 @@
  */
 #define FOLLY_PP_STRINGIZE(x) #x
 
+/**
+ * Use FOLLY_PP_STRINGIZE_MACRO(x) when you want the string representation
+ * of a non-string c++ preprocessing macro value, ex
+ * FOLLY_PP_STRINGIZE_MACRO(__LINE__).
+ */
+#define FOLLY_PP_STRINGIZE_MACRO(x) FOLLY_PP_STRINGIZE(x)
+
 #define FOLLY_PP_DETAIL_NARGS_1( \
     dummy,                       \
     _15,                         \

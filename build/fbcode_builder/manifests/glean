@@ -31,6 +31,7 @@ builder = make
 [make.build_args]
 cabal-update
 all
+glean-hiedb
 glass
 glean-clang
 EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS

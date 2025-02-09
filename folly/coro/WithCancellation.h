@@ -38,30 +38,71 @@ namespace adl {
 
 /// Default implementation that does not hook the cancellation token.
 /// Types must opt-in to hooking cancellation by customising this function.
-template <typename Awaitable>
+template <
+    typename Awaitable,
+    std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
 Awaitable&& co_withCancellation(
     const folly::CancellationToken&, Awaitable&& awaitable) noexcept {
-  return (Awaitable&&)awaitable;
+  return static_cast<Awaitable&&>(awaitable);
+}
+template <
+    typename Awaitable,
+    std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+Awaitable co_withCancellation(
+    const folly::CancellationToken&, Awaitable awaitable) noexcept {
+  return std::move(awaitable).unsafeMoveMustAwaitImmediately();
 }
 
 struct WithCancellationFunction {
-  template <typename Awaitable>
+  template <
+      typename Awaitable,
+      std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
   auto operator()(
       const folly::CancellationToken& cancelToken, Awaitable&& awaitable) const
-      noexcept(
-          noexcept(co_withCancellation(cancelToken, (Awaitable&&)awaitable)))
+      noexcept(noexcept(co_withCancellation(
+          cancelToken, static_cast<Awaitable&&>(awaitable))))
           -> decltype(co_withCancellation(
-              cancelToken, (Awaitable&&)awaitable)) {
-    return co_withCancellation(cancelToken, (Awaitable&&)awaitable);
+              cancelToken, static_cast<Awaitable&&>(awaitable))) {
+    return co_withCancellation(
+        cancelToken, static_cast<Awaitable&&>(awaitable));
   }
-
-  template <typename Awaitable>
-  auto operator()(folly::CancellationToken&& cancelToken, Awaitable&& awaitable)
-      const noexcept(noexcept(
-          co_withCancellation(std::move(cancelToken), (Awaitable&&)awaitable)))
+  template <
+      typename Awaitable,
+      std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+  auto operator()(
+      const folly::CancellationToken& cancelToken, Awaitable awaitable) const
+      noexcept(noexcept(co_withCancellation(
+          cancelToken, std::move(awaitable).unsafeMoveMustAwaitImmediately())))
           -> decltype(co_withCancellation(
-              std::move(cancelToken), (Awaitable&&)awaitable)) {
-    return co_withCancellation(std::move(cancelToken), (Awaitable&&)awaitable);
+              cancelToken,
+              std::move(awaitable).unsafeMoveMustAwaitImmediately())) {
+    return co_withCancellation(
+        cancelToken, std::move(awaitable).unsafeMoveMustAwaitImmediately());
+  }
+  template <
+      typename Awaitable,
+      std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
+  auto operator()(folly::CancellationToken&& cancelToken, Awaitable&& awaitable)
+      const noexcept(noexcept(co_withCancellation(
+          std::move(cancelToken), static_cast<Awaitable&&>(awaitable))))
+          -> decltype(co_withCancellation(
+              std::move(cancelToken), static_cast<Awaitable&&>(awaitable))) {
+    return co_withCancellation(
+        std::move(cancelToken), static_cast<Awaitable&&>(awaitable));
+  }
+  template <
+      typename Awaitable,
+      std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+  auto operator()(folly::CancellationToken&& cancelToken, Awaitable awaitable)
+      const noexcept(noexcept(co_withCancellation(
+          std::move(cancelToken),
+          std::move(awaitable).unsafeMoveMustAwaitImmediately())))
+          -> decltype(co_withCancellation(
+              std::move(cancelToken),
+              std::move(awaitable).unsafeMoveMustAwaitImmediately())) {
+    return co_withCancellation(
+        std::move(cancelToken),
+        std::move(awaitable).unsafeMoveMustAwaitImmediately());
   }
 };
 } // namespace adl

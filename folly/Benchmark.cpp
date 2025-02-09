@@ -46,7 +46,10 @@ FOLLY_GFLAGS_DEFINE_bool(benchmark, false, "Run benchmarks.");
 
 FOLLY_GFLAGS_DEFINE_bool(json, false, "Output in JSON format.");
 
-FOLLY_GFLAGS_DEFINE_bool(bm_estimate_time, false, "Estimate running time");
+FOLLY_GFLAGS_DEFINE_bool(
+    bm_estimate_time,
+    false,
+    "Estimate running time by returning the geometric mean of latency values between p25 and p75.");
 
 #if FOLLY_PERF_IS_SUPPORTED
 FOLLY_GFLAGS_DEFINE_string(

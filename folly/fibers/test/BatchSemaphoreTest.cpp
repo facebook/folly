@@ -14,4 +14,25 @@
  * limitations under the License.
  */
 
-#include <folly/compression/elias_fano/EliasFanoCoding.h>
+#include <folly/fibers/BatchSemaphore.h>
+#include <folly/portability/GTest.h>
+
+TEST(BatchSemaphoreTest, WaitSignalSynchronization) {
+  folly::fibers::BatchSemaphore sem{0};
+
+  int64_t data = 0;
+  folly::relaxed_atomic_bool signalled = false;
+
+  std::jthread t{[&]() {
+    while (!signalled) {
+      std::this_thread::yield();
+    }
+
+    sem.wait(1);
+    EXPECT_NE(data, 0);
+  }};
+
+  data = 1;
+  sem.signal(1);
+  signalled = true;
+}

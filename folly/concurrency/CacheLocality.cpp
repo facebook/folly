@@ -500,7 +500,8 @@ class SimpleAllocator {
     allocator->freelist_ = ptr;
   }
 
-  constexpr static size_t kMallocAlign = 128;
+  constexpr static size_t kMallocAlign =
+      std::max(size_t(128), hardware_destructive_interference_size);
   static_assert(
       kMallocAlign % hardware_destructive_interference_size == 0,
       "Large allocations should be cacheline-aligned");

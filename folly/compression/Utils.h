@@ -63,8 +63,3 @@ prefixToStringLE(T prefix, uint64_t n = sizeof(T)) {
 } // namespace detail
 } // namespace compression
 } // namespace folly
-
-namespace folly::io::compression::detail {
-using folly::compression::detail::dataStartsWithLE;
-using folly::compression::detail::prefixToStringLE;
-} // namespace folly::io::compression::detail

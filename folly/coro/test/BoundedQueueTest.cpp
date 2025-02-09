@@ -30,6 +30,8 @@
 #include <folly/portability/GTest.h>
 #if FOLLY_HAS_COROUTINES
 
+using namespace std::chrono_literals;
+
 namespace {
 struct SlowMover {
   explicit SlowMover(bool slow = false) : slow(slow) {}
@@ -303,6 +305,43 @@ TEST(BoundedQueueTest, UnorderedDequeueCompletion) {
   for (auto& consumer : consumers) {
     consumer.join();
   }
+}
+
+TEST(BoundedQueueTest, TryDequeueFor) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::coro::BoundedQueue<int> queue(2);
+
+    EXPECT_THROW(
+        (co_await queue.co_try_dequeue_for(1ms)), folly::OperationCancelled);
+
+    co_await queue.enqueue(42);
+    auto val = co_await queue.co_try_dequeue_for(1ms);
+    EXPECT_EQ(val, 42);
+
+    co_await folly::coro::collectAll(
+        [&]() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await queue.enqueue(43);
+        }(),
+        [&]() -> folly::coro::Task<void> {
+          EXPECT_TRUE(queue.empty());
+          val = co_await queue.co_try_dequeue_for(1h);
+          EXPECT_EQ(val, 43);
+        }());
+
+    folly::CancellationSource cancelSource;
+    co_await folly::coro::collectAll(
+        [&]() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          cancelSource.requestCancellation();
+        }(),
+        [&]() -> folly::coro::Task<void> {
+          EXPECT_THROW(
+              (co_await folly::coro::co_withCancellation(
+                  cancelSource.getToken(), queue.co_try_dequeue_for(1h))),
+              folly::OperationCancelled);
+        }());
+  }());
 }
 
 #endif

@@ -75,18 +75,18 @@ cpp_library(
     headers = ["ExceptionTracerLib.h"],
     compiler_flags = select({
         "DEFAULT": [],
-        # @fb-only: "ovr_config//third-party/libgcc:11.x": ["-DFOLLY_STATIC_LIBSTDCXX=1"], 
+        # @fb-only[end= ]: "ovr_config//third-party/libgcc:11.x": ["-DFOLLY_STATIC_LIBSTDCXX=1"],
     }),
     exported_linker_flags = select({
         "DEFAULT": [],
         # @lint-ignore-every BUCKFORMAT
         # @fb-only: "ovr_config//third-party/libgcc:11.x": [
-            # @fb-only: "-Wl,--wrap=__cxa_throw", 
-            # @fb-only: "-Wl,--wrap=__cxa_rethrow", 
-            # @fb-only: "-Wl,--wrap=__cxa_begin_catch", 
-            # @fb-only: "-Wl,--wrap=__cxa_end_catch", 
-            # @fb-only: "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE", 
-        # @fb-only: ], 
+            # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
+            # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
+            # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
+            # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
+            # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
+        # @fb-only[end= ]: ],
     }),
     link_whole = True,
     supports_python_dlopen = True,

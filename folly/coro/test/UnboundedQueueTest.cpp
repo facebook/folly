@@ -23,10 +23,13 @@
 
 #include <folly/portability/GTest.h>
 
+#include <chrono>
 #include <string>
 #include <thread>
 
 #if FOLLY_HAS_COROUTINES
+
+using namespace std::chrono_literals;
 
 TEST(UnboundedQueueTest, EnqueueDeque) {
   folly::coro::UnboundedQueue<std::string, true, true> queue;
@@ -159,8 +162,6 @@ TEST(UnboundedQueueTest, EnqueueDequeMPMC) {
 
 TEST(UnboundedQueueTest, CancelledDequeueThrowsOperationCancelled) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
-    // Cancellation currently only supported on SingleConsumer variants of
-    // UnboundedQueue.
     folly::coro::UnboundedQueue<int> queue;
     folly::CancellationSource cancelSource;
 
@@ -181,8 +182,6 @@ TEST(UnboundedQueueTest, CancelledDequeueThrowsOperationCancelled) {
 
 TEST(UnboundedQueueTest, CancelledDequeueCompletesNormallyIfAnItemIsAvailable) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
-    // Cancellation currently only supported on SingleConsumer variants of
-    // UnboundedQueue.
     folly::coro::UnboundedQueue<int> queue;
     folly::CancellationSource cancelSource;
     cancelSource.requestCancellation();
@@ -234,6 +233,43 @@ TEST(UnboundedQueueTest, TryPeekSingleConsumer) {
 
   EXPECT_EQ(63, queue.try_dequeue());
   EXPECT_EQ(nullptr, queue.try_peek());
+}
+
+TEST(UnboundedQueueTest, TryDequeueFor) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::coro::UnboundedQueue<int> queue;
+
+    EXPECT_THROW(
+        (co_await queue.co_try_dequeue_for(1ms)), folly::OperationCancelled);
+
+    queue.enqueue(42);
+    auto val = co_await queue.co_try_dequeue_for(1ms);
+    EXPECT_EQ(val, 42);
+
+    co_await folly::coro::collectAll(
+        [&]() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          queue.enqueue(43);
+        }(),
+        [&]() -> folly::coro::Task<void> {
+          EXPECT_TRUE(queue.empty());
+          val = co_await queue.co_try_dequeue_for(1h);
+          EXPECT_EQ(val, 43);
+        }());
+
+    folly::CancellationSource cancelSource;
+    co_await folly::coro::collectAll(
+        [&]() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          cancelSource.requestCancellation();
+        }(),
+        [&]() -> folly::coro::Task<void> {
+          EXPECT_THROW(
+              (co_await folly::coro::co_withCancellation(
+                  cancelSource.getToken(), queue.co_try_dequeue_for(1h))),
+              folly::OperationCancelled);
+        }());
+  }());
 }
 
 #endif

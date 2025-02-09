@@ -543,13 +543,4 @@ bool hasStreamCodec(CodecType type);
 namespace folly::io {
 using folly::compression::Codec;
 using folly::compression::CodecType;
-using folly::compression::COMPRESSION_LEVEL_BEST;
-using folly::compression::COMPRESSION_LEVEL_DEFAULT;
-using folly::compression::COMPRESSION_LEVEL_FASTEST;
-using folly::compression::getAutoUncompressionCodec;
-using folly::compression::getCodec;
-using folly::compression::getStreamCodec;
-using folly::compression::hasCodec;
-using folly::compression::hasStreamCodec;
-using folly::compression::StreamCodec;
 } // namespace folly::io

@@ -22,6 +22,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Utility.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
@@ -45,7 +46,7 @@ TEST_F(AtForkListTest, remove_nullptr) {
 
 TEST_F(AtForkListTest, append_key) {
   folly::AtForkList list;
-  char key;
+  char key = folly::unsafe_default_initialized;
   EXPECT_FALSE(list.contains(&key));
   list.append(&key, nullptr, nullptr, nullptr);
   EXPECT_TRUE(list.contains(&key));
@@ -53,7 +54,7 @@ TEST_F(AtForkListTest, append_key) {
 
 TEST_F(AtForkListTest, append_key_duplicate) {
   folly::AtForkList list;
-  char key;
+  char key = folly::unsafe_default_initialized;
   EXPECT_FALSE(list.contains(&key));
   list.append(&key, nullptr, nullptr, nullptr);
   EXPECT_TRUE(list.contains(&key));
@@ -63,7 +64,7 @@ TEST_F(AtForkListTest, append_key_duplicate) {
 
 TEST_F(AtForkListTest, remove_key) {
   folly::AtForkList list;
-  char key;
+  char key = folly::unsafe_default_initialized;
   EXPECT_FALSE(list.contains(&key));
   list.append(&key, nullptr, nullptr, nullptr);
   EXPECT_TRUE(list.contains(&key));
@@ -73,7 +74,7 @@ TEST_F(AtForkListTest, remove_key) {
 
 TEST_F(AtForkListTest, remove_key_missing) {
   folly::AtForkList list;
-  char key;
+  char key = folly::unsafe_default_initialized;
   EXPECT_FALSE(list.contains(&key));
   EXPECT_THROW(list.remove(&key), std::out_of_range);
 }
@@ -225,7 +226,7 @@ TEST_F(AtForkListTest, prepare_child_child_empty) {
 class AtForkTest : public Test {};
 
 TEST_F(AtForkTest, prepare) {
-  int foo;
+  int foo = folly::unsafe_default_initialized;
   bool forked = false;
   folly::AtFork::registerHandler(
       &foo,
@@ -267,8 +268,8 @@ TEST_F(AtForkTest, ordering) {
   std::atomic<bool> started{false};
   std::mutex a;
   std::mutex b;
-  int foo;
-  int foo2;
+  int foo = folly::unsafe_default_initialized;
+  int foo2 = folly::unsafe_default_initialized;
   folly::AtFork::registerHandler(
       &foo,
       [&] { return a.try_lock(); },

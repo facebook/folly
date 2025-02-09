@@ -31,11 +31,6 @@ xxhash
 # specific configuration we rely on the folly manifest to provide this
 # dependency to avoid duplication.
 
-[dependencies.os=linux]
-# python doesn't build on Windows yet and this causes python3 shebangs to
-# expand to a non-portable path on macOS
-python
-
 [shipit.pathmap]
 xplat/thrift/public_tld = .
 xplat/thrift = thrift

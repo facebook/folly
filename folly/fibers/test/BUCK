@@ -85,3 +85,12 @@ cpp_unittest(
         "//folly/synchronization/detail:sleeper",
     ],
 )
+
+cpp_unittest(
+    name = "batch_semaphore_test",
+    srcs = ["BatchSemaphoreTest.cpp"],
+    deps = [
+        "//folly/fibers:batch_semaphore",
+        "//folly/portability:gtest",
+    ],
+)
