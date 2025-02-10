@@ -24,7 +24,7 @@
 #include <type_traits>
 #include <utility>
 
-#if FOLLY_X64
+#if FOLLY_SSE >= 2
 #include <immintrin.h>
 #endif
 
@@ -96,7 +96,7 @@ struct movemask_fn {
 template <typename Scalar>
 inline constexpr movemask_fn<Scalar> movemask;
 
-#if FOLLY_X64
+#if FOLLY_SSE >= 2
 
 template <typename Scalar>
 template <typename Reg>
@@ -181,7 +181,7 @@ FOLLY_ERASE auto movemask_fn<Scalar>::operator()(Reg reg) const {
 
 #endif
 
-#if FOLLY_X64 || FOLLY_NEON
+#if FOLLY_SSE >= 2 || FOLLY_NEON
 
 template <typename Scalar>
 template <typename Reg, typename Ignore>
