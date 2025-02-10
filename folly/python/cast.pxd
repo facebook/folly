@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 cdef extern from "folly/lang/Cast.h" namespace "folly" nogil:
     cdef T down_cast_ref "folly::down_cast"[T, S](S ref)
     cdef T* down_cast_ptr "folly::down_cast"[T, S](S* ptr)

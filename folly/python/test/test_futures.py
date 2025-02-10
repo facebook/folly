@@ -45,3 +45,7 @@ class Futures(unittest.TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(simplebridge.get_value_x5_fibers(val))
         self.assertEqual(val * 5, res)
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

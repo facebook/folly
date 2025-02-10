@@ -22,5 +22,8 @@ patchfile = libiberty_install_pic_lib.patch
 
 # only build the parts needed for demangling
 # as we still want to use system linker and assembler etc
+# XXX flags below should be taken from cmd args - getdeps.py change required XXX
 [autoconf.args]
 --enable-install-libiberty
+CFLAGS = -fPIC
+CXXFLAGS = -fPIC

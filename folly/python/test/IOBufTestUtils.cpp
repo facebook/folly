@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <cctype>
 
-#include <folly/python/iobuf.h>
+#include <folly/python/iobuf_intf.h>
 
 namespace folly::python {
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import asyncio
 from cpython.ref cimport PyObject
 
@@ -52,7 +53,7 @@ cdef class SimpleGenerator:
     cdef void callback(
         cFollyTry[cNextResult[int]]&& res,
         PyObject* py_future,
-    ):
+    ) noexcept:
         future = <object> py_future
         if res.hasException():
             try:

@@ -62,3 +62,6 @@ class Teardown(unittest.TestCase):
 
         # Once the loop goes out of scope, AsyncioExecutor's destructor must drive
         # until all keep-alives are released (otherwise the test should crash with a UB)
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)  # verbosity=2 gives more detailed output

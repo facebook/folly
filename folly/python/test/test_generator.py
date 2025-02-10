@@ -64,3 +64,7 @@ class GeneratorTest(unittest.TestCase):
                     pass
 
         loop.run_until_complete(wrapper())
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

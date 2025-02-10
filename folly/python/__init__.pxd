@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from libcpp cimport bool as cbool
 
 cdef extern from "folly/ExceptionWrapper.h" namespace "folly":
@@ -47,7 +48,7 @@ cdef extern from "folly/Unit.h" namespace "folly":
 cdef extern from "folly/futures/Promise.h" namespace "folly":
     cdef cppclass cFollyPromise "folly::Promise"[T]:
         cFollyPromise()
-        cFollyPromise(cFollyPromise&&)
+        cFollyPromise(cFollyPromise) # && removed
         void setValue[M](M& value)
         void setException[E](E& value)
         cFollyFuture[T] getFuture()

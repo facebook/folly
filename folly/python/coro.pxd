@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from cpython.ref cimport PyObject
 from folly cimport cFollyExecutor, cFollyTry
 from libcpp cimport bool
@@ -32,20 +33,20 @@ cdef extern from "folly/CancellationToken.h" namespace "folly" nogil:
 cdef extern from "folly/python/coro.h" namespace "folly::python":
     void bridgeCoroTask[T](
         cFollyCoroTask[T]&& fut,
-        void(*)(cFollyTry[T]&&, PyObject*),
+        void(*)(cFollyTry[T]&&, PyObject*) noexcept,
         PyObject* pyFuture
     )
     # No clue but cython overloading is getting confused so we alias
     void bridgeCoroTaskWith "folly::python::bridgeCoroTask"[T](
         cFollyExecutor* executor,
         cFollyCoroTask[T]&& fut,
-        void(*)(cFollyTry[T]&&, PyObject*),
+        void(*)(cFollyTry[T]&&, PyObject*) noexcept,
         PyObject* pyFuture
     )
     void bridgeCoroTaskWithCancellation "folly::python::bridgeCoroTask"[T](
         cFollyExecutor* executor,
         cFollyCoroTask[T]&& fut,
-        void(*)(cFollyTry[T]&&, PyObject*),
+        void(*)(cFollyTry[T]&&, PyObject*) noexcept,
         PyObject* pyFuture,
         cFollyCancellationToken&& cancelToken,
     )

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# distutils: language = c++
 
 from libcpp.memory cimport unique_ptr
 from folly cimport cFollyExecutor
@@ -47,7 +46,6 @@ cdef class AsyncioExecutor:
 
 cdef class ProactorExecutor(AsyncioExecutor):
     cdef unique_ptr[cProactorExecutor, cProactorExecutorDeleter] cQ
-
 
 cdef class IocpQueue(dict):
     cdef ProactorExecutor _executor

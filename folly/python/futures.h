@@ -25,7 +25,7 @@
 #include <folly/Executor.h>
 #include <folly/futures/Future.h>
 #include <folly/python/AsyncioExecutor.h>
-#include <folly/python/executor.h>
+#include <folly/python/executor_intf.h>
 
 namespace folly {
 namespace python {

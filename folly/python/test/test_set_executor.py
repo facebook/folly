@@ -28,3 +28,7 @@ class TestSetExecutor(unittest.TestCase):
 
     def test_clear_existing_loop(self):
         test_set_executor_cython.test_clear_existing_loop(self)
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)  # verbosity=2 gives more detailed output

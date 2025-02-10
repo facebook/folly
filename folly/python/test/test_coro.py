@@ -38,3 +38,7 @@ class Futures(unittest.TestCase):
         self.assertFalse(task.done())
         task.cancel()
         return await task
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
