@@ -28,7 +28,7 @@
 #include <immintrin.h>
 #endif
 
-#if FOLLY_AARCH64
+#if FOLLY_NEON
 #include <arm_neon.h>
 #endif
 
@@ -134,7 +134,7 @@ FOLLY_ERASE auto movemask_fn<Scalar>::operator()(Reg reg) const {
 
 #endif
 
-#if FOLLY_AARCH64
+#if FOLLY_NEON
 
 namespace detail {
 
@@ -181,7 +181,7 @@ FOLLY_ERASE auto movemask_fn<Scalar>::operator()(Reg reg) const {
 
 #endif
 
-#if FOLLY_X64 || FOLLY_AARCH64
+#if FOLLY_X64 || FOLLY_NEON
 
 template <typename Scalar>
 template <typename Reg, typename Ignore>
