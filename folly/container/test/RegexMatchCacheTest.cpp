@@ -106,7 +106,7 @@ struct unordered_vector_set : private unordered_vector_set_base<T> {
   }
   static folly::span<T const> to_span(
       folly::sorted_vector_set<T> const& set) noexcept {
-    return {set.begin(), set.end()};
+    return {&*set.begin(), &*set.end()};
   }
   folly::span<T const> to_span() const noexcept { return to_span(*this); }
 
