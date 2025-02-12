@@ -174,6 +174,159 @@ void saveValueForOutstandingSnapshots(
 const BoxedValue* getSavedValue(
     SettingCoreBase::Key key, SettingCoreBase::Version at);
 
+template <typename T>
+class TypedSettingCore : public SettingCoreBase {
+ public:
+  using Contents = SettingContents<T>;
+  SetResult setFromString(
+      StringPiece newValue,
+      StringPiece reason,
+      SnapshotBase* snapshot) override {
+    if (isFrozenImmutable()) {
+      // Return the error before calling convertOrConstruct in case it throws.
+      return makeUnexpected(SetErrorCode::FrozenImmutable);
+    }
+    forceSetFromString(newValue, reason, snapshot);
+    return unit;
+  }
+
+  void forceSetFromString(
+      StringPiece newValue,
+      StringPiece reason,
+      SnapshotBase* snapshot) override {
+    setImpl(convertOrConstruct(newValue), reason, snapshot);
+  }
+
+  std::pair<std::string, std::string> getAsString(
+      const SnapshotBase* snapshot) const override;
+
+  SetResult resetToDefault(SnapshotBase* snapshot) override {
+    if (isFrozenImmutable()) {
+      // Return the error before calling convertOrConstruct in case it throws.
+      return makeUnexpected(SetErrorCode::FrozenImmutable);
+    }
+    forceResetToDefault(snapshot);
+    return folly::unit;
+  }
+
+  void forceResetToDefault(SnapshotBase* snapshot) override {
+    setImpl(defaultValue_, "default", snapshot);
+  }
+
+  const SettingMetadata& meta() const override { return meta_; }
+
+  /**
+   * @param trivialStorage must refer to the same location
+   *   as the internal trivialStorage_.  This hint will
+   *   generate better inlined code since the address is known
+   *   at compile time at the callsite.
+   */
+  std::conditional_t<IsSmallPOD<T>, T, const T&> getWithHint(
+      std::atomic<uint64_t>& trivialStorage) const {
+    if constexpr (IsSmallPOD<T>) {
+      uint64_t v = trivialStorage.load();
+      T t;
+      std::memcpy(&t, &v, sizeof(T));
+      return t;
+    } else {
+      return const_cast<TypedSettingCore*>(this)->tlValue()->value;
+    }
+  }
+  const SettingContents<T>& getSlow() const { return *tlValue(); }
+
+  SetResult set(
+      const T& t, StringPiece reason, SnapshotBase* snapshot = nullptr) {
+    if (isFrozenImmutable()) {
+      return makeUnexpected(SetErrorCode::FrozenImmutable);
+    }
+    setImpl(t, reason, snapshot);
+    return unit;
+  }
+
+  const T& defaultValue() const { return defaultValue_; }
+
+ private:
+  SettingMetadata meta_;
+  const T defaultValue_;
+
+ protected:
+  TypedSettingCore(
+      SettingMetadata meta,
+      T defaultValue,
+      std::atomic<uint64_t>& trivialStorage)
+      : meta_(std::move(meta)),
+        defaultValue_(std::move(defaultValue)),
+        trivialStorage_(trivialStorage) {}
+
+  mutable SharedMutex globalLock_;
+  std::shared_ptr<Contents> globalValue_;
+
+  std::atomic<uint64_t>& trivialStorage_;
+
+  /* Thread local versions start at 0, this will force a read on first access.
+   */
+  cacheline_aligned<std::atomic<Version>> settingVersion_{std::in_place, 1};
+
+ private:
+  using LocalValue = std::pair<Version, std::shared_ptr<Contents>>;
+  struct LocalValueTLP : cacheline_aligned<LocalValue> {
+    LocalValueTLP() noexcept
+        : cacheline_aligned<LocalValue>(std::in_place, 0, nullptr) {}
+  };
+
+  mutable ThreadLocalPtr<LocalValueTLP> localValue_;
+
+  FOLLY_ALWAYS_INLINE LocalValue& getLocalValue() const {
+    auto const ptr = localValue_.get();
+    return FOLLY_LIKELY(!!ptr) ? **ptr : getLocalValueSlow();
+  }
+  FOLLY_NOINLINE LocalValue& getLocalValueSlow() const {
+    auto const ptr = new LocalValueTLP();
+    localValue_.reset(ptr);
+    return **ptr;
+  }
+
+  FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
+    auto& value = getLocalValue();
+    if (FOLLY_LIKELY(value.first == *settingVersion_)) {
+      return value.second;
+    }
+    return tlValueSlow();
+  }
+  FOLLY_NOINLINE const std::shared_ptr<Contents>& tlValueSlow() const {
+    auto& value = getLocalValue();
+    while (value.first < *settingVersion_) {
+      /* If this destroys the old value, do it without holding the lock */
+      value.second.reset();
+      std::shared_lock lg(globalLock_);
+      value.first = *settingVersion_;
+      value.second = globalValue_;
+    }
+    return value.second;
+  }
+
+  virtual void setImpl(
+      const T& t, StringPiece reason, SnapshotBase* snapshot) = 0;
+
+  bool isFrozenImmutable() const {
+    switch (meta_.mutability) {
+      case Mutability::Mutable:
+        return false;
+      case Mutability::Immutable:
+        return immutablesFrozen(meta_.project);
+    }
+  }
+
+  T convertOrConstruct(StringPiece newValue) {
+    if constexpr (std::is_constructible_v<T, StringPiece>) {
+      return T(newValue);
+    } else {
+      SettingValueAndMetadata from(newValue, meta_);
+      return to<T>(from);
+    }
+  }
+};
+
 class SnapshotBase {
  public:
   /**
@@ -257,6 +410,8 @@ class SnapshotBase {
   SettingCoreBase::Version at_;
   std::unordered_map<SettingCoreBase::Key, BoxedValue> snapshotValues_;
 
+  template <typename T>
+  friend class TypedSettingCore;
   template <typename T, typename Tag>
   friend class SettingCore;
 
@@ -267,8 +422,8 @@ class SnapshotBase {
   SnapshotBase(SnapshotBase&&) = delete;
   SnapshotBase& operator=(SnapshotBase&&) = delete;
 
-  template <class T, typename Tag>
-  const SettingContents<T>& get(const SettingCore<T, Tag>& core) const {
+  template <class T>
+  const SettingContents<T>& get(const TypedSettingCore<T>& core) const {
     auto it = snapshotValues_.find(core.getKey());
     if (it != snapshotValues_.end()) {
       return it->second.template unbox<T>();
@@ -286,86 +441,23 @@ class SnapshotBase {
   }
 };
 
+template <typename T>
+std::pair<std::string, std::string> TypedSettingCore<T>::getAsString(
+    const SnapshotBase* snapshot) const {
+  auto& contents = snapshot ? snapshot->get(*this) : getSlow();
+  return std::make_pair(
+      folly::to<std::string>(contents.value), contents.updateReason);
+}
+
 template <class T, typename Tag>
-class SettingCore : public SettingCoreBase {
+class SettingCore : public TypedSettingCore<T> {
  public:
-  using Contents = SettingContents<T>;
+  using Contents = typename TypedSettingCore<T>::Contents;
   using AccessCounter = SingletonRelaxedCounter<uint64_t, Tag>;
-
-  SetResult setFromString(
-      StringPiece newValue,
-      StringPiece reason,
-      SnapshotBase* snapshot) override {
-    if (isFrozenImmutable()) {
-      // Return the error before calling convertOrConstruct in case it throws.
-      return makeUnexpected(SetErrorCode::FrozenImmutable);
-    }
-    forceSetFromString(newValue, reason, snapshot);
-    return unit;
-  }
-
-  void forceSetFromString(
-      StringPiece newValue,
-      StringPiece reason,
-      SnapshotBase* snapshot) override {
-    setImpl(convertOrConstruct(newValue), reason, snapshot);
-  }
-
-  std::pair<std::string, std::string> getAsString(
-      const SnapshotBase* snapshot) const override {
-    auto& contents = snapshot ? snapshot->get(*this) : getSlow();
-    return std::make_pair(
-        folly::to<std::string>(contents.value), contents.updateReason);
-  }
-
-  SetResult resetToDefault(SnapshotBase* snapshot) override {
-    if (isFrozenImmutable()) {
-      // Return the error before calling convertOrConstruct in case it throws.
-      return makeUnexpected(SetErrorCode::FrozenImmutable);
-    }
-    forceResetToDefault(snapshot);
-    return folly::unit;
-  }
-
-  void forceResetToDefault(SnapshotBase* snapshot) override {
-    setImpl(defaultValue_, "default", snapshot);
-  }
-
-  const SettingMetadata& meta() const override { return meta_; }
 
   uint64_t accessCount() const override { return AccessCounter::count(); }
 
   bool hasHadCallbacks() const override { return hasHadCallbacks_.load(); }
-
-  /**
-   * @param trivialStorage must refer to the same location
-   *   as the internal trivialStorage_.  This hint will
-   *   generate better inlined code since the address is known
-   *   at compile time at the callsite.
-   */
-  std::conditional_t<IsSmallPOD<T>, T, const T&> getWithHint(
-      std::atomic<uint64_t>& trivialStorage) const {
-    if constexpr (IsSmallPOD<T>) {
-      uint64_t v = trivialStorage.load();
-      T t;
-      std::memcpy(&t, &v, sizeof(T));
-      return t;
-    } else {
-      return const_cast<SettingCore*>(this)->tlValue()->value;
-    }
-  }
-  const SettingContents<T>& getSlow() const { return *tlValue(); }
-
-  SetResult set(
-      const T& t, StringPiece reason, SnapshotBase* snapshot = nullptr) {
-    if (isFrozenImmutable()) {
-      return makeUnexpected(SetErrorCode::FrozenImmutable);
-    }
-    setImpl(t, reason, snapshot);
-    return unit;
-  }
-
-  const T& defaultValue() const { return defaultValue_; }
 
   using UpdateCallback = Function<void(const Contents&)>;
   class CallbackHandle {
@@ -394,7 +486,7 @@ class SettingCore : public SettingCoreBase {
 
     auto copiedPtr = callbackPtr;
     {
-      std::unique_lock lg(globalLock_);
+      std::unique_lock lg(this->globalLock_);
       callbacks_.emplace(std::move(copiedPtr));
     }
     return CallbackHandle(std::move(callbackPtr), *this);
@@ -404,69 +496,20 @@ class SettingCore : public SettingCoreBase {
       SettingMetadata meta,
       T defaultValue,
       std::atomic<uint64_t>& trivialStorage)
-      : meta_(std::move(meta)),
-        defaultValue_(std::move(defaultValue)),
-        trivialStorage_(trivialStorage) {
-    forceResetToDefault(/* snapshot */ nullptr);
+      : TypedSettingCore<T>(
+            std::move(meta), std::move(defaultValue), trivialStorage) {
+    this->forceResetToDefault(/* snapshot */ nullptr);
     registerSetting(*this);
   }
 
  private:
   friend class BoxedValue;
 
-  SettingMetadata meta_;
-  const T defaultValue_;
-
-  mutable SharedMutex globalLock_;
-  std::shared_ptr<Contents> globalValue_;
-
-  std::atomic<uint64_t>& trivialStorage_;
-
   F14FastSet<std::shared_ptr<UpdateCallback>> callbacks_;
   std::atomic<bool> hasHadCallbacks_{false};
 
-  /* Thread local versions start at 0, this will force a read on first access.
-   */
-  cacheline_aligned<std::atomic<Version>> settingVersion_{std::in_place, 1};
-
-  using LocalValue = std::pair<Version, std::shared_ptr<Contents>>;
-  struct LocalValueTLP : cacheline_aligned<LocalValue> {
-    LocalValueTLP() noexcept
-        : cacheline_aligned<LocalValue>(std::in_place, 0, nullptr) {}
-  };
-
-  mutable ThreadLocalPtr<LocalValueTLP> localValue_;
-
-  FOLLY_ALWAYS_INLINE LocalValue& getLocalValue() const {
-    auto const ptr = localValue_.get();
-    return FOLLY_LIKELY(!!ptr) ? **ptr : getLocalValueSlow();
-  }
-  FOLLY_NOINLINE LocalValue& getLocalValueSlow() const {
-    auto const ptr = new LocalValueTLP();
-    localValue_.reset(ptr);
-    return **ptr;
-  }
-
-  FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
-    auto& value = getLocalValue();
-    if (FOLLY_LIKELY(value.first == *settingVersion_)) {
-      return value.second;
-    }
-    return tlValueSlow();
-  }
-  FOLLY_NOINLINE const std::shared_ptr<Contents>& tlValueSlow() const {
-    auto& value = getLocalValue();
-    while (value.first < *settingVersion_) {
-      /* If this destroys the old value, do it without holding the lock */
-      value.second.reset();
-      std::shared_lock lg(globalLock_);
-      value.first = *settingVersion_;
-      value.second = globalValue_;
-    }
-    return value.second;
-  }
-
-  void setImpl(const T& t, StringPiece reason, SnapshotBase* snapshot) {
+  void setImpl(
+      const T& t, StringPiece reason, SnapshotBase* snapshot) override {
     /* Check that we can still display it (will throw otherwise) */
     folly::to<std::string>(t);
 
@@ -476,26 +519,28 @@ class SettingCore : public SettingCoreBase {
     }
 
     {
-      std::unique_lock lg(globalLock_);
+      std::unique_lock lg(this->globalLock_);
 
-      if (globalValue_) {
+      if (this->globalValue_) {
         saveValueForOutstandingSnapshots(
-            getKey(), *settingVersion_, BoxedValue(*globalValue_));
+            this->getKey(),
+            *this->settingVersion_,
+            BoxedValue(*this->globalValue_));
       }
-      globalValue_ = std::make_shared<Contents>(reason.str(), t);
+      this->globalValue_ = std::make_shared<Contents>(reason.str(), t);
       if constexpr (IsSmallPOD<T>) {
         uint64_t v = 0;
         std::memcpy(&v, &t, sizeof(T));
-        trivialStorage_.store(v);
+        this->trivialStorage_.store(v);
       }
-      *settingVersion_ = nextGlobalVersion();
+      *this->settingVersion_ = nextGlobalVersion();
     }
     invokeCallbacks(Contents(reason.str(), t));
   }
 
   void invokeCallbacks(const Contents& contents) {
     auto callbacksSnapshot = invoke([&] {
-      std::shared_lock lg(globalLock_);
+      std::shared_lock lg(this->globalLock_);
       // invoking arbitrary user code under the lock is dangerous
       return std::vector<std::shared_ptr<UpdateCallback>>(
           callbacks_.begin(), callbacks_.end());
@@ -504,24 +549,6 @@ class SettingCore : public SettingCoreBase {
     for (auto& callbackPtr : callbacksSnapshot) {
       auto& callback = *callbackPtr;
       callback(contents);
-    }
-  }
-
-  bool isFrozenImmutable() const {
-    switch (meta_.mutability) {
-      case Mutability::Mutable:
-        return false;
-      case Mutability::Immutable:
-        return immutablesFrozen(meta_.project);
-    }
-  }
-
-  T convertOrConstruct(StringPiece newValue) {
-    if constexpr (std::is_constructible_v<T, StringPiece>) {
-      return T(newValue);
-    } else {
-      SettingValueAndMetadata from(newValue, meta_);
-      return to<T>(from);
     }
   }
 };
