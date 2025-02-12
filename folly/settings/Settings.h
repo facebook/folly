@@ -16,11 +16,14 @@
 
 #pragma once
 
+#include <string>
 #include <vector>
 
+#include <folly/CppAttributes.h>
 #include <folly/Function.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
+#include <folly/container/MapUtil.h>
 #include <folly/settings/Types.h>
 #include <folly/settings/detail/SettingsImpl.h>
 
@@ -279,6 +282,17 @@ Optional<SettingMetadata> getSettingsMeta(StringPiece settingName);
  * @return SettingMetadata for all registered settings in the process.
  */
 std::vector<SettingMetadata> getAllSettingsMeta();
+
+/**
+ * @return If the setting exists and has type T, returns the default value
+ * defined by FOLLY_SETTING_DEFINE.
+ */
+template <typename T>
+const T* FOLLY_NULLABLE getDefaultValue(const std::string& settingName) {
+  auto* eptr = get_default(*detail::settingsMap().rlock(), settingName);
+  auto* tptr = dynamic_cast<detail::TypedSettingCore<T>*>(eptr);
+  return !tptr ? nullptr : &tptr->defaultValue();
+}
 
 namespace detail {
 

@@ -18,6 +18,7 @@ cpp_library(
         ":immutables",
         ":types",
         "//folly:conv",
+        "//folly:cpp_attributes",
         "//folly:function",
         "//folly:likely",
         "//folly:optional",
@@ -27,6 +28,7 @@ cpp_library(
         "//folly:utility",
         "//folly/concurrency:singleton_relaxed_counter",
         "//folly/container:f14_hash",
+        "//folly/container:map_util",
         "//folly/lang:aligned",
     ],
 )

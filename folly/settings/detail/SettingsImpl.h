@@ -84,6 +84,9 @@ class SettingCoreBase {
 
 void registerSetting(SettingCoreBase& core);
 
+using SettingsMap = std::map<std::string, SettingCoreBase*>;
+Synchronized<SettingsMap>& settingsMap();
+
 /**
  * Returns the monotonically increasing unique positive version.
  */

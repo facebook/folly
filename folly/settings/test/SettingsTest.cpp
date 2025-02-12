@@ -343,6 +343,20 @@ TEST(Settings, basic) {
   EXPECT_EQ(
       some_ns::FOLLY_SETTING(follytest, user_defined).defaultValue(),
       some_ns::UserDefinedType("b"));
+  EXPECT_EQ(
+      *folly::settings::getDefaultValue<unsigned int>(
+          "follytest_multi_token_type"),
+      some_ns::FOLLY_SETTING(follytest, multi_token_type).defaultValue());
+  EXPECT_EQ(
+      *folly::settings::getDefaultValue<std::string>("follytest_some_flag"),
+      some_ns::FOLLY_SETTING(follytest, some_flag).defaultValue());
+  EXPECT_EQ(
+      *folly::settings::getDefaultValue<some_ns::UserDefinedType>(
+          "follytest_user_defined"),
+      some_ns::FOLLY_SETTING(follytest, user_defined).defaultValue());
+  // EXPECT_FALSE(folly::settings::getDefaultValue<int>("follytest_some_flag"));
+  // EXPECT_FALSE(folly::settings::getDefaultValue<int>("follytest_nonexisting"));
+
   {
     std::string allFlags;
     auto allMeta = folly::settings::getAllSettingsMeta();

@@ -23,13 +23,10 @@
 namespace folly {
 namespace settings {
 namespace detail {
-namespace {
-using SettingsMap = std::map<std::string, SettingCoreBase*>;
 Synchronized<SettingsMap>& settingsMap() {
   static Indestructible<Synchronized<SettingsMap>> map;
   return *map;
 }
-} // namespace
 
 void registerSetting(SettingCoreBase& core) {
   if (core.meta().project.empty() ||
