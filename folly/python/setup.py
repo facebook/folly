@@ -30,17 +30,11 @@ exts = [
         "folly.executor",
         sources=["folly/executor.pyx", "folly/ProactorExecutor.cpp"],
         libraries=["folly", "glog"],
-        extra_compile_args=[
-            "-std=c++17",
-        ],
     ),
     Extension(
         "folly.iobuf",
         sources=["folly/iobuf.pyx", "folly/iobuf_ext.cpp"],
         libraries=["folly", "glog"],
-        extra_compile_args=[
-            "-std=c++17",
-        ],
     ),
 ]
 

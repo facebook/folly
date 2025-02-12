@@ -78,9 +78,11 @@ if (PYTHON_EXTENSIONS)
     WORKING_DIRECTORY ${_cybld})
 
   add_custom_command(TARGET folly_python_bindings POST_BUILD
-    COMMAND
-      CFLAGS="${CMAKE_C_FLAGS}" CXXFLAGS="${CMAKE_CXX_FLAGS}"
-      CC="${CMAKE_C_COMPILER}" CXX="${CMAKE_CXX_COMPILER}"
+    COMMAND ${CMAKE_COMMAND} -E env
+      "CFLAGS=${CMAKE_C_FLAGS}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+      "CC=${CMAKE_C_COMPILER}"
+      "CXX=${CMAKE_CXX_COMPILER}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
@@ -129,7 +131,11 @@ if (PYTHON_EXTENSIONS)
   )
 
   add_custom_command(TARGET folly_python_bindings
-    COMMAND
+    COMMAND ${CMAKE_COMMAND} -E env
+      "CFLAGS=${CMAKE_C_FLAGS}"
+      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+      "CC=${CMAKE_C_COMPILER}"
+      "CXX=${CMAKE_CXX_COMPILER}"
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       bdist_wheel
     WORKING_DIRECTORY ${_cybld}
