@@ -20,7 +20,6 @@
 #include <mutex>
 #include <string>
 #include <type_traits>
-#include <typeindex>
 #include <unordered_map>
 
 #include <folly/Conv.h>
@@ -255,9 +254,8 @@ class SnapshotBase {
   virtual ~SnapshotBase();
 
  protected:
-  detail::SettingCoreBase::Version at_;
-  std::unordered_map<detail::SettingCoreBase::Key, detail::BoxedValue>
-      snapshotValues_;
+  SettingCoreBase::Version at_;
+  std::unordered_map<SettingCoreBase::Key, BoxedValue> snapshotValues_;
 
   template <typename T, typename Tag>
   friend class SettingCore;
@@ -270,12 +268,12 @@ class SnapshotBase {
   SnapshotBase& operator=(SnapshotBase&&) = delete;
 
   template <class T, typename Tag>
-  const SettingContents<T>& get(const detail::SettingCore<T, Tag>& core) const {
+  const SettingContents<T>& get(const SettingCore<T, Tag>& core) const {
     auto it = snapshotValues_.find(core.getKey());
     if (it != snapshotValues_.end()) {
       return it->second.template unbox<T>();
     }
-    auto savedValue = detail::getSavedValue(core.getKey(), at_);
+    auto savedValue = getSavedValue(core.getKey(), at_);
     if (savedValue) {
       return savedValue->template unbox<T>();
     }
@@ -283,8 +281,8 @@ class SnapshotBase {
   }
 
   template <class T, typename Tag>
-  void set(detail::SettingCore<T, Tag>& core, const T& t, StringPiece reason) {
-    snapshotValues_[core.getKey()] = detail::BoxedValue(t, reason, core);
+  void set(SettingCore<T, Tag>& core, const T& t, StringPiece reason) {
+    snapshotValues_[core.getKey()] = BoxedValue(t, reason, core);
   }
 };
 
@@ -414,7 +412,7 @@ class SettingCore : public SettingCoreBase {
   }
 
  private:
-  friend class detail::BoxedValue;
+  friend class BoxedValue;
 
   SettingMetadata meta_;
   const T defaultValue_;

@@ -16,13 +16,11 @@
 
 #pragma once
 
-#include <string>
 #include <vector>
 
 #include <folly/Function.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
-#include <folly/concurrency/SingletonRelaxedCounter.h>
 #include <folly/settings/Types.h>
 #include <folly/settings/detail/SettingsImpl.h>
 
