@@ -255,9 +255,6 @@ cpp_library(
 cpp_library(
     name = "async_transport_certificate",
     headers = ["AsyncTransportCertificate.h"],
-    exported_deps = [
-        "//folly:optional",
-    ],
 )
 
 cpp_library(

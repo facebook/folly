@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
-#include <folly/Optional.h>
 
 namespace folly {
 
