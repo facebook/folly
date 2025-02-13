@@ -515,10 +515,10 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
 
 #if LZ4_VERSION_NUMBER >= 10802 && defined(LZ4_STATIC_LINKING_ONLY) && \
     defined(LZ4_HC_STATIC_LINKING_ONLY) && !defined(FOLLY_USE_LZ4_FAST_RESET)
-#define FOLLY_USE_LZ4_FAST_RESET
+#define FOLLY_USE_LZ4_FAST_RESET 1
 #endif
 
-#ifdef FOLLY_USE_LZ4_FAST_RESET
+#if FOLLY_USE_LZ4_FAST_RESET
 void lz4_stream_t_deleter(LZ4_stream_t* ctx) {
   LZ4_freeStream(ctx);
 }
@@ -547,7 +547,7 @@ class LZ4Codec final : public Codec {
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data, Optional<uint64_t> uncompressedLength) override;
 
-#ifdef FOLLY_USE_LZ4_FAST_RESET
+#if FOLLY_USE_LZ4_FAST_RESET
   std::unique_ptr<
       LZ4_stream_t,
       folly::static_function_deleter<LZ4_stream_t, lz4_stream_t_deleter>>
@@ -623,7 +623,7 @@ std::unique_ptr<IOBuf> LZ4Codec::doCompress(const IOBuf* data) {
   auto output = reinterpret_cast<char*>(out->writableTail());
   const auto inputLength = data->length();
 
-#ifdef FOLLY_USE_LZ4_FAST_RESET
+#if FOLLY_USE_LZ4_FAST_RESET
   if (!highCompression_ && !ctx) {
     ctx.reset(LZ4_createStream());
   }
@@ -721,7 +721,7 @@ class LZ4FrameCodec final : public Codec {
   void resetDCtx();
 
   int level_;
-#ifdef FOLLY_USE_LZ4_FAST_RESET
+#if FOLLY_USE_LZ4_FAST_RESET
   LZ4F_compressionContext_t cctx_{nullptr};
 #endif
   LZ4F_decompressionContext_t dctx_{nullptr};
@@ -790,7 +790,7 @@ LZ4FrameCodec::~LZ4FrameCodec() {
   if (dctx_) {
     LZ4F_freeDecompressionContext(dctx_);
   }
-#ifdef FOLLY_USE_LZ4_FAST_RESET
+#if FOLLY_USE_LZ4_FAST_RESET
   if (cctx_) {
     LZ4F_freeCompressionContext(cctx_);
   }
@@ -805,7 +805,7 @@ std::unique_ptr<IOBuf> LZ4FrameCodec::doCompress(const IOBuf* data) {
     data = &clone;
   }
 
-#ifdef FOLLY_USE_LZ4_FAST_RESET
+#if FOLLY_USE_LZ4_FAST_RESET
   if (!cctx_) {
     lz4FrameThrowOnError(LZ4F_createCompressionContext(&cctx_, LZ4F_VERSION));
   }
@@ -819,7 +819,7 @@ std::unique_ptr<IOBuf> LZ4FrameCodec::doCompress(const IOBuf* data) {
   // Compress
   auto buf = IOBuf::create(maxCompressedLength(uncompressedLength));
   const size_t written = lz4FrameThrowOnError(
-#ifdef FOLLY_USE_LZ4_FAST_RESET
+#if FOLLY_USE_LZ4_FAST_RESET
       LZ4F_compressFrame_usingCDict(
           cctx_,
           buf->writableTail(),
