@@ -230,6 +230,15 @@ cpp_library(
 cpp_library(
     name = "config",
     # @fb-only[end= ]: headers = ["folly-config.h"],
+    propagated_pp_flags = select({
+        "DEFAULT": [],
+        # The `liblz4.so` in the default conda channel doesn't *publicly* export
+        # symbols used for fast reset support (although they are availabel as
+        # "internal" symbols and would link statically).
+        "ovr_config//distro:conda": [
+            "-DFOLLY_USE_LZ4_FAST_RESET=0",
+        ],
+    }),
     headers = ["//:folly-config.h"], # @oss-only
     labels = ["oss_dependency"], # @oss-only
 )
