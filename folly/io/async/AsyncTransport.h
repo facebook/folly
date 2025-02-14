@@ -843,7 +843,7 @@ class AsyncTransport
         AsyncTransport::UniquePtr ret =
             const_cast<AsyncTransport*>(last)->tryExchangeWrappedTransport(p);
         ret->setReadCB(nullptr);
-        DCHECK_NOTNULL(dynamic_cast<T*>(ret.get()));
+        DCHECK_NE(dynamic_cast<T*>(ret.get()), nullptr);
         return typename T::UniquePtr(static_cast<T*>(ret.release()));
       }
       last = current;
