@@ -490,6 +490,12 @@ constexpr auto kIsLinux = true;
 constexpr auto kIsLinux = false;
 #endif
 
+#if defined(__FreeBSD__)
+constexpr auto kIsFreeBSD = true;
+#else
+constexpr auto kIsFreeBSD = false;
+#endif
+
 #if defined(_WIN32)
 constexpr auto kIsWindows = true;
 #else
