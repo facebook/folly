@@ -32,6 +32,8 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Unistd.h>
 
+#ifdef __linux__
+
 using folly::Subprocess;
 
 DEFINE_bool(child, false, "");
@@ -79,3 +81,11 @@ int main(int argc, char* argv[]) {
   }
   return 0;
 }
+
+#else // __linux__
+
+int main() {
+  return 0;
+}
+
+#endif // __linux__

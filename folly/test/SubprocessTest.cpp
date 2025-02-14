@@ -76,6 +76,8 @@ TEST(SimpleSubprocessTest, ExitsSuccessfullyChecked) {
   proc.waitChecked();
 }
 
+#ifdef __linux__
+
 TEST(SimpleSubprocessTest, CloneFlagsWithVfork) {
   Subprocess proc(
       std::vector<std::string>{"/bin/true"},
@@ -98,6 +100,8 @@ TEST(SimpleSubprocessTest, CloneFlagsSubprocessCtorExitsAfterExec) {
   auto retCode = proc.wait();
   EXPECT_TRUE(retCode.killed());
 }
+
+#endif // __linux__
 
 TEST(SimpleSubprocessTest, ExitsWithError) {
   Subprocess proc(std::vector<std::string>{"/bin/false"});
@@ -429,8 +433,9 @@ TEST(SimpleSubprocessTest, DetachExecFails) {
       "/no/such/file");
 }
 
-TEST(SimpleSubprocessTest, Affinity) {
 #ifdef __linux__
+
+TEST(SimpleSubprocessTest, Affinity) {
   cpu_set_t cpuSet0;
   CPU_ZERO(&cpuSet0);
   CPU_SET(1, &cpuSet0);
@@ -447,8 +452,9 @@ TEST(SimpleSubprocessTest, Affinity) {
   CHECK_EQ(::memcmp(&cpuSet0, &cpuSet1, sizeof(cpu_set_t)), 0);
   auto retCode = proc.waitOrTerminateOrKill(1s, 1s);
   EXPECT_TRUE(retCode.killed());
-#endif // __linux__
 }
+
+#endif // __linux__
 
 TEST(SimpleSubprocessTest, FromExistingProcess) {
   // Manually fork a child process using fork() without exec(), and test waiting
@@ -469,6 +475,8 @@ TEST(SimpleSubprocessTest, FromExistingProcess) {
   EXPECT_EQ(kReturnCode, retCode.exitStatus());
 }
 
+#ifdef __linux__
+
 TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
   auto helper = folly::test::find_resource(
       "folly/test/subprocess_test_parent_death_helper");
@@ -487,6 +495,8 @@ TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
 
   fs::remove(tempFile);
 }
+
+#endif
 
 TEST(PopenSubprocessTest, PopenRead) {
   Subprocess proc("ls /", Subprocess::Options().pipeStdout());
