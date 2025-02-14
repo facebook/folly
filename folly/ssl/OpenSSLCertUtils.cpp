@@ -72,20 +72,17 @@ std::string getExtData(X509_EXTENSION* extension) {
   return asnValue ? asn1ToString(asnValue) : std::string();
 }
 
-} // namespace
-
-Optional<std::string> OpenSSLCertUtils::getCommonName(X509& x509) {
-  auto subject = X509_get_subject_name(&x509);
-  if (!subject) {
+Optional<std::string> commonName(X509_NAME* name) {
+  if (!name) {
     return none;
   }
 
-  auto cnLoc = X509_NAME_get_index_by_NID(subject, NID_commonName, -1);
+  auto cnLoc = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
   if (cnLoc < 0) {
     return none;
   }
 
-  auto cnEntry = X509_NAME_get_entry(subject, cnLoc);
+  auto cnEntry = X509_NAME_get_entry(name, cnLoc);
   if (!cnEntry) {
     return none;
   }
@@ -102,6 +99,16 @@ Optional<std::string> OpenSSLCertUtils::getCommonName(X509& x509) {
   }
 
   return Optional<std::string>(std::string(cnData, cnLen));
+}
+
+} // namespace
+
+Optional<std::string> OpenSSLCertUtils::getCommonName(X509& x509) {
+  return commonName(X509_get_subject_name(&x509));
+}
+
+Optional<std::string> OpenSSLCertUtils::getIssuerCommonName(X509& x509) {
+  return commonName(X509_get_issuer_name(&x509));
 }
 
 std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(X509& x509) {

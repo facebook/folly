@@ -233,6 +233,8 @@ TEST_P(OpenSSLCertUtilsTest, TestX509CN) {
   EXPECT_NE(x509, nullptr);
   auto cn = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
   EXPECT_EQ(cn.value(), "Asox Company");
+  auto issuerCn = folly::ssl::OpenSSLCertUtils::getIssuerCommonName(*x509);
+  EXPECT_EQ(issuerCn.value(), "Thrift Certificate Authority");
   auto sans = folly::ssl::OpenSSLCertUtils::getSubjectAltNames(*x509);
   EXPECT_EQ(sans.size(), 0);
 }

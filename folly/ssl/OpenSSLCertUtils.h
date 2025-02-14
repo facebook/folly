@@ -35,6 +35,8 @@ class OpenSSLCertUtils {
   // Note: non-const until OpenSSL 1.1.0
   static Optional<std::string> getCommonName(X509& x509);
 
+  static Optional<std::string> getIssuerCommonName(X509& x509);
+
   static std::vector<std::string> getSubjectAltNames(X509& x509);
 
   /*
