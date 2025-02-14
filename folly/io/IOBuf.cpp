@@ -799,7 +799,7 @@ IOBuf IOBuf::cloneCoalescedAsValueWithHeadroomTailroom(
   auto current = this;
   do {
     if (current->length() > 0) {
-      DCHECK_NOTNULL(current->data());
+      DCHECK_NE(current->data(), nullptr);
       DCHECK_LE(current->length(), newBuf.tailroom());
       memcpy(newBuf.writableTail(), current->data(), current->length());
       newBuf.append(current->length());
