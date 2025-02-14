@@ -344,7 +344,7 @@ IoUringBufferProviderBase::UniquePtr makeProvidedBufferRing(Args&&...) {
 bool validateZeroCopyRxOptions(IoUringBackend::Options& options) {
   if (options.zeroCopyRx &&
       (options.zcRxIfname.empty() || options.zcRxIfindex <= 0 ||
-       options.zcRxQueueId == -1)) {
+       options.zcRxQueueId == -1 || !options.resolveNapiId)) {
     return false;
   }
 
@@ -564,6 +564,8 @@ IoUringBackend::IoUringBackend(Options options)
     params_.flags |= IORING_SETUP_R_DISABLED;
     params_.flags |= IORING_SETUP_COOP_TASKRUN;
     params_.flags |= IORING_SETUP_SUBMIT_ALL;
+
+    napiId_ = options_.resolveNapiId(options.zcRxIfindex, options.zcRxQueueId);
   }
 
   // poll SQ options

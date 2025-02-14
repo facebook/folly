@@ -61,6 +61,9 @@ class IoUringBackend : public EventBaseBackendBase {
     using std::runtime_error::runtime_error;
   };
 
+  using ResolveNapiIdCallback =
+      std::function<int(int ifindex, uint32_t queueId)>;
+
   struct Options {
     enum Flags {
       POLL_SQ = 0x1,
@@ -216,6 +219,12 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setResolveNapiCallback(ResolveNapiIdCallback&& v) {
+      resolveNapiId = std::move(v);
+
+      return *this;
+    }
+
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -253,6 +262,7 @@ class IoUringBackend : public EventBaseBackendBase {
     std::string zcRxIfname;
     int zcRxQueueId{-1};
     int zcRxIfindex{-1};
+    ResolveNapiIdCallback resolveNapiId;
   };
 
   explicit IoUringBackend(Options options);
