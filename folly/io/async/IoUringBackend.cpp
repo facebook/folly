@@ -163,9 +163,6 @@ void checkLogOverflow([[maybe_unused]] struct io_uring* ring) {
 #endif
 }
 
-} // namespace
-
-namespace {
 class SQGroupInfoRegistry {
  private:
   // a group is a collection of io_uring instances
@@ -343,6 +340,16 @@ IoUringBufferProviderBase::UniquePtr makeProvidedBufferRing(Args&&...) {
 }
 
 #endif
+
+bool validateZeroCopyRxOptions(IoUringBackend::Options& options) {
+  if (options.zeroCopyRx &&
+      (options.zcRxIfname.empty() || options.zcRxIfindex <= 0 ||
+       options.zcRxQueueId == -1)) {
+    return false;
+  }
+
+  return true;
+}
 
 } // namespace
 
@@ -527,6 +534,9 @@ IoUringBackend::IoUringBackend(Options options)
   if (timerFd_ < 0) {
     throw std::runtime_error("timerfd_create error");
   }
+  if (!validateZeroCopyRxOptions(options_)) {
+    throw std::runtime_error("invalid zero copy rx options");
+  }
 
   ::memset(&ioRing_, 0, sizeof(ioRing_));
   ::memset(&params_, 0, sizeof(params_));
@@ -546,6 +556,15 @@ IoUringBackend::IoUringBackend(Options options)
     usingDeferTaskrun_ = true;
   }
 #endif
+
+  if (options_.zeroCopyRx) {
+    params_.flags |= IORING_SETUP_CQE32;
+    params_.flags |= IORING_SETUP_DEFER_TASKRUN;
+    params_.flags |= IORING_SETUP_SINGLE_ISSUER;
+    params_.flags |= IORING_SETUP_R_DISABLED;
+    params_.flags |= IORING_SETUP_COOP_TASKRUN;
+    params_.flags |= IORING_SETUP_SUBMIT_ALL;
+  }
 
   // poll SQ options
   if (options.flags & Options::Flags::POLL_SQ) {

@@ -773,6 +773,7 @@ cpp_library(
     ],
     modular_headers = False,
     deps = [
+        ":io_uring_provided_buffer_ring",
         "//folly:demangle",
         "//folly:file_util",
         "//folly:glog",
@@ -780,7 +781,6 @@ cpp_library(
         "//folly:spin_lock",
         "//folly:string",
         "//folly/container:f14_hash",
-        "//folly/io/async:io_uring_provided_buffer_ring",
         "//folly/lang:bits",
         "//folly/portability:gflags",
         "//folly/portability:sockets",
