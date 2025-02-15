@@ -511,6 +511,18 @@ cpp_library(
 )
 
 cpp_library(
+    name = "synchronized",
+    headers = ["Synchronized.h"],
+    exported_deps = [
+        ":shared_lock",
+        ":shared_mutex",
+        ":task",
+        ":traits",
+        "//folly:utility",
+    ],
+)
+
+cpp_library(
     name = "task",
     headers = ["Task.h"],
     exported_deps = [

@@ -334,6 +334,21 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "synchronized_test",
+    srcs = ["SynchronizedTest.cpp"],
+    deps = [
+        "//folly/coro:baton",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:synchronized",
+        "//folly/coro:task",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+    ],
+)
+
 cpp_benchmark(
     name = "task_bench",
     srcs = ["TaskBenchmark.cpp"],
