@@ -141,6 +141,7 @@ AsyncServerSocket::AsyncServerSocket(EventBase* eventBase)
       callbackIndex_(0),
       backoffTimeout_(nullptr),
       callbacks_(),
+      napiIdToCallback_(),
       keepAliveEnabled_(true),
       closeOnExec_(true) {
   disableTransparentTls();
@@ -172,6 +173,7 @@ void AsyncServerSocket::setShutdownSocketSet(
 
 AsyncServerSocket::~AsyncServerSocket() {
   assert(callbacks_.empty());
+  assert(napiIdToCallback_.empty());
 }
 
 int AsyncServerSocket::stopAccepting(int shutdownFlags) {
@@ -215,6 +217,7 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   // removeAcceptCallback().
   std::vector<CallbackInfo> callbacksCopy;
   callbacks_.swap(callbacksCopy);
+  napiIdToCallback_.clear();
   localCallbackIndex_ = -1;
   for (const auto& callback : callbacksCopy) {
     // consumer may not be set if we are running in primary event base
@@ -641,6 +644,13 @@ void AsyncServerSocket::addAcceptCallback(
   bool runStartAccepting = accepting_ && callbacks_.empty();
 
   callbacks_.emplace_back(callback, eventBase);
+  int napiId = -1;
+  if (eventBase) {
+    napiId = eventBase->getBackend()->getNapiId();
+    if (napiId != -1) {
+      napiIdToCallback_.emplace(napiId, CallbackInfo(callback, eventBase));
+    }
+  }
 
   SCOPE_SUCCESS {
     // If this is the first accept callback and we are supposed to be accepting,
@@ -676,6 +686,11 @@ void AsyncServerSocket::addAcceptCallback(
     throw;
   }
   callbacks_.back().consumer = acceptor;
+  if (napiId != -1 &&
+      napiIdToCallback_.find(napiId) != napiIdToCallback_.end()) {
+    auto& cb = napiIdToCallback_.at(napiId);
+    cb.consumer = acceptor;
+  }
   if (localCallbackIndex_ < 0 && callbacks_.back().eventBase == eventBase_) {
     localCallbackIndex_ = static_cast<int>(callbacks_.size() - 1);
   }
@@ -705,6 +720,19 @@ void AsyncServerSocket::removeAcceptCallback(
     }
     ++it;
     ++n;
+  }
+
+  // If the matching AcceptCallback is also tied to a specific NAPI ID, erase it
+  // as well.
+  for (auto mapIt = napiIdToCallback_.begin();
+       mapIt != napiIdToCallback_.end();) {
+    auto& cb = mapIt->second;
+    if (cb.callback == callback &&
+        (cb.eventBase == eventBase || eventBase == nullptr)) {
+      mapIt = napiIdToCallback_.erase(mapIt);
+    } else {
+      ++mapIt;
+    }
   }
 
   // Remove this callback from callbacks_.

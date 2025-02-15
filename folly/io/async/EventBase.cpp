@@ -155,6 +155,16 @@ EventBaseBackend::~EventBaseBackend() {
   event_base_free(evb_);
 }
 
+class TestEventBaseBackend : public EventBaseBackend {
+ public:
+  explicit TestEventBaseBackend(int napiId) : napiId_(napiId) {}
+
+  int getNapiId() const override { return napiId_; }
+
+ private:
+  int napiId_;
+};
+
 } // namespace
 
 namespace folly {
@@ -393,6 +403,10 @@ bool EventBase::tryDeregister(detail::EventBaseLocalBase& evbl) {
 
 std::unique_ptr<EventBaseBackendBase> EventBase::getDefaultBackend() {
   return std::make_unique<EventBaseBackend>();
+}
+
+std::unique_ptr<EventBaseBackendBase> EventBase::getTestBackend(int napiId) {
+  return std::make_unique<TestEventBaseBackend>(napiId);
 }
 
 size_t EventBase::getNotificationQueueSize() const {

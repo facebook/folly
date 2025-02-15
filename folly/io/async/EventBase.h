@@ -1003,6 +1003,7 @@ class EventBase
   WorkerProvider* getThreadIdCollector() override;
 
   static std::unique_ptr<EventBaseBackendBase> getDefaultBackend();
+  static std::unique_ptr<EventBaseBackendBase> getTestBackend(int napiId);
 
  protected:
   bool keepAliveAcquire() noexcept override;

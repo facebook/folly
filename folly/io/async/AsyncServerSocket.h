@@ -946,6 +946,9 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     if (callbackAssignFunc_ && socket != NetworkSocket()) {
       auto num = callbackAssignFunc_(this, socket);
       if (num >= 0) {
+        if (napiIdToCallback_.find(num) != napiIdToCallback_.end()) {
+          return &napiIdToCallback_.at(num);
+        }
         return &callbacks_[num % callbacks_.size()];
       }
     }
@@ -1016,6 +1019,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   uint32_t callbackIndex_;
   BackoffTimeout* backoffTimeout_;
   std::vector<CallbackInfo> callbacks_;
+  std::unordered_map<unsigned int, CallbackInfo> napiIdToCallback_;
   CallbackAssignFunction callbackAssignFunc_;
   int localCallbackIndex_{-1};
   bool keepAliveEnabled_;
