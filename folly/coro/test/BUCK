@@ -287,6 +287,17 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "serial_queue_runner_test",
+    srcs = ["SerialQueueRunnerTest.cpp"],
+    deps = [
+        "//folly/coro:async_scope",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:serial_queue_runner",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "shared_promise_test",
     srcs = [
         "SharedPromiseTest.cpp",

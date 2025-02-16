@@ -460,6 +460,17 @@ cpp_library(
 )
 
 cpp_library(
+    name = "serial_queue_runner",
+    srcs = ["SerialQueueRunner.cpp"],
+    headers = ["SerialQueueRunner.h"],
+    exported_deps = [
+        ":baton",
+        ":task",
+        "//folly:exception_wrapper",
+    ],
+)
+
+cpp_library(
     name = "shared_lock",
     headers = ["SharedLock.h"],
     exported_deps = [
