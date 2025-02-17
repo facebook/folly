@@ -242,8 +242,8 @@ class StackAwareViaIfAsyncAwaiter {
       : viaCoroutine_(CoroutineType::create(std::move(executor))),
         awaitable_(folly::coro::co_withAsyncStack(
             static_cast<Awaitable&&>(awaitable))),
-        awaiter_(folly::coro::get_awaiter(
-            static_cast<WithAsyncStackAwaitable&&>(awaitable_))) {}
+        awaiter_(
+            get_awaiter(static_cast<WithAsyncStackAwaitable&&>(awaitable_))) {}
 
   decltype(auto) await_ready() noexcept(noexcept(awaiter_.await_ready())) {
     return awaiter_.await_ready();
@@ -301,8 +301,7 @@ class ViaIfAsyncAwaiter {
   explicit ViaIfAsyncAwaiter(
       folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
       : viaCoroutine_(CoroutineType::create(std::move(executor))),
-        awaiter_(
-            folly::coro::get_awaiter(static_cast<Awaitable&&>(awaitable))) {}
+        awaiter_(get_awaiter(static_cast<Awaitable&&>(awaitable))) {}
 
   decltype(auto) await_ready() noexcept(noexcept(awaiter_.await_ready())) {
     return awaiter_.await_ready();
@@ -581,7 +580,7 @@ class TryAwaiter {
 
  public:
   explicit TryAwaiter(Awaitable&& awaiter)
-      : awaiter_(folly::coro::get_awaiter(static_cast<Awaitable&&>(awaiter))) {}
+      : awaiter_(get_awaiter(static_cast<Awaitable&&>(awaiter))) {}
 
   auto await_ready() noexcept(noexcept(std::declval<Awaiter&>().await_ready()))
       -> decltype(std::declval<Awaiter&>().await_ready()) {

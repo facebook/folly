@@ -143,39 +143,42 @@ constexpr bool is_awaitable_v = is_awaitable<T>::value;
 /// for that type.
 ///
 /// This encapsulates calling 'operator co_await()' if it exists.
-template <
-    typename Awaitable,
-    std::enable_if_t<
-        folly::Conjunction<
-            is_awaiter<Awaitable>,
-            folly::Negation<detail::_has_free_operator_co_await<Awaitable>>,
-            folly::Negation<detail::_has_member_operator_co_await<Awaitable>>>::
-            value,
-        int> = 0>
-Awaitable& get_awaiter(Awaitable&& awaitable) {
-  return static_cast<Awaitable&>(awaitable);
-}
+struct get_awaiter_fn {
+  template <
+      typename Awaitable,
+      std::enable_if_t<
+          folly::Conjunction<
+              is_awaiter<Awaitable>,
+              folly::Negation<detail::_has_free_operator_co_await<Awaitable>>,
+              folly::Negation<
+                  detail::_has_member_operator_co_await<Awaitable>>>::value,
+          int> = 0>
+  Awaitable& operator()(Awaitable&& awaitable) const {
+    return static_cast<Awaitable&>(awaitable);
+  }
 
-template <
-    typename Awaitable,
-    std::enable_if_t<
-        detail::_has_member_operator_co_await<Awaitable>::value,
-        int> = 0>
-decltype(auto) get_awaiter(Awaitable&& awaitable) {
-  return static_cast<Awaitable&&>(awaitable).operator co_await();
-}
+  template <
+      typename Awaitable,
+      std::enable_if_t<
+          detail::_has_member_operator_co_await<Awaitable>::value,
+          int> = 0>
+  decltype(auto) operator()(Awaitable&& awaitable) const {
+    return static_cast<Awaitable&&>(awaitable).operator co_await();
+  }
 
-template <
-    typename Awaitable,
-    std::enable_if_t<
-        folly::Conjunction<
-            detail::_has_free_operator_co_await<Awaitable>,
-            folly::Negation<detail::_has_member_operator_co_await<Awaitable>>>::
-            value,
-        int> = 0>
-decltype(auto) get_awaiter(Awaitable&& awaitable) {
-  return operator co_await(static_cast<Awaitable&&>(awaitable));
-}
+  template <
+      typename Awaitable,
+      std::enable_if_t<
+          folly::Conjunction<
+              detail::_has_free_operator_co_await<Awaitable>,
+              folly::Negation<
+                  detail::_has_member_operator_co_await<Awaitable>>>::value,
+          int> = 0>
+  decltype(auto) operator()(Awaitable&& awaitable) const {
+    return operator co_await(static_cast<Awaitable&&>(awaitable));
+  }
+};
+constexpr inline get_awaiter_fn get_awaiter{};
 
 /// awaiter_type<Awaitable>
 ///

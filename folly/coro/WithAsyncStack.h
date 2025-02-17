@@ -118,7 +118,7 @@ class WithAsyncStackAwaiter {
 
  public:
   explicit WithAsyncStackAwaiter(Awaitable&& awaitable)
-      : awaiter_(folly::coro::get_awaiter(static_cast<Awaitable&&>(awaitable))),
+      : awaiter_(get_awaiter(static_cast<Awaitable&&>(awaitable))),
         coroWrapper_(WithAsyncStackCoroutine::create()) {}
 
   auto await_ready() noexcept(noexcept(std::declval<Awaiter&>().await_ready()))
