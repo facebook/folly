@@ -110,7 +110,7 @@ class Receiver<TValue>::Waiter : public detail::IChannelCallback {
  protected:
   struct State {
     Receiver<TValue>* receiver;
-    folly::coro::coroutine_handle<> awaitingCoroutine;
+    folly::coro::coroutine_handle<> awaitingCoroutine{};
     bool cancelled{false};
   };
 
