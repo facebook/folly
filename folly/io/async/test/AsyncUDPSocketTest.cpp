@@ -1228,8 +1228,8 @@ MATCHER_P3(AllHaveCmsgsAndNontrivialCmsgs, cmsgs, nontrivialCmsgs, count, "") {
 
 TEST(MatcherTest, AllHaveCmsgsTest) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  size_t count = 2;
-  size_t controlSize = 2;
+  constexpr size_t count = 2;
+  constexpr size_t controlSize = 2;
   mmsghdr msgvec[count];
   char control[count * controlSize * CMSG_SPACE(sizeof(uint16_t))];
   memset(control, 0, sizeof(control));

@@ -171,9 +171,9 @@ TEST(AtomicSharedPtr, AliasingWithNullptrConstructorTest) {
 
 TEST(AtomicSharedPtr, MaxPtrs) {
   shared_ptr<long> p(new long);
-  int max_atomic_shared_ptrs = 262144;
+  constexpr size_t max_atomic_shared_ptrs = 262144;
   atomic_shared_ptr<long> ptrs[max_atomic_shared_ptrs];
-  for (int i = 0; i < max_atomic_shared_ptrs - 1; i++) {
+  for (size_t i = 0; i < max_atomic_shared_ptrs - 1; i++) {
     ptrs[i].store(p);
   }
   atomic_shared_ptr<long> fail;
