@@ -113,33 +113,33 @@ template <typename FunctionType, bool InvokeNoexcept>
 class ScopeGuardImpl : public ScopeGuardImplBase {
  public:
   explicit ScopeGuardImpl(FunctionType& fn) noexcept(
-      std::is_nothrow_copy_constructible<FunctionType>::value)
+      std::is_nothrow_copy_constructible_v<FunctionType>)
       : ScopeGuardImpl(
             std::as_const(fn),
             makeFailsafe(
                 std::is_nothrow_copy_constructible<FunctionType>{}, &fn)) {}
 
   explicit ScopeGuardImpl(const FunctionType& fn) noexcept(
-      std::is_nothrow_copy_constructible<FunctionType>::value)
+      std::is_nothrow_copy_constructible_v<FunctionType>)
       : ScopeGuardImpl(
             fn,
             makeFailsafe(
                 std::is_nothrow_copy_constructible<FunctionType>{}, &fn)) {}
 
   explicit ScopeGuardImpl(FunctionType&& fn) noexcept(
-      std::is_nothrow_move_constructible<FunctionType>::value)
+      std::is_nothrow_move_constructible_v<FunctionType>)
       : ScopeGuardImpl(
             std::move_if_noexcept(fn),
             makeFailsafe(
                 std::is_nothrow_move_constructible<FunctionType>{}, &fn)) {}
 
   explicit ScopeGuardImpl(FunctionType&& fn, ScopeGuardDismissed) noexcept(
-      std::is_nothrow_move_constructible<FunctionType>::value)
+      std::is_nothrow_move_constructible_v<FunctionType>)
       // No need for failsafe in this case, as the guard is dismissed.
       : ScopeGuardImplBase{true}, function_(std::forward<FunctionType>(fn)) {}
 
   ScopeGuardImpl(ScopeGuardImpl&& other) noexcept(
-      std::is_nothrow_move_constructible<FunctionType>::value)
+      std::is_nothrow_move_constructible_v<FunctionType>)
       : function_(std::move_if_noexcept(other.function_)) {
     // If the above line attempts a copy and the copy throws, other is
     // left owning the cleanup action and will execute it (or not) depending
@@ -188,7 +188,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
 };
 
 template <typename F, bool INE>
-using ScopeGuardImplDecay = ScopeGuardImpl<typename std::decay<F>::type, INE>;
+using ScopeGuardImplDecay = ScopeGuardImpl<std::decay_t<F>, INE>;
 
 } // namespace detail
 
@@ -274,11 +274,10 @@ class ScopeGuardForNewException {
 enum class ScopeGuardOnFail {};
 
 template <typename FunctionType>
-ScopeGuardForNewException<typename std::decay<FunctionType>::type, true>
-operator+(detail::ScopeGuardOnFail, FunctionType&& fn) {
-  return ScopeGuardForNewException<
-      typename std::decay<FunctionType>::type,
-      true>(std::forward<FunctionType>(fn));
+ScopeGuardForNewException<std::decay_t<FunctionType>, true> operator+(
+    detail::ScopeGuardOnFail, FunctionType&& fn) {
+  return ScopeGuardForNewException<std::decay_t<FunctionType>, true>(
+      std::forward<FunctionType>(fn));
 }
 
 /**
@@ -287,11 +286,10 @@ operator+(detail::ScopeGuardOnFail, FunctionType&& fn) {
 enum class ScopeGuardOnSuccess {};
 
 template <typename FunctionType>
-ScopeGuardForNewException<typename std::decay<FunctionType>::type, false>
-operator+(ScopeGuardOnSuccess, FunctionType&& fn) {
-  return ScopeGuardForNewException<
-      typename std::decay<FunctionType>::type,
-      false>(std::forward<FunctionType>(fn));
+ScopeGuardForNewException<std::decay_t<FunctionType>, false> operator+(
+    ScopeGuardOnSuccess, FunctionType&& fn) {
+  return ScopeGuardForNewException<std::decay_t<FunctionType>, false>(
+      std::forward<FunctionType>(fn));
 }
 
 /**
@@ -300,9 +298,9 @@ operator+(ScopeGuardOnSuccess, FunctionType&& fn) {
 enum class ScopeGuardOnExit {};
 
 template <typename FunctionType>
-ScopeGuardImpl<typename std::decay<FunctionType>::type, true> operator+(
+ScopeGuardImpl<std::decay_t<FunctionType>, true> operator+(
     detail::ScopeGuardOnExit, FunctionType&& fn) {
-  return ScopeGuardImpl<typename std::decay<FunctionType>::type, true>(
+  return ScopeGuardImpl<std::decay_t<FunctionType>, true>(
       std::forward<FunctionType>(fn));
 }
 } // namespace detail
