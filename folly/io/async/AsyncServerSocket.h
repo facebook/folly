@@ -946,8 +946,9 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     if (callbackAssignFunc_ && socket != NetworkSocket()) {
       auto num = callbackAssignFunc_(this, socket);
       if (num >= 0) {
-        if (napiIdToCallback_.find(num) != napiIdToCallback_.end()) {
-          return &napiIdToCallback_.at(num);
+        if (auto it = napiIdToCallback_.find(num);
+            it != napiIdToCallback_.end()) {
+          return &it->second;
         }
         return &callbacks_[num % callbacks_.size()];
       }

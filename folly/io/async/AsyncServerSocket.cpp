@@ -686,10 +686,11 @@ void AsyncServerSocket::addAcceptCallback(
     throw;
   }
   callbacks_.back().consumer = acceptor;
-  if (napiId != -1 &&
-      napiIdToCallback_.find(napiId) != napiIdToCallback_.end()) {
-    auto& cb = napiIdToCallback_.at(napiId);
-    cb.consumer = acceptor;
+  if (napiId != -1) {
+    if (auto it = napiIdToCallback_.find(napiId);
+        it != napiIdToCallback_.end()) {
+      it->second.consumer = acceptor;
+    }
   }
   if (localCallbackIndex_ < 0 && callbacks_.back().eventBase == eventBase_) {
     localCallbackIndex_ = static_cast<int>(callbacks_.size() - 1);
