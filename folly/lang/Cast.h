@@ -51,4 +51,22 @@ FOLLY_ERASE like_t<S&&, T> down_cast(S&& ref) noexcept {
   return static_cast<like_t<S&&, T>>(*down_cast<T>(std::addressof(ref)));
 }
 
+template <
+    typename Dst,
+    typename Src,
+    std::enable_if_t<std::is_function_v<Src>, int> = 0>
+FOLLY_ERASE Dst* reinterpret_function_cast(Src* src) noexcept {
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wcast-function-type-mismatch")
+  return reinterpret_cast<Dst*>(src);
+  FOLLY_POP_WARNING
+}
+template <
+    typename Dst,
+    typename Src,
+    std::enable_if_t<std::is_function_v<Src>, int> = 0>
+FOLLY_ERASE Dst& reinterpret_function_cast(Src& src) noexcept {
+  return *reinterpret_function_cast<Dst>(&src);
+}
+
 } // namespace folly
