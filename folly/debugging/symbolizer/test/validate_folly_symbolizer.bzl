@@ -99,6 +99,7 @@ def customized_unittest(
                                 "//folly/experimental/symbolizer:symbolized_frame",
                                 "//folly/experimental/symbolizer:symbolizer",
                                 "//folly/experimental/symbolizer/detail:debug",
+                                "//folly/lang:cast",
                                 "//folly/portability:filesystem",
                                 "//folly/portability:gtest",
                                 "//folly/portability:unistd",

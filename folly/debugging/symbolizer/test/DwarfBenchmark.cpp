@@ -20,6 +20,7 @@
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/lang/Cast.h>
 #include <folly/portability/GFlags.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
@@ -42,7 +43,8 @@ void run(LocationInfoMode mode, size_t n) {
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      folly::reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   lexicalBlockBar();
   symbolizer.symbolize(frames);
   // The address of the line where lexicalBlockBar calls inlineB_inlineA_lfind.

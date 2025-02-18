@@ -29,6 +29,7 @@
 #include <folly/debugging/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/lang/Cast.h>
 #include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
@@ -133,7 +134,8 @@ void ElfCacheTest::SetUp() {
   SKIP_IF(!Symbolizer::isAvailable());
 
   gComparatorGetStackTraceArg = &goldenFrames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   bar();
 
   Symbolizer symbolizer;
@@ -179,14 +181,16 @@ TEST(SymbolizerTest, SymbolCache) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   bar();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
 
   FrameArray<100> frames2;
   gComparatorGetStackTraceArg = &frames2;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   bar();
   symbolizer.symbolize(frames2);
   SCOPED_TRACE_FRAMES(frames2);
@@ -255,7 +259,8 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -278,7 +283,8 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
 
   FrameArray<100> frames2;
   gComparatorGetStackTraceArg = &frames2;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames2);
 
@@ -297,7 +303,8 @@ TEST(SymbolizerTest, InlineFunctionWithoutEnoughFrames) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_B_A_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -330,7 +337,8 @@ TEST(SymbolizerTest, InlineFunctionInLexicalBlock) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_lexicalBlock_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -366,7 +374,8 @@ TEST(SymbolizerTest, InlineFunctionInDifferentCompilationUnit) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   // NOTE: inlineLTO_inlineA_lfind is only inlined with LTO/ThinLTO.
   call_inlineLTO_inlineA_lfind();
   symbolizer.symbolize(frames);
@@ -387,7 +396,8 @@ TEST(SymbolizerTest, InlineClassMemberFunctionSameFile) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_same_file_memberInline_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -414,7 +424,8 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunctionSameFile) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_same_file_staticMemberInline_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -441,7 +452,8 @@ TEST(SymbolizerTest, InlineClassMemberFunctionInDifferentFile) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_different_file_memberInline_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -468,7 +480,8 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunctionInDifferentFile) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_different_file_staticMemberInline_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -495,7 +508,8 @@ TEST(SymbolizerTest, InlineFunctionNoExtraFrames) {
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 100);
   FrameArray<9> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<9>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<9>);
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -503,7 +517,8 @@ TEST(SymbolizerTest, InlineFunctionNoExtraFrames) {
   Symbolizer symbolizer2(nullptr, LocationInfoMode::FULL, 100);
   FrameArray<9> frames2;
   gComparatorGetStackTraceArg = &frames2;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<9>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<9>);
   call_inlineB_inlineA_lfind();
   symbolizer2.symbolize(frames2);
   SCOPED_TRACE_FRAMES(frames2);
@@ -518,7 +533,8 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
 
   FrameArray<100> frames;
   gComparatorGetStackTraceArg = &frames;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames);
   SCOPED_TRACE_FRAMES(frames);
@@ -539,7 +555,8 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
 
   FrameArray<100> frames2;
   gComparatorGetStackTraceArg = &frames2;
-  gComparatorGetStackTrace = (bool (*)(void*))getStackTrace<100>;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
   call_inlineB_inlineA_lfind();
   symbolizer.symbolize(frames2);
   expectFramesEq(frames, frames2);

@@ -36,6 +36,7 @@ cpp_binary(
         "//folly/experimental/symbolizer:dwarf",
         "//folly/experimental/symbolizer:symbolized_frame",
         "//folly/experimental/symbolizer:symbolizer",
+        "//folly/lang:cast",
         "//folly/portability:gflags",
     ],
 )
