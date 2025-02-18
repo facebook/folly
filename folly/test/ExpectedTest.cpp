@@ -30,6 +30,8 @@
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wself-move")
+
 using std::shared_ptr;
 using std::unique_ptr;
 

@@ -23,6 +23,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/small_vector.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wself-move")
+
 namespace {
 
 template <typename I>

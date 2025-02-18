@@ -35,6 +35,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/sorted_vector_types.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wself-move")
+
 using folly::small_vector;
 
 using folly::small_vector_policy::policy_in_situ_only;

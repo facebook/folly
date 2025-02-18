@@ -21,6 +21,8 @@
 
 #include <folly/portability/GTest.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wself-move")
+
 struct SharedFromThisPtrTest : testing::Test {};
 
 struct jabberwocky : std::enable_shared_from_this<jabberwocky> {
