@@ -102,7 +102,7 @@ struct serialization_opts {
 
   // Sort keys of all objects before printing out (potentially slow)
   // using the provided less functor.
-  Function<bool(dynamic const&, dynamic const&) const> sort_keys_by;
+  Function<bool(dynamic const&, dynamic const&) const> sort_keys_by{};
 
   // Replace invalid utf8 characters with U+FFFD and continue
   bool skip_invalid_utf8{false};
