@@ -236,6 +236,16 @@
 #define FOLLY_ATTR_WEAK
 #endif
 
+#if defined(__has_attribute)
+#if __has_attribute(weak)
+#define FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME __attribute__((__weak__))
+#else
+#define FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME
+#endif
+#else
+#define FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME
+#endif
+
 // Microsoft ABI version (can be overridden manually if necessary)
 #ifndef FOLLY_MICROSOFT_ABI_VER
 #ifdef _MSC_VER

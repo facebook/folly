@@ -58,7 +58,8 @@ static size_t alignToAllocationGranularity(size_t s) {
 }
 
 extern "C" {
-int madvise(const void* /* addr */, size_t /* len */, int /* advise */) {
+FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME int madvise(
+    const void* /* addr */, size_t /* len */, int /* advise */) {
   // We do nothing at all.
   // Could probably implement dontneed via VirtualAlloc
   // with the MEM_RESET and MEM_RESET_UNDO flags.
@@ -171,7 +172,8 @@ void* mmapWinArgs(
 }
 } // namespace
 
-void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
+FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME void* mmap(
+    void* addr, size_t length, int prot, int flags, int fd, off_t off) {
   // offHigh is zero because off_t is only 32-bit on windows
   return mmapWinArgs(
       addr, length, prot, flags, fd, (DWORD)(0), (DWORD)(off & 0xFFFFFFFF));
@@ -215,7 +217,7 @@ int munlock(const void* addr, size_t length) {
   return 0;
 }
 
-int munmap(void* addr, size_t length) {
+FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME int munmap(void* addr, size_t length) {
   // Try to unmap it as a file, otherwise VirtualFree.
   if (!UnmapViewOfFile(addr)) {
     if (folly::kIsDebug) {
