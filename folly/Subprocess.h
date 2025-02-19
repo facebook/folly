@@ -503,29 +503,6 @@ class Subprocess {
     }
 
 #if defined(__linux__)
-    /**
-     * This is an experimental feature, it is best you don't use it at this
-     * point of time.
-     * Although folly would support cloning with custom flags in some form, this
-     * API might change in the near future. So use the following assuming it is
-     * experimental. (Apr 11, 2017)
-     *
-     * This unlocks Subprocess to support clone flags, many of them need
-     * CAP_SYS_ADMIN permissions. It might also require you to go through the
-     * implementation to understand what happens before, between and after the
-     * fork-and-exec.
-     *
-     * `man 2 clone` would be a starting point for knowing about the available
-     * flags.
-     */
-    using clone_flags_t = uint64_t;
-    Options& useCloneWithFlags(clone_flags_t cloneFlags) noexcept {
-      cloneFlags_ = cloneFlags;
-      return *this;
-    }
-#endif
-
-#if defined(__linux__)
     Options& setCpuSet(const cpu_set_t& cpuSet) {
       cpuSet_ = cpuSet;
       return *this;
@@ -550,11 +527,6 @@ class Subprocess {
 #endif
     DangerousPostForkPreExecCallback* dangerousPostForkPreExecCallback_{
         nullptr};
-#if defined(__linux__)
-    // none means `vfork()` instead of a custom `clone()`
-    // Optional<> is used because value of '0' means do clone without any flags.
-    Optional<clone_flags_t> cloneFlags_;
-#endif
 #if defined(__linux__)
     Optional<cpu_set_t> cpuSet_;
 #endif

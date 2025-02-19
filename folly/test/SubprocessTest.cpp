@@ -76,33 +76,6 @@ TEST(SimpleSubprocessTest, ExitsSuccessfullyChecked) {
   proc.waitChecked();
 }
 
-#ifdef __linux__
-
-TEST(SimpleSubprocessTest, CloneFlagsWithVfork) {
-  Subprocess proc(
-      std::vector<std::string>{"/bin/true"},
-      Subprocess::Options().useCloneWithFlags(SIGCHLD | CLONE_VFORK));
-  EXPECT_EQ(0, proc.wait().exitStatus());
-}
-
-TEST(SimpleSubprocessTest, CloneFlagsWithFork) {
-  Subprocess proc(
-      std::vector<std::string>{"/bin/true"},
-      Subprocess::Options().useCloneWithFlags(SIGCHLD));
-  EXPECT_EQ(0, proc.wait().exitStatus());
-}
-
-TEST(SimpleSubprocessTest, CloneFlagsSubprocessCtorExitsAfterExec) {
-  Subprocess proc(
-      std::vector<std::string>{"/bin/sleep", "3600"},
-      Subprocess::Options().useCloneWithFlags(SIGCHLD));
-  checkUnixError(::kill(proc.pid(), SIGKILL), "kill");
-  auto retCode = proc.wait();
-  EXPECT_TRUE(retCode.killed());
-}
-
-#endif // __linux__
-
 TEST(SimpleSubprocessTest, ExitsWithError) {
   Subprocess proc(std::vector<std::string>{"/bin/false"});
   EXPECT_EQ(1, proc.wait().exitStatus());

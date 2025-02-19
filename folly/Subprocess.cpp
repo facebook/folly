@@ -471,16 +471,24 @@ void Subprocess::spawnInternal(
       options.childDir_.empty() ? nullptr : options.childDir_.c_str();
 
   pid_t pid;
-#ifdef __linux__
-  if (options.cloneFlags_) {
-    pid = syscall(SYS_clone, *options.cloneFlags_, 0, nullptr, nullptr);
+  if (options.detach_) {
+    // If we are detaching we must use fork() instead of vfork() for the first
+    // fork, since we aren't going to simply call exec() in the child.
+    pid = AtFork::forkInstrumented(fork);
   } else {
-#endif
-    if (options.detach_) {
-      // If we are detaching we must use fork() instead of vfork() for the first
-      // fork, since we aren't going to simply call exec() in the child.
+    if (kIsSanitizeThread) {
+      // TSAN treats vfork as fork, so use the instrumented version
+      // instead
       pid = AtFork::forkInstrumented(fork);
     } else {
+      pid = vfork();
+    }
+  }
+  checkUnixError(pid, errno, "failed to fork");
+  if (pid == 0) {
+    // Fork a second time if detach_ was requested.
+    // This must be done before signals are restored in prepareChild()
+    if (options.detach_) {
       if (kIsSanitizeThread) {
         // TSAN treats vfork as fork, so use the instrumented version
         // instead
@@ -488,30 +496,6 @@ void Subprocess::spawnInternal(
       } else {
         pid = vfork();
       }
-    }
-#ifdef __linux__
-  }
-#endif
-  checkUnixError(pid, errno, "failed to fork");
-  if (pid == 0) {
-    // Fork a second time if detach_ was requested.
-    // This must be done before signals are restored in prepareChild()
-    if (options.detach_) {
-#ifdef __linux__
-      if (options.cloneFlags_) {
-        pid = syscall(SYS_clone, *options.cloneFlags_, 0, nullptr, nullptr);
-      } else {
-#endif
-        if (kIsSanitizeThread) {
-          // TSAN treats vfork as fork, so use the instrumented version
-          // instead
-          pid = AtFork::forkInstrumented(fork);
-        } else {
-          pid = vfork();
-        }
-#ifdef __linux__
-      }
-#endif
       if (pid == -1) {
         // Inform our parent process of the error so it can throw in the parent.
         childError(errFd, kChildFailure, errno);
