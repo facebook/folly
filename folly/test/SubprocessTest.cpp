@@ -122,6 +122,7 @@ TEST(SimpleSubprocessTest, MoveSubprocess) {
   Subprocess old_proc(std::vector<std::string>{"/bin/true"});
   EXPECT_TRUE(old_proc.returnCode().running());
   auto new_proc = std::move(old_proc);
+  // NOLINTNEXTLINE(bugprone-use-after-move)
   EXPECT_TRUE(old_proc.returnCode().notStarted());
   EXPECT_TRUE(new_proc.returnCode().running());
   EXPECT_EQ(0, new_proc.wait().exitStatus());
