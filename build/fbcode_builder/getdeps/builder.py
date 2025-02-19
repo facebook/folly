@@ -979,12 +979,18 @@ if __name__ == "__main__":
             # better signals for flaky tests.
             retry = 0
 
-        tpx = path_search(env, "tpx")
+        tpx = None
+        try:
+            from .facebook.testinfra import start_run
+
+            tpx = path_search(env, "tpx")
+        except ImportError:
+            # internal testinfra not available
+            pass
+
         if tpx and not no_testpilot:
             buck_test_info = list_tests()
             import os
-
-            from .facebook.testinfra import start_run
 
             buck_test_info_name = os.path.join(self.build_dir, ".buck-test-info.json")
             with open(buck_test_info_name, "w") as f:
