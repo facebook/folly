@@ -100,7 +100,7 @@ class FiberManager : public ::folly::Executor {
      * due to reduced inlining.
      *
      */
-    size_t stackSizeMultiplier{kIsSanitize ? 4 : (kIsDebug ? 2 : 1)};
+    size_t stackSizeMultiplier{kIsSanitize ? 4 : (!kIsOptimize ? 2 : 1)};
 
     /**
      * Record exact amount of stack used.
