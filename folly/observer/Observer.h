@@ -271,6 +271,10 @@ class Observer {
     return core_->getCreatorContext().typeInfo;
   }
 
+  const std::type_info* getCreatorInvokeResultTypeInfo() const {
+    return core_->getCreatorContext().invokeResultTypeInfo;
+  }
+
   const std::string& getCreatorName() const {
     return core_->getCreatorContext().name;
   }
