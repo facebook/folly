@@ -102,6 +102,7 @@ class F14BasicMap {
   using hash_token_type = F14HashToken;
   using hasher = typename Policy::Hasher;
   using key_equal = typename Policy::KeyEqual;
+  using hashed_key_type = F14HashedKey<key_type, hasher>;
   using allocator_type = typename Policy::Alloc;
   using reference = value_type&;
   using const_reference = value_type const&;
@@ -436,7 +437,7 @@ class F14BasicMap {
 
   template <typename M>
   std::pair<iterator, bool> insert_or_assign(
-      const F14HashedKey<key_type, hasher>& hashedKey, M&& obj) {
+      const hashed_key_type& hashedKey, M&& obj) {
     return insert_or_assign(
         hashedKey.getHashToken(), hashedKey.getKey(), std::forward<M>(obj));
   }
@@ -453,7 +454,7 @@ class F14BasicMap {
 
   template <typename M>
   std::pair<iterator, bool> insert_or_assign(
-      F14HashedKey<key_type, hasher>&& hashedKey, M&& obj) {
+      hashed_key_type&& hashedKey, M&& obj) {
     return insert_or_assign(
         hashedKey.getHashToken(),
         std::move(hashedKey.getKey()),
@@ -556,7 +557,7 @@ class F14BasicMap {
 
   template <typename... Args>
   std::pair<iterator, bool> try_emplace_token(
-      const F14HashedKey<key_type, hasher>& hashedKey, Args&&... args) {
+      const hashed_key_type& hashedKey, Args&&... args) {
     return try_emplace_token(
         hashedKey.getHashToken(),
         hashedKey.getKey(),
@@ -577,7 +578,7 @@ class F14BasicMap {
 
   template <typename... Args>
   std::pair<iterator, bool> try_emplace_token(
-      F14HashedKey<key_type, hasher>&& hashedKey, Args&&... args) {
+      hashed_key_type&& hashedKey, Args&&... args) {
     return try_emplace_token(
         hashedKey.getHashToken(),
         std::move(hashedKey.getKey()),
@@ -876,8 +877,7 @@ class F14BasicMap {
     return table_.makeIter(table_.find(token, key));
   }
 
-  FOLLY_ALWAYS_INLINE iterator
-  find(const F14HashedKey<key_type, hasher>& hashedKey) {
+  FOLLY_ALWAYS_INLINE iterator find(const hashed_key_type& hashedKey) {
     return table_.makeIter(
         table_.find(hashedKey.getHashToken(), hashedKey.getKey()));
   }
@@ -888,7 +888,7 @@ class F14BasicMap {
   }
 
   FOLLY_ALWAYS_INLINE const_iterator
-  find(F14HashedKey<key_type, hasher> const& hashedKey) const {
+  find(hashed_key_type const& hashedKey) const {
     return table_.makeIter(
         table_.find(hashedKey.getHashToken(), hashedKey.getKey()));
   }
@@ -936,8 +936,7 @@ class F14BasicMap {
     return !table_.find(token, key).atEnd();
   }
 
-  FOLLY_ALWAYS_INLINE bool contains(
-      const F14HashedKey<key_type, hasher>& hashedKey) const {
+  FOLLY_ALWAYS_INLINE bool contains(const hashed_key_type& hashedKey) const {
     return !table_.find(hashedKey.getHashToken(), hashedKey.getKey()).atEnd();
   }
 

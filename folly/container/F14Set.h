@@ -96,6 +96,7 @@ class F14BasicSet {
   using hash_token_type = F14HashToken;
   using hasher = typename Policy::Hasher;
   using key_equal = typename Policy::KeyEqual;
+  using hashed_key_type = F14HashedKey<key_type, hasher>;
   using allocator_type = typename Policy::Alloc;
   using reference = value_type&;
   using const_reference = value_type const&;
@@ -572,8 +573,7 @@ class F14BasicSet {
     return const_cast<F14BasicSet const*>(this)->find(token, key);
   }
 
-  FOLLY_ALWAYS_INLINE iterator
-  find(const F14HashedKey<key_type, hasher>& hashedKey) {
+  FOLLY_ALWAYS_INLINE iterator find(const hashed_key_type& hashedKey) {
     return const_cast<F14BasicSet const*>(this)->find(
         hashedKey.getHashToken(), hashedKey.getKey());
   }
@@ -584,7 +584,7 @@ class F14BasicSet {
   }
 
   FOLLY_ALWAYS_INLINE const_iterator
-  find(const F14HashedKey<key_type, hasher>& hashedKey) const {
+  find(const hashed_key_type& hashedKey) const {
     return table_.makeIter(
         table_.find(hashedKey.getHashToken(), hashedKey.getKey()));
   }
@@ -632,8 +632,7 @@ class F14BasicSet {
     return !table_.find(token, key).atEnd();
   }
 
-  FOLLY_ALWAYS_INLINE bool contains(
-      const F14HashedKey<key_type, hasher>& hashedKey) const {
+  FOLLY_ALWAYS_INLINE bool contains(const hashed_key_type& hashedKey) const {
     return !table_.find(hashedKey.getHashToken(), hashedKey.getKey()).atEnd();
   }
 
