@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: MIT OR Apache-2.0 WITH LLVM-exception
  */
 
+#if defined(__aarch64__) || defined(__arm__)
+
 #ifndef _ASMDEFS_H
 #define _ASMDEFS_H
 
@@ -101,6 +103,8 @@ GNU_PROPERTY (FEATURE_1_AND, FEATURE_1_BTI|FEATURE_1_PAC)
 # else
 #   define HAVE_SVE 0
 # endif
+#endif
+
 #endif
 
 #endif
