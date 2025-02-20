@@ -19,9 +19,11 @@
 #ifdef _WIN32
 #include <limits>
 
+#include <folly/CPortability.h>
 #include <folly/portability/Windows.h>
 
-extern "C" int flock(int fd, int operation) {
+extern "C" int FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME
+flock(int fd, int operation) {
   HANDLE h = (HANDLE)_get_osfhandle(fd);
   if (h == INVALID_HANDLE_VALUE) {
     return -1;

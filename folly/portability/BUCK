@@ -314,6 +314,7 @@ cpp_library(
     compiler_flags = roar_no_jit(),
     deps = [
         ":windows",
+        "//folly:c_portability",
     ],
 )
 
