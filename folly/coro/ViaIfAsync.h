@@ -574,8 +574,20 @@ using semi_await_result_t = await_result_t<decltype(folly::coro::co_viaIfAsync(
 
 namespace detail {
 
+template <typename Awaiter>
+using detect_await_resume_try =
+    decltype(FOLLY_DECLVAL(Awaiter).await_resume_try());
+
+template <typename Awaiter>
+constexpr bool is_awaiter_try = is_detected_v<detect_await_resume_try, Awaiter>;
+
+template <typename Awaitable>
+constexpr bool is_awaitable_try = is_awaiter_try<awaiter_type_t<Awaitable>>;
+
 template <typename Awaitable>
 class TryAwaiter {
+  static_assert(is_awaitable_try<Awaitable&&>);
+
   using Awaiter = awaiter_type_t<Awaitable>;
 
  public:

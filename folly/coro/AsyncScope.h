@@ -161,25 +161,36 @@ class AsyncScope {
             std::is_same_v<await_result_t<Awaitable>, folly::Unit>,
         "Result of the task would be discarded. Make sure task result is either void or folly::Unit.");
 
+    exception_wrapper exn;
     try {
-      co_await std::move(awaitable);
-    } catch (const OperationCancelled&) {
+      if constexpr (detail::is_awaitable_try<Awaitable>) {
+        auto ret = co_await co_awaitTry(std::move(awaitable));
+        if (ret.hasException()) {
+          exn = std::move(ret.exception());
+        }
+      } else {
+        co_await std::move(awaitable);
+      }
     } catch (...) {
+      // not-awaitable-try awaitables and not-noexcept-copy-constructible values
+      exn = exception_wrapper(std::current_exception());
+    }
+    if (exn && !exn.get_exception<OperationCancelled>()) {
       if (throwOnJoin) {
         LOG(ERROR)
             << (source.has_value() ? sourceLocationToString(source.value())
                                    : "")
             << "Unhandled exception thrown from task added to AsyncScope: "
-            << folly::exceptionStr(current_exception());
+            << exn;
         if (!exceptionRaised.exchange(true)) {
-          maybeException = folly::exception_wrapper(current_exception());
+          maybeException = std::move(exn);
         }
       } else {
         LOG(DFATAL)
             << (source.has_value() ? sourceLocationToString(source.value())
                                    : "")
             << "Unhandled exception thrown from task added to AsyncScope: "
-            << folly::exceptionStr(current_exception());
+            << exn;
       }
     }
   }
@@ -255,8 +266,8 @@ inline Task<void> AsyncScope::joinAsync() noexcept {
   joinStarted_.store(true, std::memory_order_relaxed);
   co_await barrier_.arriveAndWait();
   joined_ = true;
-  if (maybeException_.has_exception_ptr()) {
-    maybeException_.throw_exception();
+  if (maybeException_) {
+    co_yield co_error{std::move(maybeException_)};
   }
 }
 
