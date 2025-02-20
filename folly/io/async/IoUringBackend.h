@@ -225,6 +225,18 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setZeroCopyRxNumPages(int v) {
+      zcRxNumPages = v;
+
+      return *this;
+    }
+
+    Options& setZeroCopyRxRefillEntries(int v) {
+      zcRxRefillEntries = v;
+
+      return *this;
+    }
+
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -263,6 +275,8 @@ class IoUringBackend : public EventBaseBackendBase {
     int zcRxQueueId{-1};
     int zcRxIfindex{-1};
     ResolveNapiIdCallback resolveNapiId;
+    int zcRxNumPages{-1};
+    int zcRxRefillEntries{-1};
   };
 
   explicit IoUringBackend(Options options);
