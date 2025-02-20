@@ -555,6 +555,7 @@ cpp_benchmark(
         "//folly:fbstring",
         "//folly:random",
         "//folly/container:foreach",
+        "//folly/lang:keep",
         "//folly/portability:gflags",
     ],
 )

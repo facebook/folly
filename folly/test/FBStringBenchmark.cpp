@@ -25,10 +25,17 @@
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
 #include <folly/container/Foreach.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GFlags.h>
 
 using namespace std;
 using namespace folly;
+
+extern "C" FOLLY_KEEP void check_folly_fbstring_core_char_ctor_small(
+    fbstring_core<char>* out, const char* data, size_t size) {
+  assume(size < sizeof(*out));
+  ::new (out) fbstring_core<char>(data, size);
+}
 
 static const int seed = folly::randomNumberSeed();
 using RandomT = std::mt19937;
