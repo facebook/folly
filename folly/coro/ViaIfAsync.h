@@ -750,7 +750,7 @@ template <
     typename Awaitable,
     std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
 detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
-    Awaitable&& awaitable) {
+    [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable&& awaitable) {
   return detail::TryAwaitable<remove_cvref_t<Awaitable>>{
       static_cast<Awaitable&&>(awaitable)};
 }
@@ -758,7 +758,7 @@ template <
     typename Awaitable,
     std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
 detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
-    Awaitable awaitable) {
+    [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {
   return detail::TryAwaitable<remove_cvref_t<Awaitable>>{
       std::move(awaitable).unsafeMoveMustAwaitImmediately()};
 }
