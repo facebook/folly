@@ -508,23 +508,17 @@ FOLLY_ALWAYS_INLINE void IoUringBackend::setProcessSignals() {
 }
 
 void IoUringBackend::processPollIoSqe(
-    IoUringBackend* backend, IoSqe* ioSqe, int res, uint32_t flags) {
-  backend->processPollIo(ioSqe, res, flags);
+    IoUringBackend* backend, IoSqe* ioSqe, const io_uring_cqe* cqe) {
+  backend->processPollIo(ioSqe, cqe->res, cqe->flags);
 }
 
 void IoUringBackend::processTimerIoSqe(
-    IoUringBackend* backend,
-    IoSqe* /*sqe*/,
-    int /*res*/,
-    uint32_t /* flags */) {
+    IoUringBackend* backend, IoSqe* /*sqe*/, const io_uring_cqe* /*cqe*/) {
   backend->setProcessTimers();
 }
 
 void IoUringBackend::processSignalReadIoSqe(
-    IoUringBackend* backend,
-    IoSqe* /*sqe*/,
-    int /*res*/,
-    uint32_t /* flags */) {
+    IoUringBackend* backend, IoSqe* /*sqe*/, const io_uring_cqe* /*cqe*/) {
   backend->setProcessSignals();
 }
 

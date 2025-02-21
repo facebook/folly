@@ -496,17 +496,11 @@ class IoUringBackend : public EventBaseBackendBase {
   struct IoSqe;
 
   static void processPollIoSqe(
-      IoUringBackend* backend, IoSqe* ioSqe, int res, uint32_t flags);
+      IoUringBackend* backend, IoSqe* ioSqe, const io_uring_cqe* cqe);
   static void processTimerIoSqe(
-      IoUringBackend* backend,
-      IoSqe* /*sqe*/,
-      int /*res*/,
-      uint32_t /* flags */);
+      IoUringBackend* backend, IoSqe* /*sqe*/, const io_uring_cqe* /*cqe*/);
   static void processSignalReadIoSqe(
-      IoUringBackend* backend,
-      IoSqe* /*sqe*/,
-      int /*res*/,
-      uint32_t /* flags */);
+      IoUringBackend* backend, IoSqe* /*sqe*/, const io_uring_cqe* /*cqe*/);
 
   // signal handling
   void addSignalEvent(Event& event);
@@ -556,7 +550,7 @@ class IoUringBackend : public EventBaseBackendBase {
   };
 
   struct IoSqe : public IoSqeBase {
-    using BackendCb = void(IoUringBackend*, IoSqe*, int, uint32_t);
+    using BackendCb = void(IoUringBackend*, IoSqe*, const io_uring_cqe*);
     explicit IoSqe(
         IoUringBackend* backend = nullptr,
         bool poolAlloc = false,
@@ -564,7 +558,7 @@ class IoUringBackend : public EventBaseBackendBase {
         : backend_(backend), poolAlloc_(poolAlloc), persist_(persist) {}
 
     void callback(const io_uring_cqe* cqe) noexcept override {
-      backendCb_(backend_, this, cqe->res, cqe->flags);
+      backendCb_(backend_, this, cqe);
     }
     void callbackCancelled(const io_uring_cqe*) noexcept override { release(); }
     virtual void release() noexcept;
@@ -1093,8 +1087,8 @@ class IoUringBackend : public EventBaseBackendBase {
   void processFileOp(IoSqe* ioSqe, int res) noexcept;
 
   static void processFileOpCB(
-      IoUringBackend* backend, IoSqe* ioSqe, int res, uint32_t) {
-    static_cast<IoUringBackend*>(backend)->processFileOp(ioSqe, res);
+      IoUringBackend* backend, IoSqe* ioSqe, const io_uring_cqe* cqe) {
+    static_cast<IoUringBackend*>(backend)->processFileOp(ioSqe, cqe->res);
   }
 
   IoUringBackend::IoSqe* allocNewIoSqe(const EventCallback& /*cb*/) {
