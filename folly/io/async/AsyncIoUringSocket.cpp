@@ -141,6 +141,9 @@ AsyncIoUringSocket::ReadSqe::ReadSqe(AsyncIoUringSocket* parent)
     : IoSqeBase(IoSqeBase::Type::Read), parent_(parent) {
   supportsMultishotRecv_ = parent->options_.multishotRecv &&
       parent->backend_->kernelSupportsRecvmsgMultishot();
+  // If the backend for this socket has an IoUringZeroCopyBufferPool, then zero
+  // copy is enabled implicitly.
+  supportsZeroCopyRx_ = parent->backend_->zcBufferPool() != nullptr;
   setEventBase(parent->evb_);
 }
 
@@ -588,6 +591,13 @@ void AsyncIoUringSocket::ReadSqe::processOldEventBaseRead() {
   }
 }
 
+bool AsyncIoUringSocket::ReadSqe::isEOF(const io_uring_cqe* cqe) noexcept {
+  if (supportsZeroCopyRx_) {
+    return cqe->res == 0 && cqe->flags == 0;
+  }
+  return cqe->res == 0;
+}
+
 void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
   auto res = cqe->res;
   auto flags = cqe->flags;
@@ -622,7 +632,7 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
       buffer_guard.dismiss();
     }
   } else {
-    if (res == 0) {
+    if (isEOF(cqe)) {
       if (parent_) {
         parent_->readEOF();
       }
@@ -663,7 +673,11 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
     } else {
       uint64_t const cb_was = setReadCbCount_;
       bytesReceived_ += res;
-      if (lastUsedBufferProvider_) {
+      if (supportsZeroCopyRx_) {
+        const io_uring_zcrx_cqe* rcqe = (io_uring_zcrx_cqe*)(cqe + 1);
+        auto pool = parent_->backend_->zcBufferPool();
+        sendReadBuf(pool->getIoBuf(cqe, rcqe), queuedReceivedData_);
+      } else if (lastUsedBufferProvider_) {
         sendReadBuf(
             lastUsedBufferProvider_->getIoBuf(flags >> 16, res),
             queuedReceivedData_);
@@ -726,7 +740,10 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
     maxSize_ = tmpBuffer_->tailroom();
     ::io_uring_prep_recv(sqe, fd, tmpBuffer_->writableTail(), maxSize_, 0);
   } else {
-    if (readCallbackUseIoBufs()) {
+    if (supportsZeroCopyRx_) {
+      ::io_uring_prep_rw(IORING_OP_RECV_ZC, sqe, fd, nullptr, 0, 0);
+      sqe->ioprio |= IORING_RECV_MULTISHOT;
+    } else if (readCallbackUseIoBufs()) {
       auto* bp = parent_->backend_->bufferProvider();
       if (bp->available()) {
         lastUsedBufferProvider_ = bp;
