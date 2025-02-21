@@ -1115,6 +1115,15 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "io_uring_zero_copy_buffer_pool_test",
+    srcs = ["IoUringZeroCopyBufferPoolTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/io/async:io_uring_zero_copy_buffer_pool",
+    ],
+)
+
 cpp_binary(
     name = "registered_fd_benchmark",
     srcs = ["RegisteredFdBenchmark.cpp"],

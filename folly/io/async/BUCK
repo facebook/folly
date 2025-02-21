@@ -837,6 +837,27 @@ cpp_library(
 )
 
 cpp_library(
+    name = "io_uring_zero_copy_buffer_pool",
+    srcs = [
+        "IoUringZeroCopyBufferPool.cpp",
+    ],
+    headers = [
+        "IoUringZeroCopyBufferPool.h",
+    ],
+    modular_headers = False,
+    deps = [
+        "//folly:conv",
+        "//folly/lang:align",
+        "//folly/portability:sys_mman",
+    ],
+    exported_deps = [
+        ":liburing",
+        "//folly/io:iobuf",
+        "//folly/synchronization:distributed_mutex",
+    ],
+)
+
+cpp_library(
     name = "io_uring_event",
     srcs = [
         "IoUringEvent.cpp",
