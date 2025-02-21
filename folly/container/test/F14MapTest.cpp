@@ -41,6 +41,9 @@ using namespace folly::f14;
 using namespace folly::string_piece_literals;
 using namespace folly::test;
 
+template <typename A, typename B>
+using detect_op_eq = decltype(FOLLY_DECLVAL(A) == FOLLY_DECLVAL(B));
+
 static constexpr bool kFallback = folly::f14::detail::getF14IntrinsicsMode() ==
     folly::f14::detail::F14IntrinsicsMode::None;
 
@@ -2203,6 +2206,67 @@ TEST(F14Map, containsWithPrecomputedHashKeyWrapper) {
   testContainsWithPrecomputedHashKeyWrapper<F14VectorMap>();
   testContainsWithPrecomputedHashKeyWrapper<F14NodeMap>();
   testContainsWithPrecomputedHashKeyWrapper<F14FastMap>();
+}
+
+template <template <class...> class TMap>
+void testContainsWithPrecomputedHashKeyWrapperTransparent() {
+  struct Key {
+    int num{};
+    Key(double, int num_) : num{num_} {}
+  };
+  static_assert(!std::is_constructible_v<Key, int>);
+  static_assert(!std::is_constructible_v<int, Key>);
+  static_assert(!folly::is_detected_v<detect_op_eq, Key, Key>);
+  static_assert(!folly::is_detected_v<detect_op_eq, Key, int>);
+  static_assert(!folly::is_detected_v<detect_op_eq, int, Key>);
+  struct KeyHash {
+    using is_transparent = void;
+    size_t operator()(Key key) const { return key.num; }
+    size_t operator()(int key) const { return key; }
+  };
+  struct KeyEqual {
+    using is_transparent = void;
+    bool operator()(Key a, Key b) const { return a.num == b.num; }
+    bool operator()(Key a, int b) const { return a.num == b; }
+    bool operator()(int a, Key b) const { return a == b.num; }
+  };
+  using Map = TMap<Key, const char*, KeyHash, KeyEqual>;
+  using HKey = typename Map::hashed_key_type;
+  static_assert(std::is_same_v<HKey, F14HashedKey<Key, KeyHash, KeyEqual>>);
+
+  int num = 3;
+  Key key{0., num};
+  HKey hkey{key};
+
+  Map m{};
+  EXPECT_FALSE(m.count(key));
+  EXPECT_FALSE(m.count(num));
+  EXPECT_FALSE(m.count(hkey));
+
+  m.insert({key, "hello"});
+  EXPECT_TRUE(m.count(key));
+  EXPECT_TRUE(m.count(num));
+  EXPECT_TRUE(m.count(hkey));
+  EXPECT_STREQ("hello", m.find(key)->second);
+  EXPECT_STREQ("hello", m.find(num)->second);
+  EXPECT_STREQ("hello", m.find(hkey)->second);
+  m.clear();
+
+  m.insert({hkey, "world"});
+  EXPECT_TRUE(m.count(key));
+  EXPECT_TRUE(m.count(num));
+  EXPECT_TRUE(m.count(hkey));
+  EXPECT_STREQ("world", m.find(key)->second);
+  EXPECT_STREQ("world", m.find(num)->second);
+  EXPECT_STREQ("world", m.find(hkey)->second);
+  m.clear();
+}
+
+TEST(F14Map, containsWithPrecomputedHashKeyWrapperTransparent) {
+  testContainsWithPrecomputedHashKeyWrapperTransparent<F14ValueMap>();
+  testContainsWithPrecomputedHashKeyWrapperTransparent<F14VectorMap>();
+  testContainsWithPrecomputedHashKeyWrapperTransparent<F14NodeMap>();
+  testContainsWithPrecomputedHashKeyWrapperTransparent<F14FastMap>();
 }
 #endif
 

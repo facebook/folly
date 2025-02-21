@@ -233,7 +233,7 @@ class F14HashToken final {
   template <typename Policy>
   friend class f14::detail::F14Table;
 
-  template <typename Key, typename Hasher>
+  template <typename Key, typename Hasher, typename KeyEqual>
   friend class F14HashedKey;
 };
 
@@ -410,14 +410,37 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
 } // namespace detail
 } // namespace f14
 
-template <typename TKeyType, typename Hasher = f14::DefaultHasher<TKeyType>>
+template <
+    typename TKeyType,
+    typename Hasher = f14::DefaultHasher<TKeyType>,
+    typename KeyEqual = f14::DefaultKeyEqual<TKeyType>>
 class F14HashedKey final {
+ private:
+  template <typename K>
+  using EligibleForHeterogeneousCompare =
+      detail::EligibleForHeterogeneousFind<TKeyType, Hasher, KeyEqual, K>;
+
+  template <typename K, typename T>
+  using EnableHeterogeneousCompare =
+      std::enable_if_t<EligibleForHeterogeneousCompare<K>::value, T>;
+
+  static constexpr void checkTemplateParamContract() {
+    static_assert(is_constexpr_default_constructible_v<Hasher>);
+    static_assert(is_constexpr_default_constructible_v<KeyEqual>);
+    static_assert(std::is_trivially_copyable_v<Hasher>);
+    static_assert(std::is_trivially_copyable_v<KeyEqual>);
+    static_assert(std::is_empty_v<Hasher>);
+    static_assert(std::is_empty_v<KeyEqual>);
+  }
+
  public:
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
   template <typename... Args>
   explicit F14HashedKey(Args&&... args)
       : key_(std::forward<Args>(args)...),
-        hash_(f14::detail::splitHashImpl<Hasher, TKeyType>(Hasher{}(key_))) {}
+        hash_(f14::detail::splitHashImpl<Hasher, TKeyType>(Hasher{}(key_))) {
+    checkTemplateParamContract();
+  }
 #else
   F14HashedKey() = delete;
 #endif
@@ -429,10 +452,44 @@ class F14HashedKey final {
   /* implicit */ operator const TKeyType&() const { return key_; }
   explicit operator const F14HashToken&() const { return hash_; }
 
-  bool operator==(const F14HashedKey& other) const {
-    return key_ == other.key_;
+  friend bool operator==(const F14HashedKey& a, const F14HashedKey& b) {
+    return KeyEqual{}(a.key_, b.key_);
   }
-  bool operator==(const TKeyType& other) const { return key_ == other; }
+  friend bool operator!=(const F14HashedKey& a, const F14HashedKey& b) {
+    return !(a == b);
+  }
+  friend bool operator==(const F14HashedKey& a, const TKeyType& b) {
+    return KeyEqual{}(a.key_, b);
+  }
+  friend bool operator!=(const F14HashedKey& a, const TKeyType& b) {
+    return !(a == b);
+  }
+  friend bool operator==(const TKeyType& a, const F14HashedKey& b) {
+    return KeyEqual{}(a, b.key_);
+  }
+  friend bool operator!=(const TKeyType& a, const F14HashedKey& b) {
+    return !(a == b);
+  }
+  template <typename K>
+  friend EnableHeterogeneousCompare<K, bool> operator==(
+      const F14HashedKey& a, const K& b) {
+    return KeyEqual{}(a.key_, b);
+  }
+  template <typename K>
+  friend EnableHeterogeneousCompare<K, bool> operator!=(
+      const F14HashedKey& a, const K& b) {
+    return !(a == b);
+  }
+  template <typename K>
+  friend EnableHeterogeneousCompare<K, bool> operator==(
+      const K& a, const F14HashedKey& b) {
+    return KeyEqual{}(a, b.key_);
+  }
+  template <typename K>
+  friend EnableHeterogeneousCompare<K, bool> operator!=(
+      const K& a, const F14HashedKey& b) {
+    return !(a == b);
+  }
 
  private:
   TKeyType key_;

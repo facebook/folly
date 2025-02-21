@@ -8,6 +8,7 @@ cpp_unittest(
         "F14DetailTest.cpp",
     ],
     deps = [
+        "//folly:traits",
         "//folly/container/detail:f14_hash_detail",
         "//folly/portability:gtest",
     ],

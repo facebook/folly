@@ -96,7 +96,7 @@ class F14BasicSet {
   using hash_token_type = F14HashToken;
   using hasher = typename Policy::Hasher;
   using key_equal = typename Policy::KeyEqual;
-  using hashed_key_type = F14HashedKey<key_type, hasher>;
+  using hashed_key_type = F14HashedKey<key_type, hasher, key_equal>;
   using allocator_type = typename Policy::Alloc;
   using reference = value_type&;
   using const_reference = value_type const&;
