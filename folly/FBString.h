@@ -683,31 +683,14 @@ inline void fbstring_core<Char>::initSmall(
       (sizeof(size_t) & (sizeof(size_t) - 1)) == 0,
       "fbstring size assumption violation");
 
-// If data is aligned, use fast word-wise copying. Otherwise,
-// use conservative memcpy.
-// The word-wise path reads bytes which are outside the range of
-// the string, and makes ASan unhappy, so we disable it when
-// compiling with ASan.
-#ifndef FOLLY_SANITIZE_ADDRESS
-  if ((reinterpret_cast<size_t>(data) & (sizeof(size_t) - 1)) == 0) {
-    const size_t byteSize = size * sizeof(Char);
-    constexpr size_t wordWidth = sizeof(size_t);
-    switch ((byteSize + wordWidth - 1) / wordWidth) { // Number of words.
-      case 3:
-        ml_.capacity_ = reinterpret_cast<const size_t*>(data)[2];
-        [[fallthrough]];
-      case 2:
-        ml_.size_ = reinterpret_cast<const size_t*>(data)[1];
-        [[fallthrough]];
-      case 1:
-        ml_.data_ = *reinterpret_cast<Char**>(const_cast<Char*>(data));
-        [[fallthrough]];
-      case 0:
-        break;
-    }
-  } else
-#endif
-  {
+  constexpr size_t kPageSize = 4096;
+
+  const auto addr = reinterpret_cast<uintptr_t>(data);
+  if (!kIsSanitize && // sanitizer would trap on over-reads
+      size && (addr ^ (addr + sizeof(small_) - 1)) < kPageSize) {
+    // the input data is all within one page so over-reads will not segfault
+    std::memcpy(small_, data, sizeof(small_)); // lowers to a 4-insn sequence
+  } else {
     if (size != 0) {
       fbstring_detail::podCopy(data, data + size, small_);
     }
