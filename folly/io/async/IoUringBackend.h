@@ -39,6 +39,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/IoUringBase.h>
+#include <folly/io/async/IoUringZeroCopyBufferPool.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/portability/Asm.h>
 #include <folly/small_vector.h>
@@ -417,6 +418,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // built in buffer provider
   IoUringBufferProviderBase* bufferProvider() { return bufferProvider_.get(); }
   uint16_t nextBufferProviderGid() { return bufferProviderGidNext_++; }
+  IoUringZeroCopyBufferPool* zcBufferPool() { return zcBufferPool_.get(); }
 
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
@@ -1139,6 +1141,7 @@ class IoUringBackend : public EventBaseBackendBase {
   IoSqeBaseList submitList_;
   uint16_t bufferProviderGidNext_{0};
   IoUringBufferProviderBase::UniquePtr bufferProvider_;
+  IoUringZeroCopyBufferPool::UniquePtr zcBufferPool_;
 
   // loop related
   bool loopBreak_{false};

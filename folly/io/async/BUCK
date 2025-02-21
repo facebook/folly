@@ -790,6 +790,10 @@ cpp_library(
         "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [
+        ":async_base",
+        ":delayed_destruction",
+        ":io_uring_zero_copy_buffer_pool",
+        ":liburing",
         "//folly:c_portability",
         "//folly:conv",
         "//folly:cpp_attributes",
@@ -799,9 +803,6 @@ cpp_library(
         "//folly:range",
         "//folly:small_vector",
         "//folly/io:iobuf",
-        "//folly/io/async:async_base",
-        "//folly/io/async:delayed_destruction",
-        "//folly/io/async:liburing",
         "//folly/portability:asm",
     ],
     exported_external_deps = [

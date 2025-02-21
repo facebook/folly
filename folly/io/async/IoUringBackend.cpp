@@ -351,6 +351,9 @@ bool validateZeroCopyRxOptions(IoUringBackend::Options& options) {
   return true;
 }
 
+// Currently a 4K page size is required.
+constexpr size_t kZeroCopyPageSize = 4096;
+
 } // namespace
 
 IoUringBackend::SocketPair::SocketPair() {
@@ -1127,6 +1130,18 @@ void IoUringBackend::initSubmissionLinked() {
     } catch (const IoUringProvidedBufferRing::LibUringCallError& ex) {
       throw NotAvailable(ex.what());
     }
+  }
+
+  if (options_.zeroCopyRx) {
+    IoUringZeroCopyBufferPool::Params params = {
+        .ring = this->ioRingPtr(),
+        .numPages = static_cast<size_t>(options_.zcRxNumPages),
+        .pageSize = kZeroCopyPageSize,
+        .rqEntries = static_cast<uint32_t>(options_.zcRxRefillEntries),
+        .ifindex = static_cast<uint32_t>(options_.zcRxIfindex),
+        .queueId = static_cast<uint16_t>(options_.zcRxQueueId),
+    };
+    zcBufferPool_ = IoUringZeroCopyBufferPool::create(params);
   }
 }
 
