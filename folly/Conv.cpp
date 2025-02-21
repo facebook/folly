@@ -21,7 +21,7 @@
 
 #include <folly/lang/SafeAssert.h>
 
-#include <fast_float/fast_float.h> // @manual=fbsource//third-party/fast_float:fast_float
+#include <fast_float/fast_float.h>
 
 namespace folly {
 namespace detail {

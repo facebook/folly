@@ -45,7 +45,7 @@
 #include <folly/stop_watch.h>
 
 #include <double-conversion/double-conversion.h>
-#include <fast_float/fast_float.h> // @manual=fbsource//third-party/fast_float:fast_float
+#include <fast_float/fast_float.h>
 
 template <typename T, typename... A>
 using detect_std_from_chars = decltype(void(std::from_chars(
