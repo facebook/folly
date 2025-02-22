@@ -128,6 +128,9 @@ void IoUringZeroCopyBufferPool::mapMemory() {
   rqRingArea_ = static_cast<char*>(bufArea_) + bufAreaSize_;
 }
 
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wmissing-designated-field-initializers")
+
 void IoUringZeroCopyBufferPool::initialRegister(
     uint32_t ifindex, uint16_t queueId) {
   mapMemory();
@@ -151,6 +154,8 @@ void IoUringZeroCopyBufferPool::initialRegister(
       .area_ptr = reinterpret_cast<uint64_t>(&areaReg),
       .region_ptr = reinterpret_cast<uint64_t>(&regionReg),
   };
+
+  FOLLY_POP_WARNING
 
   auto ret = io_uring_register_ifq(ring_, &ifqReg);
   if (ret) {
