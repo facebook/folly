@@ -32,6 +32,7 @@ cdef extern from "folly/io/IOBuf.h" namespace "folly":
         size_t countChainElements()
         uint64_t computeChainDataLength()
         unique_ptr[cIOBuf] clone()
+        unique_ptr[cIOBuf] cloneCoalesced()
         cIOBuf* prev()
         cIOBuf* next()
         void insertAfterThisOne(unique_ptr[cIOBuf]&& ciobuf)

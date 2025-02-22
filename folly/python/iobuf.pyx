@@ -103,6 +103,10 @@ cdef class IOBuf:
         """ Clone the iobuf chain """
         return from_unique_ptr(self._this.clone())
 
+    def cloneCoalesced(self):
+        """ Clone the iobuf chain """
+        return from_unique_ptr(self._this.cloneCoalesced())
+
     @property
     def next(self):
         _next = self._this.next()
