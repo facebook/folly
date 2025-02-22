@@ -257,11 +257,12 @@ class ThreadLocalPtr {
   class Accessor {
     friend class ThreadLocalPtr<T, Tag, AccessMode>;
 
-    threadlocal_detail::StaticMetaBase& meta_;
-    SharedMutex* accessAllThreadsLock_;
-    SharedMutex* forkHandlerLock_;
-    std::mutex* lock_;
-    uint32_t id_;
+    threadlocal_detail::StaticMetaBase& meta_ =
+        threadlocal_detail::StaticMeta<Tag, AccessMode>::instance();
+    std::shared_lock<SharedMutex> accessAllThreadsLock_;
+    std::shared_lock<SharedMutex> forkHandlerLock_;
+    std::unique_lock<std::mutex> lock_;
+    uint32_t id_ = 0;
 
     // Prevent the entry set from changing while we are iterating over it.
     // reset() calls to populate will acquire shared lock on the id's set.
@@ -396,14 +397,10 @@ class ThreadLocalPtr {
 
     Accessor(Accessor&& other) noexcept
         : meta_(other.meta_),
-          accessAllThreadsLock_(other.accessAllThreadsLock_),
-          forkHandlerLock_(other.forkHandlerLock_),
-          lock_(other.lock_),
-          id_(other.id_) {
-      other.id_ = 0;
-      other.accessAllThreadsLock_ = nullptr;
-      other.forkHandlerLock_ = nullptr;
-      other.lock_ = nullptr;
+          accessAllThreadsLock_(std::move(other.accessAllThreadsLock_)),
+          forkHandlerLock_(std::move(other.forkHandlerLock_)),
+          lock_(std::move(other.lock_)),
+          id_(std::exchange(other.id_, 0)) {
       wlockedThreadEntrySet_ = std::move(other.wlockedThreadEntrySet_);
     }
 
@@ -415,7 +412,7 @@ class ThreadLocalPtr {
       // which is impossible, which leaves only one possible scenario --
       // *this is empty.  Assert it.
       assert(&meta_ == &other.meta_);
-      assert(lock_ == nullptr);
+      assert(lock_);
       using std::swap;
       swap(accessAllThreadsLock_, other.accessAllThreadsLock_);
       swap(forkHandlerLock_, other.forkHandlerLock_);
@@ -425,37 +422,28 @@ class ThreadLocalPtr {
       swap(wlockedThreadEntrySet_, other.wlockedThreadEntrySet_);
     }
 
-    Accessor()
-        : meta_(threadlocal_detail::StaticMeta<Tag, AccessMode>::instance()),
-          accessAllThreadsLock_(nullptr),
-          forkHandlerLock_(nullptr),
-          lock_(nullptr),
-          id_(0) {}
+    Accessor() = default;
 
    private:
     explicit Accessor(uint32_t id)
-        : meta_(threadlocal_detail::StaticMeta<Tag, AccessMode>::instance()),
-          accessAllThreadsLock_(&meta_.accessAllThreadsLock_),
-          forkHandlerLock_(&meta_.forkHandlerLock_),
-          lock_(&meta_.lock_) {
-      forkHandlerLock_->lock_shared();
-      accessAllThreadsLock_->lock();
-      id_ = id;
+        : accessAllThreadsLock_(meta_.accessAllThreadsLock_, std::defer_lock),
+          forkHandlerLock_(meta_.forkHandlerLock_, std::defer_lock),
+          lock_(meta_.lock_, std::defer_lock),
+          id_(id) {
+      forkHandlerLock_.lock();
+      accessAllThreadsLock_.lock();
       wlockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].wlock();
-      lock_->lock();
+      lock_.lock();
     }
 
     void release() {
       if (lock_) {
-        lock_->unlock();
-        DCHECK(accessAllThreadsLock_ != nullptr);
-        accessAllThreadsLock_->unlock();
-        DCHECK(forkHandlerLock_ != nullptr);
-        forkHandlerLock_->unlock_shared();
+        lock_.unlock();
+        DCHECK(accessAllThreadsLock_);
+        accessAllThreadsLock_.unlock();
+        DCHECK(forkHandlerLock_);
+        forkHandlerLock_.unlock();
         id_ = 0;
-        lock_ = nullptr;
-        accessAllThreadsLock_ = nullptr;
-        forkHandlerLock_ = nullptr;
       }
     }
   };
