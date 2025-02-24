@@ -1571,3 +1571,28 @@ TEST(smallVector, rangeConstructorInputIteratorThrows) {
   EXPECT_THROW(SV1(first, last), std::runtime_error);
   EXPECT_THROW(SV3(first, last), std::runtime_error);
 }
+
+TEST(smallVector, comparisons) {
+  folly::small_vector<int, 3> vec1 = {1, 2, 3, 4, 5};
+  folly::small_vector<int, 3> vec2 = {1, 2, 3, 4, 5};
+  EXPECT_EQ(vec1, vec2);
+  EXPECT_FALSE(vec1 < vec2);
+  EXPECT_TRUE(vec1 <= vec2);
+  EXPECT_FALSE(vec1 > vec2);
+  EXPECT_TRUE(vec1 >= vec2);
+
+#if FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_lib_three_way_comparison)
+  EXPECT_EQ(vec1 <=> vec2, std::strong_ordering::equal);
+#endif
+  vec1.pop_back();
+  EXPECT_NE(vec1, vec2);
+  EXPECT_TRUE(vec1 < vec2);
+  EXPECT_TRUE(vec1 <= vec2);
+  EXPECT_FALSE(vec1 > vec2);
+  EXPECT_FALSE(vec1 >= vec2);
+
+#if FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_lib_three_way_comparison)
+  EXPECT_EQ(vec1 <=> vec2, std::strong_ordering::less);
+  EXPECT_EQ(vec2 <=> vec1, std::strong_ordering::greater);
+#endif
+}
