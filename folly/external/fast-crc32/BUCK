@@ -62,11 +62,20 @@ cpp_library(
     headers = [
         "neon_eor3_crc32c_v8s2x4_s3.h",
     ],
-    arch_preprocessor_flags = {
-        "aarch64": [
-            "-march=armv8.2-a+crypto+crc+sha3",
-        ],
-    },
+    deps = [
+        "//folly:portability",
+        "//folly/system:aux_vector",
+    ],
+)
+
+cpp_library(
+    name = "neon_eor3_crc32_v9s3x2e_s3",
+    srcs = [
+        "neon_eor3_crc32_v9s3x2e_s3.cpp",
+    ],
+    headers = [
+        "neon_eor3_crc32_v9s3x2e_s3.h",
+    ],
     deps = [
         "//folly:portability",
         "//folly/system:aux_vector",
