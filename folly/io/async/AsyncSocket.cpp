@@ -2691,7 +2691,7 @@ AsyncSocket::ReadResult AsyncSocket::performReadMsg(
     struct ::msghdr& msg,
     // This is here only to preserve AsyncSSLSocket's legacy semi-broken
     // behavior (D43648653 for context).
-    AsyncReader::ReadCallback::ReadMode) {
+    AsyncReader::ReadCallback::ReadMode readMode) {
   VLOG(5) << "AsyncSocket::performReadMsg() this=" << this
           << ", iovs=" << msg.msg_iov << ", num=" << msg.msg_iovlen;
 
@@ -2725,7 +2725,11 @@ AsyncSocket::ReadResult AsyncSocket::performReadMsg(
   }
 
   ssize_t bytes = 0;
-  if (readAncillaryDataCallback_ == nullptr && msg.msg_iovlen == 1) {
+  if (readMode == AsyncReader::ReadCallback::ReadMode::ReadZC) {
+    auto backend = getEventBase()->getBackend();
+    bytes = backend->issueRecvZc(
+        fd_.toFd(), msg.msg_iov[0].iov_base, msg.msg_iov[0].iov_len);
+  } else if (readAncillaryDataCallback_ == nullptr && msg.msg_iovlen == 1) {
     bytes = netops_->recv(
         fd_, msg.msg_iov[0].iov_base, msg.msg_iov[0].iov_len, MSG_DONTWAIT);
   } else {

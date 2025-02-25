@@ -44,6 +44,7 @@ class AsyncReader {
     enum class ReadMode : uint8_t {
       ReadBuffer = 0,
       ReadVec = 1,
+      ReadZC = 2,
     };
 
     virtual ~ReadCallback() = default;
