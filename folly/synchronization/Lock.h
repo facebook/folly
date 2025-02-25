@@ -66,6 +66,9 @@ FOLLY_CREATE_MEMBER_INVOKER_SUITE(unlock_upgrade_and_lock_shared);
 
 } // namespace access
 
+struct adopt_lock_state_t {};
+inline constexpr adopt_lock_state_t adopt_lock_state{};
+
 namespace detail {
 
 //  A lock base class with a mostly-complete implementation suitable for either
@@ -119,6 +122,10 @@ class lock_base {
       : mutex_{std::addressof(mutex)}, state_{state} {
     state_ || (check_fail_<true>(), 0);
   }
+  template <typename M = mutex_type, if_<has_state_, M>* = nullptr>
+  FOLLY_NODISCARD lock_base(
+      type_t<M>& mutex, adopt_lock_state_t, owner_type const& state)
+      : lock_base{mutex, std::adopt_lock, state} {}
   FOLLY_NODISCARD explicit lock_base(mutex_type& mutex)
       : mutex_{std::addressof(mutex)} {
     lock();
@@ -264,7 +271,10 @@ class lock_guard_base
   lock_guard_base(
       mutex_type& mutex, std::adopt_lock_t, state_type_ const& state)
       : lock_{mutex, std::adopt_lock, state} {}
-
+  template <bool C = has_state_, if_<C> = 0>
+  lock_guard_base(
+      mutex_type& mutex, adopt_lock_state_t, state_type_ const& state)
+      : lock_{mutex, std::adopt_lock, state} {}
   void operator=(lock_guard_base const&) = delete;
   void operator=(lock_guard_base&&) = delete;
 
@@ -521,24 +531,21 @@ class hybrid_lock_guard
   using base::base;
 };
 
-template <typename Mutex, typename... A>
-explicit hybrid_lock_guard(Mutex&, A const&...) -> hybrid_lock_guard<Mutex>;
+template <typename Mutex, typename S>
+hybrid_lock_guard(Mutex&, adopt_lock_state_t, S) -> hybrid_lock_guard<Mutex>;
 
 } // namespace folly
 
 FOLLY_NAMESPACE_STD_BEGIN
 
-template <typename Mutex, typename LockFn = ::folly::access::lock_fn>
-unique_lock(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
-    -> unique_lock<Mutex>;
+template <typename Mutex, typename S>
+unique_lock(Mutex&, folly::adopt_lock_state_t, S) -> unique_lock<Mutex>;
 
-template <typename Mutex, typename LockFn = ::folly::access::lock_shared_fn>
-shared_lock(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
-    -> shared_lock<Mutex>;
+template <typename Mutex, typename S>
+shared_lock(Mutex&, folly::adopt_lock_state_t, S) -> shared_lock<Mutex>;
 
-template <typename Mutex, typename LockFn = ::folly::access::lock_upgrade_fn>
-lock_guard(Mutex&, adopt_lock_t, invoke_result_t<LockFn, Mutex&> const&)
-    -> lock_guard<Mutex>;
+template <typename Mutex, typename S>
+lock_guard(Mutex&, folly::adopt_lock_state_t, S) -> lock_guard<Mutex>;
 
 FOLLY_NAMESPACE_STD_END
 
@@ -597,7 +604,7 @@ auto transition_lock_0_(From& lock, Transition transition, A const&... a) {
   if constexpr (std::is_void_v<ToState>) {
     return !s ? To{} : To{mutex, std::adopt_lock};
   } else {
-    return !s ? To{} : To{mutex, std::adopt_lock, s};
+    return !s ? To{} : To{mutex, folly::adopt_lock_state, s};
   }
 }
 template <
