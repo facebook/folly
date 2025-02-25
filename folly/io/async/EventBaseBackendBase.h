@@ -233,6 +233,9 @@ class EventBaseBackendBase {
   virtual int getPollableFd() const { return -1; }
 
   virtual int getNapiId() const { return -1; }
+  virtual int issueRecvZc(int /*fd*/, void* /*buf*/, unsigned int /*nbytes*/) {
+    return -1;
+  }
 
   virtual event_base* getEventBase() = 0;
   virtual int eb_event_base_loop(int flags) = 0;

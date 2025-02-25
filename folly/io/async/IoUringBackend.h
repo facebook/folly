@@ -296,6 +296,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // from EventBaseBackendBase
   int getPollableFd() const override { return ioRing_.ring_fd; }
   int getNapiId() const override { return napiId_; }
+  int issueRecvZc(int fd, void* buf, unsigned int nbytes) override;
 
   event_base* getEventBase() override { return nullptr; }
 
@@ -1074,6 +1075,23 @@ class IoUringBackend : public EventBaseBackendBase {
     unsigned int flags_;
   };
 
+  struct RecvzcIoSqe : public ReadWriteIoSqe {
+    using ReadWriteIoSqe::ReadWriteIoSqe;
+
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      ::io_uring_prep_rw(
+          IORING_OP_RECV_ZC, sqe, fd_, nullptr, iov_.data()->iov_len, 0);
+      ::io_uring_sqe_set_data(sqe, this);
+      sqe->ioprio |= IORING_RECV_MULTISHOT;
+    }
+
+    bool isDone() noexcept { return done_; }
+    void done() noexcept { done_ = true; }
+
+   private:
+    bool done_{false};
+  };
+
   size_t getActiveEvents(WaitForEventsMode waitForEvents);
   size_t prepList(IoSqeBaseList& ioSqes);
   int submitOne();
@@ -1086,9 +1104,16 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void processFileOp(IoSqe* ioSqe, int res) noexcept;
 
+  void processRecvZc(IoSqe* sqe, const io_uring_cqe* cqe) noexcept;
+
   static void processFileOpCB(
       IoUringBackend* backend, IoSqe* ioSqe, const io_uring_cqe* cqe) {
-    static_cast<IoUringBackend*>(backend)->processFileOp(ioSqe, cqe->res);
+    backend->processFileOp(ioSqe, cqe->res);
+  }
+
+  static void processRecvZcCB(
+      IoUringBackend* backend, IoSqe* ioSqe, const io_uring_cqe* cqe) {
+    backend->processRecvZc(ioSqe, cqe);
   }
 
   IoUringBackend::IoSqe* allocNewIoSqe(const EventCallback& /*cb*/) {

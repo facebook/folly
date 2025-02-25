@@ -1887,11 +1887,53 @@ void IoUringBackend::queueRecvmsg(
   submitImmediateIoSqe(*ioSqe);
 }
 
+int IoUringBackend::issueRecvZc(int fd, void* buf, unsigned int nbytes) {
+  iovec iov = {
+      .iov_base = buf,
+      .iov_len = nbytes,
+  };
+  RecvzcIoSqe ioSqe{this, fd, &iov, 0, nullptr};
+  ioSqe.backendCb_ = processRecvZcCB;
+
+  submitNow(ioSqe);
+  processCompleted();
+  return ioSqe.res_;
+}
+
 void IoUringBackend::processFileOp(IoSqe* sqe, int res) noexcept {
   auto* ioSqe = reinterpret_cast<FileOpIoSqe*>(sqe);
   // save the res
   ioSqe->res_ = res;
   activeEvents_.push_back(*ioSqe);
+}
+
+void IoUringBackend::processRecvZc(
+    IoSqe* sqe, const io_uring_cqe* cqe) noexcept {
+  RecvzcIoSqe* ioSqe = reinterpret_cast<RecvzcIoSqe*>(sqe);
+  const io_uring_zcrx_cqe* rcqe = (io_uring_zcrx_cqe*)(cqe + 1);
+
+  if (cqe->res == 0 && cqe->flags == 0) {
+    CHECK(ioSqe->isDone());
+    return;
+  }
+
+  if (cqe->res < 0) {
+    ioSqe->res_ = cqe->res;
+    ioSqe->done();
+    return;
+  }
+
+  auto buf = zcBufferPool_->getIoBuf(cqe, rcqe);
+  auto iov = ioSqe->iov_.data();
+  ::memcpy(
+      reinterpret_cast<char*>(iov->iov_base) + ioSqe->offset_,
+      buf->data(),
+      buf->length());
+  ioSqe->offset_ += cqe->res;
+  if (static_cast<size_t>(ioSqe->offset_) == iov->iov_len) {
+    ioSqe->res_ = cqe->res;
+    ioSqe->done();
+  }
 }
 
 bool IoUringBackend::kernelHasNonBlockWriteFixes() const {
