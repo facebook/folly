@@ -31,6 +31,14 @@ class AsyncIoUringSocketFactory {
 #endif
   }
 
+  static bool supportsZcRx([[maybe_unused]] folly::EventBase* eb) {
+#if FOLLY_HAS_LIBURING
+    return AsyncIoUringSocket::supportsZcRx(eb);
+#else
+    return false;
+#endif
+  }
+
   template <class TWrapper, class... Args>
   static TWrapper create([[maybe_unused]] Args&&... args) {
 #if FOLLY_HAS_LIBURING

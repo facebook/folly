@@ -78,6 +78,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       EventBase* evb, NetworkSocket ns, Options&& options = Options{});
 
   static bool supports(EventBase* backend);
+  static bool supportsZcRx(EventBase* backend);
 
   void connect(
       AsyncSocket::ConnectCallback* callback,

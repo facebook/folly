@@ -205,6 +205,11 @@ bool AsyncIoUringSocket::supports(EventBase* eb) {
   return io && io->bufferProvider() != nullptr;
 }
 
+bool AsyncIoUringSocket::supportsZcRx(EventBase* eb) {
+  IoUringBackend* io = dynamic_cast<IoUringBackend*>(eb->getBackend());
+  return io && io->zcBufferPool() != nullptr;
+}
+
 void AsyncIoUringSocket::connect(
     AsyncSocket::ConnectCallback* callback,
     const folly::SocketAddress& address,
