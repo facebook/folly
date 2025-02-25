@@ -360,7 +360,7 @@ class AtomicObserver {
   T get() const;
   T operator*() const { return get(); }
 
-  Observer<T> getUnderlyingObserver() const { return observer_; }
+  const Observer<T>& getUnderlyingObserver() const { return observer_; }
 
  private:
   mutable std::atomic<T> cachedValue_{};
@@ -379,7 +379,7 @@ class TLObserver {
   const Snapshot<T>& getSnapshotRef() const;
   const Snapshot<T>& operator*() const { return getSnapshotRef(); }
 
-  Observer<T> getUnderlyingObserver() const { return observer_; }
+  const Observer<T>& getUnderlyingObserver() const { return observer_; }
 
  private:
   Observer<T> observer_;
@@ -397,7 +397,7 @@ class ReadMostlyAtomicObserver {
   T get() const;
   T operator*() const { return get(); }
 
-  Observer<T> getUnderlyingObserver() const { return observer_; }
+  const Observer<T>& getUnderlyingObserver() const { return observer_; }
 
  private:
   Observer<T> observer_;
