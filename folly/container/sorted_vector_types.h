@@ -434,6 +434,21 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
         m_.cont_, value_comp(), /* range_is_sorted_unique */ false};
   }
 
+  /**
+   * Directly swap the container. Similar to swap()
+   */
+  void swap_container(Container& newContainer) {
+    detail::as_sorted_unique(newContainer, value_comp());
+    using std::swap;
+    swap(m_.cont_, newContainer);
+  }
+  void swap_container(sorted_unique_t, Container& newContainer) {
+    assert(detail::is_sorted_unique(
+        newContainer.begin(), newContainer.end(), value_comp()));
+    using std::swap;
+    swap(m_.cont_, newContainer);
+  }
+
   sorted_vector_set& operator=(const sorted_vector_set& other) = default;
 
   sorted_vector_set& operator=(sorted_vector_set&& other) = default;
@@ -1084,6 +1099,21 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   direct_mutation_guard get_container_for_direct_mutation() noexcept {
     return direct_mutation_guard{
         m_.cont_, value_comp(), /* range_is_sorted_unique */ false};
+  }
+
+  /**
+   * Directly swap the container. Similar to swap()
+   */
+  void swap_container(Container& newContainer) {
+    detail::as_sorted_unique(newContainer, value_comp());
+    using std::swap;
+    swap(m_.cont_, newContainer);
+  }
+  void swap_container(sorted_unique_t, Container& newContainer) {
+    assert(detail::is_sorted_unique(
+        newContainer.begin(), newContainer.end(), value_comp()));
+    using std::swap;
+    swap(m_.cont_, newContainer);
   }
 
   sorted_vector_map& operator=(const sorted_vector_map& other) = default;

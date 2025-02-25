@@ -1772,3 +1772,31 @@ TEST(HeapVectorTypes, TestGetContainer) {
   heap_vector_set<int> s;
   EXPECT_TRUE(s.get_container().empty());
 }
+
+TEST(HeapVectorTypes, TestSwapContainer) {
+  heap_vector_set<int> set{1, 2, 3};
+  std::vector<int> swapped{6, 5, 4};
+  set.swap_container(swapped);
+  EXPECT_EQ(swapped, (std::vector<int>{2, 1, 3}));
+  EXPECT_EQ(set.get_container(), (std::vector<int>{5, 4, 6}));
+  swapped = {1, 3, 5};
+  set.swap_container(folly::sorted_unique, swapped);
+  EXPECT_EQ(swapped, (std::vector<int>{5, 4, 6}));
+  EXPECT_EQ(set.get_container(), (std::vector<int>{3, 1, 5}));
+
+  heap_vector_map<int, int> map{{1, 1}, {2, 2}, {3, 3}};
+  std::vector<std::pair<int, int>> swappedMap{{6, 6}, {5, 5}, {4, 4}};
+  map.swap_container(swappedMap);
+  EXPECT_EQ(
+      swappedMap, (std::vector<std::pair<int, int>>{{2, 2}, {1, 1}, {3, 3}}));
+  EXPECT_EQ(
+      map.get_container(),
+      (std::vector<std::pair<int, int>>{{5, 5}, {4, 4}, {6, 6}}));
+  swappedMap = {{1, 1}, {3, 3}, {5, 5}};
+  map.swap_container(folly::sorted_unique, swappedMap);
+  EXPECT_EQ(
+      swappedMap, (std::vector<std::pair<int, int>>{{5, 5}, {4, 4}, {6, 6}}));
+  EXPECT_EQ(
+      map.get_container(),
+      (std::vector<std::pair<int, int>>{{3, 3}, {1, 1}, {5, 5}}));
+}

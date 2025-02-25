@@ -994,6 +994,22 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
 
   const Container& get_container() const noexcept { return m_.cont_; }
 
+  /**
+   * Directly swap the container. Similar to swap()
+   */
+  void swap_container(Container& newContainer) {
+    heap_vector_detail::as_sorted_unique(newContainer, value_comp());
+    heap_vector_detail::heapify(newContainer);
+    using std::swap;
+    swap(m_.cont_, newContainer);
+  }
+  void swap_container(sorted_unique_t, Container& newContainer) {
+    assert(heap_vector_detail::is_sorted_unique(newContainer, value_comp()));
+    heap_vector_detail::heapify(newContainer);
+    using std::swap;
+    swap(m_.cont_, newContainer);
+  }
+
   heap_vector_container& operator=(const heap_vector_container& other) =
       default;
 

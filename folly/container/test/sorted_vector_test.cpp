@@ -1645,3 +1645,30 @@ TEST(SortedVectorTypes, Comparisons) {
   EXPECT_EQ(map2 <=> map1, std::strong_ordering::greater);
 #endif
 }
+
+TEST(SortedVectorTypes, TestSwapContainer) {
+  sorted_vector_set<int> set{1, 2, 3};
+  std::vector<int> swapped{6, 5, 4};
+  set.swap_container(swapped);
+  EXPECT_EQ(swapped, (std::vector<int>{1, 2, 3}));
+  EXPECT_EQ(set.get_container(), (std::vector<int>{4, 5, 6}));
+  swapped = {1, 3};
+  set.swap_container(folly::sorted_unique, swapped);
+  EXPECT_EQ(swapped, (std::vector<int>{4, 5, 6}));
+  EXPECT_EQ(set.get_container(), (std::vector<int>{1, 3}));
+
+  sorted_vector_map<int, int> map{{1, 1}, {2, 2}, {3, 3}};
+  std::vector<std::pair<int, int>> swappedMap{{6, 6}, {5, 5}, {4, 4}};
+  map.swap_container(swappedMap);
+  EXPECT_EQ(
+      swappedMap, (std::vector<std::pair<int, int>>{{1, 1}, {2, 2}, {3, 3}}));
+  EXPECT_EQ(
+      map.get_container(),
+      (std::vector<std::pair<int, int>>{{4, 4}, {5, 5}, {6, 6}}));
+  swappedMap = {{1, 1}, {3, 3}};
+  map.swap_container(folly::sorted_unique, swappedMap);
+  EXPECT_EQ(
+      swappedMap, (std::vector<std::pair<int, int>>{{4, 4}, {5, 5}, {6, 6}}));
+  EXPECT_EQ(
+      map.get_container(), (std::vector<std::pair<int, int>>{{1, 1}, {3, 3}}));
+}
