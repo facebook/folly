@@ -70,7 +70,6 @@ class IoUringZeroCopyBufferPool {
   void mapMemory();
   void initialRegister(uint32_t ifindex, uint16_t queueId);
 
-  char* getData(int i) noexcept;
   void returnBuffer(Buffer* buf) noexcept;
 
   void delayedDestroy(uint32_t refs) noexcept;

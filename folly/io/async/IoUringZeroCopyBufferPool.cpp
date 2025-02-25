@@ -36,6 +36,8 @@ size_t getRefillRingSize(size_t rqEntries) {
   return folly::align_ceil(size, pageSize);
 }
 
+constexpr uint64_t kBufferMask = (1ULL << IORING_ZCRX_AREA_SHIFT) - 1;
+
 } // namespace
 
 void IoUringZeroCopyBufferPool::Deleter::operator()(
@@ -93,9 +95,8 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
   // By the time the pool is being destroyed, IoUringBackend has already drained
   // all requests so there won't be any more calls to getIoBuf().
   DCHECK(!wantsShutdown_);
-  auto offset = rcqe->off;
+  auto offset = (rcqe->off & kBufferMask);
   auto length = static_cast<uint32_t>(cqe->res);
-  int i = offset / pageSize_;
 
   auto freeFn = [](void*, void* userData) {
     auto buffer =
@@ -104,8 +105,17 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
     buffer->pool->returnBuffer(buffer);
   };
 
+  int i = offset / pageSize_;
+  auto& buf = buffers_[i];
+  buf.off = rcqe->off;
+  buf.len = cqe->res;
+
   auto ret = IOBuf::takeOwnership(
-      (void*)getData(i), pageSize_, length, freeFn, &buffers_[i]);
+      static_cast<char*>(bufArea_) + offset,
+      pageSize_,
+      length,
+      freeFn,
+      &buffers_[i]);
   // This method is only called from an EVB so there is no synchronization.
   bufDispensed_++;
   return ret;
@@ -175,11 +185,6 @@ void IoUringZeroCopyBufferPool::initialRegister(
 
   rqAreaToken_ = areaReg.rq_area_token;
   rqMask_ = ifqReg.rq_entries - 1;
-}
-
-char* IoUringZeroCopyBufferPool::getData(int i) noexcept {
-  uint64_t offset = (uint64_t)i * pageSize_;
-  return static_cast<char*>(bufArea_) + offset;
 }
 
 void IoUringZeroCopyBufferPool::returnBuffer(Buffer* buffer) noexcept {
