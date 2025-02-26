@@ -36,7 +36,11 @@ class Sleeper {
   const std::chrono::nanoseconds delta;
   uint32_t spinCount;
 
-  static constexpr uint32_t kMaxActiveSpin = 4000;
+#if FOLLY_AARCH64 && !FOLLY_MOBILE
+  uint32_t spinCountLog = 1;
+#endif
+
+  static constexpr uint32_t kMaxActiveSpin = 4096;
 
  public:
   static constexpr std::chrono::nanoseconds kMinYieldingSleep =
@@ -49,8 +53,15 @@ class Sleeper {
 
   void wait() noexcept {
     if (spinCount < kMaxActiveSpin) {
+#if FOLLY_AARCH64 && !FOLLY_MOBILE
+      do {
+        asm_volatile_pause();
+      } while (++spinCount < spinCountLog);
+      spinCountLog <<= 1;
+#else
       ++spinCount;
       asm_volatile_pause();
+#endif
     } else {
       /* sleep override */
       std::this_thread::sleep_for(delta);
