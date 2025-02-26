@@ -129,12 +129,14 @@ TEST(ExceptionTest, testCheckThrow) {
   EXPECT_NO_THROW(throwIf(false));
   EXPECT_THROW(throwIf(true), std::runtime_error);
 
+  auto fn = folly::fs::path("folly/test/ExceptionTest.cpp").string();
+
   try {
     throwIf(true);
   } catch (const std::runtime_error& e) {
     auto msg = std::string(e.what());
     EXPECT_THAT(msg, testing::HasSubstr("Check failed: !shouldThrow"));
-    EXPECT_THAT(msg, testing::HasSubstr("folly/test/ExceptionTest.cpp"));
+    EXPECT_THAT(msg, testing::HasSubstr(fn));
     auto lineNumber = msg.substr(msg.rfind(':') + 1);
     EXPECT_TRUE(std::all_of(lineNumber.begin(), lineNumber.end(), ::isdigit));
   }
