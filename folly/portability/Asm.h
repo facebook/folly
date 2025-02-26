@@ -40,7 +40,11 @@ inline void asm_volatile_pause() {
     (defined(__mips_isa_rev) && __mips_isa_rev > 1)
   asm volatile("pause");
 #elif FOLLY_AARCH64
+#if __ARM_ARCH >= 9
+  asm volatile("sb");
+#else
   asm volatile("isb");
+#endif
 #elif (defined(__arm__) && !(__ARM_ARCH < 7))
   asm volatile("yield");
 #elif FOLLY_PPC64
