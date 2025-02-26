@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <memory>
 
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/testing/TestUtil.h>
 
@@ -132,8 +133,8 @@ TEST(ExceptionTest, testCheckThrow) {
     throwIf(true);
   } catch (const std::runtime_error& e) {
     auto msg = std::string(e.what());
-    EXPECT_TRUE(msg.find("Check failed: !shouldThrow") != std::string::npos);
-    EXPECT_TRUE(msg.find("folly/test/ExceptionTest.cpp") != std::string::npos);
+    EXPECT_THAT(msg, testing::HasSubstr("Check failed: !shouldThrow"));
+    EXPECT_THAT(msg, testing::HasSubstr("folly/test/ExceptionTest.cpp"));
     auto lineNumber = msg.substr(msg.rfind(':') + 1);
     EXPECT_TRUE(std::all_of(lineNumber.begin(), lineNumber.end(), ::isdigit));
   }

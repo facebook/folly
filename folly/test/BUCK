@@ -456,6 +456,7 @@ cpp_unittest(
     headers = [],
     deps = [
         "//folly:exception",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/testing:test_util",
     ],
