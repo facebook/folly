@@ -259,7 +259,7 @@ class ThreadLocalPtr {
 
     threadlocal_detail::StaticMetaBase& meta_ =
         threadlocal_detail::StaticMeta<Tag, AccessMode>::instance();
-    std::shared_lock<SharedMutex> accessAllThreadsLock_;
+    std::unique_lock<SharedMutex> accessAllThreadsLock_;
     std::shared_lock<SharedMutex> forkHandlerLock_;
     std::unique_lock<std::mutex> lock_;
     uint32_t id_ = 0;
