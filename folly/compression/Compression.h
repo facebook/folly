@@ -539,7 +539,3 @@ bool hasStreamCodec(CodecType type);
 #define FOLLY_COMPRESSION_HAS_CONTEXT_POOL_SINGLETONS
 } // namespace compression
 } // namespace folly
-
-namespace folly::io {
-// empty
-} // namespace folly::io
