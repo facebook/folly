@@ -119,6 +119,17 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "tuple_test",
+    srcs = ["tuple_test.cpp"],
+    deps = [
+        "//folly:utility",
+        "//folly/detail:tuple",
+        "//folly/functional:invoke",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "detail_typelist_test",
     srcs = ["TypeListTest.cpp"],
     deps = [

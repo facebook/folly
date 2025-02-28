@@ -315,6 +315,9 @@
 #define FOLLY_GNU_DISABLE_WARNING(warningName) \
   _Pragma(                                     \
       FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored warningName))
+#define FOLLY_GNU_ENABLE_WARNING(warningName) \
+  _Pragma(                                    \
+      FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic warning warningName))
 #ifdef __clang__
 #define FOLLY_CLANG_DISABLE_WARNING(warningName) \
   FOLLY_GNU_DISABLE_WARNING(warningName)
