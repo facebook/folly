@@ -541,5 +541,5 @@ bool hasStreamCodec(CodecType type);
 } // namespace folly
 
 namespace folly::io {
-using folly::compression::CodecType;
+// empty
 } // namespace folly::io
