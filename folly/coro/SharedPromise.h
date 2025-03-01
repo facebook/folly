@@ -16,6 +16,11 @@
 
 #pragma once
 
+#include <cstddef>
+#include <type_traits>
+#include <utility>
+
+#include <folly/Likely.h>
 #include <folly/Synchronized.h>
 #include <folly/Utility.h>
 #include <folly/coro/Promise.h>
@@ -98,19 +103,17 @@ class SharedPromise {
 };
 
 template <typename T>
-SharedPromise<T>::SharedPromise(SharedPromise&& other) noexcept {
-  *this = std::move(other);
-}
+SharedPromise<T>::SharedPromise(SharedPromise&& other) noexcept
+    : state_{std::exchange(*other.state_.wlock(), {})} {}
 
 template <typename T>
 SharedPromise<T>& SharedPromise<T>::operator=(SharedPromise&& other) noexcept {
-  // unlike folly::SharedPromise, we synchronize here
-  state_.withWLock([&](auto& state) {
-    other.state_.withWLock([&](auto& otherState) {
-      state = std::exchange(otherState, {});
-    });
-  });
-
+  if (FOLLY_LIKELY(this != &other)) {
+    synchronized(
+        [](auto self, auto other) { *self = std::exchange(*other, {}); },
+        wlock(state_),
+        wlock(other.state_));
+  }
   return *this;
 }
 

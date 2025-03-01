@@ -305,6 +305,7 @@ cpp_unittest(
     deps = [
         "//folly/coro:blocking_wait",
         "//folly/coro:detach_on_cancel",
+        "//folly/coro:gtest_helpers",
         "//folly/coro:shared_promise",
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/portability:gtest",

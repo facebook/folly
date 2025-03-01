@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+#include <utility>
+
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/DetachOnCancel.h>
+#include <folly/coro/GtestHelpers.h>
 #include <folly/coro/SharedPromise.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 
@@ -302,6 +305,41 @@ TEST(SharedPromiseTest, BasicVoid) {
     promise.setValue();
     blocking_wait(promise.getFuture());
   }
+}
+
+CO_TEST(SharedPromiseTest, Swap) {
+  SharedPromise<int> p1, p2;
+  p1.setValue(42);
+  p2.setValue(43);
+  using std::swap;
+  swap(p1, p2);
+  EXPECT_EQ(co_await p1.getFuture(), 43);
+  EXPECT_EQ(co_await p2.getFuture(), 42);
+}
+
+CO_TEST(SharedPromiseTest, MoveFrom) {
+  SharedPromise<int> p1;
+  p1.setValue(42);
+  SharedPromise<int> p2;
+  p2.setValue(43);
+  p2 = std::move(p1);
+  EXPECT_EQ(co_await p2.getFuture(), 42);
+  EXPECT_FALSE(p1.isFulfilled());
+}
+
+CO_TEST(SharedPromiseTest, SelfMove) {
+  SharedPromise<int> p;
+  p.setValue(1);
+  auto& alias = p; // defeat -Wself-move
+  p = std::move(alias);
+  CO_ASSERT_TRUE(p.isFulfilled());
+  EXPECT_EQ(co_await p.getFuture(), 1);
+}
+
+TEST(SharedPromiseTest, Exchange) {
+  SharedPromise<void> p1;
+  using std::exchange;
+  SharedPromise<void> p2 = exchange(p1, {});
 }
 
 #endif
