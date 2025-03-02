@@ -14,8 +14,8 @@ ninja-build
 ninja
 
 [download.os=windows]
-url = https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-win.zip
-sha256 = bbde850d247d2737c5764c927d1071cbb1f1957dcabda4a130fa8547c12c695f
+url = https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip
+sha256 = f550fec705b6d6ff58f2db3c374c2277a37691678d6aba463adcbb129108467a
 
 [build.os=windows]
 builder = nop
@@ -24,9 +24,9 @@ builder = nop
 ninja.exe = bin/ninja.exe
 
 [download.not(os=windows)]
-url = https://github.com/ninja-build/ninja/archive/v1.10.2.tar.gz
-sha256 = ce35865411f0490368a8fc383f29071de6690cbadc27704734978221f25e2bed
+url = https://github.com/ninja-build/ninja/archive/v1.12.1.tar.gz
+sha256 = 821bdff48a3f683bc4bb3b6f0b5fe7b2d647cf65d52aeb63328c91a6c6df285a
 
 [build.not(os=windows)]
 builder = ninja_bootstrap
-subdir = ninja-1.10.2
+subdir = ninja-1.12.1
