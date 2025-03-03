@@ -359,16 +359,11 @@ Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
     return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
   }
 
-  if (*b == '+') {
-    // This function supports a leading + sign, but fast_float does not.
-    b += 1;
-    if (b == e || (!std::isdigit(*b) && *b != '.')) {
-      return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
-    }
-  }
-
   Tgt result;
-  auto [ptr, ec] = fast_float::from_chars(b, e, result);
+  fast_float::parse_options options{
+      fast_float::chars_format::general |
+      fast_float::chars_format::allow_leading_plus};
+  auto [ptr, ec] = fast_float::from_chars_advanced(b, e, result, options);
   bool isOutOfRange{ec == std::errc::result_out_of_range};
   bool isOk{ec == std::errc()};
   if (!isOk && !isOutOfRange) {
@@ -377,15 +372,6 @@ Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
 
   auto numMatchedChars = ptr - src->data();
   src->advance(numMatchedChars);
-
-  if (isOutOfRange) {
-    if (*b == '-') {
-      return -std::numeric_limits<Tgt>::infinity();
-    } else {
-      return std::numeric_limits<Tgt>::infinity();
-    }
-  }
-
   return result;
 }
 
