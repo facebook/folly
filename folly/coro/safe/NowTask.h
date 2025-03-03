@@ -48,13 +48,36 @@ template <typename T>
 class FOLLY_NODISCARD NowTaskWithExecutor final : private MustAwaitImmediately {
  protected:
   template <safe_alias, typename>
-  friend class BackgroundTask; // see `CanUnwrapNowTask` below
+  friend class BackgroundTask; // for `unwrapTaskWithExecutor`, remove later
   TaskWithExecutor<T> unwrapTaskWithExecutor() && { return std::move(inner_); }
 
   template <typename>
   friend class NowTask; // can construct
 
   explicit NowTaskWithExecutor(TaskWithExecutor<T> t) : inner_(std::move(t)) {}
+
+ public:
+  // Required for `await_result_t` to work.
+  // NB: Even though this is rvalue-qualified, this does not wrongly allow
+  // `co_await std::move(myNowTask().scheduleOn(ex));`, see `withExecutor` test
+  auto operator co_await() && noexcept {
+    return std::move(inner_).operator co_await();
+  }
+
+  NowTaskWithExecutor unsafeMoveMustAwaitImmediately() && {
+    return NowTaskWithExecutor{std::move(inner_)};
+  }
+
+  friend NowTaskWithExecutor co_withCancellation(
+      folly::CancellationToken cancelToken, NowTaskWithExecutor te) noexcept {
+    return NowTaskWithExecutor{
+        co_withCancellation(std::move(cancelToken), std::move(te.inner_))};
+  }
+
+  friend auto co_viaIfAsync(
+      Executor::KeepAlive<> executor, NowTaskWithExecutor te) noexcept {
+    return co_viaIfAsync(std::move(executor), std::move(te.inner_));
+  }
 
  private:
   TaskWithExecutor<T> inner_;
@@ -91,7 +114,6 @@ class FOLLY_CORO_TASK_ATTRS NowTask final
   using promise_type = detail::NowTaskPromise<T>;
 
   // If `makeNowTask().scheduleOn()` is movable, it defeats our purpose.
-  FOLLY_NODISCARD
   NowTaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> exec) && noexcept {
     return NowTaskWithExecutor<T>{
         std::move(*this).unwrap().scheduleOn(std::move(exec))};
@@ -121,13 +143,11 @@ class FOLLY_CORO_TASK_ATTRS NowTask final
   }
 
  protected:
-  // These 3 `friend`s (+ 1 above) are for `unwrap()`.  If this list grows,
-  // introduce a `CanUnwrapNowTask` passkey type.
   template <typename U>
-  friend auto toNowTask(NowTask<U> t);
+  friend auto toNowTask(NowTask<U> t); // for `unwrap`
   // `async_now_closure` wraps `NowTask`s into `NowTask`s
   template <auto>
-  friend auto detail::bind_captures_to_closure(auto&&, auto);
+  friend auto detail::bind_captures_to_closure(auto&&, auto); // for `unwrap`
 };
 
 // NB: `toNowTask(SafeTask)` is in `SafeTask.h` to avoid circular deps.
