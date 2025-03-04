@@ -199,16 +199,16 @@ class lock_base {
   void unlock() {
     check<true>();
     if constexpr (has_state_) {
-      auto const& state = state_; // prohibit unlock to mutate state_
-      typename Policy::unlock_fn{}(*mutex_, state);
+      // prohibit unlock to mutate state_
+      typename Policy::unlock_fn{}(*mutex_, std::as_const(state_));
     } else {
       typename Policy::unlock_fn{}(*mutex_);
     }
-    state_ = decltype(state_){};
+    state_ = owner_type{};
   }
 
   mutex_type* release() noexcept {
-    state_ = {};
+    state_ = owner_type{};
     return std::exchange(mutex_, nullptr);
   }
 
