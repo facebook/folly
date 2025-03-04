@@ -1241,7 +1241,7 @@ size_t IOBuf::goodExtBufferSize(std::size_t minCapacity) {
   size_t minSize = static_cast<size_t>(minCapacity) + sizeof(SharedInfo);
   // Add room for padding so that the SharedInfo will be aligned on an 8-byte
   // boundary.
-  minSize = (minSize + 7) & ~7;
+  minSize = (minSize + 7) & static_cast<size_t>(~7);
 
   // Use goodMallocSize() to bump up the capacity to a decent size to request
   // from malloc, so we can use all of the space that malloc will probably give
