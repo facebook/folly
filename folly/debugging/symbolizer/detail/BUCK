@@ -4,8 +4,16 @@ oncall("fbcode_entropy_wardens_folly")
 
 cpp_library(
     name = "debug",
+    srcs = ["Debug.cpp"],
     headers = ["Debug.h"],
-    exported_deps = [
+    # Make sure Debug.cpp is compiled using PIC so that there are no immediate
+    # references to _r_debug in the object file.
+    compiler_flags = select({
+        "DEFAULT": ["-fPIC"],
+        "ovr_config//compiler:clang-windows": [],
+    }),
+    preferred_linkage = "static",
+    deps = [
         "//folly:cpp_attributes",
     ],
 )
