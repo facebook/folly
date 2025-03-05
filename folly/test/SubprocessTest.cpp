@@ -66,6 +66,35 @@ bool waitForAnyOutput(Subprocess& proc) {
 }
 } // namespace
 
+struct SubprocessFdActionsListTest : testing::Test {};
+
+TEST_F(SubprocessFdActionsListTest, stress) {
+  std::mt19937 rng;
+  std::uniform_int_distribution<size_t> dist{0, 255};
+  for (size_t sz = 0; sz < 128; ++sz) {
+    std::map<int, int> map;
+    for (size_t i = 0; i < sz; ++i) {
+      while (true) {
+        auto n = dist(rng);
+        if (map.count(n)) {
+          continue;
+        }
+        map[int(n)] = -int(n);
+        break;
+      }
+    }
+    std::vector<std::pair<int, int>> vec{map.begin(), map.end()};
+    detail::SubprocessFdActionsList list{vec};
+    for (size_t fd = 0; fd < 256; ++fd) {
+      auto found = list.find(fd);
+      EXPECT_EQ(map.contains(fd), found != nullptr);
+      if (found) {
+        EXPECT_EQ(-int(fd), *found);
+      }
+    }
+  }
+}
+
 TEST(SimpleSubprocessTest, ExitsSuccessfully) {
   Subprocess proc(std::vector<std::string>{"/bin/true"});
   EXPECT_EQ(0, proc.wait().exitStatus());

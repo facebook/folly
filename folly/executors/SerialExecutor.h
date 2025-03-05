@@ -52,6 +52,12 @@ namespace detail {
  * The SerialExecutor may be deleted at any time. All tasks that have been
  * submitted will still be executed with the same guarantees, as long as the
  * parent executor is executing tasks.
+ *
+ * NOTE: This describes low-level executor tasks. Not coro::Task tasks.
+ * This executor does not guarantee that coro::Task tasks will be completed in
+ * the order that they are added. Rather, a coro::Task task may be suspended at
+ * a co_await/co_yield point and another such task that has been added to this
+ * executor may be resumed at that point.
  */
 template <template <typename> typename Queue>
 class SerialExecutorImpl : public SerializedExecutor {

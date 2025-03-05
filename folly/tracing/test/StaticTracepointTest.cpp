@@ -35,6 +35,10 @@
 #include <folly/portability/Unistd.h>
 #include <folly/tracing/test/StaticTracepointTestModule.h>
 
+#if FOLLY_HAVE_ELF
+#include <link.h>
+#endif
+
 #if FOLLY_HAVE_SDT
 
 static const std::string kUSDTSubsectionName = FOLLY_SDT_NOTE_NAME;

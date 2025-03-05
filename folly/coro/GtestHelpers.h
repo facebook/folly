@@ -45,7 +45,13 @@
  * Note that you cannot use ASSERT macros in coro tests. See below for
  * CO_ASSERT_*.
  */
-#define CO_TEST_(test_suite_name, test_name, parent_class, parent_id)          \
+#define CO_TEST_(                                                              \
+    test_suite_name,                                                           \
+    test_name,                                                                 \
+    parent_class,                                                              \
+    parent_id,                                                                 \
+    body_coro_t,                                                               \
+    unwrap_body)                                                               \
   static_assert(                                                               \
       sizeof(GTEST_STRINGIFY_(test_suite_name)) > 1,                           \
       "test_suite_name must not be empty");                                    \
@@ -69,7 +75,7 @@
                                                                                \
    private:                                                                    \
     void TestBody() override;                                                  \
-    folly::coro::Task<void> co_TestBody();                                     \
+    body_coro_t co_TestBody();                                                 \
     static ::testing::TestInfo* const test_info_ GTEST_ATTRIBUTE_UNUSED_;      \
   };                                                                           \
                                                                                \
@@ -89,35 +95,41 @@
           new ::testing::internal::TestFactoryImpl<GTEST_TEST_CLASS_NAME_(     \
               test_suite_name, test_name)>);                                   \
   void GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::TestBody() {        \
-    try {                                                                      \
-      folly::coro::blockingWait(co_TestBody());                                \
-    } catch (const std::exception& ex) {                                       \
-      LOG_ASYNC_TEST_EXCEPTION                                                 \
-      throw;                                                                   \
-    }                                                                          \
+    unwrap_body(co_TestBody);                                                  \
   }                                                                            \
-  folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                              \
-      test_suite_name, test_name)::co_TestBody()
+  body_coro_t GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::co_TestBody()
 
-/**
- * TEST() for coro tests.
+#define CO_UNWRAP_BODY(body)           \
+  try {                                \
+    folly::coro::blockingWait(body()); \
+  } catch (const std::exception& ex) { \
+    LOG_ASYNC_TEST_EXCEPTION           \
+    throw;                             \
+  }
+
+/**                                    \
+ * TEST() for coro tests.              \
  */
-#define CO_TEST(test_case_name, test_name) \
-  CO_TEST_(                                \
-      test_case_name,                      \
-      test_name,                           \
-      ::testing::Test,                     \
-      ::testing::internal::GetTestTypeId())
+#define CO_TEST(test_case_name, test_name)  \
+  CO_TEST_(                                 \
+      test_case_name,                       \
+      test_name,                            \
+      ::testing::Test,                      \
+      ::testing::internal::GetTestTypeId(), \
+      folly::coro::Task<void>,              \
+      CO_UNWRAP_BODY)
 
 /**
  * TEST_F() for coro tests.
  */
-#define CO_TEST_F(test_fixture, test_name) \
-  CO_TEST_(                                \
-      test_fixture,                        \
-      test_name,                           \
-      test_fixture,                        \
-      ::testing::internal::GetTypeId<test_fixture>())
+#define CO_TEST_F(test_fixture, test_name)            \
+  CO_TEST_(                                           \
+      test_fixture,                                   \
+      test_name,                                      \
+      test_fixture,                                   \
+      ::testing::internal::GetTypeId<test_fixture>(), \
+      folly::coro::Task<void>,                        \
+      CO_UNWRAP_BODY)
 
 #define CO_TEST_P(test_suite_name, test_name)                                  \
   class GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)                     \

@@ -22,6 +22,9 @@
 
 namespace folly::coro {
 
+static_assert(std::is_void_v<await_result_t<NowTaskWithExecutor<void>>>);
+static_assert(std::is_same_v<int, await_result_t<NowTaskWithExecutor<int>>>);
+
 Task<int> demoTask(int x) {
   co_return 1300 + x;
 }
@@ -81,6 +84,28 @@ CO_TEST(NowTaskTest, simple) {
   co_await std::move(t);
 #endif
   static_assert(!test_transform_moved_v<NowTask<int>&>);
+}
+
+template <typename T>
+inline constexpr bool test_transform_moved_with_executor_v = std::is_same_v<
+    detected_t<await_transform_result_t, T>,
+    StackAwareViaIfAsyncAwaitable<TaskWithExecutor<int>>>;
+
+CO_TEST(NowTaskTest, withExecutor) {
+  auto exec = co_await co_current_executor;
+  EXPECT_EQ(1337, co_await demoNowTask(37).scheduleOn(exec));
+
+  static_assert(test_transform_moved_with_executor_v<TaskWithExecutor<int>>);
+  static_assert(test_transform_moved_with_executor_v<TaskWithExecutor<int>&&>);
+  static_assert(test_transform_moved_with_executor_v<NowTaskWithExecutor<int>>);
+  static_assert(
+      !test_transform_moved_with_executor_v<NowTaskWithExecutor<int>&&>);
+#if 0 // The above asserts are a proxy for this manual test
+  auto te = demoNowTask(37).scheduleOn(exec);
+  co_await std::move(te);
+#endif
+  static_assert(
+      !test_transform_moved_with_executor_v<NowTaskWithExecutor<int>&>);
 }
 
 // `co_nothrow` isn't a function object, so we can't wrap it & pass prvalues

@@ -14,15 +14,31 @@
  * limitations under the License.
  */
 
-#pragma once
+#include <folly/debugging/symbolizer/detail/Debug.h>
 
-struct r_debug;
+#include <folly/CppAttributes.h>
+
+#if FOLLY_HAVE_ELF
+#include <link.h>
+#endif
+
+#if defined(__APPLE__) && !TARGET_OS_OSX
+#define NO_R_DEBUG
+#elif !defined(__linux__) || !FOLLY_HAVE_ELF || !FOLLY_HAVE_DWARF
+#define NO_R_DEBUG
+#endif
 
 namespace folly {
 namespace symbolizer {
 namespace detail {
 
-struct r_debug* get_r_debug();
+struct r_debug* get_r_debug() {
+#ifdef NO_R_DEBUG
+  return nullptr;
+#else
+  return &_r_debug;
+#endif
+}
 
 } // namespace detail
 } // namespace symbolizer

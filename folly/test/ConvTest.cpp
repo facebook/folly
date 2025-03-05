@@ -1703,33 +1703,44 @@ void tryStringToFloat(const StrToFloat<String>& strToFloat) {
   }
 
   // NaN
-  const std::array<String, 6> kNanInputs{{
+  const std::array<String, 9> kNanInputs{{
       "nan",
       "NaN",
       "NAN",
       "-nan",
       "-NaN",
       "-NAN",
+      "+nan",
+      "+NaN",
+      "+NAN",
   }};
   for (const auto& input : kNanInputs) {
     auto rv = strToFloat(input);
     EXPECT_TRUE(std::isnan(rv.value())) << input;
   }
 
-  EXPECT_EQ(strToFloat("+nan").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
-
-  const std::array<String, 6> kInfinityInputs{{
+  const std::array<String, 12> kInfinityInputs{{
       "-inf",
       "-INF",
       "-iNf",
       "-infinity",
       "-INFINITY",
       "-INFInITY",
+      "+inf",
+      "+INF",
+      "+iNf",
+      "+infinity",
+      "+INFINITY",
+      "+INFInITY",
   }};
   for (const auto& input : kInfinityInputs) {
     {
       auto rv = strToFloat(input);
-      EXPECT_EQ(rv.value(), -numeric_limits<float>::infinity()) << input;
+      if (input[0] == '-') {
+        EXPECT_EQ(rv.value(), -numeric_limits<float>::infinity()) << input;
+      } else {
+        EXPECT_EQ(rv.value(), numeric_limits<float>::infinity()) << input;
+      }
     }
 
     {
@@ -1738,10 +1749,6 @@ void tryStringToFloat(const StrToFloat<String>& strToFloat) {
       EXPECT_EQ(rv.value(), numeric_limits<float>::infinity()) << positiveInput;
     }
   }
-
-  EXPECT_EQ(
-      strToFloat("+infinity").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
-  EXPECT_EQ(strToFloat("+inf").error(), ConversionCode::STRING_TO_FLOAT_ERROR);
 
   const std::array<String, 15> kScientificNotation{{
       "123.4560e0",

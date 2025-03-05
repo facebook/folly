@@ -2,12 +2,12 @@
 name = fast_float
 
 [download]
-url = https://github.com/fastfloat/fast_float/archive/refs/tags/v6.1.4.tar.gz
-sha256 = 12cb6d250824160ca16bcb9d51f0ca7693d0d10cb444f34f1093bc02acfce704
+url = https://github.com/fastfloat/fast_float/archive/refs/tags/v8.0.0.tar.gz
+sha256 = f312f2dc34c61e665f4b132c0307d6f70ad9420185fa831911bc24408acf625d
 
 [build]
 builder = cmake
-subdir = fast_float-6.1.4
+subdir = fast_float-8.0.0
 
 [cmake.defines]
 FASTFLOAT_TEST = OFF

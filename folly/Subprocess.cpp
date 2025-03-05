@@ -23,6 +23,7 @@
 #if defined(__linux__)
 #include <sys/prctl.h>
 #endif
+#include <dlfcn.h>
 #include <fcntl.h>
 
 #include <algorithm>
@@ -49,10 +50,193 @@
 #include <folly/system/AtFork.h>
 #include <folly/system/Shell.h>
 
+/// interceptors to work around:
+///
+/// https://github.com/llvm/llvm-project/blob/llvmorg-19.1.7/compiler-rt/lib/tsan/rtl/tsan_interceptors_posix.cpp
+/// https://github.com/llvm/llvm-project/blob/llvmorg-19.1.7/compiler-rt/lib/sanitizer_common/sanitizer_signal_interceptors.inc
+
+/// In sanitized builds, explicitly disable sanitization in the child process.
+/// * Disable sanitizer function transformation, including __tsan_func_entry and
+///   __tsan_func_exit hooks (under clang).
+/// * Bypass sanitizer interceptors of libc/posix functions, including of vfork
+///   and of all other libc/posix callees in the child process. Interceptors
+///   look like __interceptor_trampoline_{name} for libc/posix function {name}.
+
+#if __has_attribute(disable_sanitizer_instrumentation)
+#define FOLLY_DETAIL_SUBPROCESS_RAW                  \
+  __attribute__((                                    \
+      noinline,                                      \
+      no_sanitize("address", "undefined", "thread"), \
+      disable_sanitizer_instrumentation))
+#else
+#define FOLLY_DETAIL_SUBPROCESS_RAW \
+  __attribute__((noinline, no_sanitize("address", "undefined", "thread")))
+#endif
+
 constexpr int kExecFailure = 127;
 constexpr int kChildFailure = 126;
 
 namespace folly {
+
+namespace detail {
+
+SubprocessFdActionsList::SubprocessFdActionsList(
+    span<value_type const> rep) noexcept
+    : begin_{rep.data()}, end_{rep.data() + rep.size()} {
+  [[maybe_unused]] auto lt = [](auto a, auto b) { return a.first < b.first; };
+  assert(std::is_sorted(begin_, end_, lt));
+  [[maybe_unused]] auto eq = [](auto a, auto b) { return a.first == b.first; };
+  assert(std::adjacent_find(begin_, end_, eq) == end_);
+}
+
+FOLLY_DETAIL_SUBPROCESS_RAW
+auto SubprocessFdActionsList::begin() const noexcept -> value_type const* {
+  return begin_;
+}
+FOLLY_DETAIL_SUBPROCESS_RAW
+auto SubprocessFdActionsList::end() const noexcept -> value_type const* {
+  return end_;
+}
+FOLLY_DETAIL_SUBPROCESS_RAW
+auto SubprocessFdActionsList::find(int fd) const noexcept -> int const* {
+  auto lo = begin_;
+  auto hi = end_;
+  while (lo < hi) {
+    auto mid = lo + (hi - lo) / 2;
+    if (mid->first == fd) {
+      return &mid->second;
+    }
+    if (mid->first < fd) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return nullptr;
+}
+
+// clang-format off
+static inline constexpr auto subprocess_libc_soname =
+    kIsLinux ? "libc.so.6" :
+    kIsFreeBSD ? "libc.so.7" :
+    kIsApple ? "/usr/lib/libc.dylib" :
+    nullptr;
+// clang-format on
+
+template <typename Ret>
+static Ret subprocess_libc_load(
+    void* const handle, Ret const ptr, char const* const name) {
+  return !kIsSanitize ? ptr : reinterpret_cast<Ret>(::dlsym(handle, name));
+}
+
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_X_BASE(X) \
+  X(_exit, _exit)                              \
+  X(close, close)                              \
+  X(dup2, dup2)                                \
+  X(fcntl, fcntl)                              \
+  X(pthread_sigmask, pthread_sigmask)          \
+  X(signal, signal)                            \
+  X(strtol, strtol)                            \
+  X(vfork, vfork)                              \
+  X(write, write)
+
+#if defined(__BIONIC_INCLUDE_FORTIFY_HEADERS)
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_X_OPEN(X) X(open, __open_real)
+#else
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_X_OPEN(X) X(open, open)
+#endif
+
+#if defined(__linux__)
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_X_PRCTL(X) X(prctl, prctl)
+#else
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_X_PRCTL(X)
+#endif
+
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_X(X) \
+  FOLLY_DETAIL_SUBPROCESS_LIBC_X_BASE(X)  \
+  FOLLY_DETAIL_SUBPROCESS_LIBC_X_OPEN(X)  \
+  FOLLY_DETAIL_SUBPROCESS_LIBC_X_PRCTL(X)
+
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_FIELD_DECL(name, func) \
+  static decltype(&::func) name;
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_FIELD_DEFN(name, func) \
+  decltype(&::func) subprocess_libc::name;
+#define FOLLY_DETAIL_SUBPROCESS_LIBC_INIT(name, func) \
+  subprocess_libc::name = subprocess_libc_load(handle, &::func, #name);
+
+struct subprocess_libc {
+  FOLLY_DETAIL_SUBPROCESS_LIBC_X(FOLLY_DETAIL_SUBPROCESS_LIBC_FIELD_DECL)
+};
+
+FOLLY_DETAIL_SUBPROCESS_LIBC_X(FOLLY_DETAIL_SUBPROCESS_LIBC_FIELD_DEFN)
+
+__attribute__((constructor(101))) static void subprocess_libc_init() {
+  auto handle = !kIsSanitize
+      ? nullptr
+      : ::dlopen(subprocess_libc_soname, RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
+  assert(!kIsSanitize || !!handle);
+  FOLLY_DETAIL_SUBPROCESS_LIBC_X(FOLLY_DETAIL_SUBPROCESS_LIBC_INIT)
+}
+
+#undef FOLLY_DETAIL_SUBPROCESS_LIBC_FIELD_DECL
+#undef FOLLY_DETAIL_SUBPROCESS_LIBC_FIELD_DEFN
+#undef FOLLY_DETAIL_SUBPROCESS_LIBC_INIT
+#undef FOLLY_DETAIL_SUBPROCESS_LIBC_X
+#undef FOLLY_DETAIL_SUBPROCESS_LIBC_X_PRCTL
+#undef FOLLY_DETAIL_SUBPROCESS_LIBC_X_OPEN
+#undef FOLLY_DETAIL_SUBPROCESS_LIBC_X_BASE
+
+} // namespace detail
+
+struct Subprocess::SpawnRawArgs {
+  struct Scratch {
+    std::vector<std::pair<int, int>> fdActions;
+
+    explicit Scratch(Options const& options)
+        : fdActions{options.fdActions_.begin(), options.fdActions_.end()} {
+      std::sort(fdActions.begin(), fdActions.end());
+    }
+  };
+
+  // from options
+  char const* childDir{};
+  bool closeOtherFds{};
+#if defined(__linux__)
+  cpu_set_t const* cpuSet{};
+#endif
+  DangerousPostForkPreExecCallback* dangerousPostForkPreExecCallback;
+  bool detach{};
+  detail::SubprocessFdActionsList fdActions;
+  int parentDeathSignal{};
+  bool processGroupLeader{};
+  bool usePath{};
+
+  // assigned explicitly
+  char const* const* argv{};
+  char const* const* envv{};
+  char const* executable{};
+  int errFd{};
+  sigset_t oldSignals{};
+
+  explicit SpawnRawArgs(Scratch const& scratch, Options const& options)
+      : childDir{options.childDir_.empty() ? nullptr : options.childDir_.c_str()},
+        closeOtherFds{options.closeOtherFds_},
+#if defined(__linux__)
+        cpuSet{get_pointer(options.cpuSet_)},
+#endif
+        dangerousPostForkPreExecCallback{
+            options.dangerousPostForkPreExecCallback_},
+        detach{options.detach_},
+        fdActions{scratch.fdActions},
+#if defined(__linux__)
+        parentDeathSignal{options.parentDeathSignal_},
+#endif
+        processGroupLeader{options.processGroupLeader_},
+        usePath{options.usePath_} {
+    static_assert(std::is_standard_layout_v<Subprocess::SpawnRawArgs>);
+    static_assert(std::is_trivially_destructible_v<Subprocess::SpawnRawArgs>);
+  }
+};
 
 ProcessReturnCode ProcessReturnCode::make(int status) {
   if (!WIFEXITED(status) && !WIFSIGNALED(status)) {
@@ -268,16 +452,22 @@ struct ChildErrorInfo {
   int errnoValue;
 };
 
-[[noreturn]] void childError(int errFd, int errCode, int errnoValue) {
+} // namespace
+
+[[noreturn]]
+FOLLY_DETAIL_SUBPROCESS_RAW void Subprocess::childError(
+    SpawnRawArgs const& args, int errCode, int errnoValue) {
   ChildErrorInfo info = {errCode, errnoValue};
   // Write the error information over the pipe to our parent process.
   // We can't really do anything else if this write call fails.
-  writeNoInt(errFd, &info, sizeof(info));
+  ssize_t r = 0;
+  do {
+    r = detail::subprocess_libc::write(args.errFd, &info, sizeof(info));
+  } while (r < 0 && errno == EINTR);
   // exit
-  _exit(errCode);
+  detail::subprocess_libc::_exit(errCode);
+  __builtin_unreachable();
 }
-
-} // namespace
 
 void Subprocess::setAllNonBlocking() {
   for (auto& p : pipes_) {
@@ -361,12 +551,6 @@ void Subprocess::spawn(
   pipesGuard.dismiss();
 }
 
-// With -Wclobbered, gcc complains about vfork potentially cloberring the
-// childDir variable, even though we only use it on the child side of the
-// vfork.
-
-FOLLY_PUSH_WARNING
-FOLLY_GCC_DISABLE_WARNING("-Wclobbered")
 void Subprocess::spawnInternal(
     std::unique_ptr<const char*[]> argv,
     const char* executable,
@@ -428,16 +612,10 @@ void Subprocess::spawnInternal(
   // Note that the const casts below are legit, per
   // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
 
-  auto argVec = const_cast<char**>(argv.get());
-
   // Set up environment
   std::unique_ptr<const char*[]> envHolder;
-  char** envVec;
   if (env) {
     envHolder = cloneStrings(*env);
-    envVec = const_cast<char**>(envHolder.get());
-  } else {
-    envVec = environ;
   }
 
   // Block all signals around vfork; see http://ewontfix.com/7/.
@@ -466,58 +644,13 @@ void Subprocess::spawnInternal(
     CHECK_EQ(r, 0) << "pthread_sigmask: " << errnoStr(r); // shouldn't fail
   };
 
-  // Call c_str() here, as it's not necessarily safe after fork.
-  const char* childDir =
-      options.childDir_.empty() ? nullptr : options.childDir_.c_str();
-
-  pid_t pid;
-  if (options.detach_) {
-    // If we are detaching we must use fork() instead of vfork() for the first
-    // fork, since we aren't going to simply call exec() in the child.
-    pid = AtFork::forkInstrumented(fork);
-  } else {
-    if (kIsSanitizeThread) {
-      // TSAN treats vfork as fork, so use the instrumented version
-      // instead
-      pid = AtFork::forkInstrumented(fork);
-    } else {
-      pid = vfork();
-    }
-  }
-  checkUnixError(pid, errno, "failed to fork");
-  if (pid == 0) {
-    // Fork a second time if detach_ was requested.
-    // This must be done before signals are restored in prepareChild()
-    if (options.detach_) {
-      if (kIsSanitizeThread) {
-        // TSAN treats vfork as fork, so use the instrumented version
-        // instead
-        pid = AtFork::forkInstrumented(fork);
-      } else {
-        pid = vfork();
-      }
-      if (pid == -1) {
-        // Inform our parent process of the error so it can throw in the parent.
-        childError(errFd, kChildFailure, errno);
-      } else if (pid != 0) {
-        // We are the intermediate process.  Exit immediately.
-        // Our child will still inform the original parent of success/failure
-        // through errFd.  The pid of the grandchild process never gets
-        // propagated back up to the original parent.  In the future we could
-        // potentially send it back using errFd if we needed to.
-        _exit(0);
-      }
-    }
-
-    int errnoValue = prepareChild(options, &oldSignals, childDir);
-    if (errnoValue != 0) {
-      childError(errFd, kChildFailure, errnoValue);
-    }
-
-    errnoValue = runChild(executable, argVec, envVec, options);
-    // If we get here, exec() failed.
-    childError(errFd, kExecFailure, errnoValue);
-  }
+  SpawnRawArgs::Scratch scratch{options};
+  SpawnRawArgs args{scratch, options};
+  args.argv = argv.get();
+  args.envv = env ? envHolder.get() : environ;
+  args.executable = executable;
+  args.errFd = errFd;
+  args.oldSignals = oldSignals;
 
   // Child is alive.  We have to be very careful about throwing after this
   // point.  We are inside the constructor, so if we throw the Subprocess
@@ -526,8 +659,53 @@ void Subprocess::spawnInternal(
   // We should only throw if we got an error via the errFd, and we know the
   // child has exited and can be immediately waited for.  In all other cases,
   // we have no way of cleaning up the child.
-  pid_ = pid;
+  pid_ = spawnInternalDoFork(args);
   returnCode_ = ProcessReturnCode::makeRunning();
+}
+
+// With -Wclobbered, gcc complains about vfork potentially cloberring the
+// childDir variable, even though we only use it on the child side of the
+// vfork.
+
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wclobbered")
+FOLLY_DETAIL_SUBPROCESS_RAW
+pid_t Subprocess::spawnInternalDoFork(SpawnRawArgs const& args) {
+  pid_t pid = detail::subprocess_libc::vfork();
+  checkUnixError(pid, errno, "failed to fork");
+  if (pid != 0) {
+    return pid;
+  }
+
+  // From this point onward, we are in the child.
+
+  // Fork a second time if detach_ was requested.
+  // This must be done before signals are restored in prepareChild()
+  if (args.detach) {
+    pid = detail::subprocess_libc::vfork();
+    if (pid == -1) {
+      // Inform our parent process of the error so it can throw in the parent.
+      childError(args, kChildFailure, errno);
+    } else if (pid != 0) {
+      // We are the intermediate process.  Exit immediately.
+      // Our child will still inform the original parent of success/failure
+      // through errFd.  The pid of the grandchild process never gets
+      // propagated back up to the original parent.  In the future we could
+      // potentially send it back using errFd if we needed to.
+      detail::subprocess_libc::_exit(0);
+    }
+  }
+
+  int errnoValue = prepareChild(args);
+  if (errnoValue != 0) {
+    childError(args, kChildFailure, errnoValue);
+  }
+
+  errnoValue = runChild(args);
+  // If we get here, exec() failed.
+  childError(args, kExecFailure, errnoValue);
+
+  return 0; // unreachable
 }
 FOLLY_POP_WARNING
 
@@ -540,9 +718,10 @@ FOLLY_POP_WARNING
 // there is very little it can do. It cannot allocate memory and
 // it cannot lock a mutex, just as if it were running in a signal
 // handler.
-void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
+FOLLY_DETAIL_SUBPROCESS_RAW
+void Subprocess::closeInheritedFds(const SpawnRawArgs& args) {
 #if defined(__linux__)
-  int dirfd = fileops::open("/proc/self/fd", O_RDONLY);
+  int dirfd = detail::subprocess_libc::open("/proc/self/fd", O_RDONLY);
   if (dirfd != -1) {
     char buffer[32768];
     int res;
@@ -573,57 +752,57 @@ void Subprocess::closeInheritedFds(const Options::FdMap& fdActions) {
         }
         char* end_p = nullptr;
         errno = 0;
-        int fd = static_cast<int>(::strtol(entry->d_name, &end_p, 10));
+        int fd = static_cast<int>(
+            detail::subprocess_libc::strtol(entry->d_name, &end_p, 10));
         if (errno == ERANGE || fd < 3 || end_p == entry->d_name) {
           continue;
         }
-        if ((fd != dirfd) && (fdActions.count(fd) == 0)) {
-          fileops::close(fd);
+        if ((fd != dirfd) && (args.fdActions.find(fd) == nullptr)) {
+          detail::subprocess_libc::close(fd);
         }
       }
     }
-    fileops::close(dirfd);
+    detail::subprocess_libc::close(dirfd);
     return;
   }
 #endif
   // If not running on Linux or if we failed to open /proc/self/fd, try to close
   // all possible open file descriptors.
   for (auto fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
-    if (fdActions.count(fd) == 0) {
-      fileops::close(fd);
+    if (args.fdActions.find(fd) == nullptr) {
+      detail::subprocess_libc::close(fd);
     }
   }
 }
 
-int Subprocess::prepareChild(
-    const Options& options,
-    const sigset_t* sigmask,
-    const char* childDir) const {
+FOLLY_DETAIL_SUBPROCESS_RAW
+int Subprocess::prepareChild(SpawnRawArgs const& args) {
   // While all signals are blocked, we must reset their
   // dispositions to default.
   for (int sig = 1; sig < NSIG; ++sig) {
-    ::signal(sig, SIG_DFL);
+    detail::subprocess_libc::signal(sig, SIG_DFL);
   }
 
   {
     // Unblock signals; restore signal mask.
-    int r = pthread_sigmask(SIG_SETMASK, sigmask, nullptr);
+    int r = detail::subprocess_libc::pthread_sigmask(
+        SIG_SETMASK, &args.oldSignals, nullptr);
     if (r != 0) {
       return r; // pthread_sigmask() returns an errno value
     }
   }
 
   // Change the working directory, if one is given
-  if (childDir) {
-    if (::chdir(childDir) == -1) {
+  if (args.childDir) {
+    if (::chdir(args.childDir) == -1) {
       return errno;
     }
   }
 
 #ifdef __linux__
   // Best effort
-  if (options.cpuSet_.hasValue()) {
-    const auto& cpuSet = options.cpuSet_.value();
+  if (args.cpuSet) {
+    const auto& cpuSet = *args.cpuSet;
     ::sched_setaffinity(0, sizeof(cpuSet), &cpuSet);
   }
 #endif
@@ -634,44 +813,46 @@ int Subprocess::prepareChild(
 
   // Redirect requested FDs to /dev/null or NUL
   // dup2 any explicitly specified FDs
-  for (auto& p : options.fdActions_) {
+  for (auto p : args.fdActions) {
     if (p.second == DEV_NULL) {
       // folly/portability/Fcntl provides an impl of open that will
       // map this to NUL on Windows.
-      auto devNull = fileops::open("/dev/null", O_RDWR | O_CLOEXEC);
+      auto devNull =
+          detail::subprocess_libc::open("/dev/null", O_RDWR | O_CLOEXEC);
       if (devNull == -1) {
         return errno;
       }
       // note: dup2 will not set CLOEXEC on the destination
-      if (::dup2(devNull, p.first) == -1) {
+      if (detail::subprocess_libc::dup2(devNull, p.first) == -1) {
         // explicit close on error to avoid leaking fds
-        fileops::close(devNull);
+        detail::subprocess_libc::close(devNull);
         return errno;
       }
-      fileops::close(devNull);
+      detail::subprocess_libc::close(devNull);
     } else if (p.second != p.first) {
-      if (::dup2(p.second, p.first) == -1) {
+      if (detail::subprocess_libc::dup2(p.second, p.first) == -1) {
         return errno;
       }
     }
   }
 
-  if (options.closeOtherFds_) {
-    closeInheritedFds(options.fdActions_);
+  if (args.closeOtherFds) {
+    closeInheritedFds(args);
   }
 
 #if defined(__linux__)
   // Opt to receive signal on parent death, if requested
-  if (options.parentDeathSignal_ != 0) {
+  if (args.parentDeathSignal != 0) {
     const auto parentDeathSignal =
-        static_cast<unsigned long>(options.parentDeathSignal_);
-    if (prctl(PR_SET_PDEATHSIG, parentDeathSignal, 0, 0, 0) == -1) {
+        static_cast<unsigned long>(args.parentDeathSignal);
+    if (detail::subprocess_libc::prctl(
+            PR_SET_PDEATHSIG, parentDeathSignal, 0, 0, 0) == -1) {
       return errno;
     }
   }
 #endif
 
-  if (options.processGroupLeader_) {
+  if (args.processGroupLeader) {
 #if !defined(__FreeBSD__)
     if (setpgrp() == -1) {
 #else
@@ -682,8 +863,8 @@ int Subprocess::prepareChild(
   }
 
   // The user callback comes last, so that the child is otherwise all set up.
-  if (options.dangerousPostForkPreExecCallback_) {
-    if (int error = (*options.dangerousPostForkPreExecCallback_)()) {
+  if (args.dangerousPostForkPreExecCallback) {
+    if (int error = (*args.dangerousPostForkPreExecCallback)()) {
       return error;
     }
   }
@@ -691,14 +872,15 @@ int Subprocess::prepareChild(
   return 0;
 }
 
-int Subprocess::runChild(
-    const char* executable, char** argv, char** env, const Options& options)
-    const {
+FOLLY_DETAIL_SUBPROCESS_RAW
+int Subprocess::runChild(SpawnRawArgs const& args) {
+  auto argv = const_cast<char* const*>(args.argv);
+  auto envv = const_cast<char* const*>(args.envv);
   // Now, finally, exec.
-  if (options.usePath_) {
-    ::execvp(executable, argv);
+  if (args.usePath) {
+    ::execvp(args.executable, argv);
   } else {
-    ::execve(executable, argv, env);
+    ::execve(args.executable, argv, envv);
   }
   return errno;
 }

@@ -104,6 +104,7 @@
 #include <chrono>
 #include <exception>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <boost/container/flat_map.hpp>
@@ -117,11 +118,40 @@
 #include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/container/span.h>
 #include <folly/gen/String.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/portability/SysResource.h>
 
 namespace folly {
+
+namespace detail {
+
+/// SubprocessFdActionsList
+///
+/// A sorted vector-map with a binary search. Declared in the header so that the
+/// binary search can be unit-tested.
+///
+/// Not using a library container type since this binary search is done in the
+/// child process after a vfork(), including in sanitized builds. Relevant
+/// member functions are explicitly marked non-sanitized (under clang).
+class SubprocessFdActionsList {
+ private:
+  using value_type = std::pair<int, int>;
+
+  value_type const* begin_;
+  value_type const* end_;
+
+ public:
+  explicit SubprocessFdActionsList(span<value_type const> rep) noexcept;
+
+  value_type const* begin() const noexcept;
+  value_type const* end() const noexcept;
+
+  int const* find(int fd) const noexcept;
+};
+
+} // namespace detail
 
 /**
  * Class to wrap a process return code.
@@ -401,17 +431,15 @@ class Subprocess {
      * Detach the spawned process, to allow destroying the Subprocess object
      * without waiting for the child process to finish.
      *
-     * This causes the code to fork twice before executing the command.
-     * The intermediate child process will exit immediately, causing the process
-     * running the executable to be reparented to init (pid 1).
+     * This causes the code to vfork twice before executing the command. The
+     * intermediate child process will exit immediately after execve, causing
+     * the process running the executable to be reparented to init (pid 1).
      *
      * Subprocess objects created with detach() enabled will already be in an
      * "EXITED" state when the constructor returns.  The caller should not call
      * wait() or poll() on the Subprocess, and pid() will return -1.
      */
-    [[deprecated(
-        "detach() forks the current process, which is considered dangerous")]] Options&
-    detach() {
+    Options& detach() {
       detach_ = true;
       return *this;
     }
@@ -951,6 +979,9 @@ class Subprocess {
   std::vector<ChildPipe> takeOwnershipOfPipes();
 
  private:
+  struct LibcReal;
+  struct SpawnRawArgs;
+
   // spawn() sets up a pipe to read errors from the child,
   // then calls spawnInternal() to do the bulk of the work.  Once
   // spawnInternal() returns it reads the error pipe to see if the child
@@ -967,19 +998,18 @@ class Subprocess {
       const std::vector<std::string>* env,
       int errFd);
 
+  static pid_t spawnInternalDoFork(SpawnRawArgs const& args);
+  [[noreturn]] static void childError(
+      SpawnRawArgs const& args, int errCode, int errnoValue);
+
   // Actions to run in child.
   // Note that this runs after vfork(), so tread lightly.
   // Returns 0 on success, or an errno value on failure.
-  int prepareChild(
-      const Options& options,
-      const sigset_t* sigmask,
-      const char* childDir) const;
-  int runChild(
-      const char* executable, char** argv, char** env, const Options& options)
-      const;
+  static int prepareChild(SpawnRawArgs const& args);
+  static int runChild(SpawnRawArgs const& args);
 
   // Closes fds inherited from parent in child process
-  static void closeInheritedFds(const Options::FdMap& fdActions);
+  static void closeInheritedFds(const SpawnRawArgs& args);
 
   /**
    * Read from the error pipe, and throw SubprocessSpawnError if the child
