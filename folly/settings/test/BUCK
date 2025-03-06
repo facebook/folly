@@ -37,6 +37,24 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "command_line_parser_test",
+    srcs = [
+        "CommandLineParserTest.cpp",
+    ],
+    labels = ["case-isolation-failure"],
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        "//folly:conv",
+        "//folly:string",
+        "//folly/container:array",
+        "//folly/logging:logging",
+        "//folly/settings:command_line_parser",
+        "//folly/settings:settings",
+        "//folly/settings:settings_accessor_proxy",
+    ],
+)
+
 cpp_library(
     name = "a",
     srcs = [
