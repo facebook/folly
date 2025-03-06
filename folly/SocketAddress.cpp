@@ -115,7 +115,7 @@ struct GetAddrInfoError {
   }
 #else
   const char* error;
-  const char* str() const { return error; }
+  const char* str() const { return error ? error : "Unknown error"; }
   explicit GetAddrInfoError(int errorCode) : error(gai_strerror(errorCode)) {}
 #endif
 };
