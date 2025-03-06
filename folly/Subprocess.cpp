@@ -137,8 +137,7 @@ static Ret subprocess_libc_load(
   X(pthread_sigmask, pthread_sigmask)          \
   X(signal, signal)                            \
   X(strtol, strtol)                            \
-  X(vfork, vfork)                              \
-  X(write, write)
+  X(vfork, vfork)
 
 #if defined(__BIONIC_INCLUDE_FORTIFY_HEADERS)
 #define FOLLY_DETAIL_SUBPROCESS_LIBC_X_OPEN(X) X(open, __open_real)
@@ -215,7 +214,7 @@ struct Subprocess::SpawnRawArgs {
   char const* const* argv{};
   char const* const* envv{};
   char const* executable{};
-  int errFd{};
+  ChildErrorInfo* err{};
   sigset_t oldSignals{};
 
   explicit SpawnRawArgs(Scratch const& scratch, Options const& options)
@@ -445,26 +444,15 @@ Subprocess::~Subprocess() {
   }
 }
 
-namespace {
-
-struct ChildErrorInfo {
+struct Subprocess::ChildErrorInfo {
   int errCode;
   int errnoValue;
 };
 
-} // namespace
-
 [[noreturn]]
 FOLLY_DETAIL_SUBPROCESS_RAW void Subprocess::childError(
     SpawnRawArgs const& args, int errCode, int errnoValue) {
-  ChildErrorInfo info = {errCode, errnoValue};
-  // Write the error information over the pipe to our parent process.
-  // We can't really do anything else if this write call fails.
-  ssize_t r = 0;
-  do {
-    r = detail::subprocess_libc::write(args.errFd, &info, sizeof(info));
-  } while (r < 0 && errno == EINTR);
-  // exit
+  *args.err = {errCode, errnoValue};
   detail::subprocess_libc::_exit(errCode);
   __builtin_unreachable();
 }
@@ -495,51 +483,21 @@ void Subprocess::spawn(
   // On error, close all pipes_ (ignoring errors, but that seems fine here).
   auto pipesGuard = makeGuard([this] { pipes_.clear(); });
 
-  // Create a pipe to use to receive error information from the child,
-  // in case it fails before calling exec()
-  int errFds[2];
-#if FOLLY_HAVE_PIPE2
-  checkUnixError(::pipe2(errFds, O_CLOEXEC), "pipe2");
-#else
-  checkUnixError(fileops::pipe(errFds), "pipe");
-#endif
-  SCOPE_EXIT {
-    CHECK_ERR(fileops::close(errFds[0]));
-    if (errFds[1] >= 0) {
-      CHECK_ERR(fileops::close(errFds[1]));
-    }
-  };
-
-#if !FOLLY_HAVE_PIPE2
-  // Ask the child to close the read end of the error pipe.
-  checkUnixError(fcntl(errFds[0], F_SETFD, FD_CLOEXEC), "set FD_CLOEXEC");
-  // Set the close-on-exec flag on the write side of the pipe.
-  // This way the pipe will be closed automatically in the child if execve()
-  // succeeds.  If the exec fails the child can write error information to the
-  // pipe.
-  checkUnixError(fcntl(errFds[1], F_SETFD, FD_CLOEXEC), "set FD_CLOEXEC");
-#endif
+  ChildErrorInfo err{};
 
   // Perform the actual work of setting up pipes then forking and
   // executing the child.
-  spawnInternal(std::move(argv), executable, options, env, errFds[1]);
+  spawnInternal(std::move(argv), executable, options, env, &err);
 
   // After spawnInternal() returns the child is alive.  We have to be very
   // careful about throwing after this point.  We are inside the constructor,
   // so if we throw the Subprocess object will have never existed, and the
   // destructor will never be called.
   //
-  // We should only throw if we got an error via the errFd, and we know the
-  // child has exited and can be immediately waited for.  In all other cases,
-  // we have no way of cleaning up the child.
-
-  // Close writable side of the errFd pipe in the parent process
-  CHECK_ERR(fileops::close(errFds[1]));
-  errFds[1] = -1;
-
-  // Read from the errFd pipe, to tell if the child ran into any errors before
-  // calling exec()
-  readChildErrorPipe(errFds[0], executable);
+  // We should only throw if we got an error via the ChildErrorInfo, and we know
+  // the child has exited and can be immediately waited for.  In all other
+  // cases, we have no way of cleaning up the child.
+  readChildErrorNum(err, executable);
 
   // If we spawned a detached child, wait on the intermediate child process.
   // It always exits immediately.
@@ -556,7 +514,7 @@ void Subprocess::spawnInternal(
     const char* executable,
     Options& options,
     const std::vector<std::string>* env,
-    int errFd) {
+    ChildErrorInfo* err) {
   // Parent work, pre-fork: create pipes
   std::vector<int> childFds;
   // Close all of the childFds as we leave this scope
@@ -649,7 +607,7 @@ void Subprocess::spawnInternal(
   args.argv = argv.get();
   args.envv = env ? envHolder.get() : environ;
   args.executable = executable;
-  args.errFd = errFd;
+  args.err = err;
   args.oldSignals = oldSignals;
 
   // Child is alive.  We have to be very careful about throwing after this
@@ -885,27 +843,8 @@ int Subprocess::runChild(SpawnRawArgs const& args) {
   return errno;
 }
 
-void Subprocess::readChildErrorPipe(int pfd, const char* executable) {
-  ChildErrorInfo info;
-  auto rc = readNoInt(pfd, &info, sizeof(info));
-  if (rc == 0) {
-    // No data means the child executed successfully, and the pipe
-    // was closed due to the close-on-exec flag being set.
-    return;
-  } else if (rc != sizeof(ChildErrorInfo)) {
-    // An error occurred trying to read from the pipe, or we got a partial read.
-    // Neither of these cases should really occur in practice.
-    //
-    // We can't get any error data from the child in this case, and we don't
-    // know if it is successfully running or not.  All we can do is to return
-    // normally, as if the child executed successfully.  If something bad
-    // happened the caller should at least get a non-normal exit status from
-    // the child.
-    XLOGF(
-        ERR,
-        "unexpected error trying to read from child error pipe rc={}, errno={}",
-        rc,
-        errno);
+void Subprocess::readChildErrorNum(ChildErrorInfo err, const char* executable) {
+  if (err.errCode == 0) {
     return;
   }
 
@@ -914,7 +853,7 @@ void Subprocess::readChildErrorPipe(int pfd, const char* executable) {
   wait();
 
   // Throw to signal the error
-  throw SubprocessSpawnError(executable, info.errCode, info.errnoValue);
+  throw SubprocessSpawnError(executable, err.errCode, err.errnoValue);
 }
 
 ProcessReturnCode Subprocess::poll(struct rusage* ru) {

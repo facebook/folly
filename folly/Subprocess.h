@@ -981,6 +981,7 @@ class Subprocess {
  private:
   struct LibcReal;
   struct SpawnRawArgs;
+  struct ChildErrorInfo;
 
   // spawn() sets up a pipe to read errors from the child,
   // then calls spawnInternal() to do the bulk of the work.  Once
@@ -996,7 +997,7 @@ class Subprocess {
       const char* executable,
       Options& options,
       const std::vector<std::string>* env,
-      int errFd);
+      ChildErrorInfo* err);
 
   static pid_t spawnInternalDoFork(SpawnRawArgs const& args);
   [[noreturn]] static void childError(
@@ -1015,7 +1016,7 @@ class Subprocess {
    * Read from the error pipe, and throw SubprocessSpawnError if the child
    * failed before calling exec().
    */
-  void readChildErrorPipe(int pfd, const char* executable);
+  void readChildErrorNum(ChildErrorInfo err, const char* executable);
 
   // Returns an index into pipes_. Throws std::invalid_argument if not found.
   size_t findByChildFd(const int childFd) const;
