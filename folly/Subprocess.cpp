@@ -357,6 +357,9 @@ void checkStatus(ProcessReturnCode returnCode) {
 } // namespace
 
 Subprocess::Options& Subprocess::Options::fd(int fd, int action) {
+  if (fdActions_.contains(fd)) {
+    throw std::invalid_argument("fd already added");
+  }
   if (action == Subprocess::PIPE) {
     if (fd == 0) {
       action = Subprocess::PIPE_IN;
