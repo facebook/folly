@@ -24,31 +24,18 @@
 namespace folly {
 namespace exception_tracer {
 
-namespace detail {
-/*
- * Unfortunately due to ambiguous nature of exception specifiers,
- * standard does not allow them to appear in typedefs or alias-declarations.
- * We, however, want callbacks to be exception safe.
- * This dummies are an ugly workaround that problem.
- */
-void dummyCxaThrow(void*, std::type_info*, void (**)(void*)) noexcept;
-void dummyCxaBeginCatch(void*) noexcept;
-void dummyCxaRethrow() noexcept;
-void dummyCxaEndCatch() noexcept;
-void dummyRethrowException(std::exception_ptr) noexcept;
-} // namespace detail
+using CxaThrowSig = void(void*, std::type_info*, void (**)(void*)) noexcept;
+using CxaBeginCatchSig = void(void*) noexcept;
+using CxaRethrowSig = void() noexcept;
+using CxaEndCatchSig = void() noexcept;
+using RethrowExceptionSig = void(std::exception_ptr) noexcept;
 
-using CxaThrowType = decltype(&detail::dummyCxaThrow);
-using CxaBeginCatchType = decltype(&detail::dummyCxaBeginCatch);
-using CxaRethrowType = decltype(&detail::dummyCxaRethrow);
-using CxaEndCatchType = decltype(&detail::dummyCxaEndCatch);
-using RethrowExceptionType = decltype(&detail::dummyRethrowException);
+void registerCxaThrowCallback(CxaThrowSig& callback);
+void registerCxaBeginCatchCallback(CxaBeginCatchSig& callback);
+void registerCxaRethrowCallback(CxaRethrowSig& callback);
+void registerCxaEndCatchCallback(CxaEndCatchSig& callback);
+void registerRethrowExceptionCallback(RethrowExceptionSig& callback);
 
-void registerCxaThrowCallback(CxaThrowType callback);
-void registerCxaBeginCatchCallback(CxaBeginCatchType callback);
-void registerCxaRethrowCallback(CxaRethrowType callback);
-void registerCxaEndCatchCallback(CxaEndCatchType callback);
-void registerRethrowExceptionCallback(RethrowExceptionType callback);
 } // namespace exception_tracer
 } // namespace folly
 

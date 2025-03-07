@@ -60,12 +60,10 @@ using namespace folly::exception_tracer;
 
 namespace {
 
-template <typename Function>
+template <typename Sig>
 class CallbackHolder {
  public:
-  void registerCallback(Function f) {
-    callbacks_.wlock()->push_back(std::move(f));
-  }
+  void registerCallback(Sig& f) { callbacks_.wlock()->push_back(f); }
 
   // always inline to enforce kInternalFramesNumber
   template <typename... Args>
@@ -77,7 +75,7 @@ class CallbackHolder {
   }
 
  private:
-  folly::Synchronized<std::vector<Function>> callbacks_;
+  folly::Synchronized<std::vector<Sig*>> callbacks_;
 };
 
 } // namespace
@@ -85,13 +83,13 @@ class CallbackHolder {
 namespace folly {
 namespace exception_tracer {
 
-#define FOLLY_EXNTRACE_DECLARE_CALLBACK(NAME)                    \
-  CallbackHolder<NAME##Type>& get##NAME##Callbacks() {           \
-    static Indestructible<CallbackHolder<NAME##Type>> Callbacks; \
-    return *Callbacks;                                           \
-  }                                                              \
-  void register##NAME##Callback(NAME##Type callback) {           \
-    get##NAME##Callbacks().registerCallback(callback);           \
+#define FOLLY_EXNTRACE_DECLARE_CALLBACK(NAME)                   \
+  CallbackHolder<NAME##Sig>& get##NAME##Callbacks() {           \
+    static Indestructible<CallbackHolder<NAME##Sig>> Callbacks; \
+    return *Callbacks;                                          \
+  }                                                             \
+  void register##NAME##Callback(NAME##Sig& callback) {          \
+    get##NAME##Callbacks().registerCallback(callback);          \
   }
 
 FOLLY_EXNTRACE_DECLARE_CALLBACK(CxaThrow)
