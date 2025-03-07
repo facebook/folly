@@ -790,9 +790,19 @@ int Subprocess::prepareChild(SpawnRawArgs const& args) {
         return errno;
       }
       detail::subprocess_libc::close(devNull);
-    } else if (p.second != p.first) {
+    } else if (p.second != p.first && p.second != NO_CLOEXEC) {
       if (detail::subprocess_libc::dup2(p.second, p.first) == -1) {
         return errno;
+      }
+    } else if (p.second == p.first || p.second == NO_CLOEXEC) {
+      int flags = detail::subprocess_libc::fcntl(p.first, F_GETFD);
+      if (flags == -1) {
+        return errno;
+      }
+      if (int newflags = flags & ~FD_CLOEXEC; newflags != flags) {
+        if (detail::subprocess_libc::fcntl(p.first, F_SETFD, newflags) == -1) {
+          return errno;
+        }
       }
     }
   }

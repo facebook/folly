@@ -897,3 +897,26 @@ TEST(CloseOtherDescriptorsSubprocessTest, ClosesFileDescriptors) {
   EXPECT_EQ("0\n1\n2\n3\n", p.first);
   proc.wait();
 }
+
+TEST(KeepFileOpenSubprocessTest, KeepsFileOpen) {
+  auto f0 = folly::File{"/dev/null"};
+  auto f1 = f0.dup();
+  auto f2 = f0.dup();
+  auto f3 = f0.dup();
+
+  f0.close(); // make space for fd 3, for ls to open /proc/self/fd
+
+  auto options =
+      Subprocess::Options()
+          .closeOtherFds()
+          .pipeStdout()
+          .fd(f1.fd(), Subprocess::NO_CLOEXEC)
+          .fd(f2.fd(), f2.fd());
+  Subprocess proc(
+      std::vector<std::string>{"/bin/ls", "/proc/self/fd"}, options);
+  auto p = proc.communicate();
+  proc.wait();
+  int fds[] = {0, 1, 2, 3, f1.fd(), f2.fd()};
+  std::sort(std::begin(fds), std::end(fds));
+  EXPECT_EQ(fmt::format("{}\n", fmt::join(fds, "\n")), p.first);
+}

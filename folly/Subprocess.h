@@ -299,6 +299,7 @@ class Subprocess {
   static const int PIPE_IN = -3;
   static const int PIPE_OUT = -4;
   static const int DEV_NULL = -5;
+  static const int NO_CLOEXEC = -6;
 
   /**
    * See Subprocess::Options::dangerousPostForkPreExecCallback() for usage.
