@@ -18,6 +18,13 @@
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/safe/NowTask.h>
 
+// Throughout this file, we have blocks of static asserts that follow the same
+// pattern:
+//  - Do some trait tests for movable `Task`, making sure they come out as
+//    expected.  This serves mainly to validate the trait actually checks what
+//    we want it to test.
+//  - Then, flip to `NowTask` and confirm that the "move" action fails.
+
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
 namespace folly::coro {
@@ -37,18 +44,20 @@ inline constexpr bool test_semi_await_result_v =
     std::is_same_v<detected_t<semi_await_result_t, T>, Res>;
 
 static_assert(test_semi_await_result_v<Task<int>>);
+static_assert(!test_semi_await_result_v<Task<int>&>);
 static_assert(test_semi_await_result_v<Task<int>&&>);
 static_assert(test_semi_await_result_v<NowTask<int>>);
-static_assert(!test_semi_await_result_v<NowTask<int>&&>);
 static_assert(!test_semi_await_result_v<NowTask<int>&>);
+static_assert(!test_semi_await_result_v<NowTask<int>&&>);
 
 using DemoTryTask = decltype(co_awaitTry(demoTask(37)));
 using DemoTryNowTask = decltype(co_awaitTry(demoNowTask(37)));
 static_assert(test_semi_await_result_v<DemoTryTask, Try<int>>);
+static_assert(!test_semi_await_result_v<DemoTryTask&, Try<int>>);
 static_assert(test_semi_await_result_v<DemoTryTask&&, Try<int>>);
 static_assert(test_semi_await_result_v<DemoTryNowTask, Try<int>>);
-static_assert(!test_semi_await_result_v<DemoTryNowTask&&, Try<int>>);
 static_assert(!test_semi_await_result_v<DemoTryNowTask&, Try<int>>);
+static_assert(!test_semi_await_result_v<DemoTryNowTask&&, Try<int>>);
 
 // Note: This `test_` predicate, and similar ones below, may look somewhat
 // redundant with `test_semi_await_result_v` above.  Both aim to test this:
@@ -76,16 +85,26 @@ CO_TEST(NowTaskTest, simple) {
   EXPECT_EQ(1337, co_await demoNowTask(37));
 
   static_assert(test_transform_moved_v<Task<int>>);
+  // Won't compile: static_assert(!test_transform_moved_v<Task<int>&>);
   static_assert(test_transform_moved_v<Task<int>&&>);
   static_assert(test_transform_moved_v<NowTask<int>>);
+  static_assert(!test_transform_moved_v<NowTask<int>&>);
   static_assert(!test_transform_moved_v<NowTask<int>&&>);
-#if 0 // The above asserts are a proxy for this manual test
+#if 0 // The above asserts approximate this manual test
   auto t = demoNowTask(37);
   co_await std::move(t);
 #endif
-  static_assert(!test_transform_moved_v<NowTask<int>&>);
 }
 
+template <typename T>
+using co_withExecutor_result_t = decltype(co_withExecutor(
+    FOLLY_DECLVAL(Executor::KeepAlive<>), FOLLY_DECLVAL(T)));
+// Check type of `co_withExecutor(...)` for task prvalue or ref inputs.
+template <typename T, typename TWithExec>
+inline constexpr bool test_move_into_co_withExecutor_v =
+    std::is_same_v<detected_t<co_withExecutor_result_t, T>, TWithExec>;
+
+// Check type of `co_await @`, where `@` is a task-with-executor prvalue or ref
 template <typename T>
 inline constexpr bool test_transform_moved_with_executor_v = std::is_same_v<
     detected_t<await_transform_result_t, T>,
@@ -93,19 +112,44 @@ inline constexpr bool test_transform_moved_with_executor_v = std::is_same_v<
 
 CO_TEST(NowTaskTest, withExecutor) {
   auto exec = co_await co_current_executor;
-  EXPECT_EQ(1337, co_await demoNowTask(37).scheduleOn(exec));
+  EXPECT_EQ(1337, co_await co_withExecutor(exec, demoNowTask(37)));
 
+  // Check passing a task/ref into `co_withExecutor()`.
+  static_assert(
+      test_move_into_co_withExecutor_v<Task<int>, TaskWithExecutor<int>>);
+  static_assert(
+      !test_move_into_co_withExecutor_v<Task<int>&, TaskWithExecutor<int>>);
+  static_assert(
+      test_move_into_co_withExecutor_v<Task<int>&&, TaskWithExecutor<int>>);
+  static_assert(
+      test_move_into_co_withExecutor_v<NowTask<int>, NowTaskWithExecutor<int>>);
+  static_assert(
+      !test_move_into_co_withExecutor_v<
+          NowTask<int>&,
+          NowTaskWithExecutor<int>>);
+  static_assert(
+      !test_move_into_co_withExecutor_v<
+          NowTask<int>&&,
+          NowTaskWithExecutor<int>>);
+#if 0 // The above asserts approximate this manual test
+  auto t = demoNowTask(37);
+  co_await co_withExecutor(exec, std::move(t));
+#endif
+
+  // Check awaiting a task-with-executor or ref.
   static_assert(test_transform_moved_with_executor_v<TaskWithExecutor<int>>);
+  // Won't compile:
+  // static_assert(!test_transform_moved_with_executor_v<TaskWithExecutor<int>&>);
   static_assert(test_transform_moved_with_executor_v<TaskWithExecutor<int>&&>);
   static_assert(test_transform_moved_with_executor_v<NowTaskWithExecutor<int>>);
   static_assert(
+      !test_transform_moved_with_executor_v<NowTaskWithExecutor<int>&>);
+  static_assert(
       !test_transform_moved_with_executor_v<NowTaskWithExecutor<int>&&>);
-#if 0 // The above asserts are a proxy for this manual test
-  auto te = demoNowTask(37).scheduleOn(exec);
+#if 0 // The above asserts approximate this manual test
+  auto te = co_withExecutor(exec, demoNowTask(37));
   co_await std::move(te);
 #endif
-  static_assert(
-      !test_transform_moved_with_executor_v<NowTaskWithExecutor<int>&>);
 }
 
 // `co_nothrow` isn't a function object, so we can't wrap it & pass prvalues
@@ -120,26 +164,30 @@ CO_TEST(NowTaskTest, nothrow) {
   EXPECT_EQ(1337, co_await co_nothrow(demoNowTask(37)));
 
   static_assert(test_make_co_nothrow_v<Task<int>>);
+  // False -- there's no substitution failure, but instantiating the awaitable
+  // is an error.  This doesn't invalidate the test.
+  // static_assert(!test_make_co_nothrow_v<Task<int>&>);
   static_assert(test_make_co_nothrow_v<Task<int>&&>);
   static_assert(test_make_co_nothrow_v<NowTask<int>>);
+  static_assert(!test_make_co_nothrow_v<NowTask<int>&>);
   static_assert(!test_make_co_nothrow_v<NowTask<int>&&>);
-#if 0 // The above asserts are a proxy for this manual test
+#if 0 // The above asserts approximate this manual test
   auto t = demoNowTask(37);
   co_nothrow(std::move(t));
 #endif
-  static_assert(!test_make_co_nothrow_v<NowTask<int>&>);
 
   using DemoNothrowTask = decltype(co_nothrow(demoTask(37)));
   using DemoNothrowNowTask = decltype(co_nothrow(demoNowTask(37)));
   static_assert(test_transform_moved_v<DemoNothrowTask>);
+  // Won't compile: static_assert(!test_transform_moved_v<DemoNothrowTask&>);
   static_assert(test_transform_moved_v<DemoNothrowTask&&>);
   static_assert(test_transform_moved_v<DemoNothrowNowTask>);
+  static_assert(!test_transform_moved_v<DemoNothrowNowTask&>);
   static_assert(!test_transform_moved_v<DemoNothrowNowTask&&>);
-#if 0 // The above asserts are a proxy for this manual test
+#if 0 // The above asserts approximate this manual test
   auto t = co_nothrow(demoNowTask(37));
   co_await std::move(t);
 #endif
-  static_assert(!test_transform_moved_v<DemoNothrowNowTask&>);
 }
 
 // `TryAwaitable` has a custom `operator co_await`, unlike `simple` and
@@ -165,24 +213,29 @@ CO_TEST(NowTaskTest, awaitTry) {
   EXPECT_EQ(1337, *(co_await co_awaitTry(demoNowTask(37))));
 
   static_assert(test_make_co_awaitTry_v<Task<int>>);
+  // False -- there's no substitution failure, but instantiating the awaitable
+  // is an error.  This doesn't invalidate the test.
+  // static_assert(!test_make_co_awaitTry_v<Task<int>&>);
   static_assert(test_make_co_awaitTry_v<Task<int>&&>);
   static_assert(test_make_co_awaitTry_v<NowTask<int>>);
+  static_assert(!test_make_co_awaitTry_v<NowTask<int>&>);
   static_assert(!test_make_co_awaitTry_v<NowTask<int>&&>);
-#if 0 // The above asserts are a proxy for this manual test
+#if 0 // The above asserts approximate this manual test
   auto t = demoNowTask(37);
   co_awaitTry(std::move(t));
 #endif
-  static_assert(!test_make_co_awaitTry_v<NowTask<int>&>);
 
   static_assert(test_transform_and_await_moved_v<DemoTryTask>);
+  // Won't compile:
+  // static_assert(!test_transform_and_await_moved_v<DemoTryTask&>);
   static_assert(test_transform_and_await_moved_v<DemoTryTask&&>);
   static_assert(test_transform_and_await_moved_v<DemoTryNowTask>);
+  static_assert(!test_transform_and_await_moved_v<DemoTryNowTask&>);
   static_assert(!test_transform_and_await_moved_v<DemoTryNowTask&&>);
-#if 0 // The above asserts are a proxy for this manual test
+#if 0 // The above asserts approximate this manual test
   auto t = co_awaitTry(demoNowTask(37));
   co_await std::move(t);
 #endif
-  static_assert(!test_transform_and_await_moved_v<DemoTryNowTask&>);
 }
 
 // `std::invoke_result_t` cannot pass prvalues -- it invokes a move ctor.
@@ -196,28 +249,30 @@ TEST(NowTaskTest, blockingWait) {
   EXPECT_EQ(1337, blockingWait(demoNowTask(37)));
 
   static_assert(test_blocking_wait_moved_v<Task<int>, int>);
+  static_assert(!test_blocking_wait_moved_v<Task<int>&, int>);
   static_assert(test_blocking_wait_moved_v<Task<int>&&, int>);
   static_assert(test_blocking_wait_moved_v<NowTask<int>, int>);
+  static_assert(!test_blocking_wait_moved_v<NowTask<int>&, int>);
   static_assert(!test_blocking_wait_moved_v<NowTask<int>&&, int>);
-#if 0 // The above asserts are a proxy for this manual test
+#if 0 // The above asserts approximate this manual test
   auto t = demoNowTask(37);
   blockingWait(std::move(t));
 #endif
-  static_assert(!test_blocking_wait_moved_v<NowTask<int>&, int>);
 }
 
 TEST(NowTaskTest, blockingWaitTry) {
   EXPECT_EQ(1337, *blockingWait(co_awaitTry(demoNowTask(37))));
 
   static_assert(test_blocking_wait_moved_v<DemoTryTask, Try<int>>);
+  static_assert(!test_blocking_wait_moved_v<DemoTryTask&, Try<int>>);
   static_assert(test_blocking_wait_moved_v<DemoTryTask&&, Try<int>>);
   static_assert(test_blocking_wait_moved_v<DemoTryNowTask, Try<int>>);
+  static_assert(!test_blocking_wait_moved_v<DemoTryNowTask&, Try<int>>);
   static_assert(!test_blocking_wait_moved_v<DemoTryNowTask&&, Try<int>>);
-#if 0 // The above asserts are a proxy for this manual test
+#if 0 // The above asserts approximate this manual test
   auto t = co_awaitTry(demoNowTask(37));
   blockingWait(std::move(t));
 #endif
-  static_assert(!test_blocking_wait_moved_v<DemoTryNowTask&, Try<int>>);
 }
 
 // Both of these are antipatterns with `Task` because if you awaited either

@@ -20,141 +20,103 @@
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
-namespace folly {
-enum class safe_alias;
-}
-namespace folly::coro {
-
-template <typename>
-class NowTask;
-
-namespace detail {
-
-template <typename T>
-class NowTaskPromise final
-    : public TaskPromiseWrapper<T, NowTask<T>, TaskPromise<T>> {};
-
-template <auto>
-auto bind_captures_to_closure(auto&&, auto);
-
-} // namespace detail
-
-template <safe_alias, typename>
-class BackgroundTask;
-
-// IMPORTANT: This omits `start()` because that would destroy reference
-// lifetime guarantees expected of `NowTask`. Use `BackgroundTask.h`.
-template <typename T>
-class FOLLY_NODISCARD NowTaskWithExecutor final
-    : public AddMustAwaitImmediately<Unit> {
- protected:
-  template <safe_alias, typename>
-  friend class BackgroundTask; // for `unwrapTaskWithExecutor`, remove later
-  TaskWithExecutor<T> unwrapTaskWithExecutor() && { return std::move(inner_); }
-
-  friend class MustAwaitImmediatelyUnsafeMover< // can construct
-      NowTaskWithExecutor,
-      detail::unsafe_mover_for_must_await_immediately_t<TaskWithExecutor<T>>>;
-  template <typename>
-  friend class NowTask; // can construct
-
-  explicit NowTaskWithExecutor(TaskWithExecutor<T> t) : inner_(std::move(t)) {}
-
- public:
-  // Required for `await_result_t` to work.
-  // NB: Even though this is rvalue-qualified, this does not wrongly allow
-  // `co_await std::move(myNowTask().scheduleOn(ex));`, see `withExecutor` test
-  auto operator co_await() && noexcept {
-    return std::move(inner_).operator co_await();
-  }
-
-  auto getUnsafeMover(ForMustAwaitImmediately p) && {
-    return MustAwaitImmediatelyUnsafeMover{
-        (NowTaskWithExecutor*)nullptr, std::move(inner_).getUnsafeMover(p)};
-  }
-
-  friend NowTaskWithExecutor co_withCancellation(
-      folly::CancellationToken cancelToken, NowTaskWithExecutor te) noexcept {
-    return NowTaskWithExecutor{
-        co_withCancellation(std::move(cancelToken), std::move(te.inner_))};
-  }
-
-  friend auto co_viaIfAsync(
-      Executor::KeepAlive<> executor, NowTaskWithExecutor te) noexcept {
-    return co_viaIfAsync(std::move(executor), std::move(te.inner_));
-  }
-
- private:
-  TaskWithExecutor<T> inner_;
-};
-
-/// `NowTask<T>` quacks like `Task<T>` but is nonmovable, and therefore
-/// must be `co_await`ed in the same expression that created it.
+/// `NowTask<T>` quacks like `Task<T>` but is immovable, and must be
+/// `co_await`ed in the same expression that created it.
 ///
-/// Defaulting to `NowTask` brings considerable safety benefits.  With
-/// `Task`, the following would be anti-patterns that cause dangling
-/// reference bugs, but with `NowTask`, C++ lifetime extension rules ensure
-/// that they simply work.
+/// Using `NowTask` by default brings considerable safety benefits.  With
+/// `Task`, the following would be anti-patterns that cause dangling reference
+/// bugs, but with `NowTask`, C++ lifetime extension rules ensure that they
+/// simply work.
 ///   - Pass-by-reference into coroutines.
 ///   - Ephemeral coro lambdas with captures.
 ///   - Coro lambdas with capture-by-reference.
 ///
 /// Notes:
 ///   - (subject to change) Unlike `SafeTask`, `NowTask` does NOT check
-///     `safe_alias_of_v` for the return type `T`.  The rationale is that
-///     `NowTask` is essentially an immediate async function, i.e. it
-///     satisfies the structured concurrency maxim of "lexical scope drives
-///     both control flow & lifetime".  That shrinks the odds that returned
-///     pointers/references are unexpectedly invalid.  The one failure mode
-///     I can think of is that the pointed-to-data gets invalidated by a
-///     concurrent thread of execution, but in that case the program almost
-///     certainly has a data race -- regardless of the lifetime bug -- and
-///     that requires runtime instrumentation (like TSAN) to detect in
-///     present-day C++.
+///     `safe_alias_of_v` for the return type `T`.  `NowTask` is essentially an
+///     immediate async function -- it satisfies the structured concurrency
+///     maxim of "lexical scope drives both control flow & lifetime".  That
+///     lowers the odds that returned pointers/references are unexpectedly
+///     invalid.  The one failure mode I can think of is that the
+///     pointed-to-data gets invalidated by a concurrent thread of execution,
+///     but in that case the program almost certainly has a data race --
+///     regardless of the lifetime bug -- and that requires runtime
+///     instrumentation (like TSAN) to detect in present-day C++.
+
+namespace folly {
+enum class safe_alias;
+}
+
+namespace folly::coro {
+
+namespace detail {
+template <auto>
+auto bind_captures_to_closure(auto&&, auto);
+}
+template <safe_alias, typename>
+class BackgroundTask;
+
+template <typename>
+class NowTask;
+template <typename>
+class NowTaskWithExecutor;
+
+namespace detail {
 template <typename T>
-class FOLLY_CORO_TASK_ATTRS NowTask final
-    : public AddMustAwaitImmediately<
-          OpaqueTaskWrapperCrtp<NowTask<T>, T, Task<T>>> {
- public:
-  using promise_type = detail::NowTaskPromise<T>;
+struct NowTaskWithExecutorCfg {
+  using InnerTaskWithExecutorT = TaskWithExecutor<T>;
+  using WrapperTaskT = NowTask<T>;
+};
+template <typename T>
+using NowTaskWithExecutorBase =
+    AddMustAwaitImmediately<TaskWithExecutorWrapperCrtp<
+        NowTaskWithExecutor<T>,
+        detail::NowTaskWithExecutorCfg<T>>>;
+} // namespace detail
 
-  // If `makeNowTask().scheduleOn()` is movable, it defeats our purpose.
-  NowTaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> exec) && noexcept {
-    return NowTaskWithExecutor<T>{
-        std::move(*this).unwrap().scheduleOn(std::move(exec))};
-  }
-
-  explicit NowTask(Task<T> t)
-      : AddMustAwaitImmediately<OpaqueTaskWrapperCrtp<NowTask<T>, T, Task<T>>>(
-            std::move(t)) {}
-
-  friend auto co_withCancellation(
-      folly::CancellationToken cancelToken, NowTask tw) noexcept {
-    return NowTask{
-        co_withCancellation(std::move(cancelToken), std::move(tw).unwrap())};
-  }
-
-  friend auto co_viaIfAsync(
-      folly::Executor::KeepAlive<> executor, NowTask tw) noexcept {
-    return co_viaIfAsync(std::move(executor), std::move(tw).unwrap());
-  }
-
-  // IMPORTANT: If you add support for any more customization points here,
-  // you must be sure to branch each callable on `must_await_immediately_v`
-  // as is done for those above.  The key point is that
-  // `MustAwaitImmediately` types MUST be taken by value, never by `&&`.
-
-  auto getUnsafeMover(ForMustAwaitImmediately p) && {
-    return MustAwaitImmediatelyUnsafeMover{
-        (NowTask*)nullptr, std::move(*this).unwrap().getUnsafeMover(p)};
-  }
-
+template <typename T>
+class FOLLY_NODISCARD NowTaskWithExecutor final
+    : public detail::NowTaskWithExecutorBase<T> {
  protected:
-  template <typename U>
-  friend auto toNowTask(NowTask<U> t); // for `unwrap`
+  using detail::NowTaskWithExecutorBase<T>::NowTaskWithExecutorBase;
+
+  template <safe_alias, typename>
+  friend class BackgroundTask; // for `unwrapTaskWithExecutor`, remove later
+};
+
+namespace detail {
+template <typename T>
+class NowTaskPromise final
+    : public TaskPromiseWrapper<T, NowTask<T>, TaskPromise<T>> {};
+template <typename T>
+struct NowTaskCfg {
+  using ValueT = T;
+  using InnerTaskT = Task<T>;
+  using TaskWithExecutorT = NowTaskWithExecutor<T>;
+  using PromiseT = NowTaskPromise<T>;
+};
+template <typename T>
+using NowTaskBase =
+    AddMustAwaitImmediately<TaskWrapperCrtp<NowTask<T>, detail::NowTaskCfg<T>>>;
+} // namespace detail
+
+template <safe_alias, typename>
+class SafeTask;
+
+template <typename T>
+class FOLLY_CORO_TASK_ATTRS NowTask final : public detail::NowTaskBase<T> {
+ protected:
+  using detail::NowTaskBase<T>::NowTaskBase;
+
+  template <typename U> // can construct
+  friend auto toNowTask(Task<U>);
+  template <safe_alias S, typename U> // can construct
+  friend auto toNowTask(SafeTask<S, U>);
+  template <typename U> // can construct & `unwrapTask`
+  friend auto toNowTask(NowTask<U>);
   // `async_now_closure` wraps `NowTask`s into `NowTask`s
-  template <auto>
-  friend auto detail::bind_captures_to_closure(auto&&, auto); // for `unwrap`
+  template <auto> // can `unwrapTask`
+  friend auto detail::bind_captures_to_closure(auto&&, auto);
 };
 
 // NB: `toNowTask(SafeTask)` is in `SafeTask.h` to avoid circular deps.
@@ -164,7 +126,7 @@ auto toNowTask(Task<T> t) {
 }
 template <typename T>
 auto toNowTask(NowTask<T> t) {
-  return NowTask<T>{std::move(t).unwrap()};
+  return NowTask<T>{std::move(t).unwrapTask()};
 }
 
 } // namespace folly::coro
