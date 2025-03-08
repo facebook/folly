@@ -285,4 +285,19 @@
   } else                          \
     CO_SKIP(message)
 
+/**
+ * Coroutine version of SUCCEED() which is defined as GTEST_SUCCEED()
+ */
+#define CO_SUCCEED(message) \
+  co_return GTEST_MESSAGE_(message, ::testing::TestPartResult::kSuccess)
+
+/**
+ * Coroutine version
+ */
+#define CO_SUCCEED_IF(expr, message) \
+  GTEST_AMBIGUOUS_ELSE_BLOCKER_      \
+  if (!(expr)) {                     \
+  } else                             \
+    CO_SUCCEED(message)
+
 #endif // FOLLY_HAS_COROUTINES
