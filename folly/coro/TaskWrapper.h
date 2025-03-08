@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/coro/AwaitImmediately.h>
 #include <folly/coro/Task.h>
 
 /// The header provides base classes for wrapping `folly::coro::Task` with
@@ -47,6 +48,8 @@
 ///
 /// Future: Once this has a benchmark, see if `FOLLY_ALWAYS_INLINE` makes
 /// any difference on the wrapped functions (it shouldn't).
+
+#if FOLLY_HAS_IMMOVABLE_COROUTINES
 
 namespace folly::coro {
 
@@ -118,16 +121,16 @@ class TaskPromiseWrapperBase {
 
   template <
       typename Awaitable,
-      std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& what) {
     return promise_.await_transform(std::forward<Awaitable>(what));
   }
   template <
       typename Awaitable,
-      std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable what) {
     return promise_.await_transform(
-        std::move(what).unsafeMoveMustAwaitImmediately());
+        mustAwaitImmediatelyUnsafeMover(std::move(what))());
   }
 
   auto yield_value(auto&& v)
@@ -230,14 +233,8 @@ class TaskWrapperCrtp
       folly::Executor::KeepAlive<> executor, Derived&& tw) noexcept {
     return co_viaIfAsync(std::move(executor), std::move(tw).unwrap());
   }
-  // At least in Clang 15, the `static_assert` isn't enough to get a usable
-  // error message (it is instantiated too late), but the deprecation
-  // warning does show up.
-  [[deprecated(
-      "Error: Use `co_await std::move(lvalue)`, not `co_await lvalue`.")]]
-  friend Derived co_viaIfAsync(folly::Executor::KeepAlive<>, const Derived&) {
-    static_assert("Use `co_await std::move(lvalue)`, not `co_await lvalue`.");
-  }
 };
 
 } // namespace folly::coro
+
+#endif

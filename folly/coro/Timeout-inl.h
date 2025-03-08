@@ -35,9 +35,9 @@ struct DiscardImpl {
 template <>
 struct DiscardImpl<false> {};
 
-template <typename SemiAwaitable, typename Duration, bool discard>
-Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeoutImpl(
-    SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
+template <typename SemiAwaitable, typename Duration, bool discard, typename Fn>
+typename detail::timeout_task_<SemiAwaitable, void>::type timeoutImpl(
+    Fn semiFn, Duration timeoutDuration, Timekeeper* tk) {
   CancellationSource cancelSource;
   DiscardImpl<discard> impl;
   auto sleepFuture =
@@ -76,7 +76,7 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeoutImpl(
   try {
     auto resultTry =
         co_await folly::coro::co_awaitTry(folly::coro::co_withCancellation(
-            cancelSource.getToken(), std::move(semiAwaitable)));
+            cancelSource.getToken(), std::move(semiFn)()));
 
     cancelCallback.reset();
 
@@ -124,18 +124,21 @@ Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeoutImpl(
 } // namespace detail
 
 template <typename SemiAwaitable, typename Duration>
-Task<typename semi_await_try_result_t<SemiAwaitable>::element_type> timeout(
+typename detail::timeout_task_<SemiAwaitable, void>::type timeout(
     SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
   return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/true>(
-      std::move(semiAwaitable), timeoutDuration, tk);
+      mustAwaitImmediatelyUnsafeMover(std::move(semiAwaitable)),
+      timeoutDuration,
+      tk);
 }
 
 template <typename SemiAwaitable, typename Duration>
-Task<typename semi_await_try_result_t<SemiAwaitable>::element_type>
-timeoutNoDiscard(
+typename detail::timeout_task_<SemiAwaitable, void>::type timeoutNoDiscard(
     SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
   return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/false>(
-      std::move(semiAwaitable), timeoutDuration, tk);
+      mustAwaitImmediatelyUnsafeMover(std::move(semiAwaitable)),
+      timeoutDuration,
+      tk);
 }
 
 } // namespace folly::coro

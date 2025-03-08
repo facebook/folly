@@ -32,6 +32,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
+#include <folly/coro/AwaitImmediately.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/CurrentExecutor.h>
 #include <folly/coro/Invoke.h>
@@ -143,7 +144,7 @@ class TaskPromiseBase {
 
   template <
       typename Awaitable,
-      std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -157,7 +158,7 @@ class TaskPromiseBase {
   }
   template <
       typename Awaitable,
-      std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -168,22 +169,23 @@ class TaskPromiseBase {
         executor_.get_alias(),
         folly::coro::co_withCancellation(
             cancelToken_,
-            std::move(awaitable).unsafeMoveMustAwaitImmediately())));
+            mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())));
   }
 
   template <
       typename Awaitable,
-      std::enable_if_t<!is_must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
   auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
     return await_transform(awaitable.unwrap());
   }
   template <
       typename Awaitable,
-      std::enable_if_t<is_must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
-    return await_transform(awaitable.unwrap().unsafeMoveMustAwaitImmediately());
+    return await_transform(
+        mustAwaitImmediatelyUnsafeMover(awaitable.unwrap())());
   }
 
   auto await_transform(co_current_executor_t) noexcept {
@@ -698,6 +700,10 @@ class FOLLY_NODISCARD TaskWithExecutor {
     return std::move(task);
   }
 
+  NoOpMover<TaskWithExecutor> getUnsafeMover(ForMustAwaitImmediately) && {
+    return NoOpMover{std::move(*this)};
+  }
+
  private:
   friend class Task<T>;
 
@@ -839,6 +845,10 @@ class FOLLY_CORO_TASK_ATTRS Task {
       tag_t<co_invoke_fn>, tag_t<Task, F, A...>, F_ f, A_... a) {
     co_yield co_result(co_await co_awaitTry(
         invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
+  }
+
+  NoOpMover<Task> getUnsafeMover(ForMustAwaitImmediately) && {
+    return NoOpMover{std::move(*this)};
   }
 
   using PrivateAwaiterTypeForTests = Awaiter;

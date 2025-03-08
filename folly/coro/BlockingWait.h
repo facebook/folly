@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Try.h>
+#include <folly/coro/AwaitImmediately.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Task.h>
 #include <folly/coro/Traits.h>
@@ -370,7 +371,7 @@ struct blocking_wait_fn {
 
   template <
       typename SemiAwaitable,
-      std::enable_if_t<!is_must_await_immediately_v<SemiAwaitable>, int> = 0>
+      std::enable_if_t<!must_await_immediately_v<SemiAwaitable>, int> = 0>
   FOLLY_NOINLINE auto operator()(
       SemiAwaitable&& awaitable, folly::DrivableExecutor* executor) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
@@ -392,7 +393,7 @@ struct blocking_wait_fn {
   }
   template <
       typename SemiAwaitable,
-      std::enable_if_t<is_must_await_immediately_v<SemiAwaitable>, int> = 0>
+      std::enable_if_t<must_await_immediately_v<SemiAwaitable>, int> = 0>
   FOLLY_NOINLINE auto operator()(
       SemiAwaitable awaitable, folly::DrivableExecutor* executor) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
@@ -409,14 +410,14 @@ struct blocking_wait_fn {
         detail::makeRefBlockingWaitTask(
             folly::coro::co_viaIfAsync(
                 folly::getKeepAliveToken(executor),
-                std::move(awaitable).unsafeMoveMustAwaitImmediately()))
+                mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()))
             .getVia(executor, frame));
   }
 
   template <
       typename SemiAwaitable,
       std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0,
-      std::enable_if_t<!is_must_await_immediately_v<SemiAwaitable>, int> = 0>
+      std::enable_if_t<!must_await_immediately_v<SemiAwaitable>, int> = 0>
   auto operator()(SemiAwaitable&& awaitable) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
     std::exception_ptr eptr;
@@ -433,7 +434,7 @@ struct blocking_wait_fn {
   template <
       typename SemiAwaitable,
       std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0,
-      std::enable_if_t<is_must_await_immediately_v<SemiAwaitable>, int> = 0>
+      std::enable_if_t<must_await_immediately_v<SemiAwaitable>, int> = 0>
   auto operator()(SemiAwaitable awaitable) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
     std::exception_ptr eptr;
@@ -441,7 +442,7 @@ struct blocking_wait_fn {
       detail::BlockingWaitExecutor executor;
       try {
         return operator()(
-            std::move(awaitable).unsafeMoveMustAwaitImmediately(), &executor);
+            mustAwaitImmediatelyUnsafeMover(std::move(awaitable))(), &executor);
       } catch (...) {
         eptr = current_exception();
       }

@@ -45,12 +45,16 @@ class BackgroundTask;
 // IMPORTANT: This omits `start()` because that would destroy reference
 // lifetime guarantees expected of `NowTask`. Use `BackgroundTask.h`.
 template <typename T>
-class FOLLY_NODISCARD NowTaskWithExecutor final : private MustAwaitImmediately {
+class FOLLY_NODISCARD NowTaskWithExecutor final
+    : public AddMustAwaitImmediately<Unit> {
  protected:
   template <safe_alias, typename>
   friend class BackgroundTask; // for `unwrapTaskWithExecutor`, remove later
   TaskWithExecutor<T> unwrapTaskWithExecutor() && { return std::move(inner_); }
 
+  friend class MustAwaitImmediatelyUnsafeMover< // can construct
+      NowTaskWithExecutor,
+      detail::unsafe_mover_for_must_await_immediately_t<TaskWithExecutor<T>>>;
   template <typename>
   friend class NowTask; // can construct
 
@@ -64,8 +68,9 @@ class FOLLY_NODISCARD NowTaskWithExecutor final : private MustAwaitImmediately {
     return std::move(inner_).operator co_await();
   }
 
-  NowTaskWithExecutor unsafeMoveMustAwaitImmediately() && {
-    return NowTaskWithExecutor{std::move(inner_)};
+  auto getUnsafeMover(ForMustAwaitImmediately p) && {
+    return MustAwaitImmediatelyUnsafeMover{
+        (NowTaskWithExecutor*)nullptr, std::move(inner_).getUnsafeMover(p)};
   }
 
   friend NowTaskWithExecutor co_withCancellation(
@@ -108,8 +113,8 @@ class FOLLY_NODISCARD NowTaskWithExecutor final : private MustAwaitImmediately {
 ///     present-day C++.
 template <typename T>
 class FOLLY_CORO_TASK_ATTRS NowTask final
-    : public OpaqueTaskWrapperCrtp<NowTask<T>, T, Task<T>>,
-      private MustAwaitImmediately {
+    : public AddMustAwaitImmediately<
+          OpaqueTaskWrapperCrtp<NowTask<T>, T, Task<T>>> {
  public:
   using promise_type = detail::NowTaskPromise<T>;
 
@@ -120,7 +125,8 @@ class FOLLY_CORO_TASK_ATTRS NowTask final
   }
 
   explicit NowTask(Task<T> t)
-      : OpaqueTaskWrapperCrtp<NowTask<T>, T, Task<T>>(std::move(t)) {}
+      : AddMustAwaitImmediately<OpaqueTaskWrapperCrtp<NowTask<T>, T, Task<T>>>(
+            std::move(t)) {}
 
   friend auto co_withCancellation(
       folly::CancellationToken cancelToken, NowTask tw) noexcept {
@@ -134,12 +140,13 @@ class FOLLY_CORO_TASK_ATTRS NowTask final
   }
 
   // IMPORTANT: If you add support for any more customization points here,
-  // you must be sure to branch each callable on `is_must_await_immediately_v`
+  // you must be sure to branch each callable on `must_await_immediately_v`
   // as is done for those above.  The key point is that
   // `MustAwaitImmediately` types MUST be taken by value, never by `&&`.
 
-  auto unsafeMoveMustAwaitImmediately() && {
-    return NowTask{std::move(*this).unwrap()};
+  auto getUnsafeMover(ForMustAwaitImmediately p) && {
+    return MustAwaitImmediatelyUnsafeMover{
+        (NowTask*)nullptr, std::move(*this).unwrap().getUnsafeMover(p)};
   }
 
  protected:

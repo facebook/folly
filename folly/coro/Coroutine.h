@@ -362,30 +362,6 @@ class ExtendedCoroutineHandle {
   ExtendedCoroutinePromise* extended_{nullptr};
 };
 
-// When the `folly::coro` API sees a (semi)awaitable that derives from this
-// (tested via `is_must_await_immediately_t` below), it will take the
-// awaitable by-value instead of by-forwarding-reference.  This supports
-// immovable tasks that can only be awaited in the same statement that
-// created them, like `NowTask`, `ClosureTask`, `MemberTask`, etc.
-//
-// To speak this protocol, your awaitable must do two things:
-//   - Derive from `private MustAwaitImmediately`
-//   - Implement `YourAwaitable unsafeMoveMustAwaitImmediately() &&`, which
-//     moves `*this` into a new prvalue of your type.
-//
-// WARNING: If we see usage of `unsafeMoveMustAwaitImmediately()` outside of
-// `folly::coro`, we will convert it to a passkey pattern, and break you.
-// Think of it as an explicit, private-to-`folly` move ctor.
-//
-// Caveat: If you encounter a public `folly::coro` API that is not
-// `MustAwaitImmediately`-aware, and simply take the awaitable by `&&`,
-// please report it, and/or branch it.  See `NothrowAwaitable` e.g.
-struct MustAwaitImmediately : private NonCopyableNonMovable {};
-
-template <typename Awaitable>
-inline constexpr bool is_must_await_immediately_v = // private inheritance ok!
-    std::is_base_of_v<MustAwaitImmediately, Awaitable>;
-
 } // namespace folly::coro
 
 #endif

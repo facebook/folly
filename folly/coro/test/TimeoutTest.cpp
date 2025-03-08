@@ -268,4 +268,29 @@ TYPED_TEST(TimeoutFixture, RequestContextInCancellationCallback) {
   ASSERT_TRUE(cancelled);
 }
 
+TYPED_TEST(TimeoutFixture, TimeoutTaskType) {
+  coro::blockingWait([&fn = this->fn]() -> coro::Task<> {
+    // timeout(Task) -> Task
+    auto five = []() -> coro::Task<int> { co_return 5; };
+    static_assert(std::is_same_v<decltype(fn(five(), 1s)), coro::Task<int>>);
+    EXPECT_EQ(5, co_await fn(five(), 1s));
+
+    // timeout(NowTask) -> NowTask
+    auto now_two = []() -> coro::NowTask<int> { co_return 2; };
+    auto timeout_now_two = [&]() {
+      // Can't use `fn` here because it's set up with perfect forwarding
+      // instead of pass-by-value.  Not worth refactoring for 1 test.
+      if constexpr (std::is_same_v<TypeParam, TimeoutNoDiscard>) {
+        return coro::timeoutNoDiscard(now_two(), 1s);
+      } else {
+        static_assert(std::is_same_v<TypeParam, Timeout>);
+        return coro::timeout(now_two(), 1s);
+      }
+    };
+    static_assert(
+        std::is_same_v<decltype(timeout_now_two()), coro::NowTask<int>>);
+    EXPECT_EQ(2, co_await timeout_now_two());
+  }());
+}
+
 #endif // FOLLY_HAS_COROUTINES

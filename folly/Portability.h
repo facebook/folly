@@ -672,9 +672,14 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_HAS_COROUTINES 0
 #endif
+
+// NB: The C++20 requirement could be relaxed, but there's no clear benefit as
+// of right now.
+#if !FOLLY_HAS_COROUTINES || FOLLY_CPLUSPLUS < 202002L
+#define FOLLY_HAS_IMMOVABLE_COROUTINES 0
 // This logic is written as "good until proven broken" because it's possible
 // that there's a good compiler older than the oldest good version I checked.
-#if defined(__clang_major__) && __clang_major__ <= 14
+#elif defined(__clang_major__) && __clang_major__ <= 14
 //  - 12.0.1 is bad: https://godbolt.org/z/6s489xE8P
 //  - 14 is still bad: https://godbolt.org/z/nW1W8cWvb
 //  - 15.0.0 is good: https://godbolt.org/z/Tco4c9hbq and sEaKKTf8r
