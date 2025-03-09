@@ -136,6 +136,7 @@ static Ret subprocess_libc_load(
   X(fcntl, fcntl)                              \
   X(pthread_sigmask, pthread_sigmask)          \
   X(signal, signal)                            \
+  X(sprintf, sprintf)                          \
   X(strtol, strtol)                            \
   X(vfork, vfork)
 
@@ -190,9 +191,13 @@ __attribute__((constructor(101))) static void subprocess_libc_init() {
 struct Subprocess::SpawnRawArgs {
   struct Scratch {
     std::vector<std::pair<int, int>> fdActions;
+    std::vector<char*> setPrintPidToBuffer;
 
     explicit Scratch(Options const& options)
-        : fdActions{options.fdActions_.begin(), options.fdActions_.end()} {
+        : fdActions{options.fdActions_.begin(), options.fdActions_.end()},
+          setPrintPidToBuffer{
+              options.setPrintPidToBuffer_.begin(),
+              options.setPrintPidToBuffer_.end()} {
       std::sort(fdActions.begin(), fdActions.end());
     }
   };
@@ -209,6 +214,8 @@ struct Subprocess::SpawnRawArgs {
   int parentDeathSignal{};
   bool processGroupLeader{};
   bool usePath{};
+  char* const* setPrintPidToBufferData{};
+  size_t setPrintPidToBufferSize{};
 
   // assigned explicitly
   char const* const* argv{};
@@ -231,7 +238,9 @@ struct Subprocess::SpawnRawArgs {
         parentDeathSignal{options.parentDeathSignal_},
 #endif
         processGroupLeader{options.processGroupLeader_},
-        usePath{options.usePath_} {
+        usePath{options.usePath_},
+        setPrintPidToBufferData{scratch.setPrintPidToBuffer.data()},
+        setPrintPidToBufferSize{scratch.setPrintPidToBuffer.size()} {
     static_assert(std::is_standard_layout_v<Subprocess::SpawnRawArgs>);
     static_assert(std::is_trivially_destructible_v<Subprocess::SpawnRawArgs>);
   }
@@ -371,6 +380,14 @@ Subprocess::Options& Subprocess::Options::fd(int fd, int action) {
     }
   }
   fdActions_[fd] = action;
+  return *this;
+}
+
+Subprocess::Options& Subprocess::Options::addPrintPidToBuffer(span<char> buf) {
+  if (buf.size() < kPidBufferMinSize) {
+    throw std::invalid_argument("buf size too small");
+  }
+  setPrintPidToBuffer_.insert(buf.data());
   return *this;
 }
 
@@ -831,6 +848,11 @@ int Subprocess::prepareChild(SpawnRawArgs const& args) {
 #endif
       return errno;
     }
+  }
+
+  for (size_t i = 0; i < args.setPrintPidToBufferSize; ++i) {
+    auto buf = args.setPrintPidToBufferData[i];
+    detail::subprocess_libc::sprintf(buf, "%d", getpid());
   }
 
   // The user callback comes last, so that the child is otherwise all set up.

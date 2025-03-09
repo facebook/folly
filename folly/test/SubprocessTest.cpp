@@ -19,6 +19,9 @@
 #include <sys/types.h>
 
 #include <chrono>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include <boost/container/flat_set.hpp>
 #include <glog/logging.h>
@@ -27,10 +30,12 @@
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
 #include <folly/String.h>
+#include <folly/container/span.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/File.h>
 #include <folly/gen/String.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/testing/TestUtil.h>
@@ -39,6 +44,7 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
 using namespace folly;
 using namespace std::chrono_literals;
+using namespace std::string_view_literals;
 
 namespace std::chrono {
 template <typename Rep, typename Period>
@@ -919,4 +925,48 @@ TEST(KeepFileOpenSubprocessTest, KeepsFileOpen) {
   int fds[] = {0, 1, 2, 3, f1.fd(), f2.fd()};
   std::sort(std::begin(fds), std::end(fds));
   EXPECT_EQ(fmt::format("{}\n", fmt::join(fds, "\n")), p.first);
+}
+
+static_assert(
+    Subprocess::Options::kPidBufferMinSize ==
+    std::numeric_limits<pid_t>::digits10 + 2);
+
+TEST(WritePidIntoBufTest, WritesPidIntoBufTooSmall) {
+  constexpr size_t size = Subprocess::Options::kPidBufferMinSize;
+  char buf[size - 1] = {};
+  auto options = Subprocess::Options();
+  EXPECT_THROW(options.addPrintPidToBuffer(buf), std::invalid_argument);
+}
+
+TEST(WritePidIntoBufTest, WritesPidIntoBuf) {
+  constexpr size_t size = Subprocess::Options::kPidBufferMinSize;
+  char buf[size] = {};
+  std::memset(buf, 0xA5, size);
+  auto options = Subprocess::Options().addPrintPidToBuffer(buf);
+  Subprocess proc(std::vector<std::string>{"/bin/true"}, options);
+  EXPECT_EQ(fmt::format("{}", proc.pid()), buf);
+  proc.wait();
+}
+
+TEST(WritePidIntoBufTest, WritesPidIntoBufExampleEnvVar) {
+  // this test effectively duplicates WritesPidIntoBuf but may serve as a
+  // reference for how to use this feature with environment-variable storage
+  //
+  // systemd does something like this:
+  // https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#%24SYSTEMD_EXEC_PID
+  constexpr size_t size = Subprocess::Options::kPidBufferMinSize;
+  constexpr auto prefix = "FOLLY_TEST_SUBPROCESS_PID="sv;
+  std::vector<std::string> env;
+  env.emplace_back("FOLLY_TEST_GREETING=hello world");
+  auto& var = env.emplace_back(prefix);
+  var.resize(prefix.size() + size); // must be stable! no more changes to env!
+  auto buf = folly::span{var}.subspan(prefix.size());
+  auto options = Subprocess::Options().pipeStdout().addPrintPidToBuffer(buf);
+  Subprocess proc(std::vector<std::string>{"/bin/env"}, options, nullptr, &env);
+  auto pid = proc.pid();
+  auto p = proc.communicate();
+  proc.wait();
+  std::vector<std::string_view> lines;
+  folly::split('\n', p.first, lines);
+  EXPECT_THAT(lines, testing::Contains(fmt::format("{}{}", prefix, pid)));
 }

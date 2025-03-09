@@ -330,6 +330,15 @@ class Subprocess {
     friend class Subprocess;
 
    public:
+    // digits10 is the maximum number of decimal digits such that any number
+    // up to this many decimal digits can always be represented in the given
+    // integer type
+    // but we need to have storage for the decimal representation of any
+    // integer, so +1, and we need to have storage for the terminal null, so
+    // again +1.
+    static inline constexpr size_t kPidBufferMinSize =
+        std::numeric_limits<pid_t>::digits10 + 2;
+
     Options() {} // E.g. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58328
 
     /**
@@ -538,6 +547,8 @@ class Subprocess {
     }
 #endif
 
+    Options& addPrintPidToBuffer(span<char> buf);
+
    private:
     typedef boost::container::flat_map<int, int> FdMap;
     FdMap fdActions_;
@@ -559,6 +570,7 @@ class Subprocess {
 #if defined(__linux__)
     Optional<cpu_set_t> cpuSet_;
 #endif
+    std::unordered_set<char*> setPrintPidToBuffer_;
   };
 
   // Non-copyable, but movable
