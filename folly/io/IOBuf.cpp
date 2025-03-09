@@ -524,7 +524,7 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
 IOBuf::IOBuf(WrapBufferOp, const void* buf, std::size_t capacity) noexcept
     : IOBuf(
           InternalConstructor(),
-          0,
+          nullptr,
           // We cast away the const-ness of the buffer here.
           // This is okay since IOBuf users must use unshare() to create a copy
           // of this buffer before writing to the buffer.
