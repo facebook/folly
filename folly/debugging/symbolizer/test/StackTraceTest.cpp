@@ -150,14 +150,12 @@ void testStackTracePrinter(StackTracePrinter& printer, int fd) {
   ASSERT_GT(fd, 0);
 
   printer.printStackTrace(true);
-  printer.flush();
 
   std::array<uint8_t, 4000> first;
   off_t pos = get_stack_trace(fd, 0, first.data(), first.size());
   ASSERT_GT(pos, 0);
 
   printer.printStackTrace(true);
-  printer.flush();
 
   std::array<uint8_t, 4000> second;
   get_stack_trace(fd, pos, second.data(), second.size());
@@ -202,6 +200,33 @@ TEST(StackTraceTest, TerseFileAndLineStackTracePrinter) {
       file.fd(), SymbolizePrinter::TERSE_FILE_AND_LINE)};
 
   testStackTracePrinter<FastStackTracePrinter>(printer, file.fd());
+}
+
+TEST(StackTraceTest, TwoStepFastStackTracePrinter) {
+  test::TemporaryFile file;
+
+  TwoStepFastStackTracePrinter printer{
+      std::make_unique<FDSymbolizePrinter>(file.fd())};
+
+  testStackTracePrinter<TwoStepFastStackTracePrinter>(printer, file.fd());
+}
+
+TEST(StackTraceTest, TwoStepTerseStackTracePrinter) {
+  test::TemporaryFile file;
+
+  TwoStepFastStackTracePrinter printer{
+      std::make_unique<FDSymbolizePrinter>(file.fd(), SymbolizePrinter::TERSE)};
+
+  testStackTracePrinter<TwoStepFastStackTracePrinter>(printer, file.fd());
+}
+
+TEST(StackTraceTest, TwoStepTerseFileAndLineStackTracePrinter) {
+  test::TemporaryFile file;
+
+  TwoStepFastStackTracePrinter printer{std::make_unique<FDSymbolizePrinter>(
+      file.fd(), SymbolizePrinter::TERSE_FILE_AND_LINE)};
+
+  testStackTracePrinter<TwoStepFastStackTracePrinter>(printer, file.fd());
 }
 
 namespace {

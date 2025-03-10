@@ -163,8 +163,8 @@ class Symbolizer {
  * Use this class to print a stack trace from normal code.  It will malloc and
  * won't flush or sync.
  *
- * These methods are thread safe, through locking.  However, they are not signal
- * safe.
+ * These methods are thread safe, through locking.  However, they are not
+ * signal safe.
  */
 class FastStackTracePrinter {
  public:
@@ -177,8 +177,8 @@ class FastStackTracePrinter {
   ~FastStackTracePrinter();
 
   /**
-   * This is NOINLINE to make sure it shows up in the stack we grab, which makes
-   * it easy to skip printing it.
+   * This is NOINLINE to make sure it shows up in the stack we grab, which
+   * makes it easy to skip printing it.
    */
   FOLLY_NOINLINE void printStackTrace(bool symbolize);
 
@@ -191,6 +191,31 @@ class FastStackTracePrinter {
   Symbolizer symbolizer_;
 };
 
+/**
+ * This is a copy of FastStackTracePrinter, but it uses a two-step approach to
+ * symbolize the stack trace. This is useful for cases where symbolization is
+ * slow and we want to avoid blocking the main thread.
+ */
+class TwoStepFastStackTracePrinter {
+ public:
+  static constexpr size_t kDefaultSymbolCacheSize = 10000;
+
+  explicit TwoStepFastStackTracePrinter(
+      std::unique_ptr<SymbolizePrinter> printer,
+      size_t symbolCacheSize = kDefaultSymbolCacheSize);
+
+  FOLLY_NOINLINE void printStackTrace(bool symbolize);
+
+ private:
+  static constexpr size_t kMaxStackTraceDepth = 100;
+
+  const std::unique_ptr<SymbolizePrinter> printer_;
+  Symbolizer symbolizer_;
+  FrameArray<kMaxStackTraceDepth> syncAddresses_;
+  FrameArray<kMaxStackTraceDepth> asyncAddresses_;
+  std::mutex mutex_;
+};
+
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 /**
@@ -199,13 +224,14 @@ class FastStackTracePrinter {
  * descriptor is more important than performance.
  *
  * Make sure to create one of these on startup, not in the signal handler, as
- * the constructor allocates on the heap, whereas the other methods don't.  Best
- * practice is to just leak this object, rather than worry about destruction
- * order.
+ * the constructor allocates on the heap, whereas the other methods don't.
+ * Best practice is to just leak this object, rather than worry about
+ * destruction order.
  *
  * These methods aren't thread safe, so if you could have signals on multiple
- * threads at the same time, you need to do your own locking to ensure you don't
- * call these methods from multiple threads.  They are signal safe, however.
+ * threads at the same time, you need to do your own locking to ensure you
+ * don't call these methods from multiple threads.  They are signal safe,
+ * however.
  */
 class SafeStackTracePrinter {
  public:
@@ -214,12 +240,12 @@ class SafeStackTracePrinter {
   virtual ~SafeStackTracePrinter() {}
 
   /**
-   * Only allocates on the stack and is signal-safe but not thread-safe.  Don't
+   * Only allocates on the stack and is signal-safe but not thread-safe. Don't
    * call printStackTrace() on the same StackTracePrinter object from multiple
    * threads at the same time.
    *
-   * This is NOINLINE to make sure it shows up in the stack we grab, which makes
-   * it easy to skip printing it.
+   * This is NOINLINE to make sure it shows up in the stack we grab, which
+   * makes it easy to skip printing it.
    */
   FOLLY_NOINLINE void printStackTrace(bool symbolize);
 
@@ -261,9 +287,9 @@ std::string getStackTraceStr();
 std::string getAsyncStackTraceStr();
 
 /**
- * Get the async stack traces (string representation) for suspended coroutines.
- * Convenience function meant for debugging and logging, works only in some
- * DEBUG builds
+ * Get the async stack traces (string representation) for suspended
+ * coroutines. Convenience function meant for debugging and logging, works
+ * only in some DEBUG builds
  *
  * Note: The returned traces will only have async frames (no normal frames).
  */

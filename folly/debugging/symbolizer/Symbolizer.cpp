@@ -92,11 +92,33 @@ void printAsyncStackInfo(PrintFunc print) {
   printHex(asyncStackFrame ? (uint64_t)asyncStackFrame->getReturnAddress() : 0);
   print(", async stack trace: ***\n");
 }
+
 } // namespace
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 namespace {
+
+template <size_t N>
+void symbolizeAndPrint(
+    const std::unique_ptr<SymbolizePrinter>& printer,
+    Symbolizer& symbolizer,
+    FrameArray<N>& addresses,
+    bool symbolize) {
+  if (symbolize) {
+    symbolizer.symbolize(addresses);
+
+    // Skip the top 2 frames:
+    printer->println(addresses, 2);
+  } else {
+    printer->print("(safe mode, symbolizer not available)\n");
+    AddressFormatter formatter;
+    for (size_t i = 0; i < addresses.frameCount; ++i) {
+      printer->print(formatter.format(addresses.addresses[i]));
+      printer->print("\n");
+    }
+  }
+}
 
 ElfCache* defaultElfCache() {
   static auto cache = new ElfCache();
@@ -147,6 +169,7 @@ bool setROARSymbolizedFrame(
   }
   return true;
 }
+
 #endif
 
 void setSymbolizedFrame(
@@ -239,7 +262,15 @@ size_t Symbolizer::symbolize(
   }
   selfPath[selfSize] = '\0';
 
+  // If we call symbolize on the same range of frames twice, results are
+  // slightly different. This is happening because we copy over the addresses
+  // again but in the second pass we don't hit the code for adjusting the
+  // address anymore. Therefore skipping copying over the addresses again if
+  // frames are already filled.
   for (size_t i = 0; i < addrCount; i++) {
+    if (frames[i].found) {
+      continue;
+    }
     frames[i].addr = addrs[i];
   }
 
@@ -362,28 +393,11 @@ void FastStackTracePrinter::printStackTrace(bool symbolize) {
   };
 
   FrameArray<kMaxStackTraceDepth> addresses;
-  auto printStack = [this, &addresses, &symbolize] {
-    if (symbolize) {
-      symbolizer_.symbolize(addresses);
-
-      // Skip the top 2 frames:
-      // getStackTraceSafe
-      // FastStackTracePrinter::printStackTrace (here)
-      printer_->println(addresses, 2);
-    } else {
-      printer_->print("(safe mode, symbolizer not available)\n");
-      AddressFormatter formatter;
-      for (size_t i = 0; i < addresses.frameCount; ++i) {
-        printer_->print(formatter.format(addresses.addresses[i]));
-        printer_->print("\n");
-      }
-    }
-  };
 
   if (!getStackTraceSafe(addresses)) {
     printer_->print("(error retrieving stack trace)\n");
   } else {
-    printStack();
+    symbolizeAndPrint(printer_, symbolizer_, addresses, symbolize);
   }
 
   addresses.frameCount = 0;
@@ -391,13 +405,39 @@ void FastStackTracePrinter::printStackTrace(bool symbolize) {
     return;
   }
   printAsyncStackInfo([this](auto sp) { printer_->print(sp); });
-  printStack();
+  symbolizeAndPrint(printer_, symbolizer_, addresses, symbolize);
 }
 
 void FastStackTracePrinter::flush() {
   printer_->flush();
 }
 
+TwoStepFastStackTracePrinter::TwoStepFastStackTracePrinter(
+    std::unique_ptr<SymbolizePrinter> printer, size_t symbolCacheSize)
+    : printer_(std::move(printer)),
+      symbolizer_(defaultElfCache(), LocationInfoMode::FULL, symbolCacheSize) {
+  getStackTraceSafe(syncAddresses_);
+  getAsyncStackTraceSafe(asyncAddresses_);
+}
+
+void TwoStepFastStackTracePrinter::printStackTrace(bool symbolize) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  SCOPE_EXIT {
+    printer_->flush();
+  };
+
+  if (syncAddresses_.frameCount == 0) {
+    printer_->print("(error retrieving stack trace)\n");
+  } else {
+    symbolizeAndPrint(printer_, symbolizer_, syncAddresses_, symbolize);
+  }
+
+  if (asyncAddresses_.frameCount == 0) {
+    return;
+  }
+  printAsyncStackInfo([this](auto sp) { printer_->print(sp); });
+  symbolizeAndPrint(printer_, symbolizer_, asyncAddresses_, symbolize);
+}
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 SafeStackTracePrinter::SafeStackTracePrinter(int fd)
