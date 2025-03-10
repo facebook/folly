@@ -214,6 +214,10 @@ struct Subprocess::SpawnRawArgs {
   int parentDeathSignal{};
   bool processGroupLeader{};
   bool usePath{};
+  Options::AttrWithMeta<uid_t> const* uid{};
+  Options::AttrWithMeta<gid_t> const* gid{};
+  Options::AttrWithMeta<uid_t> const* euid{};
+  Options::AttrWithMeta<gid_t> const* egid{};
   char* const* setPrintPidToBufferData{};
   size_t setPrintPidToBufferSize{};
 
@@ -239,6 +243,10 @@ struct Subprocess::SpawnRawArgs {
 #endif
         processGroupLeader{options.processGroupLeader_},
         usePath{options.usePath_},
+        uid{options.uid_.get_pointer()},
+        gid{options.gid_.get_pointer()},
+        euid{options.euid_.get_pointer()},
+        egid{options.egid_.get_pointer()},
         setPrintPidToBufferData{scratch.setPrintPidToBuffer.data()},
         setPrintPidToBufferSize{scratch.setPrintPidToBuffer.size()} {
     static_assert(std::is_standard_layout_v<Subprocess::SpawnRawArgs>);
@@ -784,6 +792,36 @@ int Subprocess::prepareChild(SpawnRawArgs const& args) {
     ::sched_setaffinity(0, sizeof(cpuSet), &cpuSet);
   }
 #endif
+
+  // Change effective/real group/user, if requested
+  if (auto& ptr = args.egid; ptr && 0 != ::setegid(ptr->value)) {
+    if (auto out = ptr->errout) {
+      *out = errno;
+    } else {
+      return errno;
+    }
+  }
+  if (auto& ptr = args.gid; ptr && 0 != ::setgid(ptr->value)) {
+    if (auto out = ptr->errout) {
+      *out = errno;
+    } else {
+      return errno;
+    }
+  }
+  if (auto& ptr = args.euid; ptr && 0 != ::seteuid(ptr->value)) {
+    if (auto out = ptr->errout) {
+      *out = errno;
+    } else {
+      return errno;
+    }
+  }
+  if (auto& ptr = args.uid; ptr && 0 != ::setuid(ptr->value)) {
+    if (auto out = ptr->errout) {
+      *out = errno;
+    } else {
+      return errno;
+    }
+  }
 
   // We don't have to explicitly close the parent's end of all pipes,
   // as they all have the FD_CLOEXEC flag set and will be closed at

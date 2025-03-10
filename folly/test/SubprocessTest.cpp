@@ -126,6 +126,7 @@ std::string_view readOneLineOfProcSelfStatus(
   }
   return line;
 }
+
 } // namespace
 
 struct SubprocessFdActionsListTest : testing::Test {};
@@ -1056,6 +1057,49 @@ TEST(SetSignalMask, CanOverrideExistingMask) {
   auto line = readOneLineOfProcSelfStatus(p.first, "SigBlk");
   auto expected = (1 << (SIGUSR1 - 1)) | (1 << (SIGUSR2 - 1));
   EXPECT_EQ(fmt::format("{:016x}", expected), line);
+}
+
+TEST(SetUserGroupId, KeepsExisting) {
+  auto options = Subprocess::Options().pipeStdout();
+  Subprocess proc(
+      std::vector<std::string>{"/bin/cat", "/proc/self/status"}, options);
+  auto p = proc.communicate();
+  proc.wait();
+  auto uidline = readOneLineOfProcSelfStatus(p.first, "Uid");
+  auto gidline = readOneLineOfProcSelfStatus(p.first, "Gid");
+  auto [uid, euid, gid, egid] =
+      std::tuple{getuid(), geteuid(), getgid(), getegid()};
+  EXPECT_EQ(euid, uid);
+  EXPECT_EQ(egid, gid);
+  EXPECT_EQ(fmt::format("{}\t{}\t{}\t{}", uid, euid, uid, uid), uidline);
+  EXPECT_EQ(fmt::format("{}\t{}\t{}\t{}", gid, egid, gid, gid), gidline);
+}
+
+TEST(SetUserGroupId, CanOverrideAndReportFailure) {
+  // without elevated capabilities, the process cannot switch user/group
+  // which makes writing the unit-test for that impossible; here we just
+  // check the errors
+  auto options = Subprocess::Options().pipeStdout();
+  int errnum[4] = {};
+  options.setUid(0, errnum + 0);
+  options.setGid(0, errnum + 1);
+  options.setEUid(0, errnum + 2);
+  options.setEGid(0, errnum + 3);
+  Subprocess proc(
+      std::vector<std::string>{"/bin/cat", "/proc/self/status"}, options);
+  auto p = proc.communicate();
+  proc.wait();
+  auto uidline = readOneLineOfProcSelfStatus(p.first, "Uid");
+  auto gidline = readOneLineOfProcSelfStatus(p.first, "Gid");
+  auto [uid, euid, gid, egid] = std::tuple{
+      errnum[0] ? getuid() : 0,
+      errnum[2] ? geteuid() : 0,
+      errnum[1] ? getgid() : 0,
+      errnum[3] ? getegid() : 0};
+  EXPECT_EQ(euid, uid);
+  EXPECT_EQ(egid, gid);
+  EXPECT_EQ(fmt::format("{}\t{}\t{}\t{}", uid, euid, uid, uid), uidline);
+  EXPECT_EQ(fmt::format("{}\t{}\t{}\t{}", gid, egid, gid, gid), gidline);
 }
 
 #endif

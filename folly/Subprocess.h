@@ -547,6 +547,23 @@ class Subprocess {
     }
 #endif
 
+    Options& setUid(uid_t uid, int* errout = nullptr) {
+      uid_ = AttrWithMeta<uid_t>{uid, errout};
+      return *this;
+    }
+    Options& setGid(gid_t gid, int* errout = nullptr) {
+      gid_ = AttrWithMeta<gid_t>{gid, errout};
+      return *this;
+    }
+    Options& setEUid(uid_t uid, int* errout = nullptr) {
+      euid_ = AttrWithMeta<uid_t>{uid, errout};
+      return *this;
+    }
+    Options& setEGid(gid_t gid, int* errout = nullptr) {
+      egid_ = AttrWithMeta<gid_t>{gid, errout};
+      return *this;
+    }
+
     Options& setSignalMask(sigset_t sigmask) {
       sigmask_ = sigmask;
       return *this;
@@ -555,6 +572,12 @@ class Subprocess {
     Options& addPrintPidToBuffer(span<char> buf);
 
    private:
+    template <typename T>
+    struct AttrWithMeta {
+      T value{};
+      int* errout{}; // nullptr if required, ptr if optional to report failure
+    };
+
     typedef boost::container::flat_map<int, int> FdMap;
     FdMap fdActions_;
     bool closeOtherFds_{false};
@@ -575,6 +598,10 @@ class Subprocess {
 #if defined(__linux__)
     Optional<cpu_set_t> cpuSet_;
 #endif
+    Optional<AttrWithMeta<uid_t>> uid_;
+    Optional<AttrWithMeta<gid_t>> gid_;
+    Optional<AttrWithMeta<uid_t>> euid_;
+    Optional<AttrWithMeta<gid_t>> egid_;
     Optional<sigset_t> sigmask_;
     std::unordered_set<char*> setPrintPidToBuffer_;
   };
