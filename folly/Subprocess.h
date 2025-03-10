@@ -547,6 +547,11 @@ class Subprocess {
     }
 #endif
 
+    Options& setSignalMask(sigset_t sigmask) {
+      sigmask_ = sigmask;
+      return *this;
+    }
+
     Options& addPrintPidToBuffer(span<char> buf);
 
    private:
@@ -570,6 +575,7 @@ class Subprocess {
 #if defined(__linux__)
     Optional<cpu_set_t> cpuSet_;
 #endif
+    Optional<sigset_t> sigmask_;
     std::unordered_set<char*> setPrintPidToBuffer_;
   };
 

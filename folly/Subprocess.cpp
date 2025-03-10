@@ -628,7 +628,7 @@ void Subprocess::spawnInternal(
   args.envv = env ? envHolder.get() : environ;
   args.executable = executable;
   args.err = err;
-  args.oldSignals = oldSignals;
+  args.oldSignals = options.sigmask_.value_or(oldSignals);
 
   // Child is alive.  We have to be very careful about throwing after this
   // point.  We are inside the constructor, so if we throw the Subprocess

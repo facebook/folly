@@ -70,6 +70,62 @@ bool waitForAnyOutput(Subprocess& proc) {
   LOG(INFO) << "Read " << buffer;
   return len == 1;
 }
+
+sigset_t makeSignalMask(folly::span<int const> signals) {
+  sigset_t sigmask;
+  sigemptyset(&sigmask);
+  for (auto sig : signals) {
+    sigaddset(&sigmask, sig);
+  }
+  return sigmask;
+}
+
+struct ScopedSignalMaskOverride {
+  sigset_t sigmask;
+  explicit ScopedSignalMaskOverride(folly::span<int const> signals) {
+    auto target = makeSignalMask(signals);
+    PCHECK(0 == pthread_sigmask(SIG_SETMASK, &target, &sigmask));
+  }
+  ~ScopedSignalMaskOverride() {
+    PCHECK(0 == pthread_sigmask(SIG_SETMASK, &sigmask, nullptr));
+  }
+};
+
+uint64_t readSignalMask(sigset_t sigmask) {
+  static_assert(NSIG - 1 <= 64); // 0 is not a signal
+  uint64_t ret = 0;
+  for (int sig = 1; sig < NSIG; ++sig) {
+    if (sigismember(&sigmask, sig)) {
+      ret |= (uint64_t(1) << (sig - 1));
+    }
+  }
+  return ret;
+}
+
+sigset_t getCurrentSignalMask() {
+  sigset_t sigmask;
+  pthread_sigmask(SIG_SETMASK, nullptr, &sigmask);
+  return sigmask;
+}
+
+std::string_view readOneLineOfProcSelfStatus(
+    std::string_view text, std::string_view key) {
+  std::vector<std::string_view> lines;
+  folly::split('\n', text, lines);
+  auto prefix = fmt::format("{}:", key);
+  auto iter = std::find_if(lines.begin(), lines.end(), [&](auto line) {
+    return folly::StringPiece(line).starts_with(prefix);
+  });
+  if (iter == lines.end()) {
+    return {};
+  }
+  auto line = *iter;
+  line.remove_prefix(prefix.size());
+  while (!line.empty() && std::isspace(line[0])) {
+    line.remove_prefix(1);
+  }
+  return line;
+}
 } // namespace
 
 struct SubprocessFdActionsListTest : testing::Test {};
@@ -970,3 +1026,36 @@ TEST(WritePidIntoBufTest, WritesPidIntoBufExampleEnvVar) {
   folly::split('\n', p.first, lines);
   EXPECT_THAT(lines, testing::Contains(fmt::format("{}{}", prefix, pid)));
 }
+
+#if defined(__linux__)
+
+TEST(SetSignalMask, KeepsExistingMask) {
+  // the /proc filesystem, including /proc/self/status, is linux-specific
+  ASSERT_EQ(0, readSignalMask(getCurrentSignalMask()));
+  ScopedSignalMaskOverride guard{std::array{SIGURG, SIGCHLD}};
+  auto options = Subprocess::Options().pipeStdout();
+  Subprocess proc(
+      std::vector<std::string>{"/bin/cat", "/proc/self/status"}, options);
+  auto p = proc.communicate();
+  proc.wait();
+  auto line = readOneLineOfProcSelfStatus(p.first, "SigBlk");
+  auto expected = (1 << (SIGURG - 1)) | (1 << (SIGCHLD - 1));
+  EXPECT_EQ(fmt::format("{:016x}", expected), line);
+}
+
+TEST(SetSignalMask, CanOverrideExistingMask) {
+  // the /proc filesystem, including /proc/self/status, is linux-specific
+  ASSERT_EQ(0, readSignalMask(getCurrentSignalMask()));
+  ScopedSignalMaskOverride guard{std::array{SIGURG, SIGCHLD}};
+  auto sigmask = makeSignalMask(std::array{SIGUSR1, SIGUSR2});
+  auto options = Subprocess::Options().pipeStdout().setSignalMask(sigmask);
+  Subprocess proc(
+      std::vector<std::string>{"/bin/cat", "/proc/self/status"}, options);
+  auto p = proc.communicate();
+  proc.wait();
+  auto line = readOneLineOfProcSelfStatus(p.first, "SigBlk");
+  auto expected = (1 << (SIGUSR1 - 1)) | (1 << (SIGUSR2 - 1));
+  EXPECT_EQ(fmt::format("{:016x}", expected), line);
+}
+
+#endif
