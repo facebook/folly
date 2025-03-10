@@ -485,7 +485,8 @@ class F14BasicMap {
   template <typename K, typename M>
   EnableHeterogeneousInsert<K, std::pair<iterator, bool>> insert_or_assign(
       F14HashToken const& token, K&& key, M&& obj) {
-    auto rv = try_emplace(token, std::forward<K>(key), std::forward<M>(obj));
+    auto rv =
+        try_emplace_token(token, std::forward<K>(key), std::forward<M>(obj));
     if (!rv.second) {
       rv.first->second = std::forward<M>(obj);
     }

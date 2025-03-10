@@ -1609,6 +1609,51 @@ TEST(F14Set, containsWithPrecomputedHash) {
   testContainsWithPrecomputedHash<F14FastSet>();
 }
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+template <template <class...> class TSet>
+void testFindHashedKey() {
+  TSet<std::string> s{};
+  std::string key{"hello"};
+  s.insert(key);
+
+  F14HashedKey<std::string> hashedKey{key};
+  EXPECT_NE(s.find(hashedKey), s.end());
+
+  std::string otherKey{"folly"};
+  F14HashedKey<std::string> hashedKeyNotFound{otherKey};
+  EXPECT_EQ(s.find(hashedKeyNotFound), s.end());
+}
+
+TEST(F14Set, findHashedKey) {
+  testFindHashedKey<F14ValueSet>();
+  testFindHashedKey<F14NodeSet>();
+  testFindHashedKey<F14VectorSet>();
+  testFindHashedKey<F14FastSet>();
+}
+
+template <template <class...> class TSet>
+void testContainsHashedKey() {
+  TSet<std::string> s{};
+  std::string key{"hello"};
+  s.insert(key);
+
+  F14HashedKey<std::string> hashedKey{key};
+  EXPECT_TRUE(s.contains(hashedKey));
+
+  std::string otherKey{"folly"};
+  F14HashedKey<std::string> hashedKeyNotFound{otherKey};
+  EXPECT_FALSE(s.contains(hashedKeyNotFound));
+}
+
+TEST(F14Set, containsHashedKey) {
+  testContainsHashedKey<F14ValueSet>();
+  testContainsHashedKey<F14NodeSet>();
+  testContainsHashedKey<F14VectorSet>();
+  testContainsHashedKey<F14FastSet>();
+}
+
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
 template <template <class...> class TSet>
 void testEraseIf() {
   TSet<int> s{1, 2, 3, 4};
