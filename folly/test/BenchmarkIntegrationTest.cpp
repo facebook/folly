@@ -160,8 +160,8 @@ class NonTrivialLong {
   }
 
  private:
-  long value_;
-  long otherStuff_[3];
+  [[maybe_unused]] long value_;
+  [[maybe_unused]] long otherStuff_[3];
 };
 } // namespace
 
