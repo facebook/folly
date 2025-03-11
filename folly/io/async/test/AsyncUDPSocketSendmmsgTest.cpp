@@ -90,7 +90,7 @@ struct TestData {
 
 class UDPAcceptor : public AsyncUDPServerSocket::Callback {
  public:
-  UDPAcceptor(EventBase* evb) : evb_(evb) {}
+  UDPAcceptor(EventBase* /* evb */) {}
 
   void onListenStarted() noexcept override {}
 
@@ -105,9 +105,6 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
     // send pong
     socket->write(client, data->clone());
   }
-
- private:
-  EventBase* const evb_{nullptr};
 };
 
 class UDPServer {
