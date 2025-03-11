@@ -188,8 +188,7 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
       : EventHandler(eventBase, folly::NetworkSocket::fromFd(fd)),
         total_(total),
         fd_(fd),
-        persist_(persist),
-        evb_(eventBase) {
+        persist_(persist) {
     if (persist_) {
       registerHandler(folly::EventHandler::READ | folly::EventHandler::PERSIST);
     } else {
@@ -226,7 +225,6 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
   uint64_t& total_;
   int fd_{-1};
   bool persist_;
-  folly::EventBase* evb_;
   std::unique_ptr<IoVec> ioVecPtr_;
 };
 
