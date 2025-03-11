@@ -1015,8 +1015,8 @@ class TestStruct {
   TestStruct(int a, int b) : a_{a}, b_{b} {}
 
  private:
-  int a_{0};
-  int b_{0};
+  [[maybe_unused]] int a_{0};
+  [[maybe_unused]] int b_{0};
 };
 } // namespace
 
