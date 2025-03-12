@@ -324,6 +324,17 @@ TYPED_TEST_P(SpanTest, fix_as_bytes) {
   EXPECT_EQ(20, wbytes.size());
 }
 
+TYPED_TEST_P(SpanTest, reverse_iterator) {
+  using span = typename TypeParam::template apply<int, size_t(-1)>;
+
+  int data[2] = {1, 2};
+  auto const obj = span{data};
+  auto it = obj.rbegin();
+  EXPECT_EQ(2, *it++);
+  EXPECT_EQ(1, *it++);
+  EXPECT_EQ(it, obj.rend());
+}
+
 namespace fallback_span_ctad {
 
 namespace fallback = folly::detail::fallback_span;
@@ -390,6 +401,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     , fix_static_subspan
     , fix_dynamic_subspan
     , fix_as_bytes
+    , reverse_iterator
     );
 // clang-format on
 
