@@ -323,6 +323,7 @@ class StreamCodec : public Codec {
    *
    * The default flushOp is NONE, which allows compressStream() complete
    * discretion in how much data to gather before writing any output.
+   * Always returns false in with FlushOp::NONE.
    *
    * If flushOp is END, all pending and input data is flushed to the output
    * buffer, and the frame is ended. compressStream() must be called with the
@@ -331,7 +332,7 @@ class StreamCodec : public Codec {
    *
    * If flushOp is FLUSH, all pending and input data is flushed to the output
    * buffer, but the frame is not ended. compressStream() must be called with
-   * the same input and flushOp END until it returns true. At this point the
+   * the same input and flushOp FLUSH until it returns true. At this point the
    * caller can continue to compressStream() with any input data and flushOp.
    * The uncompressor, if passed all the produced output data, will be able to
    * uncompress all the input data passed to compressStream() so far. Excessive
@@ -342,6 +343,11 @@ class StreamCodec : public Codec {
    * A std::logic_error is thrown on incorrect usage of the API.
    * A std::runtime_error is thrown upon error conditions or if no forward
    * progress could be made twice in a row.
+   *
+   * @returns true iff @p flushOp is FLUSH or END and the entire @p input
+   * has been consumed and flushed into @p output. If @p flushOp is END, then
+   * the compressed frame is complete. Always returns false if @p flushOp is
+   * NONE.
    */
   bool compressStream(
       folly::ByteRange& input,
@@ -381,7 +387,7 @@ class StreamCodec : public Codec {
    * progress could be made upon two consecutive calls to the function (only the
    * second call will throw an exception).
    *
-   * Returns true at the end of a frame. At this point resetStream() must be
+   * @returns true at the end of a frame. At this point resetStream() must be
    * called to reuse the codec.
    */
   bool uncompressStream(
