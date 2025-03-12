@@ -5,6 +5,16 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 oncall("fbcode_entropy_wardens_folly")
 
 cpp_unittest(
+    name = "large_test",
+    srcs = ["LargeTest.cpp"],
+    supports_static_listing = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "//folly/compression:compression",
+    ],
+)
+
+cpp_unittest(
     name = "compression_test",
     srcs = ["CompressionTest.cpp"],
     headers = [],
