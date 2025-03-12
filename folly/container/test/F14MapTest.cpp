@@ -2211,6 +2211,36 @@ TEST(F14Map, findHashedKey) {
 }
 
 template <template <class...> class TMap>
+void testFindHashedKeyTransparent() {
+  struct Hasher {
+    using is_transparent = void;
+    size_t operator()(int key) const { return key; }
+  };
+  struct Equal {
+    using is_transparent = void;
+    bool operator()(int a, int b) const { return a == b; }
+  };
+
+  TMap<int, int, Hasher, Equal> m{};
+  int key{0};
+  m.insert({key, 1});
+
+  F14HashedKey<int, Hasher, Equal> hashedKey{key};
+  EXPECT_NE(m.find(hashedKey), m.end());
+
+  int otherKey{1};
+  F14HashedKey<int, Hasher, Equal> hashedKeyNotFound{otherKey};
+  EXPECT_EQ(m.find(hashedKeyNotFound), m.end());
+}
+
+TEST(F14Map, findHashedKeyTransparent) {
+  testFindHashedKeyTransparent<F14ValueMap>();
+  testFindHashedKeyTransparent<F14VectorMap>();
+  testFindHashedKeyTransparent<F14NodeMap>();
+  testFindHashedKeyTransparent<F14FastMap>();
+}
+
+template <template <class...> class TMap>
 void testContainsHashedKey() {
   TMap<std::string, int> m{};
   std::string key{"hello"};
@@ -2237,14 +2267,11 @@ void testInsertOrAssignHashedKey() {
   std::string key{"hello"};
   m.insert({key, 1});
 
-  // Const qualifier is not decorative here, without it, we'll call universal
-  // reference overload. This is actually not great and means `insert_or_assign`
-  // overload for `F14HashedKey` is not fully functional.
-  const F14HashedKey<std::string> hashedKey{key};
+  F14HashedKey<std::string> hashedKey{key};
   EXPECT_FALSE(m.insert_or_assign(hashedKey, 2).second);
 
   std::string otherKey{"folly"};
-  const F14HashedKey<std::string> hashedKeyNotFound{otherKey};
+  F14HashedKey<std::string> hashedKeyNotFound{otherKey};
   EXPECT_TRUE(m.insert_or_assign(hashedKeyNotFound, 3).second);
 }
 

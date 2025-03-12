@@ -573,20 +573,9 @@ class F14BasicSet {
     return const_cast<F14BasicSet const*>(this)->find(token, key);
   }
 
-  FOLLY_ALWAYS_INLINE iterator find(const hashed_key_type& hashedKey) {
-    return const_cast<F14BasicSet const*>(this)->find(
-        hashedKey.getHashToken(), hashedKey.getKey());
-  }
-
   FOLLY_ALWAYS_INLINE const_iterator
   find(F14HashToken const& token, key_type const& key) const {
     return table_.makeIter(table_.find(token, key));
-  }
-
-  FOLLY_ALWAYS_INLINE const_iterator
-  find(const hashed_key_type& hashedKey) const {
-    return table_.makeIter(
-        table_.find(hashedKey.getHashToken(), hashedKey.getKey()));
   }
 
   template <typename K>
@@ -630,10 +619,6 @@ class F14BasicSet {
   FOLLY_ALWAYS_INLINE bool contains(
       F14HashToken const& token, key_type const& key) const {
     return !table_.find(token, key).atEnd();
-  }
-
-  FOLLY_ALWAYS_INLINE bool contains(const hashed_key_type& hashedKey) const {
-    return !table_.find(hashedKey.getHashToken(), hashedKey.getKey()).atEnd();
   }
 
   template <typename K>

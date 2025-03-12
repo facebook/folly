@@ -431,6 +431,11 @@ class F14HashedKey final {
     static_assert(std::is_trivially_copyable_v<KeyEqual>);
     static_assert(std::is_empty_v<Hasher>);
     static_assert(std::is_empty_v<KeyEqual>);
+    // When `Hasher` or `KeyEqual` is not transparent, `F14HashedKey` will
+    // behave like `TKeyType` without any performance effect, it is most likely
+    // not what is expected.
+    static_assert(is_transparent_v<Hasher>);
+    static_assert(is_transparent_v<KeyEqual>);
   }
 
  public:
@@ -451,6 +456,20 @@ class F14HashedKey final {
   // seamlessly behave as the key itself.
   /* implicit */ operator const TKeyType&() const { return key_; }
   explicit operator const F14HashToken&() const { return hash_; }
+
+  template <typename T>
+  using IsRangeConvertible =
+      std::enable_if_t<detail::TransparentlyConvertibleToRange<T>::value>;
+
+  template <typename T>
+  using RangeT =
+      Range<typename detail::ValueTypeForTransparentConversionToRange<
+          T>::type const*>;
+
+  template <typename K = TKeyType, typename Enable = IsRangeConvertible<K>>
+  constexpr explicit operator RangeT<K>() const {
+    return key_;
+  }
 
   friend bool operator==(const F14HashedKey& a, const F14HashedKey& b) {
     return KeyEqual{}(a.key_, b.key_);
@@ -1678,6 +1697,19 @@ class F14Table : public Policy {
     return ItemIter{};
   }
 
+  template <typename K>
+  HashPair computeHash(K const& key) const {
+    return splitHash(this->computeKeyHash(key));
+  }
+
+  template <typename HKKey, typename HKHasher, typename HKEqual>
+  HashPair computeHash(
+      F14HashedKey<HKKey, HKHasher, HKEqual> const& hashedKey) const {
+    static_assert(std::is_same_v<HKHasher, Hasher>);
+    static_assert(std::is_same_v<HKEqual, KeyEqual>);
+    return static_cast<HashPair>(hashedKey.getHashToken());
+  }
+
  public:
   // prehash()/prefetch() split the work of find(key) into three calls, enabling
   // you to manually implement loop pipelining for hot bulk lookups. prehash()
@@ -1686,7 +1718,7 @@ class F14Table : public Policy {
   // search.
   template <typename K>
   F14HashToken prehash(K const& key) const {
-    return F14HashToken{splitHash(this->computeKeyHash(key))};
+    return F14HashToken{computeHash(key)};
   }
 
   template <typename K>
@@ -1703,16 +1735,14 @@ class F14Table : public Policy {
 
   template <typename K>
   FOLLY_ALWAYS_INLINE ItemIter find(K const& key) const {
-    auto hp = splitHash(this->computeKeyHash(key));
+    auto hp = computeHash(key);
     return findImpl(hp, key, Prefetch::ENABLED);
   }
 
   template <typename K>
   FOLLY_ALWAYS_INLINE ItemIter
   find(F14HashToken const& token, K const& key) const {
-    FOLLY_SAFE_DCHECK(
-        splitHash(this->computeKeyHash(key)) == static_cast<HashPair>(token),
-        "");
+    FOLLY_SAFE_DCHECK(computeHash(key) == static_cast<HashPair>(token), "");
     return findImpl(static_cast<HashPair>(token), key, Prefetch::DISABLED);
   }
 
@@ -1722,7 +1752,7 @@ class F14Table : public Policy {
   // constraints.
   template <typename K, typename F>
   FOLLY_ALWAYS_INLINE ItemIter findMatching(K const& key, F&& func) const {
-    auto hp = splitHash(this->computeKeyHash(key));
+    auto hp = computeHash(key);
     std::size_t index = hp.first;
     auto needleV = loadNeedleV(hp.second);
     std::size_t step = probeDelta(hp);
@@ -2011,7 +2041,7 @@ class F14Table : public Policy {
           auto& srcItem = srcChunk->item(i);
           auto&& srcArg = std::forward<T>(src).buildArgForItem(srcItem);
           auto const& srcKey = src.keyForValue(srcArg);
-          auto hp = splitHash(this->computeKeyHash(srcKey));
+          auto hp = computeHash(srcKey);
           FOLLY_SAFE_CHECK(hp.second == srcChunk->tag(i), "");
           insertAtBlank(
               allocateTag(fullness, hp),
@@ -2388,16 +2418,14 @@ class F14Table : public Policy {
   // from args...  key won't be accessed after args are touched.
   template <typename K, typename... Args>
   std::pair<ItemIter, bool> tryEmplaceValue(K const& key, Args&&... args) {
-    const auto hp = splitHash(this->computeKeyHash(key));
+    const auto hp = computeHash(key);
     return tryEmplaceValueImpl(hp, key, std::forward<Args>(args)...);
   }
 
   template <typename K, typename... Args>
   std::pair<ItemIter, bool> tryEmplaceValueWithToken(
       F14HashToken const& token, K const& key, Args&&... args) {
-    FOLLY_SAFE_DCHECK(
-        splitHash(this->computeKeyHash(key)) == static_cast<HashPair>(token),
-        "");
+    FOLLY_SAFE_DCHECK(computeHash(key) == static_cast<HashPair>(token), "");
     return tryEmplaceValueImpl(
         static_cast<HashPair>(token), key, std::forward<Args>(args)...);
   }
@@ -2537,7 +2565,7 @@ class F14Table : public Policy {
     if (FOLLY_UNLIKELY(size() == 0)) {
       return 0;
     }
-    auto hp = splitHash(this->computeKeyHash(key));
+    auto hp = computeHash(key);
     auto iter = findImpl(hp, key, Prefetch::ENABLED);
     if (!iter.atEnd()) {
       beforeDestroy(this->valueAtItemForExtract(iter.item()));
