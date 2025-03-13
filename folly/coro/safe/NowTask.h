@@ -56,9 +56,10 @@ auto bind_captures_to_closure(auto&&, auto);
 template <safe_alias, typename>
 class BackgroundTask;
 
-template <typename>
+template <typename T = void>
 class NowTask;
-template <typename>
+
+template <typename T = void>
 class NowTaskWithExecutor;
 
 namespace detail {
