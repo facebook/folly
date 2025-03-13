@@ -601,6 +601,11 @@ void AsyncServerSocket::setEnableReuseAddr(bool enable) {
   }
 }
 
+void AsyncServerSocket::setIPFreebind(bool enable) {
+  // We defer setting this option to setupSocket to ensure it is done pre-bind.
+  ipFreebind_ = enable;
+}
+
 void AsyncServerSocket::listen(int backlog) {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
@@ -976,6 +981,15 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
                    << folly::errnoStr(errnoCopy);
     }
   }
+
+#if defined(__linux__)
+  if (ipFreebind_ &&
+      netops::setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(int)) != 0) {
+    auto errnoCopy = errno;
+    LOG(ERROR) << "failed to set IP_FREEBIND on async server socket: "
+               << errnoStr(errnoCopy);
+  }
+#endif
 
   if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
     shutdownSocketSet->add(fd);

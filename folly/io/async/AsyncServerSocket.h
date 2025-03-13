@@ -780,6 +780,20 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   bool getReusePortEnabled_() const { return reusePortEnabled_; }
 
   /**
+   * Set whether or not IP_FREEBIND is enabled on the server socket. Only
+   * supported on Linux.
+   *
+   * NOTE: This socket option only makes sense as a pre-bind operation. Setting
+   * it to an existing bound socket will have no effect.
+   */
+  void setIPFreebind(bool enable);
+
+  /**
+   * Get whether or not IP_FREEBIND is enabled on the server socket.
+   */
+  bool getIPFreebindEnabled() const { return ipFreebind_; }
+
+  /**
    * Set whether or not the socket should close during exec() (FD_CLOEXEC). By
    * default, this is enabled
    */
@@ -1027,6 +1041,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   bool reusePortEnabled_{false};
   // SO_REUSEADDR is enabled by default
   bool enableReuseAddr_{true};
+  bool ipFreebind_{false};
   bool closeOnExec_;
   bool tfo_{false};
   bool noTransparentTls_{false};

@@ -112,6 +112,28 @@ TEST(AsyncSocketTest, EnableThenDisableReuseAddr) {
   serverSocket2->bind(0);
 }
 
+TEST(AsyncSocketTest, IPFreebind) {
+  EventBase base;
+  // We expect an IPv4 bind to a public address to fail.
+  auto testAddress = folly::SocketAddress("8.8.8.8", 443);
+  auto serverSocket = AsyncServerSocket::newSocket(&base);
+  serverSocket->listen(0);
+  serverSocket->startAccepting();
+
+  try {
+    serverSocket->bind(testAddress);
+    ASSERT_TRUE(false) << "Should have thrown on IPv4 bind";
+  } catch (...) {
+    return;
+  }
+
+  auto serverSocket2 = AsyncServerSocket::newSocket(&base);
+  serverSocket2->setIPFreebind(true);
+  serverSocket2->bind(testAddress);
+  serverSocket2->listen(0);
+  serverSocket2->startAccepting();
+}
+
 TEST(AsyncSocketTest, v4v6samePort) {
   EventBase base;
   auto serverSocket = AsyncServerSocket::newSocket(&base);
