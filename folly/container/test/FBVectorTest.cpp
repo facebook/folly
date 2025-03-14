@@ -91,7 +91,7 @@ TEST(fbvector, worksWithStdString) {
 }
 
 namespace {
-class UserDefinedType {
+struct UserDefinedType {
   int whatevs_;
 };
 } // namespace
