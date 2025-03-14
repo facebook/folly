@@ -9,6 +9,7 @@
 import errno
 import hashlib
 import os
+import random
 import re
 import shutil
 import stat
@@ -837,7 +838,20 @@ class ArchiveFetcher(Fetcher):
 
     def _download(self) -> None:
         self._download_dir()
-        download_url_to_file_with_progress(self.url, self.file_name)
+        max_attempts = 5
+        delay = 1
+        for attempt in range(max_attempts):
+            try:
+                download_url_to_file_with_progress(self.url, self.file_name)
+                break
+            except TransientFailure as tf:
+                if attempt < max_attempts - 1:
+                    delay *= 2
+                    delay_with_jitter = delay * (1 + random.random() * 0.1)
+                    time.sleep(min(delay_with_jitter, 10))
+                else:
+                    print(f"Failed after retries: {tf}")
+                    raise
         self._verify_hash()
 
     def clean(self) -> None:
