@@ -635,12 +635,24 @@ class Range {
   // At the moment the set of implicit target types consists of just
   // std::string_view (when it is available).
   struct NotStringView {};
+  struct StringViewTypeChar {
+    template <typename ValueType>
+    using apply = std::basic_string_view<ValueType>;
+  };
+  struct StringViewTypeNone {
+    template <typename>
+    using apply = NotStringView;
+  };
   template <typename ValueType>
-  struct StringViewType //
-      : std::conditional<
-            detail::range_is_char_type_v_<Iter>,
-            std::basic_string_view<ValueType>,
-            NotStringView> {};
+  using StringViewTypeFunc = std::conditional_t<
+      detail::range_is_char_type_v_<Iter>,
+      StringViewTypeChar,
+      StringViewTypeNone>;
+  template <typename ValueType>
+  struct StringViewType {
+    using type =
+        typename StringViewTypeFunc<ValueType>::template apply<ValueType>;
+  };
 
   template <typename Target>
   struct IsConstructibleViaStringView
