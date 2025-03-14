@@ -219,7 +219,7 @@ bool tryUriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
           return false;
         }
         out.append(&*last, size_t(p - last));
-        out.push_back((h1 << 4) | h2);
+        out.push_back(decltype(h1)(h1 << 4) | h2);
         p += 3;
         last = p;
         break;
