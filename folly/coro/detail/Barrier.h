@@ -109,7 +109,7 @@ class Barrier {
    public:
     explicit Awaiter(Barrier& barrier) noexcept : barrier_(barrier) {}
 
-    bool await_ready() { return false; }
+    bool await_ready() noexcept { return false; }
 
     template <typename Promise>
     coroutine_handle<> await_suspend(

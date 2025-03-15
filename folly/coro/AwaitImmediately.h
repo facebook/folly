@@ -77,7 +77,8 @@ using must_await_immediately_of_ =
 
 template <typename Void, typename T>
 struct must_await_immediately_ {
-  static_assert(sizeof(T) > 0, "`must_await_immediately_t` on incomplete type");
+  static_assert(
+      require_sizeof<T>, "`must_await_immediately_t` on incomplete type");
   using type = std::false_type;
 };
 

@@ -216,6 +216,14 @@ class TaskPromiseWrapper<void, WrapperTask, Promise>
   void return_void() noexcept { this->promise_.return_void(); }
 };
 
+// Mixin for TaskWrapper.h configs for `Task` & `TaskWithExecutor` types
+struct DoesNotWrapAwaitable {
+  template <typename Awaitable>
+  static inline constexpr Awaitable&& wrapAwaitable(Awaitable&& awaitable) {
+    return static_cast<Awaitable&&>(awaitable);
+  }
+};
+
 } // namespace detail
 
 // Inherit from `OpaqueTaskWrapperCrtp` instead of `TaskWrapperCrtp` if you
@@ -227,6 +235,8 @@ class OpaqueTaskWrapperCrtp {
 
   using folly_private_must_await_immediately_t =
       must_await_immediately_t<typename Cfg::InnerTaskT>;
+  using folly_private_noexcept_awaitable_t =
+      noexcept_awaitable_t<typename Cfg::InnerTaskT>;
   using folly_private_task_wrapper_inner_t = typename Cfg::InnerTaskT;
 
   // Do NOT add any protocols here, see `TaskWrapperCrtp` instead.
@@ -246,7 +256,8 @@ class OpaqueTaskWrapperCrtp {
       Derived,
       detail::unsafe_mover_for_must_await_immediately_t<Inner>>;
 
-  explicit OpaqueTaskWrapperCrtp(Inner t) : task_(std::move(t)) {
+  explicit OpaqueTaskWrapperCrtp(Inner t)
+      : task_(mustAwaitImmediatelyUnsafeMover(std::move(t))()) {
     static_assert(
         must_await_immediately_v<Derived> ||
             !must_await_immediately_v<typename Cfg::TaskWithExecutorT>,
@@ -257,7 +268,7 @@ class OpaqueTaskWrapperCrtp {
   // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
   Inner unwrapTask() && {
     static_assert(sizeof(Inner) == sizeof(Derived));
-    return std::move(task_);
+    return mustAwaitImmediatelyUnsafeMover(std::move(task_))();
   }
 };
 
@@ -287,10 +298,15 @@ class TaskWrapperCrtp : public OpaqueTaskWrapperCrtp<Derived, Cfg> {
   }
 
   // Pass `tw` by-value, since `&&` would break immediately-awaitable types
+  // Has copy-pasta below in `TaskWithExecutorWrapperCrtp`.
   friend auto co_viaIfAsync(
       Executor::KeepAlive<> executor, Derived tw) noexcept {
-    return co_viaIfAsync(std::move(executor), std::move(tw).unwrapTask());
+    return Cfg::wrapAwaitable(co_viaIfAsync(
+        std::move(executor),
+        mustAwaitImmediatelyUnsafeMover(std::move(tw).unwrapTask())()));
   }
+
+  // No `cpo_t<co_withAsyncStack>` since a "Task" is not an awaitable.
 
   auto getUnsafeMover(ForMustAwaitImmediately p) && {
     // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
@@ -325,37 +341,55 @@ class TaskWithExecutorWrapperCrtp {
   // Our task can construct us, and that logic lives in the CRTP base
   friend typename Cfg::WrapperTaskT::folly_private_task_wrapper_crtp_base;
 
-  explicit TaskWithExecutorWrapperCrtp(Inner t) : inner_(std::move(t)) {}
+  explicit TaskWithExecutorWrapperCrtp(Inner t)
+      : inner_(mustAwaitImmediatelyUnsafeMover(std::move(t))()) {}
 
  public:
-  // Required for `await_result_t` and `get_awaiter` to work.  That, of course,
-  // lets the power-user violate the "immediately awaitable" invariant, but
-  // they are essential for metaprogramming.  Let's hope that users won't
-  // carelessly invoke `operator co_await()` or `get_awaiter`!
+  // This is a **deliberately undefined** declaration. It is provided so that
+  // `await_result_t` can work, e.g. `AsyncScope` checks that for all tasks.
   //
-  // An alternate solution for **just** `await_result_t` would have been to
-  // specialize `struct await_result` to look for a special member type on
-  // these.  We can revisit if this proves a frequent footgun.
+  // We do NOT want a definition here, for two reasons:
+  //   - As a destructive member function, this can easily violate the
+  //     "immediately awaitable" invariant -- all you have to do is
+  //     `twe.operator co_await()`.
+  //   - A definition would have to handle `Cfg::wrapAwaitable`, but also avoid
+  //     double-wrapping the awaitable (*if* that can occur?).  No definition
+  //     means I don't have to think through this :)
   //
-  // NB: This does not let this **naively** wrong code compile -- that goes
-  // through `await_transform()`.  See `NowTaskTest.cpp` for proof.
+  // If, in the future, something requires `get_awaiter()` to handle a wrapped
+  // task-with-executor in an **evaluated** context, we can then provide the
+  // definition, being mindful of the above concerns.
+  //
+  // NB: Adding a definition should not let this naively wrong code compile --
+  // that goes through `await_transform()`.  `NowTaskTest.cpp` checks this.
   //   auto t = co_withExecutor(ex, someNowTask());
   //   co_await std::move(t);
-  auto operator co_await() && noexcept {
-    return std::move(inner_).operator co_await();
-  }
+  auto operator co_await() && noexcept
+      -> decltype(Cfg::wrapAwaitable(std::move(inner_)).operator co_await());
 
   // Pass `te` by-value, since `&&` would break immediately-awaitable types
   friend Derived co_withCancellation(
       CancellationToken cancelToken, Derived te) noexcept {
-    return Derived{
-        co_withCancellation(std::move(cancelToken), std::move(te.inner_))};
+    return Derived{co_withCancellation(
+        std::move(cancelToken),
+        mustAwaitImmediatelyUnsafeMover(std::move(te.inner_))())};
   }
 
   // Pass `te` by-value, since `&&` would break immediately-awaitable types
+  // Has copy-pasta above in `TaskWrapperCrtp`.
   friend auto co_viaIfAsync(
       Executor::KeepAlive<> executor, Derived te) noexcept {
-    return co_viaIfAsync(std::move(executor), std::move(te.inner_));
+    return Cfg::wrapAwaitable(co_viaIfAsync(
+        std::move(executor),
+        mustAwaitImmediatelyUnsafeMover(std::move(te.inner_))()));
+  }
+
+  // `AsyncScope` requires an awaitable with an executor already attached, and
+  // thus directly calls `co_withAsyncStack` instead of `co_viaIfAsync`.  But,
+  // we still need to wrap the awaitable on that code path.
+  friend auto tag_invoke(cpo_t<co_withAsyncStack>, Derived te) noexcept(
+      noexcept(co_withAsyncStack(FOLLY_DECLVAL(Inner)))) {
+    return Cfg::wrapAwaitable(co_withAsyncStack(std::move(te.inner_)));
   }
 
   auto getUnsafeMover(ForMustAwaitImmediately p) && {
@@ -367,6 +401,7 @@ class TaskWithExecutorWrapperCrtp {
 
   using folly_private_must_await_immediately_t =
       must_await_immediately_t<Inner>;
+  using folly_private_task_without_executor_t = typename Cfg::WrapperTaskT;
 };
 
 } // namespace folly::coro

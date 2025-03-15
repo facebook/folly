@@ -542,7 +542,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
       }
     }
 
-    bool await_ready() const { return false; }
+    bool await_ready() const noexcept { return false; }
 
     template <typename Promise>
     FOLLY_NOINLINE void await_suspend(
@@ -621,7 +621,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
       }
     }
 
-    bool await_ready() { return false; }
+    bool await_ready() noexcept { return false; }
 
     template <typename Promise>
     FOLLY_NOINLINE coroutine_handle<> await_suspend(
@@ -703,6 +703,8 @@ class FOLLY_NODISCARD TaskWithExecutor {
   NoOpMover<TaskWithExecutor> getUnsafeMover(ForMustAwaitImmediately) && {
     return NoOpMover{std::move(*this)};
   }
+
+  using folly_private_task_without_executor_t = Task<T>;
 
  private:
   friend class Task<T>;

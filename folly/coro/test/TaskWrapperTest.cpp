@@ -30,7 +30,7 @@ class TinyNowTaskWithExecutor;
 
 namespace detail {
 template <typename T>
-struct TinyNowTaskWithExecutorCfg {
+struct TinyNowTaskWithExecutorCfg : DoesNotWrapAwaitable {
   using InnerTaskWithExecutorT = TaskWithExecutor<T>;
   using WrapperTaskT = TinyNowTask<T>;
 };
@@ -53,7 +53,7 @@ template <typename T>
 class TinyNowTaskPromise final
     : public TaskPromiseWrapper<T, TinyNowTask<T>, TaskPromise<T>> {};
 template <typename T>
-struct TinyNowTaskCfg {
+struct TinyNowTaskCfg : DoesNotWrapAwaitable {
   using ValueT = T;
   using InnerTaskT = Task<T>;
   using TaskWithExecutorT = TinyNowTaskWithExecutor<T>;
@@ -80,7 +80,7 @@ class TinyMovableTaskWithExecutor;
 
 namespace detail {
 template <typename T>
-struct TinyMovableTaskWithExecutorCfg {
+struct TinyMovableTaskWithExecutorCfg : DoesNotWrapAwaitable {
   using InnerTaskWithExecutorT = TaskWithExecutor<T>;
   using WrapperTaskT = TinyMovableTask<T>;
 };
@@ -103,7 +103,7 @@ template <typename T>
 class TinyMovableTaskPromise final
     : public TaskPromiseWrapper<T, TinyMovableTask<T>, TaskPromise<T>> {};
 template <typename T>
-struct TinyMovableTaskCfg {
+struct TinyMovableTaskCfg : DoesNotWrapAwaitable {
   using ValueT = T;
   using InnerTaskT = Task<T>;
   using TaskWithExecutorT = TinyMovableTaskWithExecutor<T>;
@@ -255,8 +255,8 @@ template <typename... BaseArgs>
 class RecursiveTaskPromiseWrapper final
     : public TaskPromiseWrapper<BaseArgs...> {};
 
-template <typename T, typename InnerTask, typename InnerPromise>
-struct RecursiveTaskWrapperConfig {
+template <typename T, typename InnerTask>
+struct RecursiveTaskWrapperConfig : DoesNotWrapAwaitable {
   using ValueT = T;
   using InnerTaskT = InnerTask;
   // IMPORTANT: In a real implementation, this should, of course, wrap an
@@ -265,17 +265,14 @@ struct RecursiveTaskWrapperConfig {
   using PromiseT = RecursiveTaskPromiseWrapper<
       T,
       RecursiveWrapTask<RecursiveTaskWrapperConfig>,
-      InnerPromise>;
+      typename InnerTask::promise_type>;
 };
 
 template <typename Cfg>
 using RecursiveWrapTaskBase = TaskWrapperCrtp<RecursiveWrapTask<Cfg>, Cfg>;
 
 template <typename T>
-using TwoWrapTaskConfig = RecursiveTaskWrapperConfig<
-    T,
-    TinyMovableTask<T>,
-    TinyMovableTaskPromise<T>>;
+using TwoWrapTaskConfig = RecursiveTaskWrapperConfig<T, TinyMovableTask<T>>;
 
 } // namespace detail
 
@@ -293,10 +290,7 @@ using TwoWrapTask = RecursiveWrapTask<detail::TwoWrapTaskConfig<T>>;
 
 namespace detail {
 template <typename T>
-using ThreeWrapTaskConfig = RecursiveTaskWrapperConfig<
-    T,
-    TwoWrapTask<T>,
-    typename TwoWrapTaskConfig<T>::PromiseT>;
+using ThreeWrapTaskConfig = RecursiveTaskWrapperConfig<T, TwoWrapTask<T>>;
 } // namespace detail
 
 template <typename T>

@@ -64,7 +64,7 @@ class NowTaskWithExecutor;
 
 namespace detail {
 template <typename T>
-struct NowTaskWithExecutorCfg {
+struct NowTaskWithExecutorCfg : DoesNotWrapAwaitable {
   using InnerTaskWithExecutorT = TaskWithExecutor<T>;
   using WrapperTaskT = NowTask<T>;
 };
@@ -90,7 +90,7 @@ template <typename T>
 class NowTaskPromise final
     : public TaskPromiseWrapper<T, NowTask<T>, TaskPromise<T>> {};
 template <typename T>
-struct NowTaskCfg {
+struct NowTaskCfg : DoesNotWrapAwaitable {
   using ValueT = T;
   using InnerTaskT = Task<T>;
   using TaskWithExecutorT = NowTaskWithExecutor<T>;

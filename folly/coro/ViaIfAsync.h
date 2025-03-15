@@ -575,6 +575,38 @@ using semi_await_result_t = await_result_t<decltype(folly::coro::co_viaIfAsync(
 
 namespace detail {
 
+template <typename T>
+using noexcept_awaitable_of_ = typename T::folly_private_noexcept_awaitable_t;
+
+template <typename Void, typename T>
+struct noexcept_awaitable_ {
+  static_assert(require_sizeof<T>, "`noexcept_awaitable_t` on incomplete type");
+  using type = std::false_type;
+};
+
+template <>
+struct noexcept_awaitable_<void, void> {
+  using type = std::false_type;
+};
+
+template <typename T>
+struct noexcept_awaitable_<void_t<noexcept_awaitable_of_<T>>, T> {
+  using type = noexcept_awaitable_of_<T>;
+};
+
+} // namespace detail
+
+// This trait is in `ViaIfAsync.h` so that we don't have include `Noexcept.h`
+// If there's ever a use-case that doesn't depend on `ViaIfAsync.h`, this can
+// be moved up to `Traits.h`
+template <typename T>
+using noexcept_awaitable_t =
+    typename detail::noexcept_awaitable_<void, T>::type;
+template <typename T>
+inline constexpr bool noexcept_awaitable_v = noexcept_awaitable_t<T>::value;
+
+namespace detail {
+
 template <typename Awaiter>
 using detect_await_resume_try =
     decltype(FOLLY_DECLVAL(Awaiter).await_resume_try());
@@ -713,6 +745,7 @@ class CommutativeWrapperAwaitable {
   }
 
   using folly_private_must_await_immediately_t = must_await_immediately_t<T>;
+  using folly_private_noexcept_awaitable_t = noexcept_awaitable_t<T>;
 
  protected:
   T inner_;
@@ -731,14 +764,12 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] TryAwaitable
           std::is_same_v<remove_cvref_t<Self>, TryAwaitable>,
           int> = 0,
       typename T2 = like_t<Self, T>,
-      std::enable_if_t<is_awaitable_v<T2>, int> = 0,
-      typename T3 = T,
-      // Future: If you have a compile error where this isn't satisfied, add
-      // a `true` branch calling `mustAwaitImmediatelyUnsafeMover(...)()`.
-      std::enable_if_t<!must_await_immediately_v<T3>, int> = 0>
+      std::enable_if_t<is_awaitable_v<T2>, int> = 0>
   friend TryAwaiter<T2> operator co_await(Self && self) {
     return TryAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
+
+  using folly_private_noexcept_awaitable_t = std::true_type;
 };
 
 } // namespace detail
@@ -754,9 +785,9 @@ detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
 template <
     typename Awaitable,
     std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
-detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
+detail::TryAwaitable<Awaitable> co_awaitTry(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {
-  return detail::TryAwaitable<remove_cvref_t<Awaitable>>{
+  return detail::TryAwaitable<Awaitable>{
       mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()};
 }
 
