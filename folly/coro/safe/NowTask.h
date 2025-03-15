@@ -49,10 +49,6 @@ enum class safe_alias;
 
 namespace folly::coro {
 
-namespace detail {
-template <auto>
-auto bind_captures_to_closure(auto&&, auto);
-}
 template <safe_alias, typename>
 class BackgroundTask;
 
@@ -115,9 +111,6 @@ class FOLLY_CORO_TASK_ATTRS NowTask final : public detail::NowTaskBase<T> {
   friend auto toNowTask(SafeTask<S, U>);
   template <typename U> // can construct & `unwrapTask`
   friend auto toNowTask(NowTask<U>);
-  // `async_now_closure` wraps `NowTask`s into `NowTask`s
-  template <auto> // can `unwrapTask`
-  friend auto detail::bind_captures_to_closure(auto&&, auto);
 };
 
 // NB: `toNowTask(SafeTask)` is in `SafeTask.h` to avoid circular deps.
