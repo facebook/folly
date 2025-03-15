@@ -172,6 +172,16 @@ FOLLY_ALWAYS_INLINE constexpr decltype(auto) apply(auto&& fn, auto&& tup) {
   }(std::make_index_sequence<std::tuple_size_v<tupv>>{});
 }
 
+FOLLY_ALWAYS_INLINE constexpr decltype(auto) reverse_apply(
+    auto&& fn, auto&& tup) {
+  using tupv = std::remove_reference_t<decltype(tup)>;
+  constexpr size_t Last = std::tuple_size_v<tupv> - 1;
+  return [&]<size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
+    return static_cast<decltype(fn)>(fn)(
+        get<Last - Is>(static_cast<decltype(tup)>(tup))...);
+  }(std::make_index_sequence<Last + 1>{});
+}
+
 // `tuple_cat` implementation details.  Credit: This follows the `tuplet`
 // algorithm, which in turn appears to derive from Eric Niebler's
 // `tuple_cat.cpp` -- read its docs for another explanation:
@@ -193,8 +203,8 @@ consteval auto repeat_type(tag_t<ForEach...>) {
 // `Base` is a `struct entry` base class of a tuple-of-tuples.  Returns the
 // `tuple_base_list` of the inner tuple "indexed" by this `Base`.
 template <typename Base>
-using inner_tuple_base_list_t =
-    std::remove_reference_t<typename Base::entry_type>::tuple_base_list;
+using inner_tuple_base_list_t = typename std::remove_reference_t<
+    typename Base::entry_type>::tuple_base_list;
 
 // Given the bases of some `outerTuples...`, return a `tag_t` repeating the
 // corresponding base for each of the tuple's entries (cardinality of

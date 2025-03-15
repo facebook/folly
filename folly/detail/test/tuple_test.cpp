@@ -139,6 +139,7 @@ struct TupleTests {
     test(17 == TupFn{}.apply([]() { return 17; }, empty));
 
     Tup t{1, 2, 3};
+    TupFn{}.apply([t](auto... n) { test(t == Tup{n...}); }, t);
     test(6 == TupFn{}.apply([](auto... n) { return (n + ...); }, t));
     TupFn{}.apply([](auto&... n) { return ((n *= n), ...); }, t);
     test(Tup{1, 4, 9} == t);
@@ -147,11 +148,11 @@ struct TupleTests {
   }
 
   static constexpr bool check_apply_move() {
-    Tup moveT{MoveOnly{}, MoveOnly{}};
+    Tup moveT{MoveOnly{}, std::optional<MoveOnly>{}};
     auto m = TupFn{}.apply(
         [](auto&& m1, auto m2) {
           static_assert(std::is_same_v<decltype(m1), MoveOnly&&>);
-          static_assert(std::is_same_v<decltype(m2), MoveOnly>);
+          static_assert(std::is_same_v<decltype(m2), std::optional<MoveOnly>>);
           return std::move(m1);
         },
         std::move(moveT));
@@ -333,6 +334,56 @@ TEST(LiteTupleTest, std_tuple_cat_move_unique_ptr) {
 }
 TEST(LiteTupleTest, lite_tuple_cat_move_unique_ptr) {
   LiteTests::check_tuple_cat_move_unique_ptr();
+}
+
+constexpr bool check_lite_tuple_reverse_apply() { // no `std::reverse_apply`
+  lite_tuple::tuple empty{};
+  test(17 == lite_tuple::reverse_apply([]() { return 17; }, empty));
+
+  lite_tuple::tuple t{1, 2, 3};
+  lite_tuple::reverse_apply(
+      [](auto... n) {
+        test(lite_tuple::tuple{3, 2, 1} == lite_tuple::tuple{n...});
+      },
+      t);
+  lite_tuple::reverse_apply([](auto&... n) { return ((n *= n), ...); }, t);
+  test(lite_tuple::tuple{1, 4, 9} == t);
+
+  lite_tuple::tuple moveT{MoveOnly{}, std::optional<MoveOnly>{}};
+  auto m = lite_tuple::reverse_apply(
+      [](auto&& m1, auto m2) {
+        static_assert(std::is_same_v<decltype(m1), std::optional<MoveOnly>&&>);
+        static_assert(std::is_same_v<decltype(m2), MoveOnly>);
+        return std::move(m1);
+      },
+      std::move(moveT));
+  static_assert(std::is_same_v<decltype(m), std::optional<MoveOnly>>);
+
+  int n = 5;
+  lite_tuple::reverse_apply(
+      [](auto&& lref, auto&& rref) {
+        static_assert(std::is_same_v<int&&, decltype(rref)>);
+        static_assert(std::is_same_v<int&, decltype(lref)>);
+      },
+      // NOLINTNEXTLINE(performance-move-const-arg)
+      // @lint-ignore CLANGTIDY facebook-hte-MoveEvaluationOrder
+      lite_tuple::forward_as_tuple(std::move(n), n));
+
+  return true;
+}
+
+static_assert(check_lite_tuple_reverse_apply());
+
+TEST(LiteTupleTest, lite_tuple_reverse_apply) { // no `std::reverse_apply`
+  lite_tuple::tuple moveT{std::make_unique<int>(7), MoveOnly{}};
+  auto p = lite_tuple::reverse_apply(
+      [](auto m, auto&& p) {
+        static_assert(std::is_same_v<decltype(m), MoveOnly>);
+        return std::move(p);
+      },
+      std::move(moveT));
+  EXPECT_EQ(7, *p);
+  EXPECT_EQ(nullptr, lite_tuple::get<0>(moveT).get());
 }
 
 } // namespace folly::detail
