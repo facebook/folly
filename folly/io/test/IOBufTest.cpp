@@ -1400,6 +1400,7 @@ TEST(IOBuf, CloneAsValue) {
     EXPECT_TRUE(copy2.isShared());
     EXPECT_TRUE(buf->isChained());
     EXPECT_TRUE(copy2.isChained());
+    EXPECT_EQ(buf->toString(), copy2.toString());
 
     copy.unshareOne();
     EXPECT_TRUE(buf->isShared());
@@ -1418,6 +1419,20 @@ TEST(IOBuf, CloneAsValue) {
 
     auto p2 = reinterpret_cast<const char*>(copy2.data());
     EXPECT_EQ("hello world goodbye", std::string(p2, copy2.length()));
+  }
+
+  {
+    // Test clones from value IOBufs.
+    auto copy = buf->cloneAsValue();
+    auto copy2 = copy.cloneAsValue();
+    EXPECT_TRUE(copy2.isShared());
+    EXPECT_TRUE(copy2.isChained());
+    EXPECT_EQ(buf->toString(), copy2.toString());
+
+    auto copy3 = copy.clone();
+    EXPECT_TRUE(copy3->isShared());
+    EXPECT_TRUE(copy3->isChained());
+    EXPECT_EQ(buf->toString(), copy3->toString());
   }
 
   EXPECT_FALSE(buf->isShared());

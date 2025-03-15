@@ -2079,10 +2079,17 @@ class IOBuf {
     StorageType storageType = StorageType::kInvalid;
     MicroSpinLock observerListLock{0};
   };
+
   // Helper structs for use by operator new and delete
   struct HeapPrefix;
   struct HeapStorage;
   struct HeapFullStorage;
+
+  // Force inlining to allow optimizing away some branches in the common cases.
+  template <class StorageType>
+  FOLLY_ALWAYS_INLINE static std::pair<StorageType*, size_t> allocateStorage(
+      size_t additionalBuffer = 0);
+  static void freeStorage(HeapStorage* storage);
 
   /**
    * Create a new IOBuf pointing to an external buffer.
