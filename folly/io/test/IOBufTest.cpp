@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <random>
+#include <unordered_map>
 
 #include <folly/Range.h>
 #include <folly/io/TypedIOBuf.h>
@@ -1925,3 +1926,67 @@ TEST(IOBuf, FromString) {
   auto longStr = std::string(1000, '0');
   EXPECT_EQ(folly::IOBuf::fromString(longStr)->toString(), longStr);
 }
+
+#if FOLLY_HAS_MEMORY_RESOURCE
+
+TEST(IOBuf, WithMemoryResource) {
+  struct FakeMemoryResource : std::pmr::memory_resource {
+    void* do_allocate(
+        std::size_t bytes, std::size_t /*  alignment */) override {
+      auto p = malloc(bytes);
+      CHECK(active.try_emplace(p, bytes).second);
+      return p;
+    }
+
+    void do_deallocate(
+        void* p, std::size_t bytes, std::size_t /* alignment */) override {
+      auto it = active.find(p);
+      CHECK(it != active.end()) << active.size();
+      CHECK_EQ(it->second, bytes);
+      active.erase(it);
+      free(p);
+    }
+
+    bool do_is_equal(
+        const memory_resource& /* other */) const noexcept override {
+      LOG(FATAL) << "Not implemented";
+    }
+
+    std::unordered_map<void*, size_t> active;
+  };
+
+  FakeMemoryResource mr;
+  const auto makeBuf = [&](size_t size) {
+    uint8_t* data = static_cast<uint8_t*>(malloc(size));
+    return IOBuf::takeOwnership(&mr, data, size, 0, 0);
+  };
+  auto buf = makeBuf(10);
+  EXPECT_EQ(mr.active.size(), 1);
+  buf->appendToChain(makeBuf(20));
+  EXPECT_EQ(mr.active.size(), 2);
+
+  {
+    // Cloning without passing a memory_resource uses the system allocator.
+    auto clone = buf->clone();
+    EXPECT_EQ(mr.active.size(), 2);
+    clone.reset();
+    EXPECT_EQ(mr.active.size(), 2);
+  }
+
+  {
+    auto clone = buf->cloneOne(&mr);
+    EXPECT_EQ(mr.active.size(), 3);
+  }
+  EXPECT_EQ(mr.active.size(), 2);
+
+  {
+    auto clone = buf->clone(&mr);
+    EXPECT_EQ(mr.active.size(), 4);
+  }
+  EXPECT_EQ(mr.active.size(), 2);
+
+  buf.reset();
+  EXPECT_EQ(mr.active.size(), 0);
+}
+
+#endif /* FOLLY_HAS_MEMORY_RESOURCE */

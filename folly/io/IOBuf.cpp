@@ -106,7 +106,8 @@ namespace folly {
 // use free for size >= 4GB
 // since we can store only 32 bits in the size var
 struct IOBuf::HeapPrefix {
-  HeapPrefix(uint8_t rc, uint32_t sz) : refcount(rc), size(sz) {}
+  HeapPrefix(uint8_t rc, uint32_t sz, bool hmr)
+      : refcount(rc), hasMemoryResource(hmr), size(sz) {}
   ~HeapPrefix() {
     // Reset magic to 0 on destruction.  This is solely for debugging purposes
     // to help catch bugs where someone tries to use HeapStorage after it has
@@ -118,6 +119,7 @@ struct IOBuf::HeapPrefix {
 
   uint16_t magic = kHeapMagic;
   std::atomic<uint8_t> refcount; // 1 for IOBuf and 1 for SharedInfo (+ data).
+  bool hasMemoryResource;
   uint32_t size;
 };
 
@@ -212,7 +214,7 @@ void IOBuf::SharedInfo::releaseStorage(
 void* IOBuf::operator new(size_t size) {
   DCHECK_GE(size, sizeof(IOBuf));
   auto [storage, mallocSize] =
-      allocateStorage<HeapStorage>(size - sizeof(IOBuf));
+      allocateStorage<HeapStorage>(nullptr, size - sizeof(IOBuf));
   return &storage->buf;
 }
 
@@ -234,19 +236,52 @@ void IOBuf::operator delete(void* /* ptr */, void* /* placement */) {
 
 template <class StorageType>
 /* static */ std::pair<StorageType*, size_t> IOBuf::allocateStorage(
-    size_t additionalBuffer) {
-  size_t mallocSize = sizeof(StorageType);
-  if (additionalBuffer > 0) {
-    mallocSize = goodMallocSize(mallocSize + additionalBuffer);
-  }
-  auto storage = static_cast<StorageType*>(checkedMalloc(mallocSize));
+    std::pmr::memory_resource* mr, size_t additionalBuffer) {
+  size_t mallocSize;
+  StorageType* storage;
+  uint32_t storedSize;
+  bool hasMemoryResource;
 
-  auto storedSize = static_cast<uint32_t>(mallocSize);
-  if (storedSize != mallocSize) {
-    // If we cannot store the size in 32 bits, fall back to non-sized free.
-    storedSize = 0;
+  if (mr == nullptr) {
+    mallocSize = sizeof(StorageType);
+    if (additionalBuffer > 0) {
+      mallocSize = goodMallocSize(mallocSize + additionalBuffer);
+    }
+    storedSize = static_cast<uint32_t>(mallocSize);
+    if (storedSize != mallocSize) {
+      // If we cannot store the size in 32 bits, fall back to non-sized free.
+      storedSize = 0;
+    }
+    storage = static_cast<StorageType*>(checkedMalloc(mallocSize));
+    hasMemoryResource = false;
+  } else {
+#if FOLLY_HAS_MEMORY_RESOURCE
+    // We only need to store the memory_resource pointer when non-null, so we
+    // conditionally add a prefix of size max_align_v to the storage to fit the
+    // pointer.
+    constexpr size_t kPtrSize = sizeof(std::pmr::memory_resource*);
+    static_assert(alignof(StorageType) <= max_align_v);
+    static_assert(kPtrSize <= max_align_v);
+    // We don't know the memory_resource implementation, so we cannot assume
+    // that goodMallocSize() is good.
+    mallocSize = max_align_v + sizeof(StorageType) + additionalBuffer;
+    storedSize = static_cast<uint32_t>(mallocSize);
+    if (storedSize != mallocSize) {
+      // We only have 32 bits to store the size, and with the PMR interface we
+      // cannot fall back to non-sized free.
+      throw_exception<std::bad_alloc>();
+    }
+    auto ptr = static_cast<uint8_t*>(mr->allocate(mallocSize));
+    memcpy(ptr + max_align_v - kPtrSize, &mr, kPtrSize);
+    storage = reinterpret_cast<StorageType*>(ptr + max_align_v);
+    hasMemoryResource = true;
+#else
+    compiler_may_unsafely_assume_unreachable();
+#endif /* FOLLY_HAS_MEMORY_RESOURCE */
   }
-  new (storage) HeapPrefix(StorageType::kInitialRefcount, storedSize);
+
+  new (storage)
+      HeapPrefix(StorageType::kInitialRefcount, storedSize, hasMemoryResource);
 
   if (io_buf_alloc_cb) {
     io_buf_alloc_cb(storage, mallocSize);
@@ -255,10 +290,31 @@ template <class StorageType>
   return {storage, mallocSize};
 }
 
+/* static */ std::pmr::memory_resource* IOBuf::getMemoryResource(
+    const HeapStorage* storage) {
+  if (!storage->prefix.hasMemoryResource) {
+    return nullptr;
+  }
+  std::pmr::memory_resource* mr;
+  constexpr size_t kPtrSize = sizeof(std::pmr::memory_resource*);
+  memcpy(&mr, reinterpret_cast<const uint8_t*>(storage) - kPtrSize, kPtrSize);
+  return mr;
+}
+
 /* static */ void IOBuf::freeStorage(HeapStorage* storage) {
   size_t size = storage->prefix.size;
+  auto mr = getMemoryResource(storage);
+
   storage->prefix.HeapPrefix::~HeapPrefix();
-  if (FOLLY_LIKELY(size)) {
+
+  if (mr != nullptr) {
+#if FOLLY_HAS_MEMORY_RESOURCE
+    auto p = reinterpret_cast<uint8_t*>(storage) - max_align_v;
+    mr->deallocate(p, size);
+#else
+    compiler_may_unsafely_assume_unreachable();
+#endif /* FOLLY_HAS_MEMORY_RESOURCE */
+  } else if (FOLLY_LIKELY(size)) {
     if (io_buf_free_cb) {
       io_buf_free_cb(storage, size);
     }
@@ -365,7 +421,8 @@ unique_ptr<IOBuf> IOBuf::createCombined(std::size_t capacity) {
 
   // To save a memory allocation, allocate space for the IOBuf object, the
   // SharedInfo struct, and the data itself all with a single call to malloc().
-  auto [storage, mallocSize] = allocateStorage<HeapFullStorage>(capacity);
+  auto [storage, mallocSize] =
+      allocateStorage<HeapFullStorage>(nullptr, capacity);
   // No free function, data lifetime is tied to SharedInfo, whole storage will
   // be deallocated when both IOBuf and SharedInfo are gone.
   new (&storage->shared) SharedInfo(
@@ -477,7 +534,7 @@ IOBuf::IOBuf(
   }
 }
 
-unique_ptr<IOBuf> IOBuf::takeOwnership(
+unique_ptr<IOBuf> IOBuf::takeOwnershipImpl(
     void* buf,
     std::size_t capacity,
     std::size_t offset,
@@ -485,7 +542,8 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     FreeFunction freeFn,
     void* userData,
     bool freeOnError,
-    TakeOwnershipOption option) {
+    TakeOwnershipOption option,
+    std::pmr::memory_resource* mr) {
   // do not allow only user data without a freeFn
   // since we use that for folly::sizedFree
   DCHECK(
@@ -505,7 +563,7 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
   }
 
   size_t mallocSize;
-  std::tie(storage, mallocSize) = allocateStorage<HeapFullStorage>();
+  std::tie(storage, mallocSize) = allocateStorage<HeapFullStorage>(mr);
   new (&storage->shared)
       SharedInfo(freeFn, userData, SharedInfo::StorageType::kHeapFullStorage);
 
@@ -732,22 +790,24 @@ void IOBuf::appendToChain(unique_ptr<IOBuf>&& iobuf) {
   prev_ = otherTail;
 }
 
-unique_ptr<IOBuf> IOBuf::clone() const {
-  auto tmp = cloneOne();
+unique_ptr<IOBuf> IOBuf::cloneImpl(std::pmr::memory_resource* mr) const {
+  auto tmp = cloneOneImpl(mr);
 
   for (IOBuf* current = next_; current != this; current = current->next_) {
-    tmp->appendToChain(current->cloneOne());
+    tmp->appendToChain(current->cloneOneImpl(mr));
   }
 
   return tmp;
 }
 
-unique_ptr<IOBuf> IOBuf::cloneOne() const {
+unique_ptr<IOBuf> IOBuf::cloneOneImpl(std::pmr::memory_resource* mr) const {
   if (sharedInfo_) {
     sharedInfo_->refcount.fetch_add(1, std::memory_order_acq_rel);
   }
-  return std::unique_ptr<IOBuf>(new IOBuf(
-      InternalConstructor(), sharedInfo_, buf_, capacity_, data_, length_));
+
+  auto [storage, mallocSize] = allocateStorage<HeapStorage>(mr);
+  return unique_ptr<IOBuf>{new (&storage->buf) IOBuf(
+      InternalConstructor(), sharedInfo_, buf_, capacity_, data_, length_)};
 }
 
 unique_ptr<IOBuf> IOBuf::cloneCoalesced() const {

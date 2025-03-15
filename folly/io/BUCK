@@ -41,6 +41,7 @@ cpp_library(
         "//folly/lang:exception",
         "//folly/lang:ordering",
         "//folly/memory:malloc",
+        "//folly/memory:memory_resource",
         "//folly/portability:sys_uio",
         "//folly/synchronization:micro_spin_lock",
     ],

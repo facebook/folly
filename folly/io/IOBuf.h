@@ -41,6 +41,7 @@
 #include <folly/detail/Iterators.h>
 #include <folly/lang/CheckedMath.h>
 #include <folly/lang/Ordering.h>
+#include <folly/memory/MemoryResource.h>
 #include <folly/portability/SysUio.h>
 #include <folly/synchronization/MicroSpinLock.h>
 
@@ -53,6 +54,10 @@ FOLLY_GNU_DISABLE_WARNING("-Wpragmas")
 // Ignore documentation warnings, to enable overloads to share documentation
 // with differing parameters
 FOLLY_GNU_DISABLE_WARNING("-Wdocumentation")
+
+namespace std::pmr {
+class memory_resource;
+}
 
 namespace folly {
 
@@ -450,7 +455,7 @@ class IOBuf {
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
       bool freeOnError = true) {
-    return takeOwnership(
+    return takeOwnershipImpl(
         buf,
         capacity,
         0,
@@ -474,7 +479,7 @@ class IOBuf {
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
       bool freeOnError = true) {
-    return takeOwnership(
+    return takeOwnershipImpl(
         buf,
         capacity,
         0,
@@ -511,7 +516,7 @@ class IOBuf {
       FreeFunction freeFn = nullptr,
       void* userData = nullptr,
       bool freeOnError = true) {
-    return takeOwnership(
+    return takeOwnershipImpl(
         buf,
         capacity,
         offset,
@@ -535,7 +540,7 @@ class IOBuf {
       std::size_t offset,
       std::size_t length,
       bool freeOnError = true) {
-    return takeOwnership(
+    return takeOwnershipImpl(
         buf,
         capacity,
         offset,
@@ -1675,7 +1680,7 @@ class IOBuf {
    *
    * @methodset Makers
    */
-  std::unique_ptr<IOBuf> clone() const;
+  std::unique_ptr<IOBuf> clone() const { return cloneImpl(nullptr); }
 
   /**
    * @copydoc clone()
@@ -1691,7 +1696,7 @@ class IOBuf {
    *
    * @methodset Makers
    */
-  std::unique_ptr<IOBuf> cloneOne() const;
+  std::unique_ptr<IOBuf> cloneOne() const { return cloneOneImpl(nullptr); }
 
   /**
    * @copydoc cloneOne()
@@ -1908,6 +1913,62 @@ class IOBuf {
       void* userData = nullptr,
       bool freeOnError = true);
 
+#if FOLLY_HAS_MEMORY_RESOURCE
+
+  /**
+   * PMR support.
+   *
+   * These methods allow constructing IOBuf chains whose nodes are allocated
+   * using the provided memory resource. Aside from the use of
+   * std::pmr::memory_resource for allocating/deallocating the nodes, their
+   * semantics are equivalent to their non-PMR counterparts. Currently only a
+   * subset of IOBuf construction methods is implemented, enough to support the
+   * typical lifetime of an IOBuf chain: buffer can be externally allocated and
+   * wrapped with takeOwnership(), and cloned. More methods can be supported as
+   * needed.
+   *
+   * The thread-safety requirements of the provided memory_resource depend on
+   * the lifetime of the IOBufs. The allocate() method is only called in the
+   * context of the IOBuf method that accepts it; deallocate() is called when
+   * the IOBuf storage is eventually destroyed. Thus, in the common case where
+   * the chain is constructed in a single thread (which owns the
+   * memory_resource) and then handed off, it is sufficient that the
+   * memory_resource supports concurrent deallocate() calls, as different nodes
+   * in the chain may be destroyed by different threads.
+   *
+   * All the methods allow mr to be nullptr, which is equivalent to calling
+   * the non-PMR counterparts.
+   */
+
+  static std::unique_ptr<IOBuf> takeOwnership(
+      std::pmr::memory_resource* mr,
+      void* buf,
+      std::size_t capacity,
+      std::size_t offset,
+      std::size_t length,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true) {
+    return takeOwnershipImpl(
+        buf,
+        capacity,
+        offset,
+        length,
+        freeFn,
+        userData,
+        freeOnError,
+        TakeOwnershipOption::DEFAULT,
+        mr);
+  }
+  std::unique_ptr<IOBuf> clone(std::pmr::memory_resource* mr) const {
+    return cloneImpl(mr);
+  }
+  std::unique_ptr<IOBuf> cloneOne(std::pmr::memory_resource* mr) const {
+    return cloneOneImpl(mr);
+  }
+
+#endif /* FOLLY_HAS_MEMORY_RESOURCE */
+
   /**
    * Overridden operator new and delete.
    *
@@ -2015,7 +2076,8 @@ class IOBuf {
 
  private:
   enum class TakeOwnershipOption { DEFAULT, STORE_SIZE };
-  static std::unique_ptr<IOBuf> takeOwnership(
+
+  static std::unique_ptr<IOBuf> takeOwnershipImpl(
       void* buf,
       std::size_t capacity,
       std::size_t offset,
@@ -2023,7 +2085,10 @@ class IOBuf {
       FreeFunction freeFn,
       void* userData,
       bool freeOnError,
-      TakeOwnershipOption option);
+      TakeOwnershipOption option,
+      std::pmr::memory_resource* mr = nullptr);
+  std::unique_ptr<IOBuf> cloneImpl(std::pmr::memory_resource* mr) const;
+  std::unique_ptr<IOBuf> cloneOneImpl(std::pmr::memory_resource* mr) const;
 
   struct SharedInfoObserverEntryBase {
     SharedInfoObserverEntryBase* prev{this};
@@ -2088,7 +2153,9 @@ class IOBuf {
   // Force inlining to allow optimizing away some branches in the common cases.
   template <class StorageType>
   FOLLY_ALWAYS_INLINE static std::pair<StorageType*, size_t> allocateStorage(
-      size_t additionalBuffer = 0);
+      std::pmr::memory_resource* mr = nullptr, size_t additionalBuffer = 0);
+  static std::pmr::memory_resource* getMemoryResource(
+      const HeapStorage* storage);
   static void freeStorage(HeapStorage* storage);
 
   /**
