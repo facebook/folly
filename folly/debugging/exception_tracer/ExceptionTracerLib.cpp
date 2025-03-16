@@ -103,6 +103,15 @@ FOLLY_EXNTRACE_DECLARE_CALLBACK(RethrowException)
 } // namespace exception_tracer
 } // namespace folly
 
+// Clang is smart enough to understand that the symbols we're loading
+// are [[noreturn]], but GCC is not. In order to be able to build with
+// -Wunreachable-code enable for Clang, these __builtin_unreachable()
+// calls need to go away. Everything else is messy though, so just
+// #define it to an empty macro under Clang and be done with it.
+#ifdef __clang__
+#define __builtin_unreachable()
+#endif
+
 namespace __cxxabiv1 {
 
 #ifdef FOLLY_STATIC_LIBSTDCXX
