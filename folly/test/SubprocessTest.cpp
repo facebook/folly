@@ -1080,11 +1080,12 @@ TEST(SetUserGroupId, CanOverrideAndReportFailure) {
   // which makes writing the unit-test for that impossible; here we just
   // check the errors
   auto options = Subprocess::Options().pipeStdout();
+  auto emptysp = std::shared_ptr<int>{};
   int errnum[4] = {};
-  options.setUid(0, errnum + 0);
-  options.setGid(0, errnum + 1);
-  options.setEUid(0, errnum + 2);
-  options.setEGid(0, errnum + 3);
+  options.setUid(0, std::shared_ptr<int>{emptysp, errnum + 0});
+  options.setGid(0, std::shared_ptr<int>{emptysp, errnum + 1});
+  options.setEUid(0, std::shared_ptr<int>{emptysp, errnum + 2});
+  options.setEGid(0, std::shared_ptr<int>{emptysp, errnum + 3});
   Subprocess proc(
       std::vector<std::string>{"/bin/cat", "/proc/self/status"}, options);
   auto p = proc.communicate();

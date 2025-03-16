@@ -547,20 +547,20 @@ class Subprocess {
     }
 #endif
 
-    Options& setUid(uid_t uid, int* errout = nullptr) {
-      uid_ = AttrWithMeta<uid_t>{uid, errout};
+    Options& setUid(uid_t uid, std::shared_ptr<int> errout = nullptr) {
+      uid_ = AttrWithMeta<uid_t>{uid, std::move(errout)};
       return *this;
     }
-    Options& setGid(gid_t gid, int* errout = nullptr) {
-      gid_ = AttrWithMeta<gid_t>{gid, errout};
+    Options& setGid(gid_t gid, std::shared_ptr<int> errout = nullptr) {
+      gid_ = AttrWithMeta<gid_t>{gid, std::move(errout)};
       return *this;
     }
-    Options& setEUid(uid_t uid, int* errout = nullptr) {
-      euid_ = AttrWithMeta<uid_t>{uid, errout};
+    Options& setEUid(uid_t uid, std::shared_ptr<int> errout = nullptr) {
+      euid_ = AttrWithMeta<uid_t>{uid, std::move(errout)};
       return *this;
     }
-    Options& setEGid(gid_t gid, int* errout = nullptr) {
-      egid_ = AttrWithMeta<gid_t>{gid, errout};
+    Options& setEGid(gid_t gid, std::shared_ptr<int> errout = nullptr) {
+      egid_ = AttrWithMeta<gid_t>{gid, std::move(errout)};
       return *this;
     }
 
@@ -575,7 +575,10 @@ class Subprocess {
     template <typename T>
     struct AttrWithMeta {
       T value{};
-      int* errout{}; // nullptr if required, ptr if optional to report failure
+
+      /// nullptr if required, ptr if optional to report failure
+      std::shared_ptr<int> erroutLifetime_{}; // do not access in child
+      int* errout{erroutLifetime_.get()};
     };
 
     typedef boost::container::flat_map<int, int> FdMap;
