@@ -186,7 +186,8 @@ void __cxa_end_catch() {
 // TODO(tudorb): Dicey, as it relies on the fact that std::exception_ptr
 // is typedef'ed to a type in namespace __exception_ptr
 extern "C" {
-void __wrap__ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE(
+[[noreturn]] void
+__wrap__ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE(
     std::exception_ptr ep) {
   getRethrowExceptionCallbacks().invoke(ep);
   __real__ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE(ep);
