@@ -31,18 +31,16 @@ namespace __cxxabiv1 {
 
 extern "C" {
 #ifdef FOLLY_STATIC_LIBSTDCXX
-void __real___cxa_throw(
-    void* thrownException, std::type_info* type, void (*destructor)(void*))
-    __attribute__((__noreturn__));
+[[noreturn]] void __real___cxa_throw(
+    void* thrownException, std::type_info* type, void (*destructor)(void*));
 void* __real___cxa_begin_catch(void* excObj) noexcept;
-void __real___cxa_rethrow(void) __attribute__((__noreturn__));
+[[noreturn]] void __real___cxa_rethrow(void);
 void __real___cxa_end_catch(void);
 #else
-void __cxa_throw(
-    void* thrownException, std::type_info* type, void (*destructor)(void*))
-    __attribute__((__noreturn__));
+__attribute__((__noreturn__)) void __cxa_throw(
+    void* thrownException, std::type_info* type, void (*destructor)(void*));
 void* __cxa_begin_catch(void* excObj) noexcept;
-void __cxa_rethrow(void) __attribute__((__noreturn__));
+__attribute__((__noreturn__)) void __cxa_rethrow(void);
 void __cxa_end_catch(void);
 #endif
 }
@@ -51,7 +49,8 @@ void __cxa_end_catch(void);
 
 #ifdef FOLLY_STATIC_LIBSTDCXX
 extern "C" {
-void __real__ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE(
+[[noreturn]] void
+__real__ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE(
     std::exception_ptr ep);
 } // namespace std
 #endif
@@ -103,28 +102,19 @@ FOLLY_EXNTRACE_DECLARE_CALLBACK(RethrowException)
 } // namespace exception_tracer
 } // namespace folly
 
-// Clang is smart enough to understand that the symbols we're loading
-// are [[noreturn]], but GCC is not. In order to be able to build with
-// -Wunreachable-code enable for Clang, these __builtin_unreachable()
-// calls need to go away. Everything else is messy though, so just
-// #define it to an empty macro under Clang and be done with it.
-#ifdef __clang__
-#define __builtin_unreachable()
-#endif
-
 namespace __cxxabiv1 {
 
 #ifdef FOLLY_STATIC_LIBSTDCXX
 extern "C" {
 
-__attribute__((__noreturn__)) void __wrap___cxa_throw(
+[[noreturn]] void __wrap___cxa_throw(
     void* thrownException, std::type_info* type, void (*destructor)(void*)) {
   getCxaThrowCallbacks().invoke(thrownException, type, &destructor);
   __real___cxa_throw(thrownException, type, destructor);
   __builtin_unreachable(); // orig_cxa_throw never returns
 }
 
-__attribute__((__noreturn__)) void __wrap___cxa_rethrow() {
+[[noreturn]] void __wrap___cxa_rethrow() {
   // __cxa_rethrow leaves the current exception on the caught stack,
   // and __cxa_begin_catch recognizes that case.  We could do the same, but
   // we'll implement something simpler (and slower): we pop the exception from
@@ -149,7 +139,7 @@ void __wrap___cxa_end_catch() {
 
 #else
 
-void __cxa_throw(
+__attribute__((__noreturn__)) void __cxa_throw(
     void* thrownException, std::type_info* type, void (*destructor)(void*)) {
   static auto orig_cxa_throw =
       reinterpret_cast<decltype(&__cxa_throw)>(dlsym(RTLD_NEXT, "__cxa_throw"));
@@ -158,7 +148,7 @@ void __cxa_throw(
   __builtin_unreachable(); // orig_cxa_throw never returns
 }
 
-void __cxa_rethrow() {
+__attribute__((__noreturn__)) void __cxa_rethrow() {
   // __cxa_rethrow leaves the current exception on the caught stack,
   // and __cxa_begin_catch recognizes that case.  We could do the same, but
   // we'll implement something simpler (and slower): we pop the exception from
@@ -207,7 +197,7 @@ void __wrap__ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE(
 
 namespace std {
 
-void rethrow_exception(std::exception_ptr ep) {
+__attribute__((__noreturn__)) void rethrow_exception(std::exception_ptr ep) {
   // Mangled name for std::rethrow_exception
   // TODO(tudorb): Dicey, as it relies on the fact that std::exception_ptr
   // is typedef'ed to a type in namespace __exception_ptr
