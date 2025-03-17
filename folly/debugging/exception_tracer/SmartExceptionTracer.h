@@ -21,7 +21,7 @@
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
-#if defined(__GLIBCXX__)
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 #define FOLLY_HAVE_SMART_EXCEPTION_TRACER 1
 
@@ -45,6 +45,6 @@ ExceptionInfo getAsyncTrace(const exception_wrapper& ew);
 
 } // namespace folly::exception_tracer
 
-#endif // defined(__GLIBCXX__)
+#endif // defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
