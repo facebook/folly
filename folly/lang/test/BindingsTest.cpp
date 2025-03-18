@@ -17,8 +17,6 @@
 #include <folly/lang/Bindings.h>
 #include <folly/portability/GTest.h>
 
-#ifndef _WIN32 // Explained in `Bindings.h`
-
 namespace folly::bindings::detail {
 
 using namespace folly::bindings::ext;
@@ -462,5 +460,3 @@ static_assert(
         const int&&>);
 
 } // namespace folly::bindings::detail
-
-#endif

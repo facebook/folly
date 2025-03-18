@@ -19,11 +19,6 @@
 #include <folly/Utility.h>
 #include <folly/detail/tuple.h>
 
-// This library is C++20.  If it finds use outside of `folly/coro/safe`, we
-// could fix the compile errors with the older MSVC still in-use (e.g.
-// "lambdas in an unevaluated context"), but this effort is not worthwhile
-// yet.  Remember to also remove the `#ifdef` in `BindingsTest.cpp`.
-#ifndef _WIN32
 FOLLY_PUSH_WARNING
 FOLLY_DETAIL_LITE_TUPLE_ADJUST_WARNINGS
 
@@ -539,4 +534,3 @@ class binding_policy<binding_t<BI, BindingType>> {
 } // namespace folly::bindings
 
 FOLLY_POP_WARNING
-#endif
