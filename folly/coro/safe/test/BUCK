@@ -21,3 +21,15 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
+
+cpp_unittest(
+    name = "safe_task_test",
+    srcs = ["SafeTaskTest.cpp"],
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:timeout",
+        "//folly/coro/safe:safe_task",
+        "//folly/fibers:semaphore",
+        "//folly/portability:gtest",
+    ],
+)
