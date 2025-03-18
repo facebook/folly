@@ -1122,6 +1122,11 @@ void IoUringBackend::initSubmissionLinked() {
           sizeShift,
           ringShift);
     } catch (const IoUringProvidedBufferRing::LibUringCallError& ex) {
+      LOG(ERROR) << folly::to<std::string>(
+          "failed to make provided buffer ring, buffer count: ",
+          options_.initialProvidedBuffersCount,
+          ", buffer size: ",
+          options_.initialProvidedBuffersEachSize);
       throw NotAvailable(ex.what());
     }
   }

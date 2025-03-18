@@ -184,11 +184,21 @@ void IoUringProvidedBufferRing::initialRegister() {
   int ret = ::io_uring_register_buf_ring(ioRingPtr_, &reg, 0);
 
   if (ret) {
-    throw LibUringCallError(folly::to<std::string>(
+    LOG(ERROR) << folly::to<std::string>(
         "unable to register provided buffer ring ",
         -ret,
         ": ",
-        folly::errnoStr(-ret)));
+        folly::errnoStr(-ret));
+    LOG(ERROR) << folly::to<std::string>(
+        "buffer ring buffer count: ",
+        buffer_.bufferCount(),
+        ", ring count: ",
+        buffer_.ringCount(),
+        ", size per buf: ",
+        buffer_.sizePerBuffer(),
+        ", bgid: ",
+        gid());
+    throw LibUringCallError("unable to register provided buffer ring");
   }
 }
 
