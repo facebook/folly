@@ -41,6 +41,10 @@
 #include <sys/random.h>
 #endif
 
+#ifdef _WIN32
+#pragma comment(lib, "advapi32.lib")
+#endif
+
 namespace folly {
 
 namespace {
