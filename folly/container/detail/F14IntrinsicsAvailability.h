@@ -18,6 +18,14 @@
 
 #include <folly/Portability.h>
 
+#if defined(FOLLY_F14_FALLBACK_DISABLED) && FOLLY_F14_FALLBACK_DISABLED == 1
+#define FOLLY_F14_VECTOR_INTRINSICS_CONFIGURED 1
+#elif !FOLLY_MOBILE
+#define FOLLY_F14_VECTOR_INTRINSICS_CONFIGURED 1
+#else
+#define FOLLY_F14_VECTOR_INTRINSICS_CONFIGURED 0
+#endif
+
 // F14 has been implemented for SSE2 and NEON (so far).
 //
 // This platform detection is a bit of a mess because it combines the
@@ -33,7 +41,7 @@
 // units the program will fail to link due to a missing definition of
 // folly::container::detail::F14LinkCheck<X>::check() for some X.
 #if (FOLLY_SSE >= 2 || (FOLLY_NEON && FOLLY_AARCH64) || FOLLY_RISCV64) && \
-    !FOLLY_MOBILE &&                                                      \
+    FOLLY_F14_VECTOR_INTRINSICS_CONFIGURED &&                             \
     !(defined(FOLLY_F14_FORCE_FALLBACK) && FOLLY_F14_FORCE_FALLBACK)
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
 #else
