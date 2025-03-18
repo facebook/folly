@@ -688,23 +688,46 @@ TEST(Hash, Pointer) {
           value));
 }
 
+template <typename T>
 struct FNVTestParam {
   std::string in;
-  uint64_t out;
+  T out;
 };
+using FNV32TestParam = FNVTestParam<uint32_t>;
+using FNV64TestParam = FNVTestParam<uint64_t>;
 
-class FNVTest : public ::testing::TestWithParam<FNVTestParam> {};
+class FNV32Test : public ::testing::TestWithParam<FNV32TestParam> {};
+class FNV64Test : public ::testing::TestWithParam<FNV64TestParam> {};
 
-TEST_P(FNVTest, Fnva64Buf) {
+TEST_P(FNV32Test, Fnva32Buf) {
+  EXPECT_EQ(
+      GetParam().out, fnva32_buf(GetParam().in.data(), GetParam().in.size()));
+}
+
+TEST_P(FNV64Test, Fnva64Buf) {
   EXPECT_EQ(
       GetParam().out, fnva64_buf(GetParam().in.data(), GetParam().in.size()));
 }
 
-TEST_P(FNVTest, Fnva64) {
+TEST_P(FNV32Test, Fnva32) {
+  EXPECT_EQ(GetParam().out, fnva32(GetParam().in));
+}
+
+TEST_P(FNV64Test, Fnva64) {
   EXPECT_EQ(GetParam().out, fnva64(GetParam().in));
 }
 
-TEST_P(FNVTest, Fnva64Partial) {
+TEST_P(FNV32Test, Fnva32Partial) {
+  size_t partialLen = GetParam().in.size() / 2;
+  auto data = GetParam().in.data();
+  auto partial = fnva32_buf(data, partialLen);
+  EXPECT_EQ(
+      GetParam().out,
+      fnva32_buf(
+          data + partialLen, GetParam().in.size() - partialLen, partial));
+}
+
+TEST_P(FNV64Test, Fnva64Partial) {
   size_t partialLen = GetParam().in.size() / 2;
   auto data = GetParam().in.data();
   auto partial = fnva64_buf(data, partialLen);
@@ -716,22 +739,43 @@ TEST_P(FNVTest, Fnva64Partial) {
 
 // Taken from http://www.isthe.com/chongo/src/fnv/test_fnv.c
 INSTANTIATE_TEST_SUITE_P(
-    FNVTesting,
-    FNVTest,
+    FNV32Testing,
+    FNV32Test,
     ::testing::Values(
-        FNVTestParam{
+        FNV32TestParam{
+            "foobar", // 11
+            0xbf9cf968},
+        FNV32TestParam{
+            "chongo was here!\n", // 39
+            0xd49930d5},
+        FNV32TestParam{
+            "127.0.0.3", // 106,
+            0x06a3cdf8},
+        FNV32TestParam{
+            "http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash", // 126
+            0xdd16ef45},
+        FNV32TestParam{
+            "http://norvig.com/21-days.html", // 136
+            0xeb08bfba}));
+
+// Taken from http://www.isthe.com/chongo/src/fnv/test_fnv.c
+INSTANTIATE_TEST_SUITE_P(
+    FNV64Testing,
+    FNV64Test,
+    ::testing::Values(
+        FNV64TestParam{
             "foobar", // 11
             0x85944171f73967e8},
-        FNVTestParam{
+        FNV64TestParam{
             "chongo was here!\n", // 39
             0x46810940eff5f915},
-        FNVTestParam{
+        FNV64TestParam{
             "127.0.0.3", // 106,
             0xaabafc7104d91158},
-        FNVTestParam{
+        FNV64TestParam{
             "http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash", // 126
             0xd9b957fb7fe794c5},
-        FNVTestParam{
+        FNV64TestParam{
             "http://norvig.com/21-days.html", // 136
             0x07aaa640476e0b9a}));
 

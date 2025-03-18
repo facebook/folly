@@ -203,6 +203,7 @@ constexpr uint32_t jenkins_rev_unmix32(uint32_t key) noexcept {
 //  Discouraged for poor performance in the smhasher suite.
 
 constexpr uint32_t fnv32_hash_start = 2166136261UL;
+constexpr uint32_t fnva32_hash_start = 2166136261UL;
 constexpr uint64_t fnv64_hash_start = 14695981039346656037ULL;
 constexpr uint64_t fnva64_hash_start = 14695981039346656037ULL;
 
@@ -212,7 +213,7 @@ constexpr uint64_t fnva64_hash_start = 14695981039346656037ULL;
  * @see fnv32
  * @methodset fnv
  */
-constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) {
+constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) noexcept {
   hash = hash //
       + (hash << 1) //
       + (hash << 4) //
@@ -277,6 +278,57 @@ constexpr uint32_t fnv32(
 inline uint32_t fnv32(
     const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
   return fnv32_buf(str.data(), str.size(), hash);
+}
+
+/**
+ * Append a byte to FNVA hash.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+constexpr uint32_t fnva32_append_byte(uint32_t hash, uint8_t c) noexcept {
+  hash ^= c;
+  hash = hash //
+      + (hash << 1) //
+      + (hash << 4) //
+      + (hash << 7) //
+      + (hash << 8) //
+      + (hash << 24);
+  return hash;
+}
+
+/**
+ * FNVA hash of a byte-range.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+constexpr uint32_t fnva32_buf(
+    const C* buf, size_t n, uint32_t hash = fnva32_hash_start) noexcept {
+  for (size_t i = 0; i < n; ++i) {
+    hash = fnva32_append_byte(hash, static_cast<uint8_t>(buf[i]));
+  }
+  return hash;
+}
+inline uint32_t fnva32_buf(
+    const void* buf, size_t n, uint32_t hash = fnva32_hash_start) noexcept {
+  return fnva32_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
+}
+
+/**
+ * FNVA hash of a string.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+inline uint32_t fnva32(
+    const std::string& str, uint32_t hash = fnva32_hash_start) noexcept {
+  return fnva32_buf(str.data(), str.size(), hash);
 }
 
 /**
