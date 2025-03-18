@@ -344,6 +344,8 @@ class FOLLY_CORO_TASK_ATTRS SafeTask final
   friend struct folly::coro::detail::SafeTaskTest; // to test `withNewSafety`
   template <safe_alias, typename>
   friend class SafeTask; // `withNewSafety` makes a different `SafeTask`
+  template <auto> // uses `withNewSafety`
+  friend auto detail::bind_captures_to_closure(auto&&, auto);
   template <safe_alias Safety, typename U>
   friend auto toNowTask(SafeTask<Safety, U>);
 
@@ -364,6 +366,34 @@ template <safe_alias Safety, typename T>
 auto toNowTask(SafeTask<Safety, T> t) {
   return NowTask<T>{std::move(t).unwrapTask()};
 }
+
+namespace detail {
+
+template <typename>
+struct safe_task_traits;
+
+template <typename T>
+struct safe_task_traits<Task<T>> {
+  static constexpr safe_alias arg_safety = safe_alias::unsafe;
+  using return_type = T;
+};
+template <typename T>
+struct safe_task_traits<TaskWithExecutor<T>> : safe_task_traits<Task<T>> {};
+template <typename T>
+struct safe_task_traits<NowTask<T>> : safe_task_traits<Task<T>> {};
+template <typename T>
+struct safe_task_traits<NowTaskWithExecutor<T>> : safe_task_traits<Task<T>> {};
+
+template <safe_alias ArgSafety, typename T>
+struct safe_task_traits<SafeTask<ArgSafety, T>> {
+  static constexpr safe_alias arg_safety = ArgSafety;
+  using return_type = T;
+};
+template <safe_alias ArgSafety, typename T>
+struct safe_task_traits<SafeTaskWithExecutor<ArgSafety, T>>
+    : safe_task_traits<SafeTask<ArgSafety, T>> {};
+
+} // namespace detail
 
 } // namespace folly::coro
 

@@ -13,6 +13,18 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "async_closure_test",
+    srcs = ["AsyncClosureTest.cpp"],
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:noexcept",
+        "//folly/coro:timeout",
+        "//folly/coro/safe:async_closure",
+        "//folly/fibers:semaphore",
+    ],
+)
+
+cpp_unittest(
     name = "now_task_test",
     srcs = ["NowTaskTest.cpp"],
     deps = [
