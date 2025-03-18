@@ -11,3 +11,13 @@ cpp_unittest(
         "//folly/coro/safe:now_task",
     ],
 )
+
+cpp_unittest(
+    name = "safe_alias_test",
+    srcs = ["SafeAliasTest.cpp"],
+    deps = [
+        "//folly/coro/safe:safe_alias",
+        "//folly/detail:tuple",
+        "//folly/portability:gtest",
+    ],
+)

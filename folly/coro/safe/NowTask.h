@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/coro/TaskWrapper.h>
+#include <folly/coro/safe/SafeAlias.h>
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
@@ -42,10 +43,6 @@
 ///     but in that case the program almost certainly has a data race --
 ///     regardless of the lifetime bug -- and that requires runtime
 ///     instrumentation (like TSAN) to detect in present-day C++.
-
-namespace folly {
-enum class safe_alias;
-}
 
 namespace folly::coro {
 
@@ -124,5 +121,9 @@ auto toNowTask(NowTask<T> t) {
 }
 
 } // namespace folly::coro
+
+template <typename T>
+struct folly::safe_alias_for<::folly::coro::NowTask<T>>
+    : safe_alias_constant<safe_alias::unsafe> {};
 
 #endif

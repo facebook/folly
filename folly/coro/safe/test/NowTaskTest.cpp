@@ -29,6 +29,9 @@
 
 namespace folly::coro {
 
+static_assert(safe_alias_of_v<Task<int>> == safe_alias::unsafe);
+static_assert(safe_alias_of_v<NowTask<int>> == safe_alias::unsafe);
+
 static_assert(std::is_void_v<await_result_t<NowTaskWithExecutor<void>>>);
 static_assert(std::is_same_v<int, await_result_t<NowTaskWithExecutor<int>>>);
 
@@ -147,8 +150,8 @@ CO_TEST(NowTaskTest, withExecutor) {
   static_assert(
       !test_transform_moved_with_executor_v<NowTaskWithExecutor<int>&&>);
 #if 0 // The above asserts approximate this manual test
-  auto te = co_withExecutor(exec, demoNowTask(37));
-  co_await std::move(te);
+  auto twe = co_withExecutor(exec, demoNowTask(37));
+  co_await std::move(twe);
 #endif
 }
 
