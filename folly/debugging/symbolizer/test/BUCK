@@ -70,6 +70,7 @@ cpp_unittest(
     name = "elf_test",
     srcs = ["ElfTest.cpp"],
     deps = [
+        "//folly:cpp_attributes",
         "//folly:file_util",
         "//folly/debugging/symbolizer/detail:debug",
         "//folly/experimental/symbolizer:elf",

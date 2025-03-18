@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/CPortability.h>
+#include <folly/CppAttributes.h>
 
 //  FOLLY_KEEP
 //
@@ -56,7 +57,8 @@
 //  This way, the linker will see at least one reference to the kept section,
 //  and so will not throw it out.
 #if __GNUC__ && __linux__
-#define FOLLY_KEEP [[gnu::section(".text.folly.keep"), gnu::used, gnu::retain]]
+#define FOLLY_KEEP \
+  [[gnu::section(".text.folly.keep"), gnu::used, FOLLY_ATTR_GNU_RETAIN]]
 #else
 #define FOLLY_KEEP
 #endif

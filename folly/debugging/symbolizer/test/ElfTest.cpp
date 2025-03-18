@@ -16,6 +16,7 @@
 
 #include <folly/experimental/symbolizer/Elf.h>
 
+#include <folly/CppAttributes.h>
 #include <folly/FileUtil.h>
 #include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/portability/GTest.h>
@@ -28,12 +29,14 @@ using folly::symbolizer::ElfFile;
 // Add some symbols for testing. Note that we have to be careful with type
 // signatures here to prevent name mangling
 extern "C" {
-[[gnu::used, gnu::retain]] uint64_t kIntegerValue = 1234567890ULL;
-[[gnu::used, gnu::retain]] const char* kStringValue = "coconuts";
-[[gnu::noinline, gnu::used, gnu::retain]] int sum_func(int lhs, int rhs) {
+[[gnu::used, FOLLY_ATTR_GNU_RETAIN]] uint64_t kIntegerValue = 1234567890ULL;
+[[gnu::used, FOLLY_ATTR_GNU_RETAIN]] const char* kStringValue = "coconuts";
+[[gnu::noinline, gnu::used, FOLLY_ATTR_GNU_RETAIN]] int sum_func(
+    int lhs, int rhs) {
   return lhs + rhs;
 }
-[[gnu::noinline, gnu::used, gnu::retain]] int sub_func(int lhs, int rhs) {
+[[gnu::noinline, gnu::used, FOLLY_ATTR_GNU_RETAIN]] int sub_func(
+    int lhs, int rhs) {
   return lhs - rhs;
 }
 }
