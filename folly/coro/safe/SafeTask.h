@@ -29,6 +29,10 @@ namespace folly::coro {
 /// Typically, you will not use `SafeTask` directly.  Instead, choose one of
 /// the type-aliases below, following `APIBestPractices.md` guidance.  Briefly:
 ///   - `ValueTask`: Use if your coro only takes value-semantic args.
+///   - `MemberTask`: Use for all non-static member functions.  Can be
+///     awaited immediately (like `NowTask`), or wrapped in an
+///     `async_closure` to support less-structured concurrency -- including
+///     scheduling on a background scope belonging to the object.
 ///   - `ClosureTask`: Use if your coro is called via `async_closure`.
 ///   - `CoCleanupSafeTask`: Use for tasks that can be directly scheduled on a
 ///     `SafeAsyncScope`.
@@ -72,6 +76,27 @@ using CoCleanupSafeTask = SafeTask<safe_alias::co_cleanup_safe_ref, T>;
 // alias for `closure_min_arg_safety`.
 template <typename T = void>
 using ClosureTask = SafeTask<safe_alias::unsafe_closure_internal, T>;
+
+// A `MemberTask` is a hybrid of `SafeTask` and `NowTask`, intended to make
+// non-static member coroutines safer.
+//   - It **is** a `SafeTask`, thereby forbidding `safe_alias::unsafe`
+//     arguments, and unsafe return types.  However, since the callable of
+//     member coros is inherently stateful, it is special-cased to omit the
+//     safety checks on the implicit object parameter.
+//   - It is non-movable like `NowTask`, which makes typical "structured
+//     concurrency" usage of coroutines quite safe (see `NowTask.h`).
+//
+// For more complex usage (background tasks, async RAII), `MemberTask` has a
+// special calling convention in `AsyncClosure.h`:
+//
+//   async_closure(bound_args{obj, args...}, FOLLY_INVOKE_MEMBER(memberFnName))
+//
+// Like any async closure, this safety-checks the now-explicit object param,
+// and produces a movable `SafeTask` of the safety level determined from the
+// arguments.  This integration lets us safely schedule member coros on
+// `SafeAsyncScope`, pass `co_cleanup` args into such coros, etc.
+template <typename T>
+using MemberTask = SafeTask<safe_alias::unsafe_member_internal, T>;
 
 // NB: There are some `async_closure`-specific values of `safe_alias` that
 // do not yet have a `SafeTask` alias.  That's because they haven't come up
@@ -161,8 +186,9 @@ inline constexpr bool IsSafeTaskValid<ArgSafety, RetT> =
 // `MemberTask`'s usage restrictions (see also `SafeTaskBaseTrait`).
 template <safe_alias ArgSafety, typename RetT, typename First, typename... Args>
 inline constexpr bool IsSafeTaskValid<ArgSafety, RetT, First, Args...> =
-    (std::is_lvalue_reference_v<First> &&
-     is_stateless_class_or_func<std::remove_reference_t<First>>)
+    ((ArgSafety == safe_alias::unsafe_member_internal) ||
+     (std::is_lvalue_reference_v<First> &&
+      is_stateless_class_or_func<std::remove_reference_t<First>>))
     ? SafeTaskRetAndArgs<ArgSafety, RetT, Args...>
     : SafeTaskRetAndArgs<ArgSafety, RetT, First, Args...>;
 
@@ -280,6 +306,17 @@ struct SafeTaskBaseTraits<safe_alias::unsafe_closure_internal, T> {
   using type = AddMustAwaitImmediately<OpaqueTaskWrapperCrtp<
       SafeTask<safe_alias::unsafe_closure_internal, T>,
       SafeTaskCfg<safe_alias::unsafe_closure_internal, T>>>;
+};
+
+// `MemberTask` implementation, also based on a special `safe_alias` level
+// similar to `ClosureTask`.
+template <typename T>
+struct SafeTaskBaseTraits<safe_alias::unsafe_member_internal, T> {
+  // Unlike `ClosureTask`, this **is** awaitable outside of `async_closure`,
+  // and therefore it **must** be non-movable to mitigate safety risks.
+  using type = AddMustAwaitImmediately<TaskWrapperCrtp<
+      SafeTask<safe_alias::unsafe_member_internal, T>,
+      SafeTaskCfg<safe_alias::unsafe_member_internal, T>>>;
 };
 
 } // namespace detail

@@ -230,6 +230,22 @@ CO_TEST_F(SafeTaskTest, ClosureTask) {
       co_await withNewSafety<safe_alias::maybe_value>(t(manual_safe_ref(x))));
 }
 
+struct HasMemberTask {
+  MemberTask<int> task(auto x) { co_return 1300 + x; }
+};
+
+static_assert(!std::is_move_constructible_v<MemberTask<int>>);
+static_assert(!std::is_move_assignable_v<MemberTask<int>>);
+
+CO_TEST_F(SafeTaskTest, MemberTask) {
+  HasMemberTask mt;
+  int x = 37;
+  EXPECT_EQ(1337, co_await mt.task(x));
+  EXPECT_EQ(
+      1337, co_await mt.task(manual_safe_ref<safe_alias::shared_cleanup>(x)));
+  EXPECT_EQ(1337, co_await mt.task(manual_safe_ref(x)));
+}
+
 static_assert(
     std::is_void_v<
         await_result_t<SafeTaskWithExecutor<safe_alias::maybe_value, void>>>);
