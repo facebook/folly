@@ -666,6 +666,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY algorithm/simd/test/
       TEST algorithm_simd_contains_test SOURCES ContainsTest.cpp
+      TEST algorithm_simd_find_first_of_test SOURCES find_first_of_test.cpp
       TEST algorithm_simd_find_fixed_test SOURCES FindFixedTest.cpp
       TEST algorithm_simd_movemask_test SOURCES MovemaskTest.cpp
 
