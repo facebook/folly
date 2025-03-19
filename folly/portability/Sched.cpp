@@ -28,11 +28,11 @@ int sched_yield() {
 }
 
 // There is only 1 scheduling policy on Windows
-int sched_get_priority_min(int policy) {
+int sched_get_priority_min(int) {
   return -15;
 }
 
-int sched_get_priority_max(int policy) {
+int sched_get_priority_max(int) {
   return 15;
 }
 } // namespace sched
