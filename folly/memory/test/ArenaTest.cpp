@@ -33,6 +33,13 @@ using namespace folly;
 
 static_assert(AllocatorHasTrivialDeallocate<SysArena>::value, "");
 
+void* alloc(SysArena& arena, size_t size) {
+  void* const mem = arena.allocate(size);
+  // Fill with garbage to detect heap corruption.
+  memset(mem, 0xff, size);
+  return mem;
+}
+
 TEST(Arena, SizeSanity) {
   std::set<size_t*> allocatedItems;
 
@@ -42,7 +49,7 @@ TEST(Arena, SizeSanity) {
   EXPECT_EQ(arena.totalSize(), minimum_size);
 
   // Insert a single small element to get a new block
-  size_t* ptr = static_cast<size_t*>(arena.allocate(sizeof(long)));
+  size_t* ptr = static_cast<size_t*>(alloc(arena, sizeof(long)));
   allocatedItems.insert(ptr);
   minimum_size += requestedBlockSize;
   maximum_size += goodMallocSize(requestedBlockSize + SysArena::kBlockOverhead);
@@ -52,7 +59,7 @@ TEST(Arena, SizeSanity) {
           << maximum_size;
 
   // Insert a larger element, size should be the same
-  ptr = static_cast<size_t*>(arena.allocate(requestedBlockSize / 2));
+  ptr = static_cast<size_t*>(alloc(arena, requestedBlockSize / 2));
   allocatedItems.insert(ptr);
   EXPECT_GE(arena.totalSize(), minimum_size);
   EXPECT_LE(arena.totalSize(), maximum_size);
@@ -61,7 +68,7 @@ TEST(Arena, SizeSanity) {
 
   // Insert 10 full block sizes to get 10 new blocks
   for (int i = 0; i < 10; i++) {
-    ptr = static_cast<size_t*>(arena.allocate(requestedBlockSize));
+    ptr = static_cast<size_t*>(alloc(arena, requestedBlockSize));
     allocatedItems.insert(ptr);
   }
   minimum_size += 10 * requestedBlockSize;
@@ -73,7 +80,7 @@ TEST(Arena, SizeSanity) {
           << maximum_size;
 
   // Insert something huge
-  ptr = static_cast<size_t*>(arena.allocate(10 * requestedBlockSize));
+  ptr = static_cast<size_t*>(alloc(arena, 10 * requestedBlockSize));
   allocatedItems.insert(ptr);
   minimum_size += 10 * requestedBlockSize;
   maximum_size +=
@@ -109,22 +116,22 @@ TEST(Arena, BytesUsedSanity) {
   EXPECT_EQ(arena.bytesUsed(), bytesUsed);
 
   // Insert 2 small chunks
-  arena.allocate(smallChunkSize);
-  arena.allocate(smallChunkSize);
+  alloc(arena, smallChunkSize);
+  alloc(arena, smallChunkSize);
   bytesUsed += 2 * smallChunkSize;
   EXPECT_EQ(arena.bytesUsed(), bytesUsed);
   EXPECT_GE(arena.totalSize(), blockSize);
   EXPECT_LE(arena.totalSize(), 2 * blockSize);
 
   // Insert big chunk, should still fit in one block
-  arena.allocate(bigChunkSize);
+  alloc(arena, bigChunkSize);
   bytesUsed += bigChunkSize;
   EXPECT_EQ(arena.bytesUsed(), bytesUsed);
   EXPECT_GE(arena.totalSize(), blockSize);
   EXPECT_LE(arena.totalSize(), 2 * blockSize);
 
   // Insert big chunk once more, should trigger new block allocation
-  arena.allocate(bigChunkSize);
+  alloc(arena, bigChunkSize);
   bytesUsed += bigChunkSize;
   EXPECT_EQ(arena.bytesUsed(), bytesUsed);
   EXPECT_GE(arena.totalSize(), 2 * blockSize);
@@ -132,7 +139,7 @@ TEST(Arena, BytesUsedSanity) {
 
   // Test that bytesUsed() accounts for alignment
   static const size_t tinyChunkSize = 7;
-  arena.allocate(tinyChunkSize);
+  alloc(arena, tinyChunkSize);
   EXPECT_GE(arena.bytesUsed(), bytesUsed + tinyChunkSize);
   size_t delta = arena.bytesUsed() - bytesUsed;
   EXPECT_EQ(delta & (delta - 1), 0);
@@ -195,7 +202,7 @@ TEST(Arena, FallbackSysArenaDoesFallbackToHeap) {
   SysArena arena0;
   FallBackIntAlloc f_no_init;
   FallBackIntAlloc f_do_init(arena0);
-  arena0.allocate(1); // First allocation to prime the arena
+  alloc(arena0, 1); // First allocation to prime the arena
 
   std::vector<int, FallBackIntAlloc> vec_arg_empty__fallback;
   std::vector<int, FallBackIntAlloc> vec_arg_noinit_fallback(f_no_init);
@@ -239,9 +246,9 @@ TEST(Arena, SizeLimit) {
 
   SysArena arena(requestedBlockSize, maxSize);
 
-  void* a = arena.allocate(sizeof(size_t));
+  void* a = alloc(arena, sizeof(size_t));
   EXPECT_TRUE(a != nullptr);
-  EXPECT_THROW(arena.allocate(maxSize + 1), std::bad_alloc);
+  EXPECT_THROW(alloc(arena, maxSize + 1), std::bad_alloc);
 }
 
 TEST(Arena, ExtremeSize) {
@@ -249,9 +256,9 @@ TEST(Arena, ExtremeSize) {
 
   SysArena arena(requestedBlockSize);
 
-  void* a = arena.allocate(sizeof(size_t));
+  void* a = alloc(arena, sizeof(size_t));
   EXPECT_TRUE(a != nullptr);
-  EXPECT_THROW(arena.allocate(SIZE_MAX - 2), std::bad_alloc);
+  EXPECT_THROW(alloc(arena, SIZE_MAX - 2), std::bad_alloc);
 }
 
 TEST(Arena, MaxAlign) {
@@ -263,16 +270,27 @@ TEST(Arena, MaxAlign) {
     SysArena arena(blockSize, SysArena::kNoSizeLimit, maxAlign);
 
     for (int i = 0; i < 100; i++) {
-      void* ptr = arena.allocate(Random::rand32(100));
+      void* ptr = alloc(arena, Random::rand32(100));
       EXPECT_EQ(reinterpret_cast<uintptr_t>(ptr) & (maxAlign - 1), 0);
     }
 
     // Reusing blocks also respects alignment
     arena.clear();
     for (int i = 0; i < 100; i++) {
-      void* ptr = arena.allocate(Random::rand32(100));
+      void* ptr = alloc(arena, Random::rand32(100));
       EXPECT_EQ(reinterpret_cast<uintptr_t>(ptr) & (maxAlign - 1), 0);
     }
+  }
+}
+
+// This used to cause heap corruption due to incorrect allocation size.
+TEST(Arena, AllocFullBlock) {
+  static const size_t blockSize = 128;
+
+  for (const size_t maxAlign : {4, 8, 16, 32, 64}) {
+    SCOPED_TRACE(maxAlign);
+    SysArena arena(blockSize, SysArena::kNoSizeLimit, maxAlign);
+    alloc(arena, blockSize);
   }
 }
 
@@ -288,7 +306,7 @@ TEST(Arena, Clear) {
 
     std::vector<void*> addresses;
     for (auto s : sizes) {
-      addresses.push_back(arena.allocate(s));
+      addresses.push_back(alloc(arena, s));
     }
 
     const size_t totalSize = arena.totalSize();
@@ -298,7 +316,7 @@ TEST(Arena, Clear) {
 
     int j = 0;
     for (auto s : sizes) {
-      auto addr = arena.allocate(s);
+      auto addr = alloc(arena, s);
       if (s <= blockSize) {
         EXPECT_EQ(addr, addresses[j]);
       }
@@ -317,7 +335,7 @@ TEST(Arena, ClearAfterLarge) {
   constexpr size_t mult = 10;
   SysArena arena(blockSize);
   EXPECT_EQ(0, arena.bytesUsed());
-  arena.allocate(blockSize * mult);
+  alloc(arena, blockSize * mult);
   EXPECT_EQ(blockSize * mult, arena.bytesUsed());
   arena.clear();
   EXPECT_EQ(0, arena.bytesUsed());
@@ -330,8 +348,8 @@ TEST(Arena, Merge) {
   SysArena arena1(blockSize);
   SysArena arena2(blockSize);
 
-  arena1.allocate(16);
-  arena2.allocate(32);
+  alloc(arena1, 16);
+  alloc(arena2, 32);
 
   EXPECT_EQ(blockAllocSize + sizeof(SysArena), arena1.totalSize());
   EXPECT_EQ(blockAllocSize + sizeof(SysArena), arena2.totalSize());

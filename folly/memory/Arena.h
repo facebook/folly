@@ -163,7 +163,7 @@ class Arena {
 
   constexpr size_t blockGoodAllocSize() {
     return ArenaAllocatorTraits<Alloc>::goodSize(
-        alloc(), sizeof(Block) + minBlockSize());
+        alloc(), roundUp(sizeof(Block)) + minBlockSize());
   }
 
   struct alignas(max_align_v) LargeBlock {
