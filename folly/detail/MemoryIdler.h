@@ -72,7 +72,7 @@ struct MemoryIdler {
   static IdleTime getVariationTimeout(
       IdleTime const& idleTimeout =
           defaultIdleTimeout.load(std::memory_order_acquire),
-      float timeoutVariationFrac = 0.5) {
+      float timeoutVariationFrac = (float)0.5) {
     if (idleTimeout <= IdleTime::zero() || timeoutVariationFrac <= 0) {
       return idleTimeout;
     }
@@ -110,7 +110,7 @@ struct MemoryIdler {
       IdleTime const& idleTimeout =
           defaultIdleTimeout.load(std::memory_order_acquire),
       size_t stackToRetain = kDefaultStackToRetain,
-      float timeoutVariationFrac = 0.5) {
+      float timeoutVariationFrac = (float)0.5) {
     FutexResult pre;
     if (futexWaitPreIdle(
             pre,
@@ -148,7 +148,7 @@ struct MemoryIdler {
       IdleTime const& idleTimeout =
           defaultIdleTimeout.load(std::memory_order_acquire),
       size_t stackToRetain = kDefaultStackToRetain,
-      float timeoutVariationFrac = 0.5) {
+      float timeoutVariationFrac = (float)0.5) {
     FutexResult pre;
     if (futexWaitPreIdle(
             pre,
