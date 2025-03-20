@@ -309,7 +309,11 @@ struct std_vector_layout {
 
   pointer __begin_;
   pointer __end_;
+#ifdef _LIBCPP_COMPRESSED_PAIR
+  _LIBCPP_COMPRESSED_PAIR(pointer, __cap_ = nullptr, allocator_type, __alloc_);
+#else
   std::__compressed_pair<pointer, allocator_type> __end_cap_;
+#endif
 };
 
 template <typename T>
