@@ -18,7 +18,7 @@ import unittest
 from sys import platform
 
 # pyre-fixme[21]: Could not find name `simplebridge` in `folly.python.test`.
-from . import simplebridge
+from folly.python.test import simplebridge
 
 
 class Futures(unittest.TestCase):

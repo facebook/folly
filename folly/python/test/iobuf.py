@@ -22,7 +22,7 @@ import unittest
 
 from folly.iobuf import IOBuf, WritableIOBuf
 
-from .iobuf_helper import (
+from folly.python.test.iobuf_helper import (
     get_empty_chain,
     get_empty_writable_chain,
     make_chain,

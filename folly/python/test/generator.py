@@ -17,7 +17,7 @@ import asyncio
 import unittest
 
 # pyre-fixme[21]: Could not find module `folly.python.test.simplegenerator`.
-from .simplegenerator import SimpleGenerator
+from folly.python.test.simplegenerator import SimpleGenerator
 
 
 class GeneratorTest(unittest.TestCase):
