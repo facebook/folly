@@ -425,4 +425,32 @@ TEST_F(MergeTest, DontLeakRequestContext) {
   }());
 }
 
+TEST_F(MergeTest, SimpleMergeWithRValueGeneratorType) {
+  blockingWait([]() -> Task<void> {
+    auto generator = merge(
+        co_await co_current_executor,
+        []() -> AsyncGenerator<AsyncGenerator<int>&&> {
+          auto makeGenerator = [](int start, int count) -> AsyncGenerator<int> {
+            for (int i = start; i < start + count; ++i) {
+              co_yield i;
+              co_await co_reschedule_on_current_executor;
+            }
+          };
+
+          co_yield makeGenerator(0, 3);
+          co_yield makeGenerator(3, 2);
+        }());
+
+    const std::array<int, 5> expectedValues = {{0, 3, 1, 4, 2}};
+
+    auto item = co_await generator.next();
+    for (int expectedValue : expectedValues) {
+      CHECK(!!item);
+      CHECK_EQ(expectedValue, *item);
+      item = co_await generator.next();
+    }
+    CHECK(!item);
+  }());
+}
+
 #endif

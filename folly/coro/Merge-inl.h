@@ -192,12 +192,10 @@ class CallbackRecord {
   };
   CallbackRecordSelector selector_;
 };
-} // namespace detail
 
-template <typename Reference, typename Value>
-AsyncGenerator<Reference, Value> merge(
-    folly::Executor::KeepAlive<> executor,
-    AsyncGenerator<AsyncGenerator<Reference, Value>> sources) {
+template <typename Reference, typename Value, typename GeneratorType>
+AsyncGenerator<Reference, Value> mergeImpl(
+    folly::Executor::KeepAlive<> executor, GeneratorType sources) {
   struct SharedState {
     explicit SharedState(folly::Executor::KeepAlive<> executor_)
         : executor(std::move(executor_)) {}
@@ -213,8 +211,7 @@ AsyncGenerator<Reference, Value> merge(
 
   auto makeConsumerTask =
       [](std::shared_ptr<SharedState> state,
-         AsyncGenerator<AsyncGenerator<Reference, Value>> sources_)
-      -> Task<void> {
+         GeneratorType sources_) -> Task<void> {
     auto makeWorkerTask =
         [](std::shared_ptr<SharedState> state_,
            AsyncGenerator<Reference, Value> generator)
@@ -366,6 +363,29 @@ AsyncGenerator<Reference, Value> merge(
       }
     }
   }
+}
+} // namespace detail
+
+template <typename Reference, typename Value>
+AsyncGenerator<Reference, Value> merge(
+    folly::Executor::KeepAlive<> executor,
+    AsyncGenerator<AsyncGenerator<Reference, Value>&&> sources) {
+  return detail::mergeImpl<
+      Reference,
+      Value,
+      AsyncGenerator<AsyncGenerator<Reference, Value>&&>>(
+      std::move(executor), std::move(sources));
+}
+
+template <typename Reference, typename Value>
+AsyncGenerator<Reference, Value> merge(
+    folly::Executor::KeepAlive<> executor,
+    AsyncGenerator<AsyncGenerator<Reference, Value>> sources) {
+  return detail::mergeImpl<
+      Reference,
+      Value,
+      AsyncGenerator<AsyncGenerator<Reference, Value>>>(
+      std::move(executor), std::move(sources));
 }
 
 } // namespace coro

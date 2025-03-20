@@ -62,6 +62,11 @@ namespace coro {
 template <typename Reference, typename Value>
 AsyncGenerator<Reference, Value> merge(
     folly::Executor::KeepAlive<> executor,
+    AsyncGenerator<AsyncGenerator<Reference, Value>&&> sources);
+
+template <typename Reference, typename Value>
+AsyncGenerator<Reference, Value> merge(
+    folly::Executor::KeepAlive<> executor,
     AsyncGenerator<AsyncGenerator<Reference, Value>> sources);
 
 } // namespace coro
