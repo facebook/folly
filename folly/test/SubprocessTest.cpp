@@ -44,6 +44,7 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
 using namespace folly;
 using namespace std::chrono_literals;
+using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 namespace std::chrono {
@@ -1101,6 +1102,167 @@ TEST(SetUserGroupId, CanOverrideAndReportFailure) {
   EXPECT_EQ(egid, gid);
   EXPECT_EQ(fmt::format("{}\t{}\t{}\t{}", uid, euid, uid, uid), uidline);
   EXPECT_EQ(fmt::format("{}\t{}\t{}\t{}", gid, egid, gid, gid), gidline);
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupFdAbsent) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgdirfd = ::open(cgdir.path().native().c_str(), O_DIRECTORY | O_CLOEXEC);
+  auto cgdirfdGuard = folly::makeGuard([&] { ::close(cgdirfd); });
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupFd(cgdirfd);
+  EXPECT_THROW(
+      Subprocess(std::vector{"/bin/true"s}, options), SubprocessSpawnError);
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupFdAbsentIntoErrnum) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgdirfd = ::open(cgdir.path().native().c_str(), O_DIRECTORY | O_CLOEXEC);
+  auto cgdirfdGuard = folly::makeGuard([&] { ::close(cgdirfd); });
+  auto options = Subprocess::Options();
+  std::shared_ptr<int> emptysp;
+  int errnum = 0;
+  options.setLinuxCGroupFd(cgdirfd, std::shared_ptr<int>{emptysp, &errnum});
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  EXPECT_EQ(ENOENT, errnum) << ::strerror(errnum);
+  proc.wait();
+  EXPECT_EQ(0, proc.returnCode().exitStatus());
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupFdPresent) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgdirfd = ::open(cgdir.path().native().c_str(), O_DIRECTORY | O_CLOEXEC);
+  auto cgdirfdGuard = folly::makeGuard([&] { ::close(cgdirfd); });
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  ::creat(cgprocs.native().c_str(), 0755); // rm'd with cgdir
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupFd(cgdirfd);
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  std::string s;
+  EXPECT_TRUE(readFile(cgprocs.native().c_str(), s));
+  EXPECT_EQ("0", s);
+  proc.wait();
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupFdPresentIntoErrnum) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgdirfd = ::open(cgdir.path().native().c_str(), O_DIRECTORY | O_CLOEXEC);
+  auto cgdirfdGuard = folly::makeGuard([&] { ::close(cgdirfd); });
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  ::creat(cgprocs.native().c_str(), 0755); // rm'd with cgdir
+  auto options = Subprocess::Options();
+  std::shared_ptr<int> emptysp;
+  int errnum = 0;
+  options.setLinuxCGroupFd(cgdirfd, std::shared_ptr<int>{emptysp, &errnum});
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  EXPECT_EQ(0, errnum) << ::strerror(errnum);
+  std::string s;
+  EXPECT_TRUE(readFile(cgprocs.native().c_str(), s));
+  EXPECT_EQ("0", s);
+  proc.wait();
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupFdPresentProcsNoOpen) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  ::creat(cgprocs.native().c_str(), 0); // rm'd with cgdir
+  auto cgdirfd = ::open(cgdir.path().native().c_str(), O_DIRECTORY | O_CLOEXEC);
+  auto cgdirfdGuard = folly::makeGuard([&] { ::close(cgdirfd); });
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupFd(cgdirfd);
+  EXPECT_THROW(
+      Subprocess(std::vector{"/bin/true"s}, options), SubprocessSpawnError);
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupFdPresentProcsNoOpenIntoErrnum) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  ::creat(cgprocs.native().c_str(), 0); // rm'd with cgdir
+  auto cgdirfd = ::open(cgdir.path().native().c_str(), O_DIRECTORY | O_CLOEXEC);
+  auto cgdirfdGuard = folly::makeGuard([&] { ::close(cgdirfd); });
+  auto options = Subprocess::Options();
+  std::shared_ptr<int> emptysp;
+  int errnum = 0;
+  options.setLinuxCGroupFd(cgdirfd, std::shared_ptr<int>{emptysp, &errnum});
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  EXPECT_EQ(EACCES, errnum) << ::strerror(errnum);
+  proc.wait();
+  EXPECT_EQ(0, proc.returnCode().exitStatus());
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupPathAbsent) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupPath(cgdir.path().string());
+  EXPECT_THROW(
+      Subprocess(std::vector{"/bin/true"s}, options), SubprocessSpawnError);
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupPathAbsentIntoErrnum) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto options = Subprocess::Options();
+  std::shared_ptr<int> emptysp;
+  int errnum = 0;
+  options.setLinuxCGroupPath(
+      cgdir.path().string(), std::shared_ptr<int>{emptysp, &errnum});
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  EXPECT_EQ(ENOENT, errnum) << ::strerror(errnum);
+  proc.wait();
+  EXPECT_EQ(0, proc.returnCode().exitStatus());
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupPathPresent) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  ::creat(cgprocs.native().c_str(), 0755); // rm'd with cgdir
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupPath(cgdir.path().string());
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  std::string s;
+  EXPECT_TRUE(readFile(cgprocs.native().c_str(), s));
+  EXPECT_EQ("0", s);
+  proc.wait();
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupPathPresentIntoErrnum) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  ::creat(cgprocs.native().c_str(), 0755); // rm'd with cgdir
+  auto options = Subprocess::Options();
+  std::shared_ptr<int> emptysp;
+  int errnum = 0;
+  options.setLinuxCGroupPath(
+      cgdir.path().string(), std::shared_ptr<int>{emptysp, &errnum});
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  EXPECT_EQ(0, errnum) << ::strerror(errnum);
+  std::string s;
+  EXPECT_TRUE(readFile(cgprocs.native().c_str(), s));
+  EXPECT_EQ("0", s);
+  proc.wait();
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupPathPresentProcsNoOpen) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  ::creat(cgprocs.native().c_str(), 0); // rm'd with cgdir
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupPath(cgdir.path().string());
+  EXPECT_THROW(
+      Subprocess(std::vector{"/bin/true"s}, options), SubprocessSpawnError);
+}
+
+TEST(SetLinuxCGroup, CanSetCGroupPathPresentProcsNoOpenIntoErrnum) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  ::creat(cgprocs.native().c_str(), 0); // rm'd with cgdir
+  auto options = Subprocess::Options();
+  std::shared_ptr<int> emptysp;
+  int errnum = 0;
+  options.setLinuxCGroupPath(
+      cgdir.path().string(), std::shared_ptr<int>{emptysp, &errnum});
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  EXPECT_EQ(EACCES, errnum) << ::strerror(errnum);
+  proc.wait();
+  EXPECT_EQ(0, proc.returnCode().exitStatus());
 }
 
 #endif
