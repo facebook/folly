@@ -119,7 +119,7 @@ auto SubprocessFdActionsList::find(int fd) const noexcept -> int const* {
 static inline constexpr auto subprocess_libc_soname =
     kIsLinux ? "libc.so.6" :
     kIsFreeBSD ? "libc.so.7" :
-    kIsApple ? "/usr/lib/libc.dylib" :
+    kIsApple ? "/usr/lib/libSystem.B.dylib" :
     nullptr;
 // clang-format on
 
