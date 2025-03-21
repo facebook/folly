@@ -23,7 +23,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/Synchronized.h>
 
-#if defined(__GLIBCXX__)
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 #include <dlfcn.h>
 
@@ -214,4 +214,4 @@ __attribute__((__noreturn__)) void rethrow_exception(std::exception_ptr ep) {
 } // namespace std
 #endif
 
-#endif // defined(__GLIBCXX__)
+#endif // defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
