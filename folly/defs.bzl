@@ -117,7 +117,7 @@ def _compute_include_directories():
     thrift_path = base_path[6:]
     return ["/".join(len(thrift_path.split("/")) * [".."])]
 
-def folly_library(
+def folly_xplat_library(
         name,
         srcs = (),
         exported_headers = (),
@@ -180,13 +180,13 @@ def folly_library(
         **kwargs
     )
 
-def folly_cxx_library(name, **kwargs):
-    folly_library(
+def folly_xplat_cxx_library(name, **kwargs):
+    folly_xplat_library(
         name = name,
         **kwargs
     )
 
-def folly_cxx_test(
+def folly_xplat_cxx_test(
         name,
         srcs,
         raw_headers = [],
@@ -196,7 +196,7 @@ def folly_cxx_test(
     # resources is cherry picked because some of the other kwargs
     # have issues that need to be investigated.
     # e.g., Some args are duplicated. Some args cause TSAN errors.
-    # TODO(T188948036): Fix xplat/folly:folly-futures-test and folly_cxx_test
+    # TODO(T188948036): Fix xplat/folly:folly-futures-test and folly_xplat_cxx_test
     resources = kwargs.get("resources", [])
 
     fb_xplat_cxx_test(
@@ -212,7 +212,7 @@ def folly_cxx_test(
         platforms = (CXX,),
     )
 
-def folly_cxx_binary(
+def folly_xplat_cxx_binary(
         name,
         srcs,
         raw_headers = [],
