@@ -98,6 +98,7 @@
 #endif
 
 #include <signal.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -583,6 +584,9 @@ class Subprocess {
 
     Options& addPrintPidToBuffer(span<char> buf);
 
+    Options& addRLimit(
+        int resource, rlimit limit, std::shared_ptr<int> errout = nullptr);
+
    private:
     template <typename T>
     struct AttrWithMeta {
@@ -621,6 +625,7 @@ class Subprocess {
     Optional<AttrWithMeta<gid_t>> egid_;
     Optional<sigset_t> sigmask_;
     std::unordered_set<char*> setPrintPidToBuffer_;
+    std::unordered_map<int, AttrWithMeta<rlimit>> rlimits_;
   };
 
   // Non-copyable, but movable

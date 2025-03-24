@@ -1266,3 +1266,45 @@ TEST(SetLinuxCGroup, CanSetCGroupPathPresentProcsNoOpenIntoErrnum) {
 }
 
 #endif
+
+TEST(SetRLimit, SetRLimitSuccess) {
+  rlimit limit;
+  ::getrlimit(RLIMIT_MEMLOCK, &limit);
+  auto limit2 = limit;
+  limit2.rlim_cur -= ::sysconf(_SC_PAGESIZE);
+  auto options = Subprocess::Options().pipeStdout();
+  options.addRLimit(RLIMIT_MEMLOCK, limit2);
+  Subprocess proc(std::vector{"/bin/ulimit"s, "-l"s}, options);
+  auto p = proc.communicate();
+  proc.wait();
+  EXPECT_EQ(fmt::format("{}\n", limit2.rlim_cur / 1024), p.first);
+}
+
+TEST(SetRLimit, SetRLimitFailure) {
+  rlimit limit;
+  ::getrlimit(RLIMIT_MEMLOCK, &limit);
+  auto limit2 = limit;
+  limit2.rlim_cur = limit2.rlim_max * 2;
+  auto options = Subprocess::Options().pipeStdout();
+  options.addRLimit(RLIMIT_MEMLOCK, limit2);
+  EXPECT_THROW(
+      Subprocess(std::vector{"/bin/ulimit"s, "-l"s}, options),
+      SubprocessSpawnError);
+}
+
+TEST(SetRLimit, SetRLimitFailureIntoErrnum) {
+  rlimit limit;
+  ::getrlimit(RLIMIT_MEMLOCK, &limit);
+  auto limit2 = limit;
+  limit2.rlim_cur = limit2.rlim_max * 2;
+  auto options = Subprocess::Options().pipeStdout();
+  auto emptysp = std::shared_ptr<int>{};
+  int errnum = 0;
+  options.addRLimit(
+      RLIMIT_MEMLOCK, limit2, std::shared_ptr<int>{emptysp, &errnum});
+  Subprocess proc(std::vector{"/bin/ulimit"s, "-l"s}, options);
+  EXPECT_EQ(EINVAL, errnum);
+  auto p = proc.communicate();
+  proc.wait();
+  EXPECT_EQ(fmt::format("{}\n", limit.rlim_cur / 1024), p.first);
+}

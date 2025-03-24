@@ -197,12 +197,14 @@ struct Subprocess::SpawnRawArgs {
   struct Scratch {
     std::vector<std::pair<int, int>> fdActions;
     std::vector<char*> setPrintPidToBuffer;
+    std::vector<std::pair<int, Options::AttrWithMeta<rlimit>>> rlimits;
 
     explicit Scratch(Options const& options)
         : fdActions{options.fdActions_.begin(), options.fdActions_.end()},
           setPrintPidToBuffer{
               options.setPrintPidToBuffer_.begin(),
-              options.setPrintPidToBuffer_.end()} {
+              options.setPrintPidToBuffer_.end()},
+          rlimits{options.rlimits_.begin(), options.rlimits_.end()} {
       std::sort(fdActions.begin(), fdActions.end());
     }
   };
@@ -237,6 +239,8 @@ struct Subprocess::SpawnRawArgs {
   Options::AttrWithMeta<gid_t> const* egid{};
   char* const* setPrintPidToBufferData{};
   size_t setPrintPidToBufferSize{};
+  std::pair<int, Options::AttrWithMeta<rlimit>> const* rlimitsData{};
+  size_t rlimitsSize{};
 
   // assigned explicitly
   char const* const* argv{};
@@ -270,7 +274,9 @@ struct Subprocess::SpawnRawArgs {
         euid{options.euid_.get_pointer()},
         egid{options.egid_.get_pointer()},
         setPrintPidToBufferData{scratch.setPrintPidToBuffer.data()},
-        setPrintPidToBufferSize{scratch.setPrintPidToBuffer.size()} {
+        setPrintPidToBufferSize{scratch.setPrintPidToBuffer.size()},
+        rlimitsData{scratch.rlimits.data()},
+        rlimitsSize{scratch.rlimits.size()} {
     static_assert(std::is_standard_layout_v<Subprocess::SpawnRawArgs>);
     static_assert(std::is_trivially_destructible_v<Subprocess::SpawnRawArgs>);
   }
@@ -440,6 +446,15 @@ Subprocess::Options& Subprocess::Options::addPrintPidToBuffer(span<char> buf) {
     throw std::invalid_argument("buf size too small");
   }
   setPrintPidToBuffer_.insert(buf.data());
+  return *this;
+}
+
+Subprocess::Options& Subprocess::Options::addRLimit(
+    int resource, rlimit limit, std::shared_ptr<int> errout) {
+  if (rlimits_.count(resource)) {
+    throw std::runtime_error("addRLimit called with same limit more than once");
+  }
+  rlimits_[resource] = AttrWithMeta<rlimit>{limit, std::move(errout)};
   return *this;
 }
 
@@ -865,6 +880,17 @@ int Subprocess::prepareChild(SpawnRawArgs const& args) {
   // Move the child process into a linux cgroup, if one is given
   if (auto rc = prepareChildDoLinuxCGroup(args)) {
     return rc;
+  }
+
+  for (size_t i = 0; i < args.rlimitsSize; ++i) {
+    auto const& limit = args.rlimitsData[i];
+    if (setrlimit(limit.first, &limit.second.value) == -1) {
+      if (limit.second.errout) {
+        *limit.second.errout = errno;
+      } else {
+        return errno;
+      }
+    }
   }
 
   // Change the working directory, if one is given
