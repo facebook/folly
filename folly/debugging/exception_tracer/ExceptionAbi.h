@@ -22,7 +22,7 @@
 #include <exception>
 #include <typeinfo>
 
-#if defined(__GLIBCXX__)
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 #include <unwind.h>
 
@@ -60,4 +60,4 @@ __cxa_eh_globals* __cxa_get_globals_fast(void) noexcept;
 
 } // namespace __cxxabiv1
 
-#endif // defined(__GLIBCXX__)
+#endif // defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)

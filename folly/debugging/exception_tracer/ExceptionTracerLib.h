@@ -19,7 +19,7 @@
 #include <exception>
 #include <typeinfo>
 
-#if defined(__GLIBCXX__)
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 namespace folly {
 namespace exception_tracer {
@@ -39,4 +39,4 @@ void registerRethrowExceptionCallback(RethrowExceptionSig& callback);
 } // namespace exception_tracer
 } // namespace folly
 
-#endif // defined(__GLIBCXX__)
+#endif // defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
