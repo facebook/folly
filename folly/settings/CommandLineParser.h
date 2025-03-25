@@ -16,7 +16,8 @@
 
 #pragma once
 
-#include <folly/Range.h>
+#include <string_view>
+
 #include <folly/settings/Settings.h>
 #include <folly/settings/SettingsAccessorProxy.h>
 
@@ -59,7 +60,7 @@ class CommandLineParser {
 ArgParsingResult parseCommandLineArguments(
     int& argc,
     char**& argv,
-    StringPiece project = "",
+    std::string_view project = "",
     Snapshot* snapshot = nullptr,
     const SettingsAccessorProxy::SettingAliases& aliases = {});
 
@@ -70,6 +71,6 @@ ArgParsingResult parseCommandLineArguments(
  * @param app inforgation about app printed before main help message
  * @param exit_on_help flag to terminate process after printing help
  */
-void printHelpIfNeeded(StringPiece app, bool exit_on_help = false);
+void printHelpIfNeeded(std::string_view app, bool exit_on_help = false);
 
 } // namespace folly::settings

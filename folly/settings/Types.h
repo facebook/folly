@@ -21,7 +21,6 @@
 
 #include <folly/Conv.h>
 #include <folly/Expected.h>
-#include <folly/Range.h>
 #include <folly/Unit.h>
 #include <folly/Utility.h>
 
@@ -54,17 +53,17 @@ struct SettingMetadata {
   /**
    * Project string.
    */
-  StringPiece project;
+  std::string_view project;
 
   /**
    * Setting name within the project.
    */
-  StringPiece name;
+  std::string_view name;
 
   /**
    * String representation of the type.
    */
-  StringPiece typeStr;
+  std::string_view typeStr;
 
   /**
    * typeid() of the type.
@@ -75,7 +74,7 @@ struct SettingMetadata {
    * String representation of the default value.
    * (note: string literal default values will be stringified with quotes)
    */
-  StringPiece defaultStr;
+  std::string_view defaultStr;
 
   /**
    * Determines if the setting can change after initialization.
@@ -90,7 +89,7 @@ struct SettingMetadata {
   /**
    * Setting description field.
    */
-  StringPiece description;
+  std::string_view description;
 };
 
 /**
@@ -98,10 +97,11 @@ struct SettingMetadata {
  * metadata associated with it. Used as the "source" in setting conversion.
  */
 struct SettingValueAndMetadata {
-  SettingValueAndMetadata(StringPiece valueStr, const SettingMetadata& metadata)
+  SettingValueAndMetadata(
+      std::string_view valueStr, const SettingMetadata& metadata)
       : value(valueStr), meta(metadata) {}
 
-  StringPiece value;
+  std::string_view value;
   const SettingMetadata& meta;
 };
 

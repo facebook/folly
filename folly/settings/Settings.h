@@ -17,12 +17,12 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <folly/CppAttributes.h>
 #include <folly/Function.h>
 #include <folly/Likely.h>
-#include <folly/Range.h>
 #include <folly/container/MapUtil.h>
 #include <folly/settings/Types.h>
 #include <folly/settings/detail/SettingsImpl.h>
@@ -89,7 +89,7 @@ class SettingWrapper {
    * @returns The SetResult indicating if the setting was successfully updated.
    * @throws std::runtime_error  If we can't convert t to string.
    */
-  SetResult set(const T& t, StringPiece reason = "api") {
+  SetResult set(const T& t, std::string_view reason = "api") {
     return core_.set(t, reason);
   }
 
@@ -118,7 +118,7 @@ class SettingWrapper {
   /**
    * Returns the setting's current update reason.
    */
-  StringPiece updateReason() const { return core_.getSlow().updateReason; }
+  std::string_view updateReason() const { return core_.getSlow().updateReason; }
 
   /**
    * Returns the number of times this setting has been accessed.
@@ -128,7 +128,7 @@ class SettingWrapper {
   /**
    * Returns the setting's update reason in the snapshot.
    */
-  StringPiece updateReason(const Snapshot& snapshot) const;
+  std::string_view updateReason(const Snapshot& snapshot) const;
 
   explicit SettingWrapper(SettingCore<T, Tag>& core) : core_(core) {}
 
@@ -276,7 +276,7 @@ class SettingWrapper {
  * @return If the setting exists, returns the current settings metadata.
  *         Empty Optional otherwise.
  */
-Optional<SettingMetadata> getSettingsMeta(StringPiece settingName);
+Optional<SettingMetadata> getSettingsMeta(std::string_view settingName);
 
 /**
  * @return SettingMetadata for all registered settings in the process.
@@ -316,7 +316,7 @@ class SnapshotSettingWrapper {
    * in this snapshot.
    * @returns The SetResult indicating if the setting was successfully updated.
    */
-  SetResult set(const T& t, StringPiece reason = "api") {
+  SetResult set(const T& t, std::string_view reason = "api") {
     return core_.set(t, reason, &snapshot_);
   }
 
@@ -391,9 +391,9 @@ class Snapshot final : public detail::SnapshotBase {
    * @throws std::runtime_error  If there's a conversion error.
    */
   SetResult setFromString(
-      StringPiece settingName,
-      StringPiece newValue,
-      StringPiece reason) override;
+      std::string_view settingName,
+      std::string_view newValue,
+      std::string_view reason) override;
 
   /**
    * Same as setFromString but will set frozen immutables in this snapshot.
@@ -401,15 +401,16 @@ class Snapshot final : public detail::SnapshotBase {
    * change dry-runs.
    */
   SetResult forceSetFromString(
-      StringPiece settingName,
-      StringPiece newValue,
-      StringPiece reason) override;
+      std::string_view settingName,
+      std::string_view newValue,
+      std::string_view reason) override;
 
   /**
    * @return If the setting exists, the current setting information.
    *         Empty Optional otherwise.
    */
-  Optional<SettingsInfo> getAsString(StringPiece settingName) const override;
+  Optional<SettingsInfo> getAsString(
+      std::string_view settingName) const override;
 
   /**
    * Reset the value of the setting identified by name to its default value.
@@ -417,14 +418,14 @@ class Snapshot final : public detail::SnapshotBase {
    *
    * @returns The SetResult indicating if the setting was successfully reset.
    */
-  SetResult resetToDefault(StringPiece settingName) override;
+  SetResult resetToDefault(std::string_view settingName) override;
 
   /**
    * Same as resetToDefault but will reset frozen immutables in this snapshot.
    * However, it will still not publish them. This is mainly useful for setting
    * change dry-runs.
    */
-  SetResult forceResetToDefault(StringPiece settingName) override;
+  SetResult forceResetToDefault(std::string_view settingName) override;
 
   /**
    * Iterates over all known settings and calls func(visitorInfo) for each.
@@ -453,7 +454,7 @@ SettingWrapper<T, TrivialPtr, Tag>::value(const Snapshot& snapshot) const {
 }
 
 template <class T, std::atomic<uint64_t>* TrivialPtr, typename Tag>
-StringPiece SettingWrapper<T, TrivialPtr, Tag>::updateReason(
+std::string_view SettingWrapper<T, TrivialPtr, Tag>::updateReason(
     const Snapshot& snapshot) const {
   return snapshot.get(core_).updateReason;
 }

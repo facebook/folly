@@ -19,13 +19,13 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 
 #include <folly/Conv.h>
 #include <folly/Function.h>
 #include <folly/Optional.h>
-#include <folly/Range.h>
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
 #include <folly/Utility.h>
@@ -64,9 +64,13 @@ class SettingCoreBase {
   using Version = uint64_t;
 
   virtual SetResult setFromString(
-      StringPiece newValue, StringPiece reason, SnapshotBase* snapshot) = 0;
+      std::string_view newValue,
+      std::string_view reason,
+      SnapshotBase* snapshot) = 0;
   virtual void forceSetFromString(
-      StringPiece newValue, StringPiece reason, SnapshotBase* snapshot) = 0;
+      std::string_view newValue,
+      std::string_view reason,
+      SnapshotBase* snapshot) = 0;
   virtual std::pair<std::string, std::string> getAsString(
       const SnapshotBase* snapshot) const = 0;
   virtual SetResult resetToDefault(SnapshotBase* snapshot) = 0;
@@ -114,8 +118,9 @@ class BoxedValue {
    * applied globally
    */
   template <class T, typename Tag>
-  BoxedValue(const T& value, StringPiece reason, SettingCore<T, Tag>& core)
-      : value_(std::make_shared<SettingContents<T>>(reason.str(), value)),
+  BoxedValue(const T& value, std::string_view reason, SettingCore<T, Tag>& core)
+      : value_(
+            std::make_shared<SettingContents<T>>(std::string(reason), value)),
         core_{&core},
         publish_{doPublish<T, Tag>} {}
 
@@ -182,8 +187,8 @@ class TypedSettingCore : public SettingCoreBase {
  public:
   using Contents = SettingContents<T>;
   SetResult setFromString(
-      StringPiece newValue,
-      StringPiece reason,
+      std::string_view newValue,
+      std::string_view reason,
       SnapshotBase* snapshot) override {
     if (isFrozenImmutable()) {
       // Return the error before calling convertOrConstruct in case it throws.
@@ -194,8 +199,8 @@ class TypedSettingCore : public SettingCoreBase {
   }
 
   void forceSetFromString(
-      StringPiece newValue,
-      StringPiece reason,
+      std::string_view newValue,
+      std::string_view reason,
       SnapshotBase* snapshot) override {
     setImpl(convertOrConstruct(newValue), reason, snapshot);
   }
@@ -238,7 +243,7 @@ class TypedSettingCore : public SettingCoreBase {
   const SettingContents<T>& getSlow() const { return *tlValue(); }
 
   SetResult set(
-      const T& t, StringPiece reason, SnapshotBase* snapshot = nullptr) {
+      const T& t, std::string_view reason, SnapshotBase* snapshot = nullptr) {
     if (isFrozenImmutable()) {
       return makeUnexpected(SetErrorCode::FrozenImmutable);
     }
@@ -309,7 +314,7 @@ class TypedSettingCore : public SettingCoreBase {
   }
 
   virtual void setImpl(
-      const T& t, StringPiece reason, SnapshotBase* snapshot) = 0;
+      const T& t, std::string_view reason, SnapshotBase* snapshot) = 0;
 
   bool isFrozenImmutable() const {
     switch (meta_.mutability) {
@@ -320,8 +325,8 @@ class TypedSettingCore : public SettingCoreBase {
     }
   }
 
-  T convertOrConstruct(StringPiece newValue) {
-    if constexpr (std::is_constructible_v<T, StringPiece>) {
+  T convertOrConstruct(std::string_view newValue) {
+    if constexpr (std::is_constructible_v<T, std::string_view>) {
       return T(newValue);
     } else {
       SettingValueAndMetadata from(newValue, meta_);
@@ -370,7 +375,9 @@ class SnapshotBase {
    * @throws std::runtime_error  If there's a conversion error.
    */
   virtual SetResult setFromString(
-      StringPiece settingName, StringPiece newValue, StringPiece reason) = 0;
+      std::string_view settingName,
+      std::string_view newValue,
+      std::string_view reason) = 0;
 
   /**
    * Same as setFromString but will set frozen immutables in this snapshot.
@@ -378,13 +385,16 @@ class SnapshotBase {
    * change dry-runs.
    */
   virtual SetResult forceSetFromString(
-      StringPiece settingName, StringPiece newValue, StringPiece reason) = 0;
+      std::string_view settingName,
+      std::string_view newValue,
+      std::string_view reason) = 0;
 
   /**
    * @return If the setting exists, the current setting information.
    *         Empty Optional otherwise.
    */
-  virtual Optional<SettingsInfo> getAsString(StringPiece settingName) const = 0;
+  virtual Optional<SettingsInfo> getAsString(
+      std::string_view settingName) const = 0;
 
   /**
    * Reset the value of the setting identified by name to its default value.
@@ -392,14 +402,14 @@ class SnapshotBase {
    *
    * @returns The SetResult indicating if the setting was successfully reset.
    */
-  virtual SetResult resetToDefault(StringPiece settingName) = 0;
+  virtual SetResult resetToDefault(std::string_view settingName) = 0;
 
   /**
    * Same as resetToDefault but will reset frozen immutables in this snapshot.
    * However, it will still not publish them. This is mainly useful for setting
    * change dry-runs.
    */
-  virtual SetResult forceResetToDefault(StringPiece settingName) = 0;
+  virtual SetResult forceResetToDefault(std::string_view settingName) = 0;
 
   /**
    * Iterates over all known settings and calls func(visitorInfo) for each.
@@ -439,7 +449,7 @@ class SnapshotBase {
   }
 
   template <class T, typename Tag>
-  void set(SettingCore<T, Tag>& core, const T& t, StringPiece reason) {
+  void set(SettingCore<T, Tag>& core, const T& t, std::string_view reason) {
     snapshotValues_[core.getKey()] = BoxedValue(t, reason, core);
   }
 };
@@ -512,7 +522,7 @@ class SettingCore : public TypedSettingCore<T> {
   std::atomic<bool> hasHadCallbacks_{false};
 
   void setImpl(
-      const T& t, StringPiece reason, SnapshotBase* snapshot) override {
+      const T& t, std::string_view reason, SnapshotBase* snapshot) override {
     /* Check that we can still display it (will throw otherwise) */
     folly::to<std::string>(t);
 
@@ -530,7 +540,7 @@ class SettingCore : public TypedSettingCore<T> {
             *this->settingVersion_,
             BoxedValue(*this->globalValue_));
       }
-      this->globalValue_ = std::make_shared<Contents>(reason.str(), t);
+      this->globalValue_ = std::make_shared<Contents>(std::string(reason), t);
       if constexpr (IsSmallPOD<T>) {
         uint64_t v = 0;
         std::memcpy(&v, &t, sizeof(T));
@@ -538,7 +548,7 @@ class SettingCore : public TypedSettingCore<T> {
       }
       *this->settingVersion_ = nextGlobalVersion();
     }
-    invokeCallbacks(Contents(reason.str(), t));
+    invokeCallbacks(Contents(std::string(reason), t));
   }
 
   void invokeCallbacks(const Contents& contents) {

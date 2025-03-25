@@ -20,11 +20,9 @@ namespace folly::settings {
 
 SettingsAccessorProxy::SettingsAccessorProxy(
     Snapshot& snapshot,
-    StringPiece project,
+    std::string_view project,
     SettingsAccessorProxy::SettingAliases aliases)
-    : project_(project.str()),
-      aliases_(std::move(aliases)),
-      snapshot_(snapshot) {
+    : project_(project), aliases_(std::move(aliases)), snapshot_(snapshot) {
   snapshot_.forEachSetting([&](const auto& setting) {
     settingsMeta_.emplace(setting.fullName(), setting.meta());
   });
@@ -39,31 +37,31 @@ SettingsAccessorProxy::SettingsAccessorProxy(
       CommandLine::AcceptOverrides,
       "Show this message"};
 
-  settingsMeta_.emplace(to<std::string>(kHelpFlag), help_meta);
+  settingsMeta_.emplace(std::string(kHelpFlag), help_meta);
 }
 
 SettingsAccessorProxy::SettingMetaMap::const_iterator
-SettingsAccessorProxy::findSettingMeta(StringPiece flag) const {
+SettingsAccessorProxy::findSettingMeta(std::string_view flag) const {
   if (!aliases_.empty()) {
-    auto it = aliases_.find(flag.str());
+    auto it = aliases_.find(std::string(flag));
     if (it != end(aliases_)) {
       flag = it->second;
     }
   }
 
-  auto it = settingsMeta_.find(flag.str());
+  auto it = settingsMeta_.find(std::string(flag));
   if (it != end(settingsMeta_)) {
     return it;
   }
 
   if (!project_.empty()) {
-    return settingsMeta_.find(to<std::string>(project_, "_", flag));
+    return settingsMeta_.find(fmt::format("{}_{}", project_, flag));
   }
   return end(settingsMeta_);
 }
 
 std::optional<std::reference_wrapper<const SettingMetadata>>
-SettingsAccessorProxy::getSettingMetadata(StringPiece flag) const {
+SettingsAccessorProxy::getSettingMetadata(std::string_view flag) const {
   auto it = findSettingMeta(flag);
   if (it != end(settingsMeta_)) {
     return std::cref(it->second);
@@ -71,11 +69,11 @@ SettingsAccessorProxy::getSettingMetadata(StringPiece flag) const {
   return std::nullopt;
 }
 
-bool SettingsAccessorProxy::hasFlag(StringPiece flag) const {
+bool SettingsAccessorProxy::hasFlag(std::string_view flag) const {
   return findSettingMeta(flag) != end(settingsMeta_);
 }
 
-bool SettingsAccessorProxy::isBooleanFlag(StringPiece flag) const {
+bool SettingsAccessorProxy::isBooleanFlag(std::string_view flag) const {
   auto it = findSettingMeta(flag);
   if (it != end(settingsMeta_)) {
     return it->second.typeId == typeid(bool);
@@ -84,21 +82,23 @@ bool SettingsAccessorProxy::isBooleanFlag(StringPiece flag) const {
 }
 
 std::string SettingsAccessorProxy::toFullyQualifiedName(
-    StringPiece flag) const {
+    std::string_view flag) const {
   auto it = findSettingMeta(flag);
   if (it != end(settingsMeta_)) {
     return it->first;
   }
 
-  return flag.str();
+  return std::string(flag);
 }
 
-SetResult SettingsAccessorProxy::resetToDefault(StringPiece settingName) {
+SetResult SettingsAccessorProxy::resetToDefault(std::string_view settingName) {
   return snapshot_.resetToDefault(toFullyQualifiedName(settingName));
 }
 
 SetResult SettingsAccessorProxy::setFromString(
-    StringPiece settingName, StringPiece newValue, StringPiece reason) {
+    std::string_view settingName,
+    std::string_view newValue,
+    std::string_view reason) {
   return snapshot_.setFromString(
       toFullyQualifiedName(settingName), newValue, reason);
 }

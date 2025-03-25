@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <string>
+#include <string_view>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -90,7 +93,7 @@ void check_args_parsing(
     const std::vector<const char*>& expected,
     Function<void()> settingValueChecker = nullptr,
     ArgParsingResult parsingResult = ArgParsingResult::HELP,
-    StringPiece project = "",
+    std::string_view project = "",
     const std::unordered_map<std::string, std::string>& aliases = {}) {
   XLOG(ERR) << "CHECKING " << join(" ", args);
   int argc = args.size();
@@ -364,13 +367,13 @@ LegacySettings gSettingsLegacy;
 struct CustomFlagsContained : public SettingsAccessorProxy {
   explicit CustomFlagsContained(
       Snapshot& snapshot,
-      StringPiece project = "",
+      std::string_view project = "",
       SettingsAccessorProxy::SettingAliases aliases = {})
       : SettingsAccessorProxy(snapshot, project, std::move(aliases)) {
     legacySetters_ = {
         {"test_legacy_int_setting",
-         [](StringPiece val) {
-           auto res = tryTo<int>(val);
+         [](std::string_view val) {
+           auto res = folly::tryTo<int>(val);
            if (res) {
              gSettingsLegacy.lIntSetting = res.value();
              return true;
@@ -378,16 +381,16 @@ struct CustomFlagsContained : public SettingsAccessorProxy {
            return true;
          }},
         {"test_legacy_double_setting",
-         [](StringPiece val) {
-           auto res = tryTo<double>(val);
+         [](std::string_view val) {
+           auto res = folly::tryTo<double>(val);
            if (res) {
              gSettingsLegacy.lDoubleSetting = res.value();
              return true;
            }
            return false;
          }},
-        {"test_legacy_string_setting", [](StringPiece val) {
-           gSettingsLegacy.lStringSetting = val.str();
+        {"test_legacy_string_setting", [](std::string_view val) {
+           gSettingsLegacy.lStringSetting = std::string(val);
            return true;
          }}};
 
@@ -430,9 +433,9 @@ struct CustomFlagsContained : public SettingsAccessorProxy {
   }
 
   SetResult setFromString(
-      StringPiece settingName,
-      StringPiece newValue,
-      StringPiece reason) override {
+      std::string_view settingName,
+      std::string_view newValue,
+      std::string_view reason) override {
     auto it = legacySetters_.find(toFullyQualifiedName(settingName));
     if (it != end(legacySetters_)) {
       if (it->second(newValue)) {
@@ -443,7 +446,7 @@ struct CustomFlagsContained : public SettingsAccessorProxy {
     return SettingsAccessorProxy::setFromString(settingName, newValue, reason);
   }
 
-  std::unordered_map<std::string, std::function<bool(StringPiece)>>
+  std::unordered_map<std::string, std::function<bool(std::string_view)>>
       legacySetters_;
 };
 

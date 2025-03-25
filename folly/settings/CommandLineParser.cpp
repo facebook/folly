@@ -46,6 +46,17 @@ struct RecursiveStateHelper {
 };
 
 using State = RecursiveStateHelper::type;
+
+// TODO: use std::string_view::starts_with, starting with C++20
+bool startsWith(std::string_view str, char ch) {
+  return !str.empty() && str.front() == ch;
+}
+std::string_view stripPrefix(std::string_view str, char ch) {
+  if (startsWith(str, ch)) {
+    return str.substr(1);
+  }
+  return str;
+}
 } // namespace
 
 class CommandLineParser::Impl {
@@ -90,7 +101,7 @@ class CommandLineParser::Impl {
       }
 
       auto arg = getNext();
-      if (!arg.startsWith('-') // positional
+      if (!startsWith(arg, '-') // positional
           || arg == "-" // stdin
           || arg.empty() // empty?
       ) {
@@ -98,12 +109,8 @@ class CommandLineParser::Impl {
       }
 
       // Like gflags allow one or two '-' in front
-      if (arg.startsWith('-')) {
-        arg = arg.subpiece(1);
-      }
-      if (arg.startsWith('-')) {
-        arg = arg.subpiece(1);
-      }
+      arg = stripPrefix(arg, '-');
+      arg = stripPrefix(arg, '-');
 
       if (arg.empty()) { // reached '--' it is end of args
         return endOfArgsState();
@@ -149,7 +156,7 @@ class CommandLineParser::Impl {
 
       value_in_arg_ = false;
       auto arg = getNext();
-      if (arg.startsWith('-')) {
+      if (startsWith(arg, '-')) {
         pos_ -= 1;
         value_in_arg_ = true;
         return no_value();
@@ -288,9 +295,13 @@ class CommandLineParser::Impl {
    * @param arg flag name
    * @return is bool folly::settings
    */
-  bool is_bool_arg(StringPiece arg) { return flagsInfo_.isBooleanFlag(arg); }
+  bool is_bool_arg(std::string_view arg) {
+    return flagsInfo_.isBooleanFlag(arg);
+  }
 
-  bool is_folly_setting(StringPiece arg) { return flagsInfo_.hasFlag(arg); }
+  bool is_folly_setting(std::string_view arg) {
+    return flagsInfo_.hasFlag(arg);
+  }
 
   bool isHelpFlag() { return flag_ == kHelpFlag; }
 
@@ -299,7 +310,7 @@ class CommandLineParser::Impl {
   /**
    * @return next argument from argv
    */
-  StringPiece getNext() { return argv_[pos_++]; }
+  std::string_view getNext() { return argv_[pos_++]; }
 
   ArgParsingResult result_;
   bool value_in_arg_{true};
@@ -307,7 +318,7 @@ class CommandLineParser::Impl {
   int& argc_;
   char**& argv_;
 
-  StringPiece flag_, value_;
+  std::string_view flag_, value_;
 
   SettingsAccessorProxy& flagsInfo_;
 };
@@ -325,11 +336,11 @@ ArgParsingResult CommandLineParser::parse() {
   return impl_->parse();
 }
 
-void printHelpIfNeeded(StringPiece app, bool exit_on_help) {
+void printHelpIfNeeded(std::string_view app, bool exit_on_help) {
   std::cerr << fmt::format("{}:\n", app);
   Snapshot snapshot;
   for (const auto& kv : SettingsAccessorProxy(snapshot).getSettingsMetadata()) {
-    auto s = fmt::format("--{} {}", kv.first, kv.second.description.str());
+    auto s = fmt::format("--{} {}", kv.first, kv.second.description);
     std::cerr << fmt::format("\t{}\n", s);
 
     auto type = kv.second.typeStr;
@@ -350,7 +361,7 @@ void printHelpIfNeeded(StringPiece app, bool exit_on_help) {
 ArgParsingResult parseCommandLineArguments(
     int& argc,
     char**& argv,
-    StringPiece project,
+    std::string_view project,
     Snapshot& snapshot,
     const SettingsAccessorProxy::SettingAliases& aliases) {
   SettingsAccessorProxy flags_info(snapshot, project, aliases);
@@ -364,7 +375,7 @@ ArgParsingResult parseCommandLineArguments(
 ArgParsingResult parseCommandLineArguments(
     int& argc,
     char**& argv,
-    StringPiece project,
+    std::string_view project,
     Snapshot* snapshot,
     const SettingsAccessorProxy::SettingAliases& aliases) {
   if (snapshot) {

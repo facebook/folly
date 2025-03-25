@@ -17,24 +17,27 @@
 #pragma once
 
 #include <optional>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 
-#include <folly/Range.h>
 #include <folly/settings/Settings.h>
 
 namespace folly::settings {
 
-constexpr const StringPiece kHelpFlag = "help";
+constexpr const std::string_view kHelpFlag = "help";
 
 class ISettingsAccessorProxy {
  public:
   virtual ~ISettingsAccessorProxy() = default;
 
   virtual SetResult setFromString(
-      StringPiece settingName, StringPiece newValue, StringPiece reason) = 0;
+      std::string_view settingName,
+      std::string_view newValue,
+      std::string_view reason) = 0;
 
-  virtual SetResult resetToDefault(StringPiece flag) = 0;
+  virtual SetResult resetToDefault(std::string_view flag) = 0;
 };
 
 /**
@@ -61,7 +64,7 @@ class SettingsAccessorProxy : public ISettingsAccessorProxy {
    */
   explicit SettingsAccessorProxy(
       Snapshot& snapshot,
-      StringPiece project = "",
+      std::string_view project = "",
       SettingAliases aliases = {});
 
   virtual ~SettingsAccessorProxy() override = default;
@@ -74,7 +77,7 @@ class SettingsAccessorProxy : public ISettingsAccessorProxy {
    * @param flag command line flag name
    * @return fully qualified folly::setting name
    */
-  std::string toFullyQualifiedName(StringPiece flag) const;
+  std::string toFullyQualifiedName(std::string_view flag) const;
 
   /**
    * Returns true if flag is registered folly::setting. Flag alias and
@@ -83,7 +86,7 @@ class SettingsAccessorProxy : public ISettingsAccessorProxy {
    * @param flag command line flag name
    * @return bool
    */
-  bool hasFlag(StringPiece flag) const;
+  bool hasFlag(std::string_view flag) const;
 
   /**
    * Returns true if flag is registered as bool folly::setting. Flag alias and
@@ -93,7 +96,7 @@ class SettingsAccessorProxy : public ISettingsAccessorProxy {
    * @param flag command line flag name
    * @return bool
    */
-  bool isBooleanFlag(StringPiece flag) const;
+  bool isBooleanFlag(std::string_view flag) const;
 
   /**
    * Sets value of settingName into newValue with reason set to `reason`. The
@@ -106,9 +109,9 @@ class SettingsAccessorProxy : public ISettingsAccessorProxy {
    * @param reason for update
    */
   virtual SetResult setFromString(
-      StringPiece settingName,
-      StringPiece newValue,
-      StringPiece reason) override;
+      std::string_view settingName,
+      std::string_view newValue,
+      std::string_view reason) override;
 
   /**
    * Return const ref to map setting_name => setting metadata. This is useful
@@ -122,19 +125,20 @@ class SettingsAccessorProxy : public ISettingsAccessorProxy {
   SettingMetaMap getSettingsMetadata() && { return std::move(settingsMeta_); }
 
   std::optional<std::reference_wrapper<const SettingMetadata>>
-  getSettingMetadata(StringPiece flag) const;
+  getSettingMetadata(std::string_view flag) const;
 
   /**
    * Resets flag to default value.
    *
    * @param flag name of folly::settings.
    */
-  virtual SetResult resetToDefault(StringPiece flag) override;
+  virtual SetResult resetToDefault(std::string_view flag) override;
 
   Snapshot& snapshot() noexcept { return snapshot_; }
 
  protected:
-  virtual SettingMetaMap::const_iterator findSettingMeta(StringPiece) const;
+  virtual SettingMetaMap::const_iterator findSettingMeta(
+      std::string_view) const;
 
   std::string project_;
   SettingAliases aliases_;

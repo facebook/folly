@@ -16,6 +16,7 @@
 
 #include <folly/settings/Settings.h>
 
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -71,7 +72,7 @@ FOLLY_SETTING_DEFINE(
 
 /* Test user defined type support */
 struct UserDefinedType {
-  explicit UserDefinedType(folly::StringPiece value) {
+  explicit UserDefinedType(std::string_view value) {
     if (value == "a") {
       value_ = 0;
     } else if (value == "b") {
@@ -107,7 +108,7 @@ enum class UserErrorCode {
   Error,
 };
 std::invalid_argument makeConversionError(
-    const UserErrorCode& error, folly::StringPiece) {
+    const UserErrorCode& error, std::string_view) {
   return std::invalid_argument(folly::to<std::string>("UserErrorCode ", error));
 }
 folly::Expected<folly::Unit, UserErrorCode> convertTo(
