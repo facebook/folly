@@ -21,6 +21,8 @@
 #include <type_traits>
 #include <vector>
 
+#include <folly/Traits.h>
+
 // On MSVC an incorrect <version> header get's picked up
 #if !defined(_MSC_VER) && __has_include(<version>)
 #include <version>
@@ -98,7 +100,7 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n);
 template <
     typename T,
     typename =
-        typename std::enable_if<std::is_trivially_destructible<T>::value>::type>
+        typename std::enable_if<folly::is_trivially_destructible_v<T>>::type>
 inline void resizeWithoutInitialization(
     std::basic_string<T>& s, std::size_t n) {
   if (n <= s.size()) {
@@ -137,7 +139,7 @@ inline void resizeWithoutInitialization(
 template <
     typename T,
     typename = typename std::enable_if<
-        std::is_trivially_destructible<T>::value &&
+        folly::is_trivially_destructible_v<T> &&
         !std::is_same<T, bool>::value>::type>
 void resizeWithoutInitialization(std::vector<T>& v, std::size_t n) {
   if (n <= v.size()) {
@@ -380,7 +382,7 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
   e += (n - v.size());
 }
 
-#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)
+#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(_)
 
 #elif defined(_MSC_VER)
 

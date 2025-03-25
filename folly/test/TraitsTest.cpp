@@ -579,6 +579,23 @@ TEST(Traits, InstantiationOf) {
 }
 #endif
 
+TEST(Traits, IsTriviallyDestructible) {
+  static_assert(folly::is_trivially_destructible_v<int>);
+  static_assert(folly::is_trivially_destructible_v<const int>);
+  static_assert(folly::is_trivially_destructible_v<const int&>);
+  //
+  static_assert(folly::is_trivially_destructible_v<std::pair<int, int>>);
+  static_assert(folly::is_trivially_destructible_v<const std::pair<int, int>>);
+  static_assert(folly::is_trivially_destructible_v<const std::pair<int, int>&>);
+  //
+  static_assert(folly::is_trivially_destructible_v<std::array<int, 3>>);
+  static_assert(folly::is_trivially_destructible_v<const std::array<int, 3>>);
+  //
+  static_assert(folly::is_trivially_destructible_v<std::tuple<int, char>>);
+  static_assert(
+      folly::is_trivially_destructible_v<const std::tuple<int, char>>);
+}
+
 TEST(Traits, member_pointer_traits_data) {
   struct o {};
   using d = float;
