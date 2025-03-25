@@ -597,7 +597,8 @@ class FOLLY_NODISCARD TaskWithExecutor {
       return std::move(coro_.promise().result()).value();
     }
 
-    folly::Try<StorageType> await_resume_try() {
+    folly::Try<StorageType> await_resume_try() noexcept(
+        std::is_nothrow_move_constructible_v<StorageType>) {
       SCOPE_EXIT {
         std::exchange(coro_, {}).destroy();
       };
@@ -905,7 +906,8 @@ class FOLLY_CORO_TASK_ATTRS Task {
       return std::move(coro_.promise().result()).value();
     }
 
-    folly::Try<StorageType> await_resume_try() {
+    folly::Try<StorageType> await_resume_try() noexcept(
+        std::is_nothrow_move_constructible_v<StorageType>) {
       DCHECK(coro_);
       SCOPE_EXIT {
         std::exchange(coro_, {}).destroy();

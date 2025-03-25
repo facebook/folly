@@ -446,7 +446,7 @@ class FOLLY_NODISCARD AsyncGenerator {
       }
     }
 
-    folly::Try<NextResult> await_resume_try() {
+    folly::Try<NextResult> await_resume_try() noexcept {
       if (coro_) {
         if (coro_.promise().hasValue()) {
           return folly::Try<NextResult>(NextResult{coro_});
