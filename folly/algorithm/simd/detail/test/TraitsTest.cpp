@@ -16,6 +16,7 @@
 
 #include <folly/algorithm/simd/detail/Traits.h>
 
+#include <folly/lang/Bits.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
