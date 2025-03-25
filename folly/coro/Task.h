@@ -26,6 +26,7 @@
 #include <glog/logging.h>
 
 #include <folly/CancellationToken.h>
+#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Executor.h>
 #include <folly/GLog.h>
 #include <folly/Portability.h>
@@ -568,6 +569,13 @@ class FOLLY_NODISCARD TaskWithExecutor {
               << "coro::blockingWait or write your test using the CO_TEST* macros instead."
               << "If you are using folly::getCPUExecutor, switch to getGlobalCPUExecutor "
               << "or be sure to call setCPUExecutor first.";
+        }
+        if (dynamic_cast<folly::DefaultKeepAliveExecutor::WeakRefExecutor*>(
+                promise.executor_.get())) {
+          FB_LOG_ONCE(ERROR)
+              << "You are scheduling a coro::Task on a weak executor. "
+              << "It is not supported, and can lead to memory leaks. "
+              << "Consider using CancellationToken instead.";
         }
       }
 
