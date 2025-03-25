@@ -335,6 +335,14 @@ std::shared_ptr<U> to_shared_ptr_aliasing(std::shared_ptr<T> const& r, U* ptr) {
 }
 
 /**
+ *  to_shared_ptr_non_owning
+ */
+template <typename U>
+std::shared_ptr<U> to_shared_ptr_non_owning(U* ptr) {
+  return std::shared_ptr<U>(std::shared_ptr<void>{}, ptr);
+}
+
+/**
  *  to_weak_ptr
  *
  *  Make a weak_ptr and return it from a shared_ptr without specifying the

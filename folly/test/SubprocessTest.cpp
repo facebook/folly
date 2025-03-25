@@ -29,6 +29,7 @@
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
+#include <folly/Memory.h>
 #include <folly/String.h>
 #include <folly/container/span.h>
 #include <folly/experimental/io/FsUtil.h>
@@ -1081,12 +1082,11 @@ TEST(SetUserGroupId, CanOverrideAndReportFailure) {
   // which makes writing the unit-test for that impossible; here we just
   // check the errors
   auto options = Subprocess::Options().pipeStdout();
-  auto emptysp = std::shared_ptr<int>{};
   int errnum[4] = {};
-  options.setUid(0, std::shared_ptr<int>{emptysp, errnum + 0});
-  options.setGid(0, std::shared_ptr<int>{emptysp, errnum + 1});
-  options.setEUid(0, std::shared_ptr<int>{emptysp, errnum + 2});
-  options.setEGid(0, std::shared_ptr<int>{emptysp, errnum + 3});
+  options.setUid(0, to_shared_ptr_non_owning(errnum + 0));
+  options.setGid(0, to_shared_ptr_non_owning(errnum + 1));
+  options.setEUid(0, to_shared_ptr_non_owning(errnum + 2));
+  options.setEGid(0, to_shared_ptr_non_owning(errnum + 3));
   Subprocess proc(
       std::vector<std::string>{"/bin/cat", "/proc/self/status"}, options);
   auto p = proc.communicate();
@@ -1119,9 +1119,8 @@ TEST(SetLinuxCGroup, CanSetCGroupFdAbsentIntoErrnum) {
   auto cgdirfd = ::open(cgdir.path().native().c_str(), O_DIRECTORY | O_CLOEXEC);
   auto cgdirfdGuard = folly::makeGuard([&] { ::close(cgdirfd); });
   auto options = Subprocess::Options();
-  std::shared_ptr<int> emptysp;
   int errnum = 0;
-  options.setLinuxCGroupFd(cgdirfd, std::shared_ptr<int>{emptysp, &errnum});
+  options.setLinuxCGroupFd(cgdirfd, to_shared_ptr_non_owning(&errnum));
   Subprocess proc(std::vector{"/bin/true"s}, options);
   EXPECT_EQ(ENOENT, errnum) << ::strerror(errnum);
   proc.wait();
@@ -1150,9 +1149,8 @@ TEST(SetLinuxCGroup, CanSetCGroupFdPresentIntoErrnum) {
   auto cgprocs = cgdir.path() / "cgroup.procs";
   ::creat(cgprocs.native().c_str(), 0755); // rm'd with cgdir
   auto options = Subprocess::Options();
-  std::shared_ptr<int> emptysp;
   int errnum = 0;
-  options.setLinuxCGroupFd(cgdirfd, std::shared_ptr<int>{emptysp, &errnum});
+  options.setLinuxCGroupFd(cgdirfd, to_shared_ptr_non_owning(&errnum));
   Subprocess proc(std::vector{"/bin/true"s}, options);
   EXPECT_EQ(0, errnum) << ::strerror(errnum);
   std::string s;
@@ -1180,9 +1178,8 @@ TEST(SetLinuxCGroup, CanSetCGroupFdPresentProcsNoOpenIntoErrnum) {
   auto cgdirfd = ::open(cgdir.path().native().c_str(), O_DIRECTORY | O_CLOEXEC);
   auto cgdirfdGuard = folly::makeGuard([&] { ::close(cgdirfd); });
   auto options = Subprocess::Options();
-  std::shared_ptr<int> emptysp;
   int errnum = 0;
-  options.setLinuxCGroupFd(cgdirfd, std::shared_ptr<int>{emptysp, &errnum});
+  options.setLinuxCGroupFd(cgdirfd, to_shared_ptr_non_owning(&errnum));
   Subprocess proc(std::vector{"/bin/true"s}, options);
   EXPECT_EQ(EACCES, errnum) << ::strerror(errnum);
   proc.wait();
@@ -1200,10 +1197,9 @@ TEST(SetLinuxCGroup, CanSetCGroupPathAbsent) {
 TEST(SetLinuxCGroup, CanSetCGroupPathAbsentIntoErrnum) {
   folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
   auto options = Subprocess::Options();
-  std::shared_ptr<int> emptysp;
   int errnum = 0;
   options.setLinuxCGroupPath(
-      cgdir.path().string(), std::shared_ptr<int>{emptysp, &errnum});
+      cgdir.path().string(), to_shared_ptr_non_owning(&errnum));
   Subprocess proc(std::vector{"/bin/true"s}, options);
   EXPECT_EQ(ENOENT, errnum) << ::strerror(errnum);
   proc.wait();
@@ -1228,10 +1224,9 @@ TEST(SetLinuxCGroup, CanSetCGroupPathPresentIntoErrnum) {
   auto cgprocs = cgdir.path() / "cgroup.procs";
   ::creat(cgprocs.native().c_str(), 0755); // rm'd with cgdir
   auto options = Subprocess::Options();
-  std::shared_ptr<int> emptysp;
   int errnum = 0;
   options.setLinuxCGroupPath(
-      cgdir.path().string(), std::shared_ptr<int>{emptysp, &errnum});
+      cgdir.path().string(), to_shared_ptr_non_owning(&errnum));
   Subprocess proc(std::vector{"/bin/true"s}, options);
   EXPECT_EQ(0, errnum) << ::strerror(errnum);
   std::string s;
@@ -1255,10 +1250,9 @@ TEST(SetLinuxCGroup, CanSetCGroupPathPresentProcsNoOpenIntoErrnum) {
   auto cgprocs = cgdir.path() / "cgroup.procs";
   ::creat(cgprocs.native().c_str(), 0); // rm'd with cgdir
   auto options = Subprocess::Options();
-  std::shared_ptr<int> emptysp;
   int errnum = 0;
   options.setLinuxCGroupPath(
-      cgdir.path().string(), std::shared_ptr<int>{emptysp, &errnum});
+      cgdir.path().string(), to_shared_ptr_non_owning(&errnum));
   Subprocess proc(std::vector{"/bin/true"s}, options);
   EXPECT_EQ(EACCES, errnum) << ::strerror(errnum);
   proc.wait();
@@ -1298,10 +1292,8 @@ TEST(SetRLimit, SetRLimitFailureIntoErrnum) {
   auto limit2 = limit;
   limit2.rlim_cur = limit2.rlim_max * 2;
   auto options = Subprocess::Options().pipeStdout();
-  auto emptysp = std::shared_ptr<int>{};
   int errnum = 0;
-  options.addRLimit(
-      RLIMIT_MEMLOCK, limit2, std::shared_ptr<int>{emptysp, &errnum});
+  options.addRLimit(RLIMIT_MEMLOCK, limit2, to_shared_ptr_non_owning(&errnum));
   Subprocess proc(std::vector{"/bin/ulimit"s, "-l"s}, options);
   EXPECT_EQ(EINVAL, errnum);
   auto p = proc.communicate();

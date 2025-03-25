@@ -98,6 +98,14 @@ TEST(toSharedPtrAliasing, example) {
   EXPECT_EQ(4, *a);
 }
 
+TEST(toSharedPtrNonOwning, example) {
+  int i = 3;
+  auto sp = folly::to_shared_ptr_non_owning(&i);
+  EXPECT_EQ(&i, sp.get());
+  EXPECT_EQ(3, *sp);
+  EXPECT_EQ(0, sp.use_count());
+}
+
 TEST(toWeakPtr, example) {
   auto s = std::make_shared<int>(17);
   EXPECT_EQ(1, s.use_count());

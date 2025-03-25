@@ -1623,6 +1623,7 @@ cpp_unittest(
         "//folly:exception",
         "//folly:file_util",
         "//folly:format",
+        "//folly:memory",
         "//folly:string",
         "//folly:subprocess",
         "//folly/container:span",
