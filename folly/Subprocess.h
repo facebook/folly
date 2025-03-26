@@ -542,8 +542,9 @@ class Subprocess {
     }
 
 #if defined(__linux__)
-    Options& setCpuSet(const cpu_set_t& cpuSet) {
-      cpuSet_ = cpuSet;
+    Options& setCpuSet(
+        const cpu_set_t& cpuSet, std::shared_ptr<int> errout = nullptr) {
+      cpuSet_ = AttrWithMeta<cpu_set_t>{cpuSet, std::move(errout)};
       return *this;
     }
 
@@ -617,7 +618,7 @@ class Subprocess {
     DangerousPostForkPreExecCallback* dangerousPostForkPreExecCallback_{
         nullptr};
 #if defined(__linux__)
-    Optional<cpu_set_t> cpuSet_;
+    Optional<AttrWithMeta<cpu_set_t>> cpuSet_;
 #endif
     Optional<AttrWithMeta<uid_t>> uid_;
     Optional<AttrWithMeta<gid_t>> gid_;

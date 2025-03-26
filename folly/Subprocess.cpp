@@ -225,7 +225,7 @@ struct Subprocess::SpawnRawArgs {
   AttrWithMeta<char const*> linuxCGroupPath{nullptr, nullptr};
   bool closeOtherFds{};
 #if defined(__linux__)
-  cpu_set_t const* cpuSet{};
+  Options::AttrWithMeta<cpu_set_t> const* cpuSet{};
 #endif
   DangerousPostForkPreExecCallback* dangerousPostForkPreExecCallback;
   bool detach{};
@@ -904,7 +904,13 @@ int Subprocess::prepareChild(SpawnRawArgs const& args) {
   // Best effort
   if (args.cpuSet) {
     const auto& cpuSet = *args.cpuSet;
-    ::sched_setaffinity(0, sizeof(cpuSet), &cpuSet);
+    if (::sched_setaffinity(0, sizeof(cpuSet.value), &cpuSet.value) == -1) {
+      if (cpuSet.errout) {
+        *cpuSet.errout = errno;
+      } else {
+        return errno;
+      }
+    }
   }
 #endif
 

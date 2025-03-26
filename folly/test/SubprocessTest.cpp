@@ -503,15 +503,15 @@ TEST(SimpleSubprocessTest, DetachExecFails) {
 
 #ifdef __linux__
 
-TEST(SimpleSubprocessTest, Affinity) {
+TEST(SimpleSubprocessTest, AffinitySuccess) {
   cpu_set_t cpuSet0;
   CPU_ZERO(&cpuSet0);
   CPU_SET(1, &cpuSet0);
   CPU_SET(2, &cpuSet0);
   CPU_SET(3, &cpuSet0);
-  Subprocess::Options options;
-  Subprocess proc(
-      std::vector<std::string>{"/bin/sleep", "5"}, options.setCpuSet(cpuSet0));
+  auto options = Subprocess::Options().pipeStdin().pipeStdout();
+  options.setCpuSet(cpuSet0);
+  Subprocess proc(std::vector<std::string>{"/bin/cat"}, options);
   EXPECT_NE(proc.pid(), -1);
   cpu_set_t cpuSet1;
   CPU_ZERO(&cpuSet1);
@@ -520,6 +520,31 @@ TEST(SimpleSubprocessTest, Affinity) {
   CHECK_EQ(::memcmp(&cpuSet0, &cpuSet1, sizeof(cpu_set_t)), 0);
   auto retCode = proc.waitOrTerminateOrKill(1s, 1s);
   EXPECT_TRUE(retCode.killed());
+}
+
+TEST(SimpleSubprocessTest, AffinityFailure) {
+  cpu_set_t cpuSet0;
+  CPU_ZERO(&cpuSet0);
+  CPU_SET(16 * sysconf(_SC_NPROCESSORS_ONLN), &cpuSet0);
+  auto options = Subprocess::Options().pipeStdin().pipeStdout();
+  options.setCpuSet(cpuSet0);
+  EXPECT_THROW(
+      Subprocess(std::vector<std::string>{"/bin/cat"}, options),
+      SubprocessSpawnError);
+}
+
+TEST(SimpleSubprocessTest, AffinityFailureIntoErrnum) {
+  cpu_set_t cpuSet0;
+  CPU_ZERO(&cpuSet0);
+  CPU_SET(16 * sysconf(_SC_NPROCESSORS_ONLN), &cpuSet0);
+  auto options = Subprocess::Options().pipeStdin().pipeStdout();
+  int cpusetErrnum = 0;
+  options.setCpuSet(cpuSet0, to_shared_ptr_non_owning(&cpusetErrnum));
+  Subprocess proc(std::vector<std::string>{"/bin/cat"}, options);
+  EXPECT_NE(proc.pid(), -1);
+  EXPECT_EQ(EINVAL, cpusetErrnum);
+  proc.communicate();
+  proc.wait();
 }
 
 #endif // __linux__
