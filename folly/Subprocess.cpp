@@ -227,7 +227,6 @@ struct Subprocess::SpawnRawArgs {
 #if defined(__linux__)
   Options::AttrWithMeta<cpu_set_t> const* cpuSet{};
 #endif
-  DangerousPostForkPreExecCallback* dangerousPostForkPreExecCallback;
   bool detach{};
   detail::SubprocessFdActionsList fdActions;
   int parentDeathSignal{};
@@ -260,8 +259,6 @@ struct Subprocess::SpawnRawArgs {
 #if defined(__linux__)
         cpuSet{get_pointer(options.cpuSet_)},
 #endif
-        dangerousPostForkPreExecCallback{
-            options.dangerousPostForkPreExecCallback_},
         detach{options.detach_},
         fdActions{scratch.fdActions},
 #if defined(__linux__)
@@ -1012,13 +1009,6 @@ int Subprocess::prepareChild(SpawnRawArgs const& args) {
   for (size_t i = 0; i < args.setPrintPidToBufferSize; ++i) {
     auto buf = args.setPrintPidToBufferData[i];
     detail::subprocess_libc::sprintf(buf, "%d", getpid());
-  }
-
-  // The user callback comes last, so that the child is otherwise all set up.
-  if (args.dangerousPostForkPreExecCallback) {
-    if (int error = (*args.dangerousPostForkPreExecCallback)()) {
-      return error;
-    }
   }
 
   return 0;
