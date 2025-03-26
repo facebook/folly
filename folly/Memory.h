@@ -453,6 +453,19 @@ std::unique_ptr<T> copy_through_unique_ptr(const std::unique_ptr<T>& t) {
   return t ? std::make_unique<T>(*t) : nullptr;
 }
 
+/**
+ *  copy_through_shared_ptr
+ *
+ *  If the argument is nonnull, allocates a copy of its pointee.
+ */
+template <typename T>
+std::shared_ptr<T> copy_through_shared_ptr(const std::shared_ptr<T>& t) {
+  static_assert(
+      !std::is_polymorphic<T>::value || std::is_final<T>::value,
+      "possibly slicing");
+  return t ? std::make_shared<T>(*t) : nullptr;
+}
+
 //  erased_unique_ptr
 //
 //  A type-erased smart-ptr with unique ownership to a heap-allocated object.

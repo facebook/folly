@@ -199,6 +199,21 @@ TEST(copyThroughUniquePtr, example) {
   EXPECT_EQ(s, nullptr);
 }
 
+TEST(copyThroughSharedPtr, example) {
+  std::shared_ptr<int> p = std::make_shared<int>(17);
+  std::shared_ptr<int> s = copy_through_shared_ptr(p);
+  EXPECT_EQ(17, *s);
+  EXPECT_EQ(17, *p);
+  EXPECT_EQ(s.use_count(), 1);
+  EXPECT_EQ(p.use_count(), 1);
+  EXPECT_NE(s.get(), p.get());
+  p.reset();
+  s = copy_through_shared_ptr(p);
+  EXPECT_EQ(s, nullptr);
+  EXPECT_EQ(s.use_count(), 0);
+  EXPECT_EQ(p.use_count(), 0);
+}
+
 TEST(toErasedUniquePtr, example) {
   erased_unique_ptr ptr = empty_erased_unique_ptr();
 
