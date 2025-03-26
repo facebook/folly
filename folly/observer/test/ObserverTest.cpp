@@ -62,6 +62,7 @@ namespace observer {
 TEST(Observer, Observable) {
   SimpleObservable<int> observable(42);
   auto observer = observable.getObserver();
+  auto snapshot1 = observer.getSnapshot();
 
   EXPECT_EQ(42, **observer);
 
@@ -78,6 +79,8 @@ TEST(Observer, Observable) {
   EXPECT_TRUE(baton.try_wait_for(std::chrono::seconds{1}));
 
   EXPECT_EQ(24, **observer);
+  const auto snapshot2 = observer.getSnapshot();
+  EXPECT_GT(snapshot2.getTimeCreated(), snapshot1.getTimeCreated());
 }
 
 TEST(Observer, MakeObserver) {

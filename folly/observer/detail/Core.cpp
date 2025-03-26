@@ -90,7 +90,8 @@ size_t Core::refresh(size_t version) {
     }
 
     try {
-      VersionedData newData{creator_(), version};
+      VersionedData newData{
+          creator_(), version, std::chrono::system_clock::now()};
       if (!newData.data) {
         throw std::logic_error("Observer creator returned nullptr.");
       }

@@ -196,19 +196,32 @@ class Snapshot {
    */
   size_t getVersion() const { return version_; }
 
+  /**
+   * Return the time at which the observed object was created.
+   */
+  std::chrono::system_clock::time_point getTimeCreated() const {
+    return timeCreated_;
+  }
+
  private:
   friend class Observer<T>;
 
+  using TimePoint = observer_detail::Core::VersionedData::TimePoint;
   Snapshot(
       const observer_detail::Core& core,
       std::shared_ptr<const T> data,
-      size_t version)
-      : data_(std::move(data)), version_(version), core_(&core) {
+      size_t version,
+      TimePoint timeCreated)
+      : data_(std::move(data)),
+        version_(version),
+        timeCreated_(timeCreated),
+        core_(&core) {
     DCHECK(data_);
   }
 
   std::shared_ptr<const T> data_;
   size_t version_;
+  TimePoint timeCreated_;
   const observer_detail::Core* core_;
 };
 

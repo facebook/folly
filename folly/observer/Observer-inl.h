@@ -87,7 +87,8 @@ Snapshot<T> Observer<T>::getSnapshot() const noexcept {
   return Snapshot<T>(
       *core_,
       std::static_pointer_cast<const T>(std::move(data.data)),
-      data.version);
+      data.version,
+      data.timeCreated);
 }
 
 template <typename T>

@@ -78,16 +78,19 @@ class Core : public std::enable_shared_from_this<Core> {
       CreatorContext creatorContext);
 
   /**
-   * View of the observed object and its version
+   * View of the observed object as well as its version and created time
    */
   struct VersionedData {
+    using TimePoint = std::chrono::system_clock::time_point;
+
     VersionedData() {}
 
-    VersionedData(std::shared_ptr<const void> dat, size_t ver)
-        : data(std::move(dat)), version(ver) {}
+    VersionedData(std::shared_ptr<const void> dat, size_t ver, TimePoint timeC)
+        : data(std::move(dat)), version(ver), timeCreated(timeC) {}
 
     std::shared_ptr<const void> data;
     size_t version{0};
+    TimePoint timeCreated;
   };
 
   /**
