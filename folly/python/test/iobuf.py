@@ -154,7 +154,6 @@ class IOBufTests(unittest.TestCase):
                 "index out of bounds on dimension 1",
             )
 
-    @unittest.skip("Will be fixed in a future diff")
     def test_delayed_free_in_cpp(self) -> None:
         """
         Delays "giving back" the reference to memory view to Python, so that

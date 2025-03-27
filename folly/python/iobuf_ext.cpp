@@ -17,9 +17,15 @@
 #include <folly/python/iobuf_ext.h>
 
 #if PY_VERSION_HEX < 0x03040000
-#define FOLLY_PYHON_PyGILState_Check() (true)
+#define FOLLY_PYTHON_PyGILState_Check() (true)
 #else
-#define FOLLY_PYHON_PyGILState_Check() PyGILState_Check()
+#define FOLLY_PYTHON_PyGILState_Check() PyGILState_Check()
+#endif
+
+#if PY_VERSION_HEX < 0x030D0000
+#define FOLLY_PYTHON_get_thread_state_unchecked() _PyThreadState_UncheckedGet()
+#else
+#define FOLLY_PYTHON_get_thread_state_unchecked() PyThreadState_GetUnchecked()
 #endif
 
 namespace folly::python {
@@ -49,7 +55,11 @@ std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
       [](void* /* buf */, void* userData) {
         auto* py_data = (PyBufferData*)userData;
         auto* pyObject = py_data->py_object;
-        if (FOLLY_PYHON_PyGILState_Check()) {
+        // Just checking whether we have GIL is insufficient, we also need to
+        // make sure that Python state is still valid. Otherwise, we can think
+        // that we have the GIL while the interpreter is actually shutting down.
+        if (FOLLY_PYTHON_get_thread_state_unchecked() &&
+            FOLLY_PYTHON_PyGILState_Check()) {
           Py_DECREF(pyObject);
         } else if (py_data->executor) {
           py_data->executor->add([pyObject]() mutable { Py_DECREF(pyObject); });
