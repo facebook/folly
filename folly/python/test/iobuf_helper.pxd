@@ -15,7 +15,14 @@
 from libcpp.memory cimport unique_ptr
 from folly.iobuf cimport cIOBuf
 from libcpp.string cimport string
+from cpython.ref cimport PyObject
+from libc.stdint cimport uint64_t, int32_t
 
 cdef extern from "folly/python/test/IOBufTestUtils.h" namespace "folly::python":
     cdef string to_uppercase_string_cpp(object iobuf) except *
     cdef string to_uppercase_string_cpp_heap(object iobuf) except *
+    void wrap_and_delayed_free_cpp(PyObject*, void*, uint64_t, int32_t) except *
+
+
+cdef extern from "Python.h":
+    cdef int PyBUF_C_CONTIGUOUS

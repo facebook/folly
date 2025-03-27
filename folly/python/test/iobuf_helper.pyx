@@ -15,6 +15,8 @@
 # distutils: language=c++
 
 from folly.iobuf cimport from_unique_ptr, createChain, IOBuf, WritableIOBuf, writable_from_unique_ptr
+from cython.view cimport memoryview
+from builtins import memoryview as py_memoryview
 
 def get_empty_chain():
     return from_unique_ptr(createChain(1024, 128))
@@ -49,3 +51,11 @@ def to_uppercase_string(iobuf: object) -> str:
 
 def to_uppercase_string_heap(iobuf: object) -> str:
     return to_uppercase_string_cpp_heap(iobuf).decode("utf-8")
+
+def wrap_and_delayed_free(mv: py_memoryview, free_delay_ms: int):
+    cdef memoryview view = memoryview(mv, PyBUF_C_CONTIGUOUS)
+    wrap_and_delayed_free_cpp(
+        <PyObject*>mv,
+        view.view.buf,
+        view.view.len,
+        free_delay_ms)

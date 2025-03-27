@@ -19,7 +19,9 @@
 #include <algorithm>
 #include <cctype>
 
+#include <folly/executors/GlobalExecutor.h>
 #include <folly/python/iobuf.h>
+#include <folly/python/iobuf_ext.h>
 
 namespace folly::python {
 
@@ -41,6 +43,15 @@ std::string to_uppercase_string_cpp_heap(PyObject* o_iobuf) {
   }
   std::transform(s.begin(), s.end(), s.begin(), ::toupper);
   return s;
+}
+
+void wrap_and_delayed_free_cpp(
+    PyObject* memoryview, void* buf, uint64_t length, int32_t delayMs) {
+  auto executor = folly::getGlobalCPUExecutor();
+  auto iobuf = iobuf_from_memoryview(executor.get(), memoryview, buf, length);
+  executor->add([delayMs, iobuf = std::move(iobuf)]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
+  });
 }
 
 } // namespace folly::python

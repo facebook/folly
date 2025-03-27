@@ -28,4 +28,7 @@ namespace folly::python {
 std::string to_uppercase_string_cpp(PyObject* iobuf);
 std::string to_uppercase_string_cpp_heap(PyObject* o_iobuf);
 
+void wrap_and_delayed_free_cpp(
+    PyObject* memoryview, void* buf, uint64_t length, int32_t delayMs);
+
 } // namespace folly::python

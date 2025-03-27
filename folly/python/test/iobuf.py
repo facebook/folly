@@ -28,6 +28,7 @@ from folly.python.test.iobuf_helper import (
     make_chain,
     to_uppercase_string,
     to_uppercase_string_heap,
+    wrap_and_delayed_free,
 )
 
 
@@ -152,6 +153,19 @@ class IOBufTests(unittest.TestCase):
                 str(e),
                 "index out of bounds on dimension 1",
             )
+
+    @unittest.skip("Will be fixed in a future diff")
+    def test_delayed_free_in_cpp(self) -> None:
+        """
+        Delays "giving back" the reference to memory view to Python, so that
+        folly::IOBuf free function is executed after this test is done.
+        What happens is that https://fburl.com/code/t38bo0vg is running on a
+        C++ thread while Python interpreter is shutting down.
+        I suspect that it causes https://fburl.com/code/zip8hjif check to succed,
+        so that every thread thinks that it's holding GIL.
+        """
+        data = b"1234567890"
+        wrap_and_delayed_free(mv=memoryview(data), free_delay_ms=1000)
 
 
 class WritableIOBufTests(unittest.TestCase):
