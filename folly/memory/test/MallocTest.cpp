@@ -21,54 +21,6 @@
 
 namespace folly {
 
-TEST(MallocTest, naiveGoodMallocSizeMatchesJEMalloc) {
-  if (!usingJEMalloc()) {
-    return;
-  }
-
-  EXPECT_EQ(naiveGoodMallocSize(0), 0);
-
-  size_t s = 1;
-  while (s < 1025) {
-    EXPECT_EQ(naiveGoodMallocSize(s), nallocx(s, 0)) << "s == " << s;
-    s++;
-  }
-
-  while (s < (1ULL << 60)) {
-    EXPECT_EQ(naiveGoodMallocSize(s - 1), nallocx(s - 1, 0)) << "s == " << s;
-    EXPECT_EQ(naiveGoodMallocSize(s), nallocx(s, 0)) << "s == " << s;
-    EXPECT_EQ(naiveGoodMallocSize(s + 1), nallocx(s + 1, 0)) << "s == " << s;
-    s = nallocx(s + 1, 0);
-  }
-}
-
-template <typename T, size_t kGoodSize = naiveGoodMallocSize(sizeof(T))>
-struct GoodSizeConstexprChecker {
-  static constexpr size_t value() { return kGoodSize; }
-};
-
-// This is a compilation check to make sure large and small calls can be used
-// in constexpr contexts.
-TEST(MallocTest, staticConstexprCheck) {
-  static constexpr int kSmall = 17;
-  static constexpr int kLarge = 217;
-
-  struct SmallStruct {
-    char array[kSmall];
-  };
-
-  struct LargeStruct {
-    char array[kLarge];
-  };
-
-  EXPECT_EQ(
-      GoodSizeConstexprChecker<SmallStruct>::value(),
-      naiveGoodMallocSize(kSmall));
-  EXPECT_EQ(
-      GoodSizeConstexprChecker<LargeStruct>::value(),
-      naiveGoodMallocSize(kLarge));
-}
-
 TEST(MallocTest, getJEMallocMallctlArenasAll) {
   SKIP_IF(!usingJEMalloc());
 

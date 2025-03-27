@@ -26,13 +26,8 @@
 #include <stdexcept>
 
 #include <folly/Portability.h>
-#include <folly/lang/Bits.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/Malloc.h>
-
-#ifdef __BMI2__
-#include <immintrin.h>
-#endif
 
 /**
  * Define various MALLOCX_* macros normally provided by jemalloc.  We define
@@ -294,81 +289,6 @@ inline bool canSdallocx() noexcept {
  */
 inline bool canNallocx() noexcept {
   return detail::usingJEMallocOrTCMalloc();
-}
-
-/**
- * @brief Return the same size class values as nallocx from jemalloc.
- *
- * This doesn't require that the system is using jemalloc.
- *
- * @param minSize Requested size for allocation
- * @return size_t
- */
-inline constexpr size_t naiveGoodMallocSize(size_t minSize) noexcept {
-  // The spacing increases by a power-of-two and there are generally four size
-  // classes per spacing. The exception is that there is one size class with a
-  // spacing of 8 and seven size classes with a spacing of 16.
-  //
-  // From https://jemalloc.net/jemalloc.3.html, here is the entire table:
-  // Spacing Size
-  // lg      [8]
-  // 16      [16, 32, 48, 64, 80, 96, 112, 128]
-  // 32      [160, 192, 224, 256]
-  // 64      [320, 384, 448, 512]
-  // 128     [640, 768, 896, 1024]
-  // 256     [1280, 1536, 1792, 2048]
-  // 512     [2560, 3072, 3584, 4096]
-  // 1 KiB   [5 KiB, 6 KiB, 7 KiB, 8 KiB]
-  // 2 KiB   [10 KiB, 12 KiB, 14 KiB, 16 KiB]
-  // 4 KiB   [20 KiB, 24 KiB, 28 KiB, 32 KiB]
-  // 8 KiB   [40 KiB, 48 KiB, 56 KiB, 64 KiB]
-  // 16 KiB  [80 KiB, 96 KiB, 112 KiB, 128 KiB]
-  // 32 KiB  [160 KiB, 192 KiB, 224 KiB, 256 KiB]
-  // 64 KiB  [320 KiB, 384 KiB, 448 KiB, 512 KiB]
-  // 128 KiB [640 KiB, 768 KiB, 896 KiB, 1 MiB]
-  // 256 KiB [1280 KiB, 1536 KiB, 1792 KiB, 2 MiB]
-  // 512 KiB [2560 KiB, 3 MiB, 3584 KiB, 4 MiB]
-  // 1 MiB   [5 MiB, 6 MiB, 7 MiB, 8 MiB]
-  // 2 MiB   [10 MiB, 12 MiB, 14 MiB, 16 MiB]
-  // 4 MiB   [20 MiB, 24 MiB, 28 MiB, 32 MiB]
-  // 8 MiB   [40 MiB, 48 MiB, 56 MiB, 64 MiB]
-  // ...  ...
-  // 512 PiB [2560 PiB, 3 EiB, 3584 PiB, 4 EiB]
-  // 1 EiB   [5 EiB, 6 EiB, 7 EiB]
-  //
-  // While nallocx(0, 0) is undefined, naiveGoodMallocSize will return 0 for
-  // this special case.
-  //
-  // The check for values less-than or equal-to 128 is to handle the odd first
-  // 8 size classes. The code will still work for any value in the range [56,
-  // 128], but using the largest range possible avoids the prevPowTwo code
-  // whenever possible.
-  //
-  // For all other size classes, the spacing can be found by approximately
-  // dividing minSize by 8. The prevPowTwo takes the ceiling of one division by
-  // 2 and the shift performs the remaining division by 4.
-  //
-  // Once the spacing is known, the final step is to round minSize up to the
-  // next multiple of that spacing value.
-  size_t spacing = 0;
-  if (minSize <= 128) {
-    spacing = 8 + 8 * (minSize > 8);
-    spacing -= 1;
-    return (minSize + spacing) & (~(spacing));
-  }
-
-#if defined(__BMI2__) && FOLLY_CPLUSPLUS >= 202002L
-  auto a = findLastSet(minSize) - 3;
-  if (std::is_constant_evaluated()) {
-    spacing = 0xFFFFFFFFFFFFFFFF & ((uint64_t(1) << a) - 1);
-  } else {
-    spacing = _bzhi_u64(0xFFFFFFFFFFFFFFFF, a);
-  }
-#else
-  spacing = prevPowTwo(minSize) >> 2;
-  spacing -= 1;
-#endif
-  return (minSize + spacing) & (~(spacing));
 }
 
 /**

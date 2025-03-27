@@ -71,15 +71,11 @@ void uniform_0_128(size_t iters, size_t (*nallocxLike)(size_t)) {
 }
 
 BENCHMARK_NAMED_PARAM(powerLaw, nallocx, [](size_t s) { return nallocx(s, 0); })
-BENCHMARK_RELATIVE_NAMED_PARAM(
-    powerLaw, naiveGoodMallocSize, folly::naiveGoodMallocSize)
 BENCHMARK_RELATIVE_NAMED_PARAM(powerLaw, goodMallocSize, folly::goodMallocSize)
 
 BENCHMARK_NAMED_PARAM(uniform_0_128, nallocx, [](size_t s) {
   return nallocx(s, 0);
 })
-BENCHMARK_RELATIVE_NAMED_PARAM(
-    uniform_0_128, naiveGoodMallocSize, folly::naiveGoodMallocSize)
 BENCHMARK_RELATIVE_NAMED_PARAM(
     uniform_0_128, goodMallocSize, folly::goodMallocSize)
 
