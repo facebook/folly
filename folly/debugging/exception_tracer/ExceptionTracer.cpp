@@ -29,11 +29,13 @@
 #include <folly/debugging/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
+#if __has_include(<dlfcn.h>)
+#include <dlfcn.h>
+#endif
+
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 #if defined(__GLIBCXX__)
-
-#include <dlfcn.h>
 
 namespace {
 

@@ -23,9 +23,11 @@
 #include <folly/SharedMutex.h>
 #include <folly/Synchronized.h>
 
-#if defined(__GLIBCXX__)
-
+#if __has_include(<dlfcn.h>)
 #include <dlfcn.h>
+#endif
+
+#if defined(__GLIBCXX__)
 
 namespace __cxxabiv1 {
 
