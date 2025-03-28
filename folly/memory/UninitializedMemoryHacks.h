@@ -269,17 +269,6 @@ struct MakeUnsafeStringSetLargerSize {
   }
 };
 
-#if _MSC_VER < 1939
-#define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)          \
-  template void std::basic_string<TYPE>::_Eos(std::size_t)      \
-                                    noexcept(_MSC_VER >= 1937); \
-  template struct folly::detail::MakeUnsafeStringSetLargerSize< \
-      FollyMemoryDetailTranslationUnitTag,                      \
-      TYPE,                                                     \
-      void (std::basic_string<TYPE>::*)(std::size_t),           \
-      &std::basic_string<TYPE>::_Eos>;                          \
-  FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
-#else
 #define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)          \
   template struct folly::detail::MakeUnsafeStringSetLargerSize< \
       FollyMemoryDetailTranslationUnitTag,                      \
@@ -287,7 +276,6 @@ struct MakeUnsafeStringSetLargerSize {
       void (std::basic_string<TYPE>::*)(std::size_t),           \
       &std::basic_string<TYPE>::_Eos>;                          \
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
-#endif // _MSC_VER < 1939
 #else
 #warning \
     "No implementation for resizeWithoutInitialization of std::basic_string"
