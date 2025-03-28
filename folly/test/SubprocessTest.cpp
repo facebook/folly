@@ -397,7 +397,7 @@ TEST(SimpleSubprocessTest, TerminateAfterProcessExit) {
 TEST(SimpleSubprocessTest, TerminateWithoutKill) {
   // Start a bash process that would sleep for 60 seconds, and the
   // default signal handler should exit itself upon receiving SIGTERM.
-  auto const opts = Subprocess::Options().pipeStdout().pipeStderr();
+  auto const opts = Subprocess::Options().pipeStdin().pipeStdout().pipeStderr();
   Subprocess proc(std::vector<std::string>{"/bin/cat"}, opts);
   auto retCode = proc.terminateOrKill(1s);
   EXPECT_TRUE(retCode.killed());
@@ -407,7 +407,7 @@ TEST(SimpleSubprocessTest, TerminateWithoutKill) {
 TEST(SimpleSubprocessTest, TerminateOrKillZeroTimeout) {
   // Using terminateOrKill() with a 0s timeout should immediately kill the
   // process with SIGKILL without bothering to attempt SIGTERM.
-  auto const opts = Subprocess::Options().pipeStdout().pipeStderr();
+  auto const opts = Subprocess::Options().pipeStdin().pipeStdout().pipeStderr();
   Subprocess proc(std::vector<std::string>{"/bin/cat"}, opts);
   auto retCode = proc.terminateOrKill(0s);
   EXPECT_TRUE(retCode.killed());
