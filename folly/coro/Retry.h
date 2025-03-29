@@ -140,7 +140,9 @@ class RetryImmediatelyWithLimit {
 };
 
 struct AlwaysRetry {
-  bool operator()(const folly::exception_wrapper&) noexcept { return true; }
+  bool operator()(const folly::exception_wrapper&) const noexcept {
+    return true;
+  }
 };
 
 } // namespace detail
