@@ -38,6 +38,7 @@
 #include <folly/gen/String.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 #include <folly/testing/TestUtil.h>
 

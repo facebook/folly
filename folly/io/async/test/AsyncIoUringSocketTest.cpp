@@ -715,7 +715,7 @@ std::string randomString(size_t n) {
   std::random_device r;
   std::default_random_engine e1(r());
 
-  std::uniform_int_distribution<char> uniform_dist('A', 'Z');
+  std::uniform_int_distribution<int8_t> uniform_dist('A', 'Z');
 
   std::string ret;
   ret.reserve(n);

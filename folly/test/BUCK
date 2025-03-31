@@ -1633,6 +1633,7 @@ cpp_unittest(
         "//folly/gen:string",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/portability:sys_syscall",
         "//folly/portability:unistd",
         "//folly/testing:test_util",
     ],

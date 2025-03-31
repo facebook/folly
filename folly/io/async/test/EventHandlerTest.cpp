@@ -245,7 +245,7 @@ class EventHandlerOobTest : public ::testing::Test {
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_family = AF_INET;
 
-    PCHECK(bind(listenfd, (struct sockaddr*)&sin, sizeof(sin)) >= 0)
+    PCHECK(::bind(listenfd, (struct sockaddr*)&sin, sizeof(sin)) >= 0)
         << "Can't bind to port";
     listen(listenfd, 5);
 
