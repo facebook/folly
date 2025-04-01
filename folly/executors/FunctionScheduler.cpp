@@ -112,6 +112,7 @@ FunctionScheduler::FunctionScheduler() = default;
 FunctionScheduler::~FunctionScheduler() {
   // make sure to stop the thread (if running)
   shutdown();
+  clearHeap();
 }
 
 void FunctionScheduler::addFunction(
@@ -243,7 +244,7 @@ void FunctionScheduler::addFunctionToHeapChecked(
   std::unique_lock<std::mutex> l(mutex_);
   auto it = functionsMap_.find(nameID);
   // check if the nameID is unique
-  if (it != functionsMap_.end() && it->second->isValid()) {
+  if (it != functionsMap_.end()) {
     throw std::invalid_argument(to<std::string>(
         "FunctionScheduler: a function named \"", nameID, "\" already exists"));
   }
@@ -290,7 +291,8 @@ bool FunctionScheduler::cancelFunctionWithLock(
     std::unique_lock<std::mutex>& lock, StringPiece nameID) {
   CHECK_EQ(lock.owns_lock(), true);
   if (currentFunction_ && currentFunction_->name == nameID) {
-    functionsMap_.erase(currentFunction_->name);
+    auto erased = functionsMap_.erase(currentFunction_->name);
+    DCHECK_NE(erased, 0);
     // This function is currently being run. Clear currentFunction_
     // The running thread will see this and won't reschedule the function.
     currentFunction_ = nullptr;
@@ -306,7 +308,7 @@ bool FunctionScheduler::cancelFunction(StringPiece nameID) {
     return true;
   }
   auto it = functionsMap_.find(nameID);
-  if (it != functionsMap_.end() && it->second->isValid()) {
+  if (it != functionsMap_.end()) {
     cancelFunction(l, it->second);
     return true;
   }
@@ -323,7 +325,7 @@ bool FunctionScheduler::cancelFunctionAndWait(StringPiece nameID) {
   }
 
   auto it = functionsMap_.find(nameID);
-  if (it != functionsMap_.end() && it->second->isValid()) {
+  if (it != functionsMap_.end()) {
     cancelFunction(l, it->second);
     return true;
   }
@@ -336,13 +338,14 @@ void FunctionScheduler::cancelFunction(
   DCHECK(l.mutex() == &mutex_);
   DCHECK(l.owns_lock());
   functionsMap_.erase(it->name);
-  it->cancel();
+  functions_.erase(it);
+  delete it;
 }
 
 bool FunctionScheduler::cancelAllFunctionsWithLock(
     std::unique_lock<std::mutex>& lock) {
   CHECK_EQ(lock.owns_lock(), true);
-  functions_.clear();
+  clearHeap();
   functionsMap_.clear();
   if (currentFunction_) {
     cancellingCurrentFunction_ = true;
@@ -373,14 +376,11 @@ bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
     return true;
   }
 
-  // Since __adjust_heap() isn't a part of the standard API, there's no way to
-  // fix the heap ordering if we adjust the key (nextRunTime) for the existing
-  // RepeatFunc. Instead, we just cancel it and add an identical object.
   auto it = functionsMap_.find(nameID);
-  if (it != functionsMap_.end() && it->second->isValid()) {
+  if (it != functionsMap_.end()) {
     if (running_) {
       it->second->resetNextRunTime(steady_clock::now());
-      std::make_heap(functions_.begin(), functions_.end(), fnCmp_);
+      functions_.update(it->second);
       runningCondvar_.notify_one();
     }
     return true;
@@ -394,18 +394,17 @@ bool FunctionScheduler::start() {
     return false;
   }
 
-  VLOG(1) << "Starting FunctionScheduler with " << functions_.size()
+  VLOG(1) << "Starting FunctionScheduler with " << functionsMap_.size()
           << " functions.";
   auto now = steady_clock::now();
   // Reset the next run time. for all functions.
   // note: this is needed since one can shutdown() and start() again
-  for (const auto& f : functions_) {
+  functions_.visit([&now](RepeatFunc* f) {
     f->resetNextRunTime(now);
     VLOG(1) << "   - func: " << (f->name.empty() ? "(anon)" : f->name.c_str())
             << ", period = " << f->intervalDescr
             << ", delay = " << f->startDelay.count() << "us";
-  }
-  std::make_heap(functions_.begin(), functions_.end(), fnCmp_);
+  });
 
   thread_ = std::thread([&] { this->run(); });
   running_ = true;
@@ -441,17 +440,7 @@ void FunctionScheduler::run() {
     }
 
     auto now = steady_clock::now();
-
-    const auto& top = functions_.front();
-    // Check to see if the function was cancelled.
-    // If so, just remove it and continue around the loop.
-    if (!top->isValid()) {
-      std::pop_heap(functions_.begin(), functions_.end(), fnCmp_);
-      functions_.pop_back();
-      continue;
-    }
-
-    auto sleepTime = top->getNextRunTime() - now;
+    auto sleepTime = functions_.top()->getNextRunTime() - now;
     if (sleepTime <= steady_clock::duration::zero()) {
       // We need to run this function now
       runOneFunction(lock, now);
@@ -470,13 +459,7 @@ void FunctionScheduler::runOneFunction(
   // Pop the function from the heap: we need to release mutex_ while we invoke
   // this function, and we need to maintain the heap property on functions_
   // while mutex_ is unlocked.
-  std::pop_heap(functions_.begin(), functions_.end(), fnCmp_);
-  auto func = std::move(functions_.back());
-  functions_.pop_back();
-  if (!func->cb) {
-    VLOG(5) << func->name << "function has been canceled while waiting";
-    return;
-  }
+  auto func = std::unique_ptr<RepeatFunc>(functions_.pop());
   currentFunction_ = func.get();
   // Update the function's next run time.
   if (steady_) {
@@ -513,23 +496,11 @@ void FunctionScheduler::runOneFunction(
     return;
   }
   if (currentFunction_->runOnce) {
-    // Don't reschedule if the function only needed to run once.
     functionsMap_.erase(currentFunction_->name);
-    currentFunction_ = nullptr;
-    return;
+  } else {
+    functions_.push(func.release());
   }
-
-  // Re-insert the function into our functions_ heap.
-  // We only maintain the heap property while running_ is set.  (running_ may
-  // have been cleared while we were invoking the user's function.)
-  functions_.push_back(std::move(func));
-
-  // Clear currentFunction_
   currentFunction_ = nullptr;
-
-  if (running_) {
-    std::push_heap(functions_.begin(), functions_.end(), fnCmp_);
-  }
 }
 
 void FunctionScheduler::addFunctionToHeap(
@@ -539,11 +510,10 @@ void FunctionScheduler::addFunctionToHeap(
   DCHECK(lock.mutex() == &mutex_);
   DCHECK(lock.owns_lock());
 
-  functions_.push_back(std::move(func));
-  functionsMap_[functions_.back()->name] = functions_.back().get();
+  func->resetNextRunTime(steady_clock::now());
+  functionsMap_.emplace(func->name, func.get());
+  functions_.push(func.release()); // heap takes ownership
   if (running_) {
-    functions_.back()->resetNextRunTime(steady_clock::now());
-    std::push_heap(functions_.begin(), functions_.end(), fnCmp_);
     // Signal the running thread to wake up and see if it needs to change
     // its current scheduling decision.
     runningCondvar_.notify_one();
@@ -553,6 +523,12 @@ void FunctionScheduler::addFunctionToHeap(
 void FunctionScheduler::setThreadName(StringPiece threadName) {
   std::unique_lock<std::mutex> l(mutex_);
   threadName_ = threadName.str();
+}
+
+void FunctionScheduler::clearHeap() {
+  while (auto top = functions_.pop()) {
+    delete top;
+  }
 }
 
 } // namespace folly

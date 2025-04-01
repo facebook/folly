@@ -187,6 +187,57 @@ TEST(FunctionScheduler, AddCancel2) {
   EXPECT_EQ(3, selfCancelCount);
 }
 
+TEST(FunctionScheduler, AddCancelInitialDelayStress) {
+  FunctionScheduler fs;
+  folly::Baton<> startTest;
+  fs.addFunctionOnce([&] { startTest.wait(); }, "entryBarrier");
+  fs.start();
+
+  auto seed = folly::randomNumberSeed();
+  LOG(INFO) << "seed: " << seed;
+  std::mt19937 rng(seed);
+  auto numFunctions = folly::Random::rand32(1, 1000, rng);
+  std::vector<int64_t> indices(numFunctions);
+  std::iota(indices.begin(), indices.end(), 1);
+
+  int64_t lastIndexRan{0};
+  auto addFunction = [&](int64_t index, bool removeBeforeAdding) {
+    std::string name = fmt::format("f{}", index);
+    if (removeBeforeAdding) {
+      fs.cancelFunction(name);
+    }
+    fs.addFunctionOnce(
+        [&, index = index] {
+          EXPECT_LT(lastIndexRan, index);
+          lastIndexRan = index;
+        },
+        name,
+        std::chrono::milliseconds(index * 50));
+  };
+
+  std::shuffle(indices.begin(), indices.end(), rng);
+  for (int idx : indices) {
+    addFunction(idx, false);
+  }
+  std::shuffle(indices.begin(), indices.end(), rng);
+  for (int idx : indices) {
+    if (folly::Random::oneIn(2, rng)) {
+      addFunction(idx, true);
+    }
+    if (folly::Random::oneIn(7, rng)) {
+      fs.cancelFunction(fmt::format("f{}", idx));
+    }
+  }
+  folly::Baton<> finishTest;
+  fs.addFunctionOnce(
+      [&] { finishTest.post(); },
+      "exitBarrier",
+      std::chrono::milliseconds(numFunctions * 60));
+  startTest.post();
+  finishTest.wait();
+  fs.shutdown();
+}
+
 TEST(FunctionScheduler, AddMultiple) {
   atomic<int> total{0};
   FunctionScheduler fs;

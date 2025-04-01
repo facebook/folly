@@ -20,11 +20,11 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <vector>
 
 #include <folly/Function.h>
 #include <folly/Range.h>
 #include <folly/container/F14Map.h>
+#include <folly/container/IntrusiveHeap.h>
 #include <folly/hash/Hash.h>
 
 namespace folly {
@@ -247,7 +247,7 @@ class FunctionScheduler {
   void setThreadName(StringPiece threadName);
 
  private:
-  struct RepeatFunc {
+  struct RepeatFunc : public IntrusiveHeapNode<> {
     Function<void()> cb;
     NextRunTimeFunc nextRunTimeFunc;
     std::chrono::steady_clock::time_point nextRunTime;
@@ -307,23 +307,7 @@ class FunctionScheduler {
     void resetNextRunTime(std::chrono::steady_clock::time_point curTime) {
       nextRunTime = curTime + startDelay;
     }
-    void cancel() {
-      // Simply reset cb to an empty function.
-      cb = {};
-    }
-    bool isValid() const { return bool(cb); }
   };
-
-  struct RunTimeOrder {
-    bool operator()(
-        const std::unique_ptr<RepeatFunc>& f1,
-        const std::unique_ptr<RepeatFunc>& f2) const {
-      return f1->getNextRunTime() > f2->getNextRunTime();
-    }
-  };
-
-  using FunctionHeap = std::vector<std::unique_ptr<RepeatFunc>>;
-  using FunctionMap = folly::F14FastMap<StringPiece, RepeatFunc*, Hash>;
 
   void run();
   void runOneFunction(
@@ -363,17 +347,23 @@ class FunctionScheduler {
   bool cancelFunctionWithLock(
       std::unique_lock<std::mutex>& lock, StringPiece nameID);
 
+  void clearHeap();
+
   std::thread thread_;
 
   // Mutex to protect our member variables.
   std::mutex mutex_;
   bool running_{false};
 
-  // The functions to run.
-  // This is a heap, ordered by next run time.
+  struct RunTimeOrder {
+    bool operator()(const RepeatFunc& f1, const RepeatFunc& f2) const {
+      return f1.getNextRunTime() > f2.getNextRunTime();
+    }
+  };
+  using FunctionHeap = IntrusiveHeap<RepeatFunc, RunTimeOrder>;
+  using FunctionMap = folly::F14FastMap<StringPiece, RepeatFunc*, Hash>;
   FunctionHeap functions_;
   FunctionMap functionsMap_;
-  RunTimeOrder fnCmp_;
 
   // The function currently being invoked by the running thread.
   // This is null when the running thread is idle
