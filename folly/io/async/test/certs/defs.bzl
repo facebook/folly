@@ -8,9 +8,9 @@ def alias_pem(pems: list[str]):
         )
 
 def alias_pem_for_xplat(pems: list[str]):
-    # in xplat these pem files are exported in //xplat/folly/io/async/test
+    # in xplat these pem files are exported in //xplat/folly/io/async/test/certs
     for pem in pems:
         alias(
             name = pem,
-            actual = "//xplat/folly/io/async/test:certs/{pem}".format(pem = pem),
+            actual = "//xplat/folly/io/async/test/certs:{pem}".format(pem = pem),
         )
