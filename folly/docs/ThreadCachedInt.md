@@ -3,7 +3,7 @@
 
 High-performance atomic increment using thread caching.
 
-`folly/ThreadCachedInt.h` introduces a integer class designed for high
+`folly/ThreadCachedInt.h` introduces an integer class designed for high
 performance increments from multiple threads simultaneously without
 loss of precision.  It has two read modes, `readFast` gives a potentially stale
 value with one load, and `readFull` gives the exact value, but is much slower,
@@ -61,7 +61,7 @@ accumulating the counters along with the global counter.  This also means that
 the first use of the object from a new thread will acquire the mutex in order to
 insert the thread local reference into the list.  By default, there is one
 global mutex per integer type used in `ThreadCachedInt`.  If you plan on using a
-lot of `ThreadCachedInt`s in your application, considering breaking up the
+lot of `ThreadCachedInt`s in your application, consider breaking up the
 global mutex by introducing additional `Tag` template parameters.
 
 `set` simply sets the global counter value, and marks all the thread local
@@ -86,7 +86,7 @@ atomic increments, and `readFull` just sums up all the ints.
 This sounds great, but in order to get the contention low enough to get similar
 performance as ThreadCachedInt with 24 threads, `ShardedAtomicInt` needs about
 2000 ints to hash across.  This uses about 20x more memory, and the lock-free
-`readFull` has to sum up all 2048 ints, which ends up being a about 50x slower
+`readFull` has to sum up all 2048 ints, which ends up being about 50x slower
 than `ThreadCachedInt` in low contention situations, which is hopefully the
 common case since it's designed for high-write, low read access patterns.
 Performance of `readFull` is about the same speed as `ThreadCachedInt` in high
