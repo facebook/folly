@@ -18,13 +18,9 @@
 
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/fdsock/SocketFds.h>
+#include <folly/portability/GTestProd.h>
 
 namespace folly {
-
-// Including `gtest/gtest_prod.h` would make gtest/gmock a hard dep
-// of the OSS build, which we do not want.
-#define _FRIEND_TEST_FOR_ASYNC_FD_SOCKET(test_case_name, test_name) \
-  friend class test_case_name##_##test_name##_Test
 
 /**
  * Intended for use with Unix sockets. Unlike regular `AsyncSocket`:
@@ -82,8 +78,7 @@ class AsyncFdSocket : public AsyncSocket {
   struct DoesNotMoveFdSocketState {};
 
  protected:
-  _FRIEND_TEST_FOR_ASYNC_FD_SOCKET(
-      AsyncFdSocketSequenceRoundtripTest, WithDataSize);
+  FOLLY_GTEST_FRIEND_TEST(AsyncFdSocketSequenceRoundtripTest, WithDataSize);
   // Protected since it's easy to accidentally pass an `AsyncFdSocket` here,
   // a scenario that's extremely easy to use incorrectly.
   AsyncFdSocket(DoesNotMoveFdSocketState, AsyncSocket*);
@@ -247,7 +242,7 @@ class AsyncFdSocket : public AsyncSocket {
   // E.g. addSeqNum(MAX - 1, 3) == 1.
   static SocketFds::SeqNum addSeqNum(
       SocketFds::SeqNum, SocketFds::SeqNum) noexcept;
-  _FRIEND_TEST_FOR_ASYNC_FD_SOCKET(AsyncFdSocketTest, TestAddSeqNum);
+  FOLLY_GTEST_FRIEND_TEST(AsyncFdSocketTest, TestAddSeqNum);
 
   FdSendMsgParamsCallback sendMsgCob_;
   std::queue<SocketFds> fdsQueue_; // must outlive readAncillaryDataCob_
