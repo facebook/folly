@@ -366,7 +366,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * sets the callback assign function
    */
-  void setCallbackAssignFunction(CallbackAssignFunction&& func) {
+  void setCallbackAssignFunction(CallbackAssignFunction func) {
     callbackAssignFunc_ = std::move(func);
   }
 
