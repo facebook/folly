@@ -587,6 +587,78 @@ T* exception_ptr_get_object_hint(std::exception_ptr const& ptr) noexcept {
   return exception_ptr_get_object_hint<T>(ptr, hints{});
 }
 
+/// get_exception_tag_t
+///
+/// Passkey: To extend `folly::get_exception<Ex>()`, a type must have the member
+/// `get_exception<Ex>(get_exception_tag_t)`.
+struct get_exception_tag_t {};
+
+/// get_exception_fn
+/// get_exception
+///
+/// `get_exception<Ex>(v)` is meant to become a uniform way for accessing
+/// exception-containers in `folly`.  It returns:
+///   - `nullptr` if `v` is of a variant type, but is not in an "error" state,
+///   - A pointer to the `Ex` held by `v`, if it holds an error whose type
+///     `From` permits `std::is_convertible<From*, Ex*>`,
+///   - `nullptr` for errors incompatible with `Ex*`.
+///
+/// In addition to the `std::exception_ptr` support above, a type can support
+/// this verb by providing a `get_exception<Ex>(get_exception_tag_t)` member.
+/// For an example, see `ExceptionWrapper.h`. Requirements:
+///   - `noexcept`
+///   - `const`-correct
+///   - returns `Ex*` or `const Ex*` depending on the overload.
+///
+/// This is most efficient when `Ex` matches the exact stored type, or when the
+/// type alias `Ex::folly_get_exception_hint_types` has a good hint.
+///
+/// NB: `Try<T>` currently omits `get_exception(get_exception_tag_t)`, because
+/// supporting it might encourage "empty state" bugs:
+///
+///   if (auto* ex = get_exception<MyError>(tryData)) {
+///     // handle error
+///   } else {
+///     doStuff(tryData.value()); // Oops, may throw `UsingUninitializedTry`!
+///   }
+template <typename Ex>
+class get_exception_fn {
+ private:
+  template <typename CEx, typename SrcRef>
+  CEx* impl(SrcRef src) const noexcept {
+    using Src = remove_cvref_t<SrcRef>;
+    if constexpr (std::is_same_v<Src, std::exception_ptr>) {
+      return exception_ptr_get_object_hint<CEx>(src);
+    } else {
+      constexpr get_exception_tag_t passkey;
+      static_assert( // Return type & `noexcept`ness must match
+          std::is_same_v<
+              CEx*,
+              decltype(src.template get_exception<Ex>(passkey))> &&
+          noexcept(noexcept(src.template get_exception<Ex>(passkey))));
+      return src.template get_exception<Ex>(passkey);
+    }
+  }
+
+ public:
+  template <typename Src>
+  const Ex* operator()(const Src& src) const noexcept {
+    return impl<const Ex, const Src&>(src);
+  }
+  template <typename Src>
+  Ex* operator()(Src& src) const noexcept {
+    return impl<Ex, Src&>(src);
+  }
+  // It is unsafe to use `get_exception()` to get a pointer into an rvalue.
+  // If you know what you're doing, add a `static_cast`.
+  template <typename Src>
+  void operator()(Src&&) const noexcept = delete;
+  template <typename Src> // NB: Actually, redundant with `Src&&` overload.
+  void operator()(const Src&&) const noexcept = delete;
+};
+template <typename Ex = std::exception>
+inline constexpr get_exception_fn<Ex> get_exception{};
+
 namespace detail {
 
 struct make_exception_ptr_with_arg_ {

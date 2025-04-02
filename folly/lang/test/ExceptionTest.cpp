@@ -421,6 +421,56 @@ TEST_F(ExceptionTest, make_exception_ptr_with_in_place) {
   EXPECT_EQ(17, *folly::exception_ptr_get_object<int>(ptr));
 }
 
+TEST_F(ExceptionTest, get_exception_from_std_exception_ptr) {
+  using folly::get_exception;
+
+  static_assert(
+      std::is_invocable_v< //
+          folly::get_exception_fn<std::exception>,
+          std::exception_ptr&>);
+  static_assert(
+      std::is_invocable_v<
+          folly::get_exception_fn<std::exception>,
+          const std::exception_ptr&>);
+  // Unsafe to extract a pointer out of rvalues
+  static_assert(
+      !std::is_invocable_v<
+          folly::get_exception_fn<std::exception>,
+          std::exception_ptr&&>);
+  static_assert(
+      !std::is_invocable_v<
+          folly::get_exception_fn<std::exception>,
+          const std::exception_ptr&&>);
+
+  auto eptr = folly::make_exception_ptr_with([]() {
+    return std::runtime_error{"foo"};
+  });
+
+  EXPECT_EQ(nullptr, get_exception<std::system_error>(eptr));
+
+  EXPECT_STREQ("foo", get_exception<std::exception>(eptr)->what());
+  EXPECT_STREQ("foo", get_exception<const std::exception>(eptr)->what());
+  EXPECT_STREQ("foo", get_exception<>(eptr)->what());
+
+  EXPECT_STREQ("foo", get_exception<std::runtime_error>(eptr)->what());
+  EXPECT_EQ(
+      folly::exception_ptr_get_object<std::runtime_error>(eptr),
+      get_exception<std::runtime_error>(eptr));
+
+  static_assert(
+      std::is_same_v<
+          std::runtime_error*,
+          decltype(get_exception<std::runtime_error>(eptr))>);
+  static_assert(
+      std::is_same_v<
+          const std::runtime_error*,
+          decltype(get_exception<const std::runtime_error>(eptr))>);
+  static_assert(
+      std::is_same_v<
+          const std::runtime_error*,
+          decltype(get_exception<std::runtime_error>(std::as_const(eptr)))>);
+}
+
 TEST_F(ExceptionTest, exception_shared_string) {
   constexpr auto c = "hello, world!";
 

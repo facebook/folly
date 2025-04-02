@@ -374,6 +374,52 @@ TEST(ExceptionWrapper, withExceptionPtrAnyNilTest) {
   EXPECT_FALSE(ew.is_compatible_with<int>());
 }
 
+TEST(ExceptionWrapper, get_exception_from_exception_wrapper) {
+  static_assert(
+      std::is_invocable_v< //
+          get_exception_fn<std::exception>,
+          exception_wrapper&>);
+  static_assert(
+      std::is_invocable_v<
+          get_exception_fn<std::exception>,
+          const exception_wrapper&>);
+  // Unsafe to extract a pointer out of rvalues
+  static_assert(
+      !std::is_invocable_v<
+          get_exception_fn<std::exception>,
+          exception_wrapper&&>);
+  static_assert(
+      !std::is_invocable_v<
+          get_exception_fn<std::exception>,
+          const exception_wrapper&&>);
+
+  auto ew = make_exception_wrapper<std::runtime_error>("foo");
+
+  EXPECT_EQ(nullptr, get_exception<std::system_error>(ew));
+
+  EXPECT_STREQ("foo", get_exception<std::exception>(ew)->what());
+  EXPECT_STREQ("foo", get_exception<const std::exception>(ew)->what());
+  EXPECT_STREQ("foo", get_exception<>(ew)->what());
+
+  EXPECT_STREQ("foo", get_exception<std::runtime_error>(ew)->what());
+  EXPECT_EQ(
+      ew.get_exception<std::runtime_error>(),
+      get_exception<std::runtime_error>(ew));
+
+  static_assert(
+      std::is_same_v<
+          std::runtime_error*,
+          decltype(get_exception<std::runtime_error>(ew))>);
+  static_assert(
+      std::is_same_v<
+          const std::runtime_error*,
+          decltype(get_exception<const std::runtime_error>(ew))>);
+  static_assert(
+      std::is_same_v<
+          const std::runtime_error*,
+          decltype(get_exception<std::runtime_error>(std::as_const(ew)))>);
+}
+
 TEST(ExceptionWrapper, withExceptionDeduction) {
   auto ew = make_exception_wrapper<std::runtime_error>("hi");
   EXPECT_TRUE(ew.with_exception([](std::runtime_error&) {}));

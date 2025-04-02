@@ -214,6 +214,9 @@ class exception_wrapper final {
   //!     whose type `From` permits `std::is_convertible<From*, Ex*>`;
   //!     otherwise, returns `nullptr`.
   //!
+  //! `folly::get_exception<Ex>(ew)` is identical, but avoids the "dependent
+  //! template" wart, and supports inspecting other types.
+  //!
   //! This is most efficient when `Ex` matches the exact stored type, or when
   //! the type alias `Ex::folly_get_exception_hint_types` has a good hint.
   template <typename Ex>
@@ -330,6 +333,16 @@ class exception_wrapper final {
   //! \overload
   template <class... CatchFns>
   void handle(CatchFns... fns) const;
+
+  // Implementation of `folly::get_exception<Ex>(ew)`
+  template <typename Ex>
+  Ex* get_exception(get_exception_tag_t) noexcept {
+    return get_exception<Ex>();
+  }
+  template <typename Ex>
+  Ex const* get_exception(get_exception_tag_t) const noexcept {
+    return get_exception<Ex>();
+  }
 };
 
 /**
