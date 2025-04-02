@@ -16,11 +16,12 @@
 
 #include <cstring>
 
+// Optimized memchr_long is only availble for Linux/ARM64, use std::memchr instead on other platforms
 #if !(defined(__linux__) && defined(__aarch64__))
 
 namespace folly {
 
-extern "C" void* __folly_memchr(const void* ptr, int ch, std::size_t count) {
+extern "C" void* memchr_long(const void* ptr, int ch, std::size_t count) {
   return std::memchr(ptr, ch, count);
 }
 

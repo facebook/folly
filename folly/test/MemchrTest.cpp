@@ -33,7 +33,7 @@ void testMemchrImpl(uint8_t* buf, size_t maxLen) {
     }
     buf[len-1] = 0xFF;
     buf[len] = kBufEnd;
-    auto* p = folly::__folly_memchr(buf, 0xFF, len);
+    auto* p = folly::memchr_long(buf, 0xFF, len);
     if (len > 0)
       EXPECT_EQ(buf+len-1, reinterpret_cast<uint8_t*>(p));
     else

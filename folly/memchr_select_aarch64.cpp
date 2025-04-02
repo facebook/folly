@@ -38,39 +38,21 @@ extern "C" {
 
 void* __folly_memchr_aarch64(void* dst, int c, std::size_t size);
 void* __folly_memchr_aarch64_simd(void* dst, int c, std::size_t size);
-inline void* __folly_memchr_aarch64_simd_wrapper(void* dst, int c, std::size_t size)
-{
-    if (size < 128) {
-    // Libc AARCH64 memchr is more efficient for short strings. 
-    // This dispatch is less efficient than including it as a case for small strings,
-    // but can't do that because it of GPL
-        return memchr(dst, c, size); 
-    } else {
-        return __folly_memchr_aarch64_simd(dst, c, size);
-    }
-}
 
 [[gnu::no_sanitize_address]]
-decltype(&__folly_memchr_aarch64) __folly_detail_memchr_resolve(
+decltype(&__folly_memchr_aarch64) __folly_detail_memchr_long_resolve(
     uint64_t hwcaps, const void* arg2) {
 #if defined(_IFUNC_ARG_HWCAP)
     if (hwcaps & HWCAP_SHA3) {
-        return __folly_memchr_aarch64_simd_wrapper;
+        return __folly_memchr_aarch64_simd;
     }
 #endif
 
   return __folly_memchr_aarch64;
 }
 
-[[gnu::ifunc("__folly_detail_memchr_resolve")]]
-void* __folly_memchr(void* dst, const int c, std::size_t size);
-
-#ifdef FOLLY_MEMCHR_IS_MEMCHR
-
-[[gnu::weak, gnu::alias("__folly_memchr")]]
-void* memchr(void* dst, const int c, std::size_t size);
-
-#endif
+[[gnu::ifunc("__folly_detail_memchr_long_resolve")]]
+void* memchr_long(void* dst, const int c, std::size_t size);
 
 } // extern "C"
 

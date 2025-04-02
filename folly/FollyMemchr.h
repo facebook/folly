@@ -20,6 +20,10 @@
 
 namespace folly {
 
-extern "C" void* __folly_memchr(const void* ptr, int ch, std::size_t count);
+// This is an AARCH64 optimized memchr, which works best for long strings
+// _long here is more than 128 byted to scan for ch.
+// When scanning for up to 16 bytes, libc memchr is 1 CPU cycle faster than this implementation
+// and between 16 and 128 bytes libc memchr is still faster.
+extern "C" void* memchr_long(const void* ptr, int ch, std::size_t count);
 
 } // namespace folly

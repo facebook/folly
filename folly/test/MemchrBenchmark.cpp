@@ -76,21 +76,22 @@ void addMemchrBenchmark(const std::string& name) {
   /* Draw line. */
   folly::addBenchmark(__FILE__, "-", []() { return 0; });
 }
-volatile static int counter = 0;
+
+// Only to fool compiler optimizer not to optimize out unused results, could 
+// have used pragmas for that
+volatile static int result_offset = 0;
 void* std_memchr(const void *s, int c, size_t l) __attribute__((noinline));
 void* std_memchr(const void *s, int c, size_t l)
 {
-  counter++; // This is a hack against optimizing compiler
-  volatile void *r = std::memchr((void *)s, c, l);
-  return (void*)r;
+  result_offset =  (uint64_t)std::memchr((void *)s, c, l)-(uint64_t)s;
+  return (void*)s + result_offset;
 }
 
 void* folly_memchr(const void *s, int c, size_t l) __attribute__((noinline));
 void* folly_memchr(const void *s, int c, size_t l)
 {
-  counter++;
-  volatile void *rr = folly::__folly_memchr((void *)s, c, l);
-  return (void*)rr;
+  result_offset =  (uint64_t)folly::memchr_long((void *)s, c, l)-(uint64_t)s;
+  return (void*)s + result_offset;
 }
 
 
