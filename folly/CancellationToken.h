@@ -18,6 +18,7 @@
 
 #include <folly/CppAttributes.h>
 #include <folly/Function.h>
+#include <folly/OperationCancelled.h>
 
 #include <atomic>
 #include <memory>
@@ -28,11 +29,6 @@ namespace folly {
 
 class CancellationCallback;
 class CancellationSource;
-struct OperationCancelled final : public std::exception {
-  const char* what() const noexcept override {
-    return "coroutine operation cancelled";
-  }
-};
 
 namespace detail {
 class CancellationState;

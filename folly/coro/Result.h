@@ -19,8 +19,8 @@
 #include <cassert>
 #include <type_traits>
 
-#include <folly/CancellationToken.h>
 #include <folly/ExceptionWrapper.h>
+#include <folly/OperationCancelled.h>
 #include <folly/Try.h>
 
 namespace folly {
