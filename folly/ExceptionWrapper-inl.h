@@ -158,12 +158,12 @@ inline std::exception const* exception_wrapper::get_exception() const noexcept {
 
 template <typename Ex>
 inline Ex* exception_wrapper::get_exception() noexcept {
-  return exception_ptr_get_object_hint<Ex>(ptr_, tag<Ex>);
+  return exception_ptr_get_object_hint<Ex>(ptr_);
 }
 
 template <typename Ex>
 inline Ex const* exception_wrapper::get_exception() const noexcept {
-  return exception_ptr_get_object_hint<Ex>(ptr_, tag<Ex>);
+  return exception_ptr_get_object_hint<Ex>(ptr_);
 }
 
 inline std::exception_ptr exception_wrapper::to_exception_ptr() const noexcept {

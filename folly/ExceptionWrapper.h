@@ -213,6 +213,9 @@ class exception_wrapper final {
   //! \returns a pointer to the `Ex` held by `*this`, if it holds an object
   //!     whose type `From` permits `std::is_convertible<From*, Ex*>`;
   //!     otherwise, returns `nullptr`.
+  //!
+  //! This is most efficient when `Ex` matches the exact stored type, or when
+  //! the type alias `Ex::folly_get_exception_hint_types` has a good hint.
   template <typename Ex>
   Ex* get_exception() noexcept;
   //! \overload

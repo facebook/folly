@@ -558,18 +558,33 @@ T* exception_ptr_try_get_object_exact_fast(
   return out;
 }
 
+namespace detail {
+template <typename T>
+using detect_folly_get_exception_hint_types =
+    typename std::remove_cv_t<T>::folly_get_exception_hint_types;
+} // namespace detail
+
 /// exception_ptr_get_object_hint
 ///
 /// Returns the address of the stored exception as if it were upcast to the
 /// given type, if it could be upcast to that type.
 ///
 /// If its concrete type is exactly equal to one of the types passed in the tag,
-/// this may be faster than exception_ptr_get_object without the hint.
+/// this may be faster than `exception_ptr_get_object` without the hint.
+///
+/// Prefer the next overload that uses `T::folly_get_exception_hint_types`.
 template <typename T, typename... S>
 T* exception_ptr_get_object_hint(
     std::exception_ptr const& ptr, tag_t<S...> const hint) noexcept {
   auto const val = exception_ptr_try_get_object_exact_fast<T>(ptr, hint);
   return FOLLY_LIKELY(!!val) ? val : exception_ptr_get_object<T>(ptr);
+}
+
+template <typename T>
+T* exception_ptr_get_object_hint(std::exception_ptr const& ptr) noexcept {
+  using hints =
+      detected_or_t<tag_t<T>, detail::detect_folly_get_exception_hint_types, T>;
+  return exception_ptr_get_object_hint<T>(ptr, hints{});
 }
 
 namespace detail {

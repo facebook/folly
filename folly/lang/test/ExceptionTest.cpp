@@ -338,7 +338,10 @@ TEST_F(ExceptionTest, exception_ptr_vmi) {
   using A0 = Virt<0>;
   using A1 = Virt<1>;
   using A2 = Virt<2>;
-  struct B0 : virtual A1, virtual A2 {};
+  struct C;
+  struct B0 : virtual A1, virtual A2 {
+    using folly_get_exception_hint_types = folly::tag_t<B0, C>;
+  };
   struct B1 : virtual A2, virtual A0 {};
   struct B2 : virtual A0, virtual A1 {};
   struct C : B0, B1, B2 {
@@ -385,6 +388,10 @@ TEST_F(ExceptionTest, exception_ptr_vmi) {
   EXPECT_EQ(
       folly::exception_ptr_get_object<C>(ptr),
       folly::exception_ptr_get_object_hint<A0>(ptr, folly::tag<B1, C, B2>));
+  EXPECT_EQ(
+      folly::exception_ptr_get_object<B0>(ptr),
+      // Uses `C::folly_get_exception_hint_types`, put `void` in list to confirm
+      folly::exception_ptr_get_object_hint<B0>(ptr));
 }
 
 TEST_F(ExceptionTest, make_exception_ptr_with_invocable_fail) {
