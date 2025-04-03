@@ -311,7 +311,6 @@ class tape {
   }
 
   // capacity ------
-
   void reserve(size_type records, size_type elements) {
     markers_.reserve(records + 1);
     data_.reserve(elements);
@@ -321,6 +320,11 @@ class tape {
   void reserve(size_type records) {
     markers_.reserve(records + 1);
     data_.reserve(records);
+  }
+
+  void shrink_to_fit() {
+    markers_.shrink_to_fit();
+    data_.shrink_to_fit();
   }
 
   // resize/clear -------
