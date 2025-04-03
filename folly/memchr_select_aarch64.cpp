@@ -36,19 +36,18 @@
 
 extern "C" {
 
-void* __folly_memchr_aarch64(void* dst, int c, std::size_t size);
-void* __folly_memchr_aarch64_simd(void* dst, int c, std::size_t size);
+void* __folly_memchr_long_aarch64(void* dst, int c, std::size_t size);
+void* __folly_memchr_long_aarch64_simd(void* dst, int c, std::size_t size);
 
-[[gnu::no_sanitize_address]]
-decltype(&__folly_memchr_aarch64) __folly_detail_memchr_long_resolve(
+decltype(&__folly_memchr_long_aarch64) __folly_detail_memchr_long_resolve(
     uint64_t hwcaps, const void* arg2) {
 #if defined(_IFUNC_ARG_HWCAP)
     if (hwcaps & HWCAP_SHA3) {
-        return __folly_memchr_aarch64_simd;
+        return __folly_memchr_long_aarch64_simd;
     }
 #endif
 
-  return __folly_memchr_aarch64;
+  return __folly_memchr_long_aarch64;
 }
 
 [[gnu::ifunc("__folly_detail_memchr_long_resolve")]]

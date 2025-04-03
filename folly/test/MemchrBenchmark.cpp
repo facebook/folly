@@ -16,8 +16,8 @@
 
 #include <folly/FollyMemchr.h>
 
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdlib>
 #include <deque>
 #include <string>
 #include <fmt/core.h>

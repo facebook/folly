@@ -41,7 +41,7 @@
    which things occur in the original string, counting leading zeros identifies
    exactly which byte matched.  */
 
-ENTRY (__folly_memchr_aarch64)
+ENTRY (__folly_memchr_long_aarch64)
 	add	end, srcin, cntin
 	sub	endm1, end, 1
 	bic	src, endm1, 15
@@ -107,5 +107,5 @@ L(nomatch):
 	mov	result, 0
 	ret
 
-END (__folly_memchr_aarch64)
+END (__folly_memchr_long_aarch64)
 

@@ -88,7 +88,7 @@
  * devices with h/w SHA512 instruction support. MTE compatibility TBD
  */
 
-ENTRY (__folly_memchr_aarch64_simd)
+ENTRY (__folly_memchr_long_aarch64_simd)
 	/* Do not dereference srcin if no bytes to compare.  */
 	cbz	cntin, L(zero_length)
         add end_addr, srcin, cntin
@@ -235,5 +235,5 @@ L(zero_length):
 	mov	result, #0
 	ret
 
-END (__folly_memchr_aarch64_simd)
+END (__folly_memchr_long_aarch64_simd)
 
