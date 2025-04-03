@@ -1381,7 +1381,7 @@ class SqliteBuilder(BuilderBase):
             copy_if_different(src, dest)
 
         cmake_lists = """
-cmake_minimum_required(VERSION 3.1.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(sqlite3 C)
 add_library(sqlite3 STATIC sqlite3.c)
 # These options are taken from the defaults in Makefile.msc in
