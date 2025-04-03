@@ -418,7 +418,7 @@ if (IS_AARCH64_ARCH)
     set_property(
       SOURCE
       ${AOR_FILE}
-      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp" "-march=armv8.2-a+crypto+sve2-sha3"
+      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp" "-march=armv8-a+crypto+sve2-sha3"
     )
     list(APPEND folly_base_files
       ${AOR_FILE}
