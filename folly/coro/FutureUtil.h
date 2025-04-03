@@ -32,12 +32,8 @@ namespace coro {
 
 // Converts the given SemiAwaitable to a Task (without starting it)
 template <typename SemiAwaitable>
-Task<semi_await_result_t<SemiAwaitable>> toTask(SemiAwaitable&& a) {
-  return co_invoke(
-      [a = std::forward<SemiAwaitable>(a)]() mutable //
-      -> Task<semi_await_result_t<SemiAwaitable>> {
-        co_return co_await std::forward<SemiAwaitable>(a);
-      });
+Task<semi_await_result_t<SemiAwaitable>> toTask(SemiAwaitable a) {
+  co_return co_await std::move(a);
 }
 template <typename SemiAwaitable>
 Task<semi_await_result_t<SemiAwaitable>> toTask(
