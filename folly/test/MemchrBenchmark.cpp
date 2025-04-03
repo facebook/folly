@@ -31,7 +31,7 @@ DEFINE_bool(linear, false, "Test all sizes [min_size, max_size]");
 DEFINE_uint32(step, 1, "Test sizes step");
 DEFINE_uint32(page_offset, 0, "Buffer offset from page aligned size");
 
-uint8_t* temp_buf;
+static uint8_t* temp_buf;
 
 size_t getPow2(size_t v) {
   assert(v != 0);
@@ -79,19 +79,19 @@ void addMemchrBenchmark(const std::string& name) {
 
 // Only to fool compiler optimizer not to optimize out unused results, could 
 // have used pragmas for that
-volatile static int result_offset = 0;
+volatile static uint64_t result_offset = 0;
 void* std_memchr(const void *s, int c, size_t l) __attribute__((noinline));
 void* std_memchr(const void *s, int c, size_t l)
 {
   result_offset =  (uint64_t)std::memchr((void *)s, c, l)-(uint64_t)s;
-  return (void*)s + result_offset;
+  return (void*)((uint64_t)s + result_offset);
 }
 
 void* folly_memchr(const void *s, int c, size_t l) __attribute__((noinline));
 void* folly_memchr(const void *s, int c, size_t l)
 {
   result_offset =  (uint64_t)folly::memchr_long((void *)s, c, l)-(uint64_t)s;
-  return (void*)s + result_offset;
+  return (void*)((uint64_t)s + result_offset);
 }
 
 

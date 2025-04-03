@@ -21,8 +21,8 @@
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
 
-constexpr size_t kPageSize = 4096;
-constexpr uint8_t kBufEnd = 0xDB;
+static constexpr size_t kPageSize = 4096;
+static constexpr uint8_t kBufEnd = 0xDB;
 
 // memset implementation test with 0xFF pattern
 // buf must have an extra byte to be filled with magic constant
