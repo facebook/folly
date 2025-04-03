@@ -31,21 +31,24 @@ namespace folly {
 namespace coro {
 
 // Converts the given SemiAwaitable to a Task (without starting it)
-template <typename SemiAwaitable>
-Task<semi_await_result_t<SemiAwaitable>> toTask(SemiAwaitable a) {
-  co_return co_await std::move(a);
-}
-template <typename SemiAwaitable>
-Task<semi_await_result_t<SemiAwaitable>> toTask(
-    std::reference_wrapper<SemiAwaitable> a) {
-  co_return co_await a.get();
-}
-inline Task<void> toTask(folly::Future<Unit> a) {
-  co_yield co_result(co_await co_awaitTry(std::move(a)));
-}
-inline Task<void> toTask(folly::SemiFuture<Unit> a) {
-  co_yield co_result(co_await co_awaitTry(std::move(a)));
-}
+struct ToTaskFn {
+  template <typename SemiAwaitable>
+  Task<semi_await_result_t<SemiAwaitable>> operator()(SemiAwaitable a) const {
+    co_return co_await std::move(a);
+  }
+  template <typename SemiAwaitable>
+  Task<semi_await_result_t<SemiAwaitable>> operator()(
+      std::reference_wrapper<SemiAwaitable> a) const {
+    co_return co_await a.get();
+  }
+  Task<void> operator()(folly::Future<Unit> a) const {
+    co_yield co_result(co_await co_awaitTry(std::move(a)));
+  }
+  Task<void> operator()(folly::SemiFuture<Unit> a) const {
+    co_yield co_result(co_await co_awaitTry(std::move(a)));
+  }
+};
+inline constexpr ToTaskFn toTask{};
 
 template <typename V>
 Task<drop_unit_t<V>> toTaskInterruptOnCancel(folly::Future<V> f) {
