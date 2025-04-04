@@ -166,7 +166,7 @@ def folly_xplat_library(
             "ovr_config//os:android": FBANDROID_CXXFLAGS,
             "ovr_config//os:iphoneos": CLANG_CXX_FLAGS,
             # TODO: Why iphoneos and macos are not marked as clang compilers?
-            "ovr_config//os:macos": CLANG_CXX_FLAGS,
+            "ovr_config//os:macos": CLANG_CXX_FLAGS + ["-fvisibility=default"],
         }) + select({
             "DEFAULT": [],
             "ovr_config//os:windows-cl": WINDOWS_MSVC_CXXFLAGS,
