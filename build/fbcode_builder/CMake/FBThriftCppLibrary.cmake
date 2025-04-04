@@ -144,6 +144,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
     PUBLIC
       "$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>"
       "$<INSTALL_INTERFACE:${ARG_INCLUDE_DIR}>"
+      ${Xxhash_INCLUDE_DIR}
   )
   target_link_libraries(
     "${LIB_NAME}"
@@ -153,6 +154,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
       Folly::folly
       mvfst::mvfst_server_async_tran
       mvfst::mvfst_server
+      ${Xxhash_LIBRARY}
   )
 
   # Add ${generated_headers} to the PUBLIC_HEADER property for ${LIB_NAME}
