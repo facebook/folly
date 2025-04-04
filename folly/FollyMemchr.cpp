@@ -16,15 +16,27 @@
 
 #include <cstring>
 
-// Optimized memchr_long is only availble for Linux/ARM64, use std::memchr instead on other platforms
-#if !(defined(__linux__) && defined(__aarch64__))
-
 namespace folly {
-
+// Optimized memchr_long is only availble for Linux/ARM64, using std::memchr instead on other platforms
+#if !(defined(__linux__) && defined(__aarch64__))
 extern "C" void* memchr_long(const void* ptr, int ch, std::size_t count) {
   return std::memchr(ptr, ch, count);
 }
 
 } // namespace folly
+#else
+extern "C" {
+void* __folly_memchr_long_aarch64(const void* dst, int c, std::size_t size);
+void* __folly_memchr_long_aarch64_sha512(const void* dst, int c, std::size_t size);
+}
 
+extern "C" void* memchr_long(const void* ptr, int ch, std::size_t count) {
+#ifdef FOLLY_ARM_FEATURE_SHA3
+  return __folly_memchr_long_aarch64_sha512(ptr, ch, count);
+#else
+  return __folly_memchr_long_aarch64(ptr, ch, count);
 #endif
+}
+#endif
+} // namespace folly
+
