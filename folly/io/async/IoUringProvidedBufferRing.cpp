@@ -75,8 +75,10 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
   ringPtr_ = (struct io_uring_buf_ring*)buffer_;
 
   if (huge_pages) {
-    int ret = madvise(buffer_, allSize_, MADV_HUGEPAGE);
+    int ret = ::madvise(buffer_, allSize_, MADV_HUGEPAGE);
     PLOG_IF(ERROR, ret) << "cannot enable huge pages";
+  } else {
+    ::madvise(buffer_, allSize_, MADV_NOHUGEPAGE);
   }
 }
 
