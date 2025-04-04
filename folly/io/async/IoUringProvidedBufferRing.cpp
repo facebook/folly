@@ -85,11 +85,12 @@ IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     uint16_t gid,
     int count,
     int bufferShift,
-    int ringSizeShift)
+    int ringSizeShift,
+    bool useHugePages)
     : IoUringBufferProviderBase(
           gid, ProvidedBuffersBuffer::calcBufferSize(bufferShift)),
       ioRingPtr_(ioRingPtr),
-      buffer_(count, bufferShift, ringSizeShift, true) {
+      buffer_(count, bufferShift, ringSizeShift, useHugePages) {
   if (count > std::numeric_limits<uint16_t>::max()) {
     throw std::runtime_error("too many buffers");
   }

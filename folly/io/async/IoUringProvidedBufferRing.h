@@ -38,7 +38,8 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
       uint16_t gid,
       int count,
       int bufferShift,
-      int ringSizeShift);
+      int ringSizeShift,
+      bool useHugePages = false);
 
   void enobuf() noexcept override;
   void unusedBuf(uint16_t i) noexcept override;
