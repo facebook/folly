@@ -106,10 +106,9 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
     char* bufferBuffer_;
     uint32_t bufferCount_;
 
-    // static constexpr
-    static constexpr size_t kHugePageMask = (1LLU << 21) - 1; // 2MB
-    static constexpr size_t kPageMask = (1LLU << 12) - 1; // 4095
-    static constexpr size_t kBufferAlignMask{31LLU};
+    static constexpr size_t kHugePageSizeBytes = 1024 * 1024 * 2;
+    static constexpr size_t kPageSizeBytes = 4096;
+    static constexpr size_t kBufferAlignBytes = 32;
   };
 
   io_uring* ioRingPtr_;

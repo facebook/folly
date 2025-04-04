@@ -19,6 +19,7 @@
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>
 #include <folly/String.h>
+#include <folly/lang/Align.h>
 
 #if FOLLY_HAS_LIBURING
 
@@ -32,7 +33,7 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
   ringMask_ = ringCount - 1;
   ringMemSize_ = sizeof(struct io_uring_buf) * ringCount;
 
-  ringMemSize_ = (ringMemSize_ + kBufferAlignMask) & (~kBufferAlignMask);
+  ringMemSize_ = align_ceil(ringMemSize_, kBufferAlignBytes);
 
   if (bufferShift_ < 5) {
     bufferShift_ = 5; // for alignment
@@ -44,11 +45,11 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
 
   int pages;
   if (huge_pages) {
-    allSize_ = (allSize_ + kHugePageMask) & (~kHugePageMask);
-    pages = allSize_ / (1 + kHugePageMask);
+    allSize_ = align_ceil(allSize_, kHugePageSizeBytes);
+    pages = allSize_ / kHugePageSizeBytes;
   } else {
-    allSize_ = (kPageMask + kPageMask) & ~kPageMask;
-    pages = allSize_ / (1 + kPageMask);
+    allSize_ = align_ceil(allSize_, kPageSizeBytes);
+    pages = allSize_ / kPageSizeBytes;
   }
 
   buffer_ = ::mmap(
