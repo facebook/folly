@@ -903,6 +903,37 @@ auto /* implicit */ operator co_await(T && t) {
   return detail::result_co_await_dispatcher()(std::forward<T>(t));
 }
 
+/// Wraps the return value from the lambda `fn` in a `result`, putting any
+/// thrown exception into its "error" state.
+///
+///   return result_catch_all([&](){ return riskyWork(); });
+///
+/// Useful when you need a subroutine **definitely** not to throw. In contrast:
+///   - `result<>` coroutines catch unhandled exceptions, but can throw due to
+///     argument copy/move ctors, or due to `bad_alloc`.
+///   - Like all functions, `result<>` non-coroutines let exceptions fly.
+template <typename F>
+// Wrap the return type of `fn` with `result` unless it already is `result`.
+typename std::conditional_t<
+    is_instantiation_of_v<result, std::invoke_result_t<F>>,
+    std::invoke_result_t<F>,
+    result<std::invoke_result_t<F>>>
+result_catch_all(F&& fn) noexcept {
+  try {
+    if constexpr (std::is_void_v<std::invoke_result_t<F>>) {
+      static_cast<F&&>(fn)();
+      return {};
+    } else {
+      return static_cast<F&&>(fn)();
+    }
+  } catch (...) {
+    // We're a making `result`, so it's OK to forward all exceptions into it,
+    // including `OperationCancelled`.
+    return non_value_result::make_legacy_error_or_cancellation(
+        exception_wrapper{std::current_exception()});
+  }
+}
+
 } // namespace folly
 
 #endif // FOLLY_HAS_RESULT

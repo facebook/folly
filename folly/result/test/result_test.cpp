@@ -876,6 +876,47 @@ RESULT_CO_TEST_F(ResultTest, check_TEST_F) {
   EXPECT_EQ(co_await std::ref(r), 42);
 }
 
+TEST(Result, catch_all_returns_result_error) {
+  auto res = []() -> result<uint8_t> {
+    return result_catch_all([]() -> result<uint8_t> {
+      return make_exception_wrapper<std::logic_error>("bop");
+    });
+  }();
+  ASSERT_STREQ("bop", get_exception<std::logic_error>(res)->what());
+}
+
+TEST(Result, catch_all_throws_error) {
+  auto res = []() -> result<uint8_t> {
+    return result_catch_all([]() -> uint8_t {
+      throw std::logic_error("foobar");
+    });
+  }();
+  ASSERT_STREQ("foobar", get_exception<std::logic_error>(res)->what());
+}
+
+TEST(Result, catch_all_throws_error_returns_result) {
+  auto res = []() -> result<uint8_t> {
+    return result_catch_all([]() -> result<uint8_t> {
+      throw std::logic_error("foobar");
+    });
+  }();
+  ASSERT_STREQ("foobar", get_exception<std::logic_error>(res)->what());
+}
+
+TEST(Result, catch_all_void_throws_error) {
+  auto res = []() -> result<> {
+    return result_catch_all([]() { throw std::logic_error("baz"); });
+  }();
+  ASSERT_STREQ("baz", get_exception<std::logic_error>(res)->what());
+}
+
+TEST(Result, catch_all_returns_value) {
+  auto fn = []() -> result<uint8_t> {
+    return result_catch_all([]() -> uint8_t { return 129; });
+  };
+  ASSERT_EQ(129, fn().value_or_throw());
+}
+
 } // namespace folly
 
 #endif // FOLLY_HAS_RESULT
