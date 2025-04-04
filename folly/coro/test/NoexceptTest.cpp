@@ -260,11 +260,6 @@ CO_TEST(NoexceptTest, AsNoexceptNowTask) {
   co_await checkAsNoexcept<NowTask<void>>();
 }
 
-// XXX test AsNoexcept more -- generally need to cover most of the compositional
-// properties above :(
-//   - cover WITH and WITHOUT executor
-//   - crib more from `checkFatalOnThrow` and `NowTaskIsImmediate` above
-
 } // namespace folly::coro
 
 #endif

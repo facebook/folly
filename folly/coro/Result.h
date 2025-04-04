@@ -22,6 +22,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/OperationCancelled.h>
 #include <folly/Try.h>
+#include <folly/result/result.h>
 
 namespace folly {
 namespace coro {
@@ -55,6 +56,14 @@ class co_result final {
       : result_(std::move(result)) {
     assert(!result_.hasException() || result_.exception());
   }
+
+#if FOLLY_HAS_RESULT
+  // Covered in `AwaitResultTest.cpp`, unlike the rest of this file, which is
+  // covered in `TaskTest.cpp`.
+  explicit co_result(folly::result<T>&& result) noexcept(
+      std::is_nothrow_move_constructible<T>::value)
+      : co_result(result_to_try(std::move(result))) {}
+#endif
 
   const Try<T>& result() const { return result_; }
 
