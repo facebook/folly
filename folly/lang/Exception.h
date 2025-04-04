@@ -613,8 +613,9 @@ struct get_exception_tag_t {};
 /// This is most efficient when `Ex` matches the exact stored type, or when the
 /// type alias `Ex::folly_get_exception_hint_types` has a good hint.
 ///
-/// NB: `Try<T>` currently omits `get_exception(get_exception_tag_t)`, because
-/// supporting it might encourage "empty state" bugs:
+/// NB: `result<T>` supports `get_exception<Ex>(res)`, but `Try<T>` currently
+/// omits `get_exception(get_exception_tag_t)`, because that might encourage
+/// "empty state" bugs:
 ///
 ///   if (auto* ex = get_exception<MyError>(tryData)) {
 ///     // handle error

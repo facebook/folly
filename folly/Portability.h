@@ -696,6 +696,15 @@ constexpr auto kCpplibVer = 0;
 #endif
 #endif // FOLLY_CFG_NO_COROUTINES
 
+// It'd be possible to relax this, by refactoring `folly/result` code down to
+// C++17, and by only blocking the coroutine support for non-coro compiles.
+// However, `result<T>` is primarily targeted at newer codebases.
+#if FOLLY_CPLUSPLUS >= 202002L && FOLLY_HAS_COROUTINES
+#define FOLLY_HAS_RESULT 1
+#else
+#define FOLLY_HAS_RESULT 0
+#endif
+
 // C++20 consteval
 #if FOLLY_CPLUSPLUS >= 202002L
 #define FOLLY_CONSTEVAL consteval
