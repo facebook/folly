@@ -50,6 +50,11 @@
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 #include <folly/container/detail/F14Mask.h>
 
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+#include <arm_neon_sve_bridge.h>
+#include <arm_sve.h>
+#endif
+
 #if __has_include(<concepts>)
 #include <concepts>
 #endif
@@ -721,8 +726,26 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   }
 
 #if FOLLY_NEON
+
   ////////
-  // Tag filtering using NEON intrinsics
+  // Tag filtering using NEON/SVE intrinsics
+
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+
+  SparseMaskIter tagMatchIter(uint8x16_t needleV, svbool_t pred) const {
+    svuint8_t tagV = svld1_u8(pred, &tags_[0]);
+    auto eqV =
+        svset_neonq_u8(svundef_u8(), vceqq_u8(svget_neonq(tagV), needleV));
+    // preserve only bits 0 and 4 of each byte
+    eqV = svand_n_u8_x(pred, eqV, 17);
+    // get info from every byte into the bottom half of every uint16_t
+    // by shifting right 4, then round to get it into a 64-bit vector
+    uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(svget_neonq(eqV)), 4);
+    uint64_t mask = vreinterpret_u64_u8(maskV)[0];
+    return SparseMaskIter(mask);
+  }
+
+#else
 
   SparseMaskIter tagMatchIter(uint8x16_t needleV) const {
     uint8x16_t tagV = vld1q_u8(&tags_[0]);
@@ -733,6 +756,8 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     uint64_t mask = vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
     return SparseMaskIter(mask);
   }
+
+#endif
 
   MaskType occupiedMask() const {
     uint8x16_t tagV = vld1q_u8(&tags_[0]);
@@ -1665,15 +1690,22 @@ class F14Table : public Policy {
   FOLLY_ALWAYS_INLINE ItemIter
   findImpl(HashPair hp, K const& key, Prefetch prefetch) const {
     FOLLY_SAFE_DCHECK(hp.second >= 0x80 && hp.second < 0x100, "");
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+    svbool_t pred = svwhilelt_b8_u32(0, chunks_->kCapacity);
+#endif
     std::size_t index = hp.first;
     std::size_t step = probeDelta(hp);
     auto needleV = loadNeedleV(hp.second);
-    for (std::size_t tries = chunkCount(); tries > 0; --tries) {
+    for (std::size_t tries = chunkCount(); tries > 0;) {
       ChunkPtr chunk = chunks_ + moduloByChunkCount(index);
       if (prefetch == Prefetch::ENABLED && sizeof(Chunk) > 64) {
         prefetchAddr(chunk->itemAddr(8));
       }
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+      auto hits = chunk->tagMatchIter(needleV, pred);
+#else
       auto hits = chunk->tagMatchIter(needleV);
+#endif
       while (hits.hasNext()) {
         auto i = hits.next();
         if (FOLLY_LIKELY(this->keyMatchesItem(key, chunk->item(i)))) {
@@ -1688,6 +1720,7 @@ class F14Table : public Policy {
         // entry, so our search is over.  This is the common case.
         break;
       }
+      --tries;
       index += step;
     }
     // Loop exit because tries is exhausted is rare, but possible.
@@ -1753,6 +1786,9 @@ class F14Table : public Policy {
   template <typename K, typename F>
   FOLLY_ALWAYS_INLINE ItemIter findMatching(K const& key, F&& func) const {
     auto hp = computeHash(key);
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+    svbool_t pred = svwhilelt_b8_u32(0, chunks_->kCapacity);
+#endif
     std::size_t index = hp.first;
     auto needleV = loadNeedleV(hp.second);
     std::size_t step = probeDelta(hp);
@@ -1761,7 +1797,11 @@ class F14Table : public Policy {
       if (sizeof(Chunk) > 64) {
         prefetchAddr(chunk->itemAddr(8));
       }
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+      auto hits = chunk->tagMatchIter(needleV, pred);
+#else
       auto hits = chunk->tagMatchIter(needleV);
+#endif
       while (hits.hasNext()) {
         auto i = hits.next();
         if (FOLLY_LIKELY(
