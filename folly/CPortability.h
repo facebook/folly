@@ -59,6 +59,12 @@
 #define FOLLY_HAS_FEATURE(...) 0
 #endif
 
+#if defined(__has_warning)
+#define FOLLY_HAS_WARNING(...) __has_warning(__VA_ARGS__)
+#else
+#define FOLLY_HAS_WARNING(...) 0
+#endif
+
 /* FOLLY_SANITIZE_ADDRESS is defined to 1 if the current compilation unit
  * is being compiled with ASAN or HWASAN enabled.
  *
