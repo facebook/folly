@@ -50,6 +50,7 @@ TEST_F(RangeTraitsTest, is_contiguous_range_v) {
   EXPECT_TRUE((folly::is_contiguous_range_v<std::string>));
   EXPECT_TRUE((folly::is_contiguous_range_v<std::string_view>));
   EXPECT_TRUE((folly::is_contiguous_range_v<std::vector<int>>));
+  EXPECT_FALSE((folly::is_contiguous_range_v<std::vector<bool>>));
 #if __has_include(<span>)
   EXPECT_TRUE((folly::is_contiguous_range_v<std::span<int>>));
   EXPECT_TRUE((folly::is_contiguous_range_v<std::span<int const>>));
