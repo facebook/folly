@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <utility>
 
+#include <folly/CPortability.h>
 #include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/detail/Futex.h>
@@ -207,6 +208,8 @@ inline unsigned MicroLockCore::waitBit() const noexcept {
   return 1U << (baseShift() + 1);
 }
 
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wattributes") // inline + [[gnu::noinline]]
 inline void MicroLockCore::store(
     uint8_t value, std::memory_order order) noexcept {
   detail::Futex<>* wordPtr = word();
@@ -221,6 +224,7 @@ inline void MicroLockCore::store(
     }
   }
 }
+FOLLY_POP_WARNING
 
 template <typename Func>
 void MicroLockCore::unlockAndStoreWithModifier(Func modifier) noexcept {
