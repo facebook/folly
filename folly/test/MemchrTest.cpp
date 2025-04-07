@@ -32,14 +32,15 @@ void testMemchrImpl(uint8_t* buf, size_t maxLen) {
     buf[len-1] = 0xFF;
     buf[len] = kBufEnd;
     auto* p = folly::memchr_long(buf, 0xFF, len);
-    if (len > 0)
+    if (len > 0) {
       EXPECT_EQ(buf+len-1, reinterpret_cast<uint8_t*>(p));
-    else
+    } else {
       EXPECT_EQ(NULL, reinterpret_cast<uint8_t*>(p));
+    }
   }
 }
 
-TEST(MemchrAsmTest, alignedBuffer) {
+TEST(MemchrTest, alignedBuffer) {
   constexpr size_t kMaxSize = 2 * kPageSize;
   uint8_t* buf = reinterpret_cast<uint8_t*>(
       aligned_alloc(kPageSize, kMaxSize + 2 * kPageSize));
@@ -52,7 +53,7 @@ TEST(MemchrAsmTest, alignedBuffer) {
   }
 }
 
-TEST(MemchrAsmTest, unalignedBuffer) {
+TEST(MemchrTest, unalignedBuffer) {
   uint8_t* buf =
       reinterpret_cast<uint8_t*>(aligned_alloc(kPageSize, 2 * kPageSize));
   SCOPE_EXIT {
