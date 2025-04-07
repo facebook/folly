@@ -51,7 +51,7 @@ void bmMemchr(const void* buf, size_t length, size_t iters) {
 
 template <void* memchr_impl(const void*, int, size_t)>
 void addMemchrBenchmark(const std::string& name) {
-  static std::deque<std::string> names;
+  static std::deque<std::string> names; // lifetime management
 
   auto addBech = [&](size_t size) {
     names.emplace_back(fmt::format("{}: size={}", name, size));
