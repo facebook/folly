@@ -127,10 +127,10 @@ ENTRY (__folly_memchr_long_aarch64_sha512)
 	lsl	tmp, soff, #1
 	lsr	synd, synd, tmp
 	lsl	synd, synd, tmp
-	/* The first block can also be the last */
-	b.ls	L(tail_32)
 	/* Have we found something already? */
 	cbnz	synd, L(tail_32)
+	/* The first block can also be the last, and we did not find anything */
+	b.ls	L(zero_length)
 
 L(loop_112):
 	subs    cntin, cntin, #112
