@@ -45,13 +45,29 @@ class SettingWrapper {
   using CallbackHandle = typename SettingCore<T, Tag>::CallbackHandle;
 
   /**
-   * Returns the setting's current value.
+   * Returns the setting's current value. As an optimization, returns by value
+   * for small types, and by const& for larger types. The returned reference is
+   * only guaranteed to be valid until the next access by the current thread.
    *
-   * As an optimization, returns by value for small types, and by
-   * const& for larger types.  Note that the returned reference is not
-   * guaranteed to be long-lived and should not be saved anywhere. In
-   * particular, a set() call might invalidate a reference obtained
-   * here after some amount of time (on the order of minutes).
+   * UNSAFE:
+   *   auto& value = *FOLLY_SETTING(project, my_string);
+   *   *FOLLY_SETTING(project, my_string) // Access invalidates `value`
+   *   useValue(value); // heap-use-after-free
+   *
+   * SAFE:
+   *   auto& value = *FOLLY_SETTING(project, my_string);
+   *   FOLLY_SETTING(project, my_string).set("abc"); // `value` is still valid
+   *   useValue(value); // OK
+   *
+   * SAFE:
+   *   Thread1:
+   *     auto& value = *FOLLY_SETTING(project, my_string);
+   *     useValue(value); // OK
+   *   Thread2:
+   *     auto& value = *FOLLY_SETTING(project, my_string);
+   *     useValue(value); // OK
+   *   Thread3:
+   *    FOLLY_SETTING(project, my_string).set("abc");
    */
   std::conditional_t<IsSmallPOD<T>, T, const T&> operator*() const {
     AccessCounter::add(1);
@@ -63,8 +79,7 @@ class SettingWrapper {
   }
 
   /**
-   * Returns the setting's current value. Equivalent to dereference operator
-   * above.
+   * Returns the setting's current value as documented above by operator*().
    */
   std::conditional_t<IsSmallPOD<T>, T, const T&> value() const {
     return operator*();
@@ -81,9 +96,9 @@ class SettingWrapper {
       const Snapshot& snapshot) const;
 
   /**
-   * Atomically updates the setting's current value.  Will invalidate
-   * any previous calls to operator*() after some amount of time (on
-   * the order of minutes).
+   * Atomically updates the setting's current value. The next call to
+   * operator*() will invalidate all references returned by previous calls to
+   * operator*() on that thread.
    *
    * @param reason  Will be stored with the current value, useful for debugging.
    * @returns The SetResult indicating if the setting was successfully updated.

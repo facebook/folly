@@ -26,6 +26,7 @@
 #include <folly/Conv.h>
 #include <folly/Function.h>
 #include <folly/Optional.h>
+#include <folly/Portability.h>
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
 #include <folly/Utility.h>
@@ -34,6 +35,7 @@
 #include <folly/lang/Aligned.h>
 #include <folly/settings/Immutables.h>
 #include <folly/settings/Types.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 namespace settings {
@@ -267,7 +269,17 @@ class TypedSettingCore : public SettingCoreBase {
         trivialStorage_(trivialStorage) {}
 
   mutable SharedMutex globalLock_;
-  std::shared_ptr<Contents> globalValue_;
+
+  // Tracks the number of calls to sanitizeModeInvalidateThreadLocalReferences.
+  // This field is stored after globalLock_ to avoid increasing layout size.
+  mutable relaxed_atomic<size_t> numInvalidateThreadLocalReferencesCalls_{0};
+
+  // Limits the number of calls to sanitizeModeInvalidateThreadLocalReferences
+  // to reduce the performance impact of these checks for ASAN builds.
+  static constexpr const size_t kMaxNumInvalidatesPerSettingInSanitizeMode = 10;
+
+  // Only mutable for use in sanitizeModeMaybeInvalidateThreadLocalReferences.
+  mutable std::shared_ptr<Contents> globalValue_;
 
   std::atomic<uint64_t>& trivialStorage_;
 
@@ -294,9 +306,34 @@ class TypedSettingCore : public SettingCoreBase {
     return **ptr;
   }
 
+  void sanitizeModeInvalidateThreadLocalReferences(
+      std::shared_ptr<Contents>& value) const {
+    std::unique_lock lg(globalLock_);
+    globalValue_ = std::make_shared<Contents>(*globalValue_);
+    value = globalValue_;
+  }
+
+  FOLLY_ALWAYS_INLINE void sanitizeModeMaybeInvalidateThreadLocalReferences(
+      std::shared_ptr<Contents>& value) const {
+    // If the setting is a non-trivial type such that operator* returns a
+    // reference and we're running under ASAN, we add spurious no-op setting
+    // updates that invalidates all references stored by the current thread.
+    // This makes reference stability problems much more likely to be caught
+    // before they're triggered in production by something like a config change.
+    if constexpr (kIsLibrarySanitizeAddress && !detail::IsSmallPOD<T>) {
+      if (numInvalidateThreadLocalReferencesCalls_.load() <
+              kMaxNumInvalidatesPerSettingInSanitizeMode &&
+          numInvalidateThreadLocalReferencesCalls_.fetch_add(1) <
+              kMaxNumInvalidatesPerSettingInSanitizeMode) {
+        sanitizeModeInvalidateThreadLocalReferences(value);
+      }
+    }
+  }
+
   FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
     auto& value = getLocalValue();
     if (FOLLY_LIKELY(value.first == *settingVersion_)) {
+      sanitizeModeMaybeInvalidateThreadLocalReferences(value.second);
       return value.second;
     }
     return tlValueSlow();
@@ -547,6 +584,9 @@ class SettingCore : public TypedSettingCore<T> {
         this->trivialStorage_.store(v);
       }
       *this->settingVersion_ = nextGlobalVersion();
+    }
+    if constexpr (kIsLibrarySanitizeAddress && !detail::IsSmallPOD<T>) {
+      this->numInvalidateThreadLocalReferencesCalls_.store(0);
     }
     invokeCallbacks(Contents(std::string(reason), t));
   }
