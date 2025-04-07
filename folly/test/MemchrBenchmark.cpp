@@ -22,6 +22,7 @@
 #include <string>
 #include <fmt/core.h>
 #include <folly/Benchmark.h>
+#include <folly/lang/Bits.h>
 #include <folly/Preprocessor.h>
 #include <folly/portability/GFlags.h>
 
@@ -32,11 +33,6 @@ DEFINE_uint32(step, 1, "Test sizes step");
 DEFINE_uint32(page_offset, 0, "Buffer offset from page aligned size");
 
 static uint8_t* temp_buf;
-
-size_t getPow2(size_t v) {
-  assert(v != 0);
-  return 1ULL << (sizeof(size_t) * 8 - __builtin_clzl(v) - 1);
-}
 
 template <void* memchr_impl(const void*, int, size_t)>
 void bmMemchr(const void* buf, size_t length, size_t iters) {
@@ -67,7 +63,7 @@ void addMemchrBenchmark(const std::string& name) {
       addBech(size);
     }
   } else {
-    for (size_t size = getPow2(FLAGS_min_size); size <= getPow2(FLAGS_max_size);
+    for (size_t size = folly::prevPowTwo(FLAGS_min_size); size <= folly::prevPowTwo(FLAGS_max_size);
          size <<= 1) {
       addBech(size);
     }
