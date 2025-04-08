@@ -1115,12 +1115,14 @@ void IoUringBackend::initSubmissionLinked() {
         std::max<int>(get_shift(options_.initialProvidedBuffersCount), 1);
 
     try {
-      bufferProvider_ = makeProvidedBufferRing(
-          this->ioRingPtr(),
-          nextBufferProviderGid(),
-          options_.initialProvidedBuffersCount,
-          sizeShift,
-          ringShift);
+      IoUringProvidedBufferRing::Options options = {
+          .gid = nextBufferProviderGid(),
+          .count = options_.initialProvidedBuffersCount,
+          .bufferShift = sizeShift,
+          .ringSizeShift = ringShift,
+          .useHugePages = false,
+      };
+      bufferProvider_ = makeProvidedBufferRing(this->ioRingPtr(), options);
     } catch (const IoUringProvidedBufferRing::LibUringCallError& ex) {
       LOG(ERROR) << folly::to<std::string>(
           "failed to make provided buffer ring, buffer count: ",

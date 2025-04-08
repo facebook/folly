@@ -33,13 +33,15 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
     using std::runtime_error::runtime_error;
   };
 
-  IoUringProvidedBufferRing(
-      io_uring* ioRingPtr,
-      uint16_t gid,
-      int count,
-      int bufferShift,
-      int ringSizeShift,
-      bool useHugePages = false);
+  struct Options {
+    uint16_t gid{0};
+    size_t count{0};
+    int bufferShift{0};
+    int ringSizeShift{0};
+    bool useHugePages{false};
+  };
+
+  IoUringProvidedBufferRing(io_uring* ioRingPtr, Options options);
 
   void enobuf() noexcept override;
   void unusedBuf(uint16_t i) noexcept override;
@@ -70,7 +72,7 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
   class ProvidedBuffersBuffer {
    public:
     ProvidedBuffersBuffer(
-        int count, int bufferShift, int ringCountShift, bool huge_pages);
+        size_t count, int bufferShift, int ringCountShift, bool huge_pages);
     ~ProvidedBuffersBuffer() { ::munmap(buffer_, allSize_); }
 
     static size_t calcBufferSize(int bufferShift) {

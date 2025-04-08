@@ -39,7 +39,14 @@ TEST_F(IoUringProvidedBufferRingTest, Create) {
   io_uring_queue_init(512, &ring, 0);
   int sizeShift = std::max<int>(get_shift(4096), 5);
   int ringShift = std::max<int>(get_shift(1000), 1);
-  IoUringProvidedBufferRing bufRing{&ring, 1, 1000, sizeShift, ringShift, true};
+  IoUringProvidedBufferRing::Options options = {
+      .gid = 1,
+      .count = 1000,
+      .bufferShift = sizeShift,
+      .ringSizeShift = ringShift,
+      .useHugePages = true,
+  };
+  IoUringProvidedBufferRing bufRing{&ring, options};
   EXPECT_EQ(bufRing.count(), 1000);
 }
 
@@ -48,8 +55,14 @@ TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
   io_uring_queue_init(512, &ring, 0);
   int sizeShift = std::max<int>(get_shift(4096), 5);
   int ringShift = std::max<int>(get_shift(1000), 1);
-  IoUringProvidedBufferRing bufRing{
-      &ring, 1, 1000, sizeShift, ringShift, false};
+  IoUringProvidedBufferRing::Options options = {
+      .gid = 1,
+      .count = 1000,
+      .bufferShift = sizeShift,
+      .ringSizeShift = ringShift,
+      .useHugePages = false,
+  };
+  IoUringProvidedBufferRing bufRing{&ring, options};
   EXPECT_EQ(bufRing.count(), 1000);
 }
 

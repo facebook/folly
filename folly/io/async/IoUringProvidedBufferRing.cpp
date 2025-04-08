@@ -26,7 +26,7 @@
 namespace folly {
 
 IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
-    int count, int bufferShift, int ringCountShift, bool huge_pages)
+    size_t count, int bufferShift, int ringCountShift, bool huge_pages)
     : bufferShift_(bufferShift), bufferCount_(count) {
   // space for the ring
   int ringCount = 1 << ringCountShift;
@@ -83,29 +83,30 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
 }
 
 IoUringProvidedBufferRing::IoUringProvidedBufferRing(
-    io_uring* ioRingPtr,
-    uint16_t gid,
-    int count,
-    int bufferShift,
-    int ringSizeShift,
-    bool useHugePages)
+    io_uring* ioRingPtr, Options options)
     : IoUringBufferProviderBase(
-          gid, ProvidedBuffersBuffer::calcBufferSize(bufferShift)),
+          options.gid,
+          ProvidedBuffersBuffer::calcBufferSize(options.bufferShift)),
       ioRingPtr_(ioRingPtr),
-      buffer_(count, bufferShift, ringSizeShift, useHugePages) {
-  if (count > std::numeric_limits<uint16_t>::max()) {
+      buffer_(
+          options.count,
+          options.bufferShift,
+          options.ringSizeShift,
+          options.useHugePages) {
+  if (options.count > std::numeric_limits<uint16_t>::max()) {
     throw std::runtime_error("too many buffers");
   }
-  if (count <= 0) {
+  if (options.count == 0) {
     throw std::runtime_error("not enough buffers");
   }
 
-  ioBufCallbacks_.assign((count + (sizeof(void*) - 1)) / sizeof(void*), this);
+  ioBufCallbacks_.assign(
+      (options.count + (sizeof(void*) - 1)) / sizeof(void*), this);
 
   initialRegister();
 
-  gottenBuffers_ += count;
-  for (int i = 0; i < count; i++) {
+  gottenBuffers_ += options.count;
+  for (size_t i = 0; i < options.count; i++) {
     returnBuffer(i);
   }
 }
