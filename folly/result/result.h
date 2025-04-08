@@ -848,59 +848,57 @@ struct result_ref_awaitable {
   }
 };
 
-// These aren't just `co_await` funcs to allow reuse by `result_generator`.
-template <typename AwaitSuspender>
-struct result_co_await_dispatcher_impl {
-  // co_await stopped_result
-  auto /* implicit */ operator()(stopped_result_t s) {
-    return non_value_awaitable<AwaitSuspender>{
-        .non_value_ = non_value_result{s}};
-  }
-  // co_await std::move(res).non_value()
-  //
-  // Pass-by-&& to discourage accidental copies of `exception_wrapper`.
-  auto /* implicit */ operator()(non_value_result && nvr) {
-    return non_value_awaitable<AwaitSuspender>{.non_value_ = std::move(nvr)};
-  }
-  // co_await make_exception_wrapper<Ex>(...)
-  //
-  // Pass-by-&& to discourage accidental copies of `exception_wrapper`.
-  auto /* implicit */ operator()(exception_wrapper && err) {
-    return non_value_awaitable<AwaitSuspender>{
-        .non_value_ = non_value_result{std::move(err)}};
-  }
-  // co_await resultFunc()
-  //
-  // DO NOT add a copyable overload for small, trivially copyable types,
-  // since this is (a) rare, (b) will make the error path slower.  See the
-  // discussion of `co_await std::{move,ref,cref}` in `result.md`.
-  template <typename T>
-  auto /* implicit */ operator()(result<T>&& r) {
-    return result_owning_awaitable<T, AwaitSuspender>{.storage_ = std::move(r)};
-  }
-  // co_await std::ref(resultVal)
-  template <typename T>
-  auto /* implicit */ operator()(std::reference_wrapper<result<T>> rr) {
-    return result_ref_awaitable<T, std::type_identity_t, AwaitSuspender>{
-        .storage_ = std::move(rr)};
-  }
-  // co_await std::cref(resultVal)
-  template <typename T>
-  auto /* implicit */ operator()(std::reference_wrapper<const result<T>> cr) {
-    return result_ref_awaitable<T, std::add_const_t, AwaitSuspender>{
-        .storage_ = std::move(cr)};
-  }
-};
-
-using result_co_await_dispatcher =
-    result_co_await_dispatcher_impl<result_await_suspender>;
-
 } // namespace detail
 
+// co_await stopped_result
+inline auto /* implicit */ operator co_await(stopped_result_t s) {
+  return detail::non_value_awaitable<detail::result_await_suspender>{
+      .non_value_ = non_value_result{s}};
+}
+
+// co_await std::move(res).non_value()
+//
+// Pass-by-&& to discourage accidental copies of `exception_wrapper`.
+inline auto /* implicit */ operator co_await(non_value_result && nvr) {
+  return detail::non_value_awaitable<detail::result_await_suspender>{
+      .non_value_ = std::move(nvr)};
+}
+
+// co_await make_exception_wrapper<Ex>(...)
+//
+// Pass-by-&& to discourage accidental copies of `exception_wrapper`.
+inline auto /* implicit */ operator co_await(exception_wrapper && err) {
+  return detail::non_value_awaitable<detail::result_await_suspender>{
+      .non_value_ = non_value_result{std::move(err)}};
+}
+
+// co_await resultFunc()
+//
+// DO NOT add a copyable overload for small, trivially copyable types,
+// since this is (a) rare, (b) will make the error path slower.  See the
+// discussion of `co_await std::{move,ref,cref}` in `result.md`.
 template <typename T>
-  requires std::is_invocable_v<detail::result_co_await_dispatcher, T&&>
-auto /* implicit */ operator co_await(T && t) {
-  return detail::result_co_await_dispatcher()(std::forward<T>(t));
+auto /* implicit */ operator co_await(result<T>&& r) {
+  return detail::result_owning_awaitable<T, detail::result_await_suspender>{
+      .storage_ = std::move(r)};
+}
+
+// co_await std::ref(resultVal)
+template <typename T>
+auto /* implicit */ operator co_await(std::reference_wrapper<result<T>> rr) {
+  return detail::result_ref_awaitable<
+      T,
+      std::type_identity_t,
+      detail::result_await_suspender>{.storage_ = std::move(rr)};
+}
+
+// co_await std::cref(resultVal)
+template <typename T>
+auto /* implicit */ operator co_await(
+    std::reference_wrapper<const result<T>> cr) {
+  return detail::
+      result_ref_awaitable<T, std::add_const_t, detail::result_await_suspender>{
+          .storage_ = std::move(cr)};
 }
 
 /// Wraps the return value from the lambda `fn` in a `result`, putting any
