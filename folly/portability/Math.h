@@ -20,7 +20,7 @@
 
 namespace folly {
 
-#if !defined(__ANDROID__) && !defined(__UCLIBC__)
+#if !defined(__UCLIBC__)
 
 /**
  * Most platforms hopefully provide std::nextafter, std::remainder.
@@ -29,16 +29,14 @@ namespace folly {
 /* using override */ using std::nextafter;
 /* using override */ using std::remainder;
 
-#else // !__ANDROID__ && !__UCLIBC__
+#else // !__UCLIBC__
 
 /**
- * On Android and uclibc, std::nextafter or std::remainder isn't implemented.
- * However, the C functions and compiler builtins are still provided. Using the
- * GCC builtin is actually slightly faster, as they're constexpr and the use
- * cases within folly are in constexpr context.
+ * On uclibc, std::nextafter isn't implemented.  However, the C
+ * functions and compiler builtins are still provided. Using the GCC
+ * builtin is actually slightly faster, as they're constexpr and the
+ * use cases within folly are in constexpr context.
  */
-
-#if defined(__GNUC__) && !defined(__clang__)
 
 constexpr float nextafter(float x, float y) {
   return __builtin_nextafterf(x, y);
@@ -52,27 +50,10 @@ constexpr long double nextafter(long double x, long double y) {
   return __builtin_nextafterl(x, y);
 }
 
-#else // __GNUC__
-
-inline float nextafter(float x, float y) {
-  return ::nextafterf(x, y);
-}
-
-inline double nextafter(double x, double y) {
-  return ::nextafter(x, y);
-}
-
-inline long double nextafter(long double x, long double y) {
-  return ::nextafterl(x, y);
-}
-
-#endif // __GNUC__
-
 /**
  * On uclibc, std::remainder isn't implemented.
  * Implement it using builtin versions
  */
-#ifdef __UCLIBC__
 constexpr float remainder(float x, float y) {
   return __builtin_remainderf(x, y);
 }
@@ -84,7 +65,6 @@ constexpr double remainder(double x, double y) {
 constexpr long double remainder(long double x, long double y) {
   return __builtin_remainderl(x, y);
 }
-#endif // __UCLIBC__
 
-#endif // !__ANDROID__ && !__UCLIBC__
+#endif // !__UCLIBC__
 } // namespace folly
