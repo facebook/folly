@@ -830,21 +830,21 @@ class exception_shared_string {
 
   struct state; // alignment is alignof(void*)
 
-  //  state_ can be either state* or char const*
-  //  - low bit 0: state*
-  //  - low bit 1: char const* to &literal_state::what
-  uintptr_t const state_;
-
-  //  private; the wrapping public ctor passes only static-lifetime constants
-  explicit exception_shared_string(literal_state_base const&) noexcept;
+  //  what_ encodes where the string lives
+  //  - low bit 0: in an allocated state
+  //  - low bit 1: in a literal_state
+  char const* const what_{};
 
   exception_shared_string(std::size_t, format_sig_&, void*);
+
+  static char const* from_state(state const* state) noexcept;
+  static state* to_state(char const* what) noexcept;
 
  public:
 #if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
   template <std::size_t N, literal_string<char, N> Str>
-  explicit exception_shared_string(vtag_t<Str>) noexcept
-      : exception_shared_string(literal_state_instance<Str>) {}
+  constexpr explicit exception_shared_string(vtag_t<Str>) noexcept
+      : what_{literal_state_instance<Str>.what.c_str()} {}
 #endif
 
   explicit exception_shared_string(char const*);
@@ -867,7 +867,7 @@ class exception_shared_string {
   ~exception_shared_string();
   void operator=(exception_shared_string const&) = delete;
 
-  char const* what() const noexcept;
+  char const* what() const noexcept { return what_; }
 };
 
 } // namespace folly

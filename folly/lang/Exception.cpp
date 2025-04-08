@@ -20,6 +20,7 @@
 #include <cassert>
 #include <cstring>
 
+#include <folly/lang/Align.h>
 #include <folly/lang/New.h>
 
 #if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
@@ -774,7 +775,8 @@ struct exception_shared_string::state {
   std::atomic<std::size_t> refs{0u};
   std::size_t const size{0u};
   static constexpr std::size_t object_size(std::size_t const len) noexcept {
-    return sizeof(state) + len + 1u;
+    // combined allocation, and size must be a multiple of alignment
+    return align_ceil(sizeof(state) + len + 1u, alignof(state));
   }
   static state* make(char const* const str, std::size_t const len) {
     constexpr auto align = std::align_val_t{alignof(state)};
@@ -798,41 +800,39 @@ struct exception_shared_string::state {
   char const* what() const noexcept {
     return static_cast<char const*>(static_cast<void const*>(this + 1u));
   }
-  void copy() noexcept { refs.fetch_add(1u, relaxed); }
-  void ruin() noexcept {
+  static void copy(state& self) noexcept { self.refs.fetch_add(1u, relaxed); }
+  static void ruin(state& self) noexcept {
     constexpr auto align = std::align_val_t{alignof(state)};
-    if (!refs.load(relaxed) || !refs.fetch_sub(1u, relaxed)) {
-      operator_delete(this, object_size(size), align);
+    if (!self.refs.load(relaxed) || !self.refs.fetch_sub(1u, relaxed)) {
+      operator_delete(&self, object_size(self.size), align);
     }
   }
+  static void copy(state* self) noexcept { !self ? void() : copy(*self); }
+  static void ruin(state* self) noexcept { !self ? void() : ruin(*self); }
 };
+
+char const* exception_shared_string::from_state(state const* self) noexcept {
+  return !self ? nullptr : reinterpret_cast<char const*>(self + 1u);
+}
+auto exception_shared_string::to_state(char const* what) noexcept -> state* {
+  auto const addr = const_cast<char*>(what);
+  return uintptr_t(addr) & 1 ? nullptr : reinterpret_cast<state*>(addr) - 1u;
+}
 
 exception_shared_string::exception_shared_string(
     std::size_t const len, format_sig_& ffun, void* const fobj)
-    : state_{reinterpret_cast<uintptr_t>(state::make(len, ffun, fobj))} {}
+    : what_{from_state(state::make(len, ffun, fobj))} {}
 
-exception_shared_string::exception_shared_string(
-    literal_state_base const& base) noexcept
-    : state_{reinterpret_cast<uintptr_t>(&base + 1)} {}
 exception_shared_string::exception_shared_string(char const* const str)
     : exception_shared_string{str, std::strlen(str)} {}
 exception_shared_string::exception_shared_string(
     char const* const str, std::size_t const len)
-    : state_{reinterpret_cast<uintptr_t>(state::make(str, len))} {}
+    : what_{from_state(state::make(str, len))} {}
 exception_shared_string::exception_shared_string(
     exception_shared_string const& that) noexcept
-    : state_{
-          that.state_ & 1 //
-              ? that.state_
-              : (reinterpret_cast<state*>(that.state_)->copy(), that.state_)} {}
+    : what_{(state::copy(to_state(that.what_)), that.what_)} {}
 exception_shared_string::~exception_shared_string() {
-  state_ & 1 ? void() : reinterpret_cast<state*>(state_)->ruin();
-}
-
-char const* exception_shared_string::what() const noexcept {
-  return state_ & 1 //
-      ? reinterpret_cast<char const*>(state_)
-      : reinterpret_cast<state*>(state_)->what();
+  state::ruin(to_state(what_));
 }
 
 } // namespace folly
