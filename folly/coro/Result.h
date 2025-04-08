@@ -60,7 +60,8 @@ class co_result final {
 #if FOLLY_HAS_RESULT
   // Covered in `AwaitResultTest.cpp`, unlike the rest of this file, which is
   // covered in `TaskTest.cpp`.
-  explicit co_result(folly::result<T>&& result) noexcept(
+  template <std::same_as<folly::result<T>> U> // no implicit ctors for `result`
+  explicit co_result(U result) noexcept(
       std::is_nothrow_move_constructible<T>::value)
       : co_result(result_to_try(std::move(result))) {}
 #endif
@@ -72,6 +73,11 @@ class co_result final {
  private:
   Try<T> result_;
 };
+
+#if FOLLY_HAS_RESULT
+template <typename T>
+co_result(result<T>) -> co_result<T>;
+#endif
 
 class co_cancelled_t final {
  public:
