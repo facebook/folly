@@ -120,6 +120,7 @@ def _compute_include_directories():
 def folly_xplat_library(
         name,
         srcs = (),
+        header_namespace = "",
         exported_headers = (),
         raw_headers = (),
         deps = (),
@@ -150,7 +151,7 @@ def folly_xplat_library(
     fb_xplat_cxx_library(
         name = name,
         srcs = srcs,
-        header_namespace = "",
+        header_namespace = header_namespace,
         exported_headers = exported_headers,
         raw_headers = raw_headers,
         public_include_directories = _compute_include_directories(),
