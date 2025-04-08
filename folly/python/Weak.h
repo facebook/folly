@@ -53,6 +53,7 @@ Py_Weak(PyObject*)
 Py_Weak(const char*) PyUnicode_AsUTF8(PyObject*);
 
 // Basic GIL Handling
+Py_Weak(PyThreadState*) PyThreadState_Get(void);
 Py_Weak(PyThreadState*) PyGILState_GetThisThreadState(void);
 Py_Weak(int) PyGILState_Check(void);
 Py_Weak(PyGILState_STATE) PyGILState_Ensure(void);
