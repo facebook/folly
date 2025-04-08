@@ -21,10 +21,9 @@
 #if FOLLY_HAS_MEMORY_RESOURCE
 
 TEST(MemoryResource, simple) {
-  using Alloc = folly::detail::std_pmr::polymorphic_allocator<char>;
+  using Alloc = std::pmr::polymorphic_allocator<char>;
 
-  std::vector<char, Alloc> v{
-      Alloc{folly::detail::std_pmr::null_memory_resource()}};
+  std::vector<char, Alloc> v{Alloc{std::pmr::null_memory_resource()}};
   EXPECT_THROW(v.push_back('x'), std::bad_alloc);
 }
 

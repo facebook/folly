@@ -54,41 +54,29 @@ template <
     typename Key,
     typename Hasher = f14::DefaultHasher<Key>,
     typename KeyEqual = f14::DefaultKeyEqual<Key>>
-using F14NodeSet = folly::F14NodeSet<
-    Key,
-    Hasher,
-    KeyEqual,
-    folly::detail::std_pmr::polymorphic_allocator<Key>>;
+using F14NodeSet = folly::
+    F14NodeSet<Key, Hasher, KeyEqual, std::pmr::polymorphic_allocator<Key>>;
 
 template <
     typename Key,
     typename Hasher = f14::DefaultHasher<Key>,
     typename KeyEqual = f14::DefaultKeyEqual<Key>>
-using F14ValueSet = folly::F14ValueSet<
-    Key,
-    Hasher,
-    KeyEqual,
-    folly::detail::std_pmr::polymorphic_allocator<Key>>;
+using F14ValueSet = folly::
+    F14ValueSet<Key, Hasher, KeyEqual, std::pmr::polymorphic_allocator<Key>>;
 
 template <
     typename Key,
     typename Hasher = f14::DefaultHasher<Key>,
     typename KeyEqual = f14::DefaultKeyEqual<Key>>
-using F14VectorSet = folly::F14VectorSet<
-    Key,
-    Hasher,
-    KeyEqual,
-    folly::detail::std_pmr::polymorphic_allocator<Key>>;
+using F14VectorSet = folly::
+    F14VectorSet<Key, Hasher, KeyEqual, std::pmr::polymorphic_allocator<Key>>;
 
 template <
     typename Key,
     typename Hasher = f14::DefaultHasher<Key>,
     typename KeyEqual = f14::DefaultKeyEqual<Key>>
-using F14FastSet = folly::F14FastSet<
-    Key,
-    Hasher,
-    KeyEqual,
-    folly::detail::std_pmr::polymorphic_allocator<Key>>;
+using F14FastSet = folly::
+    F14FastSet<Key, Hasher, KeyEqual, std::pmr::polymorphic_allocator<Key>>;
 } // namespace pmr
 #endif // FOLLY_HAS_MEMORY_RESOURCE
 

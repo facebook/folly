@@ -1133,10 +1133,10 @@ TEST(SortedVectorTypes, TestExceptionSafety) {
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 
-using folly::detail::std_pmr::memory_resource;
-using folly::detail::std_pmr::new_delete_resource;
-using folly::detail::std_pmr::null_memory_resource;
-using folly::detail::std_pmr::polymorphic_allocator;
+using std::pmr::memory_resource;
+using std::pmr::new_delete_resource;
+using std::pmr::null_memory_resource;
+using std::pmr::polymorphic_allocator;
 
 namespace {
 
@@ -1292,8 +1292,7 @@ TEST(SortedVectorTypes, TestPmrMoveConstructDifferentAlloc) {
 }
 
 template <typename T>
-using pmr_vector =
-    std::vector<T, folly::detail::std_pmr::polymorphic_allocator<T>>;
+using pmr_vector = std::vector<T, std::pmr::polymorphic_allocator<T>>;
 
 TEST(SortedVectorTypes, TestCreationFromPmrVector) {
   namespace pmr = folly::pmr;

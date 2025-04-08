@@ -66,8 +66,7 @@ using F14NodeMap = folly::F14NodeMap<
     Mapped,
     Hasher,
     KeyEqual,
-    folly::detail::std_pmr::polymorphic_allocator<
-        std::pair<Key const, Mapped>>>;
+    std::pmr::polymorphic_allocator<std::pair<Key const, Mapped>>>;
 
 template <
     typename Key,
@@ -79,8 +78,7 @@ using F14ValueMap = folly::F14ValueMap<
     Mapped,
     Hasher,
     KeyEqual,
-    folly::detail::std_pmr::polymorphic_allocator<
-        std::pair<Key const, Mapped>>>;
+    std::pmr::polymorphic_allocator<std::pair<Key const, Mapped>>>;
 
 template <
     typename Key,
@@ -92,8 +90,7 @@ using F14VectorMap = folly::F14VectorMap<
     Mapped,
     Hasher,
     KeyEqual,
-    folly::detail::std_pmr::polymorphic_allocator<
-        std::pair<Key const, Mapped>>>;
+    std::pmr::polymorphic_allocator<std::pair<Key const, Mapped>>>;
 
 template <
     typename Key,
@@ -105,8 +102,7 @@ using F14FastMap = folly::F14FastMap<
     Mapped,
     Hasher,
     KeyEqual,
-    folly::detail::std_pmr::polymorphic_allocator<
-        std::pair<Key const, Mapped>>>;
+    std::pmr::polymorphic_allocator<std::pair<Key const, Mapped>>>;
 } // namespace pmr
 #endif // FOLLY_HAS_MEMORY_RESOURCE
 

@@ -18,40 +18,15 @@
 
 #ifndef FOLLY_HAS_MEMORY_RESOURCE
 
-#if defined(__has_include) && __cplusplus >= 201703L
-
-#if __has_include(<memory_resource>)
+#if defined(__has_include) && __cplusplus >= 201703L && __has_include(<memory_resource>)
 
 #define FOLLY_HAS_MEMORY_RESOURCE 1
 #include <memory_resource> // @manual
-namespace folly {
-namespace detail {
-namespace std_pmr = ::std::pmr;
-} // namespace detail
-} // namespace folly
-
-// Ignore experimental/memory_resource for libc++ so that all programs
-// don't need to explicitly link the c++experimental lib
-#elif !defined(_LIBCPP_VERSION) && __has_include(<experimental/memory_resource>)
-
-#define FOLLY_HAS_MEMORY_RESOURCE 1
-#include <experimental/memory_resource> // @manual
-namespace folly {
-namespace detail {
-namespace std_pmr = ::std::experimental::pmr;
-} // namespace detail
-} // namespace folly
 
 #else
 
 #define FOLLY_HAS_MEMORY_RESOURCE 0
 
 #endif
-
-#else // __has_include
-
-#define FOLLY_HAS_MEMORY_RESOURCE 0
-
-#endif // __has_include
 
 #endif // FOLLY_HAS_MEMORY_RESOURCE

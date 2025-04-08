@@ -1453,12 +1453,11 @@ template <
     class T,
     class Compare = std::less<T>,
     class GrowthPolicy = void,
-    class Container =
-        std::vector<T, folly::detail::std_pmr::polymorphic_allocator<T>>>
+    class Container = std::vector<T, std::pmr::polymorphic_allocator<T>>>
 using heap_vector_set = folly::heap_vector_set<
     T,
     Compare,
-    folly::detail::std_pmr::polymorphic_allocator<T>,
+    std::pmr::polymorphic_allocator<T>,
     GrowthPolicy,
     Container>;
 
@@ -1586,12 +1585,12 @@ template <
     class GrowthPolicy = void,
     class Container = std::vector<
         std::pair<Key, Value>,
-        folly::detail::std_pmr::polymorphic_allocator<std::pair<Key, Value>>>>
+        std::pmr::polymorphic_allocator<std::pair<Key, Value>>>>
 using heap_vector_map = folly::heap_vector_map<
     Key,
     Value,
     Compare,
-    folly::detail::std_pmr::polymorphic_allocator<std::pair<Key, Value>>,
+    std::pmr::polymorphic_allocator<std::pair<Key, Value>>,
     GrowthPolicy,
     Container>;
 
