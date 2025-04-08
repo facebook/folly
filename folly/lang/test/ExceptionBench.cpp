@@ -86,6 +86,21 @@ check_folly_exception_ptr_get_object_hint_vmi( //
   return folly::exception_ptr_get_object_hint<A0>(ptr, folly::tag<B1, C, B2>);
 }
 
+extern "C" FOLLY_KEEP char const* check_folly_exception_shared_string_what(
+    folly::exception_shared_string const* str) {
+  return str->what();
+}
+
+extern "C" FOLLY_KEEP void check_folly_exception_shared_string_ctor_copy(
+    folly::exception_shared_string const* str, void* dst) {
+  ::new (dst) folly::exception_shared_string(*str);
+}
+
+extern "C" FOLLY_KEEP void check_folly_exception_shared_string_dtor(
+    folly::exception_shared_string const* str) {
+  str->~exception_shared_string();
+}
+
 BENCHMARK(std_uncaught_exceptions, iters) {
   int s = 0;
   while (iters--) {
