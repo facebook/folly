@@ -414,11 +414,11 @@ set(ARM_AOR_ASM_FILES
 )
 if (IS_AARCH64_ARCH)
   foreach (AOR_FILE IN LISTS ARM_AOR_ASM_FILES)
-  # Added -march crypto-sha3 compilation. If not supported on target, _select will not enable this codepath
+  # Added -march crypto-sha2 compilation. If not supported on target, #ifdef won't compile this codepath
     set_property(
       SOURCE
       ${AOR_FILE}
-      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp" "-march=armv8-a+crypto+sve2-sha3"
+      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp" "-march=armv8-a+crypto+sve2-sha2"
     )
     list(APPEND folly_base_files
       ${AOR_FILE}
