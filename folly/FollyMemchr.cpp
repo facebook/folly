@@ -31,7 +31,7 @@ void* __folly_memchr_long_aarch64_sha512(const void* dst, int c, std::size_t siz
 }
 
 extern "C" void* memchr_long(const void* ptr, int ch, std::size_t count) {
-#ifdef FOLLY_ARM_FEATURE_SHA3
+#ifdef FOLLY_ARM_FEATURE_SHA2
   return __folly_memchr_long_aarch64_sha512(ptr, ch, count);
 #else
   return __folly_memchr_long_aarch64(ptr, ch, count);

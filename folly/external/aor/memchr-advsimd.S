@@ -14,7 +14,7 @@
 
 #include "asmdefs.h"
 
-.arch armv8-a+sha3
+.arch armv8-a+sha2
 
 /* Arguments and results.  */
 #define srcin           x0
