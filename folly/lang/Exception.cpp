@@ -458,7 +458,7 @@ std::type_info const* exception_ptr_get_type_(
 }
 
 #if defined(__clang__)
-__attribute__((no_sanitize("undefined")))
+__attribute__((no_sanitize("undefined", "cfi-vcall")))
 #endif // defined(__clang__)
 void* exception_ptr_get_object_(
     std::exception_ptr const& ptr,
