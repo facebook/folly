@@ -20,7 +20,7 @@ namespace folly {
 // Optimized memchr_long is only availble for Linux/ARM64, using std::memchr instead on other platforms
 #if !(defined(__linux__) && defined(__aarch64__))
 extern "C" void* memchr_long(const void* ptr, int ch, std::size_t count) {
-  return std::memchr(ptr, ch, count);
+  return const_cast<void*>(std::memchr(ptr, ch, count));
 }
 
 } // namespace folly
