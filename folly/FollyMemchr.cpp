@@ -23,7 +23,6 @@ extern "C" void* memchr_long(const void* ptr, int ch, std::size_t count) {
   return const_cast<void*>(std::memchr(ptr, ch, count));
 }
 
-} // namespace folly
 #else
 extern "C" {
 void* __folly_memchr_long_aarch64(const void* dst, int c, std::size_t size);
