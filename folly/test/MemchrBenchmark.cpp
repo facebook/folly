@@ -35,18 +35,14 @@ DEFINE_uint32(page_offset, 0, "Buffer offset from page aligned size");
 static uint8_t* temp_buf;
 
 template <void* memchr_impl(const void*, int, size_t)>
-void bmMemchr(const void* buf, size_t length, size_t iters) {
-#if !defined(__aarch64__)
-  __asm__ volatile(".align 64\n");
-#endif
-#pragma unroll(1)
+static void bmMemchr(const void* buf, size_t length, size_t iters) {
   for (size_t i = 0; i < iters; ++i) {
     memchr_impl(buf, 0xFF, length);
   }
 }
 
 template <void* memchr_impl(const void*, int, size_t)>
-void addMemchrBenchmark(const std::string& name) {
+static void addMemchrBenchmark(const std::string& name) {
   static std::deque<std::string> names; // lifetime management
 
   auto addBech = [&](size_t size) {
@@ -76,16 +72,14 @@ void addMemchrBenchmark(const std::string& name) {
 // Only to fool compiler optimizer not to optimize out unused results, could 
 // have used pragmas for that
 volatile static uint64_t result_offset = 0;
-void* std_memchr(const void *s, int c, size_t l) __attribute__((noinline));
-void* std_memchr(const void *s, int c, size_t l)
-{
+static FOLLY_NOINLINE void* std_memchr(const void *s, int c, size_t l);
+static void* std_memchr(const void *s, int c, size_t l) {
   result_offset =  (uint64_t)std::memchr((void *)s, c, l)-(uint64_t)s;
   return (void*)((uint64_t)s + result_offset);
 }
 
-void* folly_memchr(const void *s, int c, size_t l) __attribute__((noinline));
-void* folly_memchr(const void *s, int c, size_t l)
-{
+static FOLLY_NOINLINE void* folly_memchr(const void *s, int c, size_t l);
+static void* folly_memchr(const void *s, int c, size_t l) {
   result_offset =  (uint64_t)folly::memchr_long((void *)s, c, l)-(uint64_t)s;
   return (void*)((uint64_t)s + result_offset);
 }
