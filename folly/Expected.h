@@ -559,7 +559,10 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
         this->assignError(static_cast<Other&&>(that).error());
         break;
       case Which::eEmpty:
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcovered-switch-default"
       default:
+#pragma GCC diagnostic pop
         this->clear();
         break;
     }
