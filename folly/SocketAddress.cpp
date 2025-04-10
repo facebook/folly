@@ -125,28 +125,23 @@ struct GetAddrInfoError {
 namespace folly {
 
 bool SocketAddress::isPrivateAddress() const {
-  auto family = getFamily();
-  if (family == AF_INET || family == AF_INET6) {
-    return storage_.addr.isPrivate() ||
-        (storage_.addr.isV6() && storage_.addr.asV6().isLinkLocal());
-  } else if (external_) {
+  if (!external_) {
+    return storage_.addr.isPrivate();
+  } else {
     // Unix addresses are always local to a host.  Return true,
     // since this conforms to the semantics of returning true for IP loopback
     // addresses.
     return true;
   }
-  return false;
 }
 
 bool SocketAddress::isLoopbackAddress() const {
-  auto family = getFamily();
-  if (family == AF_INET || family == AF_INET6) {
+  if (!external_) {
     return storage_.addr.isLoopback();
-  } else if (external_) {
+  } else {
     // Return true for UNIX addresses, since they are always local to a host.
     return true;
   }
-  return false;
 }
 
 void SocketAddress::setFromHostPort(const char* host, uint16_t port) {

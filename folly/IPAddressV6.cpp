@@ -382,7 +382,7 @@ bool IPAddressV6::isPrivate() const {
   if (isIPv4Mapped() && createIPv4().isPrivate()) {
     return true;
   }
-  return isLoopback() || inBinarySubnet({{0xfc, 0x00}}, 7);
+  return isLoopback() || inBinarySubnet({{0xfc, 0x00}}, 7) || isLinkLocal();
 }
 
 // public
