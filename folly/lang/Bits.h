@@ -477,6 +477,29 @@ class Endian {
 #undef FB_GEN2
 #undef FB_GEN1
 
+/// get_bit_at
+/// get_bit_at_fn
+///
+/// From an array of unsigned integers get a bit at a position idx.
+/// Lowest bits in an integer considered to come first.
+///
+struct get_bit_at_fn {
+  template <typename Uint>
+  FOLLY_NODISCARD constexpr bool operator()(
+      const Uint* ptr, std::size_t idx) const noexcept {
+    static_assert(std::is_unsigned_v<std::remove_cv_t<Uint>>, "");
+    static_assert(!std::is_same_v<std::remove_cv_t<Uint>, bool>, "");
+    std::size_t uintIdx = idx / (sizeof(Uint) * 8);
+    std::size_t bitIdx = idx % (sizeof(Uint) * 8);
+    Uint loaded = ptr[uintIdx];
+
+    Uint justOneBit = loaded & (Uint{1} << bitIdx);
+    return !!justOneBit;
+  }
+};
+
+inline constexpr get_bit_at_fn get_bit_at;
+
 /**
  * Representation of an unaligned value of a POD type.
  */

@@ -20,7 +20,10 @@
 #include <random>
 #include <vector>
 
+#include <fmt/core.h>
+
 #include <folly/Random.h>
+#include <folly/container/span.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {
@@ -574,6 +577,74 @@ TYPED_TEST(BitsAllUintsTest, SetNMostSignificantBits) {
 #endif
     EXPECT_EQ(expected, cactual[i]);
     EXPECT_EQ(expected, ractual[i]);
+  }
+}
+
+TYPED_TEST(BitsAllUintsTest, GetBitAt) {
+  using T = TypeParam;
+
+  constexpr std::size_t kBitSize = sizeof(T) * 8;
+
+  constexpr bool test = [] {
+    T kOnes = folly::set_n_least_significant_bits(T{}, kBitSize);
+    T in[] = {kOnes, 0, kOnes};
+
+    for (std::size_t i = 0; i != kBitSize; ++i) {
+      in[1] = T{0};
+      in[2] = kOnes;
+      T bit = static_cast<T>(1UL << i);
+      in[1] = in[1] | bit;
+      in[2] = in[2] ^ bit;
+      if (!folly::get_bit_at(in, kBitSize + i)) {
+        return false;
+      }
+      if (folly::get_bit_at(in, kBitSize * 2 + i)) {
+        return false;
+      }
+    }
+
+    return true;
+  }();
+
+  EXPECT_TRUE(test);
+}
+
+TYPED_TEST(BitsAllUintsTest, GetBitAtLE) {
+  using T = TypeParam;
+
+  if constexpr (!folly::kIsLittleEndian) {
+    return;
+  }
+
+  {
+    std::uint64_t in = folly::set_n_least_significant_bits(0UL, 64);
+    const auto* ptr = reinterpret_cast<const T*>(&in);
+
+    for (std::size_t i = 0; i != 64; ++i) {
+      EXPECT_TRUE(folly::get_bit_at(ptr, i));
+    }
+
+    in = 0;
+    for (std::size_t i = 0; i != 64; ++i) {
+      EXPECT_FALSE(folly::get_bit_at(ptr, i));
+    }
+  }
+  {
+    const std::uint8_t in[] = {0b101, 0b1110, 0, 0, 0, 0, 0, 0};
+    const auto* ptr = reinterpret_cast<const T*>(in);
+
+    // in[0]
+    EXPECT_EQ(1, folly::get_bit_at(ptr, 0));
+    EXPECT_EQ(0, folly::get_bit_at(ptr, 1));
+    EXPECT_EQ(1, folly::get_bit_at(ptr, 2));
+    EXPECT_EQ(0, folly::get_bit_at(ptr, 3));
+
+    // in[1]
+    EXPECT_EQ(0, folly::get_bit_at(ptr, 8));
+    EXPECT_EQ(1, folly::get_bit_at(ptr, 9));
+    EXPECT_EQ(1, folly::get_bit_at(ptr, 10));
+    EXPECT_EQ(1, folly::get_bit_at(ptr, 11));
+    EXPECT_EQ(0, folly::get_bit_at(ptr, 12));
   }
 }
 
