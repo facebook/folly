@@ -839,6 +839,7 @@ class exception_shared_string {
 
   static char const* from_state(state const* state) noexcept;
   static state* to_state(char const* what) noexcept;
+  void ruin_state() noexcept;
 
  public:
 #if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
@@ -864,7 +865,17 @@ class exception_shared_string {
             size, ffun_<F>, &reinterpret_cast<unsigned char&>(func)) {}
 
   exception_shared_string(exception_shared_string const&) noexcept;
-  ~exception_shared_string();
+
+#if FOLLY_CPLUSPLUS >= 202002
+  constexpr ~exception_shared_string() {
+    if (!std::is_constant_evaluated()) {
+      ruin_state();
+    }
+  }
+#else
+  ~exception_shared_string() { ruin_state(); }
+#endif
+
   void operator=(exception_shared_string const&) = delete;
 
   char const* what() const noexcept { return what_; }

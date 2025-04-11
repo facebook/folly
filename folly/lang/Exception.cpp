@@ -831,7 +831,8 @@ exception_shared_string::exception_shared_string(
 exception_shared_string::exception_shared_string(
     exception_shared_string const& that) noexcept
     : what_{(state::copy(to_state(that.what_)), that.what_)} {}
-exception_shared_string::~exception_shared_string() {
+
+void exception_shared_string::ruin_state() noexcept {
   state::ruin(to_state(what_));
 }
 
