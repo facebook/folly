@@ -585,28 +585,18 @@ TYPED_TEST(BitsAllUintsTest, GetBitAt) {
 
   constexpr std::size_t kBitSize = sizeof(T) * 8;
 
-  constexpr bool test = [] {
-    T kOnes = folly::set_n_least_significant_bits(T{}, kBitSize);
-    T in[] = {kOnes, 0, kOnes};
+  T kOnes = folly::set_n_least_significant_bits(T{}, kBitSize);
+  T in[] = {kOnes, 0, kOnes};
 
-    for (std::size_t i = 0; i != kBitSize; ++i) {
-      in[1] = T{0};
-      in[2] = kOnes;
-      T bit = static_cast<T>(1UL << i);
-      in[1] = in[1] | bit;
-      in[2] = in[2] ^ bit;
-      if (!folly::get_bit_at(in, kBitSize + i)) {
-        return false;
-      }
-      if (folly::get_bit_at(in, kBitSize * 2 + i)) {
-        return false;
-      }
-    }
-
-    return true;
-  }();
-
-  EXPECT_TRUE(test);
+  for (std::size_t i = 0; i != kBitSize; ++i) {
+    in[1] = T{0};
+    in[2] = kOnes;
+    T bit = static_cast<T>(1UL << i);
+    in[1] = in[1] | bit;
+    in[2] = in[2] ^ bit;
+    ASSERT_TRUE(folly::get_bit_at(in, kBitSize + i)) << "i=" << i;
+    ASSERT_FALSE(folly::get_bit_at(in, kBitSize * 2 + i)) << "i=" << i;
+  }
 }
 
 TYPED_TEST(BitsAllUintsTest, GetBitAtLE) {
