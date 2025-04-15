@@ -189,7 +189,7 @@ void TDigest::internalMerge(
     double nextSum = next.mean() * next.weight();
     weightSoFar += next.weight();
 
-    if (weightSoFar <= q_limit_times_count) {
+    if (weightSoFar <= q_limit_times_count || k_limit > maxSize_) {
       sumsToMerge += nextSum;
       weightsToMerge += next.weight();
     } else {
@@ -212,6 +212,7 @@ void TDigest::internalMerge(
   dst.max_ = newMax;
   dst.min_ = newMin;
 
+  DCHECK_LE(workingBuffer.size(), maxSize_);
   std::swap(dst.centroids_, workingBuffer);
 }
 
@@ -317,7 +318,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   compressed.reserve(maxSize);
 
   double k_limit = 1;
-  double q_limit_times_count = k_to_q(k_limit, maxSize) * count;
+  double q_limit_times_count = k_to_q(k_limit++, maxSize) * count;
 
   Centroid cur = centroids.front();
   double weightSoFar = cur.weight();
@@ -325,7 +326,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   double weightsToMerge = 0;
   for (auto it = centroids.begin() + 1, e = centroids.end(); it != e; ++it) {
     weightSoFar += it->weight();
-    if (weightSoFar <= q_limit_times_count) {
+    if (weightSoFar <= q_limit_times_count || k_limit > maxSize) {
       sumsToMerge += it->mean() * it->weight();
       weightsToMerge += it->weight();
     } else {
@@ -339,6 +340,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   }
   result.sum_ += cur.add(sumsToMerge, weightsToMerge);
   compressed.push_back(cur);
+  DCHECK_LE(compressed.size(), maxSize);
   compressed.shrink_to_fit();
 
   // Deal with floating point precision
