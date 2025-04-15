@@ -73,6 +73,8 @@ class SettingCoreBase {
       std::string_view newValue,
       std::string_view reason,
       SnapshotBase* snapshot) = 0;
+  virtual std::string_view getUpdateReason(
+      const SnapshotBase* snapshot) const = 0;
   virtual std::pair<std::string, std::string> getAsString(
       const SnapshotBase* snapshot) const = 0;
   virtual SetResult resetToDefault(SnapshotBase* snapshot) = 0;
@@ -209,6 +211,8 @@ class TypedSettingCore : public SettingCoreBase {
 
   std::pair<std::string, std::string> getAsString(
       const SnapshotBase* snapshot) const override;
+
+  std::string_view getUpdateReason(const SnapshotBase* snapshot) const override;
 
   SetResult resetToDefault(SnapshotBase* snapshot) override {
     if (isFrozenImmutable()) {
@@ -387,6 +391,7 @@ class SnapshotBase {
         : fullName_(fullName), core_(core), snapshot_(snapshot) {}
 
     const SettingMetadata& meta() const { return core_.meta(); }
+    std::string_view updateReason() const;
     std::pair<std::string, std::string> valueAndReason() const;
     const std::string& fullName() const { return fullName_; }
     uint64_t accessCount() const { return core_.accessCount(); }
@@ -497,6 +502,12 @@ std::pair<std::string, std::string> TypedSettingCore<T>::getAsString(
   auto& contents = snapshot ? snapshot->get(*this) : getSlow();
   return std::make_pair(
       folly::to<std::string>(contents.value), contents.updateReason);
+}
+template <typename T>
+std::string_view TypedSettingCore<T>::getUpdateReason(
+    const SnapshotBase* snapshot) const {
+  auto& contents = snapshot ? snapshot->get(*this) : getSlow();
+  return contents.updateReason;
 }
 
 template <class T, typename Tag>

@@ -208,7 +208,9 @@ std::pair<std::string, std::string>
 SnapshotBase::SettingVisitorInfo::valueAndReason() const {
   return core_.getAsString(&snapshot_);
 }
-
+std::string_view SnapshotBase::SettingVisitorInfo::updateReason() const {
+  return core_.getUpdateReason(&snapshot_);
+}
 } // namespace detail
 
 void Snapshot::publish() {

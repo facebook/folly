@@ -390,6 +390,7 @@ TEST(Settings, basic) {
         FAIL() << "Unexpected type: " << meta.typeStr;
       }
       auto [value, reason] = setting.valueAndReason();
+      EXPECT_EQ(reason, setting.updateReason());
       allFlags += folly::sformat(
           "{}/{}/{}/{}/{}/{}/{}\n",
           meta.project,
