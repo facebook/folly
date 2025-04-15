@@ -37,7 +37,7 @@ namespace netops = folly::netops;
 
 TEST(SocketAddress, Size) {
   SocketAddress addr;
-  EXPECT_EQ(sizeof(addr), 32);
+  EXPECT_EQ(sizeof(addr), 40);
 }
 
 TEST(SocketAddress, ConstructFromIpv4) {
