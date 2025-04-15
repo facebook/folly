@@ -487,9 +487,6 @@ TEST_F(ExceptionTest, exception_shared_string) {
 
 using namespace folly::string_literals;
 
-inline constexpr folly::exception_shared_string global_hello{
-    "hello, world!"_litv};
-
 TEST_F(ExceptionTest, exception_shared_string_literal) {
   auto s0 = folly::exception_shared_string("hello, world!"_litv);
   auto s1 = s0;
@@ -497,13 +494,18 @@ TEST_F(ExceptionTest, exception_shared_string_literal) {
 
   const char* expected = "hello, world!";
   EXPECT_STREQ(expected, s2.what());
+}
 
-  EXPECT_STREQ(expected, global_hello.what());
+TEST_F(ExceptionTest, exception_shared_string_literal_constant) {
+  constexpr auto s0 = folly::exception_shared_string("hello, world!"_litv);
+
+  const char* expected = "hello, world!";
+  EXPECT_STREQ(expected, s0.what());
 
   // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-  auto s3 = global_hello;
-  EXPECT_EQ(global_hello.what(), s3.what());
-  EXPECT_STREQ(expected, s3.what());
+  auto s1 = s0;
+  EXPECT_EQ(s0.what(), s1.what());
+  EXPECT_STREQ(expected, s1.what());
 }
 
 #endif

@@ -866,7 +866,7 @@ class exception_shared_string {
 
   exception_shared_string(exception_shared_string const&) noexcept;
 
-#if FOLLY_CPLUSPLUS >= 202002
+#if FOLLY_CPLUSPLUS >= 202002 && defined(__cpp_lib_is_constant_evaluated)
   constexpr ~exception_shared_string() {
     if (!std::is_constant_evaluated()) {
       ruin_state();
