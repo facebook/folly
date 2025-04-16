@@ -977,7 +977,7 @@ TEST(Conv, StringPieceToDouble) {
 }
 
 TEST(Conv, EmptyStringToInt) {
-  string s = "";
+  string s;
   StringPiece pc(s);
 
   try {
@@ -999,7 +999,7 @@ TEST(Conv, CorruptedStringToInt) {
 }
 
 TEST(Conv, EmptyStringToDouble) {
-  string s = "";
+  string s;
   StringPiece pc(s);
 
   try {
