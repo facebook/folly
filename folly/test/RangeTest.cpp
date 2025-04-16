@@ -1002,7 +1002,7 @@ TYPED_TEST(NeedleFinderTest, DelimDuplicates) {
 
 TYPED_TEST(NeedleFinderTest, Empty) {
   string a = "abc";
-  string b = "";
+  string b;
   EXPECT_EQ(string::npos, this->find_first_byte_of(a, b));
   EXPECT_EQ(string::npos, this->find_first_byte_of(b, a));
   EXPECT_EQ(string::npos, this->find_first_byte_of(b, b));

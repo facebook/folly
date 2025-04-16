@@ -48,7 +48,7 @@ struct AddressData {
       : address(address_), bytes(), version(version_) {}
   explicit AddressData(const std::string& address_)
       : address(address_), bytes(), version(0) {}
-  AddressData() : address(""), bytes(), version(0) {}
+  AddressData() : bytes(), version(0) {}
 
   static in_addr parseAddress4(const std::string& src) {
     in_addr addr;
