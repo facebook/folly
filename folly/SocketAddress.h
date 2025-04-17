@@ -100,24 +100,18 @@ class SocketAddress {
     setFromIpAddrPort(ipAddr, port);
   }
 
-  SocketAddress(const SocketAddress& addr) {
-    port_ = addr.port_;
-    storage_ = addr.storage_;
-  }
+  SocketAddress(const SocketAddress& addr) { storage_ = addr.storage_; }
 
   SocketAddress& operator=(const SocketAddress& addr) {
-    port_ = addr.port_;
     storage_ = addr.storage_;
     return *this;
   }
 
   SocketAddress(SocketAddress&& addr) noexcept {
-    port_ = addr.port_;
     storage_ = std::move(addr.storage_);
   }
 
   SocketAddress& operator=(SocketAddress&& addr) {
-    port_ = addr.port_;
     storage_ = std::move(addr.storage_);
     return *this;
   }
@@ -155,10 +149,7 @@ class SocketAddress {
    * Reset this SocketAddress by clearing the associated address and
    * freeing up any external storage being used.
    */
-  void reset() {
-    storage_ = folly::IPAddress();
-    port_ = 0;
-  }
+  void reset() { storage_ = IPAddr(); }
 
   /**
    * @overloadbrief Initialize this SocketAddress from a hostname and port.
@@ -461,8 +452,8 @@ class SocketAddress {
    */
   socklen_t getAddress(sockaddr_storage* addr) const {
     if (isFamilyInet()) {
-      return std::get<IPAddress>(storage_).toSockaddrStorage(
-          addr, htons(static_cast<uint16_t>(port_)));
+      return std::get<IPAddr>(storage_).ip.toSockaddrStorage(
+          addr, htons(std::get<IPAddr>(storage_).port));
 #if FOLLY_HAVE_VSOCK
     } else if (holdsVsock()) {
       const auto& vsockAddr = std::get<VsockAddr>(storage_);
@@ -470,7 +461,7 @@ class SocketAddress {
       memset(svm, 0, sizeof(sockaddr_vm));
       svm->svm_family = AF_VSOCK;
       svm->svm_cid = vsockAddr.cid;
-      svm->svm_port = port_;
+      svm->svm_port = vsockAddr.port;
       return sizeof(sockaddr_vm);
 #endif
     } else {
@@ -513,7 +504,7 @@ class SocketAddress {
       return sa_family_t(AF_VSOCK);
 #endif
     } else {
-      return std::get<IPAddress>(storage_).family();
+      return std::get<IPAddr>(storage_).ip.family();
     }
   }
 
@@ -601,7 +592,7 @@ class SocketAddress {
   bool isIPv4Mapped() const {
     return (
         getFamily() == AF_INET6 &&
-        std::get<IPAddress>(storage_).isIPv4Mapped());
+        std::get<IPAddr>(storage_).ip.isIPv4Mapped());
   }
 
   /**
@@ -756,21 +747,34 @@ class SocketAddress {
   };
 
   /**
-   * This class stores the CID (Context Identifier) for VSOCK addresses.
+   * This class stores an IP address and port.
+   */
+  struct IPAddr {
+    folly::IPAddress ip;
+    uint16_t port;
+
+    IPAddr() : ip(), port(0) {}
+    IPAddr(const folly::IPAddress& ip_, uint16_t port_)
+        : ip(ip_), port(port_) {}
+  };
+
+  /**
+   * This class stores the CID (Context Identifier) and port for VSOCK
+   * addresses.
    */
   struct VsockAddr {
     uint32_t cid;
+    uint32_t port;
 
-    explicit VsockAddr(uint32_t cid_) : cid(cid_) {}
+    explicit VsockAddr(uint32_t cid_) : cid(cid_), port(0) {}
+    VsockAddr(uint32_t cid_, uint32_t port_) : cid(cid_), port(port_) {}
 
 #if FOLLY_HAVE_VSOCK
     const char* getMappedName() const;
 #endif
   };
 
-  bool holdsInet() const {
-    return std::holds_alternative<folly::IPAddress>(storage_);
-  }
+  bool holdsInet() const { return std::holds_alternative<IPAddr>(storage_); }
 
   bool holdsUnix() const {
     return std::holds_alternative<ExternalUnixAddr>(storage_);
@@ -793,17 +797,12 @@ class SocketAddress {
   void updateUnixAddressLength(socklen_t addrlen);
 
   /*
-   * storage_ contains either an IPAddress, an ExternalUnixAddr, or an
-VsockAddr.
-   * IPAddress is used for IPv4 and IPv6 addresses.
+   * storage_ contains either an IPAddr, an ExternalUnixAddr, or a VsockAddr.
+   * IPAddr is used for IPv4 and IPv6 addresses.
    * ExternalUnixAddr is used for Unix domain sockets.
    * VsockAddr is used for VSOCK addresses.
    */
-  std::variant<folly::IPAddress, ExternalUnixAddr, VsockAddr> storage_{
-      folly::IPAddress()};
-
-  // IPAddress and VSock stores the port here.
-  uint32_t port_{0};
+  std::variant<IPAddr, ExternalUnixAddr, VsockAddr> storage_{IPAddr()};
 };
 
 /**

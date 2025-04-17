@@ -126,7 +126,7 @@ namespace folly {
 
 bool SocketAddress::isPrivateAddress() const {
   if (holdsInet()) {
-    return std::get<IPAddress>(storage_).isPrivate();
+    return std::get<IPAddr>(storage_).ip.isPrivate();
   } else {
     // Unix and vsock addresses are always local to a host.  Return true,
     // since this conforms to the semantics of returning true for IP loopback
@@ -137,7 +137,7 @@ bool SocketAddress::isPrivateAddress() const {
 
 bool SocketAddress::isLoopbackAddress() const {
   if (holdsInet()) {
-    return std::get<IPAddress>(storage_).isLoopback();
+    return std::get<IPAddr>(storage_).ip.isLoopback();
 #if FOLLY_HAVE_VSOCK
   } else if (holdsVsock()) {
     // VSOCK addresses with CID_LOCAL are considered loopback
@@ -161,8 +161,7 @@ void SocketAddress::setFromIpPort(const char* ip, uint16_t port) {
 }
 
 void SocketAddress::setFromIpAddrPort(const IPAddress& ipAddr, uint16_t port) {
-  storage_ = ipAddr;
-  port_ = port;
+  storage_ = IPAddr(ipAddr, port);
 }
 
 void SocketAddress::setFromLocalPort(uint16_t port) {
@@ -196,8 +195,7 @@ void SocketAddress::setFromHostPort(const char* hostAndPort) {
 
 #if FOLLY_HAVE_VSOCK
 void SocketAddress::setFromVsockCIDPort(uint32_t cid, uint32_t port) {
-  storage_ = VsockAddr(cid);
-  port_ = port;
+  storage_ = VsockAddr(cid, port);
 }
 #endif
 
@@ -275,7 +273,7 @@ void SocketAddress::setFromLocalAddress(NetworkSocket socket) {
 }
 
 void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
-  uint32_t port;
+  uint16_t port;
 
   if (address->sa_family == AF_INET) {
     port = ntohs(((sockaddr_in*)address)->sin_port);
@@ -291,7 +289,10 @@ void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
         "setting AF_UNIX addresses");
 #if FOLLY_HAVE_VSOCK
   } else if (address->sa_family == AF_VSOCK) {
-    port = ((sockaddr_vm*)address)->svm_port;
+    // For VSOCK addresses, store the CID and port in the VsockAddr
+    const auto* vsockAddr = reinterpret_cast<const sockaddr_vm*>(address);
+    storage_ = VsockAddr(vsockAddr->svm_cid, vsockAddr->svm_port);
+    return;
 #endif
   } else {
     throw std::invalid_argument(fmt::format(
@@ -300,18 +301,8 @@ void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
         address->sa_family));
   }
 
-  if (false) {
-#if FOLLY_HAVE_VSOCK
-  } else if (address->sa_family == AF_VSOCK) {
-    // For VSOCK addresses, store the CID in the VsockAddr
-    const auto* vsockAddr = reinterpret_cast<const sockaddr_vm*>(address);
-    storage_ = VsockAddr(vsockAddr->svm_cid);
-#endif
-  } else {
-    // For IP addresses, use the IPAddress constructor
-    storage_ = folly::IPAddress(address);
-  }
-  port_ = port;
+  // For IP addresses, use the IPAddress constructor
+  storage_ = IPAddr(folly::IPAddress(address), port);
 }
 
 void SocketAddress::setFromSockaddr(
@@ -390,8 +381,7 @@ void SocketAddress::setFromSockaddr(
 #if FOLLY_HAVE_VSOCK
 void SocketAddress::setFromSockaddr(const struct sockaddr_vm* address) {
   assert(address->svm_family == AF_VSOCK);
-  storage_ = VsockAddr(address->svm_cid);
-  port_ = address->svm_port;
+  storage_ = VsockAddr(address->svm_cid, address->svm_port);
 }
 #endif
 
@@ -400,7 +390,7 @@ const folly::IPAddress& SocketAddress::getIPAddress() const {
   if (family != AF_INET && family != AF_INET6) {
     throw InvalidAddressFamilyException(family);
   }
-  return std::get<IPAddress>(storage_);
+  return std::get<IPAddr>(storage_).ip;
 }
 
 socklen_t SocketAddress::getActualSize() const {
@@ -427,14 +417,14 @@ std::string SocketAddress::getFullyQualified() const {
   if (!isFamilyInet()) {
     throw std::invalid_argument("Can't get address str for non ip address");
   }
-  return std::get<IPAddress>(storage_).toFullyQualified();
+  return std::get<IPAddr>(storage_).ip.toFullyQualified();
 }
 
 std::string SocketAddress::getAddressStr() const {
   if (!isFamilyInet()) {
     throw std::invalid_argument("Can't get address str for non ip address");
   }
-  return std::get<IPAddress>(storage_).str();
+  return std::get<IPAddr>(storage_).ip.str();
 }
 
 bool SocketAddress::isFamilyInet() const {
@@ -453,12 +443,7 @@ uint16_t SocketAddress::getPort() const {
   switch (getFamily()) {
     case AF_INET:
     case AF_INET6:
-      return static_cast<uint16_t>(port_);
-#if FOLLY_HAVE_VSOCK
-    case AF_VSOCK:
-      throw std::invalid_argument(
-          "SocketAddress::getPort() called on VSOCK, failing to avoid narrowing");
-#endif
+      return std::get<IPAddr>(storage_).port;
     default:
       throw std::invalid_argument(
           "SocketAddress::getPort() called on non-IP "
@@ -470,7 +455,7 @@ uint16_t SocketAddress::getPort() const {
 uint32_t SocketAddress::getVsockPort() const {
   switch (getFamily()) {
     case AF_VSOCK:
-      return port_;
+      return std::get<VsockAddr>(storage_).port;
     default:
       throw std::invalid_argument(
           "SocketAddress::getVsockPort() called on non-VSOCK address");
@@ -482,7 +467,7 @@ void SocketAddress::setPort(uint16_t port) {
   switch (getFamily()) {
     case AF_INET:
     case AF_INET6:
-      port_ = port;
+      std::get<IPAddr>(storage_).port = port;
       return;
     default:
       throw std::invalid_argument(
@@ -504,7 +489,8 @@ bool SocketAddress::tryConvertToIPv4() {
     return false;
   }
 
-  storage_ = folly::IPAddress::createIPv4(std::get<IPAddress>(storage_));
+  auto& ipAddr = std::get<IPAddr>(storage_);
+  ipAddr.ip = folly::IPAddress::createIPv4(ipAddr.ip);
   return true;
 }
 
@@ -513,7 +499,8 @@ bool SocketAddress::mapToIPv6() {
     return false;
   }
 
-  storage_ = folly::IPAddress::createIPv6(std::get<IPAddress>(storage_));
+  auto& ipAddr = std::get<IPAddr>(storage_);
+  ipAddr.ip = folly::IPAddress::createIPv6(ipAddr.ip);
   return true;
 }
 
@@ -595,14 +582,15 @@ std::string SocketAddress::describe() const {
       const auto& vsockAddr = std::get<VsockAddr>(storage_);
       auto* maybeName = vsockAddr.getMappedName();
       if (maybeName) {
-        snprintf(buf, sizeof(buf), "[%s:%" PRIu32 "]", maybeName, port_);
+        snprintf(
+            buf, sizeof(buf), "[%s:%" PRIu32 "]", maybeName, vsockAddr.port);
       } else {
         snprintf(
             buf,
             sizeof(buf),
             "[%" PRIu32 ":%" PRIu32 "]",
             vsockAddr.cid,
-            port_);
+            vsockAddr.port);
       }
       return buf;
     }
@@ -642,17 +630,19 @@ bool SocketAddress::operator==(const SocketAddress& other) const {
   switch (getFamily()) {
     case AF_INET:
     case AF_INET6:
-      return (std::get<IPAddress>(other.storage_) ==
-              std::get<IPAddress>(storage_)) &&
-          (other.port_ == port_);
+      return (std::get<IPAddr>(other.storage_).ip ==
+              std::get<IPAddr>(storage_).ip) &&
+          (std::get<IPAddr>(other.storage_).port ==
+           std::get<IPAddr>(storage_).port);
 #if FOLLY_HAVE_VSOCK
     case AF_VSOCK:
       return (std::get<VsockAddr>(other.storage_).cid ==
               std::get<VsockAddr>(storage_).cid) &&
-          (other.port_ == port_);
+          (std::get<VsockAddr>(other.storage_).port ==
+           std::get<VsockAddr>(storage_).port);
 #endif
     case AF_UNSPEC:
-      return std::get<IPAddress>(other.storage_).empty();
+      return std::get<IPAddr>(other.storage_).ip.empty();
     default:
       throw_exception<std::invalid_argument>(
           "SocketAddress: unsupported address family for comparison");
@@ -671,8 +661,8 @@ bool SocketAddress::prefixMatch(
       [[fallthrough]];
     case AF_INET6: {
       auto prefix = folly::IPAddress::longestCommonPrefix(
-          {std::get<IPAddress>(storage_), mask_length},
-          {std::get<IPAddress>(other.storage_), mask_length});
+          {std::get<IPAddr>(storage_).ip, mask_length},
+          {std::get<IPAddr>(other.storage_).ip, mask_length});
       return prefix.second >= prefixLength;
     }
     default:
@@ -697,13 +687,13 @@ size_t SocketAddress::hash() const {
   switch ((int)getFamily()) {
     case AF_INET:
     case AF_INET6: {
-      boost::hash_combine(seed, port_);
-      boost::hash_combine(seed, std::get<IPAddress>(storage_).hash());
+      boost::hash_combine(seed, std::get<IPAddr>(storage_).port);
+      boost::hash_combine(seed, std::get<IPAddr>(storage_).ip.hash());
       break;
     }
 #if FOLLY_HAVE_VSOCK
     case AF_VSOCK: {
-      boost::hash_combine(seed, port_);
+      boost::hash_combine(seed, std::get<VsockAddr>(storage_).port);
       boost::hash_combine(seed, std::get<VsockAddr>(storage_).cid);
       break;
     }
@@ -712,7 +702,7 @@ size_t SocketAddress::hash() const {
       // Already handled above
       break;
     case AF_UNSPEC:
-      boost::hash_combine(seed, std::get<IPAddress>(storage_).hash());
+      boost::hash_combine(seed, std::get<IPAddr>(storage_).ip.hash());
       break;
     default:
       throw_exception<std::invalid_argument>(
@@ -799,7 +789,8 @@ void SocketAddress::getIpString(char* buf, size_t buflen, int flags) const {
   }
 
   sockaddr_storage tmp_sock;
-  std::get<IPAddress>(storage_).toSockaddrStorage(&tmp_sock, port_);
+  std::get<IPAddr>(storage_).ip.toSockaddrStorage(
+      &tmp_sock, std::get<IPAddr>(storage_).port);
   int rc = getnameinfo(
       (sockaddr*)&tmp_sock,
       sizeof(sockaddr_storage),
@@ -877,12 +868,13 @@ bool SocketAddress::operator<(const SocketAddress& other) const {
   switch (getFamily()) {
     case AF_INET:
     case AF_INET6: {
-      if (port_ != other.port_) {
-        return port_ < other.port_;
+      auto& thisAddr = std::get<IPAddr>(storage_);
+      auto& otherAddr = std::get<IPAddr>(other.storage_);
+      if (thisAddr.port != otherAddr.port) {
+        return thisAddr.port < otherAddr.port;
       }
 
-      return std::get<IPAddress>(storage_) <
-          std::get<IPAddress>(other.storage_);
+      return thisAddr.ip < otherAddr.ip;
     }
     case AF_UNSPEC:
     default:
