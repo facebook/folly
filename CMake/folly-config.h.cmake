@@ -83,3 +83,5 @@
 #cmakedefine FOLLY_SUPPORT_SHARED_LIBRARY 1
 
 #cmakedefine01 FOLLY_HAVE_LIBRT
+
+#cmakedefine01 FOLLY_HAVE_VSOCK

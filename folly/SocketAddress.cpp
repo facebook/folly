@@ -125,10 +125,10 @@ struct GetAddrInfoError {
 namespace folly {
 
 bool SocketAddress::isPrivateAddress() const {
-  if (!holdsUnix()) {
+  if (holdsInet()) {
     return std::get<IPAddress>(storage_).isPrivate();
   } else {
-    // Unix addresses are always local to a host.  Return true,
+    // Unix and vsock addresses are always local to a host.  Return true,
     // since this conforms to the semantics of returning true for IP loopback
     // addresses.
     return true;
@@ -136,8 +136,14 @@ bool SocketAddress::isPrivateAddress() const {
 }
 
 bool SocketAddress::isLoopbackAddress() const {
-  if (!holdsUnix()) {
+  if (holdsInet()) {
     return std::get<IPAddress>(storage_).isLoopback();
+#if FOLLY_HAVE_VSOCK
+  } else if (holdsVsock()) {
+    // VSOCK addresses with CID_LOCAL are considered loopback
+    const auto& vsockAddr = std::get<VsockAddr>(storage_);
+    return vsockAddr.cid == VMADDR_CID_LOCAL;
+#endif
   } else {
     // Return true for UNIX addresses, since they are always local to a host.
     return true;
@@ -188,6 +194,13 @@ void SocketAddress::setFromHostPort(const char* hostAndPort) {
   setFromAddrInfo(results.info);
 }
 
+#if FOLLY_HAVE_VSOCK
+void SocketAddress::setFromVsockCIDPort(uint32_t cid, uint32_t port) {
+  storage_ = VsockAddr(cid);
+  port_ = port;
+}
+#endif
+
 int SocketAddress::getPortFrom(const struct sockaddr* address) {
   switch (address->sa_family) {
     case AF_INET:
@@ -195,6 +208,11 @@ int SocketAddress::getPortFrom(const struct sockaddr* address) {
 
     case AF_INET6:
       return ntohs(((sockaddr_in6*)address)->sin6_port);
+
+#if FOLLY_HAVE_VSOCK
+    case AF_VSOCK:
+      return ((sockaddr_vm*)address)->svm_port;
+#endif
 
     default:
       return -1;
@@ -211,6 +229,9 @@ const char* SocketAddress::getFamilyNameFrom(
     GETFAMILYNAMEFROM_IMPL(AF_INET);
     GETFAMILYNAMEFROM_IMPL(AF_INET6);
     GETFAMILYNAMEFROM_IMPL(AF_UNIX);
+#if FOLLY_HAVE_VSOCK
+    GETFAMILYNAMEFROM_IMPL(AF_VSOCK);
+#endif
     GETFAMILYNAMEFROM_IMPL(AF_UNSPEC);
 
     default:
@@ -254,7 +275,7 @@ void SocketAddress::setFromLocalAddress(NetworkSocket socket) {
 }
 
 void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
-  uint16_t port;
+  uint32_t port;
 
   if (address->sa_family == AF_INET) {
     port = ntohs(((sockaddr_in*)address)->sin_port);
@@ -268,13 +289,29 @@ void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
         "SocketAddress::setFromSockaddr(): the address "
         "length must be explicitly specified when "
         "setting AF_UNIX addresses");
+#if FOLLY_HAVE_VSOCK
+  } else if (address->sa_family == AF_VSOCK) {
+    port = ((sockaddr_vm*)address)->svm_port;
+#endif
   } else {
-    throw std::invalid_argument(
+    throw std::invalid_argument(fmt::format(
         "SocketAddress::setFromSockaddr() called "
-        "with unsupported address type");
+        "with unsupported address type {}",
+        address->sa_family));
   }
 
-  setFromIpAddrPort(folly::IPAddress(address), port);
+  if (false) {
+#if FOLLY_HAVE_VSOCK
+  } else if (address->sa_family == AF_VSOCK) {
+    // For VSOCK addresses, store the CID in the VsockAddr
+    const auto* vsockAddr = reinterpret_cast<const sockaddr_vm*>(address);
+    storage_ = VsockAddr(vsockAddr->svm_cid);
+#endif
+  } else {
+    // For IP addresses, use the IPAddress constructor
+    storage_ = folly::IPAddress(address);
+  }
+  port_ = port;
 }
 
 void SocketAddress::setFromSockaddr(
@@ -304,6 +341,10 @@ void SocketAddress::setFromSockaddr(
   } else if (address->sa_family == AF_UNIX) {
     setFromSockaddr(
         reinterpret_cast<const struct sockaddr_un*>(address), addrlen);
+#if FOLLY_HAVE_VSOCK
+  } else if (address->sa_family == AF_VSOCK) {
+    setFromSockaddr(reinterpret_cast<const struct sockaddr_vm*>(address));
+#endif
   } else {
     throw std::invalid_argument(
         "SocketAddress::setFromSockaddr() called "
@@ -346,6 +387,14 @@ void SocketAddress::setFromSockaddr(
   }
 }
 
+#if FOLLY_HAVE_VSOCK
+void SocketAddress::setFromSockaddr(const struct sockaddr_vm* address) {
+  assert(address->svm_family == AF_VSOCK);
+  storage_ = VsockAddr(address->svm_cid);
+  port_ = address->svm_port;
+}
+#endif
+
 const folly::IPAddress& SocketAddress::getIPAddress() const {
   auto family = getFamily();
   if (family != AF_INET && family != AF_INET6) {
@@ -363,6 +412,10 @@ socklen_t SocketAddress::getActualSize() const {
       return sizeof(struct sockaddr_in6);
     case AF_UNIX:
       return std::get<ExternalUnixAddr>(storage_).len;
+#if FOLLY_HAVE_VSOCK
+    case AF_VSOCK:
+      return sizeof(struct sockaddr_vm);
+#endif
     default:
       throw std::invalid_argument(
           "SocketAddress::getActualSize() called "
@@ -400,13 +453,30 @@ uint16_t SocketAddress::getPort() const {
   switch (getFamily()) {
     case AF_INET:
     case AF_INET6:
-      return port_;
+      return static_cast<uint16_t>(port_);
+#if FOLLY_HAVE_VSOCK
+    case AF_VSOCK:
+      throw std::invalid_argument(
+          "SocketAddress::getPort() called on VSOCK, failing to avoid narrowing");
+#endif
     default:
       throw std::invalid_argument(
           "SocketAddress::getPort() called on non-IP "
           "address");
   }
 }
+
+#if FOLLY_HAVE_VSOCK
+uint32_t SocketAddress::getVsockPort() const {
+  switch (getFamily()) {
+    case AF_VSOCK:
+      return port_;
+    default:
+      throw std::invalid_argument(
+          "SocketAddress::getVsockPort() called on non-VSOCK address");
+  }
+}
+#endif
 
 void SocketAddress::setPort(uint16_t port) {
   switch (getFamily()) {
@@ -473,6 +543,18 @@ std::string SocketAddress::getPath() const {
       strnlen(unixAddr.addr->sun_path, size_t(unixAddr.pathLength())));
 }
 
+#if FOLLY_HAVE_VSOCK
+uint32_t SocketAddress::getVsockCID() const {
+  if (!holdsVsock()) {
+    throw std::invalid_argument(
+        "SocketAddress: attempting to get CID "
+        "for a non-VSOCK address");
+  }
+
+  return std::get<VsockAddr>(storage_).cid;
+}
+#endif
+
 std::string SocketAddress::describe() const {
   if (holdsUnix()) {
     const auto& unixAddr = std::get<ExternalUnixAddr>(storage_);
@@ -507,6 +589,24 @@ std::string SocketAddress::describe() const {
       snprintf(buf + iplen, sizeof(buf) - iplen, "]:%" PRIu16, getPort());
       return buf;
     }
+#if FOLLY_HAVE_VSOCK
+    case AF_VSOCK: {
+      char buf[32];
+      const auto& vsockAddr = std::get<VsockAddr>(storage_);
+      auto* maybeName = vsockAddr.getMappedName();
+      if (maybeName) {
+        snprintf(buf, sizeof(buf), "[%s:%" PRIu32 "]", maybeName, port_);
+      } else {
+        snprintf(
+            buf,
+            sizeof(buf),
+            "[%" PRIu32 ":%" PRIu32 "]",
+            vsockAddr.cid,
+            port_);
+      }
+      return buf;
+    }
+#endif
     default: {
       char buf[64];
       snprintf(buf, sizeof(buf), "<unknown address family %d>", getFamily());
@@ -545,6 +645,12 @@ bool SocketAddress::operator==(const SocketAddress& other) const {
       return (std::get<IPAddress>(other.storage_) ==
               std::get<IPAddress>(storage_)) &&
           (other.port_ == port_);
+#if FOLLY_HAVE_VSOCK
+    case AF_VSOCK:
+      return (std::get<VsockAddr>(other.storage_).cid ==
+              std::get<VsockAddr>(storage_).cid) &&
+          (other.port_ == port_);
+#endif
     case AF_UNSPEC:
       return std::get<IPAddress>(other.storage_).empty();
     default:
@@ -595,6 +701,13 @@ size_t SocketAddress::hash() const {
       boost::hash_combine(seed, std::get<IPAddress>(storage_).hash());
       break;
     }
+#if FOLLY_HAVE_VSOCK
+    case AF_VSOCK: {
+      boost::hash_combine(seed, port_);
+      boost::hash_combine(seed, std::get<VsockAddr>(storage_).cid);
+      break;
+    }
+#endif
     case AF_UNIX:
       // Already handled above
       break;
@@ -738,7 +851,8 @@ bool SocketAddress::operator<(const SocketAddress& other) const {
     // Return that they are never less than anything.
     //
     // Note that this still meets the requirements for a strict weak
-    // ordering, so we can use this operator<() with standard C++ containers.
+    // ordering, so we can use this operator<() with standard C++
+    // containers.
     const auto& thisUnixAddr = std::get<ExternalUnixAddr>(storage_);
     auto thisPathLength = thisUnixAddr.pathLength();
     if (thisPathLength == 0) {
@@ -776,6 +890,23 @@ bool SocketAddress::operator<(const SocketAddress& other) const {
           "SocketAddress: unsupported address family for comparing");
   }
 }
+
+#if FOLLY_HAVE_VSOCK
+const char* SocketAddress::VsockAddr::getMappedName() const {
+  // Use special names for well-known CIDs
+  if (cid == VMADDR_CID_ANY) {
+    return "any";
+  } else if (cid == VMADDR_CID_HYPERVISOR) {
+    return "hypervisor";
+  } else if (cid == VMADDR_CID_LOCAL) {
+    return "local";
+  } else if (cid == VMADDR_CID_HOST) {
+    return "host";
+  } else {
+    return nullptr;
+  }
+}
+#endif
 
 size_t hash_value(const SocketAddress& address) {
   return address.hash();

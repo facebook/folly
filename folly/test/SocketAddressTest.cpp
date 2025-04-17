@@ -948,6 +948,87 @@ TEST(SocketAddress, ResetIPAddress) {
   EXPECT_TRUE(addr.empty());
 }
 
+#if FOLLY_HAVE_VSOCK
+
+TEST(SocketAddress, Vsock) {
+  {
+    SocketAddress addr;
+    sockaddr_vm vm{};
+    memset(&vm, 0, sizeof(vm));
+    vm.svm_family = AF_VSOCK;
+    vm.svm_cid = VMADDR_CID_LOCAL;
+    vm.svm_port = VMADDR_PORT_ANY;
+    addr.setFromSockaddr(reinterpret_cast<sockaddr*>(&vm));
+
+    EXPECT_EQ(addr.getFamily(), AF_VSOCK);
+    EXPECT_EQ(addr.getVsockCID(), VMADDR_CID_LOCAL);
+    EXPECT_EQ(addr.getVsockPort(), VMADDR_PORT_ANY);
+  }
+
+  SocketAddress addr;
+  sockaddr_vm vm{};
+  memset(&vm, 0, sizeof(vm));
+  vm.svm_family = AF_VSOCK;
+  vm.svm_cid = VMADDR_CID_HOST;
+  vm.svm_port = 1234;
+  addr.setFromSockaddr(reinterpret_cast<sockaddr*>(&vm));
+
+  EXPECT_EQ(addr.getFamily(), AF_VSOCK);
+  EXPECT_EQ(addr.getVsockCID(), VMADDR_CID_HOST);
+  EXPECT_EQ(addr.getVsockPort(), 1234);
+  EXPECT_THROW(addr.getPort(), std::invalid_argument);
+  EXPECT_EQ(addr.describe(), "[host:1234]");
+
+  // Test sockaddr conversion
+  sockaddr_storage storage{};
+  addr.getAddress(&storage);
+  const sockaddr_vm* vmaddr = reinterpret_cast<sockaddr_vm*>(&storage);
+  EXPECT_EQ(vmaddr->svm_family, AF_VSOCK);
+  EXPECT_EQ(vmaddr->svm_cid, VMADDR_CID_HOST);
+  EXPECT_EQ(vmaddr->svm_port, 1234);
+
+  // Test equality
+  SocketAddress addr2;
+  sockaddr_vm vm2{};
+  memset(&vm2, 0, sizeof(vm2));
+  vm2.svm_family = AF_VSOCK;
+  vm2.svm_cid = VMADDR_CID_HOST;
+  vm2.svm_port = 1234;
+  addr2.setFromSockaddr(reinterpret_cast<sockaddr*>(&vm2));
+  EXPECT_EQ(addr, addr2);
+
+  // Test inequality
+  sockaddr_vm vm3{};
+  memset(&vm3, 0, sizeof(vm3));
+  vm3.svm_family = AF_VSOCK;
+  vm3.svm_cid = 12345;
+  vm3.svm_port = 1234;
+  SocketAddress addr3;
+  addr3.setFromSockaddr(reinterpret_cast<sockaddr*>(&vm3));
+  EXPECT_NE(addr, addr3);
+  EXPECT_EQ(addr3.describe(), "[12345:1234]");
+
+  // Test hash
+  EXPECT_EQ(addr.hash(), addr2.hash());
+  EXPECT_NE(addr.hash(), addr3.hash());
+
+  // Test describe
+  EXPECT_FALSE(addr.isFamilyInet());
+
+  // Test loopback and private address properties
+  SocketAddress loopbackAddr;
+  sockaddr_vm vmLoop{};
+  memset(&vmLoop, 0, sizeof(vmLoop));
+  vmLoop.svm_family = AF_VSOCK;
+  vmLoop.svm_cid = VMADDR_CID_LOCAL;
+  vmLoop.svm_port = 1234;
+  loopbackAddr.setFromSockaddr(reinterpret_cast<sockaddr*>(&vmLoop));
+  EXPECT_TRUE(loopbackAddr.isLoopbackAddress());
+  EXPECT_TRUE(loopbackAddr.isPrivateAddress());
+}
+
+#endif
+
 TEST(SocketAddress, ValidFamilyInet) {
   SocketAddress addr;
   EXPECT_FALSE(addr.isFamilyInet());
