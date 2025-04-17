@@ -949,7 +949,13 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
   // Set TCP nodelay if available, MAC OS X Hack
   // See http://lists.danga.com/pipermail/memcached/2005-March/001240.html
 #ifndef TCP_NOPUSH
-  if (family != AF_UNIX) {
+#if FOLLY_HAVE_VSOCK
+  auto isVsock = family == AF_VSOCK;
+#else
+  auto isVsock = false;
+#endif
+
+  if (family != AF_UNIX && !isVsock) {
     if (netops::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) !=
         0) {
       auto errnoCopy = errno;

@@ -2670,7 +2670,9 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
   ASSERT_EQ(cb1.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
 }
 
-void serverSocketSanityTest(AsyncServerSocket* serverSocket) {
+void serverSocketSanityTest(
+    AsyncServerSocket* serverSocket,
+    std::optional<folly::SocketAddress> address = std::nullopt) {
   EventBase* eventBase = serverSocket->getEventBase();
   CHECK(eventBase);
 
@@ -2688,7 +2690,11 @@ void serverSocketSanityTest(AsyncServerSocket* serverSocket) {
 
   // Connect to the server socket
   folly::SocketAddress serverAddress;
-  serverSocket->getAddress(&serverAddress);
+  if (address) {
+    serverAddress = *address;
+  } else {
+    serverSocket->getAddress(&serverAddress);
+  }
   AsyncSocket::UniquePtr socket(new AsyncSocket(eventBase, serverAddress));
 
   // Loop to process all events
@@ -2893,6 +2899,86 @@ TEST(AsyncSocketTest, UnixDomainSocketTest) {
   ASSERT_EQ(flags & O_NONBLOCK, O_NONBLOCK);
 #endif
 }
+
+#if defined(__linux__)
+TEST(AsyncSocketTest, VsockSocketLocal) {
+  EventBase eventBase;
+
+  sockaddr_vm addr{};
+  memset(&addr, 0, sizeof(addr));
+  addr.svm_family = AF_VSOCK;
+  addr.svm_cid = VMADDR_CID_LOCAL;
+  addr.svm_port = VMADDR_PORT_ANY;
+
+  folly::SocketAddress address;
+  address.setFromSockaddr(&addr);
+
+  AsyncServerSocket::UniquePtr serverSocket(new AsyncServerSocket(&eventBase));
+  serverSocket->bind(address);
+  serverSocket->listen(16);
+
+  auto actualAddress = serverSocket->getAddress();
+  EXPECT_NE(actualAddress.getVsockPort(), VMADDR_PORT_ANY);
+
+  serverSocketSanityTest(serverSocket.get());
+}
+#endif
+
+#if defined(__linux__)
+TEST(AsyncSocketTest, VsockSocketAny) {
+  EventBase eventBase;
+
+  sockaddr_vm addr{};
+  memset(&addr, 0, sizeof(addr));
+  addr.svm_family = AF_VSOCK;
+  addr.svm_cid = VMADDR_CID_ANY;
+  addr.svm_port = VMADDR_PORT_ANY;
+
+  folly::SocketAddress address;
+  address.setFromSockaddr(&addr);
+
+  AsyncServerSocket::UniquePtr serverSocket(new AsyncServerSocket(&eventBase));
+  serverSocket->bind(address);
+  serverSocket->listen(16);
+
+  auto actualAddress = serverSocket->getAddress();
+  EXPECT_NE(actualAddress.getVsockPort(), VMADDR_PORT_ANY);
+
+  addr.svm_cid = VMADDR_CID_LOCAL;
+  addr.svm_port = actualAddress.getVsockPort();
+  address.setFromSockaddr(&addr);
+
+  serverSocketSanityTest(serverSocket.get(), address);
+}
+#endif
+
+#if defined(__linux__)
+TEST(AsyncSocketTest, VsockSocketPortAny) {
+  EventBase eventBase;
+
+  sockaddr_vm addr{};
+  memset(&addr, 0, sizeof(addr));
+  addr.svm_family = AF_VSOCK;
+  addr.svm_cid = VMADDR_CID_LOCAL;
+  addr.svm_port = VMADDR_PORT_ANY;
+
+  folly::SocketAddress address;
+  address.setFromSockaddr(&addr);
+
+  AsyncServerSocket::UniquePtr serverSocket1(new AsyncServerSocket(&eventBase));
+  serverSocket1->bind(address);
+  serverSocket1->listen(16);
+
+  AsyncServerSocket::UniquePtr serverSocket2(new AsyncServerSocket(&eventBase));
+  serverSocket2->bind(address);
+  serverSocket2->listen(16);
+
+  EXPECT_NE(serverSocket1->getAddress().getVsockPort(), VMADDR_PORT_ANY);
+  EXPECT_NE(
+      serverSocket1->getAddress().getVsockPort(),
+      serverSocket2->getAddress().getVsockPort());
+}
+#endif
 
 TEST(AsyncSocketTest, ConnectionEventCallbackDefault) {
   EventBase eventBase;
