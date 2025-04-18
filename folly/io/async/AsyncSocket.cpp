@@ -982,7 +982,8 @@ void AsyncSocket::connect(
     // bind the socket
     if (bindAddr != anyAddress()) {
       int one = 1;
-#if defined(IP_BIND_ADDRESS_NO_PORT) && !FOLLY_MOBILE
+#if defined(IP_BIND_ADDRESS_NO_PORT) && !FOLLY_MOBILE && !defined(_WIN32) && \
+    !defined(__APPLE__)
       // If the any port is specified with a non-any address this is typically
       // a client socket. However, calling bind before connect without
       // IP_BIND_ADDRESS_NO_PORT forces the OS to find a unique port relying
