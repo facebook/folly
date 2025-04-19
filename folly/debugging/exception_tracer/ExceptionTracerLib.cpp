@@ -27,7 +27,7 @@
 #include <dlfcn.h>
 #endif
 
-#if defined(__GLIBCXX__)
+#if FOLLY_HAS_EXCEPTION_TRACER
 
 namespace __cxxabiv1 {
 
@@ -198,6 +198,12 @@ __wrap__ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE(
 
 #else
 
+namespace folly {
+constexpr const char* kRethrowExceptionMangledName = kIsGlibcxx
+    ? "_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"
+    : "_ZSt17rethrow_exceptionSt13exception_ptr";
+}
+
 namespace std {
 
 __attribute__((__noreturn__)) void rethrow_exception(std::exception_ptr ep) {
@@ -205,9 +211,8 @@ __attribute__((__noreturn__)) void rethrow_exception(std::exception_ptr ep) {
   // TODO(tudorb): Dicey, as it relies on the fact that std::exception_ptr
   // is typedef'ed to a type in namespace __exception_ptr
   static auto orig_rethrow_exception =
-      reinterpret_cast<decltype(&rethrow_exception)>(dlsym(
-          RTLD_NEXT,
-          "_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"));
+      reinterpret_cast<decltype(&rethrow_exception)>(
+          dlsym(RTLD_NEXT, folly::kRethrowExceptionMangledName));
   getRethrowExceptionCallbacks().invoke(ep);
   orig_rethrow_exception(std::move(ep));
   __builtin_unreachable(); // orig_rethrow_exception never returns
@@ -216,4 +221,4 @@ __attribute__((__noreturn__)) void rethrow_exception(std::exception_ptr ep) {
 } // namespace std
 #endif
 
-#endif // defined(__GLIBCXX__)
+#endif //  FOLLY_HAS_EXCEPTION_TRACER
