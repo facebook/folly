@@ -102,12 +102,19 @@ int setenv(const char* name, const char* value, int overwrite) {
 
   // Here lies the documentation we blatently ignore to make
   // this work >_>...
-  *getenv(name) = '\0';
+
+  char* env = getenv(name);
+  if (!env) {
+    errno = EINVAL;
+    return -1;
+  }
+  *env = '\0';
+  *(env + 1) = '=';
+
   // This would result in a double null termination, which
   // normally signifies the end of the environment variable
   // list, so we stick a completely empty environment variable
   // into the list instead.
-  *(getenv(name) + 1) = '=';
 
   // If _wenviron is null, the wide environment has not been initialized
   // yet, and we don't need to try to update it.
@@ -121,8 +128,13 @@ int setenv(const char* name, const char* value, int overwrite) {
       errno = EINVAL;
       return -1;
     }
-    *_wgetenv(buf) = u'\0';
-    *(_wgetenv(buf) + 1) = u'=';
+    wchar_t* wenv = _wgetenv(buf);
+    if (!wenv) {
+      errno = EINVAL;
+      return -1;
+    }
+    *wenv = u'\0';
+    *(wenv + 1) = u'=';
   }
 
   // And now, we have to update the outer environment to have
