@@ -15,7 +15,9 @@
  */
 
 #include <exception>
+#include <type_traits>
 
+#include <folly/Utility.h>
 #include <folly/debugging/exception_tracer/ExceptionAbi.h>
 #include <folly/debugging/exception_tracer/ExceptionTracer.h>
 #include <folly/debugging/exception_tracer/ExceptionTracerLib.h>
@@ -36,6 +38,11 @@ thread_local bool invalid;
 
 thread_local StackTraceStack uncaughtExceptions;
 thread_local StackTraceStack caughtExceptions;
+
+// StackTraceStack should be usable as thread_local for the entire lifetime of
+// a thread, and not just up until thread_local variables are destroyed
+static_assert(std::is_trivially_destructible_v<StackTraceStack>);
+static_assert(folly::is_constexpr_default_constructible_v<StackTraceStack>);
 
 } // namespace
 

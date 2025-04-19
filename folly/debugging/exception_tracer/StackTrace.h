@@ -38,7 +38,7 @@ class StackTraceStack {
   class Node;
 
  public:
-  StackTraceStack() = default;
+  constexpr StackTraceStack() = default;
 
   StackTraceStack(const StackTraceStack&) = delete;
   void operator=(const StackTraceStack&) = delete;
