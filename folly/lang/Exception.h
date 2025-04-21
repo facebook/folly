@@ -662,6 +662,21 @@ inline constexpr get_exception_fn<Ex> get_exception{};
 
 namespace detail {
 
+// The libc++ and cpplib implementations do not have a move constructor or a
+// move-assignment operator. To avoid refcount operations, we must improvise.
+// The libstdc++ implementation has a move constructor and a move-assignment
+// operator but having this does no harm.
+inline std::exception_ptr extract_exception_ptr(
+    std::exception_ptr&& ptr) noexcept {
+  constexpr auto sz = sizeof(std::exception_ptr);
+  // assume relocatability on all platforms
+  // assume nrvo for performance
+  std::exception_ptr ret;
+  std::memcpy(static_cast<void*>(&ret), &ptr, sz);
+  std::memset(static_cast<void*>(&ptr), 0, sz);
+  return ret;
+}
+
 struct make_exception_ptr_with_arg_ {
   size_t size = 0;
   std::type_info const* type = nullptr;

@@ -126,8 +126,6 @@ class exception_wrapper final {
   template <class This, class... CatchFns>
   static void handle_(This& this_, char const* name, CatchFns&... fns);
 
-  static std::exception_ptr extract_(std::exception_ptr&&) noexcept;
-
  public:
   //! Default-constructs an empty `exception_wrapper`
   //! \post `type() == nullptr`

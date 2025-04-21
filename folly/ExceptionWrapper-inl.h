@@ -63,30 +63,15 @@ struct exception_wrapper::with_exception_from_ex_ {
   using apply = Ex;
 };
 
-// The libc++ and cpplib implementations do not have a move constructor or a
-// move-assignment operator. To avoid refcount operations, we must improvise.
-// The libstdc++ implementation has a move constructor and a move-assignment
-// operator but having this does no harm.
-inline std::exception_ptr exception_wrapper::extract_(
-    std::exception_ptr&& ptr) noexcept {
-  constexpr auto sz = sizeof(std::exception_ptr);
-  // assume relocatability on all platforms
-  // assume nrvo for performance
-  std::exception_ptr ret;
-  std::memcpy(static_cast<void*>(&ret), &ptr, sz);
-  std::memset(static_cast<void*>(&ptr), 0, sz);
-  return ret;
-}
-
 inline exception_wrapper::exception_wrapper(exception_wrapper&& that) noexcept
-    : ptr_{extract_(std::move(that.ptr_))} {}
+    : ptr_{detail::extract_exception_ptr(std::move(that.ptr_))} {}
 
 inline exception_wrapper::exception_wrapper(
     std::exception_ptr const& ptr) noexcept
     : ptr_{ptr} {}
 
 inline exception_wrapper::exception_wrapper(std::exception_ptr&& ptr) noexcept
-    : ptr_{extract_(std::move(ptr))} {}
+    : ptr_{detail::extract_exception_ptr(std::move(ptr))} {}
 
 template <
     class Ex,
