@@ -22,14 +22,32 @@
 #include <exception>
 #include <typeinfo>
 
-#if defined(__GLIBCXX__)
+#include <folly/debugging/exception_tracer/Compatibility.h>
+
+#if FOLLY_HAS_EXCEPTION_TRACER
 
 #include <unwind.h>
 
 namespace __cxxabiv1 {
 
-#if !defined(__FreeBSD__)
 struct __cxa_exception {
+// Unlike other implementations, GCC's libsupc++ doesn't have this code.
+// See gcc/libstdc++-v3/libsupc++/unwind-cxx.h
+#if !defined(__GLIBCXX__)
+#if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
+  // Now _Unwind_Exception is marked with __attribute__((aligned)),
+  // which implies __cxa_exception is also aligned. Insert padding
+  // in the beginning of the struct, rather than before unwindHeader.
+  void* reserve;
+
+  // This is a new field to support C++11 exception_ptr.
+  // For binary compatibility it is at the start of this
+  // struct which is prepended to the object thrown in
+  // __cxa_allocate_exception.
+  size_t referenceCount;
+#endif // defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
+#endif // !defined(__GLIBCXX__)
+
   std::type_info* exceptionType;
   void (*exceptionDestructor)(void*);
   void (*unexpectedHandler)(); // std::unexpected_handler has been removed from
@@ -56,8 +74,7 @@ extern "C" {
 __cxa_eh_globals* __cxa_get_globals(void) noexcept;
 __cxa_eh_globals* __cxa_get_globals_fast(void) noexcept;
 }
-#endif
 
 } // namespace __cxxabiv1
 
-#endif // defined(__GLIBCXX__)
+#endif // FOLLY_HAS_EXCEPTION_TRACER

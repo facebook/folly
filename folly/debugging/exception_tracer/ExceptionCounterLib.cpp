@@ -25,13 +25,14 @@
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/synchronization/RWSpinLock.h>
 
+#include <folly/debugging/exception_tracer/Compatibility.h>
 #include <folly/debugging/exception_tracer/ExceptionTracerLib.h>
 #include <folly/debugging/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
-#if defined(__GLIBCXX__)
+#if FOLLY_HAS_EXCEPTION_TRACER
 
 using namespace folly::exception_tracer;
 
@@ -145,6 +146,6 @@ Initializer initializer;
 
 } // namespace
 
-#endif // defined(__GLIBCXX__)
+#endif //  FOLLY_HAS_EXCEPTION_TRACER
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
