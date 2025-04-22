@@ -18,8 +18,6 @@
 
 #include <iostream>
 
-#include <folly/GLog.h>
-
 namespace folly {
 
 [[noreturn]] void exception_wrapper::onNoExceptionError(
