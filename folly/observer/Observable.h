@@ -58,6 +58,8 @@ class ObserverCreator {
   using Context = detail::ObserverCreatorContext<Observable, Traits>;
   class ContextPrimaryPtr;
 
+  class NamedCreator;
+
   std::shared_ptr<Context> context_;
 };
 } // namespace observer

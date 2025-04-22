@@ -1359,5 +1359,26 @@ TEST(Observer, TestObserverWithNamedCreator) {
   }
 }
 
+TEST(Observer, TestObservableGetName) {
+  struct Observable {};
+
+  struct Traits {
+    using element_type = int;
+    static std::shared_ptr<const int> get(Observable&) {
+      return std::make_shared<const int>(42);
+    }
+
+    static void subscribe(Observable&, std::function<void()>) {}
+
+    static void unsubscribe(Observable&) {}
+
+    static std::string_view getName(Observable&) { return "MyName"; }
+  };
+
+  auto observer =
+      folly::observer::ObserverCreator<Observable, Traits>().getObserver();
+  EXPECT_EQ(**observer, 42);
+  EXPECT_EQ(observer.getCreatorName(), "MyName");
+}
 } // namespace observer
 } // namespace folly

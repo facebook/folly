@@ -16,10 +16,23 @@
 
 #pragma once
 
+#include <folly/Function.h>
+
 namespace folly {
 namespace observer {
 
 namespace detail {
+
+#if FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_concepts) && __cpp_concepts && \
+    __has_include(<concepts>)
+template <typename T, typename O>
+concept HasStaticGetName = requires(O& o) {
+  { T::getName(o) } -> std::convertible_to<std::string_view>;
+};
+#else
+template <typename T, typename O>
+constexpr bool HasStaticGetName = false;
+#endif
 
 template <typename Observable, typename Traits>
 class ObserverCreatorContext {
@@ -87,6 +100,8 @@ class ObserverCreatorContext {
     Traits::subscribe(observable_, std::forward<F>(callback));
   }
 
+  std::string getName() { return std::string{Traits::getName(observable_)}; }
+
  private:
   mutable SharedMutex updateLock_;
   struct State {
@@ -147,6 +162,22 @@ class ObserverCreator<Observable, Traits>::ContextPrimaryPtr {
 };
 
 template <typename Observable, typename Traits>
+class ObserverCreator<Observable, Traits>::NamedCreator {
+ public:
+  NamedCreator(
+      std::string nameP, folly::Function<std::shared_ptr<const T>()> creatorP)
+      : name_(std::move(nameP)), creator_(std::move(creatorP)) {}
+
+  std::shared_ptr<const T> operator()() { return creator_(); }
+
+  const std::string& getName() const { return name_; }
+
+ private:
+  std::string name_;
+  folly::Function<std::shared_ptr<const T>()> creator_;
+};
+
+template <typename Observable, typename Traits>
 template <typename... Args>
 ObserverCreator<Observable, Traits>::ObserverCreator(Args&&... args)
     : context_(std::make_shared<Context>(std::forward<Args>(args)...)) {}
@@ -161,9 +192,18 @@ ObserverCreator<Observable, Traits>::getObserver() && {
   // callback gets derived weak_ptr.
   ContextPrimaryPtr contextPrimary(context_);
   auto contextWeak = contextPrimary.get_weak();
-  auto observer = makeObserver([context = std::move(contextPrimary)]() {
-    return context->get();
-  });
+
+  auto observer = [&] {
+    if constexpr (detail::HasStaticGetName<Traits, Observable>) {
+      auto name = contextPrimary->getName();
+      return makeObserver(NamedCreator(
+          std::move(name),
+          [context = std::move(contextPrimary)]() { return context->get(); }));
+    }
+    return makeObserver([context = std::move(contextPrimary)]() {
+      return context->get();
+    });
+  }();
 
   context_->setCore(observer.core_);
 
@@ -179,8 +219,8 @@ ObserverCreator<Observable, Traits>::getObserver() && {
 
   context_->subscribe(scheduleUpdate);
 
-  // Do an extra update in case observable was updated between observer creation
-  // and setting updates callback.
+  // Do an extra update in case observable was updated between observer
+  // creation and setting updates callback.
   scheduleUpdate();
 
   return observer;
