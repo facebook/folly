@@ -17,6 +17,8 @@ if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
     folly_exception_tracer_base
     ExceptionTracer.cpp
     StackTrace.cpp
+    SmartExceptionTracer.cpp
+    SmartExceptionTracerSingleton.cpp
   )
   set_property(TARGET folly_exception_tracer_base PROPERTY VERSION ${PACKAGE_VERSION})
   apply_folly_compile_options_to_target(folly_exception_tracer_base)
@@ -29,6 +31,7 @@ if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
     folly_exception_tracer
     ExceptionStackTraceLib.cpp
     ExceptionTracerLib.cpp
+    SmartExceptionStackTraceHooks.cpp
   )
   set_property(TARGET folly_exception_tracer PROPERTY VERSION ${PACKAGE_VERSION})
   apply_folly_compile_options_to_target(folly_exception_tracer)
@@ -50,11 +53,11 @@ if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
 
   install(
     FILES
-      ExceptionAbi.h
       ExceptionCounterLib.h
       ExceptionTracer.h
       ExceptionTracerLib.h
       StackTrace.h
+      SmartExceptionTracer.h
     DESTINATION
       ${INCLUDE_INSTALL_DIR}/folly/debugging/exception_tracer
   )
