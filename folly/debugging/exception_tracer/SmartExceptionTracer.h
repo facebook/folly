@@ -17,11 +17,12 @@
 #pragma once
 
 #include <folly/ExceptionWrapper.h>
+#include <folly/debugging/exception_tracer/Compatibility.h>
 #include <folly/debugging/exception_tracer/ExceptionTracer.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
-#if defined(__GLIBCXX__)
+#if FOLLY_HAS_EXCEPTION_TRACER
 
 #define FOLLY_HAVE_SMART_EXCEPTION_TRACER 1
 
@@ -45,6 +46,6 @@ ExceptionInfo getAsyncTrace(const exception_wrapper& ew);
 
 } // namespace folly::exception_tracer
 
-#endif // defined(__GLIBCXX__)
+#endif //  FOLLY_HAS_EXCEPTION_TRACER
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

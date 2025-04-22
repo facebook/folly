@@ -26,7 +26,7 @@
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
-#if defined(__GLIBCXX__)
+#if FOLLY_HAS_EXCEPTION_TRACER
 
 using namespace folly::exception_tracer;
 
@@ -130,6 +130,6 @@ Initializer initializer;
 
 } // namespace
 
-#endif // defined(__GLIBCXX__)
+#endif //  FOLLY_HAS_EXCEPTION_TRACER
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

@@ -19,7 +19,9 @@
 #include <exception>
 #include <typeinfo>
 
-#if defined(__GLIBCXX__)
+#include <folly/debugging/exception_tracer/Compatibility.h>
+
+#if FOLLY_HAS_EXCEPTION_TRACER
 
 namespace folly {
 namespace exception_tracer {
@@ -39,4 +41,4 @@ void registerRethrowExceptionCallback(RethrowExceptionSig& callback);
 } // namespace exception_tracer
 } // namespace folly
 
-#endif // defined(__GLIBCXX__)
+#endif //  FOLLY_HAS_EXCEPTION_TRACER

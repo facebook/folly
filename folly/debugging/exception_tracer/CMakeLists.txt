@@ -50,6 +50,7 @@ if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
 
   install(
     FILES
+      Compatibility.h
       ExceptionAbi.h
       ExceptionCounterLib.h
       ExceptionTracer.h

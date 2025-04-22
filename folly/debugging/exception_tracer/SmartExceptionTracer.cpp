@@ -29,7 +29,7 @@
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
-#if defined(__GLIBCXX__)
+#if FOLLY_HAS_EXCEPTION_TRACER
 
 namespace folly {
 namespace exception_tracer {
@@ -133,6 +133,6 @@ ExceptionInfo getAsyncTrace(const std::exception& ex) {
 } // namespace exception_tracer
 } // namespace folly
 
-#endif // defined(__GLIBCXX__)
+#endif //  FOLLY_HAS_EXCEPTION_TRACER
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
