@@ -436,7 +436,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
         if manager == "rpm":
             packages = sorted(set(all_packages["rpm"]))
             if packages:
-                cmd_args = ["sudo", "dnf", "install", "-y"] + packages
+                cmd_args = ["sudo", "dnf", "install", "-y", "--skip-broken"] + packages
         elif manager == "deb":
             packages = sorted(set(all_packages["deb"]))
             if packages:
