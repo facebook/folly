@@ -1085,6 +1085,25 @@ ProcessReturnCode Subprocess::wait() {
   return returnCode_;
 }
 
+ProcessReturnCode Subprocess::waitAndGetRusage(struct rusage* ru) {
+  returnCode_.enforce(ProcessReturnCode::RUNNING);
+  DCHECK_GT(pid_, 0);
+  int status;
+  pid_t found;
+  do {
+    found = ::wait4(pid_, &status, 0, ru);
+  } while (found == -1 && errno == EINTR);
+  // The only two remaining errors are ECHILD (other code reaped the
+  // child?), or EINVAL (cosmic rays?), and both merit an abort:
+  PCHECK(found != -1) << "wait4(" << pid_ << ", &status, 0, resourceUsage)";
+  // Though the child process had quit, this call does not close the pipes
+  // since its descendants may still be using them.
+  DCHECK_EQ(found, pid_);
+  returnCode_ = ProcessReturnCode::make(status);
+  pid_ = -1;
+  return returnCode_;
+}
+
 void Subprocess::waitChecked() {
   wait();
   checkStatus(returnCode_);

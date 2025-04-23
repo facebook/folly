@@ -671,6 +671,14 @@ class Subprocess {
   ProcessReturnCode wait();
 
   /**
+   * Wait for the process to terminate and return its status and rusage.  Like
+   * poll(), the only exception this can throw is std::logic_error if you call
+   * this on a Subprocess whose status is not RUNNING.  Aborts on egregious
+   * violations of contract, like an out-of-band wait4(p.pid(), 0, 0, nullptr).
+   */
+  ProcessReturnCode waitAndGetRusage(struct rusage* ru);
+
+  /**
    * Wait for the process to terminate, throw if unsuccessful.
    */
   void waitChecked();
