@@ -740,7 +740,7 @@ TEST(Result, accessError) {
 
   // We can mutate the exception in-place.
   auto newErr = MyError{"buh-bye"};
-  *get_exception<MyError>(r) = std::move(newErr);
+  *get_mutable_exception<MyError>(r) = std::move(newErr);
   std::string msg2{"buh-bye"};
   EXPECT_EQ(msg2, get_exception<MyError>(r)->what());
 

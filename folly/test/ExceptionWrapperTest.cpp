@@ -391,39 +391,49 @@ TEST(ExceptionWrapper, withExceptionPtrAnyNilTest) {
 
 TEST(ExceptionWrapper, get_exception_from_exception_wrapper) {
   static_assert(
-      std::is_invocable_v< //
-          get_exception_fn<std::exception>,
-          exception_wrapper&>);
-  static_assert(
       std::is_invocable_v<
           get_exception_fn<std::exception>,
           const exception_wrapper&>);
+  static_assert(
+      std::is_invocable_v<
+          get_mutable_exception_fn<std::exception>,
+          exception_wrapper&>);
+  static_assert(
+      !std::is_invocable_v<
+          get_mutable_exception_fn<std::exception>,
+          const exception_wrapper&>);
+
   // Unsafe to extract a pointer out of rvalues
   static_assert(
       !std::is_invocable_v<
           get_exception_fn<std::exception>,
-          exception_wrapper&&>);
+          const exception_wrapper&&>);
   static_assert(
       !std::is_invocable_v<
-          get_exception_fn<std::exception>,
-          const exception_wrapper&&>);
+          get_mutable_exception_fn<std::exception>,
+          exception_wrapper&&>);
 
   auto ew = make_exception_wrapper<std::runtime_error>("foo");
 
   EXPECT_EQ(nullptr, get_exception<std::system_error>(ew));
+  EXPECT_EQ(nullptr, get_mutable_exception<std::system_error>(ew));
 
   EXPECT_STREQ("foo", get_exception<std::exception>(ew)->what());
   EXPECT_STREQ("foo", get_exception<const std::exception>(ew)->what());
   EXPECT_STREQ("foo", get_exception<>(ew)->what());
+  EXPECT_STREQ("foo", get_exception<>(std::as_const(ew))->what());
+  EXPECT_STREQ("foo", get_mutable_exception<>(ew)->what());
 
   EXPECT_STREQ("foo", get_exception<std::runtime_error>(ew)->what());
-  EXPECT_EQ(
-      ew.get_exception<std::runtime_error>(),
-      get_exception<std::runtime_error>(ew));
+  EXPECT_STREQ("foo", get_mutable_exception<std::runtime_error>(ew)->what());
+
+  auto expected_p = ew.get_exception<std::runtime_error>();
+  EXPECT_EQ(expected_p, get_exception<std::runtime_error>(ew));
+  EXPECT_EQ(expected_p, get_mutable_exception<std::runtime_error>(ew));
 
   static_assert(
       std::is_same_v<
-          std::runtime_error*,
+          const std::runtime_error*,
           decltype(get_exception<std::runtime_error>(ew))>);
   static_assert(
       std::is_same_v<
@@ -433,6 +443,10 @@ TEST(ExceptionWrapper, get_exception_from_exception_wrapper) {
       std::is_same_v<
           const std::runtime_error*,
           decltype(get_exception<std::runtime_error>(std::as_const(ew)))>);
+  static_assert(
+      std::is_same_v<
+          std::runtime_error*,
+          decltype(get_mutable_exception<std::runtime_error>(ew))>);
 }
 
 TEST(ExceptionWrapper, withExceptionDeduction) {

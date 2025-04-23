@@ -338,13 +338,13 @@ class exception_wrapper final {
   template <class... CatchFns>
   void handle(CatchFns... fns) const;
 
-  // Implementation of `folly::get_exception<Ex>(ew)`
+  // Implement the `folly::get_exception<Ex>(ew)` protocol
   template <typename Ex>
-  Ex* get_exception(get_exception_tag_t) noexcept {
+  Ex const* get_exception(get_exception_tag_t) const noexcept {
     return get_exception<Ex>();
   }
   template <typename Ex>
-  Ex const* get_exception(get_exception_tag_t) const noexcept {
+  Ex* get_mutable_exception(get_exception_tag_t) noexcept {
     return get_exception<Ex>();
   }
 };

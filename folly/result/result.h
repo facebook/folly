@@ -144,10 +144,6 @@ class non_value_result {
 
   template <typename Ex, typename EW>
   static Ex* get_exception_impl(EW& ew) {
-    static_assert(
-        // This "cheap" test is fine since `OperationCancelled` is final.
-        !std::is_same_v<const OperationCancelled, const Ex>,
-        "Test results for cancellation via `has_stopped()`");
     return folly::get_exception<Ex>(ew);
   }
 
@@ -195,12 +191,18 @@ class non_value_result {
 
   // Implement the `folly::get_exception<Ex>(res)` protocol
   template <typename Ex>
-  Ex* get_exception(get_exception_tag_t) noexcept {
-    return get_exception_impl<Ex>(ew_);
+  const Ex* get_exception(get_exception_tag_t) const noexcept {
+    static_assert( // Note: `OperationCancelled` is final
+        !std::is_same_v<const OperationCancelled, const Ex>,
+        "Test results for cancellation via `has_stopped()`");
+    return folly::get_exception<Ex>(ew_);
   }
   template <typename Ex>
-  const Ex* get_exception(get_exception_tag_t) const noexcept {
-    return get_exception_impl<const Ex>(ew_);
+  Ex* get_mutable_exception(get_exception_tag_t) noexcept {
+    static_assert( // Note: `OperationCancelled` is final
+        !std::is_same_v<const OperationCancelled, const Ex>,
+        "Test results for cancellation via `has_stopped()`");
+    return folly::get_mutable_exception<Ex>(ew_);
   }
 
   // DO NOT USE these "legacy" functions outside of `folly` internals.  See the
@@ -462,11 +464,11 @@ class result_crtp {
 
   // Implement the `folly::get_exception<Ex>(res)` protocol
   template <typename Ex>
-  Ex* get_exception(get_exception_tag_t) noexcept {
+  Ex* get_mutable_exception(get_exception_tag_t) noexcept {
     if (!exp_.hasError()) {
       return nullptr;
     }
-    return folly::get_exception<Ex>(exp_.error());
+    return folly::get_mutable_exception<Ex>(exp_.error());
   }
   template <typename Ex>
   const Ex* get_exception(get_exception_tag_t) const noexcept {
