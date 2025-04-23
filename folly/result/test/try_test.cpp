@@ -43,8 +43,8 @@ TEST(ResultTry, result_to_try) {
   static_assert(std::is_same_v<Try<int>, decltype(tInt)>);
   EXPECT_EQ(5, *tInt);
 
-  auto tErr = result_to_try(
-      result<int>{make_exception_wrapper<std::runtime_error>("foo")});
+  auto tErr =
+      result_to_try(result<int>{non_value_result{std::runtime_error{"foo"}}});
   static_assert(std::is_same_v<Try<int>, decltype(tErr)>);
   EXPECT_STREQ("foo", tErr.tryGetExceptionObject<std::runtime_error>()->what());
 
@@ -83,7 +83,7 @@ TEST(ResultTry, empty_try_to_result_default) {
 
   auto rErr = try_to_result(
       Try<int>{}, empty_try_with{[]() {
-        return make_exception_wrapper<std::runtime_error>("baz");
+        return non_value_result{std::runtime_error{"baz"}};
       }});
   static_assert(std::is_same_v<result<int>, decltype(rErr)>);
   EXPECT_STREQ("baz", get_exception<std::runtime_error>(rErr)->what());

@@ -28,7 +28,7 @@ more usable:
     [`folly::Expected`](
     https://github.com/facebook/folly/commit/0e8c7e1c97e27d96fddbdf552bc99faa22066d00).
 
-  - `result` uses `exception_wrapper`, `folly`'s enhanced `std::exception_ptr`
+  - `result` uses `std::exception_ptr` (with some folly-specific enhancements)
     to efficiently transport all exception types, which avoids the user-facing
     complexity of distinguishing `outcome::result` (`error_code` only) and
     `outcome::outcome` (code OR exception).
@@ -160,9 +160,9 @@ In bullets, `result<T>`:
 
   - Contains one of:
     * `T` -- which can be a value or reference, or
-    * `non_value_result` -- which either `has_stopped()`, or `has_error()`.
-      Error storage is `exception_wrapper`, an enhanced wrapper for
-      `std::exception_ptr`.
+    * `non_value_result` -- which either `has_stopped()`, or stores an error as
+      `std::exception_ptr`, with folly-specific optimizations.  Access the
+      latter via `folly::get_exception<Ex>(res)`.
 
     *NB*: Right now, `result` is "almost never empty, like `folly::Expected`",
     but when C++23 is widely available, it will be truly never empty.
@@ -170,7 +170,7 @@ In bullets, `result<T>`:
   - Provides constructors optimized for usability. For example, unlike
     `folly::Try`, `result` is implicitly constructible from values & errors.
 
-    *NB*: Storing an empty `exception_wrapper` is a contract violation. It is
+    *NB*: Storing an empty `std::exception_ptr` is a contract violation.  It is
     fatal in debug builds, but "works" in opt unless you hit a later assertion,
     like the `std::terminate` in `exception_wrapper::throw_exception`.
 
@@ -196,7 +196,7 @@ In bullets, `result<T>`:
   - Supports migration from `Try` via `try_to_result` and `result_to_try`.
 
   - Uses automatic storage duration for `T`.  Allocation caveats:
-      * `exception_wrapper` uses the heap via `std::exception_ptr`.
+      * `std::exception_ptr` stores the exception on the heap.
       * While `result` coroutines are set up to be HALO-friendly, a compiler is
         not *obligated* to allocate `result` coroutines on the stack. Profile
         first, then read "how to avoid coro frame allocations" below.
@@ -204,7 +204,7 @@ In bullets, `result<T>`:
 What to know about exceptions & `result`:
 
   - `result` coroutines (but **not** functions) are exception boundaries.
-    Any uncaught exception is returned as `res.non_value().error()`.
+    Any uncaught exception is captured in `res.non_value()` & returned.
 
   - The `result` API avoids throwing, aside from:
       * `value_or_throw()`, which you should avoid in favor of `co_await`,
@@ -277,8 +277,8 @@ Both are implicitly movable contexts, so the `std::move` is just visual
 noise, and can actually prevent NVRO for `return` (there's a linter against it).
 
 You can directly return any of these types: `result<V>`, `V`,
-convertible-to-`V`, convertible-to-`result<V>`, `exception_wrapper`,
-`non_value_result`, or `stopped_result`. None will incur unnecessary copies.
+convertible-to-`V`, convertible-to-`result<V>`, `non_value_result`, or
+`stopped_result`.  None will incur unnecessary copies.
 
 ## How to...
 
@@ -345,14 +345,14 @@ Most of the time, you will await a prvalue result, i.e. `co_await resultFunc()`.
 This moves the underlying value, or exposes the returned reference.
 
 However, if you have `result<V> r`, then `co_await r` will not compile -- that
-would have to copy `V` or `exception_wrapper`, and the `result` API tries to
+would have to copy `V` or `std::exception_ptr`, and the `result` API tries to
 make copies explicit.
 
 Instead, you have to choose from:
   - By-value: `co_await std::move(m)`: Returns a moved-out `V`. Error
     propagation is fast.
   - By-reference: `co_await std::cref(m)` / `std::ref(m)`: Returns `const V&` /
-    `V&`. Propagates `exception_wrapper` by copying (~25ns).
+    `V&`.  Propagates `std::exception_ptr` by copying (~25ns).
 
 For some `V`, `co_await`ing by-reference can speed up value access, at the
 expense of the error path.
@@ -400,8 +400,7 @@ difference, **as long as you follow the "mostly non-throwing" contract** of
 result<int> plantSeeds(int n) {
   return result_catch_all([&]() -> result<int> {
     if (n < 0) {
-      return make_exception_wrapper<std::logic_error>(
-          "cannot plant < 0 seeds");
+      return non_value_result{std::logic_error{"cannot plant < 0 seeds"}};
     }
     int seedsLeft = n;
     for (int i = 0; i < n; ++i) {}

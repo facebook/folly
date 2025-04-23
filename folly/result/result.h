@@ -25,7 +25,7 @@
 
 /// Read the full docs in `result.md`!
 ///
-/// `result<T>` resembles `std::variant<T, exception_wrapper, stopped_result>`,
+/// `result<T>` resembles `std::variant<T, std::exception_ptr, stopped_result>`,
 /// but is cheaper, and targets "never empty" semantics in C++23.  Its intended
 /// use-case is a "better `Try<T>`", both in sync & `folly::coro` code:
 ///
@@ -36,8 +36,8 @@
 ///       if (auto* ex = folly::get_exception<Ex>(res)) { /*...*/ }
 ///
 ///   - User-friendly constructors & conversions -- you can write
-///     `result<T>`-returning functions as-if they returned `T`, but **also**
-///     support returning `folly::make_exception_wrapper<Ex>(...)`.
+///     `result<T>`-returning functions as-if they returned `T`, while returning
+///     returning `non_value_result{YourException{...}}` on error.
 ///
 ///   - Can store & and && references.  Think of them as syntax sugar for
 ///     `std::reference_wrapper` and `folly::rvalue_reference_wrapper`.
@@ -46,7 +46,7 @@
 ///          int n;
 ///          result<int&> at(int i) {
 ///            if (n + i == 42) { return std::ref(n); }
-///            return make_exception_wrapper<std::out_of_range>("FancyIntMap");
+///            return non_value_result{std::out_of_range{"FancyIntMap"}};
 ///          }
 ///        };
 ///        FancyIntMap m{.n = 12};
@@ -91,11 +91,11 @@
 ///     use that exception.  Instead, store `stopped_result`, and use
 ///     `has_stopped()` to check for its presence.
 ///
-///   - An empty `exception_wrapper`.  This is not a major behavior change,
-///     since in any case `exception_wrapper::throw_exception` calls
-///     `std::terminate` when the wrapper is empty.  However, by explicitly
-///     specifying it as out-of-contract, and validating eagerly, we reserve
-///     this representation for a potential P2300-style "stopped" state.
+///   - An empty `std::exception_ptr`.  For prior art, consider that
+///     `exception_wrapper::throw_exception` unconditionally calls
+///     `std::terminate` when the wrapper is empty.  By explicitly specifying
+///     this as out-of-contract, and validating eagerly, we reserve this
+///     representation to potentially mean something else in the future.
 
 #if FOLLY_HAS_RESULT
 
@@ -105,11 +105,11 @@ struct OperationCancelled;
 
 namespace detail {
 // In order to give `result` a stronger contract, debug builds prevent `result`
-// and `non_value_result` from ingesting empty `exception_wrapper`s, and ones
+// and `non_value_result` from ingesting empty `std::exception_ptr`s, and ones
 // with `OperationCancelled`.
 //
 // In prod, neither check is done since the legacy behaviors are "okay"-ish:
-//   - Empty `exception_wrapper`s, while nonsensical in the context of
+//   - Empty `std::exception_ptr`s, while nonsensical in the context of
 //     `result`, are safe to use unless you call `throw_exception()`.  And,
 //     unfortunately, `co_yield co_error(exception_wrapper{})` compiles.
 //   - As of 2025, erroring with `OperationCancelled` is the implementation of
@@ -133,8 +133,11 @@ inline void dfatal_if_exception_wrapper_invalid(const exception_wrapper& ew) {
 struct stopped_result_t {};
 inline constexpr stopped_result_t stopped_result;
 
-// NB: Copying `non_value_result` is ~25ns due to `exception_wrapper` atomics.
-// Unlike `result`, it is copyable since typical patterns use rvalues anyhow.
+// NB: Copying `non_value_result` is ~25ns due to `std::exception_ptr` atomics.
+// Unlike `result`, it is implicitly copyable, because:
+//   - Common usage involves only rvalues, so the risk of perf bugs is low.
+//   - `folly::Expected` assumes that the error type is copyable, and it's
+//     too convenient an implementation not to use.
 class non_value_result {
  private:
   exception_wrapper ew_;
@@ -156,38 +159,22 @@ class non_value_result {
     return *this;
   }
 
-  /// CAREFUL: Empty & `OperationCancelled` inputs are forbidden, see the
-  /// `dfatal_if_exception_wrapper_invalid` doc.
+  /// Use this ctor to report errors from `result` coroutines & functions:
+  ///   co_await non_value_result{YourError{...}};
   ///
-  /// Future: If a good use-case arises, it's fine to make implicitly movable /
-  /// explicitly copyable, following the analogous ctor in `result_crtp`.
-  explicit non_value_result(exception_wrapper ew)
-      : non_value_result{std::in_place, std::move(ew)} {
-    detail::dfatal_if_exception_wrapper_invalid(ew_);
-  }
-  non_value_result& operator=(exception_wrapper ew) {
-    detail::dfatal_if_exception_wrapper_invalid(ew);
-    ew_ = std::move(ew);
-    return *this;
+  /// Design note: We do NOT want most users to construct `non_value_result`
+  /// from type-erased `std::exception_ptr` or `folly::exception_wrapper`,
+  /// because that would block RTTI-avoidance optimizations for `result` code.
+  explicit non_value_result(std::derived_from<std::exception> auto ex)
+      : ew_(std::in_place, std::move(ex)) {
+    static_assert(
+        !std::is_same_v<decltype(ex), OperationCancelled>,
+        // The reasons for this are discussed in `folly/OperationCancelled.h".
+        "Do not use `OperationCancelled` in new user code. Instead, construct "
+        "your `result` or `non_value_result` via `stopped_result`");
   }
 
   bool has_stopped() const { return ew_.get_exception<OperationCancelled>(); }
-  bool has_error() const { return !has_stopped(); }
-
-  // CAREFUL: All "error" getters debug-fatal if `has_stopped()`.  You must
-  // first check `has_error()` or `!has_stopped()`.
-  exception_wrapper&& error() && {
-    detail::dfatal_if_exception_wrapper_invalid(ew_);
-    return std::move(ew_);
-  }
-  exception_wrapper& error() & {
-    detail::dfatal_if_exception_wrapper_invalid(ew_);
-    return ew_;
-  }
-  const exception_wrapper& error() const& {
-    detail::dfatal_if_exception_wrapper_invalid(ew_);
-    return ew_;
-  }
 
   // Implement the `folly::get_exception<Ex>(res)` protocol
   template <typename Ex>
@@ -205,14 +192,57 @@ class non_value_result {
     return folly::get_mutable_exception<Ex>(ew_);
   }
 
-  // DO NOT USE these "legacy" functions outside of `folly` internals.  See the
-  // `OperationCancelled.h` doc for recommended ways of handling cancellation.
-  // In short: use `get_exception<MyErr>(res)` or `has_stopped()`.
+  // AVOID. Throw-catch costs upwards of 1usec.
+  [[noreturn]] exception_wrapper throw_exception() const {
+    detail::dfatal_if_exception_wrapper_invalid(ew_);
+    ew_.throw_exception();
+  }
+
+  /// AVOID.  Use `non_value_result(YourException{...})` if at all possible.
+  /// Add a `std::in_place_type_t<Ex>` constructor if needed.
+  ///
+  /// Provided for compatibility with existing `exception_wrapper` code.  It
+  /// has several downsides for `result`-first code:
+  ///   - It is a debug-fatal invariant violation to pass in an
+  ///     `exception_wrapper` that is empty or has `OperationCancelled`.
+  ///     See the `dfatal_if_exception_wrapper_invalid` doc.
+  ///   - Not knowing the static exception type blocks optimizations that can
+  ///     otherwise help avoid RTTI on error paths.
+  static non_value_result from_exception_wrapper(exception_wrapper ew) {
+    detail::dfatal_if_exception_wrapper_invalid(ew);
+    return non_value_result{std::in_place, std::move(ew)};
+  }
+
+  /// AVOID. Use `folly::get_exception<Ex>(r)` to check for specific exceptions.
+  /// It may be OK to add more specific accessors to `non_value_result`, see
+  /// `throw_exception()` for an example.
+  ///
+  /// INVARIANT: Ensure `!has_stopped()`, or you will see a debug-fatal.
+  ///
+  /// See `from_exception_wrapper` for the downsides and the rationale.
+  exception_wrapper to_exception_wrapper() && {
+    detail::dfatal_if_exception_wrapper_invalid(ew_);
+    return std::move(ew_);
+  }
+
+  friend inline bool operator==(
+      const non_value_result& lhs, const non_value_result& rhs) {
+    return lhs.ew_.exception_ptr_ref() == rhs.ew_.exception_ptr_ref();
+  }
+
+  // DO NOT USE these "legacy" functions outside of `folly` internals. Instead:
+  //   - `non_value_result(YourException{...})` whenever you statically know
+  //     the exception type (feel free to add `std::in_place_type_t` support).
+  //   - `non_value_result::from_exception_wrapper()` only when you MUST pay
+  //     for RTTI, such as "thrown exceptions".
   //
-  // Their purpose is to permit `folly::coro` internal code to safely ingest
-  // `exception_wrapper`s containing `OperationCancelled` made via
-  // `co_cancelled`, without incurring the 20-80ns+ cost of **eagerly** testing
-  // whether the contained exception is `OperationCancelled`.
+  // See `OperationCancelled.h` for how to handle cancellation.  In short: use
+  // `get_exception<MyErr>(res)` or `has_stopped()`.
+  //
+  // These internal-only functions let the `folly::coro` implementation ingest
+  // `std::exception_ptr`s containing `OperationCancelled` made via
+  // `folly::coro::co_cancelled`, without incurring the 20-80ns+ cost of
+  // eagerly eagerly testing whether it contains `OperationCancelled`.
   static non_value_result make_legacy_error_or_cancellation(
       exception_wrapper ew) {
     return {std::in_place, std::move(ew)};
@@ -259,7 +289,6 @@ using result_ref_wrap = std::conditional_t< // Reused by `result_generator`
 // Shared implementation for `T` non-`void` and `void`
 template <typename Derived, typename T>
 class result_crtp {
-  static_assert(!std::is_same_v<exception_wrapper, std::remove_cvref_t<T>>);
   static_assert(!std::is_same_v<non_value_result, std::remove_cvref_t<T>>);
   static_assert(!std::is_same_v<stopped_result_t, std::remove_cvref_t<T>>);
 
@@ -287,8 +316,7 @@ class result_crtp {
     if (a.exp_.hasValue()) {
       return b.exp_.hasValue() && a.exp_.value() == b.exp_.value();
     } else if (a.exp_.hasError()) {
-      return b.exp_.hasError() &&
-          a.exp_.error().error() == b.exp_.error().error();
+      return b.exp_.hasError() && a.exp_.error() == b.exp_.error();
     } else { // `a` empty
       return b.is_expected_empty(); // equal iff both are empty
     }
@@ -324,9 +352,9 @@ class result_crtp {
 
   void throw_if_no_value() const {
     if (FOLLY_UNLIKELY(exp_.hasError())) {
-      exp_.error().error().throw_exception();
+      exp_.error().throw_exception();
     } else if (FOLLY_UNLIKELY(!exp_.hasValue())) {
-      detail::dfatal_get_empty_result_error().error().throw_exception();
+      detail::dfatal_get_empty_result_error().throw_exception();
     }
   }
 
@@ -349,10 +377,12 @@ class result_crtp {
   /// plumbing for function-result-or-error, and
   ///   - Copying `T` is almost always a performance bug in this setting, but
   ///     see the below carve-out for "cheap-to-copy `T`".
-  ///   - Copying `exception_wrapper` also has atomic costs (~25ns).
+  ///   - Copying `std::exception_ptr` also has atomic costs (~25ns).
   Derived copy() const {
     return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
   }
+  result_crtp(const result_crtp&) = delete;
+  result_crtp& operator=(const result_crtp&) = delete;
 
   /// Implicit constructor to allow returning `stopped_result` from `result`
   /// coroutines & functions.
@@ -361,22 +391,8 @@ class result_crtp {
   /*implicit*/ result_crtp(stopped_result_t s)
       : exp_(Unexpected{non_value_result{s}}) {}
 
-  /// Implicitly movable / explicitly copyable from `exception_wrapper`.
-  ///
-  /// CAREFUL: `e` must be nonempty, and cannot contain `OperationCancelled` --
-  /// see the `dfatal_if_exception_wrapper_invalid` doc.
-  ///
-  /// Implicit move is useful so that `result` functions & coroutines can
-  /// return `make_exception_wrapper<SomeError>(...)`.
-  ///
-  /// This forbids `result<exception_wrapper>` (`static_assert` above).
-  /*implicit*/ result_crtp(exception_wrapper&& e)
-      : exp_(Unexpected{non_value_result{std::move(e)}}) {}
-  explicit result_crtp(const exception_wrapper& e)
-      : exp_(Unexpected{non_value_result{e}}) {}
-
-  /// Implicitly movable / explicitly copyable from `non_value_result` to make
-  /// it easy to return `resT1.non_value()` in a `result<T2>` function.
+  /// Implicitly movable / explicitly copyable from `non_value_result` to
+  /// make it easy to return `resT1.non_value()` in a `result<T2>` function.
   ///
   /// This forbids `result<non_value_result>` (`static_assert` above).
   /*implicit*/ result_crtp(non_value_result&& nvr)
@@ -424,11 +440,12 @@ class result_crtp {
   /// Design notes:
   ///
   /// There is no mutable `&` overload so that we can return singleton
-  /// invariant-violation exceptions for `error()` DFATALs in opt builds:
+  /// invariant-violation exceptions for `dfatal_..._error()` in opt builds:
   ///   - `folly::Expected` is empty due to an `operator=` exception
-  ///   - Calling `error()` when `has_value() == true` -- UB in `std::expected`
-  /// Moving `exception_wrapper` is 0.5ns, vs 23ns to copy the underlying
-  /// `std::exception_ptr`.
+  ///   - Calling `non_value()` when `has_value() == true` -- UB in
+  ///     `std::expected`
+  /// With folly-internal optimizations (see `extract_exception_ptr`), moving
+  /// `std::exception_ptr` takes 0.5ns, vs ~25ns for a copy.
   ///
   /// If there is a good use-case for mutating the non-value state inside
   /// `result`, we could offer `set_non_value()` with different semantics.
@@ -585,7 +602,7 @@ class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result final
   /// The test `simpleConversion` shows why this was made implicit.
   ///
   /// In hot code, prefer to convert from an rvalue (move conversion), because
-  /// that avoids the ~25ns atomic overhead of copying the `exception_wrapper`.
+  /// that avoids the ~25ns atomic overhead of copying the `std::exception_ptr`.
   template <class Arg, typename ResultT = std::remove_cvref_t<Arg>>
     requires(
         !std::is_same_v<ResultT, result> && // Not a move/copy ctor
@@ -859,18 +876,10 @@ inline auto /* implicit */ operator co_await(stopped_result_t s) {
 
 // co_await std::move(res).non_value()
 //
-// Pass-by-&& to discourage accidental copies of `exception_wrapper`.
+// Pass-by-&& to discourage accidental copies of `std::exception_ptr`.
 inline auto /* implicit */ operator co_await(non_value_result && nvr) {
   return detail::non_value_awaitable<detail::result_await_suspender>{
       .non_value_ = std::move(nvr)};
-}
-
-// co_await make_exception_wrapper<Ex>(...)
-//
-// Pass-by-&& to discourage accidental copies of `exception_wrapper`.
-inline auto /* implicit */ operator co_await(exception_wrapper && err) {
-  return detail::non_value_awaitable<detail::result_await_suspender>{
-      .non_value_ = non_value_result{std::move(err)}};
 }
 
 // co_await resultFunc()

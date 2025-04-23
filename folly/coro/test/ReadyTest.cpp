@@ -25,11 +25,11 @@ namespace folly::coro {
 
 CO_TEST(ReadyTest, co_ready_of_error_result) {
   auto errorTaskFn = []() -> NowTask<> {
-    result<> res = make_exception_wrapper<std::runtime_error>("foo");
+    result<> res = non_value_result{std::runtime_error{"foo"}};
     try {
-      co_await co_ready(std::move(res));
+      co_await co_ready{std::move(res)}; // will not throw
     } catch (...) {
-    } // propagates exception WITHOUT rethrowing
+    }
     LOG(FATAL) << "not reached";
   };
   auto res = co_await co_await_result(errorTaskFn());
@@ -39,14 +39,14 @@ CO_TEST(ReadyTest, co_ready_of_error_result) {
 CO_TEST(ReadyTest, co_ready_of_value_result) {
   auto valueTaskFn = []() -> NowTask<int> {
     result res = 1300;
-    co_return 37 + co_await co_ready(std::move(res));
+    co_return 37 + co_await co_ready{std::move(res)};
   };
   EXPECT_EQ(1337, co_await valueTaskFn());
 
   // Use a move-only value to check we don't have extraneous copies
   auto moveValueTaskFn = []() -> NowTask<std::unique_ptr<int>> {
     result res = std::make_unique<int>(1300);
-    auto np = co_await co_ready(std::move(res));
+    auto np = co_await co_ready{std::move(res)};
     *np += 37;
     co_return std::move(np);
   };
@@ -56,7 +56,7 @@ CO_TEST(ReadyTest, co_ready_of_value_result) {
 CO_TEST(ReadyTest, co_ready_of_void_result) {
   auto taskFn = [&]() -> NowTask<int> {
     result<> res;
-    co_await co_ready(std::move(res));
+    co_await co_ready{std::move(res)};
     co_return 42;
   };
   EXPECT_EQ(42, co_await taskFn());
@@ -65,7 +65,7 @@ CO_TEST(ReadyTest, co_ready_of_void_result) {
 CO_TEST(ReadyTest, co_ready_stopped) {
   auto taskFn = [&]() -> NowTask<int> {
     result<> res = stopped_result;
-    co_await co_ready(std::move(res));
+    co_await co_ready{std::move(res)};
     co_return 42;
   };
   EXPECT_TRUE((co_await co_await_result(taskFn())).has_stopped());

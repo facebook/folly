@@ -48,7 +48,7 @@ Try<T> result_to_try(result<T> r) noexcept(
 inline constexpr struct empty_try_as_error_t {
   template <typename T>
   result<T> on_empty_try() const {
-    return {make_exception_wrapper<UsingUninitializedTry>()};
+    return {non_value_result{UsingUninitializedTry{}}};
   }
 } empty_try_as_error;
 
