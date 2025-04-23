@@ -228,6 +228,12 @@ class exception_wrapper final {
   std::exception_ptr to_exception_ptr() const noexcept;
   std::exception_ptr const& exception_ptr_ref() const noexcept;
 
+  //! \return `true` if the wrappers point to the same exception object
+  friend inline bool operator==(
+      exception_wrapper const& lhs, exception_wrapper const& rhs) noexcept {
+    return lhs.ptr_ == rhs.ptr_;
+  }
+
   //! Returns the `typeid` of the wrapped exception object. If there is no
   //!     wrapped exception object, returns `nullptr`.
   std::type_info const* type() const noexcept;

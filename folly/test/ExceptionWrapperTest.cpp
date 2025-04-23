@@ -100,6 +100,21 @@ TEST(ExceptionWrapper, members) {
   EXPECT_EQ(ew.class_name(), kRuntimeErrorClassName);
 }
 
+TEST(ExceptionWrapper, equality) {
+  auto ew = make_exception_wrapper<std::runtime_error>("wat");
+  EXPECT_EQ(ew, ew);
+
+  auto ewSame = ew;
+  EXPECT_EQ(ew, ewSame);
+
+  // Before C++20, operator!= is not defaulted based on operator==
+#if FOLLY_CPLUSPLUS >= 202002L
+  auto ewDiff = make_exception_wrapper<std::runtime_error>("wat");
+  EXPECT_NE(ewDiff, ew);
+  EXPECT_NE(ewDiff, ewSame);
+#endif
+}
+
 TEST(ExceptionWrapper, tryAndCatchTest) {
   auto ew4 = try_and_catch([] { throw 17; });
   EXPECT_TRUE(bool(ew4));

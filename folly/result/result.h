@@ -286,8 +286,7 @@ class result_crtp {
       return b.exp_.hasValue() && a.exp_.value() == b.exp_.value();
     } else if (a.exp_.hasError()) {
       return b.exp_.hasError() &&
-          a.exp_.error().error().exception_ptr_ref() ==
-          b.exp_.error().error().exception_ptr_ref();
+          a.exp_.error().error() == b.exp_.error().error();
     } else { // `a` empty
       return b.is_expected_empty(); // equal iff both are empty
     }

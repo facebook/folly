@@ -202,9 +202,7 @@ TEST(Result, copyMethod) {
 
   result<int> rErr{make_exception_wrapper<MyError>("grr")};
   auto rErrToo = rErr.copy();
-  EXPECT_TRUE(
-      rErr.non_value().error().exception_ptr_ref() ==
-      rErrToo.non_value().error().exception_ptr_ref());
+  EXPECT_EQ(rErr.non_value().error(), rErrToo.non_value().error());
   EXPECT_TRUE(rErr == rErrToo);
 
   EXPECT_TRUE(rErr != r);
