@@ -634,15 +634,10 @@ TYPED_TEST_P(ConcurrentHashMapTest, IterateStressTest) {
           } else {
             res = m.erase_if_equal(k, k);
           }
-          if (!res) {
-            printf("Faulre to erase thread %i val %li\n", t, k);
-            exit(0);
-          }
           EXPECT_TRUE(res);
         }
         int count = 0;
         for (auto it = m.cbegin(); it != m.cend(); ++it) {
-          printf("Item is %li\n", it->first);
           if (it->first < 10) {
             count++;
           }
