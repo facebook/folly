@@ -712,6 +712,23 @@ TEST(IOBuf, QueueAppenderTrimEnd) {
   EXPECT_THROW(app.trimEnd(100), std::underflow_error);
 }
 
+TEST(IOBuf, QueueAppenderEnsureAtMost) {
+  folly::IOBufQueue queue;
+  constexpr size_t kInitialCapacity = 128;
+  constexpr size_t kMaxCapacity = 800;
+
+  QueueAppender app{&queue, kInitialCapacity, kMaxCapacity};
+
+  app.ensure(kInitialCapacity); // won't grow
+  EXPECT_EQ(kInitialCapacity, app.length());
+  app.ensure(kInitialCapacity + 1); // will grow
+  EXPECT_LE(kInitialCapacity + 1, app.length());
+  app.ensureWithinMaxGrowth(kMaxCapacity * 2); // will grow up to kMaxCapacity
+  EXPECT_EQ(kMaxCapacity, app.length());
+  app.ensure(kMaxCapacity + 1); // will grow beyond kMaxCapacity
+  EXPECT_LE(kMaxCapacity + 1, app.length());
+}
+
 TEST(IOBuf, CursorOperators) {
   // Test operators on a single-item chain
   {

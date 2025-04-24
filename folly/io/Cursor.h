@@ -1680,6 +1680,17 @@ class QueueAppender : public Writable<QueueAppender> {
   }
 
   /**
+   * Ensures up to n contiguous bytes available, without surpassing maxGrowth_.
+   *
+   * @methodset Modifiers
+   *
+   * Cannot go above maxGrowth.
+   *
+   * May throw if there isn't enough room.
+   */
+  void ensureWithinMaxGrowth(size_t n) { ensure(std::min(n, maxGrowth_)); }
+
+  /**
    * Write an object to the cursor.
    *
    * @param n The number of bytes of value to write; defaults to sizeof(T)
