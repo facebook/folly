@@ -867,12 +867,12 @@ class StdHasher {
   }
 
   size_t operator()(std::string_view sv) const
-      noexcept(noexcept(stdCompatibleHash(sv))) {
+      noexcept(noexcept(stdCompatibleHash(FOLLY_DECLVAL(std::string_view)))) {
     return stdCompatibleHash(sv);
   }
 
   size_t operator()(const std::string& s) const
-      noexcept(noexcept(stdCompatibleHash(s))) {
+      noexcept(noexcept(stdCompatibleHash(FOLLY_DECLVAL(const std::string&)))) {
     return stdCompatibleHash(s);
   }
 };
