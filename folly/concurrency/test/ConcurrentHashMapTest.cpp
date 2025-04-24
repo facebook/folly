@@ -1183,10 +1183,10 @@ using folly::detail::concurrenthashmap::bucket::BucketTable;
 
 #if FOLLY_SSE_PREREQ(4, 2) && FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 using folly::detail::concurrenthashmap::simd::SIMDTable;
-typedef ::testing::Types<MapFactory<BucketTable>, MapFactory<SIMDTable>>
-    MapFactoryTypes;
+using MapFactoryTypes =
+    ::testing::Types<MapFactory<BucketTable>, MapFactory<SIMDTable>>;
 #else
-typedef ::testing::Types<MapFactory<BucketTable>> MapFactoryTypes;
+using MapFactoryTypes = ::testing::Types<MapFactory<BucketTable>>;
 #endif
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
