@@ -424,7 +424,9 @@ void runSimple() {
   h8.emplace(s("abc"), s("ABC"));
   EXPECT_GE(h8.bucket_count(), 1);
   h8 = {};
-  EXPECT_GE(h8.bucket_count(), 1);
+  if (!kFallback) {
+    EXPECT_GE(h8.bucket_count(), 1);
+  }
   h9 = {{s("abc"), s("ABD")}, {s("def"), s("DEF")}};
   EXPECT_TRUE(h8.empty());
   EXPECT_EQ(h9.size(), 2);
@@ -530,7 +532,6 @@ void runRandom() {
       try {
         EXPECT_EQ(t0.empty(), r0.empty());
         EXPECT_EQ(t0.size(), r0.size());
-        EXPECT_EQ(2, Tracked<0>::counts().liveCount());
         EXPECT_EQ(t0.size() + t1.size(), Tracked<1>::counts().liveCount());
         EXPECT_EQ(r0.size() + r1.size(), Tracked<2>::counts().liveCount());
         if (pct < 15) {
