@@ -151,7 +151,8 @@ inline Ex const* exception_wrapper::get_exception() const noexcept {
   return exception_ptr_get_object_hint<Ex>(ptr_);
 }
 
-inline std::exception_ptr exception_wrapper::to_exception_ptr() const noexcept {
+inline std::exception_ptr exception_wrapper::to_exception_ptr()
+    const& noexcept {
   return ptr_;
 }
 

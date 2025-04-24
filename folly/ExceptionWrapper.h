@@ -225,7 +225,9 @@ class exception_wrapper final {
 
   //! \return A `std::exception_ptr` that references the exception held by
   //!     `*this`.
-  std::exception_ptr to_exception_ptr() const noexcept;
+  std::exception_ptr to_exception_ptr() const& noexcept;
+  // NB: Can add this back, if a good use-case arises.
+  std::exception_ptr to_exception_ptr() && = delete;
   std::exception_ptr const& exception_ptr_ref() const noexcept;
 
   //! \return `true` if the wrappers point to the same exception object
