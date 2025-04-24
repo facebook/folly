@@ -681,7 +681,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   template <class ReturnType, class... Args>
   /*implicit*/ Function(ReturnType (^objCBlock)(Args... args))
       : Function([blockCopy = (ReturnType(^)(Args...))[objCBlock copy]](
-                     Args... args) { return blockCopy(args...); }){};
+                     Args... args) { return blockCopy(args...); }) {}
 #endif
 
   /**
