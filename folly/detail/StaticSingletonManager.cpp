@@ -16,9 +16,9 @@
 
 #include <folly/detail/StaticSingletonManager.h>
 
-#include <map>
 #include <mutex>
 #include <typeindex>
+#include <unordered_map>
 
 #include <folly/memory/ReentrantAllocator.h>
 
@@ -89,13 +89,20 @@ class StaticSingletonManagerWithRttiImpl {
     return map_[key];
   }
 
-  // using reentrant_allocator to permit new/delete hooks to use this class
-  // using std::map over std::unordered_map to reduce number of mmap regions
-  // since reentrant_allocator creates creates mmap regions to avoid malloc/free
+  // Using reentrant_allocator to permit new/delete hooks to use this class.
+  // std::map would be preferred over std::unordered_map to reduce number of
+  // mmap regions, since reentrant_allocator creates mmap regions to avoid
+  // malloc/free. However, std::map surfaced address sanitizer issues in
+  // std::type_info::before when defining
+  // _LIBCPP_TYPEINFO_COMPARISON_IMPLEMENTATION=2 on Mac builds.
   using map_value_t = std::pair<std::type_index const, Entry>;
-  using map_less_t = std::less<std::type_index>;
   using map_alloc_t = reentrant_allocator<map_value_t>;
-  using map_t = std::map<std::type_index, Entry, map_less_t, map_alloc_t>;
+  using map_t = std::unordered_map<
+      std::type_index,
+      Entry,
+      std::hash<std::type_index>,
+      std::equal_to<std::type_index>,
+      map_alloc_t>;
 
   map_t map_{map_alloc_t{reentrant_allocator_options{}}};
   std::mutex mutex_;
