@@ -107,7 +107,7 @@ int SocketFileDescriptorMap::close(SOCKET sock) noexcept {
   int fd = 0;
   auto& smap = getSyncSocketMap();
   {
-    std::shared_lock<std::shared_mutex> lock{smap.mutex};
+    std::shared_lock lock{smap.mutex};
     auto it = smap.map.find(sock);
     if (it != smap.map.end()) {
       found = true;
@@ -137,7 +137,7 @@ int SocketFileDescriptorMap::socketToFd(SOCKET sock) noexcept {
 
   auto& smap = getSyncSocketMap();
   {
-    std::shared_lock<std::shared_mutex> lock{smap.mutex};
+    std::shared_lock lock{smap.mutex};
     auto const it = smap.map.find(sock);
     if (it != smap.map.end()) {
       return it->second;

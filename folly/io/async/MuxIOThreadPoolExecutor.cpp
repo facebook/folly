@@ -256,7 +256,7 @@ void MuxIOThreadPoolExecutor::join() {
   }
 
   {
-    std::shared_lock<folly::SharedMutex> lock{threadListLock_};
+    std::shared_lock lock{threadListLock_};
     for (const auto& o : observers_) {
       maybeUnregisterEventBases(o.get());
     }
