@@ -276,7 +276,7 @@ class FlatCombining {
   // Execute an operation without combining
   template <typename OpFunc>
   void requestNoFC(OpFunc& opFn) {
-    std::lock_guard<Mutex> guard(m_);
+    std::lock_guard guard(m_);
     opFn();
   }
 
@@ -529,7 +529,7 @@ class FlatCombining {
         uint64_t count;
         ++sessions_;
         {
-          std::lock_guard<Mutex> guard(m_);
+          std::lock_guard guard(m_);
           count = combiningSession();
           combined_ += count;
         }

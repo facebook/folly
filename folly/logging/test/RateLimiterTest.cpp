@@ -106,7 +106,7 @@ TEST(RateLimiter, concurrentThreads) {
 
   // Set go to true and notify all the threads
   {
-    std::lock_guard<std::mutex> lg(m);
+    std::lock_guard lg(m);
     go = true;
   }
   cv.notify_all();

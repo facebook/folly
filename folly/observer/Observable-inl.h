@@ -75,7 +75,7 @@ class ObserverCreatorContext {
       // important to not hold state_ lock while running it to avoid possible
       // lock inversion with another code path that needs state_ lock (e.g.
       // get()).
-      std::lock_guard<SharedMutex> updateLockGuard(updateLock_);
+      std::lock_guard updateLockGuard(updateLock_);
       auto newValue = Traits::get(observable_);
 
       auto state = state_.wlock();

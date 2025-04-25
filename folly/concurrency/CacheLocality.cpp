@@ -446,14 +446,14 @@ class SimpleAllocator {
 
   SimpleAllocator(Ctor, size_t sz) : sz_(sz) {}
   ~SimpleAllocator() {
-    std::lock_guard<std::mutex> g(m_);
+    std::lock_guard g(m_);
     for (auto& block : blocks_) {
       folly::aligned_free(block);
     }
   }
 
   void* allocate() {
-    std::lock_guard<std::mutex> g(m_);
+    std::lock_guard g(m_);
     // Freelist allocation.
     if (freelist_) {
       auto mem = freelist_;
@@ -487,7 +487,7 @@ class SimpleAllocator {
         reinterpret_cast<void*>(intptr_t(ptr) & ~intptr_t(kAllocSize - 1));
     auto allocator = *static_cast<SimpleAllocator**>(addr);
 
-    std::lock_guard<std::mutex> g(allocator->m_);
+    std::lock_guard g(allocator->m_);
     *static_cast<void**>(ptr) = allocator->freelist_;
     if constexpr (kIsSanitizeAddress) {
       // If running under ASAN, scrub the memory on deallocation, so we don't

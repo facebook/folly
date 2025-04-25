@@ -18,111 +18,118 @@
 // Docs: https://fburl.com/fbcref_singleton
 //
 
-// SingletonVault - a library to manage the creation and destruction
-// of interdependent singletons.
-//
-// Recommended usage of this class: suppose you have a class
-// called MyExpensiveService, and you only want to construct one (ie,
-// it's a singleton), but you only want to construct it if it is used.
-//
-// In your .h file:
-// class MyExpensiveService {
-//   // Caution - may return a null ptr during startup and shutdown.
-//   static std::shared_ptr<MyExpensiveService> getInstance();
-//   ....
-// };
-//
-// In your .cpp file:
-// namespace { struct PrivateTag {}; }
-// static folly::Singleton<MyExpensiveService, PrivateTag> the_singleton;
-// std::shared_ptr<MyExpensiveService> MyExpensiveService::getInstance() {
-//   return the_singleton.try_get();
-// }
-//
-// Code in other modules can access it via:
-//
-// auto instance = MyExpensiveService::getInstance();
-//
-// Advanced usage and notes:
-//
-// You can also access a singleton instance with
-// `Singleton<ObjectType, TagType>::try_get()`. We recommend
-// that you prefer the form `the_singleton.try_get()` because it ensures that
-// `the_singleton` is used and cannot be garbage-collected during linking: this
-// is necessary because the constructor of `the_singleton` is what registers it
-// to the SingletonVault.
-//
-// The singleton will be created on demand.  If the constructor for
-// MyExpensiveService actually makes use of *another* Singleton, then
-// the right thing will happen -- that other singleton will complete
-// construction before get() returns.  However, in the event of a
-// circular dependency, a runtime error will occur.
-//
-// You can have multiple singletons of the same underlying type, but
-// each must be given a unique tag. If no tag is specified a default tag is
-// used. We recommend that you use a tag from an anonymous namespace private to
-// your implementation file, as this ensures that the singleton is only
-// available via your interface and not also through Singleton<T>::try_get()
-//
-// namespace {
-// struct Tag1 {};
-// struct Tag2 {};
-// folly::Singleton<MyExpensiveService> s_default;
-// folly::Singleton<MyExpensiveService, Tag1> s1;
-// folly::Singleton<MyExpensiveService, Tag2> s2;
-// }
-// ...
-// MyExpensiveService* svc_default = s_default.get();
-// MyExpensiveService* svc1 = s1.get();
-// MyExpensiveService* svc2 = s2.get();
-//
-// By default, the singleton instance is constructed via new and
-// deleted via delete, but this is configurable:
-//
-// namespace { folly::Singleton<MyExpensiveService> the_singleton(create,
-//                                                                destroy); }
-//
-// Where create and destroy are functions, Singleton<T>::CreateFunc
-// Singleton<T>::TeardownFunc.
-//
-// For example, if you need to pass arguments to your class's constructor:
-//   class X {
-//    public:
-//      X(int a1, std::string a2);
-//    // ...
-//   }
-// Make your singleton like this:
-//   folly::Singleton<X> singleton_x([]() { return new X(42, "foo"); });
-//
-// The above examples detail a situation where an expensive singleton is loaded
-// on-demand (thus only if needed).  However if there is an expensive singleton
-// that will likely be needed, and initialization takes a potentially long time,
-// e.g. while initializing, parsing some files, talking to remote services,
-// making uses of other singletons, and so on, the initialization of those can
-// be scheduled up front, or "eagerly".
-//
-// In that case the singleton can be declared this way:
-//
-// namespace {
-// auto the_singleton =
-//     folly::Singleton<MyExpensiveService>(/* optional create, destroy args */)
-//     .shouldEagerInit();
-// }
-//
-// This way the singleton's instance is built at program initialization,
-// if the program opted-in to that feature by calling "doEagerInit" or
-// "doEagerInitVia" during its startup.
-//
-// What if you need to destroy all of your singletons?  Say, some of
-// your singletons manage threads, but you need to fork?  Or your unit
-// test wants to clean up all global state?  Then you can call
-// SingletonVault::singleton()->destroyInstances(), which invokes the
-// TeardownFunc for each singleton, in the reverse order they were
-// created.  It is your responsibility to ensure your singletons can
-// handle cases where the singletons they depend on go away, however.
-// Singletons won't be recreated after destroyInstances call. If you
-// want to re-enable singleton creation (say after fork was called) you
-// should call reenableInstances.
+/// Recommended usage of this class: suppose you have a class
+/// called `MyExpensiveService`, and you only want to construct one (ie,
+/// it's a singleton), but you only want to construct it if it is used.
+///
+/// In your .h file:
+///
+///     class MyExpensiveService {
+///       // Caution - may return a null ptr during startup and shutdown.
+///       static std::shared_ptr<MyExpensiveService> getInstance();
+///       ....
+///     };
+///
+/// In your .cpp file:
+///
+///     namespace { struct PrivateTag {}; }
+///
+///     static folly::Singleton<MyExpensiveService, PrivateTag> the_singleton;
+///
+///     std::shared_ptr<MyExpensiveService> MyExpensiveService::getInstance() {
+///       return the_singleton.try_get();
+///     }
+///
+/// Code in other modules can access it via:
+///
+///     auto instance = MyExpensiveService::getInstance();
+///
+/// ### Advanced usage and notes
+///
+/// You can also access a singleton instance with
+/// `Singleton<ObjectType, TagType>::try_get()`. We recommend
+/// that you prefer the form `the_singleton.try_get()` because it ensures that
+/// `the_singleton` is used and cannot be garbage-collected during linking: this
+/// is necessary because the constructor of `the_singleton` is what registers it
+/// to the SingletonVault.
+///
+/// The singleton will be created on demand.  If the constructor for
+/// MyExpensiveService actually makes use of *another* Singleton, then
+/// the right thing will happen -- that other singleton will complete
+/// construction before get() returns.  However, in the event of a
+/// circular dependency, a runtime error will occur.
+///
+/// You can have multiple singletons of the same underlying type, but
+/// each must be given a unique tag. If no tag is specified a default tag is
+/// used. We recommend that you use a tag from an anonymous namespace private to
+/// your implementation file, as this ensures that the singleton is only
+/// available via your interface and not also through `Singleton<T>::try_get()`
+///
+///     namespace {
+///     struct Tag1 {};
+///     struct Tag2 {};
+///     folly::Singleton<MyExpensiveService> s_default;
+///     folly::Singleton<MyExpensiveService, Tag1> s1;
+///     folly::Singleton<MyExpensiveService, Tag2> s2;
+///     }
+///     ...
+///     MyExpensiveService* svc_default = s_default.get();
+///     MyExpensiveService* svc1 = s1.get();
+///     MyExpensiveService* svc2 = s2.get();
+///
+/// By default, the singleton instance is constructed via new and
+/// deleted via delete, but this is configurable:
+///
+///     namespace {
+///     folly::Singleton<MyExpensiveService> the_singleton(create, destroy);
+///     }
+///
+/// Where create and destroy are functions, `Singleton<T>::CreateFunc`
+/// `Singleton<T>::TeardownFunc`.
+///
+/// For example, if you need to pass arguments to your class's constructor:
+///
+///     class X {
+///      public:
+///        X(int a1, std::string a2);
+///      // ...
+///     }
+///
+/// Make your singleton like this:
+///
+///     folly::Singleton<X> singleton_x([]() { return new X(42, "foo"); });
+///
+/// The above examples detail a situation where an expensive singleton is loaded
+/// on-demand (thus only if needed).  However if there is an expensive singleton
+/// that will likely be needed, and initialization takes a potentially long
+/// time, e.g. while initializing, parsing some files, talking to remote
+/// services, making uses of other singletons, and so on, the initialization of
+/// those can be scheduled up front, or "eagerly".
+///
+/// In that case the singleton can be declared this way:
+///
+///     namespace {
+///     auto the_singleton =
+///         folly::Singleton<MyExpensiveService>(
+///                 /* optional args, destroy args */)
+///             .shouldEagerInit();
+///     }
+///
+/// This way the singleton's instance is built at program initialization,
+/// if the program opted-in to that feature by calling "doEagerInit" or
+/// "doEagerInitVia" during its startup.
+///
+/// What if you need to destroy all of your singletons?  Say, some of
+/// your singletons manage threads, but you need to fork?  Or your unit
+/// test wants to clean up all global state?  Then you can call
+/// `SingletonVault::singleton()->destroyInstances()`, which invokes the
+/// TeardownFunc for each singleton, in the reverse order they were
+/// created.  It is your responsibility to ensure your singletons can
+/// handle cases where the singletons they depend on go away, however.
+/// Singletons won't be recreated after destroyInstances call. If you
+/// want to re-enable singleton creation (say after fork was called) you
+/// should call reenableInstances.
+/// @class folly::Singleton
 
 #pragma once
 
@@ -162,25 +169,28 @@ namespace folly {
 // For actual usage, please see the Singleton<T> class at the bottom
 // of this file; that is what you will actually interact with.
 
-// SingletonVault is the class that manages singleton instances.  It
-// is unaware of the underlying types of singletons, and simply
-// manages lifecycles and invokes CreateFunc and TeardownFunc when
-// appropriate.  In general, you won't need to interact with the
-// SingletonVault itself.
-//
-// A vault goes through a few stages of life:
-//
-//   1. Registration phase; singletons can be registered:
-//      a) Strict: no singleton can be created in this stage.
-//      b) Relaxed: singleton can be created (the default vault is Relaxed).
-//   2. registrationComplete() has been called; singletons can no
-//      longer be registered, but they can be created.
-//   3. A vault can return to stage 1 when destroyInstances is called.
-//
-// In general, you don't need to worry about any of the above; just
-// ensure registrationComplete() is called near the top of your main()
-// function, otherwise no singletons can be instantiated.
-
+/// SingletonVault - a library to manage the creation and destruction
+/// of interdependent singletons.
+///
+/// SingletonVault is the class that manages singleton instances.  It
+/// is unaware of the underlying types of singletons, and simply
+/// manages lifecycles and invokes CreateFunc and TeardownFunc when
+/// appropriate.  In general, you won't need to interact with the
+/// SingletonVault itself.
+///
+/// A vault goes through a few stages of life:
+///
+///   1. Registration phase; singletons can be registered:
+///      a) Strict: no singleton can be created in this stage.
+///      b) Relaxed: singleton can be created (the default vault is Relaxed).
+///   2. registrationComplete() has been called; singletons can no
+///      longer be registered, but they can be created.
+///   3. A vault can return to stage 1 when destroyInstances is called.
+///
+/// In general, you don't need to worry about any of the above; just
+/// ensure registrationComplete() is called near the top of your main()
+/// function, otherwise no singletons can be instantiated.
+/// @class folly::SingletonVault
 class SingletonVault;
 
 namespace detail {
@@ -836,7 +846,7 @@ class LeakySingleton {
     }
 
     auto& entry = entryInstance();
-    std::lock_guard<std::mutex> lg(entry.mutex);
+    std::lock_guard lg(entry.mutex);
     if (entry.ptr) {
       lsan_ignore_object(std::atomic_exchange(&entry.ptr, (T*)nullptr));
     }
@@ -873,7 +883,7 @@ class LeakySingleton {
   static void createInstance() {
     auto& entry = entryInstance();
 
-    std::lock_guard<std::mutex> lg(entry.mutex);
+    std::lock_guard lg(entry.mutex);
     if (entry.state == State::Living) {
       return;
     }

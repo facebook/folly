@@ -54,7 +54,7 @@ size_t Core::refresh(size_t version) {
   }
 
   {
-    std::lock_guard<SharedMutex> lgRefresh(refreshMutex_);
+    std::lock_guard lgRefresh(refreshMutex_);
 
     // Recheck in case this code was already refreshed
     if (version_ >= version) {

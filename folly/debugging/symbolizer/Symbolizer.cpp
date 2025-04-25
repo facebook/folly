@@ -421,7 +421,7 @@ TwoStepFastStackTracePrinter::TwoStepFastStackTracePrinter(
 }
 
 void TwoStepFastStackTracePrinter::printStackTrace(bool symbolize) {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard lock(mutex_);
   SCOPE_EXIT {
     printer_->flush();
   };

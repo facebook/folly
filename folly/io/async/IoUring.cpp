@@ -254,7 +254,7 @@ int IoUring::unregister_buffers() {
 
 void IoUring::initializeContext() {
   if (!init_.load(std::memory_order_acquire)) {
-    std::lock_guard<std::mutex> lock(initMutex_);
+    std::lock_guard lock(initMutex_);
     if (!init_.load(std::memory_order_relaxed)) {
       int rc = ::io_uring_queue_init_params(
           roundUpToNextPowerOfTwo(maxSubmit_), &ioRing_, &params_);

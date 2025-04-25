@@ -180,7 +180,7 @@ AsyncIO::~AsyncIO() {
 
 void AsyncIO::initializeContext() {
   if (!init_.load(std::memory_order_acquire)) {
-    std::lock_guard<std::mutex> lock(initMutex_);
+    std::lock_guard lock(initMutex_);
     if (!init_.load(std::memory_order_relaxed)) {
       int rc = io_queue_init(capacity_, &ctx_);
       // returns negative errno

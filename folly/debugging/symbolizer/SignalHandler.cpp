@@ -70,14 +70,14 @@ FatalSignalCallbackRegistry::FatalSignalCallbackRegistry()
     : installed_(false) {}
 
 void FatalSignalCallbackRegistry::add(SignalCallback func) {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard lock(mutex_);
   CHECK(!installed_) << "FatalSignalCallbackRegistry::add may not be used "
                         "after installing the signal handlers.";
   handlers_.push_back(func);
 }
 
 void FatalSignalCallbackRegistry::markInstalled() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard lock(mutex_);
   CHECK(!installed_.exchange(true))
       << "FatalSignalCallbackRegistry::markInstalled must be called "
       << "at most once";

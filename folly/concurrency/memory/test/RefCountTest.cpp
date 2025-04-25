@@ -93,7 +93,7 @@ void stressTest(size_t itersCount) {
     std::thread t1([&]() {
       if (++count) {
         {
-          std::lock_guard<std::mutex> lg(mutex);
+          std::lock_guard lg(mutex);
           EXPECT_EQ(1, a);
         }
         --count;
@@ -103,7 +103,7 @@ void stressTest(size_t itersCount) {
     std::thread t2([&]() {
       count.useGlobal();
       if (--count == 0) {
-        std::lock_guard<std::mutex> lg(mutex);
+        std::lock_guard lg(mutex);
         a = 0;
       }
     });

@@ -55,17 +55,17 @@ class BaselinePQ {
       : maxSize_(maxSize), pq_(std::forward<PQArgs>(args)...) {}
 
   bool empty() const {
-    std::lock_guard<Mutex> g(m_);
+    std::lock_guard g(m_);
     return pq_.empty();
   }
 
   size_t size() const {
-    std::lock_guard<Mutex> g(m_);
+    std::lock_guard g(m_);
     return pq_.size();
   }
 
   bool try_push(const T& val) {
-    std::lock_guard<Mutex> g(m_);
+    std::lock_guard g(m_);
     if (maxSize_ > 0 && pq_.size() == maxSize_) {
       return false;
     }
@@ -80,7 +80,7 @@ class BaselinePQ {
   }
 
   bool try_pop(T& val) {
-    std::lock_guard<Mutex> g(m_);
+    std::lock_guard g(m_);
     if (!pq_.empty()) {
       val = pq_.top();
       pq_.pop();
@@ -91,7 +91,7 @@ class BaselinePQ {
   }
 
   bool try_peek(T& val) {
-    std::lock_guard<Mutex> g(m_);
+    std::lock_guard g(m_);
     if (!pq_.empty()) {
       val = pq_.top();
       return true;

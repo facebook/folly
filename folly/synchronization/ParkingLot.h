@@ -59,7 +59,7 @@ struct WaitNodeBase {
   }
 
   void wake() {
-    std::lock_guard<std::mutex> nodeLock(mutex_);
+    std::lock_guard nodeLock(mutex_);
     signaled_ = true;
     cond_.notify_one();
   }
@@ -282,7 +282,7 @@ ParkResult ParkingLot<Data>::park_until(
 
   if (status == std::cv_status::timeout) {
     // it's not really a timeout until we unlink the unsignaled node
-    std::lock_guard<std::mutex> bucketLock(bucket.mutex_);
+    std::lock_guard bucketLock(bucket.mutex_);
     if (!node.signaled()) {
       bucket.erase(&node);
       return ParkResult::Timeout;
@@ -305,7 +305,7 @@ void ParkingLot<Data>::unpark(const Key bits, Func&& func) {
     return;
   }
 
-  std::lock_guard<std::mutex> bucketLock(bucket.mutex_);
+  std::lock_guard bucketLock(bucket.mutex_);
 
   for (auto iter = bucket.head_; iter != nullptr;) {
     auto node = static_cast<WaitNode*>(iter);

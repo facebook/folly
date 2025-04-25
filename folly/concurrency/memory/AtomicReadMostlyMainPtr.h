@@ -71,7 +71,7 @@ class AtomicReadMostlyMainPtr {
       std::memory_order order = std::memory_order_seq_cst) {
     std::shared_ptr<T> old;
     {
-      std::lock_guard<std::mutex> lg(*detail::atomicReadMostlyMu);
+      std::lock_guard lg(*detail::atomicReadMostlyMu);
       old = exchangeLocked(std::move(ptr), order);
     }
     // If ~T() runs (triggered by the shared_ptr refcount decrement), it's here,
@@ -83,7 +83,7 @@ class AtomicReadMostlyMainPtr {
   std::shared_ptr<T> exchange(
       std::shared_ptr<T> ptr,
       std::memory_order order = std::memory_order_seq_cst) {
-    std::lock_guard<std::mutex> lg(*detail::atomicReadMostlyMu);
+    std::lock_guard lg(*detail::atomicReadMostlyMu);
     return exchangeLocked(std::move(ptr), order);
   }
 
@@ -111,7 +111,7 @@ class AtomicReadMostlyMainPtr {
     std::shared_ptr<T> prev;
     std::shared_ptr<T> expectedDup;
     {
-      std::lock_guard<std::mutex> lg(*detail::atomicReadMostlyMu);
+      std::lock_guard lg(*detail::atomicReadMostlyMu);
       auto index = curMainPtrIndex_.load(failureOrder);
       ReadMostlyMainPtr<T>& oldMain = mainPtrs_[index];
       if (oldMain.get() != expected.get()) {

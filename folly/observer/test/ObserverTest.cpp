@@ -1107,7 +1107,7 @@ TEST(Observer, ObservableLockInversion) {
     using element_type = size_t;
 
     std::shared_ptr<const size_t> get() {
-      std::lock_guard<std::mutex> lg(lockingObservableLock);
+      std::lock_guard lg(lockingObservableLock);
       return std::make_shared<const size_t>(lockingObservableValue.load());
     }
 
@@ -1133,7 +1133,7 @@ TEST(Observer, ObservableLockInversion) {
   });
 
   while (true) {
-    std::lock_guard<std::mutex> lg(lockingObservableLock);
+    std::lock_guard lg(lockingObservableLock);
     if (**makeObserver([o = observer] { return **o; }) == kNumIters) {
       break;
     }
@@ -1201,7 +1201,7 @@ TEST(Observer, ReenableSingletons) {
     for (size_t i = 1; i <= kMaxValue; ++i) {
       std::this_thread::sleep_for(std::chrono::milliseconds{1});
       {
-        std::lock_guard<std::mutex> lg(forkMutex);
+        std::lock_guard lg(forkMutex);
         observable.setValue(i);
       }
     }
@@ -1211,7 +1211,7 @@ TEST(Observer, ReenableSingletons) {
     std::this_thread::sleep_for(std::chrono::milliseconds{10});
     folly::SingletonVault::singleton()->destroyInstances();
     {
-      std::lock_guard<std::mutex> lg(forkMutex);
+      std::lock_guard lg(forkMutex);
       folly::SingletonVault::singleton()->reenableInstances();
     }
     folly::observer_detail::ObserverManager::vivify();

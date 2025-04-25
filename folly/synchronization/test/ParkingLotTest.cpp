@@ -157,13 +157,13 @@ TEST(ParkingLot, WaitableMutexTest) {
   std::atomic<bool> go{false};
   WaitableMutex mu;
   std::thread t([&]() {
-    std::lock_guard<WaitableMutex> g(mu);
+    std::lock_guard g(mu);
     mu.wait([&]() { return go == true; });
   });
   sleep(1);
 
   {
-    std::lock_guard<WaitableMutex> g(mu);
+    std::lock_guard g(mu);
     go = true;
   }
   t.join();

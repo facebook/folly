@@ -78,7 +78,7 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
 }
 
 std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard lock(mutex_);
 
   auto pos = files_.find(p);
   if (pos != files_.end()) {

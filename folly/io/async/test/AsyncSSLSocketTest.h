@@ -545,7 +545,7 @@ class HandshakeCallback : public AsyncSSLSocket::HandshakeCB {
   // Functions inherited from AsyncSSLSocketHandshakeCallback
   void handshakeSuc(AsyncSSLSocket* sock) noexcept override {
     isResumed_ = sock->getSSLSessionReused();
-    std::lock_guard<std::mutex> g(mutex_);
+    std::lock_guard g(mutex_);
     cv_.notify_all();
     EXPECT_EQ(sock, socket_.get());
     std::cerr << "HandshakeCallback::connectionAccepted" << std::endl;
@@ -557,7 +557,7 @@ class HandshakeCallback : public AsyncSSLSocket::HandshakeCB {
       AsyncSSLSocket* /* sock */,
       const AsyncSocketException& ex) noexcept override {
     isResumed_ = false;
-    std::lock_guard<std::mutex> g(mutex_);
+    std::lock_guard g(mutex_);
     cv_.notify_all();
     std::cerr << "HandshakeCallback::handshakeError " << ex.what() << std::endl;
     state = (expect_ == EXPECT_ERROR) ? STATE_SUCCEEDED : STATE_FAILED;

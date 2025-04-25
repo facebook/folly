@@ -116,7 +116,7 @@ void SignalRegistry::notify(int sig) {
 }
 
 void SignalRegistry::setNotifyFd(int sig, int fd) {
-  std::lock_guard<folly::MicroSpinLock> g(mapLock_);
+  std::lock_guard g(mapLock_);
   if (fd >= 0) {
     if (!map_) {
       map_ = std::make_unique<SignalMap>();

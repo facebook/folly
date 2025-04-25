@@ -333,7 +333,7 @@ static void runFairness(std::size_t numThreads) {
         }
       }
       {
-        std::lock_guard<std::mutex> g(rlock);
+        std::lock_guard g(rlock);
         results.push_back(value);
         maxes.push_back(max);
         aqTime.push_back(time);

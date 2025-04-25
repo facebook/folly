@@ -282,10 +282,10 @@ TEST_F(AtForkTest, ordering) {
       [&] { b.unlock(); });
 
   auto thr = std::thread([&]() {
-    std::lock_guard<std::mutex> g(a);
+    std::lock_guard g(a);
     started = true;
     usleep(100);
-    std::lock_guard<std::mutex> g2(b);
+    std::lock_guard g2(b);
   });
   while (!started) {
   }

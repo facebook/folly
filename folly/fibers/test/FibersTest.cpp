@@ -2662,7 +2662,7 @@ TEST(TimedMutex, ThreadFiberDeadlockOrder) {
     mutex.unlock();
   });
 
-  fm.addTask([&] { std::lock_guard<TimedMutex> lg(mutex); });
+  fm.addTask([&] { std::lock_guard lg(mutex); });
   fm.addTask([&] {
     runInMainContext([&] {
       auto locked = mutex.try_lock_for(std::chrono::seconds{1});

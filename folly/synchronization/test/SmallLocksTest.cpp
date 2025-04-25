@@ -99,7 +99,7 @@ struct PslTest {
     using UT = typename std::make_unsigned<T>::type;
     T ourVal = rand() % T(UT(1) << (sizeof(UT) * 8 - 1));
     for (int i = 0; i < 100; ++i) {
-      std::lock_guard<PicoSpinLock<T>> guard(lock);
+      std::lock_guard guard(lock);
       lock.setData(ourVal);
       for (int n = 0; n < 10; ++n) {
         folly::asm_volatile_pause();
@@ -127,7 +127,7 @@ struct TestClobber {
   TestClobber() { lock_.init(); }
 
   void go() {
-    std::lock_guard<MicroSpinLock> g(lock_);
+    std::lock_guard g(lock_);
     // This bug depends on gcc register allocation and is very sensitive. We
     // have to use DCHECK instead of EXPECT_*.
     DCHECK(!lock_.try_lock());
@@ -171,7 +171,7 @@ TEST(SmallLocks, PicoSpinSigned) {
   EXPECT_EQ(val.getData(), -4);
 
   {
-    std::lock_guard<Lock> guard(val);
+    std::lock_guard guard(val);
     EXPECT_EQ(val.getData(), -4);
     val.setData(-8);
     EXPECT_EQ(val.getData(), -8);
@@ -190,14 +190,14 @@ TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
     a.init(-8);
     b.init(-8);
     {
-      std::lock_guard<Lock> ga(a);
-      std::lock_guard<Lock> gb(b);
+      std::lock_guard ga(a);
+      std::lock_guard gb(b);
     }
     {
-      std::lock_guard<Lock> gb(b);
+      std::lock_guard gb(b);
       EXPECT_DEATH(
           [&]() {
-            std::lock_guard<Lock> ga(a);
+            std::lock_guard ga(a);
             // If halt_on_error is turned off for TSAN, then death would
             // happen on exit, so give that a chance as well.
             std::_Exit(1);
@@ -448,7 +448,7 @@ TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
   // same lock but initialized via setting a value
   for (int i = 0; i < 10; i++) {
     val = 0;
-    std::lock_guard<MicroSpinLock> g(*reinterpret_cast<MicroSpinLock*>(&val));
+    std::lock_guard g(*reinterpret_cast<MicroSpinLock*>(&val));
   }
 
   {
@@ -457,14 +457,14 @@ TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
     a.init();
     b.init();
     {
-      std::lock_guard<MicroSpinLock> ga(a);
-      std::lock_guard<MicroSpinLock> gb(b);
+      std::lock_guard ga(a);
+      std::lock_guard gb(b);
     }
     {
-      std::lock_guard<MicroSpinLock> gb(b);
+      std::lock_guard gb(b);
       EXPECT_DEATH(
           [&]() {
-            std::lock_guard<MicroSpinLock> ga(a);
+            std::lock_guard ga(a);
             // If halt_on_error is turned off for TSAN, then death would
             // happen on exit, so give that a chance as well.
             std::_Exit(1);
@@ -477,18 +477,17 @@ TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
     uint8_t a = 0;
     uint8_t b = 0;
     {
-      std::lock_guard<MicroSpinLock> ga(*reinterpret_cast<MicroSpinLock*>(&a));
-      std::lock_guard<MicroSpinLock> gb(*reinterpret_cast<MicroSpinLock*>(&b));
+      std::lock_guard ga(*reinterpret_cast<MicroSpinLock*>(&a));
+      std::lock_guard gb(*reinterpret_cast<MicroSpinLock*>(&b));
     }
 
     a = 0;
     b = 0;
     {
-      std::lock_guard<MicroSpinLock> gb(*reinterpret_cast<MicroSpinLock*>(&b));
+      std::lock_guard gb(*reinterpret_cast<MicroSpinLock*>(&b));
       EXPECT_DEATH(
           [&]() {
-            std::lock_guard<MicroSpinLock> ga(
-                *reinterpret_cast<MicroSpinLock*>(&a));
+            std::lock_guard ga(*reinterpret_cast<MicroSpinLock*>(&a));
             // If halt_on_error is turned off for TSAN, then death would
             // happen on exit, so give that a chance as well.
             std::_Exit(1);

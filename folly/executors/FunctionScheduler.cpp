@@ -414,7 +414,7 @@ bool FunctionScheduler::start() {
 
 bool FunctionScheduler::shutdown() {
   {
-    std::lock_guard<std::mutex> g(mutex_);
+    std::lock_guard g(mutex_);
     if (!running_) {
       return false;
     }

@@ -149,7 +149,7 @@ class basic_once_flag {
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
-    std::lock_guard<Mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     if (called_.load(std::memory_order_relaxed)) {
       return;
     }
@@ -162,7 +162,7 @@ class basic_once_flag {
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE bool try_call_once_slow(F&& f, Args&&... args) noexcept {
-    std::lock_guard<Mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     if (called_.load(std::memory_order_relaxed)) {
       return true;
     }

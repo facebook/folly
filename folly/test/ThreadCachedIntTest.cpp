@@ -104,7 +104,7 @@ TEST_F(ThreadCachedIntTest, MultithreadedSlow) {
   for (uint32_t i = 0; i < kNumThreads; ++i) {
     // Allow upto iteration i on all threads.
     {
-      std::lock_guard<std::mutex> lk(cv_m);
+      std::lock_guard lk(cv_m);
       g_sync_for_mt = i + 1;
     }
     cv.notify_all();
@@ -149,7 +149,7 @@ TEST_F(ThreadCachedIntTest, MultithreadedFast) {
   }
   // Let the threads run to completion.
   {
-    std::lock_guard<std::mutex> lk(cv_m);
+    std::lock_guard lk(cv_m);
     g_sync_for_mt = kNumThreads;
   }
   cv.notify_all();

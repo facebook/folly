@@ -44,7 +44,7 @@ void runTestTag(int iters, int numThreads) {
       // notify if all the threads have created the t1
       bool notify = false;
       {
-        std::lock_guard<std::mutex> lk(m);
+        std::lock_guard lk(m);
         if (++numRunning == numThreads) {
           notify = true;
         }
@@ -82,7 +82,7 @@ void runTestTag(int iters, int numThreads) {
   susp.rehire();
 
   {
-    std::lock_guard<std::mutex> lk(mw);
+    std::lock_guard lk(mw);
     running = false;
   }
 

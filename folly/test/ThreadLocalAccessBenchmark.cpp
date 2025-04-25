@@ -66,7 +66,7 @@ void runTest(int iters, int numThreads) {
           // thread local var
           bool notify = false;
           {
-            std::lock_guard<std::mutex> lk(m);
+            std::lock_guard lk(m);
             if (++numRunning == numThreads) {
               notify = true;
             }
@@ -100,7 +100,7 @@ void runTest(int iters, int numThreads) {
   susp.rehire();
 
   {
-    std::lock_guard<std::mutex> lk(mw);
+    std::lock_guard lk(mw);
     running = false;
   }
 

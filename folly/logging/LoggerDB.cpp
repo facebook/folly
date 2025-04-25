@@ -641,7 +641,7 @@ LoggerDB::ContextCallbackList::~ContextCallbackList() {
 }
 
 void LoggerDB::ContextCallbackList::addCallback(ContextCallback callback) {
-  std::lock_guard<std::mutex> g(writeMutex_);
+  std::lock_guard g(writeMutex_);
   auto callbacks = callbacks_.load(std::memory_order_relaxed);
   if (!callbacks) {
     callbacks = new CallbacksObj();

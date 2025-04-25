@@ -83,7 +83,7 @@ class GlobalCache {
 
     auto mkey = MapKey(std::get<0>(key), std::get<1>(key), *std::get<2>(key));
 
-    std::lock_guard<std::mutex> lg(mutex_);
+    std::lock_guard lg(mutex_);
 
     types_[std::get<2>(mkey)].insert(std::get<2>(key));
 
@@ -103,7 +103,7 @@ class GlobalCache {
   std::unique_ptr<FiberManager> eraseImpl(const Key<EventBaseT>& key) {
     auto mkey = MapKey(std::get<0>(key), std::get<1>(key), *std::get<2>(key));
 
-    std::lock_guard<std::mutex> lg(mutex_);
+    std::lock_guard lg(mutex_);
 
     DCHECK_EQ(map_.count(mkey), 1u);
 
@@ -113,7 +113,7 @@ class GlobalCache {
   }
 
   TypeMap getTypeMapImpl() {
-    std::lock_guard<std::mutex> lg(mutex_);
+    std::lock_guard lg(mutex_);
 
     return types_;
   }

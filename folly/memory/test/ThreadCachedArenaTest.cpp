@@ -82,7 +82,7 @@ void ArenaTester::verify() {
 
 void ArenaTester::merge(ArenaTester&& other) {
   {
-    std::lock_guard<std::mutex> lock(mergeMutex_);
+    std::lock_guard lock(mergeMutex_);
     std::move(
         other.areas_.begin(), other.areas_.end(), std::back_inserter(areas_));
   }

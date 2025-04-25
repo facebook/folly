@@ -411,7 +411,7 @@ class alignas(64) BucketTable {
   std::size_t erase(size_t h, const K& key, Iterator* iter, MatchFunc match) {
     Node* node{nullptr};
     {
-      std::lock_guard<Mutex> g(m_);
+      std::lock_guard g(m_);
 
       size_t bcount = bucket_count_.load(std::memory_order_relaxed);
       auto buckets = buckets_.load(std::memory_order_relaxed);
@@ -465,7 +465,7 @@ class alignas(64) BucketTable {
     size_t bcount;
     Buckets* buckets;
     {
-      std::lock_guard<Mutex> g(m_);
+      std::lock_guard g(m_);
       bcount = bucket_count_.load(std::memory_order_relaxed);
       auto newbuckets = Buckets::create(bcount, cohort);
       buckets = buckets_.load(std::memory_order_relaxed);
@@ -477,7 +477,7 @@ class alignas(64) BucketTable {
   }
 
   void max_load_factor(float factor) {
-    std::lock_guard<Mutex> g(m_);
+    std::lock_guard g(m_);
     load_factor_ = factor;
     load_factor_nodes_ =
         bucket_count_.load(std::memory_order_relaxed) * load_factor_;
@@ -1409,7 +1409,7 @@ class alignas(64) SIMDTable {
     size_t ccount;
     Chunks* chunks;
     {
-      std::lock_guard<Mutex> g(m_);
+      std::lock_guard g(m_);
       ccount = chunk_count_.load(std::memory_order_relaxed);
       auto newchunks = Chunks::create(ccount, cohort);
       chunks = chunks_.load(std::memory_order_relaxed);
@@ -1426,7 +1426,7 @@ class alignas(64) SIMDTable {
     if (factor > 1.0) {
       throw_exception<std::invalid_argument>("load factor must be <= 1.0");
     }
-    std::lock_guard<Mutex> g(m_);
+    std::lock_guard g(m_);
     load_factor_ = factor;
     auto ccount = chunk_count_.load(std::memory_order_relaxed);
     grow_threshold_ = ccount * Chunk::kCapacity * load_factor_;

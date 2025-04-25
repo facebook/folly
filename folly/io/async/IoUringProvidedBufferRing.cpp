@@ -135,7 +135,7 @@ void IoUringProvidedBufferRing::destroy() noexcept {
   shutdownReferences_ = 1;
   auto returned = returnedBuffers_.load();
   {
-    std::lock_guard<std::mutex> guard(shutdownMutex_);
+    std::lock_guard guard(shutdownMutex_);
     wantsShutdown_ = true;
     // add references for every missing one
     // we can assume that there will be no more from the kernel side.
@@ -208,7 +208,7 @@ void IoUringProvidedBufferRing::initialRegister() {
 }
 
 void IoUringProvidedBufferRing::returnBufferInShutdown() noexcept {
-  { std::lock_guard<std::mutex> guard(shutdownMutex_); }
+  { std::lock_guard guard(shutdownMutex_); }
   if (shutdownReferences_.fetch_sub(1) == 1) {
     delete this;
   }

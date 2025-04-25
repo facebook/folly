@@ -163,7 +163,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     meta.removeThreadEntryFromAllInMap(threadEntry);
     forkRlock.unlock();
     {
-      std::lock_guard<std::mutex> g(meta.lock_);
+      std::lock_guard g(meta.lock_);
       // mark it as removed
       threadEntry->removed_ = true;
       auto elementsCapacity = threadEntry->getElementsCapacity();
@@ -263,7 +263,7 @@ uint32_t StaticMetaBase::elementsCapacity() const {
 uint32_t StaticMetaBase::allocate(EntryID* ent) {
   uint32_t id;
   auto& meta = *this;
-  std::lock_guard<std::mutex> g(meta.lock_);
+  std::lock_guard g(meta.lock_);
 
   id = ent->value.load(std::memory_order_relaxed);
 
@@ -311,7 +311,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
       forkRlock.unlock();
 
       {
-        std::lock_guard<std::mutex> g(meta.lock_);
+        std::lock_guard g(meta.lock_);
         for (auto& e : tmpEntrySet.threadEntries) {
           auto elementsCapacity = e->getElementsCapacity();
           if (id < elementsCapacity) {
@@ -438,7 +438,7 @@ void StaticMetaBase::reserve(EntryID* id) {
 
   // Success, update the entry
   {
-    std::lock_guard<std::mutex> g(meta.lock_);
+    std::lock_guard g(meta.lock_);
 
     if (reallocated) {
       /*

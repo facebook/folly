@@ -93,7 +93,7 @@ class ManualExecutor
   }
 
   void scheduleAt(Func&& f, TimePoint const& t) override {
-    std::lock_guard<std::mutex> lock(lock_);
+    std::lock_guard lock(lock_);
     scheduledFuncs_.emplace(t, std::move(f));
     sem_.post();
   }
@@ -117,7 +117,7 @@ class ManualExecutor
     std::priority_queue<ScheduledFunc> scheduled_funcs;
 
     {
-      std::lock_guard<std::mutex> lock(lock_);
+      std::lock_guard lock(lock_);
       funcs_.swap(funcs);
       scheduledFuncs_.swap(scheduled_funcs);
     }

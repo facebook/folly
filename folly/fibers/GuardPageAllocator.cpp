@@ -82,7 +82,7 @@ class StackCache {
   }
 
   unsigned char* borrow(size_t size) {
-    std::lock_guard<folly::SpinLock> lg(lock_);
+    std::lock_guard lg(lock_);
 
     assert(storage_);
 
@@ -117,7 +117,7 @@ class StackCache {
   }
 
   bool giveBack(unsigned char* limit, size_t size) {
-    std::lock_guard<folly::SpinLock> lg(lock_);
+    std::lock_guard lg(lock_);
 
     assert(storage_);
 

@@ -44,7 +44,7 @@ class TLRefCount {
     }
 
     if (state_.load() == State::GLOBAL_TRANSITION) {
-      std::lock_guard<std::mutex> lg(globalMutex_);
+      std::lock_guard lg(globalMutex_);
     }
 
     assert(state_.load() == State::GLOBAL);
@@ -67,7 +67,7 @@ class TLRefCount {
     }
 
     if (state_.load() == State::GLOBAL_TRANSITION) {
-      std::lock_guard<std::mutex> lg(globalMutex_);
+      std::lock_guard lg(globalMutex_);
     }
 
     assert(state_.load() == State::GLOBAL);
@@ -138,7 +138,7 @@ class TLRefCount {
   class LocalRefCount {
    public:
     explicit LocalRefCount(TLRefCount& refCount) : refCount_(refCount) {
-      std::lock_guard<std::mutex> lg(refCount.globalMutex_);
+      std::lock_guard lg(refCount.globalMutex_);
 
       collectGuard_ = refCount.collectGuard_;
     }
@@ -147,7 +147,7 @@ class TLRefCount {
 
     void collect() {
       {
-        std::lock_guard<std::mutex> lg(collectMutex_);
+        std::lock_guard lg(collectMutex_);
 
         if (!collectGuard_) {
           return;
@@ -196,7 +196,7 @@ class TLRefCount {
       asymmetric_thread_fence_light(std::memory_order_seq_cst);
 
       if (FOLLY_UNLIKELY(refCount_.state_.load() != State::LOCAL)) {
-        std::lock_guard<std::mutex> lg(collectMutex_);
+        std::lock_guard lg(collectMutex_);
 
         if (collectGuard_) {
           return true;

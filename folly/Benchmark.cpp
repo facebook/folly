@@ -890,12 +890,12 @@ std::chrono::high_resolution_clock::duration
 
 void BenchmarkingStateBase::addBenchmarkImpl(
     const char* file, StringPiece name, BenchmarkFun fun, bool useCounter) {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::lock_guard guard(mutex_);
   benchmarks_.push_back({file, name.str(), std::move(fun), useCounter});
 }
 
 bool BenchmarkingStateBase::useCounters() const {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::lock_guard guard(mutex_);
   return std::any_of(
       benchmarks_.begin(), benchmarks_.end(), [](const auto& bm) {
         return bm.useCounter;
@@ -941,7 +941,7 @@ PerfScoped BenchmarkingStateBase::setUpPerfScoped() const {
 template <typename Printer>
 std::pair<std::set<std::string>, std::vector<BenchmarkResult>>
 BenchmarkingStateBase::runBenchmarksWithPrinter(Printer* printer) const {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::lock_guard guard(mutex_);
   BenchmarksToRun toRun = selectBenchmarksToRun(benchmarks_);
   maybeRunWarmUpIteration(toRun);
 

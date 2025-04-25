@@ -39,7 +39,7 @@ void mprotectMembarrier() {
   // This function is required to be safe to call on shutdown,
   // so we must leak the mutex.
   static Indestructible<std::mutex> mprotectMutex;
-  std::lock_guard<std::mutex> lg(*mprotectMutex);
+  std::lock_guard lg(*mprotectMutex);
 
   // Ensure that we have a dummy page. The page is not used to store data;
   // rather, it is used only for the side-effects of page operations.

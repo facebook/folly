@@ -37,7 +37,7 @@ inline SingletonHolder<T>& SingletonHolder<T>::singleton() {
 
 template <typename T>
 void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
-  std::lock_guard<std::mutex> entry_lock(mutex_);
+  std::lock_guard entry_lock(mutex_);
 
   if (state_ != SingletonHolderState::NotRegistered) {
     /* Possible causes:
@@ -87,7 +87,7 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
     }
   }
 
-  std::lock_guard<std::mutex> entry_lock(mutex_);
+  std::lock_guard entry_lock(mutex_);
 
   create_ = std::move(c);
   teardown_ = std::move(t);
@@ -240,7 +240,7 @@ void SingletonHolder<T>::createInstance() {
     detail::singletonWarnCreateCircularDependencyAndAbort(type());
   }
 
-  std::lock_guard<std::mutex> entry_lock(mutex_);
+  std::lock_guard entry_lock(mutex_);
   if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
     return;
   }

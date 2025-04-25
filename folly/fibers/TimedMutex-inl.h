@@ -62,7 +62,7 @@ TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
 
   if (isOnFiber) {
     auto lockStolen = [&] {
-      std::lock_guard<folly::SpinLock> lg(lock_);
+      std::lock_guard lg(lock_);
 
       auto stolen = notifiedFiber_ != &waiter;
       if (!stolen) {
@@ -108,7 +108,7 @@ bool TimedMutex::try_lock_until(
       //    times out but the mutex is unlocked before we reach this code. In
       //    this
       //    case we'll pretend we got the lock on time.
-      std::lock_guard<folly::SpinLock> lg(lock_);
+      std::lock_guard lg(lock_);
       if (waiter.hook.is_linked()) {
         waiter.hook.unlink();
         return false;
@@ -131,7 +131,7 @@ bool TimedMutex::try_lock_until(
 }
 
 inline bool TimedMutex::try_lock() {
-  std::lock_guard<folly::SpinLock> lg(lock_);
+  std::lock_guard lg(lock_);
   if (locked_) {
     return false;
   }
@@ -140,7 +140,7 @@ inline bool TimedMutex::try_lock() {
 }
 
 inline void TimedMutex::unlock() {
-  std::lock_guard<folly::SpinLock> lg(lock_);
+  std::lock_guard lg(lock_);
   if (!threadWaiters_.empty()) {
     auto& to_wake = threadWaiters_.front();
     threadWaiters_.pop_front();
@@ -210,7 +210,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
       // 2. We're not in the waiter list anymore. This could happen if the baton
       //    times out but the mutex is unlocked before we reach this code. In
       //    this case we'll pretend we got the lock on time.
-      std::lock_guard<SpinLock> guard{lock_};
+      std::lock_guard guard{lock_};
       if (waiter.hook.is_linked()) {
         read_waiters_.erase(read_waiters_.iterator_to(waiter));
         return false;
@@ -229,7 +229,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
 
 template <bool ReaderPriority, typename BatonType>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared() {
-  std::lock_guard<SpinLock> guard{lock_};
+  std::lock_guard guard{lock_};
   if (!shouldReadersWait()) {
     assert(
         (state_ == State::UNLOCKED && readers_ == 0) ||
@@ -292,7 +292,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
     // 2. We're not in the waiter list anymore. This could happen if the baton
     //    times out but the mutex is unlocked before we reach this code. In
     //    this case we'll pretend we got the lock on time.
-    std::lock_guard<SpinLock> guard{lock_};
+    std::lock_guard guard{lock_};
     if (waiter.hook.is_linked()) {
       write_waiters_.erase(write_waiters_.iterator_to(waiter));
       return false;
@@ -304,7 +304,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
 
 template <bool ReaderPriority, typename BatonType>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock() {
-  std::lock_guard<SpinLock> guard{lock_};
+  std::lock_guard guard{lock_};
   if (state_ == State::UNLOCKED) {
     verify_unlocked_properties();
     state_ = State::WRITE_LOCKED;
@@ -324,7 +324,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock() {
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
-  std::lock_guard<SpinLock> guard{lock_};
+  std::lock_guard guard{lock_};
   assert(state_ != State::UNLOCKED);
   assert(
       (state_ == State::READ_LOCKED && readers_ > 0) ||
@@ -365,7 +365,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
-  std::lock_guard<SpinLock> guard{lock_};
+  std::lock_guard guard{lock_};
   assert(state_ == State::WRITE_LOCKED && readers_ == 0);
   state_ = State::READ_LOCKED;
   readers_ += 1;

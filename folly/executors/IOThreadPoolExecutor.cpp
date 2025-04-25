@@ -253,7 +253,7 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     }
   }
 
-  std::lock_guard<std::mutex> guard(ioThread->eventBaseShutdownMutex_);
+  std::lock_guard guard(ioThread->eventBaseShutdownMutex_);
   ioThread->eventBase = nullptr;
   eventBaseManager_->clearEventBase();
 }
@@ -271,7 +271,7 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
     }
     ioThread->shouldRun = false;
     stoppedThreads.push_back(ioThread);
-    std::lock_guard<std::mutex> guard(ioThread->eventBaseShutdownMutex_);
+    std::lock_guard guard(ioThread->eventBaseShutdownMutex_);
     if (ioThread->eventBase) {
       ioThread->eventBase->terminateLoopSoon();
     }

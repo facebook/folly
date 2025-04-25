@@ -25,7 +25,7 @@ namespace python {
 
 void GILAwareManualExecutor::add(Func callback) {
   {
-    std::lock_guard<std::mutex> lock(lock_);
+    std::lock_guard lock(lock_);
     funcs_.emplace(std::move(callback));
   }
   cv_.notify_one();
@@ -52,7 +52,7 @@ void GILAwareManualExecutor::driveImpl() {
   Func func;
   while (true) {
     {
-      std::lock_guard<std::mutex> lock(lock_);
+      std::lock_guard lock(lock_);
       if (funcs_.empty()) {
         break;
       }

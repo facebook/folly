@@ -257,7 +257,7 @@ class NodeRecycler<
   }
 
   void add(NodeType* node) {
-    std::lock_guard<MicroSpinLock> g(lock_);
+    std::lock_guard g(lock_);
     if (nodes_.get() == nullptr) {
       nodes_ = std::make_unique<std::vector<NodeType*>>(1, node);
     } else {
@@ -283,7 +283,7 @@ class NodeRecycler<
     {
       // The order at which we lock, add, swap, is very important for
       // correctness.
-      std::lock_guard<MicroSpinLock> g(lock_);
+      std::lock_guard g(lock_);
       ret = refs_.fetch_add(-1, std::memory_order_acq_rel);
       if (ret == 1) {
         // When releasing the last reference, it is safe to remove all the

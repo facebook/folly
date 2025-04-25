@@ -30,7 +30,7 @@ ManualExecutor::~ManualExecutor() {
 }
 
 void ManualExecutor::add(Func callback) {
-  std::lock_guard<std::mutex> lock(lock_);
+  std::lock_guard lock(lock_);
   funcs_.emplace(std::move(callback));
   sem_.post();
 }
@@ -41,7 +41,7 @@ size_t ManualExecutor::run() {
   Func func;
 
   {
-    std::lock_guard<std::mutex> lock(lock_);
+    std::lock_guard lock(lock_);
 
     while (!scheduledFuncs_.empty()) {
       auto& sf = scheduledFuncs_.top();
@@ -57,7 +57,7 @@ size_t ManualExecutor::run() {
 
   for (count = 0; count < n; count++) {
     {
-      std::lock_guard<std::mutex> lock(lock_);
+      std::lock_guard lock(lock_);
       if (funcs_.empty()) {
         break;
       }
@@ -81,7 +81,7 @@ size_t ManualExecutor::step() {
   Func func;
 
   {
-    std::lock_guard<std::mutex> lock(lock_);
+    std::lock_guard lock(lock_);
 
     if (funcs_.empty()) {
       return 0;
@@ -111,7 +111,7 @@ size_t ManualExecutor::drain() {
 void ManualExecutor::wait() {
   while (true) {
     {
-      std::lock_guard<std::mutex> lock(lock_);
+      std::lock_guard lock(lock_);
       if (!funcs_.empty()) {
         break;
       }

@@ -366,7 +366,7 @@ TEST(ThreadLocal, InterleavedDestructors) {
     int wVersionPrev = 0;
     while (true) {
       while (true) {
-        std::lock_guard<std::mutex> g(lock);
+        std::lock_guard g(lock);
         if (wVersion > wVersionMax) {
           return;
         }
@@ -376,7 +376,7 @@ TEST(ThreadLocal, InterleavedDestructors) {
           break;
         }
       }
-      std::lock_guard<std::mutex> g(lock);
+      std::lock_guard g(lock);
       wVersionPrev = wVersion;
       (*w)->val_ += 10;
       ++thIter;
@@ -385,20 +385,20 @@ TEST(ThreadLocal, InterleavedDestructors) {
   FOR_EACH_RANGE (i, 0, wVersionMax) {
     int thIterPrev = 0;
     {
-      std::lock_guard<std::mutex> g(lock);
+      std::lock_guard g(lock);
       thIterPrev = thIter;
       w = std::make_unique<ThreadLocal<Widget>>();
       ++wVersion;
     }
     while (true) {
-      std::lock_guard<std::mutex> g(lock);
+      std::lock_guard g(lock);
       if (thIter > thIterPrev) {
         break;
       }
     }
   }
   {
-    std::lock_guard<std::mutex> g(lock);
+    std::lock_guard g(lock);
     wVersion = wVersionMax + 1;
   }
   th.join();

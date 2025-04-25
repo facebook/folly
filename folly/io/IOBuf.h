@@ -1370,7 +1370,7 @@ class IOBuf {
 
     auto* entry =
         new SharedInfoObserverEntry<Observer>(std::forward<Observer>(observer));
-    std::lock_guard<MicroSpinLock> guard(info->observerListLock);
+    std::lock_guard guard(info->observerListLock);
     if (!info->observerListHead) {
       info->observerListHead = entry;
     } else {

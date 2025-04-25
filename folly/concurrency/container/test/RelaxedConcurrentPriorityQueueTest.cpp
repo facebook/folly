@@ -848,12 +848,12 @@ class GlobalLockPQ {
 
  public:
   void push(const T& val) {
-    std::lock_guard<std::mutex> g(m_);
+    std::lock_guard g(m_);
     q_.push(val);
   }
   void pop(T& val) {
     while (true) {
-      std::lock_guard<std::mutex> g(m_);
+      std::lock_guard g(m_);
       if (q_.empty()) {
         continue;
       }

@@ -384,7 +384,7 @@ class rcu_domain {
             syncTime, time, std::memory_order_relaxed)) {
       list_head finished;
       {
-        std::lock_guard<std::mutex> g(syncMutex_);
+        std::lock_guard g(syncMutex_);
         half_sync(false, finished);
       }
       // callbacks are called outside of syncMutex_
@@ -410,7 +410,7 @@ class rcu_domain {
       if (work < target && work_.compare_exchange_strong(tmp, target)) {
         list_head finished;
         {
-          std::lock_guard<std::mutex> g(syncMutex_);
+          std::lock_guard g(syncMutex_);
           while (version_.load(std::memory_order_acquire) < target) {
             half_sync(true, finished);
           }
