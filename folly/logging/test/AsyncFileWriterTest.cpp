@@ -774,7 +774,7 @@ TEST(AsyncFileWriter, crazyForks) {
       // Wait until forkStart is set just to have a better chance of all the
       // fork threads running simultaneously.
       {
-        std::unique_lock<std::mutex> l(forkStartMutex);
+        std::unique_lock l(forkStartMutex);
         forkStartCV.wait(l, [&forkStart] { return forkStart; });
       }
 
@@ -798,7 +798,7 @@ TEST(AsyncFileWriter, crazyForks) {
 
   // Kick off the fork threads
   {
-    std::unique_lock<std::mutex> l(forkStartMutex);
+    std::unique_lock l(forkStartMutex);
     forkStart = true;
   }
   forkStartCV.notify_all();

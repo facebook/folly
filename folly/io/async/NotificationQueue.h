@@ -425,7 +425,7 @@ class NotificationQueue {
     std::unique_ptr<Node> data;
 
     {
-      std::unique_lock<SpinLock> g(spinlock_);
+      std::unique_lock g(spinlock_);
 
       if (FOLLY_UNLIKELY(queue_.empty())) {
         return false;
@@ -442,7 +442,7 @@ class NotificationQueue {
   }
 
   size_t size() const {
-    std::unique_lock<SpinLock> g(spinlock_);
+    std::unique_lock g(spinlock_);
     return queue_.size();
   }
 
@@ -550,12 +550,12 @@ class NotificationQueue {
   }
 
   void ensureSignal() const {
-    std::unique_lock<SpinLock> g(spinlock_);
+    std::unique_lock g(spinlock_);
     ensureSignalLocked();
   }
 
   void syncSignalAndQueue() {
-    std::unique_lock<SpinLock> g(spinlock_);
+    std::unique_lock g(spinlock_);
 
     if (queue_.empty()) {
       drainSignalsLocked();
@@ -571,7 +571,7 @@ class NotificationQueue {
     {
       auto data = std::make_unique<Node>(
           std::forward<MessageTT>(message), RequestContext::saveContext());
-      std::unique_lock<SpinLock> g(spinlock_);
+      std::unique_lock g(spinlock_);
       if (checkDraining(throws) || !checkQueueSize(maxSize, throws)) {
         return false;
       }
@@ -601,7 +601,7 @@ class NotificationQueue {
         q.push_back(*data.release());
         ++first;
       }
-      std::unique_lock<SpinLock> g(spinlock_);
+      std::unique_lock g(spinlock_);
       checkDraining();
       queue_.splice(queue_.end(), q);
       if (numActiveConsumers_ < numConsumers_) {
@@ -785,7 +785,7 @@ void NotificationQueue<MessageT>::Consumer::init(
   queue_ = queue;
 
   {
-    std::unique_lock<SpinLock> g(queue_->spinlock_);
+    std::unique_lock g(queue_->spinlock_);
     queue_->numConsumers_++;
   }
   queue_->ensureSignal();
@@ -805,7 +805,7 @@ void NotificationQueue<MessageT>::Consumer::stopConsuming() {
   }
 
   {
-    std::unique_lock<SpinLock> g(queue_->spinlock_);
+    std::unique_lock g(queue_->spinlock_);
     queue_->numConsumers_--;
     setActive(false);
   }
@@ -821,7 +821,7 @@ bool NotificationQueue<MessageT>::Consumer::consumeUntilDrained(
     size_t* numConsumed) noexcept {
   DestructorGuard dg(this);
   {
-    std::unique_lock<SpinLock> g(queue_->spinlock_);
+    std::unique_lock g(queue_->spinlock_);
     if (queue_->draining_) {
       return false;
     }
@@ -829,7 +829,7 @@ bool NotificationQueue<MessageT>::Consumer::consumeUntilDrained(
   }
   consumeMessages(true, numConsumed);
   {
-    std::unique_lock<SpinLock> g(queue_->spinlock_);
+    std::unique_lock g(queue_->spinlock_);
     queue_->draining_ = false;
   }
   return true;
@@ -846,7 +846,7 @@ void NotificationQueue<MessageT>::SimpleConsumer::consume(F&& foreach) {
 
   std::unique_ptr<Node> data;
   {
-    std::unique_lock<SpinLock> g(queue_.spinlock_);
+    std::unique_lock g(queue_.spinlock_);
 
     if (FOLLY_UNLIKELY(queue_.queue_.empty())) {
       return;

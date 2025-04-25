@@ -56,7 +56,7 @@ void runTestTag(int iters, int numThreads) {
 
       // now wait
       {
-        std::unique_lock<std::mutex> lk(mw);
+        std::unique_lock lk(mw);
         cvw.wait(lk, [&]() { return !running; });
       }
     }));
@@ -64,7 +64,7 @@ void runTestTag(int iters, int numThreads) {
 
   // wait for the threads to create the t1
   {
-    std::unique_lock<std::mutex> lk(m);
+    std::unique_lock lk(m);
     cv.wait(lk, [&]() { return numRunning == numThreads; });
   }
 

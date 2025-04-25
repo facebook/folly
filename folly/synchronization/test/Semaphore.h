@@ -46,7 +46,7 @@ class Semaphore {
   explicit Semaphore(std::size_t value) : value_(value) {}
 
   bool try_wait() {
-    std::unique_lock<std::mutex> l{m_};
+    std::unique_lock l{m_};
     if (value_ > 0) {
       --value_;
       return true;
@@ -57,7 +57,7 @@ class Semaphore {
 
   template <typename PreWait, typename PostWait>
   void wait(PreWait pre_wait, PostWait post_wait) {
-    std::unique_lock<std::mutex> l{m_};
+    std::unique_lock l{m_};
     pre_wait();
     if (value_ > 0) {
       --value_;
@@ -76,7 +76,7 @@ class Semaphore {
 
   template <typename PrePost>
   void post(PrePost pre_post) {
-    std::unique_lock<std::mutex> l{m_};
+    std::unique_lock l{m_};
     if (value_ == -size_t(1)) {
       throw_exception<std::logic_error>("overflow");
     }
@@ -121,7 +121,7 @@ class PolicySemaphore {
   explicit PolicySemaphore(std::size_t value) : value_(value) {}
 
   bool try_wait() {
-    std::unique_lock<std::mutex> lock{mutex_};
+    std::unique_lock lock{mutex_};
     if (value_) {
       --value_;
       return true;
@@ -132,7 +132,7 @@ class PolicySemaphore {
 
   template <typename PreWait, typename PostWait>
   void wait(PreWait pre_wait, PostWait post_wait) {
-    std::unique_lock<std::mutex> lock{mutex_};
+    std::unique_lock lock{mutex_};
     pre_wait();
     if (value_) {
       --value_;
@@ -157,7 +157,7 @@ class PolicySemaphore {
 
   template <typename PrePost>
   void post(PrePost pre_post) {
-    std::unique_lock<std::mutex> lock{mutex_};
+    std::unique_lock lock{mutex_};
     if (value_ == -size_t(1)) {
       throw_exception<std::logic_error>("overflow");
     }

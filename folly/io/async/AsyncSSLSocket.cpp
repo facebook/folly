@@ -619,7 +619,7 @@ void AsyncSSLSocket::attachSSLContext(
   OpenSSLUtils::setSSLInitialCtx(ssl_.get(), sslCtx);
   // Detach sets the socket's context to the dummy context. Thus we must acquire
   // this lock.
-  std::unique_lock<SpinLock> guard(dummyCtxLock);
+  std::unique_lock guard(dummyCtxLock);
   SSL_set_SSL_CTX(ssl_.get(), sslCtx);
 }
 
@@ -645,7 +645,7 @@ void AsyncSSLSocket::detachSSLContext() {
     OpenSSLUtils::setSSLInitialCtx(ssl_.get(), nullptr);
   }
 
-  std::unique_lock<SpinLock> guard(dummyCtxLock);
+  std::unique_lock guard(dummyCtxLock);
   if (nullptr == dummyCtx) {
     // We need to lazily initialize the dummy context so we don't
     // accidentally override any programmatic settings to openssl

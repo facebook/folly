@@ -32,7 +32,7 @@ void GILAwareManualExecutor::add(Func callback) {
 }
 
 void GILAwareManualExecutor::waitBeforeDrive() {
-  std::unique_lock<std::mutex> lock(lock_);
+  std::unique_lock lock(lock_);
   if (!funcs_.empty()) {
     return;
   }

@@ -104,7 +104,7 @@ class ZeroCopyMMapMemStoreReal : public ZeroCopyMemStore {
   }
 
   ZeroCopyMemStore::EntryPtr get() override {
-    std::unique_lock<std::mutex> lk(availMutex_);
+    std::unique_lock lk(availMutex_);
     if (!avail_.empty()) {
       auto* entry = avail_.front();
       avail_.pop_front();
@@ -128,7 +128,7 @@ class ZeroCopyMMapMemStoreReal : public ZeroCopyMemStore {
         DCHECK(!ret);
       }
 
-      std::unique_lock<std::mutex> lk(availMutex_);
+      std::unique_lock lk(availMutex_);
       avail_.push_back(entry);
     }
   }

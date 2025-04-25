@@ -43,7 +43,7 @@ void ThreadedRepeatingFunctionRunner::stop() {
 
 bool ThreadedRepeatingFunctionRunner::stopImpl() {
   {
-    std::unique_lock<std::mutex> lock(stopMutex_);
+    std::unique_lock lock(stopMutex_);
     if (stopping_) {
       return false; // Do nothing if stop() is called twice.
     }
@@ -72,7 +72,7 @@ bool ThreadedRepeatingFunctionRunner::waitFor(
     std::chrono::milliseconds duration) noexcept {
   using clock = std::chrono::steady_clock;
   const auto deadline = clock::now() + duration;
-  std::unique_lock<std::mutex> lock(stopMutex_);
+  std::unique_lock lock(stopMutex_);
   stopCv_.wait_until(lock, deadline, [&] {
     return stopping_ || clock::now() > deadline;
   });

@@ -31,7 +31,7 @@ BufferedStat<DigestT, ClockT>::BufferedStat(
 template <typename DigestT, typename ClockT>
 void BufferedStat<DigestT, ClockT>::append(double value, TimePoint now) {
   if (FOLLY_UNLIKELY(now > expiry_.load(std::memory_order_relaxed))) {
-    std::unique_lock<SharedMutex> g(mutex_, std::try_to_lock_t());
+    std::unique_lock g(mutex_, std::try_to_lock_t());
     if (g.owns_lock()) {
       doUpdate(now, g, UpdateMode::OnExpiry);
     }
@@ -52,14 +52,14 @@ BufferedStat<DigestT, ClockT>::roundUp(TimePoint t) {
 template <typename DigestT, typename ClockT>
 std::unique_lock<SharedMutex> BufferedStat<DigestT, ClockT>::updateIfExpired(
     TimePoint now) {
-  std::unique_lock<SharedMutex> g(mutex_);
+  std::unique_lock g(mutex_);
   doUpdate(now, g, UpdateMode::OnExpiry);
   return g;
 }
 
 template <typename DigestT, typename ClockT>
 void BufferedStat<DigestT, ClockT>::flush() {
-  std::unique_lock<SharedMutex> g(mutex_);
+  std::unique_lock g(mutex_);
   doUpdate(ClockT::now(), g, UpdateMode::Now);
 }
 

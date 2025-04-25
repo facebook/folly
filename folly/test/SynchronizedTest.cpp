@@ -878,8 +878,8 @@ TEST(FollyLockTest, TestVariadicLockWithArbitraryLockables) {
   auto&& one = std::mutex{};
   auto&& two = std::mutex{};
 
-  auto lckOne = std::unique_lock<std::mutex>{one, std::defer_lock};
-  auto lckTwo = std::unique_lock<std::mutex>{two, std::defer_lock};
+  auto lckOne = std::unique_lock{one, std::defer_lock};
+  auto lckTwo = std::unique_lock{two, std::defer_lock};
   folly::lock(lckOne, lckTwo);
   EXPECT_TRUE(lckOne);
   EXPECT_TRUE(lckTwo);

@@ -241,7 +241,7 @@ void FunctionScheduler::addFunctionToHeapChecked(
         "FunctionScheduler: start delay must be non-negative");
   }
 
-  std::unique_lock<std::mutex> l(mutex_);
+  std::unique_lock l(mutex_);
   auto it = functionsMap_.find(nameID);
   // check if the nameID is unique
   if (it != functionsMap_.end()) {
@@ -303,7 +303,7 @@ bool FunctionScheduler::cancelFunctionWithLock(
 }
 
 bool FunctionScheduler::cancelFunction(StringPiece nameID) {
-  std::unique_lock<std::mutex> l(mutex_);
+  std::unique_lock l(mutex_);
   if (cancelFunctionWithLock(l, nameID)) {
     return true;
   }
@@ -317,7 +317,7 @@ bool FunctionScheduler::cancelFunction(StringPiece nameID) {
 }
 
 bool FunctionScheduler::cancelFunctionAndWait(StringPiece nameID) {
-  std::unique_lock<std::mutex> l(mutex_);
+  std::unique_lock l(mutex_);
 
   if (cancelFunctionWithLock(l, nameID)) {
     runningCondvar_.wait(l, [this]() { return !cancellingCurrentFunction_; });
@@ -355,19 +355,19 @@ bool FunctionScheduler::cancelAllFunctionsWithLock(
 }
 
 void FunctionScheduler::cancelAllFunctions() {
-  std::unique_lock<std::mutex> l(mutex_);
+  std::unique_lock l(mutex_);
   cancelAllFunctionsWithLock(l);
 }
 
 void FunctionScheduler::cancelAllFunctionsAndWait() {
-  std::unique_lock<std::mutex> l(mutex_);
+  std::unique_lock l(mutex_);
   if (cancelAllFunctionsWithLock(l)) {
     runningCondvar_.wait(l, [this]() { return !cancellingCurrentFunction_; });
   }
 }
 
 bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
-  std::unique_lock<std::mutex> l(mutex_);
+  std::unique_lock l(mutex_);
   if (currentFunction_ && currentFunction_->name == nameID) {
     if (cancellingCurrentFunction_ || currentFunction_->runOnce) {
       return false;
@@ -389,7 +389,7 @@ bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
 }
 
 bool FunctionScheduler::start() {
-  std::unique_lock<std::mutex> l(mutex_);
+  std::unique_lock l(mutex_);
   if (running_) {
     return false;
   }
@@ -427,7 +427,7 @@ bool FunctionScheduler::shutdown() {
 }
 
 void FunctionScheduler::run() {
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::unique_lock lock(mutex_);
 
   folly::setThreadName(threadName_);
 
@@ -521,7 +521,7 @@ void FunctionScheduler::addFunctionToHeap(
 }
 
 void FunctionScheduler::setThreadName(StringPiece threadName) {
-  std::unique_lock<std::mutex> l(mutex_);
+  std::unique_lock l(mutex_);
   threadName_ = threadName.str();
 }
 

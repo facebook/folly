@@ -214,14 +214,14 @@ TEST(ThreadLocalPtr, CustomDeleter2) {
 
       // Notify main thread that we're done
       {
-        std::unique_lock<std::mutex> lock(mutex);
+        std::unique_lock lock(mutex);
         state = State::DONE;
         cv.notify_all();
       }
 
       // Wait for main thread to allow us to exit
       {
-        std::unique_lock<std::mutex> lock(mutex);
+        std::unique_lock lock(mutex);
         while (state != State::EXIT) {
           cv.wait(lock);
         }
@@ -230,7 +230,7 @@ TEST(ThreadLocalPtr, CustomDeleter2) {
 
     // Wait for main thread to start (and set w.get()->val_)
     {
-      std::unique_lock<std::mutex> lock(mutex);
+      std::unique_lock lock(mutex);
       while (state != State::DONE) {
         cv.wait(lock);
       }
@@ -246,7 +246,7 @@ TEST(ThreadLocalPtr, CustomDeleter2) {
 
   // Allow thread to exit
   {
-    std::unique_lock<std::mutex> lock(mutex);
+    std::unique_lock lock(mutex);
     state = State::EXIT;
     cv.notify_all();
   }
@@ -687,7 +687,7 @@ TEST(ThreadLocal, Fork) {
   std::thread t([&]() {
     EXPECT_EQ(1, ptr->value()); // ensure created
     {
-      std::unique_lock<std::mutex> lock(mutex);
+      std::unique_lock lock(mutex);
       started = true;
       startedCond.notify_all();
     }
@@ -703,7 +703,7 @@ TEST(ThreadLocal, Fork) {
   });
 
   {
-    std::unique_lock<std::mutex> lock(mutex);
+    std::unique_lock lock(mutex);
     while (!started) {
       startedCond.wait(lock);
     }

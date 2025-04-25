@@ -71,7 +71,7 @@ void AtForkList::append(
     Function<bool()> prepare,
     Function<void()> parent,
     Function<void()> child) {
-  std::unique_lock<std::mutex> lg{mutex};
+  std::unique_lock lg{mutex};
   if (handle && index.count(handle)) {
     throw_exception<std::invalid_argument>("at-fork: append: duplicate");
   }
@@ -87,7 +87,7 @@ void AtForkList::remove(void const* handle) {
   if (!handle) {
     return;
   }
-  std::unique_lock<std::mutex> lg{mutex};
+  std::unique_lock lg{mutex};
   auto i1 = index.find(handle);
   if (i1 == index.end()) {
     throw_exception<std::out_of_range>("at-fork: remove: missing");
@@ -102,7 +102,7 @@ bool AtForkList::contains( //
   if (!handle) {
     return false;
   }
-  std::unique_lock<std::mutex> lg{mutex};
+  std::unique_lock lg{mutex};
   return index.count(handle) != 0;
 }
 

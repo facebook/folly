@@ -408,7 +408,7 @@ class FlatCombining {
       Rec* rec,
       bool syncop,
       const bool custom) {
-    std::unique_lock<Mutex> l(this->m_, std::defer_lock);
+    std::unique_lock l(this->m_, std::defer_lock);
     if (l.try_lock()) {
       // No contention
       ++uncombined_;
@@ -556,7 +556,7 @@ class FlatCombining {
     int count = 0;
     while (!rec.isDone()) {
       if (count == 0) {
-        std::unique_lock<Mutex> l(m_, std::defer_lock);
+        std::unique_lock l(m_, std::defer_lock);
         if (l.try_lock()) {
           setPending();
           tryCombining();

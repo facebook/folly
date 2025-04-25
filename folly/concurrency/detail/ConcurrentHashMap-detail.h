@@ -667,7 +667,7 @@ class alignas(64) BucketTable {
       Node* cur,
       hazptr_obj_cohort<Atom>* cohort,
       Args&&... args) {
-    std::unique_lock<Mutex> g(m_);
+    std::unique_lock g(m_);
 
     size_t bcount = bucket_count_.load(std::memory_order_relaxed);
     auto buckets = buckets_.load(std::memory_order_relaxed);
@@ -1221,7 +1221,7 @@ class alignas(64) SIMDTable {
 
     auto hp = splitHash(h);
 
-    std::unique_lock<Mutex> g(m_);
+    std::unique_lock g(m_);
 
     if (!prepare_insert(
             it,
@@ -1276,7 +1276,7 @@ class alignas(64) SIMDTable {
 
     auto hp = splitHash(h);
 
-    std::unique_lock<Mutex> g(m_);
+    std::unique_lock g(m_);
 
     if (!prepare_insert(
             it,
@@ -1353,7 +1353,7 @@ class alignas(64) SIMDTable {
   std::size_t erase(size_t h, const K& key, Iterator* iter, MatchFunc match) {
     const HashPair hp = splitHash(h);
 
-    std::unique_lock<Mutex> g(m_);
+    std::unique_lock g(m_);
 
     size_t ccount = chunk_count_.load(std::memory_order_relaxed);
     auto chunks = chunks_.load(std::memory_order_relaxed);

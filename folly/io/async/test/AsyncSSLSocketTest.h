@@ -569,7 +569,7 @@ class HandshakeCallback : public AsyncSSLSocket::HandshakeCB {
   }
 
   void waitForHandshake() {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock lock(mutex_);
     cv_.wait(lock, [this] { return state != STATE_WAITING; });
   }
 

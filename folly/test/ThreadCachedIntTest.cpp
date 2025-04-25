@@ -65,7 +65,7 @@ std::mutex cv_m;
 // otherwise goes into a loop sleeping and rechecking.
 void Runner(Counter* counter, uint32_t iterations) {
   for (uint32_t i = 0; i < iterations; ++i) {
-    std::unique_lock<std::mutex> lk(cv_m);
+    std::unique_lock lk(cv_m);
     cv.wait(lk, [i] { return i < g_sync_for_mt; });
     for (uint32_t j = 0; j < 10; ++j) {
       counter->increment(1);

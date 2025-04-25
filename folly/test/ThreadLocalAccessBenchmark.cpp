@@ -78,7 +78,7 @@ void runTest(int iters, int numThreads) {
 
           // now wait
           {
-            std::unique_lock<std::mutex> lk(mw);
+            std::unique_lock lk(mw);
             cvw.wait(lk, [&]() { return !running; });
           }
         }));
@@ -86,7 +86,7 @@ void runTest(int iters, int numThreads) {
 
   // wait for the threads to create the thread locals
   {
-    std::unique_lock<std::mutex> lk(m);
+    std::unique_lock lk(m);
     cv.wait(lk, [&]() { return numRunning == numThreads; });
   }
 

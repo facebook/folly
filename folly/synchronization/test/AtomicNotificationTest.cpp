@@ -121,7 +121,7 @@ void run_atomic_wait_until_with_notification() {
 class SimpleBaton {
  public:
   void wait() {
-    auto lck = std::unique_lock<std::mutex>{mutex_};
+    auto lck = std::unique_lock{mutex_};
     while (!signalled_) {
       cv_.wait(lck);
     }
@@ -130,12 +130,12 @@ class SimpleBaton {
   }
 
   bool try_wait() {
-    auto lck = std::unique_lock<std::mutex>{mutex_};
+    auto lck = std::unique_lock{mutex_};
     return signalled_;
   }
 
   void post() {
-    auto lck = std::unique_lock<std::mutex>{mutex_};
+    auto lck = std::unique_lock{mutex_};
     signalled_ = true;
     cv_.notify_one();
   }

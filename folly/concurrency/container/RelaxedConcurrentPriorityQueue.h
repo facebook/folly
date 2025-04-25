@@ -729,8 +729,7 @@ class RelaxedConcurrentPriorityQueue {
   bool forceInsertToRoot(Node* newNode) {
     Position pos;
     pos.level = pos.index = 0;
-    std::unique_lock<Mutex> lck(
-        levels_[pos.level][pos.index].lock, std::try_to_lock);
+    std::unique_lock lck(levels_[pos.level][pos.index].lock, std::try_to_lock);
     if (!lck.owns_lock()) {
       return false;
     }
@@ -770,7 +769,7 @@ class RelaxedConcurrentPriorityQueue {
     }
 
     while (true) {
-      std::unique_lock<Mutex> lck(
+      std::unique_lock lck(
           levels_[pos.level][pos.index].lock, std::try_to_lock);
       if (!lck.owns_lock()) {
         if (getElementSize(pos) < ListTargetSize && readValue(pos) >= val) {

@@ -67,7 +67,7 @@ class StaticSingletonManagerWithRttiImpl {
       if (auto const v = ptr.load(std::memory_order_acquire)) {
         return v;
       }
-      std::unique_lock<std::mutex> lock(mutex);
+      std::unique_lock lock(mutex);
       if (auto const v = ptr.load(std::memory_order_acquire)) {
         return v;
       }
@@ -79,13 +79,13 @@ class StaticSingletonManagerWithRttiImpl {
   };
 
   Entry* get_existing_entry(std::type_info const& key) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock lock(mutex_);
     auto const it = map_.find(key);
     return it == map_.end() ? nullptr : &it->second;
   }
 
   Entry& create_entry(std::type_info const& key) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock lock(mutex_);
     return map_[key];
   }
 

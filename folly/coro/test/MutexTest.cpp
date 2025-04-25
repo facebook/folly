@@ -44,11 +44,11 @@ TEST_F(MutexTest, TryLock) {
 TEST_F(MutexTest, ScopedLock) {
   coro::Mutex m;
   {
-    std::unique_lock<coro::Mutex> lock{m, std::try_to_lock};
+    std::unique_lock lock{m, std::try_to_lock};
     CHECK(lock.owns_lock());
 
     {
-      std::unique_lock<coro::Mutex> lock2{m, std::try_to_lock};
+      std::unique_lock lock2{m, std::try_to_lock};
       CHECK(!lock2.owns_lock());
     }
   }

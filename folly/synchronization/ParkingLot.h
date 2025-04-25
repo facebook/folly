@@ -47,7 +47,7 @@ struct WaitNodeBase {
   template <typename Clock, typename Duration>
   std::cv_status wait(std::chrono::time_point<Clock, Duration> deadline) {
     std::cv_status status = std::cv_status::no_timeout;
-    std::unique_lock<std::mutex> nodeLock(mutex_);
+    std::unique_lock nodeLock(mutex_);
     while (!signaled_ && status != std::cv_status::timeout) {
       if (deadline != std::chrono::time_point<Clock, Duration>::max()) {
         status = cond_.wait_until(nodeLock, deadline);
@@ -265,7 +265,7 @@ ParkResult ParkingLot<Data>::park_until(
     // A: Must be seq_cst.  Matches B.
     bucket.count_.fetch_add(1, std::memory_order_seq_cst);
 
-    std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
+    std::unique_lock bucketLock(bucket.mutex_);
 
     if (!std::forward<ToPark>(toPark)()) {
       bucketLock.unlock();

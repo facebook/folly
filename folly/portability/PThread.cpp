@@ -346,12 +346,12 @@ struct pthread_mutex_t_ {
   void condition_wait(std::condition_variable_any& cond) {
     switch (type) {
       case PTHREAD_MUTEX_NORMAL: {
-        std::unique_lock<std::timed_mutex> lock(timed_mtx);
+        std::unique_lock lock(timed_mtx);
         cond.wait(lock);
         break;
       }
       case PTHREAD_MUTEX_RECURSIVE: {
-        std::unique_lock<std::recursive_timed_mutex> lock(recursive_timed_mtx);
+        std::unique_lock lock(recursive_timed_mtx);
         cond.wait(lock);
         break;
       }
@@ -363,11 +363,11 @@ struct pthread_mutex_t_ {
       std::chrono::system_clock::time_point until) {
     switch (type) {
       case PTHREAD_MUTEX_NORMAL: {
-        std::unique_lock<std::timed_mutex> lock(timed_mtx);
+        std::unique_lock lock(timed_mtx);
         return cond.wait_until(lock, until) == std::cv_status::no_timeout;
       }
       case PTHREAD_MUTEX_RECURSIVE: {
-        std::unique_lock<std::recursive_timed_mutex> lock(recursive_timed_mtx);
+        std::unique_lock lock(recursive_timed_mtx);
         return cond.wait_until(lock, until) == std::cv_status::no_timeout;
       }
     }

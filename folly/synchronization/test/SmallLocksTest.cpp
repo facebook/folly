@@ -219,7 +219,7 @@ struct SimpleBarrier {
   SimpleBarrier() : lock_(), cv_(), ready_(false) {}
 
   void wait() {
-    std::unique_lock<std::mutex> lockHeld(lock_);
+    std::unique_lock lockHeld(lock_);
     while (!ready_) {
       cv_.wait(lockHeld);
     }
@@ -227,7 +227,7 @@ struct SimpleBarrier {
 
   void run() {
     {
-      std::unique_lock<std::mutex> lockHeld(lock_);
+      std::unique_lock lockHeld(lock_);
       ready_ = true;
     }
 
@@ -372,7 +372,7 @@ void simpleStressTest(Duration duration, int numThreads) {
   for (auto i = 0; i < numThreads; ++i) {
     threads.emplace_back([&mutex, &data, &stop] {
       while (!stop.load(std::memory_order_relaxed)) {
-        auto lck = std::unique_lock<Mutex>{mutex};
+        auto lck = std::unique_lock{mutex};
         EXPECT_EQ(data.fetch_add(1, std::memory_order_relaxed), 0);
         EXPECT_EQ(data.fetch_sub(1, std::memory_order_relaxed), 1);
       }

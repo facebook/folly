@@ -384,7 +384,7 @@ void runUncontended(std::size_t iters) {
   auto&& mutex = Mutex{};
   for (auto i = std::size_t{0}; i < iters; ++i) {
     folly::makeUnpredictable(mutex);
-    auto lck = std::unique_lock<Mutex>{mutex};
+    auto lck = std::unique_lock{mutex};
     folly::makeUnpredictable(mutex);
   }
 }

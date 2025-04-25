@@ -27,7 +27,7 @@ namespace fibers {
 
 template <typename WaitFunc>
 TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
-  std::unique_lock<folly::SpinLock> ulock(lock_);
+  std::unique_lock ulock(lock_);
   if (!locked_) {
     locked_ = true;
     return LockResult::SUCCESS;
@@ -167,14 +167,14 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::shouldReadersWait() const {
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::lock_shared() {
-  std::unique_lock<folly::SpinLock> ulock{lock_};
+  std::unique_lock ulock{lock_};
   if (shouldReadersWait()) {
     MutexWaiter waiter;
     read_waiters_.push_back(waiter);
     ulock.unlock();
     waiter.baton.wait();
     if (folly::kIsDebug) {
-      std::unique_lock<folly::SpinLock> assertLock{lock_};
+      std::unique_lock assertLock{lock_};
       assert(state_ == State::READ_LOCKED);
     }
     return;
@@ -198,7 +198,7 @@ template <bool ReaderPriority, typename BatonType>
 template <typename Clock, typename Duration>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
     const std::chrono::time_point<Clock, Duration>& deadline) {
-  std::unique_lock<folly::SpinLock> ulock{lock_};
+  std::unique_lock ulock{lock_};
   if (shouldReadersWait()) {
     MutexWaiter waiter;
     read_waiters_.push_back(waiter);
@@ -245,7 +245,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared() {
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_shared() {
   if (kIsDebug) {
-    std::unique_lock<folly::SpinLock> ulock{lock_};
+    std::unique_lock ulock{lock_};
     assert(state_ == State::READ_LOCKED);
   }
   unlock_();
@@ -253,7 +253,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_shared() {
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::lock() {
-  std::unique_lock<folly::SpinLock> ulock{lock_};
+  std::unique_lock ulock{lock_};
   if (state_ == State::UNLOCKED) {
     verify_unlocked_properties();
     state_ = State::WRITE_LOCKED;
@@ -276,7 +276,7 @@ template <bool ReaderPriority, typename BatonType>
 template <typename Clock, typename Duration>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
     const std::chrono::time_point<Clock, Duration>& deadline) {
-  std::unique_lock<folly::SpinLock> ulock{lock_};
+  std::unique_lock ulock{lock_};
   if (state_ == State::UNLOCKED) {
     verify_unlocked_properties();
     state_ = State::WRITE_LOCKED;
@@ -316,7 +316,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock() {
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock() {
   if (kIsDebug) {
-    std::unique_lock<folly::SpinLock> ulock{lock_};
+    std::unique_lock ulock{lock_};
     assert(state_ == State::WRITE_LOCKED);
   }
   unlock_();

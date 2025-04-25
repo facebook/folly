@@ -103,18 +103,18 @@ TEST(ExceptionCounter, multyThreads) {
       }
 
       {
-        std::unique_lock<std::mutex> lock(preparedMutex);
+        std::unique_lock lock(preparedMutex);
         ++preparedThreads;
         preparedBarrier.notify_one();
       }
 
-      std::unique_lock<std::mutex> lock(finishedMutex);
+      std::unique_lock lock(finishedMutex);
       finishedBarrier.wait(lock, [&]() { return finished; });
     });
   }
 
   {
-    std::unique_lock<std::mutex> lock(preparedMutex);
+    std::unique_lock lock(preparedMutex);
     preparedBarrier.wait(lock, [&]() {
       return preparedThreads == kNumThreads;
     });
@@ -125,7 +125,7 @@ TEST(ExceptionCounter, multyThreads) {
   EXPECT_EQ(stats[0].count, kNumIterations * kNumThreads);
 
   {
-    std::unique_lock<std::mutex> lock(finishedMutex);
+    std::unique_lock lock(finishedMutex);
     finished = true;
     finishedBarrier.notify_all();
   }

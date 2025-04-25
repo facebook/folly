@@ -29,7 +29,7 @@ struct Barrier {
   explicit Barrier(size_t count) : lock_(), cv_(), count_(count) {}
 
   void wait() {
-    std::unique_lock<std::mutex> lockHeld(lock_);
+    std::unique_lock lockHeld(lock_);
     auto gen = gen_;
     if (++num_ == count_) {
       num_ = 0;
