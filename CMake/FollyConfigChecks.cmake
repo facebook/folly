@@ -20,6 +20,10 @@ include(CheckSymbolExists)
 include(CheckTypeSize)
 include(CheckCXXCompilerFlag)
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  list(APPEND FOLLY_CXX_FLAGS -Wno-psabi)
+endif()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
   CHECK_INCLUDE_FILE_CXX(malloc_np.h FOLLY_USE_JEMALLOC)
 else()
