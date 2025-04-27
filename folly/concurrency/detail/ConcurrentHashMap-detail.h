@@ -21,6 +21,7 @@
 #include <mutex>
 #include <new>
 
+#include <folly/ScopeGuard.h>
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Mask.h>
 #include <folly/lang/Exception.h>
@@ -131,10 +132,14 @@ class ValueHolder<
   template <typename Arg, typename... Args>
   ValueHolder(std::piecewise_construct_t, Arg&& k, Args&&... args) {
     item_ = (CountedItem*)Allocator().allocate(sizeof(CountedItem));
+    auto g = makeGuard([&] {
+      Allocator().deallocate((uint8_t*)item_, sizeof(CountedItem));
+    });
     new (item_) CountedItem(
         std::piecewise_construct,
         std::forward<Arg>(k),
         std::forward<Args>(args)...);
+    g.dismiss();
   }
 
   ~ValueHolder() {
@@ -150,6 +155,37 @@ class ValueHolder<
     return item_->getItem();
   }
 }; // ValueHolder specialization
+
+template <typename Node, typename Allocator>
+struct AllocNodeGuard : NonCopyableNonMovable {
+  Allocator alloc;
+  Node* node{};
+
+  void dismiss() { node = nullptr; }
+  Node* release() { return std::exchange(node, nullptr); }
+
+  template <typename... Arg>
+  explicit AllocNodeGuard(Allocator alloc_, Arg&&... arg)
+      : alloc{std::move(alloc_)}, node{(Node*)alloc_.allocate(sizeof(Node))} {
+    auto guard = makeGuard([&] {
+      alloc.deallocate((uint8_t*)node, sizeof(Node));
+    });
+    new (node) Node(std::forward<Arg>(arg)...);
+    guard.dismiss();
+  }
+
+  ~AllocNodeGuard() {
+    if (node) {
+      node->~Node();
+      alloc.deallocate((uint8_t*)node, sizeof(Node));
+    }
+  }
+
+  template <typename... Arg>
+  static Node* make(Allocator alloc_, Arg&&... arg) {
+    return AllocNodeGuard(alloc_, std::forward<Arg>(arg)...).release();
+  }
+};
 
 // hazptr deleter that can use an allocator.
 template <typename Allocator>
@@ -705,8 +741,8 @@ class alignas(64) BucketTable {
           return false;
         } else {
           if (!cur) {
-            cur = (Node*)Allocator().allocate(sizeof(Node));
-            new (cur) Node(cohort, std::forward<Args>(args)...);
+            cur = AllocNodeGuard<Node, Allocator>::make(
+                Allocator(), cohort, std::forward<Args>(args)...);
           }
           auto next = node->next_.load(std::memory_order_relaxed);
           cur->next_.store(next, std::memory_order_relaxed);
@@ -755,8 +791,8 @@ class alignas(64) BucketTable {
       // InsertType::ANY
       // OR DOES_NOT_EXIST, but only in the try_emplace case
       DCHECK(type == InsertType::ANY || type == InsertType::DOES_NOT_EXIST);
-      cur = (Node*)Allocator().allocate(sizeof(Node));
-      new (cur) Node(cohort, std::forward<Args>(args)...);
+      cur = AllocNodeGuard<Node, Allocator>::make(
+          Allocator(), cohort, std::forward<Args>(args)...);
     }
     cur->next_.store(headnode, std::memory_order_relaxed);
     head->store(cur, std::memory_order_release);
@@ -1238,8 +1274,8 @@ class alignas(64) SIMDTable {
       return false;
     }
 
-    auto cur = (Node*)Allocator().allocate(sizeof(Node));
-    new (cur) Node(cohort, std::forward<Args>(args)...);
+    auto cur = AllocNodeGuard<Node, Allocator>::make(
+        Allocator(), cohort, std::forward<Args>(args)...);
 
     if (!node) {
       std::tie(chunk_idx, tag_idx) =
@@ -1724,18 +1760,17 @@ class alignas(64) ConcurrentHashMapSegment {
 
   template <typename Key, typename Value>
   bool insert(Iterator& it, size_t h, Key&& k, Value&& v) {
-    auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(cohort_, std::forward<Key>(k), std::forward<Value>(v));
+    concurrenthashmap::AllocNodeGuard<Node, Allocator> g(
+        Allocator(), cohort_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         h,
-        node->getItem().first,
+        g.node->getItem().first,
         InsertType::DOES_NOT_EXIST,
         [](const ValueType&) { return false; },
-        node);
-    if (!res) {
-      node->~Node();
-      Allocator().deallocate((uint8_t*)node, sizeof(Node));
+        g.node);
+    if (res) {
+      g.dismiss();
     }
     return res;
   }
@@ -1767,55 +1802,54 @@ class alignas(64) ConcurrentHashMapSegment {
 
   template <typename Key, typename Value>
   bool insert_or_assign(Iterator& it, size_t h, Key&& k, Value&& v) {
-    auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(cohort_, std::forward<Key>(k), std::forward<Value>(v));
+    concurrenthashmap::AllocNodeGuard<Node, Allocator> g(
+        Allocator(), cohort_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         h,
-        node->getItem().first,
+        g.node->getItem().first,
         InsertType::ANY,
         [](const ValueType&) { return false; },
-        node);
-    if (!res) {
-      node->~Node();
-      Allocator().deallocate((uint8_t*)node, sizeof(Node));
+        g.node);
+    if (res) {
+      g.dismiss();
     }
     return res;
   }
 
   template <typename Key, typename Value>
   bool assign(Iterator& it, size_t h, Key&& k, Value&& v) {
-    auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(cohort_, std::forward<Key>(k), std::forward<Value>(v));
+    concurrenthashmap::AllocNodeGuard<Node, Allocator> g(
+        Allocator(), cohort_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         h,
-        node->getItem().first,
+        g.node->getItem().first,
         InsertType::MUST_EXIST,
         [](const ValueType&) { return false; },
-        node);
-    if (!res) {
-      node->~Node();
-      Allocator().deallocate((uint8_t*)node, sizeof(Node));
+        g.node);
+    if (res) {
+      g.dismiss();
     }
     return res;
   }
   template <typename Key, typename Value, typename Predicate>
   bool assign_if(
       Iterator& it, size_t h, Key&& k, Value&& desired, Predicate&& predicate) {
-    auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node)
-        Node(cohort_, std::forward<Key>(k), std::forward<Value>(desired));
+    concurrenthashmap::AllocNodeGuard<Node, Allocator> g(
+        Allocator(),
+        cohort_,
+        std::forward<Key>(k),
+        std::forward<Value>(desired));
     auto res = insert_internal(
         it,
         h,
-        node->getItem().first,
+        g.node->getItem().first,
         InsertType::MATCH,
         std::forward<Predicate>(predicate),
-        node);
-    if (!res) {
-      node->~Node();
-      Allocator().deallocate((uint8_t*)node, sizeof(Node));
+        g.node);
+    if (res) {
+      g.dismiss();
     }
     return res;
   }

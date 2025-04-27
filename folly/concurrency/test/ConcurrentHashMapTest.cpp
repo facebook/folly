@@ -1134,6 +1134,72 @@ TYPED_TEST_P(ConcurrentHashMapTest, ConcurrentInsertClear) {
   }
 }
 
+struct Wrong : std::exception {
+  char const* what() const noexcept { return "wrong!"; }
+};
+struct ValueMaybeThrow {
+  int value = 0;
+  explicit ValueMaybeThrow(int i) : value{i} {
+    if (!i) {
+      throw Wrong();
+    }
+  }
+};
+
+TYPED_TEST_P(ConcurrentHashMapTest, ValueMaybeThrowInsertSeparate) {
+  CHM<int, ValueMaybeThrow> map;
+  EXPECT_THROW(map.insert(0, 0), Wrong);
+  EXPECT_FALSE(get_ptr(map, 0));
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, ValueMaybeThrowTryEmplaceFail) {
+  CHM<int, ValueMaybeThrow> map;
+  map.try_emplace(0, 1);
+  map.try_emplace(0, 0);
+  EXPECT_TRUE(get_ptr(map, 0));
+  EXPECT_EQ(1, get_ptr(map, 0)->value);
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, ValueMaybeThrowTryEmplaceSucc) {
+  CHM<int, ValueMaybeThrow> map;
+  EXPECT_THROW(map.try_emplace(0, 0), Wrong);
+  EXPECT_FALSE(get_ptr(map, 0));
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, ValueMaybeThrowEmplace) {
+  CHM<int, ValueMaybeThrow> map;
+  EXPECT_THROW(map.emplace(0, 0), Wrong);
+  EXPECT_FALSE(get_ptr(map, 0));
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, ValueMaybeThrowInsertOrAssignInsert) {
+  CHM<int, ValueMaybeThrow> map;
+  EXPECT_THROW(map.insert_or_assign(0, 0), Wrong);
+  EXPECT_FALSE(get_ptr(map, 0));
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, ValueMaybeThrowInsertOrAssignAssign) {
+  CHM<int, ValueMaybeThrow> map;
+  map.emplace(0, 1);
+  EXPECT_THROW(map.insert_or_assign(0, 0), Wrong);
+  ASSERT_TRUE(get_ptr(map, 0));
+  EXPECT_EQ(1, get_ptr(map, 0)->value);
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, ValueMaybeThrowAssignAbsent) {
+  CHM<int, ValueMaybeThrow> map;
+  map.assign(0, 0);
+  EXPECT_FALSE(get_ptr(map, 0));
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, ValueMaybeThrowAssignPresent) {
+  CHM<int, ValueMaybeThrow> map;
+  map.emplace(0, 1);
+  EXPECT_THROW(map.assign(0, 0), Wrong);
+  ASSERT_TRUE(get_ptr(map, 0));
+  EXPECT_EQ(1, get_ptr(map, 0)->value);
+}
+
 REGISTER_TYPED_TEST_SUITE_P(
     ConcurrentHashMapTest,
     MapTest,
@@ -1177,7 +1243,15 @@ REGISTER_TYPED_TEST_SUITE_P(
     HeterogeneousInsert,
     InsertOrAssignIterator,
     EraseClonedNonCopyable,
-    ConcurrentInsertClear);
+    ConcurrentInsertClear,
+    ValueMaybeThrowInsertSeparate,
+    ValueMaybeThrowTryEmplaceFail,
+    ValueMaybeThrowTryEmplaceSucc,
+    ValueMaybeThrowEmplace,
+    ValueMaybeThrowInsertOrAssignInsert,
+    ValueMaybeThrowInsertOrAssignAssign,
+    ValueMaybeThrowAssignAbsent,
+    ValueMaybeThrowAssignPresent);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 

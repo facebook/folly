@@ -342,19 +342,18 @@ class ConcurrentHashMap {
   template <typename... Args>
   std::pair<ConstIterator, bool> emplace(Args&&... args) {
     using Node = typename SegmentT::Node;
-    auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(ensureCohort(), std::forward<Args>(args)...);
-    auto h = HashFn{}(node->getItem().first);
+    detail::concurrenthashmap::AllocNodeGuard<Node, Allocator> g(
+        Allocator(), ensureCohort(), std::forward<Args>(args)...);
+    auto h = HashFn{}(g.node->getItem().first);
     auto segment = pickSegment(h);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
     res.second = ensureSegment(segment)->emplace(
-        res.first.it_, h, node->getItem().first, node);
-    if (!res.second) {
-      node->~Node();
-      Allocator().deallocate((uint8_t*)node, sizeof(Node));
+        res.first.it_, h, g.node->getItem().first, g.node);
+    if (res.second) {
+      g.dismiss();
     }
     return res;
   }
