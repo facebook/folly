@@ -674,6 +674,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST chrono_conv_test WINDOWS_DISABLED
         SOURCES ConvTest.cpp
 
+    DIRECTORY codec/test/
+      TEST codec_uuid_test SOURCES UuidTest.cpp
+
     DIRECTORY compression/test/
       TEST compression_compression_test SLOW SOURCES CompressionTest.cpp
       TEST compression_quotient_multiset_test SOURCES QuotientMultiSetTest.cpp

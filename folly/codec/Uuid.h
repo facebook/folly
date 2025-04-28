@@ -242,8 +242,10 @@ uuid_parse_buffer_to_buffer_ssse3(char* out, const char* s) {
   // ascii_digits_b = [5666777777777777]
   // clang-format on
   const __m128i sb = _mm_shuffle_epi8(b, shuffle_b);
-  const __m128i ascii_digits_a = _mm_blend_pd(a, sb, 0b10);
-  const __m128i ascii_digits_b = _mm_blend_ps(c, sb, 0b0001);
+  const __m128i ascii_digits_a = _mm_castpd_si128( // no _mm_blend_epi64
+      _mm_blend_pd(_mm_castsi128_pd(a), _mm_castsi128_pd(sb), 0b10));
+  const __m128i ascii_digits_b = _mm_castps_si128( // _mm_blend_epi32 is AVX2
+      _mm_blend_ps(_mm_castsi128_ps(c), _mm_castsi128_ps(sb), 0b0001));
 
   // check that the dashes are in the right places in the input
   const unsigned int my_dashes_mask =
