@@ -20,7 +20,6 @@ load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
 load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_arvr_mode")
-load("@wa_android//buck2:flags.bzl", "wa_exceptions_flags")
 
 def should_enable_gflags():
     return read_bool("folly", "have_libgflags_override", False)
@@ -173,7 +172,13 @@ def folly_xplat_library(
             "DEFAULT": [],
             "ovr_config//os:windows-cl": WINDOWS_MSVC_CXXFLAGS,
             "ovr_config//os:windows-gcc-or-clang": WINDOWS_CLANG_CXX_FLAGS,
-        }) + wa_exceptions_flags(),
+        }) + select({
+            "DEFAULT": [],
+            "wa_android//tools/buck/build_defs/monorepo:live_deps": [
+                "-fexceptions",
+                "-frtti",
+            ],
+        }),
         fbobjc_compiler_flags = kwargs.pop("fbobjc_compiler_flags", []) +
                                 FBOBJC_CXXFLAGS,
         fbcode_compiler_flags_override = kwargs.pop("fbcode_compiler_flags", []),
