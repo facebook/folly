@@ -324,6 +324,9 @@ class AsyncIoUringSocketTest
       if (server) {
         server->setReadCB(nullptr);
       }
+      if (client && client->transport) {
+        client->transport->closeNow();
+      }
     }
   };
 
