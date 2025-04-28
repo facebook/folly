@@ -2604,9 +2604,9 @@ TYPED_TEST_P(EventBaseTest, RunOnDestructionAddCallbackWithinCallback) {
   size_t callbacksCalled = 0;
   {
     auto evbPtr = this->makeEventBase();
-    evbPtr->runOnDestruction([&] {
+    evbPtr->runOnDestruction([rawPtr = evbPtr.get(), &callbacksCalled] {
       ++callbacksCalled;
-      evbPtr->runOnDestruction([&] { ++callbacksCalled; });
+      rawPtr->runOnDestruction([&] { ++callbacksCalled; });
     });
   }
   EXPECT_EQ(2, callbacksCalled);
