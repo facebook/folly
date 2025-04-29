@@ -1252,10 +1252,9 @@ TEST(Observer, TestMakeObserverWithTypeInfo) {
     EXPECT_THAT(
         folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
         StartsWith(prefix));
-    EXPECT_THAT(
-        folly::demangle(*observer.getCreatorInvokeResultTypeInfo())
-            .toStdString(),
-        "std::shared_ptr<int>");
+    EXPECT_EQ(
+        *observer.getCreatorInvokeResultTypeInfo(),
+        typeid(std::shared_ptr<int>));
   }
   {
     auto observer1 = folly::observer::makeObserver([] { return 1; });
@@ -1273,10 +1272,9 @@ TEST(Observer, TestMakeObserverWithTypeInfo) {
     EXPECT_THAT(
         folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
         StartsWith("folly::observer::unwrap"));
-    EXPECT_THAT(
-        folly::demangle(*observer.getCreatorInvokeResultTypeInfo())
-            .toStdString(),
-        "std::shared_ptr<int const>");
+    EXPECT_EQ(
+        *observer.getCreatorInvokeResultTypeInfo(),
+        typeid(std::shared_ptr<int const>));
   }
 }
 
@@ -1299,13 +1297,13 @@ TEST(Observer, TestMakeValueObserverWithTypeInfo) {
       return std::make_shared<int>(42);
     });
     EXPECT_EQ(42, **observer);
+
     EXPECT_THAT(
         folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
         StartsWith(prefix));
-    EXPECT_THAT(
-        folly::demangle(*observer.getCreatorInvokeResultTypeInfo())
-            .toStdString(),
-        "std::shared_ptr<int>");
+    EXPECT_EQ(
+        *observer.getCreatorInvokeResultTypeInfo(),
+        typeid(std::shared_ptr<int>));
   }
   {
     auto observer1 = folly::observer::makeValueObserver([] { return 1; });
@@ -1323,10 +1321,9 @@ TEST(Observer, TestMakeValueObserverWithTypeInfo) {
     EXPECT_THAT(
         folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
         StartsWith("folly::observer::unwrap"));
-    EXPECT_THAT(
-        folly::demangle(*observer.getCreatorInvokeResultTypeInfo())
-            .toStdString(),
-        "std::shared_ptr<int const>");
+    EXPECT_EQ(
+        *observer.getCreatorInvokeResultTypeInfo(),
+        typeid(std::shared_ptr<int const>));
   }
 }
 
@@ -1338,9 +1335,9 @@ TEST(Observer, TestSimpleObservableWithTypeInfo) {
   EXPECT_THAT(
       folly::demangle(*observer.getCreatorTypeInfo()).toStdString(),
       StartsWith(prefix));
-  EXPECT_THAT(
-      folly::demangle(*observer.getCreatorInvokeResultTypeInfo()).toStdString(),
-      "std::shared_ptr<int const>");
+  EXPECT_EQ(
+      *observer.getCreatorInvokeResultTypeInfo(),
+      typeid(std::shared_ptr<int const>));
 }
 
 TEST(Observer, TestObserverWithNamedCreator) {
