@@ -554,55 +554,33 @@ TEST_F(NotNullSharedPtrTest, pointer_cast_check) {
 #endif
 }
 
-class MyAllocator : public std::allocator<int> {
+template <typename T>
+class MyAllocator : public std::allocator<T> {
  public:
-  explicit MyAllocator(int* count) : count_(count) {}
+  explicit MyAllocator(int* c) : count_(c) {}
+  template <typename U>
+  explicit MyAllocator(const MyAllocator<U>& other) {
+    count_ = other.count_;
+  }
 
   template <typename... Args>
-  int* allocate(Args&&... args) {
+  T* allocate(Args&&... args) {
     ++*count_;
-    Alloc alloc;
-    return AllocTraits::allocate(alloc, std::forward<Args>(args)...);
+    return std::allocator<T>::allocate(std::forward<Args>(args)...);
   }
 
   template <typename U, typename... Args>
   void construct(U* p, Args&&... args) {
     ++*count_;
-    Alloc alloc;
-    AllocTraits::construct(alloc, p, std::forward<Args>(args)...);
+    ::new ((void*)p) U(std::forward<Args>(args)...);
   }
 
- public:
-  using Alloc = std::allocator<int>;
-  using AllocTraits = std::allocator_traits<Alloc>;
-  using value_type = AllocTraits::value_type;
-
-  using pointer = AllocTraits::pointer;
-  using const_pointer = AllocTraits::const_pointer;
-  using reference = value_type&;
-  using const_reference = value_type const&;
-  using size_type = AllocTraits::size_type;
-  using difference_type = AllocTraits::difference_type;
-
-  using propagate_on_container_move_assignment =
-      AllocTraits::propagate_on_container_move_assignment;
-#if __cplusplus <= 202001L
-  using Alloc::is_always_equal;
-  using Alloc::rebind;
-#else
-  using is_always_equal = AllocTraits::is_always_equal;
-  template <class U>
-  struct rebind {
-    using other = std::allocator<U>;
-  };
-#endif
-
- private:
   int* count_;
 };
+
 TEST_F(NotNullSharedPtrTest, allocate_shared) {
   int count = 0;
-  auto nnsp = allocate_not_null_shared<int>(MyAllocator(&count), 7);
+  auto nnsp = allocate_not_null_shared<int>(MyAllocator<int>(&count), 7);
   EXPECT_EQ(*nnsp, 7);
-  EXPECT_EQ(count, 1);
+  EXPECT_EQ(count, 2);
 }
