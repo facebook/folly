@@ -18,27 +18,16 @@
 
 #include <atomic>
 #include <limits>
-#include <memory>
 #include <thread>
 #include <vector>
 
 #include <folly/Traits.h>
-#include <folly/container/test/TrackingTypes.h>
-#include <folly/hash/Hash.h>
-#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Latch.h>
-#include <folly/test/DeterministicSchedule.h>
-
-using namespace folly::test;
-using namespace folly;
-using namespace std;
-
-DEFINE_int64(seed, 0, "Seed for random number generators");
 
 template <typename T>
-class ConcurrentHashMapTest : public ::testing::Test {};
-TYPED_TEST_SUITE_P(ConcurrentHashMapTest);
+class ConcurrentHashMapStressTest : public ::testing::Test {};
+TYPED_TEST_SUITE_P(ConcurrentHashMapStressTest);
 
 template <template <
     typename,
@@ -61,7 +50,7 @@ struct MapFactory {
       uint8_t ShardBits = 8,
       template <typename> class Atom = std::atomic,
       class Mutex = std::mutex>
-  using MapT = ConcurrentHashMap<
+  using MapT = folly::ConcurrentHashMap<
       KeyType,
       ValueType,
       HashFn,
@@ -75,18 +64,7 @@ struct MapFactory {
 
 #define CHM typename TypeParam::template MapT
 
-// TODO: hazptrs must support DeterministicSchedule
-
-#define Atom std::atomic // DeterministicAtomic
-#define Mutex std::mutex // DeterministicMutex
-#define lib std // DeterministicSchedule
-#define join t.join() // DeterministicSchedule::join(t)
-// #define Atom DeterministicAtomic
-// #define Mutex DeterministicMutex
-// #define lib DeterministicSchedule
-// #define join DeterministicSchedule::join(t)
-
-TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
+TYPED_TEST_P(ConcurrentHashMapStressTest, StressTestReclamation) {
   // Create a map where we keep reclaiming a lot of objects that are linked to
   // one node.
 
@@ -114,7 +92,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
   static constexpr uint64_t iters = 100;
   folly::Latch start(num_threads);
   for (uint64_t t = 0; t < num_threads; t++) {
-    threads.push_back(lib::thread([t, &map, &start]() {
+    threads.push_back(std::thread([t, &map, &start]() {
       start.arrive_and_wait();
       static constexpr uint64_t progress_report_pct =
           (iters / 20); // Every 5% we log progress
@@ -130,12 +108,12 @@ TYPED_TEST_P(ConcurrentHashMapTest, StressTestReclamation) {
     }));
   }
   for (auto& t : threads) {
-    join;
+    t.join();
   }
 }
 
 REGISTER_TYPED_TEST_SUITE_P( //
-    ConcurrentHashMapTest,
+    ConcurrentHashMapStressTest,
     StressTestReclamation);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
@@ -149,4 +127,4 @@ using MapFactoryTypes = ::testing::Types<MapFactory<BucketTable>>;
 #endif
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
-    MapFactoryTypesInstantiation, ConcurrentHashMapTest, MapFactoryTypes);
+    MapFactoryTypesInstantiation, ConcurrentHashMapStressTest, MapFactoryTypes);
