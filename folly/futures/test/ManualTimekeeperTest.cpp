@@ -42,6 +42,46 @@ TEST_F(ManualTimekeeperTest, AdvanceWithoutAnyFutures) {
   EXPECT_TRUE(future.isReady());
 }
 
+TEST_F(ManualTimekeeperTest, advanceToNext) {
+  auto timekeeper = folly::ManualTimekeeper{};
+
+  // Add a few events to the timekeeper
+  auto f100s = timekeeper.after(100s);
+  auto f200s = timekeeper.after(200s);
+  auto f200sNum2 = timekeeper.after(200s);
+  auto f201s = timekeeper.after(201s);
+  EXPECT_FALSE(f100s.isReady());
+  EXPECT_FALSE(f200s.isReady());
+  EXPECT_FALSE(f200sNum2.isReady());
+  EXPECT_FALSE(f201s.isReady());
+  timekeeper.advanceToNext();
+
+  EXPECT_TRUE(f100s.isReady());
+  EXPECT_FALSE(f200s.isReady());
+  EXPECT_FALSE(f200sNum2.isReady());
+  EXPECT_FALSE(f201s.isReady());
+
+  auto f150s = timekeeper.after(50s);
+  timekeeper.advanceToNext();
+  EXPECT_TRUE(f150s.isReady());
+  EXPECT_FALSE(f200s.isReady());
+  EXPECT_FALSE(f200sNum2.isReady());
+  EXPECT_FALSE(f201s.isReady());
+
+  timekeeper.advance(49s);
+  EXPECT_FALSE(f200s.isReady());
+  EXPECT_FALSE(f200sNum2.isReady());
+  EXPECT_FALSE(f201s.isReady());
+
+  timekeeper.advanceToNext();
+  EXPECT_TRUE(f200s.isReady());
+  EXPECT_TRUE(f200sNum2.isReady());
+  EXPECT_FALSE(f201s.isReady());
+
+  timekeeper.advance(1s);
+  EXPECT_TRUE(f201s.isReady());
+}
+
 TEST_F(ManualTimekeeperTest, AdvanceWithManyFutures) {
   auto timekeeper = folly::ManualTimekeeper{};
 

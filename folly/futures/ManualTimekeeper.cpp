@@ -35,17 +35,33 @@ SemiFuture<Unit> ManualTimekeeper::after(HighResDuration dur) {
   return std::move(future);
 }
 
+void ManualTimekeeper::fulfillReady(TimeoutSchedule& schedule) {
+  auto start = schedule.begin();
+  auto end = schedule.upper_bound(now());
+  for (auto iter = start; iter != end; iter++) {
+    iter->second->trySetTimeout();
+  }
+  schedule.erase(start, end);
+}
+
 void ManualTimekeeper::advance(Duration dur) {
   atomic_fetch_modify(
       now_, [=](auto val) { return val + dur; }, std::memory_order_relaxed);
 
-  schedule_.withWLock([this](auto& schedule) {
-    auto start = schedule.begin();
-    auto end = schedule.upper_bound(now());
-    for (auto iter = start; iter != end; iter++) {
-      iter->second->trySetTimeout();
+  schedule_.withWLock([this](auto& schedule) { fulfillReady(schedule); });
+}
+
+void ManualTimekeeper::advanceToNext() {
+  schedule_.withWLock([this](auto& sched) {
+    if (!sched.empty()) {
+      // NOTE: +1 to avoid rounding errors.
+      atomic_fetch_modify(
+          now_,
+          [=](auto) { return sched.begin()->first + Duration{1}; },
+          std::memory_order_relaxed);
+
+      fulfillReady(sched);
     }
-    schedule.erase(start, end);
   });
 }
 
