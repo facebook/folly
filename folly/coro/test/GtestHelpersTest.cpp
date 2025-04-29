@@ -90,6 +90,28 @@ CO_TYPED_TEST(GtestHelpersTypedTest, Test_type_str) {
   }
 }
 
+template <class T>
+class GtestHelpersTypedTest2 : public GtestHelpersTypedTest<T> {};
+
+TYPED_TEST_SUITE_P(GtestHelpersTypedTest2);
+
+CO_TYPED_TEST_P(GtestHelpersTypedTest2, Test_type_str) {
+  using type = typename std::remove_reference_t<decltype(*this)>::type;
+
+  if constexpr (std::is_same_v<Foo, type>) {
+    EXPECT_EQ(co_await this->type_str(), "Foo_x");
+  } else if constexpr (std::is_same_v<int, type>) {
+    EXPECT_EQ(co_await this->type_str(), "int");
+  } else if constexpr (std::is_same_v<char, type>) {
+    EXPECT_EQ(co_await this->type_str(), "char");
+  }
+}
+
+REGISTER_TYPED_TEST_SUITE_P(GtestHelpersTypedTest2, Test_type_str);
+
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    GtestHelpersTypedTest2, GtestHelpersTypedTest2, CoroTypedTests);
+
 CO_TEST(GtestHelpersTest, testCoAssertNoThrow) {
   CO_ASSERT_NO_THROW(co_await co_getInt(0));
 }

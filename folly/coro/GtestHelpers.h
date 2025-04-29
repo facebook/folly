@@ -221,6 +221,37 @@ inline auto gtestLogCurrentException(Out&& out) {
   folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                             \
       CaseName, TestName)<gtest_TypeParam_>::co_TestBody()
 
+#define CO_TYPED_TEST_P(SuiteName, TestName)                      \
+  namespace GTEST_SUITE_NAMESPACE_(SuiteName) {                   \
+  template <typename gtest_TypeParam_>                            \
+  class TestName : public SuiteName<gtest_TypeParam_> {           \
+   private:                                                       \
+    typedef SuiteName<gtest_TypeParam_> TestFixture;              \
+    typedef gtest_TypeParam_ TypeParam;                           \
+    void TestBody() override;                                     \
+    folly::coro::Task<> co_TestBody();                            \
+  };                                                              \
+  [[maybe_unused]] static bool gtest_##TestName##_defined_ =      \
+      GTEST_TYPED_TEST_SUITE_P_STATE_(SuiteName).AddTestName(     \
+          __FILE__,                                               \
+          __LINE__,                                               \
+          GTEST_STRINGIFY_(SuiteName),                            \
+          GTEST_STRINGIFY_(TestName));                            \
+  }                                                               \
+  template <typename gtest_TypeParam_>                            \
+  void GTEST_SUITE_NAMESPACE_(                                    \
+      SuiteName)::TestName<gtest_TypeParam_>::TestBody() {        \
+    try {                                                         \
+      folly::coro::blockingWait(co_TestBody());                   \
+    } catch (...) {                                               \
+      folly::detail::gtestLogCurrentException(GTEST_LOG_(ERROR)); \
+      throw;                                                      \
+    }                                                             \
+  }                                                               \
+  template <typename gtest_TypeParam_>                            \
+  folly::coro::Task<void> GTEST_SUITE_NAMESPACE_(                 \
+      SuiteName)::TestName<gtest_TypeParam_>::co_TestBody()
+
 /**
  * Coroutine versions of GTests's Assertion predicate macros. Use these in place
  * of ASSERT_* in CO_TEST or coroutine functions.
