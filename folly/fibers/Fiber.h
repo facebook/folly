@@ -86,7 +86,6 @@ class Fiber {
 
   folly::Optional<std::chrono::nanoseconds> getRunningTime() const;
 
- private:
   enum State : char {
     INVALID, /**< Does't have task function */
     NOT_STARTED, /**< Has task function, not started */
@@ -98,6 +97,9 @@ class Fiber {
     YIELDED, /**< The fiber yielded execution voluntarily */
   };
 
+  State getState() const { return state_; }
+
+ private:
   State state_{INVALID}; /**< current Fiber state */
 
   friend class Baton;
