@@ -428,6 +428,54 @@ TYPED_TEST_P(ConcurrentHashMapTest, AssignIfTest) {
   EXPECT_EQ(3, f2.value()->second);
 }
 
+TYPED_TEST_P(ConcurrentHashMapTest, InsertOrAssignIfTest) {
+  CHM<uint64_t, uint64_t> foomap(3);
+
+  bool canAssignFlag = false;
+  auto r = foomap.insert_or_assign_if(0, 0, [canAssignFlag](auto&&) {
+    return canAssignFlag;
+  });
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(0, r.first->second);
+  EXPECT_EQ(0, foomap.find(0)->second);
+
+  canAssignFlag = true;
+  r = foomap.insert_or_assign_if(1, 0, [canAssignFlag](auto&&) {
+    return canAssignFlag;
+  });
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(0, r.first->second);
+  EXPECT_EQ(0, foomap.find(1)->second);
+
+  // assign_if test equivalent
+  canAssignFlag = false;
+  r = foomap.insert_or_assign_if(1, 1, [canAssignFlag](auto&&) {
+    return canAssignFlag;
+  });
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(0, r.first->second);
+  EXPECT_EQ(0, foomap.find(1)->second);
+
+  canAssignFlag = true;
+  r = foomap.insert_or_assign_if(1, 2, [canAssignFlag](auto&&) {
+    return canAssignFlag;
+  });
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(2, r.first->second);
+  EXPECT_EQ(2, foomap.find(1)->second);
+
+  // Assign based on the current value.
+  r = foomap.insert_or_assign_if(1, 3, [](auto&& val) { return val == 2; });
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(3, r.first->second);
+  EXPECT_EQ(3, foomap.find(1)->second);
+
+  r = foomap.insert_or_assign_if(1, 4, [](auto&& val) { return val == 2; });
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(3, r.first->second);
+  EXPECT_EQ(3, foomap.find(1)->second);
+}
+
 // TODO: hazptrs must support DeterministicSchedule
 
 #define Atom std::atomic // DeterministicAtomic
@@ -1227,6 +1275,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     EraseIfTest,
     EraseInIterateTest,
     AssignIfTest,
+    InsertOrAssignIfTest,
     EraseStressTest,
     EraseTest,
     ForEachLoop,

@@ -376,6 +376,31 @@ class ConcurrentHashMap {
     return res;
   }
 
+  /*
+   * Insert desired if the key doesn't exist, or assign to desired if the
+   * predicate returns true for the current value. The bool component will
+   * always be true if the map has been updated via either insertion or
+   * assignment. Note that this is different from the std::map::insert_or_assign
+   * interface.
+   */
+  template <typename Key, typename Value, typename Predicate>
+  std::pair<ConstIterator, bool> insert_or_assign_if(
+      Key&& k, Value&& desired, Predicate&& predicate) {
+    auto h = HashFn{}(k);
+    auto segment = pickSegment(h);
+    std::pair<ConstIterator, bool> res(
+        std::piecewise_construct,
+        std::forward_as_tuple(this, segment),
+        std::forward_as_tuple(false));
+    res.second = ensureSegment(segment)->insert_or_assign_if(
+        res.first.it_,
+        h,
+        std::forward<Key>(k),
+        std::forward<Value>(desired),
+        std::forward<Predicate>(predicate));
+    return res;
+  }
+
   template <typename Key, typename Value>
   folly::Optional<ConstIterator> assign(Key&& k, Value&& v) {
     auto h = HashFn{}(k);

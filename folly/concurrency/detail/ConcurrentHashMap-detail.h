@@ -44,6 +44,8 @@ enum class InsertType {
   MATCH, // assign_if_equal (not in std).  For concurrent maps, a
          // way to atomically change a value if equal to some other
          // value.
+  MATCH_OR_DOES_NOT_EXIST, // behaves like MATCH if key exists, inserts if key
+                           // does not exist.
 };
 
 template <
@@ -708,7 +710,9 @@ class alignas(64) BucketTable {
     size_t bcount = bucket_count_.load(std::memory_order_relaxed);
     auto buckets = buckets_.load(std::memory_order_relaxed);
     // Check for rehash needed for DOES_NOT_EXIST
-    if (size() >= load_factor_nodes_ && type == InsertType::DOES_NOT_EXIST) {
+    if (size() >= load_factor_nodes_ &&
+        (type == InsertType::DOES_NOT_EXIST ||
+         type == InsertType::MATCH_OR_DOES_NOT_EXIST)) {
       if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
         throw_exception<std::bad_alloc>();
@@ -727,17 +731,21 @@ class alignas(64) BucketTable {
     auto& hazbuckets = it.hazptrs_[0];
     auto& haznode = it.hazptrs_[1];
     hazbuckets.reset_protection(buckets);
+    bool matched = false;
     while (node) {
       // Is the key found?
       if (KeyEqual()(k, node->getItem().first)) {
         it.setNode(node, buckets, bcount, idx);
         haznode.reset_protection(node);
-        if (type == InsertType::MATCH) {
+        if (type == InsertType::MATCH ||
+            type == InsertType::MATCH_OR_DOES_NOT_EXIST) {
           if (!match(node->getItem().second)) {
             return false;
           }
+          matched = true;
         }
-        if (type == InsertType::DOES_NOT_EXIST) {
+        if (type == InsertType::DOES_NOT_EXIST ||
+            (type == InsertType::MATCH_OR_DOES_NOT_EXIST && !matched)) {
           return false;
         } else {
           if (!cur) {
@@ -762,7 +770,9 @@ class alignas(64) BucketTable {
       prev = &node->next_;
       node = node->next_.load(std::memory_order_relaxed);
     }
-    if (type != InsertType::DOES_NOT_EXIST && type != InsertType::ANY) {
+    if (type != InsertType::DOES_NOT_EXIST &&
+        (type != InsertType::MATCH_OR_DOES_NOT_EXIST || matched) &&
+        type != InsertType::ANY) {
       haznode.reset_protection();
       hazbuckets.reset_protection();
       return false;
@@ -790,7 +800,9 @@ class alignas(64) BucketTable {
     if (!cur) {
       // InsertType::ANY
       // OR DOES_NOT_EXIST, but only in the try_emplace case
-      DCHECK(type == InsertType::ANY || type == InsertType::DOES_NOT_EXIST);
+      DCHECK(
+          type == InsertType::ANY || type == InsertType::DOES_NOT_EXIST ||
+          (type == InsertType::MATCH_OR_DOES_NOT_EXIST && !matched));
       cur = AllocNodeGuard<Node, Allocator>::make(
           Allocator(), cohort, std::forward<Args>(args)...);
     }
@@ -1538,7 +1550,9 @@ class alignas(64) SIMDTable {
     ccount = chunk_count_.load(std::memory_order_relaxed);
     chunks = chunks_.load(std::memory_order_relaxed);
 
-    if (size() >= grow_threshold_ && type == InsertType::DOES_NOT_EXIST) {
+    if (size() >= grow_threshold_ &&
+        (type == InsertType::DOES_NOT_EXIST ||
+         type == InsertType::MATCH_OR_DOES_NOT_EXIST)) {
       if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
         throw_exception<std::bad_alloc>();
@@ -1555,7 +1569,8 @@ class alignas(64) SIMDTable {
     if (node) {
       it.hazptrs_[1].reset_protection(node);
       it.setNode(node, chunks, ccount, chunk_idx, tag_idx);
-      if (type == InsertType::MATCH) {
+      if (type == InsertType::MATCH ||
+          type == InsertType::MATCH_OR_DOES_NOT_EXIST) {
         if (!match(node->getItem().second)) {
           return false;
         }
@@ -1563,7 +1578,9 @@ class alignas(64) SIMDTable {
         return false;
       }
     } else {
-      if (type != InsertType::DOES_NOT_EXIST && type != InsertType::ANY) {
+      if (type != InsertType::DOES_NOT_EXIST &&
+          type != InsertType::MATCH_OR_DOES_NOT_EXIST &&
+          type != InsertType::ANY) {
         it.hazptrs_[0].reset_protection();
         return false;
       }
@@ -1817,6 +1834,27 @@ class alignas(64) ConcurrentHashMapSegment {
     return res;
   }
 
+  template <typename Key, typename Value, typename Predicate>
+  bool insert_or_assign_if(
+      Iterator& it, size_t h, Key&& k, Value&& desired, Predicate&& predicate) {
+    concurrenthashmap::AllocNodeGuard<Node, Allocator> g(
+        Allocator(),
+        cohort_,
+        std::forward<Key>(k),
+        std::forward<Value>(desired));
+    auto res = insert_internal(
+        it,
+        h,
+        g.node->getItem().first,
+        InsertType::MATCH_OR_DOES_NOT_EXIST,
+        std::forward<Predicate>(predicate),
+        g.node);
+    if (res) {
+      g.dismiss();
+    }
+    return res;
+  }
+
   template <typename Key, typename Value>
   bool assign(Iterator& it, size_t h, Key&& k, Value&& v) {
     concurrenthashmap::AllocNodeGuard<Node, Allocator> g(
@@ -1833,6 +1871,7 @@ class alignas(64) ConcurrentHashMapSegment {
     }
     return res;
   }
+
   template <typename Key, typename Value, typename Predicate>
   bool assign_if(
       Iterator& it, size_t h, Key&& k, Value&& desired, Predicate&& predicate) {
