@@ -31,7 +31,11 @@ int dprintf(int fd, const char* fmt, ...) {
     va_end(args);
   };
 
-  int ret = vsnprintf(nullptr, 0, fmt, args);
+  // vsnprintf will consume it, so better copy args before using them
+  va_list argsCopy;
+  va_copy(argsCopy, args);
+  int ret = vsnprintf(nullptr, 0, fmt, argsCopy);
+  va_end(argsCopy);
   if (ret <= 0) {
     return -1;
   }
