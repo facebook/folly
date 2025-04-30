@@ -58,6 +58,8 @@ Py_Weak(PyThreadState*) PyGILState_GetThisThreadState(void);
 Py_Weak(int) PyGILState_Check(void);
 Py_Weak(PyGILState_STATE) PyGILState_Ensure(void);
 Py_Weak(void) PyGILState_Release(PyGILState_STATE);
+Py_Weak(PyThreadState*) PyEval_SaveThread(void);
+Py_Weak(void) PyEval_RestoreThread(PyThreadState*);
 
 // Some Frame and Traceback Handling
 Py_Weak(PyFrameObject*) PyThreadState_GetFrame(PyThreadState*);
