@@ -82,6 +82,8 @@ Py_Weak(int) _Py_IsFinalizing(void);
 
 } // extern "C"
 
+// Torch had the same idea.
+#ifndef PYTHONCAPI_COMPAT
 // So windows can use these helpers
 #if PY_VERSION_HEX < 0x030b0000 // < 3.11
 #include <frameobject.h>
@@ -95,6 +97,7 @@ inline int Py_IsFinalizing() {
   return _Py_IsFinalizing();
 }
 #endif
+#endif // PYTHONCAPI_COMPAT
 
 namespace folly::python {
 

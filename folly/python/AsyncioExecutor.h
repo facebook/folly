@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include <Python.h>
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/io/async/NotificationQueue.h>
+#include <folly/python/Weak.h>
 
 namespace folly {
 namespace python {
@@ -43,7 +43,7 @@ class AsyncioExecutor : public DrivableExecutor {
      * If python is finalizing, calling scheduled functions MAY segfault.
      * Any code that could have been called is now inconsequential.
      */
-    if (!isPyFinalizing()) {
+    if ((isLinked() && !Py_IsFinalizing()) || !isLinked()) {
       while (keepAliveCounter_ > 0) {
         drive();
         // Note: We're busy waiting for new callbacks (not ideal at all)
@@ -75,16 +75,6 @@ class AsyncioExecutor : public DrivableExecutor {
   }
 
  private:
-  static bool isPyFinalizing() noexcept {
-#if PY_VERSION_HEX <= 0x03070000
-    return false;
-#elif PY_VERSION_HEX < 0x030D0000
-    return _Py_IsFinalizing();
-#else
-    return Py_IsFinalizing();
-#endif
-  }
-
   std::atomic<size_t> keepAliveCounter_{1};
 };
 
