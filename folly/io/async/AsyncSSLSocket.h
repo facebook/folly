@@ -397,7 +397,7 @@ class AsyncSSLSocket : public AsyncSocket {
       const std::vector<std::string>& supportedProtocols);
 
   std::string getSecurityProtocol() const override {
-    if (sslState_ == STATE_UNENCRYPTED) {
+    if (sslState_ == SSLStateEnum::STATE_UNENCRYPTED) {
       return "";
     }
     return "TLS";
@@ -873,7 +873,7 @@ class AsyncSSLSocket : public AsyncSocket {
   // Only enable if security negotiation is deferred
   // zero copy is not supported by openssl.
   bool setZeroCopy(bool enable) override {
-    if (sslState_ == STATE_UNENCRYPTED) {
+    if (sslState_ == SSLStateEnum::STATE_UNENCRYPTED) {
       return AsyncSocket::setZeroCopy(enable);
     }
     return false;
@@ -988,7 +988,7 @@ class AsyncSSLSocket : public AsyncSocket {
   // to disable client-initiated renegotiation.
   bool handshakeComplete_{false};
   bool renegotiateAttempted_{false};
-  SSLStateEnum sslState_{STATE_UNINIT};
+  SSLStateEnum sslState_{SSLStateEnum::STATE_UNINIT};
   std::shared_ptr<const folly::SSLContext> ctx_;
   // Callback for SSL_accept() or SSL_connect()
   HandshakeCB* handshakeCallback_{nullptr};
