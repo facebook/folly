@@ -21,12 +21,18 @@
 
 #pragma once
 
-#include <Python.h>
 #include <folly/Function.h>
 #include <folly/fibers/FiberManagerInternal.h>
+#include <folly/python/Weak.h>
 
 namespace folly {
 namespace python {
+
+namespace fibers_detail {
+extern folly::Function<folly::fibers::FiberManager*(
+    const folly::fibers::FiberManager::Options&)>
+    get_fiber_manager;
+} // namespace fibers_detail
 
 // Must be called from main context
 folly::fibers::FiberManager* getFiberManager(
@@ -45,8 +51,8 @@ void bridgeFibers(
   auto* fiberManager = getFiberManager();
   // We are handing over a pointer to a python object to c++ and need
   // to make sure it isn't removed by python in that time.
-  Py_INCREF(userData);
-  auto guard = folly::makeGuard([=] { Py_DECREF(userData); });
+  Py_IncRef(userData);
+  auto guard = folly::makeGuard([=] { Py_DecRef(userData); });
   fiberManager->addTask(
       [function = std::move(function),
        callback = std::move(callback),

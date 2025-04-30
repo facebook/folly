@@ -22,11 +22,13 @@ from libcpp.cast cimport (
     dynamic_cast,
 )
 from folly.executor cimport cAsyncioExecutor
-from folly.fiber_manager cimport (
-    cFiberManager,
-    cLoopController,
-    cAsyncioLoopController,
-    cFiberManagerOptions)
+# These are implicitly pulled in because its the same name
+#from folly.fiber_manager cimport (
+#    cFiberManager,
+#    cLoopController,
+#    cAsyncioLoopController,
+#    cFiberManagerOptions)
+from folly.fibers cimport get_fiber_manager 
 from weakref import WeakKeyDictionary
 
 
@@ -68,7 +70,7 @@ cdef class FiberManager:
         self.cManager.reset()
 
 
-cdef cFiberManager* get_fiber_manager(const cFiberManagerOptions& opts):
+cdef cFiberManager* get_fiber_manager_impl(const cFiberManagerOptions& opts):
     global last_loop, last_manager
 
     loop = asyncio.get_event_loop()
@@ -86,3 +88,6 @@ cdef cFiberManager* get_fiber_manager(const cFiberManagerOptions& opts):
         last_loop = PyWeakref_NewRef(loop, clean_last_manager)
         last_manager = manager
     return manager.cManager.get()
+
+# Tell C++ about our impl
+get_fiber_manager = get_fiber_manager_impl

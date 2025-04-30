@@ -14,6 +14,7 @@
 
 from cpython.ref cimport PyObject
 from folly cimport cFollyTry
+from folly.fiber_manager cimport cFiberManager, cFiberManagerOptions
 
 cdef extern from "folly/python/fibers.h" namespace "folly::python":
     void bridgeFibers "folly::python::bridgeFibers"[T](
@@ -21,3 +22,7 @@ cdef extern from "folly/python/fibers.h" namespace "folly::python":
         void(*)(cFollyTry[T]&&, PyObject*),
         PyObject* pyFuture
     )
+
+cdef extern from "folly/python/fibers.h" namespace "folly::python::fibers_detail":
+    # This is what a function ptr looks like in pxd language. 
+    cdef cFiberManager*(*get_fiber_manager)(const cFiberManagerOptions& opts)
