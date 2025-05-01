@@ -19,7 +19,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <folly/python/Weak.h>
+#include <Python.h>
 
 #include <folly/Conv.h>
 #include <folly/ScopeGuard.h>
@@ -32,8 +32,8 @@ std::string pyObjectToString(PyObject* obj) {
   constexpr StringPiece kConversionFail = "Error conversion failed";
   PyObject *pyStr, *pyBytes;
   SCOPE_EXIT {
-    Py_DecRef(pyStr);
-    Py_DecRef(pyBytes);
+    Py_XDECREF(pyStr);
+    Py_XDECREF(pyBytes);
     // Swallow any errors that arise in this function
     PyErr_Clear();
   };
@@ -44,12 +44,16 @@ std::string pyObjectToString(PyObject* obj) {
   }
 
   char* cStr = nullptr;
+#if PY_VERSION_HEX < 0x0300000
+  cStr = PyString_AsString(pyStr);
+#else
   pyBytes = PyUnicode_AsEncodedString(pyStr, "utf-8", "strict");
   if (pyBytes == nullptr) {
     return std::string(kConversionFail);
   }
 
   cStr = PyBytes_AsString(pyBytes);
+#endif
 
   if (cStr == nullptr) {
     return std::string(kConversionFail);
@@ -63,9 +67,9 @@ std::string pyObjectToString(PyObject* obj) {
 void handlePythonError(StringPiece errPrefix) {
   PyObject *ptype, *pvalue, *ptraceback;
   SCOPE_EXIT {
-    Py_DecRef(ptype);
-    Py_DecRef(pvalue);
-    Py_DecRef(ptraceback);
+    Py_XDECREF(ptype);
+    Py_XDECREF(pvalue);
+    Py_XDECREF(ptraceback);
   };
   /**
    * PyErr_Fetch will clear the error indicator (which *should* be set here, but
