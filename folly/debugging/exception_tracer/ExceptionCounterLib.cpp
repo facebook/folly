@@ -20,8 +20,8 @@
 #include <unordered_map>
 
 #include <folly/Range.h>
+#include <folly/SingletonThreadLocal.h>
 #include <folly/Synchronized.h>
-#include <folly/ThreadLocal.h>
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/synchronization/RWSpinLock.h>
 
@@ -63,7 +63,8 @@ struct ExceptionStatsStorage {
 
 class Tag {};
 
-folly::ThreadLocal<ExceptionStatsStorage, Tag> gExceptionStats;
+using ExceptionStatsTL =
+    folly::SingletonThreadLocal<ExceptionStatsStorage, Tag>;
 
 } // namespace
 
@@ -72,7 +73,7 @@ namespace exception_tracer {
 
 std::vector<ExceptionStats> getExceptionStatistics() {
   ExceptionStatsHolderType accumulator;
-  for (auto& threadStats : gExceptionStats.accessAllThreads()) {
+  for (auto& threadStats : ExceptionStatsTL::accessAllThreads()) {
     threadStats.appendTo(accumulator);
   }
 
@@ -125,7 +126,7 @@ void throwHandler(void*, std::type_info* exType, void (**)(void*)) noexcept {
   auto exceptionId =
       folly::hash::SpookyHashV2::Hash64(frames, (n + 1) * sizeof(frames[0]), 0);
 
-  gExceptionStats->statsHolder.withWLock([&](auto& holder) {
+  ExceptionStatsTL::get().statsHolder.withWLock([&](auto& holder) {
     auto it = holder.find(exceptionId);
     if (it != holder.end()) {
       ++it->second.count;
