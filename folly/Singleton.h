@@ -129,6 +129,11 @@
 /// Singletons won't be recreated after destroyInstances call. If you
 /// want to re-enable singleton creation (say after fork was called) you
 /// should call reenableInstances.
+///
+/// NOTE: Calling `try_get()` **before**
+/// `SingletonVault::registrationComplete()` has completed (i.e. before
+/// `folly::init()` completed) is a logic error. In this case, `try_get()`
+///  will abort via `singletonWarnCreateBeforeRegistrationCompleteAndAbort()`.
 /// @class folly::Singleton
 
 #pragma once

@@ -1232,3 +1232,18 @@ auto cancelOnDestructionSingleton =
 TEST(Singleton, CancelOnDestruction) {
   cancelOnDestructionSingleton.try_get();
 }
+
+TEST(Singleton, CreationBeforeRegistrationCompleteAborts) {
+  struct Dummy {};
+  struct VaultTag {};
+  struct Tag {};
+
+  folly::SingletonVault* vault = folly::SingletonVault::singleton<VaultTag>();
+  std::ignore = vault;
+
+  static folly::Singleton<Dummy, Tag, VaultTag> lateSingleton;
+
+  EXPECT_DEATH(
+      { std::ignore = lateSingleton.try_get(); },
+      "singletonWarnCreateBeforeRegistrationCompleteAndAbort");
+}
