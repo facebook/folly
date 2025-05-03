@@ -55,9 +55,9 @@ namespace folly {
  * @note LifoSem wakes up threads in Lifo order - i.e. there are only few
  * threads as necessary running, and we always try to reuse the same few threads
  * for better cache locality.
- * Inactive threads have their stack madvised away. This works quite well in
- * combination with Lifosem - it almost doesn't matter if more threads than are
- * necessary are specified at startup.
+ * All Folly BlockingQueue implementations use either LifoSem or
+ * ThrottledLifoSem, which madvise away the stack of threads that are inactive
+ * for a long time.
  *
  * @note Supports priorities - priorities are implemented as multiple queues -
  * each worker thread checks the highest priority queue first. Threads

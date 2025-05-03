@@ -43,7 +43,7 @@
 <ul>
 <li>A single queue backed by folly/LifoSem and folly/MPMC queue.  Since there is only a single queue, contention can be quite high, since all the worker threads and all the producer threads hit the same queue.  MPMC queue excels in this situation.  MPMC queue dictates a max queue size.</li>
 <li>LifoSem wakes up threads in Lifo order - i.e. there are only few threads as necessary running, and we always try to reuse the same few threads for better cache locality.</li>
-<li>Inactive threads have their stack madvised away.  This works quite well in combination with Lifosem - it almost doesn&#039;t matter if more threads than are necessary are specified at startup.</li>
+<li>All Folly BlockingQueue implementations use either LifoSem or ThrottledLifoSem, which madvise away the stack of threads that are inactive for a long time.</li>
 <li>stop() will finish all outstanding tasks at exit</li>
 <li>Supports priorities - priorities are implemented as multiple queues - each worker thread checks the highest priority queue first.  Threads themselves don&#039;t have priorities set, so a series of long running low priority tasks could still hog all the threads.  (at last check pthreads thread priorities didn&#039;t work very well)</li>
 </ul>
@@ -60,4 +60,3 @@
 
 <p>PoolStats are provided to get task count, running time, waiting time, etc.</p>
 </section>
-
