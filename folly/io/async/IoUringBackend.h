@@ -296,7 +296,9 @@ class IoUringBackend : public EventBaseBackendBase {
   // from EventBaseBackendBase
   int getPollableFd() const override { return ioRing_.ring_fd; }
   int getNapiId() const override { return napiId_; }
-  int issueRecvZc(int fd, void* buf, unsigned int nbytes) override;
+  void queueRecvZc(
+      int fd, void* buf, unsigned long nbytes, RecvZcCallback&& callback)
+      override;
 
   event_base* getEventBase() override { return nullptr; }
 

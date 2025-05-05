@@ -827,6 +827,62 @@ TEST_P(AsyncSocketConnectTest, ConnectAndRead) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
+TEST_P(AsyncSocketConnectTest, ConnectAndReadZC) {
+  TestServer server;
+
+  // connect()
+  EventBase::Options opt;
+  opt.setBackendFactory([]() -> std::unique_ptr<folly::EventBaseBackendBase> {
+    return std::make_unique<TestEventBaseBackend>();
+  });
+  EventBase evb(std::move(opt));
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  if (GetParam() == TFOState::ENABLED) {
+    socket->enableTFO();
+  }
+  auto backend = dynamic_cast<TestEventBaseBackend*>(evb.getBackend());
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+
+  ReadCallback rcb;
+  rcb.setReadMode(AsyncReader::ReadCallback::ReadMode::ReadZC);
+  socket->setReadCB(&rcb);
+  if (GetParam() == TFOState::ENABLED) {
+    // Trigger a connection
+    socket->writeChain(nullptr, IOBuf::copyBuffer("hey"));
+  }
+
+  // Even though we haven't looped yet, we should be able to accept
+  // the connection and send data to it.
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+  uint8_t buf[128];
+  memset(buf, 'a', sizeof(buf));
+  acceptedSocket->write(buf, sizeof(buf));
+  acceptedSocket->flush();
+  acceptedSocket->close();
+
+  // Loop, although there shouldn't be anything to do.
+  evb.loop();
+
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+  ASSERT_TRUE(backend->queued);
+  // ReadZC is async and oneshot. To prevent level triggering of the socket
+  // while the request is issued async but not yet completed, the callback is
+  // uninstalled.
+  ASSERT_EQ(socket->getReadCallback(), nullptr);
+
+  // The real backend would call this on completion of the ReadZC request. But
+  // in the test we have to call it explicitly.
+  backend->recvZcCb(backend->bytes);
+  ASSERT_EQ(rcb.buffers.size(), 1);
+  ASSERT_EQ(rcb.buffers[0].length, sizeof(buf));
+  ASSERT_EQ(memcmp(rcb.buffers[0].buffer, buf, sizeof(buf)), 0);
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
+}
+
 TEST_P(AsyncSocketConnectTest, ConnectAndReadv) {
   TestServer server;
 

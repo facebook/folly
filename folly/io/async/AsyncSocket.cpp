@@ -2727,9 +2727,30 @@ AsyncSocket::ReadResult AsyncSocket::performReadMsg(
 
   ssize_t bytes = 0;
   if (readMode == AsyncReader::ReadCallback::ReadMode::ReadZC) {
+    DestructorGuard dg(this);
+    // ReadZC is async, where the current code path triggered from POLLIN will
+    // issue the request but the completion happens at a later point.
+    // AsyncSocket reads are level triggered so it is possible for another
+    // ReadZC request to be issued before an already issued request has
+    // completed. To fix this, unset the readCB.
+    auto readCallback = readCallback_;
+    setReadCB(nullptr);
     auto backend = getEventBase()->getBackend();
-    bytes = backend->issueRecvZc(
-        fd_.toFd(), msg.msg_iov[0].iov_base, msg.msg_iov[0].iov_len);
+    auto readZcCallback = [guard = std::move(dg), readCallback](ssize_t len) {
+      if (len < 0) {
+        AsyncSocketException ex(
+            AsyncSocketException::INTERNAL_ERROR, "ReadZC failed", len);
+        readCallback->readErr(ex);
+      } else {
+        readCallback->readDataAvailable(len);
+      }
+    };
+    backend->queueRecvZc(
+        fd_.toFd(),
+        msg.msg_iov[0].iov_base,
+        msg.msg_iov[0].iov_len,
+        std::move(readZcCallback));
+    return ReadResult(READ_ASYNC);
   } else if (readAncillaryDataCallback_ == nullptr && msg.msg_iovlen == 1) {
     bytes = netops_->recv(
         fd_, msg.msg_iov[0].iov_base, msg.msg_iov[0].iov_len, MSG_DONTWAIT);
@@ -3300,6 +3321,8 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
         withAddr("recv() failed"),
         errnoCopy);
     return failRead(__func__, ex);
+  } else if (bytesRead == READ_ASYNC) {
+    return ReadCode::READ_DONE;
   } else {
     assert(bytesRead == READ_EOF);
     readErr_ = READ_EOF;

@@ -19,6 +19,7 @@
 #include <memory>
 
 #include <folly/io/async/AsyncSocket.h>
+#include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/test/BlockingSocket.h>
 #include <folly/io/async/test/CallbackStateEnum.h>
 #include <folly/io/async/test/ConnCallback.h>
@@ -181,6 +182,45 @@ class ReadCallback : public folly::AsyncTransport::ReadCallback {
   Buffer currentBuffer;
   VoidCallback dataAvailableCallback;
   const size_t maxBufferSz;
+};
+
+class TestEventBaseBackend : public folly::EventBaseBackendBase {
+ public:
+  explicit TestEventBaseBackend() : evb_(EventBase::getDefaultBackend()) {}
+
+  event_base* getEventBase() override { return evb_->getEventBase(); }
+  int eb_event_base_loop(int flags) override {
+    return evb_->eb_event_base_loop(flags);
+  }
+  int eb_event_base_loopbreak() override {
+    return evb_->eb_event_base_loopbreak();
+  }
+
+  int eb_event_add(Event& event, const struct timeval* timeout) override {
+    return evb_->eb_event_add(event, timeout);
+  }
+  int eb_event_del(Event& event) override { return evb_->eb_event_del(event); }
+
+  bool eb_event_active(Event& event, int res) override {
+    return evb_->eb_event_active(event, res);
+  }
+
+  void queueRecvZc(
+      int fd,
+      void* buf,
+      unsigned long nbytes,
+      EventBaseBackendBase::RecvZcCallback&& callback) override {
+    queued = true;
+    bytes = netops::recv(NetworkSocket::fromFd(fd), buf, nbytes, MSG_DONTWAIT);
+    recvZcCb = std::move(callback);
+  }
+
+  bool queued{false};
+  ssize_t bytes{0};
+  EventBaseBackendBase::RecvZcCallback recvZcCb;
+
+ private:
+  std::unique_ptr<folly::EventBaseBackendBase> evb_;
 };
 
 class ReadvCallback : public folly::AsyncTransport::ReadCallback {

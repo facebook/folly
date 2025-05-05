@@ -1559,6 +1559,7 @@ class AsyncSocket : public AsyncSocketTransport {
     READ_ERROR = -1,
     READ_BLOCKING = -2,
     READ_NO_ERROR = -3,
+    READ_ASYNC = -4,
   };
 
   enum WriteResultEnum {

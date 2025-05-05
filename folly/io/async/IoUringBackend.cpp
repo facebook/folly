@@ -1894,17 +1894,16 @@ void IoUringBackend::queueRecvmsg(
   submitImmediateIoSqe(*ioSqe);
 }
 
-int IoUringBackend::issueRecvZc(int fd, void* buf, unsigned int nbytes) {
+void IoUringBackend::queueRecvZc(
+    int fd, void* buf, unsigned long nbytes, RecvZcCallback&& cb) {
   iovec iov = {
       .iov_base = buf,
       .iov_len = nbytes,
   };
-  RecvzcIoSqe ioSqe{this, fd, &iov, 0, nullptr};
-  ioSqe.backendCb_ = processRecvZcCB;
+  auto* ioSqe = new RecvzcIoSqe(this, fd, &iov, 0, std::move(cb));
+  ioSqe->backendCb_ = processRecvZcCB;
 
-  submitNow(ioSqe);
-  processCompleted();
-  return ioSqe.res_;
+  submitImmediateIoSqe(*ioSqe);
 }
 
 void IoUringBackend::processFileOp(IoSqe* sqe, int res) noexcept {
@@ -1926,6 +1925,7 @@ void IoUringBackend::processRecvZc(
 
   if (cqe->res < 0) {
     ioSqe->res_ = cqe->res;
+    ioSqe->cb_(cqe->res);
     ioSqe->done();
     return;
   }
@@ -1939,6 +1939,7 @@ void IoUringBackend::processRecvZc(
   ioSqe->offset_ += cqe->res;
   if (static_cast<size_t>(ioSqe->offset_) == iov->iov_len) {
     ioSqe->res_ = cqe->res;
+    ioSqe->cb_(cqe->res);
     ioSqe->done();
   }
 }
