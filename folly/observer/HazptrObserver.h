@@ -138,6 +138,8 @@ class HazptrObserver {
     return LocalSnapshot(state_, domain_);
   }
 
+  const Observer<T>& getUnderlyingObserver() const { return observer_; }
+
  private:
   struct State : public hazptr_obj_base<State, Atom> {
     explicit State(Snapshot<T> snapshot) : snapshot_(std::move(snapshot)) {}
