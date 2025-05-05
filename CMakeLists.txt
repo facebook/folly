@@ -1,1232 +1,2611 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
-# We use the GoogleTest module if it is available (only in CMake 3.9+)
-# It requires CMP0054 and CMP0057 to be enabled.
-if (POLICY CMP0054)
-  cmake_policy(SET CMP0054 NEW)
-endif()
-if (POLICY CMP0057)
-  cmake_policy(SET CMP0057 NEW)
-endif()
-
-# CMP0075 Include file check macros honor CMAKE_REQUIRED_LIBRARIES
-if(POLICY CMP0075)
-  cmake_policy(SET CMP0075 NEW)
-endif()
-
-# includes
-set(CMAKE_MODULE_PATH
-  "${CMAKE_CURRENT_SOURCE_DIR}/CMake"
-  # for in-fbsource builds
-  "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/CMake"
-  # For shipit-transformed builds
-  "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/CMake"
-  ${CMAKE_MODULE_PATH})
-
-# package information
-set(PACKAGE_NAME      "folly")
-if (NOT DEFINED PACKAGE_VERSION)
-  set(PACKAGE_VERSION   "0.58.0-dev")
-endif()
-set(PACKAGE_STRING    "${PACKAGE_NAME} ${PACKAGE_VERSION}")
-set(PACKAGE_TARNAME   "${PACKAGE_NAME}-${PACKAGE_VERSION}")
-set(PACKAGE_BUGREPORT "https://github.com/facebook/folly/issues")
-
-# 150+ tests in the root folder anyone? No? I didn't think so.
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-project(${PACKAGE_NAME} CXX C ASM)
-
-set(INCLUDE_INSTALL_DIR include CACHE STRING
-    "The subdirectory where header files should be installed")
-set(LIB_INSTALL_DIR lib CACHE STRING
-    "The subdirectory where libraries should be installed")
-set(BIN_INSTALL_DIR bin CACHE STRING
-    "The subdirectory where binaries should be installed")
-set(CMAKE_INSTALL_DIR lib/cmake/folly CACHE STRING
-    "The subdirectory where CMake package config files should be installed")
-
-option(BUILD_SHARED_LIBS
-  "If enabled, build folly as a shared library.  \
-  This is generally discouraged, since folly does not commit to having \
-  a stable ABI."
-  OFF
-)
-# Mark BUILD_SHARED_LIBS as an "advanced" option, since enabling it
-# is generally discouraged.
-mark_as_advanced(BUILD_SHARED_LIBS)
-set(FOLLY_SUPPORT_SHARED_LIBRARY "${BUILD_SHARED_LIBS}")
-
-include(FBBuildOptions)
-fb_activate_static_library_option()
-
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  message(STATUS "setting C++ standard to C++${CMAKE_CXX_STANDARD}")
-endif()
-
-if(NOT DEFINED IS_X86_64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
-  set(IS_X86_64_ARCH TRUE)
-else()
-  set(IS_X86_64_ARCH FALSE)
-endif()
-
-if(NOT DEFINED IS_AARCH64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
-  set(IS_AARCH64_ARCH TRUE)
-else()
-  set(IS_AARCH64_ARCH FALSE)
-endif()
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  # Check target architecture
-  if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(FATAL_ERROR "Folly requires a 64bit target architecture.")
-  endif()
-
-  if (MSVC_VERSION LESS 1900)
-    message(
-      FATAL_ERROR
-      "This build script only supports building Folly on 64-bit Windows with "
-      "at least Visual Studio 2017. "
-      "MSVC version '${MSVC_VERSION}' is not supported."
-    )
-  endif()
-endif()
-
-set(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
-set(
-  FOLLY_DIR_PREFIXES
-  "${CMAKE_CURRENT_SOURCE_DIR}:${CMAKE_CURRENT_BINARY_DIR}"
-)
-# https://gitlab.kitware.com/cmake/cmake/-/issues/18580#note_1405108
-string(REGEX REPLACE "(.)" "\\\\\\1" FOLLY_DIR_REGEX_ESCAPED "${FOLLY_DIR}")
-
-include(GNUInstallDirs)
-
-set(CMAKE_THREAD_PREFER_PTHREAD ON)
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-set(FOLLY_HAVE_PTHREAD "${CMAKE_USE_PTHREADS_INIT}")
-list(APPEND CMAKE_REQUIRED_LIBRARIES Threads::Threads)
-list(APPEND FOLLY_LINK_LIBRARIES Threads::Threads)
-
-if(MSVC)
-  include(FollyCompilerMSVC)
-else()
-  include(FollyCompilerUnix)
-endif()
-include(FollyFunctions)
-
-include(folly-deps) # Find the required packages
-include(FollyConfigChecks)
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
-)
-
-# Define FOLLY_XLOG_STRIP_PREFIXES when compiling our sources so that
-# folly/logging will automatically choose the correct log category names,
-# using only the relative portion of the source file name inside the
-# folly repository.
-set_property(
-  DIRECTORY
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  APPEND
-  PROPERTY
-  COMPILE_DEFINITIONS
-  "FOLLY_XLOG_STRIP_PREFIXES=\"${CMAKE_SOURCE_DIR}:${CMAKE_BINARY_DIR}\""
-)
-
-# We currently build the main libfolly library by finding all sources
-# and header files.  We then exclude specific files below.
-#
-# In the future it would perhaps be nicer to explicitly list the files we want
-# to include, and to move the source lists in to separate per-subdirectory
-# CMakeLists.txt files.
-auto_sources(files "*.cpp" "RECURSE" "${FOLLY_DIR}")
-auto_sources(hfiles "*.h" "RECURSE" "${FOLLY_DIR}")
-
-# Exclude tests, benchmarks, and other standalone utility executables from the
-# library sources.  Test sources are listed separately below.
-REMOVE_MATCHES_FROM_LISTS(files hfiles
-  MATCHES
-    "^${FOLLY_DIR_REGEX_ESCAPED}/build/"
-    "^${FOLLY_DIR_REGEX_ESCAPED}/docs/examples/"
-    "^${FOLLY_DIR_REGEX_ESCAPED}/logging/example/"
-    "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?test/"
-    "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?tool/"
-    "^${FOLLY_DIR_REGEX_ESCAPED}/facebook/"
-    "Benchmark.cpp$"
-    "Test.cpp$"
-)
-
-# Exclude exception tracer, which is necessary to statically link libstdc++
-if (${FOLLY_NO_EXCEPTION_TRACER})
-  REMOVE_MATCHES_FROM_LISTS(files hfiles
-    MATCHES
-      "^${FOLLY_DIR_REGEX_ESCAPED}/debugging/exception_tracer/"
-  )
-endif()
-
-list(REMOVE_ITEM files
-  ${FOLLY_DIR}/python/error.cpp
-  ${FOLLY_DIR}/python/executor.cpp
-  ${FOLLY_DIR}/python/fibers.cpp
-  ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
-  ${FOLLY_DIR}/python/iobuf.cpp
-  ${FOLLY_DIR}/python/iobuf_ext.cpp
-  ${FOLLY_DIR}/python/ProactorExecutor.cpp
-)
-list(REMOVE_ITEM hfiles
-  ${FOLLY_DIR}/python/fibers.h
-  ${FOLLY_DIR}/python/GILAwareManualExecutor.h
-  ${FOLLY_DIR}/python/iobuf_ext.h
-  ${FOLLY_DIR}/python/ProactorExecutor.h
-)
-
-# Explicitly include utility library code from inside
-# test subdirs
-list(APPEND files
-  ${FOLLY_DIR}/io/async/test/ScopedBoundPort.cpp
-  ${FOLLY_DIR}/io/async/test/SocketPair.cpp
-  ${FOLLY_DIR}/io/async/test/TimeUtil.cpp
-)
-list(APPEND hfiles
-  ${FOLLY_DIR}/container/test/F14TestUtil.h
-  ${FOLLY_DIR}/container/test/TrackingTypes.h
-  ${FOLLY_DIR}/io/async/test/AsyncSSLSocketTest.h
-  ${FOLLY_DIR}/io/async/test/AsyncSocketTest.h
-  ${FOLLY_DIR}/io/async/test/AsyncSocketTest2.h
-  ${FOLLY_DIR}/io/async/test/BlockingSocket.h
-  ${FOLLY_DIR}/io/async/test/CallbackStateEnum.h
-  ${FOLLY_DIR}/io/async/test/ConnCallback.h
-  ${FOLLY_DIR}/io/async/test/MockAsyncSocket.h
-  ${FOLLY_DIR}/io/async/test/MockAsyncServerSocket.h
-  ${FOLLY_DIR}/io/async/test/MockAsyncSSLSocket.h
-  ${FOLLY_DIR}/io/async/test/MockAsyncTransport.h
-  ${FOLLY_DIR}/io/async/test/MockAsyncUDPSocket.h
-  ${FOLLY_DIR}/io/async/test/MockTimeoutManager.h
-  ${FOLLY_DIR}/io/async/test/ScopedBoundPort.h
-  ${FOLLY_DIR}/io/async/test/SocketPair.h
-  ${FOLLY_DIR}/io/async/test/TFOUtil.h
-  ${FOLLY_DIR}/io/async/test/TestSSLServer.h
-  ${FOLLY_DIR}/io/async/test/TimeUtil.h
-  ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
-  ${FOLLY_DIR}/io/async/test/Util.h
-  ${FOLLY_DIR}/synchronization/test/Semaphore.h
-  ${FOLLY_DIR}/test/DeterministicSchedule.h
-  ${FOLLY_DIR}/test/TestUtils.h
-)
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  check_cxx_compiler_flag(-fcoroutines COMPILER_HAS_F_COROUTINES)
-  if (COMPILER_HAS_F_COROUTINES)
-    message(
-      STATUS
-      "GCC has support for C++ coroutines, setting flag for Folly build."
-    )
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fcoroutines>)
-  else()
-    message(
-      STATUS
-      "GCC does not have support for C++ coroutines, "
-      "disabling Folly coroutine support."
-    )
-  endif()
-endif()
-
-# base64 SIMD files compilation
-if (NOT(${IS_X86_64_ARCH}))
-  message(
-    STATUS
-    "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
-    "skipping building SSE4.2 version of base64"
-  )
-  list(REMOVE_ITEM files ${FOLLY_DIR}/detail/base64_detail/Base64_SSE4_2.cpp)
-else()
-  message(
-    STATUS
-    "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
-    "building SSE4.2 version of base64"
-  )
-  # MSVC does not have a way to enable just sse4.2, only avx.
-  # If we don't pass the flag, everything will still work but no warnings
-  if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set_source_files_properties(
-      ${FOLLY_DIR}/detail/base64_detail/Base64_SSE4_2.cpp
-      PROPERTIES
-      COMPILE_FLAGS
-        -msse4.2
-    )
-  endif()
-endif()
-
-if (${LIBSODIUM_FOUND})
-  if (NOT(${IS_X86_64_ARCH}))
-    message(
-      STATUS
-      "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
-      "skipping setting SSE2/AVX2 compile flags for LtHash SIMD code"
-    )
-  else()
-    message(
-      STATUS
-      "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
-      "setting SSE2/AVX2 compile flags for LtHash SIMD code"
-    )
-    set_source_files_properties(
-      ${FOLLY_DIR}/crypto/detail/MathOperation_AVX2.cpp
-      PROPERTIES
-      COMPILE_FLAGS
-      -mavx -mavx2 -msse2
-    )
-    set_source_files_properties(
-      ${FOLLY_DIR}/crypto/detail/MathOperation_Simple.cpp
-      PROPERTIES
-      COMPILE_FLAGS
-      -mno-avx -mno-avx2 -mno-sse2
-    )
-    set_source_files_properties(
-      ${FOLLY_DIR}/crypto/detail/MathOperation_SSE2.cpp
-      PROPERTIES
-      COMPILE_FLAGS
-      -mno-avx -mno-avx2 -msse2
-    )
-  endif()
-else()
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/crypto/Blake2xb.cpp
-    ${FOLLY_DIR}/crypto/detail/MathOperation_AVX2.cpp
-    ${FOLLY_DIR}/crypto/detail/MathOperation_Simple.cpp
-    ${FOLLY_DIR}/crypto/detail/MathOperation_SSE2.cpp
-    ${FOLLY_DIR}/crypto/LtHash.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/crypto/Blake2xb.h
-    ${FOLLY_DIR}/crypto/detail/LtHashInternal.h
-    ${FOLLY_DIR}/crypto/LtHash-inl.h
-    ${FOLLY_DIR}/crypto/LtHash.h
-  )
-endif()
-if (NOT ${LIBGFLAGS_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/NestedCommandLineApp.cpp
-    ${FOLLY_DIR}/experimental/ProgramOptions.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/NestedCommandLineApp.h
-    ${FOLLY_DIR}/experimental/ProgramOptions.h
-  )
-endif()
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/Subprocess.cpp
-  )
-endif()
-
-set(PCLMUL_FILES
-  ${FOLLY_DIR}/external/fast-crc32/avx512_crc32c_v8s3x4.cpp
-  ${FOLLY_DIR}/external/fast-crc32/sse_crc32c_v8s3x3.cpp
-  ${FOLLY_DIR}/hash/detail/ChecksumDetail.cpp
-  ${FOLLY_DIR}/hash/detail/Crc32CombineDetail.cpp
-  ${FOLLY_DIR}/hash/detail/Crc32cDetail.cpp
-)
-check_cxx_compiler_flag(-mpclmul COMPILER_HAS_M_PCLMUL)
-if (COMPILER_HAS_M_PCLMUL)
-  message(
-    STATUS
-    "compiler has flag pclmul, setting compile flag for ${PCLMUL_FILES}"
-  )
-  set_source_files_properties(
-    ${PCLMUL_FILES}
-    PROPERTIES
-    COMPILE_OPTIONS
-    -mpclmul
-  )
-else()
-  message(
-    STATUS
-    "compiler does not have flag pclmul, skipping setting compile flags for ${PCLMUL_FILES}"
-  )
-endif()
-
-if (IS_X86_64_ARCH AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  message(
-    STATUS
-    "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
-    "setting AVX512 compile flags for crc32c SIMD code"
-  )
-  set_property(
-    SOURCE
-    ${FOLLY_DIR}/external/fast-crc32/avx512_crc32c_v8s3x4.cpp
-    APPEND PROPERTY COMPILE_OPTIONS
-    "-mavx512f" "-mavx512vl"
-  )
-else()
-  # Windows doesn't nead the extra flags.
-  message(
-    STATUS
-    "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
-    "skipping setting AVX512 compile flags for crc32c SIMD code"
-  )
-endif()
-
-list(APPEND folly_base_files
-  ${files} ${hfiles}
-)
-
-if (IS_X86_64_ARCH AND NOT MSVC)
-  set_property(
-    SOURCE
-    ${FOLLY_DIR}/memcpy.S
-    APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
-  )
-  list(APPEND folly_base_files
-    ${FOLLY_DIR}/memcpy.S
-  )
-endif()
-
-set(ARM_AOR_ASM_FILES
-  ${FOLLY_DIR}/external/aor/memcpy-advsimd.S
-  ${FOLLY_DIR}/external/aor/memcpy-armv8.S
-  ${FOLLY_DIR}/external/aor/memcpy_sve.S
-  ${FOLLY_DIR}/external/aor/memset-advsimd.S
-)
-if (IS_AARCH64_ARCH)
-  foreach (AOR_FILE IN LISTS ARM_AOR_ASM_FILES)
-    set_property(
-      SOURCE
-      ${AOR_FILE}
-      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
-    )
-    list(APPEND folly_base_files
-      ${AOR_FILE}
-    )
-  endforeach()
-endif()
-
-add_library(folly_base OBJECT
-  ${folly_base_files}
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
-)
-if (BUILD_SHARED_LIBS)
-  set_property(TARGET folly_base PROPERTY POSITION_INDEPENDENT_CODE ON)
-endif()
-auto_source_group(folly ${FOLLY_DIR} ${files} ${hfiles})
-apply_folly_compile_options_to_target(folly_base)
-# Add the generated files to the correct source group.
-source_group("folly" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)
-
-# Generate pkg-config variables from folly_deps before we add our own
-# build/install-time include directory generator expressions
-include(GenPkgConfig)
-gen_pkgconfig_vars(FOLLY_PKGCONFIG folly_deps)
-
-target_include_directories(folly_deps
-  BEFORE
-  INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-)
-target_include_directories(folly_deps
-  INTERFACE
-    $<INSTALL_INTERFACE:include>
-)
-
-target_include_directories(folly_base
-  PUBLIC
-    $<TARGET_PROPERTY:folly_deps,INTERFACE_INCLUDE_DIRECTORIES>
-)
-target_compile_definitions(folly_base
-  PUBLIC
-    $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
-)
-
-set(FOLLY_INSTALL_TARGETS folly folly_deps)
-
-option(PYTHON_EXTENSIONS
-  "Build Python Bindings for Folly, requires Cython and (BUILD_SHARED_LIBS=ON)"
-  OFF
-)
-
-add_library(folly
-  $<TARGET_OBJECTS:folly_base>
-)
-set_property(TARGET folly PROPERTY VERSION ${PACKAGE_VERSION})
-apply_folly_compile_options_to_target(folly)
-target_compile_features(folly INTERFACE cxx_generic_lambdas)
-
-target_link_libraries(folly PUBLIC folly_deps)
-
-# Test utilities exported for use by downstream projects
-add_library(folly_test_util
-  ${FOLLY_DIR}/test/DeterministicSchedule.cpp
-  ${FOLLY_DIR}/json/JsonTestUtil.cpp
-)
-set_property(TARGET folly_test_util PROPERTY VERSION ${PACKAGE_VERSION})
-target_link_libraries(folly_test_util
-  PUBLIC
-    ${BOOST_LIBRARIES}
-    folly
-    ${LIBGMOCK_LIBRARIES}
-)
-apply_folly_compile_options_to_target(folly_test_util)
-list(APPEND FOLLY_INSTALL_TARGETS folly_test_util)
-
-install(TARGETS ${FOLLY_INSTALL_TARGETS}
-  EXPORT folly
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION ${LIB_INSTALL_DIR}
-  ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
-auto_install_files(folly ${FOLLY_DIR}
-  ${hfiles}
-)
-install(
-  FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
-  DESTINATION ${INCLUDE_INSTALL_DIR}/folly
-  COMPONENT dev
-)
-
-# Generate the folly-config.cmake file for installation so that
-# downstream projects that use on folly can easily depend on it in their CMake
-# files using "find_package(folly CONFIG)"
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-  CMake/folly-config.cmake.in
-  folly-config.cmake
-  INSTALL_DESTINATION ${CMAKE_INSTALL_DIR}
-  PATH_VARS
-    INCLUDE_INSTALL_DIR
-    CMAKE_INSTALL_DIR
-)
-install(
-  FILES ${CMAKE_CURRENT_BINARY_DIR}/folly-config.cmake
-  DESTINATION ${CMAKE_INSTALL_DIR}
-  COMPONENT dev
-)
-install(
-  EXPORT folly
-  DESTINATION ${CMAKE_INSTALL_DIR}
-  NAMESPACE Folly::
-  FILE folly-targets.cmake
-  COMPONENT dev
-)
-
-# Generate a pkg-config file so that downstream projects that don't use
-# CMake can depend on folly using pkg-config.
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMake/libfolly.pc.in
-  ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc.gen
-  @ONLY
-)
-
-# Specify target to allow resolving generator expressions requiring
-# a target for CMake >=3.19. See #1414.
-# VERSION_GREATER_EQUAL isn't available before CMake 3.7.
-if(NOT CMAKE_VERSION VERSION_LESS 3.19)
-  set(target_arg TARGET folly_deps)
-endif()
-
-file(
-  GENERATE
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
-  INPUT ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc.gen
-  ${target_arg}
-)
-install(
-  FILES ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
-  DESTINATION ${LIB_INSTALL_DIR}/pkgconfig
-  COMPONENT dev
-)
-
-option(BUILD_TESTS "If enabled, compile the tests." OFF)
-option(BUILD_BENCHMARKS "If enabled, compile the benchmarks." OFF)
-option(BUILD_BROKEN_TESTS "If enabled, compile tests that are known to be broken." OFF)
-option(BUILD_HANGING_TESTS "If enabled, compile tests that are known to hang." OFF)
-option(BUILD_SLOW_TESTS "If enabled, compile tests that take a while to run in debug mode." OFF)
-if (BUILD_TESTS OR BUILD_BENCHMARKS)
-  option(USE_CMAKE_GOOGLE_TEST_INTEGRATION "If enabled, use the google test integration included in CMake." ON)
-  find_package(GMock MODULE REQUIRED)
-  find_package(GTest MODULE REQUIRED)
-  if (USE_CMAKE_GOOGLE_TEST_INTEGRATION)
-    include(GoogleTest OPTIONAL RESULT_VARIABLE HAVE_CMAKE_GTEST)
-    enable_testing()
-  else()
-    set(HAVE_CMAKE_GTEST OFF)
-  endif()
-
-  # The ThreadLocalTest code uses a helper shared library for one of its tests.
-  # This can only be built if folly itself was built as a shared library.
-  if (BUILD_SHARED_LIBS)
-    add_library(thread_local_test_lib MODULE
-      ${FOLLY_DIR}/test/ThreadLocalTestLib.cpp
-    )
-    set_target_properties(thread_local_test_lib PROPERTIES PREFIX "")
-    apply_folly_compile_options_to_target(thread_local_test_lib)
-    target_link_libraries(thread_local_test_lib PUBLIC folly)
-    target_include_directories(
-      thread_local_test_lib
-      PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-  endif()
-
-  add_library(folly_test_support
-    ${FOLLY_DIR}/test/common/TestMain.cpp
-    ${FOLLY_DIR}/test/FBVectorTestUtil.cpp
-    ${FOLLY_DIR}/test/DeterministicSchedule.cpp
-    ${FOLLY_DIR}/test/DeterministicSchedule.h
-    ${FOLLY_DIR}/test/SingletonTestStructs.cpp
-    ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
-    ${FOLLY_DIR}/test/SocketAddressTestHelper.h
-    ${FOLLY_DIR}/compression/test/CodingTestUtils.cpp
-    ${FOLLY_DIR}/container/test/F14TestUtil.h
-    ${FOLLY_DIR}/container/test/TrackingTypes.h
-    ${FOLLY_DIR}/futures/test/TestExecutor.cpp
-    ${FOLLY_DIR}/futures/test/TestExecutor.h
-    ${FOLLY_DIR}/io/async/test/BlockingSocket.h
-    ${FOLLY_DIR}/io/async/test/CallbackStateEnum.h
-    ${FOLLY_DIR}/io/async/test/ConnCallback.h
-    ${FOLLY_DIR}/io/async/test/MockAsyncServerSocket.h
-    ${FOLLY_DIR}/io/async/test/MockAsyncSocket.h
-    ${FOLLY_DIR}/io/async/test/MockAsyncSSLSocket.h
-    ${FOLLY_DIR}/io/async/test/MockAsyncTransport.h
-    ${FOLLY_DIR}/io/async/test/MockAsyncUDPSocket.h
-    ${FOLLY_DIR}/io/async/test/MockTimeoutManager.h
-    ${FOLLY_DIR}/io/async/test/ScopedBoundPort.cpp
-    ${FOLLY_DIR}/io/async/test/ScopedBoundPort.h
-    ${FOLLY_DIR}/io/async/test/SocketPair.cpp
-    ${FOLLY_DIR}/io/async/test/SocketPair.h
-    ${FOLLY_DIR}/io/async/test/SSLUtil.cpp
-    ${FOLLY_DIR}/io/async/test/SSLUtil.h
-    ${FOLLY_DIR}/io/async/test/TFOUtil.cpp
-    ${FOLLY_DIR}/io/async/test/TFOUtil.h
-    ${FOLLY_DIR}/io/async/test/TestSSLServer.cpp
-    ${FOLLY_DIR}/io/async/test/TestSSLServer.h
-    ${FOLLY_DIR}/io/async/test/TimeUtil.cpp
-    ${FOLLY_DIR}/io/async/test/TimeUtil.h
-    ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
-    ${FOLLY_DIR}/io/async/test/Util.h
-    ${FOLLY_DIR}/logging/test/ConfigHelpers.cpp
-    ${FOLLY_DIR}/logging/test/ConfigHelpers.h
-    ${FOLLY_DIR}/logging/test/TestLogHandler.cpp
-    ${FOLLY_DIR}/logging/test/TestLogHandler.h
-  )
-  target_compile_definitions(folly_test_support
-    PUBLIC
-      ${LIBGMOCK_DEFINES}
-  )
-  target_include_directories(folly_test_support
-    SYSTEM
-    PUBLIC
-      ${LIBGMOCK_INCLUDE_DIR}
-      ${GTEST_INCLUDE_DIRS}
-  )
-  target_link_libraries(folly_test_support
-    PUBLIC
-      ${BOOST_LIBRARIES}
-      follybenchmark
-      folly
-      ${LIBGMOCK_LIBRARIES}
-      ${GLOG_LIBRARY}
-  )
-  apply_folly_compile_options_to_target(folly_test_support)
-
-  folly_define_tests(
-    DIRECTORY algorithm/simd/detail/test/
-      TEST algorithm_simd_detail_simd_any_of_test SOURCES SimdAnyOfTest.cpp
-      TEST algorithm_simd_detail_simd_for_each_test SOURCES SimdForEachTest.cpp
-      TEST algorithm_simd_detail_simd_traits_test SOURCES TraitsTest.cpp
-      TEST algorithm_simd_detail_unroll_utils_test SOURCES UnrollUtilsTest.cpp
-
-    DIRECTORY algorithm/simd/test/
-      TEST algorithm_simd_contains_test SOURCES ContainsTest.cpp
-      TEST algorithm_simd_find_fixed_test SOURCES FindFixedTest.cpp
-      TEST algorithm_simd_movemask_test SOURCES MovemaskTest.cpp
-
-    DIRECTORY chrono/test/
-      TEST chrono_conv_test WINDOWS_DISABLED
-        SOURCES ConvTest.cpp
-
-    DIRECTORY compression/test/
-      TEST compression_compression_test SLOW SOURCES CompressionTest.cpp
-      TEST compression_quotient_multiset_test SOURCES QuotientMultiSetTest.cpp
-      TEST compression_select64_test SOURCES Select64Test.cpp
-
-    DIRECTORY compression/elias_fano/test/
-      TEST compression_alias_fano_bit_vector_coding_test
-        SOURCES BitVectorCodingTest.cpp
-      TEST compression_alias_fano_elias_fano_test
-        SOURCES EliasFanoCodingTest.cpp
-
-    DIRECTORY container/test/
-      TEST container_access_test SOURCES AccessTest.cpp
-      TEST container_array_test SOURCES ArrayTest.cpp
-      BENCHMARK container_bit_iterator_bench SOURCES BitIteratorBench.cpp
-      TEST container_bit_iterator_test SOURCES BitIteratorTest.cpp
-      TEST container_enumerate_test SOURCES EnumerateTest.cpp
-      BENCHMARK container_evicting_cache_map_bench
-        SOURCES EvictingCacheMapBench.cpp
-      TEST container_evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
-      TEST container_f14_fwd_test SOURCES F14FwdTest.cpp
-      TEST container_f14_map_test SOURCES F14MapTest.cpp
-      TEST container_f14_set_test WINDOWS_DISABLED SOURCES F14SetTest.cpp
-      BENCHMARK container_fbvector_benchmark
-        SOURCES FBVectorBenchmark.cpp
-        HEADERS FBVectorBenchmarks.cpp.h
-      TEST container_fbvector_test SOURCES FBVectorTest.cpp
-      BENCHMARK container_foreach_benchmark SOURCES ForeachBenchmark.cpp
-      TEST container_foreach_test SOURCES ForeachTest.cpp
-      TEST container_heap_vector_types_test SOURCES heap_vector_types_test.cpp
-      TEST container_map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
-      TEST container_merge_test SOURCES MergeTest.cpp
-      TEST container_regex_match_cache_test SOURCES RegexMatchCacheTest.cpp
-      TEST container_small_vector_test WINDOWS_DISABLED
-        SOURCES small_vector_test.cpp
-      TEST container_sorted_vector_types_test SOURCES sorted_vector_test.cpp
-      TEST container_span_test SOURCES span_test.cpp
-      BENCHMARK container_sparse_byte_set_benchmark WINDOWS_DISABLED
-        SOURCES SparseByteSetBenchmark.cpp
-      TEST container_sparse_byte_set_test SOURCES SparseByteSetTest.cpp
-      TEST container_util_test SOURCES UtilTest.cpp
-
-    DIRECTORY concurrency/container/test/
-      TEST concurrency_container_lock_free_ring_buffer_test
-        SOURCES LockFreeRingBufferTest.cpp
-
-    DIRECTORY concurrency/test/
-      TEST concurrency_atomic_shared_ptr_test SOURCES AtomicSharedPtrTest.cpp
-      TEST concurrency_cache_locality_test WINDOWS_DISABLED
-        SOURCES CacheLocalityTest.cpp
-      TEST concurrency_core_cached_shared_ptr_test
-        SOURCES CoreCachedSharedPtrTest.cpp
-      BENCHMARK concurrency_concurrent_hash_map_bench WINDOWS_DISABLED
-        SOURCES ConcurrentHashMapBench.cpp
-      TEST concurrency_concurrent_hash_map_test WINDOWS_DISABLED
-        SOURCES ConcurrentHashMapTest.cpp
-      TEST concurrency_dynamic_bounded_queue_test WINDOWS_DISABLED
-        SOURCES DynamicBoundedQueueTest.cpp
-      TEST concurrency_priority_unbounded_queue_set_test
-        SOURCES PriorityUnboundedQueueSetTest.cpp
-      BENCHMARK concurrency_thread_cached_synchronized_bench
-        SOURCES ThreadCachedSynchronizedBench.cpp
-      TEST concurrency_thread_cached_synchronized_test
-        SOURCES ThreadCachedSynchronizedTest.cpp
-      TEST concurrency_unbounded_queue_test SOURCES UnboundedQueueTest.cpp
-
-    DIRECTORY detail/test/
-      TEST detail_static_singleton_manager_test
-        SOURCES StaticSingletonManagerTest.cpp
-
-    DIRECTORY detail/test/
-      TEST detail_simple_simd_string_utils_test
-        SOURCES SimpleSimdStringUtilsTest.cpp
-
-    DIRECTORY detail/test/
-      TEST detail_split_string_simd_test WINDOWS_DISABLED
-        SOURCES SplitStringSimdTest.cpp
-
-    DIRECTORY detail/base64_detail/tests/
-      TEST detail_base64_detail_test WINDOWS_DISABLED
-      SOURCES
-        Base64AgainstScalarTest.cpp
-        Base64PlatformTest.cpp
-        Base64SpecialCasesTest.cpp
-
-    DIRECTORY executors/test/
-      TEST executors_async_helpers_test SOURCES AsyncTest.cpp
-      TEST executors_codel_test WINDOWS_DISABLED SOURCES CodelTest.cpp
-      BENCHMARK executors_edf_thread_pool_executor_benchmark
-        SOURCES EDFThreadPoolExecutorBenchmark.cpp
-      TEST executors_executor_test SOURCES ExecutorTest.cpp
-      TEST executors_fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
-      # FunctionSchedulerTest has a lot of timing-dependent checks,
-      # and tends to fail on heavily loaded systems.
-      TEST executors_function_scheduler_test BROKEN
-        SOURCES FunctionSchedulerTest.cpp
-      TEST executors_global_executor_test SOURCES GlobalExecutorTest.cpp
-      TEST executors_serial_executor_test SOURCES SerialExecutorTest.cpp
-      # Fails in ThreadPoolExecutorTest.RequestContext:719 data2 != nullptr
-      TEST executors_thread_pool_executor_test BROKEN WINDOWS_DISABLED
-        SOURCES ThreadPoolExecutorTest.cpp
-      TEST executors_threaded_executor_test SOURCES ThreadedExecutorTest.cpp
-      TEST executors_timed_drivable_executor_test
-        SOURCES TimedDrivableExecutorTest.cpp
-
-    DIRECTORY executors/task_queue/test/
-      TEST executors_task_queue_priority_unbounded_blocking_queue_test
-        SOURCES PriorityUnboundedBlockingQueueTest.cpp
-      BENCHMARK executors_task_queue_unbounded_blocking_queue_bench
-        SOURCES UnboundedBlockingQueueBench.cpp
-      TEST executors_task_queue_unbounded_blocking_queue_test
-        SOURCES UnboundedBlockingQueueTest.cpp
-
-    #DIRECTORY experimental/test/
-      #TEST nested_command_line_app_test SOURCES NestedCommandLineAppTest.cpp
-      #TEST program_options_test SOURCES ProgramOptionsTest.cpp
-      # Depends on liburcu
-      #TEST read_mostly_shared_ptr_test SOURCES ReadMostlySharedPtrTest.cpp
-      #TEST ref_count_test SOURCES RefCountTest.cpp
-
-    #DIRECTORY experimental/io/test/
-
-    DIRECTORY external/farmhash/test/
-      TEST external_farmhash_farmhash_test SOURCES farmhash_test.cpp
-
-    DIRECTORY logging/test/
-      TEST logging_async_file_writer_test WINDOWS_DISABLED
-        SOURCES AsyncFileWriterTest.cpp
-      TEST logging_autotimer_test SOURCES AutoTimerTest.cpp
-      TEST logging_config_parser_test SOURCES ConfigParserTest.cpp
-      TEST logging_config_update_test SOURCES ConfigUpdateTest.cpp
-      TEST logging_file_handler_factory_test WINDOWS_DISABLED
-        SOURCES FileHandlerFactoryTest.cpp
-      TEST logging_glog_formatter_test SOURCES GlogFormatterTest.cpp
-      TEST logging_immediate_file_writer_test
-        SOURCES ImmediateFileWriterTest.cpp
-      TEST logging_log_category_test SOURCES LogCategoryTest.cpp
-      TEST logging_logger_db_test SOURCES LoggerDBTest.cpp
-      TEST logging_logger_test WINDOWS_DISABLED SOURCES LoggerTest.cpp
-      TEST logging_log_level_test SOURCES LogLevelTest.cpp
-      TEST logging_log_message_test SOURCES LogMessageTest.cpp
-      TEST logging_log_name_test SOURCES LogNameTest.cpp
-      TEST logging_log_stream_test SOURCES LogStreamTest.cpp
-      TEST logging_rate_limiter_test SOURCES RateLimiterTest.cpp
-      TEST logging_standard_log_handler_test SOURCES StandardLogHandlerTest.cpp
-      TEST logging_xlog_test WINDOWS_DISABLED
-        HEADERS
-          XlogHeader1.h
-          XlogHeader2.h
-        SOURCES
-          XlogFile1.cpp
-          XlogFile2.cpp
-          XlogTest.cpp
-
-    DIRECTORY fibers/test/
-      # FiberManager swapWithException fails with segfault
-      BENCHMARK fibers_fibers_benchmark WINDOWS_DISABLED
-        SOURCES FibersBenchmark.cpp
-      TEST fibers_fibers_test BROKEN SOURCES FibersTest.cpp
-
-    DIRECTORY functional/test/
-      TEST functional_apply_tuple_test WINDOWS_DISABLED
-        SOURCES ApplyTupleTest.cpp
-      TEST functional_invoke_test WINDOWS_DISABLED
-        SOURCES InvokeTest.cpp
-      TEST functional_partial_test SOURCES PartialTest.cpp
-      TEST functional_protocol_test SOURCES protocol_test.cpp
-      TEST functional_traits_test SOURCES traits_test.cpp
-
-    DIRECTORY futures/test/
-      TEST futures_barrier_test SOURCES BarrierTest.cpp
-      TEST futures_callback_lifetime_test SOURCES CallbackLifetimeTest.cpp
-      TEST futures_collect_test SOURCES CollectTest.cpp
-      TEST futures_context_test SOURCES ContextTest.cpp
-      TEST futures_core_test SOURCES CoreTest.cpp
-      TEST futures_ensure_test SOURCES EnsureTest.cpp
-      TEST futures_filter_test SOURCES FilterTest.cpp
-      TEST futures_future_splitter_test SOURCES FutureSplitterTest.cpp
-      BENCHMARK futures_benchmark WINDOWS_DISABLED
-        SOURCES Benchmark.cpp
-      TEST futures_future_test WINDOWS_DISABLED
-        SOURCES FutureTest.cpp
-      TEST futures_header_compile_test SOURCES HeaderCompileTest.cpp
-      TEST futures_interrupt_test SOURCES InterruptTest.cpp
-      TEST futures_map_test SOURCES MapTest.cpp
-      TEST futures_non_copyable_lambda_test SOURCES NonCopyableLambdaTest.cpp
-      TEST futures_poll_test SOURCES PollTest.cpp
-      TEST futures_promise_test SOURCES PromiseTest.cpp
-      TEST futures_reduce_test SOURCES ReduceTest.cpp
-      TEST futures_retrying_test SOURCES RetryingTest.cpp
-      TEST futures_self_destruct_test SOURCES SelfDestructTest.cpp
-      TEST futures_shared_promise_test SOURCES SharedPromiseTest.cpp
-      TEST futures_test_executor_test SOURCES TestExecutorTest.cpp
-      TEST futures_then_compile_test
-        HEADERS
-          ThenCompileTest.h
-        SOURCES
-          ThenCompileTest.cpp
-      TEST futures_then_test SOURCES ThenTest.cpp
-      TEST futures_timekeeper_test WINDOWS_DISABLED SOURCES TimekeeperTest.cpp
-      TEST futures_times_test SOURCES TimesTest.cpp
-      TEST futures_unwrap_test SOURCES UnwrapTest.cpp
-      TEST futures_via_test SOURCES ViaTest.cpp
-      TEST futures_wait_test SOURCES WaitTest.cpp
-      TEST futures_when_test SOURCES WhenTest.cpp
-      TEST futures_while_do_test SOURCES WhileDoTest.cpp
-      TEST futures_will_equal_test SOURCES WillEqualTest.cpp
-      TEST futures_window_test WINDOWS_DISABLED
-        SOURCES WindowTest.cpp
-
-    DIRECTORY gen/test/
-      # MSVC bug can't resolve initializer_list constructor properly
-      TEST gen_base_test WINDOWS_DISABLED SOURCES BaseTest.cpp
-      TEST gen_combine_test SOURCES CombineTest.cpp
-      BENCHMARK gen_parallel_map_benchmark SOURCES ParallelMapBenchmark.cpp
-      TEST gen_parallel_map_test SOURCES ParallelMapTest.cpp
-      BENCHMARK gen_parallel_benchmark SOURCES ParallelBenchmark.cpp
-      TEST gen_parallel_test SOURCES ParallelTest.cpp
-
-    DIRECTORY hash/test/
-      BENCHMARK hash_checksum_benchmark SOURCES ChecksumBenchmark.cpp
-      TEST hash_checksum_test SOURCES ChecksumTest.cpp
-      TEST hash_farm_hash_test SOURCES FarmHashTest.cpp
-      BENCHMARK hash_hash_benchmark WINDOWS_DISABLED
-        SOURCES HashBenchmark.cpp
-      TEST hash_hash_test WINDOWS_DISABLED
-        SOURCES HashTest.cpp
-      TEST hash_spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp
-      TEST hash_spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
-      TEST hash_traits_test SOURCES traits_test.cpp
-
-    DIRECTORY io/test/
-      TEST io_fs_util_test SOURCES FsUtilTest.cpp
-      TEST io_iobuf_test WINDOWS_DISABLED SOURCES IOBufTest.cpp
-      TEST io_iobuf_cursor_test SOURCES IOBufCursorTest.cpp
-      TEST io_iobuf_queue_test SOURCES IOBufQueueTest.cpp
-      TEST io_record_io_test WINDOWS_DISABLED SOURCES RecordIOTest.cpp
-      TEST io_shutdown_socket_set_test HANGING
-        SOURCES ShutdownSocketSetTest.cpp
-      TEST io_socket_option_value_test HANGING
-        SOURCES SocketOptionValueTest.cpp
-
-    DIRECTORY io/async/test/
-      # A number of tests in the async_test binary are unfortunately flaky.
-      # When run under Travis CI a number of the tests also hang (it looks
-      # like they do not get expected socket accept events, causing them
-      # to never break out of their event loops).
-      TEST io_async_async_test BROKEN
-        CONTENT_DIR certs/
-        HEADERS
-          AsyncSocketTest.h
-          AsyncSSLSocketTest.h
-        SOURCES
-          AsyncPipeTest.cpp
-          AsyncSocketExceptionTest.cpp
-          AsyncSocketTest.cpp
-          AsyncSocketTest2.cpp
-          AsyncSSLSocketTest.cpp
-          AsyncSSLSocketTest2.cpp
-          AsyncSSLSocketWriteTest.cpp
-          AsyncTransportTest.cpp
-      # This is disabled because it depends on things that don't exist
-      # on Windows.
-      # TODO: Refactor EventHandlerTest to not use eventfd so it can work on Mac OS X.
-      #TEST io_async_event_handler_test WINDOWS_DISABLED SOURCES EventHandlerTest.cpp
-      TEST io_async_async_timeout_test SOURCES AsyncTimeoutTest.cpp
-      TEST io_async_async_udp_socket_test APPLE_DISABLED WINDOWS_DISABLED
-        SOURCES AsyncUDPSocketTest.cpp
-      TEST io_async_delayed_destruction_test SOURCES DelayedDestructionTest.cpp
-      TEST io_async_delayed_destruction_base_test
-        SOURCES DelayedDestructionBaseTest.cpp
-      TEST io_async_destructor_check_test SOURCES DestructorCheckTest.cpp
-      # Fails with gtest macro error
-      TEST io_async_event_base_test BROKEN SOURCES EventBaseTest.cpp
-      TEST io_async_event_base_local_test WINDOWS_DISABLED
-        SOURCES EventBaseLocalTest.cpp
-      TEST io_async_hh_wheel_timer_test SOURCES HHWheelTimerTest.cpp
-      TEST io_async_hh_wheel_timer_slow_tests SLOW
-        SOURCES HHWheelTimerSlowTests.cpp
-      TEST io_async_notification_queue_test WINDOWS_DISABLED
-        SOURCES NotificationQueueTest.cpp
-      BENCHMARK io_async_request_context_benchmark WINDOWS_DISABLED
-        SOURCES RequestContextBenchmark.cpp
-        HEADERS RequestContextHelper.h
-      TEST io_async_request_context_test WINDOWS_DISABLED
-        SOURCES RequestContextTest.cpp
-      TEST io_async_scoped_event_base_thread_test WINDOWS_DISABLED
-        SOURCES ScopedEventBaseThreadTest.cpp
-      TEST io_async_ssl_session_test
-        CONTENT_DIR certs/
-        SOURCES SSLSessionTest.cpp
-      TEST io_async_write_chain_async_transport_wrapper_test
-        SOURCES WriteChainAsyncTransportWrapperTest.cpp
-
-    DIRECTORY io/async/ssl/test/
-      TEST io_async_ssl_ssl_errors_test SOURCES SSLErrorsTest.cpp
-
-    DIRECTORY lang/test/
-      TEST lang_align_test SOURCES AlignTest.cpp
-      TEST lang_aligned_test SOURCES AlignedTest.cpp
-      TEST lang_badge_test SOURCES BadgeTest.cpp
-      TEST lang_bits_class_test SOURCES BitsClassTest.cpp
-      TEST lang_bits_test SOURCES BitsTest.cpp
-      TEST lang_c_string_test SOURCES CStringTest.cpp
-      TEST lang_cast_test SOURCES CastTest.cpp
-      TEST lang_checked_math_test SOURCES CheckedMathTest.cpp
-      TEST lang_exception_test SOURCES ExceptionTest.cpp
-      TEST lang_extern_test SOURCES ExternTest.cpp
-      TEST lang_ordering_test SOURCES OrderingTest.cpp
-      TEST lang_pretty_test SOURCES PrettyTest.cpp
-      TEST lang_propagate_const_test SOURCES PropagateConstTest.cpp
-      TEST lang_r_value_reference_wrapper_test WINDOWS_DISABLED
-        SOURCES RValueReferenceWrapperTest.cpp
-      TEST lang_safe_assert_test SOURCES SafeAssertTest.cpp
-      BENCHMARK lang_to_ascii_benchmark SOURCES ToAsciiBench.cpp
-      TEST lang_to_ascii_test SOURCES ToAsciiTest.cpp
-      TEST lang_type_info_test SOURCES TypeInfoTest.cpp
-
-    DIRECTORY memory/test/
-      TEST memory_arena_test WINDOWS_DISABLED SOURCES ArenaTest.cpp
-      TEST memory_reentrant_allocator_test WINDOWS_DISABLED
-        SOURCES ReentrantAllocatorTest.cpp
-      TEST memory_thread_cached_arena_test WINDOWS_DISABLED
-        SOURCES ThreadCachedArenaTest.cpp
-      TEST memory_mallctl_helper_test SOURCES MallctlHelperTest.cpp
-      TEST memory_uninitialized_memory_hacks_test
-        SOURCES UninitializedMemoryHacksTest.cpp
-
-    DIRECTORY net/detail/test/
-      TEST net_detail_socket_file_descriptor_map_test
-        SOURCES SocketFileDescriptorMapTest.cpp
-
-    DIRECTORY portability/test/
-      TEST portability_constexpr_test SOURCES ConstexprTest.cpp
-      TEST portability_filesystem_test SOURCES FilesystemTest.cpp
-      TEST portability_libgen_test SOURCES LibgenTest.cpp
-      TEST portability_openssl_portability_test
-        SOURCES OpenSSLPortabilityTest.cpp
-      TEST portability_pthread_test SOURCES PThreadTest.cpp
-      TEST portability_time_test WINDOWS_DISABLED
-        SOURCES TimeTest.cpp
-
-    DIRECTORY ssl/test/
-      TEST ssl_openssl_hash_test SOURCES OpenSSLHashTest.cpp
-
-    DIRECTORY stats/test/
-      TEST stats_buffered_stat_test SOURCES BufferedStatTest.cpp
-      BENCHMARK stats_digest_builder_benchmark
-        SOURCES DigestBuilderBenchmark.cpp
-      TEST stats_digest_builder_test SOURCES DigestBuilderTest.cpp
-      BENCHMARK stats_histogram_benchmark SOURCES HistogramBenchmark.cpp
-      TEST stats_histogram_test SOURCES HistogramTest.cpp
-      BENCHMARK stats_quantile_histogram_benchmark
-        SOURCES QuantileHistogramBenchmark.cpp
-      TEST stats_quantile_estimator_test SOURCES QuantileEstimatorTest.cpp
-      TEST stats_sliding_window_test SOURCES SlidingWindowTest.cpp
-      BENCHMARK stats_tdigest_benchmark SOURCES TDigestBenchmark.cpp
-      TEST stats_tdigest_test SOURCES TDigestTest.cpp
-      TEST stats_timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
-      TEST stats_timeseries_test SOURCES TimeSeriesTest.cpp
-
-    DIRECTORY synchronization/test/
-      TEST synchronization_atomic_util_test SOURCES AtomicUtilTest.cpp
-      TEST synchronization_atomic_struct_test SOURCES AtomicStructTest.cpp
-      BENCHMARK synchronization_baton_benchmark SOURCES BatonBenchmark.cpp
-      TEST synchronization_baton_test SOURCES BatonTest.cpp
-      TEST synchronization_call_once_test SOURCES CallOnceTest.cpp
-      TEST synchronization_event_count_test SOURCES EventCountTest.cpp
-      TEST synchronization_lifo_sem_test WINDOWS_DISABLED
-        SOURCES LifoSemTests.cpp
-      TEST synchronization_relaxed_atomic_test WINDOWS_DISABLED
-        SOURCES RelaxedAtomicTest.cpp
-      TEST synchronization_rw_spin_lock_test SOURCES RWSpinLockTest.cpp
-      TEST synchronization_semaphore_test WINDOWS_DISABLED
-        SOURCES SemaphoreTest.cpp
-      TEST synchronization_small_locks_test SOURCES SmallLocksTest.cpp
-
-    DIRECTORY synchronization/detail/test/
-      TEST synchronization_detail_hardware_test SOURCES HardwareTest.cpp
-
-    DIRECTORY system/test/
-      TEST system_at_fork_test WINDOWS_DISABLED SOURCES AtForkTest.cpp
-      TEST system_memory_mapping_test SOURCES MemoryMappingTest.cpp
-      TEST system_shell_test SOURCES ShellTest.cpp
-      #TEST system_subprocess_test SOURCES SubprocessTest.cpp
-      TEST system_thread_id_test SOURCES ThreadIdTest.cpp
-      TEST system_thread_name_test WINDOWS_DISABLED
-        SOURCES ThreadNameTest.cpp
-
-    DIRECTORY test/
-      TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
-      TEST arena_smartptr_test SOURCES ArenaSmartPtrTest.cpp
-      BENCHMARK ascii_case_insensitive_benchmark
-        SOURCES AsciiCaseInsensitiveBenchmark.cpp
-      TEST ascii_check_test SOURCES AsciiCaseInsensitiveTest.cpp
-      TEST atomic_hash_array_test SOURCES AtomicHashArrayTest.cpp
-      TEST atomic_hash_map_test HANGING
-        SOURCES AtomicHashMapTest.cpp
-      TEST atomic_linked_list_test SOURCES AtomicLinkedListTest.cpp
-      TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
-      TEST base64_test SOURCES base64_test.cpp
-      TEST buffered_atomic_test SOURCES BufferedAtomicTest.cpp
-      TEST cancellation_token_test SOURCES CancellationTokenTest.cpp
-      TEST chrono_test SOURCES ChronoTest.cpp
-      TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
-      TEST concurrent_bit_set_test SOURCES ConcurrentBitSetTest.cpp
-      BENCHMARK concurrent_skip_list_benchmark
-        SOURCES ConcurrentSkipListBenchmark.cpp
-      TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
-      TEST constexpr_math_test SOURCES ConstexprMathTest.cpp
-      TEST conv_test SOURCES ConvTest.cpp
-      TEST cpu_id_test SOURCES CpuIdTest.cpp
-      TEST demangle_test SOURCES DemangleTest.cpp
-      TEST deterministic_schedule_test SOURCES DeterministicScheduleTest.cpp
-      TEST discriminated_ptr_test SOURCES DiscriminatedPtrTest.cpp
-      TEST endian_test SOURCES EndianTest.cpp
-      TEST exception_string_test BROKEN SOURCES ExceptionStringTest.cpp
-      TEST exception_test SOURCES ExceptionTest.cpp
-      BENCHMARK exception_wrapper_benchmark WINDOWS_DISABLED
-        SOURCES ExceptionWrapperBenchmark.cpp
-      TEST exception_wrapper_test WINDOWS_DISABLED
-        SOURCES ExceptionWrapperTest.cpp
-      TEST expected_coroutines_test SOURCES ExpectedCoroutinesTest.cpp
-      TEST expected_test WINDOWS_DISABLED
-        SOURCES ExpectedTest.cpp
-      BENCHMARK fbstring_benchmark WINDOWS_DISABLED
-        SOURCES FBStringBenchmark.cpp
-        HEADERS FBStringTestBenchmarks.cpp.h
-      TEST fbstring_test WINDOWS_DISABLED SOURCES FBStringTest.cpp
-      TEST file_test SOURCES FileTest.cpp
-      # Open-source linux build can't handle running this.
-      #TEST file_lock_test SOURCES FileLockTest.cpp
-      TEST file_util_test SOURCES FileUtilTest.cpp
-      BENCHMARK fingerprint_benchmark SOURCES FingerprintBenchmark.cpp
-      TEST fingerprint_test SOURCES FingerprintTest.cpp
-      TEST fixed_string_test SOURCES FixedStringTest.cpp
-      TEST format_other_test SOURCES FormatOtherTest.cpp
-      BENCHMARK format_benchmark SOURCES FormatBenchmark.cpp
-      TEST format_test SOURCES FormatTest.cpp
-      TEST function_test BROKEN
-        SOURCES FunctionTest.cpp
-      BENCHMARK function_ref_benchmark SOURCES FunctionRefBenchmark.cpp
-      TEST function_ref_test SOURCES FunctionRefTest.cpp
-      TEST futex_test SOURCES FutexTest.cpp
-      TEST glog_test SOURCES GLogTest.cpp
-      TEST group_varint_test SOURCES GroupVarintTest.cpp
-      TEST group_varint_test_ssse3 SOURCES GroupVarintTest.cpp
-      TEST indestructible_test SOURCES IndestructibleTest.cpp
-      TEST indexed_mem_pool_test BROKEN
-        SOURCES IndexedMemPoolTest.cpp
-      TEST iterators_test SOURCES IteratorsTest.cpp
-      TEST lazy_test SOURCES LazyTest.cpp
-      TEST locks_test SOURCES SpinLockTest.cpp
-      TEST math_test SOURCES MathTest.cpp
-      TEST memcpy_test SOURCES MemcpyTest.cpp
-      TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
-      TEST memory_test WINDOWS_DISABLED
-        SOURCES MemoryTest.cpp
-      TEST move_wrapper_test SOURCES MoveWrapperTest.cpp
-      TEST mpmc_pipeline_test SOURCES MPMCPipelineTest.cpp
-      TEST mpmc_queue_test SLOW
-        SOURCES MPMCQueueTest.cpp
-      TEST network_address_test HANGING
-        SOURCES
-          IPAddressTest.cpp
-          MacAddressTest.cpp
-          SocketAddressTest.cpp
-      TEST optional_coroutines_test SOURCES OptionalCoroutinesTest.cpp
-      TEST optional_test SOURCES OptionalTest.cpp
-      TEST packed_sync_ptr_test HANGING
-        SOURCES PackedSyncPtrTest.cpp
-      TEST padded_test SOURCES PaddedTest.cpp
-      #TEST poly_test SOURCES PolyTest.cpp
-      TEST portability_test SOURCES PortabilityTest.cpp
-      # Turns out this benchmark uses Linux only API for setting CPU affinity i.e. cpu_set_t.
-      BENCHMARK producer_consumer_queue_benchmark APPLE_DISABLED WINDOWS_DISABLED
-        SOURCES ProducerConsumerQueueBenchmark.cpp
-      TEST producer_consumer_queue_test SLOW
-        SOURCES ProducerConsumerQueueTest.cpp
-      BENCHMARK range_find_benchmark SOURCES RangeFindBenchmark.cpp
-      TEST random_test SOURCES RandomTest.cpp
-      TEST range_test SOURCES RangeTest.cpp
-      TEST replaceable_test WINDOWS_DISABLED SOURCES ReplaceableTest.cpp
-      TEST scope_guard_test WINDOWS_DISABLED SOURCES ScopeGuardTest.cpp
-      TEST sdt_test SOURCES SdtTest.cpp
-      # Heavily dependent on drand and srand48
-      #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
-      # SingletonTest requires Subprocess
-      #TEST singleton_test SOURCES SingletonTest.cpp
-      TEST singleton_double_registration_test BROKEN SOURCES
-        SingletonDoubleRegistration.cpp
-      TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
-      TEST singleton_thread_local_test BROKEN SOURCES
-        SingletonThreadLocalTest.cpp
-        SingletonThreadLocalTestOverload.cpp
-      TEST spin_lock_test SOURCES SpinLockTest.cpp
-      BENCHMARK string_benchmark WINDOWS_DISABLED SOURCES StringBenchmark.cpp
-      TEST string_test WINDOWS_DISABLED SOURCES StringTest.cpp
-      BENCHMARK synchronized_benchmark WINDOWS_DISABLED
-        SOURCES SynchronizedBenchmark.cpp
-      TEST synchronized_test WINDOWS_DISABLED
-        SOURCES SynchronizedTest.cpp
-      TEST thread_cached_int_test WINDOWS_DISABLED
-        SOURCES ThreadCachedIntTest.cpp
-      TEST thread_local_test WINDOWS_DISABLED SOURCES ThreadLocalTest.cpp
-      TEST timeout_queue_test SOURCES TimeoutQueueTest.cpp
-      TEST token_bucket_test SOURCES TokenBucketTest.cpp
-      TEST traits_test SOURCES TraitsTest.cpp
-      TEST try_test WINDOWS_DISABLED SOURCES TryTest.cpp
-      TEST type_list_test WINDOWS_DISABLED SOURCES TypeListTest.cpp
-      TEST unicode_test SOURCES UnicodeTest.cpp
-      TEST unit_test SOURCES UnitTest.cpp
-      BENCHMARK uri_benchmark SOURCES UriBenchmark.cpp
-      TEST uri_test SOURCES UriTest.cpp
-      TEST utf8_string_test SOURCES UTF8StringTest.cpp
-      TEST utility_test SOURCES UtilityTest.cpp
-      TEST varint_test SOURCES VarintTest.cpp
-
-    DIRECTORY testing/test/
-      TEST testing_test_util_test SOURCES TestUtilTest.cpp
-
-    DIRECTORY json/test/
-      TEST json_dynamic_converter_test SOURCES DynamicConverterTest.cpp
-      TEST json_dynamic_other_test SOURCES DynamicOtherTest.cpp
-      TEST json_dynamic_parser_test SOURCES DynamicParserTest.cpp
-      TEST json_dynamic_test SOURCES DynamicTest.cpp
-      # MSVC Preprocessor stringizing raw string literals bug
-      TEST json_json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
-      BENCHMARK json_json_benchmark SOURCES JsonBenchmark.cpp
-      TEST json_json_other_test SOURCES JsonOtherTest.cpp
-      TEST json_json_patch_test SOURCES json_patch_test.cpp
-      TEST json_json_pointer_test SOURCES json_pointer_test.cpp
-      TEST json_json_schema_test SOURCES JSONSchemaTest.cpp
-  )
-
-  if (${LIBSODIUM_FOUND})
-    folly_define_tests(
-      DIRECTORY crypto/test/
-        TEST crypto_blake2xb_test SOURCES Blake2xbTest.cpp
-        TEST crypto_lt_hash_test SOURCES LtHashTest.cpp
-    )
-  endif()
-
-  if (${LIBAIO_FOUND})
-    folly_define_tests(
-      DIRECTORY io/async/test/
-        TEST io_async_async_io_test
-          SOURCES
-            AsyncIOTest.cpp
-            AsyncBaseTestLib.cpp
-            IoTestTempFileUtil.cpp
-    )
-  endif()
-
-  get_target_property(pic folly POSITION_INDEPENDENT_CODE)
-  if (pic)
-    add_library(singleton_thread_local_overload
-      SHARED ${FOLLY_DIR}/test/SingletonThreadLocalTestOverload.cpp)
-    apply_folly_compile_options_to_target(singleton_thread_local_overload)
-    set_target_properties(singleton_thread_local_overload PROPERTIES PREFIX "")
-    target_link_libraries(singleton_thread_local_overload PRIVATE folly)
-    folly_define_tests(
-      DIRECTORY test/
-        TEST singleton_thread_local_test SOURCES SingletonThreadLocalTest.cpp
-    )
-  endif()
-endif()
-
-add_subdirectory(folly)
+cmake_minimum_required(VERSION 3.14)
+project(folly)
+
+set(CMAKE_CXX_STANDARD 14)
+
+include_directories(.)
+include_directories(folly)
+include_directories(folly/algorithm/simd)
+include_directories(folly/algorithm/simd/detail)
+include_directories(folly/channels)
+include_directories(folly/channels/detail)
+include_directories(folly/channels/test)
+include_directories(folly/chrono)
+include_directories(folly/cli)
+include_directories(folly/compression)
+include_directories(folly/compression/elias_fano)
+include_directories(folly/compression/test)
+include_directories(folly/concurrency)
+include_directories(folly/concurrency/container)
+include_directories(folly/concurrency/detail)
+include_directories(folly/concurrency/memory)
+include_directories(folly/concurrency/test)
+include_directories(folly/container)
+include_directories(folly/container/detail)
+include_directories(folly/container/test)
+include_directories(folly/coro)
+include_directories(folly/coro/detail)
+include_directories(folly/crypto)
+include_directories(folly/crypto/detail)
+include_directories(folly/debugging/exception_tracer)
+include_directories(folly/debugging/symbolizer)
+include_directories(folly/debugging/symbolizer/detail)
+include_directories(folly/debugging/symbolizer/test)
+include_directories(folly/detail)
+include_directories(folly/detail/base64_detail)
+include_directories(folly/executors)
+include_directories(folly/executors/task_queue)
+include_directories(folly/executors/test)
+include_directories(folly/executors/thread_factory)
+include_directories(folly/experimental)
+include_directories(folly/experimental/bser)
+include_directories(folly/experimental/channels)
+include_directories(folly/experimental/channels/detail)
+include_directories(folly/experimental/channels/test)
+include_directories(folly/experimental/coro)
+include_directories(folly/experimental/coro/detail)
+include_directories(folly/experimental/crypto)
+include_directories(folly/experimental/crypto/detail)
+include_directories(folly/experimental/exception_tracer)
+include_directories(folly/experimental/flat_combining)
+include_directories(folly/experimental/flat_combining/test)
+include_directories(folly/experimental/io)
+include_directories(folly/experimental/io/test)
+include_directories(folly/experimental/observer)
+include_directories(folly/experimental/observer/detail)
+include_directories(folly/experimental/settings)
+include_directories(folly/experimental/settings/detail)
+include_directories(folly/experimental/settings/test)
+include_directories(folly/experimental/symbolizer)
+include_directories(folly/experimental/symbolizer/detail)
+include_directories(folly/experimental/symbolizer/test)
+include_directories(folly/experimental/test)
+include_directories(folly/ext)
+include_directories(folly/external/aor)
+include_directories(folly/external/farmhash)
+include_directories(folly/external/fast-crc32)
+include_directories(folly/external/nvidia/hash/detail)
+include_directories(folly/fibers)
+include_directories(folly/fibers/async)
+include_directories(folly/fibers/detail)
+include_directories(folly/functional)
+include_directories(folly/futures)
+include_directories(folly/futures/detail)
+include_directories(folly/futures/test)
+include_directories(folly/gen)
+include_directories(folly/gen/test)
+include_directories(folly/hash)
+include_directories(folly/hash/detail)
+include_directories(folly/init)
+include_directories(folly/io)
+include_directories(folly/io/async)
+include_directories(folly/io/async/fdsock)
+include_directories(folly/io/async/observer)
+include_directories(folly/io/async/ssl)
+include_directories(folly/io/async/test)
+include_directories(folly/io/coro)
+include_directories(folly/json)
+include_directories(folly/json/bser)
+include_directories(folly/lang)
+include_directories(folly/logging)
+include_directories(folly/logging/example)
+include_directories(folly/logging/test)
+include_directories(folly/logging/test/helpers)
+include_directories(folly/memory)
+include_directories(folly/memory/detail)
+include_directories(folly/net)
+include_directories(folly/net/detail)
+include_directories(folly/net/test)
+include_directories(folly/observer)
+include_directories(folly/observer/detail)
+include_directories(folly/poly)
+include_directories(folly/portability)
+include_directories(folly/python)
+include_directories(folly/python/test)
+include_directories(folly/settings)
+include_directories(folly/settings/detail)
+include_directories(folly/settings/test)
+include_directories(folly/ssl)
+include_directories(folly/ssl/detail)
+include_directories(folly/stats)
+include_directories(folly/stats/detail)
+include_directories(folly/support/test)
+include_directories(folly/synchronization)
+include_directories(folly/synchronization/detail)
+include_directories(folly/synchronization/example)
+include_directories(folly/synchronization/test)
+include_directories(folly/system)
+include_directories(folly/test)
+include_directories(folly/test/function_benchmark)
+include_directories(folly/testing)
+include_directories(folly/tracing)
+include_directories(folly/tracing/test)
+include_directories(shim/third-party/rust)
+include_directories(shim/third-party/rust/fixups)
+include_directories(shim/third-party/rust/fixups/ring)
+include_directories(shim/third-party/rust/fixups/ring/include)
+include_directories(shim/third-party/rust/fixups/ring/include/ring_core_generated)
+
+add_executable(folly
+        build/fbcode_builder/CMake/fb_py_win_main.c
+        folly/algorithm/simd/detail/test/SimdAnyOfTest.cpp
+        folly/algorithm/simd/detail/test/SimdForEachTest.cpp
+        folly/algorithm/simd/detail/test/TraitsTest.cpp
+        folly/algorithm/simd/detail/test/UnrollUtilsTest.cpp
+        folly/algorithm/simd/detail/ContainsImpl.h
+        folly/algorithm/simd/detail/SimdAnyOf.h
+        folly/algorithm/simd/detail/SimdForEach.h
+        folly/algorithm/simd/detail/SimdPlatform.h
+        folly/algorithm/simd/detail/Traits.h
+        folly/algorithm/simd/detail/UnrollUtils.h
+        folly/algorithm/simd/test/ContainsTest.cpp
+        folly/algorithm/simd/test/FindFixedBenchmark.cpp
+        folly/algorithm/simd/test/FindFixedTest.cpp
+        folly/algorithm/simd/test/MovemaskTest.cpp
+        folly/algorithm/simd/Contains.cpp
+        folly/algorithm/simd/Contains.h
+        folly/algorithm/simd/FindFixed.h
+        folly/algorithm/simd/Ignore.h
+        folly/algorithm/simd/Movemask.h
+        folly/channels/detail/test/AtomicQueueTest.cpp
+        folly/channels/detail/test/PointerVariantTest.cpp
+        folly/channels/detail/AtomicQueue.h
+        folly/channels/detail/ChannelBridge.h
+        folly/channels/detail/IntrusivePtr.h
+        folly/channels/detail/MultiplexerTraits.h
+        folly/channels/detail/PointerVariant.h
+        folly/channels/detail/Utility.h
+        folly/channels/test/ChannelProcessorTest.cpp
+        folly/channels/test/ChannelTest.cpp
+        folly/channels/test/ChannelTestUtil.h
+        folly/channels/test/FanoutChannelTest.cpp
+        folly/channels/test/FanoutSenderTest.cpp
+        folly/channels/test/MaxConcurrentRateLimiterTest.cpp
+        folly/channels/test/MergeChannelTest.cpp
+        folly/channels/test/MergeTest.cpp
+        folly/channels/test/MultiplexChannelTest.cpp
+        folly/channels/test/ProducerTest.cpp
+        folly/channels/test/ProxyChannelTest.cpp
+        folly/channels/test/TransformTest.cpp
+        folly/channels/Channel-fwd.h
+        folly/channels/Channel-inl.h
+        folly/channels/Channel.h
+        folly/channels/ChannelCallbackHandle.h
+        folly/channels/ChannelProcessor-inl.h
+        folly/channels/ChannelProcessor.h
+        folly/channels/ConsumeChannel-inl.h
+        folly/channels/ConsumeChannel.h
+        folly/channels/FanoutChannel-inl.h
+        folly/channels/FanoutChannel.h
+        folly/channels/FanoutSender-inl.h
+        folly/channels/FanoutSender.h
+        folly/channels/MaxConcurrentRateLimiter.cpp
+        folly/channels/MaxConcurrentRateLimiter.h
+        folly/channels/Merge-inl.h
+        folly/channels/Merge.h
+        folly/channels/MergeChannel-inl.h
+        folly/channels/MergeChannel.h
+        folly/channels/MultiplexChannel-inl.h
+        folly/channels/MultiplexChannel.h
+        folly/channels/OnClosedException.h
+        folly/channels/Producer-inl.h
+        folly/channels/Producer.h
+        folly/channels/ProxyChannel-inl.h
+        folly/channels/ProxyChannel.h
+        folly/channels/RateLimiter.h
+        folly/channels/Transform-inl.h
+        folly/channels/Transform.h
+        folly/chrono/test/ClockTest.cpp
+        folly/chrono/test/ConvTest.cpp
+        folly/chrono/Clock.h
+        folly/chrono/Conv.h
+        folly/chrono/Hardware.h
+        folly/cli/test/NestedCommandLineAppExample.cpp
+        folly/cli/test/NestedCommandLineAppTest.cpp
+        folly/cli/test/NestedCommandLineAppTestHelper.cpp
+        folly/cli/test/ProgramOptionsTest.cpp
+        folly/cli/test/ProgramOptionsTestHelper.cpp
+        folly/cli/NestedCommandLineApp.cpp
+        folly/cli/NestedCommandLineApp.h
+        folly/cli/ProgramOptions.cpp
+        folly/cli/ProgramOptions.h
+        folly/compression/elias_fano/test/BitVectorCodingTest.cpp
+        folly/compression/elias_fano/test/EliasFanoCodingTest.cpp
+        folly/compression/elias_fano/BitVectorCoding.h
+        folly/compression/elias_fano/CodingDetail.h
+        folly/compression/elias_fano/EliasFanoCoding.h
+        folly/compression/test/CodingTestUtils.cpp
+        folly/compression/test/CodingTestUtils.h
+        folly/compression/test/CompressionContextPoolTest.cpp
+        folly/compression/test/CompressionTest.cpp
+        folly/compression/test/InstructionsTest.cpp
+        folly/compression/test/QuotientMultiSetBenchmark.cpp
+        folly/compression/test/QuotientMultiSetTest.cpp
+        folly/compression/test/Select64Test.cpp
+        folly/compression/Compression.cpp
+        folly/compression/Compression.h
+        folly/compression/CompressionContextPool.h
+        folly/compression/CompressionContextPoolSingletons.cpp
+        folly/compression/CompressionContextPoolSingletons.h
+        folly/compression/CompressionCoreLocalContextPool.h
+        folly/compression/Instructions.h
+        folly/compression/QuotientMultiSet-inl.h
+        folly/compression/QuotientMultiSet.cpp
+        folly/compression/QuotientMultiSet.h
+        folly/compression/Select64.cpp
+        folly/compression/Select64.h
+        folly/compression/Utils.h
+        folly/compression/Zlib.cpp
+        folly/compression/Zlib.h
+        folly/compression/Zstd.cpp
+        folly/compression/Zstd.h
+        folly/concurrency/container/test/atomic_grow_array_test.cpp
+        folly/concurrency/container/test/FlatCombiningPriorityQueueTest.cpp
+        folly/concurrency/container/test/LockFreeRingBufferTest.cpp
+        folly/concurrency/container/test/RelaxedConcurrentPriorityQueueTest.cpp
+        folly/concurrency/container/test/SingleWriterFixedHashMapTest.cpp
+        folly/concurrency/container/atomic_grow_array.h
+        folly/concurrency/container/FlatCombiningPriorityQueue.h
+        folly/concurrency/container/LockFreeRingBuffer.h
+        folly/concurrency/container/RelaxedConcurrentPriorityQueue.h
+        folly/concurrency/container/SingleWriterFixedHashMap.h
+        folly/concurrency/detail/AtomicSharedPtr-detail.h
+        folly/concurrency/detail/ConcurrentHashMap-detail.h
+        folly/concurrency/memory/test/AtomicReadMostlyMainPtrBenchmark.cpp
+        folly/concurrency/memory/test/AtomicReadMostlyMainPtrTest.cpp
+        folly/concurrency/memory/test/PrimaryPtrTest.cpp
+        folly/concurrency/memory/test/ReadMostlySharedPtrBenchmark.cpp
+        folly/concurrency/memory/test/ReadMostlySharedPtrStressTest.cpp
+        folly/concurrency/memory/test/ReadMostlySharedPtrTest.cpp
+        folly/concurrency/memory/test/RefCountBenchmark.cpp
+        folly/concurrency/memory/test/RefCountTest.cpp
+        folly/concurrency/memory/AtomicReadMostlyMainPtr.cpp
+        folly/concurrency/memory/AtomicReadMostlyMainPtr.h
+        folly/concurrency/memory/PrimaryPtr.h
+        folly/concurrency/memory/ReadMostlySharedPtr.h
+        folly/concurrency/memory/TLRefCount.h
+        folly/concurrency/test/AtomicSharedPtrCounted.h
+        folly/concurrency/test/AtomicSharedPtrPerformance.cpp
+        folly/concurrency/test/AtomicSharedPtrTest.cpp
+        folly/concurrency/test/CacheLocalityBenchmark.cpp
+        folly/concurrency/test/CacheLocalityTest.cpp
+        folly/concurrency/test/ConcurrentHashMapBench.cpp
+        folly/concurrency/test/ConcurrentHashMapTest.cpp
+        folly/concurrency/test/CoreCachedSharedPtrTest.cpp
+        folly/concurrency/test/DynamicBoundedQueueTest.cpp
+        folly/concurrency/test/PriorityUnboundedQueueSetTest.cpp
+        folly/concurrency/test/ProcessLocalUniqueIdTest.cpp
+        folly/concurrency/test/SingletonRelaxedCounterBench.cpp
+        folly/concurrency/test/SingletonRelaxedCounterTest.cpp
+        folly/concurrency/test/ThreadCachedSynchronizedBench.cpp
+        folly/concurrency/test/ThreadCachedSynchronizedTest.cpp
+        folly/concurrency/test/UnboundedQueueTest.cpp
+        folly/concurrency/AtomicSharedPtr.h
+        folly/concurrency/CacheLocality.cpp
+        folly/concurrency/CacheLocality.h
+        folly/concurrency/ConcurrentHashMap.h
+        folly/concurrency/CoreCachedSharedPtr.h
+        folly/concurrency/DeadlockDetector.cpp
+        folly/concurrency/DeadlockDetector.h
+        folly/concurrency/DynamicBoundedQueue.h
+        folly/concurrency/PriorityUnboundedQueueSet.h
+        folly/concurrency/ProcessLocalUniqueId.cpp
+        folly/concurrency/ProcessLocalUniqueId.h
+        folly/concurrency/SingletonRelaxedCounter.h
+        folly/concurrency/ThreadCachedSynchronized.h
+        folly/concurrency/UnboundedQueue.h
+        folly/container/detail/test/F14DetailTest.cpp
+        folly/container/detail/BitIteratorDetail.h
+        folly/container/detail/F14Defaults.h
+        folly/container/detail/F14IntrinsicsAvailability.h
+        folly/container/detail/F14MapFallback.h
+        folly/container/detail/F14Mask.h
+        folly/container/detail/F14Policy.h
+        folly/container/detail/F14SetFallback.h
+        folly/container/detail/F14Table.cpp
+        folly/container/detail/F14Table.h
+        folly/container/detail/tape_detail.h
+        folly/container/detail/Util.h
+        folly/container/test/AccessTest.cpp
+        folly/container/test/ArrayTest.cpp
+        folly/container/test/BitIteratorBench.cpp
+        folly/container/test/BitIteratorTest.cpp
+        folly/container/test/EnumerateTest.cpp
+        folly/container/test/EvictingCacheMapBench.cpp
+        folly/container/test/EvictingCacheMapTest.cpp
+        folly/container/test/F14AsanSupportTest.cpp
+        folly/container/test/F14FwdTest.cpp
+        folly/container/test/F14InterprocessTest.cpp
+        folly/container/test/F14MapTest.cpp
+        folly/container/test/F14PolicyTest.cpp
+        folly/container/test/F14SetTest.cpp
+        folly/container/test/F14SmallOverheads.cpp
+        folly/container/test/F14TestUtil.h
+        folly/container/test/FBVectorBenchmark.cpp
+        folly/container/test/FBVectorBenchmarks.cpp.h
+        folly/container/test/FBVectorTest.cpp
+        folly/container/test/FBVectorTests.cpp.h
+        folly/container/test/ForeachBenchmark.cpp
+        folly/container/test/ForeachTest.cpp
+        folly/container/test/HashMapsBench.cpp
+        folly/container/test/heap_vector_types_test.cpp
+        folly/container/test/HeterogeneousAccessTest.cpp
+        folly/container/test/IntrusiveHeapTest.cpp
+        folly/container/test/IteratorTest.cpp
+        folly/container/test/MapUtilTest.cpp
+        folly/container/test/MergeTest.cpp
+        folly/container/test/range_traits_test.cpp
+        folly/container/test/RegexMatchCacheTest.cpp
+        folly/container/test/ReserveTest.cpp
+        folly/container/test/small_vector_test.cpp
+        folly/container/test/sorted_vector_test.cpp
+        folly/container/test/span_test.cpp
+        folly/container/test/SparseByteSetBenchmark.cpp
+        folly/container/test/SparseByteSetTest.cpp
+        folly/container/test/tape_bench.cpp
+        folly/container/test/tape_test.cpp
+        folly/container/test/TrackingTypes.h
+        folly/container/test/UtilTest.cpp
+        folly/container/test/WeightedEvictingCacheMapTest.cpp
+        folly/container/Access.h
+        folly/container/Array.h
+        folly/container/BitIterator.h
+        folly/container/Enumerate.h
+        folly/container/EvictingCacheMap.h
+        folly/container/F14Map-fwd.h
+        folly/container/F14Map.h
+        folly/container/F14Set-fwd.h
+        folly/container/F14Set.h
+        folly/container/FBVector.h
+        folly/container/Foreach-inl.h
+        folly/container/Foreach.h
+        folly/container/heap_vector_types.h
+        folly/container/HeterogeneousAccess-fwd.h
+        folly/container/HeterogeneousAccess.h
+        folly/container/IntrusiveHeap.h
+        folly/container/IntrusiveList.h
+        folly/container/Iterator.h
+        folly/container/MapUtil.h
+        folly/container/Merge.h
+        folly/container/range_traits.h
+        folly/container/RegexMatchCache.cpp
+        folly/container/RegexMatchCache.h
+        folly/container/Reserve.h
+        folly/container/small_vector.h
+        folly/container/sorted_vector_types.h
+        folly/container/span.h
+        folly/container/SparseByteSet.h
+        folly/container/tape.h
+        folly/container/View.h
+        folly/container/WeightedEvictingCacheMap.h
+        folly/coro/detail/Barrier.h
+        folly/coro/detail/BarrierTask.h
+        folly/coro/detail/CurrentAsyncFrame.h
+        folly/coro/detail/Helpers.h
+        folly/coro/detail/InlineTask.h
+        folly/coro/detail/Malloc.cpp
+        folly/coro/detail/Malloc.h
+        folly/coro/detail/ManualLifetime.h
+        folly/coro/detail/Traits.h
+        folly/coro/test/AccumulateTest.cpp
+        folly/coro/test/AsyncGeneratorBenchmark.cpp
+        folly/coro/test/AsyncGeneratorTest.cpp
+        folly/coro/test/AsyncPipeTest.cpp
+        folly/coro/test/AsyncScopeTest.cpp
+        folly/coro/test/AsyncStackTest.cpp
+        folly/coro/test/BatonTest.cpp
+        folly/coro/test/BlockingWaitBenchmark.cpp
+        folly/coro/test/BlockingWaitTest.cpp
+        folly/coro/test/BoundedQueueTest.cpp
+        folly/coro/test/CollectAllBenchmark.cpp
+        folly/coro/test/CollectTest.cpp
+        folly/coro/test/ConcatTest.cpp
+        folly/coro/test/CoroBenchmarkAllocator.cpp
+        folly/coro/test/CoroBenchmarkNRVO.cpp
+        folly/coro/test/CoroTest.cpp
+        folly/coro/test/CoroutineTest.cpp
+        folly/coro/test/CurrentExecutorTest.cpp
+        folly/coro/test/ErrorTest.cpp
+        folly/coro/test/FilterTest.cpp
+        folly/coro/test/FutureUtilTest.cpp
+        folly/coro/test/GeneratorTest.cpp
+        folly/coro/test/GmockHelpersTest.cpp
+        folly/coro/test/GtestHelpersTest.cpp
+        folly/coro/test/InlineTaskTest.cpp
+        folly/coro/test/MergeTest.cpp
+        folly/coro/test/MutexTest.cpp
+        folly/coro/test/PromiseBenchmark.cpp
+        folly/coro/test/PromiseTest.cpp
+        folly/coro/test/RequestContextTest.cpp
+        folly/coro/test/RetryTest.cpp
+        folly/coro/test/RustAdaptorsTest.cpp
+        folly/coro/test/ScopeExitTest.cpp
+        folly/coro/test/SharedMutexTest.cpp
+        folly/coro/test/SharedPromiseTest.cpp
+        folly/coro/test/SleepTest.cpp
+        folly/coro/test/SmallUnboundedQueueTest.cpp
+        folly/coro/test/SuspendedStackTest.cpp
+        folly/coro/test/TaskBenchmark.cpp
+        folly/coro/test/TaskTest.cpp
+        folly/coro/test/TimeoutTest.cpp
+        folly/coro/test/TraitsTest.cpp
+        folly/coro/test/TransformTest.cpp
+        folly/coro/test/UnboundedQueueTest.cpp
+        folly/coro/Accumulate-inl.h
+        folly/coro/Accumulate.h
+        folly/coro/AsyncGenerator.h
+        folly/coro/AsyncPipe.h
+        folly/coro/AsyncScope.h
+        folly/coro/AsyncStack.h
+        folly/coro/AutoCleanup-fwd.h
+        folly/coro/AutoCleanup.h
+        folly/coro/Baton.cpp
+        folly/coro/Baton.h
+        folly/coro/BlockingWait.h
+        folly/coro/BoundedQueue.h
+        folly/coro/Cleanup.h
+        folly/coro/Collect-inl.h
+        folly/coro/Collect.h
+        folly/coro/Concat-inl.h
+        folly/coro/Concat.h
+        folly/coro/Coroutine.h
+        folly/coro/CurrentExecutor.h
+        folly/coro/DetachOnCancel.h
+        folly/coro/Filter-inl.h
+        folly/coro/Filter.h
+        folly/coro/FutureUtil.h
+        folly/coro/Generator.h
+        folly/coro/GmockHelpers.h
+        folly/coro/GtestHelpers.h
+        folly/coro/Invoke.h
+        folly/coro/Merge-inl.h
+        folly/coro/Merge.h
+        folly/coro/Mutex.cpp
+        folly/coro/Mutex.h
+        folly/coro/Promise.h
+        folly/coro/Result.h
+        folly/coro/Retry.h
+        folly/coro/RustAdaptors.h
+        folly/coro/ScopeExit.h
+        folly/coro/SharedLock.h
+        folly/coro/SharedMutex.cpp
+        folly/coro/SharedMutex.h
+        folly/coro/SharedPromise.h
+        folly/coro/Sleep-inl.h
+        folly/coro/Sleep.h
+        folly/coro/SmallUnboundedQueue.h
+        folly/coro/Task.h
+        folly/coro/TimedWait.h
+        folly/coro/Timeout-inl.h
+        folly/coro/Timeout.h
+        folly/coro/Traits.h
+        folly/coro/Transform-inl.h
+        folly/coro/Transform.h
+        folly/coro/UnboundedQueue.h
+        folly/coro/ViaIfAsync.h
+        folly/coro/WithAsyncStack.h
+        folly/coro/WithCancellation.h
+        folly/crypto/detail/LtHashInternal.h
+        folly/crypto/detail/MathOperation_AVX2.cpp
+        folly/crypto/detail/MathOperation_Simple.cpp
+        folly/crypto/detail/MathOperation_SSE2.cpp
+        folly/crypto/test/Blake2xbBenchmark.cpp
+        folly/crypto/test/Blake2xbTest.cpp
+        folly/crypto/test/LtHashBenchmark.cpp
+        folly/crypto/test/LtHashTest.cpp
+        folly/crypto/Blake2xb.cpp
+        folly/crypto/Blake2xb.h
+        folly/crypto/LtHash-inl.h
+        folly/crypto/LtHash.cpp
+        folly/crypto/LtHash.h
+        folly/debugging/exception_tracer/test/ExceptionCounterTest.cpp
+        folly/debugging/exception_tracer/test/ExceptionTracerBenchmark.cpp
+        folly/debugging/exception_tracer/test/ExceptionTracerTest.cpp
+        folly/debugging/exception_tracer/test/SmartExceptionTracerTest.cpp
+        folly/debugging/exception_tracer/ExceptionAbi.h
+        folly/debugging/exception_tracer/ExceptionCounterLib.cpp
+        folly/debugging/exception_tracer/ExceptionCounterLib.h
+        folly/debugging/exception_tracer/ExceptionStackTraceLib.cpp
+        folly/debugging/exception_tracer/ExceptionTracer.cpp
+        folly/debugging/exception_tracer/ExceptionTracer.h
+        folly/debugging/exception_tracer/ExceptionTracerLib.cpp
+        folly/debugging/exception_tracer/ExceptionTracerLib.h
+        folly/debugging/exception_tracer/SmartExceptionStackTraceHooks.cpp
+        folly/debugging/exception_tracer/SmartExceptionTracer.cpp
+        folly/debugging/exception_tracer/SmartExceptionTracer.h
+        folly/debugging/exception_tracer/SmartExceptionTracerSingleton.cpp
+        folly/debugging/exception_tracer/SmartExceptionTracerSingleton.h
+        folly/debugging/exception_tracer/StackTrace.cpp
+        folly/debugging/exception_tracer/StackTrace.h
+        folly/debugging/symbolizer/detail/Debug.h
+        folly/debugging/symbolizer/test/Crash.cpp
+        folly/debugging/symbolizer/test/DwarfBenchmark.cpp
+        folly/debugging/symbolizer/test/ElfTest.cpp
+        folly/debugging/symbolizer/test/LineReaderTest.cpp
+        folly/debugging/symbolizer/test/SignalHandlerTest.cpp
+        folly/debugging/symbolizer/test/SignalHandlerTest.h
+        folly/debugging/symbolizer/test/SmallSigAltStackCrash.cpp
+        folly/debugging/symbolizer/test/StackTraceBenchmark.cpp
+        folly/debugging/symbolizer/test/StackTraceSizeLimitTest.cpp
+        folly/debugging/symbolizer/test/StackTraceTest.cpp
+        folly/debugging/symbolizer/test/SymbolizedFrameTest.cpp
+        folly/debugging/symbolizer/test/SymbolizerTest.cpp
+        folly/debugging/symbolizer/test/SymbolizerTestUtils-inl.h
+        folly/debugging/symbolizer/test/SymbolizerTestUtils.cpp
+        folly/debugging/symbolizer/test/SymbolizerTestUtils.h
+        folly/debugging/symbolizer/tool/Addr2Line.cpp
+        folly/debugging/symbolizer/tool/LibSegFault.cpp
+        folly/debugging/symbolizer/Dwarf.cpp
+        folly/debugging/symbolizer/Dwarf.h
+        folly/debugging/symbolizer/DwarfImpl.cpp
+        folly/debugging/symbolizer/DwarfImpl.h
+        folly/debugging/symbolizer/DwarfLineNumberVM.cpp
+        folly/debugging/symbolizer/DwarfLineNumberVM.h
+        folly/debugging/symbolizer/DwarfSection.cpp
+        folly/debugging/symbolizer/DwarfSection.h
+        folly/debugging/symbolizer/DwarfUtil.cpp
+        folly/debugging/symbolizer/DwarfUtil.h
+        folly/debugging/symbolizer/Elf-inl.h
+        folly/debugging/symbolizer/Elf.cpp
+        folly/debugging/symbolizer/Elf.h
+        folly/debugging/symbolizer/ElfCache.cpp
+        folly/debugging/symbolizer/ElfCache.h
+        folly/debugging/symbolizer/LineReader.cpp
+        folly/debugging/symbolizer/LineReader.h
+        folly/debugging/symbolizer/SignalHandler.cpp
+        folly/debugging/symbolizer/SignalHandler.h
+        folly/debugging/symbolizer/StackTrace.cpp
+        folly/debugging/symbolizer/StackTrace.h
+        folly/debugging/symbolizer/SymbolizedFrame.cpp
+        folly/debugging/symbolizer/SymbolizedFrame.h
+        folly/debugging/symbolizer/SymbolizePrinter.cpp
+        folly/debugging/symbolizer/SymbolizePrinter.h
+        folly/debugging/symbolizer/Symbolizer.cpp
+        folly/debugging/symbolizer/Symbolizer.h
+        folly/detail/base64_detail/tests/Base64AgainstScalarTest.cpp
+        folly/detail/base64_detail/tests/Base64PlatformTest.cpp
+        folly/detail/base64_detail/tests/Base64SpecialCasesTest.cpp
+        folly/detail/base64_detail/Base64_SSE4_2.cpp
+        folly/detail/base64_detail/Base64_SSE4_2.h
+        folly/detail/base64_detail/Base64_SSE4_2_Platform.h
+        folly/detail/base64_detail/Base64Api.cpp
+        folly/detail/base64_detail/Base64Api.h
+        folly/detail/base64_detail/Base64Common.h
+        folly/detail/base64_detail/Base64Constants.h
+        folly/detail/base64_detail/Base64HiddenConstants.h
+        folly/detail/base64_detail/Base64Scalar.h
+        folly/detail/base64_detail/Base64Simd.h
+        folly/detail/base64_detail/Base64SWAR.cpp
+        folly/detail/base64_detail/Base64SWAR.h
+        folly/detail/test/AsyncTraceTest.cpp
+        folly/detail/test/FileUtilDetailTest.cpp
+        folly/detail/test/PerfScopedTest.cpp
+        folly/detail/test/SimpleSimdStringUtilsTest.cpp
+        folly/detail/test/SplitStringSimdTest.cpp
+        folly/detail/test/StaticSingletonManagerTest.cpp
+        folly/detail/test/ThreadLocalBenchmark.cpp
+        folly/detail/test/ThreadLocalDetailTest.cpp
+        folly/detail/test/TrapOnAvx512TestNegative.cpp
+        folly/detail/test/UniqueInstanceTest.cpp
+        folly/detail/AsyncTrace.cpp
+        folly/detail/AsyncTrace.h
+        folly/detail/AtomicHashUtils.h
+        folly/detail/AtomicUnorderedMapUtils.h
+        folly/detail/DiscriminatedPtrDetail.h
+        folly/detail/FileUtilDetail.cpp
+        folly/detail/FileUtilDetail.h
+        folly/detail/FileUtilVectorDetail.h
+        folly/detail/FingerprintPolynomial.h
+        folly/detail/Futex-inl.h
+        folly/detail/Futex.cpp
+        folly/detail/Futex.h
+        folly/detail/GroupVarintDetail.h
+        folly/detail/IPAddress.cpp
+        folly/detail/IPAddress.h
+        folly/detail/IPAddressSource.h
+        folly/detail/Iterators.h
+        folly/detail/MemoryIdler.cpp
+        folly/detail/MemoryIdler.h
+        folly/detail/MPMCPipelineDetail.h
+        folly/detail/PerfScoped.cpp
+        folly/detail/PerfScoped.h
+        folly/detail/PolyDetail.h
+        folly/detail/RangeCommon.cpp
+        folly/detail/RangeCommon.h
+        folly/detail/RangeSse42.cpp
+        folly/detail/RangeSse42.h
+        folly/detail/SimpleSimdStringUtils.cpp
+        folly/detail/SimpleSimdStringUtils.h
+        folly/detail/SimpleSimdStringUtilsImpl.h
+        folly/detail/Singleton.h
+        folly/detail/SlowFingerprint.h
+        folly/detail/SocketFastOpen.cpp
+        folly/detail/SocketFastOpen.h
+        folly/detail/SplitStringSimd.cpp
+        folly/detail/SplitStringSimd.h
+        folly/detail/SplitStringSimdImpl.h
+        folly/detail/Sse.cpp
+        folly/detail/Sse.h
+        folly/detail/StaticSingletonManager.cpp
+        folly/detail/StaticSingletonManager.h
+        folly/detail/thread_local_globals.cpp
+        folly/detail/thread_local_globals.h
+        folly/detail/ThreadLocalDetail.cpp
+        folly/detail/ThreadLocalDetail.h
+        folly/detail/TrapOnAvx512.cpp
+        folly/detail/TrapOnAvx512.h
+        folly/detail/TurnSequencer.h
+        folly/detail/TypeList.h
+        folly/detail/UniqueInstance.cpp
+        folly/detail/UniqueInstance.h
+        folly/docs/examples/folly/container/Array.cpp
+        folly/docs/examples/folly/dynamic/array.cpp
+        folly/docs/examples/folly/dynamic/object.cpp
+        folly/docs/examples/folly/experimental/coro/AsyncScope.cpp
+        folly/docs/examples/folly/experimental/coro/CancellableAsyncScope.cpp
+        folly/docs/examples/folly/experimental/coro/DetachOnCancel.cpp
+        folly/docs/examples/folly/experimental/coro/Promise.cpp
+        folly/docs/examples/folly/experimental/coro/Retry.cpp
+        folly/docs/examples/folly/experimental/coro/Task.cpp
+        folly/docs/examples/folly/experimental/coro/WithCancellation.cpp
+        folly/docs/examples/folly/hash/Hash.cpp
+        folly/docs/examples/folly/io/IOBuf.cpp
+        folly/docs/examples/folly/synchronization/Baton.cpp
+        folly/docs/examples/folly/test/TestUtils.cpp
+        folly/docs/examples/folly/CancellationCallback.cpp
+        folly/docs/examples/folly/CancellationSource.cpp
+        folly/docs/examples/folly/CancellationToken.cpp
+        folly/docs/examples/folly/dynamic.cpp
+        folly/docs/examples/folly/DynamicConverter.cpp
+        folly/docs/examples/folly/ExecutorGuide.cpp
+        folly/docs/examples/folly/File.cpp
+        folly/docs/examples/folly/Format.cpp
+        folly/docs/examples/folly/Function.cpp
+        folly/docs/examples/folly/ipaddress.cpp
+        folly/docs/examples/folly/Likely.cpp
+        folly/docs/examples/folly/MapUtil.cpp
+        folly/docs/examples/folly/ScopedEventBaseThread.cpp
+        folly/docs/examples/folly/ScopedEventBaseThread2.cpp
+        folly/docs/examples/folly/ScopeGuard.cpp
+        folly/docs/examples/folly/ScopeGuard2.cpp
+        folly/docs/examples/folly/Synchronized.cpp
+        folly/executors/task_queue/test/PriorityLifoSemMPMCQueueTest.cpp
+        folly/executors/task_queue/test/PriorityUnboundedBlockingQueueTest.cpp
+        folly/executors/task_queue/test/UnboundedBlockingQueueBench.cpp
+        folly/executors/task_queue/test/UnboundedBlockingQueueTest.cpp
+        folly/executors/task_queue/BlockingQueue.h
+        folly/executors/task_queue/LifoSemMPMCQueue.h
+        folly/executors/task_queue/PriorityLifoSemMPMCQueue.h
+        folly/executors/task_queue/PriorityUnboundedBlockingQueue.h
+        folly/executors/task_queue/UnboundedBlockingQueue.h
+        folly/executors/test/AsyncTest.cpp
+        folly/executors/test/CodelTest.cpp
+        folly/executors/test/EDFThreadPoolExecutorBenchmark.cpp
+        folly/executors/test/ExecutorTest.cpp
+        folly/executors/test/ExecutorWithPriorityTest.cpp
+        folly/executors/test/FiberIOExecutorTest.cpp
+        folly/executors/test/FunctionSchedulerTest.cpp
+        folly/executors/test/GlobalCPUExecutorTest.cpp
+        folly/executors/test/GlobalExecutorAssignmentTest.cpp
+        folly/executors/test/GlobalExecutorTest.cpp
+        folly/executors/test/GlobalIOExecutorTest.cpp
+        folly/executors/test/IOThreadPoolDeadlockDetectorObserverTest.cpp
+        folly/executors/test/IOThreadPoolExecutorBaseTestLib.h
+        folly/executors/test/IOThreadPoolExecutorTest.cpp
+        folly/executors/test/MeteredExecutorTest.cpp
+        folly/executors/test/SequencedExecutorTest.cpp
+        folly/executors/test/SerialExecutorTest.cpp
+        folly/executors/test/StrandExecutorTest.cpp
+        folly/executors/test/ThreadedExecutorTest.cpp
+        folly/executors/test/ThreadedRepeatingFunctionRunnerTest.cpp
+        folly/executors/test/ThreadPoolExecutorTest.cpp
+        folly/executors/test/TimedDrivableExecutorTest.cpp
+        folly/executors/test/TimekeeperScheduledExecutorTest.cpp
+        folly/executors/thread_factory/InitThreadFactory.h
+        folly/executors/thread_factory/NamedThreadFactory.h
+        folly/executors/thread_factory/PriorityThreadFactory.cpp
+        folly/executors/thread_factory/PriorityThreadFactory.h
+        folly/executors/thread_factory/ThreadFactory.h
+        folly/executors/Async.h
+        folly/executors/Codel.cpp
+        folly/executors/Codel.h
+        folly/executors/CPUThreadPoolExecutor.cpp
+        folly/executors/CPUThreadPoolExecutor.h
+        folly/executors/DrivableExecutor.h
+        folly/executors/EDFThreadPoolExecutor.cpp
+        folly/executors/EDFThreadPoolExecutor.h
+        folly/executors/ExecutionObserver.cpp
+        folly/executors/ExecutionObserver.h
+        folly/executors/ExecutorWithPriority-inl.h
+        folly/executors/ExecutorWithPriority.cpp
+        folly/executors/ExecutorWithPriority.h
+        folly/executors/FiberIOExecutor.h
+        folly/executors/FunctionScheduler.cpp
+        folly/executors/FunctionScheduler.h
+        folly/executors/FutureExecutor.h
+        folly/executors/GlobalExecutor.cpp
+        folly/executors/GlobalExecutor.h
+        folly/executors/GlobalThreadPoolList.cpp
+        folly/executors/GlobalThreadPoolList.h
+        folly/executors/InlineExecutor.cpp
+        folly/executors/InlineExecutor.h
+        folly/executors/IOExecutor.h
+        folly/executors/IOObjectCache.h
+        folly/executors/IOThreadPoolDeadlockDetectorObserver.cpp
+        folly/executors/IOThreadPoolDeadlockDetectorObserver.h
+        folly/executors/IOThreadPoolExecutor.cpp
+        folly/executors/IOThreadPoolExecutor.h
+        folly/executors/ManualExecutor.cpp
+        folly/executors/ManualExecutor.h
+        folly/executors/MeteredExecutor-inl.h
+        folly/executors/MeteredExecutor.h
+        folly/executors/QueuedImmediateExecutor.cpp
+        folly/executors/QueuedImmediateExecutor.h
+        folly/executors/QueueObserver.cpp
+        folly/executors/QueueObserver.h
+        folly/executors/ScheduledExecutor.h
+        folly/executors/SequencedExecutor.h
+        folly/executors/SerialExecutor-inl.h
+        folly/executors/SerialExecutor.cpp
+        folly/executors/SerialExecutor.h
+        folly/executors/SerializedExecutor.h
+        folly/executors/SoftRealTimeExecutor.cpp
+        folly/executors/SoftRealTimeExecutor.h
+        folly/executors/StrandExecutor.cpp
+        folly/executors/StrandExecutor.h
+        folly/executors/ThreadedExecutor.cpp
+        folly/executors/ThreadedExecutor.h
+        folly/executors/ThreadedRepeatingFunctionRunner.cpp
+        folly/executors/ThreadedRepeatingFunctionRunner.h
+        folly/executors/ThreadPoolExecutor.cpp
+        folly/executors/ThreadPoolExecutor.h
+        folly/executors/TimedDrivableExecutor.cpp
+        folly/executors/TimedDrivableExecutor.h
+        folly/executors/TimekeeperScheduledExecutor.cpp
+        folly/executors/TimekeeperScheduledExecutor.h
+        folly/executors/VirtualExecutor.h
+        folly/experimental/bser/test/BserTest.cpp
+        folly/experimental/bser/Bser.h
+        folly/experimental/bser/Dump.cpp
+        folly/experimental/bser/Load.cpp
+        folly/experimental/channels/detail/test/AtomicQueueTest.cpp
+        folly/experimental/channels/detail/test/PointerVariantTest.cpp
+        folly/experimental/channels/detail/AtomicQueue.h
+        folly/experimental/channels/detail/ChannelBridge.h
+        folly/experimental/channels/detail/FunctionTraits.h
+        folly/experimental/channels/detail/IntrusivePtr.h
+        folly/experimental/channels/detail/MultiplexerTraits.h
+        folly/experimental/channels/detail/PointerVariant.h
+        folly/experimental/channels/detail/Utility.h
+        folly/experimental/channels/test/ChannelProcessorTest.cpp
+        folly/experimental/channels/test/ChannelTest.cpp
+        folly/experimental/channels/test/ChannelTestUtil.h
+        folly/experimental/channels/test/FanoutChannelTest.cpp
+        folly/experimental/channels/test/FanoutSenderTest.cpp
+        folly/experimental/channels/test/MergeChannelTest.cpp
+        folly/experimental/channels/test/MergeTest.cpp
+        folly/experimental/channels/test/MultiplexChannelTest.cpp
+        folly/experimental/channels/test/ProducerTest.cpp
+        folly/experimental/channels/test/ProxyChannelTest.cpp
+        folly/experimental/channels/test/TransformTest.cpp
+        folly/experimental/channels/Channel-fwd.h
+        folly/experimental/channels/Channel-inl.h
+        folly/experimental/channels/Channel.h
+        folly/experimental/channels/ChannelCallbackHandle.h
+        folly/experimental/channels/ChannelProcessor-inl.h
+        folly/experimental/channels/ChannelProcessor.h
+        folly/experimental/channels/ConsumeChannel-inl.h
+        folly/experimental/channels/ConsumeChannel.h
+        folly/experimental/channels/FanoutChannel-inl.h
+        folly/experimental/channels/FanoutChannel.h
+        folly/experimental/channels/FanoutSender-inl.h
+        folly/experimental/channels/FanoutSender.h
+        folly/experimental/channels/MaxConcurrentRateLimiter.h
+        folly/experimental/channels/Merge-inl.h
+        folly/experimental/channels/Merge.h
+        folly/experimental/channels/MergeChannel-inl.h
+        folly/experimental/channels/MergeChannel.h
+        folly/experimental/channels/MultiplexChannel-inl.h
+        folly/experimental/channels/MultiplexChannel.h
+        folly/experimental/channels/OnClosedException.h
+        folly/experimental/channels/Producer-inl.h
+        folly/experimental/channels/Producer.h
+        folly/experimental/channels/ProxyChannel-inl.h
+        folly/experimental/channels/ProxyChannel.h
+        folly/experimental/channels/RateLimiter.cpp
+        folly/experimental/channels/RateLimiter.h
+        folly/experimental/channels/Transform-inl.h
+        folly/experimental/channels/Transform.h
+        folly/experimental/coro/detail/Barrier.h
+        folly/experimental/coro/detail/BarrierTask.h
+        folly/experimental/coro/detail/CurrentAsyncFrame.h
+        folly/experimental/coro/detail/Helpers.h
+        folly/experimental/coro/detail/InlineTask.h
+        folly/experimental/coro/detail/Malloc.cpp
+        folly/experimental/coro/detail/Malloc.h
+        folly/experimental/coro/detail/ManualLifetime.h
+        folly/experimental/coro/detail/Traits.h
+        folly/experimental/coro/test/AccumulateTest.cpp
+        folly/experimental/coro/test/AsyncGeneratorBenchmark.cpp
+        folly/experimental/coro/test/AsyncGeneratorTest.cpp
+        folly/experimental/coro/test/AsyncPipeTest.cpp
+        folly/experimental/coro/test/AsyncScopeTest.cpp
+        folly/experimental/coro/test/AsyncStackTest.cpp
+        folly/experimental/coro/test/BatonTest.cpp
+        folly/experimental/coro/test/BlockingWaitBenchmark.cpp
+        folly/experimental/coro/test/BlockingWaitTest.cpp
+        folly/experimental/coro/test/BoundedQueueTest.cpp
+        folly/experimental/coro/test/CollectAllBenchmark.cpp
+        folly/experimental/coro/test/CollectTest.cpp
+        folly/experimental/coro/test/ConcatTest.cpp
+        folly/experimental/coro/test/CoroBenchmarkAllocator.cpp
+        folly/experimental/coro/test/CoroBenchmarkNRVO.cpp
+        folly/experimental/coro/test/CoroTest.cpp
+        folly/experimental/coro/test/CurrentExecutorTest.cpp
+        folly/experimental/coro/test/ErrorTest.cpp
+        folly/experimental/coro/test/FilterTest.cpp
+        folly/experimental/coro/test/FutureUtilTest.cpp
+        folly/experimental/coro/test/GeneratorTest.cpp
+        folly/experimental/coro/test/GmockHelpersTest.cpp
+        folly/experimental/coro/test/GtestHelpersTest.cpp
+        folly/experimental/coro/test/InlineTaskTest.cpp
+        folly/experimental/coro/test/MergeTest.cpp
+        folly/experimental/coro/test/MutexTest.cpp
+        folly/experimental/coro/test/PromiseBenchmark.cpp
+        folly/experimental/coro/test/PromiseTest.cpp
+        folly/experimental/coro/test/RequestContextTest.cpp
+        folly/experimental/coro/test/RetryTest.cpp
+        folly/experimental/coro/test/RustAdaptorsTest.cpp
+        folly/experimental/coro/test/ScopeExitTest.cpp
+        folly/experimental/coro/test/SharedMutexTest.cpp
+        folly/experimental/coro/test/SmallUnboundedQueueTest.cpp
+        folly/experimental/coro/test/TaskBenchmark.cpp
+        folly/experimental/coro/test/TaskTest.cpp
+        folly/experimental/coro/test/TimeoutTest.cpp
+        folly/experimental/coro/test/TraitsTest.cpp
+        folly/experimental/coro/test/TransformTest.cpp
+        folly/experimental/coro/test/UnboundedQueueTest.cpp
+        folly/experimental/coro/Accumulate-inl.h
+        folly/experimental/coro/Accumulate.h
+        folly/experimental/coro/AsyncGenerator.h
+        folly/experimental/coro/AsyncPipe.h
+        folly/experimental/coro/AsyncScope.h
+        folly/experimental/coro/AsyncStack.h
+        folly/experimental/coro/AutoCleanup-fwd.h
+        folly/experimental/coro/AutoCleanup.h
+        folly/experimental/coro/Baton.cpp
+        folly/experimental/coro/Baton.h
+        folly/experimental/coro/BlockingWait.h
+        folly/experimental/coro/BoundedQueue.h
+        folly/experimental/coro/Cleanup.h
+        folly/experimental/coro/Collect-inl.h
+        folly/experimental/coro/Collect.h
+        folly/experimental/coro/Concat-inl.h
+        folly/experimental/coro/Concat.h
+        folly/experimental/coro/Coroutine.h
+        folly/experimental/coro/CurrentExecutor.h
+        folly/experimental/coro/DetachOnCancel.h
+        folly/experimental/coro/Filter-inl.h
+        folly/experimental/coro/Filter.h
+        folly/experimental/coro/FutureUtil.h
+        folly/experimental/coro/Generator.h
+        folly/experimental/coro/GmockHelpers.h
+        folly/experimental/coro/GtestHelpers.h
+        folly/experimental/coro/Invoke.h
+        folly/experimental/coro/Merge-inl.h
+        folly/experimental/coro/Merge.h
+        folly/experimental/coro/Mutex.cpp
+        folly/experimental/coro/Mutex.h
+        folly/experimental/coro/Promise.h
+        folly/experimental/coro/Result.h
+        folly/experimental/coro/Retry.h
+        folly/experimental/coro/RustAdaptors.h
+        folly/experimental/coro/ScopeExit.h
+        folly/experimental/coro/SharedLock.h
+        folly/experimental/coro/SharedMutex.cpp
+        folly/experimental/coro/SharedMutex.h
+        folly/experimental/coro/SharedPromise.h
+        folly/experimental/coro/Sleep-inl.h
+        folly/experimental/coro/Sleep.h
+        folly/experimental/coro/SmallUnboundedQueue.h
+        folly/experimental/coro/Task.h
+        folly/experimental/coro/TimedWait.h
+        folly/experimental/coro/Timeout-inl.h
+        folly/experimental/coro/Timeout.h
+        folly/experimental/coro/Traits.h
+        folly/experimental/coro/Transform-inl.h
+        folly/experimental/coro/Transform.h
+        folly/experimental/coro/UnboundedQueue.h
+        folly/experimental/coro/ViaIfAsync.h
+        folly/experimental/coro/WithAsyncStack.h
+        folly/experimental/coro/WithCancellation.h
+        folly/experimental/crypto/detail/LtHashInternal.h
+        folly/experimental/crypto/detail/MathOperation_AVX2.cpp
+        folly/experimental/crypto/detail/MathOperation_Simple.cpp
+        folly/experimental/crypto/detail/MathOperation_SSE2.cpp
+        folly/experimental/crypto/test/Blake2xbBenchmark.cpp
+        folly/experimental/crypto/test/Blake2xbTest.cpp
+        folly/experimental/crypto/test/LtHashBenchmark.cpp
+        folly/experimental/crypto/test/LtHashTest.cpp
+        folly/experimental/crypto/Blake2xb.cpp
+        folly/experimental/crypto/Blake2xb.h
+        folly/experimental/crypto/LtHash-inl.h
+        folly/experimental/crypto/LtHash.cpp
+        folly/experimental/crypto/LtHash.h
+        folly/experimental/exception_tracer/test/ExceptionCounterTest.cpp
+        folly/experimental/exception_tracer/test/ExceptionTracerBenchmark.cpp
+        folly/experimental/exception_tracer/test/ExceptionTracerTest.cpp
+        folly/experimental/exception_tracer/test/SmartExceptionTracerTest.cpp
+        folly/experimental/exception_tracer/ExceptionAbi.h
+        folly/experimental/exception_tracer/ExceptionCounterLib.cpp
+        folly/experimental/exception_tracer/ExceptionCounterLib.h
+        folly/experimental/exception_tracer/ExceptionStackTraceLib.cpp
+        folly/experimental/exception_tracer/ExceptionTracer.cpp
+        folly/experimental/exception_tracer/ExceptionTracer.h
+        folly/experimental/exception_tracer/ExceptionTracerLib.cpp
+        folly/experimental/exception_tracer/ExceptionTracerLib.h
+        folly/experimental/exception_tracer/SmartExceptionStackTraceHooks.cpp
+        folly/experimental/exception_tracer/SmartExceptionTracer.cpp
+        folly/experimental/exception_tracer/SmartExceptionTracer.h
+        folly/experimental/exception_tracer/SmartExceptionTracerSingleton.cpp
+        folly/experimental/exception_tracer/SmartExceptionTracerSingleton.h
+        folly/experimental/exception_tracer/StackTrace.cpp
+        folly/experimental/exception_tracer/StackTrace.h
+        folly/experimental/flat_combining/test/FlatCombiningBenchmark.cpp
+        folly/experimental/flat_combining/test/FlatCombiningExamples.h
+        folly/experimental/flat_combining/test/FlatCombiningTest.cpp
+        folly/experimental/flat_combining/test/FlatCombiningTestHelpers.h
+        folly/experimental/flat_combining/FlatCombining.h
+        folly/experimental/io/test/AsyncBaseTestLib.cpp
+        folly/experimental/io/test/AsyncBaseTestLib.h
+        folly/experimental/io/test/AsyncIOTest.cpp
+        folly/experimental/io/test/AsyncIoUringSocketTest.cpp
+        folly/experimental/io/test/AsyncSignalHandlerTest.cpp
+        folly/experimental/io/test/FsUtilTest.cpp
+        folly/experimental/io/test/IOBenchmark.cpp
+        folly/experimental/io/test/IoTestTempFileUtil.cpp
+        folly/experimental/io/test/IoTestTempFileUtil.h
+        folly/experimental/io/test/IoUringBackendBench.cpp
+        folly/experimental/io/test/IoUringBackendMockTest.cpp
+        folly/experimental/io/test/IoUringBackendTest.cpp
+        folly/experimental/io/test/IoUringEventBaseLocalTest.cpp
+        folly/experimental/io/test/IoUringEventTest.cpp
+        folly/experimental/io/test/IoUringTest.cpp
+        folly/experimental/io/test/RegisteredFdBenchmark.cpp
+        folly/experimental/io/test/SimpleAsyncIOTest.cpp
+        folly/experimental/io/tool/HugePageUtil.cpp
+        folly/experimental/io/AsyncBase.cpp
+        folly/experimental/io/AsyncBase.h
+        folly/experimental/io/AsyncIO.cpp
+        folly/experimental/io/AsyncIO.h
+        folly/experimental/io/AsyncIoUringSocket.cpp
+        folly/experimental/io/AsyncIoUringSocket.h
+        folly/experimental/io/AsyncIoUringSocketFactory.h
+        folly/experimental/io/Epoll.h
+        folly/experimental/io/EpollBackend.h
+        folly/experimental/io/EventBasePoller.h
+        folly/experimental/io/FsUtil.cpp
+        folly/experimental/io/FsUtil.h
+        folly/experimental/io/HugePages.cpp
+        folly/experimental/io/HugePages.h
+        folly/experimental/io/IoUring.cpp
+        folly/experimental/io/IoUring.h
+        folly/experimental/io/IoUringBackend.cpp
+        folly/experimental/io/IoUringBackend.h
+        folly/experimental/io/IoUringBase.h
+        folly/experimental/io/IoUringEvent.cpp
+        folly/experimental/io/IoUringEvent.h
+        folly/experimental/io/IoUringEventBaseLocal.cpp
+        folly/experimental/io/IoUringEventBaseLocal.h
+        folly/experimental/io/IoUringProvidedBufferRing.h
+        folly/experimental/io/Liburing.h
+        folly/experimental/io/MuxIOThreadPoolExecutor.h
+        folly/experimental/io/SimpleAsyncIO.cpp
+        folly/experimental/io/SimpleAsyncIO.h
+        folly/experimental/observer/detail/Core.cpp
+        folly/experimental/observer/detail/Core.h
+        folly/experimental/observer/detail/GraphCycleDetector.h
+        folly/experimental/observer/detail/ObserverManager.cpp
+        folly/experimental/observer/detail/ObserverManager.h
+        folly/experimental/observer/test/ObserverTest.cpp
+        folly/experimental/observer/CoreCachedObserver.h
+        folly/experimental/observer/HazptrObserver.h
+        folly/experimental/observer/Observable-inl.h
+        folly/experimental/observer/Observable.h
+        folly/experimental/observer/Observer-inl.h
+        folly/experimental/observer/Observer-pre.h
+        folly/experimental/observer/Observer.h
+        folly/experimental/observer/ReadMostlyTLObserver.h
+        folly/experimental/observer/SimpleObservable-inl.h
+        folly/experimental/observer/SimpleObservable.h
+        folly/experimental/observer/WithJitter-inl.h
+        folly/experimental/observer/WithJitter.h
+        folly/experimental/settings/detail/SettingsImpl.h
+        folly/experimental/settings/test/a.cpp
+        folly/experimental/settings/test/a.h
+        folly/experimental/settings/test/b.cpp
+        folly/experimental/settings/test/b.h
+        folly/experimental/settings/test/SettingsBenchmarks.cpp
+        folly/experimental/settings/test/SettingsTest.cpp
+        folly/experimental/settings/Immutables.h
+        folly/experimental/settings/Settings.cpp
+        folly/experimental/settings/Settings.h
+        folly/experimental/settings/SettingsMetadata.h
+        folly/experimental/settings/Types.h
+        folly/experimental/symbolizer/detail/Debug.h
+        folly/experimental/symbolizer/test/Crash.cpp
+        folly/experimental/symbolizer/test/DwarfBenchmark.cpp
+        folly/experimental/symbolizer/test/ElfTest.cpp
+        folly/experimental/symbolizer/test/LineReaderTest.cpp
+        folly/experimental/symbolizer/test/SignalHandlerTest.cpp
+        folly/experimental/symbolizer/test/SignalHandlerTest.h
+        folly/experimental/symbolizer/test/SmallSigAltStackCrash.cpp
+        folly/experimental/symbolizer/test/StackTraceBenchmark.cpp
+        folly/experimental/symbolizer/test/StackTraceSizeLimitTest.cpp
+        folly/experimental/symbolizer/test/StackTraceTest.cpp
+        folly/experimental/symbolizer/test/SymbolizedFrameTest.cpp
+        folly/experimental/symbolizer/test/SymbolizerTest.cpp
+        folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h
+        folly/experimental/symbolizer/test/SymbolizerTestUtils.cpp
+        folly/experimental/symbolizer/test/SymbolizerTestUtils.h
+        folly/experimental/symbolizer/tool/Addr2Line.cpp
+        folly/experimental/symbolizer/Dwarf.cpp
+        folly/experimental/symbolizer/Dwarf.h
+        folly/experimental/symbolizer/DwarfImpl.cpp
+        folly/experimental/symbolizer/DwarfImpl.h
+        folly/experimental/symbolizer/DwarfLineNumberVM.cpp
+        folly/experimental/symbolizer/DwarfLineNumberVM.h
+        folly/experimental/symbolizer/DwarfSection.cpp
+        folly/experimental/symbolizer/DwarfSection.h
+        folly/experimental/symbolizer/DwarfUtil.cpp
+        folly/experimental/symbolizer/DwarfUtil.h
+        folly/experimental/symbolizer/Elf-inl.h
+        folly/experimental/symbolizer/Elf.cpp
+        folly/experimental/symbolizer/Elf.h
+        folly/experimental/symbolizer/ElfCache.cpp
+        folly/experimental/symbolizer/ElfCache.h
+        folly/experimental/symbolizer/LineReader.cpp
+        folly/experimental/symbolizer/LineReader.h
+        folly/experimental/symbolizer/SignalHandler.cpp
+        folly/experimental/symbolizer/SignalHandler.h
+        folly/experimental/symbolizer/StackTrace.cpp
+        folly/experimental/symbolizer/StackTrace.h
+        folly/experimental/symbolizer/SymbolizedFrame.cpp
+        folly/experimental/symbolizer/SymbolizedFrame.h
+        folly/experimental/symbolizer/SymbolizePrinter.cpp
+        folly/experimental/symbolizer/SymbolizePrinter.h
+        folly/experimental/symbolizer/Symbolizer.cpp
+        folly/experimental/symbolizer/Symbolizer.h
+        folly/experimental/test/AtomicReadMostlyMainPtrBenchmark.cpp
+        folly/experimental/test/AtomicReadMostlyMainPtrTest.cpp
+        folly/experimental/test/AutoTimerTest.cpp
+        folly/experimental/test/BitsBenchmark.cpp
+        folly/experimental/test/BitsTest.cpp
+        folly/experimental/test/BitVectorCodingTest.cpp
+        folly/experimental/test/CleanupTest.cpp
+        folly/experimental/test/CodingTestUtils.cpp
+        folly/experimental/test/CodingTestUtils.h
+        folly/experimental/test/CoinflipBenchmark.cpp
+        folly/experimental/test/CoinflipTest.cpp
+        folly/experimental/test/DynamicParserTest.cpp
+        folly/experimental/test/EliasFanoCodingTest.cpp
+        folly/experimental/test/EnvUtilSubprocess.cpp
+        folly/experimental/test/EnvUtilTest.cpp
+        folly/experimental/test/EventCountTest.cpp
+        folly/experimental/test/FlatCombiningPriorityQueueTest.cpp
+        folly/experimental/test/FunctionSchedulerTest.cpp
+        folly/experimental/test/FutureDAGTest.cpp
+        folly/experimental/test/HHWheelTimerHighResBenchmark.cpp
+        folly/experimental/test/HHWheelTimerHighResTest.cpp
+        folly/experimental/test/InstructionsTest.cpp
+        folly/experimental/test/JemallocHugePageAllocatorTest.cpp
+        folly/experimental/test/JemallocNodumpAllocatorTest.cpp
+        folly/experimental/test/JSONSchemaTest.cpp
+        folly/experimental/test/LockFreeRingBufferTest.cpp
+        folly/experimental/test/NestedCommandLineAppExample.cpp
+        folly/experimental/test/NestedCommandLineAppTest.cpp
+        folly/experimental/test/NestedCommandLineAppTestHelper.cpp
+        folly/experimental/test/PrimaryPtrTest.cpp
+        folly/experimental/test/ProgramOptionsTest.cpp
+        folly/experimental/test/ProgramOptionsTestHelper.cpp
+        folly/experimental/test/QuotientMultiSetBenchmark.cpp
+        folly/experimental/test/QuotientMultiSetTest.cpp
+        folly/experimental/test/ReadMostlySharedPtrBenchmark.cpp
+        folly/experimental/test/ReadMostlySharedPtrStressTest.cpp
+        folly/experimental/test/ReadMostlySharedPtrTest.cpp
+        folly/experimental/test/RefCountBenchmark.cpp
+        folly/experimental/test/RefCountTest.cpp
+        folly/experimental/test/RelaxedConcurrentPriorityQueueTest.cpp
+        folly/experimental/test/Select64Test.cpp
+        folly/experimental/test/SingletonRelaxedCounterBench.cpp
+        folly/experimental/test/SingletonRelaxedCounterTest.cpp
+        folly/experimental/test/SingleWriterFixedHashMapTest.cpp
+        folly/experimental/test/StampedPtrTest.cpp
+        folly/experimental/test/StringKeyedBenchmark.cpp
+        folly/experimental/test/StringKeyedTest.cpp
+        folly/experimental/test/TestUtilTest.cpp
+        folly/experimental/test/ThreadedRepeatingFunctionRunnerTest.cpp
+        folly/experimental/test/TimekeeperHighResTest.cpp
+        folly/experimental/test/TimerFDTimeoutManagerTest.cpp
+        folly/experimental/test/TupleOpsTest.cpp
+        folly/experimental/tool/JSONSchemaTester.cpp
+        folly/experimental/AtomicReadMostlyMainPtr.cpp
+        folly/experimental/AtomicReadMostlyMainPtr.h
+        folly/experimental/AutoTimer.h
+        folly/experimental/Bits.h
+        folly/experimental/BitVectorCoding.h
+        folly/experimental/Cleanup.h
+        folly/experimental/CodingDetail.h
+        folly/experimental/Coinflip.h
+        folly/experimental/DynamicParser-inl.h
+        folly/experimental/DynamicParser.cpp
+        folly/experimental/DynamicParser.h
+        folly/experimental/EliasFanoCoding.h
+        folly/experimental/EnvUtil.cpp
+        folly/experimental/EnvUtil.h
+        folly/experimental/EventCount.h
+        folly/experimental/ExecutionObserver.h
+        folly/experimental/FlatCombiningPriorityQueue.h
+        folly/experimental/FunctionScheduler.cpp
+        folly/experimental/FunctionScheduler.h
+        folly/experimental/FutureDAG.h
+        folly/experimental/Instructions.h
+        folly/experimental/JemallocHugePageAllocator.cpp
+        folly/experimental/JemallocHugePageAllocator.h
+        folly/experimental/JemallocNodumpAllocator.cpp
+        folly/experimental/JemallocNodumpAllocator.h
+        folly/experimental/JSONSchema.cpp
+        folly/experimental/JSONSchema.h
+        folly/experimental/LockFreeRingBuffer.h
+        folly/experimental/NestedCommandLineApp.cpp
+        folly/experimental/NestedCommandLineApp.h
+        folly/experimental/PrimaryPtr.h
+        folly/experimental/ProgramOptions.cpp
+        folly/experimental/ProgramOptions.h
+        folly/experimental/QuotientMultiSet-inl.h
+        folly/experimental/QuotientMultiSet.cpp
+        folly/experimental/QuotientMultiSet.h
+        folly/experimental/ReadMostlySharedPtr.h
+        folly/experimental/RelaxedConcurrentPriorityQueue.h
+        folly/experimental/Select64.cpp
+        folly/experimental/Select64.h
+        folly/experimental/SingletonRelaxedCounter.h
+        folly/experimental/SingleWriterFixedHashMap.h
+        folly/experimental/StampedPtr.h
+        folly/experimental/StringKeyedCommon.h
+        folly/experimental/StringKeyedMap.h
+        folly/experimental/StringKeyedSet.h
+        folly/experimental/StringKeyedUnorderedMap.h
+        folly/experimental/StringKeyedUnorderedSet.h
+        folly/experimental/STTimerFDTimeoutManager.cpp
+        folly/experimental/STTimerFDTimeoutManager.h
+        folly/experimental/TestUtil.cpp
+        folly/experimental/TestUtil.h
+        folly/experimental/ThreadedRepeatingFunctionRunner.cpp
+        folly/experimental/ThreadedRepeatingFunctionRunner.h
+        folly/experimental/ThreadWheelTimekeeperHighRes.cpp
+        folly/experimental/ThreadWheelTimekeeperHighRes.h
+        folly/experimental/TimerFD.cpp
+        folly/experimental/TimerFD.h
+        folly/experimental/TimerFDTimeoutManager.cpp
+        folly/experimental/TimerFDTimeoutManager.h
+        folly/experimental/TLRefCount.h
+        folly/experimental/TupleOps.h
+        folly/ext/buck2/test_ext.cpp
+        folly/ext/test_ext.cpp
+        folly/ext/test_ext.h
+        folly/external/aor/asmdefs.h
+        folly/external/farmhash/test/farmhash_test.cpp
+        folly/external/farmhash/farmhash.cpp
+        folly/external/farmhash/farmhash.h
+        folly/external/fast-crc32/avx512_crc32c_v8s3x4.cpp
+        folly/external/fast-crc32/avx512_crc32c_v8s3x4.h
+        folly/external/fast-crc32/neon_crc32c_v3s4x2e_v2.cpp
+        folly/external/fast-crc32/neon_crc32c_v3s4x2e_v2.h
+        folly/external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.cpp
+        folly/external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.h
+        folly/external/fast-crc32/sse_crc32c_v8s3x3.cpp
+        folly/external/fast-crc32/sse_crc32c_v8s3x3.h
+        folly/external/nvidia/hash/detail/Crc32cCombineDetail.h
+        folly/external/nvidia/hash/detail/Crc32cDetail.cpp
+        folly/external/nvidia/hash/Checksum.cpp
+        folly/fibers/async/test/AsyncTest.cpp
+        folly/fibers/async/Async.cpp
+        folly/fibers/async/Async.h
+        folly/fibers/async/AsyncStack.h
+        folly/fibers/async/Baton.h
+        folly/fibers/async/Collect-inl.h
+        folly/fibers/async/Collect.h
+        folly/fibers/async/FiberManager.h
+        folly/fibers/async/Future.h
+        folly/fibers/async/Promise.h
+        folly/fibers/async/Task.h
+        folly/fibers/async/WaitUtils.h
+        folly/fibers/detail/AtomicBatchDispatcher.cpp
+        folly/fibers/detail/AtomicBatchDispatcher.h
+        folly/fibers/test/FibersBenchmark.cpp
+        folly/fibers/test/FibersTest.cpp
+        folly/fibers/test/FibersTestApp.cpp
+        folly/fibers/test/StackOverflow.cpp
+        folly/fibers/AddTasks-inl.h
+        folly/fibers/AddTasks.h
+        folly/fibers/AtomicBatchDispatcher-inl.h
+        folly/fibers/AtomicBatchDispatcher.h
+        folly/fibers/BatchDispatcher.h
+        folly/fibers/BatchSemaphore.cpp
+        folly/fibers/BatchSemaphore.h
+        folly/fibers/Baton-inl.h
+        folly/fibers/Baton.cpp
+        folly/fibers/Baton.h
+        folly/fibers/BoostContextCompatibility.h
+        folly/fibers/CallOnce.h
+        folly/fibers/EventBaseLoopController-inl.h
+        folly/fibers/EventBaseLoopController.h
+        folly/fibers/ExecutorBasedLoopController.h
+        folly/fibers/ExecutorLoopController-inl.h
+        folly/fibers/ExecutorLoopController.h
+        folly/fibers/Fiber-inl.h
+        folly/fibers/Fiber.cpp
+        folly/fibers/Fiber.h
+        folly/fibers/FiberManager-inl.h
+        folly/fibers/FiberManager.cpp
+        folly/fibers/FiberManager.h
+        folly/fibers/FiberManagerInternal-inl.h
+        folly/fibers/FiberManagerInternal.h
+        folly/fibers/FiberManagerMap-inl.h
+        folly/fibers/FiberManagerMap.h
+        folly/fibers/ForEach-inl.h
+        folly/fibers/ForEach.h
+        folly/fibers/GenericBaton.h
+        folly/fibers/GuardPageAllocator.cpp
+        folly/fibers/GuardPageAllocator.h
+        folly/fibers/LoopController.h
+        folly/fibers/Promise-inl.h
+        folly/fibers/Promise.h
+        folly/fibers/Semaphore.cpp
+        folly/fibers/Semaphore.h
+        folly/fibers/SemaphoreBase.cpp
+        folly/fibers/SemaphoreBase.h
+        folly/fibers/SimpleLoopController.cpp
+        folly/fibers/SimpleLoopController.h
+        folly/fibers/TimedMutex-inl.h
+        folly/fibers/TimedMutex.h
+        folly/fibers/traits.h
+        folly/fibers/WhenN-inl.h
+        folly/fibers/WhenN.h
+        folly/functional/test/ApplyTupleTest.cpp
+        folly/functional/test/InvokeTest.cpp
+        folly/functional/test/PartialTest.cpp
+        folly/functional/test/protocol_test.cpp
+        folly/functional/test/traits_test.cpp
+        folly/functional/ApplyTuple.h
+        folly/functional/Invoke.h
+        folly/functional/Partial.h
+        folly/functional/protocol.h
+        folly/functional/traits.h
+        folly/futures/detail/Core.cpp
+        folly/futures/detail/Core.h
+        folly/futures/detail/Types.h
+        folly/futures/test/BarrierTest.cpp
+        folly/futures/test/Benchmark.cpp
+        folly/futures/test/CallbackLifetimeTest.cpp
+        folly/futures/test/CleanupTest.cpp
+        folly/futures/test/CollectTest.cpp
+        folly/futures/test/ContextTest.cpp
+        folly/futures/test/ConversionOperatorTest.cpp
+        folly/futures/test/CoreTest.cpp
+        folly/futures/test/EnsureTest.cpp
+        folly/futures/test/FilterTest.cpp
+        folly/futures/test/FutureSplitterTest.cpp
+        folly/futures/test/FutureTest.cpp
+        folly/futures/test/HeaderCompileTest.cpp
+        folly/futures/test/HeapTimekeeperTest.cpp
+        folly/futures/test/InterruptTest.cpp
+        folly/futures/test/ManualTimekeeperTest.cpp
+        folly/futures/test/MapTest.cpp
+        folly/futures/test/NonCopyableLambdaTest.cpp
+        folly/futures/test/PollTest.cpp
+        folly/futures/test/PromiseTest.cpp
+        folly/futures/test/ReduceTest.cpp
+        folly/futures/test/RetryingTest.cpp
+        folly/futures/test/SelfDestructTest.cpp
+        folly/futures/test/SemiFutureTest.cpp
+        folly/futures/test/SharedPromiseTest.cpp
+        folly/futures/test/TestExecutor.cpp
+        folly/futures/test/TestExecutor.h
+        folly/futures/test/TestExecutorTest.cpp
+        folly/futures/test/ThenCompileTest.cpp
+        folly/futures/test/ThenCompileTest.h
+        folly/futures/test/ThenTest.cpp
+        folly/futures/test/ThreadWheelTimekeeperTest.cpp
+        folly/futures/test/TimekeeperTest.cpp
+        folly/futures/test/TimekeeperTestLib.h
+        folly/futures/test/TimesTest.cpp
+        folly/futures/test/UnwrapTest.cpp
+        folly/futures/test/ViaTest.cpp
+        folly/futures/test/WaitTest.cpp
+        folly/futures/test/WhenTest.cpp
+        folly/futures/test/WhileDoTest.cpp
+        folly/futures/test/WillEqualTest.cpp
+        folly/futures/test/WindowTest.cpp
+        folly/futures/Barrier.cpp
+        folly/futures/Barrier.h
+        folly/futures/Cleanup.h
+        folly/futures/Future-inl.h
+        folly/futures/Future-pre.h
+        folly/futures/Future.cpp
+        folly/futures/Future.h
+        folly/futures/FutureSplitter.h
+        folly/futures/HeapTimekeeper.cpp
+        folly/futures/HeapTimekeeper.h
+        folly/futures/ManualTimekeeper.cpp
+        folly/futures/ManualTimekeeper.h
+        folly/futures/Portability.h
+        folly/futures/Promise-inl.h
+        folly/futures/Promise.cpp
+        folly/futures/Promise.h
+        folly/futures/Retrying.h
+        folly/futures/SharedPromise-inl.h
+        folly/futures/SharedPromise.cpp
+        folly/futures/SharedPromise.h
+        folly/futures/ThreadWheelTimekeeper.cpp
+        folly/futures/ThreadWheelTimekeeper.h
+        folly/futures/WTCallback.h
+        folly/gen/test/BaseBenchmark.cpp
+        folly/gen/test/BaseTest.cpp
+        folly/gen/test/Bench.h
+        folly/gen/test/CombineTest.cpp
+        folly/gen/test/FileBenchmark.cpp
+        folly/gen/test/FileTest.cpp
+        folly/gen/test/IStreamTest.cpp
+        folly/gen/test/ParallelBenchmark.cpp
+        folly/gen/test/ParallelMapBenchmark.cpp
+        folly/gen/test/ParallelMapTest.cpp
+        folly/gen/test/ParallelTest.cpp
+        folly/gen/test/StringBenchmark.cpp
+        folly/gen/test/StringTest.cpp
+        folly/gen/Base-inl.h
+        folly/gen/Base.h
+        folly/gen/Combine-inl.h
+        folly/gen/Combine.h
+        folly/gen/Core-inl.h
+        folly/gen/Core.h
+        folly/gen/File-inl.h
+        folly/gen/File.h
+        folly/gen/IStream.h
+        folly/gen/Parallel-inl.h
+        folly/gen/Parallel.h
+        folly/gen/ParallelMap-inl.h
+        folly/gen/ParallelMap.h
+        folly/gen/String-inl.h
+        folly/gen/String.h
+        folly/hash/detail/ChecksumDetail.cpp
+        folly/hash/detail/ChecksumDetail.h
+        folly/hash/detail/Crc32cDetail.cpp
+        folly/hash/detail/Crc32CombineDetail.cpp
+        folly/hash/test/ChecksumBenchmark.cpp
+        folly/hash/test/ChecksumTest.cpp
+        folly/hash/test/FarmHashTest.cpp
+        folly/hash/test/HashBenchmark.cpp
+        folly/hash/test/HashTest.cpp
+        folly/hash/test/MurmurHashTest.cpp
+        folly/hash/test/SpookyHashV1Test.cpp
+        folly/hash/test/SpookyHashV2Test.cpp
+        folly/hash/test/traits_test.cpp
+        folly/hash/Checksum.cpp
+        folly/hash/Checksum.h
+        folly/hash/FarmHash.h
+        folly/hash/Hash.h
+        folly/hash/MurmurHash.h
+        folly/hash/SpookyHashV1.cpp
+        folly/hash/SpookyHashV1.h
+        folly/hash/SpookyHashV2.cpp
+        folly/hash/SpookyHashV2.h
+        folly/hash/traits.h
+        folly/init/test/PhaseTest.cpp
+        folly/init/Init.cpp
+        folly/init/Init.h
+        folly/init/Phase.cpp
+        folly/init/Phase.h
+        folly/io/async/fdsock/test/AsyncFdSocketTest.cpp
+        folly/io/async/fdsock/AsyncFdSocket.cpp
+        folly/io/async/fdsock/AsyncFdSocket.h
+        folly/io/async/fdsock/SocketFds.cpp
+        folly/io/async/fdsock/SocketFds.h
+        folly/io/async/observer/AsyncSocketObserverContainer.h
+        folly/io/async/observer/AsyncSocketObserverInterface.h
+        folly/io/async/ssl/test/BasicTransportCertificateTest.cpp
+        folly/io/async/ssl/test/OpenSSLUtilsTest.cpp
+        folly/io/async/ssl/test/SSLErrorsTest.cpp
+        folly/io/async/ssl/BasicTransportCertificate.h
+        folly/io/async/ssl/OpenSSLTransportCertificate.h
+        folly/io/async/ssl/OpenSSLUtils.cpp
+        folly/io/async/ssl/OpenSSLUtils.h
+        folly/io/async/ssl/SSLErrors.cpp
+        folly/io/async/ssl/SSLErrors.h
+        folly/io/async/ssl/TLSDefinitions.h
+        folly/io/async/test/AsyncBaseTestLib.cpp
+        folly/io/async/test/AsyncBaseTestLib.h
+        folly/io/async/test/AsyncIOTest.cpp
+        folly/io/async/test/AsyncIoUringSocketTest.cpp
+        folly/io/async/test/AsyncPipeTest.cpp
+        folly/io/async/test/AsyncSignalHandlerTest.cpp
+        folly/io/async/test/AsyncSignalHandlerTestLib.h
+        folly/io/async/test/AsyncSocketExceptionTest.cpp
+        folly/io/async/test/AsyncSocketObserverTest.cpp
+        folly/io/async/test/AsyncSocketTest.cpp
+        folly/io/async/test/AsyncSocketTest.h
+        folly/io/async/test/AsyncSocketTest2.cpp
+        folly/io/async/test/AsyncSocketTest2.h
+        folly/io/async/test/AsyncSSLSocketTest.cpp
+        folly/io/async/test/AsyncSSLSocketTest.h
+        folly/io/async/test/AsyncSSLSocketTest2.cpp
+        folly/io/async/test/AsyncSSLSocketWriteTest.cpp
+        folly/io/async/test/AsyncTimeoutTest.cpp
+        folly/io/async/test/AsyncTransportTest.cpp
+        folly/io/async/test/AsyncUDPSocketGSOGROTest.cpp
+        folly/io/async/test/AsyncUDPSocketSendmmsgTest.cpp
+        folly/io/async/test/AsyncUDPSocketTest.cpp
+        folly/io/async/test/AtomicNotificationQueueTest.cpp
+        folly/io/async/test/BlockingSocket.h
+        folly/io/async/test/CallbackStateEnum.h
+        folly/io/async/test/ConnCallback.h
+        folly/io/async/test/DecoratedAsyncTransportWrapperTest.cpp
+        folly/io/async/test/DelayedDestructionBaseTest.cpp
+        folly/io/async/test/DelayedDestructionTest.cpp
+        folly/io/async/test/DestructorCheckTest.cpp
+        folly/io/async/test/EpollBackendTest.cpp
+        folly/io/async/test/EventBaseBenchmark.cpp
+        folly/io/async/test/EventBaseLocalTest.cpp
+        folly/io/async/test/EventBaseTest.cpp
+        folly/io/async/test/EventBaseTestLib.h
+        folly/io/async/test/EventBaseThreadTest.cpp
+        folly/io/async/test/EventHandlerTest.cpp
+        folly/io/async/test/HHWheelTimerHighResBenchmark.cpp
+        folly/io/async/test/HHWheelTimerHighResTest.cpp
+        folly/io/async/test/HHWheelTimerSlowTests.cpp
+        folly/io/async/test/HHWheelTimerTest.cpp
+        folly/io/async/test/IOBenchmark.cpp
+        folly/io/async/test/IoTestTempFileUtil.cpp
+        folly/io/async/test/IoTestTempFileUtil.h
+        folly/io/async/test/IoUringBackendBench.cpp
+        folly/io/async/test/IoUringBackendSetupTest.cpp
+        folly/io/async/test/IoUringBackendTest.cpp
+        folly/io/async/test/IoUringEventBaseLocalTest.cpp
+        folly/io/async/test/IoUringEventTest.cpp
+        folly/io/async/test/IoUringTest.cpp
+        folly/io/async/test/MockAsyncServerSocket.h
+        folly/io/async/test/MockAsyncSocket.h
+        folly/io/async/test/MockAsyncSocketLegacyObserver.h
+        folly/io/async/test/MockAsyncSocketObserver.h
+        folly/io/async/test/MockAsyncSSLSocket.h
+        folly/io/async/test/MockAsyncTransport.h
+        folly/io/async/test/MockAsyncTransportObserver.h
+        folly/io/async/test/MockAsyncUDPSocket.h
+        folly/io/async/test/MockTimeoutManager.h
+        folly/io/async/test/MuxIOThreadPoolExecutorTest.cpp
+        folly/io/async/test/NotificationQueueBenchmark.cpp
+        folly/io/async/test/NotificationQueueTest.cpp
+        folly/io/async/test/RegisteredFdBenchmark.cpp
+        folly/io/async/test/RequestContextBenchmark.cpp
+        folly/io/async/test/RequestContextHelper.h
+        folly/io/async/test/RequestContextTest.cpp
+        folly/io/async/test/ScopedBoundPort.cpp
+        folly/io/async/test/ScopedBoundPort.h
+        folly/io/async/test/ScopedEventBaseThreadTest.cpp
+        folly/io/async/test/SimpleAsyncIOTest.cpp
+        folly/io/async/test/SocketClient.cpp
+        folly/io/async/test/SocketPair.cpp
+        folly/io/async/test/SocketPair.h
+        folly/io/async/test/SSLContextInitializationTest.cpp
+        folly/io/async/test/SSLContextRegressionTest.cpp
+        folly/io/async/test/SSLContextTest.cpp
+        folly/io/async/test/SSLOptionsTest.cpp
+        folly/io/async/test/SSLSessionTest.cpp
+        folly/io/async/test/SSLUtil.cpp
+        folly/io/async/test/SSLUtil.h
+        folly/io/async/test/TerminateCancellationTokenTest.cpp
+        folly/io/async/test/TestSSLServer.cpp
+        folly/io/async/test/TestSSLServer.h
+        folly/io/async/test/TFOTest.cpp
+        folly/io/async/test/TFOTest.h
+        folly/io/async/test/TFOUtil.cpp
+        folly/io/async/test/TFOUtil.h
+        folly/io/async/test/TimerFDTimeoutManagerTest.cpp
+        folly/io/async/test/TimeUtil.cpp
+        folly/io/async/test/TimeUtil.h
+        folly/io/async/test/TimeUtilTest.cpp
+        folly/io/async/test/UndelayedDestruction.h
+        folly/io/async/test/Util.h
+        folly/io/async/test/WriteChainAsyncTransportWrapperTest.cpp
+        folly/io/async/test/WriteFlagsTest.cpp
+        folly/io/async/test/ZeroCopy.cpp
+        folly/io/async/test/ZeroCopy.h
+        folly/io/async/test/ZeroCopyBenchmark.cpp
+        folly/io/async/test/ZeroCopyTest.cpp
+        folly/io/async/AsyncBase.cpp
+        folly/io/async/AsyncBase.h
+        folly/io/async/AsyncIO.cpp
+        folly/io/async/AsyncIO.h
+        folly/io/async/AsyncIoUringSocket.cpp
+        folly/io/async/AsyncIoUringSocket.h
+        folly/io/async/AsyncIoUringSocketFactory.h
+        folly/io/async/AsyncPipe.cpp
+        folly/io/async/AsyncPipe.h
+        folly/io/async/AsyncServerSocket.cpp
+        folly/io/async/AsyncServerSocket.h
+        folly/io/async/AsyncSignalHandler.cpp
+        folly/io/async/AsyncSignalHandler.h
+        folly/io/async/AsyncSocket.cpp
+        folly/io/async/AsyncSocket.h
+        folly/io/async/AsyncSocketBase.h
+        folly/io/async/AsyncSocketException.cpp
+        folly/io/async/AsyncSocketException.h
+        folly/io/async/AsyncSocketTransport.cpp
+        folly/io/async/AsyncSocketTransport.h
+        folly/io/async/AsyncSSLSocket.cpp
+        folly/io/async/AsyncSSLSocket.h
+        folly/io/async/AsyncTimeout.cpp
+        folly/io/async/AsyncTimeout.h
+        folly/io/async/AsyncTransport.h
+        folly/io/async/AsyncTransportCertificate.h
+        folly/io/async/AsyncUDPServerSocket.h
+        folly/io/async/AsyncUDPSocket.cpp
+        folly/io/async/AsyncUDPSocket.h
+        folly/io/async/AtomicNotificationQueue-inl.h
+        folly/io/async/AtomicNotificationQueue.h
+        folly/io/async/CertificateIdentityVerifier.h
+        folly/io/async/DecoratedAsyncTransportWrapper.h
+        folly/io/async/DelayedDestruction.cpp
+        folly/io/async/DelayedDestruction.h
+        folly/io/async/DelayedDestructionBase.h
+        folly/io/async/DestructorCheck.h
+        folly/io/async/Epoll.h
+        folly/io/async/EpollBackend.cpp
+        folly/io/async/EpollBackend.h
+        folly/io/async/EventBase.cpp
+        folly/io/async/EventBase.h
+        folly/io/async/EventBaseAtomicNotificationQueue-inl.h
+        folly/io/async/EventBaseAtomicNotificationQueue.h
+        folly/io/async/EventBaseBackendBase.cpp
+        folly/io/async/EventBaseBackendBase.h
+        folly/io/async/EventBaseLocal.cpp
+        folly/io/async/EventBaseLocal.h
+        folly/io/async/EventBaseManager.cpp
+        folly/io/async/EventBaseManager.h
+        folly/io/async/EventBasePoller.cpp
+        folly/io/async/EventBasePoller.h
+        folly/io/async/EventBaseThread.cpp
+        folly/io/async/EventBaseThread.h
+        folly/io/async/EventHandler.cpp
+        folly/io/async/EventHandler.h
+        folly/io/async/EventUtil.h
+        folly/io/async/HHWheelTimer-fwd.h
+        folly/io/async/HHWheelTimer.cpp
+        folly/io/async/HHWheelTimer.h
+        folly/io/async/IoUring.cpp
+        folly/io/async/IoUring.h
+        folly/io/async/IoUringBackend.cpp
+        folly/io/async/IoUringBackend.h
+        folly/io/async/IoUringBase.h
+        folly/io/async/IoUringEvent.cpp
+        folly/io/async/IoUringEvent.h
+        folly/io/async/IoUringEventBaseLocal.cpp
+        folly/io/async/IoUringEventBaseLocal.h
+        folly/io/async/IoUringProvidedBufferRing.cpp
+        folly/io/async/IoUringProvidedBufferRing.h
+        folly/io/async/Liburing.h
+        folly/io/async/MuxIOThreadPoolExecutor.cpp
+        folly/io/async/MuxIOThreadPoolExecutor.h
+        folly/io/async/NotificationQueue.h
+        folly/io/async/PasswordInFile.cpp
+        folly/io/async/PasswordInFile.h
+        folly/io/async/Request.cpp
+        folly/io/async/Request.h
+        folly/io/async/ScopedEventBaseThread.cpp
+        folly/io/async/ScopedEventBaseThread.h
+        folly/io/async/SimpleAsyncIO.cpp
+        folly/io/async/SimpleAsyncIO.h
+        folly/io/async/SSLContext.cpp
+        folly/io/async/SSLContext.h
+        folly/io/async/SSLOptions.cpp
+        folly/io/async/SSLOptions.h
+        folly/io/async/STTimerFDTimeoutManager.cpp
+        folly/io/async/STTimerFDTimeoutManager.h
+        folly/io/async/TerminateCancellationToken.cpp
+        folly/io/async/TerminateCancellationToken.h
+        folly/io/async/TimeoutManager.cpp
+        folly/io/async/TimeoutManager.h
+        folly/io/async/TimerFD.cpp
+        folly/io/async/TimerFD.h
+        folly/io/async/TimerFDTimeoutManager.cpp
+        folly/io/async/TimerFDTimeoutManager.h
+        folly/io/async/VirtualEventBase.cpp
+        folly/io/async/VirtualEventBase.h
+        folly/io/async/WriteChainAsyncTransportWrapper.h
+        folly/io/async/WriteFlags.h
+        folly/io/coro/test/TransportTest.cpp
+        folly/io/coro/ServerSocket.cpp
+        folly/io/coro/ServerSocket.h
+        folly/io/coro/Transport.cpp
+        folly/io/coro/Transport.h
+        folly/io/coro/TransportCallbackBase.h
+        folly/io/test/FsUtilTest.cpp
+        folly/io/test/IOBufBenchmark.cpp
+        folly/io/test/IOBufCBTest.cpp
+        folly/io/test/IOBufCursorBenchmark.cpp
+        folly/io/test/IOBufCursorTest.cpp
+        folly/io/test/IOBufIovecBuilderTest.cpp
+        folly/io/test/IOBufQueueTest.cpp
+        folly/io/test/IOBufTest.cpp
+        folly/io/test/NetworkBenchmark.cpp
+        folly/io/test/QueueAppenderBenchmark.cpp
+        folly/io/test/RecordIOTest.cpp
+        folly/io/test/ShutdownSocketSetTest.cpp
+        folly/io/test/SocketOptionValueTest.cpp
+        folly/io/tool/HugePageUtil.cpp
+        folly/io/Cursor-inl.h
+        folly/io/Cursor.cpp
+        folly/io/Cursor.h
+        folly/io/FsUtil.cpp
+        folly/io/FsUtil.h
+        folly/io/GlobalShutdownSocketSet.cpp
+        folly/io/GlobalShutdownSocketSet.h
+        folly/io/HugePages.cpp
+        folly/io/HugePages.h
+        folly/io/IOBuf.cpp
+        folly/io/IOBuf.h
+        folly/io/IOBufIovecBuilder.cpp
+        folly/io/IOBufIovecBuilder.h
+        folly/io/IOBufQueue.cpp
+        folly/io/IOBufQueue.h
+        folly/io/RecordIO-inl.h
+        folly/io/RecordIO.cpp
+        folly/io/RecordIO.h
+        folly/io/ShutdownSocketSet.cpp
+        folly/io/ShutdownSocketSet.h
+        folly/io/SocketOptionMap.cpp
+        folly/io/SocketOptionMap.h
+        folly/io/SocketOptionValue.cpp
+        folly/io/SocketOptionValue.h
+        folly/io/TypedIOBuf.h
+        folly/json/bser/test/BserTest.cpp
+        folly/json/bser/Bser.h
+        folly/json/bser/Dump.cpp
+        folly/json/bser/Load.cpp
+        folly/json/test/DynamicBenchmark.cpp
+        folly/json/test/DynamicConverterTest.cpp
+        folly/json/test/DynamicOtherTest.cpp
+        folly/json/test/DynamicParserTest.cpp
+        folly/json/test/DynamicTest.cpp
+        folly/json/test/json_patch_test.cpp
+        folly/json/test/json_pointer_test.cpp
+        folly/json/test/JsonBenchmark.cpp
+        folly/json/test/JsonOtherTest.cpp
+        folly/json/test/JSONSchemaTest.cpp
+        folly/json/test/JsonTest.cpp
+        folly/json/test/JsonTestUtilTest.cpp
+        folly/json/tool/JSONSchemaTester.cpp
+        folly/json/dynamic-inl.h
+        folly/json/dynamic.cpp
+        folly/json/dynamic.h
+        folly/json/DynamicConverter.h
+        folly/json/DynamicParser-inl.h
+        folly/json/DynamicParser.cpp
+        folly/json/DynamicParser.h
+        folly/json/json.cpp
+        folly/json/json.h
+        folly/json/json_patch.cpp
+        folly/json/json_patch.h
+        folly/json/json_pointer.cpp
+        folly/json/json_pointer.h
+        folly/json/JsonMockUtil.h
+        folly/json/JSONSchema.cpp
+        folly/json/JSONSchema.h
+        folly/json/JsonTestUtil.cpp
+        folly/json/JsonTestUtil.h
+        folly/lang/test/AlignedTest.cpp
+        folly/lang/test/AlignTest.cpp
+        folly/lang/test/BadgeTest.cpp
+        folly/lang/test/BitsBenchmark.cpp
+        folly/lang/test/BitsClassBenchmark.cpp
+        folly/lang/test/BitsClassTest.cpp
+        folly/lang/test/BitsTest.cpp
+        folly/lang/test/ByteTest.cpp
+        folly/lang/test/CastTest.cpp
+        folly/lang/test/CheckedMathTest.cpp
+        folly/lang/test/CStringTest.cpp
+        folly/lang/test/ExceptionBench.cpp
+        folly/lang/test/ExceptionTest.cpp
+        folly/lang/test/ExternTest.cpp
+        folly/lang/test/HintTest.cpp
+        folly/lang/test/LaunderTest.cpp
+        folly/lang/test/NewTest.cpp
+        folly/lang/test/OrderingTest.cpp
+        folly/lang/test/PrettyTest.cpp
+        folly/lang/test/PropagateConstTest.cpp
+        folly/lang/test/RValueReferenceWrapperTest.cpp
+        folly/lang/test/SafeAssertTest.cpp
+        folly/lang/test/ThunkTest.cpp
+        folly/lang/test/ToAsciiBench.cpp
+        folly/lang/test/ToAsciiTest.cpp
+        folly/lang/test/TypeInfoTest.cpp
+        folly/lang/test/UncaughtExceptionsTest.cpp
+        folly/lang/Access.h
+        folly/lang/Align.h
+        folly/lang/Aligned.h
+        folly/lang/Assume.h
+        folly/lang/Badge.h
+        folly/lang/Bits.h
+        folly/lang/BitsClass.h
+        folly/lang/Builtin.h
+        folly/lang/Byte.h
+        folly/lang/CArray.h
+        folly/lang/Cast.h
+        folly/lang/CheckedMath.h
+        folly/lang/CString.cpp
+        folly/lang/CString.h
+        folly/lang/CustomizationPoint.h
+        folly/lang/Exception.cpp
+        folly/lang/Exception.h
+        folly/lang/Extern.h
+        folly/lang/Hint-inl.h
+        folly/lang/Hint.h
+        folly/lang/Keep.h
+        folly/lang/Launder.h
+        folly/lang/New.h
+        folly/lang/Ordering.h
+        folly/lang/Pretty.h
+        folly/lang/PropagateConst.h
+        folly/lang/RValueReferenceWrapper.h
+        folly/lang/SafeAssert.cpp
+        folly/lang/SafeAssert.h
+        folly/lang/StaticConst.h
+        folly/lang/Thunk.h
+        folly/lang/ToAscii.cpp
+        folly/lang/ToAscii.h
+        folly/lang/TypeInfo.h
+        folly/lang/UncaughtExceptions.cpp
+        folly/lang/UncaughtExceptions.h
+        folly/logging/example/lib.cpp
+        folly/logging/example/lib.h
+        folly/logging/example/main.cpp
+        folly/logging/test/helpers/FatalHelper.cpp
+        folly/logging/test/helpers/helpers.h
+        folly/logging/test/helpers/LogAfterMain.cpp
+        folly/logging/test/helpers/LogAfterMainNoInit.cpp
+        folly/logging/test/helpers/LogOnShutdownLib.cpp
+        folly/logging/test/helpers/LogOnShutdownLib.h
+        folly/logging/test/AsyncFileWriterTest.cpp
+        folly/logging/test/AsyncLogWriterTest.cpp
+        folly/logging/test/AutoTimerTest.cpp
+        folly/logging/test/BridgeFromGoogleLoggingTest.cpp
+        folly/logging/test/ConfigHelpers.cpp
+        folly/logging/test/ConfigHelpers.h
+        folly/logging/test/ConfigParserTest.cpp
+        folly/logging/test/ConfigUpdateTest.cpp
+        folly/logging/test/CustomLogFormatterTest.cpp
+        folly/logging/test/FileHandlerFactoryTest.cpp
+        folly/logging/test/GlogFormatterTest.cpp
+        folly/logging/test/ImmediateFileWriterTest.cpp
+        folly/logging/test/InitTest.cpp
+        folly/logging/test/LogCategoryTest.cpp
+        folly/logging/test/LoggerDBTest.cpp
+        folly/logging/test/LoggerTest.cpp
+        folly/logging/test/LogLevelTest.cpp
+        folly/logging/test/LogMessageTest.cpp
+        folly/logging/test/LogNameTest.cpp
+        folly/logging/test/LogStreamTest.cpp
+        folly/logging/test/RateLimiterTest.cpp
+        folly/logging/test/StandardLogHandlerFactoryTest.cpp
+        folly/logging/test/StandardLogHandlerTest.cpp
+        folly/logging/test/SyncLevelTest.cpp
+        folly/logging/test/TestLogHandler.cpp
+        folly/logging/test/TestLogHandler.h
+        folly/logging/test/XlogBench.cpp
+        folly/logging/test/XlogFile1.cpp
+        folly/logging/test/XlogFile2.cpp
+        folly/logging/test/XlogHeader1.h
+        folly/logging/test/XlogHeader2.h
+        folly/logging/test/XlogTest.cpp
+        folly/logging/AsyncFileWriter.cpp
+        folly/logging/AsyncFileWriter.h
+        folly/logging/AsyncLogWriter.cpp
+        folly/logging/AsyncLogWriter.h
+        folly/logging/AutoTimer.h
+        folly/logging/BridgeFromGoogleLogging.cpp
+        folly/logging/BridgeFromGoogleLogging.h
+        folly/logging/CustomLogFormatter.cpp
+        folly/logging/CustomLogFormatter.h
+        folly/logging/FileHandlerFactory.cpp
+        folly/logging/FileHandlerFactory.h
+        folly/logging/FileWriterFactory.cpp
+        folly/logging/FileWriterFactory.h
+        folly/logging/GlogStyleFormatter.cpp
+        folly/logging/GlogStyleFormatter.h
+        folly/logging/ImmediateFileWriter.cpp
+        folly/logging/ImmediateFileWriter.h
+        folly/logging/Init.cpp
+        folly/logging/Init.h
+        folly/logging/InitWeak.cpp
+        folly/logging/LogCategory.cpp
+        folly/logging/LogCategory.h
+        folly/logging/LogCategoryConfig.cpp
+        folly/logging/LogCategoryConfig.h
+        folly/logging/LogConfig.cpp
+        folly/logging/LogConfig.h
+        folly/logging/LogConfigParser.cpp
+        folly/logging/LogConfigParser.h
+        folly/logging/LogFormatter.h
+        folly/logging/Logger.cpp
+        folly/logging/Logger.h
+        folly/logging/LoggerDB.cpp
+        folly/logging/LoggerDB.h
+        folly/logging/LogHandler.h
+        folly/logging/LogHandlerConfig.cpp
+        folly/logging/LogHandlerConfig.h
+        folly/logging/LogHandlerFactory.h
+        folly/logging/LogLevel.cpp
+        folly/logging/LogLevel.h
+        folly/logging/LogMessage.cpp
+        folly/logging/LogMessage.h
+        folly/logging/LogName.cpp
+        folly/logging/LogName.h
+        folly/logging/LogStream.cpp
+        folly/logging/LogStream.h
+        folly/logging/LogStreamProcessor.cpp
+        folly/logging/LogStreamProcessor.h
+        folly/logging/LogWriter.h
+        folly/logging/ObjectToString.cpp
+        folly/logging/ObjectToString.h
+        folly/logging/RateLimiter.cpp
+        folly/logging/RateLimiter.h
+        folly/logging/StandardLogHandler.cpp
+        folly/logging/StandardLogHandler.h
+        folly/logging/StandardLogHandlerFactory.cpp
+        folly/logging/StandardLogHandlerFactory.h
+        folly/logging/StreamHandlerFactory.cpp
+        folly/logging/StreamHandlerFactory.h
+        folly/logging/xlog.cpp
+        folly/logging/xlog.h
+        folly/memory/detail/MallocImpl.cpp
+        folly/memory/detail/MallocImpl.h
+        folly/memory/test/ArenaTest.cpp
+        folly/memory/test/MallctlHelperTest.cpp
+        folly/memory/test/MallocBenchmark.cpp
+        folly/memory/test/MallocTest.cpp
+        folly/memory/test/MemoryResourceTest.cpp
+        folly/memory/test/not_null_test.cpp
+        folly/memory/test/ReentrantAllocatorTest.cpp
+        folly/memory/test/SanitizeAddressTest.cpp
+        folly/memory/test/SanitizeLeakTest.cpp
+        folly/memory/test/ThreadCachedArenaTest.cpp
+        folly/memory/test/UninitializedMemoryHacksODR.cpp
+        folly/memory/test/UninitializedMemoryHacksTest.cpp
+        folly/memory/Arena-inl.h
+        folly/memory/Arena.h
+        folly/memory/EnableSharedFromThis.h
+        folly/memory/JemallocHugePageAllocator.cpp
+        folly/memory/JemallocHugePageAllocator.h
+        folly/memory/JemallocHugePageAllocatorTest.cpp
+        folly/memory/JemallocNodumpAllocator.cpp
+        folly/memory/JemallocNodumpAllocator.h
+        folly/memory/JemallocNodumpAllocatorTest.cpp
+        folly/memory/MallctlHelper.cpp
+        folly/memory/MallctlHelper.h
+        folly/memory/Malloc.h
+        folly/memory/MemoryResource.h
+        folly/memory/not_null-inl.h
+        folly/memory/not_null.h
+        folly/memory/ReentrantAllocator.cpp
+        folly/memory/ReentrantAllocator.h
+        folly/memory/SanitizeAddress.cpp
+        folly/memory/SanitizeAddress.h
+        folly/memory/SanitizeLeak.cpp
+        folly/memory/SanitizeLeak.h
+        folly/memory/ThreadCachedArena.cpp
+        folly/memory/ThreadCachedArena.h
+        folly/memory/UninitializedMemoryHacks.h
+        folly/net/detail/test/SocketFileDescriptorMapTest.cpp
+        folly/net/detail/SocketFileDescriptorMap.cpp
+        folly/net/detail/SocketFileDescriptorMap.h
+        folly/net/test/MockNetOpsDispatcher.h
+        folly/net/test/MockTcpInfoDispatcher.h
+        folly/net/test/NetOpsTest.cpp
+        folly/net/test/TcpInfoTest.cpp
+        folly/net/test/TcpInfoTestUtil.h
+        folly/net/NetOps.cpp
+        folly/net/NetOps.h
+        folly/net/NetOpsDispatcher.cpp
+        folly/net/NetOpsDispatcher.h
+        folly/net/NetworkSocket.h
+        folly/net/TcpInfo.cpp
+        folly/net/TcpInfo.h
+        folly/net/TcpInfoDispatcher.cpp
+        folly/net/TcpInfoDispatcher.h
+        folly/net/TcpInfoTypes.h
+        folly/observer/detail/Core.cpp
+        folly/observer/detail/Core.h
+        folly/observer/detail/GraphCycleDetector.h
+        folly/observer/detail/ObserverManager.cpp
+        folly/observer/detail/ObserverManager.h
+        folly/observer/test/ObserverBenchmark.cpp
+        folly/observer/test/ObserverTest.cpp
+        folly/observer/CoreCachedObserver.h
+        folly/observer/HazptrObserver.h
+        folly/observer/Observable-inl.h
+        folly/observer/Observable.h
+        folly/observer/Observer-inl.h
+        folly/observer/Observer-pre.h
+        folly/observer/Observer.h
+        folly/observer/ReadMostlyTLObserver.h
+        folly/observer/SimpleObservable-inl.h
+        folly/observer/SimpleObservable.h
+        folly/observer/WithJitter-inl.h
+        folly/observer/WithJitter.h
+        folly/poly/Nullable.h
+        folly/poly/Regular.h
+        folly/portability/test/ConstexprTest.cpp
+        folly/portability/test/FilesystemTest.cpp
+        folly/portability/test/LibgenTest.cpp
+        folly/portability/test/OpenSSLPortabilityTest.cpp
+        folly/portability/test/PThreadTest.cpp
+        folly/portability/test/TimeTest.cpp
+        folly/portability/Asm.h
+        folly/portability/Atomic.h
+        folly/portability/Builtins.cpp
+        folly/portability/Builtins.h
+        folly/portability/Config.h
+        folly/portability/Constexpr.h
+        folly/portability/Dirent.cpp
+        folly/portability/Dirent.h
+        folly/portability/Event.h
+        folly/portability/Fcntl.cpp
+        folly/portability/Fcntl.h
+        folly/portability/Filesystem.cpp
+        folly/portability/Filesystem.h
+        folly/portability/FmtCompile.h
+        folly/portability/GFlags.h
+        folly/portability/GMock.h
+        folly/portability/GTest.h
+        folly/portability/IOVec.h
+        folly/portability/Libgen.cpp
+        folly/portability/Libgen.h
+        folly/portability/Libunwind.h
+        folly/portability/Malloc.cpp
+        folly/portability/Malloc.h
+        folly/portability/Math.h
+        folly/portability/Memory.h
+        folly/portability/openat2.c
+        folly/portability/openat2.h
+        folly/portability/OpenSSL.cpp
+        folly/portability/OpenSSL.h
+        folly/portability/PThread.cpp
+        folly/portability/PThread.h
+        folly/portability/Sched.cpp
+        folly/portability/Sched.h
+        folly/portability/Sockets.cpp
+        folly/portability/Sockets.h
+        folly/portability/SourceLocation.h
+        folly/portability/Stdio.cpp
+        folly/portability/Stdio.h
+        folly/portability/Stdlib.cpp
+        folly/portability/Stdlib.h
+        folly/portability/String.cpp
+        folly/portability/String.h
+        folly/portability/SysFile.cpp
+        folly/portability/SysFile.h
+        folly/portability/Syslog.h
+        folly/portability/SysMembarrier.cpp
+        folly/portability/SysMembarrier.h
+        folly/portability/SysMman.cpp
+        folly/portability/SysMman.h
+        folly/portability/SysResource.cpp
+        folly/portability/SysResource.h
+        folly/portability/SysStat.cpp
+        folly/portability/SysStat.h
+        folly/portability/SysSyscall.h
+        folly/portability/SysTime.cpp
+        folly/portability/SysTime.h
+        folly/portability/SysTypes.h
+        folly/portability/SysUio.cpp
+        folly/portability/SysUio.h
+        folly/portability/Time.cpp
+        folly/portability/Time.h
+        folly/portability/Unistd.cpp
+        folly/portability/Unistd.h
+        folly/portability/Windows.h
+        folly/python/test/AsyncGeneratorTest.cpp
+        folly/python/test/ErrorTest.cpp
+        folly/python/test/IOBufTestUtils.cpp
+        folly/python/test/IOBufTestUtils.h
+        folly/python/test/simple.h
+        folly/python/test/simplecoro.h
+        folly/python/test/simplegenerator.h
+        folly/python/test/test_set_executor.h
+        folly/python/async_generator.h
+        folly/python/AsyncioExecutor.h
+        folly/python/coro.h
+        folly/python/error.cpp
+        folly/python/error.h
+        folly/python/executor.cpp
+        folly/python/executor.h
+        folly/python/fibers.cpp
+        folly/python/fibers.h
+        folly/python/futures.h
+        folly/python/GILAwareManualExecutor.cpp
+        folly/python/GILAwareManualExecutor.h
+        folly/python/import.h
+        folly/python/iobuf.cpp
+        folly/python/iobuf.h
+        folly/python/iobuf_ext.cpp
+        folly/python/iobuf_ext.h
+        folly/python/ProactorExecutor.cpp
+        folly/python/ProactorExecutor.h
+        folly/settings/detail/SettingsImpl.h
+        folly/settings/test/a.cpp
+        folly/settings/test/a.h
+        folly/settings/test/b.cpp
+        folly/settings/test/b.h
+        folly/settings/test/SettingsBenchmarks.cpp
+        folly/settings/test/SettingsTest.cpp
+        folly/settings/Immutables.cpp
+        folly/settings/Immutables.h
+        folly/settings/Settings.cpp
+        folly/settings/Settings.h
+        folly/settings/Types.cpp
+        folly/settings/Types.h
+        folly/ssl/detail/OpenSSLSession.cpp
+        folly/ssl/detail/OpenSSLSession.h
+        folly/ssl/detail/OpenSSLThreading.cpp
+        folly/ssl/detail/OpenSSLThreading.h
+        folly/ssl/test/OpenSSLCertUtilsTest.cpp
+        folly/ssl/test/OpenSSLHashTest.cpp
+        folly/ssl/test/OpenSSLKeyUtilsTest.cpp
+        folly/ssl/test/SSLSessionManagerTest.cpp
+        folly/ssl/Init.cpp
+        folly/ssl/Init.h
+        folly/ssl/OpenSSLCertUtils.cpp
+        folly/ssl/OpenSSLCertUtils.h
+        folly/ssl/OpenSSLHash.cpp
+        folly/ssl/OpenSSLHash.h
+        folly/ssl/OpenSSLKeyUtils.cpp
+        folly/ssl/OpenSSLKeyUtils.h
+        folly/ssl/OpenSSLLockTypes.h
+        folly/ssl/OpenSSLPtrTypes.h
+        folly/ssl/OpenSSLTicketHandler.h
+        folly/ssl/OpenSSLVersionFinder.h
+        folly/ssl/PasswordCollector.cpp
+        folly/ssl/PasswordCollector.h
+        folly/ssl/SSLSession.h
+        folly/ssl/SSLSessionManager.cpp
+        folly/ssl/SSLSessionManager.h
+        folly/stats/detail/test/DoubleRadixSortTest.cpp
+        folly/stats/detail/Bucket.h
+        folly/stats/detail/BufferedStat-inl.h
+        folly/stats/detail/BufferedStat.h
+        folly/stats/detail/DoubleRadixSort.cpp
+        folly/stats/detail/DoubleRadixSort.h
+        folly/stats/detail/SlidingWindow-inl.h
+        folly/stats/detail/SlidingWindow.h
+        folly/stats/test/BucketedTimeSeriesBenchmark.cpp
+        folly/stats/test/BufferedStatTest.cpp
+        folly/stats/test/DigestBuilderBenchmark.cpp
+        folly/stats/test/DigestBuilderTest.cpp
+        folly/stats/test/HistogramBenchmark.cpp
+        folly/stats/test/HistogramTest.cpp
+        folly/stats/test/QuantileEstimatorBenchmark.cpp
+        folly/stats/test/QuantileEstimatorTest.cpp
+        folly/stats/test/QuantileHistogramBenchmark.cpp
+        folly/stats/test/QuantileHistogramTest.cpp
+        folly/stats/test/SlidingWindowTest.cpp
+        folly/stats/test/StreamingStatsTest.cpp
+        folly/stats/test/TDigestBenchmark.cpp
+        folly/stats/test/TDigestTest.cpp
+        folly/stats/test/TimeseriesHistogramTest.cpp
+        folly/stats/test/TimeSeriesTest.cpp
+        folly/stats/BucketedTimeSeries-inl.h
+        folly/stats/BucketedTimeSeries.h
+        folly/stats/DigestBuilder-inl.h
+        folly/stats/DigestBuilder.h
+        folly/stats/Histogram-inl.h
+        folly/stats/Histogram.h
+        folly/stats/MultiLevelTimeSeries-inl.h
+        folly/stats/MultiLevelTimeSeries.h
+        folly/stats/QuantileEstimator-inl.h
+        folly/stats/QuantileEstimator.cpp
+        folly/stats/QuantileEstimator.h
+        folly/stats/QuantileHistogram-inl.h
+        folly/stats/QuantileHistogram.h
+        folly/stats/StreamingStats.h
+        folly/stats/TDigest.cpp
+        folly/stats/TDigest.h
+        folly/stats/TimeseriesHistogram-inl.h
+        folly/stats/TimeseriesHistogram.h
+        folly/support/test/GdbUtil.h
+        folly/support/test/main.cpp
+        folly/synchronization/detail/test/HardwareTest.cpp
+        folly/synchronization/detail/test/InlineFunctionRefTest.cpp
+        folly/synchronization/detail/AtomicUtils.h
+        folly/synchronization/detail/Hardware.cpp
+        folly/synchronization/detail/Hardware.h
+        folly/synchronization/detail/HazptrUtils.h
+        folly/synchronization/detail/InlineFunctionRef.h
+        folly/synchronization/detail/Sleeper.cpp
+        folly/synchronization/detail/Sleeper.h
+        folly/synchronization/detail/Spin.h
+        folly/synchronization/detail/ThreadCachedLists.h
+        folly/synchronization/detail/ThreadCachedReaders.h
+        folly/synchronization/detail/ThreadCachedTag.h
+        folly/synchronization/example/HazptrLockFreeLIFO.h
+        folly/synchronization/example/HazptrSWMRSet.h
+        folly/synchronization/example/HazptrWideCAS.h
+        folly/synchronization/test/AtomicNotificationTest.cpp
+        folly/synchronization/test/AtomicRefTest.cpp
+        folly/synchronization/test/AtomicStructTest.cpp
+        folly/synchronization/test/AtomicUtilBench.cpp
+        folly/synchronization/test/AtomicUtilTest.cpp
+        folly/synchronization/test/Barrier.h
+        folly/synchronization/test/BarrierTest.cpp
+        folly/synchronization/test/BatonBenchmark.cpp
+        folly/synchronization/test/BatonTest.cpp
+        folly/synchronization/test/BatonTestHelpers.h
+        folly/synchronization/test/CallOnceBenchmark.cpp
+        folly/synchronization/test/CallOnceTest.cpp
+        folly/synchronization/test/DelayedInitTest.cpp
+        folly/synchronization/test/DistributedMutexTest.cpp
+        folly/synchronization/test/EventCountTest.cpp
+        folly/synchronization/test/FlatCombiningBenchmark.cpp
+        folly/synchronization/test/FlatCombiningExamples.h
+        folly/synchronization/test/FlatCombiningTest.cpp
+        folly/synchronization/test/FlatCombiningTestHelpers.h
+        folly/synchronization/test/HazptrTest.cpp
+        folly/synchronization/test/LatchTest.cpp
+        folly/synchronization/test/LifoSemBench.cpp
+        folly/synchronization/test/LifoSemTests.cpp
+        folly/synchronization/test/LockTest.cpp
+        folly/synchronization/test/NativeSemaphoreTest.cpp
+        folly/synchronization/test/ParkingLotBenchmark.cpp
+        folly/synchronization/test/ParkingLotTest.cpp
+        folly/synchronization/test/RcuBench.cpp
+        folly/synchronization/test/RcuTest.cpp
+        folly/synchronization/test/RelaxedAtomicTest.cpp
+        folly/synchronization/test/RWSpinLockTest.cpp
+        folly/synchronization/test/SaturatingSemaphoreTest.cpp
+        folly/synchronization/test/Semaphore.h
+        folly/synchronization/test/SemaphoreTest.cpp
+        folly/synchronization/test/SmallLocksBenchmark.cpp
+        folly/synchronization/test/SmallLocksTest.cpp
+        folly/synchronization/test/ThreadCachedEpochBench.h
+        folly/synchronization/test/ThreadCachedReadersBench.cpp
+        folly/synchronization/test/ThreadCachedReadersTest.cpp
+        folly/synchronization/test/ThrottledLifoSemTest.cpp
+        folly/synchronization/AsymmetricThreadFence.cpp
+        folly/synchronization/AsymmetricThreadFence.h
+        folly/synchronization/AtomicNotification-inl.h
+        folly/synchronization/AtomicNotification.cpp
+        folly/synchronization/AtomicNotification.h
+        folly/synchronization/AtomicRef.h
+        folly/synchronization/AtomicStruct.h
+        folly/synchronization/AtomicUtil-inl.h
+        folly/synchronization/AtomicUtil.h
+        folly/synchronization/Baton.h
+        folly/synchronization/CallOnce.h
+        folly/synchronization/DelayedInit.h
+        folly/synchronization/DistributedMutex-inl.h
+        folly/synchronization/DistributedMutex.cpp
+        folly/synchronization/DistributedMutex.h
+        folly/synchronization/EventCount.h
+        folly/synchronization/FlatCombining.h
+        folly/synchronization/Hazptr-fwd.h
+        folly/synchronization/Hazptr.cpp
+        folly/synchronization/Hazptr.h
+        folly/synchronization/HazptrDomain.cpp
+        folly/synchronization/HazptrDomain.h
+        folly/synchronization/HazptrHolder.h
+        folly/synchronization/HazptrObj.h
+        folly/synchronization/HazptrObjLinked.h
+        folly/synchronization/HazptrRec.h
+        folly/synchronization/HazptrThreadPoolExecutor.cpp
+        folly/synchronization/HazptrThreadPoolExecutor.h
+        folly/synchronization/HazptrThrLocal.h
+        folly/synchronization/Latch.h
+        folly/synchronization/LifoSem.h
+        folly/synchronization/Lock.h
+        folly/synchronization/MicroSpinLock.h
+        folly/synchronization/NativeSemaphore.h
+        folly/synchronization/ParkingLot.cpp
+        folly/synchronization/ParkingLot.h
+        folly/synchronization/PicoSpinLock.h
+        folly/synchronization/Rcu.cpp
+        folly/synchronization/Rcu.h
+        folly/synchronization/RelaxedAtomic.h
+        folly/synchronization/RWSpinLock.h
+        folly/synchronization/SanitizeThread.cpp
+        folly/synchronization/SanitizeThread.h
+        folly/synchronization/SaturatingSemaphore.h
+        folly/synchronization/SmallLocks.h
+        folly/synchronization/ThrottledLifoSem.h
+        folly/synchronization/Utility.h
+        folly/synchronization/WaitOptions.cpp
+        folly/synchronization/WaitOptions.h
+        folly/system/test/AtForkTest.cpp
+        folly/system/test/AuxVectorTest.cpp
+        folly/system/test/EnvUtilSubprocess.cpp
+        folly/system/test/EnvUtilTest.cpp
+        folly/system/test/MemoryMappingTest.cpp
+        folly/system/test/PidTest.cpp
+        folly/system/test/ShellTest.cpp
+        folly/system/test/ThreadIdTest.cpp
+        folly/system/test/ThreadNameTest.cpp
+        folly/system/AtFork.cpp
+        folly/system/AtFork.h
+        folly/system/AuxVector.h
+        folly/system/EnvUtil.cpp
+        folly/system/EnvUtil.h
+        folly/system/HardwareConcurrency.cpp
+        folly/system/HardwareConcurrency.h
+        folly/system/MemoryMapping.cpp
+        folly/system/MemoryMapping.h
+        folly/system/Pid.cpp
+        folly/system/Pid.h
+        folly/system/Shell.cpp
+        folly/system/Shell.h
+        folly/system/ThreadId.cpp
+        folly/system/ThreadId.h
+        folly/system/ThreadName.cpp
+        folly/system/ThreadName.h
+        folly/test/common/TestMain.cpp
+        folly/test/function_benchmark/benchmark_impl.cpp
+        folly/test/function_benchmark/benchmark_impl.h
+        folly/test/function_benchmark/main.cpp
+        folly/test/function_benchmark/test_functions.cpp
+        folly/test/function_benchmark/test_functions.h
+        folly/test/stl_tests/StlVectorTest.cpp
+        folly/test/AHMIntStressTest.cpp
+        folly/test/ArenaSmartPtrTest.cpp
+        folly/test/AsciiCaseInsensitiveBenchmark.cpp
+        folly/test/AsciiCaseInsensitiveTest.cpp
+        folly/test/AtomicHashArrayTest.cpp
+        folly/test/AtomicHashMapTest.cpp
+        folly/test/AtomicLinkedListTest.cpp
+        folly/test/AtomicUnorderedMapTest.cpp
+        folly/test/base64_test.cpp
+        folly/test/BenchmarkIntegrationTest.cpp
+        folly/test/BenchmarkTest.cpp
+        folly/test/BufferedAtomic.cpp
+        folly/test/BufferedAtomic.h
+        folly/test/BufferedAtomicTest.cpp
+        folly/test/CancellationTokenTest.cpp
+        folly/test/ChronoBench.cpp
+        folly/test/ChronoTest.cpp
+        folly/test/ClockGettimeWrappersTest.cpp
+        folly/test/ComparisonOperatorTestUtil.h
+        folly/test/ConcurrentBitSetTest.cpp
+        folly/test/ConcurrentLazyTest.cpp
+        folly/test/ConcurrentSkipListBenchmark.cpp
+        folly/test/ConcurrentSkipListTest.cpp
+        folly/test/ConstexprMathBenchmark.cpp
+        folly/test/ConstexprMathTest.cpp
+        folly/test/ConstructorCallbackListTest.cpp
+        folly/test/ConvBenchmark.cpp
+        folly/test/ConvTest.cpp
+        folly/test/CpuIdTest.cpp
+        folly/test/DemangleTest.cpp
+        folly/test/DeterministicSchedule.cpp
+        folly/test/DeterministicSchedule.h
+        folly/test/DeterministicScheduleTest.cpp
+        folly/test/DiscriminatedPtrTest.cpp
+        folly/test/DynamicBenchmark.cpp
+        folly/test/DynamicConverterTest.cpp
+        folly/test/DynamicOtherTest.cpp
+        folly/test/DynamicTest.cpp
+        folly/test/EnableSharedFromThisTest.cpp
+        folly/test/EndianTest.cpp
+        folly/test/ExceptionStringTest.cpp
+        folly/test/ExceptionTest.cpp
+        folly/test/ExceptionWrapperBenchmark.cpp
+        folly/test/ExceptionWrapperTest.cpp
+        folly/test/ExecutorTest.cpp
+        folly/test/ExpectedCoroutinesBench.cpp
+        folly/test/ExpectedCoroutinesTest.cpp
+        folly/test/ExpectedTest.cpp
+        folly/test/FBStringBenchmark.cpp
+        folly/test/FBStringTest.cpp
+        folly/test/FBStringTestBenchmarks.cpp.h
+        folly/test/FBVectorBenchmark.cpp
+        folly/test/FBVectorBenchmarks.cpp.h
+        folly/test/FBVectorTest.cpp
+        folly/test/FBVectorTests.cpp.h
+        folly/test/FBVectorTestUtil.cpp
+        folly/test/FBVectorTestUtil.h
+        folly/test/FileLockTest.cpp
+        folly/test/FileTest.cpp
+        folly/test/FileTestLockHelper.cpp
+        folly/test/FileUtilTest.cpp
+        folly/test/FingerprintBenchmark.cpp
+        folly/test/FingerprintTest.cpp
+        folly/test/FixedStringTest.cpp
+        folly/test/FormatBenchmark.cpp
+        folly/test/FormatOtherTest.cpp
+        folly/test/FormatTest.cpp
+        folly/test/FunctionRefBenchmark.cpp
+        folly/test/FunctionRefTest.cpp
+        folly/test/FunctionTest.cpp
+        folly/test/FutexTest.cpp
+        folly/test/GLogBenchmark.cpp
+        folly/test/GLogTest.cpp
+        folly/test/GroupVarintTest.cpp
+        folly/test/IndestructibleTest.cpp
+        folly/test/IndexedMemPoolTest.cpp
+        folly/test/IPAddressBenchmark.cpp
+        folly/test/IPAddressTest.cpp
+        folly/test/IteratorsTest.cpp
+        folly/test/json_patch_test.cpp
+        folly/test/json_pointer_test.cpp
+        folly/test/JsonBenchmark.cpp
+        folly/test/JsonMockUtil.h
+        folly/test/JsonOtherTest.cpp
+        folly/test/JsonTest.cpp
+        folly/test/JsonTestUtil.cpp
+        folly/test/JsonTestUtil.h
+        folly/test/JsonTestUtilTest.cpp
+        folly/test/LazyTest.cpp
+        folly/test/MacAddressTest.cpp
+        folly/test/MapUtilTest.cpp
+        folly/test/MathBenchmark.cpp
+        folly/test/MathTest.cpp
+        folly/test/MaybeManagedPtrTest.cpp
+        folly/test/MemcpyBenchmark.cpp
+        folly/test/MemcpyTest.cpp
+        folly/test/MemcpyUseTest.cpp
+        folly/test/MemoryIdlerBenchmark.cpp
+        folly/test/MemoryIdlerTest.cpp
+        folly/test/MemoryTest.cpp
+        folly/test/MemsetBenchmark.cpp
+        folly/test/MemsetTest.cpp
+        folly/test/MoveWrapperTest.cpp
+        folly/test/MPMCPipelineTest.cpp
+        folly/test/MPMCQueueTest.cpp
+        folly/test/ObserverContainerTest.cpp
+        folly/test/ObserverContainerTestUtil.h
+        folly/test/OptionalCoroutinesTest.cpp
+        folly/test/OptionalTest.cpp
+        folly/test/OverloadTest.cpp
+        folly/test/PackedSyncPtrTest.cpp
+        folly/test/PaddedTest.cpp
+        folly/test/PolyTest.cpp
+        folly/test/PortabilityTest.cpp
+        folly/test/ProducerConsumerQueueBenchmark.cpp
+        folly/test/ProducerConsumerQueueTest.cpp
+        folly/test/RandomBenchmark.cpp
+        folly/test/RandomTest.cpp
+        folly/test/RangeFindBenchmark.cpp
+        folly/test/RangeTest.cpp
+        folly/test/ReplaceableTest.cpp
+        folly/test/ScopeGuardTest.cpp
+        folly/test/SdtTest.cpp
+        folly/test/SharedMutexTest.cpp
+        folly/test/SingletonBenchmark.cpp
+        folly/test/SingletonDoubleRegistration.cpp
+        folly/test/SingletonTest.cpp
+        folly/test/SingletonTestGlobal.cpp
+        folly/test/SingletonTestStructs.cpp
+        folly/test/SingletonTestStructs.h
+        folly/test/SingletonThreadLocalTest.cpp
+        folly/test/SingletonThreadLocalTestOverload.cpp
+        folly/test/small_vector_test.cpp
+        folly/test/SocketAddressTest.cpp
+        folly/test/SocketAddressTestHelper.cpp
+        folly/test/SocketAddressTestHelper.h
+        folly/test/sorted_vector_test.cpp
+        folly/test/SpinLockTest.cpp
+        folly/test/StringBenchmark.cpp
+        folly/test/StringTest.cpp
+        folly/test/StringToFloatBenchmark.cpp
+        folly/test/SubprocessBench.cpp
+        folly/test/SubprocessTest.cpp
+        folly/test/SubprocessTestParentDeathHelper.cpp
+        folly/test/SynchronizedBenchmark.cpp
+        folly/test/SynchronizedPtrTest.cpp
+        folly/test/SynchronizedTest.cpp
+        folly/test/SynchronizedTestLib-inl.h
+        folly/test/SynchronizedTestLib.h
+        folly/test/TestUtils.h
+        folly/test/TestUtilsTest.cpp
+        folly/test/ThreadCachedIntTest.cpp
+        folly/test/ThreadLocalAccessBenchmark.cpp
+        folly/test/ThreadLocalBenchmark.cpp
+        folly/test/ThreadLocalDestroyBenchmark.cpp
+        folly/test/ThreadLocalTest.cpp
+        folly/test/ThreadLocalTestLib.cpp
+        folly/test/TimeoutQueueTest.cpp
+        folly/test/TokenBucketTest.cpp
+        folly/test/TokenBucketTest.h
+        folly/test/TraitsTest.cpp
+        folly/test/TryTest.cpp
+        folly/test/TypeListTest.cpp
+        folly/test/UnicodeTest.cpp
+        folly/test/UnitTest.cpp
+        folly/test/UriBenchmark.cpp
+        folly/test/UriTest.cpp
+        folly/test/UTF8StringTest.cpp
+        folly/test/UtilityTest.cpp
+        folly/test/VarintTest.cpp
+        folly/testing/test/TestUtilTest.cpp
+        folly/testing/TestUtil.cpp
+        folly/testing/TestUtil.h
+        folly/tool/BenchmarkCompare.cpp
+        folly/tracing/test/AsyncStackTest.cpp
+        folly/tracing/test/StaticTracepointTest.cpp
+        folly/tracing/test/StaticTracepointTestModule.cpp
+        folly/tracing/test/StaticTracepointTestModule.h
+        folly/tracing/AsyncStack-inl.h
+        folly/tracing/AsyncStack.cpp
+        folly/tracing/AsyncStack.h
+        folly/tracing/ScopedTraceSection.h
+        folly/tracing/StaticTracepoint-ELF.h
+        folly/tracing/StaticTracepoint-ELFx86.h
+        folly/tracing/StaticTracepoint.h
+        folly/AtomicHashArray-inl.h
+        folly/AtomicHashArray.h
+        folly/AtomicHashMap-inl.h
+        folly/AtomicHashMap.h
+        folly/AtomicIntrusiveLinkedList.h
+        folly/AtomicLinkedList.h
+        folly/AtomicUnorderedMap.h
+        folly/base64.h
+        folly/Benchmark.cpp
+        folly/Benchmark.h
+        folly/BenchmarkUtil.h
+        folly/Bits.h
+        folly/CancellationToken-inl.h
+        folly/CancellationToken.cpp
+        folly/CancellationToken.h
+        folly/Chrono.h
+        folly/ClockGettimeWrappers.cpp
+        folly/ClockGettimeWrappers.h
+        folly/ConcurrentBitSet.h
+        folly/ConcurrentLazy.h
+        folly/ConcurrentSkipList-inl.h
+        folly/ConcurrentSkipList.h
+        folly/ConstexprMath.h
+        folly/ConstructorCallbackList.h
+        folly/Conv.cpp
+        folly/Conv.h
+        folly/CPortability.h
+        folly/CppAttributes.h
+        folly/CpuId.h
+        folly/DefaultKeepAliveExecutor.h
+        folly/Demangle.cpp
+        folly/Demangle.h
+        folly/DiscriminatedPtr.h
+        folly/dynamic-inl.h
+        folly/dynamic.cpp
+        folly/dynamic.h
+        folly/DynamicConverter.h
+        folly/Exception.h
+        folly/ExceptionString.cpp
+        folly/ExceptionString.h
+        folly/ExceptionWrapper-inl.h
+        folly/ExceptionWrapper.cpp
+        folly/ExceptionWrapper.h
+        folly/Executor.cpp
+        folly/Executor.h
+        folly/Expected.h
+        folly/FBString.h
+        folly/FBVector.h
+        folly/File.cpp
+        folly/File.h
+        folly/FileUtil.cpp
+        folly/FileUtil.h
+        folly/Fingerprint.cpp
+        folly/Fingerprint.h
+        folly/FixedString.h
+        folly/FollyMemcpy.cpp
+        folly/FollyMemcpy.h
+        folly/FollyMemset.cpp
+        folly/FollyMemset.h
+        folly/Format-inl.h
+        folly/Format.cpp
+        folly/Format.h
+        folly/FormatArg.h
+        folly/FormatTraits.h
+        folly/Function.h
+        folly/GLog.h
+        folly/GroupVarint.cpp
+        folly/GroupVarint.h
+        folly/Hash.h
+        folly/Indestructible.h
+        folly/IndexedMemPool.h
+        folly/IntrusiveList.h
+        folly/IPAddress.cpp
+        folly/IPAddress.h
+        folly/IPAddressException.h
+        folly/IPAddressV4.cpp
+        folly/IPAddressV4.h
+        folly/IPAddressV6.cpp
+        folly/IPAddressV6.h
+        folly/json.cpp
+        folly/json.h
+        folly/json_patch.cpp
+        folly/json_patch.h
+        folly/json_pointer.cpp
+        folly/json_pointer.h
+        folly/Lazy.h
+        folly/Likely.h
+        folly/MacAddress.cpp
+        folly/MacAddress.h
+        folly/MapUtil.h
+        folly/Math.h
+        folly/MaybeManagedPtr.h
+        folly/memcpy_select_aarch64.cpp
+        folly/Memory.h
+        folly/memset_select_aarch64.cpp
+        folly/MicroLock.cpp
+        folly/MicroLock.h
+        folly/MicroSpinLock.h
+        folly/MoveWrapper.h
+        folly/MPMCPipeline.h
+        folly/MPMCQueue.h
+        folly/ObserverContainer.h
+        folly/Optional.h
+        folly/Overload.h
+        folly/PackedSyncPtr.h
+        folly/Padded.h
+        folly/Poly-inl.h
+        folly/Poly.h
+        folly/PolyException.h
+        folly/Portability.h
+        folly/Preprocessor.h
+        folly/ProducerConsumerQueue.h
+        folly/Random-inl.h
+        folly/Random.cpp
+        folly/Random.h
+        folly/Range.h
+        folly/Replaceable.h
+        folly/RWSpinLock.h
+        folly/ScopeGuard.cpp
+        folly/ScopeGuard.h
+        folly/SharedMutex.cpp
+        folly/SharedMutex.h
+        folly/Singleton-inl.h
+        folly/Singleton.cpp
+        folly/Singleton.h
+        folly/SingletonThreadLocal.cpp
+        folly/SingletonThreadLocal.h
+        folly/small_vector.h
+        folly/SocketAddress.cpp
+        folly/SocketAddress.h
+        folly/sorted_vector_types.h
+        folly/SpinLock.h
+        folly/stop_watch.h
+        folly/String-inl.h
+        folly/String.cpp
+        folly/String.h
+        folly/Subprocess.cpp
+        folly/Subprocess.h
+        folly/Synchronized.h
+        folly/SynchronizedPtr.h
+        folly/ThreadCachedInt.h
+        folly/ThreadLocal.h
+        folly/TimeoutQueue.cpp
+        folly/TimeoutQueue.h
+        folly/TokenBucket.h
+        folly/Traits.h
+        folly/Try-inl.h
+        folly/Try.cpp
+        folly/Try.h
+        folly/Unicode.cpp
+        folly/Unicode.h
+        folly/Unit.h
+        folly/Uri-inl.h
+        folly/Uri.cpp
+        folly/Uri.h
+        folly/UTF8String.h
+        folly/Utility.h
+        folly/Varint.h
+        folly/VirtualExecutor.h
+        shim/third-party/googletest/gtest_main.cpp
+        shim/third-party/rust/fixups/ring/include/ring_core_generated/prefix_symbols.h
+        shim/third-party/rust/fixups/ring/include/ring_core_generated/prefix_symbols_asm.h)
