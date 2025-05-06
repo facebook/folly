@@ -261,6 +261,7 @@ class ThreadLocalPtr {
         threadlocal_detail::StaticMeta<Tag, AccessMode>::instance();
     std::unique_lock<SharedMutex> accessAllThreadsLock_;
     std::shared_lock<SharedMutex> forkHandlerLock_;
+    std::unique_lock<std::mutex> lock_;
     uint32_t id_ = 0;
 
     // Prevent the entry set from changing while we are iterating over it.
@@ -276,7 +277,7 @@ class ThreadLocalPtr {
     class Iterator {
       friend class Accessor;
       const Accessor* accessor_{nullptr};
-      using InnerVector = threadlocal_detail::ThreadEntrySet::ElementVector;
+      using InnerVector = threadlocal_detail::ThreadEntrySet::EntryVector;
       using InnerIterator = InnerVector::iterator;
 
       InnerVector& vec_;
@@ -297,10 +298,12 @@ class ThreadLocalPtr {
       }
 
       const T& dereference() const {
-        return *static_cast<T*>(iter_->wrapper.ptr);
+        return *static_cast<T*>((*iter_)->elements[accessor_->id_].ptr);
       }
 
-      T& dereference() { return *static_cast<T*>(iter_->wrapper.ptr); }
+      T& dereference() {
+        return *static_cast<T*>((*iter_)->elements[accessor_->id_].ptr);
+      }
 
       bool equal(const Iterator& other) const {
         return (accessor_->id_ == other.accessor_->id_ && iter_ == other.iter_);
@@ -310,7 +313,7 @@ class ThreadLocalPtr {
 
       explicit Iterator(const Accessor* accessor, bool toEnd = false)
           : accessor_(accessor),
-            vec_(accessor_->wlockedThreadEntrySet_->threadElements),
+            vec_(accessor_->wlockedThreadEntrySet_->threadEntries),
             iter_(vec_.begin()) {
         if (toEnd) {
           setToEnd();
@@ -321,7 +324,9 @@ class ThreadLocalPtr {
 
       // we just need to check the ptr since it can be set to nullptr
       // even if the entry is part of the list
-      bool valid() const { return (iter_ != vec_.end() && iter_->wrapper.ptr); }
+      bool valid() const {
+        return (iter_ != vec_.end() && (*iter_)->elements[accessor_->id_].ptr);
+      }
 
       void incrementToValid() {
         for (; iter_ != vec_.end() && !valid(); ++iter_) {
@@ -376,9 +381,9 @@ class ThreadLocalPtr {
 
       bool operator!=(Iterator const& rhs) const { return !equal(rhs); }
 
-      std::thread::id getThreadId() const { return iter_->threadEntry->tid(); }
+      std::thread::id getThreadId() const { return (*iter_)->tid(); }
 
-      uint64_t getOSThreadId() const { return iter_->threadEntry->tid_os; }
+      uint64_t getOSThreadId() const { return (*iter_)->tid_os; }
     };
 
     ~Accessor() { release(); }
@@ -394,6 +399,7 @@ class ThreadLocalPtr {
         : meta_(other.meta_),
           accessAllThreadsLock_(std::move(other.accessAllThreadsLock_)),
           forkHandlerLock_(std::move(other.forkHandlerLock_)),
+          lock_(std::move(other.lock_)),
           id_(std::exchange(other.id_, 0)) {
       wlockedThreadEntrySet_ = std::move(other.wlockedThreadEntrySet_);
     }
@@ -406,9 +412,11 @@ class ThreadLocalPtr {
       // which is impossible, which leaves only one possible scenario --
       // *this is empty.  Assert it.
       assert(&meta_ == &other.meta_);
+      assert(lock_);
       using std::swap;
       swap(accessAllThreadsLock_, other.accessAllThreadsLock_);
       swap(forkHandlerLock_, other.forkHandlerLock_);
+      swap(lock_, other.lock_);
       swap(id_, other.id_);
       wlockedThreadEntrySet_.unlock();
       swap(wlockedThreadEntrySet_, other.wlockedThreadEntrySet_);
@@ -420,15 +428,18 @@ class ThreadLocalPtr {
     explicit Accessor(uint32_t id)
         : accessAllThreadsLock_(meta_.accessAllThreadsLock_, std::defer_lock),
           forkHandlerLock_(meta_.forkHandlerLock_, std::defer_lock),
+          lock_(meta_.lock_, std::defer_lock),
           id_(id) {
       forkHandlerLock_.lock();
       accessAllThreadsLock_.lock();
       wlockedThreadEntrySet_ = meta_.allId2ThreadEntrySets_[id_].wlock();
+      lock_.lock();
     }
 
     void release() {
-      if (accessAllThreadsLock_) {
-        wlockedThreadEntrySet_.unlock();
+      if (lock_) {
+        lock_.unlock();
+        DCHECK(accessAllThreadsLock_);
         accessAllThreadsLock_.unlock();
         DCHECK(forkHandlerLock_);
         forkHandlerLock_.unlock();
