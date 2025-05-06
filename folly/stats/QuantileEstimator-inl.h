@@ -59,4 +59,41 @@ void SlidingWindowQuantileEstimator<ClockT>::addValue(
   bufferedSlidingWindow_.append(value, now);
 }
 
+template <typename ClockT>
+MultiSlidingWindowQuantileEstimator<
+    ClockT>::MultiSlidingWindowQuantileEstimator(Range<const WindowDef*> defs)
+    : bufferedMultiSlidingWindow_(defs, 1000, 100) {}
+
+template <typename ClockT>
+auto MultiSlidingWindowQuantileEstimator<ClockT>::estimateQuantiles(
+    Range<const double*> quantiles, TimePoint now) -> MultiQuantileEstimates {
+  auto digests = bufferedMultiSlidingWindow_.get(now);
+  MultiQuantileEstimates result;
+  result.allTime = detail::estimatesFromDigest(digests.allTime, quantiles);
+  result.windows.reserve(digests.windows.size());
+  for (auto& w : digests.windows) {
+    result.windows.push_back(
+        detail::estimatesFromDigest(TDigest::merge(w), quantiles));
+  }
+  return result;
+}
+
+template <typename ClockT>
+void MultiSlidingWindowQuantileEstimator<ClockT>::addValue(
+    double value, TimePoint now) {
+  bufferedMultiSlidingWindow_.append(value, now);
+}
+
+template <typename ClockT>
+auto MultiSlidingWindowQuantileEstimator<ClockT>::getDigests(TimePoint now)
+    -> Digests {
+  auto digests = bufferedMultiSlidingWindow_.get(now);
+  std::vector<TDigest> windowDigests;
+  windowDigests.reserve(digests.windows.size());
+  for (auto& w : digests.windows) {
+    windowDigests.push_back(TDigest::merge(w));
+  }
+  return Digests{std::move(digests.allTime), std::move(windowDigests)};
+}
+
 } // namespace folly

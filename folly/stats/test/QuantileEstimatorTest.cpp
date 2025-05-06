@@ -83,3 +83,16 @@ TEST(SlidingWindowQuantileEstimatorTest, EstimateQuantiles) {
   auto estimates = estimator.estimateQuantiles(kQuantiles);
   checkEstimates(estimates);
 }
+
+TEST(MultiSlidingWindowQuantileEstimatorTest, EstimateQuantiles) {
+  MultiSlidingWindowQuantileEstimator<MockClock> estimator(
+      std::vector<MultiSlidingWindowQuantileEstimator<MockClock>::WindowDef>{
+          {std::chrono::seconds{1}, 1}});
+  addValues(estimator);
+
+  MockClock::Now += std::chrono::seconds{1};
+
+  auto estimates = estimator.estimateQuantiles(kQuantiles);
+  checkEstimates(estimates.allTime);
+  checkEstimates(estimates.windows[0]);
+}

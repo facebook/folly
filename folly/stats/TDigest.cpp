@@ -270,12 +270,22 @@ template <class T>
   size_t maxSize = getPtr(digests.front())->maxSize_;
 
   size_t nCentroids = 0;
+  const TDigest* lastNonEmpty = nullptr;
   for (const auto& digest : digests) {
-    nCentroids += getPtr(digest)->centroids_.size();
+    if (const auto* d = getPtr(digest); !d->empty()) {
+      nCentroids += d->centroids_.size();
+      lastNonEmpty = d;
+    }
   }
 
   if (nCentroids == 0) {
     return TDigest(maxSize);
+  } else if (
+      nCentroids == lastNonEmpty->centroids_.size() &&
+      lastNonEmpty->maxSize_ == maxSize) {
+    // Only one non-empty digest and it already has the desidered maxSize, we
+    // can skip merge.
+    return *lastNonEmpty;
   }
 
   std::vector<Centroid> centroids;

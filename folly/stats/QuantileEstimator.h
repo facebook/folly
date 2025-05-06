@@ -22,7 +22,6 @@
 namespace folly {
 
 struct QuantileEstimates {
- public:
   double sum;
   double count;
 
@@ -84,6 +83,50 @@ class SlidingWindowQuantileEstimator {
 
  private:
   detail::BufferedSlidingWindow<TDigest, ClockT> bufferedSlidingWindow_;
+};
+
+/*
+ * Equivalent to (but more efficient than) a SimpleQuantileEstimator plus one
+ * SlidingWindowQuantileEstimator for each requested window.
+ */
+template <typename ClockT = std::chrono::steady_clock>
+class MultiSlidingWindowQuantileEstimator {
+ public:
+  using TimePoint = typename ClockT::time_point;
+  using Duration = typename ClockT::duration;
+
+  // Minimum granularity is in seconds, so we can buffer at least one second.
+  using WindowDef = std::pair<std::chrono::seconds, size_t>;
+
+  struct Digests {
+    Digests(TDigest at, std::vector<TDigest> ws)
+        : allTime(std::move(at)), windows(std::move(ws)) {}
+
+    TDigest allTime;
+    std::vector<TDigest> windows;
+  };
+
+  struct MultiQuantileEstimates {
+    QuantileEstimates allTime;
+    std::vector<QuantileEstimates> windows;
+  };
+
+  explicit MultiSlidingWindowQuantileEstimator(Range<const WindowDef*> defs);
+
+  MultiQuantileEstimates estimateQuantiles(
+      Range<const double*> quantiles, TimePoint now = ClockT::now());
+
+  void addValue(double value, TimePoint now = ClockT::now());
+
+  /// Flush buffered values
+  void flush() { bufferedMultiSlidingWindow_.flush(); }
+
+  // Get point-in-time TDigests
+  Digests getDigests(TimePoint now = ClockT::now());
+
+ private:
+  detail::BufferedMultiSlidingWindow<TDigest, ClockT>
+      bufferedMultiSlidingWindow_;
 };
 
 } // namespace folly

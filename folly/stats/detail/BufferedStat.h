@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Range.h>
 #include <folly/SharedMutex.h>
 #include <folly/stats/DigestBuilder.h>
 #include <folly/stats/detail/SlidingWindow.h>
@@ -152,6 +153,61 @@ class BufferedSlidingWindow : public BufferedStat<DigestT, ClockT> {
 
  private:
   SlidingWindow<DigestT> slidingWindow_;
+};
+
+/*
+ * BufferedMultiSlidingWindow is a BufferedStat that holds data in a
+ * SlidingWindow for each requested duration/nBuckets, plus an all-time digest.
+ *
+ * This is more efficient than using a BufferedDigest plus one
+ * BufferedSlidingWindow for each window, since the buffer is shared.
+ */
+template <typename DigestT, typename ClockT>
+class BufferedMultiSlidingWindow : public BufferedStat<DigestT, ClockT> {
+ public:
+  using TimePoint = typename ClockT::time_point;
+
+  // Minimum granularity is in seconds, so we can buffer at least one second.
+  using WindowDef = std::pair<std::chrono::seconds, size_t>;
+
+  struct Digests {
+    Digests(DigestT at, std::vector<std::vector<DigestT>> ws)
+        : allTime(std::move(at)), windows(std::move(ws)) {}
+
+    DigestT allTime;
+    std::vector<std::vector<DigestT>> windows;
+  };
+
+  BufferedMultiSlidingWindow(
+      Range<const WindowDef*> defs, size_t bufferSize, size_t digestSize);
+
+  Digests get(TimePoint now = ClockT::now());
+
+  void onNewDigest(
+      DigestT digest,
+      TimePoint newExpiry,
+      TimePoint oldExpiry,
+      const std::unique_lock<SharedMutex>& g) final;
+
+ private:
+  struct Window {
+    Window(
+        TimePoint firstExpiry,
+        std::chrono::seconds bucketDur,
+        size_t nBuckets,
+        size_t digestSize);
+
+    std::chrono::seconds bucketDuration;
+    TimePoint expiry;
+    // curBucket accumulates pending updates before the bucket expires and is
+    // committed to slidingWindow.
+    DigestT curBucket;
+    SlidingWindow<DigestT> slidingWindow;
+  };
+
+  size_t digestSize_;
+  DigestT allTime_;
+  std::vector<Window> windows_;
 };
 
 } // namespace detail

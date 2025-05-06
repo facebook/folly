@@ -150,5 +150,84 @@ void BufferedSlidingWindow<DigestT, ClockT>::onNewDigest(
   }
 }
 
+template <typename DigestT, typename ClockT>
+BufferedMultiSlidingWindow<DigestT, ClockT>::Window::Window(
+    TimePoint firstExpiry,
+    std::chrono::seconds bucketDur,
+    size_t nBuckets,
+    size_t digestSize)
+    : bucketDuration(bucketDur),
+      expiry(roundUpTimePoint(firstExpiry, bucketDur)),
+      curBucket(digestSize),
+      slidingWindow([=] { return DigestT(digestSize); }, nBuckets) {}
+
+template <typename DigestT, typename ClockT>
+BufferedMultiSlidingWindow<DigestT, ClockT>::BufferedMultiSlidingWindow(
+    Range<const WindowDef*> defs, size_t bufferSize, size_t digestSize)
+    : BufferedStat<DigestT, ClockT>(
+          std::chrono::seconds{1}, bufferSize, digestSize),
+      digestSize_(digestSize),
+      allTime_(digestSize) {
+  for (const auto& def : defs) {
+    windows_.emplace_back(
+        this->expiry_.load(std::memory_order_relaxed),
+        def.first,
+        def.second,
+        digestSize);
+  }
+}
+
+template <typename DigestT, typename ClockT>
+auto BufferedMultiSlidingWindow<DigestT, ClockT>::get(TimePoint now)
+    -> Digests {
+  auto digests = [&] {
+    std::vector<std::vector<DigestT>> windowDigests;
+    windowDigests.reserve(windows_.size());
+    auto g = this->updateIfExpired(now);
+    for (const auto& window : windows_) {
+      windowDigests.push_back(window.slidingWindow.get());
+    }
+    return Digests{allTime_, std::move(windowDigests)};
+  }();
+
+  for (auto& w : digests.windows) {
+    removeEmpty(w);
+  }
+  return digests;
+}
+
+template <typename DigestT, typename ClockT>
+void BufferedMultiSlidingWindow<DigestT, ClockT>::onNewDigest(
+    DigestT digest,
+    TimePoint newExpiry,
+    TimePoint oldExpiry,
+    const std::unique_lock<SharedMutex>& /* g */) {
+  for (auto& window : windows_) {
+    assert(oldExpiry <= window.expiry);
+    auto& curBucket = window.curBucket;
+    auto& slidingWindow = window.slidingWindow;
+    if (newExpiry > oldExpiry) {
+      curBucket = DigestT::merge(curBucket, digest);
+      if (newExpiry > window.expiry) {
+        auto newWindowExpiry =
+            roundUpTimePoint(newExpiry, window.bucketDuration);
+        auto diff = (newWindowExpiry - window.expiry) / window.bucketDuration;
+        slidingWindow.slide(diff);
+        slidingWindow.set(
+            diff - 1, std::exchange(curBucket, DigestT{digestSize_}));
+        window.expiry = newWindowExpiry;
+      }
+    } else {
+      // This is a flush, merge curBucket in even if it hasn't expired.
+      std::array<const DigestT*, 3> a{
+          &slidingWindow.front(), &curBucket, &digest};
+      slidingWindow.set(0, DigestT::merge(range(a)));
+      curBucket = DigestT{digestSize_};
+    }
+  }
+
+  allTime_ = DigestT::merge(allTime_, digest);
+}
+
 } // namespace detail
 } // namespace folly
