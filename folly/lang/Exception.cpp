@@ -694,6 +694,15 @@ std::exception_ptr catch_current_exception_(Try&& t) noexcept {
   return catch_exception(static_cast<Try&&>(t), current_exception);
 }
 
+template <typename Value>
+static std::exception_ptr make_exception_ptr_from_rep_(Value value) noexcept {
+  static_assert(sizeof(std::exception_ptr) == sizeof(Value));
+  static_assert(alignof(std::exception_ptr) == alignof(Value));
+  std::exception_ptr ptr;
+  std::memcpy(&ptr, &value, sizeof(value));
+  return ptr;
+}
+
 #if defined(__GLIBCXX__)
 
 std::exception_ptr make_exception_ptr_with_(
@@ -707,7 +716,7 @@ std::exception_ptr make_exception_ptr_with_(
     scope_guard_ rollback{std::bind(abi::__cxa_free_exception, object)};
     arg.ctor(object, func);
     rollback.dismiss();
-    return reinterpret_cast<std::exception_ptr&&>(object);
+    return make_exception_ptr_from_rep_(object);
   });
 }
 
@@ -753,7 +762,7 @@ std::exception_ptr make_exception_ptr_with_(
     scope_guard_ rollback{std::bind(abi::__cxa_free_exception, object)};
     arg.ctor(object, func);
     rollback.dismiss();
-    return reinterpret_cast<std::exception_ptr&&>(object);
+    return make_exception_ptr_from_rep_(object);
   });
 }
 
