@@ -637,11 +637,15 @@ struct get_exception_tag_t {};
 ///   } else {
 ///     doStuff(tryData.value()); // Oops, may throw `UsingUninitializedTry`!
 ///   }
+///
+/// The "lifetimebound" attribute provides _some_ use-after-free protection,
+/// see the `#if 0` manual test in `get_exception_from_std_exception_ptr`.
 template <typename Ex>
 class get_exception_fn {
  public:
   template <typename Src>
-  const Ex* operator()(const Src& src) const noexcept {
+  const Ex* operator()(
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] const Src& src) const noexcept {
     if constexpr (std::is_same_v<Src, std::exception_ptr>) {
       return exception_ptr_get_object_hint<const Ex>(src);
     } else {
@@ -656,7 +660,8 @@ class get_exception_fn {
   }
   // For a mutable ptr, use `folly::get_mutable_exception<Ex>(v)` instead.
   template <typename Src>
-  const Ex* operator()(Src& s) const noexcept {
+  const Ex* operator()(
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] Src& s) const noexcept {
     return operator()(std::as_const(s));
   }
 
@@ -671,7 +676,7 @@ template <typename Ex>
 class get_mutable_exception_fn {
  public:
   template <typename Src>
-  Ex* operator()(Src& src) const noexcept {
+  Ex* operator()([[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] Src& src) const noexcept {
     if constexpr (std::is_same_v<Src, std::exception_ptr>) {
       return exception_ptr_get_object_hint<Ex>(src);
     } else {

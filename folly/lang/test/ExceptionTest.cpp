@@ -456,6 +456,16 @@ TEST_F(ExceptionTest, get_exception_from_std_exception_ptr) {
           folly::get_mutable_exception_fn<std::exception>,
           const std::exception_ptr&&>);
 
+#if 0 // manual test for "clang:lifetimebound"
+  const std::exception* ex = []() {
+    auto ep = folly::make_exception_ptr_with([]() {
+      return std::runtime_error{"foo"};
+    });
+    return get_exception<>(ep);
+  }();
+  EXPECT_EQ("foo", ex->what());
+#endif
+
   auto eptr = folly::make_exception_ptr_with([]() {
     return std::runtime_error{"foo"};
   });
