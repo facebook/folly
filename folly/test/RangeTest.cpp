@@ -35,6 +35,8 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
+#include <folly/container/span.h>
+
 #if __has_include(<range/v3/range/concepts.hpp>)
 #include <range/v3/range/concepts.hpp>
 
@@ -44,6 +46,10 @@ CPP_assert(ranges::range<folly::StringPiece>);
 CPP_assert(ranges::view_<folly::StringPiece>);
 #endif
 
+#if defined(__cpp_lib_ranges)
+#include <ranges>
+#endif
+
 using namespace folly;
 using namespace std;
 
@@ -51,6 +57,12 @@ static_assert(folly::detail::range_is_char_type_v_<char*>, "");
 static_assert(folly::detail::range_is_byte_type_v_<unsigned char*>, "");
 
 static_assert(std::is_same_v<char, typename Range<char*>::value_type>);
+
+static_assert(std::is_convertible_v<folly::Range<int*>, folly::span<int>>, "");
+#if defined(__cpp_lib_ranges)
+static_assert(std::ranges::borrowed_range<folly::Range<int*>>, "");
+static_assert(std::ranges::borrowed_range<folly::Range<const int*>>, "");
+#endif
 
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
 

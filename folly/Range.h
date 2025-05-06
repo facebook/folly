@@ -56,6 +56,10 @@
 #include <string_view>
 #include <type_traits>
 
+#if defined(__cpp_lib_ranges)
+#include <ranges>
+#endif
+
 #if __has_include(<fmt/format.h>)
 #include <fmt/format.h>
 #endif
@@ -1781,3 +1785,8 @@ namespace ranges {
 template <class Iter>
 inline constexpr bool enable_view<::folly::Range<Iter>> = true;
 } // namespace ranges
+
+#if defined(__cpp_lib_ranges)
+template <typename T>
+constexpr bool std::ranges::enable_borrowed_range<folly::Range<T>> = true;
+#endif
