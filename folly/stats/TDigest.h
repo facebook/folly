@@ -107,6 +107,8 @@ class TDigest {
    * digests.
    */
   static TDigest merge(Range<const TDigest*> digests);
+  static TDigest merge(Range<const TDigest**> digests);
+  static TDigest merge(const TDigest& d1, const TDigest& d2);
 
   /*
    * Merge in place, using the provided storage.
@@ -142,6 +144,9 @@ class TDigest {
       TDigest& dst,
       Range<const double*> sortedValues,
       std::vector<Centroid>& workingBuffer) const;
+
+  template <class T>
+  static TDigest mergeImpl(Range<T> ds);
 
   std::vector<Centroid> centroids_;
   size_t maxSize_;

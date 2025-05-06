@@ -40,7 +40,7 @@ class SlidingWindow {
 
   void set(size_t idx, BucketT bucket);
 
-  BucketT front() const;
+  const BucketT& front() const;
 
   /*
    * Slides the SlidingWindow by nBuckets, inserting new buckets using the

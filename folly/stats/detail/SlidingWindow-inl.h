@@ -48,7 +48,7 @@ std::vector<BucketT> SlidingWindow<BucketT>::get() const {
 }
 
 template <typename BucketT>
-BucketT SlidingWindow<BucketT>::front() const {
+const BucketT& SlidingWindow<BucketT>::front() const {
   return buckets_[curHead_];
 }
 

@@ -22,6 +22,8 @@
 using namespace folly;
 using namespace folly::detail;
 
+namespace {
+
 const size_t kDigestSize = 100;
 
 struct MockClock {
@@ -48,14 +50,27 @@ class SimpleDigest {
     return digest;
   }
 
+  static SimpleDigest merge(Range<const SimpleDigest**> r) {
+    SimpleDigest digest(100);
+    for (auto it = r.begin(); it != r.end(); ++it) {
+      const auto& values = (*it)->values_;
+      digest.values_.insert(digest.values_.end(), values.begin(), values.end());
+    }
+    return digest;
+  }
+
   static SimpleDigest merge(Range<const SimpleDigest*> r) {
     SimpleDigest digest(100);
     for (auto it = r.begin(); it != r.end(); ++it) {
-      for (auto value : it->values_) {
-        digest.values_.push_back(value);
-      }
+      const auto& values = it->values_;
+      digest.values_.insert(digest.values_.end(), values.begin(), values.end());
     }
     return digest;
+  }
+
+  static SimpleDigest merge(const SimpleDigest& d1, const SimpleDigest& d2) {
+    std::array<const SimpleDigest*, 2> ds = {&d1, &d2};
+    return merge(range(ds));
   }
 
   std::vector<double> getValues() const { return values_; }
@@ -67,6 +82,8 @@ class SimpleDigest {
 };
 
 MockClock::time_point MockClock::Now = MockClock::time_point{};
+
+} // namespace
 
 class BufferedDigestTest : public ::testing::Test {
  protected:

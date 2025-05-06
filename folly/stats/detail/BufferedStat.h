@@ -130,7 +130,6 @@ class BufferedDigest : public BufferedStat<DigestT, ClockT> {
 
 /*
  * BufferedSlidingWindow is a BufferedStat that holds data in a SlidingWindow.
- * onBufferSwap will slide the SlidingWindow and return the front of the list.
  */
 template <typename DigestT, typename ClockT>
 class BufferedSlidingWindow : public BufferedStat<DigestT, ClockT> {

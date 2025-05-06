@@ -19,6 +19,21 @@
 namespace folly {
 namespace detail {
 
+template <typename TimePoint, typename Duration>
+TimePoint roundUpTimePoint(TimePoint t, Duration d) {
+  auto remainder = t.time_since_epoch() % d;
+  if (remainder.count() != 0) {
+    return t + d - remainder;
+  }
+  return t;
+}
+
+template <class T>
+void removeEmpty(std::vector<T>& v) {
+  const auto& isEmpty = [](const T& val) { return val.empty(); };
+  v.erase(std::remove_if(v.begin(), v.end(), isEmpty), v.end());
+}
+
 template <typename DigestT, typename ClockT>
 BufferedStat<DigestT, ClockT>::BufferedStat(
     typename ClockT::duration bufferDuration,
@@ -42,11 +57,7 @@ void BufferedStat<DigestT, ClockT>::append(double value, TimePoint now) {
 template <typename DigestT, typename ClockT>
 typename BufferedStat<DigestT, ClockT>::TimePoint
 BufferedStat<DigestT, ClockT>::roundUp(TimePoint t) {
-  auto remainder = t.time_since_epoch() % bufferDuration_;
-  if (remainder.count() != 0) {
-    return t + bufferDuration_ - remainder;
-  }
-  return t;
+  return roundUpTimePoint(t, bufferDuration_);
 }
 
 template <typename DigestT, typename ClockT>
@@ -98,8 +109,7 @@ void BufferedDigest<DigestT, ClockT>::onNewDigest(
     TimePoint /*newExpiry*/,
     TimePoint /*oldExpiry*/,
     const std::unique_lock<SharedMutex>& /*g*/) {
-  std::array<DigestT, 2> a{{std::move(digest_), std::move(digest)}};
-  digest_ = DigestT::merge(a);
+  digest_ = DigestT::merge(digest_, digest);
 }
 
 template <typename DigestT, typename ClockT>
@@ -119,12 +129,7 @@ std::vector<DigestT> BufferedSlidingWindow<DigestT, ClockT>::get(
     auto g = this->updateIfExpired(now);
     digests = slidingWindow_.get();
   }
-  digests.erase(
-      std::remove_if(
-          digests.begin(),
-          digests.end(),
-          [](const DigestT& digest) { return digest.empty(); }),
-      digests.end());
+  removeEmpty(digests);
   return digests;
 }
 
@@ -135,14 +140,13 @@ void BufferedSlidingWindow<DigestT, ClockT>::onNewDigest(
     TimePoint oldExpiry,
     const std::unique_lock<SharedMutex>& /*g*/) {
   if (newExpiry > oldExpiry) {
-    auto diff = newExpiry - oldExpiry;
-    slidingWindow_.slide(diff / this->bufferDuration_);
-    diff -= this->bufferDuration_;
-    slidingWindow_.set(diff / this->bufferDuration_, std::move(digest));
+    auto diff = (newExpiry - oldExpiry) / this->bufferDuration_;
+    slidingWindow_.slide(diff);
+    slidingWindow_.set(diff - 1, std::move(digest));
   } else {
     // just update current window
-    std::array<DigestT, 2> a{{slidingWindow_.front(), std::move(digest)}};
-    slidingWindow_.set(0 /* current window */, DigestT::merge(a));
+    slidingWindow_.set(
+        0 /* current window */, DigestT::merge(slidingWindow_.front(), digest));
   }
 }
 
