@@ -186,7 +186,7 @@ const std::string& OpenSSLUtils::getCipherName(uint16_t cipherCode) {
   if (iter != cipherCodeToName.end()) {
     return iter->second;
   } else {
-    static std::string empty("");
+    static std::string empty;
     return empty;
   }
 }
