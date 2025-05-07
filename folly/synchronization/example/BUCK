@@ -1,0 +1,31 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "hazptr_lock_free_lifo",
+    headers = ["HazptrLockFreeLIFO.h"],
+    exported_deps = [
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "hazptr_swmr_set",
+    headers = ["HazptrSWMRSet.h"],
+    exported_deps = [
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "hazptr_wide_cas",
+    headers = ["HazptrWideCAS.h"],
+    exported_deps = [
+        "//folly/synchronization:hazptr",
+    ],
+)

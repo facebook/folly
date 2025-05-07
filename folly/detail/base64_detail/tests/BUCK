@@ -1,0 +1,83 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_cxx_test",
+)
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "base64_against_scalar_test",
+    srcs = ["Base64AgainstScalarTest.cpp"],
+    supports_static_listing = True,
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/detail/base64_detail:base64_common",
+        "//xplat/folly/detail/base64_detail:base64_scalar",
+        "//xplat/folly/detail/base64_detail:base64_sse4_2",
+        "//xplat/folly/detail/base64_detail:base64_swar",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "base64_platform_test",
+    srcs = ["Base64PlatformTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/detail/base64_detail:base64_sse4_2_platform",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "base64_special_cases_test",
+    srcs = ["Base64SpecialCasesTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_constexpr",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/detail/base64_detail:base64_scalar",
+        "//xplat/folly/detail/base64_detail:base64_simd",
+        "//xplat/folly/detail/base64_detail:base64_sse4_2",
+    ],
+)
+
+# !!!! fbcode/folly/detail/base64_detail/tests/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "base64_against_scalar_test",
+    srcs = ["Base64AgainstScalarTest.cpp"],
+    deps = [
+        "//folly/detail/base64_detail:base64_common",
+        "//folly/detail/base64_detail:base64_scalar",
+        "//folly/detail/base64_detail:base64_sse4_2",
+        "//folly/detail/base64_detail:base64_swar",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "base64_platform_test",
+    srcs = ["Base64PlatformTest.cpp"],
+    deps = [
+        "//folly/detail/base64_detail:base64_sse4_2_platform",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "base64_special_cases_test",
+    srcs = ["Base64SpecialCasesTest.cpp"],
+    deps = [
+        "//folly/detail/base64_detail:base64_scalar",
+        "//folly/detail/base64_detail:base64_simd",
+        "//folly/detail/base64_detail:base64_sse4_2",
+        "//folly/portability:constexpr",
+        "//folly/portability:gtest",
+    ],
+)

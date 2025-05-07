@@ -1,0 +1,126 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "atomic_read_mostly_main_ptr",
+    srcs = [
+        "AtomicReadMostlyMainPtr.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "AtomicReadMostlyMainPtr.h",
+    ],
+    deps = [
+        "//xplat/folly:indestructible",
+        "//xplat/folly:synchronization_rcu",
+        "//xplat/folly/concurrency/memory:read_mostly_shared_ptr",
+        "//xplat/folly/executors:inline_executor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "read_mostly_shared_ptr",
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ReadMostlySharedPtr.h",
+    ],
+    deps = [
+        ":tl_ref_count",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "primary_ptr",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["PrimaryPtr.h"],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:experimental_cleanup",
+        "//xplat/folly:function",
+        "//xplat/folly:futures_core",
+        "//xplat/folly:synchronization_baton",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "tl_ref_count",
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "TLRefCount.h",
+    ],
+    deps = [
+        "//xplat/folly:synchronization_asymmetric_thread_fence",
+        "//xplat/folly:synchronization_detail_sleeper",
+        "//xplat/folly:thread_local",
+    ],
+)
+
+# !!!! fbcode/folly/concurrency/memory/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "atomic_read_mostly_main_ptr",
+    srcs = [
+        "AtomicReadMostlyMainPtr.cpp",
+    ],
+    headers = [
+        "AtomicReadMostlyMainPtr.h",
+    ],
+    deps = [
+        "//folly/executors:inline_executor",
+    ],
+    exported_deps = [
+        "//folly:indestructible",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
+        "//folly/synchronization:rcu",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "read_mostly_shared_ptr",
+    headers = ["ReadMostlySharedPtr.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly/concurrency/memory:tl_ref_count",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "primary_ptr",
+    headers = ["PrimaryPtr.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly/futures:cleanup",
+        "//folly/futures:core",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "tl_ref_count",
+    headers = ["TLRefCount.h"],
+    exported_deps = [
+        "//folly:thread_local",
+        "//folly/synchronization:asymmetric_thread_fence",
+        "//folly/synchronization/detail:sleeper",
+    ],
+)

@@ -1,0 +1,31 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "inline_function_ref_test",
+    srcs = [
+        "InlineFunctionRefTest.cpp",
+    ],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization/detail:inline_function_ref",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "hardware_test",
+    srcs = [
+        "HardwareTest.cpp",
+    ],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization/detail:hardware",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

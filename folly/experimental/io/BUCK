@@ -1,0 +1,186 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "async_base",
+    headers = [
+        "AsyncBase.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:async_base_class",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "async_io",
+    headers = [
+        "AsyncIO.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:async_io",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "liburing",
+    headers = [
+        "Liburing.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:liburing",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "async_io_uring_socket",
+    headers = [
+        "AsyncIoUringSocket.h",
+        "AsyncIoUringSocketFactory.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:async_io_uring_socket",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "simple_async_io",
+    headers = [
+        "SimpleAsyncIO.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:simple_async_io",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "epoll",
+    headers = [
+        "Epoll.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:epoll",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    # @autodeps-skip
+    name = "epoll_backend",
+    headers = [
+        "Epoll.h",
+        "EpollBackend.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:epoll_backend",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "event_base_poller",
+    headers = [
+        "EventBasePoller.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:event_base_poller",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "mux_io_thread_pool_executor",
+    headers = [
+        "MuxIOThreadPoolExecutor.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:mux_io_thread_pool_executor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "io_uring",
+    headers = [
+        "IoUring.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:io_uring",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "io_uring_backend",
+    headers = [
+        "IoUringBackend.h",
+        "IoUringBase.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:io_uring_backend",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    # @autodeps-skip
+    name = "io_uring_provided_buffer_ring",
+    headers = [
+        "IoUringBase.h",
+        "IoUringProvidedBufferRing.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:io_uring_provided_buffer_ring",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "io_uring_event",
+    headers = [
+        "IoUringEvent.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:io_uring_event",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "io_uring_event_base_local",
+    headers = [
+        "IoUringEventBaseLocal.h",
+    ],
+    exported_deps = [
+        "//folly/io/async:io_uring_event_base_local",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "fs_util",
+    headers = [
+        "FsUtil.h",
+    ],
+    exported_deps = [
+        "//folly/io:fs_util",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "huge_pages",
+    headers = [
+        "HugePages.h",
+    ],
+    exported_deps = [
+        "//folly/io:huge_pages",
+    ],
+)

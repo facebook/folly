@@ -1,0 +1,689 @@
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "access",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Access.h"],
+    exported_deps = [
+        "//xplat/folly:functional_invoke",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "align",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Align.h"],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "aligned",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Aligned.h"],
+    exported_deps = [
+        ":align",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "assume",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Assume.h"],
+    exported_deps = [
+        ":hint",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "badge",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Badge.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "bindings",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Bindings.h"],
+    exported_deps = [
+        "//xplat/folly:utility",
+        "//xplat/folly/detail:tuple",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "bits",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Bits.h"],
+    exported_deps = [
+        ":assume",
+        ":c_string",
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_builtins",
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "bits_class",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "BitsClass.h",
+    ],
+    deps = [
+        ":bits",
+        "//third-party/glog:glog",
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "builtin",
+    raw_headers = ["Builtin.h"],
+    exported_deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "c_array",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["CArray.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "c_string",
+    srcs = ["CString.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["CString.h"],
+    deps = [
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:functional_invoke",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "cast",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Cast.h"],
+    exported_deps = [
+        ":safe_assert",
+        "//xplat/folly:portability",
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "checked_math",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["CheckedMath.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:likely",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "customization_point",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["CustomizationPoint.h"],
+    exported_deps = [
+        ":static_const",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "exception",
+    srcs = ["Exception.cpp"],
+    compiler_flags = selects.with_or({
+        (
+            "ovr_config//os:android"
+        ): ["-Wno-error=deprecated-dynamic-exception-spec"],
+        "DEFAULT": [],
+    }),
+    exported_linker_flags = selects.with_or({
+        (
+            "ovr_config//os:appletvos",
+            "ovr_config//os:iphoneos",
+            "ovr_config//os:macos",
+            "ovr_config//os:watchos",
+        ): ["-lc++abi"],
+        "DEFAULT": [],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Exception.h"],
+    deps = [
+        ":align",
+        ":new",
+    ],
+    exported_deps = [
+        ":assume",
+        ":safe_assert",
+        ":thunk",
+        ":type_info",
+        "//third-party/fmt:fmt",
+        "//xplat/folly:c_portability",
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability",
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "extern",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Extern.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "hint",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Hint.h",
+        "Hint-inl.h",
+    ],
+    exported_deps = [
+        ":safe_assert",
+        "//xplat/folly:portability",
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "keep",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Keep.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "new",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["New.h"],
+    exported_deps = [
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:functional_invoke",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "ordering",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Ordering.h"],
+    exported_deps = [
+        ":exception",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "pretty",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Pretty.h"],
+    exported_deps = [
+        ":c_array",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "propagate_const",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["PropagateConst.h"],
+    exported_deps = [
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "rvalue_reference_wrapper",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["RValueReferenceWrapper.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "safe_assert",
+    srcs = ["SafeAssert.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeAssert.h"],
+    deps = [
+        ":to_ascii",
+        "//xplat/folly:portability_sys_types",
+        "//xplat/folly:portability_windows",
+        "//xplat/folly/detail:file_util_detail",
+    ],
+    exported_deps = [
+        ":c_array",
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:portability",
+        "//xplat/folly:preprocessor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "static_const",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["StaticConst.h"],
+    exported_deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "thunk",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Thunk.h"],
+    deps = [
+        "//xplat/folly:utility",
+        "//xplat/folly/lang:new",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "to_ascii",
+    srcs = ["ToAscii.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["ToAscii.h"],
+    exported_deps = [
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_builtins",
+        "//xplat/folly:utility",
+        "//xplat/folly/lang:align",
+        "//xplat/folly/lang:c_array",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "type_info",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["TypeInfo.h"],
+    exported_deps = [
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "uncaught_exceptions",
+    srcs = ["UncaughtExceptions.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["UncaughtExceptions.h"],
+    exported_deps = [
+        ":exception",
+    ],
+)
+
+# !!!! fbcode/folly/lang/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "access",
+    headers = ["Access.h"],
+    exported_deps = [
+        "//folly/functional:invoke",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "align",
+    headers = ["Align.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "aligned",
+    headers = ["Aligned.h"],
+    exported_deps = [
+        ":align",
+        "//folly:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "assume",
+    headers = ["Assume.h"],
+    exported_deps = [
+        ":hint",
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "badge",
+    headers = ["Badge.h"],
+    exported_deps = [
+        "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bindings",
+    headers = ["Bindings.h"],
+    exported_deps = [
+        "//folly:utility",
+        "//folly/detail:tuple",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bits",
+    headers = ["Bits.h"],
+    exported_deps = [
+        ":assume",
+        ":c_string",
+        "//folly:constexpr_math",
+        "//folly:portability",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/portability:builtins",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bits_class",
+    headers = ["BitsClass.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:range",
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "builtin",
+    headers = ["Builtin.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "c_array",
+    headers = ["CArray.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "c_string",
+    srcs = ["CString.cpp"],
+    headers = ["CString.h"],
+    deps = [
+        "//folly:cpp_attributes",
+        "//folly/functional:invoke",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "cast",
+    headers = ["Cast.h"],
+    exported_deps = [
+        ":safe_assert",
+        "//folly:portability",
+        "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "checked_math",
+    headers = ["CheckedMath.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:likely",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "customization_point",
+    headers = ["CustomizationPoint.h"],
+    exported_deps = [
+        ":static_const",
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "exception",
+    srcs = ["Exception.cpp"],
+    headers = ["Exception.h"],
+    linker_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:macos": ["-lc++abi"],
+    }),
+    deps = [
+        ":align",
+        ":new",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":assume",
+        ":safe_assert",
+        ":thunk",
+        ":type_info",
+        "//folly:c_portability",
+        "//folly:cpp_attributes",
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:traits",
+        "//folly:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "extern",
+    headers = ["Extern.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "keep",
+    headers = ["Keep.h"],
+    exported_deps = [
+        "//folly:c_portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "hint",
+    headers = [
+        "Hint.h",
+        "Hint-inl.h",
+    ],
+    exported_deps = [
+        ":safe_assert",
+        "//folly:portability",
+        "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "new",
+    headers = ["New.h"],
+    exported_deps = [
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly/functional:invoke",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "ordering",
+    headers = ["Ordering.h"],
+    exported_deps = [
+        ":exception",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "pretty",
+    headers = ["Pretty.h"],
+    exported_deps = [
+        ":c_array",
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "propagate_const",
+    headers = ["PropagateConst.h"],
+    exported_deps = [
+        "//folly:traits",
+        "//folly:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "rvalue_reference_wrapper",
+    headers = ["RValueReferenceWrapper.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "safe_assert",
+    srcs = ["SafeAssert.cpp"],
+    headers = ["SafeAssert.h"],
+    deps = [
+        ":to_ascii",
+        "//folly/detail:file_util_detail",
+        "//folly/portability:sys_types",
+        "//folly/portability:windows",
+    ],
+    exported_deps = [
+        ":c_array",
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly:preprocessor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "static_const",
+    headers = ["StaticConst.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "thunk",
+    headers = ["Thunk.h"],
+    exported_deps = [
+        ":new",
+        "//folly:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "to_ascii",
+    srcs = ["ToAscii.cpp"],
+    headers = ["ToAscii.h"],
+    exported_deps = [
+        ":align",
+        ":c_array",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:utility",
+        "//folly/portability:builtins",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "type_info",
+    headers = ["TypeInfo.h"],
+    exported_deps = [
+        "//folly:cpp_attributes",
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "uncaught_exceptions",
+    srcs = ["UncaughtExceptions.cpp"],
+    headers = ["UncaughtExceptions.h"],
+    exported_deps = [
+        ":exception",
+    ],
+)

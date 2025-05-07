@@ -1,0 +1,97 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "gtest_helpers",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["gtest_helpers.h"],
+    exported_deps = [
+        ":result",
+        "//xplat/folly/coro:gtest_helpers",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "gtest_helpers",
+    headers = ["gtest_helpers.h"],
+    exported_deps = [
+        ":result",
+        "//folly/coro:gtest_helpers",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "result",
+    srcs = ["result.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["result.h"],
+    deps = [
+        "//xplat/folly:indestructible",
+    ],
+    exported_deps = [
+        "//third-party/glog:glog",
+        "//third-party/googletest:gtest_headers",
+        "//xplat/folly:exception_wrapper",
+        "//xplat/folly:expected",
+        "//xplat/folly:operation_cancelled",
+        "//xplat/folly:portability_gtest_prod",
+        "//xplat/folly/lang:align",
+        "//xplat/folly/lang:rvalue_reference_wrapper",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "result",
+    srcs = ["result.cpp"],
+    headers = ["result.h"],
+    deps = [
+        "//folly:indestructible",
+    ],
+    exported_deps = [
+        "fbsource//third-party/googletest:gtest_headers",
+        "//folly:exception_wrapper",
+        "//folly:expected",
+        "//folly:operation_cancelled",
+        "//folly/lang:align",
+        "//folly/lang:rvalue_reference_wrapper",
+        "//folly/portability:gtest_prod",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "try",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["try.h"],
+    exported_deps = [
+        ":result",
+        "//xplat/folly:try",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "try",
+    headers = ["try.h"],
+    exported_deps = [
+        ":result",
+        "//folly:try",
+    ],
+)

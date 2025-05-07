@@ -1,0 +1,61 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+### this line is a hint for source control merge
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "async_fd_socket",
+    srcs = ["AsyncFdSocket.cpp"],
+    headers = ["AsyncFdSocket.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+    exported_deps = [
+        ":socket_fds",
+        "//folly/io/async:async_socket",
+        "//folly/portability:gtest_prod",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "async_fd_socket",
+    srcs = ["AsyncFdSocket.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["AsyncFdSocket.h"],
+    exported_deps = [
+        ":socket_fds",
+        "//xplat/folly:portability_gtest_prod",
+        "//xplat/folly/io/async:async_socket",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "socket_fds",
+    srcs = ["SocketFds.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SocketFds.h"],
+    exported_deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:file",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "socket_fds",
+    srcs = ["SocketFds.cpp"],
+    headers = ["SocketFds.h"],
+    exported_deps = ["//folly:file"],
+    exported_external_deps = [
+        "glog",
+    ],
+)

@@ -1,0 +1,80 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "memcpy_aarch64",
+    srcs = [
+        "memcpy-advsimd.S",
+        "memcpy-armv8.S",
+        "memcpy-mops.S",
+        "memcpy_sve.S",
+        "memmove-mops.S",
+    ],
+    headers = [
+        "asmdefs.h",
+    ],
+    target_compatible_with = [
+        "ovr_config//os:linux-arm64",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "memcpy_aarch64-use",
+    srcs = [
+        "memcpy-advsimd.S",
+        "memcpy-armv8.S",
+        "memcpy-mops.S",
+        "memcpy_sve.S",
+        "memmove-mops.S",
+    ],
+    headers = [
+        "asmdefs.h",
+    ],
+    arch_preprocessor_flags = {
+        "aarch64": [
+            "-DFOLLY_MEMCPY_IS_MEMCPY",
+        ],
+    },
+    target_compatible_with = [
+        "ovr_config//os:linux-arm64",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "memset_aarch64",
+    srcs = [
+        "memset-advsimd.S",
+        "memset-mops.S",
+    ],
+    headers = [
+        "asmdefs.h",
+    ],
+    target_compatible_with = [
+        "ovr_config//os:linux-arm64",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "memset_aarch64-use",
+    srcs = [
+        "memset-advsimd.S",
+        "memset-mops.S",
+    ],
+    headers = [
+        "asmdefs.h",
+    ],
+    arch_preprocessor_flags = {
+        "aarch64": [
+            "-DFOLLY_MEMSET_IS_MEMSET",
+        ],
+    },
+    target_compatible_with = [
+        "ovr_config//os:linux-arm64",
+    ],
+)

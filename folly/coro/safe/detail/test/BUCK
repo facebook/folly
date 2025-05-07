@@ -1,0 +1,26 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_closure_bindings_test",
+    srcs = ["AsyncClosureBindingsTest.cpp"],
+    deps = [
+        "//folly/coro:noexcept",
+        "//folly/coro:task",
+        "//folly/coro/safe/detail:async_closure_bindings",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "define_movable_deep_const_lref_copyable_test",
+    srcs = ["DefineMovableDeepConstLrefCopyableTest.cpp"],
+    deps = [
+        "//folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
+        "//folly/portability:gtest",
+    ],
+)

@@ -1,0 +1,132 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_test")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "contains_test",
+    srcs = ["ContainsTest.cpp"],
+    headers = [],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly:test_test_utils",
+        "//xplat/folly/algorithm/simd:contains",
+        "//xplat/folly/algorithm/simd/detail:simd_contains_impl",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "find_first_of_test",
+    srcs = ["find_first_of_test.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly:string",
+        "//xplat/folly/algorithm/simd:find_first_of",
+        "//xplat/folly/algorithm/simd:find_first_of_extra",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "find_fixed_test",
+    srcs = ["FindFixedTest.cpp"],
+    deps = [
+        "//third-party/fmt:fmt",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/algorithm/simd:find_fixed",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "momemask_test",
+    srcs = ["MovemaskTest.cpp"],
+    deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/algorithm/simd:movemask",
+    ],
+)
+
+# !!!! fbcode/folly/algorithm/simd/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "contains_test",
+    srcs = ["ContainsTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/algorithm/simd:contains",
+        "//folly/algorithm/simd/detail:simd_contains_impl",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "find_first_of_bench",
+    srcs = ["find_first_of_bench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/algorithm/simd:find_first_of",
+        "//folly/algorithm/simd:find_first_of_extra",
+        "//folly/init:init",
+        "//folly/lang:keep",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "find_first_of_test",
+    srcs = ["find_first_of_test.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:string",
+        "//folly/algorithm/simd:find_first_of",
+        "//folly/algorithm/simd:find_first_of_extra",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "find_fixed_bench",
+    srcs = ["FindFixedBenchmark.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly/algorithm/simd:find_fixed",
+        "//folly/init:init",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "find_fixed_test",
+    srcs = ["FindFixedTest.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:portability",
+        "//folly/algorithm/simd:find_fixed",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "momemask_test",
+    srcs = ["MovemaskTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:portability",
+        "//folly/algorithm/simd:movemask",
+        "//folly/portability:gtest",
+    ],
+)

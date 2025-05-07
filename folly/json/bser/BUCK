@@ -1,0 +1,64 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//tools/build_defs:platform_defs.bzl",
+    "APPLE",
+    "CXX",
+    "FBCODE",
+    "MACOSX",
+    "WINDOWS",
+)
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "bser",
+    srcs = [
+        "Dump.cpp",
+        "Load.cpp",
+    ],
+    apple_sdks = (MACOSX,),
+    feature = triage_InfrastructureSupermoduleOptou,
+    platforms = (CXX, FBCODE, WINDOWS, APPLE),
+    raw_headers = [
+        "Bser.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "//xplat/folly:c_portability",
+        "//xplat/folly:dynamic",
+        "//xplat/folly:json",
+        "//xplat/folly:optional",
+        "//xplat/folly:string",
+    ],
+)
+
+# !!!! fbcode/folly/json/bser/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bser",
+    srcs = [
+        "Dump.cpp",
+        "Load.cpp",
+    ],
+    headers = [
+        "Bser.h",
+    ],
+    deps = [
+        "//folly:string",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:json",  # @manual
+        "//folly:optional",
+        "//folly/io:iobuf",
+        "//folly/json:dynamic",
+    ],
+)

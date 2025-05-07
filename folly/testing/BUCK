@@ -1,0 +1,30 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "test_util",
+    srcs = ["TestUtil.cpp"],
+    headers = ["TestUtil.h"],
+    deps = [
+        "//folly:exception",
+        "//folly:file",
+        "//folly:file_util",
+        "//folly:memory",
+        "//folly:string",
+        "//folly/ext:test_ext",
+        "//folly/ext/buck2:test_ext",
+        "//folly/portability:fcntl",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly:scope_guard",
+        "//folly/experimental/io:fs_util",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_regex"),
+    ],
+)

@@ -1,0 +1,95 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "checksum",
+    srcs = ["Checksum.cpp"],
+    headers = ["Checksum.h"],
+    deps = [
+        "//folly:cpu_id",
+        "//folly/detail:traponavx512",
+        "//folly/external/fast-crc32:avx512_crc32c_v8s3x4",  # @manual
+        "//folly/external/fast-crc32:neon_crc32c_v3s4x2e_v2",  # @manual
+        "//folly/external/fast-crc32:neon_eor3_crc32_v9s3x2e_s3",  # @manual
+        "//folly/external/fast-crc32:neon_eor3_crc32c_v8s2x4_s3",  # @manual
+        "//folly/external/fast-crc32:sse_crc32c_v8s3x3",  # @manual
+        "//folly/hash/detail:checksum_detail",
+    ],
+    external_deps = [
+        "boost",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "farm_hash",
+    headers = ["FarmHash.h"],
+    exported_deps = [
+        "//folly/external/farmhash:farmhash",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "hash",
+    headers = ["Hash.h"],
+    exported_deps = [
+        ":murmur_hash",
+        ":spooky_hash_v1",
+        ":spooky_hash_v2",
+        "//folly:c_portability",
+        "//folly:portability",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/functional:apply_tuple",
+        "//folly/lang:bits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "spooky_hash_v1",
+    srcs = ["SpookyHashV1.cpp"],
+    headers = ["SpookyHashV1.h"],
+    deps = [
+        "//folly:cpp_attributes",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "spooky_hash_v2",
+    srcs = ["SpookyHashV2.cpp"],
+    headers = ["SpookyHashV2.h"],
+    deps = [
+        "//folly:cpp_attributes",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:portability",
+        "//folly/lang:c_string",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "traits",
+    headers = ["traits.h"],
+    exported_deps = [
+        "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "murmur_hash",
+    headers = ["MurmurHash.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly/lang:bits",
+        "//folly/portability:constexpr",
+    ],
+)

@@ -1,0 +1,222 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "lt_hash",
+    srcs = [
+        "LtHash.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LtHash.h",
+        "LtHash-inl.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "//xplat/folly:cpu_id",
+        "//xplat/folly:memory",
+        "//xplat/folly:optional",
+        "//xplat/folly:range",
+        "//xplat/folly/crypto:blake2xb",
+        "//xplat/folly/crypto/detail:lt_hash_internal",
+        "//xplat/folly/crypto/detail:math_operation_avx2_disable",
+        "//xplat/folly/crypto/detail:math_operation_simple",
+        "//xplat/folly/crypto/detail:math_operation_sse2_disable",
+        "//xplat/folly/lang:bits",
+        "//xplat/third-party/sodium:sodium",
+    ],
+    exported_deps = [
+        "//xplat/folly:optional",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "lt_hash_avx2",
+    srcs = [
+        "LtHash.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LtHash.h",
+        "LtHash-inl.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "//xplat/folly:cpu_id",
+        "//xplat/folly:memory",
+        "//xplat/folly:optional",
+        "//xplat/folly:range",
+        "//xplat/folly/crypto:blake2xb",
+        "//xplat/folly/crypto/detail:lt_hash_internal",
+        "//xplat/folly/crypto/detail:math_operation_avx2",
+        "//xplat/folly/crypto/detail:math_operation_simple",
+        "//xplat/folly/crypto/detail:math_operation_sse2",
+        "//xplat/folly/lang:bits",
+        "//xplat/third-party/sodium:sodium",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "blake2xb",
+    srcs = [
+        "Blake2xb.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Blake2xb.h",
+    ],
+    deps = [
+        "//xplat/folly:range",
+        "//xplat/folly/lang:bits",
+        "//xplat/third-party/sodium:sodium",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "lt_hash_sse2",
+    srcs = [
+        "LtHash.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LtHash.h",
+        "LtHash-inl.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "//xplat/folly:cpu_id",
+        "//xplat/folly:memory",
+        "//xplat/folly:optional",
+        "//xplat/folly:range",
+        "//xplat/folly/crypto:blake2xb",
+        "//xplat/folly/crypto/detail:lt_hash_internal",
+        "//xplat/folly/crypto/detail:math_operation_avx2_disable",
+        "//xplat/folly/crypto/detail:math_operation_simple",
+        "//xplat/folly/crypto/detail:math_operation_sse2",
+        "//xplat/folly/lang:bits",
+        "//xplat/third-party/sodium:sodium",
+    ],
+)
+
+# !!!! fbcode/folly/crypto/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "blake2xb",
+    srcs = [
+        "Blake2xb.cpp",
+    ],
+    headers = [
+        "Blake2xb.h",
+    ],
+    deps = [
+        "//folly/lang:bits",
+    ],
+    exported_deps = [
+        "//folly:range",
+    ],
+    exported_external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "lt_hash",
+    srcs = [
+        "LtHash.cpp",
+    ],
+    headers = [
+        "LtHash.h",
+        "LtHash-inl.h",
+    ],
+    deps = [
+        "//folly:cpu_id",
+        "//folly:memory",
+    ],
+    exported_deps = [
+        ":blake2xb",
+        "//folly:optional",
+        "//folly:range",
+        "//folly/crypto/detail:lt_hash_internal",
+        "//folly/crypto/detail:math_operation_avx2_disable",  # @manual
+        "//folly/crypto/detail:math_operation_simple",  # @manual
+        "//folly/crypto/detail:math_operation_sse2_disable",  # @manual
+        "//folly/io:iobuf",
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "lt_hash_sse2",
+    srcs = [
+        "LtHash.cpp",
+    ],
+    headers = [
+        "LtHash.h",
+        "LtHash-inl.h",
+    ],
+    deps = [
+        "//folly:cpu_id",
+        "//folly:memory",
+    ],
+    exported_deps = [
+        ":blake2xb",
+        "//folly:optional",
+        "//folly:range",
+        "//folly/crypto/detail:lt_hash_internal",
+        "//folly/crypto/detail:math_operation_avx2_disable",  # @manual
+        "//folly/crypto/detail:math_operation_simple",  # @manual
+        "//folly/crypto/detail:math_operation_sse2",  # @manual
+        "//folly/io:iobuf",
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "lt_hash_avx2",
+    srcs = [
+        "LtHash.cpp",
+    ],
+    headers = [
+        "LtHash.h",
+        "LtHash-inl.h",
+    ],
+    deps = [
+        "//folly:cpu_id",
+        "//folly:memory",
+    ],
+    exported_deps = [
+        ":blake2xb",
+        "//folly:optional",
+        "//folly:range",
+        "//folly/crypto/detail:lt_hash_internal",
+        "//folly/crypto/detail:math_operation_avx2",  # @manual
+        "//folly/crypto/detail:math_operation_simple",  # @manual
+        "//folly/crypto/detail:math_operation_sse2",  # @manual
+        "//folly/io:iobuf",
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)

@@ -1,0 +1,145 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "async_closure_fwd",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["AsyncClosure-fwd.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "async_closure_fwd",
+    headers = ["AsyncClosure-fwd.h"],
+)
+
+###
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "captures",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Captures.h"],
+    exported_deps = [
+        ":async_closure_fwd",
+        ":safe_alias",
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+        "//xplat/folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
+        "//xplat/folly/detail:tuple",
+        "//xplat/folly/lang:assume",
+        "//xplat/folly/lang:bindings",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "captures",
+    headers = ["Captures.h"],
+    exported_deps = [
+        ":async_closure_fwd",
+        ":safe_alias",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
+        "//folly/detail:tuple",
+        "//folly/lang:assume",
+        "//folly/lang:bindings",
+    ],
+)
+
+###
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "async_closure",
+    raw_headers = ["AsyncClosure.h"],
+    exported_deps = [
+        "//xplat/folly/coro/safe/detail:async_closure",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "async_closure",
+    headers = ["AsyncClosure.h"],
+    exported_deps = [
+        "//folly/coro/safe/detail:async_closure",
+    ],
+)
+
+###
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "now_task",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["NowTask.h"],
+    exported_deps = [
+        ":safe_alias",
+        "//xplat/folly/coro:task_wrapper",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "now_task",
+    headers = ["NowTask.h"],
+    exported_deps = [
+        ":safe_alias",
+        "//folly/coro:task_wrapper",
+    ],
+)
+
+###
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "safe_alias",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeAlias.h"],
+    exported_deps = [
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "safe_alias",
+    headers = ["SafeAlias.h"],
+    exported_deps = [
+        "//folly:constexpr_math",
+        "//folly:traits",
+    ],
+)
+
+###
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "safe_task",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeTask.h"],
+    exported_deps = [
+        ":now_task",
+        ":safe_alias",
+        "//xplat/folly/coro:task_wrapper",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "safe_task",
+    headers = ["SafeTask.h"],
+    exported_deps = [
+        ":now_task",
+        ":safe_alias",
+        "//folly/coro:task_wrapper",
+    ],
+)

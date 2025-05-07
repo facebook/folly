@@ -1,0 +1,54 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bucket",
+    headers = ["Bucket.h"],
+    exported_deps = [
+        "//folly:constexpr_math",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "buffered_stat",
+    srcs = [],
+    headers = [
+        "BufferedStat.h",
+        "BufferedStat-inl.h",
+    ],
+    exported_deps = [
+        ":sliding_window",
+        "//folly:range",
+        "//folly:shared_mutex",
+        "//folly/stats:digest_builder",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "sliding_window",
+    srcs = [
+    ],
+    headers = [
+        "SlidingWindow.h",
+        "SlidingWindow-inl.h",
+    ],
+    exported_deps = [
+        "//folly:function",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "double_radix_sort",
+    srcs = [
+        "DoubleRadixSort.cpp",
+    ],
+    headers = [
+        "DoubleRadixSort.h",
+    ],
+)

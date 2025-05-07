@@ -1,0 +1,108 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "dwarf",
+    headers = [
+        "Dwarf.h",
+        "DwarfImpl.h",
+        "DwarfLineNumberVM.h",
+        "DwarfSection.h",
+        "DwarfUtil.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:dwarf",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "elf",
+    headers = [
+        "Elf.h",
+        "Elf-inl.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:elf",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "symbolized_frame",
+    headers = [
+        "SymbolizedFrame.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:symbolized_frame",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "line_reader",
+    headers = [
+        "LineReader.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:line_reader",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "stack_trace",
+    headers = [
+        "StackTrace.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:stack_trace",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "elf_cache",
+    headers = [
+        "ElfCache.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:elf_cache",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "symbolize_printer",
+    headers = [
+        "SymbolizePrinter.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:symbolize_printer",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "symbolizer",
+    headers = [
+        "Symbolizer.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:symbolizer",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "signal_handler",
+    headers = [
+        "SignalHandler.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/symbolizer:signal_handler",
+    ],
+)

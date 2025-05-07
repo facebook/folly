@@ -1,0 +1,29 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_native.config_setting(
+    name = "folly-singleton-schedule-at-exit-disabled",
+    constraint_values = [
+        "fbsource//xplat/folly/buck_config/constraints:singleton-schedule-at-exit-disabled",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+fb_native.config_setting(
+    name = "folly-f14-fallback-disabled",
+    constraint_values = [
+        "fbsource//xplat/folly/buck_config/constraints:f14-fallback-disabled",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+fb_native.config_setting(
+    name = "folly-gflags-enabled",
+    constraint_values = [
+        "fbsource//xplat/folly/buck_config/constraints:gflags-enabled",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# !!!! fbcode/folly/buck_config/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!

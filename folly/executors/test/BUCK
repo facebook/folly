@@ -1,0 +1,357 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "AsyncTest",
+    srcs = ["AsyncTest.cpp"],
+    deps = [
+        "//folly/executors:async",
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "CodelTest",
+    srcs = ["CodelTest.cpp"],
+    deps = [
+        "//folly/executors:codel",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "EDFThreadPoolExecutorBenchmark",
+    srcs = ["EDFThreadPoolExecutorBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:benchmark_util",
+        "//folly:mpmc_queue",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:edf_thread_pool_executor",
+        "//folly/executors:soft_real_time_executor",
+        "//folly/executors:thread_pool_executor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "FiberIOExecutorTest",
+    srcs = ["FiberIOExecutorTest.cpp"],
+    deps = [
+        "//folly/executors:fiber_io_executor",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "executor_test",
+    srcs = ["ExecutorTest.cpp"],
+    deps = [
+        "//folly/executors:inline_executor",
+        "//folly/executors:manual_executor",
+        "//folly/executors:queued_immediate_executor",
+        "//folly/futures:core",
+        "//folly/io/async:request_context",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "GlobalExecutorTest",
+    srcs = ["GlobalExecutorTest.cpp"],
+    deps = [
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:global_executor",
+        "//folly/executors:io_executor",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/executors:virtual_executor",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:saturating_semaphore",
+        "//folly/system:hardware_concurrency",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "GlobalCPUExecutorTest",
+    srcs = ["GlobalCPUExecutorTest.cpp"],
+    deps = [
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:global_executor",
+        "//folly/executors:io_executor",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "GlobalIOExecutorTest",
+    srcs = ["GlobalCPUExecutorTest.cpp"],
+    deps = [
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:global_executor",
+        "//folly/executors:io_executor",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "GlobalExecutorAssignmentTest",
+    srcs = ["GlobalExecutorAssignmentTest.cpp"],
+    deps = [
+        "//folly:singleton",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:global_executor",
+        "//folly/executors:inline_executor",
+        "//folly/executors:io_executor",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "SerialExecutorTest",
+    srcs = ["SerialExecutorTest.cpp"],
+    deps = [
+        "//folly:random",
+        "//folly:scope_guard",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:inline_executor",
+        "//folly/executors:serial_executor",
+        "//folly/io/async:request_context",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "SequencedExecutorTest",
+    srcs = ["SequencedExecutorTest.cpp"],
+    deps = [
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:serial_executor",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "StrandExecutorTest",
+    srcs = ["StrandExecutorTest.cpp"],
+    deps = [
+        "//folly:cancellation_token",
+        "//folly/executors:global_executor",
+        "//folly/executors:manual_executor",
+        "//folly/executors:strand_executor",
+        "//folly/io/async:request_context",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "ThreadedExecutorTest",
+    srcs = ["ThreadedExecutorTest.cpp"],
+    deps = [
+        "//folly:conv",
+        "//folly/executors:threaded_executor",
+        "//folly/futures:core",
+        "//folly/gen:base",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "ThreadPoolExecutorTest",
+    srcs = ["ThreadPoolExecutorTest.cpp"],
+    deps = [
+        "//folly:c_portability",
+        "//folly:default_keep_alive_executor",
+        "//folly:exception",
+        "//folly/container:f14_hash",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:edf_thread_pool_executor",
+        "//folly/executors:future_executor",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/executors:thread_pool_executor",
+        "//folly/executors:virtual_executor",
+        "//folly/executors/task_queue:lifo_sem_mpmc_queue",
+        "//folly/executors/task_queue:unbounded_blocking_queue",
+        "//folly/executors/thread_factory:init_thread_factory",
+        "//folly/executors/thread_factory:priority_thread_factory",
+        "//folly/lang:keep",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/portability:pthread",
+        "//folly/portability:sys_resource",
+        "//folly/synchronization:latch",
+        "//folly/synchronization/detail:spin",
+        "//folly/system:thread_id",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "TimedDrivableExecutorTest",
+    srcs = ["TimedDrivableExecutorTest.cpp"],
+    deps = [
+        "//folly/executors:timed_drivable_executor",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "TimekeeperScheduledExecutorTest",
+    srcs = ["TimekeeperScheduledExecutorTest.cpp"],
+    deps = [
+        "//folly/executors:inline_executor",
+        "//folly/executors:serial_executor",
+        "//folly/executors:threaded_executor",
+        "//folly/executors:timekeeper_scheduled_executor",
+        "//folly/futures:manual_timekeeper",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "ExecutorWithPriorityTest",
+    srcs = ["ExecutorWithPriorityTest.cpp"],
+    deps = [
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:executor_with_priority",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "MeteredExecutorTest",
+    srcs = ["MeteredExecutorTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly:benchmark",
+        "//folly:synchronized",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:metered_executor",
+        "//folly/init:init",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:latch",
+        "//folly/synchronization:lifo_sem",
+        "//folly/test:deterministic_schedule",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "IOThreadPoolDeadlockDetectorObserverTest",
+    srcs = ["IOThreadPoolDeadlockDetectorObserverTest.cpp"],
+    labels = ["oss-broken"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly/concurrency:deadlock_detector",
+        "//folly/executors:io_thread_pool_deadlock_detector_observer",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "IOThreadPoolExecutorBaseTestLib",
+    headers = [
+        "IOThreadPoolExecutorBaseTestLib.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:random",
+        "//folly/container:f14_hash",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/io/async:async_base",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "IOThreadPoolExecutorTest",
+    srcs = ["IOThreadPoolExecutorTest.cpp"],
+    labels = ["oss-broken"],
+    supports_static_listing = False,
+    deps = [
+        ":IOThreadPoolExecutorBaseTestLib",
+        "//folly/executors:io_thread_pool_executor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "function_scheduler_test",
+    srcs = ["FunctionSchedulerTest.cpp"],
+    headers = [],
+    labels = ["slow"],
+    deps = [
+        "//folly:random",
+        "//folly/executors:function_scheduler",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "threaded_repeating_function_runner_test",
+    srcs = ["ThreadedRepeatingFunctionRunnerTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/executors:threaded_repeating_function_runner",
+        "//folly/portability:gtest",
+    ],
+)

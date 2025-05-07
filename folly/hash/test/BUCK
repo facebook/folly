@@ -1,0 +1,143 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "checksum_test",
+    srcs = ["ChecksumTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:portability",
+        "//folly:random",
+        "//folly/external/fast-crc32:avx512_crc32c_v8s3x4",
+        "//folly/external/fast-crc32:neon_crc32c_v3s4x2e_v2",
+        "//folly/external/fast-crc32:neon_eor3_crc32_v9s3x2e_s3",
+        "//folly/external/fast-crc32:neon_eor3_crc32c_v8s2x4_s3",
+        "//folly/external/fast-crc32:sse_crc32c_v8s3x3",
+        "//folly/hash:checksum",
+        "//folly/hash:hash",
+        "//folly/hash/detail:checksum_detail",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "boost",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "checksum_benchmark",
+    srcs = ["ChecksumBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:memory",
+        "//folly/hash:checksum",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "farm_hash_test",
+    srcs = ["FarmHashTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:farm_hash",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "hash_benchmark",
+    srcs = ["HashBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly:preprocessor",
+        "//folly/hash:hash",
+        "//folly/hash:murmur_hash",
+        "//folly/lang:keep",
+        "//folly/portability:gflags",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "hash_test",
+    srcs = ["HashTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "//folly:conv",
+        "//folly:map_util",
+        "//folly:random",
+        "//folly:range",
+        "//folly/hash:hash",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "spooky_hash_v1_test",
+    srcs = ["SpookyHashV1Test.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:spooky_hash_v1",
+        "//folly/portability:gtest",
+        "//folly/portability:time",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "spooky_hash_v2_test",
+    srcs = ["SpookyHashV2Test.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:spooky_hash_v2",
+        "//folly/portability:gtest",
+        "//folly/portability:time",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "traits_test",
+    srcs = ["traits_test.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:traits",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "murmur_hash_test",
+    srcs = ["MurmurHashTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:murmur_hash",
+        "//folly/portability:gtest",
+    ],
+)

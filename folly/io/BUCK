@@ -1,0 +1,235 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "iobuf",
+    srcs = [
+        "Cursor.cpp",
+        "IOBuf.cpp",
+        "IOBufIovecBuilder.cpp",
+        "IOBufQueue.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Cursor.h",
+        "Cursor-inl.h",
+        "IOBuf.h",
+        "IOBufIovecBuilder.h",
+        "IOBufQueue.h",
+    ],
+    deps = [
+        "//xplat/folly:conv",
+        "//xplat/folly:hash_spooky_hash_v2",
+        "//xplat/folly:portability_iovec",
+        "//xplat/folly/lang:align",
+        "//xplat/folly/lang:hint",
+        "//xplat/folly/memory:sanitize_address",
+    ],
+    exported_deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:fbstring",
+        "//xplat/folly:fbvector",
+        "//xplat/folly:function",
+        "//xplat/folly:likely",
+        "//xplat/folly:memory",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_sys_uio",
+        "//xplat/folly:range",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:synchronization_micro_spin_lock",
+        "//xplat/folly/container:span",
+        "//xplat/folly/detail:iterators",
+        "//xplat/folly/lang:bits",
+        "//xplat/folly/lang:checked_math",
+        "//xplat/folly/lang:exception",
+        "//xplat/folly/lang:ordering",
+        "//xplat/folly/memory:malloc",
+        "//xplat/folly/memory:memory_resource",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "iobuf",
+    srcs = [
+        "Cursor.cpp",
+        "IOBuf.cpp",
+        "IOBufIovecBuilder.cpp",
+        "IOBufQueue.cpp",
+    ],
+    headers = [
+        "Cursor.h",
+        "Cursor-inl.h",
+        "IOBuf.h",
+        "IOBufIovecBuilder.h",
+        "IOBufQueue.h",
+    ],
+    deps = [
+        "//folly:conv",
+        "//folly/hash:spooky_hash_v2",
+        "//folly/lang:align",
+        "//folly/lang:hint",
+        "//folly/memory:sanitize_address",
+        "//folly/portability:iovec",
+    ],
+    exported_deps = [
+        "//folly:fbstring",
+        "//folly:fbvector",
+        "//folly:function",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:scope_guard",
+        "//folly/container:span",
+        "//folly/detail:iterators",
+        "//folly/lang:bits",
+        "//folly/lang:checked_math",
+        "//folly/lang:exception",
+        "//folly/lang:ordering",
+        "//folly/memory:malloc",
+        "//folly/memory:memory_resource",
+        "//folly/portability:sys_uio",
+        "//folly/synchronization:micro_spin_lock",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "global_shutdown_socket_set",
+    srcs = ["GlobalShutdownSocketSet.cpp"],
+    headers = ["GlobalShutdownSocketSet.h"],
+    deps = [
+        "//folly:singleton",
+    ],
+    exported_deps = [
+        ":shutdown_socket_set",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "record_io",
+    srcs = [
+        "RecordIO.cpp",
+    ],
+    headers = [
+        "RecordIO.h",
+        "RecordIO-inl.h",
+    ],
+    supports_python_dlopen = True,
+    deps = [
+        "//folly:exception",
+        "//folly:file_util",
+        "//folly:memory",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:string",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        ":iobuf",
+        "//folly:file",
+        "//folly:range",
+        "//folly/detail:iterators",
+        "//folly/hash:spooky_hash_v2",
+        "//folly/system:memory_mapping",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "shutdown_socket_set",
+    srcs = ["ShutdownSocketSet.cpp"],
+    headers = ["ShutdownSocketSet.h"],
+    deps = [
+        "//folly:file_util",
+        "//folly/net:net_ops",
+        "//folly/portability:sockets",
+    ],
+    exported_deps = [
+        "//folly:file",
+        "//folly/net:network_socket",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "typed_io_buf",
+    headers = ["TypedIOBuf.h"],
+    exported_deps = [
+        ":iobuf",
+        "//folly/memory:malloc",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "socket_option_map",
+    srcs = [
+        "SocketOptionMap.cpp",
+        "SocketOptionValue.cpp",
+    ],
+    headers = [
+        "SocketOptionMap.h",
+        "SocketOptionValue.h",
+    ],
+    exported_deps = [
+        "//folly/net:network_socket",
+        "//folly/portability:sockets",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "huge_pages",
+    srcs = ["HugePages.cpp"],
+    headers = ["HugePages.h"],
+    deps = [
+        "//folly:conv",
+        "//folly:cpp_attributes",
+        "//folly:format",
+        "//folly:string",
+        "//folly/gen:base",
+        "//folly/gen:file",
+        "//folly/gen:string",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        ("boost", None, "boost_regex"),
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "fs_util",
+    srcs = ["FsUtil.cpp"],
+    headers = ["FsUtil.h"],
+    deps = [
+        "//folly:exception",
+        "//folly/portability:windows",
+    ],
+    exported_external_deps = [
+        ("boost", None, "boost_filesystem"),
+    ],
+)

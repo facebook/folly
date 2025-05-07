@@ -1,0 +1,45 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_test")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "uuid_test",
+    srcs = ["UuidTest.cpp"],
+    deps = [
+        "//third-party/fmt:fmt",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly:random",
+        "//xplat/folly/codec:uuid",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "uuid_test",
+    srcs = ["UuidTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:random",
+        "//folly/codec:uuid",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "uuid_benchmark",
+    srcs = ["UuidBenchmark.cpp"],
+    compiler_flags = ["-flto"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/codec:uuid",
+    ],
+    external_deps = [
+        ("util-linux", None, "uuid"),
+    ],
+)

@@ -1,0 +1,109 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "mock_net_ops_dispatcher",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["MockNetOpsDispatcher.h"],
+    deps = [
+        "//xplat/folly:portability_gmock",
+        "//xplat/folly/net:net_ops_dispatcher",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "mock_tcpinfo_dispatcher",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["MockTcpInfoDispatcher.h"],
+    deps = [
+        "//xplat/folly:portability_gmock",
+        "//xplat/folly/net:tcpinfo_dispatcher",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "net_ops_test",
+    srcs = ["NetOpsTest.cpp"],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/net:net_ops",
+        "//xplat/folly/net:network_socket",
+    ],
+)
+
+# !!!! fbcode/folly/net/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "mock_net_ops_dispatcher",
+    headers = [
+        "MockNetOpsDispatcher.h",
+    ],
+    exported_deps = [
+        "//folly/net:net_ops_dispatcher",
+        "//folly/portability:gmock",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "mock_tcpinfo_dispatcher",
+    headers = [
+        "MockTcpInfoDispatcher.h",
+    ],
+    exported_deps = [
+        "//folly/net:tcpinfo_dispatcher",
+        "//folly/portability:gmock",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "net_ops_test",
+    srcs = ["NetOpsTest.cpp"],
+    deps = [
+        "//folly/net:net_ops",
+        "//folly/net:network_socket",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "tcpinfo_test",
+    srcs = ["TcpInfoTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        ":tcpinfo_test_util",
+        "//folly/net:tcpinfo",
+        "//folly/net/test:mock_net_ops_dispatcher",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "tcpinfo_test_util",
+    headers = [
+        "TcpInfoTestUtil.h",
+    ],
+    exported_deps = [
+        "//folly/net:tcpinfo",
+        "//folly/net/test:mock_net_ops_dispatcher",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

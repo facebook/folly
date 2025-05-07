@@ -1,0 +1,38 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "settings",
+    headers = [
+        "Settings.h",
+        "detail/SettingsImpl.h",
+    ],
+    exported_deps = [
+        "//folly/settings:settings",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "types",
+    headers = [
+        "Types.h",
+    ],
+    exported_deps = [
+        "//folly/settings:types",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "immutables",
+    headers = [
+        "Immutables.h",
+    ],
+    exported_deps = [
+        "//folly/settings:immutables",
+    ],
+)

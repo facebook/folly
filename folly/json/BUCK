@@ -1,0 +1,169 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    name = "dynamic",
+    srcs = [
+        "dynamic.cpp",
+        "json.cpp",
+    ],
+    headers = [
+        "DynamicConverter.h",
+        "dynamic.h",
+        "dynamic-inl.h",
+        "json.h",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "//folly:unicode",
+        "//folly/container:enumerate",
+        "//folly/hash:hash",
+        "//folly/lang:assume",
+        "//folly/lang:bits",
+        "//folly/portability:constexpr",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:conv",
+        "//folly:expected",
+        "//folly:format",
+        "//folly:function",
+        "//folly:json_pointer",
+        "//folly:likely",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/container:access",
+        "//folly/container:f14_hash",
+        "//folly/detail:iterators",
+        "//folly/lang:exception",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_algorithm"),
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "json_pointer",
+    srcs = ["json_pointer.cpp"],
+    headers = ["json_pointer.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "//folly:string",
+    ],
+    exported_deps = [
+        "//folly:expected",
+        "//folly:range",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "json_patch",
+    srcs = ["json_patch.cpp"],
+    headers = ["json_patch.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "//folly/container:enumerate",
+    ],
+    exported_deps = [
+        "//folly:expected",
+        "//folly:json_pointer",
+        "//folly:optional",
+        "//folly/json:dynamic",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "json_schema",
+    srcs = ["JSONSchema.cpp"],
+    headers = ["JSONSchema.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "//folly:c_portability",
+        "//folly:conv",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:singleton",
+        "//folly:string",
+        "//folly/portability:math",
+    ],
+    exported_deps = [
+        "//folly:exception_wrapper",
+        "//folly:range",
+        "//folly/json:dynamic",
+    ],
+    external_deps = [
+        ("boost", None, "boost_algorithm"),
+        ("boost", None, "boost_regex"),
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "dynamic_parser",
+    srcs = ["DynamicParser.cpp"],
+    headers = [
+        "DynamicParser.h",
+        "DynamicParser-inl.h",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "//folly:optional",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:conv",
+        "//folly/json:dynamic",
+        # for toPseudoJson(), since print_as_pseudo_json() is in json.cpp
+        "//folly:json",  # @manual
+        "//folly:scope_guard",
+        "//folly:traits",
+    ],
+    external_deps = [
+        "glog",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "json_mock_util",
+    headers = ["JsonMockUtil.h"],
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/portability:gmock",
+        "//folly/test:json_test_util",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "json_test_util",
+    srcs = ["JsonTestUtil.cpp"],
+    headers = ["JsonTestUtil.h"],
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "//folly:conv",
+        "//folly/lang:assume",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/json:dynamic",
+    ],
+)

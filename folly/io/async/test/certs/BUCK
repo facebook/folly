@@ -1,0 +1,12 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+
+oncall("fbcode_entropy_wardens_folly")
+
+export_files(files = glob(["*.pem"]))
+
+buck_filegroup(
+    name = "certs",
+    srcs = glob(["*.pem"]),
+    visibility = ["PUBLIC"],
+)

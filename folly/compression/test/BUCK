@@ -1,0 +1,137 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "large_test",
+    srcs = ["LargeTest.cpp"],
+    supports_static_listing = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "//folly/compression:compression",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "compression_test",
+    srcs = ["CompressionTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "fbsource//third-party/zstd:zstd",
+        "//folly:random",
+        "//folly:varint",
+        "//folly/compression:compression",
+        "//folly/hash:hash",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "compression_context_pool_test",
+    srcs = [
+        "CompressionContextPoolTest.cpp",
+    ],
+    labels = ["case-isolation-failure"],
+    deps = [
+        "//folly/compression:compression_context_pool",
+        "//folly/compression:compression_context_pool_singletons",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "quotient_multiset_benchmark",
+    srcs = [
+        "QuotientMultiSetBenchmark.cpp",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:format",
+        "//folly:random",
+        "//folly:string",
+        "//folly/compression:quotient_multiset",
+        "//folly/compression/elias_fano:elias_fano_coding",
+        "//folly/container:enumerate",
+        "//folly/container:f14_hash",
+        "//folly/container:foreach",
+        "//folly/experimental/test:coding_test_utils",
+        "//folly/init:init",
+    ],
+    external_deps = [
+        ("boost", None, "boost_sort"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "quotient_multiset_test",
+    srcs = [
+        "QuotientMultiSetTest.cpp",
+    ],
+    deps = [
+        "//folly:format",
+        "//folly:random",
+        "//folly/compression:quotient_multiset",
+        "//folly/container:enumerate",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "instructions_test",
+    srcs = ["InstructionsTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/compression:instructions",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "select64_test",
+    srcs = ["Select64Test.cpp"],
+    deps = [
+        "//folly/compression:instructions",
+        "//folly/compression:select64",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "coding_test_utils",
+    srcs = ["CodingTestUtils.cpp"],
+    headers = ["CodingTestUtils.h"],
+    deps = [
+        "//folly/portability:gflags",
+    ],
+    exported_deps = [
+        "//folly:benchmark",
+        "//folly:likely",
+        "//folly:optional",
+        "//folly/compression:instructions",
+        "//folly/portability:gtest",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

@@ -1,0 +1,245 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
+load("@fbsource//tools/build_defs:platform_defs.bzl", "CXX", "FBCODE")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = fb_xplat_cxx_binary,
+    name = "tdigest_benchmark",
+    srcs = ["TDigestBenchmark.cpp"],
+    headers = [],
+    platforms = (CXX, FBCODE),
+    # args = [
+    #     "--json",
+    # ],
+    deps = [
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:portability_gflags",
+        "fbsource//xplat/folly:stats_digest_builder",
+        "fbsource//xplat/folly:stats_tdigest",
+    ],
+)
+
+# !!!! fbcode/folly/stats/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "buffered_stat_test",
+    srcs = ["BufferedStatTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:range",
+        "//folly/portability:gtest",
+        "//folly/stats/detail:buffered_stat",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "digest_builder_benchmark",
+    srcs = ["DigestBuilderBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:range",
+        "//folly/lang:keep",
+        "//folly/portability:gflags",
+        "//folly/stats:digest_builder",
+    ],
+    external_deps = [
+        ("boost", None, "boost_thread"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "digest_builder_test",
+    srcs = ["DigestBuilderTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:range",
+        "//folly/portability:gtest",
+        "//folly/stats:digest_builder",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "histogram_benchmark",
+    srcs = ["HistogramBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly/container:foreach",
+        "//folly/portability:gflags",
+        "//folly/stats:histogram",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "histogram_test",
+    srcs = ["HistogramTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/stats:histogram",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "streaming_stats_test",
+    srcs = ["StreamingStatsTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/stats:streaming_stats",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "bucketed_time_series_benchmark",
+    srcs = ["BucketedTimeSeriesBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly/stats:bucketed_time_series",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "quantile_estimator_benchmark",
+    srcs = ["QuantileEstimatorBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly/portability:gflags",
+        "//folly/stats:quantile_estimator",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "quantile_estimator_test",
+    srcs = ["QuantileEstimatorTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/stats:quantile_estimator",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "quantile_histogram_benchmark",
+    srcs = ["QuantileHistogramBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly/portability:gflags",
+        "//folly/stats:quantile_histogram",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "quantile_histogram_test",
+    srcs = ["QuantileHistogramTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:range",
+        "//folly/portability:gtest",
+        "//folly/stats:quantile_histogram",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "sliding_window_test",
+    srcs = ["SlidingWindowTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/stats/detail:sliding_window",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "tdigest_benchmark",
+    srcs = ["TDigestBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly/portability:gflags",
+        "//folly/stats:digest_builder",
+        "//folly/stats:tdigest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "tdigest_test",
+    srcs = ["TDigestTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/stats:tdigest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "time_series_test",
+    srcs = ["TimeSeriesTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/container:foreach",
+        "//folly/portability:gtest",
+        "//folly/stats:bucketed_time_series",
+        "//folly/stats:multi_level_time_series",
+        "//folly/stats/detail:bucket",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "timeseries_histogram_test",
+    srcs = ["TimeseriesHistogramTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/stats:timeseries_histogram",
+    ],
+)

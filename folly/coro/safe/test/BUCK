@@ -1,0 +1,63 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "captures_test",
+    srcs = ["CapturesTest.cpp"],
+    deps = [
+        "//folly/coro/safe:captures",
+        "//folly/lang:bindings",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_closure_test",
+    srcs = ["AsyncClosureTest.cpp"],
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:noexcept",
+        "//folly/coro:timeout",
+        "//folly/coro/safe:async_closure",
+        "//folly/fibers:semaphore",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "now_task_test",
+    srcs = ["NowTaskTest.cpp"],
+    deps = [
+        "//folly/coro:blocking_wait",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro/safe:now_task",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "safe_alias_test",
+    srcs = ["SafeAliasTest.cpp"],
+    deps = [
+        "//folly/coro/safe:safe_alias",
+        "//folly/detail:tuple",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "safe_task_test",
+    srcs = ["SafeTaskTest.cpp"],
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:timeout",
+        "//folly/coro/safe:safe_task",
+        "//folly/fibers:semaphore",
+        "//folly/portability:gtest",
+    ],
+)

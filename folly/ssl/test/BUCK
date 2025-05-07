@@ -1,0 +1,146 @@
+load("@fbcode//folly/io/async/test/certs:defs.bzl", "alias_pem")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_test")
+load("@fbsource//xplat/folly/io/async/test/certs:defs.bzl", "alias_pem_for_xplat")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = alias_pem_for_xplat,
+    pems = [
+        "tests-cert.pem",
+        "ca-cert.pem",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "openssl_hash_test",
+    srcs = ["OpenSSLHashTest.cpp"],
+    deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/ssl:openssl_hash",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "openssl_cert_utils_test",
+    srcs = ["OpenSSLCertUtilsTest.cpp"],
+    resources = {
+        # this dict is neccessary for correct mapping.
+        # :ca-cert.pem is at folly/ssl/test/certs/ca-cert.pem
+        # The test expect to find the resource at folly/ssl/test/ca-cert.pem
+        "ca-cert.pem": ":ca-cert.pem",
+        "tests-cert.pem": ":tests-cert.pem",
+    },
+    deps = [
+        "//xplat/folly:experimental_test_util",
+        "//xplat/folly:format",
+        "//xplat/folly:portability_gmock",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly:portability_openssl",
+        "//xplat/folly:portability_time",
+        "//xplat/folly:range",
+        "//xplat/folly:string",
+        "//xplat/folly/container:enumerate",
+        "//xplat/folly/ssl:openssl_cert_utils",
+        "//xplat/folly/ssl:openssl_ptr_types",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "ssl_session_manager_test",
+    srcs = ["SSLSessionManagerTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly:portability_openssl",
+        "//xplat/folly/ssl:openssl_ptr_types",
+        "//xplat/folly/ssl:ssl_session_manager",
+        "//xplat/folly/ssl/detail:openssl_session",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "openssl_key_utils_test",
+    srcs = ["OpenSSLKeyUtilsTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly:string",
+        "//xplat/folly/ssl:openssl_key_utils",
+        "//xplat/folly/ssl:password_collector",
+    ],
+)
+
+# !!!! fbcode/folly/ssl/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = alias_pem,
+    pems = [
+        "tests-cert.pem",
+        "ca-cert.pem",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "openssl_hash_test",
+    srcs = ["OpenSSLHashTest.cpp"],
+    deps = [
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+        "//folly/ssl:openssl_hash",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "openssl_cert_utils_test",
+    srcs = ["OpenSSLCertUtilsTest.cpp"],
+    resources = [
+        ":ca-cert.pem",
+        ":tests-cert.pem",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly:format",
+        "//folly:range",
+        "//folly:string",
+        "//folly/container:enumerate",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/portability:openssl",
+        "//folly/portability:time",
+        "//folly/ssl:openssl_cert_utils",
+        "//folly/ssl:openssl_ptr_types",
+        "//folly/testing:test_util",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "ssl_session_manager_test",
+    srcs = ["SSLSessionManagerTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/portability:openssl",
+        "//folly/ssl:openssl_ptr_types",
+        "//folly/ssl:ssl_session_manager",
+        "//folly/ssl/detail:openssl_session",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "openssl_key_utils_test",
+    srcs = ["OpenSSLKeyUtilsTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/ssl:openssl_key_utils",
+        "//folly/ssl:password_collector",
+    ],
+)

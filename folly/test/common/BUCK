@@ -1,0 +1,54 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
+load(
+    "@fbsource//tools/build_defs:platform_defs.bzl",
+    "ANDROID",
+    "APPLE",
+    "CXX",
+    "FBCODE",
+    "WINDOWS",
+)
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = fb_xplat_cxx_library,
+    name = "test_main",
+    srcs = ["TestMain.cpp"],
+    platforms = (ANDROID, APPLE, CXX, FBCODE, WINDOWS),
+    visibility = ["PUBLIC"],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:init_init",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_gflags",
+        "//xplat/folly:portability_gtest",
+    ],
+)
+
+# !!!! fbcode/folly/test/common/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "test_main",
+    deps = [
+        ":test_main_lib",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "test_main_lib",
+    srcs = ["TestMain.cpp"],
+    deps = [
+        "//folly:portability",
+        "//folly/init:init",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

@@ -1,0 +1,262 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "channel",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Channel.h",
+        "Channel-fwd.h",
+        "Channel-inl.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:cancellation_token",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/coro:coroutine",
+        "//xplat/folly/experimental/channels/detail:channel_bridge",
+    ],
+)
+
+# !!!! fbcode/folly/channels/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "channel",
+    headers = [
+        "Channel.h",
+        "Channel-fwd.h",
+        "Channel-inl.h",
+    ],
+    exported_deps = [
+        "//folly:cancellation_token",
+        "//folly:synchronized",
+        "//folly/coro:coroutine",
+        "//folly/experimental/channels/detail:channel_bridge",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "channel_callback_handle",
+    headers = [
+        "ChannelCallbackHandle.h",
+    ],
+    exported_deps = [
+        "//folly:intrusive_list",
+        "//folly:scope_guard",
+        "//folly/channels:channel",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "channel_processor",
+    headers = [
+        "ChannelProcessor.h",
+        "ChannelProcessor-inl.h",
+    ],
+    exported_deps = [
+        "//folly:executor",
+        "//folly/channels:consume_channel",
+        "//folly/channels:merge_channel",
+        "//folly/channels:rate_limiter",
+        "//folly/channels:transform",
+        "//folly/executors:serial_executor",
+        "//folly/experimental/channels/detail:intrusive_ptr",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "consume_channel",
+    headers = [
+        "ConsumeChannel.h",
+        "ConsumeChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly:executor",
+        "//folly:format",
+        "//folly:intrusive_list",
+        "//folly:scope_guard",
+        "//folly/channels:channel",
+        "//folly/channels:channel_callback_handle",
+        "//folly/coro:task",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "fanout_channel",
+    headers = [
+        "FanoutChannel.h",
+        "FanoutChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel",
+        "//folly/channels:fanout_sender",
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "fanout_sender",
+    headers = [
+        "FanoutSender.h",
+        "FanoutSender-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel",
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels/detail:pointer_variant",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "merge",
+    headers = [
+        "Merge.h",
+        "Merge-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel",
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "merge_channel",
+    headers = [
+        "MergeChannel.h",
+        "MergeChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel",
+        "//folly/container:f14_hash",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "multiplex_channel",
+    headers = [
+        "MultiplexChannel.h",
+        "MultiplexChannel-inl.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/range-v3:range-v3",
+        "//folly/channels:channel",
+        "//folly/channels:fanout_sender",
+        "//folly/channels:on_closed_exception",
+        "//folly/channels:rate_limiter",
+        "//folly/container:f14_hash",
+        "//folly/coro:future_util",
+        "//folly/coro:mutex",
+        "//folly/coro:promise",
+        "//folly/coro:task",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels/detail:multiplexer_traits",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "on_closed_exception",
+    headers = [
+        "OnClosedException.h",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "producer",
+    headers = [
+        "Producer.h",
+        "Producer-inl.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:cancellation_token",
+        "//folly/channels:channel",
+        "//folly/channels:channel_callback_handle",
+        "//folly/channels:consume_channel",
+        "//folly/coro:task",
+        "//folly/executors:sequenced_executor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "proxy_channel",
+    headers = [
+        "ProxyChannel.h",
+        "ProxyChannel-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "rate_limiter",
+    headers = [
+        "RateLimiter.h",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly/executors:sequenced_executor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "max_concurrent_rate_limiter",
+    srcs = [
+        "MaxConcurrentRateLimiter.cpp",
+    ],
+    exported_deps = [
+        "//folly:synchronized",
+        "//folly/channels:rate_limiter",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/executors:sequenced_executor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "transform",
+    headers = [
+        "Transform.h",
+        "Transform-inl.h",
+    ],
+    exported_deps = [
+        "//folly/channels:channel",
+        "//folly/channels:on_closed_exception",
+        "//folly/channels:rate_limiter",
+        "//folly/coro:async_generator",
+        "//folly/coro:task",
+        "//folly/executors:sequenced_executor",
+        "//folly/experimental/channels/detail:utility",
+    ],
+)

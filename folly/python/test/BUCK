@@ -1,0 +1,442 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
+load("@fbsource//tools/target_determinator/macros:fbcode_ci_helpers.bzl", "fbcode_ci")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = python_unittest,
+    name = "futures",
+    srcs = ["futures.py"],
+    supports_static_listing = False,
+    deps = [
+        ":simple_bridge",
+    ],
+)
+
+non_fbcode_target(
+    _kind = python_unittest,
+    name = "coro",
+    srcs = ["coro.py"],
+    supports_static_listing = False,
+    deps = [
+        ":simple_bridge_coro",
+    ],
+)
+
+non_fbcode_target(
+    _kind = python_unittest,
+    name = "iobuf",
+    srcs = [
+        "iobuf.py",
+    ],
+    labels = ci.labels(fbcode_ci.use_opt_instead_of_dev()),
+    supports_static_listing = False,
+    deps = [
+        ":iobuf_helper",
+        "//xplat/folly/python:iobuf",
+    ],
+)
+
+non_fbcode_target(
+    _kind = cython_library,
+    name = "simple_bridge",
+    srcs = ["simplebridge.pyx"],
+    headers = ["simple.h"],
+    cpp_deps = [
+        "//xplat/folly:futures_core",
+    ],
+    deps = [
+        "//xplat/folly/python:fibers",
+        "//xplat/folly/python:futures",
+    ],
+)
+
+non_fbcode_target(
+    _kind = cython_library,
+    name = "iobuf_helper",
+    srcs = [
+        "IOBufTestUtils.cpp",
+        "iobuf_helper.pyx",
+    ],
+    headers = [
+        "IOBufTestUtils.h",
+        "iobuf_helper.pxd",
+    ],
+    header_namespace = "folly/python/test",
+    cpp_deps = [
+        "//xplat/folly/executors:global_executor",
+        "//xplat/folly/python:iobuf_ext",
+    ],
+    types = [
+        "iobuf_helper.pyi",
+    ],
+    visibility = ["PUBLIC"],
+    deps = [
+        "//xplat/folly/python:iobuf",
+    ],
+)
+
+non_fbcode_target(
+    _kind = cython_library,
+    name = "simple_bridge_coro",
+    srcs = ["simplebridgecoro.pyx"],
+    headers = ["simplecoro.h"],
+    cpp_deps = [
+        "//xplat/folly/experimental/coro:baton",
+        "//xplat/folly/experimental/coro:task",
+        "//xplat/folly:cancellation_token",
+    ],
+    deps = [
+        "//xplat/folly/python:coro",
+    ],
+)
+
+non_fbcode_target(
+    _kind = cython_library,
+    name = "simple_generator",
+    srcs = ["simplegenerator.pyx"],
+    headers = ["simplegenerator.h"],
+    cpp_deps = [
+        "//xplat/folly/experimental/coro:async_generator",
+    ],
+    deps = [
+        "//xplat/folly/python:async_generator",
+        "//xplat/folly/python:executor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = python_unittest,
+    name = "generator",
+    srcs = ["generator.py"],
+    supports_static_listing = False,
+    deps = [
+        ":simple_generator",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "AsyncGeneratorTest",
+    srcs = [
+        "AsyncGeneratorTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/experimental/coro:blocking_wait",
+        "//xplat/folly/experimental/coro:task",
+        "//xplat/folly/python:async_generator_lib",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "ErrorTest",
+    srcs = [
+        "ErrorTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly/python:error",
+    ],
+)
+
+non_fbcode_target(
+    _kind = python_unittest,
+    name = "teardown",
+    srcs = ["teardown.py"],
+    supports_static_listing = False,
+    deps = [
+        ":simple_bridge",
+        ":simple_bridge_coro",
+    ],
+)
+
+non_fbcode_target(
+    _kind = python_unittest,
+    name = "test_set_executor",
+    srcs = ["test_set_executor.py"],
+    supports_static_listing = False,
+    deps = [
+        ":test_set_executor_cython",
+    ],
+)
+
+non_fbcode_target(
+    _kind = cython_library,
+    name = "test_set_executor_cython",
+    srcs = ["test_set_executor_cython.pyx"],
+    cpp_deps = [
+        ":test_set_executor_cpplib",
+    ],
+    deps = [
+        "//xplat/folly/python:executor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "test_set_executor_cpplib",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["test_set_executor.h"],
+    exported_deps = [
+        "//xplat/folly/python:asyncio_executor",
+    ],
+)
+
+# !!!! fbcode/folly/python/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = python_unittest,
+    # @autodeps-skip
+    name = "futures",
+    srcs = ["futures.py"],
+    deps = [
+        ":simple_bridge",
+    ],
+)
+
+fbcode_target(
+    _kind = python_unittest,
+    # @autodeps-skip
+    name = "coro",
+    srcs = ["coro.py"],
+    deps = [
+        ":simple_bridge_coro",
+    ],
+)
+
+fbcode_target(
+    _kind = cython_library,
+    name = "simple_bridge",
+    srcs = ["simplebridge.pyx"],
+    headers = ["simple.h"],
+    cpp_deps = [
+        "//folly/futures:core",
+    ],
+    deps = [
+        "//folly/python:fibers",
+        "//folly/python:futures",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "iobuf_test_utils",
+    srcs = ["IOBufTestUtils.cpp"],
+    headers = ["IOBufTestUtils.h"],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "//folly/executors:global_executor",
+        "//folly/python:iobuf_ext",
+        "//folly/python:iobuf_lib",
+    ],
+    exported_deps = [
+        "fbsource//third-party/python:python",  # Python.h
+        "//folly/io:iobuf",
+    ],
+)
+
+fbcode_target(
+    _kind = cython_library,
+    name = "iobuf_helper",
+    srcs = [
+        "iobuf_helper.pyx",
+    ],
+    headers = ["iobuf_helper.pxd"],
+    cpp_deps = [":iobuf_test_utils"],
+    types = [
+        "iobuf_helper.pyi",
+    ],
+    deps = [
+        "//folly/python:iobuf",
+    ],
+)
+
+fbcode_target(
+    _kind = python_unittest,
+    name = "iobuf",
+    srcs = [
+        "iobuf.py",
+    ],
+    labels = ci.labels(fbcode_ci.use_opt_instead_of_dev()),
+    typing = True,
+    deps = [
+        ":iobuf_helper",
+        "//folly/python:iobuf",
+    ],
+)
+
+fbcode_target(
+    _kind = cython_library,
+    name = "simple_bridge_coro",
+    srcs = ["simplebridgecoro.pyx"],
+    headers = ["simplecoro.h"],
+    cpp_deps = [
+        "//folly/coro:baton",
+        "//folly/coro:task",
+        "//folly/futures:core",
+        "//folly:cancellation_token",
+    ],
+    deps = [
+        "//folly/python:coro",
+    ],
+)
+
+fbcode_target(
+    _kind = cython_library,
+    name = "simple_generator",
+    srcs = ["simplegenerator.pyx"],
+    headers = ["simplegenerator.h"],
+    cpp_deps = [
+        "//folly/coro:async_generator",
+    ],
+    deps = [
+        "//folly/python:async_generator",
+        "//folly/python:executor",
+    ],
+)
+
+fbcode_target(
+    _kind = python_unittest,
+    # @autodeps-skip
+    name = "generator",
+    srcs = ["generator.py"],
+    deps = [
+        ":simple_generator",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "AsyncGeneratorTest",
+    srcs = [
+        "AsyncGeneratorTest.cpp",
+    ],
+    deps = [
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
+        "//folly/portability:gtest",
+        "//folly/python:async_generator_lib",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "ErrorTest",
+    srcs = [
+        "ErrorTest.cpp",
+    ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "fbsource//third-party/python:python",
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+        "//folly/python:error",
+    ],
+)
+
+fbcode_target(
+    _kind = python_unittest,
+    # @autodeps-skip
+    name = "teardown",
+    srcs = ["teardown.py"],
+    deps = [
+        ":simple_bridge",
+        ":simple_bridge_coro",
+    ],
+)
+
+fbcode_target(
+    _kind = python_unittest,
+    # @autodeps-skip
+    name = "test_set_executor",
+    srcs = ["test_set_executor.py"],
+    deps = [
+        ":test_set_executor_cython",
+    ],
+)
+
+fbcode_target(
+    _kind = python_unittest,
+    # @autodeps-skip
+    name = "test_set_executor_3_13",
+    srcs = ["test_set_executor.py"],
+    py_version = "3.13.free-threading-experimental",
+    deps = [
+        ":test_set_executor_cython",
+    ],
+)
+
+fbcode_target(
+    _kind = cython_library,
+    name = "test_set_executor_cython",
+    srcs = ["test_set_executor_cython.pyx"],
+    cpp_deps = [
+        ":test_set_executor_cpplib",
+    ],
+    deps = [
+        "//folly/python:executor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "test_set_executor_cpplib",
+    headers = ["test_set_executor.h"],
+    modular_headers = False,
+    exported_deps = [
+        "//folly/python:asyncio_executor",
+    ],
+)
+
+cpp_unittest(
+    name = "weak-test-linked",
+    srcs = [
+        "WeakTest.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+        "ovr_config//os:macos",
+        "ovr_config//os:windows",
+    ],
+    supports_static_listing = True,
+    versions = {
+        "python": "3.12",
+    },
+    deps = [
+        "fbcode//folly/python:weak",
+        # Pull in libpython so we are linked against it
+        "fbsource//third-party/python:python-for-embedding",  # @manual
+    ],
+)
+
+cpp_unittest(
+    name = "weak-test",
+    srcs = [
+        "WeakTest.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+        "ovr_config//os:macos",
+        "ovr_config//os:windows",
+    ],
+    supports_static_listing = True,
+    versions = {
+        "python": "3.12",
+    },
+    deps = [
+        "fbcode//folly/python:weak",
+    ],
+)
