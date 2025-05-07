@@ -156,7 +156,7 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   std::pair<iterator, bool> insert_or_assign(key_type const& key, M2&& obj) {
     auto rv = try_emplace(key, std::forward<M2>(obj));
     if (!rv.second) {
-      rv.first->second = std::forward<M>(obj);
+      rv.first->second = std::forward<M2>(obj);
     }
     return rv;
   }
@@ -165,7 +165,7 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   std::pair<iterator, bool> insert_or_assign(key_type&& key, M2&& obj) {
     auto rv = try_emplace(std::move(key), std::forward<M2>(obj));
     if (!rv.second) {
-      rv.first->second = std::forward<M>(obj);
+      rv.first->second = std::forward<M2>(obj);
     }
     return rv;
   }

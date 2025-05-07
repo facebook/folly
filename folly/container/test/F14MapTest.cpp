@@ -2701,3 +2701,11 @@ TEST(F14Map, reserveBadAlloc) {
           std::size_t{std::numeric_limits<uint32_t>::max()} + 1)),
       std::bad_alloc);
 }
+
+TEST(F14Map, InsertOrAssignShouldNotMoveTheData) {
+  F14FastMap<int, std::vector<int>> map;
+  std::vector<int> data = {1, 2, 3};
+  map.insert_or_assign(0, data);
+  map.insert_or_assign(0, data);
+  EXPECT_EQ(data.size(), 3);
+}
