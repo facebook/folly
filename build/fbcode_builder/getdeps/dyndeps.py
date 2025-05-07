@@ -328,9 +328,7 @@ try {{
 }} finally {{
     $env:PATH = $orig_env
 }}
-""".format(
-            path_str=path_str
-        )
+""".format(path_str=path_str)
 
 
 class ElfDeps(DepBase):
