@@ -1918,30 +1918,28 @@ void IoUringBackend::processRecvZc(
   RecvzcIoSqe* ioSqe = reinterpret_cast<RecvzcIoSqe*>(sqe);
   const io_uring_zcrx_cqe* rcqe = (io_uring_zcrx_cqe*)(cqe + 1);
 
+  auto iov = ioSqe->iov_.data();
   if (cqe->res == 0 && cqe->flags == 0) {
-    CHECK(ioSqe->isDone());
+    CHECK_EQ(static_cast<size_t>(ioSqe->offset_), iov->iov_len);
+    ioSqe->res_ = cqe->res;
+    ioSqe->cb_(static_cast<int>(iov->iov_len));
+    delete ioSqe;
     return;
   }
 
   if (cqe->res < 0) {
     ioSqe->res_ = cqe->res;
     ioSqe->cb_(cqe->res);
-    ioSqe->done();
+    delete ioSqe;
     return;
   }
 
   auto buf = zcBufferPool_->getIoBuf(cqe, rcqe);
-  auto iov = ioSqe->iov_.data();
   ::memcpy(
       reinterpret_cast<char*>(iov->iov_base) + ioSqe->offset_,
       buf->data(),
       buf->length());
   ioSqe->offset_ += cqe->res;
-  if (static_cast<size_t>(ioSqe->offset_) == iov->iov_len) {
-    ioSqe->res_ = cqe->res;
-    ioSqe->cb_(cqe->res);
-    ioSqe->done();
-  }
 }
 
 bool IoUringBackend::kernelHasNonBlockWriteFixes() const {

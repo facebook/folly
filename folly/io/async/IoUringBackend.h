@@ -1086,12 +1086,6 @@ class IoUringBackend : public EventBaseBackendBase {
       ::io_uring_sqe_set_data(sqe, this);
       sqe->ioprio |= IORING_RECV_MULTISHOT;
     }
-
-    bool isDone() noexcept { return done_; }
-    void done() noexcept { done_ = true; }
-
-   private:
-    bool done_{false};
   };
 
   size_t getActiveEvents(WaitForEventsMode waitForEvents);
