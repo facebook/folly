@@ -1,4 +1,3 @@
-load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
@@ -130,7 +129,6 @@ def validate_symbolizer_dwp(name, binary):
             "$(exe //folly/debugging/symbolizer/test:symbolizer_dwp_compability.sh)",
             "$(location {})".format(binary),
             "$(location {}[dwp])".format(binary),
-            config.get_non_selectified_build_mode(),
         ],
         type = "simple",
         # Only test in opt mode.
