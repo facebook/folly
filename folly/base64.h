@@ -261,4 +261,15 @@ inline std::string base64URLDecode(std::string_view s) {
   return res;
 }
 
+inline bool isBase64URL(std::string_view s) {
+  std::string res;
+  std::size_t resSize = folly::base64URLDecodedSize(s);
+  folly::resizeWithoutInitialization(res, resSize);
+
+  if (!folly::base64URLDecodeRuntime(s, res.data()).is_success) {
+    return false;
+  }
+  return true;
+}
+
 } // namespace folly
