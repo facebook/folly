@@ -124,7 +124,7 @@ class fbvector {
     // allocation
     // note that 'allocate' and 'deallocate' are inherited from Allocator
     T* D_allocate(size_type n) {
-      if (usingStdAllocator) {
+      if constexpr (kUsingStdAllocator) {
         return static_cast<T*>(checkedMalloc(n * sizeof(T)));
       } else {
         return std::allocator_traits<Allocator>::allocate(*this, n);
@@ -132,7 +132,7 @@ class fbvector {
     }
 
     void D_deallocate(T* p, size_type n) noexcept {
-      if (usingStdAllocator) {
+      if constexpr (kUsingStdAllocator) {
         free(p);
       } else {
         std::allocator_traits<Allocator>::deallocate(*this, p, n);
@@ -152,7 +152,7 @@ class fbvector {
         // THIS DISPATCH CODE IS DUPLICATED IN fbvector::D_destroy_range_a.
         // It has been inlined here for speed. It calls the static fbvector
         //  methods to perform the actual destruction.
-        if (usingStdAllocator) {
+        if constexpr (kUsingStdAllocator) {
           S_destroy_range(b_, e_);
         } else {
           S_destroy_range_a(*this, b_, e_);
@@ -193,7 +193,7 @@ class fbvector {
 
   static void swap(Impl& a, Impl& b) {
     using std::swap;
-    if (!usingStdAllocator) {
+    if constexpr (!kUsingStdAllocator) {
       swap(static_cast<Allocator&>(a), static_cast<Allocator&>(b));
     }
     a.swapData(b);
@@ -223,10 +223,10 @@ class fbvector {
   typedef typename std::conditional<should_pass_by_value, T, const T&>::type VT;
   typedef typename std::conditional<should_pass_by_value, T, T&&>::type MT;
 
-  static constexpr bool usingStdAllocator =
+  static constexpr bool kUsingStdAllocator =
       std::is_same<Allocator, std::allocator<T>>::value;
   typedef std::bool_constant<
-      usingStdAllocator || A::propagate_on_container_move_assignment::value>
+      kUsingStdAllocator || A::propagate_on_container_move_assignment::value>
       moveIsSwap;
 
   //===========================================================================
@@ -251,7 +251,7 @@ class fbvector {
 
   template <typename U, typename... Args>
   void M_construct(U* p, Args&&... args) {
-    if (usingStdAllocator) {
+    if constexpr (kUsingStdAllocator) {
       new (p) U(std::forward<Args>(args)...);
     } else {
       std::allocator_traits<Allocator>::construct(
@@ -276,7 +276,7 @@ class fbvector {
       typename U,
       typename Enable = typename std::enable_if<std::is_scalar<U>::value>::type>
   void M_construct(U* p, U arg) {
-    if (usingStdAllocator) {
+    if constexpr (kUsingStdAllocator) {
       *p = arg;
     } else {
       std::allocator_traits<Allocator>::construct(impl_, p, arg);
@@ -303,7 +303,7 @@ class fbvector {
       typename Enable =
           typename std::enable_if<!std::is_scalar<U>::value>::type>
   void M_construct(U* p, const U& value) {
-    if (usingStdAllocator) {
+    if constexpr (kUsingStdAllocator) {
       new (p) U(value);
     } else {
       std::allocator_traits<Allocator>::construct(impl_, p, value);
@@ -330,8 +330,8 @@ class fbvector {
   // destroy
 
   void M_destroy(T* p) noexcept {
-    if (usingStdAllocator) {
-      if (!std::is_trivially_destructible<T>::value) {
+    if constexpr (kUsingStdAllocator) {
+      if constexpr (!std::is_trivially_destructible<T>::value) {
         p->~T();
       }
     } else {
@@ -355,7 +355,7 @@ class fbvector {
   // dispatch
   // THIS DISPATCH CODE IS DUPLICATED IN IMPL. SEE IMPL FOR DETAILS.
   void D_destroy_range_a(T* first, T* last) noexcept {
-    if (usingStdAllocator) {
+    if constexpr (kUsingStdAllocator) {
       S_destroy_range(first, last);
     } else {
       S_destroy_range_a(impl_, first, last);
@@ -371,7 +371,7 @@ class fbvector {
 
   // optimized
   static void S_destroy_range(T* first, T* last) noexcept {
-    if (!std::is_trivially_destructible<T>::value) {
+    if constexpr (!std::is_trivially_destructible<T>::value) {
 #define FOLLY_FBV_OP(p) (p)->~T()
       // EXPERIMENTAL DATA on fbvector<vector<int>> (where each vector<int> has
       //  size 0), were vector<int> to be relocatable.
@@ -405,7 +405,7 @@ class fbvector {
 
   // dispatch
   void D_uninitialized_fill_n_a(T* dest, size_type sz) {
-    if (usingStdAllocator) {
+    if constexpr (kUsingStdAllocator) {
       S_uninitialized_fill_n(dest, sz);
     } else {
       S_uninitialized_fill_n_a(impl_, dest, sz);
@@ -413,7 +413,7 @@ class fbvector {
   }
 
   void D_uninitialized_fill_n_a(T* dest, size_type sz, VT value) {
-    if (usingStdAllocator) {
+    if constexpr (kUsingStdAllocator) {
       S_uninitialized_fill_n(dest, sz, value);
     } else {
       S_uninitialized_fill_n_a(impl_, dest, sz, value);
@@ -439,7 +439,7 @@ class fbvector {
 
   // optimized
   static void S_uninitialized_fill_n(T* dest, size_type n) {
-    if (folly::IsZeroInitializable<T>::value) {
+    if constexpr (folly::IsZeroInitializable<T>::value) {
       if (FOLLY_LIKELY(n != 0)) {
         T* sz = nullptr;
         if (!folly::checked_add(&sz, dest, n)) {
@@ -501,8 +501,8 @@ class fbvector {
   // dispatch
   template <typename It>
   void D_uninitialized_copy_a(T* dest, It first, It last) {
-    if (usingStdAllocator) {
-      if (std::is_trivially_copyable<T>::value) {
+    if constexpr (kUsingStdAllocator) {
+      if constexpr (std::is_trivially_copyable<T>::value) {
         S_uninitialized_copy_bits(dest, first, last);
       } else {
         S_uninitialized_copy(dest, first, last);
@@ -578,7 +578,7 @@ class fbvector {
   }
 
   static const T* S_copy_n(T* dest, const T* first, size_type n) {
-    if (std::is_trivially_copyable<T>::value) {
+    if constexpr (std::is_trivially_copyable<T>::value) {
       std::memcpy((void*)dest, (void*)first, n * sizeof(T));
       return first + n;
     } else {
@@ -588,7 +588,7 @@ class fbvector {
 
   static std::move_iterator<T*> S_copy_n(
       T* dest, std::move_iterator<T*> mIt, size_type n) {
-    if (std::is_trivially_copyable<T>::value) {
+    if constexpr (std::is_trivially_copyable<T>::value) {
       T* first = mIt.base();
       std::memcpy((void*)dest, (void*)first, n * sizeof(T));
       return std::make_move_iterator(first + n);
@@ -620,10 +620,10 @@ class fbvector {
   // The relocation trio may use either memcpy, move, or copy. It is decided
   //  by the following case statement:
   //
-  //  IsRelocatable && usingStdAllocator    -> memcpy
-  //  has_nothrow_move && usingStdAllocator -> move
-  //  cannot copy                           -> move
-  //  default                               -> copy
+  //  IsRelocatable && kUsingStdAllocator    -> memcpy
+  //  has_nothrow_move && kUsingStdAllocator -> move
+  //  cannot copy                            -> move
+  //  default                                -> copy
   //
   // If the class is non-copyable then it must be movable. However, if the
   //  move constructor is not noexcept, i.e. an error could be thrown, then
@@ -644,11 +644,11 @@ class fbvector {
 
   // dispatch type trait
   typedef std::bool_constant<
-      folly::IsRelocatable<T>::value && usingStdAllocator>
+      folly::IsRelocatable<T>::value && kUsingStdAllocator>
       relocate_use_memcpy;
 
   typedef std::bool_constant<
-      (std::is_nothrow_move_constructible<T>::value && usingStdAllocator) ||
+      (std::is_nothrow_move_constructible<T>::value && kUsingStdAllocator) ||
       !std::is_copy_constructible<T>::value>
       relocate_use_move;
 
@@ -677,7 +677,7 @@ class fbvector {
 
   // done
   void relocate_done(T* /*dest*/, T* first, T* last) noexcept {
-    if (folly::IsRelocatable<T>::value && usingStdAllocator) {
+    if constexpr (folly::IsRelocatable<T>::value && kUsingStdAllocator) {
       // used memcpy; data has been relocated, do not call destructor
     } else {
       D_destroy_range_a(first, last);
@@ -686,13 +686,13 @@ class fbvector {
 
   // undo
   void relocate_undo(T* dest, T* first, T* last) noexcept {
-    if (folly::IsRelocatable<T>::value && usingStdAllocator) {
+    if constexpr (folly::IsRelocatable<T>::value && kUsingStdAllocator) {
       // used memcpy, old data is still valid, nothing to do
-    } else if (
-        std::is_nothrow_move_constructible<T>::value && usingStdAllocator) {
+    } else if constexpr (
+        std::is_nothrow_move_constructible<T>::value && kUsingStdAllocator) {
       // noexcept move everything back, aka relocate_move
       relocate_move(first, dest, dest + (last - first));
-    } else if (!std::is_copy_constructible<T>::value) {
+    } else if constexpr (!std::is_copy_constructible<T>::value) {
       // weak guarantee
       D_destroy_range_a(dest, dest + (last - first));
     } else {
@@ -756,7 +756,8 @@ class fbvector {
       return *this;
     }
 
-    if (!usingStdAllocator &&
+    if constexpr (
+        !kUsingStdAllocator &&
         A::propagate_on_container_copy_assignment::value) {
       if (impl_ != other.impl_) {
         // can't use other's different allocator to clean up self
@@ -885,10 +886,11 @@ class fbvector {
 
   // contract dispatch for aliasing under VT optimization
   bool dataIsInternalAndNotVT(const T& t) {
-    if (should_pass_by_value) {
+    if constexpr (should_pass_by_value) {
       return false;
+    } else {
+      return dataIsInternal(t);
     }
-    return dataIsInternal(t);
   }
   bool dataIsInternal(const T& t) {
     return FOLLY_UNLIKELY(
@@ -998,7 +1000,7 @@ class fbvector {
     void* p = impl_.b_;
     // xallocx() will shrink to precisely newCapacityBytes (which was generated
     // by goodMallocSize()) if it successfully shrinks in place.
-    if ((usingJEMalloc() && usingStdAllocator) &&
+    if ((usingJEMalloc() && kUsingStdAllocator) &&
         newCapacityBytes >= folly::jemallocMinInPlaceExpandable &&
         xallocx(p, newCapacityBytes, 0, 0) == newCapacityBytes) {
       impl_.z_ += newCap - oldCap;
@@ -1025,7 +1027,7 @@ class fbvector {
 
  private:
   bool reserve_in_place(size_type n) {
-    if (!usingStdAllocator || !usingJEMalloc()) {
+    if (!kUsingStdAllocator || !usingJEMalloc()) {
       return false;
     }
 
@@ -1131,7 +1133,8 @@ class fbvector {
   }
 
   void swap(fbvector& other) noexcept {
-    if (!usingStdAllocator && A::propagate_on_container_swap::value) {
+    if constexpr (
+        !kUsingStdAllocator && A::propagate_on_container_swap::value) {
       swap(impl_, other.impl_);
     } else {
       impl_.swapData(other.impl_);
@@ -1176,7 +1179,7 @@ class fbvector {
   void emplace_back_aux(Args&&... args) {
     size_type byte_sz =
         folly::goodMallocSize(computePushBackCapacity() * sizeof(T));
-    if (usingStdAllocator && usingJEMalloc() &&
+    if (kUsingStdAllocator && usingJEMalloc() &&
         ((impl_.z_ - impl_.b_) * sizeof(T) >=
          folly::jemallocMinInPlaceExpandable)) {
       // Try to reserve in place.
@@ -1211,7 +1214,7 @@ class fbvector {
     auto newE = newB + size();
     {
       auto rollback1 = makeGuard([&] { M_deallocate(newB, sz); });
-      if (folly::IsRelocatable<T>::value && usingStdAllocator) {
+      if constexpr (folly::IsRelocatable<T>::value && kUsingStdAllocator) {
         // For linear memory access, relocate before construction.
         // By the test condition, relocate is noexcept.
         // Note that there is no cleanup to do if M_construct throws - that's
@@ -1252,7 +1255,7 @@ class fbvector {
       if (last == end()) {
         M_destroy_range_e((iterator)first);
       } else {
-        if (folly::IsRelocatable<T>::value && usingStdAllocator) {
+        if constexpr (folly::IsRelocatable<T>::value && kUsingStdAllocator) {
           D_destroy_range_a((iterator)first, (iterator)last);
           if (last - first >= cend() - last) {
             std::memcpy((void*)first, (void*)last, (cend() - last) * sizeof(T));
@@ -1350,7 +1353,7 @@ class fbvector {
       relocate_done(position + n, position, impl_.e_);
       impl_.e_ += n;
     } else {
-      if (folly::IsRelocatable<T>::value && usingStdAllocator) {
+      if constexpr (folly::IsRelocatable<T>::value && kUsingStdAllocator) {
         compiler_may_unsafely_assume(position != nullptr);
         std::memmove((void*)(position + n), (void*)position, tail * sizeof(T));
         impl_.e_ += n;
