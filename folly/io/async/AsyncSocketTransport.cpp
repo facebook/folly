@@ -19,7 +19,8 @@
 namespace folly {
 
 const SocketAddress& AsyncSocketTransport::anyAddress() {
-  static const SocketAddress anyAddress = SocketAddress("0.0.0.0", 0);
+  static const folly::Indestructible<SocketAddress> anyAddress =
+      SocketAddress("0.0.0.0", 0);
   return anyAddress;
 }
 
