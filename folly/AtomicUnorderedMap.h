@@ -279,7 +279,7 @@ struct AtomicUnorderedInsertMap {
     SCOPE_FAIL {
       addr->~Key();
     };
-    func(static_cast<void*>(&slots_[idx].keyValue().second));
+    new (&slots_[idx].keyValue().second) Value(func());
 
     while (true) {
       slots_[idx].next_ = prev >> 2;
@@ -321,9 +321,7 @@ struct AtomicUnorderedInsertMap {
   /// http://functionalcpp.wordpress.com/2013/08/28/tuple-forwarding/).
   template <class K, class V>
   std::pair<const_iterator, bool> emplace(const K& key, V&& value) {
-    return findOrConstruct(key, [&](void* raw) {
-      new (raw) Value(std::forward<V>(value));
-    });
+    return findOrConstruct(key, [&] { return Value(std::forward<V>(value)); });
   }
 
   const_iterator find(const Key& key) const {
