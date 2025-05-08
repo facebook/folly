@@ -142,16 +142,16 @@ template <
     typename Allocator = folly::detail::MMapAlloc>
 
 struct AtomicUnorderedInsertMap {
-  typedef Key key_type;
-  typedef Value mapped_type;
-  typedef std::pair<Key, Value> value_type;
-  typedef std::size_t size_type;
-  typedef std::ptrdiff_t difference_type;
-  typedef Hash hasher;
-  typedef KeyEqual key_equal;
-  typedef const value_type& const_reference;
+  using key_type = Key;
+  using mapped_type = Value;
+  using value_type = std::pair<Key, Value>;
+  using size_type = std::size_t;
+  using difference_type = std::ptrdiff_t;
+  using hasher = Hash;
+  using key_equal = KeyEqual;
+  using const_reference = const value_type&;
 
-  typedef struct ConstIterator {
+  struct ConstIterator {
     ConstIterator(const AtomicUnorderedInsertMap& owner, IndexType slot)
         : owner_(owner), slot_(slot) {}
 
@@ -159,11 +159,11 @@ struct AtomicUnorderedInsertMap {
     ConstIterator& operator=(const ConstIterator&) = default;
 
     const value_type& operator*() const {
-      return owner_.slots_[slot_].keyValue();
+      return *owner_.slots_[slot_].keyValue();
     }
 
     const value_type* operator->() const {
-      return &owner_.slots_[slot_].keyValue();
+      return owner_.slots_[slot_].keyValue();
     }
 
     // pre-increment
@@ -192,7 +192,8 @@ struct AtomicUnorderedInsertMap {
    private:
     const AtomicUnorderedInsertMap& owner_;
     IndexType slot_;
-  } const_iterator;
+  };
+  using const_iterator = ConstIterator;
 
   friend ConstIterator;
 
@@ -267,19 +268,18 @@ struct AtomicUnorderedInsertMap {
       return std::make_pair(ConstIterator(*this, existing), false);
     }
 
-    // The copying of key and the calling of func can throw exceptions. Nothing
-    // else in this function can throw an exception. In the event of an
+    // The copying of key and the calling of func and find can throw exceptions.
+    // Nothing else in this function can throw an exception. In the event of an
     // exception, deallocate as if the KV was beaten in a concurrent addition.
     const auto idx = allocateNear(slot);
-    SCOPE_FAIL {
+    auto guardSlot = folly::makeGuard([&] {
       slots_[idx].stateUpdate(CONSTRUCTING, EMPTY);
-    };
-    Key* addr = &slots_[idx].keyValue().first;
-    new (addr) Key(key);
-    SCOPE_FAIL {
-      addr->~Key();
-    };
-    new (&slots_[idx].keyValue().second) Value(func());
+    });
+    value_type* addr = slots_[idx].keyValue();
+    new (static_cast<void*>(std::addressof(addr->first))) Key(key);
+    auto guardKey = folly::makeGuard([&] { addr->first.~Key(); });
+    new (static_cast<void*>(std::addressof(addr->second))) Value(func());
+    auto guardMapped = folly::makeGuard([&] { addr->second.~Value(); });
 
     while (true) {
       slots_[idx].next_ = prev >> 2;
@@ -298,6 +298,9 @@ struct AtomicUnorderedInsertMap {
         if (idx != slot) {
           slots_[idx].stateUpdate(CONSTRUCTING, LINKED);
         }
+        guardMapped.dismiss();
+        guardKey.dismiss();
+        guardSlot.dismiss();
         return std::make_pair(ConstIterator(*this, idx), true);
       }
       // compare_exchange_strong updates its first arg on failure, so
@@ -306,10 +309,7 @@ struct AtomicUnorderedInsertMap {
       existing = find(key, slot);
       if (existing != 0) {
         // our allocated key and value are no longer needed
-        slots_[idx].keyValue().first.~Key();
-        slots_[idx].keyValue().second.~Value();
-        slots_[idx].stateUpdate(CONSTRUCTING, EMPTY);
-
+        // and so the guards expire and invoke the cleanups
         return std::make_pair(ConstIterator(*this, existing), false);
       }
     }
@@ -375,8 +375,8 @@ struct AtomicUnorderedInsertMap {
       auto s = state();
       assert(s == EMPTY || s == LINKED);
       if (s == LINKED) {
-        keyValue().first.~Key();
-        keyValue().second.~Value();
+        keyValue()->second.~Value();
+        keyValue()->first.~Key();
       }
     }
 
@@ -389,14 +389,14 @@ struct AtomicUnorderedInsertMap {
       headAndState_ += (after - before);
     }
 
-    value_type& keyValue() {
+    value_type* keyValue() {
       assert(state() != EMPTY);
-      return *static_cast<value_type*>(static_cast<void*>(&raw_));
+      return static_cast<value_type*>(static_cast<void*>(&raw_));
     }
 
-    const value_type& keyValue() const {
+    const value_type* keyValue() const {
       assert(state() != EMPTY);
-      return *static_cast<const value_type*>(static_cast<const void*>(&raw_));
+      return static_cast<const value_type*>(static_cast<const void*>(&raw_));
     }
   };
 
@@ -426,7 +426,7 @@ struct AtomicUnorderedInsertMap {
     KeyEqual ke = {};
     auto hs = slots_[slot].headAndState_.load(std::memory_order_acquire);
     for (slot = hs >> 2; slot != 0; slot = slots_[slot].next_) {
-      if (ke(key, slots_[slot].keyValue().first)) {
+      if (ke(key, slots_[slot].keyValue()->first)) {
         return slot;
       }
     }
