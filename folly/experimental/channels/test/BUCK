@@ -1,0 +1,15 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "channel_test_util",
+    headers = [
+        "ChannelTestUtil.h",
+    ],
+    exported_deps = [
+        "//folly/channels/test:channel_test_util",
+    ],
+)

@@ -1,0 +1,26 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "stl_vector_test",
+    srcs = ["StlVectorTest.cpp"],
+    labels = ["slow"],
+    deps = [
+        "//folly:conv",
+        "//folly:fbvector",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly/chrono:hardware",
+        "//folly/lang:pretty",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+    ],
+    external_deps = [
+        "boost",
+        ("boost", None, "boost_preprocessor"),
+    ],
+)

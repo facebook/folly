@@ -1,0 +1,131 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "at_fork_test",
+    srcs = ["AtForkTest.cpp"],
+    deps = [
+        "//folly:utility",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/system:at_fork",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "aux_vector_test",
+    srcs = ["AuxVectorTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/system:aux_vector",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "env_util_subprocess",
+    srcs = ["EnvUtilSubprocess.cpp"],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "env_util_test",
+    srcs = ["EnvUtilTest.cpp"],
+    headers = [],
+    args = [
+        "--env_util_subprocess_binary=$(location :env_util_subprocess)",
+    ],
+    deps = [
+        "//folly:memory",
+        "//folly:subprocess",
+        "//folly/container:array",
+        "//folly/portability:fcntl",
+        "//folly/portability:gflags",
+        "//folly/portability:gtest",
+        "//folly/portability:stdlib",
+        "//folly/system:env_util",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_algorithm"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "pid_test",
+    srcs = ["PidTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/system:pid",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "memory_mapping_test",
+    srcs = ["MemoryMappingTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:file_util",
+        "//folly:random",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_mman",
+        "//folly/system:memory_mapping",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "shell_test",
+    srcs = ["ShellTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/system:shell",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "thread_id_test",
+    srcs = ["ThreadIdTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+        "//folly/system:thread_id",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "thread_name_test",
+    srcs = ["ThreadNameTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/system:thread_name",
+    ],
+)

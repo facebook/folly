@@ -1,0 +1,152 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_trace_test",
+    srcs = ["AsyncTraceTest.cpp"],
+    deps = [
+        "//folly/detail:async_trace",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "static_singleton_manager_test",
+    srcs = ["StaticSingletonManagerTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/detail:static_singleton_manager",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "unique_instance_test",
+    srcs = ["UniqueInstanceTest.cpp"],
+    deps = [
+        "//folly:string",
+        "//folly:traits",
+        "//folly/detail:unique_instance",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "file_util_detail_test",
+    srcs = [
+        "FileUtilDetailTest.cpp",
+    ],
+    deps = [
+        "//folly/detail:file_util_detail",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "perf_scoped_test",
+    srcs = [
+        "PerfScopedTest.cpp",
+    ],
+    deps = [
+        "//folly/detail:perf_scoped",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+        "//folly/test:test_utils",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "simple_simd_string_utils_test",
+    srcs = [
+        "SimpleSimdStringUtilsTest.cpp",
+    ],
+    deps = [
+        "//folly/algorithm/simd/detail:simd_platform",
+        "//folly/detail:simple_simd_string_utils",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "split_string_simd_test",
+    srcs = [
+        "SplitStringSimdTest.cpp",
+    ],
+    deps = [
+        "//folly:fbstring",
+        "//folly:fbvector",
+        "//folly:range",
+        "//folly:small_vector",
+        "//folly/detail:split_string_simd",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "thread_local_detail_test",
+    srcs = [
+        "ThreadLocalDetailTest.cpp",
+    ],
+    deps = [
+        "//folly:synchronized",
+        "//folly:thread_local",
+        "//folly/portability:gtest",
+        "//folly/synchronization/test:barrier",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "thread_local_benchmark",
+    srcs = ["ThreadLocalBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:thread_local",
+        "//folly/synchronization/test:barrier",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "traponavx512_test_negative",
+    srcs = ["TrapOnAvx512TestNegative.cpp"],
+    deps = [
+        "//folly/detail:traponavx512",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "tuple_test",
+    srcs = ["tuple_test.cpp"],
+    deps = [
+        "//folly:utility",
+        "//folly/detail:tuple",
+        "//folly/functional:invoke",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "detail_typelist_test",
+    srcs = ["TypeListTest.cpp"],
+    deps = [
+        "//folly/detail:typelist",
+        "//folly/portability:gtest",
+    ],
+)

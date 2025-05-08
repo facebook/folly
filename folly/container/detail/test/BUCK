@@ -1,0 +1,29 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "f14_detail_test",
+    srcs = [
+        "F14DetailTest.cpp",
+    ],
+    deps = [
+        "//folly:traits",
+        "//folly/container/detail:f14_hash_detail",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "bool_wrapper_test",
+    srcs = [
+        "BoolWrapperTest.cpp",
+    ],
+    deps = [
+        "//folly/container/detail:bool_wrapper",
+        "//folly/portability:gtest",
+    ],
+)

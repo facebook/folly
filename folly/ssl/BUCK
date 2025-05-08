@@ -1,0 +1,235 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "openssl_ptr_types",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["OpenSSLPtrTypes.h"],
+    exported_deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:memory",
+        "//xplat/folly:portability_openssl",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "openssl_hash",
+    srcs = ["OpenSSLHash.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["OpenSSLHash.h"],
+    deps = ["//xplat/folly:format"],
+    exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        ":openssl_ptr_types",
+        "//xplat/folly:portability_openssl",
+        "//xplat/folly:range",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "openssl_cert_utils",
+    srcs = ["OpenSSLCertUtils.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["OpenSSLCertUtils.h"],
+    deps = [
+        "//xplat/folly:file_util",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:string",
+    ],
+    exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        ":openssl_ptr_types",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability_openssl",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "openssl_version_finder",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["OpenSSLVersionFinder.h"],
+    exported_deps = [
+        "//xplat/folly:portability_openssl",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "openssl_ticket_handler",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["OpenSSLTicketHandler.h"],
+    deps = [
+        "//xplat/folly:portability_openssl",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "ssl_session",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SSLSession.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "ssl_session_manager",
+    srcs = ["SSLSessionManager.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SSLSessionManager.h"],
+    deps = [
+        "//xplat/folly:overload",
+        "//xplat/folly/ssl/detail:openssl_session",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        ":ssl_session",
+        "//third-party/boost:boost",
+        "//xplat/folly:portability_openssl",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "password_collector",
+    srcs = ["PasswordCollector.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["PasswordCollector.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "openssl_key_utils",
+    srcs = ["OpenSSLKeyUtils.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["OpenSSLKeyUtils.h"],
+    deps = [
+        ":password_collector",
+        "//xplat/folly:portability_openssl",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        "//xplat/folly:range",
+    ],
+)
+
+# !!!! fbcode/folly/ssl/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "openssl_ptr_types",
+    headers = ["OpenSSLPtrTypes.h"],
+    exported_deps = [
+        "//folly:memory",
+        "//folly/portability:openssl",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "openssl_hash",
+    srcs = ["OpenSSLHash.cpp"],
+    headers = ["OpenSSLHash.h"],
+    deps = [
+        "//folly:format",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        "//folly:exception",
+        "//folly:range",
+        "//folly/io:iobuf",
+        "//folly/portability:openssl",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "openssl_cert_utils",
+    srcs = ["OpenSSLCertUtils.cpp"],
+    headers = ["OpenSSLCertUtils.h"],
+    deps = [
+        "//folly:file_util",
+        "//folly:scope_guard",
+        "//folly:string",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        "//folly:optional",
+        "//folly/io:iobuf",
+        "//folly/portability:openssl",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "openssl_version_finder",
+    headers = ["OpenSSLVersionFinder.h"],
+    exported_deps = [
+        "//folly/portability:openssl",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "openssl_ticket_handler",
+    headers = ["OpenSSLTicketHandler.h"],
+    exported_deps = [
+        "//folly/portability:openssl",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "ssl_session",
+    headers = ["SSLSession.h"],
+    exported_deps = [
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "ssl_session_manager",
+    srcs = ["SSLSessionManager.cpp"],
+    headers = ["SSLSessionManager.h"],
+    deps = [
+        "//folly:overload",
+        "//folly/ssl/detail:openssl_session",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        ":ssl_session",
+        "//folly/portability:openssl",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "password_collector",
+    srcs = ["PasswordCollector.cpp"],
+    headers = ["PasswordCollector.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "openssl_key_utils",
+    srcs = ["OpenSSLKeyUtils.cpp"],
+    headers = ["OpenSSLKeyUtils.h"],
+    deps = [
+        ":password_collector",
+        "//folly/portability:openssl",
+    ],
+    exported_deps = [
+        ":openssl_ptr_types",
+        "//folly:range",
+    ],
+)

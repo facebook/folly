@@ -1,0 +1,480 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "async_generator_bench",
+    srcs = ["AsyncGeneratorBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:exception_wrapper",
+        "//folly:portability",
+        "//folly/coro:async_generator",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:generator",
+        "//folly/coro:task",
+        "//folly/coro:via_if_async",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_stack_test",
+    srcs = [
+        "AsyncStackTest.cpp",
+    ],
+    deps = [
+        "//folly:portability",
+        "//folly/coro:async_stack",
+        "//folly/coro:baton",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:collect",
+        "//folly/coro:mutex",
+        "//folly/coro:task",
+        "//folly/portability:gtest",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "await_result_test",
+    srcs = ["AwaitResultTest.cpp"],
+    deps = [
+        "//folly/coro:await_result",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:result",
+        "//folly/coro/safe:now_task",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "blocking_wait_bench",
+    srcs = ["BlockingWaitBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:portability",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:coroutine",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "collect_all_benchmark",
+    srcs = ["CollectAllBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:collect",
+        "//folly/coro:generator",
+        "//folly/coro:task",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "coro_benchmark_allocator",
+    srcs = ["CoroBenchmarkAllocator.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/coro:coroutine",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "coro_benchmark_nrvo",
+    srcs = ["CoroBenchmarkNRVO.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/coro:coroutine",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_generator_test",
+    srcs = ["AsyncGeneratorTest.cpp"],
+    deps = [
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:traits",
+        "//folly/coro:async_generator",
+        "//folly/coro:baton",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:collect",
+        "//folly/coro:invoke",
+        "//folly/coro:sleep",
+        "//folly/coro:task",
+        "//folly/coro:with_cancellation",
+        "//folly/futures:core",
+        "//folly/portability:gtest",
+        "//folly/portability:pthread",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "coro_test",
+    srcs = [
+        "AccumulateTest.cpp",
+        "AsyncPipeTest.cpp",
+        "AsyncScopeTest.cpp",
+        "BatonTest.cpp",
+        "BlockingWaitTest.cpp",
+        "BoundedQueueTest.cpp",
+        "CollectTest.cpp",
+        "ConcatTest.cpp",
+        "CoroTest.cpp",
+        "CurrentExecutorTest.cpp",
+        "ErrorTest.cpp",
+        "FilterTest.cpp",
+        "FutureUtilTest.cpp",
+        "InlineTaskTest.cpp",
+        "MergeTest.cpp",
+        "MutexTest.cpp",
+        "ScopeExitTest.cpp",
+        "SharedMutexTest.cpp",
+        "SmallUnboundedQueueTest.cpp",
+        "TaskTest.cpp",
+        "TimeoutTest.cpp",
+        "TraitsTest.cpp",
+        "TransformTest.cpp",
+        "UnboundedQueueTest.cpp",
+    ],
+    labels = ["case-isolation-failure"],
+    deps = [
+        "//folly:cancellation_token",
+        "//folly:chrono",
+        "//folly:conv",
+        "//folly:exception_wrapper",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:utility",
+        "//folly/coro:accumulate",
+        "//folly/coro:async_generator",
+        "//folly/coro:async_pipe",
+        "//folly/coro:async_scope",
+        "//folly/coro:auto_cleanup",
+        "//folly/coro:baton",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:bounded_queue",
+        "//folly/coro:collect",
+        "//folly/coro:concat",
+        "//folly/coro:coroutine",
+        "//folly/coro:current_executor",
+        "//folly/coro:detach_on_cancel",
+        "//folly/coro:filter",
+        "//folly/coro:future_util",
+        "//folly/coro:generator",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:inline_task",
+        "//folly/coro:invoke",
+        "//folly/coro:merge",
+        "//folly/coro:mutex",
+        "//folly/coro:result",
+        "//folly/coro:shared_mutex",
+        "//folly/coro:sleep",
+        "//folly/coro:small_unbounded_queue",
+        "//folly/coro:task",
+        "//folly/coro:timed_wait",
+        "//folly/coro:timeout",
+        "//folly/coro:traits",
+        "//folly/coro:transform",
+        "//folly/coro:unbounded_queue",
+        "//folly/coro:with_cancellation",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:global_executor",
+        "//folly/executors:inline_executor",
+        "//folly/executors:manual_executor",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:fiber_manager_map",
+        "//folly/fibers:semaphore",
+        "//folly/futures:core",
+        "//folly/io/async:request_context",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/lang:assume",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "coroutine_test",
+    srcs = ["CoroutineTest.cpp"],
+    deps = [
+        "//folly/coro:coroutine",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "generator_test",
+    srcs = ["GeneratorTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly/coro:generator",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "gmock_helpers_test",
+    srcs = [
+        "GmockHelpersTest.cpp",
+    ],
+    deps = [
+        "//folly:portability",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:gmock_helpers",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:task",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "gtest_helpers_test",
+    srcs = [
+        "GtestHelpersTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "noexcept_test",
+    srcs = ["NoexceptTest.cpp"],
+    deps = [
+        "//folly/coro:async_scope",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:noexcept",
+        "//folly/coro/safe:now_task",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "promise_benchmark",
+    srcs = ["PromiseBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:portability",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:collect",
+        "//folly/coro:future_util",
+        "//folly/coro:promise",
+        "//folly/coro:task",
+        "//folly/futures:core",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "ready_test",
+    srcs = ["ReadyTest.cpp"],
+    deps = [
+        "//folly/coro:await_result",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:ready",
+        "//folly/coro/safe:now_task",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "request_context_test",
+    srcs = ["RequestContextTest.cpp"],
+    deps = [
+        "//folly/coro:async_generator",
+        "//folly/coro:async_scope",
+        "//folly/coro:baton",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:mutex",
+        "//folly/coro:task",
+        "//folly/coro:unbounded_queue",
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "retry_test",
+    srcs = ["RetryTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:portability",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:retry",
+        "//folly/coro:sleep",
+        "//folly/coro:task",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "serial_queue_runner_test",
+    srcs = ["SerialQueueRunnerTest.cpp"],
+    deps = [
+        "//folly/coro:async_scope",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:serial_queue_runner",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "shared_promise_test",
+    srcs = [
+        "SharedPromiseTest.cpp",
+    ],
+    deps = [
+        "//folly/coro:blocking_wait",
+        "//folly/coro:detach_on_cancel",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:shared_promise",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "sleep_test",
+    srcs = [
+        "SleepTest.cpp",
+    ],
+    deps = [
+        "//folly:portability",
+        "//folly/coro:async_scope",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:sleep",
+        "//folly/coro:task",
+        "//folly/executors:manual_executor",
+        "//folly/futures:manual_timekeeper",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "suspended_stack_test",
+    srcs = [
+        "SuspendedStackTest.cpp",
+    ],
+    deps = [
+        "//folly/coro:async_stack",
+        "//folly/coro:baton",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:mutex",
+        "//folly/coro:task",
+        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "synchronized_test",
+    srcs = ["SynchronizedTest.cpp"],
+    deps = [
+        "//folly/coro:baton",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:synchronized",
+        "//folly/coro:task",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "task_bench",
+    srcs = ["TaskBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:portability",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:current_executor",
+        "//folly/coro:task",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "task_wrapper_test",
+    srcs = ["TaskWrapperTest.cpp"],
+    deps = [
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:task_wrapper",
+        "//folly/coro:timeout",
+        "//folly/fibers:semaphore",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "RustAdaptorsTest",
+    srcs = [
+        "RustAdaptorsTest.cpp",
+    ],
+    deps = [
+        "//folly:cancellation_token",
+        "//folly:portability",
+        "//folly/coro:baton",
+        "//folly/coro:rust_adaptors",
+        "//folly/coro:sleep",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "PromiseTest",
+    srcs = [
+        "PromiseTest.cpp",
+    ],
+    deps = [
+        "//folly:portability",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:collect",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:promise",
+        "//folly/coro:task",
+        "//folly/coro:with_cancellation",
+        "//folly/portability:gtest",
+    ],
+)

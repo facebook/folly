@@ -1,0 +1,1029 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "CXXFLAGS",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "singleton",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Singleton.h",
+    ],
+    deps = [
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "socket_fast_open",
+    srcs = [
+        "SocketFastOpen.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SocketFastOpen.h",
+    ],
+    deps = [
+        "//xplat/folly:portability_sockets",
+        "//xplat/folly/net:network_socket",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "atomic_unordered_map_utils",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "AtomicUnorderedMapUtils.h",
+    ],
+    deps = [
+        "//xplat/folly:exception",
+        "//xplat/folly:portability_sys_mman",
+        "//xplat/folly:portability_unistd",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "slow_fingerprint",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SlowFingerprint.h",
+    ],
+    deps = [
+        "//xplat/folly:fingerprint",
+        "//xplat/folly:range",
+        "//xplat/folly/detail:fingerprint_polynomial",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "mpmc_pipeline_detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "MPMCPipelineDetail.h",
+    ],
+    deps = [
+        "//xplat/folly:mpmc_queue",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "thread_local_detail",
+    srcs = [
+        "ThreadLocalDetail.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ThreadLocalDetail.h",
+    ],
+    deps = [
+        ":thread_local_globals",
+        "//third-party/glog:glog",
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:exception",
+        "//xplat/folly:function",
+        "//xplat/folly:map_util",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_pthread",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:shared_mutex",
+        "//xplat/folly:synchronization_call_once",
+        "//xplat/folly:synchronization_micro_spin_lock",
+        "//xplat/folly:synchronized",
+        "//xplat/folly:system_at_fork",
+        "//xplat/folly:utility",
+        "//xplat/folly/concurrency/container:atomic_grow_array",
+        "//xplat/folly/container:foreach",
+        "//xplat/folly/detail:static_singleton_manager",
+        "//xplat/folly/detail:unique_instance",
+        "//xplat/folly/lang:exception",
+        "//xplat/folly/memory:sanitize_leak",
+    ],
+    exported_deps = [
+        "//xplat/folly/memory:malloc",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "thread_local_globals",
+    srcs = ["thread_local_globals.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["thread_local_globals.h"],
+    deps = [
+        ":static_singleton_manager",
+        "//xplat/folly:portability_pthread",
+        "//xplat/folly/lang:exception",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "memory_idler",
+    srcs = [
+        "MemoryIdler.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "MemoryIdler.h",
+    ],
+    deps = [
+        "//xplat/folly:portability_gflags",
+        "//xplat/folly:system_pid",
+    ],
+    exported_deps = [
+        "//xplat/folly:glog",
+        "//xplat/folly:hash_hash",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_pthread",
+        "//xplat/folly:portability_sys_mman",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:synchronization_atomic_struct",
+        "//xplat/folly:system_thread_id",
+        "//xplat/folly/concurrency:cache_locality",
+        "//xplat/folly/detail:futex",
+        "//xplat/folly/memory:mallctl_helper",
+        "//xplat/folly/memory:malloc",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "file_util_detail",
+    srcs = [
+        "FileUtilDetail.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "FileUtilDetail.h",
+    ],
+    deps = [
+        "//xplat/folly:portability_config",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability_sys_types",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "poly_detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "PolyDetail.h",
+    ],
+    deps = [
+        "//xplat/folly:functional_invoke",
+        "//xplat/folly:poly_exception",
+        "//xplat/folly:portability",
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+        "//xplat/folly/detail:typelist",
+        "//xplat/folly/lang:exception",
+        "//xplat/folly/lang:static_const",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "iterators",
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Iterators.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability_sys_types",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "typelist",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "TypeList.h",
+    ],
+    deps = [
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "range_common",
+    srcs = [
+        "RangeCommon.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "RangeCommon.h",
+    ],
+    deps = [
+        "//xplat/folly:likely",
+        "//xplat/folly/container:sparse_byte_set",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "ip_address",
+    srcs = [
+        "IPAddress.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "IPAddress.h",
+    ],
+    deps = [
+        "//xplat/folly:portability_fmt_compile",
+        "//xplat/folly:portability_sockets",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "unique_instance",
+    srcs = [
+        "UniqueInstance.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "UniqueInstance.h",
+    ],
+    deps = [
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:demangle",
+        "//xplat/folly/detail:static_singleton_manager",
+        "//xplat/folly/lang:exception",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sse",
+    srcs = [
+        "Sse.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Sse.h",
+    ],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "atomic_hash_utils",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "AtomicHashUtils.h",
+    ],
+    deps = [
+        "//xplat/folly:portability_asm",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "ip_address_source",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "IPAddressSource.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:format",
+        "//xplat/folly/detail:ip_address",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "fingerprint_polynomial",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "FingerprintPolynomial.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "futex",
+    srcs = [
+        "Futex.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Futex.h",
+        "Futex-inl.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:hash_hash",
+        "//xplat/folly:portability_sys_syscall",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:synchronization_parking_lot",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "turn_sequencer",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "TurnSequencer.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_asm",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly/chrono:hardware",
+        "//xplat/folly/detail:futex",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "async_trace",
+    srcs = [
+        "AsyncTrace.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "AsyncTrace.h",
+    ],
+    deps = [
+        "//xplat/folly:optional",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "file_util_vector_detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "FileUtilVectorDetail.h",
+    ],
+    deps = [
+        "//xplat/folly:portability_sys_uio",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly/detail:file_util_detail",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "static_singleton_manager",
+    srcs = [
+        "StaticSingletonManager.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    force_static = bool(select({
+        "DEFAULT": False,
+        "ovr_config//os:macos": True,
+    })),
+    raw_headers = [
+        "StaticSingletonManager.h",
+    ],
+    deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:indestructible",
+        "//xplat/folly:likely",
+        "//xplat/folly:utility",
+        "//xplat/folly/detail:singleton",
+        "//xplat/folly/lang:thunk",
+        "//xplat/folly/lang:type_info",
+        "//xplat/folly/memory:reentrant_allocator",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "range_sse42",
+    srcs = [
+        "RangeSse42.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "RangeSse42.h",
+    ],
+    deps = [
+        "//xplat/folly:likely",
+        "//xplat/folly:portability",
+        "//xplat/folly/detail:range_common",
+        "//xplat/folly/detail:sse",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "range_simd",
+    srcs = [
+        "RangeSimd.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "RangeSimd.h",
+    ],
+    deps = [
+        ":range_sse42",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability",
+        "//xplat/folly/detail:range_common",
+        "//xplat/folly/external/nvidia/detail:range_sve2",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "group_varint_detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "GroupVarintDetail.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "discriminated_ptr_detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "DiscriminatedPtrDetail.h",
+    ],
+    deps = [
+        "//xplat/folly:functional_invoke",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "perf_scoped",
+    srcs = ["PerfScoped.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "PerfScoped.h",
+    ],
+    deps = [
+        "//xplat/folly:conv",
+        "//xplat/folly:experimental_test_util",
+        "//xplat/folly:system_pid",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": ["//xplat/folly:subprocess"],
+    }),
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "simple_simd_string_utils",
+    srcs = ["SimpleSimdStringUtils.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SimpleSimdStringUtils.h",
+        "SimpleSimdStringUtilsImpl.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:range",
+        "//xplat/folly/algorithm/simd/detail:simd_any_of",
+        "//xplat/folly/algorithm/simd/detail:simd_platform",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "split_string_simd",
+    srcs = ["SplitStringSimd.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SplitStringSimd.h",
+        "SplitStringSimdImpl.h",
+    ],
+    deps = [
+        "//xplat/folly:fbstring",
+        "//xplat/folly:fbvector",
+        "//xplat/folly:small_vector",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly/algorithm/simd/detail:simd_for_each",
+        "//xplat/folly/algorithm/simd/detail:simd_platform",
+        "//xplat/folly/lang:bits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "traponavx512",
+    srcs = ["TrapOnAvx512.cpp"],
+    compiler_flags = CXXFLAGS + select({
+        "DEFAULT": [],
+        "ovr_config//toolchain/fb:fbcode-x86_64": [
+            "-msse4.2",
+            "-mavx512f",
+            "-mavx512vl",
+        ],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["TrapOnAvx512.h"],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "tuple",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["tuple.h"],
+    deps = [
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:traits",
+    ],
+)
+
+# !!!! fbcode/folly/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "async_trace",
+    srcs = ["AsyncTrace.cpp"],
+    headers = ["AsyncTrace.h"],
+    deps = [
+        "//folly:portability",
+    ],
+    exported_deps = [
+        "//folly:optional",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "atomic_hash_utils",
+    headers = ["AtomicHashUtils.h"],
+    exported_deps = [
+        "//folly/portability:asm",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "atomic_unordered_map_utils",
+    headers = ["AtomicUnorderedMapUtils.h"],
+    exported_deps = [
+        "//folly:exception",
+        "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "discriminated_ptr_detail",
+    headers = ["DiscriminatedPtrDetail.h"],
+    exported_deps = [
+        "//folly/functional:invoke",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "file_util_detail",
+    srcs = ["FileUtilDetail.cpp"],
+    headers = ["FileUtilDetail.h"],
+    deps = [
+        "//folly/portability:config",
+    ],
+    exported_deps = [
+        "//folly/portability:sys_types",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "file_util_vector_detail",
+    headers = ["FileUtilVectorDetail.h"],
+    exported_deps = [
+        ":file_util_detail",
+        "//folly/portability:sys_uio",
+        "//folly/portability:unistd",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "fingerprint_polynomial",
+    headers = ["FingerprintPolynomial.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "futex",
+    srcs = ["Futex.cpp"],
+    headers = [
+        "Futex.h",
+        "Futex-inl.h",
+    ],
+    deps = [
+        "//folly:scope_guard",
+        "//folly/hash:hash",
+        "//folly/portability:sys_syscall",
+    ],
+    exported_deps = [
+        "//folly/synchronization:parking_lot",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "group_varint_detail",
+    headers = ["GroupVarintDetail.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "ip_address",
+    srcs = ["IPAddress.cpp"],
+    headers = ["IPAddress.h"],
+    deps = [
+        "//folly/portability:fmt_compile",
+    ],
+    exported_deps = [
+        "//folly/portability:sockets",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "ip_address_source",
+    headers = ["IPAddressSource.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":ip_address",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "iterators",
+    headers = ["Iterators.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "memory_idler",
+    srcs = ["MemoryIdler.cpp"],
+    headers = ["MemoryIdler.h"],
+    deps = [
+        "//folly:glog",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly/concurrency:cache_locality",
+        "//folly/memory:mallctl_helper",
+        "//folly/memory:malloc",
+        "//folly/portability:gflags",
+        "//folly/portability:pthread",
+        "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
+        "//folly/system:pid",
+    ],
+    exported_deps = [
+        ":futex",
+        "//folly/hash:hash",
+        "//folly/synchronization:atomic_struct",
+        "//folly/system:thread_id",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "perf_scoped",
+    srcs = ["PerfScoped.cpp"],
+    headers = ["PerfScoped.h"],
+    # folly subprocess is not supported on windows
+    os_deps = [
+        (
+            "linux",
+            ["//folly:subprocess"],
+        ),
+    ],
+    deps = [
+        "//folly:conv",
+        "//folly/system:pid",
+        "//folly/testing:test_util",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "mpmc_pipeline_detail",
+    headers = ["MPMCPipelineDetail.h"],
+    exported_deps = [
+        "//folly:mpmc_queue",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "poly_detail",
+    headers = ["PolyDetail.h"],
+    exported_deps = [
+        ":typelist",
+        "//folly:poly_exception",
+        "//folly:portability",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/functional:invoke",
+        "//folly/lang:exception",
+        "//folly/lang:static_const",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "range_common",
+    srcs = ["RangeCommon.cpp"],
+    headers = ["RangeCommon.h"],
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+    deps = [
+        "//folly/container:sparse_byte_set",
+    ],
+    exported_deps = [
+        "//folly:likely",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "range_simd",
+    srcs = ["RangeSimd.cpp"],
+    headers = ["RangeSimd.h"],
+    undefined_symbols = True,
+    deps = [
+        ":range_sse42",
+        "//folly:portability",
+        "//folly/external/nvidia/detail:range_sve2",
+    ],
+    exported_deps = [
+        ":range_common",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "range_sse42",
+    srcs = ["RangeSse42.cpp"],
+    headers = ["RangeSse42.h"],
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+    deps = [
+        ":sse",
+        "//folly:likely",
+        "//folly:portability",
+    ],
+    exported_deps = [
+        ":range_common",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "singleton",
+    headers = ["Singleton.h"],
+    exported_deps = [
+        "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "slow_fingerprint",
+    headers = ["SlowFingerprint.h"],
+    exported_deps = [
+        ":fingerprint_polynomial",
+        "//folly:fingerprint",
+        "//folly:range",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "sse",
+    srcs = ["Sse.cpp"],
+    headers = ["Sse.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "simple_simd_string_utils",
+    srcs = ["SimpleSimdStringUtils.cpp"],
+    headers = [
+        "SimpleSimdStringUtils.h",
+        "SimpleSimdStringUtilsImpl.h",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/algorithm/simd/detail:simd_any_of",
+        "//folly/algorithm/simd/detail:simd_platform",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "split_string_simd",
+    srcs = ["SplitStringSimd.cpp"],
+    headers = [
+        "SplitStringSimd.h",
+        "SplitStringSimdImpl.h",
+    ],
+    deps = [
+        "//folly:fbstring",
+        "//folly:fbvector",
+        "//folly:small_vector",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:range",
+        "//folly/algorithm/simd:ignore",
+        "//folly/algorithm/simd:movemask",
+        "//folly/algorithm/simd/detail:simd_for_each",
+        "//folly/algorithm/simd/detail:simd_platform",
+        "//folly/lang:bits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "socket_fast_open",
+    srcs = ["SocketFastOpen.cpp"],
+    headers = ["SocketFastOpen.h"],
+    exported_deps = [
+        "//folly/net:network_socket",
+        "//folly/portability:sockets",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "static_singleton_manager",
+    srcs = ["StaticSingletonManager.cpp"],
+    headers = ["StaticSingletonManager.h"],
+    deps = [
+        "//folly/memory:reentrant_allocator",
+    ],
+    exported_deps = [
+        ":singleton",
+        "//folly:c_portability",
+        "//folly:indestructible",
+        "//folly:likely",
+        "//folly:utility",
+        "//folly/lang:thunk",
+        "//folly/lang:type_info",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "thread_local_detail",
+    srcs = ["ThreadLocalDetail.cpp"],
+    headers = ["ThreadLocalDetail.h"],
+    deps = [
+        ":thread_local_globals",
+        "//folly:constexpr_math",
+        "//folly:utility",
+        "//folly/lang:hint",
+        "//folly/memory:sanitize_leak",
+        "//folly/synchronization:call_once",
+    ],
+    exported_deps = [
+        ":static_singleton_manager",
+        ":unique_instance",
+        "//folly:exception",
+        "//folly:function",
+        "//folly:map_util",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:shared_mutex",
+        "//folly:synchronized",
+        "//folly/concurrency/container:atomic_grow_array",
+        "//folly/container:foreach",
+        "//folly/lang:exception",
+        "//folly/memory:malloc",
+        "//folly/portability:pthread",
+        "//folly/synchronization:micro_spin_lock",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/system:at_fork",
+        "//folly/system:thread_id",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "thread_local_globals",
+    srcs = ["thread_local_globals.cpp"],
+    headers = ["thread_local_globals.h"],
+    deps = [
+        ":static_singleton_manager",
+        "//folly/lang:exception",
+        "//folly/portability:pthread",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "turn_sequencer",
+    headers = ["TurnSequencer.h"],
+    exported_deps = [
+        ":futex",
+        "//folly:portability",
+        "//folly/chrono:hardware",
+        "//folly/portability:asm",
+        "//folly/portability:unistd",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "typelist",
+    headers = ["TypeList.h"],
+    exported_deps = [
+        "//folly:traits",
+        "//folly:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "unique_instance",
+    srcs = ["UniqueInstance.cpp"],
+    headers = ["UniqueInstance.h"],
+    deps = [
+        "//folly:demangle",
+        "//folly/lang:exception",
+    ],
+    exported_deps = [
+        ":static_singleton_manager",
+        "//folly:cpp_attributes",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "traponavx512",
+    srcs = ["TrapOnAvx512.cpp"],
+    headers = ["TrapOnAvx512.h"],
+    arch_preprocessor_flags = {
+        "x86_64": [
+            "-msse4.2",
+            "-mavx512f",
+            "-mavx512vl",
+        ],
+    },
+    deps = [
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "tuple",
+    headers = ["tuple.h"],
+    exported_deps = [
+        "//folly:cpp_attributes",
+        "//folly:traits",
+    ],
+)

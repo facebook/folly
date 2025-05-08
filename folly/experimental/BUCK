@@ -1,0 +1,59 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "event_count",
+    headers = [
+        "EventCount.h",
+    ],
+    exported_deps = [
+        "//folly/synchronization:event_count",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "flat_combining_priority_queue",
+    headers = [
+        "FlatCombiningPriorityQueue.h",
+    ],
+    exported_deps = [
+        "//folly/concurrency/container:flat_combining_priority_queue",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "function_scheduler",
+    headers = [
+        "FunctionScheduler.h",
+    ],
+    exported_deps = [
+        "//folly/executors:function_scheduler",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "test_util",
+    headers = [
+        "TestUtil.h",
+    ],
+    exported_deps = [
+        "//folly/testing:test_util",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "threaded_repeating_function_runner",
+    headers = [
+        "ThreadedRepeatingFunctionRunner.h",
+    ],
+    exported_deps = [
+        "//folly/executors:threaded_repeating_function_runner",
+    ],
+)

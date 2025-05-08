@@ -1,0 +1,77 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "folly-addr2line",
+    srcs = [
+        "Addr2Line.cpp",
+    ],
+    deps = [
+        "//folly:range",
+        "//folly/experimental/symbolizer:dwarf",
+        "//folly/experimental/symbolizer:elf",
+        "//folly/experimental/symbolizer:symbolized_frame",
+        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/init:init",
+        "//folly/portability:gflags",
+    ],
+)
+
+fbcode_target(
+    _kind = export_file,
+    name = "libFollySegFault.so.v",
+)
+
+# Build a standlone DSO for use w/ `LD_PRELOAD`.
+fbcode_target(
+    _kind = cpp_binary,
+    name = "libFollySegFault.so",
+    srcs = [
+        "LibSegFault.cpp",
+    ],
+    compiler_flags = [
+        # Allow using the elvis operator.
+        "-Wno-gnu-conditional-omitted-operand",
+    ],
+    dlopen_enabled = True,
+    linker_flags = [
+
+        # Trim runtime `DT_NEEDED` deps.
+        "--as-needed",
+
+        # Use a version script to prevent exporting any symbols.
+        "--version-script=$(location :libFollySegFault.so.v)",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//runtime:fbcode": [
+            # This how we can statically link `libstdc++.so` w/ the fbcode
+            # toolchain.
+            "--push-state",
+            "-Bstatic",
+            "-lstdc++_pic",
+            "--pop-state",
+        ],
+    }),
+    # Statically link libstdc++ to avoid an external dep which could make
+    # this less flexible.
+    os_linker_flags = [
+        (
+            "linux",
+            select({
+                "DEFAULT": [
+                    "-static-libstdc++",
+                ],
+                "ovr_config//runtime:fbcode": [],
+            }),
+        ),
+    ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "//folly:range",
+        "//folly/experimental/symbolizer:signal_handler",
+    ],
+)

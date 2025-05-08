@@ -1,0 +1,103 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "lt_hash",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LtHash.h",
+    ],
+    deps = [
+        "//xplat/folly/crypto:lt_hash",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "lt_hash_sse2",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LtHash.h",
+    ],
+    deps = [
+        "//xplat/folly/crypto:lt_hash_sse2",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "lt_hash_avx2",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LtHash.h",
+    ],
+    deps = [
+        "//xplat/folly/crypto:lt_hash_avx2",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "blake2xb",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Blake2xb.h",
+    ],
+    deps = [
+        "//xplat/folly/crypto:blake2xb",
+    ],
+)
+
+# !!!! fbcode/folly/experimental/crypto/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "blake2xb",
+    headers = [
+        "Blake2xb.h",
+    ],
+    exported_deps = [
+        "//folly/crypto:blake2xb",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "lt_hash",
+    headers = [
+        "LtHash.h",
+    ],
+    exported_deps = [
+        "//folly/crypto:lt_hash",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "lt_hash_sse2",
+    headers = [
+        "LtHash.h",
+    ],
+    exported_deps = [
+        "//folly/crypto:lt_hash_sse2",  # @manual
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "lt_hash_avx2",
+    headers = [
+        "LtHash.h",
+    ],
+    exported_deps = [
+        "//folly/crypto:lt_hash_avx2",  # @manual
+    ],
+)

@@ -1,0 +1,23 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "test_util_test",
+    srcs = ["TestUtilTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:memory",
+        "//folly/portability:fcntl",
+        "//folly/portability:gtest",
+        "//folly/portability:stdlib",
+        "//folly/portability:unistd",
+        "//folly/testing:test_util",
+    ],
+    external_deps = [
+        "glog",
+        ("boost", None, "boost_algorithm"),
+    ],
+)

@@ -1,0 +1,98 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "atomic_queue",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "AtomicQueue.h",
+    ],
+    exported_deps = [
+        "//xplat/folly/channels/detail:atomic_queue",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "channel_bridge",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ChannelBridge.h",
+    ],
+    exported_deps = [
+        "//xplat/folly/channels/detail:channel_bridge",
+    ],
+)
+
+# !!!! fbcode/folly/experimental/channels/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "atomic_queue",
+    headers = [
+        "AtomicQueue.h",
+    ],
+    exported_deps = [
+        "//folly/channels/detail:atomic_queue",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "channel_bridge",
+    headers = [
+        "ChannelBridge.h",
+    ],
+    exported_deps = [
+        "//folly/channels/detail:channel_bridge",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "intrusive_ptr",
+    headers = [
+        "IntrusivePtr.h",
+    ],
+    exported_deps = [
+        "//folly/channels/detail:intrusive_ptr",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "multiplexer_traits",
+    headers = [
+        "MultiplexerTraits.h",
+    ],
+    exported_deps = [
+        "//folly/channels/detail:multiplexer_traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "pointer_variant",
+    headers = [
+        "PointerVariant.h",
+    ],
+    exported_deps = [
+        "//folly/channels/detail:pointer_variant",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "utility",
+    headers = [
+        "Utility.h",
+    ],
+    exported_deps = [
+        "//folly/channels/detail:utility",
+    ],
+)

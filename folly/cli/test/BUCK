@@ -1,0 +1,83 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "nested_command_line_app_test",
+    srcs = ["NestedCommandLineAppTest.cpp"],
+    headers = [],
+    env = {
+        "FOLLY_NESTED_CMDLINE_HELPER": "$(exe_target :nested_command_line_app_test_helper)",
+    },
+    resources = [
+    ],
+    deps = [
+        "//folly:subprocess",
+        "//folly/cli:program_options",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "nested_command_line_app_test_helper",
+    srcs = ["NestedCommandLineAppTestHelper.cpp"],
+    headers = [],
+    deps = [
+        "//folly/cli:program_options",
+        "//folly/portability:gflags",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "program_options_test",
+    srcs = ["ProgramOptionsTest.cpp"],
+    headers = [],
+    env = {
+        "FOLLY_PROGRAM_OPTIONS_TEST_HELPER": "$(exe_target :program_options_test_helper)",
+    },
+    deps = [
+        "//folly:file_util",
+        "//folly:subprocess",
+        "//folly/cli:program_options",
+        "//folly/experimental/io:fs_util",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "program_options_test_helper",
+    srcs = ["ProgramOptionsTestHelper.cpp"],
+    headers = [],
+    deps = [
+        "//folly:conv",
+        "//folly/cli:program_options",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "nested_command_line_app_example",
+    srcs = ["NestedCommandLineAppExample.cpp"],
+    headers = [],
+    deps = [
+        "//folly:scope_guard",
+        "//folly:string",
+        "//folly/cli:program_options",
+    ],
+)

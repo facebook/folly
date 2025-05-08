@@ -1,0 +1,16 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "benchmark_compare",
+    srcs = ["BenchmarkCompare.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:file_util",
+        "//folly/init:init",
+        "//folly/json:dynamic",
+    ],
+)

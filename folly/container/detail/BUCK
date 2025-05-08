@@ -1,0 +1,282 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "FBANDROID_CPPFLAGS",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("ios_app_infra")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "bit_iterator_detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "BitIteratorDetail.h",
+    ],
+    deps = [
+        "//third-party/boost:boost",
+        "//xplat/folly:portability_sys_types",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "f14_intrinsics_availability",
+    exported_preprocessor_flags = select({
+        "//xplat/folly/buck_config:folly-f14-fallback-disabled": [
+            "-DFOLLY_F14_FALLBACK_DISABLED=1",
+        ],
+        "DEFAULT": [],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "F14IntrinsicsAvailability.h",
+    ],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "f14_hash_detail",
+    srcs = [
+        "F14Table.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "F14MapFallback.h",
+        "F14Policy.h",
+        "F14SetFallback.h",
+        "F14Table.h",
+    ],
+    deps = [
+        "//xplat/folly:bits",
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:functional_invoke",
+        "//xplat/folly:hash_hash",
+        "//xplat/folly:likely",
+        "//xplat/folly:memory",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_builtins",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:traits",
+        "//xplat/folly:unit",
+        "//xplat/folly/container:heterogeneous_access",
+        "//xplat/folly/container/detail:f14_defaults",
+        "//xplat/folly/container/detail:f14_intrinsics_availability",
+        "//xplat/folly/container/detail:f14_mask",
+        "//xplat/folly/container/detail:util",
+        "//xplat/folly/lang:align",
+        "//xplat/folly/lang:assume",
+        "//xplat/folly/lang:exception",
+        "//xplat/folly/lang:pretty",
+        "//xplat/folly/lang:safe_assert",
+    ],
+    exported_deps = [
+        "//xplat/folly/memory:malloc",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "util",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Util.h",
+    ],
+    deps = [
+        "//xplat/folly:functional_apply_tuple",
+        "//xplat/folly:traits",
+        "//xplat/folly/container:iterator",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "f14_mask",
+    fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "F14Mask.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:bits",
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability",
+        "//xplat/folly/lang:assume",
+        "//xplat/folly/lang:safe_assert",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "f14_defaults",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "F14Defaults.h",
+    ],
+    deps = [
+        "//xplat/folly/container:heterogeneous_access_fwd",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "tape_detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "tape_detail.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly/container:iterator",
+        "//xplat/folly/container:range_traits",
+        "//xplat/folly/lang:hint",
+        "//xplat/folly/memory:uninitialized_memory_hacks",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "bool_wrapper",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "BoolWrapper.h",
+    ],
+)
+
+# !!!! fbcode/folly/container/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bit_iterator_detail",
+    headers = ["BitIteratorDetail.h"],
+    exported_deps = [
+        "//folly/portability:sys_types",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "f14_intrinsics_availability",
+    headers = [
+        "F14IntrinsicsAvailability.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "f14_defaults",
+    headers = [
+        "F14Defaults.h",
+    ],
+    exported_deps = [
+        "//folly/container:heterogeneous_access_fwd",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "f14_hash_detail",
+    srcs = [
+        "F14Table.cpp",
+    ],
+    headers = [
+        "F14MapFallback.h",
+        "F14Policy.h",
+        "F14SetFallback.h",
+        "F14Table.h",
+    ],
+    exported_deps = [
+        ":f14_defaults",
+        ":f14_intrinsics_availability",
+        ":f14_mask",
+        ":util",
+        "//folly:bits",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:traits",
+        "//folly:unit",
+        "//folly/container:heterogeneous_access",
+        "//folly/functional:invoke",
+        "//folly/hash:hash",
+        "//folly/lang:align",
+        "//folly/lang:assume",
+        "//folly/lang:exception",
+        "//folly/lang:pretty",
+        "//folly/lang:safe_assert",
+        "//folly/memory:malloc",
+        "//folly/portability:builtins",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "f14_mask",
+    headers = [
+        "F14Mask.h",
+    ],
+    exported_deps = [
+        ":f14_intrinsics_availability",
+        "//folly:bits",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:portability",
+        "//folly/lang:assume",
+        "//folly/lang:safe_assert",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "tape_detail",
+    headers = [
+        "tape_detail.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:range",
+        "//folly/container:iterator",
+        "//folly/container:range_traits",
+        "//folly/lang:hint",
+        "//folly/memory:uninitialized_memory_hacks",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "util",
+    headers = [
+        "Util.h",
+    ],
+    exported_deps = [
+        "//folly:traits",
+        "//folly/container:iterator",
+        "//folly/functional:apply_tuple",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bool_wrapper",
+    headers = [
+        "BoolWrapper.h",
+    ],
+)

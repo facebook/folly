@@ -1,0 +1,21 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+load("@fbsource//tools/build_defs:fb_python_library.bzl", "fb_python_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = fb_python_library,
+    name = "co_bt",
+    srcs = ["co_bt.py"],
+    visibility = ["PUBLIC"],
+)
+
+# !!!! fbcode/folly/coro/scripts/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = python_library,
+    # @autodeps-skip
+    name = "co_bt",
+    srcs = ["co_bt.py"],
+)

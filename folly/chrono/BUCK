@@ -1,0 +1,78 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "clock",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Clock.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "conv",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Conv.h",
+    ],
+    deps = [
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:conv",
+        "//xplat/folly:expected",
+        "//xplat/folly:portability_sys_time",
+        "//xplat/folly:portability_sys_types",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "hardware",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Hardware.h",
+    ],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+# !!!! fbcode/folly/chrono/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "clock",
+    headers = ["Clock.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "conv",
+    headers = ["Conv.h"],
+    exported_deps = [
+        "//folly:constexpr_math",
+        "//folly:conv",
+        "//folly:expected",
+        "//folly:utility",
+        "//folly/portability:sys_time",
+        "//folly/portability:sys_types",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "hardware",
+    headers = ["Hardware.h"],
+    exported_deps = [
+        "//folly:portability",
+    ],
+)

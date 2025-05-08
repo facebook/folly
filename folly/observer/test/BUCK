@@ -1,0 +1,39 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "observer_test",
+    srcs = ["ObserverTest.cpp"],
+    headers = [],
+    labels = ["oss-broken"],
+    deps = [
+        "//folly:demangle",
+        "//folly:singleton",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:fiber_manager_map",
+        "//folly/observer:core_cached_observer",
+        "//folly/observer:hazptr_observer",
+        "//folly/observer:observer",
+        "//folly/observer:read_mostly_tl_observer",
+        "//folly/observer:simple_observable",
+        "//folly/observer:with_jitter",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "observer_benchmark",
+    srcs = ["ObserverBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/init:init",
+        "//folly/observer:observer",
+    ],
+)

@@ -1,0 +1,101 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "bit_vector_coding",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "BitVectorCoding.h",
+    ],
+    deps = [
+        ":coding_detail",
+        "//third-party/glog:glog",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly/compression:instructions",
+        "//xplat/folly/compression:select64",
+        "//xplat/folly/lang:bits",
+        "//xplat/folly/lang:bits_class",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "coding_detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "CodingDetail.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "elias_fano_coding",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "EliasFanoCoding.h",
+    ],
+    deps = [
+        ":coding_detail",
+        "//third-party/glog:glog",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly/compression:instructions",
+        "//xplat/folly/compression:select64",
+        "//xplat/folly/lang:assume",
+        "//xplat/folly/lang:bits",
+    ],
+)
+
+# !!!! fbcode/folly/compression/elias_fano/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "coding_detail",
+    headers = ["CodingDetail.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bit_vector_coding",
+    headers = ["BitVectorCoding.h"],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/compression:instructions",
+        "//folly/compression:select64",
+        "//folly/compression/elias_fano:coding_detail",
+        "//folly/lang:bits",
+        "//folly/lang:bits_class",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "elias_fano_coding",
+    headers = ["EliasFanoCoding.h"],
+    exported_deps = [
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/compression:instructions",
+        "//folly/compression:select64",
+        "//folly/compression/elias_fano:coding_detail",
+        "//folly/lang:assume",
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

@@ -1,0 +1,21 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "result_test",
+    srcs = ["result_test.cpp"],
+    deps = ["//folly/result:gtest_helpers"],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "try_test",
+    srcs = ["try_test.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/result:try",
+    ],
+)

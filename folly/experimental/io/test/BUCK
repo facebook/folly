@@ -1,0 +1,36 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "io_test_temp_file_util_lib",
+    headers = [
+        "IoTestTempFileUtil.h",
+    ],
+    exported_deps = [
+        "//folly/io/async/test:io_test_temp_file_util_lib",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "async_base_test_lib",
+    headers = [
+        "AsyncBaseTestLib.h",
+    ],
+    exported_deps = [
+        "//folly/io/async/test:async_base_test_lib",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "mux_io_thread_pool_executor_test_lib",
+    headers = [
+    ],
+    exported_deps = [
+        "//folly/io/async/test:mux_io_thread_pool_executor_test_lib",
+    ],
+)

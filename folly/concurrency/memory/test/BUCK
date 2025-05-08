@@ -1,0 +1,106 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "atomic_read_mostly_main_ptr_benchmark",
+    srcs = ["AtomicReadMostlyMainPtrBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/concurrency/memory:atomic_read_mostly_main_ptr",
+        "//folly/portability:gflags",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "atomic_read_mostly_main_ptr_test",
+    srcs = ["AtomicReadMostlyMainPtrTest.cpp"],
+    deps = [
+        "//folly/concurrency/memory:atomic_read_mostly_main_ptr",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "read_mostly_shared_ptr_benchmark",
+    srcs = ["ReadMostlySharedPtrBenchmark.cpp"],
+    headers = [],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:memory",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
+        "//folly/portability:gflags",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "read_mostly_shared_ptr_stress_test",
+    srcs = ["ReadMostlySharedPtrStressTest.cpp"],
+    headers = [],
+    labels = ["heavyweight"],
+    deps = [
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "read_mostly_shared_ptr_test",
+    srcs = ["ReadMostlySharedPtrTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:memory",
+        "//folly/concurrency/memory:read_mostly_shared_ptr",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "primary_ptr_test",
+    srcs = ["PrimaryPtrTest.cpp"],
+    headers = [],
+    labels = ["oss-broken"],
+    deps = [
+        "//folly/concurrency/memory:primary_ptr",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "ref_count_benchmark",
+    srcs = ["RefCountBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/concurrency/memory:tl_ref_count",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "ref_count_test",
+    srcs = ["RefCountTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/concurrency/memory:tl_ref_count",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/synchronization/test:barrier",
+    ],
+)

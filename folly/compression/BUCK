@@ -1,0 +1,311 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "compression",
+    srcs = [
+        "Compression.cpp",
+        "Zlib.cpp",
+        "Zstd.cpp",
+    ],
+    compiler_flags = [
+        "-DLZ4_STATIC_LINKING_ONLY",
+        "-DLZ4_HC_STATIC_LINKING_ONLY",
+        "-DLZ4F_STATIC_LINKING_ONLY",
+    ],
+    fbcode_external_deps = [
+        "glog",
+        "snappy",
+        ("bzip2", None, "bz2"),
+        ("xz", None, "lzma"),
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Compression.h",
+        "Utils.h",
+        "Zlib.h",
+        "Zstd.h",
+    ],
+    deps = [
+        "fbsource//third-party/lz4:lz4",
+        ":compression_context_pool_singletons",
+        "//third-party/glog:glog",
+        "//xplat/folly:conv",
+        "//xplat/folly:portability_windows",
+        "//xplat/folly:random",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:stop_watch",
+        "//xplat/folly:varint",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            "//third-party/bzip2:bzlib2",
+            "//xplat/third-party/snappy:snappy",
+            "//xplat/third-party/xz:lzma",
+        ],
+    }),
+    exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "//xplat/folly:memory",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly/lang:bits",
+        "//xplat/third-party/linker_lib:z",
+        "//xplat/third-party/zstd:zstd",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "compression_context_pool",
+    srcs = [],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "CompressionContextPool.h",
+        "CompressionCoreLocalContextPool.h",
+    ],
+    deps = [
+        "//xplat/folly/memory:malloc",
+    ],
+    exported_deps = [
+        "//xplat/folly:memory",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/concurrency:cache_locality",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "compression_context_pool_singletons",
+    srcs = ["CompressionContextPoolSingletons.cpp"],
+    cxx_deps = [
+        "//xplat/folly/memory:jemalloc_huge_page_allocator",
+    ],
+    fbandroid_preprocessor_flags = [
+        "-DFOLLY_COMPRESSION_USE_HUGEPAGES=0",
+    ],
+    fbcode_deps = [
+        "//xplat/folly/memory:jemalloc_huge_page_allocator",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["CompressionContextPoolSingletons.h"],
+    deps = ["//xplat/folly:portability"],
+    exported_deps = [
+        ":compression_context_pool",
+        "//xplat/folly:portability_config",
+        "//xplat/folly/memory:malloc",
+        "//xplat/third-party/zstd:zstd",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "quotient_multiset",
+    srcs = [
+        "QuotientMultiSet.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "QuotientMultiSet.h",
+        "QuotientMultiSet-inl.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        ":select64",
+        "//third-party/glog:glog",
+        "//xplat/folly:format",
+        "//xplat/folly:math",
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly/compression:instructions",
+        "//xplat/folly/lang:bits",
+        "//xplat/folly/lang:bits_class",
+        "//xplat/folly/lang:safe_assert",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "instructions",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Instructions.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:cpu_id",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_builtins",
+        "//xplat/folly/lang:assume",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "select64",
+    srcs = [
+        "Select64.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Select64.h",
+    ],
+    deps = [
+        ":instructions",
+        "//third-party/glog:glog",
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:portability",
+        "//xplat/folly:utility",
+    ],
+)
+
+# !!!! fbcode/folly/compression/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "compression",
+    srcs = [
+        "Compression.cpp",
+        "Zlib.cpp",
+        "Zstd.cpp",
+    ],
+    headers = [
+        "Compression.h",
+        "Utils.h",
+        "Zlib.h",
+        "Zstd.h",
+    ],
+    compiler_flags = [
+        "-DLZ4_STATIC_LINKING_ONLY",
+        "-DLZ4_HC_STATIC_LINKING_ONLY",
+        "-DLZ4F_STATIC_LINKING_ONLY",
+    ],
+    deps = [
+        "fbsource//third-party/lz4:lz4",
+        ":compression_context_pool_singletons",
+        "//folly:conv",
+        "//folly:random",
+        "//folly:scope_guard",
+        "//folly:stop_watch",
+        "//folly:varint",
+        "//folly/portability:windows",
+    ],
+    exported_deps = [
+        "fbsource//third-party/zstd:zstd",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/io:iobuf",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        "glog",
+        "snappy",
+        ("bzip2", None, "bz2"),
+        ("xz", None, "lzma"),
+    ],
+    exported_external_deps = [
+        ("zlib", None, "z"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "compression_context_pool",
+    srcs = [],
+    headers = [
+        "CompressionContextPool.h",
+        "CompressionCoreLocalContextPool.h",
+    ],
+    exported_deps = [
+        "//folly:memory",
+        "//folly:synchronized",
+        "//folly/concurrency:cache_locality",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "compression_context_pool_singletons",
+    srcs = ["CompressionContextPoolSingletons.cpp"],
+    headers = ["CompressionContextPoolSingletons.h"],
+    deps = [
+        "//folly:portability",
+        "//folly/memory:jemalloc_huge_page_allocator",
+        "//folly/memory:malloc",
+    ],
+    exported_deps = [
+        "fbsource//third-party/zstd:zstd",
+        ":compression_context_pool",
+        "//folly/portability:config",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "quotient_multiset",
+    srcs = [
+        "QuotientMultiSet.cpp",
+    ],
+    headers = [
+        "QuotientMultiSet.h",
+        "QuotientMultiSet-inl.h",
+    ],
+    deps = [
+        "//folly:math",
+    ],
+    exported_deps = [
+        "//folly:format",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/compression:instructions",
+        "//folly/compression:select64",
+        "//folly/io:iobuf",
+        "//folly/lang:bits",
+        "//folly/lang:bits_class",
+        "//folly/lang:safe_assert",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "instructions",
+    headers = ["Instructions.h"],
+    exported_deps = [
+        "//folly:cpu_id",
+        "//folly:portability",
+        "//folly/lang:assume",
+        "//folly/portability:builtins",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "select64",
+    srcs = ["Select64.cpp"],
+    headers = ["Select64.h"],
+    deps = [
+        "//folly:constexpr_math",
+        "//folly:utility",
+    ],
+    exported_deps = [
+        ":instructions",
+        "//folly:portability",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

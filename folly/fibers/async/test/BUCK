@@ -1,0 +1,29 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_test",
+    srcs = ["AsyncTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/coro:blocking_wait",
+        "//folly/coro:sleep",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:fiber_manager_map",
+        "//folly/fibers/async:baton",
+        "//folly/fibers/async:collect",
+        "//folly/fibers/async:core",
+        "//folly/fibers/async:fiber_manager",
+        "//folly/fibers/async:future",
+        "//folly/fibers/async:promise",
+        "//folly/fibers/async:stack_tracing",
+        "//folly/fibers/async:task",
+        "//folly/fibers/async:wait_utils",
+        "//folly/io/async:async_base",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

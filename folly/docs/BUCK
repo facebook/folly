@@ -1,0 +1,104 @@
+load("@fbcode//folly/docs:defs.bzl", "copy", "html")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+
+#
+# Actual listing of source files
+#
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = html,
+    src = "AtomicHashMap.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "Benchmark.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "Conv.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "Dynamic.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "FBString.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "FBVector.md",
+    support = ["Fbvector--graphical_solutions.png"],
+)
+
+fbcode_target(
+    _kind = html,
+    src = "Format.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "GroupVarint.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "Histogram.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "PackedSyncPtr.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "Poly.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "ProducerConsumerQueue.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "SmallLocks.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "small_vector.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "Synchronized.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "ThreadCachedInt.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "ThreadLocal.md",
+)
+
+fbcode_target(
+    _kind = html,
+    src = "Traits.md",
+)
+
+fbcode_target(
+    _kind = copy,
+    path = "style.css",
+)

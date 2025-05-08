@@ -1,0 +1,773 @@
+load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "for_each",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ForEach.h",
+        "ForEach-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:functional_invoke",
+        "//xplat/folly/fibers:core",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "add_tasks",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "AddTasks.h",
+        "AddTasks-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:optional",
+        "//xplat/folly:try",
+        "//xplat/folly/fibers:core",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "guard_page_allocator",
+    srcs = [
+        "GuardPageAllocator.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "GuardPageAllocator.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:portability_sys_mman",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:singleton",
+        "//xplat/folly:spin_lock",
+        "//xplat/folly:synchronized",
+        "//xplat/third-party/linker_lib:dl",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "generic_baton",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "GenericBaton.h",
+    ],
+    deps = [
+        "//xplat/folly:synchronization_baton",
+        "//xplat/folly/fibers:core",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "core",
+    srcs = [
+        "Baton.cpp",
+        "Fiber.cpp",
+        "FiberManager.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Baton.h",
+        "Baton-inl.h",
+        "Fiber.h",
+        "Fiber-inl.h",
+        "FiberManagerInternal.h",
+        "FiberManagerInternal-inl.h",
+        "Promise.h",
+        "Promise-inl.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:portability_asm",
+        "//xplat/folly:portability_config",
+        "//xplat/folly:portability_sys_syscall",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:singleton_thread_local",
+        "//xplat/folly:synchronization_sanitize_thread",
+        "//xplat/folly/detail:memory_idler",
+        "//xplat/folly/memory:sanitize_address",
+    ],
+    exported_deps = [
+        "//xplat/folly:atomic_linked_list",
+        "//xplat/folly:c_portability",
+        "//xplat/folly:executor",
+        "//xplat/folly:function",
+        "//xplat/folly:functional_invoke",
+        "//xplat/folly:intrusive_list",
+        "//xplat/folly:likely",
+        "//xplat/folly:memory",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:try",
+        "//xplat/folly/detail:futex",
+        "//xplat/folly/executors:execution_observer",
+        "//xplat/folly/experimental/coro:coroutine",
+        "//xplat/folly/fibers:boost_context_compatibility",
+        "//xplat/folly/fibers:guard_page_allocator",
+        "//xplat/folly/fibers:loop_controller",
+        "//xplat/folly/fibers:traits",
+        "//xplat/folly/io/async:async_base",
+        "//xplat/folly/io/async:request_context",
+        "//xplat/folly/lang:thunk",
+        "//xplat/folly/tracing:async_stack",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "atomic_batch_dispatcher",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "AtomicBatchDispatcher.h",
+        "AtomicBatchDispatcher-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:function",
+        "//xplat/folly:futures_core",
+        "//xplat/folly:optional",
+        "//xplat/folly/fibers/detail:atomic_batch_dispatcher",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "traits",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "traits.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "boost_context_compatibility",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "BoostContextCompatibility.h",
+    ],
+    deps = [
+        "//third-party/boost:boost",
+        "//third-party/boost:boost_context",
+        "//third-party/glog:glog",
+        "//xplat/folly:function",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "semaphore",
+    srcs = [
+        "Semaphore.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Semaphore.h",
+    ],
+    deps = [
+        "//xplat/folly:futures_core",
+        "//xplat/folly:intrusive_list",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/coro:task",
+        "//xplat/folly/coro:timeout",
+        "//xplat/folly/fibers:core",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "semaphore_base",
+    srcs = [
+        "SemaphoreBase.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SemaphoreBase.h",
+    ],
+    deps = [
+        "//xplat/folly:futures_core",
+        "//xplat/folly:intrusive_list",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/experimental/coro:task",
+        "//xplat/folly/fibers:core",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "loop_controller",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LoopController.h",
+    ],
+    deps = [
+        "//xplat/folly/io/async:async_base_fwd",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "executor_based_loop_controller",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ExecutorBasedLoopController.h",
+    ],
+    deps = [
+        "//xplat/folly:executor",
+        "//xplat/folly/fibers:loop_controller",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "batch_dispatcher",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "BatchDispatcher.h",
+    ],
+    deps = [
+        "//xplat/folly:function",
+        "//xplat/folly:futures_core",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "event_base_loop_controller",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "EventBaseLoopController.h",
+        "EventBaseLoopController-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:cancellation_token",
+        "//xplat/folly:memory",
+        "//xplat/folly/fibers:core",
+        "//xplat/folly/fibers:executor_based_loop_controller",
+        "//xplat/folly/fibers:loop_controller",
+        "//xplat/folly/io/async:async_base",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "timed_mutex",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "CallOnce.h",
+        "TimedMutex.h",
+        "TimedMutex-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:intrusive_list",
+        "//xplat/folly:portability",
+        "//xplat/folly:spin_lock",
+        "//xplat/folly:synchronization_call_once",
+        "//xplat/folly/fibers:generic_baton",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "fibers",
+    feature = triage_InfrastructureSupermoduleOptou,
+    deps = [
+        "//xplat/folly/fibers:add_tasks",
+        "//xplat/folly/fibers:atomic_batch_dispatcher",
+        "//xplat/folly/fibers:batch_dispatcher",
+        "//xplat/folly/fibers:batch_semaphore",
+        "//xplat/folly/fibers:boost_context_compatibility",
+        "//xplat/folly/fibers:core",
+        "//xplat/folly/fibers:core_manager",
+        "//xplat/folly/fibers:event_base_loop_controller",
+        "//xplat/folly/fibers:fiber_manager_map",
+        "//xplat/folly/fibers:for_each",
+        "//xplat/folly/fibers:generic_baton",
+        "//xplat/folly/fibers:guard_page_allocator",
+        "//xplat/folly/fibers:loop_controller",
+        "//xplat/folly/fibers:semaphore",
+        "//xplat/folly/fibers:semaphore_base",
+        "//xplat/folly/fibers:simple_loop_controller",
+        "//xplat/folly/fibers:timed_mutex",
+        "//xplat/folly/fibers:traits",
+        "//xplat/folly/fibers:when_n",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "batch_semaphore",
+    srcs = [
+        "BatchSemaphore.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "BatchSemaphore.h",
+    ],
+    deps = [
+        "//xplat/folly/fibers:semaphore_base",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "simple_loop_controller",
+    srcs = [
+        "SimpleLoopController.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SimpleLoopController.h",
+    ],
+    deps = [
+        "//xplat/folly:function",
+        "//xplat/folly:likely",
+        "//xplat/folly/fibers:core_manager",
+        "//xplat/folly/fibers:loop_controller",
+        "//xplat/folly/io/async:async_base",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "executor_loop_controller",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ExecutorLoopController.h",
+        "ExecutorLoopController-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:executor",
+        "//xplat/folly:futures_core",
+        "//xplat/folly/fibers:core",
+        "//xplat/folly/fibers:executor_based_loop_controller",
+        "//xplat/folly/fibers:loop_controller",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "core_manager",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "FiberManager.h",
+        "FiberManager-inl.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:functional_invoke",
+        "//xplat/folly:futures_core",
+        "//xplat/folly/fibers:core",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "fiber_manager_map",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "FiberManagerMap.h",
+        "FiberManagerMap-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:function",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:singleton_thread_local",
+        "//xplat/folly:synchronization_relaxed_atomic",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/fibers:core",
+        "//xplat/folly/fibers:event_base_loop_controller",
+        "//xplat/folly/io/async:async_base",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "when_n",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "WhenN.h",
+        "WhenN-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:functional_invoke",
+        "//xplat/folly:optional",
+        "//xplat/folly/fibers:core",
+        "//xplat/folly/fibers:for_each",
+    ],
+)
+
+# !!!! fbcode/folly/fibers/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "add_tasks",
+    headers = [
+        "AddTasks.h",
+        "AddTasks-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly:optional",
+        "//folly:try",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "atomic_batch_dispatcher",
+    headers = [
+        "AtomicBatchDispatcher.h",
+        "AtomicBatchDispatcher-inl.h",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:function",
+        "//folly:optional",
+        "//folly/fibers/detail:atomic_batch_dispatcher",
+        "//folly/futures:core",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "batch_dispatcher",
+    headers = ["BatchDispatcher.h"],
+    exported_deps = [
+        "//folly:function",
+        "//folly/futures:core",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "boost_context_compatibility",
+    headers = ["BoostContextCompatibility.h"],
+    exported_deps = [
+        "//folly:function",
+    ],
+    exported_external_deps = [
+        "glog",
+        ("boost", None, "boost_context"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "core",
+    srcs = [
+        "Baton.cpp",
+        "Fiber.cpp",
+        "FiberManager.cpp",
+    ],
+    auto_headers = AutoHeaders.NONE,
+    headers = [
+        "Baton.h",
+        "Baton-inl.h",
+        "Fiber.h",
+        "Fiber-inl.h",
+        "FiberManagerInternal.h",
+        "FiberManagerInternal-inl.h",
+        "Promise.h",
+        "Promise-inl.h",
+    ],
+    deps = [
+        "//folly:constexpr_math",
+        "//folly:singleton_thread_local",
+        "//folly/detail:memory_idler",
+        "//folly/memory:sanitize_address",
+        "//folly/portability:asm",
+        "//folly/portability:config",
+        "//folly/portability:sys_syscall",
+        "//folly/portability:unistd",
+        "//folly/synchronization:sanitize_thread",
+    ],
+    exported_deps = [
+        ":boost_context_compatibility",
+        ":guard_page_allocator",
+        ":loop_controller",
+        ":traits",
+        "//folly:atomic_linked_list",
+        "//folly:c_portability",
+        "//folly:executor",
+        "//folly:function",
+        "//folly:intrusive_list",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:try",
+        "//folly/coro:coroutine",
+        "//folly/detail:async_trace",
+        "//folly/detail:futex",
+        "//folly/executors:execution_observer",
+        "//folly/functional:invoke",
+        "//folly/io/async:async_base",
+        "//folly/io/async:request_context",
+        "//folly/lang:thunk",
+        "//folly/portability:pthread",
+        "//folly/tracing:async_stack",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "core_manager",
+    headers = [
+        "FiberManager.h",
+        "FiberManager-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly/functional:invoke",
+        "//folly/futures:core",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "event_base_loop_controller",
+    headers = [
+        "EventBaseLoopController.h",
+        "EventBaseLoopController-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":executor_based_loop_controller",
+        "//folly:cancellation_token",
+        "//folly:memory",
+        "//folly/io/async:async_base",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "executor_loop_controller",
+    headers = [
+        "ExecutorLoopController.h",
+        "ExecutorLoopController-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":executor_based_loop_controller",
+        "//folly:executor",
+        "//folly:scope_guard",
+        "//folly/futures:core",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "fiber_manager_map",
+    headers = [
+        "FiberManagerMap.h",
+        "FiberManagerMap-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":event_base_loop_controller",
+        "//folly:function",
+        "//folly:scope_guard",
+        "//folly:singleton_thread_local",
+        "//folly:synchronized",
+        "//folly/container:f14_hash",
+        "//folly/io/async:async_base",
+        "//folly/synchronization:relaxed_atomic",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "fibers",
+    exported_deps = [
+        ":add_tasks",  # @manual
+        ":atomic_batch_dispatcher",  # @manual
+        ":batch_dispatcher",  # @manual
+        ":batch_semaphore",  # @manual
+        ":boost_context_compatibility",  # @manual
+        ":core",  # @manual
+        ":core_manager",  # @manual
+        ":event_base_loop_controller",  # @manual
+        ":fiber_manager_map",  # @manual
+        ":for_each",  # @manual
+        ":generic_baton",  # @manual
+        ":guard_page_allocator",  # @manual
+        ":loop_controller",  # @manual
+        ":semaphore",  # @manual
+        ":semaphore_base",  # @manual
+        ":simple_loop_controller",  # @manual
+        ":timed_mutex",  # @manual
+        ":traits",  # @manual
+        ":when_n",  # @manual
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "for_each",
+    headers = [
+        "ForEach.h",
+        "ForEach-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//folly/functional:invoke",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "generic_baton",
+    headers = ["GenericBaton.h"],
+    exported_deps = [
+        ":core",
+        "//folly/synchronization:baton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "guard_page_allocator",
+    srcs = ["GuardPageAllocator.cpp"],
+    headers = ["GuardPageAllocator.h"],
+    deps = [
+        "//folly:singleton",
+        "//folly:spin_lock",
+        "//folly:synchronized",
+        "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        "glog",
+        ("glibc", None, "dl"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "loop_controller",
+    headers = ["LoopController.h"],
+    exported_deps = [
+        "//folly/io/async:async_base_fwd",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "executor_based_loop_controller",
+    headers = ["ExecutorBasedLoopController.h"],
+    exported_deps = [
+        ":loop_controller",
+        "//folly:executor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "semaphore",
+    srcs = ["Semaphore.cpp"],
+    headers = ["Semaphore.h"],
+    exported_deps = [
+        ":core",
+        "//folly:intrusive_list",
+        "//folly:synchronized",
+        "//folly/coro:task",
+        "//folly/coro:timeout",
+        "//folly/futures:core",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "batch_semaphore",
+    srcs = ["BatchSemaphore.cpp"],
+    headers = ["BatchSemaphore.h"],
+    exported_deps = [
+        ":semaphore_base",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "semaphore_base",
+    srcs = ["SemaphoreBase.cpp"],
+    headers = ["SemaphoreBase.h"],
+    exported_deps = [
+        ":core",
+        "//folly:intrusive_list",
+        "//folly:synchronized",
+        "//folly/coro:task",
+        "//folly/futures:core",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "simple_loop_controller",
+    srcs = ["SimpleLoopController.cpp"],
+    headers = ["SimpleLoopController.h"],
+    deps = [
+        "//folly/io/async:async_base",
+    ],
+    exported_deps = [
+        ":core_manager",
+        ":loop_controller",
+        "//folly:function",
+        "//folly:likely",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "timed_mutex",
+    headers = [
+        "CallOnce.h",
+        "TimedMutex.h",
+        "TimedMutex-inl.h",
+    ],
+    exported_deps = [
+        ":generic_baton",
+        "//folly:intrusive_list",
+        "//folly:portability",
+        "//folly:spin_lock",
+        "//folly/synchronization:call_once",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "traits",
+    headers = ["traits.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "when_n",
+    headers = [
+        "WhenN.h",
+        "WhenN-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":for_each",
+        "//folly:optional",
+        "//folly/functional:invoke",
+    ],
+)

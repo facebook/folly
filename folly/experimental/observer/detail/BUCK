@@ -1,0 +1,60 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "observer_manager",
+    feature = triage_InfrastructureSupermoduleOptou,
+    force_static = False,
+    raw_headers = [
+        "Core.h",
+        "ObserverManager.h",
+    ],
+    exported_deps = [
+        "//xplat/folly/observer/detail:observer_manager",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "graph_cycle_detector",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "GraphCycleDetector.h",
+    ],
+    deps = [
+        "//xplat/folly/observer/detail:graph_cycle_detector",
+    ],
+)
+
+# !!!! fbcode/folly/experimental/observer/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "graph_cycle_detector",
+    headers = [
+        "GraphCycleDetector.h",
+    ],
+    exported_deps = [
+        "//folly/observer/detail:graph_cycle_detector",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "observer_manager",
+    headers = [
+        "Core.h",
+        "ObserverManager.h",
+    ],
+    exported_deps = [
+        "//folly/observer/detail:observer_manager",
+    ],
+)

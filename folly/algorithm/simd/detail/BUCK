@@ -1,0 +1,157 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "simd_platform",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SimdPlatform.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly/algorithm/simd:ignore",
+        "//xplat/folly/algorithm/simd:movemask",
+        "//xplat/folly/algorithm/simd/detail:unroll_utils",
+        "//xplat/folly/lang:bits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "simd_any_of",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SimdAnyOf.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly/algorithm/simd/detail:simd_for_each",
+        "//xplat/folly/algorithm/simd/detail:unroll_utils",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "simd_contains_impl",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["ContainsImpl.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly/algorithm/simd/detail:simd_any_of",
+        "//xplat/folly/algorithm/simd/detail:simd_platform",
+        "//xplat/folly/container:span",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "simd_for_each",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SimdForEach.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly/algorithm/simd:ignore",
+        "//xplat/folly/algorithm/simd/detail:unroll_utils",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "traits",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Traits.h"],
+    exported_deps = [
+        "//xplat/folly:memory",
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "unroll_utils",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["UnrollUtils.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:traits",
+    ],
+)
+
+# !!!! fbcode/folly/algorithm/simd/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+######################################################################
+# Libraries
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "simd_any_of",
+    headers = ["SimdAnyOf.h"],
+    exported_deps = [
+        ":simd_for_each",
+        ":unroll_utils",
+        "//folly:c_portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "simd_platform",
+    headers = ["SimdPlatform.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/algorithm/simd:ignore",
+        "//folly/algorithm/simd:movemask",
+        "//folly/lang:safe_assert",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "simd_contains_impl",
+    headers = ["ContainsImpl.h"],
+    exported_deps = [
+        ":simd_any_of",
+        ":simd_platform",
+        "//folly:c_portability",
+        "//folly/container:span",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "simd_for_each",
+    headers = ["SimdForEach.h"],
+    exported_deps = [
+        ":unroll_utils",
+        "//folly:c_portability",
+        "//folly:traits",
+        "//folly/algorithm/simd:ignore",
+        "//folly/lang:align",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "traits",
+    headers = ["Traits.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:memory",
+        "//folly:traits",
+        "//folly/container:span",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "unroll_utils",
+    headers = ["UnrollUtils.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:traits",
+    ],
+)

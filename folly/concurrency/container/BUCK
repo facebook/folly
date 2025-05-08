@@ -1,0 +1,169 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "atomic_grow_array",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "atomic_grow_array.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:constexpr_math",
+        "//xplat/folly:likely",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly/container:span",
+        "//xplat/folly/lang:align",
+        "//xplat/folly/lang:bits",
+        "//xplat/folly/lang:new",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "flat_combining_priority_queue",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "FlatCombiningPriorityQueue.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:optional",
+        "//xplat/folly/detail:futex",
+        "//xplat/folly/experimental/flat_combining:flat_combining",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "lock_free_ring_buffer",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LockFreeRingBuffer.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:traits",
+        "//xplat/folly/detail:turn_sequencer",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "relaxed_concurrent_priority_queue",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "RelaxedConcurrentPriorityQueue.h",
+    ],
+    deps = [
+        "//xplat/folly:random",
+        "//xplat/folly:spin_lock",
+        "//xplat/folly:synchronization_detail_spin",
+        "//xplat/folly:synchronization_hazptr",
+        "//xplat/folly:synchronization_wait_options",
+        "//xplat/folly:thread_local",
+        "//xplat/folly/detail:futex",
+        "//xplat/folly/lang:align",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "single_writer_fixed_hash_map",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SingleWriterFixedHashMap.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly/lang:bits",
+    ],
+)
+
+# !!!! fbcode/folly/concurrency/container/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "atomic_grow_array",
+    headers = [
+        "atomic_grow_array.h",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:scope_guard",
+        "//folly/container:span",
+        "//folly/lang:align",
+        "//folly/lang:bits",
+        "//folly/lang:new",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "relaxed_concurrent_priority_queue",
+    headers = [
+        "RelaxedConcurrentPriorityQueue.h",
+    ],
+    exported_deps = [
+        "//folly:random",
+        "//folly:spin_lock",
+        "//folly:thread_local",
+        "//folly/detail:futex",
+        "//folly/lang:align",
+        "//folly/synchronization:hazptr",
+        "//folly/synchronization:wait_options",
+        "//folly/synchronization/detail:spin",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "lock_free_ring_buffer",
+    headers = ["LockFreeRingBuffer.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:traits",
+        "//folly/detail:turn_sequencer",
+        "//folly/portability:unistd",
+        "//folly/synchronization:sanitize_thread",
+    ],
+    exported_external_deps = [
+        "boost",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "flat_combining_priority_queue",
+    headers = ["FlatCombiningPriorityQueue.h"],
+    exported_deps = [
+        "//folly:optional",
+        "//folly/detail:futex",
+        "//folly/synchronization:flat_combining",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "single_writer_fixed_hash_map",
+    headers = [
+        "SingleWriterFixedHashMap.h",
+    ],
+    exported_deps = [
+        "//folly/lang:bits",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

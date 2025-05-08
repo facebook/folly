@@ -1,0 +1,217 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//tools/build_defs:platform_defs.bzl",
+    "IOS",
+    "MACOSX",
+    "WATCHOS",
+)
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "exception_tracer_base",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ExceptionTracer.h",
+    ],
+    deps = [
+        "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "exception_abi",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ExceptionAbi.h",
+    ],
+    deps = [
+        "//xplat/folly/debugging/exception_tracer:exception_abi",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "smart_exception_tracer",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    feature = triage_InfrastructureSupermoduleOptou,
+    link_whole = True,
+    raw_headers = [
+        "SmartExceptionTracer.h",
+    ],
+    deps = [
+        "//xplat/folly/debugging/exception_tracer:smart_exception_tracer",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "smart_exception_tracer_singleton",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SmartExceptionTracerSingleton.h",
+    ],
+    exported_deps = [
+        "//xplat/folly/debugging/exception_tracer:smart_exception_tracer_singleton",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "smart_exception_stack_trace_hooks",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    feature = triage_InfrastructureSupermoduleOptou,
+    link_whole = True,
+    deps = [
+        "//xplat/folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "exception_counter",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    feature = triage_InfrastructureSupermoduleOptou,
+    link_whole = True,
+    raw_headers = [
+        "ExceptionCounterLib.h",
+    ],
+    deps = [
+        "//xplat/folly/debugging/exception_tracer:exception_counter",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "exception_tracer",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    feature = triage_InfrastructureSupermoduleOptou,
+    link_whole = True,
+    deps = [
+        "//xplat/folly/debugging/exception_tracer:exception_tracer",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "stacktrace",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "StackTrace.h",
+    ],
+    deps = [
+        "//xplat/folly/debugging/exception_tracer:stacktrace",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "exception_tracer_callbacks",
+    feature = triage_InfrastructureSupermoduleOptou,
+    link_whole = True,
+    raw_headers = [
+        "ExceptionTracerLib.h",
+    ],
+    deps = [
+        "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
+    ],
+)
+
+# !!!! fbcode/folly/experimental/exception_tracer/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "exception_abi",
+    headers = ["ExceptionAbi.h"],
+    exported_deps = [
+        "//folly/debugging/exception_tracer:exception_abi",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "exception_counter",
+    headers = ["ExceptionCounterLib.h"],
+    link_whole = True,
+    exported_deps = [
+        "//folly/debugging/exception_tracer:exception_counter",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "exception_tracer",
+    headers = [],
+    link_whole = True,
+    exported_deps = [
+        "//folly/debugging/exception_tracer:exception_tracer",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "exception_tracer_base",
+    headers = ["ExceptionTracer.h"],
+    exported_deps = [
+        "//folly/debugging/exception_tracer:exception_tracer_base",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "exception_tracer_callbacks",
+    headers = ["ExceptionTracerLib.h"],
+    link_whole = True,
+    exported_deps = [
+        "//folly/debugging/exception_tracer:exception_tracer_callbacks",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "stacktrace",
+    headers = ["StackTrace.h"],
+    exported_deps = [
+        "//folly/debugging/exception_tracer:stacktrace",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "smart_exception_tracer_singleton",
+    headers = [
+        "SmartExceptionTracerSingleton.h",
+    ],
+    exported_deps = [
+        "//folly/debugging/exception_tracer:smart_exception_tracer_singleton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "smart_exception_stack_trace_hooks",
+    link_whole = True,
+    deps = [
+        "//folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "smart_exception_tracer",
+    headers = ["SmartExceptionTracer.h"],
+    exported_deps = [
+        "//folly/debugging/exception_tracer:smart_exception_tracer",
+    ],
+)

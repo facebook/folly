@@ -1,0 +1,20 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "huge_page_util",
+    srcs = ["HugePageUtil.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:range",
+        "//folly/experimental/io:huge_pages",
+        "//folly/portability:gflags",
+        "//folly/system:memory_mapping",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
