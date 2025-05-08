@@ -1175,13 +1175,15 @@ class fbvector {
     return (capacity() * 3 + 1) / 2;
   }
 
-  template <class... Args>
-  void emplace_back_aux(Args&&... args) {
-    size_type byte_sz =
-        folly::goodMallocSize(computePushBackCapacity() * sizeof(T));
+  static bool emplace_back_aux_xallocx(
+      size_type& byte_sz,
+      size_type current_size,
+      size_type push_back_capacity,
+      pointer& z,
+      pointer b) {
+    byte_sz = folly::goodMallocSize(push_back_capacity * sizeof(T));
     if (kUsingStdAllocator && usingJEMalloc() &&
-        ((impl_.z_ - impl_.b_) * sizeof(T) >=
-         folly::jemallocMinInPlaceExpandable)) {
+        ((z - b) * sizeof(T) >= folly::jemallocMinInPlaceExpandable)) {
       // Try to reserve in place.
       // Ask xallocx to allocate in place at least size()+1 and at most sz
       //  space.
@@ -1193,19 +1195,32 @@ class fbvector {
       //  expanding in place, and we never reallocate by less than the desired
       //  amount unless we cannot expand further. Hence we will not reallocate
       //  sub-optimally twice in a row (modulo the blocking memory being freed).
-      size_type lower = folly::goodMallocSize(sizeof(T) + size() * sizeof(T));
+      size_type lower =
+          folly::goodMallocSize(sizeof(T) + current_size * sizeof(T));
       size_type upper = byte_sz;
       size_type extra = upper - lower;
 
-      void* p = impl_.b_;
+      void* p = b;
       size_t actual;
 
       if ((actual = xallocx(p, lower, extra, 0)) >= lower) {
-        impl_.z_ = impl_.b_ + actual / sizeof(T);
-        M_construct(impl_.e_, std::forward<Args>(args)...);
-        ++impl_.e_;
-        return;
+        z = b + actual / sizeof(T);
+        return true;
       }
+    }
+
+    return false;
+  }
+
+  template <class... Args>
+  void emplace_back_aux(Args&&... args) {
+    // Try to reserve in place.
+    size_type byte_sz;
+    if (emplace_back_aux_xallocx(
+            byte_sz, size(), computePushBackCapacity(), impl_.z_, impl_.b_)) {
+      M_construct(impl_.e_, std::forward<Args>(args)...);
+      ++impl_.e_;
+      return;
     }
 
     // Reallocation failed. Perform a manual relocation.
