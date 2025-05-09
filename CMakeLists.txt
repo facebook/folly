@@ -675,6 +675,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES ConvTest.cpp
 
     DIRECTORY codec/test/
+      TEST codec_hex_test SOURCES hex_test.cpp
       TEST codec_uuid_test SOURCES UuidTest.cpp
 
     DIRECTORY compression/test/

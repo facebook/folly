@@ -7,6 +7,17 @@ oncall("fbcode_entropy_wardens_folly")
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "hex",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["hex.h"],
+    exported_deps = [
+        "//xplat/folly/lang:align",
+        "//xplat/folly/lang:assume",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "uuid",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Uuid.h"],
@@ -16,6 +27,16 @@ non_fbcode_target(
         "//xplat/folly:portability",
         "//xplat/folly:unit",
         "//xplat/folly/memory:uninitialized_memory_hacks",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "hex",
+    headers = ["hex.h"],
+    exported_deps = [
+        "//folly/lang:align",
+        "//folly/lang:assume",
     ],
 )
 

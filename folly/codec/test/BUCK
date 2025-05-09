@@ -7,6 +7,19 @@ oncall("fbcode_entropy_wardens_folly")
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
+    name = "hex_test",
+    srcs = ["hex_test.cpp"],
+    deps = [
+        "//xplat/folly:likely",
+        "//xplat/folly:portability_gmock",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/codec:hex",
+        "//xplat/folly/lang:keep",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
     name = "uuid_test",
     srcs = ["UuidTest.cpp"],
     deps = [
@@ -14,6 +27,19 @@ non_fbcode_target(
         "//xplat/folly:portability_gtest",
         "//xplat/folly:random",
         "//xplat/folly/codec:uuid",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "hex_test",
+    srcs = ["hex_test.cpp"],
+    deps = [
+        "//folly:likely",
+        "//folly/codec:hex",
+        "//folly/lang:keep",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
     ],
 )
 
