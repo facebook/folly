@@ -23,8 +23,17 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
+#include <folly/lang/Keep.h>
 
 DEFINE_int32(threads, 16, "benchmark concurrency");
+
+extern "C" FOLLY_KEEP void check_std_call_once(std::once_flag& flag) {
+  std::call_once(flag, folly::detail::keep_sink_nx<>);
+}
+
+extern "C" FOLLY_KEEP void check_folly_call_once(folly::once_flag& flag) {
+  folly::call_once(flag, folly::detail::keep_sink_nx<>);
+}
 
 template <typename CallOnceFunc>
 void bm_impl(CallOnceFunc&& fn, size_t iters) {
