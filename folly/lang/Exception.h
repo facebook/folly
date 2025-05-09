@@ -746,7 +746,7 @@ struct make_exception_ptr_with_arg_ {
       : size{sizeof(E)},
         type{FOLLY_TYPE_INFO_OF(E)},
         ctor{make<F, E>},
-        dtor{kIsArchWasm ? dtor_<E> : thunk::dtor<E>} {}
+        dtor{dtor_<E>} {}
 };
 
 std::exception_ptr make_exception_ptr_with_(

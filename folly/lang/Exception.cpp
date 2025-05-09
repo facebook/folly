@@ -170,11 +170,13 @@ namespace __cxxabiv1 {
 
 //  the definition until llvm v10.0.0-rc2
 struct __folly_cxa_exception_sans_reserve {
+  using dtor_ret_t = std::conditional_t<folly::kIsArchWasm, void*, void>;
+
 #if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
   size_t referenceCount;
 #endif
   std::type_info* exceptionType;
-  void (*exceptionDestructor)(void*);
+  dtor_ret_t (*exceptionDestructor)(void*);
   void (*unexpectedHandler)();
   std::terminate_handler terminateHandler;
   __folly_cxa_exception_sans_reserve* nextException;
@@ -197,12 +199,14 @@ struct __folly_cxa_exception_sans_reserve {
 
 //  the definition since llvm v10.0.0-rc2
 struct __folly_cxa_exception_with_reserve {
+  using dtor_ret_t = std::conditional_t<folly::kIsArchWasm, void*, void>;
+
 #if defined(__LP64__) || defined(_WIN64) || defined(_LIBCXXABI_ARM_EHABI)
   void* reserve;
   size_t referenceCount;
 #endif
   std::type_info* exceptionType;
-  void (*exceptionDestructor)(void*);
+  dtor_ret_t (*exceptionDestructor)(void*);
   void (*unexpectedHandler)();
   std::terminate_handler terminateHandler;
   __folly_cxa_exception_with_reserve* nextException;
