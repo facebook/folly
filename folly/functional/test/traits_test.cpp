@@ -26,11 +26,10 @@ struct TraitsTest : testing::Test {
   using traits = folly::function_traits<S>;
 
   template <typename S>
-  using result_type_t = typename traits<S>::result_type;
+  using result_t = typename traits<S>::result;
 
   template <typename R, typename S>
-  static constexpr bool is_result_type_v =
-      std::is_same<R, result_type_t<S>>::value;
+  static constexpr bool is_result_v = std::is_same<R, result_t<S>>::value;
 
   template <typename S>
   static constexpr bool is_nothrow_v = traits<S>::is_nothrow;
@@ -68,54 +67,54 @@ TEST_F(TraitsTest, function_traits) {
 
   //  result_type
 
-  EXPECT_TRUE((is_result_type_v<vc, vc()>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() volatile>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const volatile>));
-  EXPECT_TRUE((is_result_type_v<vc, vc()&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() volatile&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const volatile&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() &&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const&&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() volatile&&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const volatile&&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...)>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) volatile>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const volatile>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...)&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) volatile&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const volatile&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) &&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const&&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) volatile&&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const volatile&&>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() volatile noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const volatile noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() & noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const & noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() volatile & noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc() const volatile & noexcept>));
-  EXPECT_TRUE((is_result_type_v < vc, vc() && noexcept >));
-  EXPECT_TRUE((is_result_type_v < vc, vc() const&& noexcept >));
-  EXPECT_TRUE((is_result_type_v < vc, vc() volatile && noexcept >));
-  EXPECT_TRUE((is_result_type_v < vc, vc() const volatile&& noexcept >));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) volatile noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const volatile noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) & noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const & noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) volatile & noexcept>));
-  EXPECT_TRUE((is_result_type_v<vc, vc(...) const volatile & noexcept>));
-  EXPECT_TRUE((is_result_type_v < vc, vc(...) && noexcept >));
-  EXPECT_TRUE((is_result_type_v < vc, vc(...) const&& noexcept >));
-  EXPECT_TRUE((is_result_type_v < vc, vc(...) volatile && noexcept >));
-  EXPECT_TRUE((is_result_type_v < vc, vc(...) const volatile&& noexcept >));
+  EXPECT_TRUE((is_result_v<vc, vc()>));
+  EXPECT_TRUE((is_result_v<vc, vc() const>));
+  EXPECT_TRUE((is_result_v<vc, vc() volatile>));
+  EXPECT_TRUE((is_result_v<vc, vc() const volatile>));
+  EXPECT_TRUE((is_result_v<vc, vc()&>));
+  EXPECT_TRUE((is_result_v<vc, vc() const&>));
+  EXPECT_TRUE((is_result_v<vc, vc() volatile&>));
+  EXPECT_TRUE((is_result_v<vc, vc() const volatile&>));
+  EXPECT_TRUE((is_result_v<vc, vc() &&>));
+  EXPECT_TRUE((is_result_v<vc, vc() const&&>));
+  EXPECT_TRUE((is_result_v<vc, vc() volatile&&>));
+  EXPECT_TRUE((is_result_v<vc, vc() const volatile&&>));
+  EXPECT_TRUE((is_result_v<vc, vc(...)>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) volatile>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const volatile>));
+  EXPECT_TRUE((is_result_v<vc, vc(...)&>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const&>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) volatile&>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const volatile&>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) &&>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const&&>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) volatile&&>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const volatile&&>));
+  EXPECT_TRUE((is_result_v<vc, vc() noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc() const noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc() volatile noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc() const volatile noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc() & noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc() const & noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc() volatile & noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc() const volatile & noexcept>));
+  EXPECT_TRUE((is_result_v < vc, vc() && noexcept >));
+  EXPECT_TRUE((is_result_v < vc, vc() const&& noexcept >));
+  EXPECT_TRUE((is_result_v < vc, vc() volatile && noexcept >));
+  EXPECT_TRUE((is_result_v < vc, vc() const volatile&& noexcept >));
+  EXPECT_TRUE((is_result_v<vc, vc(...) noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) volatile noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const volatile noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) & noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const & noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) volatile & noexcept>));
+  EXPECT_TRUE((is_result_v<vc, vc(...) const volatile & noexcept>));
+  EXPECT_TRUE((is_result_v < vc, vc(...) && noexcept >));
+  EXPECT_TRUE((is_result_v < vc, vc(...) const&& noexcept >));
+  EXPECT_TRUE((is_result_v < vc, vc(...) volatile && noexcept >));
+  EXPECT_TRUE((is_result_v < vc, vc(...) const volatile&& noexcept >));
 
   //  is_nothrow
 

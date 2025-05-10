@@ -27,7 +27,7 @@ struct function_traits_base_;
 
 template <typename R, typename... A>
 struct function_traits_base_<R(A...)> {
-  using result_type = R;
+  using result = R;
 
   template <std::size_t Idx>
   using argument = type_pack_element_t<Idx, A...>;
@@ -64,7 +64,7 @@ struct function_traits_cvref_ {
 //  When complete, has a class body of the form:
 //
 //      struct function_traits<S> {
-//        using result_type = R;
+//        using result = R;
 //        static constexpr bool is_nothrow = NX;
 //
 //        template <std::size_t Index>
@@ -475,11 +475,9 @@ struct function_remove_cvref_<true, true, R> {
 };
 
 template <typename F, typename T = function_traits<F>>
-using function_remove_cvref_t_ =
-    typename T::template arguments<function_remove_cvref_<
-        T::is_nothrow,
-        T::is_variadic,
-        typename T::result_type>::template apply>;
+using function_remove_cvref_t_ = typename T::template arguments<
+    function_remove_cvref_<T::is_nothrow, T::is_variadic, typename T::result>::
+        template apply>;
 
 } // namespace detail
 

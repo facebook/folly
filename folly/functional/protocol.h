@@ -108,7 +108,7 @@ template <typename S>
 struct match_safely_invocable_as_protocol_impl_ {
   using traits = function_traits<S>;
 
-  using sig_r = typename traits::result_type;
+  using sig_r = typename traits::result;
   static constexpr bool sig_nx = traits::is_nothrow;
 
   template <typename F>

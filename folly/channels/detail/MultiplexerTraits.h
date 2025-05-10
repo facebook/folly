@@ -50,7 +50,7 @@ struct MultiplexerTraits {
 
   // Element type of the returned vector from MultiplexerType::onNewSubscription
   using OutputValueType =
-      typename OnNewSubscriptionTraits::result_type::StorageType::value_type;
+      typename OnNewSubscriptionTraits::result::StorageType::value_type;
 };
 } // namespace detail
 } // namespace channels
