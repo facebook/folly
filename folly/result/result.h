@@ -227,7 +227,7 @@ class non_value_result {
 
   friend inline bool operator==(
       const non_value_result& lhs, const non_value_result& rhs) {
-    return lhs.ew_.exception_ptr_ref() == rhs.ew_.exception_ptr_ref();
+    return lhs.ew_ == rhs.ew_;
   }
 
   // DO NOT USE these "legacy" functions outside of `folly` internals. Instead:

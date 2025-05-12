@@ -228,7 +228,11 @@ class exception_wrapper final {
   std::exception_ptr to_exception_ptr() const& noexcept;
   // NB: Can add this back, if a good use-case arises.
   std::exception_ptr to_exception_ptr() && = delete;
-  std::exception_ptr const& exception_ptr_ref() const noexcept;
+
+  std::exception_ptr& exception_ptr() & noexcept;
+  std::exception_ptr const& exception_ptr() const& noexcept;
+  std::exception_ptr&& exception_ptr() && noexcept;
+  std::exception_ptr const&& exception_ptr() const&& noexcept;
 
   //! \return `true` if the wrappers point to the same exception object
   friend inline bool operator==(

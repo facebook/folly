@@ -153,9 +153,19 @@ inline std::exception_ptr exception_wrapper::to_exception_ptr()
   return ptr_;
 }
 
-inline std::exception_ptr const& exception_wrapper::exception_ptr_ref()
-    const noexcept {
+inline std::exception_ptr& exception_wrapper::exception_ptr() & noexcept {
   return ptr_;
+}
+inline std::exception_ptr const& exception_wrapper::exception_ptr()
+    const& noexcept {
+  return ptr_;
+}
+inline std::exception_ptr&& exception_wrapper::exception_ptr() && noexcept {
+  return std::move(ptr_);
+}
+inline std::exception_ptr const&& exception_wrapper::exception_ptr()
+    const&& noexcept {
+  return std::move(ptr_);
 }
 
 inline std::type_info const* exception_wrapper::type() const noexcept {
