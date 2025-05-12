@@ -25,15 +25,12 @@ struct exception_wrapper::with_exception_from_fn_ {
   };
   struct impl_arg_ {
     template <typename F>
-    using apply = typename function_traits<F>::template argument<0>;
+    using apply = function_arguments_element_t<0, F>;
   };
   struct impl_bye_;
-  template <
-      typename Sig,
-      typename Traits = function_traits<Sig>,
-      std::size_t NArgs = Traits::template arguments<type_pack_size_t>::value>
+  template <typename Sig, std::size_t NArgs = function_arguments_size_v<Sig>>
   using impl_ = conditional_t<
-      Traits::is_variadic,
+      function_is_variadic_v<Sig>,
       impl_var_,
       conditional_t<NArgs == 1, impl_arg_, impl_bye_>>;
 

@@ -25,32 +25,30 @@ namespace detail {
 
 template <typename MultiplexerType>
 struct MultiplexerTraits {
-  using OnNewSubscriptionPtr = decltype(&MultiplexerType::onNewSubscription);
-  using OnNewSubscriptionTraits = function_traits<
-      typename member_pointer_traits<OnNewSubscriptionPtr>::member_type>;
+  using OnNewSubscriptionSig =
+      member_pointer_member_t<decltype(&MultiplexerType::onNewSubscription)>;
 
-  using OnInputValuePtr = decltype(&MultiplexerType::onInputValue);
-  using OnInputValueTraits = function_traits<
-      typename member_pointer_traits<OnInputValuePtr>::member_type>;
+  using OnInputValueSig =
+      member_pointer_member_t<decltype(&MultiplexerType::onInputValue)>;
 
   // First parameter type of MultiplexerType::onNewSubscription
-  using KeyType = typename OnNewSubscriptionTraits::template argument<0>;
+  using KeyType = function_arguments_element_t<0, OnNewSubscriptionSig>;
 
   // Second parameter type for MultiplexerType::onNewSubscription
   using KeyContextType =
-      std::decay_t<typename OnNewSubscriptionTraits::template argument<1>>;
+      std::decay_t<function_arguments_element_t<1, OnNewSubscriptionSig>>;
 
   // Third parameter type for MultiplexerType::onNewSubscription
   using SubscriptionArgType =
-      typename OnNewSubscriptionTraits::template argument<2>;
+      function_arguments_element_t<2, OnNewSubscriptionSig>;
 
   // First parameter value type of MultiplexerType::onInputValue
   using InputValueType =
-      typename OnInputValueTraits::template argument<0>::element_type;
+      typename function_arguments_element_t<0, OnInputValueSig>::element_type;
 
   // Element type of the returned vector from MultiplexerType::onNewSubscription
   using OutputValueType =
-      typename OnNewSubscriptionTraits::result::StorageType::value_type;
+      typename function_result_t<OnNewSubscriptionSig>::StorageType::value_type;
 };
 } // namespace detail
 } // namespace channels

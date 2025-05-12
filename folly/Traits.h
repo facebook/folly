@@ -200,6 +200,18 @@ struct member_pointer_traits<M O::*> {
   using object_type = O;
 };
 
+/// member_pointer_member_t
+///
+/// The member-type of a pointer-to-member type.
+template <typename P>
+using member_pointer_member_t = typename member_pointer_traits<P>::member_type;
+
+/// member_pointer_object_t
+///
+/// The object-type of a pointer-to-member type.
+template <typename P>
+using member_pointer_object_t = typename member_pointer_traits<P>::object_type;
+
 namespace detail {
 
 struct is_constexpr_default_constructible_ {
