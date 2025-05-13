@@ -49,7 +49,9 @@
 #define vhas_chr5       v12
 #define vhas_chr5q      q12
 #define vhas_chr6       v13
+#define vhas_chr6q      q13
 #define vhas_chr7       v14
+#define vhas_chr7q      q14
 #define vrepmask        v15
 #define vend            v16
 
@@ -141,14 +143,13 @@ L(loop_112):
 	cmeq    vhas_chr2.16b, vdata2.16b, vrepchr.16b
 	cmeq    vhas_chr3.16b, vdata3.16b, vrepchr.16b
 	cmeq    vhas_chr4.16b, vdata4.16b, vrepchr.16b
-	sha512h    vhas_chr1q, vhas_chr2q, vhas_chr3.2d
-	cmeq    vhas_chr5.16b, vdata5.16b, vrepchr.16b
-	cmeq    vhas_chr6.16b, vdata6.16b, vrepchr.16b
-	sha512h    vhas_chr4q, vhas_chr5q, vhas_chr6.2d
-	cmeq    vhas_chr7.16b, vdata7.16b, vrepchr.16b
-	sha512h    vhas_chr1q, vhas_chr4q, vhas_chr7.2d
-	addp    vend.2d, vhas_chr1.2d, vhas_chr1.2d
-	mov     synd, vend.d[0]
+        sha512h    vhas_chr1q, vhas_chr2q, vhas_chr3.2d
+        cmeq    vhas_chr5.16b, vdata5.16b, vrepchr.16b
+        cmeq    vhas_chr6.16b, vdata6.16b, vrepchr.16b
+        sha512h    vhas_chr4q, vhas_chr5q, vhas_chr1.2d
+        cmeq    vhas_chr7.16b, vdata7.16b, vrepchr.16b
+        sha512h    vhas_chr6q, vhas_chr7q, vhas_chr4.2d
+        mov     synd, vhas_chr6.d[1]
 	cbz     synd, L(loop_112)
 
 	add cntin, cntin, #112
