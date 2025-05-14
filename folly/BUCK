@@ -7229,6 +7229,7 @@ fbcode_target(
         "//folly/lang:bits",
         "//folly/lang:exception",
         "//folly/net:network_socket",
+        "//folly/portability:config",
         "//folly/portability:sockets",
     ],
     external_deps = [
