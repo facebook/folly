@@ -461,6 +461,13 @@ TEST_F(NotNullHelperTest, output) {
 }
 
 TEST_F(NotNullHelperTest, casting) {
+  auto nnu = make_not_null_unique<int>(42);
+  std::unique_ptr<int> i{std::move(nnu)};
+  static_assert(
+      std::is_constructible_v<
+          std::unique_ptr<int>,
+          not_null<std::unique_ptr<int>>>);
+
   not_null_shared_ptr<Derived> nnd(new Derived());
 
   auto s = static_pointer_cast<Base>(nnd);
