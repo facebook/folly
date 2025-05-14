@@ -1014,13 +1014,8 @@ TEST(SortedVectorTypes, TestMapCreationFromVector) {
 TEST(SortedVectorTypes, TestSetCreationFromSmallVector) {
   using smvec = folly::small_vector<int, 5>;
   smvec vec = {3, 1, -1, 5, 0};
-  sorted_vector_set<
-      int,
-      std::less<int>,
-      std::allocator<std::pair<int, int>>,
-      void,
-      smvec>
-      vset(std::move(vec));
+  sorted_vector_set<int, std::less<int>, std::allocator<int>, void, smvec> vset(
+      std::move(vec));
   check_invariant(vset);
   EXPECT_THAT(vset, testing::ElementsAreArray({-1, 0, 1, 3, 5}));
 }
