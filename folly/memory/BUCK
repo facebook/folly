@@ -59,6 +59,7 @@ non_fbcode_target(
     deps = [
         "//xplat/folly:memory",
         "//xplat/folly:portability",
+        "//xplat/folly:traits",
         "//xplat/folly/lang:exception",
     ],
 )
@@ -318,6 +319,7 @@ fbcode_target(
     exported_deps = [
         "//folly:memory",
         "//folly:portability",
+        "//folly:traits",
         "//folly/lang:exception",
     ],
 )

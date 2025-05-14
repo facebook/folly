@@ -48,6 +48,8 @@
 #include <memory>
 #include <type_traits>
 
+#include <folly/Traits.h>
+
 namespace folly {
 
 namespace detail {
@@ -61,6 +63,22 @@ template <typename FromPtrT, typename ToT>
 struct is_not_null_castable;
 template <typename FromPtrT, typename ToT>
 struct is_not_null_move_castable;
+
+template <bool, template <typename...> class>
+struct check_constraint_if_not {};
+
+template <template <typename...> class DelayedConstraint>
+struct check_constraint_if_not<true, DelayedConstraint> {
+  template <typename... Args>
+  constexpr static bool apply = true;
+};
+
+template <template <typename...> class DelayedConstraint>
+struct check_constraint_if_not<false, DelayedConstraint> {
+  template <typename... Args>
+  constexpr static bool apply = DelayedConstraint<Args...>::value;
+};
+
 } // namespace detail
 
 class guaranteed_not_null_provider {
@@ -144,13 +162,16 @@ class not_null_base : protected guaranteed_not_null_provider {
 
   template <
       typename U,
-      typename = std::enable_if_t<detail::is_not_null_castable<PtrT, U>::value>>
+      typename = std::enable_if_t<detail::check_constraint_if_not<
+          std::is_same_v<PtrT, folly::remove_cvref_t<U>>,
+          detail::is_not_null_castable>::template apply<PtrT, U>>>
   operator U() const& noexcept(std::is_nothrow_constructible_v<U, const PtrT&>);
 
   template <
       typename U,
-      typename =
-          std::enable_if_t<detail::is_not_null_move_castable<PtrT, U>::value>>
+      typename = std::enable_if_t<detail::check_constraint_if_not<
+          std::is_same_v<PtrT, folly::remove_cvref_t<U>>,
+          detail::is_not_null_move_castable>::template apply<PtrT, U>>>
   operator U() && noexcept(std::is_nothrow_constructible_v<U, PtrT&&>);
 
   explicit inline operator bool() const noexcept { return true; }
