@@ -404,7 +404,6 @@ non_fbcode_target(
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["error.h"],
     deps = [
-        "fbsource//third-party/python:python",  # @manual see: T220549503 # TODO: FRIED remove this
         ":weak",
         "//xplat/folly:conv",
         "//xplat/folly:range",
@@ -830,7 +829,6 @@ fbcode_target(
         "error.h",
     ],
     deps = [
-        "fbsource//third-party/python:python",  # @manual see: T220549503 # TODO: FRIED remove this
         ":weak",
         "//folly:conv",
         "//folly:scope_guard",
