@@ -69,6 +69,8 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
     "${output_dir}/gen-cpp2/${base}_data.h"
     "${output_dir}/gen-cpp2/${base}_data.cpp"
     "${output_dir}/gen-cpp2/${base}_types.cpp"
+    "${output_dir}/gen-cpp2/${base}_types_compact.cpp"
+    "${output_dir}/gen-cpp2/${base}_types_binary.cpp"
     "${output_dir}/gen-cpp2/${base}_metadata.cpp"
   )
   foreach(service IN LISTS ARG_SERVICES)
