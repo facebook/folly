@@ -66,6 +66,8 @@ fbcode_target(
         "//folly/codec:uuid",
     ],
     external_deps = [
+        ("boost", None, "boost_lexical_cast"),
+        ("boost", None, "boost_uuid"),
         ("util-linux", None, "uuid"),
     ],
 )

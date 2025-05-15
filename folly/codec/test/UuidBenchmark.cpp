@@ -17,6 +17,9 @@
 #include <folly/Benchmark.h>
 
 #include <string>
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <uuid/uuid.h>
 
 #include <folly/codec/Uuid.h>
@@ -79,6 +82,22 @@ BENCHMARK(uuid_parse_glibc, n) {
   uuid_t uuid;
   for (size_t i = 0; i < n; ++i) {
     folly::compiler_must_not_elide(uuid_parse(sVec[i].c_str(), uuid));
+    folly::compiler_must_not_elide(uuid);
+  }
+}
+
+BENCHMARK(uuid_parse_boost, n) {
+  std::vector<std::string> sVec;
+  BENCHMARK_SUSPEND {
+    sVec.resize(n);
+    for (auto& s : sVec) {
+      s = generateRandomGuid();
+    }
+  }
+  boost::uuids::uuid uuid;
+  for (size_t i = 0; i < n; ++i) {
+    folly::compiler_must_not_elide(
+        uuid = boost::lexical_cast<boost::uuids::uuid>(sVec[i]));
     folly::compiler_must_not_elide(uuid);
   }
 }
