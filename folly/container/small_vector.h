@@ -1484,6 +1484,15 @@ struct IndexableTraits<small_vector<T, M, P>>
 
 } // namespace detail
 
+template <typename>
+struct is_small_vector : std::false_type {};
+
+template <class Value, size_t N, class Policy>
+struct is_small_vector<small_vector<Value, N, Policy>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_small_vector_v = is_small_vector<T>::value;
+
 } // namespace folly
 
 FOLLY_POP_WARNING

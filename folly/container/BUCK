@@ -358,6 +358,7 @@ non_fbcode_target(
     raw_headers = ["sorted_vector_types.h"],
     exported_deps = [
         "//xplat/folly:scope_guard",
+        "//xplat/folly:small_vector",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/lang:access",
@@ -768,6 +769,7 @@ fbcode_target(
     ],
     exported_deps = [
         "//folly:scope_guard",
+        "//folly:small_vector",
         "//folly:traits",
         "//folly:utility",
         "//folly/lang:access",

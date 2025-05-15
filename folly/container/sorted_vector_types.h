@@ -79,6 +79,7 @@
 #include <folly/lang/Access.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/MemoryResource.h>
+#include <folly/small_vector.h>
 
 namespace folly {
 
@@ -891,6 +892,28 @@ inline constexpr bool is_sorted_vector_set_v =
 template <typename T>
 struct is_sorted_vector_set : std::bool_constant<is_sorted_vector_set_v<T>> {};
 
+template <
+    class T,
+    size_t N,
+    class Compare = std::less<T>,
+    class Allocator = std::allocator<T>,
+    class GrowthPolicy = void,
+    class SmallVectorPolicy = void>
+using small_sorted_vector_set = sorted_vector_set<
+    T,
+    Compare,
+    Allocator,
+    GrowthPolicy,
+    folly::small_vector<T, N, SmallVectorPolicy>>;
+
+template <typename T>
+inline constexpr bool is_small_sorted_vector_set_v =
+    is_sorted_vector_set_v<T> && is_small_vector_v<typename T::container_type>;
+
+template <typename T>
+struct is_small_sorted_vector_set
+    : std::bool_constant<is_small_sorted_vector_set_v<T>> {};
+
 #if FOLLY_HAS_MEMORY_RESOURCE
 
 namespace pmr {
@@ -1675,6 +1698,30 @@ inline constexpr bool is_sorted_vector_map_v =
 
 template <typename T>
 struct is_sorted_vector_map : std::bool_constant<is_sorted_vector_map_v<T>> {};
+
+template <
+    class Key,
+    class Value,
+    size_t N,
+    class Compare = std::less<Key>,
+    class Allocator = std::allocator<std::pair<Key, Value>>,
+    class GrowthPolicy = void,
+    class SmallVectorPolicy = void>
+using small_sorted_vector_map = sorted_vector_map<
+    Key,
+    Value,
+    Compare,
+    Allocator,
+    GrowthPolicy,
+    folly::small_vector<std::pair<Key, Value>, N, SmallVectorPolicy>>;
+
+template <typename T>
+inline constexpr bool is_small_sorted_vector_map_v =
+    is_sorted_vector_map_v<T> && is_small_vector_v<typename T::container_type>;
+
+template <typename T>
+struct is_small_sorted_vector_map
+    : std::bool_constant<is_small_sorted_vector_map_v<T>> {};
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 

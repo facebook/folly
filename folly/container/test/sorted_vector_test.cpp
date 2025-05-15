@@ -31,7 +31,6 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
-#include <folly/small_vector.h>
 #include <folly/sorted_vector_types.h>
 
 using folly::sorted_vector_map;
@@ -75,6 +74,11 @@ static_assert(std::is_same_v<
 static_assert(std::is_same_v<
               folly::sorted_vector_map<int, double>::const_pointer,
               const std::pair<int, double>*>);
+
+static_assert(folly::is_small_sorted_vector_map_v<
+              folly::small_sorted_vector_map<int, double, 5>>);
+static_assert(folly::is_small_sorted_vector_set_v<
+              folly::small_sorted_vector_set<int, 5>>);
 
 template <class T>
 struct less_invert {
@@ -1012,25 +1016,17 @@ TEST(SortedVectorTypes, TestMapCreationFromVector) {
 }
 
 TEST(SortedVectorTypes, TestSetCreationFromSmallVector) {
-  using smvec = folly::small_vector<int, 5>;
-  smvec vec = {3, 1, -1, 5, 0};
-  sorted_vector_set<int, std::less<int>, std::allocator<int>, void, smvec> vset(
-      std::move(vec));
+  using ssvs = folly::small_sorted_vector_set<int, 5>;
+  ssvs::container_type vec = {3, 1, -1, 5, 0};
+  ssvs vset(std::move(vec));
   check_invariant(vset);
   EXPECT_THAT(vset, testing::ElementsAreArray({-1, 0, 1, 3, 5}));
 }
 
 TEST(SortedVectorTypes, TestMapCreationFromSmallVector) {
-  using smvec = folly::small_vector<std::pair<int, int>, 5>;
-  smvec vec = {{3, 1}, {1, 5}, {-1, 2}, {5, 3}, {0, 3}};
-  sorted_vector_map<
-      int,
-      int,
-      std::less<int>,
-      std::allocator<std::pair<int, int>>,
-      void,
-      smvec>
-      vmap(std::move(vec));
+  using ssvm = folly::small_sorted_vector_map<int, int, 5>;
+  ssvm::container_type vec = {{3, 1}, {1, 5}, {-1, 2}, {5, 3}, {0, 3}};
+  ssvm vmap(std::move(vec));
   check_invariant(vmap);
   auto contents = std::vector<std::pair<int, int>>(vmap.begin(), vmap.end());
   auto expected_contents = std::vector<std::pair<int, int>>({

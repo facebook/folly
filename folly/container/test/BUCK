@@ -798,7 +798,6 @@ fbcode_target(
     deps = [
         "//folly:optional",
         "//folly:range",
-        "//folly:small_vector",
         "//folly:sorted_vector_types",
         "//folly:utility",
         "//folly/memory:malloc",
