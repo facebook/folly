@@ -174,6 +174,10 @@ def folly_xplat_library(
             "ovr_config//os:windows-gcc-or-clang": WINDOWS_CLANG_CXX_FLAGS,
         }) + select({
             "DEFAULT": [],
+            "wa_android//tools/buck/build_defs/monorepo:bloks_sync_live_deps": [
+                "-fexceptions",
+                "-frtti",
+            ],
             "wa_android//tools/buck/build_defs/monorepo:live_deps": [
                 "-fexceptions",
                 "-frtti",
