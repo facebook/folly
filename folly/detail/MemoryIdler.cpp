@@ -39,6 +39,11 @@ FOLLY_GFLAGS_DEFINE_bool(
     false,
     "if enabled, folly memory-idler purges jemalloc arenas on thread idle");
 
+FOLLY_GFLAGS_DEFINE_bool(
+    folly_memory_idler_madvise_stacks,
+    true,
+    "if enabled, folly memory-idler madvises dontneed stacks on thread idle");
+
 namespace folly {
 namespace detail {
 
@@ -185,6 +190,10 @@ FOLLY_NOINLINE static uintptr_t getStackPtr() {
 }
 
 void MemoryIdler::unmapUnusedStack(size_t retain) {
+  if (!FLAGS_folly_memory_idler_madvise_stacks) {
+    return;
+  }
+
   if (!isUnmapUnusedStackAvailable()) {
     return;
   }
