@@ -894,7 +894,7 @@ struct is_sorted_vector_set : std::bool_constant<is_sorted_vector_set_v<T>> {};
 
 template <
     class T,
-    size_t N,
+    size_t N = 1,
     class Compare = std::less<T>,
     class Allocator = std::allocator<T>,
     class GrowthPolicy = void,
@@ -1702,7 +1702,7 @@ struct is_sorted_vector_map : std::bool_constant<is_sorted_vector_map_v<T>> {};
 template <
     class Key,
     class Value,
-    size_t N,
+    size_t N = 1,
     class Compare = std::less<Key>,
     class Allocator = std::allocator<std::pair<Key, Value>>,
     class GrowthPolicy = void,
