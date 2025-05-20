@@ -1007,7 +1007,10 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         if args.run_on_all_branches:
             return self.RUN_ON_ALL
         if args.cron:
-            return f"""
+            if args.cron == "never":
+                return " {}"
+            else:
+                return f"""
   schedule:
     - cron: '{args.cron}'"""
 
@@ -1062,18 +1065,27 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
 
         if build_opts.is_linux():
             artifacts = "linux"
-            runs_on = f"ubuntu-{args.ubuntu_version}"
-            if args.cpu_cores:
-                runs_on = f"{args.cpu_cores}-core-ubuntu-{args.ubuntu_version}"
+            if args.runs_on:
+                runs_on = args.runs_on
+            else:
+                runs_on = f"ubuntu-{args.ubuntu_version}"
+                if args.cpu_cores:
+                    runs_on = f"{args.cpu_cores}-core-ubuntu-{args.ubuntu_version}"
         elif build_opts.is_windows():
             artifacts = "windows"
-            runs_on = "windows-2019"
+            if args.runs_on:
+                runs_on = args.runs_on
+            else:
+                runs_on = "windows-2019"
             # The windows runners are python 3 by default; python2.exe
             # is available if needed.
             py3 = "python"
         else:
             artifacts = "mac"
-            runs_on = "macOS-latest"
+            if args.runs_on:
+                runs_on = args.runs_on
+            else:
+                runs_on = "macOS-latest"
 
         os.makedirs(args.output_dir, exist_ok=True)
 
@@ -1367,8 +1379,12 @@ jobs:
             help="Number of CPU cores to use (applicable for Linux OS)",
         )
         parser.add_argument(
+            "--runs-on",
+            help="Allow specifying explicit runs-on: for github actions",
+        )
+        parser.add_argument(
             "--cron",
-            help="Specify that the job runs on a cron schedule instead of on pushes",
+            help="Specify that the job runs on a cron schedule instead of on pushes. Pass never to disable the action.",
         )
         parser.add_argument(
             "--main-branch",
