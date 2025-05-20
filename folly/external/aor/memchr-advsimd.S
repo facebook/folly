@@ -49,7 +49,6 @@
 #define vhas_chr5       v12
 #define vhas_chr5q      q12
 #define vhas_chr6       v13
-#define vhas_chr6q      q13
 #define vhas_chr7       v14
 #define vhas_chr7q      q14
 #define vrepmask        v15
@@ -79,15 +78,17 @@
 
 /*
  * Core algorithm:
- *
- * For each 32-byte chunk we calculate a 64-bit syndrome value, with two bits
+ * Unrolled to scan blocks of 112 bytes for match using SHA512H instruction
+ * for main loop reduction - should only compile for devices with h/w SHA512H
+ * instruction support. It was proven using SAT solver that input chaining
+ * for SHA512H instruction used below produces 0 result if and only if all
+ * 112 input bytes are 0. This version is not compatible with MTE. After match,
+ * for each 32-byte chunk we calculate a 64-bit syndrome value, with two bits
  * per byte. For each tuple, bit 0 is set if the relevant byte matched the
  * requested character and bit 1 is not used (faster than using a 32bit
  * syndrome). Since the bits in the syndrome reflect exactly the order in which
  * things occur in the original string, counting trailing zeros allows to
- * identify exactly which byte has matched. Unrolled to 112 bytes
- * and using SHA512 instruction for main loop reduction - should only compile for
- * devices with h/w SHA512 instruction support. MTE compatibility TBD
+ * identify exactly which byte has matched. 
  */
 
 ENTRY (__folly_memchr_long_aarch64_sha512)
@@ -135,22 +136,32 @@ ENTRY (__folly_memchr_long_aarch64_sha512)
 	b.ls	L(zero_length)
 
 L(loop_112):
-	subs    cntin, cntin, #112
-	b.ls    L(load_partial)
-	ld1     {vdata1.16b, vdata2.16b, vdata3.16b, vdata4.16b}, [src], #64
-	ld1     {vdata5.16b, vdata6.16b, vdata7.16b}, [src], #48
-	cmeq    vhas_chr1.16b, vdata1.16b, vrepchr.16b
-	cmeq    vhas_chr2.16b, vdata2.16b, vrepchr.16b
-	cmeq    vhas_chr3.16b, vdata3.16b, vrepchr.16b
-	cmeq    vhas_chr4.16b, vdata4.16b, vrepchr.16b
-        sha512h    vhas_chr1q, vhas_chr2q, vhas_chr3.2d
+        subs    cntin, cntin, #112
+        b.ls    L(load_partial)
+        ld1     {vdata1.16b, vdata2.16b, vdata3.16b, vdata4.16b}, [src], #64
+        ld1     {vdata5.16b, vdata6.16b, vdata7.16b}, [src], #48
+        cmeq    vhas_chr1.16b, vdata1.16b, vrepchr.16b
+        cmeq    vhas_chr2.16b, vdata2.16b, vrepchr.16b
+        cmeq    vhas_chr3.16b, vdata3.16b, vrepchr.16b
+        cmeq    vhas_chr4.16b, vdata4.16b, vrepchr.16b
+        /* If all inputs to SHA512H are outputs of CMPEQ,
+           then it returns 0 if and only if all bytes in
+           X, Y and W inputs are 0.
+        */
+        sha512h vhas_chr1q, vhas_chr2q, vhas_chr3.2d
         cmeq    vhas_chr5.16b, vdata5.16b, vrepchr.16b
         cmeq    vhas_chr6.16b, vdata6.16b, vrepchr.16b
-        sha512h    vhas_chr4q, vhas_chr5q, vhas_chr1.2d
+        sha512h vhas_chr4q, vhas_chr5q, vhas_chr6.2d
         cmeq    vhas_chr7.16b, vdata7.16b, vrepchr.16b
-        sha512h    vhas_chr6q, vhas_chr7q, vhas_chr4.2d
-        mov     synd, vhas_chr6.d[1]
-	cbz     synd, L(loop_112)
+        /* If Y and W inputs to this SHA512H are outputs of
+           SHA512H, which only had inputs from CMPEQ calls,
+           and X is output from CMPEQ call, then it returns 0
+           if and only if all 7 inputs are 0.
+        */
+        sha512h vhas_chr1q, vhas_chr7q, vhas_chr4.2d
+        addp    vend.2d, vhas_chr1.2d, vhas_chr1.2d
+        mov     synd, vend.d[0]
+        cbz     synd, L(loop_112)
 
 	add cntin, cntin, #112
 	b L(pt_1_7)
