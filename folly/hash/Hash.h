@@ -281,6 +281,79 @@ inline uint32_t fnv32(
 }
 
 /**
+ * Append byte to FNV hash.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+constexpr uint32_t fnv32_append_byte_FIXED(uint32_t hash, uint8_t c) noexcept {
+  hash = hash //
+      + (hash << 1) //
+      + (hash << 4) //
+      + (hash << 7) //
+      + (hash << 8) //
+      + (hash << 24);
+  // forcing unsigned char
+  hash ^= static_cast<uint8_t>(c);
+  return hash;
+}
+
+/**
+ * FNV hash of a byte-range.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+constexpr uint32_t fnv32_buf_FIXED(
+    const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
+  for (size_t i = 0; i < n; ++i) {
+    hash = fnv32_append_byte_FIXED(hash, static_cast<uint8_t>(buf[i]));
+  }
+  return hash;
+}
+inline uint32_t fnv32_buf_FIXED(
+    const void* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
+  return fnv32_buf_FIXED(reinterpret_cast<const uint8_t*>(buf), n, hash);
+}
+
+/**
+ * FNV hash of a c-str.
+ *
+ * Continues hashing until a null byte is reached.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @methodset fnv
+ */
+constexpr uint32_t fnv32_FIXED(
+    const char* buf, uint32_t hash = fnv32_hash_start) noexcept {
+  for (; *buf; ++buf) {
+    hash = fnv32_append_byte_FIXED(hash, static_cast<uint8_t>(*buf));
+  }
+  return hash;
+}
+
+/**
+ * @overloadbrief FNV hash of a string.
+ *
+ * FNV is the Fowler / Noll / Vo Hash:
+ * http://www.isthe.com/chongo/tech/comp/fnv/
+ *
+ * Discouraged for poor performance in the smhasher suite.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @methodset fnv
+ */
+inline uint32_t fnv32_FIXED(
+    const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
+  return fnv32_buf_FIXED(str.data(), str.size(), hash);
+}
+
+/**
  * Append a byte to FNVA hash.
  *
  * @see fnv32
@@ -329,6 +402,82 @@ inline uint32_t fnva32_buf(
 inline uint32_t fnva32(
     const std::string& str, uint32_t hash = fnva32_hash_start) noexcept {
   return fnva32_buf(str.data(), str.size(), hash);
+}
+
+/**
+ * Append a byte to FNV hash.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+constexpr uint64_t fnv64_append_byte_FIXED(uint64_t hash, uint8_t c) {
+  hash = hash //
+      + (hash << 1) //
+      + (hash << 4) //
+      + (hash << 5) //
+      + (hash << 7) //
+      + (hash << 8) //
+      + (hash << 40);
+  // forcing unsigned char
+  hash ^= static_cast<uint8_t>(c);
+  return hash;
+}
+
+/**
+ * FNV hash of a byte-range.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+constexpr uint64_t fnv64_buf_FIXED(
+    const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
+  for (size_t i = 0; i < n; ++i) {
+    hash = fnv64_append_byte_FIXED(hash, static_cast<uint8_t>(buf[i]));
+  }
+  return hash;
+}
+inline uint64_t fnv64_buf_FIXED(
+    const void* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
+  return fnv64_buf_FIXED(reinterpret_cast<const uint8_t*>(buf), n, hash);
+}
+
+/**
+ * FNV hash of a c-str.
+ *
+ * Continues hashing until a null byte is reached.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+constexpr uint64_t fnv64_FIXED(
+    const char* buf, uint64_t hash = fnv64_hash_start) noexcept {
+  for (; *buf; ++buf) {
+    hash = fnv64_append_byte_FIXED(hash, static_cast<uint8_t>(*buf));
+  }
+  return hash;
+}
+
+/**
+ * @overloadbrief FNV hash of a string.
+ *
+ * FNV is the Fowler / Noll / Vo Hash:
+ * http://www.isthe.com/chongo/tech/comp/fnv/
+ *
+ * Discouraged for poor performance in the smhasher suite.
+ *
+ * @param hash  The initial hash seed.
+ *
+ * @see fnv32
+ * @methodset fnv
+ */
+inline uint64_t fnv64_FIXED(
+    std::string_view str, uint64_t hash = fnv64_hash_start) noexcept {
+  return fnv64_buf_FIXED(str.data(), str.size(), hash);
 }
 
 /**
