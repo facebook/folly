@@ -213,7 +213,7 @@ constexpr uint64_t fnva64_hash_start = 14695981039346656037ULL;
  * @see fnv32
  * @methodset fnv
  */
-constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) noexcept {
+constexpr uint32_t fnv32_append_byte_BROKEN(uint32_t hash, uint8_t c) noexcept {
   hash = hash //
       + (hash << 1) //
       + (hash << 4) //
@@ -234,16 +234,16 @@ constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) noexcept {
  * @methodset fnv
  */
 template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint32_t fnv32_buf(
+constexpr uint32_t fnv32_buf_BROKEN(
     const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
-    hash = fnv32_append_byte(hash, static_cast<uint8_t>(buf[i]));
+    hash = fnv32_append_byte_BROKEN(hash, static_cast<uint8_t>(buf[i]));
   }
   return hash;
 }
-inline uint32_t fnv32_buf(
+inline uint32_t fnv32_buf_BROKEN(
     const void* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
+  return fnv32_buf_BROKEN(reinterpret_cast<const uint8_t*>(buf), n, hash);
 }
 
 /**
@@ -255,10 +255,10 @@ inline uint32_t fnv32_buf(
  *
  * @methodset fnv
  */
-constexpr uint32_t fnv32(
+constexpr uint32_t fnv32_BROKEN(
     const char* buf, uint32_t hash = fnv32_hash_start) noexcept {
   for (; *buf; ++buf) {
-    hash = fnv32_append_byte(hash, static_cast<uint8_t>(*buf));
+    hash = fnv32_append_byte_BROKEN(hash, static_cast<uint8_t>(*buf));
   }
   return hash;
 }
@@ -275,9 +275,9 @@ constexpr uint32_t fnv32(
  *
  * @methodset fnv
  */
-inline uint32_t fnv32(
+inline uint32_t fnv32_BROKEN(
     const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_buf(str.data(), str.size(), hash);
+  return fnv32_buf_BROKEN(str.data(), str.size(), hash);
 }
 
 /**
@@ -486,7 +486,7 @@ inline uint64_t fnv64_FIXED(
  * @see fnv32
  * @methodset fnv
  */
-constexpr uint64_t fnv64_append_byte(uint64_t hash, uint8_t c) {
+constexpr uint64_t fnv64_append_byte_BROKEN(uint64_t hash, uint8_t c) {
   hash = hash //
       + (hash << 1) //
       + (hash << 4) //
@@ -508,16 +508,16 @@ constexpr uint64_t fnv64_append_byte(uint64_t hash, uint8_t c) {
  * @methodset fnv
  */
 template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint64_t fnv64_buf(
+constexpr uint64_t fnv64_buf_BROKEN(
     const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
-    hash = fnv64_append_byte(hash, static_cast<uint8_t>(buf[i]));
+    hash = fnv64_append_byte_BROKEN(hash, static_cast<uint8_t>(buf[i]));
   }
   return hash;
 }
-inline uint64_t fnv64_buf(
+inline uint64_t fnv64_buf_BROKEN(
     const void* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
+  return fnv64_buf_BROKEN(reinterpret_cast<const uint8_t*>(buf), n, hash);
 }
 
 /**
@@ -530,10 +530,10 @@ inline uint64_t fnv64_buf(
  * @see fnv32
  * @methodset fnv
  */
-constexpr uint64_t fnv64(
+constexpr uint64_t fnv64_BROKEN(
     const char* buf, uint64_t hash = fnv64_hash_start) noexcept {
   for (; *buf; ++buf) {
-    hash = fnv64_append_byte(hash, static_cast<uint8_t>(*buf));
+    hash = fnv64_append_byte_BROKEN(hash, static_cast<uint8_t>(*buf));
   }
   return hash;
 }
@@ -551,9 +551,103 @@ constexpr uint64_t fnv64(
  * @see fnv32
  * @methodset fnv
  */
+inline uint64_t fnv64_BROKEN(
+    std::string_view str, uint64_t hash = fnv64_hash_start) noexcept {
+  return fnv64_buf_BROKEN(str.data(), str.size(), hash);
+}
+
+/**
+ * Alias for fnv32_append_byte_BROKEN.
+ *
+ * @see fnv32_BROKEN
+ * @methodset fnv
+ */
+constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) noexcept {
+  return fnv32_append_byte_BROKEN(hash, c);
+}
+
+/**
+ * Alias for fnv32_buf_BROKEN.
+ *
+ * @see fnv32_BROKEN
+ * @methodset fnv
+ */
+template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+constexpr uint32_t fnv32_buf(
+    const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
+  return fnv32_buf_BROKEN(buf, n, hash);
+}
+inline uint32_t fnv32_buf(
+    const void* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
+  return fnv32_buf_BROKEN(buf, n, hash);
+}
+
+/**
+ * Alias for fnv32_BROKEN.
+ *
+ * @methodset fnv
+ */
+constexpr uint32_t fnv32(
+    const char* buf, uint32_t hash = fnv32_hash_start) noexcept {
+  return fnv32_BROKEN(buf, hash);
+}
+
+/**
+ * Alias for fnv32_BROKEN.
+ *
+ * @methodset fnv
+ */
+inline uint32_t fnv32(
+    const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
+  return fnv32_BROKEN(str, hash);
+}
+
+/**
+ * Alias for fnv64_append_byte_BROKEN.
+ *
+ * @see fnv32_BROKEN
+ * @methodset fnv
+ */
+constexpr uint64_t fnv64_append_byte(uint64_t hash, uint8_t c) {
+  return fnv64_append_byte_BROKEN(hash, c);
+}
+
+/**
+ * Alias for fnv64_buf_BROKEN.
+ *
+ * @see fnv32_BROKEN
+ * @methodset fnv
+ */
+template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+constexpr uint64_t fnv64_buf(
+    const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
+  return fnv64_buf_BROKEN(buf, n, hash);
+}
+inline uint64_t fnv64_buf(
+    const void* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
+  return fnv64_buf_BROKEN(buf, n, hash);
+}
+
+/**
+ * Alias for fnv64_BROKEN.
+ *
+ * @see fnv32_BROKEN
+ * @methodset fnv
+ */
+constexpr uint64_t fnv64(
+    const char* buf, uint64_t hash = fnv64_hash_start) noexcept {
+  return fnv64_BROKEN(buf, hash);
+}
+
+/**
+ * Alias for fnv64_BROKEN.
+ *
+ * @see fnv32_BROKEN
+ * @methodset fnv
+ */
 inline uint64_t fnv64(
     std::string_view str, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_buf(str.data(), str.size(), hash);
+  return fnv64_BROKEN(str, hash);
 }
 
 /**
