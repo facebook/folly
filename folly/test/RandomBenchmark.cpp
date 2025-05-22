@@ -17,15 +17,18 @@
 #include <folly/Random.h>
 
 #include <random>
-#include <thread>
 
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
+#include <folly/Portability.h>
 #include <folly/container/Foreach.h>
-
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
+#endif
+
+#if FOLLY_X64
+#include <immintrin.h>
 #endif
 
 using namespace folly;
@@ -37,7 +40,19 @@ BENCHMARK(minstdrand, n) {
 
   braces.dismiss();
 
-  FOR_EACH_RANGE (i, 0, n) {
+  for (unsigned i = 0; i < n; i++) {
+    doNotOptimizeAway(rng());
+  }
+}
+
+BENCHMARK(ranlux24_base, n) {
+  BenchmarkSuspender braces;
+  std::random_device rd;
+  std::ranlux24_base rng(rd());
+
+  braces.dismiss();
+
+  for (unsigned i = 0; i < n; i++) {
     doNotOptimizeAway(rng());
   }
 }
@@ -49,7 +64,19 @@ BENCHMARK(mt19937, n) {
 
   braces.dismiss();
 
-  FOR_EACH_RANGE (i, 0, n) {
+  for (unsigned i = 0; i < n; i++) {
+    doNotOptimizeAway(rng());
+  }
+}
+
+BENCHMARK(mt19937_64, n) {
+  BenchmarkSuspender braces;
+  std::random_device rd;
+  std::mt19937 rng(rd());
+
+  braces.dismiss();
+
+  for (unsigned i = 0; i < n; i++) {
     doNotOptimizeAway(rng());
   }
 }
@@ -62,11 +89,47 @@ BENCHMARK(sfmt19937, n) {
 
   braces.dismiss();
 
-  FOR_EACH_RANGE (i, 0, n) {
+  for (unsigned i = 0; i < n; i++) {
+    doNotOptimizeAway(rng());
+  }
+}
+
+BENCHMARK(sfmt19937_64, n) {
+  BenchmarkSuspender braces;
+  std::random_device rd;
+  __gnu_cxx::sfmt19937_64 rng(rd());
+
+  braces.dismiss();
+
+  for (unsigned i = 0; i < n; i++) {
     doNotOptimizeAway(rng());
   }
 }
 #endif
+
+BENCHMARK(xoshiro256, n) {
+  BenchmarkSuspender braces;
+  std::random_device rd;
+  folly::xoshiro256pp_32 rng(rd());
+
+  braces.dismiss();
+
+  for (unsigned i = 0; i < n; i++) {
+    doNotOptimizeAway(rng());
+  }
+}
+
+BENCHMARK(xoshiro256_64, n) {
+  BenchmarkSuspender braces;
+  std::random_device rd;
+  folly::xoshiro256pp_64 rng(rd());
+
+  braces.dismiss();
+
+  for (unsigned i = 0; i < n; i++) {
+    doNotOptimizeAway(rng());
+  }
+}
 
 BENCHMARK(threadprng, n) {
   BenchmarkSuspender braces;
@@ -75,7 +138,7 @@ BENCHMARK(threadprng, n) {
 
   braces.dismiss();
 
-  FOR_EACH_RANGE (i, 0, n) {
+  for (unsigned i = 0; i < n; i++) {
     doNotOptimizeAway(tprng());
   }
 }
