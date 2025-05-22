@@ -241,6 +241,15 @@ non_fbcode_target(
     ],
 )
 
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "vector_traits_test",
+    srcs = ["VectorTraitsTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/lang:vector_traits",
+    ],
+)
 # !!!! fbcode/folly/lang/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
@@ -528,6 +537,16 @@ fbcode_target(
     srcs = ["TypeInfoTest.cpp"],
     deps = [
         "//folly/lang:type_info",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "vector_traits_test",
+    srcs = ["VectorTraitsTest.cpp"],
+    deps = [
+        "//folly/lang:vector_traits",
         "//folly/portability:gtest",
     ],
 )

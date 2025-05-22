@@ -362,6 +362,12 @@ non_fbcode_target(
     ],
 )
 
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "vector_traits",
+    raw_headers = ["VectorTraits.h"],
+)
+
 # !!!! fbcode/folly/lang/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
@@ -686,4 +692,10 @@ fbcode_target(
     exported_deps = [
         ":exception",
     ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "vector_traits",
+    headers = ["VectorTraits.h"],
 )
