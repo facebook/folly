@@ -551,6 +551,7 @@ fbcode_target(
     headers = ["Keep.h"],
     exported_deps = [
         "//folly:c_portability",
+        "//folly:cpp_attributes",
     ],
 )
 

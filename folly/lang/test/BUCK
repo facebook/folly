@@ -333,7 +333,9 @@ fbcode_target(
     srcs = ["BitsTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:random",
+        "//folly/container:span",
         "//folly/lang:bits",
         "//folly/portability:gtest",
     ],
