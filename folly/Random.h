@@ -21,6 +21,7 @@
 #pragma once
 #define FOLLY_RANDOM_H_
 
+#include <array>
 #include <cstdint>
 #include <random>
 #include <type_traits>
@@ -29,7 +30,6 @@
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Bits.h>
-#include <folly/random/xoshiro256pp.h>
 
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
@@ -39,7 +39,11 @@ namespace folly {
 
 namespace detail {
 
-using DefaultGenerator = folly::xoshiro256pp_32;
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
+using DefaultGenerator = __gnu_cxx::sfmt19937;
+#else
+using DefaultGenerator = std::mt19937;
+#endif
 
 } // namespace detail
 

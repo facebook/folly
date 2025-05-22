@@ -475,7 +475,6 @@ non_fbcode_target(
         "//xplat/folly:cpp_attributes",
         "//xplat/folly:portability_config",
         "//xplat/folly:synchronization_relaxed_atomic",
-        "//xplat/folly/random:xoshiro256pp",
     ],
     exported_deps = [
         "//third-party/glog:glog",
@@ -7415,7 +7414,6 @@ fbcode_target(
         ":traits",
         "//folly/functional:invoke",
         "//folly/lang:bits",
-        "//folly/random:xoshiro256pp",
     ],
     external_deps = [
         "glog",
