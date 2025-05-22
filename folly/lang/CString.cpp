@@ -18,9 +18,7 @@
 
 #include <algorithm>
 #include <cstring>
-#include <type_traits>
 
-#include <folly/CppAttributes.h>
 #include <folly/functional/Invoke.h>
 
 namespace {

@@ -472,7 +472,6 @@ fbcode_target(
     srcs = ["CString.cpp"],
     headers = ["CString.h"],
     deps = [
-        "//folly:cpp_attributes",
         "//folly/functional:invoke",
     ],
     exported_deps = [
