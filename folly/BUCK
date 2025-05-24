@@ -6332,7 +6332,6 @@ fbcode_target(
     srcs = ["ClockGettimeWrappers.cpp"],
     headers = ["ClockGettimeWrappers.h"],
     deps = [
-        ":c_portability",
         ":likely",
     ],
     exported_deps = [

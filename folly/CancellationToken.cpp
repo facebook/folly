@@ -23,7 +23,6 @@
 
 #include <glog/logging.h>
 
-#include <algorithm>
 #include <new>
 #include <thread>
 #include <tuple>
