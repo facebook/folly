@@ -39,20 +39,20 @@
 #define vdata5          v5
 #define vdata6          v6
 #define vdata7          v7
-#define vhas_chr1       v8
-#define vhas_chr1q      q8
-#define vhas_chr2       v9
-#define vhas_chr2q      q9
-#define vhas_chr3       v10
-#define vhas_chr4       v11
-#define vhas_chr4q      q11
-#define vhas_chr5       v12
-#define vhas_chr5q      q12
-#define vhas_chr6       v13
-#define vhas_chr7       v14
-#define vhas_chr7q      q14
-#define vrepmask        v15
-#define vend            v16
+#define vhas_chr1       v16
+#define vhas_chr1q      q16
+#define vhas_chr2       v17
+#define vhas_chr2q      q17
+#define vhas_chr3       v18
+#define vhas_chr4       v19
+#define vhas_chr4q      q19
+#define vhas_chr5       v20
+#define vhas_chr5q      q20
+#define vhas_chr6       v21
+#define vhas_chr7       v22
+#define vhas_chr7q      q22
+#define vrepmask        v23
+#define vend            v24
 
 .macro  CHECK_PAIR regA, regB
     cmeq    vhas_chr1.16b, \regA\().16b, vrepchr.16b
