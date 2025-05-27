@@ -17,7 +17,7 @@
 #pragma once
 
 #include <cassert>
-#include <cmath>
+#include <limits>
 #include <vector>
 
 #include <folly/Range.h>
@@ -50,6 +50,10 @@ namespace folly {
  */
 class TDigest {
  public:
+  static constexpr size_t kDefaultMaxSize = 100;
+  // Recommended number of values to buffer before each merge.
+  static constexpr size_t kDefaultBufferSize = 1000;
+
   class Centroid {
    public:
     explicit Centroid(double mean = 0.0, double weight = 1.0)
@@ -80,8 +84,7 @@ class TDigest {
     std::vector<Centroid> buf;
   };
 
-  explicit TDigest(size_t maxSize = 100)
-      : maxSize_(maxSize), sum_(0.0), count_(0.0), max_(NAN), min_(NAN) {}
+  explicit TDigest(size_t maxSize = kDefaultMaxSize) : maxSize_(maxSize) {}
 
   explicit TDigest(
       std::vector<Centroid> centroids,
@@ -89,7 +92,7 @@ class TDigest {
       double count,
       double max_val,
       double min_val,
-      size_t maxSize = 100);
+      size_t maxSize = kDefaultMaxSize);
 
   /*
    * Returns a new TDigest constructed with values merged from the current
@@ -150,10 +153,10 @@ class TDigest {
 
   std::vector<Centroid> centroids_;
   size_t maxSize_;
-  double sum_;
-  double count_;
-  double max_;
-  double min_;
+  double sum_ = 0.0;
+  double count_ = 0.0;
+  double max_ = std::numeric_limits<double>::quiet_NaN();
+  double min_ = std::numeric_limits<double>::quiet_NaN();
 };
 
 } // namespace folly

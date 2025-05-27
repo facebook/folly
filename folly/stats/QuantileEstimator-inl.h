@@ -26,7 +26,10 @@ QuantileEstimates estimatesFromDigest(
 
 template <typename ClockT>
 SimpleQuantileEstimator<ClockT>::SimpleQuantileEstimator()
-    : bufferedDigest_(std::chrono::seconds{1}, 1000, 100) {}
+    : bufferedDigest_(
+          std::chrono::seconds{1},
+          TDigest::kDefaultBufferSize,
+          TDigest::kDefaultMaxSize) {}
 
 template <typename ClockT>
 QuantileEstimates SimpleQuantileEstimator<ClockT>::estimateQuantiles(
@@ -43,7 +46,11 @@ void SimpleQuantileEstimator<ClockT>::addValue(double value, TimePoint now) {
 template <typename ClockT>
 SlidingWindowQuantileEstimator<ClockT>::SlidingWindowQuantileEstimator(
     Duration windowDuration, size_t nWindows)
-    : bufferedSlidingWindow_(nWindows, windowDuration, 1000, 100) {}
+    : bufferedSlidingWindow_(
+          nWindows,
+          windowDuration,
+          TDigest::kDefaultBufferSize,
+          TDigest::kDefaultMaxSize) {}
 
 template <typename ClockT>
 QuantileEstimates SlidingWindowQuantileEstimator<ClockT>::estimateQuantiles(
@@ -62,7 +69,8 @@ void SlidingWindowQuantileEstimator<ClockT>::addValue(
 template <typename ClockT>
 MultiSlidingWindowQuantileEstimator<
     ClockT>::MultiSlidingWindowQuantileEstimator(Range<const WindowDef*> defs)
-    : bufferedMultiSlidingWindow_(defs, 1000, 100) {}
+    : bufferedMultiSlidingWindow_(
+          defs, TDigest::kDefaultBufferSize, TDigest::kDefaultMaxSize) {}
 
 template <typename ClockT>
 auto MultiSlidingWindowQuantileEstimator<ClockT>::estimateQuantiles(

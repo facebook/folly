@@ -17,7 +17,7 @@
 #include <folly/stats/TDigest.h>
 
 #include <algorithm>
-#include <limits>
+#include <cmath>
 
 #include <glog/logging.h>
 
@@ -70,15 +70,6 @@ double k_to_q(double k, double d) {
   } else {
     return 2 * k_div_d * k_div_d;
   }
-}
-
-double clamp(double v, double lo, double hi) {
-  if (v > hi) {
-    return hi;
-  } else if (v < lo) {
-    return lo;
-  }
-  return v;
 }
 
 } // namespace
@@ -452,7 +443,7 @@ double TDigest::estimateQuantile(double q) const {
   }
   auto value = centroids_[pos].mean() +
       ((rank - t) / centroids_[pos].weight() - 0.5) * delta;
-  return clamp(value, min, max);
+  return std::clamp(value, min, max);
 }
 
 double TDigest::Centroid::add(double sum, double weight) {
