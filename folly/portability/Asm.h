@@ -24,6 +24,14 @@
 #include <intrin.h>
 #endif
 
+#if defined(__linux__) && FOLLY_AARCH64
+#include <sys/auxv.h>
+#ifndef HWCAP_SB
+#define HWCAP_SB (1 << 29)
+#endif  // HWCAP_SB
+#endif
+
+
 namespace folly {
 inline void asm_volatile_memory() {
 #if defined(__GNUC__) || defined(__clang__)
@@ -40,8 +48,21 @@ inline void asm_volatile_pause() {
     (defined(__mips_isa_rev) && __mips_isa_rev > 1)
   asm volatile("pause");
 #elif FOLLY_AARCH64
-#if __ARM_ARCH >= 9
-  asm volatile("sb");
+#if defined(__linux__)
+  static int use_spin_delay_sb = -1;
+
+  // Use SB instruction if available otherwise ISB
+  if (__builtin_expect(use_spin_delay_sb == 1, 1)) {
+    asm volatile(".inst 0xd50330ff");   // SB instruction encoding
+  } else if (use_spin_delay_sb == 0) {
+    asm volatile("isb");
+  } else {
+    // Initialize variable and use getauxval fuction as delay
+    if (getauxval(AT_HWCAP) & HWCAP_SB)
+      use_spin_delay_sb = 1;
+    else
+      use_spin_delay_sb = 0;
+    }
 #else
   asm volatile("isb");
 #endif
