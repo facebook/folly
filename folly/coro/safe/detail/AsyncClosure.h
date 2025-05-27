@@ -52,7 +52,7 @@ auto async_closure_make_cleanup_tuple(
     static_assert(
         noexcept_awaitable_v<T> && std::is_void_v<semi_await_result_t<T>>,
         "`co_cleanup()` must return a `noexcept`-awaitable `void` coro. "
-        "Simply change your return type to `AsNoexcept<Task<void>>`.");
+        "Change your return type to `AsNoexcept<Task<>>` and don't throw.");
     return lite_tuple::tuple{std::move(task)};
   };
   if constexpr (has_async_object_private_hack_co_cleanup<decltype(arg)>) {

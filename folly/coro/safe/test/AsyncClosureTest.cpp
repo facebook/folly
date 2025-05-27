@@ -35,12 +35,14 @@ CO_TEST(AsyncClosure, invalid_co_cleanup) {
   };
 
   struct ValidCleanup : NonCopyableNonMovable {
-    AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) { co_return; }
+    AsNoexcept<Task<>> co_cleanup(async_closure_private_t) { co_return; }
   };
   co_await checkCleanup(tag<ValidCleanup>);
 
   struct InvalidCleanupNonVoid : NonCopyableNonMovable {
-    AsNoexcept<Task<int>> co_cleanup(async_closure_private_t) { co_return 1; }
+    AsNoexcept<Task<int>, OnCancel{0}> co_cleanup(async_closure_private_t) {
+      co_return 1;
+    }
   };
 #if 0 // Manual test -- this uses `static_assert` for better UX.
   co_await checkCleanup(tag<InvalidCleanupNonVoid>);
@@ -54,7 +56,7 @@ CO_TEST(AsyncClosure, invalid_co_cleanup) {
 #endif
 
   struct InvalidCleanupIsMovable {
-    AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) { co_return; }
+    AsNoexcept<Task<>> co_cleanup(async_closure_private_t) { co_return; }
   };
 #if 0 // Manual test -- this failure escapes `is_detected_v`.
   co_await checkCleanup(tag<InvalidCleanupIsMovable>);
@@ -494,7 +496,7 @@ CO_TEST(AsyncClosure, nestedRefsWithoutOuterCoro) {
 struct ErrorObliviousHasCleanup : NonCopyableNonMovable {
   explicit ErrorObliviousHasCleanup(int* p) : cleanBits_(p) {}
   int* cleanBits_;
-  AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) {
+  AsNoexcept<Task<>> co_cleanup(async_closure_private_t) {
     *cleanBits_ += 3;
     co_return;
   }
@@ -513,7 +515,7 @@ struct HasCleanup : NonCopyableNonMovable {
   std::optional<exception_wrapper>* optCleanupErrPtr_;
   // If the closure (not other cleanups!) exited with an exception, each
   // `co_cleanup` gets to see it.
-  AsNoexcept<Task<void>> co_cleanup(
+  AsNoexcept<Task<>> co_cleanup(
       async_closure_private_t, const exception_wrapper* ew) {
     *optCleanupErrPtr_ = *ew;
     co_return;
@@ -797,7 +799,7 @@ struct OrderTracker : NonCopyableNonMovable {
   explicit OrderTracker(int& n, int& cleanupN)
       : myN_(++n), nRef_(n), myCleanupN_(++cleanupN), cleanupNRef_(cleanupN) {}
 
-  AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) {
+  AsNoexcept<Task<>> co_cleanup(async_closure_private_t) {
     EXPECT_EQ(myCleanupN_, cleanupNRef_--);
     co_return;
   }

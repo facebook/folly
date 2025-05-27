@@ -26,7 +26,7 @@ using namespace folly::bindings;
 namespace folly::coro::detail {
 
 struct HasCleanup : NonCopyableNonMovable {
-  AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) { co_return; }
+  AsNoexcept<Task<>> co_cleanup(async_closure_private_t) { co_return; }
 };
 
 constexpr capture_private_t coro_safe_detail_bindings_test_private() {

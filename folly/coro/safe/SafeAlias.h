@@ -326,21 +326,23 @@ struct safe_alias_for<::folly::coro::TryAwaitable<T>>
 
 // Future: Move to `Noexcept.h` once `SafeAlias.h` is mature.
 namespace coro {
-template <typename>
+template <typename, auto>
 class AsNoexcept;
-template <typename>
+template <typename, auto>
 class AsNoexceptWithExecutor;
-template <typename>
-class AsNoexceptAwaitable;
+namespace detail {
+template <typename, auto>
+class NoexceptAwaitable;
+}
 } // namespace coro
-template <typename T>
-struct safe_alias_for<::folly::coro::AsNoexcept<T>>
+template <typename T, auto CancelCfg>
+struct safe_alias_for<::folly::coro::AsNoexcept<T, CancelCfg>>
     : safe_alias_constant<safe_alias_of_v<T>> {};
-template <typename T>
-struct safe_alias_for<::folly::coro::AsNoexceptWithExecutor<T>>
+template <typename T, auto CancelCfg>
+struct safe_alias_for<::folly::coro::AsNoexceptWithExecutor<T, CancelCfg>>
     : safe_alias_constant<safe_alias_of_v<T>> {};
-template <typename T>
-struct safe_alias_for<::folly::coro::AsNoexceptAwaitable<T>>
+template <typename T, auto CancelCfg>
+struct safe_alias_for<::folly::coro::detail::NoexceptAwaitable<T, CancelCfg>>
     : safe_alias_constant<safe_alias_of_v<T>> {};
 
 } // namespace folly

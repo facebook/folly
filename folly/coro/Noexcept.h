@@ -23,7 +23,7 @@
 
 /// ## When to use this
 ///
-/// Use `AsNoexcept`<>` only with APIs that only take coroutines that MUST NOT
+/// Use `AsNoexcept<>` only with APIs that only take coroutines that MUST NOT
 /// throw when awaited -- like `co_cleanup()` or async scopes.  If your code
 /// compiles without `AsNoexcept<>`, you do not need it!
 ///
@@ -64,37 +64,49 @@
 ///
 /// `Noexcept.h` lets you mark coroutine types as `noexcept_awaitable_v`:
 ///
-///   []() -> AsNoexcept<Task<...>> { co_return ...; }
+///   []() -> AsNoexcept<Task<T>, OnCancel(defaultT())> { co_return ...; }
 ///
 /// This function creates a coroutine whose awaitable is that of the inner
-/// task, but automatically wrapped with `detail::NoexceptAwaitable`.
+/// task, but wrapped with `detail::NoexceptAwaitable<...>`.
 //
 /// The latter is an awaitable-wrapper similar to `co_awaitTry()`, except that
 /// it terminates the program if `someAwaitable()` resumes with a thrown
 /// exception.  So, both of these will never throw, but the former returns a
 /// `Try` while latter returns an unwrapped value:
 ///
-///   co_await co_awaitTry(intAwaitable())  // returns `Try<int>`
-///   co_await detail::NoexceptAwaitable{intAwaitable()} // returns `int`
+///   co_await co_awaitTry(intTask())  // `Try<int>`
+///   co_await detail::NoexceptAwaitable<int, OnCancel(0)>{intTask()} // `int`
 ///
-/// Both the coroutine `AsNoexcept<Task<...>>` and the preceding 2 awaitables
-/// return `true` for `noexcept_awaitable_v`.
+/// Both the coroutine `AsNoexcept<Task<...>, ...>` and the preceding 2
+/// awaitables return `true` for `noexcept_awaitable_v`.
 ///
-/// `AsNoexcept<>` / `NoexceptAwaitable` compose properly with other coroutine-
+/// `AsNoexcept<>` / `NoexceptAwaitable<>` compose properly with other coro-
 /// and awaitable-wrappers.  But, not all combinations make sense -- see the
-/// test, and/or extend it if needed.  For example, the wrapper is useless in
-/// `NoexceptAwaitable(co_awaitTry(...))`, since exceptions are put in a `Try`.
+/// test, and/or extend it if needed.  For example, the outer wrapper is
+/// useless in `NoexceptAwaitable<...>(co_awaitTry(...))`, since exceptions
+/// would already have been routed into a `Try`.
 
 namespace folly::coro {
 
-namespace detail {
+struct TerminateOnCancel {};
+inline constexpr TerminateOnCancel terminateOnCancel{};
+
 template <typename T>
-class NoexceptAwaitable;
-} // namespace detail
+struct OnCancel {
+  T privateVal_; // only `public` to make this a structural type
+  T onCancelDefaultValue() const noexcept { return privateVal_; }
+  consteval explicit OnCancel(T t) : privateVal_{std::move(t)} {}
+};
+
+template <>
+struct OnCancel<void> {
+  void onCancelDefaultValue() const noexcept {}
+  consteval explicit OnCancel() = default;
+};
 
 namespace detail {
 
-template <typename Awaitable>
+template <typename Awaitable, auto CancelCfg>
 class NoexceptAwaiter {
  private:
   using Awaiter = awaiter_type_t<Awaitable>;
@@ -113,7 +125,18 @@ class NoexceptAwaiter {
 
   // `noexcept` forces any rethrown exceptions to `std::terminate`
   auto await_resume() noexcept -> decltype(awaiter_.await_resume()) {
-    return awaiter_.await_resume();
+    if constexpr (std::is_same_v<decltype(CancelCfg), TerminateOnCancel>) {
+      return awaiter_.await_resume();
+    } else {
+      try {
+        return awaiter_.await_resume();
+      } catch (const OperationCancelled&) {
+        // IMPORTANT: If you want to extend this protocol to pull out a default
+        // value from the awaiter, be sure to add this assert:
+        // static_assert(noexcept(CancelCfg.onCancelDefaultValue(awaiter_)));
+        return CancelCfg.onCancelDefaultValue();
+      }
+    }
   }
 
   // `noexcept` here as well, because the underlying awaitable might
@@ -127,16 +150,28 @@ class NoexceptAwaiter {
   }
 };
 
-template <typename T>
+template <typename, auto>
+class NoexceptAwaitable;
+
+template <auto CancelCfg>
+struct WithCancelCfg {
+  template <typename T>
+  using apply = NoexceptAwaitable<T, CancelCfg>;
+};
+
+template <typename T, auto CancelCfg>
 class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NoexceptAwaitable
-    : public CommutativeWrapperAwaitable<NoexceptAwaitable, T> {
+    : public CommutativeWrapperAwaitable<
+          WithCancelCfg<CancelCfg>::template apply,
+          T> {
  public:
-  using CommutativeWrapperAwaitable<NoexceptAwaitable, T>::
-      CommutativeWrapperAwaitable;
+  using CommutativeWrapperAwaitable<
+      WithCancelCfg<CancelCfg>::template apply,
+      T>::CommutativeWrapperAwaitable;
 
   template <typename T2 = T, std::enable_if_t<is_awaitable_v<T2>, int> = 0>
-  NoexceptAwaiter<T> operator co_await() && {
-    return NoexceptAwaiter<T>{std::move(this->inner_)};
+  NoexceptAwaiter<T, CancelCfg> operator co_await() && {
+    return NoexceptAwaiter<T, CancelCfg>{std::move(this->inner_)};
   }
 
   using folly_private_noexcept_awaitable_t = std::true_type;
@@ -146,38 +181,40 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NoexceptAwaitable
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
-template <typename Inner>
+template <typename Inner, auto CancelCfg>
 class AsNoexcept;
 // NB: While it'd be prettier to have `AsNoexcept` branch on whether the inner
 // task has an executor, a separate template is much simpler.
-template <typename Inner>
+template <typename Inner, auto CancelCfg>
 class AsNoexceptWithExecutor;
 
 namespace detail {
-template <typename Inner>
+template <typename Inner, auto CancelCfg>
 struct AsNoexceptWithExecutorCfg {
   using InnerTaskWithExecutorT = Inner;
-  using WrapperTaskT =
-      AsNoexcept<typename Inner::folly_private_task_without_executor_t>;
+  using WrapperTaskT = AsNoexcept<
+      typename Inner::folly_private_task_without_executor_t,
+      CancelCfg>;
   template <typename Awaitable> // library-internal, meant to be by-rref
   static inline auto wrapAwaitable(Awaitable&& awaitable) noexcept {
     // Assert can be removed, I was concerned if we accidentally double-wrap
     static_assert(!noexcept_awaitable_v<Awaitable>);
-    return detail::NoexceptAwaitable<Awaitable>{
+    return detail::NoexceptAwaitable<Awaitable, CancelCfg>{
         mustAwaitImmediatelyUnsafeMover(static_cast<Awaitable&&>(awaitable))()};
   }
 };
-template <typename Inner>
+template <typename Inner, auto CancelCfg>
 using AsNoexceptWithExecutorBase = TaskWithExecutorWrapperCrtp<
-    AsNoexceptWithExecutor<Inner>,
-    AsNoexceptWithExecutorCfg<Inner>>;
+    AsNoexceptWithExecutor<Inner, CancelCfg>,
+    AsNoexceptWithExecutorCfg<Inner, CancelCfg>>;
 } // namespace detail
 
-template <typename Inner>
+template <typename Inner, auto CancelCfg = OnCancel<void>{}>
 class FOLLY_NODISCARD AsNoexceptWithExecutor final
-    : public detail::AsNoexceptWithExecutorBase<Inner> {
+    : public detail::AsNoexceptWithExecutorBase<Inner, CancelCfg> {
  protected:
-  using detail::AsNoexceptWithExecutorBase<Inner>::AsNoexceptWithExecutorBase;
+  using detail::AsNoexceptWithExecutorBase<Inner, CancelCfg>::
+      AsNoexceptWithExecutorBase;
 
  public:
   using folly_private_noexcept_awaitable_t = std::true_type;
@@ -189,35 +226,39 @@ template <typename... BaseArgs>
 class AsNoexceptTaskPromiseWrapper final
     : public TaskPromiseWrapper<BaseArgs...> {};
 
-template <typename Inner>
+template <typename Inner, auto CancelCfg>
 struct AsNoexceptCfg {
   using ValueT = semi_await_result_t<Inner>;
   using InnerTaskT = Inner;
-  using TaskWithExecutorT = AsNoexceptWithExecutor<decltype(co_withExecutor(
-      FOLLY_DECLVAL(Executor::KeepAlive<>), FOLLY_DECLVAL(Inner)))>;
+  using TaskWithExecutorT = AsNoexceptWithExecutor<
+      decltype(co_withExecutor(
+          FOLLY_DECLVAL(Executor::KeepAlive<>), FOLLY_DECLVAL(Inner))),
+      CancelCfg>;
   using PromiseT = AsNoexceptTaskPromiseWrapper<
       ValueT,
-      AsNoexcept<Inner>,
+      AsNoexcept<Inner, CancelCfg>,
       typename Inner::promise_type>;
   template <typename Awaitable> // library-internal, meant to be by-rref
   static inline auto wrapAwaitable(Awaitable&& awaitable) noexcept {
     // Assert can be removed, I was concerned if we accidentally double-wrap
     static_assert(!noexcept_awaitable_v<Awaitable>);
-    return detail::NoexceptAwaitable<Awaitable>{
+    return detail::NoexceptAwaitable<Awaitable, CancelCfg>{
         static_cast<Awaitable&&>(awaitable)};
   }
 };
 
-template <typename Inner>
-using AsNoexceptBase = TaskWrapperCrtp<AsNoexcept<Inner>, AsNoexceptCfg<Inner>>;
+template <typename Inner, auto CancelCfg>
+using AsNoexceptBase = TaskWrapperCrtp<
+    AsNoexcept<Inner, CancelCfg>,
+    AsNoexceptCfg<Inner, CancelCfg>>;
 
 } // namespace detail
 
-template <typename Inner>
+template <typename Inner, auto CancelCfg = OnCancel<void>{}>
 class FOLLY_CORO_TASK_ATTRS AsNoexcept final
-    : public detail::AsNoexceptBase<Inner> {
+    : public detail::AsNoexceptBase<Inner, CancelCfg> {
  protected:
-  using detail::AsNoexceptBase<Inner>::AsNoexceptBase;
+  using detail::AsNoexceptBase<Inner, CancelCfg>::AsNoexceptBase;
 
  public:
   using folly_private_noexcept_awaitable_t = std::true_type;
