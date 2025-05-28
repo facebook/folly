@@ -489,6 +489,8 @@ struct DispatchSmallTrivial {
         break;
       case Op::HEAP:
         break;
+      default: /* unexpected */
+        abort();
     }
     return 0U;
   }
@@ -524,6 +526,8 @@ struct DispatchBigTrivial {
         break;
       case Op::HEAP:
         break;
+      default: /* unexpected */
+        abort();
     }
     return src->bigt.size;
   }
@@ -562,6 +566,8 @@ struct DispatchSmall {
         break;
       case Op::HEAP:
         break;
+      default: /* unexpected */
+        abort();
     }
     return 0U;
   }
@@ -583,6 +589,8 @@ struct DispatchBig {
         break;
       case Op::HEAP:
         break;
+      default: /* unexpected */
+        abort();
     }
     return sizeof(Fun);
   }
