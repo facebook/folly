@@ -733,11 +733,11 @@ constexpr double_conversion::DoubleToStringConverter::DtoaMode convert(
       return double_conversion::DoubleToStringConverter::FIXED;
     case DtoaMode::PRECISION:
       return double_conversion::DoubleToStringConverter::PRECISION;
+    default: /* unexpected */
+      assert(false);
+      // Default to PRECISION per exising behavior.
+      return double_conversion::DoubleToStringConverter::PRECISION;
   }
-
-  assert(false);
-  // Default to PRECISION per exising behavior.
-  return double_conversion::DoubleToStringConverter::PRECISION;
 }
 
 /// Converts `DtoaFlags` to
