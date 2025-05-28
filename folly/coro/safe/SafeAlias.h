@@ -142,17 +142,18 @@ enum class safe_alias {
   // the `Captures.h` mechanism that discourages moving `async_closure`
   // capture wrappers out of the closure that owns it (we can't prevent it).
   closure_min_arg_safety = shared_cleanup,
-  // Used only in `async_closure*()`:
-  //   - Valid ONLY until the current closure's cleanup starts.
-  //   - ONLY safe to pass to sub-closures
-  //   - NOT safe to return or pass to callbacks from ancestor closures
-  //   - NOT safe to pass to callbacks of the same closure's cleanup args
-  //     (e.g. `SafeAsyncScope`).
+  // Used only in `async_closure*()` when it takes a `co_cleanup_capture` ref
+  // from a parent:
+  //   - NOT safe to reference from tasks spawned on `co_cleanup_capture` args.
+  //   - Otherwise, just like `co_cleanup_safe_ref`.
   after_cleanup_ref,
   // Used only in `async_closure*()`:
-  //   - Valid until the end of the current closure's cleanup.
-  //   - Safe to pass to sub-closures, or to callbacks from this
-  //     closure's `SafeAsyncScope` (& other `co_cleanup()` args).
+  //   - Unlike `after_cleanup_ref`, is safe to reference from tasks spawned on
+  //     `co_cleanup_capture` args -- because we know these belong to the
+  //     current closure.
+  //   - Outlives the end of the current closure's cleanup, and is thus safe to
+  //     use in `after_cleanup{}` or sub-closures.
+  //   - Safe to pass to sub-closures.
   //   - NOT safe to return or pass to callbacks from ancestor closures.
   co_cleanup_safe_ref,
   // Looks like a "value", i.e. alive as long as you hold it.  Remember

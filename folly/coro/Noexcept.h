@@ -94,7 +94,10 @@ inline constexpr TerminateOnCancel terminateOnCancel{};
 template <typename T>
 struct OnCancel {
   T privateVal_; // only `public` to make this a structural type
-  T onCancelDefaultValue() const noexcept { return privateVal_; }
+  T onCancelDefaultValue() const noexcept {
+    static_assert(std::is_nothrow_copy_constructible_v<T>);
+    return privateVal_;
+  }
   consteval explicit OnCancel(T t) : privateVal_{std::move(t)} {}
 };
 
