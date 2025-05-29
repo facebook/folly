@@ -38,6 +38,8 @@ int mallctlnametomib(const char*, size_t*, size_t*)
     __attribute__((__nothrow__, __weak__));
 int mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
     __attribute__((__nothrow__, __weak__));
+void malloc_stats_print(void (*)(void*, const char*), void*, const char*)
+    __attribute__((__nothrow__, __weak__));
 #endif
 bool MallocExtension_Internal_GetNumericProperty(const char*, size_t, size_t*)
     __attribute__((__weak__));
@@ -56,6 +58,8 @@ extern int (*mallctl)(const char*, void*, size_t*, void*, size_t);
 extern int (*mallctlnametomib)(const char*, size_t*, size_t*);
 extern int (*mallctlbymib)(
     const size_t*, size_t, void*, size_t*, void*, size_t);
+extern void malloc_stats_print(
+    void (*)(void*, const char*), void*, const char*);
 #endif
 extern bool (*MallocExtension_Internal_GetNumericProperty)(
     const char*, size_t, size_t*);
