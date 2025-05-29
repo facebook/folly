@@ -65,15 +65,24 @@ using ValueTask = SafeTask<safe_alias::maybe_value, T>;
 template <typename T = void>
 using CoCleanupSafeTask = SafeTask<safe_alias::co_cleanup_safe_ref, T>;
 
-// Use `ClosureTask` as the inner coro type for tasks meant to be wrapped
-// in an `async_closure`.
+// Use `ClosureTask` as the inner coro type for tasks meant to ALWAYS be
+// wrapped in an `async_closure`.
 //
-// Outside of a closure, `ClosureTask` is neither awaitable nor movable.
-// The `unsafe_closure_internal` specialization below explains why.
+// Outside of a closure, a `ClosureTask` is immovable.  If you are wanting to
+// move a `ClosureTask`, construct it via an async closure, and you'll get back
+// a `SafeTask` with safety measurements reflecting the safety of its args.
 //
 // If your use-case calls for a `SafeTask` that is sometimes wrapped in a
-// closure, and sometimes isn't, you might add a `MinClosureSafeTask` type
-// alias for `closure_min_arg_safety`.
+// closure, and sometimes is constructed without a closure, you might add a
+// `MinClosureSafeTask` type alias for `closure_min_arg_safety`.
+//
+// Immovability rationale: `ClosureTask` is implemented as a `SafeTask` for
+// reasons explained in the `unsafe_closure_internal` specialization below.
+// But, its safety contract is weaker than that of the usual closure (it can
+// take `capture<Val>`, which should never be moved) -- immovability is meant
+// to reduce the odds of misuse.  Making it truly opaque / not semi-awaitable
+// would be a stronger safeguard, but that requires extra complexity even just
+// so that `AsNoexcept<ClosureTask<>> foo()` would compile.
 template <typename T = void>
 using ClosureTask = SafeTask<safe_alias::unsafe_closure_internal, T>;
 
@@ -300,10 +309,8 @@ struct SafeTaskBaseTraits {
 //    owning closure that's responsible for its cleanup.
 template <typename T>
 struct SafeTaskBaseTraits<safe_alias::unsafe_closure_internal, T> {
-  // In today's usage, `ClosureTask` does not benefit from being movable, so
-  // mark it non-movable to be safer & preserve option value.
-  // IMPORTANT: If changing, also update the base of `SafeTaskWithExecutor`.
-  using type = AddMustAwaitImmediately<OpaqueTaskWrapperCrtp<
+  // The `ClosureTask` docblock discusses why this is immovable.
+  using type = AddMustAwaitImmediately<TaskWrapperCrtp<
       SafeTask<safe_alias::unsafe_closure_internal, T>,
       SafeTaskCfg<safe_alias::unsafe_closure_internal, T>>>;
 };
@@ -312,8 +319,8 @@ struct SafeTaskBaseTraits<safe_alias::unsafe_closure_internal, T> {
 // similar to `ClosureTask`.
 template <typename T>
 struct SafeTaskBaseTraits<safe_alias::unsafe_member_internal, T> {
-  // Unlike `ClosureTask`, this **is** awaitable outside of `async_closure`,
-  // and therefore it **must** be non-movable to mitigate safety risks.
+  // Immovable since members take `this`, whose lifetime is unknown -- i.e.
+  // outside of async closure usage, a `MemberTask` is just a `NowTask`.
   using type = AddMustAwaitImmediately<TaskWrapperCrtp<
       SafeTask<safe_alias::unsafe_member_internal, T>,
       SafeTaskCfg<safe_alias::unsafe_member_internal, T>>>;
