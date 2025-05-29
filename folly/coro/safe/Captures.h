@@ -235,7 +235,7 @@ class capture_private_t {
   friend struct CapturesTest;
   template <typename, template <typename> class, typename>
   friend class capture_crtp_base;
-  template <typename, auto>
+  template <typename, auto, size_t>
   friend class capture_binding_helper;
   template <auto>
   friend auto bind_captures_to_closure(auto&&, auto);
@@ -591,6 +591,9 @@ class capture_storage : public capture_crtp_base<Derived, RefArgT, V> {
       async_closure_private_t, auto&&, const exception_wrapper*);
   template <typename> // For the `capture` specializations only!
   friend struct AsyncObjectRefForSlot;
+  template <typename ArgMap, size_t ArgI, typename Arg>
+  friend decltype(auto) async_closure_resolve_backref(
+      capture_private_t, auto&, Arg&);
 
   constexpr auto& get_lref() noexcept { return v_; }
   constexpr const auto& get_lref() const noexcept { return v_; }

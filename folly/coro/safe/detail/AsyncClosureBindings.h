@@ -124,17 +124,26 @@ struct async_closure_regular_arg {
   BindWrapper bindWrapper_;
 };
 
+// Use `is_base_of` since `instantiation_of` cannot handle no-type templates
+class async_closure_outer_stored_arg_base {};
+template <typename T>
+concept is_async_closure_outer_stored_arg =
+    std::is_base_of_v<async_closure_outer_stored_arg_base, T>;
+
 // For a given closure, all `_stored_arg` tags are going to be of one flavor.
-// We have separate "inner" and "outer" tags for a pretty weak reason --
-// currently, the "has outer coro" decision isn't exported in any other way.
-// If useful, we could easily refactor this to be one `_owned_capture` tag
-// type, and branch on `has_outer_coro` in `AsyncClosure.h`.  Reworking things
-// this way would make it possible to have an outer coro without storage, which
-// might be needed if someone has a legitimate use-case for captures that
-// define `setParentCancelToken()` without defining `co_cleanup()` (dubious!).
-template <is_any_capture Storage, typename BindWrapper>
-struct async_closure_outer_stored_arg {
+// With an outer coro, we capture info required to resolve backrefs.  Also, the
+// "has outer coro" decision isn't exported in any way besides the "inner" vs
+// "outer" stored arg type.  If useful, we could easily refactor this to be one
+// `_owned_capture` tag type, and branch on `has_outer_coro` in
+// `AsyncClosure.h`.  Reworking things this way would make it possible to have
+// an outer coro without storage, which might be needed if someone has a
+// legitimate use-case for captures that define `setParentCancelToken()` or
+// `setParentExecutor()` without defining `co_cleanup()` (dubious!).
+template <is_any_capture Storage, typename BindWrapper, size_t ArgI, auto Tag>
+struct async_closure_outer_stored_arg : async_closure_outer_stored_arg_base {
   using storage_type = Storage;
+  constexpr static inline size_t arg_idx = ArgI;
+  constexpr static inline auto tag = Tag;
   BindWrapper bindWrapper_;
 };
 template <is_any_capture Storage, typename BindWrapper>
@@ -213,7 +222,7 @@ struct binding_helper_cfg {
   constexpr auto operator<=>(const binding_helper_cfg&) const = default;
 };
 
-template <typename Binding, auto Cfg>
+template <typename Binding, auto Cfg, size_t ArgI>
 class capture_binding_helper;
 
 // This helper class only has static members.  It exists only so that the
@@ -221,10 +230,12 @@ class capture_binding_helper;
 template <
     std::derived_from<folly::bindings::ext::bind_info_t> auto BI,
     typename BindingType,
-    auto Cfg>
+    auto Cfg,
+    size_t ArgI>
 class capture_binding_helper<
     folly::bindings::ext::binding_t<BI, BindingType>,
-    Cfg> {
+    Cfg,
+    ArgI> {
  private:
   // A constraint on the template would make forward-declarations messy.
   static_assert(std::is_same_v<decltype(Cfg), binding_helper_cfg>);
@@ -310,7 +321,11 @@ class capture_binding_helper<
   template <typename T>
   static constexpr auto store_as(auto bind_wrapper) {
     if constexpr (Cfg.has_outer_coro) {
-      return async_closure_outer_stored_arg<T, decltype(bind_wrapper)>{
+      return async_closure_outer_stored_arg<
+          T,
+          decltype(bind_wrapper),
+          ArgI,
+          folly::bindings::ext::named_bind_info_tag_v<decltype(BI)>>{
           .bindWrapper_ = std::move(bind_wrapper)};
     } else {
       return async_closure_inner_stored_arg<T, decltype(bind_wrapper)>{
@@ -448,7 +463,7 @@ template <bool IncludeRefHack, typename T>
 auto vtag_safety_of_async_closure_arg() {
   // "owned capture": `store_as` outputs `async_closure_*_stored_arg`.
   if constexpr (
-      is_instantiation_of_v<async_closure_outer_stored_arg, T> ||
+      is_async_closure_outer_stored_arg<T> ||
       is_instantiation_of_v<async_closure_inner_stored_arg, T>) {
     using CT = typename T::storage_type::capture_type;
     static_assert(!std::is_reference_v<CT>);
@@ -602,18 +617,18 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
       typename BoundArgs::binding_list_t{}));
 
   auto tup = static_cast<BoundArgs&&>(bargs).unsafe_tuple_to_bind();
-  auto make_result_tuple = [&]<binding_helper_cfg HelperCfg>(
-                               vtag_t<HelperCfg>) {
-    return [&]<size_t... Is>(std::index_sequence<Is...>) {
-      return lite_tuple::tuple{[&]() {
-        using Binding = type_list_element_t<Is, Bindings>;
-        using T = std::tuple_element_t<Is, decltype(tup)>;
-        return capture_binding_helper<Binding, HelperCfg>::transform_binding(
-            bind_wrapper_t<T>{
-                .t_ = static_cast<T&&>(lite_tuple::get<Is>(tup))});
-      }()...};
-    }(std::make_index_sequence<type_list_size_v<Bindings>>{});
-  };
+  auto make_result_tuple =
+      [&]<binding_helper_cfg HelperCfg>(vtag_t<HelperCfg>) {
+        return [&]<size_t... Is>(std::index_sequence<Is...>) {
+          return lite_tuple::tuple{[&]() {
+            using Binding = type_list_element_t<Is, Bindings>;
+            using T = std::tuple_element_t<Is, decltype(tup)>;
+            return capture_binding_helper<Binding, HelperCfg, Is>::
+                transform_binding(bind_wrapper_t<T>{
+                    .t_ = static_cast<T&&>(lite_tuple::get<Is>(tup))});
+          }()...};
+        }(std::make_index_sequence<type_list_size_v<Bindings>>{});
+      };
 
   // Future: If there are many `make_in_place` arguments (which require
   // `capture_heap`), it may be more efficient to auto-select an outer coro,

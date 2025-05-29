@@ -278,12 +278,122 @@ inline auto async_closure_default_inner_err() {
   }
 }
 
-template <typename... Ts>
+template <auto Tag, size_t ArgI, size_t StoredI>
+struct async_closure_backref_entry {
+  static inline constexpr auto tag = Tag;
+  static inline constexpr size_t arg_idx = ArgI;
+  static inline constexpr size_t stored_idx = StoredI;
+};
+
+template <typename... Entries>
+struct async_closure_backref_map : Entries... {};
+
+template <auto Tag, size_t ArgI, size_t StoredI>
+async_closure_backref_entry<Tag, ArgI, StoredI> async_closure_backref_get(
+    async_closure_backref_entry<Tag, ArgI, StoredI>);
+
+template <typename, size_t, typename T>
+  requires(!std::is_lvalue_reference_v<T>)
+struct async_closure_backref_populator {
+  T&& operator()(capture_private_t, auto&, T&& t) const {
+    return static_cast<T&&>(t);
+  }
+};
+
+template <typename ArgMap, size_t ArgI, typename Arg>
+decltype(auto) async_closure_resolve_backref(
+    capture_private_t priv, auto& tup, Arg&) {
+  constexpr auto Tag = Arg::folly_bindings_identifier_tag;
+  // `AsyncClosureBindings.h` populates tags via `named_bind_info_tag_v`, which
+  // uses `no_tag_t` to mean "no tag was set" -- so you can't look it up.
+  static_assert(!std::is_same_v<folly::bindings::ext::no_tag_t, decltype(Tag)>);
+  // This will fail on missing, or ambiguous tags.
+  using Entry = decltype(async_closure_backref_get<Tag>(FOLLY_DECLVAL(ArgMap)));
+  static_assert(
+      Entry::arg_idx < ArgI,
+      "Can only take backrefs to capture storage to the left of the current "
+      "capture, since in-place captures are constructed left-to-right.");
+  auto& target = lite_tuple::get<Entry::stored_idx>(tup);
+  using SourceCapture = std::remove_reference_t<decltype(target)>;
+  static_assert(is_any_capture<SourceCapture>);
+  using Source = typename SourceCapture::capture_type;
+  // At present, it's not even possible to add an `"x"_id` tag to a non-stored
+  // argument.  We would also never want to allow backrefs to rvalue reference
+  // captures, since those are meant to be single-use.
+  static_assert(!std::is_reference_v<Source>);
+  return capture<Source&>(priv, forward_bind_wrapper(target.get_lref()));
+}
+
+// Replace `"x"_id` backreferences in the args of `capture_in_place` and
+// `capture_in_place_with` with `capture<T&>` references to the corresponding
+// capture storage.
+//
+// Backrefs may ONLY point to capture storage -- any args moved into the inner
+// coro are subject to unspecified destruction order, and so could not safely
+// reference each other.  In principle, we could allow backrefs to
+// `capture<T&>` refs being passed from the parent, but that adds complexity,
+// and isn't very useful.
+//
+// We don't need an explicit "closure has outer coro" test, since the
+// backref-population logic ONLY runs against stored args.
+template <typename ArgMap, size_t ArgI, typename T, typename... Args>
+  requires(requires(Args a) { a.folly_bindings_identifier_tag; } || ...)
+struct async_closure_backref_populator<
+    ArgMap,
+    ArgI,
+    bind_wrapper_t<folly::bindings::detail::in_place_args_maker<T, Args...>>> {
+  using BindWrap =
+      bind_wrapper_t<folly::bindings::detail::in_place_args_maker<T, Args...>>;
+  auto operator()(capture_private_t priv, auto& tup, BindWrap&& bw) const {
+    return lite_tuple::apply(
+        [&](Args&&... args) {
+          return unsafe_tuple_to_bind_wrapper(
+              folly::bindings::make_in_place_with([&]() {
+                return T{[&]() -> decltype(auto) {
+                  if constexpr (requires(Args a) {
+                                  a.folly_bindings_identifier_tag;
+                                }) {
+                    // Pass (and take) `args` by lvalue ref because moving
+                    // backref tokens doesn't make sense.
+                    return async_closure_resolve_backref<ArgMap, ArgI>(
+                        priv, tup, args);
+                  } else {
+                    return static_cast<Args&&>(args);
+                  }
+                }()...};
+              }).unsafe_tuple_to_bind());
+        },
+        static_cast<BindWrap&&>(bw).what_to_bind().release_arg_tuple());
+  }
+};
+
+template <typename ArgMap, typename... Ts>
 struct async_closure_storage {
-  explicit async_closure_storage(capture_private_t priv, auto&&... as)
+  template <typename... StoredArgs> // no forwarding refs
+  explicit async_closure_storage(capture_private_t priv, StoredArgs&&... sas)
       : inner_err_(async_closure_default_inner_err()),
         // Curly braces guarantee that in-place construction is left-to-right
-        storage_tuple_{Ts{priv, static_cast<decltype(as)>(as)}...} {}
+        storage_tuple_{Ts{
+            priv,
+            async_closure_backref_populator<
+                ArgMap,
+                StoredArgs::arg_idx,
+                decltype(sas.bindWrapper_)>{}(
+                priv,
+                // Here, we access `storage_tuple_` before it is constructed,
+                // which emits an "uninitialized access" warning.  However,
+                // this one is safe because:
+                //   - lite_tuple constructs elements left-to-right
+                //   - we check above that backrefs only point right-to-left
+                //
+                // clang-format off
+                FOLLY_PUSH_WARNING
+                FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
+                storage_tuple_,
+                FOLLY_POP_WARNING
+                // clang-format on
+                static_cast<StoredArgs&&>(sas)
+                    .bindWrapper_)}...} {}
 
   // We go through getters so that `AsyncObject` can reuse closure machinery.
   // Note that we only need lvalue refs to the storage tuple, meaning that
@@ -304,7 +414,7 @@ struct async_closure_storage {
 template <size_t StorageI, typename Bs>
 decltype(auto) async_closure_bind_inner_coro_arg(
     capture_private_t priv, Bs& bs, auto& storage_ptr) {
-  if constexpr (is_instantiation_of_v<async_closure_outer_stored_arg, Bs>) {
+  if constexpr (is_async_closure_outer_stored_arg<Bs>) {
     // "own": arg was already moved into `storage_ptr`.
     auto& storage_ref = get_from_storage_ptr<StorageI>(storage_ptr);
     static_assert(
@@ -332,6 +442,11 @@ decltype(auto) async_closure_bind_inner_coro_arg(
   }
 }
 
+template <typename, typename T>
+struct with_tag {
+  T value;
+};
+
 // Eagerly construct -- but do not await -- an `async_closure`:
 //   - Resolve bindings.
 //   - Construct & store args for the user-supplied inner coro.
@@ -358,6 +473,16 @@ template <auto Cfg>
 auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
   auto& [arg_safeties, b_tup] = safeties_and_binds;
 
+  using BTupIs = std::make_index_sequence<std::tuple_size_v<decltype(b_tup)>>;
+  // For stored arg  @ `i`, `VtagStorageIs[i]` is a `*storage_ptr` index.
+  using VtagStorageIs = decltype(lite_tuple::apply(
+      [&]<typename... Bs>(Bs&...) {
+        return cumsum_except_last<
+            (size_t)0,
+            is_async_closure_outer_stored_arg<Bs>...>;
+      },
+      b_tup));
+
   // If some arguments require outer-coro storage, construct them in-place
   // on a `unique_ptr<tuple<>>`.  Without an outer coro, this stores `nullopt`.
   //
@@ -368,29 +493,33 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
   // Future: With a custom coro class, it should be possible to store the
   // argument tuple ON the coro frame, saving one allocation.
   auto storage_ptr = lite_tuple::apply(
-      []<typename... SAs>(SAs... sas) {
+      []<typename... Entries, typename... SAs>(with_tag<Entries, SAs>... as) {
         if constexpr (sizeof...(SAs) == 0) {
           return std::nullopt; // Signals "no outer closure" to the caller
         } else {
           // (2) Construct all the storage args in-place in one tuple.
-          return std::make_unique<
-              async_closure_storage<typename SAs::storage_type...>>(
-              capture_private_t{}, std::move(sas.bindWrapper_)...);
+          return std::make_unique<async_closure_storage<
+              async_closure_backref_map<Entries...>,
+              typename SAs::storage_type...>>(
+              capture_private_t{}, std::move(as).value...);
         }
       },
       // (1) Collect the args that need storage on the outer coro.
-      lite_tuple::apply(
-          [](auto&... bs) {
-            return lite_tuple::tuple_cat([]<typename B>(B& b) {
-              if constexpr ( //
-                  is_instantiation_of_v<async_closure_outer_stored_arg, B>) {
-                return lite_tuple::tuple{std::move(b)};
-              } else {
-                return lite_tuple::tuple{};
-              }
-            }(bs)...);
-          },
-          b_tup));
+      []<size_t... ArgIs, size_t... StorageIs>(
+          auto& tup, std::index_sequence<ArgIs...>, vtag_t<StorageIs...>) {
+        // Future: Could support using the `self_id` backref to get a capture
+        // ref to the `async_closure_scope_self_ref_hack` arg.
+        return lite_tuple::tuple_cat([]<typename B>(B& b) {
+          if constexpr (is_async_closure_outer_stored_arg<B>) {
+            static_assert(ArgIs == B::arg_idx);
+            return lite_tuple::tuple{with_tag<
+                async_closure_backref_entry<B::tag, ArgIs, StorageIs>,
+                B>{std::move(b)}};
+          } else {
+            return lite_tuple::tuple{};
+          }
+        }(lite_tuple::get<ArgIs>(tup))...);
+      }(b_tup, BTupIs{}, VtagStorageIs{}));
 
   auto raw_inner_coro = lite_tuple::apply(
       [&]<typename... Bs>(Bs&... bs) {
@@ -420,12 +549,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
                       capture_private_t{}, bs, storage_ptr);
                 }
               }()...);
-        }(std::index_sequence_for<Bs...>{},
-               cumsum_except_last< // `StorageIs` indexes into `storage_ptr`
-                   (size_t)0,
-                   is_instantiation_of_v<
-                       async_closure_outer_stored_arg,
-                       Bs>...>);
+        }(BTupIs{}, VtagStorageIs{}); // `StorageIs` indexes into `storage_ptr`
       },
       b_tup);
 

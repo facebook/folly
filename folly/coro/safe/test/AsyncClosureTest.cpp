@@ -261,6 +261,65 @@ CO_TEST(AsyncClosure, callFunctionWithOuter) {
   EXPECT_EQ("hide-and-seek", res);
 }
 
+struct TakesBackref {
+  capture<std::string&> prefix_;
+  std::string suffix_;
+};
+
+CO_TEST(AsyncClosure, capture_backref) {
+  auto concat_prefix_suffix =
+      [](auto, auto /*hello*/, auto world) -> ClosureTask<std::string> {
+    co_return *world->prefix_ + world->suffix_;
+  };
+
+  auto r1 = co_await asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "s1"_id = as_capture(std::string{"goodbye"}),
+          "s2"_id = as_capture(std::string{"hello"}),
+          capture_in_place<TakesBackref>("s2"_id, " world!")});
+  EXPECT_EQ("hello world!", r1);
+
+  auto r2 = co_await asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "s1"_id = as_capture(std::string{"goodbye"}),
+          "s2"_id = as_capture(std::string{"hello"}),
+          capture_in_place<TakesBackref>("s1"_id, " world!")});
+  EXPECT_EQ("goodbye world!", r2);
+
+#if 0 // manual test for "backrefs must point only to the left" assert
+  (void)asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "s1"_id = as_capture(std::string{"goodbye"}),
+          capture_in_place<TakesBackref>("s2"_id, " world!"),
+          "s2"_id = as_capture(std::string{"hello"})});
+#endif
+
+#if 0 // manual test for "ambiguous backref" scenario
+  // Future: Make this error message clearer than the current:
+  //   error: no matching function for call to 'async_closure_backref_get'
+  (void)asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "s"_id = as_capture(std::string{"goodbye"}),
+          "s"_id = as_capture(std::string{"hello"}),
+          capture_in_place<TakesBackref>("s"_id, " world!")});
+#endif
+
+#if 0 // manual test for "backref not found" scenario
+  // Future: Make this error message clearer than the current:
+  //   error: no matching function for call to 'async_closure_backref_get'
+  (void)asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "x1"_id = as_capture(std::string{"goodbye"}),
+          "x2"_id = as_capture(std::string{"hello"}),
+          capture_in_place<TakesBackref>("s"_id, " world!")});
+#endif
+}
+
 CO_TEST(AsyncClosure, simpleCancellation) {
   EXPECT_THROW(
       co_await timeout(
