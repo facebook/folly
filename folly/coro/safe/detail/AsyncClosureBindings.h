@@ -257,26 +257,29 @@ class capture_binding_helper<
     static_assert(std::is_reference_v<ST> == (BI.category == category_t::ref));
     if constexpr (std::is_reference_v<ArgT>) { // Is `capture<Ref>`?
       // Design note: Why do we automatically pass all `capture`s by-reference?
-      // As an alternative, recall that `folly::bindings` has `by_ref`.  This
-      // adverb, while originally meant for defining storage structs, could be
-      // hijacked as a mandatory marking for `captures` that get passed
-      // by-reference.  That would be more explicit, but also more confusing
-      // and harder to use:
-      //   - `by_ref` CANNOT be used for "regular" args, since those are
+      // As an alternative, recall that `folly::bindings` has `const_ref` /
+      // `mut_ref`.  These modifiers could be hijacked as a mandatory marking
+      // for `captures` that get passed by-reference.  That might seem more
+      // explicit, but also more confusing and harder to use:
+      //   - `const_ref` / `mut_ref CANNOT be used for "regular" args -- they're
       //     by-reference iff the caller writes `T&` in the signature.
       //   - `capture`s are intended to belong to the parent closure, it rarely
       //     makes sense to copy or move them.
       //   - Syntactically, `capture`s behave like pointers.
-      //   - If we required an explicit `by_ref` only to pass `capture<Val>` as
-      //     a `capture<Ref>`, then a closure from "has outer coro" to "lacks
-      //     outer coro" would require each called to add `by_ref`.
+      //   - If we needed an explicit `const_ref` / `mut_ref` only to pass
+      //     `capture<Val>` as a `capture<Ref>`, then migrating a closure from
+      //     "has outer coro" to "lacks outer coro" would require adding such a
+      //     modifier at every callsite.
       //   - You can still move out the contents of a capture into a child by
       //     passing an rvalue ref as `std::move(cap)` to the child, or by
       //     passing the actual value via `*std::move(cap)`.  Similarly, `*cap`
       //     would copy the value.
+      // N.B.  We DO use `as_capture{const_ref{}}` etc in order to convert
+      // plain references from a parent coro into `capture` refs in a child
+      // closure, see "capture-by-reference" in `Captures.md`.
       static_assert(
           !std::is_reference_v<ST>,
-          "Pass `capture<Ref>` by value, do not use `by_ref`");
+          "Pass `capture<Ref>` by value, do not use `const_ref` / `mut_ref`");
       // Passing the caller's `capture<Ref>` makes a new `capture` ref object.
       if constexpr (std::is_lvalue_reference_v<BindingType>) {
         // Improve errors over just "deleted copy ctor".

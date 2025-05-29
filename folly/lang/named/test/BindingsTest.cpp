@@ -147,15 +147,16 @@ constexpr auto check_by_ref() {
   double b = 2.3;
 
   constexpr auto ref = category_t::ref;
-  constexpr constness_t def_const{};
+  constexpr auto konst = constness_t::constant;
   static_assert(
       std::is_same_v<
-          decltype(by_ref{"a"_id = 1, bound_args{"b"_id = b, "c"_id = 'c'}})::
-              binding_list_t,
+          decltype(const_ref{
+              "a"_id = 1,
+              bound_args{"b"_id = b, "c"_id = 'c'}})::binding_list_t,
           tag_t<
-              binding_t<named_bi<"a", def_const, ref>, int&&>,
-              binding_t<named_bi<"b", def_const, ref>, double&>,
-              binding_t<named_bi<"c", def_const, ref>, char&&>>>);
+              binding_t<named_bi<"a", konst, ref>, int&&>,
+              binding_t<named_bi<"b", konst, ref>, double&>,
+              binding_t<named_bi<"c", konst, ref>, char&&>>>);
 
   constexpr auto non_const = constness_t::non_constant;
   using non_const_refs = tag_t<
@@ -164,16 +165,15 @@ constexpr auto check_by_ref() {
       binding_t<named_bi<"c", non_const, ref>, char&&>>;
   static_assert(
       std::is_same_v<
-          decltype(non_constant{by_ref{
+          decltype(non_constant{const_ref{
               "a"_id = 1,
               bound_args{"b"_id = b, "c"_id = 'c'}}})::binding_list_t,
           non_const_refs>);
 
   static_assert(
       std::is_same_v<
-          decltype(by_non_const_ref{
-              "a"_id = 1,
-              bound_args{"b"_id = b, "c"_id = 'c'}})::binding_list_t,
+          decltype(mut_ref{"a"_id = 1, bound_args{"b"_id = b, "c"_id = 'c'}})::
+              binding_list_t,
           non_const_refs>);
 
   return true;
@@ -249,25 +249,25 @@ constexpr auto check_in_place_binding_modifier_distributive_property() {
           my_list,
           decltype(non_constant{
               "a"_id = true,
-              "b"_id = by_ref{b},
+              "b"_id = const_ref{b},
               "c"_id = make_in_place<int>(3),
-              self_id = by_ref('d')})::binding_list_t>);
+              self_id = const_ref('d')})::binding_list_t>);
   static_assert(
       std::is_same_v<
           my_list,
           decltype(non_constant{
               "a"_id = non_constant{true},
-              "b"_id = by_non_const_ref{b},
+              "b"_id = mut_ref{b},
               "c"_id = non_constant{make_in_place<int>(3)},
-              self_id = by_non_const_ref{'d'}})::binding_list_t>);
+              self_id = mut_ref{'d'}})::binding_list_t>);
   static_assert(
       std::is_same_v<
           my_list,
           decltype(non_constant{
               non_constant{"a"_id = true},
-              by_non_const_ref{"b"_id = b},
+              mut_ref{"b"_id = b},
               non_constant{"c"_id = make_in_place<int>(3)},
-              by_non_const_ref{self_id = 'd'}})::binding_list_t>);
+              mut_ref{self_id = 'd'}})::binding_list_t>);
 
   return true;
 }
@@ -281,9 +281,8 @@ template <typename BA>
 using policy = decltype(get_policy(typename BA::binding_list_t{}));
 
 // A minimal test that `storage_type` matches standard policy
-static_assert(std::is_same_v<
-              policy<decltype(constant(by_ref(5)))>::storage_type,
-              const int&&>);
+static_assert(
+    std::is_same_v<policy<decltype(const_ref(5))>::storage_type, const int&&>);
 
 template <typename BA>
 using sig = policy<BA>::signature_type;
@@ -298,9 +297,7 @@ constexpr auto check_in_place_binding_signature_type() {
           sig<decltype("x"_id = non_constant(5))>,
           id_type<"x", int>>);
   static_assert(
-      std::is_same_v<
-          sig<decltype("x"_id = by_non_const_ref(5))>,
-          id_type<"x", int&&>>);
+      std::is_same_v<sig<decltype("x"_id = mut_ref(5))>, id_type<"x", int&&>>);
   static_assert(
       std::is_same_v<
           sig<decltype(self_id = constant(make_in_place<int>(5)))>,

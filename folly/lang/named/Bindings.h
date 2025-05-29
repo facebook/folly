@@ -27,7 +27,7 @@
 ///   bound_args{
 ///      self_id = make_in_place<MyClass>(), // tag akin to Python's `self`
 ///      "x"_id = 5,
-///      "y"_id = by_non_const_ref{y},
+///      "y"_id = mut_ref{y},
 ///   }
 ///
 /// If the API takes a pack of named bindings, the above syntax is all that a

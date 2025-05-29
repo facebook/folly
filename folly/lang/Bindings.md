@@ -6,31 +6,30 @@ Are you trying to call a `folly::bindings`-enabled API?  For simple usage,
 you should not need to read this file at all!  Read the API docs instead.
 
 NEVER write functions that pass `folly::bindings` helper types (`constant`,
-`by_ref`, `bound_args`, etc) by reference.  These immovable objects must
+`const_ref`, `bound_args`, etc) by reference.  These immovable objects must
 only exist in the statement that constructed them.
 
 The high-level idea of `folly::bindings` is to offer **the caller** a
 vocabulary to describe the storage types to be used by the callee.
 
 For example, if a callee wants to store a generic tuple, the caller may
-write `constant(5), by_ref(b, c, non_constant(d))` to define the storage as
+write `constant{5}, const_ref{b, c}, mut_ref{d}` to define the storage as
 `std::tuple<const int, const int&, const int&, int&>{5, b, c, d}`.
 
 Your specific API's docs are authoritative -- a callee can change modifier
 meanings, or define new ones.  That said, suggested modifier semantics are:
   - Pass non-movable, non-copyable types via `make_in_place<T>()` or
     `make_in_place_with(fn)`.
-  - The API decides whether `by_ref` / `by_non_const_ref` are supported.
+  - The API decides whether `const_ref` / `mut_ref` are supported.
     If NOT, then the callee's signature decides between by-value & by-ref.
-      * Using `by_ref` should cause a compile error (`static_assert`).
+      * Using `const_ref` etc should cause a compile error (`static_assert`).
     If YES, they tell the callee to take the argument by reference. Then:
-      * WATCH OUT: `by_ref` defaults to `const`, unlike standard C++.
+      * WATCH OUT: `const_ref` / `mut_ref` is explicit unlike regular C++.
         Rationale: Programming best practice is to minimize "implicit"
         mutation.  When writing modern C++, two argument passing styles
         predominate: `T` -- you own this, and `const T&` -- a read-only
         input.  Any mutable "output" references, like `T&`, ought to be
-        plainly visible at the callsite to avoid bugs, but unfortunately C++
-        doesn't support this.  `by_ref` remedies this flaw.
+        plainly visible at the callsite to avoid bugs, and `mut_ref` is.
       * Passing a variable without modifiers will be pass-by-value.
   - Unlike `std::as_const`, which changes the `const`ness of the input,
     `{non_,}constant` say whether the storage should be made `const`.
@@ -73,15 +72,12 @@ uniformly bind:
 
 Consider this `folly::bindings` expression:
 
-  bound_args ba{5, constant{a}, by_ref{non_constant{b, std::move(c)}, d}};
+  bound_args ba{5, constant{a}, mut_ref{b, std::move(c)}, const_ref{d}};
 
 Stored with the default `binding_policy`, this is akin to:
 
   std::tuple<int, const A, B&, C&&, const D&> tup =
       std::forward_as_tuple{5, a, b, std::move(c), d};
-
-Note that `folly::bindings` shows one non-standard behavior above --
-`by_ref` emits a `const` reference unless overridden.
 
 Regular C++ arguments are fine (and preferred!) when the destination types
 are known in advance, and the types are movable.  But, in trickier cases
@@ -103,9 +99,8 @@ standard C++ semantics, except for a couple of restrictions to make argument
 passing less bug-prone.
 
 With the vanilla `binding_policy`, besides `make_in_place*` support, you get:
-  - Arguments are bound by value, unless the callsite includes `by_ref`.
-    This should reduce bugs related to aliasing the caller doesn't expect.
-  - Reference args default to `const`.
+  - Arguments are bound by value, unless the callsite includes `const_ref` /
+    `mut_ref`.  This prevents bugs from callers not expecting aliasing.
   - While `copy{}` and `move{}` modifiers aren't yet provided, `category_t`
     and `binding_policy` allow for the notion of the caller restricting that
     an argument be passed by copy, or move-copy.

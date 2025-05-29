@@ -72,7 +72,7 @@ struct bound_args_unsafe_move {
 //     doing in-place construction, and the input is a "maker" object that's
 //     implicitly convertible to that value type.
 //   - "Flags" stored in `bind_info_t` enums below.  Users set them via
-//     modifier helpers like `constant{}` or `by_ref{}`.  Library authors
+//     modifier helpers like `constant{}` or `const_ref{}`.  Library authors
 //     may derive from `bind_info_t` to add custom flags, and then define a
 //     corresponding `binding_policy` specialization to handle them.
 //   - An "output type" computed **after** all the modifiers are applied
@@ -111,7 +111,7 @@ struct bind_info_t {
 //   - `BindingType`: the input binding type -- a reference, unless this is
 //     a `make_in_place*` binding -- see `is_binding_t_type_in_place`.
 //   - A `bind_info_t`-derived object capturing the effects of any binding
-//     modifiers (`constant`, `by_ref`, etc).
+//     modifiers (`constant`, `const_ref`, etc).
 // This is used by `binding_policy` to compute `storage_type` and
 // `signature_type`.  The values returned by `unsafe_tuple_to_bind()` should
 // be convertible to the resulting `storage_type`.
@@ -124,7 +124,7 @@ template <typename BT>
 concept is_binding_t_type_in_place = !std::is_reference_v<BT>;
 
 // Implementation detail for all the `bound_args` modifiers (`constant`,
-// `by_ref`, etc).  Concatenates multiple `Ts`, each quacking like
+// `const_ref`, etc).  Concatenates multiple `Ts`, each quacking like
 // `like_bound_args`, to produce a single `like_bound_args` list.  Applies
 // `BindInfoFn` to each `bind_info_t` in the inputs' `binding_list_t`s.
 template <typename BindInfoFn, typename... Ts>
@@ -380,12 +380,13 @@ using non_constant_bind_info = decltype([](auto bi) {
   return bi;
 });
 
-using by_ref_bind_info = decltype([](auto bi) {
+using const_ref_bind_info = decltype([](auto bi) {
   bi.category = ext::category_t::ref;
+  bi.constness = ext::constness_t::constant;
   return bi;
 });
 
-using by_non_const_ref_bind_info = decltype([](auto bi) {
+using mut_ref_bind_info = decltype([](auto bi) {
   bi.category = ext::category_t::ref;
   bi.constness = ext::constness_t::non_constant;
   return bi;
@@ -440,11 +441,18 @@ constexpr auto make_in_place_with(
 // You can think of these analogously to value category specifiers for
 // member variables of a struct -- e.g.
 //
-//   (1) `non_constant(by_ref())` asks to store a non-const reference, of
-//        the same reference category as the input.
-//   (2) `constant` stores the input as a `const` value (under the default
+//   (1) `mut_ref{}` asks to store a non-const reference, of
+//        the same reference category as the input.  Or, see `const_ref{}`.
+//   (2) `constant{}` stores the input as a `const` value (under the default
 //       `binding_policy`).  Unlike `std::as_const` this allows you to move
 //        a non-const reference into a `const` storage location.
+//
+// Specifiers can be overridden, e.g. you could (but should not!) express
+// `mut_ref{}` as `non_constant{const_ref{}}`.
+//
+// There's currently no user-facing `by_ref{}`, which would leave the
+// `constness` of the binding to be defaulted by the `binding_policy` below.
+// If a use-case arises, the test already contains its trivial implementation.
 
 template <typename... Ts>
 struct constant
@@ -465,22 +473,22 @@ template <typename... Ts>
 non_constant(Ts&&...) -> non_constant<ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
-struct by_ref : ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...> {
-  using ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...>::
+struct const_ref
+    : ext::merge_update_bound_args<detail::const_ref_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::const_ref_bind_info, Ts...>::
       merge_update_bound_args;
 };
 template <typename... Ts>
-by_ref(Ts&&...) -> by_ref<ext::deduce_bound_args_t<Ts>...>;
+const_ref(Ts&&...) -> const_ref<ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
-struct by_non_const_ref
-    : ext::merge_update_bound_args<detail::by_non_const_ref_bind_info, Ts...> {
-  using ext::merge_update_bound_args<
-      detail::by_non_const_ref_bind_info,
-      Ts...>::merge_update_bound_args;
+struct mut_ref
+    : ext::merge_update_bound_args<detail::mut_ref_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::mut_ref_bind_info, Ts...>::
+      merge_update_bound_args;
 };
 template <typename... Ts>
-by_non_const_ref(Ts&&...) -> by_non_const_ref<ext::deduce_bound_args_t<Ts>...>;
+mut_ref(Ts&&...) -> mut_ref<ext::deduce_bound_args_t<Ts>...>;
 
 // Future: Add `copied()` and `moved()` modifiers so the user can ensure
 // pass-by-value with copy-, or move-copy semantics.  This enforcement
@@ -512,7 +520,7 @@ class binding_policy<binding_t<BI, BindingType>> {
   static_assert(
       !is_binding_t_type_in_place<BindingType> ||
           BI.category != category_t::ref,
-      "`by_ref` is incompatible with `make_in_place*`");
+      "`const_ref` / `mut_ref` is incompatible with `make_in_place*`");
 
  protected:
   // Future: This **might** compile faster with a family of explicit
