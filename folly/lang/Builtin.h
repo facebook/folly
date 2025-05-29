@@ -24,7 +24,7 @@
 #if FOLLY_HAS_BUILTIN(__builtin_unpredictable)
 #define FOLLY_BUILTIN_UNPREDICTABLE(exp) __builtin_unpredictable(exp)
 #else
-#define folly_builtin_unpredictable(exp) \
+#define FOLLY_BUILTIN_UNPREDICTABLE(exp) \
   ::folly::builtin::detail::predict_<long long>(exp)
 #endif
 
