@@ -22,6 +22,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Overload.h>
 #include <folly/stats/detail/DoubleRadixSort.h>
 
 namespace folly {
@@ -70,6 +71,23 @@ double k_to_q(double k, double d) {
     return 1 - 2 * base * base;
   } else {
     return 2 * k_div_d * k_div_d;
+  }
+}
+
+template <class Container1, class Container2, class Compare, class Callback>
+void merge2Containers(
+    const Container1& c1, const Container2& c2, Compare&& cmp, Callback&& cb) {
+  auto f1 = c1.begin();
+  const auto l1 = c1.end();
+  auto f2 = c2.begin();
+  const auto l2 = c2.end();
+  while (f1 != l1 || f2 != l2) {
+    // In case of ties, c2 takes priority.
+    if (f1 != l1 && (f2 == l2 || cmp(*f1, *f2))) {
+      cb(*f1++);
+    } else {
+      cb(*f2++);
+    }
   }
 }
 
@@ -219,19 +237,13 @@ void TDigest::mergeValues(
 
   CentroidMerger merger(std::move(workingBuffer), maxSize_, newCount);
 
-  auto it_centroids = centroids_.begin();
-  auto it_sortedValues = sortedValues.begin();
-
-  while (it_centroids != centroids_.end() ||
-         it_sortedValues != sortedValues.end()) {
-    if (it_centroids != centroids_.end() &&
-        (it_sortedValues == sortedValues.end() ||
-         it_centroids->mean() < *it_sortedValues)) {
-      merger.append(*it_centroids++);
-    } else {
-      merger.append(Centroid{*it_sortedValues++, 1.0});
-    }
-  }
+  merge2Containers(
+      centroids_,
+      sortedValues,
+      [](const Centroid& c, double val) { return c.mean() < val; },
+      overload(
+          [&](const Centroid& c) { merger.append(c); },
+          [&](double val) { merger.append(Centroid{val, 1.0}); }));
 
   workingBuffer = std::move(dst.centroids_);
   std::tie(dst.centroids_, dst.sum_) = std::move(merger).finalize();
@@ -285,6 +297,8 @@ template <class T>
 /* static */ TDigest TDigest::mergeImpl(Range<T> digests) {
   if (digests.empty()) {
     return TDigest();
+  } else if (digests.size() == 2) {
+    return merge2Impl(*getPtr(digests[0]), *getPtr(digests[1]));
   }
 
   size_t maxSize = getPtr(digests.front())->maxSize_;
@@ -379,6 +393,48 @@ template <class T>
   return result;
 }
 
+/* static */ TDigest TDigest::merge2Impl(const TDigest& d1, const TDigest& d2) {
+  size_t maxSize = d1.maxSize_;
+
+  if (d2.empty()) {
+    return d1;
+  } else if (d1.empty() && maxSize == d2.maxSize_) {
+    return d2;
+  }
+
+  double count = 0;
+  double min = std::numeric_limits<double>::infinity();
+  double max = -std::numeric_limits<double>::infinity();
+
+  for (const auto* digest : {&d1, &d2}) {
+    if (digest->count() > 0) {
+      count += digest->count();
+      DCHECK(!std::isnan(digest->min_));
+      DCHECK(!std::isnan(digest->max_));
+      min = std::min(min, digest->min_);
+      max = std::max(max, digest->max_);
+    }
+  }
+
+  std::vector<Centroid> workingBuffer;
+  workingBuffer.reserve(maxSize);
+  CentroidMerger merger(std::move(workingBuffer), maxSize, count);
+
+  merge2Containers(
+      d1.centroids_, d2.centroids_, std::less<>(), [&](const Centroid& c) {
+        merger.append(c);
+      });
+
+  TDigest result(maxSize);
+  std::tie(result.centroids_, result.sum_) = std::move(merger).finalize();
+  result.count_ = count;
+  result.min_ = min;
+  result.max_ = max;
+
+  result.centroids_.shrink_to_fit();
+  return result;
+}
+
 /* static */ TDigest TDigest::merge(Range<const TDigest*> digests) {
   return mergeImpl(digests);
 }
@@ -388,8 +444,7 @@ template <class T>
 }
 
 /* static */ TDigest TDigest::merge(const TDigest& d1, const TDigest& d2) {
-  std::array<const TDigest*, 2> digests = {&d1, &d2};
-  return merge(range(digests));
+  return merge2Impl(d1, d2);
 }
 
 double TDigest::estimateQuantile(double q) const {

@@ -153,6 +153,8 @@ class TDigest {
   template <class T>
   static TDigest mergeImpl(Range<T> ds);
 
+  static TDigest merge2Impl(const TDigest& d1, const TDigest& d2);
+
   std::vector<Centroid> centroids_;
   size_t maxSize_;
   double sum_ = 0.0;

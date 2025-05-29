@@ -4659,6 +4659,7 @@ non_fbcode_target(
         "stats/TDigest.h",
     ],
     deps = [
+        ":overload",
         ":range",
         ":stats_detail_double_radix_sort",
         ":utility",
