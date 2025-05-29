@@ -358,22 +358,22 @@ template <typename T>
 concept is_in_place_maker = instantiated_from<T, in_place_fn_maker> ||
     instantiated_from<T, in_place_args_maker>;
 
-using constant_build_info = decltype([](auto bi) {
+using constant_bind_info = decltype([](auto bi) {
   bi.constness = ext::constness_t::constant;
   return bi;
 });
 
-using non_constant_build_info = decltype([](auto bi) {
+using non_constant_bind_info = decltype([](auto bi) {
   bi.constness = ext::constness_t::non_constant;
   return bi;
 });
 
-using by_ref_build_info = decltype([](auto bi) {
+using by_ref_bind_info = decltype([](auto bi) {
   bi.category = ext::category_t::ref;
   return bi;
 });
 
-using by_non_const_ref_build_info = decltype([](auto bi) {
+using by_non_const_ref_bind_info = decltype([](auto bi) {
   bi.category = ext::category_t::ref;
   bi.constness = ext::constness_t::non_constant;
   return bi;
@@ -417,8 +417,8 @@ constexpr auto make_in_place_with(auto make_fn) {
 
 template <typename... Ts>
 struct constant
-    : ext::merge_update_bound_args<detail::constant_build_info, Ts...> {
-  using ext::merge_update_bound_args<detail::constant_build_info, Ts...>::
+    : ext::merge_update_bound_args<detail::constant_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::constant_bind_info, Ts...>::
       merge_update_bound_args;
 };
 template <typename... Ts>
@@ -426,16 +426,16 @@ constant(Ts&&...) -> constant<ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
 struct non_constant
-    : ext::merge_update_bound_args<detail::non_constant_build_info, Ts...> {
-  using ext::merge_update_bound_args<detail::non_constant_build_info, Ts...>::
+    : ext::merge_update_bound_args<detail::non_constant_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::non_constant_bind_info, Ts...>::
       merge_update_bound_args;
 };
 template <typename... Ts>
 non_constant(Ts&&...) -> non_constant<ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
-struct by_ref : ext::merge_update_bound_args<detail::by_ref_build_info, Ts...> {
-  using ext::merge_update_bound_args<detail::by_ref_build_info, Ts...>::
+struct by_ref : ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...>::
       merge_update_bound_args;
 };
 template <typename... Ts>
@@ -443,9 +443,9 @@ by_ref(Ts&&...) -> by_ref<ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
 struct by_non_const_ref
-    : ext::merge_update_bound_args<detail::by_non_const_ref_build_info, Ts...> {
+    : ext::merge_update_bound_args<detail::by_non_const_ref_bind_info, Ts...> {
   using ext::merge_update_bound_args<
-      detail::by_non_const_ref_build_info,
+      detail::by_non_const_ref_bind_info,
       Ts...>::merge_update_bound_args;
 };
 template <typename... Ts>
