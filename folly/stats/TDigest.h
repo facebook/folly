@@ -143,7 +143,9 @@ class TDigest {
   size_t maxSize() const { return maxSize_; }
 
  private:
-  void internalMerge(
+  class CentroidMerger;
+
+  void mergeValues(
       TDigest& dst,
       Range<const double*> sortedValues,
       std::vector<Centroid>& workingBuffer) const;

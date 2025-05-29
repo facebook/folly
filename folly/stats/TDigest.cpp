@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 
 #include <glog/logging.h>
 
@@ -74,6 +75,76 @@ double k_to_q(double k, double d) {
 
 } // namespace
 
+class TDigest::CentroidMerger {
+ public:
+  CentroidMerger(
+      std::vector<Centroid>&& workingBuffer, size_t maxSize, double count)
+      : result_(std::move(workingBuffer)),
+        maxSize_(maxSize),
+        count_(count),
+        k_limit_(1),
+        q_limit_times_count_(k_to_q(k_limit_++, maxSize_) * count_) {
+    result_.clear();
+  }
+
+  FOLLY_ALWAYS_INLINE void append(const Centroid& centroid) {
+    if constexpr (kIsDebug) {
+      CHECK(!(centroid < last_));
+      last_ = centroid;
+    }
+
+    if (!cur_) { // First centroid.
+      cur_ = centroid;
+      weightSoFar_ = centroid.weight();
+      return;
+    }
+
+    weightSoFar_ += centroid.weight();
+    if (weightSoFar_ <= q_limit_times_count_ || k_limit_ > maxSize_) {
+      sumsToMerge_ += centroid.mean() * centroid.weight();
+      weightsToMerge_ += centroid.weight();
+    } else {
+      sum_ += cur_->add(sumsToMerge_, weightsToMerge_);
+      sumsToMerge_ = 0;
+      weightsToMerge_ = 0;
+      result_.push_back(*cur_);
+      q_limit_times_count_ = k_to_q(k_limit_++, maxSize_) * count_;
+      cur_ = centroid;
+    }
+  }
+
+  std::pair<std::vector<Centroid>, double> finalize() && {
+    if (!cur_) {
+      return {}; // No centroids, no sum.
+    }
+
+    sum_ += cur_->add(sumsToMerge_, weightsToMerge_);
+    result_.push_back(*cur_);
+    DCHECK_LE(result_.size(), maxSize_);
+    // In exact arithmetic the centroid should already be sorted, but floating
+    // point error accumulation can cause small perturbations in the order, fix
+    // them up.
+    std::sort(result_.begin(), result_.end());
+    return {std::move(result_), sum_};
+  }
+
+ private:
+  std::vector<Centroid> result_;
+  const size_t maxSize_;
+  const double count_;
+  double k_limit_;
+  double q_limit_times_count_;
+  double sum_ = 0.0;
+
+  std::optional<Centroid> cur_;
+  double weightSoFar_ = 0.0;
+  // Keep track of sums along the way to reduce expensive floating point ops.
+  double sumsToMerge_ = 0.0;
+  double weightsToMerge_ = 0.0;
+
+  Centroid last_{std::numeric_limits<double>::lowest()}; // Only for debug.
+};
+
 TDigest::TDigest(
     std::vector<Centroid> centroids,
     double sum,
@@ -121,7 +192,7 @@ TDigest TDigest::merge(Range<const double*> unsortedValues) const {
   return merge(sorted_equivalent, Range<const double*>(in, in + n));
 }
 
-void TDigest::internalMerge(
+void TDigest::mergeValues(
     TDigest& dst,
     Range<const double*> sortedValues,
     std::vector<Centroid>& workingBuffer) const {
@@ -129,7 +200,6 @@ void TDigest::internalMerge(
     return;
   }
 
-  double newSum = 0.0;
   const double newCount = count_ + sortedValues.size();
   double newMin = 0.0;
   double newMax = 0.0;
@@ -147,68 +217,27 @@ void TDigest::internalMerge(
     newMax = maybeMax;
   }
 
-  workingBuffer.resize(0);
-
-  double k_limit = 1;
-  double q_limit_times_count = k_to_q(k_limit++, maxSize_) * newCount;
+  CentroidMerger merger(std::move(workingBuffer), maxSize_, newCount);
 
   auto it_centroids = centroids_.begin();
   auto it_sortedValues = sortedValues.begin();
 
-  Centroid cur;
-  if (it_centroids != centroids_.end() &&
-      it_centroids->mean() < *it_sortedValues) {
-    cur = *it_centroids++;
-  } else {
-    cur = Centroid(*it_sortedValues++, 1.0);
-  }
-
-  double weightSoFar = cur.weight();
-
-  // Keep track of sums along the way to reduce expensive floating points
-  double sumsToMerge = 0;
-  double weightsToMerge = 0;
-
   while (it_centroids != centroids_.end() ||
          it_sortedValues != sortedValues.end()) {
-    Centroid next;
-
     if (it_centroids != centroids_.end() &&
         (it_sortedValues == sortedValues.end() ||
          it_centroids->mean() < *it_sortedValues)) {
-      next = *it_centroids++;
+      merger.append(*it_centroids++);
     } else {
-      next = Centroid(*it_sortedValues++, 1.0);
-    }
-
-    double nextSum = next.mean() * next.weight();
-    weightSoFar += next.weight();
-
-    if (weightSoFar <= q_limit_times_count || k_limit > maxSize_) {
-      sumsToMerge += nextSum;
-      weightsToMerge += next.weight();
-    } else {
-      newSum += cur.add(sumsToMerge, weightsToMerge);
-      sumsToMerge = 0;
-      weightsToMerge = 0;
-      workingBuffer.push_back(cur);
-      q_limit_times_count = k_to_q(k_limit++, maxSize_) * newCount;
-      cur = next;
+      merger.append(Centroid{*it_sortedValues++, 1.0});
     }
   }
-  newSum += cur.add(sumsToMerge, weightsToMerge);
-  workingBuffer.push_back(cur);
 
-  // Update all internal status.
-  // Deal with floating point precision
-  std::sort(workingBuffer.begin(), workingBuffer.end());
-  dst.sum_ = newSum;
+  workingBuffer = std::move(dst.centroids_);
+  std::tie(dst.centroids_, dst.sum_) = std::move(merger).finalize();
   dst.count_ = newCount;
   dst.max_ = newMax;
   dst.min_ = newMin;
-
-  DCHECK_LE(workingBuffer.size(), maxSize_);
-  std::swap(dst.centroids_, workingBuffer);
 }
 
 TDigest TDigest::merge(
@@ -222,7 +251,7 @@ TDigest TDigest::merge(
   std::vector<Centroid> compressed;
   compressed.reserve(maxSize_);
 
-  internalMerge(result, sortedValues, compressed);
+  mergeValues(result, sortedValues, compressed);
 
   result.centroids_.shrink_to_fit();
 
@@ -238,7 +267,7 @@ void TDigest::merge(
   }
 
   workingBuffer.buf.reserve(maxSize_);
-  internalMerge(*this, sortedValues, workingBuffer.buf);
+  mergeValues(*this, sortedValues, workingBuffer.buf);
 }
 
 namespace {
@@ -333,46 +362,20 @@ template <class T>
     }
   }
 
-  DCHECK(std::is_sorted(centroids.begin(), centroids.end()));
+  std::vector<Centroid> workingBuffer;
+  workingBuffer.reserve(maxSize);
+  CentroidMerger merger(std::move(workingBuffer), maxSize, count);
+  for (const auto& centroid : centroids) {
+    merger.append(centroid);
+  }
 
   TDigest result(maxSize);
-
-  std::vector<Centroid> compressed;
-  compressed.reserve(maxSize);
-
-  double k_limit = 1;
-  double q_limit_times_count = k_to_q(k_limit++, maxSize) * count;
-
-  Centroid cur = centroids.front();
-  double weightSoFar = cur.weight();
-  double sumsToMerge = 0;
-  double weightsToMerge = 0;
-  for (auto it = centroids.begin() + 1, e = centroids.end(); it != e; ++it) {
-    weightSoFar += it->weight();
-    if (weightSoFar <= q_limit_times_count || k_limit > maxSize) {
-      sumsToMerge += it->mean() * it->weight();
-      weightsToMerge += it->weight();
-    } else {
-      result.sum_ += cur.add(sumsToMerge, weightsToMerge);
-      sumsToMerge = 0;
-      weightsToMerge = 0;
-      compressed.push_back(cur);
-      q_limit_times_count = k_to_q(k_limit++, maxSize) * count;
-      cur = *it;
-    }
-  }
-  result.sum_ += cur.add(sumsToMerge, weightsToMerge);
-  compressed.push_back(cur);
-  DCHECK_LE(compressed.size(), maxSize);
-  compressed.shrink_to_fit();
-
-  // Deal with floating point precision
-  std::sort(compressed.begin(), compressed.end());
-
+  std::tie(result.centroids_, result.sum_) = std::move(merger).finalize();
   result.count_ = count;
   result.min_ = min;
   result.max_ = max;
-  result.centroids_ = std::move(compressed);
+
+  result.centroids_.shrink_to_fit();
   return result;
 }
 

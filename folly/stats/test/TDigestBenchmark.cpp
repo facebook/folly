@@ -189,40 +189,46 @@ BENCHMARK_RELATIVE_NAMED_PARAM(estimateQuantile, 1000_p75, 1000, 0.75)
 BENCHMARK_RELATIVE_NAMED_PARAM(estimateQuantile, 1000_p99, 1000, 0.99)
 BENCHMARK_RELATIVE_NAMED_PARAM(estimateQuantile, 1000_p999, 1000, 0.999)
 
-/*
- * ./tdigest_benchmark
- * ============================================================================
- * folly/stats/test/TDigestBenchmark.cpp           relative  time/iter  iters/s
- * ============================================================================
- * merge(100x1)                                                 2.30us  434.11K
- * merge(100x5)                                      65.52%     3.52us  284.42K
- * merge(100x10)                                     48.66%     4.73us  211.26K
- * merge(1000x1)                                      9.37%    24.59us   40.67K
- * merge(1000x5)                                      6.22%    37.03us   27.00K
- * merge(1000x10)                                     4.60%    50.03us   19.99K
- * ----------------------------------------------------------------------------
- * mergeDigests(100x10)                                        21.50us   46.52K
- * mergeDigests(100x30)                              20.03%   107.34us    9.32K
- * mergeDigests(100x60)                               8.66%   248.29us    4.03K
- * mergeDigests(1000x60)                              0.78%     2.75ms   363.17
- * ----------------------------------------------------------------------------
- * estimateQuantile(100x1_p001)                                 7.34ns  136.21M
- * estimateQuantile(100_p01)                         68.10%    10.78ns   92.76M
- * estimateQuantile(100_p25)                         11.51%    63.77ns   15.68M
- * estimateQuantile(100_p50)                          7.98%    92.03ns   10.87M
- * estimateQuantile(100_p75)                         14.99%    48.98ns   20.42M
- * estimateQuantile(100_p99)                         77.57%     9.46ns  105.65M
- * estimateQuantile(100_p999)                       130.42%     5.63ns  177.64M
- * ----------------------------------------------------------------------------
- * estimateQuantile(1000_p001)                       16.69%    43.99ns   22.73M
- * estimateQuantile(1000_p01)                         6.08%   120.74ns    8.28M
- * estimateQuantile(1000_p25)                         1.43%   513.01ns    1.95M
- * estimateQuantile(1000_p50)                         1.06%   693.28ns    1.44M
- * estimateQuantile(1000_p75)                         1.66%   442.20ns    2.26M
- * estimateQuantile(1000_p99)                         7.12%   103.08ns    9.70M
- * estimateQuantile(1000_p999)                       22.98%    31.94ns   31.30M
- * ============================================================================
- */
+#if 0
+$ buck2 run @mode/opt-clang-thinlto folly/stats/test:tdigest_benchmark -- --bm_min_usec 200000
+============================================================================
+[...]folly/stats/test/TDigestBenchmark.cpp     relative  time/iter   iters/s
+============================================================================
+addValueMultithreaded(1)                                   41.69ns    23.99M
+addValueMultithreaded(2)                                   19.38ns    51.59M
+addValueMultithreaded(4)                                   10.16ns    98.43M
+addValueMultithreaded(8)                                    5.18ns   192.98M
+addValueMultithreaded(16)                                   3.26ns   306.51M
+addValueMultithreaded(32)                                   2.53ns   395.71M
+----------------------------------------------------------------------------
+merge(100x1)                                                2.08us   480.52K
+merge(100x5)                                    56.712%     3.67us   272.51K
+merge(100x10)                                   38.173%     5.45us   183.43K
+merge(1000x1)                                   9.3386%    22.28us    44.87K
+merge(1000x5)                                   5.6666%    36.73us    27.23K
+merge(1000x10)                                  4.1275%    50.42us    19.83K
+----------------------------------------------------------------------------
+mergeDigests(100x10)                                       11.03us    90.63K
+mergeDigests(100x30)                            14.161%    77.91us    12.83K
+mergeDigests(100x60)                            5.4596%   202.09us     4.95K
+mergeDigests(1000x60)                          0.53292%     2.07ms    483.01
+----------------------------------------------------------------------------
+estimateQuantile(100x1_p001)                                7.12ns   140.40M
+estimateQuantile(100_p01)                       58.880%    12.10ns    82.67M
+estimateQuantile(100_p25)                       11.432%    62.30ns    16.05M
+estimateQuantile(100_p50)                       12.584%    56.60ns    17.67M
+estimateQuantile(100_p75)                       12.226%    58.26ns    17.17M
+estimateQuantile(100_p99)                       76.697%     9.29ns   107.68M
+estimateQuantile(100_p999)                      115.92%     6.14ns   162.75M
+----------------------------------------------------------------------------
+estimateQuantile(1000_p001)                     27.732%    25.68ns    38.94M
+estimateQuantile(1000_p01)                      8.4949%    83.84ns    11.93M
+estimateQuantile(1000_p25)                      1.4429%   493.62ns     2.03M
+estimateQuantile(1000_p50)                      1.1394%   625.09ns     1.60M
+estimateQuantile(1000_p75)                      1.5984%   445.60ns     2.24M
+estimateQuantile(1000_p99)                      8.5818%    82.99ns    12.05M
+estimateQuantile(1000_p999)                     35.089%    20.30ns    49.27M
+#endif
 
 int main(int argc, char* argv[]) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
