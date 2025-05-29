@@ -58,7 +58,7 @@ extern int (*mallctl)(const char*, void*, size_t*, void*, size_t);
 extern int (*mallctlnametomib)(const char*, size_t*, size_t*);
 extern int (*mallctlbymib)(
     const size_t*, size_t, void*, size_t*, void*, size_t);
-extern void malloc_stats_print(
+extern void (*malloc_stats_print)(
     void (*)(void*, const char*), void*, const char*);
 #endif
 extern bool (*MallocExtension_Internal_GetNumericProperty)(
@@ -79,6 +79,8 @@ extern bool (*MallocExtension_Internal_GetNumericProperty)(
     linker, "/alternatename:_mallctlnametomib=_mallctlnametomibWeak")
 #pragma comment(linker, "/alternatename:_mallctlbymib=_mallctlbymibWeak")
 #pragma comment( \
+    linker, "/alternatename:_malloc_stats_print=_malloc_stats_printWeak")
+#pragma comment( \
     linker,      \
     "/alternatename:_MallocExtension_Internal_GetNumericProperty=_MallocExtension_Internal_GetNumericPropertyWeak")
 #else
@@ -92,6 +94,8 @@ extern bool (*MallocExtension_Internal_GetNumericProperty)(
 #pragma comment(linker, "/alternatename:mallctl=mallctlWeak")
 #pragma comment(linker, "/alternatename:mallctlnametomib=mallctlnametomibWeak")
 #pragma comment(linker, "/alternatename:mallctlbymib=mallctlbymibWeak")
+#pragma comment( \
+    linker, "/alternatename:malloc_stats_print=malloc_stats_printWeak")
 #pragma comment( \
     linker,      \
     "/alternatename:MallocExtension_Internal_GetNumericProperty=MallocExtension_Internal_GetNumericPropertyWeak")
