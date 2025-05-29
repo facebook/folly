@@ -34,6 +34,7 @@ non_fbcode_target(
         "//xplat/folly/detail:tuple",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:bindings",
+        "//xplat/folly/lang/named:bindings",
     ],
 )
 
@@ -50,6 +51,7 @@ fbcode_target(
         "//folly/detail:tuple",
         "//folly/lang:assume",
         "//folly/lang:bindings",
+        "//folly/lang/named:bindings",
     ],
 )
 

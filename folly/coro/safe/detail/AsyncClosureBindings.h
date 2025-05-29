@@ -364,11 +364,27 @@ class capture_binding_helper<
     }
   }
 
+  template <typename>
+  static inline constexpr bool is_supported_capture_bind_info_v = false;
+
+  template <>
+  static inline constexpr bool
+      is_supported_capture_bind_info_v<capture_bind_info_t> = true;
+
+  // Future: Right now, we only check that `"x"_id = ` tags are unique at time
+  // of use, and this only applies for stored captures.  But, from a pure "code
+  // quality" point of view, it would be reasonable to demand that all tags are
+  // unique, and that they are all used.  This could be done either as a linter
+  // or in this file, at some compile-time cost.
+  template <auto Tag>
+  static inline constexpr bool is_supported_capture_bind_info_v<
+      folly::bindings::ext::named_bind_info_t<Tag, capture_bind_info_t>> = true;
+
  public:
   // Transforms the binding as per the file docblock, returns a new binding.
   // (either one of the 4 tag types above, or `capture<Ref>`)
   static constexpr auto transform_binding(auto bind_wrapper) {
-    if constexpr (std::is_same_v<decltype(BI), capture_bind_info_t>) {
+    if constexpr (is_supported_capture_bind_info_v<decltype(BI)>) {
       // Tests in `check_stored_*`.
       return store_capture_binding(std::move(bind_wrapper));
     } else { // Bindings for arguments the closure does NOT store.
@@ -376,11 +392,11 @@ class capture_binding_helper<
           std::is_same_v<
               vtag_t<BI>,
               vtag_t<folly::bindings::ext::bind_info_t{}>>,
-          "`folly::bindings::` modifiers like `constant` only make sense in "
-          "`as_capture()` bindings -- for example, to move a mutable value "
-          "into `const` capture storage. For regular args, use `const` in "
-          "the signature of your inner coro, and/or `std::as_const` when "
-          "passing the arg.");
+          "`folly::bindings::` modifiers like `constant` (or `\"x\"_id = `) "
+          "only make sense with `as_capture()` bindings -- for example, to "
+          "move a mutable value into `const` capture storage. For regular "
+          "args, use `const` in the signature of your inner coro, and/or "
+          "`std::as_const` when passing the arg.");
       // If we allowed `make_in_place` without `as_capture`, the argument would
       // require a copy or a move to be passed to the inner task (which the
       // type may not support).  If `as_capture` isn't appropriate, the user

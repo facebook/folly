@@ -315,9 +315,10 @@ Task<void> checkInPlaceArgs() {
       },
       bound_args{
           30, // a
-          // Test both const and non-const `AsyncOuterClosurePtr`s
-          as_capture(1000), // b
-          capture_in_place<const InPlaceOnly>(&made, 7), // c
+          // Test both const and non-const `AsyncOuterClosurePtr`s.
+          // Check that "x"_id tagging for capture backrefs is transparent.
+          "b"_id = as_capture(1000),
+          "c"_id = capture_in_place<const InPlaceOnly>(&made, 7),
           as_capture(constant(200))}); // d
   EXPECT_EQ(1337, res);
   EXPECT_TRUE(made);

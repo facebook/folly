@@ -25,6 +25,7 @@
 #include <folly/detail/tuple.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Bindings.h>
+#include <folly/lang/named/Bindings.h>
 
 ///
 /// Please read the user- and developer-facing docs in `Capture.md`.
