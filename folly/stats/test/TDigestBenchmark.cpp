@@ -194,40 +194,40 @@ $ buck2 run @mode/opt-clang-thinlto folly/stats/test:tdigest_benchmark -- --bm_m
 ============================================================================
 [...]folly/stats/test/TDigestBenchmark.cpp     relative  time/iter   iters/s
 ============================================================================
-addValueMultithreaded(1)                                   35.74ns    27.98M
-addValueMultithreaded(2)                                   17.87ns    55.95M
-addValueMultithreaded(4)                                    9.20ns   108.74M
-addValueMultithreaded(8)                                    5.00ns   199.95M
-addValueMultithreaded(16)                                   3.23ns   309.88M
-addValueMultithreaded(32)                                   2.47ns   404.19M
+addValueMultithreaded(1)                                   34.97ns    28.59M
+addValueMultithreaded(2)                                   18.05ns    55.40M
+addValueMultithreaded(4)                                    8.95ns   111.72M
+addValueMultithreaded(8)                                    4.82ns   207.65M
+addValueMultithreaded(16)                                   3.13ns   319.61M
+addValueMultithreaded(32)                                   2.34ns   426.82M
 ----------------------------------------------------------------------------
-merge(100x1)                                                2.07us   483.18K
-merge(100x5)                                    60.331%     3.43us   291.51K
-merge(100x10)                                   44.095%     4.69us   213.06K
-merge(1000x1)                                   9.9117%    20.88us    47.89K
-merge(1000x5)                                   6.2382%    33.18us    30.14K
-merge(1000x10)                                  4.6617%    44.40us    22.52K
+merge(100x1)                                                1.98us   505.58K
+merge(100x5)                                    56.060%     3.53us   283.43K
+merge(100x10)                                   40.640%     4.87us   205.47K
+merge(1000x1)                                   9.0798%    21.78us    45.91K
+merge(1000x5)                                   6.2609%    31.59us    31.65K
+merge(1000x10)                                  4.6135%    42.87us    23.32K
 ----------------------------------------------------------------------------
-mergeDigests(100x10)                                        9.73us   102.75K
-mergeDigests(100x30)                            13.410%    72.58us    13.78K
-mergeDigests(100x60)                            4.9018%   198.55us     5.04K
-mergeDigests(1000x60)                          0.45690%     2.13ms    469.47
+mergeDigests(100x10)                                       12.64us    79.13K
+mergeDigests(100x30)                            19.851%    63.66us    15.71K
+mergeDigests(100x60)                            7.8621%   160.75us     6.22K
+mergeDigests(1000x60)                          0.74880%     1.69ms    592.50
 ----------------------------------------------------------------------------
-estimateQuantile(100x1_p001)                                7.16ns   139.59M
-estimateQuantile(100_p01)                       69.246%    10.35ns    96.66M
-estimateQuantile(100_p25)                       11.517%    62.20ns    16.08M
-estimateQuantile(100_p50)                       13.373%    53.57ns    18.67M
-estimateQuantile(100_p75)                       12.293%    58.27ns    17.16M
-estimateQuantile(100_p99)                       74.274%     9.64ns   103.68M
-estimateQuantile(100_p999)                      116.46%     6.15ns   162.57M
+estimateQuantile(100x1_p001)                                6.03ns   165.93M
+estimateQuantile(100_p01)                       60.279%    10.00ns   100.02M
+estimateQuantile(100_p25)                       16.275%    37.03ns    27.01M
+estimateQuantile(100_p50)                       11.407%    52.83ns    18.93M
+estimateQuantile(100_p75)                       10.688%    56.39ns    17.73M
+estimateQuantile(100_p99)                       68.894%     8.75ns   114.32M
+estimateQuantile(100_p999)                      95.333%     6.32ns   158.19M
 ----------------------------------------------------------------------------
-estimateQuantile(1000_p001)                     28.191%    25.41ns    39.35M
-estimateQuantile(1000_p01)                      7.0709%   101.31ns     9.87M
-estimateQuantile(1000_p25)                      1.6211%   441.91ns     2.26M
-estimateQuantile(1000_p50)                      1.1638%   615.55ns     1.62M
-estimateQuantile(1000_p75)                      1.6436%   435.84ns     2.29M
-estimateQuantile(1000_p99)                      9.5754%    74.81ns    13.37M
-estimateQuantile(1000_p999)                     37.233%    19.24ns    51.98M
+estimateQuantile(1000_p001)                     23.949%    25.16ns    39.74M
+estimateQuantile(1000_p01)                      5.4653%   110.27ns     9.07M
+estimateQuantile(1000_p25)                      1.2942%   465.67ns     2.15M
+estimateQuantile(1000_p50)                     0.94209%   639.71ns     1.56M
+estimateQuantile(1000_p75)                      1.3843%   435.35ns     2.30M
+estimateQuantile(1000_p99)                      8.1199%    74.22ns    13.47M
+estimateQuantile(1000_p999)                     31.818%    18.94ns    52.79M
 #endif
 
 int main(int argc, char* argv[]) {

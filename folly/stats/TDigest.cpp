@@ -23,6 +23,7 @@
 #include <glog/logging.h>
 
 #include <folly/Overload.h>
+#include <folly/algorithm/BinaryHeap.h>
 #include <folly/stats/detail/DoubleRadixSort.h>
 
 namespace folly {
@@ -322,11 +323,17 @@ template <class T>
     return *lastNonEmpty;
   }
 
-  std::vector<Centroid> centroids;
-  centroids.reserve(nCentroids);
+  struct Cursor : folly::Range<const Centroid*> {
+    using folly::Range<const Centroid*>::Range;
 
-  std::vector<size_t> starts;
-  starts.reserve(digests.size());
+    bool operator<(const Cursor& rhs) const {
+      // In a max-heap we want the top to be the minimum.
+      return front().mean() > rhs.front().mean();
+    }
+  };
+
+  std::vector<Cursor> cursors;
+  cursors.reserve(digests.size());
 
   double count = 0;
 
@@ -337,7 +344,6 @@ template <class T>
 
   for (const auto& d : digests) {
     const auto& digest = *getPtr(d);
-    starts.push_back(centroids.size());
     double curCount = digest.count();
     if (curCount > 0) {
       DCHECK(!std::isnan(digest.min_));
@@ -345,42 +351,27 @@ template <class T>
       min = std::min(min, digest.min_);
       max = std::max(max, digest.max_);
       count += curCount;
-      centroids.insert(
-          centroids.end(), digest.centroids_.begin(), digest.centroids_.end());
+
+      DCHECK(!digest.centroids_.empty());
+      cursors.emplace_back(digest.centroids_);
     }
   }
 
-  size_t startsSize = starts.size();
-  for (size_t digestsPerBlock = 1; digestsPerBlock < startsSize;
-       digestsPerBlock *= 2) {
-    // Each sorted block is digestPerBlock digests big. For each step, try to
-    // merge two blocks together.
-    for (size_t i = 0; i < startsSize; i += (digestsPerBlock * 2)) {
-      // It is possible that this block is incomplete (less than digestsPerBlock
-      // big). In that case, the rest of the block is sorted and leave it alone
-      if (i + digestsPerBlock < startsSize) {
-        auto first = starts[i];
-        auto middle = starts[i + digestsPerBlock];
-
-        // It is possible that the next block is incomplete (less than
-        // digestsPerBlock big). In that case, merge to end. Otherwise, merge to
-        // the end of that block.
-        auto last = (i + (digestsPerBlock * 2) < startsSize)
-            ? starts[i + 2 * digestsPerBlock]
-            : centroids.size();
-        std::inplace_merge(
-            centroids.begin() + first,
-            centroids.begin() + middle,
-            centroids.begin() + last);
-      }
-    }
-  }
+  // Use a heap to iterate the union of the centroids to merge in sorted order.
+  std::make_heap(cursors.begin(), cursors.end());
 
   std::vector<Centroid> workingBuffer;
   workingBuffer.reserve(maxSize);
   CentroidMerger merger(std::move(workingBuffer), maxSize, count);
-  for (const auto& centroid : centroids) {
-    merger.append(centroid);
+  while (!cursors.empty()) {
+    auto& top = cursors.front();
+    merger.append(top.front());
+    top.pop_front();
+    if (top.empty()) {
+      top = cursors.back();
+      cursors.pop_back();
+    }
+    down_heap(cursors.begin(), cursors.end());
   }
 
   TDigest result(maxSize);

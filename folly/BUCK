@@ -4664,6 +4664,7 @@ non_fbcode_target(
         ":stats_detail_double_radix_sort",
         ":utility",
         "//third-party/glog:glog",
+        "//xplat/folly/algorithm:binary_heap",
     ],
 )
 
