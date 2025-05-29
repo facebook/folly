@@ -141,7 +141,7 @@ class TDigest::CentroidMerger {
       sum_ += cur_->add(sumsToMerge_, weightsToMerge_);
       sumsToMerge_ = 0;
       weightsToMerge_ = 0;
-      result_.push_back(*cur_);
+      commit(*cur_);
       q_limit_times_count_ = k_to_q(k_limit_++, maxSize_) * count_;
       cur_ = centroid;
     }
@@ -153,16 +153,25 @@ class TDigest::CentroidMerger {
     }
 
     sum_ += cur_->add(sumsToMerge_, weightsToMerge_);
-    result_.push_back(*cur_);
+    commit(*cur_);
     DCHECK_LE(result_.size(), maxSize_);
-    // In exact arithmetic the centroid should already be sorted, but floating
-    // point error accumulation can cause small perturbations in the order, fix
-    // them up.
-    std::sort(result_.begin(), result_.end());
+    DCHECK(std::is_sorted(result_.begin(), result_.end()));
     return {std::move(result_), sum_};
   }
 
  private:
+  void commit(const Centroid& c) {
+    // Since the input centroids are sorted, the resulting centroids should also
+    // be sorted, but floating point error accumulation can cause perturbations
+    // in the order. These should be small and extremely rare, so we can use
+    // insertion sort to optimize for the case that there is nothing to do.
+    auto it = result_.end();
+    while (FOLLY_UNLIKELY(it != result_.begin() && c < *(it - 1))) {
+      --it;
+    }
+    result_.insert(it, c);
+  }
+
   std::vector<Centroid> result_;
   const size_t maxSize_;
   const double count_;
