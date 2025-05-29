@@ -107,6 +107,71 @@ which needs just one dereference, and can still access the `shared_ptr` via
 **Watch out:** Be sure to null-check `capture_indirect` via its `operator bool`.
 This is important, since, the underlying type is typically nullable!
 
+### Escape hatch: Capture-by-reference
+
+Use via `capture_const_ref{}`, `as_capture{const_ref{}}`, `capture_mut_ref{}`,
+etc in your closure's `bound_args{}` list.
+
+
+This mechanism solves problems similar to `AfterCleanup.h`, but after-cleanup
+is strictly safer, so you should prefer it when applicable.
+
+Capture-by-ref is a way of turning a reference from a parent scope into a
+`capture<T&>` or `<T&&>` inside a child `async_now_closure`.  While the
+`NowTask` restriction aids lifetime safety, the user must still be careful to
+avoid giving the child the ability to store short-lived child refs in the
+parent's scope.  To fix a concrete instance of this problem, the
+`AsyncClosureBindings.h` implementation blocks the capture-by-ref mechanism
+from passing `co_cleanup` refs & `captures`.
+
+#### Design notes for capture-by-reference
+
+This section discusses potential relaxations of the capture-by-ref safety
+rules, which would make it more broadly applicable.  However, the relaxations
+would come with both new footguns, and new complexity, so I'm currently
+thinking of them as "rejected designs" rather than future work.
+
+**Note 1:** It would be within the spirit of regular RAII to defer awaiting the
+closure to a later point in the current scope.  That is, the `SafeTask` taking
+these `capture_ref()` args would be marked down to `<= lexical_scope_ref`
+safety.  This could be a new safety level with:
+
+```cpp
+after_cleanup_ref >= lexical_scope_ref >= shared_cleanup
+```
+
+The valid lifetime for this body-only `SafeTask` is clearly shorter than
+`after_cleanup_ref` -- it's invalid whenever the captured refs are destroyed,
+which (under typical RAII) is a bit longer than the lexical lifetime of the
+task.  In the `lexical_scope_ref` scenario, the user can, of course, invalidate
+the reference before awaiting the task, but it takes a bit of effort, and might
+be covered if the [P1179R1 lifetime safety profile](https://wg21.link/P1179R1)
+is standardized.  For example:
+
+```cpp
+std::optional<SafeTask<safe_alias::lexical_scope_ref, void>> t;
+{
+  int i = 5;
+  t = async_closure([](auto i) -> ClosureTask<void> {
+    std::cout << *i << std::endl;
+    co_return;
+  }, capture_ref(i));
+  ++i;
+}
+// BAD: The reference to `i` is now invalid!
+co_await std::move(*t);
+```
+
+**Note 2:** The way that `async_closure(...  capture_const_ref(...) ...)`
+behaves, it seems like we could just universally allow creating
+`lexical_scope_capture<T&>` from `T&` -- even outside `async_closure`
+invocations.  `Captures.h` would need to support auto-upgrade of
+`lexical_scope_capture` to `capture` or `after_cleanup_capture`, depending on
+`shared_cleanup` status.  This "universal" implementation would be more
+complex, but without `async_closure()`'s capture-upgrade semantics, there's not
+a lot of value in obtaining a `lexical_scope_capture<Ref>` -- for example, you
+can't use it to schedule work on a nested `SafeAsyncScope`.
+
 ### Debugging lifetime safety compile errors
 
 If you're working with captures, and get a compile error about `SafeTask`,

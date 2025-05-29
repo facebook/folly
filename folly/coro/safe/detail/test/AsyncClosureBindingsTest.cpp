@@ -107,6 +107,11 @@ constexpr bool check_regular_args() {
   check_one<async_closure_regular_arg<int, bind_wrapper_t<int&>>>(
       [&]() -> auto& { return x; });
 
+  // Unsafe arg binding is relevant for `async_now_closure`
+  check_one<
+      async_closure_regular_arg<int*, bind_wrapper_t<int*&&>>,
+      safe_alias::unsafe>([&]() -> auto* { return &x; });
+
   MoveMe moo{.x = 7};
   check_one<async_closure_regular_arg<MoveMe, bind_wrapper_t<MoveMe&&>>>(
       [&]() -> auto&& { return std::move(moo); });
@@ -346,6 +351,46 @@ constexpr bool check_owned_capture_int() {
 }
 
 static_assert(check_owned_capture_int());
+
+constexpr bool check_parent_capture_ref() {
+  int x = 5;
+  check_one_no_shared_cleanup<capture<const int&>, safe_alias::unsafe>([&]() {
+    return capture_const_ref{x};
+  });
+  check_one_no_shared_cleanup<capture<int&>, safe_alias::unsafe>([&]() {
+    return capture_mut_ref{x};
+  });
+  check_one_shared_cleanup<after_cleanup_capture<int&&>, safe_alias::unsafe>(
+      [&]() { return capture_mut_ref{std::move(x)}; });
+
+  // Check multiple args together, including a stored argument eligible for
+  // `after_cleanup` downgrade, and a ref eligible for an upgrade.  Ensures
+  // that passing a "capture-by-ref" arg doesn't make a coro "shared cleanup".
+  // This choice should be safe since `transform_binding` doesn't allow taking
+  // references to `capture` types or `co_cleanup` types.  Contrariwise,
+  // capture-by-ref wouldn't be very useful if it did force shared cleanup.
+  constexpr async_closure_bindings_cfg Cfg{
+      .force_outer_coro = false,
+      .force_shared_cleanup = false,
+      .is_invoke_member = false};
+  after_cleanup_capture<int> av{priv, forward_bind_wrapper(5)};
+  using ActualTup = decltype(async_closure_safeties_and_bindings<Cfg>(
+      bound_args{as_capture{const_ref{5}, 5}, av}));
+  using ExpectedTup = lite_tuple::tuple<
+      vtag_t<
+          safe_alias::unsafe,
+          safe_alias::maybe_value,
+          safe_alias::after_cleanup_ref>,
+      lite_tuple::tuple<
+          capture<const int&&>,
+          async_closure_inner_stored_arg<capture<int>, bind_wrapper_t<int&&>>,
+          capture<int&>>>;
+  static_assert(std::is_same_v<ActualTup, ExpectedTup>);
+
+  return true;
+}
+
+static_assert(check_parent_capture_ref());
 
 constexpr bool check_owned_cleanup_capture() {
   static_assert(

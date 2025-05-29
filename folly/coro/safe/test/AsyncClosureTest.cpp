@@ -831,6 +831,19 @@ CO_TEST(AsyncClosure, nowClosure) {
   EXPECT_EQ(1337, memberRes);
 }
 
+CO_TEST(AsyncClosure, captureByReference) {
+  // This demo uses an atomic because e.g. with async scopes, the inner tasks
+  // might be concurrent -- and you can't move atomics, so you either need to
+  // use `AfterCleanup.h` (preferred, safer!) or capture-by-reference.
+  std::atomic_int n = 0;
+  co_await async_now_closure(
+      capture_mut_ref{n}, [](auto n) -> ClosureTask<void> {
+        n->fetch_add(42);
+        co_return;
+      });
+  EXPECT_EQ(42, n.load());
+}
+
 CO_TEST(AsyncClosure, nowClosureCoCleanup) {
   std::optional<exception_wrapper> optCleanErr;
   int res = co_await async_now_closure(
