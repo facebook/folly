@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include <glog/logging.h>
+
 namespace folly {
 namespace detail {
 
@@ -81,12 +83,8 @@ static void double_radix_sort_rec(
 }
 
 void double_radix_sort(uint64_t n, uint64_t* buckets, double* in, double* tmp) {
-  // If array is too small, use std::sort directly.
-  if (n < 700) {
-    std::sort(in, in + n);
-  } else {
-    detail::double_radix_sort_rec(n, buckets, 0, false, in, tmp);
-  }
+  detail::double_radix_sort_rec(n, buckets, 0, false, in, tmp);
+  DCHECK(std::is_sorted(in, in + n));
 }
 
 } // namespace detail

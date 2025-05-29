@@ -3896,6 +3896,9 @@ non_fbcode_target(
     raw_headers = [
         "stats/detail/DoubleRadixSort.h",
     ],
+    deps = [
+        "//third-party/glog:glog",
+    ],
 )
 
 non_fbcode_target(
@@ -4665,6 +4668,7 @@ non_fbcode_target(
         ":utility",
         "//third-party/glog:glog",
         "//xplat/folly/algorithm:binary_heap",
+        "//xplat/folly/memory:malloc",
     ],
 )
 

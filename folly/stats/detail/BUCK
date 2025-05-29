@@ -51,4 +51,7 @@ fbcode_target(
     headers = [
         "DoubleRadixSort.h",
     ],
+    external_deps = [
+        "glog",
+    ],
 )

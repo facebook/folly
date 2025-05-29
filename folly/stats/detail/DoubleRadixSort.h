@@ -22,8 +22,7 @@ namespace folly {
 namespace detail {
 
 /*
- * Sorts a double[] array using radix sort (falling back to std::sort
- * for small arrays).
+ * Sorts a double[] array using radix sort.
  *
  * n - size of array
  * buckets - must be array of uint64_t of size 256*9.

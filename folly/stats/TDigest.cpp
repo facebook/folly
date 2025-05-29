@@ -23,7 +23,9 @@
 #include <glog/logging.h>
 
 #include <folly/Overload.h>
+#include <folly/Utility.h>
 #include <folly/algorithm/BinaryHeap.h>
+#include <folly/memory/Malloc.h>
 #include <folly/stats/detail/DoubleRadixSort.h>
 
 namespace folly {
@@ -91,6 +93,19 @@ void merge2Containers(
     }
   }
 }
+
+class Buffer : NonCopyableNonMovable {
+ public:
+  explicit Buffer(size_t size)
+      : ptr_(reinterpret_cast<char*>(checkedMalloc(size))), size_(size) {}
+  ~Buffer() { sizedFree(ptr_, size_); }
+
+  char* get() { return ptr_; }
+
+ private:
+  char* ptr_;
+  size_t size_;
+};
 
 } // namespace
 
@@ -190,25 +205,41 @@ TDigest::TDigest(
   }
 }
 
-// Merge unsorted values by first sorting them.  Use radix sort if
-// possible.  This implementation puts all additional memory in the
-// heap, so that if called from fiber context we do not smash the
-// stack.  Otherwise it is very similar to boost::spreadsort.
+// Merge unsorted values by first sorting them.
 TDigest TDigest::merge(Range<const double*> unsortedValues) const {
+  constexpr size_t kRadixSortThreshold = 700;
+
   auto n = unsortedValues.size();
 
-  // We require 256 buckets per byte level, plus one count array we can reuse.
-  std::unique_ptr<uint64_t[]> buckets{new uint64_t[256 * 9]};
-  // Allocate input and tmp array
-  std::unique_ptr<double[]> tmp{new double[n * 2]};
-  auto out = tmp.get() + n;
-  auto in = tmp.get();
-  std::copy(unsortedValues.begin(), unsortedValues.end(), in);
+  if (n > kRadixSortThreshold) {
+    // Use radix sort if the set is large enough.  This implementation puts all
+    // additional memory in the heap, so that if
+    // called from fiber context we do not smash the stack.  Otherwise it is
+    // very similar to boost::spreadsort.
 
-  detail::double_radix_sort(n, buckets.get(), in, out);
-  DCHECK(std::is_sorted(in, in + n));
+    // We require 256 buckets per byte level, plus one count array we can reuse.
+    size_t kBucketsSize = 256 * 9;
+    static_assert(alignof(double) == alignof(uint64_t));
+    Buffer buffer(kBucketsSize * sizeof(uint64_t) + 2 * n * sizeof(double));
+    auto* p = buffer.get();
+    uint64_t* buckets = reinterpret_cast<uint64_t*>(p);
+    p += kBucketsSize * sizeof(uint64_t);
+    double* in = reinterpret_cast<double*>(p);
+    p += n * sizeof(double);
+    double* out = reinterpret_cast<double*>(p);
 
-  return merge(sorted_equivalent, Range<const double*>(in, in + n));
+    std::copy(unsortedValues.begin(), unsortedValues.end(), in);
+    detail::double_radix_sort(n, buckets, in, out);
+
+    return merge(sorted_equivalent, Range<const double*>(in, in + n));
+  } else {
+    // Set is small, prefer avoiding allocations. Temporary buffer is small
+    // enough that we can keep it on the stack.
+    double in[kRadixSortThreshold];
+    std::copy(unsortedValues.begin(), unsortedValues.end(), in);
+    std::sort(in, in + n);
+    return merge(sorted_equivalent, Range<const double*>(in, in + n));
+  }
 }
 
 void TDigest::mergeValues(
