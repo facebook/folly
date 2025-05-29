@@ -30,7 +30,8 @@ namespace folly::bindings {
 
 template <typename, typename... As>
 constexpr auto make_in_place(As&&...);
-constexpr auto make_in_place_with(auto);
+template <typename... As>
+constexpr auto make_in_place_with(auto, As&&...);
 
 // The primitive for representing lists of bound args. Unary forms:
 //  - `bound_args<V>`: if `V` is already `like_bound_args`, wraps that
@@ -321,31 +322,42 @@ class in_place_bound_args
       : base{u, std::move(t)} {}
 };
 
-template <typename T, typename Fn>
+template <typename T, typename Fn, typename... Args>
 class in_place_fn_maker : private MoveOnly {
  private:
   Fn fn_; // May contain refs; ~safe since a binding lives for 1 statement.
+  detail::lite_tuple::tuple<Args&&...> arg_tup_;
 
  protected:
-  template <typename, typename>
+  template <typename, typename, typename...>
   friend class in_place_fn_bound_args;
 
-  constexpr /*implicit*/ in_place_fn_maker(Fn fn) : fn_(std::move(fn)) {}
+  constexpr /*implicit*/ in_place_fn_maker(
+      Fn fn, Args&&... as [[clang::lifetimebound]])
+      : fn_(std::move(fn)), arg_tup_{static_cast<Args&&>(as)...} {}
 
  public:
   // This implicit conversion allows direct construction inside of `tuple` e.g.
-  constexpr /*implicit*/ operator T() && { return fn_(); }
+  constexpr /*implicit*/ operator T() && {
+    return lite_tuple::apply(fn_, arg_tup_);
+  }
 };
 
 // NB: `Args` are deduced by `make_in_place` as forwarding references
-template <typename T, typename Fn>
+template <typename T, typename Fn, typename... Args>
 class in_place_fn_bound_args
-    : public in_place_bound_args_crtp_base<T, in_place_fn_maker<T, Fn>> {
+    : public in_place_bound_args_crtp_base<
+          T,
+          in_place_fn_maker<T, Fn, Args...>> {
  protected:
-  friend constexpr auto ::folly::bindings::make_in_place_with(auto);
+  template <typename... As>
+  friend constexpr auto ::folly::bindings::make_in_place_with(auto, As&&...);
 
-  using base = in_place_bound_args_crtp_base<T, in_place_fn_maker<T, Fn>>;
-  constexpr explicit in_place_fn_bound_args(Fn fn) : base{{std::move(fn)}} {}
+  using base =
+      in_place_bound_args_crtp_base<T, in_place_fn_maker<T, Fn, Args...>>;
+  constexpr explicit in_place_fn_bound_args(
+      Fn fn, Args&&... args [[clang::lifetimebound]])
+      : base{{std::move(fn), static_cast<Args&&>(args)...}} {}
 
  public:
   constexpr in_place_fn_bound_args(ext::bound_args_unsafe_move u, auto t)
@@ -383,6 +395,20 @@ using by_non_const_ref_bind_info = decltype([](auto bi) {
 
 // `make_in_place` and `make_in_place_with` construct non-movable,
 // non-copyable types in their final location.
+//
+// CAREFUL: As with other `bound_args{}`, the returned object stores references
+// to `args` to avoid unnecessary move-copies.  A power user may wish to write
+// a function that returns a binding, which OWNS some values.  For example, you
+// may need to avoid a stack-use-after-free such as this one:
+//
+//   auto makeFoo(int n) { return make_in_place<Foo>(n); } // BAD: `n` is dead
+//
+// To avoid the bug, either take `n` by-reference (often preferred), or store
+// your values inside a `make_in_place_with` callable:
+//
+//   auto makeFoo(int n) {
+//     return make_in_place_with([n]() { return Foo{n}; });
+//   }
 template <typename T, typename... Args>
 constexpr auto make_in_place(Args&&... args [[clang::lifetimebound]]) {
   return detail::in_place_bound_args<T, Args...>{static_cast<Args&&>(args)...};
@@ -391,10 +417,15 @@ constexpr auto make_in_place(Args&&... args [[clang::lifetimebound]]) {
 //   - Dangling references may be hidden inside `make_fn` captures --
 //     `clang` offers no `lifetimebound` analysis for these (yet?).
 //   - The type signature of the `in_place_bound_args` includes a lambda.
-constexpr auto make_in_place_with(auto make_fn) {
+// CAREFUL: While `make_fn` is taken by-value, `args` are stored as references,
+// as in `make_in_place`.
+template <typename... Args>
+constexpr auto make_in_place_with(
+    auto make_fn, Args&&... args [[clang::lifetimebound]]) {
   return detail::in_place_fn_bound_args<
-      std::invoke_result_t<decltype(make_fn)>,
-      decltype(make_fn)>{std::move(make_fn)};
+      std::invoke_result_t<decltype(make_fn), Args&&...>,
+      decltype(make_fn),
+      Args...>{std::move(make_fn), static_cast<Args&&>(args)...};
 }
 
 // The below "binding modifiers" all return an immovable bound args list,

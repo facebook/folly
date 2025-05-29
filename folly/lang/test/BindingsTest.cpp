@@ -348,6 +348,28 @@ constexpr auto check_in_place_bound_args_via_fn() {
   Foo f2 = lite_tuple::get<0>(std::move(b2).unsafe_tuple_to_bind());
   test(37 == f2.n_);
 
+  struct MoveN : MoveOnly {
+    int n_;
+  };
+
+  int n1 = 1000, n2 = 300, n3 = 30, n4 = 7;
+  auto fn2 = [mn1 = MoveN{.n_ = n1}](int&& i2, int& i3, const int& i4) {
+    return mn1.n_ + i2 + i3 + i4;
+  };
+  auto b3 = make_in_place_with(
+      std::move(fn2), // the contained `MoveN` is noncopyable
+      std::move(n2),
+      n3,
+      std::as_const(n4));
+  static_assert(
+      std::is_same_v<
+          decltype(b3),
+          in_place_fn_bound_args<int, decltype(fn2), int, int&, const int&>>);
+  static_assert(
+      std::is_same_v<
+          decltype(b3)::binding_list_t,
+          tag_t<binding_t<bind_info_t{}, int>>>);
+
   return true;
 }
 

@@ -173,6 +173,11 @@ auto capture_in_place(auto&&... as [[clang::lifetimebound]]) {
   return as_capture(
       ::folly::bindings::make_in_place<T>(static_cast<decltype(as)>(as)...));
 }
+auto capture_in_place_with(
+    auto make_fn, auto&&... as [[clang::lifetimebound]]) {
+  return as_capture(::folly::bindings::make_in_place_with(
+      std::move(make_fn), static_cast<decltype(as)>(as)...));
+}
 
 template <typename T>
   requires(!detail::has_async_closure_co_cleanup<T>)
