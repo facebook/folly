@@ -520,14 +520,16 @@ double TDigest::estimateQuantile(double q) const {
   if (centroids_.size() > 1) {
     if (pos == 0) {
       delta = centroids_[pos + 1].mean() - centroids_[pos].mean();
-      max = centroids_[pos + 1].mean();
+      // Numerical errors in accumulating the centroid can make it exceed the
+      // min_/max_ bounds.
+      max = std::min(centroids_[pos + 1].mean(), max_);
     } else if (pos == centroids_.size() - 1) {
       delta = centroids_[pos].mean() - centroids_[pos - 1].mean();
-      min = centroids_[pos - 1].mean();
+      min = std::max(centroids_[pos - 1].mean(), min_);
     } else {
       delta = (centroids_[pos + 1].mean() - centroids_[pos - 1].mean()) / 2;
-      min = centroids_[pos - 1].mean();
-      max = centroids_[pos + 1].mean();
+      min = std::max(centroids_[pos - 1].mean(), min_);
+      max = std::min(centroids_[pos + 1].mean(), max_);
     }
   }
   auto value = centroids_[pos].mean() +
