@@ -134,6 +134,9 @@ include(FollyFunctions)
 
 include(folly-deps) # Find the required packages
 include(FollyConfigChecks)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND MINGW)
+  set(FOLLY_HAVE_WEAK_SYMBOLS OFF)
+endif()
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h

@@ -60,6 +60,9 @@ FOLLY_POP_WARNING
 
 #ifdef _WIN32
 #define FOLLY_PORT_WIN32_OPEN_BINARY _O_BINARY
+#ifdef __MINGW32__
+#include <share.h>
+#endif
 #else
 #define FOLLY_PORT_WIN32_OPEN_BINARY 0
 #endif
