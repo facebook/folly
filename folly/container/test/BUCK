@@ -636,7 +636,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_unittest,
+    _kind = cpp_benchmark,
     name = "tape_bench",
     srcs = ["tape_bench.cpp"],
     deps = [
