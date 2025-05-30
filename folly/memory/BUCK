@@ -295,7 +295,6 @@ fbcode_target(
     )],
     exported_deps = [
         "//folly:portability",
-        "//folly/lang:bits",
         "//folly/lang:exception",
         "//folly/memory/detail:malloc_impl",
         "//folly/portability:malloc",
