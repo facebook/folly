@@ -31,7 +31,6 @@ const char* nallocxWeak = nullptr;
 const char* mallctlWeak = nullptr;
 const char* mallctlnametomibWeak = nullptr;
 const char* mallctlbymibWeak = nullptr;
-const char* malloc_stats_printWeak = nullptr;
 const char* MallocExtension_Internal_GetNumericPropertyWeak = nullptr;
 #elif !FOLLY_HAVE_WEAK_SYMBOLS
 #if (!defined(USE_JEMALLOC) && !defined(FOLLY_USE_JEMALLOC)) || FOLLY_SANITIZE
@@ -45,8 +44,6 @@ size_t (*nallocx)(size_t, int) = nullptr;
 int (*mallctl)(const char*, void*, size_t*, void*, size_t) = nullptr;
 int (*mallctlnametomib)(const char*, size_t*, size_t*) = nullptr;
 int (*mallctlbymib)(const size_t*, size_t, void*, size_t*, void*, size_t) =
-    nullptr;
-void (*malloc_stats_print)(void (*)(void*, const char*), void*, const char*) =
     nullptr;
 #endif
 bool (*MallocExtension_Internal_GetNumericProperty)(
