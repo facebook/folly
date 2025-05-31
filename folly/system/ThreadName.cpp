@@ -48,6 +48,8 @@
 // pthread_setname_np was introduced in Android NDK version 9
 #elif defined(__ANDROID__) && __ANDROID_API__ >= 9
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 1
+#elif FOLLY_HAVE_PTHREAD && defined(__MINGW32__)
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 1
 #else
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 0
 #endif
@@ -58,24 +60,51 @@
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_NAME 0
 #endif // defined(__APPLE__)
 
+namespace ns {
+
+struct dummy {};
+using thread_id_access = std::basic_ostream<dummy>;
+
+} // namespace ns
+
+namespace std {
+template <>
+class basic_ostream<ns::dummy> {
+ public:
+  using id_type = std::thread::native_handle_type;
+  id_type id = 0;
+};
+
+template <>
+ns::thread_id_access& operator<<(ns::thread_id_access& os, std::thread::id id) {
+#if defined(_LIBCPP_VERSION)
+  os.id = reinterpret_cast<std::thread::native_handle_type>(id.__id_);
+#elif defined(_GLIBCXX_RELEASE)
+  os.id = reinterpret_cast<std::thread::native_handle_type>(id._M_thread);
+#elif defined(_MSC_VER)
+  os.id = (std::thread::native_handle_type)(id._Id);
+#else
+#error Search your implementation
+#endif
+  return os;
+}
+
+} // namespace std
+
 namespace folly {
 
 namespace {
 
-#if FOLLY_HAVE_PTHREAD && !defined(_WIN32)
+inline auto GetThreadId(std::thread::id id) {
+  ns::thread_id_access t;
+  t << id;
+  return t.id;
+}
+
+#ifdef FOLLY_HAVE_PTHREAD
 pthread_t stdTidToPthreadId(std::thread::id tid) {
-  static_assert(
-      std::is_same<pthread_t, std::thread::native_handle_type>::value,
-      "This assumes that the native handle type is pthread_t");
-  static_assert(
-      sizeof(std::thread::native_handle_type) == sizeof(std::thread::id),
-      "This assumes std::thread::id is a thin wrapper around "
-      "std::thread::native_handle_type, but that doesn't appear to be true.");
-  // In most implementations, std::thread::id is a thin wrapper around
-  // std::thread::native_handle_type, which means we can do unsafe things to
-  // extract it.
-  pthread_t id;
-  std::memcpy(&id, &tid, sizeof(id));
+  auto h = GetThreadId(tid);
+  pthread_t id = reinterpret_cast<pthread_t>(h);
   return id;
 }
 #endif
@@ -235,6 +264,7 @@ bool setThreadNameWindowsViaDebugger(DWORD id, StringPiece name) noexcept {
 
   TNIUnion tniUnion = {0x1000, trimmed, id, 0};
 
+#ifdef _MSC_VER
   // SEH requires no use of C++ object destruction semantics in this stack
   // frame.
   __try {
@@ -245,20 +275,13 @@ bool setThreadNameWindowsViaDebugger(DWORD id, StringPiece name) noexcept {
           : EXCEPTION_EXECUTE_HANDLER) {
     // Swallow the exception when a debugger isn't attached.
   }
+#endif
   return true;
 }
 
 bool setThreadNameWindows(std::thread::id tid, StringPiece name) {
-  static_assert(
-      sizeof(DWORD) == sizeof(std::thread::id),
-      "This assumes std::thread::id is a thin wrapper around "
-      "the Win32 thread id, but that doesn't appear to be true.");
-
-  // std::thread::id is a thin wrapper around the Windows thread ID,
-  // so just extract it.
-  DWORD id;
-  std::memcpy(&id, &tid, sizeof(id));
-
+  auto h = GetThreadId(tid);
+  DWORD id = static_cast<DWORD>(reinterpret_cast<std::uintptr_t>(h));
   // First, try the Windows 10 1607 SetThreadDescription call.
   if (setThreadNameWindowsViaDescription(id, name)) {
     return true;
@@ -273,7 +296,7 @@ bool setThreadNameWindows(std::thread::id tid, StringPiece name) {
 } // namespace
 
 bool setThreadName(std::thread::id tid, StringPiece name) {
-#ifdef _WIN32
+#if !FOLLY_HAVE_PTHREAD && defined(_WIN32)
   return setThreadNameWindows(tid, name);
 #else
   return setThreadName(stdTidToPthreadId(tid), name);
@@ -281,7 +304,7 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
 }
 
 bool setThreadName(pthread_t pid, StringPiece name) {
-#ifdef _WIN32
+#if !FOLLY_HAVE_PTHREAD && defined(_WIN32)
   static_assert(
       sizeof(unsigned int) == sizeof(std::thread::id),
       "This assumes std::thread::id is a thin wrapper around "

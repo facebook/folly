@@ -287,6 +287,8 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
 #include <folly/portability/Windows.h>
 
 extern "C" {
+
+#ifdef _MSC_VER
 char* asctime_r(const tm* tm, char* buf) {
   char tmpBuf[64];
   if (asctime_s(tmpBuf, tm)) {
@@ -312,13 +314,6 @@ tm* gmtime_r(const time_t* t, tm* res) {
   return nullptr;
 }
 
-tm* localtime_r(const time_t* t, tm* o) {
-  if (!localtime_s(o, t)) {
-    return o;
-  }
-  return nullptr;
-}
-
 int nanosleep(const struct timespec* request, struct timespec* remain) {
   Sleep((DWORD)((request->tv_sec * 1000) + (request->tv_nsec / 1000000)));
   if (remain != nullptr) {
@@ -326,6 +321,14 @@ int nanosleep(const struct timespec* request, struct timespec* remain) {
     remain->tv_sec = 0;
   }
   return 0;
+}
+#endif
+
+tm* localtime_r(const time_t* t, tm* o) {
+  if (!localtime_s(o, t)) {
+    return o;
+  }
+  return nullptr;
 }
 
 char* strptime(
