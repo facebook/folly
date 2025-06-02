@@ -30,17 +30,15 @@ using namespace folly;
 
 #if JEMALLOC_VERSION_MAJOR > 4
 static constexpr char const* kDecayCmd = "arena.0.dirty_decay_ms";
-const char* malloc_conf = "dirty_decay_ms:10";
 #else
 static constexpr char const* kDecayCmd = "arena.0.decay_time";
-const char* malloc_conf = "purge:decay,decay_time:10";
 #endif
 static constexpr char const* kNoArgCmd = "arena.0.decay";
 static constexpr char const* kInvalidCmd = "invalid";
 
 class MallctlHelperTest : public ::testing::Test {
  protected:
-  void TearDown() override {
+  void SetUp() override {
     // Reset decay_time of arena 0 to 10 seconds.
     ssize_t decayTime = 10;
     EXPECT_NO_THROW(mallctlWrite(kDecayCmd, decayTime));
