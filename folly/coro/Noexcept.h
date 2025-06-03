@@ -240,7 +240,7 @@ struct AsNoexceptCfg {
   using PromiseT = AsNoexceptTaskPromiseWrapper<
       ValueT,
       AsNoexcept<Inner, CancelCfg>,
-      typename Inner::promise_type>;
+      typename folly::coro::coroutine_traits<Inner>::promise_type>;
   template <typename Awaitable> // library-internal, meant to be by-rref
   static inline auto wrapAwaitable(Awaitable&& awaitable) noexcept {
     // Assert can be removed, I was concerned if we accidentally double-wrap
@@ -255,6 +255,28 @@ using AsNoexceptBase = TaskWrapperCrtp<
     AsNoexcept<Inner, CancelCfg>,
     AsNoexceptCfg<Inner, CancelCfg>>;
 
+// CAUTION: `as_noexcept_rewrapper` gives you the power to wrap and unwrap
+// `AsNoexcept`, so you must be extremely careful to preserve behavior:
+//   - The unwrapped task must be rewrapped before awaiting.
+//   - You must not wrap any other task.
+
+template <typename>
+struct as_noexcept_rewrapper {
+  static inline constexpr bool as_noexcept_wrapped = false;
+  static auto wrap_with(auto fn) { return fn(); }
+};
+
+template <typename Inner, auto Cfg>
+struct as_noexcept_rewrapper<AsNoexcept<Inner, Cfg>> {
+  static inline constexpr bool as_noexcept_wrapped = true;
+  static Inner unwrapTask(AsNoexcept<Inner, Cfg>&& t) {
+    return std::move(t).unwrapTask();
+  }
+  static auto wrap_with(auto fn) {
+    return AsNoexcept<decltype(fn()), Cfg>{fn()};
+  }
+};
+
 } // namespace detail
 
 template <typename Inner, auto CancelCfg = OnCancel<void>{}>
@@ -262,6 +284,9 @@ class FOLLY_CORO_TASK_ATTRS AsNoexcept final
     : public detail::AsNoexceptBase<Inner, CancelCfg> {
  protected:
   using detail::AsNoexceptBase<Inner, CancelCfg>::AsNoexceptBase;
+
+  template <typename> // Can unwrap and re-wrap (construct)
+  friend struct detail::as_noexcept_rewrapper;
 
  public:
   using folly_private_noexcept_awaitable_t = std::true_type;

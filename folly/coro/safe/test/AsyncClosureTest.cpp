@@ -861,6 +861,73 @@ CO_TEST(AsyncClosure, nowClosureCoCleanup) {
   EXPECT_TRUE(optCleanErr.has_value());
 }
 
+constexpr bool check_as_noexcept_closures() {
+  static_assert( // SafeTask, without outer coro
+      std::is_same_v<
+          AsNoexcept<ValueTask<>>,
+          decltype(async_closure(
+              bound_args{},
+              []() -> AsNoexcept<ClosureTask<>> { co_return; }))>);
+
+  static_assert( // SafeTask, with outer coro
+      std::is_same_v<
+          AsNoexcept<ValueTask<>>,
+          decltype(async_closure<ForceOuter>(
+              bound_args{},
+              []() -> AsNoexcept<ClosureTask<>> { co_return; }))>);
+
+  static_assert( // NowTask, without outer coro
+      std::is_same_v<
+          AsNoexcept<NowTask<>>,
+          decltype(async_now_closure(bound_args{}, []() -> AsNoexcept<Task<>> {
+            co_return;
+          }))>);
+  static_assert( // NowTask, with outer coro
+      std::is_same_v<
+          AsNoexcept<NowTask<>>,
+          decltype(async_now_closure<ForceOuter>(
+              bound_args{}, []() -> AsNoexcept<Task<>> { co_return; }))>);
+
+  return true;
+}
+
+static_assert(check_as_noexcept_closures());
+
+struct MyErr : std::exception {};
+
+struct ThrowOnMove {
+  ThrowOnMove() {}
+  ~ThrowOnMove() = default;
+  [[noreturn]] ThrowOnMove(ThrowOnMove&&) { throw MyErr{}; }
+  ThrowOnMove(const ThrowOnMove&) = delete;
+  void operator=(ThrowOnMove&&) = delete;
+  void operator=(const ThrowOnMove&) = delete;
+};
+
+TEST(AsyncClosure, fatalWhenNoexceptClosureThrows) {
+  auto throwNoOuter = async_closure(
+      bound_args{}, []() -> ClosureTask<ThrowOnMove> { co_return {}; });
+  EXPECT_THROW(blockingWait(std::move(throwNoOuter)), MyErr);
+
+  auto noexceptThrowNoOuter = async_closure(
+      bound_args{},
+      []() -> AsNoexcept<ClosureTask<ThrowOnMove>, terminateOnCancel> {
+        co_return {};
+      });
+  EXPECT_DEATH({ blockingWait(std::move(noexceptThrowNoOuter)); }, "MyErr");
+
+  auto throwOuter = async_closure<ForceOuter>(
+      bound_args{}, []() -> ClosureTask<ThrowOnMove> { co_return {}; });
+  EXPECT_THROW(blockingWait(std::move(throwOuter)), MyErr);
+
+  auto noexceptThrowOuter = async_closure<ForceOuter>(
+      bound_args{},
+      []() -> AsNoexcept<ClosureTask<ThrowOnMove>, terminateOnCancel> {
+        co_return {};
+      });
+  EXPECT_DEATH({ blockingWait(std::move(noexceptThrowOuter)); }, "MyErr");
+}
+
 // Records construction order, asserts that (1) cleanup & destruction happen in
 // the opposite order, and (2) all cleanups complete before any dtors.
 struct OrderTracker : NonCopyableNonMovable {

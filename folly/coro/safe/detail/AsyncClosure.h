@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/coro/Noexcept.h>
 #include <folly/coro/safe/SafeTask.h>
 #include <folly/coro/safe/detail/AsyncClosureBindings.h>
 #include <folly/detail/tuple.h>
@@ -75,22 +76,34 @@ concept has_result_after_cleanup = requires(
   std::move(t).result_after_cleanup(priv);
 };
 
-auto async_closure_outer_coro_result(async_closure_private_t priv, auto r) {
-  if constexpr (has_result_after_cleanup<
-                    std::remove_reference_t<decltype(r)>>) {
+template <bool AssertNoexcept, typename T>
+  requires(!std::is_reference_v<T>)
+auto async_closure_outer_coro_result(async_closure_private_t priv, T r) {
+  if constexpr (has_result_after_cleanup<T>) {
+    static_assert(
+        !AssertNoexcept || noexcept(std::move(r).result_after_cleanup(priv)));
     return std::move(r).result_after_cleanup(priv);
   } else {
+    static_assert(!AssertNoexcept || std::is_nothrow_constructible_v<T, T&&>);
     (void)priv;
     return r;
   }
 }
 
-template <bool SetCancelTok, typename ResultT, safe_alias OuterSafety>
+template <
+    bool SetCancelTok,
+    typename ResultT,
+    safe_alias OuterSafety,
+    bool AssertNoexcept>
 auto async_closure_make_outer_coro(
     async_closure_private_t priv, auto inner_mover, auto storage_ptr) {
   return lite_tuple::apply(
       [&](auto... reversed_noexcept_cleanups) {
-        return async_closure_outer_coro<SetCancelTok, ResultT, OuterSafety>(
+        return async_closure_outer_coro<
+            SetCancelTok,
+            ResultT,
+            OuterSafety,
+            AssertNoexcept>(
             priv,
             // Doesn't downgrade safety, since movers are library-internal
             // "unsafe" types that don't expose the inner type's `safe_alias`.
@@ -116,13 +129,20 @@ auto async_closure_make_outer_coro(
           storage_ptr->storage_tuple_like()));
 }
 
+// IMPORTANT: This must not allow unhandled exceptions to escape, since for
+// noexcept-awaitable inner coros, the outer one is marked noexcept-awaitable.
 template <
     bool SetCancelTok,
     typename ResultT,
     safe_alias OuterSafety,
-    typename OuterResT = drop_unit_t<decltype(async_closure_outer_coro_result(
-        std::declval<async_closure_private_t>(),
-        std::declval<lift_unit_t<ResultT>&&>()))>>
+    // This coro is noexcept-awaitable iff `async_closure_outer_coro_result` is
+    // `noexcept`.  But we don't want to restrict it for coros that are not
+    // marked `AsNoexcept` -- this boolean toggles its "is noexcept" asserts.
+    bool AssertNoexcept,
+    typename OuterResT =
+        drop_unit_t<decltype(async_closure_outer_coro_result<AssertNoexcept>(
+            std::declval<async_closure_private_t>(),
+            std::declval<lift_unit_t<ResultT>&&>()))>>
 std::conditional_t<
     OuterSafety >= safe_alias::closure_min_arg_safety,
     SafeTask<OuterSafety, OuterResT>,
@@ -172,7 +192,8 @@ async_closure_outer_coro(
     if constexpr (std::is_void_v<ResultT>) {
       co_return;
     } else {
-      co_return async_closure_outer_coro_result(priv, std::move(res).value());
+      co_return async_closure_outer_coro_result<AssertNoexcept>(
+          priv, std::move(res).value());
     }
   } else if (FOLLY_LIKELY(res.hasException())) {
     co_yield co_error(std::move(inner_err));
@@ -211,6 +232,7 @@ inline constexpr auto cumsum_except_last<Sum, Head, Tail...> =
 template < // inner coro safety is measured BEFORE re-wrapping it!
     safe_alias OuterSafety,
     safe_alias InnerSafety,
+    typename NoexceptWrap,
     typename OuterMover>
 class async_closure_wrap_coro {
  private:
@@ -219,8 +241,7 @@ class async_closure_wrap_coro {
  protected:
   template <auto>
   friend auto bind_captures_to_closure(auto&&, auto);
-  explicit async_closure_wrap_coro(
-      vtag_t<OuterSafety, InnerSafety>, OuterMover outer_mover)
+  explicit async_closure_wrap_coro(OuterMover outer_mover)
       : outer_mover_(std::move(outer_mover)) {}
 
  public:
@@ -253,7 +274,7 @@ class async_closure_wrap_coro {
     static_assert(
         is_inner_coro_safe,
         "`async_closure` currently only supports `SafeTask` as the inner coro.");
-    return std::move(outer_mover_)();
+    return NoexceptWrap::wrap_with([&]() { return std::move(outer_mover_)(); });
   }
 };
 
@@ -553,13 +574,24 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
       },
       b_tup);
 
+  // First, unwrap `AsNoexcept` so that `safe_task_traits` below can work.
+  // We only allow `AsNoexcept` as the outer wrapper.
+  using NoexceptWrap = as_noexcept_rewrapper<decltype(raw_inner_coro)>;
+  auto unwrapped_inner = []<typename T>(T&& t) {
+    if constexpr (NoexceptWrap::as_noexcept_wrapped) {
+      return NoexceptWrap::unwrapTask(std::move(t));
+    } else {
+      return mustAwaitImmediatelyUnsafeMover(std::move(t))();
+    }
+  }(std::move(raw_inner_coro));
+
   // Compute the safety of the arguments being passed by the caller.
   constexpr safe_alias OuterSafety = Cfg.force_shared_cleanup // making NowTask
       ? safe_alias::unsafe
       : folly::least_safe_alias(decltype(arg_safeties){});
   // Also check that the coroutine function's signature looks safe.
   constexpr safe_alias InnerSafety =
-      safe_task_traits<decltype(raw_inner_coro)>::arg_safety;
+      safe_task_traits<decltype(unwrapped_inner)>::arg_safety;
 
   // This converts `raw_inner_task` into a "task mover" that can be plumbed
   // down to, and used by, `async_closure_outer_coro()`.  We do 3 tricks here:
@@ -585,9 +617,9 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
       constexpr auto newSafety =
           std::max(OuterSafety, safe_alias::closure_min_arg_safety);
       return mustAwaitImmediatelyUnsafeMover(
-          std::move(raw_inner_coro).template withNewSafety<newSafety>());
+          std::move(unwrapped_inner).template withNewSafety<newSafety>());
     } else { // The "new safety" rewrite doesn't apply to unsafe tasks!
-      return mustAwaitImmediatelyUnsafeMover(std::move(raw_inner_coro));
+      return mustAwaitImmediatelyUnsafeMover(std::move(unwrapped_inner));
     }
   }();
 
@@ -599,7 +631,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
   // would not be true e.g.  if the user passed something like this:
   //   [](int num, auto me) { return me->addNumber(num); }
   static_assert(
-      std::is_same_v<MemberTask<ResultT>, decltype(raw_inner_coro)> ==
+      std::is_same_v<MemberTask<ResultT>, decltype(unwrapped_inner)> ==
           Cfg.is_invoke_member,
       "To use `MemberTask<>` coros with `async_closure`, you must pass "
       "the callable as `FOLLY_INVOKE_MEMBER(memberName)`, and pass the "
@@ -617,7 +649,8 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
           async_closure_make_outer_coro<
               /*cancelTok*/ true,
               ResultT,
-              OuterSafety>(
+              OuterSafety,
+              NoexceptWrap::as_noexcept_wrapped>(
               async_closure_private_t{},
               std::move(inner_mover),
               std::move(storage_ptr)));
@@ -625,10 +658,15 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
   }();
 
   if constexpr (Cfg.force_shared_cleanup) {
-    return toNowTask(std::move(outer_mover)());
+    return NoexceptWrap::wrap_with([&]() {
+      return toNowTask(std::move(outer_mover)());
+    });
   } else {
-    return async_closure_wrap_coro{
-        vtag<OuterSafety, InnerSafety>, std::move(outer_mover)};
+    return async_closure_wrap_coro<
+        OuterSafety,
+        InnerSafety,
+        NoexceptWrap,
+        decltype(outer_mover)>{std::move(outer_mover)};
   }
 }
 

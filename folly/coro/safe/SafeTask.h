@@ -274,10 +274,7 @@ template <safe_alias ArgSafety, typename T>
 struct SafeTaskCfg : DoesNotWrapAwaitable {
   using ValueT = T;
   using InnerTaskT = Task<T>;
-  using TaskWithExecutorT = std::conditional_t<
-      ArgSafety == safe_alias::unsafe_closure_internal,
-      void,
-      SafeTaskWithExecutor<ArgSafety, T>>;
+  using TaskWithExecutorT = SafeTaskWithExecutor<ArgSafety, T>;
   // There is no `promise_type` here because it's added by `coroutine_traits`
   // below.  This is the mechanism that enables `SafeTaskPromise` to inspect
   // the specific arguments of the coroutine (including the implicit object
