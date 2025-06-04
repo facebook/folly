@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
@@ -56,11 +54,12 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "global_shutdown_socket_set",
     srcs = ["GlobalShutdownSocketSet.cpp"],
     headers = ["GlobalShutdownSocketSet.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:singleton",
     ],
@@ -70,8 +69,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "record_io",
     srcs = [
         "RecordIO.cpp",
@@ -80,7 +78,9 @@ fbcode_target(
         "RecordIO.h",
         "RecordIO-inl.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
     supports_python_dlopen = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:exception",
         "//folly:file_util",
@@ -100,11 +100,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "shutdown_socket_set",
     srcs = ["ShutdownSocketSet.cpp"],
     headers = ["ShutdownSocketSet.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:file_util",
         "//folly/net:net_ops",
@@ -120,18 +121,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "typed_io_buf",
     headers = ["TypedIOBuf.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":iobuf",
         "//folly/memory:malloc",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "socket_option_map",
     srcs = [
         "SocketOptionMap.cpp",
@@ -141,17 +142,20 @@ fbcode_target(
         "SocketOptionMap.h",
         "SocketOptionValue.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/net:network_socket",
         "//folly/portability:sockets",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "huge_pages",
     srcs = ["HugePages.cpp"],
     headers = ["HugePages.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:conv",
         "//folly:cpp_attributes",
@@ -174,11 +178,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "fs_util",
     srcs = ["FsUtil.cpp"],
     headers = ["FsUtil.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:exception",
         "//folly/portability:windows",
