@@ -107,6 +107,15 @@ class Buffer : NonCopyableNonMovable {
   size_t size_;
 };
 
+double clamp(double v, double lo, double hi) {
+  if (v > hi) {
+    return hi;
+  } else if (v < lo) {
+    return lo;
+  }
+  return v;
+}
+
 } // namespace
 
 class TDigest::CentroidMerger {
@@ -534,7 +543,7 @@ double TDigest::estimateQuantile(double q) const {
   }
   auto value = centroids_[pos].mean() +
       ((rank - t) / centroids_[pos].weight() - 0.5) * delta;
-  return std::clamp(value, min, max);
+  return clamp(value, min, max);
 }
 
 double TDigest::Centroid::add(double sum, double weight) {
