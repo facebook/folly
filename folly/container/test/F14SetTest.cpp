@@ -25,7 +25,6 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 #include <folly/container/F14Set.h>
 // clang-format on
 
-#include <chrono>
 #include <numeric>
 #include <random>
 #include <string>
