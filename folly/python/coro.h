@@ -21,13 +21,12 @@
 
 #pragma once
 
-#include <Python.h>
+#include <folly/CancellationToken.h>
 #include <folly/Executor.h>
 #include <folly/Portability.h>
-
-#include <folly/CancellationToken.h>
 #include <folly/coro/Task.h>
 #include <folly/python/AsyncioExecutor.h>
+#include <folly/python/Weak.h>
 #include <folly/python/executor.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -44,8 +43,8 @@ void bridgeCoroTask(
     folly::CancellationToken&& cancellationToken) {
   // We are handing over a pointer to a python object to c++ and need
   // to make sure it isn't removed by python in that time.
-  Py_INCREF(userData);
-  auto guard = folly::makeGuard([=] { Py_DECREF(userData); });
+  Py_IncRef(userData);
+  auto guard = folly::makeGuard([=] { Py_DecRef(userData); });
   std::move(coroFrom).scheduleOn(executor).start(
       [callback = std::move(callback), userData, guard = std::move(guard)](
           folly::Try<T>&& result) mutable {

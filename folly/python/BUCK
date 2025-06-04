@@ -84,16 +84,16 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = cython_library,
     name = "executor",
-    srcs = {"executor.pyx": "executor.pyx"},
-    headers = {
-        "executor.h": "executor.h",
-        "executor.pxd": "executor.pxd",
-    },
+    srcs = ["executor.pyx"],
+    headers = [
+        "executor.pxd",
+        "executor_detail.pxd",
+    ],
     header_namespace = "folly/python",
-    api = ["executor"],
     cpp_deps = [
-        "//xplat/folly/python:asyncio_executor",
-        "//xplat/folly/python:proactor_executor",
+        ":asyncio_executor",
+        ":proactor_executor",
+        ":executor_lib",
     ],
     package = "folly",
     visibility = ["PUBLIC"],
@@ -105,17 +105,36 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "futures_lib",
-    cxx_deps = [
-        "//xplat/folly/python:executor__cython-lib",
-    ],
+    enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "futures.h",
     ],
     deps = [
+        ":asyncio_executor",
+        ":executor_lib",
+        ":weak",
         "//xplat/folly:executor",
         "//xplat/folly:futures_core",
-        "//xplat/folly/python:asyncio_executor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "executor_lib",
+    srcs = [
+        "executor.cpp",
+    ],
+    enable_static_variant = False,
+    raw_headers = [
+        "executor.h",
+    ],
+    deps = [
+        ":asyncio_executor",
+        ":import",
+        ":weak",
+        "//xplat/folly:executor",
+        "//xplat/folly:function",
     ],
 )
 
@@ -319,20 +338,19 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "coro_lib",
     apple_sdks = (IOS, MACOSX),
-    cxx_deps = [
-        "//xplat/folly/python:executor__cython-lib",
-    ],
     enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "coro.h",
     ],
     deps = [
+        ":asyncio_executor",
+        ":executor_lib",
+        ":weak",
         "//xplat/folly:cancellation_token",
         "//xplat/folly:executor",
         "//xplat/folly:portability",
         "//xplat/folly/experimental/coro:task",
-        "//xplat/folly/python:asyncio_executor",
     ],
 )
 
@@ -493,18 +511,15 @@ fbcode_target(
     ],
     headers = [
         "executor.h",
-        # @fb-only[end= ]: ":executor__executor_api.h",
     ],
-    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
-    modular_headers = False,
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
     exported_deps = [
-        "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
+        ":weak",
         "//folly:executor",
+        "//folly:function",
     ],
 )
 
@@ -532,11 +547,12 @@ fbcode_target(
     ],
     headers = [
         "executor.pxd",
+        "executor_detail.pxd",
     ],
-    api = ["executor"],
     cpp_deps = [
         ":asyncio_executor",
         ":proactor_executor",
+        ":executor_lib",
     ],
     package = "folly",
     deps = [
@@ -563,13 +579,10 @@ fbcode_target(
     headers = [
         "futures.h",
     ],
-    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
-    modular_headers = False,
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     exported_deps = [
-        "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
         ":executor_lib",
+        ":weak",
         "//folly:executor",
         "//folly/futures:core",
     ],
@@ -596,13 +609,10 @@ fbcode_target(
     headers = [
         "coro.h",
     ],
-    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
-    modular_headers = False,
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     exported_deps = [
-        "fbsource//third-party/python:python",  # Python.h
         ":asyncio_executor",
         ":executor_lib",
+        ":weak",
         "//folly:cancellation_token",
         "//folly:executor",
         "//folly:portability",
