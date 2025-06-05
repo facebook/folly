@@ -4124,23 +4124,18 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "experimental_io_huge_pages",
-    exported_headers = [
-        "experimental/io/HugePages.h",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
-        "//xplat/folly/io:huge_pages",
+        "//xplat/folly/experimental/io:huge_pages",
     ],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "experimental_io_fs_util",
-    exported_headers = [
-        "experimental/io/FsUtil.h",
-    ],
+    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
-        "//xplat/folly/io:fs_util",
+        "//xplat/folly/experimental/io:fs_util",
     ],
 )
 
