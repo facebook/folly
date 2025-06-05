@@ -190,5 +190,54 @@ TEST_F(ThreadLocalDetailTest, TLObjectsChurn) {
   threadBarriers.clear();
 }
 
+// Test race between tl.reset() and threads exiting.
+TEST_F(ThreadLocalDetailTest, TLResetAndThreadExitRace) {
+  struct Data {
+    int value;
+  };
+
+  std::atomic<uint32_t> numTLObjects{0};
+
+  folly::ThreadLocalPtr<Data, Data>* tlObject =
+      new folly::ThreadLocalPtr<Data, Data>();
+
+  const int32_t count = 256;
+  std::vector<std::thread> threads;
+  test::Barrier allThreadsBarriers{count + 1};
+
+  threads.reserve(count);
+  for (int32_t i = 0; i < count; ++i) {
+    threads.emplace_back([&, index = i]() {
+      Data* d = new Data();
+      d->value = index;
+      numTLObjects++;
+      tlObject->reset(
+          d, [&, expected = index](Data* d, TLPDestructionMode mode) {
+            ASSERT_EQ(d->value, expected);
+            if (mode == TLPDestructionMode::THIS_THREAD) {
+              d->value = count + expected;
+            } else {
+              d->value = count * 2 + expected;
+            }
+            delete d;
+          });
+      allThreadsBarriers.wait();
+      // Thread will exit and delete tl version of tlObject.
+    });
+  }
+
+  // Wait for all threads to start.
+  allThreadsBarriers.wait();
+
+  // Destroy tlObject. The call will race with threads exiting
+  // and also trying to destroy their individual version of it.
+  delete tlObject;
+
+  for (int32_t i = 0; i < count; ++i) {
+    threads[i].join();
+  }
+  threads.clear();
+}
+
 } // namespace threadlocal_detail
 } // namespace folly

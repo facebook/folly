@@ -144,6 +144,32 @@ bool StaticMetaBase::dying() {
   return folly::detail::thread_is_dying();
 }
 
+/*
+ * Note on safe lifecycle management of TL objects:
+ * Any instance of a TL object created has to be disposed of safely. The
+ * non-trivial cases are a) when a thread exits and we have to dispose of all
+ * instances that belong to the thread across different TL objects; b) when a TL
+ * object is destroyed and we have to dispose of all instances of that TL object
+ * across all the threads that may have instantiated it. These 2 paths can also
+ * race and are resolved, using the ThreadEntrySet locks, as follows:
+ * - The exiting thread goes over all ThreadEntrySets and removes itself from
+ * it. After this, the thread is responsible for disposing of any elements that
+ * are still set in its 'elements' array. By setting the removed_ flag any new
+ * elements created when disposing elements will not be made discoverable via
+ * ThreadEntrySets and hence remain the responsibility of the exiting thread to
+ * dispose.
+ * - The thread calling destroy goes over all ThreadEntry in the ThreadEntrySet
+ * of the TL object being destoryed (in popThreadEntrySetAndClearElementPtrs).
+ * The ElementWrapper for the ThreadEntry found there are copied out and cleared
+ * from the 'elements' array. This is done under the ThreadEntrySet lock and the
+ * 'destroy' call is responsible for disposing the elements it thus claimed. The
+ * actual dispose happens after releasing the locks and since the TL object is
+ * being destroyed, no new elements of it should be getting created. The destroy
+ * code should not access any ThreadEntry outside the safety of
+ * popThreadEntrySetAndClearElementPtrs as their owner threads could exit and
+ * release them.
+ */
+
 void StaticMetaBase::onThreadExit(void* ptr) {
   folly::detail::thread_is_dying_mark();
   auto threadEntry = static_cast<ThreadEntry*>(ptr);
@@ -164,7 +190,11 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     forkRlock.unlock();
     {
       std::lock_guard g(meta.lock_);
-      // mark it as removed
+      // mark it as removed. Once this is set, any new TL object created in this
+      // thread as part of invoking the destructor on another TL object will not
+      // record this threadEntry in that TL object's ThreadEntrySet. This thread
+      // itself will be responsible for cleaning up the new object(s) so
+      // created.
       threadEntry->removed_ = true;
       auto elementsCapacity = threadEntry->getElementsCapacity();
       auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
@@ -280,13 +310,45 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   return id;
 }
 
+std::vector<ElementWrapper>
+StaticMetaBase::popThreadEntrySetAndClearElementPtrs(uint32_t id) {
+  // Lock the ThreadEntrySet for id so that no other thread can update
+  // its local ptr or alter the its elements array or ThreadEntry object
+  // itself, before this function is done updating them.
+  std::vector<ElementWrapper> wrappers;
+  auto wlocked = allId2ThreadEntrySets_[id].wlock();
+  wrappers.reserve(wlocked->threadEntries.size());
+  std::lock_guard g(
+      lock_); // To prevent any ThreadEntry element's vector from resizing.
+  for (auto& threadEntry : wlocked->threadEntries) {
+    auto elementsCapacity = threadEntry->getElementsCapacity();
+    if (id < elementsCapacity) {
+      /*
+       * Writing another thread's ThreadEntry from here is fine;
+       * The TL object is being destroyed, so get(id), or reset()
+       * or accessAllThreads calls on it are illegal. Only other
+       * racing accesses would be from the owner thread itself
+       * either a) reallocating the elements array (guarded by lock_, so safe)
+       * or b) exiting and trying to clear the elements array or free the
+       * elements and ThreadEntry itself. The ThreadEntrySet lock synchronizes
+       * this part as the exiting thread will acquire it to remove itself from
+       * the set.
+       */
+      wrappers.push_back(threadEntry->elements[id]);
+      threadEntry->elements[id].ptr = nullptr;
+      threadEntry->elements[id].deleter = 0;
+    }
+  }
+  wlocked->clear();
+  return wrappers;
+}
+
 void StaticMetaBase::destroy(EntryID* ent) {
   try {
     auto& meta = *this;
 
     // Elements in other threads that use this id.
-    std::vector<ElementWrapper> elements;
-    ThreadEntrySet tmpEntrySet;
+    std::vector<ElementWrapper> elementsToDispose;
 
     {
       std::shared_lock forkRlock(meta.forkHandlerLock_);
@@ -307,37 +369,23 @@ void StaticMetaBase::destroy(EntryID* ent) {
       if (id == kEntryIDInvalid) {
         return;
       }
-      meta.allId2ThreadEntrySets_[id].swap(tmpEntrySet);
+      elementsToDispose = meta.popThreadEntrySetAndClearElementPtrs(id);
       forkRlock.unlock();
 
       {
-        std::lock_guard g(meta.lock_);
-        for (auto& e : tmpEntrySet.threadEntries) {
-          auto elementsCapacity = e->getElementsCapacity();
-          if (id < elementsCapacity) {
-            if (e->elements[id].ptr) {
-              elements.push_back(e->elements[id]);
-              /*
-               * Writing another thread's ThreadEntry from here is fine;
-               * the only other potential reader is the owning thread --
-               * from onThreadExit (which grabs the lock, so is properly
-               * synchronized with us) or from get(), which also grabs
-               * the lock if it needs to resize the elements vector.
-               *
-               * We can't conflict with reads for a get(id), because
-               * it's illegal to call get on a thread local that's
-               * destructing.
-               */
-              e->elements[id].ptr = nullptr;
-              e->elements[id].deleter = 0;
-            }
-          }
-        }
+        // Release the id to be reused by another TL variable. Some
+        // other TL object may acquire and re-use it before the rest
+        // of the cleanup work is done. That is ok. The destructor callbacks
+        // for the objects should not access the same TL variable again. If
+        // we want to tolerate that pattern, due to any legacy behavior, this
+        // block should be after the loop to dispose of all collected elements
+        // below.
+        std::lock_guard<std::mutex> g(meta.lock_);
         meta.freeIds_.push_back(id);
       }
     }
     // Delete elements outside the locks.
-    for (ElementWrapper& elem : elements) {
+    for (ElementWrapper& elem : elementsToDispose) {
       if (elem.dispose(TLPDestructionMode::ALL_THREADS)) {
         elem.cleanup();
       }

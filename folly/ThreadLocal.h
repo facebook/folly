@@ -464,6 +464,11 @@ class ThreadLocalPtr {
       return;
     }
     StaticMeta::instance().destroy(&id_);
+    // User provided destructors should not cause the TL to have its id
+    // reallocated.
+    DCHECK(
+        id_.value.load(std::memory_order_relaxed) ==
+        threadlocal_detail::kEntryIDInvalid);
   }
 
   // non-copyable

@@ -513,6 +513,14 @@ struct StaticMetaBase {
   }
 
   /*
+   * Pop current ThreadEntrySet and for each ThreadEntry in it, clear its
+   * ElementWrapper for the 'id' and return them in the accumulated vector. This
+   * is called when an TL object is destroyed. The ElementWrapper returned are
+   * the responsibility of the calling thread to dispose of.
+   */
+  std::vector<ElementWrapper> popThreadEntrySetAndClearElementPtrs(uint32_t id);
+
+  /*
    * Check if ThreadEntry* is present in the map for all slots of @ids.
    */
   FOLLY_ALWAYS_INLINE bool isThreadEntryRemovedFromAllInMap(
@@ -545,6 +553,13 @@ struct StaticMetaBase {
 
   relaxed_atomic_uint32_t nextId_;
   std::vector<uint32_t> freeIds_;
+  // The lock_ is used to protect the freeIds_ list as well as synchronize
+  // reallocation of a thread's private array of ElementWrappers. The freeIds_
+  // vector is manipulated on TL object id allocation and destroy. Resize of
+  // ElementWrappers array can only be done by its owner thread but other
+  // threads may try to be accessing the array at the same time if in the middle
+  // of destroying a TL object or when iterating over all instances of a TL
+  // object.
   std::mutex lock_;
   mutable SharedMutex accessAllThreadsLock_;
   // As part of handling fork, we need to ensure no locks used by ThreadLocal
