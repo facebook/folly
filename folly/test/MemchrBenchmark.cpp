@@ -75,13 +75,13 @@ static uint64_t result_offset = 0;
 static FOLLY_NOINLINE void* std_memchr(const void *s, int c, size_t l) {
   folly::compiler_must_not_predict(result_offset);
   result_offset =  (uint64_t)std::memchr((void *)s, c, l)-(uint64_t)s;
-  return (void*)((uint64_t)s + result_offset);
+  return (void*)(s + result_offset);
 }
 
 static FOLLY_NOINLINE void* folly_memchr(const void *s, int c, size_t l) {
   folly::compiler_must_not_predict(result_offset);
   result_offset =  (uint64_t)folly::memchr_long((void *)s, c, l)-(uint64_t)s;
-  return (void*)((uint64_t)s + result_offset);
+  return (void*)(s + result_offset);
 }
 
 int main(int argc, char** argv) {
