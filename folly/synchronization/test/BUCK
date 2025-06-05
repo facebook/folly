@@ -276,7 +276,6 @@ fbcode_target(
         ":barrier",
         "//folly:benchmark",
         "//folly/detail:futex",
-        "//folly/synchronization:baton",
         "//folly/synchronization:parking_lot",
     ],
 )
@@ -380,7 +379,6 @@ fbcode_target(
     deps = [
         ":barrier",
         ":semaphore",
-        "//folly:traits",
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",
         "//folly/synchronization:latch",
