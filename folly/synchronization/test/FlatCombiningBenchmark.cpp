@@ -17,6 +17,7 @@
 #include <folly/Benchmark.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/test/FlatCombiningTestHelpers.h>
+#include <folly/system/HardwareConcurrency.h>
 
 #include <glog/logging.h>
 
@@ -339,7 +340,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_tc_async_dup, iters) {
 BENCHMARK_DRAW_LINE();
 
 void benchmarkSetup() {
-  int numCores = std::thread::hardware_concurrency();
+  int numCores = folly::hardware_concurrency();
   std::cout << "\nRunning benchmarks on machine with " << numCores
             << " logical cores" << std::endl;
 }

@@ -15,7 +15,6 @@
  */
 
 #include <list>
-#include <thread>
 
 #include <folly/Benchmark.h>
 #include <folly/Synchronized.h>
@@ -28,6 +27,7 @@
 #include <folly/synchronization/Baton.h>
 #include <folly/synchronization/Latch.h>
 #include <folly/synchronization/LifoSem.h>
+#include <folly/system/HardwareConcurrency.h>
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
@@ -492,7 +492,7 @@ namespace {
 // in the executor (so it should ideally not impose any overhead).
 void benchmarkSaturation(
     size_t meteredExecutorChainDepth, uint32_t maxInQueue, size_t iters) {
-  const size_t numThreads = std::thread::hardware_concurrency();
+  const size_t numThreads = folly::hardware_concurrency();
 
   BenchmarkSuspender suspender;
 

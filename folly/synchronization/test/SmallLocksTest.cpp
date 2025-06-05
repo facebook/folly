@@ -36,6 +36,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/HardwareConcurrency.h>
 #include <folly/test/TestUtils.h>
 
 using folly::MicroLock;
@@ -394,7 +395,7 @@ TEST(SmallLocks, MicroSpinLockStressTestLockTwoThreads) {
 
 TEST(SmallLocks, MicroSpinLockStressTestLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
-  auto threads = std::thread::hardware_concurrency();
+  auto threads = folly::hardware_concurrency();
   simpleStressTest<MicroSpinLock>(duration, threads);
 }
 
@@ -405,7 +406,7 @@ TEST(SmallLocks, PicoSpinLockStressTestLockTwoThreads) {
 
 TEST(SmallLocks, PicoSpinLockStressTestLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
-  auto threads = std::thread::hardware_concurrency();
+  auto threads = folly::hardware_concurrency();
   simpleStressTest<PicoSpinLock<std::uint16_t>>(duration, threads);
 }
 
@@ -435,7 +436,7 @@ TEST(SmallLocks, MicroSpinLockStressTestTryLockTwoThreads) {
 
 TEST(SmallLocks, MicroSpinLockStressTestTryLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
-  auto threads = std::thread::hardware_concurrency();
+  auto threads = folly::hardware_concurrency();
   simpleStressTestTryLock<MicroSpinLock>(duration, threads);
 }
 
@@ -504,6 +505,6 @@ TEST(SmallLocks, PicoSpinLockStressTestTryLockTwoThreads) {
 
 TEST(SmallLocks, PicoSpinLockStressTestTryLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
-  auto threads = std::thread::hardware_concurrency();
+  auto threads = folly::hardware_concurrency();
   simpleStressTestTryLock<PicoSpinLock<std::uint16_t>>(duration, threads);
 }

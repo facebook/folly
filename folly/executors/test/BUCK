@@ -274,6 +274,7 @@ fbcode_target(
         "//folly/synchronization:baton",
         "//folly/synchronization:latch",
         "//folly/synchronization:lifo_sem",
+        "//folly/system:hardware_concurrency",
         "//folly/test:deterministic_schedule",
     ],
 )
