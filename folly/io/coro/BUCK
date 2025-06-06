@@ -1,81 +1,16 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "transport_callback_base",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "TransportCallbackBase.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly/coro:baton",
-        "//xplat/folly/coro:task",
-        "//xplat/folly/io/async:async_transport",
-        "//xplat/folly/io/async/ssl:ssl_errors",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "transport_callbacks",
-    raw_headers = [
-        "TransportCallbacks.h",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        ":transport_callback_base",
-        "//xplat/folly:network_address",
-        "//xplat/folly:range",
-        "//xplat/folly/coro:task",
-        "//xplat/folly/io/async:async_socket",
-        "//xplat/folly/io/async:async_socket_exception",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "socket",
-    srcs = [
-        "ServerSocket.cpp",
-        "Transport.cpp",
-    ],
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "ServerSocket.h",
-        "Transport.h",
-    ],
-    deps = [
-        ":transport_callbacks",
-        "//xplat/folly:portability",
-        "//xplat/folly/coro:baton",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        "//xplat/folly:exception_wrapper",
-        "//xplat/folly:expected",
-        "//xplat/folly:network_address",
-        "//xplat/folly:range",
-        "//xplat/folly/coro:task",
-        "//xplat/folly/io/async:async_socket",
-        "//xplat/folly/io/async:async_socket_exception",
-        "//xplat/folly/io/async:server_socket",
-    ],
-)
-
-# !!!! fbcode/folly/io/coro/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "transport_callback_base",
     headers = [
         "TransportCallbackBase.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
         "//folly/coro:baton",
@@ -85,12 +20,13 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "transport_callbacks",
     headers = [
         "TransportCallbacks.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":transport_callback_base",
         "//folly:network_address",
@@ -102,8 +38,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "socket",
     srcs = [
         "ServerSocket.cpp",
@@ -113,6 +48,8 @@ fbcode_target(
         "ServerSocket.h",
         "Transport.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         ":transport_callbacks",
         "//folly:portability",
