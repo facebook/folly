@@ -139,4 +139,13 @@ class SocketFds final {
   std::unique_ptr<FdsVariant> ptr_;
 };
 
+namespace detail {
+
+// Overflow on signed ints is UB, while this explicitly wraps MAX -> 0.
+// E.g. addSocketFdsSeqNum(MAX - 1, 3) == 1.
+SocketFds::SeqNum addSocketFdsSeqNum(
+    SocketFds::SeqNum, SocketFds::SeqNum) noexcept;
+
+} // namespace detail
+
 } // namespace folly

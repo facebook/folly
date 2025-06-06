@@ -238,12 +238,6 @@ class AsyncFdSocket : public AsyncSocket {
 
   void setUpCallbacks() noexcept;
 
-  // Overflow on signed ints is UB, while this explicitly wraps MAX -> 0.
-  // E.g. addSeqNum(MAX - 1, 3) == 1.
-  static SocketFds::SeqNum addSeqNum(
-      SocketFds::SeqNum, SocketFds::SeqNum) noexcept;
-  FOLLY_GTEST_FRIEND_TEST(AsyncFdSocketTest, TestAddSeqNum);
-
   FdSendMsgParamsCallback sendMsgCob_;
   std::queue<SocketFds> fdsQueue_; // must outlive readAncillaryDataCob_
   FdReadAncillaryDataCallback readAncillaryDataCob_;
