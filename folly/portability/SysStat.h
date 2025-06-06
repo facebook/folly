@@ -23,6 +23,7 @@
 #ifdef _WIN32
 #include <folly/portability/SysTypes.h>
 
+#ifdef _MSC_VER
 // Windows gives weird names to these.
 #define S_IXUSR 0
 #define S_IWUSR _S_IWRITE
@@ -40,6 +41,7 @@
 
 #define S_ISDIR(mode) (((mode) & (_S_IFDIR)) == (_S_IFDIR) ? 1 : 0)
 #define S_ISREG(mode) (((mode) & (_S_IFREG)) == (_S_IFREG) ? 1 : 0)
+#endif
 
 // This isn't defined anywhere, so give a sane value.
 #define MAXSYMLINKS 255

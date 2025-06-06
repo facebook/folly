@@ -243,7 +243,7 @@ inline void fastIpv4AppendToString(const in_addr& inAddr, std::string& out) {
 }
 
 inline size_t fastIpv6ToBufferUnsafe(const in6_addr& in6Addr, char* str) {
-#ifdef _MSC_VER
+#ifdef _WIN32
   const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.u.Word);
 #else
   const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.s6_addr16);
