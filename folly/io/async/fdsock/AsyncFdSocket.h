@@ -213,8 +213,10 @@ class AsyncFdSocket : public AsyncSocket {
     explicit FdReadAncillaryDataCallback(AsyncFdSocket* socket)
         : socket_(socket) {}
 
-    void ancillaryData(struct ::msghdr& msg) noexcept override {
+    folly::Expected<folly::Unit, AsyncSocketException> ancillaryData(
+        struct ::msghdr& msg) noexcept override {
       socket_->enqueueFdsFromAncillaryData(msg);
+      return folly::unit;
     }
 
     folly::MutableByteRange getAncillaryDataCtrlBuffer() noexcept override {

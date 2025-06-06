@@ -173,7 +173,8 @@ class AsyncSocket : public AsyncSocketTransport {
      *         is, choosing to read `msg_name*` or `msg_iov*` leads to
      *         undefined behavior.
      */
-    virtual void ancillaryData(struct ::msghdr&) noexcept = 0;
+    virtual folly::Expected<folly::Unit, AsyncSocketException> ancillaryData(
+        struct ::msghdr&) noexcept = 0;
 
     /**
      * Must return a buffer large enough to contain the incoming ancillary

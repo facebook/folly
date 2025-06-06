@@ -9788,9 +9788,12 @@ class TruncateAncillaryDataAndCallFn
   explicit TruncateAncillaryDataAndCallFn(VoidCallback cob)
       : callback_(std::move(cob)) {}
 
-  void ancillaryData(struct msghdr& msg) noexcept override {
+  folly::Expected<folly::Unit, AsyncSocketException> ancillaryData(
+      struct msghdr& msg) noexcept override {
     sawCtrunc_ = sawCtrunc_ || (msg.msg_flags & MSG_CTRUNC);
     callback_();
+
+    return folly::unit;
   }
   folly::MutableByteRange getAncillaryDataCtrlBuffer() override {
     return folly::MutableByteRange(ancillaryDataCtrlBuffer_);
@@ -10334,10 +10337,11 @@ class TestRXTimestampsCallback
  public:
   explicit TestRXTimestampsCallback(AsyncSocket* sock) : socket_(sock) {}
 
-  void ancillaryData(struct msghdr& msgh) noexcept override {
+  folly::Expected<folly::Unit, AsyncSocketException> ancillaryData(
+      struct msghdr& msgh) noexcept override {
     if (closeSocket_) {
       socket_->close();
-      return;
+      return folly::unit;
     }
 
     struct cmsghdr* cmsg;
@@ -10351,6 +10355,7 @@ class TestRXTimestampsCallback
       timespec* ts = (struct timespec*)CMSG_DATA(cmsg);
       actualRxTimestampSec_ = ts[0].tv_sec;
     }
+    return folly::unit;
   }
   folly::MutableByteRange getAncillaryDataCtrlBuffer() override {
     return folly::MutableByteRange(ancillaryDataCtrlBuffer_);

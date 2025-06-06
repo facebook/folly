@@ -3271,7 +3271,12 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
     DCHECK(readCallback_);
     if (readAncillaryDataCallback_) {
       auto prevReadCallback = readCallback_;
-      readAncillaryDataCallback_->ancillaryData(msg);
+
+      auto ancillaryDataRes = readAncillaryDataCallback_->ancillaryData(msg);
+      if (ancillaryDataRes.hasError()) {
+        return failRead(__func__, ancillaryDataRes.error());
+      }
+
       if (FOLLY_UNLIKELY(readCallback_ != prevReadCallback)) {
         // The `ancillaryData` callback is allowed to close the socket,
         // but otherwise is not allowed to change/replace the read callback.
