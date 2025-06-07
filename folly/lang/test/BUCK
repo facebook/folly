@@ -499,6 +499,15 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "switch_test",
+    srcs = ["SwitchTest.cpp"],
+    deps = [
+        "//folly/lang:switch",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "thunk_test",
     srcs = ["ThunkTest.cpp"],
     deps = [

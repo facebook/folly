@@ -314,6 +314,16 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "switch",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Switch.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "thunk",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Thunk.h"],
@@ -645,6 +655,15 @@ fbcode_target(
     headers = ["StaticConst.h"],
     exported_deps = [
         "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "switch",
+    headers = ["Switch.h"],
+    exported_deps = [
+        "//folly:c_portability",
     ],
 )
 
