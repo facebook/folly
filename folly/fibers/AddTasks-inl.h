@@ -31,7 +31,7 @@ inline bool TaskIterator<T>::hasCompleted() const {
 
 template <typename T>
 inline bool TaskIterator<T>::hasPending() const {
-  return !context_.unique();
+  return context_.use_count() > 1;
 }
 
 template <typename T>
