@@ -39,6 +39,7 @@
 
 #include <folly/Portability.h>
 #include <folly/hash/SpookyHashV2.h>
+#include <folly/hash/rapidhash.h>
 #include <folly/lang/CString.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/Constexpr.h>
@@ -794,7 +795,7 @@ class Range {
   }
 
   // Do NOT use this function, which was left behind for backwards
-  // compatibility.  Use SpookyHashV2 instead -- it is faster, and produces
+  // compatibility.  Use rapidhashNano instead -- it is faster, and produces
   // a 64-bit hash, which means dramatically fewer collisions in large maps.
   // (The above advice does not apply if you are targeting a 32-bit system.)
   //
@@ -1697,8 +1698,8 @@ struct hasher<
     // can contain pointers and padding.  Also, floating point numbers
     // may be == without being bit-identical.  size_t is less than 64
     // bits on some platforms.
-    return static_cast<size_t>(
-        hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0));
+    return static_cast<size_t>(folly::hash::rapidhashNano(
+        reinterpret_cast<const char*>(r.begin()), r.size() * sizeof(T)));
   }
 };
 

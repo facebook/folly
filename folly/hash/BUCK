@@ -34,10 +34,20 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "rapidhash",
+    headers = ["rapidhash.h"],
+    exported_deps = [
+        "//folly/external/rapidhash:rapidhash",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
     name = "hash",
     headers = ["Hash.h"],
     exported_deps = [
         ":murmur_hash",
+        ":rapidhash",
         ":spooky_hash_v1",
         ":spooky_hash_v2",
         "//folly:c_portability",
