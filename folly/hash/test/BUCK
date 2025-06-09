@@ -66,6 +66,7 @@ fbcode_target(
         "//folly:preprocessor",
         "//folly/hash:hash",
         "//folly/hash:murmur_hash",
+        "//folly/hash:rapidhash",
         "//folly/lang:keep",
         "//folly/portability:gflags",
     ],
@@ -86,6 +87,17 @@ fbcode_target(
         "//folly:random",
         "//folly:range",
         "//folly/hash:hash",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "rapidhash_test",
+    srcs = ["RapidHashTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:rapidhash",
         "//folly/portability:gtest",
     ],
 )
