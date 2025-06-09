@@ -200,6 +200,15 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
+    name = "switch_test",
+    srcs = ["SwitchTest.cpp"],
+    deps = [
+        "//xplat/folly/lang:switch",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
     name = "thunk_test",
     srcs = ["ThunkTest.cpp"],
     deps = [
