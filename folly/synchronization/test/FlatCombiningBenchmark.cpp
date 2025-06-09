@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <iomanip>
 #include <folly/Benchmark.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/test/FlatCombiningTestHelpers.h>
