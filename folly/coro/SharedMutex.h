@@ -120,9 +120,10 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   ///
   /// Returns a SemiAwaitable<void> type that requires the caller to inject
   /// an executor by calling .viaIfAsync(executor) and then co_awaiting the
-  /// result to wait for the lock to be acquired. Note that if you are awaiting
-  /// the lock operation within a folly::coro::Task then the current executor
-  /// will be injected implicitly without needing to call .viaIfAsync().
+  /// result to wait for the lock to be acquired. Note that if the caller is
+  /// awaiting the lock operation within a folly::coro::Task then the current
+  /// executor will be injected implicitly without needing to call
+  /// .viaIfAsync().
   ///
   /// If the lock was acquired synchronously then the awaiting coroutine
   /// continues on the current thread without suspending.
@@ -151,9 +152,10 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   ///
   /// Returns a SemiAwaitable<void> type that requires the caller to inject
   /// an executor by calling .viaIfAsync(executor) and then co_awaiting the
-  /// result to wait for the lock to be acquired. Note that if you are awaiting
-  /// the lock operation within a folly::coro::Task then the current executor
-  /// will be injected implicitly without needing to call .viaIfAsync().
+  /// result to wait for the lock to be acquired. Note that if the caller is
+  /// awaiting the lock operation within a folly::coro::Task then the current
+  /// executor will be injected implicitly without needing to call
+  /// .viaIfAsync().
   ///
   /// If the lock was acquired synchronously then the awaiting coroutine
   /// continues on the current thread without suspending.
