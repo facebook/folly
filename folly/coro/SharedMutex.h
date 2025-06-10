@@ -209,7 +209,6 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
 
     SharedMutexFair* mutex_;
     LockAwaiterBase* nextAwaiter_;
-    LockAwaiterBase* nextReader_;
     coroutine_handle<> continuation_;
     LockType lockType_;
   };
@@ -307,6 +306,12 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
     SharedMutexFair& mutex_;
   };
 
+  // There is an invariant that if the mutex state is unlocked, there must be no
+  // waiters; the converse is obviously not always true. This is guaranteed by
+  // the `getWaitersToResume` function. If there are waiters after an unlock_*
+  // operation, the mutex state will transition to a non-unlocked state.
+  // This helps avoid a redundant check on the waiters list when the mutex is
+  // unlocked.
   struct State {
     State() noexcept
         : lockedFlagAndReaderCount_(kUnlocked),
@@ -321,7 +326,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
     LockAwaiterBase** waitersTailNext_;
   };
 
-  static LockAwaiterBase* unlockOrGetNextWaitersToResume(State& state) noexcept;
+  static LockAwaiterBase* getWaitersToResume(State& state) noexcept;
 
   static void resumeWaiters(LockAwaiterBase* awaiters) noexcept;
 

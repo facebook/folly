@@ -50,7 +50,8 @@ void SharedMutexFair::unlock() noexcept {
   {
     auto lockedState = state_.lock();
     assert(lockedState->lockedFlagAndReaderCount_ == kExclusiveLockFlag);
-    awaitersToResume = unlockOrGetNextWaitersToResume(*lockedState);
+    lockedState->lockedFlagAndReaderCount_ = kUnlocked;
+    awaitersToResume = getWaitersToResume(*lockedState);
   }
 
   resumeWaiters(awaitersToResume);
@@ -62,48 +63,45 @@ void SharedMutexFair::unlock_shared() noexcept {
     auto lockedState = state_.lock();
     assert(lockedState->lockedFlagAndReaderCount_ >= kSharedLockCountIncrement);
     lockedState->lockedFlagAndReaderCount_ -= kSharedLockCountIncrement;
-    if (lockedState->lockedFlagAndReaderCount_ != kUnlocked) {
-      return;
-    }
-
-    awaitersToResume = unlockOrGetNextWaitersToResume(*lockedState);
+    awaitersToResume = getWaitersToResume(*lockedState);
   }
 
   resumeWaiters(awaitersToResume);
 }
 
-SharedMutexFair::LockAwaiterBase*
-SharedMutexFair::unlockOrGetNextWaitersToResume(
+SharedMutexFair::LockAwaiterBase* SharedMutexFair::getWaitersToResume(
     SharedMutexFair::State& state) noexcept {
   auto* head = state.waitersHead_;
-  if (head != nullptr) {
-    if (head->lockType_ == LockType::EXCLUSIVE) {
-      state.waitersHead_ = std::exchange(head->nextAwaiter_, nullptr);
-      state.lockedFlagAndReaderCount_ = kExclusiveLockFlag;
-    } else {
-      std::size_t newState = kSharedLockCountIncrement;
-
-      // Scan for a run of SHARED lock types.
-      auto* last = head;
-      auto* next = last->nextAwaiter_;
-      while (next != nullptr && next->lockType_ == LockType::SHARED) {
-        last = next;
-        next = next->nextAwaiter_;
-        newState += kSharedLockCountIncrement;
-      }
-
-      last->nextAwaiter_ = nullptr;
-      state.lockedFlagAndReaderCount_ = newState;
-      state.waitersHead_ = next;
-    }
-
-    if (state.waitersHead_ == nullptr) {
-      state.waitersTailNext_ = &state.waitersHead_;
-    }
-  } else {
-    state.lockedFlagAndReaderCount_ = kUnlocked;
+  if (state.lockedFlagAndReaderCount_ != kUnlocked || head == nullptr) {
+    // either the mutex state disallows resumption of any awaiters
+    // or there's nothing to resume
+    return nullptr;
   }
 
+  // state transition from unlocked to the next state
+  if (head->lockType_ == LockType::EXCLUSIVE) {
+    state.waitersHead_ = std::exchange(head->nextAwaiter_, nullptr);
+    state.lockedFlagAndReaderCount_ = kExclusiveLockFlag;
+  } else {
+    std::size_t newState = kSharedLockCountIncrement;
+
+    // Scan for a run of SHARED lock types.
+    auto* last = head;
+    auto* next = last->nextAwaiter_;
+    while (next != nullptr && next->lockType_ == LockType::SHARED) {
+      last = next;
+      next = next->nextAwaiter_;
+      newState += kSharedLockCountIncrement;
+    }
+
+    last->nextAwaiter_ = nullptr;
+    state.lockedFlagAndReaderCount_ = newState;
+    state.waitersHead_ = next;
+  }
+
+  if (state.waitersHead_ == nullptr) {
+    state.waitersTailNext_ = &state.waitersHead_;
+  }
   return head;
 }
 
