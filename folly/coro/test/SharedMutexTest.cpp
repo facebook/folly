@@ -54,6 +54,29 @@ TEST_F(SharedMutexTest, TryLock) {
   m.unlock();
 }
 
+TEST_F(SharedMutexTest, TryLockUpgrade) {
+  coro::SharedMutex m;
+
+  CHECK(m.try_lock());
+  CHECK(!m.try_lock_upgrade());
+  m.unlock();
+
+  CHECK(m.try_lock_upgrade());
+  CHECK(!m.try_lock_upgrade());
+  CHECK(!m.try_lock());
+  m.unlock_upgrade();
+
+  CHECK(m.try_lock_shared());
+  CHECK(m.try_lock_upgrade());
+  CHECK(!m.try_lock_upgrade());
+  CHECK(m.try_lock_shared());
+  m.unlock_upgrade();
+  CHECK(m.try_lock_upgrade());
+  m.unlock_upgrade();
+  m.unlock_shared();
+  m.unlock_shared();
+}
+
 TEST_F(SharedMutexTest, ManualLockAsync) {
   coro::SharedMutex mutex;
   int value = 0;

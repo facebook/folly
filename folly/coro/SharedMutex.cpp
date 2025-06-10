@@ -36,12 +36,22 @@ bool SharedMutexFair::try_lock() noexcept {
 
 bool SharedMutexFair::try_lock_shared() noexcept {
   auto lock = state_.lock();
-  if (lock->lockedFlagAndReaderCount_ == kUnlocked ||
-      (lock->lockedFlagAndReaderCount_ != kExclusiveLockFlag &&
-       lock->waitersHead_ == nullptr)) {
+  if (canLockShared(*lock)) {
     lock->lockedFlagAndReaderCount_ += kSharedLockCountIncrement;
     // check for potential overflow
     assert(lock->lockedFlagAndReaderCount_ >= kSharedLockCountIncrement);
+    return true;
+  }
+  return false;
+}
+
+bool SharedMutexFair::try_lock_upgrade() noexcept {
+  auto lock = state_.lock();
+  if (lock->lockedFlagAndReaderCount_ == kUnlocked ||
+      ((lock->lockedFlagAndReaderCount_ &
+        (kExclusiveLockFlag | kUpgradeLockFlag)) == 0 &&
+       lock->waitingWriterCount_ == 0)) {
+    lock->lockedFlagAndReaderCount_ |= kUpgradeLockFlag;
     return true;
   }
   return false;
@@ -71,6 +81,18 @@ void SharedMutexFair::unlock_shared() noexcept {
   resumeWaiters(awaitersToResume);
 }
 
+void SharedMutexFair::unlock_upgrade() noexcept {
+  LockAwaiterBase* awaitersToResume = nullptr;
+  {
+    auto lockedState = state_.lock();
+    assert(lockedState->lockedFlagAndReaderCount_ & kUpgradeLockFlag);
+    lockedState->lockedFlagAndReaderCount_ &= ~kUpgradeLockFlag;
+    awaitersToResume = getWaitersToResume(*lockedState);
+  }
+
+  resumeWaiters(awaitersToResume);
+}
+
 SharedMutexFair::LockAwaiterBase* SharedMutexFair::getWaitersToResume(
     SharedMutexFair::State& state) noexcept {
   auto* head = state.waitersHead_;
@@ -84,6 +106,7 @@ SharedMutexFair::LockAwaiterBase* SharedMutexFair::getWaitersToResume(
   if (head->lockType_ == LockType::EXCLUSIVE) {
     state.waitersHead_ = std::exchange(head->nextAwaiter_, nullptr);
     state.lockedFlagAndReaderCount_ = kExclusiveLockFlag;
+    --state.waitingWriterCount_;
   } else {
     std::size_t newState = kSharedLockCountIncrement;
 

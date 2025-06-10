@@ -116,6 +116,13 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   /// release the shared lock.
   bool try_lock_shared() noexcept;
 
+  /// Try to acquire an upgrade lock on the mutex synchronously.
+  ///
+  /// If this returns true then the upgrade lock was acquired synchronously
+  /// and the caller is responsible for calling .unlock_upgrade() later to
+  /// release the upgrade lock.
+  bool try_lock_upgrade() noexcept;
+
   /// Asynchronously acquire an exclusive lock on the mutex.
   ///
   /// Returns a SemiAwaitable<void> type that requires the caller to inject
@@ -193,6 +200,12 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   /// coroutine(s) waiting to acquire the lock, if any.
   void unlock_shared() noexcept;
 
+  /// Release an upgrade lock.
+  ///
+  /// This will resume the next coroutine(s) waiting to acquire an exclusive
+  /// lock or an upgrade lock, if any.
+  void unlock_upgrade() noexcept;
+
  private:
   using folly_coro_aware_mutex = std::true_type;
 
@@ -232,6 +245,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
 
       // Append to the end of the waiters queue.
       continuation_ = continuation;
+      ++lock->waitingWriterCount_;
       *lock->waitersTailNext_ = this;
       lock->waitersTailNext_ = &nextAwaiter_;
       return true;
@@ -251,12 +265,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
         coroutine_handle<> continuation) noexcept {
       auto lock = mutex_->state_.lock();
 
-      // a shared lock can be acquired if there are no exclusive locks held or
-      // pending; an exclusive lock is pending if there are queued waiters for
-      // it
-      if (lock->lockedFlagAndReaderCount_ == kUnlocked ||
-          (lock->lockedFlagAndReaderCount_ != kExclusiveLockFlag &&
-           lock->waitersHead_ == nullptr)) {
+      if (canLockShared(*lock)) {
         lock->lockedFlagAndReaderCount_ += kSharedLockCountIncrement;
         // check for potential overflow
         assert(lock->lockedFlagAndReaderCount_ >= kSharedLockCountIncrement);
@@ -318,6 +327,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   struct State {
     State() noexcept
         : lockedFlagAndReaderCount_(kUnlocked),
+          waitingWriterCount_(0),
           waitersHead_(nullptr),
           waitersTailNext_(&waitersHead_) {}
 
@@ -325,7 +335,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
     // bit 1 - upgrade lock is held
     // bits 2-[31/63] - count of held shared locks
     std::size_t lockedFlagAndReaderCount_;
-
+    std::size_t waitingWriterCount_;
     LockAwaiterBase* waitersHead_;
     LockAwaiterBase** waitersTailNext_;
   };
@@ -333,6 +343,14 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   static LockAwaiterBase* getWaitersToResume(State& state) noexcept;
 
   static void resumeWaiters(LockAwaiterBase* awaiters) noexcept;
+  static bool canLockShared(const State& state) noexcept {
+    // a shared lock can be acquired if there are no exclusive locks held or
+    // pending; an exclusive lock is pending if there are queued waiters for
+    // it
+    return state.lockedFlagAndReaderCount_ == kUnlocked ||
+        (state.lockedFlagAndReaderCount_ != kExclusiveLockFlag &&
+         state.waitingWriterCount_ == 0);
+  }
 
   static constexpr std::size_t kUnlocked = 0;
   static constexpr std::size_t kExclusiveLockFlag = 1;
