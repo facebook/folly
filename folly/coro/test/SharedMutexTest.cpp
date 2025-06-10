@@ -199,7 +199,12 @@ TEST_F(SharedMutexTest, ManualLockAsync) {
   }
 }
 
-TEST_F(SharedMutexTest, ManualLockUpgradeAsync) {
+void testAllStateTransitions(
+    std::function<folly::coro::Task<void>(coro::SharedMutex&)> lock,
+    std::function<folly::coro::Task<void>(coro::SharedMutex&)> lock_upgrade,
+    std::function<folly::coro::Task<void>(coro::SharedMutex&)> lock_shared,
+    std::function<folly::coro::Task<void>(coro::SharedMutex&)>
+        unlock_upgrade_and_lock) {
   // all possible initial state
   auto unlocked = [](coro::SharedMutex&) {};
   auto exclusively_locked = [](coro::SharedMutex& m) { CHECK(m.try_lock()); };
@@ -212,24 +217,6 @@ TEST_F(SharedMutexTest, ManualLockUpgradeAsync) {
   auto upgrade_and_shared_locked = [](coro::SharedMutex& m) {
     CHECK(m.try_lock_shared());
     CHECK(m.try_lock_upgrade());
-  };
-
-  // these are all the async operations that can happen to the mutex
-  auto lock = [](coro::SharedMutex& m) -> coro::Task<void> {
-    co_await m.co_lock();
-    m.unlock();
-  };
-  auto lock_upgrade = [](coro::SharedMutex& m) -> coro::Task<void> {
-    co_await m.co_lock_upgrade();
-    m.unlock_upgrade();
-  };
-  auto lock_shared = [](coro::SharedMutex& m) -> coro::Task<void> {
-    co_await m.co_lock_shared();
-    m.unlock_shared();
-  };
-  auto unlock_upgrade_and_lock = [](coro::SharedMutex& m) -> coro::Task<void> {
-    co_await m.co_unlock_upgrade_and_lock();
-    m.unlock();
   };
 
   // cleanup helpers
@@ -737,6 +724,29 @@ TEST_F(SharedMutexTest, ManualLockUpgradeAsync) {
   }
 }
 
+TEST_F(SharedMutexTest, ManualLockAllStateTransitions) {
+  // these are all the async operations that can happen to the mutex
+  auto lock = [](coro::SharedMutex& m) -> coro::Task<void> {
+    co_await m.co_lock();
+    m.unlock();
+  };
+  auto lock_upgrade = [](coro::SharedMutex& m) -> coro::Task<void> {
+    co_await m.co_lock_upgrade();
+    m.unlock_upgrade();
+  };
+  auto lock_shared = [](coro::SharedMutex& m) -> coro::Task<void> {
+    co_await m.co_lock_shared();
+    m.unlock_shared();
+  };
+  auto unlock_upgrade_and_lock = [](coro::SharedMutex& m) -> coro::Task<void> {
+    co_await m.co_unlock_upgrade_and_lock();
+    m.unlock();
+  };
+
+  testAllStateTransitions(
+      lock, lock_upgrade, lock_shared, unlock_upgrade_and_lock);
+}
+
 TEST_F(SharedMutexTest, ScopedLockAsync) {
   coro::SharedMutex mutex;
   int value = 0;
@@ -880,6 +890,75 @@ TEST_F(SharedMutexTest, MultipleWaiters) {
 
     mutex.unlock_upgrade();
     mutex.unlock_shared();
+  }
+}
+
+TEST_F(SharedMutexTest, ScopedLockAllStateTransitions) {
+  // these are all the async operations that can happen to the mutex
+  auto lock = [](coro::SharedMutex& m) -> coro::Task<void> {
+    auto l = co_await m.co_scoped_lock();
+  };
+  auto lock_upgrade = [](coro::SharedMutex& m) -> coro::Task<void> {
+    auto l = co_await m.co_scoped_lock_upgrade();
+  };
+  auto lock_shared = [](coro::SharedMutex& m) -> coro::Task<void> {
+    auto l = co_await m.co_scoped_lock_shared();
+  };
+  auto unlock_upgrade_and_lock = [](coro::SharedMutex& m) -> coro::Task<void> {
+    auto l = co_await m.co_scoped_unlock_upgrade_and_lock();
+  };
+
+  testAllStateTransitions(
+      lock, lock_upgrade, lock_shared, unlock_upgrade_and_lock);
+}
+
+TEST_F(SharedMutexTest, AsyncLockTransition) {
+  coro::SharedMutex mutex;
+  int value = 0;
+  auto conditionalWrite = [&]() -> coro::Task<void> {
+    auto uLock = co_await mutex.co_scoped_lock_upgrade();
+    if (value == 0) {
+      auto wLock = co_await folly::coro::co_transition_lock(uLock);
+      value += 1;
+    }
+  };
+
+  auto read = [&]() -> coro::Task<int> {
+    auto rLock = co_await mutex.co_scoped_lock_shared();
+    int copyValue = value;
+    co_return copyValue;
+  };
+
+  {
+    ManualExecutor executor;
+    value = 0;
+    auto w = conditionalWrite().scheduleOn(&executor).start();
+    auto r = read().scheduleOn(&executor).start();
+    executor.drain();
+    EXPECT_EQ(std::move(r).get(), 1);
+  }
+
+  {
+    ManualExecutor executor;
+    value = 0;
+    auto r1 = read().scheduleOn(&executor).start();
+    auto w = conditionalWrite().scheduleOn(&executor).start();
+    auto r2 = read().scheduleOn(&executor).start();
+    executor.drain();
+    EXPECT_EQ(std::move(r1).get(), 0);
+    EXPECT_EQ(std::move(r2).get(), 1);
+  }
+
+  {
+    ManualExecutor executor;
+    value = 0;
+    auto r1 = read().scheduleOn(&executor).start();
+    auto w1 = conditionalWrite().scheduleOn(&executor).start();
+    auto w2 = conditionalWrite().scheduleOn(&executor).start();
+    auto r2 = read().scheduleOn(&executor).start();
+    executor.drain();
+    EXPECT_EQ(std::move(r1).get(), 0);
+    EXPECT_EQ(std::move(r2).get(), 1);
   }
 }
 

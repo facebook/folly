@@ -25,6 +25,7 @@
 
 #include <folly/Portability.h>
 #include <folly/coro/Coroutine.h>
+#include <folly/coro/Task.h>
 #include <folly/synchronization/Lock.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -147,6 +148,18 @@ class UpgradeLock
 
 template <typename Mutex, typename... A>
 explicit UpgradeLock(Mutex&, A const&...) -> UpgradeLock<Mutex>;
+
+/// Async version of the folly::transition_lock
+/// TODO: add more transition policies beyond just from upgrade to exclusive
+template <typename Mutex>
+folly::coro::Task<std::unique_lock<Mutex>> co_transition_lock(
+    UpgradeLock<Mutex>& lock) {
+  if (lock.owns_lock()) {
+    co_return co_await lock.release()->co_scoped_unlock_upgrade_and_lock();
+  } else {
+    co_return std::unique_lock<Mutex>{*lock.release(), std::defer_lock};
+  }
+}
 
 } // namespace coro
 } // namespace folly

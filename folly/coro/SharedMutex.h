@@ -111,7 +111,9 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   class LockSharedAwaiter;
   class ScopedLockSharedAwaiter;
   class LockUpgradeAwaiter;
+  class ScopedLockUpgradeAwaiter;
   class UnlockUpgradeAndLockAwaiter;
+  class ScopedUnlockUpgradeAndLockAwaiter;
 
  public:
   SharedMutexFair() noexcept = default;
@@ -226,6 +228,20 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   /// .unlock_upgrade() to release the lock.
   [[nodiscard]] LockOperation<LockUpgradeAwaiter> co_lock_upgrade() noexcept;
 
+  /// Asynchronously acquire an upgrade lock on the mutex and return an object
+  /// that will release the lock when it goes out of scope.
+  ///
+  /// Returns a SemiAwaitable<UpgradeLock<SharedMutexFair>> that, once
+  /// associated with an executor using .viaIfAsync(), must be co_awaited to
+  /// wait for the lock to be acquired.
+  ///
+  /// If the lock could be acquired immediately then the coroutine continues
+  /// execution without suspending. Otherwise, the coroutine is suspended and
+  /// will later be resumed on the specified executor once the lock has been
+  /// acquired.
+  [[nodiscard]] LockOperation<ScopedLockUpgradeAwaiter>
+  co_scoped_lock_upgrade() noexcept;
+
   /// Asynchronously transition the currently held upgrade lock to exclusive.
   ///
   /// Returns a SemiAwaitable<void> type that requires the caller to inject
@@ -245,6 +261,27 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   /// .unlock() to release the lock.
   [[nodiscard]] LockOperation<UnlockUpgradeAndLockAwaiter>
   co_unlock_upgrade_and_lock() noexcept;
+
+  /// Asynchronously transfer the currently held upgrade lock to exclusive
+  /// and return an object that will release the exclusive lock when it
+  /// goes out of scope.
+  ///
+  /// Notice that if the upgrade lock is acquired using
+  /// `co_scoped_lock_upgrade()`, one should transfer the lock via
+  /// `co_transition_lock(coro::UpgradeLock<coro::SharedMutex>&)` to avoid
+  /// double unlock. This method is mostly useful if the original upgrade
+  /// lock is acquired manually via `co_await mutex.co_lock_upgrade();`.
+  ///
+  /// Returns a SemiAwaitable<std::unique_lock<SharedMutexFair>> that, once
+  /// associated with an executor using .viaIfAsync(), must be co_awaited to
+  /// wait for the lock to be acquired.
+  ///
+  /// If the lock could be acquired immediately then the coroutine continues
+  /// execution without suspending. Otherwise, the coroutine is suspended and
+  /// will later be resumed on the specified executor once the lock has been
+  /// acquired.
+  [[nodiscard]] LockOperation<ScopedUnlockUpgradeAndLockAwaiter>
+  co_scoped_unlock_upgrade_and_lock() noexcept;
 
   /// Release the exclusive lock.
   ///
@@ -423,6 +460,26 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
     }
   };
 
+  class ScopedLockUpgradeAwaiter : public LockUpgradeAwaiter {
+   public:
+    using LockUpgradeAwaiter::LockUpgradeAwaiter;
+
+    [[nodiscard]] UpgradeLock<SharedMutexFair> await_resume() noexcept {
+      LockUpgradeAwaiter::await_resume();
+      return UpgradeLock<SharedMutexFair>{*mutex_, std::adopt_lock};
+    }
+  };
+
+  class ScopedUnlockUpgradeAndLockAwaiter : public UnlockUpgradeAndLockAwaiter {
+   public:
+    using UnlockUpgradeAndLockAwaiter::UnlockUpgradeAndLockAwaiter;
+
+    [[nodiscard]] std::unique_lock<SharedMutexFair> await_resume() noexcept {
+      UnlockUpgradeAndLockAwaiter::await_resume();
+      return std::unique_lock<SharedMutexFair>{*mutex_, std::adopt_lock};
+    }
+  };
+
   friend class LockAwaiter;
 
   template <typename Awaiter>
@@ -522,10 +579,21 @@ SharedMutexFair::co_lock_upgrade() noexcept {
   return LockOperation<LockUpgradeAwaiter>{*this};
 }
 
+inline SharedMutexFair::LockOperation<SharedMutexFair::ScopedLockUpgradeAwaiter>
+SharedMutexFair::co_scoped_lock_upgrade() noexcept {
+  return LockOperation<ScopedLockUpgradeAwaiter>{*this};
+}
+
 inline SharedMutexFair::LockOperation<
     SharedMutexFair::UnlockUpgradeAndLockAwaiter>
 SharedMutexFair::co_unlock_upgrade_and_lock() noexcept {
   return LockOperation<UnlockUpgradeAndLockAwaiter>{*this};
+}
+
+inline SharedMutexFair::LockOperation<
+    SharedMutexFair::ScopedUnlockUpgradeAndLockAwaiter>
+SharedMutexFair::co_scoped_unlock_upgrade_and_lock() noexcept {
+  return LockOperation<ScopedUnlockUpgradeAndLockAwaiter>{*this};
 }
 
 // The default SharedMutex is SharedMutexFair.

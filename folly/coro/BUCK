@@ -1274,6 +1274,7 @@ fbcode_target(
     exported_deps = [
         "//folly:portability",
         "//folly/coro:coroutine",
+        "//folly/coro:task",
         "//folly/synchronization:lock",
     ],
     exported_external_deps = ["glog"],
@@ -1289,6 +1290,7 @@ non_fbcode_target(
         "//xplat/folly:portability",
         "//xplat/folly:synchronization_lock",
         "//xplat/folly/experimental/coro:coroutine",
+        "//xplat/folly/experimental/coro:task",
     ],
 )
 
