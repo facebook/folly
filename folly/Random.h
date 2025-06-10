@@ -41,6 +41,12 @@ namespace detail {
 
 using DefaultGenerator = folly::xoshiro256pp_32;
 
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
+using LegacyGenerator = __gnu_cxx::sfmt19937;
+#else
+using LegacyGenerator = std::mt19937;
+#endif
+
 } // namespace detail
 
 /**
@@ -97,6 +103,7 @@ class Random {
 
  public:
   using DefaultGenerator = detail::DefaultGenerator;
+  using LegacyGenerator = detail::LegacyGenerator;
 
   /**
    * Get secure random bytes. (On Linux and OSX, this means /dev/urandom).
