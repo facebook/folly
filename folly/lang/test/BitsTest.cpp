@@ -362,6 +362,38 @@ TEST(Bits, LoadUnalignedUB) {
   EXPECT_EQ(0, x);
 }
 
+TEST(Bits, ConstexprLoadUnaligned) {
+  auto data = "hello world";
+  EXPECT_EQ(
+      folly::loadUnaligned<uint8_t>(data + 1),
+      folly::constexprLoadUnaligned<uint8_t>(data + 1));
+  EXPECT_EQ(
+      folly::loadUnaligned<uint16_t>(data + 1),
+      folly::constexprLoadUnaligned<uint16_t>(data + 1));
+  EXPECT_EQ(
+      folly::loadUnaligned<uint32_t>(data + 1),
+      folly::constexprLoadUnaligned<uint32_t>(data + 1));
+  EXPECT_EQ(
+      folly::loadUnaligned<uint64_t>(data + 1),
+      folly::constexprLoadUnaligned<uint64_t>(data + 1));
+}
+
+TEST(Bits, ConstexprPartialLoadUnaligned) {
+  auto data = "hello world";
+  EXPECT_EQ(
+      folly::partialLoadUnaligned<uint8_t>(data + 1, 0),
+      folly::constexprPartialLoadUnaligned<uint8_t>(data + 1, 0));
+  EXPECT_EQ(
+      folly::partialLoadUnaligned<uint16_t>(data + 1, 1),
+      folly::constexprPartialLoadUnaligned<uint16_t>(data + 1, 1));
+  EXPECT_EQ(
+      folly::partialLoadUnaligned<uint32_t>(data + 1, 3),
+      folly::constexprPartialLoadUnaligned<uint32_t>(data + 1, 3));
+  EXPECT_EQ(
+      folly::partialLoadUnaligned<uint64_t>(data + 1, 5),
+      folly::constexprPartialLoadUnaligned<uint64_t>(data + 1, 5));
+}
+
 TYPED_TEST(BitsAllUintsTest, NLeastSignificantBits) {
   using T = TypeParam;
 

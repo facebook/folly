@@ -572,6 +572,75 @@ inline T partialLoadUnaligned(const void* p, size_t l) {
   return value;
 }
 
+namespace detail {
+
+template <class T, class S>
+constexpr T constexprLoadUnalignedImpl(const S* s) {
+  T ret = T{0};
+  for (std::size_t i = 0; i < sizeof(T); ++i) {
+    auto idx = kIsLittleEndian ? i : (sizeof(T) - 1 - i);
+    ret |= T{static_cast<std::uint8_t>(s[i])} << (idx * 8);
+  }
+  return ret;
+}
+
+} // namespace detail
+
+/**
+ * Read an unaligned value of type T and return it.
+ * Constexpr, but not optimized. Accepts inputs either of char-array types or
+ * char-backed enum-array types.
+ */
+template <class T, class S>
+constexpr T constexprLoadUnaligned(const S* s) {
+  static_assert(std::is_integral_v<T>);
+  static_assert(std::is_unsigned_v<T>);
+  static_assert(!std::is_same_v<T, bool>);
+  static_assert(std::is_integral_v<S> || std::is_enum_v<S>);
+  static_assert(!std::is_same_v<S, bool>);
+  static_assert(sizeof(S) == 1);
+
+  return is_constant_evaluated_or(false)
+      ? detail::constexprLoadUnalignedImpl<T>(s)
+      : loadUnaligned<T>(s);
+}
+
+namespace detail {
+
+template <class T, class S>
+constexpr T constexprPartialLoadUnalignedImpl(const S* s, std::size_t l) {
+  T ret = T{0};
+  for (std::size_t i = 0; i < l; ++i) {
+    auto idx = kIsLittleEndian ? i : (sizeof(T) - 1 - i);
+    ret |= T{static_cast<std::uint8_t>(s[i])} << (idx * 8);
+  }
+  return ret;
+}
+
+} // namespace detail
+
+/**
+ * Read an unaligned value of type T and return it.
+ * Constexpr, but not optimized. Accepts inputs either of char-array types or
+ * char-backed enum-array types.
+ */
+template <class T, class S>
+constexpr T constexprPartialLoadUnaligned(const S* s, std::size_t l) {
+  static_assert(std::is_integral_v<T>);
+  static_assert(std::is_unsigned_v<T>);
+  static_assert(!std::is_same_v<T, bool>);
+  static_assert(std::is_integral_v<S> || std::is_enum_v<S>);
+  static_assert(!std::is_same_v<S, bool>);
+  static_assert(sizeof(S) == 1);
+  if (!(l < sizeof(T))) {
+    assume_unreachable();
+  }
+
+  return is_constant_evaluated_or(false)
+      ? detail::constexprPartialLoadUnalignedImpl<T>(s, l)
+      : partialLoadUnaligned<T>(s, l);
+}
+
 /**
  * Write an unaligned value of type T.
  */
