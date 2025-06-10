@@ -27,20 +27,10 @@ namespace hash {
 
 namespace detail {
 
-FOLLY_ALWAYS_INLINE constexpr std::uint64_t shiftMix(std::uint64_t v) {
+FOLLY_ALWAYS_INLINE constexpr std::uint64_t murmurHash64ShiftMix(
+    std::uint64_t v) {
   constexpr std::uint64_t kShift = 47;
   return v ^ (v >> kShift);
-}
-
-FOLLY_ALWAYS_INLINE constexpr std::uint64_t constexprLoad64(
-    const char* s, std::size_t l) {
-  static_assert(kIsLittleEndian);
-
-  std::uint64_t ret = 0;
-  for (std::size_t i = 0; i < l; ++i) {
-    ret |= std::uint64_t(static_cast<uint8_t>(s[i])) << (i * 8);
-  }
-  return ret;
 }
 
 } // namespace detail
@@ -62,22 +52,19 @@ constexpr std::uint64_t murmurHash64(
   const std::size_t tail = len & 0x7;
 
   for (const char* p = beg; p != end; p += 8) {
-    const std::uint64_t k = folly::is_constant_evaluated_or(false)
-        ? detail::constexprLoad64(p, 8)
-        : loadUnaligned<std::uint64_t>(p);
-    hash = (hash ^ detail::shiftMix(k * kMul) * kMul) * kMul;
+    const std::uint64_t k = constexprLoadUnaligned<std::uint64_t>(p);
+    hash = (hash ^ detail::murmurHash64ShiftMix(k * kMul) * kMul) * kMul;
   }
 
   if (tail != 0) {
-    const std::uint64_t k = folly::is_constant_evaluated_or(false)
-        ? detail::constexprLoad64(end, tail)
-        : partialLoadUnaligned<std::uint64_t>(end, tail);
+    const std::uint64_t k =
+        constexprPartialLoadUnaligned<std::uint64_t>(end, tail);
     hash ^= k;
     hash *= kMul;
   }
 
-  hash = detail::shiftMix(hash) * kMul;
-  hash = detail::shiftMix(hash);
+  hash = detail::murmurHash64ShiftMix(hash) * kMul;
+  hash = detail::murmurHash64ShiftMix(hash);
 
   return hash;
 }
