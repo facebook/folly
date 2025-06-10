@@ -199,6 +199,544 @@ TEST_F(SharedMutexTest, ManualLockAsync) {
   }
 }
 
+TEST_F(SharedMutexTest, ManualLockUpgradeAsync) {
+  // all possible initial state
+  auto unlocked = [](coro::SharedMutex&) {};
+  auto exclusively_locked = [](coro::SharedMutex& m) { CHECK(m.try_lock()); };
+  auto shared_locked_only = [](coro::SharedMutex& m) {
+    CHECK(m.try_lock_shared());
+  };
+  auto upgrade_locked_only = [](coro::SharedMutex& m) {
+    CHECK(m.try_lock_upgrade());
+  };
+  auto upgrade_and_shared_locked = [](coro::SharedMutex& m) {
+    CHECK(m.try_lock_shared());
+    CHECK(m.try_lock_upgrade());
+  };
+
+  // these are all the async operations that can happen to the mutex
+  auto lock = [](coro::SharedMutex& m) -> coro::Task<void> {
+    co_await m.co_lock();
+    m.unlock();
+  };
+  auto lock_upgrade = [](coro::SharedMutex& m) -> coro::Task<void> {
+    co_await m.co_lock_upgrade();
+    m.unlock_upgrade();
+  };
+  auto lock_shared = [](coro::SharedMutex& m) -> coro::Task<void> {
+    co_await m.co_lock_shared();
+    m.unlock_shared();
+  };
+  auto unlock_upgrade_and_lock = [](coro::SharedMutex& m) -> coro::Task<void> {
+    co_await m.co_unlock_upgrade_and_lock();
+    m.unlock();
+  };
+
+  // cleanup helpers
+  auto unlock = [](coro::SharedMutex& m) { m.unlock(); };
+  auto unlock_shared = [](coro::SharedMutex& m) { m.unlock_shared(); };
+  auto unlock_upgrade = [](coro::SharedMutex& m) { m.unlock_upgrade(); };
+  // unlock in different order changes the waiter list and the mutex state
+  auto unlock_upgrade_and_unlock_shared = [](coro::SharedMutex& m) {
+    m.unlock_upgrade();
+    m.unlock_shared();
+  };
+  auto unlock_shared_and_unlock_upgrade = [](coro::SharedMutex& m) {
+    m.unlock_shared();
+    m.unlock_upgrade();
+  };
+
+  std::vector<std::tuple<
+      std::string /* test name */,
+      std::function<void(coro::SharedMutex&)> /* set up initial state*/,
+      std::optional<std::function<coro::Task<void>(
+          coro::SharedMutex&)>> /* optionally arrange a waiter */,
+      std::function<coro::Task<void>(coro::SharedMutex&)> /* action */,
+      bool /* expect the task to complete or not */,
+      std::optional<std::function<void(coro::SharedMutex&)>> /* optional
+                                                                  cleanup */
+      >>
+      cases;
+
+  // unlocked & no one waiting
+  cases.emplace_back(
+      "unlocked-no-waiter-lock",
+      unlocked,
+      std::nullopt,
+      lock,
+      true,
+      std::nullopt);
+  cases.emplace_back(
+      "unlocked-no-waiter-lock_upgrade",
+      unlocked,
+      std::nullopt,
+      lock_upgrade,
+      true,
+      std::nullopt);
+  cases.emplace_back(
+      "unlocked-no-waiter-lock_shared",
+      unlocked,
+      std::nullopt,
+      lock_shared,
+      true,
+      std::nullopt);
+
+  // locked with no waiters
+  cases.emplace_back(
+      "locked-no-waiter-lock",
+      exclusively_locked,
+      std::nullopt,
+      lock,
+      false,
+      unlock);
+  cases.emplace_back(
+      "locked-no-waiter-lock_upgrade",
+      exclusively_locked,
+      std::nullopt,
+      lock_upgrade,
+      false,
+      unlock);
+  cases.emplace_back(
+      "locked-no-waiter-lock_shared",
+      exclusively_locked,
+      std::nullopt,
+      lock_shared,
+      false,
+      unlock);
+
+  // locked with waiters
+  cases.emplace_back(
+      "locked-lock-waiter-lock", exclusively_locked, lock, lock, false, unlock);
+  cases.emplace_back(
+      "locked-lock-waiter-lock_upgrade",
+      exclusively_locked,
+      lock,
+      lock_upgrade,
+      false,
+      unlock);
+  cases.emplace_back(
+      "locked-lock-waiter-lock_shared",
+      exclusively_locked,
+      lock,
+      lock_shared,
+      false,
+      unlock);
+
+  cases.emplace_back(
+      "locked-lock_shared-waiter-lock",
+      exclusively_locked,
+      lock_shared,
+      lock,
+      false,
+      unlock);
+  cases.emplace_back(
+      "locked-lock_shared-waiter-lock_upgrade",
+      exclusively_locked,
+      lock_shared,
+      lock_upgrade,
+      false,
+      unlock);
+  cases.emplace_back(
+      "locked-lock_shared-waiter-lock_shared",
+      exclusively_locked,
+      lock_shared,
+      lock_shared,
+      false,
+      unlock);
+
+  cases.emplace_back(
+      "locked-lock_upgrade-waiter-lock",
+      exclusively_locked,
+      lock_upgrade,
+      lock,
+      false,
+      unlock);
+  cases.emplace_back(
+      "locked-lock_upgrade-waiter-lock_upgrade",
+      exclusively_locked,
+      lock_upgrade,
+      lock_upgrade,
+      false,
+      unlock);
+  cases.emplace_back(
+      "locked-lock_upgrade-waiter-lock_shared",
+      exclusively_locked,
+      lock_upgrade,
+      lock_shared,
+      false,
+      unlock);
+
+  // shared locked and no one waiting
+  cases.emplace_back(
+      "shared_locked-no-waiter-lock",
+      shared_locked_only,
+      std::nullopt,
+      lock,
+      false,
+      unlock_shared);
+  cases.emplace_back(
+      "shared_locked-no-waiter-lock_upgrade",
+      shared_locked_only,
+      std::nullopt,
+      lock_upgrade,
+      true,
+      unlock_shared);
+  cases.emplace_back(
+      "shared_locked-no-waiter-lock_shared",
+      shared_locked_only,
+      std::nullopt,
+      lock_shared,
+      true,
+      unlock_shared);
+
+  // shared locked with waiters
+  cases.emplace_back(
+      "shared_locked-lock-waiter-lock",
+      shared_locked_only,
+      lock,
+      lock,
+      false,
+      unlock_shared);
+  // this is the case where lock_upgrade wait for waiting writers to
+  // avoid writer starvation
+  cases.emplace_back(
+      "shared_locked-lock-waiter-lock_upgrade",
+      shared_locked_only,
+      lock,
+      lock_upgrade,
+      false,
+      unlock_shared);
+  // this is the reader-block-writer-block-reader case, since the mutex
+  // prioritizes the writer/upgrader
+  cases.emplace_back(
+      "shared_locked-lock-waiter-lock_shared",
+      shared_locked_only,
+      lock,
+      lock_shared,
+      false,
+      unlock_shared);
+
+  // upgrade locked and no one waiting
+  cases.emplace_back(
+      "upgrade_locked-no-waiter-lock",
+      upgrade_locked_only,
+      std::nullopt,
+      lock,
+      false,
+      unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_locked-no-waiter-lock_upgrade",
+      upgrade_locked_only,
+      std::nullopt,
+      lock_upgrade,
+      false,
+      unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_locked-no-waiter-lock_shared",
+      upgrade_locked_only,
+      std::nullopt,
+      lock_shared,
+      true,
+      unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_locked-no-waiter-unlock_upgrade_and_lock",
+      upgrade_locked_only,
+      std::nullopt,
+      unlock_upgrade_and_lock,
+      true,
+      std::nullopt);
+
+  // upgrade locked with waiters
+  cases.emplace_back(
+      "upgrade_locked-lock-waiter-lock",
+      upgrade_locked_only,
+      lock,
+      lock,
+      false,
+      unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_locked-lock-waiter-lock_upgrade",
+      upgrade_locked_only,
+      lock,
+      lock_upgrade,
+      false,
+      unlock_upgrade);
+  // since the mutex prioritizes the writer, lock_shared() would be blocked by
+  // the lock() even when the mutex is only upgrade locked
+  cases.emplace_back(
+      "upgrade_locked-lock-waiter-lock_shared",
+      upgrade_locked_only,
+      lock,
+      lock_shared,
+      false,
+      unlock_upgrade);
+  // this is the case where lock transfer skips the waiter line to avoid
+  // deadlock
+  cases.emplace_back(
+      "upgrade_locked-lock-waiter-unlock_upgrade_and_lock",
+      upgrade_locked_only,
+      lock,
+      unlock_upgrade_and_lock,
+      true,
+      std::nullopt);
+
+  cases.emplace_back(
+      "upgrade_locked-lock_upgrade-waiter-lock",
+      upgrade_locked_only,
+      lock_upgrade,
+      lock,
+      false,
+      unlock_upgrade);
+  // the mutex prioritizes writers but read locks can still be granted as long
+  // as there is no writers waiting
+  // granting the read lock here will not starve the waiting upgrader, as they
+  // are not contending anyway
+  cases.emplace_back(
+      "upgrade_locked-lock_upgrade-waiter-lock_shared",
+      upgrade_locked_only,
+      lock_upgrade,
+      lock_shared,
+      true,
+      unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_locked-lock_upgrade-waiter-lock_upgrade",
+      upgrade_locked_only,
+      lock_upgrade,
+      lock_upgrade,
+      false,
+      unlock_upgrade);
+  // this is the case where lock transfer skips the waiter line to avoid
+  // deadlock
+  cases.emplace_back(
+      "upgrade_locked-lock_upgrade-waiter-unlock_upgrade_and_lock",
+      upgrade_locked_only,
+      lock_upgrade,
+      unlock_upgrade_and_lock,
+      true,
+      std::nullopt);
+
+  // upgrade and shared locked with no one waiting
+  cases.emplace_back(
+      "upgrade_and_shared_locked-no-waiter-lock-0",
+      upgrade_and_shared_locked,
+      std::nullopt,
+      lock,
+      false,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-no-waiter-lock-1",
+      upgrade_and_shared_locked,
+      std::nullopt,
+      lock,
+      false,
+      unlock_shared_and_unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-no-waiter-lock_upgrade-0",
+      upgrade_and_shared_locked,
+      std::nullopt,
+      lock_upgrade,
+      false,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-no-waiter-lock_upgrade-1",
+      upgrade_and_shared_locked,
+      std::nullopt,
+      lock_upgrade,
+      false,
+      unlock_shared_and_unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-no-waiter-lock_shared-0",
+      upgrade_and_shared_locked,
+      std::nullopt,
+      lock_shared,
+      true,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-no-waiter-lock_shared-1",
+      upgrade_and_shared_locked,
+      std::nullopt,
+      lock_shared,
+      true,
+      unlock_shared_and_unlock_upgrade);
+
+  // the lock transfer needs to wait for the readers to drain
+  cases.emplace_back(
+      "upgrade_and_shared_locked-no-waiter-unlock_upgrade_and_lock",
+      upgrade_and_shared_locked,
+      std::nullopt,
+      unlock_upgrade_and_lock,
+      false,
+      unlock_shared);
+
+  // upgrade and shared locked with waiters
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock-waiter-lock-0",
+      upgrade_and_shared_locked,
+      lock,
+      lock,
+      false,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock-waiter-lock-1",
+      upgrade_and_shared_locked,
+      lock,
+      lock,
+      false,
+      unlock_shared_and_unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock-waiter-lock_upgrade-0",
+      upgrade_and_shared_locked,
+      lock,
+      lock_upgrade,
+      false,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock-waiter-lock_upgrade-1",
+      upgrade_and_shared_locked,
+      lock,
+      lock_upgrade,
+      false,
+      unlock_shared_and_unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock-waiter-lock_shared-0",
+      upgrade_and_shared_locked,
+      lock,
+      lock_shared,
+      false,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock-waiter-lock_shared-1",
+      upgrade_and_shared_locked,
+      lock,
+      lock_shared,
+      false,
+      unlock_shared_and_unlock_upgrade);
+  // this is the case where lock transfer skips the waiter line to avoid
+  // deadlock once the reader is drained, the lock transfer will succeed first
+  // before the lock()
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock-waiter-unlock_upgrade_and_lock",
+      upgrade_and_shared_locked,
+      lock,
+      unlock_upgrade_and_lock,
+      false,
+      unlock_shared);
+
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock_upgrade-waiter-lock-0",
+      upgrade_and_shared_locked,
+      lock_upgrade,
+      lock,
+      false,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock_upgrade-waiter-lock-1",
+      upgrade_and_shared_locked,
+      lock_upgrade,
+      lock,
+      false,
+      unlock_shared_and_unlock_upgrade);
+  // the mutex prioritizes writers but read locks can still be granted as long
+  // as there is no writers waiting
+  // granting the read lock here will not starve the waiting upgrader, as they
+  // are not contending anyway
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock_upgrade-waiter-lock_shared-0",
+      upgrade_and_shared_locked,
+      lock_upgrade,
+      lock_shared,
+      true,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock_upgrade-waiter-lock_shared-1",
+      upgrade_and_shared_locked,
+      lock_upgrade,
+      lock_shared,
+      true,
+      unlock_shared_and_unlock_upgrade);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock_upgrade-waiter-lock_upgrade-0",
+      upgrade_and_shared_locked,
+      lock_upgrade,
+      lock_upgrade,
+      false,
+      unlock_upgrade_and_unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock_upgrade-waiter-lock_upgrade-1",
+      upgrade_and_shared_locked,
+      lock_upgrade,
+      lock_upgrade,
+      false,
+      unlock_shared_and_unlock_upgrade);
+  // this is the case where lock transfer skips the waiter line to avoid
+  // deadlock once the reader is drained, the lock transfer will succeed
+  // first before the lock_upgrade()
+  cases.emplace_back(
+      "upgrade_and_shared_locked-lock_upgrade-waiter-unlock_upgrade_and_lock",
+      upgrade_and_shared_locked,
+      lock_upgrade,
+      unlock_upgrade_and_lock,
+      false,
+      unlock_shared);
+  // tests when there is a lock transition waiter
+  cases.emplace_back(
+      "upgrade_and_shared_locked-unlock_upgrade_and_lock-waiter-lock",
+      upgrade_and_shared_locked,
+      unlock_upgrade_and_lock,
+      lock,
+      false,
+      unlock_shared);
+  // this is the case where the mutex prioritizes draining the readers when
+  // there is pending lock transfer and not granting new reader locks even when
+  // it could
+  cases.emplace_back(
+      "upgrade_and_shared_locked-unlock_upgrade_and_lock-waiter-lock_shared",
+      upgrade_and_shared_locked,
+      unlock_upgrade_and_lock,
+      lock_shared,
+      false,
+      unlock_shared);
+  cases.emplace_back(
+      "upgrade_and_shared_locked-unlock_upgrade_and_lock-waiter-lock_upgrade",
+      upgrade_and_shared_locked,
+      unlock_upgrade_and_lock,
+      lock_upgrade,
+      false,
+      unlock_shared);
+
+  for (auto& [testName, init, waiterSetup, action, expectDone, cleanup] :
+       cases) {
+    SCOPED_TRACE(testName);
+    coro::SharedMutex m;
+    ManualExecutor executor;
+    init(m);
+    std::optional<folly::SemiFuture<folly::Unit>> waiterSemi;
+    if (waiterSetup) {
+      waiterSemi = (*waiterSetup)(m).scheduleOn(&executor).start();
+    }
+    executor.drain();
+    if (waiterSemi) {
+      ASSERT_FALSE(waiterSemi->isReady()); // the waiter is supposed to wait
+    }
+    auto semi = action(m).scheduleOn(&executor).start();
+    executor.drain();
+    ASSERT_EQ(semi.isReady(), expectDone);
+    if (expectDone) {
+      ASSERT_TRUE(semi.hasValue());
+    }
+    if (cleanup) {
+      (*cleanup)(m);
+    }
+    executor.drain();
+    ASSERT_TRUE(semi.isReady());
+    ASSERT_TRUE(semi.hasValue());
+    if (waiterSemi) {
+      ASSERT_TRUE(waiterSemi->isReady());
+      ASSERT_TRUE(waiterSemi->hasValue());
+    }
+  }
+}
+
 TEST_F(SharedMutexTest, ScopedLockAsync) {
   coro::SharedMutex mutex;
   int value = 0;
@@ -251,6 +789,97 @@ TEST_F(SharedMutexTest, ScopedLockAsync) {
     b5.post();
     executor.drain();
     CHECK_EQ(2, std::move(r3).get());
+  }
+}
+
+TEST_F(SharedMutexTest, MultipleWaiters) {
+  coro::SharedMutex mutex;
+  auto writer = [&]() -> coro::Task<void> { co_await mutex.co_lock(); };
+  auto upgrader = [&]() -> coro::Task<void> {
+    co_await mutex.co_lock_upgrade();
+  };
+  auto reader = [&]() -> coro::Task<void> { co_await mutex.co_lock_shared(); };
+
+  {
+    // test that the long reader scan does not go pass a waiting writer
+    ManualExecutor executor;
+    ASSERT_TRUE(mutex.try_lock());
+    // U1 S1 U2 S2 W S3
+    // expect U1 S1 S2 to be unblocked on unlock
+    auto u1 = upgrader().scheduleOn(&executor).start();
+    auto s1 = reader().scheduleOn(&executor).start();
+    auto u2 = upgrader().scheduleOn(&executor).start();
+    auto s2 = reader().scheduleOn(&executor).start();
+    auto w = writer().scheduleOn(&executor).start();
+    auto s3 = reader().scheduleOn(&executor).start();
+    executor.drain();
+    EXPECT_FALSE(u1.isReady());
+    EXPECT_FALSE(s1.isReady());
+    EXPECT_FALSE(s2.isReady());
+    mutex.unlock();
+    executor.drain();
+    EXPECT_TRUE(u1.hasValue());
+    EXPECT_TRUE(s1.hasValue());
+    EXPECT_TRUE(s2.hasValue());
+
+    EXPECT_FALSE(u2.isReady());
+    EXPECT_FALSE(w.isReady());
+    EXPECT_FALSE(s3.isReady());
+
+    mutex.unlock_upgrade();
+    mutex.unlock_shared();
+    mutex.unlock_shared();
+    executor.drain();
+    EXPECT_TRUE(u2.hasValue());
+    EXPECT_FALSE(w.isReady());
+    EXPECT_FALSE(s3.isReady());
+
+    mutex.unlock_upgrade();
+    executor.drain();
+    EXPECT_TRUE(w.hasValue());
+    EXPECT_FALSE(s3.isReady());
+
+    mutex.unlock();
+    executor.drain();
+    EXPECT_TRUE(s3.hasValue());
+    mutex.unlock_shared();
+  }
+
+  {
+    // test that resuming a tail reader via long scan is handled correct
+    // this is to ensure the waiter tail pointer is updated correctly
+    ManualExecutor executor;
+    ASSERT_TRUE(mutex.try_lock());
+    // U1 U2 S
+    auto u1 = upgrader().scheduleOn(&executor).start();
+    auto u2 = upgrader().scheduleOn(&executor).start();
+    auto s = reader().scheduleOn(&executor).start();
+    executor.drain();
+    EXPECT_FALSE(u1.isReady());
+    EXPECT_FALSE(u2.isReady());
+    EXPECT_FALSE(s.isReady());
+    mutex.unlock();
+    executor.drain();
+    EXPECT_TRUE(u1.hasValue());
+    EXPECT_TRUE(s.hasValue());
+    EXPECT_FALSE(u2.isReady());
+
+    // u3 should be enqueued behind u2 which is the new tail
+    auto u3 = upgrader().scheduleOn(&executor).start();
+    executor.drain();
+    EXPECT_FALSE(u3.isReady());
+
+    mutex.unlock_upgrade();
+    executor.drain();
+    EXPECT_TRUE(u2.hasValue());
+    EXPECT_FALSE(u3.isReady());
+
+    mutex.unlock_upgrade();
+    executor.drain();
+    EXPECT_TRUE(u3.hasValue());
+
+    mutex.unlock_upgrade();
+    mutex.unlock_shared();
   }
 }
 

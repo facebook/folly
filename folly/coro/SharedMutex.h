@@ -110,6 +110,8 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   class ScopedLockAwaiter;
   class LockSharedAwaiter;
   class ScopedLockSharedAwaiter;
+  class LockUpgradeAwaiter;
+  class UnlockUpgradeAndLockAwaiter;
 
  public:
   SharedMutexFair() noexcept = default;
@@ -205,6 +207,45 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   [[nodiscard]] LockOperation<ScopedLockSharedAwaiter>
   co_scoped_lock_shared() noexcept;
 
+  /// Asynchronously acquire an upgrade lock on the mutex.
+  ///
+  /// Returns a SemiAwaitable<void> type that requires the caller to inject
+  /// an executor by calling .viaIfAsync(executor) and then co_awaiting the
+  /// result to wait for the lock to be acquired. Note that if the caller is
+  /// awaiting the lock operation within a folly::coro::Task then the current
+  /// executor will be injected implicitly without needing to call
+  /// .viaIfAsync().
+  ///
+  /// If the lock was acquired synchronously then the awaiting coroutine
+  /// continues on the current thread without suspending.
+  /// If the lock could not be acquired synchronously then the awaiting
+  /// coroutine is suspended and later resumed on the specified executor when
+  /// the lock becomes available.
+  ///
+  /// After this operation completes, the caller is responsible for calling
+  /// .unlock_upgrade() to release the lock.
+  [[nodiscard]] LockOperation<LockUpgradeAwaiter> co_lock_upgrade() noexcept;
+
+  /// Asynchronously transition the currently held upgrade lock to exclusive.
+  ///
+  /// Returns a SemiAwaitable<void> type that requires the caller to inject
+  /// an executor by calling .viaIfAsync(executor) and then co_awaiting the
+  /// result to wait for the lock to be acquired. Note that if the caller is
+  /// awaiting the lock operation within a folly::coro::Task then the current
+  /// executor will be injected implicitly without needing to call
+  /// .viaIfAsync().
+  ///
+  /// If the lock was transitioned synchronously then the awaiting coroutine
+  /// continues on the current thread without suspending.
+  /// If the lock could not be transitioned synchronously then the awaiting
+  /// coroutine is suspended and later resumed on the specified executor when
+  /// the lock becomes available.
+  ///
+  /// After this operation completes, the caller is responsible for calling
+  /// .unlock() to release the lock.
+  [[nodiscard]] LockOperation<UnlockUpgradeAndLockAwaiter>
+  co_unlock_upgrade_and_lock() noexcept;
+
   /// Release the exclusive lock.
   ///
   /// This will resume the next coroutine(s) waiting to acquire the lock, if
@@ -235,7 +276,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
  private:
   using folly_coro_aware_mutex = std::true_type;
 
-  enum class LockType : std::uint8_t { EXCLUSIVE, SHARED };
+  enum class LockType : std::uint8_t { EXCLUSIVE, UPGRADE, SHARED };
 
   class LockAwaiterBase {
    protected:
@@ -309,6 +350,59 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
     void await_resume() noexcept {}
   };
 
+  class LockUpgradeAwaiter : public LockAwaiterBase {
+   public:
+    explicit LockUpgradeAwaiter(SharedMutexFair& mutex) noexcept
+        : LockAwaiterBase(mutex, LockType::UPGRADE) {}
+
+    bool await_ready() noexcept { return mutex_->try_lock_upgrade(); }
+
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
+        coroutine_handle<> continuation) noexcept {
+      auto lock = mutex_->state_.lock();
+
+      if (canLockUpgrade(*lock)) {
+        lock->lockedFlagAndReaderCount_ |= kUpgradeLockFlag;
+        return false;
+      }
+
+      continuation_ = continuation;
+      *lock->waitersTailNext_ = this;
+      lock->waitersTailNext_ = &nextAwaiter_;
+      return true;
+    }
+
+    void await_resume() noexcept {}
+  };
+
+  class UnlockUpgradeAndLockAwaiter : public LockAwaiterBase {
+   public:
+    explicit UnlockUpgradeAndLockAwaiter(SharedMutexFair& mutex) noexcept
+        : LockAwaiterBase(mutex, LockType::EXCLUSIVE) {}
+
+    bool await_ready() noexcept {
+      return mutex_->try_unlock_upgrade_and_lock();
+    }
+
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
+        coroutine_handle<> continuation) noexcept {
+      auto lock = mutex_->state_.lock();
+
+      assert(lock->lockedFlagAndReaderCount_ & kUpgradeLockFlag);
+      if (lock->lockedFlagAndReaderCount_ == kUpgradeLockFlag) {
+        lock->lockedFlagAndReaderCount_ = kExclusiveLockFlag;
+        return false;
+      }
+
+      continuation_ = continuation;
+      assert(lock->upgrader_ == nullptr);
+      lock->upgrader_ = this;
+      return true;
+    }
+
+    void await_resume() noexcept {}
+  };
+
   class ScopedLockAwaiter : public LockAwaiter {
    public:
     using LockAwaiter::LockAwaiter;
@@ -355,6 +449,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
         : lockedFlagAndReaderCount_(kUnlocked),
           waitingWriterCount_(0),
           waitersHead_(nullptr),
+          upgrader_(nullptr),
           waitersTailNext_(&waitersHead_) {}
 
     // bit 0 - exclusive lock is held
@@ -363,18 +458,34 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
     std::size_t lockedFlagAndReaderCount_;
     std::size_t waitingWriterCount_;
     LockAwaiterBase* waitersHead_;
+    // active upgrade lock holder who's waiting to upgrade to exclusive
+    // at most one waiter can be in such state
+    LockAwaiterBase* upgrader_;
     LockAwaiterBase** waitersTailNext_;
   };
 
-  static LockAwaiterBase* getWaitersToResume(State& state) noexcept;
+  static LockAwaiterBase* getWaitersToResume(
+      State& state, LockType prevLockType) noexcept;
+  static LockAwaiterBase* scanReadersAndUpgrader(
+      LockAwaiterBase* head,
+      State& lockedState,
+      LockType prevLockType) noexcept;
 
   static void resumeWaiters(LockAwaiterBase* awaiters) noexcept;
   static bool canLockShared(const State& state) noexcept {
-    // a shared lock can be acquired if there are no exclusive locks held or
-    // pending; an exclusive lock is pending if there are queued waiters for
-    // it
+    // a shared lock can be acquired if there are no exclusive locks held,
+    // exclusive lock pending or lock transition pending
+    // an exclusive lock is pending if there are queued waiters for
+    // it; there is a pending lock transition if there is active upgrade lock
+    // waiting to be upgraded to exclusive
     return state.lockedFlagAndReaderCount_ == kUnlocked ||
         (state.lockedFlagAndReaderCount_ != kExclusiveLockFlag &&
+         state.waitingWriterCount_ == 0 && state.upgrader_ == nullptr);
+  }
+  static bool canLockUpgrade(const State& state) noexcept {
+    return state.lockedFlagAndReaderCount_ == kUnlocked ||
+        ((state.lockedFlagAndReaderCount_ &
+          (kExclusiveLockFlag | kUpgradeLockFlag)) == 0 &&
          state.waitingWriterCount_ == 0);
   }
 
@@ -404,6 +515,17 @@ SharedMutexFair::co_scoped_lock() noexcept {
 inline SharedMutexFair::LockOperation<SharedMutexFair::ScopedLockSharedAwaiter>
 SharedMutexFair::co_scoped_lock_shared() noexcept {
   return LockOperation<ScopedLockSharedAwaiter>{*this};
+}
+
+inline SharedMutexFair::LockOperation<SharedMutexFair::LockUpgradeAwaiter>
+SharedMutexFair::co_lock_upgrade() noexcept {
+  return LockOperation<LockUpgradeAwaiter>{*this};
+}
+
+inline SharedMutexFair::LockOperation<
+    SharedMutexFair::UnlockUpgradeAndLockAwaiter>
+SharedMutexFair::co_unlock_upgrade_and_lock() noexcept {
+  return LockOperation<UnlockUpgradeAndLockAwaiter>{*this};
 }
 
 // The default SharedMutex is SharedMutexFair.
