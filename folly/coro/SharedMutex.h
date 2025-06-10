@@ -223,7 +223,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
         coroutine_handle<> continuation) noexcept {
-      auto lock = mutex_->state_.contextualLock();
+      auto lock = mutex_->state_.lock();
 
       // Exclusive lock can only be acquired if it's currently unlocked.
       if (lock->lockedFlagAndReaderCount_ == kUnlocked) {
@@ -250,7 +250,7 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
         coroutine_handle<> continuation) noexcept {
-      auto lock = mutex_->state_.contextualLock();
+      auto lock = mutex_->state_.lock();
 
       // shared-lock can be acquired if it's either unlocked or it is
       // currently locked shared and there is no queued waiters.

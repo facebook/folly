@@ -26,7 +26,7 @@ SharedMutexFair::~SharedMutexFair() {
 }
 
 bool SharedMutexFair::try_lock() noexcept {
-  auto lock = state_.contextualLock();
+  auto lock = state_.lock();
   if (lock->lockedFlagAndReaderCount_ == kUnlocked) {
     lock->lockedFlagAndReaderCount_ = kExclusiveLockFlag;
     return true;
@@ -35,7 +35,7 @@ bool SharedMutexFair::try_lock() noexcept {
 }
 
 bool SharedMutexFair::try_lock_shared() noexcept {
-  auto lock = state_.contextualLock();
+  auto lock = state_.lock();
   if (lock->lockedFlagAndReaderCount_ == kUnlocked ||
       (lock->lockedFlagAndReaderCount_ >= kSharedLockCountIncrement &&
        lock->waitersHead_ == nullptr)) {
@@ -48,7 +48,7 @@ bool SharedMutexFair::try_lock_shared() noexcept {
 void SharedMutexFair::unlock() noexcept {
   LockAwaiterBase* awaitersToResume = nullptr;
   {
-    auto lockedState = state_.contextualLock();
+    auto lockedState = state_.lock();
     assert(lockedState->lockedFlagAndReaderCount_ == kExclusiveLockFlag);
     awaitersToResume = unlockOrGetNextWaitersToResume(*lockedState);
   }
@@ -59,7 +59,7 @@ void SharedMutexFair::unlock() noexcept {
 void SharedMutexFair::unlock_shared() noexcept {
   LockAwaiterBase* awaitersToResume = nullptr;
   {
-    auto lockedState = state_.contextualLock();
+    auto lockedState = state_.lock();
     assert(lockedState->lockedFlagAndReaderCount_ >= kSharedLockCountIncrement);
     lockedState->lockedFlagAndReaderCount_ -= kSharedLockCountIncrement;
     if (lockedState->lockedFlagAndReaderCount_ != kUnlocked) {
