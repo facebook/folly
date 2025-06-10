@@ -37,9 +37,11 @@ bool SharedMutexFair::try_lock() noexcept {
 bool SharedMutexFair::try_lock_shared() noexcept {
   auto lock = state_.lock();
   if (lock->lockedFlagAndReaderCount_ == kUnlocked ||
-      (lock->lockedFlagAndReaderCount_ >= kSharedLockCountIncrement &&
+      (lock->lockedFlagAndReaderCount_ != kExclusiveLockFlag &&
        lock->waitersHead_ == nullptr)) {
     lock->lockedFlagAndReaderCount_ += kSharedLockCountIncrement;
+    // check for potential overflow
+    assert(lock->lockedFlagAndReaderCount_ >= kSharedLockCountIncrement);
     return true;
   }
   return false;
@@ -92,6 +94,8 @@ SharedMutexFair::LockAwaiterBase* SharedMutexFair::getWaitersToResume(
       last = next;
       next = next->nextAwaiter_;
       newState += kSharedLockCountIncrement;
+      // check for potential overflow
+      assert(newState >= kSharedLockCountIncrement);
     }
 
     last->nextAwaiter_ = nullptr;
