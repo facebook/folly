@@ -22,6 +22,7 @@
 #include <numeric>
 #include <random>
 #include <set>
+#include <sstream>
 #include <type_traits>
 #include <vector>
 
@@ -324,6 +325,74 @@ void random_resize(std::vector<T>& collection, size_t max, RNG&& rng) {
     // Swap with the last element and pop
     std::swap(collection[index], collection.back());
     collection.pop_back();
+  }
+}
+
+TEST(Xoshiro256ppTest, StreamOperator) {
+  constexpr uint64_t kTestSeed = 0x1234567890ABCDEF;
+
+  // Test 32-bit version
+  {
+    xoshiro256pp_32 rng(kTestSeed);
+    std::stringstream ss;
+    ss << rng;
+
+    // Verify that the output contains the expected format
+    std::string output = ss.str();
+    EXPECT_FALSE(output.empty());
+    EXPECT_NE(output.find("cur:"), std::string::npos)
+        << "Output should contain 'cur:' marker";
+
+    // Create a second identical RNG and verify they produce the same string
+    // representation
+    xoshiro256pp_32 rng2(kTestSeed);
+    std::stringstream ss2;
+    ss2 << rng2;
+    EXPECT_EQ(ss.str(), ss2.str())
+        << "Same RNG state should produce the same string representation";
+
+    // Generate some values to change the internal state
+    for (int i = 0; i < 10; ++i) {
+      rng();
+    }
+
+    // Verify that the string representation changes after generating values
+    std::stringstream ss3;
+    ss3 << rng;
+    EXPECT_NE(ss.str(), ss3.str())
+        << "RNG state should change after generating values";
+  }
+
+  // Test 64-bit version
+  {
+    xoshiro256pp_64 rng(kTestSeed);
+    std::stringstream ss;
+    ss << rng;
+
+    // Verify that the output contains the expected format
+    std::string output = ss.str();
+    EXPECT_FALSE(output.empty());
+    EXPECT_NE(output.find("cur:"), std::string::npos)
+        << "Output should contain 'cur:' marker";
+
+    // Create a second identical RNG and verify they produce the same string
+    // representation
+    xoshiro256pp_64 rng2(kTestSeed);
+    std::stringstream ss2;
+    ss2 << rng2;
+    EXPECT_EQ(ss.str(), ss2.str())
+        << "Same RNG state should produce the same string representation";
+
+    // Generate some values to change the internal state
+    for (int i = 0; i < 10; ++i) {
+      rng();
+    }
+
+    // Verify that the string representation changes after generating values
+    std::stringstream ss3;
+    ss3 << rng;
+    EXPECT_NE(ss.str(), ss3.str())
+        << "RNG state should change after generating values";
   }
 }
 
