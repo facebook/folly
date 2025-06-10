@@ -16,6 +16,7 @@
 
 #include <folly/Portability.h>
 
+#include <folly/coro/AsyncScope.h>
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/SharedMutex.h>
@@ -1007,6 +1008,86 @@ TEST_F(SharedMutexTest, ThreadSafety) {
 
   CHECK_EQ(value1, 2 * iterationCount);
   CHECK_EQ(value2, 2 * iterationCount);
+}
+
+TEST_F(SharedMutexTest, StressTest) {
+  // create a large number of coroutines running on an executor with
+  // 10 threads, constantly trying to read and write shared state
+
+  coro::SharedMutex mutex;
+  int value1 = 0;
+  int value2 = 0;
+  std::atomic<bool> reachedTarget{false};
+  std::atomic<size_t> earlyExists{0};
+  constexpr int target = 100'000;
+
+  auto incrementIfEven = [&]() -> coro::Task<void> {
+    {
+      auto rLock = co_await mutex.co_scoped_lock_shared();
+      if (value1 % 2 != 0) {
+        ++earlyExists;
+        co_return;
+      }
+    }
+    auto uLock = co_await mutex.co_scoped_lock_upgrade();
+    if (value1 % 2 != 0) {
+      ++earlyExists;
+      co_return;
+    }
+    auto wLock = co_await folly::coro::co_transition_lock(uLock);
+    ++value1;
+    ++value2;
+  };
+  auto incrementIfOdd = [&]() -> coro::Task<void> {
+    {
+      auto rLock = co_await mutex.co_scoped_lock_shared();
+      if (value1 % 2 == 0) {
+        ++earlyExists;
+        co_return;
+      }
+    }
+    auto uLock = co_await mutex.co_scoped_lock_upgrade();
+    if (value1 % 2 == 0) {
+      ++earlyExists;
+      co_return;
+    }
+    auto wLock = co_await folly::coro::co_transition_lock(uLock);
+    ++value1;
+    ++value2;
+  };
+  auto read = [&]() -> coro::Task<int> {
+    auto rLock = co_await mutex.co_scoped_lock_shared();
+    EXPECT_EQ(value1, value1);
+    co_return value1;
+  };
+  auto check = [&]() -> coro::Task<void> {
+    auto rLock = co_await mutex.co_scoped_lock_shared();
+    if (value1 >= target) {
+      reachedTarget = true;
+    }
+    EXPECT_EQ(value1, value1);
+  };
+
+  CPUThreadPoolExecutor executor{
+      10, std::make_shared<NamedThreadFactory>("TestThreadPool")};
+
+  size_t writeTaskCnt = 0;
+  folly::coro::AsyncScope scope;
+  while (!reachedTarget.load()) {
+    writeTaskCnt += 2;
+    scope.add(check().scheduleOn(&executor));
+    scope.add(incrementIfOdd().scheduleOn(&executor));
+    scope.add(check().scheduleOn(&executor));
+    scope.add(incrementIfEven().scheduleOn(&executor));
+    scope.add(check().scheduleOn(&executor));
+  }
+  folly::coro::blockingWait(scope.joinAsync().scheduleOn(&executor));
+
+  // final read
+  int finalValue = folly::coro::blockingWait(read().scheduleOn(&executor));
+
+  EXPECT_GE(finalValue, target);
+  EXPECT_EQ(writeTaskCnt, finalValue + earlyExists);
 }
 
 #endif
