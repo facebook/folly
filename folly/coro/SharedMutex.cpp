@@ -57,6 +57,18 @@ bool SharedMutexFair::try_lock_upgrade() noexcept {
   return false;
 }
 
+bool SharedMutexFair::try_unlock_upgrade_and_lock() noexcept {
+  auto lock = state_.lock();
+  assert(lock->lockedFlagAndReaderCount_ & kUpgradeLockFlag);
+  // skip the line and perform the upgrade as long as there is
+  // no outstanding shared locks
+  if (lock->lockedFlagAndReaderCount_ == kUpgradeLockFlag) {
+    lock->lockedFlagAndReaderCount_ = kExclusiveLockFlag;
+    return true;
+  }
+  return false;
+}
+
 void SharedMutexFair::unlock() noexcept {
   LockAwaiterBase* awaitersToResume = nullptr;
   {

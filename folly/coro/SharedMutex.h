@@ -38,7 +38,7 @@ namespace coro {
 /// primitive that allows a coroutine to asynchronously acquire a lock on the
 /// mutex.
 ///
-/// The mutex supports two kinds of locks:
+/// The mutex supports three kinds of locks:
 /// - exclusive-lock - Also known as a write-lock.
 ///                    While an exclusive lock is held, no other thread will be
 ///                    able to acquire either an exclusive lock or a shared
@@ -47,6 +47,11 @@ namespace coro {
 ///                    The mutex permits multiple shared locks to be held
 ///                    concurrently but does not permit shared locks to be held
 ///                    concurrently with exclusive locks.
+/// - upgrade-lock   - When an upgrade lock is held, others can still acquire
+///                    shared locks but no exclusive lock, or upgrade lock.
+///                    An upgrade lock can be later upgraded to an exclusive
+///                    lock atomically after all the outstanding shared locks
+///                    are released.
 ///
 /// This mutex employs a fair lock acquisition strategy that attempts to process
 /// locks in a mostly FIFO order in which they arrive at the mutex.
@@ -59,6 +64,18 @@ namespace coro {
 /// acquire a new read-lock while already holding a read-lock, since it's
 /// possible that this could lead to deadlock if there was another coroutine
 /// that was currently waiting on a write-lock.
+///
+/// Notably, lock transition (e.g. upgrade an upgrade lock to an exclusive lock)
+/// does not respect the FIFO order and is eager. This means a pending lock
+/// transition will be processed as soon as possible. This is to avoid deadlock
+/// in following scenario
+/// 1. coroutine A has the upgrade lock
+/// 2. coroutine B is waiting for an exclusive lock
+/// 3. coroutine A tries to upgrade the lock to exclusive
+/// Coroutine A and B would deadlock if we process the lock transition
+/// (operation #3) in FIFO order. The readers will not be starved because they
+/// are not blocked by the upgrade state to begin with. The writers/upgraders
+/// will not be starved because they cannot acquire the lock anyway.
 ///
 /// The locks acquired by this mutex do not have thread affinity. A coroutine
 /// can acquire the lock on one thread and release the lock on another thread.
@@ -205,6 +222,15 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   /// This will resume the next coroutine(s) waiting to acquire an exclusive
   /// lock or an upgrade lock, if any.
   void unlock_upgrade() noexcept;
+
+  /// Try to atomically transition an upgrade lock to an exclusive lock
+  /// synchronously.
+  ///
+  /// If this returns true then the lock was acquired synchronously
+  /// and the caller is responsible for calling .unlock() later to
+  /// release the lock. Otherwise, the caller remains responsible for calling
+  /// .unlock_upgrade() later to release the upgrade lock.
+  bool try_unlock_upgrade_and_lock() noexcept;
 
  private:
   using folly_coro_aware_mutex = std::true_type;

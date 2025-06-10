@@ -33,48 +33,111 @@ using namespace folly;
 class SharedMutexTest : public testing::Test {};
 
 TEST_F(SharedMutexTest, TryLock) {
-  coro::SharedMutex m;
+  // the mutex can only be one of the following five states
+  struct MutexStateBase : private folly::NonCopyableNonMovable {
+    virtual ~MutexStateBase() {}
+    coro::SharedMutex m{};
+    bool upgraded{false};
+  };
+  struct Unlocked : public MutexStateBase {};
+  struct ExclusivelyLocked : public MutexStateBase {
+    ExclusivelyLocked() { CHECK(m.try_lock()); }
+    ~ExclusivelyLocked() override { m.unlock(); }
+  };
+  struct SharedLockedOnly : public MutexStateBase {
+    SharedLockedOnly() { CHECK(m.try_lock_shared()); }
+    ~SharedLockedOnly() override { m.unlock_shared(); }
+  };
+  struct UpgradeLockedOnly : public MutexStateBase {
+    UpgradeLockedOnly() { CHECK(m.try_lock_upgrade()); }
+    ~UpgradeLockedOnly() override {
+      if (upgraded) {
+        m.unlock();
+      } else {
+        m.unlock_upgrade();
+      }
+    }
+  };
+  struct UpgradeAndSharedLocked : public MutexStateBase {
+    UpgradeAndSharedLocked() {
+      CHECK(m.try_lock_upgrade());
+      CHECK(m.try_lock_shared());
+    }
+    ~UpgradeAndSharedLocked() override {
+      if (upgraded) {
+        m.unlock();
+      } else {
+        m.unlock_upgrade();
+      }
+      m.unlock_shared();
+    }
+  };
+  // all possible actions
+  auto lock_success = [](MutexStateBase& state) {
+    CHECK(state.m.try_lock());
+    state.m.unlock();
+  };
+  auto lock_fail = [](MutexStateBase& state) { CHECK(!state.m.try_lock()); };
+  auto lock_upgrade_success = [](MutexStateBase& state) {
+    CHECK(state.m.try_lock_upgrade());
+    state.m.unlock_upgrade();
+  };
+  auto lock_upgrade_fail = [](MutexStateBase& state) {
+    CHECK(!state.m.try_lock_upgrade());
+  };
+  auto lock_shared_success = [](MutexStateBase& state) {
+    CHECK(state.m.try_lock_shared());
+    state.m.unlock_shared();
+  };
+  auto lock_shared_fail = [](MutexStateBase& state) {
+    CHECK(!state.m.try_lock_shared());
+  };
+  auto unlock_upgrade_and_lock_success = [](MutexStateBase& state) {
+    CHECK(state.m.try_unlock_upgrade_and_lock());
+    state.upgraded = true;
+  };
+  auto unlock_upgrade_and_lock_fail = [](MutexStateBase& state) {
+    CHECK(!state.m.try_unlock_upgrade_and_lock());
+  };
 
-  CHECK(m.try_lock());
-  CHECK(!m.try_lock());
-  CHECK(!m.try_lock_shared());
-  m.unlock();
+  std::vector<std::tuple<
+      std::unique_ptr<MutexStateBase> /* initial state */,
+      std::function<void(MutexStateBase&)> /* action */
+      >>
+      cases;
 
-  CHECK(m.try_lock_shared());
-  CHECK(!m.try_lock());
-  CHECK(m.try_lock_shared());
-  CHECK(!m.try_lock());
-  m.unlock_shared();
-  CHECK(!m.try_lock());
-  CHECK(m.try_lock_shared());
-  m.unlock_shared();
-  m.unlock_shared();
+  // all state transitions and expected outcome
+  cases.emplace_back(std::make_unique<Unlocked>(), lock_success);
+  cases.emplace_back(std::make_unique<Unlocked>(), lock_upgrade_success);
+  cases.emplace_back(std::make_unique<Unlocked>(), lock_shared_success);
 
-  CHECK(m.try_lock());
-  m.unlock();
-}
+  cases.emplace_back(std::make_unique<ExclusivelyLocked>(), lock_fail);
+  cases.emplace_back(std::make_unique<ExclusivelyLocked>(), lock_upgrade_fail);
+  cases.emplace_back(std::make_unique<ExclusivelyLocked>(), lock_shared_fail);
 
-TEST_F(SharedMutexTest, TryLockUpgrade) {
-  coro::SharedMutex m;
+  cases.emplace_back(std::make_unique<SharedLockedOnly>(), lock_fail);
+  cases.emplace_back(
+      std::make_unique<SharedLockedOnly>(), lock_upgrade_success);
+  cases.emplace_back(std::make_unique<SharedLockedOnly>(), lock_shared_success);
 
-  CHECK(m.try_lock());
-  CHECK(!m.try_lock_upgrade());
-  m.unlock();
+  cases.emplace_back(std::make_unique<UpgradeLockedOnly>(), lock_fail);
+  cases.emplace_back(
+      std::make_unique<UpgradeLockedOnly>(), lock_shared_success);
+  cases.emplace_back(std::make_unique<UpgradeLockedOnly>(), lock_upgrade_fail);
+  cases.emplace_back(
+      std::make_unique<UpgradeLockedOnly>(), unlock_upgrade_and_lock_success);
 
-  CHECK(m.try_lock_upgrade());
-  CHECK(!m.try_lock_upgrade());
-  CHECK(!m.try_lock());
-  m.unlock_upgrade();
+  cases.emplace_back(std::make_unique<UpgradeAndSharedLocked>(), lock_fail);
+  cases.emplace_back(
+      std::make_unique<UpgradeAndSharedLocked>(), lock_shared_success);
+  cases.emplace_back(
+      std::make_unique<UpgradeAndSharedLocked>(), lock_upgrade_fail);
+  cases.emplace_back(
+      std::make_unique<UpgradeAndSharedLocked>(), unlock_upgrade_and_lock_fail);
 
-  CHECK(m.try_lock_shared());
-  CHECK(m.try_lock_upgrade());
-  CHECK(!m.try_lock_upgrade());
-  CHECK(m.try_lock_shared());
-  m.unlock_upgrade();
-  CHECK(m.try_lock_upgrade());
-  m.unlock_upgrade();
-  m.unlock_shared();
-  m.unlock_shared();
+  for (auto& [state, action] : cases) {
+    action(*state);
+  }
 }
 
 TEST_F(SharedMutexTest, ManualLockAsync) {
