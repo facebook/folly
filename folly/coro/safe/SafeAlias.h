@@ -284,7 +284,7 @@ struct safe_alias_for<manual_safe_val_t<S, T>> : safe_alias_constant<S> {};
 // User-facing stuff from `Task.h` can trivially include unsafe aliasing,
 // the `folly::coro` docs include hundreds of words of pitfalls.  The intent
 // here is to catch people accidentally passing `Task`s into safer
-// primitives, and breaking their memory-safety guarantess.
+// primitives, and breaking their memory-safety guarantees.
 //
 // Future: Move this into `Task.h` once `SafeAlias.h` is mature.
 namespace coro {
