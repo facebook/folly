@@ -239,5 +239,67 @@ TEST_F(ThreadLocalDetailTest, TLResetAndThreadExitRace) {
   threads.clear();
 }
 
+// Test reallocation of elements array is not blocked by Accessor for
+// accessAllThreads
+TEST_F(ThreadLocalDetailTest, accessAllAndRealloc) {
+  struct Tag {};
+
+  ThreadLocalTestHelper<Tag> helper;
+
+  const int32_t count = 1000;
+  helper.elements.reserve(count);
+  for (int32_t i = 0; i < count; ++i) {
+    helper.elements.emplace_back();
+  }
+
+  // Elements 1..count are initialized
+  // under accessor later.
+  *helper.elements[0] = 0;
+
+  std::thread spawnMoreThreads;
+  const int32_t countSubThreads = 128;
+  std::vector<std::thread> threads;
+  test::Barrier threadsBarrier(countSubThreads + 1);
+  // Barrier to ensure all threads started by
+  // spawnMoreThreads is done after the Accessor is created.
+  test::Barrier spawnHelperBarrier(2);
+
+  spawnMoreThreads = std::thread([&]() {
+    spawnHelperBarrier.wait();
+    // create a bunch of threads. let them assign some value to the elemnts
+    // other than one at index 0. This will cause elements array to be
+    // reallocated a few times. They should not get blocked by presence of the
+    // accessAllThreads accessor.
+    for (int32_t i = 0; i < countSubThreads; ++i) {
+      threads.emplace_back([count = count, &helper, &threadsBarrier]() {
+        for (int32_t i = 1; i < count; ++i) {
+          *helper.elements[i] = 1;
+        }
+        threadsBarrier.wait();
+      });
+    }
+  });
+
+  {
+    auto accessor = helper.elements[0].accessAllThreads();
+    spawnHelperBarrier.wait();
+    // Thread holding accessor can itself also update any other
+    // TL, trigger reallocs from it and not get stuck.
+    for (int32_t i = 1; i < count; ++i) {
+      *helper.elements[i] = i;
+    }
+    // Helper thread will spawn all the countSubThreads and each
+    // will be able to setup a value for elements[1] without being
+    // blocked on 'accessor'. They will not be able to exit, so we
+    // only wait here for each to be done assigning to element[1]
+    // but not to exit.
+    threadsBarrier.wait();
+  }
+  spawnMoreThreads.join();
+  for (int32_t i = 0; i < countSubThreads; ++i) {
+    threads[i].join();
+  }
+}
+
 } // namespace threadlocal_detail
 } // namespace folly

@@ -61,32 +61,33 @@ bool ThreadEntrySet::basicSanity() const {
   if constexpr (!kIsDebug) {
     return true;
   }
-  if (threadEntries.empty() && entryToVectorSlot.empty()) {
+  if (threadElements.empty() && entryToVectorSlot.empty()) {
     return true;
   }
-  if (threadEntries.size() != entryToVectorSlot.size()) {
+  if (threadElements.size() != entryToVectorSlot.size()) {
     return false;
   }
-  auto const size = threadEntries.size();
+  auto const size = threadElements.size();
   rand_engine rng;
   std::uniform_int_distribution<size_t> dist{0, size - 1};
   if (dist(rng) < constexpr_log2(size)) {
     return true;
   }
   return //
+      threadElements.size() == entryToVectorSlot.size() &&
       std::all_of(
           entryToVectorSlot.begin(),
           entryToVectorSlot.end(),
           [&](auto const& kvp) {
-            return kvp.second < threadEntries.size() &&
-                threadEntries[kvp.second] == kvp.first;
+            return kvp.second < threadElements.size() &&
+                threadElements[kvp.second].threadEntry == kvp.first;
           });
 }
 
 void ThreadEntrySet::compress() {
   assert(compressible());
   // compress the vector
-  threadEntries.shrink_to_fit();
+  threadElements.shrink_to_fit();
   // compress the index
   EntryIndex newIndex;
   newIndex.reserve(entryToVectorSlot.size());
@@ -245,6 +246,11 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
       if (meta.strict_) {
         rlock.lock();
       }
+      // ThreadEntry 'tmp' was removed from all sets in its own cleanup. Since
+      // we set removed_ flag, no subsequent element being added (during destroy
+      // of other TL elements) should have added the ThreadEntry back to the
+      // tracking set.
+      DCHECK(meta.isThreadEntryRemovedFromAllInMap(tmp, !meta.strict_));
 
       for (bool shouldRunInner = true; shouldRunInner;) {
         shouldRunInner = false;
@@ -310,37 +316,41 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   return id;
 }
 
-std::vector<ElementWrapper>
-StaticMetaBase::popThreadEntrySetAndClearElementPtrs(uint32_t id) {
+ThreadEntrySet StaticMetaBase::popThreadEntrySetAndClearElementPtrs(
+    uint32_t id) {
   // Lock the ThreadEntrySet for id so that no other thread can update
   // its local ptr or alter the its elements array or ThreadEntry object
-  // itself, before this function is done updating them.
-  std::vector<ElementWrapper> wrappers;
+  // itself, before this function is done updating them. This is called
+  // by the `destroy` function to release a TL object. There should be
+  // no racing accessAllThreads() call with it.
   auto wlocked = allId2ThreadEntrySets_[id].wlock();
-  wrappers.reserve(wlocked->threadEntries.size());
-  std::lock_guard g(
-      lock_); // To prevent any ThreadEntry element's vector from resizing.
-  for (auto& threadEntry : wlocked->threadEntries) {
-    auto elementsCapacity = threadEntry->getElementsCapacity();
+  ThreadEntrySet tmp;
+  std::swap(*wlocked, tmp);
+  std::lock_guard g(lock_);
+  for (auto& e : tmp.threadElements) {
+    auto elementsCapacity = e.threadEntry->getElementsCapacity();
     if (id < elementsCapacity) {
       /*
        * Writing another thread's ThreadEntry from here is fine;
        * The TL object is being destroyed, so get(id), or reset()
        * or accessAllThreads calls on it are illegal. Only other
        * racing accesses would be from the owner thread itself
-       * either a) reallocating the elements array (guarded by lock_, so safe)
-       * or b) exiting and trying to clear the elements array or free the
-       * elements and ThreadEntry itself. The ThreadEntrySet lock synchronizes
-       * this part as the exiting thread will acquire it to remove itself from
-       * the set.
+       * either a) reallocating the elements array (guarded by
+       * lock_, so safe) or b) exiting and trying to clear the
+       * elements array or free the elements and ThreadEntry itself. The
+       * ThreadEntrySet lock synchronizes this part as the exiting thread will
+       * acquire it to remove itself from the set.
        */
-      wrappers.push_back(threadEntry->elements[id]);
-      threadEntry->elements[id].ptr = nullptr;
-      threadEntry->elements[id].deleter = 0;
+      DCHECK_EQ(e.threadEntry->elements[id].ptr, e.wrapper.ptr);
+      e.wrapper.deleter = e.threadEntry->elements[id].deleter;
+      e.threadEntry->elements[id].ptr = nullptr;
+      e.threadEntry->elements[id].deleter = 0;
     }
+    // Destroy should not access thread entry after this call as racing
+    // exit call can make it invalid.
+    e.threadEntry = nullptr;
   }
-  wlocked->clear();
-  return wrappers;
+  return tmp;
 }
 
 void StaticMetaBase::destroy(EntryID* ent) {
@@ -348,7 +358,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
     auto& meta = *this;
 
     // Elements in other threads that use this id.
-    std::vector<ElementWrapper> elementsToDispose;
+    ThreadEntrySet tmpEntrySet;
 
     {
       std::shared_lock forkRlock(meta.forkHandlerLock_);
@@ -369,7 +379,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
       if (id == kEntryIDInvalid) {
         return;
       }
-      elementsToDispose = meta.popThreadEntrySetAndClearElementPtrs(id);
+      tmpEntrySet = meta.popThreadEntrySetAndClearElementPtrs(id);
       forkRlock.unlock();
 
       {
@@ -380,14 +390,14 @@ void StaticMetaBase::destroy(EntryID* ent) {
         // we want to tolerate that pattern, due to any legacy behavior, this
         // block should be after the loop to dispose of all collected elements
         // below.
-        std::lock_guard<std::mutex> g(meta.lock_);
+        std::lock_guard g(meta.lock_);
         meta.freeIds_.push_back(id);
       }
     }
     // Delete elements outside the locks.
-    for (ElementWrapper& elem : elementsToDispose) {
-      if (elem.dispose(TLPDestructionMode::ALL_THREADS)) {
-        elem.cleanup();
+    for (auto& e : tmpEntrySet.threadElements) {
+      if (e.wrapper.dispose(TLPDestructionMode::ALL_THREADS)) {
+        e.wrapper.cleanup();
       }
     }
   } catch (...) { // Just in case we get a lock error or something anyway...
@@ -526,7 +536,17 @@ FOLLY_NOINLINE void StaticMetaBase::ensureThreadEntryIsInSet(
  */
 void* ThreadEntry::releaseElement(uint32_t id) {
   auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
-  return elements[id].release();
+  auto capacity = getElementsCapacity();
+  void* ptrToReturn = (capacity >= id) ? elements[id].release() : nullptr;
+  auto slot = rlocked->getIndexFor(this);
+  if (slot < 0) {
+    DCHECK(removed_ || ptrToReturn == nullptr);
+    return ptrToReturn;
+  }
+  auto& element = rlocked.asNonConstUnsafe().threadElements[slot];
+  DCHECK_EQ(ptrToReturn, element.wrapper.ptr);
+  element.wrapper = {};
+  return ptrToReturn;
 }
 
 /*

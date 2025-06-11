@@ -93,6 +93,9 @@ namespace folly {
 
 namespace threadlocal_detail {
 
+struct StaticMetaBase;
+struct ThreadEntryList;
+
 /**
  * POD wrapper around an element (a void*) and an associated deleter.
  * This must be POD, as we memset() it to 0 and memcpy() it around.
@@ -200,10 +203,9 @@ struct ElementWrapper {
 
   void* ptr;
   uintptr_t deleter;
-};
 
-struct StaticMetaBase;
-struct ThreadEntryList;
+  ElementWrapper() : ptr(nullptr), deleter(0) {}
+};
 
 /**
  * Per-thread entry.  Each thread using a StaticMeta object has one.
@@ -313,16 +315,33 @@ class PthreadKeyUnregister {
   static PthreadKeyUnregister instance_;
 };
 
+/**
+ * Cache the ptr + deleter info in ThreadEntrySet too. This allows
+ * accessAllThreads() to get to the per thread ptr without holding the
+ * StaticMeta's lock_. Eventually, the deleter info will be
+ * moved to the ThreadEntrySet alone, leaving only the ptr in the
+ * ElementWrapper. For now, the ElementDisposeInfo tracked in ThreadEntrySet is
+ * the same as ElementWrapper.
+ */
+using ElementDisposeInfo = ElementWrapper;
+
 // ThreadEntrySet is used to track all ThreadEntry that have a valid
 // ElementWrapper for a particular TL id. The class provides no internal locking
 // and caller must ensure safety of any access.
 struct ThreadEntrySet {
+  struct Element {
+    ElementDisposeInfo wrapper;
+    ThreadEntry* threadEntry;
+
+    /* implicit */ Element(ThreadEntry* entry = nullptr) : threadEntry(entry) {}
+  };
+
   // Vector of ThreadEntry for fast iteration during accessAllThreads.
-  using EntryVector = std::vector<ThreadEntry*>;
-  EntryVector threadEntries;
-  // Map from ThreadEntry* to its slot in the threadEntries vector to be able
+  using ElementVector = std::vector<Element>;
+  ElementVector threadElements;
+  // Map from ThreadEntry* to its slot in the threadElements vector to be able
   // to remove an entry quickly.
-  using EntryIndex = std::unordered_map<ThreadEntry*, EntryVector::size_type>;
+  using EntryIndex = std::unordered_map<ThreadEntry*, ElementVector::size_type>;
   EntryIndex entryToVectorSlot;
 
   bool basicSanity() const;
@@ -330,7 +349,30 @@ struct ThreadEntrySet {
   void clear() {
     DCHECK(basicSanity());
     entryToVectorSlot.clear();
-    threadEntries.clear();
+    threadElements.clear();
+  }
+
+  int64_t getIndexFor(ThreadEntry* entry) const {
+    DCHECK(basicSanity());
+    auto iter = entryToVectorSlot.find(entry);
+    if (iter != entryToVectorSlot.end()) {
+      return static_cast<int64_t>(iter->second);
+    }
+    return -1;
+  }
+
+  /**
+   * Helper function for debugging checks. Fetch ptr for a given ThreadEnrtry.
+   * Used to sanity check the value in ElementDisposeInfo wrapper matches the
+   * ElementWrapper array used for fast access from the thread itself.
+   */
+  void* getPtrForThread(ThreadEntry* entry) const {
+    DCHECK(basicSanity());
+    auto index = getIndexFor(entry);
+    if (index < 0) {
+      return nullptr;
+    }
+    return threadElements[static_cast<size_t>(index)].wrapper.ptr;
   }
 
   bool contains(ThreadEntry* entry) const {
@@ -343,37 +385,53 @@ struct ThreadEntrySet {
     auto iter = entryToVectorSlot.find(entry);
     if (iter != entryToVectorSlot.end()) {
       // Entry already present. Sanity check and exit.
-      DCHECK_EQ(entry, threadEntries[iter->second]);
+      DCHECK_EQ(entry, threadElements[iter->second].threadEntry);
       return false;
     }
-    threadEntries.push_back(entry);
-    auto idx = threadEntries.size() - 1;
+    threadElements.emplace_back(entry);
+    auto idx = threadElements.size() - 1;
     entryToVectorSlot[entry] = idx;
     return true;
   }
 
-  bool erase(ThreadEntry* entry) {
+  bool insert(const Element& element) {
+    DCHECK(basicSanity());
+    auto iter = entryToVectorSlot.find(element.threadEntry);
+    if (iter != entryToVectorSlot.end()) {
+      // Entry already present. Skip copying over element. Caller
+      // responsible for handling acceptability of this behavior.
+      DCHECK_EQ(element.threadEntry, threadElements[iter->second].threadEntry);
+      return false;
+    }
+    threadElements.push_back(element);
+    auto idx = threadElements.size() - 1;
+    entryToVectorSlot[element.threadEntry] = idx;
+    return true;
+  }
+
+  Element erase(ThreadEntry* entry) {
     DCHECK(basicSanity());
     auto iter = entryToVectorSlot.find(entry);
     if (iter == entryToVectorSlot.end()) {
       // Entry not present.
-      return false;
+      return Element{nullptr};
     }
     auto idx = iter->second;
-    DCHECK_LT(idx, threadEntries.size());
+    DCHECK_LT(idx, threadElements.size());
     entryToVectorSlot.erase(iter);
-    if (idx != threadEntries.size() - 1) {
-      ThreadEntry* last = threadEntries.back();
-      threadEntries[idx] = last;
-      entryToVectorSlot[last] = idx;
+    Element last = threadElements.back();
+    Element current = threadElements[idx];
+    if (idx != threadElements.size() - 1) {
+      threadElements[idx] = last;
+      entryToVectorSlot[last.threadEntry] = idx;
     }
-    threadEntries.pop_back();
+    threadElements.pop_back();
     DCHECK(basicSanity());
     if (compressible()) {
       compress();
     }
     DCHECK(basicSanity());
-    return true;
+    return current;
   }
 
   /// compressible
@@ -386,7 +444,7 @@ struct ThreadEntrySet {
     // the vector, since that way lies non-amortized-O(N)-complexity costs for
     // both insert and erase ops.
     constexpr size_t const mult = 4;
-    auto& vec = threadEntries;
+    auto& vec = threadElements;
     return std::max(size_t(1), vec.size()) * mult <= vec.capacity();
   }
   /// compress
@@ -518,7 +576,7 @@ struct StaticMetaBase {
    * is called when an TL object is destroyed. The ElementWrapper returned are
    * the responsibility of the calling thread to dispose of.
    */
-  std::vector<ElementWrapper> popThreadEntrySetAndClearElementPtrs(uint32_t id);
+  ThreadEntrySet popThreadEntrySetAndClearElementPtrs(uint32_t id);
 
   /*
    * Check if ThreadEntry* is present in the map for all slots of @ids.
@@ -558,8 +616,7 @@ struct StaticMetaBase {
   // vector is manipulated on TL object id allocation and destroy. Resize of
   // ElementWrappers array can only be done by its owner thread but other
   // threads may try to be accessing the array at the same time if in the middle
-  // of destroying a TL object or when iterating over all instances of a TL
-  // object.
+  // of destroying a TL object.
   std::mutex lock_;
   mutable SharedMutex accessAllThreadsLock_;
   // As part of handling fork, we need to ensure no locks used by ThreadLocal
@@ -612,11 +669,28 @@ template <class Ptr>
 void ThreadEntry::resetElement(Ptr p, uint32_t id) {
   auto& set = meta->allId2ThreadEntrySets_[id];
   auto rlock = set.rlock();
-  if (p != nullptr && !removed_ && !rlock->contains(this)) {
-    meta->ensureThreadEntryIsInSet(this, set, rlock);
-  }
   cleanupElement(id);
   elements[id].set(p);
+  if (removed_) {
+    // Elements no longer being mirrored in the ThreadEntrySet.
+    // Thread must have cleared itself from the set when it started exiting.
+    DCHECK(!rlock->contains(this));
+    return;
+  }
+  if (p != nullptr && !rlock->contains(this)) {
+    meta->ensureThreadEntryIsInSet(this, set, rlock);
+  }
+  auto slot = rlock->getIndexFor(this);
+  if (slot < 0) {
+    // Not present in ThreadEntrySet implies the value was never set to be
+    // non-null and new value 'p' is nullptr as well.
+    DCHECK(!p);
+    DCHECK(!elements[id].ptr);
+    return;
+  }
+  size_t uslot = static_cast<size_t>(slot);
+  auto& wrapper = rlock.asNonConstUnsafe().threadElements[uslot].wrapper;
+  wrapper = elements[id];
 }
 
 /*
@@ -628,11 +702,28 @@ template <class Ptr, class Deleter>
 void ThreadEntry::resetElement(Ptr p, Deleter& d, uint32_t id) {
   auto& set = meta->allId2ThreadEntrySets_[id];
   auto rlock = set.rlock();
-  if (p != nullptr && !removed_ && !rlock->contains(this)) {
-    meta->ensureThreadEntryIsInSet(this, set, rlock);
-  }
   cleanupElement(id);
   elements[id].set(p, d);
+  if (removed_) {
+    // Elements no longer being mirrored in the ThreadEntrySet.
+    // Thread must have cleared itself from the set when it started exiting.
+    DCHECK(!rlock->contains(this));
+    return;
+  }
+  if (p != nullptr && !rlock->contains(this)) {
+    meta->ensureThreadEntryIsInSet(this, set, rlock);
+  }
+  auto slot = rlock->getIndexFor(this);
+  if (slot < 0) {
+    // Not present in ThreadEntrySet implies the value was never set to be
+    // non-null and new value 'p' is nullptr as well.
+    DCHECK(!p);
+    DCHECK(!elements[id].ptr);
+    return;
+  }
+  size_t uslot = static_cast<size_t>(slot);
+  auto& wrapper = rlock.asNonConstUnsafe().threadElements[uslot].wrapper;
+  wrapper = elements[id];
 }
 
 // Held in a singleton to track our global instances.
@@ -692,6 +783,10 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     uint32_t id = ent->getOrInvalid();
     // Only valid index into the the elements array
     DCHECK_NE(id, kEntryIDInvalid);
+    DCHECK(
+        te->removed_ ||
+        te->elements[id].ptr ==
+            te->meta->allId2ThreadEntrySets_[id].rlock()->getPtrForThread(te));
     return te->elements[id];
   }
 
@@ -799,9 +894,11 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     for (const auto ptr : meta.getThreadEntrySetsPtrSpan()) {
       auto& set = *ptr;
       auto wlockedSet = set.wlock();
-      if (wlockedSet->contains(threadEntry)) {
+      auto slot = wlockedSet->getIndexFor(threadEntry);
+      if (slot >= 0) {
+        auto element = wlockedSet->threadElements[slot];
         wlockedSet->clear();
-        wlockedSet->insert(threadEntry);
+        wlockedSet->insert(element);
       } else {
         wlockedSet->clear();
       }
