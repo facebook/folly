@@ -993,6 +993,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lang_r_value_reference_wrapper_test WINDOWS_DISABLED
         SOURCES RValueReferenceWrapperTest.cpp
       TEST lang_safe_assert_test SOURCES SafeAssertTest.cpp
+      TEST lang_switch_test SOURCES SwitchTest.cpp
       BENCHMARK lang_to_ascii_benchmark SOURCES ToAsciiBench.cpp
       TEST lang_to_ascii_test SOURCES ToAsciiTest.cpp
       TEST lang_type_info_test SOURCES TypeInfoTest.cpp
