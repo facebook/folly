@@ -1557,7 +1557,7 @@ makeExpected(Value&& val) {
       std::in_place, static_cast<Value&&>(val)};
 }
 
-// Suppress comparability of Optional<T> with T, despite implicit conversion.
+// Suppress comparability of Expected<T> with T, despite implicit conversion.
 template <class Value, class Error>
 bool operator==(const Expected<Value, Error>&, const Value& other) = delete;
 template <class Value, class Error>

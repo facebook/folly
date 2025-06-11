@@ -225,20 +225,38 @@ constexpr const std::array<
     ErrorString,
     static_cast<std::size_t>(ConversionCode::NUM_ERROR_CODES)>
     kErrorStrings{{
+        // SUCCESS
         {"Success", true},
+        // EMPTY_INPUT_STRING
         {"Empty input string", true},
+        // NO_DIGITS
         {"No digits found in input string", true},
+        // BOOL_OVERFLOW
         {"Integer overflow when parsing bool (must be 0 or 1)", true},
+        // BOOL_INVALID_VALUE
         {"Invalid value for bool", true},
+        // NON_DIGIT_CHAR
         {"Non-digit character found", true},
+        // INVALID_LEADING_CHAR
         {"Invalid leading character", true},
+        // POSITIVE_OVERFLOW
         {"Overflow during conversion", true},
+        // NEGATIVE_OVERFLOW
         {"Negative overflow during conversion", true},
+        // STRING_TO_FLOAT_ERROR
         {"Unable to convert string to floating point value", true},
+        // NON_WHITESPACE_AFTER_END
         {"Non-whitespace character found after end of conversion", true},
+        // ARITH_POSITIVE_OVERFLOW
         {"Overflow during arithmetic conversion", false},
+        // ARITH_NEGATIVE_OVERFLOW
         {"Negative overflow during arithmetic conversion", false},
+        // ARITH_LOSS_OF_PRECISION
         {"Loss of precision during arithmetic conversion", false},
+        // SPLIT_ERROR,
+        {"Unexpected number of fields resulting from a split", true},
+        // CUSTOM,
+        {"Custom conversion failed", true},
     }};
 
 // Check if ASCII is really ASCII

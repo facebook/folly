@@ -764,6 +764,11 @@ std::string stripLeftMargin(std::string s) {
   return join("\n", piecer);
 }
 
+bool SubstringConversionCode::operator==(
+    const SubstringConversionCode& other) const {
+  return this->code == other.code && this->substring == other.substring;
+}
+
 } // namespace folly
 
 #ifdef FOLLY_DEFINED_DMGL

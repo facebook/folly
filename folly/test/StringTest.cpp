@@ -1016,9 +1016,9 @@ ColorError makeConversionError(ColorErrorCode, StringPiece sp) {
 
 Expected<StringPiece, ColorErrorCode> parseTo(
     StringPiece in, Color& out) noexcept {
-  if (in == "R") {
+  if (in.startsWith('R')) {
     out = Color::Red;
-  } else if (in == "B") {
+  } else if (in.startsWith('B')) {
     out = Color::Blue;
   } else {
     return makeUnexpected(ColorErrorCode::INVALID_COLOR);
@@ -1035,6 +1035,98 @@ TEST(Split, fixedConvertCustom) {
   EXPECT_EQ(c2, my::Color::Blue);
 
   EXPECT_THROW(folly::split(',', "B,G", c1, c2), my::ColorError);
+}
+
+namespace folly {
+
+void PrintTo(SubstringConversionCode x, std::ostream* os) {
+  *os << makeConversionError(x.code, x.substring).what();
+}
+
+} // namespace folly
+
+TEST(Split, trySplitTo) {
+  StringPiece sp1 = "start", sp2 = "start";
+  int i32 = -111;
+  double f64 = -222;
+
+  // Failure cases
+  EXPECT_EQ(
+      (SubstringConversionCode{"z.x", ConversionCode::STRING_TO_FLOAT_ERROR}),
+      folly::trySplitTo("b:z.x", ':', sp1, f64).error());
+  EXPECT_EQ(
+      (SubstringConversionCode{
+          "14.x", ConversionCode::NON_WHITESPACE_AFTER_END}),
+      folly::trySplitTo("b:14.x", ':', sp2, f64).error());
+  EXPECT_EQ( // Earliest errors are returned first
+      (SubstringConversionCode{
+          "thirteen", ConversionCode::INVALID_LEADING_CHAR}),
+      folly::trySplitTo("a:thirteen:b:14.7x", ':', sp1, i32, sp2, f64).error());
+  EXPECT_EQ(
+      (SubstringConversionCode{"14.7:extra", ConversionCode::SPLIT_ERROR}),
+      folly::trySplitTo("a:13:b:14.7:extra", ':', sp1, i32, sp2, f64).error());
+
+  // Original arguments untouched on all failures.
+  EXPECT_EQ(sp1, "start");
+  EXPECT_EQ(i32, -111);
+  EXPECT_EQ(f64, -222);
+  EXPECT_EQ(sp2, "start");
+
+  // Simple success case.
+  EXPECT_TRUE(folly::trySplitTo("a:12:b:13.4", ':', sp1, i32, sp2, f64));
+  EXPECT_EQ(sp1, "a");
+  EXPECT_EQ(i32, 12);
+  EXPECT_EQ(sp2, "b");
+  EXPECT_EQ(f64, 13.4);
+
+  // Verifies that a line contains exactly one field.
+  EXPECT_EQ(folly::unit, folly::trySplitTo("hello", ' ', sp1).value());
+
+  // Field count must exactly match, even if the whole input could be
+  // represented by the output type.
+  EXPECT_EQ(
+      (SubstringConversionCode{"hello world", ConversionCode::SPLIT_ERROR}),
+      folly::trySplitTo("hello world", ' ', sp1).error());
+
+  // Trailing delimiters are not stripped, this is just an empty last field.
+  EXPECT_EQ(
+      (SubstringConversionCode{"hello ", ConversionCode::SPLIT_ERROR}),
+      folly::trySplitTo("hello ", ' ', sp1).error());
+  EXPECT_TRUE(folly::trySplitTo("hello ", ' ', sp1, sp2));
+  EXPECT_EQ(sp1, "hello");
+  EXPECT_EQ(sp2, "");
+
+  // Likewise for leading delimiters.
+  EXPECT_EQ(
+      (SubstringConversionCode{" hello", ConversionCode::SPLIT_ERROR}),
+      folly::trySplitTo(" hello", ' ', sp1).error());
+  EXPECT_TRUE(folly::trySplitTo(" hello", ' ', sp1, sp2));
+  EXPECT_EQ(sp1, "");
+  EXPECT_EQ(sp2, "hello");
+
+  // Assignment order is reversed.
+  EXPECT_TRUE(folly::trySplitTo("1:2:3:4", ':', i32, f64, f64, i32));
+  EXPECT_EQ(i32, 1);
+  EXPECT_EQ(f64, 2);
+
+  // std::ignore is supported.
+  EXPECT_TRUE(folly::trySplitTo(
+      "a:15:ab:cd:ef:16.7", ':', std::ignore, i32, sp1, sp2, std::ignore, f64));
+  EXPECT_EQ(i32, 15);
+  EXPECT_EQ(sp1, "ab");
+  EXPECT_EQ(sp2, "cd");
+  EXPECT_EQ(f64, 16.7);
+
+  // Customizations via 'parseTo()' are supported.
+  my::Color c1, c2;
+  EXPECT_EQ(
+      (SubstringConversionCode{"New", ConversionCode::CUSTOM}),
+      folly::trySplitTo(
+          "Black:Blue:Old:New", ':', std::ignore, c1, std::ignore, c2)
+          .error());
+  EXPECT_TRUE(folly::trySplitTo("1:Red:2:Blue", ':', i32, c1, i32, c2));
+  EXPECT_EQ(c1, my::Color::Red);
+  EXPECT_EQ(c2, my::Color::Blue);
 }
 
 TEST(String, join) {

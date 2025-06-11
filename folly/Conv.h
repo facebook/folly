@@ -163,6 +163,8 @@ enum class ConversionCode : unsigned char {
   ARITH_POSITIVE_OVERFLOW,
   ARITH_NEGATIVE_OVERFLOW,
   ARITH_LOSS_OF_PRECISION,
+  SPLIT_ERROR,
+  CUSTOM,
   NUM_ERROR_CODES, // has to be the last entry
 };
 

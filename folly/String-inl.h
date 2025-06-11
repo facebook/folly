@@ -407,6 +407,78 @@ bool splitFixed(
   return false;
 }
 
+// Overload for no remaining output fields; requires empty input.
+template <class Delim>
+Expected<Unit, SubstringConversionCode> trySplitTo(
+    StringPiece input, const Delim&) {
+  if (input.empty()) {
+    return unit;
+  }
+  return makeUnexpected(
+      SubstringConversionCode{input, ConversionCode::SPLIT_ERROR});
+}
+
+// Replace custom conversion codes with folly::ConversionCode::CUSTOM_OTHER.
+template <class CustomCode>
+inline ConversionCode convertError(CustomCode&&) {
+  return ConversionCode::CUSTOM;
+}
+
+inline ConversionCode convertError(ConversionCode code) {
+  return code;
+}
+
+// tryFieldTo helpers, wrapping tryTo<>, but adding support for std::ignore and
+// replacing custom error types with ConversionCode::CUSTOM.
+template <class Output>
+Expected<Output, ConversionCode> tryFieldTo(folly::StringPiece input) {
+  if (auto result = tryTo<Output>(input)) {
+    return std::move(result.value());
+  } else {
+    return makeUnexpected(convertError(result.error()));
+  }
+}
+
+template <>
+inline Expected<decltype(std::ignore), ConversionCode>
+tryFieldTo<decltype(std::ignore)>(folly::StringPiece /*input*/) {
+  return std::ignore;
+}
+
+template <class Delim, class Output, class... Outputs>
+Expected<Unit, SubstringConversionCode> trySplitTo(
+    StringPiece input,
+    const Delim& delim,
+    Output& output,
+    Outputs&... outputs) {
+  auto pos = input.find(delim);
+  if ((pos == std::string::npos) != (sizeof...(outputs) == 0)) {
+    return makeUnexpected(
+        SubstringConversionCode{input, ConversionCode::SPLIT_ERROR});
+  }
+  StringPiece head, tail;
+  if (pos == std::string::npos) {
+    head = input;
+  } else {
+    head = input.subpiece(0, pos);
+    tail = input.subpiece(pos + delimSize(delim));
+  }
+  // Eagerly attempt parsing the head value, but only assign on the way back
+  // from the recursive calls to ensure all outputs are untouched on failure.
+  if (auto headResult = tryFieldTo<Output>(head)) {
+    if (auto tailResult = trySplitTo(tail, delim, outputs...)) {
+      output = *headResult;
+      return unit;
+
+    } else {
+      return makeUnexpected(tailResult.error());
+    }
+  } else {
+    // First failure (left-to-right) is returned.
+    return makeUnexpected(SubstringConversionCode{head, headResult.error()});
+  }
+}
+
 } // namespace detail
 
 //////////////////////////////////////////////////////////////////////
@@ -440,6 +512,14 @@ void splitTo(
     bool ignoreEmpty) {
   detail::internalSplit<OutputValueType>(
       detail::prepareDelim(delimiter), StringPiece(input), out, ignoreEmpty);
+}
+
+template <class Delim, class... OutputTypes>
+typename std::enable_if<
+    StrictConjunction<IsConvertible<OutputTypes>...>::value,
+    Expected<Unit, SubstringConversionCode>>::type
+trySplitTo(StringPiece input, const Delim& delim, OutputTypes&... outputs) {
+  return detail::trySplitTo(input, detail::prepareDelim(delim), outputs...);
 }
 
 template <bool exact, class Delim, class... OutputTypes>

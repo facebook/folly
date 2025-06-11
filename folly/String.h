@@ -596,6 +596,43 @@ typename std::enable_if<
     bool>::type
 split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
 
+// Error type for trySplitTo(), below.
+struct SubstringConversionCode {
+  StringPiece substring;
+  ConversionCode code;
+  bool operator==(const SubstringConversionCode& other) const;
+};
+
+/**
+ * Try to split a string into a fixed number of fields by delimiter, using
+ * folly::tryTo<> for conversions. types by delimiter.
+ * - On success, all output values will be initialized and the 'Unit{}' value is
+ *   returned. Arguments are assigned in reverse order.
+ * - On failure, the first failing 'ConversionCode' is returned with its
+ *   associated substring in a 'SubstringConversionCode'.
+ * - String splitting is performed prior to each conversion; field values will
+ *   not contain the delimiter.
+ * - All custom error codes are mapped to ConversionCode::CUSTOM.
+ *
+ * Examples:
+ *
+ *  folly::StringPiece name, key, value;
+ *  if (folly::trySplitTo(line, '\t',  name, key, value))
+ *    ...
+ *
+ *  folly::StringPiece name;
+ *  double value;
+ *  int id;
+ *  if (folly::trySplitTo(line, '\t', name, value, id))
+ *    ...
+ *
+ */
+template <class Delim, class... OutputTypes>
+typename std::enable_if<
+    StrictConjunction<IsConvertible<OutputTypes>...>::value,
+    Expected<Unit, SubstringConversionCode>>::type
+trySplitTo(StringPiece input, const Delim& delimiter, OutputTypes&... outputs);
+
 /**
  * Join list of tokens.
  *
