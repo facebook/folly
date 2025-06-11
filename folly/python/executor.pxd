@@ -44,6 +44,7 @@ cdef extern from "folly/python/ProactorExecutor.h" namespace "folly::python":
 
 cdef class AsyncioExecutor:
     cdef cAsyncioExecutor* _executor
+    cdef int _pid
 
 cdef class ProactorExecutor(AsyncioExecutor):
     cdef unique_ptr[cProactorExecutor, cProactorExecutorDeleter] cQ
