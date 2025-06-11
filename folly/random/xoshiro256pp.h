@@ -30,12 +30,13 @@
 #endif
 
 namespace folly {
-template <typename ResType>
 
+template <typename ResType>
 class xoshiro256pp {
  public:
   using result_type = ResType;
-  static constexpr result_type default_seed = 0x8690c864c6e0b716;
+  static constexpr result_type default_seed =
+      static_cast<result_type>(0x8690c864c6e0b716);
 
   // While this is not the actual size of the state, it is the size of the input
   // seed that we allow. Any uses of a larger state in the form of a seed_seq
