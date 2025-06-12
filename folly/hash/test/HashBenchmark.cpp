@@ -101,7 +101,7 @@ struct SpookyHashV2 {
 
 struct FNV64 {
   uint64_t operator()(const uint8_t* data, size_t size) const {
-    return folly::hash::fnv64_buf(data, size);
+    return folly::hash::fnv64_buf_BROKEN(data, size);
   }
 };
 

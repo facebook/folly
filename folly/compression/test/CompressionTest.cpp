@@ -71,7 +71,7 @@ uint64_t DataHolder::hash(size_t size) const {
     return p->second;
   }
 
-  uint64_t h = folly::hash::fnv64_buf(data_.get(), size);
+  uint64_t h = folly::hash::fnv64_buf_BROKEN(data_.get(), size);
   hashCache_[size] = h;
   return h;
 }
@@ -84,7 +84,7 @@ ByteRange DataHolder::data(size_t size) const {
 uint64_t hashIOBuf(const IOBuf* buf) {
   uint64_t h = folly::hash::fnv64_hash_start;
   for (auto& range : *buf) {
-    h = folly::hash::fnv64_buf(range.data(), range.size(), h);
+    h = folly::hash::fnv64_buf_BROKEN(range.data(), range.size(), h);
   }
   return h;
 }

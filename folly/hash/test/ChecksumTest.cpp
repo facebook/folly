@@ -575,7 +575,7 @@ int main(int argc, char** argv) {
   const uint64_t* end = (const uint64_t*)(buffer + sizeof(buffer));
   *dst++ = 0;
   while (dst < end) {
-    *dst++ = folly::hash::fnv64_buf((const char*)src, sizeof(uint64_t));
+    *dst++ = folly::hash::fnv64_buf_BROKEN((const char*)src, sizeof(uint64_t));
     src += sizeof(uint64_t);
   }
 
