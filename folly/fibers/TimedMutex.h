@@ -26,11 +26,19 @@ namespace fibers {
 
 namespace detail {
 
-// Represents a waiter waiting for the lock. The waiter waits on the
-// baton until it is woken up by a post or timeout expires.
+// Represents a waiter waiting for the lock. The waiter waits on the baton until
+// it is woken up by a post or timeout expires.
+//
+// The destructor blocks until wake() is called. This is to ensure that if a
+// waiter times out, it is not invalidated for a waker that might have already
+// have acquired a reference to it. Hence, whoever removes the waiter from a
+// list is responsible for waking it.
 template <class BatonType>
 class MutexWaiter {
  public:
+  MutexWaiter() = default;
+  ~MutexWaiter();
+
   void wait();
 
   template <class Deadline>
@@ -42,6 +50,9 @@ class MutexWaiter {
 
  private:
   BatonType baton_;
+  // This is silly, but Baton implementations do not allow to check the state
+  // after a timed out wait, so we need to duplicate the state.
+  std::atomic<bool> posted_{false};
 };
 
 } // namespace detail
@@ -207,12 +218,7 @@ class TimedRWMutexImpl {
 
   void unlock_();
 
-  // Different states the lock can be in
-  enum class State {
-    UNLOCKED,
-    READ_LOCKED,
-    WRITE_LOCKED,
-  };
+  enum class State : uint8_t { UNLOCKED, READ_LOCKED, WRITE_LOCKED };
 
   using MutexWaiter = detail::MutexWaiter<BatonType>;
   using MutexWaiterList =

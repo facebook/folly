@@ -748,6 +748,7 @@ fbcode_target(
         "//folly:portability",
         "//folly:spin_lock",
         "//folly/synchronization:call_once",
+        "//folly/synchronization/detail:sleeper",
     ],
 )
 

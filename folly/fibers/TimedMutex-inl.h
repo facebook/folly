@@ -17,11 +17,26 @@
 #pragma once
 
 #include <mutex>
+#include <folly/synchronization/detail/Sleeper.h>
 
 namespace folly {
 namespace fibers {
 
 namespace detail {
+
+template <class BatonType>
+MutexWaiter<BatonType>::~MutexWaiter() {
+  if (posted_.load(std::memory_order_acquire)) {
+    return;
+  }
+  // If baton supported retrying wait() after wait()/try_wait_until(), like
+  // SaturatingSemaphore, this could simply be replaced with baton_.wait(), and
+  // posted_ could be removed.
+  folly::detail::Sleeper sleeper;
+  while (!posted_.load(std::memory_order_acquire)) {
+    sleeper.wait();
+  }
+}
 
 template <class BatonType>
 void MutexWaiter<BatonType>::wait() {
@@ -37,6 +52,7 @@ bool MutexWaiter<BatonType>::try_wait_until(Deadline deadline) {
 template <class BatonType>
 void MutexWaiter<BatonType>::wake() {
   baton_.post();
+  posted_.store(true, std::memory_order_release);
 }
 
 } // namespace detail
@@ -125,9 +141,11 @@ bool TimedMutex::try_lock_until(
       //    times out but the mutex is unlocked before we reach this code. In
       //    this
       //    case we'll pretend we got the lock on time.
-      std::lock_guard lg(lock_);
+      std::unique_lock lg(lock_);
       if (waiter.hook.is_linked()) {
         waiters.erase(waiters.iterator_to(waiter));
+        lg.unlock();
+        waiter.wake(); // Ensure that destruction doesn't block.
         return false;
       }
     }
@@ -157,19 +175,25 @@ inline bool TimedMutex::try_lock() {
 }
 
 inline void TimedMutex::unlock() {
-  std::lock_guard lg(lock_);
+  std::unique_lock lg(lock_);
   if (!threadWaiters_.empty()) {
     auto& to_wake = threadWaiters_.front();
     threadWaiters_.pop_front();
+    lg.unlock();
     to_wake.wake();
-  } else if (!fiberWaiters_.empty()) {
+    return;
+  }
+
+  if (!fiberWaiters_.empty()) {
     auto& to_wake = fiberWaiters_.front();
     fiberWaiters_.pop_front();
     notifiedFiber_ = &to_wake;
+    lg.unlock();
     to_wake.wake();
-  } else {
-    locked_ = false;
+    return;
   }
+
+  locked_ = false;
 }
 
 //
@@ -227,9 +251,11 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
       // 2. We're not in the waiter list anymore. This could happen if the baton
       //    times out but the mutex is unlocked before we reach this code. In
       //    this case we'll pretend we got the lock on time.
-      std::lock_guard guard{lock_};
+      std::unique_lock guard{lock_};
       if (waiter.hook.is_linked()) {
         read_waiters_.erase(read_waiters_.iterator_to(waiter));
+        guard.unlock();
+        waiter.wake(); // Ensure that destruction doesn't block.
         return false;
       }
     }
@@ -246,7 +272,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
 
 template <bool ReaderPriority, typename BatonType>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared() {
-  std::lock_guard guard{lock_};
+  std::unique_lock guard{lock_};
   if (!shouldReadersWait()) {
     assert(
         (state_ == State::UNLOCKED && readers_ == 0) ||
@@ -309,9 +335,11 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
     // 2. We're not in the waiter list anymore. This could happen if the baton
     //    times out but the mutex is unlocked before we reach this code. In
     //    this case we'll pretend we got the lock on time.
-    std::lock_guard guard{lock_};
+    std::unique_lock guard{lock_};
     if (waiter.hook.is_linked()) {
       write_waiters_.erase(write_waiters_.iterator_to(waiter));
+      guard.unlock();
+      waiter.wake(); // Ensure that destruction doesn't block.
       return false;
     }
   }
@@ -341,7 +369,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock() {
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
-  std::lock_guard guard{lock_};
+  std::unique_lock guard{lock_};
   assert(state_ != State::UNLOCKED);
   assert(
       (state_ == State::READ_LOCKED && readers_ > 0) ||
@@ -357,12 +385,19 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
     state_ = State::READ_LOCKED;
     readers_ = read_waiters_.size();
 
-    while (!read_waiters_.empty()) {
-      MutexWaiter& to_wake = read_waiters_.front();
-      read_waiters_.pop_front();
+    MutexWaiterList waiters_to_wake = std::move(read_waiters_);
+    guard.unlock();
+
+    while (!waiters_to_wake.empty()) {
+      MutexWaiter& to_wake = waiters_to_wake.front();
+      waiters_to_wake.pop_front();
       to_wake.wake();
     }
-  } else if (readers_ == 0) {
+
+    return;
+  }
+
+  if (readers_ == 0) {
     if (!write_waiters_.empty()) {
       assert(read_waiters_.empty() || !ReaderPriority);
       state_ = State::WRITE_LOCKED;
@@ -370,19 +405,22 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
       // Wake a single writer (after releasing the spin lock)
       MutexWaiter& to_wake = write_waiters_.front();
       write_waiters_.pop_front();
+      guard.unlock();
       to_wake.wake();
-    } else {
-      verify_unlocked_properties();
-      state_ = State::UNLOCKED;
+      return;
     }
-  } else {
-    assert(state_ == State::READ_LOCKED);
+
+    verify_unlocked_properties();
+    state_ = State::UNLOCKED;
+    return;
   }
+
+  assert(state_ == State::READ_LOCKED);
 }
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
-  std::lock_guard guard{lock_};
+  std::unique_lock guard{lock_};
   assert(state_ == State::WRITE_LOCKED && readers_ == 0);
   state_ = State::READ_LOCKED;
   readers_ += 1;
@@ -390,9 +428,12 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
   if (!read_waiters_.empty()) {
     readers_ += read_waiters_.size();
 
-    while (!read_waiters_.empty()) {
-      MutexWaiter& to_wake = read_waiters_.front();
-      read_waiters_.pop_front();
+    MutexWaiterList waiters_to_wake = std::move(read_waiters_);
+    guard.unlock();
+
+    while (!waiters_to_wake.empty()) {
+      MutexWaiter& to_wake = waiters_to_wake.front();
+      waiters_to_wake.pop_front();
       to_wake.wake();
     }
   }
