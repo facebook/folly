@@ -24,6 +24,28 @@
 namespace folly {
 namespace fibers {
 
+namespace detail {
+
+// Represents a waiter waiting for the lock. The waiter waits on the
+// baton until it is woken up by a post or timeout expires.
+template <class BatonType>
+class MutexWaiter {
+ public:
+  void wait();
+
+  template <class Deadline>
+  bool try_wait_until(Deadline deadline);
+
+  void wake();
+
+  folly::SafeIntrusiveListHook hook;
+
+ private:
+  BatonType baton_;
+};
+
+} // namespace detail
+
 /**
  * @class TimedMutex
  *
@@ -77,17 +99,12 @@ class TimedMutex {
  private:
   enum class LockResult { SUCCESS, TIMEOUT, STOLEN };
 
+  using MutexWaiter = detail::MutexWaiter<Baton>;
+  using MutexWaiterList =
+      folly::SafeIntrusiveList<MutexWaiter, &MutexWaiter::hook>;
+
   template <typename WaitFunc>
   LockResult lockHelper(WaitFunc&& waitFunc);
-
-  // represents a waiter waiting for the lock. The waiter waits on the
-  // baton until it is woken up by a post or timeout expires.
-  struct MutexWaiter {
-    Baton baton;
-    folly::IntrusiveListHook hook;
-  };
-
-  using MutexWaiterList = folly::IntrusiveList<MutexWaiter, &MutexWaiter::hook>;
 
   const Options options_;
   folly::SpinLock lock_; //< lock to protect waiter list
@@ -197,23 +214,9 @@ class TimedRWMutexImpl {
     WRITE_LOCKED,
   };
 
-  typedef boost::intrusive::list_member_hook<> MutexWaiterHookType;
-
-  // represents a waiter waiting for the lock.
-  struct MutexWaiter {
-    BatonType baton;
-    MutexWaiterHookType hook;
-  };
-
-  typedef boost::intrusive::
-      member_hook<MutexWaiter, MutexWaiterHookType, &MutexWaiter::hook>
-          MutexWaiterHook;
-
-  typedef boost::intrusive::list<
-      MutexWaiter,
-      MutexWaiterHook,
-      boost::intrusive::constant_time_size<true>>
-      MutexWaiterList;
+  using MutexWaiter = detail::MutexWaiter<BatonType>;
+  using MutexWaiterList =
+      folly::CountedIntrusiveList<MutexWaiter, &MutexWaiter::hook>;
 
   folly::SpinLock lock_; //< lock protecting the internal state
   // (state_, read_waiters_, etc.)

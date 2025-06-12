@@ -21,6 +21,26 @@
 namespace folly {
 namespace fibers {
 
+namespace detail {
+
+template <class BatonType>
+void MutexWaiter<BatonType>::wait() {
+  baton_.wait();
+}
+
+template <class BatonType>
+template <class Deadline>
+bool MutexWaiter<BatonType>::try_wait_until(Deadline deadline) {
+  return baton_.try_wait_until(deadline);
+}
+
+template <class BatonType>
+void MutexWaiter<BatonType>::wake() {
+  baton_.post();
+}
+
+} // namespace detail
+
 //
 // TimedMutex implementation
 //
@@ -48,15 +68,12 @@ TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
   // This makes a huge difference, at least in the benchmarks,
   // when the mutex isn't locked.
   MutexWaiter waiter;
-  if (isOnFiber) {
-    fiberWaiters_.push_back(waiter);
-  } else {
-    threadWaiters_.push_back(waiter);
-  }
+  MutexWaiterList& waiters = isOnFiber ? fiberWaiters_ : threadWaiters_;
+  waiters.push_back(waiter);
 
   ulock.unlock();
 
-  if (!waitFunc(waiter)) {
+  if (!waitFunc(waiters, waiter)) {
     return LockResult::TIMEOUT;
   }
 
@@ -82,8 +99,8 @@ TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
 inline void TimedMutex::lock() {
   LockResult result;
   do {
-    result = lockHelper([](MutexWaiter& waiter) {
-      waiter.baton.wait();
+    result = lockHelper([](MutexWaiterList&, MutexWaiter& waiter) {
+      waiter.wait();
       return true;
     });
 
@@ -100,8 +117,8 @@ bool TimedMutex::try_lock_for(
 template <typename Clock, typename Duration>
 bool TimedMutex::try_lock_until(
     const std::chrono::time_point<Clock, Duration>& deadline) {
-  auto result = lockHelper([&](MutexWaiter& waiter) {
-    if (!waiter.baton.try_wait_until(deadline)) {
+  auto result = lockHelper([&](MutexWaiterList& waiters, MutexWaiter& waiter) {
+    if (!waiter.try_wait_until(deadline)) {
       // We timed out. Two cases:
       // 1. We're still in the waiter list and we truly timed out
       // 2. We're not in the waiter list anymore. This could happen if the baton
@@ -110,7 +127,7 @@ bool TimedMutex::try_lock_until(
       //    case we'll pretend we got the lock on time.
       std::lock_guard lg(lock_);
       if (waiter.hook.is_linked()) {
-        waiter.hook.unlink();
+        waiters.erase(waiters.iterator_to(waiter));
         return false;
       }
     }
@@ -144,12 +161,12 @@ inline void TimedMutex::unlock() {
   if (!threadWaiters_.empty()) {
     auto& to_wake = threadWaiters_.front();
     threadWaiters_.pop_front();
-    to_wake.baton.post();
+    to_wake.wake();
   } else if (!fiberWaiters_.empty()) {
     auto& to_wake = fiberWaiters_.front();
     fiberWaiters_.pop_front();
     notifiedFiber_ = &to_wake;
-    to_wake.baton.post();
+    to_wake.wake();
   } else {
     locked_ = false;
   }
@@ -172,7 +189,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::lock_shared() {
     MutexWaiter waiter;
     read_waiters_.push_back(waiter);
     ulock.unlock();
-    waiter.baton.wait();
+    waiter.wait();
     if (folly::kIsDebug) {
       std::unique_lock assertLock{lock_};
       assert(state_ == State::READ_LOCKED);
@@ -204,7 +221,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
     read_waiters_.push_back(waiter);
     ulock.unlock();
 
-    if (!waiter.baton.try_wait_until(deadline)) {
+    if (!waiter.try_wait_until(deadline)) {
       // We timed out. Two cases:
       // 1. We're still in the waiter list and we truly timed out
       // 2. We're not in the waiter list anymore. This could happen if the baton
@@ -262,7 +279,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::lock() {
   MutexWaiter waiter;
   write_waiters_.push_back(waiter);
   ulock.unlock();
-  waiter.baton.wait();
+  waiter.wait();
 }
 
 template <bool ReaderPriority, typename BatonType>
@@ -286,7 +303,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
   write_waiters_.push_back(waiter);
   ulock.unlock();
 
-  if (!waiter.baton.try_wait_until(deadline)) {
+  if (!waiter.try_wait_until(deadline)) {
     // We timed out. Two cases:
     // 1. We're still in the waiter list and we truly timed out
     // 2. We're not in the waiter list anymore. This could happen if the baton
@@ -343,7 +360,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
     while (!read_waiters_.empty()) {
       MutexWaiter& to_wake = read_waiters_.front();
       read_waiters_.pop_front();
-      to_wake.baton.post();
+      to_wake.wake();
     }
   } else if (readers_ == 0) {
     if (!write_waiters_.empty()) {
@@ -353,7 +370,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
       // Wake a single writer (after releasing the spin lock)
       MutexWaiter& to_wake = write_waiters_.front();
       write_waiters_.pop_front();
-      to_wake.baton.post();
+      to_wake.wake();
     } else {
       verify_unlocked_properties();
       state_ = State::UNLOCKED;
@@ -376,7 +393,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
     while (!read_waiters_.empty()) {
       MutexWaiter& to_wake = read_waiters_.front();
       read_waiters_.pop_front();
-      to_wake.baton.post();
+      to_wake.wake();
     }
   }
 }
