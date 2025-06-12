@@ -34,11 +34,9 @@ fbcode_target(
     headers = [],
     deps = [
         "//folly:benchmark",
-        "//folly:benchmark_util",
         "//folly:mpmc_queue",
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:edf_thread_pool_executor",
-        "//folly/executors:soft_real_time_executor",
         "//folly/executors:thread_pool_executor",
     ],
 )
@@ -93,10 +91,8 @@ fbcode_target(
     deps = [
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:global_executor",
-        "//folly/executors:io_executor",
         "//folly/executors:io_thread_pool_executor",
         "//folly/portability:gtest",
-        "//folly/synchronization:baton",
     ],
 )
 
@@ -107,10 +103,8 @@ fbcode_target(
     deps = [
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:global_executor",
-        "//folly/executors:io_executor",
         "//folly/executors:io_thread_pool_executor",
         "//folly/portability:gtest",
-        "//folly/synchronization:baton",
     ],
 )
 
