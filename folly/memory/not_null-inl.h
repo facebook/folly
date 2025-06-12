@@ -75,7 +75,7 @@ template <typename FromT, typename ToPtrT>
 struct is_not_null_nothrow_constructible
     : std::integral_constant<
           bool,
-          is_not_null_v<FromT> &&
+          is_not_null_v<remove_cvref_t<FromT>> &&
               std::is_nothrow_constructible_v<ToPtrT, FromT>> {};
 
 struct secret_guaranteed_not_null : guaranteed_not_null_provider {
@@ -117,7 +117,7 @@ template <typename PtrT>
 template <typename U>
 not_null_base<PtrT>::not_null_base(U&& u, private_tag)
     : ptr_(detail::maybeUnwrap(std::forward<U>(u))) {
-  if constexpr (!detail::is_not_null_v<U>) {
+  if constexpr (!detail::is_not_null_v<remove_cvref_t<U>>) {
     throw_if_null();
   }
 }
