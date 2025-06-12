@@ -254,6 +254,8 @@ struct ThreadEntry {
 
   template <class Ptr, class Deleter>
   void resetElement(Ptr p, Deleter& d, uint32_t id);
+
+  void resetElementImplAfterSet(const ElementWrapper& element, uint32_t id);
 };
 
 struct ThreadEntryList {
@@ -667,63 +669,21 @@ struct FakeUniqueInstance {
  */
 template <class Ptr>
 void ThreadEntry::resetElement(Ptr p, uint32_t id) {
-  auto& set = meta->allId2ThreadEntrySets_[id];
-  auto rlock = set.rlock();
-  cleanupElement(id);
-  elements[id].set(p);
-  if (removed_) {
-    // Elements no longer being mirrored in the ThreadEntrySet.
-    // Thread must have cleared itself from the set when it started exiting.
-    DCHECK(!rlock->contains(this));
-    return;
-  }
-  if (p != nullptr && !rlock->contains(this)) {
-    meta->ensureThreadEntryIsInSet(this, set, rlock);
-  }
-  auto slot = rlock->getIndexFor(this);
-  if (slot < 0) {
-    // Not present in ThreadEntrySet implies the value was never set to be
-    // non-null and new value 'p' is nullptr as well.
-    DCHECK(!p);
-    DCHECK(!elements[id].ptr);
-    return;
-  }
-  size_t uslot = static_cast<size_t>(slot);
-  auto& wrapper = rlock.asNonConstUnsafe().threadElements[uslot].wrapper;
-  wrapper = elements[id];
+  ElementWrapper element;
+  element.set(p);
+  resetElementImplAfterSet(element, id);
 }
 
 /*
  * Resets element from ThreadEntry::elements at index @id.
  * call set() on the element to reset it.
- * This is a templated method for when a deleter is not provided.
+ * This is a templated method for when a deleter is provided.
  */
 template <class Ptr, class Deleter>
 void ThreadEntry::resetElement(Ptr p, Deleter& d, uint32_t id) {
-  auto& set = meta->allId2ThreadEntrySets_[id];
-  auto rlock = set.rlock();
-  cleanupElement(id);
-  elements[id].set(p, d);
-  if (removed_) {
-    // Elements no longer being mirrored in the ThreadEntrySet.
-    // Thread must have cleared itself from the set when it started exiting.
-    DCHECK(!rlock->contains(this));
-    return;
-  }
-  if (p != nullptr && !rlock->contains(this)) {
-    meta->ensureThreadEntryIsInSet(this, set, rlock);
-  }
-  auto slot = rlock->getIndexFor(this);
-  if (slot < 0) {
-    // Not present in ThreadEntrySet implies the value was never set to be
-    // non-null and new value 'p' is nullptr as well.
-    DCHECK(!p);
-    DCHECK(!elements[id].ptr);
-    return;
-  }
-  size_t uslot = static_cast<size_t>(slot);
-  auto& wrapper = rlock.asNonConstUnsafe().threadElements[uslot].wrapper;
-  wrapper = elements[id];
+  ElementWrapper element;
+  element.set(p, d);
+  resetElementImplAfterSet(element, id);
 }
 
 // Held in a singleton to track our global instances.

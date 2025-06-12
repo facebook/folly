@@ -561,6 +561,33 @@ void ThreadEntry::cleanupElement(uint32_t id) {
   elements[id].cleanup();
 }
 
+void ThreadEntry::resetElementImplAfterSet(
+    const ElementWrapper& element, uint32_t id) {
+  auto& set = meta->allId2ThreadEntrySets_[id];
+  auto rlock = set.rlock();
+  cleanupElement(id);
+  elements[id] = element;
+  if (removed_) {
+    // Elements no longer being mirrored in the ThreadEntrySet.
+    // Thread must have cleared itself from the set when it started exiting.
+    DCHECK(!rlock->contains(this));
+    return;
+  }
+  if (element.ptr != nullptr && !rlock->contains(this)) {
+    meta->ensureThreadEntryIsInSet(this, set, rlock);
+  }
+  auto slot = rlock->getIndexFor(this);
+  if (slot < 0) {
+    // Not present in ThreadEntrySet implies the value was never set to be
+    // non-null and new value in element.ptr is nullptr as well.
+    DCHECK(!element.ptr);
+    DCHECK(!elements[id].ptr);
+    return;
+  }
+  size_t uslot = static_cast<size_t>(slot);
+  rlock.asNonConstUnsafe().threadElements[uslot].wrapper = element;
+}
+
 FOLLY_STATIC_CTOR_PRIORITY_MAX
 PthreadKeyUnregister PthreadKeyUnregister::instance_;
 #if defined(__GLIBC__)
