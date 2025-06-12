@@ -84,6 +84,27 @@ bool ThreadEntrySet::basicSanity() const {
           });
 }
 
+bool ThreadEntry::cachedInSetMatchesElementsArray(uint32_t id) {
+  if constexpr (!kIsDebug) {
+    return true;
+  }
+
+  if (removed_) {
+    // Pointer in entry set and elements array need not match anymore.
+    return true;
+  }
+
+  auto rlock = meta->allId2ThreadEntrySets_[id].tryRLock();
+  if (!rlock) {
+    // Try lock failed. Skip checking in this case. Avoids
+    // getting stuck in case this validation is called when
+    // already holding the entry set lock.
+    return true;
+  }
+
+  return elements[id].ptr == rlock->getPtrForThread(this);
+}
+
 void ThreadEntrySet::compress() {
   assert(compressible());
   // compress the vector

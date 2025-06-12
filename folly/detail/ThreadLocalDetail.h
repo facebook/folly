@@ -256,6 +256,8 @@ struct ThreadEntry {
   void resetElement(Ptr p, Deleter& d, uint32_t id);
 
   void resetElementImplAfterSet(const ElementWrapper& element, uint32_t id);
+
+  bool cachedInSetMatchesElementsArray(uint32_t id);
 };
 
 struct ThreadEntryList {
@@ -743,10 +745,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     uint32_t id = ent->getOrInvalid();
     // Only valid index into the the elements array
     DCHECK_NE(id, kEntryIDInvalid);
-    DCHECK(
-        te->removed_ ||
-        te->elements[id].ptr ==
-            te->meta->allId2ThreadEntrySets_[id].rlock()->getPtrForThread(te));
+    DCHECK(te->cachedInSetMatchesElementsArray(id));
     return te->elements[id];
   }
 
