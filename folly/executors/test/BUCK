@@ -123,7 +123,6 @@ fbcode_target(
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:global_executor",
         "//folly/executors:inline_executor",
-        "//folly/executors:io_executor",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],
