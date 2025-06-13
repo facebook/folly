@@ -133,8 +133,6 @@ CIDRNetwork IPAddress::createNetwork(
   }
 
   CHECK(0);
-
-  return CIDRNetwork{};
 }
 
 // public static
