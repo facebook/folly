@@ -3345,8 +3345,6 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
     callback->readEOF();
     return ReadCode::READ_DONE;
   }
-
-  return ReadCode::READ_DONE; // redundant
 }
 
 void AsyncSocket::handleRead() noexcept {
