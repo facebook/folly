@@ -143,43 +143,14 @@ rapidhash_mix(uint64_t A, uint64_t B) noexcept {
 /*
  *  Read functions.
  */
-FOLLY_EXTERNAL_RAPIDHASH_INLINE_CONSTEXPR std::uint64_t rapidhash_read32_cx(const char* s) {
-  static_assert(kIsLittleEndian);
-  std::uint64_t ret = 0;
-  ret |= std::uint64_t(static_cast<uint8_t>(s[0])) << (0 * 8);
-  ret |= std::uint64_t(static_cast<uint8_t>(s[1])) << (1 * 8);
-  ret |= std::uint64_t(static_cast<uint8_t>(s[2])) << (2 * 8);
-  ret |= std::uint64_t(static_cast<uint8_t>(s[3])) << (3 * 8);
-  return ret;
-}
-
-FOLLY_EXTERNAL_RAPIDHASH_INLINE_CONSTEXPR uint64_t
+FOLLY_EXTERNAL_RAPIDHASH_INLINE_CONSTEXPR uint32_t
 rapidhash_read32(const char* p) noexcept {
-  if (folly::is_constant_evaluated_or(false) && kIsLittleEndian) {
-    return rapidhash_read32_cx(p);
-  } else {
-    return folly::Endian::little(loadUnaligned<std::uint32_t>(p));
-  }
-}
-
-FOLLY_EXTERNAL_RAPIDHASH_INLINE_CONSTEXPR std::uint64_t rapidhash_read64_cx(
-    const char* s, std::size_t l) {
-  static_assert(kIsLittleEndian);
-
-  std::uint64_t ret = 0;
-  for (std::size_t i = 0; i < l; ++i) {
-    ret |= std::uint64_t(static_cast<uint8_t>(s[i])) << (i * 8);
-  }
-  return ret;
+  return folly::constexprLoadUnaligned<uint32_t, char>(p);
 }
 
 FOLLY_EXTERNAL_RAPIDHASH_INLINE_CONSTEXPR uint64_t
 rapidhash_read64(const char* p) noexcept {
-  if (folly::is_constant_evaluated_or(false) && kIsLittleEndian) {
-    return rapidhash_read64_cx(p, 8);
-  } else {
-    return folly::Endian::little(loadUnaligned<std::uint64_t>(p));
-  }
+  return folly::constexprLoadUnaligned<uint64_t, char>(p);
 }
 
 /*
