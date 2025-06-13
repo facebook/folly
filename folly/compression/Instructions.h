@@ -18,16 +18,16 @@
 
 #include <glog/logging.h>
 
+#ifdef _MSC_VER
+#include <immintrin.h>
+#endif
+
 #include <string_view>
 
 #include <folly/CpuId.h>
 #include <folly/Portability.h>
 #include <folly/lang/Assume.h>
 #include <folly/portability/Builtins.h>
-
-#if FOLLY_X64 || defined(__i386__)
-#include <immintrin.h>
-#endif
 
 namespace folly {
 namespace compression {
@@ -93,8 +93,15 @@ struct Nehalem : public Default {
   }
 
   static FOLLY_ALWAYS_INLINE uint64_t popcount(uint64_t value) {
-    // POPCNT is supported starting with Intel Nehalem, AMD K10.
+// POPCNT is supported starting with Intel Nehalem, AMD K10.
+#if defined(__GNUC__)
+    // GCC and Clang won't inline the intrinsics.
+    uint64_t result;
+    asm("popcntq %1, %0" : "=r"(result) : "r"(value));
+    return result;
+#else
     return uint64_t(_mm_popcnt_u64(value));
+#endif
   }
 };
 
@@ -106,18 +113,45 @@ struct Haswell : public Nehalem {
   }
 
   static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {
-    // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
-    // BLSR combines two instructions into one and reduces register pressure.
+// BMI1 is supported starting with Intel Haswell, AMD Piledriver.
+// BLSR combines two instructions into one and reduces register pressure.
+#if defined(__GNUC__)
+    // GCC and Clang won't inline the intrinsics.
+    uint64_t result;
+    asm("blsrq %1, %0" : "=r"(result) : "r"(value));
+    return result;
+#else
     return _blsr_u64(value);
+#endif
   }
 
   static FOLLY_ALWAYS_INLINE uint64_t
   bextr(uint64_t value, uint32_t start, uint32_t length) {
+#if defined(__GNUC__)
+    // GCC and Clang won't inline the intrinsics.
+    // Encode parameters in `pattern` where `pattern[0:7]` is `start` and
+    // `pattern[8:15]` is `length`.
+    // Ref: Intel Advanced Vector Extensions Programming Reference
+    uint64_t pattern = start & 0xFF;
+    pattern = pattern | ((length & 0xFF) << 8);
+    uint64_t result;
+    asm("bextrq %2, %1, %0" : "=r"(result) : "r"(value), "r"(pattern));
+    return result;
+#else
     return _bextr_u64(value, start, length);
+#endif
   }
 
   static FOLLY_ALWAYS_INLINE uint64_t bzhi(uint64_t value, uint32_t index) {
+#if defined(__GNUC__)
+    // GCC and Clang won't inline the intrinsics.
+    const uint64_t index64 = index;
+    uint64_t result;
+    asm("bzhiq %2, %1, %0" : "=r"(result) : "r"(value), "r"(index64));
+    return result;
+#else
     return _bzhi_u64(value, index);
+#endif
   }
 };
 #endif
