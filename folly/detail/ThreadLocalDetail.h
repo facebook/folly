@@ -357,7 +357,6 @@ struct ThreadEntrySet {
   }
 
   int64_t getIndexFor(ThreadEntry* entry) const {
-    DCHECK(basicSanity());
     auto iter = entryToVectorSlot.find(entry);
     if (iter != entryToVectorSlot.end()) {
       return static_cast<int64_t>(iter->second);
@@ -371,7 +370,6 @@ struct ThreadEntrySet {
    * ElementWrapper array used for fast access from the thread itself.
    */
   void* getPtrForThread(ThreadEntry* entry) const {
-    DCHECK(basicSanity());
     auto index = getIndexFor(entry);
     if (index < 0) {
       return nullptr;
