@@ -97,9 +97,12 @@ fbcode_target(
     name = "filesystem",
     srcs = ["Filesystem.cpp"],
     headers = ["Filesystem.h"],
-    exported_deps = [
-        "fbsource//third-party/libgcc:stdc++fs",
-    ],
+    exported_deps = select({
+        "ovr_config//cpp:libc++": [],
+        "ovr_config//cpp:libstdc++": [
+            "fbsource//third-party/libgcc:stdc++fs",
+        ],
+    }),
 )
 
 fbcode_target(
