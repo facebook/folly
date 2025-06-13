@@ -1,0 +1,40 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = rust_library,
+    name = "request_context",
+    srcs = ["request_context.rs"],
+    cpp_deps = [":request_context_bridge"],
+    cxx_bridge = "request_context.rs",
+    deps = [
+        "fbsource//third-party/rust:cxx",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_library,
+    name = "request_context_future",
+    srcs = ["request_context_future.rs"],
+    deps = [
+        "fbsource//third-party/rust:futures-core",
+        "fbsource//third-party/rust:pin-project",
+        ":request_context",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "request_context_bridge",
+    srcs = ["request_context.cpp"],
+    headers = ["request_context.h"],
+    visibility = [],
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
+        ":request_context@header",
+        "//folly/io/async:request_context",
+    ],
+)

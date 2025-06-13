@@ -1,0 +1,67 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "singleton_vault_cpp",
+    srcs = [
+        "singleton.cpp",
+    ],
+    headers = [
+        "singleton.h",
+    ],
+    preferred_linkage = "static",
+    exported_deps = [
+        "//folly:singleton",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "singleton_test_cpp",
+    srcs = [
+        "singleton_test.cpp",
+    ],
+    headers = [
+        "singleton_test.h",
+    ],
+    preferred_linkage = "static",
+    exported_deps = [
+        "//folly:singleton",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_library,
+    name = "singleton_vault",
+    srcs = [
+        "lib.rs",
+    ],
+    cpp_deps = [":singleton_vault_cpp"],
+    cxx_bridge = "lib.rs",
+    deps = [
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:cxx",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_library,
+    name = "singleton_vault_test",
+    srcs = [
+        "test.rs",
+    ],
+    cpp_deps = [":singleton_test_cpp"],
+    crate_root = "test.rs",
+    cxx_bridge = "test.rs",
+    test_deps = [
+        "fbsource//third-party/rust:anyhow",
+        ":singleton_vault",
+    ],
+    deps = [
+        "fbsource//third-party/rust:cxx",
+    ],
+)

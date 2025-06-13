@@ -1,0 +1,37 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "memory-cpp",
+    srcs = [
+        "memory.cpp",
+    ],
+    headers = [
+        "memory.h",
+    ],
+    preferred_linkage = "static",
+    undefined_symbols = True,
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
+        "//folly/memory:mallctl_helper",
+        "//folly/memory:malloc",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_library,
+    name = "memory",
+    srcs = [
+        "lib.rs",
+    ],
+    cpp_deps = [":memory-cpp"],
+    cxx_bridge = "lib.rs",
+    deps = [
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:cxx",
+    ],
+)

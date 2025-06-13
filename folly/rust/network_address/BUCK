@@ -1,0 +1,35 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "network_address-ffi",
+    srcs = ["FollyWrapper.cpp"],
+    headers = ["FollyWrapper.h"],
+    preferred_linkage = "static",
+    undefined_symbols = True,  # defined by :network_address
+    visibility = [],
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
+        ":network_address@header",
+        "//folly:network_address",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_library,
+    name = "network_address",
+    srcs = ["src/lib.rs"],
+    cpp_deps = [
+        ":network_address-ffi",
+    ],
+    crate = "network_address",
+    crate_root = "src/lib.rs",
+    cxx_bridge = "src/lib.rs",
+    deps = [
+        "fbsource//third-party/rust:cxx",
+    ],
+)

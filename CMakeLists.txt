@@ -171,6 +171,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?test/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?tool/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/facebook/"
+    "^${FOLLY_DIR_REGEX_ESCAPED}/rust/"
     "Benchmark.cpp$"
     "Test.cpp$"
 )

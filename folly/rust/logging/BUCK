@@ -1,0 +1,38 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "logging-ffi",
+    srcs = [
+        "logging.cpp",
+    ],
+    headers = [
+        "logging.h",
+    ],
+    preferred_linkage = "static",
+    undefined_symbols = True,
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
+        "//folly:range",
+        "//folly/logging:init",
+        "//folly/logging:logging",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_library,
+    name = "logging",
+    srcs = ["lib.rs"],
+    cpp_deps = [
+        ":logging-ffi",
+    ],
+    cxx_bridge = "lib.rs",
+    deps = [
+        "fbsource//third-party/rust:cxx",
+        "//common/rust/shed/fbinit:fbinit",
+    ],
+)
