@@ -59,8 +59,9 @@ unsigned int* uncaught_exceptions_ptr() noexcept {
   assert(kIsGlibcxx || kIsLibcpp);
 #if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
   return &__cxxabiv1::__cxa_get_globals()->uncaughtExceptions;
-#endif
+#else
   return nullptr;
+#endif
 }
 
 } // namespace detail
