@@ -2065,10 +2065,10 @@ static bool doKernelSupportsSendZC() {
   }
 
   return (cqe->flags & IORING_CQE_F_NOTIF) || (cqe->res == -EBADF);
-#endif
-
+#else
   // fallthrough
   return false;
+#endif
 }
 
 } // namespace
