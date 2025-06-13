@@ -1064,11 +1064,11 @@ TEST(Singleton, LeakySingletonTSAN) {
   }
 }
 
-TEST(Singleton, ShutdownTimer) {
-  // TSAN will SIGSEGV if the shutdown timer activates (it spawns a new thread,
-  // which TSAN doesn't like).
-  SKIP_IF(folly::kIsSanitizeThread);
+// TSAN will SIGSEGV if the shutdown timer activates (it spawns a new thread,
+// which TSAN doesn't like).
+#if !defined(FOLLY_SANITIZE_THREAD)
 
+TEST(Singleton, ShutdownTimer) {
   struct VaultTag {};
   struct PrivateTag {};
   struct Object {
@@ -1094,6 +1094,8 @@ TEST(Singleton, ShutdownTimer) {
   SingletonObject::try_get()->shutdownDuration = 10ms;
   vault.destroyInstancesFinal();
 }
+
+#endif
 
 TEST(Singleton, ShutdownTimerDisable) {
   struct VaultTag {};
