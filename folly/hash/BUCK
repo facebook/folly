@@ -38,6 +38,7 @@ fbcode_target(
     headers = ["Hash.h"],
     exported_deps = [
         ":murmur_hash",
+        ":rapidhash",
         ":spooky_hash_v1",
         ":spooky_hash_v2",
         "//folly:c_portability",

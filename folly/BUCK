@@ -847,6 +847,7 @@ non_fbcode_target(
     exported_deps = [
         "//third-party/fmt:fmt",
         "//xplat/folly:cpu_id",
+        "//xplat/folly:hash_rapidhash",
         "//xplat/folly:hash_spooky_hash_v2",
         "//xplat/folly:likely",
         "//xplat/folly:portability",
@@ -4745,6 +4746,7 @@ non_fbcode_target(
     deps = [
         ":functional_apply_tuple",
         ":hash_murmur_hash",
+        ":hash_rapidhash",
         ":hash_spooky_hash_v1",
         ":hash_spooky_hash_v2",
         ":traits",
@@ -7421,6 +7423,7 @@ fbcode_target(
         ":traits",
         "//folly/detail:range_common",
         "//folly/detail:range_simd",
+        "//folly/hash:rapidhash",
         "//folly/hash:spooky_hash_v2",
         "//folly/lang:c_string",
         "//folly/lang:exception",

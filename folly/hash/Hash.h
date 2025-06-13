@@ -46,6 +46,7 @@
 #include <folly/hash/MurmurHash.h>
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
+#include <folly/hash/rapidhash.h>
 #include <folly/lang/Bits.h>
 
 namespace folly {
@@ -999,8 +1000,7 @@ struct hasher<std::string> {
   using folly_is_avalanching = std::true_type;
 
   size_t operator()(const std::string& key) const {
-    return static_cast<size_t>(
-        hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));
+    return static_cast<size_t>(hash::rapidhashNano(key.data(), key.size()));
   }
 };
 template <typename K>
@@ -1011,8 +1011,7 @@ struct hasher<std::string_view> {
   using folly_is_avalanching = std::true_type;
 
   size_t operator()(const std::string_view& key) const {
-    return static_cast<size_t>(
-        hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));
+    return static_cast<size_t>(hash::rapidhashNano(key.data(), key.size()));
   }
 };
 template <typename K>
