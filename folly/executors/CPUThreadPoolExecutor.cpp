@@ -317,7 +317,6 @@ bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
   } else {
     return tryTimeoutThread();
   }
-  return true;
 }
 
 void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
