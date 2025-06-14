@@ -3604,11 +3604,11 @@ non_fbcode_target(
         "//xplat/folly:memory",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:typed_io_buf",
         "//third-party/boost:boost_filesystem",
         "//third-party/boost:boost_system",
         "//xplat/folly:discriminated_ptr",
         "//xplat/folly:extended",
-        "//xplat/folly:io_typed_io_buf",
         "//xplat/folly:logging_init",
         "//xplat/folly:logging_init_weak",
         "//xplat/folly:logging_log_handler",
