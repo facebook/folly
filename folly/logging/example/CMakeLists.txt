@@ -13,7 +13,7 @@
 # limitations under the License.
 
 add_executable(logging_example main.cpp)
-target_link_libraries(logging_example logging_example_lib folly)
+target_link_libraries(logging_example logging_example_lib folly ws2_32)
 
 add_library(logging_example_lib lib.cpp)
 target_link_libraries(logging_example_lib folly)

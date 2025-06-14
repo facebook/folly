@@ -16,7 +16,7 @@
 
 #include <folly/net/detail/SocketFileDescriptorMap.h>
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 
 #include <shared_mutex>
 #include <unordered_map>
