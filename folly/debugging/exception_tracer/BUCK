@@ -5,6 +5,7 @@ load(
     "MACOSX",
     "WATCHOS",
 )
+load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load(
     "@fbsource//xplat/folly:defs.bzl",
     "folly_xplat_library",
@@ -172,6 +173,12 @@ non_fbcode_target(_kind = folly_xplat_library,
     ],
 )
 
+FBCODE_LIBSTDCXX_SELECTOR = selects.and_(
+    selects.cond("ovr_config//runtime/constraints:fbcode"),
+    selects.cond("ovr_config//cpp:libstdc++"),
+)
+
+
 non_fbcode_target(_kind = folly_xplat_library,
     name = "exception_tracer_callbacks",
     srcs = [
@@ -190,37 +197,47 @@ non_fbcode_target(_kind = folly_xplat_library,
         "//xplat/third-party/linker_lib:dl",
         "//xplat/folly/debugging/exception_tracer:compatibility",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        # @fb-only: "fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static": ["-DFOLLY_STATIC_LIBSTDCXX=1"],
-        # @fb-only: "fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type": ["-DFOLLY_STATIC_LIBSTDCXX=1"],
-        # @fb-only[end= ]: "ovr_config//third-party/libgcc:11.x": ["-DFOLLY_STATIC_LIBSTDCXX=1"],
-    }),
-    exported_linker_flags = select({
-        "DEFAULT": [],
-        # @lint-ignore-every BUCKFORMAT
-        # @fb-only: "fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static": [
+    compiler_flags = selects.if_(
+        selects.or_(
+            selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
+            selects.and_(
+                FBCODE_LIBSTDCXX_SELECTOR,
+                selects.or_(
+                    selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
+                    selects.cond("ovr_config//third-party/libgcc:11.x")
+                ),
+            ),
+        ),
+        ["-DFOLLY_STATIC_LIBSTDCXX=1"],
+        [],
+    ),
+    exported_linker_flags = selects.if_(
+        selects.and_(
+            FBCODE_LIBSTDCXX_SELECTOR,
+            selects.or_(
+                selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
+                selects.cond("ovr_config//third-party/libgcc:11.x"),
+            ),
+        ),
+        [
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
             # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
-        # @fb-only[end= ]: ],
-        # @fb-only: "fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type": [
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
-        # @fb-only[end= ]: ],
-        # @fb-only: "ovr_config//third-party/libgcc:11.x": [
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
-        # @fb-only[end= ]: ],
-    }),
+        ],
+        select({
+            "DEFAULT": [],
+            "fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type": [
+                # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
+                # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
+                # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
+                # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
+                # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
+            ],
+
+        }),
+    ),
 )
 
 # !!!! fbcode/folly/debugging/exception_tracer/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
@@ -305,25 +322,30 @@ fbcode_target(_kind = cpp_library,
     ],
 )
 
+LIBSTDCXX_BUCKIFIED_SELECTOR = selects.and_(
+    selects.cond("ovr_config//cpp:libstdc++"),
+    selects.cond("ovr_config//third-party/libgcc:11.x"),
+)
+
 fbcode_target(_kind = cpp_library,
     name = "exception_tracer_callbacks",
     srcs = ["ExceptionTracerLib.cpp"],
     headers = ["ExceptionTracerLib.h"],
-    compiler_flags = select({
-        "DEFAULT": [],
-        # @fb-only[end= ]: "ovr_config//third-party/libgcc:11.x": ["-DFOLLY_STATIC_LIBSTDCXX=1"],
-    }),
-    exported_linker_flags = select({
-        "DEFAULT": [],
+    compiler_flags = selects.if_(LIBSTDCXX_BUCKIFIED_SELECTOR,
+        # @fb-only[end= ]: ["-DFOLLY_STATIC_LIBSTDCXX=1"],
+        [],
+    ),
+    exported_linker_flags = selects.if_(LIBSTDCXX_BUCKIFIED_SELECTOR,
         # @lint-ignore-every BUCKFORMAT
-        # @fb-only: "ovr_config//third-party/libgcc:11.x": [
+        # @fb-only: [
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
             # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
         # @fb-only[end= ]: ],
-    }),
+        [],
+    ),
     link_whole = True,
     supports_python_dlopen = True,
     labels = ["EXCLUDED_FROM_LINK_GROUPS"],
