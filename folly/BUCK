@@ -2265,6 +2265,7 @@ non_fbcode_target(
         "//xplat/folly:portability_asm",
         "//xplat/folly:synchronization_atomic_notification",
         "//xplat/folly:synchronization_atomic_ref",
+        "//xplat/folly:utility",
     ],
 )
 
@@ -7130,6 +7131,7 @@ fbcode_target(
     exported_deps = [
         ":optional",
         ":portability",
+        ":utility",
         "//folly/synchronization:atomic_notification",
         "//folly/synchronization:atomic_ref",
     ],

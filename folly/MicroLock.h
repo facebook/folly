@@ -23,6 +23,7 @@
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>
+#include <folly/Utility.h>
 #include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/AtomicRef.h>
 
@@ -289,11 +290,11 @@ uint8_t MicroLockBase<MaxSpins, MaxYields>::lockAndLoad() noexcept {
   if ((oldWord & heldBit()) == 0 &&
       atomic_ref(lock_).compare_exchange_weak(
           oldWord,
-          oldWord | heldBit(),
+          to_narrow(oldWord | heldBit()),
           std::memory_order_acquire,
           std::memory_order_relaxed)) {
     // Fast uncontended case: memory_order_acquire above is our barrier
-    return decodeDataFromWord(oldWord | heldBit());
+    return decodeDataFromWord(to_narrow(oldWord | heldBit()));
   } else {
     // lockSlowPath doesn't call waitBit(); it just shifts the input bit.  Make
     // sure its shifting produces the same result a call to waitBit would.
