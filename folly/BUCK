@@ -2260,11 +2260,11 @@ non_fbcode_target(
         "MicroLock.h",
     ],
     exported_deps = [
-        "//xplat/folly:c_portability",
         "//xplat/folly:optional",
         "//xplat/folly:portability",
         "//xplat/folly:portability_asm",
-        "//xplat/folly/detail:futex",
+        "//xplat/folly:synchronization_atomic_notification",
+        "//xplat/folly:synchronization_atomic_ref",
     ],
 )
 
@@ -7128,10 +7128,10 @@ fbcode_target(
         "//folly/portability:asm",
     ],
     exported_deps = [
-        ":c_portability",
         ":optional",
         ":portability",
-        "//folly/detail:futex",
+        "//folly/synchronization:atomic_notification",
+        "//folly/synchronization:atomic_ref",
     ],
 )
 
