@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include <folly/Portability.h>
 #include <folly/net/NetworkSocket.h>
@@ -28,6 +29,9 @@
 #ifdef _WIN32
 
 #include <WS2tcpip.h> // @manual
+#ifdef __MINGW32__
+#include <mswsock.h>
+#endif
 
 using nfds_t = int;
 using sa_family_t = ADDRESS_FAMILY;

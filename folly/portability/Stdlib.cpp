@@ -29,6 +29,8 @@
 namespace folly {
 namespace portability {
 namespace stdlib {
+
+#ifdef _MSC_VER
 char* mktemp(char* tn) {
   return _mktemp(tn);
 }
@@ -76,6 +78,7 @@ char* realpath(const char* path, char* resolved_path) {
   // I sure hope the caller gave us _MAX_PATH space in the buffer....
   return _fullpath(resolved_path, path, _MAX_PATH);
 }
+#endif
 
 int setenv(const char* name, const char* value, int overwrite) {
   if (overwrite == 0 && getenv(name) != nullptr) {
@@ -165,7 +168,7 @@ int folly::portability::stdlib::clearenv() {
     }
   }
 
-  for (auto s : data) {
+  for (const auto& s : data) {
     if (unsetenv(s.c_str()) != 0)
       return -1;
   }

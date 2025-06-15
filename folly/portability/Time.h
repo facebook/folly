@@ -59,11 +59,13 @@ extern "C" int clock_getres(clockid_t clk_id, struct timespec* ts);
 #define TM_YEAR_BASE (1900)
 
 extern "C" {
+#ifdef _MSC_VER
 char* asctime_r(const tm* tm, char* buf);
 char* ctime_r(const time_t* t, char* buf);
 tm* gmtime_r(const time_t* t, tm* res);
-tm* localtime_r(const time_t* t, tm* o);
 int nanosleep(const struct timespec* request, struct timespec* remain);
+#endif
+tm* localtime_r(const time_t* t, tm* o);
 char* strptime(
     const char* __restrict buf,
     const char* __restrict fmt,
