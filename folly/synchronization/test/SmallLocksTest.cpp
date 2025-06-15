@@ -179,9 +179,9 @@ TEST(SmallLocks, PicoSpinSigned) {
   EXPECT_EQ(val.getData(), -8);
 }
 
-TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
-  SKIP_IF(!folly::kIsSanitizeThread) << "Enabled in TSAN mode only";
+#if FOLLY_SANITIZE_THREAD
 
+TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
   typedef PicoSpinLock<int16_t, 0> Lock;
 
   {
@@ -206,6 +206,8 @@ TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
     }
   }
 }
+
+#endif
 
 TEST(SmallLocks, RegClobber) {
   TestClobber().go();
@@ -439,9 +441,9 @@ TEST(SmallLocks, MicroSpinLockStressTestTryLockHardwareConcurrency) {
   simpleStressTestTryLock<MicroSpinLock>(duration, threads);
 }
 
-TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
-  SKIP_IF(!folly::kIsSanitizeThread) << "Enabled in TSAN mode only";
+#if FOLLY_SANITIZE_THREAD
 
+TEST(SmallLocks, MicroSpinLockThreadSanitizer) {
   uint8_t val = 0;
   static_assert(sizeof(uint8_t) == sizeof(MicroSpinLock), "sanity check");
   // make sure TSAN handles this case too:
@@ -496,6 +498,8 @@ TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
     }
   }
 }
+
+#endif
 
 TEST(SmallLocks, PicoSpinLockStressTestTryLockTwoThreads) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
