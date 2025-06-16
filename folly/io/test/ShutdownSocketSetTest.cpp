@@ -98,8 +98,6 @@ Server::Server() : acceptSocket_(), port_(0), stop_(NO_STOP) {
     if (stop_ != NO_STOP) {
       closeClients(stop_ == ABORTIVE);
     }
-
-    shutdownSocketSet_.close(acceptSocket_);
   });
 }
 
