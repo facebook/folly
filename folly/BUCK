@@ -39,42 +39,6 @@ oncall("fbcode_entropy_wardens_folly")
 
 CPPFLAGS = cpp_flags()
 
-# A subset of folly which does not create any linker dependencies (srcs and deps are both empty).
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "headers_only_do_not_use",
-    feature = triage_InfrastructureSupermoduleOptou,
-    deps = [
-        # Header-only deps
-        "//third-party/boost:boost",
-    ],
-    exported_deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:config",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:function",
-        "//xplat/folly:functional_apply_tuple",
-        "//xplat/folly:functional_invoke",
-        "//xplat/folly:functional_partial",
-        "//xplat/folly:likely",
-        "//xplat/folly:math",
-        "//xplat/folly:move_wrapper",
-        "//xplat/folly:portability",
-        "//xplat/folly:portability_iovec",
-        "//xplat/folly:portability_math",
-        "//xplat/folly:portability_windows",
-        "//xplat/folly:preprocessor",
-        "//xplat/folly:traits",
-        "//xplat/folly:unit",
-        "//xplat/folly/container:enumerate",
-        "//xplat/folly/container:foreach",
-        "//xplat/folly/lang:checked_math",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:uncaught_exceptions",
-    ],
-)
-
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "memory",
