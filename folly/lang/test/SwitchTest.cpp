@@ -34,16 +34,22 @@ enum class E {
 
 TEST_F(SwitchTest, Exhaustive) {
   auto lambda = [](E e) -> std::int64_t {
-    FOLLY_EXHAUSTIVE_SWITCH(switch (e) {
-      case E::ZERO:
-        return 0;
-      case E::ONE:
-        return 1;
-      case E::TWO:
-        return 2;
-      default:
-        return -1;
-    })
+    FOLLY_EXHAUSTIVE_SWITCH({
+      switch (e) {
+        case E::ZERO: {
+          return 0;
+        }
+        case E::ONE: {
+          return 1;
+        }
+        case E::TWO: {
+          return 2;
+        }
+        default: {
+          return -1;
+        }
+      }
+    });
   };
 
   EXPECT_EQ(lambda(E::ZERO), 0);
@@ -54,13 +60,15 @@ TEST_F(SwitchTest, Exhaustive) {
 
 TEST_F(SwitchTest, Flexible) {
   auto lambda = [](E e) -> std::int64_t {
-    FOLLY_FLEXIBLE_SWITCH(switch (e) {
-      case E::ZERO:
-        return 0;
-      case E::ONE:
-        return 1;
-      default:
-        return -1;
+    FOLLY_FLEXIBLE_SWITCH({
+      switch (e) {
+        case E::ZERO:
+          return 0;
+        case E::ONE:
+          return 1;
+        default:
+          return -1;
+      }
     });
   };
 

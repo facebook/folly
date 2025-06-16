@@ -37,13 +37,15 @@
  *    };
  *
  *    void foo(logposition_t logpos) {
- *      FOLLY_EXHAUSTIVE_SWITCH(switch (logpos) {
- *        case logposition_t::sealed:
- *          // handle sealed case
- *        case logposition_t::nonexistent:
- *          // handle nonexistent case
- *        default:
- *          // handle non-exceptional value
+ *      FOLLY_EXHAUSTIVE_SWITCH({
+ *        switch (logpos) {
+ *          case logposition_t::sealed:
+ *            // handle sealed case
+ *          case logposition_t::nonexistent:
+ *            // handle nonexistent case
+ *          default:
+ *            // handle non-exceptional value
+ *        }
  *      });
  *    }
  *
@@ -60,14 +62,16 @@
  *    };
  *
  *    bool isRedColor(Color c) {
- *      FOLLY_FLEXIBLE_SWITCH(switch (c) {
- *        case Color::Red:
- *        case Color::LightRed:
- *        case Color::DarkRed:
- *          return true;
- *        default:
- *          return false;
- *      })
+ *      FOLLY_FLEXIBLE_SWITCH({
+ *        switch (c) {
+ *          case Color::Red:
+ *          case Color::LightRed:
+ *          case Color::DarkRed:
+ *            return true;
+ *          default:
+ *            return false;
+ *        }
+ *      });
  *    }
  *
  * The above is the less common pattern for switch statements.
@@ -80,14 +84,16 @@
   FOLLY_DETAIL_DISABLE_FLEXIBLE_SWITCH_ERRORS  \
   FOLLY_DETAIL_ENABLE_EXHAUSTIVE_SWITCH_ERRORS \
   __VA_ARGS__                                  \
-  FOLLY_POP_WARNING
+  FOLLY_POP_WARNING                            \
+  static_assert(true, "Add a semicolon after this line for formatting")
 
 #define FOLLY_FLEXIBLE_SWITCH(...)              \
   FOLLY_PUSH_WARNING                            \
   FOLLY_DETAIL_DISABLE_EXHAUSTIVE_SWITCH_ERRORS \
   FOLLY_DETAIL_ENABLE_FLEXIBLE_SWITCH_ERRORS    \
   __VA_ARGS__                                   \
-  FOLLY_POP_WARNING
+  FOLLY_POP_WARNING                             \
+  static_assert(true, "Add a semicolon after this line for formatting")
 
 /**
  * Used to implement the above two macros.  Please do not use anything here for
