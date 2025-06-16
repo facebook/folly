@@ -51,7 +51,7 @@
 #include <folly/container/detail/F14Mask.h>
 
 #if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-#include <arm_neon_sve_bridge.h>
+#include <arm_neon_sve_bridge.h> // @manual
 #include <arm_sve.h>
 #endif
 
