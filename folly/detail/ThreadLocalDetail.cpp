@@ -84,6 +84,97 @@ bool ThreadEntrySet::basicSanity() const {
           });
 }
 
+void ThreadEntrySet::clear() {
+  DCHECK(basicSanity());
+  entryToVectorSlot.clear();
+  threadElements.clear();
+}
+
+int64_t ThreadEntrySet::getIndexFor(ThreadEntry* entry) const {
+  auto iter = entryToVectorSlot.find(entry);
+  if (iter != entryToVectorSlot.end()) {
+    return static_cast<int64_t>(iter->second);
+  }
+  return -1;
+}
+
+void* ThreadEntrySet::getPtrForThread(ThreadEntry* entry) const {
+  auto index = getIndexFor(entry);
+  if (index < 0) {
+    return nullptr;
+  }
+  return threadElements[static_cast<size_t>(index)].wrapper.ptr;
+}
+
+bool ThreadEntrySet::contains(ThreadEntry* entry) const {
+  DCHECK(basicSanity());
+  return entryToVectorSlot.find(entry) != entryToVectorSlot.end();
+}
+
+bool ThreadEntrySet::insert(ThreadEntry* entry) {
+  DCHECK(basicSanity());
+  auto iter = entryToVectorSlot.find(entry);
+  if (iter != entryToVectorSlot.end()) {
+    // Entry already present. Sanity check and exit.
+    DCHECK_EQ(entry, threadElements[iter->second].threadEntry);
+    return false;
+  }
+  threadElements.emplace_back(entry);
+  auto idx = threadElements.size() - 1;
+  entryToVectorSlot[entry] = idx;
+  return true;
+}
+
+bool ThreadEntrySet::insert(const Element& element) {
+  DCHECK(basicSanity());
+  auto iter = entryToVectorSlot.find(element.threadEntry);
+  if (iter != entryToVectorSlot.end()) {
+    // Entry already present. Skip copying over element. Caller
+    // responsible for handling acceptability of this behavior.
+    DCHECK_EQ(element.threadEntry, threadElements[iter->second].threadEntry);
+    return false;
+  }
+  threadElements.push_back(element);
+  auto idx = threadElements.size() - 1;
+  entryToVectorSlot[element.threadEntry] = idx;
+  return true;
+}
+
+ThreadEntrySet::Element ThreadEntrySet::erase(ThreadEntry* entry) {
+  DCHECK(basicSanity());
+  auto iter = entryToVectorSlot.find(entry);
+  if (iter == entryToVectorSlot.end()) {
+    // Entry not present.
+    return Element{nullptr};
+  }
+  auto idx = iter->second;
+  DCHECK_LT(idx, threadElements.size());
+  entryToVectorSlot.erase(iter);
+  Element last = threadElements.back();
+  Element current = threadElements[idx];
+  if (idx != threadElements.size() - 1) {
+    threadElements[idx] = last;
+    entryToVectorSlot[last.threadEntry] = idx;
+  }
+  threadElements.pop_back();
+  DCHECK(basicSanity());
+  if (compressible()) {
+    compress();
+  }
+  DCHECK(basicSanity());
+  return current;
+}
+
+bool ThreadEntrySet::compressible() const {
+  // We choose a sufficiently-large multiplier so that there is no risk of a
+  // following insert growing the vector and then a following erase shrinking
+  // the vector, since that way lies non-amortized-O(N)-complexity costs for
+  // both insert and erase ops.
+  constexpr size_t const mult = 4;
+  auto& vec = threadElements;
+  return std::max(size_t(1), vec.size()) * mult <= vec.capacity();
+}
+
 bool ThreadEntry::cachedInSetMatchesElementsArray(uint32_t id) {
   if constexpr (!kIsDebug) {
     return true;

@@ -350,105 +350,31 @@ struct ThreadEntrySet {
 
   bool basicSanity() const;
 
-  void clear() {
-    DCHECK(basicSanity());
-    entryToVectorSlot.clear();
-    threadElements.clear();
-  }
+  void clear();
 
-  int64_t getIndexFor(ThreadEntry* entry) const {
-    auto iter = entryToVectorSlot.find(entry);
-    if (iter != entryToVectorSlot.end()) {
-      return static_cast<int64_t>(iter->second);
-    }
-    return -1;
-  }
+  int64_t getIndexFor(ThreadEntry* entry) const;
 
   /**
    * Helper function for debugging checks. Fetch ptr for a given ThreadEnrtry.
    * Used to sanity check the value in ElementDisposeInfo wrapper matches the
    * ElementWrapper array used for fast access from the thread itself.
    */
-  void* getPtrForThread(ThreadEntry* entry) const {
-    auto index = getIndexFor(entry);
-    if (index < 0) {
-      return nullptr;
-    }
-    return threadElements[static_cast<size_t>(index)].wrapper.ptr;
-  }
+  void* getPtrForThread(ThreadEntry* entry) const;
 
-  bool contains(ThreadEntry* entry) const {
-    DCHECK(basicSanity());
-    return entryToVectorSlot.find(entry) != entryToVectorSlot.end();
-  }
+  bool contains(ThreadEntry* entry) const;
 
-  bool insert(ThreadEntry* entry) {
-    DCHECK(basicSanity());
-    auto iter = entryToVectorSlot.find(entry);
-    if (iter != entryToVectorSlot.end()) {
-      // Entry already present. Sanity check and exit.
-      DCHECK_EQ(entry, threadElements[iter->second].threadEntry);
-      return false;
-    }
-    threadElements.emplace_back(entry);
-    auto idx = threadElements.size() - 1;
-    entryToVectorSlot[entry] = idx;
-    return true;
-  }
+  bool insert(ThreadEntry* entry);
 
-  bool insert(const Element& element) {
-    DCHECK(basicSanity());
-    auto iter = entryToVectorSlot.find(element.threadEntry);
-    if (iter != entryToVectorSlot.end()) {
-      // Entry already present. Skip copying over element. Caller
-      // responsible for handling acceptability of this behavior.
-      DCHECK_EQ(element.threadEntry, threadElements[iter->second].threadEntry);
-      return false;
-    }
-    threadElements.push_back(element);
-    auto idx = threadElements.size() - 1;
-    entryToVectorSlot[element.threadEntry] = idx;
-    return true;
-  }
+  bool insert(const Element& element);
 
-  Element erase(ThreadEntry* entry) {
-    DCHECK(basicSanity());
-    auto iter = entryToVectorSlot.find(entry);
-    if (iter == entryToVectorSlot.end()) {
-      // Entry not present.
-      return Element{nullptr};
-    }
-    auto idx = iter->second;
-    DCHECK_LT(idx, threadElements.size());
-    entryToVectorSlot.erase(iter);
-    Element last = threadElements.back();
-    Element current = threadElements[idx];
-    if (idx != threadElements.size() - 1) {
-      threadElements[idx] = last;
-      entryToVectorSlot[last.threadEntry] = idx;
-    }
-    threadElements.pop_back();
-    DCHECK(basicSanity());
-    if (compressible()) {
-      compress();
-    }
-    DCHECK(basicSanity());
-    return current;
-  }
+  Element erase(ThreadEntry* entry);
 
   /// compressible
   ///
   /// If many elements have been removed, then size might be much less than
   /// capacity and it becomes possible to reduce memory usage.
-  bool compressible() const {
-    // We choose a sufficiently-large multiplier so that there is no risk of a
-    // following insert growing the vector and then a following erase shrinking
-    // the vector, since that way lies non-amortized-O(N)-complexity costs for
-    // both insert and erase ops.
-    constexpr size_t const mult = 4;
-    auto& vec = threadElements;
-    return std::max(size_t(1), vec.size()) * mult <= vec.capacity();
-  }
+  bool compressible() const;
+
   /// compress
   ///
   /// Attempt to reduce the memory usage of the data structure.
