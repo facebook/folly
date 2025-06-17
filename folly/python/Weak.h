@@ -79,6 +79,9 @@ Py_Weak(int) Py_IsFinalizing(void);
 Py_Weak(int) _Py_IsFinalizing(void);
 #endif
 
+// Python Types
+Py_Weak(PyTypeObject) PyFrame_Type;
+
 #undef Py_Weak
 #endif // NOT_WINDOWS
 
