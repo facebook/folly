@@ -68,7 +68,7 @@ struct FullMask<1> : std::integral_constant<MaskType, 1> {};
 
 // Iterates a mask, optimized for the case that only a few bits are set
 class SparseMaskIter {
-  static_assert(kMaskSpacing == 4, "");
+  static_assert(kMaskSpacing == 4);
 
   uint32_t interleavedMask_;
 
@@ -88,7 +88,7 @@ class SparseMaskIter {
 
 // Iterates a mask, optimized for the case that most bits are set
 class DenseMaskIter {
-  static_assert(kMaskSpacing == 4, "");
+  static_assert(kMaskSpacing == 4);
 
   std::size_t count_;
   unsigned index_;

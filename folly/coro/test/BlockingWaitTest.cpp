@@ -32,24 +32,21 @@
 
 #if FOLLY_HAS_COROUTINES
 
-static_assert(
+static_assert( //
     std::is_same<
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<>>())),
-        void>::value,
-    "");
-static_assert(
+        void>::value);
+static_assert( //
     std::is_same<
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<int>>())),
-        int>::value,
-    "");
-static_assert(
+        int>::value);
+static_assert( //
     std::is_same<
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<int&>>())),
-        int&>::value,
-    "");
+        int&>::value);
 static_assert(
     std::is_same<
         decltype(folly::coro::blockingWait(

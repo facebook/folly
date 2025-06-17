@@ -88,24 +88,21 @@ auto asRange(const std::vector<T>& c, std::random_access_iterator_tag) {
 // tape types
 
 static_assert(
-    std::is_same_v<folly::StringPiece, folly::string_tape::reference>, "");
+    std::is_same_v<folly::StringPiece, folly::string_tape::reference>);
 static_assert(
-    std::is_same_v<folly::StringPiece, folly::string_tape::value_type>, "");
-static_assert(
+    std::is_same_v<folly::StringPiece, folly::string_tape::value_type>);
+static_assert( //
     std::is_same_v<
         folly::Range<const int*>,
-        folly::tape<std::vector<int>>::reference>,
-    "");
-static_assert(
+        folly::tape<std::vector<int>>::reference>);
+static_assert( //
     std::is_same_v<
         folly::Range<const int*>,
-        folly::tape<std::vector<int>>::value_type>,
-    "");
-static_assert(
+        folly::tape<std::vector<int>>::value_type>);
+static_assert( //
     std::is_same_v<
         folly::Range<const int*>,
-        folly::tape<folly::small_vector<int, 4>>::reference>,
-    "");
+        folly::tape<folly::small_vector<int, 4>>::reference>);
 
 #if defined(__cpp_lib_ranges)
 static_assert(std::ranges::random_access_range<folly::string_tape>);

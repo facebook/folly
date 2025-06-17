@@ -35,14 +35,14 @@ namespace {
 
 template <typename T>
 void checkTransparent() {
-  static_assert(is_transparent_v<HeterogeneousAccessEqualTo<T>>, "");
-  static_assert(is_transparent_v<HeterogeneousAccessHash<T>>, "");
+  static_assert(is_transparent_v<HeterogeneousAccessEqualTo<T>>);
+  static_assert(is_transparent_v<HeterogeneousAccessHash<T>>);
 }
 
 template <typename T>
 void checkNotTransparent() {
-  static_assert(!is_transparent_v<HeterogeneousAccessEqualTo<T>>, "");
-  static_assert(!is_transparent_v<HeterogeneousAccessHash<T>>, "");
+  static_assert(!is_transparent_v<HeterogeneousAccessEqualTo<T>>);
+  static_assert(!is_transparent_v<HeterogeneousAccessHash<T>>);
 }
 
 struct StringVector {
@@ -218,7 +218,7 @@ TEST(HeterogeneousAccess, transparentMatches) {
   runTestMatches<std::vector<int>>({1, 2, 3, 4});
 
   static_assert(
-      std::is_convertible<small_vector<int, 2>, Range<int const*>>::value, "");
+      std::is_convertible<small_vector<int, 2>, Range<int const*>>::value);
   runTestMatches<small_vector<int, 2>>({1, 2, 3, 4});
 }
 

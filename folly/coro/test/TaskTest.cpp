@@ -37,39 +37,33 @@
 
 using namespace folly;
 
-static_assert(
+static_assert( //
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::Task<void>>,
-        void>::value,
-    "");
-static_assert(
+        void>::value);
+static_assert( //
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::Task<int>>,
-        int>::value,
-    "");
+        int>::value);
 
 static_assert(
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::detail::InlineTask<void>>,
-        void>::value,
-    "");
+        void>::value);
 static_assert(
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::detail::InlineTask<int>>,
-        int>::value,
-    "");
+        int>::value);
 
 static_assert(
     std::is_same<folly::coro::semi_await_result_t<folly::coro::Baton&>, void>::
-        value,
-    "");
+        value);
 static_assert(
     std::is_same<
         folly::coro::semi_await_result_t<
             decltype(std::declval<folly::coro::SharedMutex&>()
                          .co_scoped_lock_shared())>,
-        folly::coro::SharedLock<folly::coro::SharedMutex>>::value,
-    "");
+        folly::coro::SharedLock<folly::coro::SharedMutex>>::value);
 
 namespace {
 

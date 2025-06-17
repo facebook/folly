@@ -33,9 +33,9 @@ TEST(UnrollUtilsTest, ArrayMap) {
   constexpr std::array<double, 3> expected{2.0, 3.0, 4.0};
 
   // non constexpr std::array operator== for older standards
-  static_assert(expected[0] == actual[0], "");
-  static_assert(expected[1] == actual[1], "");
-  static_assert(expected[2] == actual[2], "");
+  static_assert(expected[0] == actual[0]);
+  static_assert(expected[1] == actual[1]);
+  static_assert(expected[2] == actual[2]);
 }
 
 template <int... values>
@@ -45,10 +45,10 @@ constexpr int reduceValues() {
 }
 
 TEST(UnrollUtilsTest, ArrayReduce) {
-  static_assert(1 == reduceValues<1>(), "");
-  static_assert(3 == reduceValues<1, 2>(), "");
-  static_assert(4 == reduceValues<1, 0, 3>(), "");
-  static_assert(10 == reduceValues<1, 2, 3, 4>(), "");
+  static_assert(1 == reduceValues<1>());
+  static_assert(3 == reduceValues<1, 2>());
+  static_assert(4 == reduceValues<1, 0, 3>());
+  static_assert(10 == reduceValues<1, 2, 3, 4>());
 }
 
 template <std::size_t stopAt>
@@ -83,36 +83,31 @@ TEST(UnrollUtilsTest, UnrollUntil) {
           /*N*/ 0,
           /*stopAt*/ 0,
           /*expectedRes*/ false,
-          /*ExpectedLastStep*/ kNoStop>(),
-      "");
+          /*ExpectedLastStep*/ kNoStop>());
   static_assert(
       unrollUntilTest<
           /*N*/ 0,
           /*stopAt*/ 1,
           /*expectedRes*/ false,
-          /*ExpectedLastStep*/ kNoStop>(),
-      "");
+          /*ExpectedLastStep*/ kNoStop>());
   static_assert(
       unrollUntilTest<
           /*N*/ 3,
           /*stopAt*/ 1,
           /*expectedRes*/ true,
-          /*ExpectedLastStep*/ 1>(),
-      "");
+          /*ExpectedLastStep*/ 1>());
   static_assert(
       unrollUntilTest<
           /*N*/ 3,
           /*stopAt*/ 4,
           /*expectedRes*/ false,
-          /*ExpectedLastStep*/ 2>(),
-      "");
+          /*ExpectedLastStep*/ 2>());
   static_assert(
       unrollUntilTest<
           /*N*/ 5,
           /*stopAt*/ 3,
           /*expectedRes*/ true,
-          /*ExpectedLastStep*/ 3>(),
-      "");
+          /*ExpectedLastStep*/ 3>());
 }
 
 } // namespace folly::simd::detail

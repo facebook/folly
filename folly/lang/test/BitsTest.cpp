@@ -399,11 +399,11 @@ TYPED_TEST(BitsAllUintsTest, NLeastSignificantBits) {
 
   static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
-  static_assert(n_least_significant_bits<T>(0) == 0b0, "");
-  static_assert(n_least_significant_bits<T>(1) == 0b1, "");
-  static_assert(n_least_significant_bits<T>(2) == 0b11, "");
-  static_assert(n_least_significant_bits<T>(3) == 0b111, "");
-  static_assert(n_least_significant_bits<T>(4) == 0b1111, "");
+  static_assert(n_least_significant_bits<T>(0) == 0b0);
+  static_assert(n_least_significant_bits<T>(1) == 0b1);
+  static_assert(n_least_significant_bits<T>(2) == 0b11);
+  static_assert(n_least_significant_bits<T>(3) == 0b111);
+  static_assert(n_least_significant_bits<T>(4) == 0b1111);
 
   constexpr auto cactual = [] {
     std::array<T, kBitSize> ret{};
@@ -435,16 +435,15 @@ TYPED_TEST(BitsAllUintsTest, NMostSignificantBits) {
 
   static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
+  static_assert(n_most_significant_bits<T>(kBitSize) == static_cast<T>(~0b0));
   static_assert(
-      n_most_significant_bits<T>(kBitSize) == static_cast<T>(~0b0), "");
+      n_most_significant_bits<T>(kBitSize - 1) == static_cast<T>(~0b1));
   static_assert(
-      n_most_significant_bits<T>(kBitSize - 1) == static_cast<T>(~0b1), "");
+      n_most_significant_bits<T>(kBitSize - 2) == static_cast<T>(~0b11));
   static_assert(
-      n_most_significant_bits<T>(kBitSize - 2) == static_cast<T>(~0b11), "");
+      n_most_significant_bits<T>(kBitSize - 3) == static_cast<T>(~0b111));
   static_assert(
-      n_most_significant_bits<T>(kBitSize - 3) == static_cast<T>(~0b111), "");
-  static_assert(
-      n_most_significant_bits<T>(kBitSize - 4) == static_cast<T>(~0b1111), "");
+      n_most_significant_bits<T>(kBitSize - 4) == static_cast<T>(~0b1111));
 
   constexpr auto cactual = [] {
     std::array<T, kBitSize> ret{};
@@ -476,8 +475,8 @@ TYPED_TEST(BitsAllUintsTest, ClearNLeastSignificantBits) {
 
   static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
-  static_assert(clear_n_least_significant_bits(T{0b11U}, 1U) == 0b10U, "");
-  static_assert(clear_n_least_significant_bits(T{0b101U}, 1U) == 0b100U, "");
+  static_assert(clear_n_least_significant_bits(T{0b11U}, 1U) == 0b10U);
+  static_assert(clear_n_least_significant_bits(T{0b101U}, 1U) == 0b100U);
 
   constexpr auto cactual = [] {
     std::array<T, kBitSize> ret{};
@@ -509,9 +508,9 @@ TYPED_TEST(BitsAllUintsTest, SetNLeastSignificantBits) {
 
   static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
-  static_assert(set_n_least_significant_bits(T{0b10U}, 1U) == 0b11U, "");
-  static_assert(set_n_least_significant_bits(T{0b100U}, 1U) == 0b101U, "");
-  static_assert(set_n_least_significant_bits(T{0b100U}, 2U) == 0b111U, "");
+  static_assert(set_n_least_significant_bits(T{0b10U}, 1U) == 0b11U);
+  static_assert(set_n_least_significant_bits(T{0b100U}, 1U) == 0b101U);
+  static_assert(set_n_least_significant_bits(T{0b100U}, 2U) == 0b111U);
 
   constexpr auto cactual = [] {
     std::array<T, kBitSize> ret{};
@@ -543,10 +542,9 @@ TYPED_TEST(BitsAllUintsTest, ClearNMostSignificantBits) {
 
   static constexpr std::size_t kBitSize = sizeof(T) * 8;
 
+  static_assert(clear_n_most_significant_bits(T{0b101U}, kBitSize - 1) == 0b1U);
   static_assert(
-      clear_n_most_significant_bits(T{0b101U}, kBitSize - 1) == 0b1U, "");
-  static_assert(
-      clear_n_most_significant_bits(T{0b1100U}, kBitSize - 3) == 0b100U, "");
+      clear_n_most_significant_bits(T{0b1100U}, kBitSize - 3) == 0b100U);
 
   constexpr auto cactual = [] {
     std::array<T, kBitSize> ret{};
@@ -580,12 +578,10 @@ TYPED_TEST(BitsAllUintsTest, SetNMostSignificantBits) {
 
   static_assert(
       set_n_most_significant_bits(T{0b1}, kBitSize - 2) ==
-          static_cast<T>(~0b10),
-      "");
+      static_cast<T>(~0b10));
   static_assert(
       set_n_most_significant_bits(T{0b1100U}, kBitSize - 3) ==
-          static_cast<T>(~0b11),
-      "");
+      static_cast<T>(~0b11));
 
   constexpr auto cactual = [] {
     std::array<T, kBitSize> ret{};

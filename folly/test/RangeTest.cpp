@@ -53,15 +53,15 @@ CPP_assert(ranges::view_<folly::StringPiece>);
 using namespace folly;
 using namespace std;
 
-static_assert(folly::detail::range_is_char_type_v_<char*>, "");
-static_assert(folly::detail::range_is_byte_type_v_<unsigned char*>, "");
+static_assert(folly::detail::range_is_char_type_v_<char*>);
+static_assert(folly::detail::range_is_byte_type_v_<unsigned char*>);
 
 static_assert(std::is_same_v<char, typename Range<char*>::value_type>);
 
-static_assert(std::is_convertible_v<folly::Range<int*>, folly::span<int>>, "");
+static_assert(std::is_convertible_v<folly::Range<int*>, folly::span<int>>);
 #if defined(__cpp_lib_ranges)
-static_assert(std::ranges::borrowed_range<folly::Range<int*>>, "");
-static_assert(std::ranges::borrowed_range<folly::Range<const int*>>, "");
+static_assert(std::ranges::borrowed_range<folly::Range<int*>>);
+static_assert(std::ranges::borrowed_range<folly::Range<const int*>>);
 #endif
 
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
@@ -1512,14 +1512,14 @@ TEST(Range, ArrayConstructors) {
 
 TEST(Range, ConstexprAccessors) {
   constexpr StringPiece piece = range("hello");
-  static_assert(piece.size() == 6u, "");
-  static_assert(piece.end() - piece.begin() == 6u, "");
-  static_assert(piece.data() == piece.begin(), "");
-  static_assert(piece.start() == piece.begin(), "");
-  static_assert(piece.cbegin() == piece.begin(), "");
-  static_assert(piece.cend() == piece.end(), "");
-  static_assert(*piece.begin() == 'h', "");
-  static_assert(*(piece.end() - 1) == '\0', "");
+  static_assert(piece.size() == 6u);
+  static_assert(piece.end() - piece.begin() == 6u);
+  static_assert(piece.data() == piece.begin());
+  static_assert(piece.start() == piece.begin());
+  static_assert(piece.cbegin() == piece.begin());
+  static_assert(piece.cend() == piece.end());
+  static_assert(*piece.begin() == 'h');
+  static_assert(*(piece.end() - 1) == '\0');
 }
 
 TEST(Range, LiteralSuffix) {

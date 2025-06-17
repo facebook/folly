@@ -151,7 +151,7 @@ void rawOverAlignedImpl(Alloc const& alloc, size_t n, void*& raw) {
       typename AllocTraits::template rebind_traits<BaseType>;
   using BaseAlloc = typename BaseAllocTraits::allocator_type;
   static_assert(
-      sizeof(BaseType) == kBaseAlign && alignof(BaseType) == kBaseAlign, "");
+      sizeof(BaseType) == kBaseAlign && alignof(BaseType) == kBaseAlign);
 
 #if defined(__cpp_sized_deallocation)
   if (kCanBypass && kAlign == kBaseAlign) {
@@ -614,8 +614,8 @@ class AlignedSysAllocator : private Align {
   constexpr Align const& align() const { return *this; }
 
  public:
-  static_assert(std::is_nothrow_copy_constructible<Align>::value, "");
-  static_assert(is_nothrow_invocable_r_v<std::size_t, Align>, "");
+  static_assert(std::is_nothrow_copy_constructible<Align>::value);
+  static_assert(is_nothrow_invocable_r_v<std::size_t, Align>);
 
   using value_type = T;
 

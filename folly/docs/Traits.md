@@ -115,7 +115,7 @@ explicitly, `fbvector<MySimpleType>` or `fbvector<MyParameterizedType>`
 will fail to compile due to assertion below:
 
 ```Cpp
-static_assert(IsRelocatable<My*Type>::value, "");
+static_assert(IsRelocatable<My*Type>::value);
 ```
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE*(type) macros can be used to state that type

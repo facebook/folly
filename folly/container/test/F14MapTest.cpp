@@ -1101,8 +1101,8 @@ TEST(Tracked, baseline) {
 template <typename M, typename F>
 void runInsertCases(
     std::string const& name, F const& insertFunc, uint64_t expectedDist = 0) {
-  static_assert(std::is_same<typename M::key_type, Tracked<0>>::value, "");
-  static_assert(std::is_same<typename M::mapped_type, Tracked<1>>::value, "");
+  static_assert(std::is_same<typename M::key_type, Tracked<0>>::value);
+  static_assert(std::is_same<typename M::mapped_type, Tracked<1>>::value);
   {
     typename M::value_type p{0, 0};
     M m;
@@ -2021,9 +2021,9 @@ struct C {
 } // namespace
 
 TEST(F14FastMap, disabledDoubleTransparent) {
-  static_assert(std::is_convertible<B<char>, A>::value, "");
-  static_assert(std::is_convertible<C, B<char>>::value, "");
-  static_assert(!std::is_convertible<C, A>::value, "");
+  static_assert(std::is_convertible<B<char>, A>::value);
+  static_assert(std::is_convertible<C, B<char>>::value);
+  static_assert(!std::is_convertible<C, A>::value);
 
   F14FastMap<
       B<char>,

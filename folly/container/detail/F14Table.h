@@ -312,7 +312,7 @@ struct ShouldAssume32BitHash<
 // 64-bit
 template <typename Hasher, typename Key>
 std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
-  static_assert(sizeof(std::size_t) == sizeof(uint64_t), "");
+  static_assert(sizeof(std::size_t) == sizeof(uint64_t));
   std::size_t tag;
   if (!IsAvalanchingHasher<Hasher, Key>::value) {
 #if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
@@ -380,7 +380,7 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
 // 32-bit
 template <typename Hasher, typename Key>
 std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
-  static_assert(sizeof(std::size_t) == sizeof(uint32_t), "");
+  static_assert(sizeof(std::size_t) == sizeof(uint32_t));
   uint8_t tag;
   if (!IsAvalanchingHasher<Hasher, Key>::value) {
 #if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
@@ -906,7 +906,7 @@ class PackedChunkItemPtr {
 // alignment, so it works on 32-bit and 64-bit platforms
 template <typename T>
 class PackedChunkItemPtr<T*> {
-  static_assert((alignof(F14Chunk<T>) % 16) == 0, "");
+  static_assert((alignof(F14Chunk<T>) % 16) == 0);
 
   // Chunks are 16-byte aligned, so we can maintain a packed pointer to a
   // chunk item by packing the 4-bit item index into the least significant
@@ -1542,7 +1542,7 @@ class F14Table : public Policy {
     FOLLY_SAFE_DCHECK(chunkCount > 0, "");
     FOLLY_SAFE_DCHECK(!(chunkCount > 1 && capacityScale == 0), "");
     if (chunkCount == 1) {
-      static_assert(offsetof(Chunk, rawItems_) == 16, "");
+      static_assert(offsetof(Chunk, rawItems_) == 16);
       return 16 + sizeof(Item) * computeCapacity(1, capacityScale);
     } else {
       return sizeof(Chunk) * chunkCount;

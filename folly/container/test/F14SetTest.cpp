@@ -910,7 +910,7 @@ TEST(F14ValueSet, steadyStateStats) {
 // and a key_type const& or key_type&& and cause it to be inserted
 template <typename S, typename F>
 void runInsertCases(std::string const& /* name */, F const& insertFunc) {
-  static_assert(std::is_same<typename S::value_type, Tracked<0>>::value, "");
+  static_assert(std::is_same<typename S::value_type, Tracked<0>>::value);
   {
     typename S::value_type k{0};
     S s;
@@ -1500,9 +1500,9 @@ struct C {
 } // namespace
 
 TEST(F14FastSet, disabledDoubleTransparent) {
-  static_assert(std::is_convertible<B<char>, A>::value, "");
-  static_assert(std::is_convertible<C, B<char>>::value, "");
-  static_assert(!std::is_convertible<C, A>::value, "");
+  static_assert(std::is_convertible<B<char>, A>::value);
+  static_assert(std::is_convertible<C, B<char>>::value);
+  static_assert(!std::is_convertible<C, A>::value);
 
   F14FastSet<B<char>, transparent<AHasher>, transparent<std::equal_to<A>>> set;
   set.emplace(A{10});
@@ -1526,7 +1526,7 @@ template <
 struct RunAllValueSizeTests {
   void operator()() const {
     using Key = std::array<char, N>;
-    static_assert(sizeof(Key) == N, "");
+    static_assert(sizeof(Key) == N);
     S<Key, CharArrayHasher, std::equal_to<Key>, std::allocator<Key>> set;
 
     for (int i = 0; i < 100; ++i) {

@@ -75,13 +75,13 @@ struct NoDefault {
 
 } // namespace
 
-static_assert(sizeof(Optional<char>) == 2, "");
-static_assert(sizeof(Optional<int>) == 8, "");
-static_assert(sizeof(Optional<NoDefault>) == 4, "");
-static_assert(sizeof(Optional<char>) == sizeof(std::optional<char>), "");
-static_assert(sizeof(Optional<short>) == sizeof(std::optional<short>), "");
-static_assert(sizeof(Optional<int>) == sizeof(std::optional<int>), "");
-static_assert(sizeof(Optional<double>) == sizeof(std::optional<double>), "");
+static_assert(sizeof(Optional<char>) == 2);
+static_assert(sizeof(Optional<int>) == 8);
+static_assert(sizeof(Optional<NoDefault>) == 4);
+static_assert(sizeof(Optional<char>) == sizeof(std::optional<char>));
+static_assert(sizeof(Optional<short>) == sizeof(std::optional<short>));
+static_assert(sizeof(Optional<int>) == sizeof(std::optional<int>));
+static_assert(sizeof(Optional<double>) == sizeof(std::optional<double>));
 
 static_assert(is_hashable_v<folly::Optional<HashableStruct>>);
 static_assert(!is_hashable_v<folly::Optional<UnhashableStruct>>);

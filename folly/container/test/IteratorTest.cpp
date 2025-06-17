@@ -490,101 +490,84 @@ TEST(EmplaceIterator, EmplaceArgs) {
     static_assert(
         std::is_same<
             int,
-            std::tuple_element_t<0, decltype(args)::storage_type>>::value,
-        "");
+            std::tuple_element_t<0, decltype(args)::storage_type>>::value);
     static_assert(
         std::is_same<
             Object,
-            std::tuple_element_t<1, decltype(args)::storage_type>>::value,
-        "");
+            std::tuple_element_t<1, decltype(args)::storage_type>>::value);
     static_assert(
         std::is_same<
             Object,
-            std::tuple_element_t<2, decltype(args)::storage_type>>::value,
-        "");
+            std::tuple_element_t<2, decltype(args)::storage_type>>::value);
     static_assert(
         std::is_same<
             Object,
-            std::tuple_element_t<3, decltype(args)::storage_type>>::value,
-        "");
+            std::tuple_element_t<3, decltype(args)::storage_type>>::value);
     static_assert(
         std::is_same<
             Object,
-            std::tuple_element_t<4, decltype(args)::storage_type>>::value,
-        "");
+            std::tuple_element_t<4, decltype(args)::storage_type>>::value);
     static_assert(
         std::is_same<
             Object,
-            std::tuple_element_t<5, decltype(args)::storage_type>>::value,
-        "");
+            std::tuple_element_t<5, decltype(args)::storage_type>>::value);
     static_assert(
         std::is_same<
             std::reference_wrapper<const Object>,
-            std::tuple_element_t<6, decltype(args)::storage_type>>::value,
-        "");
+            std::tuple_element_t<6, decltype(args)::storage_type>>::value);
     static_assert(
         std::is_same<
             rvalue_reference_wrapper<Object>,
-            std::tuple_element_t<7, decltype(args)::storage_type>>::value,
-        "");
+            std::tuple_element_t<7, decltype(args)::storage_type>>::value);
 
     // Check whether args.get() restores the original argument type for
     // rvalue references to emplace_args.
     static_assert(
         std::is_same<int&&, decltype(get_emplace_arg<0>(std::move(args)))>::
-            value,
-        "");
+            value);
     static_assert(
         std::is_same<Object&, decltype(get_emplace_arg<1>(std::move(args)))>::
-            value,
-        "");
+            value);
     static_assert(
         std::is_same<
             const Object&,
-            decltype(get_emplace_arg<2>(std::move(args)))>::value,
-        "");
+            decltype(get_emplace_arg<2>(std::move(args)))>::value);
     static_assert(
         std::is_same<Object&, decltype(get_emplace_arg<3>(std::move(args)))>::
-            value,
-        "");
+            value);
     static_assert(
         std::is_same<
             const Object&,
-            decltype(get_emplace_arg<4>(std::move(args)))>::value,
-        "");
+            decltype(get_emplace_arg<4>(std::move(args)))>::value);
     static_assert(
         std::is_same<Object&&, decltype(get_emplace_arg<5>(std::move(args)))>::
-            value,
-        "");
+            value);
     static_assert(
         std::is_same<
             const Object&,
-            decltype(get_emplace_arg<6>(std::move(args)))>::value,
-        "");
+            decltype(get_emplace_arg<6>(std::move(args)))>::value);
     static_assert(
         std::is_same<Object&&, decltype(get_emplace_arg<7>(std::move(args)))>::
-            value,
-        "");
+            value);
 
     // lvalue references to emplace_args should behave mostly like std::tuples.
     // Note that get_emplace_arg<7>(args) does not compile, because
     // folly::rvalue_reference_wrappers can only be unwrapped through an rvalue
     // reference.
     static_assert(
-        std::is_same<int&, decltype(get_emplace_arg<0>(args))>::value, "");
+        std::is_same<int&, decltype(get_emplace_arg<0>(args))>::value);
     static_assert(
-        std::is_same<Object&, decltype(get_emplace_arg<1>(args))>::value, "");
+        std::is_same<Object&, decltype(get_emplace_arg<1>(args))>::value);
     static_assert(
-        std::is_same<Object&, decltype(get_emplace_arg<2>(args))>::value, "");
+        std::is_same<Object&, decltype(get_emplace_arg<2>(args))>::value);
     static_assert(
-        std::is_same<Object&, decltype(get_emplace_arg<3>(args))>::value, "");
+        std::is_same<Object&, decltype(get_emplace_arg<3>(args))>::value);
     static_assert(
-        std::is_same<Object&, decltype(get_emplace_arg<4>(args))>::value, "");
+        std::is_same<Object&, decltype(get_emplace_arg<4>(args))>::value);
     static_assert(
-        std::is_same<Object&, decltype(get_emplace_arg<5>(args))>::value, "");
+        std::is_same<Object&, decltype(get_emplace_arg<5>(args))>::value);
     static_assert(
-        std::is_same<const Object&, decltype(get_emplace_arg<6>(args))>::value,
-        "");
+        std::is_same<const Object&, decltype(get_emplace_arg<6>(args))>::value);
   }
 }
 
@@ -917,14 +900,13 @@ TEST(IndexIterator, UseProxyReferences) {
   using it_ref_t = typename std::iterator_traits<it>::reference;
   using it_cref_t = typename std::iterator_traits<cit>::reference;
 
-  static_assert(std::is_same<it_ref_t, std::pair<int, int&>>::value, "");
-  static_assert(std::is_same<it_cref_t, std::pair<int, const int&>>::value, "");
+  static_assert(std::is_same<it_ref_t, std::pair<int, int&>>::value);
+  static_assert(std::is_same<it_cref_t, std::pair<int, const int&>>::value);
 
-  static_assert(std::is_same<decltype(it {} -> first), int>::value, "");
-  static_assert(std::is_same<decltype(it {} -> second), int&>::value, "");
-  static_assert(std::is_same<decltype(cit {} -> first), int>::value, "");
-  static_assert(
-      std::is_same<decltype(cit {} -> second), const int&>::value, "");
+  static_assert(std::is_same<decltype(it {} -> first), int>::value);
+  static_assert(std::is_same<decltype(it {} -> second), int&>::value);
+  static_assert(std::is_same<decltype(cit {} -> first), int>::value);
+  static_assert(std::is_same<decltype(cit {} -> second), const int&>::value);
 
   ASSERT_EQ(4, (std::count_if(civ.begin(), civ.end(), [](auto&& pair) {
               return pair.first == pair.second;
@@ -958,7 +940,7 @@ TEST(IndexIterator, OperatorArrowForNonProxies) {
   using v_t = std::vector<std::array<int, 2>>;
   using iterator = folly::index_iterator<v_t>;
 
-  static_assert(std::is_same<iterator::pointer, v_t::pointer>::value, "");
+  static_assert(std::is_same<iterator::pointer, v_t::pointer>::value);
 
   v_t v;
   v.resize(3);

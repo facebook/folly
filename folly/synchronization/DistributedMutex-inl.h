@@ -492,9 +492,9 @@ class TaskWithCoalesce {
   Func func_;
   Waiter& waiter_;
 
-  static_assert(!std::is_void<ReturnType>{}, "");
-  static_assert(alignof(decltype(waiter_.storage_)) >= alignof(ReturnType), "");
-  static_assert(sizeof(decltype(waiter_.storage_)) >= sizeof(ReturnType), "");
+  static_assert(!std::is_void<ReturnType>{});
+  static_assert(alignof(decltype(waiter_.storage_)) >= alignof(ReturnType));
+  static_assert(sizeof(decltype(waiter_.storage_)) >= sizeof(ReturnType));
 };
 
 template <typename Func, typename Waiter>
@@ -546,8 +546,8 @@ class TaskWithBigReturnValue {
   Func func_;
   StorageType* storage_{nullptr};
 
-  static_assert(!std::is_void<ReturnType>{}, "");
-  static_assert(sizeof(Waiter::storage_) < sizeof(ReturnType), "");
+  static_assert(!std::is_void<ReturnType>{});
+  static_assert(sizeof(Waiter::storage_) < sizeof(ReturnType));
 };
 
 template <typename T, bool>
@@ -589,7 +589,7 @@ template <
     typename Waiter,
     typename Func = typename Request::F>
 CoalescedTask<Func, Waiter> coalesce(Request& request, Waiter& waiter) {
-  static_assert(!std::is_same<Request, std::nullptr_t>{}, "");
+  static_assert(!std::is_same<Request, std::nullptr_t>{});
   return CoalescedTask<Func, Waiter>{request.func_, waiter};
 }
 
@@ -619,8 +619,7 @@ template <typename Task, typename Storage>
 void attach(Task&, Storage&) {
   static_assert(
       std::is_same<Storage, std::nullptr_t>{} ||
-          std::is_same<Storage, folly::Unit>{},
-      "");
+      std::is_same<Storage, folly::Unit>{});
 }
 
 template <
@@ -635,8 +634,8 @@ template <typename Request, typename Waiter>
 void throwIfExceptionOccurred(Request&, Waiter& waiter, bool exception) {
   using Storage = decltype(waiter.storage_);
   using F = typename Request::F;
-  static_assert(sizeof(Storage) >= sizeof(std::exception_ptr), "");
-  static_assert(alignof(Storage) >= alignof(std::exception_ptr), "");
+  static_assert(sizeof(Storage) >= sizeof(std::exception_ptr));
+  static_assert(alignof(Storage) >= alignof(std::exception_ptr));
 
   // we only need to check for an exception in the waiter struct if the passed
   // callable is not noexcept
@@ -682,8 +681,8 @@ void detach(
   throwIfExceptionOccurred(request, waiter, exception);
 
   using ReturnType = typename RequestWithReturn<F>::ReturnType;
-  static_assert(!std::is_same<ReturnType, void>{}, "");
-  static_assert(sizeof(waiter.storage_) >= sizeof(ReturnType), "");
+  static_assert(!std::is_same<ReturnType, void>{});
+  static_assert(sizeof(waiter.storage_) >= sizeof(ReturnType));
 
   auto& val = *std::launder(reinterpret_cast<ReturnType*>(&waiter.storage_));
   new (&request.value_) ReturnType{std::move(val)};
@@ -699,8 +698,8 @@ void detach(
   throwIfExceptionOccurred(request, waiter, exception);
 
   using ReturnType = typename RequestWithReturn<F>::ReturnType;
-  static_assert(!std::is_same<ReturnType, void>{}, "");
-  static_assert(sizeof(storage) >= sizeof(ReturnType), "");
+  static_assert(!std::is_same<ReturnType, void>{});
+  static_assert(sizeof(storage) >= sizeof(ReturnType));
 
   auto& val = *std::launder(reinterpret_cast<ReturnType*>(&storage));
   new (&request.value_) ReturnType{std::move(val)};
@@ -1390,7 +1389,7 @@ FOLLY_ALWAYS_INLINE std::uintptr_t tryWake(
     // need to use placement new because the class contains a futex, which is
     // non-movable and non-copyable
     using Metadata = std::decay_t<decltype(waiter->metadata_)>;
-    static_assert(std::is_trivially_destructible<Metadata>{}, "");
+    static_assert(std::is_trivially_destructible<Metadata>{});
 
     // we need release here because of the write to waker_ and also because we
     // are unlocking the mutex, the thread we do the handoff to here should

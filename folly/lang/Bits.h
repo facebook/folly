@@ -239,7 +239,7 @@ inline constexpr T strictPrevPowTwo(T const v) {
 /// least significant (right) bits are set and others are not.
 template <class T>
 struct n_least_significant_bits_fn {
-  static_assert(detail::supported_in_bits_operations_v<T>, "");
+  static_assert(detail::supported_in_bits_operations_v<T>);
 
   FOLLY_NODISCARD constexpr T operator()(std::uint32_t n) const {
     if (!folly::is_constant_evaluated_or(true)) {
@@ -270,7 +270,7 @@ inline constexpr n_least_significant_bits_fn<T> n_least_significant_bits;
 /// most significant bits (left) are set and others are not.
 template <class T>
 struct n_most_significant_bits_fn {
-  static_assert(detail::supported_in_bits_operations_v<T>, "");
+  static_assert(detail::supported_in_bits_operations_v<T>);
 
   FOLLY_NODISCARD constexpr T operator()(std::uint32_t n) const {
     if (!folly::is_constant_evaluated_or(true)) {
@@ -304,7 +304,7 @@ inline constexpr n_most_significant_bits_fn<T> n_most_significant_bits;
 struct clear_n_least_significant_bits_fn {
   template <typename T>
   FOLLY_NODISCARD constexpr T operator()(T x, std::uint32_t n) const {
-    static_assert(detail::supported_in_bits_operations_v<T>, "");
+    static_assert(detail::supported_in_bits_operations_v<T>);
 
     // alternative is to do two shifts but that has
     // a dependency between them, so is likely worse
@@ -322,7 +322,7 @@ inline constexpr clear_n_least_significant_bits_fn
 struct set_n_least_significant_bits_fn {
   template <typename T>
   FOLLY_NODISCARD constexpr T operator()(T x, std::uint32_t n) const {
-    static_assert(detail::supported_in_bits_operations_v<T>, "");
+    static_assert(detail::supported_in_bits_operations_v<T>);
 
     // alternative is to do two shifts but that has
     // a dependency between them, so is likely worse
@@ -339,7 +339,7 @@ inline constexpr set_n_least_significant_bits_fn set_n_least_significant_bits;
 struct clear_n_most_significant_bits_fn {
   template <typename T>
   FOLLY_NODISCARD constexpr T operator()(T x, std::uint32_t n) const {
-    static_assert(detail::supported_in_bits_operations_v<T>, "");
+    static_assert(detail::supported_in_bits_operations_v<T>);
 
     if (!folly::is_constant_evaluated_or(true)) {
       compiler_may_unsafely_assume(n <= sizeof(T) * 8);
@@ -367,7 +367,7 @@ inline constexpr clear_n_most_significant_bits_fn clear_n_most_significant_bits;
 struct set_n_most_significant_bits_fn {
   template <typename T>
   FOLLY_NODISCARD constexpr T operator()(T x, std::uint32_t n) const {
-    static_assert(detail::supported_in_bits_operations_v<T>, "");
+    static_assert(detail::supported_in_bits_operations_v<T>);
     return x | n_most_significant_bits<T>(n);
   }
 };
@@ -487,8 +487,8 @@ struct get_bit_at_fn {
   template <typename Uint>
   FOLLY_NODISCARD constexpr bool operator()(
       const Uint* ptr, std::size_t idx) const noexcept {
-    static_assert(std::is_unsigned_v<std::remove_cv_t<Uint>>, "");
-    static_assert(!std::is_same_v<std::remove_cv_t<Uint>, bool>, "");
+    static_assert(std::is_unsigned_v<std::remove_cv_t<Uint>>);
+    static_assert(!std::is_same_v<std::remove_cv_t<Uint>, bool>);
     std::size_t uintIdx = idx / (sizeof(Uint) * 8);
     std::size_t bitIdx = idx % (sizeof(Uint) * 8);
     Uint loaded = ptr[uintIdx];

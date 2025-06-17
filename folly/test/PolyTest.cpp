@@ -331,7 +331,7 @@ TEST(Poly, SemiRegularReference) {
   EXPECT_EQ(&i, &poly_cast<int>(p2));
   EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
   // Can't default-initialize reference-like Poly's:
-  static_assert(!std::is_default_constructible<Poly<ISemiRegular&>>::value, "");
+  static_assert(!std::is_default_constructible<Poly<ISemiRegular&>>::value);
 }
 
 TEST(Poly, Conversions) {
@@ -345,12 +345,10 @@ TEST(Poly, Conversions) {
   EXPECT_EQ(&poly_cast<int>(p4), &poly_cast<int>(p1));
   static_assert(
       !std::is_constructible<Poly<ISemiRegular&>, Poly<ISemiRegular const&>&>::
-          value,
-      "");
+          value);
   static_assert(
       !std::is_constructible<Poly<ISemiRegular>, Poly<ISemiRegular const&>&>::
-          value,
-      "");
+          value);
 }
 
 TEST(Poly, EqualityComparableReference) {
@@ -541,7 +539,7 @@ TEST(Poly, NullablePointer) {
   // No null references ever.
   Poly<INullablePointer> r = 42;
   Poly<INullablePointer&> s = r;
-  static_assert(!poly_empty(s), "");
+  static_assert(!poly_empty(s));
   EXPECT_THROW(Poly<INullablePointer&> r_(q), BadPolyAccess);
 }
 
@@ -560,31 +558,30 @@ TEST(Poly, Move) {
     int i = 42;
     Poly<IMoveOnly&> p = i;
     static_assert(
-        !std::is_convertible<Poly<IMoveOnly&>, Poly<IMoveOnly&&>>::value, "");
+        !std::is_convertible<Poly<IMoveOnly&>, Poly<IMoveOnly&&>>::value);
     auto q = poly_move(p);
-    static_assert(std::is_same<decltype(q), Poly<IMoveOnly&&>>::value, "");
+    static_assert(std::is_same<decltype(q), Poly<IMoveOnly&&>>::value);
     EXPECT_EQ(&poly_cast<int>(p), &poly_cast<int>(q));
   }
   {
     int i = 42;
     Poly<ISemiRegular const&> p = i;
     auto q = poly_move(p);
-    static_assert(
-        std::is_same<decltype(q), Poly<ISemiRegular const&>>::value, "");
+    static_assert(std::is_same<decltype(q), Poly<ISemiRegular const&>>::value);
     EXPECT_EQ(&poly_cast<int>(p), &poly_cast<int>(q));
   }
   {
     Poly<IMoveOnly> p = MoveOnly_{};
-    static_assert(!std::is_copy_constructible<Poly<IMoveOnly>>::value, "");
+    static_assert(!std::is_copy_constructible<Poly<IMoveOnly>>::value);
     auto q = poly_move(p);
-    static_assert(std::is_same<decltype(q), Poly<IMoveOnly>>::value, "");
+    static_assert(std::is_same<decltype(q), Poly<IMoveOnly>>::value);
   }
 }
 
 TEST(Poly, RValueRef) {
   int i = 42;
   Poly<ISemiRegular&&> p = std::move(i);
-  static_assert(std::is_same<decltype(poly_cast<int>(p)), int&>::value, "");
+  static_assert(std::is_same<decltype(poly_cast<int>(p)), int&>::value);
   EXPECT_EQ(&i, &poly_cast<int>(p));
 }
 
@@ -749,7 +746,7 @@ TEST(Poly, Addable) {
 
   Poly<IAddable const&> aref = a, bref = b;
   auto cc = aref + bref;
-  static_assert(std::is_same<decltype(cc), Poly<IAddable>>::value, "");
+  static_assert(std::is_same<decltype(cc), Poly<IAddable>>::value);
   EXPECT_EQ(typeid(int), poly_type(cc));
   EXPECT_EQ(5, poly_cast<int>(cc));
   b = 4;

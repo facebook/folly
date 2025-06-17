@@ -153,22 +153,22 @@ TEST(Traits, conditional) {
 }
 
 TEST(Trait, logicOperators) {
-  static_assert(Conjunction<true_type>::value, "");
-  static_assert(!Conjunction<false_type>::value, "");
-  static_assert(is_same<Conjunction<true_type>::type, true_type>::value, "");
-  static_assert(is_same<Conjunction<false_type>::type, false_type>::value, "");
-  static_assert(Conjunction<true_type, true_type>::value, "");
-  static_assert(!Conjunction<true_type, false_type>::value, "");
+  static_assert(Conjunction<true_type>::value);
+  static_assert(!Conjunction<false_type>::value);
+  static_assert(is_same<Conjunction<true_type>::type, true_type>::value);
+  static_assert(is_same<Conjunction<false_type>::type, false_type>::value);
+  static_assert(Conjunction<true_type, true_type>::value);
+  static_assert(!Conjunction<true_type, false_type>::value);
 
-  static_assert(Disjunction<true_type>::value, "");
-  static_assert(!Disjunction<false_type>::value, "");
-  static_assert(is_same<Disjunction<true_type>::type, true_type>::value, "");
-  static_assert(is_same<Disjunction<false_type>::type, false_type>::value, "");
-  static_assert(Disjunction<true_type, true_type>::value, "");
-  static_assert(Disjunction<true_type, false_type>::value, "");
+  static_assert(Disjunction<true_type>::value);
+  static_assert(!Disjunction<false_type>::value);
+  static_assert(is_same<Disjunction<true_type>::type, true_type>::value);
+  static_assert(is_same<Disjunction<false_type>::type, false_type>::value);
+  static_assert(Disjunction<true_type, true_type>::value);
+  static_assert(Disjunction<true_type, false_type>::value);
 
-  static_assert(!Negation<true_type>::value, "");
-  static_assert(Negation<false_type>::value, "");
+  static_assert(!Negation<true_type>::value);
+  static_assert(Negation<false_type>::value);
 }
 
 TEST(Traits, isNegative) {
@@ -673,17 +673,17 @@ TEST(Traits, intBitsLg) {
 }
 
 TEST(Traits, isAllocator) {
-  static_assert(is_allocator_v<std::allocator<int>>, "");
-  static_assert(is_allocator<std::allocator<int>>::value, "");
+  static_assert(is_allocator_v<std::allocator<int>>);
+  static_assert(is_allocator<std::allocator<int>>::value);
 
-  static_assert(is_allocator_v<std::allocator<std::string>>, "");
-  static_assert(is_allocator<std::allocator<std::string>>::value, "");
+  static_assert(is_allocator_v<std::allocator<std::string>>);
+  static_assert(is_allocator<std::allocator<std::string>>::value);
 
-  static_assert(!is_allocator_v<int>, "");
-  static_assert(!is_allocator<int>::value, "");
+  static_assert(!is_allocator_v<int>);
+  static_assert(!is_allocator<int>::value);
 
-  static_assert(!is_allocator_v<std::string>, "");
-  static_assert(!is_allocator<std::string>::value, "");
+  static_assert(!is_allocator_v<std::string>);
+  static_assert(!is_allocator<std::string>::value);
 }
 
 struct type_pack_element_test {

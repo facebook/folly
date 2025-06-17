@@ -208,7 +208,7 @@ struct unsafe_for_async_usage { // a convenience wrapper for the marker below:
   // the marker member type alias
   using folly_is_unsafe_for_async_usage = std::true_type;
 };
-static_assert(detail::is_unsafe_for_async_usage_v<unsafe_for_async_usage>, "");
+static_assert(detail::is_unsafe_for_async_usage_v<unsafe_for_async_usage>);
 
 namespace detail {
 
