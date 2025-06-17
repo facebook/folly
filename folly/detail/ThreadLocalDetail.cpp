@@ -70,7 +70,7 @@ bool ThreadEntrySet::basicSanity() const {
   auto const size = threadElements.size();
   rand_engine rng;
   std::uniform_int_distribution<size_t> dist{0, size - 1};
-  if (dist(rng) < constexpr_log2(size)) {
+  if (!(dist(rng) < constexpr_log2(size))) {
     return true;
   }
   return //
