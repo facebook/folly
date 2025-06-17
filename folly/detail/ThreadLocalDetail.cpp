@@ -73,15 +73,13 @@ bool ThreadEntrySet::basicSanity() const {
   if (!(dist(rng) < constexpr_log2(size))) {
     return true;
   }
-  return //
-      threadElements.size() == entryToVectorSlot.size() &&
-      std::all_of(
-          entryToVectorSlot.begin(),
-          entryToVectorSlot.end(),
-          [&](auto const& kvp) {
-            return kvp.second < threadElements.size() &&
-                threadElements[kvp.second].threadEntry == kvp.first;
-          });
+  for (auto const& kvp : entryToVectorSlot) {
+    if (!(kvp.second < threadElements.size() &&
+          threadElements[kvp.second].threadEntry == kvp.first)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void ThreadEntrySet::clear() {
