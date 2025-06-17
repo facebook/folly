@@ -56,13 +56,11 @@ TEST_F(ThreadLocalDetailTest, Basic) {
   // only check it should be >= 1.
   *helper.elements[0] = 0;
   ASSERT_GE(meta.totalElementWrappers_.load(), 1);
-  ;
 
   for (int32_t i = 0; i < count; ++i) {
     *helper.elements[i] = i;
   }
   ASSERT_GE(meta.totalElementWrappers_.load(), count);
-  ;
 }
 
 // Test the totalElementWrappers_ grows and shrinks as threads come and go.
