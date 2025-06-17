@@ -47,16 +47,16 @@ static_assert( //
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<int&>>())),
         int&>::value);
-static_assert(
+//  blockingWait() should convert rvalue-reference-returning awaitables
+//  into a returned prvalue to avoid potential lifetime issues since
+//  its possible the rvalue reference could have been to some temporary
+//  object stored inside the Awaiter which would have been destructed
+//  by the time blockingWait returns.
+static_assert( //
     std::is_same<
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<int&&>>())),
-        int>::value,
-    "blockingWait() should convert rvalue-reference-returning awaitables "
-    "into a returned prvalue to avoid potential lifetime issues since "
-    "its possible the rvalue reference could have been to some temporary "
-    "object stored inside the Awaiter which would have been destructed "
-    "by the time blockingWait returns.");
+        int>::value);
 
 class BlockingWaitTest : public testing::Test {};
 
