@@ -19,6 +19,8 @@ from folly cimport cFollyExecutor
 from libcpp cimport bool
 from libc.stdint cimport uint64_t, uintptr_t
 
+cdef extern from "folly/portability/Unistd.h":
+    cdef int getpid()
 
 cdef extern from "folly/python/AsyncioExecutor.h" namespace "folly::python":
     cdef cppclass cAsyncioExecutor "folly::python::AsyncioExecutor"(cFollyExecutor):

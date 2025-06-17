@@ -14,7 +14,6 @@
 
 import asyncio
 import sys
-import os
 
 from folly.executor_detail cimport get_running_executor as ptr_get_running_executor, set_executor_for_loop as ptr_set_executor_for_loop
 from libcpp.memory cimport make_unique, unique_ptr
@@ -29,7 +28,7 @@ _RaiseKeyError = object()
 
 cdef class AsyncioExecutor:
     def __cinit__(self):
-        self._pid = os.getpid()
+        self._pid = getpid()
 
 
 cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
@@ -48,7 +47,7 @@ cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
         deref(self.cQ).drive()
 
     def __dealloc__(NotificationQueueAsyncioExecutor self):
-        if self.driveBeforeDealloc and self._pid == os.getpid():
+        if self.driveBeforeDealloc and self._pid == getpid():
             self.drive()
         # We explicitly reset here, otherwise it is possible
         # that self.cQ destructor runs after python finalizes
