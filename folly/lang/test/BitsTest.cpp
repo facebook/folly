@@ -634,6 +634,8 @@ TYPED_TEST(BitsAllUintsTest, GetBitAtLE) {
     return;
   }
 
+  static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__);
+
   {
     std::uint64_t in = folly::set_n_least_significant_bits(0UL, 64);
     const auto* ptr = reinterpret_cast<const T*>(&in);
