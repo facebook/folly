@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
   po::store(result.options, vm);
   po::notify(vm);
 
-  if (vm.count("help")) {
+  if (vm.contains("help")) {
     std::cout << desc;
     return 1;
   }
