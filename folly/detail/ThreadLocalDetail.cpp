@@ -251,6 +251,38 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
   return threadEntryList;
 }
 
+ThreadEntry* StaticMetaBase::allocateNewThreadEntry() {
+  // If a thread is exiting, various cleanup handlers could
+  // end up triggering use of a ThreadLocal and (re)create a
+  // ThreadEntry. This is problematic since we don't know if the
+  // destructor specified in the pthreadKey_ has already been run
+  // for this StaticMeta or will run again. Such a newly created
+  // ThreadEntry could leak. The count incremented on threadEntryList
+  // could also cause all the list and other threadEntry objects used
+  // by this thread to leak.
+  // For now, debug assert that the thread is not exiting to keep the
+  // legacy behavior. The handling of this case needs to be improved
+  // as well.
+  DCHECK(!dying());
+  ThreadEntryList* threadEntryList = getThreadEntryList();
+  ThreadEntry* threadEntry = new ThreadEntry();
+
+  threadEntry->list = threadEntryList;
+  threadEntry->listNext = threadEntryList->head;
+  threadEntryList->head = threadEntry;
+
+  threadEntry->tid() = std::this_thread::get_id();
+  threadEntry->tid_os = folly::getOSThreadID();
+
+  // if we're adding a thread entry
+  // we need to increment the list count
+  // even if the entry is reused
+  threadEntryList->count++;
+
+  threadEntry->meta = this;
+  return threadEntry;
+}
+
 bool StaticMetaBase::dying() {
   return folly::detail::thread_is_dying();
 }

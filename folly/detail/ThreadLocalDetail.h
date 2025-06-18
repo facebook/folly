@@ -431,6 +431,8 @@ struct StaticMetaBase {
 
   FOLLY_EXPORT static ThreadEntryList* getThreadEntryList();
 
+  ThreadEntry* allocateNewThreadEntry();
+
   static bool dying();
 
   static void onThreadExit(void* ptr);
@@ -722,22 +724,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     ThreadEntry* threadEntry =
         static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
-      ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
-      threadEntry = new ThreadEntry();
-
-      threadEntry->list = threadEntryList;
-      threadEntry->listNext = threadEntryList->head;
-      threadEntryList->head = threadEntry;
-
-      threadEntry->tid() = std::this_thread::get_id();
-      threadEntry->tid_os = folly::getOSThreadID();
-
-      // if we're adding a thread entry
-      // we need to increment the list count
-      // even if the entry is reused
-      threadEntryList->count++;
-
-      threadEntry->meta = &meta;
+      threadEntry = meta.allocateNewThreadEntry();
       int ret = pthread_setspecific(key, threadEntry);
       checkPosixError(ret, "pthread_setspecific failed");
     }
