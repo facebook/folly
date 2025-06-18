@@ -1,166 +1,178 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_base",
     headers = [
         "AsyncBase.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:async_base_class",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_io",
     headers = [
         "AsyncIO.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:async_io",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "liburing",
     headers = [
         "Liburing.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:liburing",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_io_uring_socket",
     headers = [
         "AsyncIoUringSocket.h",
         "AsyncIoUringSocketFactory.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:async_io_uring_socket",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "simple_async_io",
     headers = [
         "SimpleAsyncIO.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:simple_async_io",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "epoll",
     headers = [
         "Epoll.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:epoll",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     # @autodeps-skip
     name = "epoll_backend",
     headers = [
         "Epoll.h",
         "EpollBackend.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:epoll_backend",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "event_base_poller",
     headers = [
         "EventBasePoller.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:event_base_poller",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "mux_io_thread_pool_executor",
     headers = [
         "MuxIOThreadPoolExecutor.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:mux_io_thread_pool_executor",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "io_uring",
     headers = [
         "IoUring.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "io_uring_backend",
     headers = [
         "IoUringBackend.h",
         "IoUringBase.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_backend",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     # @autodeps-skip
     name = "io_uring_provided_buffer_ring",
     headers = [
         "IoUringBase.h",
         "IoUringProvidedBufferRing.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_provided_buffer_ring",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "io_uring_event",
     headers = [
         "IoUringEvent.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_event",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "io_uring_event_base_local",
     headers = [
         "IoUringEventBaseLocal.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_event_base_local",
     ],
