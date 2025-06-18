@@ -472,8 +472,9 @@ void EventBase::resetLoadAvg(double value) {
 
 static std::chrono::milliseconds getTimeDelta(
     std::chrono::steady_clock::time_point* prev) {
-  auto result = std::chrono::steady_clock::now() - *prev;
-  *prev = std::chrono::steady_clock::now();
+  auto now = std::chrono::steady_clock::now();
+  auto result = now - *prev;
+  *prev = now;
 
   return std::chrono::duration_cast<std::chrono::milliseconds>(result);
 }
