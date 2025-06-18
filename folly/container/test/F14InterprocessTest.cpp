@@ -149,7 +149,7 @@ void runSimpleSetTest() {
   }
   EXPECT_EQ(s.size(), 20);
   for (int i = 0; i < 40; ++i) {
-    EXPECT_EQ(s.count(i), (i < 20 ? 1 : 0));
+    EXPECT_EQ(s.contains(i), (i < 20 ? 1 : 0));
   }
 }
 
@@ -193,7 +193,7 @@ void runSimultaneousAccessMapTest() {
     EXPECT_NE(&*m1, &*m2);
 
     (*m1)[1] = 10;
-    EXPECT_EQ(m2->count(0), 0);
+    EXPECT_EQ(m2->contains(0), 0);
     EXPECT_EQ((*m2)[1], 10);
     (*m2)[2] = 20;
     EXPECT_EQ(m1->size(), 2);
