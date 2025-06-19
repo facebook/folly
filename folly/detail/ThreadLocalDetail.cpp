@@ -17,7 +17,6 @@
 #include <folly/detail/ThreadLocalDetail.h>
 
 #include <algorithm>
-#include <list>
 #include <mutex>
 #include <random>
 
