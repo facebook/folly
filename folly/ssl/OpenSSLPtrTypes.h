@@ -137,6 +137,9 @@ FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(
 FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(OcspCertId, OCSP_CERTID, OCSP_CERTID_free);
 #endif
 
+// PKCS7
+FOLLY_SSL_DETAIL_DEFINE_PTR_TYPE(Pkcs7, PKCS7, PKCS7_free);
+
 // OpenSSL STACK_OF(T) can both represent owned or borrowed values.
 //
 // This isn't represented in the OpenSSL "safestack" type (e.g. STACK_OF(Foo)).
