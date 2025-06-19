@@ -34,6 +34,12 @@ fbcode_target(
         "//folly/cli:program_options",
         "//folly/portability:gflags",
     ],
+    external_deps = [
+        # boost_atomic is required by boost_filesystem, which is required by
+        # boost_program_options, prior to C++20, for its implementation of
+        # atomic_ref; this is controlled by a preprocessory symbol
+        ("boost", None, "boost_atomic"),  # @manual
+    ],
 )
 
 fbcode_target(
@@ -67,6 +73,10 @@ fbcode_target(
     ],
     external_deps = [
         "glog",
+        # boost_atomic is required by boost_filesystem, which is required by
+        # boost_program_options, prior to C++20, for its implementation of
+        # atomic_ref; this is controlled by a preprocessory symbol
+        ("boost", None, "boost_atomic"),  # @manual
     ],
 )
 
