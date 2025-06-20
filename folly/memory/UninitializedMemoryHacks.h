@@ -336,7 +336,7 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
   // enabled we need to call the appropriate annotation functions in order to
   // stop ASAN from reporting false positives. When ASAN is disabled, the
   // annotation function is a no-op.
-#ifndef _LIBCPP_HAS_NO_ASAN
+#if defined(_LIBCPP_HAS_ASAN) ? _LIBCPP_HAS_ASAN : !defined(_LIBCPP_HAS_NO_ASAN)
   __sanitizer_annotate_contiguous_container(
       v.data(), v.data() + v.capacity(), v.data() + s, v.data() + n);
 #endif
