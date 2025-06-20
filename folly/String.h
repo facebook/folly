@@ -800,8 +800,24 @@ inline bool hasSpaceOrCntrlSymbols(folly::StringPiece s) {
 }
 
 struct format_string_for_each_named_arg_fn {
+  struct options {
+    bool numeric_args_as_named = false;
+
+    options& set_numeric_args_as_named(bool value) noexcept {
+      numeric_args_as_named = value;
+      return *this;
+    }
+  };
+
   template <typename C, typename CT, typename Fn>
   constexpr void operator()(std::basic_string_view<C, CT> str, Fn fn) const
+      noexcept(noexcept(fn(str))) {
+    return operator()(options{}, str, std::ref(fn));
+  }
+
+  template <typename C, typename CT, typename Fn>
+  constexpr void operator()(
+      options const& opts, std::basic_string_view<C, CT> str, Fn fn) const
       noexcept(noexcept(fn(str))) {
     using view = std::basic_string_view<C, CT>;
     while (true) {
@@ -820,7 +836,7 @@ struct format_string_for_each_named_arg_fn {
       }
       auto const arg = str.substr(beg, end - beg);
       auto const c = arg.empty() ? 0 : arg[0];
-      if (c && !(c >= '0' && c <= '9')) {
+      if (c && (opts.numeric_args_as_named || !(c >= '0' && c <= '9'))) {
         fn(arg);
       }
       str = str.substr(end);
@@ -830,6 +846,9 @@ struct format_string_for_each_named_arg_fn {
 
 inline constexpr format_string_for_each_named_arg_fn
     format_string_for_each_named_arg{};
+
+using format_string_for_each_named_arg_options =
+    format_string_for_each_named_arg_fn::options;
 
 } // namespace folly
 

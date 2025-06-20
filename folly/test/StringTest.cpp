@@ -1581,3 +1581,28 @@ TEST(String, format_string_for_each_named_arg) {
   EXPECT_THAT(fn("hello{bob}world{sam}go"), testing::ElementsAre("bob", "sam"));
   EXPECT_THAT(fn("{bob}world{sam}"), testing::ElementsAre("bob", "sam"));
 }
+
+TEST(String, format_string_for_each_named_arg_with_numeric_args_as_named) {
+  auto const fn = [](std::string_view str) {
+    auto const opts =
+        format_string_for_each_named_arg_options{} //
+            .set_numeric_args_as_named(true);
+    std::vector<std::string> out;
+    folly::format_string_for_each_named_arg(opts, str, [&](auto sub) {
+      out.push_back(std::string(sub));
+    });
+    return out;
+  };
+  EXPECT_THAT(fn(""), testing::ElementsAre());
+  EXPECT_THAT(fn("hello"), testing::ElementsAre());
+  EXPECT_THAT(fn("{{}}"), testing::ElementsAre());
+  EXPECT_THAT(fn("hello{{}}world"), testing::ElementsAre());
+  EXPECT_THAT(fn("hello{}world"), testing::ElementsAre());
+  EXPECT_THAT(fn("hello{3}world"), testing::ElementsAre("3"));
+  EXPECT_THAT(fn("hello{34}world"), testing::ElementsAre("34"));
+  EXPECT_THAT(fn("hello{bob}world"), testing::ElementsAre("bob"));
+  EXPECT_THAT(fn("hello{3}world{bob}go"), testing::ElementsAre("3", "bob"));
+  EXPECT_THAT(fn("hello{bob}world{3}go"), testing::ElementsAre("bob", "3"));
+  EXPECT_THAT(fn("hello{bob}world{sam}go"), testing::ElementsAre("bob", "sam"));
+  EXPECT_THAT(fn("{bob}world{sam}"), testing::ElementsAre("bob", "sam"));
+}
