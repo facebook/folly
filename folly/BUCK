@@ -5,7 +5,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
-load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_arvr_mode")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "ANDROID",
@@ -535,8 +534,11 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     force_static = select({
         "DEFAULT": False,
-        "ovr_config//os:macos": True,
-    }) if is_arvr_mode() else False,
+        "ovr_config//build_mode:arvr_mode": select({
+            "DEFAULT": False,
+            "ovr_config//os:macos": True,
+        }),
+    }),
     raw_headers = [
         "Executor.h",
     ],
