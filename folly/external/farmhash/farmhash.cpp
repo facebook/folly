@@ -126,7 +126,7 @@
 
 #if defined(FARMHASH_UNKNOWN_ENDIAN) || !defined(bswap_64)
 
-#ifdef _MSC_VER
+#ifdef _WIN32
 
 #undef bswap_32
 #undef bswap_64

@@ -243,7 +243,7 @@
 #endif
 
 #if defined(__has_attribute)
-#if __has_attribute(weak)
+#if __has_attribute(weak) && !defined(__MINGW32__)
 #define FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME __attribute__((__weak__))
 #else
 #define FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME
