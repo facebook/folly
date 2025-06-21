@@ -795,12 +795,7 @@ class IoUringBackend : public EventBaseBackendBase {
     void prepRecvmsgMultishot(
         struct io_uring_sqe* sqe, int fd, struct msghdr* msg) noexcept {
       CHECK(sqe);
-      ::io_uring_prep_recvmsg(sqe, fd, msg, MSG_TRUNC);
-      // this magic value is set in io_uring_prep_recvmsg_multishot,
-      // however this version of the library isn't available widely yet
-      // so just hardcode it here
-      constexpr uint16_t kMultishotFlag = 1U << 1;
-      sqe->ioprio |= kMultishotFlag;
+      ::io_uring_prep_recvmsg_multishot(sqe, fd, msg, MSG_TRUNC);
       if (IoUringBufferProviderBase* bp = backend_->bufferProvider()) {
         sqe->buf_group = bp->gid();
         sqe->flags |= IOSQE_BUFFER_SELECT;

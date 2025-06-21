@@ -1969,14 +1969,10 @@ static bool doKernelSupportsRecvmsgMultishot() {
         }
       }
       void processSubmit(struct io_uring_sqe* sqe) noexcept override {
-        io_uring_prep_recvmsg(sqe, fd, &msg, 0);
+        io_uring_prep_recvmsg_multishot(sqe, fd, &msg, 0);
 
         sqe->buf_group = bp_->gid();
         sqe->flags |= IOSQE_BUFFER_SELECT;
-
-        // see note in prepRecvmsgMultishot
-        constexpr uint16_t kMultishotFlag = 1U << 1;
-        sqe->ioprio |= kMultishotFlag;
       }
 
       void callback(const io_uring_cqe* cqe) noexcept override {
