@@ -134,14 +134,41 @@ FatalSignalInfo kFatalSignals[] = {
     {0, nullptr, {}},
 };
 
-[[maybe_unused]] void callPreviousSignalHandler(int signum) {
+void signalHandler(int signum, siginfo_t* info, void* uctx);
+
+[[maybe_unused]] void callPreviousSignalHandler(int signum, siginfo_t* info) {
   // Restore disposition to old disposition, then kill ourselves with the same
-  // signal. The signal will be blocked until we return from our handler,
-  // then it will invoke the default handler and abort.
+  // signal. The signal will remain blocked until the current call to the signal
+  // handler returns.
+  //
+  // For signals which arise from a faulting instruction, just restore the old
+  // disposition and return from the signal handler, returning control to the
+  // faulting instruction.
+  //
+  // Otherwise, restore the old disposition and explicitly re-raise the signal
+  // without returning to the faulting instruction.
+  //
+  // For these signals, we can approximately assume that when control returns to
+  // the faulting instruction, that instruction would fault again in the same
+  // way and generate the same signal again, triggering the default disposition
+  // for the signal. For example, an instruction which faulted, generating any
+  // of SIGSEGV, SIGILL, SIGFPE, or SIGBUS, can approximately be assumed to
+  // fault and generate the same signal again for the same reason.
+  //
+  // As a risk, it is possible that another thread or signal handler would
+  // resolve the fault concurrently with the current signal handling and before
+  // control returns to the faulting instruction, in which case the program
+  // continues without our signal handler registered for this signal anymore.
+  //
+  // But, when it works, this technique preserves the true signal cause and
+  // makes that cause available to the debugger.
+  const bool fault = info->si_code > 0;
   for (auto p = kFatalSignals; p->name; ++p) {
     if (p->number == signum) {
       sigaction(signum, &p->oldAction, nullptr);
-      raise(signum);
+      if (!fault) {
+        raise(signum);
+      }
       return;
     }
   }
@@ -477,7 +504,7 @@ void signalHandler(int signum, siginfo_t* info, void* uctx) {
 
   gSignalThread = kInvalidThreadId;
   // Kill ourselves with the previous handler.
-  callPreviousSignalHandler(signum);
+  callPreviousSignalHandler(signum, info);
 }
 
 #endif // FOLLY_USE_SYMBOLIZER
