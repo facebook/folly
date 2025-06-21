@@ -1,0 +1,16 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "segv",
+    srcs = ["segv.cpp"],
+    headers = [],
+    deps = [
+        "//folly/debugging/symbolizer:signal_handler",
+        "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
+    ],
+)
