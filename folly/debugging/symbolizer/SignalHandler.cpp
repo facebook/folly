@@ -117,11 +117,13 @@ void installFatalSignalCallbacks() {
 
 namespace {
 
-struct {
+struct FatalSignalInfo {
   int number;
   const char* name;
   struct sigaction oldAction;
-} kFatalSignals[] = {
+};
+
+FatalSignalInfo kFatalSignals[] = {
     {SIGSEGV, "SIGSEGV", {}},
     {SIGILL, "SIGILL", {}},
     {SIGFPE, "SIGFPE", {}},
