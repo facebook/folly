@@ -172,12 +172,9 @@ coro::Task<void> Semaphore::co_wait() {
         // from a thread requesting cancellation.
         // TODO: This is not unreachable code, but the compiler wrongly thinks
         // it is. Once the compiler is fixed we can remove this.
-        FOLLY_PUSH_WARNING
-        FOLLY_CLANG_DISABLE_WARNING("-Wunreachable-code")
         if (cancelled) {
           co_yield folly::coro::co_cancelled;
         }
-        FOLLY_POP_WARNING
 
         co_return;
       }
