@@ -1,11 +1,12 @@
 [cells]
 prelude = prelude
 none = none
+gh_bazel_skylib = gh_bazel_skylib
 
 [cell_aliases]
 config = prelude
 ovr_config = prelude
-bazel_skylib = gh_facebook_buck2_shims_meta
+bazel_skylib = gh_bazel_skylib
 buck = gh_facebook_buck2_shims_meta
 fbcode = gh_facebook_buck2_shims_meta
 fbcode_macros = gh_facebook_buck2_shims_meta
@@ -15,6 +16,11 @@ toolchains = gh_facebook_buck2_shims_meta
 
 [external_cells]
 prelude = bundled
+gh_bazel_skylib = git
+
+[external_cell_gh_bazel_skylib]
+git_origin = https://github.com/bazelbuild/bazel-skylib.git
+commit_hash = 223e4e945801dfbc0bfa31d0900196f5bb54b0fc
 
 [build]
 execution_platforms = prelude//platforms:default
