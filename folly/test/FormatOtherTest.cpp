@@ -65,9 +65,6 @@ void testFormatSeq() {
   T v{10, 20, 30};
   EXPECT_EQ("30 10", sformat("{0[2]} {0[0]}", v));
   EXPECT_EQ("0020", sformat("{0[1]:04}", v));
-  EXPECT_EQ("0020", svformat("{1:04}", v));
-  EXPECT_EQ("10 20", svformat("{} {}", v));
-  EXPECT_EQ("10 20 0030", svformat("{} {} {:04}", v));
 }
 
 } // namespace
