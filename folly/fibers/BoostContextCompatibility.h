@@ -62,6 +62,13 @@ class FiberImpl {
     DCHECK_EQ(this, reinterpret_cast<FiberImpl*>(context));
   }
 
+  void* getStackPointer() const {
+    if (kIsArchAmd64 && kIsLinux) {
+      return reinterpret_cast<void**>(fiberContext_)[6];
+    }
+    return nullptr;
+  }
+
  private:
   static void fiberFunc(boost::context::detail::transfer_t transfer) {
     auto fiberImpl = reinterpret_cast<FiberImpl*>(transfer.data);
