@@ -39,7 +39,11 @@
 namespace folly {
 namespace symbolizer {
 
-#ifndef _WIN32
+#ifdef _WIN32
+
+const unsigned long kAllFatalSignals = 0;
+
+#else
 
 const unsigned long kAllFatalSignals = (1UL << SIGSEGV) | (1UL << SIGILL) |
     (1UL << SIGFPE) | (1UL << SIGABRT) | (1UL << SIGBUS) | (1UL << SIGTERM) |
