@@ -46,9 +46,17 @@ void fmt_vformat_mangle_name_fn::operator()(
 
 std::string fmt_vformat_mangle_format_string_fn::operator()(
     std::string_view const str) const {
+  return operator()(options{}, str);
+}
+
+std::string fmt_vformat_mangle_format_string_fn::operator()(
+    options const& opts, std::string_view const str) const {
+  auto const fe_opts =
+      format_string_for_each_named_arg_options{} //
+          .set_numeric_args_as_named(opts.numeric_args_as_named);
   std::string out;
   char const* pos = str.data();
-  format_string_for_each_named_arg(str, [&](auto const arg) {
+  format_string_for_each_named_arg(fe_opts, str, [&](auto const arg) {
     out.append(pos, arg.data());
     fmt_vformat_mangle_name(out, arg);
     pos = arg.data() + arg.size();
