@@ -34,9 +34,6 @@ fbcode_target(
         "//folly/futures:barrier",
         "//folly/portability:gtest",
     ],
-    external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
