@@ -324,6 +324,16 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "std_bitset_test",
+    srcs = ["StdBitsetTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/container:std_bitset",
+    ],
+)
+
+non_fbcode_target(
     _kind = fb_xplat_cxx_library,
     name = "test-headers",
     header_namespace = "",
@@ -768,6 +778,15 @@ fbcode_target(
     deps = [
         "//folly/container:sparse_byte_set",
         "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "std_bitset_test",
+    srcs = ["StdBitsetTest.cpp"],
+    deps = [
+        "//folly/container:std_bitset",
     ],
 )
 
