@@ -428,6 +428,7 @@ fbcode_target(
         "//folly/coro:mutex",
         "//folly/coro:task",
         "//folly/coro:via_if_async",
+        "//folly/coro/safe:now_task",
     ],
 )
 
@@ -446,6 +447,7 @@ non_fbcode_target(
         "//xplat/folly:unit",
         "//xplat/folly/container:access",
         "//xplat/folly/container:iterator",
+        "//xplat/folly/coro/safe:now_task",
         "//xplat/folly/experimental/coro:async_generator",
         "//xplat/folly/experimental/coro:async_pipe",
         "//xplat/folly/experimental/coro:async_scope",

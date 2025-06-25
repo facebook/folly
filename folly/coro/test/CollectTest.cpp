@@ -36,12 +36,54 @@
 
 #if FOLLY_HAS_COROUTINES
 
+static_assert(
+    std::is_same_v<
+        decltype(collectAll(
+            FOLLY_DECLVAL(folly::coro::Task<int>),
+            FOLLY_DECLVAL(folly::coro::Task<int>))),
+        folly::coro::Task<std::tuple<int, int>>>);
+
+#if FOLLY_HAS_IMMOVABLE_COROUTINES
+
+// If any of the inputs are immediately-awaitable, so is the collection
+
+static_assert(
+    std::is_same_v<
+        decltype(collectAll(
+            FOLLY_DECLVAL(folly::coro::NowTask<int>),
+            FOLLY_DECLVAL(folly::coro::Task<int>))),
+        folly::coro::NowTask<std::tuple<int, int>>>);
+
+static_assert(
+    std::is_same_v<
+        decltype(collectAll(
+            FOLLY_DECLVAL(folly::coro::Task<int>),
+            FOLLY_DECLVAL(folly::coro::NowTask<int>))),
+        folly::coro::NowTask<std::tuple<int, int>>>);
+
+static_assert(
+    std::is_same_v<
+        decltype(collectAll(
+            FOLLY_DECLVAL(folly::coro::NowTask<int>),
+            FOLLY_DECLVAL(folly::coro::NowTask<int>))),
+        folly::coro::NowTask<std::tuple<int, int>>>);
+
+#endif
+
 folly::coro::Task<void> sleepThatShouldBeCancelled(
     std::chrono::milliseconds dur) {
   EXPECT_THROW(co_await folly::coro::sleep(dur), folly::OperationCancelled);
 }
 
 class CollectAllTest : public testing::Test {};
+
+CO_TEST_F(CollectAllTest, NowTask) {
+  auto [a, b] = co_await folly::coro::collectAll(
+      []() -> folly::coro::NowTask<int> { co_return 3; }(),
+      []() -> folly::coro::NowTask<int> { co_return 7; }());
+  EXPECT_EQ(3, a);
+  EXPECT_EQ(7, b);
+}
 
 TEST_F(CollectAllTest, WithNoArgs) {
   bool completed = false;

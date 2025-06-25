@@ -26,6 +26,7 @@
 #include <folly/coro/Task.h>
 #include <folly/coro/ViaIfAsync.h>
 #include <folly/coro/detail/Traits.h>
+#include <folly/coro/safe/NowTask.h>
 
 #include <functional>
 #include <iterator>
@@ -80,6 +81,12 @@ class MoveRange {
   Container& container_;
 };
 
+template <typename... SemiAwaitables>
+using CollectAllTask =
+    typename detail::best_fit_task_wrapper<void, SemiAwaitables...>::
+        template task_type<std::tuple<detail::collect_all_component_t<
+            remove_cvref_t<SemiAwaitables>>...>>;
+
 } // namespace detail
 
 ///////////////////////////////////////////////////////////////////////////
@@ -124,8 +131,7 @@ class MoveRange {
 template <typename... SemiAwaitables>
 // Do NOT take awaitables by-reference, that would break `NowTask` safety.
 auto collectAll(SemiAwaitables... awaitables)
-    -> folly::coro::Task<std::tuple<
-        detail::collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>>;
+    -> detail::CollectAllTask<SemiAwaitables...>;
 
 ///////////////////////////////////////////////////////////////////////////
 // collectAllTry(SemiAwaitable<Ts>...)

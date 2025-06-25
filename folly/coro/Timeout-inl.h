@@ -36,7 +36,7 @@ template <>
 struct DiscardImpl<false> {};
 
 template <typename SemiAwaitable, typename Duration, bool discard, typename Fn>
-typename detail::timeout_task_<SemiAwaitable, void>::type timeoutImpl(
+typename detail::TimeoutTask<SemiAwaitable> timeoutImpl(
     Fn semiFn, Duration timeoutDuration, Timekeeper* tk) {
   CancellationSource cancelSource;
   DiscardImpl<discard> impl;
@@ -124,7 +124,7 @@ typename detail::timeout_task_<SemiAwaitable, void>::type timeoutImpl(
 } // namespace detail
 
 template <typename SemiAwaitable, typename Duration>
-typename detail::timeout_task_<SemiAwaitable, void>::type timeout(
+typename detail::TimeoutTask<SemiAwaitable> timeout(
     SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
   return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/true>(
       mustAwaitImmediatelyUnsafeMover(std::move(semiAwaitable)),
@@ -133,7 +133,7 @@ typename detail::timeout_task_<SemiAwaitable, void>::type timeout(
 }
 
 template <typename SemiAwaitable, typename Duration>
-typename detail::timeout_task_<SemiAwaitable, void>::type timeoutNoDiscard(
+typename detail::TimeoutTask<SemiAwaitable> timeoutNoDiscard(
     SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
   return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/false>(
       mustAwaitImmediatelyUnsafeMover(std::move(semiAwaitable)),

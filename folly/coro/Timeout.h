@@ -27,25 +27,10 @@
 namespace folly::coro {
 
 namespace detail {
-// Default to `NowTask`
-template <typename SemiAwaitable, typename Void>
-struct timeout_task_
-#if FOLLY_HAS_IMMOVABLE_COROUTINES
-{
-  using type =
-      NowTask<typename semi_await_try_result_t<SemiAwaitable>::element_type>;
-}
-#endif
-;
-
-// If the input is movable, return `Task`.
 template <typename SemiAwaitable>
-struct timeout_task_<
-    SemiAwaitable,
-    std::enable_if_t<!must_await_immediately_v<SemiAwaitable>, void>> {
-  using type =
-      Task<typename semi_await_try_result_t<SemiAwaitable>::element_type>;
-};
+using TimeoutTask =
+    typename best_fit_task_wrapper<void, SemiAwaitable>::template task_type<
+        typename semi_await_try_result_t<SemiAwaitable>::element_type>;
 } // namespace detail
 
 /// Returns a Task that, when started, starts a timer of duration
@@ -69,7 +54,7 @@ struct timeout_task_<
 /// \throws folly::FutureTimeout
 /// \refcode folly/docs/examples/folly/coro/DetachOnCancel.cpp
 template <typename SemiAwaitable, typename Duration>
-typename detail::timeout_task_<SemiAwaitable, void>::type timeout(
+typename detail::TimeoutTask<SemiAwaitable> timeout(
     SemiAwaitable semiAwaitable,
     Duration timeoutDuration,
     Timekeeper* tk = nullptr);
@@ -97,7 +82,7 @@ typename detail::timeout_task_<SemiAwaitable, void>::type timeout(
 /// If a timekeeper is provided then uses that timekeeper to start the timer,
 /// otherwise uses the process' default TimeKeeper if 'tk' is null.
 template <typename SemiAwaitable, typename Duration>
-typename detail::timeout_task_<SemiAwaitable, void>::type timeoutNoDiscard(
+typename detail::TimeoutTask<SemiAwaitable> timeoutNoDiscard(
     SemiAwaitable semiAwaitable,
     Duration timeoutDuration,
     Timekeeper* tk = nullptr);
