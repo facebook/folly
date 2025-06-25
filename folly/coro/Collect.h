@@ -122,7 +122,8 @@ class MoveRange {
 //       co_await folly::coro::collectAll(doSomething(), doSomethingElse());
 //
 template <typename... SemiAwaitables>
-auto collectAll(SemiAwaitables&&... awaitables)
+// Do NOT take awaitables by-reference, that would break `NowTask` safety.
+auto collectAll(SemiAwaitables... awaitables)
     -> folly::coro::Task<std::tuple<
         detail::collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>>;
 

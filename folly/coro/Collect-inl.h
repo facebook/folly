@@ -392,7 +392,7 @@ auto collectAnyNoDiscardImpl(
 } // namespace detail
 
 template <typename... SemiAwaitables>
-auto collectAll(SemiAwaitables&&... awaitables)
+auto collectAll(SemiAwaitables... awaitables)
     -> folly::coro::Task<std::tuple<
         detail::collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>> {
   return detail::collectAllImpl(
