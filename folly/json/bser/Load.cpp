@@ -16,7 +16,6 @@
 
 #include <folly/json/bser/Bser.h>
 
-#include <folly/String.h>
 #include <folly/io/Cursor.h>
 
 using namespace folly;
