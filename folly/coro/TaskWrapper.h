@@ -372,7 +372,24 @@ class TaskWithExecutorWrapperCrtp {
   // `AsyncScope` requires an awaitable with an executor already attached, and
   // thus directly calls `co_withAsyncStack` instead of `co_viaIfAsync`.  But,
   // we still need to wrap the awaitable on that code path.
-  friend auto tag_invoke(cpo_t<co_withAsyncStack>, Derived te) noexcept(
+  //
+  // NB: Passing by-&& here looks like it could compromise the safety of
+  // immediately-awaitable coros (`NowTask`, `NowTaskWithExecutor`).  With
+  // by-value, `BlockingWaitTest.AwaitNowTaskWithExecutor` would not build.
+  //
+  // Supporting pass-by-value would require fixing a LOT of plumbing.
+  //   - `WithAsyncStack.h` calls `is_tag_invocable_v`, which would fail on
+  //     `NowTaskWithExecutor` if this is by-value, since the implementation of
+  //     `is_tag_invocable_v` presents all args by-&&.
+  //   - `CommutativeWrapperAwaitable` and `StackAwareViaIfAsyncAwaiter`,
+  //     among others, also assume that `co_withAsyncStack` takes by-ref.
+  //
+  // Fortunately, I'm not aware of any practical reduction in
+  // immediately-awaitable safety from this issue.  `co_withAsyncStack` should
+  // never be called in user code.  Internal usage in `folly/coro` looks
+  // overall immediately-awaitable-safe -- and the best safeguard for any
+  // particular scenario is to test, see e.g. `NowTaskTest.blockingWait`.
+  friend auto tag_invoke(cpo_t<co_withAsyncStack>, Derived&& te) noexcept(
       noexcept(co_withAsyncStack(FOLLY_DECLVAL(Inner)))) {
     return Cfg::wrapAwaitable(co_withAsyncStack(std::move(te.inner_)));
   }

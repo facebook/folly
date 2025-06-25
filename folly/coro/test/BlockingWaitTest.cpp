@@ -22,6 +22,7 @@
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Invoke.h>
+#include <folly/coro/safe/NowTask.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
@@ -59,6 +60,25 @@ static_assert( //
         int>::value);
 
 class BlockingWaitTest : public testing::Test {};
+
+TEST_F(BlockingWaitTest, AwaitNowTask) {
+  bool ran = false;
+  folly::coro::blockingWait([&]() -> folly::coro::NowTask<> {
+    ran = true;
+    co_return;
+  }());
+  EXPECT_TRUE(ran);
+}
+
+TEST_F(BlockingWaitTest, AwaitNowTaskWithExecutor) {
+  bool ran = false;
+  folly::coro::blockingWait(co_withExecutor(
+      folly::getGlobalCPUExecutor(), [&]() -> folly::coro::NowTask<> {
+        ran = true;
+        co_return;
+      }()));
+  EXPECT_TRUE(ran);
+}
 
 TEST_F(BlockingWaitTest, SynchronousCompletionVoidResult) {
   folly::coro::blockingWait(folly::coro::ready_awaitable<>{});
