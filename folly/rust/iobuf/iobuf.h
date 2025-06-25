@@ -28,8 +28,15 @@
 // less messy than the alternative, passing --no-size_t-is-usize to bindgen and
 // using Into/TryInto to convert between u64 and usize.
 namespace std {
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
 using size_t = size_t;
-}
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+} // namespace std
 
 #include <folly/io/IOBuf.h>
 
