@@ -1,6 +1,14 @@
 {
 	"name": "Ubuntu",
 	"build": {
+		"cacheFrom": "ghcr.io/marinatedconcrete/config-devcontainer",
 		"dockerfile": "Containerfile"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"GitHub.vscode-github-actions"
+			]
+		}
 	}
 }
