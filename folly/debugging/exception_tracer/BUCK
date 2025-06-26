@@ -43,8 +43,8 @@ non_fbcode_target(
         "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:portability",
         "//xplat/folly:string",
-        "//xplat/folly/debugging/exception_tracer:exception_abi",
         "//xplat/folly/debugging/exception_tracer:compatibility",
+        "//xplat/folly/debugging/exception_tracer:exception_abi",
         "//xplat/folly/debugging/exception_tracer:stacktrace",
         "//xplat/third-party/linker_lib:dl",
     ],
@@ -136,9 +136,9 @@ non_fbcode_target(
         "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:hash_spooky_hash_v2",
         "//xplat/folly:range",
+        "//xplat/folly:singleton_thread_local",
         "//xplat/folly:synchronization_rw_spin_lock",
         "//xplat/folly:synchronized",
-        "//xplat/folly:singleton_thread_local",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
         "//xplat/folly/debugging/exception_tracer:stacktrace",
@@ -156,8 +156,8 @@ non_fbcode_target(
     link_whole = True,
     deps = [
         "//xplat/folly:experimental_symbolizer_symbolizer",
-        "//xplat/folly/debugging/exception_tracer:compatibility",
         "//xplat/folly:utility",
+        "//xplat/folly/debugging/exception_tracer:compatibility",
         "//xplat/folly/debugging/exception_tracer:exception_abi",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
@@ -192,19 +192,6 @@ non_fbcode_target(
     name = "exception_tracer_callbacks",
     srcs = [
         "ExceptionTracerLib.cpp",
-    ],
-    feature = triage_InfrastructureSupermoduleOptou,
-    link_whole = True,
-    raw_headers = [
-        "ExceptionTracerLib.h",
-    ],
-    deps = [
-        "//xplat/folly:indestructible",
-        "//xplat/folly:portability",
-        "//xplat/folly:shared_mutex",
-        "//xplat/folly:synchronized",
-        "//xplat/third-party/linker_lib:dl",
-        "//xplat/folly/debugging/exception_tracer:compatibility",
     ],
     compiler_flags = selects.if_(
         selects.or_(
@@ -246,6 +233,19 @@ non_fbcode_target(
             ],
         }),
     ),
+    feature = triage_InfrastructureSupermoduleOptou,
+    link_whole = True,
+    raw_headers = [
+        "ExceptionTracerLib.h",
+    ],
+    deps = [
+        "//xplat/folly:indestructible",
+        "//xplat/folly:portability",
+        "//xplat/folly:shared_mutex",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/debugging/exception_tracer:compatibility",
+        "//xplat/third-party/linker_lib:dl",
+    ],
 )
 
 # !!!! fbcode/folly/debugging/exception_tracer/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
@@ -278,8 +278,8 @@ fbcode_target(
         ":exception_tracer_callbacks",
         ":stacktrace",
         "//folly:range",
-        "//folly:synchronized",
         "//folly:singleton_thread_local",
+        "//folly:synchronized",
         "//folly/experimental/symbolizer:symbolizer",
         "//folly/hash:spooky_hash_v2",
         "//folly/synchronization:rw_spin_lock",
@@ -364,9 +364,9 @@ fbcode_target(
         # @fb-only[end= ]: ],
         [],
     ),
+    labels = ["EXCLUDED_FROM_LINK_GROUPS"],
     link_whole = True,
     supports_python_dlopen = True,
-    labels = ["EXCLUDED_FROM_LINK_GROUPS"],
     deps = [
         "//folly:indestructible",
         "//folly:portability",
