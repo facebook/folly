@@ -1143,6 +1143,11 @@ class AsyncSocket : public AsyncSocketTransport {
 #endif
   }
 
+  /**
+   * Sets TOS or traffic class. Throws an exception on error.
+   */
+  void setTosOrTrafficClass(int tosOrTrafficClass);
+
   void disableTransparentTls() override { noTransparentTls_ = true; }
 
   void disableTSocks() { noTSocks_ = true; }
@@ -1995,6 +2000,7 @@ class AsyncSocket : public AsyncSocketTransport {
   bool noTSocks_{false};
   // Whether to track EOR or not.
   bool trackEor_{false};
+  Optional<int> tosOrTrafficClass_;
 
   // ByteEvent state
   std::unique_ptr<ByteEventHelper> byteEventHelper_;

@@ -930,6 +930,9 @@ void AsyncSocket::connect(
           withAddr("failed to put socket in non-blocking mode"),
           errnoCopy);
     }
+    if (tosOrTrafficClass_) {
+      setTosOrTrafficClass(*tosOrTrafficClass_);
+    }
 
 #if !defined(MSG_NOSIGNAL) && defined(F_SETNOSIGPIPE)
     // iOS and OS X don't support MSG_NOSIGNAL; set F_SETNOSIGPIPE instead
@@ -4505,6 +4508,42 @@ std::string AsyncSocket::withAddr(folly::StringPiece s) {
       s,
       peer.describe(),
       kIsMobile ? "" : fmt::format(", local={}", local.describe()));
+}
+
+void AsyncSocket::setTosOrTrafficClass(int tosOrTrafficClass) {
+#if defined(_WIN32)
+  throw AsyncSocketException(
+      AsyncSocketException::INTERNAL_ERROR,
+      withAddr("setting tos or traffic class not supported on windows"));
+#else
+  tosOrTrafficClass_ = tosOrTrafficClass;
+  cachePeerAddress();
+  if (!addr_.isInitialized()) {
+    return;
+  }
+  auto family = addr_.getFamily();
+  int ret = 0;
+  if (family == AF_INET6) {
+    // For IPv6 set the traffic class field
+    ret = netops_->setsockopt(
+        fd_,
+        IPPROTO_IPV6,
+        IPV6_TCLASS,
+        &tosOrTrafficClass,
+        sizeof(tosOrTrafficClass));
+  } else {
+    // For IPv4 set the TOS field
+    ret = netops_->setsockopt(
+        fd_, IPPROTO_IP, IP_TOS, &tosOrTrafficClass, sizeof(tosOrTrafficClass));
+  }
+  if (ret != 0) {
+    auto errnoCopy = errno;
+    throw AsyncSocketException(
+        AsyncSocketException::INTERNAL_ERROR,
+        withAddr("failed to set tos"),
+        errnoCopy);
+  }
+#endif
 }
 
 void AsyncSocket::setBufferCallback(BufferCallback* cb) {
