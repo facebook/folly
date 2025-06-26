@@ -708,9 +708,10 @@ class AsyncGeneratorPromise final
   }
 
   template <typename Awaitable>
-  auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
+  auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
-    return await_transform(awaitable.unwrap());
+    return await_transform(
+        mustAwaitImmediatelyUnsafeMover(awaitable.unwrap())());
   }
 
   auto await_transform(folly::coro::co_current_executor_t) noexcept {

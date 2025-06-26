@@ -173,16 +173,7 @@ class TaskPromiseBase {
             mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())));
   }
 
-  template <
-      typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
-  auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
-    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
-    return await_transform(awaitable.unwrap());
-  }
-  template <
-      typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+  template <typename Awaitable>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
     return await_transform(
