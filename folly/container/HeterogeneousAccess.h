@@ -24,6 +24,7 @@
 #include <folly/Traits.h>
 #include <folly/container/HeterogeneousAccess-fwd.h>
 #include <folly/hash/Hash.h>
+#include <folly/hash/rapidhash.h>
 
 namespace folly {
 
@@ -125,7 +126,8 @@ struct TransparentRangeHash<char> {
   // of std::hash<std::string> then we should consider using it all of the time.
   template <typename U>
   std::size_t operator()(U const& stringish) const {
-    return hash::stdCompatibleHash(StringPiece{stringish});
+    auto sp = StringPiece{stringish};
+    return (std::size_t)folly::hash::rapidhashNano(sp.data(), sp.size());
   }
 };
 

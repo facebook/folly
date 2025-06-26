@@ -75,6 +75,10 @@
 
 #if FOLLY_NEON
 #include <arm_neon.h> // uint8x16t intrinsics
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+#include <arm_neon_sve_bridge.h> // @manual
+#include <arm_sve.h>
+#endif
 #elif FOLLY_SSE >= 2 // SSE2
 #include <emmintrin.h> // _mm_set1_epi8
 #include <immintrin.h> // __m128i intrinsics

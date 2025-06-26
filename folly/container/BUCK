@@ -38,6 +38,7 @@ non_fbcode_target(
     ],
     deps = [
         "//xplat/folly:hash_hash",
+        "//xplat/folly:hash_rapidhash",
         "//xplat/folly:range",
         "//xplat/folly:traits",
         "//xplat/folly/container:heterogeneous_access_fwd",
@@ -635,6 +636,7 @@ fbcode_target(
         "//folly:range",
         "//folly:traits",
         "//folly/hash:hash",
+        "//folly/hash:rapidhash",
     ],
 )
 

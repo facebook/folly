@@ -221,22 +221,3 @@ TEST(HeterogeneousAccess, transparentMatches) {
       std::is_convertible<small_vector<int, 2>, Range<int const*>>::value);
   runTestMatches<small_vector<int, 2>>({1, 2, 3, 4});
 }
-
-TEST(HeterogeneousAccess, Stress) {
-  constexpr std::size_t kMinLen = 1;
-  constexpr std::size_t kMaxLen = 2048;
-  constexpr std::size_t kEachLenAttempts = 16;
-
-  std::default_random_engine rng(0);
-
-  for (std::size_t len = kMinLen; len < kMaxLen; ++len) {
-    for (std::size_t attempt = 0; attempt < kEachLenAttempts; ++attempt) {
-      const std::vector<uint8_t> bytes = randomBytes(rng, len);
-      const std::string bytesAsStr{
-          reinterpret_cast<const char*>(bytes.data()), bytes.size()};
-      EXPECT_EQ(
-          HeterogeneousAccessHash<std::string>{}(bytesAsStr),
-          std::hash<std::string>{}(bytesAsStr));
-    }
-  }
-}
