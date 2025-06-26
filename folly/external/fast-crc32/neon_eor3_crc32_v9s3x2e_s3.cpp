@@ -3,13 +3,20 @@
 /* MIT licensed */
 
 #include "folly/external/fast-crc32/neon_eor3_crc32_v9s3x2e_s3.h"
-#include <folly/system/AuxVector.h> // @manual
+#include <folly/system/AuxVector.h>
 #include <folly/Portability.h>
 
 #include <stddef.h>
 #include <stdint.h>
 
 #define CRC_EXPORT extern
+
+namespace folly::detail {
+[[maybe_unused]] static ElfHwCaps hwcaps() {
+  static ElfHwCaps caps;
+  return caps;
+}
+}
 
 #if !(FOLLY_AARCH64 && FOLLY_NEON && FOLLY_ARM_FEATURE_CRYPTO && FOLLY_ARM_FEATURE_CRC32 && FOLLY_ARM_FEATURE_SHA3)
 #include <stdlib.h>
@@ -72,7 +79,7 @@ CRC_AINLINE uint64x2_t crc_shift(uint32_t crc, size_t nbytes) {
 
 FOLLY_TARGET_ATTRIBUTE("+crc")
 CRC_EXPORT bool has_neon_eor3_crc32_v9s3x2e_s3() {
-  static ElfHwCaps caps;
+  auto caps = hwcaps();
 
   return caps.aarch64_fp() && caps.aarch64_asimd() && caps.aarch64_pmull() &&
       caps.aarch64_crc32() && caps.aarch64_sha3();
