@@ -638,11 +638,11 @@ TEST(HeapVectorTypes, TransparentMapTest) {
   EXPECT_TRUE(m.end() == m.find(zebra));
 
   // count
-  EXPECT_EQ(0, m.contains(buddy));
-  EXPECT_EQ(1, m.contains(hello));
-  EXPECT_EQ(0, m.contains(stake));
-  EXPECT_EQ(1, m.contains(world));
-  EXPECT_EQ(0, m.contains(zebra));
+  EXPECT_FALSE(m.contains(buddy));
+  EXPECT_TRUE(m.contains(hello));
+  EXPECT_FALSE(m.contains(stake));
+  EXPECT_TRUE(m.contains(world));
+  EXPECT_FALSE(m.contains(zebra));
 
   // lower_bound
   EXPECT_TRUE(m.find(hello) == m.lower_bound(buddy));
