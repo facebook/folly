@@ -14,7 +14,8 @@ load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "tri
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "compatibility",
     srcs = [
     ],
@@ -25,7 +26,8 @@ non_fbcode_target(_kind = folly_xplat_library,
     ],
 )
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "exception_tracer_base",
     srcs = [
         "ExceptionTracer.cpp",
@@ -48,7 +50,8 @@ non_fbcode_target(_kind = folly_xplat_library,
     ],
 )
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "exception_abi",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
@@ -59,7 +62,8 @@ non_fbcode_target(_kind = folly_xplat_library,
     ]
 )
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "smart_exception_tracer",
     srcs = [
         "SmartExceptionTracer.cpp",
@@ -82,7 +86,8 @@ non_fbcode_target(_kind = folly_xplat_library,
     ],
 )
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "smart_exception_tracer_singleton",
     srcs = [
         "SmartExceptionTracerSingleton.cpp",
@@ -99,7 +104,8 @@ non_fbcode_target(_kind = folly_xplat_library,
     ],
 )
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "smart_exception_stack_trace_hooks",
     srcs = [
         "SmartExceptionStackTraceHooks.cpp",
@@ -114,7 +120,8 @@ non_fbcode_target(_kind = folly_xplat_library,
     ],
 )
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "exception_counter",
     srcs = [
         "ExceptionCounterLib.cpp",
@@ -138,7 +145,8 @@ non_fbcode_target(_kind = folly_xplat_library,
     ],
 )
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "exception_tracer",
     srcs = [
         "ExceptionStackTraceLib.cpp",
@@ -157,7 +165,8 @@ non_fbcode_target(_kind = folly_xplat_library,
     ],
 )
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "stacktrace",
     srcs = [
         "StackTrace.cpp",
@@ -179,7 +188,8 @@ FBCODE_LIBSTDCXX_SELECTOR = selects.and_(
 )
 
 
-non_fbcode_target(_kind = folly_xplat_library,
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "exception_tracer_callbacks",
     srcs = [
         "ExceptionTracerLib.cpp",
@@ -244,19 +254,22 @@ non_fbcode_target(_kind = folly_xplat_library,
 
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "compatibility",
     srcs = [],
     headers = ["Compatibility.h"],
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "exception_abi",
     headers = ["ExceptionAbi.h"],
     deps = [":compatibility"]
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "exception_counter",
     srcs = ["ExceptionCounterLib.cpp"],
     headers = ["ExceptionCounterLib.h"],
@@ -278,7 +291,8 @@ fbcode_target(_kind = cpp_library,
     ],
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "exception_tracer",
     srcs = ["ExceptionStackTraceLib.cpp"],
     headers = [],
@@ -297,7 +311,8 @@ fbcode_target(_kind = cpp_library,
     ],
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "exception_tracer_base",
     srcs = ["ExceptionTracer.cpp"],
     headers = ["ExceptionTracer.h"],
@@ -327,15 +342,18 @@ LIBSTDCXX_BUCKIFIED_SELECTOR = selects.and_(
     selects.cond("ovr_config//third-party/libgcc:11.x"),
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "exception_tracer_callbacks",
     srcs = ["ExceptionTracerLib.cpp"],
     headers = ["ExceptionTracerLib.h"],
-    compiler_flags = selects.if_(LIBSTDCXX_BUCKIFIED_SELECTOR,
+    compiler_flags = selects.if_(
+        LIBSTDCXX_BUCKIFIED_SELECTOR,
         # @fb-only[end= ]: ["-DFOLLY_STATIC_LIBSTDCXX=1"],
         [],
     ),
-    exported_linker_flags = selects.if_(LIBSTDCXX_BUCKIFIED_SELECTOR,
+    exported_linker_flags = selects.if_(
+        LIBSTDCXX_BUCKIFIED_SELECTOR,
         # @lint-ignore-every BUCKFORMAT
         # @fb-only: [
             # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
@@ -363,7 +381,8 @@ fbcode_target(_kind = cpp_library,
     ],
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "stacktrace",
     srcs = ["StackTrace.cpp"],
     headers = ["StackTrace.h"],
@@ -375,7 +394,8 @@ fbcode_target(_kind = cpp_library,
     ],
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "smart_exception_tracer_singleton",
     srcs = [
         "SmartExceptionTracerSingleton.cpp",
@@ -390,7 +410,8 @@ fbcode_target(_kind = cpp_library,
     ],
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "smart_exception_stack_trace_hooks",
     srcs = [
         "SmartExceptionStackTraceHooks.cpp",
@@ -404,7 +425,8 @@ fbcode_target(_kind = cpp_library,
     ],
 )
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "smart_exception_tracer",
     srcs = ["SmartExceptionTracer.cpp"],
     headers = ["SmartExceptionTracer.h"],

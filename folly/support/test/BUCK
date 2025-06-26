@@ -5,7 +5,8 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(_kind = cpp_library,
+fbcode_target(
+    _kind = cpp_library,
     name = "gdb_util",
     headers = ["GdbUtil.h"],
     exported_deps = [
@@ -13,7 +14,8 @@ fbcode_target(_kind = cpp_library,
     ],
 )
 
-fbcode_target(_kind = cpp_binary,
+fbcode_target(
+    _kind = cpp_binary,
     name = "main",
     srcs = ["main.cpp"],
     modules = False,
