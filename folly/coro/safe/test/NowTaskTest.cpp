@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/coro/AsyncGenerator.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/safe/NowTask.h>
@@ -112,6 +113,19 @@ template <typename T>
 inline constexpr bool test_transform_moved_with_executor_v = std::is_same_v<
     detected_t<await_transform_result_t, T>,
     StackAwareViaIfAsyncAwaitable<TaskWithExecutor<int>>>;
+
+// Check that `AsyncGenerator::await_transform` behaves like that of `Task`.
+CO_TEST(NowTaskTest, awaitFromGenerator) {
+  auto now30 = []() -> NowTask<int> { co_return 30; };
+  auto now7 = []() -> NowTask<int> { co_return 7; };
+  auto genFn = [&]() -> AsyncGenerator<int> {
+    co_yield co_await now30();
+    co_yield co_await co_nothrow(now7());
+  };
+  auto gen = genFn();
+  EXPECT_EQ(30, *(co_await gen.next()));
+  EXPECT_EQ(7, *(co_await gen.next()));
+}
 
 CO_TEST(NowTaskTest, withExecutor) {
   auto exec = co_await co_current_executor;
