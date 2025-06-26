@@ -10,5 +10,8 @@
 				"GitHub.vscode-github-actions"
 			]
 		}
+	},
+	"features": {
+		"ghcr.io/facebook/devcontainers/features/dotslash:1": {}
 	}
 }
