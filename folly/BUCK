@@ -3160,9 +3160,9 @@ non_fbcode_target(
         "external/rapidhash/rapidhash.h",
     ],
     exported_deps = [
-        ":bits",
-        ":cpp_attributes",
-        ":portability",
+        ":c_portability",
+        ":portability_constexpr",
+        "//xplat/folly/lang:bits",
     ],
 )
 

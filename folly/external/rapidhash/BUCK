@@ -8,7 +8,8 @@ fbcode_target(
     name = "rapidhash",
     headers = ["rapidhash.h"],
     exported_deps = [
-        "//folly:cpp_attributes",
+        "//folly:c_portability",
         "//folly/lang:bits",
+        "//folly/portability:constexpr",
     ],
 )

@@ -40,6 +40,7 @@ non_fbcode_target(
         "//xplat/folly:random",
         "//xplat/folly:scope_guard",
         "//xplat/folly:stop_watch",
+        "//xplat/folly:utility",
         "//xplat/folly:varint",
     ] + select({
         "DEFAULT": [],
@@ -193,6 +194,7 @@ fbcode_target(
         "//folly:random",
         "//folly:scope_guard",
         "//folly:stop_watch",
+        "//folly:utility",
         "//folly:varint",
         "//folly/portability:windows",
     ],

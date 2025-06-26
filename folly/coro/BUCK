@@ -261,7 +261,6 @@ fbcode_target(
     name = "await_immediately",
     headers = ["AwaitImmediately.h"],
     exported_deps = [
-        "//folly:portability",
         "//folly:utility",
     ],
 )
@@ -272,7 +271,6 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AwaitImmediately.h"],
     exported_deps = [
-        "//xplat/folly:portability",
         "//xplat/folly:utility",
     ],
 )
@@ -1339,10 +1337,11 @@ fbcode_target(
         "SharedPromise.h",
     ],
     exported_deps = [
+        ":promise",
+        "//folly:likely",
         "//folly:small_vector",
         "//folly:synchronized",
         "//folly:utility",
-        "//folly/coro:promise",
         "//folly/futures:core",
     ],
 )
@@ -1353,11 +1352,12 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SharedPromise.h"],
     deps = [
+        ":promise",
         "//xplat/folly:futures_core",
+        "//xplat/folly:likely",
         "//xplat/folly:small_vector",
         "//xplat/folly:synchronized",
         "//xplat/folly:utility",
-        "//xplat/folly/experimental/coro:promise",
     ],
 )
 
@@ -1534,7 +1534,10 @@ fbcode_target(
     _kind = cpp_library,
     name = "task_wrapper",
     headers = ["TaskWrapper.h"],
-    exported_deps = [":task"],
+    exported_deps = [
+        ":await_immediately",
+        ":task",
+    ],
 )
 
 non_fbcode_target(
@@ -1542,7 +1545,10 @@ non_fbcode_target(
     name = "task_wrapper",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["TaskWrapper.h"],
-    exported_deps = [":task"],
+    exported_deps = [
+        ":await_immediately",
+        ":task",
+    ],
 )
 
 ### this line is a hint for source control merge

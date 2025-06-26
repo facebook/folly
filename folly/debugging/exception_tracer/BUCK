@@ -43,7 +43,6 @@ non_fbcode_target(
         "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:portability",
         "//xplat/folly:string",
-        "//xplat/folly/debugging/exception_tracer:compatibility",
         "//xplat/folly/debugging/exception_tracer:exception_abi",
         "//xplat/folly/debugging/exception_tracer:stacktrace",
         "//xplat/third-party/linker_lib:dl",
@@ -57,7 +56,7 @@ non_fbcode_target(
     raw_headers = [
         "ExceptionAbi.h",
     ],
-    deps = [
+    exported_deps = [
         "//xplat/folly/debugging/exception_tracer:compatibility",
     ],
 )
@@ -157,7 +156,6 @@ non_fbcode_target(
     deps = [
         "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:utility",
-        "//xplat/folly/debugging/exception_tracer:compatibility",
         "//xplat/folly/debugging/exception_tracer:exception_abi",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
@@ -263,7 +261,7 @@ fbcode_target(
     _kind = cpp_library,
     name = "exception_abi",
     headers = ["ExceptionAbi.h"],
-    deps = [
+    exported_deps = [
         ":compatibility",
     ],
 )
@@ -298,7 +296,6 @@ fbcode_target(
     headers = [],
     link_whole = True,
     deps = [
-        ":compatibility",
         ":exception_abi",
         ":exception_tracer_base",
         ":exception_tracer_callbacks",
@@ -322,7 +319,6 @@ fbcode_target(
     deps = [
         ":exception_abi",
         ":stacktrace",
-        ":compatibility",
         "//folly:cpp_attributes",
         "//folly:portability",
         "//folly:string",
@@ -421,7 +417,6 @@ fbcode_target(
         ":exception_tracer_callbacks",
         ":smart_exception_tracer_singleton",
         "//folly/experimental/symbolizer:symbolizer",
-        "//folly/debugging/exception_tracer:compatibility",
     ],
 )
 
