@@ -345,19 +345,18 @@ fbcode_target(
     headers = ["ExceptionTracerLib.h"],
     compiler_flags = selects.if_(
         LIBSTDCXX_BUCKIFIED_SELECTOR,
-        # @fb-only[end= ]: ["-DFOLLY_STATIC_LIBSTDCXX=1"],
+        ["-DFOLLY_STATIC_LIBSTDCXX=1"],
         [],
     ),
     exported_linker_flags = selects.if_(
         LIBSTDCXX_BUCKIFIED_SELECTOR,
-        # @lint-ignore-every BUCKFORMAT
-        # @fb-only: [
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
-        # @fb-only[end= ]: ],
+        [
+         "-Wl,--wrap=__cxa_throw",
+         "-Wl,--wrap=__cxa_rethrow",
+         "-Wl,--wrap=__cxa_begin_catch",
+         "-Wl,--wrap=__cxa_end_catch",
+         "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
+         ],
         [],
     ),
     labels = ["EXCLUDED_FROM_LINK_GROUPS"],
