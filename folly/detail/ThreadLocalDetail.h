@@ -265,60 +265,6 @@ struct ThreadEntryList {
 };
 
 /**
- * We want to disable onThreadExit call at the end of shutdown, we don't care
- * about leaking memory at that point.
- *
- * Otherwise if ThreadLocal is used in a shared library, onThreadExit may be
- * called after dlclose().
- *
- * This class has one single static instance; however since it's so widely used,
- * directly or indirectly, by so many classes, we need to take care to avoid
- * problems stemming from the Static Initialization/Destruction Order Fiascos.
- * Therefore this class needs to be constexpr-constructible, so as to avoid
- * the need for this to participate in init/destruction order.
- */
-class PthreadKeyUnregister {
- public:
-  static constexpr size_t kMaxKeys = size_t(1) << 16;
-
-  ~PthreadKeyUnregister() {
-    // If static constructor priorities are not supported then
-    // ~PthreadKeyUnregister logic is not safe.
-#if !defined(__APPLE__) && !defined(_MSC_VER)
-    MSLGuard lg(lock_);
-    while (size_) {
-      pthread_key_delete(keys_[--size_]);
-    }
-#endif
-  }
-
-  static void registerKey(pthread_key_t key) { instance_.registerKeyImpl(key); }
-
- private:
-  /**
-   * Only one global instance should exist, hence this is private.
-   * See also the important note at the top of this class about `constexpr`
-   * usage.
-   */
-  constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() {}
-
-  void registerKeyImpl(pthread_key_t key) {
-    MSLGuard lg(lock_);
-    if (size_ == kMaxKeys) {
-      throw_exception<std::logic_error>(
-          "pthread_key limit has already been reached");
-    }
-    keys_[size_++] = key;
-  }
-
-  MicroSpinLock lock_;
-  size_t size_;
-  pthread_key_t keys_[kMaxKeys];
-
-  static PthreadKeyUnregister instance_;
-};
-
-/**
  * Cache the ptr + deleter info in ThreadEntrySet too. This allows
  * accessAllThreads() to get to the per thread ptr without holding the
  * StaticMeta's lock_. Eventually, the deleter info will be
