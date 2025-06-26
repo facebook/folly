@@ -59,7 +59,7 @@ non_fbcode_target(
     ],
     deps = [
         "//xplat/folly/debugging/exception_tracer:compatibility",
-    ]
+    ],
 )
 
 non_fbcode_target(
@@ -187,7 +187,6 @@ FBCODE_LIBSTDCXX_SELECTOR = selects.and_(
     selects.cond("ovr_config//cpp:libstdc++"),
 )
 
-
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "exception_tracer_callbacks",
@@ -214,7 +213,7 @@ non_fbcode_target(
                 FBCODE_LIBSTDCXX_SELECTOR,
                 selects.or_(
                     selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
-                    selects.cond("ovr_config//third-party/libgcc:11.x")
+                    selects.cond("ovr_config//third-party/libgcc:11.x"),
                 ),
             ),
         ),
@@ -245,7 +244,6 @@ non_fbcode_target(
                 # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
                 # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
             ],
-
         }),
     ),
 )
@@ -265,7 +263,9 @@ fbcode_target(
     _kind = cpp_library,
     name = "exception_abi",
     headers = ["ExceptionAbi.h"],
-    deps = [":compatibility"]
+    deps = [
+        ":compatibility",
+    ],
 )
 
 fbcode_target(
