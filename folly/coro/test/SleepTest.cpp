@@ -20,7 +20,6 @@
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Sleep.h>
 #include <folly/coro/Task.h>
-#include <folly/executors/ManualExecutor.h>
 #include <folly/futures/ManualTimekeeper.h>
 #include <folly/portability/GTest.h>
 

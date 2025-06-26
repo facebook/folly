@@ -21,7 +21,6 @@
 #include <type_traits>
 
 #include <folly/ExceptionWrapper.h>
-#include <folly/Utility.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES

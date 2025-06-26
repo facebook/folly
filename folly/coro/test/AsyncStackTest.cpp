@@ -20,7 +20,6 @@
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Collect.h>
-#include <folly/coro/Mutex.h>
 #include <folly/coro/Task.h>
 #include <folly/tracing/AsyncStack.h>
 
