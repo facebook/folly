@@ -178,10 +178,6 @@ def folly_xplat_library(
                 "-fexceptions",
                 "-frtti",
             ],
-            "wa_android//tools/buck/build_defs/monorepo:live_deps": [
-                "-fexceptions",
-                "-frtti",
-            ],
         }),
         fbobjc_compiler_flags = kwargs.pop("fbobjc_compiler_flags", []) +
                                 FBOBJC_CXXFLAGS,
