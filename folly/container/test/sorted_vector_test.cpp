@@ -335,7 +335,7 @@ TEST(SortedVectorTypes, SimpleSetTest) {
 
   sorted_vector_set<std::string> s4;
   s4.emplace("foobar", 3);
-  EXPECT_EQ(s4.contains("foo"), 1);
+  EXPECT_TRUE(s4.contains("foo"));
 }
 
 TEST(SortedVectorTypes, TransparentSetTest) {
@@ -368,11 +368,11 @@ TEST(SortedVectorTypes, TransparentSetTest) {
   }
 
   // count
-  EXPECT_EQ(0, s.contains(buddy));
-  EXPECT_EQ(1, s.contains(hello));
-  EXPECT_EQ(0, s.contains(stake));
-  EXPECT_EQ(1, s.contains(world));
-  EXPECT_EQ(0, s.contains(zebra));
+  EXPECT_FALSE(s.contains(buddy));
+  EXPECT_TRUE(s.contains(hello));
+  EXPECT_FALSE(s.contains(stake));
+  EXPECT_TRUE(s.contains(world));
+  EXPECT_FALSE(s.contains(zebra));
 
   // contains
   EXPECT_FALSE(s.contains(buddy));
@@ -522,11 +522,11 @@ TEST(SortedVectorTypes, TransparentMapTest) {
   EXPECT_TRUE(m.end() == m.find(zebra));
 
   // count
-  EXPECT_EQ(0, m.contains(buddy));
-  EXPECT_EQ(1, m.contains(hello));
-  EXPECT_EQ(0, m.contains(stake));
-  EXPECT_EQ(1, m.contains(world));
-  EXPECT_EQ(0, m.contains(zebra));
+  EXPECT_FALSE(m.contains(buddy));
+  EXPECT_TRUE(m.contains(hello));
+  EXPECT_FALSE(m.contains(stake));
+  EXPECT_TRUE(m.contains(world));
+  EXPECT_FALSE(m.contains(zebra));
 
   // lower_bound
   EXPECT_TRUE(m.find(hello) == m.lower_bound(buddy));
@@ -1173,7 +1173,7 @@ TEST(SortedVectorTypes, TestPmrCopyConstructSameAlloc) {
 
     pmr::sorted_vector_set<int> s2(s1, a2);
     EXPECT_EQ(s1.get_allocator(), s2.get_allocator());
-    EXPECT_EQ(s2.contains(42), 1);
+    EXPECT_TRUE(s2.contains(42));
   }
 
   {
@@ -1201,7 +1201,7 @@ TEST(SortedVectorTypes, TestPmrCopyConstructDifferentAlloc) {
 
     pmr::sorted_vector_set<int> s2(s1, a2);
     EXPECT_NE(s1.get_allocator(), s2.get_allocator());
-    EXPECT_EQ(s2.contains(42), 1);
+    EXPECT_TRUE(s2.contains(42));
   }
 
   {
@@ -1232,7 +1232,7 @@ TEST(SortedVectorTypes, TestPmrMoveConstructSameAlloc) {
     // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_EQ(s1.get_allocator(), s2.get_allocator());
     EXPECT_EQ(s2.data(), d);
-    EXPECT_EQ(s2.contains(42), 1);
+    EXPECT_TRUE(s2.contains(42));
   }
 
   {
@@ -1266,7 +1266,7 @@ TEST(SortedVectorTypes, TestPmrMoveConstructDifferentAlloc) {
     // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_NE(s1.get_allocator(), s2.get_allocator());
     EXPECT_NE(s2.data(), d);
-    EXPECT_EQ(s2.contains(42), 1);
+    EXPECT_TRUE(s2.contains(42));
   }
 
   {
