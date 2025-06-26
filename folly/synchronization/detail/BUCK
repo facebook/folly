@@ -99,8 +99,6 @@ fbcode_target(
     ],
     headers = ["Hardware.h"],
     deps = [
-        "//folly:cpp_attributes",
-        "//folly/lang:assume",
         "//folly/lang:exception",
     ],
     exported_deps = [
