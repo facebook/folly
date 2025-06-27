@@ -18,7 +18,6 @@ load(
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
-load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_arvr_mode")
 
 def should_enable_gflags():
     return read_bool("folly", "have_libgflags_override", False)
@@ -40,15 +39,15 @@ def cpp_flags():
             "ovr_config//os:linux": ["-DFOLLY_MOBILE=1"],
         })
 
-    elif is_arvr_mode():
+    else:
         flags += select({
             "DEFAULT": ["-DFOLLY_MOBILE=1"],
-            "ovr_config//os:linux": [],
-            "ovr_config//os:macos": [],
+            "ovr_config//build_mode:arvr_mode": select({
+                "DEFAULT": ["-DFOLLY_MOBILE=1"],
+                "ovr_config//os:linux": [],
+                "ovr_config//os:macos": [],
+            }),
         })
-
-    else:
-        flags += ["-DFOLLY_MOBILE=1"]
 
     return flags
 
@@ -141,11 +140,13 @@ def folly_xplat_library(
 
     # We use gflags on fbcode platforms, which don't mix well when mixing static
     # and dynamic linking.
-    if not is_arvr_mode():
-        force_static = select({
+    force_static = select({
+        "DEFAULT": select({
             "DEFAULT": force_static,
             "ovr_config//runtime:fbcode": False,
-        })
+        }),
+        "ovr_config//build_mode:arvr_mode": force_static,
+    })
 
     fb_xplat_cxx_library(
         name = name,
