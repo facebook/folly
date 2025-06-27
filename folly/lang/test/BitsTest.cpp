@@ -619,7 +619,7 @@ TYPED_TEST(BitsAllUintsTest, GetBitAt) {
   for (std::size_t i = 0; i != kBitSize; ++i) {
     in[1] = T{0};
     in[2] = kOnes;
-    T bit = static_cast<T>(1UL << i);
+    T bit = T(T{1} << i);
     in[1] = in[1] | bit;
     in[2] = in[2] ^ bit;
     ASSERT_TRUE(folly::get_bit_at(in, kBitSize + i)) << "i=" << i;
