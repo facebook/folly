@@ -695,9 +695,8 @@ class AsyncGeneratorPromise final
     state_ = State::DONE;
   }
 
-  // FIXME: Much of this class is currenrly copy-pasted from `TaskPromiseBase`,
-  // and should be refactored to be use that, so as to avoid divergent behavior
-  // of `co_await`.
+  // FIXME: Much of this class is currently copy-pasted from `TaskPromiseBase`,
+  // Refactor this to use that, so as to avoid `co_await` behavior divergence.
 
   template <
       typename Awaitable,

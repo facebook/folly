@@ -97,6 +97,9 @@ using NowTaskBase =
 template <safe_alias, typename>
 class SafeTask;
 
+template <safe_alias S, typename U>
+auto toNowTask(SafeTask<S, U>);
+
 template <typename T>
 class FOLLY_CORO_TASK_ATTRS NowTask final : public detail::NowTaskBase<T> {
  protected:
@@ -119,6 +122,33 @@ template <typename T>
 auto toNowTask(NowTask<T> t) {
   return NowTask<T>{std::move(t).unwrapTask()};
 }
+
+// Apparently, Clang 15 has a bug in prvalue semantics support, so it cannot
+// return immovable coroutines.
+#if !defined(__clang__) || __clang_major__ > 15
+
+/// Make a `NowTask` that trivially returns a value.
+template <class T>
+NowTask<T> makeNowTask(T t) {
+  co_return t;
+}
+
+/// Make a `NowTask` that trivially returns no value
+inline NowTask<> makeNowTask() {
+  co_return;
+}
+/// Same as makeNowTask(). See Unit
+inline NowTask<> makeNowTask(Unit) {
+  co_return;
+}
+
+/// Make a `NowTask` that will trivially yield an exception.
+template <class T>
+NowTask<T> makeErrorNowTask(exception_wrapper ew) {
+  co_yield co_error(std::move(ew));
+}
+
+#endif // no `makeNowTask` on old/buggy clang
 
 } // namespace folly::coro
 
