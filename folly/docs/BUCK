@@ -1,5 +1,5 @@
-load("@fbcode//folly/docs:defs.bzl", "copy", "html")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbsource//xplat/folly/docs:defs.bzl", "copy", "html")
 
 #
 # Actual listing of source files

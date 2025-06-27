@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "IOS",
@@ -248,8 +249,6 @@ non_fbcode_target(
 
 # !!!! fbcode/folly/debugging/exception_tracer/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-
 fbcode_target(
     _kind = cpp_library,
     name = "compatibility",
@@ -345,19 +344,18 @@ fbcode_target(
     headers = ["ExceptionTracerLib.h"],
     compiler_flags = selects.if_(
         LIBSTDCXX_BUCKIFIED_SELECTOR,
-        # @fb-only[end= ]: ["-DFOLLY_STATIC_LIBSTDCXX=1"],
+        ["-DFOLLY_STATIC_LIBSTDCXX=1"],
         [],
     ),
     exported_linker_flags = selects.if_(
         LIBSTDCXX_BUCKIFIED_SELECTOR,
-        # @lint-ignore-every BUCKFORMAT
-        # @fb-only: [
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
-        # @fb-only[end= ]: ],
+        [
+            "-Wl,--wrap=__cxa_throw",
+            "-Wl,--wrap=__cxa_rethrow",
+            "-Wl,--wrap=__cxa_begin_catch",
+            "-Wl,--wrap=__cxa_end_catch",
+            "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
+        ],
         [],
     ),
     labels = ["EXCLUDED_FROM_LINK_GROUPS"],
