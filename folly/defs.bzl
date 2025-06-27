@@ -14,7 +14,6 @@ load(
     "IOS",
     "MACOSX",
     "WINDOWS",
-    "get_available_platforms",
 )
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
@@ -235,11 +234,3 @@ def folly_xplat_cxx_binary(
         contacts = contacts,
         platforms = (CXX,),
     )
-
-def override_soname_if_needed(name):
-    # This is a hack to unblock rollout of platform suffix removal to xplat/folly.
-    # See T89357426. This only applies when using arvr build modes and can be removed when Hermes
-    # is built from source (or prebuilt using arvr build modes).
-    if is_arvr_mode() and ANDROID in get_available_platforms():
-        return "libxplat_folly_{}Android.so".format(name)
-    return None

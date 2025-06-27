@@ -28,7 +28,6 @@ load(
     "cpp_flags",
     "folly_xplat_cxx_test",
     "folly_xplat_library",
-    "override_soname_if_needed",
     "should_enable_gflags",
 )
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
@@ -542,7 +541,6 @@ non_fbcode_target(
     raw_headers = [
         "Executor.h",
     ],
-    soname = override_soname_if_needed("executor"),
     exported_deps = [
         "//third-party/glog:glog",
         "//xplat/folly:exception_string",
@@ -6325,7 +6323,6 @@ non_fbcode_target(
         "futures/ThreadWheelTimekeeper.h",
         "futures/WTCallback.h",
     ],
-    soname = override_soname_if_needed("futures_core"),
     deps = [
         ":likely",
         ":safe_assert",
