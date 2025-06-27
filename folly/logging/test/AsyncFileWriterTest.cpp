@@ -77,6 +77,7 @@ using folly::test::TemporaryFile;
 using std::chrono::milliseconds;
 using std::chrono::steady_clock;
 using testing::ContainsRegex;
+using testing::HasSubstr;
 
 TEST(AsyncFileWriter, noMessages) {
   TemporaryFile tmpFile{"logging_test"};
@@ -731,10 +732,9 @@ TEST(AsyncFileWriter, fork) {
   // The log file should contain all of the messages we wrote, from both the
   // parent and child processes.
   for (size_t n = 0; n < numMessages; ++n) {
-    EXPECT_THAT(
-        data, ContainsRegex(folly::to<std::string>("prefork", n, "\n")));
-    EXPECT_THAT(data, ContainsRegex(folly::to<std::string>("parent", n, "\n")));
-    EXPECT_THAT(data, ContainsRegex(folly::to<std::string>("child", n, "\n")));
+    EXPECT_THAT(data, HasSubstr(folly::to<std::string>("prefork", n, "\n")));
+    EXPECT_THAT(data, HasSubstr(folly::to<std::string>("parent", n, "\n")));
+    EXPECT_THAT(data, HasSubstr(folly::to<std::string>("child", n, "\n")));
   }
 #else
   SKIP() << "pthread_atfork() is not supported on this platform";
