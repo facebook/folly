@@ -650,7 +650,9 @@ TEST(AsyncFileWriter, fork) {
 
   {
     AsyncFileWriter writer{folly::File{tmpFile.fd(), false}};
-    writer.writeMessage(folly::to<std::string>("parent pid=", getpid(), "\n"));
+    writer.writeMessage(
+        folly::to<std::string>("parent pid=", getpid(), "\n"),
+        AsyncFileWriter::NEVER_DISCARD);
 
     // Start some background threads just to exercise the behavior
     // when other threads are also logging to the writer when the fork occurs
@@ -661,22 +663,30 @@ TEST(AsyncFileWriter, fork) {
         size_t iter = 0;
         while (!stop) {
           writer.writeMessage(
-              folly::to<std::string>("bgthread_", getpid(), "_", iter, "\n"));
+              folly::to<std::string>("bgthread_", getpid(), "_", iter, "\n"),
+              AsyncFileWriter::NEVER_DISCARD);
           ++iter;
+          asm_volatile_pause();
         }
       });
     }
 
     for (size_t n = 0; n < numMessages; ++n) {
-      writer.writeMessage(folly::to<std::string>("prefork", n, "\n"));
+      writer.writeMessage(
+          folly::to<std::string>("prefork", n, "\n"),
+          AsyncFileWriter::NEVER_DISCARD);
     }
 
     auto pid = fork();
     folly::checkUnixError(pid, "failed to fork");
     if (pid == 0) {
-      writer.writeMessage(folly::to<std::string>("child pid=", getpid(), "\n"));
+      writer.writeMessage(
+          folly::to<std::string>("child pid=", getpid(), "\n"),
+          AsyncFileWriter::NEVER_DISCARD);
       for (size_t n = 0; n < numMessages; ++n) {
-        writer.writeMessage(folly::to<std::string>("child", n, "\n"));
+        writer.writeMessage(
+            folly::to<std::string>("child", n, "\n"),
+            AsyncFileWriter::NEVER_DISCARD);
         std::this_thread::sleep_for(sleepDuration);
       }
 
@@ -692,7 +702,9 @@ TEST(AsyncFileWriter, fork) {
     }
 
     for (size_t n = 0; n < numMessages; ++n) {
-      writer.writeMessage(folly::to<std::string>("parent", n, "\n"));
+      writer.writeMessage(
+          folly::to<std::string>("parent", n, "\n"),
+          AsyncFileWriter::NEVER_DISCARD);
       std::this_thread::sleep_for(sleepDuration);
     }
 
