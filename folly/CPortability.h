@@ -342,7 +342,9 @@
 #define FOLLY_PUSH_WARNING __pragma(warning(push))
 #define FOLLY_POP_WARNING __pragma(warning(pop))
 // Disable the GCC warnings.
+#define FOLLY_GNU_ENABLE_WARNING(warningName)
 #define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GNU_ENABLE_ERROR(warningName)
 #define FOLLY_GCC_DISABLE_WARNING(warningName)
 #define FOLLY_CLANG_DISABLE_WARNING(warningName)
 #define FOLLY_MSVC_DISABLE_WARNING(warningNumber) \
@@ -350,7 +352,9 @@
 #else
 #define FOLLY_PUSH_WARNING
 #define FOLLY_POP_WARNING
+#define FOLLY_GNU_ENABLE_WARNING(warningName)
 #define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GNU_ENABLE_ERROR(warningName)
 #define FOLLY_GCC_DISABLE_WARNING(warningName)
 #define FOLLY_CLANG_DISABLE_WARNING(warningName)
 #define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
