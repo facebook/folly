@@ -132,8 +132,6 @@ fbcode_target(
     headers = ["GMock.h"],
     exported_deps = [
         "fbsource//third-party/googletest:gmock",
-        ":unistd",
-        ":windows",
         "//folly:portability",
     ],
 )
@@ -144,8 +142,6 @@ fbcode_target(
     headers = ["GTest.h"],
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
-        ":unistd",
-        ":windows",
         "//folly:portability",
     ],
 )

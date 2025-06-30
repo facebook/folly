@@ -194,6 +194,7 @@ fbcode_target(
         "//folly/coro:transform",
         "//folly/coro:unbounded_queue",
         "//folly/coro:with_cancellation",
+        "//folly/coro/safe:now_task",
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:global_executor",
         "//folly/executors:inline_executor",

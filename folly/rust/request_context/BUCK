@@ -32,9 +32,11 @@ fbcode_target(
     srcs = ["request_context.cpp"],
     headers = ["request_context.h"],
     visibility = [],
+    deps = [
+        ":request_context@header",
+    ],
     exported_deps = [
         "fbsource//third-party/rust:cxx-core",
-        ":request_context@header",
         "//folly/io/async:request_context",
     ],
 )

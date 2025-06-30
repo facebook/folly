@@ -4484,8 +4484,6 @@ non_fbcode_target(
     ],
     exported_deps = [
         ":portability",
-        ":portability_unistd",
-        ":portability_windows",
         "//third-party/googletest:gmock",
     ],
 )
@@ -5004,8 +5002,6 @@ non_fbcode_target(
     ],
     exported_deps = [
         ":portability",
-        ":portability_unistd",
-        ":portability_windows",
         "//third-party/googletest:gtest",
     ],
 )

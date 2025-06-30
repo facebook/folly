@@ -1140,6 +1140,7 @@ fbcode_target(
         ":blocking_socket",
         ":callback_state_enum",
         ":conn_callback",
+        "//folly/io/async:async_base",
         "//folly/io/async:async_socket",
         "//folly/io/async:server_socket",
         "//folly/net:net_ops",

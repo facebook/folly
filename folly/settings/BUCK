@@ -24,12 +24,12 @@ non_fbcode_target(
         "detail/SettingsImpl.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//xplat/folly:conv",
         "//xplat/folly:function",
         "//xplat/folly:likely",
         "//xplat/folly:optional",
         "//xplat/folly:portability",
-        "//xplat/folly:range",
         "//xplat/folly:shared_mutex",
         "//xplat/folly:synchronization_relaxed_atomic",
         "//xplat/folly:synchronized",
@@ -54,6 +54,7 @@ fbcode_target(
         "detail/SettingsImpl.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:synchronized",
     ],
     exported_deps = [
@@ -65,7 +66,6 @@ fbcode_target(
         "//folly:likely",
         "//folly:optional",
         "//folly:portability",
-        "//folly:range",
         "//folly:shared_mutex",
         "//folly:thread_local",
         "//folly:utility",
@@ -96,7 +96,6 @@ fbcode_target(
     exported_deps = [
         ":settings",
         ":settings_accessor_proxy",
-        "//folly:range",
     ],
 )
 
@@ -111,7 +110,6 @@ fbcode_target(
     ],
     exported_deps = [
         ":settings",
-        "//folly:range",
     ],
 )
 
@@ -137,7 +135,6 @@ fbcode_target(
     exported_deps = [
         "//folly:conv",
         "//folly:expected",
-        "//folly:range",
         "//folly:unit",
         "//folly:utility",
     ],

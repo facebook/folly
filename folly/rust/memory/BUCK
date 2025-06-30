@@ -15,9 +15,11 @@ fbcode_target(
     ],
     preferred_linkage = "static",
     undefined_symbols = True,
+    deps = [
+        "//folly/memory:mallctl_helper",
+    ],
     exported_deps = [
         "fbsource//third-party/rust:cxx-core",
-        "//folly/memory:mallctl_helper",
         "//folly/memory:malloc",
     ],
 )

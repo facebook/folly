@@ -15,11 +15,13 @@ fbcode_target(
     ],
     preferred_linkage = "static",
     undefined_symbols = True,
-    exported_deps = [
-        "fbsource//third-party/rust:cxx-core",
+    deps = [
         "//folly:range",
         "//folly/logging:init",
         "//folly/logging:logging",
+    ],
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
     ],
 )
 

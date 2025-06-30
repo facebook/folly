@@ -12,9 +12,11 @@ fbcode_target(
     preferred_linkage = "static",
     undefined_symbols = True,  # defined by :network_address
     visibility = [],
+    deps = [
+        ":network_address@header",
+    ],
     exported_deps = [
         "fbsource//third-party/rust:cxx-core",
-        ":network_address@header",
         "//folly:network_address",
     ],
 )

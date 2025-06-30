@@ -14,7 +14,7 @@ fbcode_target(
         "singleton.h",
     ],
     preferred_linkage = "static",
-    exported_deps = [
+    deps = [
         "//folly:singleton",
     ],
 )
@@ -29,7 +29,7 @@ fbcode_target(
         "singleton_test.h",
     ],
     preferred_linkage = "static",
-    exported_deps = [
+    deps = [
         "//folly:singleton",
     ],
 )

@@ -550,9 +550,10 @@ fbcode_target(
         "executor_detail.pxd",
     ],
     cpp_deps = [
+        "//folly/portability:unistd",
         ":asyncio_executor",
-        ":proactor_executor",
         ":executor_lib",
+        ":proactor_executor",
     ],
     package = "folly",
     deps = [

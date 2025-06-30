@@ -60,7 +60,6 @@ fbcode_target(
         "//folly:indestructible",
     ],
     exported_deps = [
-        "fbsource//third-party/googletest:gtest_headers",
         "//folly:exception_wrapper",
         "//folly:expected",
         "//folly:operation_cancelled",
