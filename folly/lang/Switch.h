@@ -79,36 +79,22 @@
  * Note: The two macros here do not work well before llvm-18, they are known to
  * work for most recent versions of gcc, however.
  */
-#define FOLLY_EXHAUSTIVE_SWITCH(...)           \
-  FOLLY_PUSH_WARNING                           \
-  FOLLY_DETAIL_DISABLE_FLEXIBLE_SWITCH_ERRORS  \
-  FOLLY_DETAIL_ENABLE_EXHAUSTIVE_SWITCH_ERRORS \
-  __VA_ARGS__                                  \
-  FOLLY_POP_WARNING                            \
+#define FOLLY_EXHAUSTIVE_SWITCH(...)                    \
+  FOLLY_PUSH_WARNING                                    \
+  FOLLY_GNU_DISABLE_WARNING("-Wcovered-switch-default") \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch-default")            \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch-enum")               \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch")                    \
+  __VA_ARGS__                                           \
+  FOLLY_POP_WARNING                                     \
   static_assert(true, "Add a semicolon after this line for formatting")
 
-#define FOLLY_FLEXIBLE_SWITCH(...)              \
-  FOLLY_PUSH_WARNING                            \
-  FOLLY_DETAIL_DISABLE_EXHAUSTIVE_SWITCH_ERRORS \
-  FOLLY_DETAIL_ENABLE_FLEXIBLE_SWITCH_ERRORS    \
-  __VA_ARGS__                                   \
-  FOLLY_POP_WARNING                             \
-  static_assert(true, "Add a semicolon after this line for formatting")
-
-/**
- * Used to implement the above two macros.  Please do not use anything here for
- * production code.
- */
-#define FOLLY_DETAIL_DISABLE_EXHAUSTIVE_SWITCH_ERRORS \
-  FOLLY_GNU_DISABLE_WARNING("-Wswitch-enum")
-
-#define FOLLY_DETAIL_DISABLE_FLEXIBLE_SWITCH_ERRORS \
-  FOLLY_GNU_DISABLE_WARNING("-Wcovered-switch-default")
-
-#define FOLLY_DETAIL_ENABLE_EXHAUSTIVE_SWITCH_ERRORS \
-  FOLLY_GNU_ENABLE_ERROR("-Wswitch-default")         \
-  FOLLY_GNU_ENABLE_ERROR("-Wswitch-enum")
-
-#define FOLLY_DETAIL_ENABLE_FLEXIBLE_SWITCH_ERRORS   \
+#define FOLLY_FLEXIBLE_SWITCH(...)                   \
+  FOLLY_PUSH_WARNING                                 \
+  FOLLY_GNU_DISABLE_WARNING("-Wswitch-enum")         \
   FOLLY_GNU_ENABLE_ERROR("-Wcovered-switch-default") \
-  FOLLY_GNU_ENABLE_ERROR("-Wswitch-default")
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch-default")         \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch")                 \
+  __VA_ARGS__                                        \
+  FOLLY_POP_WARNING                                  \
+  static_assert(true, "Add a semicolon after this line for formatting")
