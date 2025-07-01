@@ -126,6 +126,13 @@ class TDigest {
    */
   double estimateQuantile(double q) const;
 
+  /*
+   * Returns the estimate of the CDF at the given input.
+   * Raise an invalid_argument exception if the input is NaN or infinite.
+   * Returns NaN if the centroids are emtpy.
+   */
+  double estimateCdf(double x) const;
+
   double mean() const { return count_ > 0 ? sum_ / count_ : 0; }
 
   double sum() const { return sum_; }
