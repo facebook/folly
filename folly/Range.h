@@ -714,6 +714,15 @@ class Range {
     return Tgt(b_, walk_size());
   }
 
+#if FMT_VERSION
+  template <
+      typename IterType = Iter,
+      std::enable_if_t<detail::range_is_char_type_v_<IterType>, int> = 0>
+  constexpr operator fmt::basic_string_view<value_type>() const noexcept {
+    return _t<StringViewType<value_type>>(*this);
+  }
+#endif
+
   /// explicit non-operator conversion to any compatible type
   ///
   /// A compatible type is one which is constructible with an iterator and a

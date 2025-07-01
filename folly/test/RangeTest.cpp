@@ -1761,6 +1761,12 @@ TEST(StringPiece, Format) {
   EXPECT_EQ("  foo", fmt::format("{:>5}", folly::StringPiece("foo")));
 }
 
+TEST(StringPiece, FormatInFormatString) {
+  EXPECT_EQ(
+      "  foo",
+      fmt::format(folly::StringPiece("{:>5}"), folly::StringPiece("foo")));
+}
+
 namespace {
 
 // Range with non-pod value type should not cause compile errors.
