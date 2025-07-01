@@ -116,18 +116,11 @@ struct TransparentRangeHash<char> {
   using is_transparent = void;
   using folly_is_avalanching = std::true_type;
 
-  // Implementing this in terms of std::hash<std::string_view> guarantees that
-  // replacing std::hash<std::string> with HeterogeneousAccessHash<std::string>
-  // is actually zero overhead in the case that the underlying implementations
-  // make different optimality tradeoffs (short versus long string performance,
-  // for example). We use hash::stdCompatibleHash here as an alternative
-  // compatible implementation of std::hash.
-  // If folly::hasher<std::string_view> dominated the performance
-  // of std::hash<std::string> then we should consider using it all of the time.
   template <typename U>
   std::size_t operator()(U const& stringish) const {
     auto sp = StringPiece{stringish};
-    return (std::size_t)folly::hash::rapidhashNano(sp.data(), sp.size());
+    return static_cast<std::size_t>(
+        folly::hash::rapidhashNano(sp.data(), sp.size()));
   }
 };
 

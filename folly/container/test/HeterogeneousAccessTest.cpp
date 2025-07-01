@@ -16,8 +16,6 @@
 
 #include <folly/container/HeterogeneousAccess.h>
 
-#include <limits>
-#include <random>
 #include <set>
 #include <string_view>
 #include <vector>
@@ -52,15 +50,6 @@ struct StringVector {
     return {&data_[0], data_.size()};
   }
 };
-
-std::vector<uint8_t> randomBytes(
-    std::default_random_engine& rng, std::size_t n) {
-  std::vector<uint8_t> ret(n);
-  std::uniform_int_distribution<uint8_t> dist(
-      0, std::numeric_limits<uint8_t>::max());
-  std::generate(ret.begin(), ret.end(), [&]() { return dist(rng); });
-  return ret;
-}
 
 } // namespace
 

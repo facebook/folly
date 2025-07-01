@@ -15,7 +15,6 @@ fbcode_target(
         "//folly:random",
         "//folly/external/fast-crc32:avx512_crc32c_v8s3x4",
         "//folly/external/fast-crc32:neon_crc32c_v3s4x2e_v2",
-        "//folly/external/fast-crc32:neon_eor3_crc32_v9s3x2e_s3",
         "//folly/external/fast-crc32:neon_eor3_crc32c_v8s2x4_s3",
         "//folly/external/fast-crc32:sse_crc32c_v8s3x3",
         "//folly/hash:checksum",
@@ -150,6 +149,17 @@ fbcode_target(
     headers = [],
     deps = [
         "//folly/hash:murmur_hash",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "std_compatible_hash_test",
+    srcs = ["StdCompatibleHashTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:hash",
         "//folly/portability:gtest",
     ],
 )
