@@ -86,18 +86,11 @@ if (PYTHON_EXTENSIONS)
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
-      ${_cybld}/folly/executor_api.h
       ${_cybld}/folly/iobuf_api.h
     WORKING_DIRECTORY ${_cybld}
   )
 
   add_custom_target(create_post_binding_symlink ALL)
-  add_custom_command(TARGET create_post_binding_symlink
-    COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_cybld}/folly/executor_api.h"
-      "${_cybld}/folly/python/executor_api.h"
-  )
   add_custom_command(TARGET create_post_binding_symlink
     COMMAND
       ${CMAKE_COMMAND} -E create_symlink
@@ -143,7 +136,6 @@ if (PYTHON_EXTENSIONS)
 
   install(
     FILES
-      ${_cybld}/folly/executor_api.h
       ${_cybld}/folly/iobuf_api.h
     DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
     COMPONENT dev
