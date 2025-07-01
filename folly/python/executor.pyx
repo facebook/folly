@@ -106,7 +106,7 @@ cdef class IocpQueue(dict):
 # get_executor() should always be run from a running eventloop in a single
 # diff. But ultimately we will want to remove this function and
 # go back to just get_executor() that only binds to a running loop.
-cdef cAsyncioExecutor* get_running_executor(bint running):
+cdef cAsyncioExecutor* get_running_executor(bint running) noexcept:
     return get_running_executor_drive(running, False)
 
 
@@ -137,7 +137,7 @@ cdef cAsyncioExecutor* get_running_executor_drive(
     return executor._executor
 
 
-cdef int set_executor_for_loop(loop, cAsyncioExecutor* c_executor):
+cdef int set_executor_for_loop(loop, cAsyncioExecutor* c_executor) noexcept:
     if c_executor == NULL:
         del loop_to_q[loop]
         return 0
