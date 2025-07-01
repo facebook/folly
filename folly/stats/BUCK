@@ -112,6 +112,7 @@ fbcode_target(
     deps = [
         "//folly:overload",
         "//folly/algorithm:binary_heap",
+        "//folly/lang:exception",
         "//folly/memory:malloc",
         "//folly/stats/detail:double_radix_sort",
     ],

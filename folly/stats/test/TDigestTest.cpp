@@ -52,6 +52,66 @@ TEST(TDigest, Basic) {
   EXPECT_EQ(50.375, digest.estimateQuantile(0.5));
   EXPECT_EQ(100.0 - 0.5, digest.estimateQuantile(0.99));
   EXPECT_EQ(100, digest.estimateQuantile(0.999));
+
+  EXPECT_EQ(0.495, digest.estimateCdf(50.0));
+  EXPECT_EQ(0.005, digest.estimateCdf(1));
+  EXPECT_EQ(0.01, digest.estimateCdf(2.0 - 0.5));
+  EXPECT_EQ(0.99, digest.estimateCdf(100.0 - 0.5));
+  EXPECT_EQ(0.995, digest.estimateCdf(100));
+}
+
+TEST(TDigest, Cdf) {
+  TDigest digest(100);
+  // Throw on invalid inputs
+  EXPECT_ANY_THROW(
+      digest.estimateCdf(std::numeric_limits<double>::quiet_NaN()));
+
+  // digest is empty
+  EXPECT_TRUE(std::isnan(digest.estimateCdf(1)));
+
+  // Singleton centroids
+  digest = digest.merge(std::vector<double>{1, 2, 3});
+  EXPECT_EQ(0, digest.estimateCdf(1 - 1e-9)); // Out of bounds
+  EXPECT_EQ(0.5 / 3, digest.estimateCdf(1));
+  EXPECT_EQ(1.0 / 3, digest.estimateCdf(1 + 1e-9));
+
+  EXPECT_EQ(1 / 3.0, digest.estimateCdf(2 - 1e-9));
+  EXPECT_EQ(1.5 / 3.0, digest.estimateCdf(2));
+  EXPECT_EQ(2 / 3.0, digest.estimateCdf(2 + 1e-9));
+
+  EXPECT_EQ(2.0 / 3, digest.estimateCdf(3 - 1e-9));
+  EXPECT_EQ(2.5 / 3, digest.estimateCdf(3));
+  EXPECT_EQ(1.0, digest.estimateCdf(3 + 1e-9)); // Out of bounds
+
+  // Single centroid
+  auto digest2 = TDigest(10);
+  digest2 = digest2.merge(std::vector<double>{1});
+  EXPECT_EQ(0.5, digest2.estimateCdf(1));
+
+  // This is a hypothesical digest with 2 centroids
+  // for data points 0, 1, 2, 3, 4, 5
+  // This is used to test the behavior of the CDF function at the two tails
+  auto centroids = std::vector<TDigest::Centroid>(
+      {TDigest::Centroid(1, 3), TDigest::Centroid(4, 3)});
+  auto digest3 = TDigest(
+      /*centroids*/ centroids,
+      /*sum*/ 15,
+      /*count*/ 6,
+      /*max_val*/ 5,
+      /*min_val*/ 0,
+      /*maxsize*/ 2);
+
+  // Left tail
+  EXPECT_EQ(0.5 / 6, digest3.estimateCdf(0));
+  EXPECT_FLOAT_EQ(1.0 / 6, digest3.estimateCdf(0 + 1e-10));
+  // Center between min and first centroid
+  EXPECT_FLOAT_EQ(1.0 / 6 + (3.0 / 2 - 1) * 0.5 / 6, digest3.estimateCdf(0.5));
+
+  // Right tail
+  EXPECT_EQ(5.5 / 6, digest3.estimateCdf(5));
+  EXPECT_FLOAT_EQ(5.0 / 6, digest3.estimateCdf(5 - 1e-10));
+  // Center between last centroid and max
+  EXPECT_FLOAT_EQ(5.0 / 6 - (3.0 / 2 - 1) * 0.5 / 6, digest3.estimateCdf(4.5));
 }
 
 TEST(TDigest, Merge) {
@@ -407,6 +467,8 @@ TEST_P(DistributionTest, ReasonableError) {
     }
 
     double est = digest.estimateQuantile(quantile);
+    double qx = digest.estimateCdf(est);
+    EXPECT_LE(std::abs(qx - quantile), 0.005);
     auto it = std::lower_bound(values.begin(), values.end(), est);
     int32_t actualRank = std::distance(values.begin(), it);
     double actualQuantile = ((double)actualRank) / kNumSamples;

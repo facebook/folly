@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Portions Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,22 @@
  * limitations under the License.
  */
 
+/*
+ * Licensed to Ted Dunning under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <folly/stats/TDigest.h>
 
 #include <algorithm>
@@ -25,6 +41,7 @@
 #include <folly/Overload.h>
 #include <folly/Utility.h>
 #include <folly/algorithm/BinaryHeap.h>
+#include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 #include <folly/stats/detail/DoubleRadixSort.h>
 
@@ -544,6 +561,159 @@ double TDigest::estimateQuantile(double q) const {
   auto value = centroids_[pos].mean() +
       ((rank - t) / centroids_[pos].weight() - 0.5) * delta;
   return clamp(value, min, max);
+}
+
+// Compute the CDF of the value x in the digest.
+// This implementation is based on the reference java implementation from
+// https://github.com/tdunning/t-digest/blob/main/core/src/main/java/com/tdunning/math/stats/MergingDigest.java
+// See license details at the top the file.
+double TDigest::estimateCdf(double x) const {
+  if (std::isnan(x) || !std::isfinite(x)) {
+    throw_exception(std::invalid_argument("Invalid input value"));
+  }
+
+  if (centroids_.empty()) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  if (x < min_) {
+    return 0;
+  }
+
+  if (x > max_) {
+    return 1;
+  }
+
+  // Exactly one centroid, should have max==min
+  if (centroids_.size() == 1) {
+    double width = max_ - min_;
+    if (x - min_ <= width) {
+      // min and max are too close together to do any viable interpolation
+      return 0.5;
+    } else {
+      // interpolate if somehow we have weight > 0 and max != min
+      return (x - min_) / (max_ - min_);
+    }
+  }
+
+  // Two or more centroids
+
+  // Check for the left tail
+  const auto& first = centroids_.front();
+  if (x < first.mean()) {
+    // min_ <= x < mean[0]
+
+    // note that this is different than mean[0] > min
+    // this guarantees we divide by non-zero number and interpolation works
+    if (first.mean() - min_ > 0) {
+      // must be a sample exactly at min
+      if (x == min_) {
+        return 0.5 / count_;
+      } else {
+        return (1 +
+                (x - min_) / (first.mean() - min_) * (first.weight() / 2 - 1)) /
+            count_;
+      }
+    } else {
+      // this should be redundant with the check x < min
+      return 0;
+    }
+  }
+  DCHECK_GE(x, centroids_.front().mean());
+
+  // Check the right tail
+  const auto& last = centroids_.back();
+  if (x > last.mean()) {
+    // mean[n-1] < x <= max_
+
+    // note that this is different than max_ > mean[n-1]
+    // this guarantees we divide by non-zero number and interpolation works
+    if (max_ - last.mean() > 0) {
+      if (x == max_) {
+        return 1 - 0.5 / count_;
+      } else {
+        // there has to be a single sample exactly at max
+        double dq =
+            (1 + (max_ - x) / (max_ - last.mean()) * (last.weight() / 2 - 1)) /
+            count_;
+        return 1 - dq;
+      }
+    } else {
+      return 1;
+    }
+  }
+
+  // we know that there are at least two centroids and mean[0] <= x <= mean[n-1]
+  // that means that there are either one or more consecutive centroids all at
+  // exactly x or there are consecutive centroids, c0 < x < c1
+  double weightSoFar = 0;
+  size_t n = centroids_.size();
+  for (size_t it = 0; it < n - 1; it++) {
+    // weightSoFar does not include weight[it] yet
+    if (centroids_[it].mean() == x) {
+      // we have one or more centroids == x, treat them as one
+      // dw will accumulate the weight of all of the centroids at x
+      double dw = 0;
+      while (it < n && centroids_[it].mean() == x) {
+        dw += centroids_[it].weight();
+        it++;
+      }
+      return (weightSoFar + dw / 2) / count_;
+    }
+    if (centroids_[it].mean() <= x && x < centroids_[it + 1].mean()) {
+      // landed between centroids ... check for floating point madness
+      if (centroids_[it + 1].mean() - centroids_[it].mean() > 0) {
+        // note how we handle singleton centroids here
+        // the point is that for singleton centroids, we know that their
+        // entire weight is exactly at the centroid and thus shouldn't be
+        // involved in interpolation
+        double leftExcludedW = 0;
+        double rightExcludedW = 0;
+        if (centroids_[it].weight() == 1) {
+          if (centroids_[it + 1].weight() == 1) {
+            // two singletons means no interpolation
+            // left singleton is in, right is out
+            return (weightSoFar + 1) / count_;
+          } else {
+            leftExcludedW = 0.5;
+          }
+        } else if (centroids_[it + 1].weight() == 1) {
+          rightExcludedW = 0.5;
+        }
+        double dw = (centroids_[it].weight() + centroids_[it + 1].weight()) / 2;
+
+        // can't have double singleton (handled that earlier)
+        DCHECK_GT(dw, 1);
+        DCHECK_LE(leftExcludedW + rightExcludedW, 0.5);
+
+        // adjust endpoints for any singleton
+        double left = centroids_[it].mean();
+        double right = centroids_[it + 1].mean();
+
+        double dwNoSingleton = dw - leftExcludedW - rightExcludedW;
+
+        // adjustments have only limited effect on endpoints
+        DCHECK_GT(dwNoSingleton, dw / 2);
+        DCHECK_GT(right - left, 0);
+        double base = weightSoFar + centroids_[it].weight() / 2 + leftExcludedW;
+        return (base + dwNoSingleton * (x - left) / (right - left)) / count_;
+      } else {
+        // this is simply caution against floating point madness
+        // it is conceivable that the centroids will be different
+        // but too near to allow safe interpolation
+        double dw = (centroids_[it].weight() + centroids_[it + 1].weight()) / 2;
+        return (weightSoFar + dw) / count_;
+      }
+    }
+    // Continue to the next centroid
+    weightSoFar += centroids_[it].weight();
+  }
+
+  if (x == centroids_.back().mean()) {
+    return 1 - 0.5 / count_;
+  } else {
+    throw_exception<std::runtime_error>("Unexpected loop fallthrough.");
+  }
 }
 
 double TDigest::Centroid::add(double sum, double weight) {
