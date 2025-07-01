@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+find_package(Python3 REQUIRED COMPONENTS Development)
+
 add_library(
     follybenchmark
     Benchmark.cpp
@@ -98,6 +100,8 @@ if (PYTHON_EXTENSIONS)
       "${_cybld}/folly/python/iobuf_api.h"
   )
 
+find_package(Python3 REQUIRED COMPONENTS Development)
+
   add_library(
     folly_python_cpp
       python/error.cpp
@@ -105,6 +109,8 @@ if (PYTHON_EXTENSIONS)
       python/iobuf.cpp
   )
 
+target_include_directories(folly_python_cpp PRIVATE ${Python3_INCLUDE_DIRS})
+target_link_libraries(folly_python_cpp PRIVATE Python3::Python)
   add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
