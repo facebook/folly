@@ -16,7 +16,6 @@
 
 #include <folly/gen/Parallel.h>
 
-#include <array>
 #include <iostream>
 #include <memory>
 #include <vector>

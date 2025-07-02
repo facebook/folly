@@ -24,7 +24,6 @@
 #include <glog/logging.h>
 
 #include <folly/FBVector.h>
-#include <folly/Range.h>
 #include <folly/gen/Base.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
