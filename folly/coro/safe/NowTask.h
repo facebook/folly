@@ -34,7 +34,7 @@
 ///
 /// Notes:
 ///   - (subject to change) Unlike `SafeTask`, `NowTask` does NOT check
-///     `safe_alias_of_v` for the return type `T`.  `NowTask` is essentially an
+///     `safe_alias_of` for the return type `T`.  `NowTask` is essentially an
 ///     immediate async function -- it satisfies the structured concurrency
 ///     maxim of "lexical scope drives both control flow & lifetime".  That
 ///     lowers the odds that returned pointers/references are unexpectedly
@@ -153,7 +153,7 @@ NowTask<T> makeErrorNowTask(exception_wrapper ew) {
 } // namespace folly::coro
 
 template <typename T>
-struct folly::safe_alias_for<::folly::coro::NowTask<T>>
+struct folly::safe_alias_of<::folly::coro::NowTask<T>>
     : safe_alias_constant<safe_alias::unsafe> {};
 
 #endif

@@ -296,4 +296,16 @@ class FOLLY_CORO_TASK_ATTRS AsNoexcept final
 
 } // namespace folly::coro
 
+namespace folly {
+template <typename T, auto CancelCfg>
+struct safe_alias_of<::folly::coro::AsNoexcept<T, CancelCfg>>
+    : safe_alias_of<T> {};
+template <typename T, auto CancelCfg>
+struct safe_alias_of<::folly::coro::AsNoexceptWithExecutor<T, CancelCfg>>
+    : safe_alias_of<T> {};
+template <typename T, auto CancelCfg>
+struct safe_alias_of<::folly::coro::detail::NoexceptAwaitable<T, CancelCfg>>
+    : safe_alias_of<T> {};
+} // namespace folly
+
 #endif // FOLLY_HAS_COROUTINES

@@ -16,20 +16,15 @@
 
 #pragma once
 
-#include <folly/ConstexprMath.h>
 #include <folly/Traits.h>
+#include <folly/lang/SafeAlias-fwd.h>
 
 #include <type_traits>
 
 namespace folly {
-template <typename>
+template <typename> // Forward-decl to keep `RValueReferenceWrapper.h` dep-free
 class rvalue_reference_wrapper;
 } // namespace folly
-
-namespace folly::detail::lite_tuple {
-template <typename... Ts>
-struct tuple;
-} // namespace folly::detail::lite_tuple
 
 /*
 "Aliasing" is indirect access to memory via pointers or references.  It is
@@ -56,7 +51,7 @@ The BIG CAVEATS are:
 
  - The "composition hole" -- i.e. aliasing hidden in structures.  We can't see
    unsafe class members, so `UnsafeStruct` below will be deduced to have
-   `maybe_value` safety unless you specialize `safe_alias_for<UnsafeStruct>`.
+   `maybe_value` safety unless you specialize `safe_alias_of<UnsafeStruct>`.
      struct UnsafeStruct { int* rawPtr; };
    Future: Perhaps with C++26 reflection, this could be fixed.
 
@@ -90,133 +85,54 @@ The BIG CAVEATS are:
 If you need to bypass this control, prefer the `manual_safe_*` wrappers
 below, instead of writing a custom workaround.  Always explain why it's safe.
 
-You can teach `safe_alias_of_v` about your type by specializing
-`folly::safe_alias_for`, as seen below.  Best practices:
+You can teach `safe_alias_of_v` about your type by including `SafeAlias-fwd.h`
+and specializing `folly::safe_alias_of`.  Some principles:
   - Declare the specialization in the same header that declares your type.
   - Only use `maybe_value` if your type ACTUALLY follows value semantics.
-  - Use `least_safe_alias()` to aggregate safety across pieces of a
-    composite type.
+  - Use `safe_alias_of_pack` to aggregate safety for a multi-part type.
   - Unless you're implementing an `async_closure`-integrated type, it is VERY
     unlikely that you should use `safe_alias::*_cleanup`.
 */
 namespace folly {
 
-// ENUM ORDER IS IMPORTANT!  Categories go from "least safe to most safe".
-// Always use >= for safety gating.
+// See also: `safe_alias_of_v`
 //
-// Note: Only `async_closure*()` from `folly coro/safe/` use the middle
-// safety levels `shared_cleanup`, `after_cleanup_ref`, and
-// `co_cleanup_safe_ref`. Normal user code should stick to `maybe_value` and
-// `unsafe`.
-enum class safe_alias {
-  // Definitely has aliasing, we know nothing of the lifetime.
-  unsafe,
-  // Implementation detail of `async_closure`, used for creating
-  // `ClosureTask`, a restricted-usage `SafeTask`.  Other code should treat
-  // this as `unsafe`.  `SafeTask.h` & `Captures.h` explain the rationale.
-  unsafe_closure_internal,
-  // Implementation detail of `async_closure`, used for creating
-  // `MemberTask`, a restricted-usage `SafeTask`.  Other code should treat
-  // this as `unsafe`.  Closure-related code that distinguishes this from
-  // `unsafe_closure_internal` expects this value to be higher.
-  unsafe_member_internal,
-  // Used only in `async_closure*()` -- the minimum level it considers safe
-  // for arguments, and the minimum level of `SafeTask` it will emit.
-  //   - Represents an arg that can schedule a cleanup callback on an
-  //     ancestor's cleanup arg `A`.  This safety level cannot be stronger
-  //     than `after_cleanup_ref` because otherwise such a ref could be
-  //     passed to a cleanup callback on a different ancestor's cleanup arg
-  //     `B` -- and `A` could be invalid by the time `B` runs.
-  //   - Follows all the rules of `after_cleanup_ref`.
-  //   - Additionally, when a `shared_cleanup` ref is passed to
-  //     `async_closure`, it knows to mark its own args as `after_cleanup_ref`.
-  //     This prevents the closure from passing its short-lived `capture`s
-  //     into a new callback on the longer-lived `shared_cleanup` arg.
-  //     Conversely, in the absence of `shared_cleanup` args, it is safe for
-  //     `async_closure` to upgrade `after_cleanup_capture*<Ref>`s to
-  //     `capture*<Ref>`s, since its cleanup will terminate before the
-  //     parent's will start. Explained in detail in `Captures.md`.
-  shared_cleanup,
-  // `async_closure` won't take `unsafe*` args.  It is important that we
-  // disallow `unsafe_closure_internal` in particular, since this is part of
-  // the `Captures.h` mechanism that discourages moving `async_closure`
-  // capture wrappers out of the closure that owns it (we can't prevent it).
-  closure_min_arg_safety = shared_cleanup,
-  // Used only in `async_closure*()` when it takes a `co_cleanup_capture` ref
-  // from a parent:
-  //   - NOT safe to reference from tasks spawned on `co_cleanup_capture` args.
-  //   - Otherwise, just like `co_cleanup_safe_ref`.
-  after_cleanup_ref,
-  // Used only in `async_closure*()`:
-  //   - Unlike `after_cleanup_ref`, is safe to reference from tasks spawned on
-  //     `co_cleanup_capture` args -- because we know these belong to the
-  //     current closure.
-  //   - Outlives the end of the current closure's cleanup, and is thus safe to
-  //     use in `after_cleanup{}` or sub-closures.
-  //   - Safe to pass to sub-closures.
-  //   - NOT safe to return or pass to callbacks from ancestor closures.
-  co_cleanup_safe_ref,
-  // Looks like a "value", i.e. alive as long as you hold it.  Remember
-  // this is just a HEURISTIC -- a ref inside a struct will fool it.
-  maybe_value
-};
-
-template <safe_alias Safety>
-using safe_alias_constant = std::integral_constant<safe_alias, Safety>;
-
-// Use only `safe_alias_of_v`, which removes CV qualifiers before testing.
+// Unknown types are `maybe_value`. Raw references & pointers are `unsafe`.
 template <typename T>
-struct safe_alias_for
-    : std::conditional_t<
+struct safe_alias_of
+    : conditional_t<
           std::is_reference_v<T> || std::is_pointer_v<T>,
           safe_alias_constant<safe_alias::unsafe>,
           safe_alias_constant<safe_alias::maybe_value>> {};
+
+// `const` and `volatile` qualifiers don't affect the `safe_alias` measurement.
 template <typename T>
-struct safe_alias_for<std::reference_wrapper<T>>
+struct safe_alias_of<const T> : safe_alias_of<T> {};
+template <typename T>
+struct safe_alias_of<volatile T> : safe_alias_of<T> {};
+
+// Reference wrappers are unsafe.
+template <typename T>
+struct safe_alias_of<std::reference_wrapper<T>>
     : safe_alias_constant<safe_alias::unsafe> {};
 template <typename T>
-struct safe_alias_for<folly::rvalue_reference_wrapper<T>>
+struct safe_alias_of<folly::rvalue_reference_wrapper<T>>
     : safe_alias_constant<safe_alias::unsafe> {};
-
-template <typename T>
-inline constexpr safe_alias safe_alias_of_v =
-    safe_alias_for<std::remove_cv_t<T>>::value;
-
-template <safe_alias... Vs>
-constexpr safe_alias least_safe_alias(vtag_t<Vs...>) {
-  return folly::constexpr_min(safe_alias::maybe_value, Vs...);
-}
-
-namespace detail {
-// Helper: Inspects its own template args for aliasing.
-template <typename... Ts>
-struct safe_alias_for_pack {
-  static constexpr auto value =
-      folly::least_safe_alias(vtag<safe_alias_of_v<Ts>...>);
-};
-} // namespace detail
 
 // Let `safe_alias_of_v` recursively inspect `std` containers that are likely
 // to be involved in bugs.  If you encounter a memory-safety issue that
 // would've been caught by this, feel free to extend this.
 template <typename... As>
-struct safe_alias_for<std::tuple<As...>> : detail::safe_alias_for_pack<As...> {
-};
+struct safe_alias_of<std::tuple<As...>> : detail::safe_alias_of_pack<As...> {};
 template <typename... As>
-struct safe_alias_for<std::pair<As...>> : detail::safe_alias_for_pack<As...> {};
+struct safe_alias_of<std::pair<As...>> : detail::safe_alias_of_pack<As...> {};
 template <typename... As>
-struct safe_alias_for<std::vector<As...>> : detail::safe_alias_for_pack<As...> {
-};
-
-// A `folly`-internal `std::tuple` mimic with good ctor/dtor ordering.
-template <typename... As>
-struct safe_alias_for<::folly::detail::lite_tuple::tuple<As...>>
-    : detail::safe_alias_for_pack<As...> {};
+struct safe_alias_of<std::vector<As...>> : detail::safe_alias_of_pack<As...> {};
 
 // Recursing into `tag_t<>` type lists is nice for metaprogramming
 template <typename... As>
-struct safe_alias_for<::folly::tag_t<As...>>
-    : detail::safe_alias_for_pack<As...> {};
+struct safe_alias_of<::folly::tag_t<As...>>
+    : detail::safe_alias_of_pack<As...> {};
 
 // IMPORTANT: If you use the `manual_safe_` escape-hatch wrappers, you MUST
 // comment with clear proof of WHY your usage is safe.  The goal is to
@@ -275,75 +191,8 @@ auto manual_safe_with(Fn&& fn) {
 }
 
 template <safe_alias S, typename T>
-struct safe_alias_for<manual_safe_ref_t<S, T>> : safe_alias_constant<S> {};
+struct safe_alias_of<manual_safe_ref_t<S, T>> : safe_alias_constant<S> {};
 template <safe_alias S, typename T>
-struct safe_alias_for<manual_safe_val_t<S, T>> : safe_alias_constant<S> {};
-
-// Use `SafeTask<>` instead of `Task` to move tasks into other safe coro APIs.
-//
-// User-facing stuff from `Task.h` can trivially include unsafe aliasing,
-// the `folly::coro` docs include hundreds of words of pitfalls.  The intent
-// here is to catch people accidentally passing `Task`s into safer
-// primitives, and breaking their memory-safety guarantees.
-//
-// Future: Move this into `Task.h` once `SafeAlias.h` is mature.
-namespace coro {
-template <typename T>
-class TaskWithExecutor;
-template <typename T>
-class Task;
-} // namespace coro
-template <typename T>
-struct safe_alias_for<::folly::coro::TaskWithExecutor<T>>
-    : safe_alias_constant<safe_alias::unsafe> {};
-template <typename T>
-struct safe_alias_for<::folly::coro::Task<T>>
-    : safe_alias_constant<safe_alias::unsafe> {};
-
-// Future: Implement a `coro/safe` generator wrapper.
-// Future: This `safe_alias_for` should sit in `AsyncGenerator.h` once
-// `SafeAlias.h` is mature.
-namespace coro {
-template <typename, typename, bool>
-class AsyncGenerator;
-} // namespace coro
-template <typename Ref, typename Val, bool Clean>
-struct safe_alias_for<::folly::coro::AsyncGenerator<Ref, Val, Clean>>
-    : safe_alias_constant<safe_alias::unsafe> {};
-
-// Future: Move to `ViaIfAsync.h` once `SafeAlias.h` is mature.
-namespace coro {
-template <typename>
-class NothrowAwaitable;
-template <typename>
-class TryAwaitable;
-} // namespace coro
-template <typename T>
-struct safe_alias_for<::folly::coro::NothrowAwaitable<T>>
-    : safe_alias_constant<safe_alias_of_v<T>> {};
-template <typename T>
-struct safe_alias_for<::folly::coro::TryAwaitable<T>>
-    : safe_alias_constant<safe_alias_of_v<T>> {};
-
-// Future: Move to `Noexcept.h` once `SafeAlias.h` is mature.
-namespace coro {
-template <typename, auto>
-class AsNoexcept;
-template <typename, auto>
-class AsNoexceptWithExecutor;
-namespace detail {
-template <typename, auto>
-class NoexceptAwaitable;
-}
-} // namespace coro
-template <typename T, auto CancelCfg>
-struct safe_alias_for<::folly::coro::AsNoexcept<T, CancelCfg>>
-    : safe_alias_constant<safe_alias_of_v<T>> {};
-template <typename T, auto CancelCfg>
-struct safe_alias_for<::folly::coro::AsNoexceptWithExecutor<T, CancelCfg>>
-    : safe_alias_constant<safe_alias_of_v<T>> {};
-template <typename T, auto CancelCfg>
-struct safe_alias_for<::folly::coro::detail::NoexceptAwaitable<T, CancelCfg>>
-    : safe_alias_constant<safe_alias_of_v<T>> {};
+struct safe_alias_of<manual_safe_val_t<S, T>> : safe_alias_constant<S> {};
 
 } // namespace folly

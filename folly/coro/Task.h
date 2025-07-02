@@ -49,6 +49,7 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/SafeAlias-fwd.h>
 #include <folly/result/result.h>
 #include <folly/result/try.h>
 #include <folly/tracing/AsyncStack.h>
@@ -993,6 +994,20 @@ detail::TaskPromiseCrtpBase<Promise, T>::get_return_object() noexcept {
 }
 
 } // namespace coro
+
+// Use `SafeTask` instead of `Task` to move tasks into other safe coro APIs.
+//
+// User-facing stuff from `Task.h` can trivially include unsafe aliasing,
+// the `folly::coro` docs include hundreds of words of pitfalls.  The intent
+// here is to catch people accidentally passing `Task`s into safer
+// primitives, and breaking their memory-safety guarantees.
+template <typename T>
+struct safe_alias_of<::folly::coro::TaskWithExecutor<T>>
+    : safe_alias_constant<safe_alias::unsafe> {};
+template <typename T>
+struct safe_alias_of<::folly::coro::Task<T>>
+    : safe_alias_constant<safe_alias::unsafe> {};
+
 } // namespace folly
 
 #endif // FOLLY_HAS_COROUTINES

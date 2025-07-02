@@ -19,6 +19,7 @@
 #include <compare>
 
 #include <folly/coro/safe/Captures.h>
+#include <folly/coro/safe/SafeAlias.h>
 
 /// This header's `async_closure_safeties_and_bindings` implements the
 /// argument-binding logic for `async_closure`.
@@ -96,6 +97,11 @@ class AsyncObjectNonSlotPtr;
 } // namespace folly::coro
 
 namespace folly::coro::detail {
+
+template <safe_alias... Vs>
+constexpr safe_alias vtag_least_safe_alias(vtag_t<Vs...>) {
+  return std::min({safe_alias::maybe_value, Vs...});
+}
 
 //
 // There are 4 tag types here, which all quack the same interface:
@@ -729,7 +735,7 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   //     of closures, each calling `spawn_self_closure()` to make the next.
   //     `SafeAsyncScope` awaits these concurrently, so they must not take
   //     dependencies on each other's owned captures.
-  constexpr auto internal_arg_min_safety = folly::least_safe_alias(
+  constexpr auto internal_arg_min_safety = vtag_least_safe_alias(
       vtag_safety_of_async_closure_args<
           /*ParentViewOfSafety*/ false,
           shared_cleanup_transformed_binding_types>());

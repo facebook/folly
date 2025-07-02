@@ -266,11 +266,10 @@ class async_closure_wrap_coro {
     // KEEP IN SYNC with `is_safe`.
     static_assert(
         has_safe_args,
-        "Args passed into `async_closure()` must have `safe_alias_of_v` of "
-        "at least `shared_cleanup`. `NowTask` and `async_now_closure()` do "
-        "not have this constraint. If you need a closure, use `manual_safe_*` "
-        "to work around this, and comment with a proof of why your usage is "
-        "memory-safe.");
+        "Args passed into `async_closure()` must have `safe_alias_of` of at "
+        "least `shared_cleanup`. `NowTask` and `async_now_closure()` do not "
+        "have this constraint. To force a movable closure, use `manual_safe_*`,"
+        " and comment with a proof of why your usage is memory-safe.");
     static_assert(
         is_inner_coro_safe,
         "`async_closure` currently only supports `SafeTask` as the inner coro.");
@@ -588,7 +587,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
   // Compute the safety of the arguments being passed by the caller.
   constexpr safe_alias OuterSafety = Cfg.force_shared_cleanup // making NowTask
       ? safe_alias::unsafe
-      : folly::least_safe_alias(decltype(arg_safeties){});
+      : vtag_least_safe_alias(decltype(arg_safeties){});
   // Also check that the coroutine function's signature looks safe.
   constexpr safe_alias InnerSafety =
       safe_task_traits<decltype(unwrapped_inner)>::arg_safety;
@@ -606,7 +605,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
     // inner coro is a `ClosureTask` or other `SafeTask`.
     if constexpr (InnerSafety >= safe_alias::unsafe_closure_internal) {
       // In the presence of stored `capture`s, `InnerSafety` (as measured by
-      // `safe_alias_of_v` on the inner coro) is not what we want.  That's
+      // `safe_alias_of` on the inner coro) is not what we want.  That's
       // because `Captures.h` marks owned captures as `unsafe_closure_internal`
       // to discourage them being moved out of the closure.  Instead, we set
       // safety based on `vtag_safety_of_async_closure_args` (`OuterSafety`).

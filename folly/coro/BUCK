@@ -59,6 +59,7 @@ fbcode_target(
         "//folly/coro:via_if_async",
         "//folly/coro:with_async_stack",
         "//folly/coro:with_cancellation",
+        "//folly/lang:safe_alias_fwd",
         "//folly/tracing:async_stack",
     ],
     exported_external_deps = [
@@ -89,6 +90,7 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:via_if_async",
         "//xplat/folly/experimental/coro:with_async_stack",
         "//xplat/folly/experimental/coro:with_cancellation",
+        "//xplat/folly/lang:safe_alias_fwd",
         "//xplat/folly/tracing:async_stack",
     ],
 )
@@ -1486,6 +1488,7 @@ fbcode_target(
         "//folly/futures:core",
         "//folly/io/async:request_context",
         "//folly/lang:assume",
+        "//folly/lang:safe_alias_fwd",
         "//folly/result:result",
         "//folly/result:try",
         "//folly/tracing:async_stack",
@@ -1526,6 +1529,7 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:with_cancellation",
         "//xplat/folly/io/async:request_context",
         "//xplat/folly/lang:assume",
+        "//xplat/folly/lang:safe_alias_fwd",
         "//xplat/folly/result:result",
         "//xplat/folly/result:try",
         "//xplat/folly/tracing:async_stack",
@@ -1760,6 +1764,7 @@ fbcode_target(
         "//folly/coro:with_cancellation",
         "//folly/io/async:request_context",
         "//folly/lang:customization_point",
+        "//folly/lang:safe_alias_fwd",
         "//folly/tracing:async_stack",
     ],
     exported_external_deps = [
@@ -1784,6 +1789,7 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:with_cancellation",
         "//xplat/folly/io/async:request_context",
         "//xplat/folly/lang:customization_point",
+        "//xplat/folly/lang:safe_alias_fwd",
         "//xplat/folly/tracing:async_stack",
     ],
 )

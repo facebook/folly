@@ -284,6 +284,13 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "safe_alias_fwd",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeAlias-fwd.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "safe_assert",
     srcs = ["SafeAssert.cpp"],
     feature = triage_InfrastructureSupermoduleOptou,
@@ -628,6 +635,12 @@ fbcode_target(
     _kind = cpp_library,
     name = "rvalue_reference_wrapper",
     headers = ["RValueReferenceWrapper.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "safe_alias_fwd",
+    headers = ["SafeAlias-fwd.h"],
 )
 
 fbcode_target(

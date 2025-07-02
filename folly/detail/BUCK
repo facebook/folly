@@ -569,6 +569,7 @@ non_fbcode_target(
     deps = [
         "//xplat/folly:cpp_attributes",
         "//xplat/folly:traits",
+        "//xplat/folly/lang:safe_alias_fwd",
     ],
 )
 
@@ -1032,5 +1033,6 @@ fbcode_target(
     exported_deps = [
         "//folly:cpp_attributes",
         "//folly:traits",
+        "//folly/lang:safe_alias_fwd",
     ],
 )

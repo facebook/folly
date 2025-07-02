@@ -19,7 +19,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/coro/safe/AsyncClosure-fwd.h>
-#include <folly/coro/safe/SafeAlias.h>
+#include <folly/lang/SafeAlias-fwd.h>
 // `#undef`ed at end-of-file not to leak this macro.
 #include <folly/coro/safe/detail/DefineMovableDeepConstLrefCopyable.h>
 #include <folly/detail/tuple.h>
@@ -324,7 +324,7 @@ class capture_crtp_base {
         "When a class provides custom dereferencing via `capture_proxy`, "
         "it must be `NonCopyableNonMovable` to ensure that it can only passed "
         "via `capture<Ref>`, not via your temporary proxy object. The goals "
-        "are (1) ensure correct `safe_alias_of_v` markings, (2) keep the "
+        "are (1) ensure correct `safe_alias_of` markings, (2) keep the "
         "forwarding object as a hidden implementation detail.");
     return fn();
   }
@@ -339,7 +339,7 @@ class capture_crtp_base {
   //
   // The reason for this indirection is as follows:
   //   - "Restricted" references to scopes must enforce stricter
-  //     `safe_alias_of_v` constraints on their awaitables.
+  //     `safe_alias_of` constraints on their awaitables.
   //     `restricted_co_cleanup_capture` explains the usage.
   //   - A `restricted_co_cleanup_capture<Ref>` may be obtained from an
   //     `co_cleanup_capture<...AsyncScope...>` that was originally NOT
@@ -961,7 +961,7 @@ struct capture_safety
     : safe_alias_constant<
           (capture_safety_impl_v<std::remove_reference_t<T>> <=
            safe_alias::shared_cleanup)
-              ? ::folly::constexpr_min(
+              ? std::min(
                     MaxRefSafety,
                     capture_safety_impl_v<std::remove_reference_t<T>>)
               : MaxRefSafety> {};
@@ -982,36 +982,36 @@ namespace folly {
 // the appropriate safety.
 
 template <typename T>
-struct safe_alias_for<::folly::coro::capture<T>>
+struct safe_alias_of<::folly::coro::capture<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
 };
 template <typename T>
-struct safe_alias_for<::folly::coro::capture_heap<T>>
+struct safe_alias_of<::folly::coro::capture_heap<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
 };
 template <typename T>
-struct safe_alias_for<::folly::coro::capture_indirect<T>>
+struct safe_alias_of<::folly::coro::capture_indirect<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
 };
 
 template <typename T>
-struct safe_alias_for<::folly::coro::after_cleanup_capture<T>>
+struct safe_alias_of<::folly::coro::after_cleanup_capture<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
 template <typename T>
-struct safe_alias_for<::folly::coro::after_cleanup_capture_heap<T>>
+struct safe_alias_of<::folly::coro::after_cleanup_capture_heap<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
 template <typename T>
-struct safe_alias_for<::folly::coro::after_cleanup_capture_indirect<T>>
+struct safe_alias_of<::folly::coro::after_cleanup_capture_indirect<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
 
 template <typename T>
-struct safe_alias_for<::folly::coro::co_cleanup_capture<T>>
+struct safe_alias_of<::folly::coro::co_cleanup_capture<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::shared_cleanup> {};
 // FIXME: `capture_safety` will still measure this as `shared_cleanup` due
 // to `T` being that safety.  So, when implementing restricted refs, we'll
 // have to add a new case to `capture_safety` to handle this.
 template <typename T>
-struct safe_alias_for<::folly::coro::restricted_co_cleanup_capture<T>>
+struct safe_alias_of<::folly::coro::restricted_co_cleanup_capture<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
 
 } // namespace folly

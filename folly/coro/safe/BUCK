@@ -44,13 +44,13 @@ fbcode_target(
     headers = ["Captures.h"],
     exported_deps = [
         ":async_closure_fwd",
-        ":safe_alias",
         "//folly:traits",
         "//folly:utility",
         "//folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
         "//folly/detail:tuple",
         "//folly/lang:assume",
         "//folly/lang:bindings",
+        "//folly/lang:safe_alias_fwd",
         "//folly/lang/named:bindings",
     ],
 )
@@ -106,8 +106,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeAlias.h"],
     exported_deps = [
-        "//xplat/folly:constexpr_math",
         "//xplat/folly:traits",
+        "//xplat/folly/lang:safe_alias_fwd",
     ],
 )
 
@@ -116,8 +116,8 @@ fbcode_target(
     name = "safe_alias",
     headers = ["SafeAlias.h"],
     exported_deps = [
-        "//folly:constexpr_math",
         "//folly:traits",
+        "//folly/lang:safe_alias_fwd",
     ],
 )
 

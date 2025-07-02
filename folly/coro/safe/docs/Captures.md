@@ -86,7 +86,7 @@ If your function takes a capture, here is all you need to know:
 It bears repeating the "composition hole" warning from `SafeAlias.h`.
   - If a type stores any kind of reference (like `capture<Ref>`) or pointer, or
     anything else that's not a straight-up value type, then it **must**
-    correctly specialize `safe_alias_for`.
+    correctly specialize `safe_alias_of`.
   - When your child closure gets a lambda (or another object) from a parent,
     it is **particularly risky** to pass `capture<Ref>`s into its `operator()`
     (or other member function).  If the parent stored any reference in that
@@ -175,7 +175,7 @@ can't use it to schedule work on a nested `SafeAsyncScope`.
 ### Debugging lifetime safety compile errors
 
 If you're working with captures, and get a compile error about `SafeTask`,
-`safe_alias_of_v`, or similar, there is a good chance that you triggered a
+`safe_alias_of`, or similar, there is a good chance that you triggered a
 lifetime safety check. Read `LifetimeSafetyDebugging.md` for what to do next --
 it also covers the lifetime safety design of `Captures.h`.
 

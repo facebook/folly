@@ -28,6 +28,7 @@
 #include <folly/coro/detail/Malloc.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/CustomizationPoint.h>
+#include <folly/lang/SafeAlias-fwd.h>
 #include <folly/tracing/AsyncStack.h>
 
 #include <glog/logging.h>
@@ -857,6 +858,12 @@ detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
 }
 
 } // namespace coro
+
+template <typename T>
+struct safe_alias_of<coro::detail::NothrowAwaitable<T>> : safe_alias_of<T> {};
+template <typename T>
+struct safe_alias_of<coro::detail::TryAwaitable<T>> : safe_alias_of<T> {};
+
 } // namespace folly
 
 #endif // FOLLY_HAS_COROUTINES

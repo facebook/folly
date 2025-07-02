@@ -43,10 +43,9 @@ namespace folly::coro {
 ///     types to automatically branch between a `NowTask` and a `SafeTask`.
 ///
 /// `SafeTask` is a thin wrapper around `folly::coro::Task` that uses
-/// `safe_alias_of_v` to enforce some compile-time guarantees:
-///   - The `SafeTask` has `safe_alias_of_v` memory safety at least as high
-///     as the coro's arguments.  In particular, no args are taken by
-///     reference.
+/// `safe_alias_of` to enforce some compile-time guarantees:
+///   - The `SafeTask` has `safe_alias_of` memory safety at least as high as
+///     the coro's arguments.  In particular, no args are taken by reference.
 ///   - Regardless of the task's declared safety, the coro's return must
 ///     have safety `maybe_value` (explained in `SafeTaskRetAndArgs`).
 ///   - The coroutine is NOT a stateful callable -- this prohibits lambda
@@ -141,7 +140,7 @@ using AutoSafeTaskImpl = std::conditional_t<
 template <typename T, typename... SafetyArgs>
 using AutoSafeTask = detail::AutoSafeTaskImpl<
     T,
-    ::folly::detail::safe_alias_for_pack<SafetyArgs...>::value>;
+    ::folly::detail::safe_alias_of_pack<SafetyArgs...>::value>;
 
 namespace detail {
 
@@ -410,12 +409,12 @@ struct folly::coro::
       folly::coro::detail::SafeTaskPromise<ArgSafety, T, Args...>;
 };
 
-// For `safe_alias_of_v`: use the task while its arguments are still good.
+// The `SafeTask` is as safe as its arguments.
 template <folly::safe_alias ArgSafety, typename T>
-struct folly::safe_alias_for<folly::coro::SafeTask<ArgSafety, T>>
+struct folly::safe_alias_of<folly::coro::SafeTask<ArgSafety, T>>
     : folly::safe_alias_constant<ArgSafety> {};
 template <folly::safe_alias ArgSafety, typename T>
-struct folly::safe_alias_for<folly::coro::SafeTaskWithExecutor<ArgSafety, T>>
+struct folly::safe_alias_of<folly::coro::SafeTaskWithExecutor<ArgSafety, T>>
     : folly::safe_alias_constant<ArgSafety> {};
 
 #endif

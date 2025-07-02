@@ -39,6 +39,7 @@ non_fbcode_target(
     raw_headers = ["AsyncClosureBindings.h"],
     exported_deps = [
         "//xplat/folly/coro/safe:captures",
+        "//xplat/folly/coro/safe:safe_alias",
     ],
 )
 
@@ -48,6 +49,7 @@ fbcode_target(
     headers = ["AsyncClosureBindings.h"],
     exported_deps = [
         "//folly/coro/safe:captures",
+        "//folly/coro/safe:safe_alias",
     ],
 )
 

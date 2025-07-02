@@ -35,6 +35,7 @@
 #include <folly/coro/WithCancellation.h>
 #include <folly/coro/detail/Malloc.h>
 #include <folly/coro/detail/ManualLifetime.h>
+#include <folly/lang/SafeAlias-fwd.h>
 #include <folly/tracing/AsyncStack.h>
 
 #include <glog/logging.h>
@@ -868,6 +869,15 @@ auto tag_invoke(
 }
 
 } // namespace coro
+
+// Standard `AsyncGenerator` coros can easily capture references & other unsafe
+// aliasing.
+//
+// Future: Implement a `coro/safe` generator wrapper, like `async_closure_gen`.
+template <typename Ref, typename Val, bool Clean>
+struct safe_alias_of<::folly::coro::AsyncGenerator<Ref, Val, Clean>>
+    : safe_alias_constant<safe_alias::unsafe> {};
+
 } // namespace folly
 
 #endif
