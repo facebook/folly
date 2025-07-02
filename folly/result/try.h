@@ -69,7 +69,8 @@ class empty_try_with {
 /// Pick your own default via `empty_try_with{[]() { return result<T>{...}; }`.
 template <typename T, typename IfEmpty>
 result<T> try_to_result(Try<T> t, IfEmpty if_empty) noexcept(
-    std::is_nothrow_move_constructible_v<T>) {
+    std::is_nothrow_move_constructible_v<T> &&
+    noexcept(std::move(if_empty).template on_empty_try<T>())) {
   if (t.hasValue()) {
     if constexpr (std::is_void_v<T>) {
       return result<void>{};

@@ -761,6 +761,10 @@ class CommutativeWrapperAwaitable {
         }};
   }
 
+  template <
+      typename T2 = T,
+      typename = decltype(FOLLY_DECLVAL(T2&&).getUnsafeMover(
+          FOLLY_DECLVAL(ForMustAwaitImmediately)))>
   auto getUnsafeMover(ForMustAwaitImmediately p) && {
     // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
     static_assert(sizeof(Derived<T>) == sizeof(T));

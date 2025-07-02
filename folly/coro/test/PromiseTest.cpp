@@ -48,6 +48,21 @@ CO_TEST(PromiseTest, ImmediateValue) {
   EXPECT_EQ(co_await std::move(future), 42);
 }
 
+CO_TEST(PromiseTest, CollectImmediateValue) {
+  {
+    auto [promise, future] = coro::makePromiseContract<int>();
+    EXPECT_TRUE(promise.trySetWith([]() { return 42; }));
+    auto [res] = co_await collectAll(std::move(future));
+    EXPECT_EQ(res, 42);
+  }
+  {
+    auto [promise, future] = coro::makePromiseContract<int>();
+    EXPECT_TRUE(promise.trySetWith([]() { return 42; }));
+    auto [res] = co_await collectAll(co_awaitTry(std::move(future)));
+    EXPECT_EQ(res.value(), 42);
+  }
+}
+
 CO_TEST(PromiseTest, ImmediateWithValue) {
   auto [promise, future] = coro::makePromiseContract<int>();
   EXPECT_TRUE(promise.trySetWith([]() { return 42; }));
