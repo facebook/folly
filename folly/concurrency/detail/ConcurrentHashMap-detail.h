@@ -977,7 +977,7 @@ class alignas(64) SIMDTable {
       uint64x2_t vec;
       vec[0] = low;
       vec[1] = hi;
-      auto eqV = vceqq_u8(vec, needleV);
+      auto eqV = vceqq_u8(vreinterpretq_u8_u64(vec), needleV);
       uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(eqV), 4);
       uint64_t mask = vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
       return SparseMaskIter{mask};
