@@ -1486,6 +1486,8 @@ fbcode_target(
         "//folly/futures:core",
         "//folly/io/async:request_context",
         "//folly/lang:assume",
+        "//folly/result:result",
+        "//folly/result:try",
         "//folly/tracing:async_stack",
     ],
     exported_external_deps = [
@@ -1524,6 +1526,8 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:with_cancellation",
         "//xplat/folly/io/async:request_context",
         "//xplat/folly/lang:assume",
+        "//xplat/folly/result:result",
+        "//xplat/folly/result:try",
         "//xplat/folly/tracing:async_stack",
     ],
 )

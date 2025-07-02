@@ -281,6 +281,18 @@ class StackAwareViaIfAsyncAwaiter {
     return awaiter_.await_resume_try();
   }
 
+#if FOLLY_HAS_RESULT
+  template <
+      typename Awaiter2 = Awaiter,
+      typename Result =
+          decltype(FOLLY_DECLVAL(Awaiter2&).await_resume_result())>
+  Result await_resume_result() noexcept(
+      noexcept(FOLLY_DECLVAL(Awaiter2&).await_resume_result())) {
+    viaCoroutine_.destroy();
+    return awaiter_.await_resume_result();
+  }
+#endif
+
  private:
   CoroutineType viaCoroutine_;
   WithAsyncStackAwaitable awaitable_;
@@ -399,6 +411,18 @@ class ViaIfAsyncAwaiter {
     viaCoroutine_.destroy();
     return awaiter_.await_resume_try();
   }
+
+#if FOLLY_HAS_RESULT
+  template <
+      typename Awaiter2 = Awaiter,
+      typename Result =
+          decltype(FOLLY_DECLVAL(Awaiter2&).await_resume_result())>
+  Result await_resume_result() noexcept(
+      noexcept(FOLLY_DECLVAL(Awaiter2&).await_resume_result())) {
+    viaCoroutine_.destroy();
+    return awaiter_.await_resume_result();
+  }
+#endif
 
  private:
   CoroutineType viaCoroutine_;

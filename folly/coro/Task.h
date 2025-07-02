@@ -49,6 +49,8 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/Assume.h>
+#include <folly/result/result.h>
+#include <folly/result/try.h>
 #include <folly/tracing/AsyncStack.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -604,6 +606,16 @@ class FOLLY_NODISCARD TaskWithExecutor {
       return std::move(coro_.promise().result());
     }
 
+#if FOLLY_HAS_RESULT
+    result<T> await_resume_result() noexcept(
+        std::is_nothrow_move_constructible_v<StorageType>) {
+      SCOPE_EXIT {
+        std::exchange(coro_, {}).destroy();
+      };
+      return try_to_result(std::move(coro_.promise().result()));
+    }
+#endif
+
    private:
     handle_t coro_;
   };
@@ -913,6 +925,17 @@ class FOLLY_CORO_TASK_ATTRS Task {
       };
       return std::move(coro_.promise().result());
     }
+
+#if FOLLY_HAS_RESULT
+    result<T> await_resume_result() noexcept(
+        std::is_nothrow_move_constructible_v<StorageType>) {
+      DCHECK(coro_);
+      SCOPE_EXIT {
+        std::exchange(coro_, {}).destroy();
+      };
+      return try_to_result(std::move(coro_.promise().result()));
+    }
+#endif
 
    private:
     // This overload needed as Awaiter is returned from co_viaIfAsync() which is
