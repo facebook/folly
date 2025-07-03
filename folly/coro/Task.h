@@ -806,7 +806,8 @@ class FOLLY_CORO_TASK_ATTRS Task {
       Executor::KeepAlive<> executor, Task task) noexcept {
     return std::move(task).scheduleOn(std::move(executor));
   }
-  // Legacy form, prefer `co_withExecutor(exec, std::move(task))`.
+  [[deprecated(
+      "Legacy form, prefer `co_withExecutor(exec, std::move(task))`.")]]
   TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
     setExecutor(std::move(executor));
     DCHECK(coro_);
