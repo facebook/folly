@@ -26,7 +26,6 @@
 #include <folly/init/Init.h>
 #include <folly/logging/Init.h>
 #include <folly/logging/LogConfig.h>
-#include <folly/logging/LogConfigParser.h>
 #include <folly/logging/LogHandler.h>
 #include <folly/logging/LogHandlerConfig.h>
 #include <folly/logging/LogHandlerFactory.h>

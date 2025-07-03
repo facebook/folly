@@ -219,7 +219,6 @@ fbcode_target(
     name = "logger_test",
     srcs = ["LoggerTest.cpp"],
     deps = [
-        "fbsource//third-party/fmt:fmt",
         ":test_handler",
         "//folly/logging:log_handler",
         "//folly/logging:logging",

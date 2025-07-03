@@ -16,7 +16,6 @@
 
 #include <folly/logging/Logger.h>
 
-#include <fmt/format.h>
 #include <folly/logging/LogCategory.h>
 #include <folly/logging/LogHandler.h>
 #include <folly/logging/LogMessage.h>
