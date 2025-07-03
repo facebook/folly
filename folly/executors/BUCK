@@ -58,6 +58,7 @@ non_fbcode_target(
         "//xplat/folly/container:f14_hash",
         "//xplat/folly/executors/thread_factory:named_thread_factory",
         "//xplat/folly/executors/thread_factory:thread_factory",
+        "//xplat/folly/io/async:request_context",
     ],
 )
 
@@ -958,6 +959,7 @@ fbcode_target(
     deps = [
         "//folly:scope_guard",
         "//folly/executors/thread_factory:named_thread_factory",
+        "//folly/io/async:request_context",
         "//folly/system:thread_name",
     ],
     exported_deps = [

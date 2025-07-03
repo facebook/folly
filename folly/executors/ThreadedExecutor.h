@@ -27,6 +27,8 @@
 
 namespace folly {
 
+class RequestContext;
+
 /***
  *  ThreadedExecutor
  *
@@ -71,11 +73,12 @@ class ThreadedExecutor : public virtual folly::Executor {
     Type type;
     Func startFunc;
     std::thread::id joinTid;
+    std::shared_ptr<RequestContext> context;
   };
 
   static std::shared_ptr<ThreadFactory> newDefaultThreadFactory();
 
-  void work(Func& func);
+  void work(Message& message);
   void control();
 
   std::shared_ptr<ThreadFactory> threadFactory_;

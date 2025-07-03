@@ -23,6 +23,7 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
+#include <folly/io/async/Request.h>
 #include <folly/system/ThreadName.h>
 
 namespace folly {
@@ -33,7 +34,7 @@ ThreadedExecutor::ThreadedExecutor(std::shared_ptr<ThreadFactory> threadFactory)
 
 ThreadedExecutor::~ThreadedExecutor() {
   stopping_.store(true, std::memory_order_release);
-  controlMessages_.enqueue({Message::Type::StopControl, {}, {}});
+  controlMessages_.enqueue({Message::Type::StopControl, {}, {}, {}});
   controlThread_.join();
   CHECK(running_.empty());
   CHECK(controlMessages_.empty());
@@ -41,17 +42,23 @@ ThreadedExecutor::~ThreadedExecutor() {
 
 void ThreadedExecutor::add(Func func) {
   CHECK(!stopping_.load(std::memory_order_acquire));
-  controlMessages_.enqueue({Message::Type::Start, std::move(func), {}});
+  controlMessages_.enqueue(
+      {Message::Type::Start,
+       std::move(func),
+       {},
+       RequestContext::saveContext()});
 }
 
 std::shared_ptr<ThreadFactory> ThreadedExecutor::newDefaultThreadFactory() {
   return std::make_shared<NamedThreadFactory>("Threaded");
 }
 
-void ThreadedExecutor::work(Func& func) {
-  invokeCatchingExns("ThreadedExecutor: func", std::exchange(func, {}));
+void ThreadedExecutor::work(Message& message) {
+  auto guard = folly::RequestContextScopeGuard{std::move(message.context)};
+  invokeCatchingExns(
+      "ThreadedExecutor: func", std::exchange(message.startFunc, {}));
   controlMessages_.enqueue(
-      {Message::Type::Join, {}, std::this_thread::get_id()});
+      {Message::Type::Join, {}, std::this_thread::get_id(), {}});
 }
 
 void ThreadedExecutor::control() {
@@ -62,7 +69,7 @@ void ThreadedExecutor::control() {
     switch (msg.type) {
       case Message::Type::Start: {
         auto th = threadFactory_->newThread(
-            [this, func = std::move(msg.startFunc)]() mutable { work(func); });
+            [this, message = std::move(msg)]() mutable { work(message); });
         auto id = th.get_id();
         running_[id] = std::move(th);
         break;
