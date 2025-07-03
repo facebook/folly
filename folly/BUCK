@@ -460,13 +460,6 @@ non_fbcode_target(
     srcs = [
         "File.cpp",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "File.h",
@@ -495,13 +488,6 @@ non_fbcode_target(
     srcs = [
         "FileUtil.cpp",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FileUtil.h",
@@ -923,13 +909,7 @@ non_fbcode_target(
     ],
     compiler_flags = [
         "-fno-omit-frame-pointer",
-    ] + select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
+    ],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "String.h",
@@ -2046,13 +2026,6 @@ non_fbcode_target(
     srcs = [
         "ExceptionWrapper.cpp",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionWrapper.h",
@@ -4553,13 +4526,6 @@ non_fbcode_target(
     srcs = [
         "system/MemoryMapping.cpp",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "system/MemoryMapping.h",
@@ -5274,13 +5240,6 @@ non_fbcode_target(
     srcs = [
         "Unicode.cpp",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Unicode.h",

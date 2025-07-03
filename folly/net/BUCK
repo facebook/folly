@@ -42,13 +42,6 @@ non_fbcode_target(
     srcs = [
         "NetOps.cpp",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "NetOps.h",

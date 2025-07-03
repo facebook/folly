@@ -16,13 +16,6 @@ fb_dirsync_cpp_library(
         "dynamic-inl.h",
         "json.h",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
@@ -64,13 +57,6 @@ fb_dirsync_cpp_library(
     name = "json_pointer",
     srcs = ["json_pointer.cpp"],
     headers = ["json_pointer.h"],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [

@@ -103,13 +103,7 @@ non_fbcode_target(
     ],
     compiler_flags = [
         "-fno-omit-frame-pointer",
-    ] + select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
+    ],
     cxx_deps = [
         "//xplat/third-party/linker_lib:dl",
     ],

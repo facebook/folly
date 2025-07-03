@@ -19,13 +19,6 @@ fb_dirsync_cpp_library(
         "IOBufIovecBuilder.h",
         "IOBufQueue.h",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
@@ -161,13 +154,6 @@ fb_dirsync_cpp_library(
     name = "huge_pages",
     srcs = ["HugePages.cpp"],
     headers = ["HugePages.h"],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
@@ -196,13 +182,6 @@ fb_dirsync_cpp_library(
     name = "fs_util",
     srcs = ["FsUtil.cpp"],
     headers = ["FsUtil.h"],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
