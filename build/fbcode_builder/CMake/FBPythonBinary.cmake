@@ -236,6 +236,7 @@ function(add_fb_python_unittest TARGET)
   set(
     one_value_args
     WORKING_DIRECTORY BASE_DIR NAMESPACE TEST_LIST DISCOVERY_TIMEOUT
+    WORKING_DIRECTORY BASE_DIR NAMESPACE TEST_LIST DISCOVERY_TIMEOUT TYPE
   )
   fb_cmake_parse_args(
     ARG "" "${one_value_args}" "${multi_value_args}" "${ARGN}"
@@ -286,8 +287,13 @@ function(add_fb_python_unittest TARGET)
   list(APPEND ARG_SOURCES "${FB_PY_TEST_MAIN}=__main__.py")
   list(APPEND ARG_SOURCES "${test_modules_path}=__test_modules__.py")
 
+  if(NOT DEFINED ARG_TYPE)
+    set(ARG_TYPE "zipapp")
+  endif()
+
   add_fb_python_executable(
     "${TARGET}"
+    TYPE "${ARG_TYPE}"
     NAMESPACE "${ARG_NAMESPACE}"
     BASE_DIR "${ARG_BASE_DIR}"
     SOURCES ${ARG_SOURCES}

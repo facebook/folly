@@ -432,29 +432,35 @@ class InstallSysDepsCmd(ProjectCmdBase):
                 merged += v
                 all_packages[k] = merged
 
-        cmd_args = None
+        cmd_argss = []
         if manager == "rpm":
             packages = sorted(set(all_packages["rpm"]))
             if packages:
-                cmd_args = ["sudo", "dnf", "install", "-y", "--skip-broken"] + packages
+                cmd_argss.append(
+                    ["sudo", "dnf", "install", "-y", "--skip-broken"] + packages
+                )
         elif manager == "deb":
             packages = sorted(set(all_packages["deb"]))
             if packages:
-                cmd_args = [
-                    "sudo",
-                    "--preserve-env=http_proxy",
-                    "apt-get",
-                    "install",
-                    "-y",
-                ] + packages
+                cmd_argss.append(
+                    [
+                        "sudo",
+                        "--preserve-env=http_proxy",
+                        "apt-get",
+                        "install",
+                        "-y",
+                    ]
+                    + packages
+                )
+                cmd_argss.append(["pip", "install", "pex"])
         elif manager == "homebrew":
             packages = sorted(set(all_packages["homebrew"]))
             if packages:
-                cmd_args = ["brew", "install"] + packages
+                cmd_argss.append(["brew", "install"] + packages)
         elif manager == "pacman-package":
             packages = sorted(list(set(all_packages["pacman-package"])))
             if packages:
-                cmd_args = ["pacman", "-S"] + packages
+                cmd_argss.append(["pacman", "-S"] + packages)
         else:
             host_tuple = loader.build_opts.host_type.as_tuple_string()
             print(
@@ -462,7 +468,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
             )
             return
 
-        if cmd_args:
+        for cmd_args in cmd_argss:
             if args.dry_run:
                 print(" ".join(cmd_args))
             else:
