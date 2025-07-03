@@ -34,7 +34,7 @@ Task<int> co_answerToLife() {
 
 TEST(Task, demo) {
   auto executor = folly::getGlobalCPUExecutor().get();
-  int answer = blockingWait(co_answerToLife().scheduleOn(executor));
+  int answer = blockingWait(co_withExecutor(executor, co_answerToLife()));
 
   EXPECT_EQ(answer, 42);
 
@@ -42,8 +42,8 @@ TEST(Task, demo) {
   auto t2 = makeTask(2);
   t1.swap(t2);
 
-  EXPECT_EQ(blockingWait(std::move(t1).scheduleOn(executor)), 2);
-  EXPECT_EQ(blockingWait(std::move(t2).scheduleOn(executor)), 1);
+  EXPECT_EQ(blockingWait(co_withExecutor(executor, std::move(t1))), 2);
+  EXPECT_EQ(blockingWait(co_withExecutor(executor, std::move(t2))), 1);
 
   auto answerFuture = co_answerToLife().semi().via(executor).then(
       [](folly::Try<int> semiResult) { EXPECT_EQ(semiResult.value(), 42); });
@@ -51,12 +51,14 @@ TEST(Task, demo) {
   folly::collectAll(std::move(answerFuture));
 
   auto voidReturnTask = makeTask();
-  EXPECT_NO_THROW(blockingWait(std::move(voidReturnTask).scheduleOn(executor)));
+  EXPECT_NO_THROW(
+      blockingWait(co_withExecutor(executor, std::move(voidReturnTask))));
 
   auto errorYieldingTask = makeErrorTask<void>(
       folly::make_exception_wrapper<std::logic_error>("not really"));
   EXPECT_THROW(blockingWait(std::move(errorYieldingTask)), std::logic_error);
 
   auto taskifiedTry = makeResultTask(folly::Try<int>(10));
-  EXPECT_EQ(blockingWait(std::move(taskifiedTry).scheduleOn(executor)), 10);
+  EXPECT_EQ(
+      blockingWait(co_withExecutor(executor, std::move(taskifiedTry))), 10);
 }

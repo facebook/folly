@@ -52,7 +52,7 @@ class StrandExecutor;
 //      folly::coro::Task<T> someMethod() {
 //        auto currentEx = co_await folly::coro::co_current_executor;
 //        auto strandEx = folly::StrandExecutor::create(strand_, currentEx);
-//        co_return co_await someMethodImpl().scheduleOn(strandEx);
+//        co_return co_await co_withExecutor(strandEx, someMethodImpl());
 //      }
 //
 //    private:

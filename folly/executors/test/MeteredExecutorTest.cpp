@@ -349,16 +349,17 @@ template <typename T>
 coro::Task<bool> co_run(Executor::KeepAlive<> ka, coro::Task<T> f) {
   auto cpuexec = dynamic_cast<CPUThreadPoolExecutor*>(ka.get());
   EXPECT_TRUE(cpuexec != nullptr);
-  co_return co_await std::move(f).scheduleOn(cpuexec);
+  co_return co_await co_withExecutor(cpuexec, std::move(f));
 }
 
 } // namespace
 
 TEST_F(MeteredExecutorTest, UnderlyingExecutor) {
   createAdapter(1);
-  EXPECT_FALSE(coro::blockingWait(co_isOnCPUExc().scheduleOn(getKeepAlive(1))));
-  EXPECT_TRUE(coro::blockingWait(
-      co_run(getKeepAlive(0), co_isOnCPUExc()).scheduleOn(getKeepAlive(0))));
+  EXPECT_FALSE(
+      coro::blockingWait(co_withExecutor(getKeepAlive(1), co_isOnCPUExc())));
+  EXPECT_TRUE(coro::blockingWait(co_withExecutor(
+      getKeepAlive(0), co_run(getKeepAlive(0), co_isOnCPUExc()))));
 }
 
 TEST_F(MeteredExecutorTest, PauseResume) {
