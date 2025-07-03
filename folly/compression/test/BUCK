@@ -58,6 +58,7 @@ fbcode_target(
         "QuotientMultiSetBenchmark.cpp",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
         "//folly:format",
         "//folly:random",
@@ -82,6 +83,7 @@ fbcode_target(
         "QuotientMultiSetTest.cpp",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:format",
         "//folly:random",
         "//folly/compression:quotient_multiset",

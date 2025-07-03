@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/channels/ConsumeChannel.h>
 #include <folly/channels/MergeChannel.h>
 #include <folly/channels/test/ChannelTestUtil.h>
@@ -35,7 +36,7 @@ bool isMatch(
     const U& expected,
     testing::MatchResultListener* resultListener) {
   if (expected != actual) {
-    *resultListener << folly::sformat(
+    *resultListener << fmt::format(
         "{} mismatch: ({} != {})", type, actual, expected);
     return false;
   }

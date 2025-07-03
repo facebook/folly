@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <folly/Executor.h>
 #include <folly/Format.h>
 #include <folly/IntrusiveList.h>
@@ -180,7 +181,7 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
     if (retVal.template hasException<folly::OperationCancelled>()) {
       co_return false;
     } else if (retVal.hasException()) {
-      LOG(FATAL) << folly::sformat(
+      LOG(FATAL) << fmt::format(
           "Encountered exception from callback when consuming channel of "
           "type {}: {}",
           typeid(TValue).name(),

@@ -1233,6 +1233,7 @@ fbcode_target(
     headers = [],
     labels = ["heavyweight"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         ":deterministic_schedule",
         "//folly:format",
         "//folly:memory",

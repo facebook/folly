@@ -81,6 +81,7 @@ fbcode_target(
         "MergeChannelTest.cpp",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly/channels:consume_channel",
         "//folly/channels:merge_channel",
         "//folly/channels/test:channel_test_util",

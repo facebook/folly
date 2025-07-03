@@ -1586,6 +1586,9 @@ non_fbcode_target(
     raw_headers = [
         "ConstructorCallbackList.h",
     ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
 )
 
 non_fbcode_target(
@@ -6796,6 +6799,7 @@ fbcode_target(
         "ConstructorCallbackList.h",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         ":format",
         ":function",
         ":shared_mutex",

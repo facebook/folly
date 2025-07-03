@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include <fmt/format.h>
+
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Random.h>
@@ -93,7 +95,7 @@ static std::string getStr(
 }
 
 static std::string getExe() {
-  auto path = folly::sformat("/proc/{}/exe", getpid());
+  auto path = fmt::format("/proc/{}/exe", getpid());
   return folly::fs::read_symlink(path).string();
 }
 

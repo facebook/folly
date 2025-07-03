@@ -18,6 +18,8 @@
 
 #include <random>
 
+#include <fmt/format.h>
+
 #include <folly/Format.h>
 #include <folly/Random.h>
 #include <folly/container/Enumerate.h>
@@ -61,7 +63,7 @@ class QuotientMultiSetTest : public ::testing::Test {
       uint64_t start = index;
       uint64_t& key = keys[start];
       auto debugInfo = [&] {
-        return folly::sformat("Index: {} Key: {}", index, key);
+        return fmt::format("Index: {} Key: {}", index, key);
       };
       while (index < keys.size() && keys[index] == key) {
         index++;
@@ -182,7 +184,7 @@ TEST_F(QuotientMultiSetTest, Uniform) {
 
   for (const auto& testCase : testCases) {
     const auto& [keyBits, size, loadFactor] = testCase;
-    SCOPED_TRACE(folly::sformat(
+    SCOPED_TRACE(fmt::format(
         "Key bits: {} Size: {} Load factor: {}", keyBits, size, loadFactor));
     std::vector<uint64_t> keys;
     for (uint64_t idx = 0; idx < size; idx++) {

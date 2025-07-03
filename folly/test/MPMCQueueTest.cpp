@@ -24,6 +24,7 @@
 
 #include <boost/intrusive_ptr.hpp>
 #include <boost/thread/barrier.hpp>
+#include <fmt/format.h>
 
 #include <folly/Format.h>
 #include <folly/Memory.h>
@@ -402,7 +403,7 @@ struct TryWriteUntilCaller : public WriteMethodCaller<Q> {
     return q.tryWriteUntil(then, i);
   }
   string methodName() override {
-    return folly::sformat(
+    return fmt::format(
         "tryWriteUntil({}ms)",
         std::chrono::duration_cast<milliseconds>(duration_).count());
   }
@@ -474,7 +475,7 @@ string producerConsumerBench(
   uint64_t failures = failed;
   size_t allocated = q.allocatedCapacity();
 
-  return folly::sformat(
+  return fmt::format(
       "{}, {} {} producers, {} consumers => {} nanos/handoff, {} csw / {} "
       "handoff, {} failures, {} allocated",
       qName,

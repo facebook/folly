@@ -61,6 +61,7 @@ fbcode_target(
         "ChannelProcessor-inl.h",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:executor",
         "//folly/channels:consume_channel",
         "//folly/channels:merge_channel",
@@ -79,6 +80,7 @@ fbcode_target(
         "ConsumeChannel-inl.h",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:executor",
         "//folly:format",
         "//folly:intrusive_list",

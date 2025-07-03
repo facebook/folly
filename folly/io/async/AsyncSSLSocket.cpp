@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 
 #include <fcntl.h>
@@ -150,8 +151,7 @@ class AsyncSSLSocketConnector
       if (timeoutLeft <= std::chrono::milliseconds::zero()) {
         AsyncSocketException ex(
             AsyncSocketException::TIMED_OUT,
-            folly::sformat(
-                "SSL connect timed out after {}ms", timeout_.count()));
+            fmt::format("SSL connect timed out after {}ms", timeout_.count()));
         fail(ex);
         delete this;
         return;
@@ -717,7 +717,7 @@ void AsyncSSLSocket::timeoutExpired(
     DestructorGuard dg(this);
     AsyncSocketException ex(
         AsyncSocketException::TIMED_OUT,
-        folly::sformat(
+        fmt::format(
             "SSL {} timed out after {}ms",
             (sslState_ == STATE_CONNECTING) ? "connect" : "accept",
             timeout.count()));

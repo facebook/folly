@@ -119,7 +119,7 @@ folly::Expected<folly::Unit, UserErrorCode> convertTo(
     return folly::makeUnexpected(UserErrorCode::Error);
   }
   out.value_ =
-      folly::sformat("{}_{}->{}", src.meta.project, src.meta.name, src.value);
+      fmt::format("{}_{}->{}", src.meta.project, src.meta.name, src.value);
   return folly::unit;
 }
 template <class String>
@@ -391,7 +391,7 @@ TEST(Settings, basic) {
       }
       auto [value, reason] = setting.valueAndReason();
       EXPECT_EQ(reason, setting.updateReason());
-      allFlags += folly::sformat(
+      allFlags += fmt::format(
           "{}/{}/{}/{}/{}/{}/{}\n",
           meta.project,
           meta.name,

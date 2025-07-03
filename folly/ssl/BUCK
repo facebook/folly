@@ -25,6 +25,7 @@ non_fbcode_target(
     raw_headers = ["OpenSSLHash.h"],
     deps = ["//xplat/folly:format"],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly/io:iobuf",
         ":openssl_ptr_types",
         "//xplat/folly:portability_openssl",
@@ -141,6 +142,7 @@ fbcode_target(
     srcs = ["OpenSSLHash.cpp"],
     headers = ["OpenSSLHash.h"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:format",
     ],
     exported_deps = [

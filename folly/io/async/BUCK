@@ -156,6 +156,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AsyncSocket.h"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//third-party/boost:boost",
         "//xplat/folly:constructor_callback_list",
         "//xplat/folly:exception",
@@ -223,6 +224,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AsyncSSLSocket.h"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//xplat/folly:format",
         "//xplat/folly:indestructible",
         "//xplat/folly:network_address",
@@ -931,6 +933,7 @@ fbcode_target(
     srcs = ["AsyncSocket.cpp"],
     headers = ["AsyncSocket.h"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:exception",
         "//folly:format",
         "//folly:portability",
@@ -997,6 +1000,7 @@ fbcode_target(
     srcs = ["AsyncSSLSocket.cpp"],
     headers = ["AsyncSSLSocket.h"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:format",
         "//folly:indestructible",
         "//folly:network_address",

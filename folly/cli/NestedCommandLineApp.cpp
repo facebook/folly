@@ -18,6 +18,7 @@
 
 #include <iostream>
 
+#include <fmt/format.h>
 #include <glog/logging.h>
 
 #include <folly/FileUtil.h>
@@ -103,7 +104,7 @@ po::options_description& NestedCommandLineApp::addCommand(
       std::move(shortHelp),
       std::move(fullHelp),
       std::move(command),
-      po::options_description(folly::sformat("Options for `{}'", name)),
+      po::options_description(fmt::format("Options for `{}'", name)),
       std::move(positionalOptions)};
 
   auto p = commands_.emplace(std::move(name), std::move(info));
@@ -219,7 +220,7 @@ auto NestedCommandLineApp::findCommand(const std::string& name) const
   if (pos == commands_.end()) {
     throw ProgramExit(
         1,
-        folly::sformat(
+        fmt::format(
             "Command '{}' not found. Run '{} {}' for help.",
             name,
             programName_,
@@ -249,7 +250,7 @@ int NestedCommandLineApp::run(const std::vector<std::string>& args) {
     fprintf(
         stderr,
         "%s",
-        folly::sformat(
+        fmt::format(
             "{}. Run '{} help' for {}.\n",
             ex.what(),
             programName_,
@@ -313,7 +314,7 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
   if (!parsed.command) {
     throw ProgramExit(
         1,
-        folly::sformat(
+        fmt::format(
             "Command not specified. Run '{} {}' for help.",
             programName_,
             kHelpCommand));

@@ -1,3 +1,5 @@
+#include <fmt/format.h>
+
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -433,7 +435,7 @@ void runAllHashMapTests() {
           for (auto& map : value.second) {
             addBenchmark(
                 __FILE__,
-                folly::sformat(
+                fmt::format(
                     "{}{} {:>8}<{}, {}>[{}]",
                     isBaseline ? "" : "%",
                     test,

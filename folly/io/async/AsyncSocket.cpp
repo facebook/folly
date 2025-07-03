@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/io/async/AsyncSocket.h>
 
 #include <sys/types.h>
@@ -3696,8 +3697,7 @@ void AsyncSocket::timeoutExpired() noexcept {
     if (connectCallback_) {
       AsyncSocketException ex(
           AsyncSocketException::TIMED_OUT,
-          folly::sformat(
-              "connect timed out after {}ms", connectTimeout_.count()));
+          fmt::format("connect timed out after {}ms", connectTimeout_.count()));
       failConnect(__func__, ex);
     } else {
       // we faced a connect error without a connect callback, which could
@@ -3710,7 +3710,7 @@ void AsyncSocket::timeoutExpired() noexcept {
     // a normal write operation timed out
     AsyncSocketException ex(
         AsyncSocketException::TIMED_OUT,
-        folly::sformat("write timed out after {}ms", sendTimeout_));
+        fmt::format("write timed out after {}ms", sendTimeout_));
     failWrite(__func__, ex);
   }
 }

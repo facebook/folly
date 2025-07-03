@@ -15,6 +15,7 @@ fbcode_target(
         "ProgramOptions.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:conv",
         "//folly:file_util",
         "//folly:format",
