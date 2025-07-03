@@ -17,7 +17,6 @@
 #include <folly/stats/DigestBuilder.h>
 
 #include <chrono>
-#include <condition_variable>
 #include <thread>
 
 #include <boost/thread/barrier.hpp>
