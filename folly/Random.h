@@ -31,7 +31,7 @@
 #include <folly/lang/Bits.h>
 #include <folly/random/xoshiro256pp.h>
 
-#if FOLLY_HAVE_EXTRANDOM_SFMT19937
+#if defined(FOLLY_HAVE_EXTRANDOM_SFMT19937) && FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
 #endif
 
@@ -41,7 +41,7 @@ namespace detail {
 
 using DefaultGenerator = folly::xoshiro256pp_32;
 
-#if FOLLY_HAVE_EXTRANDOM_SFMT19937
+#if defined(FOLLY_HAVE_EXTRANDOM_SFMT19937) && FOLLY_HAVE_EXTRANDOM_SFMT19937
 using LegacyGenerator = __gnu_cxx::sfmt19937;
 #else
 using LegacyGenerator = std::mt19937;
