@@ -174,6 +174,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?test/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?tool/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/facebook/"
+    "^${FOLLY_DIR_REGEX_ESCAPED}/rust/"
     "Benchmark.cpp$"
     "Test.cpp$"
 )
@@ -718,6 +719,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES small_vector_test.cpp
       TEST container_sorted_vector_types_test SOURCES sorted_vector_test.cpp
       TEST container_span_test SOURCES span_test.cpp
+      TEST container_std_bitset_test SOURCES StdBitsetTest.cpp
       BENCHMARK container_sparse_byte_set_benchmark
         SOURCES SparseByteSetBenchmark.cpp
       TEST container_sparse_byte_set_test SOURCES SparseByteSetTest.cpp
@@ -996,6 +998,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lang_r_value_reference_wrapper_test WINDOWS_DISABLED
         SOURCES RValueReferenceWrapperTest.cpp
       TEST lang_safe_assert_test SOURCES SafeAssertTest.cpp
+      TEST lang_switch_test SOURCES SwitchTest.cpp
       BENCHMARK lang_to_ascii_benchmark SOURCES ToAsciiBench.cpp
       TEST lang_to_ascii_test SOURCES ToAsciiTest.cpp
       TEST lang_type_info_test SOURCES TypeInfoTest.cpp

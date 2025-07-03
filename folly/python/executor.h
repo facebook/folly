@@ -17,10 +17,17 @@
 #pragma once
 
 #include <folly/Executor.h>
+#include <folly/Function.h>
 #include <folly/python/AsyncioExecutor.h>
+#include <folly/python/Weak.h>
 
 namespace folly {
 namespace python {
+
+namespace executor_detail {
+extern folly::Function<AsyncioExecutor*(bool)> get_running_executor;
+extern folly::Function<int(PyObject*, AsyncioExecutor*)> set_executor_for_loop;
+} // namespace executor_detail
 
 folly::Executor* getExecutor();
 

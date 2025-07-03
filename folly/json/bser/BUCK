@@ -51,9 +51,6 @@ fbcode_target(
     headers = [
         "Bser.h",
     ],
-    deps = [
-        "//folly:string",
-    ],
     exported_deps = [
         "//folly:c_portability",
         "//folly:json",  # @manual

@@ -1,0 +1,46 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = rust_bindgen_library,
+    name = "tdigest",
+    allowlist_funcs = [
+        "facebook::rust::.*",
+    ],
+    allowlist_types = [
+        "folly::TDigest",
+        "facebook::rust::.*",
+    ],
+    allowlist_vars = [
+        "facebook::rust::.*",
+    ],
+    cpp_deps = [":tdigest-ffi"],
+    cxx_bridge = "tdigest.rs",
+    cxx_namespaces = True,
+    generate = ("types", "vars", "functions"),
+    header = "tdigest.h",
+    opaque_types = [
+        "std::.*",
+    ],
+    rustc_flags = ["-Aunused-crate-dependencies"],  # because of fbsource//third-party/rust:rand which is only used in tests and test_deps not defined in rust_bindgen_library
+    src_includes = ["tdigest.rs"],
+    deps = [
+        "fbsource//third-party/rust:cxx",
+        "fbsource//third-party/rust:rand",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "tdigest-ffi",
+    srcs = ["tdigest.cpp"],
+    headers = ["tdigest.h"],
+    preferred_linkage = "static",
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
+        "//folly/stats:tdigest",
+    ],
+)

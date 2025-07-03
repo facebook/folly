@@ -17,10 +17,8 @@
 #include <folly/executors/GlobalExecutor.h>
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/executors/IOExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
-#include <folly/synchronization/Baton.h>
 
 TEST(GlobalCPUExecutorTest, CPUThreadCountFlagSet) {
   folly::gflags::FlagSaver flagsaver;

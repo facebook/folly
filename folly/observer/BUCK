@@ -17,6 +17,7 @@ non_fbcode_target(
         "Observable-inl.h",
     ],
     deps = [
+        "//xplat/folly:function",
         "//xplat/folly/experimental/observer:observer",
     ],
 )
@@ -93,7 +94,8 @@ fbcode_target(
         "Observable-inl.h",
     ],
     exported_deps = [
-        "//folly/observer:observer",
+        ":observer",
+        "//folly:function",
         "//folly/synchronization:baton",
     ],
 )

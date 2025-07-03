@@ -21,10 +21,11 @@
 #include <cstdint>
 #include <utility>
 
-#include <folly/CPortability.h>
 #include <folly/Optional.h>
 #include <folly/Portability.h>
-#include <folly/detail/Futex.h>
+#include <folly/Utility.h>
+#include <folly/synchronization/AtomicNotification.h>
+#include <folly/synchronization/AtomicRef.h>
 
 namespace folly {
 
@@ -50,12 +51,6 @@ namespace folly {
  *
  * Unused bits in the lock can be used to store user data via
  * lockAndLoad() and unlockAndStore(), or LockGuardWithData.
- *
- * MicroLock uses a dirty trick: it actually operates on the full
- * 32-bit, four-byte-aligned bit of memory into which it is embedded.
- * It never modifies bits outside the ones it's defined to modify, but
- * it _accesses_ all the bits in the 32-bit memory location for
- * purposes of futex management.
  *
  * The MaxSpins template parameter controls the number of times we
  * spin trying to acquire the lock.  MaxYields controls the number of
@@ -97,10 +92,6 @@ class MicroLockCore {
  protected:
   uint8_t lock_{};
   /**
-   * Arithmetic shift required to get to the byte from the word.
-   */
-  unsigned baseShift() const noexcept;
-  /**
    * Mask for bit indicating that the flag is held.
    */
   unsigned heldBit() const noexcept;
@@ -109,19 +100,8 @@ class MicroLockCore {
    */
   unsigned waitBit() const noexcept;
 
-  FOLLY_DISABLE_SANITIZERS static uint8_t lockSlowPath(
-      uint32_t oldWord,
-      detail::Futex<>* wordPtr,
-      unsigned baseShift,
-      unsigned maxSpins,
-      unsigned maxYields) noexcept;
-
-  /**
-   * The word (halfword on 64-bit systems) that this lock atomically operates
-   * on. Although the atomic operations access 4 bytes, only the byte used by
-   * the lock will be modified.
-   */
-  detail::Futex<>* word() const noexcept;
+  uint8_t lockSlowPath(
+      uint8_t oldWord, unsigned maxSpins, unsigned maxYields) noexcept;
 
   static constexpr unsigned kNumLockBits = 2;
   static constexpr uint8_t kLockBits =
@@ -140,32 +120,26 @@ class MicroLockCore {
     return static_cast<uint8_t>(data << kNumLockBits);
   }
 
-  static constexpr uint8_t decodeDataFromWord(
-      uint32_t word, unsigned baseShift) noexcept {
-    return static_cast<uint8_t>(
-        static_cast<uint8_t>(word >> baseShift) >> kNumLockBits);
+  static constexpr uint8_t decodeDataFromWord(uint8_t word) noexcept {
+    return static_cast<uint8_t>(word >> kNumLockBits);
   }
-  uint8_t decodeDataFromWord(uint32_t word) const noexcept {
-    return decodeDataFromWord(word, baseShift());
-  }
-  static constexpr uint32_t encodeDataToWord(
-      uint32_t word, unsigned shiftToByte, uint8_t value) noexcept {
-    const uint32_t preservedBits = word & ~(kDataBits << shiftToByte);
-    const uint32_t newBits = encodeDataToByte(value) << shiftToByte;
+  static constexpr uint8_t encodeDataToWord(
+      uint8_t word, uint8_t value) noexcept {
+    const uint8_t preservedBits = word & ~(kDataBits);
+    const uint8_t newBits = encodeDataToByte(value);
     return preservedBits | newBits;
   }
 
   template <typename Func>
-  FOLLY_DISABLE_SANITIZERS void unlockAndStoreWithModifier(
-      Func modifier) noexcept;
+  void unlockAndStoreWithModifier(Func modifier) noexcept;
 
  public:
   /**
    * Loads the data stored in the unused bits of the lock atomically.
    */
-  FOLLY_DISABLE_SANITIZERS uint8_t
-  load(std::memory_order order = std::memory_order_seq_cst) const noexcept {
-    return decodeDataFromWord(word()->load(order));
+  uint8_t load(
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
+    return decodeDataFromWord(atomic_ref(lock_).load(order));
   }
 
   /**
@@ -173,7 +147,7 @@ class MicroLockCore {
    * used by the lock, the most significant 2 bits of the provided value will be
    * ignored.
    */
-  FOLLY_DISABLE_SANITIZERS void store(
+  void store(
       uint8_t value,
       std::memory_order order = std::memory_order_seq_cst) noexcept;
 
@@ -186,73 +160,51 @@ class MicroLockCore {
   void unlock() noexcept;
 };
 
-inline detail::Futex<>* MicroLockCore::word() const noexcept {
-  uintptr_t lockptr = (uintptr_t)&lock_;
-  lockptr &= ~(sizeof(uint32_t) - 1);
-  return (detail::Futex<>*)lockptr;
-}
-
-inline unsigned MicroLockCore::baseShift() const noexcept {
-  unsigned offset_bytes = (unsigned)((uintptr_t)&lock_ - (uintptr_t)word());
-
-  return static_cast<unsigned>(
-      kIsLittleEndian ? CHAR_BIT * offset_bytes
-                      : CHAR_BIT * (sizeof(uint32_t) - offset_bytes - 1));
-}
-
 inline unsigned MicroLockCore::heldBit() const noexcept {
-  return 1U << (baseShift() + 0);
+  return 1U << 0;
 }
 
 inline unsigned MicroLockCore::waitBit() const noexcept {
-  return 1U << (baseShift() + 1);
+  return 1U << 1;
 }
 
-FOLLY_PUSH_WARNING
-FOLLY_GCC_DISABLE_WARNING("-Wattributes") // inline + [[gnu::noinline]]
 inline void MicroLockCore::store(
     uint8_t value, std::memory_order order) noexcept {
-  detail::Futex<>* wordPtr = word();
-
-  const auto shiftToByte = baseShift();
-  auto oldWord = wordPtr->load(std::memory_order_relaxed);
+  auto oldWord = atomic_ref(lock_).load(std::memory_order_relaxed);
   while (true) {
-    auto newWord = encodeDataToWord(oldWord, shiftToByte, value);
-    if (wordPtr->compare_exchange_weak(
+    auto newWord = encodeDataToWord(oldWord, value);
+    if (atomic_ref(lock_).compare_exchange_weak(
             oldWord, newWord, order, std::memory_order_relaxed)) {
       break;
     }
   }
 }
-FOLLY_POP_WARNING
 
 template <typename Func>
 void MicroLockCore::unlockAndStoreWithModifier(Func modifier) noexcept {
-  detail::Futex<>* wordPtr = word();
-  uint32_t oldWord;
-  uint32_t newWord;
+  uint8_t oldWord;
+  uint8_t newWord;
 
-  oldWord = wordPtr->load(std::memory_order_relaxed);
+  oldWord = atomic_ref(lock_).load(std::memory_order_relaxed);
   do {
     assert(oldWord & heldBit());
     newWord = modifier(oldWord) & ~(heldBit() | waitBit());
-  } while (!wordPtr->compare_exchange_weak(
+  } while (!atomic_ref(lock_).compare_exchange_weak(
       oldWord, newWord, std::memory_order_release, std::memory_order_relaxed));
 
   if (oldWord & waitBit()) {
-    detail::futexWake(wordPtr, 1, heldBit());
+    atomic_notify_one(&atomic_ref(lock_).atomic());
   }
 }
 
 inline void MicroLockCore::unlockAndStore(uint8_t value) noexcept {
-  unlockAndStoreWithModifier(
-      [value, shiftToByte = baseShift()](uint32_t oldWord) {
-        return encodeDataToWord(oldWord, shiftToByte, value);
-      });
+  unlockAndStoreWithModifier([value](uint8_t oldWord) {
+    return encodeDataToWord(oldWord, value);
+  });
 }
 
 inline void MicroLockCore::unlock() noexcept {
-  unlockAndStoreWithModifier([](uint32_t oldWord) { return oldWord; });
+  unlockAndStoreWithModifier(identity);
 }
 
 template <unsigned MaxSpins = 1000, unsigned MaxYields = 0>
@@ -264,9 +216,9 @@ class MicroLockBase : public MicroLockCore {
    * data, in which case reading and locking should be done in one atomic
    * operation.
    */
-  FOLLY_DISABLE_SANITIZERS uint8_t lockAndLoad() noexcept;
+  uint8_t lockAndLoad() noexcept;
   void lock() noexcept { lockAndLoad(); }
-  FOLLY_DISABLE_SANITIZERS bool try_lock() noexcept;
+  bool try_lock() noexcept;
 
   /**
    * A lock guard which allows reading and writing to the unused bits of the
@@ -315,13 +267,12 @@ bool MicroLockBase<MaxSpins, MaxYields>::try_lock() noexcept {
   // else has the lock (by looking at heldBit) or see our CAS succeed.
   // A failed CAS by itself does not indicate lock-acquire failure.
 
-  detail::Futex<>* wordPtr = word();
-  uint32_t oldWord = wordPtr->load(std::memory_order_relaxed);
+  uint8_t oldWord = atomic_ref(lock_).load(std::memory_order_relaxed);
   do {
     if (oldWord & heldBit()) {
       return false;
     }
-  } while (!wordPtr->compare_exchange_weak(
+  } while (!atomic_ref(lock_).compare_exchange_weak(
       oldWord,
       oldWord | heldBit(),
       std::memory_order_acquire,
@@ -334,23 +285,22 @@ template <unsigned MaxSpins, unsigned MaxYields>
 uint8_t MicroLockBase<MaxSpins, MaxYields>::lockAndLoad() noexcept {
   static_assert(MaxSpins + MaxYields < (unsigned)-1, "overflow");
 
-  detail::Futex<>* wordPtr = word();
-  uint32_t oldWord;
-  oldWord = wordPtr->load(std::memory_order_relaxed);
+  uint8_t oldWord;
+  oldWord = atomic_ref(lock_).load(std::memory_order_relaxed);
   if ((oldWord & heldBit()) == 0 &&
-      wordPtr->compare_exchange_weak(
+      atomic_ref(lock_).compare_exchange_weak(
           oldWord,
-          oldWord | heldBit(),
+          to_narrow(oldWord | heldBit()),
           std::memory_order_acquire,
           std::memory_order_relaxed)) {
     // Fast uncontended case: memory_order_acquire above is our barrier
-    return decodeDataFromWord(oldWord | heldBit());
+    return decodeDataFromWord(to_narrow(oldWord | heldBit()));
   } else {
     // lockSlowPath doesn't call waitBit(); it just shifts the input bit.  Make
     // sure its shifting produces the same result a call to waitBit would.
     assert(heldBit() << 1 == waitBit());
     // lockSlowPath emits its own memory barrier
-    return lockSlowPath(oldWord, wordPtr, baseShift(), MaxSpins, MaxYields);
+    return lockSlowPath(oldWord, MaxSpins, MaxYields);
   }
 }
 

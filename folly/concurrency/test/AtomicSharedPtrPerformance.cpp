@@ -22,7 +22,6 @@
 
 #include <folly/concurrency/AtomicSharedPtr.h>
 
-#include <sys/time.h>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>

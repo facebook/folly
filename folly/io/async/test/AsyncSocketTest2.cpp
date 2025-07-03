@@ -534,6 +534,91 @@ TEST(AsyncSocketTest, ConnectTimeout) {
   EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(1));
 }
 
+class AsyncSocketToSTest : public ::testing::Test {
+ protected:
+  using MockDispatcher = ::testing::NiceMock<netops::test::MockDispatcher>;
+  using TestObserver = MockAsyncSocketLegacyLifecycleObserverForByteEvents;
+  using ByteEventType = AsyncSocket::ByteEvent::Type;
+
+  void SetUp() override {
+    netOpsDispatcher = std::make_shared<MockDispatcher>();
+    socket = AsyncSocket::newSocket(&evb);
+    socket->setOverrideNetOpsDispatcher(netOpsDispatcher);
+    v6Addr = SocketAddress(
+        SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6, 65535);
+    v4Addr = SocketAddress(
+        SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4, 65535);
+  }
+
+  void setupDefaultReturn() {
+    EXPECT_CALL(*netOpsDispatcher, setsockopt(_, _, _, _, _))
+        .Times(AnyNumber())
+        .WillRepeatedly(Return(0));
+  }
+
+  void expectNoCallsToTOS() {
+    EXPECT_CALL(*netOpsDispatcher, setsockopt(_, IPPROTO_IP, IP_TOS, _, _))
+        .Times(0);
+    EXPECT_CALL(
+        *netOpsDispatcher, setsockopt(_, IPPROTO_IPV6, IPV6_TCLASS, _, _))
+        .Times(0);
+  }
+
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket;
+  std::shared_ptr<MockDispatcher> netOpsDispatcher;
+
+  SocketAddress v6Addr;
+  SocketAddress v4Addr;
+};
+
+TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassBeforeConnect) {
+  setupDefaultReturn();
+  int tos = 1;
+  socket->setTosOrTrafficClass(tos);
+
+  EXPECT_CALL(*netOpsDispatcher, setsockopt(_, IPPROTO_IPV6, IPV6_TCLASS, _, _))
+      .Times(1)
+      .WillOnce(Return(0));
+  socket->connect(nullptr, v6Addr, 1000);
+}
+
+TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassAfterConnect) {
+  setupDefaultReturn();
+  int tos = 1;
+  expectNoCallsToTOS();
+  // EXPECT_CALL(*netOpsDispatcher, connect(_, _, _)).WillOnce(Return(0));
+  socket->connect(nullptr, v6Addr, 1000);
+  EXPECT_CALL(*netOpsDispatcher, setsockopt(_, IPPROTO_IPV6, IPV6_TCLASS, _, _))
+      .Times(1)
+      .WillOnce([]() { return 0; });
+  socket->setTosOrTrafficClass(tos);
+}
+
+TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassIPV4) {
+  setupDefaultReturn();
+  int tos = 1;
+  socket->setTosOrTrafficClass(tos);
+
+  EXPECT_CALL(*netOpsDispatcher, setsockopt(_, IPPROTO_IP, IP_TOS, _, _))
+      .Times(1)
+      .WillOnce(Return(0));
+  socket->connect(nullptr, v4Addr, 1000);
+}
+
+TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassError) {
+  setupDefaultReturn();
+  int tos = 1;
+  socket->setTosOrTrafficClass(tos);
+
+  EXPECT_CALL(*netOpsDispatcher, setsockopt(_, IPPROTO_IP, IP_TOS, _, _))
+      .Times(1)
+      .WillOnce([]() { return -1; });
+  ConnCallback ccb;
+  socket->connect(&ccb, v4Addr, 1000);
+  EXPECT_EQ(ccb.state, StateEnum::STATE_FAILED);
+}
+
 enum class TFOState {
   DISABLED,
   ENABLED,
@@ -9788,9 +9873,12 @@ class TruncateAncillaryDataAndCallFn
   explicit TruncateAncillaryDataAndCallFn(VoidCallback cob)
       : callback_(std::move(cob)) {}
 
-  void ancillaryData(struct msghdr& msg) noexcept override {
+  folly::Expected<folly::Unit, AsyncSocketException> ancillaryData(
+      struct msghdr& msg) noexcept override {
     sawCtrunc_ = sawCtrunc_ || (msg.msg_flags & MSG_CTRUNC);
     callback_();
+
+    return folly::unit;
   }
   folly::MutableByteRange getAncillaryDataCtrlBuffer() override {
     return folly::MutableByteRange(ancillaryDataCtrlBuffer_);
@@ -10334,10 +10422,11 @@ class TestRXTimestampsCallback
  public:
   explicit TestRXTimestampsCallback(AsyncSocket* sock) : socket_(sock) {}
 
-  void ancillaryData(struct msghdr& msgh) noexcept override {
+  folly::Expected<folly::Unit, AsyncSocketException> ancillaryData(
+      struct msghdr& msgh) noexcept override {
     if (closeSocket_) {
       socket_->close();
-      return;
+      return folly::unit;
     }
 
     struct cmsghdr* cmsg;
@@ -10351,6 +10440,7 @@ class TestRXTimestampsCallback
       timespec* ts = (struct timespec*)CMSG_DATA(cmsg);
       actualRxTimestampSec_ = ts[0].tv_sec;
     }
+    return folly::unit;
   }
   folly::MutableByteRange getAncillaryDataCtrlBuffer() override {
     return folly::MutableByteRange(ancillaryDataCtrlBuffer_);

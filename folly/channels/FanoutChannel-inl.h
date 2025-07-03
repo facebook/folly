@@ -195,7 +195,7 @@ class FanoutChannelProcessor
   /**
    * Closes all subscribers without closing the fanout channel.
    */
-  void closeSubscribers(CloseResult closeResult) {
+  void closeSubscribers(CloseResult closeResult) override {
     auto state = state_.wlock();
     std::move(state->fanoutSender)
         .close(
@@ -207,7 +207,7 @@ class FanoutChannelProcessor
   /**
    * This is called when the user's FanoutChannel object has been destroyed.
    */
-  void destroyHandle(CloseResult closeResult) {
+  void destroyHandle(CloseResult closeResult) override {
     auto state = state_.wlock();
     processHandleDestroyed(state, std::move(closeResult));
   }
@@ -219,7 +219,7 @@ class FanoutChannelProcessor
     return state_.wlock()->fanoutSender.anySubscribers();
   }
 
-  ContextType getContext() { return state_.rlock()->context; }
+  ContextType getContext() override { return state_.rlock()->context; }
 
  private:
   /**

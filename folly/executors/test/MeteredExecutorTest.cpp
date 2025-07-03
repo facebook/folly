@@ -15,7 +15,6 @@
  */
 
 #include <list>
-#include <thread>
 
 #include <folly/Benchmark.h>
 #include <folly/Synchronized.h>
@@ -28,6 +27,7 @@
 #include <folly/synchronization/Baton.h>
 #include <folly/synchronization/Latch.h>
 #include <folly/synchronization/LifoSem.h>
+#include <folly/system/HardwareConcurrency.h>
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
@@ -349,16 +349,17 @@ template <typename T>
 coro::Task<bool> co_run(Executor::KeepAlive<> ka, coro::Task<T> f) {
   auto cpuexec = dynamic_cast<CPUThreadPoolExecutor*>(ka.get());
   EXPECT_TRUE(cpuexec != nullptr);
-  co_return co_await std::move(f).scheduleOn(cpuexec);
+  co_return co_await co_withExecutor(cpuexec, std::move(f));
 }
 
 } // namespace
 
 TEST_F(MeteredExecutorTest, UnderlyingExecutor) {
   createAdapter(1);
-  EXPECT_FALSE(coro::blockingWait(co_isOnCPUExc().scheduleOn(getKeepAlive(1))));
-  EXPECT_TRUE(coro::blockingWait(
-      co_run(getKeepAlive(0), co_isOnCPUExc()).scheduleOn(getKeepAlive(0))));
+  EXPECT_FALSE(
+      coro::blockingWait(co_withExecutor(getKeepAlive(1), co_isOnCPUExc())));
+  EXPECT_TRUE(coro::blockingWait(co_withExecutor(
+      getKeepAlive(0), co_run(getKeepAlive(0), co_isOnCPUExc()))));
 }
 
 TEST_F(MeteredExecutorTest, PauseResume) {
@@ -492,7 +493,7 @@ namespace {
 // in the executor (so it should ideally not impose any overhead).
 void benchmarkSaturation(
     size_t meteredExecutorChainDepth, uint32_t maxInQueue, size_t iters) {
-  const size_t numThreads = std::thread::hardware_concurrency();
+  const size_t numThreads = folly::hardware_concurrency();
 
   BenchmarkSuspender suspender;
 

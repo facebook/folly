@@ -755,6 +755,9 @@ inline constexpr uint32_t hsieh_hash32_buf_constexpr(
       hash += *s;
       hash ^= hash << 10;
       hash += hash >> 1;
+      break;
+    default:
+      break;
   }
 
   /* Force "avalanching" of final 127 bits */

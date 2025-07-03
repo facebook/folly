@@ -283,7 +283,7 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
   template <typename K>
   std::size_t computeKeyHash(K const& key) const {
     static_assert(
-        isAvalanchingHasher() == IsAvalanchingHasher<Hasher, K>::value, "");
+        isAvalanchingHasher() == IsAvalanchingHasher<Hasher, K>::value);
     static_assert(
         !isAvalanchingHasher() ||
             sizeof(decltype(hasher()(key))) >= sizeof(std::size_t),
@@ -1132,8 +1132,7 @@ class VectorContainerPolicy
   template <typename K>
   std::size_t computeKeyHash(K const& key) const {
     static_assert(
-        Super::isAvalanchingHasher() == IsAvalanchingHasher<Hasher, K>::value,
-        "");
+        Super::isAvalanchingHasher() == IsAvalanchingHasher<Hasher, K>::value);
     return this->hasher()(key);
   }
 

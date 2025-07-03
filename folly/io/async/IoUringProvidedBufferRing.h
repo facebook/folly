@@ -22,7 +22,11 @@
 
 #if FOLLY_HAS_LIBURING
 
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wnested-anon-types")
+FOLLY_CLANG_DISABLE_WARNING("-Wzero-length-array")
 #include <liburing.h> // @manual
+FOLLY_POP_WARNING
 
 namespace folly {
 

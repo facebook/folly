@@ -59,8 +59,9 @@ unsigned int* uncaught_exceptions_ptr() noexcept {
   assert(kIsGlibcxx || kIsLibcpp);
 #if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
   return &__cxxabiv1::__cxa_get_globals()->uncaughtExceptions;
-#endif
+#else
   return nullptr;
+#endif
 }
 
 } // namespace detail
@@ -703,7 +704,7 @@ static std::exception_ptr make_exception_ptr_from_rep_(Value value) noexcept {
   static_assert(sizeof(std::exception_ptr) == sizeof(Value));
   static_assert(alignof(std::exception_ptr) == alignof(Value));
   std::exception_ptr ptr;
-  std::memcpy(&ptr, &value, sizeof(value));
+  std::memcpy(static_cast<void*>(&ptr), &value, sizeof(value));
   return ptr;
 }
 

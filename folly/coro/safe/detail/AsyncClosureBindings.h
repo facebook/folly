@@ -19,6 +19,7 @@
 #include <compare>
 
 #include <folly/coro/safe/Captures.h>
+#include <folly/coro/safe/SafeAlias.h>
 
 /// This header's `async_closure_safeties_and_bindings` implements the
 /// argument-binding logic for `async_closure`.
@@ -97,6 +98,11 @@ class AsyncObjectNonSlotPtr;
 
 namespace folly::coro::detail {
 
+template <safe_alias... Vs>
+constexpr safe_alias vtag_least_safe_alias(vtag_t<Vs...>) {
+  return std::min({safe_alias::maybe_value, Vs...});
+}
+
 //
 // There are 4 tag types here, which all quack the same interface:
 //   * `storage_type`: For storing "owned captures", but also for measuring
@@ -124,17 +130,26 @@ struct async_closure_regular_arg {
   BindWrapper bindWrapper_;
 };
 
+// Use `is_base_of` since `instantiation_of` cannot handle no-type templates
+class async_closure_outer_stored_arg_base {};
+template <typename T>
+concept is_async_closure_outer_stored_arg =
+    std::is_base_of_v<async_closure_outer_stored_arg_base, T>;
+
 // For a given closure, all `_stored_arg` tags are going to be of one flavor.
-// We have separate "inner" and "outer" tags for a pretty weak reason --
-// currently, the "has outer coro" decision isn't exported in any other way.
-// If useful, we could easily refactor this to be one `_owned_capture` tag
-// type, and branch on `has_outer_coro` in `AsyncClosure.h`.  Reworking things
-// this way would make it possible to have an outer coro without storage, which
-// might be needed if someone has a legitimate use-case for captures that
-// define `setParentCancelToken()` without defining `co_cleanup()` (dubious!).
-template <is_any_capture Storage, typename BindWrapper>
-struct async_closure_outer_stored_arg {
+// With an outer coro, we capture info required to resolve backrefs.  Also, the
+// "has outer coro" decision isn't exported in any way besides the "inner" vs
+// "outer" stored arg type.  If useful, we could easily refactor this to be one
+// `_owned_capture` tag type, and branch on `has_outer_coro` in
+// `AsyncClosure.h`.  Reworking things this way would make it possible to have
+// an outer coro without storage, which might be needed if someone has a
+// legitimate use-case for captures that define `setParentCancelToken()` or
+// `setParentExecutor()` without defining `co_cleanup()` (dubious!).
+template <is_any_capture Storage, typename BindWrapper, size_t ArgI, auto Tag>
+struct async_closure_outer_stored_arg : async_closure_outer_stored_arg_base {
   using storage_type = Storage;
+  constexpr static inline size_t arg_idx = ArgI;
+  constexpr static inline auto tag = Tag;
   BindWrapper bindWrapper_;
 };
 template <is_any_capture Storage, typename BindWrapper>
@@ -210,21 +225,26 @@ struct async_closure_scope_self_ref_hack {
 struct binding_helper_cfg {
   bool is_shared_cleanup_closure;
   bool has_outer_coro;
+  bool in_safety_measurement_pass;
   constexpr auto operator<=>(const binding_helper_cfg&) const = default;
 };
 
-template <typename Binding, auto Cfg>
+template <typename Binding, auto Cfg, size_t ArgI>
 class capture_binding_helper;
+
+struct capture_ref_measurement_stub {};
 
 // This helper class only has static members.  It exists only so that the
 // various functions can share some type aliases.
 template <
     std::derived_from<folly::bindings::ext::bind_info_t> auto BI,
     typename BindingType,
-    auto Cfg>
+    auto Cfg,
+    size_t ArgI>
 class capture_binding_helper<
     folly::bindings::ext::binding_t<BI, BindingType>,
-    Cfg> {
+    Cfg,
+    ArgI> {
  private:
   // A constraint on the template would make forward-declarations messy.
   static_assert(std::is_same_v<decltype(Cfg), binding_helper_cfg>);
@@ -246,26 +266,29 @@ class capture_binding_helper<
     static_assert(std::is_reference_v<ST> == (BI.category == category_t::ref));
     if constexpr (std::is_reference_v<ArgT>) { // Is `capture<Ref>`?
       // Design note: Why do we automatically pass all `capture`s by-reference?
-      // As an alternative, recall that `folly::bindings` has `by_ref`.  This
-      // adverb, while originally meant for defining storage structs, could be
-      // hijacked as a mandatory marking for `captures` that get passed
-      // by-reference.  That would be more explicit, but also more confusing
-      // and harder to use:
-      //   - `by_ref` CANNOT be used for "regular" args, since those are
+      // As an alternative, recall that `folly::bindings` has `const_ref` /
+      // `mut_ref`.  These modifiers could be hijacked as a mandatory marking
+      // for `captures` that get passed by-reference.  That might seem more
+      // explicit, but also more confusing and harder to use:
+      //   - `const_ref` / `mut_ref CANNOT be used for "regular" args -- they're
       //     by-reference iff the caller writes `T&` in the signature.
       //   - `capture`s are intended to belong to the parent closure, it rarely
       //     makes sense to copy or move them.
       //   - Syntactically, `capture`s behave like pointers.
-      //   - If we required an explicit `by_ref` only to pass `capture<Val>` as
-      //     a `capture<Ref>`, then a closure from "has outer coro" to "lacks
-      //     outer coro" would require each called to add `by_ref`.
+      //   - If we needed an explicit `const_ref` / `mut_ref` only to pass
+      //     `capture<Val>` as a `capture<Ref>`, then migrating a closure from
+      //     "has outer coro" to "lacks outer coro" would require adding such a
+      //     modifier at every callsite.
       //   - You can still move out the contents of a capture into a child by
       //     passing an rvalue ref as `std::move(cap)` to the child, or by
       //     passing the actual value via `*std::move(cap)`.  Similarly, `*cap`
       //     would copy the value.
+      // N.B.  We DO use `as_capture{const_ref{}}` etc in order to convert
+      // plain references from a parent coro into `capture` refs in a child
+      // closure, see "capture-by-reference" in `Captures.md`.
       static_assert(
           !std::is_reference_v<ST>,
-          "Pass `capture<Ref>` by value, do not use `by_ref`");
+          "Pass `capture<Ref>` by value, do not use `const_ref` / `mut_ref`");
       // Passing the caller's `capture<Ref>` makes a new `capture` ref object.
       if constexpr (std::is_lvalue_reference_v<BindingType>) {
         // Improve errors over just "deleted copy ctor".
@@ -310,7 +333,11 @@ class capture_binding_helper<
   template <typename T>
   static constexpr auto store_as(auto bind_wrapper) {
     if constexpr (Cfg.has_outer_coro) {
-      return async_closure_outer_stored_arg<T, decltype(bind_wrapper)>{
+      return async_closure_outer_stored_arg<
+          T,
+          decltype(bind_wrapper),
+          ArgI,
+          folly::bindings::ext::named_bind_info_tag_v<decltype(BI)>>{
           .bindWrapper_ = std::move(bind_wrapper)};
     } else {
       return async_closure_inner_stored_arg<T, decltype(bind_wrapper)>{
@@ -320,9 +347,6 @@ class capture_binding_helper<
 
   // "owned capture": The closure creates storage for `as_capture()` bindings
   static constexpr auto store_capture_binding(auto bind_wrapper) {
-    static_assert(
-        (BI.category != category_t::ref) && !std::is_reference_v<ST>,
-        "`as_capture()` can only store values (not refs) on the closure");
     static_assert(
         !is_any_capture<ST>,
         "Given a capture `c`, do not write `as_capture(c)` to pass it to a "
@@ -364,23 +388,59 @@ class capture_binding_helper<
     }
   }
 
+  template <typename>
+  static inline constexpr bool is_supported_capture_bind_info_v = false;
+
+  template <>
+  static inline constexpr bool
+      is_supported_capture_bind_info_v<capture_bind_info_t> = true;
+
+  // Future: Right now, we only check that `"x"_id = ` tags are unique at time
+  // of use, and this only applies for stored captures.  But, from a pure "code
+  // quality" point of view, it would be reasonable to demand that all tags are
+  // unique, and that they are all used.  This could be done either as a linter
+  // or in this file, at some compile-time cost.
+  template <auto Tag>
+  static inline constexpr bool is_supported_capture_bind_info_v<
+      folly::bindings::ext::named_bind_info_t<Tag, capture_bind_info_t>> = true;
+
  public:
   // Transforms the binding as per the file docblock, returns a new binding.
   // (either one of the 4 tag types above, or `capture<Ref>`)
   static constexpr auto transform_binding(auto bind_wrapper) {
-    if constexpr (std::is_same_v<decltype(BI), capture_bind_info_t>) {
-      // Tests in `check_stored_*`.
-      return store_capture_binding(std::move(bind_wrapper));
+    if constexpr (is_supported_capture_bind_info_v<decltype(BI)>) {
+      // Implement "capture-by-reference", docs in `Captures.md`
+      if constexpr (BI.category == category_t::ref) {
+        // Test in `check_parent_capture_ref`
+        static_assert(std::is_reference_v<ST>);
+        static_assert(
+            !is_any_capture<UncvrefST>,
+            "Do not use `const_ref` / `mut_ref` verbs to pass a `capture` to "
+            "a child closure -- just pass it directly.");
+        // It should be hard to get a ref to a co_cleanup type
+        static_assert(!has_async_closure_co_cleanup<UncvrefST>);
+        if constexpr (Cfg.in_safety_measurement_pass) {
+          return capture_ref_measurement_stub{};
+        } else if constexpr (Cfg.is_shared_cleanup_closure) {
+          return after_cleanup_capture<ST>{
+              capture_private_t{}, std::move(bind_wrapper)};
+        } else {
+          return capture<ST>{capture_private_t{}, std::move(bind_wrapper)};
+        }
+      } else { // Tests in `check_stored_*`.
+        static_assert(!std::is_reference_v<ST>);
+        return store_capture_binding(std::move(bind_wrapper));
+      }
     } else { // Bindings for arguments the closure does NOT store.
       static_assert(
           std::is_same_v<
               vtag_t<BI>,
               vtag_t<folly::bindings::ext::bind_info_t{}>>,
-          "`folly::bindings::` modifiers like `constant` only make sense in "
-          "`as_capture()` bindings -- for example, to move a mutable value "
-          "into `const` capture storage. For regular args, use `const` in "
-          "the signature of your inner coro, and/or `std::as_const` when "
-          "passing the arg.");
+          "`folly::bindings::` modifiers like `constant` (or `\"x\"_id = `) "
+          "only make sense with `as_capture()` bindings -- for example, to "
+          "move a mutable value into `const` capture storage. For regular "
+          "args, use `const` in the signature of your inner coro, and/or "
+          "`std::as_const` when passing the arg.");
       // If we allowed `make_in_place` without `as_capture`, the argument would
       // require a copy or a move to be passed to the inner task (which the
       // type may not support).  If `as_capture` isn't appropriate, the user
@@ -428,11 +488,11 @@ class capture_binding_helper<
 
 // See `vtag_safety_of_async_closure_args` for the docs.
 // NB: As a nested lambda, this breaks on clang-17 due to compiler bugs.
-template <bool IncludeRefHack, typename T>
+template <bool ParentViewOfSafety, typename T>
 auto vtag_safety_of_async_closure_arg() {
   // "owned capture": `store_as` outputs `async_closure_*_stored_arg`.
   if constexpr (
-      is_instantiation_of_v<async_closure_outer_stored_arg, T> ||
+      is_async_closure_outer_stored_arg<T> ||
       is_instantiation_of_v<async_closure_inner_stored_arg, T>) {
     using CT = typename T::storage_type::capture_type;
     static_assert(!std::is_reference_v<CT>);
@@ -443,24 +503,34 @@ auto vtag_safety_of_async_closure_arg() {
     return vtag<capture_safety_impl_v<CT>>;
   } else if constexpr ( //
       is_instantiation_of_v<async_closure_scope_self_ref_hack, T>) {
-    if constexpr (IncludeRefHack) {
+    // This is a closure made by `spawn_self_closure()` et al. It must:
+    //  - Avoid marking the closure's outer task `shared_cleanup`, so it can
+    //    still be added to the scope that made it (`if` branch).
+    //  - Downgrade [*] the safety of its own captures (`else` branch).
+    //
+    // [*] It would be memory-unsafe to reference such captures from
+    // recursively scheduled closures on the same scope!
+    if constexpr (ParentViewOfSafety) {
+      return vtag<>;
+    } else {
       constexpr auto storage_safety = safe_alias_of_v<typename T::storage_type>;
       // In current usage, ref_hack can only contain `co_cleanup_capture<V&>`.
       static_assert(storage_safety == safe_alias::shared_cleanup);
       return vtag<storage_safety>;
-    } else {
-      // The closure made by `scheduleScopeClosure` (et al) should downgrade[*]
-      // the safety of its own captures, but it must not mark the closure's
-      // outer task `shared_cleanup` (so it can still be added to the scope).
-      //
-      // [*] It would be memory-unsafe to reference such captures from
-      // recursively scheduled closures on the same scope!
-      return vtag<>;
     }
   } else if constexpr (is_any_capture<T>) {
     // "pass capture ref": Output of the `to_capture_ref` branch.
     static_assert(std::is_reference_v<typename T::capture_type>);
     return vtag<safe_alias_of_v<T>>;
+  } else if constexpr (std::is_same_v<capture_ref_measurement_stub, T>) {
+    if constexpr (ParentViewOfSafety) {
+      // Only allow capture-by-reference in `async_now_closure`s
+      return vtag<safe_alias::unsafe>;
+    } else {
+      // But, don't do closure-internal downgrades, since `transform_bindings`
+      // tries to prevent it from taking in refs to co_cleanup types this way.
+      return vtag<>;
+    }
   } else {
     // "regular arg": A non-`capture` passed via forwarding reference.
     static_assert(is_instantiation_of_v<async_closure_regular_arg, T>);
@@ -481,12 +551,14 @@ auto vtag_safety_of_async_closure_arg() {
 // closure's own args downgraded to `after_cleanup_ref` safety), but not in
 // the second (we don't want the emitted `SafeTask` to be knocked down to
 // `shared_cleanup` safety, since that would make it unschedulable).
-template <bool IncludeRefHack, typename TransformedBindingList>
+template <bool ParentViewOfSafety, typename TransformedBindingList>
 constexpr auto vtag_safety_of_async_closure_args() {
   return []<typename... T>(tag_t<T...>) {
     return value_list_concat_t<
         vtag_t,
-        decltype(vtag_safety_of_async_closure_arg<IncludeRefHack, T>())...>{};
+        decltype(vtag_safety_of_async_closure_arg<
+                 ParentViewOfSafety,
+                 T>())...>{};
   }(TransformedBindingList{});
 }
 
@@ -586,18 +658,18 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
       typename BoundArgs::binding_list_t{}));
 
   auto tup = static_cast<BoundArgs&&>(bargs).unsafe_tuple_to_bind();
-  auto make_result_tuple = [&]<binding_helper_cfg HelperCfg>(
-                               vtag_t<HelperCfg>) {
-    return [&]<size_t... Is>(std::index_sequence<Is...>) {
-      return lite_tuple::tuple{[&]() {
-        using Binding = type_list_element_t<Is, Bindings>;
-        using T = std::tuple_element_t<Is, decltype(tup)>;
-        return capture_binding_helper<Binding, HelperCfg>::transform_binding(
-            bind_wrapper_t<T>{
-                .t_ = static_cast<T&&>(lite_tuple::get<Is>(tup))});
-      }()...};
-    }(std::make_index_sequence<type_list_size_v<Bindings>>{});
-  };
+  auto make_result_tuple =
+      [&]<binding_helper_cfg HelperCfg>(vtag_t<HelperCfg>) {
+        return [&]<size_t... Is>(std::index_sequence<Is...>) {
+          return lite_tuple::tuple{[&]() {
+            using Binding = type_list_element_t<Is, Bindings>;
+            using T = std::tuple_element_t<Is, decltype(tup)>;
+            return capture_binding_helper<Binding, HelperCfg, Is>::
+                transform_binding(bind_wrapper_t<T>{
+                    .t_ = static_cast<T&&>(lite_tuple::get<Is>(tup))});
+          }()...};
+        }(std::make_index_sequence<type_list_size_v<Bindings>>{});
+      };
 
   // Future: If there are many `make_in_place` arguments (which require
   // `capture_heap`), it may be more efficient to auto-select an outer coro,
@@ -619,41 +691,53 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   // original safety applies in the parent closure, which is where the
   // returned `vtag` is consumed.
   //
-  // Choosing `true` does not affect the presence of `shared_cleanup` in the
-  // vtag -- this toggles between `after_cleanup_ref_capture` and `capture`,
-  // with either `after_cleanup_ref` or `co_cleanup_safe_ref` safety.
+  // Choosing `true` here does not affect the `is_shared_cleanup` choice below
+  // It merely toggles between `after_cleanup_ref_capture` and `capture`, with
+  // either `after_cleanup_ref` or `co_cleanup_safe_ref` safety.
   using shared_cleanup_transformed_binding_types = type_list_concat_t<
       tag_t,
       decltype(make_result_tuple(
           vtag<binding_helper_cfg{
               .is_shared_cleanup_closure = true,
-              .has_outer_coro = has_outer_coro}>))>;
+              .has_outer_coro = has_outer_coro,
+              .in_safety_measurement_pass = true}>))>;
 
-  // This bit affects **only** closures created by `scheduleScopeClosure` and
-  // `scheduleSelfClosure`.  Also see `async_closure_scope_self_ref_hack`.
+  // Why do we evaluate arg safety with `ParentViewOfSafety == true` here,
+  // and with `false` in the returned `vtag_safety_of_async_closure_args`?
   //
-  // Why does `IncludeRefHack` differ from the returned
-  // `vtag_safety_of_async_closure_args`?
+  // This toggle supports two usage scenarios:
+  //
+  // (1) Capture-by-reference behaviors, like `capture_const_ref()` /
+  // `as_capture(const_ref())` et al.
+  //    - `unsafe` for parent --  Since these are raw references from the
+  //      parent's scope, ensure they're only allowed in `async_now_closure`s.
+  //    - Ignored by child -- Simultaneously, we don't want the internal coro
+  //      to be subject to "shared cleanup" downgrades.  Doing that would,
+  //      e.g., break the useful pattern of an on-closure scope collecting
+  //      results on a parent collector passed via capture-by-reference.
+  //
+  // (2) Closures created by `spawn_self_closure()` et al.  Also see
+  // `async_closure_scope_self_ref_hack`.
   //
   //   - In the returned `vtag` that measures the parent's view of the safety
-  //     of the closure, we set it to `false`.  This excludes the closure's
-  //     first arg (the scope or object ref) from the vtag -- it would
-  //     otherwise be `shared_cleanup`.  That is, of course, the entire point
-  //     of `schedule*Closure` -- we happen to know that the scope ref is
-  //     safe because of the circumstances of the closure's creation.
+  //     of the closure, `ParentViewOfSafety == true` will exclude the
+  //     closure's first arg (the scope or object ref) from the vtag -- it
+  //     would otherwise be `shared_cleanup`.  That is, of course, the entire
+  //     point of `spawn_self_closure()` -- we happen to know that the scope
+  //     ref is safe because of the circumstances of the closure's creation.
   //
-  //   - Here, we set it to `true`.  Then, the `scheduleScopeClosure` and
-  //     `scheduleSelfClosure` closures **internally** consider themselves to
-  //     be `shared_cleanup` closures. I.e. `after_cleanup_` inputs are not
-  //     upgraded, and owned captures are downgraded to `after_cleanup_`.
+  //   - Using `ParentViewOfSafety = false` here makes `spawn_self_closure`s
+  //     **internally** consider themselves to be `shared_cleanup` closures.
+  //     I.e. `after_cleanup_` inputs are not upgraded, and owned captures are
+  //     downgraded to `after_cleanup_`.
   //
-  //     To see that these downgrades are the correct behavior, imagine a
-  //     chain of closures, each calling `scheduleScopeClosure` to make the
-  //     next.  `SafeAsyncScope` awaits these concurrently, so they must not
-  //     take dependencies on each other's owned captures.
-  constexpr auto internal_arg_min_safety = folly::least_safe_alias(
+  //     To see that these downgrades are the correct behavior, imagine a chain
+  //     of closures, each calling `spawn_self_closure()` to make the next.
+  //     `SafeAsyncScope` awaits these concurrently, so they must not take
+  //     dependencies on each other's owned captures.
+  constexpr auto internal_arg_min_safety = vtag_least_safe_alias(
       vtag_safety_of_async_closure_args<
-          /*IncludeRefHack*/ true,
+          /*ParentViewOfSafety*/ false,
           shared_cleanup_transformed_binding_types>());
 
   // Compute the `after_cleanup_` downgrade/upgrade behavior for the closure.
@@ -673,13 +757,14 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   return lite_tuple::tuple{
       // Safety of the closure's arguments from the parent's perspective
       vtag_safety_of_async_closure_args<
-          /*IncludeRefHack*/ false,
+          /*ParentViewOfSafety*/ true,
           shared_cleanup_transformed_binding_types>(),
       // How the child closure should store and/or bind its arguments
       make_result_tuple(
           vtag<binding_helper_cfg{
               .is_shared_cleanup_closure = is_shared_cleanup,
-              .has_outer_coro = has_outer_coro}>)};
+              .has_outer_coro = has_outer_coro,
+              .in_safety_measurement_pass = false}>)};
 }
 
 } // namespace folly::coro::detail

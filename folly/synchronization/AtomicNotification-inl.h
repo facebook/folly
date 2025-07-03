@@ -27,7 +27,7 @@ namespace atomic_notification {
  * overhead with respect to atomic notifications.  Assert that
  * atomic_uint_fast_wait_t is the same as Futex<std::atomic>
  */
-static_assert(std::is_same<atomic_uint_fast_wait_t, Futex<std::atomic>>{}, "");
+static_assert(std::is_same<atomic_uint_fast_wait_t, Futex<std::atomic>>{});
 
 /**
  * Implementation and specializations for the atomic_wait() family of
@@ -56,7 +56,7 @@ void atomic_wait_impl(
 
 template <template <typename...> class Atom, typename Integer, typename... Args>
 void atomic_wait_impl(const Atom<Integer, Args...>* atomic, Integer old) {
-  static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
+  static_assert(!std::is_same<Integer, std::uint32_t>{});
   parkingLot.park(atomic, -1, [&] { return atomic->load() == old; }, [] {});
 }
 
@@ -84,7 +84,7 @@ std::cv_status atomic_wait_until_impl(
     const Atom<Integer, Args...>* atomic,
     Integer expected,
     const std::chrono::time_point<Clock, Duration>& deadline) {
-  static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
+  static_assert(!std::is_same<Integer, std::uint32_t>{});
   return toCvStatus(parkingLot.park_until(
       atomic, -1, [&] { return atomic->load() == expected; }, [] {}, deadline));
 }
@@ -97,7 +97,7 @@ void atomic_notify_one_impl(const Atom<std::uint32_t, Args...>* atomic) {
 
 template <template <typename...> class Atom, typename Integer, typename... Args>
 void atomic_notify_one_impl(const Atom<Integer, Args...>* atomic) {
-  static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
+  static_assert(!std::is_same<Integer, std::uint32_t>{});
   parkingLot.unpark(atomic, [&](const auto& data) {
     FOLLY_SAFE_DCHECK(data == std::numeric_limits<std::uint32_t>::max(), "");
     return UnparkControl::RemoveBreak;
@@ -112,7 +112,7 @@ void atomic_notify_all_impl(const Atom<std::uint32_t, Args...>* atomic) {
 
 template <template <typename...> class Atom, typename Integer, typename... Args>
 void atomic_notify_all_impl(const Atom<Integer, Args...>* atomic) {
-  static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
+  static_assert(!std::is_same<Integer, std::uint32_t>{});
   parkingLot.unpark(atomic, [&](const auto& data) {
     FOLLY_SAFE_DCHECK(data == std::numeric_limits<std::uint32_t>::max(), "");
     return UnparkControl::RemoveContinue;

@@ -32,6 +32,7 @@ fbcode_target(
     name = "now_task_test",
     srcs = ["NowTaskTest.cpp"],
     deps = [
+        "//folly/coro:async_generator",
         "//folly/coro:blocking_wait",
         "//folly/coro:gtest_helpers",
         "//folly/coro/safe:now_task",

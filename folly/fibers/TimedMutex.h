@@ -24,6 +24,39 @@
 namespace folly {
 namespace fibers {
 
+namespace detail {
+
+// Represents a waiter waiting for the lock. The waiter waits on the baton until
+// it is woken up by a post or timeout expires.
+//
+// The destructor blocks until wake() is called. This is to ensure that if a
+// waiter times out, it is not invalidated for a waker that might have already
+// have acquired a reference to it. Hence, whoever removes the waiter from a
+// list is responsible for waking it.
+template <class BatonType>
+class MutexWaiter {
+ public:
+  MutexWaiter() = default;
+  ~MutexWaiter();
+
+  void wait();
+
+  template <class Deadline>
+  bool try_wait_until(Deadline deadline);
+
+  void wake();
+
+  folly::SafeIntrusiveListHook hook;
+
+ private:
+  BatonType baton_;
+  // This is silly, but Baton implementations do not allow to check the state
+  // after a timed out wait, so we need to duplicate the state.
+  std::atomic<bool> posted_{false};
+};
+
+} // namespace detail
+
 /**
  * @class TimedMutex
  *
@@ -77,17 +110,12 @@ class TimedMutex {
  private:
   enum class LockResult { SUCCESS, TIMEOUT, STOLEN };
 
+  using MutexWaiter = detail::MutexWaiter<Baton>;
+  using MutexWaiterList =
+      folly::SafeIntrusiveList<MutexWaiter, &MutexWaiter::hook>;
+
   template <typename WaitFunc>
   LockResult lockHelper(WaitFunc&& waitFunc);
-
-  // represents a waiter waiting for the lock. The waiter waits on the
-  // baton until it is woken up by a post or timeout expires.
-  struct MutexWaiter {
-    Baton baton;
-    folly::IntrusiveListHook hook;
-  };
-
-  using MutexWaiterList = folly::IntrusiveList<MutexWaiter, &MutexWaiter::hook>;
 
   const Options options_;
   folly::SpinLock lock_; //< lock to protect waiter list
@@ -190,30 +218,11 @@ class TimedRWMutexImpl {
 
   void unlock_();
 
-  // Different states the lock can be in
-  enum class State {
-    UNLOCKED,
-    READ_LOCKED,
-    WRITE_LOCKED,
-  };
+  enum class State : uint8_t { UNLOCKED, READ_LOCKED, WRITE_LOCKED };
 
-  typedef boost::intrusive::list_member_hook<> MutexWaiterHookType;
-
-  // represents a waiter waiting for the lock.
-  struct MutexWaiter {
-    BatonType baton;
-    MutexWaiterHookType hook;
-  };
-
-  typedef boost::intrusive::
-      member_hook<MutexWaiter, MutexWaiterHookType, &MutexWaiter::hook>
-          MutexWaiterHook;
-
-  typedef boost::intrusive::list<
-      MutexWaiter,
-      MutexWaiterHook,
-      boost::intrusive::constant_time_size<true>>
-      MutexWaiterList;
+  using MutexWaiter = detail::MutexWaiter<BatonType>;
+  using MutexWaiterList =
+      folly::CountedIntrusiveList<MutexWaiter, &MutexWaiter::hook>;
 
   folly::SpinLock lock_; //< lock protecting the internal state
   // (state_, read_waiters_, etc.)

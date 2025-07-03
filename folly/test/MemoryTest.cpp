@@ -497,66 +497,56 @@ TEST(AllocatorObjectLifecycleTraits, compiles) {
   using A = std::allocator<int>;
   using S = std::string;
 
-  static_assert(
-      folly::AllocatorHasDefaultObjectConstruct<A, int, int>::value, "");
-  static_assert(folly::AllocatorHasDefaultObjectConstruct<A, S, S>::value, "");
+  static_assert(folly::AllocatorHasDefaultObjectConstruct<A, int, int>::value);
+  static_assert(folly::AllocatorHasDefaultObjectConstruct<A, S, S>::value);
 
-  static_assert(folly::AllocatorHasDefaultObjectDestroy<A, int>::value, "");
-  static_assert(folly::AllocatorHasDefaultObjectDestroy<A, S>::value, "");
+  static_assert(folly::AllocatorHasDefaultObjectDestroy<A, int>::value);
+  static_assert(folly::AllocatorHasDefaultObjectDestroy<A, S>::value);
 
   static_assert(
       folly::AllocatorHasDefaultObjectConstruct<
           folly::AlignedSysAllocator<int>,
           int,
-          int>::value,
-      "");
+          int>::value);
   static_assert(
       folly::AllocatorHasDefaultObjectConstruct<
           folly::AlignedSysAllocator<int>,
           S,
-          S>::value,
-      "");
+          S>::value);
 
   static_assert(
       folly::AllocatorHasDefaultObjectDestroy<
           folly::AlignedSysAllocator<int>,
-          int>::value,
-      "");
+          int>::value);
   static_assert(
       folly::AllocatorHasDefaultObjectDestroy<
           folly::AlignedSysAllocator<int>,
-          S>::value,
-      "");
+          S>::value);
 
   static_assert(
-      !folly::AllocatorHasDefaultObjectConstruct<TestAlloc1<S>, S, S>::value,
-      "");
+      !folly::AllocatorHasDefaultObjectConstruct<TestAlloc1<S>, S, S>::value);
   static_assert(
-      folly::AllocatorHasDefaultObjectDestroy<TestAlloc1<S>, S>::value, "");
+      folly::AllocatorHasDefaultObjectDestroy<TestAlloc1<S>, S>::value);
 
   static_assert(
-      !folly::AllocatorHasDefaultObjectConstruct<TestAlloc2<S>, S, S>::value,
-      "");
+      !folly::AllocatorHasDefaultObjectConstruct<TestAlloc2<S>, S, S>::value);
   static_assert(
-      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc2<S>, S>::value, "");
+      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc2<S>, S>::value);
 
   static_assert(
-      folly::AllocatorHasDefaultObjectConstruct<TestAlloc3<S>, S, S>::value,
-      "");
+      folly::AllocatorHasDefaultObjectConstruct<TestAlloc3<S>, S, S>::value);
   static_assert(
-      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc3<S>, S>::value, "");
+      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc3<S>, S>::value);
 
   static_assert(
-      folly::AllocatorHasDefaultObjectConstruct<TestAlloc4<S>, S, S>::value,
-      "");
+      folly::AllocatorHasDefaultObjectConstruct<TestAlloc4<S>, S, S>::value);
   static_assert(
-      folly::AllocatorHasDefaultObjectDestroy<TestAlloc4<S>, S>::value, "");
+      folly::AllocatorHasDefaultObjectDestroy<TestAlloc4<S>, S>::value);
 
   static_assert(
-      folly::AllocatorHasDefaultObjectConstruct<TestAlloc5<S>, S, S>::value,
-      "");
+      folly::AllocatorHasDefaultObjectConstruct<TestAlloc5<S>, S, S>::value);
   static_assert(
-      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc5<S>, S>::value, "");
+      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc5<S>, S>::value);
 }
 
 template <typename T>

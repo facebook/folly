@@ -141,114 +141,91 @@ struct CallableButNotCopyable {
 // TEST =====================================================================
 // Test constructibility and non-constructibility for some tricky conversions
 static_assert(
-    !std::is_assignable<Function<void()>, CallableButNotCopyable>::value, "");
+    !std::is_assignable<Function<void()>, CallableButNotCopyable>::value);
 static_assert(
-    !std::is_constructible<Function<void()>, CallableButNotCopyable&>::value,
-    "");
+    !std::is_constructible<Function<void()>, CallableButNotCopyable&>::value);
 static_assert(
     !std::is_constructible<Function<void() const>, CallableButNotCopyable>::
-        value,
-    "");
+        value);
 static_assert(
     !std::is_constructible<Function<void() const>, CallableButNotCopyable&>::
-        value,
-    "");
+        value);
 
 static_assert(
-    !std::is_assignable<Function<void()>, CallableButNotCopyable>::value, "");
+    !std::is_assignable<Function<void()>, CallableButNotCopyable>::value);
 static_assert(
-    !std::is_assignable<Function<void()>, CallableButNotCopyable&>::value, "");
+    !std::is_assignable<Function<void()>, CallableButNotCopyable&>::value);
 static_assert(
-    !std::is_assignable<Function<void() const>, CallableButNotCopyable>::value,
-    "");
+    !std::is_assignable<Function<void() const>, CallableButNotCopyable>::value);
 static_assert(
-    !std::is_assignable<Function<void() const>, CallableButNotCopyable&>::value,
-    "");
+    !std::is_assignable<Function<void() const>, CallableButNotCopyable&>::
+        value);
 
 static_assert(
-    std::is_constructible<Function<int(int)>, Function<int(int) const>>::value,
-    "");
+    std::is_constructible<Function<int(int)>, Function<int(int) const>>::value);
 static_assert(
-    !std::is_constructible<Function<int(int) const>, Function<int(int)>>::value,
-    "");
+    !std::is_constructible<Function<int(int) const>, Function<int(int)>>::
+        value);
 static_assert(
     std::is_constructible<Function<int(short)>, Function<short(int) const>>::
-        value,
-    "");
+        value);
 static_assert(
     !std::is_constructible<Function<int(short) const>, Function<short(int)>>::
-        value,
-    "");
+        value);
 static_assert(
     !std::is_constructible<Function<int(int)>, Function<int(int) const>&>::
-        value,
-    "");
+        value);
 static_assert(
     !std::is_constructible<Function<int(int) const>, Function<int(int)>&>::
-        value,
-    "");
+        value);
 static_assert(
     !std::is_constructible<Function<int(short)>, Function<short(int) const>&>::
-        value,
-    "");
+        value);
 static_assert(
     !std::is_constructible<Function<int(short) const>, Function<short(int)>&>::
-        value,
-    "");
+        value);
 
 static_assert(
-    std::is_assignable<Function<int(int)>, Function<int(int) const>>::value,
-    "");
+    std::is_assignable<Function<int(int)>, Function<int(int) const>>::value);
 static_assert(
-    !std::is_assignable<Function<int(int) const>, Function<int(int)>>::value,
-    "");
+    !std::is_assignable<Function<int(int) const>, Function<int(int)>>::value);
 static_assert(
-    std::is_assignable<Function<int(short)>, Function<short(int) const>>::value,
-    "");
+    std::is_assignable<Function<int(short)>, Function<short(int) const>>::
+        value);
 static_assert(
     !std::is_assignable<Function<int(short) const>, Function<short(int)>>::
-        value,
-    "");
+        value);
 static_assert(
-    !std::is_assignable<Function<int(int)>, Function<int(int) const>&>::value,
-    "");
+    !std::is_assignable<Function<int(int)>, Function<int(int) const>&>::value);
 static_assert(
-    !std::is_assignable<Function<int(int) const>, Function<int(int)>&>::value,
-    "");
+    !std::is_assignable<Function<int(int) const>, Function<int(int)>&>::value);
 static_assert(
     !std::is_assignable<Function<int(short)>, Function<short(int) const>&>::
-        value,
-    "");
+        value);
 static_assert(
     !std::is_assignable<Function<int(short) const>, Function<short(int)>&>::
-        value,
-    "");
+        value);
 
-static_assert(
+static_assert( //
     std::is_nothrow_constructible<
         Function<int(int)>,
-        Function<int(int) const>>::value,
-    "");
-static_assert(
+        Function<int(int) const>>::value);
+static_assert( //
     !std::is_nothrow_constructible<
         Function<int(short)>,
-        Function<short(int) const>>::value,
-    "");
+        Function<short(int) const>>::value);
 static_assert(
     std::is_nothrow_assignable<Function<int(int)>, Function<int(int) const>>::
-        value,
-    "");
-static_assert(
+        value);
+static_assert( //
     !std::is_nothrow_assignable<
         Function<int(short)>,
-        Function<short(int) const>>::value,
-    "");
+        Function<short(int) const>>::value);
+
+static_assert(!std::is_constructible<Function<int const&()>, int (*)()>::value);
 
 static_assert(
-    !std::is_constructible<Function<int const&()>, int (*)()>::value, "");
-
-static_assert(
-    !std::is_constructible<Function<int const&() const>, int (*)()>::value, "");
+    !std::is_constructible<Function<int const&() const>, int (*)()>::value);
 
 static_assert( //
     !std::is_constructible_v< //
@@ -300,7 +277,7 @@ static_assert( //
         Function<int() const>,
         Function<int() const noexcept>>);
 
-static_assert(std::is_nothrow_destructible<Function<int(int)>>::value, "");
+static_assert(std::is_nothrow_destructible<Function<int(int)>>::value);
 
 struct ctor_guide {
   static void fn();

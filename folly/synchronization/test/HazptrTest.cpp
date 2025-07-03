@@ -19,6 +19,7 @@
 #include <atomic>
 #include <thread>
 
+#include <iomanip>
 #include <folly/Singleton.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>

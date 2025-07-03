@@ -30,50 +30,58 @@ namespace detail {
 
 template <typename T>
 struct atomic_ref_base {
-  static_assert(sizeof(T) == sizeof(std::atomic<T>), "size mismatch");
-  static_assert(
-      std::is_trivially_copyable_v<T>, "value not trivially-copyable");
+  using value_type = remove_cvref_t<T>;
 
-  using value_type = T;
+ private:
+  using atomic_reference = copy_cvref_t<T, std::atomic<value_type>>&;
+
+ public:
+  static_assert(
+      sizeof(value_type) == sizeof(std::atomic<value_type>), "size mismatch");
+  static_assert(
+      std::is_trivially_copyable_v<value_type>, "value not trivially-copyable");
 
   static inline constexpr std::size_t required_alignment =
-      alignof(std::atomic<T>);
+      alignof(std::atomic<value_type>);
 
   explicit atomic_ref_base(T& ref) : ref_(ref) { check_alignment_(); }
   atomic_ref_base(atomic_ref_base const&) = default;
 
-  void store(T desired, std::memory_order order = std::memory_order_seq_cst)
-      const noexcept {
+  void store(
+      value_type desired,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().store(desired, order);
   }
 
-  T load(std::memory_order order = std::memory_order_seq_cst) const noexcept {
+  value_type load(
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().load(order);
   }
 
-  T exchange(T desired, std::memory_order order = std::memory_order_seq_cst)
-      const noexcept {
+  value_type exchange(
+      value_type desired,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().exchange(desired, order);
   }
 
   bool compare_exchange_weak(
-      T& expected,
-      T desired,
+      value_type& expected,
+      value_type desired,
       std::memory_order success,
       std::memory_order failure) const noexcept {
     return atomic().compare_exchange_weak(expected, desired, success, failure);
   }
 
   bool compare_exchange_weak(
-      T& expected,
-      T desired,
+      value_type& expected,
+      value_type desired,
       std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().compare_exchange_weak(expected, desired, order);
   }
 
   bool compare_exchange_strong(
-      T& expected,
-      T desired,
+      value_type& expected,
+      value_type desired,
       std::memory_order success,
       std::memory_order failure) const noexcept {
     return atomic().compare_exchange_strong(
@@ -81,14 +89,14 @@ struct atomic_ref_base {
   }
 
   bool compare_exchange_strong(
-      T& expected,
-      T desired,
+      value_type& expected,
+      value_type desired,
       std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().compare_exchange_strong(expected, desired, order);
   }
 
-  std::atomic<T>& atomic() const noexcept {
-    return reinterpret_cast<std::atomic<T>&>(ref_); // ub dragons be here
+  atomic_reference atomic() const noexcept {
+    return reinterpret_cast<atomic_reference>(ref_); // ub dragons be here
   }
 
  private:
@@ -103,38 +111,45 @@ struct atomic_ref_base {
 
 template <typename T>
 struct atomic_ref_integral_base : atomic_ref_base<T> {
+  using typename atomic_ref_base<T>::value_type;
+
   using atomic_ref_base<T>::atomic_ref_base;
   using atomic_ref_base<T>::atomic;
 
-  T fetch_add(T arg, std::memory_order order = std::memory_order_seq_cst)
-      const noexcept {
+  value_type fetch_add(
+      value_type arg,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().fetch_add(arg, order);
   }
 
-  T fetch_sub(T arg, std::memory_order order = std::memory_order_seq_cst)
-      const noexcept {
+  value_type fetch_sub(
+      value_type arg,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().fetch_sub(arg, order);
   }
 
-  T fetch_and(T arg, std::memory_order order = std::memory_order_seq_cst)
-      const noexcept {
+  value_type fetch_and(
+      value_type arg,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().fetch_and(arg, order);
   }
 
-  T fetch_or(T arg, std::memory_order order = std::memory_order_seq_cst)
-      const noexcept {
+  value_type fetch_or(
+      value_type arg,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().fetch_or(arg, order);
   }
 
-  T fetch_xor(T arg, std::memory_order order = std::memory_order_seq_cst)
-      const noexcept {
+  value_type fetch_xor(
+      value_type arg,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept {
     return atomic().fetch_xor(arg, order);
   }
 };
 
-template <typename T>
+template <typename T, typename TD = remove_cvref_t<T>>
 using atomic_ref_select = conditional_t<
-    std::is_integral<T>::value && !std::is_same<T, bool>::value,
+    std::is_integral<TD>::value && !std::is_same<TD, bool>::value,
     atomic_ref_integral_base<T>,
     atomic_ref_base<T>>;
 
@@ -166,10 +181,12 @@ atomic_ref(T&) -> atomic_ref<T>;
 struct make_atomic_ref_t {
   template <
       typename T,
+      typename...,
+      typename TD = remove_cvref_t<T>,
+      typename ATD = std::atomic<TD>,
       std::enable_if_t<
-          std::is_trivially_copyable_v<T> &&
-              sizeof(T) == sizeof(std::atomic<T>) &&
-              alignof(T) == alignof(std::atomic<T>),
+          std::is_trivially_copyable_v<TD> && //
+              sizeof(TD) == sizeof(ATD) && alignof(TD) == alignof(ATD),
           int> = 0>
   atomic_ref<T> operator()(T& ref) const {
     return atomic_ref<T>{ref};

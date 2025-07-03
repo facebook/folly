@@ -96,14 +96,15 @@ TEST_F(NotNullTest, ctor_exception) {
   EXPECT_FALSE((ctor_throws<Derived*, const not_null<Derived*>&>(nnd)));
 
   // Converting constructor fails in debug mode
-#ifndef NDEBUG
-  EXPECT_DEATH(not_null<Base*> nb1(nnd), "not_null internal pointer is null");
-  EXPECT_DEATH(
-      not_null<Base*> nb2(std::move(nnd)), "not_null internal pointer is null");
-#else
-  EXPECT_FALSE(ctor_throws<Base*>(nnd));
-  EXPECT_FALSE(ctor_throws<Base*>(std::move(nnd)));
-#endif
+  if constexpr (folly::kIsDebug) {
+    EXPECT_DEATH(not_null<Base*> nb1(nnd), "not_null internal pointer is null");
+    EXPECT_DEATH(
+        not_null<Base*> nb2(std::move(nnd)),
+        "not_null internal pointer is null");
+  } else {
+    EXPECT_FALSE(ctor_throws<Base*>(nnd));
+    EXPECT_FALSE(ctor_throws<Base*>(std::move(nnd)));
+  }
 }
 
 TEST_F(NotNullTest, ctor_conversion) {
@@ -168,12 +169,12 @@ TEST_F(NotNullTest, move_casting) {
   auto f = [](std::unique_ptr<Base>) {};
   f(std::move(nnd));
 
-#ifdef NDEBUG
-  // use-after-move is disallowed, but possible
-  EXPECT_EQ(nnd.unwrap(), nullptr);
-#else
-  EXPECT_DEATH(nnd.unwrap(), "not_null internal pointer is null");
-#endif
+  if constexpr (folly::kIsDebug) {
+    EXPECT_DEATH(nnd.unwrap(), "not_null internal pointer is null");
+  } else {
+    // use-after-move is disallowed, but possible
+    EXPECT_EQ(nnd.unwrap(), nullptr);
+  }
 }
 
 // If there are multiple ways to convert, not_null's casting operator should
@@ -552,13 +553,13 @@ TEST_F(NotNullSharedPtrTest, pointer_cast_check) {
   EXPECT_EQ(nnd.get(), nnb1.get());
 
   nullify(nnd);
-#ifndef NDEBUG
-  EXPECT_DEATH(
-      static_pointer_cast<Base>(nnd), "not_null internal pointer is null");
-#else
-  auto nnb2 = static_pointer_cast<Base>(nnd);
-  EXPECT_EQ(nnb2.get(), nullptr);
-#endif
+  if constexpr (folly::kIsDebug) {
+    EXPECT_DEATH(
+        static_pointer_cast<Base>(nnd), "not_null internal pointer is null");
+  } else {
+    auto nnb2 = static_pointer_cast<Base>(nnd);
+    EXPECT_EQ(nnb2.get(), nullptr);
+  }
 }
 
 template <typename T>

@@ -145,11 +145,16 @@ auto collectAllTryImpl(
   }
 }
 
-template <typename... SemiAwaitables, size_t... Indices>
-auto collectAllImpl(
-    std::index_sequence<Indices...>, SemiAwaitables... awaitables)
-    -> folly::coro::Task<
-        std::tuple<collect_all_component_t<SemiAwaitables>...>> {
+template <
+    typename Ret,
+    typename... SemiAwaitables,
+    size_t... Indices,
+    typename... SemiFns>
+Ret collectAllImpl(
+    tag_t<Ret, SemiAwaitables...>,
+    std::index_sequence<Indices...>,
+    // `semiFns()` is the immovable, must-await-immediately `SemiAwaitable`
+    SemiFns... semiFns) {
   if constexpr (sizeof...(SemiAwaitables) == 0) {
     co_return std::tuple<>{};
   } else {
@@ -163,20 +168,21 @@ auto collectAllImpl(
 
     exception_wrapper firstException;
 
-    auto makeTask = [&](auto&& awaitable, auto& result) -> BarrierTask {
-      using await_result = semi_await_result_t<decltype(awaitable)>;
+    auto makeTask = [&](auto&& fn, auto& result) -> BarrierTask {
+      using await_result =
+          semi_await_result_t<decltype(static_cast<decltype(fn)>(fn)())>;
       try {
         if constexpr (std::is_void_v<await_result>) {
           co_await co_viaIfAsync(
               executor.get_alias(),
               co_withCancellation(
-                  cancelToken, static_cast<decltype(awaitable)>(awaitable)));
+                  cancelToken, static_cast<decltype(fn)>(fn)()));
           result.emplace();
         } else {
           result.emplace(co_await co_viaIfAsync(
               executor.get_alias(),
               co_withCancellation(
-                  cancelToken, static_cast<decltype(awaitable)>(awaitable))));
+                  cancelToken, static_cast<decltype(fn)>(fn)())));
         }
       } catch (...) {
         if (!cancelSource.requestCancellation()) {
@@ -190,8 +196,7 @@ auto collectAllImpl(
 
     folly::coro::detail::BarrierTask tasks[sizeof...(SemiAwaitables)] = {
         makeTask(
-            static_cast<SemiAwaitables&&>(awaitables),
-            std::get<Indices>(results))...,
+            static_cast<SemiFns&&>(semiFns), std::get<Indices>(results))...,
     };
 
     folly::coro::detail::Barrier barrier{sizeof...(SemiAwaitables) + 1};
@@ -392,12 +397,13 @@ auto collectAnyNoDiscardImpl(
 } // namespace detail
 
 template <typename... SemiAwaitables>
-auto collectAll(SemiAwaitables&&... awaitables)
-    -> folly::coro::Task<std::tuple<
-        detail::collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>> {
+auto collectAll(SemiAwaitables... awaitables)
+    -> detail::CollectAllTask<SemiAwaitables...> {
   return detail::collectAllImpl(
+      tag<detail::CollectAllTask<SemiAwaitables...>, SemiAwaitables...>,
       std::make_index_sequence<sizeof...(SemiAwaitables)>{},
-      static_cast<SemiAwaitables&&>(awaitables)...);
+      mustAwaitImmediatelyUnsafeMover(
+          static_cast<SemiAwaitables&&>(awaitables))...);
 }
 
 template <typename... SemiAwaitables>

@@ -56,10 +56,8 @@
 
 #include <asm/hwcap.h> // @manual
 
-#if defined(__has_include)
 #if __has_include(<sys/ifunc.h>)
 #include <sys/ifunc.h>
-#endif
 #endif
 
 #if !defined(HWCAP2_MOPS)

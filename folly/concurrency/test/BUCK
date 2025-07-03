@@ -103,6 +103,7 @@ fbcode_target(
         "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/portability:config",
         "//folly/portability:gtest",
+        "//folly/system:hardware_concurrency",
     ],
 )
 
@@ -255,7 +256,6 @@ fbcode_target(
     srcs = ["ThreadCachedSynchronizedTest.cpp"],
     deps = [
         "//folly/concurrency:thread_cached_synchronized",
-        "//folly/lang:keep",
         "//folly/portability:gtest",
     ],
 )

@@ -58,6 +58,7 @@ non_fbcode_target(
         "//xplat/folly:constexpr_math",
         "//xplat/folly:functional_invoke",
         "//xplat/folly:hash_hash",
+        "//xplat/folly:hash_rapidhash",
         "//xplat/folly:likely",
         "//xplat/folly:memory",
         "//xplat/folly:optional",

@@ -99,4 +99,17 @@ SocketFds::SeqNum SocketFds::getFdSocketSeqNum() const {
   return kNoSeqNum;
 }
 
+SocketFds::SeqNum detail::addSocketFdsSeqNum(
+    SocketFds::SeqNum a, SocketFds::SeqNum b) noexcept {
+  if (a < 0 || b < 0) {
+    LOG(DFATAL) << "Inputs must be nonnegative, got " << a << " + " << b;
+    return SocketFds::kNoSeqNum;
+  }
+  const auto gap = std::numeric_limits<SocketFds::SeqNum>::max() - a;
+  if (FOLLY_LIKELY(b <= gap)) {
+    return a + b;
+  }
+  return b - gap - 1; // wrap around through 0, modulo max
+}
+
 } // namespace folly

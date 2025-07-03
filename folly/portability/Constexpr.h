@@ -131,15 +131,14 @@ struct is_constant_evaluated_or_constinit_ {
 //    unable to tell whether it is in a constant context.
 constexpr bool is_constant_evaluated_or(
     detail::is_constant_evaluated_or_constinit_<bool> const def) noexcept {
+  (void)def; // silence unused variable warning
 #if defined(__cpp_lib_is_constant_evaluated)
   return std::is_constant_evaluated();
-#endif
-
-#if FOLLY_HAS_BUILTIN(__builtin_is_constant_evaluated)
+#elif FOLLY_HAS_BUILTIN(__builtin_is_constant_evaluated)
   return __builtin_is_constant_evaluated();
-#endif
-
+#else
   return def.value;
+#endif
 }
 
 } // namespace folly

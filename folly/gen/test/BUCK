@@ -50,7 +50,6 @@ fbcode_target(
     headers = [],
     deps = [
         "//folly:fbvector",
-        "//folly:range",
         "//folly/gen:base",
         "//folly/gen:combine",
         "//folly/portability:gflags",

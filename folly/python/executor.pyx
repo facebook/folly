@@ -15,7 +15,7 @@
 import asyncio
 import sys
 
-from folly.executor cimport cAsyncioExecutor, cNotificationQueueAsyncioExecutor, cProactorExecutor
+from folly.executor_detail cimport get_running_executor as ptr_get_running_executor, set_executor_for_loop as ptr_set_executor_for_loop
 from libcpp.memory cimport make_unique, unique_ptr
 from cython.operator cimport dereference as deref
 from weakref import WeakKeyDictionary
@@ -23,11 +23,12 @@ from cpython.ref cimport PyObject
 
 # asyncio Loops to AsyncioExecutor
 loop_to_q = WeakKeyDictionary()
-
 _RaiseKeyError = object()
 
+
 cdef class AsyncioExecutor:
-    pass
+    def __cinit__(self):
+        self._pid = getpid()
 
 
 cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
@@ -46,7 +47,7 @@ cdef class NotificationQueueAsyncioExecutor(AsyncioExecutor):
         deref(self.cQ).drive()
 
     def __dealloc__(NotificationQueueAsyncioExecutor self):
-        if self.driveBeforeDealloc:
+        if self.driveBeforeDealloc and self._pid == getpid():
             self.drive()
         # We explicitly reset here, otherwise it is possible
         # that self.cQ destructor runs after python finalizes
@@ -108,6 +109,11 @@ cdef class IocpQueue(dict):
 cdef cAsyncioExecutor* get_running_executor(bint running):
     return get_running_executor_drive(running, False)
 
+
+# Install the Cython function into the C++ function pointer
+ptr_get_running_executor = get_running_executor
+
+
 cdef cAsyncioExecutor* get_running_executor_drive(
     bint running, bint driveBeforeDealloc):
     try:
@@ -130,6 +136,7 @@ cdef cAsyncioExecutor* get_running_executor_drive(
         loop_to_q[loop] = executor
     return executor._executor
 
+
 cdef int set_executor_for_loop(loop, cAsyncioExecutor* c_executor):
     if c_executor == NULL:
         del loop_to_q[loop]
@@ -143,6 +150,11 @@ cdef int set_executor_for_loop(loop, cAsyncioExecutor* c_executor):
     loop_to_q[loop] = executor
 
     return 0
+
+
+# Install the Cython function into the C++ function pointer
+ptr_set_executor_for_loop = set_executor_for_loop
+
 
 cdef cAsyncioExecutor* get_executor():
     return get_running_executor(False)

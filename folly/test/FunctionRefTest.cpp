@@ -29,43 +29,37 @@ namespace folly {
 
 TEST(FunctionRef, Traits) {
   static_assert(
-      std::is_trivially_copy_constructible<FunctionRef<int(int)>>::value, "");
+      std::is_trivially_copy_constructible<FunctionRef<int(int)>>::value);
   static_assert(
-      std::is_trivially_move_constructible<FunctionRef<int(int)>>::value, "");
+      std::is_trivially_move_constructible<FunctionRef<int(int)>>::value);
   static_assert(
       std::is_trivially_constructible<
           FunctionRef<int(int)>,
-          FunctionRef<int(int)>&>::value,
-      "");
+          FunctionRef<int(int)>&>::value);
   static_assert(
-      std::is_trivially_copy_assignable<FunctionRef<int(int)>>::value, "");
+      std::is_trivially_copy_assignable<FunctionRef<int(int)>>::value);
   static_assert(
-      std::is_trivially_move_assignable<FunctionRef<int(int)>>::value, "");
+      std::is_trivially_move_assignable<FunctionRef<int(int)>>::value);
   static_assert(
       std::is_trivially_assignable<
           FunctionRef<int(int)>,
-          FunctionRef<int(int)>&>::value,
-      "");
+          FunctionRef<int(int)>&>::value);
   static_assert(
-      std::is_nothrow_copy_constructible<FunctionRef<int(int)>>::value, "");
+      std::is_nothrow_copy_constructible<FunctionRef<int(int)>>::value);
   static_assert(
-      std::is_nothrow_move_constructible<FunctionRef<int(int)>>::value, "");
+      std::is_nothrow_move_constructible<FunctionRef<int(int)>>::value);
   static_assert(
       std::is_nothrow_constructible<
           FunctionRef<int(int)>,
-          FunctionRef<int(int)>&>::value,
-      "");
-  static_assert(
-      std::is_nothrow_copy_assignable<FunctionRef<int(int)>>::value, "");
-  static_assert(
-      std::is_nothrow_move_assignable<FunctionRef<int(int)>>::value, "");
+          FunctionRef<int(int)>&>::value);
+  static_assert(std::is_nothrow_copy_assignable<FunctionRef<int(int)>>::value);
+  static_assert(std::is_nothrow_move_assignable<FunctionRef<int(int)>>::value);
   static_assert(
       std::is_nothrow_assignable<
           FunctionRef<int(int)>,
-          FunctionRef<int(int)>&>::value,
-      "");
+          FunctionRef<int(int)>&>::value);
 
-  static_assert(std::is_nothrow_destructible<FunctionRef<int(int)>>::value, "");
+  static_assert(std::is_nothrow_destructible<FunctionRef<int(int)>>::value);
 }
 
 TEST(FunctionRef, Simple) {

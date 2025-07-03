@@ -154,8 +154,8 @@ INSTANTIATE_TEST_SUITE_P(
     UuidParsers,
     UuidParseTest,
     ::testing::ValuesIn(getUuidParseTestParams()),
-    [](const ::testing::TestParamInfo<UuidParseTestParam>& info) {
-      return info.param.name;
+    [](const ::testing::TestParamInfo<UuidParseTestParam>& info_) {
+      return info_.param.name;
     });
 
 // Additional tests for comparing implementations
@@ -217,7 +217,7 @@ INSTANTIATE_TEST_SUITE_P(
     SimdVsScalar,
     UuidParseComparisonTest,
     ::testing::ValuesIn(getSimdParseFunctions()),
-    [](const ::testing::TestParamInfo<UuidParseTestParam>& info) {
-      return "CompareScalarTo" + info.param.name;
+    [](const ::testing::TestParamInfo<UuidParseTestParam>& info_) {
+      return "CompareScalarTo" + info_.param.name;
     });
 #endif

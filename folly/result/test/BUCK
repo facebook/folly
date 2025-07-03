@@ -15,7 +15,6 @@ fbcode_target(
     name = "try_test",
     srcs = ["try_test.cpp"],
     deps = [
-        "//folly/portability:gtest",
         "//folly/result:try",
     ],
 )

@@ -25,7 +25,6 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include <glog/logging.h>
@@ -92,6 +91,9 @@ struct __is_location_invariant<::folly::threadlocal_detail::SharedPtrDeleter>
 namespace folly {
 
 namespace threadlocal_detail {
+
+struct StaticMetaBase;
+struct ThreadEntryList;
 
 /**
  * POD wrapper around an element (a void*) and an associated deleter.
@@ -200,10 +202,9 @@ struct ElementWrapper {
 
   void* ptr;
   uintptr_t deleter;
-};
 
-struct StaticMetaBase;
-struct ThreadEntryList;
+  ElementWrapper() : ptr(nullptr), deleter(0) {}
+};
 
 /**
  * Per-thread entry.  Each thread using a StaticMeta object has one.
@@ -252,6 +253,10 @@ struct ThreadEntry {
 
   template <class Ptr, class Deleter>
   void resetElement(Ptr p, Deleter& d, uint32_t id);
+
+  void resetElementImplAfterSet(const ElementWrapper& element, uint32_t id);
+
+  bool cachedInSetMatchesElementsArray(uint32_t id);
 };
 
 struct ThreadEntryList {
@@ -260,135 +265,61 @@ struct ThreadEntryList {
 };
 
 /**
- * We want to disable onThreadExit call at the end of shutdown, we don't care
- * about leaking memory at that point.
- *
- * Otherwise if ThreadLocal is used in a shared library, onThreadExit may be
- * called after dlclose().
- *
- * This class has one single static instance; however since it's so widely used,
- * directly or indirectly, by so many classes, we need to take care to avoid
- * problems stemming from the Static Initialization/Destruction Order Fiascos.
- * Therefore this class needs to be constexpr-constructible, so as to avoid
- * the need for this to participate in init/destruction order.
+ * Cache the ptr + deleter info in ThreadEntrySet too. This allows
+ * accessAllThreads() to get to the per thread ptr without holding the
+ * StaticMeta's lock_. Eventually, the deleter info will be
+ * moved to the ThreadEntrySet alone, leaving only the ptr in the
+ * ElementWrapper. For now, the ElementDisposeInfo tracked in ThreadEntrySet is
+ * the same as ElementWrapper.
  */
-class PthreadKeyUnregister {
- public:
-  static constexpr size_t kMaxKeys = size_t(1) << 16;
-
-  ~PthreadKeyUnregister() {
-    // If static constructor priorities are not supported then
-    // ~PthreadKeyUnregister logic is not safe.
-#if !defined(__APPLE__) && !defined(_MSC_VER)
-    MSLGuard lg(lock_);
-    while (size_) {
-      pthread_key_delete(keys_[--size_]);
-    }
-#endif
-  }
-
-  static void registerKey(pthread_key_t key) { instance_.registerKeyImpl(key); }
-
- private:
-  /**
-   * Only one global instance should exist, hence this is private.
-   * See also the important note at the top of this class about `constexpr`
-   * usage.
-   */
-  constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() {}
-
-  void registerKeyImpl(pthread_key_t key) {
-    MSLGuard lg(lock_);
-    if (size_ == kMaxKeys) {
-      throw_exception<std::logic_error>(
-          "pthread_key limit has already been reached");
-    }
-    keys_[size_++] = key;
-  }
-
-  MicroSpinLock lock_;
-  size_t size_;
-  pthread_key_t keys_[kMaxKeys];
-
-  static PthreadKeyUnregister instance_;
-};
+using ElementDisposeInfo = ElementWrapper;
 
 // ThreadEntrySet is used to track all ThreadEntry that have a valid
 // ElementWrapper for a particular TL id. The class provides no internal locking
 // and caller must ensure safety of any access.
 struct ThreadEntrySet {
+  struct Element {
+    ElementDisposeInfo wrapper;
+    ThreadEntry* threadEntry;
+
+    /* implicit */ Element(ThreadEntry* entry = nullptr) : threadEntry(entry) {}
+  };
+
   // Vector of ThreadEntry for fast iteration during accessAllThreads.
-  using EntryVector = std::vector<ThreadEntry*>;
-  EntryVector threadEntries;
-  // Map from ThreadEntry* to its slot in the threadEntries vector to be able
+  using ElementVector = std::vector<Element>;
+  ElementVector threadElements;
+  // Map from ThreadEntry* to its slot in the threadElements vector to be able
   // to remove an entry quickly.
-  using EntryIndex = std::unordered_map<ThreadEntry*, EntryVector::size_type>;
+  using EntryIndex = std::unordered_map<ThreadEntry*, ElementVector::size_type>;
   EntryIndex entryToVectorSlot;
 
   bool basicSanity() const;
 
-  void clear() {
-    DCHECK(basicSanity());
-    entryToVectorSlot.clear();
-    threadEntries.clear();
-  }
+  void clear();
 
-  bool contains(ThreadEntry* entry) const {
-    DCHECK(basicSanity());
-    return entryToVectorSlot.find(entry) != entryToVectorSlot.end();
-  }
+  int64_t getIndexFor(ThreadEntry* entry) const;
 
-  bool insert(ThreadEntry* entry) {
-    DCHECK(basicSanity());
-    auto iter = entryToVectorSlot.find(entry);
-    if (iter != entryToVectorSlot.end()) {
-      // Entry already present. Sanity check and exit.
-      DCHECK_EQ(entry, threadEntries[iter->second]);
-      return false;
-    }
-    threadEntries.push_back(entry);
-    auto idx = threadEntries.size() - 1;
-    entryToVectorSlot[entry] = idx;
-    return true;
-  }
+  /**
+   * Helper function for debugging checks. Fetch ptr for a given ThreadEnrtry.
+   * Used to sanity check the value in ElementDisposeInfo wrapper matches the
+   * ElementWrapper array used for fast access from the thread itself.
+   */
+  void* getPtrForThread(ThreadEntry* entry) const;
 
-  bool erase(ThreadEntry* entry) {
-    DCHECK(basicSanity());
-    auto iter = entryToVectorSlot.find(entry);
-    if (iter == entryToVectorSlot.end()) {
-      // Entry not present.
-      return false;
-    }
-    auto idx = iter->second;
-    DCHECK_LT(idx, threadEntries.size());
-    entryToVectorSlot.erase(iter);
-    if (idx != threadEntries.size() - 1) {
-      ThreadEntry* last = threadEntries.back();
-      threadEntries[idx] = last;
-      entryToVectorSlot[last] = idx;
-    }
-    threadEntries.pop_back();
-    DCHECK(basicSanity());
-    if (compressible()) {
-      compress();
-    }
-    DCHECK(basicSanity());
-    return true;
-  }
+  bool contains(ThreadEntry* entry) const;
+
+  bool insert(ThreadEntry* entry);
+
+  bool insert(const Element& element);
+
+  Element erase(ThreadEntry* entry);
 
   /// compressible
   ///
   /// If many elements have been removed, then size might be much less than
   /// capacity and it becomes possible to reduce memory usage.
-  bool compressible() const {
-    // We choose a sufficiently-large multiplier so that there is no risk of a
-    // following insert growing the vector and then a following erase shrinking
-    // the vector, since that way lies non-amortized-O(N)-complexity costs for
-    // both insert and erase ops.
-    constexpr size_t const mult = 4;
-    auto& vec = threadEntries;
-    return std::max(size_t(1), vec.size()) * mult <= vec.capacity();
-  }
+  bool compressible() const;
+
   /// compress
   ///
   /// Attempt to reduce the memory usage of the data structure.
@@ -444,6 +375,8 @@ struct StaticMetaBase {
   StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict);
 
   FOLLY_EXPORT static ThreadEntryList* getThreadEntryList();
+
+  ThreadEntry* allocateNewThreadEntry();
 
   static bool dying();
 
@@ -513,6 +446,14 @@ struct StaticMetaBase {
   }
 
   /*
+   * Pop current ThreadEntrySet and for each ThreadEntry in it, clear its
+   * ElementWrapper for the 'id' and return them in the accumulated vector. This
+   * is called when an TL object is destroyed. The ElementWrapper returned are
+   * the responsibility of the calling thread to dispose of.
+   */
+  ThreadEntrySet popThreadEntrySetAndClearElementPtrs(uint32_t id);
+
+  /*
    * Check if ThreadEntry* is present in the map for all slots of @ids.
    */
   FOLLY_ALWAYS_INLINE bool isThreadEntryRemovedFromAllInMap(
@@ -545,6 +486,12 @@ struct StaticMetaBase {
 
   relaxed_atomic_uint32_t nextId_;
   std::vector<uint32_t> freeIds_;
+  // The lock_ is used to protect the freeIds_ list as well as synchronize
+  // reallocation of a thread's private array of ElementWrappers. The freeIds_
+  // vector is manipulated on TL object id allocation and destroy. Resize of
+  // ElementWrappers array can only be done by its owner thread but other
+  // threads may try to be accessing the array at the same time if in the middle
+  // of destroying a TL object.
   std::mutex lock_;
   mutable SharedMutex accessAllThreadsLock_;
   // As part of handling fork, we need to ensure no locks used by ThreadLocal
@@ -595,29 +542,21 @@ struct FakeUniqueInstance {
  */
 template <class Ptr>
 void ThreadEntry::resetElement(Ptr p, uint32_t id) {
-  auto& set = meta->allId2ThreadEntrySets_[id];
-  auto rlock = set.rlock();
-  if (p != nullptr && !removed_ && !rlock->contains(this)) {
-    meta->ensureThreadEntryIsInSet(this, set, rlock);
-  }
-  cleanupElement(id);
-  elements[id].set(p);
+  ElementWrapper element;
+  element.set(p);
+  resetElementImplAfterSet(element, id);
 }
 
 /*
  * Resets element from ThreadEntry::elements at index @id.
  * call set() on the element to reset it.
- * This is a templated method for when a deleter is not provided.
+ * This is a templated method for when a deleter is provided.
  */
 template <class Ptr, class Deleter>
 void ThreadEntry::resetElement(Ptr p, Deleter& d, uint32_t id) {
-  auto& set = meta->allId2ThreadEntrySets_[id];
-  auto rlock = set.rlock();
-  if (p != nullptr && !removed_ && !rlock->contains(this)) {
-    meta->ensureThreadEntryIsInSet(this, set, rlock);
-  }
-  cleanupElement(id);
-  elements[id].set(p, d);
+  ElementWrapper element;
+  element.set(p, d);
+  resetElementImplAfterSet(element, id);
 }
 
 // Held in a singleton to track our global instances.
@@ -677,6 +616,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     uint32_t id = ent->getOrInvalid();
     // Only valid index into the the elements array
     DCHECK_NE(id, kEntryIDInvalid);
+    DCHECK(te->cachedInSetMatchesElementsArray(id));
     return te->elements[id];
   }
 
@@ -729,22 +669,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     ThreadEntry* threadEntry =
         static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
-      ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
-      threadEntry = new ThreadEntry();
-
-      threadEntry->list = threadEntryList;
-      threadEntry->listNext = threadEntryList->head;
-      threadEntryList->head = threadEntry;
-
-      threadEntry->tid() = std::this_thread::get_id();
-      threadEntry->tid_os = folly::getOSThreadID();
-
-      // if we're adding a thread entry
-      // we need to increment the list count
-      // even if the entry is reused
-      threadEntryList->count++;
-
-      threadEntry->meta = &meta;
+      threadEntry = meta.allocateNewThreadEntry();
       int ret = pthread_setspecific(key, threadEntry);
       checkPosixError(ret, "pthread_setspecific failed");
     }
@@ -784,9 +709,11 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     for (const auto ptr : meta.getThreadEntrySetsPtrSpan()) {
       auto& set = *ptr;
       auto wlockedSet = set.wlock();
-      if (wlockedSet->contains(threadEntry)) {
+      auto slot = wlockedSet->getIndexFor(threadEntry);
+      if (slot >= 0) {
+        auto element = wlockedSet->threadElements[slot];
         wlockedSet->clear();
-        wlockedSet->insert(threadEntry);
+        wlockedSet->insert(element);
       } else {
         wlockedSet->clear();
       }

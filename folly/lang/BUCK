@@ -284,6 +284,13 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "safe_alias_fwd",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeAlias-fwd.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "safe_assert",
     srcs = ["SafeAssert.cpp"],
     feature = triage_InfrastructureSupermoduleOptou,
@@ -309,6 +316,16 @@ non_fbcode_target(
     raw_headers = ["StaticConst.h"],
     exported_deps = [
         "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "switch",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Switch.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
     ],
 )
 
@@ -622,6 +639,12 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "safe_alias_fwd",
+    headers = ["SafeAlias-fwd.h"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
     name = "safe_assert",
     srcs = ["SafeAssert.cpp"],
     headers = ["SafeAssert.h"],
@@ -645,6 +668,15 @@ fbcode_target(
     headers = ["StaticConst.h"],
     exported_deps = [
         "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "switch",
+    headers = ["Switch.h"],
+    exported_deps = [
+        "//folly:c_portability",
     ],
 )
 

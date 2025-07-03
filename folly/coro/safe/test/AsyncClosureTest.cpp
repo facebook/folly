@@ -35,12 +35,14 @@ CO_TEST(AsyncClosure, invalid_co_cleanup) {
   };
 
   struct ValidCleanup : NonCopyableNonMovable {
-    AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) { co_return; }
+    AsNoexcept<Task<>> co_cleanup(async_closure_private_t) { co_return; }
   };
   co_await checkCleanup(tag<ValidCleanup>);
 
   struct InvalidCleanupNonVoid : NonCopyableNonMovable {
-    AsNoexcept<Task<int>> co_cleanup(async_closure_private_t) { co_return 1; }
+    AsNoexcept<Task<int>, OnCancel{0}> co_cleanup(async_closure_private_t) {
+      co_return 1;
+    }
   };
 #if 0 // Manual test -- this uses `static_assert` for better UX.
   co_await checkCleanup(tag<InvalidCleanupNonVoid>);
@@ -54,7 +56,7 @@ CO_TEST(AsyncClosure, invalid_co_cleanup) {
 #endif
 
   struct InvalidCleanupIsMovable {
-    AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) { co_return; }
+    AsNoexcept<Task<>> co_cleanup(async_closure_private_t) { co_return; }
   };
 #if 0 // Manual test -- this failure escapes `is_detected_v`.
   co_await checkCleanup(tag<InvalidCleanupIsMovable>);
@@ -259,6 +261,65 @@ CO_TEST(AsyncClosure, callFunctionWithOuter) {
   EXPECT_EQ("hide-and-seek", res);
 }
 
+struct TakesBackref {
+  capture<std::string&> prefix_;
+  std::string suffix_;
+};
+
+CO_TEST(AsyncClosure, capture_backref) {
+  auto concat_prefix_suffix =
+      [](auto, auto /*hello*/, auto world) -> ClosureTask<std::string> {
+    co_return *world->prefix_ + world->suffix_;
+  };
+
+  auto r1 = co_await asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "s1"_id = as_capture(std::string{"goodbye"}),
+          "s2"_id = as_capture(std::string{"hello"}),
+          capture_in_place<TakesBackref>("s2"_id, " world!")});
+  EXPECT_EQ("hello world!", r1);
+
+  auto r2 = co_await asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "s1"_id = as_capture(std::string{"goodbye"}),
+          "s2"_id = as_capture(std::string{"hello"}),
+          capture_in_place<TakesBackref>("s1"_id, " world!")});
+  EXPECT_EQ("goodbye world!", r2);
+
+#if 0 // manual test for "backrefs must point only to the left" assert
+  (void)asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "s1"_id = as_capture(std::string{"goodbye"}),
+          capture_in_place<TakesBackref>("s2"_id, " world!"),
+          "s2"_id = as_capture(std::string{"hello"})});
+#endif
+
+#if 0 // manual test for "ambiguous backref" scenario
+  // Future: Make this error message clearer than the current:
+  //   error: no matching function for call to 'async_closure_backref_get'
+  (void)asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "s"_id = as_capture(std::string{"goodbye"}),
+          "s"_id = as_capture(std::string{"hello"}),
+          capture_in_place<TakesBackref>("s"_id, " world!")});
+#endif
+
+#if 0 // manual test for "backref not found" scenario
+  // Future: Make this error message clearer than the current:
+  //   error: no matching function for call to 'async_closure_backref_get'
+  (void)asyncClosureCheckType<ValueTask<std::string>, ForceOuter>(
+      concat_prefix_suffix,
+      bound_args{
+          "x1"_id = as_capture(std::string{"goodbye"}),
+          "x2"_id = as_capture(std::string{"hello"}),
+          capture_in_place<TakesBackref>("s"_id, " world!")});
+#endif
+}
+
 CO_TEST(AsyncClosure, simpleCancellation) {
   EXPECT_THROW(
       co_await timeout(
@@ -313,9 +374,10 @@ Task<void> checkInPlaceArgs() {
       },
       bound_args{
           30, // a
-          // Test both const and non-const `AsyncOuterClosurePtr`s
-          as_capture(1000), // b
-          capture_in_place<const InPlaceOnly>(&made, 7), // c
+          // Test both const and non-const `AsyncOuterClosurePtr`s.
+          // Check that "x"_id tagging for capture backrefs is transparent.
+          "b"_id = as_capture(1000),
+          "c"_id = capture_in_place<const InPlaceOnly>(&made, 7),
           as_capture(constant(200))}); // d
   EXPECT_EQ(1337, res);
   EXPECT_TRUE(made);
@@ -494,7 +556,7 @@ CO_TEST(AsyncClosure, nestedRefsWithoutOuterCoro) {
 struct ErrorObliviousHasCleanup : NonCopyableNonMovable {
   explicit ErrorObliviousHasCleanup(int* p) : cleanBits_(p) {}
   int* cleanBits_;
-  AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) {
+  AsNoexcept<Task<>> co_cleanup(async_closure_private_t) {
     *cleanBits_ += 3;
     co_return;
   }
@@ -513,7 +575,7 @@ struct HasCleanup : NonCopyableNonMovable {
   std::optional<exception_wrapper>* optCleanupErrPtr_;
   // If the closure (not other cleanups!) exited with an exception, each
   // `co_cleanup` gets to see it.
-  AsNoexcept<Task<void>> co_cleanup(
+  AsNoexcept<Task<>> co_cleanup(
       async_closure_private_t, const exception_wrapper* ew) {
     *optCleanupErrPtr_ = *ew;
     co_return;
@@ -769,6 +831,19 @@ CO_TEST(AsyncClosure, nowClosure) {
   EXPECT_EQ(1337, memberRes);
 }
 
+CO_TEST(AsyncClosure, captureByReference) {
+  // This demo uses an atomic because e.g. with async scopes, the inner tasks
+  // might be concurrent -- and you can't move atomics, so you either need to
+  // use `AfterCleanup.h` (preferred, safer!) or capture-by-reference.
+  std::atomic_int n = 0;
+  co_await async_now_closure(
+      capture_mut_ref{n}, [](auto n) -> ClosureTask<void> {
+        n->fetch_add(42);
+        co_return;
+      });
+  EXPECT_EQ(42, n.load());
+}
+
 CO_TEST(AsyncClosure, nowClosureCoCleanup) {
   std::optional<exception_wrapper> optCleanErr;
   int res = co_await async_now_closure(
@@ -786,6 +861,73 @@ CO_TEST(AsyncClosure, nowClosureCoCleanup) {
   EXPECT_TRUE(optCleanErr.has_value());
 }
 
+constexpr bool check_as_noexcept_closures() {
+  static_assert( // SafeTask, without outer coro
+      std::is_same_v<
+          AsNoexcept<ValueTask<>>,
+          decltype(async_closure(
+              bound_args{},
+              []() -> AsNoexcept<ClosureTask<>> { co_return; }))>);
+
+  static_assert( // SafeTask, with outer coro
+      std::is_same_v<
+          AsNoexcept<ValueTask<>>,
+          decltype(async_closure<ForceOuter>(
+              bound_args{},
+              []() -> AsNoexcept<ClosureTask<>> { co_return; }))>);
+
+  static_assert( // NowTask, without outer coro
+      std::is_same_v<
+          AsNoexcept<NowTask<>>,
+          decltype(async_now_closure(bound_args{}, []() -> AsNoexcept<Task<>> {
+            co_return;
+          }))>);
+  static_assert( // NowTask, with outer coro
+      std::is_same_v<
+          AsNoexcept<NowTask<>>,
+          decltype(async_now_closure<ForceOuter>(
+              bound_args{}, []() -> AsNoexcept<Task<>> { co_return; }))>);
+
+  return true;
+}
+
+static_assert(check_as_noexcept_closures());
+
+struct MyErr : std::exception {};
+
+struct ThrowOnMove {
+  ThrowOnMove() {}
+  ~ThrowOnMove() = default;
+  [[noreturn]] ThrowOnMove(ThrowOnMove&&) { throw MyErr{}; }
+  ThrowOnMove(const ThrowOnMove&) = delete;
+  void operator=(ThrowOnMove&&) = delete;
+  void operator=(const ThrowOnMove&) = delete;
+};
+
+TEST(AsyncClosure, fatalWhenNoexceptClosureThrows) {
+  auto throwNoOuter = async_closure(
+      bound_args{}, []() -> ClosureTask<ThrowOnMove> { co_return {}; });
+  EXPECT_THROW(blockingWait(std::move(throwNoOuter)), MyErr);
+
+  auto noexceptThrowNoOuter = async_closure(
+      bound_args{},
+      []() -> AsNoexcept<ClosureTask<ThrowOnMove>, terminateOnCancel> {
+        co_return {};
+      });
+  EXPECT_DEATH({ blockingWait(std::move(noexceptThrowNoOuter)); }, "MyErr");
+
+  auto throwOuter = async_closure<ForceOuter>(
+      bound_args{}, []() -> ClosureTask<ThrowOnMove> { co_return {}; });
+  EXPECT_THROW(blockingWait(std::move(throwOuter)), MyErr);
+
+  auto noexceptThrowOuter = async_closure<ForceOuter>(
+      bound_args{},
+      []() -> AsNoexcept<ClosureTask<ThrowOnMove>, terminateOnCancel> {
+        co_return {};
+      });
+  EXPECT_DEATH({ blockingWait(std::move(noexceptThrowOuter)); }, "MyErr");
+}
+
 // Records construction order, asserts that (1) cleanup & destruction happen in
 // the opposite order, and (2) all cleanups complete before any dtors.
 struct OrderTracker : NonCopyableNonMovable {
@@ -797,7 +939,7 @@ struct OrderTracker : NonCopyableNonMovable {
   explicit OrderTracker(int& n, int& cleanupN)
       : myN_(++n), nRef_(n), myCleanupN_(++cleanupN), cleanupNRef_(cleanupN) {}
 
-  AsNoexcept<Task<void>> co_cleanup(async_closure_private_t) {
+  AsNoexcept<Task<>> co_cleanup(async_closure_private_t) {
     EXPECT_EQ(myCleanupN_, cleanupNRef_--);
     co_return;
   }

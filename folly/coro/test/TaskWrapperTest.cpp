@@ -71,6 +71,8 @@ class FOLLY_CORO_TASK_ATTRS TinyNowTask final
   using detail::TinyNowTaskBase<T>::TinyNowTaskBase;
 };
 
+static_assert(is_semi_awaitable_v<TinyNowTask<int>>);
+
 ///////////////////
 
 template <typename>
@@ -120,6 +122,8 @@ class FOLLY_CORO_TASK_ATTRS TinyMovableTask final
  protected:
   using detail::TinyMovableTaskBase<T>::TinyMovableTaskBase;
 };
+
+static_assert(is_semi_awaitable_v<TinyMovableTask<int>>);
 
 ///////////////////
 
@@ -306,43 +310,6 @@ CO_TEST(TaskWrapper, recursiveUnwrap) {
           decltype(t().unwrapTask().unwrapTask()),
           TinyMovableTask<int>>);
   EXPECT_EQ(3, co_await t().unwrapTask().unwrapTask());
-}
-
-template <typename>
-struct OpaqueTask;
-
-namespace detail {
-template <typename T>
-class OpaqueTaskPromise final
-    : public TaskPromiseWrapper<T, OpaqueTask<T>, TaskPromise<T>> {};
-template <typename T>
-struct OpaqueTaskWrapperConfig {
-  using ValueT = T;
-  using InnerTaskT = Task<T>;
-  using TaskWithExecutorT = TaskWithExecutor<T>;
-  using PromiseT = OpaqueTaskPromise<T>;
-};
-template <typename T>
-using OpaqueTaskBase =
-    OpaqueTaskWrapperCrtp<OpaqueTask<T>, detail::OpaqueTaskWrapperConfig<T>>;
-} // namespace detail
-
-template <typename T>
-struct FOLLY_CORO_TASK_ATTRS OpaqueTask final
-    : public detail::OpaqueTaskBase<T> {
-  using detail::OpaqueTaskBase<T>::unwrapTask;
-
- protected:
-  using detail::OpaqueTaskBase<T>::OpaqueTaskBase;
-};
-
-static_assert(is_semi_awaitable_v<TinyMovableTask<int>>);
-static_assert(is_semi_awaitable_v<TinyNowTask<int>>);
-static_assert(!is_semi_awaitable_v<OpaqueTask<int>>);
-
-CO_TEST(TaskWrapper, opaque) {
-  auto ot = [](int x) -> OpaqueTask<int> { co_return 1300 + x; }(37);
-  EXPECT_EQ(1337, co_await std::move(ot).unwrapTask());
 }
 
 } // namespace folly::coro

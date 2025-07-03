@@ -143,7 +143,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
     static_assert(
         !std::is_reference<Func>{},
         "InlineFunctionRef cannot be used with lvalues");
-    static_assert(std::is_rvalue_reference<Func&&>{}, "");
+    static_assert(std::is_rvalue_reference<Func&&>{});
     construct(ConstructMode<Func>{}, std::as_const(func));
   }
 
@@ -177,9 +177,9 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
     //    2) be invocable in a const context, it does not make sense to copy a
     //       callable into inline storage if it makes state local
     //       modifications.
-    static_assert(alignof(Value) <= alignof(Storage), "");
-    static_assert(is_invocable<const std::decay_t<Func>, Args&&...>{}, "");
-    static_assert(std::is_trivially_copyable<Value>{}, "");
+    static_assert(alignof(Value) <= alignof(Storage));
+    static_assert(is_invocable<const std::decay_t<Func>, Args&&...>{});
+    static_assert(std::is_trivially_copyable<Value>{});
 
     new (&storage_) Value{func};
     call_ = &callInline<Value>;
@@ -203,8 +203,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
     // pointer types are invocable.
     static_assert(
         !std::is_pointer<Func>::value ||
-            std::is_function<std::remove_pointer_t<Func>>::value,
-        "");
+        std::is_function<std::remove_pointer_t<Func>>::value);
     return folly::invoke(
         *std::launder(reinterpret_cast<const Func*>(&object)),
         static_cast<Args&&>(args)...);
@@ -215,7 +214,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
     // When the function we were instantiated with was not trivial, the given
     // pointer points to a pointer, which pointers to the callable.  So we
     // cast to a pointer and then to the pointee.
-    static_assert(std::is_pointer<Func>::value, "");
+    static_assert(std::is_pointer<Func>::value);
     return folly::invoke(
         **std::launder(reinterpret_cast<const Func*>(&object)),
         static_cast<Args&&>(args)...);

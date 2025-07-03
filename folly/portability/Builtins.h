@@ -131,7 +131,7 @@ FOLLY_ALWAYS_INLINE int __builtin_popcount(unsigned int x) {
 
 #if !defined(_MSC_VER) || !defined(FOLLY_DETAIL_MSC_BUILTIN_SUPPORT)
 FOLLY_ALWAYS_INLINE int __builtin_popcountl(unsigned long x) {
-  static_assert(sizeof(x) == 4, "");
+  static_assert(sizeof(x) == 4);
   return int(__popcnt(x));
 }
 #endif // !defined(_MSC_VER) || !defined(FOLLY_DETAIL_MSC_BUILTIN_SUPPORT)

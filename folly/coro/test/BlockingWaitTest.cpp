@@ -22,6 +22,7 @@
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Invoke.h>
+#include <folly/coro/safe/NowTask.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
@@ -32,36 +33,52 @@
 
 #if FOLLY_HAS_COROUTINES
 
-static_assert(
+static_assert( //
     std::is_same<
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<>>())),
-        void>::value,
-    "");
-static_assert(
+        void>::value);
+static_assert( //
     std::is_same<
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<int>>())),
-        int>::value,
-    "");
-static_assert(
+        int>::value);
+static_assert( //
     std::is_same<
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<int&>>())),
-        int&>::value,
-    "");
-static_assert(
+        int&>::value);
+//  blockingWait() should convert rvalue-reference-returning awaitables
+//  into a returned prvalue to avoid potential lifetime issues since
+//  its possible the rvalue reference could have been to some temporary
+//  object stored inside the Awaiter which would have been destructed
+//  by the time blockingWait returns.
+static_assert( //
     std::is_same<
         decltype(folly::coro::blockingWait(
             std::declval<folly::coro::ready_awaitable<int&&>>())),
-        int>::value,
-    "blockingWait() should convert rvalue-reference-returning awaitables "
-    "into a returned prvalue to avoid potential lifetime issues since "
-    "its possible the rvalue reference could have been to some temporary "
-    "object stored inside the Awaiter which would have been destructed "
-    "by the time blockingWait returns.");
+        int>::value);
 
 class BlockingWaitTest : public testing::Test {};
+
+TEST_F(BlockingWaitTest, AwaitNowTask) {
+  bool ran = false;
+  folly::coro::blockingWait([&]() -> folly::coro::NowTask<> {
+    ran = true;
+    co_return;
+  }());
+  EXPECT_TRUE(ran);
+}
+
+TEST_F(BlockingWaitTest, AwaitNowTaskWithExecutor) {
+  bool ran = false;
+  folly::coro::blockingWait(co_withExecutor(
+      folly::getGlobalCPUExecutor(), [&]() -> folly::coro::NowTask<> {
+        ran = true;
+        co_return;
+      }()));
+  EXPECT_TRUE(ran);
+}
 
 TEST_F(BlockingWaitTest, SynchronousCompletionVoidResult) {
   folly::coro::blockingWait(folly::coro::ready_awaitable<>{});

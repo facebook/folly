@@ -183,6 +183,7 @@ fbcode_target(
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
         "//folly/synchronization:distributed_mutex",
+        "//folly/system:hardware_concurrency",
         "//folly/test:deterministic_schedule",
         "//folly/test:test_utils",
     ],
@@ -275,7 +276,6 @@ fbcode_target(
         ":barrier",
         "//folly:benchmark",
         "//folly/detail:futex",
-        "//folly/synchronization:baton",
         "//folly/synchronization:parking_lot",
     ],
 )
@@ -379,7 +379,6 @@ fbcode_target(
     deps = [
         ":barrier",
         ":semaphore",
-        "//folly:traits",
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",
         "//folly/synchronization:latch",
@@ -401,6 +400,7 @@ fbcode_target(
         "//folly/synchronization:distributed_mutex",
         "//folly/synchronization:flat_combining",
         "//folly/synchronization:small_locks",
+        "//folly/system:hardware_concurrency",
     ],
 )
 
@@ -418,6 +418,7 @@ fbcode_target(
         "//folly/portability:pthread",
         "//folly/portability:unistd",
         "//folly/synchronization:small_locks",
+        "//folly/system:hardware_concurrency",
         "//folly/test:test_utils",
     ],
     external_deps = [
@@ -502,9 +503,10 @@ fbcode_target(
     name = "flat_combining_benchmark",
     srcs = ["FlatCombiningBenchmark.cpp"],
     deps = [
+        ":flat_combining_test_helpers",
         "//folly:benchmark",
         "//folly/portability:gtest",
-        "//folly/synchronization/test:flat_combining_test_helpers",
+        "//folly/system:hardware_concurrency",
     ],
     external_deps = [
         "glog",

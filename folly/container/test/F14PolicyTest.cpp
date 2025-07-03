@@ -36,9 +36,9 @@ struct Force32BitHash {
 struct F14ValueSetTester {
   static void test() {
     static_assert(
-        !F14FastSet<int, NormalHash>::Policy::shouldAssume32BitHash(), "");
+        !F14FastSet<int, NormalHash>::Policy::shouldAssume32BitHash());
     static_assert(
-        F14FastSet<int, Force32BitHash>::Policy::shouldAssume32BitHash(), "");
+        F14FastSet<int, Force32BitHash>::Policy::shouldAssume32BitHash());
   }
 };
 

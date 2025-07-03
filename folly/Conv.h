@@ -163,6 +163,8 @@ enum class ConversionCode : unsigned char {
   ARITH_POSITIVE_OVERFLOW,
   ARITH_NEGATIVE_OVERFLOW,
   ARITH_LOSS_OF_PRECISION,
+  SPLIT_ERROR,
+  CUSTOM,
   NUM_ERROR_CODES, // has to be the last entry
 };
 
@@ -733,11 +735,11 @@ constexpr double_conversion::DoubleToStringConverter::DtoaMode convert(
       return double_conversion::DoubleToStringConverter::FIXED;
     case DtoaMode::PRECISION:
       return double_conversion::DoubleToStringConverter::PRECISION;
+    default: /* unexpected */
+      assert(false);
+      // Default to PRECISION per exising behavior.
+      return double_conversion::DoubleToStringConverter::PRECISION;
   }
-
-  assert(false);
-  // Default to PRECISION per exising behavior.
-  return double_conversion::DoubleToStringConverter::PRECISION;
 }
 
 /// Converts `DtoaFlags` to

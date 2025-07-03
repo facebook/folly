@@ -31,7 +31,7 @@
 
 using namespace folly;
 
-static_assert(AllocatorHasTrivialDeallocate<SysArena>::value, "");
+static_assert(AllocatorHasTrivialDeallocate<SysArena>::value);
 
 void* alloc(SysArena& arena, size_t size) {
   void* const mem = arena.allocate(size);

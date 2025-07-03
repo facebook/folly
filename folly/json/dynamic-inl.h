@@ -1359,6 +1359,8 @@ class FormatValue<dynamic> {
       case dynamic::OBJECT:
         FormatValue(val_.at(arg.splitKey().toString())).format(arg, cb);
         break;
+      default:
+        folly::assume_unreachable();
     }
   }
 

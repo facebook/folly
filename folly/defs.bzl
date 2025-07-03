@@ -14,12 +14,10 @@ load(
     "IOS",
     "MACOSX",
     "WINDOWS",
-    "get_available_platforms",
 )
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
-load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_arvr_mode")
 
 def should_enable_gflags():
     return read_bool("folly", "have_libgflags_override", False)
@@ -41,15 +39,15 @@ def cpp_flags():
             "ovr_config//os:linux": ["-DFOLLY_MOBILE=1"],
         })
 
-    elif is_arvr_mode():
+    else:
         flags += select({
             "DEFAULT": ["-DFOLLY_MOBILE=1"],
-            "ovr_config//os:linux": [],
-            "ovr_config//os:macos": [],
+            "ovr_config//build_mode:arvr_mode": select({
+                "DEFAULT": ["-DFOLLY_MOBILE=1"],
+                "ovr_config//os:linux": [],
+                "ovr_config//os:macos": [],
+            }),
         })
-
-    else:
-        flags += ["-DFOLLY_MOBILE=1"]
 
     return flags
 
@@ -114,8 +112,8 @@ def _compute_include_directories():
     base_path = native.package_name()
     if base_path == "xplat/folly":
         return [".."]
-    thrift_path = base_path[6:]
-    return ["/".join(len(thrift_path.split("/")) * [".."])]
+    folly_path = base_path[6:]
+    return ["/".join(len(folly_path.split("/")) * [".."])]
 
 def folly_xplat_library(
         name,
@@ -142,11 +140,13 @@ def folly_xplat_library(
 
     # We use gflags on fbcode platforms, which don't mix well when mixing static
     # and dynamic linking.
-    if not is_arvr_mode():
-        force_static = select({
+    force_static = select({
+        "DEFAULT": select({
             "DEFAULT": force_static,
             "ovr_config//runtime:fbcode": False,
-        })
+        }),
+        "ovr_config//build_mode:arvr_mode": force_static,
+    })
 
     fb_xplat_cxx_library(
         name = name,
@@ -175,10 +175,6 @@ def folly_xplat_library(
         }) + select({
             "DEFAULT": [],
             "wa_android//tools/buck/build_defs/monorepo:bloks_sync_live_deps": [
-                "-fexceptions",
-                "-frtti",
-            ],
-            "wa_android//tools/buck/build_defs/monorepo:live_deps": [
                 "-fexceptions",
                 "-frtti",
             ],
@@ -239,11 +235,3 @@ def folly_xplat_cxx_binary(
         contacts = contacts,
         platforms = (CXX,),
     )
-
-def override_soname_if_needed(name):
-    # This is a hack to unblock rollout of platform suffix removal to xplat/folly.
-    # See T89357426. This only applies when using arvr build modes and can be removed when Hermes
-    # is built from source (or prebuilt using arvr build modes).
-    if is_arvr_mode() and ANDROID in get_available_platforms():
-        return "libxplat_folly_{}Android.so".format(name)
-    return None

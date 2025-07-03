@@ -714,6 +714,15 @@ class Range {
     return Tgt(b_, walk_size());
   }
 
+#if FMT_VERSION
+  template <
+      typename IterType = Iter,
+      std::enable_if_t<detail::range_is_char_type_v_<IterType>, int> = 0>
+  constexpr operator fmt::basic_string_view<value_type>() const noexcept {
+    return _t<StringViewType<value_type>>(*this);
+  }
+#endif
+
   /// explicit non-operator conversion to any compatible type
   ///
   /// A compatible type is one which is constructible with an iterator and a
@@ -791,36 +800,6 @@ class Range {
       throw_exception<std::out_of_range>("index out of range");
     }
     return b_[i];
-  }
-
-  // Do NOT use this function, which was left behind for backwards
-  // compatibility.  Use SpookyHashV2 instead -- it is faster, and produces
-  // a 64-bit hash, which means dramatically fewer collisions in large maps.
-  // (The above advice does not apply if you are targeting a 32-bit system.)
-  //
-  // Works only for Range<const char*> and Range<char*>
-  //
-  //
-  //         ** WANT TO GET RID OF THIS LINT? **
-  //
-  // A) Use a better hash function (*cough*folly::Hash*cough*), but
-  //    only if you don't serialize data in a format that depends on
-  //    this formula (ie the writer and reader assume this exact hash
-  //    function is used).
-  //
-  // B) If you have to use this exact function then make your own hasher
-  //    object and copy the body over (see thrift example: D3972362).
-  //    https://github.com/facebook/fbthrift/commit/f8ed502e24ab4a32a9d5f266580
-  [[deprecated(
-      "Replace with folly::Hash if the hash is not serialized")]] uint32_t
-  hash() const {
-    // Taken from fbi/nstring.h:
-    //    Quick and dirty bernstein hash...fine for short ascii strings
-    uint32_t hash = 5381;
-    for (size_t ix = 0; ix < size(); ix++) {
-      hash = ((hash << 5) + hash) + b_[ix];
-    }
-    return hash;
   }
 
   void advance(size_type n) {

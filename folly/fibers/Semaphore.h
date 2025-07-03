@@ -115,7 +115,7 @@ class Semaphore {
    */
   template <typename Duration>
   coro::Task<void> co_try_wait_for(Duration timeout) {
-    co_await folly::coro::timeoutNoDiscard(co_wait(), timeout);
+    return folly::coro::timeoutNoDiscard(co_wait(), timeout);
   }
 
 #endif

@@ -18,7 +18,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <stdexcept>
 #include <thread>
 #include <vector>
 

@@ -11,7 +11,7 @@ non_fbcode_target(
     srcs = ["Crc32cDetail.cpp"],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Crc32cCombineDetail.h"],
-    deps = [
+    exported_deps = [
         "//xplat/folly:portability",
     ],
 )
@@ -23,7 +23,7 @@ fbcode_target(
     name = "crc32c_detail",
     srcs = ["Crc32cDetail.cpp"],
     headers = ["Crc32cCombineDetail.h"],
-    deps = [
+    exported_deps = [
         "//folly:portability",
     ],
 )

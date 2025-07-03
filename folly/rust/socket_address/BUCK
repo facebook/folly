@@ -1,0 +1,34 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = rust_library,
+    name = "socket_address",
+    srcs = ["lib.rs"],
+    cpp_deps = [
+        ":socket_address-ffi",
+    ],
+    crate_root = "lib.rs",
+    cxx_bridge = "lib.rs",
+    deps = [
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:cxx",
+        "//folly/rust/network_address:network_address",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "socket_address-ffi",
+    srcs = ["RustSocketAddress.cpp"],
+    headers = ["RustSocketAddress.h"],
+    preferred_linkage = "static",
+    undefined_symbols = True,  # defined by :socket_address
+    visibility = [],
+    exported_deps = [
+        "//folly:network_address",
+    ],
+)

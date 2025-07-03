@@ -76,7 +76,7 @@ class Fiber {
   /**
    * Retrieve this fiber's base stack and stack size.
    *
-   * @return This fiber's stack pointer and stack size.
+   * @return This fiber's base stack pointer and stack size.
    */
   std::pair<void*, size_t> getStack() const {
     return {fiberStackLimit_, fiberStackSize_};
@@ -98,6 +98,13 @@ class Fiber {
   };
 
   State getState() const { return state_; }
+
+  /**
+   * Retrieve this fiber's stack pointer. This is only meant for debugging.
+   *
+   * @return This fiber's current stack pointer.
+   */
+  void* getStackPointer() const { return fiberImpl_.getStackPointer(); }
 
  private:
   State state_{INVALID}; /**< current Fiber state */

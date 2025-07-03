@@ -2824,12 +2824,12 @@ inline std::string&& toStdString(std::string&& s) {
 
 // Hash functions to make fbstring usable with e.g. unordered_map
 
-#define FOLLY_FBSTRING_HASH1(T)                                        \
-  template <>                                                          \
-  struct hash<::folly::basic_fbstring<T>> {                            \
-    size_t operator()(const ::folly::basic_fbstring<T>& s) const {     \
-      return ::folly::hash::fnv32_buf(s.data(), s.size() * sizeof(T)); \
-    }                                                                  \
+#define FOLLY_FBSTRING_HASH1(T)                                               \
+  template <>                                                                 \
+  struct hash<::folly::basic_fbstring<T>> {                                   \
+    size_t operator()(const ::folly::basic_fbstring<T>& s) const {            \
+      return ::folly::hash::fnv32_buf_BROKEN(s.data(), s.size() * sizeof(T)); \
+    }                                                                         \
   };
 
 // The C++11 standard says that these four are defined for basic_string

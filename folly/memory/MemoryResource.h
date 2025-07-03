@@ -18,7 +18,7 @@
 
 #ifndef FOLLY_HAS_MEMORY_RESOURCE
 
-#if defined(__has_include) && __cplusplus >= 201703L && __has_include(<memory_resource>)
+#if __has_include(<memory_resource>)
 
 #define FOLLY_HAS_MEMORY_RESOURCE 1
 #include <memory_resource> // @manual

@@ -373,7 +373,7 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
       enable_if_t<!std::is_constructible<Iter, LocalIter const&>::value, Iter>
       fromLocal(LocalIter const& src) {
     Iter dst;
-    static_assert(sizeof(dst) <= sizeof(src), "");
+    static_assert(sizeof(dst) <= sizeof(src));
     std::memcpy(std::addressof(dst), std::addressof(src), sizeof(dst));
     FOLLY_SAFE_CHECK(
         std::addressof(*src) == std::addressof(*dst),

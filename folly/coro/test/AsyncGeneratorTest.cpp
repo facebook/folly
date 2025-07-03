@@ -19,6 +19,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/AwaitResult.h>
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Collect.h>
@@ -658,6 +659,27 @@ TEST(AsyncGeneraor, CoAwaitTry) {
     auto item3 = co_await folly::coro::co_awaitTry(gen.next());
     CHECK(item3.hasException());
     CHECK(item3.exception().is_compatible_with<SomeError>());
+  }());
+}
+
+TEST(AsyncGeneraor, CoAwaitResult) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto gen = []() -> folly::coro::AsyncGenerator<std::string> {
+      co_yield "foo";
+      co_yield "bar";
+      co_yield folly::coro::co_error(SomeError{});
+      CHECK(false);
+    }();
+
+    auto item1 = co_await folly::coro::co_await_result(gen.next());
+    CHECK(item1.has_value());
+    CHECK(*item1.value_or_throw() == "foo");
+    auto item2 = co_await folly::coro::co_await_result(gen.next());
+    CHECK(item2.has_value());
+    CHECK(*item2.value_or_throw() == "bar");
+    auto item3 = co_await folly::coro::co_await_result(gen.next());
+    CHECK(!item3.has_value() && !item3.has_stopped());
+    CHECK(folly::get_exception<SomeError>(item3));
   }());
 }
 

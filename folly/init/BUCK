@@ -8,19 +8,10 @@ fbcode_target(
     name = "init",
     srcs = ["Init.cpp"],
     headers = ["Init.h"],
-    os_deps = [
-        (
-            "linux",
-            ["//folly/experimental/symbolizer:signal_handler"],
-        ),
-        (
-            "macos",
-            ["//folly/experimental/symbolizer:signal_handler"],
-        ),
-    ],
     deps = [
         ":phase",
         "//folly:singleton",
+        "//folly/experimental/symbolizer:signal_handler",
         "//folly/logging:init",
         "//folly/portability:config",
         "//folly/portability:gflags",

@@ -317,13 +317,17 @@
 // Clang & GCC
 #define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
 #define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
+#define FOLLY_GNU_ENABLE_WARNING_INTERNAL2(warningName) #warningName
 #define FOLLY_GNU_DISABLE_WARNING_INTERNAL2(warningName) #warningName
+#define FOLLY_GNU_ENABLE_ERROR_INTERNAL2(warningName) #warningName
 #define FOLLY_GNU_DISABLE_WARNING(warningName) \
   _Pragma(                                     \
       FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored warningName))
 #define FOLLY_GNU_ENABLE_WARNING(warningName) \
   _Pragma(                                    \
-      FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic warning warningName))
+      FOLLY_GNU_ENABLE_WARNING_INTERNAL2(GCC diagnostic warning warningName))
+#define FOLLY_GNU_ENABLE_ERROR(warningName) \
+  _Pragma(FOLLY_GNU_ENABLE_ERROR_INTERNAL2(GCC diagnostic error warningName))
 #ifdef __clang__
 #define FOLLY_CLANG_DISABLE_WARNING(warningName) \
   FOLLY_GNU_DISABLE_WARNING(warningName)
@@ -338,7 +342,9 @@
 #define FOLLY_PUSH_WARNING __pragma(warning(push))
 #define FOLLY_POP_WARNING __pragma(warning(pop))
 // Disable the GCC warnings.
+#define FOLLY_GNU_ENABLE_WARNING(warningName)
 #define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GNU_ENABLE_ERROR(warningName)
 #define FOLLY_GCC_DISABLE_WARNING(warningName)
 #define FOLLY_CLANG_DISABLE_WARNING(warningName)
 #define FOLLY_MSVC_DISABLE_WARNING(warningNumber) \
@@ -346,7 +352,9 @@
 #else
 #define FOLLY_PUSH_WARNING
 #define FOLLY_POP_WARNING
+#define FOLLY_GNU_ENABLE_WARNING(warningName)
 #define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GNU_ENABLE_ERROR(warningName)
 #define FOLLY_GCC_DISABLE_WARNING(warningName)
 #define FOLLY_CLANG_DISABLE_WARNING(warningName)
 #define FOLLY_MSVC_DISABLE_WARNING(warningNumber)

@@ -21,6 +21,23 @@ namespace folly::bindings::detail {
 
 using namespace folly::bindings::ext;
 
+namespace detail {
+using by_ref_bind_info = decltype([](auto bi) {
+  bi.category = ext::category_t::ref;
+  return bi;
+});
+} // namespace detail
+
+// This isn't in `Bindings.h` only because it's unclear if users need something
+// a const-defaultable "by reference" verb.
+template <typename... Ts>
+struct by_ref : ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...>::
+      merge_update_bound_args;
+};
+template <typename... Ts>
+by_ref(Ts&&...) -> by_ref<ext::deduce_bound_args_t<Ts>...>;
+
 struct Foo : folly::NonCopyableNonMovable {
   constexpr explicit Foo(bool* made, int n) : n_(n) {
     if (made) {
@@ -193,12 +210,26 @@ constexpr auto check_by_ref() {
               binding_t<ref_def_bi, double&>,
               binding_t<ref_def_bi, char&&>>>);
 
+  using constant_ref = decltype(const_ref{1, bound_args{b, 'c'}});
+  static_assert(
+      std::is_same_v<
+          constant_ref,
+          const_ref<int&&, bound_args<double&, char&&>>>);
+  constexpr bind_info_t ref_const_bi{category_t::ref, constness_t::constant};
+  static_assert(
+      std::is_same_v<
+          constant_ref::binding_list_t,
+          tag_t<
+              binding_t<ref_const_bi, int&&>,
+              binding_t<ref_const_bi, double&>,
+              binding_t<ref_const_bi, char&&>>>);
+
   using non_constant_ref =
-      decltype(non_constant{by_ref{1, bound_args{b, 'c'}}});
+      decltype(non_constant{const_ref{1, bound_args{b, 'c'}}});
   static_assert(
       std::is_same_v<
           non_constant_ref,
-          non_constant<by_ref<int&&, bound_args<double&, char&&>>>>);
+          non_constant<const_ref<int&&, bound_args<double&, char&&>>>>);
   constexpr bind_info_t ref_non_const_bi{
       category_t::ref, constness_t::non_constant};
   using non_const_bindings = tag_t<
@@ -208,41 +239,46 @@ constexpr auto check_by_ref() {
   static_assert(
       std::is_same_v<non_constant_ref::binding_list_t, non_const_bindings>);
 
-  using non_const_ref = decltype(by_non_const_ref{1, bound_args{b, 'c'}});
+  using non_const_ref = decltype(mut_ref{1, bound_args{b, 'c'}});
   static_assert(
       std::is_same_v<
           non_const_ref,
-          by_non_const_ref<int&&, bound_args<double&, char&&>>>);
+          mut_ref<int&&, bound_args<double&, char&&>>>);
   static_assert(
       std::is_same_v<non_const_ref::binding_list_t, non_const_bindings>);
 
-  constexpr bind_info_t ref_const_bi{category_t::ref, constness_t::constant};
-  static_assert(
-      std::is_same_v<decltype(constant(by_ref(b))), constant<by_ref<double&>>>);
   static_assert(
       std::is_same_v<
-          decltype(constant(by_ref(b)))::binding_list_t,
+          decltype(constant(const_ref(b))),
+          constant<const_ref<double&>>>);
+  static_assert(
+      std::is_same_v<
+          decltype(constant(const_ref(b)))::binding_list_t,
           tag_t<binding_t<ref_const_bi, double&>>>);
   static_assert(
-      std::is_same_v<decltype(by_ref(constant(b))), by_ref<constant<double&>>>);
+      std::is_same_v<
+          decltype(const_ref(constant(b))),
+          const_ref<constant<double&>>>);
   static_assert(
       std::is_same_v<
-          decltype(by_ref(constant(b)))::binding_list_t,
+          decltype(const_ref(constant(b)))::binding_list_t,
           tag_t<binding_t<ref_const_bi, double&>>>);
 
   using bind_ref_non_const = tag_t<binding_t<ref_non_const_bi, double&>>;
   static_assert(
+      std::is_same_v<decltype(mut_ref(b))::binding_list_t, bind_ref_non_const>);
+  static_assert(
       std::is_same_v<
-          decltype(by_non_const_ref(b))::binding_list_t,
+          decltype(non_constant(const_ref(b)))::binding_list_t,
           bind_ref_non_const>);
   static_assert(
       std::is_same_v<
-          decltype(non_constant(by_ref(b)))::binding_list_t,
+          decltype(by_ref{non_constant{b}})::binding_list_t,
           bind_ref_non_const>);
   static_assert(
       std::is_same_v<
-          decltype(by_ref(non_constant(b)))::binding_list_t,
-          bind_ref_non_const>);
+          decltype(const_ref{non_constant{b}})::binding_list_t,
+          tag_t<binding_t<ref_const_bi, double&>>>);
 
   return true;
 }
@@ -348,6 +384,28 @@ constexpr auto check_in_place_bound_args_via_fn() {
   Foo f2 = lite_tuple::get<0>(std::move(b2).unsafe_tuple_to_bind());
   test(37 == f2.n_);
 
+  struct MoveN : MoveOnly {
+    int n_;
+  };
+
+  int n1 = 1000, n2 = 300, n3 = 30, n4 = 7;
+  auto fn2 = [mn1 = MoveN{.n_ = n1}](int&& i2, int& i3, const int& i4) {
+    return mn1.n_ + i2 + i3 + i4;
+  };
+  auto b3 = make_in_place_with(
+      std::move(fn2), // the contained `MoveN` is noncopyable
+      std::move(n2),
+      n3,
+      std::as_const(n4));
+  static_assert(
+      std::is_same_v<
+          decltype(b3),
+          in_place_fn_bound_args<int, decltype(fn2), int, int&, const int&>>);
+  static_assert(
+      std::is_same_v<
+          decltype(b3)::binding_list_t,
+          tag_t<binding_t<bind_info_t{}, int>>>);
+
   return true;
 }
 
@@ -369,16 +427,16 @@ constexpr auto check_in_place_bound_args_modifier_distributive_property() {
       std::is_same_v<
           expected_binding_list,
           decltype(non_constant(
-              true, by_ref(b), make_in_place<int>(3), by_ref('c')))::
+              true, const_ref(b), make_in_place<int>(3), by_ref('c')))::
               binding_list_t>);
   static_assert(
       std::is_same_v<
           expected_binding_list,
           decltype(non_constant(
               non_constant(true),
-              by_non_const_ref(b),
+              mut_ref(b),
               non_constant(make_in_place<int>(3)),
-              by_non_const_ref('c')))::binding_list_t>);
+              mut_ref('c')))::binding_list_t>);
 
   return true;
 }
@@ -400,14 +458,14 @@ constexpr auto check_in_place_binding_storage_type() {
   static_assert(std::is_same_v<store<decltype(constant(5))>, const int>);
   static_assert(std::is_same_v<store<decltype(non_constant(5))>, int>);
 
-  static_assert(std::is_same_v<store<decltype(by_ref(b))>, const int&>);
+  static_assert(std::is_same_v<store<decltype(const_ref(b))>, const int&>);
   static_assert(
-      std::is_same_v<store<decltype(constant(by_ref(b)))>, const int&>);
-  static_assert(std::is_same_v<store<decltype(by_non_const_ref(b))>, int&>);
-  static_assert(std::is_same_v<store<decltype(by_ref(5))>, const int&&>);
+      std::is_same_v<store<decltype(constant(const_ref(b)))>, const int&>);
+  static_assert(std::is_same_v<store<decltype(mut_ref(b))>, int&>);
+  static_assert(std::is_same_v<store<decltype(const_ref(5))>, const int&&>);
   static_assert(
-      std::is_same_v<store<decltype(constant(by_ref(5)))>, const int&&>);
-  static_assert(std::is_same_v<store<decltype(by_non_const_ref(5))>, int&&>);
+      std::is_same_v<store<decltype(constant(const_ref(5)))>, const int&&>);
+  static_assert(std::is_same_v<store<decltype(mut_ref(5))>, int&&>);
 
   static_assert(
       std::is_same_v<
@@ -456,7 +514,7 @@ static_assert(check_unsafe_move());
 // A minimal test for `using signature_type = storage_type`...
 static_assert(
     std::is_same_v<
-        typename first_policy<decltype(constant(by_ref(5)))>::signature_type,
+        typename first_policy<decltype(constant(const_ref(5)))>::signature_type,
         const int&&>);
 
 } // namespace folly::bindings::detail

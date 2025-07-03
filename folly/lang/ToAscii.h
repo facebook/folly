@@ -276,7 +276,7 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_table(
     char* out, size_t size, uint64_t v) {
   using table = to_ascii_table<Base, Alphabet>;
   auto pos = size;
-  while (FOLLY_UNLIKELY(pos > 2)) {
+  while (pos > 2) {
     pos -= 2;
     //  keep /, % together so a peephole optimization computes them together
     auto const q = v / (Base * Base);
@@ -287,7 +287,7 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_table(
   }
 
   auto const val = table::data.data[size_t(v)];
-  if (FOLLY_UNLIKELY(pos == 2)) {
+  if (pos == 2) {
     std::memcpy(out, &val, 2);
   } else {
     *out = val >> (kIsLittleEndian ? 8 : 0);

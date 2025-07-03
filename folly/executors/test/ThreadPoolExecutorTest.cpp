@@ -29,7 +29,6 @@
 
 #include <folly/Exception.h>
 #include <folly/container/F14Map.h>
-#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/EDFThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>

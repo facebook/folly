@@ -20,8 +20,6 @@
 #include <condition_variable>
 #include <mutex>
 
-#include <glog/logging.h>
-
 #include <folly/Random.h>
 #include <folly/portability/GTest.h>
 

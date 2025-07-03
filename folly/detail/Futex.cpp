@@ -16,10 +16,8 @@
 
 #include <folly/detail/Futex.h>
 
-#include <array>
 #include <cerrno>
 #include <cstdint>
-#include <cstring>
 
 #include <folly/ScopeGuard.h>
 #include <folly/hash/Hash.h>

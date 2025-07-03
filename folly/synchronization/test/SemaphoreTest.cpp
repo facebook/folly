@@ -23,7 +23,6 @@
 
 #include <glog/logging.h>
 
-#include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
 #include <folly/synchronization/Latch.h>

@@ -27,7 +27,10 @@
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/Hazptr.h>
 
-#if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
+#ifdef __aarch64__
+#include <arm_acle.h>
+#include <arm_neon.h>
+#elif FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
 #include <nmmintrin.h>
 #endif
 
@@ -827,7 +830,8 @@ class alignas(64) BucketTable {
 
 } // namespace bucket
 
-#if FOLLY_SSE_PREREQ(4, 2) && FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+#if (FOLLY_SSE_PREREQ(4, 2) || FOLLY_AARCH64) && \
+    FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 namespace simd {
 
@@ -960,6 +964,40 @@ class alignas(64) SIMDTable {
       setNodeAndTag(index, nullptr, 0);
     }
 
+#ifdef __aarch64__
+
+    ////////
+    // Tag filtering using NEON intrinsics
+
+    SparseMaskIter tagMatchIter(std::size_t needle) const {
+      FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
+      uint64_t low = tags_low_.load(std::memory_order_acquire);
+      uint64_t hi = tags_hi_.load(std::memory_order_acquire);
+      uint8x16_t needleV = vdupq_n_u8(static_cast<uint8_t>(needle));
+      uint64x2_t vec;
+      vec[0] = low;
+      vec[1] = hi;
+      auto eqV = vceqq_u8(vreinterpretq_u8_u64(vec), needleV);
+      uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(eqV), 4);
+      uint64_t mask = vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
+      return SparseMaskIter{mask};
+    }
+
+    MaskType occupiedMask() const {
+      uint64_t low = tags_low_.load(std::memory_order_relaxed);
+      uint64_t hi = tags_hi_.load(std::memory_order_relaxed);
+      uint64x2_t vec;
+      vec[0] = low;
+      vec[1] = hi;
+      // signed shift extends top bit to all bits
+      auto occupiedV =
+          vreinterpretq_u8_s8(vshrq_n_s8(vreinterpretq_s8_u64(vec), 7));
+      uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(occupiedV), 4);
+      return vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
+    }
+
+#else
+
     ////////
     // Tag filtering using SSE2 intrinsics
 
@@ -980,6 +1018,8 @@ class alignas(64) SIMDTable {
       auto tagV = _mm_set_epi64x(hi, low);
       return _mm_movemask_epi8(tagV) & kFullMask;
     }
+
+#endif
 
     DenseMaskIter occupiedIter() const {
       // Currently only invoked when relaxed semantics are sufficient.
@@ -1494,7 +1534,11 @@ class alignas(64) SIMDTable {
 
  private:
   static HashPair splitHash(std::size_t hash) {
+#ifdef __aarch64__
+    std::size_t c = __crc32cd(0, hash);
+#else
     std::size_t c = _mm_crc32_u64(0, hash);
+#endif
     size_t tag = (c >> 24) | 0x80;
     hash += c;
     return std::make_pair(hash, tag);

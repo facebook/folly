@@ -16,10 +16,6 @@ fbcode_target(
         "//folly/init:init",
         "//folly/io:iobuf",
     ],
-    external_deps = [
-        "glog",
-        ("libsodium", None, "sodium"),
-    ],
 )
 
 fbcode_target(
@@ -32,9 +28,6 @@ fbcode_target(
         "//folly/crypto:blake2xb",
         "//folly/io:iobuf",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 
@@ -112,9 +105,6 @@ fbcode_target(
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
-    ],
 )
 
 fbcode_target(
@@ -131,9 +121,6 @@ fbcode_target(
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
-    ],
 )
 
 fbcode_target(
@@ -149,8 +136,5 @@ fbcode_target(
         "//folly/crypto:lt_hash_avx2",  # @manual
         "//folly/io:iobuf",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )

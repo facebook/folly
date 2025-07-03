@@ -28,6 +28,7 @@
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/system/HardwareConcurrency.h>
 #include <folly/test/DeterministicSchedule.h>
 #include <folly/test/TestUtils.h>
 
@@ -815,7 +816,7 @@ TEST(DistributedMutex, StressHundredThreads) {
   basicNThreads(100);
 }
 TEST(DistributedMutex, StressHardwareConcurrencyThreads) {
-  basicNThreads(std::thread::hardware_concurrency());
+  basicNThreads(folly::hardware_concurrency());
 }
 
 TEST(DistributedMutex, StressThreeThreadsLockTryAndTimed) {
@@ -838,8 +839,7 @@ TEST(DistributedMutex, StressSixtyFourThreadsLockTryAndTimed) {
 }
 TEST(DistributedMutex, StressHwConcThreadsLockTryAndTimed) {
   lockWithTryAndTimedNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressTwoThreadsCombine) {
@@ -877,8 +877,7 @@ TEST(DistributedMutex, StressHundredThreadsCombine) {
 }
 TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombine) {
   combineNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressTwoThreadsCombineAndLock) {
@@ -901,8 +900,7 @@ TEST(DistributedMutex, StressSixtyFourThreadsCombineAndLock) {
 }
 TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombineAndLock) {
   combineWithLockNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressThreeThreadsCombineTryLockAndLock) {
@@ -925,8 +923,7 @@ TEST(DistributedMutex, StressSixtyFourThreadsCombineTryLockAndLock) {
 }
 TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombineTryLockAndLock) {
   combineWithTryLockNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressThreeThreadsCombineTryLockLockAndTimed) {
@@ -955,8 +952,7 @@ TEST(DistributedMutex, StressSixtyFourThreadsCombineTryLockLockAndTimed) {
 }
 TEST(DistributedMutex, StressHwConcurrencyThreadsCombineTryLockLockAndTimed) {
   combineWithLockTryAndTimedNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressTryLock) {
@@ -1097,8 +1093,7 @@ TEST(DistributedMutex, DeterministicStressSixtyFourThreadsLockTryAndTimed) {
 }
 TEST(DistributedMutex, DeterministicStressHwConcThreadsLockTryAndTimed) {
   lockWithTryAndTimedNThreadsDeterministic(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, CombineDeterministicStressTwoThreads) {
@@ -1121,8 +1116,7 @@ TEST(DistributedMutex, CombineDeterministicStressSixtyFourThreads) {
 }
 TEST(DistributedMutex, CombineDeterministicStressHardwareConcurrencyThreads) {
   combineNThreadsDeterministic(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, CombineAndLockDeterministicStressTwoThreads) {
@@ -1151,8 +1145,7 @@ TEST(DistributedMutex, CombineAndLockDeterministicStressSixtyFourThreads) {
 }
 TEST(DistributedMutex, CombineAndLockDeterministicStressHWConcurrencyThreads) {
   combineAndLockNThreadsDeterministic(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressThreeThreads) {
@@ -1181,8 +1174,7 @@ TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressSixtyThreads) {
 }
 TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressHWConcThreads) {
   combineTryLockAndLockNThreadsDeterministic(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressThreeThreads) {
@@ -1211,8 +1203,7 @@ TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressSixtyThreads) {
 }
 TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressHWConcThreads) {
   combineWithTryLockAndTimedNThreadsDeterministic(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+      folly::hardware_concurrency(), std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, TimedLockTimeout) {

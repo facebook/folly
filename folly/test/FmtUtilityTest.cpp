@@ -50,3 +50,19 @@ TEST_F(FmtUtilityTest, fmt_vformat_mangle) {
                   {folly::fmt_vformat_mangle_name("@pre-key|adj"), "silly"sv},
               })));
 }
+
+TEST_F(FmtUtilityTest, fmt_vformat_mangle_numeric_args_as_named) {
+  auto const opts =
+      folly::fmt_vformat_mangle_format_string_options{}
+          .set_numeric_args_as_named(true);
+  EXPECT_EQ(
+      "hello bob you silly goose",
+      fmt::vformat(
+          folly::fmt_vformat_mangle_format_string(
+              opts, "hello {123} you {456} goose"),
+          folly::fmt_make_format_args_from_map(
+              std::map<std::string, std::string_view>{
+                  {folly::fmt_vformat_mangle_name("123"), "bob"sv},
+                  {folly::fmt_vformat_mangle_name("456"), "silly"sv},
+              })));
+}

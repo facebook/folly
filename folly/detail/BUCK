@@ -83,6 +83,13 @@ non_fbcode_target(
     srcs = [
         "ThreadLocalDetail.cpp",
     ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//build_mode:whatsapp": [
+            "-fexceptions",
+            "-frtti",
+        ],
+    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ThreadLocalDetail.h",
@@ -562,6 +569,7 @@ non_fbcode_target(
     deps = [
         "//xplat/folly:cpp_attributes",
         "//xplat/folly:traits",
+        "//xplat/folly/lang:safe_alias_fwd",
     ],
 )
 
@@ -1025,5 +1033,6 @@ fbcode_target(
     exported_deps = [
         "//folly:cpp_attributes",
         "//folly:traits",
+        "//folly/lang:safe_alias_fwd",
     ],
 )

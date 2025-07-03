@@ -37,13 +37,12 @@ struct IntArrayIterator
 
 TEST(IteratorsTest, IterFacadeHasCorrectTraits) {
   using TR = std::iterator_traits<IntArrayIterator>;
-  static_assert(std::is_same<TR::value_type, int const>::value, "");
-  static_assert(std::is_same<TR::reference, int const&>::value, "");
-  static_assert(std::is_same<TR::pointer, int const*>::value, "");
+  static_assert(std::is_same<TR::value_type, int const>::value);
+  static_assert(std::is_same<TR::reference, int const&>::value);
+  static_assert(std::is_same<TR::pointer, int const*>::value);
   static_assert(
-      std::is_same<TR::iterator_category, std::forward_iterator_tag>::value,
-      "");
-  static_assert(std::is_same<TR::difference_type, ssize_t>::value, "");
+      std::is_same<TR::iterator_category, std::forward_iterator_tag>::value);
+  static_assert(std::is_same<TR::difference_type, ssize_t>::value);
 }
 
 TEST(IteratorsTest, SimpleIteratorFacade) {
@@ -81,13 +80,12 @@ struct IntPointerIter
 
 TEST(IteratorsTest, IterAdaptorHasCorrectTraits) {
   using TR = std::iterator_traits<IntPointerIter>;
-  static_assert(std::is_same<TR::value_type, int const>::value, "");
-  static_assert(std::is_same<TR::reference, int const&>::value, "");
-  static_assert(std::is_same<TR::pointer, int const*>::value, "");
+  static_assert(std::is_same<TR::value_type, int const>::value);
+  static_assert(std::is_same<TR::reference, int const&>::value);
+  static_assert(std::is_same<TR::pointer, int const*>::value);
   static_assert(
-      std::is_same<TR::iterator_category, std::forward_iterator_tag>::value,
-      "");
-  static_assert(std::is_same<TR::difference_type, ssize_t>::value, "");
+      std::is_same<TR::iterator_category, std::forward_iterator_tag>::value);
+  static_assert(std::is_same<TR::difference_type, ssize_t>::value);
 }
 
 TEST(IteratorsTest, IterAdaptorWithPointer) {

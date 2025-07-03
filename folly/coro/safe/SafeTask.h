@@ -43,10 +43,9 @@ namespace folly::coro {
 ///     types to automatically branch between a `NowTask` and a `SafeTask`.
 ///
 /// `SafeTask` is a thin wrapper around `folly::coro::Task` that uses
-/// `safe_alias_of_v` to enforce some compile-time guarantees:
-///   - The `SafeTask` has `safe_alias_of_v` memory safety at least as high
-///     as the coro's arguments.  In particular, no args are taken by
-///     reference.
+/// `safe_alias_of` to enforce some compile-time guarantees:
+///   - The `SafeTask` has `safe_alias_of` memory safety at least as high as
+///     the coro's arguments.  In particular, no args are taken by reference.
 ///   - Regardless of the task's declared safety, the coro's return must
 ///     have safety `maybe_value` (explained in `SafeTaskRetAndArgs`).
 ///   - The coroutine is NOT a stateful callable -- this prohibits lambda
@@ -65,15 +64,24 @@ using ValueTask = SafeTask<safe_alias::maybe_value, T>;
 template <typename T = void>
 using CoCleanupSafeTask = SafeTask<safe_alias::co_cleanup_safe_ref, T>;
 
-// Use `ClosureTask` as the inner coro type for tasks meant to be wrapped
-// in an `async_closure`.
+// Use `ClosureTask` as the inner coro type for tasks meant to ALWAYS be
+// wrapped in an `async_closure`.
 //
-// Outside of a closure, `ClosureTask` is neither awaitable nor movable.
-// The `unsafe_closure_internal` specialization below explains why.
+// Outside of a closure, a `ClosureTask` is immovable.  If you are wanting to
+// move a `ClosureTask`, construct it via an async closure, and you'll get back
+// a `SafeTask` with safety measurements reflecting the safety of its args.
 //
 // If your use-case calls for a `SafeTask` that is sometimes wrapped in a
-// closure, and sometimes isn't, you might add a `MinClosureSafeTask` type
-// alias for `closure_min_arg_safety`.
+// closure, and sometimes is constructed without a closure, you might add a
+// `MinClosureSafeTask` type alias for `closure_min_arg_safety`.
+//
+// Immovability rationale: `ClosureTask` is implemented as a `SafeTask` for
+// reasons explained in the `unsafe_closure_internal` specialization below.
+// But, its safety contract is weaker than that of the usual closure (it can
+// take `capture<Val>`, which should never be moved) -- immovability is meant
+// to reduce the odds of misuse.  Making it truly opaque / not semi-awaitable
+// would be a stronger safeguard, but that requires extra complexity even just
+// so that `AsNoexcept<ClosureTask<>> foo()` would compile.
 template <typename T = void>
 using ClosureTask = SafeTask<safe_alias::unsafe_closure_internal, T>;
 
@@ -132,7 +140,7 @@ using AutoSafeTaskImpl = std::conditional_t<
 template <typename T, typename... SafetyArgs>
 using AutoSafeTask = detail::AutoSafeTaskImpl<
     T,
-    ::folly::detail::safe_alias_for_pack<SafetyArgs...>::value>;
+    ::folly::detail::safe_alias_of_pack<SafetyArgs...>::value>;
 
 namespace detail {
 
@@ -265,10 +273,7 @@ template <safe_alias ArgSafety, typename T>
 struct SafeTaskCfg : DoesNotWrapAwaitable {
   using ValueT = T;
   using InnerTaskT = Task<T>;
-  using TaskWithExecutorT = std::conditional_t<
-      ArgSafety == safe_alias::unsafe_closure_internal,
-      void,
-      SafeTaskWithExecutor<ArgSafety, T>>;
+  using TaskWithExecutorT = SafeTaskWithExecutor<ArgSafety, T>;
   // There is no `promise_type` here because it's added by `coroutine_traits`
   // below.  This is the mechanism that enables `SafeTaskPromise` to inspect
   // the specific arguments of the coroutine (including the implicit object
@@ -300,10 +305,8 @@ struct SafeTaskBaseTraits {
 //    owning closure that's responsible for its cleanup.
 template <typename T>
 struct SafeTaskBaseTraits<safe_alias::unsafe_closure_internal, T> {
-  // In today's usage, `ClosureTask` does not benefit from being movable, so
-  // mark it non-movable to be safer & preserve option value.
-  // IMPORTANT: If changing, also update the base of `SafeTaskWithExecutor`.
-  using type = AddMustAwaitImmediately<OpaqueTaskWrapperCrtp<
+  // The `ClosureTask` docblock discusses why this is immovable.
+  using type = AddMustAwaitImmediately<TaskWrapperCrtp<
       SafeTask<safe_alias::unsafe_closure_internal, T>,
       SafeTaskCfg<safe_alias::unsafe_closure_internal, T>>>;
 };
@@ -312,8 +315,8 @@ struct SafeTaskBaseTraits<safe_alias::unsafe_closure_internal, T> {
 // similar to `ClosureTask`.
 template <typename T>
 struct SafeTaskBaseTraits<safe_alias::unsafe_member_internal, T> {
-  // Unlike `ClosureTask`, this **is** awaitable outside of `async_closure`,
-  // and therefore it **must** be non-movable to mitigate safety risks.
+  // Immovable since members take `this`, whose lifetime is unknown -- i.e.
+  // outside of async closure usage, a `MemberTask` is just a `NowTask`.
   using type = AddMustAwaitImmediately<TaskWrapperCrtp<
       SafeTask<safe_alias::unsafe_member_internal, T>,
       SafeTaskCfg<safe_alias::unsafe_member_internal, T>>>;
@@ -406,12 +409,12 @@ struct folly::coro::
       folly::coro::detail::SafeTaskPromise<ArgSafety, T, Args...>;
 };
 
-// For `safe_alias_of_v`: use the task while its arguments are still good.
+// The `SafeTask` is as safe as its arguments.
 template <folly::safe_alias ArgSafety, typename T>
-struct folly::safe_alias_for<folly::coro::SafeTask<ArgSafety, T>>
+struct folly::safe_alias_of<folly::coro::SafeTask<ArgSafety, T>>
     : folly::safe_alias_constant<ArgSafety> {};
 template <folly::safe_alias ArgSafety, typename T>
-struct folly::safe_alias_for<folly::coro::SafeTaskWithExecutor<ArgSafety, T>>
+struct folly::safe_alias_of<folly::coro::SafeTaskWithExecutor<ArgSafety, T>>
     : folly::safe_alias_constant<ArgSafety> {};
 
 #endif

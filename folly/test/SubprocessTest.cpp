@@ -128,7 +128,7 @@ TEST_F(SubprocessFdActionsListTest, stress) {
     for (size_t i = 0; i < sz; ++i) {
       while (true) {
         auto n = dist(rng);
-        if (map.count(n)) {
+        if (map.contains(n)) {
           continue;
         }
         map[int(n)] = -int(n);

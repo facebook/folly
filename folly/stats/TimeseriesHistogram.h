@@ -55,7 +55,7 @@ template <
 class TimeseriesHistogram {
  private:
   // NOTE: T must be equivalent to _signed_ numeric type for our math.
-  static_assert(std::numeric_limits<T>::is_signed, "");
+  static_assert(std::numeric_limits<T>::is_signed);
 
  public:
   // Values to be inserted into container

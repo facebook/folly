@@ -30,7 +30,8 @@ namespace folly::bindings {
 
 template <typename, typename... As>
 constexpr auto make_in_place(As&&...);
-constexpr auto make_in_place_with(auto);
+template <typename... As>
+constexpr auto make_in_place_with(auto, As&&...);
 
 // The primitive for representing lists of bound args. Unary forms:
 //  - `bound_args<V>`: if `V` is already `like_bound_args`, wraps that
@@ -71,7 +72,7 @@ struct bound_args_unsafe_move {
 //     doing in-place construction, and the input is a "maker" object that's
 //     implicitly convertible to that value type.
 //   - "Flags" stored in `bind_info_t` enums below.  Users set them via
-//     modifier helpers like `constant{}` or `by_ref{}`.  Library authors
+//     modifier helpers like `constant{}` or `const_ref{}`.  Library authors
 //     may derive from `bind_info_t` to add custom flags, and then define a
 //     corresponding `binding_policy` specialization to handle them.
 //   - An "output type" computed **after** all the modifiers are applied
@@ -110,7 +111,7 @@ struct bind_info_t {
 //   - `BindingType`: the input binding type -- a reference, unless this is
 //     a `make_in_place*` binding -- see `is_binding_t_type_in_place`.
 //   - A `bind_info_t`-derived object capturing the effects of any binding
-//     modifiers (`constant`, `by_ref`, etc).
+//     modifiers (`constant`, `const_ref`, etc).
 // This is used by `binding_policy` to compute `storage_type` and
 // `signature_type`.  The values returned by `unsafe_tuple_to_bind()` should
 // be convertible to the resulting `storage_type`.
@@ -123,7 +124,7 @@ template <typename BT>
 concept is_binding_t_type_in_place = !std::is_reference_v<BT>;
 
 // Implementation detail for all the `bound_args` modifiers (`constant`,
-// `by_ref`, etc).  Concatenates multiple `Ts`, each quacking like
+// `const_ref`, etc).  Concatenates multiple `Ts`, each quacking like
 // `like_bound_args`, to produce a single `like_bound_args` list.  Applies
 // `BindInfoFn` to each `bind_info_t` in the inputs' `binding_list_t`s.
 template <typename BindInfoFn, typename... Ts>
@@ -321,31 +322,42 @@ class in_place_bound_args
       : base{u, std::move(t)} {}
 };
 
-template <typename T, typename Fn>
+template <typename T, typename Fn, typename... Args>
 class in_place_fn_maker : private MoveOnly {
  private:
   Fn fn_; // May contain refs; ~safe since a binding lives for 1 statement.
+  detail::lite_tuple::tuple<Args&&...> arg_tup_;
 
  protected:
-  template <typename, typename>
+  template <typename, typename, typename...>
   friend class in_place_fn_bound_args;
 
-  constexpr /*implicit*/ in_place_fn_maker(Fn fn) : fn_(std::move(fn)) {}
+  constexpr /*implicit*/ in_place_fn_maker(
+      Fn fn, Args&&... as [[clang::lifetimebound]])
+      : fn_(std::move(fn)), arg_tup_{static_cast<Args&&>(as)...} {}
 
  public:
   // This implicit conversion allows direct construction inside of `tuple` e.g.
-  constexpr /*implicit*/ operator T() && { return fn_(); }
+  constexpr /*implicit*/ operator T() && {
+    return lite_tuple::apply(fn_, arg_tup_);
+  }
 };
 
 // NB: `Args` are deduced by `make_in_place` as forwarding references
-template <typename T, typename Fn>
+template <typename T, typename Fn, typename... Args>
 class in_place_fn_bound_args
-    : public in_place_bound_args_crtp_base<T, in_place_fn_maker<T, Fn>> {
+    : public in_place_bound_args_crtp_base<
+          T,
+          in_place_fn_maker<T, Fn, Args...>> {
  protected:
-  friend constexpr auto ::folly::bindings::make_in_place_with(auto);
+  template <typename... As>
+  friend constexpr auto ::folly::bindings::make_in_place_with(auto, As&&...);
 
-  using base = in_place_bound_args_crtp_base<T, in_place_fn_maker<T, Fn>>;
-  constexpr explicit in_place_fn_bound_args(Fn fn) : base{{std::move(fn)}} {}
+  using base =
+      in_place_bound_args_crtp_base<T, in_place_fn_maker<T, Fn, Args...>>;
+  constexpr explicit in_place_fn_bound_args(
+      Fn fn, Args&&... args [[clang::lifetimebound]])
+      : base{{std::move(fn), static_cast<Args&&>(args)...}} {}
 
  public:
   constexpr in_place_fn_bound_args(ext::bound_args_unsafe_move u, auto t)
@@ -358,22 +370,23 @@ template <typename T>
 concept is_in_place_maker = instantiated_from<T, in_place_fn_maker> ||
     instantiated_from<T, in_place_args_maker>;
 
-using constant_build_info = decltype([](auto bi) {
+using constant_bind_info = decltype([](auto bi) {
   bi.constness = ext::constness_t::constant;
   return bi;
 });
 
-using non_constant_build_info = decltype([](auto bi) {
+using non_constant_bind_info = decltype([](auto bi) {
   bi.constness = ext::constness_t::non_constant;
   return bi;
 });
 
-using by_ref_build_info = decltype([](auto bi) {
+using const_ref_bind_info = decltype([](auto bi) {
   bi.category = ext::category_t::ref;
+  bi.constness = ext::constness_t::constant;
   return bi;
 });
 
-using by_non_const_ref_build_info = decltype([](auto bi) {
+using mut_ref_bind_info = decltype([](auto bi) {
   bi.category = ext::category_t::ref;
   bi.constness = ext::constness_t::non_constant;
   return bi;
@@ -383,6 +396,20 @@ using by_non_const_ref_build_info = decltype([](auto bi) {
 
 // `make_in_place` and `make_in_place_with` construct non-movable,
 // non-copyable types in their final location.
+//
+// CAREFUL: As with other `bound_args{}`, the returned object stores references
+// to `args` to avoid unnecessary move-copies.  A power user may wish to write
+// a function that returns a binding, which OWNS some values.  For example, you
+// may need to avoid a stack-use-after-free such as this one:
+//
+//   auto makeFoo(int n) { return make_in_place<Foo>(n); } // BAD: `n` is dead
+//
+// To avoid the bug, either take `n` by-reference (often preferred), or store
+// your values inside a `make_in_place_with` callable:
+//
+//   auto makeFoo(int n) {
+//     return make_in_place_with([n]() { return Foo{n}; });
+//   }
 template <typename T, typename... Args>
 constexpr auto make_in_place(Args&&... args [[clang::lifetimebound]]) {
   return detail::in_place_bound_args<T, Args...>{static_cast<Args&&>(args)...};
@@ -391,10 +418,15 @@ constexpr auto make_in_place(Args&&... args [[clang::lifetimebound]]) {
 //   - Dangling references may be hidden inside `make_fn` captures --
 //     `clang` offers no `lifetimebound` analysis for these (yet?).
 //   - The type signature of the `in_place_bound_args` includes a lambda.
-constexpr auto make_in_place_with(auto make_fn) {
+// CAREFUL: While `make_fn` is taken by-value, `args` are stored as references,
+// as in `make_in_place`.
+template <typename... Args>
+constexpr auto make_in_place_with(
+    auto make_fn, Args&&... args [[clang::lifetimebound]]) {
   return detail::in_place_fn_bound_args<
-      std::invoke_result_t<decltype(make_fn)>,
-      decltype(make_fn)>{std::move(make_fn)};
+      std::invoke_result_t<decltype(make_fn), Args&&...>,
+      decltype(make_fn),
+      Args...>{std::move(make_fn), static_cast<Args&&>(args)...};
 }
 
 // The below "binding modifiers" all return an immovable bound args list,
@@ -409,16 +441,23 @@ constexpr auto make_in_place_with(auto make_fn) {
 // You can think of these analogously to value category specifiers for
 // member variables of a struct -- e.g.
 //
-//   (1) `non_constant(by_ref())` asks to store a non-const reference, of
-//        the same reference category as the input.
-//   (2) `constant` stores the input as a `const` value (under the default
+//   (1) `mut_ref{}` asks to store a non-const reference, of
+//        the same reference category as the input.  Or, see `const_ref{}`.
+//   (2) `constant{}` stores the input as a `const` value (under the default
 //       `binding_policy`).  Unlike `std::as_const` this allows you to move
 //        a non-const reference into a `const` storage location.
+//
+// Specifiers can be overridden, e.g. you could (but should not!) express
+// `mut_ref{}` as `non_constant{const_ref{}}`.
+//
+// There's currently no user-facing `by_ref{}`, which would leave the
+// `constness` of the binding to be defaulted by the `binding_policy` below.
+// If a use-case arises, the test already contains its trivial implementation.
 
 template <typename... Ts>
 struct constant
-    : ext::merge_update_bound_args<detail::constant_build_info, Ts...> {
-  using ext::merge_update_bound_args<detail::constant_build_info, Ts...>::
+    : ext::merge_update_bound_args<detail::constant_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::constant_bind_info, Ts...>::
       merge_update_bound_args;
 };
 template <typename... Ts>
@@ -426,30 +465,30 @@ constant(Ts&&...) -> constant<ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
 struct non_constant
-    : ext::merge_update_bound_args<detail::non_constant_build_info, Ts...> {
-  using ext::merge_update_bound_args<detail::non_constant_build_info, Ts...>::
+    : ext::merge_update_bound_args<detail::non_constant_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::non_constant_bind_info, Ts...>::
       merge_update_bound_args;
 };
 template <typename... Ts>
 non_constant(Ts&&...) -> non_constant<ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
-struct by_ref : ext::merge_update_bound_args<detail::by_ref_build_info, Ts...> {
-  using ext::merge_update_bound_args<detail::by_ref_build_info, Ts...>::
+struct const_ref
+    : ext::merge_update_bound_args<detail::const_ref_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::const_ref_bind_info, Ts...>::
       merge_update_bound_args;
 };
 template <typename... Ts>
-by_ref(Ts&&...) -> by_ref<ext::deduce_bound_args_t<Ts>...>;
+const_ref(Ts&&...) -> const_ref<ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
-struct by_non_const_ref
-    : ext::merge_update_bound_args<detail::by_non_const_ref_build_info, Ts...> {
-  using ext::merge_update_bound_args<
-      detail::by_non_const_ref_build_info,
-      Ts...>::merge_update_bound_args;
+struct mut_ref
+    : ext::merge_update_bound_args<detail::mut_ref_bind_info, Ts...> {
+  using ext::merge_update_bound_args<detail::mut_ref_bind_info, Ts...>::
+      merge_update_bound_args;
 };
 template <typename... Ts>
-by_non_const_ref(Ts&&...) -> by_non_const_ref<ext::deduce_bound_args_t<Ts>...>;
+mut_ref(Ts&&...) -> mut_ref<ext::deduce_bound_args_t<Ts>...>;
 
 // Future: Add `copied()` and `moved()` modifiers so the user can ensure
 // pass-by-value with copy-, or move-copy semantics.  This enforcement
@@ -481,7 +520,7 @@ class binding_policy<binding_t<BI, BindingType>> {
   static_assert(
       !is_binding_t_type_in_place<BindingType> ||
           BI.category != category_t::ref,
-      "`by_ref` is incompatible with `make_in_place*`");
+      "`const_ref` / `mut_ref` is incompatible with `make_in_place*`");
 
  protected:
   // Future: This **might** compile faster with a family of explicit

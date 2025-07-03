@@ -45,7 +45,6 @@ fbcode_target(
         "--env_util_subprocess_binary=$(location :env_util_subprocess)",
     ],
     deps = [
-        "//folly:memory",
         "//folly:subprocess",
         "//folly/container:array",
         "//folly/portability:fcntl",

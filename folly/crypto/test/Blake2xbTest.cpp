@@ -20,8 +20,6 @@
 #include <string>
 #include <vector>
 
-#include <sodium.h>
-
 #include <folly/String.h>
 #include <folly/io/IOBuf.h>
 #include <folly/portability/GTest.h>

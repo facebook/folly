@@ -49,14 +49,42 @@ namespace folly::coro {
 
 namespace detail {
 
-// This reuses the `await_resume_try` machinery in the hope that the compiler
-// will be able to optimize away the `Try` -> `result` conversion.  In some
-// cases, this may incur an extra move-copy, so if this ends up being hot,
-// adding a specialized `await_resume_result` interface may be justified.
+template <typename Awaiter>
+using detect_await_resume_result =
+    decltype(FOLLY_DECLVAL(Awaiter).await_resume_result());
+
+template <typename Awaiter>
+constexpr bool is_awaiter_result =
+    is_detected_v<detect_await_resume_result, Awaiter>;
+
+template <typename Awaitable>
+constexpr bool is_awaitable_result =
+    is_awaiter_result<awaiter_type_t<Awaitable>>;
+
+// On the happy path, this uses the dedicated `await_resume_result()` protocol,
+// if it's supported by the awaiter.
+//
+// As fallback, this reuses the `await_resume_try()` machinery in the hope that
+// the compiler will be able to optimize away the `Try` -> `result` conversion.
+//
+// The reasons to support the dedicated protocol are (1) better semantics, and
+// (2) a data flow that's easier for the compiler to optimize.  Specifically:
+//
+//   - `await_resume_result()` cleanly handles `Task<V&>`, whereas `Try`
+//     doesn't support storing references, and the caller of `co_awaitTry` has
+//     to deal with `Try<std::reference_wrapper<V>>`.  See the test in
+//     `TaskOfLvalueReferenceAsTry`.
+//
+//   - `await_resume_result()` implementations can explicitly avoid the "empty
+//     `Try`" pitfall, which is something that gets converted to a
+//     `UsingUninitializedTry` error by the `try_to_result()` fallback.
+//
+//   - Falling back to `await_resume_try()` can incur an extra move-copy, which
+//     may not always optimize away.
 template <typename Awaitable>
 class ResultAwaiter {
  private:
-  static_assert(is_awaitable_try<Awaitable&&>);
+  static_assert(is_awaitable_try<Awaitable> || is_awaitable_result<Awaitable>);
 
   using Awaiter = awaiter_type_t<Awaitable>;
   Awaiter awaiter_;
@@ -71,10 +99,26 @@ class ResultAwaiter {
   template <typename Promise>
   auto await_suspend(coroutine_handle<Promise> coro)
       FOLLY_DETAIL_FORWARD_BODY(awaiter_.await_suspend(coro))
+      // clang-format on
 
-  auto await_resume()
-      FOLLY_DETAIL_FORWARD_BODY(try_to_result(awaiter_.await_resume_try()))
-  // clang-format on
+      template <
+          typename Awaiter2 = Awaiter,
+          typename Result =
+              decltype(FOLLY_DECLVAL(Awaiter2&).await_resume_result())>
+      Result await_resume() noexcept(noexcept(awaiter_.await_resume_result())) {
+    return awaiter_.await_resume_result();
+  }
+
+  template <
+      typename Awaiter2 = Awaiter,
+      typename Result =
+          decltype(try_to_result(FOLLY_DECLVAL(Awaiter2&).await_resume_try()))>
+  Result await_resume() noexcept(
+      noexcept(try_to_result(awaiter_.await_resume_try())))
+    requires(!is_awaitable_result<Awaitable>)
+  {
+    return try_to_result(awaiter_.await_resume_try());
+  }
 };
 
 template <typename T>

@@ -49,6 +49,9 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/SafeAlias-fwd.h>
+#include <folly/result/result.h>
+#include <folly/result/try.h>
 #include <folly/tracing/AsyncStack.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -173,16 +176,7 @@ class TaskPromiseBase {
             mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())));
   }
 
-  template <
-      typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
-  auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
-    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
-    return await_transform(awaitable.unwrap());
-  }
-  template <
-      typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+  template <typename Awaitable>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
     return await_transform(
@@ -613,6 +607,16 @@ class FOLLY_NODISCARD TaskWithExecutor {
       return std::move(coro_.promise().result());
     }
 
+#if FOLLY_HAS_RESULT
+    result<T> await_resume_result() noexcept(
+        std::is_nothrow_move_constructible_v<StorageType>) {
+      SCOPE_EXIT {
+        std::exchange(coro_, {}).destroy();
+      };
+      return try_to_result(std::move(coro_.promise().result()));
+    }
+#endif
+
    private:
     handle_t coro_;
   };
@@ -802,7 +806,8 @@ class FOLLY_CORO_TASK_ATTRS Task {
       Executor::KeepAlive<> executor, Task task) noexcept {
     return std::move(task).scheduleOn(std::move(executor));
   }
-  // Legacy form, prefer `co_withExecutor(exec, std::move(task))`.
+  [[deprecated(
+      "Legacy form, prefer `co_withExecutor(exec, std::move(task))`.")]]
   TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
     setExecutor(std::move(executor));
     DCHECK(coro_);
@@ -923,6 +928,17 @@ class FOLLY_CORO_TASK_ATTRS Task {
       return std::move(coro_.promise().result());
     }
 
+#if FOLLY_HAS_RESULT
+    result<T> await_resume_result() noexcept(
+        std::is_nothrow_move_constructible_v<StorageType>) {
+      DCHECK(coro_);
+      SCOPE_EXIT {
+        std::exchange(coro_, {}).destroy();
+      };
+      return try_to_result(std::move(coro_.promise().result()));
+    }
+#endif
+
    private:
     // This overload needed as Awaiter is returned from co_viaIfAsync() which is
     // then passed into co_withAsyncStack().
@@ -979,6 +995,20 @@ detail::TaskPromiseCrtpBase<Promise, T>::get_return_object() noexcept {
 }
 
 } // namespace coro
+
+// Use `SafeTask` instead of `Task` to move tasks into other safe coro APIs.
+//
+// User-facing stuff from `Task.h` can trivially include unsafe aliasing,
+// the `folly::coro` docs include hundreds of words of pitfalls.  The intent
+// here is to catch people accidentally passing `Task`s into safer
+// primitives, and breaking their memory-safety guarantees.
+template <typename T>
+struct safe_alias_of<::folly::coro::TaskWithExecutor<T>>
+    : safe_alias_constant<safe_alias::unsafe> {};
+template <typename T>
+struct safe_alias_of<::folly::coro::Task<T>>
+    : safe_alias_constant<safe_alias::unsafe> {};
+
 } // namespace folly
 
 #endif // FOLLY_HAS_COROUTINES

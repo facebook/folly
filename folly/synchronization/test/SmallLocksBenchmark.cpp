@@ -31,6 +31,7 @@
 #include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/FlatCombining.h>
 #include <folly/synchronization/SmallLocks.h>
+#include <folly/system/HardwareConcurrency.h>
 
 /* "Work cycle" is just an additional nop loop iteration.
  * A smaller number of work cyles will result in more contention,
@@ -42,7 +43,7 @@ DEFINE_int32(work, 100, "Number of work cycles");
 DEFINE_int32(unlocked_work, 1000, "Number of unlocked work cycles");
 DEFINE_int32(
     threads,
-    std::thread::hardware_concurrency(),
+    folly::hardware_concurrency(),
     "Number of threads for fairness test");
 DEFINE_bool(run_fairness, true, "Run fairness benchmarks");
 
@@ -229,7 +230,7 @@ template <typename Lock, typename Data = std::uint64_t>
 static void runContended(
     size_t numOps, size_t numThreads, size_t work = FLAGS_work) {
   folly::BenchmarkSuspender braces;
-  size_t totalthreads = std::thread::hardware_concurrency();
+  size_t totalthreads = folly::hardware_concurrency();
   if (totalthreads < numThreads) {
     totalthreads = numThreads;
   }
@@ -279,7 +280,7 @@ static void runContended(
 
 template <typename Lock>
 static void runFairness(std::size_t numThreads) {
-  size_t totalthreads = std::thread::hardware_concurrency();
+  size_t totalthreads = folly::hardware_concurrency();
   if (totalthreads < numThreads) {
     totalthreads = numThreads;
   }

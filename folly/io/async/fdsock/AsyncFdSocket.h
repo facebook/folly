@@ -213,8 +213,10 @@ class AsyncFdSocket : public AsyncSocket {
     explicit FdReadAncillaryDataCallback(AsyncFdSocket* socket)
         : socket_(socket) {}
 
-    void ancillaryData(struct ::msghdr& msg) noexcept override {
+    folly::Expected<folly::Unit, AsyncSocketException> ancillaryData(
+        struct ::msghdr& msg) noexcept override {
       socket_->enqueueFdsFromAncillaryData(msg);
+      return folly::unit;
     }
 
     folly::MutableByteRange getAncillaryDataCtrlBuffer() noexcept override {
@@ -237,12 +239,6 @@ class AsyncFdSocket : public AsyncSocket {
   void enqueueFdsFromAncillaryData(struct ::msghdr& msg) noexcept;
 
   void setUpCallbacks() noexcept;
-
-  // Overflow on signed ints is UB, while this explicitly wraps MAX -> 0.
-  // E.g. addSeqNum(MAX - 1, 3) == 1.
-  static SocketFds::SeqNum addSeqNum(
-      SocketFds::SeqNum, SocketFds::SeqNum) noexcept;
-  FOLLY_GTEST_FRIEND_TEST(AsyncFdSocketTest, TestAddSeqNum);
 
   FdSendMsgParamsCallback sendMsgCob_;
   std::queue<SocketFds> fdsQueue_; // must outlive readAncillaryDataCob_

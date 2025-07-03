@@ -18,7 +18,6 @@
 // order.
 #include <folly/Try.h>
 #include <folly/futures/Future.h>
-#include <folly/futures/Promise.h>
 #include <folly/portability/GTest.h>
 
 TEST(Basic, compiles) {

@@ -1,0 +1,79 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = rust_bindgen_library,
+    name = "iobuf-sys",
+    allowlist_funcs = [
+        "facebook::rust::.*",
+    ],
+    allowlist_types = [
+        "folly::IOBuf",
+        "facebook::rust::.*",
+    ],
+    allowlist_vars = [
+        "facebook::rust::.*",
+    ],
+    blocklist_types = [
+        # These seems to come from type_traits / make_signed via fbvector
+        "folly::fbvector.*",
+        "__type",
+        "type_",
+    ],
+    cpp_deps = [":folly-io-buf"],
+    cxx_namespaces = True,
+    generate = ("types", "vars", "functions"),
+    header = "iobuf.h",
+    opaque_types = [
+        "std::.*",
+        "folly::fbstring.*",
+    ],
+    src_includes = ["iobuf_sys.rs"],
+    visibility = [],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "iobuf-ffi",
+    srcs = ["iobuf.cpp"],
+    headers = ["iobuf.h"],
+    preferred_linkage = "static",
+    exported_deps = [
+        ":folly-io-buf",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_library,
+    name = "iobuf",
+    srcs = glob(["src/*.rs"]),
+    cpp_deps = [":iobuf-ffi"],
+    crate_root = "src/lib.rs",
+    cxx_bridge = "src/lib.rs",
+    test_deps = [
+        "fbsource//third-party/rust:quickcheck",
+        "//thrift/lib/rust/src/dep_tests:test_if-rust",
+    ],
+    deps = [
+        "fbsource//third-party/rust:bytes",
+        "fbsource//third-party/rust:cxx",
+        "fbsource//third-party/rust:memmap2",
+        ":iobuf-sys",
+        "//eden/scm/lib/minibytes:minibytes",
+        "//thrift/lib/rust:fbthrift",
+    ],
+)
+
+fbcode_target(
+    _kind = fb_native.alias,
+    name = "folly-io-buf",
+    actual = select({
+        "DEFAULT": "//folly/io:iobuf",
+        "ovr_config//build_mode:arvr_mode": "fbsource//xplat/folly/io:iobuf",
+    }),
+)

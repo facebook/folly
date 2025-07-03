@@ -32,11 +32,11 @@
 
 namespace folly {
 
-static_assert(IsConvertible<float>::value, "");
-static_assert(IsConvertible<int>::value, "");
-static_assert(IsConvertible<bool>::value, "");
-static_assert(IsConvertible<int>::value, "");
-static_assert(!IsConvertible<std::vector<int>>::value, "");
+static_assert(IsConvertible<float>::value);
+static_assert(IsConvertible<int>::value);
+static_assert(IsConvertible<bool>::value);
+static_assert(IsConvertible<int>::value);
+static_assert(!IsConvertible<std::vector<int>>::value);
 
 namespace detail {
 
@@ -762,6 +762,11 @@ std::string stripLeftMargin(std::string s) {
     }
   }
   return join("\n", piecer);
+}
+
+bool SubstringConversionCode::operator==(
+    const SubstringConversionCode& other) const {
+  return this->code == other.code && this->substring == other.substring;
 }
 
 } // namespace folly

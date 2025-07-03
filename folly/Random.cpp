@@ -20,6 +20,7 @@
 #include <mutex>
 #include <random>
 
+#include <glog/logging.h>
 #include <folly/CppAttributes.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/ThreadLocal.h>
@@ -28,8 +29,6 @@
 #include <folly/portability/SysTime.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/RelaxedAtomic.h>
-
-#include <glog/logging.h>
 
 #ifdef _WIN32
 #include <wincrypt.h> // @manual

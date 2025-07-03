@@ -118,67 +118,41 @@ TEST(Format, Simple) {
 
   std::vector<int> v1{10, 20, 30};
   EXPECT_EQ("0020", sformat("{0[1]:04}", v1));
-  EXPECT_EQ("0020", svformat("{1:04}", v1));
-  EXPECT_EQ("10 20", svformat("{} {}", v1));
 
   const std::vector<int> v2 = v1;
   EXPECT_EQ("0020", sformat("{0[1]:04}", v2));
-  EXPECT_EQ("0020", svformat("{1:04}", v2));
   EXPECT_THROW(sformat("{0[3]:04}", v2), std::out_of_range);
-  EXPECT_THROW(svformat("{3:04}", v2), std::out_of_range);
   EXPECT_EQ("0020", sformat("{0[1]:04}", defaulted(v2, 42)));
-  EXPECT_EQ("0020", svformat("{1:04}", defaulted(v2, 42)));
   EXPECT_EQ("0042", sformat("{0[3]:04}", defaulted(v2, 42)));
-  EXPECT_EQ("0042", svformat("{3:04}", defaulted(v2, 42)));
 
   {
     const int p[] = {10, 20, 30};
     const int* q = p;
     EXPECT_EQ("0020", sformat("{0[1]:04}", p));
-    EXPECT_EQ("0020", svformat("{1:04}", p));
     EXPECT_EQ("0020", sformat("{0[1]:04}", q));
-    EXPECT_EQ("0020", svformat("{1:04}", q));
     EXPECT_NE("", sformat("{}", q));
 
     EXPECT_EQ("0x", sformat("{}", p).substr(0, 2));
-    EXPECT_EQ("10", svformat("{}", p));
     EXPECT_EQ("0x", sformat("{}", q).substr(0, 2));
-    EXPECT_EQ("10", svformat("{}", q));
     q = nullptr;
     EXPECT_EQ("(null)", sformat("{}", q));
   }
 
   std::map<int, std::string> m{{10, "hello"}, {20, "world"}};
   EXPECT_EQ("worldXX", sformat("{[20]:X<7}", m));
-  EXPECT_EQ("worldXX", svformat("{20:X<7}", m));
   EXPECT_THROW(sformat("{[42]:X<7}", m), std::out_of_range);
-  EXPECT_THROW(svformat("{42:X<7}", m), std::out_of_range);
   EXPECT_EQ("worldXX", sformat("{[20]:X<7}", defaulted(m, "meow")));
-  EXPECT_EQ("worldXX", svformat("{20:X<7}", defaulted(m, "meow")));
   EXPECT_EQ("meowXXX", sformat("{[42]:X<7}", defaulted(m, "meow")));
-  EXPECT_EQ("meowXXX", svformat("{42:X<7}", defaulted(m, "meow")));
 
   std::map<std::string, std::string> m2{{"hello", "world"}};
   EXPECT_EQ("worldXX", sformat("{[hello]:X<7}", m2));
-  EXPECT_EQ("worldXX", svformat("{hello:X<7}", m2));
   EXPECT_THROW(sformat("{[none]:X<7}", m2), std::out_of_range);
-  EXPECT_THROW(svformat("{none:X<7}", m2), std::out_of_range);
   EXPECT_EQ("worldXX", sformat("{[hello]:X<7}", defaulted(m2, "meow")));
-  EXPECT_EQ("worldXX", svformat("{hello:X<7}", defaulted(m2, "meow")));
   EXPECT_EQ("meowXXX", sformat("{[none]:X<7}", defaulted(m2, "meow")));
-  EXPECT_EQ("meowXXX", svformat("{none:X<7}", defaulted(m2, "meow")));
-  try {
-    svformat("{none:X<7}", m2);
-    EXPECT_FALSE(true) << "svformat should throw on missing key";
-  } catch (const FormatKeyNotFoundException& e) {
-    EXPECT_STREQ("none", e.key());
-  }
 
   // Test indexing in strings
   EXPECT_EQ("61 62", sformat("{0[0]:x} {0[1]:x}", "abcde"));
-  EXPECT_EQ("61 62", svformat("{0:x} {1:x}", "abcde"));
   EXPECT_EQ("61 62", sformat("{0[0]:x} {0[1]:x}", std::string("abcde")));
-  EXPECT_EQ("61 62", svformat("{0:x} {1:x}", std::string("abcde")));
 
   // Test booleans
   EXPECT_EQ("true", sformat("{}", true));
@@ -190,14 +164,12 @@ TEST(Format, Simple) {
   {
     std::pair<int, std::string> p{42, "hello"};
     EXPECT_EQ("    42 hello ", sformat("{0[0]:6} {0[1]:6}", p));
-    EXPECT_EQ("    42 hello ", svformat("{:6} {:6}", p));
   }
 
   // Test tuples
   {
     std::tuple<int, std::string, int> t{42, "hello", 23};
     EXPECT_EQ("    42 hello      23", sformat("{0[0]:6} {0[1]:6} {0[2]:6}", t));
-    EXPECT_EQ("    42 hello      23", svformat("{:6} {:6} {:6}", t));
   }
 
   // Test writing to stream
@@ -434,7 +406,6 @@ TEST(Format, OutOfBounds) {
   std::map<std::string, int> map{{"hello", 0}, {"world", 1}};
   EXPECT_EQ("hello = 0", sformat("hello = {[hello]}", map));
   EXPECT_THROW(sformat("{[nope]}", map), std::out_of_range);
-  EXPECT_THROW(svformat("{nope}", map), std::out_of_range);
 }
 
 TEST(Format, BogusFormatString) {
@@ -457,10 +428,6 @@ TEST(Format, BogusFormatString) {
   EXPECT_FORMAT_ERROR(
       sformat("{0:*}", 12, "ok"),
       "cannot provide value arg index without width arg index");
-
-  std::vector<int> v{1, 2, 3};
-  EXPECT_FORMAT_ERROR(
-      svformat("{:*}", v), "dynamic field width not supported in vformat()");
 
   // This one fails in detail::enforceWhitespace(), which throws
   // std::range_error

@@ -62,9 +62,22 @@ inline constexpr fmt_vformat_mangle_name_fn fmt_vformat_mangle_name{};
 /// vformat format-strings containing named-arg names which fmt::vformat might
 /// not otherwise permit.
 struct fmt_vformat_mangle_format_string_fn {
+  struct options {
+    bool numeric_args_as_named = false;
+
+    options& set_numeric_args_as_named(bool value) noexcept {
+      numeric_args_as_named = value;
+      return *this;
+    }
+  };
+
   std::string operator()(std::string_view const str) const;
+  std::string operator()(options const& opts, std::string_view const str) const;
 };
 inline constexpr fmt_vformat_mangle_format_string_fn
     fmt_vformat_mangle_format_string{};
+
+using fmt_vformat_mangle_format_string_options =
+    fmt_vformat_mangle_format_string_fn::options;
 
 } // namespace folly

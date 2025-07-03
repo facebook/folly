@@ -1,60 +1,10 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "iobuf",
-    srcs = [
-        "Cursor.cpp",
-        "IOBuf.cpp",
-        "IOBufIovecBuilder.cpp",
-        "IOBufQueue.cpp",
-    ],
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Cursor.h",
-        "Cursor-inl.h",
-        "IOBuf.h",
-        "IOBufIovecBuilder.h",
-        "IOBufQueue.h",
-    ],
-    deps = [
-        "//xplat/folly:conv",
-        "//xplat/folly:hash_spooky_hash_v2",
-        "//xplat/folly:portability_iovec",
-        "//xplat/folly/lang:align",
-        "//xplat/folly/lang:hint",
-        "//xplat/folly/memory:sanitize_address",
-    ],
-    exported_deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:fbvector",
-        "//xplat/folly:function",
-        "//xplat/folly:likely",
-        "//xplat/folly:memory",
-        "//xplat/folly:portability",
-        "//xplat/folly:portability_sys_uio",
-        "//xplat/folly:range",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:synchronization_micro_spin_lock",
-        "//xplat/folly/container:span",
-        "//xplat/folly/detail:iterators",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:checked_math",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:ordering",
-        "//xplat/folly/memory:malloc",
-        "//xplat/folly/memory:memory_resource",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "iobuf",
     srcs = [
         "Cursor.cpp",
@@ -69,6 +19,15 @@ fbcode_target(
         "IOBufIovecBuilder.h",
         "IOBufQueue.h",
     ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//build_mode:whatsapp": [
+            "-fexceptions",
+            "-frtti",
+        ],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:conv",
         "//folly/hash:spooky_hash_v2",
@@ -102,11 +61,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "global_shutdown_socket_set",
     srcs = ["GlobalShutdownSocketSet.cpp"],
     headers = ["GlobalShutdownSocketSet.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:singleton",
     ],
@@ -116,8 +76,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "record_io",
     srcs = [
         "RecordIO.cpp",
@@ -126,7 +85,9 @@ fbcode_target(
         "RecordIO.h",
         "RecordIO-inl.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
     supports_python_dlopen = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:exception",
         "//folly:file_util",
@@ -146,11 +107,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "shutdown_socket_set",
     srcs = ["ShutdownSocketSet.cpp"],
     headers = ["ShutdownSocketSet.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:file_util",
         "//folly/net:net_ops",
@@ -166,18 +128,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "typed_io_buf",
     headers = ["TypedIOBuf.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":iobuf",
         "//folly/memory:malloc",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "socket_option_map",
     srcs = [
         "SocketOptionMap.cpp",
@@ -187,17 +149,27 @@ fbcode_target(
         "SocketOptionMap.h",
         "SocketOptionValue.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/net:network_socket",
         "//folly/portability:sockets",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "huge_pages",
     srcs = ["HugePages.cpp"],
     headers = ["HugePages.h"],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//build_mode:whatsapp": [
+            "-fexceptions",
+            "-frtti",
+        ],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:conv",
         "//folly:cpp_attributes",
@@ -220,11 +192,19 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "fs_util",
     srcs = ["FsUtil.cpp"],
     headers = ["FsUtil.h"],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//build_mode:whatsapp": [
+            "-fexceptions",
+            "-frtti",
+        ],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:exception",
         "//folly/portability:windows",

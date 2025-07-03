@@ -28,13 +28,9 @@
 /// `Task`, `TaskWithExecutor`, and `TaskPromise`, leaving just the "new logic"
 /// in each wrapper's implementation.
 ///
-///   - `OpaqueTaskWrapperCrtp` makes your type a coroutine (`promise_type`)
-///     that can `co_await` other `folly::coro` objects.  However, your type
-///     itself is NOT made (semi)awaitable.  This can be useful if you want to
-///     restrict how your type can be awaited.
-///
-///   - `TaskWrapperCrtp` is a coroutine, and is semi-awaitable by other
-///     `folly::coro` coroutines. It has the following features:
+///   - `TaskWrapperCrtp` makes your type (1)  a coroutine (`promise_type`)
+///     that can `co_await` other `folly::coro` objects.  (2) semi-awaitable by
+///     other `folly::coro` coroutines.  It has the following features:
 ///        * `co_await`ability (using `co_viaIfAsync`)
 ///        * Interoperates with `folly::coro` awaitable wrappers like
 ///          `co_awaitTry` and `co_nothrow`.
@@ -226,60 +222,14 @@ struct DoesNotWrapAwaitable {
 
 } // namespace detail
 
-// Inherit from `OpaqueTaskWrapperCrtp` instead of `TaskWrapperCrtp` if you
-// don't want your wrapped task to become a regular semi-awaitable.
-template <typename Derived, typename Cfg>
-class OpaqueTaskWrapperCrtp {
- public:
-  using promise_type = typename Cfg::PromiseT;
-
-  using folly_private_must_await_immediately_t =
-      must_await_immediately_t<typename Cfg::InnerTaskT>;
-  using folly_private_noexcept_awaitable_t =
-      noexcept_awaitable_t<typename Cfg::InnerTaskT>;
-  using folly_private_task_wrapper_inner_t = typename Cfg::InnerTaskT;
-
-  // Do NOT add any protocols here, see `TaskWrapperCrtp` instead.
-
- private:
-  using Inner = folly_private_task_wrapper_inner_t;
-  static_assert(
-      detail::is_task_or_wrapper_v<Inner, typename Cfg::ValueT>,
-      "*TaskWrapper must wrap a sequence of wrappers ending in Task<T>");
-
-  Inner task_;
-
- protected:
-  template <typename, typename, typename> // can construct
-  friend class ::folly::coro::detail::TaskPromiseWrapperBase;
-  friend class MustAwaitImmediatelyUnsafeMover< // can construct
-      Derived,
-      detail::unsafe_mover_for_must_await_immediately_t<Inner>>;
-
-  explicit OpaqueTaskWrapperCrtp(Inner t)
-      : task_(mustAwaitImmediatelyUnsafeMover(std::move(t))()) {
-    static_assert(
-        must_await_immediately_v<Derived> ||
-            !must_await_immediately_v<typename Cfg::TaskWithExecutorT>,
-        "`TaskWithExecutorT` must `AddMustAwaitImmediately` because the inner "
-        "task did");
-  }
-
-  // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
-  Inner unwrapTask() && {
-    static_assert(sizeof(Inner) == sizeof(Derived));
-    return mustAwaitImmediatelyUnsafeMover(std::move(task_))();
-  }
-};
-
 // IMPORTANT: Read "Do not blindly forward more APIs" in the file docblock.  In
 // a nutshell, adding methods, or by-ref CPOs, can compromise the safety of
 // immediately-awaitable wrappers, so DON'T DO THAT.
 template <typename Derived, typename Cfg>
-class TaskWrapperCrtp : public OpaqueTaskWrapperCrtp<Derived, Cfg> {
-  using OpaqueTaskWrapperCrtp<Derived, Cfg>::OpaqueTaskWrapperCrtp;
-
+class TaskWrapperCrtp {
  public:
+  using promise_type = typename Cfg::PromiseT;
+
   // For `NowTask` & `SafeTask` API-compatibility, DO NOT add `scheduleOn()`.
   // Use `co_withExecutor(ex, task())` instead of `task().scheduleOn(ex)`,
   //
@@ -315,7 +265,42 @@ class TaskWrapperCrtp : public OpaqueTaskWrapperCrtp<Derived, Cfg> {
         (Derived*)nullptr, std::move(*this).unwrapTask().getUnsafeMover(p)};
   }
 
+  using folly_private_must_await_immediately_t =
+      must_await_immediately_t<typename Cfg::InnerTaskT>;
+  using folly_private_noexcept_awaitable_t =
+      noexcept_awaitable_t<typename Cfg::InnerTaskT>;
+  using folly_private_task_wrapper_inner_t = typename Cfg::InnerTaskT;
   using folly_private_task_wrapper_crtp_base = TaskWrapperCrtp;
+
+ private:
+  using Inner = folly_private_task_wrapper_inner_t;
+  static_assert(
+      detail::is_task_or_wrapper_v<Inner, typename Cfg::ValueT>,
+      "*TaskWrapper must wrap a sequence of wrappers ending in Task<T>");
+
+  Inner task_;
+
+ protected:
+  template <typename, typename, typename> // can construct
+  friend class ::folly::coro::detail::TaskPromiseWrapperBase;
+  friend class MustAwaitImmediatelyUnsafeMover< // can construct
+      Derived,
+      detail::unsafe_mover_for_must_await_immediately_t<Inner>>;
+
+  explicit TaskWrapperCrtp(Inner t)
+      : task_(mustAwaitImmediatelyUnsafeMover(std::move(t))()) {
+    static_assert(
+        must_await_immediately_v<Derived> ||
+            !must_await_immediately_v<typename Cfg::TaskWithExecutorT>,
+        "`TaskWithExecutorT` must `AddMustAwaitImmediately` because the inner "
+        "task did");
+  }
+
+  // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
+  Inner unwrapTask() && {
+    static_assert(sizeof(Inner) == sizeof(Derived));
+    return mustAwaitImmediatelyUnsafeMover(std::move(task_))();
+  }
 };
 
 // IMPORTANT: Read "Do not blindly forward more APIs" in the file docblock.  In
@@ -387,7 +372,24 @@ class TaskWithExecutorWrapperCrtp {
   // `AsyncScope` requires an awaitable with an executor already attached, and
   // thus directly calls `co_withAsyncStack` instead of `co_viaIfAsync`.  But,
   // we still need to wrap the awaitable on that code path.
-  friend auto tag_invoke(cpo_t<co_withAsyncStack>, Derived te) noexcept(
+  //
+  // NB: Passing by-&& here looks like it could compromise the safety of
+  // immediately-awaitable coros (`NowTask`, `NowTaskWithExecutor`).  With
+  // by-value, `BlockingWaitTest.AwaitNowTaskWithExecutor` would not build.
+  //
+  // Supporting pass-by-value would require fixing a LOT of plumbing.
+  //   - `WithAsyncStack.h` calls `is_tag_invocable_v`, which would fail on
+  //     `NowTaskWithExecutor` if this is by-value, since the implementation of
+  //     `is_tag_invocable_v` presents all args by-&&.
+  //   - `CommutativeWrapperAwaitable` and `StackAwareViaIfAsyncAwaiter`,
+  //     among others, also assume that `co_withAsyncStack` takes by-ref.
+  //
+  // Fortunately, I'm not aware of any practical reduction in
+  // immediately-awaitable safety from this issue.  `co_withAsyncStack` should
+  // never be called in user code.  Internal usage in `folly/coro` looks
+  // overall immediately-awaitable-safe -- and the best safeguard for any
+  // particular scenario is to test, see e.g. `NowTaskTest.blockingWait`.
+  friend auto tag_invoke(cpo_t<co_withAsyncStack>, Derived&& te) noexcept(
       noexcept(co_withAsyncStack(FOLLY_DECLVAL(Inner)))) {
     return Cfg::wrapAwaitable(co_withAsyncStack(std::move(te.inner_)));
   }

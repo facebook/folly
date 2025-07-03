@@ -10,34 +10,6 @@
 
 typedef int (*Py_Main)(int, wchar_t**);
 
-// Add the given path to Windows's DLL search path.
-// For Windows DLL search path resolution, see:
-// https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order
-void add_search_path(const wchar_t* path) {
-  wchar_t buffer[PATH_SIZE];
-  wchar_t** lppPart = NULL;
-
-  if (!GetFullPathNameW(path, PATH_SIZE, buffer, lppPart)) {
-    fwprintf(
-        stderr,
-        L"warning: %d unable to expand path %s\n",
-        GetLastError(),
-        path);
-    return;
-  }
-
-  if (!AddDllDirectory(buffer)) {
-    DWORD error = GetLastError();
-    if (error != ERROR_FILE_NOT_FOUND) {
-      fwprintf(
-          stderr,
-          L"warning: %d unable to set DLL search path for %s\n",
-          GetLastError(),
-          path);
-    }
-  }
-}
-
 int locate_py_main(int argc, wchar_t** argv) {
   /*
    * We have to dynamically locate Python3.dll because we may be loading a
@@ -50,16 +22,6 @@ int locate_py_main(int argc, wchar_t** argv) {
    */
   HINSTANCE python_dll;
   Py_Main pymain;
-
-  // last added directory has highest priority
-  add_search_path(L"C:\\Python36\\");
-  add_search_path(L"C:\\tools\\fb-python\\fb-python36\\");
-  add_search_path(L"C:\\Python37\\");
-  add_search_path(L"C:\\tools\\fb-python\\fb-python37\\");
-  add_search_path(L"C:\\Python38\\");
-  add_search_path(L"C:\\tools\\fb-python\\fb-python38\\");
-  // TODO(T123615656): Re-enable Python 3.9 after the fix
-  // add_search_path(L"C:\\tools\\fb-python\\fb-python39\\");
 
   python_dll =
       LoadLibraryExW(L"python3.dll", NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);

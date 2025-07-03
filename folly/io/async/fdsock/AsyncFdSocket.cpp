@@ -120,7 +120,7 @@ void AsyncFdSocket::writeChainWithFds(
               sentFdsSeqNum_)));
       return failWrite(__func__, callback, 0, ex);
     }
-    sentFdsSeqNum_ = addSeqNum(sentFdsSeqNum_, fds.size());
+    sentFdsSeqNum_ = detail::addSocketFdsSeqNum(sentFdsSeqNum_, fds.size());
     // No DCHECK_GE(allocatedToSendFdsSeqNum_, sentFdsSeqNum_), since it can
     // theoretically happen that "allocated" wraps around before "sent".
 
@@ -353,7 +353,8 @@ void AsyncFdSocket::enqueueFdsFromAncillaryData(struct ::msghdr& msg) noexcept {
   }
 
   const auto seqNum = receivedFdsSeqNum_;
-  receivedFdsSeqNum_ = addSeqNum(receivedFdsSeqNum_, receivedFds.size());
+  receivedFdsSeqNum_ =
+      detail::addSocketFdsSeqNum(receivedFdsSeqNum_, receivedFds.size());
   SocketFds fds{std::move(receivedFds)};
   fds.setFdSocketSeqNumOnce(seqNum);
 
@@ -362,19 +363,6 @@ void AsyncFdSocket::enqueueFdsFromAncillaryData(struct ::msghdr& msg) noexcept {
           << ", prev queue size " << fdsQueue_.size();
 
   fdsQueue_.emplace(std::move(fds));
-}
-
-SocketFds::SeqNum AsyncFdSocket::addSeqNum(
-    SocketFds::SeqNum a, SocketFds::SeqNum b) noexcept {
-  if (a < 0 || b < 0) {
-    LOG(DFATAL) << "Inputs must be nonnegative, got " << a << " + " << b;
-    return SocketFds::kNoSeqNum;
-  }
-  const auto gap = std::numeric_limits<SocketFds::SeqNum>::max() - a;
-  if (FOLLY_LIKELY(b <= gap)) {
-    return a + b;
-  }
-  return b - gap - 1; // wrap around through 0, modulo max
 }
 
 #endif // !Windows
@@ -407,7 +395,8 @@ SocketFds::SeqNum AsyncFdSocket::injectSocketSeqNumIntoFdsToSend(
   eventBase_->dcheckIsInEventBaseThread();
   const auto fdsSeqNum = allocatedToSendFdsSeqNum_;
   fds->dcheckToSendOrEmpty().setFdSocketSeqNumOnce(fdsSeqNum);
-  allocatedToSendFdsSeqNum_ = addSeqNum(allocatedToSendFdsSeqNum_, fds->size());
+  allocatedToSendFdsSeqNum_ =
+      detail::addSocketFdsSeqNum(allocatedToSendFdsSeqNum_, fds->size());
   return fdsSeqNum;
 #endif // !Windows
 }

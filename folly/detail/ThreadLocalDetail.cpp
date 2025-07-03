@@ -17,7 +17,6 @@
 #include <folly/detail/ThreadLocalDetail.h>
 
 #include <algorithm>
-#include <list>
 #include <mutex>
 #include <random>
 
@@ -61,32 +60,143 @@ bool ThreadEntrySet::basicSanity() const {
   if constexpr (!kIsDebug) {
     return true;
   }
-  if (threadEntries.empty() && entryToVectorSlot.empty()) {
+  if (threadElements.empty() && entryToVectorSlot.empty()) {
     return true;
   }
-  if (threadEntries.size() != entryToVectorSlot.size()) {
+  if (threadElements.size() != entryToVectorSlot.size()) {
     return false;
   }
-  auto const size = threadEntries.size();
+  auto const size = threadElements.size();
   rand_engine rng;
   std::uniform_int_distribution<size_t> dist{0, size - 1};
-  if (dist(rng) < constexpr_log2(size)) {
+  if (!(dist(rng) < constexpr_log2(size))) {
     return true;
   }
-  return //
-      std::all_of(
-          entryToVectorSlot.begin(),
-          entryToVectorSlot.end(),
-          [&](auto const& kvp) {
-            return kvp.second < threadEntries.size() &&
-                threadEntries[kvp.second] == kvp.first;
-          });
+  for (auto const& kvp : entryToVectorSlot) {
+    if (!(kvp.second < threadElements.size() &&
+          threadElements[kvp.second].threadEntry == kvp.first)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void ThreadEntrySet::clear() {
+  DCHECK(basicSanity());
+  entryToVectorSlot.clear();
+  threadElements.clear();
+}
+
+int64_t ThreadEntrySet::getIndexFor(ThreadEntry* entry) const {
+  auto iter = entryToVectorSlot.find(entry);
+  if (iter != entryToVectorSlot.end()) {
+    return static_cast<int64_t>(iter->second);
+  }
+  return -1;
+}
+
+void* ThreadEntrySet::getPtrForThread(ThreadEntry* entry) const {
+  auto index = getIndexFor(entry);
+  if (index < 0) {
+    return nullptr;
+  }
+  return threadElements[static_cast<size_t>(index)].wrapper.ptr;
+}
+
+bool ThreadEntrySet::contains(ThreadEntry* entry) const {
+  DCHECK(basicSanity());
+  return entryToVectorSlot.find(entry) != entryToVectorSlot.end();
+}
+
+bool ThreadEntrySet::insert(ThreadEntry* entry) {
+  DCHECK(basicSanity());
+  auto iter = entryToVectorSlot.find(entry);
+  if (iter != entryToVectorSlot.end()) {
+    // Entry already present. Sanity check and exit.
+    DCHECK_EQ(entry, threadElements[iter->second].threadEntry);
+    return false;
+  }
+  threadElements.emplace_back(entry);
+  auto idx = threadElements.size() - 1;
+  entryToVectorSlot[entry] = idx;
+  return true;
+}
+
+bool ThreadEntrySet::insert(const Element& element) {
+  DCHECK(basicSanity());
+  auto iter = entryToVectorSlot.find(element.threadEntry);
+  if (iter != entryToVectorSlot.end()) {
+    // Entry already present. Skip copying over element. Caller
+    // responsible for handling acceptability of this behavior.
+    DCHECK_EQ(element.threadEntry, threadElements[iter->second].threadEntry);
+    return false;
+  }
+  threadElements.push_back(element);
+  auto idx = threadElements.size() - 1;
+  entryToVectorSlot[element.threadEntry] = idx;
+  return true;
+}
+
+ThreadEntrySet::Element ThreadEntrySet::erase(ThreadEntry* entry) {
+  DCHECK(basicSanity());
+  auto iter = entryToVectorSlot.find(entry);
+  if (iter == entryToVectorSlot.end()) {
+    // Entry not present.
+    return Element{nullptr};
+  }
+  auto idx = iter->second;
+  DCHECK_LT(idx, threadElements.size());
+  entryToVectorSlot.erase(iter);
+  Element last = threadElements.back();
+  Element current = threadElements[idx];
+  if (idx != threadElements.size() - 1) {
+    threadElements[idx] = last;
+    entryToVectorSlot[last.threadEntry] = idx;
+  }
+  threadElements.pop_back();
+  DCHECK(basicSanity());
+  if (compressible()) {
+    compress();
+  }
+  DCHECK(basicSanity());
+  return current;
+}
+
+bool ThreadEntrySet::compressible() const {
+  // We choose a sufficiently-large multiplier so that there is no risk of a
+  // following insert growing the vector and then a following erase shrinking
+  // the vector, since that way lies non-amortized-O(N)-complexity costs for
+  // both insert and erase ops.
+  constexpr size_t const mult = 4;
+  auto& vec = threadElements;
+  return std::max(size_t(1), vec.size()) * mult <= vec.capacity();
+}
+
+bool ThreadEntry::cachedInSetMatchesElementsArray(uint32_t id) {
+  if constexpr (!kIsDebug) {
+    return true;
+  }
+
+  if (removed_) {
+    // Pointer in entry set and elements array need not match anymore.
+    return true;
+  }
+
+  auto rlock = meta->allId2ThreadEntrySets_[id].tryRLock();
+  if (!rlock) {
+    // Try lock failed. Skip checking in this case. Avoids
+    // getting stuck in case this validation is called when
+    // already holding the entry set lock.
+    return true;
+  }
+
+  return elements[id].ptr == rlock->getPtrForThread(this);
 }
 
 void ThreadEntrySet::compress() {
   assert(compressible());
   // compress the vector
-  threadEntries.shrink_to_fit();
+  threadElements.shrink_to_fit();
   // compress the index
   EntryIndex newIndex;
   newIndex.reserve(entryToVectorSlot.size());
@@ -95,6 +205,60 @@ void ThreadEntrySet::compress() {
   }
   entryToVectorSlot = std::move(newIndex);
 }
+
+/**
+ * We want to disable onThreadExit call at the end of shutdown, we don't care
+ * about leaking memory at that point.
+ *
+ * Otherwise if ThreadLocal is used in a shared library, onThreadExit may be
+ * called after dlclose().
+ *
+ * This class has one single static instance; however since it's so widely used,
+ * directly or indirectly, by so many classes, we need to take care to avoid
+ * problems stemming from the Static Initialization/Destruction Order Fiascos.
+ * Therefore this class needs to be constexpr-constructible, so as to avoid
+ * the need for this to participate in init/destruction order.
+ */
+class PthreadKeyUnregister {
+ public:
+  static constexpr size_t kMaxKeys = size_t(1) << 16;
+
+  ~PthreadKeyUnregister() {
+    // If static constructor priorities are not supported then
+    // ~PthreadKeyUnregister logic is not safe.
+#if !defined(__APPLE__) && !defined(_MSC_VER)
+    MSLGuard lg(lock_);
+    while (size_) {
+      pthread_key_delete(keys_[--size_]);
+    }
+#endif
+  }
+
+  static void registerKey(pthread_key_t key) { instance_.registerKeyImpl(key); }
+
+ private:
+  /**
+   * Only one global instance should exist, hence this is private.
+   * See also the important note at the top of this class about `constexpr`
+   * usage.
+   */
+  constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() {}
+
+  void registerKeyImpl(pthread_key_t key) {
+    MSLGuard lg(lock_);
+    if (size_ == kMaxKeys) {
+      throw_exception<std::logic_error>(
+          "pthread_key limit has already been reached");
+    }
+    keys_[size_++] = key;
+  }
+
+  MicroSpinLock lock_;
+  size_t size_;
+  pthread_key_t keys_[kMaxKeys];
+
+  static PthreadKeyUnregister instance_;
+};
 
 StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
     : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
@@ -140,9 +304,67 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
   return threadEntryList;
 }
 
+ThreadEntry* StaticMetaBase::allocateNewThreadEntry() {
+  // If a thread is exiting, various cleanup handlers could
+  // end up triggering use of a ThreadLocal and (re)create a
+  // ThreadEntry. This is problematic since we don't know if the
+  // destructor specified in the pthreadKey_ has already been run
+  // for this StaticMeta or will run again. Such a newly created
+  // ThreadEntry could leak. The count incremented on threadEntryList
+  // could also cause all the list and other threadEntry objects used
+  // by this thread to leak.
+  // For now, debug assert that the thread is not exiting to keep the
+  // legacy behavior. The handling of this case needs to be improved
+  // as well.
+  DCHECK(!dying());
+  ThreadEntryList* threadEntryList = getThreadEntryList();
+  ThreadEntry* threadEntry = new ThreadEntry();
+
+  threadEntry->list = threadEntryList;
+  threadEntry->listNext = threadEntryList->head;
+  threadEntryList->head = threadEntry;
+
+  threadEntry->tid() = std::this_thread::get_id();
+  threadEntry->tid_os = folly::getOSThreadID();
+
+  // if we're adding a thread entry
+  // we need to increment the list count
+  // even if the entry is reused
+  threadEntryList->count++;
+
+  threadEntry->meta = this;
+  return threadEntry;
+}
+
 bool StaticMetaBase::dying() {
   return folly::detail::thread_is_dying();
 }
+
+/*
+ * Note on safe lifecycle management of TL objects:
+ * Any instance of a TL object created has to be disposed of safely. The
+ * non-trivial cases are a) when a thread exits and we have to dispose of all
+ * instances that belong to the thread across different TL objects; b) when a TL
+ * object is destroyed and we have to dispose of all instances of that TL object
+ * across all the threads that may have instantiated it. These 2 paths can also
+ * race and are resolved, using the ThreadEntrySet locks, as follows:
+ * - The exiting thread goes over all ThreadEntrySets and removes itself from
+ * it. After this, the thread is responsible for disposing of any elements that
+ * are still set in its 'elements' array. By setting the removed_ flag any new
+ * elements created when disposing elements will not be made discoverable via
+ * ThreadEntrySets and hence remain the responsibility of the exiting thread to
+ * dispose.
+ * - The thread calling destroy goes over all ThreadEntry in the ThreadEntrySet
+ * of the TL object being destoryed (in popThreadEntrySetAndClearElementPtrs).
+ * The ElementWrapper for the ThreadEntry found there are copied out and cleared
+ * from the 'elements' array. This is done under the ThreadEntrySet lock and the
+ * 'destroy' call is responsible for disposing the elements it thus claimed. The
+ * actual dispose happens after releasing the locks and since the TL object is
+ * being destroyed, no new elements of it should be getting created. The destroy
+ * code should not access any ThreadEntry outside the safety of
+ * popThreadEntrySetAndClearElementPtrs as their owner threads could exit and
+ * release them.
+ */
 
 void StaticMetaBase::onThreadExit(void* ptr) {
   folly::detail::thread_is_dying_mark();
@@ -164,7 +386,11 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     forkRlock.unlock();
     {
       std::lock_guard g(meta.lock_);
-      // mark it as removed
+      // mark it as removed. Once this is set, any new TL object created in this
+      // thread as part of invoking the destructor on another TL object will not
+      // record this threadEntry in that TL object's ThreadEntrySet. This thread
+      // itself will be responsible for cleaning up the new object(s) so
+      // created.
       threadEntry->removed_ = true;
       auto elementsCapacity = threadEntry->getElementsCapacity();
       auto beforeCount = meta.totalElementWrappers_.fetch_sub(elementsCapacity);
@@ -215,6 +441,11 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
       if (meta.strict_) {
         rlock.lock();
       }
+      // ThreadEntry 'tmp' was removed from all sets in its own cleanup. Since
+      // we set removed_ flag, no subsequent element being added (during destroy
+      // of other TL elements) should have added the ThreadEntry back to the
+      // tracking set.
+      DCHECK(meta.isThreadEntryRemovedFromAllInMap(tmp, !meta.strict_));
 
       for (bool shouldRunInner = true; shouldRunInner;) {
         shouldRunInner = false;
@@ -280,12 +511,48 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   return id;
 }
 
+ThreadEntrySet StaticMetaBase::popThreadEntrySetAndClearElementPtrs(
+    uint32_t id) {
+  // Lock the ThreadEntrySet for id so that no other thread can update
+  // its local ptr or alter the its elements array or ThreadEntry object
+  // itself, before this function is done updating them. This is called
+  // by the `destroy` function to release a TL object. There should be
+  // no racing accessAllThreads() call with it.
+  auto wlocked = allId2ThreadEntrySets_[id].wlock();
+  ThreadEntrySet tmp;
+  std::swap(*wlocked, tmp);
+  std::lock_guard g(lock_);
+  for (auto& e : tmp.threadElements) {
+    auto elementsCapacity = e.threadEntry->getElementsCapacity();
+    if (id < elementsCapacity) {
+      /*
+       * Writing another thread's ThreadEntry from here is fine;
+       * The TL object is being destroyed, so get(id), or reset()
+       * or accessAllThreads calls on it are illegal. Only other
+       * racing accesses would be from the owner thread itself
+       * either a) reallocating the elements array (guarded by
+       * lock_, so safe) or b) exiting and trying to clear the
+       * elements array or free the elements and ThreadEntry itself. The
+       * ThreadEntrySet lock synchronizes this part as the exiting thread will
+       * acquire it to remove itself from the set.
+       */
+      DCHECK_EQ(e.threadEntry->elements[id].ptr, e.wrapper.ptr);
+      e.wrapper.deleter = e.threadEntry->elements[id].deleter;
+      e.threadEntry->elements[id].ptr = nullptr;
+      e.threadEntry->elements[id].deleter = 0;
+    }
+    // Destroy should not access thread entry after this call as racing
+    // exit call can make it invalid.
+    e.threadEntry = nullptr;
+  }
+  return tmp;
+}
+
 void StaticMetaBase::destroy(EntryID* ent) {
   try {
     auto& meta = *this;
 
     // Elements in other threads that use this id.
-    std::vector<ElementWrapper> elements;
     ThreadEntrySet tmpEntrySet;
 
     {
@@ -307,39 +574,25 @@ void StaticMetaBase::destroy(EntryID* ent) {
       if (id == kEntryIDInvalid) {
         return;
       }
-      meta.allId2ThreadEntrySets_[id].swap(tmpEntrySet);
+      tmpEntrySet = meta.popThreadEntrySetAndClearElementPtrs(id);
       forkRlock.unlock();
 
       {
+        // Release the id to be reused by another TL variable. Some
+        // other TL object may acquire and re-use it before the rest
+        // of the cleanup work is done. That is ok. The destructor callbacks
+        // for the objects should not access the same TL variable again. If
+        // we want to tolerate that pattern, due to any legacy behavior, this
+        // block should be after the loop to dispose of all collected elements
+        // below.
         std::lock_guard g(meta.lock_);
-        for (auto& e : tmpEntrySet.threadEntries) {
-          auto elementsCapacity = e->getElementsCapacity();
-          if (id < elementsCapacity) {
-            if (e->elements[id].ptr) {
-              elements.push_back(e->elements[id]);
-              /*
-               * Writing another thread's ThreadEntry from here is fine;
-               * the only other potential reader is the owning thread --
-               * from onThreadExit (which grabs the lock, so is properly
-               * synchronized with us) or from get(), which also grabs
-               * the lock if it needs to resize the elements vector.
-               *
-               * We can't conflict with reads for a get(id), because
-               * it's illegal to call get on a thread local that's
-               * destructing.
-               */
-              e->elements[id].ptr = nullptr;
-              e->elements[id].deleter = 0;
-            }
-          }
-        }
         meta.freeIds_.push_back(id);
       }
     }
     // Delete elements outside the locks.
-    for (ElementWrapper& elem : elements) {
-      if (elem.dispose(TLPDestructionMode::ALL_THREADS)) {
-        elem.cleanup();
+    for (auto& e : tmpEntrySet.threadElements) {
+      if (e.wrapper.dispose(TLPDestructionMode::ALL_THREADS)) {
+        e.wrapper.cleanup();
       }
     }
   } catch (...) { // Just in case we get a lock error or something anyway...
@@ -478,7 +731,17 @@ FOLLY_NOINLINE void StaticMetaBase::ensureThreadEntryIsInSet(
  */
 void* ThreadEntry::releaseElement(uint32_t id) {
   auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
-  return elements[id].release();
+  auto capacity = getElementsCapacity();
+  void* ptrToReturn = (capacity >= id) ? elements[id].release() : nullptr;
+  auto slot = rlocked->getIndexFor(this);
+  if (slot < 0) {
+    DCHECK(removed_ || ptrToReturn == nullptr);
+    return ptrToReturn;
+  }
+  auto& element = rlocked.asNonConstUnsafe().threadElements[slot];
+  DCHECK_EQ(ptrToReturn, element.wrapper.ptr);
+  element.wrapper = {};
+  return ptrToReturn;
 }
 
 /*
@@ -491,6 +754,33 @@ void ThreadEntry::cleanupElement(uint32_t id) {
   elements[id].dispose(TLPDestructionMode::THIS_THREAD);
   // Cleanup
   elements[id].cleanup();
+}
+
+void ThreadEntry::resetElementImplAfterSet(
+    const ElementWrapper& element, uint32_t id) {
+  auto& set = meta->allId2ThreadEntrySets_[id];
+  auto rlock = set.rlock();
+  cleanupElement(id);
+  elements[id] = element;
+  if (removed_) {
+    // Elements no longer being mirrored in the ThreadEntrySet.
+    // Thread must have cleared itself from the set when it started exiting.
+    DCHECK(!rlock->contains(this));
+    return;
+  }
+  if (element.ptr != nullptr && !rlock->contains(this)) {
+    meta->ensureThreadEntryIsInSet(this, set, rlock);
+  }
+  auto slot = rlock->getIndexFor(this);
+  if (slot < 0) {
+    // Not present in ThreadEntrySet implies the value was never set to be
+    // non-null and new value in element.ptr is nullptr as well.
+    DCHECK(!element.ptr);
+    DCHECK(!elements[id].ptr);
+    return;
+  }
+  size_t uslot = static_cast<size_t>(slot);
+  rlock.asNonConstUnsafe().threadElements[uslot].wrapper = element;
 }
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX

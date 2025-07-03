@@ -89,11 +89,9 @@ folly::Optional<LineNumberAttribute> readLineNumberAttribute(
         case DW_FORM_strp_sup:
           FOLLY_SAFE_DFATAL("Unexpected DW_FORM_strp_sup");
           return folly::none;
-          break;
         default:
           FOLLY_SAFE_DFATAL("Unexpected form for DW_LNCT_path: ", formCode);
           return folly::none;
-          break;
       }
     } break;
 
@@ -112,7 +110,6 @@ folly::Optional<LineNumberAttribute> readLineNumberAttribute(
           FOLLY_SAFE_DFATAL(
               "Unexpected form for DW_LNCT_directory_index: ", formCode);
           return folly::none;
-          break;
       }
     } break;
 
@@ -157,7 +154,6 @@ folly::Optional<LineNumberAttribute> readLineNumberAttribute(
         default:
           FOLLY_SAFE_DFATAL("Unexpected form for DW_LNCT_size: ", formCode);
           return folly::none;
-          break;
       }
     } break;
 
@@ -169,7 +165,6 @@ folly::Optional<LineNumberAttribute> readLineNumberAttribute(
         default:
           FOLLY_SAFE_DFATAL("Unexpected form for DW_LNCT_MD5: ", formCode);
           return folly::none;
-          break;
       }
     } break;
 
@@ -178,7 +173,6 @@ folly::Optional<LineNumberAttribute> readLineNumberAttribute(
       FOLLY_SAFE_DFATAL(
           "Unexpected vendor content type code: ", contentTypeCode);
       return folly::none;
-      break;
   }
   return LineNumberAttribute{
       .contentTypeCode = contentTypeCode,

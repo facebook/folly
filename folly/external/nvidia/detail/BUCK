@@ -28,6 +28,8 @@ fbcode_target(
     headers = ["RangeSve2.h"],
     deps = [
         "//folly:portability",
+    ],
+    exported_deps = [
         "//folly/detail:range_common",
     ],
 )

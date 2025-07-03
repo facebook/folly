@@ -187,8 +187,8 @@ inline constexpr atomic_fetch_flip_fallback_fn atomic_fetch_flip_fallback{};
 template <typename Integer>
 inline bool atomic_fetch_set_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(alignof(std::atomic<Integer>) == alignof(Integer), "");
-  static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer), "");
+  static_assert(alignof(std::atomic<Integer>) == alignof(Integer));
+  static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer));
   assert(atomic.is_lock_free());
 
   if /* constexpr */ (sizeof(Integer) == 4) {
@@ -207,16 +207,16 @@ inline bool atomic_fetch_set_native(
 template <typename Atomic>
 inline bool atomic_fetch_set_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
-  static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
+  static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{});
+  static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{});
   return atomic_fetch_set_fallback(atomic, bit, order);
 }
 
 template <typename Integer>
 inline bool atomic_fetch_reset_native(
     std::atomic<Integer>& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(alignof(std::atomic<Integer>) == alignof(Integer), "");
-  static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer), "");
+  static_assert(alignof(std::atomic<Integer>) == alignof(Integer));
+  static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer));
   assert(atomic.is_lock_free());
 
   if /* constexpr */ (sizeof(Integer) == 4) {
@@ -235,8 +235,8 @@ inline bool atomic_fetch_reset_native(
 template <typename Atomic>
 inline bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order mo) {
-  static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{}, "");
-  static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{}, "");
+  static_assert(!std::is_same<Atomic, std::atomic<std::uint32_t>>{});
+  static_assert(!std::is_same<Atomic, std::atomic<std::uint64_t>>{});
   return atomic_fetch_reset_fallback(atomic, bit, mo);
 }
 
@@ -377,7 +377,7 @@ inline bool atomic_fetch_set_native(
 template <typename Atomic>
 inline bool atomic_fetch_set_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(!is_instantiation_of_v<std::atomic, Atomic>, "");
+  static_assert(!is_instantiation_of_v<std::atomic, Atomic>);
   return atomic_fetch_set_fallback(atomic, bit, order);
 }
 
@@ -410,7 +410,7 @@ inline bool atomic_fetch_reset_native(
 template <typename Atomic>
 bool atomic_fetch_reset_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(!is_instantiation_of_v<std::atomic, Atomic>, "");
+  static_assert(!is_instantiation_of_v<std::atomic, Atomic>);
   return atomic_fetch_reset_fallback(atomic, bit, order);
 }
 
@@ -443,7 +443,7 @@ inline bool atomic_fetch_flip_native(
 template <typename Atomic>
 bool atomic_fetch_flip_native(
     Atomic& atomic, std::size_t bit, std::memory_order order) {
-  static_assert(!is_instantiation_of_v<std::atomic, Atomic>, "");
+  static_assert(!is_instantiation_of_v<std::atomic, Atomic>);
   return atomic_fetch_flip_fallback(atomic, bit, order);
 }
 
@@ -465,8 +465,8 @@ inline constexpr atomic_fetch_flip_native_fn atomic_fetch_flip_native{};
 template <typename Atomic>
 void atomic_fetch_bit_op_check_(Atomic& atomic, std::size_t bit) {
   using Integer = decltype(atomic.load());
-  static_assert(std::is_unsigned<Integer>{}, "");
-  static_assert(!std::is_const<Atomic>{}, "");
+  static_assert(std::is_unsigned<Integer>{});
+  static_assert(!std::is_const<Atomic>{});
   assert(bit < (sizeof(Integer) * 8));
   (void)bit;
 }

@@ -17,10 +17,12 @@
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 
+#include <folly/coro/AwaitResult.h>
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Invoke.h>
 #include <folly/coro/Mutex.h>
+#include <folly/coro/Ready.h>
 #include <folly/coro/SharedMutex.h>
 #include <folly/coro/Task.h>
 #include <folly/coro/detail/InlineTask.h>
@@ -37,39 +39,33 @@
 
 using namespace folly;
 
-static_assert(
+static_assert( //
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::Task<void>>,
-        void>::value,
-    "");
-static_assert(
+        void>::value);
+static_assert( //
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::Task<int>>,
-        int>::value,
-    "");
+        int>::value);
 
 static_assert(
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::detail::InlineTask<void>>,
-        void>::value,
-    "");
+        void>::value);
 static_assert(
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::detail::InlineTask<int>>,
-        int>::value,
-    "");
+        int>::value);
 
 static_assert(
     std::is_same<folly::coro::semi_await_result_t<folly::coro::Baton&>, void>::
-        value,
-    "");
+        value);
 static_assert(
     std::is_same<
         folly::coro::semi_await_result_t<
             decltype(std::declval<folly::coro::SharedMutex&>()
                          .co_scoped_lock_shared())>,
-        folly::coro::SharedLock<folly::coro::SharedMutex>>::value,
-    "");
+        folly::coro::SharedLock<folly::coro::SharedMutex>>::value);
 
 namespace {
 
@@ -403,6 +399,23 @@ TEST_F(TaskTest, TaskOfLvalueReferenceAsTry) {
     auto&& result = co_await co_awaitTry(returnIntRef(value));
     CHECK(result.hasValue());
     CHECK_EQ(&value, &result.value().get());
+
+    int& valueRef = co_await returnIntRef(value);
+    CHECK_EQ(&value, &valueRef);
+  }());
+}
+
+TEST_F(TaskTest, TaskOfLvalueReferenceAsResult) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto returnIntRef = [](int& value) -> folly::coro::Task<int&> {
+      co_return value;
+    };
+
+    int value = 123;
+    auto&& res = co_await co_await_result(returnIntRef(value));
+    CHECK(res.has_value());
+    CHECK_EQ(&value, &res.value_or_throw());
+    CHECK_EQ(&value, &(co_await folly::coro::co_ready(std::move(res))));
 
     int& valueRef = co_await returnIntRef(value);
     CHECK_EQ(&value, &valueRef);

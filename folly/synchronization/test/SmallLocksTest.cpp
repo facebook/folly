@@ -21,7 +21,6 @@
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
-#include <limits>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -36,6 +35,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/HardwareConcurrency.h>
 #include <folly/test/TestUtils.h>
 
 using folly::MicroLock;
@@ -179,9 +179,9 @@ TEST(SmallLocks, PicoSpinSigned) {
   EXPECT_EQ(val.getData(), -8);
 }
 
-TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
-  SKIP_IF(!folly::kIsSanitizeThread) << "Enabled in TSAN mode only";
+#if FOLLY_SANITIZE_THREAD
 
+TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
   typedef PicoSpinLock<int16_t, 0> Lock;
 
   {
@@ -206,6 +206,8 @@ TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
     }
   }
 }
+
+#endif
 
 TEST(SmallLocks, RegClobber) {
   TestClobber().go();
@@ -394,7 +396,7 @@ TEST(SmallLocks, MicroSpinLockStressTestLockTwoThreads) {
 
 TEST(SmallLocks, MicroSpinLockStressTestLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
-  auto threads = std::thread::hardware_concurrency();
+  auto threads = folly::hardware_concurrency();
   simpleStressTest<MicroSpinLock>(duration, threads);
 }
 
@@ -405,7 +407,7 @@ TEST(SmallLocks, PicoSpinLockStressTestLockTwoThreads) {
 
 TEST(SmallLocks, PicoSpinLockStressTestLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
-  auto threads = std::thread::hardware_concurrency();
+  auto threads = folly::hardware_concurrency();
   simpleStressTest<PicoSpinLock<std::uint16_t>>(duration, threads);
 }
 
@@ -435,13 +437,13 @@ TEST(SmallLocks, MicroSpinLockStressTestTryLockTwoThreads) {
 
 TEST(SmallLocks, MicroSpinLockStressTestTryLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
-  auto threads = std::thread::hardware_concurrency();
+  auto threads = folly::hardware_concurrency();
   simpleStressTestTryLock<MicroSpinLock>(duration, threads);
 }
 
-TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
-  SKIP_IF(!folly::kIsSanitizeThread) << "Enabled in TSAN mode only";
+#if FOLLY_SANITIZE_THREAD
 
+TEST(SmallLocks, MicroSpinLockThreadSanitizer) {
   uint8_t val = 0;
   static_assert(sizeof(uint8_t) == sizeof(MicroSpinLock), "sanity check");
   // make sure TSAN handles this case too:
@@ -497,6 +499,8 @@ TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
   }
 }
 
+#endif
+
 TEST(SmallLocks, PicoSpinLockStressTestTryLockTwoThreads) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
   simpleStressTestTryLock<PicoSpinLock<std::uint16_t>>(duration, 2);
@@ -504,6 +508,6 @@ TEST(SmallLocks, PicoSpinLockStressTestTryLockTwoThreads) {
 
 TEST(SmallLocks, PicoSpinLockStressTestTryLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
-  auto threads = std::thread::hardware_concurrency();
+  auto threads = folly::hardware_concurrency();
   simpleStressTestTryLock<PicoSpinLock<std::uint16_t>>(duration, threads);
 }

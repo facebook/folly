@@ -35,6 +35,7 @@
 #include <folly/coro/WithCancellation.h>
 #include <folly/coro/detail/Malloc.h>
 #include <folly/coro/detail/ManualLifetime.h>
+#include <folly/lang/SafeAlias-fwd.h>
 #include <folly/tracing/AsyncStack.h>
 
 #include <glog/logging.h>
@@ -695,22 +696,44 @@ class AsyncGeneratorPromise final
     state_ = State::DONE;
   }
 
-  template <typename U>
-  auto await_transform(U&& value) {
+  // FIXME: Much of this class is currently copy-pasted from `TaskPromiseBase`,
+  // Refactor this to use that, so as to avoid `co_await` behavior divergence.
+
+  template <
+      typename Awaitable,
+      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+  auto await_transform(Awaitable&& awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
         ? BypassExceptionThrowing::ACTIVE
         : BypassExceptionThrowing::INACTIVE;
+
     return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
-            cancelToken_, static_cast<U&&>(value))));
+            cancelToken_, static_cast<Awaitable&&>(awaitable))));
+  }
+  template <
+      typename Awaitable,
+      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+  auto await_transform(Awaitable awaitable) {
+    bypassExceptionThrowing_ =
+        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
+        ? BypassExceptionThrowing::ACTIVE
+        : BypassExceptionThrowing::INACTIVE;
+
+    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
+        executor_.get_alias(),
+        folly::coro::co_withCancellation(
+            cancelToken_,
+            mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())));
   }
 
   template <typename Awaitable>
-  auto await_transform(NothrowAwaitable<Awaitable>&& awaitable) {
+  auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
-    return await_transform(awaitable.unwrap());
+    return await_transform(
+        mustAwaitImmediatelyUnsafeMover(awaitable.unwrap())());
   }
 
   auto await_transform(folly::coro::co_current_executor_t) noexcept {
@@ -846,6 +869,15 @@ auto tag_invoke(
 }
 
 } // namespace coro
+
+// Standard `AsyncGenerator` coros can easily capture references & other unsafe
+// aliasing.
+//
+// Future: Implement a `coro/safe` generator wrapper, like `async_closure_gen`.
+template <typename Ref, typename Val, bool Clean>
+struct safe_alias_of<::folly::coro::AsyncGenerator<Ref, Val, Clean>>
+    : safe_alias_constant<safe_alias::unsafe> {};
+
 } // namespace folly
 
 #endif

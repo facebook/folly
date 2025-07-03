@@ -19,12 +19,13 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/coro/safe/AsyncClosure-fwd.h>
-#include <folly/coro/safe/SafeAlias.h>
+#include <folly/lang/SafeAlias-fwd.h>
 // `#undef`ed at end-of-file not to leak this macro.
 #include <folly/coro/safe/detail/DefineMovableDeepConstLrefCopyable.h>
 #include <folly/detail/tuple.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Bindings.h>
+#include <folly/lang/named/Bindings.h>
 
 ///
 /// Please read the user- and developer-facing docs in `Capture.md`.
@@ -114,11 +115,11 @@ struct capture_bind_info_t : folly::bindings::ext::bind_info_t {
       : folly::bindings::ext::bind_info_t(std::move(bi)), captureKind_(ap) {}
 };
 
-template <capture_kind Kind>
+template <capture_kind Kind, typename UpdateBI = std::identity>
 struct as_capture_bind_info {
   // Using `auto` prevents object slicing
   constexpr auto operator()(auto bi) {
-    return capture_bind_info_t{std::move(bi), Kind};
+    return capture_bind_info_t{UpdateBI{}(std::move(bi)), Kind};
   }
 };
 
@@ -167,10 +168,52 @@ template <typename... Ts>
 as_capture_indirect(Ts&&...)
     -> as_capture_indirect<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
 
+// Sugar for `as_capture{const_ref{...}}`
+template <typename... Ts>
+struct capture_const_ref
+    : ::folly::bindings::ext::merge_update_bound_args<
+          detail::as_capture_bind_info<
+              detail::capture_kind::plain,
+              ::folly::bindings::detail::const_ref_bind_info>,
+          Ts...> {
+  using ::folly::bindings::ext::merge_update_bound_args<
+      detail::as_capture_bind_info<
+          detail::capture_kind::plain,
+          ::folly::bindings::detail::const_ref_bind_info>,
+      Ts...>::merge_update_bound_args;
+};
+template <typename... Ts>
+capture_const_ref(Ts&&...)
+    -> capture_const_ref<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
+// Sugar for `as_capture{mut_ref{...}}`
+template <typename... Ts>
+struct capture_mut_ref
+    : ::folly::bindings::ext::merge_update_bound_args<
+          detail::as_capture_bind_info<
+              detail::capture_kind::plain,
+              ::folly::bindings::detail::mut_ref_bind_info>,
+          Ts...> {
+  using ::folly::bindings::ext::merge_update_bound_args<
+      detail::as_capture_bind_info<
+          detail::capture_kind::plain,
+          ::folly::bindings::detail::mut_ref_bind_info>,
+      Ts...>::merge_update_bound_args;
+};
+template <typename... Ts>
+capture_mut_ref(Ts&&...)
+    -> capture_mut_ref<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
+
+// Sugar for `as_capture{make_in_place<T>(...)}`
 template <typename T>
 auto capture_in_place(auto&&... as [[clang::lifetimebound]]) {
   return as_capture(
       ::folly::bindings::make_in_place<T>(static_cast<decltype(as)>(as)...));
+}
+// Sugar for `as_capture{make_in_place_with(fn, ...)}`
+auto capture_in_place_with(
+    auto make_fn, auto&&... as [[clang::lifetimebound]]) {
+  return as_capture(::folly::bindings::make_in_place_with(
+      std::move(make_fn), static_cast<decltype(as)>(as)...));
 }
 
 template <typename T>
@@ -234,7 +277,7 @@ class capture_private_t {
   friend struct CapturesTest;
   template <typename, template <typename> class, typename>
   friend class capture_crtp_base;
-  template <typename, auto>
+  template <typename, auto, size_t>
   friend class capture_binding_helper;
   template <auto>
   friend auto bind_captures_to_closure(auto&&, auto);
@@ -281,7 +324,7 @@ class capture_crtp_base {
         "When a class provides custom dereferencing via `capture_proxy`, "
         "it must be `NonCopyableNonMovable` to ensure that it can only passed "
         "via `capture<Ref>`, not via your temporary proxy object. The goals "
-        "are (1) ensure correct `safe_alias_of_v` markings, (2) keep the "
+        "are (1) ensure correct `safe_alias_of` markings, (2) keep the "
         "forwarding object as a hidden implementation detail.");
     return fn();
   }
@@ -296,7 +339,7 @@ class capture_crtp_base {
   //
   // The reason for this indirection is as follows:
   //   - "Restricted" references to scopes must enforce stricter
-  //     `safe_alias_of_v` constraints on their awaitables.
+  //     `safe_alias_of` constraints on their awaitables.
   //     `restricted_co_cleanup_capture` explains the usage.
   //   - A `restricted_co_cleanup_capture<Ref>` may be obtained from an
   //     `co_cleanup_capture<...AsyncScope...>` that was originally NOT
@@ -590,6 +633,9 @@ class capture_storage : public capture_crtp_base<Derived, RefArgT, V> {
       async_closure_private_t, auto&&, const exception_wrapper*);
   template <typename> // For the `capture` specializations only!
   friend struct AsyncObjectRefForSlot;
+  template <typename ArgMap, size_t ArgI, typename Arg>
+  friend decltype(auto) async_closure_resolve_backref(
+      capture_private_t, auto&, Arg&);
 
   constexpr auto& get_lref() noexcept { return v_; }
   constexpr const auto& get_lref() const noexcept { return v_; }
@@ -915,7 +961,7 @@ struct capture_safety
     : safe_alias_constant<
           (capture_safety_impl_v<std::remove_reference_t<T>> <=
            safe_alias::shared_cleanup)
-              ? ::folly::constexpr_min(
+              ? std::min(
                     MaxRefSafety,
                     capture_safety_impl_v<std::remove_reference_t<T>>)
               : MaxRefSafety> {};
@@ -936,36 +982,36 @@ namespace folly {
 // the appropriate safety.
 
 template <typename T>
-struct safe_alias_for<::folly::coro::capture<T>>
+struct safe_alias_of<::folly::coro::capture<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
 };
 template <typename T>
-struct safe_alias_for<::folly::coro::capture_heap<T>>
+struct safe_alias_of<::folly::coro::capture_heap<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
 };
 template <typename T>
-struct safe_alias_for<::folly::coro::capture_indirect<T>>
+struct safe_alias_of<::folly::coro::capture_indirect<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
 };
 
 template <typename T>
-struct safe_alias_for<::folly::coro::after_cleanup_capture<T>>
+struct safe_alias_of<::folly::coro::after_cleanup_capture<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
 template <typename T>
-struct safe_alias_for<::folly::coro::after_cleanup_capture_heap<T>>
+struct safe_alias_of<::folly::coro::after_cleanup_capture_heap<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
 template <typename T>
-struct safe_alias_for<::folly::coro::after_cleanup_capture_indirect<T>>
+struct safe_alias_of<::folly::coro::after_cleanup_capture_indirect<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
 
 template <typename T>
-struct safe_alias_for<::folly::coro::co_cleanup_capture<T>>
+struct safe_alias_of<::folly::coro::co_cleanup_capture<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::shared_cleanup> {};
 // FIXME: `capture_safety` will still measure this as `shared_cleanup` due
 // to `T` being that safety.  So, when implementing restricted refs, we'll
 // have to add a new case to `capture_safety` to handle this.
 template <typename T>
-struct safe_alias_for<::folly::coro::restricted_co_cleanup_capture<T>>
+struct safe_alias_of<::folly::coro::restricted_co_cleanup_capture<T>>
     : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
 
 } // namespace folly

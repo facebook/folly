@@ -71,7 +71,7 @@ constexpr bool hasHandwrittenContains() {
 template <typename T, typename Platform = SimdPlatform<T>>
 FOLLY_ALWAYS_INLINE bool containsImplHandwritten(
     folly::span<const T> haystack, T needle) {
-  static_assert(!std::is_same_v<Platform, void>, "");
+  static_assert(!std::is_same_v<Platform, void>);
   return simdAnyOf<Platform, 4>(
       haystack.data(),
       haystack.data() + haystack.size(),

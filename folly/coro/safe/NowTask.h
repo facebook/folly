@@ -34,7 +34,7 @@
 ///
 /// Notes:
 ///   - (subject to change) Unlike `SafeTask`, `NowTask` does NOT check
-///     `safe_alias_of_v` for the return type `T`.  `NowTask` is essentially an
+///     `safe_alias_of` for the return type `T`.  `NowTask` is essentially an
 ///     immediate async function -- it satisfies the structured concurrency
 ///     maxim of "lexical scope drives both control flow & lifetime".  That
 ///     lowers the odds that returned pointers/references are unexpectedly
@@ -97,6 +97,9 @@ using NowTaskBase =
 template <safe_alias, typename>
 class SafeTask;
 
+template <safe_alias S, typename U>
+auto toNowTask(SafeTask<S, U>);
+
 template <typename T>
 class FOLLY_CORO_TASK_ATTRS NowTask final : public detail::NowTaskBase<T> {
  protected:
@@ -120,10 +123,64 @@ auto toNowTask(NowTask<T> t) {
   return NowTask<T>{std::move(t).unwrapTask()};
 }
 
+// Apparently, Clang 15 has a bug in prvalue semantics support, so it cannot
+// return immovable coroutines.
+#if !defined(__clang__) || __clang_major__ > 15
+
+/// Make a `NowTask` that trivially returns a value.
+template <class T>
+NowTask<T> makeNowTask(T t) {
+  co_return t;
+}
+
+/// Make a `NowTask` that trivially returns no value
+inline NowTask<> makeNowTask() {
+  co_return;
+}
+/// Same as makeNowTask(). See Unit
+inline NowTask<> makeNowTask(Unit) {
+  co_return;
+}
+
+/// Make a `NowTask` that will trivially yield an exception.
+template <class T>
+NowTask<T> makeErrorNowTask(exception_wrapper ew) {
+  co_yield co_error(std::move(ew));
+}
+
+#endif // no `makeNowTask` on old/buggy clang
+
 } // namespace folly::coro
 
 template <typename T>
-struct folly::safe_alias_for<::folly::coro::NowTask<T>>
+struct folly::safe_alias_of<::folly::coro::NowTask<T>>
     : safe_alias_constant<safe_alias::unsafe> {};
 
 #endif
+
+#if FOLLY_HAS_COROUTINES
+
+namespace folly::coro::detail {
+
+// `best_fit_task_wrapper<void, ...>` defaults to `NowTask`
+template <typename Void, typename... SemiAwaitables>
+struct best_fit_task_wrapper
+#if FOLLY_HAS_IMMOVABLE_COROUTINES
+{
+  template <typename T>
+  using task_type = NowTask<T>;
+}
+#endif
+;
+
+// If all `best_fit_task_wrapper<void, ...>` inputs are movable, return `Task`.
+template <typename... SemiAwaitables>
+struct best_fit_task_wrapper<
+    std::enable_if_t<(!must_await_immediately_v<SemiAwaitables> && ...), void>,
+    SemiAwaitables...> {
+  template <typename T>
+  using task_type = Task<T>;
+};
+} // namespace folly::coro::detail
+
+#endif // FOLLY_HAS_COROUTINES

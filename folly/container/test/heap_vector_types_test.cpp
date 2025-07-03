@@ -462,7 +462,7 @@ TEST(HeapVectorTypes, SimpleMapTest) {
 
   m[32] = 100.0f;
   check_invariant(m);
-  EXPECT_TRUE(m.count(32) == 1);
+  EXPECT_TRUE(m.contains(32));
   EXPECT_DOUBLE_EQ(100.0, m.at(32));
   EXPECT_FALSE(m.find(32) == m.end());
   EXPECT_TRUE(m.contains(32));
@@ -479,7 +479,7 @@ TEST(HeapVectorTypes, SimpleMapTest) {
   EXPECT_TRUE(it == m2.end());
   m2.insert(it, std::make_pair(1 << 20, 10.0f));
   check_invariant(m2);
-  EXPECT_TRUE(m2.count(1 << 20) == 1);
+  EXPECT_TRUE(m2.contains(1 << 20));
   EXPECT_TRUE(m < m2);
   EXPECT_TRUE(m <= m2);
 
@@ -544,7 +544,7 @@ TEST(HeapVectorTypes, SimpleSmallMapTest) {
 
   m[32] = 100.0f;
   check_invariant(m);
-  EXPECT_TRUE(m.count(32) == 1);
+  EXPECT_TRUE(m.contains(32));
   EXPECT_DOUBLE_EQ(100.0, m.at(32));
   EXPECT_FALSE(m.find(32) == m.end());
   EXPECT_TRUE(m.contains(32));
@@ -561,7 +561,7 @@ TEST(HeapVectorTypes, SimpleSmallMapTest) {
   EXPECT_TRUE(it == m2.end());
   m2.insert(it, std::make_pair(1 << 20, 10.0f));
   check_invariant(m2);
-  EXPECT_TRUE(m2.count(1 << 20) == 1);
+  EXPECT_TRUE(m2.contains(1 << 20));
   EXPECT_TRUE(m < m2);
   EXPECT_TRUE(m <= m2);
 
@@ -638,11 +638,11 @@ TEST(HeapVectorTypes, TransparentMapTest) {
   EXPECT_TRUE(m.end() == m.find(zebra));
 
   // count
-  EXPECT_EQ(0, m.count(buddy));
-  EXPECT_EQ(1, m.count(hello));
-  EXPECT_EQ(0, m.count(stake));
-  EXPECT_EQ(1, m.count(world));
-  EXPECT_EQ(0, m.count(zebra));
+  EXPECT_FALSE(m.contains(buddy));
+  EXPECT_TRUE(m.contains(hello));
+  EXPECT_FALSE(m.contains(stake));
+  EXPECT_TRUE(m.contains(world));
+  EXPECT_FALSE(m.contains(zebra));
 
   // lower_bound
   EXPECT_TRUE(m.find(hello) == m.lower_bound(buddy));

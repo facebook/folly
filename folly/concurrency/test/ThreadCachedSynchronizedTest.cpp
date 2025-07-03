@@ -16,7 +16,6 @@
 
 #include <folly/concurrency/ThreadCachedSynchronized.h>
 
-#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
 class ThreadCachedSynchronizedTest : public testing::Test {};

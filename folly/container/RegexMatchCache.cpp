@@ -174,7 +174,7 @@ void RegexMatchCache::consistency(
     auto const regexs = r(regex);
     auto const regexi = regexVector_.index_of_value(&regex);
     for (auto const& [match, mtrentry] : cacheMatchToRegex_) {
-      auto const rtmcontains = rtmentry.matches.count(match);
+      auto const rtmcontains = rtmentry.matches.contains(match);
       auto const mtrcontains = mtrentry.regexes.get_value(regexi);
       if (rtmcontains && !mtrcontains) {
         h(fmt::format( //
@@ -244,7 +244,7 @@ void RegexMatchCache::consistency(
         h(fmt::format( //
             "string-queue-reverse none regex[{}]",
             q(r(*regex))));
-      } else if (!sqrptr->strings.count(string)) {
+      } else if (!sqrptr->strings.contains(string)) {
         h(fmt::format( //
             "string-queue-reverse[{}] none string[{}]",
             q(r(*regex)),

@@ -1421,6 +1421,7 @@ fbcode_target(
     headers = [],
     deps = [
         "//folly:benchmark",
+        "//folly:portability",
         "//folly:random",
         "//folly/container:foreach",
     ],
@@ -1470,6 +1471,7 @@ fbcode_target(
         "//folly:cpp_attributes",
         "//folly:memory",
         "//folly:range",
+        "//folly/container:span",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",

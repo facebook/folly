@@ -20,7 +20,6 @@
 #include <vector>
 
 #include <folly/Benchmark.h>
-#include <folly/CppAttributes.h>
 #include <folly/Random.h>
 #include <folly/lang/Assume.h>
 

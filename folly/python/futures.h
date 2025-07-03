@@ -21,10 +21,10 @@
 
 #pragma once
 
-#include <Python.h>
 #include <folly/Executor.h>
 #include <folly/futures/Future.h>
 #include <folly/python/AsyncioExecutor.h>
+#include <folly/python/Weak.h>
 #include <folly/python/executor.h>
 
 namespace folly {
@@ -38,8 +38,8 @@ void bridgeFuture(
     PyObject* userData) {
   // We are handing over a pointer to a python object to c++ and need
   // to make sure it isn't removed by python in that time.
-  Py_INCREF(userData);
-  auto guard = folly::makeGuard([=] { Py_DECREF(userData); });
+  Py_IncRef(userData);
+  auto guard = folly::makeGuard([=] { Py_DecRef(userData); });
   // Handle the lambdas for cython
   // run callback from our Q
   futureFrom.via(executor).then(

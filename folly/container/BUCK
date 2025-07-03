@@ -38,6 +38,7 @@ non_fbcode_target(
     ],
     deps = [
         "//xplat/folly:hash_hash",
+        "//xplat/folly:hash_rapidhash",
         "//xplat/folly:range",
         "//xplat/folly:traits",
         "//xplat/folly/container:heterogeneous_access_fwd",
@@ -369,6 +370,17 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_library,
+    name = "std_bitset",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["StdBitset.h"],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "fbvector",
     compiler_flags = [
         "-fno-omit-frame-pointer",
@@ -624,6 +636,7 @@ fbcode_target(
         "//folly:range",
         "//folly:traits",
         "//folly/hash:hash",
+        "//folly/hash:rapidhash",
     ],
 )
 
@@ -775,6 +788,16 @@ fbcode_target(
         "//folly/lang:access",
         "//folly/lang:exception",
         "//folly/memory:memory_resource",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "std_bitset",
+    headers = ["StdBitset.h"],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:portability",
     ],
 )
 

@@ -169,7 +169,7 @@ class non_value_result {
       : ew_(std::in_place, std::move(ex)) {
     static_assert(
         !std::is_same_v<decltype(ex), OperationCancelled>,
-        // The reasons for this are discussed in `folly/OperationCancelled.h".
+        // The reasons for this are discussed in `folly/OperationCancelled.h`.
         "Do not use `OperationCancelled` in new user code. Instead, construct "
         "your `result` or `non_value_result` via `stopped_result`");
   }

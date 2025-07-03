@@ -15,7 +15,6 @@
  */
 
 #include <array>
-#include <exception>
 #include <limits>
 #include <optional>
 #include <random>

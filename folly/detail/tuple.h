@@ -18,6 +18,7 @@
 
 #include <folly/CppAttributes.h>
 #include <folly/Traits.h>
+#include <folly/lang/SafeAlias-fwd.h>
 
 /// Any file constructing `lite_tuple` should contain this after `#include`s:
 ///   FOLLY_PUSH_WARNINGS
@@ -264,6 +265,12 @@ FOLLY_ALWAYS_INLINE constexpr auto tuple_cat(Tups&&... tups) {
 }
 
 } // namespace folly::detail::lite_tuple
+
+namespace folly {
+template <typename... As>
+struct safe_alias_of<::folly::detail::lite_tuple::tuple<As...>>
+    : detail::safe_alias_of_pack<As...> {};
+} // namespace folly
 
 namespace std {
 

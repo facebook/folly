@@ -20,6 +20,15 @@
 
 #include <folly/portability/GTest.h>
 
+template <int Base, typename F>
+static void to_ascii_size_hammer(F _) {
+  for (int sz = 1, b = 1, e = Base; sz <= 4; ++sz, b = e, e *= Base) {
+    for (int i = b; i < e; ++i) {
+      EXPECT_EQ(sz, _(i)) << i;
+    }
+  }
+}
+
 template <typename F>
 static void to_ascii_size_16(F _) {
   EXPECT_EQ(1, _(0x0));
@@ -34,6 +43,8 @@ static void to_ascii_size_16(F _) {
   EXPECT_EQ(16, _(0x1000000000000000));
   EXPECT_EQ(16, _(0x1000000000000001));
   EXPECT_EQ(16, _(0xffffffffffffffff));
+
+  to_ascii_size_hammer<16>(_);
 }
 
 template <typename F>
@@ -48,6 +59,8 @@ static void to_ascii_size_10(F _) {
   EXPECT_EQ(4, _(1000));
   EXPECT_EQ(4, _(9999));
   EXPECT_EQ(20, _(18446744073709551615u));
+
+  to_ascii_size_hammer<10>(_);
 }
 
 template <typename F>
@@ -64,6 +77,8 @@ static void to_ascii_size_8(F _) {
   EXPECT_EQ(22, _(01000000000000000000000));
   EXPECT_EQ(22, _(01000000000000000000001));
   EXPECT_EQ(22, _(01777777777777777777777));
+
+  to_ascii_size_hammer<8>(_);
 }
 
 template <typename F>

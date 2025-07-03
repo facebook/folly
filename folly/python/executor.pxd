@@ -19,6 +19,8 @@ from folly cimport cFollyExecutor
 from libcpp cimport bool
 from libc.stdint cimport uint64_t, uintptr_t
 
+cdef extern from "folly/portability/Unistd.h":
+    cdef int getpid()
 
 cdef extern from "folly/python/AsyncioExecutor.h" namespace "folly::python":
     cdef cppclass cAsyncioExecutor "folly::python::AsyncioExecutor"(cFollyExecutor):
@@ -44,6 +46,7 @@ cdef extern from "folly/python/ProactorExecutor.h" namespace "folly::python":
 
 cdef class AsyncioExecutor:
     cdef cAsyncioExecutor* _executor
+    cdef int _pid
 
 cdef class ProactorExecutor(AsyncioExecutor):
     cdef unique_ptr[cProactorExecutor, cProactorExecutorDeleter] cQ
@@ -52,8 +55,8 @@ cdef class ProactorExecutor(AsyncioExecutor):
 cdef class IocpQueue(dict):
     cdef ProactorExecutor _executor
 
-cdef api cAsyncioExecutor* get_executor()
-cdef api int set_executor_for_loop(loop, cAsyncioExecutor* executor)
-cdef api cAsyncioExecutor* get_running_executor(bint running)
-cdef api cAsyncioExecutor* get_running_executor_drive(
+cdef cAsyncioExecutor* get_executor()
+cdef int set_executor_for_loop(loop, cAsyncioExecutor* executor)
+cdef cAsyncioExecutor* get_running_executor(bint running)
+cdef cAsyncioExecutor* get_running_executor_drive(
     bint running, bint driveBeforeDealloc)

@@ -21,11 +21,9 @@
 #include <thread>
 
 #include <folly/Benchmark.h>
-#include <folly/BenchmarkUtil.h>
 #include <folly/MPMCQueue.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/EDFThreadPoolExecutor.h>
-#include <folly/executors/SoftRealTimeExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
 using namespace folly;

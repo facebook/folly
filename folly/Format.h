@@ -58,7 +58,7 @@ class Formatter;
 template <class... Args>
 Formatter<false, Args...> format(StringPiece fmt, Args&&... args);
 template <class C>
-std::string svformat(StringPiece fmt, C&& container);
+std::string svformat(StringPiece fmt, C&& container) = delete;
 template <class T, class Enable = void>
 class FormatValue;
 
@@ -300,29 +300,6 @@ format(StringPiece fmt, Args&&... args) {
 template <class... Args>
 inline std::string sformat(StringPiece fmt, Args&&... args) {
   return Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...).str();
-}
-
-/**
- * Create a formatter object that takes one argument (of container type)
- * and uses that container to get argument values from.
- *
- * std::map<string, string> map { {"hello", "world"}, {"answer", "42"} };
- *
- * The following are equivalent:
- * sformat("{0[hello]} {0[answer]}", map);
- *
- * svformat("{hello} {answer}", map);
- *
- * but the latter is cleaner.
- */
-template <class Container>
-[[deprecated(
-    "Use fmt::format instead of folly::svformat for better performance, build "
-    "times and compatibility with std::format")]] //
-inline std::string
-svformat(StringPiece fmt, Container&& container) {
-  return Formatter<true, Container>(fmt, static_cast<Container&&>(container))
-      .str();
 }
 
 /**

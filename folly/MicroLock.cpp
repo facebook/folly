@@ -23,16 +23,12 @@
 namespace folly {
 
 uint8_t MicroLockCore::lockSlowPath(
-    uint32_t oldWord,
-    detail::Futex<>* wordPtr,
-    unsigned baseShift,
-    unsigned maxSpins,
-    unsigned maxYields) noexcept {
-  uint32_t newWord;
+    uint8_t oldWord, unsigned maxSpins, unsigned maxYields) noexcept {
+  uint8_t newWord;
   unsigned spins = 0;
-  uint32_t heldBit = 1 << baseShift;
-  uint32_t waitBit = heldBit << 1;
-  uint32_t needWaitBit = 0;
+  uint8_t heldBit = 1;
+  uint8_t waitBit = heldBit << 1;
+  uint8_t needWaitBit = 0;
 
 retry:
   if ((oldWord & heldBit) != 0) {
@@ -43,7 +39,7 @@ retry:
       // lock holder knows to FUTEX_WAKE us.
       newWord = oldWord | waitBit;
       if (newWord != oldWord) {
-        if (!wordPtr->compare_exchange_weak(
+        if (!atomic_ref(lock_).compare_exchange_weak(
                 oldWord,
                 newWord,
                 std::memory_order_relaxed,
@@ -51,7 +47,7 @@ retry:
           goto retry;
         }
       }
-      detail::futexWait(wordPtr, newWord, heldBit);
+      atomic_wait(&atomic_ref(lock_).atomic(), newWord);
       needWaitBit = waitBit;
     } else if (spins > maxSpins) {
       // sched_yield(), but more portable
@@ -59,18 +55,18 @@ retry:
     } else {
       folly::asm_volatile_pause();
     }
-    oldWord = wordPtr->load(std::memory_order_relaxed);
+    oldWord = atomic_ref(lock_).load(std::memory_order_relaxed);
     goto retry;
   }
 
   newWord = oldWord | heldBit | needWaitBit;
-  if (!wordPtr->compare_exchange_weak(
+  if (!atomic_ref(lock_).compare_exchange_weak(
           oldWord,
           newWord,
           std::memory_order_acquire,
           std::memory_order_relaxed)) {
     goto retry;
   }
-  return decodeDataFromWord(newWord, baseShift);
+  return decodeDataFromWord(newWord);
 }
 } // namespace folly

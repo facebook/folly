@@ -732,7 +732,7 @@ Attribute readAttribute(
           *cu.rnglistsBase + index * offsetSize);
       auto offset = readOffset(sp, cu.is64Bit);
       return {spec, die, *cu.rnglistsBase + offset};
-    } break;
+    }
 
     case DW_FORM_loclistx: {
       auto index = readULEB(info);
@@ -745,7 +745,7 @@ Attribute readAttribute(
           *cu.loclistsBase + index * offsetSize);
       auto offset = readOffset(sp, cu.is64Bit);
       return {spec, die, *cu.loclistsBase + offset};
-    } break;
+    }
 
     case DW_FORM_data16:
       return {spec, die, readBytes(info, 16)};

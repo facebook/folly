@@ -383,7 +383,7 @@ struct BufferedAtomic {
   }
 
   static std::unordered_map<const BufferedAtomic<T>*, RecordBuffer<T>> bufs;
-  mutable std::atomic<std::thread::id> prevUnguardedAccess;
+  mutable std::atomic<std::thread::id> prevUnguardedAccess{};
 };
 
 template <typename T>

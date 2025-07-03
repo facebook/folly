@@ -17,7 +17,7 @@
 #pragma once
 
 #include <cassert>
-#include <cmath>
+#include <limits>
 #include <vector>
 
 #include <folly/Range.h>
@@ -50,6 +50,10 @@ namespace folly {
  */
 class TDigest {
  public:
+  static constexpr size_t kDefaultMaxSize = 100;
+  // Recommended number of values to buffer before each merge.
+  static constexpr size_t kDefaultBufferSize = 1000;
+
   class Centroid {
    public:
     explicit Centroid(double mean = 0.0, double weight = 1.0)
@@ -80,8 +84,7 @@ class TDigest {
     std::vector<Centroid> buf;
   };
 
-  explicit TDigest(size_t maxSize = 100)
-      : maxSize_(maxSize), sum_(0.0), count_(0.0), max_(NAN), min_(NAN) {}
+  explicit TDigest(size_t maxSize = kDefaultMaxSize) : maxSize_(maxSize) {}
 
   explicit TDigest(
       std::vector<Centroid> centroids,
@@ -89,7 +92,7 @@ class TDigest {
       double count,
       double max_val,
       double min_val,
-      size_t maxSize = 100);
+      size_t maxSize = kDefaultMaxSize);
 
   /*
    * Returns a new TDigest constructed with values merged from the current
@@ -123,6 +126,13 @@ class TDigest {
    */
   double estimateQuantile(double q) const;
 
+  /*
+   * Returns the estimate of the CDF at the given input.
+   * Raise an invalid_argument exception if the input is NaN or infinite.
+   * Returns NaN if the centroids are emtpy.
+   */
+  double estimateCdf(double x) const;
+
   double mean() const { return count_ > 0 ? sum_ / count_ : 0; }
 
   double sum() const { return sum_; }
@@ -140,7 +150,9 @@ class TDigest {
   size_t maxSize() const { return maxSize_; }
 
  private:
-  void internalMerge(
+  class CentroidMerger;
+
+  void mergeValues(
       TDigest& dst,
       Range<const double*> sortedValues,
       std::vector<Centroid>& workingBuffer) const;
@@ -148,12 +160,14 @@ class TDigest {
   template <class T>
   static TDigest mergeImpl(Range<T> ds);
 
+  static TDigest merge2Impl(const TDigest& d1, const TDigest& d2);
+
   std::vector<Centroid> centroids_;
   size_t maxSize_;
-  double sum_;
-  double count_;
-  double max_;
-  double min_;
+  double sum_ = 0.0;
+  double count_ = 0.0;
+  double max_ = std::numeric_limits<double>::quiet_NaN();
+  double min_ = std::numeric_limits<double>::quiet_NaN();
 };
 
 } // namespace folly
