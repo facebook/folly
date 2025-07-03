@@ -388,7 +388,7 @@ void runAllHashMapTests() {
 #define Z(test, map, key, value_size)                                          \
   for (auto size = FLAGS_map_size_min; size <= FLAGS_map_size_max;             \
        size *= FLAGS_map_size_step) {                                          \
-    auto value = folly::sformat("a[{}]", #value_size);                         \
+    auto value = fmt::format("a[{}]", #value_size);                            \
     tests[size][#test][#key][value][#map] = [=](int iters) {                   \
       benchmark##test<map, key, std::array<uint8_t, value_size>>(iters, size); \
       return iters;                                                            \
