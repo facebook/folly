@@ -35,9 +35,9 @@ CO_TEST(AsyncScope, demo) {
   };
 
   folly::coro::AsyncScope scope;
-  scope.add(incrementBy5().scheduleOn(folly::getGlobalCPUExecutor()));
-  scope.add(incrementBy10().scheduleOn(folly::getGlobalCPUExecutor()));
-  scope.add(incrementBy100().scheduleOn(folly::getGlobalCPUExecutor()));
+  scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), incrementBy5()));
+  scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), incrementBy10()));
+  scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), incrementBy100()));
 
   co_await scope.joinAsync();
   EXPECT_EQ(count, 115);
