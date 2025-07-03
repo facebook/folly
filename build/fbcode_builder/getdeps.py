@@ -28,7 +28,7 @@ from getdeps.fetcher import (
 from getdeps.load import ManifestLoader
 from getdeps.manifest import ManifestParser
 from getdeps.platform import HostType
-from getdeps.runcmd import run_cmd
+from getdeps.runcmd import check_cmd
 from getdeps.subcmd import add_subcommands, cmd, SubCmd
 
 try:
@@ -472,7 +472,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
             if args.dry_run:
                 print(" ".join(cmd_args))
             else:
-                run_cmd(cmd_args)
+                check_cmd(cmd_args)
         else:
             print("no packages to install")
 
