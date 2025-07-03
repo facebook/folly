@@ -18,11 +18,8 @@
 
 #include <spawn.h>
 
-#include <system_error>
-
 #include <boost/algorithm/string.hpp>
 
-#include <folly/Memory.h>
 #include <folly/Subprocess.h>
 #include <folly/container/Array.h>
 #include <folly/portability/Fcntl.h>

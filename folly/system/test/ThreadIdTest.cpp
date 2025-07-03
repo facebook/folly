@@ -22,7 +22,6 @@
 #include <folly/portability/GTest.h>
 
 #ifndef _WIN32
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <folly/portability/Unistd.h>
 #endif
