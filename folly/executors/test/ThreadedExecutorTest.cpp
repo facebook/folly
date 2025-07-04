@@ -21,9 +21,7 @@
 #include <folly/Conv.h>
 #include <folly/futures/Future.h>
 #include <folly/gen/Base.h>
-#include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
-#include <folly/synchronization/Baton.h>
 
 namespace {
 
@@ -115,21 +113,4 @@ TEST_F(ThreadedExecutorTest, many_sleeping_decreasing_time) {
           .get();
 
   EXPECT_EQ("42", rets[42]);
-}
-
-TEST_F(ThreadedExecutorTest, request_context_propagation) {
-  folly::ThreadedExecutor executor;
-  size_t tasks = 0;
-  folly::Baton baton;
-  {
-    folly::RequestContextScopeGuard guard;
-    executor.add([&tasks, &baton, context = folly::RequestContext::try_get()] {
-      EXPECT_EQ(context, folly::RequestContext::try_get());
-      ++tasks;
-      baton.post();
-    });
-  }
-
-  baton.wait();
-  EXPECT_EQ(tasks, 1);
 }

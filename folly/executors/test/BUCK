@@ -174,9 +174,7 @@ fbcode_target(
         "//folly/executors:threaded_executor",
         "//folly/futures:core",
         "//folly/gen:base",
-        "//folly/io/async:request_context",
         "//folly/portability:gtest",
-        "//folly/synchronization:baton",
     ],
 )
 
