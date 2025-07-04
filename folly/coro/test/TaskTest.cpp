@@ -198,8 +198,8 @@ TEST_F(TaskTest, RequestContextIsPreservedAcrossSuspendResume) {
 
   // Context should be captured at coroutine co_await time and not at
   // call time.
-  auto task1 = parentRequest(1).scheduleOn(&executor);
-  auto task2 = parentRequest(2).scheduleOn(&executor);
+  auto task1 = co_withExecutor(&executor, parentRequest(1));
+  auto task2 = co_withExecutor(&executor, parentRequest(2));
 
   {
     RequestContextScopeGuard nestedRequestScope;
@@ -593,19 +593,17 @@ TEST_F(TaskTest, MakeTask) {
 TEST_F(TaskTest, ScheduleOnRestoresExecutor) {
   folly::ScopedEventBaseThread ebt;
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    co_await [&]() -> folly::coro::Task<void> {
+    co_await co_withExecutor(&ebt, [&]() -> folly::coro::Task<void> {
       EXPECT_TRUE(ebt.getEventBase()->inRunningEventBaseThread());
       co_return;
-    }()
-                          .scheduleOn(&ebt);
+    }());
     EXPECT_FALSE(ebt.getEventBase()->inRunningEventBaseThread());
     try {
-      co_await [&]() -> folly::coro::Task<void> {
+      co_await co_withExecutor(&ebt, [&]() -> folly::coro::Task<void> {
         EXPECT_TRUE(ebt.getEventBase()->inRunningEventBaseThread());
         throw std::runtime_error("");
         co_return;
-      }()
-                            .scheduleOn(&ebt);
+      }());
     } catch (...) {
     }
     EXPECT_FALSE(ebt.getEventBase()->inRunningEventBaseThread());
@@ -617,7 +615,7 @@ TEST_F(TaskTest, CoAwaitTryWithScheduleOn) {
     auto t = []() -> folly::coro::Task<int> { co_return 42; }();
 
     folly::Try<int> result = co_await folly::coro::co_awaitTry(
-        std::move(t).scheduleOn(folly::getGlobalCPUExecutor()));
+        co_withExecutor(folly::getGlobalCPUExecutor(), std::move(t)));
     EXPECT_EQ(42, result.value());
   }());
 }
@@ -638,7 +636,7 @@ TEST_F(TaskTest, CoAwaitTryWithScheduleOnAndCancellation) {
       folly::Try<int> result = co_await folly::coro::co_withCancellation(
           cancelSrc.getToken(),
           folly::coro::co_awaitTry(
-              makeTask().scheduleOn(folly::getGlobalCPUExecutor())));
+              co_withExecutor(folly::getGlobalCPUExecutor(), makeTask())));
       EXPECT_EQ(42, result.value());
     }
 
@@ -648,7 +646,7 @@ TEST_F(TaskTest, CoAwaitTryWithScheduleOnAndCancellation) {
       folly::Try<int> result =
           co_await folly::coro::co_awaitTry(folly::coro::co_withCancellation(
               cancelSrc.getToken(),
-              makeTask().scheduleOn(folly::getGlobalCPUExecutor())));
+              co_withExecutor(folly::getGlobalCPUExecutor(), makeTask())));
       EXPECT_EQ(42, result.value());
     }
   }());
@@ -725,7 +723,7 @@ TEST_F(TaskTest, CoAwaitNothrowWithScheduleOn) {
         auto t = []() -> folly::coro::Task<int> { co_return 42; }();
 
         int result = co_await folly::coro::co_nothrow(
-            std::move(t).scheduleOn(folly::getGlobalCPUExecutor()));
+            co_withExecutor(folly::getGlobalCPUExecutor(), std::move(t)));
         EXPECT_EQ(42, result);
 
         t = []() -> folly::coro::Task<int> {
@@ -734,7 +732,7 @@ TEST_F(TaskTest, CoAwaitNothrowWithScheduleOn) {
 
         try {
           result = co_await folly::coro::co_nothrow(
-              std::move(t).scheduleOn(folly::getGlobalCPUExecutor()));
+              co_withExecutor(folly::getGlobalCPUExecutor(), std::move(t)));
         } catch (...) {
           ADD_FAILURE();
         }
@@ -805,7 +803,7 @@ TEST_F(TaskTest, CoYieldCoErrorSameExecutor) {
     co_yield folly::coro::co_error(ExpectedException());
   };
   auto scopeAndThrowWrapper = [&]() -> folly::coro::Task<void> {
-    co_await scopeAndThrow().scheduleOn(ebThread.getEventBase());
+    co_await co_withExecutor(ebThread.getEventBase(), scopeAndThrow());
   };
 
   EXPECT_THROW(

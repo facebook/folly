@@ -1075,16 +1075,17 @@ TEST_F(SharedMutexTest, StressTest) {
   folly::coro::AsyncScope scope;
   while (!reachedTarget.load()) {
     writeTaskCnt += 2;
-    scope.add(check().scheduleOn(&executor));
-    scope.add(incrementIfOdd().scheduleOn(&executor));
-    scope.add(check().scheduleOn(&executor));
-    scope.add(incrementIfEven().scheduleOn(&executor));
-    scope.add(check().scheduleOn(&executor));
+    scope.add(co_withExecutor(&executor, check()));
+    scope.add(co_withExecutor(&executor, incrementIfOdd()));
+    scope.add(co_withExecutor(&executor, check()));
+    scope.add(co_withExecutor(&executor, incrementIfEven()));
+    scope.add(co_withExecutor(&executor, check()));
   }
-  folly::coro::blockingWait(scope.joinAsync().scheduleOn(&executor));
+  folly::coro::blockingWait(co_withExecutor(&executor, scope.joinAsync()));
 
   // final read
-  int finalValue = folly::coro::blockingWait(read().scheduleOn(&executor));
+  int finalValue =
+      folly::coro::blockingWait(co_withExecutor(&executor, read()));
 
   EXPECT_GE(finalValue, target);
   EXPECT_EQ(writeTaskCnt, finalValue + earlyExists);

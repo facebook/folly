@@ -42,7 +42,8 @@ CO_TEST_F(SleepTest, Basic) {
     }
   };
 
-  asyncScope.add(func().scheduleOn(co_await folly::coro::co_current_executor));
+  asyncScope.add(
+      co_withExecutor(co_await folly::coro::co_current_executor, func()));
   co_await folly::coro::co_reschedule_on_current_executor;
   EXPECT_EQ(sleepCompletedCount, 0);
 
