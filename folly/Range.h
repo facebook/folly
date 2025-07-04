@@ -714,7 +714,7 @@ class Range {
     return Tgt(b_, walk_size());
   }
 
-#if FMT_VERSION
+#if FMT_VERSION < 100000
   template <
       typename IterType = Iter,
       std::enable_if_t<detail::range_is_char_type_v_<IterType>, int> = 0>
