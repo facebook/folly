@@ -85,31 +85,37 @@ The BIG CAVEATS are:
 If you need to bypass this control, prefer the `manual_safe_*` wrappers
 below, instead of writing a custom workaround.  Always explain why it's safe.
 
-You can teach `safe_alias_of_v` about your type by including `SafeAlias-fwd.h`
-and specializing `folly::safe_alias_of`.  Some principles:
-  - Declare the specialization in the same header that declares your type.
+To teach `safe_alias_of` about your type, include `SafeAlias-fwd.h` and either:
+ 1) Add a member type alias to your class:
+    using using folly_private_safe_alias_t = safe_alias_constant<...>;
+ 2) Specialize `folly::safe_alias_of<YourT>`.
+
+When adding `safe_alias` annotations to types, stick to these principles:
+  - Always mark the `safe_alias` level in the header that declares your type.
+    For `std` types you cannot change, add the specialization here, in
+    `SafeAlias.h`.  Since we cannot forward-declare from `std`, this
+    unfortunately imposes a tradeoff between build cost and safety.  Commonly
+    used containers are worth the cost.  For less-commonly used containers, we
+    could develop a multi-header setup, plus some linter coverage to ensure the
+    right headers ultimately do get included.
   - Only use `maybe_value` if your type ACTUALLY follows value semantics.
-  - Use `safe_alias_of_pack` to aggregate safety for a multi-part type.
   - Unless you're implementing an `async_closure`-integrated type, it is VERY
-    unlikely that you should use `safe_alias::*_cleanup`.
+    unlikely that you should use anything besides `unsafe` or `maybe_value`.
+  - Use `safe_alias_of_pack` to aggregate safety for a multi-part type.
 */
 namespace folly {
 
-// See also: `safe_alias_of_v`
+// Types are `maybe_value` unless otherwise specified.  Note that
+// `SafeAlias-fwd.h` already marks raw pointers & refs as `unsafe`, and peels
+// off CV qualifiers from the type being tested.
 //
-// Unknown types are `maybe_value`. Raw references & pointers are `unsafe`.
-template <typename T>
-struct safe_alias_of
-    : conditional_t<
-          std::is_reference_v<T> || std::is_pointer_v<T>,
-          safe_alias_constant<safe_alias::unsafe>,
-          safe_alias_constant<safe_alias::maybe_value>> {};
-
-// `const` and `volatile` qualifiers don't affect the `safe_alias` measurement.
-template <typename T>
-struct safe_alias_of<const T> : safe_alias_of<T> {};
-template <typename T>
-struct safe_alias_of<volatile T> : safe_alias_of<T> {};
+// See also: `safe_alias_of_v`.
+//
+// As explained in `SafeAlias-fwd.h`, do NOT move this to the `fwd` header.  To
+// guarantee safety, this permissive primary template must be colocated with
+// the other specializations below.
+template <typename T, typename /*SFINAE*/>
+struct safe_alias_of : safe_alias_constant<safe_alias::maybe_value> {};
 
 // Reference wrappers are unsafe.
 template <typename T>
@@ -123,16 +129,15 @@ struct safe_alias_of<folly::rvalue_reference_wrapper<T>>
 // to be involved in bugs.  If you encounter a memory-safety issue that
 // would've been caught by this, feel free to extend this.
 template <typename... As>
-struct safe_alias_of<std::tuple<As...>> : detail::safe_alias_of_pack<As...> {};
+struct safe_alias_of<std::tuple<As...>> : safe_alias_of_pack<As...> {};
 template <typename... As>
-struct safe_alias_of<std::pair<As...>> : detail::safe_alias_of_pack<As...> {};
+struct safe_alias_of<std::pair<As...>> : safe_alias_of_pack<As...> {};
 template <typename... As>
-struct safe_alias_of<std::vector<As...>> : detail::safe_alias_of_pack<As...> {};
+struct safe_alias_of<std::vector<As...>> : safe_alias_of_pack<As...> {};
 
 // Recursing into `tag_t<>` type lists is nice for metaprogramming
 template <typename... As>
-struct safe_alias_of<::folly::tag_t<As...>>
-    : detail::safe_alias_of_pack<As...> {};
+struct safe_alias_of<::folly::tag_t<As...>> : safe_alias_of_pack<As...> {};
 
 // IMPORTANT: If you use the `manual_safe_` escape-hatch wrappers, you MUST
 // comment with clear proof of WHY your usage is safe.  The goal is to

@@ -19,18 +19,26 @@
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Task.h>
 #include <folly/coro/Traits.h>
-#include <folly/coro/safe/NowTask.h>
+#include <folly/coro/detail/PickTaskWrapper.h>
 #include <folly/futures/Future.h>
+// `timeout(coroFutureInt())` makes a `SafeTask`
+#include <folly/coro/safe/SafeTask.h>
+// `timeout(memberTask())` makes a `NowTask`
+#include <folly/coro/safe/NowTask.h>
 
 #if FOLLY_HAS_COROUTINES
 
 namespace folly::coro {
 
 namespace detail {
-template <typename SemiAwaitable>
-using TimeoutTask =
-    typename best_fit_task_wrapper<void, SemiAwaitable>::template task_type<
-        typename semi_await_try_result_t<SemiAwaitable>::element_type>;
+// This doesn't try to apply `AsNoexcept` to the output, since `timeout` is
+// expected to throw, and `timeoutNoDiscard()` may either complete with a
+// stopped state, or with an error.
+template <typename SemiAwaitable, typename TimekeeperPtr>
+using TimeoutTask = PickTaskWrapper<
+    typename semi_await_try_result_t<SemiAwaitable>::element_type,
+    std::min(safe_alias_of_v<TimekeeperPtr>, safe_alias_of_v<SemiAwaitable>),
+    must_await_immediately_v<SemiAwaitable>>;
 } // namespace detail
 
 /// Returns a Task that, when started, starts a timer of duration
@@ -53,11 +61,16 @@ using TimeoutTask =
 ///
 /// \throws folly::FutureTimeout
 /// \refcode folly/docs/examples/folly/coro/DetachOnCancel.cpp
-template <typename SemiAwaitable, typename Duration>
-typename detail::TimeoutTask<SemiAwaitable> timeout(
+template <
+    typename SemiAwaitable,
+    typename Duration,
+    // Templated so we can take safe pointers like `capture<Timekeeper&>` from
+    // `folly/coro/safe`, and return a `SafeTask`.
+    typename TimekeeperPtr = std::nullptr_t>
+typename detail::TimeoutTask<SemiAwaitable, TimekeeperPtr> timeout(
     SemiAwaitable semiAwaitable,
     Duration timeoutDuration,
-    Timekeeper* tk = nullptr);
+    TimekeeperPtr tk = nullptr);
 
 /// Returns a Task that, when started, starts a timer of duration
 /// 'timeoutDuration' and awaits the passed SemiAwaitable (operation).
@@ -81,11 +94,14 @@ typename detail::TimeoutTask<SemiAwaitable> timeout(
 ///
 /// If a timekeeper is provided then uses that timekeeper to start the timer,
 /// otherwise uses the process' default TimeKeeper if 'tk' is null.
-template <typename SemiAwaitable, typename Duration>
-typename detail::TimeoutTask<SemiAwaitable> timeoutNoDiscard(
+template <
+    typename SemiAwaitable,
+    typename Duration,
+    typename TimekeeperPtr = std::nullptr_t> // templated for reason above
+typename detail::TimeoutTask<SemiAwaitable, TimekeeperPtr> timeoutNoDiscard(
     SemiAwaitable semiAwaitable,
     Duration timeoutDuration,
-    Timekeeper* tk = nullptr);
+    TimekeeperPtr tk = nullptr);
 
 } // namespace folly::coro
 

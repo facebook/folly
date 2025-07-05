@@ -23,8 +23,10 @@
 #include <folly/coro/Generator.h>
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Mutex.h>
+#include <folly/coro/Promise.h>
 #include <folly/coro/Sleep.h>
 #include <folly/coro/Task.h>
+#include <folly/coro/safe/NowTask.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/io/async/Request.h>
@@ -36,39 +38,71 @@
 
 #if FOLLY_HAS_COROUTINES
 
-static_assert(
-    std::is_same_v<
-        decltype(collectAll(
-            FOLLY_DECLVAL(folly::coro::Task<int>),
-            FOLLY_DECLVAL(folly::coro::Task<int>))),
-        folly::coro::Task<std::tuple<int, int>>>);
+namespace folly::coro {
+
+// collectAll(Task) -> Task
+static_assert(std::is_same_v<
+              decltype(collectAll(
+                  FOLLY_DECLVAL(Task<int>), FOLLY_DECLVAL(Task<int>))),
+              Task<std::tuple<int, int>>>);
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
 // If any of the inputs are immediately-awaitable, so is the collection
+static_assert(std::is_same_v<
+              decltype(collectAll(
+                  FOLLY_DECLVAL(NowTask<int>), FOLLY_DECLVAL(Task<int>))),
+              NowTask<std::tuple<int, int>>>);
+static_assert(std::is_same_v<
+              decltype(collectAll(
+                  FOLLY_DECLVAL(Task<int>), FOLLY_DECLVAL(NowTask<int>))),
+              NowTask<std::tuple<int, int>>>);
+static_assert(std::is_same_v<
+              decltype(collectAll(
+                  FOLLY_DECLVAL(NowTask<int>), FOLLY_DECLVAL(NowTask<int>))),
+              NowTask<std::tuple<int, int>>>);
 
+// collectAll(NowTask) -> NowTask
+static_assert(std::is_same_v<
+              NowTask<std::tuple<int>>,
+              decltype(collectAll(FOLLY_DECLVAL(NowTask<int>)))>);
+static_assert(std::is_same_v<
+              NowTask<std::tuple<int>>,
+              decltype(collectAll(FOLLY_DECLVAL(NowTaskWithExecutor<int>)))>);
+
+// collectAll(ValueTask or coro::Future) -> ValueTask
+static_assert(std::is_same_v<
+              ValueTask<std::tuple<int>>,
+              decltype(collectAll(FOLLY_DECLVAL(ValueTask<int>)))>);
+static_assert(std::is_same_v<
+              ValueTask<std::tuple<int>>,
+              decltype(collectAll(FOLLY_DECLVAL(
+                  SafeTaskWithExecutor<safe_alias::maybe_value, int>)))>);
+static_assert(std::is_same_v<
+              ValueTask<std::tuple<int>>,
+              decltype(collectAll(FOLLY_DECLVAL(coro::Future<int>)))>);
+
+// collectAll: returns the "least safe" wrapper
 static_assert(
     std::is_same_v<
+        NowTask<std::tuple<int, int>>,
         decltype(collectAll(
-            FOLLY_DECLVAL(folly::coro::NowTask<int>),
-            FOLLY_DECLVAL(folly::coro::Task<int>))),
-        folly::coro::NowTask<std::tuple<int, int>>>);
-
+            FOLLY_DECLVAL(NowTask<int>), FOLLY_DECLVAL(ValueTask<int>)))>);
+static_assert(std::is_same_v<
+              Task<std::tuple<int, int>>,
+              decltype(collectAll(
+                  FOLLY_DECLVAL(Task<int>), FOLLY_DECLVAL(ValueTask<int>)))>);
 static_assert(
     std::is_same_v<
+        NowTask<std::tuple<int, int, int>>,
         decltype(collectAll(
-            FOLLY_DECLVAL(folly::coro::Task<int>),
-            FOLLY_DECLVAL(folly::coro::NowTask<int>))),
-        folly::coro::NowTask<std::tuple<int, int>>>);
-
-static_assert(
-    std::is_same_v<
-        decltype(collectAll(
-            FOLLY_DECLVAL(folly::coro::NowTask<int>),
-            FOLLY_DECLVAL(folly::coro::NowTask<int>))),
-        folly::coro::NowTask<std::tuple<int, int>>>);
+            FOLLY_DECLVAL(Task<int>),
+            FOLLY_DECLVAL(NowTask<int>),
+            FOLLY_DECLVAL(ValueTask<int>)))>);
 
 #endif
+
+} // namespace folly::coro
 
 folly::coro::Task<void> sleepThatShouldBeCancelled(
     std::chrono::milliseconds dur) {

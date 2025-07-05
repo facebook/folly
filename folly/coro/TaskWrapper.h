@@ -265,12 +265,16 @@ class TaskWrapperCrtp {
         (Derived*)nullptr, std::move(*this).unwrapTask().getUnsafeMover(p)};
   }
 
+  using folly_private_task_wrapper_inner_t = typename Cfg::InnerTaskT;
+  using folly_private_task_wrapper_crtp_base = TaskWrapperCrtp;
+
+  // Wrappers can override these as-needed
   using folly_private_must_await_immediately_t =
       must_await_immediately_t<typename Cfg::InnerTaskT>;
   using folly_private_noexcept_awaitable_t =
       noexcept_awaitable_t<typename Cfg::InnerTaskT>;
-  using folly_private_task_wrapper_inner_t = typename Cfg::InnerTaskT;
-  using folly_private_task_wrapper_crtp_base = TaskWrapperCrtp;
+  using folly_private_safe_alias_t =
+      safe_alias_of<folly_private_task_wrapper_inner_t>;
 
  private:
   using Inner = folly_private_task_wrapper_inner_t;
@@ -404,6 +408,7 @@ class TaskWithExecutorWrapperCrtp {
   using folly_private_must_await_immediately_t =
       must_await_immediately_t<Inner>;
   using folly_private_task_without_executor_t = typename Cfg::WrapperTaskT;
+  using folly_private_safe_alias_t = safe_alias_of<Inner>;
 };
 
 } // namespace folly::coro

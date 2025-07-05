@@ -88,9 +88,9 @@ TEST(SafeAliasTest, pair) {
 
 TEST(SafeAliasTest, vector) {
   class X {};
-  static_assert(safe_alias_of_v<std::vector<X, int>> == SA::maybe_value);
+  static_assert(safe_alias_of_v<std::vector<X>> == SA::maybe_value);
   static_assert(safe_alias_of_v<std::vector<int>> == SA::maybe_value);
-  static_assert(safe_alias_of_v<std::vector<X&>> == SA::unsafe);
+  static_assert(safe_alias_of_v<std::vector<X*>> == SA::unsafe);
   static_assert(safe_alias_of_v<std::vector<int*>> == SA::unsafe);
 }
 

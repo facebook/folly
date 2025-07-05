@@ -56,8 +56,7 @@
 
 #if FOLLY_HAS_COROUTINES
 
-namespace folly {
-namespace coro {
+namespace folly::coro {
 
 template <typename T = void>
 class Task;
@@ -718,6 +717,8 @@ class FOLLY_NODISCARD TaskWithExecutor {
   }
 
   using folly_private_task_without_executor_t = Task<T>;
+  // See comment in `Task`, or use `SafeTaskWithExecutor` instead.
+  using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
  private:
   friend class Task<T>;
@@ -868,6 +869,13 @@ class FOLLY_CORO_TASK_ATTRS Task {
   }
 
   using PrivateAwaiterTypeForTests = Awaiter;
+  // Use `SafeTask` instead of `Task` to move tasks into other safe coro APIs.
+  //
+  // User-facing stuff from `Task.h` can trivially include unsafe aliasing, the
+  // `folly::coro` docs include hundreds of words of pitfalls.  The intent here
+  // is to catch people accidentally passing `Task`s into safer primitives, and
+  // breaking their memory-safety guarantees.
+  using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
  private:
   friend class detail::TaskPromiseBase;
@@ -994,21 +1002,6 @@ detail::TaskPromiseCrtpBase<Promise, T>::get_return_object() noexcept {
       coroutine_handle<Promise>::from_promise(*static_cast<Promise*>(this))};
 }
 
-} // namespace coro
-
-// Use `SafeTask` instead of `Task` to move tasks into other safe coro APIs.
-//
-// User-facing stuff from `Task.h` can trivially include unsafe aliasing,
-// the `folly::coro` docs include hundreds of words of pitfalls.  The intent
-// here is to catch people accidentally passing `Task`s into safer
-// primitives, and breaking their memory-safety guarantees.
-template <typename T>
-struct safe_alias_of<::folly::coro::TaskWithExecutor<T>>
-    : safe_alias_constant<safe_alias::unsafe> {};
-template <typename T>
-struct safe_alias_of<::folly::coro::Task<T>>
-    : safe_alias_constant<safe_alias::unsafe> {};
-
-} // namespace folly
+} // namespace folly::coro
 
 #endif // FOLLY_HAS_COROUTINES

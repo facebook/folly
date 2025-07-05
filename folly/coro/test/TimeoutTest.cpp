@@ -19,8 +19,11 @@
 #include <folly/coro/AsyncGenerator.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Collect.h>
+#include <folly/coro/Promise.h>
 #include <folly/coro/Sleep.h>
 #include <folly/coro/Timeout.h>
+#include <folly/coro/safe/Captures.h>
+#include <folly/coro/safe/NowTask.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
@@ -32,6 +35,50 @@
 
 using namespace std::chrono_literals;
 using namespace folly;
+
+#if FOLLY_HAS_IMMOVABLE_COROUTINES
+
+namespace folly::coro {
+
+// timeout(NowTask) -> NowTask
+static_assert(std::is_same_v<
+              NowTask<int>,
+              decltype(timeout(FOLLY_DECLVAL(NowTask<int>), 1s))>);
+static_assert(std::is_same_v<
+              NowTask<int>,
+              decltype(timeout(FOLLY_DECLVAL(NowTaskWithExecutor<int>), 1s))>);
+
+// timeout(ValueTask or coro::Future) -> ValueTask
+static_assert(std::is_same_v<
+              ValueTask<int>,
+              decltype(timeout(FOLLY_DECLVAL(ValueTask<int>), 1s))>);
+static_assert(
+    std::is_same_v<
+        ValueTask<int>,
+        decltype(timeout(
+            FOLLY_DECLVAL(SafeTaskWithExecutor<safe_alias::maybe_value, int>),
+            1s))>);
+static_assert(std::is_same_v<
+              ValueTask<int>,
+              decltype(timeout(FOLLY_DECLVAL(coro::Future<int>), 1s))>);
+
+// Passing a `Timekeeper` pointer changes the safety
+static_assert(
+    std::is_same_v<
+        Task<int>,
+        decltype(timeout(
+            FOLLY_DECLVAL(ValueTask<int>), 1s, FOLLY_DECLVAL(Timekeeper*)))>);
+static_assert(
+    std::is_same_v<
+        CoCleanupSafeTask<int>,
+        decltype(timeout(
+            FOLLY_DECLVAL(ValueTask<int>),
+            1s,
+            FOLLY_DECLVAL(capture<Timekeeper&>)))>);
+
+} // namespace folly::coro
+
+#endif
 
 struct Timeout {
   template <typename... Arg>

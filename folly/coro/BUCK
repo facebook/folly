@@ -428,7 +428,9 @@ fbcode_target(
         "//folly/coro:mutex",
         "//folly/coro:task",
         "//folly/coro:via_if_async",
+        "//folly/coro/detail:pick_task_wrapper",
         "//folly/coro/safe:now_task",
+        "//folly/coro/safe:safe_task",
     ],
 )
 
@@ -447,7 +449,9 @@ non_fbcode_target(
         "//xplat/folly:unit",
         "//xplat/folly/container:access",
         "//xplat/folly/container:iterator",
+        "//xplat/folly/coro/detail:pick_task_wrapper",
         "//xplat/folly/coro/safe:now_task",
+        "//xplat/folly/coro/safe:safe_task",
         "//xplat/folly/experimental/coro:async_generator",
         "//xplat/folly/experimental/coro:async_pipe",
         "//xplat/folly/experimental/coro:async_scope",
@@ -1075,6 +1079,7 @@ fbcode_target(
         "//folly/coro:baton",
         "//folly/coro:coroutine",
         "//folly/futures:core",
+        "//folly/lang:safe_alias_fwd",
         "//folly/synchronization:relaxed_atomic",
     ],
 )
@@ -1610,7 +1615,9 @@ fbcode_target(
         "//folly/coro:task",
         "//folly/coro:traits",
         "//folly/coro:with_cancellation",
+        "//folly/coro/detail:pick_task_wrapper",
         "//folly/coro/safe:now_task",
+        "//folly/coro/safe:safe_task",
         "//folly/futures:core",
     ],
 )
@@ -1626,7 +1633,9 @@ non_fbcode_target(
     exported_deps = [
         "//xplat/folly:cancellation_token",
         "//xplat/folly:futures_core",
+        "//xplat/folly/coro/detail:pick_task_wrapper",
         "//xplat/folly/coro/safe:now_task",
+        "//xplat/folly/coro/safe:safe_task",
         "//xplat/folly/experimental/coro:baton",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:task",

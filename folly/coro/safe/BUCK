@@ -83,8 +83,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["NowTask.h"],
     exported_deps = [
-        ":safe_alias",
         "//xplat/folly/coro:task_wrapper",
+        "//xplat/folly/lang:safe_alias_fwd",
     ],
 )
 
@@ -93,8 +93,8 @@ fbcode_target(
     name = "now_task",
     headers = ["NowTask.h"],
     exported_deps = [
-        ":safe_alias",
         "//folly/coro:task_wrapper",
+        "//folly/lang:safe_alias_fwd",
     ],
 )
 

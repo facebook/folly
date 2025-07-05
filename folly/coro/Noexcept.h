@@ -157,7 +157,7 @@ template <typename, auto>
 class NoexceptAwaitable;
 
 template <auto CancelCfg>
-struct WithCancelCfg {
+struct NoexceptAwaitableWithCancelCfg {
   template <typename T>
   using apply = NoexceptAwaitable<T, CancelCfg>;
 };
@@ -165,11 +165,11 @@ struct WithCancelCfg {
 template <typename T, auto CancelCfg>
 class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NoexceptAwaitable
     : public CommutativeWrapperAwaitable<
-          WithCancelCfg<CancelCfg>::template apply,
+          NoexceptAwaitableWithCancelCfg<CancelCfg>::template apply,
           T> {
  public:
   using CommutativeWrapperAwaitable<
-      WithCancelCfg<CancelCfg>::template apply,
+      NoexceptAwaitableWithCancelCfg<CancelCfg>::template apply,
       T>::CommutativeWrapperAwaitable;
 
   template <typename T2 = T, std::enable_if_t<is_awaitable_v<T2>, int> = 0>
@@ -295,17 +295,5 @@ class FOLLY_CORO_TASK_ATTRS AsNoexcept final
 #endif // FOLLY_HAS_IMMOVABLE_COROUTINES
 
 } // namespace folly::coro
-
-namespace folly {
-template <typename T, auto CancelCfg>
-struct safe_alias_of<::folly::coro::AsNoexcept<T, CancelCfg>>
-    : safe_alias_of<T> {};
-template <typename T, auto CancelCfg>
-struct safe_alias_of<::folly::coro::AsNoexceptWithExecutor<T, CancelCfg>>
-    : safe_alias_of<T> {};
-template <typename T, auto CancelCfg>
-struct safe_alias_of<::folly::coro::detail::NoexceptAwaitable<T, CancelCfg>>
-    : safe_alias_of<T> {};
-} // namespace folly
 
 #endif // FOLLY_HAS_COROUTINES

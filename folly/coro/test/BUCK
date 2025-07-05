@@ -185,6 +185,7 @@ fbcode_target(
         "//folly/coro:invoke",
         "//folly/coro:merge",
         "//folly/coro:mutex",
+        "//folly/coro:promise",
         "//folly/coro:ready",
         "//folly/coro:result",
         "//folly/coro:shared_mutex",
@@ -197,6 +198,7 @@ fbcode_target(
         "//folly/coro:transform",
         "//folly/coro:unbounded_queue",
         "//folly/coro:with_cancellation",
+        "//folly/coro/safe:captures",
         "//folly/coro/safe:now_task",
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:global_executor",
@@ -276,6 +278,7 @@ fbcode_target(
         "//folly/coro:gtest_helpers",
         "//folly/coro:noexcept",
         "//folly/coro/safe:now_task",
+        "//folly/coro/safe:safe_task",
     ],
 )
 

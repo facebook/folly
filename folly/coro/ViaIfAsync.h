@@ -35,9 +35,7 @@
 
 #if FOLLY_HAS_COROUTINES
 
-namespace folly {
-
-namespace coro {
+namespace folly::coro {
 
 namespace detail {
 
@@ -773,8 +771,11 @@ class CommutativeWrapperAwaitable {
         (Derived<T>*)nullptr, std::move(inner_).getUnsafeMover(p)};
   }
 
+  // IMPORTANT: If a commutative wrapper changes safety, immediate- or
+  // noexcept-awaitability, it must remember to override these:
   using folly_private_must_await_immediately_t = must_await_immediately_t<T>;
   using folly_private_noexcept_awaitable_t = noexcept_awaitable_t<T>;
+  using folly_private_safe_alias_t = safe_alias_of<T>;
 
  protected:
   T inner_;
@@ -857,13 +858,6 @@ detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
       mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()};
 }
 
-} // namespace coro
-
-template <typename T>
-struct safe_alias_of<coro::detail::NothrowAwaitable<T>> : safe_alias_of<T> {};
-template <typename T>
-struct safe_alias_of<coro::detail::TryAwaitable<T>> : safe_alias_of<T> {};
-
-} // namespace folly
+} // namespace folly::coro
 
 #endif // FOLLY_HAS_COROUTINES

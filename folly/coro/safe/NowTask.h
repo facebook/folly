@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/coro/TaskWrapper.h>
-#include <folly/coro/safe/SafeAlias.h>
+#include <folly/lang/SafeAlias-fwd.h>
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
@@ -152,35 +152,4 @@ NowTask<T> makeErrorNowTask(exception_wrapper ew) {
 
 } // namespace folly::coro
 
-template <typename T>
-struct folly::safe_alias_of<::folly::coro::NowTask<T>>
-    : safe_alias_constant<safe_alias::unsafe> {};
-
 #endif
-
-#if FOLLY_HAS_COROUTINES
-
-namespace folly::coro::detail {
-
-// `best_fit_task_wrapper<void, ...>` defaults to `NowTask`
-template <typename Void, typename... SemiAwaitables>
-struct best_fit_task_wrapper
-#if FOLLY_HAS_IMMOVABLE_COROUTINES
-{
-  template <typename T>
-  using task_type = NowTask<T>;
-}
-#endif
-;
-
-// If all `best_fit_task_wrapper<void, ...>` inputs are movable, return `Task`.
-template <typename... SemiAwaitables>
-struct best_fit_task_wrapper<
-    std::enable_if_t<(!must_await_immediately_v<SemiAwaitables> && ...), void>,
-    SemiAwaitables...> {
-  template <typename T>
-  using task_type = Task<T>;
-};
-} // namespace folly::coro::detail
-
-#endif // FOLLY_HAS_COROUTINES

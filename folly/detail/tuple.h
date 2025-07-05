@@ -269,7 +269,7 @@ FOLLY_ALWAYS_INLINE constexpr auto tuple_cat(Tups&&... tups) {
 namespace folly {
 template <typename... As>
 struct safe_alias_of<::folly::detail::lite_tuple::tuple<As...>>
-    : detail::safe_alias_of_pack<As...> {};
+    : safe_alias_of_pack<As...> {};
 } // namespace folly
 
 namespace std {

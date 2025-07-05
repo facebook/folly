@@ -1,0 +1,29 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+### this line is a hint for source control merge
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "pick_task_wrapper",
+    headers = ["PickTaskWrapper.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly/lang:safe_alias_fwd",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "pick_task_wrapper",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["PickTaskWrapper.h"],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly/lang:safe_alias_fwd",
+    ],
+)

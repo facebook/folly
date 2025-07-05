@@ -35,9 +35,14 @@ struct DiscardImpl {
 template <>
 struct DiscardImpl<false> {};
 
-template <typename SemiAwaitable, typename Duration, bool discard, typename Fn>
-typename detail::TimeoutTask<SemiAwaitable> timeoutImpl(
-    Fn semiFn, Duration timeoutDuration, Timekeeper* tk) {
+template <
+    typename SemiAwaitable,
+    typename Duration,
+    bool discard,
+    typename Fn,
+    typename TimekeeperPtr>
+typename detail::TimeoutTask<SemiAwaitable, TimekeeperPtr> timeoutImpl(
+    Fn semiFn, Duration timeoutDuration, TimekeeperPtr tk) {
   CancellationSource cancelSource;
   DiscardImpl<discard> impl;
   auto sleepFuture =
@@ -123,22 +128,22 @@ typename detail::TimeoutTask<SemiAwaitable> timeoutImpl(
 
 } // namespace detail
 
-template <typename SemiAwaitable, typename Duration>
-typename detail::TimeoutTask<SemiAwaitable> timeout(
-    SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
+template <typename SemiAwaitable, typename Duration, typename TimekeeperPtr>
+typename detail::TimeoutTask<SemiAwaitable, TimekeeperPtr> timeout(
+    SemiAwaitable semiAwaitable, Duration timeoutDuration, TimekeeperPtr tk) {
   return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/true>(
       mustAwaitImmediatelyUnsafeMover(std::move(semiAwaitable)),
       timeoutDuration,
-      tk);
+      std::move(tk));
 }
 
-template <typename SemiAwaitable, typename Duration>
-typename detail::TimeoutTask<SemiAwaitable> timeoutNoDiscard(
-    SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
+template <typename SemiAwaitable, typename Duration, typename TimekeeperPtr>
+typename detail::TimeoutTask<SemiAwaitable, TimekeeperPtr> timeoutNoDiscard(
+    SemiAwaitable semiAwaitable, Duration timeoutDuration, TimekeeperPtr tk) {
   return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/false>(
       mustAwaitImmediatelyUnsafeMover(std::move(semiAwaitable)),
       timeoutDuration,
-      tk);
+      std::move(tk));
 }
 
 } // namespace folly::coro
