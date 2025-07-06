@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/portability/Windows.h>
+
 #include <folly/io/HugePages.h>
 
 #include <fcntl.h>

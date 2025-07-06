@@ -16,27 +16,23 @@
 
 #include <folly/system/MemoryMapping.h>
 
+#include <fcntl.h>
+#include <sys/types.h>
+
 #include <algorithm>
 #include <cerrno>
+#include <system_error>
 #include <utility>
 
 #include <fmt/core.h>
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
+#include <folly/experimental/io/HugePages.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
-
-#ifdef __linux__
-#include <folly/experimental/io/HugePages.h> // @manual
-#endif
-
-#include <fcntl.h>
-#include <sys/types.h>
-
-#include <system_error>
 
 static constexpr ssize_t kDefaultMlockChunkSize = !folly::kMscVer
     // Linux implementations of unmap/mlock/munlock take a kernel
@@ -97,17 +93,15 @@ MemoryMapping::MemoryMapping(AnonymousType, off64_t length, Options options)
 
 namespace {
 
-#ifdef __linux__
 void getDeviceOptions(dev_t device, off64_t& pageSize, bool& autoExtend) {
-  auto ps = getHugePageSizeForDevice(device);
-  if (ps) {
-    pageSize = ps->size;
-    autoExtend = true;
+  if constexpr (kIsLinux) {
+    auto ps = getHugePageSizeForDevice(device);
+    if (ps) {
+      pageSize = ps->size;
+      autoExtend = true;
+    }
   }
 }
-#else
-inline void getDeviceOptions(dev_t, off64_t&, bool&) {}
-#endif
 
 } // namespace
 

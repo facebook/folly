@@ -164,6 +164,7 @@ fb_dirsync_cpp_library(
         "//folly/gen:base",
         "//folly/gen:file",
         "//folly/gen:string",
+        "//folly/portability:windows",
     ],
     exported_deps = [
         "//folly:range",

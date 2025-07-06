@@ -66,15 +66,10 @@ fbcode_target(
     name = "memory_mapping",
     srcs = ["MemoryMapping.cpp"],
     headers = ["MemoryMapping.h"],
-    os_deps = [
-        (
-            "linux",
-            ["//folly/experimental/io:huge_pages"],
-        ),
-    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:portability",
+        "//folly/experimental/io:huge_pages",
         "//folly/portability:gflags",
         "//folly/portability:sys_mman",
         "//folly/portability:sys_syscall",
