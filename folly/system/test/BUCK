@@ -1,5 +1,4 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -31,19 +30,10 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
-    name = "env_util_subprocess",
-    srcs = ["EnvUtilSubprocess.cpp"],
-)
-
-fbcode_target(
     _kind = cpp_unittest,
     name = "env_util_test",
     srcs = ["EnvUtilTest.cpp"],
     headers = [],
-    args = [
-        "--env_util_subprocess_binary=$(location :env_util_subprocess)",
-    ],
     deps = [
         "//folly:subprocess",
         "//folly/container:array",
