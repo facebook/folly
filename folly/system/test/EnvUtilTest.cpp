@@ -98,6 +98,9 @@ TEST(EnvironmentStateTest, FailOnEmptyString) {
   PCHECK(0 == putenv(test));
   auto okState = EnvironmentState::fromCurrentEnvironment();
   test[0] = 0;
+  SCOPE_EXIT {
+    test[0] = 'A';
+  };
   EXPECT_THROW(
       EnvironmentState::fromCurrentEnvironment(), MalformedEnvironment);
 }
@@ -128,6 +131,9 @@ TEST(EnvironmentStateTest, FailOnDuplicate) {
   PCHECK(0 == putenv(test));
   auto okState = EnvironmentState::fromCurrentEnvironment();
   test[3] = 'H';
+  SCOPE_EXIT {
+    test[3] = 'G';
+  };
   EXPECT_THROW(
       EnvironmentState::fromCurrentEnvironment(), MalformedEnvironment);
 }
