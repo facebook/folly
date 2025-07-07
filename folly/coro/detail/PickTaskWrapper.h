@@ -62,6 +62,8 @@ struct identity_metafunction {
 template <safe_alias, bool /*must await immediately (now)*/>
 struct PickTaskWrapperImpl;
 
+#if FOLLY_HAS_IMMOVABLE_COROUTINES
+
 template <>
 struct PickTaskWrapperImpl<safe_alias::unsafe, /*await now*/ false> {
   template <typename T>
@@ -69,8 +71,6 @@ struct PickTaskWrapperImpl<safe_alias::unsafe, /*await now*/ false> {
   template <typename T>
   using TaskWithExecutor = TaskWithExecutor<T>;
 };
-
-#if FOLLY_HAS_IMMOVABLE_COROUTINES
 
 template <>
 struct PickTaskWrapperImpl<safe_alias::unsafe, /*await now*/ true> {
