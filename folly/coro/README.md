@@ -18,8 +18,8 @@ folly::coro::Task<int> taskSlow43() {
 
 int main() {
   ...
-  CHECK_EQ(43, folly::coro::blockingWait(taskSlow43().scheduleOn(
-                   folly::getGlobalCPUExecutor().get())));
+  CHECK_EQ(43, folly::coro::blockingWait(co_withExecutor(
+                   folly::getGlobalCPUExecutor().get(), taskSlow43())));
   ...
 }
 ```
@@ -87,7 +87,7 @@ void runCoroutine1() {
   // coroutine arguments are captured here, not when we start the coroutine
   auto task = checkArg(arg42);
   arg42 = 43;
-  folly::coro::blockingWait(std::move(task).scheduleOn(folly::getCPUExecutor().get()));
+  folly::coro::blockingWait(co_withExecutor(folly::getCPUExecutor().get(), std::move(task)));
 }
 
 void runCoroutine2() {
@@ -124,7 +124,7 @@ folly::coro::Task<void> bar(folly::CPUThreadPoolExecutor* otherExecutor) {
 
   // Launches foo() on 'otherExecutor' and when it's done resumes this
   // coroutine on whatever executor bar() was launched on.
-  co_await foo().scheduleOn(otherExecutor);
+  co_await co_withExecutor(otherExecutor, foo());
 }
 ```
 

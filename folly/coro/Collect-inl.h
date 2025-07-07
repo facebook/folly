@@ -269,8 +269,8 @@ auto makeUnorderedAsyncGeneratorImpl(
         state->pipe.write(std::move(result));
       }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable), sharedState);
       if constexpr (std::is_same_v<AsyncScope, folly::coro::AsyncScope>) {
-        scopeParam.add(
-            co_withCancellation(cancelToken, std::move(task)).scheduleOn(ex));
+        scopeParam.add(co_withExecutor(
+            ex, co_withCancellation(cancelToken, std::move(task))));
       } else {
         static_assert(std::is_same_v<AsyncScope, CancellableAsyncScope>);
         scopeParam.add(std::move(task).scheduleOn(ex), cancelToken);

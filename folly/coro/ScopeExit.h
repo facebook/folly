@@ -348,7 +348,7 @@ class co_scope_exit_fn {
 ///
 ///   // Do some complicated, potentially throwing work using the AsyncScope
 ///   auto ex = co_await co_current_executor;
-///   asyncScope->add(someTask(std::move(inputs)).scheduleOn(ex));
+///   asyncScope->add(co_withExecutor(ex, someTask(std::move(inputs))));
 /// }
 ///
 /// The body of the coroutine passed to co_scope_exit will be executed when the
