@@ -78,8 +78,9 @@ static r_debug* r_debug_cache_;
 struct r_debug* get_r_debug() {
 #if FOLLY_DETAIL_HAS_R_DEBUG
   return r_debug_cache_;
-#endif
+#else
   return nullptr;
+#endif
 }
 
 } // namespace detail

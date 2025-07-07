@@ -761,7 +761,6 @@ Attribute readAttribute(
       FOLLY_SAFE_DFATAL("invalid attribute form: ", spec.form);
       return {spec, die, 0u};
   }
-  return {spec, die, 0u};
 }
 
 /*
