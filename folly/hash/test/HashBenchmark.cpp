@@ -34,6 +34,36 @@
 #include <folly/portability/GFlags.h>
 
 extern "C" FOLLY_KEEP uint64_t
+check_folly_hash_128_to_64(uint64_t upper, uint64_t lower) {
+  return folly::hash::hash_128_to_64(upper, lower);
+}
+
+extern "C" FOLLY_KEEP uint64_t
+check_folly_commutative_hash_128_to_64(uint64_t upper, uint64_t lower) {
+  return folly::hash::commutative_hash_128_to_64(upper, lower);
+}
+
+extern "C" FOLLY_KEEP uint64_t check_folly_twang_mix64(uint64_t key) {
+  return folly::hash::twang_mix64(key);
+}
+
+extern "C" FOLLY_KEEP uint64_t check_folly_twang_unmix64(uint64_t key) {
+  return folly::hash::twang_unmix64(key);
+}
+
+extern "C" FOLLY_KEEP uint32_t check_folly_twang_32from64(uint64_t key) {
+  return folly::hash::twang_32from64(key);
+}
+
+extern "C" FOLLY_KEEP uint32_t check_folly_jenkins_rev_mix32(uint32_t key) {
+  return folly::hash::jenkins_rev_mix32(key);
+}
+
+extern "C" FOLLY_KEEP uint32_t check_folly_jenkins_rev_unmix32(uint32_t key) {
+  return folly::hash::jenkins_rev_unmix32(key);
+}
+
+extern "C" FOLLY_KEEP uint64_t
 check_folly_spooky_hash_v2_hash_32(void const* data, size_t size) {
   return folly::hash::SpookyHashV2::Hash32(data, size, 0);
 }
