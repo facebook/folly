@@ -386,7 +386,7 @@ void dynamic::destroy() noexcept {
     return;
   }
 
-#define FB_X(T) detail::Destroy::destroy(getAddress<T>())
+#define FB_X(T) std::destroy_at(getAddress<T>())
   FB_DYNAMIC_APPLY(type_, FB_X);
 #undef FB_X
 }

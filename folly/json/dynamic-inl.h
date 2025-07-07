@@ -130,15 +130,6 @@ struct FOLLY_EXPORT TypeError : std::runtime_error {
 
 namespace detail {
 
-// This helper is used in destroy() to be able to run destructors on
-// types like "int64_t" without a compiler error.
-struct Destroy {
-  template <class T>
-  static void destroy(T* t) {
-    t->~T();
-  }
-};
-
 /*
  * Helper for implementing numeric conversions in operators on
  * numbers.  Just promotes to double when one of the arguments is
