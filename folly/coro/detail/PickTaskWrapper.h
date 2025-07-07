@@ -106,6 +106,18 @@ struct PickTaskWrapperImpl<Safety, /*await now*/ false> {
   using TaskWithExecutor = SafeTaskWithExecutor<Safety, T>;
 };
 
+#else // no FOLLY_HAS_IMMOVABLE_COROUTINES
+
+// This fallback is required because `coro::Future<SafeType>` is safe and is
+// available on earlier build systems.  We have no choice but to emit `Task`.
+template <safe_alias Safety>
+struct PickTaskWrapperImpl<Safety, /*await now*/ false> {
+  template <typename T>
+  using Task = Task<T>;
+  template <typename T>
+  using TaskWithExecutor = TaskWithExecutor<T>;
+};
+
 #endif // FOLLY_HAS_IMMOVABLE_COROUTINES
 
 // Pass this as `AddWrapperMetaFn` to `PickTaskWrapper` to add `AsNoexcept`.
