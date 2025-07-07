@@ -66,7 +66,7 @@ int main() {
     folly::coro::Task t = foo(baton, 111);
 
     std::cout << "2. Assigning an Executor.\n";
-    folly::coro::TaskWithExecutor te = std::move(t).scheduleOn(executor);
+    folly::coro::TaskWithExecutor te = co_withExecutor(executor, std::move(t));
 
     std::cout << "3. Starting the Task.\n"
               << "   This is where the Coroutine calls executor.add().\n";
