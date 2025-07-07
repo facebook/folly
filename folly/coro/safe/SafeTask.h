@@ -333,6 +333,16 @@ class FOLLY_NODISCARD SafeTaskWithExecutor final
 
  public:
   using folly_private_safe_alias_t = safe_alias_constant<ArgSafety>;
+
+  [[deprecated(
+      "`asUnsafe()` is an provided as escape hatch for interoperating with "
+      "older futures-based code, or other places not yet compatible with "
+      "true structured concurrency patterns. Beware, the full `Task` API "
+      "abounds with footguns like `start()` and `semi()` -- including UB, "
+      "leaks, and lost errors.")]]
+  TaskWithExecutor<T> asUnsafe() && {
+    return std::move(*this).unwrapTaskWithExecutor();
+  }
 };
 
 template <safe_alias ArgSafety, typename T>
@@ -359,6 +369,16 @@ class FOLLY_CORO_TASK_ATTRS SafeTask final
  public:
   using detail::SafeTaskBaseTraits<ArgSafety, T>::type::type;
   using folly_private_safe_alias_t = safe_alias_constant<ArgSafety>;
+
+  [[deprecated(
+      "`asUnsafe()` is an provided as escape hatch for interoperating with "
+      "older futures-based code, or other places not yet compatible with "
+      "true structured concurrency patterns. Beware, the full `Task` API "
+      "abounds with footguns like `start()` and `semi()` -- including UB, "
+      "leaks, and lost errors.")]]
+  Task<T> asUnsafe() && {
+    return std::move(*this).unwrapTask();
+  }
 };
 
 template <safe_alias Safety, typename T>
