@@ -29,6 +29,7 @@
 
 #include <folly/FileUtil.h>
 #include <folly/MapUtil.h>
+#include <folly/Overload.h>
 #include <folly/String.h>
 #include <folly/detail/PerfScoped.h>
 #include <folly/json/json.h>
@@ -522,21 +523,32 @@ class BenchmarkResultsPrinter {
       for (auto const& name : counterNames_) {
         if (auto ptr = folly::get_ptr(datum.counters, name)) {
           switch (ptr->type) {
+            // UserMetrics constructed as precision_values avoid the
+            // implicit cast from long to double when formatting the output
             case UserMetric::Type::TIME:
-              printf(
-                  "  %*s",
-                  int(name.length()),
-                  readableTime(ptr->value, 2).c_str());
+              folly::variant_match(ptr->value, [&](auto value) {
+                printf(
+                    "  %*s",
+                    int(name.length()),
+                    readableTime(value, 2).c_str());
+              });
               break;
             case UserMetric::Type::METRIC:
-              printf(
-                  "  %*s",
-                  int(name.length()),
-                  metricReadable(ptr->value, 2).c_str());
+              folly::variant_match(ptr->value, [&](auto value) {
+                printf(
+                    "  %*s",
+                    int(name.length()),
+                    metricReadable(value, 2).c_str());
+              });
               break;
             case UserMetric::Type::CUSTOM:
             default:
-              printf("  %*" PRId64, int(name.length()), ptr->value);
+              folly::variant_match(ptr->value, [&](auto value) {
+                printf(
+                    "  %*" PRId64,
+                    int(name.length()),
+                    static_cast<int64_t>(value));
+              });
           }
         } else {
           printf("  %*s", int(name.length()), "NaN");
@@ -577,7 +589,9 @@ void benchmarkResultsToDynamic(
       dynamic obj = dynamic::object;
       for (auto& counter : datum.counters) {
         dynamic counterInfo = dynamic::object;
-        counterInfo["value"] = counter.second.value;
+        folly::variant_match(counter.second.value, [&](auto value) {
+          counterInfo["value"] = value;
+        });
         counterInfo["type"] = static_cast<int>(counter.second.type);
         obj[counter.first] = counterInfo;
       }

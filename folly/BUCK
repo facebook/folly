@@ -133,6 +133,7 @@ non_fbcode_target(
         ":file_util",
         ":json",
         ":map_util",
+        ":overload",
         ":string",
         "//third-party/boost:boost_regex",
         "//xplat/folly/container:foreach",
@@ -6605,6 +6606,7 @@ fbcode_target(
     deps = [
         ":file_util",
         ":map_util",
+        ":overload",
         ":string",
         "//folly/detail:perf_scoped",
         "//folly/json:dynamic",

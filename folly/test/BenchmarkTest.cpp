@@ -349,6 +349,104 @@ TEST_F(BenchmarkingStateTest, ListTests) {
   }
 }
 
+TEST_F(BenchmarkingStateTest, UserMetricInt) {
+  std::string output;
+
+  {
+    addBenchmark(__FILE__, "int_custom", [&](UserCounters& counter) {
+      counter["int_custom_count"] =
+          UserMetric(123456, UserMetric::Type::CUSTOM);
+      doBaseline();
+      TestClock::advance(std::chrono::nanoseconds(1));
+      return 1;
+    });
+
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    ASSERT_THAT(output, ::testing::HasSubstr("123456"));
+  }
+
+  {
+    addBenchmark(__FILE__, "int_metric", [&](UserCounters& counter) {
+      counter["int_metric_count"] =
+          UserMetric(234567, UserMetric::Type::METRIC);
+      doBaseline();
+      TestClock::advance(std::chrono::nanoseconds(1));
+      return 1;
+    });
+
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    ASSERT_THAT(output, ::testing::HasSubstr("234.57K"));
+  }
+
+  {
+    addBenchmark(__FILE__, "int_time", [&](UserCounters& counter) {
+      counter["int_time_count"] = UserMetric(10, UserMetric::Type::TIME);
+      doBaseline();
+      TestClock::advance(std::chrono::nanoseconds(1));
+      return 1;
+    });
+
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    std::cout << output << std::endl;
+    ASSERT_THAT(output, ::testing::HasSubstr("10.00s"));
+  }
+}
+
+TEST_F(BenchmarkingStateTest, UserMetricPrecise) {
+  std::string output;
+
+  {
+    addBenchmark(__FILE__, "double_custom", [&](UserCounters& counter) {
+      counter["double_custom_count"] =
+          UserMetric(1234.56, UserMetric::Type::CUSTOM);
+      doBaseline();
+      TestClock::advance(std::chrono::nanoseconds(1));
+      return 1;
+    });
+
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    ASSERT_THAT(output, ::testing::HasSubstr("1234"));
+  }
+
+  {
+    addBenchmark(__FILE__, "double_metric", [&](UserCounters& counter) {
+      counter["double_metric_count"] =
+          UserMetric(23.456, UserMetric::Type::METRIC);
+      doBaseline();
+      TestClock::advance(std::chrono::nanoseconds(1));
+      return 1;
+    });
+
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    ASSERT_THAT(output, ::testing::HasSubstr("23.46"));
+  }
+
+  {
+    addBenchmark(__FILE__, "double_time", [&](UserCounters& counter) {
+      counter["double_time_count"] = UserMetric(34.567, UserMetric::Type::TIME);
+      doBaseline();
+      TestClock::advance(std::chrono::nanoseconds(1));
+      return 1;
+    });
+
+    ::testing::internal::CaptureStdout();
+    runBenchmarks();
+    output = ::testing::internal::GetCapturedStdout();
+    std::cout << output << std::endl;
+    ASSERT_THAT(output, ::testing::HasSubstr("34.57s"));
+  }
+}
+
 } // namespace
 } // namespace detail
 } // namespace folly

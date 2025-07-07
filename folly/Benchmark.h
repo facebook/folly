@@ -35,6 +35,7 @@
 #include <set>
 #include <type_traits>
 #include <unordered_map>
+#include <variant>
 
 #include <boost/function_types/function_arity.hpp>
 #include <glog/logging.h>
@@ -63,13 +64,19 @@ inline bool runBenchmarksOnFlag() {
 class UserMetric {
  public:
   enum class Type { CUSTOM, TIME, METRIC };
-
-  int64_t value{};
+  std::variant<int64_t, double> value;
   Type type{Type::CUSTOM};
 
   UserMetric() = default;
   /* implicit */ UserMetric(int64_t val, Type typ = Type::CUSTOM)
       : value(val), type(typ) {}
+
+  // Allow users to provide precision values
+  template <
+      typename T,
+      typename = std::enable_if_t<std::is_floating_point_v<T>>>
+  explicit UserMetric(T precision_val, Type typ = Type::CUSTOM)
+      : value(convert_helper(precision_val)), type(typ) {}
 
   friend bool operator==(const UserMetric& x, const UserMetric& y) {
     return x.value == y.value && x.type == y.type;
@@ -77,6 +84,9 @@ class UserMetric {
   friend bool operator!=(const UserMetric& x, const UserMetric& y) {
     return !(x == y);
   }
+
+ private:
+  double convert_helper(double val) { return val; }
 };
 
 using UserCounters = std::unordered_map<std::string, UserMetric>;
