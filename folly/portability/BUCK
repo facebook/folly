@@ -117,6 +117,7 @@ fbcode_target(
 fbcode_target(
     _kind = cpp_library,
     name = "gflags",
+    srcs = ["GFlags.cpp"],
     headers = ["GFlags.h"],
     exported_deps = [
         ":config",
