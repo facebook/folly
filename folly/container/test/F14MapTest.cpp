@@ -1397,9 +1397,9 @@ TEST(F14VectorMap, destructuring) {
   runInsertAndEmplace<F14VectorMap<Tracked<0>, Tracked<1>>>("f14vector");
 }
 
-TEST(F14VectorMap, destructuringErase) {
-  SKIP_IF(kFallback);
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+TEST(F14VectorMap, destructuringErase) {
   using M = F14VectorMap<Tracked<0>, Tracked<1>>;
   typename M::value_type p1{0, 0};
   typename M::value_type p2{2, 2};
@@ -1418,7 +1418,6 @@ TEST(F14VectorMap, destructuringErase) {
       0);
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 TEST(F14ValueMap, maxSize) {
   F14ValueMap<int, int> m;
   EXPECT_EQ(
@@ -1449,6 +1448,7 @@ TEST(F14VectorMap, vectorMaxSize) {
            std::allocator_traits<decltype(m)::allocator_type>::max_size(
                m.get_allocator())}));
 }
+
 #endif
 
 template <typename M>
@@ -2077,10 +2077,10 @@ TEST(F14Map, randomInsertOrder) {
   runRandomInsertOrderTest<F14FastMap<char, std::string>>();
 }
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
 template <typename M>
 void runContinuousCapacityTest(std::size_t minSize, std::size_t maxSize) {
-  SKIP_IF(kFallback);
-
   using K = typename M::key_type;
   for (std::size_t n = minSize; n <= maxSize; ++n) {
     M m1;
@@ -2166,6 +2166,8 @@ TEST(F14Map, continuousCapacityBig3) {
 TEST(F14Map, continuousCapacityF12) {
   runContinuousCapacityTest<F14VectorMap<uint16_t, uint16_t>>(0xfff0, 0xfffe);
 }
+
+#endif
 
 template <template <class...> class TMap>
 void testContainsWithPrecomputedHash() {
@@ -2586,6 +2588,8 @@ TEST(F14Map, insertOrAssignUnchangedIfNoInsert) {
   testInsertOrAssignUnchangedIfNoInsert<F14FastMap>();
 }
 
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
 template <typename M>
 void runSimpleShrinkToFitTest(float expectedLoadFactor) {
   using K = typename M::key_type;
@@ -2600,7 +2604,6 @@ void runSimpleShrinkToFitTest(float expectedLoadFactor) {
 }
 
 TEST(F14Map, shrinkToFit) {
-  SKIP_IF(kFallback);
   runSimpleShrinkToFitTest<F14NodeMap<int, int>>(0.5);
   runSimpleShrinkToFitTest<F14ValueMap<int, int>>(0.5);
   runSimpleShrinkToFitTest<F14VectorMap<int, int>>(0.875);
@@ -2623,7 +2626,6 @@ void runDefactoShrinkToFitTest(float expectedLoadFactor) {
 }
 
 TEST(F14Map, defactoShrinkToFit) {
-  SKIP_IF(kFallback);
   runDefactoShrinkToFitTest<F14NodeMap<int, int>>(0.5);
   runDefactoShrinkToFitTest<F14ValueMap<int, int>>(0.5);
   runDefactoShrinkToFitTest<F14VectorMap<int, int>>(0.875);
@@ -2658,7 +2660,6 @@ void runInitialReserveTest(float expectedLoadFactor) {
 }
 
 TEST(F14Map, initialReserve) {
-  SKIP_IF(kFallback);
   runInitialReserveTest<F14NodeMap<int, int>>(0.5);
   runInitialReserveTest<F14ValueMap<int, int>>(0.5);
   runInitialReserveTest<F14VectorMap<int, int>>(0.875);
@@ -2682,7 +2683,6 @@ void runReserveMoreTest(int n) {
 }
 
 TEST(F14Map, reserveMoreNeverShrinks) {
-  SKIP_IF(kFallback);
   runReserveMoreTest<F14NodeMap<int, int>>(1);
   runReserveMoreTest<F14ValueMap<int, int>>(1);
   runReserveMoreTest<F14VectorMap<int, int>>(1);
@@ -2692,7 +2692,6 @@ TEST(F14Map, reserveMoreNeverShrinks) {
 }
 
 TEST(F14Map, reserveBadAlloc) {
-  SKIP_IF(kFallback);
   SKIP_IF(
       std::numeric_limits<size_t>::max() <=
       std::numeric_limits<uint32_t>::max());
@@ -2701,6 +2700,8 @@ TEST(F14Map, reserveBadAlloc) {
           std::size_t{std::numeric_limits<uint32_t>::max()} + 1)),
       std::bad_alloc);
 }
+
+#endif
 
 TEST(F14Map, InsertOrAssignShouldNotMoveTheData) {
   F14FastMap<int, std::vector<int>> map;

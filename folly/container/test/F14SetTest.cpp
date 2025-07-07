@@ -736,9 +736,9 @@ TEST(F14FastSet, pmrSimple) {
 }
 #endif
 
-TEST(F14Set, ContainerSize) {
-  SKIP_IF(kFallback);
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+TEST(F14Set, ContainerSize) {
   {
     F14ValueSet<int> set;
     set.insert(10);
@@ -771,7 +771,6 @@ TEST(F14Set, ContainerSize) {
   }
 }
 
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 TEST(F14VectorMap, reverseIterator) {
   using TSet = F14VectorSet<uint64_t>;
   auto populate = [](TSet& h, uint64_t lo, uint64_t hi) {
@@ -824,6 +823,7 @@ TEST(F14VectorSet, OrderPreservingReinsertionView) {
 
   EXPECT_EQ(asVector(s1), asVector(s2));
 }
+
 #endif
 
 TEST(F14ValueSet, eraseWhileIterating) {
@@ -862,9 +862,9 @@ TEST(F14VectorSet, random) {
   runRandom<F14VectorSet<uint64_t>>();
 }
 
-TEST(F14ValueSet, growStats) {
-  SKIP_IF(kFallback);
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+TEST(F14ValueSet, growStats) {
   F14ValueSet<uint64_t> h;
   for (unsigned i = 1; i <= 3072; ++i) {
     h.insert(i);
@@ -877,8 +877,6 @@ TEST(F14ValueSet, growStats) {
 }
 
 TEST(F14ValueSet, steadyStateStats) {
-  SKIP_IF(kFallback);
-
   // 10k keys, 14% probability of insert, 90% chance of erase, so the
   // table should converge to 1400 size without triggering the rehash
   // that would occur at 1536.
@@ -893,18 +891,18 @@ TEST(F14ValueSet, steadyStateStats) {
       h.erase(key);
     }
     if (((i + 1) % 10000) == 0) {
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
       auto stats = F14TableStats::compute(h);
       // Verify that average miss probe length is bounded despite continued
       // erase + reuse.  p99 of the average across 10M random steps is 4.69,
       // average is 2.96.
       EXPECT_LT(f14::expectedProbe(stats.missProbeLengthHisto), 10.0);
-#endif
     }
   }
   // F14ValueSet at steady state
   runSanityChecks(h);
 }
+
+#endif
 
 // S should be a set of Tracked<0>.  F should take a set
 // and a key_type const& or key_type&& and cause it to be inserted
