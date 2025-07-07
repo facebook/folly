@@ -1784,48 +1784,27 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "functional_invoke",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "functional/Invoke.h",
-    ],
-    exported_deps = [
-        ":cpp_attributes",
-        ":portability",
-        ":preprocessor",
-        ":traits",
-        ":utility",
-        "//third-party/boost:boost_preprocessor",
-        "//xplat/folly/lang:customization_point",
-    ],
+    exported_deps = ["//xplat/folly/functional:invoke"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "functional_protocol",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "functional/protocol.h",
-    ],
-    exported_deps = [
-        ":functional_invoke",
-        ":functional_traits",
-        ":portability",
-        ":traits",
-    ],
+    exported_deps = ["//xplat/folly/functional:protocol"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "functional_traits",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "functional/traits.h",
-    ],
-    exported_deps = [
-        ":traits",
-    ],
+    exported_deps = ["//xplat/folly/functional:traits"],
 )
 
 non_fbcode_target(
@@ -1848,30 +1827,19 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "functional_apply_tuple",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "functional/ApplyTuple.h",
-    ],
-    exported_deps = [
-        ":functional_invoke",
-        ":traits",
-        ":utility",
-    ],
+    exported_deps = ["//xplat/folly/functional:apply_tuple"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "functional_partial",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "functional/Partial.h",
-    ],
-    exported_deps = [
-        ":functional_invoke",
-        ":utility",
-    ],
+    exported_deps = ["//xplat/folly/functional:partial"],
 )
 
 non_fbcode_target(

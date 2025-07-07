@@ -1,7 +1,72 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_test")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat unit tests
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "apply_tuple_test",
+    srcs = ["ApplyTupleTest.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    deps = [
+        "//xplat/folly:overload",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/functional:apply_tuple",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "invoke_test",
+    srcs = ["InvokeTest.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    deps = [
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/functional:invoke",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "partial_test",
+    srcs = ["PartialTest.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    deps = [
+        "//xplat/folly:function",
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/functional:partial",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "protocol_test",
+    srcs = ["protocol_test.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly:traits",
+        "//xplat/folly/functional:protocol",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "traits_test",
+    srcs = ["traits_test.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/functional:traits",
+    ],
+)
+
+# fbcode unit tests
 
 fbcode_target(
     _kind = cpp_unittest,

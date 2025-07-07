@@ -1,7 +1,75 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "apply_tuple",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["ApplyTuple.h"],
+    exported_deps = [
+        ":invoke",
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "invoke",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Invoke.h"],
+    exported_deps = [
+        "//third-party/boost:boost_preprocessor",
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:portability",
+        "//xplat/folly:preprocessor",
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+        "//xplat/folly/lang:customization_point",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "partial",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Partial.h"],
+    exported_deps = [
+        ":invoke",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "protocol",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["protocol.h"],
+    exported_deps = [
+        ":invoke",
+        ":traits",
+        "//xplat/folly:portability",
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "traits",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["traits.h"],
+    exported_deps = [
+        "//xplat/folly:traits",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
