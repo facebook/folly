@@ -914,6 +914,15 @@ class ArchiveFetcher(Fetcher):
             src = str(src)
             t.extractall(src)
 
+        if is_windows():
+            subdir = self.manifest.get("build", "subdir")
+            checkdir = src
+            if subdir:
+                checkdir = src + "\\" + subdir
+            if os.path.exists(checkdir):
+                children = os.listdir(checkdir)
+                print(f"Extracted to {checkdir} contents: {children}")
+
         with open(self.hash_file, "w") as f:
             f.write(self.sha256)
 

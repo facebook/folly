@@ -852,6 +852,14 @@ if __name__ == "__main__":
         if cmake is None:
             raise Exception("Failed to find CMake")
 
+        if self.build_opts.is_windows():
+            checkdir = self.src_dir
+            if os.path.exists(checkdir):
+                children = os.listdir(checkdir)
+                print(f"Building from source {checkdir} contents: {children}")
+            else:
+                print(f"Source {checkdir} not found")
+
         if reconfigure:
             define_args = self._compute_cmake_define_args(env)
             self._write_build_script(
