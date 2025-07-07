@@ -75,7 +75,7 @@ struct PerfTest {
   }
 
   void consumer() {
-    if /* constexpr */ (Pop) {
+    if constexpr (Pop) {
       while (!done_) {
         if (queue_.frontPtr()) {
           queue_.popFront();

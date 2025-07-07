@@ -105,7 +105,7 @@ DWORD __stdcall internal_pthread_thread_start(void* arg) {
   auto startupInfo = reinterpret_cast<pthread_startup_info*>(arg);
   current_thread_self = startupInfo->thread;
   auto ret = startupInfo->startupFunction(startupInfo->startupArgument);
-  if /* constexpr */ (sizeof(void*) != sizeof(DWORD)) {
+  if constexpr (sizeof(void*) != sizeof(DWORD)) {
     auto tmp = reinterpret_cast<uintptr_t>(ret);
     if (tmp > std::numeric_limits<DWORD>::max()) {
       throw std::out_of_range(

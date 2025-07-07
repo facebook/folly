@@ -1369,14 +1369,14 @@ typename std::enable_if<
         !std::is_same<Tgt, bool>::value && is_integral_v<Tgt>,
     Expected<Tgt, ConversionCode>>::type
 convertTo(const Src& value) noexcept {
-  if /* constexpr */ (
+  if constexpr (
       make_unsigned_t<Tgt>(std::numeric_limits<Tgt>::max()) <
       make_unsigned_t<Src>(std::numeric_limits<Src>::max())) {
     if (greater_than<Tgt, std::numeric_limits<Tgt>::max()>(value)) {
       return makeUnexpected(ConversionCode::ARITH_POSITIVE_OVERFLOW);
     }
   }
-  if /* constexpr */ (
+  if constexpr (
       is_signed_v<Src> && (!is_signed_v<Tgt> || sizeof(Src) > sizeof(Tgt))) {
     if (less_than<Tgt, std::numeric_limits<Tgt>::min()>(value)) {
       return makeUnexpected(ConversionCode::ARITH_NEGATIVE_OVERFLOW);
@@ -1399,7 +1399,7 @@ convertTo(const Src& value) noexcept {
   if (FOLLY_UNLIKELY(std::isinf(value))) {
     return static_cast<Tgt>(value);
   }
-  if /* constexpr */ (
+  if constexpr (
       std::numeric_limits<Tgt>::max() < std::numeric_limits<Src>::max()) {
     if (value > std::numeric_limits<Tgt>::max()) {
       return makeUnexpected(ConversionCode::ARITH_POSITIVE_OVERFLOW);

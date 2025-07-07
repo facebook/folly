@@ -292,7 +292,7 @@ void LtHash<B, N>::setChecksum(const folly::IOBuf& checksum) {
     std::memcpy(checksumCopy.writableTail(), range.data(), range.size());
     checksumCopy.append(range.size());
   }
-  if /* constexpr */ (detail::Bits<B>::needsPadding()) {
+  if constexpr (detail::Bits<B>::needsPadding()) {
     bool isPaddedCorrectly =
         detail::MathOperation<detail::MathEngine::AUTO>::checkPaddingBits(
             detail::Bits<B>::kDataMask(),
@@ -323,7 +323,7 @@ void LtHash<B, N>::setChecksum(std::unique_ptr<folly::IOBuf> checksum) {
   // If we get here, we know that the input is not null, shared, or chained,
   // is the proper size, and is aligned on a cache line boundary.
   // Just need to check the padding bits before taking ownership of the buffer.
-  if /* constexpr */ (detail::Bits<B>::needsPadding()) {
+  if constexpr (detail::Bits<B>::needsPadding()) {
     bool isPaddedCorrectly =
         detail::MathOperation<detail::MathEngine::AUTO>::checkPaddingBits(
             detail::Bits<B>::kDataMask(),
@@ -350,7 +350,7 @@ void LtHash<B, N>::hashObject(
   }
   updateDigest(digest, firstRange, std::forward<Args>(moreRanges)...);
   digest.finish(out);
-  if /* constexpr */ (detail::Bits<B>::needsPadding()) {
+  if constexpr (detail::Bits<B>::needsPadding()) {
     detail::MathOperation<detail::MathEngine::AUTO>::clearPaddingBits(
         detail::Bits<B>::kDataMask(), out);
   }

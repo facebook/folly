@@ -1215,7 +1215,7 @@ template <typename Key>
 inline dynamic::IfIsNonStringDynamicConvertible<Key, dynamic const*>
 const_dynamic_view::descend_unchecked_(Key const& key) const noexcept {
   if (auto* parray = d_->get_nothrow<dynamic::Array>()) {
-    if /* constexpr */ (!std::is_integral<Key>::value) {
+    if constexpr (!std::is_integral<Key>::value) {
       return nullptr;
     }
     if (key < 0 || folly::to_unsigned(key) >= parray->size()) {
