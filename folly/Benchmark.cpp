@@ -456,7 +456,8 @@ class BenchmarkResultsPrinter {
 
   void header(std::string_view file) {
     separator('=');
-    printDefaultHeaderContents(file, columns_);
+    printDefaultHeaderContents(file, columns_ - namesLength_);
+
     for (auto const& name : counterNames_) {
       printf("  %s", name.c_str());
     }
@@ -494,7 +495,8 @@ class BenchmarkResultsPrinter {
         baselineNsPerIter_ = datum.timeInNs;
         useBaseline = false;
       }
-      s.resize(columns_ - kUnitHeaders.size(), ' ');
+      s.resize(columns_ - namesLength_ - kUnitHeaders.size(), ' ');
+
       const auto nsPerIter = datum.timeInNs;
       const auto secPerIter = nsPerIter / 1E9;
       const auto itersPerSec = (secPerIter == 0)
