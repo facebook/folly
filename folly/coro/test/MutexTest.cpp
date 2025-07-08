@@ -74,12 +74,12 @@ TEST_F(MutexTest, LockAsync) {
 
   ManualExecutor executor;
 
-  auto f1 = makeTask(b1).scheduleOn(&executor).start();
+  auto f1 = co_withExecutor(&executor, makeTask(b1)).start();
   executor.drain();
   CHECK_EQ(1, value);
   CHECK(!m.try_lock());
 
-  auto f2 = makeTask(b2).scheduleOn(&executor).start();
+  auto f2 = co_withExecutor(&executor, makeTask(b2)).start();
   executor.drain();
   CHECK_EQ(1, value);
 
@@ -115,12 +115,12 @@ TEST_F(MutexTest, ScopedLockAsync) {
 
   ManualExecutor executor;
 
-  auto f1 = makeTask(b1).scheduleOn(&executor).start();
+  auto f1 = co_withExecutor(&executor, makeTask(b1)).start();
   executor.drain();
   CHECK_EQ(1, value);
   CHECK(!m.try_lock());
 
-  auto f2 = makeTask(b2).scheduleOn(&executor).start();
+  auto f2 = co_withExecutor(&executor, makeTask(b2)).start();
   executor.drain();
   CHECK_EQ(1, value);
 
@@ -154,9 +154,9 @@ TEST_F(MutexTest, ThreadSafety) {
     }
   };
 
-  auto f1 = makeTask().scheduleOn(&threadPool).start();
-  auto f2 = makeTask().scheduleOn(&threadPool).start();
-  auto f3 = makeTask().scheduleOn(&threadPool).start();
+  auto f1 = co_withExecutor(&threadPool, makeTask()).start();
+  auto f2 = co_withExecutor(&threadPool, makeTask()).start();
+  auto f3 = co_withExecutor(&threadPool, makeTask()).start();
 
   std::move(f1).get();
   std::move(f2).get();

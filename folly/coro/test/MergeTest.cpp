@@ -314,62 +314,64 @@ TEST_F(MergeTest, SourcesAreDestroyedBeforeEof) {
 
   // Stream interrupted by cancellation.
   auto future =
-      folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-        auto gen =
-            folly::coro::merge(&exec, listGenerator(/* shouldThrow */ false));
-        folly::CancellationSource cancelSource;
-        auto r = co_await folly::coro::co_withCancellation(
-            cancelSource.getToken(), gen.next());
-        CHECK(r.has_value());
-        CHECK_EQ(*r, 42);
-        CHECK_GT(
-            runningSourceGenerators.load() + runningListGenerators.load(), 0);
-        cancelSource.requestCancellation();
-        // Currently the merged generator discards items produced
-        // after cancellation. But this behavior is not important, and
-        // it would probably be equally fine to return them (but stop
-        // calling source generators for more), so this test accepts
-        // either behavior.
-        while (true) {
-          r = co_await folly::coro::co_withCancellation(
-              cancelSource.getToken(), gen.next());
-          if (!r.has_value()) {
-            break;
-          }
-          CHECK_EQ(*r, 42);
-        }
-        CHECK_EQ(runningSourceGenerators.load(), 0);
-        CHECK_EQ(runningListGenerators.load(), 0);
-      })
-          .scheduleOn(&exec)
+      co_withExecutor(
+          &exec, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+            auto gen = folly::coro::merge(
+                &exec, listGenerator(/* shouldThrow */ false));
+            folly::CancellationSource cancelSource;
+            auto r = co_await folly::coro::co_withCancellation(
+                cancelSource.getToken(), gen.next());
+            CHECK(r.has_value());
+            CHECK_EQ(*r, 42);
+            CHECK_GT(
+                runningSourceGenerators.load() + runningListGenerators.load(),
+                0);
+            cancelSource.requestCancellation();
+            // Currently the merged generator discards items produced
+            // after cancellation. But this behavior is not important, and
+            // it would probably be equally fine to return them (but stop
+            // calling source generators for more), so this test accepts
+            // either behavior.
+            while (true) {
+              r = co_await folly::coro::co_withCancellation(
+                  cancelSource.getToken(), gen.next());
+              if (!r.has_value()) {
+                break;
+              }
+              CHECK_EQ(*r, 42);
+            }
+            CHECK_EQ(runningSourceGenerators.load(), 0);
+            CHECK_EQ(runningListGenerators.load(), 0);
+          }))
           .start();
   std::move(future).get();
 
   // Stream interrupted by exception.
   future =
-      folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-        auto gen =
-            folly::coro::merge(&exec, listGenerator(/* shouldThrow */ true));
-        auto r = co_await gen.next();
-        CHECK(r.has_value());
-        CHECK_EQ(*r, 42);
-        CHECK_GT(
-            runningSourceGenerators.load() + runningListGenerators.load(), 0);
-        while (true) {
-          auto r2 = co_await folly::coro::co_awaitTry(gen.next());
-          if (!r2.hasValue()) {
-            CHECK(
-                r2.exception().what().find("test exception") !=
-                std::string::npos);
-            break;
-          }
-          CHECK(r2->has_value());
-          CHECK_EQ(r2->value(), 42);
-        }
-        CHECK_EQ(runningSourceGenerators.load(), 0);
-        CHECK_EQ(runningListGenerators.load(), 0);
-      })
-          .scheduleOn(&exec)
+      co_withExecutor(
+          &exec, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+            auto gen = folly::coro::merge(
+                &exec, listGenerator(/* shouldThrow */ true));
+            auto r = co_await gen.next();
+            CHECK(r.has_value());
+            CHECK_EQ(*r, 42);
+            CHECK_GT(
+                runningSourceGenerators.load() + runningListGenerators.load(),
+                0);
+            while (true) {
+              auto r2 = co_await folly::coro::co_awaitTry(gen.next());
+              if (!r2.hasValue()) {
+                CHECK(
+                    r2.exception().what().find("test exception") !=
+                    std::string::npos);
+                break;
+              }
+              CHECK(r2->has_value());
+              CHECK_EQ(r2->value(), 42);
+            }
+            CHECK_EQ(runningSourceGenerators.load(), 0);
+            CHECK_EQ(runningListGenerators.load(), 0);
+          }))
           .start();
   std::move(future).get();
 }

@@ -46,7 +46,7 @@ TEST(SmallUnboundedQueueTest, DequeueWhileBlocking) {
   folly::coro::SmallUnboundedQueue<int> queue;
   folly::ManualExecutor ex;
 
-  auto fut = queue.dequeue().scheduleOn(&ex).start();
+  auto fut = co_withExecutor(&ex, queue.dequeue()).start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
 

@@ -164,12 +164,13 @@ TEST(AsyncPipeTest, WriteWhileBlocking) {
   folly::ManualExecutor ex;
 
   auto fut =
-      folly::coro::co_invoke(
-          [&]() -> folly::coro::Task<
-                    folly::coro::AsyncGenerator<int&&>::NextResult> {
-            co_return co_await pipe.first.next();
-          })
-          .scheduleOn(&ex)
+      co_withExecutor(
+          &ex,
+          folly::coro::co_invoke(
+              [&]() -> folly::coro::Task<
+                        folly::coro::AsyncGenerator<int&&>::NextResult> {
+                co_return co_await pipe.first.next();
+              }))
           .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
@@ -185,12 +186,13 @@ TEST(AsyncPipeTest, CloseWhileBlocking) {
   folly::ManualExecutor ex;
 
   auto fut =
-      folly::coro::co_invoke(
-          [&]() -> folly::coro::Task<
-                    folly::coro::AsyncGenerator<int&&>::NextResult> {
-            co_return co_await pipe.first.next();
-          })
-          .scheduleOn(&ex)
+      co_withExecutor(
+          &ex,
+          folly::coro::co_invoke(
+              [&]() -> folly::coro::Task<
+                        folly::coro::AsyncGenerator<int&&>::NextResult> {
+                co_return co_await pipe.first.next();
+              }))
           .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
@@ -206,12 +208,13 @@ TEST(AsyncPipeTest, DestroyWhileBlocking) {
   folly::ManualExecutor ex;
 
   auto fut =
-      folly::coro::co_invoke(
-          [&]() -> folly::coro::Task<
-                    folly::coro::AsyncGenerator<int&&>::NextResult> {
-            co_return co_await pipe.first.next();
-          })
-          .scheduleOn(&ex)
+      co_withExecutor(
+          &ex,
+          folly::coro::co_invoke(
+              [&]() -> folly::coro::Task<
+                        folly::coro::AsyncGenerator<int&&>::NextResult> {
+                co_return co_await pipe.first.next();
+              }))
           .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
@@ -231,15 +234,14 @@ TEST(AsyncPipeTest, OnClosedCallbackCalledWhenGeneratorDestroyed) {
   auto ex = folly::ManualExecutor();
   auto cancellationSource = folly::CancellationSource();
   auto fut =
-      folly::coro::co_withCancellation(
-          cancellationSource.getToken(),
-          folly::coro::co_invoke(
-              [gen = std::move(pipe.first)]() mutable
-              -> folly::coro::Task<
-                  folly::coro::AsyncGenerator<int&&>::NextResult> {
-                co_return co_await gen.next();
-              }))
-          .scheduleOn(&ex)
+      co_withExecutor(
+          &ex,
+          folly::coro::co_withCancellation(
+              cancellationSource.getToken(),
+              folly::coro::co_invoke(
+                  [gen = std::move(pipe.first)]() mutable
+                  -> folly::coro::Task<folly::coro::AsyncGenerator<
+                      int&&>::NextResult> { co_return co_await gen.next(); })))
           .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
@@ -290,15 +292,14 @@ TEST(
   auto ex = folly::ManualExecutor();
   auto cancellationSource = folly::CancellationSource();
   auto fut =
-      folly::coro::co_withCancellation(
-          cancellationSource.getToken(),
-          folly::coro::co_invoke(
-              [gen = std::move(pipe.first)]() mutable
-              -> folly::coro::Task<
-                  folly::coro::AsyncGenerator<int&&>::NextResult> {
-                co_return co_await gen.next();
-              }))
-          .scheduleOn(&ex)
+      co_withExecutor(
+          &ex,
+          folly::coro::co_withCancellation(
+              cancellationSource.getToken(),
+              folly::coro::co_invoke(
+                  [gen = std::move(pipe.first)]() mutable
+                  -> folly::coro::Task<folly::coro::AsyncGenerator<
+                      int&&>::NextResult> { co_return co_await gen.next(); })))
           .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
@@ -394,10 +395,12 @@ TEST(BoundedAsyncPipeTest, PublisherBlocks) {
     // wrap in co_invoke() here, since write() accepts arguments by reference,
     // and temporaries may go out of scope
     auto writeFuture =
-        folly::coro::co_invoke([&pipe_2 = pipe]() -> folly::coro::Task<bool> {
-          co_return co_await pipe_2.write(20);
-        })
-            .scheduleOn(&executor)
+        co_withExecutor(
+            &executor,
+            folly::coro::co_invoke(
+                [&pipe_2 = pipe]() -> folly::coro::Task<bool> {
+                  co_return co_await pipe_2.write(20);
+                }))
             .start();
     executor.drain();
     EXPECT_FALSE(writeFuture.isReady());
@@ -435,10 +438,12 @@ TEST(BoundedAsyncPipeTest, BlockingPublisherCanceledOnDestroy) {
     std::vector<folly::SemiFuture<bool>> futures;
     for (size_t i = 0; i < 5; ++i) {
       auto writeFuture =
-          folly::coro::co_invoke([&pipe_2 = pipe]() -> folly::coro::Task<bool> {
-            co_return co_await pipe_2.write(20);
-          })
-              .scheduleOn(&executor)
+          co_withExecutor(
+              &executor,
+              folly::coro::co_invoke(
+                  [&pipe_2 = pipe]() -> folly::coro::Task<bool> {
+                    co_return co_await pipe_2.write(20);
+                  }))
               .start();
       executor.drain();
       EXPECT_FALSE(writeFuture.isReady());
@@ -488,13 +493,14 @@ TEST(BoundedAsyncPipeTest, BlockingPublisherCancelsWithParent) {
 
     folly::CancellationSource cs;
     auto future =
-        folly::coro::co_withCancellation(
-            cs.getToken(),
-            folly::coro::co_invoke(
-                [&pipe_2 = pipe]() -> folly::coro::Task<bool> {
-                  co_return co_await pipe_2.write(100);
-                }))
-            .scheduleOn(&executor)
+        co_withExecutor(
+            &executor,
+            folly::coro::co_withCancellation(
+                cs.getToken(),
+                folly::coro::co_invoke(
+                    [&pipe_2 = pipe]() -> folly::coro::Task<bool> {
+                      co_return co_await pipe_2.write(100);
+                    })))
             .start();
     executor.drain();
     EXPECT_FALSE(future.isReady());

@@ -131,7 +131,7 @@ TEST(SignalHandler, AsyncStackTraceSimple2) {
   EXPECT_DEATH(
       [] {
         auto ex = std::make_unique<IOThreadPoolExecutor>(/* nThreads */ 1);
-        auto fut = co_funcA().scheduleOn(ex.get()).start();
+        auto fut = co_withExecutor(ex.get(), co_funcA()).start();
         fut.wait();
       }(),
       "\\*\\*\\* Aborted at [0-9]+ \\(Unix time, try 'date -d @[0-9]+'\\) "

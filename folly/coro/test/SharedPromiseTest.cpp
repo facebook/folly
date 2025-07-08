@@ -38,8 +38,8 @@ class BlockingWaitWaitInterface {
 class CPUThreadPoolWaitInterface {
  public:
   std::string waitAndGetValue(folly::coro::Future<std::string> future) {
-    return coGet(std::move(future))
-        .scheduleOn(cpuThreadPoolExecutor_.get())
+    return co_withExecutor(
+               cpuThreadPoolExecutor_.get(), coGet(std::move(future)))
         .start()
         .get();
   }
@@ -270,8 +270,9 @@ TYPED_TEST(SharedPromiseTest, CleanlyCancellableWait) {
   auto cancellationToken = cancellationSource.getToken();
 
   auto started =
-      folly::coro::co_withCancellation(cancellationToken, std::move(task))
-          .scheduleOn(fallibleExecutor.get())
+      co_withExecutor(
+          fallibleExecutor.get(),
+          folly::coro::co_withCancellation(cancellationToken, std::move(task)))
           .start();
 
   cancellationSource.requestCancellation();
