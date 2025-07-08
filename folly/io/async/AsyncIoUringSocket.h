@@ -322,6 +322,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
     detachEventBase();
 
+    void setUseZeroCopyRx(bool val) { useZeroCopyRx_ = val; }
+
    private:
     ~ReadSqe() override = default;
     void appendReadData(
@@ -347,6 +349,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     bool supportsMultishotRecv_ =
         false; // todo: this can be per process instead of per socket
     bool supportsZeroCopyRx_ = false;
+    bool useZeroCopyRx_ = false;
 
     folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
         oldEventBaseRead_;

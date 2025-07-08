@@ -597,7 +597,7 @@ void AsyncIoUringSocket::ReadSqe::processOldEventBaseRead() {
 }
 
 bool AsyncIoUringSocket::ReadSqe::isEOF(const io_uring_cqe* cqe) noexcept {
-  if (supportsZeroCopyRx_) {
+  if (supportsZeroCopyRx_ && useZeroCopyRx_) {
     return cqe->res == 0 && cqe->flags == 0;
   }
   return cqe->res == 0;
@@ -678,7 +678,7 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
     } else {
       uint64_t const cb_was = setReadCbCount_;
       bytesReceived_ += res;
-      if (supportsZeroCopyRx_) {
+      if (supportsZeroCopyRx_ && useZeroCopyRx_) {
         const io_uring_zcrx_cqe* rcqe = (io_uring_zcrx_cqe*)(cqe + 1);
         auto pool = parent_->backend_->zcBufferPool();
         sendReadBuf(pool->getIoBuf(cqe, rcqe), queuedReceivedData_);
@@ -745,7 +745,7 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
     maxSize_ = tmpBuffer_->tailroom();
     ::io_uring_prep_recv(sqe, fd, tmpBuffer_->writableTail(), maxSize_, 0);
   } else {
-    if (supportsZeroCopyRx_) {
+    if (supportsZeroCopyRx_ && useZeroCopyRx_) {
       ::io_uring_prep_rw(IORING_OP_RECV_ZC, sqe, fd, nullptr, 0, 0);
       sqe->ioprio |= IORING_RECV_MULTISHOT;
     } else if (readCallbackUseIoBufs()) {
@@ -1835,6 +1835,15 @@ void AsyncIoUringSocket::setFd(NetworkSocket ns) {
     LOG(ERROR) << "unable to setFd " << ns.toFd() << " : " << e.what();
     fileops::close(ns.toFd());
     throw;
+  }
+  // Only actually enable zero copy receive if the socket is not from loopback.
+  // There is no 'zero copy' for loopback anyway, and issuing recvzc requests
+  // for a loopback socket will always hit the inefficient copy fallback path.
+  // Better to simply issue normal multishot recv.
+  if (readSqe_) {
+    SocketAddress remoteAddr;
+    getPeerAddress(&remoteAddr);
+    readSqe_->setUseZeroCopyRx(!remoteAddr.isLoopbackAddress());
   }
 }
 

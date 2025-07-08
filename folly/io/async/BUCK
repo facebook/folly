@@ -1425,9 +1425,9 @@ fbcode_target(
         "AsyncIoUringSocketFactory.h",
     ],
     deps = [
+        ":io_uring_event_base_local",
         "//folly:conv",
         "//folly/detail:socket_fast_open",
-        "//folly/io/async:io_uring_event_base_local",
         "//folly/memory:malloc",
         "//folly/portability:sys_uio",
     ],
