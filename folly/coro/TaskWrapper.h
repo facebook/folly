@@ -46,10 +46,10 @@
 ///
 /// Several existing wrappers are immediately-awaitable (`AwaitImmediately.h`).
 /// For those tasks (e.g. `NowTask`), API forwarding is risky:
-///   - Do NOT forward `semi()`, `scheduleOn()`, `start*()`, `unwrap()`, or
-///     other destructive methods, or CPOs that take the awaitable
-///     by-reference.  All of those make it trivial to accidentally break the
-///     immediately-awaitable invariant, and cause lifetime bugs.
+///   - Do NOT forward `semi()`, `start*()`, `unwrap()`, or other methods, or
+///     CPOs that take the awaitable by-reference.  All of those make it
+///     trivial to accidentally break the immediately-awaitable invariant, and
+///     cause lifetime bugs.
 ///   - When forwarding an API, use either a static method or CPO.  Then,
 ///     either ONLY take the awaitable by-value, or bifurcate the API on
 ///     `must_await_immediately_v<Awaitable>`, grep for examples.
@@ -230,9 +230,6 @@ class TaskWrapperCrtp {
  public:
   using promise_type = typename Cfg::PromiseT;
 
-  // For `NowTask` & `SafeTask` API-compatibility, DO NOT add `scheduleOn()`.
-  // Use `co_withExecutor(ex, task())` instead of `task().scheduleOn(ex)`,
-  //
   // Pass `tw` by-value, since `&&` would break immediately-awaitable types
   friend typename Cfg::TaskWithExecutorT co_withExecutor(
       Executor::KeepAlive<> executor, Derived tw) noexcept {

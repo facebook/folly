@@ -39,8 +39,8 @@ namespace folly::coro {
 // To handle immediately-awaitables, `folly::coro` APIs must follow these rules:
 //
 //  (1) NEVER expose non-static member functions for actions that consume the
-//      (semi)awaitable.  For example, `scheduleOn()` is deprecated in favor of
-//      `co_withExecutor()`, `start()` is unsafe.
+//      (semi)awaitable.  For example, `task.scheduleOn()` was removed in favor
+//      of `co_withExecutor()`, `.start()` and `.semi()` are unsafe, etc.
 //
 //      INSTEAD: Use static member functions, or ADL CPOs, which take the
 //      (semi)awaitable by-value.

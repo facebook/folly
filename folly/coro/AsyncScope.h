@@ -63,12 +63,10 @@ namespace coro {
 //    }
 //
 //    folly::coro::AsyncScope scope;
-//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(),
-//    processEvent(ev1)));
-//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(),
-//    processEvent(ev2)));
-//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(),
-//    processEvent(ev3))); co_await scope.joinAsync();
+//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), process(ev1)));
+//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), process(ev2)));
+//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), process(ev3)));
+//    co_await scope.joinAsync();
 //
 class AsyncScope {
  public:
@@ -118,7 +116,7 @@ class AsyncScope {
    * Passing folly::coro::Task
    * -------------------------
    * NOTE: You cannot pass a folly::coro::Task to this method.
-   * You must first call .scheduleOn() to specify which executor the task
+   * You must first call co_withExecutor() to specify which executor the task
    * should run on.
    */
   // returnAddress customize entry point to async stack (useful if this is
@@ -376,7 +374,6 @@ class CancellableAsyncScope {
   template <class T>
   folly::coro::Task<void> co_schedule(folly::coro::Task<T>&& task) {
     add(co_withExecutor(co_await co_current_executor, std::move(task)));
-    co_return;
   }
 
   /**

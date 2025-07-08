@@ -37,8 +37,7 @@ class PollFuture final : private Executor {
 
   explicit PollFuture(Task<T> task) {
     Executor* self = this;
-    std::move(task)
-        .scheduleOn(makeKeepAlive(self))
+    co_withExecutor(makeKeepAlive(self), std::move(task))
         .start(
             [&](Try<T>&& result) noexcept {
               // Rust doesn't support exceptions

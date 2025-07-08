@@ -273,7 +273,7 @@ auto makeUnorderedAsyncGeneratorImpl(
             ex, co_withCancellation(cancelToken, std::move(task))));
       } else {
         static_assert(std::is_same_v<AsyncScope, CancellableAsyncScope>);
-        scopeParam.add(std::move(task).scheduleOn(ex), cancelToken);
+        scopeParam.add(co_withExecutor(ex, std::move(task)), cancelToken);
       }
       ++expected;
       RequestContext::setContext(context);
