@@ -36,6 +36,13 @@ class AtomicNotificationQueue {
   ~AtomicNotificationQueue();
 
   /*
+   * Get the maximum number of tasks processed in a single round.
+   * Can be called from any thread as long as it's externally synchronized with
+   * setMaxReadAtOnce.
+   */
+  uint32_t getMaxReadAtOnce() const;
+
+  /*
    * Set the maximum number of tasks processed in a single round.
    * Can be called from consumer thread only.
    */

@@ -54,6 +54,8 @@ class EventBaseAtomicNotificationQueue
 
   ~EventBaseAtomicNotificationQueue() override;
 
+  uint32_t getMaxReadAtOnce() const;
+
   /*
    * Set the maximum number of tasks processed in a single round.
    * Can be called from consumer thread only.

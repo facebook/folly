@@ -20,6 +20,34 @@
 namespace folly {
 namespace test {
 
+TEST(IOThreadPoolExecutor, MaxReadAtOnce) {
+  {
+    auto executor = IOThreadPoolExecutor{1};
+    EXPECT_EQ(executor.getEventBase()->getMaxReadAtOnce(), 10);
+  }
+
+  {
+    auto saver = FlagSaver{};
+    FLAGS_folly_iothreadpoolexecutor_max_read_at_once = 0;
+    auto executor = IOThreadPoolExecutor{1};
+    EXPECT_EQ(executor.getEventBase()->getMaxReadAtOnce(), 0);
+  }
+
+  {
+    auto saver = FlagSaver{};
+    FLAGS_folly_iothreadpoolexecutor_max_read_at_once = 0;
+    auto options = IOThreadPoolExecutor::Options{};
+    options.setMaxReadAtOnce(42);
+    auto executor = IOThreadPoolExecutor{
+        1,
+        std::make_shared<NamedThreadFactory>("IOThreadPool"),
+        EventBaseManager::get(),
+        std::move(options)};
+
+    EXPECT_EQ(executor.getEventBase()->getMaxReadAtOnce(), 42);
+  }
+}
+
 INSTANTIATE_TYPED_TEST_SUITE_P(
     IOThreadPoolExecutorTest,
     IOThreadPoolExecutorBaseTest,

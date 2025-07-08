@@ -418,6 +418,10 @@ size_t EventBase::getNumLoopCallbacks() const {
   return loopCallbacks_.size();
 }
 
+uint32_t EventBase::getMaxReadAtOnce() const {
+  return queue_->getMaxReadAtOnce();
+}
+
 void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
   queue_->setMaxReadAtOnce(maxAtOnce);
 }

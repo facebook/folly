@@ -109,6 +109,11 @@ EventBaseAtomicNotificationQueue<Task, Consumer>::
   }
 }
 template <typename Task, typename Consumer>
+uint32_t EventBaseAtomicNotificationQueue<Task, Consumer>::getMaxReadAtOnce()
+    const {
+  return notificationQueue_.getMaxReadAtOnce();
+}
+template <typename Task, typename Consumer>
 void EventBaseAtomicNotificationQueue<Task, Consumer>::setMaxReadAtOnce(
     uint32_t maxAtOnce) {
   notificationQueue_.setMaxReadAtOnce(maxAtOnce);

@@ -803,6 +803,7 @@ class EventBase
    */
   size_t getNumLoopCallbacks() const;
 
+  uint32_t getMaxReadAtOnce() const;
   void setMaxReadAtOnce(uint32_t maxAtOnce);
 
   /**
