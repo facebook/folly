@@ -50,12 +50,12 @@ namespace channels {
  *         folly::Executor::KeepAlive<folly::SequencedExecutor> executor)
  *         : Producer<int>(std::move(sender), std::move(executor)) {
  *       // Start polling for values.
- *       folly::coro::co_withCancellation(
+ *       co_withExecutor(getExecutor(), folly::coro::co_withCancellation(
  *             cancelSource_.getToken(),
  *             [=, keepAlive = getKeepAlive()]() {
  *               return pollForOutputValues();
  *             })
- *         .scheduleOn(getExecutor())
+ *         )
  *         .start();
  *     }
  *

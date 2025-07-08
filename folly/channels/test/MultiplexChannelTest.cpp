@@ -236,8 +236,7 @@ TEST_F(MultiplexChannelFixture, ClearUnusedSubscriptions) {
   executor_.drain();
 
   auto clearedSubscriptions1Task =
-      multiplexChannel.clearUnusedSubscriptions()
-          .scheduleOn(&executor_)
+      co_withExecutor(&executor_, multiplexChannel.clearUnusedSubscriptions())
           .start();
   executor_.drain();
   auto clearedSubscriptions1 =
@@ -252,8 +251,7 @@ TEST_F(MultiplexChannelFixture, ClearUnusedSubscriptions) {
   executor_.drain();
 
   auto clearedSubscriptions2Task =
-      multiplexChannel.clearUnusedSubscriptions()
-          .scheduleOn(&executor_)
+      co_withExecutor(&executor_, multiplexChannel.clearUnusedSubscriptions())
           .start();
   executor_.drain();
   auto clearedSubscriptions2 =
@@ -270,8 +268,7 @@ TEST_F(MultiplexChannelFixture, ClearUnusedSubscriptions) {
   EXPECT_TRUE(multiplexChannel.anySubscribers());
 
   auto clearedSubscriptions3Task =
-      multiplexChannel.clearUnusedSubscriptions()
-          .scheduleOn(&executor_)
+      co_withExecutor(&executor_, multiplexChannel.clearUnusedSubscriptions())
           .start();
   executor_.drain();
   auto clearedSubscriptions3 =

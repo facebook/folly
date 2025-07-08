@@ -232,14 +232,16 @@ TEST(Channel, CancelNextWithoutClose) {
   EXPECT_EQ(folly::coro::blockingWait(receiver.next()).value(), 1);
 
   auto nextTask =
-      folly::coro::co_withCancellation(
-          cancelSource.getToken(),
-          folly::coro::co_invoke(
-              [&receiver_2 =
-                   receiver]() -> folly::coro::Task<std::optional<int>> {
-                co_return co_await receiver_2.next(false /* closeOnCancel */);
-              }))
-          .scheduleOn(&executor)
+      co_withExecutor(
+          &executor,
+          folly::coro::co_withCancellation(
+              cancelSource.getToken(),
+              folly::coro::co_invoke(
+                  [&receiver_2 =
+                       receiver]() -> folly::coro::Task<std::optional<int>> {
+                    co_return co_await receiver_2.next(
+                        false /* closeOnCancel */);
+                  })))
           .start();
   executor.drain();
 
