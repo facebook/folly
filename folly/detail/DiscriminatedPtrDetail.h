@@ -24,31 +24,6 @@
 namespace folly {
 namespace dptr_detail {
 
-/**
- * Given a target type and a list of types, return the 1-based index of the
- * type in the list of types.  Fail to compile if the target type doesn't
- * appear in the list.
- *
- * GetIndex<int, void, char, int>::value == 3
- * GetIndex<int, void, char>::value -> fails to compile
- */
-template <typename... Types>
-struct GetTypeIndex;
-
-// When recursing, we never reach the 0- or 1- template argument base case
-// unless the target type is not in the list.  If the target type is in the
-// list, we stop recursing when it is at the head of the remaining type
-// list via the GetTypeIndex<T, T, Types...> partial specialization.
-template <typename T, typename... Types>
-struct GetTypeIndex<T, T, Types...> {
-  static const size_t value = 1;
-};
-
-template <typename T, typename U, typename... Types>
-struct GetTypeIndex<T, U, Types...> {
-  static const size_t value = 1 + GetTypeIndex<T, Types...>::value;
-};
-
 // Generalize std::is_same for variable number of type arguments
 template <typename... Types>
 struct IsSameType;

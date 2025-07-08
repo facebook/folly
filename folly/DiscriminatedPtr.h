@@ -191,7 +191,9 @@ class DiscriminatedPtr {
    */
   template <typename T>
   uint16_t typeIndex() const {
-    return uint16_t(dptr_detail::GetTypeIndex<T, Types...>::value);
+    constexpr auto idx = type_pack_find_v<T, Types...>;
+    static_assert(idx < sizeof...(Types));
+    return uint16_t(idx + 1);
   }
 
   uint16_t index() const { return data_ >> 48; }
