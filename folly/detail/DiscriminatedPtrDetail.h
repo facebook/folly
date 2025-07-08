@@ -46,59 +46,35 @@ struct ConstVisitorResult {
   static_assert((std::is_same_v<type, res<Types>> && ...));
 };
 
-template <size_t index, typename V, typename R, typename... Types>
-struct ApplyVisitor1;
-
-template <typename V, typename R, typename T, typename... Types>
-struct ApplyVisitor1<1, V, R, T, Types...> {
-  R operator()(size_t, V&& visitor, void* ptr) const {
+template <typename... Types>
+struct ApplyVisitor {
+  template <typename V, typename T, typename R>
+  static R one(V& visitor, void* ptr) {
     return visitor(static_cast<T*>(ptr));
   }
-};
 
-template <size_t index, typename V, typename R, typename T, typename... Types>
-struct ApplyVisitor1<index, V, R, T, Types...> {
-  R operator()(size_t runtimeIndex, V&& visitor, void* ptr) const {
-    return runtimeIndex == 1
-        ? visitor(static_cast<T*>(ptr))
-        : ApplyVisitor1<index - 1, V, R, Types...>()(
-              runtimeIndex - 1, std::forward<V>(visitor), ptr);
+  template <typename V, typename R = _t<VisitorResult<V&, Types...>>>
+  R operator()(size_t runtimeIndex, V& visitor, void* ptr) const {
+    using F = R(V&, void*);
+    constexpr F* f[] = {nullptr, &one<V, Types, R>...};
+    return f[runtimeIndex](visitor, ptr);
   }
 };
 
-template <size_t index, typename V, typename R, typename... Types>
-struct ApplyConstVisitor1;
-
-template <typename V, typename R, typename T, typename... Types>
-struct ApplyConstVisitor1<1, V, R, T, Types...> {
-  R operator()(size_t, V&& visitor, void* ptr) const {
+template <typename... Types>
+struct ApplyConstVisitor {
+  template <typename V, typename T, typename R>
+  static R one(V& visitor, void* ptr) {
     return visitor(static_cast<const T*>(ptr));
   }
-};
 
-template <size_t index, typename V, typename R, typename T, typename... Types>
-struct ApplyConstVisitor1<index, V, R, T, Types...> {
-  R operator()(size_t runtimeIndex, V&& visitor, void* ptr) const {
-    return runtimeIndex == 1
-        ? visitor(static_cast<const T*>(ptr))
-        : ApplyConstVisitor1<index - 1, V, R, Types...>()(
-              runtimeIndex - 1, std::forward<V>(visitor), ptr);
+  template <typename V, typename R = _t<ConstVisitorResult<V&, Types...>>>
+  R operator()(size_t runtimeIndex, V& visitor, void* ptr) const {
+    using F = R(V&, void*);
+    constexpr F* f[] = {nullptr, &one<V, Types, R>...};
+    return f[runtimeIndex](visitor, ptr);
   }
 };
-
-template <typename V, typename... Types>
-using ApplyVisitor = ApplyVisitor1<
-    sizeof...(Types),
-    V,
-    typename VisitorResult<V, Types...>::type,
-    Types...>;
-
-template <typename V, typename... Types>
-using ApplyConstVisitor = ApplyConstVisitor1<
-    sizeof...(Types),
-    V,
-    typename ConstVisitorResult<V, Types...>::type,
-    Types...>;
 
 } // namespace dptr_detail
 } // namespace folly

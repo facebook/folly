@@ -165,24 +165,23 @@ class DiscriminatedPtr {
    *   return the same type (or a static_assert will fire).
    */
   template <typename V>
-  typename dptr_detail::VisitorResult<V, Types...>::type apply(V&& visitor) {
+  _t<dptr_detail::VisitorResult<V, Types...>> apply(V&& visitor) {
     size_t n = index();
     if (n == 0) {
       throw std::invalid_argument("Empty DiscriminatedPtr");
     }
-    return dptr_detail::ApplyVisitor<V, Types...>()(
-        n, std::forward<V>(visitor), ptr());
+    constexpr dptr_detail::ApplyVisitor<Types...> call;
+    return call(n, visitor, ptr());
   }
 
   template <typename V>
-  typename dptr_detail::ConstVisitorResult<V, Types...>::type apply(
-      V&& visitor) const {
+  _t<dptr_detail::ConstVisitorResult<V, Types...>> apply(V&& visitor) const {
     size_t n = index();
     if (n == 0) {
       throw std::invalid_argument("Empty DiscriminatedPtr");
     }
-    return dptr_detail::ApplyConstVisitor<V, Types...>()(
-        n, std::forward<V>(visitor), ptr());
+    constexpr dptr_detail::ApplyConstVisitor<Types...> call;
+    return call(n, visitor, ptr());
   }
 
  private:
