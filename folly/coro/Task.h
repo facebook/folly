@@ -718,8 +718,6 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
  private:
   friend class Task<T>;
-  friend TaskWithExecutor<T> co_withExecutor(
-      Executor::KeepAlive<>, Task<T>) noexcept;
 
   explicit TaskWithExecutor(handle_t coro) noexcept : coro_(coro) {}
 
@@ -774,6 +772,15 @@ class FOLLY_CORO_TASK_ATTRS Task {
     coro_.promise().executor_ = std::move(e);
   }
 
+  // `co_withExecutor` implementation detail -- this works around the fact that
+  // not all compilers consider the hidden friend `co_withExecutor` to be a
+  // friend of `TaskWithExecutor`, and I found no uniform way to add the
+  // friendship without making it non-hidden.  Try folding back into
+  // `co_withExecutor` in 2027 or so, to see if the old compiler issue is gone.
+  TaskWithExecutor<T> asTaskWithExecutor() && {
+    return TaskWithExecutor<T>{std::exchange(coro_, {})};
+  }
+
  public:
   Task(const Task& t) = delete;
 
@@ -805,7 +812,7 @@ class FOLLY_CORO_TASK_ATTRS Task {
       Executor::KeepAlive<> executor, Task task) noexcept {
     task.setExecutor(std::move(executor));
     DCHECK(task.coro_);
-    return TaskWithExecutor<T>{std::exchange(task.coro_, {})};
+    return std::move(task).asTaskWithExecutor();
   }
   [[deprecated("Legacy form, prefer `co_withExecutor(exec, yourTask())`.")]]
   TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
