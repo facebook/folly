@@ -518,7 +518,7 @@ TEST_F(ExceptionTest, get_exception_from_std_exception_ptr) {
 TEST_F(ExceptionTest, exception_shared_string) {
   constexpr auto c = "hello, world!";
 
-  auto s0 = folly::exception_shared_string(c);
+  auto s0 = folly::exception_shared_string(c, strlen(c));
   auto s1 = s0;
   auto s2 = s1;
   EXPECT_STREQ(c, s2.what());
@@ -531,13 +531,37 @@ TEST_F(ExceptionTest, exception_shared_string) {
 
 using namespace folly::string_literals;
 
-TEST_F(ExceptionTest, exception_shared_string_literal) {
+TEST_F(ExceptionTest, exception_shared_string_literal_litv) {
   auto s0 = folly::exception_shared_string("hello, world!"_litv);
   auto s1 = s0;
   auto s2 = s1;
 
   const char* expected = "hello, world!";
   EXPECT_STREQ(expected, s2.what());
+}
+
+TEST_F(ExceptionTest, exception_shared_string_literal_consteval) {
+  constexpr const char* c = "hello, world!";
+
+  {
+    folly::exception_shared_string s0{c};
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s1 = s0;
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s2 = s1;
+    EXPECT_STREQ(c, s2.what());
+  }
+
+  // Same, but `constexpr`.  Future: need C++20 `std::is_constant_evaluated` to
+  // make the copy ctor `constexpr` as well.
+  {
+    constexpr folly::exception_shared_string s0{c};
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s1 = s0;
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s2 = s1;
+    EXPECT_STREQ(c, s2.what());
+  }
 }
 
 TEST_F(ExceptionTest, exception_shared_string_literal_constant) {

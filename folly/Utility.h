@@ -253,6 +253,19 @@ struct identity_fn {
 using Identity = identity_fn;
 inline constexpr identity_fn identity{};
 
+#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
+
+/// literal_c_str
+///
+/// This can only wrap literal strings, since the constructor is marked
+/// consteval.  Like with fmt::format_string.
+struct literal_c_str {
+  const char* const ptr;
+  /* implicit */ consteval literal_c_str(const char* p) : ptr(p) {}
+};
+
+#endif
+
 /// literal_string
 ///
 /// A structural type representing a literal string. A structural type may be

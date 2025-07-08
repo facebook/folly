@@ -335,7 +335,7 @@ class FOLLY_NODISCARD SafeTaskWithExecutor final
   using folly_private_safe_alias_t = safe_alias_constant<ArgSafety>;
 
   [[deprecated(
-      "`asUnsafe()` is an provided as escape hatch for interoperating with "
+      "`asUnsafe()` is provided as an escape hatch for interoperating with "
       "older futures-based code, or other places not yet compatible with "
       "true structured concurrency patterns. Beware, the full `Task` API "
       "abounds with footguns like `start()` and `semi()` -- including UB, "
@@ -371,7 +371,7 @@ class FOLLY_CORO_TASK_ATTRS SafeTask final
   using folly_private_safe_alias_t = safe_alias_constant<ArgSafety>;
 
   [[deprecated(
-      "`asUnsafe()` is an provided as escape hatch for interoperating with "
+      "`asUnsafe()` is provided as an escape hatch for interoperating with "
       "older futures-based code, or other places not yet compatible with "
       "true structured concurrency patterns. Beware, the full `Task` API "
       "abounds with footguns like `start()` and `semi()` -- including UB, "
