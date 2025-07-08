@@ -529,17 +529,6 @@ TEST_F(ExceptionTest, exception_shared_string) {
 
 #if FOLLY_CPLUSPLUS >= 202002
 
-using namespace folly::string_literals;
-
-TEST_F(ExceptionTest, exception_shared_string_literal_litv) {
-  auto s0 = folly::exception_shared_string("hello, world!"_litv);
-  auto s1 = s0;
-  auto s2 = s1;
-
-  const char* expected = "hello, world!";
-  EXPECT_STREQ(expected, s2.what());
-}
-
 TEST_F(ExceptionTest, exception_shared_string_literal_consteval) {
   constexpr const char* c = "hello, world!";
 
@@ -564,19 +553,8 @@ TEST_F(ExceptionTest, exception_shared_string_literal_consteval) {
   }
 }
 
-TEST_F(ExceptionTest, exception_shared_string_literal_constant) {
-  constexpr auto s0 = folly::exception_shared_string("hello, world!"_litv);
-
-  const char* expected = "hello, world!";
-  EXPECT_STREQ(expected, s0.what());
-
-  // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-  auto s1 = s0;
-  EXPECT_EQ(s0.what(), s1.what());
-  EXPECT_STREQ(expected, s1.what());
-}
-
 #endif
+
 // example of how to do the in-place formatting efficiently
 struct format_param_fn {
   template <typename A>

@@ -862,9 +862,8 @@ inline constexpr make_exception_ptr_with_fn make_exception_ptr_with{};
 //  constructible and mostly do not need to optimize moves, and this affects how
 //  exception messages are best stored.
 //
-//  May be constructed with a literal string in a very particular form. If so
-//  constructed, (a literal copy of) the literal string will be held with no
-//  refcount required.
+//  May be constructed with a string literal pointer, which will be stored with
+//  no refcount required.
 class exception_shared_string {
  private:
   using format_sig_ = void(void*, char*, std::size_t);
@@ -938,10 +937,6 @@ class exception_shared_string {
 
  public:
 #if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
-  template <std::size_t N, literal_string<char, N> Str>
-  constexpr explicit exception_shared_string(vtag_t<Str>) noexcept
-      : tagged_what_{vtag<true>, Str.c_str()} {}
-
   constexpr explicit exception_shared_string(literal_c_str p) noexcept
       : tagged_what_{vtag<true>, p.ptr} {}
 #endif
