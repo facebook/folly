@@ -24,5 +24,5 @@ cdef extern from "folly/python/fibers.h" namespace "folly::python":
     )
 
 cdef extern from "folly/python/fibers.h" namespace "folly::python::fibers_detail":
-    # This is what a function ptr looks like in pxd language. 
-    cdef cFiberManager*(*get_fiber_manager)(const cFiberManagerOptions& opts)
+    # This is what a function ptr looks like in pxd language.
+    cdef void assign_func(cFiberManager*(*get_fiber_manager)(const cFiberManagerOptions& opts))

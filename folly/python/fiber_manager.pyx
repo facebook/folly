@@ -28,7 +28,7 @@ from folly.executor cimport cAsyncioExecutor
 #    cLoopController,
 #    cAsyncioLoopController,
 #    cFiberManagerOptions)
-from folly.fibers cimport get_fiber_manager 
+from folly.fibers cimport assign_func
 from weakref import WeakKeyDictionary
 
 
@@ -90,4 +90,4 @@ cdef cFiberManager* get_fiber_manager_impl(const cFiberManagerOptions& opts):
     return manager.cManager.get()
 
 # Tell C++ about our impl
-get_fiber_manager = get_fiber_manager_impl
+assign_func(get_fiber_manager_impl)

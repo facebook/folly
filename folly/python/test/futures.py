@@ -37,7 +37,6 @@ class Futures(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError, msg="0 is not allowed"):
             await simplebridge.get_value_x5(0)
 
-    # TODO fried: fix fiber details for windows also
     @unittest.skipIf(platform.startswith("win"), "Broken on Windows.")
     async def test_bridge_fibers(self):
         val = 1337

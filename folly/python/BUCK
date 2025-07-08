@@ -652,6 +652,16 @@ fbcode_target(
     name = "fibers_lib",
     srcs = ["fibers.cpp"],
     headers = ["fibers.h"],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "-DFOLLY_PYTHON_WIN_SHAREDLIB",
+        ],
+    }),
+    preferred_linkage = select({
+        "DEFAULT": None,
+        "ovr_config//os:windows": "shared",
+    }),
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#define FOLLY_PYTHON_FIBERS_DETAIL_DEFS
 #include <folly/python/fibers.h>
 #include <folly/python/import.h>
 
@@ -22,9 +23,13 @@ namespace python {
 
 namespace fibers_detail {
 // Will be filled in from Cython Side
-folly::Function<folly::fibers::FiberManager*(
-    const folly::fibers::FiberManager::Options&)>
-    get_fiber_manager;
+folly::fibers::FiberManager* (*get_fiber_manager)(
+    const folly::fibers::FiberManager::Options&);
+
+FOLLY_PYTHON_FIBERS_API void assign_func(folly::fibers::FiberManager* (
+    *_get_fiber_manager)(const folly::fibers::FiberManager::Options&)) {
+  get_fiber_manager = _get_fiber_manager;
+}
 } // namespace fibers_detail
 
 int import_folly_fiber_manager_impl() {
@@ -42,7 +47,7 @@ int import_folly_fiber_manager_impl() {
 FOLLY_CONSTINIT static import_cache import_folly_fiber_manager{
     import_folly_fiber_manager_impl, "folly.fiber_manager"};
 
-folly::fibers::FiberManager* getFiberManager(
+FOLLY_PYTHON_FIBERS_API folly::fibers::FiberManager* getFiberManager(
     const folly::fibers::FiberManager::Options& opts) {
   DCHECK(!folly::fibers::onFiber());
   if (!isLinked()) {

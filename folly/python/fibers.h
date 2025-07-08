@@ -21,21 +21,29 @@
 
 #pragma once
 
-#include <folly/Function.h>
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/python/Weak.h>
+
+#ifdef FOLLY_PYTHON_WIN_SHAREDLIB
+#ifdef FOLLY_PYTHON_FIBERS_DETAIL_DEFS
+#define FOLLY_PYTHON_FIBERS_API __declspec(dllexport)
+#else
+#define FOLLY_PYTHON_FIBERS_API __declspec(dllimport)
+#endif
+#else
+#define FOLLY_PYTHON_FIBERS_API
+#endif
 
 namespace folly {
 namespace python {
 
 namespace fibers_detail {
-extern folly::Function<folly::fibers::FiberManager*(
-    const folly::fibers::FiberManager::Options&)>
-    get_fiber_manager;
+FOLLY_PYTHON_FIBERS_API void assign_func(folly::fibers::FiberManager* (
+    *_get_fiber_manager)(const folly::fibers::FiberManager::Options&));
 } // namespace fibers_detail
 
 // Must be called from main context
-folly::fibers::FiberManager* getFiberManager(
+FOLLY_PYTHON_FIBERS_API folly::fibers::FiberManager* getFiberManager(
     const folly::fibers::FiberManager::Options& opts = {});
 
 /**
