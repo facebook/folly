@@ -1,7 +1,164 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "at_fork",
+    srcs = ["AtFork.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["AtFork.h"],
+    deps = [
+        "//xplat/folly:portability_pthread",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:synchronization_sanitize_thread",
+        "//xplat/folly/lang:exception",
+    ],
+    exported_deps = [
+        "//xplat/folly:function",
+        "//xplat/folly:portability_sys_types",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "aux_vector",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["AuxVector.h"],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:preprocessor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "env_util",
+    srcs = ["EnvUtil.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["EnvUtil.h"],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:portability_stdlib",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:string",
+    ],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:memory",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "hardware_concurrency",
+    srcs = ["HardwareConcurrency.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["HardwareConcurrency.h"],
+    deps = [
+        "//xplat/folly:portability_sched",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "memory_mapping",
+    srcs = ["MemoryMapping.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["MemoryMapping.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//third-party/glog:glog",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_gflags",
+        "//xplat/folly:portability_sys_mman",
+        "//xplat/folly:portability_sys_syscall",
+        "//xplat/folly/experimental/io:huge_pages",
+    ],
+    exported_deps = [
+        "//xplat/folly:file",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:range",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "pid",
+    srcs = ["Pid.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Pid.h"],
+    deps = [
+        ":at_fork",
+        "//third-party/glog:glog",
+        "//xplat/folly:portability_unistd",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability_sys_types",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "shell",
+    srcs = ["Shell.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Shell.h"],
+    exported_deps = [
+        "//xplat/folly:conv",
+        "//xplat/folly:format",
+        "//xplat/folly:range",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "thread_id",
+    srcs = ["ThreadId.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["ThreadId.h"],
+    windows_exported_deps = [
+        "//xplat/folly:assume",
+        "//xplat/folly:portability_time",
+        "//third-party/boost:boost_thread",
+    ],
+    deps = [
+        ":at_fork",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability_pthread",
+        "//xplat/folly:portability_sys_syscall",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:portability_windows",
+        "//xplat/folly:synchronization_relaxed_atomic",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "thread_name",
+    srcs = ["ThreadName.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["ThreadName.h"],
+    deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_windows",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:traits",
+    ],
+    exported_deps = [
+        "//xplat/folly:optional",
+        "//xplat/folly:portability_config",
+        "//xplat/folly:portability_pthread",
+        "//xplat/folly:range",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
