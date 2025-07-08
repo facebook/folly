@@ -1769,14 +1769,6 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "functional_protocol",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/functional:protocol"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "functional_traits",
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/functional:traits"],
