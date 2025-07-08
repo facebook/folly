@@ -17,6 +17,6 @@
 from folly.executor cimport cAsyncioExecutor
 
 cdef extern from "folly/python/executor.h" namespace "folly::python::executor_detail":
-    # This is what a function ptr looks like in pxd language. 
-    cdef cAsyncioExecutor*(*get_running_executor)(bint running)
-    cdef int(*set_executor_for_loop)(loop, cAsyncioExecutor* executor)
+    cdef void assign_funcs(
+        cAsyncioExecutor*(*get_running_executor)(bint),
+        int(*set_executor_for_loop)(object, cAsyncioExecutor* executor))

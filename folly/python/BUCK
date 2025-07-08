@@ -512,6 +512,16 @@ fbcode_target(
     headers = [
         "executor.h",
     ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "-DFOLLY_PYTHON_WIN_SHAREDLIB",
+        ],
+    }),
+    preferred_linkage = select({
+        "DEFAULT": None,
+        "ovr_config//os:windows": "shared",
+    }),
     deps = [
         ":import",
     ],
