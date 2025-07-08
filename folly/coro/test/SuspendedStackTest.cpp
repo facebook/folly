@@ -82,11 +82,11 @@ CO_TEST(SuspendedStacksTest, testBaton) {
   expectSuspendedFrames(0);
 
   folly::coro::Baton b;
-  waitOn<coroDepth>(b).scheduleOn(ex).start();
+  co_withExecutor(ex, waitOn<coroDepth>(b)).start();
   co_await folly::coro::co_reschedule_on_current_executor;
   expectSuspendedFrames(1, currentDepth + coroDepth);
 
-  waitOn<coroDepth>(b).scheduleOn(ex).start();
+  co_withExecutor(ex, waitOn<coroDepth>(b)).start();
   co_await folly::coro::co_reschedule_on_current_executor;
   expectSuspendedFrames(2, currentDepth + coroDepth);
 
@@ -104,7 +104,7 @@ CO_TEST(SuspendedStacksTest, testFibersBaton) {
   expectSuspendedFrames(0);
 
   folly::fibers::Baton b;
-  waitOn<coroDepth>(b).scheduleOn(ex).start();
+  co_withExecutor(ex, waitOn<coroDepth>(b)).start();
   co_await folly::coro::co_reschedule_on_current_executor;
   expectSuspendedFrames(1, currentDepth + coroDepth);
 
@@ -126,8 +126,9 @@ CO_TEST(SuspendedStacksTest, testLock) {
   expectSuspendedFrames(0);
 
   auto aw = m.co_lock();
-  waitOn<coroDepth>(std::move(aw))
-      .scheduleOn(co_await folly::coro::co_current_executor)
+  co_withExecutor(
+      co_await folly::coro::co_current_executor,
+      waitOn<coroDepth>(std::move(aw)))
       .start();
   co_await folly::coro::co_reschedule_on_current_executor;
   expectSuspendedFrames(1, currentDepth + coroDepth);
@@ -142,8 +143,9 @@ CO_TEST(SuspendedStacksTest, testFuture) {
       (co_await folly::coro::co_current_async_stack_trace).size();
   auto [promise, future] = folly::makePromiseContract<int>();
 
-  waitOn<coroDepth>(std::move(future))
-      .scheduleOn(co_await folly::coro::co_current_executor)
+  co_withExecutor(
+      co_await folly::coro::co_current_executor,
+      waitOn<coroDepth>(std::move(future)))
       .start();
   co_await folly::coro::co_reschedule_on_current_executor;
   expectSuspendedFrames(1, currentDepth + coroDepth);

@@ -299,8 +299,7 @@ folly::coro::Task<InitialValue> parallelAccumulate(
   } else {
     auto mid = begin + (distance / 2);
     auto [first, second] = co_await folly::coro::collectAll(
-        parallelAccumulate(begin, mid, op, std::move(initialValue))
-            .scheduleOn(co_await folly::coro::co_current_executor),
+        parallelAccumulate(begin, mid, op, std::move(initialValue)),
         parallelAccumulate(mid + 1, end, op, *mid));
     co_return op(std::move(first), std::move(second));
   }
@@ -311,7 +310,7 @@ TEST_F(CollectAllTest, ParallelAccumulate) {
       4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
 
   folly::coro::blockingWait(
-      []() -> folly::coro::Task<void> {
+      co_withExecutor(&threadPool, []() -> folly::coro::Task<void> {
         std::vector<int> values(100'000);
         for (int i = 0; i < 100'000; ++i) {
           values[i] = (1337 * i) % 1'000'000;
@@ -323,8 +322,7 @@ TEST_F(CollectAllTest, ParallelAccumulate) {
             });
 
         EXPECT_EQ(999'989, result);
-      }()
-                  .scheduleOn(&threadPool));
+      }()));
 }
 
 TEST_F(CollectAllTest, CollectAllCancelsSubtasksWhenASubtaskFails) {
@@ -398,15 +396,15 @@ TEST_F(CollectAllTest, CancellationTokenRemainsActiveAfterReturn) {
     auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
       auto token = co_await folly::coro::co_current_cancellation_token;
       auto ex = co_await folly::coro::co_current_executor;
-      scope.add(
+      scope.add(co_withExecutor(
+          ex,
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                 auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
                 EXPECT_TRUE(innerToken.isCancellationRequested());
-              }))
-              .scheduleOn(ex));
+              }))));
     });
 
     co_await folly::coro::co_withCancellation(
@@ -470,10 +468,11 @@ TEST_F(CollectAllTest, TaskWithExecutorUsage) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto [a, b] = co_await folly::coro::collectAll(
-        []() -> folly::coro::Task<int> { co_return 42; }().scheduleOn(
-                 &threadPool),
-        []() -> folly::coro::Task<std::string> { co_return "coroutine"; }()
-                    .scheduleOn(&threadPool));
+        co_withExecutor(
+            &threadPool, []() -> folly::coro::Task<int> { co_return 42; }()),
+        co_withExecutor(&threadPool, []() -> folly::coro::Task<std::string> {
+          co_return "coroutine";
+        }()));
     EXPECT_TRUE(a == 42);
     EXPECT_TRUE(b == "coroutine");
   }());
@@ -643,15 +642,15 @@ TEST_F(CollectAllTryTest, CancellationTokenRemainsActiveAfterReturn) {
     auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
       auto token = co_await folly::coro::co_current_cancellation_token;
       auto ex = co_await folly::coro::co_current_executor;
-      scope.add(
+      scope.add(co_withExecutor(
+          ex,
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                 auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
                 EXPECT_TRUE(innerToken.isCancellationRequested());
-              }))
-              .scheduleOn(ex));
+              }))));
     });
 
     co_await folly::coro::co_withCancellation(
@@ -898,15 +897,15 @@ TEST_F(CollectAllRangeTest, CancellationTokenRemainsActiveAfterReturn) {
       co_yield folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
         auto token = co_await folly::coro::co_current_cancellation_token;
         auto ex = co_await folly::coro::co_current_executor;
-        scope.add(
+        scope.add(co_withExecutor(
+            ex,
             folly::coro::co_withCancellation(
                 token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                   auto innerToken =
                       co_await folly::coro::co_current_cancellation_token;
                   co_await baton;
                   EXPECT_TRUE(innerToken.isCancellationRequested());
-                }))
-                .scheduleOn(ex));
+                }))));
       });
     };
 
@@ -966,9 +965,9 @@ TEST_F(CollectAllRangeTest, VectorOfTaskWithExecutorUsage) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     std::vector<folly::coro::TaskWithExecutor<int>> tasks;
     for (int i = 0; i < 4; ++i) {
-      tasks.push_back(
-          [](int idx) -> folly::coro::Task<int> { co_return idx + 1; }(i)
-                             .scheduleOn(&threadPool));
+      tasks.push_back(co_withExecutor(
+          &threadPool,
+          [](int idx) -> folly::coro::Task<int> { co_return idx + 1; }(i)));
     }
 
     auto results = co_await folly::coro::collectAllRange(std::move(tasks));
@@ -1308,15 +1307,15 @@ TEST_F(CollectAllTryRangeTest, CancellationTokenRemainsActiveAfterReturn) {
       co_yield folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
         auto token = co_await folly::coro::co_current_cancellation_token;
         auto ex = co_await folly::coro::co_current_executor;
-        scope.add(
+        scope.add(co_withExecutor(
+            ex,
             folly::coro::co_withCancellation(
                 token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                   auto innerToken =
                       co_await folly::coro::co_current_cancellation_token;
                   co_await baton;
                   EXPECT_TRUE(innerToken.isCancellationRequested());
-                }))
-                .scheduleOn(ex));
+                }))));
       });
     };
 
@@ -1706,15 +1705,15 @@ TEST_F(CollectAllWindowedTest, CancellationTokenRemainsActiveAfterReturn) {
       co_yield folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
         auto token = co_await folly::coro::co_current_cancellation_token;
         auto ex = co_await folly::coro::co_current_executor;
-        scope.add(
+        scope.add(co_withExecutor(
+            ex,
             folly::coro::co_withCancellation(
                 token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                   auto innerToken =
                       co_await folly::coro::co_current_cancellation_token;
                   co_await baton;
                   EXPECT_TRUE(innerToken.isCancellationRequested());
-                }))
-                .scheduleOn(ex));
+                }))));
       });
     };
 
@@ -1775,9 +1774,9 @@ TEST_F(CollectAllWindowedTest, VectorOfTaskWithExecutorUsage) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     std::vector<folly::coro::TaskWithExecutor<int>> tasks;
     for (int i = 0; i < 4; ++i) {
-      tasks.push_back(
-          [](int idx) -> folly::coro::Task<int> { co_return idx + 1; }(i)
-                             .scheduleOn(&threadPool));
+      tasks.push_back(co_withExecutor(
+          &threadPool,
+          [](int idx) -> folly::coro::Task<int> { co_return idx + 1; }(i)));
     }
 
     auto results =
@@ -1944,15 +1943,15 @@ TEST_F(CollectAllTryWindowedTest, CancellationTokenRemainsActiveAfterReturn) {
       co_yield folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
         auto token = co_await folly::coro::co_current_cancellation_token;
         auto ex = co_await folly::coro::co_current_executor;
-        scope.add(
+        scope.add(co_withExecutor(
+            ex,
             folly::coro::co_withCancellation(
                 token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                   auto innerToken =
                       co_await folly::coro::co_current_cancellation_token;
                   co_await baton;
                   EXPECT_TRUE(innerToken.isCancellationRequested());
-                }))
-                .scheduleOn(ex));
+                }))));
       });
     };
 
@@ -2191,15 +2190,15 @@ TEST_F(CollectAnyTest, CancellationTokenRemainsActiveAfterReturn) {
     auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
       auto token = co_await folly::coro::co_current_cancellation_token;
       auto ex = co_await folly::coro::co_current_executor;
-      scope.add(
+      scope.add(co_withExecutor(
+          ex,
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                 auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
                 EXPECT_TRUE(innerToken.isCancellationRequested());
-              }))
-              .scheduleOn(ex));
+              }))));
     });
 
     co_await folly::coro::co_withCancellation(
@@ -2454,15 +2453,15 @@ TEST_F(
     auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
       auto token = co_await folly::coro::co_current_cancellation_token;
       auto ex = co_await folly::coro::co_current_executor;
-      scope.add(
+      scope.add(co_withExecutor(
+          ex,
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                 auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
                 EXPECT_TRUE(innerToken.isCancellationRequested());
-              }))
-              .scheduleOn(ex));
+              }))));
     });
 
     co_await folly::coro::co_withCancellation(
@@ -2673,15 +2672,15 @@ TEST_F(CollectAnyNoDiscardTest, CancellationTokenRemainsActiveAfterReturn) {
     auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
       auto token = co_await folly::coro::co_current_cancellation_token;
       auto ex = co_await folly::coro::co_current_executor;
-      scope.add(
+      scope.add(co_withExecutor(
+          ex,
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                 auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
                 EXPECT_TRUE(innerToken.isCancellationRequested());
-              }))
-              .scheduleOn(ex));
+              }))));
     });
 
     co_await folly::coro::co_withCancellation(
@@ -2946,15 +2945,15 @@ TEST_F(CollectAnyRangeTest, CancellationTokenRemainsActiveAfterReturn) {
     auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
       auto token = co_await folly::coro::co_current_cancellation_token;
       auto ex = co_await folly::coro::co_current_executor;
-      scope.add(
+      scope.add(co_withExecutor(
+          ex,
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                 auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
                 EXPECT_TRUE(innerToken.isCancellationRequested());
-              }))
-              .scheduleOn(ex));
+              }))));
     });
 
     std::vector<folly::coro::Task<void>> tasks;
@@ -3247,15 +3246,15 @@ TEST_F(
     auto task = folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
       auto token = co_await folly::coro::co_current_cancellation_token;
       auto ex = co_await folly::coro::co_current_executor;
-      scope.add(
+      scope.add(co_withExecutor(
+          ex,
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                 auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
                 EXPECT_TRUE(innerToken.isCancellationRequested());
-              }))
-              .scheduleOn(ex));
+              }))));
     });
 
     std::vector<folly::coro::Task<void>> tasks;
@@ -3514,15 +3513,15 @@ TEST_F(
     tasks.push_back(folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
       auto token = co_await folly::coro::co_current_cancellation_token;
       auto ex = co_await folly::coro::co_current_executor;
-      scope.add(
+      scope.add(co_withExecutor(
+          ex,
           folly::coro::co_withCancellation(
               token, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
                 auto innerToken =
                     co_await folly::coro::co_current_cancellation_token;
                 co_await baton;
                 EXPECT_TRUE(innerToken.isCancellationRequested());
-              }))
-              .scheduleOn(ex));
+              }))));
     }));
 
     co_await folly::coro::co_withCancellation(
@@ -3541,18 +3540,18 @@ TEST(MakeUnorderedAsyncGeneratorTest, GeneratorEarlyDestroy) {
 
     std::vector<folly::coro::TaskWithExecutor<int>> tasks;
 
-    tasks.push_back(
-        folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+    tasks.push_back(co_withExecutor(
+        &executor, folly::coro::co_invoke([]() -> folly::coro::Task<int> {
           co_await folly::coro::co_reschedule_on_current_executor;
           std::this_thread::sleep_for(std::chrono::seconds{2});
           co_return 42;
-        }).scheduleOn(&executor));
-    tasks.push_back(
-        folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+        })));
+    tasks.push_back(co_withExecutor(
+        &executor, folly::coro::co_invoke([]() -> folly::coro::Task<int> {
           co_await folly::coro::co_reschedule_on_current_executor;
           std::this_thread::sleep_for(std::chrono::seconds{1});
           co_return 43;
-        }).scheduleOn(&executor));
+        })));
 
     {
       auto gen =

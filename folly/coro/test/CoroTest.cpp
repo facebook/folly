@@ -131,7 +131,7 @@ TEST_F(CoroTest, ExecutorKeepAlive) {
   auto future = [] {
     ScopedEventBaseThread evbThread;
 
-    return taskSleep().scheduleOn(evbThread.getEventBase()).start();
+    return co_withExecutor(evbThread.getEventBase(), taskSleep()).start();
   }();
   EXPECT_TRUE(future.isReady());
 }
@@ -165,8 +165,10 @@ TEST_F(CoroTest, ExecutorKeepAliveDummy) {
   };
 
   CountingExecutor executor;
-  ExecutorRec::go(42).scheduleOn(&executor).start().via(&executor).getVia(
-      &executor);
+  co_withExecutor(&executor, ExecutorRec::go(42))
+      .start()
+      .via(&executor)
+      .getVia(&executor);
 }
 
 TEST_F(CoroTest, FutureThrow) {
@@ -221,8 +223,8 @@ TEST_F(CoroTest, NestedThreads) {
     // when performing a store to members that uses SSE instructions.
     folly::ScopedEventBaseThread evbThread;
 
-    co_await taskThreadNested(evbThread.getThreadId())
-        .scheduleOn(evbThread.getEventBase());
+    co_await co_withExecutor(
+        evbThread.getEventBase(), taskThreadNested(evbThread.getThreadId()));
 
     EXPECT_EQ(threadId, std::this_thread::get_id());
 
@@ -239,13 +241,13 @@ TEST_F(CoroTest, CurrentExecutor) {
     auto current = co_await coro::co_current_executor;
     EXPECT_EQ(executor, current);
     auto task42 = []() -> coro::Task<int> { co_return 42; };
-    co_return co_await task42().scheduleOn(current);
+    co_return co_await co_withExecutor(current, task42());
   };
 
   ScopedEventBaseThread evbThread;
-  auto task =
-      taskGetCurrentExecutor(evbThread.getEventBase())
-          .scheduleOn(evbThread.getEventBase());
+  auto task = co_withExecutor(
+      evbThread.getEventBase(),
+      taskGetCurrentExecutor(evbThread.getEventBase()));
   EXPECT_EQ(42, coro::blockingWait(std::move(task)));
 }
 
@@ -446,11 +448,13 @@ TEST_F(CoroTest, co_invoke) {
   ManualExecutor executor;
   Promise<folly::Unit> p;
   auto coroFuture =
-      coro::co_invoke([f = p.getSemiFuture()]() mutable -> coro::Task<void> {
-        (void)co_await std::move(f);
-        co_return;
-      })
-          .scheduleOn(&executor)
+      co_withExecutor(
+          &executor,
+          coro::co_invoke(
+              [f = p.getSemiFuture()]() mutable -> coro::Task<void> {
+                (void)co_await std::move(f);
+                co_return;
+              }))
           .start();
   executor.drain();
   EXPECT_FALSE(coroFuture.isReady());
@@ -480,18 +484,19 @@ TEST_F(CoroTest, Semaphore) {
             &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
 
         for (size_t i = 0; i < kTasks; ++i) {
-          coro::co_invoke([&, completionCounter]() -> coro::Task<void> {
-            for (size_t j = 0; j < kIterations; ++j) {
-              co_await sem.co_wait();
-              ++counter;
-              sem.signal();
-              --counter;
+          co_withExecutor(
+              &evb,
+              coro::co_invoke([&, completionCounter]() -> coro::Task<void> {
+                for (size_t j = 0; j < kIterations; ++j) {
+                  co_await sem.co_wait();
+                  ++counter;
+                  sem.signal();
+                  --counter;
 
-              EXPECT_LT(counter, kNumTokens);
-              EXPECT_GE(counter, 0);
-            }
-          })
-              .scheduleOn(&evb)
+                  EXPECT_LT(counter, kNumTokens);
+                  EXPECT_GE(counter, 0);
+                }
+              }))
               .start();
         }
       }

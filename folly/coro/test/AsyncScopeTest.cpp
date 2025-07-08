@@ -46,7 +46,7 @@ CO_TEST_F(AsyncScopeTest, AddAndJoin) {
 
   folly::coro::AsyncScope scope;
   for (int i = 0; i < 100; ++i) {
-    scope.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
   }
 
   co_await scope.joinAsync();
@@ -67,10 +67,10 @@ CO_TEST_F(AsyncScopeTest, StartChildTasksAfterCleanupStarted) {
 
   auto parentTask = [&]() -> folly::coro::Task<> {
     co_await baton;
-    scope.add(childTask().scheduleOn(executor));
+    scope.add(co_withExecutor(executor, childTask()));
   };
 
-  scope.add(parentTask().scheduleOn(executor));
+  scope.add(co_withExecutor(executor, parentTask()));
 
   co_await folly::coro::collectAll(
       scope.joinAsync(), [&]() -> folly::coro::Task<> {
@@ -91,7 +91,7 @@ CO_TEST_F(AsyncScopeTest, QueryRemainingCount) {
 
   CO_ASSERT_EQ(0, scope.remaining());
   for (int i = 0; i < 10; ++i) {
-    scope.add(makeTask().scheduleOn(executor));
+    scope.add(co_withExecutor(executor, makeTask()));
   }
   CO_ASSERT_EQ(10, scope.remaining());
 
@@ -107,7 +107,7 @@ CO_TEST_F(AsyncScopeTest, QueryRemainingCountAfterJoined) {
 
   auto makeTask = [&]() -> folly::coro::Task<> { co_await baton; };
   auto executor = co_await folly::coro::co_current_executor;
-  scope.add(makeTask().scheduleOn(executor));
+  scope.add(co_withExecutor(executor, makeTask()));
 
   EXPECT_EQ(scope.remaining(), 1);
 
@@ -134,7 +134,7 @@ folly::coro::Task<> crash() {
     co_await folly::coro::sleep(std::chrono::milliseconds(100));
     throw std::runtime_error("Computer says no");
   };
-  scope.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+  scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
   co_return;
 }
 } // namespace
@@ -151,7 +151,7 @@ CO_TEST_F(AsyncScopeTest, ThrowOnJoin) {
     co_await folly::coro::sleep(std::chrono::milliseconds(100));
     throw std::runtime_error("Computer says no");
   };
-  scope.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+  scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
 
   EXPECT_THROW(co_await scope.joinAsync(), std::runtime_error);
 }
@@ -172,9 +172,10 @@ CO_TEST_F(CancellableAsyncScopeTest, AddAndJoin) {
 
   folly::coro::CancellableAsyncScope scope;
   for (int i = 0; i < 99; ++i) {
-    scope.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
   }
-  scope.addWithSourceLoc(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+  scope.addWithSourceLoc(
+      co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
 
   co_await scope.joinAsync();
 
@@ -194,10 +195,10 @@ CO_TEST_F(CancellableAsyncScopeTest, StartChildTasksAfterCleanupStarted) {
 
   auto parentTask = [&]() -> folly::coro::Task<> {
     co_await baton;
-    scope.add(childTask().scheduleOn(executor));
+    scope.add(co_withExecutor(executor, childTask()));
   };
 
-  scope.add(parentTask().scheduleOn(executor));
+  scope.add(co_withExecutor(executor, parentTask()));
 
   co_await folly::coro::collectAll(
       scope.joinAsync(), [&]() -> folly::coro::Task<> {
@@ -218,7 +219,7 @@ CO_TEST_F(CancellableAsyncScopeTest, QueryRemainingCount) {
 
   CO_ASSERT_EQ(0, scope.remaining());
   for (int i = 0; i < 10; ++i) {
-    scope.add(makeTask().scheduleOn(executor));
+    scope.add(co_withExecutor(executor, makeTask()));
   }
   CO_ASSERT_EQ(10, scope.remaining());
 
@@ -242,7 +243,7 @@ CO_TEST_F(CancellableAsyncScopeTest, QueryIsCancellationRequested) {
   folly::coro::CancellableAsyncScope scope;
   CO_ASSERT_EQ(false, scope.isScopeCancellationRequested());
   for (int i = 0; i < 10; ++i) {
-    scope.add(makeTask().scheduleOn(executor));
+    scope.add(co_withExecutor(executor, makeTask()));
   }
   CO_ASSERT_EQ(10, scope.remaining());
 
@@ -257,7 +258,7 @@ CO_TEST_F(CancellableAsyncScopeTest, QueryIsCancellationRequested) {
 
   CO_ASSERT_EQ(0, scope2.remaining());
   for (int i = 0; i < 10; ++i) {
-    scope2.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+    scope2.add(co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
   }
   CO_ASSERT_EQ(10, scope2.remaining());
   CO_ASSERT_EQ(false, scope2.isScopeCancellationRequested());
@@ -274,7 +275,7 @@ CO_TEST_F(CancellableAsyncScopeTest, QueryIsCancellationRequested) {
 
   CO_ASSERT_EQ(0, scope3.remaining());
   for (int i = 0; i < 10; ++i) {
-    scope3.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+    scope3.add(co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
   }
   CO_ASSERT_EQ(10, scope3.remaining());
   CO_ASSERT_EQ(false, scope3.isScopeCancellationRequested());
@@ -289,7 +290,7 @@ CO_TEST_F(CancellableAsyncScopeTest, QueryIsCancellationRequested) {
   CO_ASSERT_EQ(0, scope4.remaining());
   for (int i = 0; i < 10; ++i) {
     scope4.add(
-        makeTask().scheduleOn(folly::getGlobalCPUExecutor()),
+        co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()),
         source.getToken());
   }
   CO_ASSERT_EQ(10, scope4.remaining());
@@ -314,7 +315,7 @@ CO_TEST_F(CancellableAsyncScopeTest, CancelSuspendedWork) {
 
   CO_ASSERT_EQ(0, scope.remaining());
   for (int i = 0; i < 10; ++i) {
-    scope.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
   }
   CO_ASSERT_EQ(10, scope.remaining());
 
@@ -328,7 +329,7 @@ CO_TEST_F(CancellableAsyncScopeTest, CancelSuspendedWork) {
 
   CO_ASSERT_EQ(0, scope2.remaining());
   for (int i = 0; i < 10; ++i) {
-    scope2.add(makeTask().scheduleOn(folly::getGlobalCPUExecutor()));
+    scope2.add(co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()));
   }
   CO_ASSERT_EQ(10, scope2.remaining());
 
@@ -342,7 +343,7 @@ CO_TEST_F(CancellableAsyncScopeTest, CancelSuspendedWork) {
   CO_ASSERT_EQ(0, scope3.remaining());
   for (int i = 0; i < 10; ++i) {
     scope3.add(
-        makeTask().scheduleOn(folly::getGlobalCPUExecutor()),
+        co_withExecutor(folly::getGlobalCPUExecutor(), makeTask()),
         source.getToken());
   }
   CO_ASSERT_EQ(10, scope3.remaining());

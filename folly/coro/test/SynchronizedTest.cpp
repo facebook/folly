@@ -80,7 +80,7 @@ TEST_F(SynchronizedTest, ConcurrentReads) {
           activeReaders--;
           co_return folly::unit;
         });
-    std::move(readTask).scheduleOn(&executor).start();
+    co_withExecutor(&executor, std::move(readTask)).start();
   }
   executor.drain();
   EXPECT_EQ(activeReaders, kNumReaders);
@@ -93,7 +93,7 @@ TEST_F(SynchronizedTest, ConcurrentReads) {
         writeComplete = true;
         co_return folly::unit;
       });
-  std::move(writeTask).scheduleOn(&executor).start();
+  co_withExecutor(&executor, std::move(writeTask)).start();
 
   // Readers have the lock. Writing doesn't run.
   executor.drain();
@@ -126,7 +126,7 @@ TEST_F(SynchronizedTest, ConcurrentReadsWithUnlock) {
           activeReaders--;
           co_return folly::unit;
         });
-    std::move(readTask).scheduleOn(&executor).start();
+    co_withExecutor(&executor, std::move(readTask)).start();
   }
   executor.drain();
   EXPECT_EQ(activeReaders, kNumReaders);
@@ -138,7 +138,7 @@ TEST_F(SynchronizedTest, ConcurrentReadsWithUnlock) {
         writeComplete = true;
         co_return folly::unit;
       });
-  std::move(writeTask).scheduleOn(&executor).start();
+  co_withExecutor(&executor, std::move(writeTask)).start();
 
   // Readers have the lock. Writing doesn't run.
   executor.drain();

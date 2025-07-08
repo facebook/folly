@@ -160,12 +160,12 @@ static coro::Task<void> parentRequest(int id) {
   coro::Baton baton2;
 
   auto fut1 =
-      childRequest(mutex, baton1)
-          .scheduleOn(co_await coro::co_current_executor)
+      co_withExecutor(
+          co_await coro::co_current_executor, childRequest(mutex, baton1))
           .start();
   auto fut2 =
-      childRequest(mutex, baton1)
-          .scheduleOn(co_await coro::co_current_executor)
+      co_withExecutor(
+          co_await coro::co_current_executor, childRequest(mutex, baton1))
           .start();
 
   CHECK_EQ(contextData, RequestContext::get()->getContextData(testToken1));
