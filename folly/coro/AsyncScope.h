@@ -224,9 +224,8 @@ inline std::size_t AsyncScope::remaining() const noexcept {
 template <typename Awaitable>
 FOLLY_NOINLINE inline void AsyncScope::add(
     Awaitable&& awaitable, void* returnAddress) {
-  assert(
-      !joined_ &&
-      "It is invalid to add() more work after work has been joined");
+  CHECK(!joined_)
+      << "It is invalid to add() more work after work has been joined";
   anyTasksStarted_.store(true, std::memory_order_relaxed);
   addImpl(
       static_cast<Awaitable&&>(awaitable),
@@ -244,9 +243,8 @@ FOLLY_NOINLINE inline void AsyncScope::addWithSourceLoc(
     Awaitable&& awaitable,
     void* returnAddress,
     source_location sourceLocation) {
-  assert(
-      !joined_ &&
-      "It is invalid to add() more work after work has been joined");
+  CHECK(!joined_)
+      << "It is invalid to add() more work after work has been joined";
   anyTasksStarted_.store(true, std::memory_order_relaxed);
   addImpl(
       static_cast<Awaitable&&>(awaitable),
