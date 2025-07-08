@@ -24,59 +24,15 @@
 namespace folly {
 namespace dptr_detail {
 
-// Generalize std::is_same for variable number of type arguments
-template <typename... Types>
-struct IsSameType;
-
-template <>
-struct IsSameType<> {
-  static const bool value = true;
-};
-
-template <typename T>
-struct IsSameType<T> {
-  static const bool value = true;
-};
-
-template <typename T, typename U, typename... Types>
-struct IsSameType<T, U, Types...> {
-  static const bool value =
-      std::is_same<T, U>::value && IsSameType<U, Types...>::value;
-};
-
-// Define type as the type of all T in (non-empty) Types..., asserting that
-// all types in Types... are the same.
-template <typename... Types>
-struct SameType;
-
-template <typename T, typename... Types>
-struct SameType<T, Types...> {
-  typedef T type;
-  static_assert(
-      IsSameType<T, Types...>::value, "Not all types in pack are the same");
-};
-
-// Determine the result type of applying a visitor of type V on a pointer
-// to type T.
-template <typename V, typename T>
-struct VisitorResult1 {
-  typedef invoke_result_t<V, T*> type;
-};
-
-// Determine the result type of applying a visitor of type V on a const pointer
-// to type T.
-template <typename V, typename T>
-struct ConstVisitorResult1 {
-  typedef invoke_result_t<V, const T*> type;
-};
-
 // Determine the result type of applying a visitor of type V on pointers of
 // all types in Types..., asserting that the type is the same for all types
 // in Types...
 template <typename V, typename... Types>
 struct VisitorResult {
-  typedef
-      typename SameType<typename VisitorResult1<V, Types>::type...>::type type;
+  template <typename T>
+  using res = invoke_result_t<V, T*>;
+  using type = std::common_type_t<res<Types>...>;
+  static_assert((std::is_same_v<type, res<Types>> && ...));
 };
 
 // Determine the result type of applying a visitor of type V on const pointers
@@ -84,9 +40,10 @@ struct VisitorResult {
 // in Types...
 template <typename V, typename... Types>
 struct ConstVisitorResult {
-  typedef
-      typename SameType<typename ConstVisitorResult1<V, Types>::type...>::type
-          type;
+  template <typename T>
+  using res = invoke_result_t<V, const T*>;
+  using type = std::common_type_t<res<Types>...>;
+  static_assert((std::is_same_v<type, res<Types>> && ...));
 };
 
 template <size_t index, typename V, typename R, typename... Types>
