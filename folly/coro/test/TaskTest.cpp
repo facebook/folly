@@ -271,8 +271,8 @@ TEST_F(TaskTest, ContextPreservedAcrossMutexLock) {
 
   folly::coro::Baton event1;
   folly::coro::Baton event2;
-  auto t1 = handleRequest(event1).scheduleOn(&manualExecutor).start();
-  auto t2 = handleRequest(event2).scheduleOn(&manualExecutor).start();
+  auto t1 = co_withExecutor(&manualExecutor, handleRequest(event1)).start();
+  auto t2 = co_withExecutor(&manualExecutor, handleRequest(event2)).start();
 
   manualExecutor.drain();
 
@@ -325,7 +325,7 @@ TEST_F(TaskTest, RequestContextSideEffectsArePreserved) {
   folly::ManualExecutor executor;
   folly::coro::Baton baton;
 
-  auto t = g(baton).scheduleOn(&executor).start();
+  auto t = co_withExecutor(&executor, g(baton)).start();
 
   executor.drain();
 
@@ -472,7 +472,7 @@ TEST_F(TaskTest, StartInlineUnsafe) {
       co_await folly::coro::co_reschedule_on_current_executor;
       hasFinished = true;
     };
-    auto sf = makeTask().scheduleOn(executor).startInlineUnsafe();
+    auto sf = co_withExecutor(executor, makeTask()).startInlineUnsafe();
 
     // Check that the task started inline on the current thread.
     // It should not yet have completed, however, since the rest
@@ -503,7 +503,7 @@ TEST_F(TaskTest, StartInlineUnsafePreservesRequestContext) {
       co_await baton;
       EXPECT_EQ(childCtx, RequestContext::try_get());
     };
-    auto sf = makeTask().scheduleOn(executor).startInlineUnsafe();
+    auto sf = co_withExecutor(executor, makeTask()).startInlineUnsafe();
 
     EXPECT_TRUE(hasStarted);
     EXPECT_EQ(parentCtx, RequestContext::try_get());

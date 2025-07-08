@@ -120,7 +120,7 @@ CO_TEST_F(AsyncScopeTest, QueryRemainingCountAfterJoined) {
     EXPECT_EQ(scope.remaining(), 1);
     baton.post();
   };
-  auto validateFut = validateTask().scheduleOn(executor).start();
+  auto validateFut = co_withExecutor(executor, validateTask()).start();
   co_await validateBaton;
   co_await scope.joinAsync();
   co_await std::move(validateFut);

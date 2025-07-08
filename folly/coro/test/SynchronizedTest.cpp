@@ -170,9 +170,9 @@ TEST_F(SynchronizedTest, ThreadSafety) {
     }
   };
 
-  auto f1 = makeTask().scheduleOn(&threadPool).start();
-  auto f2 = makeTask().scheduleOn(&threadPool).start();
-  auto f3 = makeTask().scheduleOn(&threadPool).start();
+  auto f1 = co_withExecutor(&threadPool, makeTask()).start();
+  auto f2 = co_withExecutor(&threadPool, makeTask()).start();
+  auto f3 = co_withExecutor(&threadPool, makeTask()).start();
 
   std::move(f1).get();
   std::move(f2).get();

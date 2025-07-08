@@ -145,7 +145,7 @@ TEST_F(CollectAllTest, OneTaskWithValue) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   executor.drain();
 
@@ -203,7 +203,7 @@ TEST_F(CollectAllTest, CollectAllDoesntCompleteUntilAllTasksComplete) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   EXPECT_FALSE(task1Started);
   EXPECT_FALSE(task2Started);
@@ -507,7 +507,7 @@ TEST_F(CollectAllTryTest, OneTaskWithValue) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   executor.drain();
 
@@ -1984,7 +1984,7 @@ TEST_F(CollectAnyTest, OneTaskWithValue) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   executor.drain();
 
@@ -2061,7 +2061,7 @@ TEST_F(CollectAnyTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   EXPECT_FALSE(task1Started);
   EXPECT_FALSE(task2Started);
@@ -2230,7 +2230,7 @@ TEST_F(CollectAnyWithoutExceptionTest, OneTaskWithValue) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   executor.drain();
 
@@ -2308,7 +2308,7 @@ TEST_F(CollectAnyWithoutExceptionTest, DoesntCompleteUntilAllTasksComplete) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   EXPECT_FALSE(task1Started);
   EXPECT_FALSE(task2Started);
@@ -2558,7 +2558,7 @@ TEST_F(CollectAnyNoDiscardTest, DoesntCompleteUntilAllTasksComplete) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   EXPECT_FALSE(task1Started);
   EXPECT_FALSE(task2Started);
@@ -2715,7 +2715,7 @@ TEST_F(CollectAnyRangeTest, OneTaskWithValue) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   executor.drain();
 
@@ -2806,7 +2806,7 @@ TEST_F(CollectAnyRangeTest, CollectAnyDoesntCompleteUntilAllTasksComplete) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   EXPECT_FALSE(task1Started);
   EXPECT_FALSE(task2Started);
@@ -2990,7 +2990,7 @@ TEST_F(CollectAnyWithoutExceptionRangeTest, OneTaskWithValue) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   executor.drain();
 
@@ -3082,7 +3082,7 @@ TEST_F(
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   EXPECT_FALSE(task1Started);
   EXPECT_FALSE(task2Started);
@@ -3382,7 +3382,7 @@ TEST_F(CollectAnyNoDiscardRangeTest, DoesntCompleteUntilAllTasksComplete) {
 
   folly::ManualExecutor executor;
 
-  auto future = run().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, run()).start();
 
   EXPECT_FALSE(task1Started);
   EXPECT_FALSE(task2Started);

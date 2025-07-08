@@ -45,7 +45,7 @@ class CoroTest : public testing::Test {};
 TEST_F(CoroTest, Basic) {
   ManualExecutor executor;
   auto task42 = []() -> coro::Task<int> { co_return 42; };
-  auto future = task42().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, task42()).start();
 
   EXPECT_FALSE(future.isReady());
 
@@ -72,7 +72,7 @@ TEST_F(CoroTest, BasicFuture) {
   ManualExecutor executor;
 
   auto task42 = []() -> coro::Task<int> { co_return 42; };
-  auto future = task42().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, task42()).start();
 
   EXPECT_FALSE(future.isReady());
 
@@ -87,7 +87,7 @@ coro::Task<void> taskVoid() {
 
 TEST_F(CoroTest, Basic2) {
   ManualExecutor executor;
-  auto future = taskVoid().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, taskVoid()).start();
 
   EXPECT_FALSE(future.isReady());
 
@@ -115,7 +115,7 @@ TEST_F(CoroTest, Sleep) {
   ScopedEventBaseThread evbThread;
 
   auto startTime = std::chrono::steady_clock::now();
-  auto task = taskSleep().scheduleOn(evbThread.getEventBase());
+  auto task = co_withExecutor(evbThread.getEventBase(), taskSleep());
 
   coro::blockingWait(std::move(task));
 
@@ -176,7 +176,7 @@ TEST_F(CoroTest, FutureThrow) {
   };
 
   ManualExecutor executor;
-  auto future = taskException().scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, taskException()).start();
 
   EXPECT_FALSE(future.isReady());
 
@@ -198,7 +198,7 @@ coro::Task<int> taskRecursion(int depth) {
 
 TEST_F(CoroTest, LargeStack) {
   ScopedEventBaseThread evbThread;
-  auto task = taskRecursion(50000).scheduleOn(evbThread.getEventBase());
+  auto task = co_withExecutor(evbThread.getEventBase(), taskRecursion(50000));
 
   EXPECT_EQ(50000, coro::blockingWait(std::move(task)));
 }
@@ -230,7 +230,7 @@ TEST_F(CoroTest, NestedThreads) {
   };
 
   ScopedEventBaseThread evbThread;
-  auto task = taskThread().scheduleOn(evbThread.getEventBase());
+  auto task = co_withExecutor(evbThread.getEventBase(), taskThread());
   EXPECT_EQ(42, coro::blockingWait(std::move(task)));
 }
 
@@ -411,7 +411,7 @@ TEST_F(CoroTest, Baton) {
 
   ManualExecutor executor;
   fibers::Baton baton;
-  auto future = taskBaton(baton).scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, taskBaton(baton)).start();
 
   EXPECT_FALSE(future.isReady());
 
@@ -760,7 +760,7 @@ struct CountingManualExecutor : public folly::ManualExecutor {
 
 ssize_t runAndCountExecutorAdd(folly::coro::Task<void> task) {
   CountingManualExecutor executor;
-  auto future = std::move(task).scheduleOn(&executor).start();
+  auto future = co_withExecutor(&executor, std::move(task)).start();
 
   executor.drain();
 
