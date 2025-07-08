@@ -70,36 +70,41 @@ std::vector<RTask> collectMakeInnerTaskVec(InputRange& awaitables, Make& make) {
   return tasks;
 }
 
-template <typename SemiAwaitable, typename Result>
+template <typename SemiAwaitableMover, typename Result>
 BarrierTask makeCollectAllTryTask(
     Executor::KeepAlive<> executor,
     const CancellationToken& cancelToken,
-    SemiAwaitable&& awaitable,
+    SemiAwaitableMover&& mover,
     Try<Result>& result) {
   try {
     if constexpr (std::is_void_v<Result>) {
       co_await co_viaIfAsync(
           std::move(executor),
           co_withCancellation(
-              cancelToken, static_cast<SemiAwaitable&&>(awaitable)));
+              cancelToken, static_cast<SemiAwaitableMover&&>(mover)()));
       result.emplace();
     } else {
       result.emplace(co_await co_viaIfAsync(
           std::move(executor),
           co_withCancellation(
-              cancelToken, static_cast<SemiAwaitable&&>(awaitable))));
+              cancelToken, static_cast<SemiAwaitableMover&&>(mover)())));
     }
   } catch (...) {
     result.emplaceException(current_exception());
   }
 }
 
-template <typename... SemiAwaitables, size_t... Indices>
-auto collectAllTryImpl(
-    std::index_sequence<Indices...>, SemiAwaitables... awaitables)
-    -> folly::coro::Task<
-        std::tuple<collect_all_try_component_t<SemiAwaitables>...>> {
+template <
+    typename Ret,
+    typename... SemiAwaitables,
+    size_t... Indices,
+    typename... SemiAwaitablesMovers>
+Ret collectAllTryImpl(
+    tag_t<Ret, SemiAwaitables...>,
+    std::index_sequence<Indices...>,
+    SemiAwaitablesMovers... movers) {
   static_assert(sizeof...(Indices) == sizeof...(SemiAwaitables));
+  static_assert(sizeof...(Indices) == sizeof...(SemiAwaitablesMovers));
   if constexpr (sizeof...(SemiAwaitables) == 0) {
     co_return std::tuple<>{};
   } else {
@@ -113,7 +118,7 @@ auto collectAllTryImpl(
         makeCollectAllTryTask(
             executor.get_alias(),
             cancelToken,
-            static_cast<SemiAwaitables&&>(awaitables),
+            static_cast<SemiAwaitablesMovers&&>(movers),
             std::get<Indices>(results))...,
     };
 
@@ -407,12 +412,13 @@ auto collectAll(SemiAwaitables... awaitables)
 }
 
 template <typename... SemiAwaitables>
-auto collectAllTry(SemiAwaitables&&... awaitables)
-    -> folly::coro::Task<std::tuple<detail::collect_all_try_component_t<
-        remove_cvref_t<SemiAwaitables>>...>> {
+auto collectAllTry(SemiAwaitables... awaitables)
+    -> detail::CollectAllTryTask<SemiAwaitables...> {
   return detail::collectAllTryImpl(
+      tag<detail::CollectAllTryTask<SemiAwaitables...>, SemiAwaitables...>,
       std::make_index_sequence<sizeof...(SemiAwaitables)>{},
-      static_cast<SemiAwaitables&&>(awaitables)...);
+      mustAwaitImmediatelyUnsafeMover(
+          static_cast<SemiAwaitables&&>(awaitables))...);
 }
 
 template <

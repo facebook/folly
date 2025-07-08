@@ -90,8 +90,13 @@ class MoveRange {
 // since e.g. `CancellationToken::merge` can throw `bad_alloc`.
 template <typename... SemiAwaitables>
 using CollectAllTask = PickTaskWrapper<
-    std::tuple<
-        detail::collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>,
+    std::tuple<collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>,
+    std::min({safe_alias::maybe_value, safe_alias_of_v<SemiAwaitables>...}),
+    (must_await_immediately_v<SemiAwaitables> || ...)>;
+
+template <typename... SemiAwaitables>
+using CollectAllTryTask = PickTaskWrapper<
+    std::tuple<collect_all_try_component_t<remove_cvref_t<SemiAwaitables>>...>,
     std::min({safe_alias::maybe_value, safe_alias_of_v<SemiAwaitables>...}),
     (must_await_immediately_v<SemiAwaitables> || ...)>;
 
@@ -179,9 +184,8 @@ auto collectAll(SemiAwaitables... awaitables)
 //    }
 //
 template <typename... SemiAwaitables>
-auto collectAllTry(SemiAwaitables&&... awaitables)
-    -> folly::coro::Task<std::tuple<detail::collect_all_try_component_t<
-        remove_cvref_t<SemiAwaitables>>...>>;
+auto collectAllTry(SemiAwaitables... awaitables)
+    -> detail::CollectAllTryTask<SemiAwaitables...>;
 
 ////////////////////////////////////////////////////////////////////////
 // collectAllRange(RangeOf<SemiAwaitable<T>>&&)

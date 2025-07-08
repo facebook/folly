@@ -40,67 +40,78 @@
 
 namespace folly::coro {
 
-// collectAll(Task) -> Task
-static_assert(std::is_same_v<
-              decltype(collectAll(
-                  FOLLY_DECLVAL(Task<int>), FOLLY_DECLVAL(Task<int>))),
-              Task<std::tuple<int, int>>>);
+struct CollectAll {
+  template <typename... Args>
+  auto operator()(Args...) const
+      -> decltype(collectAll(FOLLY_DECLVAL(Args)...));
+};
 
-#if FOLLY_HAS_IMMOVABLE_COROUTINES
+struct CollectAllTry {
+  template <typename... Args>
+  auto operator()(Args...) const
+      -> decltype(collectAllTry(FOLLY_DECLVAL(Args)...));
+};
 
-// If any of the inputs are immediately-awaitable, so is the collection
-static_assert(std::is_same_v<
-              decltype(collectAll(
-                  FOLLY_DECLVAL(NowTask<int>), FOLLY_DECLVAL(Task<int>))),
-              NowTask<std::tuple<int, int>>>);
-static_assert(std::is_same_v<
-              decltype(collectAll(
-                  FOLLY_DECLVAL(Task<int>), FOLLY_DECLVAL(NowTask<int>))),
-              NowTask<std::tuple<int, int>>>);
-static_assert(std::is_same_v<
-              decltype(collectAll(
-                  FOLLY_DECLVAL(NowTask<int>), FOLLY_DECLVAL(NowTask<int>))),
-              NowTask<std::tuple<int, int>>>);
+template <typename Fn, typename In, typename Out>
+struct SafeTaskTypeAssertions {
+  static_assert(
+      std::is_same_v<
+          decltype(Fn()(FOLLY_DECLVAL(NowTask<In>), FOLLY_DECLVAL(Task<In>))),
+          NowTask<std::tuple<Out, Out>>>);
+  static_assert(
+      std::is_same_v<
+          decltype(Fn()(FOLLY_DECLVAL(Task<In>), FOLLY_DECLVAL(NowTask<In>))),
+          NowTask<std::tuple<Out, Out>>>);
+  static_assert(std::is_same_v<
+                decltype(Fn()(
+                    FOLLY_DECLVAL(NowTask<In>), FOLLY_DECLVAL(NowTask<In>))),
+                NowTask<std::tuple<Out, Out>>>);
 
-// collectAll(NowTask) -> NowTask
-static_assert(std::is_same_v<
-              NowTask<std::tuple<int>>,
-              decltype(collectAll(FOLLY_DECLVAL(NowTask<int>)))>);
-static_assert(std::is_same_v<
-              NowTask<std::tuple<int>>,
-              decltype(collectAll(FOLLY_DECLVAL(NowTaskWithExecutor<int>)))>);
+  // collectAll(NowTask) -> NowTask
+  static_assert(std::is_same_v<
+                NowTask<std::tuple<Out>>,
+                decltype(Fn()(FOLLY_DECLVAL(NowTask<In>)))>);
+  static_assert(std::is_same_v<
+                NowTask<std::tuple<Out>>,
+                decltype(Fn()(FOLLY_DECLVAL(NowTaskWithExecutor<In>)))>);
 
-// collectAll(ValueTask or coro::Future) -> ValueTask
-static_assert(std::is_same_v<
-              ValueTask<std::tuple<int>>,
-              decltype(collectAll(FOLLY_DECLVAL(ValueTask<int>)))>);
-static_assert(std::is_same_v<
-              ValueTask<std::tuple<int>>,
-              decltype(collectAll(FOLLY_DECLVAL(
-                  SafeTaskWithExecutor<safe_alias::maybe_value, int>)))>);
-static_assert(std::is_same_v<
-              ValueTask<std::tuple<int>>,
-              decltype(collectAll(FOLLY_DECLVAL(coro::Future<int>)))>);
+  // collectAll(ValueTask or coro::Future) -> ValueTask
+  static_assert(std::is_same_v<
+                ValueTask<std::tuple<Out>>,
+                decltype(Fn()(FOLLY_DECLVAL(ValueTask<In>)))>);
+  static_assert(std::is_same_v<
+                ValueTask<std::tuple<Out>>,
+                decltype(Fn()(FOLLY_DECLVAL(
+                    SafeTaskWithExecutor<safe_alias::maybe_value, In>)))>);
+  static_assert(std::is_same_v<
+                ValueTask<std::tuple<Out>>,
+                decltype(Fn()(FOLLY_DECLVAL(coro::Future<In>)))>);
 
-// collectAll: returns the "least safe" wrapper
-static_assert(
-    std::is_same_v<
-        NowTask<std::tuple<int, int>>,
-        decltype(collectAll(
-            FOLLY_DECLVAL(NowTask<int>), FOLLY_DECLVAL(ValueTask<int>)))>);
-static_assert(std::is_same_v<
-              Task<std::tuple<int, int>>,
-              decltype(collectAll(
-                  FOLLY_DECLVAL(Task<int>), FOLLY_DECLVAL(ValueTask<int>)))>);
-static_assert(
-    std::is_same_v<
-        NowTask<std::tuple<int, int, int>>,
-        decltype(collectAll(
-            FOLLY_DECLVAL(Task<int>),
-            FOLLY_DECLVAL(NowTask<int>),
-            FOLLY_DECLVAL(ValueTask<int>)))>);
+  // collectAll: returns the "least safe" wrapper
+  static_assert(
+      std::is_same_v<
+          NowTask<std::tuple<Out, Out>>,
+          decltype(Fn()(
+              FOLLY_DECLVAL(NowTask<In>), FOLLY_DECLVAL(ValueTask<In>)))>);
+  static_assert(std::is_same_v<
+                Task<std::tuple<Out, Out>>,
+                decltype(Fn()(
+                    FOLLY_DECLVAL(Task<In>), FOLLY_DECLVAL(ValueTask<In>)))>);
+  static_assert(
+      std::is_same_v<
+          NowTask<std::tuple<Out, Out, Out>>,
+          decltype(Fn()(
+              FOLLY_DECLVAL(Task<In>),
+              FOLLY_DECLVAL(NowTask<In>),
+              FOLLY_DECLVAL(ValueTask<In>)))>);
+};
+namespace {
+[[maybe_unused]] struct SafeTaskTypeAssertions<CollectAll, int, int>
+    checkCollectAll;
 
-#endif
+[[maybe_unused]] struct SafeTaskTypeAssertions<CollectAllTry, int, Try<int>>
+    checkCollectAllTry;
+} // namespace
 
 } // namespace folly::coro
 
@@ -479,6 +490,19 @@ TEST_F(CollectAllTest, TaskWithExecutorUsage) {
 }
 
 class CollectAllTryTest : public testing::Test {};
+
+CO_TEST_F(CollectAllTryTest, NowTask) {
+  auto [a, b] = co_await folly::coro::collectAllTry(
+      []() -> folly::coro::NowTask<void> { co_return; }(),
+      []() -> folly::coro::NowTask<int> {
+        if (false) {
+          co_return 42;
+        }
+        throw ErrorA{};
+      }());
+  EXPECT_TRUE(a.hasValue());
+  EXPECT_TRUE(b.hasException());
+}
 
 TEST_F(CollectAllTryTest, WithNoArgs) {
   bool completed = false;
@@ -1489,8 +1513,8 @@ TEST_F(CollectAllWindowedTest, WithGeneratorOfTaskOfValue) {
     auto count = ++activeCount;
     CHECK_LE(count, maxConcurrency);
 
-    // Reschedule a variable number of times so that tasks may complete out of
-    // order.
+    // Reschedule a variable number of times so that tasks may complete out
+    // of order.
     for (int i = 0; i < index % 5; ++i) {
       co_await folly::coro::co_reschedule_on_current_executor;
     }
@@ -2366,8 +2390,8 @@ TEST_F(CollectAnyWithoutExceptionTest, ThrowsLastError) {
 TEST_F(CollectAnyWithoutExceptionTest, ReturnsFirstValueWithoutException) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     // Child tasks are started in-order.
-    // Since the third task returns a value first ignore the exceptions and the
-    // last value and propagate the third value out of
+    // Since the third task returns a value first ignore the exceptions and
+    // the last value and propagate the third value out of
     // collectAnyWithoutException().
     auto [index, result] = co_await folly::coro::collectAnyWithoutException(
         []() -> folly::coro::Task<int> {
@@ -2498,8 +2522,8 @@ TEST_F(CollectAnyNoDiscardTest, MultipleTasksWithValues) {
       [](std::atomic_size_t& count, size_t num) -> folly::coro::Task<void> {
     count.fetch_add(1);
     while (count.load() < num) {
-      // Need to yield because collectAnyNoDiscard() won't start the second and
-      // third coroutines until the first one gets to a suspend point
+      // Need to yield because collectAnyNoDiscard() won't start the second
+      // and third coroutines until the first one gets to a suspend point
       co_await folly::coro::co_reschedule_on_current_executor;
     }
   };
@@ -2582,9 +2606,9 @@ TEST_F(CollectAnyNoDiscardTest, ThrowsAllErrors) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     // Child tasks are started in-order.
     // The first task will reschedule itself onto the executor.
-    // The second task will fail immediately and will be the first task to fail.
-    // Then the third and first tasks will fail.
-    // We should see all exceptions propagate out of collectAnyNoDiscard().
+    // The second task will fail immediately and will be the first task to
+    // fail. Then the third and first tasks will fail. We should see all
+    // exceptions propagate out of collectAnyNoDiscard().
     auto [first, second, third] = co_await folly::coro::collectAnyNoDiscard(
         [&]() -> folly::coro::Task<int> {
           co_await folly::coro::co_reschedule_on_current_executor;
@@ -3159,8 +3183,8 @@ TEST_F(CollectAnyWithoutExceptionRangeTest, ReturnsFirstValueWithoutException) {
       co_yield []() -> folly::coro::Task<int> { co_return 4; }();
     };
     // Child tasks are started in-order.
-    // Since the third task returns a value first ignore the exceptions and the
-    // last value and propagate the third value out of
+    // Since the third task returns a value first ignore the exceptions and
+    // the last value and propagate the third value out of
     // collectAnyWithoutException().
     auto [index, result] =
         co_await folly::coro::collectAnyWithoutExceptionRange(generateTasks());
@@ -3307,8 +3331,8 @@ TEST_F(CollectAnyNoDiscardRangeTest, MultipleTasksWithValues) {
       [](std::atomic_size_t& count, size_t num) -> folly::coro::Task<void> {
     count.fetch_add(1);
     while (count.load() < num) {
-      // Need to yield because collectAnyNoDiscard() won't start the second and
-      // third coroutines until the first one gets to a suspend point
+      // Need to yield because collectAnyNoDiscard() won't start the second
+      // and third coroutines until the first one gets to a suspend point
       co_await folly::coro::co_reschedule_on_current_executor;
     }
   };
@@ -3406,9 +3430,9 @@ TEST_F(CollectAnyNoDiscardRangeTest, ThrowsAllErrors) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     // Child tasks are started in-order.
     // The first task will reschedule itself onto the executor.
-    // The second task will fail immediately and will be the first task to fail.
-    // Then the third and first tasks will fail.
-    // We should see all exceptions propagate out of collectAnyNoDiscard().
+    // The second task will fail immediately and will be the first task to
+    // fail. Then the third and first tasks will fail. We should see all
+    // exceptions propagate out of collectAnyNoDiscard().
     auto generateTasks =
         [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
       co_yield [&]() -> folly::coro::Task<int> {
