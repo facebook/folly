@@ -29,6 +29,7 @@ non_fbcode_target(
     deps = [
         "//xplat/folly:portability",
         "//xplat/folly:portability_gtest",
+        "//xplat/folly/lang:keep",
         "//xplat/folly/random:xoshiro256pp",
     ],
 )
@@ -40,6 +41,7 @@ fbcode_target(
     name = "xoshiro256pp_test",
     srcs = ["Xoshiro256ppTest.cpp"],
     deps = [
+        "//folly/lang:keep",
         "//folly/portability:gtest",
         "//folly/random:xoshiro256pp",
     ],
