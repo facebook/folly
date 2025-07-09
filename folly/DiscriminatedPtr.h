@@ -184,6 +184,12 @@ class DiscriminatedPtr {
     return call(n, visitor, ptr());
   }
 
+  /**
+   * Get the 1-based type index of the type currently stored in this pointer.
+   * Returns 0 if the pointer is empty.
+   */
+  size_t index() const { return data_ >> 48; }
+
  private:
   /**
    * Get the 1-based type index of T in Types.
@@ -194,8 +200,6 @@ class DiscriminatedPtr {
     static_assert(idx < sizeof...(Types));
     return uint16_t(idx + 1);
   }
-
-  uint16_t index() const { return data_ >> 48; }
   void* ptr() const {
     return reinterpret_cast<void*>(data_ & ((1ULL << 48) - 1));
   }
