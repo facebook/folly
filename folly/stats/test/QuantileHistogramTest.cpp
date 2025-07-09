@@ -208,31 +208,3 @@ TYPED_TEST(QuantileHistogramTypedTest, bimodalStress) {
     EXPECT_EQ(qhist.count(), kNumAdds);
   }
 }
-
-TEST(CPUShardedQuantileHistogramTest, stress) {
-  static constexpr size_t kNumThreads = 20;
-  static constexpr size_t kNumAdds = 2500;
-  std::vector<std::thread> threads(kNumThreads);
-  CPUShardedQuantileHistogram qhist;
-
-  for (auto& th : threads) {
-    th = std::thread([&] {
-      std::default_random_engine rng;
-      std::uniform_real_distribution<double> uniform(0.0, 1.0);
-      for (size_t i = 0; i < kNumAdds; i++) {
-        qhist.addValue(uniform(rng));
-
-        // Random flush operation.
-        if (uniform(rng) < 0.01) {
-          EXPECT_LE(qhist.max(), 1.0);
-        }
-      }
-    });
-  }
-
-  for (auto& th : threads) {
-    th.join();
-  }
-
-  EXPECT_EQ(qhist.count(), kNumThreads * kNumAdds);
-}

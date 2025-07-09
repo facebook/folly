@@ -90,13 +90,9 @@ fbcode_target(
         "QuantileHistogram-inl.h",
     ],
     exported_deps = [
-        ":digest_builder",
         "//folly:conv",
         "//folly:glog",
-        "//folly:likely",
         "//folly:range",
-        "//folly:shared_mutex",
-        "//folly/lang:align",
     ],
 )
 

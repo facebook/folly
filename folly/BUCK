@@ -4379,7 +4379,6 @@ non_fbcode_target(
     deps = [
         ":c_portability",
         ":conv",
-        ":stats_digest_builder",
         "//third-party/glog:glog",
         "//xplat/folly/lang:exception",
     ],
