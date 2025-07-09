@@ -29,6 +29,7 @@
 #include <folly/coro/detail/BarrierTask.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/SourceLocation.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 #include <glog/logging.h>
 
@@ -196,9 +197,9 @@ class AsyncScope {
   }
 
   detail::Barrier barrier_{1};
-  std::atomic<bool> anyTasksStarted_{false};
-  std::atomic<bool> joinStarted_{false};
-  bool joined_{false};
+  relaxed_atomic<bool> anyTasksStarted_{false};
+  relaxed_atomic<bool> joinStarted_{false};
+  relaxed_atomic<bool> joined_{false};
   bool throwOnJoin_{false};
   folly::exception_wrapper maybeException_;
   std::atomic<bool> exceptionRaised_{false};
@@ -210,15 +211,13 @@ inline AsyncScope::AsyncScope(bool throwOnJoin) noexcept
     : throwOnJoin_(throwOnJoin) {}
 
 inline AsyncScope::~AsyncScope() {
-  CHECK(!anyTasksStarted_.load(std::memory_order_relaxed) || joined_)
+  CHECK(!anyTasksStarted_ || joined_)
       << "AsyncScope::cleanup() not yet complete";
 }
 
 inline std::size_t AsyncScope::remaining() const noexcept {
   const std::size_t count = barrier_.remaining();
-  return joinStarted_.load(std::memory_order_relaxed)
-      ? count
-      : (count > 1 ? count - 1 : 0);
+  return joinStarted_ ? count : (count > 1 ? count - 1 : 0);
 }
 
 template <typename Awaitable>
@@ -226,7 +225,7 @@ FOLLY_NOINLINE inline void AsyncScope::add(
     Awaitable&& awaitable, void* returnAddress) {
   CHECK(!joined_)
       << "It is invalid to add() more work after work has been joined";
-  anyTasksStarted_.store(true, std::memory_order_relaxed);
+  anyTasksStarted_ = true;
   addImpl(
       static_cast<Awaitable&&>(awaitable),
       throwOnJoin_,
@@ -245,7 +244,7 @@ FOLLY_NOINLINE inline void AsyncScope::addWithSourceLoc(
     source_location sourceLocation) {
   CHECK(!joined_)
       << "It is invalid to add() more work after work has been joined";
-  anyTasksStarted_.store(true, std::memory_order_relaxed);
+  anyTasksStarted_ = true;
   addImpl(
       static_cast<Awaitable&&>(awaitable),
       throwOnJoin_,
@@ -258,10 +257,8 @@ FOLLY_NOINLINE inline void AsyncScope::addWithSourceLoc(
 }
 
 inline Task<void> AsyncScope::joinAsync() noexcept {
-  assert(
-      !joinStarted_.load(std::memory_order_relaxed) &&
-      "It is invalid to join a scope multiple times");
-  joinStarted_.store(true, std::memory_order_relaxed);
+  assert(!joinStarted_ && "It is invalid to join a scope multiple times");
+  joinStarted_ = true;
   co_await barrier_.arriveAndWait();
   joined_ = true;
   if (maybeException_) {
