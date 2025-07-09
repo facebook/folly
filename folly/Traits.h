@@ -131,6 +131,19 @@ struct require_sizeof_<decltype(void(sizeof(T))), T> {
 template <typename T>
 constexpr std::size_t require_sizeof = detail::require_sizeof_<void, T>::size;
 
+/// is_complete
+/// is_complete_v
+///
+/// It is tempting to define is_complete and is_complete_v, but ultimately these
+/// would be a bad idea. These traits are defined here to witness that these are
+/// intentionally excluded and not merely a missing feature.
+template <typename T>
+struct is_complete {
+  static_assert(always_false<T>, "is_complete would break ODR");
+};
+template <typename T>
+constexpr auto is_complete_v = is_complete<T>::value;
+
 /// is_unbounded_array_v
 /// is_unbounded_array
 ///
