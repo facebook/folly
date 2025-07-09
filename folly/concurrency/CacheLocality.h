@@ -384,6 +384,28 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
   }
 };
 
+/// Similar to AccessSpreader, but it has exactly one stripe for each last-level
+/// cache that is accessible by the current process.
+///
+/// Only supported on Linux; on other systems, numStripes() always returns 1
+/// and current() always returns 0.
+class LLCAccessSpreader {
+  struct PrivateTag {};
+
+ public:
+  static LLCAccessSpreader& get();
+
+  explicit LLCAccessSpreader(PrivateTag);
+
+  size_t current() const;
+  size_t numStripes() const;
+
+ private:
+  Getcpu::Func getcpu_;
+  size_t numStripes_;
+  std::vector<size_t> stripeByCpu_;
+};
+
 /**
  * An allocator that can be used with AccessSpreader to allocate core-local
  * memory.

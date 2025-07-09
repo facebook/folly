@@ -104,6 +104,13 @@ BENCHMARK(CachedAccessSpreaderUse, iters) {
   }
 }
 
+BENCHMARK(LLCAccessSpreaderUse, iters) {
+  for (unsigned long i = 0; i < iters; ++i) {
+    auto x = LLCAccessSpreader::get().current();
+    folly::doNotOptimizeAway(x);
+  }
+}
+
 BENCHMARK(StateCachedAccessSpreaderUse, iters) {
   auto& state = AccessSpreader<>::state();
   for (unsigned long i = 0; i < iters; ++i) {

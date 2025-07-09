@@ -24,6 +24,7 @@
 #include <mutex>
 #include <numeric>
 #include <optional>
+#include <unordered_map>
 
 #include <fmt/core.h>
 #include <glog/logging.h>
@@ -432,6 +433,72 @@ bool AccessSpreaderBase::initialize(
 }
 
 } // namespace detail
+
+/* static */ LLCAccessSpreader& LLCAccessSpreader::get() {
+  static folly::Indestructible<LLCAccessSpreader> instance(PrivateTag{});
+  return *instance;
+}
+
+LLCAccessSpreader::LLCAccessSpreader(PrivateTag) {
+#ifdef __linux__
+  auto getcpu = Getcpu::resolveVdsoFunc();
+  getcpu_ = getcpu ? getcpu : &FallbackGetcpuType::getcpu;
+
+  // /proc/cpuinfo does not have accurate LLC info, we need to force a read
+  // from sysfs.
+  auto cl = CacheLocality::readFromSysfs();
+  stripeByCpu_.resize(cl.numCpus);
+
+  // Only have stripes for LLCs that are accessible from the current process,
+  // and number them sequentially as we discover them.
+  std::unordered_map<size_t, size_t> cacheIdx;
+  cpu_set_t cpuset;
+  PCHECK(sched_getaffinity(0, sizeof(cpuset), &cpuset) == 0);
+  for (size_t cpu = 0; cpu < cl.numCpus; ++cpu) {
+    if (!CPU_ISSET(cpu, &cpuset)) {
+      continue;
+    }
+
+    auto llcEquiv = cl.equivClassesByCpu[cpu].back();
+    auto [it, _] = cacheIdx.try_emplace(llcEquiv, cacheIdx.size());
+    stripeByCpu_[cpu] = it->second;
+  }
+
+  numStripes_ = cacheIdx.size();
+#else
+  numStripes_ = 1;
+#endif // __linux__
+}
+
+size_t LLCAccessSpreader::current() const {
+#ifdef __linux__
+  struct ThreadCache {
+    size_t usesLeft = 0;
+    size_t value;
+  };
+
+  // We expect that a thread doesn't migrate LLC often, so reuse the value a
+  // few times before refreshing it.
+  // TODO(ott): Re-evaluate once we can use rseq to get the current CPU.
+  thread_local ThreadCache tc;
+  if (tc.usesLeft-- == 0) {
+    tc.usesLeft = 16; // A small number is enough to amortize.
+    unsigned cpu;
+    getcpu_(&cpu, nullptr, nullptr);
+    // If the set of active CPUs can change at runtime just return the 0
+    // stripe. This should not happen in normal operations.
+    tc.value = cpu < stripeByCpu_.size() ? stripeByCpu_[cpu] : 0;
+  }
+
+  return tc.value;
+#else
+  return 0;
+#endif // __linux__
+}
+
+size_t LLCAccessSpreader::numStripes() const {
+  return numStripes_;
+}
 
 namespace {
 
