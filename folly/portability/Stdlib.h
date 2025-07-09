@@ -72,7 +72,7 @@ int unsetenv(const char* name);
 } // namespace portability
 } // namespace folly
 
-#if defined(_WIN32) || (!__linux__ && !FOLLY_MOBILE)
+#if defined(_WIN32) || (!defined(__linux__) && !FOLLY_MOBILE)
 FOLLY_PUSH_WARNING
 FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
 /* using override */ using namespace folly::portability::stdlib;
