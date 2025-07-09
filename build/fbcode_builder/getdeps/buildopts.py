@@ -21,6 +21,9 @@ from .manifest import ContextGenerator
 from .platform import get_available_ram, HostType, is_windows
 
 
+CYGWIN_TMP = "c:\\cygwin\\tmp"
+
+
 def detect_project(path):
     repo_type, repo_root = containing_repo_type(path)
     if repo_type is None:
@@ -582,9 +585,18 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
                         "so that I can store build products somewhere sane"
                     )
                 )
-            scratch_dir = os.path.join(
-                os.environ["DISK_TEMP"], "fbcode_builder_getdeps"
-            )
+
+            disk_temp = os.environ["DISK_TEMP"]
+            if is_windows() and os.path.exists(CYGWIN_TMP):
+                # prefer the cygwin tmp dir, as its less likely to have a tmp cleaner
+                # that removes extracted prior dated source files
+                print(
+                    f"Using {CYGWIN_TMP} instead of DISK_TEMP {disk_temp} for scratch dir",
+                    file=sys.stderr,
+                )
+                disk_temp = CYGWIN_TMP
+
+            scratch_dir = os.path.join(disk_temp, "fbcode_builder_getdeps")
         if not scratch_dir:
             try:
                 scratch_dir = (
