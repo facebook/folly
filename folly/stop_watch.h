@@ -17,7 +17,6 @@
 #pragma once
 
 #include <chrono>
-#include <stdexcept>
 #include <utility>
 
 #include <folly/Chrono.h>
@@ -178,7 +177,7 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *  std::cout << "time elapsed: " << watch.elapsed() << std::endl;
    *
    */
-  duration elapsed() const {
+  [[nodiscard]] duration elapsed() const {
     return std::chrono::duration_cast<duration>(now() - checkpoint_);
   }
 
@@ -197,7 +196,7 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *
    */
   template <typename UDuration>
-  bool elapsed(UDuration&& amount) const {
+  [[nodiscard]] bool elapsed(UDuration&& amount) const {
     return now() - checkpoint_ >= amount;
   }
 
@@ -249,7 +248,7 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
    *
    */
   template <typename UDuration>
-  bool lap(UDuration&& amount) {
+  [[nodiscard]] bool lap(UDuration&& amount) {
     auto current = now();
 
     if (current - checkpoint_ < amount) {
@@ -270,7 +269,7 @@ struct custom_stop_watch : private detail::inheritable<Clock> {
  private:
   typename clock_type::time_point checkpoint_;
 
-  typename clock_type::time_point now() const {
+  [[nodiscard]] typename clock_type::time_point now() const {
     // We cannot just do base::now() if clock_type is marked as final.
     return static_cast<clock_type const&>(*this).now();
   }
