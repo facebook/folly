@@ -467,6 +467,8 @@ LLCAccessSpreader::LLCAccessSpreader(PrivateTag) {
   numStripes_ = cacheIdx.size();
 #else
   numStripes_ = 1;
+  (void)getcpu_;
+  (void)stripeByCpu_;
 #endif // __linux__
 }
 
