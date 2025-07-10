@@ -90,7 +90,7 @@ The `XLOGF()` and `FB_LOGF()` macros format their arguments using
 format syntax supported by
 [`fmt::format()`](https://fmt.dev/latest/syntax.html).
 
-Additionally he `XLOG()` and `FB_LOG()` macros concatenate any log arguments
+Additionally the `XLOG()` and `FB_LOG()` macros concatenate any log arguments
 using `folly::to<string>()`, and also accept arguments via iostream-style `<<`
 syntax.
 
