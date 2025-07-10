@@ -861,24 +861,22 @@ estimateSpaceNeeded(const Src&) {
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 namespace detail {
 
-FOLLY_ERASE constexpr size_t estimateSpaceToReserveOne(std::false_type, void*) {
-  return 0;
-}
-template <typename T>
-FOLLY_ERASE constexpr size_t estimateSpaceToReserveOne(
-    std::true_type, const T& v) {
-  return estimateSpaceNeeded(v);
-}
-
 template <typename>
 struct EstimateSpaceToReserveAll;
 template <size_t... I>
 struct EstimateSpaceToReserveAll<std::index_sequence<I...>> {
-  template <size_t J, size_t N = sizeof...(I)>
-  using tag = std::bool_constant<J + 1 < N>;
+  template <bool Tag, typename T>
+  FOLLY_ERASE static constexpr size_t one(const T& v) {
+    if constexpr (!Tag) {
+      return 0;
+    } else {
+      return estimateSpaceNeeded(v);
+    }
+  }
+
   template <class... T>
   static size_t call(const T&... v) {
-    const size_t sizes[] = {estimateSpaceToReserveOne(tag<I>{}, v)...};
+    const size_t sizes[] = {one<(I + 1 < sizeof...(I))>(v)...};
     size_t size = 0;
     for (const auto s : sizes) {
       size += s;
@@ -911,55 +909,44 @@ void reserveInTargetDelim(const Delimiter& d, const Ts&... vs) {
       fordelim + EstimateSpaceToReserveAll<seq>::call(vs...));
 }
 
-template <class T>
-FOLLY_ERASE constexpr void toAppendStrImplOne(
-    std::false_type, const T& v, void*) {
-  (void)v;
-}
-template <class T, class Tgt>
-FOLLY_ERASE void toAppendStrImplOne(std::true_type, const T& v, Tgt result) {
-  toAppend(v, result);
-}
 template <typename>
 struct ToAppendStrImplAll;
 template <size_t... I>
 struct ToAppendStrImplAll<std::index_sequence<I...>> {
+  template <bool Tag, class T, class Tgt>
+  FOLLY_ERASE static void one(const T& v, Tgt* result) {
+    if constexpr (Tag) {
+      toAppend(v, result);
+    }
+  }
+
   template <class... T>
   static void call(const T&... v) {
     auto r = getLastElement(v...);
-    ((toAppendStrImplOne(std::bool_constant<I + 1 < sizeof...(T)>{}, v, r)),
-     ...);
+    ((one<I + 1 < sizeof...(T)>(v, r)), ...);
   }
 };
 
-template <class Delimiter, class T>
-FOLLY_ERASE constexpr void toAppendDelimStrImplOne(
-    index_constant<0>, const Delimiter& d, const T& v, void*) {
-  (void)d;
-  (void)v;
-}
-template <class Delimiter, class T, class Tgt>
-FOLLY_ERASE void toAppendDelimStrImplOne(
-    index_constant<1>, const Delimiter& d, const T& v, Tgt result) {
-  (void)d;
-  toAppend(v, result);
-}
-template <class Delimiter, class T, class Tgt>
-FOLLY_ERASE void toAppendDelimStrImplOne(
-    index_constant<2>, const Delimiter& d, const T& v, Tgt result) {
-  toAppend(v, result);
-  toAppend(d, result);
-}
 template <typename>
 struct ToAppendDelimStrImplAll;
 template <size_t... I>
 struct ToAppendDelimStrImplAll<std::index_sequence<I...>> {
-  template <size_t J, size_t N = sizeof...(I), size_t K = N - J - 1>
-  using tag = index_constant<(K < 2 ? K : 2)>;
+  template <size_t Tag, class Delimiter, class T, class Tgt>
+  FOLLY_ERASE static void one(const Delimiter& d, const T& v, Tgt* result) {
+    if constexpr (Tag >= 1) {
+      toAppend(v, result);
+    }
+    if constexpr (Tag >= 2) {
+      toAppend(d, result);
+    }
+  }
+
   template <class Delimiter, class... T>
   static void call(const Delimiter& d, const T&... v) {
+    static_assert(sizeof...(I) > 0);
+    constexpr size_t N = sizeof...(I) - 1;
     auto r = detail::getLastElement(v...);
-    ((toAppendDelimStrImplOne(tag<I>{}, d, v, r)), ...);
+    ((one<(N - I < 2 ? N - I : 2)>(d, v, r)), ...);
   }
 };
 template <
