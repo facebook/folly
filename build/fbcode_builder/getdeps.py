@@ -1015,6 +1015,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         if args.cron:
             if args.cron == "never":
                 return " {}"
+            elif args.cron == "workflow_dispatch":
+                return "\n  workflow_dispatch"
             else:
                 return f"""
   schedule:
@@ -1082,7 +1084,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             if args.runs_on:
                 runs_on = args.runs_on
             else:
-                runs_on = "windows-2019"
+                runs_on = "windows-2022"
             # The windows runners are python 3 by default; python2.exe
             # is available if needed.
             py3 = "python"
@@ -1324,7 +1326,7 @@ jobs:
                 no_deps_arg = "--no-deps "
 
             out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name} {project_prefix}\n"
+                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name}{project_prefix}\n"
             )
 
             out.write("    - name: Copy artifacts\n")
@@ -1339,7 +1341,7 @@ jobs:
 
             out.write(
                 f"      run: {getdepscmd}{allow_sys_arg} fixup-dyn-deps{strip} "
-                f"--src-dir=. {manifest.name} _artifacts/{artifacts} {project_prefix} "
+                f"--src-dir=. {manifest.name} _artifacts/{artifacts}{project_prefix} "
                 f"--final-install-prefix /usr/local\n"
             )
 
@@ -1355,7 +1357,7 @@ jobs:
 
                 out.write("    - name: Test %s\n" % manifest.name)
                 out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} test {num_jobs_arg}--src-dir=. {manifest.name} {project_prefix}\n"
+                    f"      run: {getdepscmd}{allow_sys_arg} test {num_jobs_arg}--src-dir=. {manifest.name}{project_prefix}\n"
                 )
             if build_opts.free_up_disk and not build_opts.is_windows():
                 out.write("    - name: Show disk space at end\n")

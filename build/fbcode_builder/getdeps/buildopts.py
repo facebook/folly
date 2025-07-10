@@ -147,25 +147,43 @@ class BuildOptions(object):
             # On Windows, the compiler is not available in the PATH by
             # default so we need to run the vcvarsall script to populate the
             # environment. We use a glob to find some version of this script
-            # as deployed with Visual Studio 2017.  This logic can also
-            # locate Visual Studio 2019 but note that at the time of writing
-            # the version of boost in our manifest cannot be built with
-            # VS 2019, so we're effectively tied to VS 2017 until we upgrade
-            # the boost dependency.
-            for year in ["2017", "2019"]:
-                vcvarsall += glob.glob(
-                    os.path.join(
-                        os.environ["ProgramFiles(x86)"],
-                        "Microsoft Visual Studio",
-                        year,
-                        "*",
-                        "VC",
-                        "Auxiliary",
-                        "Build",
-                        "vcvarsall.bat",
+            # as deployed with Visual Studio.
+            if len(vcvarsall) == 0:
+                # check the 64 bit installs
+                for year in ["2022"]:
+                    vcvarsall += glob.glob(
+                        os.path.join(
+                            os.environ.get("ProgramFiles", "C:\\Program Files"),
+                            "Microsoft Visual Studio",
+                            year,
+                            "*",
+                            "VC",
+                            "Auxiliary",
+                            "Build",
+                            "vcvarsall.bat",
+                        )
                     )
+
+                # then the 32 bit ones
+                for year in ["2019", "2017"]:
+                    vcvarsall += glob.glob(
+                        os.path.join(
+                            os.environ["ProgramFiles(x86)"],
+                            "Microsoft Visual Studio",
+                            year,
+                            "*",
+                            "VC",
+                            "Auxiliary",
+                            "Build",
+                            "vcvarsall.bat",
+                        )
+                    )
+            if len(vcvarsall) == 0:
+                raise Exception(
+                    "Could not find vcvarsall.bat. Please install Visual Studio."
                 )
             vcvars_path = vcvarsall[0]
+            print(f"Using vcvarsall.bat from {vcvars_path}", file=sys.stderr)
 
         self.vcvars_path = vcvars_path
 
