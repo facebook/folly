@@ -225,13 +225,10 @@ inline bool exception_wrapper::with_exception_(This& this_, Fn fn_) {
 template <class This, class... CatchFns>
 inline void exception_wrapper::handle_(
     This& this_, char const* name, CatchFns&... fns) {
-  using _ = bool[];
   if (!this_) {
     onNoExceptionError(name);
   }
-  bool handled = false;
-  void(_{false, (handled = handled || with_exception_<void>(this_, fns))...});
-  if (!handled) {
+  if (!(with_exception_<void>(this_, fns) || ...)) {
     this_.throw_exception();
   }
 }

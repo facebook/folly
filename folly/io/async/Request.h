@@ -612,8 +612,7 @@ struct ShallowCopyRequestContextScopeGuard {
       rc->overwriteContextData(i.first, std::move(i.second), true);
     };
 
-    using _ = int[];
-    void(_{0, (go(item), 0)...});
+    ((go(item)), ...);
   }
 
   std::shared_ptr<RequestContext> prev_;

@@ -1105,9 +1105,8 @@ class FormatValue<std::tuple<Args...>> {
   template <class Callback, size_t... I>
   void doFormat(
       size_t i, FormatArg& arg, Callback& cb, std::index_sequence<I...>) const {
-    using _ = int[];
     detail::formatCheckIndex(i, arg, sizeof...(Args));
-    void(_{(i == I ? (FV<I>(std::get<I>(val_)).format(arg, cb), 0) : 0)..., 0});
+    ((i == I && (FV<I>(std::get<I>(val_)).format(arg, cb), 0)), ...);
   }
   template <class Callback>
   void doFormat(size_t i, FormatArg& arg, Callback& cb) const {

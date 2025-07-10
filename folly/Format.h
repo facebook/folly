@@ -181,8 +181,7 @@ class BaseFormatterImpl<
     return static_cast<int>(static_cast<const V&>(values_).value);
   }
   void getSizeArg(int* out) const {
-    using _ = int[];
-    void(_{(out[I] = getSizeArgAt<I, Args>(IsSizeable<Args>{}))..., 0});
+    ((out[I] = getSizeArgAt<I, Args>(IsSizeable<Args>{})), ...);
   }
 
  protected:

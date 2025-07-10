@@ -1241,10 +1241,7 @@ hash_combine_generic(const Hasher& h, const T& t, const Ts&... ts) noexcept(
 template <typename Hash, typename... Value>
 uint64_t commutative_hash_combine_generic(
     uint64_t seed, Hash const& hasher, Value const&... value) {
-  // variadic foreach:
-  uint64_t _[] = {
-      0, seed = commutative_hash_combine_value_generic(seed, hasher, value)...};
-  (void)_;
+  ((seed = commutative_hash_combine_value_generic(seed, hasher, value)), ...);
   return seed;
 }
 

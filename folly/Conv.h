@@ -912,14 +912,13 @@ void reserveInTargetDelim(const Delimiter& d, const Ts&... vs) {
 }
 
 template <class T>
-FOLLY_ERASE constexpr int toAppendStrImplOne(
+FOLLY_ERASE constexpr void toAppendStrImplOne(
     std::false_type, const T& v, void*) {
   (void)v;
-  return 0;
 }
 template <class T, class Tgt>
-FOLLY_ERASE int toAppendStrImplOne(std::true_type, const T& v, Tgt result) {
-  return toAppend(v, result), 0;
+FOLLY_ERASE void toAppendStrImplOne(std::true_type, const T& v, Tgt result) {
+  toAppend(v, result);
 }
 template <typename>
 struct ToAppendStrImplAll;
@@ -927,33 +926,29 @@ template <size_t... I>
 struct ToAppendStrImplAll<std::index_sequence<I...>> {
   template <class... T>
   static void call(const T&... v) {
-    using _ = int[];
     auto r = getLastElement(v...);
-    void(_{toAppendStrImplOne(
-        std::bool_constant<I + 1 < sizeof...(T)>{}, v, r)...});
+    ((toAppendStrImplOne(std::bool_constant<I + 1 < sizeof...(T)>{}, v, r)),
+     ...);
   }
 };
 
 template <class Delimiter, class T>
-FOLLY_ERASE constexpr int toAppendDelimStrImplOne(
+FOLLY_ERASE constexpr void toAppendDelimStrImplOne(
     index_constant<0>, const Delimiter& d, const T& v, void*) {
   (void)d;
   (void)v;
-  return 0;
 }
 template <class Delimiter, class T, class Tgt>
-FOLLY_ERASE int toAppendDelimStrImplOne(
+FOLLY_ERASE void toAppendDelimStrImplOne(
     index_constant<1>, const Delimiter& d, const T& v, Tgt result) {
   (void)d;
   toAppend(v, result);
-  return 0;
 }
 template <class Delimiter, class T, class Tgt>
-FOLLY_ERASE int toAppendDelimStrImplOne(
+FOLLY_ERASE void toAppendDelimStrImplOne(
     index_constant<2>, const Delimiter& d, const T& v, Tgt result) {
   toAppend(v, result);
   toAppend(d, result);
-  return 0;
 }
 template <typename>
 struct ToAppendDelimStrImplAll;
@@ -963,9 +958,8 @@ struct ToAppendDelimStrImplAll<std::index_sequence<I...>> {
   using tag = index_constant<(K < 2 ? K : 2)>;
   template <class Delimiter, class... T>
   static void call(const Delimiter& d, const T&... v) {
-    using _ = int[];
     auto r = detail::getLastElement(v...);
-    void(_{toAppendDelimStrImplOne(tag<I>{}, d, v, r)...});
+    ((toAppendDelimStrImplOne(tag<I>{}, d, v, r)), ...);
   }
 };
 template <
