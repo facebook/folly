@@ -134,7 +134,6 @@ non_fbcode_target(
         ":import",
         ":weak",
         "//xplat/folly:executor",
-        "//xplat/folly:function",
     ],
 )
 
@@ -319,8 +318,8 @@ non_fbcode_target(
     cpp_deps = [
         "fbsource//xplat/folly/io:iobuf",
         "//xplat/folly:executor",
-        "//xplat/folly/python:iobuf_ext",
-        "//xplat/folly/python:iobuf_lib",
+        ":iobuf_ext",
+        ":iobuf_lib",
     ],
     package = "folly",
     tests = [
@@ -329,8 +328,9 @@ non_fbcode_target(
     types = ["iobuf.pyi"],
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:folly",
-        "//xplat/folly/python:futures",
+        ":executor",
+        ":folly",
+        ":futures",
     ],
 )
 
@@ -365,7 +365,6 @@ non_fbcode_target(
     deps = [
         ":import",
         ":weak",
-        "//xplat/folly:function",
         "//xplat/folly/fibers:core",
     ],
 )
@@ -529,7 +528,6 @@ fbcode_target(
         ":asyncio_executor",
         ":weak",
         "//folly:executor",
-        "//folly:function",
     ],
 )
 
@@ -668,7 +666,6 @@ fbcode_target(
     ],
     exported_deps = [
         ":weak",
-        "//folly:function",
         "//folly/fibers:core",
     ],
 )
@@ -761,6 +758,7 @@ fbcode_target(
         "iobuf.pyi",
     ],
     deps = [
+        ":executor",
         ":folly",
         ":futures",
     ],
