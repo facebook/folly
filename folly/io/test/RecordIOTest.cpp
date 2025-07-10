@@ -16,8 +16,6 @@
 
 #include <folly/io/RecordIO.h>
 
-#include <sys/types.h>
-
 #include <random>
 
 #include <glog/logging.h>
