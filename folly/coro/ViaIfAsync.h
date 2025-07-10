@@ -689,8 +689,9 @@ class CommutativeWrapperAwaitable {
   template <
       typename T2,
       std::enable_if_t<must_await_immediately_v<T2>, int> = 0>
-  explicit CommutativeWrapperAwaitable(T2 awaitable) noexcept(
-      std::is_nothrow_constructible_v<T, T2>)
+  explicit CommutativeWrapperAwaitable(T2 awaitable)
+      // `mustAwaitImmediatelyUnsafeMover` has more `noexcept` assertions.
+      noexcept(noexcept(T{FOLLY_DECLVAL(T2)}))
       : inner_(mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()) {}
 
   template <typename Factory>
@@ -783,9 +784,11 @@ class CommutativeWrapperAwaitable {
       typename T2 = T,
       typename = decltype(FOLLY_DECLVAL(T2&&).getUnsafeMover(
           FOLLY_DECLVAL(ForMustAwaitImmediately)))>
-  auto getUnsafeMover(ForMustAwaitImmediately p) && {
+  auto getUnsafeMover(ForMustAwaitImmediately p) && noexcept {
     // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
     static_assert(sizeof(Derived<T>) == sizeof(T));
+    static_assert( // More `noexcept` tests in `MustAwaitImmediatelyUnsafeMover`
+        noexcept(std::move(inner_).getUnsafeMover(p)));
     return MustAwaitImmediatelyUnsafeMover{
         (Derived<T>*)nullptr, std::move(inner_).getUnsafeMover(p)};
   }

@@ -255,9 +255,11 @@ class TaskWrapperCrtp {
 
   // No `cpo_t<co_withAsyncStack>` since a "Task" is not an awaitable.
 
-  auto getUnsafeMover(ForMustAwaitImmediately p) && {
+  auto getUnsafeMover(ForMustAwaitImmediately p) && noexcept {
     // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
     static_assert(sizeof(Derived) == sizeof(typename Cfg::InnerTaskT));
+    static_assert( // More `noexcept` tests in `MustAwaitImmediatelyUnsafeMover`
+        noexcept(std::move(*this).unwrapTask().getUnsafeMover(p)));
     return MustAwaitImmediatelyUnsafeMover{
         (Derived*)nullptr, std::move(*this).unwrapTask().getUnsafeMover(p)};
   }
@@ -289,6 +291,8 @@ class TaskWrapperCrtp {
       detail::unsafe_mover_for_must_await_immediately_t<Inner>>;
 
   explicit TaskWrapperCrtp(Inner t)
+      // `mustAwaitImmediatelyUnsafeMover` has more `noexcept` assertions.
+      noexcept(noexcept(Inner{FOLLY_DECLVAL(Inner)}))
       : task_(mustAwaitImmediatelyUnsafeMover(std::move(t))()) {
     static_assert(
         must_await_immediately_v<Derived> ||
@@ -298,7 +302,7 @@ class TaskWrapperCrtp {
   }
 
   // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
-  Inner unwrapTask() && {
+  Inner unwrapTask() && noexcept {
     static_assert(sizeof(Inner) == sizeof(Derived));
     return mustAwaitImmediatelyUnsafeMover(std::move(task_))();
   }
@@ -319,15 +323,17 @@ class TaskWithExecutorWrapperCrtp {
       detail::unsafe_mover_for_must_await_immediately_t<Inner>>;
 
   // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
-  Inner unwrapTaskWithExecutor() && {
+  Inner unwrapTaskWithExecutor() && noexcept {
     static_assert(sizeof(Inner) == sizeof(Derived));
-    return std::move(inner_);
+    return mustAwaitImmediatelyUnsafeMover(std::move(inner_))();
   }
 
   // Our task can construct us, and that logic lives in the CRTP base
   friend typename Cfg::WrapperTaskT::folly_private_task_wrapper_crtp_base;
 
   explicit TaskWithExecutorWrapperCrtp(Inner t)
+      // `mustAwaitImmediatelyUnsafeMover` has more `noexcept` assertions.
+      noexcept(noexcept(Inner{FOLLY_DECLVAL(Inner)}))
       : inner_(mustAwaitImmediatelyUnsafeMover(std::move(t))()) {}
 
  public:
@@ -395,9 +401,11 @@ class TaskWithExecutorWrapperCrtp {
     return Cfg::wrapAwaitable(co_withAsyncStack(std::move(te.inner_)));
   }
 
-  auto getUnsafeMover(ForMustAwaitImmediately p) && {
+  auto getUnsafeMover(ForMustAwaitImmediately p) && noexcept {
     // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
     static_assert(sizeof(Derived) == sizeof(Inner));
+    static_assert( // More `noexcept` tests in `MustAwaitImmediatelyUnsafeMover`
+        noexcept(std::move(inner_).getUnsafeMover(p)));
     return MustAwaitImmediatelyUnsafeMover{
         (Derived*)nullptr, std::move(inner_).getUnsafeMover(p)};
   }

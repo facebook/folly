@@ -708,8 +708,9 @@ class FOLLY_NODISCARD TaskWithExecutor {
     return std::move(task);
   }
 
-  NoOpMover<TaskWithExecutor> getUnsafeMover(ForMustAwaitImmediately) && {
-    return NoOpMover{std::move(*this)};
+  NoOpMover<TaskWithExecutor> getUnsafeMover(
+      ForMustAwaitImmediately) && noexcept {
+    return NoOpMover{std::move(*this)}; // Asserts `this` is nothrow-movable
   }
 
   using folly_private_task_without_executor_t = Task<T>;
@@ -869,8 +870,8 @@ class FOLLY_CORO_TASK_ATTRS Task {
         invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
   }
 
-  NoOpMover<Task> getUnsafeMover(ForMustAwaitImmediately) && {
-    return NoOpMover{std::move(*this)};
+  NoOpMover<Task> getUnsafeMover(ForMustAwaitImmediately) && noexcept {
+    return NoOpMover{std::move(*this)}; // Asserts `this` is nothrow-movable
   }
 
   using PrivateAwaiterTypeForTests = Awaiter;
