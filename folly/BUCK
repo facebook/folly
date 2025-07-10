@@ -1767,14 +1767,6 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "functional_traits",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/functional:traits"],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "function",
     fbobjc_complete_nullability = True,
@@ -1959,10 +1951,10 @@ non_fbcode_target(
         ":demangle",
         ":exception_string",
         ":fbstring",
-        ":functional_traits",
         ":portability",
         ":traits",
         ":utility",
+        "//xplat/folly/functional:traits",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:exception",
     ],
