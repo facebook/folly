@@ -91,9 +91,9 @@ non_fbcode_target(
         "Util.h",
     ],
     deps = [
-        "//xplat/folly:functional_apply_tuple",
         "//xplat/folly:traits",
         "//xplat/folly/container:iterator",
+        "//xplat/folly/functional:apply_tuple",
     ],
 )
 
