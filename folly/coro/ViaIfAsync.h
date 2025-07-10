@@ -561,7 +561,7 @@ struct ViaIfAsyncFunction {
         std::move(executor),
         mustAwaitImmediatelyUnsafeMover(std::move(awaitable))());
   }
-}; // namespace adl
+};
 
 } // namespace adl
 } // namespace detail
@@ -575,6 +575,10 @@ struct ViaIfAsyncFunction {
 /// execution to the specified executor.
 FOLLY_DEFINE_CPO(detail::adl::ViaIfAsyncFunction, co_viaIfAsync)
 
+template <typename T>
+using semi_await_awaitable_t = decltype(folly::coro::co_viaIfAsync(
+    FOLLY_DECLVAL(folly::Executor::KeepAlive<>), FOLLY_DECLVAL(T)));
+
 template <typename T, typename = void>
 struct is_semi_awaitable : std::bool_constant<!require_sizeof<T>> {};
 
@@ -583,18 +587,14 @@ struct is_semi_awaitable<T, std::enable_if_t<std::is_void_v<T>>>
     : std::false_type {};
 
 template <typename T>
-struct is_semi_awaitable<
-    T,
-    void_t<decltype(folly::coro::co_viaIfAsync(
-        std::declval<folly::Executor::KeepAlive<>>(), FOLLY_DECLVAL(T)))>>
+struct is_semi_awaitable<T, void_t<semi_await_awaitable_t<T>>>
     : std::true_type {};
 
 template <typename T>
 constexpr bool is_semi_awaitable_v = is_semi_awaitable<T>::value;
 
 template <typename T>
-using semi_await_result_t = await_result_t<decltype(folly::coro::co_viaIfAsync(
-    std::declval<folly::Executor::KeepAlive<>>(), FOLLY_DECLVAL(T)))>;
+using semi_await_result_t = await_result_t<semi_await_awaitable_t<T>>;
 
 namespace detail {
 
@@ -747,13 +747,12 @@ class CommutativeWrapperAwaitable {
   template <
       typename T2 = T,
       std::enable_if_t<!must_await_immediately_v<T2>, int> = 0,
-      typename Result = decltype(folly::coro::co_viaIfAsync(
-          std::declval<folly::Executor::KeepAlive<>>(), std::declval<T2>()))>
+      typename Result = semi_await_awaitable_t<T2>>
   friend Derived<Result> co_viaIfAsync(
       folly::Executor::KeepAlive<> executor,
       Derived<T>&& awaitable) //
       noexcept(noexcept(folly::coro::co_viaIfAsync(
-          std::declval<folly::Executor::KeepAlive<>>(), std::declval<T2>()))) {
+          FOLLY_DECLVAL(folly::Executor::KeepAlive<>), FOLLY_DECLVAL(T2)))) {
     return Derived<Result>{
         std::in_place, [&]() -> decltype(auto) {
           return folly::coro::co_viaIfAsync(
@@ -763,15 +762,12 @@ class CommutativeWrapperAwaitable {
   template <
       typename T2 = T,
       std::enable_if_t<must_await_immediately_v<T2>, int> = 0,
-      typename Result = decltype(folly::coro::co_viaIfAsync(
-          std::declval<folly::Executor::KeepAlive<>>(),
-          mustAwaitImmediatelyUnsafeMover(std::declval<T2>())()))>
+      typename Result = semi_await_awaitable_t<T2>>
   friend Derived<Result> co_viaIfAsync(
       folly::Executor::KeepAlive<> executor,
       Derived<T> awaitable) //
       noexcept(noexcept(folly::coro::co_viaIfAsync(
-          std::declval<folly::Executor::KeepAlive<>>(),
-          mustAwaitImmediatelyUnsafeMover(std::declval<T2>())()))) {
+          FOLLY_DECLVAL(folly::Executor::KeepAlive<>), FOLLY_DECLVAL(T2)))) {
     return Derived<Result>{
         std::in_place, [&]() {
           return folly::coro::co_viaIfAsync(
@@ -844,10 +840,8 @@ detail::TryAwaitable<Awaitable> co_awaitTry(
 }
 
 template <typename T>
-using semi_await_try_result_t =
-    await_result_t<decltype(folly::coro::co_viaIfAsync(
-        std::declval<folly::Executor::KeepAlive<>>(),
-        folly::coro::co_awaitTry(FOLLY_DECLVAL(T))))>;
+using semi_await_try_result_t = await_result_t<semi_await_awaitable_t<
+    decltype(folly::coro::co_awaitTry(FOLLY_DECLVAL(T)))>>;
 
 namespace detail {
 

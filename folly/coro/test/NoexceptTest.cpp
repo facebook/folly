@@ -96,11 +96,9 @@ NowTask<void> checkFatalOnThrow() {
   //
   // NB: If your metaprogramming task requires this for uniformity, you can of
   // course make it work, and adjust the test to be `EXPECT_DEATH`.
-  static_assert(detail::is_awaitable_try<decltype(co_viaIfAsync(
-                    FOLLY_DECLVAL(Executor::KeepAlive<>), coThrow()))>);
-  static_assert(
-      !detail::is_awaitable_try<decltype(co_viaIfAsync(
-          FOLLY_DECLVAL(Executor::KeepAlive<>), co_fatalOnThrow(coThrow())))>);
+  static_assert(detail::is_awaitable_try<semi_await_awaitable_t<TaskT>>);
+  static_assert(!detail::is_awaitable_try<
+                semi_await_awaitable_t<decltype(co_fatalOnThrow(coThrow()))>>);
   // (2) The opposite order "just works", no exception is thrown.
   auto ew = (co_await co_fatalOnThrow(co_awaitTry(coThrow()))).exception();
   EXPECT_NE(nullptr, ew.template get_exception<MyErr>());
