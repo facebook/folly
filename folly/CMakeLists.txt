@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(Python3 REQUIRED COMPONENTS Development)
 
 add_library(
     follybenchmark
@@ -100,7 +99,6 @@ if (PYTHON_EXTENSIONS)
       "${_cybld}/folly/python/iobuf_api.h"
   )
 
-find_package(Python3 REQUIRED COMPONENTS Development)
 
   add_library(
     folly_python_cpp
