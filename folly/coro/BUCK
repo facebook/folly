@@ -396,7 +396,7 @@ non_fbcode_target(
         "Cleanup.h",
     ],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -958,7 +958,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Invoke.h"],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:customization_point",
     ],
 )
@@ -1234,11 +1234,11 @@ non_fbcode_target(
     exported_deps = [
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:executor",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:scope_guard",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:traits",
         "//xplat/folly/experimental/coro:via_if_async",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:customization_point",
         "//xplat/folly/tracing:async_stack",
@@ -1825,9 +1825,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["WithAsyncStack.h"],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:traits",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:customization_point",
         "//xplat/folly/tracing:async_stack",

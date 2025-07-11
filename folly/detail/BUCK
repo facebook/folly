@@ -185,12 +185,12 @@ non_fbcode_target(
         "PolyDetail.h",
     ],
     deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:poly_exception",
         "//xplat/folly:portability",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/detail:typelist",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:exception",
         "//xplat/folly/lang:static_const",
     ],
@@ -474,7 +474,7 @@ non_fbcode_target(
         "DiscriminatedPtrDetail.h",
     ],
     deps = [
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
     ],
 )
 

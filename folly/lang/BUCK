@@ -12,7 +12,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Access.h"],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -124,7 +124,7 @@ non_fbcode_target(
     raw_headers = ["CString.h"],
     deps = [
         "//xplat/folly:cpp_attributes",
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -238,8 +238,8 @@ non_fbcode_target(
     raw_headers = ["New.h"],
     exported_deps = [
         "//xplat/folly:cpp_attributes",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:portability",
+        "//xplat/folly/functional:invoke",
     ],
 )
 

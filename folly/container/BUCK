@@ -126,8 +126,8 @@ non_fbcode_target(
         "View.h",
     ],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:portability",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:customization_point",
     ],
 )
@@ -141,12 +141,12 @@ non_fbcode_target(
         "Foreach-inl.h",
     ],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:portability",
         "//xplat/folly:preprocessor",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/container:access",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -175,10 +175,10 @@ non_fbcode_target(
         "Iterator.h",
     ],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/container:access",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:rvalue_reference_wrapper",
     ],
 )
@@ -226,13 +226,13 @@ non_fbcode_target(
         "heap_vector_types.h",
     ],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:portability_builtins",
         "//xplat/folly:range",
         "//xplat/folly:scope_guard",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/container:iterator",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:exception",
         "//xplat/folly/memory:memory_resource",
     ],
@@ -246,7 +246,7 @@ non_fbcode_target(
         "Access.h",
     ],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -308,13 +308,13 @@ non_fbcode_target(
     raw_headers = ["span.h"],
     exported_deps = [
         "//xplat/folly:cpp_attributes",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:portability",
         "//xplat/folly:portability_constexpr",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/container:access",
         "//xplat/folly/container:iterator",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -425,9 +425,9 @@ non_fbcode_target(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:optional",
         "//xplat/folly:range",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -445,13 +445,13 @@ non_fbcode_target(
         "//third-party/boost:boost",
         "//xplat/folly:constexpr_math",
         "//xplat/folly:format_traits",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:hash_hash",
         "//xplat/folly:likely",
         "//xplat/folly:portability",
         "//xplat/folly:portability_malloc",
         "//xplat/folly:scope_guard",
         "//xplat/folly:traits",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:checked_math",

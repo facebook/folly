@@ -56,7 +56,6 @@ non_fbcode_target(
     deps = [
         "//xplat/folly:bits",
         "//xplat/folly:constexpr_math",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:hash_hash",
         "//xplat/folly:hash_rapidhash",
         "//xplat/folly:likely",
@@ -72,6 +71,7 @@ non_fbcode_target(
         "//xplat/folly/container/detail:f14_intrinsics_availability",
         "//xplat/folly/container/detail:f14_mask",
         "//xplat/folly/container/detail:util",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:exception",

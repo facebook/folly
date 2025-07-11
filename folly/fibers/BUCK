@@ -15,8 +15,8 @@ non_fbcode_target(
         "ForEach-inl.h",
     ],
     deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly/fibers:core",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -105,7 +105,6 @@ non_fbcode_target(
         "//xplat/folly:c_portability",
         "//xplat/folly:executor",
         "//xplat/folly:function",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:intrusive_list",
         "//xplat/folly:likely",
         "//xplat/folly:memory",
@@ -120,6 +119,7 @@ non_fbcode_target(
         "//xplat/folly/fibers:guard_page_allocator",
         "//xplat/folly/fibers:loop_controller",
         "//xplat/folly/fibers:traits",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:request_context",
         "//xplat/folly/lang:thunk",
@@ -368,9 +368,9 @@ non_fbcode_target(
         "FiberManager-inl.h",
     ],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:futures_core",
         "//xplat/folly/fibers:core",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -403,10 +403,10 @@ non_fbcode_target(
         "WhenN-inl.h",
     ],
     deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:optional",
         "//xplat/folly/fibers:core",
         "//xplat/folly/fibers:for_each",
+        "//xplat/folly/functional:invoke",
     ],
 )
 

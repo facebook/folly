@@ -93,8 +93,8 @@ non_fbcode_target(
         "FutureExecutor.h",
     ],
     deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:futures_core",
+        "//xplat/folly/functional:invoke",
     ],
 )
 

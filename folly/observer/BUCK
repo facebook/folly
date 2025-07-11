@@ -58,12 +58,12 @@ non_fbcode_target(
         "ReadMostlyTLObserver.h",
     ],
     deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:shared_mutex",
         "//xplat/folly:synchronization_baton",
         "//xplat/folly:thread_local",
         "//xplat/folly/concurrency:core_cached_shared_ptr",
         "//xplat/folly/experimental/observer/detail:observer_manager",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
