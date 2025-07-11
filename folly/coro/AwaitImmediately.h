@@ -33,8 +33,9 @@ namespace folly::coro {
 //
 // To create a new immediately-awaitable type, follow this protocol:
 //   - Derive from `public AddMustAwaitImmediately<YourBase>`.
-//   - Implement `getUnsafeMover(ForMustAwaitImmediately)`, but first read "A
-//     note on object slicing" below, and review the existing examples.
+//   - Implement `getUnsafeMover(ForMustAwaitImmediately) && noexcept`, but
+//     first read the ENTIRE docblock of `mustAwaitImmediatelyUnsafeMover()`
+//     with the notes on object slicing and `noexcept` behavior.
 //
 // To handle immediately-awaitables, `folly::coro` APIs must follow these rules:
 //
@@ -138,7 +139,8 @@ class MustAwaitImmediatelyUnsafeMover {
 
  public:
   // `Outer*` is just for type deduction and should be `nullptr`.
-  MustAwaitImmediatelyUnsafeMover(Outer*, InnerMover m) : mover_(std::move(m)) {
+  MustAwaitImmediatelyUnsafeMover(Outer*, InnerMover m) noexcept
+      : mover_(std::move(m)) {
     // See mustAwaitImmediatelyUnsafeMover docblock
     static_assert(std::is_nothrow_move_constructible_v<InnerMover>);
     // See "A note on object slicing" below
@@ -159,7 +161,7 @@ struct NoOpMover {
   T t_;
 
  public:
-  explicit NoOpMover(T t) : t_(std::move(t)) {
+  explicit NoOpMover(T t) noexcept : t_(std::move(t)) {
     // See mustAwaitImmediatelyUnsafeMover docblock
     static_assert(std::is_nothrow_move_constructible_v<T>);
   }
@@ -180,7 +182,13 @@ using unsafe_mover_for_must_await_immediately_t =
 // the awaitable be used outside of its original full-expression.
 //
 // This wraps `getUnsafeMover` for types that implement it, and provides
-// a no-op fallback for those that don't.
+// a no-op fallback for those that don't. Required semantics:
+//
+//  - It's a destructive operation -- hence the r-value qualifier
+//  - It takes ownership of the internals of `awaitable`.
+//  - It returns a mover value (never a reference), whose `operator() &&` is a
+//    single-use operation that returns a new awaitable equivalent to the
+//    original `awaitable` that was passed in & moved out.
 //
 // ## A note on object slicing -- for `getUnsafeMover` implementations
 //
@@ -220,7 +228,8 @@ typename DetectRes::type mustAwaitImmediatelyUnsafeMover(
     return static_cast<Awaitable&&>(awaitable).getUnsafeMover(
         ForMustAwaitImmediately{});
   } else {
-    static_assert(std::is_nothrow_move_constructible_v<Awaitable>);
+    static_assert(
+        std::is_nothrow_constructible_v<NoOpMover<Awaitable>, Awaitable&&>);
     return NoOpMover<Awaitable>{static_cast<Awaitable&&>(awaitable)};
   }
 }
