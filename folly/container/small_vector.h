@@ -137,6 +137,8 @@ class small_vector;
 
 namespace detail {
 
+namespace small_vector_detail {
+
 /*
  * Move objects in memory to the right into some uninitialized memory, where
  * the region overlaps. Then call create() for each hole in reverse order.
@@ -249,6 +251,8 @@ void partiallyUninitializedCopy(
     std::destroy(to + minSize, to + toSize);
   }
 }
+
+} // namespace small_vector_detail
 
 template <class SizeType, bool ShouldUseHeap, bool AlwaysUseHeap>
 struct IntegralSizePolicyBase {
@@ -460,13 +464,23 @@ struct small_vector_base {
       type;
 };
 
+namespace small_vector_detail {
+
 inline void* unshiftPointer(void* p, size_t sizeBytes) {
   return static_cast<char*>(p) - sizeBytes;
 }
 
+} // namespace small_vector_detail
+
+namespace small_vector_detail {
+
 inline void* shiftPointer(void* p, size_t sizeBytes) {
   return static_cast<char*>(p) + sizeBytes;
 }
+
+} // namespace small_vector_detail
+
+// No backward compatibility using declarations needed
 } // namespace detail
 
 //////////////////////////////////////////////////////////////////////
@@ -593,7 +607,8 @@ class small_vector
       }
       if (o.size() < capacity()) {
         const size_t oSize = o.size();
-        detail::partiallyUninitializedCopy(o.begin(), oSize, begin(), size());
+        detail::small_vector_detail::partiallyUninitializedCopy(
+            o.begin(), oSize, begin(), size());
         this->setSize(oSize);
       } else {
         assign(o.begin(), o.end());
@@ -620,7 +635,7 @@ class small_vector
           moveInlineStorageRelocatable(std::move(o));
         } else {
           const size_t oSize = o.size();
-          detail::partiallyUninitializedCopy(
+          detail::small_vector_detail::partiallyUninitializedCopy(
               std::make_move_iterator(o.u.buffer()),
               oSize,
               this->u.buffer(),
@@ -780,9 +795,8 @@ class small_vector
     }
     auto extra = sz - size();
     makeSize(sz);
-    detail::populateMemForward(begin() + size(), extra, [&](void* p) {
-      new (p) value_type();
-    });
+    detail::small_vector_detail::populateMemForward(
+        begin() + size(), extra, [&](void* p) { new (p) value_type(); });
     this->incrementSize(extra);
   }
 
@@ -796,9 +810,8 @@ class small_vector
     }
     auto extra = sz - size();
     makeSize(sz);
-    detail::populateMemForward(begin() + size(), extra, [&](void* p) {
-      new (p) value_type(v);
-    });
+    detail::small_vector_detail::populateMemForward(
+        begin() + size(), extra, [&](void* p) { new (p) value_type(v); });
     this->incrementSize(extra);
   }
 
@@ -919,7 +932,7 @@ class small_vector
           offset);
       this->incrementSize(1);
     } else {
-      detail::moveObjectsRightAndCreate(
+      detail::small_vector_detail::moveObjectsRightAndCreate(
           data() + offset,
           data() + currentSize,
           data() + currentSize + 1,
@@ -946,7 +959,7 @@ class small_vector
     if (n != 0) {
       auto currentSize = size();
       makeSize(currentSize + n);
-      detail::moveObjectsRightAndCreate(
+      detail::small_vector_detail::moveObjectsRightAndCreate(
           data() + offset,
           data() + currentSize,
           data() + currentSize + n,
@@ -1116,7 +1129,7 @@ class small_vector
     assert(distance >= 0);
     assert(offset >= 0);
     makeSize(currentSize + distance);
-    detail::moveObjectsRightAndCreate(
+    detail::small_vector_detail::moveObjectsRightAndCreate(
         data() + offset,
         data() + currentSize,
         data() + currentSize + distance,
@@ -1156,18 +1169,16 @@ class small_vector
     size_type distance = std::distance(first, last);
     if (distance <= MaxInline) {
       this->incrementSize(distance);
-      detail::populateMemForward(u.buffer(), distance, [&](void* p) {
-        new (p) value_type(*first++);
-      });
+      detail::small_vector_detail::populateMemForward(
+          u.buffer(), distance, [&](void* p) { new (p) value_type(*first++); });
       return;
     }
     makeSize(distance);
     this->incrementSize(distance);
     {
       auto rollback = makeGuard([&] { freeHeap(); });
-      detail::populateMemForward(u.heap(), distance, [&](void* p) {
-        new (p) value_type(*first++);
-      });
+      detail::small_vector_detail::populateMemForward(
+          u.heap(), distance, [&](void* p) { new (p) value_type(*first++); });
       rollback.dismiss();
     }
   }
@@ -1179,7 +1190,8 @@ class small_vector
     this->incrementSize(n);
     {
       auto rollback = makeGuard([&] { freeHeap(); });
-      detail::populateMemForward(data(), n, std::forward<InitFunc>(func));
+      detail::small_vector_detail::populateMemForward(
+          data(), n, std::forward<InitFunc>(func));
       rollback.dismiss();
     }
   }
@@ -1279,8 +1291,10 @@ class small_vector
         newCapacity * sizeof(value_type) + allocationExtraBytes;
     void* newh = checkedMalloc(sizeBytes);
     value_type* newp = static_cast<value_type*>(
-        heapifyCapacity ? detail::shiftPointer(newh, kHeapifyCapacitySize)
-                        : newh);
+        heapifyCapacity
+            ? detail::small_vector_detail::shiftPointer(
+                  newh, kHeapifyCapacitySize)
+            : newh);
 
     {
       auto rollback = makeGuard([&] { //
@@ -1344,12 +1358,14 @@ class small_vector
     InternalSizeType getCapacity() const {
       return heap_
           ? *static_cast<InternalSizeType*>(
-                detail::unshiftPointer(heap_, kHeapifyCapacitySize))
+                detail::small_vector_detail::unshiftPointer(
+                    heap_, kHeapifyCapacitySize))
           : 0;
     }
     void setCapacity(InternalSizeType c) {
       *static_cast<InternalSizeType*>(
-          detail::unshiftPointer(heap_, kHeapifyCapacitySize)) = c;
+          detail::small_vector_detail::unshiftPointer(
+              heap_, kHeapifyCapacitySize)) = c;
     }
     size_t allocationExtraBytes() const { return kHeapifyCapacitySize; }
   } FOLLY_SV_PACK_ATTR;
@@ -1422,7 +1438,8 @@ class small_vector
 
     if (hasCapacity()) {
       auto extraBytes = u.pdata_.allocationExtraBytes();
-      auto vp = detail::unshiftPointer(u.pdata_.heap_, extraBytes);
+      auto vp = detail::small_vector_detail::unshiftPointer(
+          u.pdata_.heap_, extraBytes);
       annotate_object_collected(vp);
       sizedFree(vp, u.getCapacity() * sizeof(value_type) + extraBytes);
     } else {
