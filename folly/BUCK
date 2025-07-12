@@ -1759,14 +1759,6 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "functional_invoke",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/functional:invoke"],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "function",
     fbobjc_complete_nullability = True,
