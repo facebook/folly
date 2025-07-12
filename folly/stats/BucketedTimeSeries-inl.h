@@ -34,8 +34,10 @@ BucketedTimeSeries<VT, CT>::BucketedTimeSeries(
   if (!isAllTime()) {
     // Round nBuckets down to duration_.count().
     //
-    // There is no point in having more buckets than our timestamp
-    // granularity: otherwise we would have buckets that could never be used.
+    // Integer divisions in the class depend on the invariant nBuckets <=
+    // duration_.count(). Besides, there is no point in having more buckets than
+    // our timestamp granularity: otherwise we would have buckets that could
+    // never be used.
     if (nBuckets > size_t(duration_.count())) {
       nBuckets = size_t(duration_.count());
     }
@@ -387,6 +389,32 @@ void BucketedTimeSeries<VT, CT>::getBucketInfo(
   TimeInt scaledBucketStart = scaledTime - scaledOffsetInBucket;
   TimeInt scaledNextBucketStart = scaledBucketStart + duration_.count();
 
+  // To ensure consistency, we perform ceiling division here to scale
+  // down by a factor of buckets_.size(), while we perform floor division
+  // in getBucketIdx to scale down by a factor of duration.
+  // The correctness is guaranteed by the invariant that buckets_.size() <=
+  // duration_.count(). Here is a brief proof.
+  //
+  // Bucket start time is correct iff getBucketIdx(startTime) returns the same
+  // bucket index, and getBucketIdx(startTime-1) returns the previous bucket
+  // index.
+  // bucketStartMod is essentially ceil(bucket_idx * duration / bucket_size).
+  // The bucket index from bucketStartMode is
+  //    floor(ceil(bucket_idx * duration / bucket_size) * bucket_size /
+  //    duration)
+  // If duration is divisible by bucket_size, getBucketIdx(bucketStart) equals
+  // bucket_idx. Otherwise, ceil(bucket_idx * duration / bucket_size) *
+  // bucket_size is strictly greater than bucket_idx * duration and less than
+  // bucket_idx * duration + bucket_size. Since duration >= bucket_size, and we
+  // perform floor division for getBucketIdx, getBucketIdx(bucketStart) still
+  // equals bucket_idx.
+  // For bucketStartMod - 1, the same reasoning applies.
+  // (ceil(bucket_idx * duration / bucket_size) - 1) * bucket_size falls in
+  // [bucket_idx * duration - bucket_size, bucket_idx * duration); the left
+  // equality can be achieved when duration is divisible by bucket_size. It will
+  // always be strictly less than bucket_idx * duration again because of the
+  // bucket_size <= duration invariant. Hence getBucketIdx(bucketStart - 1)
+  // equals bucket_idx - 1.
   Duration bucketStartMod(
       (scaledBucketStart + buckets_.size() - 1) / buckets_.size());
   Duration nextBucketStartMod(
