@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 add_library(
     follybenchmark
     Benchmark.cpp
@@ -86,7 +87,6 @@ if (PYTHON_EXTENSIONS)
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
-      ${_cybld}/folly/executor_api.h
       ${_cybld}/folly/iobuf_api.h
     WORKING_DIRECTORY ${_cybld}
   )
@@ -95,15 +95,10 @@ if (PYTHON_EXTENSIONS)
   add_custom_command(TARGET create_post_binding_symlink
     COMMAND
       ${CMAKE_COMMAND} -E create_symlink
-      "${_cybld}/folly/executor_api.h"
-      "${_cybld}/folly/python/executor_api.h"
-  )
-  add_custom_command(TARGET create_post_binding_symlink
-    COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
       "${_cybld}/folly/iobuf_api.h"
       "${_cybld}/folly/python/iobuf_api.h"
   )
+
 
   add_library(
     folly_python_cpp
@@ -112,6 +107,8 @@ if (PYTHON_EXTENSIONS)
       python/iobuf.cpp
   )
 
+  target_include_directories(folly_python_cpp PRIVATE ${Python3_INCLUDE_DIRS})
+  target_link_libraries(folly_python_cpp PRIVATE Python3::Python)
   add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
@@ -143,7 +140,6 @@ if (PYTHON_EXTENSIONS)
 
   install(
     FILES
-      ${_cybld}/folly/executor_api.h
       ${_cybld}/folly/iobuf_api.h
     DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
     COMPONENT dev
