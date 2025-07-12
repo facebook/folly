@@ -656,7 +656,7 @@ constexpr auto kCpplibVer = 0;
 #if defined(__NVCC__)
 // For now, NVCC matches other compilers but does not offer coroutines.
 #define FOLLY_HAS_COROUTINES 0
-#elif defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES) && \
+#elif defined(_MSVC) && defined(__clang__) && !defined(LLVM_COROUTINES) && \
     !defined(LLVM_COROUTINES_CPP20)
 // LLVM and MSVC coroutines are ABI incompatible, so for the MSVC implementation
 // of <experimental/coroutine> on Windows we *don't* have coroutines.

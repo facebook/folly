@@ -283,7 +283,7 @@ namespace abi = __cxxabiv1;
 
 #endif // defined(__FreeBSD__)
 
-#if defined(_WIN32)
+#if defined(_MSC_VER)
 
 #if defined(__clang__)
 struct _s_ThrowInfo; // compiler intrinsic in msvc
@@ -300,7 +300,7 @@ template <class _E>
 void* __GetExceptionInfo(_E); // builtin
 #endif
 
-#endif // defined(_WIN32)
+#endif // defined(_MSC_VER)
 
 //  implementations ---
 
@@ -517,7 +517,7 @@ void* exception_ptr_get_object_(
 
 #endif // defined(__FreeBSD__)
 
-#if defined(_WIN32)
+#if defined(_MSC_VER)
 
 template <typename T>
 static T* win32_decode_pointer(T* ptr) {
@@ -631,7 +631,7 @@ void* exception_ptr_get_object_(
   return nullptr;
 }
 
-#endif // defined(_WIN32)
+#endif // defined(_MSC_VER)
 
 } // namespace detail
 

@@ -29,7 +29,7 @@ namespace folly {
 uint64_t getCurrentThreadID() {
 #if defined(__APPLE__)
   return uint64_t(pthread_mach_thread_np(pthread_self()));
-#elif defined(_WIN32)
+#elif defined(_WIN32) && !defined(FOLLY_HAVE_PTHREAD)
   return uint64_t(GetCurrentThreadId());
 #else
   return uint64_t(pthread_self());

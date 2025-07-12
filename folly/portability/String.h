@@ -32,8 +32,10 @@ extern "C" char* strndup(const char* a, size_t len);
 #ifdef _WIN32
 extern "C" {
 void bzero(void* s, size_t n);
+#ifdef _MSC_VER
 int strcasecmp(const char* a, const char* b);
 int strncasecmp(const char* a, const char* b, size_t c);
+#endif
 char* strtok_r(char* str, char const* delim, char** ctx);
 }
 #endif

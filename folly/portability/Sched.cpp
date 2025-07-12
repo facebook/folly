@@ -16,7 +16,7 @@
 
 #include <folly/portability/Sched.h>
 
-#ifdef _WIN32
+#if !FOLLY_HAVE_PTHREAD && defined(_WIN32)
 #include <thread>
 
 namespace folly {
