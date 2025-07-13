@@ -61,7 +61,7 @@ struct ScopeExitArg {
 ///  }
 ///
 /// In the example above, a and b will be cleaned up automatically when
-/// cleanup() of the zip genertor is co_awaited, even if next() of the zip
+/// cleanup() of the zip generator is co_awaited, even if next() of the zip
 /// generator have been never co_awaited.
 
 template <typename T, typename CleanupFn>

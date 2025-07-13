@@ -431,7 +431,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   /// This starts execution of the Task on the bound executor, and call the
   /// passed callback upon completion. The callback takes a Try<T> which
   /// represents either th value returned by the Task on success or an
-  /// exeception thrown by the Task
+  /// exception thrown by the Task
   /// @param tryCallback a function that takes in a Try<T>
   /// @param cancelToken a CancelationToken object
   template <typename F>
@@ -995,7 +995,7 @@ Task<T> makeErrorTask(exception_wrapper ew) {
 /// Make a Task out of a Try.
 /// @tparam T the type of the value wrapped by the Try
 /// @param t the Try to convert into a Task
-/// @returns a Task that will yield the Try's value or exeception.
+/// @returns a Task that will yield the Try's value or exception.
 template <class T>
 Task<drop_unit_t<T>> makeResultTask(Try<T> t) {
   co_yield co_result(std::move(t));

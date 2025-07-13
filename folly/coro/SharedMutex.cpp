@@ -215,7 +215,7 @@ SharedMutexFair::LockAwaiterBase* SharedMutexFair::scanReadersAndUpgrader(
     // U1 U2 U3 U4 S1 W S2
     // , and someone just unlocked an exclusive lock
     // we unlock U1 _and_ S1.
-    // However, doing long reader scan everytime someone unlocks any lock
+    // However, doing long reader scan every time someone unlocks any lock
     // is wasteful. Readers can only be blocked when the mutex has an active
     // exclusive lock or there are writers waiting ahead of it. In other words,
     // a reader can only be blocked when there is one or more writers ahead of

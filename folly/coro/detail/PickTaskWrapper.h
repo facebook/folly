@@ -94,7 +94,7 @@ template <safe_alias Safety>
   requires(Safety >= safe_alias::closure_min_arg_safety)
 // Future: There is no principled reason we can't have must-await-immediately
 // `SafeTask`s with these higher safety levels, but supporting that cleanly
-// would require reorganizing the `folly/coro` task-wrapper implemtations.  Two
+// would require reorganizing the `folly/coro` task-wrapper implementations. Two
 // possible approaches are:
 //  - `NowTask<T> = AwaitNow<Task<T>>`
 //  - Roll up `NowTask` and `SafeTask` into something like `BasicTask<T, Cfg>`,

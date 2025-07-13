@@ -375,7 +375,7 @@ auto makeUnorderedTryAsyncGenerator(
 // If any of the input awaitables fail with an exception then requests
 // cancellation of any incomplete operations and fails the whole
 // operation with an exception. If multiple input awaitables fail with
-// an exception then the exeception from the first task to fail (in time)
+// an exception then the exception from the first task to fail (in time)
 // will be rethrown and the rest of the results will be discarded.
 //
 // If there is an exception thrown while iterating over the input-range then

@@ -157,7 +157,7 @@ TEST_F(CoroTest, ExecutorKeepAliveDummy) {
           dynamic_cast<CountingExecutor*>(co_await coro::co_current_executor);
       DCHECK(executor);
 
-      // Note, extra keep-alives are being kept by the Futures.
+      // Note, extra keepalives are being kept by the Futures.
       EXPECT_EQ(3, executor->keepAliveCounter);
 
       co_await go(depth - 1);
@@ -559,7 +559,7 @@ TEST_F(CoroTest, CancelOutstandingSemaphoreWait) {
             co_await folly::coro::co_reschedule_on_current_executor;
             // Completing the second task with an error will cause
             // collectAll() to request cancellation of the other task
-            // whcih should reqeust cancellation of sem.co_wait().
+            // which should request cancellation of sem.co_wait().
             co_yield folly::coro::co_error(ExpectedError{});
           }());
     } catch (const ExpectedError&) {
