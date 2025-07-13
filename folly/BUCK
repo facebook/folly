@@ -602,16 +602,6 @@ non_fbcode_target(
     ],
 )
 
-# Legacy alias
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "turnsequencer",
-    feature = triage_InfrastructureSupermoduleOptou,
-    deps = [
-        "//xplat/folly/detail:turn_sequencer",
-    ],
-)
-
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "portability_stdlib",
@@ -3324,7 +3314,6 @@ non_fbcode_target(
         "//xplat/folly:synchronization_lifo_sem",
         "//xplat/folly:synchronized",
         "//xplat/folly:traits",
-        "//xplat/folly:turnsequencer",
         "//xplat/folly:unit",
         "//xplat/folly/concurrency:concurrent_hash_map",
         "//xplat/folly/concurrency:priority_unbounded_queue_set",
@@ -3334,6 +3323,7 @@ non_fbcode_target(
         "//xplat/folly/container:evicting_cache_map",
         "//xplat/folly/container:foreach",
         "//xplat/folly/detail:socket_fast_open",
+        "//xplat/folly/detail:turn_sequencer",
         "//xplat/folly/executors:cpu_thread_pool_executor",
         "//xplat/folly/executors:global_executor",
         "//xplat/folly/executors:inline_executor",
@@ -3496,7 +3486,7 @@ non_fbcode_target(
         "//xplat/folly:portability_sys_mman",
         "//xplat/folly:singleton",
         "//xplat/folly:try",
-        "//xplat/folly:turnsequencer",
+        "//xplat/folly/detail:turn_sequencer",
         "//xplat/folly/executors:executor_with_priority",
         "//xplat/folly/executors:inline_executor",
         "//xplat/folly/executors:manual_executor",
