@@ -17,7 +17,6 @@
 #include <folly/container/F14Map.h>
 
 #include <algorithm>
-#include <chrono>
 #include <random>
 #include <string>
 #include <type_traits>

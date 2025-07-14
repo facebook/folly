@@ -598,7 +598,6 @@ fbcode_target(
         "//folly:random",
         "//folly:range",
         "//folly:small_vector",
-        "//folly:sorted_vector_types",
         "//folly:utility",
         "//folly/container:heap_vector_types",
         "//folly/memory:malloc",
@@ -875,6 +874,7 @@ fbcode_target(
     srcs = ["HashMapsBench.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
         "//folly:conv",
         "//folly:format",
