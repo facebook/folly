@@ -19,7 +19,6 @@
 #include <atomic>
 #include <cassert>
 #include <condition_variable>
-#include <cstdio>
 #include <cstdlib>
 #include <mutex>
 #include <string>

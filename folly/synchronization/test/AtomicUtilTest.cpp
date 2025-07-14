@@ -22,7 +22,6 @@
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 #include <folly/Utility.h>
-#include <folly/functional/Invoke.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/AtomicRef.h>
 

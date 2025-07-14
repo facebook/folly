@@ -64,7 +64,6 @@ fbcode_target(
         "//folly:benchmark",
         "//folly:portability",
         "//folly:utility",
-        "//folly/functional:invoke",
         "//folly/portability:gtest",
         "//folly/synchronization:atomic_ref",
         "//folly/synchronization:atomic_util",
@@ -507,9 +506,6 @@ fbcode_target(
         "//folly:benchmark",
         "//folly/portability:gtest",
         "//folly/system:hardware_concurrency",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
