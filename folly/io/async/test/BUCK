@@ -485,6 +485,7 @@ non_fbcode_target(
     exported_deps = [
         ":util",
         "//xplat/folly:futures_core",
+        "//xplat/folly:math",
         "//xplat/folly:memory",
         "//xplat/folly:portability_gmock",
         "//xplat/folly:portability_stdlib",
