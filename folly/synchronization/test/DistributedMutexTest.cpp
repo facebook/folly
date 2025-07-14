@@ -574,7 +574,6 @@ void combineWithLockTryAndTimedNThreads(
 
   auto tryLockFunction = [&]() {
     while (!stop.load()) {
-      using Mutex = std::decay_t<decltype(mutex)>;
       auto lck = std::unique_lock{mutex, std::defer_lock};
       if (lck.try_lock()) {
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
@@ -586,7 +585,6 @@ void combineWithLockTryAndTimedNThreads(
 
   auto timedLockFunction = [&]() {
     while (!stop.load()) {
-      using Mutex = std::decay_t<decltype(mutex)>;
       auto lck = std::unique_lock{mutex, std::defer_lock};
       if (lck.try_lock_for(kForever)) {
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
