@@ -14,7 +14,7 @@ load(
     "WINDOWS",
 )
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../../defs.bzl",
     "DEFAULT_APPLE_SDKS",
     "FBANDROID_CXXFLAGS",
     "FBOBJC_CXXFLAGS",

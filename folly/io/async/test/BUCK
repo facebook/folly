@@ -1,13 +1,11 @@
-# @fb-only[end= ]: load("@fbcode//folly/io/async/test/certs:defs.bzl", "alias_pem")
-load("@shim//folly/io/async/test/certs:defs.bzl", "alias_pem") # @oss-only
-
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../../../defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
+load("../../../io/async/test/certs/defs.bzl", "alias_pem")
 
 oncall("fbcode_entropy_wardens_folly")
 

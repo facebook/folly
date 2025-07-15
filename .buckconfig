@@ -8,3 +8,6 @@ root = gh_facebook_folly
 [oss]
 internal_cell = fbcode
 project_dirs = folly
+
+[buck2]
+directories_to_allow_relative_paths = //folly

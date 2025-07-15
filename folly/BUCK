@@ -17,8 +17,9 @@ load(
     "WINDOWS",
 )
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    ":defs.bzl",
     "CXXFLAGS",
     "DEFAULT_APPLE_SDKS",
     "FBANDROID_CPPFLAGS",
@@ -30,7 +31,6 @@ load(
     "folly_xplat_library",
     "should_enable_gflags",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(":folly_extended_library.bzl", "folly_extended_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")

@@ -5,8 +5,8 @@ load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//tools/target_determinator/macros:fbcode_ci_helpers.bzl", "fbcode_ci")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../../defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 

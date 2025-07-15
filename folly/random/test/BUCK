@@ -8,7 +8,7 @@ load(
     "WINDOWS",
 )
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../../defs.bzl",
     "FBANDROID_CXXFLAGS",
     "FBOBJC_CXXFLAGS",
     "folly_xplat_cxx_test",

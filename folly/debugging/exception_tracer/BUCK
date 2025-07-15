@@ -7,11 +7,11 @@ load(
     "WATCHOS",
 )
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../../defs.bzl",
     "folly_xplat_library",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 

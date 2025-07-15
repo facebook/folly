@@ -1,6 +1,6 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
