@@ -156,7 +156,7 @@ static unsigned_nanos filetimeToUnsignedNanos(FILETIME ft) {
 
   // FILETIMEs are in units of 100ns.
   return unsigned_nanos(i.QuadPart * 100);
-};
+}
 
 static LARGE_INTEGER performanceFrequency() {
   static auto result = [] {
