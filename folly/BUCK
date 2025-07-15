@@ -312,7 +312,6 @@ non_fbcode_target(
     ],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
-        "experimental/TestUtil.h",
         "testing/TestUtil.h",
     ],
     deps = [

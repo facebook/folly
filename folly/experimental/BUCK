@@ -37,11 +37,9 @@ fbcode_target(
 )
 
 fbcode_target(
+    # @shim
     _kind = cpp_library,
     name = "test_util",
-    headers = [
-        "TestUtil.h",
-    ],
     exported_deps = [
         "//folly/testing:test_util",
     ],
