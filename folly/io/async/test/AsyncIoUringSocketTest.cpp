@@ -583,7 +583,6 @@ TEST_P(AsyncIoUringSocketTest, DetachEventBase) {
     }
     if (std::chrono::steady_clock::now() > start + std::chrono::seconds(1)) {
       FAIL();
-      break;
     }
   } while (true);
 
