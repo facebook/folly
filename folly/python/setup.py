@@ -30,11 +30,13 @@ exts = [
         "folly.executor",
         sources=["folly/executor.pyx", "folly/ProactorExecutor.cpp"],
         libraries=["folly", "glog"],
+        define_macros=[("GLOG_USE_GLOG_EXPORT", "1")],
     ),
     Extension(
         "folly.iobuf",
         sources=["folly/iobuf.pyx", "folly/iobuf_ext.cpp"],
         libraries=["folly", "glog"],
+        define_macros=[("GLOG_USE_GLOG_EXPORT", "1")],
     ),
 ]
 
