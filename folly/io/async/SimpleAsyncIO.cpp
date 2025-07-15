@@ -80,7 +80,6 @@ SimpleAsyncIO::SimpleAsyncIO(Config cfg)
     default:
       // Should never happen...
       LOG(FATAL) << "unrecognized mode " << (int)cfg.mode_ << " requested";
-      break;
   }
 
   if (cfg.evb_) {
