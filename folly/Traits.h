@@ -937,6 +937,9 @@ struct IsRelocatable<std::pair<T, U>>
 template <typename T, typename... Ts>
 using IsOneOf = StrictDisjunction<std::is_same<T, Ts>...>;
 
+template <typename T, typename... Ts>
+inline constexpr bool is_one_of_v = IsOneOf<T, Ts...>::value;
+
 /*
  * Complementary type traits for integral comparisons.
  *
