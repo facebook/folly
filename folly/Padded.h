@@ -118,15 +118,6 @@ class Node {
   } storage_;
 };
 
-// We must define kElementCount and kPaddingBytes to work around a bug
-// in gtest that odr-uses them.
-template <class T, size_t NS>
-constexpr size_t Node<T, NS>::kNodeSize;
-template <class T, size_t NS>
-constexpr size_t Node<T, NS>::kElementCount;
-template <class T, size_t NS>
-constexpr size_t Node<T, NS>::kPaddingBytes;
-
 template <class Iter>
 class Iterator;
 
