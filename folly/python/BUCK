@@ -280,6 +280,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["iobuf_ext.h"],
+    deps = [
+        ":weak",
+    ],
     exported_deps = [
         "fbsource//third-party/python:python",
         "fbsource//xplat/folly/io:iobuf",
@@ -710,6 +713,9 @@ fbcode_target(
     name = "iobuf_ext",
     srcs = ["iobuf_ext.cpp"],
     headers = ["iobuf_ext.h"],
+    deps = [
+        ":weak",
+    ],
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         "//folly:executor",
