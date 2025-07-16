@@ -37,9 +37,8 @@ fb_xplat_rust_library(
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
         "fbsource//third-party/rust:memmap2",
-        "fbsource//xplat/thrift/lib/rust:fbthrift",
-    ],
         get_cell_name() + "//" + package_name() + "_sys:iobuf-sys",
+    ]
 )
 
 fb_native.alias(
