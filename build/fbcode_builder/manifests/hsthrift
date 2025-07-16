@@ -24,6 +24,7 @@ boost
 builder = make
 
 [make.build_args]
+setup-folly-0
 cabal-update
 all
 
