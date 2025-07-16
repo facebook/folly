@@ -28,21 +28,21 @@ non_fbcode_target(
     ],
     deps = [
         "//third-party/boost:boost",
-    ],
-    exported_deps = [
         "//third-party/boost:boost_regex",
         "//third-party/glog:glog",
         "//xplat/folly:exception",
-        "//xplat/folly:experimental_io_fs_util",
         "//xplat/folly:file",
         "//xplat/folly:file_util",
         "//xplat/folly:memory",
         "//xplat/folly:portability_fcntl",
-        "//xplat/folly:range",
-        "//xplat/folly:scope_guard",
         "//xplat/folly:string",
         "//xplat/folly/ext:test_ext",
         "//xplat/folly/ext/buck2:test_ext",
+    ],
+    exported_deps = [
+        "//xplat/folly:experimental_io_fs_util",
+        "//xplat/folly:range",
+        "//xplat/folly:scope_guard",
     ],
 )
 
