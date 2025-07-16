@@ -117,7 +117,7 @@ pub mod bridge {
 
     #[namespace = "facebook::rust"]
     unsafe extern "C++" {
-        include!("folly/rust/iobuf/iobuf.h");
+        include!("folly/rust/iobuf_sys/iobuf.h");
 
         fn iobuf_create(cap: usize) -> UniquePtr<IOBuf>;
         fn iobuf_create_combined(cap: usize) -> UniquePtr<IOBuf>;
