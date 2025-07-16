@@ -33,7 +33,7 @@ fbcode_target(
     headers = ["request_context.h"],
     visibility = [],
     deps = [
-        ":request_context@header",
+        # ":request_context@header",
     ],
     exported_deps = [
         "fbsource//third-party/rust:cxx",

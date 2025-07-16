@@ -13,7 +13,8 @@ fbcode_target(
     undefined_symbols = True,  # defined by :network_address
     visibility = [],
     deps = [
-        ":network_address@header",
+        # FIXME: This probably can't be skipped
+        # ":network_address@header",
     ],
     exported_deps = [
         "fbsource//third-party/rust:cxx",
