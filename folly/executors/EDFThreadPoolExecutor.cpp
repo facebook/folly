@@ -45,8 +45,8 @@ namespace folly {
 
 class EDFThreadPoolExecutor::Task {
  public:
-  explicit Task(Func&& f, int repeat, uint64_t deadline)
-      : f_(std::move(f)), total_(repeat), deadline_(deadline) {}
+  explicit Task(Func&& f, uint64_t deadline)
+      : f_(std::move(f)), total_(1), deadline_(deadline) {}
 
   explicit Task(std::vector<Func>&& fs, uint64_t deadline)
       : fs_(std::move(fs)), total_(fs_.size()), deadline_(deadline) {}
@@ -300,12 +300,12 @@ void EDFThreadPoolExecutor::add(Func f) {
   add(std::move(f), kLatestDeadline);
 }
 
-void EDFThreadPoolExecutor::add(Func f, std::size_t total, uint64_t deadline) {
-  if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed) || total == 0)) {
+void EDFThreadPoolExecutor::add(Func f, uint64_t deadline) {
+  if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
     return;
   }
 
-  auto task = std::make_shared<Task>(std::move(f), total, deadline);
+  auto task = std::make_shared<Task>(std::move(f), deadline);
   registerTaskEnqueue(*task);
   taskQueue_->push(std::move(task));
 
@@ -313,7 +313,7 @@ void EDFThreadPoolExecutor::add(Func f, std::size_t total, uint64_t deadline) {
   if (numIdleThreads > 0) {
     // If idle threads are available notify them, otherwise all worker threads
     // are running and will get around to this task in time.
-    sem_->post(std::min(total, numIdleThreads));
+    sem_->post(std::min<size_t>(1, numIdleThreads));
   }
 }
 
