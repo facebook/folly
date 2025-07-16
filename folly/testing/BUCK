@@ -1,7 +1,52 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "test_util",
+    srcs = [
+        "TestUtil.cpp",
+    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//compiler:clang": [
+            "-Wno-narrowing",
+        ],
+    }),
+    fbandroid_deps = [
+        "//xplat/third-party/linker_lib:atomic",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "TestUtil.h",
+    ],
+    deps = [
+        "//third-party/boost:boost",
+    ],
+    exported_deps = [
+        "//third-party/boost:boost_regex",
+        "//third-party/glog:glog",
+        "//xplat/folly:exception",
+        "//xplat/folly:experimental_io_fs_util",
+        "//xplat/folly:file",
+        "//xplat/folly:file_util",
+        "//xplat/folly:memory",
+        "//xplat/folly:portability_fcntl",
+        "//xplat/folly:range",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:string",
+        "//xplat/folly/ext:test_ext",
+        "//xplat/folly/ext/buck2:test_ext",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
