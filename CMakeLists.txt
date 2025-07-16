@@ -83,13 +83,15 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
   message(STATUS "setting C++ standard to C++${CMAKE_CXX_STANDARD}")
 endif()
+set(FOLLY_CXX_OPTIONS "-std=c++${CMAKE_CXX_STANDARD}")
 
 # Explicitly enable coroutine support, since GCC does not enable it
 # by default when targeting C++17/20.
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fcoroutines>)
+  set(FOLLY_CXX_OPTIONS "${FOLLY_CXX_OPTIONS} -fcoroutines")
 endif()
-
+ 
 if(NOT DEFINED IS_X86_64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
   set(IS_X86_64_ARCH TRUE)
 else()
