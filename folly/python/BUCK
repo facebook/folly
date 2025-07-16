@@ -791,7 +791,7 @@ fbcode_target(
     srcs = ["iobuf.cpp"],
     headers = [
         "iobuf.h",
-        # @fb-only[end= ]: ":iobuf__iobuf_api.h",
+        ":iobuf__iobuf_api.h",
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
