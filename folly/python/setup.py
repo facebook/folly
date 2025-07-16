@@ -29,7 +29,6 @@ from setuptools import Extension, setup
 
 Options.fast_fail = True
 
-
 def parse_build_mode(argv: list) -> tuple:
     """
     Parse command line arguments to determine build mode.
@@ -52,31 +51,50 @@ is_api_only, remaining_argv = parse_build_mode(sys.argv)
 sys.argv = remaining_argv
 
 if is_api_only:
-    # Generate API headers only (no C++ compilation or linking)
-    # Used by CMake to generate iobuf_api.h before building folly_python_cpp
-    Cython.Compiler.Main.compile(
-        "folly/iobuf.pyx",
-        full_module_name="folly.iobuf",
-        cplus=True,
-        language_level=3,
-    )
+    # Invoke cython compiler directly instead of calling cythonize().
+    # Generating *_api.h files only requires first stage of compilation
+    # # from cython source -> cpp source.
     Cython.Compiler.Main.compile(
         "folly/executor.pyx",
         full_module_name="folly.executor",
         cplus=True,
+        # include_path=[pkg_dir("folly")],
+        language_level=3,
+    )
+    Cython.Compiler.Main.compile(
+        "folly/iobuf.pyx",
+        full_module_name="folly.iobuf",
+        cplus=True,
+        # include_path=[pkg_dir("folly")],
         language_level=3,
     )
 else:
     exts = [
         Extension(
             "folly.executor",
-            sources=["folly/executor.pyx", "folly/ProactorExecutor.cpp"],
+            sources=[
+                "folly/executor.pyx",
+                "folly/ProactorExecutor.cpp",
+            ],
             libraries=["folly_python_cpp", "folly", "glog"],
+
+            # So the loader can find bundled .so next to the extension at runtime:
+            runtime_library_dirs=['$ORIGIN'],            # Linux
+            extra_link_args=['-Wl,-rpath,$ORIGIN'],      # Linux (some dists ignore runtime_library_dirs)
+            # On macOS use: extra_link_args=['-Wl,-rpath,@loader_path']
         ),
         Extension(
             "folly.iobuf",
-            sources=["folly/iobuf.pyx", "folly/iobuf_ext.cpp"],
+            sources=[
+                "folly/iobuf.pyx",
+                "folly/iobuf_ext.cpp",
+            ],
             libraries=["folly_python_cpp", "folly", "glog"],
+
+            # So the loader can find bundled .so next to the extension at runtime:
+            runtime_library_dirs=['$ORIGIN'],            # Linux
+            extra_link_args=['-Wl,-rpath,$ORIGIN'],      # Linux (some dists ignore runtime_library_dirs)
+            # On macOS use: extra_link_args=['-Wl,-rpath,@loader_path']
         ),
     ]
 
@@ -84,7 +102,12 @@ else:
         name="folly",
         version="0.0.1",
         packages=["folly"],
-        package_data={"": ["*.pxd", "*.h"]},
+        package_data={
+            "": ["*.pxd", "*.h"],
+            "folly": ["libfolly_python_cpp.so"],
+        },
+        # include_package_data=True,                           # (optional) works with MANIFEST.in too
+
         setup_requires=["cython"],
         zip_safe=False,
         ext_modules=cythonize(exts, compiler_directives={"language_level": 3}),
