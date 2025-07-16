@@ -20,10 +20,10 @@ use std::slice;
 use bytes::Buf;
 use bytes::Bytes;
 use cxx::UniquePtr;
-#[cfg(fbcode_build)]
-use fbthrift::BufExt;
 use iobuf_sys::root::facebook::rust::*;
 use iobuf_sys::root::folly::IOBuf as IOBufSys;
+
+use crate::bufext::BufExt;
 
 use crate::IOBuf;
 use crate::bridge;
