@@ -78,15 +78,15 @@ fb_xplat_cxx_library(
         "fbcode//folly/rust/iobuf/...",
         "fbsource//xplat/folly/rust/iobuf/...",
     ],
-    exported_deps = [
-        "fbsource//xplat/folly/io:iobuf" if is_xplat() else "fbcode//folly/io:iobuf",
-    ],
+    # exported_deps = [
+    #     "fbsource//xplat/folly/io:iobuf" if is_xplat() else "fbcode//folly/io:iobuf",
+    # ],
 )
 
 fb_xplat_rust_library(
     name = "_iobuf",
     srcs = glob(["src/*.rs"]),
-    cpp_deps = [":_iobuf-ffi"],
+    # cpp_deps = [":_iobuf-ffi"],
     crate = "iobuf",
     crate_root = "src/lib.rs",
     cxx_bridge = "src/lib.rs",
@@ -104,7 +104,7 @@ fb_xplat_rust_library(
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
         "fbsource//third-party/rust:memmap2",
-        "fbsource//xplat/thrift/lib/rust:fbthrift",
+        # "fbsource//xplat/thrift/lib/rust:fbthrift",
         ":iobuf-sys",
     ],
 )
