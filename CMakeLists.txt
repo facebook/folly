@@ -757,7 +757,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES StaticSingletonManagerTest.cpp
       TEST detail_type_list_test SOURCES TypeListTest.cpp
 
-    DIRECTORY detail/base64_detail/tests/
+    DIRECTORY detail/base64_detail/test/
       TEST detail_base64_detail_test WINDOWS_DISABLED
       SOURCES
         Base64AgainstScalarTest.cpp
