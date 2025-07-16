@@ -481,16 +481,6 @@ non_fbcode_target(
     ],
 )
 
-# Legacy alias
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "inline_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
-    deps = [
-        "//xplat/folly/executors:inline_executor",
-    ],
-)
-
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "subprocess",
