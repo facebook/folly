@@ -18,7 +18,6 @@
 
 #include <folly/container/F14Map.h>
 
-#include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
 #include <vector>

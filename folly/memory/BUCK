@@ -439,9 +439,8 @@ fbcode_target(
     allocator = "jemalloc",
     labels = ["oss-broken"],
     deps = [
+        ":jemalloc_huge_page_allocator",
         "//folly/container:f14_hash",
-        "//folly/memory:jemalloc_huge_page_allocator",
-        "//folly/memory:malloc",
         "//folly/portability:gtest",
     ],
 )
