@@ -104,6 +104,13 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_TARGET_ATTRIBUTE(target) __attribute__((__target__(target)))
 #endif
 
+#if defined(__i386__) || defined(__i686__) || defined(__x86__) || \
+    defined(_M_IX86)
+#define FOLLY_X86 1
+#else
+#define FOLLY_X86 0
+#endif
+
 // detection for 64 bit
 #if defined(__x86_64__) || defined(_M_X64)
 #define FOLLY_X64 1
@@ -149,6 +156,7 @@ constexpr bool kHasUnalignedAccess = false;
 
 namespace folly {
 constexpr bool kIsArchArm = FOLLY_ARM == 1;
+constexpr bool kIsArchX86 = FOLLY_X86 == 1;
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
