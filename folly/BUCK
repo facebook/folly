@@ -298,14 +298,6 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "experimental_test_util",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/testing:test_util"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "testing_test_util",
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/testing:test_util"],
