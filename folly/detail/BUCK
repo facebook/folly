@@ -488,8 +488,8 @@ non_fbcode_target(
     ],
     deps = [
         "//xplat/folly:conv",
-        "//xplat/folly:experimental_test_util",
         "//xplat/folly:system_pid",
+        "//xplat/folly/testing:test_util",
     ] + select({
         "DEFAULT": [],
         "ovr_config//os:linux": ["//xplat/folly:subprocess"],

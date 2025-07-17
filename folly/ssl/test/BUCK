@@ -37,7 +37,6 @@ non_fbcode_target(
     },
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//xplat/folly:experimental_test_util",
         "//xplat/folly:format",
         "//xplat/folly:portability_gmock",
         "//xplat/folly:portability_gtest",
@@ -48,6 +47,7 @@ non_fbcode_target(
         "//xplat/folly/container:enumerate",
         "//xplat/folly/ssl:openssl_cert_utils",
         "//xplat/folly/ssl:openssl_ptr_types",
+        "//xplat/folly/testing:test_util",
     ],
 )
 
