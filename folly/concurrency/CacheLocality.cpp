@@ -44,14 +44,17 @@ namespace folly {
 /// Returns the CacheLocality information best for this machine
 static CacheLocality getSystemLocalityInfo() {
   if (kIsLinux) {
-    // First try to parse /proc/cpuinfo.
-    // If that fails, then try to parse /sys/devices/.
-    // The latter is slower but more accurate.
-    try {
-      return CacheLocality::readFromProcCpuinfo();
-    } catch (...) {
-      // /proc/cpuinfo might be non-standard
-      // lets try with sysfs /sys/devices/cpu
+    if (kIsArchAmd64 || kIsArchX86) {
+      // First try to parse /proc/cpuinfo.
+      // But only on arch's where the file has cpu topology hints.
+      // If that fails, then try to parse /sys/devices/.
+      // The latter is slower but more accurate.
+      try {
+        return CacheLocality::readFromProcCpuinfo();
+      } catch (...) {
+        // /proc/cpuinfo might be non-standard
+        // lets try with sysfs /sys/devices/cpu
+      }
     }
 
     try {
