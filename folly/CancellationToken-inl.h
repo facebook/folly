@@ -442,7 +442,8 @@ std::pair<CancellationSource, std::tuple<Data...>*> CancellationSource::create(
 }
 
 template <typename... Ts>
-inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
+CancellationToken cancellation_token_merge_fn::operator()(
+    Ts&&... tokens) const {
   if constexpr (sizeof...(Ts) == 0) {
     return CancellationToken();
   } else if constexpr (sizeof...(Ts) == 1) {
@@ -499,6 +500,11 @@ inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
           copyIdx, copyToks.data(), moveIdx, moveToks.data()));
     }
   }
+}
+
+template <typename... Ts>
+inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
+  return cancellation_token_merge(std::forward<Ts>(tokens)...);
 }
 
 } // namespace folly
