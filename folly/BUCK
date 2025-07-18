@@ -2839,16 +2839,6 @@ non_fbcode_target(
     ],
 )
 
-# Legacy alias
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "farmhash",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = [
-        ":external_farmhash_farmhash",
-    ],
-)
-
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "external_farmhash_farmhash",
