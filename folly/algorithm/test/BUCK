@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -11,5 +12,30 @@ fbcode_target(
     deps = [
         "//folly/algorithm:binary_heap",
         "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "lower_bound_test",
+    srcs = ["LowerBoundTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/algorithm:lower_bound",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "lower_bound_benchmark",
+    srcs = ["LowerBoundBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly/algorithm:lower_bound",
+        "//folly/container:span",
+        "//folly/portability:gflags",
     ],
 )
