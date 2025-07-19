@@ -140,7 +140,7 @@ non_fbcode_target(
     ],
     deps = [
         "//xplat/folly:portability_gflags",
-        "//xplat/folly:system_pid",
+        "//xplat/folly/system:pid",
     ],
     exported_deps = [
         "//xplat/folly:glog",
@@ -488,7 +488,7 @@ non_fbcode_target(
     ],
     deps = [
         "//xplat/folly:conv",
-        "//xplat/folly:system_pid",
+        "//xplat/folly/system:pid",
         "//xplat/folly/testing:test_util",
     ] + select({
         "DEFAULT": [],
