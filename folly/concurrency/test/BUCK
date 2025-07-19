@@ -43,6 +43,15 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_binary,
+    name = "cache_locality_init_main",
+    srcs = ["CacheLocalityInitMain.cpp"],
+    deps = [
+        "//folly/concurrency:cache_locality",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "cache_locality_test",
     srcs = ["CacheLocalityTest.cpp"],
