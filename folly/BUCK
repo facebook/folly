@@ -298,14 +298,6 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "system_aux_vector",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/system:aux_vector"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "system_thread_id",
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/system:thread_id"],
@@ -2907,7 +2899,7 @@ non_fbcode_target(
     ],
     exported_deps = [
         ":portability",
-        ":system_aux_vector",
+        "//xplat/folly/system:aux_vector",
     ],
 )
 
@@ -2929,7 +2921,7 @@ non_fbcode_target(
     ],
     exported_deps = [
         ":portability",
-        ":system_aux_vector",
+        "//xplat/folly/system:aux_vector",
     ],
 )
 
