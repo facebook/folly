@@ -486,11 +486,11 @@ non_fbcode_target(
         ":portability_unistd",
         ":scope_guard",
         ":string",
-        ":system_at_fork",
         ":system_shell",
         "//third-party/boost:boost_range",
         "//xplat/folly:portability_dirent",
         "//xplat/folly/lang:assume",
+        "//xplat/folly/system:at_fork",
     ],
     exported_deps = [
         ":exception",
@@ -2637,10 +2637,10 @@ non_fbcode_target(
         "//xplat/folly:indestructible",
         "//xplat/folly:optional",
         "//xplat/folly:synchronization_detail_rcu-detail",
-        "//xplat/folly:system_at_fork",
         "//xplat/folly/detail:static_singleton_manager",
         "//xplat/folly/detail:turn_sequencer",
         "//xplat/folly/executors:queued_immediate_executor",
+        "//xplat/folly/system:at_fork",
     ],
 )
 
@@ -4720,14 +4720,6 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "system_at_fork",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/system:at_fork"],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "stats_detail_sliding_window",
     feature = triage_InfrastructureSupermoduleOptou,
@@ -5128,9 +5120,9 @@ non_fbcode_target(
         ":portability_time",
         ":portability_unistd",
         ":string",
-        ":system_at_fork",
         ":system_thread_id",
         ":system_thread_name",
+        "//xplat/folly/system:at_fork",
     ],
     exported_deps = [
         ":c_portability",
