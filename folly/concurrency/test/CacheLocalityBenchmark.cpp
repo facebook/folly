@@ -392,6 +392,14 @@ BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 16_stripe_1000_work, 16, 1000)
 BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 32_stripe_1000_work, 32, 1000)
 BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_1000_work, 1000)
 
+BENCHMARK_DRAW_LINE();
+BENCHMARK(getSystemLocalityInfo, iters) {
+  while (iters--) {
+    auto cl = folly::detail::getSystemLocalityInfo();
+    folly::compiler_must_not_elide(cl);
+  }
+}
+
 int main(int argc, char** argv) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();

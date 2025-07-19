@@ -134,6 +134,10 @@ struct CacheLocality {
   explicit CacheLocality(std::vector<std::vector<size_t>> equivClasses);
 };
 
+namespace detail {
+CacheLocality getSystemLocalityInfo();
+}
+
 /// Knows how to derive a function pointer to the VDSO implementation of
 /// getcpu(2), if available
 struct Getcpu {
