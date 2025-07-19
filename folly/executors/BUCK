@@ -252,11 +252,11 @@ non_fbcode_target(
         "//xplat/folly:function",
         "//xplat/folly:shared_mutex",
         "//xplat/folly:singleton",
-        "//xplat/folly:system_hardware_concurrency",
         "//xplat/folly/detail:async_trace",
         "//xplat/folly/executors:cpu_thread_pool_executor",
         "//xplat/folly/executors:inline_executor",
         "//xplat/folly/executors:io_thread_pool_executor",
+        "//xplat/folly/system:hardware_concurrency",
     ],
     exported_deps = [
         "//xplat/folly:executor",

@@ -5210,14 +5210,6 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "system_hardware_concurrency",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/system:hardware_concurrency"],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "experimental_program_options",
     srcs = [
