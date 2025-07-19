@@ -87,7 +87,7 @@ class MoveRange {
 
 // Future: Apply `AsNoexcept` to the task if the entire collection process is
 // noexcept-awaitable.  This would require reworking the implementation a bit,
-// since e.g. `CancellationToken::merge` can throw `bad_alloc`.
+// since e.g. `cancellation_token_merge` can throw `bad_alloc`.
 template <typename... SemiAwaitables>
 using CollectAllTask = PickTaskWrapper<
     std::tuple<collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>,

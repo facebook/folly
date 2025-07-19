@@ -294,10 +294,10 @@ class CancellableAsyncScope {
       : cancellationToken_(cancellationSource_.getToken()),
         scope_(throwOnJoin) {}
   explicit CancellableAsyncScope(CancellationToken&& token)
-      : cancellationToken_(CancellationToken::merge(
+      : cancellationToken_(cancellation_token_merge(
             cancellationSource_.getToken(), std::move(token))) {}
   CancellableAsyncScope(CancellationToken&& token, bool throwOnJoin)
-      : cancellationToken_(CancellationToken::merge(
+      : cancellationToken_(cancellation_token_merge(
             cancellationSource_.getToken(), std::move(token))),
         scope_(throwOnJoin) {}
 
@@ -326,7 +326,7 @@ class CancellableAsyncScope {
       void* returnAddress = nullptr) {
     scope_.add(
         co_withCancellation(
-            token ? CancellationToken::merge(*token, cancellationToken_)
+            token ? cancellation_token_merge(*token, cancellationToken_)
                   : cancellationToken_,
             static_cast<Awaitable&&>(awaitable)),
         returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
@@ -340,7 +340,7 @@ class CancellableAsyncScope {
       source_location sourceLocation = source_location::current()) {
     scope_.addWithSourceLoc(
         co_withCancellation(
-            token ? CancellationToken::merge(*token, cancellationToken_)
+            token ? cancellation_token_merge(*token, cancellationToken_)
                   : cancellationToken_,
             static_cast<Awaitable&&>(awaitable)),
         returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS(),

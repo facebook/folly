@@ -158,7 +158,7 @@ async_closure_outer_coro(
   }
 
   // Pass our cancellation token to args that want it for cleanup.  The user
-  // code can throw -- e.g. `CancellationToken::merge()` may allocate.
+  // code can throw -- e.g. `cancellation_token_merge()` may allocate.
   if constexpr (SetCancelTok) {
     const auto& ctok = co_await co_current_cancellation_token;
     inner_err = try_and_catch([&]() {
