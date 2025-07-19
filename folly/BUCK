@@ -486,11 +486,11 @@ non_fbcode_target(
         ":portability_unistd",
         ":scope_guard",
         ":string",
-        ":system_shell",
         "//third-party/boost:boost_range",
         "//xplat/folly:portability_dirent",
         "//xplat/folly/lang:assume",
         "//xplat/folly/system:at_fork",
+        "//xplat/folly/system:shell",
     ],
     exported_deps = [
         ":exception",
@@ -5199,14 +5199,6 @@ non_fbcode_target(
     name = "experimental_env_util",
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/system:env_util"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "system_shell",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/system:shell"],
 )
 
 non_fbcode_target(
