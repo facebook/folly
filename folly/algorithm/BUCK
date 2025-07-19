@@ -16,10 +16,28 @@ non_fbcode_target(
     ],
 )
 
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "lower_bound",
+    raw_headers = ["LowerBound.h"],
+    exported_deps = [
+        "//xplat/folly/lang:builtin",
+    ],
+)
+
 fbcode_target(
     _kind = cpp_library,
     name = "binary_heap",
     headers = ["BinaryHeap.h"],
+    exported_deps = [
+        "//folly/lang:builtin",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "lower_bound",
+    headers = ["LowerBound.h"],
     exported_deps = [
         "//folly/lang:builtin",
     ],
