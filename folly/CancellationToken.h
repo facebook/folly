@@ -108,18 +108,6 @@ class CancellationToken {
   bool canBeCancelled() const noexcept;
 
   /**
-   * Obtain a CancellationToken linked to any number of other
-   * CancellationTokens.
-   *
-   * This token will have cancellation requested when any of the passed-in
-   * tokens do.
-   * This token is cancellable if any of the passed-in tokens are at the time of
-   * construction.
-   */
-  template <typename... Ts>
-  static CancellationToken merge(Ts&&... tokens);
-
-  /**
    * Swaps the underlying state of the cancellation token with the token that is
    * passed-in.
    */

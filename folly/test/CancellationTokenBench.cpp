@@ -37,7 +37,7 @@ struct BenchMergeContext {
       : t1(s1.getToken()), t2(s2.getToken()), t3(s3.getToken()) {}
   template <typename... Ts>
   static inline auto merge(Ts&&... ts) { // abbreviation
-    return CancellationToken::merge(std::forward<Ts>(ts)...);
+    return cancellation_token_merge(std::forward<Ts>(ts)...);
   }
 };
 
@@ -167,9 +167,9 @@ void benchMergeNDistinct(size_t iters) {
       folly::doNotOptimizeAway(std::apply(
           [&](const auto&... ts) {
             if constexpr (RVal) {
-              return CancellationToken::merge(copy(ts)...);
+              return cancellation_token_merge(copy(ts)...);
             } else {
-              return CancellationToken::merge(ts...);
+              return cancellation_token_merge(ts...);
             }
           },
           toks));

@@ -502,9 +502,4 @@ CancellationToken cancellation_token_merge_fn::operator()(
   }
 }
 
-template <typename... Ts>
-inline CancellationToken CancellationToken::merge(Ts&&... tokens) {
-  return cancellation_token_merge(std::forward<Ts>(tokens)...);
-}
-
 } // namespace folly
