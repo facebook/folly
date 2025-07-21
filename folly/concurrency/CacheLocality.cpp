@@ -20,6 +20,7 @@
 #define _GNU_SOURCE 1 // for RTLD_NOLOAD
 #include <dlfcn.h>
 #endif
+#include <filesystem>
 #include <fstream>
 #include <mutex>
 #include <numeric>
@@ -31,9 +32,11 @@
 #include <folly/Indestructible.h>
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
+#include <folly/container/Reserve.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Exception.h>
+#include <folly/portability/Fcntl.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
 
@@ -179,20 +182,50 @@ static size_t parseLeadingNumber(const std::string& line) {
   return val;
 }
 
-CacheLocality CacheLocality::readFromSysfsTree(
-    const std::function<std::string(std::string const&)>& mapping) {
+CacheLocality CacheLocality::readFromSysfsTree(std::string_view root) {
+#if defined(_WIN32)
+  // windows does not have openat and open flag constants
+  return CacheLocality::uniform(0);
+#else
+
   // the list of cache equivalence classes, where equivalence classes
   // are named by the smallest cpu in the class
   std::vector<std::vector<size_t>> equivClassesByCpu;
 
+  auto rdfile = [&](auto dirfd, auto name) {
+    auto fd = ::openat(dirfd, name.c_str(), O_CLOEXEC, O_RDONLY);
+    if (fd < 0) {
+      return std::string(); // stop condition for the inner loop below
+    }
+    auto fdg = makeGuard([=] { ::close(fd); });
+    alignas(64) char buf[64];
+    int ret = 0;
+    do {
+      ret = ::pread(fd, buf, sizeof(buf), 0);
+    } while (ret < 0 && errno == EINVAL);
+    if (ret < 0) {
+      return std::string();
+    }
+    return std::string(buf, to_unsigned(ret));
+  };
+
+  auto subroot = std::filesystem::path(root) / "sys/devices/system/cpu";
+  int allfd = ::open(subroot.c_str(), O_DIRECTORY | O_CLOEXEC, O_RDONLY);
+  assert(allfd >= 0);
+  size_t maxindex = 0;
   for (size_t cpu = 0;; ++cpu) {
+    auto cpuroot = fmt::format("cpu{}/cache", cpu);
+    int cpufd =
+        ::openat(allfd, cpuroot.c_str(), O_DIRECTORY | O_CLOEXEC, O_RDONLY);
+    if (cpufd < 0) {
+      break;
+    }
     std::vector<size_t> levels;
+    grow_capacity_by(levels, maxindex);
     for (size_t index = 0;; ++index) {
-      auto dir = fmt::format(
-          "/sys/devices/system/cpu/cpu{}/cache/index{}/", cpu, index);
-      auto cacheType = mapping(dir + "type");
-      auto equivStr = mapping(dir + "shared_cpu_list");
-      if (cacheType.empty() || equivStr.empty()) {
+      auto dir = fmt::format("index{}/", index);
+      auto cacheType = rdfile(cpufd, dir + "type");
+      if (cacheType.empty()) {
         // no more caches
         break;
       }
@@ -200,9 +233,16 @@ CacheLocality CacheLocality::readFromSysfsTree(
         // cacheType in { "Data", "Instruction", "Unified" }. skip icache
         continue;
       }
+      // only try to read the second file once we know we will need it
+      auto equivStr = rdfile(cpufd, dir + "shared_cpu_list");
+      if (equivStr.empty()) {
+        // no more caches
+        break;
+      }
       auto equiv = parseLeadingNumber(equivStr);
       levels.push_back(equiv);
     }
+    maxindex = std::max(maxindex, levels.size());
 
     if (levels.empty()) {
       // no levels at all for this cpu, we must be done
@@ -216,15 +256,12 @@ CacheLocality CacheLocality::readFromSysfsTree(
   }
 
   return CacheLocality{std::move(equivClassesByCpu)};
+
+#endif
 }
 
 CacheLocality CacheLocality::readFromSysfs() {
-  return readFromSysfsTree([](std::string const& name) {
-    std::ifstream xi(name.c_str());
-    std::string rv;
-    std::getline(xi, rv);
-    return rv;
-  });
+  return readFromSysfsTree();
 }
 
 namespace {

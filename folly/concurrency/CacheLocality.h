@@ -23,6 +23,7 @@
 #include <functional>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -106,8 +107,7 @@ struct CacheLocality {
   /// not exist.  The function will be called with paths of the form
   /// /sys/devices/system/cpu/cpu*/cache/index*/{type,shared_cpu_list} .
   /// Throws an exception if no caches can be parsed at all.
-  static CacheLocality readFromSysfsTree(
-      const std::function<std::string(std::string const&)>& mapping);
+  static CacheLocality readFromSysfsTree(std::string_view root = "/");
 
   /// Reads CacheLocality information from the real sysfs filesystem.
   /// Throws an exception if no cache information can be loaded.

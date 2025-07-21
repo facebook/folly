@@ -26,10 +26,13 @@
 #include <folly/portability/SysResource.h>
 #include <folly/portability/Unistd.h>
 #include <folly/test/TestUtils.h>
+#include <folly/testing/TestUtil.h>
 
 #include <glog/logging.h>
 
 using namespace folly;
+
+#if !defined(_WIN32)
 
 /// This is the relevant nodes from a production box's sysfs tree.  If you
 /// think this map is ugly you should see the version of this test that
@@ -309,10 +312,14 @@ static std::unordered_map<std::string, std::string> fakeSysfsTree = {
     {"/sys/devices/system/cpu/cpu31/cache/index3/type", "Unified"}};
 
 TEST(CacheLocality, FakeSysfs) {
-  auto parsed = CacheLocality::readFromSysfsTree([](std::string name) {
-    auto iter = fakeSysfsTree.find(name);
-    return iter == fakeSysfsTree.end() ? std::string() : iter->second;
-  });
+  folly::test::TemporaryDirectory tmpdir;
+  for (const auto& [k, v] : fakeSysfsTree) {
+    auto path = tmpdir.path() / k;
+    fs::create_directories(path.parent_path());
+    std::ofstream(path.string()) << v << std::endl;
+  }
+  auto root = tmpdir.path();
+  auto parsed = CacheLocality::readFromSysfsTree(tmpdir.path().string());
 
   size_t expectedNumCpus = 32;
   std::vector<size_t> expectedNumCachesByLevel = {16, 16, 2};
@@ -324,6 +331,8 @@ TEST(CacheLocality, FakeSysfs) {
   EXPECT_EQ(expectedNumCachesByLevel, parsed.numCachesByLevel);
   EXPECT_EQ(expectedLocalityIndexByCpu, parsed.localityIndexByCpu);
 }
+
+#endif
 
 static const std::vector<std::string> fakeProcCpuinfo = {
     "processor	: 0",
