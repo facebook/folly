@@ -53,18 +53,14 @@ namespace hash {
 
 namespace detail {
 
-namespace {
-
 template <typename T>
 constexpr bool is_hashable_byte_v = false;
 template <>
-constexpr bool is_hashable_byte_v<char> = true;
+inline constexpr bool is_hashable_byte_v<char> = true;
 template <>
-constexpr bool is_hashable_byte_v<signed char> = true;
+inline constexpr bool is_hashable_byte_v<signed char> = true;
 template <>
-constexpr bool is_hashable_byte_v<unsigned char> = true;
-
-} // namespace
+inline constexpr bool is_hashable_byte_v<unsigned char> = true;
 
 } // namespace detail
 
