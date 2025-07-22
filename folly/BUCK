@@ -296,14 +296,6 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "system_thread_id",
-    feature = triage_InfrastructureSupermoduleOptou,
-    exported_deps = ["//xplat/folly/system:thread_id"],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "thread_local",
     feature = triage_InfrastructureSupermoduleOptou,
@@ -5112,9 +5104,9 @@ non_fbcode_target(
         ":portability_time",
         ":portability_unistd",
         ":string",
-        ":system_thread_id",
         ":system_thread_name",
         "//xplat/folly/system:at_fork",
+        "//xplat/folly/system:thread_id",
     ],
     exported_deps = [
         ":c_portability",
