@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_arvr_mode")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_cxx_library")
@@ -687,7 +686,7 @@ liburing_deps = select({
     "DEFAULT": [],
     # @fb-only[end= ]: "ovr_config//distro/constraints:conda": [],
     # @fb-only[end= ]: "ovr_config//os:linux-sgx": [],
-    "ovr_config//runtime:fbcode": [] if is_arvr_mode() else ["fbsource//third-party/liburing:uring"],
+    "ovr_config//runtime:fbcode": ["fbsource//third-party/liburing:uring"],
 })
 
 non_fbcode_target(
