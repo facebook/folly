@@ -812,8 +812,8 @@ non_fbcode_target(
         "//xplat/folly:portability_unistd",
         "//xplat/folly:scope_guard",
         "//xplat/folly:string",
-        "//xplat/folly:system_thread_id",
         "//xplat/folly/net:net_ops",
+        "//xplat/folly/system:thread_id",
     ],
     exported_deps = [
         "//xplat/folly:portability_gtest",

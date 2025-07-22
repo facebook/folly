@@ -151,11 +151,11 @@ non_fbcode_target(
         "//xplat/folly:portability_unistd",
         "//xplat/folly:scope_guard",
         "//xplat/folly:synchronization_atomic_struct",
-        "//xplat/folly:system_thread_id",
         "//xplat/folly/concurrency:cache_locality",
         "//xplat/folly/detail:futex",
         "//xplat/folly/memory:mallctl_helper",
         "//xplat/folly/memory:malloc",
+        "//xplat/folly/system:thread_id",
     ],
 )
 

@@ -121,9 +121,9 @@ non_fbcode_target(
         "//xplat/folly:optional",
         "//xplat/folly:portability_fcntl",
         "//xplat/folly:portability_unistd",
-        "//xplat/folly:system_thread_id",
         "//xplat/folly/container:reserve",
         "//xplat/folly/lang:exception",
+        "//xplat/folly/system:thread_id",
     ],
     exported_deps = [
         "//xplat/folly:indestructible",
