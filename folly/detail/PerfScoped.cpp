@@ -25,7 +25,6 @@
 #endif
 
 #include <stdexcept>
-#include <thread>
 
 namespace folly {
 namespace detail {
