@@ -97,12 +97,10 @@ void bmHasher(Hasher hasher, size_t k, size_t iters) {
 }
 
 template <class Hasher>
-void addHashBenchmark(const std::string& name) {
-  static std::deque<std::string> names;
-
+void addHashBenchmark(const std::string& hasherName) {
   for (size_t k = 1; k < 16; ++k) {
-    names.emplace_back(fmt::format("{}: k={}", name, k));
-    folly::addBenchmark(__FILE__, names.back().c_str(), [=](unsigned iters) {
+    std::string name = fmt::format("{}: k={}", hasherName, k);
+    folly::addBenchmark(__FILE__, name, [=](unsigned iters) {
       Hasher hasher;
       bmHasher(hasher, k, iters);
       return iters;
@@ -111,8 +109,8 @@ void addHashBenchmark(const std::string& name) {
 
   for (size_t i = 0; i < 21; ++i) {
     auto k = size_t(1) << i;
-    names.emplace_back(fmt::format("{}: k=2^{}", name, i));
-    folly::addBenchmark(__FILE__, names.back().c_str(), [=](unsigned iters) {
+    std::string name = fmt::format("{}: k=2^{}", hasherName, i);
+    folly::addBenchmark(__FILE__, name, [=](unsigned iters) {
       Hasher hasher;
       bmHasher(hasher, k, iters);
       return iters;
