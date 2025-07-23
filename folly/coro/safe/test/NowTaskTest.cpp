@@ -308,13 +308,13 @@ CO_TEST(NowTaskTest, lambdaWithCaptures) {
   EXPECT_EQ(1337, res);
 }
 
-CO_TEST(NowTaskTest, toNowTask) {
+CO_TEST(NowTaskTest, to_now_task) {
   static_assert(
-      std::is_same_v<NowTask<int>, decltype(toNowTask(demoNowTask(5)))>);
+      std::is_same_v<NowTask<int>, decltype(to_now_task(demoNowTask(5)))>);
   auto t = []() -> Task<int> { co_return 5; }();
   static_assert(
-      std::is_same_v<NowTask<int>, decltype(toNowTask(std::move(t)))>);
-  EXPECT_EQ(5, co_await toNowTask(std::move(t)));
+      std::is_same_v<NowTask<int>, decltype(to_now_task(std::move(t)))>);
+  EXPECT_EQ(5, co_await to_now_task(std::move(t)));
 }
 
 } // namespace folly::coro

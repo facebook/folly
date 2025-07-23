@@ -657,7 +657,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
 
   if constexpr (Cfg.force_shared_cleanup) {
     return NoexceptWrap::wrap_with([&]() {
-      return toNowTask(std::move(outer_mover)());
+      return to_now_task(std::move(outer_mover)());
     });
   } else {
     return async_closure_wrap_coro<

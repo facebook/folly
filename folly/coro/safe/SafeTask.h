@@ -360,7 +360,7 @@ class FOLLY_CORO_TASK_ATTRS safe_task final
   template <auto> // uses `withNewSafety`
   friend auto detail::bind_captures_to_closure(auto&&, auto);
   template <safe_alias Safety, typename U>
-  friend auto toNowTask(safe_task<Safety, U>);
+  friend auto to_now_task(safe_task<Safety, U>);
 
   // The `async_closure` implementation is allowed to override the
   // argument-deduced `lenient_safe_alias_of_v` for a `safe_task` because
@@ -388,7 +388,7 @@ class FOLLY_CORO_TASK_ATTRS safe_task final
 };
 
 template <safe_alias Safety, typename T>
-auto toNowTask(safe_task<Safety, T> t) {
+auto to_now_task(safe_task<Safety, T> t) {
   return NowTask<T>{std::move(t).unwrapTask()};
 }
 

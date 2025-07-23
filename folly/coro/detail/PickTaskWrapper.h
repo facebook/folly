@@ -26,7 +26,7 @@
 ///  - `strict_safe_alias_of_v` / `lenient_safe_alias_of_v`
 ///
 /// Variation along these dimensions is currently implemented as a zoo of coro
-/// templates and wrappers -- `Task` aka `UnsafeMovableTask`, `NowTask`,
+/// templates and wrappers -- `Task` aka `UnsafeMovableTask`, `now_task`,
 /// `safe_task`, `as_noexcept<InnerTask>`.  The type function
 /// `pick_task_wrapper` provides common logic for picking a task type with the
 /// given attributes.
@@ -46,9 +46,9 @@ template <safe_alias, typename>
 class safe_task_with_executor;
 
 template <typename T>
-class NowTask;
+class now_task;
 template <typename T>
-class NowTaskWithExecutor;
+class now_task_with_executor;
 
 template <typename, auto>
 class as_noexcept;
@@ -76,9 +76,9 @@ struct pick_task_wrapper_impl<safe_alias::unsafe, /*await now*/ false> {
 template <>
 struct pick_task_wrapper_impl<safe_alias::unsafe, /*await now*/ true> {
   template <typename T>
-  using Task = NowTask<T>;
+  using Task = now_task<T>;
   template <typename T>
-  using TaskWithExecutor = NowTaskWithExecutor<T>;
+  using TaskWithExecutor = now_task_with_executor<T>;
 };
 
 // These `safe_task` types are immovable, so "await now" doesn't matter.
@@ -97,8 +97,8 @@ template <safe_alias Safety>
 // `safe_task`s with these higher safety levels, but supporting that cleanly
 // would require reorganizing the `folly/coro` task-wrapper implementations. Two
 // possible approaches are:
-//  - `NowTask<T> = AwaitNow<Task<T>>`
-//  - Roll up `NowTask` and `safe_task` into `basic_task<T, Cfg>` or similar,
+//  - `now_task<T> = await_now<Task<T>>`
+//  - Roll up `now_task` and `safe_task` into `basic_task<T, Cfg>` or similar,
 //    where `Cfg` captures both safety & immediate-awaitability.
 struct pick_task_wrapper_impl<Safety, /*await now*/ false> {
   template <typename T>

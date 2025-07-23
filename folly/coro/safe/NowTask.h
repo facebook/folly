@@ -21,20 +21,28 @@
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
-/// `NowTask<T>` quacks like `Task<T>` but is immovable, and must be
+/// `now_task<T>` quacks like `Task<T>` but is immovable, and must be
 /// `co_await`ed in the same expression that created it.
 ///
-/// Using `NowTask` by default brings considerable safety benefits.  With
+/// Using `now_task` by default brings considerable safety benefits.  With
 /// `Task`, the following would be anti-patterns that cause dangling reference
-/// bugs, but with `NowTask`, C++ lifetime extension rules ensure that they
+/// bugs, but with `now_task`, C++ lifetime extension rules ensure that they
 /// simply work.
 ///   - Pass-by-reference into coroutines.
 ///   - Ephemeral coro lambdas with captures.
 ///   - Coro lambdas with capture-by-reference.
 ///
+/// Q: Is it `now_task` or `NowTask`?
+///
+/// A: In order to ease adoption, both forms will compile, but `now_task` is
+///    primary.  Both are intended to eventually be renamed to simply
+///    `folly::coro::task`, while the current movable, delayed-awaitable task
+///    will be renamed to `unsafe_task`, and largely superseded by
+///    `async_closure` and various `safe_task` flavors.
+///
 /// Notes:
-///   - (subject to change) Unlike `safe_task`, `NowTask` does NOT check
-///     `safe_alias_of` for the return type `T`.  `NowTask` is essentially an
+///   - (subject to change) Unlike `safe_task`, `now_task` does NOT check
+///     `safe_alias_of` for the return type `T`.  `now_task` is essentially an
 ///     immediate async function -- it satisfies the structured concurrency
 ///     maxim of "lexical scope drives both control flow & lifetime".  That
 ///     lowers the odds that returned pointers/references are unexpectedly
@@ -50,29 +58,35 @@ template <safe_alias, typename>
 class BackgroundTask;
 
 template <typename T = void>
-class NowTask;
+class now_task;
 
 template <typename T = void>
-class NowTaskWithExecutor;
+class now_task_with_executor;
+
+// Backwards-compatibility shims
+template <typename T = void>
+using NowTask = now_task<T>;
+template <typename T = void>
+using NowTaskWithExecutor = now_task_with_executor<T>;
 
 namespace detail {
 template <typename T>
-struct NowTaskWithExecutorCfg : DoesNotWrapAwaitable {
+struct now_task_with_executor_cfg : DoesNotWrapAwaitable {
   using InnerTaskWithExecutorT = TaskWithExecutor<T>;
-  using WrapperTaskT = NowTask<T>;
+  using WrapperTaskT = now_task<T>;
 };
 template <typename T>
-using NowTaskWithExecutorBase =
+using now_task_with_executor_base =
     AddMustAwaitImmediately<TaskWithExecutorWrapperCrtp<
-        NowTaskWithExecutor<T>,
-        detail::NowTaskWithExecutorCfg<T>>>;
+        now_task_with_executor<T>,
+        detail::now_task_with_executor_cfg<T>>>;
 } // namespace detail
 
 template <typename T>
-class FOLLY_NODISCARD NowTaskWithExecutor final
-    : public detail::NowTaskWithExecutorBase<T> {
+class FOLLY_NODISCARD now_task_with_executor final
+    : public detail::now_task_with_executor_base<T> {
  protected:
-  using detail::NowTaskWithExecutorBase<T>::NowTaskWithExecutorBase;
+  using detail::now_task_with_executor_base<T>::now_task_with_executor_base;
 
   template <safe_alias, typename>
   friend class BackgroundTask; // for `unwrapTaskWithExecutor`, remove later
@@ -80,75 +94,75 @@ class FOLLY_NODISCARD NowTaskWithExecutor final
 
 namespace detail {
 template <typename T>
-class NowTaskPromise final
-    : public TaskPromiseWrapper<T, NowTask<T>, TaskPromise<T>> {};
+class now_task_promise final
+    : public TaskPromiseWrapper<T, now_task<T>, TaskPromise<T>> {};
 template <typename T>
-struct NowTaskCfg : DoesNotWrapAwaitable {
+struct now_task_cfg : DoesNotWrapAwaitable {
   using ValueT = T;
   using InnerTaskT = Task<T>;
-  using TaskWithExecutorT = NowTaskWithExecutor<T>;
-  using PromiseT = NowTaskPromise<T>;
+  using TaskWithExecutorT = now_task_with_executor<T>;
+  using PromiseT = now_task_promise<T>;
 };
 template <typename T>
-using NowTaskBase =
-    AddMustAwaitImmediately<TaskWrapperCrtp<NowTask<T>, detail::NowTaskCfg<T>>>;
+using now_task_base = AddMustAwaitImmediately<
+    TaskWrapperCrtp<now_task<T>, detail::now_task_cfg<T>>>;
 } // namespace detail
 
 template <safe_alias, typename>
 class safe_task;
 
 template <safe_alias S, typename U>
-auto toNowTask(safe_task<S, U>);
+auto to_now_task(safe_task<S, U>);
 
 template <typename T>
-class FOLLY_CORO_TASK_ATTRS NowTask final : public detail::NowTaskBase<T> {
+class FOLLY_CORO_TASK_ATTRS now_task final : public detail::now_task_base<T> {
  protected:
-  using detail::NowTaskBase<T>::NowTaskBase;
+  using detail::now_task_base<T>::now_task_base;
 
   template <typename U> // can construct
-  friend auto toNowTask(Task<U>);
+  friend auto to_now_task(Task<U>);
   template <safe_alias S, typename U> // can construct
-  friend auto toNowTask(safe_task<S, U>);
+  friend auto to_now_task(safe_task<S, U>);
   template <typename U> // can construct & `unwrapTask`
-  friend auto toNowTask(NowTask<U>);
+  friend auto to_now_task(now_task<U>);
 };
 
-// NB: `toNowTask(safe_task)` is in `SafeTask.h` to avoid circular deps.
+// NB: `to_now_task(safe_task)` is in `SafeTask.h` to avoid circular deps.
 template <typename T>
-auto toNowTask(Task<T> t) {
-  return NowTask<T>{std::move(t)};
+auto to_now_task(Task<T> t) {
+  return now_task<T>{std::move(t)};
 }
 template <typename T>
-auto toNowTask(NowTask<T> t) {
-  return NowTask<T>{std::move(t).unwrapTask()};
+auto to_now_task(now_task<T> t) {
+  return now_task<T>{std::move(t).unwrapTask()};
 }
 
 // Apparently, Clang 15 has a bug in prvalue semantics support, so it cannot
 // return immovable coroutines.
 #if !defined(__clang__) || __clang_major__ > 15
 
-/// Make a `NowTask` that trivially returns a value.
+/// Make a `now_task` that trivially returns a value.
 template <class T>
-NowTask<T> makeNowTask(T t) {
+now_task<T> make_now_task(T t) {
   co_return t;
 }
 
-/// Make a `NowTask` that trivially returns no value
-inline NowTask<> makeNowTask() {
+/// Make a `now_task` that trivially returns no value
+inline now_task<> make_now_task() {
   co_return;
 }
-/// Same as makeNowTask(). See Unit
-inline NowTask<> makeNowTask(Unit) {
+/// Same as make_now_task(). See Unit
+inline now_task<> make_now_task(Unit) {
   co_return;
 }
 
-/// Make a `NowTask` that will trivially yield an exception.
+/// Make a `now_task` that will trivially yield an exception.
 template <class T>
-NowTask<T> makeErrorNowTask(exception_wrapper ew) {
+now_task<T> make_error_now_task(exception_wrapper ew) {
   co_yield co_error(std::move(ew));
 }
 
-#endif // no `makeNowTask` on old/buggy clang
+#endif // no `make_now_task` on old/buggy clang
 
 } // namespace folly::coro
 
