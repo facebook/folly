@@ -1,7 +1,755 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//tools/build_defs:platform_defs.bzl",
+    "IOS",
+    "MACOSX",
+    "WATCHOS",
+)
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "WINDOWS_CLANG_CXX_FLAGS",
+    "folly_xplat_library",
+    "should_enable_gflags",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "asm",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Asm.h",
+    ],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "atomic",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Atomic.h",
+    ],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "builtins",
+    srcs = [
+        "Builtins.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Builtins.h",
+    ],
+    exported_deps = [
+        ":windows",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "config",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    fbobjc_exported_preprocessor_flags = [
+        "-DFOLLY_ASSUME_NO_JEMALLOC=1",
+        "-DFOLLY_ASSUME_NO_TCMALLOC=1",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Config.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:config",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "constexpr",
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Constexpr.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "dirent",
+    srcs = [
+        "Dirent.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Dirent.h",
+    ],
+    exported_deps = [
+        ":windows",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "event",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Event.h",
+    ],
+    exported_deps = [
+        ":fcntl",
+        ":windows",
+        "//xplat/folly/net/detail:socket_file_descriptor_map",
+        "//xplat/third-party/event:event",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "extended",
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    exported_deps = [
+        ":builtins",
+        ":dirent",
+        ":sys_mman",
+        ":sys_resource",
+        ":time",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "fcntl",
+    srcs = [
+        "Fcntl.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Fcntl.h",
+    ],
+    exported_deps = [
+        ":sockets",
+        ":sys_stat",
+        ":windows",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "filesystem",
+    srcs = ["Filesystem.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Filesystem.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "fmt_compile",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["FmtCompile.h"],
+    deps = [
+        "//third-party/fmt:fmt",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "gflags",
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    exported_preprocessor_flags = select({
+        "//xplat/folly/buck_config:folly-gflags-enabled": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
+        "DEFAULT": ["-DFOLLY_HAVE_LIBGFLAGS=1"] if should_enable_gflags() else ["-DFOLLY_HAVE_LIBGFLAGS=0"],
+        "ovr_config//os:linux": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
+        "ovr_config//os:macos": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
+        "ovr_config//os:windows": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
+        # In some cases, fbandroid suffixed rules can build with the fbcode platforms.
+        "ovr_config//runtime:fbcode": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "GFlags.h",
+    ],
+    exported_deps = [":config"] + select({
+        "//xplat/folly/buck_config:folly-gflags-enabled": ["//third-party/gflags:gflags"],
+        "DEFAULT": ["//third-party/gflags:gflags"] if should_enable_gflags() else [],
+        "ovr_config//os:linux": ["//third-party/gflags:gflags"],
+        "ovr_config//os:macos": ["//third-party/gflags:gflags"],
+        "ovr_config//os:windows": ["//third-party/gflags:gflags"],
+        "ovr_config//runtime:fbcode": ["//third-party/gflags:gflags"],
+    }),
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "gmock",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "GMock.h",
+    ],
+    deps = [
+        "//third-party/googletest:gmock",
+    ],
+    exported_deps = [
+        "//third-party/googletest:gmock",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "gtest",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "GTest.h",
+    ],
+    exported_deps = [
+        "//third-party/googletest:gtest",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "gtest_prod",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["GTestProd.h"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "headers",
+    feature = triage_InfrastructureSupermoduleOptou,
+    exported_deps = [
+        ":asm",
+        ":atomic",
+        ":sys_syscall",
+        ":syslog",
+        "//xplat/third-party/linker_lib:atomic",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "iovec",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "IOVec.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "libgen",
+    srcs = [
+        "Libgen.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Libgen.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "libunwind",
+    exported_preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//runtime:anywhere-linux": [
+            # anywhere-linux links in a different version of libunwind, do not use for now
+            "-DFOLLY_HAVE_LIBUNWIND=0",
+        ],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Libunwind.h",
+    ],
+    exported_deps = select({
+        "DEFAULT": ["//third-party/libunwind:unwind"],
+        "ovr_config//os:android": [],
+        "ovr_config//os:appletvos": [],  # apple
+        "ovr_config//os:iphoneos": [],  # apple
+        "ovr_config//os:macos": [],  # apple
+        "ovr_config//os:watchos": [],  # apple
+        "ovr_config//os:windows": [],
+        "ovr_config//runtime:anywhere-linux": [],
+    }),
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "malloc",
+    srcs = [
+        "Malloc.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Malloc.h",
+    ],
+    deps = [
+        # "//xplat/third-party/jemalloc:headers",  # not available in xplat
+        "//xplat/folly:bits",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "math",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Math.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "memory",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Memory.h",
+    ],
+    deps = [
+        "//xplat/folly:memory",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "openssl",
+    srcs = [
+        "OpenSSL.cpp",
+    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//compiler:clang": [
+            "-Wno-unused-function",
+        ],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "OpenSSL.h",
+    ],
+    exported_deps = [
+        ":windows",
+        "//xplat/folly:portability",
+        "//xplat/third-party/openssl:crypto",
+        "//xplat/third-party/openssl:ssl",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "pthread",
+    srcs = [
+        "PThread.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    cxx_exported_deps = [
+        "//xplat/third-party/linker_lib:pthread",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "PThread.h",
+    ],
+    exported_deps = [
+        ":config",
+        ":sched",
+        ":time",
+        ":windows",
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly/lang:assume",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:android": ["//xplat/third-party/linker_lib:pthread"],
+        "ovr_config//os:windows": ["//third-party/boost:boost_thread"],
+    }),
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sched",
+    srcs = [
+        "Sched.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Sched.h",
+    ],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sockets",
+    srcs = [
+        "Sockets.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Sockets.h",
+    ],
+    deps = [
+        "//xplat/folly/net/detail:socket_file_descriptor_map",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly/net:net_ops",
+        "//xplat/folly/net:network_socket",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "source_location",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SourceLocation.h",
+    ],
+    exported_deps = [
+        "//third-party/fmt:fmt",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "stdio",
+    srcs = [
+        "Stdio.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Stdio.h",
+    ],
+    deps = [
+        ":unistd",
+        "//xplat/folly:scope_guard",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "stdlib",
+    srcs = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "Stdlib.cpp",
+        ],
+    }),
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows-clang": WINDOWS_CLANG_CXX_FLAGS,
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Stdlib.h",
+    ],
+    deps = [
+        ":fcntl",
+        ":sys_stat",
+        ":windows",
+    ],
+    exported_deps = select({
+        "DEFAULT": [
+            ":config",
+        ],
+        "ovr_config//os:windows": [
+            ":config",
+            ":fcntl",
+        ],
+    }) + ["//xplat/folly:c_portability"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "string",
+    srcs = [
+        "String.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "String.h",
+    ],
+    exported_deps = [
+        ":config",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_file",
+    srcs = [
+        "SysFile.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysFile.h",
+    ],
+    exported_deps = [
+        ":windows",
+        "//xplat/folly:c_portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_membarrier",
+    srcs = [
+        "SysMembarrier.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysMembarrier.h",
+    ],
+    exported_deps = [
+        ":sys_syscall",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_mman",
+    srcs = [
+        "SysMman.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysMman.h",
+    ],
+    exported_deps = [
+        ":windows",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_resource",
+    srcs = [
+        "SysResource.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysResource.h",
+    ],
+    windows_exported_deps = [
+        ":sys_time",
+    ],
+    exported_deps = [
+        ":sys_time",
+        ":windows",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_stat",
+    srcs = [
+        "SysStat.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysStat.h",
+    ],
+    exported_deps = [
+        ":sys_types",
+        ":windows",
+        "//xplat/folly:c_portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_syscall",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysSyscall.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:c_portability",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_time",
+    srcs = [
+        "SysTime.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysTime.h",
+    ],
+    exported_deps = [
+        ":windows",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_types",
+    apple_sdks = (IOS, MACOSX, WATCHOS),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysTypes.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sys_uio",
+    srcs = [
+        "SysUio.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SysUio.h",
+    ],
+    exported_deps = [
+        ":config",
+        ":iovec",
+        ":sockets",
+        ":sys_file",
+        ":sys_types",
+        ":unistd",
+        "//xplat/folly:scope_guard",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "syslog",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Syslog.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "time",
+    srcs = [
+        "Time.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Time.h",
+    ],
+    exported_deps = [
+        ":config",
+        ":windows",
+        "//xplat/folly:c_portability",
+        "//xplat/folly:likely",
+        "//xplat/folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "unistd",
+    srcs = [
+        "Unistd.cpp",
+    ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Unistd.h",
+    ],
+    windows_exported_deps = [
+        ":sockets",
+    ],
+    deps = [
+        "//xplat/folly:scope_guard",
+        "//xplat/folly/net/detail:socket_file_descriptor_map",
+    ],
+    exported_deps = [
+        ":sockets",
+        ":sys_types",
+        ":windows",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "windows",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Windows.h",
+    ],
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "//third-party/toolchains/win:ws2_32.lib",
+        ],
+    }),
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
