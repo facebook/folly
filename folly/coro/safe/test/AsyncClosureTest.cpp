@@ -699,14 +699,14 @@ TEST(AsyncClosure, nonSafeTaskIsNotAwaited) {
 // Why not add `invoke_async_closure` as above?  Simply put, this is a
 // "less-safe" pattern, in that it makes it easy for users to create `safe_task`
 // instances that hide unsafe reference captures.  Prefer to tell people to use
-// `async_now_closure(bound_args{a1, a2}, ...)` with `Task`/`NowTask` lambdas.
+// `async_now_closure(bound_args{a1, a2}, ...)` with `Task`/`now_task` lambdas.
 CO_TEST(AsyncClosure, memberTaskLambda) {
   int z = 1300; // Goal: ASAN failures if the lambda is destroyed
   auto lambda = [&z](auto x, auto y) -> member_task<int> {
     co_return x + *y + z;
   };
   // BAD: To be coherent with regular `folly/coro/safe` safety guarantees,
-  // the `t` below should be emitted as an immovable `NowTask`.  Otherwise,
+  // the `t` below should be emitted as an immovable `now_task`.  Otherwise,
   // one can imagine lifetime errors involving the `&z` capture.
   //
   // Unfortunately, we can't fix this in C++20.  This is an instance of
@@ -772,15 +772,15 @@ CO_TEST(AsyncClosure, memberTask) {
           }));
 }
 
-// Check that `async_now_closure` returns `NowTask<int>` & return the task.
-NowTask<int> intAsyncNowClosure(auto&& bargs, auto&& fn) {
+// Check that `async_now_closure` returns `now_task<int>` & return the task.
+now_task<int> intAsyncNowClosure(auto&& bargs, auto&& fn) {
   return async_now_closure(
       folly::bindings::ext::bound_args_unsafe_move::from(std::move(bargs)),
       std::move(fn));
 }
 
 template <typename T>
-NowTask<void> check_now_closure_no_outer_coro() {
+now_task<void> check_now_closure_no_outer_coro() {
   int b1 = 300, c = 30, d = 7;
   // The coro take raw references & use lambda captures
   int res = co_await intAsyncNowClosure(
@@ -796,7 +796,7 @@ NowTask<void> check_now_closure_no_outer_coro() {
 
 // The plumbing for an outer-coro closure is different, so test it too.
 template <typename T>
-NowTask<void> check_now_closure_with_outer_coro() {
+now_task<void> check_now_closure_with_outer_coro() {
   int cleanBits = 128;
   int res = co_await intAsyncNowClosure(
       capture_in_place<ErrorObliviousHasCleanup>(&cleanBits),
@@ -806,12 +806,12 @@ NowTask<void> check_now_closure_with_outer_coro() {
 
 CO_TEST(AsyncClosure, nowClosure) {
   co_await check_now_closure_no_outer_coro<Task<int>>();
-  co_await check_now_closure_no_outer_coro<NowTask<int>>();
+  co_await check_now_closure_no_outer_coro<now_task<int>>();
 
   co_await check_now_closure_with_outer_coro<Task<int>>();
-  co_await check_now_closure_with_outer_coro<NowTask<int>>();
+  co_await check_now_closure_with_outer_coro<now_task<int>>();
 
-  // Going from `closure_task` / `member_task` to `NowTask` is rare, but it
+  // Going from `closure_task` / `member_task` to `now_task` is rare, but it
   // does work.  Of course, passing raw refs is not possible in this case.
 
   co_await check_now_closure_with_outer_coro<closure_task<int>>();
@@ -877,15 +877,15 @@ constexpr bool check_as_noexcept_closures() {
               bound_args{},
               []() -> as_noexcept<closure_task<>> { co_return; }))>);
 
-  static_assert( // NowTask, without outer coro
+  static_assert( // now_task, without outer coro
       std::is_same_v<
-          as_noexcept<NowTask<>>,
+          as_noexcept<now_task<>>,
           decltype(async_now_closure(bound_args{}, []() -> as_noexcept<Task<>> {
             co_return;
           }))>);
-  static_assert( // NowTask, with outer coro
+  static_assert( // now_task, with outer coro
       std::is_same_v<
-          as_noexcept<NowTask<>>,
+          as_noexcept<now_task<>>,
           decltype(async_now_closure<ForceOuter>(
               bound_args{}, []() -> as_noexcept<Task<>> { co_return; }))>);
 

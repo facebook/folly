@@ -193,7 +193,7 @@ class as_noexcept_with_executor;
 
 namespace detail {
 template <typename Inner, auto CancelCfg>
-struct as_noexcept_with_executorCfg {
+struct as_noexcept_with_executor_cfg {
   using InnerTaskWithExecutorT = Inner;
   using WrapperTaskT = as_noexcept<
       typename Inner::folly_private_task_without_executor_t,
@@ -209,7 +209,7 @@ struct as_noexcept_with_executorCfg {
 template <typename Inner, auto CancelCfg>
 using as_noexcept_with_executor_base = TaskWithExecutorWrapperCrtp<
     as_noexcept_with_executor<Inner, CancelCfg>,
-    as_noexcept_with_executorCfg<Inner, CancelCfg>>;
+    as_noexcept_with_executor_cfg<Inner, CancelCfg>>;
 } // namespace detail
 
 template <typename Inner, auto CancelCfg = OnCancel<void>{}>

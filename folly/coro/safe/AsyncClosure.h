@@ -25,12 +25,12 @@ namespace folly::coro {
 /// Learn more about `coro/safe` tools by browsing `docs/`.  Start with
 /// `README.md` and `AsyncClosure.md`.  Here's a tl;dr for `AsyncClosure.h`.
 ///
-/// Use `async_closure()` / `async_now_closure()` only when `NowTask` is not
+/// Use `async_closure()` / `async_now_closure()` only when `now_task` is not
 /// enough.  For your effort, you get (1) guaranteed, exception-safe async
 /// RAII, and (2) the resulting coro is an automatically-measured movable
 /// `safe_task`, which improves lifetime safety (`LifetimeSafetyBenefits.md`).
 ///
-/// Control flow matches a regular `NowTask` lazy-start coro:
+/// Control flow matches a regular `now_task` lazy-start coro:
 ///   - All "argument-binding" and "coro creation" work is eager.
 ///   - Your inner task & subsequent cleanup can only run when awaited.
 ///
@@ -57,7 +57,7 @@ namespace folly::coro {
 ///
 /// The difference between `async_closure()` and `async_now_closure()` is that
 /// the former measures argument & inner coro safety, and makes a `safe_task`,
-/// while the latter has no safety checks, and makes a `NowTask`.  Both make it
+/// while the latter has no safety checks, and makes a `now_task`.  Both make it
 /// easy to write lifetime-safe code.
 
 struct async_closure_config {
@@ -97,7 +97,7 @@ template <bool ForceOuterCoro, bool EmitNowTask>
 auto async_closure_impl(auto&& bargs, auto&& make_inner_coro) {
   constexpr detail::async_closure_bindings_cfg Cfg{
       .force_outer_coro = ForceOuterCoro,
-      // `NowTask`s closures have no safety controls, and thus -- like
+      // `now_task`s closures have no safety controls, and thus -- like
       // "shared cleanup" closures -- don't get to upgrade `capture` refs.
       .force_shared_cleanup = EmitNowTask,
       .is_invoke_member = is_instantiation_of_v<
@@ -142,9 +142,9 @@ auto async_closure(auto bargs, auto&& make_inner_coro) {
 }
 
 // Like `async_closure` -- same argument binding semantics, same `co_cleanup`
-// async RAII, and cancellation support, but returns a non-movable `NowTask`
+// async RAII, and cancellation support, but returns a non-movable `now_task`
 // without the lifetime safety enforcement:
-//   - `make_inner_coro` may return a `NowTask`, plain `Task`, or `safe_task`.
+//   - `make_inner_coro` may return a `now_task`, plain `Task`, or `safe_task`.
 //   - It can take arguments by ref, you can pass raw pointers, etc.
 //   - There are no checks on the `co_return` type.
 //
@@ -153,7 +153,7 @@ auto async_closure(auto bargs, auto&& make_inner_coro) {
 // review `LifetimSafetyBenefits.md` and use the `safe_task`-enabled
 // `async_closure()`, which is movable and schedulable on `safe_async_scope`.
 //
-// BEWARE: Returning `NowTask` doesn't prevent egregious bugs like returning
+// BEWARE: Returning `now_task` doesn't prevent egregious bugs like returning
 // a pointer to a local.  Instead, make sure to configure your compiler to
 // error on simple, non-async lifetime bugs (e.g. `-Wdangling -Werror`).
 template <async_closure_config Cfg = async_closure_config{}>

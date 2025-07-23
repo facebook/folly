@@ -30,17 +30,17 @@ namespace folly::coro {
 /// the type-aliases below, following `APIBestPractices.md` guidance.  Briefly:
 ///   - `value_task`: Use if your coro only takes value-semantic args.
 ///   - `member_task`: Use for all non-static member functions.  Can be
-///     awaited immediately (like `NowTask`), or wrapped in an
+///     awaited immediately (like `now_task`), or wrapped in an
 ///     `async_closure` to support less-structured concurrency -- including
 ///     scheduling on a background scope belonging to the object.
 ///   - `closure_task`: Use if your coro is called via `async_closure`.
 ///   - `co_cleanup_safe_task`: Use for tasks that can be directly scheduled on
 ///     a `safe_async_scope`.
-///   - (not in `SafeTask.h`) `NowTask`: All other coros.  This requires the
+///   - (not in `SafeTask.h`) `now_task`: All other coros.  This requires the
 ///     task to always be awaited in the expression that created it,
 ///     eliminating a variety of common dangling reference bugs.
 ///   - `auto_safe_task`: Generic coros where you want the argument & return
-///     types to automatically branch between a `NowTask` and a `safe_task`.
+///     types to automatically branch between a `now_task` and a `safe_task`.
 ///
 /// `safe_task` is a thin wrapper around `folly::coro::Task` that uses
 /// `safe_alias_of` to enforce some compile-time guarantees:
@@ -102,17 +102,17 @@ using co_cleanup_safe_task = safe_task<safe_alias::co_cleanup_safe_ref, T>;
 template <typename T = void>
 using closure_task = safe_task<safe_alias::unsafe_closure_internal, T>;
 
-// A `member_task` is a hybrid of `safe_task` and `NowTask`, intended to make
+// A `member_task` is a hybrid of `safe_task` and `now_task`, intended to make
 // non-static member coroutines safer.
 //   - It **is** a `safe_task`, thereby forbidding `safe_alias::unsafe`
 //     arguments, and unsafe return types.  However, since the callable of
 //     member coros is inherently stateful, it is special-cased to omit the
 //     safety checks on the implicit object parameter.
-//   - It is immovable like `NowTask`, which makes typical "structured
+//   - It is immovable like `now_task`, which makes typical "structured
 //     concurrency" usage of coroutines quite safe (see `NowTask.h`).
 //     `member_task` needs this, since members take `this`, whose lifetime is
 //     unknown -- i.e.  outside of async closure usage, a `member_task` is just
-//     a `NowTask`.
+//     a `now_task`.
 //
 // For more complex usage (background tasks, async RAII), `member_task` has a
 // special calling convention in `AsyncClosure.h`:
@@ -138,7 +138,7 @@ using auto_safe_task_impl = std::conditional_t<
     (Safety >= safe_alias::closure_min_arg_safety &&
      lenient_safe_alias_of_v<T> >= safe_alias::maybe_value),
     safe_task<Safety, T>,
-    NowTask<T>>;
+    now_task<T>>;
 }
 
 /// Coros declared as `safe_task<Safety, T>` will satisfy the strong
@@ -155,7 +155,7 @@ using auto_safe_task_impl = std::conditional_t<
 /// `auto_safe_task` has a Significant Caveat -- you can't use it with
 /// non-`static` member functions -- the implicit object parameter is unsafe
 /// (as it should be).  And if you do use it, you will get a compile-time
-/// error instead of a `NowTask`, simply because this type-function has no
+/// error instead of a `now_task`, simply because this type-function has no
 /// access to the callable.  See `APIBestPractices.md` for workarounds.
 template <typename T, typename... SafetyArgs>
 using auto_safe_task = detail::auto_safe_task_impl<
@@ -230,11 +230,11 @@ class safe_task_promise final
           safe_task<ArgSafety, T>,
           detail::TaskPromise<T>> {
   // "Unsafe" is not a "safe" task any more.  In the future, we could have
-  // `safe_task<unsafe, T>` act as `NowTask<T>`, but there's no present use
+  // `safe_task<unsafe, T>` act as `now_task<T>`, but there's no present use
   // for this uniformity, but there are benefits to explicitness.
   static_assert(
       ArgSafety > safe_alias::unsafe,
-      "Instead of making an unsafe `safe_task`, use a `NowTask`, or "
+      "Instead of making an unsafe `safe_task`, use a `now_task`, or "
       "`async_now_closure()`");
 
  public:
@@ -389,7 +389,7 @@ class FOLLY_CORO_TASK_ATTRS safe_task final
 
 template <safe_alias Safety, typename T>
 auto to_now_task(safe_task<Safety, T> t) {
-  return NowTask<T>{std::move(t).unwrapTask()};
+  return now_task<T>{std::move(t).unwrapTask()};
 }
 
 namespace detail {
@@ -405,9 +405,10 @@ struct safe_task_traits<Task<T>> {
 template <typename T>
 struct safe_task_traits<TaskWithExecutor<T>> : safe_task_traits<Task<T>> {};
 template <typename T>
-struct safe_task_traits<NowTask<T>> : safe_task_traits<Task<T>> {};
+struct safe_task_traits<now_task<T>> : safe_task_traits<Task<T>> {};
 template <typename T>
-struct safe_task_traits<NowTaskWithExecutor<T>> : safe_task_traits<Task<T>> {};
+struct safe_task_traits<now_task_with_executor<T>> : safe_task_traits<Task<T>> {
+};
 
 template <safe_alias ArgSafety, typename T>
 struct safe_task_traits<safe_task<ArgSafety, T>> {

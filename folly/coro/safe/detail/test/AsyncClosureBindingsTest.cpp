@@ -119,7 +119,7 @@ constexpr bool check_regular_args() {
   // The `MoveMe` test makes an rvalue ref from an lvalue, but this here is
   // actually passing a prvalue.  The reason we test both scenarios is that
   // it's completely fine to plumb prvalues through `async_closure`, since the
-  // resulting task will either take it by-value, or it'll be a `NowTask`.
+  // resulting task will either take it by-value, or it'll be a `now_task`.
   // Since `bound_args{}` objects are immovable, it's quite hard for a user to
   // accidentally grab a dangling ref to a prvalue this way.
   check_one<async_closure_regular_arg<int, bind_wrapper_t<int&&>>>([]() {

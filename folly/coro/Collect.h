@@ -29,7 +29,7 @@
 #include <folly/coro/detail/Traits.h>
 // `collectAll(coroFutureInt())` makes a `safe_task`
 #include <folly/coro/safe/SafeTask.h>
-// `collectAll(memberTask())` makes a `NowTask`
+// `collectAll(memberTask())` makes a `now_task`
 #include <folly/coro/safe/NowTask.h>
 
 #include <functional>
@@ -144,7 +144,7 @@ using CollectAllTryTask = pick_task_wrapper<
 //       co_await folly::coro::collectAll(doSomething(), doSomethingElse());
 //
 template <typename... SemiAwaitables>
-// Do NOT take awaitables by-reference, that would break `NowTask` safety.
+// Do NOT take awaitables by-reference, that would break `now_task` safety.
 auto collectAll(SemiAwaitables... awaitables)
     -> detail::CollectAllTask<SemiAwaitables...>;
 

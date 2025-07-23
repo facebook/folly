@@ -110,7 +110,7 @@ inline constexpr bool must_await_immediately_v =
 // To make a (semi)awaitable immediate, have it publicly inherit from
 // `AddMustAwaitImmediately<InnerSemiAwaitable>`.  It is templated on the
 // "inner type" so that all bases are distinct in a tower-of-wrappers, like
-// `TryAwaitable<NowTask<T>>`.  Repeating a base would break the empty basea
+// `TryAwaitable<now_task<T>>`.  Repeating a base would break the empty basea
 // optimization (EBO).
 template <typename InnerT>
 struct AddMustAwaitImmediately : public InnerT {

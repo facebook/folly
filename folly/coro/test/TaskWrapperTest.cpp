@@ -24,54 +24,55 @@ using namespace std::literals::chrono_literals;
 namespace folly::coro {
 
 template <typename>
-class TinyNowTask;
+class tiny_now_task;
 template <typename>
-class TinyNowTaskWithExecutor;
+class tiny_now_task_with_executor;
 
 namespace detail {
 template <typename T>
-struct TinyNowTaskWithExecutorCfg : DoesNotWrapAwaitable {
+struct tiny_now_task_with_executor_cfg : DoesNotWrapAwaitable {
   using InnerTaskWithExecutorT = TaskWithExecutor<T>;
-  using WrapperTaskT = TinyNowTask<T>;
+  using WrapperTaskT = tiny_now_task<T>;
 };
 template <typename T>
-using TinyNowTaskWithExecutorBase =
+using tiny_now_task_with_executor_base =
     AddMustAwaitImmediately<TaskWithExecutorWrapperCrtp<
-        TinyNowTaskWithExecutor<T>,
-        detail::TinyNowTaskWithExecutorCfg<T>>>;
+        tiny_now_task_with_executor<T>,
+        detail::tiny_now_task_with_executor_cfg<T>>>;
 } // namespace detail
 
 template <typename T>
-class FOLLY_NODISCARD TinyNowTaskWithExecutor final
-    : public detail::TinyNowTaskWithExecutorBase<T> {
+class FOLLY_NODISCARD tiny_now_task_with_executor final
+    : public detail::tiny_now_task_with_executor_base<T> {
  protected:
-  using detail::TinyNowTaskWithExecutorBase<T>::TinyNowTaskWithExecutorBase;
+  using detail::tiny_now_task_with_executor_base<
+      T>::tiny_now_task_with_executor_base;
 };
 
 namespace detail {
 template <typename T>
-class TinyNowTaskPromise final
-    : public TaskPromiseWrapper<T, TinyNowTask<T>, TaskPromise<T>> {};
+class tiny_now_taskPromise final
+    : public TaskPromiseWrapper<T, tiny_now_task<T>, TaskPromise<T>> {};
 template <typename T>
-struct TinyNowTaskCfg : DoesNotWrapAwaitable {
+struct tiny_now_taskCfg : DoesNotWrapAwaitable {
   using ValueT = T;
   using InnerTaskT = Task<T>;
-  using TaskWithExecutorT = TinyNowTaskWithExecutor<T>;
-  using PromiseT = TinyNowTaskPromise<T>;
+  using TaskWithExecutorT = tiny_now_task_with_executor<T>;
+  using PromiseT = tiny_now_taskPromise<T>;
 };
 template <typename T>
-using TinyNowTaskBase = AddMustAwaitImmediately<
-    TaskWrapperCrtp<TinyNowTask<T>, detail::TinyNowTaskCfg<T>>>;
+using tiny_now_taskBase = AddMustAwaitImmediately<
+    TaskWrapperCrtp<tiny_now_task<T>, detail::tiny_now_taskCfg<T>>>;
 } // namespace detail
 
 template <typename T>
-class FOLLY_CORO_TASK_ATTRS TinyNowTask final
-    : public detail::TinyNowTaskBase<T> {
+class FOLLY_CORO_TASK_ATTRS tiny_now_task final
+    : public detail::tiny_now_taskBase<T> {
  protected:
-  using detail::TinyNowTaskBase<T>::TinyNowTaskBase;
+  using detail::tiny_now_taskBase<T>::tiny_now_taskBase;
 };
 
-static_assert(is_semi_awaitable_v<TinyNowTask<int>>);
+static_assert(is_semi_awaitable_v<tiny_now_task<int>>);
 
 ///////////////////
 
@@ -218,7 +219,7 @@ struct TaskWrapperTest : testing::Test {
 };
 
 using NowTaskWrapperTest =
-    TaskWrapperTest<TinyNowTask, TinyNowTaskWithExecutor>;
+    TaskWrapperTest<tiny_now_task, tiny_now_task_with_executor>;
 using MovableTaskWrapperTest =
     TaskWrapperTest<TinyMovableTask, TinyMovableTaskWithExecutor>;
 

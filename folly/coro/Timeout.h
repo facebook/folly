@@ -23,7 +23,7 @@
 #include <folly/futures/Future.h>
 // `timeout(coroFutureInt())` makes a `safe_task`
 #include <folly/coro/safe/SafeTask.h>
-// `timeout(memberTask())` makes a `NowTask`
+// `timeout(memberTask())` makes a `now_task`
 #include <folly/coro/safe/NowTask.h>
 
 #if FOLLY_HAS_COROUTINES

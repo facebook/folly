@@ -118,7 +118,7 @@ is strictly safer, so you should prefer it when applicable.
 
 Capture-by-ref is a way of turning a reference from a parent scope into a
 `capture<T&>` or `<T&&>` inside a child `async_now_closure`.  While the
-`NowTask` restriction aids lifetime safety, the user must still be careful to
+`now_task` restriction aids lifetime safety, the user must still be careful to
 avoid giving the child the ability to store short-lived child refs in the
 parent's scope.  To fix a concrete instance of this problem, the
 `AsyncClosureBindings.h` implementation blocks the capture-by-ref mechanism

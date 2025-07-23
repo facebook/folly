@@ -40,13 +40,14 @@ using namespace folly;
 
 namespace folly::coro {
 
-// timeout(NowTask) -> NowTask
+// timeout(now_task) -> now_task
 static_assert(std::is_same_v<
-              NowTask<int>,
-              decltype(timeout(FOLLY_DECLVAL(NowTask<int>), 1s))>);
-static_assert(std::is_same_v<
-              NowTask<int>,
-              decltype(timeout(FOLLY_DECLVAL(NowTaskWithExecutor<int>), 1s))>);
+              now_task<int>,
+              decltype(timeout(FOLLY_DECLVAL(now_task<int>), 1s))>);
+static_assert(
+    std::is_same_v<
+        now_task<int>,
+        decltype(timeout(FOLLY_DECLVAL(now_task_with_executor<int>), 1s))>);
 
 // timeout(value_task or coro::Future) -> value_task
 static_assert(std::is_same_v<
@@ -323,8 +324,8 @@ TYPED_TEST(TimeoutFixture, TimeoutTaskType) {
     static_assert(std::is_same_v<decltype(fn(five(), 1s)), coro::Task<int>>);
     EXPECT_EQ(5, co_await fn(five(), 1s));
 
-    // timeout(NowTask) -> NowTask
-    auto now_two = []() -> coro::NowTask<int> { co_return 2; };
+    // timeout(now_task) -> now_task
+    auto now_two = []() -> coro::now_task<int> { co_return 2; };
     auto timeout_now_two = [&]() {
       // Can't use `fn` here because it's set up with perfect forwarding
       // instead of pass-by-value.  Not worth refactoring for 1 test.
@@ -336,7 +337,7 @@ TYPED_TEST(TimeoutFixture, TimeoutTaskType) {
       }
     };
     static_assert(
-        std::is_same_v<decltype(timeout_now_two()), coro::NowTask<int>>);
+        std::is_same_v<decltype(timeout_now_two()), coro::now_task<int>>);
     EXPECT_EQ(2, co_await timeout_now_two());
   }());
 }

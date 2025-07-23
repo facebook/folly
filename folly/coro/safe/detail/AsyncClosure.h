@@ -145,7 +145,7 @@ template <
 std::conditional_t<
     OuterSafety >= safe_alias::closure_min_arg_safety,
     safe_task<OuterSafety, OuterResT>,
-    NowTask<OuterResT>>
+    now_task<OuterResT>>
 async_closure_outer_coro(
     async_closure_private_t priv,
     auto inner_mover,
@@ -266,7 +266,7 @@ class async_closure_wrap_coro {
     static_assert(
         has_safe_args,
         "Args passed into `async_closure()` must have `safe_alias_of` of at "
-        "least `shared_cleanup`. `NowTask` and `async_now_closure()` do not "
+        "least `shared_cleanup`. `now_task` and `async_now_closure()` do not "
         "have this constraint. To force a movable closure, use `manual_safe_*`,"
         " and comment with a proof of why your usage is memory-safe.");
     static_assert(
@@ -584,7 +584,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
   }(std::move(raw_inner_coro));
 
   // Compute the safety of the arguments being passed by the caller.
-  constexpr safe_alias OuterSafety = Cfg.force_shared_cleanup // making NowTask
+  constexpr safe_alias OuterSafety = Cfg.force_shared_cleanup // making now_task
       ? safe_alias::unsafe
       : vtag_least_safe_alias(decltype(arg_safeties){});
   // Also check that the coroutine function's signature looks safe.
@@ -593,7 +593,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
 
   // This converts `raw_inner_task` into a "task mover" that can be plumbed
   // down to, and used by, `async_closure_outer_coro()`.  We do 3 tricks here:
-  //   - Wrap all tasks into a "mover" to handle immovables like `NowTask`.
+  //   - Wrap all tasks into a "mover" to handle immovables like `now_task`.
   //   - For `closure_task`, we'll internally LIE about its safety to let it be
   //     `co_await`ed. Per below, that's OK thanks to `async_closure_wrap_coro`.
   //   - For `safe_task` closures with the "no outer coro" optimization, we set

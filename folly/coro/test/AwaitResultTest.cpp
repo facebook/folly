@@ -27,7 +27,7 @@
 namespace folly::coro {
 
 CO_TEST(AwaitResultTest, co_await_result_of_error) {
-  auto voidErrorTask = []() -> NowTask<void> {
+  auto voidErrorTask = []() -> now_task<void> {
     co_yield co_error(std::runtime_error("foo"));
   };
   { // Capture the error
@@ -35,7 +35,7 @@ CO_TEST(AwaitResultTest, co_await_result_of_error) {
     EXPECT_STREQ("foo", get_exception<std::runtime_error>(res)->what());
   }
   { // Also test `coro::co_result` integration
-    auto res = co_await co_await_result([&]() -> NowTask<void> {
+    auto res = co_await co_await_result([&]() -> now_task<void> {
       co_yield co_result(co_await co_await_result(voidErrorTask()));
     }());
     EXPECT_STREQ("foo", get_exception<std::runtime_error>(res)->what());
@@ -44,7 +44,7 @@ CO_TEST(AwaitResultTest, co_await_result_of_error) {
 
 CO_TEST(AwaitResultTest, co_await_result_of_value) {
   // Return a move-only thing to make sure we don't copy
-  auto valueTask = []() -> NowTask<std::unique_ptr<int>> {
+  auto valueTask = []() -> now_task<std::unique_ptr<int>> {
     co_return std::make_unique<int>(1337);
   };
   { // Capture the value
@@ -53,16 +53,17 @@ CO_TEST(AwaitResultTest, co_await_result_of_value) {
     EXPECT_EQ(1337, *res.value_or_throw());
   }
   { // Also test `coro::co_result` integration
-    auto res = co_await co_await_result([&]() -> NowTask<std::unique_ptr<int>> {
-      co_yield co_result(co_await co_await_result(valueTask()));
-    }());
+    auto res =
+        co_await co_await_result([&]() -> now_task<std::unique_ptr<int>> {
+          co_yield co_result(co_await co_await_result(valueTask()));
+        }());
     EXPECT_EQ(1337, *res.value_or_throw());
   }
 }
 
 CO_TEST(AwaitResultTest, co_await_result_of_void) {
   int numAwaited = 0;
-  auto voidTask = [&]() -> NowTask<void> {
+  auto voidTask = [&]() -> now_task<void> {
     ++numAwaited;
     co_return;
   };
@@ -73,7 +74,7 @@ CO_TEST(AwaitResultTest, co_await_result_of_void) {
     EXPECT_EQ(1, numAwaited);
   }
   { // Also test `coro::co_result` integration
-    auto res = co_await co_await_result([&]() -> NowTask<void> {
+    auto res = co_await co_await_result([&]() -> now_task<void> {
       co_yield co_result(co_await co_await_result(voidTask()));
     }());
     static_assert(std::is_same_v<decltype(res), result<>>);
@@ -83,7 +84,7 @@ CO_TEST(AwaitResultTest, co_await_result_of_void) {
 }
 
 CO_TEST(AwaitResultTest, co_await_result_stopped) {
-  auto stoppedTask = [&]() -> NowTask<void> {
+  auto stoppedTask = [&]() -> now_task<void> {
     co_yield co_cancelled;
     LOG(FATAL) << "not reached";
   };
@@ -92,7 +93,7 @@ CO_TEST(AwaitResultTest, co_await_result_stopped) {
     EXPECT_TRUE(res.has_stopped());
   }
   { // Also test `coro::co_result` integration
-    auto res = co_await co_await_result([&]() -> NowTask<void> {
+    auto res = co_await co_await_result([&]() -> now_task<void> {
       co_yield co_result(co_await co_await_result(stoppedTask()));
       LOG(FATAL) << "not reached";
     }());

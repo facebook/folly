@@ -45,7 +45,7 @@
 /// ### WARNING: Do not blindly forward more APIs in `TaskWrapper.h`!
 ///
 /// Several existing wrappers are immediately-awaitable (`AwaitImmediately.h`).
-/// For those tasks (e.g. `NowTask`), API forwarding is risky:
+/// For those tasks (e.g. `now_task`), API forwarding is risky:
 ///   - Do NOT forward `semi()`, `start*()`, `unwrap()`, or other methods, or
 ///     CPOs that take the awaitable by-reference.  All of those make it
 ///     trivial to accidentally break the immediately-awaitable invariant, and
@@ -382,13 +382,13 @@ class TaskWithExecutorWrapperCrtp {
   // we still need to wrap the awaitable on that code path.
   //
   // NB: Passing by-&& here looks like it could compromise the safety of
-  // immediately-awaitable coros (`NowTask`, `NowTaskWithExecutor`).  With
+  // immediately-awaitable coros (`now_task`, `now_task_with_executor`).  With
   // by-value, `BlockingWaitTest.AwaitNowTaskWithExecutor` would not build.
   //
   // Supporting pass-by-value would require fixing a LOT of plumbing.
   //   - `WithAsyncStack.h` calls `is_tag_invocable_v`, which would fail on
-  //     `NowTaskWithExecutor` if this is by-value, since the implementation of
-  //     `is_tag_invocable_v` presents all args by-&&.
+  //     `now_task_with_executor` if this is by-value, since the implementation
+  //     of `is_tag_invocable_v` presents all args by-&&.
   //   - `CommutativeWrapperAwaitable` and `StackAwareViaIfAsyncAwaiter`,
   //     among others, also assume that `co_withAsyncStack` takes by-ref.
   //

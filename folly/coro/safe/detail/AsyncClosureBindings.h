@@ -748,7 +748,7 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   //  - An `async_closure` takes a `safe_task` and emits a `safe_task`.  Then
   //    we'll have `==` iff we got a `co_cleanup_capture` ref from a parent.
   //  - An `async_closure` taking an unconstrained task (may have by-ref
-  //    args, ref captures), and emitting a `NowTask`.  In this case, the arg
+  //    args, ref captures), and emitting a `now_task`.  In this case, the arg
   //    safety doesn't actually matter -- the caller must always
   //    `force_shared_cleanup` simply because the lambda callable might
   //    capture a `co_cleanup` ref inside it.

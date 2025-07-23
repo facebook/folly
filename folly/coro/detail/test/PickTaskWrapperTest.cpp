@@ -28,17 +28,17 @@ namespace folly::coro {
 
 TEST(PickTaskWrapperTest, AllTestsAreStatic) {}
 
-// (unsafe, await now) -> NowTask
+// (unsafe, await now) -> now_task
 static_assert(
     std::is_same_v<
-        NowTask<int>,
+        now_task<int>,
         detail::pick_task_wrapper<
             int,
             safe_alias::unsafe,
             /*await now*/ true>>);
 static_assert(
     std::is_same_v<
-        NowTaskWithExecutor<int>,
+        now_task_with_executor<int>,
         detail::pick_task_with_executor_wrapper<
             int,
             safe_alias::unsafe,
