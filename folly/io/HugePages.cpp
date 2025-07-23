@@ -18,7 +18,6 @@
 
 #include <folly/io/HugePages.h>
 
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -32,7 +31,6 @@
 #include <boost/regex.hpp>
 
 #include <folly/Conv.h>
-#include <folly/CppAttributes.h>
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/String.h>

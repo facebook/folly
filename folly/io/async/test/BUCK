@@ -976,7 +976,6 @@ fbcode_target(
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
     supports_static_listing = False,
     deps = [
-        "//folly:memory",
         "//folly/io/async:async_base",
         "//folly/io/async:async_pipe",
         "//folly/portability:gtest",
@@ -1072,7 +1071,6 @@ fbcode_target(
     ],
     external_deps = [
         ("glibc", None, "dl"),
-        ("openssl", None, "crypto"),
     ],
 )
 

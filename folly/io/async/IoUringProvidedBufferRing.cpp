@@ -17,7 +17,6 @@
 #include <folly/io/async/IoUringProvidedBufferRing.h>
 
 #include <folly/Conv.h>
-#include <folly/ExceptionString.h>
 #include <folly/String.h>
 #include <folly/lang/Align.h>
 

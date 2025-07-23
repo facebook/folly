@@ -18,11 +18,7 @@
 
 #include <fcntl.h>
 #include <signal.h>
-#include <sys/types.h>
 
-#include <openssl/async.h>
-
-#include <fstream>
 #include <iostream>
 #include <list>
 #include <set>

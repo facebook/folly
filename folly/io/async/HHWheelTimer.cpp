@@ -18,8 +18,6 @@
 
 #include <cassert>
 
-#include <folly/Memory.h>
-#include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/container/BitIterator.h>
 #include <folly/io/async/Request.h>

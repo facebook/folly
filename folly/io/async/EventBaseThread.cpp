@@ -16,7 +16,6 @@
 
 #include <folly/io/async/EventBaseThread.h>
 
-#include <folly/Memory.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 
 namespace folly {

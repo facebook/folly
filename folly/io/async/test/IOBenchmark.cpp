@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include <sys/eventfd.h>
-
 #include <folly/Benchmark.h>
 #include <folly/FileUtil.h>
 #include <folly/experimental/io/AsyncIO.h>
