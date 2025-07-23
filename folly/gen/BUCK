@@ -1,7 +1,146 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "DEFAULT_APPLE_SDKS",
+    "folly_xplat_library",
+)
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "base",
+    apple_sdks = DEFAULT_APPLE_SDKS,
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Base.h",
+        "Base-inl.h",
+    ],
+    deps = [
+        "//third-party/range-v3:range-v3",
+        "//xplat/folly:conv",
+        "//xplat/folly:gen_core",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly:utility",
+        "//xplat/folly/container:access",
+        "//xplat/folly/container:f14_hash",
+        "//xplat/folly/functional:invoke",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "combine",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Combine.h",
+        "Combine-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:gen_base",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "core",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Core.h",
+        "Core-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "file",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "File.h",
+        "File-inl.h",
+    ],
+    deps = [
+        ":base",
+        ":string",
+        "//xplat/folly:exception",
+        "//xplat/folly:file",
+        "//xplat/folly:io_iobuf",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "istream",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "IStream.h",
+    ],
+    deps = [
+        "//xplat/folly:gen_core",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "parallel",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Parallel.h",
+        "Parallel-inl.h",
+    ],
+    deps = [
+        ":base",
+        "//xplat/folly:experimental_event_count",
+        "//xplat/folly:mpmc_queue",
+        "//xplat/folly:scope_guard",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "parallel_map",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ParallelMap.h",
+        "ParallelMap-inl.h",
+    ],
+    deps = [
+        ":core",
+        "//xplat/folly:expected",
+        "//xplat/folly:experimental_event_count",
+        "//xplat/folly:mpmc_pipeline",
+        "//xplat/folly/functional:invoke",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "string",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "String.h",
+        "String-inl.h",
+    ],
+    exported_deps = [
+        ":base",
+        "//xplat/folly:conv",
+        "//xplat/folly:io_iobuf",
+        "//xplat/folly:portability",
+        "//xplat/folly:range",
+        "//xplat/folly:string",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,

@@ -4298,71 +4298,33 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "gen_base",
     apple_sdks = DEFAULT_APPLE_SDKS,
-    raw_headers = [
-        "gen/Base.h",
-        "gen/Base-inl.h",
-    ],
-    deps = [
-        "//third-party/range-v3:range-v3",
-        "//xplat/folly:conv",
-        "//xplat/folly:gen_core",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:utility",
-        "//xplat/folly/container:access",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/functional:invoke",
-    ],
+    exported_deps = ["//xplat/folly/gen:base"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "gen_file",
-    raw_headers = [
-        "gen/File.h",
-        "gen/File-inl.h",
-    ],
-    deps = [
-        ":exception",
-        ":file",
-        ":gen_base",
-        ":gen_string",
-        ":io_iobuf",
-    ],
+    exported_deps = ["//xplat/folly/gen:file"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "gen_string",
-    raw_headers = [
-        "gen/String.h",
-        "gen/String-inl.h",
-    ],
-    exported_deps = [
-        ":conv",
-        ":gen_base",
-        ":io_iobuf",
-        ":portability",
-        ":range",
-        ":string",
-    ],
+    exported_deps = ["//xplat/folly/gen:string"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "gen_core",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "gen/Core.h",
-        "gen/Core-inl.h",
-    ],
-    deps = [
-        ":portability",
-    ],
+    exported_deps = ["//xplat/folly/gen:core"],
 )
 
 non_fbcode_target(
@@ -4592,15 +4554,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "gen_istream",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "gen/IStream.h",
-    ],
-    deps = [
-        ":gen_core",
-    ],
+    exported_deps = ["//xplat/folly/gen:istream"],
 )
 
 non_fbcode_target(
@@ -5438,16 +5396,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "gen_combine",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "gen/Combine.h",
-        "gen/Combine-inl.h",
-    ],
-    deps = [
-        ":gen_base",
-    ],
+    exported_deps = ["//xplat/folly/gen:combine"],
 )
 
 non_fbcode_target(
@@ -5463,19 +5416,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "gen_parallel",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "gen/Parallel.h",
-        "gen/Parallel-inl.h",
-    ],
-    deps = [
-        ":experimental_event_count",
-        ":gen_base",
-        ":mpmc_queue",
-        ":scope_guard",
-    ],
+    exported_deps = ["//xplat/folly/gen:parallel"],
 )
 
 non_fbcode_target(
@@ -5616,20 +5561,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "gen_parallel_map",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "gen/ParallelMap.h",
-        "gen/ParallelMap-inl.h",
-    ],
-    deps = [
-        ":expected",
-        ":experimental_event_count",
-        ":gen_core",
-        ":mpmc_pipeline",
-        "//xplat/folly/functional:invoke",
-    ],
+    exported_deps = ["//xplat/folly/gen:parallel_map"],
 )
 
 non_fbcode_target(
