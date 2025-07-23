@@ -37,15 +37,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    # @shim
-    _kind = cpp_library,
-    name = "test_util",
-    exported_deps = [
-        "//folly/testing:test_util",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_library,
     name = "threaded_repeating_function_runner",
     headers = [
