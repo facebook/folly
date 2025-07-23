@@ -36,7 +36,7 @@ writing correct & performant C++ programs.  Fortunately,
   - When references ARE used, the most common scenario is passing a
     reference from a parent lexical scope to descendant scopes.
 
-`strict_safe_alias_of_v` / `lenient_safe_alias_of_v` are a _heuristic_ to check
+`strict_safe_alias_of_v` / `lenient_safe_alias_of_v` are _heuristics_ to check
 whether a type is likely to be memory-safe in the above settings.  The
 `safe_alias` enum shows a hierarchy of memory safety, but you only need to know
 about two:
@@ -272,9 +272,12 @@ class manual_safe_callable_t {
 // APIs taking callables should typically use `strict_safe_alias_of_v`, due to
 // the risk posed by lambda captures.  Future: Instead, almost always prefer
 // `safe_bind`, since that correctly measures safety for you.
-template <safe_alias Safety = safe_alias::maybe_value, typename Fn>
-manual_safe_callable_t<Safety, Fn> manual_safe_callable(Fn fn) {
-  return manual_safe_callable_t<Safety, Fn>{std::move(fn)};
+template <
+    safe_alias Safety = safe_alias::maybe_value,
+    typename Fn,
+    typename UncvrefFn = remove_cvref_t<Fn>>
+manual_safe_callable_t<Safety, UncvrefFn> manual_safe_callable(Fn&& fn) {
+  return manual_safe_callable_t<Safety, UncvrefFn>{static_cast<Fn&&>(fn)};
 }
 
 } // namespace folly

@@ -85,7 +85,7 @@ class MoveRange {
   Container& container_;
 };
 
-// Future: Apply `AsNoexcept` to the task if the entire collection process is
+// Future: Apply `as_noexcept` to the task if the entire collection process is
 // noexcept-awaitable.  This would require reworking the implementation a bit,
 // since e.g. `cancellation_token_merge` can throw `bad_alloc`.
 template <typename... SemiAwaitables>

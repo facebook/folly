@@ -60,25 +60,26 @@ static_assert(
             safe_alias::maybe_value,
             /*await now*/ false>>);
 
-// (co_cleanup_safe_ref, movable, wrapper) -> AsNoexcept<co_cleanup_safe_task<>>
+// (co_cleanup_safe_ref, movable, wrapper) ->
+// as_noexcept<co_cleanup_safe_task<>>
 static_assert(
     std::is_same_v<
-        AsNoexcept<co_cleanup_safe_task<int>, terminateOnCancel>,
+        as_noexcept<co_cleanup_safe_task<int>, terminateOnCancel>,
         detail::pick_task_wrapper<
             int,
             safe_alias::co_cleanup_safe_ref,
             /*await now*/ false,
-            detail::AsNoexceptWithCancelCfg<terminateOnCancel>>>);
+            detail::as_noexcept_with_cancel_cfg<terminateOnCancel>>>);
 static_assert(
     std::is_same_v<
-        AsNoexcept<
+        as_noexcept<
             safe_task_with_executor<safe_alias::co_cleanup_safe_ref, int>,
             terminateOnCancel>,
         detail::pick_task_with_executor_wrapper<
             int,
             safe_alias::co_cleanup_safe_ref,
             /*await now*/ false,
-            detail::AsNoexceptWithCancelCfg<terminateOnCancel>>>);
+            detail::as_noexcept_with_cancel_cfg<terminateOnCancel>>>);
 
 } // namespace folly::coro
 

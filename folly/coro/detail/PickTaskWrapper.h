@@ -27,8 +27,9 @@
 ///
 /// Variation along these dimensions is currently implemented as a zoo of coro
 /// templates and wrappers -- `Task` aka `UnsafeMovableTask`, `NowTask`,
-/// `safe_task`, `AsNoexcept<InnerTask>`.  The type function `pick_task_wrapper`
-/// provides common logic for picking a task type with the given attributes.
+/// `safe_task`, `as_noexcept<InnerTask>`.  The type function
+/// `pick_task_wrapper` provides common logic for picking a task type with the
+/// given attributes.
 
 #if FOLLY_HAS_COROUTINES
 
@@ -50,7 +51,7 @@ template <typename T>
 class NowTaskWithExecutor;
 
 template <typename, auto>
-class AsNoexcept;
+class as_noexcept;
 
 namespace detail {
 
@@ -120,11 +121,11 @@ struct pick_task_wrapper_impl<Safety, /*await now*/ false> {
 
 #endif // FOLLY_HAS_IMMOVABLE_COROUTINES
 
-// Pass this as `AddWrapperMetaFn` to `pick_task_wrapper` to add `AsNoexcept`.
+// Pass this as `AddWrapperMetaFn` to `pick_task_wrapper` to add `as_noexcept`.
 template <auto CancelCfg>
-struct AsNoexceptWithCancelCfg {
+struct as_noexcept_with_cancel_cfg {
   template <typename T>
-  using apply = AsNoexcept<T, CancelCfg>;
+  using apply = as_noexcept<T, CancelCfg>;
 };
 
 template <

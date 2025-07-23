@@ -23,9 +23,9 @@
 
 /// ## When to use this
 ///
-/// Use `AsNoexcept<>` only with APIs that only take coroutines that MUST NOT
+/// Use `as_noexcept<>` only with APIs that only take coroutines that MUST NOT
 /// throw when awaited -- like `co_cleanup()` or async scopes.  If your code
-/// compiles without `AsNoexcept<>`, you do not need it!
+/// compiles without `as_noexcept<>`, you do not need it!
 ///
 /// ## This is probably not the utility you are looking for!
 ///
@@ -35,8 +35,8 @@
 ///     whatever is awaiting me".  This saves the ~usec overhead of rethrow.
 ///
 ///   - If your project likes to avoid exceptions, that is not a great reason
-///     to reflexively make all your coros `AsNoexcept<>`, for these reasons:
-///       * Since `AsNoexcept<>` is implemented as a wrapper, it may reduce
+///     to reflexively make all your coros `as_noexcept<>`, for these reasons:
+///       * Since `as_noexcept<>` is implemented as a wrapper, it may reduce
 ///         your build speed.
 ///       * Coro frame allocation & construction can still throw (unless you
 ///         also mark the coro function `noexcept`).
@@ -49,7 +49,7 @@
 ///
 /// ## Why does this even exist, what's wrong with `noexcept`?
 ///
-/// Some `folly::coro` libraries require `AsNoexcept<>` is to clearly signal a
+/// Some `folly::coro` libraries require `as_noexcept<>` is to clearly signal a
 /// **firm contract** between the API and the user-supplied coroutine.  This is
 /// only appropriate in situations similar to sync destructors, where the API
 /// has no good recourse in case of a thrown exception.
@@ -60,11 +60,11 @@
 /// of the coroutine object itself (i.e.  a `bad_alloc` for the frame, or
 /// errors copying/moving the args).
 ///
-/// ## How exactly does `AsNoexcept<>` work?
+/// ## How exactly does `as_noexcept<>` work?
 ///
 /// `Noexcept.h` lets you mark coroutine types as `noexcept_awaitable_v`:
 ///
-///   []() -> AsNoexcept<Task<T>, OnCancel(defaultT())> { co_return ...; }
+///   []() -> as_noexcept<now_task<T>, OnCancel(defaultT())> { co_return ...; }
 ///
 /// This function creates a coroutine whose awaitable is that of the inner
 /// task, but wrapped with `detail::NoexceptAwaitable<...>`.
@@ -77,10 +77,10 @@
 ///   co_await co_awaitTry(intTask())  // `Try<int>`
 ///   co_await detail::NoexceptAwaitable<int, OnCancel(0)>{intTask()} // `int`
 ///
-/// Both the coroutine `AsNoexcept<Task<...>, ...>` and the preceding 2
+/// Both the coroutine `as_noexcept<Task<...>, ...>` and the preceding 2
 /// awaitables return `true` for `noexcept_awaitable_v`.
 ///
-/// `AsNoexcept<>` / `NoexceptAwaitable<>` compose properly with other coro-
+/// `as_noexcept<>` / `NoexceptAwaitable<>` compose properly with other coro-
 /// and awaitable-wrappers.  But, not all combinations make sense -- see the
 /// test, and/or extend it if needed.  For example, the outer wrapper is
 /// useless in `NoexceptAwaitable<...>(co_awaitTry(...))`, since exceptions
@@ -185,17 +185,17 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NoexceptAwaitable
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
 template <typename Inner, auto CancelCfg>
-class AsNoexcept;
-// NB: While it'd be prettier to have `AsNoexcept` branch on whether the inner
+class as_noexcept;
+// NB: While it'd be prettier to have `as_noexcept` branch on whether the inner
 // task has an executor, a separate template is much simpler.
 template <typename Inner, auto CancelCfg>
-class AsNoexceptWithExecutor;
+class as_noexcept_with_executor;
 
 namespace detail {
 template <typename Inner, auto CancelCfg>
-struct AsNoexceptWithExecutorCfg {
+struct as_noexcept_with_executorCfg {
   using InnerTaskWithExecutorT = Inner;
-  using WrapperTaskT = AsNoexcept<
+  using WrapperTaskT = as_noexcept<
       typename Inner::folly_private_task_without_executor_t,
       CancelCfg>;
   template <typename Awaitable> // library-internal, meant to be by-rref
@@ -207,17 +207,17 @@ struct AsNoexceptWithExecutorCfg {
   }
 };
 template <typename Inner, auto CancelCfg>
-using AsNoexceptWithExecutorBase = TaskWithExecutorWrapperCrtp<
-    AsNoexceptWithExecutor<Inner, CancelCfg>,
-    AsNoexceptWithExecutorCfg<Inner, CancelCfg>>;
+using as_noexcept_with_executor_base = TaskWithExecutorWrapperCrtp<
+    as_noexcept_with_executor<Inner, CancelCfg>,
+    as_noexcept_with_executorCfg<Inner, CancelCfg>>;
 } // namespace detail
 
 template <typename Inner, auto CancelCfg = OnCancel<void>{}>
-class FOLLY_NODISCARD AsNoexceptWithExecutor final
-    : public detail::AsNoexceptWithExecutorBase<Inner, CancelCfg> {
+class FOLLY_NODISCARD as_noexcept_with_executor final
+    : public detail::as_noexcept_with_executor_base<Inner, CancelCfg> {
  protected:
-  using detail::AsNoexceptWithExecutorBase<Inner, CancelCfg>::
-      AsNoexceptWithExecutorBase;
+  using detail::as_noexcept_with_executor_base<Inner, CancelCfg>::
+      as_noexcept_with_executor_base;
 
  public:
   using folly_private_noexcept_awaitable_t = std::true_type;
@@ -226,20 +226,20 @@ class FOLLY_NODISCARD AsNoexceptWithExecutor final
 namespace detail {
 
 template <typename... BaseArgs>
-class AsNoexceptTaskPromiseWrapper final
+class as_noexcept_task_promise_wrapper final
     : public TaskPromiseWrapper<BaseArgs...> {};
 
 template <typename Inner, auto CancelCfg>
-struct AsNoexceptCfg {
+struct as_noexcept_cfg {
   using ValueT = semi_await_result_t<Inner>;
   using InnerTaskT = Inner;
-  using TaskWithExecutorT = AsNoexceptWithExecutor<
+  using TaskWithExecutorT = as_noexcept_with_executor<
       decltype(co_withExecutor(
           FOLLY_DECLVAL(Executor::KeepAlive<>), FOLLY_DECLVAL(Inner))),
       CancelCfg>;
-  using PromiseT = AsNoexceptTaskPromiseWrapper<
+  using PromiseT = as_noexcept_task_promise_wrapper<
       ValueT,
-      AsNoexcept<Inner, CancelCfg>,
+      as_noexcept<Inner, CancelCfg>,
       typename folly::coro::coroutine_traits<Inner>::promise_type>;
   template <typename Awaitable> // library-internal, meant to be by-rref
   static inline auto wrapAwaitable(Awaitable&& awaitable) noexcept {
@@ -251,12 +251,12 @@ struct AsNoexceptCfg {
 };
 
 template <typename Inner, auto CancelCfg>
-using AsNoexceptBase = TaskWrapperCrtp<
-    AsNoexcept<Inner, CancelCfg>,
-    AsNoexceptCfg<Inner, CancelCfg>>;
+using as_noexcept_base = TaskWrapperCrtp<
+    as_noexcept<Inner, CancelCfg>,
+    as_noexcept_cfg<Inner, CancelCfg>>;
 
 // CAUTION: `as_noexcept_rewrapper` gives you the power to wrap and unwrap
-// `AsNoexcept`, so you must be extremely careful to preserve behavior:
+// `as_noexcept`, so you must be extremely careful to preserve behavior:
 //   - The unwrapped task must be rewrapped before awaiting.
 //   - You must not wrap any other task.
 
@@ -267,23 +267,23 @@ struct as_noexcept_rewrapper {
 };
 
 template <typename Inner, auto Cfg>
-struct as_noexcept_rewrapper<AsNoexcept<Inner, Cfg>> {
+struct as_noexcept_rewrapper<as_noexcept<Inner, Cfg>> {
   static inline constexpr bool as_noexcept_wrapped = true;
-  static Inner unwrapTask(AsNoexcept<Inner, Cfg>&& t) {
+  static Inner unwrapTask(as_noexcept<Inner, Cfg>&& t) {
     return std::move(t).unwrapTask();
   }
   static auto wrap_with(auto fn) {
-    return AsNoexcept<decltype(fn()), Cfg>{fn()};
+    return as_noexcept<decltype(fn()), Cfg>{fn()};
   }
 };
 
 } // namespace detail
 
 template <typename Inner, auto CancelCfg = OnCancel<void>{}>
-class FOLLY_CORO_TASK_ATTRS AsNoexcept final
-    : public detail::AsNoexceptBase<Inner, CancelCfg> {
+class FOLLY_CORO_TASK_ATTRS as_noexcept final
+    : public detail::as_noexcept_base<Inner, CancelCfg> {
  protected:
-  using detail::AsNoexceptBase<Inner, CancelCfg>::AsNoexceptBase;
+  using detail::as_noexcept_base<Inner, CancelCfg>::as_noexcept_base;
 
   template <typename> // Can unwrap and re-wrap (construct)
   friend struct detail::as_noexcept_rewrapper;

@@ -31,7 +31,7 @@
 namespace folly::coro {
 
 namespace detail {
-// This doesn't try to apply `AsNoexcept` to the output, since `timeout` is
+// This doesn't try to apply `as_noexcept` to the output, since `timeout` is
 // expected to throw, and `timeoutNoDiscard()` may either complete with a
 // stopped state, or with an error.
 template <typename SemiAwaitable, typename TimekeeperPtr>
