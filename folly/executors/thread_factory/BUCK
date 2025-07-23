@@ -36,7 +36,7 @@ non_fbcode_target(
         "//xplat/folly:portability_sys_resource",
         "//xplat/folly:portability_sys_time",
         "//xplat/folly:string",
-        "//xplat/folly:system_thread_name",
+        "//xplat/folly/system:thread_name",
     ],
     exported_deps = [
         "//xplat/folly/executors/thread_factory:init_thread_factory",
@@ -65,8 +65,8 @@ non_fbcode_target(
     exported_deps = [
         "//xplat/folly:conv",
         "//xplat/folly:range",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/executors/thread_factory:thread_factory",
+        "//xplat/folly/system:thread_name",
     ],
 )
 

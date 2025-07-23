@@ -490,8 +490,8 @@ non_fbcode_target(
         "//xplat/folly:portability_unistd",
         "//xplat/folly:scope_guard",
         "//xplat/folly:synchronization_baton",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/io/async:async_base",
+        "//xplat/folly/system:thread_name",
     ],
 )
 
@@ -533,9 +533,9 @@ non_fbcode_target(
     deps = [
         "//xplat/folly:portability_gtest",
         "//xplat/folly:synchronization_baton",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/io/async:event_base_manager",
         "//xplat/folly/io/async:event_base_thread",
+        "//xplat/folly/system:thread_name",
     ],
 )
 
@@ -651,8 +651,8 @@ non_fbcode_target(
         "//third-party/boost:boost_thread",
         "//xplat/folly:memory",
         "//xplat/folly:portability_gtest",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/io/async:async_base",
+        "//xplat/folly/system:thread_name",
     ],
     exported_deps = ["//xplat/folly/io/async:request_context"],
 )
@@ -680,9 +680,9 @@ non_fbcode_target(
         "//xplat/folly:optional",
         "//xplat/folly:portability_gtest",
         "//xplat/folly:synchronization_baton",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/io/async:event_base_manager",
         "//xplat/folly/io/async:scoped_event_base_thread",
+        "//xplat/folly/system:thread_name",
     ],
 )
 

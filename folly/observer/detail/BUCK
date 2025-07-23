@@ -33,9 +33,9 @@ non_fbcode_target(
         "//xplat/folly:singleton",
         "//xplat/folly:synchronization_sanitize_thread",
         "//xplat/folly:synchronized",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/concurrency:unbounded_queue",
         "//xplat/folly/experimental/observer/detail:graph_cycle_detector",
+        "//xplat/folly/system:thread_name",
     ],
     exported_deps = [
         "//xplat/folly/fibers:core_manager",

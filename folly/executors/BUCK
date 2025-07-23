@@ -53,11 +53,11 @@ non_fbcode_target(
         "//third-party/glog:glog",
         "//xplat/folly:executor",
         "//xplat/folly:scope_guard",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/concurrency:unbounded_queue",
         "//xplat/folly/container:f14_hash",
         "//xplat/folly/executors/thread_factory:named_thread_factory",
         "//xplat/folly/executors/thread_factory:thread_factory",
+        "//xplat/folly/system:thread_name",
     ],
 )
 
@@ -79,9 +79,9 @@ non_fbcode_target(
         "//xplat/folly:random",
         "//xplat/folly:range",
         "//xplat/folly:string",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/container:f14_hash",
         "//xplat/folly/container:intrusive_heap",
+        "//xplat/folly/system:thread_name",
     ],
 )
 
@@ -592,7 +592,7 @@ non_fbcode_target(
     deps = [
         "//third-party/glog:glog",
         "//xplat/folly:function",
-        "//xplat/folly:system_thread_name",
+        "//xplat/folly/system:thread_name",
     ],
 )
 
