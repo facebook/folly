@@ -1,7 +1,52 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "init",
+    srcs = [
+        "Init.cpp",
+    ],
+    fbcode_deps = [
+        "fbcode//folly/experimental/symbolizer:signal_handler",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Init.h",
+    ],
+    deps = [
+        ":phase",
+        "//third-party/glog:glog",
+        "//xplat/folly:experimental_symbolizer_symbolizer",
+        "//xplat/folly:logging_init",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_config",
+        "//xplat/folly:portability_gflags",
+        "//xplat/folly:portability_sys_syscall",
+        "//xplat/folly:singleton",
+        "//xplat/folly:synchronization_hazptr_thread_pool_executor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "phase",
+    srcs = [
+        "Phase.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Phase.h",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,

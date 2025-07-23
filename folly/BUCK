@@ -4930,42 +4930,19 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "init_init",
-    srcs = [
-        "init/Init.cpp",
-    ],
-    fbcode_deps = [
-        "fbcode//folly/experimental/symbolizer:signal_handler",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "init/Init.h",
-    ],
-    deps = [
-        ":experimental_symbolizer_symbolizer",
-        ":init_phase",
-        ":logging_init",
-        ":portability",
-        ":portability_config",
-        ":portability_gflags",
-        ":portability_sys_syscall",
-        ":singleton",
-        ":synchronization_hazptr_thread_pool_executor",
-        "//third-party/glog:glog",
-    ],
+    exported_deps = ["//xplat/folly/init:init"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "init_phase",
-    srcs = [
-        "init/Phase.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "init/Phase.h",
-    ],
+    exported_deps = ["//xplat/folly/init:phase"],
 )
 
 non_fbcode_target(
