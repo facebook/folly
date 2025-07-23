@@ -22,7 +22,7 @@
 #include <type_traits>
 
 namespace folly {
-template <typename> // Forward-decl to keep `RValueReferenceWrapper.h` dep-free
+template <typename> // Forward-decl to avoid `RValueReferenceWrapper.h` dep
 class rvalue_reference_wrapper;
 } // namespace folly
 
@@ -36,9 +36,10 @@ writing correct & performant C++ programs.  Fortunately,
   - When references ARE used, the most common scenario is passing a
     reference from a parent lexical scope to descendant scopes.
 
-`safe_alias_of_v` is a _heuristic_ to check whether a type is likely to be
-memory-safe in the above settings.  The `safe_alias` enum shows a hierarchy
-of memory safety, but you only need to know about two:
+`strict_safe_alias_of_v` / `lenient_safe_alias_of_v` are a _heuristic_ to check
+whether a type is likely to be memory-safe in the above settings.  The
+`safe_alias` enum shows a hierarchy of memory safety, but you only need to know
+about two:
   - `unsafe` -- e.g. raw pointers or references, and
   - `maybe_value` -- `int`, `std::pair<int, char>`, or `std::unique_ptr<Foo>`.
 
@@ -51,8 +52,14 @@ The BIG CAVEATS are:
 
  - The "composition hole" -- i.e. aliasing hidden in structures.  We can't see
    unsafe class members, so `UnsafeStruct` below will be deduced to have
-   `maybe_value` safety unless you specialize `safe_alias_of<UnsafeStruct>`.
-     struct UnsafeStruct { int* rawPtr; };
+   `maybe_value` safety unless you specify a `safe_alias` value:
+     struct UnsafeStruct {
+       int* rawPtr;
+       // Without this, most APIs will treat `UnsafeStruct` as `maybe_value`
+       template <safe_alias>
+       using folly_private_safe_alias_t =
+           safe_alias_constant<safe_alias::unsafe>;
+     };
    Future: Perhaps with C++26 reflection, this could be fixed.
 
    The "lambda hole" is a particularly easy instance of the "composition hole".
@@ -87,7 +94,8 @@ below, instead of writing a custom workaround.  Always explain why it's safe.
 
 To teach `safe_alias_of` about your type, include `SafeAlias-fwd.h` and either:
  1) Add a member type alias to your class:
-    using using folly_private_safe_alias_t = safe_alias_constant<...>;
+    template <safe_alias Default>
+    using using folly_private_safe_alias_t = safe_alias_of<Inner, Default>;
  2) Specialize `folly::safe_alias_of<YourT>`.
 
 When adding `safe_alias` annotations to types, stick to these principles:
@@ -105,39 +113,64 @@ When adding `safe_alias` annotations to types, stick to these principles:
 */
 namespace folly {
 
-// Types are `maybe_value` unless otherwise specified.  Note that
+// The default safety measurements for types that don't specify one.  Note that
 // `SafeAlias-fwd.h` already marks raw pointers & refs as `unsafe`, and peels
 // off CV qualifiers from the type being tested.
 //
-// See also: `safe_alias_of_v`.
+// See also: `strict_safe_alias_of_v` / `lenient_safe_alias_of_v`.
 //
-// As explained in `SafeAlias-fwd.h`, do NOT move this to the `fwd` header.  To
-// guarantee safety, this permissive primary template must be colocated with
-// the other specializations below.
-template <typename T, typename /*SFINAE*/>
-struct safe_alias_of : safe_alias_constant<safe_alias::maybe_value> {};
+// As explained in `SafeAlias-fwd.h`, do NOT move this to the `fwd` header.
+// This is commonly used with `lenient_safe_alias_of_v`, so the default
+// behavior is permissive.  Therefore, to guarantee safety, this primary
+// template must be colocated with the other specializations below.
+template <typename T, safe_alias Default, typename /*SFINAE*/>
+struct safe_alias_of
+    : safe_alias_constant<
+          // Stateless & fundamental types are always safe -- `void` is covered
+          // in `SafeAlias-fwd.h`.  Function pointers are covered below, on the
+          // the potentially incorrect theory that adding 2 specializations is
+          // cheaper to compile than this test here:
+          //   std::is_pointer_v<T> &&
+          //   std::is_function_v<std::remove_pointer_t<T>>
+          //
+          // Check `sizeof()` to avoid `is_empty` UB on incomplete types.
+          (std::is_fundamental_v<T> || (sizeof(T) >= 0 && std::is_empty_v<T>))
+              ? safe_alias::maybe_value
+              : Default> {};
 
 // Reference wrappers are unsafe.
-template <typename T>
-struct safe_alias_of<std::reference_wrapper<T>>
+template <typename T, safe_alias Default>
+struct safe_alias_of<std::reference_wrapper<T>, Default>
     : safe_alias_constant<safe_alias::unsafe> {};
-template <typename T>
-struct safe_alias_of<folly::rvalue_reference_wrapper<T>>
+template <typename T, safe_alias Default>
+struct safe_alias_of<folly::rvalue_reference_wrapper<T>, Default>
     : safe_alias_constant<safe_alias::unsafe> {};
 
-// Let `safe_alias_of_v` recursively inspect `std` containers that are likely
-// to be involved in bugs.  If you encounter a memory-safety issue that
-// would've been caught by this, feel free to extend this.
-template <typename... As>
-struct safe_alias_of<std::tuple<As...>> : safe_alias_of_pack<As...> {};
-template <typename... As>
-struct safe_alias_of<std::pair<As...>> : safe_alias_of_pack<As...> {};
-template <typename... As>
-struct safe_alias_of<std::vector<As...>> : safe_alias_of_pack<As...> {};
+// Function pointers are stateless, and thus also safe (see primary template).
+template <typename R, typename... Args, safe_alias Default>
+struct safe_alias_of<R (*)(Args...), Default>
+    : safe_alias_constant<safe_alias::maybe_value> {};
+template <typename R, typename... Args, safe_alias Default>
+struct safe_alias_of<R (*)(Args...) noexcept, Default>
+    : safe_alias_constant<safe_alias::maybe_value> {};
+
+// Let `safe_alias_of` recursively inspect `std` containers that are likely to
+// be involved in bugs.  If you encounter a memory-safety issue that would've
+// been caught by this, feel free to extend this.
+template <typename... As, safe_alias Default>
+struct safe_alias_of<std::tuple<As...>, Default>
+    : safe_alias_of_pack<Default, As...> {};
+template <typename... As, safe_alias Default>
+struct safe_alias_of<std::pair<As...>, Default>
+    : safe_alias_of_pack<Default, As...> {};
+template <typename... As, safe_alias Default>
+struct safe_alias_of<std::vector<As...>, Default>
+    : safe_alias_of_pack<Default, As...> {};
 
 // Recursing into `tag_t<>` type lists is nice for metaprogramming
-template <typename... As>
-struct safe_alias_of<::folly::tag_t<As...>> : safe_alias_of_pack<As...> {};
+template <typename... As, safe_alias Default>
+struct safe_alias_of<::folly::tag_t<As...>, Default>
+    : safe_alias_of_pack<Default, As...> {};
 
 // IMPORTANT: If you use the `manual_safe_` escape-hatch wrappers, you MUST
 // comment with clear proof of WHY your usage is safe.  The goal is to
@@ -154,18 +187,25 @@ struct safe_alias_of<::folly::tag_t<As...>> : safe_alias_of_pack<As...> {};
 //
 // The types are public since they may occur in user-facing signatures.
 
-template <safe_alias, typename T>
+template <safe_alias S, typename T>
 struct manual_safe_ref_t : std::reference_wrapper<T> {
   using typename std::reference_wrapper<T>::type;
   using std::reference_wrapper<T>::reference_wrapper;
+
+  template <safe_alias>
+  using folly_private_safe_alias_t = safe_alias_constant<S>;
 };
 
-template <safe_alias, typename T>
+template <safe_alias S, typename T>
 struct manual_safe_val_t {
   using type = T;
 
+  template <safe_alias>
+  using folly_private_safe_alias_t = safe_alias_constant<S>;
+
   template <typename... Args>
-  manual_safe_val_t(Args&&... args) : t_(static_cast<Args&&>(args)...) {}
+  explicit manual_safe_val_t(Args&&... args)
+      : t_(static_cast<Args&&>(args)...) {}
   template <typename Fn>
   manual_safe_val_t(std::in_place_type_t<T>, Fn fn) : t_(fn()) {}
 
@@ -181,11 +221,11 @@ struct manual_safe_val_t {
 };
 
 template <safe_alias Safety = safe_alias::maybe_value, typename T = void>
-auto manual_safe_ref(T& t) {
+manual_safe_ref_t<Safety, T> manual_safe_ref(T& t) {
   return manual_safe_ref_t<Safety, T>{t};
 }
 template <safe_alias Safety = safe_alias::maybe_value, typename T>
-auto manual_safe_val(T t) {
+manual_safe_val_t<Safety, T> manual_safe_val(T t) {
   return manual_safe_val_t<Safety, T>{std::move(t)};
 }
 template <safe_alias Safety = safe_alias::maybe_value, typename Fn>
@@ -195,9 +235,46 @@ auto manual_safe_with(Fn&& fn) {
       std::in_place_type<FnRet>, static_cast<Fn&&>(fn)};
 }
 
-template <safe_alias S, typename T>
-struct safe_alias_of<manual_safe_ref_t<S, T>> : safe_alias_constant<S> {};
-template <safe_alias S, typename T>
-struct safe_alias_of<manual_safe_val_t<S, T>> : safe_alias_constant<S> {};
+template <safe_alias S, typename Fn>
+class manual_safe_callable_t {
+ private:
+  Fn fn_;
+
+ public:
+  template <safe_alias>
+  using folly_private_safe_alias_t = safe_alias_constant<S>;
+
+  explicit manual_safe_callable_t(Fn fn) : fn_(std::move(fn)) {}
+
+  template <typename... Args>
+  auto operator()(Args&&... args) &
+      // Same as FOLLY_DETAIL_FORWARD_BODY, but we don't yet depend on Utility.h
+      noexcept(noexcept(fn_(static_cast<Args&&>(args)...)))
+          -> decltype(fn_(static_cast<Args&&>(args)...)) {
+    return fn_(static_cast<Args&&>(args)...);
+  }
+
+  template <typename... Args>
+  auto operator()(Args&&... args) const& noexcept(
+      noexcept(std::as_const(fn_)(static_cast<Args&&>(args)...)))
+      -> decltype(std::as_const(fn_)(static_cast<Args&&>(args)...)) {
+    return std::as_const(fn_)(static_cast<Args&&>(args)...);
+  }
+
+  template <typename... Args>
+  auto operator()(Args&&... args) && noexcept(
+      noexcept(std::move(fn_)(static_cast<Args&&>(args)...)))
+      -> decltype(std::move(fn_)(static_cast<Args&&>(args)...)) {
+    return std::move(fn_)(static_cast<Args&&>(args)...);
+  }
+};
+
+// APIs taking callables should typically use `strict_safe_alias_of_v`, due to
+// the risk posed by lambda captures.  Future: Instead, almost always prefer
+// `safe_bind`, since that correctly measures safety for you.
+template <safe_alias Safety = safe_alias::maybe_value, typename Fn>
+manual_safe_callable_t<Safety, Fn> manual_safe_callable(Fn fn) {
+  return manual_safe_callable_t<Safety, Fn>{std::move(fn)};
+}
 
 } // namespace folly

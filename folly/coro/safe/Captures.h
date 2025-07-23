@@ -769,6 +769,41 @@ class capture_indirect_storage : public capture_storage<Derived, RefArgT, T> {
   }
 };
 
+// `capture_safety_impl_v` is separate for `AsyncObject.h` to specialize
+template <typename T, safe_alias Default>
+inline constexpr auto capture_safety_impl_v = safe_alias_of<T, Default>::value;
+
+// ALL "capture" types must have `folly_private_safe_alias_t` markings.
+//
+// `capture` refs are only valid as long as their on-closure storage.  They can
+// be copied/moved, so their `safe_alias` marking is the only thing preventing
+// the use of invalid references.  The docs in `enum class safe_alias` discuss
+// how safety levels are assigned for closure `capture`s.  `async_closure`
+// invokes `to_capture_ref()` to emit refs with the appropriate safety.
+//
+// If the underlying type is `<= shared_cleanup`, that leaks through to
+// all `capture`s containing it.  See e.g. `AsyncObjectPtr`.
+//   * Note: A `shared_cleanup` type `T` gives a closure a way of passing refs
+//     onto parent `SafeAsyncScope`s (generically: cleanup phases), so
+//     `capture<T>` must never be safer than `T` (unless we're dealing with a
+//     restricted capture ref),
+//
+// Otherwise, the safety measurement of `T` is "outer" to the current
+// closure, and is one of `after_cleanup_ref`, `co_cleanup_safe_ref`, or
+// `maybe_value`.  Those should all behave the same inside the closure,
+// so `MaxRefSafety` is all that matters.
+//   * Note: `capture<V>` is convertible to `capture<V&>` etc, so the ref
+//     version should never be safer.
+template <typename T, safe_alias MaxRefSafety, safe_alias Default>
+struct capture_safety
+    : safe_alias_constant<
+          (capture_safety_impl_v<std::remove_reference_t<T>, Default> <=
+           safe_alias::shared_cleanup)
+              ? std::min(
+                    MaxRefSafety,
+                    capture_safety_impl_v<std::remove_reference_t<T>, Default>)
+              : MaxRefSafety> {};
+
 } // namespace detail
 
 // Please read the file docblock.
@@ -794,6 +829,9 @@ class capture : public detail::capture_storage<capture<T>, capture, T> {
  public:
   FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE(capture, T);
   using detail::capture_storage<capture<T>, capture, T>::capture_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::co_cleanup_safe_ref, Default>;
 };
 template <typename T> // may be a value or reference
   requires(!detail::has_async_closure_co_cleanup<T>)
@@ -806,6 +844,9 @@ class after_cleanup_capture
       after_cleanup_capture<T>,
       after_cleanup_capture,
       T>::capture_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::after_cleanup_ref, Default>;
 };
 
 // The use-case for `capture_heap` is to allow a closure without cleanup
@@ -826,6 +867,9 @@ class capture_heap
  public:
   using detail::capture_heap_storage<capture_heap<T>, capture, T>::
       capture_heap_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::co_cleanup_safe_ref, Default>;
 };
 template <typename T>
 class after_cleanup_capture_heap
@@ -838,6 +882,9 @@ class after_cleanup_capture_heap
       after_cleanup_capture_heap<T>,
       after_cleanup_capture,
       T>::capture_heap_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::after_cleanup_ref, Default>;
 };
 
 // `capture_indirect<SomePtr<T>>` is like `capture<SomePtr<T>>` with syntax
@@ -852,6 +899,9 @@ class capture_indirect
       capture_indirect<T>,
       capture_indirect,
       T>::capture_indirect_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::co_cleanup_safe_ref, Default>;
 };
 template <typename T>
 class after_cleanup_capture_indirect
@@ -864,6 +914,9 @@ class after_cleanup_capture_indirect
       after_cleanup_capture_indirect<T>,
       after_cleanup_capture_indirect,
       T>::capture_indirect_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::after_cleanup_ref, Default>;
 };
 
 // A closure that takes a cleanup arg is required to mark its directly-owned
@@ -887,6 +940,9 @@ class co_cleanup_capture
   FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE(co_cleanup_capture, T);
   using detail::capture_storage<co_cleanup_capture<T>, co_cleanup_capture, T>::
       capture_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::shared_cleanup, Default>;
 };
 
 // What this accomplishes, in brief -- details in `Captures.md`:
@@ -916,6 +972,12 @@ class restricted_co_cleanup_capture
       restricted_co_cleanup_capture<T>,
       restricted_co_cleanup_capture,
       T>::capture_storage;
+  // FIXME: `capture_safety` will still measure this as `shared_cleanup` due
+  // to `T` being that safety.  So, when implementing restricted refs, we'll
+  // have to add a new case to `capture_safety` to handle this.
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::after_cleanup_ref, Default>;
 };
 
 namespace detail {
@@ -940,81 +1002,9 @@ template <typename T>
 concept is_any_capture_val =
     is_any_capture<T> && !std::is_reference_v<typename T::capture_type>;
 
-// `capture_safety_impl_v` is separate for `AsyncObject.h` to specialize
-template <typename T>
-inline constexpr auto capture_safety_impl_v = safe_alias_of_v<T>;
-// If the underlying type is `<= shared_cleanup`, that leaks through to
-// all `capture`s containing it.  See e.g. `AsyncObjectPtr`.
-//   * Note: A `shared_cleanup` type `T` gives a closure a way of passing refs
-//     onto parent `SafeAsyncScope`s (generically: cleanup phases), so
-//     `capture<T>` must never be safer than `T` (unless we're dealing with a
-//     restricted capture ref),
-//
-// Otherwise, the safety measurement of `T` is "outer" to the current
-// closure, and is one of `after_cleanup_ref`, `co_cleanup_safe_ref`, or
-// `maybe_value`.  Those should all behave the same inside the closure,
-// so `MaxRefSafety` is all that matters.
-//   * Note: `capture<V>` is convertible to `capture<V&>` etc, so the ref
-//     version should never be safer.
-template <typename T, safe_alias MaxRefSafety>
-struct capture_safety
-    : safe_alias_constant<
-          (capture_safety_impl_v<std::remove_reference_t<T>> <=
-           safe_alias::shared_cleanup)
-              ? std::min(
-                    MaxRefSafety,
-                    capture_safety_impl_v<std::remove_reference_t<T>>)
-              : MaxRefSafety> {};
-
 } // namespace detail
 
 } // namespace folly::coro
-
-namespace folly {
-
-// Set `safe_alias` values for all the `capture` types.
-//
-// `capture` refs are only valid as long as their on-closure storage.  They
-// can be copied/moved, so their `safe_alias` marking is the only thing
-// preventing the use of invalid references.  The docs in `enum class
-// safe_alias` discuss how safety levels are assigned for closure
-// `capture`s.  `async_closure` invokes `to_capture_ref()` to emit refs with
-// the appropriate safety.
-
-template <typename T>
-struct safe_alias_of<::folly::coro::capture<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
-};
-template <typename T>
-struct safe_alias_of<::folly::coro::capture_heap<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
-};
-template <typename T>
-struct safe_alias_of<::folly::coro::capture_indirect<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
-};
-
-template <typename T>
-struct safe_alias_of<::folly::coro::after_cleanup_capture<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
-template <typename T>
-struct safe_alias_of<::folly::coro::after_cleanup_capture_heap<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
-template <typename T>
-struct safe_alias_of<::folly::coro::after_cleanup_capture_indirect<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
-
-template <typename T>
-struct safe_alias_of<::folly::coro::co_cleanup_capture<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::shared_cleanup> {};
-// FIXME: `capture_safety` will still measure this as `shared_cleanup` due
-// to `T` being that safety.  So, when implementing restricted refs, we'll
-// have to add a new case to `capture_safety` to handle this.
-template <typename T>
-struct safe_alias_of<::folly::coro::restricted_co_cleanup_capture<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
-
-} // namespace folly
 
 // We extended `folly::bindings` with `capture_kind`, so we must explicitly
 // specialize `binding_policy`.  We reuse the standard rules.  Custom

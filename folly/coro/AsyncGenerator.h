@@ -224,6 +224,7 @@ class FOLLY_NODISCARD AsyncGenerator {
   //
   // Future: Implement a `coro/safe` generator wrapper, like
   // `async_closure_gen`.
+  template <safe_alias>
   using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
  private:
@@ -297,6 +298,7 @@ class FOLLY_NODISCARD AsyncGenerator {
       return CleanupAwaitable{scopeExit_, std::move(executor)};
     }
 
+    template <safe_alias>
     using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
    private:
@@ -496,6 +498,7 @@ class FOLLY_NODISCARD AsyncGenerator {
       return NextSemiAwaitable{std::exchange(awaitable.coro_, {})};
     }
 
+    template <safe_alias>
     using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
    private:

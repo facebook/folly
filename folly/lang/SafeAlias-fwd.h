@@ -101,12 +101,12 @@ using safe_alias_constant = std::integral_constant<safe_alias, Safety>;
 
 // IMPORTANT:
 //
-// (1) Do NOT move the primary, permissive template in here!
+// (1) Do NOT move the primary template in here!
 //
 //     The reason is that we REQUIRE the extra specializations in `SafeAlias.h`
-//     before concluding that something is safe.  It would be very bad if a
-//     user forgot to include `SafeAlias.h`, and was told that a type was safe,
-//     when it isn't.
+//     before allowing `lenient_safe_alias_v` to conclude that something is
+//     safe.  It would be very bad if a user forgot to include `SafeAlias.h`,
+//     and was told that a type was safe, when it isn't.
 //
 // (2) Keep this SMALL -- pretty much everything in `folly/coro` includes this.
 //
@@ -114,22 +114,27 @@ using safe_alias_constant = std::integral_constant<safe_alias, Safety>;
 //     check is: if you have to add an `#include`, it goes in `SafeAlias.h`.
 //
 // Future: Replace the SFINAE arg with `requires` once on C++20.
-template <typename T, typename /*SFINAE*/ = void>
+template <typename T, safe_alias /*default*/, typename /*SFINAE*/ = void>
 struct safe_alias_of;
 
 // `const` and `volatile` qualifiers don't affect the `safe_alias` measurement.
-template <typename T>
-struct safe_alias_of<const T> : safe_alias_of<T> {};
-template <typename T>
-struct safe_alias_of<volatile T> : safe_alias_of<T> {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<const T, Default> : safe_alias_of<T, Default> {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<volatile T, Default> : safe_alias_of<T, Default> {};
 
 // Raw references & pointers are `unsafe`.
-template <typename T>
-struct safe_alias_of<T*> : safe_alias_constant<safe_alias::unsafe> {};
-template <typename T>
-struct safe_alias_of<T&> : safe_alias_constant<safe_alias::unsafe> {};
-template <typename T>
-struct safe_alias_of<T&&> : safe_alias_constant<safe_alias::unsafe> {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<T*, Default> : safe_alias_constant<safe_alias::unsafe> {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<T&, Default> : safe_alias_constant<safe_alias::unsafe> {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<T&&, Default> : safe_alias_constant<safe_alias::unsafe> {};
+
+// `void` is incomplete and would fail the primary template
+template <safe_alias Default>
+struct safe_alias_of<void, Default>
+    : safe_alias_constant<safe_alias::maybe_value> {};
 
 // Most `folly` types annotate their safety via a member type alias. We do
 // this not just because it's shorter, but also because member classes, like
@@ -138,19 +143,35 @@ struct safe_alias_of<T&&> : safe_alias_constant<safe_alias::unsafe> {};
 //
 // This is in `SafeAlias-fwd.h`, since that allows the various task wrappers
 // NOT to include the larger `SafeAlias.h`.
-template <typename T>
-struct safe_alias_of<T, std::void_t<typename T::folly_private_safe_alias_t>>
-    : T::folly_private_safe_alias_t {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<
+    T,
+    Default,
+    std::void_t<typename T::template folly_private_safe_alias_t<Default>>>
+    : T::template folly_private_safe_alias_t<Default> {};
 
+// Use this in APIs that take callable objects, since lambda captures present a
+// particularly high risk for aliasing bugs. If you have a compile error:
+//   - The best solution is to expose the correct `folly_private_safe_alias_t`
+//     for your type.
+//   - For async coroutines, use `async_closure()` or `SafeTask.h`.
+//   - Future: Also see `safe_bind`.
+//   - For one-offs, `SafeAlias.h`  includes some `manual_safe_*` workarounds.
+//     You MUST include a comment that proves your usage is safe.
 template <typename T>
-inline constexpr safe_alias safe_alias_of_v = safe_alias_of<T>::value;
+inline constexpr safe_alias strict_safe_alias_of_v =
+    safe_alias_of<T, safe_alias::unsafe>::value;
+// For low-risk APIs, where "vanilla C++ usability" outweighs safety.
+template <typename T>
+inline constexpr safe_alias lenient_safe_alias_of_v =
+    safe_alias_of<T, safe_alias::maybe_value>::value;
 
 // Utility for computing the `safe_alias_of` a composite type.
 // Returns the lowest `safe_alias` level of all the supplied `Ts`.
-template <typename... Ts>
+template <safe_alias Default, typename... Ts>
 struct safe_alias_of_pack {
   static constexpr auto value =
-      std::min({safe_alias::maybe_value, safe_alias_of_v<Ts>...});
+      std::min({safe_alias::maybe_value, safe_alias_of<Ts, Default>::value...});
 };
 
 } // namespace folly

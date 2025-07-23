@@ -37,7 +37,9 @@ namespace detail {
 template <typename SemiAwaitable, typename TimekeeperPtr>
 using TimeoutTask = PickTaskWrapper<
     typename semi_await_try_result_t<SemiAwaitable>::element_type,
-    std::min(safe_alias_of_v<TimekeeperPtr>, safe_alias_of_v<SemiAwaitable>),
+    std::min(
+        lenient_safe_alias_of_v<TimekeeperPtr>,
+        lenient_safe_alias_of_v<SemiAwaitable>),
     must_await_immediately_v<SemiAwaitable>>;
 } // namespace detail
 

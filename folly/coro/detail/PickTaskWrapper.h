@@ -23,7 +23,7 @@
 /// outer coro to be able to pass through these attributes of the inner coro:
 ///  - `must_await_immediately_v`
 ///  - `noexcept_awaitable_v`
-///  - `safe_alias_of_v`
+///  - `strict_safe_alias_of_v` / `lenient_safe_alias_of_v`
 ///
 /// Variation along these dimensions is currently implemented as a zoo of coro
 /// templates and wrappers -- `Task` aka `UnsafeMovableTask`, `NowTask`,

@@ -272,8 +272,9 @@ class TaskWrapperCrtp {
       must_await_immediately_t<typename Cfg::InnerTaskT>;
   using folly_private_noexcept_awaitable_t =
       noexcept_awaitable_t<typename Cfg::InnerTaskT>;
+  template <safe_alias Default>
   using folly_private_safe_alias_t =
-      safe_alias_of<folly_private_task_wrapper_inner_t>;
+      safe_alias_of<folly_private_task_wrapper_inner_t, Default>;
 
  private:
   using Inner = folly_private_task_wrapper_inner_t;
@@ -413,7 +414,8 @@ class TaskWithExecutorWrapperCrtp {
   using folly_private_must_await_immediately_t =
       must_await_immediately_t<Inner>;
   using folly_private_task_without_executor_t = typename Cfg::WrapperTaskT;
-  using folly_private_safe_alias_t = safe_alias_of<Inner>;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t = safe_alias_of<Inner, Default>;
 };
 
 } // namespace folly::coro

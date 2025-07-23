@@ -498,9 +498,11 @@ auto vtag_safety_of_async_closure_arg() {
     static_assert(!std::is_reference_v<CT>);
     // Stored captures are as safe as the type being stored.  For example, when
     // a closure stores a `BackgroundTask<Safety, T>`, it cannot be safer than
-    // `Safety`.  We don't use `safe_alias_of_v` here because `AsyncObject.h`
-    // specializes `capture_safety_impl_v`.
-    return vtag<capture_safety_impl_v<CT>>;
+    // `Safety`.
+    //
+    // While this replicates `lenient_safe_alias_of_v` logic, we don't directly
+    // use it here, since `AsyncObject.h` specializes `capture_safety_impl_v`.
+    return vtag<capture_safety_impl_v<CT, safe_alias::maybe_value>>;
   } else if constexpr ( //
       is_instantiation_of_v<async_closure_scope_self_ref_hack, T>) {
     // This is a closure made by `spawn_self_closure()` et al. It must:
@@ -513,7 +515,8 @@ auto vtag_safety_of_async_closure_arg() {
     if constexpr (ParentViewOfSafety) {
       return vtag<>;
     } else {
-      constexpr auto storage_safety = safe_alias_of_v<typename T::storage_type>;
+      constexpr auto storage_safety =
+          lenient_safe_alias_of_v<typename T::storage_type>;
       // In current usage, ref_hack can only contain `co_cleanup_capture<V&>`.
       static_assert(storage_safety == safe_alias::shared_cleanup);
       return vtag<storage_safety>;
@@ -521,7 +524,7 @@ auto vtag_safety_of_async_closure_arg() {
   } else if constexpr (is_any_capture<T>) {
     // "pass capture ref": Output of the `to_capture_ref` branch.
     static_assert(std::is_reference_v<typename T::capture_type>);
-    return vtag<safe_alias_of_v<T>>;
+    return vtag<lenient_safe_alias_of_v<T>>;
   } else if constexpr (std::is_same_v<capture_ref_measurement_stub, T>) {
     if constexpr (ParentViewOfSafety) {
       // Only allow capture-by-reference in `async_now_closure`s
@@ -534,7 +537,7 @@ auto vtag_safety_of_async_closure_arg() {
   } else {
     // "regular arg": A non-`capture` passed via forwarding reference.
     static_assert(is_instantiation_of_v<async_closure_regular_arg, T>);
-    return vtag<safe_alias_of_v<typename T::storage_type>>;
+    return vtag<lenient_safe_alias_of_v<typename T::storage_type>>;
   }
 }
 

@@ -438,12 +438,12 @@ A properly implemented `co_cleanup` type `T` should:
     may be useful when accessing members of `T`.  The proxy type should be
     `NonCopyableNonMovable` with a constructor restricted to your class.
 
-  - For public APIs, require `safe_alias_of_v` of at least `co_cleanup_safe_ref`
-    for any input that may be stored until cleanup time.
+  - For public APIs, require `lenient_safe_alias_of_v` of at least
+    `co_cleanup_safe_ref` for any input that may be stored until cleanup time.
 
   - If `restricted_co_cleanup_capture<T&>` support is desired, ADL-customize
     `capture_restricted_proxy()` as above, and enforce that all API inputs have
-    `safe_alias_of_v` of `maybe_value`.
+    `lenient_safe_alias_of_v` of `maybe_value`.
 
 ### How many templates are in this type zoo? Can't you type-erase?
 

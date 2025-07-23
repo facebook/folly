@@ -94,9 +94,12 @@ TEST(SafeTask, isSafeTaskValid) {
 }
 
 TEST(SafeTask, safe_alias_of_v) {
-  static_assert(safe_alias_of_v<ValueTask<int>> == safe_alias::maybe_value);
   static_assert(
-      safe_alias_of_v<SafeTask<safe_alias::after_cleanup_ref, int>> ==
+      strict_safe_alias_of_v<ValueTask<int>> == safe_alias::maybe_value);
+  static_assert(
+      lenient_safe_alias_of_v<ValueTask<int>> == safe_alias::maybe_value);
+  static_assert(
+      lenient_safe_alias_of_v<SafeTask<safe_alias::after_cleanup_ref, int>> ==
       safe_alias::after_cleanup_ref);
 }
 

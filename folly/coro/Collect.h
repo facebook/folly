@@ -91,13 +91,15 @@ class MoveRange {
 template <typename... SemiAwaitables>
 using CollectAllTask = PickTaskWrapper<
     std::tuple<collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>,
-    std::min({safe_alias::maybe_value, safe_alias_of_v<SemiAwaitables>...}),
+    std::min(
+        {safe_alias::maybe_value, lenient_safe_alias_of_v<SemiAwaitables>...}),
     (must_await_immediately_v<SemiAwaitables> || ...)>;
 
 template <typename... SemiAwaitables>
 using CollectAllTryTask = PickTaskWrapper<
     std::tuple<collect_all_try_component_t<remove_cvref_t<SemiAwaitables>>...>,
-    std::min({safe_alias::maybe_value, safe_alias_of_v<SemiAwaitables>...}),
+    std::min(
+        {safe_alias::maybe_value, lenient_safe_alias_of_v<SemiAwaitables>...}),
     (must_await_immediately_v<SemiAwaitables> || ...)>;
 
 } // namespace detail

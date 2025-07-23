@@ -136,7 +136,7 @@ using AutoSafeTaskImpl = std::conditional_t<
     // This checks both args & the return value because we want to avoid this
     // resolving to a `SafeTask` that won't actually compile.
     (Safety >= safe_alias::closure_min_arg_safety &&
-     safe_alias_of_v<T> >= safe_alias::maybe_value),
+     lenient_safe_alias_of_v<T> >= safe_alias::maybe_value),
     SafeTask<Safety, T>,
     NowTask<T>>;
 }
@@ -158,24 +158,28 @@ using AutoSafeTaskImpl = std::conditional_t<
 /// error instead of a `NowTask`, simply because this type-function has no
 /// access to the callable.  See `APIBestPractices.md` for workarounds.
 template <typename T, typename... SafetyArgs>
-using AutoSafeTask =
-    detail::AutoSafeTaskImpl<T, safe_alias_of_pack<SafetyArgs...>::value>;
+using AutoSafeTask = detail::AutoSafeTaskImpl<
+    T,
+    // Same logic as `lenient_safe_alias_of_v`
+    safe_alias_of_pack<safe_alias::maybe_value, SafetyArgs...>::value>;
 
 namespace detail {
 
 struct SafeTaskTest;
 
 template <safe_alias ArgSafety, typename RetT, typename... Args>
-concept SafeTaskRetAndArgs = ((safe_alias_of_v<Args> >= ArgSafety) && ...) &&
+concept SafeTaskRetAndArgs =
+    ((lenient_safe_alias_of_v<Args> >= ArgSafety) && ...) &&
     // In the event that you need a child scope to return a reference to
     // something owned by a still-valid ancestor scope, we don't have a good
     // way to detect this automatically.  To work around, use a `manual_safe_*`
     // wrapper in `SafeAlias.h`, and comment why it is safe.
-    (safe_alias_of_v<RetT> >= safe_alias::maybe_value);
+    (lenient_safe_alias_of_v<RetT> >= safe_alias::maybe_value);
 
 template <typename T>
 concept is_stateless_class_or_func =
-    (std::is_class_v<T> && std::is_empty_v<T>) ||
+    // `require_sizeof` avoids `is_empty` UB on incomplete types
+    (require_sizeof<T> >= 0 && std::is_empty_v<T>) ||
     (std::is_pointer_v<T> && std::is_function_v<std::remove_pointer_t<T>>);
 
 template <safe_alias, typename...>
@@ -332,6 +336,7 @@ class FOLLY_NODISCARD SafeTaskWithExecutor final
   friend class BackgroundTask; // for `unwrapTaskWithExecutor()`, remove later
 
  public:
+  template <safe_alias>
   using folly_private_safe_alias_t = safe_alias_constant<ArgSafety>;
 
   [[deprecated(
@@ -358,7 +363,7 @@ class FOLLY_CORO_TASK_ATTRS SafeTask final
   friend auto toNowTask(SafeTask<Safety, U>);
 
   // The `async_closure` implementation is allowed to override the
-  // argument-deduced `safe_alias_of_v` for a `SafeTask` because
+  // argument-deduced `lenient_safe_alias_of_v` for a `SafeTask` because
   // `capture_safety` marks some coro-stored `*capture*`s as `unsafe` even
   // though they're safe -- to discourage users from moving them.
   template <safe_alias NewSafety>
@@ -368,6 +373,7 @@ class FOLLY_CORO_TASK_ATTRS SafeTask final
 
  public:
   using detail::SafeTaskBaseTraits<ArgSafety, T>::type::type;
+  template <safe_alias>
   using folly_private_safe_alias_t = safe_alias_constant<ArgSafety>;
 
   [[deprecated(

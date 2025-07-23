@@ -793,7 +793,8 @@ class CommutativeWrapperAwaitable {
   // noexcept-awaitability, it must remember to override these:
   using folly_private_must_await_immediately_t = must_await_immediately_t<T>;
   using folly_private_noexcept_awaitable_t = noexcept_awaitable_t<T>;
-  using folly_private_safe_alias_t = safe_alias_of<T>;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t = safe_alias_of<T, Default>;
 
  protected:
   T inner_;

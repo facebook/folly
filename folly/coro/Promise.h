@@ -268,7 +268,8 @@ class Future {
     return std::move(future);
   }
 
-  using folly_private_safe_alias_t = safe_alias_of<T>;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t = safe_alias_of<T, Default>;
 
  private:
   Future(CancellationSource cs, detail::PromiseState<T>& state)

@@ -715,6 +715,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
   using folly_private_task_without_executor_t = Task<T>;
   // See comment in `Task`, or use `SafeTaskWithExecutor` instead.
+  template <safe_alias>
   using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
  private:
@@ -881,6 +882,7 @@ class FOLLY_CORO_TASK_ATTRS Task {
   // `folly::coro` docs include hundreds of words of pitfalls.  The intent here
   // is to catch people accidentally passing `Task`s into safer primitives, and
   // breaking their memory-safety guarantees.
+  template <safe_alias>
   using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
  private:
