@@ -27,7 +27,7 @@
 ///
 /// Variation along these dimensions is currently implemented as a zoo of coro
 /// templates and wrappers -- `Task` aka `UnsafeMovableTask`, `NowTask`,
-/// `SafeTask`, `AsNoexcept<InnerTask>`.  The type function `PickTaskWrapper`
+/// `safe_task`, `AsNoexcept<InnerTask>`.  The type function `pick_task_wrapper`
 /// provides common logic for picking a task type with the given attributes.
 
 #if FOLLY_HAS_COROUTINES
@@ -40,9 +40,9 @@ template <typename T>
 class TaskWithExecutor;
 
 template <safe_alias, typename>
-class SafeTask;
+class safe_task;
 template <safe_alias, typename>
-class SafeTaskWithExecutor;
+class safe_task_with_executor;
 
 template <typename T>
 class NowTask;
@@ -60,12 +60,12 @@ struct identity_metafunction {
 };
 
 template <safe_alias, bool /*must await immediately (now)*/>
-struct PickTaskWrapperImpl;
+struct pick_task_wrapper_impl;
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
 template <>
-struct PickTaskWrapperImpl<safe_alias::unsafe, /*await now*/ false> {
+struct pick_task_wrapper_impl<safe_alias::unsafe, /*await now*/ false> {
   template <typename T>
   using Task = Task<T>;
   template <typename T>
@@ -73,37 +73,37 @@ struct PickTaskWrapperImpl<safe_alias::unsafe, /*await now*/ false> {
 };
 
 template <>
-struct PickTaskWrapperImpl<safe_alias::unsafe, /*await now*/ true> {
+struct pick_task_wrapper_impl<safe_alias::unsafe, /*await now*/ true> {
   template <typename T>
   using Task = NowTask<T>;
   template <typename T>
   using TaskWithExecutor = NowTaskWithExecutor<T>;
 };
 
-// These `SafeTask` types are immovable, so "await now" doesn't matter.
+// These `safe_task` types are immovable, so "await now" doesn't matter.
 template <safe_alias Safety, bool AwaitNow>
   requires(Safety < safe_alias::closure_min_arg_safety)
-struct PickTaskWrapperImpl<Safety, AwaitNow> {
+struct pick_task_wrapper_impl<Safety, AwaitNow> {
   template <typename T>
-  using Task = SafeTask<Safety, T>;
+  using Task = safe_task<Safety, T>;
   template <typename T>
-  using TaskWithExecutor = SafeTaskWithExecutor<Safety, T>;
+  using TaskWithExecutor = safe_task_with_executor<Safety, T>;
 };
 
 template <safe_alias Safety>
   requires(Safety >= safe_alias::closure_min_arg_safety)
 // Future: There is no principled reason we can't have must-await-immediately
-// `SafeTask`s with these higher safety levels, but supporting that cleanly
+// `safe_task`s with these higher safety levels, but supporting that cleanly
 // would require reorganizing the `folly/coro` task-wrapper implementations. Two
 // possible approaches are:
 //  - `NowTask<T> = AwaitNow<Task<T>>`
-//  - Roll up `NowTask` and `SafeTask` into something like `BasicTask<T, Cfg>`,
+//  - Roll up `NowTask` and `safe_task` into `basic_task<T, Cfg>` or similar,
 //    where `Cfg` captures both safety & immediate-awaitability.
-struct PickTaskWrapperImpl<Safety, /*await now*/ false> {
+struct pick_task_wrapper_impl<Safety, /*await now*/ false> {
   template <typename T>
-  using Task = SafeTask<Safety, T>;
+  using Task = safe_task<Safety, T>;
   template <typename T>
-  using TaskWithExecutor = SafeTaskWithExecutor<Safety, T>;
+  using TaskWithExecutor = safe_task_with_executor<Safety, T>;
 };
 
 #else // no FOLLY_HAS_IMMOVABLE_COROUTINES
@@ -111,7 +111,7 @@ struct PickTaskWrapperImpl<Safety, /*await now*/ false> {
 // This fallback is required because `coro::Future<SafeType>` is safe and is
 // available on earlier build systems.  We have no choice but to emit `Task`.
 template <safe_alias Safety>
-struct PickTaskWrapperImpl<Safety, /*await now*/ false> {
+struct pick_task_wrapper_impl<Safety, /*await now*/ false> {
   template <typename T>
   using Task = Task<T>;
   template <typename T>
@@ -120,7 +120,7 @@ struct PickTaskWrapperImpl<Safety, /*await now*/ false> {
 
 #endif // FOLLY_HAS_IMMOVABLE_COROUTINES
 
-// Pass this as `AddWrapperMetaFn` to `PickTaskWrapper` to add `AsNoexcept`.
+// Pass this as `AddWrapperMetaFn` to `pick_task_wrapper` to add `AsNoexcept`.
 template <auto CancelCfg>
 struct AsNoexceptWithCancelCfg {
   template <typename T>
@@ -132,18 +132,19 @@ template <
     safe_alias Safety,
     bool MustAwaitImmediately,
     typename AddWrapperMetaFn = identity_metafunction>
-using PickTaskWrapper = typename AddWrapperMetaFn::template apply<
-    typename PickTaskWrapperImpl<Safety, MustAwaitImmediately>::template Task<
-        T>>;
+using pick_task_wrapper = typename AddWrapperMetaFn::template apply<
+    typename pick_task_wrapper_impl<Safety, MustAwaitImmediately>::
+        template Task<T>>;
 
 template <
     typename T,
     safe_alias Safety,
     bool MustAwaitImmediately,
     typename AddWrapperMetaFn = identity_metafunction>
-using PickTaskWithExecutorWrapper = typename AddWrapperMetaFn::template apply<
-    typename PickTaskWrapperImpl<Safety, MustAwaitImmediately>::
-        template TaskWithExecutor<T>>;
+using pick_task_with_executor_wrapper =
+    typename AddWrapperMetaFn::template apply<typename pick_task_wrapper_impl<
+        Safety,
+        MustAwaitImmediately>::template TaskWithExecutor<T>>;
 
 } // namespace detail
 } // namespace folly::coro

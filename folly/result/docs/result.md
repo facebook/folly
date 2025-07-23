@@ -187,7 +187,7 @@ In bullets, `result<T>`:
     an error.  A line with just `resultFoo()` will not compile, you need
     `co_await resultFoo()`.
 
-  - Integrates with `coro::Task` (or safer `NowTask` / `ValueTask`) via
+  - Integrates with `coro::Task` (or safer `NowTask` / `value_task`) via
       * `v = co_await co_ready(res)` -- get `res`'s value, propagating errors.
       * `r = co_await co_await_result(someCoro())` -- await without throwing,
         though if you won't handle *any* errors, keep using `co_nothrow`.
@@ -228,7 +228,7 @@ What to know about exceptions & `result`:
 
 ### Avoid `Task<result<T>>`
 
-`coro::Task` coroutines (or safer `NowTask`, `ValueTask`, etc) should **not**
+`coro::Task` coroutines (or safer `NowTask`, `value_task`, etc) should **not**
 wrap `result`, because tasks are already capable of non-throwing error
 propagation. Instead, read "how to interoperate with `Task`" below.
 
@@ -364,7 +364,7 @@ performance are negligible, so choose readability:
   - `co_await std::ref(r)` if you need to mutate the value, or plan to move it
     after using it.
 
-### Interoperate with `coro::Task` (or safer `NowTask` / `ValueTask`)
+### Interoperate with `coro::Task` (or safer `NowTask` / `value_task`)
 
   - To pass all errors to the parent, use `co_await co_nothrow(childTask())`.
   - Get a task's `result` via `res = co_await co_await_result(childTask())`.

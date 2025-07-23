@@ -47,16 +47,16 @@ enum class safe_alias {
   // Definitely has aliasing, we know nothing of the lifetime.
   unsafe,
   // Implementation detail of `async_closure`, used for creating
-  // `ClosureTask`, a restricted-usage `SafeTask`.  Other code should treat
-  // this as `unsafe`.  `SafeTask.h` & `Captures.h` explain the rationale.
+  // `closure_task`, a restricted-usage `safe_task`.  Other code should treat
+  // this as `unsafe`.  `safe_task.h` & `Captures.h` explain the rationale.
   unsafe_closure_internal,
   // Implementation detail of `async_closure`, used for creating
-  // `MemberTask`, a restricted-usage `SafeTask`.  Other code should treat
+  // `member_task`, a restricted-usage `safe_task`.  Other code should treat
   // this as `unsafe`.  Closure-related code that distinguishes this from
   // `unsafe_closure_internal` expects this value to be higher.
   unsafe_member_internal,
   // Used only in `async_closure*()` -- the minimum level it considers safe
-  // for arguments, and the minimum level of `SafeTask` it will emit.
+  // for arguments, and the minimum level of `safe_task` it will emit.
   //   - Represents an arg that can schedule a cleanup callback on an
   //     ancestor's cleanup arg `A`.  This safety level cannot be stronger
   //     than `after_cleanup_ref` because otherwise such a ref could be
@@ -154,7 +154,7 @@ struct safe_alias_of<
 // particularly high risk for aliasing bugs. If you have a compile error:
 //   - The best solution is to expose the correct `folly_private_safe_alias_t`
 //     for your type.
-//   - For async coroutines, use `async_closure()` or `SafeTask.h`.
+//   - For async coroutines, use `async_closure()` or `safe_task.h`.
 //   - Future: Also see `safe_bind`.
 //   - For one-offs, `SafeAlias.h`  includes some `manual_safe_*` workarounds.
 //     You MUST include a comment that proves your usage is safe.

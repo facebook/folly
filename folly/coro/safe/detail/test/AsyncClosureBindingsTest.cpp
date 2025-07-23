@@ -155,14 +155,14 @@ constexpr bool check_capture_val_to_ref() {
     //
     //   co_await async_closure(
     //       safeAsyncScope<CancelViaParent>(),
-    //       [](auto scope) -> ClosureTask<void> {
+    //       [](auto scope) -> closure_task<void> {
     //         co_await async_closure(
     //             bound_args{scope, as_capture(123)},
-    //             [](auto outerScope, auto n) -> ClosureTask<void> {
+    //             [](auto outerScope, auto n) -> closure_task<void> {
     //               outerScope.with(co_await co_current_executor).schedule(
     //                   async_closure(
     //                       bound_args{n},
-    //                       [](auto n2) -> ClosureTask<void> {
+    //                       [](auto n2) -> closure_task<void> {
     //                         ++n2;
     //                         co_return;
     //                       }));

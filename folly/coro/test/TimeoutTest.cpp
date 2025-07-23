@@ -48,18 +48,19 @@ static_assert(std::is_same_v<
               NowTask<int>,
               decltype(timeout(FOLLY_DECLVAL(NowTaskWithExecutor<int>), 1s))>);
 
-// timeout(ValueTask or coro::Future) -> ValueTask
+// timeout(value_task or coro::Future) -> value_task
 static_assert(std::is_same_v<
-              ValueTask<int>,
-              decltype(timeout(FOLLY_DECLVAL(ValueTask<int>), 1s))>);
+              value_task<int>,
+              decltype(timeout(FOLLY_DECLVAL(value_task<int>), 1s))>);
 static_assert(
     std::is_same_v<
-        ValueTask<int>,
+        value_task<int>,
         decltype(timeout(
-            FOLLY_DECLVAL(SafeTaskWithExecutor<safe_alias::maybe_value, int>),
+            FOLLY_DECLVAL(
+                safe_task_with_executor<safe_alias::maybe_value, int>),
             1s))>);
 static_assert(std::is_same_v<
-              ValueTask<int>,
+              value_task<int>,
               decltype(timeout(FOLLY_DECLVAL(coro::Future<int>), 1s))>);
 
 // Passing a `Timekeeper` pointer changes the safety
@@ -67,12 +68,12 @@ static_assert(
     std::is_same_v<
         Task<int>,
         decltype(timeout(
-            FOLLY_DECLVAL(ValueTask<int>), 1s, FOLLY_DECLVAL(Timekeeper*)))>);
+            FOLLY_DECLVAL(value_task<int>), 1s, FOLLY_DECLVAL(Timekeeper*)))>);
 static_assert(
     std::is_same_v<
-        CoCleanupSafeTask<int>,
+        co_cleanup_safe_task<int>,
         decltype(timeout(
-            FOLLY_DECLVAL(ValueTask<int>),
+            FOLLY_DECLVAL(value_task<int>),
             1s,
             FOLLY_DECLVAL(capture<Timekeeper&>)))>);
 

@@ -10,10 +10,10 @@ wrapper around `int` whose lifetime is tightly bound to the closure.
 assert(15 == co_await async_closure(
     // NB: Could omit this `bound_args`, since the 1 arg is `like_bound_args`
     bound_args{as_capture(5)},
-    [](auto n) -> ClosureTask<int> {
+    [](auto n) -> closure_task<int> {
       co_await async_closure(
         bound_args{n},
-        [](auto nRef) -> ClosureTask<void> {
+        [](auto nRef) -> closure_task<void> {
           *nRef += 10;
           co_return;
         });
@@ -132,7 +132,7 @@ would come with both new footguns, and new complexity, so I'm currently
 thinking of them as "rejected designs" rather than future work.
 
 **Note 1:** It would be within the spirit of regular RAII to defer awaiting the
-closure to a later point in the current scope.  That is, the `SafeTask` taking
+closure to a later point in the current scope.  That is, the `safe_task` taking
 these `capture_ref()` args would be marked down to `<= lexical_scope_ref`
 safety.  This could be a new safety level with:
 
@@ -140,7 +140,7 @@ safety.  This could be a new safety level with:
 after_cleanup_ref >= lexical_scope_ref >= shared_cleanup
 ```
 
-The valid lifetime for this body-only `SafeTask` is clearly shorter than
+The valid lifetime for this body-only `safe_task` is clearly shorter than
 `after_cleanup_ref` -- it's invalid whenever the captured refs are destroyed,
 which (under typical RAII) is a bit longer than the lexical lifetime of the
 task.  In the `lexical_scope_ref` scenario, the user can, of course, invalidate
@@ -149,10 +149,10 @@ be covered if the [P1179R1 lifetime safety profile](https://wg21.link/P1179R1)
 is standardized.  For example:
 
 ```cpp
-std::optional<SafeTask<safe_alias::lexical_scope_ref, void>> t;
+std::optional<safe_task<safe_alias::lexical_scope_ref, void>> t;
 {
   int i = 5;
-  t = async_closure([](auto i) -> ClosureTask<void> {
+  t = async_closure([](auto i) -> closure_task<void> {
     std::cout << *i << std::endl;
     co_return;
   }, capture_ref(i));
@@ -170,11 +170,11 @@ invocations.  `Captures.h` would need to support auto-upgrade of
 `shared_cleanup` status.  This "universal" implementation would be more
 complex, but without `async_closure()`'s capture-upgrade semantics, there's not
 a lot of value in obtaining a `lexical_scope_capture<Ref>` -- for example, you
-can't use it to schedule work on a nested `SafeAsyncScope`.
+can't use it to schedule work on a nested `safe_async_scope`.
 
 ### Debugging lifetime safety compile errors
 
-If you're working with captures, and get a compile error about `SafeTask`,
+If you're working with captures, and get a compile error about `safe_task`,
 `safe_alias_of`, or similar, there is a good chance that you triggered a
 lifetime safety check. Read `LifetimeSafetyDebugging.md` for what to do next --
 it also covers the lifetime safety design of `Captures.h`.
@@ -198,7 +198,7 @@ it also covers the lifetime safety design of `Captures.h`.
 such a thing, you end up needing to store two kinds of values that live strictly
 longer than the coroutine function scope itself. Specifically:
   - Values with `co_cleanup` (details in `CoCleanupAsyncRAII.md`). The
-    archetypal type is `SafeAsyncScope`, which is immovable to allow an
+    archetypal type is `safe_async_scope`, which is immovable to allow an
     efficient implementation -- so the storage mechanism also needs to support
     in-place construction.
   - Values that outlive the cleanup, so they can be safely referenced by the
@@ -239,12 +239,12 @@ give a short-lived reference to a longer-lived task on that scope:
 ```cpp
 co_await async_closure(
     safeAsyncScope<CancelViaParent>(),
-    [](auto scope) -> ClosureTask<void> {
+    [](auto scope) -> closure_task<void> {
       co_await async_closure(
           bound_args{scope, as_capture(5)},
-          [](auto outerScope, auto n1) -> ClosureTask<void> {
+          [](auto outerScope, auto n1) -> closure_task<void> {
               outerScope->with(co_await co_current_executor).schedule(
-                  [](capture<int&> n2) -> CoCleanupSafeTask<void> {
+                  [](capture<int&> n2) -> co_cleanup_safe_task<void> {
                     assert(*n2 == 5); // Invalid memory access!
                     co_return;
                   }(n1));
@@ -262,14 +262,14 @@ no known conversion from 'after_cleanup_capture<int>' to 'capture<int &>'
 ```
 Changing the inner lambda to `after_cleanup_capture` still won't compile:
 ```
-Bad SafeTask: check for unsafe aliasing in arguments or return type
+Bad safe_task: check for unsafe aliasing in arguments or return type
 ```
-Relaxing the inner task to `SafeTask<safe_alias::after_cleanup_ref, void>` also
+Relaxing the inner task to `safe_task<safe_alias::after_cleanup_ref, void>` also
 won't let the bug through, since `schedule()` won't take a less-safe task.
 ```
 constraints not satisfied ... schedule( ...
 is_void_safe_task<
-    SafeTask<safe_alias::after_cleanup_ref, void>,
+    safe_task<safe_alias::after_cleanup_ref, void>,
     safe_alias::co_cleanup_safe_ref>' evaluated to false
 ```
 
@@ -278,7 +278,7 @@ To understand the solution, let's reformulate this bug more abstractly:
   - Any closure taking `co_cleanup_capture<T&>` is vulnerable to the problem,
     **unless** the API of `T` specifically ensures that it only takes inputs of
     safety `maybe_value`.  In this section, we focus on `co_cleanup` types that
-    must be able to take references, like `SafeAsyncScope`.
+    must be able to take references, like `safe_async_scope`.
 
     NB: Types with value-only APIs should expose `capture_restricted_proxy()`.
 
@@ -356,7 +356,7 @@ search the code for "restricted".
 In some scenarios -- e.g. passing around a fire-and-forget logger -- it is
 important to avoid the safety downgrade.  For example, a closure taking a
 `co_cleanup_capture<Logger&>` would be unable to pass any of its own captures to
-a `co_cleanup_capture<SafeAsyncScope&>` that it owns.
+a `co_cleanup_capture<safe_async_scope&>` that it owns.
 
 To avoid downgrades, pass `restricted_co_cleanup_capture<Logger&>` to the child
 closure.  This `capture` uses ADL customization point

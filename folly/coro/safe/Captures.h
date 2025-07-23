@@ -46,7 +46,7 @@ using ::folly::bindings::bound_args;
 class AsyncObjectTag;
 
 template <safe_alias, typename>
-class SafeTask;
+class safe_task;
 
 namespace detail {
 
@@ -329,7 +329,7 @@ class capture_crtp_base {
     return fn();
   }
 
-  // Object intended for use with `capture`  (like `SafeAsyncScope`) may
+  // Object intended for use with `capture`  (like `safe_async_scope`) may
   // provide overloads of the helper function `capture_proxy` to provide
   // proxy types for `capture` operators `*` and `->`.
   //
@@ -345,7 +345,7 @@ class capture_crtp_base {
   //     `co_cleanup_capture<...AsyncScope...>` that was originally NOT
   //     restricted -- so, "restricted" is a property of the reference, not
   //     of the underlying scope object.
-  //   - Therefore, the public API of `SafeAsyncScope` must sit in a
+  //   - Therefore, the public API of `safe_async_scope` must sit in a
   //     "reference" object that knows if it's restricted, not in the storage
   //     object (which does not).
   //   - It would break encapsulation to put `AsyncScope`-specific logic like
@@ -517,7 +517,7 @@ class capture_crtp_base {
   // of your closure.  That deliberately has stricter single-use semantics
   // than `V&&` in vanilla C++ -- for example, without single-use, an rref
   // could be used to move out a value that is still referenced in
-  // SafeAsyncScope task.  Having the explicit && -> & conversion permits
+  // safe_async_scope task.  Having the explicit && -> & conversion permits
   // the child change its mind about moving out the value.
   //
   // Future ideas & implementation notes:
@@ -784,7 +784,7 @@ inline constexpr auto capture_safety_impl_v = safe_alias_of<T, Default>::value;
 // If the underlying type is `<= shared_cleanup`, that leaks through to
 // all `capture`s containing it.  See e.g. `AsyncObjectPtr`.
 //   * Note: A `shared_cleanup` type `T` gives a closure a way of passing refs
-//     onto parent `SafeAsyncScope`s (generically: cleanup phases), so
+//     onto parent `safe_async_scope`s (generically: cleanup phases), so
 //     `capture<T>` must never be safer than `T` (unless we're dealing with a
 //     restricted capture ref),
 //

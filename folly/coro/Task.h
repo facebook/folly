@@ -714,7 +714,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   }
 
   using folly_private_task_without_executor_t = Task<T>;
-  // See comment in `Task`, or use `SafeTaskWithExecutor` instead.
+  // See comment in `Task`, or use `safe_task_with_executor` instead.
   template <safe_alias>
   using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
@@ -876,7 +876,7 @@ class FOLLY_CORO_TASK_ATTRS Task {
   }
 
   using PrivateAwaiterTypeForTests = Awaiter;
-  // Use `SafeTask` instead of `Task` to move tasks into other safe coro APIs.
+  // Use `safe_task` instead of `Task` to move tasks into other safe coro APIs.
   //
   // User-facing stuff from `Task.h` can trivially include unsafe aliasing, the
   // `folly::coro` docs include hundreds of words of pitfalls.  The intent here

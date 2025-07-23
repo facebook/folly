@@ -75,16 +75,16 @@ struct SafeTaskTypeAssertions {
                 NowTask<std::tuple<Out>>,
                 decltype(Fn()(FOLLY_DECLVAL(NowTaskWithExecutor<In>)))>);
 
-  // collectAll(ValueTask or coro::Future) -> ValueTask
+  // collectAll(value_task or coro::Future) -> value_task
   static_assert(std::is_same_v<
-                ValueTask<std::tuple<Out>>,
-                decltype(Fn()(FOLLY_DECLVAL(ValueTask<In>)))>);
+                value_task<std::tuple<Out>>,
+                decltype(Fn()(FOLLY_DECLVAL(value_task<In>)))>);
   static_assert(std::is_same_v<
-                ValueTask<std::tuple<Out>>,
+                value_task<std::tuple<Out>>,
                 decltype(Fn()(FOLLY_DECLVAL(
-                    SafeTaskWithExecutor<safe_alias::maybe_value, In>)))>);
+                    safe_task_with_executor<safe_alias::maybe_value, In>)))>);
   static_assert(std::is_same_v<
-                ValueTask<std::tuple<Out>>,
+                value_task<std::tuple<Out>>,
                 decltype(Fn()(FOLLY_DECLVAL(coro::Future<In>)))>);
 
   // collectAll: returns the "least safe" wrapper
@@ -92,18 +92,18 @@ struct SafeTaskTypeAssertions {
       std::is_same_v<
           NowTask<std::tuple<Out, Out>>,
           decltype(Fn()(
-              FOLLY_DECLVAL(NowTask<In>), FOLLY_DECLVAL(ValueTask<In>)))>);
+              FOLLY_DECLVAL(NowTask<In>), FOLLY_DECLVAL(value_task<In>)))>);
   static_assert(std::is_same_v<
                 Task<std::tuple<Out, Out>>,
                 decltype(Fn()(
-                    FOLLY_DECLVAL(Task<In>), FOLLY_DECLVAL(ValueTask<In>)))>);
+                    FOLLY_DECLVAL(Task<In>), FOLLY_DECLVAL(value_task<In>)))>);
   static_assert(
       std::is_same_v<
           NowTask<std::tuple<Out, Out, Out>>,
           decltype(Fn()(
               FOLLY_DECLVAL(Task<In>),
               FOLLY_DECLVAL(NowTask<In>),
-              FOLLY_DECLVAL(ValueTask<In>)))>);
+              FOLLY_DECLVAL(value_task<In>)))>);
 };
 namespace {
 [[maybe_unused]] struct SafeTaskTypeAssertions<CollectAll, int, int>

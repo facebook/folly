@@ -69,7 +69,7 @@ The BIG CAVEATS are:
        auto t = async_closure(
          // LAMBDA HOLE: We can't tell this callable object is unsafe!
          bound_args{[&](int p) { *badPtr = p; }},
-         [](auto fn) -> ClosureTask<void> {
+         [](auto fn) -> closure_task<void> {
            int i = 5;
            fn(i); // FAILURE: Dereferencing uninitialized `badPtr`.
            co_return;

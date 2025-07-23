@@ -32,39 +32,39 @@ TEST(PickTaskWrapperTest, AllTestsAreStatic) {}
 static_assert(
     std::is_same_v<
         NowTask<int>,
-        detail::PickTaskWrapper<
+        detail::pick_task_wrapper<
             int,
             safe_alias::unsafe,
             /*await now*/ true>>);
 static_assert(
     std::is_same_v<
         NowTaskWithExecutor<int>,
-        detail::PickTaskWithExecutorWrapper<
+        detail::pick_task_with_executor_wrapper<
             int,
             safe_alias::unsafe,
             /*await now*/ true>>);
 
-// (maybe_value, movable) -> ValueTask
+// (maybe_value, movable) -> value_task
 static_assert(
     std::is_same_v<
-        ValueTask<int>,
-        detail::PickTaskWrapper<
+        value_task<int>,
+        detail::pick_task_wrapper<
             int,
             safe_alias::maybe_value,
             /*await now*/ false>>);
 static_assert(
     std::is_same_v<
-        SafeTaskWithExecutor<safe_alias::maybe_value, int>,
-        detail::PickTaskWithExecutorWrapper<
+        safe_task_with_executor<safe_alias::maybe_value, int>,
+        detail::pick_task_with_executor_wrapper<
             int,
             safe_alias::maybe_value,
             /*await now*/ false>>);
 
-// (co_cleanup_safe_ref, movable, wrapper) -> AsNoexcept<CoCleanupSafeTask<>>
+// (co_cleanup_safe_ref, movable, wrapper) -> AsNoexcept<co_cleanup_safe_task<>>
 static_assert(
     std::is_same_v<
-        AsNoexcept<CoCleanupSafeTask<int>, terminateOnCancel>,
-        detail::PickTaskWrapper<
+        AsNoexcept<co_cleanup_safe_task<int>, terminateOnCancel>,
+        detail::pick_task_wrapper<
             int,
             safe_alias::co_cleanup_safe_ref,
             /*await now*/ false,
@@ -72,9 +72,9 @@ static_assert(
 static_assert(
     std::is_same_v<
         AsNoexcept<
-            SafeTaskWithExecutor<safe_alias::co_cleanup_safe_ref, int>,
+            safe_task_with_executor<safe_alias::co_cleanup_safe_ref, int>,
             terminateOnCancel>,
-        detail::PickTaskWithExecutorWrapper<
+        detail::pick_task_with_executor_wrapper<
             int,
             safe_alias::co_cleanup_safe_ref,
             /*await now*/ false,

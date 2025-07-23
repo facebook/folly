@@ -27,7 +27,7 @@ using namespace folly::coro;
 using namespace std::literals::chrono_literals;
 
 struct StatelessClass {
-  ValueTask<void> validSafeTask() { co_return; }
+  value_task<void> validSafeTask() { co_return; }
 };
 
 struct StatefulClass {
@@ -35,82 +35,82 @@ struct StatefulClass {
 };
 
 TEST(SafeTask, isSafeTaskValid) {
-  using folly::coro::detail::IsSafeTaskValid;
+  using folly::coro::detail::is_safe_task_valid;
   constexpr auto kVal = safe_alias::maybe_value;
   constexpr auto kPost = safe_alias::co_cleanup_safe_ref;
   constexpr auto kPre = safe_alias::after_cleanup_ref;
 
   // Without an implicit object parameter
-  static_assert(IsSafeTaskValid<kVal, int, int>);
-  static_assert(!IsSafeTaskValid<kVal, int, int*>);
-  static_assert(!IsSafeTaskValid<kVal, int*, int>);
-  static_assert(IsSafeTaskValid<kVal, void, int>);
-  static_assert(!IsSafeTaskValid<kVal, void, int*>);
+  static_assert(is_safe_task_valid<kVal, int, int>);
+  static_assert(!is_safe_task_valid<kVal, int, int*>);
+  static_assert(!is_safe_task_valid<kVal, int*, int>);
+  static_assert(is_safe_task_valid<kVal, void, int>);
+  static_assert(!is_safe_task_valid<kVal, void, int*>);
 
   // With an implicit "class" object parameter
-  static_assert(IsSafeTaskValid<kVal, int, StatelessClass&, int>);
-  static_assert(IsSafeTaskValid<kVal, int, const StatelessClass&, int>);
-  static_assert(!IsSafeTaskValid<kVal, int, StatefulClass&, int>);
-  static_assert(!IsSafeTaskValid<kVal, int, const StatefulClass&, int>);
+  static_assert(is_safe_task_valid<kVal, int, StatelessClass&, int>);
+  static_assert(is_safe_task_valid<kVal, int, const StatelessClass&, int>);
+  static_assert(!is_safe_task_valid<kVal, int, StatefulClass&, int>);
+  static_assert(!is_safe_task_valid<kVal, int, const StatefulClass&, int>);
 
   // With an implicit "lambda" object parameter
-  auto okFn = [](int x) -> ValueTask<int> { co_return x; };
-  static_assert(IsSafeTaskValid<kVal, int, decltype(okFn)&, int>);
-  static_assert(IsSafeTaskValid<kVal, int, const decltype(okFn)&, int>);
+  auto okFn = [](int x) -> value_task<int> { co_return x; };
+  static_assert(is_safe_task_valid<kVal, int, decltype(okFn)&, int>);
+  static_assert(is_safe_task_valid<kVal, int, const decltype(okFn)&, int>);
   // Can declare this with captures because it's not a coro
-  auto badFn = [okFn](int x) -> ValueTask<int> { return okFn(x); };
-  static_assert(!IsSafeTaskValid<kVal, int, decltype(badFn)&, int>);
-  static_assert(!IsSafeTaskValid<kVal, int, const decltype(badFn)&, int>);
+  auto badFn = [okFn](int x) -> value_task<int> { return okFn(x); };
+  static_assert(!is_safe_task_valid<kVal, int, decltype(badFn)&, int>);
+  static_assert(!is_safe_task_valid<kVal, int, const decltype(badFn)&, int>);
 
   // With a templated implicit object parameter
-  auto okTmpl = [](auto x) -> ValueTask<int> { co_return x; };
-  static_assert(IsSafeTaskValid<kVal, int, decltype(okTmpl)&, int>);
-  static_assert(IsSafeTaskValid<kVal, int, const decltype(okTmpl)&, int>);
+  auto okTmpl = [](auto x) -> value_task<int> { co_return x; };
+  static_assert(is_safe_task_valid<kVal, int, decltype(okTmpl)&, int>);
+  static_assert(is_safe_task_valid<kVal, int, const decltype(okTmpl)&, int>);
   // Can declare this with captures because it's not a coro
-  auto badTmpl = [okTmpl](auto x) -> ValueTask<int> { return okTmpl(x); };
-  static_assert(!IsSafeTaskValid<kVal, int, decltype(badTmpl)&, int>);
-  static_assert(!IsSafeTaskValid<kVal, int, const decltype(badTmpl)&, int>);
+  auto badTmpl = [okTmpl](auto x) -> value_task<int> { return okTmpl(x); };
+  static_assert(!is_safe_task_valid<kVal, int, decltype(badTmpl)&, int>);
+  static_assert(!is_safe_task_valid<kVal, int, const decltype(badTmpl)&, int>);
 
   // safe_alias::after_cleanup_ref relaxes constraint on args, but not return
   // val
-  static_assert(IsSafeTaskValid<kPre, int, manual_safe_ref_t<kPre, int>>);
-  static_assert(IsSafeTaskValid<kPre, int, manual_safe_ref_t<kPost, int>>);
-  static_assert(!IsSafeTaskValid<kPre, int, int*>);
-  static_assert(!IsSafeTaskValid<kPre, int*, int>);
-  static_assert(!IsSafeTaskValid<kPre, manual_safe_ref_t<kPre, int>, int>);
-  static_assert(!IsSafeTaskValid<kPre, manual_safe_ref_t<kPost, int>, int>);
-  static_assert(IsSafeTaskValid<kPre, void, int>);
-  static_assert(!IsSafeTaskValid<kPre, void, int*>);
+  static_assert(is_safe_task_valid<kPre, int, manual_safe_ref_t<kPre, int>>);
+  static_assert(is_safe_task_valid<kPre, int, manual_safe_ref_t<kPost, int>>);
+  static_assert(!is_safe_task_valid<kPre, int, int*>);
+  static_assert(!is_safe_task_valid<kPre, int*, int>);
+  static_assert(!is_safe_task_valid<kPre, manual_safe_ref_t<kPre, int>, int>);
+  static_assert(!is_safe_task_valid<kPre, manual_safe_ref_t<kPost, int>, int>);
+  static_assert(is_safe_task_valid<kPre, void, int>);
+  static_assert(!is_safe_task_valid<kPre, void, int*>);
 
   // Ditto for safe_alias::co_cleanup_safe_ref
-  static_assert(!IsSafeTaskValid<kPost, int, manual_safe_ref_t<kPre, int>>);
-  static_assert(IsSafeTaskValid<kPost, int, manual_safe_ref_t<kPost, int>>);
-  static_assert(!IsSafeTaskValid<kPost, int, int*>);
-  static_assert(!IsSafeTaskValid<kPost, int*, int>);
-  static_assert(!IsSafeTaskValid<kPost, manual_safe_ref_t<kPre, int>, int>);
-  static_assert(!IsSafeTaskValid<kPost, manual_safe_ref_t<kPost, int>, int>);
-  static_assert(IsSafeTaskValid<kPost, void, int>);
-  static_assert(!IsSafeTaskValid<kPost, void, int*>);
+  static_assert(!is_safe_task_valid<kPost, int, manual_safe_ref_t<kPre, int>>);
+  static_assert(is_safe_task_valid<kPost, int, manual_safe_ref_t<kPost, int>>);
+  static_assert(!is_safe_task_valid<kPost, int, int*>);
+  static_assert(!is_safe_task_valid<kPost, int*, int>);
+  static_assert(!is_safe_task_valid<kPost, manual_safe_ref_t<kPre, int>, int>);
+  static_assert(!is_safe_task_valid<kPost, manual_safe_ref_t<kPost, int>, int>);
+  static_assert(is_safe_task_valid<kPost, void, int>);
+  static_assert(!is_safe_task_valid<kPost, void, int*>);
 }
 
 TEST(SafeTask, safe_alias_of_v) {
   static_assert(
-      strict_safe_alias_of_v<ValueTask<int>> == safe_alias::maybe_value);
+      strict_safe_alias_of_v<value_task<int>> == safe_alias::maybe_value);
   static_assert(
-      lenient_safe_alias_of_v<ValueTask<int>> == safe_alias::maybe_value);
+      lenient_safe_alias_of_v<value_task<int>> == safe_alias::maybe_value);
   static_assert(
-      lenient_safe_alias_of_v<SafeTask<safe_alias::after_cleanup_ref, int>> ==
+      lenient_safe_alias_of_v<safe_task<safe_alias::after_cleanup_ref, int>> ==
       safe_alias::after_cleanup_ref);
 }
 
 CO_TEST(SafeTask, trivial) {
   EXPECT_EQ(
-      1337, co_await [](int x) -> ValueTask<int> { co_return 1300 + x; }(37));
+      1337, co_await [](int x) -> value_task<int> { co_return 1300 + x; }(37));
 }
 
 CO_TEST(CoCleanupSafeTask, trivial) {
   int x = 37;
-  auto t = [](auto x) -> CoCleanupSafeTask<int> { co_return 1300 + x; };
+  auto t = [](auto x) -> co_cleanup_safe_task<int> { co_return 1300 + x; };
   EXPECT_EQ(
       1337, co_await t(manual_safe_ref<safe_alias::co_cleanup_safe_ref>(x)));
   EXPECT_EQ(1337, co_await t(manual_safe_ref(x)));
@@ -118,7 +118,7 @@ CO_TEST(CoCleanupSafeTask, trivial) {
 
 CO_TEST(PreCleanupTask, trivial) {
   int x = 37;
-  auto t = [](auto x) -> SafeTask<safe_alias::after_cleanup_ref, int> {
+  auto t = [](auto x) -> safe_task<safe_alias::after_cleanup_ref, int> {
     co_return 1300 + x;
   };
   EXPECT_EQ(
@@ -129,14 +129,14 @@ CO_TEST(PreCleanupTask, trivial) {
 }
 
 namespace {
-ValueTask<int> intFunc(auto x) {
+value_task<int> intFunc(auto x) {
   co_return *x;
 }
 } // namespace
 
 CO_TEST(SafeTask, returnsNonVoid) {
   auto x = std::make_unique<int>(17);
-  auto lambdaTmpl = [](auto x) -> ValueTask<int> { co_return x; };
+  auto lambdaTmpl = [](auto x) -> value_task<int> { co_return x; };
   EXPECT_EQ(
       20,
       // Would fail to compile with a raw pointer (i.e. `.get()`)
@@ -144,14 +144,14 @@ CO_TEST(SafeTask, returnsNonVoid) {
 }
 
 namespace {
-ValueTask<void> voidFunc(auto x) {
+value_task<void> voidFunc(auto x) {
   EXPECT_EQ(17, *x);
   co_return;
 }
 } // namespace
 
 CO_TEST(SafeTask, returnsVoid) {
-  auto lambdaTmpl = [](auto x) -> ValueTask<void> {
+  auto lambdaTmpl = [](auto x) -> value_task<void> {
     EXPECT_EQ(3, x);
     co_return;
   };
@@ -159,14 +159,14 @@ CO_TEST(SafeTask, returnsVoid) {
   auto x = std::make_unique<int>(17);
 #if 1
   co_await voidFunc(std::move(x));
-#else // Manual test: passing `int*` breaks the build with "Bad SafeTask"
+#else // Manual test: passing `int*` breaks the build with "Bad safe_task"
   co_await voidFunc(x.get());
 #endif
 }
 
 CO_TEST(SafeTask, awaitsTask) {
   EXPECT_EQ(
-      1337, co_await []() -> ValueTask<int> {
+      1337, co_await []() -> value_task<int> {
         co_return 1300 + co_await ([]() -> Task<int> { co_return 37; }());
       }());
 }
@@ -174,7 +174,7 @@ CO_TEST(SafeTask, awaitsTask) {
 CO_TEST(SafeTask, cancellation) {
   EXPECT_THROW(
       co_await timeout(
-          []() -> ValueTask<void> {
+          []() -> value_task<void> {
             folly::fibers::Semaphore stuck{0}; // a cancellable baton
             co_await stuck.co_wait();
           }(),
@@ -188,12 +188,12 @@ struct MyError : std::exception {};
 
 CO_TEST(SafeTask, throws) {
   EXPECT_THROW(
-      co_await []() -> ValueTask<void> { co_yield co_error(MyError{}); }(),
+      co_await []() -> value_task<void> { co_yield co_error(MyError{}); }(),
       MyError);
 }
 
 CO_TEST(SafeTask, co_awaitTry) {
-  auto res = co_await co_awaitTry([]() -> ValueTask<void> {
+  auto res = co_await co_awaitTry([]() -> value_task<void> {
     co_yield co_error(MyError{});
   }());
   EXPECT_TRUE(res.hasException<MyError>());
@@ -213,16 +213,16 @@ struct SafeTaskTest : testing::Test {
 CO_TEST_F(SafeTaskTest, withNewSafety) {
   int x = 7;
   auto t = withNewSafety<safe_alias::maybe_value>(
-      [](auto x) -> SafeTask<safe_alias::shared_cleanup, int> {
+      [](auto x) -> safe_task<safe_alias::shared_cleanup, int> {
         co_return 30 + x;
       }(manual_safe_ref<safe_alias::shared_cleanup>(x)));
-  static_assert(std::is_same_v<decltype(t), ValueTask<int>>);
+  static_assert(std::is_same_v<decltype(t), value_task<int>>);
   EXPECT_EQ(37, co_await std::move(t));
 }
 
 CO_TEST_F(SafeTaskTest, ClosureTask) {
   int x = 37;
-  auto t = [](auto x) -> ClosureTask<int> { co_return 1300 + x; };
+  auto t = [](auto x) -> closure_task<int> { co_return 1300 + x; };
   // These must be unwrapped to be awaited. The "new safety" is incidental.
   EXPECT_EQ(
       1337,
@@ -234,11 +234,11 @@ CO_TEST_F(SafeTaskTest, ClosureTask) {
 }
 
 struct HasMemberTask {
-  MemberTask<int> task(auto x) { co_return 1300 + x; }
+  member_task<int> task(auto x) { co_return 1300 + x; }
 };
 
-static_assert(!std::is_move_constructible_v<MemberTask<int>>);
-static_assert(!std::is_move_assignable_v<MemberTask<int>>);
+static_assert(!std::is_move_constructible_v<member_task<int>>);
+static_assert(!std::is_move_assignable_v<member_task<int>>);
 
 CO_TEST_F(SafeTaskTest, MemberTask) {
   HasMemberTask mt;
@@ -249,13 +249,12 @@ CO_TEST_F(SafeTaskTest, MemberTask) {
   EXPECT_EQ(1337, co_await mt.task(manual_safe_ref(x)));
 }
 
-static_assert(
-    std::is_void_v<
-        await_result_t<SafeTaskWithExecutor<safe_alias::maybe_value, void>>>);
+static_assert(std::is_void_v<await_result_t<
+                  safe_task_with_executor<safe_alias::maybe_value, void>>>);
 static_assert(
     std::is_same_v<
         int,
-        await_result_t<SafeTaskWithExecutor<safe_alias::maybe_value, int>>>);
+        await_result_t<safe_task_with_executor<safe_alias::maybe_value, int>>>);
 
 } // namespace folly::coro::detail
 

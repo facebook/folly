@@ -33,7 +33,7 @@
 ///   - Coro lambdas with capture-by-reference.
 ///
 /// Notes:
-///   - (subject to change) Unlike `SafeTask`, `NowTask` does NOT check
+///   - (subject to change) Unlike `safe_task`, `NowTask` does NOT check
 ///     `safe_alias_of` for the return type `T`.  `NowTask` is essentially an
 ///     immediate async function -- it satisfies the structured concurrency
 ///     maxim of "lexical scope drives both control flow & lifetime".  That
@@ -95,10 +95,10 @@ using NowTaskBase =
 } // namespace detail
 
 template <safe_alias, typename>
-class SafeTask;
+class safe_task;
 
 template <safe_alias S, typename U>
-auto toNowTask(SafeTask<S, U>);
+auto toNowTask(safe_task<S, U>);
 
 template <typename T>
 class FOLLY_CORO_TASK_ATTRS NowTask final : public detail::NowTaskBase<T> {
@@ -108,12 +108,12 @@ class FOLLY_CORO_TASK_ATTRS NowTask final : public detail::NowTaskBase<T> {
   template <typename U> // can construct
   friend auto toNowTask(Task<U>);
   template <safe_alias S, typename U> // can construct
-  friend auto toNowTask(SafeTask<S, U>);
+  friend auto toNowTask(safe_task<S, U>);
   template <typename U> // can construct & `unwrapTask`
   friend auto toNowTask(NowTask<U>);
 };
 
-// NB: `toNowTask(SafeTask)` is in `SafeTask.h` to avoid circular deps.
+// NB: `toNowTask(safe_task)` is in `SafeTask.h` to avoid circular deps.
 template <typename T>
 auto toNowTask(Task<T> t) {
   return NowTask<T>{std::move(t)};

@@ -27,7 +27,7 @@
 #include <folly/coro/ViaIfAsync.h>
 #include <folly/coro/detail/PickTaskWrapper.h>
 #include <folly/coro/detail/Traits.h>
-// `collectAll(coroFutureInt())` makes a `SafeTask`
+// `collectAll(coroFutureInt())` makes a `safe_task`
 #include <folly/coro/safe/SafeTask.h>
 // `collectAll(memberTask())` makes a `NowTask`
 #include <folly/coro/safe/NowTask.h>
@@ -89,14 +89,14 @@ class MoveRange {
 // noexcept-awaitable.  This would require reworking the implementation a bit,
 // since e.g. `cancellation_token_merge` can throw `bad_alloc`.
 template <typename... SemiAwaitables>
-using CollectAllTask = PickTaskWrapper<
+using CollectAllTask = pick_task_wrapper<
     std::tuple<collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>,
     std::min(
         {safe_alias::maybe_value, lenient_safe_alias_of_v<SemiAwaitables>...}),
     (must_await_immediately_v<SemiAwaitables> || ...)>;
 
 template <typename... SemiAwaitables>
-using CollectAllTryTask = PickTaskWrapper<
+using CollectAllTryTask = pick_task_wrapper<
     std::tuple<collect_all_try_component_t<remove_cvref_t<SemiAwaitables>>...>,
     std::min(
         {safe_alias::maybe_value, lenient_safe_alias_of_v<SemiAwaitables>...}),
