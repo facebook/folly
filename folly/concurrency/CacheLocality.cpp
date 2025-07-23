@@ -211,7 +211,11 @@ CacheLocality CacheLocality::readFromSysfsTree(std::string_view root) {
 
   auto subroot = std::filesystem::path(root) / "sys/devices/system/cpu";
   int allfd = ::open(subroot.c_str(), O_DIRECTORY | O_CLOEXEC, O_RDONLY);
+  if (allfd < 0 && errno == ENOENT) {
+    throw std::runtime_error("unable to open sysfs");
+  }
   assert(allfd >= 0);
+
   size_t maxindex = 0;
   for (size_t cpu = 0;; ++cpu) {
     auto cpuroot = fmt::format("cpu{}/cache", cpu);
