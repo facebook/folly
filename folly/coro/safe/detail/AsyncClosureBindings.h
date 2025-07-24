@@ -52,7 +52,7 @@
 ///         types tells the `async_closure` implementation whether to store the
 ///         arg, and how to bind it to the inner closure.
 ///       - Figure out the storage type for each `as_capture` binding using
-///         `folly::bindings::binding_policy`, to support `make_in_place*`.
+///         `folly::bind::binding_policy`, to support `make_in_place*`.
 ///       - Transform non-owned `capture`s via `to_capture_ref`.  Parents'
 ///         owned captures are implicitly passed by-ref; `after_cleanup_` refs
 ///         are "upgraded" if possible.  Docs in `Captures.md`.
@@ -237,21 +237,21 @@ struct capture_ref_measurement_stub {};
 // This helper class only has static members.  It exists only so that the
 // various functions can share some type aliases.
 template <
-    std::derived_from<folly::bindings::ext::bind_info_t> auto BI,
+    std::derived_from<folly::bind::ext::bind_info_t> auto BI,
     typename BindingType,
     auto Cfg,
     size_t ArgI>
 class capture_binding_helper<
-    folly::bindings::ext::binding_t<BI, BindingType>,
+    folly::bind::ext::binding_t<BI, BindingType>,
     Cfg,
     ArgI> {
  private:
   // A constraint on the template would make forward-declarations messy.
   static_assert(std::is_same_v<decltype(Cfg), binding_helper_cfg>);
 
-  using category_t = folly::bindings::ext::category_t;
-  using ST = typename folly::bindings::ext::binding_policy<
-      folly::bindings::ext::binding_t<BI, BindingType>>::storage_type;
+  using category_t = folly::bind::ext::category_t;
+  using ST = typename folly::bind::ext::binding_policy<
+      folly::bind::ext::binding_t<BI, BindingType>>::storage_type;
   using UncvrefST = std::remove_cvref_t<ST>;
 
   // "Pass capture ref" validation.  Here, `ST` is either a value or a
@@ -266,7 +266,7 @@ class capture_binding_helper<
     static_assert(std::is_reference_v<ST> == (BI.category == category_t::ref));
     if constexpr (std::is_reference_v<ArgT>) { // Is `capture<Ref>`?
       // Design note: Why do we automatically pass all `capture`s by-reference?
-      // As an alternative, recall that `folly::bindings` has `const_ref` /
+      // As an alternative, recall that `folly::bind` has `const_ref` /
       // `mut_ref`.  These modifiers could be hijacked as a mandatory marking
       // for `captures` that get passed by-reference.  That might seem more
       // explicit, but also more confusing and harder to use:
@@ -337,7 +337,7 @@ class capture_binding_helper<
           T,
           decltype(bind_wrapper),
           ArgI,
-          folly::bindings::ext::named_bind_info_tag_v<decltype(BI)>>{
+          folly::bind::ext::named_bind_info_tag_v<decltype(BI)>>{
           .bindWrapper_ = std::move(bind_wrapper)};
     } else {
       return async_closure_inner_stored_arg<T, decltype(bind_wrapper)>{
@@ -367,7 +367,7 @@ class capture_binding_helper<
         !Cfg.has_outer_coro &&
         // `make_in_place*` is often used for immovable types, so without an
         // outer coro, they must be on-heap to pass ownership to the inner coro.
-        folly::bindings::ext::is_binding_t_type_in_place<BindingType> &&
+        folly::bind::ext::is_binding_t_type_in_place<BindingType> &&
         // Heuristic: Moving a type is usually cheaper than putting it on
         // the heap.  If not, people can always use `capture_indirect` with
         // `unique_ptr`...  Or, we could later add new capture kinds, like
@@ -402,7 +402,7 @@ class capture_binding_helper<
   // or in this file, at some compile-time cost.
   template <auto Tag>
   static inline constexpr bool is_supported_capture_bind_info_v<
-      folly::bindings::ext::named_bind_info_t<Tag, capture_bind_info_t>> = true;
+      folly::bind::ext::named_bind_info_t<Tag, capture_bind_info_t>> = true;
 
  public:
   // Transforms the binding as per the file docblock, returns a new binding.
@@ -433,10 +433,8 @@ class capture_binding_helper<
       }
     } else { // Bindings for arguments the closure does NOT store.
       static_assert(
-          std::is_same_v<
-              vtag_t<BI>,
-              vtag_t<folly::bindings::ext::bind_info_t{}>>,
-          "`folly::bindings::` modifiers like `constant` (or `\"x\"_id = `) "
+          std::is_same_v<vtag_t<BI>, vtag_t<folly::bind::ext::bind_info_t{}>>,
+          "`folly::bind::` modifiers like `constant` (or `\"x\"_id = `) "
           "only make sense with `as_capture()` bindings -- for example, to "
           "move a mutable value into `const` capture storage. For regular "
           "args, use `const` in the signature of your inner coro, and/or "
@@ -447,7 +445,7 @@ class capture_binding_helper<
       // can also work around that via `std::make_unique<TheirType>` and/or
       // `as_capture_indirect`.
       static_assert(
-          !folly::bindings::ext::is_binding_t_type_in_place<BindingType>,
+          !folly::bind::ext::is_binding_t_type_in_place<BindingType>,
           "Did you mean `capture_in_place<T>(...)`?");
       if constexpr (is_any_capture<UncvrefST>) { // Tests in `check_capture_*`
         // Pass preexisting `capture`s (NOT owned by this closure).
@@ -567,7 +565,7 @@ constexpr auto vtag_safety_of_async_closure_args() {
 
 template <typename BindingT>
 constexpr bool capture_needs_outer_coro() {
-  using BP = folly::bindings::ext::binding_policy<BindingT>;
+  using BP = folly::bind::ext::binding_policy<BindingT>;
   using ST = typename BP::storage_type;
   return has_async_closure_co_cleanup<ST>;
 }
@@ -587,8 +585,8 @@ struct async_closure_invoke_member_bindings {
   template <auto BI0, typename BT0, auto... BI, typename... BT>
   constexpr auto operator()(
       tag_t<
-          folly::bindings::ext::binding_t<BI0, BT0>,
-          folly::bindings::ext::binding_t<BI, BT>...>) {
+          folly::bind::ext::binding_t<BI0, BT0>,
+          folly::bind::ext::binding_t<BI, BT>...>) {
     using T = std::remove_cvref_t<BT0>;
     constexpr bool arg0_is_non_owning_ptr =
         // `transform_binding()` passes captures as non-owning refs
@@ -632,13 +630,13 @@ struct async_closure_invoke_member_bindings {
           "that the closure can take ownership of the object instance. "
           "Consider `folly::copy()` or `std::move()`.");
       return tag<
-          folly::bindings::ext::
+          folly::bind::ext::
               binding_t<as_capture_bind_info<capture_kind::plain>{}(BI0), BT0>,
-          folly::bindings::ext::binding_t<BI, BT>...>;
+          folly::bind::ext::binding_t<BI, BT>...>;
     } else {
       return tag<
-          folly::bindings::ext::binding_t<BI0, BT0>,
-          folly::bindings::ext::binding_t<BI, BT>...>;
+          folly::bind::ext::binding_t<BI0, BT0>,
+          folly::bind::ext::binding_t<BI, BT>...>;
     }
   }
 };

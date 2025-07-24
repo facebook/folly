@@ -24,7 +24,7 @@
 
 using namespace folly;
 using namespace folly::coro;
-using namespace folly::bindings;
+using namespace folly::bind;
 using namespace std::literals::chrono_literals;
 
 CO_TEST(AsyncClosure, invalid_co_cleanup) {
@@ -150,7 +150,7 @@ template <typename ExpectedT, async_closure_config Cfg = NoForceOuter>
 constexpr auto asyncClosureCheckType(auto fn, auto bargs) {
   auto t = async_closure<Cfg>(
       // Actually, safe because `bargs` is by-value
-      folly::bindings::ext::bound_args_unsafe_move::from(std::move(bargs)),
+      folly::bind::ext::bound_args_unsafe_move::from(std::move(bargs)),
       std::move(fn));
   static_assert(std::is_same_v<decltype(t), ExpectedT>);
   return std::move(t);
@@ -775,7 +775,7 @@ CO_TEST(AsyncClosure, memberTask) {
 // Check that `async_now_closure` returns `now_task<int>` & return the task.
 now_task<int> intAsyncNowClosure(auto&& bargs, auto&& fn) {
   return async_now_closure(
-      folly::bindings::ext::bound_args_unsafe_move::from(std::move(bargs)),
+      folly::bind::ext::bound_args_unsafe_move::from(std::move(bargs)),
       std::move(fn));
 }
 

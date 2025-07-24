@@ -26,7 +26,7 @@ FOLLY_DETAIL_LITE_TUPLE_ADJUST_WARNINGS
 /// READ ME: The docs for this library are in `Bind.md`.
 ///
 
-namespace folly::bindings {
+namespace folly::bind {
 
 template <typename, typename... As>
 constexpr auto make_in_place(As&&...);
@@ -235,11 +235,11 @@ namespace detail { // Private details
 
 template <typename T, typename Maker>
 class in_place_bound_args_crtp_base
-    : public ::folly::bindings::ext::like_bound_args {
+    : public ::folly::bind::ext::like_bound_args {
  private:
   static_assert(!std::is_reference_v<T>);
   static_assert( // This would be an unexpected usage.
-      !std::derived_from<T, ::folly::bindings::ext::like_bound_args>);
+      !std::derived_from<T, ::folly::bind::ext::like_bound_args>);
 
  protected:
   using maker_type = Maker;
@@ -309,7 +309,7 @@ class in_place_bound_args
     : public in_place_bound_args_crtp_base<T, in_place_args_maker<T, Args...>> {
  protected:
   template <typename, typename... As>
-  friend constexpr auto ::folly::bindings::make_in_place(As&&...);
+  friend constexpr auto ::folly::bind::make_in_place(As&&...);
 
   using base =
       in_place_bound_args_crtp_base<T, in_place_args_maker<T, Args...>>;
@@ -351,7 +351,7 @@ class in_place_fn_bound_args
           in_place_fn_maker<T, Fn, Args...>> {
  protected:
   template <typename... As>
-  friend constexpr auto ::folly::bindings::make_in_place_with(auto, As&&...);
+  friend constexpr auto ::folly::bind::make_in_place_with(auto, As&&...);
 
   using base =
       in_place_bound_args_crtp_base<T, in_place_fn_maker<T, Fn, Args...>>;
@@ -570,6 +570,6 @@ class binding_policy<binding_t<BI, BindingType>> {
 };
 
 } // namespace ext
-} // namespace folly::bindings
+} // namespace folly::bind
 
 FOLLY_POP_WARNING

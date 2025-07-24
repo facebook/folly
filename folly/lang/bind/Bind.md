@@ -2,14 +2,14 @@
 
 ## User guide
 
-Are you trying to call a `folly::bindings`-enabled API?  For simple usage,
+Are you trying to call a `folly::bind`-enabled API?  For simple usage,
 you should not need to read this file at all!  Read the API docs instead.
 
-NEVER write functions that pass `folly::bindings` helper types (`constant`,
+NEVER write functions that pass `folly::bind` helper types (`constant`,
 `const_ref`, `bound_args`, etc) by reference.  These immovable objects must
 only exist in the statement that constructed them.
 
-The high-level idea of `folly::bindings` is to offer **the caller** a
+The high-level idea of `folly::bind` is to offer **the caller** a
 vocabulary to describe the storage types to be used by the callee.
 
 For example, if a callee wants to store a generic tuple, the caller may
@@ -55,7 +55,7 @@ These options have tradeoffs, but none provide ALL of these features:
   - Let the caller set the target storage (value or ref, const or not) for
     the binding, with the callee just specifying just `auto`.  Consequences:
       * The callee can reflect on the supplied args, without C++26 P2996
-      * `folly::bindings::constant` lets you move a non-`const` object into
+      * `folly::bind::constant` lets you move a non-`const` object into
         `const` storage, while `std::as_const` cannot.
   - Define custom binding logic for some args, like `as_capture` in
     `async_closure`, or named arguments in `folly/lang/named`.
@@ -63,14 +63,14 @@ These options have tradeoffs, but none provide ALL of these features:
     your helpers could return an argument pack, without needing to pack them
     in tuples & having the consumer recursively `std::tuple_cat`.
 
-`folly::bindings` addresses all of the above.  It is a customizable tool to
+`folly::bind` addresses all of the above.  It is a customizable tool to
 uniformly bind:
   - input references & in-place constructors
   - to reference or value storage inside your API.
 
 ### When might you use it?
 
-Consider this `folly::bindings` expression:
+Consider this `folly::bind` expression:
 
   bound_args ba{5, constant{a}, mut_ref{b, std::move(c)}, const_ref{d}};
 
@@ -81,18 +81,18 @@ Stored with the default `binding_policy`, this is akin to:
 
 Regular C++ arguments are fine (and preferred!) when the destination types
 are known in advance, and the types are movable.  But, in trickier cases
-`folly::bindings` saves the day:
+`folly::bind` saves the day:
   - It lets the caller ergonomically declare a structure at the same time it
     is constructed or passed (`async_closure`, named scopes).
   - In order to in-place construct an immovable type `A` by-value inside the
     caller's storage, you need an implicit conversion operator.
-    `folly::bindings::make_in_place*` implements one on your behalf.
+    `folly::bind::make_in_place*` implements one on your behalf.
   - API-specific binding customizations can be provided via helper classes.
     For example, `folly/lang/named` enables kwargs support.
 
 ### What changes in the UX over standard C++ bindings?
 
-That depends on how you integrate `folly::bindings`, but...  the recommended
+That depends on how you integrate `folly::bind`, but...  the recommended
 way is to use the standard `binding_policy`, possibly extending it in a
 careful way.  The goal should be "low user surprisal", so we stay close to
 standard C++ semantics, except for a couple of restrictions to make argument
@@ -111,7 +111,7 @@ defaults to bind-by-reference.  This policy could be added to `Bind.h`.
 
 ### To integrate `Bind.h`, take `bound_args` via CTAD in an immovable class
 
-The simple way to make a `folly::bindings` API is to take one `bound_args`:
+The simple way to make a `folly::bind` API is to take one `bound_args`:
 
 ```cpp
 template <typename T>

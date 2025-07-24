@@ -325,7 +325,7 @@ decltype(auto) async_closure_resolve_backref(
   constexpr auto Tag = Arg::folly_bindings_identifier_tag;
   // `AsyncClosureBindings.h` populates tags via `named_bind_info_tag_v`, which
   // uses `no_tag_t` to mean "no tag was set" -- so you can't look it up.
-  static_assert(!std::is_same_v<folly::bindings::ext::no_tag_t, decltype(Tag)>);
+  static_assert(!std::is_same_v<folly::bind::ext::no_tag_t, decltype(Tag)>);
   // This will fail on missing, or ambiguous tags.
   using Entry = decltype(async_closure_backref_get<Tag>(FOLLY_DECLVAL(ArgMap)));
   static_assert(
@@ -360,14 +360,14 @@ template <typename ArgMap, size_t ArgI, typename T, typename... Args>
 struct async_closure_backref_populator<
     ArgMap,
     ArgI,
-    bind_wrapper_t<folly::bindings::detail::in_place_args_maker<T, Args...>>> {
+    bind_wrapper_t<folly::bind::detail::in_place_args_maker<T, Args...>>> {
   using BindWrap =
-      bind_wrapper_t<folly::bindings::detail::in_place_args_maker<T, Args...>>;
+      bind_wrapper_t<folly::bind::detail::in_place_args_maker<T, Args...>>;
   auto operator()(capture_private_t priv, auto& tup, BindWrap&& bw) const {
     return lite_tuple::apply(
         [&](Args&&... args) {
           return unsafe_tuple_to_bind_wrapper(
-              folly::bindings::make_in_place_with([&]() {
+              folly::bind::make_in_place_with([&]() {
                 return T{[&]() -> decltype(auto) {
                   if constexpr (requires(Args a) {
                                   a.folly_bindings_identifier_tag;

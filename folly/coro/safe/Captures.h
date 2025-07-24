@@ -41,7 +41,7 @@ class exception_wrapper;
 namespace folly::coro {
 
 // Re-export `bound_args` since it's required to use async closures & objects.
-using ::folly::bindings::bound_args;
+using ::folly::bind::bound_args;
 
 class AsyncObjectTag;
 
@@ -105,14 +105,14 @@ enum class capture_kind {
   indirect,
 };
 
-struct capture_bind_info_t : folly::bindings::ext::bind_info_t {
+struct capture_bind_info_t : folly::bind::ext::bind_info_t {
   capture_kind captureKind_;
 
   constexpr explicit capture_bind_info_t(
       // Using a constraint prevents object slicing
-      std::same_as<folly::bindings::ext::bind_info_t> auto bi,
+      std::same_as<folly::bind::ext::bind_info_t> auto bi,
       capture_kind ap)
-      : folly::bindings::ext::bind_info_t(std::move(bi)), captureKind_(ap) {}
+      : folly::bind::ext::bind_info_t(std::move(bi)), captureKind_(ap) {}
 };
 
 template <capture_kind Kind, typename UpdateBI = std::identity>
@@ -130,7 +130,7 @@ class capture_crtp_base;
 
 ///
 /// `as_capture()` and `as_capture_indirect()` work much like other
-/// `folly::bindings` modifiers.  However, since they're primarily intended
+/// `folly::bind` modifiers.  However, since they're primarily intended
 /// for `async_closure` arguments, you will practically only use them:
 ///   - alone, for non-`co_cleanup` arguments;
 ///   - with `make_in_place()` or `make_in_place_with()`, for `co_cleanup`
@@ -144,75 +144,74 @@ class capture_crtp_base;
 
 template <typename... Ts>
 struct as_capture
-    : ::folly::bindings::ext::merge_update_bound_args<
+    : ::folly::bind::ext::merge_update_bound_args<
           detail::as_capture_bind_info<detail::capture_kind::plain>,
           Ts...> {
-  using ::folly::bindings::ext::merge_update_bound_args<
+  using ::folly::bind::ext::merge_update_bound_args<
       detail::as_capture_bind_info<detail::capture_kind::plain>,
       Ts...>::merge_update_bound_args;
 };
 template <typename... Ts>
-as_capture(Ts&&...)
-    -> as_capture<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
+as_capture(Ts&&...) -> as_capture<folly::bind::ext::deduce_bound_args_t<Ts>...>;
 
 template <typename... Ts>
 struct as_capture_indirect
-    : ::folly::bindings::ext::merge_update_bound_args<
+    : ::folly::bind::ext::merge_update_bound_args<
           detail::as_capture_bind_info<detail::capture_kind::indirect>,
           Ts...> {
-  using ::folly::bindings::ext::merge_update_bound_args<
+  using ::folly::bind::ext::merge_update_bound_args<
       detail::as_capture_bind_info<detail::capture_kind::indirect>,
       Ts...>::merge_update_bound_args;
 };
 template <typename... Ts>
 as_capture_indirect(Ts&&...)
-    -> as_capture_indirect<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
+    -> as_capture_indirect<folly::bind::ext::deduce_bound_args_t<Ts>...>;
 
 // Sugar for `as_capture{const_ref{...}}`
 template <typename... Ts>
 struct capture_const_ref
-    : ::folly::bindings::ext::merge_update_bound_args<
+    : ::folly::bind::ext::merge_update_bound_args<
           detail::as_capture_bind_info<
               detail::capture_kind::plain,
-              ::folly::bindings::detail::const_ref_bind_info>,
+              ::folly::bind::detail::const_ref_bind_info>,
           Ts...> {
-  using ::folly::bindings::ext::merge_update_bound_args<
+  using ::folly::bind::ext::merge_update_bound_args<
       detail::as_capture_bind_info<
           detail::capture_kind::plain,
-          ::folly::bindings::detail::const_ref_bind_info>,
+          ::folly::bind::detail::const_ref_bind_info>,
       Ts...>::merge_update_bound_args;
 };
 template <typename... Ts>
 capture_const_ref(Ts&&...)
-    -> capture_const_ref<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
+    -> capture_const_ref<folly::bind::ext::deduce_bound_args_t<Ts>...>;
 // Sugar for `as_capture{mut_ref{...}}`
 template <typename... Ts>
 struct capture_mut_ref
-    : ::folly::bindings::ext::merge_update_bound_args<
+    : ::folly::bind::ext::merge_update_bound_args<
           detail::as_capture_bind_info<
               detail::capture_kind::plain,
-              ::folly::bindings::detail::mut_ref_bind_info>,
+              ::folly::bind::detail::mut_ref_bind_info>,
           Ts...> {
-  using ::folly::bindings::ext::merge_update_bound_args<
+  using ::folly::bind::ext::merge_update_bound_args<
       detail::as_capture_bind_info<
           detail::capture_kind::plain,
-          ::folly::bindings::detail::mut_ref_bind_info>,
+          ::folly::bind::detail::mut_ref_bind_info>,
       Ts...>::merge_update_bound_args;
 };
 template <typename... Ts>
 capture_mut_ref(Ts&&...)
-    -> capture_mut_ref<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
+    -> capture_mut_ref<folly::bind::ext::deduce_bound_args_t<Ts>...>;
 
 // Sugar for `as_capture{make_in_place<T>(...)}`
 template <typename T>
 auto capture_in_place(auto&&... as [[clang::lifetimebound]]) {
   return as_capture(
-      ::folly::bindings::make_in_place<T>(static_cast<decltype(as)>(as)...));
+      ::folly::bind::make_in_place<T>(static_cast<decltype(as)>(as)...));
 }
 // Sugar for `as_capture{make_in_place_with(fn, ...)}`
 auto capture_in_place_with(
     auto make_fn, auto&&... as [[clang::lifetimebound]]) {
-  return as_capture(::folly::bindings::make_in_place_with(
+  return as_capture(::folly::bind::make_in_place_with(
       std::move(make_fn), static_cast<decltype(as)>(as)...));
 }
 
@@ -1006,10 +1005,10 @@ concept is_any_capture_val =
 
 } // namespace folly::coro
 
-// We extended `folly::bindings` with `capture_kind`, so we must explicitly
+// We extended `folly::bind` with `capture_kind`, so we must explicitly
 // specialize `binding_policy`.  We reuse the standard rules.  Custom
 // `capture` binding logic is in `async_closure_bindings()`.
-namespace folly::bindings::ext {
+namespace folly::bind::ext {
 template <auto BI, typename BindingType>
   requires std::same_as< // Written as a constraint to prevent object slicing
       decltype(BI),
@@ -1022,7 +1021,7 @@ class binding_policy<ext::binding_t<BI, BindingType>> {
   using storage_type = typename standard::storage_type;
   using signature_type = typename standard::signature_type;
 };
-} // namespace folly::bindings::ext
+} // namespace folly::bind::ext
 
 #endif
 

@@ -59,7 +59,7 @@ struct CapturesTest : testing::Test {
     return co_cleanup_capture<ArgT>{
         arg_priv,
         unsafe_tuple_to_bind_wrapper(
-            folly::bindings::make_in_place<ArgT>(
+            folly::bind::make_in_place<ArgT>(
                 std::forward<decltype(args)>(args)...)
                 .unsafe_tuple_to_bind())};
   }
@@ -329,7 +329,7 @@ TEST_F(CapturesTest, make_in_place) {
   capture<std::string> cap{
       arg_priv,
       unsafe_tuple_to_bind_wrapper(
-          folly::bindings::make_in_place<std::string>("hi")
+          folly::bind::make_in_place<std::string>("hi")
               .unsafe_tuple_to_bind())};
 }
 

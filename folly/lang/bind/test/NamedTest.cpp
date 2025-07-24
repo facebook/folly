@@ -23,8 +23,8 @@
 //
 
 using namespace folly;
-using namespace folly::bindings;
-using namespace folly::bindings::ext;
+using namespace folly::bind;
+using namespace folly::bind::ext;
 
 // This is here so that test "runs" show up in CI history
 TEST(NamedTest, all_tests_run_at_build_time) {}
@@ -197,7 +197,7 @@ constexpr auto check_in_place_binding_type_sig() {
           in_place_ba,
           id_arg<
               "x",
-              folly::bindings::detail::
+              folly::bind::detail::
                   in_place_bound_args<Foo, std::nullptr_t, int>>>);
   static_assert(
       std::is_same_v<

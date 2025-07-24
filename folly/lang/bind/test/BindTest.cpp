@@ -17,9 +17,9 @@
 #include <folly/lang/bind/Bind.h>
 #include <folly/portability/GTest.h>
 
-namespace folly::bindings::detail {
+namespace folly::bind::detail {
 
-using namespace folly::bindings::ext;
+using namespace folly::bind::ext;
 
 namespace detail {
 using by_ref_bind_info = decltype([](auto bi) {
@@ -517,4 +517,4 @@ static_assert(
         typename first_policy<decltype(constant(const_ref(5)))>::signature_type,
         const int&&>);
 
-} // namespace folly::bindings::detail
+} // namespace folly::bind::detail

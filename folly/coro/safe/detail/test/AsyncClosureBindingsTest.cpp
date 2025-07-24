@@ -21,7 +21,7 @@
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
-using namespace folly::bindings;
+using namespace folly::bind;
 
 namespace folly::coro::detail {
 
@@ -408,10 +408,10 @@ constexpr bool check_owned_cleanup_capture() {
               vtag_t<safe_alias::maybe_value>,
               lite_tuple::tuple<async_closure_outer_stored_arg<
                   co_cleanup_capture<HasCleanup>,
-                  bind_wrapper_t<folly::bindings::detail::in_place_args_maker<
+                  bind_wrapper_t<folly::bind::detail::in_place_args_maker<
                       detail::HasCleanup>>,
                   /*ArgI = */ 0,
-                  /*Tag = */ folly::bindings::ext::no_tag_t{}>>>>);
+                  /*Tag = */ folly::bind::ext::no_tag_t{}>>>>);
   return true;
 }
 
@@ -476,7 +476,7 @@ constexpr bool check_force_outer_coro() {
                   capture<int>,
                   bind_wrapper_t<int&&>,
                   /*ArgI = */ 0,
-                  /*Tag = */ folly::bindings::ext::no_tag_t{}>>>>);
+                  /*Tag = */ folly::bind::ext::no_tag_t{}>>>>);
   return true;
 }
 
@@ -503,7 +503,7 @@ constexpr bool check_is_invoke_member_implicit_capture() {
                       capture<MoveMe>,
                       bind_wrapper_t<MoveMe&&>,
                       /*ArgI = */ 0,
-                      /*Tag = */ folly::bindings::ext::no_tag_t{}>,
+                      /*Tag = */ folly::bind::ext::no_tag_t{}>,
                   // The second arg is NOT implicitly captured
                   async_closure_regular_arg<
                       MoveMe,

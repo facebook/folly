@@ -35,11 +35,11 @@
 /// custom container like `named_values{...}` (not yet built).
 ///
 
-namespace folly::bindings {
+namespace folly::bind {
 
 namespace ext { // For extension authors -- public details
 
-template <auto Tag, std::derived_from<folly::bindings::ext::bind_info_t> Base>
+template <auto Tag, std::derived_from<folly::bind::ext::bind_info_t> Base>
 struct named_bind_info_t : Base {
   constexpr const Base& as_base() const { return *this; }
   using Base::Base;
@@ -187,4 +187,4 @@ class binding_policy<ext::binding_t<NBI, BindingType>> {
 
 } // namespace ext
 
-} // namespace folly::bindings
+} // namespace folly::bind
