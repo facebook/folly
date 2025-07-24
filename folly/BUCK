@@ -4976,18 +4976,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_example_lib",
-    srcs = [
-        "logging/example/lib.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/example/lib.h",
-    ],
-    deps = [
-        ":logging_logging",
-        ":range",
+    exported_deps = [
+        "//xplat/folly/logging/example:lib",
     ],
 )
 
