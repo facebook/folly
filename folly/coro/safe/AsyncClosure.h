@@ -34,12 +34,12 @@ namespace folly::coro {
 ///   - All "argument-binding" and "coro creation" work is eager.
 ///   - Your inner task & subsequent cleanup can only run when awaited.
 ///
-/// `async_closure(bound_args{...}, taskFn)` wraps an outer task around yours,
+/// `async_closure(bind::args{...}, taskFn)` wraps an outer task around yours,
 /// unless elided via an automatic optimization.  The outer task owns special
 /// "capture" args passed to the closure, ensuring they outlive the inner task.
 ///
 /// Lifecycle contract:
-///   - `bound_args{}` evaluate left-to-right (L2R) due to `{}`.
+///   - `bind::args{}` evaluate left-to-right (L2R) due to `{}`.
 ///   - Construction of `capture_in_place` / `bind::in_place` args is also L2R.
 ///   - When args are passed to the inner coro, copy/move order is unspecified.
 ///   - Upon awaiting the inner coro, `setParentCancelToken()` is called on the
@@ -93,7 +93,7 @@ struct async_closure_config {
 
 namespace detail {
 template <bool ForceOuterCoro, bool EmitNowTask>
-// OK to take `bound_args` by-ref since the porcelain functions take it by-value
+// OK to take `bind::args` by-ref since the porcelain functions take it by-value
 auto async_closure_impl(auto&& bargs, auto&& make_inner_coro) {
   constexpr detail::async_closure_bindings_cfg Cfg{
       .force_outer_coro = ForceOuterCoro,
@@ -120,8 +120,8 @@ auto async_closure_impl(auto&& bargs, auto&& make_inner_coro) {
 // Coro creation, argument storage, and in-place construction are also
 // synchronous, as is the movement of the args into the task coroutine.
 //
-// The first argument should be `bound_args{...}`.  For single-argument
-// closures, you can omit the `bound_args` if you're passing `as_capture()`,
+// The first argument should be `bind::args{...}`.  For single-argument
+// closures, you can omit the `bind::args` if you're passing `as_capture()`,
 // `capture_in_place<>()`, or another `bind::ext::like_args` item.
 //
 // Async RAII: Awaiting the task ensures `co_cleanup(async_closure_private_t)`

@@ -117,7 +117,7 @@ using closure_task = safe_task<safe_alias::unsafe_closure_internal, T>;
 // For more complex usage (background tasks, async RAII), `member_task` has a
 // special calling convention in `AsyncClosure.h`:
 //
-//   async_closure(bound_args{obj, args...}, FOLLY_INVOKE_MEMBER(memberFnName))
+//   async_closure(bind::args{obj, args...}, FOLLY_INVOKE_MEMBER(memberFnName))
 //
 // Like any async closure, this safety-checks the now-explicit object param,
 // and produces a movable `safe_task` of the safety level determined from the

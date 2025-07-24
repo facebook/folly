@@ -9,10 +9,10 @@ wrapper around `int` whose lifetime is tightly bound to the closure.
 ```cpp
 assert(15 == co_await async_closure(
     // NB: Can omit the outer `args` -- its sole arg is `bind::ext::like_args`
-    bound_args{as_capture(5)},
+    bind::args{as_capture(5)},
     [](auto n) -> closure_task<int> {
       co_await async_closure(
-        bound_args{n},
+        bind::args{n},
         [](auto nRef) -> closure_task<void> {
           *nRef += 10;
           co_return;
@@ -110,7 +110,7 @@ This is important, since, the underlying type is typically nullable!
 ### Escape hatch: Capture-by-reference
 
 Use via `capture_const_ref{}`, `as_capture{const_ref{}}`, `capture_mut_ref{}`,
-etc in your closure's `bound_args{}` list.
+etc in your closure's `bind::args{}` list.
 
 
 This mechanism solves problems similar to `AfterCleanup.h`, but after-cleanup
@@ -241,7 +241,7 @@ co_await async_closure(
     safeAsyncScope<CancelViaParent>(),
     [](auto scope) -> closure_task<void> {
       co_await async_closure(
-          bound_args{scope, as_capture(5)},
+          bind::args{scope, as_capture(5)},
           [](auto outerScope, auto n1) -> closure_task<void> {
               outerScope->with(co_await co_current_executor).schedule(
                   [](capture<int&> n2) -> co_cleanup_safe_task<void> {
@@ -326,10 +326,10 @@ normal `capture`-passing rules in two ways:
     of type `after_cleanup_capture<int>`. Whereas, in the absence of `outerScope`,
     the type would be `capture<int>`.
   - **Parent `capture`s are not upgraded:** Suppose the example scheduled a
-    closure: `.schedule(async_closure(bound_args{n1}, ...))`.  Then, **inside
+    closure: `.schedule(async_closure(bind::args{n1}, ...))`.  Then, **inside
     that closure** `n1` would be visible as `capture<int&>` because it can't be
     exfiltrated to `outerScope`.  That's the upgrade behavior[†].  But, when
-    passing `bound_args{outerScope, n1}`, the `shared_cleanup` argument blocks
+    passing `bind::args{outerScope, n1}`, the `shared_cleanup` argument blocks
     the upgrade, and the closure would still see `after_cleanup_capture<int&>`.
 
     > [†] Note that when a closure upgrades its refs, e.g. from

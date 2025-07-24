@@ -49,12 +49,10 @@ constexpr auto check_ref_binding() {
 
   static_assert(std::is_same_v<decltype("x"_id = 5), id_arg<"x", int&&>>);
   static_assert(
-      std::is_same_v<
-          decltype("x"_id = bound_args{5}),
-          id_arg<"x", bound_args<int&&>>>);
+      std::is_same_v<decltype("x"_id = args{5}), id_arg<"x", args<int&&>>>);
 
 #if 0 // Manual test showing that a name can't be bound to multiple args
-  (void)("x"_id = bound_args{5, 6});
+  (void)("x"_id = args{5, 6});
 #endif
 
   int y = 5;
@@ -83,11 +81,11 @@ static_assert(check_ref_binding());
 
 constexpr auto check_flatten_bindings() {
   int b = 2, d = 4;
-  using FlatT = decltype(bound_args{
+  using FlatT = decltype(args{
       "a"_id = 1.2,
-      bound_args{"b"_id = b, "c"_id = 'x'},
+      args{"b"_id = b, "c"_id = 'x'},
       "d"_id = d,
-      bound_args{},
+      args{},
       "e"_id = "abc"});
   static_assert(
       std::is_same_v<
@@ -107,14 +105,14 @@ constexpr auto check_as_const_and_non_const() {
   double b = 2.3;
 
   using non_const_bas =
-      decltype(non_constant{"a"_id = 1, bound_args{"b"_id = b, "c"_id = 'c'}});
+      decltype(non_constant{"a"_id = 1, args{"b"_id = b, "c"_id = 'c'}});
 
   static_assert(
       std::is_same_v<
           non_const_bas,
           non_constant<
               id_arg<"a", int&&>,
-              bound_args<id_arg<"b", double&>, id_arg<"c", char&&>>>>);
+              args<id_arg<"b", double&>, id_arg<"c", char&&>>>>);
 
   constexpr auto non_const = constness_t::non_constant;
   static_assert(
@@ -129,8 +127,7 @@ constexpr auto check_as_const_and_non_const() {
   static_assert(
       std::is_same_v<
           decltype(constant{non_constant{
-              "a"_id = 1,
-              bound_args{"b"_id = b, "c"_id = 'c'}}})::binding_list_t,
+              "a"_id = 1, args{"b"_id = b, "c"_id = 'c'}}})::binding_list_t,
           tag_t<
               binding_t<named_bi<"a", konst>, int&&>,
               binding_t<named_bi<"b", konst>, double&>,
@@ -149,8 +146,7 @@ constexpr auto check_by_ref() {
   static_assert(
       std::is_same_v<
           decltype(const_ref{
-              "a"_id = 1,
-              bound_args{"b"_id = b, "c"_id = 'c'}})::binding_list_t,
+              "a"_id = 1, args{"b"_id = b, "c"_id = 'c'}})::binding_list_t,
           tag_t<
               binding_t<named_bi<"a", konst, ref>, int&&>,
               binding_t<named_bi<"b", konst, ref>, double&>,
@@ -164,14 +160,13 @@ constexpr auto check_by_ref() {
   static_assert(
       std::is_same_v<
           decltype(non_constant{const_ref{
-              "a"_id = 1,
-              bound_args{"b"_id = b, "c"_id = 'c'}}})::binding_list_t,
+              "a"_id = 1, args{"b"_id = b, "c"_id = 'c'}}})::binding_list_t,
           non_const_refs>);
 
   static_assert(
       std::is_same_v<
-          decltype(mut_ref{"a"_id = 1, bound_args{"b"_id = b, "c"_id = 'c'}})::
-              binding_list_t,
+          decltype(mut_ref{
+              "a"_id = 1, args{"b"_id = b, "c"_id = 'c'}})::binding_list_t,
           non_const_refs>);
 
   return true;

@@ -68,7 +68,7 @@ The BIG CAVEATS are:
        int* badPtr;
        auto t = async_closure(
          // LAMBDA HOLE: We can't tell this callable object is unsafe!
-         bound_args{[&](int p) { *badPtr = p; }},
+         bind::args{[&](int p) { *badPtr = p; }},
          [](auto fn) -> closure_task<void> {
            int i = 5;
            fn(i); // FAILURE: Dereferencing uninitialized `badPtr`.

@@ -24,7 +24,7 @@
 
 ///
 /// Extends `Bind.h` (read that first) with keyword-argument syntax:
-///   bound_args{
+///   bind::args{
 ///      self_id = bind::in_place<MyClass>(), // tag akin to Python's `self`
 ///      "x"_id = 5,
 ///      "y"_id = mut_ref{y},
@@ -106,7 +106,7 @@ class identifier {
   template <typename T>
     requires(!std::derived_from<T, ext::like_args>)
   constexpr auto operator=(T&& t) const {
-    return make_with_tag<T&&>(vtag<Tag>, bound_args{static_cast<T&&>(t)});
+    return make_with_tag<T&&>(vtag<Tag>, args{static_cast<T&&>(t)});
   }
 
   static inline constexpr auto folly_bindings_identifier_tag = Tag;

@@ -40,9 +40,6 @@ class exception_wrapper;
 
 namespace folly::coro {
 
-// Re-export `bound_args` since it's required to use async closures & objects.
-using ::folly::bind::bound_args;
-
 class AsyncObjectTag;
 
 template <safe_alias, typename>

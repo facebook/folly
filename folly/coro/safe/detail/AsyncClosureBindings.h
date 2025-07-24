@@ -25,7 +25,7 @@
 /// argument-binding logic for `async_closure`.
 ///
 /// Before reading further, make sure to get familiar with:
-///   - `folly/lang/Bindings.md` for `bound_args` & friends.
+///   - `folly/lang/Bindings.md` for `bind::args` & friends.
 ///   - `docs/Captures.md` to understand the `capture` type wrappers, and the
 ///     safety upgrade/downgrade rules for passing them into closures.
 /// In particular, know this distinction:
@@ -35,7 +35,7 @@
 ///   * "capture references" are `capture<V&>` or `<V&&>, implicitly created
 ///     for the closure from any caller-provided `capture` (value or ref).
 ///
-/// `async_closure` takes user-specified closure arguments as `bound_args`, an
+/// `async_closure` takes user-specified closure arguments as `bind::args`, an
 /// immovable object with 1-expression lifetime.  This header plumbs them
 /// through some transformations.  In opt builds, it is intended to be elided
 /// by compiler's alias analysis (NB: this needs benchmarks & perhaps tweaks).
@@ -46,7 +46,7 @@
 ///   * Measure the safety of the closure, as seen by its caller.  This uses
 ///     the safeties of the arguments **before** any transformations.
 ///   * Transform the arg tuple:
-///       - Convert each entry of the `bound_args` into a `capture` ref (when
+///       - Convert each entry of the `bind::args` into a `capture` ref (when
 ///         the caller gave us a `capture`), or one of 4 tag types
 ///         (`async_closure*_arg` or `async_closure*_self_ref_hack`).  The tag
 ///         types tells the `async_closure` implementation whether to store the
@@ -184,7 +184,7 @@ struct async_closure_inner_stored_arg {
 //
 // The solution is to introduce `scheduleScopeClosure()`, which acts just like
 // `schedule(async_closure())`, but prepends an "implicit scope parameter" to
-// the user-supplied `bound_args{}`.
+// the user-supplied `bind::args{}`.
 //
 // This implicit param is `self_ref_hack`, which is handled specially inside
 // `detail/AsyncClosure*`.  As a result, the user's inner task gets a
@@ -609,7 +609,7 @@ struct async_closure_invoke_member_bindings {
     static_assert(
         Cfg.force_outer_coro || !Cfg.is_invoke_member || arg0_is_non_owning_ptr,
         "It looks like you want the `member_task` closure to own the object "
-        "instance. Use `async_now_closure(bound_args{&obj}, fn)` if that "
+        "instance. Use `async_now_closure(bind::args{&obj}, fn)` if that "
         "applies. The next best approach is to make your task `static`, "
         "with its first arg `auto self`. If that's not viable, then use "
         "`async_closure_config{.force_outer_coro = true}` to allocate a "

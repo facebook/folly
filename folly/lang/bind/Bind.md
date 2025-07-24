@@ -6,7 +6,7 @@ Are you trying to call a `folly::bind`-enabled API?  For simple usage,
 you should not need to read this file at all!  Read the API docs instead.
 
 NEVER write functions that pass `folly::bind` helper types (`constant`,
-`const_ref`, `bound_args`, etc) by reference.  These immovable objects must
+`const_ref`, `args`, etc) by reference.  These immovable objects must
 only exist in the statement that constructed them.
 
 The high-level idea of `folly::bind` is to offer **the caller** a
@@ -72,7 +72,7 @@ uniformly bind:
 
 Consider this `folly::bind` expression:
 
-  bound_args ba{5, constant{a}, mut_ref{b, std::move(c)}, const_ref{d}};
+  bind::args ba{5, constant{a}, mut_ref{b, std::move(c)}, const_ref{d}};
 
 Stored with the default `binding_policy`, this is akin to:
 
@@ -109,22 +109,22 @@ In "synchronous" APIs, where your code only runs while the user's original
 statement is active, another viable integration is to define a policy that
 defaults to bind-by-reference.  This policy could be added to `Bind.h`.
 
-### To integrate `Bind.h`, take `bound_args` via CTAD in an immovable class
+### To integrate `Bind.h`, take `bind::args` via CTAD in an immovable class
 
-The simple way to make a `folly::bind` API is to take one `bound_args`:
+The simple way to make a `folly::bind` API is to take one `bind::args`:
 
 ```cpp
 template <typename T>
-void foo(bound_args<T> args) {
+void foo(bind::args<T> args) {
   // Read "Using your bound args" for how to access `args`
 }
 // User code
-foo(bound_args{5, constant(bind::in_place<Bar>(x), std::move(y))});
+foo(bind::args{5, constant(bind::in_place<Bar>(x), std::move(y))});
 ```
 
-#### Alternative: API with no user-visible `bound_args`
+#### Alternative: API with no user-visible `bind::args`
 
-If the one-`bound_args` pattern does not work for you, there's another way.
+If the one-`bind::args` pattern does not work for you, there's another way.
 Before going down this road, read this section *carefully*.  Needing to depend
 on CTAD limits your template deduction capabilities, and forces you to
 implement each API method as a class.
@@ -133,19 +133,19 @@ In `Bind.h`, all the modifiers (like `constant`) look similar to this:
 
 ```cpp
 template <typename... Ts>
-class YOUR_TYPE : private bound_args<Ts...> { // (1)
-  // (2) -- the ctor must take `bound_args<Ts>...` **by value**.
-  using bound_args<Ts...>::bound_args;
+class YOUR_TYPE : private bind::args<Ts...> { // (1)
+  // (2) -- the ctor must take `bind::args<Ts>...` **by value**.
+  using bind::args<Ts...>::args;
 };
 template <typename... Ts>
-YOUR_TYPE(Ts&&...) -> YOUR_TYPE<ext::deduce_args_t<Ts>...>; // (3)
+YOUR_TYPE(Ts&&...) -> YOUR_TYPE<bind::ext::deduce_args_t<Ts>...>; // (3)
 ```
 
 Your API's implementation could follow a similar pattern, so you should
 understand how (1-3) work together to bind the input arguments.  Afterwards,
 I will describe how to add your business logic.
 
-(1) Deriving from a `NonCopyableNonMovable` base (`bound_args`) encourages
+(1) Deriving from a `NonCopyableNonMovable` base (`bind::args`) encourages
 users to pass the outer type **only** via prvalue semantics.  This is
 required in order to minimize lifetime bugs.  These "binding" types
 typically store references, which (thanks to lifetime extension) are valid
@@ -171,23 +171,23 @@ proposal for future releases (though P2785 would help).  Yet, in generic
 code, we want to allow packs of arguments where some are binding helpers
 (like `constant(5)`) and others are perfect-forwarded references (like `x`).
 Without prvalue perfect forwarding, the next best trick is to implicitly
-convert every arg to a `bound_args<T>` value, as done by this ctor.
+convert every arg to a `bind::args<T>` value, as done by this ctor.
   - If the argument type `T` derives from `bind::ext::like_args`, we wrap it in
-    `struct bound_args<T> : T`, moving the underlying data via the
+    `struct args<T> : T`, moving the underlying data via the
     implementation-detail `unsafe_move_args` protocol.  This handles the case
     when the user passes a modifier like `constant(5)` as an arg.
-  - For all other `T`, `bound_args<T>` simply captures a forwarding
+  - For all other `T`, `args<T>` simply captures a forwarding
     reference to the input.
 
 IMPORTANT:
-  - To be lifetime-safe, this ctor takes the `bound_args<Ts>` by-value.
-  - Do **NOT** assume that `Ts` are your input types.  A single `bound_args`
+  - To be lifetime-safe, this ctor takes the `args<Ts>` by-value.
+  - Do **NOT** assume that `Ts` are your input types.  A single `args`
     may represent a sequence of arguments to bind (e.g.  `constant(5, x)`,
-    and the base class `bound_args<Ts...>` takes care of flattening these
+    and the base class `args<Ts...>` takes care of flattening these
     for you.  The usage is explained below.
 
 (3) The deduction guide is necessary so that the class's ctor (2) can
-implicitly convert each argument into a `bound_args<T>` value.  In other
+implicitly convert each argument into a `args<T>` value.  In other
 words, it arranges for `T` to record the type of the argument as provided.
 
 Once the base `bound_arg<Ts...>` is constructed, you can access the
@@ -216,7 +216,7 @@ There are two natural choices for **when** to run your business logic:
     recommendable pattern, since error handling gets trickier (either your
     class models both value & error states, or your ctor throws).  However,
     it can give a simpler UX.  Implementing this requires some adjustments:
-      - Stop inheriting from `bound_args`, since you would no longer want to
+      - Stop inheriting from `args`, since you would no longer want to
         store the bound args tuple, but only the API's result.
       - Instead, lightly refactor `Bind.h` to expose the argument-flattening
         logic by composition.
@@ -230,6 +230,6 @@ auto store_tuple() && {
   return [&]<typename... Bs>(tag<Bs...>) {
     return std::tuple<binding_policy<Bs>::storage_type...>{
       std::move(*this)->unsafe_tuple_to_bind()};
-  }(bound_args<Ts...>::binding_list_t{});
+  }(args<Ts...>::binding_list_t{});
 }
 ```

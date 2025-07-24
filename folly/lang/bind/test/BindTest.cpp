@@ -76,10 +76,10 @@ constexpr void test(bool ok) {
 
 constexpr auto check_ref_args() {
   int y = 5;
-  static_assert(std::is_same_v<decltype(bound_args{5}), bound_args<int&&>>);
+  static_assert(std::is_same_v<decltype(args{5}), args<int&&>>);
   {
-    auto lval = bound_args(y);
-    static_assert(std::is_same_v<decltype(lval), bound_args<int&>>);
+    auto lval = args(y);
+    static_assert(std::is_same_v<decltype(lval), args<int&>>);
     static_assert(
         std::is_same_v<
             decltype(lval)::binding_list_t,
@@ -92,8 +92,8 @@ constexpr auto check_ref_args() {
     test(25 == lite_tuple::get<0>(std::move(lval).unsafe_tuple_to_bind()));
   }
   {
-    auto rval = bound_args(std::move(y));
-    static_assert(std::is_same_v<decltype(rval), bound_args<int&&>>);
+    auto rval = args(std::move(y));
+    static_assert(std::is_same_v<decltype(rval), args<int&&>>);
     static_assert(
         std::is_same_v<
             decltype(rval)::binding_list_t,
@@ -110,19 +110,13 @@ constexpr auto check_ref_args() {
 
 static_assert(check_ref_args());
 
-constexpr auto check_nested_bound_args() {
+constexpr auto check_nested_args() {
   int b = 2, d = 4;
-  using FlatT =
-      decltype(bound_args{1.2, bound_args{b, 'x'}, d, bound_args{}, "abc"});
+  using FlatT = decltype(args{1.2, args{b, 'x'}, d, args{}, "abc"});
   static_assert(
       std::is_same_v<
           FlatT,
-          bound_args<
-              double&&,
-              bound_args<int&, char&&>,
-              int&,
-              bound_args<>,
-              const char(&)[4]>>);
+          args<double&&, args<int&, char&&>, int&, args<>, const char(&)[4]>>);
   constexpr auto BI = bind_info_t{};
   static_assert(
       std::is_same_v<
@@ -136,16 +130,15 @@ constexpr auto check_nested_bound_args() {
   return true;
 }
 
-static_assert(check_nested_bound_args());
+static_assert(check_nested_args());
 
 constexpr auto check_const_and_non_const() {
   double b = 2.3;
 
-  using non_const_bas = decltype(non_constant(1, bound_args(b, 'c')));
+  using non_const_bas = decltype(non_constant(1, args(b, 'c')));
   static_assert(
-      std::is_same_v<
-          non_const_bas,
-          non_constant<int&&, bound_args<double&, char&&>>>);
+      std::
+          is_same_v<non_const_bas, non_constant<int&&, args<double&, char&&>>>);
   constexpr bind_info_t def_non_const_bi{
       category_t{}, constness_t::non_constant};
   static_assert(
@@ -156,11 +149,11 @@ constexpr auto check_const_and_non_const() {
               binding_t<def_non_const_bi, double&>,
               binding_t<def_non_const_bi, char&&>>>);
 
-  using const_bas = decltype(constant{non_constant{1, bound_args{b, 'c'}}});
+  using const_bas = decltype(constant{non_constant{1, args{b, 'c'}}});
   static_assert(
       std::is_same_v<
           const_bas,
-          constant<non_constant<int&&, bound_args<double&, char&&>>>>);
+          constant<non_constant<int&&, args<double&, char&&>>>>);
   constexpr bind_info_t def_const_bi{category_t{}, constness_t::constant};
   static_assert(
       std::is_same_v<
@@ -198,9 +191,8 @@ static_assert(check_const_and_non_const());
 constexpr auto check_by_ref() {
   double b = 2.3;
 
-  using ref = decltype(by_ref{1, bound_args{b, 'c'}});
-  static_assert(
-      std::is_same_v<ref, by_ref<int&&, bound_args<double&, char&&>>>);
+  using ref = decltype(by_ref{1, args{b, 'c'}});
+  static_assert(std::is_same_v<ref, by_ref<int&&, args<double&, char&&>>>);
   constexpr bind_info_t ref_def_bi{category_t::ref, constness_t{}};
   static_assert(
       std::is_same_v<
@@ -210,11 +202,9 @@ constexpr auto check_by_ref() {
               binding_t<ref_def_bi, double&>,
               binding_t<ref_def_bi, char&&>>>);
 
-  using constant_ref = decltype(const_ref{1, bound_args{b, 'c'}});
+  using constant_ref = decltype(const_ref{1, args{b, 'c'}});
   static_assert(
-      std::is_same_v<
-          constant_ref,
-          const_ref<int&&, bound_args<double&, char&&>>>);
+      std::is_same_v<constant_ref, const_ref<int&&, args<double&, char&&>>>);
   constexpr bind_info_t ref_const_bi{category_t::ref, constness_t::constant};
   static_assert(
       std::is_same_v<
@@ -224,12 +214,11 @@ constexpr auto check_by_ref() {
               binding_t<ref_const_bi, double&>,
               binding_t<ref_const_bi, char&&>>>);
 
-  using non_constant_ref =
-      decltype(non_constant{const_ref{1, bound_args{b, 'c'}}});
+  using non_constant_ref = decltype(non_constant{const_ref{1, args{b, 'c'}}});
   static_assert(
       std::is_same_v<
           non_constant_ref,
-          non_constant<const_ref<int&&, bound_args<double&, char&&>>>>);
+          non_constant<const_ref<int&&, args<double&, char&&>>>>);
   constexpr bind_info_t ref_non_const_bi{
       category_t::ref, constness_t::non_constant};
   using non_const_bindings = tag_t<
@@ -239,11 +228,9 @@ constexpr auto check_by_ref() {
   static_assert(
       std::is_same_v<non_constant_ref::binding_list_t, non_const_bindings>);
 
-  using non_const_ref = decltype(mut_ref{1, bound_args{b, 'c'}});
+  using non_const_ref = decltype(mut_ref{1, args{b, 'c'}});
   static_assert(
-      std::is_same_v<
-          non_const_ref,
-          mut_ref<int&&, bound_args<double&, char&&>>>);
+      std::is_same_v<non_const_ref, mut_ref<int&&, args<double&, char&&>>>);
   static_assert(
       std::is_same_v<non_const_ref::binding_list_t, non_const_bindings>);
 
@@ -476,14 +463,14 @@ static_assert(check_in_place_binding_storage_type());
 
 constexpr auto check_unsafe_move() {
   int y = 5;
-  bound_args one_ref{y};
-  bound_args wrapped{unsafe_move_args::from(std::move(one_ref))};
+  args one_ref{y};
+  args wrapped{unsafe_move_args::from(std::move(one_ref))};
 
   bool made = false;
   bool* made_ptr = &made;
   auto foo = in_place<Foo>(made_ptr, y);
 
-  bound_args merged1{
+  args merged1{
       0xdeadbeef,
       unsafe_move_args::from(std::move(wrapped)),
       unsafe_move_args::from(std::move(foo))};
@@ -494,9 +481,9 @@ constexpr auto check_unsafe_move() {
   static_assert(
       std::is_same_v<
           decltype(merged2),
-          bound_args<
+          args<
               unsigned int&&, // the now-destroyed ephemeral 0xdeadbeef
-              bound_args<int&>, // wrapped ref to `y`
+              args<int&>, // wrapped ref to `y`
               in_place_args<Foo, bool*&, int&>>>);
 
   return true;

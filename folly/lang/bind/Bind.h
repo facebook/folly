@@ -34,14 +34,14 @@ template <typename... As>
 constexpr auto in_place_with(auto, As&&...);
 
 // The primitive for representing lists of bound args. Unary forms:
-//  - `bound_args<V>`: if `V` is already `like_args`, wraps that
+//  - `bind::args<V>`: if `V` is already `like_args`, wraps that
 //    binding, unmodified.
-//  - `bound_args<V&>` or `bound_args<V&&>`: binds a reference preserving
+//  - `bind::args<V&>` or `bind::args<V&&>`: binds a reference preserving
 //    the value category of the input.
-// Plural `bound_args<Ts...>` is a concatenation of many `like_args`,
-// equivalent to `merge_and_update_bound_args` with `std::identity`.
+// Plural `bind::args<Ts...>` is a concatenation of many `like_args`,
+// equivalent to `merge_update_args` with `std::identity`.
 template <typename...>
-class bound_args;
+class args;
 
 namespace detail::lite_tuple {
 using namespace folly::detail::lite_tuple;
@@ -123,7 +123,7 @@ struct binding_t {};
 template <typename BT>
 concept is_binding_t_type_in_place = !std::is_reference_v<BT>;
 
-// Implementation detail for all the `bound_args` modifiers (`constant`,
+// Implementation detail for all the `bind::args` modifiers (`constant`,
 // `const_ref`, etc).  Concatenates multiple `Ts`, each quacking like
 // `like_args`, to produce a single `like_args` list.  Applies
 // `BindInfoFn` to each `bind_info_t` in the inputs' `binding_list_t`s.
@@ -131,7 +131,7 @@ template <typename BindInfoFn, typename... Ts>
 class merge_update_args : public like_args {
  private:
   using tuple_to_bind_t = decltype(detail::lite_tuple::tuple_cat(
-      std::declval<bound_args<Ts>>().unsafe_tuple_to_bind()...));
+      std::declval<args<Ts>>().unsafe_tuple_to_bind()...));
   tuple_to_bind_t tup_;
 
  protected:
@@ -140,12 +140,12 @@ class merge_update_args : public like_args {
  public:
   // Concatenate `Ts::binding_list_t...` after mapping their `bind_info_t`s
   // through `BindInfoFn`.
-  using binding_list_t = decltype([]<auto... BIs, typename... BTs>(
-                                      tag_t<binding_t<BIs, BTs>...>) {
-    return tag<binding_t<BindInfoFn{}(BIs), BTs>...>;
-  }(type_list_concat_t<tag_t, typename bound_args<Ts>::binding_list_t...>{}));
+  using binding_list_t =
+      decltype([]<auto... BIs, typename... BTs>(tag_t<binding_t<BIs, BTs>...>) {
+        return tag<binding_t<BindInfoFn{}(BIs), BTs>...>;
+      }(type_list_concat_t<tag_t, typename args<Ts>::binding_list_t...>{}));
 
-  explicit constexpr merge_update_args(bound_args<Ts>... ts) noexcept
+  explicit constexpr merge_update_args(args<Ts>... ts) noexcept
       : tup_(detail::lite_tuple::tuple_cat(
             std::move(ts).unsafe_tuple_to_bind()...)) {}
 
@@ -158,7 +158,7 @@ class merge_update_args : public like_args {
       : tup_(std::move(t)) {}
 };
 
-// This is cosmetic -- the point is for the signatures of `bound_args<>` and
+// This is cosmetic -- the point is for the signatures of `bind::args<>` and
 // similar templates to show rvalue reference bindings with `&&`.
 template <typename T>
 using deduce_args_t =
@@ -169,7 +169,7 @@ using deduce_args_t =
 // Binds an input reference (lvalue or rvalue)
 template <typename T>
   requires(!std::derived_from<T, ext::like_args>)
-class bound_args<T> : public ext::like_args {
+class args<T> : public ext::like_args {
   static_assert(
       std::is_reference_v<T>,
       "Check that your deduction guide has `deduce_args_t`");
@@ -180,25 +180,25 @@ class bound_args<T> : public ext::like_args {
  public:
   using binding_list_t = tag_t<ext::binding_t<ext::bind_info_t{}, T&&>>;
 
-  constexpr /*implicit*/ bound_args(T&& t) noexcept : ref_(t) {}
+  constexpr /*implicit*/ args(T&& t) noexcept : ref_(t) {}
 
   // `lifetimebound` documented in `in_place_args_crtp_base`
   constexpr auto unsafe_tuple_to_bind() && noexcept [[clang::lifetimebound]] {
     return detail::lite_tuple::tuple<T&&>{static_cast<T&&>(ref_)};
   }
 
-  constexpr bound_args(ext::unsafe_move_args, detail::lite_tuple::tuple<T&&> t)
+  constexpr args(ext::unsafe_move_args, detail::lite_tuple::tuple<T&&> t)
       : ref_(detail::lite_tuple::get<0>(t)) {}
 };
 
 // This specialization is instantiated when a binding modifier (usually derived
 // from `merge_update_args`), or a `bind::in_place*`, gets passed to an
-// object taking `bound_args<Ts>...`.
+// object taking `bind::args<Ts>...`.
 //
 // It wraps another `like_args`, by value.  This preserves the
 // interface (`binding_list_t`, `unsafe_tuple_to_bind`, etc) of the
 // underlying class.  It only exists to allow constructors of bound args
-// aggregates to take their inputs by-value as `bound_args<Ts>...`.
+// aggregates to take their inputs by-value as `bind::args<Ts>...`.
 //
 // This "always wrap" design is necessary because `like_args` are both
 // immovable AND unsafe for end-users to pass by-reference.  They contain
@@ -208,25 +208,25 @@ class bound_args<T> : public ext::like_args {
 // `unsafe_move_args` ctor to move the innards from the prvalue argument
 // into the wrapper.
 //
-// NB It is not typical for `T` to be another `bound_args`, but it's also
+// NB It is not typical for `T` to be another `bind::args`, but it's also
 // perfectly fine, compositionally speaking, so it is allowed.
 template <std::derived_from<ext::like_args> T>
-class bound_args<T> : public T {
+class args<T> : public T {
  public:
-  constexpr /*implicit*/ bound_args(T t)
+  constexpr /*implicit*/ args(T t)
       : T(ext::unsafe_move_args{}, std::move(t).unsafe_tuple_to_bind()) {}
 
-  constexpr bound_args(ext::unsafe_move_args, auto tup)
+  constexpr args(ext::unsafe_move_args, auto tup)
       : T(ext::unsafe_move_args{}, std::move(tup)) {}
 };
 
 template <typename... Ts>
   requires(sizeof...(Ts) != 1)
-class bound_args<Ts...> : public ext::merge_update_args<std::identity, Ts...> {
+class args<Ts...> : public ext::merge_update_args<std::identity, Ts...> {
   using ext::merge_update_args<std::identity, Ts...>::merge_update_args;
 };
 template <typename... Ts>
-bound_args(Ts&&...) -> bound_args<ext::deduce_args_t<Ts>...>;
+args(Ts&&...) -> args<ext::deduce_args_t<Ts>...>;
 
 namespace detail { // Private details
 
@@ -388,7 +388,7 @@ using mut_ref_bind_info = decltype([](auto bi) {
 // `bind::in_place` and `bind::in_place_with` construct non-movable,
 // non-copyable types in their final location.
 //
-// CAREFUL: As with other `bound_args{}`, the returned object stores references
+// CAREFUL: As with other `bind::args{}`, the returned object stores references
 // to `args` to avoid unnecessary move-copies.  A power user may wish to write
 // a function that returns a binding, which OWNS some values.  For example, you
 // may need to avoid a stack-use-after-free such as this one:
@@ -423,7 +423,7 @@ constexpr auto in_place_with(
 // The below "binding modifiers" all return an immovable bound args list,
 // meant to be passed only by-value, as a prvalue.  They can all take unary,
 // or plural `like_args` as inputs.  Their only difference from
-// `bound_args{values...}` is that these modifiers override some aspect of
+// `bind::args{values...}` is that these modifiers override some aspect of
 // `bind_info_t`s on on all the bindings they contain.
 //
 // Unlike standard C++, the "constant" and "ref" modifiers commute, avoiding
