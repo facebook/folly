@@ -168,8 +168,9 @@ constexpr bool manyZeroesTests(TestRunner testRunner) {
         std::string_view(expectedBuf.data(), expectedURLL - expectedBuf.data());
 
     // Run test
-    if (!testRunner(test))
+    if (!testRunner(test)) {
       return false;
+    }
   }
 
   return true;
