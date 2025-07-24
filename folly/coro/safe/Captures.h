@@ -144,63 +144,63 @@ class capture_crtp_base;
 
 template <typename... Ts>
 struct as_capture
-    : ::folly::bind::ext::merge_update_bound_args<
+    : ::folly::bind::ext::merge_update_args<
           detail::as_capture_bind_info<detail::capture_kind::plain>,
           Ts...> {
-  using ::folly::bind::ext::merge_update_bound_args<
+  using ::folly::bind::ext::merge_update_args<
       detail::as_capture_bind_info<detail::capture_kind::plain>,
-      Ts...>::merge_update_bound_args;
+      Ts...>::merge_update_args;
 };
 template <typename... Ts>
-as_capture(Ts&&...) -> as_capture<folly::bind::ext::deduce_bound_args_t<Ts>...>;
+as_capture(Ts&&...) -> as_capture<folly::bind::ext::deduce_args_t<Ts>...>;
 
 template <typename... Ts>
 struct as_capture_indirect
-    : ::folly::bind::ext::merge_update_bound_args<
+    : ::folly::bind::ext::merge_update_args<
           detail::as_capture_bind_info<detail::capture_kind::indirect>,
           Ts...> {
-  using ::folly::bind::ext::merge_update_bound_args<
+  using ::folly::bind::ext::merge_update_args<
       detail::as_capture_bind_info<detail::capture_kind::indirect>,
-      Ts...>::merge_update_bound_args;
+      Ts...>::merge_update_args;
 };
 template <typename... Ts>
 as_capture_indirect(Ts&&...)
-    -> as_capture_indirect<folly::bind::ext::deduce_bound_args_t<Ts>...>;
+    -> as_capture_indirect<folly::bind::ext::deduce_args_t<Ts>...>;
 
 // Sugar for `as_capture{const_ref{...}}`
 template <typename... Ts>
 struct capture_const_ref
-    : ::folly::bind::ext::merge_update_bound_args<
+    : ::folly::bind::ext::merge_update_args<
           detail::as_capture_bind_info<
               detail::capture_kind::plain,
               ::folly::bind::detail::const_ref_bind_info>,
           Ts...> {
-  using ::folly::bind::ext::merge_update_bound_args<
+  using ::folly::bind::ext::merge_update_args<
       detail::as_capture_bind_info<
           detail::capture_kind::plain,
           ::folly::bind::detail::const_ref_bind_info>,
-      Ts...>::merge_update_bound_args;
+      Ts...>::merge_update_args;
 };
 template <typename... Ts>
 capture_const_ref(Ts&&...)
-    -> capture_const_ref<folly::bind::ext::deduce_bound_args_t<Ts>...>;
+    -> capture_const_ref<folly::bind::ext::deduce_args_t<Ts>...>;
 // Sugar for `as_capture{mut_ref{...}}`
 template <typename... Ts>
 struct capture_mut_ref
-    : ::folly::bind::ext::merge_update_bound_args<
+    : ::folly::bind::ext::merge_update_args<
           detail::as_capture_bind_info<
               detail::capture_kind::plain,
               ::folly::bind::detail::mut_ref_bind_info>,
           Ts...> {
-  using ::folly::bind::ext::merge_update_bound_args<
+  using ::folly::bind::ext::merge_update_args<
       detail::as_capture_bind_info<
           detail::capture_kind::plain,
           ::folly::bind::detail::mut_ref_bind_info>,
-      Ts...>::merge_update_bound_args;
+      Ts...>::merge_update_args;
 };
 template <typename... Ts>
 capture_mut_ref(Ts&&...)
-    -> capture_mut_ref<folly::bind::ext::deduce_bound_args_t<Ts>...>;
+    -> capture_mut_ref<folly::bind::ext::deduce_args_t<Ts>...>;
 
 // Sugar for `as_capture{bind::in_place<T>(...)}`
 template <typename T>

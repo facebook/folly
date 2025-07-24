@@ -122,7 +122,7 @@ auto async_closure_impl(auto&& bargs, auto&& make_inner_coro) {
 //
 // The first argument should be `bound_args{...}`.  For single-argument
 // closures, you can omit the `bound_args` if you're passing `as_capture()`,
-// `capture_in_place<>()`, or another `like_bound_args` item.
+// `capture_in_place<>()`, or another `bind::ext::like_args` item.
 //
 // Async RAII: Awaiting the task ensures `co_cleanup(async_closure_private_t)`
 // is awaited for each of the `capture` arguments that defines it.

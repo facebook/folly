@@ -8,7 +8,7 @@ wrapper around `int` whose lifetime is tightly bound to the closure.
 
 ```cpp
 assert(15 == co_await async_closure(
-    // NB: Could omit this `bound_args`, since the 1 arg is `like_bound_args`
+    // NB: Can omit the outer `args` -- its sole arg is `bind::ext::like_args`
     bound_args{as_capture(5)},
     [](auto n) -> closure_task<int> {
       co_await async_closure(

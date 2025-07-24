@@ -31,12 +31,12 @@ using by_ref_bind_info = decltype([](auto bi) {
 // This isn't in `Bind.h` only because it's unclear if users need something a
 // const-defaultable "by reference" verb.
 template <typename... Ts>
-struct by_ref : ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...> {
-  using ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...>::
-      merge_update_bound_args;
+struct by_ref : ext::merge_update_args<detail::by_ref_bind_info, Ts...> {
+  using ext::merge_update_args<detail::by_ref_bind_info, Ts...>::
+      merge_update_args;
 };
 template <typename... Ts>
-by_ref(Ts&&...) -> by_ref<ext::deduce_bound_args_t<Ts>...>;
+by_ref(Ts&&...) -> by_ref<ext::deduce_args_t<Ts>...>;
 
 struct Foo : folly::NonCopyableNonMovable {
   constexpr explicit Foo(bool* made, int n) : n_(n) {
@@ -50,7 +50,7 @@ struct Foo : folly::NonCopyableNonMovable {
 // This is here so that test "runs" show up in CI history
 TEST(BindTest, all_tests_run_at_build_time) {
   // This is a manually-enabled example of the `lifetimebound` annotation on
-  // `in_place_bound_args::unsafe_tuple_to_bind()`.  With `lifetimebound` it
+  // `in_place_args::unsafe_tuple_to_bind()`.  With `lifetimebound` it
   // won't compile, without it would hit an ASAN failure.  It has to be a
   // runtime test because `constexpr` evaluation detects usage of dangling
   // references regardless of `lifetimebound`..
@@ -74,7 +74,7 @@ constexpr void test(bool ok) {
   }
 }
 
-constexpr auto check_ref_bound_args() {
+constexpr auto check_ref_args() {
   int y = 5;
   static_assert(std::is_same_v<decltype(bound_args{5}), bound_args<int&&>>);
   {
@@ -108,7 +108,7 @@ constexpr auto check_ref_bound_args() {
   return true;
 }
 
-static_assert(check_ref_bound_args());
+static_assert(check_ref_args());
 
 constexpr auto check_nested_bound_args() {
   int b = 2, d = 4;
@@ -285,7 +285,7 @@ constexpr auto check_by_ref() {
 
 static_assert(check_by_ref());
 
-constexpr auto check_in_place_bound_args_one_line() {
+constexpr auto check_in_place_args_one_line() {
   bool made = false;
 
   static_assert(
@@ -307,8 +307,8 @@ constexpr auto check_in_place_bound_args_one_line() {
   return true;
 }
 
-static_assert(check_in_place_bound_args_one_line());
-constexpr auto check_in_place_bound_args_step_by_step() {
+static_assert(check_in_place_args_one_line());
+constexpr auto check_in_place_args_step_by_step() {
   bool made = false;
 
   // These vars can't be prvalues since the `Foo` ctor is delayed.
@@ -317,8 +317,7 @@ constexpr auto check_in_place_bound_args_step_by_step() {
 
   // Not a prvalue due to [[clang::lifetimebound]] on `what_to_bind()`.
   auto b = in_place<Foo>(made_ptr, n);
-  static_assert(
-      std::is_same_v<decltype(b), in_place_bound_args<Foo, bool*&, int&>>);
+  static_assert(std::is_same_v<decltype(b), in_place_args<Foo, bool*&, int&>>);
   auto [fooMaker] = std::move(b).unsafe_tuple_to_bind();
   test(!made);
 
@@ -329,27 +328,27 @@ constexpr auto check_in_place_bound_args_step_by_step() {
   return true;
 }
 
-static_assert(check_in_place_bound_args_step_by_step());
+static_assert(check_in_place_args_step_by_step());
 
 // NB: These signatures are NOT meant to be user-visible.
-constexpr auto check_in_place_bound_args_type_sig() {
+constexpr auto check_in_place_args_type_sig() {
   static_assert(
       std::is_same_v<
           decltype(in_place<Foo>(nullptr, 7)),
-          in_place_bound_args<Foo, std::nullptr_t, int>>);
+          in_place_args<Foo, std::nullptr_t, int>>);
 
   int n = 7;
   static_assert(
       std::is_same_v<
           decltype(in_place<Foo>(nullptr, n)),
-          in_place_bound_args<Foo, std::nullptr_t, int&>>);
+          in_place_args<Foo, std::nullptr_t, int&>>);
 
   // Composes with projection modifiers as expected
   using const_in_place = decltype(constant(in_place<Foo>(nullptr, 7)));
   static_assert(
       std::is_same_v<
           const_in_place,
-          constant<in_place_bound_args<Foo, std::nullptr_t, int>>>);
+          constant<in_place_args<Foo, std::nullptr_t, int>>>);
   constexpr bind_info_t const_bi{category_t{}, constness_t::constant};
   static_assert(
       std::is_same_v<
@@ -359,9 +358,9 @@ constexpr auto check_in_place_bound_args_type_sig() {
   return true;
 }
 
-static_assert(check_in_place_bound_args_type_sig());
+static_assert(check_in_place_args_type_sig());
 
-constexpr auto check_in_place_bound_args_via_fn() {
+constexpr auto check_in_place_args_via_fn() {
   // Test for issues with prvalue lambdas
   Foo f1 = lite_tuple::get<0>(
       in_place_with([]() { return Foo{nullptr, 17}; }).unsafe_tuple_to_bind());
@@ -370,7 +369,7 @@ constexpr auto check_in_place_bound_args_via_fn() {
   auto fn = []() { return Foo{nullptr, 37}; };
   auto b2 = in_place_with(fn);
   static_assert(
-      std::is_same_v<decltype(b2), in_place_fn_bound_args<Foo, decltype(fn)>>);
+      std::is_same_v<decltype(b2), in_place_fn_args<Foo, decltype(fn)>>);
   static_assert(
       std::is_same_v<
           decltype(b2)::binding_list_t,
@@ -396,7 +395,7 @@ constexpr auto check_in_place_bound_args_via_fn() {
   static_assert(
       std::is_same_v<
           decltype(b3),
-          in_place_fn_bound_args<int, decltype(fn2), int, int&, const int&>>);
+          in_place_fn_args<int, decltype(fn2), int, int&, const int&>>);
   static_assert(
       std::is_same_v<
           decltype(b3)::binding_list_t,
@@ -405,9 +404,9 @@ constexpr auto check_in_place_bound_args_via_fn() {
   return true;
 }
 
-static_assert(check_in_place_bound_args_via_fn());
+static_assert(check_in_place_args_via_fn());
 
-constexpr auto check_in_place_bound_args_modifier_distributive_property() {
+constexpr auto check_in_place_args_modifier_distributive_property() {
   constexpr bind_info_t def_non_const_bi{
       category_t{}, constness_t::non_constant};
   constexpr bind_info_t ref_non_const_bi{
@@ -437,7 +436,7 @@ constexpr auto check_in_place_bound_args_modifier_distributive_property() {
   return true;
 }
 
-static_assert(check_in_place_bound_args_modifier_distributive_property());
+static_assert(check_in_place_args_modifier_distributive_property());
 
 template <typename B>
 using first_policy =
@@ -478,7 +477,7 @@ static_assert(check_in_place_binding_storage_type());
 constexpr auto check_unsafe_move() {
   int y = 5;
   bound_args one_ref{y};
-  bound_args wrapped{bound_args_unsafe_move::from(std::move(one_ref))};
+  bound_args wrapped{unsafe_move_args::from(std::move(one_ref))};
 
   bool made = false;
   bool* made_ptr = &made;
@@ -486,9 +485,9 @@ constexpr auto check_unsafe_move() {
 
   bound_args merged1{
       0xdeadbeef,
-      bound_args_unsafe_move::from(std::move(wrapped)),
-      bound_args_unsafe_move::from(std::move(foo))};
-  auto merged2 = bound_args_unsafe_move::from(std::move(merged1));
+      unsafe_move_args::from(std::move(wrapped)),
+      unsafe_move_args::from(std::move(foo))};
+  auto merged2 = unsafe_move_args::from(std::move(merged1));
 
   test(!made);
 
@@ -498,7 +497,7 @@ constexpr auto check_unsafe_move() {
           bound_args<
               unsigned int&&, // the now-destroyed ephemeral 0xdeadbeef
               bound_args<int&>, // wrapped ref to `y`
-              in_place_bound_args<Foo, bool*&, int&>>>);
+              in_place_args<Foo, bool*&, int&>>>);
 
   return true;
 }

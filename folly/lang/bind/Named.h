@@ -65,18 +65,18 @@ struct named_bind_info {
 } // namespace detail
 
 template <literal_string Str, typename T>
-struct id_arg : ext::merge_update_bound_args<detail::named_bind_info<Str>, T> {
-  using ext::merge_update_bound_args<detail::named_bind_info<Str>, T>::
-      merge_update_bound_args;
+struct id_arg : ext::merge_update_args<detail::named_bind_info<Str>, T> {
+  using ext::merge_update_args<detail::named_bind_info<Str>, T>::
+      merge_update_args;
 };
 
 struct self_id_t {};
 
 template <typename T>
 struct self_id_arg
-    : ext::merge_update_bound_args<detail::named_bind_info<self_id_t{}>, T> {
-  using ext::merge_update_bound_args<detail::named_bind_info<self_id_t{}>, T>::
-      merge_update_bound_args;
+    : ext::merge_update_args<detail::named_bind_info<self_id_t{}>, T> {
+  using ext::merge_update_args<detail::named_bind_info<self_id_t{}>, T>::
+      merge_update_args;
 };
 
 template <auto Tag> // `literal_string<"x">` or `self_id_t{}`
@@ -84,18 +84,17 @@ class identifier {
  private:
   template <typename T, literal_string Str>
   static constexpr id_arg<Str, T> make_with_tag(vtag_t<Str>, auto&& ba) {
-    return id_arg<Str, T>{bound_args_unsafe_move::from(std::move(ba))};
+    return id_arg<Str, T>{unsafe_move_args::from(std::move(ba))};
   }
   template <typename T>
   static constexpr self_id_arg<T> make_with_tag(
       vtag_t<self_id_t{}>, auto&& ba) {
-    return self_id_arg<T>{bound_args_unsafe_move::from(std::move(ba))};
+    return self_id_arg<T>{unsafe_move_args::from(std::move(ba))};
   }
 
  public:
   // "x"_id = some_binding_modifier{var}
-  constexpr auto operator=(
-      std::derived_from<ext::like_bound_args> auto ba) const {
+  constexpr auto operator=(std::derived_from<ext::like_args> auto ba) const {
     []<typename... BTs>(tag_t<BTs...>) {
       static_assert(
           sizeof...(BTs) == 1,
@@ -105,7 +104,7 @@ class identifier {
   }
   // "x"_id = var
   template <typename T>
-    requires(!std::derived_from<T, ext::like_bound_args>)
+    requires(!std::derived_from<T, ext::like_args>)
   constexpr auto operator=(T&& t) const {
     return make_with_tag<T&&>(vtag<Tag>, bound_args{static_cast<T&&>(t)});
   }

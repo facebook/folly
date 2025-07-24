@@ -138,7 +138,7 @@ class YOUR_TYPE : private bound_args<Ts...> { // (1)
   using bound_args<Ts...>::bound_args;
 };
 template <typename... Ts>
-YOUR_TYPE(Ts&&...) -> YOUR_TYPE<ext::deduce_bound_args_t<Ts>...>; // (3)
+YOUR_TYPE(Ts&&...) -> YOUR_TYPE<ext::deduce_args_t<Ts>...>; // (3)
 ```
 
 Your API's implementation could follow a similar pattern, so you should
@@ -172,10 +172,10 @@ code, we want to allow packs of arguments where some are binding helpers
 (like `constant(5)`) and others are perfect-forwarded references (like `x`).
 Without prvalue perfect forwarding, the next best trick is to implicitly
 convert every arg to a `bound_args<T>` value, as done by this ctor.
-  - If the argument type `T` derives from `like_bound_args`, we wrap it
-    in `struct bound_args<T> : T`, moving the underlying data via the
-    implementation-detail `bound_args_unsafe_move` protocol.  This handles the
-    case when the user passes a modifier like `constant(5)` as an arg.
+  - If the argument type `T` derives from `bind::ext::like_args`, we wrap it in
+    `struct bound_args<T> : T`, moving the underlying data via the
+    implementation-detail `unsafe_move_args` protocol.  This handles the case
+    when the user passes a modifier like `constant(5)` as an arg.
   - For all other `T`, `bound_args<T>` simply captures a forwarding
     reference to the input.
 

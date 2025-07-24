@@ -195,8 +195,7 @@ constexpr auto check_in_place_binding_type_sig() {
           in_place_ba,
           id_arg<
               "x",
-              folly::bind::detail::
-                  in_place_bound_args<Foo, std::nullptr_t, int>>>);
+              folly::bind::detail::in_place_args<Foo, std::nullptr_t, int>>>);
   static_assert(
       std::is_same_v<
           in_place_ba::binding_list_t,
