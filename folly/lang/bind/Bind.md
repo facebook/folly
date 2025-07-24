@@ -32,10 +32,10 @@ meanings, or define new ones.  That said, suggested modifier semantics are:
         plainly visible at the callsite to avoid bugs, and `mut_ref` is.
       * Passing a variable without modifiers will be pass-by-value.
   - Unlike `std::as_const`, which changes the `const`ness of the input,
-    `{non_,}constant` say whether the storage should be made `const`.
-    That is, `constant` is like `const T var` in the callee's signature.
+    `bind::constant` / `bind::mut` say whether the *destination* is `const`.
+    So, `constant` is like `const T var` in the callee's signature. E.g.
       * `constant(std::move(var))` moves in the value, and stores it as `const`.
-      * `non_constant` never removes a `const` qualifier from the underlying
+      * `mut` never removes a `const` qualifier from the underlying
         data.  Rather, it can override the "references default to `const`"
         behavior, or to override a `constant` modifier that it surrounds.
 

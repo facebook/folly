@@ -92,11 +92,11 @@ enum class category_t {
 };
 enum class constness_t {
   // The binding policy decides.  The standard policy uses `const` for refs,
-  // `non_constant` for values.
+  // `mut` for values.
   unset = 0,
   // For reference types, these both affect the underlying value type:
   constant, // Make the input `const` if it's not already.
-  non_constant // Will NOT remove `const` from an input type
+  mut // Will NOT remove `const` from an input type
 };
 struct bind_info_t {
   category_t category;
@@ -366,8 +366,8 @@ using constant_bind_info = decltype([](auto bi) {
   return bi;
 });
 
-using non_constant_bind_info = decltype([](auto bi) {
-  bi.constness = ext::constness_t::non_constant;
+using mut_bind_info = decltype([](auto bi) {
+  bi.constness = ext::constness_t::mut;
   return bi;
 });
 
@@ -379,7 +379,7 @@ using const_ref_bind_info = decltype([](auto bi) {
 
 using mut_ref_bind_info = decltype([](auto bi) {
   bi.category = ext::category_t::ref;
-  bi.constness = ext::constness_t::non_constant;
+  bi.constness = ext::constness_t::mut;
   return bi;
 });
 
@@ -439,7 +439,7 @@ constexpr auto in_place_with(
 //        a non-const reference into a `const` storage location.
 //
 // Specifiers can be overridden, e.g. you could (but should not!) express
-// `mut_ref{}` as `non_constant{const_ref{}}`.
+// `mut_ref{}` as `mut{const_ref{}}`.
 //
 // There's currently no user-facing `by_ref{}`, which would leave the
 // `constness` of the binding to be defaulted by the `binding_policy` below.
@@ -454,13 +454,11 @@ template <typename... Ts>
 constant(Ts&&...) -> constant<ext::deduce_args_t<Ts>...>;
 
 template <typename... Ts>
-struct non_constant
-    : ext::merge_update_args<detail::non_constant_bind_info, Ts...> {
-  using ext::merge_update_args<detail::non_constant_bind_info, Ts...>::
-      merge_update_args;
+struct mut : ext::merge_update_args<detail::mut_bind_info, Ts...> {
+  using ext::merge_update_args<detail::mut_bind_info, Ts...>::merge_update_args;
 };
 template <typename... Ts>
-non_constant(Ts&&...) -> non_constant<ext::deduce_args_t<Ts>...>;
+mut(Ts&&...) -> mut<ext::deduce_args_t<Ts>...>;
 
 template <typename... Ts>
 struct const_ref : ext::merge_update_args<detail::const_ref_bind_info, Ts...> {
@@ -525,7 +523,7 @@ class binding_policy<binding_t<BI, BindingType>> {
   constexpr static auto project_type() {
     if constexpr (BI.category == category_t::ref) {
       // By-reference: `const` by default
-      if constexpr (BI.constness == constness_t::non_constant) {
+      if constexpr (BI.constness == constness_t::mut) {
         return std::type_identity<BindingType&&>{}; // Leave existing `const`
       } else {
         return std::type_identity<add_const_inside_ref<BindingType>&&>{};

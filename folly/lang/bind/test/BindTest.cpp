@@ -135,12 +135,10 @@ static_assert(check_nested_args());
 constexpr auto check_const_and_non_const() {
   double b = 2.3;
 
-  using non_const_bas = decltype(non_constant(1, args(b, 'c')));
+  using non_const_bas = decltype(mut(1, args(b, 'c')));
   static_assert(
-      std::
-          is_same_v<non_const_bas, non_constant<int&&, args<double&, char&&>>>);
-  constexpr bind_info_t def_non_const_bi{
-      category_t{}, constness_t::non_constant};
+      std::is_same_v<non_const_bas, mut<int&&, args<double&, char&&>>>);
+  constexpr bind_info_t def_non_const_bi{category_t{}, constness_t::mut};
   static_assert(
       std::is_same_v<
           non_const_bas::binding_list_t,
@@ -149,11 +147,9 @@ constexpr auto check_const_and_non_const() {
               binding_t<def_non_const_bi, double&>,
               binding_t<def_non_const_bi, char&&>>>);
 
-  using const_bas = decltype(constant{non_constant{1, args{b, 'c'}}});
+  using const_bas = decltype(constant{mut{1, args{b, 'c'}}});
   static_assert(
-      std::is_same_v<
-          const_bas,
-          constant<non_constant<int&&, args<double&, char&&>>>>);
+      std::is_same_v<const_bas, constant<mut<int&&, args<double&, char&&>>>>);
   constexpr bind_info_t def_const_bi{category_t{}, constness_t::constant};
   static_assert(
       std::is_same_v<
@@ -170,17 +166,17 @@ constexpr auto check_const_and_non_const() {
 
   static_assert(
       std::is_same_v<
-          decltype(constant(non_constant(b)))::binding_list_t,
+          decltype(constant(mut(b)))::binding_list_t,
           tag_t<binding_t<def_const_bi, double&>>>);
 
   static_assert(
       std::is_same_v<
-          decltype(non_constant(b))::binding_list_t,
+          decltype(mut(b))::binding_list_t,
           tag_t<binding_t<def_non_const_bi, double&>>>);
 
   static_assert(
       std::is_same_v<
-          decltype(non_constant(constant(b)))::binding_list_t,
+          decltype(mut(constant(b)))::binding_list_t,
           tag_t<binding_t<def_non_const_bi, double&>>>);
 
   return true;
@@ -214,19 +210,17 @@ constexpr auto check_by_ref() {
               binding_t<ref_const_bi, double&>,
               binding_t<ref_const_bi, char&&>>>);
 
-  using non_constant_ref = decltype(non_constant{const_ref{1, args{b, 'c'}}});
+  using mutable_ref = decltype(mut{const_ref{1, args{b, 'c'}}});
   static_assert(
-      std::is_same_v<
-          non_constant_ref,
-          non_constant<const_ref<int&&, args<double&, char&&>>>>);
-  constexpr bind_info_t ref_non_const_bi{
-      category_t::ref, constness_t::non_constant};
+      std::
+          is_same_v<mutable_ref, mut<const_ref<int&&, args<double&, char&&>>>>);
+  constexpr bind_info_t ref_non_const_bi{category_t::ref, constness_t::mut};
   using non_const_bindings = tag_t<
       binding_t<ref_non_const_bi, int&&>,
       binding_t<ref_non_const_bi, double&>,
       binding_t<ref_non_const_bi, char&&>>;
   static_assert(
-      std::is_same_v<non_constant_ref::binding_list_t, non_const_bindings>);
+      std::is_same_v<mutable_ref::binding_list_t, non_const_bindings>);
 
   using non_const_ref = decltype(mut_ref{1, args{b, 'c'}});
   static_assert(
@@ -256,15 +250,15 @@ constexpr auto check_by_ref() {
       std::is_same_v<decltype(mut_ref(b))::binding_list_t, bind_ref_non_const>);
   static_assert(
       std::is_same_v<
-          decltype(non_constant(const_ref(b)))::binding_list_t,
+          decltype(mut(const_ref(b)))::binding_list_t,
           bind_ref_non_const>);
   static_assert(
       std::is_same_v<
-          decltype(by_ref{non_constant{b}})::binding_list_t,
+          decltype(by_ref{mut{b}})::binding_list_t,
           bind_ref_non_const>);
   static_assert(
       std::is_same_v<
-          decltype(const_ref{non_constant{b}})::binding_list_t,
+          decltype(const_ref{mut{b}})::binding_list_t,
           tag_t<binding_t<ref_const_bi, double&>>>);
 
   return true;
@@ -394,10 +388,8 @@ constexpr auto check_in_place_args_via_fn() {
 static_assert(check_in_place_args_via_fn());
 
 constexpr auto check_in_place_args_modifier_distributive_property() {
-  constexpr bind_info_t def_non_const_bi{
-      category_t{}, constness_t::non_constant};
-  constexpr bind_info_t ref_non_const_bi{
-      category_t::ref, constness_t::non_constant};
+  constexpr bind_info_t def_non_const_bi{category_t{}, constness_t::mut};
+  constexpr bind_info_t ref_non_const_bi{category_t::ref, constness_t::mut};
   using expected_binding_list = tag_t<
       binding_t<def_non_const_bi, bool&&>,
       binding_t<ref_non_const_bi, double&>,
@@ -408,17 +400,14 @@ constexpr auto check_in_place_args_modifier_distributive_property() {
   static_assert(
       std::is_same_v<
           expected_binding_list,
-          decltype(non_constant(
-              true, const_ref(b), in_place<int>(3), by_ref('c')))::
+          decltype(mut(true, const_ref(b), in_place<int>(3), by_ref('c')))::
               binding_list_t>);
   static_assert(
       std::is_same_v<
           expected_binding_list,
-          decltype(non_constant(
-              non_constant(true),
-              mut_ref(b),
-              non_constant(in_place<int>(3)),
-              mut_ref('c')))::binding_list_t>);
+          decltype(mut(
+              mut(true), mut_ref(b), mut(in_place<int>(3)), mut_ref('c')))::
+              binding_list_t>);
 
   return true;
 }
@@ -436,9 +425,9 @@ constexpr auto check_in_place_binding_storage_type() {
   int b = 2;
 
   static_assert(std::is_same_v<store<decltype(constant(b))>, const int>);
-  static_assert(std::is_same_v<store<decltype(non_constant(b))>, int>);
+  static_assert(std::is_same_v<store<decltype(mut(b))>, int>);
   static_assert(std::is_same_v<store<decltype(constant(5))>, const int>);
-  static_assert(std::is_same_v<store<decltype(non_constant(5))>, int>);
+  static_assert(std::is_same_v<store<decltype(mut(5))>, int>);
 
   static_assert(std::is_same_v<store<decltype(const_ref(b))>, const int&>);
   static_assert(
