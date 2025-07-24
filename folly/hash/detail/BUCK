@@ -11,6 +11,36 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "checksum_detail",
+    srcs = [
+        "ChecksumDetail.cpp",
+        "Crc32CombineDetail.cpp",
+        "Crc32cDetail.cpp",
+    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:android-x86_64": ["-mpclmul"],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ChecksumDetail.h",
+    ],
+    deps = [
+        "//third-party/boost:boost_preprocessor",
+        "//xplat/folly:bits",
+        "//xplat/folly:cpp_attributes",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly/external/nvidia/hash:checksum",  # @manual
+        "//xplat/folly/external/nvidia/hash/detail:crc32c_detail",  # @manual
+    ],
+)
+
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "random_seed",
@@ -22,6 +52,8 @@ non_fbcode_target(
         "//xplat/folly:portability",
     ],
 )
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,

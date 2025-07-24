@@ -907,57 +907,19 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_detail_checksum_detail",
-    srcs = [
-        "hash/detail/ChecksumDetail.cpp",
-        "hash/detail/Crc32CombineDetail.cpp",
-        "hash/detail/Crc32cDetail.cpp",
-    ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//os:android-x86_64": ["-mpclmul"],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/detail/ChecksumDetail.h",
-    ],
-    deps = [
-        ":bits",
-        ":cpp_attributes",
-        "//third-party/boost:boost_preprocessor",
-    ],
-    exported_deps = [
-        ":portability",
-        "//xplat/folly/external/nvidia/hash:checksum",  # @manual
-        "//xplat/folly/external/nvidia/hash/detail:crc32c_detail",  # @manual
-    ],
+    exported_deps = ["//xplat/folly/hash/detail:checksum_detail"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_checksum",
-    srcs = [
-        "hash/Checksum.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/Checksum.h",
-    ],
-    exported_deps = [
-        "//third-party/boost:boost",
-        "//xplat/folly:cpu_id",
-        "//xplat/folly:external_fastcrc32_avx512",
-        "//xplat/folly:external_fastcrc32_neon",
-        "//xplat/folly:external_fastcrc32_neon_eor3_sha3",
-        "//xplat/folly:external_fastcrc32_sse42",
-        "//xplat/folly:hash_detail_checksum_detail",
-        "//xplat/folly/detail:traponavx512",
-        "//xplat/folly/external/nvidia/hash:checksum",  # @manual
-    ],
+    exported_deps = ["//xplat/folly/hash:checksum"],
 )
 
 non_fbcode_target(
@@ -3969,44 +3931,27 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_spooky_hash_v1",
-    srcs = [
-        "hash/SpookyHashV1.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/SpookyHashV1.h",
-    ],
-    deps = [
-        ":cpp_attributes",
-    ],
+    exported_deps = ["//xplat/folly/hash:spooky_hash_v1"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_traits",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/traits.h",
-    ],
-    deps = [
-        ":traits",
-    ],
+    exported_deps = ["//xplat/folly/hash:traits"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_murmur_hash",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/MurmurHash.h",
-    ],
-    deps = [
-        ":bits",
-        ":c_portability",
-        ":portability",
-    ],
+    exported_deps = ["//xplat/folly/hash:murmur_hash"],
 )
 
 non_fbcode_target(
@@ -4038,27 +3983,19 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_farm_hash",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/FarmHash.h",
-    ],
-    deps = [
-        ":external_farmhash_farmhash",
-    ],
+    exported_deps = ["//xplat/folly/hash:farm_hash"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_rapidhash",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/rapidhash.h",
-    ],
-    deps = [
-        ":external_rapidhash",
-    ],
+    exported_deps = ["//xplat/folly/hash:rapidhash"],
 )
 
 non_fbcode_target(
@@ -4113,20 +4050,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_spooky_hash_v2",
-    srcs = [
-        "hash/SpookyHashV2.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/SpookyHashV2.h",
-    ],
-    deps = [
-        ":cpp_attributes",
-        ":portability",
-        "//xplat/folly/lang:c_string",
-    ],
+    exported_deps = ["//xplat/folly/hash:spooky_hash_v2"],
 )
 
 non_fbcode_target(
@@ -4378,22 +4306,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "hash_hash",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash/Hash.h",
-    ],
-    deps = [
-        ":hash_murmur_hash",
-        ":hash_spooky_hash_v1",
-        ":hash_spooky_hash_v2",
-        ":traits",
-        ":utility",
-        "//xplat/folly:c_portability",
-        "//xplat/folly/functional:apply_tuple",
-        "//xplat/folly/lang:bits",
-    ],
+    exported_deps = ["//xplat/folly/hash:hash"],
 )
 
 non_fbcode_target(
