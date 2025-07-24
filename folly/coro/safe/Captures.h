@@ -24,8 +24,8 @@
 #include <folly/coro/safe/detail/DefineMovableDeepConstLrefCopyable.h>
 #include <folly/detail/tuple.h>
 #include <folly/lang/Assume.h>
-#include <folly/lang/Bindings.h>
-#include <folly/lang/named/Bindings.h>
+#include <folly/lang/bind/Bind.h>
+#include <folly/lang/bind/Named.h>
 
 ///
 /// Please read the user- and developer-facing docs in `Capture.md`.

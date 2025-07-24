@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/lang/Bindings.h>
+#include <folly/lang/bind/Bind.h>
 #include <folly/portability/GTest.h>
 
 namespace folly::bindings::detail {
@@ -28,8 +28,8 @@ using by_ref_bind_info = decltype([](auto bi) {
 });
 } // namespace detail
 
-// This isn't in `Bindings.h` only because it's unclear if users need something
-// a const-defaultable "by reference" verb.
+// This isn't in `Bind.h` only because it's unclear if users need something a
+// const-defaultable "by reference" verb.
 template <typename... Ts>
 struct by_ref : ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...> {
   using ext::merge_update_bound_args<detail::by_ref_bind_info, Ts...>::
@@ -48,7 +48,7 @@ struct Foo : folly::NonCopyableNonMovable {
 };
 
 // This is here so that test "runs" show up in CI history
-TEST(BindingsTest, all_tests_run_at_build_time) {
+TEST(BindTest, all_tests_run_at_build_time) {
   // This is a manually-enabled example of the `lifetimebound` annotation on
   // `in_place_bound_args::unsafe_tuple_to_bind()`.  With `lifetimebound` it
   // won't compile, without it would hit an ASAN failure.  It has to be a

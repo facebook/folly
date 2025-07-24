@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/lang/named/Bindings.h>
+#include <folly/lang/bind/Named.h>
 #include <folly/portability/GTest.h>
 
 //
-// IMPORTANT: This is intended to parallel `folly/lang/test/BindingsTest.cpp`!
+// IMPORTANT: This is intended to parallel `folly/lang/test/BindTest.cpp`!
 // To reduce redundancy, we don't repeat some of the tests here.
 //
 
@@ -27,7 +27,7 @@ using namespace folly::bindings;
 using namespace folly::bindings::ext;
 
 // This is here so that test "runs" show up in CI history
-TEST(NamedBindingsTest, all_tests_run_at_build_time) {}
+TEST(NamedTest, all_tests_run_at_build_time) {}
 
 // Better UX than `assert()` in constexpr tests.
 constexpr void test(bool ok) {

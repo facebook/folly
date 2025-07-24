@@ -23,7 +23,7 @@ FOLLY_PUSH_WARNING
 FOLLY_DETAIL_LITE_TUPLE_ADJUST_WARNINGS
 
 ///
-/// READ ME: The docs for this library are in `Bindings.md`.
+/// READ ME: The docs for this library are in `Bind.md`.
 ///
 
 namespace folly::bindings {

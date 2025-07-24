@@ -392,8 +392,8 @@ class capture_binding_helper<
   static inline constexpr bool is_supported_capture_bind_info_v = false;
 
   template <>
-  static inline constexpr bool
-      is_supported_capture_bind_info_v<capture_bind_info_t> = true;
+  inline constexpr bool is_supported_capture_bind_info_v<capture_bind_info_t> =
+      true;
 
   // Future: Right now, we only check that `"x"_id = ` tags are unique at time
   // of use, and this only applies for stored captures.  But, from a pure "code

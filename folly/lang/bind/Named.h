@@ -20,10 +20,10 @@
 #include <type_traits>
 
 #include <folly/Traits.h>
-#include <folly/lang/Bindings.h>
+#include <folly/lang/bind/Bind.h>
 
 ///
-/// Extends `lang/Bindings.h` (read that first) with keyword-argument syntax:
+/// Extends `Bind.h` (read that first) with keyword-argument syntax:
 ///   bound_args{
 ///      self_id = make_in_place<MyClass>(), // tag akin to Python's `self`
 ///      "x"_id = 5,

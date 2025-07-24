@@ -33,8 +33,8 @@ non_fbcode_target(
         "//xplat/folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
         "//xplat/folly/detail:tuple",
         "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:bindings",
-        "//xplat/folly/lang/named:bindings",
+        "//xplat/folly/lang/bind:bind",
+        "//xplat/folly/lang/bind:named",
     ],
 )
 
@@ -49,9 +49,9 @@ fbcode_target(
         "//folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
         "//folly/detail:tuple",
         "//folly/lang:assume",
-        "//folly/lang:bindings",
         "//folly/lang:safe_alias_fwd",
-        "//folly/lang/named:bindings",
+        "//folly/lang/bind:bind",
+        "//folly/lang/bind:named",
     ],
 )
 

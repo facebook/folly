@@ -486,7 +486,7 @@ struct with_tag {
 //
 // Rationale: "Eager" is the only option matching user expectations, since
 // regular coroutine args are bound eagerly too.  Implementation-wise, all
-// `lang/Bindings.h` logic has to be resolved within the current statement,
+// `lang/bind/Bind.h` logic has to be resolved within the current statement,
 // since the auxiliary reference-bearing objects aren't valid beyond that.
 template <auto Cfg>
 auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {

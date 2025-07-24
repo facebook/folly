@@ -9,7 +9,7 @@ fbcode_target(
     srcs = ["CapturesTest.cpp"],
     deps = [
         "//folly/coro/safe:captures",
-        "//folly/lang:bindings",
+        "//folly/lang/bind:bind",
         "//folly/portability:gtest",
     ],
 )

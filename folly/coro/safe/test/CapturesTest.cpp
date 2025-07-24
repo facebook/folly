@@ -15,7 +15,7 @@
  */
 
 #include <folly/coro/safe/Captures.h>
-#include <folly/lang/Bindings.h>
+#include <folly/lang/bind/Bind.h>
 #include <folly/portability/GTest.h>
 
 #ifdef FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE

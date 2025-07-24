@@ -1,4 +1,4 @@
-# Binding API inputs to storage with `folly/lang/Bindings.h`
+# Binding API inputs to storage with `folly/lang/bind/`
 
 ## User guide
 
@@ -107,9 +107,9 @@ With the vanilla `binding_policy`, besides `make_in_place*` support, you get:
 
 In "synchronous" APIs, where your code only runs while the user's original
 statement is active, another viable integration is to define a policy that
-defaults to bind-by-reference.  This policy could be added to `Bindings.h`.
+defaults to bind-by-reference.  This policy could be added to `Bind.h`.
 
-### To integrate `Bindings.h`, take `bound_args` via CTAD in an immovable class
+### To integrate `Bind.h`, take `bound_args` via CTAD in an immovable class
 
 The simple way to make a `folly::bindings` API is to take one `bound_args`:
 
@@ -129,7 +129,7 @@ Before going down this road, read this section *carefully*.  Needing to depend
 on CTAD limits your template deduction capabilities, and forces you to
 implement each API method as a class.
 
-In `Bindings.h`, all the modifiers (like `constant`) look similar to this:
+In `Bind.h`, all the modifiers (like `constant`) look similar to this:
 
 ```cpp
 template <typename... Ts>
@@ -162,8 +162,8 @@ Notes:
     only if your type has the inherited ctor shown above, and can logically
     be thought of as a bag of args.
   - A linter is proposed, but not yet implemented, for detecting cases
-    where `Bindings.h` helpers are being taken by-reference.  With this
-    linter, the prvalue-only protection against lifetime bugs will be robust.
+    where `Bind.h` helpers are being taken by-reference.  With this linter, the
+    prvalue-only protection against lifetime bugs will be robust.
 
 (2) Prvalue semantics only allows us to take arguments by-value.  C++20
 lacks perfect forwarding for prvalues, and there is not even an accepted
@@ -218,8 +218,8 @@ There are two natural choices for **when** to run your business logic:
     it can give a simpler UX.  Implementing this requires some adjustments:
       - Stop inheriting from `bound_args`, since you would no longer want to
         store the bound args tuple, but only the API's result.
-      - Instead, lightly refactor `Bindings.h` to expose the
-        argument-flattening logic by composition.
+      - Instead, lightly refactor `Bind.h` to expose the argument-flattening
+        logic by composition.
       - So long as it doesn't store any input references, `YOUR_TYPE` can
         now be movable or copyable.
 

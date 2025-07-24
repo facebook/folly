@@ -293,16 +293,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_unittest,
-    name = "bindings_test",
-    srcs = ["BindingsTest.cpp"],
-    deps = [
-        "//folly/lang:bindings",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_binary,
     name = "bits_benchmark",
     srcs = ["BitsBenchmark.cpp"],

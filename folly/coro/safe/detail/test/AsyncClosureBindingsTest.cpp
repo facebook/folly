@@ -99,9 +99,9 @@ constexpr bool check_empty() {
 
 static_assert(check_empty());
 
-// Somewhat redundant with `lang/Bindings.h` tests, but we should show that
-// these work "as expected".  No `make_in_place` coverage here since we
-// don't allow those on the "regular" path.
+// Somewhat redundant with `lang/bind/Bind.h` tests, but we should show that
+// these work "as expected".  No `make_in_place` coverage here since we don't
+// allow those on the "regular" path.
 constexpr bool check_regular_args() {
   int x = 7;
   check_one<async_closure_regular_arg<int, bind_wrapper_t<int&>>>(

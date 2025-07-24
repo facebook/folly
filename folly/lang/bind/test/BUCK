@@ -5,10 +5,20 @@ oncall("fbcode_entropy_wardens_folly")
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "bindings_test",
-    srcs = ["BindingsTest.cpp"],
+    name = "bind_test",
+    srcs = ["BindTest.cpp"],
     deps = [
-        "//folly/lang/named:bindings",
+        "//folly/lang/bind:bind",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "named_test",
+    srcs = ["NamedTest.cpp"],
+    deps = [
+        "//folly/lang/bind:named",
         "//folly/portability:gtest",
     ],
 )
