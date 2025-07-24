@@ -85,8 +85,9 @@ void testReadsSerially(
   typename TAsync::Op op;
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  if (fd == -1)
+  if (fd == -1) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     fileops::close(fd);
@@ -126,8 +127,9 @@ void testReadsParallel(
 
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  if (fd == -1)
+  if (fd == -1) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     fileops::close(fd);
@@ -199,8 +201,9 @@ void testReadsQueued(
 
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  if (fd == -1)
+  if (fd == -1) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     fileops::close(fd);
@@ -393,8 +396,9 @@ TYPED_TEST_P(AsyncTest, NonBlockingWait) {
   typename TypeParam::Op op;
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  if (fd == -1)
+  if (fd == -1) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     fileops::close(fd);
@@ -427,8 +431,9 @@ TYPED_TEST_P(AsyncTest, Cancel) {
       kNumOpsBatch1 + kNumOpsBatch2, folly::AsyncBase::NOT_POLLABLE);
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  if (fd == -1)
+  if (fd == -1) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     fileops::close(fd);
@@ -495,8 +500,9 @@ TYPED_TEST_P(AsyncBatchTest, BatchRead) {
   TypeParam aioReader;
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  if (fd == -1)
+  if (fd == -1) {
     fd = ::open(tempFile.path().c_str(), O_RDONLY);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     fileops::close(fd);

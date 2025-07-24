@@ -1097,8 +1097,9 @@ TEST(IoUringBackend, FileReadWrite) {
   auto tempFile = folly::test::TempFileUtil::getTempFile(kFileSize);
 
   int fd = folly::fileops::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  if (fd == -1)
+  if (fd == -1) {
     fd = folly::fileops::open(tempFile.path().c_str(), O_RDWR);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     folly::fileops::close(fd);
@@ -1165,8 +1166,9 @@ TEST(IoUringBackend, FileReadvWritev) {
   auto tempFile = folly::test::TempFileUtil::getTempFile(kFileSize);
 
   int fd = folly::fileops::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  if (fd == -1)
+  if (fd == -1) {
     fd = folly::fileops::open(tempFile.path().c_str(), O_RDWR);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     folly::fileops::close(fd);
@@ -1261,8 +1263,9 @@ TEST(IoUringBackend, FileReadMany) {
   auto tempFile = folly::test::TempFileUtil::getTempFile(kFileSize);
 
   int fd = folly::fileops::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  if (fd == -1)
+  if (fd == -1) {
     fd = folly::fileops::open(tempFile.path().c_str(), O_RDWR);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     folly::fileops::close(fd);
@@ -1323,8 +1326,9 @@ TEST(IoUringBackend, FileWriteMany) {
   auto tempFile = folly::test::TempFileUtil::getTempFile(kFileSize);
 
   int fd = folly::fileops::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  if (fd == -1)
+  if (fd == -1) {
     fd = folly::fileops::open(tempFile.path().c_str(), O_RDWR);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     folly::fileops::close(fd);
