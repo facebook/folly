@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/coro/safe/AsyncClosure-fwd.h>
@@ -23,12 +24,12 @@
 // `#undef`ed at end-of-file not to leak this macro.
 #include <folly/coro/safe/detail/DefineMovableDeepConstLrefCopyable.h>
 #include <folly/detail/tuple.h>
-#include <folly/lang/Assume.h>
-#include <folly/lang/bind/Bind.h>
-#include <folly/lang/bind/Named.h>
 
 ///
 /// Please read the user- and developer-facing docs in `Capture.md`.
+///
+/// Callers typically only include `BindCaptures.h`, while callees need to
+/// include `Captures.h`.  Both are provided by `AsyncClosure.h`.
 ///
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
@@ -93,123 +94,10 @@ concept immovable_async_closure_co_cleanup =
     !std::is_copy_assignable_v<T> && !std::is_move_constructible_v<T> &&
     !std::is_move_assignable_v<T> && !std::swappable<T>;
 
-// Any binding with this key is meant to be owned by the async closure
-enum class capture_kind {
-  plain = 0,
-  // Syntax sugar: Passing `as_capture_indirect()` with a pointer-like (e.g.
-  // `unique_ptr<T>`), this emits a `capture_indirect<>`, giving access to
-  // the underlying `T` with just one dereference `*` / `->`, instead of 2.
-  indirect,
-};
-
-struct capture_bind_info_t : folly::bind::ext::bind_info_t {
-  capture_kind captureKind_;
-
-  constexpr explicit capture_bind_info_t(
-      // Using a constraint prevents object slicing
-      std::same_as<folly::bind::ext::bind_info_t> auto bi,
-      capture_kind ap)
-      : folly::bind::ext::bind_info_t(std::move(bi)), captureKind_(ap) {}
-};
-
-template <capture_kind Kind, typename UpdateBI = std::identity>
-struct as_capture_bind_info {
-  // Using `auto` prevents object slicing
-  constexpr auto operator()(auto bi) {
-    return capture_bind_info_t{UpdateBI{}(std::move(bi)), Kind};
-  }
-};
-
 template <typename, template <typename> class, typename>
 class capture_crtp_base;
 
 } // namespace detail
-
-///
-/// `as_capture()` and `as_capture_indirect()` work much like other
-/// `folly::bind` modifiers.  However, since they're primarily intended
-/// for `async_closure` arguments, you will practically only use them:
-///   - alone, for non-`co_cleanup` arguments;
-///   - with `bind::in_place()` or `bind::in_place_with()`, for `co_cleanup`
-///     arguments;
-///   - with `constant()`, for either.
-///
-/// `capture_in_place<T>()` is short for `as_capture(bind::in_place<T>())`.
-///
-/// See `Captures.md` and `folly/lang/Bindings.md`.
-///
-
-template <typename... Ts>
-struct as_capture
-    : ::folly::bind::ext::merge_update_args<
-          detail::as_capture_bind_info<detail::capture_kind::plain>,
-          Ts...> {
-  using ::folly::bind::ext::merge_update_args<
-      detail::as_capture_bind_info<detail::capture_kind::plain>,
-      Ts...>::merge_update_args;
-};
-template <typename... Ts>
-as_capture(Ts&&...) -> as_capture<folly::bind::ext::deduce_args_t<Ts>...>;
-
-template <typename... Ts>
-struct as_capture_indirect
-    : ::folly::bind::ext::merge_update_args<
-          detail::as_capture_bind_info<detail::capture_kind::indirect>,
-          Ts...> {
-  using ::folly::bind::ext::merge_update_args<
-      detail::as_capture_bind_info<detail::capture_kind::indirect>,
-      Ts...>::merge_update_args;
-};
-template <typename... Ts>
-as_capture_indirect(Ts&&...)
-    -> as_capture_indirect<folly::bind::ext::deduce_args_t<Ts>...>;
-
-// Sugar for `as_capture{const_ref{...}}`
-template <typename... Ts>
-struct capture_const_ref
-    : ::folly::bind::ext::merge_update_args<
-          detail::as_capture_bind_info<
-              detail::capture_kind::plain,
-              ::folly::bind::detail::const_ref_bind_info>,
-          Ts...> {
-  using ::folly::bind::ext::merge_update_args<
-      detail::as_capture_bind_info<
-          detail::capture_kind::plain,
-          ::folly::bind::detail::const_ref_bind_info>,
-      Ts...>::merge_update_args;
-};
-template <typename... Ts>
-capture_const_ref(Ts&&...)
-    -> capture_const_ref<folly::bind::ext::deduce_args_t<Ts>...>;
-// Sugar for `as_capture{mut_ref{...}}`
-template <typename... Ts>
-struct capture_mut_ref
-    : ::folly::bind::ext::merge_update_args<
-          detail::as_capture_bind_info<
-              detail::capture_kind::plain,
-              ::folly::bind::detail::mut_ref_bind_info>,
-          Ts...> {
-  using ::folly::bind::ext::merge_update_args<
-      detail::as_capture_bind_info<
-          detail::capture_kind::plain,
-          ::folly::bind::detail::mut_ref_bind_info>,
-      Ts...>::merge_update_args;
-};
-template <typename... Ts>
-capture_mut_ref(Ts&&...)
-    -> capture_mut_ref<folly::bind::ext::deduce_args_t<Ts>...>;
-
-// Sugar for `as_capture{bind::in_place<T>(...)}`
-template <typename T>
-auto capture_in_place(auto&&... as [[clang::lifetimebound]]) {
-  return as_capture(bind::in_place<T>(static_cast<decltype(as)>(as)...));
-}
-// Sugar for `as_capture{bind::in_place_with(fn, ...)}`
-auto capture_in_place_with(
-    auto make_fn, auto&&... as [[clang::lifetimebound]]) {
-  return as_capture(bind::in_place_with(
-      std::move(make_fn), static_cast<decltype(as)>(as)...));
-}
 
 template <typename T>
   requires(!detail::has_async_closure_co_cleanup<T>)
@@ -1000,24 +888,6 @@ concept is_any_capture_val =
 } // namespace detail
 
 } // namespace folly::coro
-
-// We extended `folly::bind` with `capture_kind`, so we must explicitly
-// specialize `binding_policy`.  We reuse the standard rules.  Custom
-// `capture` binding logic is in `async_closure_bindings()`.
-namespace folly::bind::ext {
-template <auto BI, typename BindingType>
-  requires std::same_as< // Written as a constraint to prevent object slicing
-      decltype(BI),
-      ::folly::coro::detail::capture_bind_info_t>
-class binding_policy<ext::binding_t<BI, BindingType>> {
- private:
-  using standard = binding_policy<ext::binding_t<bind_info_t{BI}, BindingType>>;
-
- public:
-  using storage_type = typename standard::storage_type;
-  using signature_type = typename standard::signature_type;
-};
-} // namespace folly::bind::ext
 
 #endif
 

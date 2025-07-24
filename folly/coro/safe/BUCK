@@ -22,19 +22,35 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "bind_captures",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["BindCaptures.h"],
+    exported_deps = ["//xplat/folly/lang/bind:bind"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bind_captures",
+    headers = ["BindCaptures.h"],
+    exported_deps = ["//folly/lang/bind:bind"],
+)
+
+###
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "captures",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Captures.h"],
     exported_deps = [
         ":async_closure_fwd",
         ":safe_alias",
+        "//xplat/folly:portability",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
         "//xplat/folly/detail:tuple",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang/bind:bind",
-        "//xplat/folly/lang/bind:named",
+        "//xplat/folly/lang:safe_alias_fwd",
     ],
 )
 
@@ -44,14 +60,12 @@ fbcode_target(
     headers = ["Captures.h"],
     exported_deps = [
         ":async_closure_fwd",
+        "//folly:portability",
         "//folly:traits",
         "//folly:utility",
         "//folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
         "//folly/detail:tuple",
-        "//folly/lang:assume",
         "//folly/lang:safe_alias_fwd",
-        "//folly/lang/bind:bind",
-        "//folly/lang/bind:named",
     ],
 )
 

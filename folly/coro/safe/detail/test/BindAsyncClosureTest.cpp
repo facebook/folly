@@ -16,7 +16,7 @@
 
 #include <folly/coro/Noexcept.h>
 #include <folly/coro/Task.h>
-#include <folly/coro/safe/detail/AsyncClosureBindings.h>
+#include <folly/coro/safe/detail/BindAsyncClosure.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
@@ -155,7 +155,7 @@ constexpr bool check_capture_val_to_ref() {
     //       safeAsyncScope<CancelViaParent>(),
     //       [](auto scope) -> closure_task<void> {
     //         co_await async_closure(
-    //             bind::args{scope, as_capture(123)},
+    //             bind::args{scope, bind::capture(123)},
     //             [](auto outerScope, auto n) -> closure_task<void> {
     //               outerScope.with(co_await co_current_executor).schedule(
     //                   async_closure(
@@ -339,12 +339,12 @@ static_assert(check_capture_rref_to_rref());
 constexpr bool check_owned_capture_int() {
   check_one_no_shared_cleanup<
       async_closure_inner_stored_arg<capture<int>, bind_wrapper_t<int&&>>>(
-      []() { return as_capture(5); });
+      []() { return bind::capture(5); });
   // In this test, a `co_cleanup_capture` ref is passed as an argument, but
   // importantly, that doesn't force the closure to have an outer coro.
   check_one_shared_cleanup<async_closure_inner_stored_arg<
       after_cleanup_capture<int>,
-      bind_wrapper_t<int&&>>>([]() { return as_capture(5); });
+      bind_wrapper_t<int&&>>>([]() { return bind::capture(5); });
   return true;
 }
 
@@ -353,13 +353,13 @@ static_assert(check_owned_capture_int());
 constexpr bool check_parent_capture_ref() {
   int x = 5;
   check_one_no_shared_cleanup<capture<const int&>, safe_alias::unsafe>([&]() {
-    return capture_const_ref{x};
+    return bind::capture_const_ref{x};
   });
   check_one_no_shared_cleanup<capture<int&>, safe_alias::unsafe>([&]() {
-    return capture_mut_ref{x};
+    return bind::capture_mut_ref{x};
   });
   check_one_shared_cleanup<after_cleanup_capture<int&&>, safe_alias::unsafe>(
-      [&]() { return capture_mut_ref{std::move(x)}; });
+      [&]() { return bind::capture_mut_ref{std::move(x)}; });
 
   // Check multiple args together, including a stored argument eligible for
   // `after_cleanup` downgrade, and a ref eligible for an upgrade.  Ensures
@@ -373,7 +373,7 @@ constexpr bool check_parent_capture_ref() {
       .is_invoke_member = false};
   after_cleanup_capture<int> av{priv, forward_bind_wrapper(5)};
   using ActualTup = decltype(async_closure_safeties_and_bindings<Cfg>(
-      bind::args{as_capture{bind::const_ref{5}, 5}, av}));
+      bind::args{bind::capture{bind::const_ref{5}, 5}, av}));
   using ExpectedTup = lite_tuple::tuple<
       vtag_t<
           safe_alias::unsafe,
@@ -398,7 +398,7 @@ constexpr bool check_owned_cleanup_capture() {
                        .force_outer_coro = false,
                        .force_shared_cleanup = false,
                        .is_invoke_member = false}>(
-              bind::args{capture_in_place<HasCleanup>()})),
+              bind::args{bind::capture_in_place<HasCleanup>()})),
           lite_tuple::tuple<
               // This is the safety from the point of view of the closure's
               // parent.  It does not matter that inside the closure, we have
@@ -453,7 +453,8 @@ constexpr bool check_force_outer_coro() {
                    async_closure_bindings_cfg{
                        .force_outer_coro = false,
                        .force_shared_cleanup = false,
-                       .is_invoke_member = false}>(bind::args{as_capture(5)})),
+                       .is_invoke_member = false}>(
+              bind::args{bind::capture(5)})),
           lite_tuple::tuple<
               vtag_t<safe_alias::maybe_value>,
               // inner <=> no outer coro
@@ -466,7 +467,8 @@ constexpr bool check_force_outer_coro() {
                    async_closure_bindings_cfg{
                        .force_outer_coro = true, // this changed...
                        .force_shared_cleanup = false,
-                       .is_invoke_member = false}>(bind::args{as_capture(5)})),
+                       .is_invoke_member = false}>(
+              bind::args{bind::capture(5)})),
           lite_tuple::tuple<
               vtag_t<safe_alias::maybe_value>,
               // ... outer <=> no outer coro

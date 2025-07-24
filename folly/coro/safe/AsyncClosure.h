@@ -40,7 +40,8 @@ namespace folly::coro {
 ///
 /// Lifecycle contract:
 ///   - `bind::args{}` evaluate left-to-right (L2R) due to `{}`.
-///   - Construction of `capture_in_place` / `bind::in_place` args is also L2R.
+///   - Construction of `bind::capture_in_place` / `bind::in_place` args is also
+///   L2R.
 ///   - When args are passed to the inner coro, copy/move order is unspecified.
 ///   - Upon awaiting the inner coro, `setParentCancelToken()` is called on the
 ///     capture args in L2R order.
@@ -121,8 +122,8 @@ auto async_closure_impl(auto&& bargs, auto&& make_inner_coro) {
 // synchronous, as is the movement of the args into the task coroutine.
 //
 // The first argument should be `bind::args{...}`.  For single-argument
-// closures, you can omit the `bind::args` if you're passing `as_capture()`,
-// `capture_in_place<>()`, or another `bind::ext::like_args` item.
+// closures, you can omit the `bind::args` if you're passing `bind::capture()`,
+// `bind::capture_in_place<>()`, or another `bind::ext::like_args` item.
 //
 // Async RAII: Awaiting the task ensures `co_cleanup(async_closure_private_t)`
 // is awaited for each of the `capture` arguments that defines it.

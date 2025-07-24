@@ -18,8 +18,10 @@
 
 #include <compare>
 
+#include <folly/coro/safe/BindCaptures.h>
 #include <folly/coro/safe/Captures.h>
 #include <folly/coro/safe/SafeAlias.h>
+#include <folly/lang/bind/Named.h> // See test `AsyncClosure.captureBackref`
 
 /// This header's `async_closure_safeties_and_bindings` implements the
 /// argument-binding logic for `async_closure`.
@@ -30,7 +32,7 @@
 ///     safety upgrade/downgrade rules for passing them into closures.
 /// In particular, know this distinction:
 ///   * "owned captures" look like `capture<V>`.  These are wrappers tied
-///     to the closure whose `as_capture()` created it. Note that a closure
+///     to the closure whose `bind::capture()` created it. Note that a closure
 ///     with an outer coro will pass these as `capture<V&>` to the inner task.
 ///   * "capture references" are `capture<V&>` or `<V&&>, implicitly created
 ///     for the closure from any caller-provided `capture` (value or ref).
@@ -51,8 +53,8 @@
 ///         (`async_closure*_arg` or `async_closure*_self_ref_hack`).  The tag
 ///         types tells the `async_closure` implementation whether to store the
 ///         arg, and how to bind it to the inner closure.
-///       - Figure out the storage type for each `as_capture` binding using
-///         `folly::bind::binding_policy`, to support `bind::in_place*`.
+///       - Figure out the storage type for each `bind::capture` binding using
+///         `bind::binding_policy`, to support `bind::in_place*`.
 ///       - Transform non-owned `capture`s via `to_capture_ref`.  Parents'
 ///         owned captures are implicitly passed by-ref; `after_cleanup_` refs
 ///         are "upgraded" if possible.  Docs in `Captures.md`.
@@ -237,21 +239,18 @@ struct capture_ref_measurement_stub {};
 // This helper class only has static members.  It exists only so that the
 // various functions can share some type aliases.
 template <
-    std::derived_from<folly::bind::ext::bind_info_t> auto BI,
+    std::derived_from<bind::ext::bind_info_t> auto BI,
     typename BindingType,
     auto Cfg,
     size_t ArgI>
-class capture_binding_helper<
-    folly::bind::ext::binding_t<BI, BindingType>,
-    Cfg,
-    ArgI> {
+class capture_binding_helper<bind::ext::binding_t<BI, BindingType>, Cfg, ArgI> {
  private:
   // A constraint on the template would make forward-declarations messy.
   static_assert(std::is_same_v<decltype(Cfg), binding_helper_cfg>);
 
-  using category_t = folly::bind::ext::category_t;
-  using ST = typename folly::bind::ext::binding_policy<
-      folly::bind::ext::binding_t<BI, BindingType>>::storage_type;
+  using category_t = bind::ext::category_t;
+  using ST = typename bind::ext::binding_policy<
+      bind::ext::binding_t<BI, BindingType>>::storage_type;
   using UncvrefST = std::remove_cvref_t<ST>;
 
   // "Pass capture ref" validation.  Here, `ST` is either a value or a
@@ -266,10 +265,13 @@ class capture_binding_helper<
     static_assert(std::is_reference_v<ST> == (BI.category == category_t::ref));
     if constexpr (std::is_reference_v<ArgT>) { // Is `capture<Ref>`?
       // Design note: Why do we automatically pass all `capture`s by-reference?
-      // As an alternative, recall that `folly::bind` has `const_ref` /
-      // `mut_ref`.  These modifiers could be hijacked as a mandatory marking
-      // for `captures` that get passed by-reference.  That might seem more
-      // explicit, but also more confusing and harder to use:
+      //
+      // As an alternative, recall we have `bind::const_ref` / `bind::mut_ref`.
+      // These are now used for `bind::capture_const_ref` and
+      // `bind::capture_mut_ref` with different semantics (below).  Why didn't
+      // we instead use these as mandatory markings for `captures` that get
+      // passed by-reference.  That might seem more explicit, but also more
+      // confusing and harder to use:
       //   - `const_ref` / `mut_ref CANNOT be used for "regular" args -- they're
       //     by-reference iff the caller writes `T&` in the signature.
       //   - `capture`s are intended to belong to the parent closure, it rarely
@@ -283,7 +285,8 @@ class capture_binding_helper<
       //     passing an rvalue ref as `std::move(cap)` to the child, or by
       //     passing the actual value via `*std::move(cap)`.  Similarly, `*cap`
       //     would copy the value.
-      // N.B.  We DO use `as_capture{const_ref{}}` etc in order to convert
+      //
+      // N.B.  We DO use `bind::capture{const_ref{}}` etc in order to convert
       // plain references from a parent coro into `capture` refs in a child
       // closure, see "capture-by-reference" in `Captures.md`.
       static_assert(
@@ -337,7 +340,7 @@ class capture_binding_helper<
           T,
           decltype(bind_wrapper),
           ArgI,
-          folly::bind::ext::named_bind_info_tag_v<decltype(BI)>>{
+          bind::ext::named_bind_info_tag_v<decltype(BI)>>{
           .bindWrapper_ = std::move(bind_wrapper)};
     } else {
       return async_closure_inner_stored_arg<T, decltype(bind_wrapper)>{
@@ -345,18 +348,19 @@ class capture_binding_helper<
     }
   }
 
-  // "owned capture": The closure creates storage for `as_capture()` bindings
+  // "owned capture": The closure creates storage for `bind::capture()` bindings
   static constexpr auto store_capture_binding(auto bind_wrapper) {
     static_assert(
         !is_any_capture<ST>,
-        "Given a capture `c`, do not write `as_capture(c)` to pass it to a "
+        "Given a capture `c`, do not write `bind::capture(c)` to pass it to a "
         "closure. Just write `c` as the argument, and it'll automatically "
         "be passed as a capture reference.");
     if constexpr (has_async_closure_co_cleanup<ST>) {
       static_assert(Cfg.has_outer_coro);
       // Future: Add a toggle to emit `restricted_co_cleanup_capture`
       return store_as<co_cleanup_capture<ST>>(std::move(bind_wrapper));
-    } else if constexpr (BI.captureKind_ == capture_kind::indirect) {
+    } else if constexpr (
+        BI.captureKind_ == bind::detail::capture_kind::indirect) {
       if constexpr (Cfg.is_shared_cleanup_closure) {
         return store_as<after_cleanup_capture_indirect<ST>>(
             std::move(bind_wrapper));
@@ -367,7 +371,7 @@ class capture_binding_helper<
         !Cfg.has_outer_coro &&
         // `bind::in_place*` is often used for immovable types, so without an
         // outer coro, they must be on-heap to pass ownership to the inner coro.
-        folly::bind::ext::is_binding_t_type_in_place<BindingType> &&
+        bind::ext::is_binding_t_type_in_place<BindingType> &&
         // Heuristic: Moving a type is usually cheaper than putting it on
         // the heap.  If not, people can always use `capture_indirect` with
         // `unique_ptr`...  Or, we could later add new capture kinds, like
@@ -392,8 +396,9 @@ class capture_binding_helper<
   static inline constexpr bool is_supported_capture_bind_info_v = false;
 
   template <>
-  inline constexpr bool is_supported_capture_bind_info_v<capture_bind_info_t> =
-      true;
+  inline constexpr bool
+      is_supported_capture_bind_info_v<bind::detail::capture_bind_info_t> =
+          true;
 
   // Future: Right now, we only check that `"x"_id = ` tags are unique at time
   // of use, and this only applies for stored captures.  But, from a pure "code
@@ -402,7 +407,8 @@ class capture_binding_helper<
   // or in this file, at some compile-time cost.
   template <auto Tag>
   static inline constexpr bool is_supported_capture_bind_info_v<
-      folly::bind::ext::named_bind_info_t<Tag, capture_bind_info_t>> = true;
+      bind::ext::named_bind_info_t<Tag, bind::detail::capture_bind_info_t>> =
+      true;
 
  public:
   // Transforms the binding as per the file docblock, returns a new binding.
@@ -433,20 +439,20 @@ class capture_binding_helper<
       }
     } else { // Bindings for arguments the closure does NOT store.
       static_assert(
-          std::is_same_v<vtag_t<BI>, vtag_t<folly::bind::ext::bind_info_t{}>>,
+          std::is_same_v<vtag_t<BI>, vtag_t<bind::ext::bind_info_t{}>>,
           "`folly::bind::` modifiers like `constant` (or `\"x\"_id = `) "
-          "only make sense with `as_capture()` bindings -- for example, to "
+          "only make sense with `bind::capture()` bindings -- for example, to "
           "move a mutable value into `const` capture storage. For regular "
           "args, use `const` in the signature of your inner coro, and/or "
           "`std::as_const` when passing the arg.");
-      // If we allowed `bind::in_place` without `as_capture`, the argument would
-      // require a copy or a move to be passed to the inner task (which the
-      // type may not support).  If `as_capture` isn't appropriate, the user
-      // can also work around that via `std::make_unique<TheirType>` and/or
-      // `as_capture_indirect`.
+      // If we allowed `bind::in_place` without `bind::capture`, the argument
+      // would require a copy or a move to be passed to the inner task (which
+      // the type may not support).  If `bind::capture` isn't appropriate, the
+      // user can also work around that via `std::make_unique<TheirType>` and/or
+      // `bind::capture_indirect`.
       static_assert(
-          !folly::bind::ext::is_binding_t_type_in_place<BindingType>,
-          "Did you mean `capture_in_place<T>(...)`?");
+          !bind::ext::is_binding_t_type_in_place<BindingType>,
+          "Did you mean `bind::capture_in_place<T>(...)`?");
       if constexpr (is_any_capture<UncvrefST>) { // Tests in `check_capture_*`
         // Pass preexisting `capture`s (NOT owned by this closure).
         // Future: Add a toggle to make `restricted_co_cleanup_capture` refs.
@@ -463,7 +469,7 @@ class capture_binding_helper<
         // to unwrap it for it to be handled correctly downstream.
         return std::move(bind_wrapper).what_to_bind();
       } else { // Test in `check_regular_args`
-        // "regular" args -- neither an owned capture (`as_capture()` et al),
+        // "regular" args -- neither an owned capture (`bind::capture()` et al),
         // nor a parent's `capture`. Passed via forwarding reference.
 
         // This may be redundant, since `co_cleanup_capture` enforces that
@@ -474,7 +480,7 @@ class capture_binding_helper<
         static_assert(
             !has_async_closure_co_cleanup<UncvrefST>,
             "This argument implements `async_closure` cleanup, so you should "
-            "almost certainly pass it `as_capture()` -- or, if you already "
+            "almost certainly pass it `bind::capture()` -- or, if you already "
             "have as a reference `capture`, by-value.");
 
         return async_closure_regular_arg<ST, decltype(bind_wrapper)>{
@@ -565,7 +571,7 @@ constexpr auto vtag_safety_of_async_closure_args() {
 
 template <typename BindingT>
 constexpr bool capture_needs_outer_coro() {
-  using BP = folly::bind::ext::binding_policy<BindingT>;
+  using BP = bind::ext::binding_policy<BindingT>;
   using ST = typename BP::storage_type;
   return has_async_closure_co_cleanup<ST>;
 }
@@ -578,15 +584,13 @@ struct async_closure_bindings_cfg {
 
 // For `is_invoke_member` closures, we must run an additional lifetime-safety
 // check.  For convenience, we also implicitly wrap the first argument with
-// `as_capture` when that's the obviously right choice.
+// `bind::capture` when that's the obviously right choice.
 template <async_closure_bindings_cfg Cfg>
 struct async_closure_invoke_member_bindings {
   constexpr auto operator()(tag_t<>) { return tag<>; }
   template <auto BI0, typename BT0, auto... BI, typename... BT>
   constexpr auto operator()(
-      tag_t<
-          folly::bind::ext::binding_t<BI0, BT0>,
-          folly::bind::ext::binding_t<BI, BT>...>) {
+      tag_t<bind::ext::binding_t<BI0, BT0>, bind::ext::binding_t<BI, BT>...>) {
     using T = std::remove_cvref_t<BT0>;
     constexpr bool arg0_is_non_owning_ptr =
         // `transform_binding()` passes captures as non-owning refs
@@ -600,7 +604,7 @@ struct async_closure_invoke_member_bindings {
     // Invoking a `member_task` requires `force_outer_coro` iff the first arg
     // is an owning capture.
     //
-    // NB: Both implicit & explicit `as_capture()`s are assumed to be owning,
+    // NB: Both implicit & explicit `bind::capture()`s are assumed to be owning,
     // and thus also `force_outer_coro`.
     //
     // The reason that `force_outer_coro` is NOT done automatically is that
@@ -614,12 +618,12 @@ struct async_closure_invoke_member_bindings {
         "with its first arg `auto self`. If that's not viable, then use "
         "`async_closure_config{.force_outer_coro = true}` to allocate a "
         "coro frame to own your object.");
-    // Syntax sugar: `as_capture()` may be left as implicit for the arg0
+    // Syntax sugar: `bind::capture()` may be left as implicit for the arg0
     // "object parameter" of `FOLLY_INVOKE_MEMBER`.
     if constexpr (
         Cfg.is_invoke_member &&
-        // If arg0 is `as_capture()` or similar, don't double-wrap it.
-        !std::derived_from<decltype(BI0), capture_bind_info_t> &&
+        // If arg0 is `bind::capture()` or similar, don't double-wrap it.
+        !std::derived_from<decltype(BI0), bind::detail::capture_bind_info_t> &&
         // Non-owning pointer-like things don't need to be captured.
         !arg0_is_non_owning_ptr) {
       static_assert(
@@ -630,13 +634,15 @@ struct async_closure_invoke_member_bindings {
           "that the closure can take ownership of the object instance. "
           "Consider `folly::copy()` or `std::move()`.");
       return tag<
-          folly::bind::ext::
-              binding_t<as_capture_bind_info<capture_kind::plain>{}(BI0), BT0>,
-          folly::bind::ext::binding_t<BI, BT>...>;
+          bind::ext::binding_t<
+              bind::detail::capture_bind_info<
+                  bind::detail::capture_kind::plain>{}(BI0),
+              BT0>,
+          bind::ext::binding_t<BI, BT>...>;
     } else {
       return tag<
-          folly::bind::ext::binding_t<BI0, BT0>,
-          folly::bind::ext::binding_t<BI, BT>...>;
+          bind::ext::binding_t<BI0, BT0>,
+          bind::ext::binding_t<BI, BT>...>;
     }
   }
 };
@@ -708,8 +714,8 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   //
   // This toggle supports two usage scenarios:
   //
-  // (1) Capture-by-reference behaviors, like `capture_const_ref()` /
-  // `as_capture(const_ref())` et al.
+  // (1) Capture-by-reference behaviors, like `bind::capture_const_ref()` /
+  // `bind::capture(const_ref())` et al.
   //    - `unsafe` for parent --  Since these are raw references from the
   //      parent's scope, ensure they're only allowed in `async_now_closure`s.
   //    - Ignored by child -- Simultaneously, we don't want the internal coro
