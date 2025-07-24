@@ -905,9 +905,10 @@ std::chrono::high_resolution_clock::duration
     BenchmarkSuspenderBase::suspenderOverhead;
 
 void BenchmarkingStateBase::addBenchmarkImpl(
-    const char* file, StringPiece name, BenchmarkFun fun, bool useCounter) {
+    std::string file, std::string name, BenchmarkFun fun, bool useCounter) {
   std::lock_guard guard(mutex_);
-  benchmarks_.push_back({file, name.str(), std::move(fun), useCounter});
+  benchmarks_.push_back(
+      {std::move(file), std::move(name), std::move(fun), useCounter});
 }
 
 bool BenchmarkingStateBase::useCounters() const {

@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <string>
 
 namespace folly {
 namespace detail {
@@ -65,14 +66,15 @@ struct BenchmarkingStateTest : ::testing::Test {
   BenchmarkingStateTest() {
     state.addBenchmark(
         __FILE__,
-        BenchmarkingState<TestClock>::getGlobalBaselineNameForTests(),
+        BenchmarkingState<TestClock>::getGlobalBaselineNameForTests().str(),
         [] {
           doBaseline();
           return 1;
         });
     state.addBenchmark(
         __FILE__,
-        BenchmarkingState<TestClock>::getGlobalSuspenderBaselineNameForTests(),
+        BenchmarkingState<TestClock>::getGlobalSuspenderBaselineNameForTests()
+            .str(),
         [] {
           doSuspenderBaseline();
           return 1;
