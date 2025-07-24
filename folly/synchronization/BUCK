@@ -380,9 +380,6 @@ fbcode_target(
     name = "wait_options",
     srcs = ["WaitOptions.cpp"],
     headers = ["WaitOptions.h"],
-    deps = [
-        "//folly:portability",
-    ],
     exported_deps = [
         "//folly:c_portability",
     ],

@@ -16,8 +16,6 @@
 
 #include <folly/synchronization/detail/Sleeper.h>
 
-#include <folly/Portability.h>
-
 namespace folly {
 namespace detail {
 
