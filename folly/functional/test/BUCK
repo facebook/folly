@@ -86,7 +86,6 @@ fbcode_target(
     srcs = ["InvokeTest.cpp"],
     headers = [],
     deps = [
-        "//folly:cpp_attributes",
         "//folly/functional:invoke",
         "//folly/portability:gtest",
     ],
@@ -110,7 +109,6 @@ fbcode_target(
     srcs = ["protocol_test.cpp"],
     headers = [],
     deps = [
-        "//folly:traits",
         "//folly/functional:protocol",
         "//folly/portability:gtest",
     ],
