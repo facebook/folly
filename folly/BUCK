@@ -3723,18 +3723,10 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_detail_double_radix_sort",
-    srcs = [
-        "stats/detail/DoubleRadixSort.cpp",
-    ],
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/detail/DoubleRadixSort.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-    ],
+    exported_deps = ["//xplat/folly/stats/detail:double_radix_sort"],
 )
 
 non_fbcode_target(
@@ -3747,12 +3739,10 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_detail_bucket",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/detail/Bucket.h",
-    ],
+    exported_deps = ["//xplat/folly/stats/detail:bucket"],
 )
 
 non_fbcode_target(
@@ -3857,36 +3847,19 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_bucketed_time_series",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/BucketedTimeSeries.h",
-        "stats/BucketedTimeSeries-inl.h",
-    ],
-    deps = [
-        ":likely",
-        ":stats_detail_bucket",
-        "//third-party/glog:glog",
-    ],
+    exported_deps = ["//xplat/folly/stats:bucketed_time_series"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_histogram",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/Histogram.h",
-        "stats/Histogram-inl.h",
-    ],
-    deps = [
-        ":c_portability",
-        ":conv",
-        ":stats_detail_bucket",
-        ":traits",
-        "//third-party/glog:glog",
-        "//xplat/folly/lang:exception",
-    ],
+    exported_deps = ["//xplat/folly/stats:histogram"],
 )
 
 non_fbcode_target(
@@ -3906,12 +3879,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_streaming_stats",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/StreamingStats.h",
-    ],
+    exported_deps = ["//xplat/folly/stats:streaming_stats"],
 )
 
 non_fbcode_target(
@@ -4289,16 +4261,10 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_detail_sliding_window",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/detail/SlidingWindow.h",
-        "stats/detail/SlidingWindow-inl.h",
-    ],
-    deps = [
-        ":function",
-    ],
+    exported_deps = ["//xplat/folly/stats/detail:sliding_window"],
 )
 
 non_fbcode_target(
@@ -4340,24 +4306,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_tdigest",
-    srcs = [
-        "stats/TDigest.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/TDigest.h",
-    ],
-    deps = [
-        ":overload",
-        ":range",
-        ":stats_detail_double_radix_sort",
-        ":utility",
-        "//third-party/glog:glog",
-        "//xplat/folly/algorithm:binary_heap",
-        "//xplat/folly/memory:malloc",
-    ],
+    exported_deps = ["//xplat/folly/stats:tdigest"],
 )
 
 non_fbcode_target(
@@ -4704,19 +4657,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_multi_level_time_series",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/MultiLevelTimeSeries.h",
-        "stats/MultiLevelTimeSeries-inl.h",
-    ],
-    deps = [
-        ":constexpr_math",
-        ":stats_bucketed_time_series",
-        ":string",
-        "//third-party/glog:glog",
-    ],
+    exported_deps = ["//xplat/folly/stats:multi_level_time_series"],
 )
 
 non_fbcode_target(
@@ -4809,17 +4754,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_timeseries_histogram",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/TimeseriesHistogram.h",
-        "stats/TimeseriesHistogram-inl.h",
-    ],
-    deps = [
-        ":stats_histogram",
-        ":stats_multi_level_time_series",
-    ],
+    exported_deps = ["//xplat/folly/stats:timeseries_histogram"],
 )
 
 non_fbcode_target(
@@ -5080,21 +5019,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_digest_builder",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/DigestBuilder.h",
-        "stats/DigestBuilder-inl.h",
-    ],
-    deps = [
-        ":spin_lock",
-        ":synchronization_lock",
-    ],
-    exported_deps = [
-        "//xplat/folly/concurrency:cache_locality",
-        "//xplat/folly/lang:bits",
-    ],
+    exported_deps = ["//xplat/folly/stats:digest_builder"],
 )
 
 non_fbcode_target(
@@ -5211,18 +5140,10 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_detail_buffered_stat",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/detail/BufferedStat.h",
-        "stats/detail/BufferedStat-inl.h",
-    ],
-    deps = [
-        ":shared_mutex",
-        ":stats_detail_sliding_window",
-        ":stats_digest_builder",
-    ],
+    exported_deps = ["//xplat/folly/stats/detail:buffered_stat"],
 )
 
 non_fbcode_target(
@@ -5371,20 +5292,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "stats_quantile_estimator",
-    srcs = [
-        "stats/QuantileEstimator.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/QuantileEstimator.h",
-        "stats/QuantileEstimator-inl.h",
-    ],
-    deps = [
-        ":stats_detail_buffered_stat",
-        ":stats_tdigest",
-    ],
+    exported_deps = ["//xplat/folly/stats:quantile_estimator"],
 )
 
 non_fbcode_target(

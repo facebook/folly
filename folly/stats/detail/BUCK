@@ -1,7 +1,65 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "bucket",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Bucket.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "buffered_stat",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "BufferedStat.h",
+        "BufferedStat-inl.h",
+    ],
+    deps = [
+        ":sliding_window",
+        "//xplat/folly:shared_mutex",
+        "//xplat/folly/stats:digest_builder",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "double_radix_sort",
+    srcs = [
+        "DoubleRadixSort.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "DoubleRadixSort.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sliding_window",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SlidingWindow.h",
+        "SlidingWindow-inl.h",
+    ],
+    deps = [
+        "//xplat/folly:function",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
