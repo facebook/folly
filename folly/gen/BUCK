@@ -69,11 +69,11 @@ non_fbcode_target(
         "File-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
         ":base",
         ":string",
         "//xplat/folly:exception",
         "//xplat/folly:file",
-        "//xplat/folly:io_iobuf",
     ],
 )
 
@@ -131,9 +131,9 @@ non_fbcode_target(
         "String-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
         ":base",
         "//xplat/folly:conv",
-        "//xplat/folly:io_iobuf",
         "//xplat/folly:portability",
         "//xplat/folly:range",
         "//xplat/folly:string",
