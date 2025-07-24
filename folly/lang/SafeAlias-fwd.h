@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <type_traits>
 
-/// See `folly/coro/safe/SafeAlias.h` for the high-level docs & definitions.
+/// See `folly/lang/SafeAlias.h` for the high-level docs & definitions.
 ///
 /// This is a MINIMAL header to let types declare their `safe_alias` level.
 ///

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/coro/safe/SafeAlias.h>
 #include <folly/detail/tuple.h>
+#include <folly/lang/SafeAlias.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

@@ -20,7 +20,7 @@
 
 #include <folly/coro/safe/BindCaptures.h>
 #include <folly/coro/safe/Captures.h>
-#include <folly/coro/safe/SafeAlias.h>
+#include <folly/lang/SafeAlias.h>
 #include <folly/lang/bind/Named.h> // See test `AsyncClosure.captureBackref`
 
 /// This header's `async_closure_safeties_and_bindings` implements the

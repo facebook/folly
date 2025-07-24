@@ -44,8 +44,8 @@ fbcode_target(
     name = "safe_alias_test",
     srcs = ["SafeAliasTest.cpp"],
     deps = [
-        "//folly/coro/safe:safe_alias",
         "//folly/detail:tuple",
+        "//folly/lang:safe_alias",
         "//folly/portability:gtest",
     ],
 )

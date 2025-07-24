@@ -18,7 +18,7 @@
 
 #include <folly/coro/TaskWrapper.h>
 #include <folly/coro/safe/NowTask.h>
-#include <folly/coro/safe/SafeAlias.h>
+#include <folly/lang/SafeAlias.h>
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 

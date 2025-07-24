@@ -40,7 +40,7 @@ non_fbcode_target(
     exported_deps = [
         "//xplat/folly/coro/safe:bind_captures",
         "//xplat/folly/coro/safe:captures",
-        "//xplat/folly/coro/safe:safe_alias",
+        "//xplat/folly/lang:safe_alias",
         "//xplat/folly/lang/bind:named",
     ],
 )
@@ -52,7 +52,7 @@ fbcode_target(
     exported_deps = [
         "//folly/coro/safe:bind_captures",
         "//folly/coro/safe:captures",
-        "//folly/coro/safe:safe_alias",
+        "//folly/lang:safe_alias",
         "//folly/lang/bind:named",
     ],
 )

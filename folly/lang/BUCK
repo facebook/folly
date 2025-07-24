@@ -273,7 +273,18 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
-    name = "safe_alias_fwd",
+    name = "safe_alias",  # Use this only when checking *_safe_alias_of_v
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeAlias.h"],
+    exported_deps = [
+        ":safe_alias_fwd",
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "safe_alias_fwd",  # Use this to label types with safe_alias
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeAlias-fwd.h"],
 )
@@ -618,7 +629,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "safe_alias_fwd",
+    name = "safe_alias",  # Use this only when checking *_safe_alias_of_v
+    headers = ["SafeAlias.h"],
+    exported_deps = [
+        ":safe_alias_fwd",
+        "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "safe_alias_fwd",  # Use this to label types with safe_alias
     headers = ["SafeAlias-fwd.h"],
 )
 
