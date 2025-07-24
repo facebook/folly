@@ -367,7 +367,7 @@ struct async_closure_backref_populator<
     return lite_tuple::apply(
         [&](Args&&... args) {
           return unsafe_tuple_to_bind_wrapper(
-              folly::bind::make_in_place_with([&]() {
+              bind::in_place_with([&]() {
                 return T{[&]() -> decltype(auto) {
                   if constexpr (requires(Args a) {
                                   a.folly_bindings_identifier_tag;

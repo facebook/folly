@@ -394,20 +394,20 @@ a second coro frame, the one that awaits cleanup. But, when `async_closure` sees
 that it owns no `co_cleanup_capture`s, it will:
   - Omit the outer coro frame (which would now be no-op)
   - Move in its own captures into the inner coro.
-  - For owned captures that are `make_in_place`, automatically use the
+  - For owned captures that are `bind::in_place`, automatically use the
     `capture_heap` variation.
 
 From most perspectives, a no-cleanup closure quacks just like its
 outer-coro-awaits-inner-coro cousin. However, its own capture args' signatures
 will differ:
   - `capture<Value>` is passed instead of `capture<Value&>`.
-  - `make_in_place` captures use the `capture_heap` template.
+  - `bind::in_place` captures use the `capture_heap` template.
 
 By design, reference and value, plain and `_heap` captures have identical
 interfaces, letting `async_closure` freely pick the storage for those typical
 inner coros that take all captures by `auto`.
 
-In the unlikely event of a no-cleanup closure taking lots of `make_in_place`
+In the unlikely event of a no-cleanup closure taking lots of `bind::in_place`
 captures, you can try `async_closure::force_outer_coro` to coalesce allocations.
 
 ### Integrating your own `co_cleanup` type

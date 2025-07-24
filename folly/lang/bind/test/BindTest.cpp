@@ -19,7 +19,7 @@
 
 namespace folly::bind::detail {
 
-using namespace folly::bind::ext;
+using namespace ::folly::bind::ext;
 
 namespace detail {
 using by_ref_bind_info = decltype([](auto bi) {
@@ -57,7 +57,7 @@ TEST(BindTest, all_tests_run_at_build_time) {
 #if 0
   int n = 1337;
   bool made = false;
-  auto fooMaker = make_in_place<Foo>(&made, n).unsafe_tuple_to_bind();
+  auto fooMaker = in_place<Foo>(&made, n).unsafe_tuple_to_bind();
   // UNSAFE: `fooMaker` contains a ref to the prvalue `&made`, which became
   // invalid at the `;` of the previous line.
   lite_tuple::tuple<Foo> foo = std::move(fooMaker);
@@ -291,17 +291,15 @@ constexpr auto check_in_place_bound_args_one_line() {
   static_assert(
       1 ==
       std::tuple_size_v<
-          decltype(make_in_place<Foo>(&made, 37).unsafe_tuple_to_bind())>);
+          decltype(in_place<Foo>(&made, 37).unsafe_tuple_to_bind())>);
 
   // Binding prvalues is ok since `Foo` is constructed in the same statement.
-  Foo foo =
-      lite_tuple::get<0>(make_in_place<Foo>(&made, 37).unsafe_tuple_to_bind());
+  Foo foo = lite_tuple::get<0>(in_place<Foo>(&made, 37).unsafe_tuple_to_bind());
   test(made);
   test(foo.n_ == 37);
 
   int n = 3;
-  Foo f2 =
-      lite_tuple::get<0>(make_in_place<Foo>(nullptr, n).unsafe_tuple_to_bind());
+  Foo f2 = lite_tuple::get<0>(in_place<Foo>(nullptr, n).unsafe_tuple_to_bind());
   ++n;
   test(3 == f2.n_);
   test(4 == n);
@@ -318,7 +316,7 @@ constexpr auto check_in_place_bound_args_step_by_step() {
   int n = 37;
 
   // Not a prvalue due to [[clang::lifetimebound]] on `what_to_bind()`.
-  auto b = make_in_place<Foo>(made_ptr, n);
+  auto b = in_place<Foo>(made_ptr, n);
   static_assert(
       std::is_same_v<decltype(b), in_place_bound_args<Foo, bool*&, int&>>);
   auto [fooMaker] = std::move(b).unsafe_tuple_to_bind();
@@ -337,17 +335,17 @@ static_assert(check_in_place_bound_args_step_by_step());
 constexpr auto check_in_place_bound_args_type_sig() {
   static_assert(
       std::is_same_v<
-          decltype(make_in_place<Foo>(nullptr, 7)),
+          decltype(in_place<Foo>(nullptr, 7)),
           in_place_bound_args<Foo, std::nullptr_t, int>>);
 
   int n = 7;
   static_assert(
       std::is_same_v<
-          decltype(make_in_place<Foo>(nullptr, n)),
+          decltype(in_place<Foo>(nullptr, n)),
           in_place_bound_args<Foo, std::nullptr_t, int&>>);
 
   // Composes with projection modifiers as expected
-  using const_in_place = decltype(constant(make_in_place<Foo>(nullptr, 7)));
+  using const_in_place = decltype(constant(in_place<Foo>(nullptr, 7)));
   static_assert(
       std::is_same_v<
           const_in_place,
@@ -366,13 +364,11 @@ static_assert(check_in_place_bound_args_type_sig());
 constexpr auto check_in_place_bound_args_via_fn() {
   // Test for issues with prvalue lambdas
   Foo f1 = lite_tuple::get<0>(
-      make_in_place_with([]() {
-        return Foo{nullptr, 17};
-      }).unsafe_tuple_to_bind());
+      in_place_with([]() { return Foo{nullptr, 17}; }).unsafe_tuple_to_bind());
   test(17 == f1.n_);
 
   auto fn = []() { return Foo{nullptr, 37}; };
-  auto b2 = make_in_place_with(fn);
+  auto b2 = in_place_with(fn);
   static_assert(
       std::is_same_v<decltype(b2), in_place_fn_bound_args<Foo, decltype(fn)>>);
   static_assert(
@@ -392,7 +388,7 @@ constexpr auto check_in_place_bound_args_via_fn() {
   auto fn2 = [mn1 = MoveN{.n_ = n1}](int&& i2, int& i3, const int& i4) {
     return mn1.n_ + i2 + i3 + i4;
   };
-  auto b3 = make_in_place_with(
+  auto b3 = in_place_with(
       std::move(fn2), // the contained `MoveN` is noncopyable
       std::move(n2),
       n3,
@@ -427,7 +423,7 @@ constexpr auto check_in_place_bound_args_modifier_distributive_property() {
       std::is_same_v<
           expected_binding_list,
           decltype(non_constant(
-              true, const_ref(b), make_in_place<int>(3), by_ref('c')))::
+              true, const_ref(b), in_place<int>(3), by_ref('c')))::
               binding_list_t>);
   static_assert(
       std::is_same_v<
@@ -435,7 +431,7 @@ constexpr auto check_in_place_bound_args_modifier_distributive_property() {
           decltype(non_constant(
               non_constant(true),
               mut_ref(b),
-              non_constant(make_in_place<int>(3)),
+              non_constant(in_place<int>(3)),
               mut_ref('c')))::binding_list_t>);
 
   return true;
@@ -469,12 +465,10 @@ constexpr auto check_in_place_binding_storage_type() {
 
   static_assert(
       std::is_same_v<
-          first_policy<decltype(make_in_place<int>(5))>::storage_type,
+          first_policy<decltype(in_place<int>(5))>::storage_type,
           int>);
   static_assert(
-      std::is_same_v<
-          store<decltype(constant(make_in_place<int>(5)))>,
-          const int>);
+      std::is_same_v<store<decltype(constant(in_place<int>(5)))>, const int>);
 
   return true;
 }
@@ -488,12 +482,12 @@ constexpr auto check_unsafe_move() {
 
   bool made = false;
   bool* made_ptr = &made;
-  auto in_place = make_in_place<Foo>(made_ptr, y);
+  auto foo = in_place<Foo>(made_ptr, y);
 
   bound_args merged1{
       0xdeadbeef,
       bound_args_unsafe_move::from(std::move(wrapped)),
-      bound_args_unsafe_move::from(std::move(in_place))};
+      bound_args_unsafe_move::from(std::move(foo))};
   auto merged2 = bound_args_unsafe_move::from(std::move(merged1));
 
   test(!made);

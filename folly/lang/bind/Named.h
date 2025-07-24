@@ -25,7 +25,7 @@
 ///
 /// Extends `Bind.h` (read that first) with keyword-argument syntax:
 ///   bound_args{
-///      self_id = make_in_place<MyClass>(), // tag akin to Python's `self`
+///      self_id = bind::in_place<MyClass>(), // tag akin to Python's `self`
 ///      "x"_id = 5,
 ///      "y"_id = mut_ref{y},
 ///   }
@@ -132,12 +132,15 @@ struct id_type {
   using storage_type = UnderlyingSig::storage_type;
 };
 
-// For brevity, `identifier`s are usually made via custom string literals.
+template <literal_string Str>
+inline constexpr ext::identifier<Str> id{};
+
+// For brevity, `bind::id<"x">` can be made via the literal `"x"_id`.
 inline namespace literals {
 inline namespace string_literals {
 template <literal_string Str>
 consteval auto operator""_id() noexcept {
-  return ext::identifier<Str>{};
+  return id<Str>;
 }
 } // namespace string_literals
 } // namespace literals

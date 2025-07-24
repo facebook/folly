@@ -133,11 +133,11 @@ class capture_crtp_base;
 /// `folly::bind` modifiers.  However, since they're primarily intended
 /// for `async_closure` arguments, you will practically only use them:
 ///   - alone, for non-`co_cleanup` arguments;
-///   - with `make_in_place()` or `make_in_place_with()`, for `co_cleanup`
+///   - with `bind::in_place()` or `bind::in_place_with()`, for `co_cleanup`
 ///     arguments;
 ///   - with `constant()`, for either.
 ///
-/// `capture_in_place<T>()` is short for `as_capture(make_in_place<T>())`.
+/// `capture_in_place<T>()` is short for `as_capture(bind::in_place<T>())`.
 ///
 /// See `Captures.md` and `folly/lang/Bindings.md`.
 ///
@@ -202,16 +202,15 @@ template <typename... Ts>
 capture_mut_ref(Ts&&...)
     -> capture_mut_ref<folly::bind::ext::deduce_bound_args_t<Ts>...>;
 
-// Sugar for `as_capture{make_in_place<T>(...)}`
+// Sugar for `as_capture{bind::in_place<T>(...)}`
 template <typename T>
 auto capture_in_place(auto&&... as [[clang::lifetimebound]]) {
-  return as_capture(
-      ::folly::bind::make_in_place<T>(static_cast<decltype(as)>(as)...));
+  return as_capture(bind::in_place<T>(static_cast<decltype(as)>(as)...));
 }
-// Sugar for `as_capture{make_in_place_with(fn, ...)}`
+// Sugar for `as_capture{bind::in_place_with(fn, ...)}`
 auto capture_in_place_with(
     auto make_fn, auto&&... as [[clang::lifetimebound]]) {
-  return as_capture(::folly::bind::make_in_place_with(
+  return as_capture(bind::in_place_with(
       std::move(make_fn), static_cast<decltype(as)>(as)...));
 }
 
@@ -700,7 +699,7 @@ class capture_heap_storage : public capture_crtp_base<Derived, RefArgT, T> {
 // dereference operations into one for better UX.  There is no need for a
 // `capture_heap_indirect_storage`, since this "indirect" syntax sugar only
 // applies to pointer types, which are always cheaply movable, and thus
-// don't benefit from `make_in_place`.
+// don't benefit from `bind::in_place`.
 //
 // Similarly, no support for `co_cleanup()` captures since those generally
 // aren't pointer-like, and won't suffer from double-dereferences.
@@ -850,10 +849,10 @@ class after_cleanup_capture
 
 // The use-case for `capture_heap` is to allow a closure without cleanup
 // args to avoid an inner/outer task split, while still taking
-// `make_in_place` arguments.  This is meant to be an implementation detail
+// `bind::in_place` arguments.  This is meant to be an implementation detail
 // that's almost fully API-compatible with `capture`.  At a future
 // point we *could* remove this:
-//  - Then, any use of `make_in_place` would auto-create an outer task.
+//  - Then, any use of `bind::in_place` would auto-create an outer task.
 //  - Any user code that explicitly specifies `capture_heap` in signatures
 //    would need to be updated to `capture`.
 //  - Any places that rely on moving `capture_heap<V>` would need to migrate

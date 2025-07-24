@@ -18,8 +18,8 @@ write `constant{5}, const_ref{b, c}, mut_ref{d}` to define the storage as
 
 Your specific API's docs are authoritative -- a callee can change modifier
 meanings, or define new ones.  That said, suggested modifier semantics are:
-  - Pass non-movable, non-copyable types via `make_in_place<T>()` or
-    `make_in_place_with(fn)`.
+  - Pass non-movable, non-copyable types via `bind::in_place<T>()` or
+    `bind::in_place_with(fn)`.
   - The API decides whether `const_ref` / `mut_ref` are supported.
     If NOT, then the callee's signature decides between by-value & by-ref.
       * Using `const_ref` etc should cause a compile error (`static_assert`).
@@ -86,7 +86,7 @@ are known in advance, and the types are movable.  But, in trickier cases
     is constructed or passed (`async_closure`, named scopes).
   - In order to in-place construct an immovable type `A` by-value inside the
     caller's storage, you need an implicit conversion operator.
-    `folly::bind::make_in_place*` implements one on your behalf.
+    `bind::in_place*` implements one on your behalf.
   - API-specific binding customizations can be provided via helper classes.
     For example, `folly/lang/named` enables kwargs support.
 
@@ -98,7 +98,7 @@ careful way.  The goal should be "low user surprisal", so we stay close to
 standard C++ semantics, except for a couple of restrictions to make argument
 passing less bug-prone.
 
-With the vanilla `binding_policy`, besides `make_in_place*` support, you get:
+With the vanilla `binding_policy`, besides `bind::in_place*` support, you get:
   - Arguments are bound by value, unless the callsite includes `const_ref` /
     `mut_ref`.  This prevents bugs from callers not expecting aliasing.
   - While `copy{}` and `move{}` modifiers aren't yet provided, `category_t`
@@ -119,7 +119,7 @@ void foo(bound_args<T> args) {
   // Read "Using your bound args" for how to access `args`
 }
 // User code
-foo(bound_args{5, constant(make_in_place<Bar>(x), std::move(y))});
+foo(bound_args{5, constant(bind::in_place<Bar>(x), std::move(y))});
 ```
 
 #### Alternative: API with no user-visible `bound_args`

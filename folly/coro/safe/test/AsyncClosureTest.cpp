@@ -22,9 +22,9 @@
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
-using namespace folly;
-using namespace folly::coro;
-using namespace folly::bind;
+namespace folly::coro {
+
+using namespace folly::bind::literals;
 using namespace std::literals::chrono_literals;
 
 CO_TEST(AsyncClosure, invalid_co_cleanup) {
@@ -102,37 +102,44 @@ void checkSafety() {
         arg_safety.value);
   };
 
-  checkIsSafe(kValue, intTask, bound_args{5});
-  checkIsSafe(kValue, StatelessIntCallable{}, bound_args{5});
-  checkIsSafe(kValue, StatelessGenericCallable{}, bound_args{5});
-  checkIsSafe(kValue, []() -> closure_task<int> { co_return 5; }, bound_args{});
-  checkIsSafe(kValue, []() -> closure_task<void> { co_return; }, bound_args{});
+  checkIsSafe(kValue, intTask, bind::bound_args{5});
+  checkIsSafe(kValue, StatelessIntCallable{}, bind::bound_args{5});
+  checkIsSafe(kValue, StatelessGenericCallable{}, bind::bound_args{5});
   checkIsSafe(
-      kValue, [](int x) -> closure_task<int> { co_return x; }, bound_args{5});
+      kValue, []() -> closure_task<int> { co_return 5; }, bind::bound_args{});
   checkIsSafe(
-      kValue, [](auto) -> closure_task<void> { co_return; }, bound_args{5});
+      kValue, []() -> closure_task<void> { co_return; }, bind::bound_args{});
+  checkIsSafe(
+      kValue,
+      [](int x) -> closure_task<int> { co_return x; },
+      bind::bound_args{5});
+  checkIsSafe(
+      kValue,
+      [](auto) -> closure_task<void> { co_return; },
+      bind::bound_args{5});
   checkIsSafe(
       safe_alias_constant<safe_alias::co_cleanup_safe_ref>{},
       [](auto) -> closure_task<void> { co_return; },
-      bound_args{manual_safe_ref<safe_alias::co_cleanup_safe_ref>(x)});
+      bind::bound_args{manual_safe_ref<safe_alias::co_cleanup_safe_ref>(x)});
   checkIsSafe(
       safe_alias_constant<safe_alias::after_cleanup_ref>{},
       [](auto) -> closure_task<void> { co_return; },
-      bound_args{manual_safe_ref<safe_alias::after_cleanup_ref>(x)});
+      bind::bound_args{manual_safe_ref<safe_alias::after_cleanup_ref>(x)});
 
   auto checkIsUnsafe = [&](auto fn, auto bargs) {
     auto s = safeWrap(std::move(fn), std::move(bargs));
     static_assert(!s.is_safe());
   };
   // Only `safe_task` is allowed as the inner coro.
-  checkIsUnsafe([]() -> Task<int> { co_return 5; }, bound_args{});
-  checkIsUnsafe([]() -> Task<void> { co_return; }, bound_args{});
-  checkIsUnsafe([](int x) -> Task<int> { co_return x; }, bound_args{5});
-  checkIsUnsafe([](auto) -> Task<void> { co_return; }, bound_args{5});
+  checkIsUnsafe([]() -> Task<int> { co_return 5; }, bind::bound_args{});
+  checkIsUnsafe([]() -> Task<void> { co_return; }, bind::bound_args{});
+  checkIsUnsafe([](int x) -> Task<int> { co_return x; }, bind::bound_args{5});
+  checkIsUnsafe([](auto) -> Task<void> { co_return; }, bind::bound_args{5});
   // Don't allow passing in `unsafe*` args externally.
   checkIsUnsafe(
       [](auto) -> closure_task<void> { co_return; },
-      bound_args{manual_safe_ref<safe_alias::unsafe_closure_internal>(x)});
+      bind::bound_args{
+          manual_safe_ref<safe_alias::unsafe_closure_internal>(x)});
 }
 
 TEST(AsyncClosure, safetyNoOuter) {
@@ -150,7 +157,7 @@ template <typename ExpectedT, async_closure_config Cfg = NoForceOuter>
 constexpr auto asyncClosureCheckType(auto fn, auto bargs) {
   auto t = async_closure<Cfg>(
       // Actually, safe because `bargs` is by-value
-      folly::bind::ext::bound_args_unsafe_move::from(std::move(bargs)),
+      bind::ext::bound_args_unsafe_move::from(std::move(bargs)),
       std::move(fn));
   static_assert(std::is_same_v<decltype(t), ExpectedT>);
   return std::move(t);
@@ -159,7 +166,7 @@ constexpr auto asyncClosureCheckType(auto fn, auto bargs) {
 template <async_closure_config Cfg>
 Task<void> checkNoArgs() {
   auto res = co_await asyncClosureCheckType<value_task<int>, Cfg>(
-      []() -> closure_task<int> { co_return 7; }, bound_args{});
+      []() -> closure_task<int> { co_return 7; }, bind::bound_args{});
   EXPECT_EQ(7, res);
 }
 
@@ -182,7 +189,7 @@ Task<void> checkReturnsVoid() {
         ran_returnsVoid = true;
         co_return;
       },
-      bound_args{});
+      bind::bound_args{});
   EXPECT_TRUE(ran_returnsVoid);
 }
 
@@ -205,7 +212,7 @@ Task<void> checkPlainArgs() {
         static_assert(std::is_same_v<std::unique_ptr<int>, decltype(yPtr)>);
         co_return r;
       },
-      bound_args{thirtySix, std::make_unique<int>(1200), 100});
+      bind::bound_args{thirtySix, std::make_unique<int>(1200), 100});
   EXPECT_EQ(1337, res);
 }
 
@@ -226,7 +233,7 @@ CO_TEST(AsyncClosure, callFuncTemplate) {
       // As of 2024, C++ lacks an "overload set" type, and thus can't
       // directly deduce `funcTemplate` (see P3360R0 pr P3312R0).
       FOLLY_INVOKE_QUAL(funcTemplate),
-      bound_args{capture_in_place<std::string>("hi")});
+      bind::bound_args{capture_in_place<std::string>("hi")});
   EXPECT_EQ("hide-and-seek", res);
 }
 
@@ -251,14 +258,15 @@ closure_task<std::string> funcWithOuter(capture<ImmovableString&> hi) {
 
 CO_TEST(AsyncClosure, callFunctionNoOuter) {
   auto res = co_await asyncClosureCheckType<value_task<std::string>>(
-      funcNoOuter, bound_args{capture_in_place<ImmovableString>("hi")});
+      funcNoOuter, bind::bound_args{capture_in_place<ImmovableString>("hi")});
   EXPECT_EQ("hide-and-seek", res);
 }
 
 CO_TEST(AsyncClosure, callFunctionWithOuter) {
   auto res =
       co_await asyncClosureCheckType<value_task<std::string>, ForceOuter>(
-          funcWithOuter, bound_args{capture_in_place<ImmovableString>("hi")});
+          funcWithOuter,
+          bind::bound_args{capture_in_place<ImmovableString>("hi")});
   EXPECT_EQ("hide-and-seek", res);
 }
 
@@ -275,7 +283,7 @@ CO_TEST(AsyncClosure, capture_backref) {
 
   auto r1 = co_await asyncClosureCheckType<value_task<std::string>, ForceOuter>(
       concat_prefix_suffix,
-      bound_args{
+      bind::bound_args{
           "s1"_id = as_capture(std::string{"goodbye"}),
           "s2"_id = as_capture(std::string{"hello"}),
           capture_in_place<TakesBackref>("s2"_id, " world!")});
@@ -283,7 +291,7 @@ CO_TEST(AsyncClosure, capture_backref) {
 
   auto r2 = co_await asyncClosureCheckType<value_task<std::string>, ForceOuter>(
       concat_prefix_suffix,
-      bound_args{
+      bind::bound_args{
           "s1"_id = as_capture(std::string{"goodbye"}),
           "s2"_id = as_capture(std::string{"hello"}),
           capture_in_place<TakesBackref>("s1"_id, " world!")});
@@ -292,7 +300,7 @@ CO_TEST(AsyncClosure, capture_backref) {
 #if 0 // manual test for "backrefs must point only to the left" assert
   (void)asyncClosureCheckType<value_task<std::string>, ForceOuter>(
       concat_prefix_suffix,
-      bound_args{
+      bind::bound_args{
           "s1"_id = as_capture(std::string{"goodbye"}),
           capture_in_place<TakesBackref>("s2"_id, " world!"),
           "s2"_id = as_capture(std::string{"hello"})});
@@ -303,7 +311,7 @@ CO_TEST(AsyncClosure, capture_backref) {
   //   error: no matching function for call to 'async_closure_backref_get'
   (void)asyncClosureCheckType<value_task<std::string>, ForceOuter>(
       concat_prefix_suffix,
-      bound_args{
+      bind::bound_args{
           "s"_id = as_capture(std::string{"goodbye"}),
           "s"_id = as_capture(std::string{"hello"}),
           capture_in_place<TakesBackref>("s"_id, " world!")});
@@ -314,7 +322,7 @@ CO_TEST(AsyncClosure, capture_backref) {
   //   error: no matching function for call to 'async_closure_backref_get'
   (void)asyncClosureCheckType<value_task<std::string>, ForceOuter>(
       concat_prefix_suffix,
-      bound_args{
+      bind::bound_args{
           "x1"_id = as_capture(std::string{"goodbye"}),
           "x2"_id = as_capture(std::string{"hello"}),
           capture_in_place<TakesBackref>("s"_id, " world!")});
@@ -325,7 +333,7 @@ CO_TEST(AsyncClosure, simpleCancellation) {
   EXPECT_THROW(
       co_await timeout(
           async_closure(
-              bound_args{},
+              bind::bound_args{},
               []() -> closure_task<void> {
                 folly::fibers::Semaphore stuck{0}; // a cancellable baton
                 co_await stuck.co_wait();
@@ -373,13 +381,13 @@ Task<void> checkInPlaceArgs() {
         assertArgConst(d); // marked `constant`
         co_return a + *b + c->n_ + *d;
       },
-      bound_args{
+      bind::bound_args{
           30, // a
           // Test both const and non-const `AsyncOuterClosurePtr`s.
           // Check that "x"_id tagging for capture backrefs is transparent.
           "b"_id = as_capture(1000),
           "c"_id = capture_in_place<const InPlaceOnly>(&made, 7),
-          as_capture(constant(200))}); // d
+          as_capture(bind::constant(200))}); // d
   EXPECT_EQ(1337, res);
   EXPECT_TRUE(made);
 }
@@ -407,8 +415,8 @@ CO_TEST(AsyncClosureTest, constAutoArgWithOuterCoro) {
         assertArgConst(a);
         co_return a->n_;
       },
-      bound_args{as_capture(
-          make_in_place<
+      bind::bound_args{as_capture(
+          bind::in_place<
 // Manual test: When set to 0, this should fail to compile because the `const
 // auto` above requires (via `FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE`) the
 // inner type to be `const`.
@@ -465,7 +473,7 @@ CO_TEST(AsyncClosure, nestedRefsWithOuterCoro) {
               *x2 += 100; // ref remains non-const -- C++ arg semantics
               co_return;
             },
-            bound_args{x, y, z});
+            bind::bound_args{x, y, z});
         // Can also pass `capture<Ref>`s into a bare safe_task.
         co_await [](auto x3, auto y3, auto z3) -> co_cleanup_safe_task<void> {
           static_assert(std::is_same_v<decltype(x3), capture<int&>>);
@@ -483,10 +491,11 @@ CO_TEST(AsyncClosure, nestedRefsWithOuterCoro) {
         }(x, y, z);
         co_return *x + **y + *z;
       },
-      bound_args{
+      bind::bound_args{
           as_capture(
-              make_in_place<int>(1000), constant(std::make_unique<int>(23))),
-          as_capture_indirect(constant(std::make_unique<int>(14)))});
+              bind::in_place<int>(1000),
+              bind::constant(std::make_unique<int>(23))),
+          as_capture_indirect(bind::constant(std::make_unique<int>(14)))});
   EXPECT_EQ(1337, res);
 }
 
@@ -530,7 +539,7 @@ CO_TEST(AsyncClosure, nestedRefsWithoutOuterCoro) {
               *w2 += 100; // ref remains non-const -- C++ arg semantics
               co_return;
             },
-            bound_args{w, y, z});
+            bind::bound_args{w, y, z});
         // Can pass implicitly converted `capture<Ref>`s into a safe_task
         co_await
             [](capture<ImmovableInt&> x3,
@@ -543,10 +552,10 @@ CO_TEST(AsyncClosure, nestedRefsWithoutOuterCoro) {
             }(x, y, z);
         co_return *w + x->n_ + **y + *z;
       },
-      bound_args{
+      bind::bound_args{
           as_capture(
-              make_in_place<int>(700),
-              make_in_place<ImmovableInt>(300),
+              bind::in_place<int>(700),
+              bind::in_place<ImmovableInt>(300),
               std::make_unique<int>(23)),
           // Can't use `constant()` here because we can't move a `const
           // unique_ptr`.
@@ -599,7 +608,7 @@ CO_TEST(AsyncClosure, cleanupAfterError) {
 
   std::optional<exception_wrapper> optCleanErr;
   auto res = co_await co_awaitTry(async_closure(
-      as_capture(make_in_place<HasCleanup>(&optCleanErr)),
+      as_capture(bind::in_place<HasCleanup>(&optCleanErr)),
       [](auto) -> closure_task<void> {
         co_yield folly::coro::co_error{MagicError{111}};
       }));
@@ -636,13 +645,13 @@ template <typename CleanupT>
 Task<void> check_pass_cleanup_arg_to_subclosure(auto validate_ref) {
   std::optional<exception_wrapper> optCleanErr;
   co_await async_closure(
-      bound_args{capture_in_place<CleanupT>(&optCleanErr), validate_ref},
+      bind::bound_args{capture_in_place<CleanupT>(&optCleanErr), validate_ref},
       [](auto c, auto validate_ref2) -> closure_task<void> {
         validate_ref2(c);
         static_assert(
             std::is_same_v<decltype(c), co_cleanup_capture<CleanupT&>>);
         co_await async_closure(
-            bound_args{c, validate_ref2},
+            bind::bound_args{c, validate_ref2},
             [](auto c2, auto validate_ref3) -> closure_task<void> {
               validate_ref3(c2);
               static_assert(
@@ -681,10 +690,10 @@ TEST(AsyncClosure, nonSafeTaskIsNotAwaited) {
   // `static_assert` -- but `checkIsUnsafe` above checks the logic.
   folly::coro::detail::async_closure_impl<
       /*ForceOuter*/ false,
-      /*EmitNowTask*/ false>(bound_args{}, lambda);
+      /*EmitNowTask*/ false>(bind::bound_args{}, lambda);
   folly::coro::detail::async_closure_impl<
       /*ForceOuter*/ true,
-      /*EmitNowTask*/ false>(bound_args{}, lambda);
+      /*EmitNowTask*/ false>(bind::bound_args{}, lambda);
   EXPECT_FALSE(awaited);
 }
 
@@ -694,12 +703,13 @@ TEST(AsyncClosure, nonSafeTaskIsNotAwaited) {
 // arguments.  It also has the usual `async_closure` safety checks on the
 // arguments.  While tempting, it would be a BAD IDEA to add this syntax sugar:
 //   invoke_async_closure(
-//       bound_args{arg1, arg2},
+//       bind::bound_args{arg1, arg2},
 //       [&z](auto a1, auto a2) -> member_task<T> {...})
 // Why not add `invoke_async_closure` as above?  Simply put, this is a
 // "less-safe" pattern, in that it makes it easy for users to create `safe_task`
 // instances that hide unsafe reference captures.  Prefer to tell people to use
-// `async_now_closure(bound_args{a1, a2}, ...)` with `Task`/`now_task` lambdas.
+// `async_now_closure(bind::bound_args{a1, a2}, ...)` with `Task`/`now_task`
+// lambdas.
 CO_TEST(AsyncClosure, memberTaskLambda) {
   int z = 1300; // Goal: ASAN failures if the lambda is destroyed
   auto lambda = [&z](auto x, auto y) -> member_task<int> {
@@ -718,13 +728,13 @@ CO_TEST(AsyncClosure, memberTaskLambda) {
   // Won't compile without `force_outer_coro`, the assert is:
   //   ... you want the `member_task` closure to own the object ...
   auto t = async_closure<ForceOuter>(
-      bound_args{as_capture(std::move(lambda)), 30, as_capture(7)},
+      bind::bound_args{as_capture(std::move(lambda)), 30, as_capture(7)},
       FOLLY_INVOKE_MEMBER(operator()));
   EXPECT_EQ(1337, co_await std::move(t));
   EXPECT_EQ(
       1337,
       co_await async_closure<ForceOuter>(
-          bound_args{
+          bind::bound_args{
               as_capture([&z](auto x, auto y) -> member_task<int> {
                 co_return x + *y + z;
               }),
@@ -743,23 +753,23 @@ CO_TEST(AsyncClosure, memberTask) {
   EXPECT_EQ(
       1337,
       co_await async_closure<ForceOuter>(
-          bound_args{as_capture(HasMemberTask{}), 30, as_capture(7)},
+          bind::bound_args{as_capture(HasMemberTask{}), 30, as_capture(7)},
           FOLLY_INVOKE_MEMBER(task)));
   EXPECT_EQ(
       1337, // Syntax sugar: implicit `as_capture` for member's object parameter
       co_await async_closure<ForceOuter>(
-          bound_args{HasMemberTask{}, 30, as_capture(7)},
+          bind::bound_args{HasMemberTask{}, 30, as_capture(7)},
           FOLLY_INVOKE_MEMBER(task)));
   EXPECT_EQ(
-      1337, // Same, but showing that `make_in_place` still works
+      1337, // Same, but showing that `bind::in_place` still works
       co_await async_closure<ForceOuter>(
-          bound_args{make_in_place<HasMemberTask>(), 30, as_capture(7)},
+          bind::bound_args{bind::in_place<HasMemberTask>(), 30, as_capture(7)},
           FOLLY_INVOKE_MEMBER(task)));
   HasMemberTask hmt;
   EXPECT_EQ(
       1337, // Wouldn't compile without either `std::move` or `folly::copy`.
       co_await async_closure<ForceOuter>(
-          bound_args{std::move(hmt), 30, as_capture(7)},
+          bind::bound_args{std::move(hmt), 30, as_capture(7)},
           FOLLY_INVOKE_MEMBER(task)));
 
   // Second, call a member coro on an existing `capture<HasMemberTask>`.
@@ -768,15 +778,15 @@ CO_TEST(AsyncClosure, memberTask) {
       co_await async_closure<ForceOuter>(
           as_capture(HasMemberTask{}), [](auto mt) -> closure_task<int> {
             co_return co_await async_closure(
-                bound_args{mt, 30, as_capture(7)}, FOLLY_INVOKE_MEMBER(task));
+                bind::bound_args{mt, 30, as_capture(7)},
+                FOLLY_INVOKE_MEMBER(task));
           }));
 }
 
 // Check that `async_now_closure` returns `now_task<int>` & return the task.
 now_task<int> intAsyncNowClosure(auto&& bargs, auto&& fn) {
   return async_now_closure(
-      folly::bind::ext::bound_args_unsafe_move::from(std::move(bargs)),
-      std::move(fn));
+      bind::ext::bound_args_unsafe_move::from(std::move(bargs)), std::move(fn));
 }
 
 template <typename T>
@@ -784,7 +794,7 @@ now_task<void> check_now_closure_no_outer_coro() {
   int b1 = 300, c = 30, d = 7;
   // The coro take raw references & use lambda captures
   int res = co_await intAsyncNowClosure(
-      bound_args{as_capture(1000), b1}, [&c, d](auto a, int& b2) -> T {
+      bind::bound_args{as_capture(1000), b1}, [&c, d](auto a, int& b2) -> T {
         static_assert(
             std::is_same_v< // No ref upgrade
                 after_cleanup_capture<int>,
@@ -828,7 +838,7 @@ CO_TEST(AsyncClosure, nowClosure) {
 
   HasMemberTask hmt;
   auto memberRes = co_await intAsyncNowClosure(
-      bound_args{&hmt, 7, as_capture(30)}, FOLLY_INVOKE_MEMBER(task));
+      bind::bound_args{&hmt, 7, as_capture(30)}, FOLLY_INVOKE_MEMBER(task));
   EXPECT_EQ(1337, memberRes);
 }
 
@@ -848,7 +858,8 @@ CO_TEST(AsyncClosure, captureByReference) {
 CO_TEST(AsyncClosure, nowClosureCoCleanup) {
   std::optional<exception_wrapper> optCleanErr;
   int res = co_await async_now_closure(
-      bound_args{capture_in_place<HasCleanup>(&optCleanErr), as_capture(1300)},
+      bind::bound_args{
+          capture_in_place<HasCleanup>(&optCleanErr), as_capture(1300)},
       [](auto cleanup, auto n) -> Task<int> {
         static_assert(
             std::is_same_v<co_cleanup_capture<HasCleanup&>, decltype(cleanup)>);
@@ -867,27 +878,28 @@ constexpr bool check_as_noexcept_closures() {
       std::is_same_v<
           as_noexcept<value_task<>>,
           decltype(async_closure(
-              bound_args{},
+              bind::bound_args{},
               []() -> as_noexcept<closure_task<>> { co_return; }))>);
 
   static_assert( // safe_task, with outer coro
       std::is_same_v<
           as_noexcept<value_task<>>,
           decltype(async_closure<ForceOuter>(
-              bound_args{},
+              bind::bound_args{},
               []() -> as_noexcept<closure_task<>> { co_return; }))>);
 
   static_assert( // now_task, without outer coro
       std::is_same_v<
           as_noexcept<now_task<>>,
-          decltype(async_now_closure(bound_args{}, []() -> as_noexcept<Task<>> {
-            co_return;
-          }))>);
+          decltype(async_now_closure(
+              bind::bound_args{},
+              []() -> as_noexcept<Task<>> { co_return; }))>);
   static_assert( // now_task, with outer coro
       std::is_same_v<
           as_noexcept<now_task<>>,
           decltype(async_now_closure<ForceOuter>(
-              bound_args{}, []() -> as_noexcept<Task<>> { co_return; }))>);
+              bind::bound_args{},
+              []() -> as_noexcept<Task<>> { co_return; }))>);
 
   return true;
 }
@@ -907,22 +919,22 @@ struct ThrowOnMove {
 
 TEST(AsyncClosure, fatalWhenNoexceptClosureThrows) {
   auto throwNoOuter = async_closure(
-      bound_args{}, []() -> closure_task<ThrowOnMove> { co_return {}; });
+      bind::bound_args{}, []() -> closure_task<ThrowOnMove> { co_return {}; });
   EXPECT_THROW(blockingWait(std::move(throwNoOuter)), MyErr);
 
   auto noexceptThrowNoOuter = async_closure(
-      bound_args{},
+      bind::bound_args{},
       []() -> as_noexcept<closure_task<ThrowOnMove>, terminateOnCancel> {
         co_return {};
       });
   EXPECT_DEATH({ blockingWait(std::move(noexceptThrowNoOuter)); }, "MyErr");
 
   auto throwOuter = async_closure<ForceOuter>(
-      bound_args{}, []() -> closure_task<ThrowOnMove> { co_return {}; });
+      bind::bound_args{}, []() -> closure_task<ThrowOnMove> { co_return {}; });
   EXPECT_THROW(blockingWait(std::move(throwOuter)), MyErr);
 
   auto noexceptThrowOuter = async_closure<ForceOuter>(
-      bound_args{},
+      bind::bound_args{},
       []() -> as_noexcept<closure_task<ThrowOnMove>, terminateOnCancel> {
         co_return {};
       });
@@ -955,7 +967,7 @@ struct OrderTracker : NonCopyableNonMovable {
 CO_TEST(AsyncClosure, ctorCleanupDtorOrdering) {
   int n = 0, cleanupN = 1000;
   co_await async_closure(
-      bound_args{
+      bind::bound_args{
           capture_in_place<OrderTracker>(n, cleanupN),
           capture_in_place<OrderTracker>(n, cleanupN),
           capture_in_place<OrderTracker>(n, cleanupN),
@@ -976,5 +988,7 @@ CO_TEST(AsyncClosure, ctorCleanupDtorOrdering) {
         co_return;
       });
 }
+
+} // namespace folly::coro
 
 #endif

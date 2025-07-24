@@ -52,7 +52,7 @@
 ///         types tells the `async_closure` implementation whether to store the
 ///         arg, and how to bind it to the inner closure.
 ///       - Figure out the storage type for each `as_capture` binding using
-///         `folly::bind::binding_policy`, to support `make_in_place*`.
+///         `folly::bind::binding_policy`, to support `bind::in_place*`.
 ///       - Transform non-owned `capture`s via `to_capture_ref`.  Parents'
 ///         owned captures are implicitly passed by-ref; `after_cleanup_` refs
 ///         are "upgraded" if possible.  Docs in `Captures.md`.
@@ -365,7 +365,7 @@ class capture_binding_helper<
       }
     } else if constexpr (
         !Cfg.has_outer_coro &&
-        // `make_in_place*` is often used for immovable types, so without an
+        // `bind::in_place*` is often used for immovable types, so without an
         // outer coro, they must be on-heap to pass ownership to the inner coro.
         folly::bind::ext::is_binding_t_type_in_place<BindingType> &&
         // Heuristic: Moving a type is usually cheaper than putting it on
@@ -439,7 +439,7 @@ class capture_binding_helper<
           "move a mutable value into `const` capture storage. For regular "
           "args, use `const` in the signature of your inner coro, and/or "
           "`std::as_const` when passing the arg.");
-      // If we allowed `make_in_place` without `as_capture`, the argument would
+      // If we allowed `bind::in_place` without `as_capture`, the argument would
       // require a copy or a move to be passed to the inner task (which the
       // type may not support).  If `as_capture` isn't appropriate, the user
       // can also work around that via `std::make_unique<TheirType>` and/or
@@ -623,7 +623,7 @@ struct async_closure_invoke_member_bindings {
         // Non-owning pointer-like things don't need to be captured.
         !arg0_is_non_owning_ptr) {
       static_assert(
-          // BT0 is a value for `make_in_place`, rval ref otherwise.
+          // BT0 is a value for `bind::in_place`, rval ref otherwise.
           !std::is_lvalue_reference_v<BT0>,
           "If you call `async_closure` with `FOLLY_INVOKE_MEMBER` and "
           "a non-`capture` argument, then it has to be an r-value, so "
@@ -672,7 +672,7 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
         }(std::make_index_sequence<type_list_size_v<Bindings>>{});
       };
 
-  // Future: If there are many `make_in_place` arguments (which require
+  // Future: If there are many `bind::in_place` arguments (which require
   // `capture_heap`), it may be more efficient to auto-select an outer coro,
   // for just 2 heap allocations.  Beware: this changes user-facing types
   // (`capture_heap` to `capture`), but most users shouldn't depend on that.

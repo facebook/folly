@@ -21,8 +21,6 @@
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
-using namespace folly::bind;
-
 namespace folly::coro::detail {
 
 struct HasCleanup : NonCopyableNonMovable {
@@ -100,7 +98,7 @@ constexpr bool check_empty() {
 static_assert(check_empty());
 
 // Somewhat redundant with `lang/bind/Bind.h` tests, but we should show that
-// these work "as expected".  No `make_in_place` coverage here since we don't
+// these work "as expected".  No `bind::in_place` coverage here since we don't
 // allow those on the "regular" path.
 constexpr bool check_regular_args() {
   int x = 7;
@@ -375,7 +373,7 @@ constexpr bool check_parent_capture_ref() {
       .is_invoke_member = false};
   after_cleanup_capture<int> av{priv, forward_bind_wrapper(5)};
   using ActualTup = decltype(async_closure_safeties_and_bindings<Cfg>(
-      bound_args{as_capture{const_ref{5}, 5}, av}));
+      bound_args{as_capture{bind::const_ref{5}, 5}, av}));
   using ExpectedTup = lite_tuple::tuple<
       vtag_t<
           safe_alias::unsafe,

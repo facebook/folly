@@ -22,9 +22,7 @@
 // To reduce redundancy, we don't repeat some of the tests here.
 //
 
-using namespace folly;
-using namespace folly::bind;
-using namespace folly::bind::ext;
+namespace folly::bind::ext {
 
 // This is here so that test "runs" show up in CI history
 TEST(NamedTest, all_tests_run_at_build_time) {}
@@ -191,7 +189,7 @@ struct Foo : folly::NonCopyableNonMovable {
 };
 
 constexpr auto check_in_place_binding_type_sig() {
-  using in_place_ba = decltype("x"_id = make_in_place<Foo>(nullptr, 7));
+  using in_place_ba = decltype("x"_id = in_place<Foo>(nullptr, 7));
   static_assert(
       std::is_same_v<
           in_place_ba,
@@ -207,7 +205,7 @@ constexpr auto check_in_place_binding_type_sig() {
   // Composes with projection modifiers as expected
   static_assert(
       std::is_same_v<
-          decltype("x"_id = constant{make_in_place<Foo>(nullptr, 7)})::
+          decltype("x"_id = constant{in_place<Foo>(nullptr, 7)})::
               binding_list_t,
           tag_t<binding_t<named_bi<"x", constness_t::constant>, Foo>>>);
   return true;
@@ -218,13 +216,12 @@ static_assert(check_in_place_binding_type_sig());
 constexpr auto check_in_place_binding_natural_usage() {
   // projections don't affect `.unsafe_tuple_to_bind`, just the storage type
   Foo f1 = folly::detail::lite_tuple::get<0>(
-      ("x"_id = constant{make_in_place<Foo>(nullptr, 17)})
-          .unsafe_tuple_to_bind());
+      ("x"_id = constant{in_place<Foo>(nullptr, 17)}).unsafe_tuple_to_bind());
   test(17 == f1.n_);
 
   int n = 3;
   Foo f2 = folly::detail::lite_tuple::get<0>(
-      ("y"_id = make_in_place<Foo>(nullptr, n)).unsafe_tuple_to_bind());
+      ("y"_id = in_place<Foo>(nullptr, n)).unsafe_tuple_to_bind());
   ++n;
   test(3 == f2.n_);
   test(4 == n);
@@ -250,7 +247,7 @@ constexpr auto check_in_place_binding_modifier_distributive_property() {
           decltype(non_constant{
               "a"_id = true,
               "b"_id = const_ref{b},
-              "c"_id = make_in_place<int>(3),
+              "c"_id = in_place<int>(3),
               self_id = const_ref('d')})::binding_list_t>);
   static_assert(
       std::is_same_v<
@@ -258,7 +255,7 @@ constexpr auto check_in_place_binding_modifier_distributive_property() {
           decltype(non_constant{
               "a"_id = non_constant{true},
               "b"_id = mut_ref{b},
-              "c"_id = non_constant{make_in_place<int>(3)},
+              "c"_id = non_constant{in_place<int>(3)},
               self_id = mut_ref{'d'}})::binding_list_t>);
   static_assert(
       std::is_same_v<
@@ -266,7 +263,7 @@ constexpr auto check_in_place_binding_modifier_distributive_property() {
           decltype(non_constant{
               non_constant{"a"_id = true},
               mut_ref{"b"_id = b},
-              non_constant{"c"_id = make_in_place<int>(3)},
+              non_constant{"c"_id = in_place<int>(3)},
               mut_ref{self_id = 'd'}})::binding_list_t>);
 
   return true;
@@ -300,10 +297,12 @@ constexpr auto check_in_place_binding_signature_type() {
       std::is_same_v<sig<decltype("x"_id = mut_ref(5))>, id_type<"x", int&&>>);
   static_assert(
       std::is_same_v<
-          sig<decltype(self_id = constant(make_in_place<int>(5)))>,
+          sig<decltype(self_id = constant(in_place<int>(5)))>,
           self_id_type<const int>>);
 
   return true;
 }
 
 static_assert(check_in_place_binding_signature_type());
+
+} // namespace folly::bind::ext

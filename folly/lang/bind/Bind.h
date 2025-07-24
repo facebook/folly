@@ -29,9 +29,9 @@ FOLLY_DETAIL_LITE_TUPLE_ADJUST_WARNINGS
 namespace folly::bind {
 
 template <typename, typename... As>
-constexpr auto make_in_place(As&&...);
+constexpr auto in_place(As&&...);
 template <typename... As>
-constexpr auto make_in_place_with(auto, As&&...);
+constexpr auto in_place_with(auto, As&&...);
 
 // The primitive for representing lists of bound args. Unary forms:
 //  - `bound_args<V>`: if `V` is already `like_bound_args`, wraps that
@@ -108,8 +108,8 @@ struct bind_info_t {
 };
 
 // Metadata for a bound arg, capturing:
-//   - `BindingType`: the input binding type -- a reference, unless this is
-//     a `make_in_place*` binding -- see `is_binding_t_type_in_place`.
+//   - `BindingType`: the input binding type -- a reference, unless this is a
+//     `bind::in_place*` -- see `is_binding_t_type_in_place`.
 //   - A `bind_info_t`-derived object capturing the effects of any binding
 //     modifiers (`constant`, `const_ref`, etc).
 // This is used by `binding_policy` to compute `storage_type` and
@@ -192,9 +192,9 @@ class bound_args<T> : public ext::like_bound_args {
       : ref_(detail::lite_tuple::get<0>(t)) {}
 };
 
-// This specialization is instantiated when a binding modifier (usually
-// derived from `merge_update_bound_args`), or a `make_in_place*` binding,
-// gets passed to an object taking `bound_args<Ts>...`.
+// This specialization is instantiated when a binding modifier (usually derived
+// from `merge_update_bound_args`), or a `bind::in_place*`, gets passed to an
+// object taking `bound_args<Ts>...`.
 //
 // It wraps another `like_bound_args`, by value.  This preserves the
 // interface (`binding_list_t`, `unsafe_tuple_to_bind`, etc) of the
@@ -265,7 +265,7 @@ class in_place_bound_args_crtp_base
   // In short, if you removed this `lifetimebound`, the compiler could no
   // longer catch this dangling ref --
   //   // BAD: Contained prvalue `&made` becomes invalid at the `;`
-  //   auto fooMaker = make_in_place<Foo>(&made, n).unsafe_tuple_to_bind();
+  //   auto fooMaker = bind::in_place<Foo>(&made, n).unsafe_tuple_to_bind();
   //   Foo foo = std::move(fooMaker);
 
   // To allow in-place construction within a `tuple<..., T, ...>`, this
@@ -303,13 +303,13 @@ class in_place_args_maker : private MoveOnly {
   }
 };
 
-// NB: `Args` are deduced by `make_in_place` as forwarding references
+// NB: `Args` are deduced by `bind::in_place` as forwarding references
 template <typename T, typename... Args>
 class in_place_bound_args
     : public in_place_bound_args_crtp_base<T, in_place_args_maker<T, Args...>> {
  protected:
   template <typename, typename... As>
-  friend constexpr auto ::folly::bind::make_in_place(As&&...);
+  friend constexpr auto ::folly::bind::in_place(As&&...);
 
   using base =
       in_place_bound_args_crtp_base<T, in_place_args_maker<T, Args...>>;
@@ -343,7 +343,7 @@ class in_place_fn_maker : private MoveOnly {
   }
 };
 
-// NB: `Args` are deduced by `make_in_place` as forwarding references
+// NB: `Args` are deduced by `bind::in_place` as forwarding references
 template <typename T, typename Fn, typename... Args>
 class in_place_fn_bound_args
     : public in_place_bound_args_crtp_base<
@@ -351,7 +351,7 @@ class in_place_fn_bound_args
           in_place_fn_maker<T, Fn, Args...>> {
  protected:
   template <typename... As>
-  friend constexpr auto ::folly::bind::make_in_place_with(auto, As&&...);
+  friend constexpr auto ::folly::bind::in_place_with(auto, As&&...);
 
   using base =
       in_place_bound_args_crtp_base<T, in_place_fn_maker<T, Fn, Args...>>;
@@ -394,7 +394,7 @@ using mut_ref_bind_info = decltype([](auto bi) {
 
 } // namespace detail
 
-// `make_in_place` and `make_in_place_with` construct non-movable,
+// `bind::in_place` and `bind::in_place_with` construct non-movable,
 // non-copyable types in their final location.
 //
 // CAREFUL: As with other `bound_args{}`, the returned object stores references
@@ -402,26 +402,26 @@ using mut_ref_bind_info = decltype([](auto bi) {
 // a function that returns a binding, which OWNS some values.  For example, you
 // may need to avoid a stack-use-after-free such as this one:
 //
-//   auto makeFoo(int n) { return make_in_place<Foo>(n); } // BAD: `n` is dead
+//   auto makeFoo(int n) { return bind::in_place<Foo>(n); } // BAD: `n` is dead
 //
 // To avoid the bug, either take `n` by-reference (often preferred), or store
-// your values inside a `make_in_place_with` callable:
+// your values inside a `bind::in_place_with` callable:
 //
 //   auto makeFoo(int n) {
-//     return make_in_place_with([n]() { return Foo{n}; });
+//     return bind::in_place_with([n]() { return Foo{n}; });
 //   }
 template <typename T, typename... Args>
-constexpr auto make_in_place(Args&&... args [[clang::lifetimebound]]) {
+constexpr auto in_place(Args&&... args [[clang::lifetimebound]]) {
   return detail::in_place_bound_args<T, Args...>{static_cast<Args&&>(args)...};
 }
-// This is second-choice compared to `make_in_place` because:
+// This is second-choice compared to `bind::in_place` because:
 //   - Dangling references may be hidden inside `make_fn` captures --
 //     `clang` offers no `lifetimebound` analysis for these (yet?).
 //   - The type signature of the `in_place_bound_args` includes a lambda.
 // CAREFUL: While `make_fn` is taken by-value, `args` are stored as references,
-// as in `make_in_place`.
+// as in `bind::in_place`.
 template <typename... Args>
-constexpr auto make_in_place_with(
+constexpr auto in_place_with(
     auto make_fn, Args&&... args [[clang::lifetimebound]]) {
   return detail::in_place_fn_bound_args<
       std::invoke_result_t<decltype(make_fn), Args&&...>,
@@ -520,7 +520,7 @@ class binding_policy<binding_t<BI, BindingType>> {
   static_assert(
       !is_binding_t_type_in_place<BindingType> ||
           BI.category != category_t::ref,
-      "`const_ref` / `mut_ref` is incompatible with `make_in_place*`");
+      "`const_ref` / `mut_ref` is incompatible with `bind::in_place*`");
 
  protected:
   // Future: This **might** compile faster with a family of explicit
