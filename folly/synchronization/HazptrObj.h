@@ -337,8 +337,9 @@ class hazptr_obj_cohort {
       l_.push(obj);
       inc_count();
       check_threshold_push();
-      if (safe_list_top())
+      if (safe_list_top()) {
         reclaim_safe_list();
+      }
     } else {
       obj->set_next(nullptr);
       reclaim_list(obj);
@@ -350,8 +351,9 @@ class hazptr_obj_cohort {
     while (true) {
       Obj* top = safe_list_top();
       obj->set_next(top);
-      if (cas_safe_list_top(top, obj))
+      if (cas_safe_list_top(top, obj)) {
         return;
+      }
     }
   }
 

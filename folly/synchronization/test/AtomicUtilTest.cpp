@@ -653,8 +653,9 @@ TEST_F(AtomicFetchModifyTest, contention) {
     auto const i = folly::to_signed(iters.load(relaxed));
     return c < prime255 || i < prime255 ? 0 : c - i;
   };
-  while (contention() < required_contention)
+  while (contention() < required_contention) {
     ;
+  }
   stop.store(true, relaxed);
   for (auto& th : threads) {
     th.join();
