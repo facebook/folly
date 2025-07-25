@@ -153,40 +153,4 @@ consteval auto operator""_id() noexcept {
 // `this_id` is ambiguous (which ID?), and doesn't sound well in all use-cases.
 inline constexpr ext::identifier<ext::self_id_t{}> self_id;
 
-namespace ext {
-
-struct no_tag_t {};
-
-template <typename>
-inline constexpr no_tag_t named_bind_info_tag_v{};
-
-template <auto Tag, typename Base>
-inline constexpr auto named_bind_info_tag_v<named_bind_info_t<Tag, Base>> = Tag;
-
-// Named bindings follow the binding policy of the underlying base
-template <auto NBI, typename BindingType>
-// Use a constraint to avoid object slicing
-  requires(!std::is_same_v<
-           const no_tag_t,
-           decltype(named_bind_info_tag_v<decltype(NBI)>)>)
-class binding_policy<ext::binding_t<NBI, BindingType>> {
- private:
-  using underlying = binding_policy<ext::binding_t<NBI.as_base(), BindingType>>;
-
-  template <typename Base>
-  static constexpr auto signature_type_for(
-      const named_bind_info_t<ext::self_id_t{}, Base>&)
-      -> self_id_type<typename underlying::signature_type>;
-
-  template <literal_string Str, typename Base>
-  static constexpr auto signature_type_for(const named_bind_info_t<Str, Base>&)
-      -> id_type<Str, typename underlying::signature_type>;
-
- public:
-  using storage_type = typename underlying::storage_type;
-  using signature_type = decltype(signature_type_for(NBI));
-};
-
-} // namespace ext
-
 } // namespace folly::bind

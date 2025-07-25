@@ -72,27 +72,27 @@ struct unsafe_move_args {
 //     doing in-place construction, and the input is a "maker" object that's
 //     implicitly convertible to that value type.
 //   - "Flags" stored in `bind_info_t` enums below.  Users set them via
-//     modifier helpers like `constant{}` or `const_ref{}`.  Library authors
-//     may derive from `bind_info_t` to add custom flags, and then define a
-//     corresponding `binding_policy` specialization to handle them.
-//   - An "output type" computed **after** all the modifiers are applied
-//     via a `binding_policy`, review the docs for the standard one below.
+//     modifiers like `constant{}` or `const_ref{}`.  Library authors may
+//     derive from `bind_info_t` to add custom flags, and then customize the
+//     policies in `ToStorage.h` or `AsArgument.h` to handle them.
 //
-// Each flag must default to `unset` so that the policy can dictate
-// behavior.  For example, standard policy is: non-`const` output for
+// Each flag must default to `unset` so that each policy can dictate behavior.
+// For example, standard storage policy is: non-`const` output for
 // pass-by-value, `const` for pass-by-ref.  But, with this flag + policy
 // design, an API can elect an alternate "always `const`" policy while still
 // using the standard modifier vocabulary from this file.
 enum class category_t {
-  unset = 0, // The binding policy decides. The standard policy uses "VALUE".
+  // The policy decides.  The standard storage policy uses `value`, while the
+  // argument-binding one uses `ref`.
+  unset = 0,
   ref, // Follows reference category of the input, i.e. `InputT&&`.
   value, // Copies or moves, depending on input ref type.
   copy, // Like `value`, but fails on rvalue input.
   move // Like `value`, but fails on lvalue input.
 };
 enum class constness_t {
-  // The binding policy decides.  The standard policy uses `const` for refs,
-  // `mut` for values.
+  // The policy decides.  The standard storage & argument-binding policies use
+  // `const` for refs, `mut` for values.
   unset = 0,
   // For reference types, these both affect the underlying value type:
   constant, // Make the input `const` if it's not already.
@@ -112,9 +112,10 @@ struct bind_info_t {
 //     `bind::in_place*` -- see `is_binding_t_type_in_place`.
 //   - A `bind_info_t`-derived object capturing the effects of any binding
 //     modifiers (`constant`, `const_ref`, etc).
-// This is used by `binding_policy` to compute `storage_type` and
-// `signature_type`.  The values returned by `unsafe_tuple_to_bind()` should
-// be convertible to the resulting `storage_type`.
+//
+// This is used by policies like `bind_to_storage_policy` and
+// `bind_as_argument()`.  The values returned by `unsafe_tuple_to_bind()`
+// should be convertible to the resulting `::storage_type`.
 template <std::derived_from<bind_info_t> auto, typename BindingType>
 struct binding_t {};
 
@@ -434,16 +435,18 @@ constexpr auto in_place_with(
 //
 //   (1) `mut_ref{}` asks to store a non-const reference, of
 //        the same reference category as the input.  Or, see `const_ref{}`.
-//   (2) `constant{}` stores the input as a `const` value (under the default
-//       `binding_policy`).  Unlike `std::as_const` this allows you to move
-//        a non-const reference into a `const` storage location.
+//   (2) `constant{}` + `bind_to_storage_policy` stores the input as a `const`
+//        value.  This allows you to move a non-const reference into a `const`
+//        storage location.
+//   (3) `constant{}` + `bind_as_argument()` passes a stored reference
+//       via `std::as_const`.
 //
 // Specifiers can be overridden, e.g. you could (but should not!) express
 // `mut_ref{}` as `mut{const_ref{}}`.
 //
 // There's currently no user-facing `by_ref{}`, which would leave the
-// `constness` of the binding to be defaulted by the `binding_policy` below.
-// If a use-case arises, the test already contains its trivial implementation.
+// `constness` of the binding to be defaulted by each policy.  If a use-case
+// arises, the test already contains its trivial implementation.
 
 template <typename... Ts>
 struct constant : ext::merge_update_args<detail::constant_bind_info, Ts...> {
@@ -477,85 +480,9 @@ template <typename... Ts>
 mut_ref(Ts&&...) -> mut_ref<ext::deduce_args_t<Ts>...>;
 
 // Future: Add `copied()` and `moved()` modifiers so the user can ensure
-// pass-by-value with copy-, or move-copy semantics.  This enforcement
-// already exists in `binding_policy` and `category_t`.
+// pass-by-value with copy-, or move-copy semantics.  This enforcement already
+// exists in `bind_to_storage_policy` and `category_t`.
 
-namespace ext { // For extension authors -- public details
-
-template <typename, typename = void>
-class binding_policy;
-
-// This is a separate class so that libraries can customize the binding
-// policy enacted by `binding_policy` by detecting their custom fields in
-// `BI`.  See `named/Binding.h` for an example.
-//
-// IMPORTANT:
-//  - Only specialize `binding_policy` for the specific derived classes
-//    of `bind_info_t` that you own -- DO NOT overmatch!
-//  - DO delegate handling of the base `bind_info_t` to this specialization, by
-//    slicing your input BI. Example:
-//      using basics = binding_policy<binding_t<bind_info_t{BI}, BindingType>>;
-//    Any deviations from the standard policy are likely to confuse users &
-//    readers of your library, and are probably not worth it.  If you REALLY
-//    need to deviate (ex: default bindings to `const`), make the name of
-//    your API reflect this (ex: `fooDefaultConst()`).
-template <auto BI, typename BindingType>
-// Formulated as a constraint to prevent object slicing
-  requires std::same_as<decltype(BI), bind_info_t>
-class binding_policy<binding_t<BI, BindingType>> {
-  static_assert(
-      !is_binding_t_type_in_place<BindingType> ||
-          BI.category != category_t::ref,
-      "`const_ref` / `mut_ref` is incompatible with `bind::in_place*`");
-
- protected:
-  // Future: This **might** compile faster with a family of explicit
-  // specializations, see e.g. `folly::like_t`'s implementation.
-  template <typename T>
-  using add_const_inside_ref = std::conditional_t<
-      std::is_rvalue_reference_v<T>,
-      typename std::add_const<std::remove_reference_t<T>>::type&&,
-      std::conditional_t<
-          std::is_lvalue_reference_v<T>,
-          typename std::add_const<std::remove_reference_t<T>>::type&,
-          typename std::add_const<std::remove_reference_t<T>>::type>>;
-
-  constexpr static auto project_type() {
-    if constexpr (BI.category == category_t::ref) {
-      // By-reference: `const` by default
-      if constexpr (BI.constness == constness_t::mut) {
-        return std::type_identity<BindingType&&>{}; // Leave existing `const`
-      } else {
-        return std::type_identity<add_const_inside_ref<BindingType>&&>{};
-      }
-    } else {
-      if constexpr (BI.category == category_t::copy) {
-        static_assert(!std::is_rvalue_reference_v<BindingType>);
-      } else if constexpr (BI.category == category_t::move) {
-        static_assert(std::is_rvalue_reference_v<BindingType>);
-      } else {
-        static_assert(
-            (BI.category == category_t::value) ||
-            (BI.category == category_t::unset));
-      }
-      // By-value: non-`const` by default
-      using UnrefT = std::remove_reference_t<BindingType>;
-      if constexpr (BI.constness == constness_t::constant) {
-        return std::type_identity<const UnrefT>{};
-      } else {
-        return std::type_identity<UnrefT>{};
-      }
-    }
-  }
-
- public:
-  using storage_type = typename decltype(project_type())::type;
-  // Why is this here?  With named bindings, we want the signature of a
-  // binding list to show the identifier's name to the user.
-  using signature_type = storage_type;
-};
-
-} // namespace ext
 } // namespace folly::bind
 
 FOLLY_POP_WARNING

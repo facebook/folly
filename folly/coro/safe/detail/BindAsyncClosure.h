@@ -22,6 +22,7 @@
 #include <folly/coro/safe/Captures.h>
 #include <folly/lang/SafeAlias.h>
 #include <folly/lang/bind/Named.h> // See test `AsyncClosure.captureBackref`
+#include <folly/lang/bind/NamedToStorage.h>
 
 /// This header's `async_closure_safeties_and_bindings` implements the
 /// argument-binding logic for `async_closure`.
@@ -54,7 +55,7 @@
 ///         types tells the `async_closure` implementation whether to store the
 ///         arg, and how to bind it to the inner closure.
 ///       - Figure out the storage type for each `bind::capture` binding using
-///         `bind::binding_policy`, to support `bind::in_place*`.
+///         `bind::bind_to_storage_policy`, to support `bind::in_place*`.
 ///       - Transform non-owned `capture`s via `to_capture_ref`.  Parents'
 ///         owned captures are implicitly passed by-ref; `after_cleanup_` refs
 ///         are "upgraded" if possible.  Docs in `Captures.md`.
@@ -88,6 +89,27 @@
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 FOLLY_PUSH_WARNING
 FOLLY_DETAIL_LITE_TUPLE_ADJUST_WARNINGS
+
+// Future: If this is used anywhere else, move it to `BindCapturesToStorage.h`.
+//
+// We extended `bind::ext::bind_info_t` with `capture_kind`, so we must
+// explicitly specialize `bind_to_storage_policy`.  We reuse the standard
+// rules.  Custom `capture` binding logic lives in `BindAsyncClosure.h`.
+namespace folly::bind::ext {
+template <auto BI, typename BindingType>
+  requires std::same_as< // Written as a constraint to prevent object slicing
+      decltype(BI),
+      ::folly::bind::detail::capture_bind_info_t>
+class bind_to_storage_policy<ext::binding_t<BI, BindingType>> {
+ private:
+  using standard =
+      bind_to_storage_policy<ext::binding_t<bind_info_t{BI}, BindingType>>;
+
+ public:
+  using storage_type = typename standard::storage_type;
+  using signature_type = typename standard::signature_type;
+};
+} // namespace folly::bind::ext
 
 namespace folly::coro {
 class AsyncObject;
@@ -249,7 +271,7 @@ class capture_binding_helper<bind::ext::binding_t<BI, BindingType>, Cfg, ArgI> {
   static_assert(std::is_same_v<decltype(Cfg), binding_helper_cfg>);
 
   using category_t = bind::ext::category_t;
-  using ST = typename bind::ext::binding_policy<
+  using ST = typename bind::ext::bind_to_storage_policy<
       bind::ext::binding_t<BI, BindingType>>::storage_type;
   using UncvrefST = std::remove_cvref_t<ST>;
 
@@ -571,7 +593,7 @@ constexpr auto vtag_safety_of_async_closure_args() {
 
 template <typename BindingT>
 constexpr bool capture_needs_outer_coro() {
-  using BP = bind::ext::binding_policy<BindingT>;
+  using BP = bind::ext::bind_to_storage_policy<BindingT>;
   using ST = typename BP::storage_type;
   return has_async_closure_co_cleanup<ST>;
 }

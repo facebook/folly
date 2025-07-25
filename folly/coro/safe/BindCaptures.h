@@ -26,9 +26,12 @@
 /// Callers typically only include `BindCaptures.h`, while callees need to
 /// include `Captures.h`.  Both are provided by `AsyncClosure.h`.
 ///
-/// NOTE: The binding helpers in this file are all in `folly::bind::` for
-/// uniformity with the other related verbs -- `bind::args`, `bind::in_place`
-/// `bind::constant`, etc.
+/// NOTE:
+///   - The binding helpers in this file are all in `folly::bind::` for
+///     uniformity with the other related verbs -- `bind::args`,
+///     `bind::in_place` `bind::constant`, etc.
+///   - The `bind_to_storage_policy` specialization for this is only used
+///     in one file, so it's inlined in `BindAsyncClosure.h`.
 ///
 
 namespace folly::bind {
@@ -149,24 +152,6 @@ auto capture_in_place_with(
   return capture(bind::in_place_with(
       std::move(make_fn), static_cast<decltype(as)>(as)...));
 }
-
-// We extended `bind::ext::bind_info_t` with `capture_kind`, so we must
-// explicitly specialize `binding_policy`.  We reuse the standard rules.
-// Custom `capture` binding logic lives in `BindAsyncClosure.h`.
-namespace ext {
-template <auto BI, typename BindingType>
-  requires std::same_as< // Written as a constraint to prevent object slicing
-      decltype(BI),
-      ::folly::bind::detail::capture_bind_info_t>
-class binding_policy<ext::binding_t<BI, BindingType>> {
- private:
-  using standard = binding_policy<ext::binding_t<bind_info_t{BI}, BindingType>>;
-
- public:
-  using storage_type = typename standard::storage_type;
-  using signature_type = typename standard::signature_type;
-};
-} // namespace ext
 
 } // namespace folly::bind
 

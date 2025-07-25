@@ -264,36 +264,4 @@ constexpr auto check_in_place_binding_modifier_distributive_property() {
 
 static_assert(check_in_place_binding_modifier_distributive_property());
 
-template <typename BT>
-auto get_policy(tag_t<BT>) -> binding_policy<BT>;
-
-template <typename BA>
-using policy = decltype(get_policy(typename BA::binding_list_t{}));
-
-// A minimal test that `storage_type` matches standard policy
-static_assert(
-    std::is_same_v<policy<decltype(const_ref(5))>::storage_type, const int&&>);
-
-template <typename BA>
-using sig = policy<BA>::signature_type;
-
-constexpr auto check_in_place_binding_signature_type() {
-  static_assert(
-      std::is_same_v<
-          sig<decltype("x"_id = constant(5))>,
-          id_type<"x", const int>>);
-  static_assert(
-      std::is_same_v<sig<decltype("x"_id = mut(5))>, id_type<"x", int>>);
-  static_assert(
-      std::is_same_v<sig<decltype("x"_id = mut_ref(5))>, id_type<"x", int&&>>);
-  static_assert(
-      std::is_same_v<
-          sig<decltype(self_id = constant(in_place<int>(5)))>,
-          self_id_type<const int>>);
-
-  return true;
-}
-
-static_assert(check_in_place_binding_signature_type());
-
 } // namespace folly::bind::ext

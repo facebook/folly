@@ -74,7 +74,7 @@ Consider this `folly::bind` expression:
 
   bind::args ba{5, constant{a}, mut_ref{b, std::move(c)}, const_ref{d}};
 
-Stored with the default `binding_policy`, this is akin to:
+Stored with the default `bind_to_storage_policy`, this is akin to:
 
   std::tuple<int, const A, B&, C&&, const D&> tup =
       std::forward_as_tuple{5, a, b, std::move(c), d};
@@ -93,16 +93,16 @@ are known in advance, and the types are movable.  But, in trickier cases
 ### What changes in the UX over standard C++ bindings?
 
 That depends on how you integrate `folly::bind`, but...  the recommended
-way is to use the standard `binding_policy`, possibly extending it in a
+way is to use the standard `bind_to_storage_policy`, possibly extending it in a
 careful way.  The goal should be "low user surprisal", so we stay close to
 standard C++ semantics, except for a couple of restrictions to make argument
 passing less bug-prone.
 
-With the vanilla `binding_policy`, besides `bind::in_place*` support, you get:
+With the vanilla `bind_to_storage_policy`, besides `bind::in_place*` support, you get:
   - Arguments are bound by value, unless the callsite includes `const_ref` /
     `mut_ref`.  This prevents bugs from callers not expecting aliasing.
   - While `copy{}` and `move{}` modifiers aren't yet provided, `category_t`
-    and `binding_policy` allow for the notion of the caller restricting that
+    and `bind_to_storage_policy` allow for the notion of the caller restricting that
     an argument be passed by copy, or move-copy.
 
 In "synchronous" APIs, where your code only runs while the user's original
@@ -193,7 +193,7 @@ words, it arranges for `T` to record the type of the argument as provided.
 Once the base `bound_arg<Ts...>` is constructed, you can access the
 **flattened** bound args:
   - The "input" and "storage" types for each argument via the class template
-    `binding_policy`, and member type list `binding_list_t`.
+    `bind_to_storage_policy`, and member type list `binding_list_t`.
   - The argument-to-store via the `unsafe_tuple_to_bind()` method.  Each
     tuple entry is either a reference, or a type that is implicitly
     convertible to the storage type.  In order to use this value, you
@@ -228,7 +228,7 @@ Here is a method for `YOUR_TYPE` that stores the args as a tuple of values:
 ```cpp
 auto store_tuple() && {
   return [&]<typename... Bs>(tag<Bs...>) {
-    return std::tuple<binding_policy<Bs>::storage_type...>{
+    return std::tuple<bind_to_storage_policy<Bs>::storage_type...>{
       std::move(*this)->unsafe_tuple_to_bind()};
   }(args<Ts...>::binding_list_t{});
 }

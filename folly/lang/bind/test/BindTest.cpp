@@ -414,42 +414,6 @@ constexpr auto check_in_place_args_modifier_distributive_property() {
 
 static_assert(check_in_place_args_modifier_distributive_property());
 
-template <typename B>
-using first_policy =
-    binding_policy<type_list_element_t<0, typename B::binding_list_t>>;
-
-template <typename B>
-using store = typename first_policy<B>::storage_type;
-
-constexpr auto check_in_place_binding_storage_type() {
-  int b = 2;
-
-  static_assert(std::is_same_v<store<decltype(constant(b))>, const int>);
-  static_assert(std::is_same_v<store<decltype(mut(b))>, int>);
-  static_assert(std::is_same_v<store<decltype(constant(5))>, const int>);
-  static_assert(std::is_same_v<store<decltype(mut(5))>, int>);
-
-  static_assert(std::is_same_v<store<decltype(const_ref(b))>, const int&>);
-  static_assert(
-      std::is_same_v<store<decltype(constant(const_ref(b)))>, const int&>);
-  static_assert(std::is_same_v<store<decltype(mut_ref(b))>, int&>);
-  static_assert(std::is_same_v<store<decltype(const_ref(5))>, const int&&>);
-  static_assert(
-      std::is_same_v<store<decltype(constant(const_ref(5)))>, const int&&>);
-  static_assert(std::is_same_v<store<decltype(mut_ref(5))>, int&&>);
-
-  static_assert(
-      std::is_same_v<
-          first_policy<decltype(in_place<int>(5))>::storage_type,
-          int>);
-  static_assert(
-      std::is_same_v<store<decltype(constant(in_place<int>(5)))>, const int>);
-
-  return true;
-}
-
-static_assert(check_in_place_binding_storage_type());
-
 constexpr auto check_unsafe_move() {
   int y = 5;
   args one_ref{y};
@@ -479,11 +443,5 @@ constexpr auto check_unsafe_move() {
 }
 
 static_assert(check_unsafe_move());
-
-// A minimal test for `using signature_type = storage_type`...
-static_assert(
-    std::is_same_v<
-        typename first_policy<decltype(constant(const_ref(5)))>::signature_type,
-        const int&&>);
 
 } // namespace folly::bind::detail

@@ -42,6 +42,7 @@ non_fbcode_target(
         "//xplat/folly/coro/safe:captures",
         "//xplat/folly/lang:safe_alias",
         "//xplat/folly/lang/bind:named",
+        "//xplat/folly/lang/bind:named_to_storage",
     ],
 )
 
@@ -54,6 +55,7 @@ fbcode_target(
         "//folly/coro/safe:captures",
         "//folly/lang:safe_alias",
         "//folly/lang/bind:named",
+        "//folly/lang/bind:named_to_storage",
     ],
 )
 

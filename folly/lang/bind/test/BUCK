@@ -22,3 +22,23 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "named_to_storage_test",
+    srcs = ["NamedToStorageTest.cpp"],
+    deps = [
+        "//folly/lang/bind:named_to_storage",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "to_storage_test",
+    srcs = ["ToStorageTest.cpp"],
+    deps = [
+        "//folly/lang/bind:to_storage",
+        "//folly/portability:gtest",
+    ],
+)

@@ -50,3 +50,49 @@ fbcode_target(
         "//folly:traits",
     ],
 )
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "named_to_storage",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["NamedToStorage.h"],
+    exported_deps = [
+        ":named",
+        ":to_storage",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "named_to_storage",
+    headers = ["NamedToStorage.h"],
+    exported_deps = [
+        ":named",
+        ":to_storage",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "to_storage",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["ToStorage.h"],
+    exported_deps = [
+        ":bind",
+        "//xplat/folly:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "to_storage",
+    headers = ["ToStorage.h"],
+    exported_deps = [
+        ":bind",
+        "//folly:utility",
+    ],
+)
