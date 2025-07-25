@@ -1,6 +1,6 @@
 # Binding API inputs to storage with `folly/lang/bind/`
 
-## User guide
+## For users
 
 Are you trying to call a `folly::bind`-enabled API?  For simple usage,
 you should not need to read this file at all!  Read the API docs instead.
@@ -9,37 +9,52 @@ NEVER write functions that pass `folly::bind` helper types (`constant`,
 `const_ref`, `args`, etc) by reference.  These immovable objects must
 only exist in the statement that constructed them.
 
-The high-level idea of `folly::bind` is to offer **the caller** a
-vocabulary to describe the storage types to be used by the callee.
+Does `folly::bind::some_word` feel too long?  It is fine to write this in any
+`.cpp` file, or inside your project-level namespace:
 
-For example, if a callee wants to store a generic tuple, the caller may
-write `constant{5}, const_ref{b, c}, mut_ref{d}` to define the storage as
-`std::tuple<const int, const int&, const int&, int&>{5, b, c, d}`.
+  namespace bind = folly::bind;
+
+The high-level idea of `folly::bind` is to offer **the caller** a vocabulary to
+describe the storage types to be used by the callee.
+
+For example, if `foo()` wants to store a generic tuple, its caller may write:
+
+  foo(bind::constant{5}, bind::const_ref{b, c}, bind::mut_ref{d})
+
+That tells `foo()` to store:
+
+  std::tuple<const int, const int&, const int&, int&>{5, b, c, d}
 
 Your specific API's docs are authoritative -- a callee can change modifier
 meanings, or define new ones.  That said, suggested modifier semantics are:
+
   - Pass non-movable, non-copyable types via `bind::in_place<T>()` or
     `bind::in_place_with(fn)`.
-  - The API decides whether `const_ref` / `mut_ref` are supported.
+
+  - The API decides whether to support `bind::const_ref` / `bind::mut_ref`.
     If NOT, then the callee's signature decides between by-value & by-ref.
-      * Using `const_ref` etc should cause a compile error (`static_assert`).
-    If YES, they tell the callee to take the argument by reference. Then:
-      * WATCH OUT: `const_ref` / `mut_ref` is explicit unlike regular C++.
+      * Using `bind::const_ref` etc should be a compile error (`static_assert`).
+    If YES, these tell the callee to take the argument by reference.
+      * WATCH OUT: Unlike plain C++, `bind::const_ref` / `bind::mut_ref` is
+        explicit about `const`-ness.
+
         Rationale: Programming best practice is to minimize "implicit"
         mutation.  When writing modern C++, two argument passing styles
         predominate: `T` -- you own this, and `const T&` -- a read-only
         input.  Any mutable "output" references, like `T&`, ought to be
         plainly visible at the callsite to avoid bugs, and `mut_ref` is.
+
       * Passing a variable without modifiers will be pass-by-value.
+
   - Unlike `std::as_const`, which changes the `const`ness of the input,
     `bind::constant` / `bind::mut` say whether the *destination* is `const`.
     So, `constant` is like `const T var` in the callee's signature. E.g.
-      * `constant(std::move(var))` moves in the value, and stores it as `const`.
-      * `mut` never removes a `const` qualifier from the underlying
-        data.  Rather, it can override the "references default to `const`"
-        behavior, or to override a `constant` modifier that it surrounds.
+      * `bind::constant(std::move(v))` moves in `v`, and stores it as `const`.
+      * `bind::mut` never removes a `const` qualifier from the underlying data.
+        It can override the "references default to `const`" behavior, or a
+        `bind::constant` modifier that it surrounds.
 
-## Library authors only
+## For library authors
 
 ### What is this for?
 
@@ -55,8 +70,8 @@ These options have tradeoffs, but none provide ALL of these features:
   - Let the caller set the target storage (value or ref, const or not) for
     the binding, with the callee just specifying just `auto`.  Consequences:
       * The callee can reflect on the supplied args, without C++26 P2996
-      * `folly::bind::constant` lets you move a non-`const` object into
-        `const` storage, while `std::as_const` cannot.
+      * `bind::constant` lets you move a non-`const` object into `const`
+        storage, while `std::as_const` cannot.
   - Define custom binding logic for some args, like `as_capture` in
     `async_closure`, or named arguments in `folly/lang/named`.
   - Allow helper functions to return several adjacent arguments -- as if
@@ -72,9 +87,15 @@ uniformly bind:
 
 Consider this `folly::bind` expression:
 
-  bind::args ba{5, constant{a}, mut_ref{b, std::move(c)}, const_ref{d}};
+  bind::args ba{
+      5,
+      bind::constant{a},
+      bind::mut_ref{b, std::move(c)},
+      bind::const_ref{d}};
 
-Stored with the default `bind_to_storage_policy`, this is akin to:
+With the default `bind_to_storage_policy`, it implies the following storage
+types (but not the outer `std::tuple` -- the algorithm taking `ba` must
+construct it -- feel free to add `lang/bind/ToTuple.h`).
 
   std::tuple<int, const A, B&, C&&, const D&> tup =
       std::forward_as_tuple{5, a, b, std::move(c), d};
@@ -83,7 +104,7 @@ Regular C++ arguments are fine (and preferred!) when the destination types
 are known in advance, and the types are movable.  But, in trickier cases
 `folly::bind` saves the day:
   - It lets the caller ergonomically declare a structure at the same time it
-    is constructed or passed (`async_closure`, named scopes).
+    is constructed or passed (`async_closure`, `safe_closure`, named scopes).
   - In order to in-place construct an immovable type `A` by-value inside the
     caller's storage, you need an implicit conversion operator.
     `bind::in_place*` implements one on your behalf.
@@ -93,21 +114,25 @@ are known in advance, and the types are movable.  But, in trickier cases
 ### What changes in the UX over standard C++ bindings?
 
 That depends on how you integrate `folly::bind`, but...  the recommended
-way is to use the standard `bind_to_storage_policy`, possibly extending it in a
-careful way.  The goal should be "low user surprisal", so we stay close to
+way is to use a standard policy, possibly with careful extensions. Namely:
+  - `bind_to_storage_policy` when the callee wants `bind::` verbs to modulate
+    how the `bind::args` are stored -- see the `std::tuple` example above.
+  - `bind_as_argument` when the callee wants `bind::` verbs to change how
+    its internally-stored values are bound to a function argument, as in
+    `safe_closure()`.
+
+The goal should be "low user surprisal", so the standard policies stay close to
 standard C++ semantics, except for a couple of restrictions to make argument
 passing less bug-prone.
 
-With the vanilla `bind_to_storage_policy`, besides `bind::in_place*` support, you get:
-  - Arguments are bound by value, unless the callsite includes `const_ref` /
-    `mut_ref`.  This prevents bugs from callers not expecting aliasing.
-  - While `copy{}` and `move{}` modifiers aren't yet provided, `category_t`
-    and `bind_to_storage_policy` allow for the notion of the caller restricting that
-    an argument be passed by copy, or move-copy.
+For example, with the standard `bind_to_storage_policy`, you get
+`bind::in_place*` support, you and this unsurprising behavior:
+  - Arguments are stored as values, unless the callsite has `bind::const_ref` /
+    / `bind::mut_ref`.  This prevents bugs from callers not expecting aliasing.
 
 In "synchronous" APIs, where your code only runs while the user's original
-statement is active, another viable integration is to define a policy that
-defaults to bind-by-reference.  This policy could be added to `Bind.h`.
+statement is active, you may want a policy that defaults to bind-by-reference.
+For this usage, take a look at `AsArgument.h`.
 
 ### To integrate `Bind.h`, take `bind::args` via CTAD in an immovable class
 
@@ -119,7 +144,7 @@ void foo(bind::args<T> args) {
   // Read "Using your bound args" for how to access `args`
 }
 // User code
-foo(bind::args{5, constant(bind::in_place<Bar>(x), std::move(y))});
+foo(bind::args{5, bind::constant(bind::in_place<Bar>(x), std::move(y))});
 ```
 
 #### Alternative: API with no user-visible `bind::args`
@@ -129,7 +154,7 @@ Before going down this road, read this section *carefully*.  Needing to depend
 on CTAD limits your template deduction capabilities, and forces you to
 implement each API method as a class.
 
-In `Bind.h`, all the modifiers (like `constant`) look similar to this:
+In `Bind.h`, all the modifiers (like `bind::constant`) look similar to this:
 
 ```cpp
 template <typename... Ts>
@@ -158,39 +183,39 @@ example, see the `#if 0` in the test under `all_tests_run_at_build_time`.
 
 Notes:
   - `private` inheritance prevents `YOUR_TYPE` from being nested inside
-    binding modifiers like `constant()`.  You can relax to `public`, but
-    only if your type has the inherited ctor shown above, and can logically
-    be thought of as a bag of args.
+    binding modifiers like `bind::constant()`.  You can relax to `public`, but
+    only if your type has the inherited ctor shown above, and can logically be
+    thought of as a bag of args.
   - A linter is proposed, but not yet implemented, for detecting cases
     where `Bind.h` helpers are being taken by-reference.  With this linter, the
     prvalue-only protection against lifetime bugs will be robust.
 
-(2) Prvalue semantics only allows us to take arguments by-value.  C++20
-lacks perfect forwarding for prvalues, and there is not even an accepted
-proposal for future releases (though P2785 would help).  Yet, in generic
-code, we want to allow packs of arguments where some are binding helpers
-(like `constant(5)`) and others are perfect-forwarded references (like `x`).
+(2) Prvalue semantics only allows us to take arguments by-value.  C++20 lacks
+perfect forwarding for prvalues, and there is not even an accepted proposal for
+future releases (though P2785 would help).  Yet, in generic code, we want to
+allow packs of arguments where some are binding helpers (like
+`bind::constant(5)`) and others are perfect-forwarded references (like `x`).
 Without prvalue perfect forwarding, the next best trick is to implicitly
 convert every arg to a `bind::args<T>` value, as done by this ctor.
   - If the argument type `T` derives from `bind::ext::like_args`, we wrap it in
     `struct args<T> : T`, moving the underlying data via the
     implementation-detail `unsafe_move_args` protocol.  This handles the case
-    when the user passes a modifier like `constant(5)` as an arg.
+    when the user passes a modifier like `bind::constant(5)` as an arg.
   - For all other `T`, `args<T>` simply captures a forwarding
     reference to the input.
 
 IMPORTANT:
-  - To be lifetime-safe, this ctor takes the `args<Ts>` by-value.
-  - Do **NOT** assume that `Ts` are your input types.  A single `args`
-    may represent a sequence of arguments to bind (e.g.  `constant(5, x)`,
-    and the base class `args<Ts...>` takes care of flattening these
-    for you.  The usage is explained below.
+  - To be lifetime-safe, this ctor takes the `bind::args<Ts>` by-value.
+  - Do **NOT** assume that `Ts` are your input types.  A single `bind::args`
+    may represent a sequence of arguments to bind -- `bind::constant(5, x)` --
+    and the base class `bind::args<Ts...>` takes care of flattening these for
+    you.  The usage is explained below.
 
 (3) The deduction guide is necessary so that the class's ctor (2) can
-implicitly convert each argument into a `args<T>` value.  In other
+implicitly convert each argument into a `bind::args<T>` value.  In other
 words, it arranges for `T` to record the type of the argument as provided.
 
-Once the base `bound_arg<Ts...>` is constructed, you can access the
+Once the base `bind::args<Ts...>` is constructed, you can access the
 **flattened** bound args:
   - The "input" and "storage" types for each argument via the class template
     `bind_to_storage_policy`, and member type list `binding_list_t`.
@@ -216,7 +241,7 @@ There are two natural choices for **when** to run your business logic:
     recommendable pattern, since error handling gets trickier (either your
     class models both value & error states, or your ctor throws).  However,
     it can give a simpler UX.  Implementing this requires some adjustments:
-      - Stop inheriting from `args`, since you would no longer want to
+      - Stop inheriting from `bind::args`, since you would no longer want to
         store the bound args tuple, but only the API's result.
       - Instead, lightly refactor `Bind.h` to expose the argument-flattening
         logic by composition.
