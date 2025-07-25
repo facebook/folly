@@ -38,13 +38,11 @@ class RandomSeed {
   static uint64_t seed() {
     // Abseil's implementation takes an address of static variable. It works
     // fine, as long as hash values doesn't cross shared object/binary
-    // boundary.  Unfortunately, we observed few such cases, so we are taking
-    // address of `std::malloc` instead to increase chances of having single
-    // address across multiple shared objects. If we have multiple instances of
-    // `malloc`, there is high chance we have bigger problems to worry about,
-    // than different hash values.
+    // boundary. Unfortunately, we observed few such cases, so we are taking
+    // address of `std::abort` instead to increase chances of having single
+    // address across multiple shared objects.
     return kIsDebug
-        ? static_cast<uint64_t>(reinterpret_cast<uintptr_t>(&std::malloc))
+        ? static_cast<uint64_t>(reinterpret_cast<uintptr_t>(&std::abort))
         : 0ULL;
   }
 };
