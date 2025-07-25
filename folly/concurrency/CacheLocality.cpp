@@ -37,6 +37,7 @@
 #include <folly/hash/Hash.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/FmtCompile.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
 
@@ -218,7 +219,7 @@ CacheLocality CacheLocality::readFromSysfsTree(std::string_view root) {
 
   size_t maxindex = 0;
   for (size_t cpu = 0;; ++cpu) {
-    auto cpuroot = fmt::format("cpu{}/cache", cpu);
+    auto cpuroot = fmt::format(FMT_COMPILE("cpu{}/cache"), cpu);
     int cpufd =
         ::openat(allfd, cpuroot.c_str(), O_DIRECTORY | O_CLOEXEC, O_RDONLY);
     if (cpufd < 0) {
@@ -227,7 +228,7 @@ CacheLocality CacheLocality::readFromSysfsTree(std::string_view root) {
     std::vector<size_t> levels;
     grow_capacity_by(levels, maxindex);
     for (size_t index = 0;; ++index) {
-      auto dir = fmt::format("index{}/", index);
+      auto dir = fmt::format(FMT_COMPILE("index{}/"), index);
       auto cacheType = rdfile(cpufd, dir + "type");
       if (cacheType.empty()) {
         // no more caches
