@@ -20,6 +20,20 @@ oncall("fbcode_entropy_wardens_folly")
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
+    name = "hash_test",
+    srcs = ["hash_test.cpp"],
+    fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
+    fbobjc_compiler_flags = FBOBJC_CXXFLAGS,
+    platforms = (ANDROID, APPLE, CXX, WINDOWS),
+    deps = [
+        "//xplat/folly/container:span",
+        "//xplat/folly/portability:gtest",
+        "//xplat/folly/random:hash",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
     name = "xoshiro256pp_test",
     srcs = ["Xoshiro256ppTest.cpp"],
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
@@ -33,6 +47,17 @@ non_fbcode_target(
 )
 
 # fbcode build rules
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "hash_test",
+    srcs = ["hash_test.cpp"],
+    deps = [
+        "//folly/container:span",
+        "//folly/portability:gtest",
+        "//folly/random:hash",
+    ],
+)
 
 fbcode_target(
     _kind = cpp_unittest,

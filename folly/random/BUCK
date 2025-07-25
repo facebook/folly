@@ -12,6 +12,19 @@ oncall("fbcode_entropy_wardens_folly")
 
 non_fbcode_target(
     _kind = folly_xplat_library,
+    name = "hash",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "hash.h",
+    ],
+    deps = [
+        "//xplat/folly:utility",
+        "//xplat/folly/functional:invoke",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "xoshiro256pp",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
@@ -24,6 +37,18 @@ non_fbcode_target(
 )
 
 # fbcode build rules
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "hash",
+    headers = [
+        "hash.h",
+    ],
+    exported_deps = [
+        "//folly:utility",
+        "//folly/functional:invoke",
+    ],
+)
 
 fbcode_target(
     _kind = cpp_library,
