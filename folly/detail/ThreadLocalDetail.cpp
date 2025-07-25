@@ -23,8 +23,10 @@
 #include <folly/ConstexprMath.h>
 #include <folly/Utility.h>
 #include <folly/detail/thread_local_globals.h>
+#include <folly/hash/MurmurHash.h>
 #include <folly/lang/Hint.h>
 #include <folly/memory/SanitizeLeak.h>
+#include <folly/random/hash.h>
 #include <folly/synchronization/CallOnce.h>
 
 constexpr auto kSmallGrowthFactor = 1.1;
@@ -33,12 +35,16 @@ constexpr auto kBigGrowthFactor = 1.7;
 namespace folly {
 namespace threadlocal_detail {
 
-struct rand_engine {
-  using result_type = unsigned int;
-  result_type operator()() { return to_unsigned(std::rand()); }
-  static constexpr result_type min() { return 0; }
-  static constexpr result_type max() { return RAND_MAX; }
+namespace {
+
+struct murmur_hash_fn {
+  std::uint64_t operator()(std::uint64_t const val) const noexcept {
+    auto const ptr = reinterpret_cast<const char*>(&val);
+    return folly::hash::murmurHash64(ptr, sizeof(val), 0u);
+  }
 };
+
+} // namespace
 
 SharedPtrDeleter::SharedPtrDeleter(std::shared_ptr<void> const& ts) noexcept
     : ts_{ts} {}
@@ -67,7 +73,10 @@ bool ThreadEntrySet::basicSanity() const {
     return false;
   }
   auto const size = threadElements.size();
-  rand_engine rng;
+  // NOLINTNEXTLINE
+  static std::atomic<std::uint64_t> rng_seed_{to_unsigned(std::rand())};
+  using engine = hash_counter_engine<murmur_hash_fn, std::uint64_t>;
+  thread_local engine rng{rng_seed_.fetch_add(1, std::memory_order_relaxed)};
   std::uniform_int_distribution<size_t> dist{0, size - 1};
   if (!(dist(rng) < constexpr_log2(size))) {
     return true;

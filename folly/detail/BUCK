@@ -93,6 +93,7 @@ non_fbcode_target(
         "//xplat/folly:constexpr_math",
         "//xplat/folly:exception",
         "//xplat/folly:function",
+        "//xplat/folly:hash_murmur_hash",
         "//xplat/folly:map_util",
         "//xplat/folly:portability",
         "//xplat/folly:portability_pthread",
@@ -108,6 +109,7 @@ non_fbcode_target(
         "//xplat/folly/detail:unique_instance",
         "//xplat/folly/lang:exception",
         "//xplat/folly/memory:sanitize_leak",
+        "//xplat/folly/random:hash",
         "//xplat/folly/system:at_fork",
     ],
     exported_deps = [
@@ -920,8 +922,10 @@ fbcode_target(
         ":thread_local_globals",
         "//folly:constexpr_math",
         "//folly:utility",
+        "//folly/hash:murmur_hash",
         "//folly/lang:hint",
         "//folly/memory:sanitize_leak",
+        "//folly/random:hash",
         "//folly/synchronization:call_once",
     ],
     exported_deps = [
