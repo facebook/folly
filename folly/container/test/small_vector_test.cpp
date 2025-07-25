@@ -1597,3 +1597,42 @@ TEST(smallVector, comparisons) {
   EXPECT_EQ(vec2 <=> vec1, std::strong_ordering::greater);
 #endif
 }
+
+struct NontrivialImmovable {
+  NontrivialImmovable() {}
+  NontrivialImmovable(const NontrivialImmovable&) = default;
+  NontrivialImmovable(NontrivialImmovable&&) = delete;
+  ~NontrivialImmovable() = default;
+
+  // Make it non trivial to copy
+  NontrivialImmovable& operator=(const NontrivialImmovable&) { return *this; }
+};
+
+static_assert(!std::is_trivially_copyable_v<NontrivialImmovable>);
+
+struct TrivialImmovable {
+  TrivialImmovable() {}
+  TrivialImmovable(const TrivialImmovable&) = default;
+  TrivialImmovable(TrivialImmovable&&) = delete;
+};
+
+static_assert(std::is_trivially_copyable_v<TrivialImmovable>);
+
+struct TrivialNonCopyableNorMovable {
+  TrivialNonCopyableNorMovable() {}
+  TrivialNonCopyableNorMovable(const TrivialNonCopyableNorMovable&) = delete;
+  TrivialNonCopyableNorMovable(TrivialNonCopyableNorMovable&&) = delete;
+};
+
+static_assert(std::is_trivially_copyable_v<TrivialNonCopyableNorMovable>);
+
+TEST(smallVector, ImmovableTypes) {
+  // Immovable types can be used to create small_vectors as long as no use to
+  // resizing operations is present. We need to make sure that creation of the
+  // small_vector with the sized constructor works whether or not they are
+  // trivially copyable.
+  { folly::small_vector<NontrivialImmovable> sv{10}; }
+  { folly::small_vector<TrivialImmovable> sv{10}; }
+  { folly::small_vector<TrivialNonCopyableNorMovable> sv{10}; }
+  SUCCEED();
+}

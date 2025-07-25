@@ -546,7 +546,7 @@ class small_vector
     }
 
     auto n = o.size();
-    makeSize(n);
+    makeSize</* IgnoreExistingData */ true>(n);
     {
       auto rollback = makeGuard([&] { freeHeap(); });
       std::uninitialized_copy(o.begin(), o.begin() + n, begin());
@@ -1198,7 +1198,7 @@ class small_vector
 
   template <typename InitFunc>
   void doConstruct(size_type n, InitFunc&& func) {
-    makeSize(n);
+    makeSize</* IgnoreExistingData */ true>(n);
     assert(size() == 0);
     this->incrementSize(n);
     {
@@ -1231,18 +1231,26 @@ class small_vector
     return static_cast<size_type>(std::min<size_t>(c, max_size()));
   }
 
+  template <bool IgnoreExistingData = false>
   void makeSize(size_type newSize) {
     if (newSize <= capacity()) {
       return;
     }
-    makeSizeInternal(newSize, false, [](void*) { assume_unreachable(); }, 0);
+    auto emplaceFunc = [](void*) { assume_unreachable(); };
+    makeSizeInternal<
+        /* Insert */ false,
+        IgnoreExistingData,
+        decltype(emplaceFunc)>(newSize, std::move(emplaceFunc), 0);
   }
 
   template <typename EmplaceFunc>
   void makeSize(size_type newSize, EmplaceFunc&& emplaceFunc, size_type pos) {
     assert(size() == capacity());
-    makeSizeInternal(
-        newSize, true, std::forward<EmplaceFunc>(emplaceFunc), pos);
+
+    makeSizeInternal<
+        /* Insert */ true,
+        /* IgnoreExistingData */ false,
+        EmplaceFunc>(newSize, std::forward<EmplaceFunc>(emplaceFunc), pos);
   }
 
   /*
@@ -1255,12 +1263,9 @@ class small_vector
    * NOTE: If reallocation is not needed, insert must be false,
    * because we only know how to emplace elements into new memory.
    */
-  template <typename EmplaceFunc>
+  template <bool Insert, bool IgnoreExistingData, typename EmplaceFunc>
   void makeSizeInternal(
-      size_type newSize,
-      bool insert,
-      EmplaceFunc&& emplaceFunc,
-      size_type pos) {
+      size_type newSize, EmplaceFunc&& emplaceFunc, size_type pos) {
     if (newSize > max_size()) {
       throw_exception<std::length_error>("max_size exceeded in small_vector");
     }
@@ -1313,11 +1318,12 @@ class small_vector
       auto rollback = makeGuard([&] { //
         sizedFree(newh, sizeBytes);
       });
-      if (insert) {
+      if constexpr (Insert) {
+        static_assert(!IgnoreExistingData);
         // move and insert the new element
         this->moveToUninitializedEmplace(
             begin(), end(), newp, pos, std::forward<EmplaceFunc>(emplaceFunc));
-      } else {
+      } else if constexpr (!IgnoreExistingData) {
         // move without inserting new element
         if (data()) {
           this->moveToUninitialized(begin(), end(), newp);
