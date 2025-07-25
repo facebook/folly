@@ -16,25 +16,23 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-# Test for xoshiro256pp random number generator
+# xplat build rules
+
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
-    name = "xoshiro256pp-test",
-    srcs = [
-        "Xoshiro256ppTest.cpp",
-    ],
+    name = "xoshiro256pp_test",
+    srcs = ["Xoshiro256ppTest.cpp"],
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
     fbobjc_compiler_flags = FBOBJC_CXXFLAGS,
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
     deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/lang:keep",
+        "//xplat/folly/portability:gtest",
         "//xplat/folly/random:xoshiro256pp",
     ],
 )
 
-# !!!! fbcode/folly/random/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_unittest,

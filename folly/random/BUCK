@@ -1,6 +1,3 @@
-######################################################################
-# Libraries
-
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
@@ -10,6 +7,8 @@ load(
 )
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
 
 non_fbcode_target(
     _kind = folly_xplat_library,
@@ -22,8 +21,9 @@ non_fbcode_target(
         "//xplat/folly:likely",
         "//xplat/folly:portability",
     ],
-    # other parameters as needed
 )
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
@@ -31,7 +31,6 @@ fbcode_target(
     headers = [
         "xoshiro256pp.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//folly:likely",
         "//folly:portability",
