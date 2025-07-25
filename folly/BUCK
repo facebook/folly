@@ -4004,14 +4004,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_init_weak",
-    srcs = [
-        "logging/InitWeak.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    deps = [
-        ":c_portability",
+    exported_deps = [
+        "//xplat/folly/logging:init_weak",
     ],
 )
 
@@ -4134,34 +4132,22 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_rate_limiter",
-    srcs = [
-        "logging/RateLimiter.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/RateLimiter.h",
-    ],
-    deps = [
-        ":chrono",
+    exported_deps = [
+        "//xplat/folly/logging:rate_limiter",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_glog_bridge",
-    srcs = [
-        "logging/BridgeFromGoogleLogging.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/BridgeFromGoogleLogging.h",
-    ],
-    deps = [
-        ":logging_logging",
-        "//third-party/glog:glog",
-        "//xplat/folly:utility",
+    exported_deps = [
+        "//xplat/folly/logging:glog_bridge",
     ],
 )
 
@@ -4283,17 +4269,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_log_name",
-    srcs = [
-        "logging/LogName.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/LogName.h",
-    ],
-    deps = [
-        ":range",
+    exported_deps = [
+        "//xplat/folly/logging:log_name",
     ],
 )
 
@@ -4403,19 +4384,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_log_level",
-    srcs = [
-        "logging/LogLevel.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/LogLevel.h",
-    ],
-    deps = [
-        ":conv",
-        ":portability",
-        ":range",
+    exported_deps = [
+        "//xplat/folly/logging:log_level",
     ],
 )
 
@@ -4436,136 +4410,32 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_init",
-    srcs = [
-        "logging/Init.cpp",
-        "logging/LogConfigParser.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/Init.h",
-        "logging/LogConfigParser.h",
-    ],
-    deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly:dynamic",
-        "//xplat/folly:json",
-        "//xplat/folly:logging_init_weak",
-        "//xplat/folly:logging_log_name",
-        "//xplat/folly:logging_logging",
-        "//xplat/folly:range",
-        "//xplat/folly:string",
-        "//xplat/folly/lang:safe_assert",
+    exported_deps = [
+        "//xplat/folly/logging:init",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_logging",
-    srcs = [
-        "logging/AsyncFileWriter.cpp",
-        "logging/AsyncLogWriter.cpp",
-        "logging/CustomLogFormatter.cpp",
-        "logging/FileWriterFactory.cpp",
-        "logging/GlogStyleFormatter.cpp",
-        "logging/ImmediateFileWriter.cpp",
-        "logging/LogCategory.cpp",
-        "logging/LogCategoryConfig.cpp",
-        "logging/LogConfig.cpp",
-        "logging/LogMessage.cpp",
-        "logging/LogStream.cpp",
-        "logging/LogStreamProcessor.cpp",
-        "logging/Logger.cpp",
-        "logging/LoggerDB.cpp",
-        "logging/ObjectToString.cpp",
-        "logging/StandardLogHandler.cpp",
-        "logging/StandardLogHandlerFactory.cpp",
-        "logging/StreamHandlerFactory.cpp",
-        "logging/xlog.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    force_static = False,
-    raw_headers = [
-        "logging/AsyncFileWriter.h",
-        "logging/AsyncLogWriter.h",
-        "logging/CustomLogFormatter.h",
-        "logging/FileWriterFactory.h",
-        "logging/GlogStyleFormatter.h",
-        "logging/ImmediateFileWriter.h",
-        "logging/LogCategory.h",
-        "logging/LogCategoryConfig.h",
-        "logging/LogConfig.h",
-        "logging/LogFormatter.h",
-        "logging/LogMessage.h",
-        "logging/LogStream.h",
-        "logging/LogStreamProcessor.h",
-        "logging/LogWriter.h",
-        "logging/Logger.h",
-        "logging/LoggerDB.h",
-        "logging/ObjectToString.h",
-        "logging/StandardLogHandler.h",
-        "logging/StandardLogHandlerFactory.h",
-        "logging/StreamHandlerFactory.h",
-        "logging/xlog.h",
-    ],
-    deps = [
-        ":constexpr_math",
-        ":demangle",
-        ":exception",
-        ":file_util",
-        ":format",
-        ":map_util",
-        ":portability_pthread",
-        ":portability_time",
-        ":portability_unistd",
-        ":string",
-        "//xplat/folly/system:at_fork",
-        "//xplat/folly/system:thread_id",
-        "//xplat/folly/system:thread_name",
-    ],
     exported_deps = [
-        ":c_portability",
-        ":conv",
-        ":cpp_attributes",
-        ":exception_string",
-        ":file",
-        ":likely",
-        ":logging_log_handler",
-        ":logging_log_level",
-        ":logging_log_name",
-        ":logging_rate_limiter",
-        ":optional",
-        ":portability",
-        ":range",
-        ":scope_guard",
-        ":synchronized",
-        "//third-party/fmt:fmt",
-        "//xplat/folly/detail:static_singleton_manager",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:type_info",
+        "//xplat/folly/logging:logging",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_log_handler",
-    srcs = [
-        "logging/LogHandlerConfig.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/LogHandler.h",
-        "logging/LogHandlerConfig.h",
-        "logging/LogHandlerFactory.h",
-    ],
-    deps = [
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:logging_log_level",
-        "//xplat/folly:optional",
-        "//xplat/folly:range",
-        "//xplat/folly/lang:safe_assert",
+    exported_deps = [
+        "//xplat/folly/logging:log_handler",
     ],
 )
 
@@ -4950,18 +4820,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "logging_file_handler_factory",
-    srcs = [
-        "logging/FileHandlerFactory.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/FileHandlerFactory.h",
-    ],
-    deps = [
-        ":logging_log_handler",
-        ":logging_logging",
+    exported_deps = [
+        "//xplat/folly/logging:file_handler_factory",
     ],
 )
 
