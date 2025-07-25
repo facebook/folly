@@ -23,7 +23,6 @@
 #include <utility>
 #include <vector>
 
-#include <folly/CppAttributes.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
 

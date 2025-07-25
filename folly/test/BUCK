@@ -357,7 +357,6 @@ fbcode_target(
     deps = [
         "//folly:benchmark",
         "//folly:conv",
-        "//folly:cpp_attributes",
         "//folly/container:foreach",
         "//folly/lang:to_ascii",
     ],
@@ -1165,7 +1164,6 @@ fbcode_target(
         "//folly:memory",
         "//folly:string",
         "//folly/lang:keep",
-        "//folly/memory:arena",
         "//folly/portability:asm",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -1424,7 +1422,6 @@ fbcode_target(
         "//folly:benchmark",
         "//folly:portability",
         "//folly:random",
-        "//folly/container:foreach",
     ],
     external_deps = [
         "glog",
@@ -1469,7 +1466,6 @@ fbcode_target(
     },
     deps = [
         "fbsource//third-party/range-v3:range-v3",
-        "//folly:cpp_attributes",
         "//folly:memory",
         "//folly:range",
         "//folly/container:span",
@@ -1990,7 +1986,6 @@ fbcode_target(
     headers = [],
     default_strip_mode = "full",
     deps = [
-        "//folly:cpp_attributes",
         "//folly:scope_guard",
         "//folly:traits",
         "//folly/portability:gtest",

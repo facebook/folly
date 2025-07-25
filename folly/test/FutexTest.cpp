@@ -17,7 +17,6 @@
 #include <folly/detail/Futex.h>
 
 #include <chrono>
-#include <condition_variable>
 #include <functional>
 #include <ratio>
 #include <thread>

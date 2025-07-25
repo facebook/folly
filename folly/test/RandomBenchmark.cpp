@@ -22,7 +22,6 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
-#include <folly/container/Foreach.h>
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
 #endif

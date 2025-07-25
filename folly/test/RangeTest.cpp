@@ -28,7 +28,6 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/range/concepts.hpp>
 
-#include <folly/CppAttributes.h>
 #include <folly/Memory.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

@@ -16,7 +16,6 @@
 
 #include <folly/PackedSyncPtr.h>
 
-#include <cinttypes>
 #include <thread>
 #include <unordered_map>
 #include <utility>

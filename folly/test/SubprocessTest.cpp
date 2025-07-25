@@ -16,8 +16,6 @@
 
 #include <folly/Subprocess.h>
 
-#include <sys/types.h>
-
 #include <chrono>
 #include <string>
 #include <string_view>

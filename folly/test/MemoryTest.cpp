@@ -26,7 +26,6 @@
 #include <folly/ConstexprMath.h>
 #include <folly/String.h>
 #include <folly/lang/Keep.h>
-#include <folly/memory/Arena.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
