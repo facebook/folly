@@ -1867,572 +1867,322 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_asymmetric_thread_fence",
-    srcs = [
-        "synchronization/AsymmetricThreadFence.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/AsymmetricThreadFence.h",
-    ],
-    deps = [
-        "//xplat/folly:synchronization_relaxed_atomic",
-    ],
     exported_deps = [
-        ":exception",
-        ":indestructible",
-        ":portability_asm",
-        ":portability_sys_membarrier",
-        ":portability_sys_mman",
+        "//xplat/folly/synchronization:asymmetric_thread_fence",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_atomic_util",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/AtomicUtil.h",
-        "synchronization/AtomicUtil-inl.h",
-    ],
     exported_deps = [
-        ":constexpr_math",
-        ":likely",
-        ":portability",
-        ":traits",
+        "//xplat/folly/synchronization:atomic_util",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_atomic_notification",
-    srcs = [
-        "synchronization/AtomicNotification.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/AtomicNotification.h",
-        "synchronization/AtomicNotification-inl.h",
-    ],
     exported_deps = [
-        ":synchronization_parking_lot",
-        "//xplat/folly:portability",
-        "//xplat/folly/detail:futex",
+        "//xplat/folly/synchronization:atomic_notification",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_atomic_ref",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/AtomicRef.h",
-    ],
     exported_deps = [
-        ":traits",
-        "//xplat/folly/lang:safe_assert",
+        "//xplat/folly/synchronization:atomic_ref",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_atomic_struct",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/AtomicStruct.h",
-    ],
     exported_deps = [
-        ":constexpr_math",
-        ":synchronization_detail_atomic_utils",
-        ":traits",
+        "//xplat/folly/synchronization:atomic_struct",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_baton",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/Baton.h",
-    ],
     exported_deps = [
-        ":likely",
-        ":portability_asm",
-        ":synchronization_atomic_util",
-        ":synchronization_detail_spin",
-        ":synchronization_wait_options",
-        "//xplat/folly/detail:async_trace",
-        "//xplat/folly/detail:futex",
-        "//xplat/folly/detail:memory_idler",
+        "//xplat/folly/synchronization:baton",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_call_once",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/CallOnce.h",
-    ],
     exported_deps = [
-        "//xplat/folly:likely",
-        "//xplat/folly:micro_lock",
-        "//xplat/folly:portability",
-        "//xplat/folly:shared_mutex",
-        "//xplat/folly/functional:invoke",
+        "//xplat/folly/synchronization:call_once",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_delayed_init",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["synchronization/DelayedInit.h"],
     exported_deps = [
-        "//xplat/folly:synchronization_call_once",
-        "//xplat/folly/lang:safe_assert",
+        "//xplat/folly/synchronization:delayed_init",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_distributed_mutex",
-    srcs = [
-        "synchronization/DistributedMutex.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/DistributedMutex.h",
-        "synchronization/DistributedMutex-inl.h",
-    ],
     exported_deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:likely",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:portability_asm",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:synchronization_atomic_notification",
-        "//xplat/folly:synchronization_atomic_util",
-        "//xplat/folly:synchronization_detail_inline_function_ref",
-        "//xplat/folly:synchronization_detail_sleeper",
-        "//xplat/folly:synchronization_lock",
-        "//xplat/folly:utility",
-        "//xplat/folly/chrono:hardware",
-        "//xplat/folly/detail:futex",
-        "//xplat/folly/functional:invoke",
-        "//xplat/folly/lang:align",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:exception",
+        "//xplat/folly/synchronization:distributed_mutex",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_flat_combining",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/FlatCombining.h",
-    ],
-    deps = [
-        "//xplat/folly:function",
-        "//xplat/folly:indexed_mem_pool",
-        "//xplat/folly:portability",
-        "//xplat/folly:synchronization_saturating_semaphore",
-    ],
     exported_deps = [
-        "//xplat/folly/concurrency:cache_locality",
-        "//xplat/folly/system:thread_name",
+        "//xplat/folly/synchronization:flat_combining",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_hazptr",
-    srcs = [
-        "synchronization/Hazptr.cpp",
-        "synchronization/HazptrDomain.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/Hazptr.h",
-        "synchronization/Hazptr-fwd.h",
-        "synchronization/HazptrDomain.h",
-        "synchronization/HazptrHolder.h",
-        "synchronization/HazptrObj.h",
-        "synchronization/HazptrObjLinked.h",
-        "synchronization/HazptrRec.h",
-        "synchronization/HazptrThrLocal.h",
-    ],
-    deps = [
-        ":portability_gflags",
-    ],
     exported_deps = [
-        ":c_portability",
-        ":executor",
-        ":indestructible",
-        ":memory",
-        ":portability",
-        ":scope_guard",
-        ":singleton_thread_local",
-        ":synchronization_asymmetric_thread_fence",
-        ":synchronization_detail_hazptr_utils",
-        ":traits",
-        "//third-party/glog:glog",
-        "//xplat/folly/concurrency:cache_locality",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/executors:inline_executor",
+        "//xplat/folly/synchronization:hazptr",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_hazptr_thread_pool_executor",
-    srcs = [
-        "synchronization/HazptrThreadPoolExecutor.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/HazptrThreadPoolExecutor.h",
-    ],
     exported_deps = [
-        ":singleton",
-        ":synchronization_hazptr",
-        "//xplat/folly/executors:cpu_thread_pool_executor",
+        "//xplat/folly/synchronization:hazptr_thread_pool_executor",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_latch",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/Latch.h",
-    ],
     exported_deps = [
-        ":c_portability",
-        ":likely",
-        ":synchronization_saturating_semaphore",
-        "//xplat/folly/lang:exception",
+        "//xplat/folly/synchronization:latch",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_lifo_sem",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/LifoSem.h",
-    ],
     exported_deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:indexed_mem_pool",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly:synchronization_atomic_struct",
-        "//xplat/folly:synchronization_saturating_semaphore",
-        "//xplat/folly:traits",
-        "//xplat/folly/detail:static_singleton_manager",
-        "//xplat/folly/lang:aligned",
-        "//xplat/folly/lang:safe_assert",
+        "//xplat/folly/synchronization:lifo_sem",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_throttled_lifo_sem",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/ThrottledLifoSem.h",
-    ],
     exported_deps = [
-        ":glog",
-        ":intrusive_list",
-        ":optional",
-        ":synchronization_detail_spin",
-        ":synchronization_distributed_mutex",
-        ":synchronization_saturating_semaphore",
-        ":synchronization_wait_options",
-        "//xplat/folly/lang:align",
+        "//xplat/folly/synchronization:throttled_lifo_sem",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_lock",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/Lock.h",
-    ],
     exported_deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly:traits",
-        "//xplat/folly/functional:invoke",
-        "//xplat/folly/lang:exception",
+        "//xplat/folly/synchronization:lock",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_micro_spin_lock",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/MicroSpinLock.h",
-    ],
     exported_deps = [
-        ":portability",
-        ":synchronization_detail_sleeper",
-        ":synchronization_sanitize_thread",
-        "//xplat/folly/lang:align",
+        "//xplat/folly/synchronization:micro_spin_lock",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_native_semaphore",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/NativeSemaphore.h",
-    ],
     exported_deps = [
-        ":portability_windows",
-        ":utility",
-        "//xplat/folly/lang:exception",
+        "//xplat/folly/synchronization:native_semaphore",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_pico_spin_lock",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/PicoSpinLock.h",
-    ],
     exported_deps = [
-        ":portability",
-        ":synchronization_atomic_ref",
-        ":synchronization_atomic_util",
-        ":synchronization_detail_sleeper",
-        ":synchronization_sanitize_thread",
-        "//xplat/folly/lang:safe_assert",
+        "//xplat/folly/synchronization:pico_spin_lock",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_parking_lot",
-    srcs = [
-        "synchronization/ParkingLot.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/ParkingLot.h",
-    ],
     exported_deps = [
-        "//xplat/folly:hash",
-        "//xplat/folly:indestructible",
-        "//xplat/folly:portability",
-        "//xplat/folly:unit",
-        "//xplat/folly/lang:safe_assert",
+        "//xplat/folly/synchronization:parking_lot",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_rcu",
-    srcs = [
-        "synchronization/Rcu.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/Rcu.h",
-    ],
     exported_deps = [
-        "//xplat/folly:function",
-        "//xplat/folly:indestructible",
-        "//xplat/folly:optional",
-        "//xplat/folly:synchronization_detail_rcu-detail",
-        "//xplat/folly/detail:static_singleton_manager",
-        "//xplat/folly/detail:turn_sequencer",
-        "//xplat/folly/executors:queued_immediate_executor",
-        "//xplat/folly/system:at_fork",
+        "//xplat/folly/synchronization:rcu",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_relaxed_atomic",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/RelaxedAtomic.h",
+    exported_deps = [
+        "//xplat/folly/synchronization:relaxed_atomic",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_rw_spin_lock",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/RWSpinLock.h",
-    ],
     exported_deps = [
-        ":likely",
-        ":portability",
-        ":portability_asm",
-        ":synchronization_lock",
+        "//xplat/folly/synchronization:rw_spin_lock",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_sanitize_thread",
-    srcs = [
-        "synchronization/SanitizeThread.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/SanitizeThread.h",
-    ],
-    deps = [
-        "//xplat/folly/lang:extern",
-    ],
     exported_deps = [
-        ":portability",
+        "//xplat/folly/synchronization:sanitize_thread",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_saturating_semaphore",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/SaturatingSemaphore.h",
-    ],
     exported_deps = [
-        ":likely",
-        ":portability_asm",
-        ":synchronization_atomic_util",
-        ":synchronization_detail_spin",
-        ":synchronization_wait_options",
-        "//third-party/glog:glog",
-        "//xplat/folly/detail:futex",
-        "//xplat/folly/detail:memory_idler",
+        "//xplat/folly/synchronization:saturating_semaphore",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_small_locks",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/SmallLocks.h",
-    ],
     exported_deps = [
-        "//xplat/folly:micro_lock",
-        "//xplat/folly:portability",
-        "//xplat/folly:synchronization_micro_spin_lock",
-        "//xplat/folly:synchronization_pico_spin_lock",
+        "//xplat/folly/synchronization:small_locks",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_wait_options",
-    srcs = [
-        "synchronization/WaitOptions.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/WaitOptions.h",
-    ],
     exported_deps = [
-        ":c_portability",
-        ":portability",
+        "//xplat/folly/synchronization:wait_options",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_atomic_utils",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/detail/AtomicUtils.h",
+    exported_deps = [
+        "//xplat/folly/synchronization/detail:atomic_utils",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_hazptr_utils",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/detail/HazptrUtils.h",
-    ],
     exported_deps = [
-        ":portability",
-        ":synchronization_detail_sleeper",
-        "//third-party/glog:glog",
+        "//xplat/folly/synchronization/detail:hazptr_utils",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_sleeper",
-    srcs = [
-        "synchronization/detail/Sleeper.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/detail/Sleeper.h",
-    ],
     exported_deps = [
-        ":portability",
-        ":portability_asm",
-        ":portability_time",
+        "//xplat/folly/synchronization/detail:sleeper",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_spin",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/detail/Spin.h",
-    ],
     exported_deps = [
-        ":portability_asm",
-        ":synchronization_wait_options",
+        "//xplat/folly/synchronization/detail:spin",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_inline_function_ref",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/detail/InlineFunctionRef.h",
-    ],
     exported_deps = [
-        "//xplat/folly:function",
-        "//xplat/folly:traits",
-        "//xplat/folly:utility",
-        "//xplat/folly/functional:invoke",
+        "//xplat/folly/synchronization/detail:inline_function_ref",
     ],
 )
 
@@ -4096,24 +3846,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_hardware",
-    srcs = [
-        "synchronization/detail/Hardware.cpp",
-    ],
-    compiler_flags = [
-        "-mrtm",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/detail/Hardware.h",
-    ],
-    deps = [
-        "//third-party/boost:boost",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:portability",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:exception",
+    exported_deps = [
+        "//xplat/folly/synchronization/detail:hardware",
     ],
 )
 
@@ -4872,21 +4610,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_rcu-detail",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/detail/ThreadCachedLists.h",
-        "synchronization/detail/ThreadCachedReaders.h",
-        "synchronization/detail/ThreadCachedTag.h",
-    ],
-    deps = [
-        ":function",
-        ":synchronization_asymmetric_thread_fence",
-        ":synchronization_relaxed_atomic",
-        ":synchronized",
-        ":thread_local",
-        "//third-party/glog:glog",
+    exported_deps = [
+        "//xplat/folly/synchronization/detail:rcu-detail",
     ],
 )
 
@@ -5050,26 +4779,22 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_example_hazptr_swmr_set",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/example/HazptrSWMRSet.h",
-    ],
-    deps = [
-        ":synchronization_hazptr",
+    exported_deps = [
+        "//xplat/folly/synchronization/example:hazptr_swmr_set",
     ],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_example_hazptr_lock_free_lifo",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/example/HazptrLockFreeLIFO.h",
-    ],
-    deps = [
-        ":synchronization_hazptr",
+    exported_deps = [
+        "//xplat/folly/synchronization/example:hazptr_lock_free_lifo",
     ],
 )
 
@@ -5092,14 +4817,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "synchronization_example_hazptr_wide_cas",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "synchronization/example/HazptrWideCAS.h",
-    ],
-    deps = [
-        ":synchronization_hazptr",
+    exported_deps = [
+        "//xplat/folly/synchronization/example:hazptr_wide_cas",
     ],
 )
 

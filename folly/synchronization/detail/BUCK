@@ -1,7 +1,122 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "atomic_utils",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "AtomicUtils.h",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "hardware",
+    srcs = [
+        "Hardware.cpp",
+    ],
+    compiler_flags = [
+        "-mrtm",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Hardware.h",
+    ],
+    deps = [
+        "//third-party/boost:boost",
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:portability",
+        "//xplat/folly/lang:assume",
+        "//xplat/folly/lang:exception",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "hazptr_utils",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "HazptrUtils.h",
+    ],
+    exported_deps = [
+        ":sleeper",
+        "//third-party/glog:glog",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "inline_function_ref",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "InlineFunctionRef.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:function",
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+        "//xplat/folly/functional:invoke",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "rcu-detail",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ThreadCachedLists.h",
+        "ThreadCachedReaders.h",
+        "ThreadCachedTag.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:function",
+        "//xplat/folly:synchronized",
+        "//xplat/folly:thread_local",
+        "//xplat/folly/synchronization:asymmetric_thread_fence",
+        "//xplat/folly/synchronization:relaxed_atomic",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "sleeper",
+    srcs = [
+        "Sleeper.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Sleeper.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_asm",
+        "//xplat/folly:portability_time",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "spin",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Spin.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability_asm",
+        "//xplat/folly/synchronization:wait_options",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
