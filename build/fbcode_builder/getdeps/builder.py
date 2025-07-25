@@ -443,8 +443,8 @@ class AutoconfBuilder(BuilderBase):
                 self._check_cmd(["autoreconf", "-ivf"], cwd=self.src_dir, env=env)
         configure_cmd = [configure_path, "--prefix=" + self.inst_dir] + self.args
         self._check_cmd(configure_cmd, env=env)
-        only_install = self.manifest.get("build", "only_install", "false", ctx=self.ctx)
-        if not only_install:
+        only_install = self.manifest.get("build", "only_install", ctx=self.ctx)
+        if not only_install or only_install.lower() == "false":
             self._check_cmd([self._make_binary, "-j%s" % self.num_jobs], env=env)
         self._check_cmd([self._make_binary, "install"], env=env)
 
