@@ -595,6 +595,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  */
 #define XLOG_IS_ON_IMPL_HELPER(level)                           \
   ([] {                                                         \
+    /* NOLINTNEXTLINE(misc-const-correctness) */                \
     static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE>       \
         folly_detail_xlog_level;                                \
     constexpr auto* folly_detail_xlog_filename = XLOG_FILENAME; \
