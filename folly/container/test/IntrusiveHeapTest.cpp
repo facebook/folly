@@ -101,8 +101,9 @@ class IntrusiveHeapTest {
       const Heap& heap,
       const typename Heap::Node* node,
       const typename Heap::Node* parent) {
-    if (node == nullptr)
+    if (node == nullptr) {
       return;
+    }
     CHECK_EQ(node->parent_, parent) << "on node " << node << " in " << heap;
     if (parent != nullptr) {
       CHECK(!Heap::compare(parent, node))
@@ -115,8 +116,9 @@ class IntrusiveHeapTest {
   template <class Heap>
   static void print(
       int indent, const typename Heap::Node* node, std::ostream& os) {
-    if (node == nullptr)
+    if (node == nullptr) {
       return;
+    }
     // Right first so it looks like a top-down tree, but with left := up.
     print<Heap>(indent + 2, node->right_, os);
     os << std::string(indent, ' ') << *Heap::asT(node) << " (" << node

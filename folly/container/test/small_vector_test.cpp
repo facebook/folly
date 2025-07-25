@@ -629,10 +629,11 @@ void testGrowShrinkGrow() {
   auto cap = vec.capacity();
   vec.resize(4);
   vec.shrink_to_fit();
-  if (N > 4)
+  if (N > 4) {
     EXPECT_EQ(vec.capacity(), N); // in situ size
-  else
+  } else {
     EXPECT_LT(vec.capacity(), cap); // on heap
+  }
 }
 
 TEST(smallVector, GrowShrinkGrow) {
