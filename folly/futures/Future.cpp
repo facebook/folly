@@ -117,19 +117,35 @@ SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton) {
 
 namespace detail {
 
+FOLLY_EXPORT FOLLY_ALWAYS_INLINE
+    folly::Singleton<Timekeeper, TimekeeperSingletonTag>&
+    getOrCreateTimekeeperSingleton() {
+  using TimekeeperSingleton =
+      folly::Singleton<Timekeeper, TimekeeperSingletonTag>;
+  static TimekeeperSingleton sTimekeeperSingleton([]() -> Timekeeper* {
+    if (FLAGS_folly_futures_use_thread_wheel_timekeeper) {
+      return new ThreadWheelTimekeeper;
+    } else {
+      return new HeapTimekeeper;
+    }
+  });
+  return sTimekeeperSingleton;
+}
+
 namespace {
-Singleton<Timekeeper, TimekeeperSingletonTag> gTimekeeperSingleton(
-    []() -> Timekeeper* {
-      if (FLAGS_folly_futures_use_thread_wheel_timekeeper) {
-        return new ThreadWheelTimekeeper;
-      } else {
-        return new HeapTimekeeper;
-      }
-    });
+class TimekeeperSingletonInstantiator {
+ public:
+  TimekeeperSingletonInstantiator() {
+    // call this function to force the timekeeper singleton to be created
+    folly::detail::getOrCreateTimekeeperSingleton();
+  }
+};
+TimekeeperSingletonInstantiator gTimekeeperSingletonInstantiator;
 } // namespace
 
 std::shared_ptr<Timekeeper> getTimekeeperSingleton() {
-  return gTimekeeperSingleton.try_get();
+  (void)gTimekeeperSingletonInstantiator;
+  return getOrCreateTimekeeperSingleton().try_get();
 }
 
 } // namespace detail
