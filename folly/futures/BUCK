@@ -1,7 +1,180 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "barrier",
+    srcs = [
+        "Barrier.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    force_static = False,
+    raw_headers = [
+        "Barrier.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly/lang:new",
+    ],
+    exported_deps = ["//xplat/folly/futures:core"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "core",
+    srcs = [
+        "Future.cpp",
+        "HeapTimekeeper.cpp",
+        "Promise.cpp",
+        "ThreadWheelTimekeeper.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    force_static = False,
+    labels = [
+        # This library should be used via :futures. Depslint
+        # doesn't support the concept of target-reexports (nor do we know the
+        # best design for such a feature), so we just exclude this target from
+        # being added.
+        "depslint_never_add",
+    ],
+    raw_headers = [
+        "Future.h",
+        "Future-inl.h",
+        "Future-pre.h",
+        "HeapTimekeeper.h",
+        "Promise.h",
+        "Promise-inl.h",
+        "Retrying.h",
+        "ThreadWheelTimekeeper.h",
+        "WTCallback.h",
+    ],
+    deps = [
+        "//xplat/folly:likely",
+        "//xplat/folly:safe_assert",
+        "//xplat/folly:singleton",
+        "//xplat/folly/system:thread_name",
+    ],
+    exported_deps = [
+        ":portability",
+        "//xplat/folly:chrono",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_gflags",
+        "//xplat/folly:random",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:synchronization_distributed_mutex",
+        "//xplat/folly:synchronization_relaxed_atomic",
+        "//xplat/folly:synchronization_saturating_semaphore",
+        "//xplat/folly:traits",
+        "//xplat/folly:try",
+        "//xplat/folly:unit",
+        "//xplat/folly:utility",
+        "//xplat/folly/container:intrusive_heap",
+        "//xplat/folly/detail:async_trace",
+        "//xplat/folly/executors:drivable_executor",
+        "//xplat/folly/executors:executor_with_priority",
+        "//xplat/folly/executors:global_executor",
+        "//xplat/folly/executors:inline_executor",
+        "//xplat/folly/executors:queued_immediate_executor",
+        "//xplat/folly/executors:timed_drivable_executor",
+        "//xplat/folly/experimental/coro:traits",
+        "//xplat/folly/fibers:core",
+        "//xplat/folly/functional:invoke",
+        "//xplat/folly/futures/detail:core",
+        "//xplat/folly/futures/detail:types",
+        "//xplat/folly/io/async:async_base",
+        "//xplat/folly/lang:exception",
+        "//xplat/folly/lang:pretty",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "future_splitter",
+    feature = triage_InfrastructureSupermoduleOptou,
+    force_static = False,
+    raw_headers = [
+        "FutureSplitter.h",
+    ],
+    exported_deps = [
+        ":core",
+        ":shared_promise",
+        "//xplat/folly/lang:exception",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "futures",
+    feature = triage_InfrastructureSupermoduleOptou,
+    deps = [
+        ":barrier",
+        ":core",
+        ":future_splitter",
+        ":shared_promise",
+        "//xplat/folly/executors:inline_executor",
+        "//xplat/folly/executors:manual_executor",
+        "//xplat/folly/executors:queued_immediate_executor",
+        "//xplat/folly/executors:scheduled_executor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "manual_timekeeper",
+    srcs = [
+        "ManualTimekeeper.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ManualTimekeeper.h",
+    ],
+    deps = [
+        ":core",
+        "//xplat/folly:synchronized",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "portability",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Portability.h",
+    ],
+    deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "shared_promise",
+    srcs = [
+        "SharedPromise.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    force_static = False,
+    raw_headers = [
+        "SharedPromise.h",
+        "SharedPromise-inl.h",
+    ],
+    exported_deps = [
+        ":core",
+        "//xplat/folly:portability",
+        "//xplat/folly/executors:inline_executor",
+        "//xplat/folly/lang:exception",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,

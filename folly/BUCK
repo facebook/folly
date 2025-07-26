@@ -3444,12 +3444,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_detail_types",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "futures/detail/Types.h",
-    ],
+    exported_deps = ["//xplat/folly/futures/detail:types"],
 )
 
 non_fbcode_target(
@@ -3762,15 +3761,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_portability",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "futures/Portability.h",
-    ],
-    deps = [
-        ":portability",
-    ],
+    exported_deps = ["//xplat/folly/futures:portability"],
 )
 
 non_fbcode_target(
@@ -4732,31 +4727,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_detail_core",
-    srcs = [
-        "futures/detail/Core.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "futures/detail/Core.h",
-    ],
-    exported_deps = [
-        ":executor",
-        ":function",
-        ":futures_detail_types",
-        ":optional",
-        ":scope_guard",
-        ":synchronization_atomic_util",
-        ":synchronization_micro_spin_lock",
-        ":try",
-        ":utility",
-        "//third-party/fmt:fmt",
-        "//third-party/glog:glog",
-        "//xplat/folly/io/async:request_context",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:exception",
-    ],
+    exported_deps = ["//xplat/folly/futures/detail:core"],
 )
 
 non_fbcode_target(
@@ -4820,158 +4795,51 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_core",
-    srcs = [
-        "futures/Future.cpp",
-        "futures/HeapTimekeeper.cpp",
-        "futures/Promise.cpp",
-        "futures/ThreadWheelTimekeeper.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    force_static = False,
-    labels = [
-        # This library should be used via :futures. Depslint
-        # doesn't support the concept of target-reexports (nor do we know the
-        # best design for such a feature), so we just exclude this target from
-        # being added.
-        "depslint_never_add",
-    ],
-    raw_headers = [
-        "futures/Future.h",
-        "futures/Future-inl.h",
-        "futures/Future-pre.h",
-        "futures/HeapTimekeeper.h",
-        "futures/Promise.h",
-        "futures/Promise-inl.h",
-        "futures/Retrying.h",
-        "futures/ThreadWheelTimekeeper.h",
-        "futures/WTCallback.h",
-    ],
-    deps = [
-        ":likely",
-        ":safe_assert",
-        ":singleton",
-        "//xplat/folly/system:thread_name",
-    ],
-    exported_deps = [
-        ":chrono",
-        ":futures_detail_core",
-        ":futures_detail_types",
-        ":futures_portability",
-        ":optional",
-        ":portability",
-        ":portability_gflags",
-        ":random",
-        ":scope_guard",
-        ":synchronization_distributed_mutex",
-        ":synchronization_relaxed_atomic",
-        ":synchronization_saturating_semaphore",
-        ":traits",
-        ":try",
-        ":unit",
-        ":utility",
-        "//xplat/folly/container:intrusive_heap",
-        "//xplat/folly/detail:async_trace",
-        "//xplat/folly/executors:drivable_executor",
-        "//xplat/folly/executors:executor_with_priority",
-        "//xplat/folly/executors:global_executor",
-        "//xplat/folly/executors:inline_executor",
-        "//xplat/folly/executors:queued_immediate_executor",
-        "//xplat/folly/executors:timed_drivable_executor",
-        "//xplat/folly/experimental/coro:traits",
-        "//xplat/folly/fibers:core",
-        "//xplat/folly/functional:invoke",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:pretty",
-    ],
+    exported_deps = ["//xplat/folly/futures:core"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_manual_timekeeper",
-    srcs = [
-        "futures/ManualTimekeeper.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "futures/ManualTimekeeper.h",
-    ],
-    deps = [
-        ":futures_core",
-        ":synchronized",
-    ],
+    exported_deps = ["//xplat/folly/futures:manual_timekeeper"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_barrier",
-    srcs = [
-        "futures/Barrier.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    force_static = False,
-    raw_headers = [
-        "futures/Barrier.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/lang:new",
-    ],
-    exported_deps = [":futures_core"],
+    exported_deps = ["//xplat/folly/futures:barrier"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_shared_promise",
-    srcs = [
-        "futures/SharedPromise.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    force_static = False,
-    raw_headers = [
-        "futures/SharedPromise.h",
-        "futures/SharedPromise-inl.h",
-    ],
-    exported_deps = [
-        ":futures_core",
-        ":portability",
-        "//xplat/folly/executors:inline_executor",
-        "//xplat/folly/lang:exception",
-    ],
+    exported_deps = ["//xplat/folly/futures:shared_promise"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_future_splitter",
     feature = triage_InfrastructureSupermoduleOptou,
-    force_static = False,
-    raw_headers = [
-        "futures/FutureSplitter.h",
-    ],
-    exported_deps = [
-        ":futures_core",
-        ":futures_shared_promise",
-        "//xplat/folly/lang:exception",
-    ],
+    exported_deps = ["//xplat/folly/futures:future_splitter"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "futures_futures",
     feature = triage_InfrastructureSupermoduleOptou,
-    deps = [
-        ":futures_barrier",
-        ":futures_core",
-        ":futures_future_splitter",
-        ":futures_shared_promise",
-        "//xplat/folly/executors:inline_executor",
-        "//xplat/folly/executors:manual_executor",
-        "//xplat/folly/executors:queued_immediate_executor",
-        "//xplat/folly/executors:scheduled_executor",
-    ],
+    exported_deps = ["//xplat/folly/futures:futures"],
 )
 
 non_fbcode_target(
