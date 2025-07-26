@@ -867,8 +867,10 @@ class RelaxedConcurrentPriorityQueue {
     int num = std::min(rsize, (uint32_t)PopBatch);
     for (int i = num - 1; i >= 0; i--) {
       // wait until this block is empty
-      while (shared_buffer_[i].pnode.load(std::memory_order_relaxed) != nullptr)
+      while (
+          shared_buffer_[i].pnode.load(std::memory_order_relaxed) != nullptr) {
         ;
+      }
       shared_buffer_[i].pnode.store(head, std::memory_order_relaxed);
       head = head->next;
     }
