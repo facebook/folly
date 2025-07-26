@@ -4685,57 +4685,6 @@ non_fbcode_target(
     ],
 )
 
-# xplat/third-party/libaio does not exist yet; disabling target
-# folly_xplat_library(
-#     name = "experimental_io_async_io",
-#     srcs = [
-#         "experimental/io/AsyncIO.cpp",
-#     ],
-#     public_include_directories = [
-#         "..",
-#     ],
-#     raw_headers = [
-#         "experimental/io/AsyncIO.h",
-#     ],
-#     deps = [
-#         "//third-party/boost:boost",
-#         "//third-party/glog:glog",
-#         "//xplat/third-party/libaio:aio",
-#         ":exception",
-#         ":experimental_io_async_base",
-#         ":format",
-#         ":likely",
-#         ":portability_unistd",
-#         ":string",
-#     ],
-# )
-
-# xplat/third-party/liburing does not exist yet; disabling target
-# folly_xplat_library(
-#     name = "experimental_io_io_uring",
-#     srcs = [
-#         "experimental/io/IoUring.cpp",
-#     ],
-#     public_include_directories = [
-#         "..",
-#     ],
-#     raw_headers = [
-#         "experimental/io/IoUring.h",
-#     ],
-#     deps = [
-#         "//third-party/boost:boost",
-#         "//third-party/glog:glog",
-#         "//xplat/third-party/liburing:uring",
-#         ":exception",
-#         ":experimental_io_async_base",
-#         ":format",
-#         ":likely",
-#         ":portability_unistd",
-#         ":shared_mutex",
-#         ":string",
-#     ],
-# )
-
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
