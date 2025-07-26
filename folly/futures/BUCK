@@ -28,6 +28,19 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_library,
+    name = "cleanup",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Cleanup.h",
+    ],
+    deps = [
+        ":core",
+        "//third-party/glog:glog",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "core",
     srcs = [
         "Future.cpp",

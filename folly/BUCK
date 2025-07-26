@@ -3453,16 +3453,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_cleanup",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "futures/Cleanup.h",
-    ],
-    deps = [
-        ":futures_core",
-        "//third-party/glog:glog",
-    ],
+    exported_deps = ["//xplat/folly/futures:cleanup"],
 )
 
 non_fbcode_target(
