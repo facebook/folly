@@ -24,8 +24,6 @@
 #include <folly/Demangle.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
-#include <folly/String.h>
-#include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/debugging/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>

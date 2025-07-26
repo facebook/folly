@@ -17,21 +17,18 @@
 #include <folly/debugging/symbolizer/Symbolizer.h>
 
 #include <climits>
-#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 
 #include <folly/FileUtil.h>
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
-#include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <folly/container/EvictingCacheMap.h>
 #include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
-#include <folly/experimental/symbolizer/LineReader.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/lang/ToAscii.h>
 #include <folly/memory/SanitizeAddress.h>

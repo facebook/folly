@@ -94,7 +94,6 @@ fbcode_target(
     srcs = ["StackTrace.cpp"],
     headers = ["StackTrace.h"],
     deps = [
-        "//folly:cpp_attributes",
         "//folly:portability",
         "//folly/portability:config",
         "//folly/portability:libunwind",
@@ -171,7 +170,6 @@ fbcode_target(
         "//folly/container:evicting_cache_map",
         "//folly/debugging/symbolizer/detail:debug",
         "//folly/experimental/symbolizer:elf",
-        "//folly/experimental/symbolizer:line_reader",
         "//folly/lang:safe_assert",
         "//folly/lang:to_ascii",
         "//folly/memory:sanitize_address",

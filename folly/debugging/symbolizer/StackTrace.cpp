@@ -19,10 +19,8 @@
 
 #include <memory>
 
-#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/portability/Config.h>
-#include <folly/tracing/AsyncStack.h>
 
 #if FOLLY_HAVE_LIBUNWIND
 // Must be first to ensure that UNW_LOCAL_ONLY is defined
@@ -31,7 +29,7 @@
 #endif
 
 #if FOLLY_HAVE_BACKTRACE
-#include <execinfo.h>
+#include <execinfo.h> // @donotremove
 #endif
 
 namespace folly {
