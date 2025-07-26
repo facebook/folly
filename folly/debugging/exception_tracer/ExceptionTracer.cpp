@@ -22,7 +22,6 @@
 
 #include <glog/logging.h>
 
-#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/String.h>
 #include <folly/debugging/exception_tracer/ExceptionAbi.h>

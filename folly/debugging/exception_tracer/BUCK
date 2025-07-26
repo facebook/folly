@@ -300,7 +300,6 @@ fbcode_target(
         ":exception_tracer_callbacks",
         ":stacktrace",
         "//folly:utility",
-        "//folly/experimental/symbolizer:symbolizer",
     ],
     exported_deps = [
         ":exception_tracer_callbacks",
@@ -318,7 +317,6 @@ fbcode_target(
     deps = [
         ":exception_abi",
         ":stacktrace",
-        "//folly:cpp_attributes",
         "//folly:portability",
         "//folly:string",
         "//folly/experimental/symbolizer:symbolizer",
@@ -431,7 +429,6 @@ fbcode_target(
         "//folly:scope_guard",
         "//folly:synchronized",
         "//folly/container:f14_hash",
-        "//folly/experimental/symbolizer:symbolizer",
         "//folly/lang:exception",
     ],
     exported_deps = [

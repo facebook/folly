@@ -24,7 +24,6 @@
 #include <folly/debugging/exception_tracer/ExceptionTracerLib.h>
 #include <folly/debugging/exception_tracer/SmartExceptionTracerSingleton.h>
 #include <folly/debugging/exception_tracer/StackTrace.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/lang/Exception.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
