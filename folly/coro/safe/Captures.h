@@ -155,17 +155,12 @@ concept const_or_not = (std::same_as<T, U> || std::same_as<T, const U>);
 
 namespace detail {
 
-class capture_private_t {
- protected:
-  friend struct CapturesTest;
-  template <typename, template <typename> class, typename>
-  friend class capture_crtp_base;
-  template <typename, auto, size_t>
-  friend class capture_binding_helper;
-  template <auto>
-  friend auto bind_captures_to_closure(auto&&, auto);
-  friend constexpr capture_private_t coro_safe_detail_bindings_test_private();
-  friend class ::folly::coro::AsyncObjectTag;
+// DANGER: Using this passkey makes it easy to break the lifetime-safety
+// guarantees of `folly/coro/safe`, so before adding a new callsite, get
+// familiar with the lifetime-safety docs, and get a careful review.  This used
+// to have a private-with-friends constructor, but the friend list grew
+// unmanageably large as the number of lifetime-safe utilities increased.
+struct capture_private_t {
   explicit capture_private_t() = default;
 };
 
