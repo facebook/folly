@@ -3417,19 +3417,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "quantile_histogram",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "stats/QuantileHistogram.h",
-        "stats/QuantileHistogram-inl.h",
-    ],
-    deps = [
-        ":c_portability",
-        ":conv",
-        "//third-party/glog:glog",
-        "//xplat/folly/lang:exception",
-    ],
+    exported_deps = ["//xplat/folly/stats:quantile_histogram"],
 )
 
 non_fbcode_target(
