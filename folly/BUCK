@@ -4101,19 +4101,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_auto_timer",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "logging/AutoTimer.h",
-    ],
-    deps = [
-        ":conv",
-        ":format",
-        ":optional",
-        ":string",
-        "//third-party/glog:glog",
-    ],
+    exported_deps = ["//xplat/folly/logging:auto_timer"],
 )
 
 non_fbcode_target(
