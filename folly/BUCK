@@ -3674,14 +3674,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_function_scheduler",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "experimental/FunctionScheduler.h",
-    ],
-    deps = [
-        "//xplat/folly/executors:function_scheduler",
+    exported_deps = [
+        "//xplat/folly/experimental:function_scheduler",
     ],
 )
 
@@ -4067,14 +4065,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_threaded_repeating_function_runner",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "experimental/ThreadedRepeatingFunctionRunner.h",
-    ],
-    deps = [
-        "//xplat/folly/executors:threaded_repeating_function_runner",
+    exported_deps = [
+        "//xplat/folly/experimental:threaded_repeating_function_runner",
     ],
 )
 
@@ -4426,20 +4422,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_event_count",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "experimental/EventCount.h",
-        "synchronization/EventCount.h",
-    ],
-    deps = [
-        ":likely",
-        ":portability_sys_time",
-        ":portability_unistd",
-        "//third-party/glog:glog",
-        "//xplat/folly/detail:futex",
-        "//xplat/folly/lang:bits",
+    exported_deps = [
+        "//xplat/folly/experimental:event_count",
     ],
 )
 
@@ -4658,17 +4646,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_settings_settings",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "experimental/settings/Immutables.h",
-        "experimental/settings/Settings.h",
-        "experimental/settings/Types.h",
-        "experimental/settings/detail/SettingsImpl.h",
-    ],
-    deps = [
-        "//xplat/folly/settings:settings_settings",
+    exported_deps = [
+        "//xplat/folly/experimental/settings:settings",
     ],
 )
 
@@ -4719,14 +4702,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_flat_combining_priority_queue",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "experimental/FlatCombiningPriorityQueue.h",
-    ],
-    deps = [
-        "//xplat/folly/concurrency/container:flat_combining_priority_queue",
+    exported_deps = [
+        "//xplat/folly/experimental:flat_combining_priority_queue",
     ],
 )
 
@@ -4994,14 +4975,12 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_io_async_base",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "experimental/io/AsyncBase.h",
-    ],
     exported_deps = [
-        "//xplat/folly/io/async:async_base_class",
+        "//xplat/folly/experimental/io:async_base",
     ],
 )
 
@@ -5057,17 +5036,11 @@ non_fbcode_target(
 # )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_io_async_io_uring_socket",
-    raw_headers = [
-        "experimental/io/AsyncIoUringSocket.h",
-        "experimental/io/AsyncIoUringSocketFactory.h",
-        "experimental/io/IoUringBackend.h",
-        "experimental/io/IoUringBase.h",
-        "experimental/io/Liburing.h",
-    ],
     exported_deps = [
-        "//xplat/folly/io/async:async_io_uring_socket",
+        "//xplat/folly/experimental/io:async_io_uring_socket",
     ],
 )
 

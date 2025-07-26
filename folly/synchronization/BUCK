@@ -175,6 +175,23 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_library,
+    name = "event_count",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "EventCount.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability_sys_time",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly/detail:futex",
+        "//xplat/folly/lang:bits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "flat_combining",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [

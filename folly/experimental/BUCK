@@ -1,7 +1,61 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "event_count",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "EventCount.h",
+    ],
+    exported_deps = [
+        "//xplat/folly/synchronization:event_count",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "flat_combining_priority_queue",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "FlatCombiningPriorityQueue.h",
+    ],
+    deps = [
+        "//xplat/folly/concurrency/container:flat_combining_priority_queue",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "function_scheduler",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "FunctionScheduler.h",
+    ],
+    deps = [
+        "//xplat/folly/executors:function_scheduler",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "threaded_repeating_function_runner",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ThreadedRepeatingFunctionRunner.h",
+    ],
+    deps = [
+        "//xplat/folly/executors:threaded_repeating_function_runner",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
