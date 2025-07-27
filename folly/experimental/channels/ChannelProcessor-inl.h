@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/ChannelProcessor-inl.h>
+#include <folly/channels/ChannelProcessor-inl.h> // @shim

@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/BoundedQueue.h>
+#include <folly/coro/BoundedQueue.h> // @shim

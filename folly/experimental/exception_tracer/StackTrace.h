@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/debugging/exception_tracer/StackTrace.h>
+#include <folly/debugging/exception_tracer/StackTrace.h> // @shim

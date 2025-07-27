@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/container/FBVector.h>
+#include <folly/container/FBVector.h> // @shim

@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/detail/IntrusivePtr.h>
+#include <folly/channels/detail/IntrusivePtr.h> // @shim

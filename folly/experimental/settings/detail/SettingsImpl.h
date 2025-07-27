@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/settings/detail/SettingsImpl.h>
+#include <folly/settings/detail/SettingsImpl.h> // @shim

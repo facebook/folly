@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/json/json.h>
+#include <folly/json/json.h> // @shim

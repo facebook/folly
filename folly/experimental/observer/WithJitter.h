@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/observer/WithJitter.h>
+#include <folly/observer/WithJitter.h> // @shim

@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Traits.h>
+#include <folly/coro/Traits.h> // @shim

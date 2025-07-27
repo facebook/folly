@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/SharedMutex.h>
+#include <folly/coro/SharedMutex.h> // @shim

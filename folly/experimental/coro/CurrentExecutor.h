@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/CurrentExecutor.h> // @shim

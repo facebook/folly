@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/json/dynamic.h>
+#include <folly/json/dynamic.h> // @shim

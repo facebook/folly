@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/Channel-inl.h>
+#include <folly/channels/Channel-inl.h> // @shim

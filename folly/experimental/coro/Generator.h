@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Generator.h>
+#include <folly/coro/Generator.h> // @shim

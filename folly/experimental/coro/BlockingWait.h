@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/BlockingWait.h>
+#include <folly/coro/BlockingWait.h> // @shim

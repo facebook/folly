@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/TimedWait.h>
+#include <folly/coro/TimedWait.h> // @shim

@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/settings/Types.h>
+#include <folly/settings/Types.h> // @shim

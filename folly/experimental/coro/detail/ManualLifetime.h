@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/detail/ManualLifetime.h>
+#include <folly/coro/detail/ManualLifetime.h> // @shim

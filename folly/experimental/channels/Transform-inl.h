@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/Transform-inl.h>
+#include <folly/channels/Transform-inl.h> // @shim

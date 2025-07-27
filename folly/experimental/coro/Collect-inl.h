@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Collect-inl.h>
+#include <folly/coro/Collect-inl.h> // @shim

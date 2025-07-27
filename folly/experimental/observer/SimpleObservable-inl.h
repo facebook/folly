@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/observer/SimpleObservable-inl.h>
+#include <folly/observer/SimpleObservable-inl.h> // @shim

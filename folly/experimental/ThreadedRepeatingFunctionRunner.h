@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/executors/ThreadedRepeatingFunctionRunner.h>
+#include <folly/executors/ThreadedRepeatingFunctionRunner.h> // @shim

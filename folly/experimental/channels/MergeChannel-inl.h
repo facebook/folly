@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/MergeChannel-inl.h>
+#include <folly/channels/MergeChannel-inl.h> // @shim

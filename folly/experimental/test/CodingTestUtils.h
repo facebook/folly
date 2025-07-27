@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/compression/test/CodingTestUtils.h>
+#include <folly/compression/test/CodingTestUtils.h> // @shim

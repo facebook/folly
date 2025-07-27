@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Promise.h>
+#include <folly/coro/Promise.h> // @shim

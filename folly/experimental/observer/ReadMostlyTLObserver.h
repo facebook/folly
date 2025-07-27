@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/observer/ReadMostlyTLObserver.h>
+#include <folly/observer/ReadMostlyTLObserver.h> // @shim

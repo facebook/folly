@@ -16,4 +16,4 @@
 
 #pragma once
 
-#include <folly/lang/Exception.h>
+#include <folly/lang/Exception.h> // @shim

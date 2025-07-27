@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/container/small_vector.h>
+#include <folly/container/small_vector.h> // @shim

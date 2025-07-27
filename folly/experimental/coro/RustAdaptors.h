@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/RustAdaptors.h>
+#include <folly/coro/RustAdaptors.h> // @shim

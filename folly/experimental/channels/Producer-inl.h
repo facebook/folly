@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/Producer-inl.h>
+#include <folly/channels/Producer-inl.h> // @shim

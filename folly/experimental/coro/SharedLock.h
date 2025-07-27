@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/SharedLock.h>
+#include <folly/coro/SharedLock.h> // @shim

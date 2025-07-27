@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/container/IntrusiveList.h>
+#include <folly/container/IntrusiveList.h> // @shim

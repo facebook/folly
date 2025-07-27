@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/AutoCleanup.h>
+#include <folly/coro/AutoCleanup.h> // @shim

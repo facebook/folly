@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/synchronization/FlatCombining.h>
+#include <folly/synchronization/FlatCombining.h> // @shim

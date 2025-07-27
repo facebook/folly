@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/FanoutChannel.h>
+#include <folly/channels/FanoutChannel.h> // @shim

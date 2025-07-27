@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/test/ChannelTestUtil.h>
+#include <folly/channels/test/ChannelTestUtil.h> // @shim

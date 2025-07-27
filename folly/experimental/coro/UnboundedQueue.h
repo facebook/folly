@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/UnboundedQueue.h>
+#include <folly/coro/UnboundedQueue.h> // @shim
