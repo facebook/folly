@@ -1169,6 +1169,14 @@ void IoUringBackend::delayedInit() {
     initSubmissionLinked();
   }
 
+  if (useReqBatching()) {
+    int iowait_ret = ::io_uring_set_iowait(&ioRing_, false);
+    if (iowait_ret) {
+      LOG(FATAL) << "Failed to set NO_IOWAIT flag: "
+                 << folly::errnoStr(-iowait_ret);
+    }
+  }
+
   if (options_.registerRingFd) {
     // registering just has some perf impact, so no need to fall back
 #if FOLLY_IO_URING_UP_TO_DATE
