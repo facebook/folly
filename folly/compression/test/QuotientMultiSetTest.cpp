@@ -20,7 +20,6 @@
 
 #include <fmt/format.h>
 
-#include <folly/Format.h>
 #include <folly/Random.h>
 #include <folly/container/Enumerate.h>
 #include <folly/io/IOBufQueue.h>

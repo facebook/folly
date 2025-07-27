@@ -21,8 +21,6 @@
 #include <stdexcept>
 #include <string>
 
-#include <zstd.h>
-
 #include <folly/Conv.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
