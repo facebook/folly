@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/StackTrace.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/debugging/symbolizer/StackTrace.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/SimpleLoopController.h>
 #include <folly/init/Init.h>

@@ -28,11 +28,11 @@ fbcode_target(
     ],
     exported_deps = [
         "fbsource//third-party/libdwarf:dwarf",
+        ":elf",
+        ":elf_cache",
+        ":symbolized_frame",
         "//folly:function",
         "//folly:range",
-        "//folly/experimental/symbolizer:elf",
-        "//folly/experimental/symbolizer:elf_cache",
-        "//folly/experimental/symbolizer:symbolized_frame",
     ],
 )
 
@@ -118,9 +118,9 @@ fbcode_target(
         "//folly/portability:sys_mman",
     ],
     exported_deps = [
+        ":elf",
         "//folly:optional",
         "//folly:range",
-        "//folly/experimental/symbolizer:elf",
         "//folly/hash:hash",
         "//folly/memory:reentrant_allocator",
         "//folly/portability:config",
@@ -147,9 +147,9 @@ fbcode_target(
         "//folly/lang:to_ascii",
     ],
     exported_deps = [
+        ":symbolized_frame",
         "//folly:fbstring",
         "//folly:range",
-        "//folly/experimental/symbolizer:symbolized_frame",
     ],
 )
 
@@ -163,13 +163,14 @@ fbcode_target(
         "Symbolizer.h",
     ],
     deps = [
+        ":elf",
+        ":line_reader",
         "//folly:file_util",
         "//folly:memory",
         "//folly:scope_guard",
         "//folly:synchronized",
         "//folly/container:evicting_cache_map",
         "//folly/debugging/symbolizer/detail:debug",
-        "//folly/experimental/symbolizer:elf",
         "//folly/lang:safe_assert",
         "//folly/lang:to_ascii",
         "//folly/memory:sanitize_address",
@@ -177,15 +178,15 @@ fbcode_target(
         "//folly/tracing:async_stack",
     ],
     exported_deps = [
+        ":dwarf",
+        ":elf_cache",
+        ":stack_trace",
+        ":symbolize_printer",
+        ":symbolized_frame",
         "//folly:fbstring",
         "//folly:optional",
         "//folly:range",
         "//folly:string",
-        "//folly/experimental/symbolizer:dwarf",
-        "//folly/experimental/symbolizer:elf_cache",
-        "//folly/experimental/symbolizer:stack_trace",
-        "//folly/experimental/symbolizer:symbolize_printer",
-        "//folly/experimental/symbolizer:symbolized_frame",
         "//folly/io:iobuf",
         "//folly/portability:config",
         "//folly/portability:unistd",
@@ -202,8 +203,8 @@ fbcode_target(
         "SignalHandler.h",
     ],
     deps = [
+        ":symbolizer",
         "//folly:scope_guard",
-        "//folly/experimental/symbolizer:symbolizer",
         "//folly/lang:to_ascii",
         "//folly/portability:sys_syscall",
         "//folly/portability:unistd",

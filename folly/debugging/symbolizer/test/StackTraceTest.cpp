@@ -18,8 +18,8 @@
 
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Task.h>
-#include <folly/experimental/symbolizer/StackTrace.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/debugging/symbolizer/StackTrace.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/lang/Hint.h>
 #include <folly/test/TestUtils.h>
 #include <folly/testing/TestUtil.h>

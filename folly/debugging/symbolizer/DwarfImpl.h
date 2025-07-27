@@ -25,9 +25,9 @@
 #include <folly/debugging/symbolizer/DwarfLineNumberVM.h>
 #include <folly/debugging/symbolizer/DwarfSection.h>
 #include <folly/debugging/symbolizer/DwarfUtil.h>
-#include <folly/experimental/symbolizer/Elf.h>
-#include <folly/experimental/symbolizer/ElfCache.h>
-#include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/debugging/symbolizer/Elf.h>
+#include <folly/debugging/symbolizer/ElfCache.h>
+#include <folly/debugging/symbolizer/SymbolizedFrame.h>
 
 namespace folly {
 namespace symbolizer {

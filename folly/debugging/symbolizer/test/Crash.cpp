@@ -15,7 +15,7 @@
  */
 
 #include <cstdlib>
-#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/debugging/symbolizer/SignalHandler.h>
 
 int main() {
   folly::symbolizer::installFatalSignalHandler();

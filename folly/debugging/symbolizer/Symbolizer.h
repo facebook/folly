@@ -25,11 +25,11 @@
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/String.h>
-#include <folly/experimental/symbolizer/Dwarf.h>
-#include <folly/experimental/symbolizer/ElfCache.h>
-#include <folly/experimental/symbolizer/StackTrace.h>
-#include <folly/experimental/symbolizer/SymbolizePrinter.h>
-#include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/debugging/symbolizer/Dwarf.h>
+#include <folly/debugging/symbolizer/ElfCache.h>
+#include <folly/debugging/symbolizer/StackTrace.h>
+#include <folly/debugging/symbolizer/SymbolizePrinter.h>
+#include <folly/debugging/symbolizer/SymbolizedFrame.h>
 #include <folly/io/IOBuf.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/Unistd.h>

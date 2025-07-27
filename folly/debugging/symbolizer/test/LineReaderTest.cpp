@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/LineReader.h>
+#include <folly/debugging/symbolizer/LineReader.h>
 
 #include <glog/logging.h>
 

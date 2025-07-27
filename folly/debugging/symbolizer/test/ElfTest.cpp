@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/Elf.h>
+#include <folly/debugging/symbolizer/Elf.h>
 
 #include <folly/CppAttributes.h>
 #include <folly/FileUtil.h>

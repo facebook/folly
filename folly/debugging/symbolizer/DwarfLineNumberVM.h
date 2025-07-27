@@ -18,7 +18,7 @@
 
 #include <folly/Range.h>
 #include <folly/debugging/symbolizer/DwarfUtil.h>
-#include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/debugging/symbolizer/SymbolizedFrame.h>
 
 namespace folly {
 namespace symbolizer {

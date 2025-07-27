@@ -28,7 +28,7 @@
  *
  */
 
-#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/debugging/symbolizer/SignalHandler.h>
 
 #include <bitset>
 #include <csignal>

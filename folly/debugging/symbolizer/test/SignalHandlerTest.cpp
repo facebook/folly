@@ -16,7 +16,7 @@
 
 #include <folly/debugging/symbolizer/test/SignalHandlerTest.h>
 
-#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/debugging/symbolizer/SignalHandler.h>
 
 #include <folly/CPortability.h>
 #include <folly/FileUtil.h>

@@ -15,7 +15,7 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/experimental/symbolizer/StackTrace.h>
+#include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/init/Init.h>
 
 using namespace folly;

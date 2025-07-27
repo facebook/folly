@@ -12,10 +12,10 @@ fbcode_target(
     ],
     deps = [
         "//folly:range",
-        "//folly/experimental/symbolizer:dwarf",
-        "//folly/experimental/symbolizer:elf",
-        "//folly/experimental/symbolizer:symbolized_frame",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:dwarf",
+        "//folly/debugging/symbolizer:elf",
+        "//folly/debugging/symbolizer:symbolized_frame",
+        "//folly/debugging/symbolizer:symbolizer",
         "//folly/init:init",
         "//folly/portability:gflags",
     ],
@@ -72,6 +72,6 @@ fbcode_target(
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:range",
-        "//folly/experimental/symbolizer:signal_handler",
+        "//folly/debugging/symbolizer:signal_handler",
     ],
 )
