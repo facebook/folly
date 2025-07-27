@@ -17,6 +17,7 @@
 #include <folly/portability/Dirent.h>
 
 #ifdef _WIN32
+#include <errno.h>
 #include <stdlib.h>
 #include <string>
 

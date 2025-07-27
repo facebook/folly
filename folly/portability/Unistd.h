@@ -59,7 +59,7 @@ ssize_t pread64(int fd, void* buf, size_t count, off64_t offset);
 // Windows is weird and doesn't actually defined these
 // for the parameters to access, so we have to do it ourselves -_-...
 #define F_OK 0
-#define X_OK F_OK
+#define X_OK 1
 #define W_OK 2
 #define R_OK 4
 #define RW_OK 6
@@ -78,7 +78,9 @@ int getgid();
 pid_t getppid();
 int getuid();
 int lockf(int fd, int cmd, off_t len);
+#ifdef _MSC_VER
 off64_t lseek64(int fh, off64_t off, int orig);
+#endif
 ssize_t pread(int fd, void* buf, size_t count, off_t offset);
 ssize_t pread64(int fd, void* buf, size_t count, off64_t offset);
 ssize_t pwrite(int fd, const void* buf, size_t count, off_t offset);
