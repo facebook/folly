@@ -414,6 +414,26 @@ TEST(Dynamic, ObjectHeterogeneousAccess) {
   EXPECT_EQ(obj.count(StringPiece{b}), 0);
   EXPECT_EQ(obj.count(StaticStrings::kBar), 0);
 
+  // contains()
+  EXPECT_TRUE(obj.contains(empty));
+  EXPECT_TRUE(obj.contains(nullptr));
+  EXPECT_TRUE(obj.contains(foo));
+
+  EXPECT_TRUE(obj.contains(a));
+  EXPECT_TRUE(obj.contains(StaticStrings::kA));
+  EXPECT_TRUE(obj.contains("a"));
+
+  EXPECT_TRUE(obj.contains(sp));
+  EXPECT_TRUE(obj.contains(StringPiece{"a"}));
+  EXPECT_TRUE(obj.contains(StaticStrings::kFoo));
+
+  EXPECT_TRUE(obj.contains(std::string{"a"}));
+  EXPECT_TRUE(obj.contains(str));
+
+  EXPECT_FALSE(obj.contains(b));
+  EXPECT_FALSE(obj.contains(StringPiece{b}));
+  EXPECT_FALSE(obj.contains(StaticStrings::kBar));
+
   // operator[]
   EXPECT_EQ(obj[empty], 456);
   EXPECT_EQ(obj[nullptr], 456);

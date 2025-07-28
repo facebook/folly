@@ -829,6 +829,16 @@ inline std::size_t dynamic::count(StringPiece key) const {
   return find(key) != items().end() ? 1u : 0u;
 }
 
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, bool> dynamic::contains(
+    K&& key) const {
+  return count(key);
+}
+
+inline bool dynamic::contains(StringPiece key) const {
+  return count(key);
+}
+
 template <class K, class V>
 inline dynamic::IfNotIterator<K, void> dynamic::insert(K&& key, V&& val) {
   auto& obj = get<ObjectImpl>();

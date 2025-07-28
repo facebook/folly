@@ -650,6 +650,18 @@ struct dynamic {
   IfIsNonStringDynamicConvertible<K, std::size_t> count(K&&) const;
   std::size_t count(StringPiece) const;
 
+  /**
+   * Check if key exists.
+   *
+   * If this is an object, returns whether it contains a field with
+   * the given name.  Otherwise throws TypeError.
+   *
+   * @methodset Object
+   */
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, bool> contains(K&&) const;
+  bool contains(StringPiece) const;
+
  private:
   dynamic const& atImpl(dynamic const&) const&;
 
