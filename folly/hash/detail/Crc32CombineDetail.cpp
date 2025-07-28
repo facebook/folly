@@ -68,7 +68,7 @@ struct gf_powers_make {
 
 } // namespace
 
-#if FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 
 // Reduction taken from
 // https://www.nicst.de/crc.pdf
@@ -120,7 +120,7 @@ static uint32_t gf_multiply_crc32_hw(uint64_t, uint64_t, uint32_t) {
   return 0;
 }
 
-#endif // FOLLY_SSE_PREREQ(4, 2)
+#endif // FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 
 static constexpr uint32_t crc32c_m = 0x82f63b78;
 static constexpr uint32_t crc32_m = 0xedb88320;

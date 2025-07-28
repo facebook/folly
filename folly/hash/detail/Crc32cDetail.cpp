@@ -41,7 +41,7 @@
 namespace folly {
 namespace detail {
 
-#if defined(FOLLY_X64) && FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 
 namespace crc32_detail {
 
