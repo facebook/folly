@@ -62,7 +62,6 @@
 #include <folly/compression/Utils.h>
 #include <folly/io/Cursor.h>
 #include <folly/lang/Bits.h>
-#include <folly/stop_watch.h>
 
 using folly::compression::detail::dataStartsWithLE;
 using folly::compression::detail::prefixToStringLE;

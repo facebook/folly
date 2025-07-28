@@ -193,7 +193,6 @@ fbcode_target(
         "//folly:conv",
         "//folly:random",
         "//folly:scope_guard",
-        "//folly:stop_watch",
         "//folly:utility",
         "//folly:varint",
         "//folly/portability:windows",
