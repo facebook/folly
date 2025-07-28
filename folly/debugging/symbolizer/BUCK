@@ -31,13 +31,13 @@ non_fbcode_target(
         ":symbolized_frame",
         "//third-party/boost:boost",
         "//third-party/glog:glog",
-        "//third-party/libdwarf:dwarf",
         "//xplat/folly:function",
         "//xplat/folly:optional",
         "//xplat/folly:portability_sys_mman",
         "//xplat/folly:portability_unistd",
         "//xplat/folly:range",
         "//xplat/folly:scope_guard",
+        "//xplat/folly/portability/provide:libdwarf",  # @manual
     ],
 )
 
@@ -209,12 +209,12 @@ fbcode_target(
         "//folly/portability:unistd",
     ],
     exported_deps = [
-        "fbsource//third-party/libdwarf:dwarf",
         ":elf",
         ":elf_cache",
         ":symbolized_frame",
         "//folly:function",
         "//folly:range",
+        "//folly/portability/provide:libdwarf",  # @manual
     ],
 )
 

@@ -27,7 +27,7 @@
 
 #if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
 
-#include <dwarf.h> // @manual=fbsource//third-party/libdwarf:dwarf
+#include <dwarf.h> // @manual
 
 // We need a single dwarf5 tag, but may not be building against
 // a new enough libdwarf, so just define it ourselves.

@@ -278,27 +278,13 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "libunwind",
-    exported_preprocessor_flags = select({
-        "DEFAULT": [],
-        "ovr_config//runtime:anywhere-linux": [
-            # anywhere-linux links in a different version of libunwind, do not use for now
-            "-DFOLLY_HAVE_LIBUNWIND=0",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Libunwind.h",
     ],
-    exported_deps = select({
-        "DEFAULT": ["//third-party/libunwind:unwind"],
-        "ovr_config//os:android": [],
-        "ovr_config//os:appletvos": [],  # apple
-        "ovr_config//os:iphoneos": [],  # apple
-        "ovr_config//os:macos": [],  # apple
-        "ovr_config//os:watchos": [],  # apple
-        "ovr_config//os:windows": [],
-        "ovr_config//runtime:anywhere-linux": [],
-    }),
+    exported_deps = [
+        "//xplat/folly/portability/provide:libunwind",  # @manual
+    ],
 )
 
 non_fbcode_target(
@@ -918,11 +904,8 @@ fbcode_target(
     _kind = cpp_library,
     name = "libunwind",
     headers = ["Libunwind.h"],
-    os_deps = [
-        (
-            "linux",
-            ["fbsource//third-party/libunwind:unwind"],
-        ),
+    exported_deps = [
+        "//folly/portability/provide:libunwind",  # @manual
     ],
 )
 

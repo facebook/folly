@@ -1,0 +1,80 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+oncall("fbcode_entropy_wardens_folly")
+
+# Here are rules which conditionally provide exported-deps on other libraries,
+# encapsulating the conditional logic via select's.
+#
+# This enables other rules across folly which may need these deps to extract the
+# complexity to here and to take simple deps on the rules here.
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "libdwarf",
+    feature = triage_InfrastructureSupermoduleOptou,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            "//third-party/libdwarf:dwarf",
+        ],
+    }),
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "libunwind",
+    feature = triage_InfrastructureSupermoduleOptou,
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            ":libunwind-linux",
+        ],
+    }),
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "libunwind-linux",
+    feature = triage_InfrastructureSupermoduleOptou,
+    exported_deps = select({
+        "DEFAULT": [
+            "//third-party/libunwind:unwind",
+        ],
+        # anywhere-linux links in a different version of libunwind, do not use for now
+        "ovr_config//runtime:anywhere-linux": [],
+    }),
+)
+
+# fbcode build rules
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "libdwarf",
+    exported_deps = [
+        "fbsource//third-party/libdwarf:dwarf",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "libunwind",
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            ":libunwind-linux",
+        ],
+    }),
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "libunwind-linux",
+    exported_deps = [
+        "fbsource//third-party/libunwind:unwind",
+    ],
+)
