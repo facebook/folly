@@ -1,7 +1,90 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "dwarf",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Dwarf.h",
+        "DwarfImpl.h",
+        "DwarfLineNumberVM.h",
+        "DwarfSection.h",
+        "DwarfUtil.h",
+    ],
+    exported_deps = ["//xplat/folly/debugging/symbolizer:dwarf"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "elf",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Elf.h",
+        "Elf-inl.h",
+    ],
+    exported_deps = ["//xplat/folly/debugging/symbolizer:elf"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "elf_cache",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ElfCache.h",
+    ],
+    exported_deps = ["//xplat/folly/debugging/symbolizer:elf_cache"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "line_reader",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LineReader.h",
+    ],
+    exported_deps = ["//xplat/folly/debugging/symbolizer:line_reader"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "stack_trace",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "StackTrace.h",
+    ],
+    exported_deps = ["//xplat/folly/debugging/symbolizer:stack_trace"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "symbolized_frame",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SymbolizedFrame.h",
+    ],
+    exported_deps = ["//xplat/folly/debugging/symbolizer:symbolized_frame"],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "symbolizer",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SignalHandler.h",
+        "SymbolizePrinter.h",
+        "Symbolizer.h",
+    ],
+    exported_deps = ["//xplat/folly/debugging/symbolizer:symbolizer"],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,

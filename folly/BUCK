@@ -3255,26 +3255,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_stack_trace",
-    srcs = [
-        "debugging/symbolizer/StackTrace.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/StackTrace.h",
-        "experimental/symbolizer/StackTrace.h",
-    ],
-    deps = [
-        ":cpp_attributes",
-        ":portability",
-        ":portability_config",
-        "//xplat/folly/tracing:async_stack",
-    ],
-    exported_deps = [
-        ":portability_libunwind",
-        ":portability_sys_types",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer:stack_trace"],
 )
 
 non_fbcode_target(
@@ -4058,33 +4043,19 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_detail_debug",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/detail/Debug.h",
-        "experimental/symbolizer/detail/Debug.h",
-    ],
-    deps = [
-        ":cpp_attributes",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer/detail:debug"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_line_reader",
-    srcs = [
-        "debugging/symbolizer/LineReader.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/LineReader.h",
-        "experimental/symbolizer/LineReader.h",
-    ],
-    deps = [
-        ":file_util",
-        ":range",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer:line_reader"],
 )
 
 non_fbcode_target(
@@ -4104,30 +4075,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_elf",
-    srcs = [
-        "debugging/symbolizer/Elf.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/Elf.h",
-        "debugging/symbolizer/Elf-inl.h",
-        "experimental/symbolizer/Elf.h",
-        "experimental/symbolizer/Elf-inl.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:conv",
-        "//xplat/folly:exception",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability_sys_mman",
-        "//xplat/folly:portability_unistd",
-        "//xplat/folly:range",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/lang:c_string",
-        "//xplat/folly/lang:safe_assert",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer:elf"],
 )
 
 non_fbcode_target(
@@ -4160,80 +4112,27 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_elf_cache",
-    srcs = ["debugging/symbolizer/ElfCache.cpp"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/ElfCache.h",
-        "experimental/symbolizer/ElfCache.h",
-    ],
-    exported_deps = [
-        ":experimental_symbolizer_elf",
-        ":scope_guard",
-        "//third-party/boost:boost",
-        "//xplat/folly:conv",
-        "//xplat/folly:hash_hash",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability_sys_mman",
-        "//xplat/folly/memory:reentrant_allocator",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer:elf_cache"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_dwarf",
-    srcs = [
-        "debugging/symbolizer/Dwarf.cpp",
-        "debugging/symbolizer/DwarfImpl.cpp",
-        "debugging/symbolizer/DwarfLineNumberVM.cpp",
-        "debugging/symbolizer/DwarfSection.cpp",
-        "debugging/symbolizer/DwarfUtil.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/Dwarf.h",
-        "debugging/symbolizer/DwarfImpl.h",
-        "debugging/symbolizer/DwarfLineNumberVM.h",
-        "debugging/symbolizer/DwarfSection.h",
-        "debugging/symbolizer/DwarfUtil.h",
-        "experimental/symbolizer/Dwarf.h",
-        "experimental/symbolizer/DwarfImpl.h",
-        "experimental/symbolizer/DwarfLineNumberVM.h",
-        "experimental/symbolizer/DwarfSection.h",
-        "experimental/symbolizer/DwarfUtil.h",
-    ],
-    deps = [
-        ":experimental_symbolized_frame",
-        ":experimental_symbolizer_elf_cache",
-        ":function",
-        ":portability_sys_mman",
-        ":scope_guard",
-        "//third-party/boost:boost",
-        "//third-party/glog:glog",
-        "//third-party/libdwarf:dwarf",
-        "//xplat/folly:experimental_symbolizer_elf",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability_unistd",
-        "//xplat/folly:range",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer:dwarf"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolized_frame",
-    srcs = [
-        "debugging/symbolizer/SymbolizedFrame.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/SymbolizedFrame.h",
-        "experimental/symbolizer/SymbolizedFrame.h",
-    ],
-    deps = [
-        ":experimental_symbolizer_elf",
-        ":range",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer:symbolized_frame"],
 )
 
 non_fbcode_target(
@@ -4289,67 +4188,19 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_symbolizer_detail",
-    srcs = [
-        "debugging/symbolizer/detail/Debug.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/detail/Debug.h",
-    ],
-    deps = [
-        ":portability",
-        "//xplat/third-party/linker_lib:dl",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer/detail:debug"],
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_symbolizer",
-    srcs = [
-        "debugging/symbolizer/SignalHandler.cpp",
-        "debugging/symbolizer/SymbolizePrinter.cpp",
-        "debugging/symbolizer/Symbolizer.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "debugging/symbolizer/SignalHandler.h",
-        "debugging/symbolizer/SymbolizePrinter.h",
-        "debugging/symbolizer/Symbolizer.h",
-        "experimental/symbolizer/SignalHandler.h",
-        "experimental/symbolizer/SymbolizePrinter.h",
-        "experimental/symbolizer/Symbolizer.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        ":experimental_symbolizer_symbolizer_detail",
-        ":scope_guard",
-        "//third-party/glog:glog",
-        "//xplat/folly:experimental_symbolizer_detail_debug",
-        "//xplat/folly:experimental_symbolizer_dwarf",
-        "//xplat/folly:experimental_symbolizer_elf_cache",
-        "//xplat/folly:experimental_symbolizer_line_reader",
-        "//xplat/folly:experimental_symbolizer_stack_trace",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:file_util",
-        "//xplat/folly:memory",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability_sys_mman",
-        "//xplat/folly:portability_sys_syscall",
-        "//xplat/folly:range",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:string",
-        "//xplat/folly:synchronized",
-        "//xplat/folly/container:evicting_cache_map",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/lang:to_ascii",
-        "//xplat/folly/memory:sanitize_address",
-        "//xplat/folly/tracing:async_stack",
-    ],
-    exported_deps = [
-        "//xplat/folly:portability_unistd",
-    ],
+    exported_deps = ["//xplat/folly/experimental/symbolizer:symbolizer"],
 )
 
 non_fbcode_target(

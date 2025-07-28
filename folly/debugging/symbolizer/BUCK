@@ -1,7 +1,189 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "dwarf",
+    srcs = [
+        "Dwarf.cpp",
+        "DwarfImpl.cpp",
+        "DwarfLineNumberVM.cpp",
+        "DwarfSection.cpp",
+        "DwarfUtil.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Dwarf.h",
+        "DwarfImpl.h",
+        "DwarfLineNumberVM.h",
+        "DwarfSection.h",
+        "DwarfUtil.h",
+    ],
+    deps = [
+        ":elf",
+        ":elf_cache",
+        ":symbolized_frame",
+        "//third-party/boost:boost",
+        "//third-party/glog:glog",
+        "//third-party/libdwarf:dwarf",
+        "//xplat/folly:function",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability_sys_mman",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:range",
+        "//xplat/folly:scope_guard",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "elf",
+    srcs = [
+        "Elf.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Elf.h",
+        "Elf-inl.h",
+    ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:conv",
+        "//xplat/folly:exception",
+        "//xplat/folly:likely",
+        "//xplat/folly:portability_sys_mman",
+        "//xplat/folly:portability_unistd",
+        "//xplat/folly:range",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly/lang:c_string",
+        "//xplat/folly/lang:safe_assert",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "elf_cache",
+    srcs = ["ElfCache.cpp"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ElfCache.h",
+    ],
+    exported_deps = [
+        ":elf",
+        "//third-party/boost:boost",
+        "//xplat/folly:conv",
+        "//xplat/folly:hash_hash",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability_sys_mman",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly/memory:reentrant_allocator",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "line_reader",
+    srcs = [
+        "LineReader.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "LineReader.h",
+    ],
+    deps = [
+        "//xplat/folly:file_util",
+        "//xplat/folly:range",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "stack_trace",
+    srcs = [
+        "StackTrace.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "StackTrace.h",
+    ],
+    deps = [
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_config",
+        "//xplat/folly/tracing:async_stack",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability_libunwind",
+        "//xplat/folly:portability_sys_types",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "symbolized_frame",
+    srcs = [
+        "SymbolizedFrame.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SymbolizedFrame.h",
+    ],
+    deps = [
+        ":elf",
+        "//xplat/folly:range",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "symbolizer",
+    srcs = [
+        "SignalHandler.cpp",
+        "SymbolizePrinter.cpp",
+        "Symbolizer.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "SignalHandler.h",
+        "SymbolizePrinter.h",
+        "Symbolizer.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        ":dwarf",
+        ":elf_cache",
+        ":line_reader",
+        ":stack_trace",
+        "//third-party/glog:glog",
+        "//xplat/folly:fbstring",
+        "//xplat/folly:file_util",
+        "//xplat/folly:memory",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability_sys_mman",
+        "//xplat/folly:portability_sys_syscall",
+        "//xplat/folly:range",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:string",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/container:evicting_cache_map",
+        "//xplat/folly/container:f14_hash",
+        "//xplat/folly/debugging/symbolizer/detail:debug",
+        "//xplat/folly/lang:to_ascii",
+        "//xplat/folly/memory:sanitize_address",
+        "//xplat/folly/tracing:async_stack",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability_unistd",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
