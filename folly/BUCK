@@ -213,43 +213,14 @@ non_fbcode_target(
             "-DFOLLY_SINGLETON_SKIP_SCHEDULE_ATEXIT=1",
         ],
         "DEFAULT": [],
-    }) + select({
-        # Symbolizer is not available for all platforms, disable it for now.
-        "DEFAULT": ["-DFOLLY_HAVE_DWARF=0"],
-        "ovr_config//os:linux": [],
     }),
     fbandroid_deps = [
         "//xplat/third-party/linker_lib:dl",
     ],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
-        "Singleton-inl.h",
         "Singleton.h",
-        # Instead of depending on experimental_symbolizer_symbolizer, reference always-included headers here.
-        "debugging/symbolizer/Dwarf.h",
-        "debugging/symbolizer/DwarfImpl.h",
-        "debugging/symbolizer/DwarfLineNumberVM.h",
-        "debugging/symbolizer/DwarfSection.h",
-        "debugging/symbolizer/DwarfUtil.h",
-        "debugging/symbolizer/Elf.h",
-        "debugging/symbolizer/Elf-inl.h",
-        "debugging/symbolizer/ElfCache.h",
-        "debugging/symbolizer/Symbolizer.h",
-        "debugging/symbolizer/SymbolizedFrame.h",
-        "debugging/symbolizer/SymbolizePrinter.h",
-        "debugging/symbolizer/StackTrace.h",
-        "experimental/symbolizer/Dwarf.h",
-        "experimental/symbolizer/DwarfImpl.h",
-        "experimental/symbolizer/DwarfLineNumberVM.h",
-        "experimental/symbolizer/DwarfSection.h",
-        "experimental/symbolizer/DwarfUtil.h",
-        "experimental/symbolizer/Elf.h",
-        "experimental/symbolizer/Elf-inl.h",
-        "experimental/symbolizer/ElfCache.h",
-        "experimental/symbolizer/Symbolizer.h",
-        "experimental/symbolizer/SymbolizedFrame.h",
-        "experimental/symbolizer/SymbolizePrinter.h",
-        "experimental/symbolizer/StackTrace.h",
+        "Singleton-inl.h",
     ],
     deps = [
         "//xplat/folly:portability_fmt_compile",
@@ -265,6 +236,7 @@ non_fbcode_target(
         "//xplat/folly:demangle",
         "//xplat/folly:exception",
         "//xplat/folly:executor",
+        "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:fbstring",
         "//xplat/folly:file_util",
         "//xplat/folly:hash_hash",
@@ -287,10 +259,7 @@ non_fbcode_target(
         "//xplat/folly/lang:exception",
         "//xplat/folly/memory:reentrant_allocator",
         "//xplat/folly/memory:sanitize_leak",
-    ] + select({
-        "DEFAULT": [],
-        "ovr_config//os:linux": ["//xplat/folly:experimental_symbolizer_symbolizer"],
-    }),
+    ],
 )
 
 non_fbcode_target(
