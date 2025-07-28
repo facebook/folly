@@ -587,7 +587,7 @@ TEST(EvictingCacheMap, IteratorSanityTest) {
 
   std::set<int> seen;
   for (auto& it : map) {
-    EXPECT_EQ(0, seen.count(it.first));
+    EXPECT_EQ(0, seen.contains(it.first));
     seen.insert(it.first);
     EXPECT_EQ(it.first * 2, it.second);
   }
