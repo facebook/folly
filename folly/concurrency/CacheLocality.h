@@ -99,6 +99,11 @@ struct CacheLocality {
   template <template <typename> class Atom = std::atomic>
   static const CacheLocality& system();
 
+  /// Returns the best CacheLocality information available for the current
+  /// system.  This will be loaded from sysfs if possible, otherwise it will be
+  /// correct in the number of CPUs but not in their sharing structure.
+  static CacheLocality readSystemLocalityInfo();
+
   /// Reads CacheLocality information from a tree structured like
   /// the sysfs filesystem.  The provided function will be evaluated
   /// for each sysfs file that needs to be queried.  The function
@@ -133,10 +138,6 @@ struct CacheLocality {
  private:
   explicit CacheLocality(std::vector<std::vector<size_t>> equivClasses);
 };
-
-namespace detail {
-CacheLocality getSystemLocalityInfo();
-}
 
 /// Knows how to derive a function pointer to the VDSO implementation of
 /// getcpu(2), if available

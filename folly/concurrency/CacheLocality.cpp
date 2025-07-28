@@ -45,10 +45,8 @@ namespace folly {
 
 ///////////// CacheLocality
 
-namespace detail {
-
 /// Returns the CacheLocality information best for this machine
-CacheLocality getSystemLocalityInfo() {
+CacheLocality CacheLocality::readSystemLocalityInfo() {
   if (kIsLinux) {
     if (kIsArchAmd64 || kIsArchX86) {
       // First try to parse /proc/cpuinfo.
@@ -85,8 +83,6 @@ CacheLocality getSystemLocalityInfo() {
   return CacheLocality::uniform(size_t(numCpus));
 }
 
-} // namespace detail
-
 template <>
 const CacheLocality& CacheLocality::system<std::atomic>() {
   static std::atomic<const CacheLocality*> cache;
@@ -94,7 +90,7 @@ const CacheLocality& CacheLocality::system<std::atomic>() {
   if (value != nullptr) {
     return *value;
   }
-  auto next = new CacheLocality(detail::getSystemLocalityInfo());
+  auto next = new CacheLocality(readSystemLocalityInfo());
   if (cache.compare_exchange_strong(value, next, std::memory_order_acq_rel)) {
     return *next;
   }

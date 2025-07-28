@@ -394,9 +394,9 @@ BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_1000_work, 1000)
 
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK(getSystemLocalityInfo, iters) {
+BENCHMARK(readSystemLocalityInfo, iters) {
   while (iters--) {
-    auto cl = folly::detail::getSystemLocalityInfo();
+    auto cl = folly::CacheLocality::readSystemLocalityInfo();
     folly::compiler_must_not_elide(cl);
   }
 }
