@@ -37,7 +37,7 @@
 #ifndef ZSTD_STATIC_LINKING_ONLY
 #define ZSTD_STATIC_LINKING_ONLY
 #endif
-#include <zstd.h>
+#include <zstd.h> // @donotremove
 #endif
 
 namespace folly {
