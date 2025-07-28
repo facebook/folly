@@ -3977,38 +3977,11 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
+    # @shim
     _kind = folly_xplat_library,
     name = "experimental_program_options",
-    srcs = [
-        "cli/NestedCommandLineApp.cpp",
-        "cli/ProgramOptions.cpp",
-    ],
-    apple_sdks = (IOS, MACOSX),
-    fbandroid_deps = [
-        "//third-party/gflags:gflags",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
-    platforms = (ANDROID, APPLE, CXX, FBCODE, WINDOWS),
-    raw_headers = [
-        "cli/NestedCommandLineApp.h",
-        "cli/ProgramOptions.h",
-    ],
-    # Note: keeping relative target labels otherwise fbcode_macros will complain about a dependency
-    # on a restricted repo since experimental_program_options is in fbcode_allowed_list.bzl.
-    deps = [
-        ":c_portability",
-        ":conv",
-        ":experimental_io_fs_util",
-        ":file_util",
-        ":format",
-        ":optional",
-        ":portability",
-        ":portability_gflags",
-        ":string",
-        "//third-party/boost:boost",
-        "//third-party/boost:boost_program_options",
-        "//third-party/glog:glog",
-    ],
+    exported_deps = ["//xplat/folly/cli:program_options"],
 )
 
 non_fbcode_target(

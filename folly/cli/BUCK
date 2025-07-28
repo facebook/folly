@@ -1,7 +1,56 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//tools/build_defs:platform_defs.bzl",
+    "ANDROID",
+    "APPLE",
+    "CXX",
+    "FBCODE",
+    "IOS",
+    "MACOSX",
+    "WINDOWS",
+)
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "program_options",
+    srcs = [
+        "NestedCommandLineApp.cpp",
+        "ProgramOptions.cpp",
+    ],
+    apple_sdks = (IOS, MACOSX),
+    fbandroid_deps = [
+        "//third-party/gflags:gflags",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    platforms = (ANDROID, APPLE, CXX, FBCODE, WINDOWS),
+    raw_headers = [
+        "NestedCommandLineApp.h",
+        "ProgramOptions.h",
+    ],
+    deps = [
+        "//third-party/boost:boost",
+        "//third-party/boost:boost_program_options",
+        "//third-party/glog:glog",
+        "//xplat/folly:c_portability",
+        "//xplat/folly:conv",
+        "//xplat/folly:experimental_io_fs_util",
+        "//xplat/folly:file_util",
+        "//xplat/folly:format",
+        "//xplat/folly:optional",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_gflags",
+        "//xplat/folly:string",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
