@@ -109,7 +109,7 @@ void testMap() {
   for (int i = 0; i < 100; ++i) {
     auto e = createEntry<KeyT, ValueT>(i);
     auto ret = arr->insert(e);
-    EXPECT_EQ(!ref.count(e.first), ret.second); // succeed iff not in ref
+    EXPECT_EQ(!ref.contains(e.first), ret.second); // succeed iff not in ref
     ref.insert(e);
     EXPECT_EQ(ref.size(), arr->size());
     if (ret.first == arr->end()) {
