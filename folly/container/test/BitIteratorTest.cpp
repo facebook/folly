@@ -30,7 +30,7 @@ namespace {
 
 template <class INT, class IT>
 void checkIt(INT exp, IT& it) {
-  typedef typename std::make_unsigned<INT>::type utype;
+  using utype = typename std::make_unsigned<INT>::type;
   size_t bits = std::numeric_limits<utype>::digits;
   utype uexp = exp;
   for (size_t i = 0; i < bits; ++i) {
@@ -42,7 +42,7 @@ void checkIt(INT exp, IT& it) {
 
 template <class INT, class IT>
 void checkRange(INT exp, IT begin, IT end) {
-  typedef typename std::make_unsigned<INT>::type utype;
+  using utype = typename std::make_unsigned<INT>::type;
   utype uexp = exp;
   size_t i = 0;
   auto bitEnd = makeBitIterator(end);

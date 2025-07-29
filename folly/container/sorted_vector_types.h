@@ -106,7 +106,7 @@ template <class Policy>
 struct growth_policy_wrapper : private Policy {
   template <class Container, class Iterator>
   Iterator increase_capacity(Container& c, Iterator desired_insertion) {
-    typedef typename Container::difference_type diff_t;
+    using diff_t = typename Container::difference_type;
     diff_t d = desired_insertion - c.begin();
     Policy::increase_capacity(c);
     return c.begin() + d;
@@ -282,30 +282,30 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   struct EBO;
 
  public:
-  typedef T value_type;
-  typedef T key_type;
-  typedef Compare key_compare;
-  typedef Compare value_compare;
-  typedef Allocator allocator_type;
-  typedef Container container_type;
+  using value_type = T;
+  using key_type = T;
+  using key_compare = Compare;
+  using value_compare = Compare;
+  using allocator_type = Allocator;
+  using container_type = Container;
 
-  typedef typename Container::pointer pointer;
-  typedef typename Container::reference reference;
-  typedef typename Container::const_reference const_reference;
-  typedef typename Container::const_pointer const_pointer;
+  using pointer = typename Container::pointer;
+  using reference = typename Container::reference;
+  using const_reference = typename Container::const_reference;
+  using const_pointer = typename Container::const_pointer;
   /*
    * XXX: Our normal iterator ought to also be a constant iterator
    * (cf. Defect Report 103 for std::set), but this is a bit more of a
    * pain.
    */
-  typedef typename Container::iterator iterator;
-  typedef typename Container::const_iterator const_iterator;
-  typedef typename Container::difference_type difference_type;
-  typedef typename Container::size_type size_type;
-  typedef typename Container::reverse_iterator reverse_iterator;
-  typedef typename Container::const_reverse_iterator const_reverse_iterator;
-  typedef detail::DirectMutationGuard<Container, value_compare>
-      direct_mutation_guard;
+  using iterator = typename Container::iterator;
+  using const_iterator = typename Container::const_iterator;
+  using difference_type = typename Container::difference_type;
+  using size_type = typename Container::size_type;
+  using reverse_iterator = typename Container::reverse_iterator;
+  using const_reverse_iterator = typename Container::const_reverse_iterator;
+  using direct_mutation_guard =
+      detail::DirectMutationGuard<Container, value_compare>;
 
   sorted_vector_set() : m_(Compare(), Allocator()) {}
 
@@ -966,12 +966,12 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   struct EBO;
 
  public:
-  typedef Key key_type;
-  typedef Value mapped_type;
-  typedef typename Container::value_type value_type;
-  typedef Compare key_compare;
-  typedef Allocator allocator_type;
-  typedef Container container_type;
+  using key_type = Key;
+  using mapped_type = Value;
+  using value_type = typename Container::value_type;
+  using key_compare = Compare;
+  using allocator_type = Allocator;
+  using container_type = Container;
 
   struct value_compare : private Compare {
     bool operator()(const value_type& a, const value_type& b) const {
@@ -983,18 +983,18 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     explicit value_compare(const Compare& c) : Compare(c) {}
   };
 
-  typedef typename Container::pointer pointer;
-  typedef typename Container::const_pointer const_pointer;
-  typedef typename Container::reference reference;
-  typedef typename Container::const_reference const_reference;
-  typedef typename Container::iterator iterator;
-  typedef typename Container::const_iterator const_iterator;
-  typedef typename Container::difference_type difference_type;
-  typedef typename Container::size_type size_type;
-  typedef typename Container::reverse_iterator reverse_iterator;
-  typedef typename Container::const_reverse_iterator const_reverse_iterator;
-  typedef detail::DirectMutationGuard<Container, value_compare>
-      direct_mutation_guard;
+  using pointer = typename Container::pointer;
+  using const_pointer = typename Container::const_pointer;
+  using reference = typename Container::reference;
+  using const_reference = typename Container::const_reference;
+  using iterator = typename Container::iterator;
+  using const_iterator = typename Container::const_iterator;
+  using difference_type = typename Container::difference_type;
+  using size_type = typename Container::size_type;
+  using reverse_iterator = typename Container::reverse_iterator;
+  using const_reverse_iterator = typename Container::const_reverse_iterator;
+  using direct_mutation_guard =
+      detail::DirectMutationGuard<Container, value_compare>;
 
   sorted_vector_map() noexcept(
       std::is_nothrow_constructible<EBO, value_compare, Allocator>::value)

@@ -733,8 +733,8 @@ TEST(smallVector, MoveConstructor) {
 }
 
 TEST(smallVector, NoHeap) {
-  typedef folly::small_vector<std::string, 10, policy_in_situ_only<true>>
-      Vector;
+  using Vector =
+      folly::small_vector<std::string, 10, policy_in_situ_only<true>>;
 
   Vector v;
   static_assert(v.max_size() == 10, "max_size is incorrect");
@@ -802,7 +802,7 @@ TEST(smallVector, AllHeap) {
 }
 template <int N>
 void testBasic() {
-  typedef folly::small_vector<int, N, policy_size_type<uint32_t>> Vector;
+  using Vector = folly::small_vector<int, N, policy_size_type<uint32_t>>;
 
   Vector a;
 
