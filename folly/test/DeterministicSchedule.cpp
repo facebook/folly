@@ -346,7 +346,7 @@ void DeterministicSchedule::afterThreadCreate(Sem* sem) {
   bool started = false;
   while (!started) {
     beforeSharedAccess();
-    if (active_.count(std::this_thread::get_id()) == 1) {
+    if (active_.contains(std::this_thread::get_id())) {
       started = true;
       tls.threadId = nextThreadId_++;
       assert(tls.threadId.val == threadInfoMap_.size());
@@ -384,14 +384,14 @@ void DeterministicSchedule::waitForBeforeThreadExit(std::thread& child) {
   auto& tls = TLState::get();
   assert(tls.sched == this);
   beforeSharedAccess();
-  assert(tls.sched->joins_.count(child.get_id()) == 0);
-  if (tls.sched->active_.count(child.get_id())) {
+  assert(!tls.sched->joins_.contains(child.get_id()));
+  if (tls.sched->active_.contains(child.get_id())) {
     Sem* sem = descheduleCurrentThread();
     tls.sched->joins_.insert({child.get_id(), sem});
     afterSharedAccess();
     // Wait to be scheduled by exiting child thread
     beforeSharedAccess();
-    assert(!tls.sched->active_.count(child.get_id()));
+    assert(!tls.sched->active_.contains(child.get_id()));
   }
   afterSharedAccess();
 }
@@ -454,7 +454,7 @@ static std::unordered_map<Sem*, std::unique_ptr<ThreadSyncVar>> semSyncVar;
 
 void DeterministicSchedule::post(Sem* sem) {
   beforeSharedAccess();
-  if (semSyncVar.count(sem) == 0) {
+  if (!semSyncVar.contains(sem)) {
     semSyncVar[sem] = std::make_unique<ThreadSyncVar>();
   }
   semSyncVar[sem]->release();
@@ -465,7 +465,7 @@ void DeterministicSchedule::post(Sem* sem) {
 
 bool DeterministicSchedule::tryWait(Sem* sem) {
   beforeSharedAccess();
-  if (semSyncVar.count(sem) == 0) {
+  if (!semSyncVar.contains(sem)) {
     semSyncVar[sem] = std::make_unique<ThreadSyncVar>();
   }
 
