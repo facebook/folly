@@ -4908,7 +4908,6 @@ fbcode_target(
     )],
     deps = [
         ":c_portability",
-        ":cpp_attributes",
         ":utility",
         "//folly/functional:invoke",
         "//folly/lang:c_string",
@@ -5129,7 +5128,6 @@ fbcode_target(
     headers = ["Fingerprint.h"],
     deps = [
         ":portability",
-        ":utility",
         "//folly/detail:fingerprint_polynomial",
     ],
     exported_deps = [
@@ -5185,7 +5183,6 @@ fbcode_target(
     ],
     deps = [
         ":constexpr_math",
-        ":cpp_attributes",
         "//folly/container:array",
     ],
     exported_deps = [

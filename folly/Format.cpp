@@ -19,11 +19,10 @@
 #include <cassert>
 
 #include <folly/ConstexprMath.h>
-#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/container/Array.h>
 
-#include <double-conversion/double-conversion.h>
+#include <double-conversion/double-conversion.h> // @donotremove
 
 namespace folly {
 namespace detail {

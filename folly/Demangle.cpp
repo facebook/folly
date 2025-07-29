@@ -20,13 +20,12 @@
 #include <cstring>
 
 #include <folly/CPortability.h>
-#include <folly/CppAttributes.h>
 #include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/CString.h>
 
 #if __has_include(<cxxabi.h>)
-#include <cxxabi.h>
+#include <cxxabi.h> // @donotremove
 #endif
 
 //  The headers <libiberty.h> (binutils) and <string.h> (glibc) both declare the

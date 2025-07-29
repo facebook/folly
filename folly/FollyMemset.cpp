@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <cstring>
+#include <cstring> // @donotremove
 
 #if !defined(__AVX2__) && !(defined(__linux__) && defined(__aarch64__))
 

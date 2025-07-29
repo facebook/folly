@@ -17,7 +17,6 @@
 #include <folly/Fingerprint.h>
 
 #include <folly/Portability.h>
-#include <folly/Utility.h>
 #include <folly/detail/FingerprintPolynomial.h>
 
 #include <utility>
