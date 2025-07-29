@@ -560,7 +560,7 @@ TEST(Hash, hashBool10) {
 }
 
 TEST(Hash, stdTuple) {
-  typedef std::tuple<int64_t, std::string, int32_t> tuple3;
+  using tuple3 = std::tuple<int64_t, std::string, int32_t>;
   tuple3 t(42, "foo", 1);
 
   std::unordered_map<tuple3, std::string> m;
@@ -600,7 +600,7 @@ TEST(Hash, enumType) {
 }
 
 TEST(Hash, pairFollyHash) {
-  typedef std::pair<int64_t, int32_t> pair2;
+  using pair2 = std::pair<int64_t, int32_t>;
   pair2 p(42, 1);
 
   std::unordered_map<pair2, std::string, folly::Hash> m;
@@ -609,7 +609,7 @@ TEST(Hash, pairFollyHash) {
 }
 
 TEST(Hash, tupleFollyHash) {
-  typedef std::tuple<int64_t, int32_t, int32_t> tuple3;
+  using tuple3 = std::tuple<int64_t, int32_t, int32_t>;
   tuple3 t(42, 1, 1);
 
   std::unordered_map<tuple3, std::string, folly::Hash> m;
@@ -661,7 +661,7 @@ TEST(Hash, commutativeHashCombine) {
 }
 
 TEST(Hash, stdTupleDifferentHash) {
-  typedef std::tuple<int64_t, std::string, int32_t> tuple3;
+  using tuple3 = std::tuple<int64_t, std::string, int32_t>;
   tuple3 t1(42, "foo", 1);
   tuple3 t2(9, "bar", 3);
   tuple3 t3(42, "foo", 3);
