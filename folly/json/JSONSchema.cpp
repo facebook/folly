@@ -677,7 +677,7 @@ void SchemaValidator::loadSchema(
       // This is a ref, but we haven't loaded it yet. Find where it is based on
       // the root schema.
       std::vector<std::string> parts;
-      split("/", p->stringPiece(), parts);
+      split('/', p->stringPiece(), parts);
       const auto* s = &context.schema; // First part is '#'
       for (size_t i = 1; s && i < parts.size(); ++i) {
         // Per the standard, we must replace ~1 with / and then ~0 with ~

@@ -33,7 +33,7 @@ Expected<json_pointer, json_pointer::parse_error> json_pointer::try_parse(
   }
 
   std::vector<std::string> tokens;
-  splitTo<std::string>("/", str, std::inserter(tokens, tokens.begin()));
+  splitTo<std::string>('/', str, std::inserter(tokens, tokens.begin()));
   tokens.erase(tokens.begin());
 
   for (auto& token : tokens) {
