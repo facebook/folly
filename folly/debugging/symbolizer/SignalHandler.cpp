@@ -21,7 +21,6 @@
 #include <signal.h>
 #include <sys/types.h>
 
-#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <ctime>
