@@ -65,7 +65,7 @@ std::vector<std::string> getNonTLS13CipherList(SSL* s) {
           begin(ciphers),
           end(ciphers),
           [](const std::string& cipher) {
-            return suitesFor13.count(cipher) > 0;
+            return suitesFor13.contains(cipher);
           }),
       end(ciphers));
   return ciphers;
@@ -78,7 +78,7 @@ std::vector<std::string> getTLS13Ciphersuites(SSL* s) {
           begin(ciphers),
           end(ciphers),
           [](const std::string& cipher) {
-            return suitesFor13.count(cipher) == 0;
+            return !suitesFor13.contains(cipher);
           }),
       end(ciphers));
   return ciphers;
