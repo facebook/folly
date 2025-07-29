@@ -59,10 +59,10 @@ TEST_F(SparseByteSetTest, each_random) {
   set<uint8_t> added;
   while (added.size() <= lims::max()) {
     auto c = uint8_t(dist(rng));
-    EXPECT_EQ(added.count(c), s.contains(c));
-    EXPECT_EQ(!added.count(c), s.add(c));
+    EXPECT_EQ(added.contains(c), s.contains(c));
+    EXPECT_EQ(!added.contains(c), s.add(c));
     added.insert(c);
-    EXPECT_TRUE(added.count(c)); // sanity
+    EXPECT_TRUE(added.contains(c)); // sanity
     EXPECT_TRUE(s.contains(c));
   }
 }
