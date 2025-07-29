@@ -368,10 +368,38 @@ CO_TEST_F(CancellableAsyncScopeTest, CancelSuspendedWorkCoSchedule) {
   }
   CO_ASSERT_EQ(10, scope.remaining());
 
-  // Although we are suspended while sleeping, cancelAndJoinAsync will handle
-  // this correctly.
   co_await scope.cancelAndJoinAsync();
   CO_ASSERT_EQ(0, scope.remaining());
+
+  // default scope construction; each task is added with custom cancellation
+  // token; cancellation handled by the scope
+  folly::coro::CancellableAsyncScope scope2;
+  folly::CancellationSource source;
+
+  CO_ASSERT_EQ(0, scope2.remaining());
+  for (int i = 0; i < 10; ++i) {
+    co_await scope2.co_schedule(makeTask(), source.getToken());
+  }
+  CO_ASSERT_EQ(10, scope2.remaining());
+
+  source.requestCancellation();
+  co_await scope2.cancelAndJoinAsync();
+  CO_ASSERT_EQ(0, scope2.remaining());
+
+  // default scope construction; each task is added with custom cancellation
+  // token; cancellation handled by the custom token
+  folly::coro::CancellableAsyncScope scope3;
+  source = {};
+
+  CO_ASSERT_EQ(0, scope3.remaining());
+  for (int i = 0; i < 10; ++i) {
+    co_await scope3.co_schedule(makeTask(), source.getToken());
+  }
+  CO_ASSERT_EQ(10, scope3.remaining());
+
+  source.requestCancellation();
+  co_await scope3.joinAsync();
+  CO_ASSERT_EQ(0, scope3.remaining());
 }
 
 #endif // FOLLY_HAS_COROUTINES

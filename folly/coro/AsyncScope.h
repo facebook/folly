@@ -363,12 +363,18 @@ class CancellableAsyncScope {
    * AsyncScope. The task will be provided a cancellation token to respond to
    * cancelAndJoinAsync() in the future.
    *
+   * An additional cancellation token may be passed in to apply to the
+   * awaitable; it will be merged with the internal token.
+   *
    * Note that cancellation is cooperative, your task must handle cancellation
    * in order to have any effect.
    */
   template <class T>
-  folly::coro::Task<void> co_schedule(folly::coro::Task<T>&& task) {
-    add(co_withExecutor(co_await co_current_executor, std::move(task)));
+  folly::coro::Task<void> co_schedule(
+      folly::coro::Task<T>&& task,
+      std::optional<CancellationToken> token = std::nullopt) {
+    add(co_withExecutor(co_await co_current_executor, std::move(task)),
+        std::move(token));
   }
 
   /**
