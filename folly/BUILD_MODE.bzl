@@ -51,6 +51,7 @@ _extra_gcc_flags = [
 _extra_asan_options = {
     "detect_leaks": "1",
     "detect_odr_violation": "2",
+    "handle_segv": "1",
 }
 
 _modes = extend_build_modes(
