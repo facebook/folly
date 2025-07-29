@@ -34,11 +34,29 @@ struct StatefulClass {
   int i;
 };
 
+struct SafeStatefulClass {
+  int i;
+  template <safe_alias>
+  using folly_private_safe_alias_t =
+      // The least-safe marking that `member_task` will accept
+      safe_alias_constant<safe_alias::after_cleanup_ref>;
+};
+
+struct UnsafeStatefulClass {
+  int i;
+  template <safe_alias>
+  using folly_private_safe_alias_t =
+      // The most-safe marking that `member_task` won't accept
+      safe_alias_constant<safe_alias::shared_cleanup>;
+};
+
 TEST(SafeTask, isSafeTaskValid) {
   using folly::coro::detail::is_safe_task_valid;
   constexpr auto kVal = safe_alias::maybe_value;
   constexpr auto kPost = safe_alias::co_cleanup_safe_ref;
   constexpr auto kPre = safe_alias::after_cleanup_ref;
+  constexpr auto kMember = safe_alias::unsafe_member_internal;
+  constexpr auto kClosure = safe_alias::unsafe_closure_internal;
 
   // Without an implicit object parameter
   static_assert(is_safe_task_valid<kVal, int, int>);
@@ -52,6 +70,33 @@ TEST(SafeTask, isSafeTaskValid) {
   static_assert(is_safe_task_valid<kVal, int, const StatelessClass&, int>);
   static_assert(!is_safe_task_valid<kVal, int, StatefulClass&, int>);
   static_assert(!is_safe_task_valid<kVal, int, const StatefulClass&, int>);
+
+  // Unlike `closure_task`, `member_task` tolerates stateful classes iff their
+  // safety is explicitly marked.
+  // (1) Stateless
+  static_assert(is_safe_task_valid<kClosure, int, StatelessClass&, int>);
+  static_assert(is_safe_task_valid<kClosure, int, const StatelessClass&, int>);
+  static_assert(is_safe_task_valid<kMember, int, StatelessClass&, int>);
+  static_assert(is_safe_task_valid<kMember, int, const StatelessClass&, int>);
+  // (2) Stateful, unmarked
+  static_assert(!is_safe_task_valid<kClosure, int, StatefulClass&, int>);
+  static_assert(!is_safe_task_valid<kClosure, int, const StatefulClass&, int>);
+  static_assert(!is_safe_task_valid<kMember, int, StatefulClass&, int>);
+  static_assert(!is_safe_task_valid<kMember, int, const StatefulClass&, int>);
+  // (3) Stateful, marked safe enough
+  static_assert(!is_safe_task_valid<kClosure, int, SafeStatefulClass&, int>);
+  static_assert(
+      !is_safe_task_valid<kClosure, int, const SafeStatefulClass&, int>);
+  static_assert(is_safe_task_valid<kMember, int, SafeStatefulClass&, int>);
+  static_assert(
+      is_safe_task_valid<kMember, int, const SafeStatefulClass&, int>);
+  // (4) Stateful, marked not safe enough
+  static_assert(!is_safe_task_valid<kClosure, int, UnsafeStatefulClass&, int>);
+  static_assert(
+      !is_safe_task_valid<kClosure, int, const UnsafeStatefulClass&, int>);
+  static_assert(!is_safe_task_valid<kMember, int, UnsafeStatefulClass&, int>);
+  static_assert(
+      !is_safe_task_valid<kMember, int, const UnsafeStatefulClass&, int>);
 
   // With an implicit "lambda" object parameter
   auto okFn = [](int x) -> value_task<int> { co_return x; };

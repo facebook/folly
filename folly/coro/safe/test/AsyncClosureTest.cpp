@@ -690,55 +690,13 @@ TEST(AsyncClosure, nonSafeTaskIsNotAwaited) {
   EXPECT_FALSE(awaited);
 }
 
-// This test explores the anti-pattern of `async_closure` calling
-// `FOLLY_INVOKE_MEMBER(operator())` on a lambda.  The behavior is analogous to
-// `co_invoke`, in that it gives you a task that owns both the `lambda` and its
-// arguments.  It also has the usual `async_closure` safety checks on the
-// arguments.  While tempting, it would be a BAD IDEA to add this syntax sugar:
-//   invoke_async_closure(
-//       bind::args{arg1, arg2},
-//       [&z](auto a1, auto a2) -> member_task<T> {...})
-// Why not add `invoke_async_closure` as above?  Simply put, this is a
-// "less-safe" pattern, in that it makes it easy for users to create `safe_task`
-// instances that hide unsafe reference captures.  Prefer to tell people to use
-// `async_now_closure(bind::args{a1, a2}, ...)` with `Task`/`now_task`
-// lambdas.
-CO_TEST(AsyncClosure, memberTaskLambda) {
-  int z = 1300; // Goal: ASAN failures if the lambda is destroyed
-  auto lambda = [&z](auto x, auto y) -> member_task<int> {
-    co_return x + *y + z;
-  };
-  // BAD: To be coherent with regular `folly/coro/safe` safety guarantees,
-  // the `t` below should be emitted as an immovable `now_task`.  Otherwise,
-  // one can imagine lifetime errors involving the `&z` capture.
-  //
-  // Unfortunately, we can't fix this in C++20.  This is an instance of
-  // "aliasing hidden in structures" `SafeAlias.h` problem -- there's no way
-  // for us to know that the lambda contains unsafe members on the inside.
-  //
-  // Won't compile without `std::move`, the assert is:
-  //   ... has to be an r-value, so that the closure can take ownership ...
-  // Won't compile without `force_outer_coro`, the assert is:
-  //   ... you want the `member_task` closure to own the object ...
-  auto t = async_closure<ForceOuter>(
-      bind::args{bind::capture(std::move(lambda)), 30, bind::capture(7)},
-      FOLLY_INVOKE_MEMBER(operator()));
-  EXPECT_EQ(1337, co_await std::move(t));
-  EXPECT_EQ(
-      1337,
-      co_await async_closure<ForceOuter>(
-          bind::args{
-              bind::capture([&z](auto x, auto y) -> member_task<int> {
-                co_return x + *y + z;
-              }),
-              30,
-              bind::capture(7)},
-          FOLLY_INVOKE_MEMBER(operator())));
-}
-
 struct HasMemberTask {
   int z = 1300; // Goal: ASAN failures if the class is destroyed
   member_task<int> task(auto x, auto y) { co_return x + *y + z; }
+  // An explicit safety annotation is required to use `member_task`
+  template <safe_alias>
+  using folly_private_safe_alias_t =
+      safe_alias_constant<safe_alias::maybe_value>;
 };
 
 CO_TEST(AsyncClosure, memberTask) {

@@ -26,21 +26,35 @@ namespace folly::coro {
 
 /// Why is `SafeTask.h` useful?
 ///
+/// `now_task` from `NowTask.h` should be your default.  This immovable task
+/// should always be awaited in the full-expression that created it,
+/// eliminating a most classes of lifetime-safety bugs.
+///
+/// If you need a MOVABLE task with compile-time safety checks, read on.
+///
 /// Typically, you will not use `safe_task` directly.  Instead, choose one of
 /// the type-aliases below, following `APIBestPractices.md` guidance.  Briefly:
-///   - `value_task`: Use if your coro only takes value-semantic args.
-///   - `member_task`: Use for all non-static member functions.  Can be
-///     awaited immediately (like `now_task`), or wrapped in an
-///     `async_closure` to support less-structured concurrency -- including
-///     scheduling on a background scope belonging to the object.
-///   - `closure_task`: Use if your coro is called via `async_closure`.
-///   - `co_cleanup_safe_task`: Use for tasks that can be directly scheduled on
-///     a `safe_async_scope`.
-///   - (not in `SafeTask.h`) `now_task`: All other coros.  This requires the
-///     task to always be awaited in the expression that created it,
-///     eliminating a variety of common dangling reference bugs.
-///   - `auto_safe_task`: Generic coros where you want the argument & return
-///     types to automatically branch between a `now_task` and a `safe_task`.
+///
+///   `value_task`:
+///   Use if your coro only takes value-semantic args.
+///
+///   `member_task`:
+///   Use for non-static member functions.  Can be awaited immediately (like
+///   `now_task`), or wrapped in an `async_closure` to support less-structured
+///   concurrency -- including scheduling on a background scope belonging to
+///   the object.  IMPORTANT: adding a `member_task` to a class requires it to
+///   have an **explicit** `folly/lang/SafeAlias.h` annotation.
+///
+///   `closure_task`:
+///   Use if your coro is called via `async_closure`.  Outside of closures,
+///   this behaves like `now_task`.
+///
+///   `co_cleanup_safe_task`:
+///   Use for tasks that can be directly scheduled on a `safe_async_scope`.
+///
+///   `auto_safe_task`:
+///   Generic coros where you want the argument & return types to automatically
+///   choose between a `now_task` and a `safe_task`.
 ///
 /// `safe_task` is a thin wrapper around `folly::coro::Task` that uses
 /// `safe_alias_of` to enforce some compile-time guarantees:
@@ -64,16 +78,12 @@ using value_task = safe_task<safe_alias::maybe_value, T>;
 template <typename T = void>
 using co_cleanup_safe_task = safe_task<safe_alias::co_cleanup_safe_ref, T>;
 
-// Use `closure_task` as the inner coro type for tasks meant to ALWAYS be
-// wrapped in an `async_closure`.
+// Use `closure_task` as the inner coro type for tasks meant to be wrapped in
+// an `async_closure` or `async_now_closure`.  The closure code will measure
+// the safety of its args, and return a correct `safe_task`.
 //
-// Outside of a closure, a `closure_task` is immovable.  If you are wanting to
-// move a `closure_task`, construct it via an async closure, and you'll get back
-// a `safe_task` with safety measurements reflecting the safety of its args.
-//
-// If your use-case calls for a `safe_task` that is sometimes wrapped in a
-// closure, and sometimes is constructed without a closure, you might add a
-// `min_closure_safe_task` type alias for `closure_min_arg_safety`.
+// Without a surrounding closure call, a `closure_task` is immovable, and works
+// like `now_task`, but with some restrictions on its arg & return types.
 //
 // Immovability rationale: `closure_task` is implemented as a `safe_task` for
 // reasons explained in the next paragraph.  But, its safety contract is weaker
@@ -87,7 +97,7 @@ using co_cleanup_safe_task = safe_task<safe_alias::co_cleanup_safe_ref, T>;
 // `safe_task` without the inner coro being a `safe_task` -- otherwise it could
 // not guarantee that none of the args are taken by reference.  Conveniently,
 // `safe_task` also checks the return type is safe, and the coro's callable is
-// stateless, so `async_closure` can skip those checks.
+// stateless, so `async_closure` can rely on those checks.
 //
 // This `closure_task` implementation uses a `safe_alias` level safer than
 // `unsafe` to get all of the above `SafeAlias` checks.  The level also has
@@ -102,27 +112,33 @@ using co_cleanup_safe_task = safe_task<safe_alias::co_cleanup_safe_ref, T>;
 template <typename T = void>
 using closure_task = safe_task<safe_alias::unsafe_closure_internal, T>;
 
-// A `member_task` is a hybrid of `safe_task` and `now_task`, intended to make
-// non-static member coroutines safer.
-//   - It **is** a `safe_task`, thereby forbidding `safe_alias::unsafe`
-//     arguments, and unsafe return types.  However, since the callable of
-//     member coros is inherently stateful, it is special-cased to omit the
-//     safety checks on the implicit object parameter.
-//   - It is immovable like `now_task`, which makes typical "structured
-//     concurrency" usage of coroutines quite safe (see `NowTask.h`).
-//     `member_task` needs this, since members take `this`, whose lifetime is
-//     unknown -- i.e.  outside of async closure usage, a `member_task` is just
-//     a `now_task`.
+// A `member_task` is nearly identical to `closure_task`, except that it's
+// usable with non-static member coroutines on **stateful** classes.
+//   - In `async_closure`, it behaves like `closure_task`, with one
+//     extra constraint -- its implicit object parameter must refer to a class
+//     with an explicitly annotated `safe_alias_of` (see `SafeAlias.h`).
+//   - Without `async_closure`, it is immediately-awaitable, like `now_task`.
+//   - Since it is also a `safe_task`, it forbids `safe_alias::unsafe`
+//     arguments, and unsafe return types.
 //
-// For more complex usage (background tasks, async RAII), `member_task` has a
-// special calling convention in `AsyncClosure.h`:
+// To construct `async_closure`s with `member_task`s (for background or scope
+// tasks), use this special calling convention:
 //
 //   async_closure(bind::args{obj, args...}, FOLLY_INVOKE_MEMBER(memberFnName))
 //
-// Like any async closure, this safety-checks the now-explicit object param,
-// and produces a movable `safe_task` of the safety level determined from the
-// arguments.  This integration lets us safely schedule member coros on
-// `safe_async_scope`, pass `co_cleanup` args into such coros, etc.
+// This closure will safety-check the now-explicit object param, and produce a
+// movable `safe_task` of the safety level determined by the arguments.  This
+// integration lets us safely schedule member coros on `safe_async_scope`, pass
+// `co_cleanup` args into such coros, etc.
+//
+// Design note: Fundamentally, the reason that we have `member_task`, and
+// cannot just use `closure_task` for class members, is that C++20 does not let
+// a coroutine function distinguish (i) an "implicit object param" from (ii) a
+// regular lvalue reference.  For (i), `member_task` requires `async_closure`
+// to invoke it with `FOLLY_INVOKE_MEMBER`, so in this case we just need the
+// first arg to be a reference-to-a-safe-object.  In case (ii), such as
+// `closure_task`, a reference-to-a-safe-object is definitely unsafe, whereas a
+// reference to a stateless/empty object is safe enough.
 template <typename T>
 using member_task = safe_task<safe_alias::unsafe_member_internal, T>;
 
@@ -190,10 +206,13 @@ template <safe_alias ArgSafety, typename RetT>
 inline constexpr bool is_safe_task_valid<ArgSafety, RetT> =
     safe_task_ret_and_args<ArgSafety, RetT>;
 // Inspect the first argument, which can be an implicit object parameter, to
-// allow stateless callables (like lambdas), but to prohibit stateful
-// callables (these can contain unsafe aliasing in their state, which we
-// can't inspect).  If you need to make `safe_task`s from a stateful object,
-// pass `capture<Ref>` to a static func, and check out `AsyncObject.h`.
+// allow stateless callables (like lambdas), but to prohibit stateful callables
+// (these can contain unsafe aliasing in their state, which we can't inspect
+// automatically).  If you need to make `safe_task`s from a stateful object,
+// ideas include:
+//   - Pass a `capture<YourClass&>` to a static member `YourClass::func`
+//   - Explicitly mark `safe_alias_of<YourClass>` and use `member_task`.
+//   - Future: Check out `AsyncObject.h`.
 //
 // How this works: With >= 1 args in the pack, the `First` argument
 // **could** be an implicit object parameter.  We don't know if it is, but
@@ -208,17 +227,44 @@ inline constexpr bool is_safe_task_valid<ArgSafety, RetT> =
 // pass a stateless class by reference, if it's the first param.  This
 // should be harmless in practice.
 //
-// FIXME: It should (?) be fine to simplify this scenario by having
-// `SafeAlias` mark as "safe" all references-to-empty-classes, and all
-// function pointers.  Then, only a shortened comment would survive.
-//
 // For `member_task`, `First` is assumed to be the implicit object parameter.
-// This cannot be safe, so we don't check it, and instead rely on
-// `member_task`'s usage restrictions (see also `safe_task_base_trait`).
+// We cannot deduce its safety, so we use `strict_safe_alias_of_v` to force the
+// user to explicitly mark this class -- incidentally, this precludes
+// `member_task` lambdas.  It is safe for `member_task` to treat
+// a ref-to-a-safe-object as safe, since it is usable only:
+//   - As a free coro, where it acts like a restricted `now_task`
+//   - Via `async_closure`, which enforces a `FOLLY_INVOKE_MEMBER` calling
+//     convention that either takes a safe capture-ref, or makes the closure
+//     take ownership of the closure.
+// We MUST NOT apply the same treatment to `closure_task`, since it cannot
+// ensure that the ref itself is safe (even if the referenced type is).
 template <safe_alias ArgSafety, typename RetT, typename First, typename... Args>
 inline constexpr bool is_safe_task_valid<ArgSafety, RetT, First, Args...> =
-    ((ArgSafety == safe_alias::unsafe_member_internal) ||
-     (std::is_lvalue_reference_v<First> &&
+    (std::is_lvalue_reference_v<First> &&
+     ((ArgSafety == safe_alias::unsafe_member_internal &&
+       strict_safe_alias_of_v<std::remove_reference_t<First>> >=
+           // This `std::max` requires the implicit object parameter of
+           // `member_task`s to have safety `> shared_cleanup`.  In effect,
+           // this prohibits `member_task`s from being added to classes that
+           // store `co_cleanup_capture` refs, or (equivalently) to
+           // `async_object`s.  This tradeoff is required so that
+           // `async_now_closure()` of `member_task`s is not ALWAYS forced to
+           // apply shared-cleanup downgrades to its arguments.  The details
+           // are in `async_closure_safeties_and_bindings`.  If you find
+           // yourself blocked by this restriction, my best idea is:
+           // (1) Add another `co_cleanup_member_task` (better name TBD), with
+           //     a new safety level `< unsafe_closure_internal`.
+           // (2) Scan all mentions of `unsafe_closure_internal` to make sure
+           //     nothing assumes it is the lowest "safe" level. Importantly,
+           //     the `bind_captures_to_closure` logic related to
+           //     shared-cleanup in `async_now_closure` would continue to
+           //     test for `unsafe_closure_internal`, NOT the new level.
+           // (3) Special-case `co_cleanup_member_task` in this check to
+           //     let its implicit object param be `<= shared_cleanup`.
+           std::max(
+               ArgSafety,
+               safe_alias{
+                   to_underlying(safe_alias::closure_min_arg_safety) + 1})) ||
       is_stateless_class_or_func<std::remove_reference_t<First>>))
     ? safe_task_ret_and_args<ArgSafety, RetT, Args...>
     : safe_task_ret_and_args<ArgSafety, RetT, First, Args...>;
@@ -242,9 +288,9 @@ class safe_task_promise final
   // `returnsVoid` in `SafeTaskTest.cpp`.
   //
   // This is a no-op wrapper.  It needs to exist because `is_safe_task_valid`
-  // requires the coroutine function to be a complete type before checking
-  // if it's a stateless callable, and the easiest place to do that is in a
-  // class function that's guaranteed to be instantiated, such as this.
+  // requires the coroutine function to be a complete type before checking if
+  // it's a stateless callable in `is_safe_task_valid`.  This is a good place
+  // to do this, since this function is guaranteed to be instantiated.
   safe_task<ArgSafety, T> get_return_object() noexcept {
     // If your build failed here, your `safe_task<>` coro declaration is
     // invalid.  Specific causes for this failure:
@@ -255,7 +301,8 @@ class safe_task_promise final
     static_assert(
         detail::is_safe_task_valid<ArgSafety, T, Args...>,
         "Bad safe_task: check for unsafe aliasing in arguments or return "
-        "type; also ensure your callable is stateless.");
+        "type; also ensure your callable is stateless (or, in the case of "
+        "`member_task` -- explicitly specifies `safe_alias_of`).");
     return TaskPromiseWrapper<
         T,
         safe_task<ArgSafety, T>,
