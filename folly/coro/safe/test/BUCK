@@ -41,17 +41,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "safe_alias_test",
-    srcs = ["SafeAliasTest.cpp"],
-    deps = [
-        "//folly/detail:tuple",
-        "//folly/lang:safe_alias",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "safe_task_test",
     srcs = ["SafeTaskTest.cpp"],
     deps = [

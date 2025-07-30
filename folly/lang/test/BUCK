@@ -185,6 +185,17 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
+    name = "safe_alias_test",
+    srcs = ["SafeAliasTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/detail:tuple",
+        "//xplat/folly/lang:safe_alias",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
     name = "safe_assert_test",
     srcs = ["SafeAssertTest.cpp"],
     raw_headers = [],
@@ -474,6 +485,17 @@ fbcode_target(
     headers = [],
     deps = [
         "//folly/lang:rvalue_reference_wrapper",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "safe_alias_test",
+    srcs = ["SafeAliasTest.cpp"],
+    deps = [
+        "//folly/detail:tuple",
+        "//folly/lang:safe_alias",
         "//folly/portability:gtest",
     ],
 )
