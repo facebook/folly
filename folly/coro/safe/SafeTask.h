@@ -28,7 +28,7 @@ namespace folly::coro {
 ///
 /// `now_task` from `NowTask.h` should be your default.  This immovable task
 /// should always be awaited in the full-expression that created it,
-/// eliminating a most classes of lifetime-safety bugs.
+/// eliminating most classes of lifetime-safety bugs.
 ///
 /// If you need a MOVABLE task with compile-time safety checks, read on.
 ///

@@ -74,7 +74,7 @@
 ///   * "owned capture" or just "own": Make a new `capture` whose storage (and
 ///     cleanup) belongs to this closure.
 ///       - These correspond to `async_closure_{inner,outer}_stored_arg`.
-///       - If the closure is "shared cleanup", the safety of the new capture
+///       - If the closure is shared-cleanup, the safety of the new capture
 ///         is downgraded to `after_cleanup_ref`.
 ///       - The inner task sees a `capture` ref for closures with an outer
 ///         coro, and a `capture` value otherwise.
@@ -232,7 +232,7 @@ struct async_closure_scope_self_ref_hack {
   using storage_type = Storage;
 
  protected:
-  template <size_t, typename Bs>
+  template <size_t, typename Bs, bool>
   friend decltype(auto) async_closure_bind_inner_coro_arg(
       capture_private_t, Bs&, auto&);
   template <typename, size_t>
@@ -600,7 +600,7 @@ constexpr bool capture_needs_outer_coro() {
 
 struct async_closure_bindings_cfg {
   bool force_outer_coro;
-  bool force_shared_cleanup;
+  bool emit_now_task;
   bool is_invoke_member;
 };
 
@@ -669,15 +669,30 @@ struct async_closure_invoke_member_bindings {
   }
 };
 
+template <safe_alias ParentView, bool ArgsForceSharedCleanup>
+struct async_closure_arg_safety {
+  static inline constexpr auto parent_view = ParentView;
+  static inline constexpr auto args_force_shared_cleanup =
+      ArgsForceSharedCleanup;
+};
+
 // Converts forwarded arguments to bindings, figures out the storage policy
 // (outer coro?, shared cleanup?), and applies `transform_bindings` to compute
 // the final storage & binding outcome for each argument.  The caller should
 // create an outer coro iff the resulting `tuple` contains at least one
 // `async_closure_outer_stored_arg`.
 //
-// Returns a pair:
-//   - vtag<safe_alias> computed as in `vtag_safety_of_async_closure_arg()`
-//   - transformed bindings: binding | async_closure_{inner,outer}_stored_arg
+// Returns a 3-tuple:
+// [0] `async_closure_arg_safety`, see `vtag_safety_of_async_closure_arg()`
+// [1] A tuple `transform_bindings()` outputs, containing:
+//       binding OR async_closure_{inner,outer}_stored_arg, ...
+//     This tuple is always used by `bind_captures_to_closure`, at least for
+//     type computations, if not for creating the actual inner coro.  It is
+//     computed as if the closure's shared-cleanup behavior were fully
+//     determined by the bound args we see here.
+// [2] Either `nullptr`, OR a tuple of `transform_bindings()` outputs identical
+//     to [1], except that shared-cleanup is force-enabled.  This tuple is only
+//     computed for the cases when `bind_captures_to_closure` would use it.
 //
 // NB: It's fine for this implementation detail to take `BoundArgs` by-ref
 // because `async_closure` & friends took them by value.
@@ -687,18 +702,17 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
       typename BoundArgs::binding_list_t{}));
 
   auto tup = static_cast<BoundArgs&&>(bargs).unsafe_tuple_to_bind();
-  auto make_result_tuple =
-      [&]<binding_helper_cfg HelperCfg>(vtag_t<HelperCfg>) {
-        return [&]<size_t... Is>(std::index_sequence<Is...>) {
-          return lite_tuple::tuple{[&]() {
-            using Binding = type_list_element_t<Is, Bindings>;
-            using T = std::tuple_element_t<Is, decltype(tup)>;
-            return capture_binding_helper<Binding, HelperCfg, Is>::
-                transform_binding(bind_wrapper_t<T>{
-                    .t_ = static_cast<T&&>(lite_tuple::get<Is>(tup))});
-          }()...};
-        }(std::make_index_sequence<type_list_size_v<Bindings>>{});
-      };
+  auto make_bindings = [&]<binding_helper_cfg HelperCfg>(vtag_t<HelperCfg>) {
+    return [&]<size_t... Is>(std::index_sequence<Is...>) {
+      return lite_tuple::tuple{[&]() {
+        using Binding = type_list_element_t<Is, Bindings>;
+        using T = std::tuple_element_t<Is, decltype(tup)>;
+        return capture_binding_helper<Binding, HelperCfg, Is>::
+            transform_binding(bind_wrapper_t<T>{
+                .t_ = static_cast<T&&>(lite_tuple::get<Is>(tup))});
+      }()...};
+    }(std::make_index_sequence<type_list_size_v<Bindings>>{});
+  };
 
   // Future: If there are many `bind::in_place` arguments (which require
   // `capture_heap`), it may be more efficient to auto-select an outer coro,
@@ -725,14 +739,14 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   // either `after_cleanup_ref` or `co_cleanup_safe_ref` safety.
   using shared_cleanup_transformed_binding_types = type_list_concat_t<
       tag_t,
-      decltype(make_result_tuple(
+      decltype(make_bindings(
           vtag<binding_helper_cfg{
               .is_shared_cleanup_closure = true,
               .has_outer_coro = has_outer_coro,
               .in_safety_measurement_pass = true}>))>;
-
-  // Why do we evaluate arg safety with `ParentViewOfSafety == true` here,
-  // and with `false` in the returned `vtag_safety_of_async_closure_args`?
+  // The template args store two views of the safety of the closure's args:
+  //   - As seen by the parent, where `ParentViewOfSafety == true`,
+  //   - As used for internal safety computations.
   //
   // This toggle supports two usage scenarios:
   //
@@ -741,7 +755,7 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   //    - `unsafe` for parent --  Since these are raw references from the
   //      parent's scope, ensure they're only allowed in `async_now_closure`s.
   //    - Ignored by child -- Simultaneously, we don't want the internal coro
-  //      to be subject to "shared cleanup" downgrades.  Doing that would,
+  //      to be subject to shared-cleanup downgrades.  Doing that would,
   //      e.g., break the useful pattern of an on-closure scope collecting
   //      results on a parent collector passed via capture-by-reference.
   //
@@ -764,36 +778,95 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   //     of closures, each calling `spawn_self_closure()` to make the next.
   //     `safe_async_scope` awaits these concurrently, so they must not take
   //     dependencies on each other's owned captures.
-  constexpr auto internal_arg_min_safety = vtag_least_safe_alias(
-      vtag_safety_of_async_closure_args<
-          /*ParentViewOfSafety*/ false,
-          shared_cleanup_transformed_binding_types>());
+  async_closure_arg_safety<
+      // parent_view=
+      vtag_least_safe_alias(vtag_safety_of_async_closure_args<
+                            /*ParentViewOfSafety*/ true,
+                            shared_cleanup_transformed_binding_types>()),
+      // args_force_shared_cleanup=
+      (safe_alias::shared_cleanup >=
+       vtag_least_safe_alias(vtag_safety_of_async_closure_args<
+                             /*ParentViewOfSafety*/ false,
+                             shared_cleanup_transformed_binding_types>()))>
+      arg_min_safety;
 
-  // Compute the `after_cleanup_` downgrade/upgrade behavior for the closure.
-  // Two possible scenarios:
-  //  - An `async_closure` takes a `safe_task` and emits a `safe_task`.  Then
-  //    we'll have `==` iff we got a `co_cleanup_capture` ref from a parent.
-  //  - An `async_closure` taking an unconstrained task (may have by-ref
-  //    args, ref captures), and emitting a `now_task`.  In this case, the arg
-  //    safety doesn't actually matter -- the caller must always
-  //    `force_shared_cleanup` simply because the lambda callable might
-  //    capture a `co_cleanup` ref inside it.
+  // How this async-closure will store and/or bind its arguments depends on
+  // whether we have to force shared-cleanup downgrades for its args.
+  //
+  // This can happen in two ways:
+  //
+  // (1) `async_closure` takes a `safe_task` and emits a `safe_task`.  Just
+  //     above, we computed` `args_force_shared_cleanup`, which says that the
+  //     closure needs shared-cleanup iff a parent passes a
+  //     `co_cleanup_capture` ref.
   static_assert(
       safe_alias::closure_min_arg_safety == safe_alias::shared_cleanup);
-  constexpr bool is_shared_cleanup = Cfg.force_shared_cleanup ||
-      (safe_alias::shared_cleanup >= internal_arg_min_safety);
+
+  // (2) `async_now_closure` always emits a `now_task`, which is meant
+  //     to be usable even with unsafe coros & arguments.
+  //
+  //     However, we only need shared-cleanup if the inner-coro COULD access an
+  //     ref of safety <= `shared_cleanup`.  Above, we tested the explicit
+  //     inputs via `args_force_shared_cleanup`, but that misses the "implicit
+  //     object parameter" (aka `this`) of the coro callable.
+  //
+  //     For example, `async_now_closure(..., [&]() -> now_task<> { ...  })`
+  //     compiles, and can access potentially-unsafe refs via the lambda's
+  //     `this` pointer, which gets access to raw refs into the outer scope.
+  //
+  //     Since `make_inner_coro` is evaluated synchronously, it is allowed to
+  //     be a "coro wrapper", i.e. a plain lambda with unsafe captures that
+  //     calls an actual coroutine function.  We only care about the safety of
+  //     the resulting coro.  Luckily, `is_safe_task_valid` from `SafeTask.h`
+  //     constrains the safety of the implicit object parameter.  Specifically,
+  //     we know that a `safe_task` with `ArgSafety >= unsafe_internal_closure`
+  //     requires[*] the implicit object parameter to have safety `>
+  //     shared_cleanup` (yes, greater than!), which is exactly our goal here.
+  //
+  //     To sum up: Above, we saw that if `async_now_closure`'s inner coro has
+  //     safety `>= unsafe_closure_internal`, then it should not have access to
+  //     any refs of safety `<= shared_cleanup`.
+  //
+  //     HOWEVER, here, in `async_closure_safeties_and_bindings`, we do not yet
+  //     know the inner coro result type, and cannot test its safety.  In fact,
+  //     we need to synthesize the argument types for `make_inner_coro` just to
+  //     resolve the right overload.  As a workaround, the returned 3-tuple
+  //     provides bindings for BOTH options -- by tuple index:
+  //
+  //     [1] `task_forces_shared_cleanup == false`.  Use these arg bindings,
+  //         made with `.is_shared_cleanup == args_force_shared_cleanup`, to
+  //         compute the inner coro type.  Use them to actually make the inner
+  //         coro ONLY IF it has safety `>= unsafe_closure_internal`.
+  //
+  //     [2] `task_forces_shared_cleanup == true`.  These arg bindings are
+  //         computed optionally (condition below), by setting
+  //         `.is_shared_cleanup == true`.  They will be used to make a
+  //         fallback inner coro if the plan from [1] didn't work.  We force
+  //         shared cleanup because, per above, the unsafe inner coro may have
+  //         access to unsafe refs.
+  auto maybe_make_bindings_for =
+      [&]<bool task_forces_shared_cleanup>(vtag_t<task_forces_shared_cleanup>) {
+        if constexpr (
+            // Always run `make_bindings` for index 1 of the returned `tuple`.
+            !task_forces_shared_cleanup ||
+            // Only run `make_bindings` for index 2 IF it may get used.
+            (Cfg.emit_now_task && !arg_min_safety.args_force_shared_cleanup)) {
+          return make_bindings(
+              vtag<binding_helper_cfg{
+                  .is_shared_cleanup_closure = task_forces_shared_cleanup ||
+                      arg_min_safety.args_force_shared_cleanup,
+                  .has_outer_coro = has_outer_coro,
+                  .in_safety_measurement_pass = false}>);
+        } else {
+          return nullptr; // result[2] will not be used
+        }
+      };
 
   return lite_tuple::tuple{
-      // Safety of the closure's arguments from the parent's perspective
-      vtag_safety_of_async_closure_args<
-          /*ParentViewOfSafety*/ true,
-          shared_cleanup_transformed_binding_types>(),
-      // How the child closure should store and/or bind its arguments
-      make_result_tuple(
-          vtag<binding_helper_cfg{
-              .is_shared_cleanup_closure = is_shared_cleanup,
-              .has_outer_coro = has_outer_coro,
-              .in_safety_measurement_pass = false}>)};
+      arg_min_safety,
+      // The doc above `maybe_make_bindings_for` explains how these are used.
+      maybe_make_bindings_for(vtag</*task_forces_shared_cleanup*/ false>),
+      maybe_make_bindings_for(vtag</*task_forces_shared_cleanup*/ true>)};
 }
 
 } // namespace folly::coro::detail

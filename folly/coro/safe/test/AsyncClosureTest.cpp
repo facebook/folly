@@ -601,7 +601,7 @@ CO_TEST(AsyncClosure, cleanupAfterError) {
 
   std::optional<exception_wrapper> optCleanErr;
   auto res = co_await co_awaitTry(async_closure(
-      bind::capture(bind::in_place<HasCleanup>(&optCleanErr)),
+      bind::capture_in_place<HasCleanup>(&optCleanErr),
       [](auto) -> closure_task<void> {
         co_yield folly::coro::co_error{MagicError{111}};
       }));
@@ -742,18 +742,38 @@ now_task<int> intAsyncNowClosure(auto&& bargs, auto&& fn) {
 }
 
 template <typename T>
-now_task<void> check_now_closure_no_outer_coro() {
+now_task<void> check_now_closure_no_outer_coro_unsafe_task() {
   int b1 = 300, c = 30, d = 7;
   // The coro take raw references & use lambda captures
-  int res = co_await intAsyncNowClosure(
+  int res1 = co_await intAsyncNowClosure(
       bind::args{bind::capture(1000), b1}, [&c, d](auto a, int& b2) -> T {
-        static_assert(
-            std::is_same_v< // No ref upgrade
-                after_cleanup_capture<int>,
-                decltype(a)>);
+        // No ref upgrade, since `T` is unsafe (`Task` or `now_task`)
+        static_assert(std::is_same_v<after_cleanup_capture<int>, decltype(a)>);
         co_return *a + b2 + c + d;
       });
-  EXPECT_EQ(1337, res);
+  EXPECT_EQ(1337, res1);
+
+  // Same "no ref upgrade" test, but with a concrete arg type.
+  int res2 = co_await intAsyncNowClosure(
+      bind::capture(42),
+      [](after_cleanup_capture<int> a) -> T { co_return *a; });
+  EXPECT_EQ(42, res2);
+
+  // Same "no ref upgrade" test, but with a parent ref forcing shared-cleanup
+  std::optional<exception_wrapper> optCleanErr;
+  int res3 = co_await async_now_closure(
+      bind::capture_in_place<HasCleanup>(&optCleanErr),
+      [](auto cleanup) -> closure_task<int> {
+        co_return co_await intAsyncNowClosure(
+            bind::args{cleanup, bind::capture(5)},
+            [](auto, auto a) -> closure_task<int> {
+              // No ref upgrade despite safe task, due to `cleanup` arg.
+              static_assert(
+                  std::is_same_v<after_cleanup_capture<int>, decltype(a)>);
+              co_return *a;
+            });
+      });
+  EXPECT_EQ(5, res3);
 }
 
 // The plumbing for an outer-coro closure is different, so test it too.
@@ -767,8 +787,8 @@ now_task<void> check_now_closure_with_outer_coro() {
 }
 
 CO_TEST(AsyncClosure, nowClosure) {
-  co_await check_now_closure_no_outer_coro<Task<int>>();
-  co_await check_now_closure_no_outer_coro<now_task<int>>();
+  co_await check_now_closure_no_outer_coro_unsafe_task<Task<int>>();
+  co_await check_now_closure_no_outer_coro_unsafe_task<now_task<int>>();
 
   co_await check_now_closure_with_outer_coro<Task<int>>();
   co_await check_now_closure_with_outer_coro<now_task<int>>();
@@ -778,15 +798,19 @@ CO_TEST(AsyncClosure, nowClosure) {
 
   co_await check_now_closure_with_outer_coro<closure_task<int>>();
 
-  int closureRes = co_await intAsyncNowClosure(
-      bind::capture(7), [](auto n) -> closure_task<int> {
-        static_assert(
-            std::is_same_v< // No ref upgrade
-                after_cleanup_capture<int>,
-                decltype(n)>);
-        co_return *n;
-      });
-  EXPECT_EQ(7, closureRes);
+  auto makeNowClosure =
+      []<typename TaskT, typename CaptureRef>(tag_t<TaskT, CaptureRef>) {
+        return intAsyncNowClosure(bind::capture(7), [](auto n) -> TaskT {
+          static_assert(std::is_same_v<CaptureRef, decltype(n)>);
+          co_return *n;
+        });
+      };
+  // Safe `closure_task` -- safe to do a ref upgrade, absent `co_cleanup` args
+  // from the parent.
+  EXPECT_EQ(7, co_await makeNowClosure(tag<closure_task<int>, capture<int>>));
+  EXPECT_EQ( // Unsafe `Task` -- no ref upgrade
+      7,
+      co_await makeNowClosure(tag<Task<int>, after_cleanup_capture<int>>));
 
   HasMemberTask hmt;
   auto memberRes = co_await intAsyncNowClosure(
@@ -801,29 +825,45 @@ CO_TEST(AsyncClosure, captureByReference) {
   std::atomic_int n = 0;
   co_await async_now_closure(
       bind::capture_mut_ref{n}, [](auto n) -> closure_task<void> {
+        static_assert(std::is_same_v<capture<std::atomic_int&>, decltype(n)>);
         n->fetch_add(42);
         co_return;
       });
   EXPECT_EQ(42, n.load());
+  // Same, but with shared-cleanup downgrade due to an unsafe inner task type
+  co_await async_now_closure(
+      bind::capture_mut_ref{n}, [](auto n) -> Task<void> {
+        static_assert(
+            std::is_same_v<
+                after_cleanup_capture<std::atomic_int&>,
+                decltype(n)>);
+        n->fetch_add(-5);
+        co_return;
+      });
+  EXPECT_EQ(37, n.load());
 }
 
-CO_TEST(AsyncClosure, nowClosureCoCleanup) {
+template <typename TaskT, typename CaptureIntRef>
+now_task<> checkNowClosureCoCleanup() {
   std::optional<exception_wrapper> optCleanErr;
   int res = co_await async_now_closure(
       bind::args{
           bind::capture_in_place<HasCleanup>(&optCleanErr),
           bind::capture(1300)},
-      [](auto cleanup, auto n) -> Task<int> {
+      [](auto cleanup, auto n) -> TaskT {
         static_assert(
             std::is_same_v<co_cleanup_capture<HasCleanup&>, decltype(cleanup)>);
-        static_assert(
-            std::is_same_v< // No ref upgrade
-                after_cleanup_capture<int&>,
-                decltype(n)>);
+        static_assert(std::is_same_v<CaptureIntRef, decltype(n)>);
         co_return *n + 37;
       });
   EXPECT_EQ(1337, res);
   EXPECT_TRUE(optCleanErr.has_value());
+}
+
+CO_TEST(AsyncClosure, nowClosureCoCleanup) {
+  co_await checkNowClosureCoCleanup<closure_task<int>, capture<int&>>();
+  // Downgraded ref safety, since `Task` is unsafe
+  co_await checkNowClosureCoCleanup<Task<int>, after_cleanup_capture<int&>>();
 }
 
 constexpr bool check_as_noexcept_closures() {

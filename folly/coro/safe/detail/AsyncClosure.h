@@ -430,34 +430,41 @@ struct async_closure_storage {
   lite_tuple::tuple<Ts...> storage_tuple_;
 };
 
-template <size_t StorageI, typename Bs>
+template <size_t StorageI, typename Bs, bool DerefResult = false>
 decltype(auto) async_closure_bind_inner_coro_arg(
     capture_private_t priv, Bs& bs, auto& storage_ptr) {
-  if constexpr (is_async_closure_outer_stored_arg<Bs>) {
-    // "own": arg was already moved into `storage_ptr`.
-    auto& storage_ref = get_from_storage_ptr<StorageI>(storage_ptr);
-    static_assert(
-        std::is_same_v<
-            typename Bs::storage_type,
-            std::remove_reference_t<decltype(storage_ref)>>);
-    // `SharedCleanupClosure=true` preserves the `after_cleanup_ref_` prefix of
-    // the storage type.
-    return storage_ref.template to_capture_ref</*shared*/ true>(priv);
-  } else if constexpr (
-      // "own": Move stored `bind::capture()` into inner coro.
-      is_instantiation_of_v<async_closure_inner_stored_arg, Bs> ||
-      // `scheduleSelfClosure` / `scheduleScopeClosure` self-references.
-      is_instantiation_of_v<async_closure_scope_self_ref_hack, Bs>) {
-    return typename Bs::storage_type{priv, std::move(bs.bindWrapper_)};
-  } else if constexpr (is_any_capture<Bs>) {
-    // "pass": Move `capture<Ref>` into the inner coro.
-    static_assert(std::is_reference_v<typename Bs::capture_type>);
-    return std::move(bs);
-  } else { // "regular": Non-`capture` binding.
-    static_assert(is_instantiation_of_v<async_closure_regular_arg, Bs>);
-    // We don't inspect `storage_type` here -- `detail/BindAsyncClosure.h`
-    // should have ensured that `bind_info_t` was in a default, no-op state.
-    return std::move(bs).bindWrapper_.what_to_bind();
+  auto fn = [&]() -> decltype(auto) {
+    if constexpr (is_async_closure_outer_stored_arg<Bs>) {
+      // "own": arg was already moved into `storage_ptr`.
+      auto& storage_ref = get_from_storage_ptr<StorageI>(storage_ptr);
+      static_assert(
+          std::is_same_v<
+              typename Bs::storage_type,
+              std::remove_reference_t<decltype(storage_ref)>>);
+      // `SharedCleanupClosure=true` preserves the `after_cleanup_ref_` prefix
+      // of the storage type.
+      return storage_ref.template to_capture_ref</*shared*/ true>(priv);
+    } else if constexpr (
+        // "own": Move stored `bind::capture()` into inner coro.
+        is_instantiation_of_v<async_closure_inner_stored_arg, Bs> ||
+        // `scheduleSelfClosure` / `scheduleScopeClosure` self-references.
+        is_instantiation_of_v<async_closure_scope_self_ref_hack, Bs>) {
+      return typename Bs::storage_type{priv, std::move(bs.bindWrapper_)};
+    } else if constexpr (is_any_capture<Bs>) {
+      // "pass": Move `capture<Ref>` into the inner coro.
+      static_assert(std::is_reference_v<typename Bs::capture_type>);
+      return std::move(bs);
+    } else { // "regular": Non-`capture` binding.
+      static_assert(is_instantiation_of_v<async_closure_regular_arg, Bs>);
+      // We don't inspect `storage_type` here -- `detail/BindAsyncClosure.h`
+      // should have ensured that `bind_info_t` was in a default, no-op state.
+      return std::move(bs).bindWrapper_.what_to_bind();
+    }
+  };
+  if constexpr (DerefResult) {
+    return *fn();
+  } else {
+    return fn();
   }
 }
 
@@ -466,33 +473,12 @@ struct with_tag {
   T value;
 };
 
-// Eagerly construct -- but do not await -- an `async_closure`:
-//   - Resolve bindings.
-//   - Construct & store args for the user-supplied inner coro.
-//   - For ensuring cleanup in the face of `bad_alloc`, pre-allocate the
-//     outer task & `co_cleanup` tasks, if needed.
-//   - Create the inner coro, passing it `capture` references, or -- if
-//     there are no `co_cleanup` args and no outer coro -- quack-alike
-//     owning wrappers.
-//   - Marks the final user-facing task with the `safe_alias` that
-//     describes the memory-safety of the closure's arguments.
-//   - Returns the task inside a wrapper that statically checks the memory
-//     safety of the return & `make_inner_coro` types when
-//     `release_outer_coro()` is called.
-//
-// NB: Due to the "omit outer coro" optimization, `release_outer_coro()`
-// will in some cases return a no-overhead wrapper around the coro returned
-// by `make_inner_coro()`.
-//
-// Rationale: "Eager" is the only option matching user expectations, since
-// regular coroutine args are bound eagerly too.  Implementation-wise, all
-// `lang/bind/Bind.h` logic has to be resolved within the current statement,
-// since the auxiliary reference-bearing objects aren't valid beyond that.
-template <auto Cfg>
-auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
-  auto& [arg_safeties, b_tup] = safeties_and_binds;
-
-  using BTupIs = std::make_index_sequence<std::tuple_size_v<decltype(b_tup)>>;
+template <bool OnlyGetInnerCoroType, auto Cfg, typename BTup>
+auto async_closure_inner_coro_and_storage(auto&& make_inner_coro, BTup& b_tup) {
+  // Ensure the compiler doesn't waste cycles on the "coro type detection"
+  // code-path for safe `async_closure` -- only `async_now_closure` needs it.
+  static_assert(Cfg.emit_now_task || !OnlyGetInnerCoroType);
+  using BTupIs = std::make_index_sequence<std::tuple_size_v<BTup>>;
   // For stored arg  @ `i`, `VtagStorageIs[i]` is a `*storage_ptr` index.
   using VtagStorageIs = decltype(lite_tuple::apply(
       [&]<typename... Bs>(Bs&...) {
@@ -540,37 +526,130 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
         }(lite_tuple::get<ArgIs>(tup))...);
       }(b_tup, BTupIs{}, VtagStorageIs{}));
 
-  auto raw_inner_coro = lite_tuple::apply(
-      [&]<typename... Bs>(Bs&... bs) {
-        return [&]<size_t... ArgIs, size_t... StorageIs>(
-                   std::index_sequence<ArgIs...>, vtag_t<StorageIs...>) {
-          return make_inner_coro(
-              // Unpack `Bs`, `ArgIs`, and `StorageIs` jointly
-              [&]() -> decltype(auto) {
-                if constexpr (Cfg.is_invoke_member && ArgIs == 0) {
-                  // We have a `FOLLY_INVOKE_MEMBER`.  It accesses the
-                  // member function via `.`, but this arg is expected to be
-                  // `co_cleanup_capture<>` or `AsyncObjectPtr<>`, so we
-                  // "magically" dereference it here.
-                  //
-                  // On safety: Below, we assert that it it made a
-                  // `member_task<T>`, which `inner_rewrapped` will
-                  // implicitly unwrap & mark with a higher safety level.
-                  // `member_task` provides only a minimal safety
-                  // attestation, namely (besides arg 1, the implicit object
-                  // param), none of its args are taken by-reference.  This
-                  // is fine, since for `OuterSafety`, we will have
-                  // accounted for all the args' safety levels.
-                  return *async_closure_bind_inner_coro_arg<StorageIs, Bs>(
-                      capture_private_t{}, bs, storage_ptr);
-                } else {
-                  return async_closure_bind_inner_coro_arg<StorageIs, Bs>(
-                      capture_private_t{}, bs, storage_ptr);
-                }
-              }()...);
-        }(BTupIs{}, VtagStorageIs{}); // `StorageIs` indexes into `storage_ptr`
-      },
-      b_tup);
+  using StoragePtr = decltype(storage_ptr);
+  // The `apply` + nested lambdas jointly iterate over several packs:
+  //   - Binding tuple elements: `Bs... bs` from `b_tup`, indexed by `ArgIs...`
+  //   - `StorageIs...` point into `storage_ptr` for owned captures.
+  //
+  // (1) The return type depends on `OnlyGetInnerCoroType`.
+  //
+  // `true`: Only used inside a `decltype()`, which drives the logic from
+  // `async_closure_safeties_and_bindings` labeled `task_forces_shared_cleanup`.
+  // The return type is `tuple<type_identity<InnerCoro>, unused storage_ptr>`.
+  //
+  // `false`: This is the evaluated path that makes the actual inner coro.
+  //
+  // (2) If `DerefResult` is `true` below, this means the callable is a
+  // `FOLLY_INVOKE_MEMBER`.  It accesses the member function via `.`, but this
+  // arg is expected to be `co_cleanup_capture<>` or `AsyncObjectPtr<>`, so we
+  // "magically" dereference it here.
+  //
+  // On member-invocation safety: `bind_captures_to_closure` will we assert
+  // that we made a `member_task<T>`, which `inner_rewrapped` will implicitly
+  // unwrap & mark with a higher safety level.  By itself, `member_task`
+  // provides only a minimal safety attestation, namely:
+  //   - For the implicit object param `Arg1`,
+  //       strict_safe_alias_of_v<Arg1> > shared_cleanup
+  //   - None of the other args are taken by-reference.
+  // This is fine, since for `OuterSafety`, we will have accounted for all the
+  // args' safety levels.
+  return lite_tuple::tuple{
+      lite_tuple::apply(
+          [&]<typename... Bs>(Bs&... bs) {
+            return [&]<size_t... ArgIs, size_t... StorageIs>(
+                       std::index_sequence<ArgIs...>, vtag_t<StorageIs...>) {
+              if constexpr (OnlyGetInnerCoroType) { // Non-evaluated, see (1)
+                return type_identity<detected_or_t<
+                    void*,
+                    std::invoke_result_t,
+                    decltype(make_inner_coro),
+                    decltype(async_closure_bind_inner_coro_arg<
+                            StorageIs,
+                            Bs,
+                            /*DerefResult*/ Cfg.is_invoke_member && ArgIs == 0>(
+                            capture_private_t{},
+                            FOLLY_DECLVAL(Bs&),
+                            FOLLY_DECLVAL(StoragePtr&)))...>>{};
+              } else { // Actually create a coro
+                return make_inner_coro(
+                    async_closure_bind_inner_coro_arg<
+                        StorageIs,
+                        Bs,
+                        /*DerefResult*/ (Cfg.is_invoke_member && ArgIs == 0)>(
+                        capture_private_t{}, bs, storage_ptr)...);
+              }
+            }(BTupIs{}, VtagStorageIs{});
+          },
+          b_tup),
+      std::move(storage_ptr)};
+}
+
+// Eagerly construct -- but do not await -- an `async_closure`:
+//   - Resolve bindings.  For `emit_now_closure` this can  involve a tricky
+//     dance with trying two different versions of bindings, as described
+//     inside `async_closure_safeties_and_bindings`.
+//   - Construct & store args for the user-supplied inner coro.
+//   - For ensuring cleanup in the face of `bad_alloc`, pre-allocate the
+//     outer task & `co_cleanup` tasks, if needed.
+//   - Create the inner coro, passing it `capture` references, or -- if
+//     there are no `co_cleanup` args and no outer coro -- quack-alike
+//     owning wrappers.
+//   - Marks the final user-facing task with the `safe_alias` that
+//     describes the memory-safety of the closure's arguments.
+//   - Returns the task inside a wrapper that statically checks the memory
+//     safety of the return & `make_inner_coro` types when
+//     `release_outer_coro()` is called.
+//
+// NB: Due to the "omit outer coro" optimization, `release_outer_coro()`
+// will in some cases return a no-overhead wrapper around the coro returned
+// by `make_inner_coro()`.
+//
+// Rationale: "Eager" is the only option matching user expectations, since
+// regular coroutine args are bound eagerly too.  Implementation-wise, all
+// `lang/bind/Bind.h` logic has to be resolved within the current statement,
+// since the auxiliary reference-bearing objects aren't valid beyond that.
+template <auto Cfg>
+auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
+  // The comment in `async_closure_safeties_and_bindings` covers WHY there are
+  // two `b_tup` flavors, and why the overall algorithm is correct. In brief:
+  //   - `b_tup` is the happy path.
+  //   - `b_tup_for_unsafe_task` is only used when it turns out that the inner
+  //     coro for an `async_now_closure` is an unsafe task.  It is `nullptr` on
+  //     code paths where it definitely won't get used.
+  auto& [arg_min_safety, b_tup, b_tup_for_unsafe_task] = safeties_and_binds;
+  auto pick_safest_b_tup = [&]() -> auto& {
+    // Avoid the compile-time cost of `unsafe_inner_coro_forces_shared_cleanup`
+    if constexpr (
+        !Cfg.emit_now_task ||
+        decltype(arg_min_safety)::args_force_shared_cleanup) {
+      return b_tup;
+    } else {
+      // Per the discussion in `async_closure_safeties_and_bindings`, if
+      // `async_now_closure` produces a `safe_task`, then we don't have to
+      // force shared-cleanup behavior, and may use the `b_tup` bindings.
+      // Using `b_tup_for_unsafe_task` will cause the inner coro to see
+      // capture-refs of lower safety (e.g.  `after_cleanup_ref` instead of
+      // `co_cleanup_safe_ref`).
+      constexpr bool unsafe_inner_coro_forces_shared_cleanup =
+          Cfg.emit_now_task &&
+          (strict_safe_alias_of_v<typename std::tuple_element_t<
+               0,
+               decltype(async_closure_inner_coro_and_storage<
+                        /*get type*/ true,
+                        Cfg>(
+                   static_cast<decltype(make_inner_coro)>(make_inner_coro),
+                   b_tup))>::type> < safe_alias::unsafe_closure_internal);
+      if constexpr (unsafe_inner_coro_forces_shared_cleanup) {
+        return b_tup_for_unsafe_task;
+      } else { // Stateless inner coro
+        return b_tup;
+      }
+    }
+  };
+  auto [raw_inner_coro, storage_ptr] =
+      async_closure_inner_coro_and_storage</*get type*/ false, Cfg>(
+          static_cast<decltype(make_inner_coro)>(make_inner_coro),
+          pick_safest_b_tup());
 
   // First, unwrap `as_noexcept` so that `safe_task_traits` below can work.
   // We only allow `as_noexcept` as the outer wrapper.
@@ -584,9 +663,9 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
   }(std::move(raw_inner_coro));
 
   // Compute the safety of the arguments being passed by the caller.
-  constexpr safe_alias OuterSafety = Cfg.force_shared_cleanup // making now_task
+  constexpr safe_alias OuterSafety = Cfg.emit_now_task
       ? safe_alias::unsafe
-      : vtag_least_safe_alias(decltype(arg_safeties){});
+      : decltype(arg_min_safety)::parent_view;
   // Also check that the coroutine function's signature looks safe.
   constexpr safe_alias InnerSafety =
       safe_task_traits<decltype(unwrapped_inner)>::arg_safety;
@@ -655,7 +734,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
     }
   }();
 
-  if constexpr (Cfg.force_shared_cleanup) {
+  if constexpr (Cfg.emit_now_task) {
     return NoexceptWrap::wrap_with([&]() {
       return to_now_task(std::move(outer_mover)());
     });

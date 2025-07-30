@@ -41,29 +41,34 @@ struct MoveMe : folly::MoveOnly {
 
 template <
     typename ExpectedT,
-    safe_alias ExpectedSafety = safe_alias::maybe_value>
+    safe_alias ExpectedSafety = safe_alias::maybe_value,
+    bool ArgsForceSharedCleanup = false>
 constexpr void check_one_no_shared_cleanup(auto arg_fn) {
   static_assert(
       std::is_same_v<
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = false,
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = false}>(bind::args{arg_fn()})),
-          lite_tuple::
-              tuple<vtag_t<ExpectedSafety>, lite_tuple::tuple<ExpectedT>>>);
+          lite_tuple::tuple<
+              async_closure_arg_safety<ExpectedSafety, ArgsForceSharedCleanup>,
+              lite_tuple::tuple<ExpectedT>,
+              std::nullptr_t>>);
 }
 
 template <
     typename ExpectedT,
     safe_alias ExpectedSafety = safe_alias::maybe_value>
 constexpr void check_one_shared_cleanup(auto arg_fn) {
+  constexpr auto ExpectedMinSafety =
+      std::min({ExpectedSafety, safe_alias::shared_cleanup});
   static_assert(
       std::is_same_v<
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = false,
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = false}>(bind::args{
               arg_fn(),
               // Triggers "shared cleanup" downgrade logic.
@@ -71,15 +76,22 @@ constexpr void check_one_shared_cleanup(auto arg_fn) {
               // `std::move(c)`, which is not allowed for cleanup captures.
               std::declval<co_cleanup_capture<HasCleanup&>&>()})),
           lite_tuple::tuple<
-              vtag_t<ExpectedSafety, safe_alias::shared_cleanup>,
-              lite_tuple::tuple<ExpectedT, co_cleanup_capture<HasCleanup&>>>>);
+              async_closure_arg_safety<
+                  ExpectedMinSafety,
+                  /*args_force_shared_cleanup*/ true>,
+              lite_tuple::tuple<ExpectedT, co_cleanup_capture<HasCleanup&>>,
+              std::nullptr_t>>);
 }
 
 template <
     typename ExpectedT,
-    safe_alias ExpectedSafety = safe_alias::maybe_value>
+    safe_alias ExpectedSafety = safe_alias::maybe_value,
+    bool ArgsForceSharedCleanup = false>
 constexpr void check_one(auto arg_fn) {
-  check_one_no_shared_cleanup<ExpectedT, ExpectedSafety>(arg_fn);
+  check_one_no_shared_cleanup<
+      ExpectedT,
+      ExpectedSafety,
+      ArgsForceSharedCleanup>(arg_fn);
   check_one_shared_cleanup<ExpectedT, ExpectedSafety>(arg_fn);
 }
 
@@ -89,9 +101,14 @@ constexpr bool check_empty() {
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = false,
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = false}>(bind::args{})),
-          lite_tuple::tuple<vtag_t<>, lite_tuple::tuple<>>>);
+          lite_tuple::tuple<
+              async_closure_arg_safety<
+                  safe_alias::maybe_value,
+                  /*args_force_shared_cleanup*/ false>,
+              lite_tuple::tuple<>,
+              std::nullptr_t>>);
   return true;
 }
 
@@ -108,7 +125,8 @@ constexpr bool check_regular_args() {
   // Unsafe arg binding is relevant for `async_now_closure`
   check_one<
       async_closure_regular_arg<int*, bind_wrapper_t<int*&&>>,
-      safe_alias::unsafe>([&]() -> auto* { return &x; });
+      safe_alias::unsafe,
+      /*args_force_shared_cleanup*/ true>([&]() -> auto* { return &x; });
 
   MoveMe moo{.x = 7};
   check_one<async_closure_regular_arg<MoveMe, bind_wrapper_t<MoveMe&&>>>(
@@ -245,11 +263,14 @@ constexpr bool check_capture_lref_to_lref() {
   {
     HasCleanup cleanup;
     co_cleanup_capture<HasCleanup&> ar{priv, forward_bind_wrapper(cleanup)};
-    check_one<co_cleanup_capture<HasCleanup&>, safe_alias::shared_cleanup>(
-        [&]() -> auto& { return ar; });
+    check_one<
+        co_cleanup_capture<HasCleanup&>,
+        safe_alias::shared_cleanup,
+        /*args_force_shared_cleanup*/ true>([&]() -> auto& { return ar; });
     check_one<
         co_cleanup_capture<const HasCleanup&>,
-        safe_alias::shared_cleanup>([&]() -> auto& {
+        safe_alias::shared_cleanup,
+        /*args_force_shared_cleanup*/ true>([&]() -> auto& {
       return std::as_const(ar);
     });
   }
@@ -295,7 +316,7 @@ constexpr bool check_capture_lref_to_rref() {
   HasCleanup cleanup;
   async_closure_safeties_and_bindings<async_closure_bindings_cfg{
       .force_outer_coro = false,
-      .force_shared_cleanup = false,
+      .emit_now_task = false,
       .is_invoke_member = false}>(bind::args{
       co_cleanup_capture<HasCleanup&>{priv, forward_bind_wrapper(cleanup)}});
 #endif
@@ -369,20 +390,20 @@ constexpr bool check_parent_capture_ref() {
   // capture-by-ref wouldn't be very useful if it did force shared cleanup.
   constexpr async_closure_bindings_cfg Cfg{
       .force_outer_coro = false,
-      .force_shared_cleanup = false,
+      .emit_now_task = false,
       .is_invoke_member = false};
   after_cleanup_capture<int> av{priv, forward_bind_wrapper(5)};
   using ActualTup = decltype(async_closure_safeties_and_bindings<Cfg>(
       bind::args{bind::capture{bind::const_ref{5}, 5}, av}));
   using ExpectedTup = lite_tuple::tuple<
-      vtag_t<
+      async_closure_arg_safety<
           safe_alias::unsafe,
-          safe_alias::maybe_value,
-          safe_alias::after_cleanup_ref>,
+          /*args_force_shared_cleanup*/ false>,
       lite_tuple::tuple<
           capture<const int&&>,
           async_closure_inner_stored_arg<capture<int>, bind_wrapper_t<int&&>>,
-          capture<int&>>>;
+          capture<int&>>,
+      std::nullptr_t>;
   static_assert(std::is_same_v<ActualTup, ExpectedTup>);
 
   return true;
@@ -396,26 +417,29 @@ constexpr bool check_owned_cleanup_capture() {
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = false,
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = false}>(
               bind::args{bind::capture_in_place<HasCleanup>()})),
           lite_tuple::tuple<
               // This is the safety from the point of view of the closure's
               // parent.  It does not matter that inside the closure, we have
               // a `shared_cleanup`-safety `co_cleanup_capture<HasCleanup&>`.
-              vtag_t<safe_alias::maybe_value>,
+              async_closure_arg_safety<
+                  safe_alias::maybe_value,
+                  /*args_force_shared_cleanup*/ false>,
               lite_tuple::tuple<async_closure_outer_stored_arg<
                   co_cleanup_capture<HasCleanup>,
                   bind_wrapper_t<folly::bind::detail::in_place_args_maker<
                       detail::HasCleanup>>,
                   /*ArgI = */ 0,
-                  /*Tag = */ folly::bind::ext::no_tag_t{}>>>>);
+                  /*Tag = */ folly::bind::ext::no_tag_t{}>>,
+              std::nullptr_t>>);
   return true;
 }
 
 static_assert(check_owned_cleanup_capture());
 
-constexpr bool check_force_shared_cleanup_blocks_ref_upgrade() {
+constexpr bool check_emit_now_task_blocks_ref_upgrade() {
   int x = 7;
   after_cleanup_capture<int&> cr{priv, forward_bind_wrapper(x)};
   static_assert(
@@ -423,28 +447,61 @@ constexpr bool check_force_shared_cleanup_blocks_ref_upgrade() {
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = false,
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = false}>(bind::args{cr})),
           lite_tuple::tuple<
               // ref upgrades don't affect the parent's measurement...
-              vtag_t<safe_alias::after_cleanup_ref>,
+              async_closure_arg_safety<
+                  safe_alias::after_cleanup_ref,
+                  /*args_force_shared_cleanup*/ false>,
               // ...but the child sees a more-safe `capture<int&>`
-              lite_tuple::tuple<capture<int&>>>>);
+              lite_tuple::tuple<capture<int&>>,
+              std::nullptr_t>>);
+
+  // Compared to the above, we only change `.emit_now_task = true`...
   static_assert(
       std::is_same_v<
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = false,
-                       .force_shared_cleanup = true, // this changed...
+                       .emit_now_task = true, // NOTE: `false` ABOVE
                        .is_invoke_member = false}>(bind::args{cr})),
           lite_tuple::tuple<
-              vtag_t<safe_alias::after_cleanup_ref>,
-              // ...and the result was -- no ref upgrade
+              async_closure_arg_safety<
+                  safe_alias::after_cleanup_ref,
+                  /*args_force_shared_cleanup*/ false>,
+              // ... we upgrade refs here (safe inner coro),
+              lite_tuple::tuple<capture<int&>>,
+              // ... but not here (unsafe inner coro).
               lite_tuple::tuple<after_cleanup_capture<int&>>>>);
+
+  // Still `.emit_now_task = true`, but now with the addition of
+  // a new arg that forces shared-cleanup behavior...
+  static_assert(
+      std::is_same_v<
+          decltype(async_closure_safeties_and_bindings<
+                   async_closure_bindings_cfg{
+                       .force_outer_coro = false,
+                       .emit_now_task = true,
+                       .is_invoke_member = false}>(bind::args{
+              cr,
+              // NOTE: NEW ARGUMENT
+              std::declval<co_cleanup_capture<HasCleanup&>&>()})),
+          lite_tuple::tuple<
+              async_closure_arg_safety<
+                  safe_alias::shared_cleanup,
+                  /*args_force_shared_cleanup*/ true>,
+              lite_tuple::tuple<
+                  // ... thanks to the arg, we can never upgrade refs,
+                  after_cleanup_capture<int&>,
+                  co_cleanup_capture<folly::coro::detail::HasCleanup&>>,
+              // ... so the third entry is unused.
+              std::nullptr_t>>);
+
   return true;
 }
 
-static_assert(check_force_shared_cleanup_blocks_ref_upgrade());
+static_assert(check_emit_now_task_blocks_ref_upgrade());
 
 constexpr bool check_force_outer_coro() {
   static_assert(
@@ -452,31 +509,37 @@ constexpr bool check_force_outer_coro() {
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = false,
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = false}>(
               bind::args{bind::capture(5)})),
           lite_tuple::tuple<
-              vtag_t<safe_alias::maybe_value>,
+              async_closure_arg_safety<
+                  safe_alias::maybe_value,
+                  /*args_force_shared_cleanup*/ false>,
               // inner <=> no outer coro
               lite_tuple::tuple<async_closure_inner_stored_arg<
                   capture<int>,
-                  bind_wrapper_t<int&&>>>>>);
+                  bind_wrapper_t<int&&>>>,
+              std::nullptr_t>>);
   static_assert(
       std::is_same_v<
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = true, // this changed...
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = false}>(
               bind::args{bind::capture(5)})),
           lite_tuple::tuple<
-              vtag_t<safe_alias::maybe_value>,
+              async_closure_arg_safety<
+                  safe_alias::maybe_value,
+                  /*args_force_shared_cleanup*/ false>,
               // ... outer <=> no outer coro
               lite_tuple::tuple<async_closure_outer_stored_arg<
                   capture<int>,
                   bind_wrapper_t<int&&>,
                   /*ArgI = */ 0,
-                  /*Tag = */ folly::bind::ext::no_tag_t{}>>>>);
+                  /*Tag = */ folly::bind::ext::no_tag_t{}>>,
+              std::nullptr_t>>);
   return true;
 }
 
@@ -493,11 +556,13 @@ constexpr bool check_is_invoke_member_implicit_capture() {
                        // object parameter, and moving it into the inner coro
                        // cannot provide that.
                        .force_outer_coro = true,
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = true}>(
               bind::args{MoveMe{}, MoveMe{}})),
           lite_tuple::tuple<
-              vtag_t<safe_alias::maybe_value, safe_alias::maybe_value>,
+              async_closure_arg_safety<
+                  safe_alias::maybe_value,
+                  /*args_force_shared_cleanup*/ false>,
               lite_tuple::tuple<
                   async_closure_outer_stored_arg<
                       capture<MoveMe>,
@@ -505,26 +570,26 @@ constexpr bool check_is_invoke_member_implicit_capture() {
                       /*ArgI = */ 0,
                       /*Tag = */ folly::bind::ext::no_tag_t{}>,
                   // The second arg is NOT implicitly captured
-                  async_closure_regular_arg<
-                      MoveMe,
-                      bind_wrapper_t<MoveMe&&>>>>>);
+                  async_closure_regular_arg<MoveMe, bind_wrapper_t<MoveMe&&>>>,
+              std::nullptr_t>>);
   // Same as above, but with `is_invoke_member = false`
   static_assert(
       std::is_same_v<
           decltype(async_closure_safeties_and_bindings<
                    async_closure_bindings_cfg{
                        .force_outer_coro = true,
-                       .force_shared_cleanup = false,
+                       .emit_now_task = false,
                        .is_invoke_member = false}>(
               bind::args{MoveMe{}, MoveMe{}})),
           lite_tuple::tuple<
-              vtag_t<safe_alias::maybe_value, safe_alias::maybe_value>,
+              async_closure_arg_safety<
+                  safe_alias::maybe_value,
+                  /*args_force_shared_cleanup*/ false>,
               lite_tuple::tuple<
                   // Neither arg is implicitly captured
                   async_closure_regular_arg<MoveMe, bind_wrapper_t<MoveMe&&>>,
-                  async_closure_regular_arg<
-                      MoveMe,
-                      bind_wrapper_t<MoveMe&&>>>>>);
+                  async_closure_regular_arg<MoveMe, bind_wrapper_t<MoveMe&&>>>,
+              std::nullptr_t>>);
   return true;
 }
 

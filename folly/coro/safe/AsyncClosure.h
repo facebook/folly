@@ -98,9 +98,7 @@ template <bool ForceOuterCoro, bool EmitNowTask>
 auto async_closure_impl(auto&& bargs, auto&& make_inner_coro) {
   constexpr detail::async_closure_bindings_cfg Cfg{
       .force_outer_coro = ForceOuterCoro,
-      // `now_task`s closures have no safety controls, and thus -- like
-      // "shared cleanup" closures -- don't get to upgrade `capture` refs.
-      .force_shared_cleanup = EmitNowTask,
+      .emit_now_task = EmitNowTask,
       .is_invoke_member = is_instantiation_of_v<
           invoke_member_wrapper_fn,
           std::remove_reference_t<decltype(make_inner_coro)>>};
