@@ -320,9 +320,9 @@ struct RWTicketIntTrait {
 
 template <>
 struct RWTicketIntTrait<64> {
-  typedef uint64_t FullInt;
-  typedef uint32_t HalfInt;
-  typedef uint16_t QuarterInt;
+  using FullInt = uint64_t;
+  using HalfInt = uint32_t;
+  using QuarterInt = uint16_t;
 
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
   static __m128i make128(const uint16_t v[4]) {
@@ -343,9 +343,9 @@ struct RWTicketIntTrait<64> {
 
 template <>
 struct RWTicketIntTrait<32> {
-  typedef uint32_t FullInt;
-  typedef uint16_t HalfInt;
-  typedef uint8_t QuarterInt;
+  using FullInt = uint32_t;
+  using HalfInt = uint16_t;
+  using QuarterInt = uint8_t;
 
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
   static __m128i make128(const uint8_t v[4]) {
@@ -372,10 +372,10 @@ struct RWTicketIntTrait<32> {
 
 template <size_t kBitWidth, bool kFavorWriter = false>
 class RWTicketSpinLockT {
-  typedef detail::RWTicketIntTrait<kBitWidth> IntTraitType;
-  typedef typename detail::RWTicketIntTrait<kBitWidth>::FullInt FullInt;
-  typedef typename detail::RWTicketIntTrait<kBitWidth>::HalfInt HalfInt;
-  typedef typename detail::RWTicketIntTrait<kBitWidth>::QuarterInt QuarterInt;
+  using IntTraitType = detail::RWTicketIntTrait<kBitWidth>;
+  using FullInt = typename detail::RWTicketIntTrait<kBitWidth>::FullInt;
+  using HalfInt = typename detail::RWTicketIntTrait<kBitWidth>::HalfInt;
+  using QuarterInt = typename detail::RWTicketIntTrait<kBitWidth>::QuarterInt;
 
   union RWTicket {
     constexpr RWTicket() : whole(0) {}
@@ -537,8 +537,8 @@ class RWTicketSpinLockT {
   void unlock_shared() { __sync_fetch_and_add(&ticket.write, 1); }
 };
 
-typedef RWTicketSpinLockT<32> RWTicketSpinLock32;
-typedef RWTicketSpinLockT<64> RWTicketSpinLock64;
+using RWTicketSpinLock32 = RWTicketSpinLockT<32>;
+using RWTicketSpinLock64 = RWTicketSpinLockT<64>;
 
 #endif // RW_SPINLOCK_USE_X86_INTRINSIC_
 
