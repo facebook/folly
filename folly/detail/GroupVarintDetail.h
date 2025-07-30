@@ -48,11 +48,11 @@ struct GroupVarintTraits<uint64_t> {
 template <typename T>
 class GroupVarintBase {
  protected:
-  typedef GroupVarintTraits<T> Traits;
+  using Traits = GroupVarintTraits<T>;
   enum : uint32_t { kHeaderSize = Traits::kHeaderSize };
 
  public:
-  typedef T type;
+  using type = T;
 
   /**
    * Number of integers encoded / decoded in one pass.
@@ -93,7 +93,7 @@ class GroupVarintBase {
   }
 
  private:
-  typedef GroupVarint<T> Derived;
+  using Derived = GroupVarint<T>;
   enum { kFullGroupSize = kHeaderSize + kGroupSize * sizeof(type) };
 };
 
