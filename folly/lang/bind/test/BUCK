@@ -42,3 +42,13 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "as_argument_test",
+    srcs = ["AsArgumentTest.cpp"],
+    deps = [
+        "//folly/lang/bind:as_argument",
+        "//folly/portability:gtest",
+    ],
+)

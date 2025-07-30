@@ -519,6 +519,22 @@ struct copy : ext::merge_update_args<detail::copy_bind_info, Ts...> {
 template <typename... Ts>
 copy(Ts&&...) -> copy<ext::deduce_args_t<Ts>...>;
 
+namespace ext::detail { // Common detail for `AsArgument.h` and `ToStorage.h`
+// Similar to `std::as_const`, but only computes the type, and works on
+// rvalue references.
+//
+// Future: This **might** compile faster with a family of explicit
+// specializations, see e.g. `folly::like_t`'s implementation.
+template <typename T>
+using add_const_inside_ref_t = std::conditional_t<
+    std::is_rvalue_reference_v<T>,
+    typename std::add_const<std::remove_reference_t<T>>::type&&,
+    std::conditional_t<
+        std::is_lvalue_reference_v<T>,
+        typename std::add_const<std::remove_reference_t<T>>::type&,
+        typename std::add_const<std::remove_reference_t<T>>::type>>;
+} // namespace ext::detail
+
 } // namespace folly::bind
 
 FOLLY_POP_WARNING

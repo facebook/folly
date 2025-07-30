@@ -58,27 +58,14 @@ class bind_to_storage_policy<binding_t<BI, BindingType>> {
       "`const_ref` / `mut_ref` is incompatible with `bind::in_place*`");
 
  protected:
-  // Similar to `std::as_const`, but only computes the type, and works on
-  // rvalue references.
-  //
-  // Future: This **might** compile faster with a family of explicit
-  // specializations, see e.g. `folly::like_t`'s implementation.
-  template <typename T>
-  using add_const_inside_ref = std::conditional_t<
-      std::is_rvalue_reference_v<T>,
-      typename std::add_const<std::remove_reference_t<T>>::type&&,
-      std::conditional_t<
-          std::is_lvalue_reference_v<T>,
-          typename std::add_const<std::remove_reference_t<T>>::type&,
-          typename std::add_const<std::remove_reference_t<T>>::type>>;
-
   constexpr static auto project_type() {
     if constexpr (BI.category == category_t::ref) {
       // By-reference: `const` by default
       if constexpr (BI.constness == constness_t::mut) {
         return std::type_identity<BindingType&&>{}; // Leave existing `const`
       } else {
-        return std::type_identity<add_const_inside_ref<BindingType>&&>{};
+        return std::type_identity<
+            detail::add_const_inside_ref_t<BindingType>&&>{};
       }
     } else {
       if constexpr (BI.category == category_t::copy) {
