@@ -36,10 +36,10 @@ namespace folly {
 
 // This file contains several classes that might be useful if you are
 // trying to dynamically optimize cache locality: CacheLocality reads
-// cache sharing information from sysfs to determine how CPUs should be
-// grouped to minimize contention, Getcpu provides fast access to the
-// current CPU via __vdso_getcpu, and AccessSpreader uses these two to
-// optimally spread accesses among a predetermined number of stripes.
+// cache sharing information from procfs or sysfs to determine how CPUs
+// should be grouped to minimize contention, Getcpu provides fast access
+// to the current CPU via __vdso_getcpu, and AccessSpreader uses these two
+// to optimally spread accesses among a predetermined number of stripes.
 //
 // AccessSpreader<>::current(n) microbenchmarks at 22 nanos, which is
 // substantially less than the cost of a cache miss.  This means that we
@@ -83,9 +83,9 @@ struct CacheLocality {
   std::vector<std::vector<size_t>> equivClassesByCpu;
 
   /// Returns the best CacheLocality information available for the current
-  /// system, cached for fast access.  This will be loaded from sysfs if
-  /// possible, otherwise it will be correct in the number of CPUs but
-  /// not in their sharing structure.
+  /// system, cached for fast access.  This will be loaded from procfs or
+  /// sysfs if possible, otherwise it will be correct in the number of CPUs
+  /// but not in their sharing structure.
   ///
   /// If you are into yo dawgs, this is a shared cache of the local
   /// locality of the shared caches.
@@ -94,14 +94,15 @@ struct CacheLocality {
   /// repeatable CacheLocality structure during testing.  Rather than
   /// inject the type of the CacheLocality provider into every data type
   /// that transitively uses it, all components select between the default
-  /// sysfs implementation and a deterministic implementation by keying
+  /// procfs/sysfs implementation and a deterministic implementation by keying
   /// off the type of the underlying atomic.  See DeterministicScheduler.
   template <template <typename> class Atom = std::atomic>
   static const CacheLocality& system();
 
   /// Returns the best CacheLocality information available for the current
-  /// system.  This will be loaded from sysfs if possible, otherwise it will be
-  /// correct in the number of CPUs but not in their sharing structure.
+  /// system.  This will be loaded from procfs or sysfs if possible, otherwise
+  /// it will be correct in the number of CPUs but not in their sharing
+  /// structure.
   static CacheLocality readSystemLocalityInfo();
 
   /// Reads CacheLocality information from a tree structured like
