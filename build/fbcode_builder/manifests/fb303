@@ -11,7 +11,7 @@ repo_url = https://github.com/facebook/fb303.git
 cargo_config_file = source/fb303/thrift/.cargo/config.toml
 
 [crate.pathmap]
-fb303_core = fb303/thrift
+fb303_core = fb303/thrift/rust
 
 [build]
 builder = cmake
