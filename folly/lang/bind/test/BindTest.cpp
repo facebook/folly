@@ -266,6 +266,72 @@ constexpr auto check_by_ref() {
 
 static_assert(check_by_ref());
 
+constexpr auto check_move_and_copy() {
+  double b = 2.3;
+
+  // Test copy/move modifier by itself
+  using move_args = decltype(move{1, args{b, 'c'}});
+  static_assert(std::is_same_v<move_args, move<int&&, args<double&, char&&>>>);
+  constexpr bind_info_t move_bi{category_t::move, constness_t{}};
+  static_assert(
+      std::is_same_v<
+          move_args::binding_list_t,
+          tag_t<
+              binding_t<move_bi, int&&>,
+              binding_t<move_bi, double&>,
+              binding_t<move_bi, char&&>>>);
+
+  using copy_args = decltype(copy{1, args{b, 'c'}});
+  static_assert(std::is_same_v<copy_args, copy<int&&, args<double&, char&&>>>);
+  constexpr bind_info_t copy_bi{category_t::copy, constness_t{}};
+  static_assert(
+      std::is_same_v<
+          copy_args::binding_list_t,
+          tag_t<
+              binding_t<copy_bi, int&&>,
+              binding_t<copy_bi, double&>,
+              binding_t<copy_bi, char&&>>>);
+
+  // Lightly test composition with `constness` modifiers -- order doesn't matter
+  using const_move = decltype(constant{move{b}});
+  static_assert(std::is_same_v<const_move, constant<move<double&>>>);
+  constexpr bind_info_t const_move_bi{category_t::move, constness_t::constant};
+  static_assert(
+      std::is_same_v<
+          const_move::binding_list_t,
+          tag_t<binding_t<const_move_bi, double&>>>);
+
+  using copy_const = decltype(copy{constant{b}});
+  static_assert(std::is_same_v<copy_const, copy<constant<double&>>>);
+  constexpr bind_info_t const_copy_bi{category_t::copy, constness_t::constant};
+  static_assert(
+      std::is_same_v<
+          copy_const::binding_list_t,
+          tag_t<binding_t<const_copy_bi, double&>>>);
+
+  // Composing `move{const_ref{}}` replaces `category` with `move` but
+  // preserves `constness` from the inner `const_ref`.
+  using move_ref = decltype(move{const_ref{b}});
+  static_assert(std::is_same_v<move_ref, move<const_ref<double&>>>);
+  constexpr bind_info_t move_ref_bi{category_t::move, constness_t::constant};
+  static_assert(
+      std::is_same_v<
+          move_ref::binding_list_t,
+          tag_t<binding_t<move_ref_bi, double&>>>);
+
+  // Light `in_place` test -- it's independent of the `category` change
+  using move_in_place = decltype(move{in_place<int>(42)});
+  static_assert(std::is_same_v<move_in_place, move<in_place_args<int, int>>>);
+  static_assert(
+      std::is_same_v<
+          move_in_place::binding_list_t,
+          tag_t<binding_t<move_bi, int>>>);
+
+  return true;
+}
+
+static_assert(check_move_and_copy());
+
 constexpr auto check_in_place_args_one_line() {
   bool made = false;
 
