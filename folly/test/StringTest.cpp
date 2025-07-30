@@ -637,25 +637,25 @@ void splitTest() {
   EXPECT_EQ(parts[0], "asfds");
   parts.clear();
 
-  folly::split("a", "", parts, true);
+  folly::split('a', "", parts, true);
   EXPECT_EQ(parts.size(), 0);
   parts.clear();
 
-  folly::split("a", "", parts);
+  folly::split('a', "", parts);
   EXPECT_EQ(parts.size(), 1);
   EXPECT_EQ(parts[0], "");
   parts.clear();
 
-  folly::split("a", StringPiece(), parts, true);
+  folly::split('a', StringPiece(), parts, true);
   EXPECT_EQ(parts.size(), 0);
   parts.clear();
 
-  folly::split("a", StringPiece(), parts);
+  folly::split('a', StringPiece(), parts);
   EXPECT_EQ(parts.size(), 1);
   EXPECT_EQ(parts[0], "");
   parts.clear();
 
-  folly::split("a", "abcdefg", parts, true);
+  folly::split('a', "abcdefg", parts, true);
   EXPECT_EQ(parts.size(), 1);
   EXPECT_EQ(parts[0], "bcdefg");
   parts.clear();
@@ -736,16 +736,16 @@ void piecesTest() {
   pieces.clear();
 
   // test multiple split rounds
-  folly::split(",", "a_b,c_d", pieces);
+  folly::split(',', "a_b,c_d", pieces);
   EXPECT_EQ(pieces.size(), 2);
   EXPECT_EQ(pieces[0], "a_b");
   EXPECT_EQ(pieces[1], "c_d");
-  folly::split("_", pieces[0], pieces2);
+  folly::split('_', pieces[0], pieces2);
   EXPECT_EQ(pieces2.size(), 2);
   EXPECT_EQ(pieces2[0], "a");
   EXPECT_EQ(pieces2[1], "b");
   pieces2.clear();
-  folly::split("_", pieces[1], pieces2);
+  folly::split('_', pieces[1], pieces2);
   EXPECT_EQ(pieces2.size(), 2);
   EXPECT_EQ(pieces2[0], "c");
   EXPECT_EQ(pieces2[1], "d");
@@ -771,16 +771,16 @@ void piecesTest() {
   EXPECT_EQ(pieces[0], "asfds");
   pieces.clear();
 
-  folly::split("a", "", pieces, true);
+  folly::split('a', "", pieces, true);
   EXPECT_EQ(pieces.size(), 0);
   pieces.clear();
 
-  folly::split("a", "", pieces);
+  folly::split('a', "", pieces);
   EXPECT_EQ(pieces.size(), 1);
   EXPECT_EQ(pieces[0], "");
   pieces.clear();
 
-  folly::split("a", "abcdefg", pieces, true);
+  folly::split('a', "abcdefg", pieces, true);
   EXPECT_EQ(pieces.size(), 1);
   EXPECT_EQ(pieces[0], "bcdefg");
   pieces.clear();
@@ -827,7 +827,7 @@ void piecesTest() {
 
   std::set<Str> unique;
   folly::splitTo<Str>(
-      ":",
+      ':',
       "asd:bsd:asd:asd:bsd:csd::asd",
       std::inserter(unique, unique.begin()),
       true);
