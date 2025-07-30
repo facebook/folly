@@ -56,7 +56,7 @@ const seconds kDurations[] = {
 };
 } // namespace IntMHTS
 
-typedef std::mt19937 RandomInt32;
+using RandomInt32 = std::mt19937;
 
 using StatsClock = folly::LegacyStatsClock<std::chrono::seconds>;
 StatsClock::time_point mkTimePoint(int value) {

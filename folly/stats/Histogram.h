@@ -41,8 +41,8 @@ namespace detail {
 template <typename T, typename BucketT>
 class HistogramBuckets {
  public:
-  typedef T ValueType;
-  typedef BucketT BucketType;
+  using ValueType = T;
+  using BucketType = BucketT;
 
   /*
    * Create a set of histogram buckets.
@@ -230,8 +230,8 @@ class HistogramBuckets {
 template <typename T>
 class Histogram {
  public:
-  typedef T ValueType;
-  typedef detail::Bucket<T> Bucket;
+  using ValueType = T;
+  using Bucket = detail::Bucket<T>;
 
   Histogram(ValueType bucketSize, ValueType min, ValueType max)
       : buckets_(bucketSize, min, max, Bucket()) {}

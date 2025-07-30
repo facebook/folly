@@ -497,7 +497,7 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
 }
 
 TEST(BucketedTimeSeries, forEachBucket) {
-  typedef BucketedTimeSeries<int64_t>::Bucket BucketSeries;
+  using BucketSeries = BucketedTimeSeries<int64_t>::Bucket;
   struct BucketInfo {
     BucketInfo(const BucketSeries* b, TimePoint s, TimePoint ns)
         : bucket(b), start(s), nextStart(ns) {}
