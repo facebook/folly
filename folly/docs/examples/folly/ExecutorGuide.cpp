@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <cassert>
 #include <iostream>
 #include <folly/Executor.h>
 #include <folly/coro/Baton.h>
