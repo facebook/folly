@@ -1,13 +1,13 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
+load("@fbsource//tools/build_defs:fb_xplat_rust_library.bzl", "fb_xplat_rust_library")
+load("@fbsource//tools/build_defs:fb_xplat_suffixed_aliases.bzl", "create_aliases_for_platforms")
 load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
+load("@fbsource//tools/build_defs:selects.bzl", "selects")
 
 oncall("rust_libraries")
 
-fbcode_target(
-    _kind = rust_bindgen_library,
+rust_bindgen_library(
     name = "iobuf-sys",
     allowlist_funcs = [
         "facebook::rust::.*",
@@ -37,43 +37,59 @@ fbcode_target(
     visibility = [],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_xplat_cxx_library(
     name = "iobuf-ffi",
     srcs = ["iobuf.cpp"],
-    headers = ["iobuf.h"],
+    exported_headers = ["iobuf.h"],
     preferred_linkage = "static",
+    visibility = ["PUBLIC"],
     exported_deps = [
         ":folly-io-buf",
     ],
 )
 
-fbcode_target(
-    _kind = rust_library,
+fb_xplat_rust_library(
     name = "iobuf",
     srcs = glob(["src/*.rs"]),
     cpp_deps = [":iobuf-ffi"],
     crate_root = "src/lib.rs",
     cxx_bridge = "src/lib.rs",
+    features = selects.with_or({
+        "DEFAULT": [],
+        ("ovr_config//runtime:fbcode", "ovr_config//os:windows", "ovr_config//os:macos"): [
+            "minibytes",
+        ],
+    }),
     test_deps = [
         "fbsource//third-party/rust:quickcheck",
-        "//thrift/lib/rust/src/dep_tests:test_if-rust",
+        "fbsource//xplat/thrift/lib/rust/src/dep_tests:test_if-rust",
     ],
+    visibility = ["PUBLIC"],
     deps = [
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
         "fbsource//third-party/rust:memmap2",
+        "fbsource//xplat/thrift/lib/rust:fbthrift",
         ":iobuf-sys",
-        "//eden/scm/lib/minibytes:minibytes",
-        "//thrift/lib/rust:fbthrift",
-    ],
+    ] + selects.with_or({
+        "DEFAULT": [],
+        ("ovr_config//runtime:fbcode", "ovr_config//os:windows", "ovr_config//os:macos"): [
+            "fbcode//eden/scm/lib/minibytes:minibytes",
+        ],
+    }),
 )
 
-fbcode_target(
-    _kind = fb_native.alias,
+fb_native.alias(
     name = "folly-io-buf",
     actual = select({
-        "DEFAULT": "//folly/io:iobuf",
+        "DEFAULT": selects.with_or({
+            "DEFAULT": "fbsource//xplat/folly/io:iobuf",
+            ("ovr_config//runtime:fbcode", "ovr_config//os:windows", "ovr_config//os:macos"): "fbcode//folly/io:iobuf",
+        }),
         "ovr_config//build_mode:arvr_mode": "fbsource//xplat/folly/io:iobuf",
     }),
+)
+
+create_aliases_for_platforms(
+    actual_name = "folly-io-buf",
 )
