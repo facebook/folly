@@ -171,7 +171,7 @@ struct AllocNodeGuard : NonCopyableNonMovable {
 
   template <typename... Arg>
   explicit AllocNodeGuard(Allocator alloc_, Arg&&... arg)
-      : alloc{std::move(alloc_)}, node{(Node*)alloc_.allocate(sizeof(Node))} {
+      : alloc{std::move(alloc_)}, node{(Node*)alloc.allocate(sizeof(Node))} {
     auto guard = makeGuard([&] {
       alloc.deallocate((uint8_t*)node, sizeof(Node));
     });
