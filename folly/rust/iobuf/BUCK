@@ -1,7 +1,9 @@
+load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "WINDOWS")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_rust_library.bzl", "fb_xplat_rust_library")
 load("@fbsource//tools/build_defs:fb_xplat_suffixed_aliases.bzl", "create_aliases_for_platforms")
+load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_xplat")
 load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
 
@@ -33,6 +35,7 @@ rust_bindgen_library(
         "std::.*",
         "folly::fbstring.*",
     ],
+    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
     src_includes = ["iobuf_sys.rs"],
     visibility = [],
 )
@@ -41,6 +44,7 @@ fb_xplat_cxx_library(
     name = "iobuf-ffi",
     srcs = ["iobuf.cpp"],
     exported_headers = ["iobuf.h"],
+    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
     preferred_linkage = "static",
     visibility = ["PUBLIC"],
     exported_deps = [
@@ -60,11 +64,13 @@ fb_xplat_rust_library(
             "minibytes",
         ],
     }),
+    platforms = (CXX, ANDROID, APPLE, WINDOWS),
     test_deps = [
         "fbsource//third-party/rust:quickcheck",
         "fbsource//xplat/thrift/lib/rust/src/dep_tests:test_if-rust",
     ],
     visibility = ["PUBLIC"],
+    xplat_preexisting_target_flavors = [FBCODE],
     deps = [
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
@@ -78,6 +84,12 @@ fb_xplat_rust_library(
         ],
     }),
 )
+
+fb_native.alias(
+    name = "iobufFbcode",
+    actual = ":iobuf",
+    visibility = ["PUBLIC"],
+) if is_xplat() else None
 
 fb_native.alias(
     name = "folly-io-buf",
