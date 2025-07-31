@@ -19,7 +19,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <cstring>
-#include <string>
 
 #include <glog/logging.h>
 
