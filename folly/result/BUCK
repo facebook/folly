@@ -94,3 +94,20 @@ fbcode_target(
         "//folly:try",
     ],
 )
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "value_only_result",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["value_only_result.h"],
+    exported_deps = ["//xplat/folly/result:result"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "value_only_result",
+    headers = ["value_only_result.h"],
+    exported_deps = ["//folly/result:result"],
+)

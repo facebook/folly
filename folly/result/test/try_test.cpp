@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
+#include <folly/portability/GTest.h>
 #include <folly/result/try.h>
 
 #if FOLLY_HAS_RESULT

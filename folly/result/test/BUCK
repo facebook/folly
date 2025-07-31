@@ -15,6 +15,17 @@ fbcode_target(
     name = "try_test",
     srcs = ["try_test.cpp"],
     deps = [
+        "//folly/portability:gtest",
         "//folly/result:try",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "value_only_result_test",
+    srcs = ["value_only_result_test.cpp"],
+    deps = [
+        "//folly/result:gtest_helpers",
+        "//folly/result:value_only_result",
     ],
 )

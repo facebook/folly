@@ -906,9 +906,10 @@ auto /* implicit */ operator co_await(std::reference_wrapper<result<T>> rr) {
 template <typename T>
 auto /* implicit */ operator co_await(
     std::reference_wrapper<const result<T>> cr) {
-  return detail::
-      result_ref_awaitable<T, std::add_const_t, detail::result_await_suspender>{
-          .storage_ = std::move(cr)};
+  return detail::result_ref_awaitable< //
+      T,
+      std::add_const_t,
+      detail::result_await_suspender>{.storage_ = std::move(cr)};
 }
 
 /// Wraps the return value from the lambda `fn` in a `result`, putting any

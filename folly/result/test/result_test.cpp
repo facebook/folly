@@ -339,13 +339,6 @@ RESULT_CO_TEST(Result, movableContexts) {
   {
     auto fn = []() -> result<std::unique_ptr<int>> {
       auto fivePtr = std::make_unique<int>(5);
-      return fivePtr;
-    };
-    EXPECT_EQ(5, *(co_await fn()));
-  }
-  {
-    auto fn = []() -> result<std::unique_ptr<int>> {
-      auto fivePtr = std::make_unique<int>(5);
       co_return fivePtr;
     };
     EXPECT_EQ(5, *(co_await fn()));

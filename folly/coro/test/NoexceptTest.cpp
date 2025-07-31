@@ -94,8 +94,11 @@ now_task<void> checkFatalOnThrow() {
   // exception would fatal before getting to the `co_awaitTry`, and it shouldn't
   // compile since `NoexceptAwaiter` lacks `await_resume_try`.
   //
-  // NB: If your metaprogramming task requires this for uniformity, you can of
-  // course make it work, and adjust the test to be `EXPECT_DEATH`.
+  // NB: If your metaprogramming task requires this for uniformity, the good
+  // path forward would be to ignore legacy `Try` and to instead add
+  // `await_resume_result` returning `value_only_result`.  This way, you get
+  // uniform UX without paying for the error path.  If implementing this, might
+  // as well add an `EXPECT_DEATH` test too.
   static_assert(detail::is_awaitable_try<semi_await_awaitable_t<TaskT>>);
   static_assert(!detail::is_awaitable_try<
                 semi_await_awaitable_t<decltype(co_fatalOnThrow(coThrow()))>>);

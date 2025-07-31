@@ -49,8 +49,8 @@ namespace folly {
 
 namespace detail {
 
-// This hack lets `Captures.h` specialize `safe_closure` to store `capture<V>`
-// types to be stored as `capture<V&>`, without taking a direct dependency.
+// Captures.h specializes this template to teach safe_closure to store
+// capture<V> types as capture<V&>, without taking a direct dependency.
 template <typename ST>
 struct safe_closure_arg_storage_helper {
   // If we can't see the type, we probably can't see its specialization either.
