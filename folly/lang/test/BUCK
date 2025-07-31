@@ -211,6 +211,17 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
+    name = "safe_closure_test",
+    srcs = ["SafeClosureTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/coro/safe:captures",
+        "//xplat/folly/lang:safe_closure",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
     name = "switch_test",
     srcs = ["SwitchTest.cpp"],
     deps = [
@@ -514,6 +525,17 @@ fbcode_target(
     ],
     external_deps = [
         "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "safe_closure_test",
+    srcs = ["SafeClosureTest.cpp"],
+    deps = [
+        "//folly/coro/safe:captures",
+        "//folly/lang:safe_closure",
+        "//folly/portability:gtest",
     ],
 )
 

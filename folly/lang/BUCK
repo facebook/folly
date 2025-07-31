@@ -313,6 +313,20 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "safe_closure",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeClosure.h"],
+    exported_deps = [
+        ":safe_alias",
+        "//xplat/folly/detail:tuple",
+        "//xplat/folly/lang/bind:as_argument",
+        "//xplat/folly/lang/bind:bind",
+        "//xplat/folly/lang/bind:to_storage",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "static_const",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["StaticConst.h"],
@@ -661,6 +675,19 @@ fbcode_target(
         "//folly:cpp_attributes",
         "//folly:portability",
         "//folly:preprocessor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "safe_closure",
+    headers = ["SafeClosure.h"],
+    exported_deps = [
+        ":safe_alias",
+        "//folly/detail:tuple",
+        "//folly/lang/bind:as_argument",
+        "//folly/lang/bind:bind",
+        "//folly/lang/bind:to_storage",
     ],
 )
 

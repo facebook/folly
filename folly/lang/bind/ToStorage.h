@@ -52,6 +52,9 @@ template <auto BI, typename BindingType>
 // Formulated as a constraint to prevent object slicing
   requires std::same_as<decltype(BI), bind_info_t>
 class bind_to_storage_policy<binding_t<BI, BindingType>> {
+  // If `BindingType` is incomplete, it means we likely can't see the relevant
+  // `bind_to_storage_policy` specializations, either.
+  static_assert(require_sizeof<BindingType> >= 0);
   static_assert(
       !is_binding_t_type_in_place<BindingType> ||
           BI.category != category_t::ref,

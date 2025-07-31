@@ -544,10 +544,10 @@ auto async_closure_inner_coro_and_storage(auto&& make_inner_coro, BTup& b_tup) {
   // arg is expected to be `co_cleanup_capture<>` or `AsyncObjectPtr<>`, so we
   // "magically" dereference it here.
   //
-  // On member-invocation safety: `bind_captures_to_closure` will we assert
-  // that we made a `member_task<T>`, which `inner_rewrapped` will implicitly
-  // unwrap & mark with a higher safety level.  By itself, `member_task`
-  // provides only a minimal safety attestation, namely:
+  // On member-invocation safety: `bind_captures_to_closure` will assert that
+  // we made a `member_task<T>`, which `inner_rewrapped` will implicitly unwrap
+  // & mark with a higher safety level.  By itself, `member_task` provides only
+  // a minimal safety attestation, namely:
   //   - For the implicit object param `Arg1`,
   //       strict_safe_alias_of_v<Arg1> > shared_cleanup
   //   - None of the other args are taken by-reference.

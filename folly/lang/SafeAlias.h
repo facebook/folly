@@ -269,9 +269,11 @@ class manual_safe_callable_t {
   }
 };
 
-// APIs taking callables should typically use `strict_safe_alias_of_v`, due to
-// the risk posed by lambda captures.  Future: Instead, almost always prefer
-// `safe_bind`, since that correctly measures safety for you.
+// Whenever possible, prefer `safe_closure`, since it automatically measures
+// the safety of its stored arguments.
+//
+// Motivation: APIs taking callables should typically use
+// `strict_safe_alias_of_v`, due to the risk posed by lambda captures.
 template <
     safe_alias Safety = safe_alias::maybe_value,
     typename Fn,

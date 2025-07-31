@@ -100,10 +100,10 @@ template <auto BI, typename BindingType>
   requires std::same_as< // Written as a constraint to prevent object slicing
       decltype(BI),
       ::folly::bind::detail::capture_bind_info_t>
-class bind_to_storage_policy<ext::binding_t<BI, BindingType>> {
+class bind_to_storage_policy<binding_t<BI, BindingType>> {
  private:
   using standard =
-      bind_to_storage_policy<ext::binding_t<bind_info_t{BI}, BindingType>>;
+      bind_to_storage_policy<binding_t<bind_info_t{BI}, BindingType>>;
 
  public:
   using storage_type = typename standard::storage_type;
@@ -805,7 +805,7 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   // (2) `async_now_closure` always emits a `now_task`, which is meant
   //     to be usable even with unsafe coros & arguments.
   //
-  //     However, we only need shared-cleanup if the inner-coro COULD access an
+  //     However, we only need shared-cleanup if the inner-coro COULD access a
   //     ref of safety <= `shared_cleanup`.  Above, we tested the explicit
   //     inputs via `args_force_shared_cleanup`, but that misses the "implicit
   //     object parameter" (aka `this`) of the coro callable.

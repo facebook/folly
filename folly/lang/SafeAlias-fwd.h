@@ -152,10 +152,10 @@ struct safe_alias_of<
 
 // Use this in APIs that take callable objects, since lambda captures present a
 // particularly high risk for aliasing bugs. If you have a compile error:
-//   - The best solution is to expose the correct `folly_private_safe_alias_t`
-//     for your type.
+//   - For regular lambdas with captures, use `safe_closure()`.
+//   - For custom callables, the best solution is to add the correct
+//     `folly_private_safe_alias_t` to your type.
 //   - For async coroutines, use `async_closure()` or `safe_task.h`.
-//   - Future: Also see `safe_bind`.
 //   - For one-offs, `SafeAlias.h`  includes some `manual_safe_*` workarounds.
 //     You MUST include a comment that proves your usage is safe.
 template <typename T>

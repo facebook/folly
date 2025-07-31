@@ -884,6 +884,19 @@ concept is_any_capture_val =
 
 } // namespace folly::coro
 
+// Customize `safe_closure` to store `capture<V>` as `capture<V&>`.
+namespace folly::detail {
+template <typename ST>
+struct safe_closure_arg_storage_helper;
+template <coro::detail::is_any_capture_val ST>
+struct safe_closure_arg_storage_helper<ST> {
+  // We should never move `capture<Val>`s, so `safe_closure` will fail to
+  // implicitly convert from `capture<Val>&&` to `capture<V&>` since the
+  // `&&`-qualified conversions are `explicit` above.
+  using type = coro::capture_ref_conversion_t<ST&>;
+};
+} // namespace folly::detail
+
 #endif
 
 #undef FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE

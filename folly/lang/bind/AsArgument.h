@@ -56,6 +56,13 @@ constexpr decltype(auto) bind_as_argument(StorageRef&& sr) {
       return static_cast<detail::add_const_inside_ref_t<StorageRef&&>>(sr);
     } else {
       static_assert(BI.constness == constness_t::mut);
+      // In principle, this could be relaxed, but we'd need to see a use-case
+      // where binding `bind::mut` by `const` reference is justified.
+      static_assert(
+          !std::is_const_v<std::remove_reference_t<StorageRef>>,
+          "It is likely a bug to use `bind::mut` when the stored argument "
+          "(e.g. the `safe_closure`) is `const`. Hint: If you're invoking a "
+          "lambda capture, recall that copy-captures are `const` by default.");
       return static_cast<StorageRef&&>(sr);
     }
   } else { // Explicit pass-by-value: `bind::move{}` or `bind::copy{}`
@@ -82,7 +89,8 @@ constexpr decltype(auto) bind_as_argument(StorageRef&& sr) {
       static_assert(
           !std::is_reference_v<StorageRef>,
           "To use `bind::move`, pass the arg storage (e.g. the `safe_closure`) "
-          "by rvalue.");
+          "by rvalue. Hint: if your `safe_closure` is a lambda capture, recall "
+          "that copy-captures are `const` by default.");
       return static_cast<StorageRef&&>(sr);
     }
   }
