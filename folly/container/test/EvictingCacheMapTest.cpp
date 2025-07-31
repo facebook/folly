@@ -840,3 +840,52 @@ TEST(EvictingCacheMap, PiecewiseConstructTest) {
   EXPECT_TRUE(inserted);
   EXPECT_EQ(iter->second, "test");
 }
+
+TEST(EvictingCacheMap, ZeroClearSizeClampingTest) {
+  // Test that clearSize = 0 gets clamped to 1
+  constexpr size_t kMaxSize = 5;
+  constexpr size_t kClearSize = 0;
+  EvictingCacheMap<int, int> map(kMaxSize, kClearSize);
+
+  // Fill the cache to maxSize
+  for (int i = 0; i < 5; i++) {
+    map.set(i, i);
+    EXPECT_TRUE(map.exists(i));
+  }
+  EXPECT_EQ(5, map.size());
+
+  // Adding one more should trigger eviction
+  // Even though clearSize was set to 0, it should be clamped to 1
+  map.set(5, 5);
+  EXPECT_EQ(5, map.size()); // Size should still be maxSize
+  EXPECT_TRUE(map.exists(5)); // New element should exist
+  EXPECT_FALSE(map.exists(0)); // Oldest element should be evicted
+
+  // Verify that exactly 1 element was cleared (not 0)
+  for (int i = 1; i < 6; i++) {
+    EXPECT_TRUE(map.exists(i));
+  }
+}
+
+TEST(EvictingCacheMap, SetClearSizeZeroClampingTest) {
+  constexpr size_t kMaxSize = 10;
+  constexpr size_t kClearSize = 5;
+  EvictingCacheMap<int, int> map(kMaxSize, kClearSize);
+
+  // Fill cache
+  for (int i = 0; i < 10; i++) {
+    map.set(i, i);
+  }
+  EXPECT_EQ(10, map.size());
+
+  // Set clearSize to 0 - should be clamped to 1
+  map.setClearSize(0);
+
+  // Trigger eviction by reducing maxSize
+  map.setMaxSize(5);
+  EXPECT_EQ(5, map.size());
+
+  // Add more elements to test that clearSize=1 is being used
+  map.set(10, 10);
+  EXPECT_EQ(5, map.size());
+}

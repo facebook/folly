@@ -168,7 +168,7 @@ class EvictingCacheMap {
         keyEqual_(keyEqual),
         index_(maxSize + /*transient*/ 1, keyHash_, keyEqual_),
         maxSize_(maxSize),
-        clearSize_(clearSize) {}
+        clearSize_(clampClearSize(clearSize)) {}
 
   EvictingCacheMap(const EvictingCacheMap&) = delete;
   EvictingCacheMap& operator=(const EvictingCacheMap&) = delete;
@@ -197,7 +197,9 @@ class EvictingCacheMap {
 
   std::size_t getMaxSize() const { return maxSize_; }
 
-  void setClearSize(std::size_t clearSize) { clearSize_ = clearSize; }
+  void setClearSize(std::size_t clearSize) {
+    clearSize_ = clampClearSize(clearSize);
+  }
 
   /**
    * Check for existence of a specific key in the map.  This operation has
@@ -735,6 +737,12 @@ class EvictingCacheMap {
     } else {
       return nullptr;
     }
+  }
+
+  // A zero clear size doesnt make sense. If you want to disable clearing, set
+  // maxSize to 0.
+  static std::size_t clampClearSize(std::size_t clearSize) {
+    return std::max(clearSize, std::size_t{1});
   }
 
   PruneHookCall pruneHook_;
