@@ -21,6 +21,7 @@ from .builder import (
     NinjaBootstrap,
     NopBuilder,
     OpenSSLBuilder,
+    SetupPyBuilder,
     SqliteBuilder,
     SystemdBuilder,
 )
@@ -114,6 +115,7 @@ SCHEMA = {
     "subprojects": {"optional_section": True},
     # fb-only
     "sandcastle": {"optional_section": True, "fields": {"run_tests": OPTIONAL}},
+    "setup-py.test": {"optional_section": True, "fields": {"python_script": REQUIRED}},
 }
 
 # These sections are allowed to vary for different platforms
@@ -674,6 +676,18 @@ class ManifestParser(object):
 
         if builder == "systemd":
             return SystemdBuilder(
+                loader,
+                dep_manifests,
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+            )
+
+        if builder == "setup-py":
+            return SetupPyBuilder(
                 loader,
                 dep_manifests,
                 build_options,

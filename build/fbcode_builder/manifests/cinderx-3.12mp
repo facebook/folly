@@ -1,0 +1,24 @@
+[manifest]
+name = cinderx-3.12mp
+fbsource_path = fbcode/cinderx
+shipit_project = facebookincubator/cinderx
+
+[git]
+repo_url = https://github.com/facebookincubator/cinderx.git
+
+[build.os=linux]
+builder = setup-py
+
+[build.not(os=linux)]
+builder = nop
+
+[dependencies]
+python-setuptools
+meta-python-3.12
+
+[shipit.pathmap]
+fbcode/cinderx = cinderx
+fbcode/cinderx/oss_toplevel = .
+
+[setup-py.test]
+python_script = cinderx/PythonLib/test_cinderx/test_oss_quick.py
