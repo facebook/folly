@@ -400,7 +400,6 @@ fbcode_target(
     deps = [
         "//folly:conv",
         "//folly:string",
-        "//folly/memory:malloc",
     ],
     exported_deps = [
         "//folly:c_portability",
@@ -452,9 +451,8 @@ fbcode_target(
     headers = [],
     allocator = "jemalloc",
     deps = [
+        ":jemalloc_nodump_allocator",
         "//folly/io:iobuf",
-        "//folly/memory:jemalloc_nodump_allocator",
-        "//folly/memory:malloc",
         "//folly/portability:gtest",
     ],
 )
