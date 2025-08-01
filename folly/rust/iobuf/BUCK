@@ -58,12 +58,9 @@ fb_xplat_rust_library(
     cpp_deps = [":iobuf-ffi"],
     crate_root = "src/lib.rs",
     cxx_bridge = "src/lib.rs",
-    features = selects.with_or({
-        "DEFAULT": [],
-        ("ovr_config//runtime:fbcode", "ovr_config//os:windows", "ovr_config//os:macos"): [
-            "minibytes",
-        ],
-    }),
+    features = [
+        "minibytes",
+    ],
     platforms = (CXX, ANDROID, APPLE, WINDOWS),
     test_deps = [
         "fbsource//third-party/rust:quickcheck",
@@ -72,17 +69,13 @@ fb_xplat_rust_library(
     visibility = ["PUBLIC"],
     xplat_preexisting_target_flavors = [FBCODE],
     deps = [
+        "fbcode//eden/scm/lib/minibytes:minibytes",
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
         "fbsource//third-party/rust:memmap2",
         "fbsource//xplat/thrift/lib/rust:fbthrift",
         ":iobuf-sys",
-    ] + selects.with_or({
-        "DEFAULT": [],
-        ("ovr_config//runtime:fbcode", "ovr_config//os:windows", "ovr_config//os:macos"): [
-            "fbcode//eden/scm/lib/minibytes:minibytes",
-        ],
-    }),
+    ],
 )
 
 fb_native.alias(
