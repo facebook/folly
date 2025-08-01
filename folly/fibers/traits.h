@@ -41,17 +41,17 @@ struct ExtractFirstArg;
 
 template <typename Ret, typename T, typename First, typename... Args>
 struct ExtractFirstArg<Ret (T::*)(First, Args...)> {
-  typedef First type;
+  using type = First;
 };
 
 template <typename Ret, typename T, typename First, typename... Args>
 struct ExtractFirstArg<Ret (T::*)(First, Args...) const> {
-  typedef First type;
+  using type = First;
 };
 
 template <typename Ret, typename First, typename... Args>
 struct ExtractFirstArg<Ret(First, Args...)> {
-  typedef First type;
+  using type = First;
 };
 
 } // namespace detail
@@ -62,14 +62,14 @@ struct FirstArgOf;
 /** Specialization for non-function-object callables */
 template <typename F>
 struct FirstArgOf<F, typename std::enable_if<!std::is_class<F>::value>::type> {
-  typedef typename detail::ExtractFirstArg<
-      typename std::remove_pointer<F>::type>::type type;
+  using type = typename detail::ExtractFirstArg<
+      typename std::remove_pointer<F>::type>::type;
 };
 
 /** Specialization for function objects */
 template <typename F>
 struct FirstArgOf<F, typename std::enable_if<std::is_class<F>::value>::type> {
-  typedef typename FirstArgOf<decltype(&F::operator())>::type type;
+  using type = typename FirstArgOf<decltype(&F::operator())>::type;
 };
 
 } // namespace fibers

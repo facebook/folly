@@ -87,7 +87,7 @@ static constexpr auto& await = await_async;
 template <typename T>
 class [[nodiscard]] Async {
  public:
-  typedef T inner_type;
+  using inner_type = T;
 
   // General use constructor
   template <typename... Us>
@@ -118,7 +118,7 @@ class [[nodiscard]] Async {
 template <>
 class [[nodiscard]] Async<void> {
  public:
-  typedef void inner_type;
+  using inner_type = void;
 
   /* implicit */ Async() {}
   /* implicit */ Async(Unit) {}
