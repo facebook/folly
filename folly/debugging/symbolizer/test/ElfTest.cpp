@@ -16,8 +16,10 @@
 
 #include <folly/debugging/symbolizer/Elf.h>
 
+#include <gmock/gmock.h>
 #include <folly/CppAttributes.h>
 #include <folly/FileUtil.h>
+#include <folly/String.h>
 #include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/portability/GTest.h>
 #include <folly/testing/TestUtil.h>
@@ -217,6 +219,23 @@ TEST_F(ElfTest, PosixFadviseBadAdvice) {
   auto res = elfFile_.posixFadvise(10000);
   EXPECT_NE(0, res.first);
   EXPECT_STREQ("posix_fadvise failed for file", res.second);
+}
+
+TEST(TestUUID, SimpleElf) {
+  auto const file =
+      folly::test::find_resource("folly/debugging/symbolizer/test/simple_elf");
+  EXPECT_TRUE(std::filesystem::exists(file.c_str())) << file.c_str();
+  ElfFile elfFile = ElfFile(file.c_str());
+  auto uuidMaybe = elfFile.getUUID();
+  EXPECT_TRUE(([&]() {
+    return uuidMaybe.hasError()
+        ? testing::AssertionFailure() << uuidMaybe.error()
+        : testing::AssertionSuccess();
+  })());
+
+  auto& uuid = uuidMaybe.value();
+  EXPECT_EQ(4, uuid.size());
+  EXPECT_THAT(uuid, ::testing::ElementsAreArray({0xDE, 0xAD, 0xBE, 0xEF}));
 }
 
 #endif

@@ -55,6 +55,7 @@ using ElfSym = FOLLY_ELF_ELFW(Sym);
 using ElfRel = FOLLY_ELF_ELFW(Rel);
 using ElfRela = FOLLY_ELF_ELFW(Rela);
 using ElfDyn = FOLLY_ELF_ELFW(Dyn);
+using ElfNhdr = FOLLY_ELF_ELFW(Nhdr);
 
 // ElfFileId is supposed to uniquely identify any instance of an ELF binary.
 // It does that by using the file's inode, dev ID, size and modification time
@@ -359,6 +360,15 @@ class ElfFile {
   const char* filepath() const { return filepath_; }
 
   const ElfFileId& getFileId() const { return fileId_; }
+
+  /**
+   * Retrieve the UUID from the .note.gnu.build-id if available.
+   * @return
+   *     Returns a range pointing to the bitstring of the .gnu.buildid note
+   *     which can vary depending on the build mode, see man ld build-id for
+   *     more information
+   */
+  folly::Expected<folly::StringPiece, std::string> getUUID() const noexcept;
 
   /**
    * Announce an intention to access file data in a specific pattern in the

@@ -495,6 +495,39 @@ std::pair<const int, char const*> ElfFile::posixFadvise(
   return posixFadvise(0, 0, advice);
 }
 
+folly::Expected<folly::StringPiece, std::string> ElfFile::getUUID()
+    const noexcept {
+  auto section = getSectionByName(".note.gnu.build-id");
+  if (!section) {
+    return folly::makeUnexpected("no .note.gnu.build-id section.");
+  }
+
+  auto body = getSectionBody(*section);
+  if (body.size() < sizeof(ElfNhdr)) {
+    return folly::makeUnexpected(
+        ".note.gnu.build-id section smaller than Note header.");
+  }
+
+  // The section starts with a header, then
+  auto header = reinterpret_cast<const ElfNhdr*>(body.begin());
+  if (header->n_type != NT_GNU_BUILD_ID) {
+    return folly::makeUnexpected(
+        ".note.gnu.build-id section type does not match NT_GNU_BUILD_ID.");
+  }
+
+  if (body.size() < sizeof(ElfNhdr) + header->n_namesz + header->n_descsz) {
+    return folly::makeUnexpected(
+        ".note.gnu.build-id is malformed, section size is smaller than the specificed note size.");
+  }
+
+  // Namesz and Descz can themselves be padded to be 4 byte aligned. It's
+  // unlikely this will ever be incorrect but per the man page we still need to
+  // do it.
+  const char* desc =
+      body.begin() + sizeof(ElfNhdr) + folly::align_ceil(header->n_namesz, 4);
+  return folly::StringPiece(desc, header->n_descsz);
+}
+
 } // namespace symbolizer
 } // namespace folly
 

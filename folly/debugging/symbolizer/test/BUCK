@@ -72,12 +72,26 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_binary,
+    name = "simple_elf",
+    srcs = ["SimpleElf.cpp"],
+    linker_flags = [
+        "--build-id=0xdeadbeef",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "elf_test",
     srcs = ["ElfTest.cpp"],
+    resources = [
+        ":simple_elf",
+    ],
     deps = [
+        "fbsource//third-party/googletest:gmock",
         "//folly:cpp_attributes",
         "//folly:file_util",
+        "//folly:string",
         "//folly/debugging/symbolizer:elf",
         "//folly/debugging/symbolizer/detail:debug",
         "//folly/portability:gtest",
