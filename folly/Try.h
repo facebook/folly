@@ -407,7 +407,7 @@ class Try<void> {
   /*
    * The value type for the Try
    */
-  typedef void element_type;
+  using element_type = void;
 
   // Construct a Try holding a successful and void result
   Try() noexcept : hasValue_(true) {}
