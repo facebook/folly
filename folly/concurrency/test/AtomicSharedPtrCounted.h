@@ -113,7 +113,7 @@ class counted_ptr_internals : public counted_ptr_base<Atom> {
   }
   template <typename T>
   using CountedPtr = counted_ptr<T, Atom>;
-  typedef void counted_base;
+  using counted_base = void;
 
   template <typename T>
   static counted_base* get_counted_base(const counted_ptr<T, Atom>& bar) {

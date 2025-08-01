@@ -60,7 +60,7 @@ template <
     typename Enabled = void>
 class ValueHolder {
  public:
-  typedef std::pair<const KeyType, ValueType> value_type;
+  using value_type = std::pair<const KeyType, ValueType>;
 
   explicit ValueHolder(const ValueHolder& other) : item_(other.item_) {}
 
@@ -93,7 +93,7 @@ class ValueHolder<
     std::enable_if_t<
         !std::is_nothrow_copy_constructible<ValueType>::value ||
         !std::is_nothrow_copy_constructible<KeyType>::value>> {
-  typedef std::pair<const KeyType, ValueType> value_type;
+  using value_type = std::pair<const KeyType, ValueType>;
 
   struct CountedItem {
     value_type kv_;
@@ -228,7 +228,7 @@ class NodeT
           Atom,
           concurrenthashmap::HazptrDeleter<Allocator>> {
  public:
-  typedef std::pair<const KeyType, ValueType> value_type;
+  using value_type = std::pair<const KeyType, ValueType>;
 
   explicit NodeT(hazptr_obj_cohort<Atom>* cohort, NodeT* other)
       : item_(other->item_) {
@@ -287,7 +287,7 @@ class alignas(64) BucketTable {
   // perfectly balanced, reserve(size) will still work without
   // rehashing.
   static constexpr float kDefaultLoadFactor = 1.05f;
-  typedef std::pair<const KeyType, ValueType> value_type;
+  using value_type = std::pair<const KeyType, ValueType>;
 
   using Node =
       concurrenthashmap::bucket::NodeT<KeyType, ValueType, Allocator, Atom>;
@@ -855,7 +855,7 @@ class NodeT
           Atom,
           HazptrDeleter<Allocator>> {
  public:
-  typedef std::pair<const KeyType, ValueType> value_type;
+  using value_type = std::pair<const KeyType, ValueType>;
 
   template <typename Arg, typename... Args>
   NodeT(hazptr_obj_cohort<Atom>* cohort, Arg&& k, Args&&... args)
@@ -1137,7 +1137,7 @@ class alignas(64) SIMDTable {
   static constexpr float kDefaultLoadFactor =
       Chunk::kDesiredCapacity / (float)Chunk::kCapacity;
 
-  typedef std::pair<const KeyType, ValueType> value_type;
+  using value_type = std::pair<const KeyType, ValueType>;
 
   using InsertType = concurrenthashmap::InsertType;
 
@@ -1789,10 +1789,10 @@ class alignas(64) ConcurrentHashMapSegment {
       Mutex>;
 
  public:
-  typedef KeyType key_type;
-  typedef ValueType mapped_type;
-  typedef std::pair<const KeyType, ValueType> value_type;
-  typedef std::size_t size_type;
+  using key_type = KeyType;
+  using mapped_type = ValueType;
+  using value_type = std::pair<const KeyType, ValueType>;
+  using size_type = std::size_t;
 
   using InsertType = concurrenthashmap::InsertType;
   using Iterator = typename ImplT::Iterator;

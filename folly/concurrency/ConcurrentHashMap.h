@@ -166,13 +166,13 @@ class ConcurrentHashMap {
  public:
   class ConstIterator;
 
-  typedef KeyType key_type;
-  typedef ValueType mapped_type;
-  typedef std::pair<const KeyType, ValueType> value_type;
-  typedef std::size_t size_type;
-  typedef HashFn hasher;
-  typedef KeyEqual key_equal;
-  typedef ConstIterator const_iterator;
+  using key_type = KeyType;
+  using mapped_type = ValueType;
+  using value_type = std::pair<const KeyType, ValueType>;
+  using size_type = std::size_t;
+  using hasher = HashFn;
+  using key_equal = KeyEqual;
+  using const_iterator = ConstIterator;
 
  private:
   template <typename K, typename T>

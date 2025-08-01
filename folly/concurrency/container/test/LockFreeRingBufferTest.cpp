@@ -94,7 +94,7 @@ TEST(LockFreeRingBuffer, readsCanBlock) {
 // expose the cursor raw value via a wrapper type
 template <typename T, template <typename> class Atom>
 uint64_t value(const typename LockFreeRingBuffer<T, Atom>::Cursor& rbcursor) {
-  typedef typename LockFreeRingBuffer<T, Atom>::Cursor RBCursor;
+  using RBCursor = typename LockFreeRingBuffer<T, Atom>::Cursor;
 
   struct ExposedCursor : RBCursor {
     ExposedCursor(const RBCursor& cursor) : RBCursor(cursor) {}
