@@ -49,6 +49,7 @@ SCHEMA = {
             "shipit_project": OPTIONAL,
             "shipit_fbcode_builder": OPTIONAL,
             "use_shipit": OPTIONAL,
+            "shipit_external_branch": OPTIONAL,
         },
     },
     "dependencies": {"optional_section": True, "allow_values": False},
@@ -428,7 +429,11 @@ class ManifestParser(object):
             and real_shipit_available
         ):
             # We can use the code from fbsource
-            return ShipitTransformerFetcher(build_options, self.shipit_project)
+            return ShipitTransformerFetcher(
+                build_options,
+                self.shipit_project,
+                self.get("manifest", "shipit_external_branch"),
+            )
 
         # If both of these are None, the package can only be coming from
         # preinstalled toolchain or system packages

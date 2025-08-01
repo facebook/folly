@@ -646,9 +646,10 @@ class ShipitTransformerFetcher(Fetcher):
             fbcode_path = []
         return www_path + fbcode_path
 
-    def __init__(self, build_options, project_name) -> None:
+    def __init__(self, build_options, project_name, external_branch) -> None:
         self.build_options = build_options
         self.project_name = project_name
+        self.external_branch = external_branch
         self.repo_dir = os.path.join(build_options.scratch_dir, "shipit", project_name)
         self.shipit = None
         for path in ShipitTransformerFetcher._shipit_paths(build_options):
@@ -679,24 +680,27 @@ class ShipitTransformerFetcher(Fetcher):
             if os.path.exists(tmp_path):
                 shutil.rmtree(tmp_path)
             os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+            cmd = [
+                self.shipit,
+                "shipit",
+                "--project=" + self.project_name,
+                "--create-new-repo",
+                "--source-repo-dir=" + self.build_options.fbsource_dir,
+                "--source-branch=.",
+                "--skip-source-init",
+                "--skip-source-pull",
+                "--skip-source-clean",
+                "--skip-push",
+                "--destination-use-anonymous-https",
+                "--create-new-repo-output-path=" + tmp_path,
+            ]
+            if self.external_branch:
+                cmd += [
+                    f"--external-branch={self.external_branch}",
+                ]
 
             # Run shipit
-            run_cmd(
-                [
-                    self.shipit,
-                    "shipit",
-                    "--project=" + self.project_name,
-                    "--create-new-repo",
-                    "--source-repo-dir=" + self.build_options.fbsource_dir,
-                    "--source-branch=.",
-                    "--skip-source-init",
-                    "--skip-source-pull",
-                    "--skip-source-clean",
-                    "--skip-push",
-                    "--destination-use-anonymous-https",
-                    "--create-new-repo-output-path=" + tmp_path,
-                ]
-            )
+            run_cmd(cmd)
 
             # Remove the .git directory from the repository it generated.
             # There is no need to commit this.

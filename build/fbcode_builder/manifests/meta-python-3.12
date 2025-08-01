@@ -1,0 +1,17 @@
+# This is primarily to support CinderX, so it's not heavily configured.
+
+[manifest]
+name = meta-python-3.12
+fbsource_path = third-party/python/3.12
+shipit_project = facebookincubator/cinder
+shipit_fbcode_builder = false
+shipit_external_branch = meta/3.12
+
+[git]
+repo_url = https://github.com/facebookincubator/cinder.git#meta/3.12
+
+[build]
+builder = autoconf
+
+[shipit.pathmap]
+third-party/python/3.12 = .
