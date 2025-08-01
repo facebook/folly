@@ -7,7 +7,7 @@ oncall("rust_libraries")
 fbcode_target(
     _kind = alias,
     name = "iobuf",
-    actual = "//folly/rust/iobuf:iobuf",
+    actual = "fbsource//xplat/folly/rust/iobuf:iobuf",
 )
 
 fbcode_target(
