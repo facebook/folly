@@ -98,7 +98,7 @@ class ThreadLocal {
 
   void reset(T* newPtr = nullptr) { tlp_.reset(newPtr); }
 
-  typedef typename ThreadLocalPtr<T, Tag, AccessMode>::Accessor Accessor;
+  using Accessor = typename ThreadLocalPtr<T, Tag, AccessMode>::Accessor;
   Accessor accessAllThreads() const { return tlp_.accessAllThreads(); }
 
  private:
@@ -145,7 +145,7 @@ class ThreadLocal {
 template <class T, class Tag = void, class AccessMode = void>
 class ThreadLocalPtr {
  private:
-  typedef threadlocal_detail::StaticMeta<Tag, AccessMode> StaticMeta;
+  using StaticMeta = threadlocal_detail::StaticMeta<Tag, AccessMode>;
 
   using AccessAllThreadsEnabled = Negation<std::is_same<Tag, void>>;
 

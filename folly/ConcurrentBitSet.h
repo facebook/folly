@@ -95,14 +95,14 @@ class ConcurrentBitSet {
  private:
   // Pick the largest lock-free type available
 #if (ATOMIC_LLONG_LOCK_FREE == 2)
-  typedef unsigned long long BlockType;
+  using BlockType = unsigned long long;
 #elif (ATOMIC_LONG_LOCK_FREE == 2)
   typedef unsigned long BlockType;
 #else
   // Even if not lock free, what can we do?
   typedef unsigned int BlockType;
 #endif
-  typedef std::atomic<BlockType> AtomicBlockType;
+  using AtomicBlockType = std::atomic<BlockType>;
 
   static constexpr size_t kBitsPerBlock =
       std::numeric_limits<BlockType>::digits;

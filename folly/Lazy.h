@@ -89,7 +89,7 @@ namespace detail {
 
 template <class Func>
 struct Lazy {
-  typedef invoke_result_t<Func> result_type;
+  using result_type = invoke_result_t<Func>;
 
   static_assert(
       !std::is_const<Func>::value, "Func should not be a const-qualified type");

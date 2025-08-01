@@ -110,7 +110,7 @@ class FOLLY_EXPORT OptionalEmptyException : public std::runtime_error {
 template <class Value>
 class Optional {
  public:
-  typedef Value value_type;
+  using value_type = Value;
 
   using promise_type = detail::OptionalPromise<Value>;
 

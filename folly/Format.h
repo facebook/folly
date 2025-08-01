@@ -158,7 +158,7 @@ class BaseFormatterImpl<
   /**
    * Metadata to identify generated children of BaseFormatter
    */
-  typedef detail::FormatterTag IsFormatter;
+  using IsFormatter = detail::FormatterTag;
 
  private:
   template <typename T, typename D = typename std::decay<T>::type>

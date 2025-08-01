@@ -511,7 +511,7 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
 
 template <class Tgt>
 void toAppend(__int128 value, Tgt* result) {
-  typedef unsigned __int128 Usrc;
+  using Usrc = unsigned __int128;
   char buffer[detail::digitsEnough<unsigned __int128>() + 1];
   const auto oute = buffer + sizeof(buffer);
   size_t p;
@@ -613,8 +613,8 @@ template <class Tgt, class Src>
 typename std::enable_if<
     is_integral_v<Src> && IsSomeString<Tgt>::value && sizeof(Src) < 4>::type
 toAppend(Src value, Tgt* result) {
-  typedef typename std::conditional<is_signed_v<Src>, int64_t, uint64_t>::type
-      Intermediate;
+  using Intermediate =
+      typename std::conditional<is_signed_v<Src>, int64_t, uint64_t>::type;
   toAppend<Tgt>(static_cast<Intermediate>(value), result);
 }
 
@@ -623,8 +623,8 @@ typename std::enable_if<
     is_integral_v<Src> && sizeof(Src) < 4 && !std::is_same<Src, char>::value,
     size_t>::type
 estimateSpaceNeeded(Src value) {
-  typedef typename std::conditional<is_signed_v<Src>, int64_t, uint64_t>::type
-      Intermediate;
+  using Intermediate =
+      typename std::conditional<is_signed_v<Src>, int64_t, uint64_t>::type;
   return estimateSpaceNeeded(static_cast<Intermediate>(value));
 }
 

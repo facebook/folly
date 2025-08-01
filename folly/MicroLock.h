@@ -304,5 +304,5 @@ uint8_t MicroLockBase<MaxSpins, MaxYields>::lockAndLoad() noexcept {
   }
 }
 
-typedef MicroLockBase<> MicroLock;
+using MicroLock = MicroLockBase<>;
 } // namespace folly

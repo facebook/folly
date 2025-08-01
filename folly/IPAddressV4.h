@@ -46,12 +46,12 @@ class IPAddressV6;
 /**
  * Pair of IPAddressV4, netmask
  */
-typedef std::pair<IPAddressV4, uint8_t> CIDRNetworkV4;
+using CIDRNetworkV4 = std::pair<IPAddressV4, uint8_t>;
 
 /**
  * Specialization of `std::array` for IPv4 addresses
  */
-typedef std::array<uint8_t, 4> ByteArray4;
+using ByteArray4 = std::array<uint8_t, 4>;
 
 class IPAddressV4 {
  public:

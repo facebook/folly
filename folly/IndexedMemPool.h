@@ -157,10 +157,10 @@ template <
     template <typename> class Atom = std::atomic,
     typename Traits = IndexedMemPoolTraits<T>>
 struct IndexedMemPool {
-  typedef T value_type;
+  using value_type = T;
 
-  typedef std::unique_ptr<T, detail::IndexedMemPoolRecycler<IndexedMemPool>>
-      UniquePtr;
+  using UniquePtr =
+      std::unique_ptr<T, detail::IndexedMemPoolRecycler<IndexedMemPool>>;
 
   IndexedMemPool(const IndexedMemPool&) = delete;
   IndexedMemPool& operator=(const IndexedMemPool&) = delete;

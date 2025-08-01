@@ -147,16 +147,16 @@ class ConcurrentSkipList {
   static_assert(
       MAX_HEIGHT >= 2 && MAX_HEIGHT < 64,
       "MAX_HEIGHT can only be in the range of [2, 64)");
-  typedef std::unique_lock<folly::MicroSpinLock> ScopedLocker;
-  typedef ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT> SkipListType;
+  using ScopedLocker = std::unique_lock<folly::MicroSpinLock>;
+  using SkipListType = ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>;
 
  public:
-  typedef detail::SkipListNode<T> NodeType;
-  typedef T value_type;
-  typedef T key_type;
+  using NodeType = detail::SkipListNode<T>;
+  using value_type = T;
+  using key_type = T;
 
-  typedef detail::csl_iterator<value_type, NodeType> iterator;
-  typedef detail::csl_iterator<const value_type, NodeType> const_iterator;
+  using iterator = detail::csl_iterator<value_type, NodeType>;
+  using const_iterator = detail::csl_iterator<const value_type, NodeType>;
 
   class Accessor;
   class Skipper;
@@ -535,23 +535,23 @@ class ConcurrentSkipList {
 
 template <typename T, typename Comp, typename NodeAlloc, int MAX_HEIGHT>
 class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
-  typedef detail::SkipListNode<T> NodeType;
-  typedef ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT> SkipListType;
+  using NodeType = detail::SkipListNode<T>;
+  using SkipListType = ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>;
 
  public:
-  typedef T value_type;
-  typedef T key_type;
-  typedef T& reference;
-  typedef T* pointer;
-  typedef const T& const_reference;
-  typedef const T* const_pointer;
-  typedef size_t size_type;
-  typedef Comp key_compare;
-  typedef Comp value_compare;
+  using value_type = T;
+  using key_type = T;
+  using reference = T&;
+  using pointer = T*;
+  using const_reference = const T&;
+  using const_pointer = const T*;
+  using size_type = size_t;
+  using key_compare = Comp;
+  using value_compare = Comp;
 
-  typedef typename SkipListType::iterator iterator;
-  typedef typename SkipListType::const_iterator const_iterator;
-  typedef typename SkipListType::Skipper Skipper;
+  using iterator = typename SkipListType::iterator;
+  using const_iterator = typename SkipListType::const_iterator;
+  using Skipper = typename SkipListType::Skipper;
 
   explicit Accessor(std::shared_ptr<ConcurrentSkipList> skip_list)
       : slHolder_(std::move(skip_list)) {
@@ -673,10 +673,10 @@ class detail::csl_iterator
           ValT,
           std::forward_iterator_tag> {
  public:
-  typedef ValT value_type;
-  typedef value_type& reference;
-  typedef value_type* pointer;
-  typedef ptrdiff_t difference_type;
+  using value_type = ValT;
+  using reference = value_type&;
+  using pointer = value_type*;
+  using difference_type = ptrdiff_t;
 
   explicit csl_iterator(NodeT* node = nullptr) : node_(node) {}
 
@@ -711,15 +711,15 @@ class detail::csl_iterator
 // Skipper interface
 template <typename T, typename Comp, typename NodeAlloc, int MAX_HEIGHT>
 class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
-  typedef detail::SkipListNode<T> NodeType;
-  typedef ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT> SkipListType;
-  typedef typename SkipListType::Accessor Accessor;
+  using NodeType = detail::SkipListNode<T>;
+  using SkipListType = ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>;
+  using Accessor = typename SkipListType::Accessor;
 
  public:
-  typedef T value_type;
-  typedef T& reference;
-  typedef T* pointer;
-  typedef ptrdiff_t difference_type;
+  using value_type = T;
+  using reference = T&;
+  using pointer = T*;
+  using difference_type = ptrdiff_t;
 
   Skipper(std::shared_ptr<SkipListType> skipList)
       : accessor_(std::move(skipList)) {

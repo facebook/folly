@@ -61,7 +61,7 @@ class Node {
       std::is_trivial_v<T> && sizeof(T) <= NS && NS % alignof(T) == 0);
 
  public:
-  typedef T value_type;
+  using value_type = T;
   static constexpr size_t kNodeSize = NS;
   static constexpr size_t kElementCount = NS / sizeof(T);
   static constexpr size_t kPaddingBytes = NS % sizeof(T);
@@ -277,14 +277,14 @@ Iterator<typename Container::iterator> end(Container& c) {
 template <class Container>
 class Adaptor {
  public:
-  typedef typename Container::value_type Node;
-  typedef typename Node::value_type value_type;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
-  typedef Iterator<typename Container::iterator> iterator;
-  typedef Iterator<typename Container::const_iterator> const_iterator;
-  typedef typename const_iterator::difference_type difference_type;
-  typedef typename Container::size_type size_type;
+  using Node = typename Container::value_type;
+  using value_type = typename Node::value_type;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using iterator = Iterator<typename Container::iterator>;
+  using const_iterator = Iterator<typename Container::const_iterator>;
+  using difference_type = typename const_iterator::difference_type;
+  using size_type = typename Container::size_type;
 
   static constexpr size_t kElementsPerNode = Node::kElementCount;
   // Constructors
