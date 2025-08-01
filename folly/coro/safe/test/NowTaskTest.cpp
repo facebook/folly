@@ -258,7 +258,7 @@ CO_TEST(NowTaskTest, awaitTry) {
 #endif
 }
 
-// `std::invoke_result_t` cannot pass prvalues -- it invokes a move ctor.
+// `invoke_result_t` cannot pass prvalues -- it invokes a move ctor.
 template <typename T>
 using blockingWait_result_t = decltype(blockingWait(FOLLY_DECLVAL(T)));
 template <typename T, typename Res>

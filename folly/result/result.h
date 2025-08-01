@@ -278,10 +278,10 @@ const non_value_result& dfatal_get_empty_result_error();
 const non_value_result& dfatal_get_bad_result_access_error();
 
 template <typename T>
-using result_ref_wrap = std::conditional_t< // Reused by `result_generator`
+using result_ref_wrap = conditional_t< // Reused by `result_generator`
     std::is_rvalue_reference_v<T>,
     rvalue_reference_wrapper<std::remove_reference_t<T>>,
-    std::conditional_t<
+    conditional_t<
         std::is_lvalue_reference_v<T>,
         std::reference_wrapper<std::remove_reference_t<T>>,
         T>>;
@@ -921,15 +921,12 @@ auto /* implicit */ operator co_await(
 ///   - `result<>` coroutines catch unhandled exceptions, but can throw due to
 ///     argument copy/move ctors, or due to `bad_alloc`.
 ///   - Like all functions, `result<>` non-coroutines let exceptions fly.
-template <typename F>
+template <typename F, typename RetF = decltype(FOLLY_DECLVAL(F&&)())>
 // Wrap the return type of `fn` with `result` unless it already is `result`.
-typename std::conditional_t<
-    is_instantiation_of_v<result, std::invoke_result_t<F>>,
-    std::invoke_result_t<F>,
-    result<std::invoke_result_t<F>>>
+conditional_t<is_instantiation_of_v<result, RetF>, RetF, result<RetF>>
 result_catch_all(F&& fn) noexcept {
   try {
-    if constexpr (std::is_void_v<std::invoke_result_t<F>>) {
+    if constexpr (std::is_void_v<RetF>) {
       static_cast<F&&>(fn)();
       return {};
     } else {

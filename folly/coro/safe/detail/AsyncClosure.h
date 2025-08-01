@@ -561,7 +561,7 @@ auto async_closure_inner_coro_and_storage(auto&& make_inner_coro, BTup& b_tup) {
               if constexpr (OnlyGetInnerCoroType) { // Non-evaluated, see (1)
                 return type_identity<detected_or_t<
                     void*,
-                    std::invoke_result_t,
+                    invoke_result_t,
                     decltype(make_inner_coro),
                     decltype(async_closure_bind_inner_coro_arg<
                             StorageIs,

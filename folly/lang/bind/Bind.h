@@ -430,7 +430,7 @@ template <typename... Args>
 constexpr auto in_place_with(
     auto make_fn, Args&&... args [[clang::lifetimebound]]) {
   return detail::in_place_fn_args<
-      std::invoke_result_t<decltype(make_fn), Args&&...>,
+      decltype(make_fn(FOLLY_DECLVAL(Args&&)...)),
       decltype(make_fn),
       Args...>{std::move(make_fn), static_cast<Args&&>(args)...};
 }

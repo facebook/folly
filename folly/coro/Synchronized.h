@@ -190,10 +190,10 @@ class Synchronized : public NonCopyableNonMovable {
   }
 
   template <typename FuncT>
-  using rlock_result_t = std::invoke_result_t<FuncT, ReadLockedPtr>;
+  using rlock_result_t = invoke_result_t<FuncT, ReadLockedPtr>;
 
   template <typename FuncT>
-  using wlock_result_t = std::invoke_result_t<FuncT, WriteLockedPtr>;
+  using wlock_result_t = invoke_result_t<FuncT, WriteLockedPtr>;
 
   template <typename FuncT, typename ReturnT = rlock_result_t<FuncT>>
   typename std::enable_if<!is_semi_awaitable_v<ReturnT>, Task<ReturnT>>::type

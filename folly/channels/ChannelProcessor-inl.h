@@ -118,8 +118,7 @@ class ChannelProcessorImpl {
 
   template <
       typename Function,
-      typename ReturnType =
-          typename std::invoke_result_t<Function>::StorageType>
+      typename ReturnType = typename invoke_result_t<Function>::StorageType>
   static folly::coro::Task<ReturnType> catchNonCoroException(Function func) {
     auto result = folly::makeTryWith(std::move(func));
     if (result.hasException()) {
