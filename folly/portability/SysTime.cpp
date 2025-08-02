@@ -21,6 +21,8 @@
 #include <cstdint>
 
 extern "C" {
+
+#ifdef _MSC_VER
 int gettimeofday(timeval* tv, folly_port_struct_timezone*) {
   constexpr auto posixWinFtOffset = 116444736000000000ULL;
 
@@ -39,6 +41,7 @@ int gettimeofday(timeval* tv, folly_port_struct_timezone*) {
 
   return 0;
 }
+#endif
 
 void timeradd(timeval* a, timeval* b, timeval* res) {
   res->tv_sec = a->tv_sec + b->tv_sec;

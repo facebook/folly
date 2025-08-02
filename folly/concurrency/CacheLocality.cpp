@@ -16,7 +16,7 @@
 
 #include <folly/concurrency/CacheLocality.h>
 
-#ifndef _MSC_VER
+#ifndef _WIN32
 #define _GNU_SOURCE 1 // for RTLD_NOLOAD
 #include <dlfcn.h>
 #endif

@@ -16,7 +16,7 @@
 
 #include <folly/portability/Sockets.h>
 
-#ifdef _MSC_VER
+#ifdef _WIN32
 
 #include <errno.h>
 #include <fcntl.h>

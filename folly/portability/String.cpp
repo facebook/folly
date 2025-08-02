@@ -38,6 +38,7 @@ void bzero(void* s, size_t n) {
   memset(s, 0, n);
 }
 
+#ifdef _MSC_VER
 int strcasecmp(const char* a, const char* b) {
   return _stricmp(a, b);
 }
@@ -45,6 +46,7 @@ int strcasecmp(const char* a, const char* b) {
 int strncasecmp(const char* a, const char* b, size_t c) {
   return _strnicmp(a, b, c);
 }
+#endif
 
 char* strtok_r(char* str, char const* delim, char** ctx) {
   return strtok_s(str, delim, ctx);
