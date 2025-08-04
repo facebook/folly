@@ -28,8 +28,6 @@
 
 #include <cstring>
 
-#include <folly/CppAttributes.h>
-
 #define ALLOW_UNALIGNED_READS 1
 
 namespace folly {

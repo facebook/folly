@@ -30,7 +30,6 @@
 
 #include <cstring>
 
-#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 
 namespace folly {

@@ -17,7 +17,6 @@
 #include <folly/hash/Checksum.h>
 
 #include <algorithm>
-#include <stdexcept>
 
 #include <boost/crc.hpp>
 
@@ -32,7 +31,6 @@
 
 #if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 #include <emmintrin.h>
-#include <nmmintrin.h>
 #endif
 
 namespace folly {

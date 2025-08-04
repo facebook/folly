@@ -196,9 +196,6 @@ fbcode_target(
     name = "spooky_hash_v1",
     srcs = ["SpookyHashV1.cpp"],
     headers = ["SpookyHashV1.h"],
-    deps = [
-        "//folly:cpp_attributes",
-    ],
 )
 
 fbcode_target(
@@ -206,9 +203,6 @@ fbcode_target(
     name = "spooky_hash_v2",
     srcs = ["SpookyHashV2.cpp"],
     headers = ["SpookyHashV2.h"],
-    deps = [
-        "//folly:cpp_attributes",
-    ],
     exported_deps = [
         "//folly:c_portability",
         "//folly:portability",
