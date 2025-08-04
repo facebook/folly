@@ -29,8 +29,8 @@ class ScheduledExecutor : public virtual Executor {
  public:
   // Reality is that better than millisecond resolution is very hard to
   // achieve. However, we reserve the right to be incredible.
-  typedef std::chrono::microseconds Duration;
-  typedef std::chrono::steady_clock::time_point TimePoint;
+  using Duration = std::chrono::microseconds;
+  using TimePoint = std::chrono::steady_clock::time_point;
 
   ~ScheduledExecutor() override = default;
 
