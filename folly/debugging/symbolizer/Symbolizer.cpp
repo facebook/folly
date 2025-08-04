@@ -16,9 +16,7 @@
 
 #include <folly/debugging/symbolizer/Symbolizer.h>
 
-#include <climits>
 #include <cstdlib>
-#include <iostream>
 
 #include <folly/FileUtil.h>
 #include <folly/Memory.h>
