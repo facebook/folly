@@ -231,7 +231,6 @@ fbcode_target(
         "//folly:memory",
         "//folly:scope_guard",
         "//folly/container:reserve",
-        "//folly/detail:static_singleton_manager",
         "//folly/hash:hash",
         "//folly/lang:exception",
         "//folly/portability:fcntl",

@@ -35,7 +35,6 @@
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
 #include <folly/container/Reserve.h>
-#include <folly/detail/StaticSingletonManager.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/Fcntl.h>
