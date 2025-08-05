@@ -45,7 +45,7 @@ inline std::uint64_t hardware_timestamp() {
   return __builtin_ia32_rdtsc();
 #elif FOLLY_AARCH64 && !FOLLY_MOBILE
   uint64_t cval;
-  asm volatile("mrs %0, cntvct_el0" : "=r"(cval));
+  asm volatile("isb \n mrs %0, cntvct_el0" : "=r"(cval));
   return cval;
 #else
   // use steady_clock::now() as an approximation for the timestamp counter on
