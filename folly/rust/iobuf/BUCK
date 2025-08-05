@@ -2,10 +2,38 @@ load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE"
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_rust_library.bzl", "fb_xplat_rust_library")
+load("@fbsource//tools/build_defs:fb_xplat_suffixed_aliases.bzl", "create_forwarding_aliases")
 load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_fbcode_compatible", "is_fbcode_mode_mac", "is_fbcode_mode_win", "is_xplat")
 load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
 
 oncall("rust_libraries")
+
+# Avoid duplicate symbols by redirecting the top-level iobuf/iobuf-ffi targets to only one variant
+# of the library. This way, we don't end up with both `fbcode//folly/rust/iobuf:iobuf` and `fbsource//xplat/folly/rust/iobuf:iobuf`
+# in the same build graph.
+create_forwarding_aliases(
+    name = "iobuf",
+    actual_name = select({
+        "DEFAULT": "fbsource//xplat/folly/rust/iobuf:_iobuf",
+        "ovr_config//os:linux": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_compatible() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+        "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+        "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+    }),
+    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    visibility = ["PUBLIC"],
+) if is_xplat() else None
+
+create_forwarding_aliases(
+    name = "iobuf-ffi",
+    actual_name = select({
+        "DEFAULT": "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
+        "ovr_config//os:linux": "fbcode//folly/rust/iobuf:_iobuf-ffi" if is_fbcode_compatible() else "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
+        "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf-ffi" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
+        "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf-ffi" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
+    }),
+    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    visibility = ["PUBLIC"],
+) if is_xplat() else None
 
 rust_bindgen_library(
     name = "iobuf-sys",
@@ -25,7 +53,7 @@ rust_bindgen_library(
         "__type",
         "type_",
     ],
-    cpp_deps = [":iobuf-ffi"],
+    cpp_deps = [":_iobuf-ffi"],
     cxx_namespaces = True,
     generate = ("types", "vars", "functions"),
     header = "iobuf.h",
@@ -36,29 +64,24 @@ rust_bindgen_library(
     platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
     src_includes = ["iobuf_sys.rs"],
     visibility = [],
-) if is_xplat() else None
+)
 
 fb_xplat_cxx_library(
-    name = "iobuf-ffi",
+    name = "_iobuf-ffi",
     srcs = ["iobuf.cpp"],
     exported_headers = ["iobuf.h"],
     platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
     preferred_linkage = "static",
-    visibility = ["PUBLIC"],
-    exported_deps = select({
-        "DEFAULT": [
-            "fbsource//xplat/folly/io:iobuf",
-        ],
-        "ovr_config//os:linux": ["fbcode//folly/io:iobuf" if is_fbcode_compatible() else "fbsource//xplat/folly/io:iobuf"],
-        "ovr_config//os:macos": ["fbcode//folly/io:iobuf" if is_fbcode_mode_mac() else "fbsource//xplat/folly/io:iobuf"],
-        "ovr_config//os:windows": ["fbcode//folly/io:iobuf" if is_fbcode_mode_win() else "fbsource//xplat/folly/io:iobuf"],
-    }),
-) if is_xplat() else None
+    exported_deps = [
+        "fbsource//xplat/folly/io:iobuf" if is_xplat() else "fbcode//folly/io:iobuf",
+    ],
+)
 
 fb_xplat_rust_library(
-    name = "iobuf",
+    name = "_iobuf",
     srcs = glob(["src/*.rs"]),
-    cpp_deps = [":iobuf-ffi"],
+    cpp_deps = [":_iobuf-ffi"],
+    crate = "iobuf",
     crate_root = "src/lib.rs",
     cxx_bridge = "src/lib.rs",
     features = [
@@ -69,7 +92,6 @@ fb_xplat_rust_library(
         "fbsource//third-party/rust:quickcheck",
         "fbsource//xplat/thrift/lib/rust/src/dep_tests:test_if-rust",
     ],
-    visibility = ["PUBLIC"],
     xplat_preexisting_target_flavors = [FBCODE],
     deps = [
         "fbcode//eden/scm/lib/minibytes:minibytes",
@@ -79,10 +101,10 @@ fb_xplat_rust_library(
         "fbsource//xplat/thrift/lib/rust:fbthrift",
         ":iobuf-sys",
     ],
-) if is_xplat() else None
+)
 
 fb_native.alias(
-    name = "iobufFbcode",
-    actual = ":iobuf",
+    name = "_iobufFbcode",
+    actual = ":_iobuf",
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
