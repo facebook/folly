@@ -1697,6 +1697,32 @@ TEST(Range, InitializerList) {
   check(crange(ilist));
 }
 
+TEST(Range, NoexceptSwap) {
+  StringPiece a;
+  StringPiece b;
+  static_assert(noexcept(a.swap(b)));
+  static_assert(noexcept(swap(a, b)));
+
+  SUCCEED();
+}
+
+struct ThrowingSwapIter
+    : public std::iterator<std::input_iterator_tag, int, int, const int*, int> {
+};
+
+// @lint-ignore CLANGTIDY facebook-hte-MissingSwapNoExceptDeclaration
+void swap(ThrowingSwapIter& a, ThrowingSwapIter& b);
+
+TEST(Range, ThrowingSwap) {
+  Range<ThrowingSwapIter> x;
+  Range<ThrowingSwapIter> y;
+
+  static_assert(!noexcept(x.swap(y)));
+  static_assert(!noexcept(swap(x, y)));
+
+  SUCCEED();
+}
+
 namespace {
 std::size_t stringViewSize(std::string_view s) {
   return s.size();

@@ -957,7 +957,7 @@ class Range {
     return find(other) != std::string::npos;
   }
 
-  void swap(Range& rhs) {
+  void swap(Range& rhs) noexcept(std::is_nothrow_swappable_v<Iter>) {
     std::swap(b_, rhs.b_);
     std::swap(e_, rhs.e_);
   }
@@ -1262,7 +1262,8 @@ template <class Iter>
 const typename Range<Iter>::size_type Range<Iter>::npos = std::string::npos;
 
 template <class Iter>
-void swap(Range<Iter>& lhs, Range<Iter>& rhs) {
+void swap(Range<Iter>& lhs, Range<Iter>& rhs) noexcept(
+    noexcept(lhs.swap(rhs))) {
   lhs.swap(rhs);
 }
 
