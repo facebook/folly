@@ -57,7 +57,7 @@ template <class T>
 struct BitsTraits<
     Unaligned<T>,
     typename std::enable_if<(std::is_integral<T>::value)>::type> {
-  typedef T UnderlyingType;
+  using UnderlyingType = T;
   static T load(const Unaligned<T>& x) { return x; }
   static void store(Unaligned<T>& x, T v) { x = v; }
   static T loadRMW(const Unaligned<T>& x) {
@@ -74,7 +74,7 @@ template <class T>
 struct BitsTraits<
     UnalignedNoASan<T>,
     typename std::enable_if<(std::is_integral<T>::value)>::type> {
-  typedef T UnderlyingType;
+  using UnderlyingType = T;
   static T FOLLY_DISABLE_ADDRESS_SANITIZER load(const UnalignedNoASan<T>& x) {
     return x.value;
   }
@@ -97,7 +97,7 @@ template <class T>
 struct BitsTraits<
     T,
     typename std::enable_if<(std::is_integral<T>::value)>::type> {
-  typedef T UnderlyingType;
+  using UnderlyingType = T;
   static T load(const T& x) { return x; }
   static void store(T& x, T v) { x = v; }
   static T loadRMW(const T& x) {
@@ -119,8 +119,8 @@ struct BitsTraits<
  */
 template <class T, class Traits = detail::BitsTraits<T>>
 struct Bits {
-  typedef typename Traits::UnderlyingType UnderlyingType;
-  typedef T type;
+  using UnderlyingType = typename Traits::UnderlyingType;
+  using type = T;
   static_assert(sizeof(T) == sizeof(UnderlyingType), "Size mismatch");
 
   /**
