@@ -199,6 +199,25 @@ using CachedSymbolizedFrames =
 
 using UnsyncSymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
 
+/**
+ * @param instructionAddr The address of an instruction after it has been
+ * adjusted by the linker's `l_addr`.
+ * @return true if the given address is contained in an executable segment of
+ * `elfFile`.
+ */
+bool containedInExecutableSegment(
+    const ElfFile& elfFile, ElfAddr instructionAddr) {
+  return elfFile.iterateProgramHeaders([&](const ElfPhdr& sh) {
+    bool executable = sh.p_flags & PF_X;
+    bool loadable = sh.p_type == PT_LOAD;
+    if (!(executable && loadable)) {
+      return false;
+    }
+    return sh.p_vaddr <= instructionAddr &&
+        instructionAddr < (sh.p_vaddr + sh.p_memsz);
+  });
+}
+
 } // namespace
 
 struct Symbolizer::SymbolCache : public Synchronized<UnsyncSymbolCache> {
@@ -332,7 +351,7 @@ size_t Symbolizer::symbolize(
       // address at which the object is loaded.
       auto const adjusted = addr - reinterpret_cast<uintptr_t>(lmap->l_addr);
       size_t numInlined = 0;
-      if (elfFile->getSectionContainingAddress(adjusted)) {
+      if (containedInExecutableSegment(*elfFile, adjusted)) {
         if (mode_ == LocationInfoMode::FULL_WITH_INLINE &&
             frameCount > addrCount) {
           size_t maxInline = std::min<size_t>(
