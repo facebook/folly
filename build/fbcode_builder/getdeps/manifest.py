@@ -255,6 +255,11 @@ class ManifestParser(object):
                 % (file_name, self.name)
             )
 
+        if "." in self.name:
+            raise Exception(
+                f"manifest name ({self.name}) must not contain the '.' character (it is incompatible with github actions)"
+            )
+
     def get(self, section, key, defval=None, ctx=None):
         ctx = ctx or {}
 

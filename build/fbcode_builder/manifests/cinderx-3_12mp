@@ -1,5 +1,5 @@
 [manifest]
-name = cinderx-3.12mp
+name = cinderx-3_12mp
 fbsource_path = fbcode/cinderx
 shipit_project = facebookincubator/cinderx
 
@@ -14,7 +14,7 @@ builder = nop
 
 [dependencies]
 python-setuptools
-meta-python-3.12
+meta-python-3_12
 
 [shipit.pathmap]
 fbcode/cinderx = cinderx
