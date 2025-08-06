@@ -31,7 +31,17 @@
 
 namespace folly {
 
-template <typename ResType>
+namespace detail {
+#if defined(__AVX2__) && defined(__GNUC__)
+using DefaultVectorType = __v4du; // GCC-specific unsigned vector type
+#else
+using DefaultVectorType = uint64_t; // Fallback for other compilers
+#endif
+} // namespace detail
+
+using DefaultVectorType = detail::DefaultVectorType;
+
+template <typename ResType, typename VectorType = DefaultVectorType>
 class xoshiro256pp {
  public:
   using result_type = ResType;
@@ -85,11 +95,7 @@ class xoshiro256pp {
   }
 
  private:
-#if defined(__AVX2__) && defined(__GNUC__)
-  using vector_type = __v4du; // GCC-specific unsigned vector type
-#else
-  using vector_type = uint64_t; // Fallback for other compilers
-#endif
+  using vector_type = VectorType;
   static constexpr uint64_t StateSize = 4;
   static constexpr uint64_t VecResCount = 8;
   static constexpr uint64_t ResultCount =
@@ -101,9 +107,10 @@ class xoshiro256pp {
   vector_type state[VecResCount][StateSize]{};
   uint64_t cur = ResultCount;
 
-  template <typename Size, typename CharT, typename Traits>
+  template <typename Size, typename VType, typename CharT, typename Traits>
   friend std::basic_ostream<CharT, Traits>& operator<<(
-      std::basic_ostream<CharT, Traits>& os, const xoshiro256pp<Size>& rng);
+      std::basic_ostream<CharT, Traits>& os,
+      const xoshiro256pp<Size, VType>& rng);
 
   template <typename T>
   static inline T seed_vec(uint64_t& seed) {
@@ -153,9 +160,10 @@ class xoshiro256pp {
   }
 };
 
-template <typename Size, typename CharT, typename Traits>
+template <typename Size, typename VectorType, typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<<(
-    std::basic_ostream<CharT, Traits>& os, const xoshiro256pp<Size>& rng) {
+    std::basic_ostream<CharT, Traits>& os,
+    const xoshiro256pp<Size, VectorType>& rng) {
   for (auto i2 : rng.res) {
     os << i2 << " ";
   }
