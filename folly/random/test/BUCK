@@ -69,3 +69,13 @@ fbcode_target(
         "//folly/random:xoshiro256pp",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "xoshiro256pp_avx2_parity_test",
+    srcs = ["Xoshiro256ppAvxParityTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/random:xoshiro256pp",
+    ],
+)

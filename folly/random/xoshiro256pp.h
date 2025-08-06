@@ -32,10 +32,25 @@
 namespace folly {
 
 namespace detail {
+template <typename T>
+struct is_valid_vector_type {
+  constexpr static bool value = false;
+};
+
+template <>
+struct is_valid_vector_type<uint64_t> {
+  constexpr static bool value = true;
+};
+
 #if defined(__AVX2__) && defined(__GNUC__)
-using DefaultVectorType = __v4du; // GCC-specific unsigned vector type
+using DefaultVectorType = __v4du;
+template <>
+struct is_valid_vector_type<__v4du> {
+  constexpr static bool value = true;
+};
 #else
-using DefaultVectorType = uint64_t; // Fallback for other compilers
+using DefaultVectorType =
+    uint64_t; // Fallback for other compilers and architectures
 #endif
 } // namespace detail
 
@@ -52,11 +67,15 @@ class xoshiro256pp {
   // seed that we allow. Any uses of a larger state in the form of a seed_seq
   // will be ignored after the first small part of it.
   static constexpr size_t state_size = sizeof(uint64_t) / sizeof(result_type);
+
   // Add static_asserts to enforce constraints on ResType
   static_assert(
       std::is_integral_v<result_type>, "ResType must be an integral type.");
   static_assert(
       std::is_unsigned_v<result_type>, "ResType must be an unsigned type.");
+  static_assert(
+      folly::detail::is_valid_vector_type<VectorType>::value,
+      "Invalid vector type.");
 
   xoshiro256pp(uint64_t pSeed = default_seed) noexcept : state{} {
     seed(pSeed);
@@ -73,14 +92,15 @@ class xoshiro256pp {
   static constexpr result_type min() noexcept {
     return std::numeric_limits<result_type>::min();
   }
+
   static constexpr result_type max() noexcept {
     return std::numeric_limits<result_type>::max();
   }
 
   void seed(uint64_t pSeed = default_seed) noexcept {
     uint64_t seed = pSeed;
-    for (uint64_t re = 0; re < VecResCount; re++) {
-      for (uint64_t stat = 0; stat < StateSize; stat++) {
+    for (uint64_t stat = 0; stat < StateSize; stat++) {
+      for (uint64_t re = 0; re < VecResCount; re++) {
         state[re][stat] = seed_vec<vector_type>(seed);
       }
     }
@@ -97,9 +117,11 @@ class xoshiro256pp {
  private:
   using vector_type = VectorType;
   static constexpr uint64_t StateSize = 4;
-  static constexpr uint64_t VecResCount = 8;
-  static constexpr uint64_t ResultCount =
-      VecResCount * (sizeof(vector_type) / sizeof(result_type));
+  // The number of bytes generated per call to calc() = four uint64_t
+  static constexpr uint64_t ResultSize = 4 * sizeof(uint64_t);
+  static constexpr uint64_t VecResCount = ResultSize / sizeof(vector_type);
+  static constexpr uint64_t ResultCount = ResultSize / sizeof(result_type);
+
   union {
     vector_type vecRes[VecResCount]{};
     result_type res[ResultCount];
@@ -141,6 +163,7 @@ class xoshiro256pp {
     for (uint64_t i = 0; i < VecResCount; i++) {
       auto& curState = state[i];
       vecRes[i] = rotl(curState[0] + curState[3], 23) + curState[0];
+
       const auto t = curState[1] << 17;
       curState[2] ^= curState[0];
       curState[3] ^= curState[1];
