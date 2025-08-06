@@ -72,6 +72,10 @@ fb_xplat_cxx_library(
     exported_headers = ["iobuf.h"],
     platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
     preferred_linkage = "static",
+    visibility = [
+        "fbcode//folly/rust/iobuf/...",
+        "fbsource//xplat/folly/rust/iobuf/...",
+    ],
     exported_deps = [
         "fbsource//xplat/folly/io:iobuf" if is_xplat() else "fbcode//folly/io:iobuf",
     ],
@@ -92,6 +96,10 @@ fb_xplat_rust_library(
         "fbsource//third-party/rust:quickcheck",
         "fbsource//xplat/thrift/lib/rust/src/dep_tests:test_if-rust",
     ],
+    visibility = [
+        "fbcode//folly/rust/iobuf/...",
+        "fbsource//xplat/folly/rust/iobuf/...",
+    ],
     xplat_preexisting_target_flavors = [FBCODE],
     deps = [
         "fbcode//eden/scm/lib/minibytes:minibytes",
@@ -106,5 +114,8 @@ fb_xplat_rust_library(
 fb_native.alias(
     name = "_iobufFbcode",
     actual = ":_iobuf",
-    visibility = ["PUBLIC"],
+    visibility = [
+        "fbcode//folly/rust/iobuf/...",
+        "fbsource//xplat/folly/rust/iobuf/...",
+    ],
 ) if is_xplat() else None
