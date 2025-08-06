@@ -47,6 +47,12 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = alias,
+    name = "folly_dynamic",
+    actual = "//folly/rust/dynamic:folly_dynamic",
+)
+
+fbcode_target(
     _kind = rust_library,
     name = "folly",
     srcs = ["lib.rs"],

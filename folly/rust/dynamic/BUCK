@@ -1,0 +1,30 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = rust_library,
+    name = "folly_dynamic",
+    srcs = ["dynamic.rs"],
+    cpp_deps = [":dynamic-ffi"],
+    crate_root = "dynamic.rs",
+    cxx_bridge = "dynamic.rs",
+    deps = [
+        "fbsource//third-party/rust:cxx",
+        "//common/rust/folly/string:string",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "dynamic-ffi",
+    srcs = ["dynamic.cpp"],
+    headers = ["dynamic.h"],
+    preferred_linkage = "static",
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
+        "//folly/json:dynamic",
+    ],
+)
