@@ -208,8 +208,8 @@ TEST_F(EliasFanoCodingTest, SkipForwardPointersDense) {
 }
 
 TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
-  typedef EliasFanoEncoder<uint32_t, uint32_t, 2, 2> Encoder;
-  typedef EliasFanoReader<Encoder, instructions::Default> Reader;
+  using Encoder = EliasFanoEncoder<uint32_t, uint32_t, 2, 2>;
+  using Reader = EliasFanoReader<Encoder, instructions::Default>;
   constexpr uint32_t kLargeValue = 127;
 
   // Build a list where the upper bits have a large gap after the
@@ -233,7 +233,7 @@ TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
 
 namespace bm {
 
-typedef EliasFanoEncoder<uint32_t, uint32_t, 128, 128> Encoder;
+using Encoder = EliasFanoEncoder<uint32_t, uint32_t, 128, 128>;
 
 std::vector<uint64_t> data;
 std::vector<size_t> order;

@@ -32,16 +32,16 @@ using namespace folly::compression;
 class BitVectorCodingTest : public ::testing::Test {
  public:
   void doTestEmpty() {
-    typedef BitVectorEncoder<uint32_t, size_t> Encoder;
-    typedef BitVectorReader<Encoder, instructions::Default> Reader;
+    using Encoder = BitVectorEncoder<uint32_t, size_t>;
+    using Reader = BitVectorReader<Encoder, instructions::Default>;
     testEmpty<Reader, Encoder>();
   }
 
   template <size_t kSkipQuantum, size_t kForwardQuantum>
   void doTestAll() {
-    typedef BitVectorEncoder<uint32_t, uint32_t, kSkipQuantum, kForwardQuantum>
-        Encoder;
-    typedef BitVectorReader<Encoder> Reader;
+    using Encoder =
+        BitVectorEncoder<uint32_t, uint32_t, kSkipQuantum, kForwardQuantum>;
+    using Reader = BitVectorReader<Encoder>;
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
   }
@@ -69,7 +69,7 @@ TEST_F(BitVectorCodingTest, SkipForwardPointers) {
 
 namespace bm {
 
-typedef BitVectorEncoder<uint32_t, uint32_t, 128, 128> Encoder;
+using Encoder = BitVectorEncoder<uint32_t, uint32_t, 128, 128>;
 
 std::vector<uint64_t> data;
 std::vector<size_t> order;
