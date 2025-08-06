@@ -58,13 +58,13 @@ struct BitsTraits<
     Unaligned<T>,
     typename std::enable_if<(std::is_integral<T>::value)>::type> {
   using UnderlyingType = T;
-  static T load(const Unaligned<T>& x) { return x; }
-  static void store(Unaligned<T>& x, T v) { x = v; }
+  static T load(const Unaligned<T>& x) { return Endian::little<T>(x); }
+  static void store(Unaligned<T>& x, T v) { x = Endian::little<T>(v); }
   static T loadRMW(const Unaligned<T>& x) {
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
     FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
-    return x;
+    return Endian::little<T>(x);
     FOLLY_POP_WARNING
   }
 };
@@ -76,18 +76,18 @@ struct BitsTraits<
     typename std::enable_if<(std::is_integral<T>::value)>::type> {
   using UnderlyingType = T;
   static T FOLLY_DISABLE_ADDRESS_SANITIZER load(const UnalignedNoASan<T>& x) {
-    return x.value;
+    return Endian::little<T>(x.value);
   }
   static void FOLLY_DISABLE_ADDRESS_SANITIZER
   store(UnalignedNoASan<T>& x, T v) {
-    x.value = v;
+    x.value = Endian::little<T>(v);
   }
   static T FOLLY_DISABLE_ADDRESS_SANITIZER
   loadRMW(const UnalignedNoASan<T>& x) {
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
     FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
-    return x.value;
+    return Endian::little<T>(x.value);
     FOLLY_POP_WARNING
   }
 };
@@ -98,13 +98,13 @@ struct BitsTraits<
     T,
     typename std::enable_if<(std::is_integral<T>::value)>::type> {
   using UnderlyingType = T;
-  static T load(const T& x) { return x; }
-  static void store(T& x, T v) { x = v; }
+  static T load(const T& x) { return Endian::little<T>(x); }
+  static void store(T& x, T v) { x = Endian::little<T>(v); }
   static T loadRMW(const T& x) {
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
     FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
-    return x;
+    return Endian::little<T>(x);
     FOLLY_POP_WARNING
   }
 };
