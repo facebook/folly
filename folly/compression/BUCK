@@ -198,6 +198,7 @@ fbcode_target(
         "//folly/portability:windows",
     ],
     exported_deps = [
+        "fbsource//third-party/zlib:z",
         "fbsource//third-party/zstd:zstd",
         "//folly:memory",
         "//folly:optional",
@@ -211,9 +212,6 @@ fbcode_target(
         "snappy",
         ("bzip2", None, "bz2"),
         ("xz", None, "lzma"),
-    ],
-    exported_external_deps = [
-        ("zlib", None, "z"),
     ],
 )
 
