@@ -218,7 +218,7 @@ class PreinstalledNopFetcher(SystemPackageFetcher):
 class GitFetcher(Fetcher):
     DEFAULT_DEPTH = 1
 
-    def __init__(self, build_options, manifest, repo_url, rev, depth) -> None:
+    def __init__(self, build_options, manifest, repo_url, rev, depth, branch) -> None:
         # Extract the host/path portions of the URL and generate a flattened
         # directory name.  eg:
         # github.com/facebook/folly.git -> github.com-facebook-folly.git
@@ -249,10 +249,11 @@ class GitFetcher(Fetcher):
                         "Using pinned rev %s for %s" % (rev, repo_url), file=sys.stderr
                     )
 
-        self.rev = rev or "main"
+        self.rev = rev or branch or "main"
         self.origin_repo = repo_url
         self.manifest = manifest
         self.depth = depth if depth else GitFetcher.DEFAULT_DEPTH
+        self.branch = branch
 
     def _update(self) -> ChangeStatus:
         current_hash = (
@@ -295,17 +296,19 @@ class GitFetcher(Fetcher):
         # eg: this python process is native win32, but the git.exe is cygwin
         # or msys and doesn't like the absolute windows path that we'd otherwise
         # pass to it.  Careful use of cwd helps avoid headaches with cygpath.
-        run_cmd(
-            [
-                "git",
-                "clone",
-                "--depth=" + str(self.depth),
-                "--",
-                self.origin_repo,
-                os.path.basename(self.repo_dir),
-            ],
-            cwd=os.path.dirname(self.repo_dir),
-        )
+        cmd = [
+            "git",
+            "clone",
+            "--depth=" + str(self.depth),
+        ]
+        if self.branch:
+            cmd.append("--branch=" + self.branch)
+        cmd += [
+            "--",
+            self.origin_repo,
+            os.path.basename(self.repo_dir),
+        ]
+        run_cmd(cmd, cwd=os.path.dirname(self.repo_dir))
         self._update()
 
     def clean(self) -> None:

@@ -57,7 +57,12 @@ SCHEMA = {
     "depends.environment": {"optional_section": True},
     "git": {
         "optional_section": True,
-        "fields": {"repo_url": REQUIRED, "rev": OPTIONAL, "depth": OPTIONAL},
+        "fields": {
+            "repo_url": REQUIRED,
+            "rev": OPTIONAL,
+            "depth": OPTIONAL,
+            "branch": OPTIONAL,
+        },
     },
     "download": {
         "optional_section": True,
@@ -461,7 +466,8 @@ class ManifestParser(object):
         if repo_url:
             rev = self.get("git", "rev")
             depth = self.get("git", "depth")
-            return GitFetcher(build_options, self, repo_url, rev, depth)
+            branch = self.get("git", "branch")
+            return GitFetcher(build_options, self, repo_url, rev, depth, branch)
 
         if url:
             # We need to defer this import until now to avoid triggering

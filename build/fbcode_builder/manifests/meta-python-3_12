@@ -8,7 +8,8 @@ shipit_fbcode_builder = false
 shipit_external_branch = meta/3.12
 
 [git]
-repo_url = https://github.com/facebookincubator/cinder.git#meta/3.12
+repo_url = https://github.com/facebookincubator/cinder.git
+branch = meta/3.12
 
 [build]
 builder = autoconf
