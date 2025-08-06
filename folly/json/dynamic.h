@@ -114,7 +114,7 @@ struct dynamic {
    * Object item iterators dereference as pairs of (key, value).
    */
  private:
-  typedef std::vector<dynamic> Array;
+  using Array = std::vector<dynamic>;
 
   /*
    * Violating spec, std::vector<bool>::const_reference is not bool in libcpp:
@@ -130,9 +130,9 @@ struct dynamic {
       std::vector<bool>::const_reference>;
 
  public:
-  typedef Array::iterator iterator;
-  typedef Array::const_iterator const_iterator;
-  typedef dynamic value_type;
+  using iterator = Array::iterator;
+  using const_iterator = Array::const_iterator;
+  using value_type = dynamic;
 
   struct const_key_iterator;
   struct const_value_iterator;
