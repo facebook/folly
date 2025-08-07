@@ -245,7 +245,7 @@ class ElfFile {
    *
    * Returns {nullptr, nullptr} if not found.
    */
-  typedef std::pair<const ElfShdr*, const ElfSym*> Symbol;
+  using Symbol = std::pair<const ElfShdr*, const ElfSym*>;
   Symbol getDefinitionByAddress(uintptr_t address) const noexcept;
 
   /**
