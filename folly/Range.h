@@ -38,7 +38,7 @@
 #pragma once
 
 #include <folly/Portability.h>
-#include <folly/hash/Hash.h>
+#include <folly/hash/SpookyHashV2.h>
 #include <folly/lang/CString.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/Constexpr.h>
@@ -1677,9 +1677,8 @@ struct hasher<
     // can contain pointers and padding.  Also, floating point numbers
     // may be == without being bit-identical.  size_t is less than 64
     // bits on some platforms.
-
-    // @lint-ignore CLANGTIDY facebook-hte-DetailCall
-    return detail::hashBytes(r.begin(), r.size() * sizeof(T));
+    return static_cast<size_t>(
+        hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0));
   }
 };
 

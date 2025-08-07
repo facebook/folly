@@ -55,15 +55,12 @@ non_fbcode_target(
     deps = [
         ":murmur_hash",
         ":spooky_hash_v1",
+        ":spooky_hash_v2",
         "//xplat/folly:c_portability",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/functional:apply_tuple",
         "//xplat/folly/lang:bits",
-    ],
-    exported_deps = [
-        "//xplat/folly/hash:spooky_hash_v2",
-        "//xplat/folly/hash/detail:random_seed",
     ],
 )
 
@@ -181,7 +178,6 @@ fbcode_target(
         "//folly:traits",
         "//folly:utility",
         "//folly/functional:apply_tuple",
-        "//folly/hash/detail:random_seed",
         "//folly/lang:bits",
     ],
 )

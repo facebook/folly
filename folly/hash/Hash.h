@@ -46,7 +46,6 @@
 #include <folly/hash/MurmurHash.h>
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
-#include <folly/hash/detail/RandomSeed.h>
 #include <folly/lang/Bits.h>
 
 namespace folly {
@@ -848,21 +847,8 @@ struct float_hasher {
   }
 };
 
-inline size_t hashBytes(const void* ptr, size_t length) {
-  return static_cast<size_t>(hash::SpookyHashV2::Hash64(
-      ptr,
-      length,
-      // @lint-ignore CLANGTIDY facebook-hte-DetailCall
-      hash::detail::RandomSeed::seed()));
-}
-
 } // namespace detail
 
-// Hash values of folly::hasher and folly::Hash are not guaranteed to be stable
-// across different program runs. This behaviour is consistent with std::hash
-// guarantees. Do not persist hash values from this hasher anywhere. If you
-// need to persist hash values, use named hashes such as MurmurHash,
-// SpookyHashV2, rapidhash etc.
 template <class Key, class Enable = void>
 struct hasher;
 
@@ -1009,7 +995,8 @@ struct hasher<std::string> {
   using folly_is_avalanching = std::true_type;
 
   size_t operator()(const std::string& key) const {
-    return detail::hashBytes(key.data(), key.size());
+    return static_cast<size_t>(
+        hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));
   }
 };
 template <typename K>
@@ -1020,7 +1007,8 @@ struct hasher<std::string_view> {
   using folly_is_avalanching = std::true_type;
 
   size_t operator()(const std::string_view& key) const {
-    return detail::hashBytes(key.data(), key.size());
+    return static_cast<size_t>(
+        hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));
   }
 };
 template <typename K>
