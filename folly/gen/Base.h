@@ -112,7 +112,7 @@ class Get {
 template <class Class, class Result>
 class MemberFunction {
  public:
-  typedef Result (Class::*MemberPtr)();
+  using MemberPtr = Result (Class::*)();
 
  private:
   MemberPtr member_;
@@ -130,7 +130,7 @@ class MemberFunction {
 template <class Class, class Result>
 class ConstMemberFunction {
  public:
-  typedef Result (Class::*MemberPtr)() const;
+  using MemberPtr = Result (Class::*)() const;
 
  private:
   MemberPtr member_;
@@ -146,7 +146,7 @@ class ConstMemberFunction {
 template <class Class, class FieldType>
 class Field {
  public:
-  typedef FieldType Class::*FieldPtr;
+  using FieldPtr = FieldType Class::*;
 
  private:
   FieldPtr field_;
