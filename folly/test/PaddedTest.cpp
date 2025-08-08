@@ -23,7 +23,7 @@
 using namespace folly;
 
 TEST(NodeTest, Padding) {
-  typedef padded::Node<int32_t, 64> IntNode;
+  using IntNode = padded::Node<int32_t, 64>;
   EXPECT_EQ(16, IntNode::kElementCount);
   EXPECT_EQ(0, IntNode::kPaddingBytes);
   EXPECT_EQ(alignof(int32_t), alignof(IntNode));
@@ -50,7 +50,7 @@ TEST(NodeTest, Padding) {
     char c[7];
   };
   EXPECT_EQ(1, alignof(SevenBytes));
-  typedef padded::Node<SevenBytes, 64> SevenByteNode;
+  using SevenByteNode = padded::Node<SevenBytes, 64>;
   EXPECT_EQ(9, SevenByteNode::kElementCount); // 64 / 7
   EXPECT_EQ(1, SevenByteNode::kPaddingBytes); // 64 % 7
   EXPECT_EQ(1, alignof(SevenByteNode));
@@ -77,8 +77,8 @@ TEST(NodeTest, Padding) {
 
 class IntPaddedTestBase : public ::testing::Test {
  protected:
-  typedef padded::Node<uint32_t, 64> IntNode;
-  typedef std::vector<IntNode> IntNodeVec;
+  using IntNode = padded::Node<uint32_t, 64>;
+  using IntNodeVec = std::vector<IntNode>;
   IntNodeVec v_;
   int n_;
 };
@@ -173,8 +173,8 @@ class StructPaddedTestBase : public ::testing::Test {
     uint8_t y;
     uint8_t z;
   };
-  typedef padded::Node<Point, 64> PointNode;
-  typedef std::vector<PointNode> PointNodeVec;
+  using PointNode = padded::Node<Point, 64>;
+  using PointNodeVec = std::vector<PointNode>;
   PointNodeVec v_;
   int n_;
 };
@@ -207,7 +207,7 @@ TEST_F(StructPaddedConstTest, Iteration) {
 
 class IntAdaptorTest : public IntPaddedConstTest {
  protected:
-  typedef padded::Adaptor<IntNodeVec> IntAdaptor;
+  using IntAdaptor = padded::Adaptor<IntNodeVec>;
   IntAdaptor a_;
 };
 

@@ -47,7 +47,7 @@ using std::chrono::milliseconds;
 using std::chrono::seconds;
 using std::chrono::steady_clock;
 
-typedef DeterministicSchedule DSched;
+using DSched = DeterministicSchedule;
 
 template <template <typename> class Atom>
 void run_mt_sequencer_thread(
@@ -924,7 +924,7 @@ static void lc_step(int lineno, int what = NOTHING, int what2 = NOTHING) {
 
 template <typename R>
 struct Lifecycle {
-  typedef R IsRelocatable;
+  using IsRelocatable = R;
 
   bool constructed;
 

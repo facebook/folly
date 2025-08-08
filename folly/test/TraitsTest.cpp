@@ -46,16 +46,16 @@ namespace {
 struct T1 {}; // old-style IsRelocatable, below
 struct T2 {}; // old-style IsRelocatable, below
 struct T3 {
-  typedef std::true_type IsRelocatable;
+  using IsRelocatable = std::true_type;
 };
 struct T5 : T3 {};
 
 struct F1 {};
 struct F2 {
-  typedef int IsRelocatable;
+  using IsRelocatable = int;
 };
 struct F3 : T3 {
-  typedef std::false_type IsRelocatable;
+  using IsRelocatable = std::false_type;
 };
 struct F4 : T1 {};
 

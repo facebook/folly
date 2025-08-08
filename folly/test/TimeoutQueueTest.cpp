@@ -21,7 +21,7 @@
 using namespace folly;
 
 TEST(TimeoutQueue, Simple) {
-  typedef std::vector<TimeoutQueue::Id> EventVec;
+  using EventVec = std::vector<TimeoutQueue::Id>;
   EventVec events;
 
   TimeoutQueue q;
@@ -47,7 +47,7 @@ TEST(TimeoutQueue, Simple) {
 }
 
 TEST(TimeoutQueue, Erase) {
-  typedef std::vector<TimeoutQueue::Id> EventVec;
+  using EventVec = std::vector<TimeoutQueue::Id>;
   EventVec events;
 
   TimeoutQueue q;

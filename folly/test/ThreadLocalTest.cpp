@@ -794,7 +794,7 @@ TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
   ASSERT_NE(nullptr, handle)
       << "unable to load " << lib.string() << ": " << dlerror();
 
-  typedef void (*useA_t)();
+  using useA_t = void (*)();
   dlerror();
   useA_t useA = (useA_t)dlsym(handle, "useA");
 

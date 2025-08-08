@@ -1463,8 +1463,8 @@ TEST(ReplaceAll, BadArg) {
 
 TEST(Range, Constructors) {
   vector<int> c = {1, 2, 3};
-  typedef Range<vector<int>::iterator> RangeType;
-  typedef Range<vector<int>::const_iterator> ConstRangeType;
+  using RangeType = Range<vector<int>::iterator>;
+  using ConstRangeType = Range<vector<int>::const_iterator>;
   RangeType cr(c.begin(), c.end());
   auto subpiece1 = ConstRangeType(cr, 1, 5);
   auto subpiece2 = ConstRangeType(cr, 1);

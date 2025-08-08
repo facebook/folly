@@ -158,7 +158,7 @@ TEST(Singleton, NamedUsage) {
   // Define two named Watchdog singletons and one unnamed singleton.
   struct Watchdog1 {};
   struct Watchdog2 {};
-  typedef detail::DefaultTag Watchdog3;
+  using Watchdog3 = detail::DefaultTag;
   SingletonNamedUsage<Watchdog, Watchdog1> watchdog1_singleton;
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
   SingletonNamedUsage<Watchdog, Watchdog2> watchdog2_singleton;
