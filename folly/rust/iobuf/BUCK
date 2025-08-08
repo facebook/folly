@@ -88,9 +88,6 @@ fb_xplat_rust_library(
     crate = "iobuf",
     crate_root = "src/lib.rs",
     cxx_bridge = "src/lib.rs",
-    features = [
-        "minibytes",
-    ],
     platforms = (CXX, ANDROID, APPLE, WINDOWS),
     test_deps = [
         "fbsource//third-party/rust:quickcheck",
@@ -102,7 +99,6 @@ fb_xplat_rust_library(
     ],
     xplat_preexisting_target_flavors = [FBCODE],
     deps = [
-        "fbcode//eden/scm/lib/minibytes:minibytes",
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
         "fbsource//third-party/rust:memmap2",

@@ -163,8 +163,6 @@ pub unsafe trait BytesToIOBufSharedExt: std::ops::Deref<Target = [u8]> {}
 
 unsafe impl BytesToIOBufSharedExt for bytes::Bytes {}
 unsafe impl BytesToIOBufSharedExt for memmap2::Mmap {}
-#[cfg(feature = "minibytes")]
-unsafe impl BytesToIOBufSharedExt for minibytes::Bytes {}
 
 /// Convert a `Bytes` into an `IOBufShared`.
 impl<T> From<T> for IOBufShared
