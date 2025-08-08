@@ -34,7 +34,7 @@ using namespace std;
 using namespace std::chrono;
 using folly::chrono::coarse_steady_clock;
 
-typedef DeterministicSchedule DSched;
+using DSched = DeterministicSchedule;
 
 template <template <typename> class Atom>
 void run_basic_thread(Futex<Atom>& f) {
@@ -120,7 +120,7 @@ void run_wait_until_tests() {
   liveClockWaitUntilTests<Atom, steady_clock, steady_clock::duration>();
   liveClockWaitUntilTests<Atom, steady_clock, coarse_steady_clock::duration>();
 
-  typedef duration<int64_t, std::ratio<1, 10000000>> decimicroseconds;
+  using decimicroseconds = duration<int64_t, std::ratio<1, 10000000>>;
   liveClockWaitUntilTests<Atom, system_clock, decimicroseconds>();
 }
 

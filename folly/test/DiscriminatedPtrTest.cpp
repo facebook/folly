@@ -23,7 +23,7 @@ using namespace folly;
 TEST(DiscriminatedPtr, Basic) {
   struct Foo {};
   struct Bar {};
-  typedef DiscriminatedPtr<void, int, Foo, Bar> Ptr;
+  using Ptr = DiscriminatedPtr<void, int, Foo, Bar>;
 
   int a = 10;
   Ptr p;
@@ -77,7 +77,7 @@ TEST(DiscriminatedPtr, Apply) {
     std::string operator()(const Foo* /* ptr */) { return "const Foo"; }
   };
 
-  typedef DiscriminatedPtr<int, Foo> Ptr;
+  using Ptr = DiscriminatedPtr<int, Foo>;
   Ptr p;
 
   int a = 0;
@@ -108,7 +108,7 @@ TEST(DiscriminatedPtr, ApplyVoid) {
     std::string result;
   };
 
-  typedef DiscriminatedPtr<int, Foo> Ptr;
+  using Ptr = DiscriminatedPtr<int, Foo>;
   Ptr p;
   Visitor v;
 

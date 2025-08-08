@@ -30,8 +30,8 @@ struct MyObject {
   int i;
 };
 
-typedef folly::AtomicHashMap<int, std::shared_ptr<MyObject>> MyMap;
-typedef std::lock_guard<std::mutex> Guard;
+using MyMap = folly::AtomicHashMap<int, std::shared_ptr<MyObject>>;
+using Guard = std::lock_guard<std::mutex>;
 
 std::unique_ptr<MyMap> newMap() {
   return std::make_unique<MyMap>(100);

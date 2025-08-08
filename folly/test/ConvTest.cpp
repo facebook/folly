@@ -110,8 +110,8 @@ void testIntegral2String() {}
 
 template <class String, class Int, class... Ints>
 void testIntegral2String() {
-  typedef folly::make_unsigned_t<Int> Uint;
-  typedef folly::make_signed_t<Int> Sint;
+  using Uint = folly::make_unsigned_t<Int>;
+  using Sint = folly::make_signed_t<Int>;
 
   Uint value = 123;
   EXPECT_EQ(to<String>(value), "123");
@@ -136,8 +136,8 @@ void testIntegral2String() {
 #if FOLLY_HAVE_INT128_T
 template <class String>
 void test128Bit2String() {
-  typedef unsigned __int128 Uint;
-  typedef __int128 Sint;
+  using Uint = unsigned __int128;
+  using Sint = __int128;
 
   EXPECT_EQ(detail::digitsEnough<unsigned __int128>(), 39);
 
@@ -226,8 +226,8 @@ void testString2Integral() {}
 
 template <class String, class Int, class... Ints>
 void testString2Integral() {
-  typedef folly::make_unsigned_t<Int> Uint;
-  typedef folly::make_signed_t<Int> Sint;
+  using Uint = folly::make_unsigned_t<Int>;
+  using Sint = folly::make_signed_t<Int>;
 
   // Unsigned numbers small enough to fit in a signed type
   static const String strings[] = {
