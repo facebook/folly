@@ -79,22 +79,36 @@
  * Note: The two macros here do not work well before llvm-18, they are known to
  * work for most recent versions of gcc, however.
  */
-#define FOLLY_EXHAUSTIVE_SWITCH(...)                    \
-  FOLLY_PUSH_WARNING                                    \
-  FOLLY_GNU_DISABLE_WARNING("-Wcovered-switch-default") \
-  FOLLY_GNU_ENABLE_ERROR("-Wswitch-default")            \
-  FOLLY_GNU_ENABLE_ERROR("-Wswitch-enum")               \
-  FOLLY_GNU_ENABLE_ERROR("-Wswitch")                    \
-  __VA_ARGS__                                           \
-  FOLLY_POP_WARNING                                     \
+#define FOLLY_EXHAUSTIVE_SWITCH(...)               \
+  FOLLY_PUSH_WARNING                               \
+  FOLLY_GNU_DISABLE_COVERED_SWITCH_DEFAULT_WARNING \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch-default")       \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch-enum")          \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch")               \
+  __VA_ARGS__                                      \
+  FOLLY_POP_WARNING                                \
   static_assert(true, "Add a semicolon after this line for formatting")
 
-#define FOLLY_FLEXIBLE_SWITCH(...)                   \
-  FOLLY_PUSH_WARNING                                 \
-  FOLLY_GNU_DISABLE_WARNING("-Wswitch-enum")         \
-  FOLLY_GNU_ENABLE_ERROR("-Wcovered-switch-default") \
-  FOLLY_GNU_ENABLE_ERROR("-Wswitch-default")         \
-  FOLLY_GNU_ENABLE_ERROR("-Wswitch")                 \
-  __VA_ARGS__                                        \
-  FOLLY_POP_WARNING                                  \
+#define FOLLY_FLEXIBLE_SWITCH(...)              \
+  FOLLY_PUSH_WARNING                            \
+  FOLLY_GNU_DISABLE_WARNING("-Wswitch-enum")    \
+  FOLLY_GNU_ENABLE_COVERED_SWITCH_DEFAULT_ERROR \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch-default")    \
+  FOLLY_GNU_ENABLE_ERROR("-Wswitch")            \
+  __VA_ARGS__                                   \
+  FOLLY_POP_WARNING                             \
   static_assert(true, "Add a semicolon after this line for formatting")
+
+#if defined(__has_warning) && (defined(__GNUC__) || defined(__clang__))
+#if __has_warning("-Wcovered-switch-default")
+#define FOLLY_GNU_DISABLE_COVERED_SWITCH_DEFAULT_WARNING \
+  FOLLY_GNU_DISABLE_WARNING("-Wcovered-switch-default")
+#define FOLLY_GNU_ENABLE_COVERED_SWITCH_DEFAULT_ERROR \
+  FOLLY_GNU_ENABLE_ERROR("-Wcovered-switch-default")
+#endif
+#endif
+
+#ifndef FOLLY_GNU_DISABLE_COVERED_SWITCH_DEFAULT_WARNING
+#define FOLLY_GNU_DISABLE_COVERED_SWITCH_DEFAULT_WARNING
+#define FOLLY_GNU_ENABLE_COVERED_SWITCH_DEFAULT_ERROR
+#endif
