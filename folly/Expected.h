@@ -512,6 +512,7 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
         this->error().~Error();
         break;
       case Which::eEmpty:
+      default:
         break;
     }
     this->which_ = Which::eEmpty;

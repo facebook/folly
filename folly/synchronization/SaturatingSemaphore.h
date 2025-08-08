@@ -23,6 +23,7 @@
 #include <folly/Likely.h>
 #include <folly/detail/Futex.h>
 #include <folly/detail/MemoryIdler.h>
+#include <folly/lang/Switch.h>
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/WaitOptions.h>
@@ -275,24 +276,34 @@ template <typename Clock, typename Duration>
 FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
     const std::chrono::time_point<Clock, Duration>& deadline,
     const WaitOptions& opt) noexcept {
-  switch (detail::spin_pause_until(deadline, opt, [this] { return ready(); })) {
-    case detail::spin_result::success:
-      return true;
-    case detail::spin_result::timeout:
-      return false;
-    case detail::spin_result::advance:
-      break;
-  }
-
-  if (!MayBlock) {
-    switch (detail::spin_yield_until(deadline, [this] { return ready(); })) {
+  FOLLY_EXHAUSTIVE_SWITCH({
+    switch (detail::spin_pause_until(deadline, opt, [this] {
+      return ready();
+    })) {
       case detail::spin_result::success:
         return true;
       case detail::spin_result::timeout:
         return false;
       case detail::spin_result::advance:
         break;
+      default:
+        folly::assume_unreachable();
     }
+  });
+
+  if (!MayBlock) {
+    FOLLY_EXHAUSTIVE_SWITCH({
+      switch (detail::spin_yield_until(deadline, [this] { return ready(); })) {
+        case detail::spin_result::success:
+          return true;
+        case detail::spin_result::timeout:
+          return false;
+        case detail::spin_result::advance:
+          break;
+        default:
+          folly::assume_unreachable();
+      }
+    });
   }
 
   auto before = state_.load(std::memory_order_relaxed);
