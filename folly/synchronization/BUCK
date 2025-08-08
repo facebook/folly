@@ -469,6 +469,7 @@ non_fbcode_target(
         "//xplat/folly:portability_asm",
         "//xplat/folly/detail:futex",
         "//xplat/folly/detail:memory_idler",
+        "//xplat/folly/lang:switch",
         "//xplat/folly/synchronization/detail:spin",
     ],
 )
@@ -609,6 +610,7 @@ fbcode_target(
         "//folly/detail:async_trace",
         "//folly/detail:futex",
         "//folly/detail:memory_idler",
+        "//folly/lang:switch",
         "//folly/portability:asm",
         "//folly/synchronization/detail:spin",
     ],
@@ -880,6 +882,7 @@ fbcode_target(
         "//folly:likely",
         "//folly/detail:futex",
         "//folly/detail:memory_idler",
+        "//folly/lang:switch",
         "//folly/portability:asm",
         "//folly/synchronization/detail:spin",
     ],

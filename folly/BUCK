@@ -75,6 +75,7 @@ non_fbcode_target(
         ":scope_guard",
         ":small_vector",
         "//xplat/folly/io/async:destructor_check",
+        "//xplat/folly/lang:switch",
     ],
 )
 
@@ -1891,6 +1892,7 @@ non_fbcode_target(
     name = "synchronization_baton",
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
+        "//xplat/folly/lang:switch",
         "//xplat/folly/synchronization:baton",
     ],
 )
@@ -2081,6 +2083,7 @@ non_fbcode_target(
     name = "synchronization_saturating_semaphore",
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
+        "//xplat/folly/lang:switch",
         "//xplat/folly/synchronization:saturating_semaphore",
     ],
 )
@@ -5665,6 +5668,7 @@ fbcode_target(
         ":scope_guard",
         ":small_vector",
         "//folly/io/async:destructor_check",
+        "//folly/lang:switch",
     ],
     exported_external_deps = [
         "glog",

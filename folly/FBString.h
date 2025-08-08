@@ -344,8 +344,9 @@ class fbstring_core {
         return ml_.data_;
       case Category::isLarge:
         return mutableDataLarge();
+      default:
+        folly::assume_unreachable();
     }
-    folly::assume_unreachable();
   }
 
   const Char* c_str() const {
