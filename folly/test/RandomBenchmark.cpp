@@ -106,11 +106,10 @@ BENCHMARK(sfmt19937_64, n) {
 }
 #endif
 
-#if defined(FOLLY_X64) && defined(__AVX2__) && defined(__GNUC__)
-BENCHMARK(xoshiro256_vector, n) {
+BENCHMARK(xoshiro256, n) {
   BenchmarkSuspender braces;
   std::random_device rd;
-  folly::xoshiro256pp<uint32_t, __v4du> rng(rd());
+  folly::xoshiro256pp_32 rng(rd());
 
   braces.dismiss();
 
@@ -119,35 +118,10 @@ BENCHMARK(xoshiro256_vector, n) {
   }
 }
 
-BENCHMARK(xoshiro256_64_vector, n) {
+BENCHMARK(xoshiro256_64, n) {
   BenchmarkSuspender braces;
   std::random_device rd;
-  folly::xoshiro256pp<uint64_t, __v4du> rng(rd());
-
-  braces.dismiss();
-
-  for (unsigned i = 0; i < n; i++) {
-    doNotOptimizeAway(rng());
-  }
-}
-#endif
-
-BENCHMARK(xoshiro256_scalar, n) {
-  BenchmarkSuspender braces;
-  std::random_device rd;
-  folly::xoshiro256pp<uint32_t, uint64_t> rng(rd());
-
-  braces.dismiss();
-
-  for (unsigned i = 0; i < n; i++) {
-    doNotOptimizeAway(rng());
-  }
-}
-
-BENCHMARK(xoshiro256_64_scalar, n) {
-  BenchmarkSuspender braces;
-  std::random_device rd;
-  folly::xoshiro256pp<uint64_t, uint64_t> rng(rd());
+  folly::xoshiro256pp_64 rng(rd());
 
   braces.dismiss();
 
