@@ -35,9 +35,8 @@ inline std::memory_order default_failure_memory_order(
     case std::memory_order_acquire:
     case std::memory_order_seq_cst:
       return successMode;
-    default:
-      assume_unreachable();
   }
+  assume_unreachable();
 }
 
 inline char const* memory_order_to_str(std::memory_order mo) {
@@ -54,8 +53,6 @@ inline char const* memory_order_to_str(std::memory_order mo) {
       return "acq_rel";
     case std::memory_order_seq_cst:
       return "seq_cst";
-    default:
-      assume_unreachable();
   }
 }
 } // namespace detail

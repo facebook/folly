@@ -25,7 +25,6 @@
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/io/async/DestructorCheck.h>
-#include <folly/lang/Switch.h>
 #include <folly/small_vector.h>
 
 /**
@@ -167,25 +166,21 @@ class ObserverContainerStore : public ObserverContainerStoreBase<Observer> {
     if (iterating_) {
       CHECK(maybeCurrentIterationPolicy_.has_value());
       const auto& policy = maybeCurrentIterationPolicy_.value();
-      FOLLY_EXHAUSTIVE_SWITCH({
-        switch (policy) {
-          case InvokeWhileIteratingPolicy::InvokeAdded:
-          case InvokeWhileIteratingPolicy::DoNotInvokeAdded:
-            break;
-          case InvokeWhileIteratingPolicy::CheckNoChange:
-            folly::terminate_with<std::runtime_error>(
-                "Cannot add observers while iterating "
-                "per current iteration policy (CheckNoChange)");
-            break;
-          case InvokeWhileIteratingPolicy::CheckNoAdded:
-            folly::terminate_with<std::runtime_error>(
-                "Cannot add observers while iterating "
-                "per current iteration policy (CheckNoAdded)");
-            break;
-          default:
-            folly::assume_unreachable();
-        }
-      });
+      switch (policy) {
+        case InvokeWhileIteratingPolicy::InvokeAdded:
+        case InvokeWhileIteratingPolicy::DoNotInvokeAdded:
+          break;
+        case InvokeWhileIteratingPolicy::CheckNoChange:
+          folly::terminate_with<std::runtime_error>(
+              "Cannot add observers while iterating "
+              "per current iteration policy (CheckNoChange)");
+          break;
+        case InvokeWhileIteratingPolicy::CheckNoAdded:
+          folly::terminate_with<std::runtime_error>(
+              "Cannot add observers while iterating "
+              "per current iteration policy (CheckNoAdded)");
+          break;
+      }
     }
     observers_.insert(observers_.end(), observer);
     return true;
@@ -208,22 +203,18 @@ class ObserverContainerStore : public ObserverContainerStoreBase<Observer> {
     if (iterating_) {
       CHECK(maybeCurrentIterationPolicy_.has_value());
       const auto& policy = maybeCurrentIterationPolicy_.value();
-      FOLLY_EXHAUSTIVE_SWITCH({
-        switch (policy) {
-          case InvokeWhileIteratingPolicy::InvokeAdded:
-          case InvokeWhileIteratingPolicy::DoNotInvokeAdded:
-            break;
-          case InvokeWhileIteratingPolicy::CheckNoChange:
-            folly::terminate_with<std::runtime_error>(
-                "Cannot remove observers while iterating "
-                "per current iteration policy (CheckNoChange)");
-            break;
-          case InvokeWhileIteratingPolicy::CheckNoAdded:
-            break;
-          default:
-            folly::assume_unreachable();
-        }
-      });
+      switch (policy) {
+        case InvokeWhileIteratingPolicy::InvokeAdded:
+        case InvokeWhileIteratingPolicy::DoNotInvokeAdded:
+          break;
+        case InvokeWhileIteratingPolicy::CheckNoChange:
+          folly::terminate_with<std::runtime_error>(
+              "Cannot remove observers while iterating "
+              "per current iteration policy (CheckNoChange)");
+          break;
+        case InvokeWhileIteratingPolicy::CheckNoAdded:
+          break;
+      }
 
       *it = nullptr;
       removalDuringIteration_ = true;

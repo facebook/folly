@@ -32,7 +32,6 @@ non_fbcode_target(
         "//xplat/folly/io/async:request_context",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:switch",
     ],
 )
 
@@ -70,7 +69,6 @@ fbcode_target(
         "//folly/io/async:request_context",
         "//folly/lang:assume",
         "//folly/lang:exception",
-        "//folly/lang:switch",
         "//folly/synchronization:atomic_util",
     ],
     exported_external_deps = [
