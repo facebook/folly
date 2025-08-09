@@ -19,6 +19,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Expected.h>
 #include <folly/OperationCancelled.h>
+#include <folly/coro/Coroutine.h>
 #include <folly/lang/Align.h> // for `hardware_constructive_interference_size`
 #include <folly/lang/RValueReferenceWrapper.h>
 #include <folly/portability/GTestProd.h>
@@ -739,10 +740,10 @@ struct result_promise_base {
   void operator=(result_promise_base&&) = delete;
   ~result_promise_base() = default;
 
-  FOLLY_NODISCARD std::suspend_never initial_suspend() const noexcept {
+  FOLLY_NODISCARD folly::coro::suspend_never initial_suspend() const noexcept {
     return {};
   }
-  FOLLY_NODISCARD std::suspend_never final_suspend() const noexcept {
+  FOLLY_NODISCARD folly::coro::suspend_never final_suspend() const noexcept {
     return {};
   }
   void unhandled_exception() noexcept {
@@ -778,7 +779,7 @@ struct result_promise<T, typename std::enable_if<std::is_void_v<T>>::type>
 };
 
 template <typename T>
-using result_promise_handle = std::coroutine_handle<result_promise<T>>;
+using result_promise_handle = folly::coro::coroutine_handle<result_promise<T>>;
 
 // This is separate to let `result_generator` reuse the awaitables below.
 struct result_await_suspender {
