@@ -860,6 +860,9 @@ static_assert(
 static_assert(
     folly::IsAvalanchingHasher<std::hash<std::string>, std::string>::value);
 static_assert(
+    folly::IsAvalanchingHasher<std::hash<std::string_view>, std::string_view>::
+        value);
+static_assert(
     !folly::IsAvalanchingHasher<std::hash<TestEnum>, TestEnum>::value);
 static_assert(
     !folly::IsAvalanchingHasher<std::hash<TestStruct>, TestStruct>::value);
@@ -1051,6 +1054,18 @@ TEST(Traits, stdHashTuple2Avalances) {
 
 TEST(Traits, stdHashStringAvalances) {
   verifyAvalanching<std::hash<std::string>, std::string>(
+      "00000000000000000000000000000", [](std::string& str) {
+        std::size_t i = 0;
+        while (str[i] == '1') {
+          str[i] = '0';
+          ++i;
+        }
+        str[i] = '1';
+      });
+}
+
+TEST(Traits, stdHashStringViewAvalances) {
+  verifyAvalanching<std::hash<std::string_view>, std::string>(
       "00000000000000000000000000000", [](std::string& str) {
         std::size_t i = 0;
         while (str[i] == '1') {

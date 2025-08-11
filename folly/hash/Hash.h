@@ -1325,10 +1325,13 @@ namespace folly {
 // std::hash for float and double on libstdc++-v3 are avalanching,
 // but they are not on libc++.  std::hash for integral types is not
 // avalanching for libstdc++-v3 or libc++.  We're conservative here and
-// just mark std::string as avalanching.  std::string_view will also be
-// so, once it exists.
+// just mark std::string and std::string_view as avalanching.
 template <typename... Args, typename K>
 struct IsAvalanchingHasher<std::hash<std::basic_string<Args...>>, K>
+    : std::true_type {};
+
+template <typename... Args, typename K>
+struct IsAvalanchingHasher<std::hash<std::basic_string_view<Args...>>, K>
     : std::true_type {};
 
 } // namespace folly
