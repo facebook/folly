@@ -23,7 +23,7 @@
 
 namespace folly {
 
-typedef std::unique_ptr<int> A;
+using A = std::unique_ptr<int>;
 struct B {};
 
 template <class T>
@@ -39,7 +39,7 @@ Future<T> someFuture() {
 
 template <class Ret, class... Params>
 typename std::enable_if<isFuture<Ret>::value, Ret>::type aFunction(Params...) {
-  typedef typename Ret::value_type T;
+  using T = typename Ret::value_type;
   return makeFuture(T());
 }
 
@@ -57,7 +57,7 @@ std::function<Ret(Params...)> aStdFunction(
 template <class Ret, class... Params>
 std::function<Ret(Params...)> aStdFunction(
     typename std::enable_if<isFuture<Ret>::value, bool>::type = true) {
-  typedef typename Ret::value_type T;
+  using T = typename Ret::value_type;
   return [](Params...) -> Future<T> { return makeFuture(T()); };
 }
 
@@ -72,7 +72,7 @@ class SomeClass {
   template <class Ret, class... Params>
   static typename std::enable_if<isFuture<Ret>::value, Ret>::type aStaticMethod(
       Params...) {
-    typedef typename Ret::value_type T;
+    using T = typename Ret::value_type;
     return makeFuture(T());
   }
 
@@ -83,7 +83,7 @@ class SomeClass {
 
   template <class Ret, class... Params>
   typename std::enable_if<isFuture<Ret>::value, Ret>::type aMethod(Params...) {
-    typedef typename Ret::value_type T;
+    using T = typename Ret::value_type;
     return makeFuture(T());
   }
 };

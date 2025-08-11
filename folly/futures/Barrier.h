@@ -50,7 +50,7 @@ class Barrier {
   folly::Future<bool> wait();
 
  private:
-  typedef folly::Promise<bool> BoolPromise;
+  using BoolPromise = folly::Promise<bool>;
 
   static constexpr uint64_t kReaderShift = 32;
   static constexpr uint64_t kReader = uint64_t(1) << kReaderShift;

@@ -37,7 +37,7 @@ using namespace folly;
 
 #define EXPECT_TYPE(x, T) EXPECT_TRUE((std::is_same<decltype(x), T>::value))
 
-typedef FutureException eggs_t;
+using eggs_t = FutureException;
 static eggs_t eggs("eggs");
 
 // Future

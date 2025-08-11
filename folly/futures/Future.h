@@ -143,7 +143,7 @@ class FutureBase {
   using Core = futures::detail::Core<T>;
 
  public:
-  typedef T value_type;
+  using value_type = T;
 
   /// Construct from a value (perfect forwarding)
   ///
