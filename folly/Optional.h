@@ -220,11 +220,19 @@ class Optional {
   }
 
   std::optional<Value> toStdOptional() && noexcept {
-    return static_cast<std::optional<Value>>(std::move(*this));
+    if (has_value()) {
+      auto opt = std::optional<Value>(std::move(value()));
+      reset();
+      return opt;
+    }
+    return std::nullopt;
   }
 
   std::optional<Value> toStdOptional() const& noexcept {
-    return static_cast<std::optional<Value>>(*this);
+    if (has_value()) {
+      return std::optional<Value>(value());
+    }
+    return std::nullopt;
   }
 
   /// Set the Optional
