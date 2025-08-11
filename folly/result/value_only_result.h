@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// Could cut the dep, they only share some implementation helpers.
 #include <folly/result/result.h>
 
 #pragma once
@@ -44,8 +43,18 @@
 ///   - `co_yield co_result()`
 ///   - `co_await co_ready()`
 ///
-/// In contrast, it's hard to imagine a use-case that requires
-/// `value_only_result` to **be** a coroutine.
+/// It's a good idea add a linter that errors whenever a function returning
+/// `value_only_result` is not `noexcept`.
+///
+/// While it is hard to imagine a use-case that requires `value_only_result` to
+/// **be** a coroutine, here are some notes:
+///   - The `noexcept` linter above becomes more important, since writing
+///     `unhandled_exception() { throw; }` neither makes sense, nor bodes well
+///     for well-optimized code.  But writing `unhandled_exception() noexcept`
+///     definitely requires a pervasive linter.
+///   - You may want to add a `::template apply<>` to `result`-like types
+///     to make it easier for users to write generic coros that are
+///     either-`result`-or-`value_only_result`.
 ///
 /// Implementation note: It wouldn't be hard to deduplicate most of the API
 /// implementation with `result.h`, but I went with the "copy" route since it
@@ -85,13 +94,8 @@ class value_only_result_crtp {
 
   ~value_only_result_crtp() = default;
 
-  friend inline bool operator==(
-      const value_only_result_crtp& a, const value_only_result_crtp& b) {
-    return a.value_ == b.value_;
-  }
-
  public:
-  using value_type = T;
+  using value_type = T; // NB: can be a reference
 
   /// Movable, so long as `T` is.
   value_only_result_crtp(value_only_result_crtp&&) = default;
@@ -110,6 +114,9 @@ class value_only_result_crtp {
 
   bool has_value() const { return true; }
   bool has_stopped() const { return false; }
+
+  // Only provide `==` since less/greater doesn't make sense for `result`.
+  bool operator==(const value_only_result_crtp&) const = default;
 };
 
 } // namespace detail
@@ -118,7 +125,7 @@ class value_only_result_crtp {
 // to `void`.
 template <typename T>
 class FOLLY_NODISCARD
-    // Not yet a coroutine, but if we make it one, it SHOULD be elidable.
+    // Not a coroutine, but any reasonable implementation would be elidable.
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] value_only_result final
     : public detail::value_only_result_crtp<value_only_result<T>, T> {
  private:
@@ -274,8 +281,8 @@ class FOLLY_NODISCARD
 
   value_only_result() : base(std::in_place, unit) {}
 
-  void value_or_throw() const {}
-  void value_only() const {}
+  void value_or_throw() const noexcept {}
+  void value_only() const noexcept {}
 };
 
 namespace detail {
@@ -287,7 +294,8 @@ struct value_only_result_owning_awaitable {
   typename VOR::value_type await_resume() {
     return std::move(storage_).value_only();
   }
-  void await_suspend(auto) {}
+  template <typename U>
+  void await_suspend(result_promise_handle<U>) {}
 };
 
 // As with `result<>`, no `folly::rvalue_reference_wrapper` counterpart because
@@ -321,7 +329,8 @@ struct value_only_result_ref_awaitable {
     return storage_.get().value_only();
   }
 
-  void await_suspend(auto) {}
+  template <typename U>
+  void await_suspend(result_promise_handle<U>) {}
 };
 
 } // namespace detail

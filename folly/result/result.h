@@ -226,6 +226,15 @@ class non_value_result {
     return std::move(ew_);
   }
 
+  /// AVOID.  Most code should use `result` coros, which catch most exceptions
+  /// automatically.  Or, for a stronger guarantee, see `result_catch_all`.
+  static non_value_result from_current_exception() {
+    // Something was already thrown, and the user likely wants a result, so
+    // it's appropriate to accept even `OperationCancelled` here.
+    return non_value_result::make_legacy_error_or_cancellation(
+        exception_wrapper{current_exception()});
+  }
+
   friend inline bool operator==(
       const non_value_result& lhs, const non_value_result& rhs) {
     return lhs.ew_ == rhs.ew_;
@@ -294,7 +303,7 @@ class result_crtp {
   static_assert(!std::is_same_v<stopped_result_t, std::remove_cvref_t<T>>);
 
  public:
-  using value_type = T;
+  using value_type = T; // NB: can be a reference
 
  protected:
   using storage_type = detail::result_ref_wrap<lift_unit_t<T>>;
@@ -691,9 +700,8 @@ template <typename T>
 struct is_result<result<T>> : std::true_type {};
 
 // This short-circuiting coroutine implementation was modeled on
-// `folly/Expected.h`, which is likely to follow the state of the art in
-// compiler support & optimizations.  So, if you're looking at this, please
-// compare it to the original, and backport any improvements here.
+// `folly/Expected.h`. Please try to port any compiler fixes or
+// optimizations across both.
 namespace detail {
 
 template <typename>
@@ -712,12 +720,13 @@ struct result_promise_return {
   void operator=(result_promise_return const&) = delete;
   result_promise_return(result_promise_return&&) = delete;
   void operator=(result_promise_return&&) = delete;
+  // Remove this once clang 15 is well-forgotten. From D42260201:
   // letting dtor be trivial makes the coroutine crash
-  // TODO: fix clang/llvm codegen
   ~result_promise_return() {}
 
   /* implicit */ operator result<T>() {
-    // D42260201: handle both deferred and eager return-object conversion
+    // Simplify this once clang 15 is well-forgotten. From D42260201:
+    // handle both deferred and eager return-object conversion
     // behaviors see docs for detect_promise_return_object_eager_conversion
     if (coro::detect_promise_return_object_eager_conversion()) {
       assert(storage_.is_expected_empty());
@@ -747,10 +756,7 @@ struct result_promise_base {
     return {};
   }
   void unhandled_exception() noexcept {
-    // We're making a `result`, so it's OK to forward all exceptions into it,
-    // including `OperationCancelled`.
-    *value_ = non_value_result::make_legacy_error_or_cancellation(
-        exception_wrapper{std::current_exception()});
+    *value_ = non_value_result::from_current_exception();
   }
 
   result_promise_return<T> get_return_object() noexcept { return *this; }
@@ -781,7 +787,8 @@ struct result_promise<T, typename std::enable_if<std::is_void_v<T>>::type>
 template <typename T>
 using result_promise_handle = folly::coro::coroutine_handle<result_promise<T>>;
 
-// This is separate to let `result_generator` reuse the awaitables below.
+// This is separate to let future https://fburl.com/result-generator-impl reuse
+// the awaitables below.
 struct result_await_suspender {
   // Future: check if all these `FOLLY_ALWAYS_INLINE`s aren't a pessimization.
   template <typename T, typename U>
@@ -934,10 +941,7 @@ result_catch_all(F&& fn) noexcept {
       return static_cast<F&&>(fn)();
     }
   } catch (...) {
-    // We're a making `result`, so it's OK to forward all exceptions into it,
-    // including `OperationCancelled`.
-    return non_value_result::make_legacy_error_or_cancellation(
-        exception_wrapper{std::current_exception()});
+    return non_value_result::from_current_exception();
   }
 }
 
