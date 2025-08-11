@@ -27,7 +27,6 @@
 #endif
 
 #if FOLLY_X64
-#include <immintrin.h>
 #endif
 
 using namespace folly;
