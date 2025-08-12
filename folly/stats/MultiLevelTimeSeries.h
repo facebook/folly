@@ -339,9 +339,9 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  template <typename ReturnType = double>
+  template <typename ReturnType = double, typename Interval = Duration>
   ReturnType rate(TimePoint start, TimePoint end) const {
-    return getLevel(start).template rate<ReturnType>(start, end);
+    return getLevel(start).template rate<ReturnType, Interval>(start, end);
   }
 
   /*
