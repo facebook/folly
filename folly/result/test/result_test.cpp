@@ -129,7 +129,8 @@ TEST(Result, storeAndGetStoppedResult) {
   // Constructing with `OperationCancelled` without the legacy path
   // is debug-fatal.
   if (kIsDebug) {
-    EXPECT_DEATH({ non_value_result::from_exception_wrapper(ocEw); }, deathRe);
+    EXPECT_DEATH(
+        { (void)non_value_result::from_exception_wrapper(ocEw); }, deathRe);
   } else {
     auto ew =
         non_value_result::from_exception_wrapper(ocEw).to_exception_wrapper();

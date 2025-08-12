@@ -43,7 +43,7 @@
 ///   - `co_yield co_result()`
 ///   - `co_await co_ready()`
 ///
-/// It's a good idea add a linter that errors whenever a function returning
+/// It's a good idea to add a linter that errors whenever a function returning
 /// `value_only_result` is not `noexcept`.
 ///
 /// While it is hard to imagine a use-case that requires `value_only_result` to

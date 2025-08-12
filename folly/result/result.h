@@ -139,7 +139,7 @@ inline constexpr stopped_result_t stopped_result;
 //   - Common usage involves only rvalues, so the risk of perf bugs is low.
 //   - `folly::Expected` assumes that the error type is copyable, and it's
 //     too convenient an implementation not to use.
-class non_value_result {
+class FOLLY_NODISCARD non_value_result {
  private:
   exception_wrapper ew_;
 
