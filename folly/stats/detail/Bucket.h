@@ -119,18 +119,17 @@ ReturnType rateHelper(ReturnType count, Duration elapsed) {
   // elapsed time first may collapse it down to 0 if the elapsed interval
   // is less than the desired interval, which will incorrectly result in
   // an infinite rate.
-  typedef std::chrono::duration<
-      ReturnType,
-      std::ratio<Duration::period::den, Duration::period::num>>
-      NativeRate;
-  typedef std::chrono::duration<
-      ReturnType,
-      std::ratio<Interval::period::den, Interval::period::num>>
-      DesiredRate;
+  using NativeRate = std::chrono::duration<
+      double,
+      std::ratio<Duration::period::den, Duration::period::num>>;
+  using DesiredRate = std::chrono::duration<
+      double,
+      std::ratio<Interval::period::den, Interval::period::num>>;
 
-  NativeRate native(count / elapsed.count());
+  // We use Rep=double to avoid rouding down too much here.
+  NativeRate native((double)count / elapsed.count());
   DesiredRate desired = std::chrono::duration_cast<DesiredRate>(native);
-  return desired.count();
+  return static_cast<ReturnType>(desired.count());
 }
 
 template <typename T>

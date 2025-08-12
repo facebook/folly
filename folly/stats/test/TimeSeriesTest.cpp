@@ -339,14 +339,18 @@ TEST(BucketedTimeSeries, rate) {
   // Really we only entered 599 seconds worth of data: [0, 598] (inclusive)
   EXPECT_EQ(599, ts.elapsed().count());
   EXPECT_NEAR(300.5, ts.rate(), 0.005);
+  EXPECT_NEAR(18030.05, (ts.rate<double, std::chrono::minutes>()), 0.005);
   EXPECT_NEAR(1.5, ts.countRate(), 0.005);
+  EXPECT_NEAR(90.15, (ts.countRate<double, std::chrono::minutes>()), 0.005);
 
   // If we add 1 more second, now we will have 600 seconds worth of data
   ts.update(seconds(599));
   EXPECT_EQ(600, ts.elapsed().count());
   EXPECT_NEAR(300, ts.rate(), 0.005);
   EXPECT_EQ(300, ts.rate<int>());
+  EXPECT_EQ(18000, (ts.rate<int, std::chrono::minutes>()));
   EXPECT_NEAR(1.5, ts.countRate(), 0.005);
+  EXPECT_EQ(90, (ts.countRate<int, std::chrono::minutes>()));
 
   // However, 1 more second after that and we will have filled up all the
   // buckets, and have to drop one.
