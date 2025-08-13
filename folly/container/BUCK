@@ -756,6 +756,7 @@ fbcode_target(
     ],
     exported_deps = [
         "//folly:portability",
+        "//folly/lang:builtin",
     ],
     exported_external_deps = [
         "boost",
