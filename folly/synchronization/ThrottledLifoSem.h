@@ -139,6 +139,15 @@ class ThrottledLifoSem {
     return static_cast<uint32_t>(state_.load() & kValueMask);
   }
 
+  // Returns the number of posts that are not assigned yet to existing
+  // waiters. This can be negative if there are more waiters than posts.
+  int64_t excessValueGuess() const {
+    uint64_t state = state_.load(std::memory_order_relaxed);
+    uint64_t value = state & kValueMask;
+    uint64_t numWaiters = state >> kNumWaitersShift;
+    return static_cast<int64_t>(value) - static_cast<int64_t>(numWaiters);
+  }
+
  private:
   friend class ThrottledLifoSemTestHelper;
 
