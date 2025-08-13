@@ -16,6 +16,7 @@
 
 #include <folly/concurrency/CacheLocality.h>
 
+#include <fstream>
 #include <memory>
 #include <thread>
 #include <unordered_map>
