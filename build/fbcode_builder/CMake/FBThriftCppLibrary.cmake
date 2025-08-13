@@ -86,7 +86,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
       "${output_dir}/gen-cpp2/${service}AsyncClient.cpp"
       "${output_dir}/gen-cpp2/${service}_processmap_binary.cpp"
       "${output_dir}/gen-cpp2/${service}_processmap_compact.cpp"
-      "${output_dir}/gen-cpp2/${service}_processmap_serialization.cpp"
+      "${output_dir}/gen-cpp2/${service}_types_serialization.cpp"
     )
   endforeach()
 
