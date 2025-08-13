@@ -1,0 +1,39 @@
+[manifest]
+name = moxygen
+fbsource_path = fbcode/moxygen
+shipit_project = moxygen
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookexperimental/moxygen.git
+
+[build.os=windows]
+builder = nop
+
+[build]
+builder = cmake
+subdir = .
+job_weight_mib = 3072
+rewrite_includes = true
+
+[cmake.defines.test=on]
+BUILD_TESTS = ON
+
+[cmake.defines.test=off]
+BUILD_TESTS = OFF
+
+[dependencies]
+zlib
+gperf
+folly
+fizz
+wangle
+mvfst
+proxygen
+
+[dependencies.test=on]
+googletest
+
+[shipit.pathmap]
+fbcode/ti/experimental/moxygen/project_root = .
+fbcode/ti/experimental/moxygen = moxygen
