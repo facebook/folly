@@ -84,6 +84,9 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "elf_test",
     srcs = ["ElfTest.cpp"],
+    # Do NOT move segments to a seperate helper .so lib because
+    # this test expect to find its symbols in /proc/self/exe.
+    extract_helper_lib = False,
     resources = [
         ":simple_elf",
     ],
