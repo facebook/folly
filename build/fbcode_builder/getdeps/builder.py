@@ -840,7 +840,31 @@ if __name__ == "__main__":
 
         return define_args
 
+    def _run_include_rewriter(self):
+        """Run include path rewriting on source files before building."""
+        from .include_rewriter import rewrite_includes_from_manifest
+
+        print(f"Rewriting include paths for {self.manifest.name}...")
+        try:
+            modified_count = rewrite_includes_from_manifest(
+                self.manifest, self.ctx, self.src_dir, verbose=True
+            )
+            if modified_count > 0:
+                print(f"Successfully modified {modified_count} files")
+            else:
+                print("No files needed modification")
+        except Exception as e:
+            print(f"Warning: Include path rewriting failed: {e}")
+            # Don't fail the build for include rewriting issues
+
     def _build(self, reconfigure: bool) -> None:
+        # Check if include rewriting is enabled
+        rewrite_includes = self.manifest.get(
+            "build", "rewrite_includes", "false", ctx=self.ctx
+        )
+        if rewrite_includes.lower() == "true":
+            self._run_include_rewriter()
+
         reconfigure = reconfigure or self._needs_reconfigure()
 
         env = self._compute_env()

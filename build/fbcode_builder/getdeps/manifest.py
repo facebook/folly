@@ -79,6 +79,7 @@ SCHEMA = {
             "job_weight_mib": OPTIONAL,
             "patchfile": OPTIONAL,
             "patchfile_opts": OPTIONAL,
+            "rewrite_includes": OPTIONAL,
         },
     },
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
