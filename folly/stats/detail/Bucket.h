@@ -135,7 +135,7 @@ ReturnType rateHelper(ReturnType count, Duration elapsed) {
 template <typename T>
 struct Bucket {
  public:
-  typedef T ValueType;
+  using ValueType = T;
 
   Bucket() : sum(ValueType()), count(0) {}
 
