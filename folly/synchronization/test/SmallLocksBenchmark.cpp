@@ -30,6 +30,7 @@
 #include <folly/lang/Aligned.h>
 #include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/FlatCombining.h>
+#include <folly/synchronization/RWSpinLock.h>
 #include <folly/synchronization/SmallLocks.h>
 #include <folly/system/HardwareConcurrency.h>
 
@@ -484,6 +485,9 @@ static void folly_flatcombining_no_caching(size_t numOps, size_t numThreads) {
 static void folly_flatcombining_caching(size_t numOps, size_t numThreads) {
   runContended<FlatCombiningMutexCaching>(numOps, numThreads);
 }
+static void folly_RWSpinlock(size_t numOps, size_t numThreads) {
+  runContended<folly::RWSpinLock>(numOps, numThreads);
+}
 
 static void std_mutex_simple(size_t numOps, size_t numThreads) {
   runContended<std::mutex, Ints>(numOps, numThreads, 0);
@@ -525,6 +529,9 @@ static void folly_flatcombining_no_caching_simple(size_t ops, size_t threads) {
 static void folly_flatcombining_caching_simple(size_t ops, size_t threads) {
   runContended<FlatCombiningMutexCaching>(ops, threads, 0);
 }
+static void folly_RWSpinlock_simple(size_t numOps, size_t numThreads) {
+  runContended<folly::RWSpinLock>(numOps, numThreads, 0);
+}
 
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 1thread, 1)
@@ -537,6 +544,7 @@ BENCH_REL(folly_distributedmutex, 1thread, 1)
 BENCH_REL(folly_distributedmutex_combining, 1thread, 1)
 BENCH_REL(folly_flatcombining_no_caching, 1thread, 1)
 BENCH_REL(folly_flatcombining_caching, 1thread, 1)
+BENCH_REL(folly_RWSpinlock, 1thread, 1)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 2thread, 2)
 BENCH_BASE(std_shared_mutex, 2thread, 2)
@@ -548,6 +556,7 @@ BENCH_REL(folly_distributedmutex, 2thread, 2)
 BENCH_REL(folly_distributedmutex_combining, 2thread, 2)
 BENCH_REL(folly_flatcombining_no_caching, 2thread, 2)
 BENCH_REL(folly_flatcombining_caching, 2thread, 2)
+BENCH_REL(folly_RWSpinlock, 2thread, 2)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 4thread, 4)
 BENCH_BASE(std_shared_mutex, 4thread, 4)
@@ -559,6 +568,7 @@ BENCH_REL(folly_distributedmutex, 4thread, 4)
 BENCH_REL(folly_distributedmutex_combining, 4thread, 4)
 BENCH_REL(folly_flatcombining_no_caching, 4thread, 4)
 BENCH_REL(folly_flatcombining_caching, 4thread, 4)
+BENCH_REL(folly_RWSpinlock, 4thread, 4)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 8thread, 8)
 BENCH_BASE(std_shared_mutex, 8thread, 8)
@@ -570,6 +580,7 @@ BENCH_REL(folly_distributedmutex, 8thread, 8)
 BENCH_REL(folly_distributedmutex_combining, 8thread, 8)
 BENCH_REL(folly_flatcombining_no_caching, 8thread, 8)
 BENCH_REL(folly_flatcombining_caching, 8thread, 8)
+BENCH_REL(folly_RWSpinlock, 8thread, 8)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 16thread, 16)
 BENCH_BASE(std_shared_mutex, 16thread, 16)
@@ -581,6 +592,7 @@ BENCH_REL(folly_distributedmutex, 16thread, 16)
 BENCH_REL(folly_distributedmutex_combining, 16thread, 16)
 BENCH_REL(folly_flatcombining_no_caching, 16thread, 16)
 BENCH_REL(folly_flatcombining_caching, 16thread, 16)
+BENCH_REL(folly_RWSpinlock, 16thread, 16)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 32thread, 32)
 BENCH_BASE(std_shared_mutex, 32thread, 32)
@@ -592,6 +604,7 @@ BENCH_REL(folly_distributedmutex, 32thread, 32)
 BENCH_REL(folly_distributedmutex_combining, 32thread, 32)
 BENCH_REL(folly_flatcombining_no_caching, 32thread, 32)
 BENCH_REL(folly_flatcombining_caching, 32thread, 32)
+BENCH_REL(folly_RWSpinlock, 32thread, 32)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 64thread, 64)
 BENCH_BASE(std_shared_mutex, 64thread, 64)
@@ -603,6 +616,7 @@ BENCH_REL(folly_distributedmutex, 64thread, 64)
 BENCH_REL(folly_distributedmutex_combining, 64thread, 64)
 BENCH_REL(folly_flatcombining_no_caching, 64thread, 64)
 BENCH_REL(folly_flatcombining_caching, 64thread, 64)
+BENCH_REL(folly_RWSpinlock, 64thread, 64)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 128thread, 128)
 BENCH_BASE(std_shared_mutex, 128thread, 128)
@@ -614,6 +628,7 @@ BENCH_REL(folly_distributedmutex, 128thread, 128)
 BENCH_REL(folly_distributedmutex_combining, 128thread, 128)
 BENCH_REL(folly_flatcombining_no_caching, 128thread, 128)
 BENCH_REL(folly_flatcombining_caching, 128thread, 128)
+BENCH_REL(folly_RWSpinlock, 128thread, 128)
 
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex_simple, 1thread, 1)
@@ -626,6 +641,7 @@ BENCH_REL(folly_distributedmutex_simple, 1thread, 1)
 BENCH_REL(folly_distributedmutex_combining_simple, 1thread, 1)
 BENCH_REL(folly_flatcombining_no_caching_simple, 1thread, 1)
 BENCH_REL(folly_flatcombining_caching_simple, 1thread, 1)
+BENCH_REL(folly_RWSpinlock_simple, 1thread, 1)
 BENCH_REL(atomics_fetch_add, 1thread, 1)
 BENCH_REL(atomic_fetch_xor, 1thread, 1)
 BENCH_REL(atomic_cas, 1thread, 1)
@@ -640,6 +656,7 @@ BENCH_REL(folly_distributedmutex_simple, 2thread, 2)
 BENCH_REL(folly_distributedmutex_combining_simple, 2thread, 2)
 BENCH_REL(folly_flatcombining_no_caching_simple, 2thread, 2)
 BENCH_REL(folly_flatcombining_caching_simple, 2thread, 2)
+BENCH_REL(folly_RWSpinlock_simple, 2thread, 2)
 BENCH_REL(atomics_fetch_add, 2thread, 2)
 BENCH_REL(atomic_fetch_xor, 2thread, 2)
 BENCH_REL(atomic_cas, 2thread, 2)
@@ -654,6 +671,7 @@ BENCH_REL(folly_distributedmutex_simple, 4thread, 4)
 BENCH_REL(folly_distributedmutex_combining_simple, 4thread, 4)
 BENCH_REL(folly_flatcombining_no_caching_simple, 4thread, 4)
 BENCH_REL(folly_flatcombining_caching_simple, 4thread, 4)
+BENCH_REL(folly_RWSpinlock_simple, 4thread, 4)
 BENCH_REL(atomics_fetch_add, 4thread, 4)
 BENCH_REL(atomic_fetch_xor, 4thread, 4)
 BENCH_REL(atomic_cas, 4thread, 4)
@@ -668,6 +686,7 @@ BENCH_REL(folly_distributedmutex_simple, 8thread, 8)
 BENCH_REL(folly_distributedmutex_combining_simple, 8thread, 8)
 BENCH_REL(folly_flatcombining_no_caching_simple, 8thread, 8)
 BENCH_REL(folly_flatcombining_caching_simple, 8thread, 8)
+BENCH_REL(folly_RWSpinlock_simple, 8thread, 8)
 BENCH_REL(atomics_fetch_add, 8thread, 8)
 BENCH_REL(atomic_fetch_xor, 8thread, 8)
 BENCH_REL(atomic_cas, 8thread, 8)
@@ -682,6 +701,7 @@ BENCH_REL(folly_distributedmutex_simple, 16thread, 16)
 BENCH_REL(folly_distributedmutex_combining_simple, 16thread, 16)
 BENCH_REL(folly_flatcombining_no_caching_simple, 16thread, 16)
 BENCH_REL(folly_flatcombining_caching_simple, 16thread, 16)
+BENCH_REL(folly_RWSpinlock_simple, 16thread, 16)
 BENCH_REL(atomics_fetch_add, 16thread, 16)
 BENCH_REL(atomic_fetch_xor, 16thread, 16)
 BENCH_REL(atomic_cas, 16thread, 16)
@@ -696,6 +716,7 @@ BENCH_REL(folly_distributedmutex_simple, 32thread, 32)
 BENCH_REL(folly_distributedmutex_combining_simple, 32thread, 32)
 BENCH_REL(folly_flatcombining_no_caching_simple, 32thread, 32)
 BENCH_REL(folly_flatcombining_caching_simple, 32thread, 32)
+BENCH_REL(folly_RWSpinlock_simple, 32thread, 32)
 BENCH_REL(atomics_fetch_add, 32thread, 32)
 BENCH_REL(atomic_fetch_xor, 32thread, 32)
 BENCH_REL(atomic_cas, 32thread, 32)
@@ -710,6 +731,7 @@ BENCH_REL(folly_distributedmutex_simple, 64thread, 64)
 BENCH_REL(folly_distributedmutex_combining_simple, 64thread, 64)
 BENCH_REL(folly_flatcombining_no_caching_simple, 64thread, 64)
 BENCH_REL(folly_flatcombining_caching_simple, 64thread, 64)
+BENCH_REL(folly_RWSpinlock_simple, 64thread, 64)
 BENCH_REL(atomics_fetch_add, 64thread, 64)
 BENCH_REL(atomic_fetch_xor, 64thread, 64)
 BENCH_REL(atomic_cas, 64thread, 64)
@@ -724,6 +746,7 @@ BENCH_REL(folly_distributedmutex_simple, 128thread, 128)
 BENCH_REL(folly_distributedmutex_combining_simple, 128thread, 128)
 BENCH_REL(folly_flatcombining_no_caching_simple, 128thread, 128)
 BENCH_REL(folly_flatcombining_caching_simple, 128thread, 128)
+BENCH_REL(folly_RWSpinlock_simple, 128thread, 128)
 BENCH_REL(atomics_fetch_add, 128thread, 128)
 BENCH_REL(atomic_fetch_xor, 128thread, 128)
 BENCH_REL(atomic_cas, 128thread, 128)
@@ -752,6 +775,7 @@ int main(int argc, char** argv) {
           "folly::DistributedMutex", numThreads);
       fairnessTest<DistributedMutexFlatCombining>(
           "folly::DistributedMutex (Combining)", numThreads);
+      fairnessTest<folly::RWSpinLock>("folly::RWSpinLock", numThreads);
 
       std::cout << std::string(76, '=') << std::endl;
     }

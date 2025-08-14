@@ -154,6 +154,13 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #undef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
 #endif
 
+#if FOLLY_AARCH64 && !FOLLY_MOBILE
+#include <arm_neon.h>
+#define RW_SPINLOCK_USE_NEON_INSTRUCTIONS_
+#else
+#undef RW_SPINLOCK_USE_NEON_INSTRUCTIONS_
+#endif
+
 #include <algorithm>
 #include <atomic>
 #include <thread>
@@ -338,6 +345,30 @@ struct RWTicketIntTrait<64> {
   static inline uint64_t addParallel(__m128i in, __m128i kDelta) {
     return toInteger(_mm_add_epi16(in, kDelta));
   }
+#elif defined(RW_SPINLOCK_USE_NEON_INSTRUCTIONS_)
+  static inline uint16x4_t loadWhole(const FullInt* src) {
+    uint16x4_t vWhole = vreinterpret_u16_u64(vld1_u64(src));
+    asm_volatile_memory();
+    return vWhole;
+  }
+
+  template <uint64_t kWrite, uint64_t kRead, uint64_t kUsers>
+  static inline uint16x4_t getMask() {
+    constexpr uint64_t mask = kWrite + (kRead << 16) + (kUsers << 32);
+    uint64x1_t maskV;
+    maskV[0] = mask;
+    return vreinterpret_u16_u64(maskV);
+  }
+
+  static inline uint16x4_t getUnlockMask() { return getMask<1, 1, 0>(); }
+
+  static inline uint64_t toInteger(uint16x4_t in) {
+    return vreinterpret_u64_u16(in)[0];
+  }
+
+  static inline uint64_t addParallel(uint16x4_t in, uint16x4_t kDelta) {
+    return toInteger(vadd_u16(in, kDelta));
+  }
 #endif
 };
 
@@ -365,6 +396,34 @@ struct RWTicketIntTrait<32> {
   }
   static inline uint32_t addParallel(__m128i in, __m128i kDelta) {
     return toInteger(_mm_add_epi8(in, kDelta));
+  }
+#elif defined(RW_SPINLOCK_USE_NEON_INSTRUCTIONS_)
+  static inline uint8x8_t loadWhole(const FullInt* src) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wuninitialized"
+    uint32x2_t vWhole;
+    vWhole = vld1_lane_u32(src, vWhole, 0);
+#pragma clang diagnostic pop
+    asm_volatile_memory();
+    return vreinterpret_u8_u32(vWhole);
+  }
+
+  template <uint32_t kWrite, uint32_t kRead, uint32_t kUsers>
+  static inline uint8x8_t getMask() {
+    constexpr uint32_t mask = kWrite + (kRead << 8) + (kUsers << 16);
+    uint32x2_t maskV;
+    maskV[0] = mask;
+    return vreinterpret_u8_u32(maskV);
+  }
+
+  static inline uint8x8_t getUnlockMask() { return getMask<1, 1, 0>(); }
+
+  static inline uint32_t toInteger(uint8x8_t in) {
+    return vreinterpret_u32_u8(in)[0];
+  }
+
+  static inline uint32_t addParallel(uint8x8_t in, uint8x8_t kDelta) {
+    return toInteger(vadd_u8(in, kDelta));
   }
 #endif
 };
@@ -488,8 +547,13 @@ class RWTicketSpinLockT {
   // Release writer permission on the lock.
   void unlock() {
     RWTicket t;
-    t.whole = load_acquire(&ticket.whole);
 
+#if defined(RW_SPINLOCK_USE_NEON_INSTRUCTIONS_)
+    auto vWhole = IntTraitType::loadWhole(&ticket.whole);
+    auto vMask = IntTraitType::getUnlockMask();
+    t.whole = IntTraitType::addParallel(vWhole, vMask);
+#else
+    t.whole = load_acquire(&ticket.whole);
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
     FullInt old = t.whole;
     // SSE2 can reduce the lock and unlock overhead by 10%
@@ -500,6 +564,7 @@ class RWTicketSpinLockT {
 #else
     ++t.read;
     ++t.write;
+#endif
 #endif
     store_release(&ticket.readWrite, t.readWrite);
   }

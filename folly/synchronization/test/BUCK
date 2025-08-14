@@ -398,6 +398,7 @@ fbcode_target(
         "//folly/lang:aligned",
         "//folly/synchronization:distributed_mutex",
         "//folly/synchronization:flat_combining",
+        "//folly/synchronization:rw_spin_lock",
         "//folly/synchronization:small_locks",
         "//folly/system:hardware_concurrency",
     ],
