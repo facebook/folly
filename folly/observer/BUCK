@@ -58,8 +58,8 @@ non_fbcode_target(
         "ReadMostlyTLObserver.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly:shared_mutex",
-        "//xplat/folly:synchronization_baton",
         "//xplat/folly:thread_local",
         "//xplat/folly/concurrency:core_cached_shared_ptr",
         "//xplat/folly/experimental/observer/detail:observer_manager",
@@ -76,8 +76,8 @@ non_fbcode_target(
         "SimpleObservable-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:delayed_init",
         "//xplat/folly:function",
-        "//xplat/folly:synchronization_delayed_init",
         "//xplat/folly:synchronized",
         "//xplat/folly/experimental/observer:observable",
         "//xplat/folly/experimental/observer:observer",
