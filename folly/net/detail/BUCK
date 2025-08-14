@@ -19,7 +19,7 @@ non_fbcode_target(
         "SocketFileDescriptorMap.h",
     ],
     deps = [
-        "//xplat/folly:portability_windows",
+        "fbsource//xplat/folly/portability:windows",
     ],
 )
 
