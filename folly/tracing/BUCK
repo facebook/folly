@@ -39,10 +39,10 @@ non_fbcode_target(
         "AsyncStack-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:pthread",
         "//third-party/glog:glog",
         "//xplat/folly:indestructible",
         "//xplat/folly:likely",
-        "//xplat/folly:portability_pthread",
         "//xplat/folly:synchronized",
         "//xplat/folly/lang:hint",
     ],
