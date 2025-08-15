@@ -1040,3 +1040,16 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "collection_util_test",
+    srcs = ["CollectionUtilTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:small_vector",
+        "//folly:sorted_vector_types",
+        "//folly/container:collection_util",
+        "//folly/container:f14_hash",
+    ],
+)

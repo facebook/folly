@@ -877,3 +877,9 @@ fbcode_target(
         "//folly/memory:memory_resource",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "collection_util",
+    headers = ["CollectionUtil.h"],
+)
