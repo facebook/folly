@@ -528,6 +528,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  *   skipped with just a single check of the LogLevel.
  */
 #define XLOG_ACTUAL_IMPL(level, cond, always_fatal, type, ...)              \
+  /* NOLINTNEXTLINE(readability-simplify-boolean-expr) */                   \
   (!XLOG_IS_ON_IMPL(level) || !(cond))                                      \
       ? ::folly::logDisabledHelper(::std::bool_constant<always_fatal>{})    \
       : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &      \
