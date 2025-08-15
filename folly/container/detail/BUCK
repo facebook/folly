@@ -17,8 +17,8 @@ non_fbcode_target(
         "BitIteratorDetail.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:sys_types",
         "//third-party/boost:boost",
-        "//xplat/folly:portability_sys_types",
     ],
 )
 
@@ -54,15 +54,15 @@ non_fbcode_target(
         "F14Table.h",
     ],
     deps = [
+        "fbsource//xplat/folly/hash:hash",
+        "fbsource//xplat/folly/hash:rapidhash",
+        "fbsource//xplat/folly/portability:builtins",
         "//xplat/folly:bits",
         "//xplat/folly:constexpr_math",
-        "//xplat/folly:hash_hash",
-        "//xplat/folly:hash_rapidhash",
         "//xplat/folly:likely",
         "//xplat/folly:memory",
         "//xplat/folly:optional",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_builtins",
         "//xplat/folly:scope_guard",
         "//xplat/folly:traits",
         "//xplat/folly:unit",

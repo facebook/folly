@@ -66,11 +66,11 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Bits.h"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:builtins",
         ":assume",
         ":c_string",
         "//xplat/folly:constexpr_math",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_builtins",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
     ],
@@ -298,9 +298,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeAssert.h"],
     deps = [
+        "fbsource//xplat/folly/portability:sys_types",
+        "fbsource//xplat/folly/portability:windows",
         ":to_ascii",
-        "//xplat/folly:portability_sys_types",
-        "//xplat/folly:portability_windows",
         "//xplat/folly/detail:file_util_detail",
     ],
     exported_deps = [
@@ -363,10 +363,10 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ToAscii.h"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:builtins",
         "//xplat/folly:constexpr_math",
         "//xplat/folly:likely",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_builtins",
         "//xplat/folly:utility",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:c_array",
