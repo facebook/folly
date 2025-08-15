@@ -105,6 +105,7 @@ non_fbcode_target(
         "//xplat/folly/detail:async_trace",
         "//xplat/folly/detail:futex",
         "//xplat/folly/detail:memory_idler",
+        "//xplat/folly/lang:switch",
         "//xplat/folly/synchronization/detail:spin",
     ],
 )
