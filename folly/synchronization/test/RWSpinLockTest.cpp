@@ -40,17 +40,7 @@ struct RWSpinLockTest : public testing::Test {
   typedef RWSpinLockT RWSpinLockType;
 };
 
-typedef testing::Types<
-    RWSpinLock
-#ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-    ,
-    RWTicketSpinLockT<32, true>,
-    RWTicketSpinLockT<32, false>,
-    RWTicketSpinLockT<64, true>,
-    RWTicketSpinLockT<64, false>
-#endif
-    >
-    Implementations;
+typedef testing::Types<RWSpinLock> Implementations;
 
 TYPED_TEST_SUITE(RWSpinLockTest, Implementations);
 

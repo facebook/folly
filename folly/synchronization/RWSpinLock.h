@@ -49,34 +49,7 @@
  *  READ, although it is slower on WRITE, and also inherently unfair
  *  to writers.
  *
- *  RWTicketSpinLock shows more balanced READ/WRITE performance.  If
- *  your application really needs a lot more threads, and a
- *  higher-priority writer, prefer one of the RWTicketSpinLock locks.
- *
- *  Caveats:
- *
- *    RWTicketSpinLock locks can only be used with GCC on x86/x86-64
- *    based systems.
- *
- *    RWTicketSpinLock<32> only allows up to 2^8 - 1 concurrent
- *    readers and writers.
- *
- *    RWTicketSpinLock<64> only allows up to 2^16 - 1 concurrent
- *    readers and writers.
- *
- *    RWTicketSpinLock<..., true> (kFavorWriter = true, that is, strict
- *    writer priority) is NOT reentrant, even for lock_shared().
- *
- *    The lock will not grant any new shared (read) accesses while a thread
- *    attempting to acquire the lock in write mode is blocked. (That is,
- *    if the lock is held in shared mode by N threads, and a thread attempts
- *    to acquire it in write mode, no one else can acquire it in shared mode
- *    until these N threads release the lock and then the blocked thread
- *    acquires and releases the exclusive lock.) This also applies for
- *    attempts to reacquire the lock in shared mode by threads that already
- *    hold it in shared mode, making the lock non-reentrant.
- *
- *    RWSpinLock handles 2^30 - 1 concurrent readers.
+ *  RWSpinLock handles 2^30 - 1 concurrent readers.
  */
 
 #pragma once
@@ -92,14 +65,6 @@ Benchmark                                    Iters   Total t    t/iter iter/sec
 -------------------------------------------------------------------------------
 *      BM_RWSpinLockRead                     100000  1.786 ms  17.86 ns   53.4M
 +30.5% BM_RWSpinLockWrite                    100000  2.331 ms  23.31 ns  40.91M
-+85.7% BM_RWTicketSpinLock32Read             100000  3.317 ms  33.17 ns  28.75M
-+96.0% BM_RWTicketSpinLock32Write            100000    3.5 ms     35 ns  27.25M
-+85.6% BM_RWTicketSpinLock64Read             100000  3.315 ms  33.15 ns  28.77M
-+96.0% BM_RWTicketSpinLock64Write            100000    3.5 ms     35 ns  27.25M
-+85.7% BM_RWTicketSpinLock32FavorWriterRead  100000  3.317 ms  33.17 ns  28.75M
-+29.7% BM_RWTicketSpinLock32FavorWriterWrite 100000  2.316 ms  23.16 ns  41.18M
-+85.3% BM_RWTicketSpinLock64FavorWriterRead  100000  3.309 ms  33.09 ns  28.82M
-+30.2% BM_RWTicketSpinLock64FavorWriterWrite 100000  2.325 ms  23.25 ns  41.02M
 + 175% BM_PThreadRWMutexRead                 100000  4.917 ms  49.17 ns   19.4M
 + 166% BM_PThreadRWMutexWrite                100000  4.757 ms  47.57 ns  20.05M
 
@@ -110,24 +75,18 @@ Benchmark                    hits       average    min       max        sigma
 ---------- 8  threads ------------
 RWSpinLock       Write       142666     220ns      78ns      40.8us     269ns
 RWSpinLock       Read        1282297    222ns      80ns      37.7us     248ns
-RWTicketSpinLock Write       85692      209ns      71ns      17.9us     252ns
-RWTicketSpinLock Read        769571     215ns      78ns      33.4us     251ns
 pthread_rwlock_t Write       84248      2.48us     99ns      269us      8.19us
 pthread_rwlock_t Read        761646     933ns      101ns     374us      3.25us
 
 ---------- 16 threads ------------
 RWSpinLock       Write       124236     237ns      78ns      261us      801ns
 RWSpinLock       Read        1115807    236ns      78ns      2.27ms     2.17us
-RWTicketSpinLock Write       81781      231ns      71ns      31.4us     351ns
-RWTicketSpinLock Read        734518     238ns      78ns      73.6us     379ns
 pthread_rwlock_t Write       83363      7.12us     99ns      785us      28.1us
 pthread_rwlock_t Read        754978     2.18us     101ns     1.02ms     14.3us
 
 ---------- 50 threads ------------
 RWSpinLock       Write       131142     1.37us     82ns      7.53ms     68.2us
 RWSpinLock       Read        1181240    262ns      78ns      6.62ms     12.7us
-RWTicketSpinLock Write       83045      397ns      73ns      7.01ms     31.5us
-RWTicketSpinLock Read        744133     386ns      78ns        11ms     31.4us
 pthread_rwlock_t Write       80849      112us      103ns     4.52ms     263us
 pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 
@@ -135,31 +94,6 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 
 #include <folly/Portability.h>
 #include <folly/portability/Asm.h>
-
-#if defined(__GNUC__) && (defined(__i386) || FOLLY_X64 || defined(ARCH_K8))
-#define RW_SPINLOCK_USE_X86_INTRINSIC_
-#include <x86intrin.h>
-#elif defined(_MSC_VER) && FOLLY_X64
-#define RW_SPINLOCK_USE_X86_INTRINSIC_
-#elif FOLLY_AARCH64
-#define RW_SPINLOCK_USE_X86_INTRINSIC_
-#else
-#undef RW_SPINLOCK_USE_X86_INTRINSIC_
-#endif
-
-// iOS doesn't define _mm_cvtsi64_si128 and friends
-#if (FOLLY_SSE >= 2) && !FOLLY_MOBILE && FOLLY_X64
-#define RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
-#else
-#undef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
-#endif
-
-#if FOLLY_AARCH64 && !FOLLY_MOBILE
-#include <arm_neon.h>
-#define RW_SPINLOCK_USE_NEON_INSTRUCTIONS_
-#else
-#undef RW_SPINLOCK_USE_NEON_INSTRUCTIONS_
-#endif
 
 #include <algorithm>
 #include <atomic>
@@ -314,301 +248,4 @@ class RWSpinLock {
   std::atomic<int32_t> bits_;
 };
 
-#ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-// A more balanced Read-Write spin lock implemented based on GCC intrinsics.
-
-namespace detail {
-template <size_t kBitWidth>
-struct RWTicketIntTrait {
-  static_assert(
-      kBitWidth == 32 || kBitWidth == 64,
-      "bit width has to be either 32 or 64 ");
-};
-
-template <>
-struct RWTicketIntTrait<64> {
-  using FullInt = uint64_t;
-  using HalfInt = uint32_t;
-  using QuarterInt = uint16_t;
-
-#ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
-  static __m128i make128(const uint16_t v[4]) {
-    return _mm_set_epi16(
-        0, 0, 0, 0, short(v[3]), short(v[2]), short(v[1]), short(v[0]));
-  }
-  static inline __m128i fromInteger(uint64_t from) {
-    return _mm_cvtsi64_si128(int64_t(from));
-  }
-  static inline uint64_t toInteger(__m128i in) {
-    return uint64_t(_mm_cvtsi128_si64(in));
-  }
-  static inline uint64_t addParallel(__m128i in, __m128i kDelta) {
-    return toInteger(_mm_add_epi16(in, kDelta));
-  }
-#elif defined(RW_SPINLOCK_USE_NEON_INSTRUCTIONS_)
-  static inline uint16x4_t loadWhole(const FullInt* src) {
-    uint16x4_t vWhole = vreinterpret_u16_u64(vld1_u64(src));
-    asm_volatile_memory();
-    return vWhole;
-  }
-
-  template <uint64_t kWrite, uint64_t kRead, uint64_t kUsers>
-  static inline uint16x4_t getMask() {
-    constexpr uint64_t mask = kWrite + (kRead << 16) + (kUsers << 32);
-    uint64x1_t maskV;
-    maskV[0] = mask;
-    return vreinterpret_u16_u64(maskV);
-  }
-
-  static inline uint16x4_t getUnlockMask() { return getMask<1, 1, 0>(); }
-
-  static inline uint64_t toInteger(uint16x4_t in) {
-    return vreinterpret_u64_u16(in)[0];
-  }
-
-  static inline uint64_t addParallel(uint16x4_t in, uint16x4_t kDelta) {
-    return toInteger(vadd_u16(in, kDelta));
-  }
-#endif
-};
-
-template <>
-struct RWTicketIntTrait<32> {
-  using FullInt = uint32_t;
-  using HalfInt = uint16_t;
-  using QuarterInt = uint8_t;
-
-#ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
-  static __m128i make128(const uint8_t v[4]) {
-    // clang-format off
-    return _mm_set_epi8(
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        char(v[3]), char(v[2]), char(v[1]), char(v[0]));
-    // clang-format on
-  }
-  static inline __m128i fromInteger(uint32_t from) {
-    return _mm_cvtsi32_si128(int32_t(from));
-  }
-  static inline uint32_t toInteger(__m128i in) {
-    return uint32_t(_mm_cvtsi128_si32(in));
-  }
-  static inline uint32_t addParallel(__m128i in, __m128i kDelta) {
-    return toInteger(_mm_add_epi8(in, kDelta));
-  }
-#elif defined(RW_SPINLOCK_USE_NEON_INSTRUCTIONS_)
-  static inline uint8x8_t loadWhole(const FullInt* src) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wuninitialized"
-    uint32x2_t vWhole;
-    vWhole = vld1_lane_u32(src, vWhole, 0);
-#pragma clang diagnostic pop
-    asm_volatile_memory();
-    return vreinterpret_u8_u32(vWhole);
-  }
-
-  template <uint32_t kWrite, uint32_t kRead, uint32_t kUsers>
-  static inline uint8x8_t getMask() {
-    constexpr uint32_t mask = kWrite + (kRead << 8) + (kUsers << 16);
-    uint32x2_t maskV;
-    maskV[0] = mask;
-    return vreinterpret_u8_u32(maskV);
-  }
-
-  static inline uint8x8_t getUnlockMask() { return getMask<1, 1, 0>(); }
-
-  static inline uint32_t toInteger(uint8x8_t in) {
-    return vreinterpret_u32_u8(in)[0];
-  }
-
-  static inline uint32_t addParallel(uint8x8_t in, uint8x8_t kDelta) {
-    return toInteger(vadd_u8(in, kDelta));
-  }
-#endif
-};
-} // namespace detail
-
-template <size_t kBitWidth, bool kFavorWriter = false>
-class RWTicketSpinLockT {
-  using IntTraitType = detail::RWTicketIntTrait<kBitWidth>;
-  using FullInt = typename detail::RWTicketIntTrait<kBitWidth>::FullInt;
-  using HalfInt = typename detail::RWTicketIntTrait<kBitWidth>::HalfInt;
-  using QuarterInt = typename detail::RWTicketIntTrait<kBitWidth>::QuarterInt;
-
-  union RWTicket {
-    constexpr RWTicket() : whole(0) {}
-    FullInt whole;
-    HalfInt readWrite;
-    __extension__ struct {
-      QuarterInt write;
-      QuarterInt read;
-      QuarterInt users;
-    };
-  } ticket;
-
- private: // Some x64-specific utilities for atomic access to ticket.
-  template <class T>
-  static T load_acquire(T* addr) {
-    T t = *addr; // acquire barrier
-    asm_volatile_memory();
-    return t;
-  }
-
-  template <class T>
-  static void store_release(T* addr, T v) {
-    asm_volatile_memory();
-    *addr = v; // release barrier
-  }
-
- public:
-  constexpr RWTicketSpinLockT() {}
-
-  RWTicketSpinLockT(RWTicketSpinLockT const&) = delete;
-  RWTicketSpinLockT& operator=(RWTicketSpinLockT const&) = delete;
-
-  void lock() {
-    if (kFavorWriter) {
-      writeLockAggressive();
-    } else {
-      writeLockNice();
-    }
-  }
-
-  /*
-   * Both try_lock and try_lock_shared diverge in our implementation from the
-   * lock algorithm described in the link above.
-   *
-   * In the read case, it is undesirable that the readers could wait
-   * for another reader (before increasing ticket.read in the other
-   * implementation).  Our approach gives up on
-   * first-come-first-serve, but our benchmarks showed improve
-   * performance for both readers and writers under heavily contended
-   * cases, particularly when the number of threads exceeds the number
-   * of logical CPUs.
-   *
-   * We have writeLockAggressive() using the original implementation
-   * for a writer, which gives some advantage to the writer over the
-   * readers---for that path it is guaranteed that the writer will
-   * acquire the lock after all the existing readers exit.
-   */
-  bool try_lock() {
-    RWTicket t;
-    FullInt old = t.whole = load_acquire(&ticket.whole);
-    if (t.users != t.write) {
-      return false;
-    }
-    ++t.users;
-    return __sync_bool_compare_and_swap(&ticket.whole, old, t.whole);
-  }
-
-  /*
-   * Call this if you want to prioritize writer to avoid starvation.
-   * Unlike writeLockNice, immediately acquires the write lock when
-   * the existing readers (arriving before the writer) finish their
-   * turns.
-   */
-  void writeLockAggressive() {
-    // std::this_thread::yield() is needed here to avoid a pathology if the
-    // number of threads attempting concurrent writes is >= the number of real
-    // cores allocated to this process. This is less likely than the
-    // corresponding situation in lock_shared(), but we still want to
-    // avoid it
-    uint_fast32_t count = 0;
-    QuarterInt val = __sync_fetch_and_add(&ticket.users, 1);
-    while (val != load_acquire(&ticket.write)) {
-      asm_volatile_pause();
-      if (FOLLY_UNLIKELY(++count > 1000)) {
-        std::this_thread::yield();
-      }
-    }
-  }
-
-  // Call this when the writer should be nicer to the readers.
-  void writeLockNice() {
-    // Here it doesn't cpu-relax the writer.
-    //
-    // This is because usually we have many more readers than the
-    // writers, so the writer has less chance to get the lock when
-    // there are a lot of competing readers.  The aggressive spinning
-    // can help to avoid starving writers.
-    //
-    // We don't worry about std::this_thread::yield() here because the caller
-    // has already explicitly abandoned fairness.
-    while (!try_lock()) {
-    }
-  }
-
-  // Atomically unlock the write-lock from writer and acquire the read-lock.
-  void unlock_and_lock_shared() {
-    QuarterInt val = __sync_fetch_and_add(&ticket.read, 1);
-  }
-
-  // Release writer permission on the lock.
-  void unlock() {
-    RWTicket t;
-
-#if defined(RW_SPINLOCK_USE_NEON_INSTRUCTIONS_)
-    auto vWhole = IntTraitType::loadWhole(&ticket.whole);
-    auto vMask = IntTraitType::getUnlockMask();
-    t.whole = IntTraitType::addParallel(vWhole, vMask);
-#else
-    t.whole = load_acquire(&ticket.whole);
-#ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
-    FullInt old = t.whole;
-    // SSE2 can reduce the lock and unlock overhead by 10%
-    static const QuarterInt kDeltaBuf[4] = {1, 1, 0, 0}; // write/read/user
-    static const __m128i kDelta = IntTraitType::make128(kDeltaBuf);
-    __m128i m = IntTraitType::fromInteger(old);
-    t.whole = IntTraitType::addParallel(m, kDelta);
-#else
-    ++t.read;
-    ++t.write;
-#endif
-#endif
-    store_release(&ticket.readWrite, t.readWrite);
-  }
-
-  void lock_shared() {
-    // std::this_thread::yield() is important here because we can't grab the
-    // shared lock if there is a pending writeLockAggressive, so we
-    // need to let threads that already have a shared lock complete
-    uint_fast32_t count = 0;
-    while (!LIKELY(try_lock_shared())) {
-      asm_volatile_pause();
-      if (FOLLY_UNLIKELY((++count & 1023) == 0)) {
-        std::this_thread::yield();
-      }
-    }
-  }
-
-  bool try_lock_shared() {
-    RWTicket t, old;
-    old.whole = t.whole = load_acquire(&ticket.whole);
-    old.users = old.read;
-#ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
-    // SSE2 may reduce the total lock and unlock overhead by 10%
-    static const QuarterInt kDeltaBuf[4] = {0, 1, 1, 0}; // write/read/user
-    static const __m128i kDelta = IntTraitType::make128(kDeltaBuf);
-    __m128i m = IntTraitType::fromInteger(old.whole);
-    t.whole = IntTraitType::addParallel(m, kDelta);
-#else
-    ++t.read;
-    ++t.users;
-#endif
-    return __sync_bool_compare_and_swap(&ticket.whole, old.whole, t.whole);
-  }
-
-  void unlock_shared() { __sync_fetch_and_add(&ticket.write, 1); }
-};
-
-using RWTicketSpinLock32 = RWTicketSpinLockT<32>;
-using RWTicketSpinLock64 = RWTicketSpinLockT<64>;
-
-#endif // RW_SPINLOCK_USE_X86_INTRINSIC_
-
 } // namespace folly
-
-#ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-#undef RW_SPINLOCK_USE_X86_INTRINSIC_
-#endif

@@ -47,10 +47,6 @@ using SynchronizedTestTypes = testing::Types<
     std::timed_mutex,
     std::recursive_timed_mutex,
 #endif
-#ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-    folly::RWTicketSpinLock32,
-    folly::RWTicketSpinLock64,
-#endif
     folly::SpinLock>;
 TYPED_TEST_SUITE(SynchronizedTest, SynchronizedTestTypes);
 
@@ -110,10 +106,6 @@ using SynchronizedTimedTestTypes = testing::Types<
     std::timed_mutex,
     std::recursive_timed_mutex,
 #endif
-#ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-    folly::RWTicketSpinLock32,
-    folly::RWTicketSpinLock64,
-#endif
     folly::SharedMutexReadPriority,
     folly::SharedMutexWritePriority>;
 TYPED_TEST_SUITE(SynchronizedTimedTest, SynchronizedTimedTestTypes);
@@ -125,13 +117,8 @@ TYPED_TEST(SynchronizedTimedTest, Timed) {
 template <class Mutex>
 class SynchronizedTimedWithConstTest : public testing::Test {};
 
-using SynchronizedTimedWithConstTestTypes = testing::Types<
-#ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-    folly::RWTicketSpinLock32,
-    folly::RWTicketSpinLock64,
-#endif
-    folly::SharedMutexReadPriority,
-    folly::SharedMutexWritePriority>;
+using SynchronizedTimedWithConstTestTypes = testing::
+    Types<folly::SharedMutexReadPriority, folly::SharedMutexWritePriority>;
 TYPED_TEST_SUITE(
     SynchronizedTimedWithConstTest, SynchronizedTimedWithConstTestTypes);
 
