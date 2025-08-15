@@ -176,9 +176,9 @@ int stringAppendfImplHelper(
 }
 
 void stringAppendfImpl(std::string& output, const char* format, va_list args) {
-  // Very simple; first, try to avoid an allocation by using an inline
-  // buffer.  If that fails to hold the output string, allocate one on
-  // the heap, use it instead.
+  // Very simple; first, try to write 128 bytes, if that's too small, resize the
+  // std::string to be as large as needs be (as it will be known after the first
+  // snprintf parse). Shrink to appropriate size on exit.
   //
   // It is hard to guess the proper size of this buffer; some
   // heuristics could be based on the number of format characters, or
@@ -186,33 +186,31 @@ void stringAppendfImpl(std::string& output, const char* format, va_list args) {
   // that seems big enough for simple cases (say, one line of text on
   // a terminal) without being large enough to be concerning as a
   // stack variable.
-  std::array<char, 128> inline_buffer;
+  const size_t write_point = output.size();
+  output.resize(write_point + 127); 
 
-  int bytes_used = stringAppendfImplHelper(
-      inline_buffer.data(), inline_buffer.size(), format, args);
+  const int bytes_used = stringAppendfImplHelper(
+      &output[write_point], 128, format, args);
   if (bytes_used < 0) {
+    output.resize(write_point);
     throw std::runtime_error(to<std::string>(
         "Invalid format string; snprintf returned negative "
         "with format string: ",
         format));
   }
 
-  if (static_cast<size_t>(bytes_used) < inline_buffer.size()) {
-    output.append(inline_buffer.data(), size_t(bytes_used));
+  output.resize(write_point + bytes_used);
+  if (bytes_used < 128) {
     return;
   }
 
-  // Couldn't fit.  Heap allocate a buffer, oh well.
-  std::unique_ptr<char[]> heap_buffer(new char[size_t(bytes_used + 1)]);
-  int final_bytes_used = stringAppendfImplHelper(
-      heap_buffer.get(), size_t(bytes_used + 1), format, args);
+  // Couldn't fit. Rewrite again, now that we have resized sufficiently.
+  const int final_bytes_used = stringAppendfImplHelper(
+      &output[write_point], bytes_used + 1, format, args);
   // The second call can take fewer bytes if, for example, we were printing a
   // string buffer with null-terminating char using a width specifier -
   // vsnprintf("%.*s", buf.size(), buf)
   CHECK(bytes_used >= final_bytes_used);
-
-  // We don't keep the trailing '\0' in our output string
-  output.append(heap_buffer.get(), size_t(final_bytes_used));
 }
 
 } // namespace
