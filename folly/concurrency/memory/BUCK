@@ -16,8 +16,8 @@ non_fbcode_target(
         "AtomicReadMostlyMainPtr.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:rcu",
         "//xplat/folly:indestructible",
-        "//xplat/folly:synchronization_rcu",
         "//xplat/folly/concurrency/memory:read_mostly_shared_ptr",
         "//xplat/folly/executors:inline_executor",
     ],
@@ -44,11 +44,11 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["PrimaryPtr.h"],
     deps = [
+        "fbsource//xplat/folly/futures:cleanup",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/synchronization:baton",
         "//third-party/glog:glog",
-        "//xplat/folly:experimental_cleanup",
         "//xplat/folly:function",
-        "//xplat/folly:futures_core",
-        "//xplat/folly:synchronization_baton",
     ],
 )
 
@@ -63,8 +63,8 @@ non_fbcode_target(
         "TLRefCount.h",
     ],
     deps = [
-        "//xplat/folly:synchronization_asymmetric_thread_fence",
-        "//xplat/folly:synchronization_detail_sleeper",
+        "fbsource//xplat/folly/synchronization:asymmetric_thread_fence",
+        "fbsource//xplat/folly/synchronization/detail:sleeper",
         "//xplat/folly:thread_local",
     ],
 )
