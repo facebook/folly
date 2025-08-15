@@ -16,7 +16,7 @@ non_fbcode_target(
         "FlatCombining.h",
     ],
     deps = [
-        "//xplat/folly:synchronization_flat_combining",
+        "fbsource//xplat/folly/synchronization:flat_combining",
     ],
 )
 
