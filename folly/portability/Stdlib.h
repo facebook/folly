@@ -62,9 +62,11 @@ int clearenv();
 #endif
 
 #ifdef _WIN32
+#ifdef _MSC_VER
 char* mkdtemp(char* tn);
 int mkstemp(char* tn);
 char* realpath(const char* path, char* resolved_path);
+#endif
 int setenv(const char* name, const char* value, int overwrite);
 int unsetenv(const char* name);
 #endif

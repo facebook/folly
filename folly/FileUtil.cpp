@@ -95,7 +95,7 @@ int dup2NoInt(int oldFd, int newFd) {
 int fdatasyncNoInt(int fd) {
 #if defined(__APPLE__)
   return int(wrapNoInt(fcntl, fd, F_FULLFSYNC));
-#elif defined(__FreeBSD__) || defined(_MSC_VER)
+#elif defined(__FreeBSD__) || defined(_WIN32)
   return int(wrapNoInt(fsync, fd));
 #else
   return int(wrapNoInt(fdatasync, fd));
