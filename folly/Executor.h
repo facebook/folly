@@ -49,6 +49,137 @@ class ExecutorKeepAliveBase {
 
 } // namespace detail
 
+class Executor;
+
+/**
+ * `ExecutorKeepAlive` is a safe pointer to an `Executor`.
+ *
+ * For any `Executor` that supports keep-alive functionality, its destructor
+ * will block until all the `ExecutorKeepAlive` objects associated with that
+ * executor are destroyed.  For executors that don't support the keep-alive
+ * functionality, `ExecutorKeepAlive` doesn't provide such protection.
+ *
+ * `ExecutorKeepAlive` should *always* be used instead of `Executor*`.
+ * `ExecutorKeepAlive` can be implicitly constructed from `Executor*`.
+ *
+ * The `getKeepAliveToken()` helper can be used to construct a keep-alive in
+ * templated code if you need to preserve the original executor type.
+ */
+template <typename ExecutorT = Executor>
+class ExecutorKeepAlive : private detail::ExecutorKeepAliveBase {
+ public:
+  using KeepAliveFunc = Function<void(ExecutorKeepAlive&&)>;
+
+  ExecutorKeepAlive() = default;
+
+  ~ExecutorKeepAlive() {
+    static_assert(
+        std::is_standard_layout<ExecutorKeepAlive>::value, "standard-layout");
+    static_assert(sizeof(ExecutorKeepAlive) == sizeof(void*), "pointer size");
+    static_assert(
+        alignof(ExecutorKeepAlive) == alignof(void*), "pointer align");
+
+    reset();
+  }
+
+  ExecutorKeepAlive(ExecutorKeepAlive&& other) noexcept
+      : storage_(std::exchange(other.storage_, 0)) {}
+
+  ExecutorKeepAlive(const ExecutorKeepAlive& other) noexcept;
+
+  template <
+      typename OtherExecutor,
+      typename = typename std::enable_if<
+          std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
+  /* implicit */ ExecutorKeepAlive(
+      ExecutorKeepAlive<OtherExecutor>&& other) noexcept
+      : ExecutorKeepAlive(other.get(), other.storage_ & kFlagMask) {
+    other.storage_ = 0;
+  }
+
+  template <
+      typename OtherExecutor,
+      typename = typename std::enable_if<
+          std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
+  /* implicit */ ExecutorKeepAlive(
+      const ExecutorKeepAlive<OtherExecutor>& other) noexcept;
+
+  /* implicit */ ExecutorKeepAlive(ExecutorT* executor);
+
+  ExecutorKeepAlive& operator=(ExecutorKeepAlive&& other) noexcept {
+    reset();
+    storage_ = std::exchange(other.storage_, 0);
+    return *this;
+  }
+
+  ExecutorKeepAlive& operator=(ExecutorKeepAlive const& other) {
+    return operator=(folly::copy(other));
+  }
+
+  template <
+      typename OtherExecutor,
+      typename = typename std::enable_if<
+          std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
+  ExecutorKeepAlive& operator=(
+      ExecutorKeepAlive<OtherExecutor>&& other) noexcept {
+    return *this = ExecutorKeepAlive(std::move(other));
+  }
+
+  template <
+      typename OtherExecutor,
+      typename = typename std::enable_if<
+          std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
+  ExecutorKeepAlive& operator=(const ExecutorKeepAlive<OtherExecutor>& other) {
+    return *this = ExecutorKeepAlive(other);
+  }
+
+  void reset() noexcept;
+
+  explicit operator bool() const { return storage_; }
+
+  ExecutorT* get() const {
+    return reinterpret_cast<ExecutorT*>(storage_ & kExecutorMask);
+  }
+
+  ExecutorT& operator*() const { return *get(); }
+
+  ExecutorT* operator->() const { return get(); }
+
+  ExecutorKeepAlive copy() const;
+
+  ExecutorKeepAlive get_alias() const {
+    return ExecutorKeepAlive(storage_ | kAliasFlag);
+  }
+
+  template <class KAF>
+  void add(KAF&& f) && {
+    static_assert(
+        is_invocable<KAF, ExecutorKeepAlive&&>::value,
+        "Parameter to add must be void(ExecutorKeepAlive&&)>");
+    auto ex = get();
+    ex->add([ka = std::move(*this), f_2 = std::forward<KAF>(f)]() mutable {
+      f_2(std::move(ka));
+    });
+  }
+
+ private:
+  friend class Executor;
+  template <typename OtherExecutor>
+  friend class ExecutorKeepAlive;
+
+  ExecutorKeepAlive(ExecutorT* executor, uintptr_t flags) noexcept
+      : storage_(reinterpret_cast<uintptr_t>(executor) | flags) {
+    assert(executor);
+    assert(!(reinterpret_cast<uintptr_t>(executor) & ~kExecutorMask));
+    assert(!(flags & kExecutorMask));
+  }
+
+  explicit ExecutorKeepAlive(uintptr_t storage) noexcept : storage_(storage) {}
+
+  //  Combined storage for the executor pointer and for all flags.
+  uintptr_t storage_{reinterpret_cast<uintptr_t>(nullptr)};
+};
+
 /// An Executor accepts units of work with add(), which should be
 /// threadsafe.
 class Executor {
@@ -69,142 +200,10 @@ class Executor {
   static constexpr int8_t MID_PRI = 0;
   static constexpr int8_t HI_PRI = SCHAR_MAX;
 
-  /**
-   * Executor::KeepAlive is a safe pointer to an Executor.
-   * For any Executor that supports KeepAlive functionality, Executor's
-   * destructor will block until all the KeepAlive objects associated with that
-   * Executor are destroyed.
-   * For Executors that don't support the KeepAlive functionality, KeepAlive
-   * doesn't provide such protection.
-   *
-   * KeepAlive should *always* be used instead of Executor*. KeepAlive can be
-   * implicitly constructed from Executor*. getKeepAliveToken() helper method
-   * can be used to construct a KeepAlive in templated code if you need to
-   * preserve the original Executor type.
-   */
+  // Compatibility shim.  Cannot be forward-declared, unlike
+  // `ExecutorKeepAlive`.
   template <typename ExecutorT = Executor>
-  class KeepAlive : private detail::ExecutorKeepAliveBase {
-   public:
-    using KeepAliveFunc = Function<void(KeepAlive&&)>;
-
-    KeepAlive() = default;
-
-    ~KeepAlive() {
-      static_assert(
-          std::is_standard_layout<KeepAlive>::value, "standard-layout");
-      static_assert(sizeof(KeepAlive) == sizeof(void*), "pointer size");
-      static_assert(alignof(KeepAlive) == alignof(void*), "pointer align");
-
-      reset();
-    }
-
-    KeepAlive(KeepAlive&& other) noexcept
-        : storage_(std::exchange(other.storage_, 0)) {}
-
-    KeepAlive(const KeepAlive& other) noexcept
-        : KeepAlive(getKeepAliveToken(other.get())) {}
-
-    template <
-        typename OtherExecutor,
-        typename = typename std::enable_if<
-            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
-    /* implicit */ KeepAlive(KeepAlive<OtherExecutor>&& other) noexcept
-        : KeepAlive(other.get(), other.storage_ & kFlagMask) {
-      other.storage_ = 0;
-    }
-
-    template <
-        typename OtherExecutor,
-        typename = typename std::enable_if<
-            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
-    /* implicit */ KeepAlive(const KeepAlive<OtherExecutor>& other) noexcept
-        : KeepAlive(getKeepAliveToken(other.get())) {}
-
-    /* implicit */ KeepAlive(ExecutorT* executor) {
-      *this = getKeepAliveToken(executor);
-    }
-
-    KeepAlive& operator=(KeepAlive&& other) noexcept {
-      reset();
-      storage_ = std::exchange(other.storage_, 0);
-      return *this;
-    }
-
-    KeepAlive& operator=(KeepAlive const& other) {
-      return operator=(folly::copy(other));
-    }
-
-    template <
-        typename OtherExecutor,
-        typename = typename std::enable_if<
-            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
-    KeepAlive& operator=(KeepAlive<OtherExecutor>&& other) noexcept {
-      return *this = KeepAlive(std::move(other));
-    }
-
-    template <
-        typename OtherExecutor,
-        typename = typename std::enable_if<
-            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
-    KeepAlive& operator=(const KeepAlive<OtherExecutor>& other) {
-      return *this = KeepAlive(other);
-    }
-
-    void reset() noexcept {
-      if (Executor* executor = get()) {
-        auto const flags = std::exchange(storage_, 0) & kFlagMask;
-        if (!(flags & (kDummyFlag | kAliasFlag))) {
-          executor->keepAliveRelease();
-        }
-      }
-    }
-
-    explicit operator bool() const { return storage_; }
-
-    ExecutorT* get() const {
-      return reinterpret_cast<ExecutorT*>(storage_ & kExecutorMask);
-    }
-
-    ExecutorT& operator*() const { return *get(); }
-
-    ExecutorT* operator->() const { return get(); }
-
-    KeepAlive copy() const {
-      return isKeepAliveDummy(*this) //
-          ? makeKeepAliveDummy(get())
-          : getKeepAliveToken(get());
-    }
-
-    KeepAlive get_alias() const { return KeepAlive(storage_ | kAliasFlag); }
-
-    template <class KAF>
-    void add(KAF&& f) && {
-      static_assert(
-          is_invocable<KAF, KeepAlive&&>::value,
-          "Parameter to add must be void(KeepAlive&&)>");
-      auto ex = get();
-      ex->add([ka = std::move(*this), f_2 = std::forward<KAF>(f)]() mutable {
-        f_2(std::move(ka));
-      });
-    }
-
-   private:
-    friend class Executor;
-    template <typename OtherExecutor>
-    friend class KeepAlive;
-
-    KeepAlive(ExecutorT* executor, uintptr_t flags) noexcept
-        : storage_(reinterpret_cast<uintptr_t>(executor) | flags) {
-      assert(executor);
-      assert(!(reinterpret_cast<uintptr_t>(executor) & ~kExecutorMask));
-      assert(!(flags & kExecutorMask));
-    }
-
-    explicit KeepAlive(uintptr_t storage) noexcept : storage_(storage) {}
-
-    //  Combined storage for the executor pointer and for all flags.
-    uintptr_t storage_{reinterpret_cast<uintptr_t>(nullptr)};
-  };
+  using KeepAlive = ExecutorKeepAlive<ExecutorT>;
 
   template <typename ExecutorT>
   static KeepAlive<ExecutorT> getKeepAliveToken(ExecutorT* executor) {
@@ -235,6 +234,9 @@ class Executor {
   }
 
  protected:
+  template <typename>
+  friend class ExecutorKeepAlive;
+
   /**
    * Returns true if the KeepAlive is constructed from an executor that does
    * not support the keep alive ref-counting functionality
@@ -277,6 +279,39 @@ class Executor {
     return KeepAlive<ExecutorT>{executor, KeepAlive<ExecutorT>::kDummyFlag};
   }
 };
+
+template <typename ExecutorT>
+ExecutorKeepAlive<ExecutorT>::ExecutorKeepAlive(
+    const ExecutorKeepAlive<ExecutorT>& other) noexcept
+    : ExecutorKeepAlive(Executor::getKeepAliveToken(other.get())) {}
+
+template <typename ExecutorT>
+template <typename OtherExecutor, typename>
+ExecutorKeepAlive<ExecutorT>::ExecutorKeepAlive(
+    const ExecutorKeepAlive<OtherExecutor>& other) noexcept
+    : ExecutorKeepAlive(Executor::getKeepAliveToken(other.get())) {}
+
+template <typename ExecutorT>
+ExecutorKeepAlive<ExecutorT>::ExecutorKeepAlive(ExecutorT* executor) {
+  *this = Executor::getKeepAliveToken(executor);
+}
+
+template <typename ExecutorT>
+void ExecutorKeepAlive<ExecutorT>::reset() noexcept {
+  if (Executor* executor = get()) {
+    auto const flags = std::exchange(storage_, 0) & kFlagMask;
+    if (!(flags & (kDummyFlag | kAliasFlag))) {
+      executor->keepAliveRelease();
+    }
+  }
+}
+
+template <typename ExecutorT>
+ExecutorKeepAlive<ExecutorT> ExecutorKeepAlive<ExecutorT>::copy() const {
+  return Executor::isKeepAliveDummy(*this) //
+      ? Executor::makeKeepAliveDummy(get())
+      : Executor::getKeepAliveToken(get());
+}
 
 /// Returns a keep-alive token which guarantees that Executor will keep
 /// processing tasks until the token is released (if supported by Executor).
