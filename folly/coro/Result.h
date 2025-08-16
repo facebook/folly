@@ -19,34 +19,11 @@
 #include <cassert>
 #include <type_traits>
 
-#include <folly/ExceptionWrapper.h>
-#include <folly/OperationCancelled.h>
 #include <folly/Try.h>
+#include <folly/coro/Error.h> // compat: used to be the same header
 #include <folly/result/result.h>
 
-namespace folly {
-namespace coro {
-
-class co_error final {
- public:
-  template <
-      typename... A,
-      std::enable_if_t<
-          sizeof...(A) && std::is_constructible<exception_wrapper, A...>::value,
-          int> = 0>
-  explicit co_error(A&&... a) noexcept(
-      std::is_nothrow_constructible<exception_wrapper, A...>::value)
-      : ex_(static_cast<A&&>(a)...) {
-    assert(ex_);
-  }
-
-  const exception_wrapper& exception() const { return ex_; }
-
-  exception_wrapper& exception() { return ex_; }
-
- private:
-  exception_wrapper ex_;
-};
+namespace folly::coro {
 
 template <typename T>
 class co_result final {
@@ -79,14 +56,4 @@ template <typename T>
 co_result(result<T>) -> co_result<T>;
 #endif
 
-class co_cancelled_t final {
- public:
-  /* implicit */ operator co_error() const {
-    return co_error(OperationCancelled{});
-  }
-};
-
-inline constexpr co_cancelled_t co_cancelled{};
-
-} // namespace coro
-} // namespace folly
+} // namespace folly::coro

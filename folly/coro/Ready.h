@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/Executor.h>
-#include <folly/coro/Result.h>
-#include <folly/coro/WithAsyncStack.h>
+#include <coroutine>
+
+#include <folly/coro/Error.h>
 
 /// Use `co_ready` to "await" synchronous coroutine types from inside async
 /// coroutines like `coro::Task`. For example:
@@ -63,7 +63,19 @@
 ///     would be fine to add the analogous specialization for `Try`.  Just be
 ///     mindful of its two warts: empty state and empty `exception_wrapper`.
 
+namespace folly {
+class Executor;
+template <typename>
+class ExecutorKeepAlive;
+template <typename>
+class result;
+} // namespace folly
+
 namespace folly::coro {
+
+namespace detail {
+struct WithAsyncStackFunction;
+}
 
 template <typename>
 class co_ready;
@@ -97,11 +109,14 @@ class co_ready<result<T>> {
   }
 
   friend auto co_viaIfAsync(
-      const Executor::KeepAlive<>&, co_ready&& r) noexcept {
+      const ExecutorKeepAlive<Executor>&, co_ready&& r) noexcept {
     return std::move(r);
   }
 
-  friend auto tag_invoke(cpo_t<co_withAsyncStack>, co_ready&& r) noexcept {
+  // Conventionally, the first arg would be `cpo_t<co_withAsyncStack>`, but
+  // that cannot be forward-declared.
+  friend auto tag_invoke(
+      const detail::WithAsyncStackFunction&, co_ready&& r) noexcept {
     return std::move(r);
   }
 };

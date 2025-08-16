@@ -762,6 +762,29 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "error",
+    headers = ["Error.h"],
+    exported_deps = [
+        "//folly:exception_wrapper",
+        "//folly:operation_cancelled",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "error",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Error.h"],
+    exported_deps = [
+        "//xplat/folly:exception_wrapper",
+        "//xplat/folly:operation_cancelled",
+    ],
+)
+
+### this line is a hint for source control merge
+
+fbcode_target(
+    _kind = cpp_library,
     name = "filter",
     headers = [
         "Filter.h",
@@ -1104,11 +1127,7 @@ fbcode_target(
     _kind = cpp_library,
     name = "ready",
     headers = ["Ready.h"],
-    exported_deps = [
-        ":result",
-        ":with_async_stack",
-        "//folly:executor",
-    ],
+    exported_deps = [":error"],
 )
 
 non_fbcode_target(
@@ -1116,11 +1135,7 @@ non_fbcode_target(
     name = "ready",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Ready.h"],
-    exported_deps = [
-        ":result",
-        ":with_async_stack",
-        "//xplat/folly:executor",
-    ],
+    exported_deps = [":error"],
 )
 
 ### this line is a hint for source control merge
@@ -1130,8 +1145,7 @@ fbcode_target(
     name = "result",
     headers = ["Result.h"],
     exported_deps = [
-        "//folly:exception_wrapper",
-        "//folly:operation_cancelled",
+        ":error",
         "//folly:try",
         "//folly/result:result",
     ],
@@ -1143,8 +1157,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Result.h"],
     exported_deps = [
-        "//xplat/folly:exception_wrapper",
-        "//xplat/folly:operation_cancelled",
+        ":error",
         "//xplat/folly:try",
         "//xplat/folly/result:result",
     ],
