@@ -145,6 +145,21 @@ class SettingWrapper {
    */
   std::string_view updateReason(const Snapshot& snapshot) const;
 
+  /**
+   * Returns the setting's name
+   */
+  std::string_view name() const { return core_.meta().name; }
+
+  /**
+   * Returns the setting's project
+   */
+  std::string_view project() const { return core_.meta().project; }
+
+  /**
+   * Returns the setting's description
+   */
+  std::string_view description() const { return core_.meta().description; }
+
   explicit SettingWrapper(SettingCore<T, Tag>& core) : core_(core) {}
 
  private:
