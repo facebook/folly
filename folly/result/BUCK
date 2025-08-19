@@ -40,12 +40,12 @@ non_fbcode_target(
         "//xplat/folly:indestructible",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gtest_prod",
         "//third-party/glog:glog",
         "//third-party/googletest:gtest_headers",
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:expected",
         "//xplat/folly:operation_cancelled",
-        "//xplat/folly:portability_gtest_prod",
         "//xplat/folly/coro:coroutine",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:rvalue_reference_wrapper",

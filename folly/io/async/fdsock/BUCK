@@ -29,8 +29,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AsyncFdSocket.h"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gtest_prod",
         ":socket_fds",
-        "//xplat/folly:portability_gtest_prod",
         "//xplat/folly/io/async:async_socket",
     ],
 )
