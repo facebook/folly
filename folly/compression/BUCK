@@ -33,10 +33,10 @@ non_fbcode_target(
     ],
     deps = [
         "fbsource//third-party/lz4:lz4",
+        "fbsource//xplat/folly/portability:windows",
         ":compression_context_pool_singletons",
         "//third-party/glog:glog",
         "//xplat/folly:conv",
-        "//xplat/folly:portability_windows",
         "//xplat/folly:random",
         "//xplat/folly:scope_guard",
         "//xplat/folly:stop_watch",
@@ -98,8 +98,8 @@ non_fbcode_target(
     raw_headers = ["CompressionContextPoolSingletons.h"],
     deps = ["//xplat/folly:portability"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:config",
         ":compression_context_pool",
-        "//xplat/folly:portability_config",
         "//xplat/folly/memory:malloc",
         "//xplat/third-party/zstd:zstd",
     ],
@@ -139,10 +139,10 @@ non_fbcode_target(
         "Instructions.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:builtins",
         "//third-party/glog:glog",
         "//xplat/folly:cpu_id",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_builtins",
         "//xplat/folly/lang:assume",
     ],
 )
