@@ -17,9 +17,7 @@
 #include <folly/detail/MemoryIdler.h>
 
 #include <climits>
-#include <cstdio>
 #include <cstring>
-#include <utility>
 
 #include <folly/GLog.h>
 #include <folly/Portability.h>

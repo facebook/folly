@@ -575,9 +575,6 @@ fbcode_target(
     name = "async_trace",
     srcs = ["AsyncTrace.cpp"],
     headers = ["AsyncTrace.h"],
-    deps = [
-        "//folly:portability",
-    ],
     exported_deps = [
         "//folly:optional",
     ],

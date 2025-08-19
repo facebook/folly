@@ -16,8 +16,6 @@
 
 #include <folly/detail/AsyncTrace.h>
 
-#include <folly/Portability.h>
-
 namespace folly {
 namespace async_tracing {
 FOLLY_ATTR_WEAK void logSetGlobalCPUExecutor(Executor*) noexcept {}
