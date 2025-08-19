@@ -822,21 +822,36 @@ inline dynamic::item_iterator dynamic::find(StringPiece key) {
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, std::size_t> dynamic::count(
     K&& key) const {
+  if (const auto* as_array = get_nothrow<Array>()) {
+    return std::count(as_array->begin(), as_array->end(), std::forward<K>(key));
+  }
   return find(std::forward<K>(key)) != items().end() ? 1u : 0u;
 }
 
 inline std::size_t dynamic::count(StringPiece key) const {
+  if (const auto* as_array = get_nothrow<Array>()) {
+    return std::count(as_array->begin(), as_array->end(), key);
+  }
   return find(key) != items().end() ? 1u : 0u;
 }
 
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, bool> dynamic::contains(
     K&& key) const {
-  return count(key);
+  if (const auto* as_array = get_nothrow<Array>()) {
+    return std::find(
+               as_array->begin(), as_array->end(), std::forward<K>(key)) !=
+        as_array->end();
+  }
+  return find(std::forward<K>(key)) != items().end();
 }
 
 inline bool dynamic::contains(StringPiece key) const {
-  return count(key);
+  if (const auto* as_array = get_nothrow<Array>()) {
+    return std::find(as_array->begin(), as_array->end(), key) !=
+        as_array->end();
+  }
+  return find(key) != items().end();
 }
 
 template <class K, class V>

@@ -642,7 +642,10 @@ struct dynamic {
    * Count by key.
    *
    * If this is an object, returns whether it contains a field with
-   * the given name.  Otherwise throws TypeError.
+   * the given name.
+   * If this is an array, returns the number of elements matching
+   * the supplied value.
+   * Otherwise throws TypeError.
    *
    * @methodset Object
    */
@@ -654,9 +657,10 @@ struct dynamic {
    * Check if key exists.
    *
    * If this is an object, returns whether it contains a field with
-   * the given name.  Otherwise throws TypeError.
-   *
-   * @methodset Object
+   * the given name.
+   * If this is an array, returns whether it contains a value matching
+   * the supplied value.
+   * Otherwise throws TypeError.
    */
   template <typename K>
   IfIsNonStringDynamicConvertible<K, bool> contains(K&&) const;

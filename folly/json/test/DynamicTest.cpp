@@ -1663,5 +1663,39 @@ TEST(Dynamic, EqualNestedValues) {
   EXPECT_EQ(obj1, obj2);
 }
 
+TEST(Dynamic, ArrayCountContains) {
+  // .count() and .contains() should also work on arrays
+  dynamic arr = dynamic::array(
+      1, 3, 1, "a", 1, nullptr, nullptr, 1, dynamic::array(666), 1);
+
+  EXPECT_EQ(arr.count(1), 5);
+  EXPECT_TRUE(arr.contains(1));
+
+  EXPECT_EQ(arr.count(3), 1);
+  EXPECT_TRUE(arr.contains(3));
+
+  EXPECT_EQ(arr.count("a"), 1);
+  EXPECT_TRUE(arr.contains("a"));
+
+  std::string a = "a";
+  StringPiece spa(a);
+  EXPECT_EQ(arr.count(spa), 1);
+  EXPECT_TRUE(arr.contains(spa));
+
+  EXPECT_EQ(arr.count(nullptr), 2);
+  EXPECT_TRUE(arr.contains(nullptr));
+
+  EXPECT_EQ(arr.count(dynamic::array(666)), 1);
+  EXPECT_TRUE(arr.contains(dynamic::array(666)));
+
+  EXPECT_EQ(arr.count("not in the array"), 0);
+  EXPECT_FALSE(arr.contains("not in the array"));
+
+  // Quick check that count and contains don't work for all other types
+  dynamic a_bool = true;
+  EXPECT_THROW(a_bool.contains(true), TypeError);
+  EXPECT_THROW(a_bool.count(true), TypeError);
+}
+
 } // namespace test
 } // namespace folly
