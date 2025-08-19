@@ -18,12 +18,10 @@
 
 #include <algorithm>
 #include <cstring>
-#include <stdexcept>
 
 #include <glog/logging.h>
 
 #include <folly/Likely.h>
-#include <folly/Portability.h>
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
