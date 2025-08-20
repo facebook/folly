@@ -266,7 +266,8 @@ void ThreadPoolExecutor::addThreads(size_t n) {
 
 // threadListLock_ is writelocked
 void ThreadPoolExecutor::removeThreads(size_t n, bool isJoin) {
-  isJoin_ = isJoin;
+  // Block early thread stopping.
+  isJoin_.store(isJoin, std::memory_order_release);
   stopThreads(n);
 }
 

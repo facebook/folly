@@ -298,25 +298,28 @@ CPUThreadPoolExecutor::getTaskQueue() {
   return taskQueue_.get();
 }
 
-// threadListLock_ must be writelocked.
-bool CPUThreadPoolExecutor::tryDecrToStop() {
-  auto toStop = threadsToStop_.load(std::memory_order_relaxed);
-  if (toStop <= 0) {
-    return false;
-  }
-  threadsToStop_.store(toStop - 1, std::memory_order_relaxed);
+// Does not need threadListLock_ lock.
+bool CPUThreadPoolExecutor::shouldStopThread(bool isPoison) {
+  auto threadsToStop = threadsToStop_.load(std::memory_order_relaxed);
+  do {
+    if (threadsToStop == 0 ||
+        // If we're joining, do not allow early stopping: only stop threads when
+        // a poison task is received.
+        (!isPoison && isJoin_.load(std::memory_order_acquire))) {
+      return false;
+    }
+  } while (!threadsToStop_.compare_exchange_weak(
+      threadsToStop, threadsToStop - 1, std::memory_order_relaxed));
   return true;
 }
 
-bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
-  if (tryDecrToStop()) {
-    return true;
+// threadListLock_ must be writelocked.
+void CPUThreadPoolExecutor::stopThread(const ThreadPtr& thread) {
+  for (auto& o : observers_) {
+    o->threadStopped(thread.get());
   }
-  if (task) {
-    return false;
-  } else {
-    return tryTimeoutThread();
-  }
+  threadList_.remove(thread);
+  stoppedThreads_.add(thread);
 }
 
 void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
@@ -340,21 +343,16 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     auto task = taskQueue_->try_take_for(
         threadTimeout_.load(std::memory_order_relaxed));
 
-    // Handle thread stopping, either by task timeout, or
-    // by 'poison' task added in join() or stop().
-    if (FOLLY_UNLIKELY(!task || !task->func_)) {
-      // Actually remove the thread from the list.
+    // Handle thread stopping, either by task timeout, or by 'poison' task added
+    // by stopThreads().
+    if (bool timeout = !task; FOLLY_UNLIKELY(timeout || !task->func_)) {
       std::unique_lock w{threadListLock_};
-      if (taskShouldStop(task)) {
-        for (auto& o : observers_) {
-          o->threadStopped(thread.get());
-        }
-        threadList_.remove(thread);
-        stoppedThreads_.add(thread);
+      if (shouldStopThread(/* isPoison */ !timeout) ||
+          (timeout && tryTimeoutThread())) {
+        stopThread(thread);
         return;
-      } else {
-        continue;
       }
+      continue;
     }
 
     if (auto queueObserver = getQueueObserver(task->priority())) {
@@ -362,13 +360,10 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     }
     runTask(thread, std::move(task.value()));
 
-    if (FOLLY_UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
+    if (shouldStopThread(/* isPoison */ false)) {
       std::unique_lock w{threadListLock_};
-      if (tryDecrToStop()) {
-        threadList_.remove(thread);
-        stoppedThreads_.add(thread);
-        return;
-      }
+      stopThread(thread);
+      return;
     }
   }
 }
