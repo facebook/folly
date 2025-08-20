@@ -275,6 +275,10 @@ TEST(ThreadPoolExecutorTest, CPUPoolStats) {
   poolStats<CPUThreadPoolExecutor>();
 }
 
+TEST(ThreadPoolExecutorTest, EDFPoolStats) {
+  poolStats<EDFThreadPoolExecutor>();
+}
+
 TEST(ThreadPoolExecutorTest, IOPoolStats) {
   poolStats<IOThreadPoolExecutor>();
 }

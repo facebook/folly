@@ -45,14 +45,23 @@ namespace folly {
 
 class EDFThreadPoolExecutor::Task {
  public:
+  struct Poison {};
+
   explicit Task(Func&& f, uint64_t deadline)
       : f_(std::move(f)), total_(1), deadline_(deadline) {}
 
   explicit Task(std::vector<Func>&& fs, uint64_t deadline)
       : fs_(std::move(fs)), total_(fs_.size()), deadline_(deadline) {}
 
+  explicit Task(Poison, int total)
+      : total_(total), deadline_(kLatestDeadline) {
+    CHECK_GT(total, 0);
+  }
+
   uint64_t getDeadline() const { return deadline_; }
   uint64_t getEnqueueOrder() const { return enqueueOrder_; }
+
+  bool isPoison() const { return !f_ && fs_.empty() && total_ > 0; }
 
   bool isDone() const {
     return iter_.load(std::memory_order_relaxed) >= total_;
@@ -89,7 +98,7 @@ class EDFThreadPoolExecutor::Task {
   std::atomic<int> iter_{0};
   int total_;
   uint64_t deadline_;
-  uint64_t enqueueOrder_;
+  uint64_t enqueueOrder_ = 0;
   std::shared_ptr<RequestContext> context_ = RequestContext::saveContext();
   std::chrono::steady_clock::time_point enqueueTime_ =
       std::chrono::steady_clock::now();
@@ -120,9 +129,6 @@ class EDFThreadPoolExecutor::TaskQueue {
 
   static constexpr std::size_t kNumBuckets = 2 << 5;
 
-  explicit TaskQueue()
-      : buckets_{}, curDeadline_(kLatestDeadline), numItems_(0) {}
-
   void push(TaskPtr task) {
     auto deadline = task->getDeadline();
     auto& bucket = getBucket(deadline);
@@ -132,8 +138,6 @@ class EDFThreadPoolExecutor::TaskQueue {
       bucket.tasks.push(std::move(task));
       bucket.empty.store(bucket.tasks.empty(), std::memory_order_relaxed);
     }
-
-    numItems_.fetch_add(1, std::memory_order_seq_cst);
 
     // Update current earliest deadline if necessary
     uint64_t curDeadline = curDeadline_.load(std::memory_order_relaxed);
@@ -145,13 +149,10 @@ class EDFThreadPoolExecutor::TaskQueue {
         curDeadline, deadline, std::memory_order_relaxed));
   }
 
+  // Should only be called on a nonempty queue.
   TaskPtr pop() {
     bool needDeadlineUpdate = false;
     for (;;) {
-      if (numItems_.load(std::memory_order_seq_cst) == 0) {
-        return nullptr;
-      }
-
       auto curDeadline = curDeadline_.load(std::memory_order_relaxed);
       auto& bucket = getBucket(curDeadline);
 
@@ -191,7 +192,6 @@ class EDFThreadPoolExecutor::TaskQueue {
           // Current task finished. Remove from the queue.
           bucket.tasks.pop();
           bucket.empty.store(bucket.tasks.empty(), std::memory_order_relaxed);
-          numItems_.fetch_sub(1, std::memory_order_seq_cst);
         }
       }
 
@@ -200,8 +200,6 @@ class EDFThreadPoolExecutor::TaskQueue {
       needDeadlineUpdate = true;
     }
   }
-
-  std::size_t size() const { return numItems_.load(std::memory_order_seq_cst); }
 
  private:
   Bucket& getBucket(uint64_t deadline) {
@@ -251,13 +249,7 @@ class EDFThreadPoolExecutor::TaskQueue {
   }
 
   std::array<Bucket, kNumBuckets> buckets_;
-  std::atomic<uint64_t> curDeadline_;
-
-  // All operations performed on `numItems_` explicitly specify memory
-  // ordering of `std::memory_order_seq_cst`. This is due to `numItems_`
-  // performing Dekker's algorithm with `numIdleThreads_` prior to consumer
-  // threads (workers) wait on `sem_`.
-  std::atomic<std::size_t> numItems_;
+  std::atomic<uint64_t> curDeadline_ = kLatestDeadline;
 };
 
 /* static */ std::unique_ptr<EDFThreadPoolSemaphore>
@@ -301,20 +293,10 @@ void EDFThreadPoolExecutor::add(Func f) {
 }
 
 void EDFThreadPoolExecutor::add(Func f, uint64_t deadline) {
-  if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
-    return;
-  }
-
   auto task = std::make_shared<Task>(std::move(f), deadline);
   registerTaskEnqueue(*task);
   taskQueue_->push(std::move(task));
-
-  auto numIdleThreads = numIdleThreads_.load(std::memory_order_seq_cst);
-  if (numIdleThreads > 0) {
-    // If idle threads are available notify them, otherwise all worker threads
-    // are running and will get around to this task in time.
-    sem_->post(std::min<size_t>(1, numIdleThreads));
-  }
+  sem_->post(1);
 }
 
 void EDFThreadPoolExecutor::add(std::vector<Func> fs, uint64_t deadline) {
@@ -326,17 +308,30 @@ void EDFThreadPoolExecutor::add(std::vector<Func> fs, uint64_t deadline) {
   auto task = std::make_shared<Task>(std::move(fs), deadline);
   registerTaskEnqueue(*task);
   taskQueue_->push(std::move(task));
-
-  auto numIdleThreads = numIdleThreads_.load(std::memory_order_seq_cst);
-  if (numIdleThreads > 0) {
-    // If idle threads are available notify them, otherwise all worker threads
-    // are running and will get around to this task in time.
-    sem_->post(std::min(total, numIdleThreads));
-  }
+  sem_->post(static_cast<uint32_t>(total));
 }
 
 size_t EDFThreadPoolExecutor::getTaskQueueSize() const {
-  return taskQueue_->size();
+  return sem_->valueGuess();
+}
+
+bool EDFThreadPoolExecutor::tryStopThread(
+    const ThreadPtr& thread, bool isPoison) {
+  auto threadsToStop = threadsToStop_.load(std::memory_order_relaxed);
+  do {
+    if (threadsToStop == 0 || (!isPoison && isJoin_)) {
+      return false;
+    }
+  } while (!threadsToStop_.compare_exchange_weak(
+      threadsToStop, threadsToStop - 1, std::memory_order_relaxed));
+
+  std::unique_lock w{threadListLock_};
+  for (auto& o : observers_) {
+    o->threadStopped(thread.get());
+  }
+  threadList_.remove(thread);
+  stoppedThreads_.add(thread);
+  return true;
 }
 
 void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
@@ -346,24 +341,23 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
 
   thread->startupBaton.post();
   for (;;) {
-    auto task = take();
+    sem_->wait();
 
-    // Handle thread stopping
-    if (FOLLY_UNLIKELY(!task)) {
-      // Actually remove the thread from the list.
-      std::unique_lock w{threadListLock_};
-      for (auto& o : observers_) {
-        o->threadStopped(thread.get());
+    // We consumed a post so the queue is non-empty, but we need to discard
+    // finished tasks.
+    int iter;
+    std::shared_ptr<EDFThreadPoolExecutor::Task> task;
+    do {
+      task = taskQueue_->pop();
+      iter = task->next();
+    } while (iter < 0);
+
+    if (task->isPoison()) {
+      if (tryStopThread(thread, /* isPoison */ true)) {
+        return;
+      } else {
+        continue; // Poison was consumed early by tryStopThread().
       }
-      threadList_.remove(thread);
-      stoppedThreads_.add(thread);
-      return;
-    }
-
-    int iter = task->next();
-    if (FOLLY_UNLIKELY(iter < 0)) {
-      // This task is already finished
-      continue;
     }
 
     thread->idle.store(false, std::memory_order_relaxed);
@@ -404,72 +398,27 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
     thread->idle.store(true, std::memory_order_relaxed);
     thread->lastActiveTime.store(
         std::chrono::steady_clock::now(), std::memory_order_relaxed);
+
+    if (tryStopThread(thread, /* isPoison */ false)) {
+      return;
+    }
   }
 }
 
 // threadListLock_ is writelocked.
 void EDFThreadPoolExecutor::stopThreads(std::size_t numThreads) {
+  if (numThreads == 0) {
+    return;
+  }
   threadsToStop_.fetch_add(numThreads, std::memory_order_relaxed);
+  taskQueue_->push(
+      std::make_shared<Task>(Task::Poison{}, static_cast<int>(numThreads)));
   sem_->post(numThreads);
 }
 
 // threadListLock_ is read (or write) locked.
 std::size_t EDFThreadPoolExecutor::getPendingTaskCountImpl() const {
   return getTaskQueueSize();
-}
-
-bool EDFThreadPoolExecutor::shouldStop() {
-  // in normal cases, only do a read (prevents cache line bounces)
-  if (threadsToStop_.load(std::memory_order_relaxed) <= 0 ||
-      isJoin_.load(std::memory_order_relaxed)) {
-    return false;
-  }
-  // modify only if needed
-  if (threadsToStop_.fetch_sub(1, std::memory_order_relaxed) > 0) {
-    return true;
-  } else {
-    threadsToStop_.fetch_add(1, std::memory_order_relaxed);
-    return false;
-  }
-}
-
-std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
-  if (FOLLY_UNLIKELY(shouldStop())) {
-    return nullptr;
-  }
-
-  if (auto task = taskQueue_->pop()) {
-    return task;
-  }
-
-  if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
-    return nullptr;
-  }
-
-  // No tasks on the horizon, so go sleep
-  numIdleThreads_.fetch_add(1, std::memory_order_seq_cst);
-
-  SCOPE_EXIT {
-    numIdleThreads_.fetch_sub(1, std::memory_order_seq_cst);
-  };
-
-  for (;;) {
-    if (FOLLY_UNLIKELY(shouldStop())) {
-      return nullptr;
-    }
-
-    if (auto task = taskQueue_->pop()) {
-      // It's possible to return a finished task here, in which case
-      // the worker will call this function again.
-      return task;
-    }
-
-    if (FOLLY_UNLIKELY(isJoin_.load(std::memory_order_relaxed))) {
-      return nullptr;
-    }
-
-    sem_->wait();
-  }
 }
 
 void EDFThreadPoolExecutor::fillTaskInfo(const Task& task, TaskInfo& info) {
