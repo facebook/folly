@@ -1414,7 +1414,8 @@ fb_dirsync_cpp_library(
         # x86_64-conda-linux-gnu-c++ (conda-forge gcc 11.4.0-13) 11.4.0
         # fails to compile Demangle.cpp because of unused static functions despite
         # using [[maybe_unused]] attribute.
-        "ovr_config//distro/constraints:conda": ["-Wno-unused-function"],
+        # FIXME: uncomment this once an OSS solution exists
+        # "ovr_config//distro/constraints:conda": ["-Wno-unused-function"],
     }),
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,

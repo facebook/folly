@@ -267,7 +267,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["detail/InlineTask.h"],
     exported_deps = [
-        "//xplat/folly/coro:inline_task",
+        "//xplat/folly/coro/detail:inline_task",
     ],
 )
 
@@ -804,7 +804,7 @@ fbcode_target(
         "detail/InlineTask.h",
     ],
     exported_deps = [
-        "//folly/coro:inline_task",
+        "//folly/coro/detail:inline_task",
     ],
 )
 
