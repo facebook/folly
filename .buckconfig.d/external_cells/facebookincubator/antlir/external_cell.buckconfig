@@ -10,9 +10,9 @@ gh_facebookincubator_antlir = git
 gh_facebookincubator_antlir_generated = git
 
 [external_cell_gh_facebookincubator_antlir]
-git_origin = https://github.com/facebookincubator/antlir.git
-commit_hash = de5b0f6e8b434a72a03f5868fd62533629004a44
+git_origin = https://github.com/ben--/antlir.git
+commit_hash = e81a223fd851230b4e3141784565a95abaffdf11
 
 [external_cell_gh_facebookincubator_antlir_generated]
-git_origin = https://github.com/facebookincubator/antlir.git
-commit_hash = de5b0f6e8b434a72a03f5868fd62533629004a44
+git_origin = https://github.com/ben--/antlir.git
+commit_hash = e81a223fd851230b4e3141784565a95abaffdf11
