@@ -53,8 +53,7 @@ class EDFThreadPoolExecutor::Task {
   explicit Task(std::vector<Func>&& fs, uint64_t deadline)
       : fs_(std::move(fs)), total_(fs_.size()), deadline_(deadline) {}
 
-  explicit Task(Poison, int total)
-      : total_(total), deadline_(kLatestDeadline) {
+  explicit Task(Poison, int total) : total_(total), deadline_(kLatestDeadline) {
     CHECK_GT(total, 0);
   }
 
