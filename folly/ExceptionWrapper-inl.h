@@ -184,6 +184,19 @@ inline folly::fbstring exception_wrapper::class_name() const {
   return !*this ? "" : !ti ? "<unknown>" : folly::demangle(*ti);
 }
 
+template <>
+struct fmt::formatter<folly::exception_wrapper>
+    : formatter<std::string_view> {
+  template <typename Context>
+  auto format(const folly::exception_wrapper& ew, Context& ctx) const {
+    if (auto e = ew.get_exception()) {
+      return formatter<std::string_view>::format(class_name() + ": " + e->what(), ctx);
+    } else {
+      return formatter<std::string_view>::format(class_name() + ": <unknown>", ctx);
+    }
+  }
+};
+
 template <class Ex>
 inline bool exception_wrapper::is_compatible_with() const noexcept {
   return exception_ptr_get_object<Ex>(ptr_);
