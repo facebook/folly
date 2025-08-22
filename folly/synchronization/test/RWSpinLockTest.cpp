@@ -37,10 +37,10 @@ using namespace folly;
 
 template <typename RWSpinLockT>
 struct RWSpinLockTest : public testing::Test {
-  typedef RWSpinLockT RWSpinLockType;
+  using RWSpinLockType = RWSpinLockT;
 };
 
-typedef testing::Types<RWSpinLock> Implementations;
+using Implementations = testing::Types<RWSpinLock>;
 
 TYPED_TEST_SUITE(RWSpinLockTest, Implementations);
 
@@ -56,7 +56,7 @@ static void run(RWSpinLockType& lock) {
 }
 
 TYPED_TEST(RWSpinLockTest, WriterWaitReaders) {
-  typedef typename TestFixture::RWSpinLockType LockType;
+  using LockType = typename TestFixture::RWSpinLockType;
   LockType l;
 
   for (int i = 0; i < kMaxReaders; ++i) {
@@ -73,7 +73,7 @@ TYPED_TEST(RWSpinLockTest, WriterWaitReaders) {
 }
 
 TYPED_TEST(RWSpinLockTest, ReadersWaitWriter) {
-  typedef typename TestFixture::RWSpinLockType LockType;
+  using LockType = typename TestFixture::RWSpinLockType;
   LockType l;
 
   EXPECT_TRUE(l.try_lock());
@@ -89,7 +89,7 @@ TYPED_TEST(RWSpinLockTest, ReadersWaitWriter) {
 }
 
 TYPED_TEST(RWSpinLockTest, WriterWaitWriter) {
-  typedef typename TestFixture::RWSpinLockType LockType;
+  using LockType = typename TestFixture::RWSpinLockType;
   LockType l;
 
   EXPECT_TRUE(l.try_lock());
@@ -101,7 +101,7 @@ TYPED_TEST(RWSpinLockTest, WriterWaitWriter) {
 }
 
 TYPED_TEST(RWSpinLockTest, ReadHolders) {
-  typedef typename TestFixture::RWSpinLockType LockType;
+  using LockType = typename TestFixture::RWSpinLockType;
   LockType l;
 
   {
@@ -118,7 +118,7 @@ TYPED_TEST(RWSpinLockTest, ReadHolders) {
 }
 
 TYPED_TEST(RWSpinLockTest, WriteHolders) {
-  typedef typename TestFixture::RWSpinLockType LockType;
+  using LockType = typename TestFixture::RWSpinLockType;
   LockType l;
   {
     std::unique_lock guard(l);
@@ -133,7 +133,7 @@ TYPED_TEST(RWSpinLockTest, WriteHolders) {
 }
 
 TYPED_TEST(RWSpinLockTest, ConcurrentTests) {
-  typedef typename TestFixture::RWSpinLockType LockType;
+  using LockType = typename TestFixture::RWSpinLockType;
   LockType l;
   srand(time(nullptr));
 
