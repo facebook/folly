@@ -368,6 +368,7 @@ non_fbcode_target(
     name = "std_bitset_test",
     srcs = ["StdBitsetTest.cpp"],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//xplat/folly:portability_gtest",
         "//xplat/folly/container:std_bitset",
     ],
@@ -825,6 +826,7 @@ fbcode_target(
     name = "std_bitset_test",
     srcs = ["StdBitsetTest.cpp"],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly/container:std_bitset",
     ],
 )
@@ -1047,6 +1049,7 @@ fbcode_target(
     srcs = ["CollectionUtilTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly:small_vector",
         "//folly:sorted_vector_types",
         "//folly/container:collection_util",

@@ -194,8 +194,7 @@ fbcode_target(
     _kind = cpp_library,
     name = "ssl_session",
     headers = ["SSLSession.h"],
-    exported_deps = [
-    ],
+    exported_deps = [],
 )
 
 fbcode_target(
