@@ -4586,8 +4586,7 @@ non_fbcode_target(
     raw_headers = ["MaybeManagedPtr.h"],
     deps = [
     ],
-    exported_deps = [
-    ],
+    exported_deps = [],
 )
 
 # !!!! fbcode/folly/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
@@ -6317,6 +6316,5 @@ fbcode_target(
     headers = ["MaybeManagedPtr.h"],
     deps = [
     ],
-    exported_deps = [
-    ],
+    exported_deps = [],
 )
