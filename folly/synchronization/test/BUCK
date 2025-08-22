@@ -538,3 +538,16 @@ fbcode_target(
         "glog",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "striped_throttled_lifo_sem_test",
+    srcs = ["StripedThrottledLifoSemTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:random",
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+        "//folly/synchronization:striped_throttled_lifo_sem",
+    ],
+)

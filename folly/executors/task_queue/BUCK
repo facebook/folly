@@ -1,5 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
@@ -148,5 +150,24 @@ fbcode_target(
         ":blocking_queue",
         "//folly/concurrency:unbounded_queue",
         "//folly/synchronization:lifo_sem",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "striped_priority_unbounded_blocking_queue",
+    headers = ["StripedPriorityUnboundedBlockingQueue.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        "//folly:constexpr_math",
+        "//folly:executor",
+        "//folly:glog",
+        "//folly/concurrency:cache_locality",
+        "//folly/concurrency:priority_unbounded_queue_set",
+        "//folly/executors/task_queue:blocking_queue",
+        "//folly/executors/task_queue:priority_unbounded_blocking_queue",
+        "//folly/lang:exception",
+        "//folly/synchronization:striped_throttled_lifo_sem",
     ],
 )

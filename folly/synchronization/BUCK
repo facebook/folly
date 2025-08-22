@@ -1,6 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library", "folly_xplat_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -969,5 +970,34 @@ fbcode_target(
     ],
     exported_external_deps = [
         "glog",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "striped_throttled_lifo_sem",
+    srcs = [
+        "StripedThrottledLifoSem.cpp",
+    ],
+    headers = [
+        "StripedThrottledLifoSem.h",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    deps = [
+        "//folly/portability:gflags",
+        "//folly/portability:sys_resource",
+        "//folly/system:thread_name",
+        "//folly/tracing:static_tracepoint",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly:glog",
+        "//folly:unit",
+        "//folly/container:f14_hash",
+        "//folly/container:small_vector",
+        "//folly/memory:malloc",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization:throttled_lifo_sem",
     ],
 )

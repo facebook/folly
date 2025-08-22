@@ -53,3 +53,17 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "striped_priority_unbounded_blocking_queue_test",
+    srcs = [
+        "StripedPriorityUnboundedBlockingQueueTest.cpp",
+    ],
+    deps = [
+        "//folly:random",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors/task_queue:striped_priority_unbounded_blocking_queue",
+        "//folly/portability:gtest",
+    ],
+)
