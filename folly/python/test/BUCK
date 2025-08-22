@@ -418,6 +418,7 @@ cpp_unittest(
     deps = [
         "fbcode//folly/python:weak",
         # Pull in libpython so we are linked against it
+        "fbsource//third-party/googletest:gtest",
         "fbsource//third-party/python:python-for-embedding",  # @manual
     ],
 )
@@ -438,5 +439,6 @@ cpp_unittest(
     },
     deps = [
         "fbcode//folly/python:weak",
+        "fbsource//third-party/googletest:gtest",
     ],
 )
