@@ -7,16 +7,13 @@ oncall("fbcode_entropy_wardens_folly")
 
 fbcode_target(
     _kind = cpp_benchmark,
-    name = "fibers_benchmark",
-    srcs = ["FibersBenchmark.cpp"],
+    name = "timed_mutex_benchmark",
+    srcs = ["TimedMutexBenchmark.cpp"],
     headers = [],
     deps = [
         "//folly:benchmark",
-        "//folly/fibers:core_manager",
-        "//folly/fibers:fiber_manager_map",
-        "//folly/fibers:simple_loop_controller",
+        "//folly/fibers:timed_mutex",
         "//folly/init:init",
-        "//folly/io/async:async_base",
     ],
 )
 
