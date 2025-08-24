@@ -1,6 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:native_rules.bzl", "alias")
-load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+load("@fbsource//tools/build_defs:rust_library.bzl", "rust_library")
 
 oncall("rust_libraries")
 
