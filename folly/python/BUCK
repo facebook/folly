@@ -111,11 +111,11 @@ non_fbcode_target(
         "futures.h",
     ],
     deps = [
+        "fbsource//xplat/folly/futures:core",
         ":asyncio_executor",
         ":executor_lib",
         ":weak",
         "//xplat/folly:executor",
-        "//xplat/folly:futures_core",
     ],
 )
 
@@ -176,7 +176,7 @@ non_fbcode_target(
     name = "folly",
     headers = {"__init__.pxd": "__init__.pxd"},
     cpp_deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:executor",
         "//xplat/folly:try",
