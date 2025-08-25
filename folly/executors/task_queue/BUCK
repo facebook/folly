@@ -18,11 +18,11 @@ non_fbcode_target(
         "PriorityLifoSemMPMCQueue.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:lifo_sem",
         "//third-party/glog:glog",
         "//xplat/folly:executor",
         "//xplat/folly:mpmc_queue",
         "//xplat/folly:range",
-        "//xplat/folly:synchronization_lifo_sem",
         "//xplat/folly/executors/task_queue:blocking_queue",
     ],
 )
@@ -49,8 +49,8 @@ non_fbcode_target(
         "LifoSemMPMCQueue.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/synchronization:lifo_sem",
         "//xplat/folly:mpmc_queue",
-        "//xplat/folly:synchronization_lifo_sem",
         "//xplat/folly/executors/task_queue:blocking_queue",
     ],
 )
@@ -63,9 +63,9 @@ non_fbcode_target(
         "PriorityUnboundedBlockingQueue.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:lifo_sem",
         "//xplat/folly:constexpr_math",
         "//xplat/folly:executor",
-        "//xplat/folly:synchronization_lifo_sem",
         "//xplat/folly/concurrency:priority_unbounded_queue_set",
         "//xplat/folly/executors/task_queue:blocking_queue",
         "//xplat/folly/lang:exception",
@@ -80,7 +80,7 @@ non_fbcode_target(
         "UnboundedBlockingQueue.h",
     ],
     deps = [
-        "//xplat/folly:synchronization_lifo_sem",
+        "fbsource//xplat/folly/synchronization:lifo_sem",
         "//xplat/folly/concurrency:unbounded_queue",
         "//xplat/folly/executors/task_queue:blocking_queue",
     ],
