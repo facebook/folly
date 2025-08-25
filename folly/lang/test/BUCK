@@ -225,6 +225,7 @@ non_fbcode_target(
     name = "switch_test",
     srcs = ["SwitchTest.cpp"],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//xplat/folly/lang:switch",
     ],
 )
@@ -544,6 +545,7 @@ fbcode_target(
     name = "switch_test",
     srcs = ["SwitchTest.cpp"],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly/lang:switch",
     ],
 )
