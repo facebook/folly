@@ -31,8 +31,8 @@ non_fbcode_target(
         "DigestBuilder-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:lock",
         "//xplat/folly:spin_lock",
-        "//xplat/folly:synchronization_lock",
     ],
     exported_deps = [
         "//xplat/folly:memory",
