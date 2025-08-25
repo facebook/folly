@@ -4584,8 +4584,7 @@ non_fbcode_target(
     name = "maybe_managed_ptr",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MaybeManagedPtr.h"],
-    deps = [
-    ],
+    deps = [],
     exported_deps = [],
 )
 
@@ -6314,7 +6313,6 @@ fbcode_target(
     _kind = cpp_library,
     name = "maybe_managed_ptr",
     headers = ["MaybeManagedPtr.h"],
-    deps = [
-    ],
+    deps = [],
     exported_deps = [],
 )
