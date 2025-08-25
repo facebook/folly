@@ -31,4 +31,6 @@ void registrationComplete();
 
 void doEagerInit();
 
+void destroyInstances();
+
 } // namespace facebook::folly::rust

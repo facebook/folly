@@ -43,4 +43,8 @@ void doEagerInit() {
   ::folly::SingletonVault::singleton()->doEagerInit();
 }
 
+void destroyInstances() {
+  ::folly::SingletonVault::singleton()->destroyInstances();
+}
+
 } // namespace facebook::folly::rust
