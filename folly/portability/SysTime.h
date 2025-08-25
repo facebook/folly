@@ -42,7 +42,9 @@ extern "C" {
 // a global field that contains information on the current timezone.
 // As such "timezone" is not a good name to use inside of C/C++ code on
 // Windows.  Instead users should use folly_port_struct_timezone instead.
+#ifdef _MSC_VER
 int gettimeofday(timeval* tv, folly_port_struct_timezone*);
+#endif
 void timeradd(timeval* a, timeval* b, timeval* res);
 void timersub(timeval* a, timeval* b, timeval* res);
 }
