@@ -146,8 +146,7 @@ fb_dirsync_cpp_library(
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
-    deps = [
-    ],
+    deps = [],
     exported_deps = [
         ":async_socket_exception",
         ":async_transport",
@@ -419,7 +418,6 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         ":scoped_event_base_thread",
-        "//folly:memory",
     ],
     exported_deps = [
         ":async_base",
@@ -718,6 +716,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         ":io_uring_event_base_local",
+        ":io_uring_provided_buffer_ring",
         "//folly:conv",
         "//folly/detail:socket_fast_open",
         "//folly/memory:malloc",
@@ -791,6 +790,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
+        ":epoll",
         "//folly:file_util",
         "//folly:intrusive_list",
         "//folly:map_util",
