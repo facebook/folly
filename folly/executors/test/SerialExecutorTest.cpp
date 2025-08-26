@@ -45,6 +45,12 @@ using SerialExecutorTypes = ::testing::Types<
     folly::SmallSerialExecutor>;
 TYPED_TEST_SUITE(SerialExecutorTest, SerialExecutorTypes);
 
+TYPED_TEST(SerialExecutorTest, Accessors) {
+  folly::CPUThreadPoolExecutor parent{1};
+  auto executor = TypeParam::create(&parent);
+  EXPECT_EQ(&parent, executor->parent().get());
+}
+
 template <class SerialExecutorType>
 void simpleTest(folly::Executor& parent) {
   class SerialExecutorContextData : public folly::RequestData {

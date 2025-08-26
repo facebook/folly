@@ -70,6 +70,8 @@ class SerialExecutorImpl : public SerializedExecutor {
   static KeepAlive<SerialExecutorImpl> create(
       KeepAlive<Executor> parent = getGlobalCPUExecutor());
 
+  const KeepAlive<Executor>& parent() const { return parent_; }
+
   class Deleter {
    public:
     Deleter() {}
