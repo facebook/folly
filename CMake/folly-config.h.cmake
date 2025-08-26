@@ -62,8 +62,8 @@
 #cmakedefine HAVE_VSNPRINTF_ERRORS 1
 
 #cmakedefine FOLLY_HAVE_LIBUNWIND 1
-#cmakedefine FOLLY_HAVE_DWARF 1
-#cmakedefine FOLLY_HAVE_ELF 1
+#cmakedefine01 FOLLY_HAVE_DWARF
+#cmakedefine01 FOLLY_HAVE_ELF
 #cmakedefine FOLLY_HAVE_SWAPCONTEXT 1
 #cmakedefine FOLLY_HAVE_BACKTRACE 1
 #cmakedefine FOLLY_USE_SYMBOLIZER 1
