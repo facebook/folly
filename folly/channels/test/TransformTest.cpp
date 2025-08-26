@@ -43,7 +43,7 @@ class TransformFixture : public Test {
     return consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
-        [=](Try<std::string> resultTry) -> folly::coro::Task<bool> {
+        [=, this](Try<std::string> resultTry) -> folly::coro::Task<bool> {
           onNext_(std::move(resultTry));
           co_return true;
         });
