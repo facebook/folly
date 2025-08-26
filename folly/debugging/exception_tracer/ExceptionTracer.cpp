@@ -43,7 +43,8 @@ using namespace ::folly::symbolizer;
 using namespace __cxxabiv1;
 
 extern "C" {
-const StackTraceStack* getCaughtExceptionStackTraceStack(void)
+const StackTraceStack*
+folly_exception_tracer_get_caught_exceptions_stack_trace_stack(void)
     __attribute__((__weak__));
 typedef const StackTraceStack* (*GetCaughtExceptionStackTraceStackType)();
 GetCaughtExceptionStackTraceStackType getCaughtExceptionStackTraceStackFn;
@@ -137,14 +138,18 @@ bool isAbiCppException(const __cxa_exception* exc) {
 std::vector<ExceptionInfo> getCurrentExceptions() {
   struct Once {
     Once() {
-      // See if linked in with us (getCaughtExceptionStackTraceStack is weak)
-      getCaughtExceptionStackTraceStackFn = getCaughtExceptionStackTraceStack;
+      // See if linked in with us
+      // (folly_exception_tracer_get_caught_exceptions_stack_trace_stack is
+      // weak)
+      getCaughtExceptionStackTraceStackFn =
+          folly_exception_tracer_get_caught_exceptions_stack_trace_stack;
 
       if (!getCaughtExceptionStackTraceStackFn) {
         // Nope, see if it's in a shared library
         getCaughtExceptionStackTraceStackFn =
             (GetCaughtExceptionStackTraceStackType)dlsym(
-                RTLD_NEXT, "getCaughtExceptionStackTraceStack");
+                RTLD_NEXT,
+                "folly_exception_tracer_get_caught_exceptions_stack_trace_stack");
       }
     }
   };

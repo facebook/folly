@@ -46,10 +46,12 @@ static_assert(folly::is_constexpr_default_constructible_v<StackTraceStack>);
 } // namespace
 
 // These functions are exported and may be found via dlsym(RTLD_NEXT, ...)
-extern "C" const StackTraceStack* getUncaughtExceptionStackTraceStack() {
+extern "C" const StackTraceStack*
+folly_exception_tracer_get_uncaught_exceptions_stack_trace_stack() {
   return invalid ? nullptr : &uncaughtExceptions;
 }
-extern "C" const StackTraceStack* getCaughtExceptionStackTraceStack() {
+extern "C" const StackTraceStack*
+folly_exception_tracer_get_caught_exceptions_stack_trace_stack() {
   return invalid ? nullptr : &caughtExceptions;
 }
 
