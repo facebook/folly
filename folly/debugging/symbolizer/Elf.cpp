@@ -478,23 +478,6 @@ const char* ElfFile::getSymbolName(const Symbol& symbol) const noexcept {
   return getString(*linkSection, symbol.second->st_name);
 }
 
-std::pair<const int, char const*> ElfFile::posixFadvise(
-    off_t offset, off_t len, int const advice) const noexcept {
-  if (fd_ == -1) {
-    return {1, "file not open"};
-  }
-  int res = posix_fadvise(fd_, offset, len, advice);
-  if (res != 0) {
-    return {res, "posix_fadvise failed for file"};
-  }
-  return {res, ""};
-}
-
-std::pair<const int, char const*> ElfFile::posixFadvise(
-    int const advice) const noexcept {
-  return posixFadvise(0, 0, advice);
-}
-
 folly::Expected<folly::StringPiece, std::string> ElfFile::getUUID()
     const noexcept {
   auto section = getSectionByName(".note.gnu.build-id");

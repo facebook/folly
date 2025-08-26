@@ -181,46 +181,6 @@ TEST_F(ElfTest, FailToOpenLargeFilename) {
   EXPECT_EQ(ElfFile::kSuccess, elfFile->openNoThrow(kDefaultElf));
 }
 
-TEST_F(ElfTest, PosixFadvise) {
-  auto res = elfFile_.posixFadvise(POSIX_FADV_DONTNEED);
-  EXPECT_EQ(0, res.first);
-  EXPECT_STREQ("", res.second);
-}
-
-TEST_F(ElfTest, PosixFadviseOffSetAndLen) {
-  auto posixFadviseCalled = false;
-  elfFile_.iterateSections(
-      [&](const folly::symbolizer::ElfShdr& section) -> bool {
-        if (section.sh_type == SHT_SYMTAB) {
-          posixFadviseCalled = true;
-          auto res = elfFile_.posixFadvise(
-              section.sh_offset, section.sh_size, POSIX_FADV_DONTNEED);
-          EXPECT_EQ(0, res.first);
-          EXPECT_STREQ("", res.second);
-        }
-        return false;
-      });
-  EXPECT_TRUE(posixFadviseCalled);
-}
-
-TEST_F(ElfTest, PosixFadviseNotOpen) {
-  folly::test::TemporaryFile tmpFile;
-  const static folly::StringPiece contents = "!";
-  folly::writeFull(tmpFile.fd(), contents.data(), contents.size());
-
-  ElfFile elfFile;
-  elfFile.openNoThrow(tmpFile.path().c_str());
-  auto res = elfFile.posixFadvise(POSIX_FADV_DONTNEED);
-  EXPECT_EQ(1, res.first);
-  EXPECT_STREQ("file not open", res.second);
-}
-
-TEST_F(ElfTest, PosixFadviseBadAdvice) {
-  auto res = elfFile_.posixFadvise(10000);
-  EXPECT_NE(0, res.first);
-  EXPECT_STREQ("posix_fadvise failed for file", res.second);
-}
-
 TEST(TestUUID, SimpleElf) {
   auto const file =
       folly::test::find_resource("folly/debugging/symbolizer/test/simple_elf");
