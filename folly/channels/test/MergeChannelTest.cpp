@@ -118,7 +118,7 @@ class MergeChannelFixture : public Test {
     return consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
-        [=](Try<MergeChannelEvent<std::string, int>> resultTry)
+        [=, this](Try<MergeChannelEvent<std::string, int>> resultTry)
             -> folly::coro::Task<bool> {
           if (resultTry.hasValue()) {
             std::visit(
