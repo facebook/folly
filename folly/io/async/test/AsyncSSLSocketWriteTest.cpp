@@ -230,7 +230,7 @@ TEST_F(AsyncSSLSocketWriteTest, SslErrorWantWrite) {
   // but getRawBytesWritten will still  be incremented by the write size as
   // the bytes were appended to the BIO
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         EXPECT_EQ(m, sock_->getCurrBytesToFinalByte().value_or(0));
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
@@ -259,7 +259,7 @@ TEST_F(AsyncSSLSocketWriteTest, SslErrorWantWrite) {
 
   // second time we try to write, same buffer should be passed in
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         EXPECT_EQ(m, sock_->getCurrBytesToFinalByte().value_or(0));
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
@@ -285,7 +285,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing1) {
   int pos = 0;
   InSequence s;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 9))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -313,7 +313,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing2) {
   int pos = 0;
   InSequence s;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -325,7 +325,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing2) {
       sendSocketMessage(_, _, MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL))
       .WillOnce(Return(ByMove(AsyncSocket::WriteResult(1500))));
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 6))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -375,7 +375,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing4) {
   int pos = 0;
   InSequence s1;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -398,7 +398,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing4) {
 
   InSequence s2;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -427,7 +427,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing5) {
   int pos = 0;
   InSequence s;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -439,7 +439,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing5) {
       sendSocketMessage(_, _, MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL))
       .WillOnce(Return(ByMove(AsyncSocket::WriteResult(1500))));
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -467,7 +467,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing6) {
 
   InSequence s1;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -490,7 +490,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescing6) {
 
   InSequence s2;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 800))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
         auto result = AsyncSSLSocket::bioWrite(b, (const char*)buf, m);
@@ -523,7 +523,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescingWithEoRTracking1) {
 
   InSequence s;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         // the first 1500 does not have the EOR byte
         EXPECT_EQ(folly::none, sock_->getCurrBytesToFinalByte());
         verifyVec(buf, m, pos);
@@ -537,7 +537,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescingWithEoRTracking1) {
       sendSocketMessage(_, _, MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL))
       .WillOnce(Return(ByMove(AsyncSocket::WriteResult(1500))));
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 6))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         EXPECT_EQ(m, sock_->getCurrBytesToFinalByte().value_or(0));
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
@@ -569,7 +569,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescingWithEoRTracking2) {
 
   InSequence s;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         // the first 1500 does not have the EOR byte
         EXPECT_EQ(folly::none, sock_->getCurrBytesToFinalByte());
         verifyVec(buf, m, pos);
@@ -583,7 +583,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescingWithEoRTracking2) {
       sendSocketMessage(_, _, MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL))
       .WillOnce(Return(ByMove(AsyncSocket::WriteResult(1500))));
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 300))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         EXPECT_EQ(m, sock_->getCurrBytesToFinalByte().value_or(0));
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
@@ -616,7 +616,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescingWithEoRTracking3) {
 
   InSequence s;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1600))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         // partial write of 1000 bytes
         // currBytesToFinalByte should be 1600 at this point; expect full write
         EXPECT_EQ(1600, sock_->getCurrBytesToFinalByte().value_or(0));
@@ -641,7 +641,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescingWithEoRTracking3) {
   consumeVec(vec.get(), countWritten, partialWritten);
 
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 600))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         EXPECT_EQ(m, sock_->getCurrBytesToFinalByte().value_or(0));
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
@@ -679,7 +679,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescingWithEoRTrackingErrorWantWrite) {
   // but getRawBytesWritten will still  be incremented by the write size as
   // the bytes were appended to the BIO
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         EXPECT_EQ(m, sock_->getCurrBytesToFinalByte().value_or(0));
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
@@ -710,7 +710,7 @@ TEST_F(AsyncSSLSocketWriteTest, WriteCoalescingWithEoRTrackingErrorWantWrite) {
   // second time we try to write, no error
   // EOR should still be set
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
-      .WillOnce(Invoke([=, &pos](SSL* ssl, const void* buf, int m) {
+      .WillOnce(Invoke([=, this, &pos](SSL* ssl, const void* buf, int m) {
         EXPECT_EQ(m, sock_->getCurrBytesToFinalByte().value_or(0));
         verifyVec(buf, m, pos);
         BIO* b = SSL_get_wbio(ssl);
