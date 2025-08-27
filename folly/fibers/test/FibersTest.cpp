@@ -44,6 +44,7 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Lock.h>
 #include <folly/tracing/AsyncStack.h>
 
 using namespace folly::fibers;
@@ -2740,11 +2741,14 @@ void testTimedRWMutex() {
     }
 
     for (size_t i = 0; i < kNumWriteTasks; ++i) {
-      fm.addTask([&] {
+      fm.addTask([&, i] {
         std::unique_lock lock(mutex);
         ASSERT_FALSE(writeLocked.exchange(true));
         ++numWriteSections;
         ASSERT_TRUE(writeLocked.exchange(false));
+        if (i % 10 == 0) {
+          auto rlock = folly::transition_lock<std::shared_lock>(lock);
+        }
       });
     }
   }

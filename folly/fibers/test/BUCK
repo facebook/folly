@@ -48,6 +48,7 @@ fbcode_target(
         "//folly/futures:core",
         "//folly/io/async:scoped_event_base_thread",
         "//folly/portability:gtest",
+        "//folly/synchronization:lock",
         "//folly/tracing:async_stack",
     ],
 )
