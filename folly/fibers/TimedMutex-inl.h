@@ -203,27 +203,40 @@ inline void TimedMutex::unlock() {
 template <bool ReaderPriority, typename BatonType>
 class TimedRWMutexImpl<ReaderPriority, BatonType>::StateLock {
  public:
-  explicit StateLock(std::atomic<uint64_t>& stateRef) : stateRef_(stateRef) {
+  // Spin until the state is not locked to apply mutation. The callback can
+  // abort at any time.
+  template <class Mutation>
+  FOLLY_ALWAYS_INLINE static bool tryMutate(
+      std::atomic<uint64_t>& stateRef, Mutation mutation) {
     folly::detail::Sleeper sleeper;
-    auto curState = stateRef_.load(std::memory_order_relaxed);
+    auto curState = stateRef.load(std::memory_order_relaxed);
     while (true) {
-      while (curState & kStateLocked) {
+      while (FOLLY_UNLIKELY(curState & kStateLocked)) {
         sleeper.wait();
-        curState = stateRef_.load(std::memory_order_relaxed);
+        curState = stateRef.load(std::memory_order_relaxed);
       }
-      auto newState = curState | kStateLocked;
-      if (stateRef_.compare_exchange_strong(
+      auto newState = curState;
+      if (!mutation(newState)) {
+        return false;
+      }
+      if (stateRef.compare_exchange_strong(
               curState,
               newState,
               std::memory_order_acq_rel,
               std::memory_order_relaxed)) {
-        state_ = newState;
-#ifndef NDEBUG
-        initialState_ = newState;
-#endif
-        return;
+        return true;
       }
     }
+  }
+
+  explicit StateLock(std::atomic<uint64_t>& stateRef) : stateRef_(stateRef) {
+    tryMutate(stateRef_, [&](uint64_t& state) {
+      state_ = (state |= kStateLocked);
+#ifndef NDEBUG
+      initialState_ = state_;
+#endif
+      return true;
+    });
   }
 
   ~StateLock() {
@@ -273,12 +286,46 @@ template <bool ReaderPriority, typename BatonType>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::shouldReadersWait(
     StateLock& slock) const {
   assert(!(slock.state() & kHasWriteWaiters) == write_waiters_.empty());
-  return (slock.state() & kWriteLocked) ||
-      (!ReaderPriority && (slock.state() & kHasWriteWaiters));
+  return shouldReadersWait(slock.state());
+}
+
+template <bool ReaderPriority, typename BatonType>
+/* static */ bool
+TimedRWMutexImpl<ReaderPriority, BatonType>::shouldReadersWait(uint64_t state) {
+  return (state & kWriteLocked) ||
+      (!ReaderPriority && (state & kHasWriteWaiters));
+}
+
+template <bool ReaderPriority, typename BatonType>
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_fast() {
+  return StateLock::tryMutate(state_, [](uint64_t& state) {
+    if (FOLLY_UNLIKELY(shouldReadersWait(state))) {
+      return false;
+    }
+    state += kReadersInc;
+    return true;
+  });
+}
+
+template <bool ReaderPriority, typename BatonType>
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_unlock_shared_fast() {
+  return StateLock::tryMutate(state_, [](uint64_t& state) {
+    auto numReaders = state >> kReadersShift;
+    assert(!(state & kWriteLocked) && numReaders > 0);
+    if (FOLLY_UNLIKELY(numReaders == 1 && (state & kHasWriteWaiters))) {
+      return false; // We may need to wake up a writer.
+    }
+    state -= kReadersInc;
+    return true;
+  });
 }
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::lock_shared() {
+  if (try_lock_shared_fast()) {
+    return;
+  }
+
   StateLock slock{state_};
   assert(!(slock.state() & kHasWriteWaiters) == write_waiters_.empty());
   if (shouldReadersWait(slock)) {
@@ -304,6 +351,9 @@ template <bool ReaderPriority, typename BatonType>
 template <typename Clock, typename Duration>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
     const std::chrono::time_point<Clock, Duration>& deadline) {
+  if (try_lock_shared_fast()) {
+    return true;
+  }
   StateLock slock{state_};
   if (shouldReadersWait(slock)) {
     MutexWaiter waiter;
@@ -333,6 +383,10 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
 
 template <bool ReaderPriority, typename BatonType>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared() {
+  if (try_lock_shared_fast()) {
+    return true;
+  }
+
   StateLock slock{state_};
   if (shouldReadersWait(slock)) {
     return false;
@@ -344,6 +398,10 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared() {
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_shared() {
+  if (try_unlock_shared_fast()) {
+    return;
+  }
+
   assert((state_.load(std::memory_order_relaxed) >> kReadersShift) > 0);
   unlock_();
 }

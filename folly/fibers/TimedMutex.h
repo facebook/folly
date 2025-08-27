@@ -210,7 +210,11 @@ class TimedRWMutexImpl {
   class StateLock;
 
   void verify_unlocked_properties(StateLock& slock) const;
-  bool shouldReadersWait(StateLock& slock) const;
+  FOLLY_ALWAYS_INLINE bool shouldReadersWait(StateLock& slock) const;
+  FOLLY_ALWAYS_INLINE static bool shouldReadersWait(uint64_t state);
+
+  FOLLY_ALWAYS_INLINE bool try_lock_shared_fast();
+  FOLLY_ALWAYS_INLINE bool try_unlock_shared_fast();
 
   bool try_lock_(StateLock& slock);
   void unlock_();
