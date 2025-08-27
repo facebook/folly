@@ -349,7 +349,9 @@ size_t Symbolizer::symbolize(
 
       // Get the unrelocated, ELF-relative address by normalizing via the
       // address at which the object is loaded.
-      auto const adjusted = addr - reinterpret_cast<uintptr_t>(lmap->l_addr);
+      auto const eaddr = static_cast<ElfAddr>(addr);
+      auto const maddr = lmap->l_addr;
+      auto const adjusted = eaddr < maddr ? ~ElfAddr(0) : eaddr - maddr;
       size_t numInlined = 0;
       if (containedInExecutableSegment(*elfFile, adjusted)) {
         if (mode_ == LocationInfoMode::FULL_WITH_INLINE &&

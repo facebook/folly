@@ -19,6 +19,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = select({
         "DEFAULT": [],
+        "ovr_config//os:android": [
+            "//third-party/libdwarf:dwarf",
+        ],
         "ovr_config//os:linux": [
             "//third-party/libdwarf:dwarf",
         ],
