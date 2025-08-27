@@ -228,7 +228,7 @@ FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME int munmap(void* addr, size_t length) {
       VirtualQuery(addr, &inf, sizeof(inf));
       assert(inf.AllocationBase == addr);
 
-      auto deb = (MemMapDebugTrailer*)((char*)addr + length);
+      [[maybe_unused]] auto deb = (MemMapDebugTrailer*)((char*)addr + length);
       assert(deb->length == length);
       assert(deb->magic == kMMapLengthMagic);
     }
