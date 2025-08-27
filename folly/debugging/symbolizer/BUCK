@@ -64,6 +64,9 @@ non_fbcode_target(
         "//xplat/folly/lang:c_string",
         "//xplat/folly/lang:safe_assert",
     ],
+    exported_deps = [
+        "//xplat/folly:portability_config",
+    ],
 )
 
 non_fbcode_target(
