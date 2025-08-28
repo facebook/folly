@@ -21,6 +21,7 @@ non_fbcode_target(
         "TestUtil.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:fcntl",
         "//third-party/boost:boost",
         "//third-party/boost:boost_regex",
         "//third-party/glog:glog",
@@ -28,13 +29,12 @@ non_fbcode_target(
         "//xplat/folly:file",
         "//xplat/folly:file_util",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_fcntl",
         "//xplat/folly:string",
         "//xplat/folly/ext:test_ext",
         "//xplat/folly/ext/buck2:test_ext",
     ],
     exported_deps = [
-        "//xplat/folly:experimental_io_fs_util",
+        "fbsource//xplat/folly/experimental/io:fs_util",
         "//xplat/folly:range",
         "//xplat/folly:scope_guard",
     ],
