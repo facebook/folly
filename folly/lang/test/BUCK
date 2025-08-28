@@ -11,7 +11,7 @@ non_fbcode_target(
     name = "align_test",
     srcs = ["AlignTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:align",
     ],
 )
@@ -21,7 +21,7 @@ non_fbcode_target(
     name = "aligned_test",
     srcs = ["AlignedTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:aligned",
     ],
@@ -47,7 +47,7 @@ non_fbcode_target(
     srcs = ["BitsTest.cpp"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:random",
         "//xplat/folly/lang:bits",
     ],
@@ -58,7 +58,7 @@ non_fbcode_target(
     name = "c_string_test",
     srcs = ["CStringTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:c_string",
     ],
 )
@@ -68,7 +68,7 @@ non_fbcode_target(
     name = "cast_test",
     srcs = ["CastTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:utility",
         "//xplat/folly/lang:cast",
     ],
@@ -79,7 +79,7 @@ non_fbcode_target(
     name = "checked_math_test",
     srcs = ["CheckedMathTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:checked_math",
         "//xplat/folly/lang:keep",
     ],
@@ -102,8 +102,8 @@ non_fbcode_target(
     srcs = ["ExceptionTest.cpp"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:exception",
         "//xplat/folly/lang:keep",
@@ -116,7 +116,7 @@ non_fbcode_target(
     name = "extern_test",
     srcs = ["ExternTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:extern",
     ],
 )
@@ -126,7 +126,7 @@ non_fbcode_target(
     name = "hint_test",
     srcs = ["HintTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:hint",
     ],
 )
@@ -136,7 +136,7 @@ non_fbcode_target(
     name = "new_test",
     srcs = ["NewTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:new",
     ],
@@ -147,7 +147,7 @@ non_fbcode_target(
     name = "ordering_test",
     srcs = ["OrderingTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:ordering",
     ],
 )
@@ -157,7 +157,7 @@ non_fbcode_target(
     name = "pretty_test",
     srcs = ["PrettyTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:pretty",
     ],
 )
@@ -167,7 +167,7 @@ non_fbcode_target(
     name = "propagate_const_test",
     srcs = ["PropagateConstTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:propagate_const",
     ],
 )
@@ -178,7 +178,7 @@ non_fbcode_target(
     srcs = ["RValueReferenceWrapperTest.cpp"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:rvalue_reference_wrapper",
     ],
 )
@@ -188,7 +188,7 @@ non_fbcode_target(
     name = "safe_alias_test",
     srcs = ["SafeAliasTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/detail:tuple",
         "//xplat/folly/lang:safe_alias",
     ],
@@ -200,10 +200,10 @@ non_fbcode_target(
     srcs = ["SafeAssertTest.cpp"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/glog:glog",
         "//xplat/folly:benchmark",
         "//xplat/folly:conv",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/lang:keep",
         "//xplat/folly/lang:safe_assert",
     ],
@@ -214,7 +214,7 @@ non_fbcode_target(
     name = "safe_closure_test",
     srcs = ["SafeClosureTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/coro/safe:captures",
         "//xplat/folly/lang:safe_closure",
     ],
@@ -235,7 +235,7 @@ non_fbcode_target(
     name = "thunk_test",
     srcs = ["ThunkTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:traits",
         "//xplat/folly/lang:thunk",
     ],
@@ -246,8 +246,8 @@ non_fbcode_target(
     name = "to_ascii_bench",
     srcs = ["ToAsciiBench.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:fmt_compile",
         "//xplat/folly:benchmark",
-        "//xplat/folly:portability_fmt_compile",
         "//xplat/folly/lang:keep",
         "//xplat/folly/lang:to_ascii",
     ],
@@ -258,7 +258,7 @@ non_fbcode_target(
     name = "to_ascii_test",
     srcs = ["ToAsciiTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:to_ascii",
     ],
 )
@@ -268,7 +268,7 @@ non_fbcode_target(
     name = "type_info_test",
     srcs = ["TypeInfoTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:type_info",
     ],
 )
@@ -278,7 +278,7 @@ non_fbcode_target(
     name = "vector_traits_test",
     srcs = ["VectorTraitsTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:vector_traits",
     ],
 )
