@@ -34,7 +34,7 @@ non_fbcode_target(
         "Async.h",
     ],
     deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly/executors:global_executor",
     ],
 )
@@ -72,10 +72,10 @@ non_fbcode_target(
         "FunctionScheduler.h",
     ],
     deps = [
+        "fbsource//xplat/folly/hash:hash",
         "//third-party/glog:glog",
         "//xplat/folly:conv",
         "//xplat/folly:function",
-        "//xplat/folly:hash_hash",
         "//xplat/folly:random",
         "//xplat/folly:range",
         "//xplat/folly:string",
@@ -93,7 +93,7 @@ non_fbcode_target(
         "FutureExecutor.h",
     ],
     deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly/functional:invoke",
     ],
 )
@@ -126,8 +126,8 @@ non_fbcode_target(
         "TimekeeperScheduledExecutor.h",
     ],
     deps = [
+        "fbsource//xplat/folly/futures:core",
         "//third-party/glog:glog",
-        "//xplat/folly:futures_core",
         "//xplat/folly/executors:scheduled_executor",
     ],
 )
@@ -177,7 +177,7 @@ non_fbcode_target(
         "ManualExecutor.h",
     ],
     deps = [
-        "//xplat/folly:synchronization_lifo_sem",
+        "fbsource//xplat/folly/synchronization:lifo_sem",
         "//xplat/folly/executors:drivable_executor",
         "//xplat/folly/executors:scheduled_executor",
         "//xplat/folly/executors:sequenced_executor",
@@ -195,8 +195,8 @@ non_fbcode_target(
         "QueueObserver.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:sys_types",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_sys_types",
         "//xplat/folly:synchronized",
     ],
 )
@@ -259,8 +259,8 @@ non_fbcode_target(
         "//xplat/folly/system:hardware_concurrency",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gflags",
         "//xplat/folly:executor",
-        "//xplat/folly:portability_gflags",
         "//xplat/folly/executors:io_executor",
         "//xplat/folly/executors:thread_pool_executor",
     ],
@@ -275,10 +275,10 @@ non_fbcode_target(
         "SerialExecutor-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:relaxed_atomic",
         "//third-party/glog:glog",
         "//xplat/folly:exception_string",
         "//xplat/folly:scope_guard",
-        "//xplat/folly:synchronization_relaxed_atomic",
         "//xplat/folly/concurrency:unbounded_queue",
         "//xplat/folly/executors:global_executor",
         "//xplat/folly/executors:serialized_executor",
@@ -382,7 +382,7 @@ non_fbcode_target(
         "Codel.h",
     ],
     deps = [
-        "//xplat/folly:portability_gflags",
+        "fbsource//xplat/folly/portability:gflags",
     ],
 )
 
@@ -397,10 +397,10 @@ non_fbcode_target(
         "EDFThreadPoolExecutor.h",
     ],
     deps = [
-        "//xplat/folly:portability_gflags",
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/synchronization:lifo_sem",
+        "fbsource//xplat/folly/synchronization:throttled_lifo_sem",
         "//xplat/folly:scope_guard",
-        "//xplat/folly:synchronization_lifo_sem",
-        "//xplat/folly:synchronization_throttled_lifo_sem",
         "//xplat/folly/concurrency:process_local_unique_id",
         "//xplat/folly/executors:soft_real_time_executor",
         "//xplat/folly/executors:thread_pool_executor",
@@ -419,9 +419,9 @@ non_fbcode_target(
         "CPUThreadPoolExecutor.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/synchronization:throttled_lifo_sem",
         "//xplat/folly:optional",
-        "//xplat/folly:portability_gflags",
-        "//xplat/folly:synchronization_throttled_lifo_sem",
         "//xplat/folly/executors:queue_observer",
         "//xplat/folly/executors:thread_pool_executor",
         "//xplat/folly/executors/task_queue:priority_lifo_sem_mpmc_queue",
@@ -441,18 +441,18 @@ non_fbcode_target(
         "ThreadPoolExecutor.h",
     ],
     deps = [
-        "//xplat/folly:synchronization_asymmetric_thread_fence",
+        "fbsource//xplat/folly/synchronization:asymmetric_thread_fence",
         "//xplat/folly/tracing:static_tracepoint",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/portability:pthread",
+        "fbsource//xplat/folly/synchronization:atomic_struct",
+        "fbsource//xplat/folly/synchronization:baton",
         "//third-party/glog:glog",
         "//xplat/folly:default_keep_alive_executor",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_gflags",
-        "//xplat/folly:portability_pthread",
         "//xplat/folly:shared_mutex",
-        "//xplat/folly:synchronization_atomic_struct",
-        "//xplat/folly:synchronization_baton",
         "//xplat/folly/concurrency:process_local_unique_id",
         "//xplat/folly/executors:global_thread_pool_list",
         "//xplat/folly/executors/task_queue:lifo_sem_mpmc_queue",
@@ -537,13 +537,13 @@ non_fbcode_target(
         "IOThreadPoolExecutor.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gflags",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_gflags",
         "//xplat/folly/detail:memory_idler",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/synchronization:relaxed_atomic",
         "//xplat/folly:portability",
-        "//xplat/folly:synchronization_relaxed_atomic",
         "//xplat/folly/executors:io_executor",
         "//xplat/folly/executors:queue_observer",
         "//xplat/folly/executors:thread_pool_executor",
