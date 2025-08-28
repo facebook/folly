@@ -115,9 +115,9 @@ non_fbcode_target(
         "//xplat/folly/detail/base64_detail:base64_scalar",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:constexpr",
         "//xplat/folly:cpu_id",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_constexpr",
         "//xplat/folly/detail/base64_detail:base64_sse4_2",
         "//xplat/folly/detail/base64_detail:base64_swar",
     ],
