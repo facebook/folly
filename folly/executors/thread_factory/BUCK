@@ -32,9 +32,9 @@ non_fbcode_target(
         "PriorityThreadFactory.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:sys_resource",
+        "fbsource//xplat/folly/portability:sys_time",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_sys_resource",
-        "//xplat/folly:portability_sys_time",
         "//xplat/folly:string",
         "//xplat/folly/system:thread_name",
     ],

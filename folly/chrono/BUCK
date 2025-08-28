@@ -25,11 +25,11 @@ non_fbcode_target(
         "Conv.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:sys_time",
+        "fbsource//xplat/folly/portability:sys_types",
         "//xplat/folly:constexpr_math",
         "//xplat/folly:conv",
         "//xplat/folly:expected",
-        "//xplat/folly:portability_sys_time",
-        "//xplat/folly:portability_sys_types",
         "//xplat/folly:utility",
     ],
 )
