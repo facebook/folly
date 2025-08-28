@@ -22,11 +22,11 @@ non_fbcode_target(
         ":relaxed_atomic",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:asm",
+        "fbsource//xplat/folly/portability:sys_membarrier",
+        "fbsource//xplat/folly/portability:sys_mman",
         "//xplat/folly:exception",
         "//xplat/folly:indestructible",
-        "//xplat/folly:portability_asm",
-        "//xplat/folly:portability_sys_membarrier",
-        "//xplat/folly:portability_sys_mman",
     ],
 )
 
@@ -99,10 +99,10 @@ non_fbcode_target(
         "Baton.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:asm",
         ":atomic_util",
         ":wait_options",
         "//xplat/folly:likely",
-        "//xplat/folly:portability_asm",
         "//xplat/folly/detail:async_trace",
         "//xplat/folly/detail:futex",
         "//xplat/folly/detail:memory_idler",
@@ -153,6 +153,7 @@ non_fbcode_target(
         "DistributedMutex-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:asm",
         ":atomic_notification",
         ":atomic_util",
         ":lock",
@@ -161,7 +162,6 @@ non_fbcode_target(
         "//xplat/folly:likely",
         "//xplat/folly:optional",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_asm",
         "//xplat/folly:scope_guard",
         "//xplat/folly:utility",
         "//xplat/folly/chrono:hardware",
@@ -183,10 +183,10 @@ non_fbcode_target(
         "EventCount.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:sys_time",
+        "fbsource//xplat/folly/portability:unistd",
         "//third-party/glog:glog",
         "//xplat/folly:likely",
-        "//xplat/folly:portability_sys_time",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly/detail:futex",
         "//xplat/folly/lang:bits",
     ],
@@ -230,7 +230,7 @@ non_fbcode_target(
         "HazptrThrLocal.h",
     ],
     deps = [
-        "//xplat/folly:portability_gflags",
+        "fbsource//xplat/folly/portability:gflags",
     ],
     exported_deps = [
         ":asymmetric_thread_fence",
@@ -347,7 +347,7 @@ non_fbcode_target(
         "NativeSemaphore.h",
     ],
     exported_deps = [
-        "//xplat/folly:portability_windows",
+        "fbsource//xplat/folly/portability:windows",
         "//xplat/folly:utility",
         "//xplat/folly/lang:exception",
     ],
@@ -431,10 +431,10 @@ non_fbcode_target(
         "RWSpinLock.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:asm",
         ":lock",
         "//xplat/folly:likely",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_asm",
     ],
 )
 
@@ -464,11 +464,11 @@ non_fbcode_target(
         "SaturatingSemaphore.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:asm",
         ":atomic_util",
         ":wait_options",
         "//third-party/glog:glog",
         "//xplat/folly:likely",
-        "//xplat/folly:portability_asm",
         "//xplat/folly/detail:futex",
         "//xplat/folly/detail:memory_idler",
         "//xplat/folly/lang:switch",

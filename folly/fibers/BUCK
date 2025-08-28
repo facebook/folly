@@ -46,9 +46,9 @@ non_fbcode_target(
         "GuardPageAllocator.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:sys_mman",
+        "fbsource//xplat/folly/portability:unistd",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_sys_mman",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:singleton",
         "//xplat/folly:spin_lock",
         "//xplat/folly:synchronized",
@@ -64,7 +64,7 @@ non_fbcode_target(
         "GenericBaton.h",
     ],
     deps = [
-        "//xplat/folly:synchronization_baton",
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly/fibers:core",
     ],
 )
@@ -89,14 +89,14 @@ non_fbcode_target(
         "Promise-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:asm",
+        "fbsource//xplat/folly/portability:config",
+        "fbsource//xplat/folly/portability:sys_syscall",
+        "fbsource//xplat/folly/portability:unistd",
+        "fbsource//xplat/folly/synchronization:sanitize_thread",
         "//third-party/glog:glog",
         "//xplat/folly:constexpr_math",
-        "//xplat/folly:portability_asm",
-        "//xplat/folly:portability_config",
-        "//xplat/folly:portability_sys_syscall",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:singleton_thread_local",
-        "//xplat/folly:synchronization_sanitize_thread",
         "//xplat/folly/detail:memory_idler",
         "//xplat/folly/memory:sanitize_address",
     ],
@@ -136,9 +136,9 @@ non_fbcode_target(
         "AtomicBatchDispatcher-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:c_portability",
         "//xplat/folly:function",
-        "//xplat/folly:futures_core",
         "//xplat/folly:optional",
         "//xplat/folly/fibers/detail:atomic_batch_dispatcher",
     ],
@@ -179,7 +179,7 @@ non_fbcode_target(
         "Semaphore.h",
     ],
     deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:intrusive_list",
         "//xplat/folly:synchronized",
         "//xplat/folly/coro:task",
@@ -199,7 +199,7 @@ non_fbcode_target(
         "SemaphoreBase.h",
     ],
     deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:intrusive_list",
         "//xplat/folly:synchronized",
         "//xplat/folly/experimental/coro:task",
@@ -240,8 +240,8 @@ non_fbcode_target(
         "BatchDispatcher.h",
     ],
     deps = [
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:function",
-        "//xplat/folly:futures_core",
     ],
 )
 
@@ -273,10 +273,10 @@ non_fbcode_target(
         "TimedMutex-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:call_once",
         "//xplat/folly:intrusive_list",
         "//xplat/folly:portability",
         "//xplat/folly:spin_lock",
-        "//xplat/folly:synchronization_call_once",
         "//xplat/folly/fibers:generic_baton",
     ],
 )
@@ -351,8 +351,8 @@ non_fbcode_target(
         "ExecutorLoopController-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:executor",
-        "//xplat/folly:futures_core",
         "//xplat/folly/fibers:core",
         "//xplat/folly/fibers:executor_based_loop_controller",
         "//xplat/folly/fibers:loop_controller",
@@ -368,7 +368,7 @@ non_fbcode_target(
         "FiberManager-inl.h",
     ],
     exported_deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly/fibers:core",
         "//xplat/folly/functional:invoke",
     ],
@@ -383,10 +383,10 @@ non_fbcode_target(
         "FiberManagerMap-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:relaxed_atomic",
         "//xplat/folly:function",
         "//xplat/folly:scope_guard",
         "//xplat/folly:singleton_thread_local",
-        "//xplat/folly:synchronization_relaxed_atomic",
         "//xplat/folly:synchronized",
         "//xplat/folly/fibers:core",
         "//xplat/folly/fibers:event_base_loop_controller",
