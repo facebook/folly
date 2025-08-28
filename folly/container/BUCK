@@ -37,8 +37,8 @@ non_fbcode_target(
         "HeterogeneousAccess.h",
     ],
     deps = [
-        "//xplat/folly:hash_hash",
-        "//xplat/folly:hash_rapidhash",
+        "fbsource//xplat/folly/hash:hash",
+        "fbsource//xplat/folly/hash:rapidhash",
         "//xplat/folly:portability",
         "//xplat/folly:range",
         "//xplat/folly:traits",
@@ -64,8 +64,8 @@ non_fbcode_target(
         "Enumerate.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:sys_types",
         "//xplat/folly:c_portability",
-        "//xplat/folly:portability_sys_types",
     ],
 )
 
@@ -228,7 +228,7 @@ non_fbcode_target(
         "heap_vector_types.h",
     ],
     exported_deps = [
-        "//xplat/folly:portability_builtins",
+        "fbsource//xplat/folly/portability:builtins",
         "//xplat/folly:range",
         "//xplat/folly:scope_guard",
         "//xplat/folly:traits",
@@ -283,13 +283,13 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["RegexMatchCache.h"],
     deps = [
+        "fbsource//xplat/folly/portability:windows",
+        "fbsource//xplat/folly/synchronization:atomic_util",
         "//third-party/boost:boost_regex",
         "//third-party/fmt:fmt",
         "//third-party/glog:glog",
         "//xplat/folly:map_util",
-        "//xplat/folly:portability_windows",
         "//xplat/folly:string",
-        "//xplat/folly:synchronization_atomic_util",
         "//xplat/folly/ssl:openssl_hash",
     ],
     exported_deps = [
@@ -309,9 +309,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["span.h"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:constexpr",
         "//xplat/folly:cpp_attributes",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_constexpr",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
         "//xplat/folly/container:access",
@@ -444,13 +444,13 @@ non_fbcode_target(
         "small_vector.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/hash:hash",
+        "fbsource//xplat/folly/portability:malloc",
         "//third-party/boost:boost",
         "//xplat/folly:constexpr_math",
         "//xplat/folly:format_traits",
-        "//xplat/folly:hash_hash",
         "//xplat/folly:likely",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_malloc",
         "//xplat/folly:scope_guard",
         "//xplat/folly:traits",
         "//xplat/folly/functional:invoke",
