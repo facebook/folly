@@ -73,6 +73,10 @@ template <typename Sig>
 class CallbackHolder {
  public:
   void registerCallback(Sig& f) { callbacks_.wlock()->push_back(f); }
+  void unregisterCallback(Sig& f) {
+    auto callbacks = callbacks_.wlock();
+    std::erase(*callbacks, f);
+  }
 
   // always inline to enforce kInternalFramesNumber
   template <typename... Args>
@@ -99,6 +103,9 @@ namespace exception_tracer {
   }                                                             \
   void register##NAME##Callback(NAME##Sig& callback) {          \
     get##NAME##Callbacks().registerCallback(callback);          \
+  }                                                             \
+  void unregister##NAME##Callback(NAME##Sig& callback) {        \
+    get##NAME##Callbacks().unregisterCallback(callback);        \
   }
 
 FOLLY_EXNTRACE_DECLARE_CALLBACK(CxaThrow)
