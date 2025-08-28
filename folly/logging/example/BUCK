@@ -19,7 +19,7 @@ non_fbcode_target(
         "lib.h",
     ],
     deps = [
-        "//xplat/folly:logging_logging",
+        "fbsource//xplat/folly/logging:logging",
         "//xplat/folly:range",
     ],
 )
