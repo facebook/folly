@@ -50,7 +50,7 @@ non_fbcode_target(
     srcs = ["simplebridge.pyx"],
     headers = ["simple.h"],
     cpp_deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
     ],
     deps = [
         "//xplat/folly/python:fibers",
@@ -130,7 +130,7 @@ non_fbcode_target(
     ],
     supports_static_listing = False,
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/experimental/coro:blocking_wait",
         "//xplat/folly/experimental/coro:task",
         "//xplat/folly/python:async_generator_lib",
@@ -146,7 +146,7 @@ non_fbcode_target(
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/python:python",  # Python.h
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:scope_guard",
         "//xplat/folly/python:error",
     ],

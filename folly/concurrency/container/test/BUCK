@@ -9,7 +9,7 @@ non_fbcode_target(
     name = "atomic_grow_array_test",
     srcs = ["atomic_grow_array_test.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/concurrency/container:atomic_grow_array",
         "//xplat/folly/lang:keep",
     ],

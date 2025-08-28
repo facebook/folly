@@ -11,7 +11,7 @@ non_fbcode_target(
     srcs = ["ContainsTest.cpp"],
     headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:test_test_utils",
         "//xplat/folly/algorithm/simd:contains",
         "//xplat/folly/algorithm/simd/detail:simd_contains_impl",
@@ -23,7 +23,7 @@ non_fbcode_target(
     name = "find_first_of_test",
     srcs = ["find_first_of_test.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:string",
         "//xplat/folly/algorithm/simd:find_first_of",
         "//xplat/folly/algorithm/simd:find_first_of_extra",
@@ -35,9 +35,9 @@ non_fbcode_target(
     name = "find_fixed_test",
     srcs = ["FindFixedTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/fmt:fmt",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/algorithm/simd:find_fixed",
     ],
 )
@@ -47,8 +47,8 @@ non_fbcode_target(
     name = "momemask_test",
     srcs = ["MovemaskTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/algorithm/simd:movemask",
     ],
 )
