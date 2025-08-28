@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include <random>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -1092,4 +1093,50 @@ TEST(Traits, follyHasherFloatAvalanches) {
 
 TEST(Traits, follyHasherDoubleAvalanches) {
   verifyAvalanching<folly::hasher<double>>(0.0, [](double& v) { v += 1; });
+}
+
+TEST(HashSequence, Fold) {
+  EXPECT_EQ(folly::hash::detail::hash_sequence(folly::hasher<int>{}), 0);
+  EXPECT_EQ(
+      folly::hash::detail::hash_sequence(folly::hasher<int>{}, 1),
+      folly::hasher<int>{}(1));
+  EXPECT_EQ(
+      folly::hash::detail::hash_sequence(folly::hasher<int>{}, 1, 2),
+      folly::hash::hash_128_to_64(
+          folly::hasher<int>{}(1), folly::hasher<int>{}(2)));
+  EXPECT_EQ(
+      folly::hash::detail::hash_sequence(folly::hasher<int>{}, 1, 2, 3),
+      folly::hash::hash_128_to_64(
+          folly::hasher<int>{}(1),
+          folly::hash::hash_128_to_64(
+              folly::hasher<int>{}(2), folly::hasher<int>{}(3))));
+}
+
+TEST(HashSequence, TypeMix) {
+  EXPECT_EQ(
+      folly::hash::detail::hash_sequence(
+          folly::detail::hash_one, 1, 1.0, std::string_view{"hello"}),
+      folly::hash::hash_128_to_64(
+          folly::hasher<int>{}(1),
+          folly::hash::hash_128_to_64(
+              folly::hasher<double>{}(1.0),
+              folly::hasher<std::string_view>{}("hello"))));
+}
+
+TEST(HashTuple, Empty) {
+  auto empty = std::make_tuple<>();
+  EXPECT_EQ(
+      folly::hash::detail::hash_tuple(folly::hasher<decltype(empty)>{}, empty),
+      0);
+}
+
+TEST(HashTuple, Basic) {
+  auto basic = std::make_tuple<int, double, std::string>(1, 1.0, "hello");
+  EXPECT_EQ(
+      folly::hash::detail::hash_tuple(folly::detail::hash_one, basic),
+      folly::hash::hash_128_to_64(
+          folly::hasher<int>{}(1),
+          folly::hash::hash_128_to_64(
+              folly::hasher<double>{}(1.0),
+              folly::hasher<std::string>{}("hello"))));
 }

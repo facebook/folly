@@ -42,7 +42,6 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
-#include <folly/functional/ApplyTuple.h>
 #include <folly/hash/MurmurHash.h>
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
@@ -82,6 +81,38 @@ constexpr uint64_t hash_128_to_64(
   b *= kMul;
   return b;
 }
+
+namespace detail {
+
+template <typename H>
+constexpr uint64_t hash_sequence(const H&) noexcept {
+  return 0;
+}
+
+template <typename H, typename T>
+constexpr uint64_t hash_sequence(const H& h, const T& v) noexcept(
+    noexcept(h(v))) {
+  return h(v);
+}
+
+template <typename H, typename T, typename... Ts>
+constexpr uint64_t hash_sequence(
+    const H& h, const T& v, const Ts&... ts) noexcept(noexcept(h(v))) {
+  return hash::hash_128_to_64(h(v), hash_sequence(h, ts...));
+}
+
+template <typename H, typename Tuple, size_t... Is>
+uint64_t hash_tuple_sequence(
+    const H& h, const Tuple& t, std::index_sequence<Is...>) {
+  return hash_sequence(h, std::get<Is>(t)...);
+}
+
+template <typename H, typename... Ts>
+constexpr uint64_t hash_tuple(const H& h, const std::tuple<Ts...>& t) {
+  return hash_tuple_sequence(h, t, std::make_index_sequence<sizeof...(Ts)>());
+}
+
+} // namespace detail
 
 /**
  * Order-independent reduction of two 64-bit hashes into one.
@@ -859,12 +890,14 @@ struct Hash {
     return hasher<T>()(v);
   }
 
-  template <class T, class... Ts>
-  constexpr size_t operator()(const T& t, const Ts&... ts) const {
-    return hash::hash_128_to_64((*this)(t), (*this)(ts...));
+  template <class... Ts>
+  constexpr size_t operator()(const Ts&... ts) const {
+    return static_cast<size_t>(hash::detail::hash_sequence(*this, ts...));
   }
 
-  constexpr size_t operator()() const noexcept { return 0; }
+  constexpr size_t operator()() const noexcept {
+    return static_cast<size_t>(hash::detail::hash_sequence(*this));
+  }
 };
 
 // IsAvalanchingHasher<H, K> extends std::integral_constant<bool, V>.
@@ -1016,7 +1049,10 @@ struct IsAvalanchingHasher<hasher<std::string_view>, K> : std::true_type {};
 
 template <typename T>
 struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {
-  size_t operator()(T key) const noexcept { return Hash()(to_underlying(key)); }
+  size_t operator()(T key) const noexcept {
+    auto u = to_underlying(key);
+    return hasher<decltype(u)>{}(u);
+  }
 };
 
 template <typename T, typename K>
@@ -1024,19 +1060,31 @@ struct IsAvalanchingHasher<
     hasher<T, std::enable_if_t<std::is_enum<T>::value>>,
     K> : IsAvalanchingHasher<hasher<std::underlying_type_t<T>>, K> {};
 
+namespace detail {
+struct hash_one_fn {
+  template <typename T>
+  constexpr size_t operator()(T const& v) const
+      noexcept(noexcept(hasher<T>{}(v))) {
+    return hasher<T>{}(v);
+  }
+};
+
+inline constexpr hash_one_fn hash_one{};
+} // namespace detail
+
 template <typename T1, typename T2>
 struct hasher<std::pair<T1, T2>> {
   using folly_is_avalanching = std::true_type;
 
   size_t operator()(const std::pair<T1, T2>& key) const {
-    return Hash()(key.first, key.second);
+    return hash::detail::hash_sequence(detail::hash_one, key.first, key.second);
   }
 };
 
 template <typename... Ts>
 struct hasher<std::tuple<Ts...>> {
   size_t operator()(const std::tuple<Ts...>& key) const {
-    return apply(Hash(), key);
+    return hash::detail::hash_tuple(detail::hash_one, key);
   }
 };
 
@@ -1045,7 +1093,8 @@ struct hasher<T*> {
   using folly_is_avalanching = hasher<std::uintptr_t>::folly_is_avalanching;
 
   size_t operator()(T* key) const {
-    return Hash()(folly::bit_cast<std::uintptr_t>(key));
+    auto val = folly::bit_cast<std::uintptr_t>(key);
+    return hasher<decltype(val)>{}(val);
   }
 };
 
@@ -1054,7 +1103,7 @@ struct hasher<std::unique_ptr<T>> {
   using folly_is_avalanching = typename hasher<T*>::folly_is_avalanching;
 
   size_t operator()(const std::unique_ptr<T>& key) const {
-    return Hash()(key.get());
+    return hasher<T*>{}(key.get());
   }
 };
 
@@ -1063,7 +1112,7 @@ struct hasher<std::shared_ptr<T>> {
   using folly_is_avalanching = typename hasher<T*>::folly_is_avalanching;
 
   size_t operator()(const std::shared_ptr<T>& key) const {
-    return Hash()(key.get());
+    return hasher<T*>{}(key.get());
   }
 };
 

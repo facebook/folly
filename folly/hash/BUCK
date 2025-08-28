@@ -177,7 +177,6 @@ fbcode_target(
         "//folly:portability",
         "//folly:traits",
         "//folly:utility",
-        "//folly/functional:apply_tuple",
         "//folly/lang:bits",
     ],
 )
