@@ -11,9 +11,9 @@ non_fbcode_target(
     name = "at_fork_test",
     srcs = ["AtForkTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly:utility",
         "//xplat/folly/system:at_fork",
     ],
@@ -24,7 +24,7 @@ non_fbcode_target(
     name = "aux_vector_test",
     srcs = ["AuxVectorTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/system:aux_vector",
     ],
 )
@@ -34,13 +34,13 @@ non_fbcode_target(
     name = "env_util_test",
     srcs = ["EnvUtilTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:fcntl",
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:stdlib",
         "//third-party/boost:boost_algorithm",
         "//third-party/glog:glog",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_fcntl",
-        "//xplat/folly:portability_gflags",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_stdlib",
         "//xplat/folly:subprocess",
         "//xplat/folly/container:array",
         "//xplat/folly/system:env_util",
@@ -52,8 +52,8 @@ non_fbcode_target(
     name = "pid_test",
     srcs = ["PidTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/system:pid",
     ],
 )
@@ -63,10 +63,10 @@ non_fbcode_target(
     name = "memory_mapping_test",
     srcs = ["MemoryMappingTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:sys_mman",
         "//third-party/glog:glog",
         "//xplat/folly:file_util",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_sys_mman",
         "//xplat/folly:random",
         "//xplat/folly/system:memory_mapping",
     ],
@@ -77,8 +77,8 @@ non_fbcode_target(
     name = "shell_test",
     srcs = ["ShellTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/system:shell",
     ],
 )
@@ -88,9 +88,9 @@ non_fbcode_target(
     name = "thread_id_test",
     srcs = ["ThreadIdTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:unistd",
         "//xplat/folly:benchmark",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly/system:thread_id",
     ],
 )
@@ -100,9 +100,9 @@ non_fbcode_target(
     name = "thread_name_test",
     srcs = ["ThreadNameTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly:scope_guard",
-        "//xplat/folly:synchronization_baton",
         "//xplat/folly/system:thread_name",
     ],
 )

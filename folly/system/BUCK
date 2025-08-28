@@ -14,14 +14,14 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AtFork.h"],
     deps = [
-        "//xplat/folly:portability_pthread",
+        "fbsource//xplat/folly/portability:pthread",
+        "fbsource//xplat/folly/synchronization:sanitize_thread",
         "//xplat/folly:scope_guard",
-        "//xplat/folly:synchronization_sanitize_thread",
         "//xplat/folly/lang:exception",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:sys_types",
         "//xplat/folly:function",
-        "//xplat/folly:portability_sys_types",
     ],
 )
 
@@ -43,9 +43,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["EnvUtil.h"],
     deps = [
+        "fbsource//xplat/folly/portability:stdlib",
+        "fbsource//xplat/folly/portability:unistd",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_stdlib",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:string",
     ],
     exported_deps = [
@@ -61,7 +61,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["HardwareConcurrency.h"],
     deps = [
-        "//xplat/folly:portability_sched",
+        "fbsource//xplat/folly/portability:sched",
     ],
 )
 
@@ -73,16 +73,16 @@ non_fbcode_target(
     raw_headers = ["MemoryMapping.h"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/portability:sys_mman",
+        "fbsource//xplat/folly/portability:sys_syscall",
         "//third-party/glog:glog",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_gflags",
-        "//xplat/folly:portability_sys_mman",
-        "//xplat/folly:portability_sys_syscall",
         "//xplat/folly/experimental/io:huge_pages",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:unistd",
         "//xplat/folly:file",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:range",
     ],
 )
@@ -94,12 +94,12 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Pid.h"],
     deps = [
+        "fbsource//xplat/folly/portability:unistd",
         ":at_fork",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_unistd",
     ],
     exported_deps = [
-        "//xplat/folly:portability_sys_types",
+        "fbsource//xplat/folly/portability:sys_types",
     ],
 )
 
@@ -123,18 +123,18 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ThreadId.h"],
     windows_exported_deps = [
-        "//xplat/folly:assume",
-        "//xplat/folly:portability_time",
+        "fbsource//xplat/folly/lang:assume",
+        "fbsource//xplat/folly/portability:time",
         "//third-party/boost:boost_thread",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:pthread",
+        "fbsource//xplat/folly/portability:sys_syscall",
+        "fbsource//xplat/folly/portability:unistd",
+        "fbsource//xplat/folly/portability:windows",
+        "fbsource//xplat/folly/synchronization:relaxed_atomic",
         ":at_fork",
         "//xplat/folly:likely",
-        "//xplat/folly:portability_pthread",
-        "//xplat/folly:portability_sys_syscall",
-        "//xplat/folly:portability_unistd",
-        "//xplat/folly:portability_windows",
-        "//xplat/folly:synchronization_relaxed_atomic",
     ],
 )
 
@@ -145,15 +145,15 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ThreadName.h"],
     deps = [
+        "fbsource//xplat/folly/portability:windows",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_windows",
         "//xplat/folly:scope_guard",
         "//xplat/folly:traits",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:config",
+        "fbsource//xplat/folly/portability:pthread",
         "//xplat/folly:optional",
-        "//xplat/folly:portability_config",
-        "//xplat/folly:portability_pthread",
         "//xplat/folly:range",
     ],
 )
