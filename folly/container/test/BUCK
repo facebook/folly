@@ -826,7 +826,6 @@ fbcode_target(
     name = "std_bitset_test",
     srcs = ["StdBitsetTest.cpp"],
     deps = [
-        "fbsource//third-party/googletest:gtest",
         "//folly/container:std_bitset",
     ],
 )
@@ -1049,10 +1048,10 @@ fbcode_target(
     srcs = ["CollectionUtilTest.cpp"],
     headers = [],
     deps = [
-        "fbsource//third-party/googletest:gtest",
         "//folly:small_vector",
         "//folly:sorted_vector_types",
         "//folly/container:collection_util",
         "//folly/container:f14_hash",
+        "//folly/json:dynamic",
     ],
 )

@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
+#include <folly/json/dynamic.h>
 #include <folly/small_vector.h>
 #include <folly/sorted_vector_types.h>
 
@@ -135,4 +136,17 @@ TEST(CollectionUtilTest, hasFind) {
 
   OnlyHasFind<int, int> myMap2;
   EXPECT_FALSE(folly::contains(myMap, 0));
+}
+
+TEST(CollectionUtilTest, dynamicContains) {
+  // folly::dynamic has unusual semantics. Test contains() explicitly with
+  // dynamic maps and arrays.
+
+  dynamic obj = dynamic::object("a", 1)("b", 2)("c", 3);
+  EXPECT_TRUE(contains(obj, "b"));
+  EXPECT_FALSE(contains(obj, "d"));
+
+  dynamic arr = dynamic::array(1, 3, 5, 7);
+  EXPECT_TRUE(contains(arr, 5));
+  EXPECT_FALSE(contains(arr, 6));
 }
