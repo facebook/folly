@@ -29,7 +29,7 @@ non_fbcode_target(
     raw_headers = ["OpenSSLTransportCertificate.h"],
     deps = ["//xplat/folly/io/async:async_transport_certificate"],
     exported_deps = [
-        "//xplat/folly:portability_openssl",
+        "fbsource//xplat/folly/portability:openssl",
         "//xplat/folly/ssl:openssl_ptr_types",
     ],
 )
@@ -41,16 +41,16 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLUtils.h"],
     deps = [
+        "fbsource//xplat/folly/portability:unistd",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:scope_guard",
         "//xplat/folly/io/async:async_socket_exception",
         "//xplat/folly/ssl:ssl_session",
         "//xplat/folly/ssl/detail:openssl_session",
     ],
     exported_deps = [
-        "//xplat/folly:portability_openssl",
-        "//xplat/folly:portability_sockets",
+        "fbsource//xplat/folly/portability:openssl",
+        "fbsource//xplat/folly/portability:sockets",
         "//xplat/folly:range",
         "//xplat/folly/net:network_socket",
         "//xplat/folly/ssl:openssl_ptr_types",
@@ -64,7 +64,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SSLErrors.h"],
     deps = [
-        "//xplat/folly:portability_openssl",
+        "fbsource//xplat/folly/portability:openssl",
         "//xplat/folly:range",
     ],
     exported_deps = ["//xplat/folly/io/async:async_socket_exception"],

@@ -11,9 +11,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLPtrTypes.h"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:openssl",
         "//third-party/glog:glog",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_openssl",
     ],
 )
 
@@ -27,8 +27,8 @@ non_fbcode_target(
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:openssl",
         ":openssl_ptr_types",
-        "//xplat/folly:portability_openssl",
         "//xplat/folly:range",
     ],
 )
@@ -46,9 +46,9 @@ non_fbcode_target(
     ],
     exported_deps = [
         "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:openssl",
         ":openssl_ptr_types",
         "//xplat/folly:optional",
-        "//xplat/folly:portability_openssl",
     ],
 )
 
@@ -58,7 +58,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLVersionFinder.h"],
     exported_deps = [
-        "//xplat/folly:portability_openssl",
+        "fbsource//xplat/folly/portability:openssl",
     ],
 )
 
@@ -68,7 +68,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLTicketHandler.h"],
     deps = [
-        "//xplat/folly:portability_openssl",
+        "fbsource//xplat/folly/portability:openssl",
     ],
 )
 
@@ -90,10 +90,10 @@ non_fbcode_target(
         "//xplat/folly/ssl/detail:openssl_session",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:openssl",
         ":openssl_ptr_types",
         ":ssl_session",
         "//third-party/boost:boost",
-        "//xplat/folly:portability_openssl",
     ],
 )
 
@@ -112,8 +112,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLKeyUtils.h"],
     deps = [
+        "fbsource//xplat/folly/portability:openssl",
         ":password_collector",
-        "//xplat/folly:portability_openssl",
     ],
     exported_deps = [
         ":openssl_ptr_types",

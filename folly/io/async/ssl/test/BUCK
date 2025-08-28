@@ -12,8 +12,8 @@ non_fbcode_target(
     contacts = ["oncall+secure_pipes@xmail.facebook.com"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_openssl",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:openssl",
         "//xplat/folly/io/async/ssl:ssl_errors",
     ],
 )
@@ -27,8 +27,8 @@ non_fbcode_target(
     contacts = ["oncall+secure_pipes@xmail.facebook.com"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:file_util",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async/ssl:basic_transport_certificate",
         "//xplat/folly/ssl:openssl_cert_utils",
     ],

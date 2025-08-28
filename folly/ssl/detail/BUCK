@@ -12,7 +12,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLSession.h"],
     exported_deps = [
-        "//xplat/folly:portability_openssl",
+        "fbsource//xplat/folly/portability:openssl",
         "//xplat/folly:shared_mutex",
         "//xplat/folly:synchronized",
         "//xplat/folly/ssl:openssl_ptr_types",
