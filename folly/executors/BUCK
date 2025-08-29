@@ -695,7 +695,6 @@ fbcode_target(
     srcs = ["EDFThreadPoolExecutor.cpp"],
     headers = ["EDFThreadPoolExecutor.h"],
     deps = [
-        "//folly:scope_guard",
         "//folly/concurrency:process_local_unique_id",
         "//folly/portability:gflags",
         "//folly/synchronization:lifo_sem",

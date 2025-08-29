@@ -29,7 +29,6 @@
 #include <vector>
 
 #include <glog/logging.h>
-#include <folly/ScopeGuard.h>
 #include <folly/concurrency/ProcessLocalUniqueId.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/LifoSem.h>
