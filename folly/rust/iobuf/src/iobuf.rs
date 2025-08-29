@@ -257,7 +257,8 @@ impl Clone for IOBufShared {
 impl Eq for IOBufShared {}
 impl PartialEq for IOBufShared {
     fn eq(&self, other: &Self) -> bool {
-        self.0.as_ref() == other.0.as_ref()
+        let foo = self.0.as_ref();
+        foo == other.0.as_ref()
     }
 }
 
