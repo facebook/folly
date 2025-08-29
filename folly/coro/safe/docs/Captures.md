@@ -83,6 +83,11 @@ If your function takes a capture, here is all you need to know:
 
         *Caveat*: To reduce use-after-move errors, dereferencing requires rvalues.
         That is, `*rcap` won't work -- you must `*std::move(rcap)`.
+  - *Power users:* It is a limitation of C++ that `operator->` loses value
+    category by returning a pointer.  In special cases where this is critical
+    for a good UX, it is technically possible to address that returning a
+    pointer to a specially crafted rvalue proxy for `rval_ptr` queries.  In
+    regular metaprogramming, you should use `(*cap).member` for deref.
 
 ### `safe_alias` warning: the "composition hole" & lambda captures
 

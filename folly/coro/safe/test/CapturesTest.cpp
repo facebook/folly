@@ -49,7 +49,7 @@ struct CapturesTest : testing::Test {
   static constexpr capture_private_t arg_priv{};
 
   template <typename ArgT>
-  auto make(auto&& arg) {
+  static constexpr auto make(auto&& arg) {
     return ArgT{
         arg_priv, forward_bind_wrapper(std::forward<decltype(arg)>(arg))};
   }
@@ -205,7 +205,73 @@ struct CapturesTest : testing::Test {
             std::make_unique<int>(7)),
         make_ref_fn);
   }
+
+  struct TestStruct {
+    int member_;
+  };
+
+  // Check that member access through capture has expected value category.
+  // Crucially, we use `(*x).` instead of `x->` since the latter returns a
+  // pointer, discarding value category.
+  template <
+      typename InnerType,
+      typename ExpectedRvalMemberType,
+      typename ExpectedLvalMemberType = void>
+  static constexpr void check_member_access() {
+    using Capture = capture<InnerType>;
+
+    TestStruct obj{};
+    auto cap = make<Capture>(obj);
+    static_assert(std::is_same_v<Capture, decltype(cap)>);
+
+    static_assert(
+        std::is_same_v<
+            decltype(((*static_cast<Capture&&>(cap)).member_)),
+            ExpectedRvalMemberType>);
+
+    // C++ language limitation: `operator->` returns a pointer, so it always
+    // gives lvalue access regardless of value category
+    static_assert(
+        std::is_same_v<
+            decltype((static_cast<Capture&&>(cap)->member_)),
+            std::remove_reference_t<ExpectedRvalMemberType>&>);
+
+    // Test lvalue access for `capture<V>` and `capture<V&>`.  `capture<V&&>`
+    // may only be accessed by-rvalue.
+    if constexpr (!std::is_rvalue_reference_v<InnerType>) {
+      static_assert(
+          std::is_same_v<decltype(((*cap).member_)), ExpectedLvalMemberType>);
+      static_assert(
+          std::is_same_v<
+              decltype(((*static_cast<Capture&>(cap)).member_)),
+              ExpectedLvalMemberType>);
+      static_assert(
+          std::is_same_v<
+              decltype((static_cast<Capture&>(cap)->member_)),
+              ExpectedLvalMemberType&>);
+    }
+  }
+
+  // Test the value category behavior of member access through capture-refs.
+  static constexpr bool test_member_value_category() {
+    // capture<V> (owned value) gives lvalue member for lvalue access, and
+    // rvalue members for rvalue access.
+    check_member_access<TestStruct, int&&, int&>();
+    check_member_access<const TestStruct, const int&&, const int&>();
+
+    // capture<V&> always gives lval members, even when accessed by rvalue.
+    check_member_access<TestStruct&, int&, int&>();
+    check_member_access<const TestStruct&, const int&, const int&>();
+
+    // capture<V&&> is only accessed by rvalue.
+    check_member_access<TestStruct&&, int&&>();
+    check_member_access<const TestStruct&&, const int&&>();
+
+    return true;
+  }
 };
+
+static_assert(CapturesTest::test_member_value_category());
 
 TEST_F(CapturesTest, indirect_getUnderlyingUnsafe) {
   auto ci = make<capture_indirect<std::unique_ptr<short>>>(

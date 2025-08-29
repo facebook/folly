@@ -250,7 +250,13 @@ class capture_crtp_base {
     } else if constexpr (Kind == ext::capture_proxy_kind::lval_ref) {
       return lref; // Unproxied l-value reference
     } else if constexpr (Kind == ext::capture_proxy_kind::rval_ref) {
-      return std::move(lref); // Unproxied r-value reference
+      // Implement regular forwarding-ref semantics:
+      //   (V&)&& -> V&, (V)&& -> V&&, (V&&)&& -> V&&
+      if constexpr (std::is_lvalue_reference_v<T>) {
+        return lref;
+      } else {
+        return std::move(lref);
+      }
     } else if constexpr (
         Kind == ext::capture_proxy_kind::lval_ptr ||
         Kind == ext::capture_proxy_kind::rval_ptr) {
