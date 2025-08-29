@@ -31,7 +31,7 @@ non_fbcode_target(
         "NetworkSocket.h",
     ],
     deps = [
-        "//xplat/folly:portability_windows",
+        "fbsource//xplat/folly/portability:windows",
         "//xplat/folly/net/detail:socket_file_descriptor_map",
     ],
 )
@@ -52,11 +52,11 @@ non_fbcode_target(
         "//xplat/folly/net/detail:socket_file_descriptor_map",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:iovec",
+        "fbsource//xplat/folly/portability:sys_types",
+        "fbsource//xplat/folly/portability:time",
+        "fbsource//xplat/folly/portability:windows",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_iovec",
-        "//xplat/folly:portability_sys_types",
-        "//xplat/folly:portability_time",
-        "//xplat/folly:portability_windows",
         "//xplat/folly/net:network_socket",
     ],
 )
@@ -90,8 +90,8 @@ non_fbcode_target(
         "TcpInfoTypes.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:sockets",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_sockets",
     ],
     exported_deps = [
         "//xplat/folly:expected",
