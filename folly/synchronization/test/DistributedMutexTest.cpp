@@ -1818,6 +1818,8 @@ TEST(DistributedMutex, TestExceptionPropagationUncontended) {
   thread.join();
 }
 
+#if !defined(FOLLY_SANITIZE_THREAD) || !FOLLY_SANITIZE_THREAD
+
 namespace {
 template <template <typename> class Atom = std::atomic>
 void concurrentExceptionPropagationStress(
@@ -1837,7 +1839,6 @@ void concurrentExceptionPropagationStress(
   //
   // So we are disabling it for now until some point in the future where TSAN
   // stops reporting this as a false-positive.
-  SKIP_IF(folly::kIsSanitizeThread);
 
   TestConstruction::reset();
   auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
@@ -1949,6 +1950,8 @@ TEST(DistributedMutex, TestExceptionPropagationDeterministicSixtyFourThreads) {
   concurrentExceptionPropagationDeterministic(
       64, std::chrono::seconds{kStressTestSeconds});
 }
+
+#endif // !FOLLY_SANITIZE_THREAD
 
 namespace {
 std::array<std::uint64_t, 8> makeMonotonicArray(int start) {
