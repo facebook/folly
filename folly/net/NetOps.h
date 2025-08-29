@@ -118,6 +118,10 @@ struct sockaddr_un {
 #endif
 #endif
 
+#ifndef FOLLY_HAVE_SO_TIMESTAMPING
+#define FOLLY_HAVE_SO_TIMESTAMPING 0
+#endif
+
 #ifndef SO_EE_ORIGIN_ZEROCOPY
 #define SO_EE_ORIGIN_ZEROCOPY 5
 #endif
