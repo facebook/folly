@@ -962,9 +962,7 @@ class SharedMutexImpl
   // that are the same after integer division by k share that resource.
   // Our strategy for deferred readers is to probe up to numSlots/4 slots,
   // using the full granularity of AccessSpreader for the start slot
-  // and then search outward.  We can use AccessSpreader::current(n)
-  // without managing our own spreader if kMaxDeferredReaders <=
-  // AccessSpreader::kMaxCpus, which is currently 128.
+  // and then search outward.
   //
   // In order to give each L1 cache its own playground, we need
   // kMaxDeferredReaders >= #L1 caches. We double it, making it
