@@ -17,6 +17,7 @@
 #include <folly/hash/Checksum.h>
 
 #include <algorithm>
+#include <stdexcept>
 
 #include <boost/crc.hpp>
 
