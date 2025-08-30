@@ -9,7 +9,7 @@ function (fb_activate_static_library_option)
   # is generally discouraged.
   mark_as_advanced(USE_STATIC_DEPS_ON_UNIX)
 
-  if(UNIX AND USE_STATIC_DEPS_ON_UNIX)
+  if((UNIX OR MINGW) AND USE_STATIC_DEPS_ON_UNIX)
     SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a" PARENT_SCOPE)
   endif()
 

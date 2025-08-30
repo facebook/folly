@@ -24,7 +24,9 @@
 // This is a massive pain to have be an `int` due to the pthread implementation
 // we support, but it's far more compatible with the rest of the windows world
 // as an `int` than it would be as a `void*`
+#ifdef _MSC_VER
 using pid_t = int;
+#endif
 
 using uid_t = int;
 using gid_t = int;
@@ -38,7 +40,10 @@ using ssize_t = SSIZE_T;
 #define HAVE_MODE_T 1
 // The Windows headers don't define this anywhere, nor do any of the libs
 // that Folly depends on, so define it here.
+#ifndef _MODE_T_
 using mode_t = unsigned int;
+#endif
+
 #endif
 
 #endif

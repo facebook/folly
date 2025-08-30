@@ -16,7 +16,7 @@
 
 #pragma once
 
-#ifndef _WIN32
+#if FOLLY_HAVE_PTHREAD && !defined(_MSC_VER)
 #include <sched.h>
 #else
 #define SCHED_OTHER 0
