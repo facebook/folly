@@ -18,8 +18,11 @@
 
 #include <array>
 #include <cstdint>
+#include <folly/Utility.h>
 #include <folly/detail/base64_detail/Base64Common.h>
 #include <folly/detail/base64_detail/Base64Constants.h>
+#include <folly/memory/UninitializedMemoryHacks.h>
+#include <folly/portability/Constexpr.h>
 
 namespace folly::detail::base64_detail {
 
@@ -257,6 +260,21 @@ constexpr Base64DecodeResult base64URLDecodeScalar(
       errorAccumulator !=
           static_cast<std::uint8_t>(constants::kDecodeErrorMarker),
       o};
+}
+
+constexpr inline const char* base64PHPStrictRemoveWhitespacesScalar(
+    const char* f, const char* l, char* o) noexcept {
+  constexpr auto& skips =
+      detail::base64_detail::constants::kBase64PHPStrictDecodeSkipTable;
+  std::size_t pos = 0;
+
+  while (f != l) {
+    auto v = *f++;
+    o[pos] = v;
+    pos += skips[to_unsigned(v)];
+  }
+
+  return o + pos;
 }
 
 } // namespace folly::detail::base64_detail

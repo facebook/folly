@@ -19,6 +19,7 @@
 #include <sstream>
 #include <string_view>
 #include <type_traits>
+#include <folly/detail/base64_detail/Base64Api.h>
 #include <folly/detail/base64_detail/Base64Scalar.h>
 #include <folly/detail/base64_detail/Base64Simd.h>
 #include <folly/detail/base64_detail/Base64_SSE4_2.h>
@@ -190,6 +191,9 @@ constexpr bool runEncodeTests(TestRunner testRunner) {
 #define GCC_CONSTEXPR_BUG_ACTIVE
 #endif
 
+enum DecoderType { URLDecoder, RegularDecoder, PHPStrictDecoder };
+
+template <DecoderType decoderType>
 struct ConstexprTester {
   constexpr bool encodeTest(TestCase test) const {
     std::array<char, 1000> buf = {};
@@ -272,6 +276,27 @@ struct ConstexprTester {
     return oneInput(test.encodedStd) && oneInput(test.encodedURL);
   }
 
+  constexpr bool decodePHPTest(TestCase test) const {
+    std::array<char, 1000> buf = {};
+    auto res = base64PHPStrictDecode(
+        test.encodedStd.data(),
+        test.encodedStd.data() + test.encodedStd.size(),
+        buf.begin());
+
+    std::string_view decoded(buf.begin(), res.o - buf.begin());
+
+    if (res.isSuccess && test.data == decoded) {
+      return true;
+    }
+
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
+    EXPECT_TRUE(res.isSuccess) << "encoded: " << test.encodedStd;
+    EXPECT_EQ(test.data, decoded) << "encoded: " << test.encodedStd;
+#endif
+
+    return false;
+  }
+
   constexpr bool sizeTests(TestCase test) const {
     std::size_t encodedSize = base64EncodedSize(test.data.size());
     std::size_t encodedURLSize = base64URLEncodedSize(test.data.size());
@@ -284,11 +309,15 @@ struct ConstexprTester {
     std::size_t decodedStdWithURlSize = base64URLDecodedSize(
         test.encodedStd.data(),
         test.encodedStd.data() + test.encodedStd.size());
+    std::size_t decodedPHPSize = base64PHPStrictDecodeRequiredOutputSize(
+        test.encodedStd.data(),
+        test.encodedStd.data() + test.encodedStd.size());
 
     if (encodedSize == test.encodedStd.size() &&
         encodedURLSize == test.encodedURL.size() &&
         decodedSize == test.data.size() && decodedURLSize == test.data.size() &&
-        decodedStdWithURlSize == test.data.size()) {
+        decodedStdWithURlSize == test.data.size() &&
+        decodedPHPSize >= test.data.size()) {
       return true;
     }
 
@@ -298,14 +327,30 @@ struct ConstexprTester {
     EXPECT_EQ(test.data.size(), decodedSize) << test.encodedStd;
     EXPECT_EQ(test.data.size(), decodedStdWithURlSize) << test.encodedStd;
     EXPECT_EQ(test.data.size(), decodedURLSize) << test.encodedURL;
+    EXPECT_LE(test.data.size(), decodedPHPSize) << test.encodedStd;
 #endif
 
     return false;
   }
 
   constexpr bool operator()(TestCase test) const {
-    return sizeTests(test) && encodeTest(test) && encodeURLTest(test) &&
-        decodeTest(test) && decodeURLTest(test);
+    if (!sizeTests(test)) {
+      return false;
+    }
+
+    if constexpr (decoderType == DecoderType::RegularDecoder) {
+      return encodeTest(test) && decodeTest(test);
+    }
+
+    if constexpr (decoderType == DecoderType::URLDecoder) {
+      return encodeURLTest(test) && decodeURLTest(test);
+    }
+
+    if constexpr (decoderType == DecoderType::PHPStrictDecoder) {
+      return decodePHPTest(test);
+    }
+
+    return true;
   }
 };
 
@@ -390,8 +435,13 @@ struct SimdTester {
 
 TEST(Base64, ConstexprTests) {
   // Comment out the static assert to debug
-  static_assert(runEncodeTests(ConstexprTester{}));
-  ASSERT_TRUE(runEncodeTests(ConstexprTester{}));
+  static_assert(runEncodeTests(ConstexprTester<DecoderType::RegularDecoder>{}));
+  static_assert(runEncodeTests(ConstexprTester<DecoderType::URLDecoder>{}));
+  static_assert(
+      runEncodeTests(ConstexprTester<DecoderType::PHPStrictDecoder>{}));
+  ASSERT_TRUE(runEncodeTests(ConstexprTester<DecoderType::RegularDecoder>{}));
+  ASSERT_TRUE(runEncodeTests(ConstexprTester<DecoderType::URLDecoder>{}));
+  ASSERT_TRUE(runEncodeTests(ConstexprTester<DecoderType::PHPStrictDecoder>{}));
 }
 
 TEST(Base64, SpecialCases) {
@@ -417,7 +467,7 @@ constexpr char kHasNegative1[] = {
 struct DecodingErrorDetectionTest {
   bool isSuccess;
   std::string_view input;
-} constexpr kDecodingErrorDection[] = {
+} constexpr kDecodingErrorDetection[] = {
     // clang-format off
     { true,  "" },
     { false, "=" },
@@ -456,40 +506,67 @@ constexpr std::string_view kDecodingOnlyURLValid[] = {
     "bA_/0a--ba+_bA_/0a--ba+_bA_/0a--ba+_bA_/0a--ba+_bA_/0a--ba+_bA_/0a--ba+_bA_/0a--ba+_bA_/0a--ba==",
 };
 
-template <bool isURLDecoder>
+constexpr std::string_view kDecodingOnlyStrictPHPValid[] = {
+    " ",
+    "\n",
+    "\t",
+    "\r",
+    "\t\n\r ",
+    "\n        \n",
+    "\n\n\n\n\n\n\n\n",
+    "\ta\t\na\n\ra\r a ",
+    "a\n\na\n\na\n\na\n\n"
+    "0w\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n=\n\n=\n\n",
+    "\r\r\r\r\r\r\r\r\r  0  0  0  \t\t\t\t\n\n\n\n   =   \n\n\n\n",
+};
+
+template <DecoderType decoderType>
 constexpr size_t decodedSize(std::string_view in) {
   const char* f = in.data();
   const char* l = in.data() + in.size();
 
-  if constexpr (isURLDecoder) {
+  if constexpr (decoderType == DecoderType::URLDecoder) {
     return base64URLDecodedSize(f, l);
+  } else if constexpr (decoderType == DecoderType::PHPStrictDecoder) {
+    return base64PHPStrictDecodeRequiredOutputSize(f, l);
   } else {
     return base64DecodedSize(f, l);
   }
 }
 
-template <bool isURLDecoder, typename Decoder>
+template <DecoderType decoderType, typename Decoder>
 void triggerASANOnBadDecode(std::string_view in, Decoder decoder) {
-  std::vector<char> buf(decodedSize<isURLDecoder>(in));
+  std::vector<char> buf(decodedSize<decoderType>(in));
   decoder(in.data(), in.data() + in.size(), buf.data());
 }
 
-template <bool isURLDecoder, typename Decoder>
-constexpr bool decodingErrorDectionTest(Decoder decoder) {
+template <DecoderType decoderType, typename Decoder>
+constexpr bool decodingErrorDetectionTest(Decoder decoder) {
   std::array<char, 1000> buf = {};
 
   auto sizeTest = [&](std::string_view in, Base64DecodeResult r) {
-    std::size_t allocatedSize = decodedSize<isURLDecoder>(in);
+    std::size_t allocatedSize = decodedSize<decoderType>(in);
 
     std::size_t usedSize = static_cast<std::size_t>(r.o - buf.data());
 
-    if (usedSize == allocatedSize) {
-      return true;
+    if constexpr (decoderType == DecoderType::PHPStrictDecoder) {
+      if (usedSize <= allocatedSize) {
+        return true;
+      }
+    } else {
+      if (usedSize == allocatedSize) {
+        return true;
+      }
     }
 
     if (r.isSuccess) {
 #ifndef GCC_CONSTEXPR_BUG_ACTIVE
-      EXPECT_EQ(usedSize, allocatedSize) << in << " isURL: " << isURLDecoder;
+      if constexpr (decoderType == DecoderType::PHPStrictDecoder) {
+        EXPECT_LE(usedSize, allocatedSize) << in;
+      } else {
+        EXPECT_EQ(usedSize, allocatedSize)
+            << in << " isURL: " << (decoderType == DecoderType::URLDecoder);
+      }
 #endif
       return false;
     }
@@ -497,16 +574,21 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
     if (allocatedSize > 1000 || // overflow
         usedSize > allocatedSize) {
 #ifndef GCC_CONSTEXPR_BUG_ACTIVE
-      EXPECT_LE(usedSize, allocatedSize) << in << " isURL: " << isURLDecoder;
+      if constexpr (decoderType == DecoderType::PHPStrictDecoder) {
+        EXPECT_LE(usedSize, allocatedSize) << in;
+      } else {
+        EXPECT_LE(usedSize, allocatedSize)
+            << in << " isURL: " << (decoderType == DecoderType::URLDecoder);
+      }
 #endif
       return false;
     }
     return true;
   };
 
-  for (const auto& test : kDecodingErrorDection) {
+  for (const auto& test : kDecodingErrorDetection) {
     if (!folly::is_constant_evaluated_or(true)) {
-      triggerASANOnBadDecode<isURLDecoder>(test.input, decoder);
+      triggerASANOnBadDecode<decoderType>(test.input, decoder);
     }
     auto r = decoder(
         test.input.data(), test.input.data() + test.input.size(), buf.data());
@@ -523,10 +605,11 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
 
   for (std::string_view URLOnly : kDecodingOnlyURLValid) {
     if (!folly::is_constant_evaluated_or(true)) {
-      triggerASANOnBadDecode<isURLDecoder>(URLOnly, decoder);
+      triggerASANOnBadDecode<decoderType>(URLOnly, decoder);
     }
     auto r =
         decoder(URLOnly.data(), URLOnly.data() + URLOnly.size(), buf.data());
+    auto isURLDecoder = decoderType == DecoderType::URLDecoder;
     if (isURLDecoder != r.isSuccess) {
 #ifndef GCC_CONSTEXPR_BUG_ACTIVE
       EXPECT_EQ(isURLDecoder, r.isSuccess) << URLOnly;
@@ -539,19 +622,49 @@ constexpr bool decodingErrorDectionTest(Decoder decoder) {
     }
   }
 
+  for (std::string_view PHPStrictOnly : kDecodingOnlyStrictPHPValid) {
+    if (!folly::is_constant_evaluated_or(true)) {
+      triggerASANOnBadDecode<decoderType>(PHPStrictOnly, decoder);
+    }
+    auto r = decoder(
+        PHPStrictOnly.data(),
+        PHPStrictOnly.data() + PHPStrictOnly.size(),
+        buf.data());
+    auto isPHPStrictDecoder = decoderType == DecoderType::PHPStrictDecoder;
+    if (isPHPStrictDecoder != r.isSuccess) {
+#ifndef GCC_CONSTEXPR_BUG_ACTIVE
+      EXPECT_EQ(isPHPStrictDecoder, r.isSuccess) << PHPStrictOnly;
+#endif
+      return false;
+    }
+
+    if (!sizeTest(PHPStrictOnly, r)) {
+      return false;
+    }
+  }
+
   return true;
 }
 
-TEST(Base64, DecodingErrorDeteciton) {
-  static_assert(decodingErrorDectionTest<false>(base64DecodeScalar));
-  static_assert(decodingErrorDectionTest<true>(base64URLDecodeScalar));
-  ASSERT_TRUE(decodingErrorDectionTest<false>(base64DecodeScalar));
-  ASSERT_TRUE(decodingErrorDectionTest<true>(base64URLDecodeScalar));
-  ASSERT_TRUE(decodingErrorDectionTest<false>(base64DecodeSWAR));
-  ASSERT_TRUE(decodingErrorDectionTest<true>(base64URLDecodeSWAR));
+TEST(Base64, DecodingErrorDetection) {
+  static_assert(decodingErrorDetectionTest<DecoderType::RegularDecoder>(
+      base64DecodeScalar));
+  static_assert(decodingErrorDetectionTest<DecoderType::URLDecoder>(
+      base64URLDecodeScalar));
+  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::RegularDecoder>(
+      base64DecodeScalar));
+  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::URLDecoder>(
+      base64URLDecodeScalar));
+  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::RegularDecoder>(
+      base64DecodeSWAR));
+  ASSERT_TRUE(
+      decodingErrorDetectionTest<DecoderType::URLDecoder>(base64URLDecodeSWAR));
 #if FOLLY_SSE_PREREQ(4, 2)
-  ASSERT_TRUE(decodingErrorDectionTest<false>(base64Decode_SSE4_2));
+  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::RegularDecoder>(
+      base64Decode_SSE4_2));
 #endif
+  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::PHPStrictDecoder>(
+      base64PHPStrictDecode));
 }
 
 } // namespace

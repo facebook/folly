@@ -14,6 +14,7 @@ non_fbcode_target(
     supports_static_listing = True,
     deps = [
         "fbsource//xplat/folly/portability:gtest",
+        "//xplat/folly/detail/base64_detail:base64_api",
         "//xplat/folly/detail/base64_detail:base64_common",
         "//xplat/folly/detail/base64_detail:base64_scalar",
         "//xplat/folly/detail/base64_detail:base64_sse4_2",
@@ -38,6 +39,7 @@ non_fbcode_target(
     deps = [
         "fbsource//xplat/folly/portability:constexpr",
         "fbsource//xplat/folly/portability:gtest",
+        "//xplat/folly/detail/base64_detail:base64_api",
         "//xplat/folly/detail/base64_detail:base64_scalar",
         "//xplat/folly/detail/base64_detail:base64_simd",
         "//xplat/folly/detail/base64_detail:base64_sse4_2",
@@ -51,6 +53,7 @@ fbcode_target(
     name = "base64_against_scalar_test",
     srcs = ["Base64AgainstScalarTest.cpp"],
     deps = [
+        "//folly/detail/base64_detail:base64_api",
         "//folly/detail/base64_detail:base64_common",
         "//folly/detail/base64_detail:base64_scalar",
         "//folly/detail/base64_detail:base64_sse4_2",
@@ -74,6 +77,7 @@ fbcode_target(
     name = "base64_special_cases_test",
     srcs = ["Base64SpecialCasesTest.cpp"],
     deps = [
+        "//folly/detail/base64_detail:base64_api",
         "//folly/detail/base64_detail:base64_scalar",
         "//folly/detail/base64_detail:base64_simd",
         "//folly/detail/base64_detail:base64_sse4_2",

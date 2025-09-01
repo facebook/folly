@@ -98,4 +98,18 @@ inline constexpr Base64DecodeResult base64URLDecode(
   }
 }
 
+inline constexpr const char* base64PHPStrictRemoveWhitespaces(
+    const char* f, const char* l, char* o) noexcept {
+  return base64PHPStrictRemoveWhitespacesScalar(f, l, o);
+}
+
+inline constexpr Base64DecodeResult base64PHPStrictDecode(
+    const char* f, const char* l, char* o) noexcept {
+  const char* o_l = base64PHPStrictRemoveWhitespaces(f, l, o);
+
+  // Encoded string is always longer so reuse output to avoid extra allocation
+  Base64DecodeResult result = base64Decode(o, o_l, o);
+  return {result.isSuccess, result.o};
+}
+
 } // namespace folly::detail::base64_detail

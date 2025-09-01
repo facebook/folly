@@ -64,6 +64,7 @@ inline auto base64Encode(std::string_view s) -> std::string;
 inline auto base64Decode(std::string_view s) -> std::string;
 inline auto base64URLEncode(std::string_view s) -> std::string;
 inline auto base64URLDecode(std::string_view s) -> std::string;
+inline auto base64PHPStrictDecode(std::string_view s) -> std::string;
 
 // Low level API.
 //
@@ -100,6 +101,11 @@ constexpr std::size_t base64URLDecodedSize(
     const char* f, const char* l) noexcept;
 constexpr std::size_t base64URLDecodedSize(std::string_view s) noexcept;
 
+constexpr std::size_t base64PHPStrictDecodeRequiredOutputSize(
+    const char* f, const char* l) noexcept;
+constexpr std::size_t base64PHPStrictDecodeRequiredOutputSize(
+    std::string_view s) noexcept;
+
 struct base64_decode_result {
   bool is_success;
   char* o;
@@ -123,6 +129,11 @@ inline base64_decode_result base64DecodeRuntime(
 inline base64_decode_result base64URLDecodeRuntime(
     const char* f, const char* l, char* o) noexcept;
 inline base64_decode_result base64URLDecodeRuntime(
+    std::string_view s, char* o) noexcept;
+
+inline constexpr base64_decode_result base64PHPStrictDecode(
+    const char* f, const char* l, char* o) noexcept;
+inline constexpr base64_decode_result base64PHPStrictDecode(
     std::string_view s, char* o) noexcept;
 
 // -----------------------------------------------------------------
@@ -193,6 +204,17 @@ constexpr std::size_t base64URLDecodedSize(std::string_view s) noexcept {
   return folly::base64URLDecodedSize(s.data(), s.data() + s.size());
 }
 
+constexpr std::size_t base64PHPStrictDecodeRequiredOutputSize(
+    const char* f, const char* l) noexcept {
+  return detail::base64_detail::base64PHPStrictDecodeRequiredOutputSize(f, l);
+}
+
+constexpr std::size_t base64PHPStrictDecodeRequiredOutputSize(
+    std::string_view s) noexcept {
+  return folly::base64PHPStrictDecodeRequiredOutputSize(
+      s.data(), s.data() + s.size());
+}
+
 inline constexpr base64_decode_result base64Decode(
     const char* f, const char* l, char* o) noexcept {
   auto detailResult = detail::base64_detail::base64Decode(f, l, o);
@@ -237,6 +259,17 @@ inline base64_decode_result base64URLDecodeRuntime(
   return folly::base64URLDecodeRuntime(s.data(), s.data() + s.size(), o);
 }
 
+inline constexpr base64_decode_result base64PHPStrictDecode(
+    const char* f, const char* l, char* o) noexcept {
+  auto detailResult = detail::base64_detail::base64PHPStrictDecode(f, l, o);
+  return {detailResult.isSuccess, detailResult.o};
+}
+
+inline constexpr base64_decode_result base64PHPStrictDecode(
+    std::string_view s, char* o) noexcept {
+  return folly::base64PHPStrictDecode(s.data(), s.data() + s.size(), o);
+}
+
 // NOTE: for resizeWithoutInitialization we don't need to declare the macros,
 //       since we are using char which is already included by default.
 inline std::string base64Decode(std::string_view s) {
@@ -258,6 +291,26 @@ inline std::string base64URLDecode(std::string_view s) {
   if (!folly::base64URLDecodeRuntime(s, res.data()).is_success) {
     folly::throw_exception<base64_decode_error>("Base64URL Decoding failed");
   }
+  return res;
+}
+
+inline std::string base64PHPStrictDecode(std::string_view s) {
+  std::string res;
+  folly::resizeWithoutInitialization(
+      res, base64PHPStrictDecodeRequiredOutputSize(s));
+
+  if (s.empty()) {
+    return res;
+  }
+
+  base64_decode_result decoded = folly::base64PHPStrictDecode(s, res.data());
+
+  if (!decoded.is_success) {
+    folly::throw_exception<base64_decode_error>("Base64PHP Decoding failed");
+  }
+
+  res.resize(decoded.o - res.data());
+  res.shrink_to_fit();
   return res;
 }
 

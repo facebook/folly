@@ -18,6 +18,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <folly/Utility.h>
+#include <folly/detail/base64_detail/Base64Constants.h>
 
 namespace folly::detail::base64_detail {
 
@@ -70,6 +72,14 @@ constexpr std::size_t base64URLDecodedSize(const char* f, const char* l) {
   res += extra;
 
   return res;
+}
+
+constexpr std::size_t base64PHPStrictDecodeRequiredOutputSize(
+    const char* f, const char* l) {
+  std::size_t n = static_cast<std::size_t>(l - f);
+
+  // Reserve full input size as output is used for temporary storage
+  return n;
 }
 
 struct Base64DecodeResult {

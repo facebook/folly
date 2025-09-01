@@ -13,6 +13,10 @@ non_fbcode_target(
     name = "base64_common",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Base64Common.h"],
+    deps = [
+        "//xplat/folly:utility",
+        "//xplat/folly/detail/base64_detail:base64_constants",
+    ],
 )
 
 non_fbcode_target(
@@ -38,8 +42,11 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Base64Scalar.h"],
     deps = [
+        "//xplat/folly:portability_constexpr",
+        "//xplat/folly:utility",
         "//xplat/folly/detail/base64_detail:base64_common",
         "//xplat/folly/detail/base64_detail:base64_constants",
+        "//xplat/folly/memory:uninitialized_memory_hacks",
     ],
 )
 
@@ -147,6 +154,10 @@ fbcode_target(
     _kind = cpp_library,
     name = "base64_common",
     headers = ["Base64Common.h"],
+    exported_deps = [
+        ":base64_constants",
+        "//folly:utility",
+    ],
 )
 
 fbcode_target(
@@ -171,6 +182,9 @@ fbcode_target(
     exported_deps = [
         ":base64_common",
         ":base64_constants",
+        "//folly:utility",
+        "//folly/memory:uninitialized_memory_hacks",
+        "//folly/portability:constexpr",
     ],
 )
 

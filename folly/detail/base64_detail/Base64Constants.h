@@ -62,6 +62,15 @@ constexpr char base64URLDecodeRule(char x) {
   return base64DecodeRule(x);
 }
 
+constexpr std::uint8_t base64PHPStrictDecodeSkipRule(char x) {
+  // This is different from std::isspace and std::isblank in <cctype>
+  if (x == '\t' || x == '\n' || x == '\r' || x == ' ') {
+    return 0;
+  }
+
+  return 1;
+}
+
 template <typename DecodeChar>
 constexpr auto buildDecodeTable(DecodeChar decodeChar) {
   std::array<char, 256> res = {};
@@ -71,9 +80,19 @@ constexpr auto buildDecodeTable(DecodeChar decodeChar) {
   return res;
 }
 
+constexpr auto buildBase64PHPStrictDecodeSkipTable() {
+  std::array<std::uint8_t, 256> res = {};
+  for (std::size_t i = 0; i != res.size(); ++i) {
+    res[i] = base64PHPStrictDecodeSkipRule(static_cast<char>(i));
+  }
+  return res;
+}
+
 constexpr std::array<char, 256> kBase64DecodeTable =
     buildDecodeTable(base64DecodeRule);
 constexpr std::array<char, 256> kBase64URLDecodeTable =
     buildDecodeTable(base64URLDecodeRule);
+constexpr std::array<std::uint8_t, 256> kBase64PHPStrictDecodeSkipTable =
+    buildBase64PHPStrictDecodeSkipTable();
 
 } // namespace folly::detail::base64_detail::constants

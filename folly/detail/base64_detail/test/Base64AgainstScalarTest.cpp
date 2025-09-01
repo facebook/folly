@@ -19,6 +19,7 @@
 #include <optional>
 #include <random>
 #include <string_view>
+#include <folly/detail/base64_detail/Base64Api.h>
 #include <folly/detail/base64_detail/Base64Common.h>
 #include <folly/detail/base64_detail/Base64SWAR.h>
 #include <folly/detail/base64_detail/Base64Scalar.h>
@@ -95,6 +96,10 @@ constexpr Decode kDecodesURL[] = {
     base64URLDecodeSWAR,
 };
 
+constexpr Decode kDecodesPHP[] = {
+    base64PHPStrictDecode,
+};
+
 TEST_F(Base64RandomTest, RandomTest) {
   for (int i = 0; i != 10'000; ++i) {
     auto bytes = generateBytes();
@@ -116,6 +121,10 @@ TEST_F(Base64RandomTest, RandomTest) {
     for (Decode decode : kDecodesURL) {
       ASSERT_EQ(bytes, callDecode(base64, decode));
       ASSERT_EQ(bytes, callDecode(base64URL, decode));
+    }
+
+    for (Decode decode : kDecodesPHP) {
+      ASSERT_EQ(bytes, callDecode(base64, decode));
     }
   }
 }
