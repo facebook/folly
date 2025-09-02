@@ -10,9 +10,9 @@ non_fbcode_target(
     name = "hex_test",
     srcs = ["hex_test.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:likely",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/codec:hex",
         "//xplat/folly/lang:keep",
     ],
@@ -23,8 +23,8 @@ non_fbcode_target(
     name = "uuid_test",
     srcs = ["UuidTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/fmt:fmt",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly:random",
         "//xplat/folly/codec:uuid",
     ],

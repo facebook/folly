@@ -11,7 +11,7 @@ non_fbcode_target(
         "SimdAnyOfTest.cpp",
     ],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:range",
         "//xplat/folly/algorithm/simd/detail:simd_any_of",
         "//xplat/folly/algorithm/simd/detail:simd_platform",
@@ -23,7 +23,7 @@ non_fbcode_target(
     name = "simd_for_each_test",
     srcs = ["SimdForEachTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/algorithm/simd/detail:simd_for_each",
     ],
 )
@@ -33,8 +33,8 @@ non_fbcode_target(
     name = "traits_test",
     srcs = ["TraitsTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/algorithm/simd/detail:traits",
         "//xplat/folly/lang:bits",
     ],
@@ -45,7 +45,7 @@ non_fbcode_target(
     name = "unroll_utils_test",
     srcs = ["UnrollUtilsTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/algorithm/simd/detail:unroll_utils",
     ],
 )
