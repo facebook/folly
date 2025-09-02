@@ -26,7 +26,7 @@ namespace test {
 
 class MockAsyncServerSocket : public AsyncServerSocket {
  public:
-  typedef std::unique_ptr<MockAsyncServerSocket, Destructor> UniquePtr;
+  using UniquePtr = std::unique_ptr<MockAsyncServerSocket, Destructor>;
 
   // We explicitly do not mock destroy(), since the base class implementation
   // in DelayedDestruction is what actually deletes the object.
