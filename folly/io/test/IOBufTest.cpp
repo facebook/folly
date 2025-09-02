@@ -847,7 +847,7 @@ struct OwnershipTestClass {
   int val;
 };
 
-typedef std::function<void(OwnershipTestClass*)> CustomDeleter;
+using CustomDeleter = std::function<void(OwnershipTestClass*)>;
 
 void customDelete(OwnershipTestClass* p) {
   ++customDeleterCount;
