@@ -97,9 +97,9 @@ non_fbcode_target(
         "Sleeper.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:asm",
+        "fbsource//xplat/folly/portability:time",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_asm",
-        "//xplat/folly:portability_time",
     ],
 )
 
@@ -111,7 +111,7 @@ non_fbcode_target(
         "Spin.h",
     ],
     exported_deps = [
-        "//xplat/folly:portability_asm",
+        "fbsource//xplat/folly/portability:asm",
         "//xplat/folly/synchronization:wait_options",
     ],
 )
