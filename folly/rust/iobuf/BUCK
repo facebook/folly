@@ -48,12 +48,6 @@ rust_bindgen_library(
         "facebook::rust::.*",
     ],
     blocklist_types = [
-        # Work around incorrect detection of nested name specifier. T234253370
-        # Bindgen needs to be fixed to understand the new AST representation.
-        # https://github.com/llvm/llvm-project/pull/147835
-        "folly::IOBuf_Iterator",
-        "folly::IOBuf_iterator",
-        "folly::IOBuf_const_iterator",
         # These seems to come from type_traits / make_signed via fbvector
         "folly::fbvector.*",
         "__type",
