@@ -21,9 +21,9 @@ non_fbcode_target(
         "Base-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/gen:core",
         "//third-party/range-v3:range-v3",
         "//xplat/folly:conv",
-        "//xplat/folly:gen_core",
         "//xplat/folly:optional",
         "//xplat/folly:portability",
         "//xplat/folly:range",
@@ -43,7 +43,7 @@ non_fbcode_target(
         "Combine-inl.h",
     ],
     deps = [
-        "//xplat/folly:gen_base",
+        "fbsource//xplat/folly/gen:base",
     ],
 )
 
@@ -85,7 +85,7 @@ non_fbcode_target(
         "IStream.h",
     ],
     deps = [
-        "//xplat/folly:gen_core",
+        "fbsource//xplat/folly/gen:core",
     ],
 )
 
@@ -98,8 +98,8 @@ non_fbcode_target(
         "Parallel-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/experimental:event_count",
         ":base",
-        "//xplat/folly:experimental_event_count",
         "//xplat/folly:mpmc_queue",
         "//xplat/folly:scope_guard",
     ],
@@ -114,9 +114,9 @@ non_fbcode_target(
         "ParallelMap-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/experimental:event_count",
         ":core",
         "//xplat/folly:expected",
-        "//xplat/folly:experimental_event_count",
         "//xplat/folly:mpmc_pipeline",
         "//xplat/folly/functional:invoke",
     ],
