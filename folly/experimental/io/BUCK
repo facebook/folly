@@ -137,6 +137,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_backend",
+        "//folly/io/async:io_uring_provided_buffer_ring",
     ],
 )
 

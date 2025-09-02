@@ -33,7 +33,7 @@ fbcode_target(
     },
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
-        ":symbolizer_test_utils_dwarf4_dwarf32_noaaranges",
+        ":symbolizer_test_utils_dwarf5_dwarf64_single_inlining_aaranges",
         "//folly:benchmark",
         "//folly:range",
         "//folly/debugging/symbolizer:dwarf",

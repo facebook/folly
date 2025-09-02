@@ -246,6 +246,7 @@ fbcode_target(
         "GmockHelpersTest.cpp",
     ],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly:portability",
         "//folly/coro:blocking_wait",
         "//folly/coro:gmock_helpers",

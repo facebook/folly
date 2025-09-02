@@ -8,7 +8,10 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "result_test",
     srcs = ["result_test.cpp"],
-    deps = ["//folly/result:gtest_helpers"],
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "//folly/result:gtest_helpers",
+    ],
 )
 
 fbcode_target(
@@ -38,6 +41,7 @@ fbcode_target(
     name = "value_only_result_test",
     srcs = ["value_only_result_test.cpp"],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly/result:gtest_helpers",
         "//folly/result:value_only_result",
     ],

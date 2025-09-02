@@ -85,8 +85,6 @@ fb_dirsync_cpp_library(
         "//folly:exception",
         "//folly:file_util",
         "//folly:memory",
-        "//folly:portability",
-        "//folly:scope_guard",
         "//folly:string",
         "//folly/portability:unistd",
     ],

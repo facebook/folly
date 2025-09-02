@@ -12,6 +12,7 @@ fbcode_target(
     supports_static_listing = False,
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly/compression:compression",
     ],
 )

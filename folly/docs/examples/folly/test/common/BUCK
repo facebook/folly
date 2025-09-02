@@ -9,6 +9,7 @@ fbcode_target(
     srcs = ["TestMainDemo.cpp"],
     test_main = "//folly/test/common:test_main_lib",
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly:singleton",
     ],
 )

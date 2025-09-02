@@ -762,6 +762,7 @@ fbcode_target(
     name = "fmt_utility_test",
     srcs = ["FmtUtilityTest.cpp"],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly:fmt_utility",
     ],
 )

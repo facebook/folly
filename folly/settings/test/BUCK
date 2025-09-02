@@ -50,6 +50,7 @@ fbcode_target(
     labels = ["case-isolation-failure"],
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//third-party/googletest:gtest",
         "//folly:conv",
         "//folly:string",
         "//folly/container:array",
