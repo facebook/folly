@@ -58,6 +58,9 @@ using namespace folly;
 using namespace folly::test;
 using namespace testing;
 
+static constexpr auto kMaxAttemptsEnableByteEvents =
+    folly::AsyncSocket::kMaxAttemptsEnableByteEvents;
+
 namespace {
 // string and corresponding vector with 100 characters
 const std::string kOneHundredCharacterString(
@@ -7878,7 +7881,7 @@ TEST_F(
  * Enable byte events and have offset correction repeat due to sendBufInUseBytes
  * changing in between calls to the kernel trying to enable timestamping.
  *
- * The operation should be retried SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS times and
+ * The operation should be retried kMaxAttemptsEnableByteEvents times and
  * then fail.
  */
 TEST_F(
@@ -7905,12 +7908,12 @@ TEST_F(
 
   clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
 
-  auto byteEventsEnabledAttempts = 0;
+  size_t byteEventsEnabledAttempts = 0;
 
   {
     InSequence s;
 
-    for (; byteEventsEnabledAttempts < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS;
+    for (; byteEventsEnabledAttempts < kMaxAttemptsEnableByteEvents;
          byteEventsEnabledAttempts++) {
       EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
           .WillOnce(Return(wrappedTcpInfoBefore))
@@ -7924,7 +7927,7 @@ TEST_F(
 
   auto observer = clientConn.attachObserver(true /* enableByteEvents */);
 
-  EXPECT_EQ(byteEventsEnabledAttempts, SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS);
+  EXPECT_EQ(byteEventsEnabledAttempts, kMaxAttemptsEnableByteEvents);
   EXPECT_EQ(0, observer->byteEventsEnabledCalled);
   EXPECT_EQ(1, observer->byteEventsUnavailableCalled);
   EXPECT_TRUE(observer->byteEventsUnavailableCalledEx.has_value());
@@ -7935,7 +7938,7 @@ TEST_F(
  * Enable byte events and have offset correction repeat due to sentBytes
  * changing in between calls to the kernel trying to enable timestamping.
  *
- * The operation should be retried SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS times and
+ * The operation should be retried kMaxAttemptsEnableByteEvents times and
  * then fail.
  */
 TEST_F(
@@ -7962,12 +7965,12 @@ TEST_F(
 
   clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
 
-  auto byteEventsEnabledAttempts = 0;
+  size_t byteEventsEnabledAttempts = 0;
 
   {
     InSequence s;
 
-    for (; byteEventsEnabledAttempts < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS;
+    for (; byteEventsEnabledAttempts < kMaxAttemptsEnableByteEvents;
          byteEventsEnabledAttempts++) {
       EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
           .WillOnce(Return(wrappedTcpInfoBefore))
@@ -7981,7 +7984,7 @@ TEST_F(
 
   auto observer = clientConn.attachObserver(true /* enableByteEvents */);
 
-  EXPECT_EQ(byteEventsEnabledAttempts, SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS);
+  EXPECT_EQ(byteEventsEnabledAttempts, kMaxAttemptsEnableByteEvents);
   EXPECT_EQ(0, observer->byteEventsEnabledCalled);
   EXPECT_EQ(1, observer->byteEventsUnavailableCalled);
   EXPECT_TRUE(observer->byteEventsUnavailableCalledEx.has_value());
@@ -7992,7 +7995,7 @@ TEST_F(
  * Enable byte events and have offset correction repeat due to sendBufInUseBytes
  * changing in between calls to the kernel trying to enable timestamping.
  *
- * The operation should be retried at most SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS
+ * The operation should be retried at most kMaxAttemptsEnableByteEvents
  * times and then succeed when sendBufInUseBytes does not change.
  */
 TEST_F(
@@ -8028,15 +8031,14 @@ TEST_F(
 
   clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
 
-  auto byteEventsEnabledAttempts = 0;
-  auto constexpr kRetriesUntilByteEventsSuccessful = 5;
-  EXPECT_LE(
-      kRetriesUntilByteEventsSuccessful, SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS);
+  size_t byteEventsEnabledAttempts = 0;
+  size_t constexpr kRetriesUntilByteEventsSuccessful = 5;
+  EXPECT_LE(kRetriesUntilByteEventsSuccessful, kMaxAttemptsEnableByteEvents);
 
   {
     InSequence s;
 
-    for (; byteEventsEnabledAttempts < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS;
+    for (; byteEventsEnabledAttempts < kMaxAttemptsEnableByteEvents;
          byteEventsEnabledAttempts++) {
       if (byteEventsEnabledAttempts == kRetriesUntilByteEventsSuccessful) {
         EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))
@@ -8073,7 +8075,7 @@ TEST_F(
  * Enable byte events and have offset correction repeat due to sentBytes
  * changing in between calls to the kernel trying to enable timestamping.
  *
- * The operation should be retried at most SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS
+ * The operation should be retried at most kMaxAttemptsEnableByteEvents
  * times and then succeed when sentBytes does not change.
  */
 TEST_F(
@@ -8109,15 +8111,14 @@ TEST_F(
 
   clientConn.setMockTcpInfoDispatcher(mockTcpInfoDispatcher);
 
-  auto byteEventsEnabledAttempts = 0;
-  auto constexpr kRetriesUntilByteEventsSuccessful = 5;
-  EXPECT_LE(
-      kRetriesUntilByteEventsSuccessful, SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS);
+  size_t byteEventsEnabledAttempts = 0;
+  size_t constexpr kRetriesUntilByteEventsSuccessful = 5;
+  EXPECT_LE(kRetriesUntilByteEventsSuccessful, kMaxAttemptsEnableByteEvents);
 
   {
     InSequence s;
 
-    for (; byteEventsEnabledAttempts < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS;
+    for (; byteEventsEnabledAttempts < kMaxAttemptsEnableByteEvents;
          byteEventsEnabledAttempts++) {
       if (byteEventsEnabledAttempts == kRetriesUntilByteEventsSuccessful) {
         EXPECT_CALL(*mockTcpInfoDispatcher, initFromFd(_, _, _, _))

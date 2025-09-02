@@ -1696,7 +1696,7 @@ void AsyncSocket::enableByteEvents() {
     // [1]
     // https://github.com/torvalds/linux/commit/b534dc46c8ae0165b1b2509be24dbea4fa9c4011
 
-    while (byteEventsEnabledMaxAttempts++ < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS) {
+    while (byteEventsEnabledMaxAttempts++ < kMaxAttemptsEnableByteEvents) {
       folly::TcpInfo::LookupOptions options = {};
       options.getMemInfo = true;
       const auto expectTInfoBefore = getTcpInfo(options);
@@ -1756,7 +1756,7 @@ void AsyncSocket::enableByteEvents() {
       }
     }
 
-    if (byteEventsEnabledMaxAttempts > SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS) {
+    if (byteEventsEnabledMaxAttempts > kMaxAttemptsEnableByteEvents) {
       throw AsyncSocketException(
           AsyncSocketException::INTERNAL_ERROR,
           withAddr(

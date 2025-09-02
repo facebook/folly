@@ -92,6 +92,8 @@ class AsyncSocket : public AsyncSocketTransport {
   using Observer = AsyncSocketObserverContainer::Observer;
   using ManagedObserver = AsyncSocketObserverContainer::ManagedObserver;
 
+  static inline constexpr size_t kMaxAttemptsEnableByteEvents = 10;
+
   class EvbChangeCallback {
    public:
     virtual ~EvbChangeCallback() = default;
