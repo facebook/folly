@@ -10,8 +10,8 @@ non_fbcode_target(
     srcs = ["AsyncFdSocketTest.cpp"],
     contacts = ["oncall+thrift@xmail.facebook.com"],
     deps = [
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/io/async/fdsock:async_fd_socket",
         "//xplat/folly/io/async/test:async_socket_test_lib",
     ],

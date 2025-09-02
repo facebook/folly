@@ -12,7 +12,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MockNetOpsDispatcher.h"],
     deps = [
-        "//xplat/folly:portability_gmock",
+        "fbsource//xplat/folly/portability:gmock",
         "//xplat/folly/net:net_ops_dispatcher",
     ],
 )
@@ -23,7 +23,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MockTcpInfoDispatcher.h"],
     deps = [
-        "//xplat/folly:portability_gmock",
+        "fbsource//xplat/folly/portability:gmock",
         "//xplat/folly/net:tcpinfo_dispatcher",
     ],
 )
@@ -33,8 +33,8 @@ non_fbcode_target(
     name = "net_ops_test",
     srcs = ["NetOpsTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/net:net_ops",
         "//xplat/folly/net:network_socket",
     ],
