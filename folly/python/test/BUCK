@@ -89,8 +89,11 @@ non_fbcode_target(
     srcs = ["simplebridgecoro.pyx"],
     headers = ["simplecoro.h"],
     cpp_deps = [
-        "//xplat/folly/experimental/coro:baton",
-        "//xplat/folly/experimental/coro:task",
+        "//xplat/folly/coro:baton",
+        "//xplat/folly/coro:task",
+        "//xplat/folly/futures:core",
+        "//xplat/folly/python:asyncio_executor",
+        "//xplat/folly/python:executor_lib",
         "//xplat/folly:cancellation_token",
     ],
     deps = [
@@ -287,6 +290,8 @@ fbcode_target(
         "//folly/coro:baton",
         "//folly/coro:task",
         "//folly/futures:core",
+        "//folly/python:asyncio_executor",
+        "//folly/python:executor_lib",
         "//folly:cancellation_token",
     ],
     deps = [
@@ -416,9 +421,9 @@ cpp_unittest(
         "python": "3.12",
     },
     deps = [
-        "fbcode//folly/python:weak",
+        "fbcode//folly/python:weak",  # @manual
         # Pull in libpython so we are linked against it
-        "fbsource//third-party/googletest:gtest",
+        "fbsource//third-party/googletest:gtest",  # @manual
         "fbsource//third-party/python:python-for-embedding",  # @manual
     ],
 )
@@ -438,7 +443,7 @@ cpp_unittest(
         "python": "3.12",
     },
     deps = [
-        "fbcode//folly/python:weak",
-        "fbsource//third-party/googletest:gtest",
+        "fbcode//folly/python:weak",  # @manual
+        "fbsource//third-party/googletest:gtest",  # @manual
     ],
 )

@@ -40,3 +40,30 @@ class Futures(unittest.TestCase):
         self.assertFalse(task.done())
         task.cancel()
         return await task
+
+    async def _test_executor_stats(self):
+        task_count = 3
+        block_ms = 1
+
+        initial_stats = simplebridgecoro.get_executor_stats()
+        # Some compilation mode (libcxx) injects a different executor
+        if initial_stats is None:
+            return
+        initial_count = initial_stats.drive_count
+
+        # Run multiple coroutines
+        tasks = []
+        expected = []
+        for i in range(task_count):
+            expected.append(i)
+            tasks.append(simplebridgecoro.blocking_task(block_ms, i))
+        results = await asyncio.gather(*tasks)
+        self.assertEqual(results, expected)
+
+        # Today drive only process 1 task at a time
+        final_stats = simplebridgecoro.get_executor_stats()
+        self.assertEqual(final_stats.drive_count, initial_count + 2 * task_count)
+
+    def test_executor_stats(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self._test_executor_stats())

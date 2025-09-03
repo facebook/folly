@@ -29,8 +29,12 @@ cdef extern from "folly/python/AsyncioExecutor.h" namespace "folly::python":
     cdef cppclass cDeleter "folly::python::NotificationQueueAsyncioExecutor::Deleter":
         pass
 
+    cdef cppclass cStats "folly::python::NotificationQueueAsyncioExecutor::Stats":
+        size_t driveCount
+
     cdef cppclass cNotificationQueueAsyncioExecutor "folly::python::NotificationQueueAsyncioExecutor"(cAsyncioExecutor):
         int fileno()
+        cStats stats()
         @staticmethod
         unique_ptr[cNotificationQueueAsyncioExecutor, cDeleter] create()
 

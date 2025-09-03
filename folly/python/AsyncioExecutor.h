@@ -100,19 +100,30 @@ class NotificationQueueAsyncioExecutor
  public:
   using Func = folly::Func;
 
+  struct Stats {
+    size_t driveCount{0};
+  };
+
   void add(Func func) override { queue_.putMessage(std::move(func)); }
 
   int fileno() const { return consumer_.getFd(); }
 
   void drive() noexcept override {
+    ++stats_.driveCount;
+
     consumer_.consume([&](Func&& func) {
       invokeCatchingExns(
           "NotificationQueueExecutor: task", std::exchange(func, {}));
     });
   }
 
+  const Stats& stats() const { return stats_; }
+
+ private:
   folly::NotificationQueue<Func> queue_;
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
+
+  Stats stats_;
 }; // NotificationQueueAsyncioExecutor
 
 } // namespace python
