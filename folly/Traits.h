@@ -112,7 +112,7 @@ namespace detail {
 
 template <typename Void, typename T>
 struct require_sizeof_ {
-  static_assert(always_false<T>, "application of sizeof fails substitution");
+  static_assert(always_false<T>, "T must be a complete type");
 };
 template <typename T>
 struct require_sizeof_<decltype(void(sizeof(T))), T> {
