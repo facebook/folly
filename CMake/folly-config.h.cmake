@@ -73,7 +73,7 @@
 
 #cmakedefine01 FOLLY_HAVE_LIBLZ4 1
 #cmakedefine01 FOLLY_HAVE_LIBLZMA 1
-#cmakedefine FOLLY_HAVE_LIBSNAPPY 1
+#cmakedefine01 FOLLY_HAVE_LIBSNAPPY 1
 #cmakedefine FOLLY_HAVE_LIBZ 1
 #cmakedefine FOLLY_HAVE_LIBZSTD 1
 #cmakedefine FOLLY_HAVE_LIBBZ2 1
