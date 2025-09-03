@@ -133,6 +133,16 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
+    name = "must_use_immediately_test",
+    srcs = ["MustUseImmediatelyTest.cpp"],
+    deps = [
+        "//xplat/folly:portability_gtest",
+        "//xplat/folly/lang:must_use_immediately",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
     name = "new_test",
     srcs = ["NewTest.cpp"],
     deps = [
@@ -451,6 +461,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "must_use_immediately_test",
+    srcs = ["MustUseImmediatelyTest.cpp"],
+    deps = [
+        "//folly:traits",
+        "//folly/lang:must_use_immediately",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "new_test",
     srcs = ["NewTest.cpp"],
     deps = [
@@ -545,7 +566,6 @@ fbcode_target(
     name = "switch_test",
     srcs = ["SwitchTest.cpp"],
     deps = [
-        "fbsource//third-party/googletest:gtest",
         "//folly/lang:switch",
     ],
 )

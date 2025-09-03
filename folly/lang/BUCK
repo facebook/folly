@@ -224,6 +224,17 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "must_use_immediately",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["MustUseImmediately.h"],
+    exported_deps = [
+        "//xplat/folly:utility",
+        "//xplat/folly/detail:tuple",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "new",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["New.h"],
@@ -594,6 +605,16 @@ fbcode_target(
         ":safe_assert",
         "//folly:portability",
         "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "must_use_immediately",
+    headers = ["MustUseImmediately.h"],
+    exported_deps = [
+        "//folly:utility",
+        "//folly/detail:tuple",
     ],
 )
 
