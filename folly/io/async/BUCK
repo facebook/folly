@@ -48,7 +48,6 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:chrono",
-        "//folly:map_util",
         "//folly:string",
         "//folly/container:bit_iterator",
         "//folly/lang:assume",
@@ -167,7 +166,6 @@ fb_dirsync_cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:exception",
-        "//folly:format",
         "//folly:portability",
         "//folly:string",
         "//folly/lang:checked_math",
@@ -537,11 +535,9 @@ fb_dirsync_cpp_library(
         "//folly:memory",
         "//folly:random",
         "//folly:shared_mutex",
-        "//folly:spin_lock",
         "//folly/ssl:openssl_ticket_handler",
         "//folly/ssl:password_collector",
         "//folly/ssl:ssl_session_manager",
-        "//folly/system:thread_id",
     ],
     exported_deps = [
         "//folly:function",
@@ -636,8 +632,6 @@ fb_dirsync_cpp_library(
     deps = [
         "//folly:exception",
         "//folly:format",
-        "//folly:likely",
-        "//folly:string",
         "//folly/portability:filesystem",
         "//folly/portability:unistd",
     ],
@@ -648,7 +642,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_uio",
     ],
     external_deps = [
-        "boost",
         "glog",
     ],
 )
@@ -716,7 +709,6 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         ":io_uring_event_base_local",
-        ":io_uring_provided_buffer_ring",
         "//folly:conv",
         "//folly/detail:socket_fast_open",
         "//folly/memory:malloc",
@@ -790,7 +782,6 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
-        ":epoll",
         "//folly:file_util",
         "//folly:intrusive_list",
         "//folly:map_util",
@@ -868,7 +859,6 @@ fb_dirsync_cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:exception",
-        "//folly:likely",
         "//folly:string",
         "//folly/portability:unistd",
     ],
@@ -950,7 +940,6 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:conv",
-        "//folly:exception_string",
         "//folly:string",
         "//folly/lang:align",
     ],

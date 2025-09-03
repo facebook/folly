@@ -156,7 +156,6 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_library,
     deps = [
         "//folly:conv",
-        "//folly:cpp_attributes",
         "//folly:format",
         "//folly:string",
         "//folly/gen:base",
