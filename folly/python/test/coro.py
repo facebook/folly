@@ -41,10 +41,7 @@ class Futures(unittest.TestCase):
         task.cancel()
         return await task
 
-    async def _test_executor_stats(self):
-        task_count = 3
-        block_ms = 1
-
+    async def _test_executor_stats(self, task_count, block_ms, drive_count):
         initial_stats = simplebridgecoro.get_executor_stats()
         # Some compilation mode (libcxx) injects a different executor
         if initial_stats is None:
@@ -62,8 +59,26 @@ class Futures(unittest.TestCase):
 
         # Today drive only process 1 task at a time
         final_stats = simplebridgecoro.get_executor_stats()
-        self.assertEqual(final_stats.drive_count, initial_count + 2 * task_count)
+        self.assertEqual(final_stats.drive_count, initial_count + drive_count)
 
     def test_executor_stats(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._test_executor_stats())
+        task_count = 4
+        # 4 * 1, less than 5ms default
+        block_ms = 1
+        # Drive called once
+        drive_count = 1
+        loop.run_until_complete(
+            self._test_executor_stats(task_count, block_ms, drive_count)
+        )
+
+    def test_executor_stats_blocking(self):
+        loop = asyncio.get_event_loop()
+        task_count = 3
+        # More than 5ms default
+        block_ms = 6
+        # Drive called many times because we time slice
+        drive_count = task_count
+        loop.run_until_complete(
+            self._test_executor_stats(task_count, block_ms, drive_count)
+        )

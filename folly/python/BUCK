@@ -163,6 +163,7 @@ non_fbcode_target(
     ],
     deps = [
         ":weak",
+        "//xplat/folly:chrono",
         "//xplat/folly:exception_string",
         "//xplat/folly:function",
         "//xplat/folly/executors:drivable_executor",
@@ -467,6 +468,7 @@ fbcode_target(
     modular_headers = False,
     exported_deps = [
         ":weak",
+        "//folly:chrono",
         "//folly:exception_string",
         "//folly:function",
         "//folly/executors:drivable_executor",
