@@ -270,7 +270,6 @@ fbcode_target(
     name = "exception_counter",
     srcs = ["ExceptionCounterLib.cpp"],
     headers = ["ExceptionCounterLib.h"],
-    link_whole = True,
     deps = [
         ":exception_tracer_callbacks",
         ":stacktrace",
@@ -284,6 +283,17 @@ fbcode_target(
     exported_deps = [
         ":compatibility",
         ":exception_tracer_base",
+        ":exception_tracer_callbacks",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "exception_counter_static_registration",
+    srcs = ["ExceptionCounterLibStaticRegistration.cpp"],
+    link_whole = True,
+    deps = [
+        ":exception_counter",
         ":exception_tracer_callbacks",
     ],
 )

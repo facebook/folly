@@ -26,7 +26,6 @@
 #include <folly/synchronization/RWSpinLock.h>
 
 #include <folly/debugging/exception_tracer/Compatibility.h>
-#include <folly/debugging/exception_tracer/ExceptionTracerLib.h>
 #include <folly/debugging/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
@@ -101,16 +100,12 @@ std::ostream& operator<<(std::ostream& out, const ExceptionStats& stats) {
   return out;
 }
 
-} // namespace exception_tracer
-} // namespace folly
-
-namespace {
-
 /*
  * This handler gathers statistics on all exceptions thrown by the program
  * Information is being stored in thread local storage.
  */
-void throwHandler(void*, std::type_info* exType, void (**)(void*)) noexcept {
+void exceptionStatsThrowHandler(
+    void*, std::type_info* exType, void (**)(void*)) noexcept {
   // This array contains the exception type and the stack frame
   // pointers so they get all hashed together.
   uintptr_t frames[kMaxFrames + 1];
@@ -139,13 +134,8 @@ void throwHandler(void*, std::type_info* exType, void (**)(void*)) noexcept {
   });
 }
 
-struct Initializer {
-  Initializer() { registerCxaThrowCallback(throwHandler); }
-};
-
-Initializer initializer;
-
-} // namespace
+} // namespace exception_tracer
+} // namespace folly
 
 #endif //  FOLLY_HAS_EXCEPTION_TRACER
 
