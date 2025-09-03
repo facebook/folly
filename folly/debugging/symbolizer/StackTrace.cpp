@@ -94,10 +94,11 @@ inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
   if (r < 0) {
     return false;
   }
+  bool isSignalFrame = r > 0;
   // Use previous instruction in normal (call) frames (because the
   // return address might not be in the same function for noreturn functions)
   // but not in signal frames.
-  ip = uip - (r == 0);
+  ip = uip - !isSignalFrame;
   return true;
 }
 
