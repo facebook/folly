@@ -840,15 +840,20 @@ namespace detail {
 
 template <typename Int>
 struct integral_hasher {
-  using folly_is_avalanching =
-      std::bool_constant<(sizeof(Int) >= 8 || sizeof(size_t) == 4)>;
+  using folly_is_avalanching = std::true_type;
 
   constexpr size_t operator()(Int const& i) const noexcept {
     static_assert(sizeof(Int) <= 16, "Input type is too wide");
-    if constexpr (sizeof(Int) <= 4) {
+    if constexpr (sizeof(Int) <= 4 && sizeof(size_t) <= 4) {
       auto const i32 = static_cast<int32_t>(i); // impl accident: sign-extends
       auto const u32 = static_cast<uint32_t>(i32);
       return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
+    } else if constexpr (sizeof(Int) <= 4 && sizeof(size_t) <= 8) {
+      auto const i64 = static_cast<int64_t>(i); // impl accident: sign-extends
+      auto const u64 = static_cast<uint64_t>(i64);
+      return static_cast<size_t>(hash::twang_mix64(u64));
+    } else if constexpr (sizeof(Int) <= 4) {
+      static_assert(always_false<Int>);
     } else if constexpr (sizeof(Int) <= 8) {
       auto const u64 = static_cast<uint64_t>(i);
       return static_cast<size_t>(hash::twang_mix64(u64));
