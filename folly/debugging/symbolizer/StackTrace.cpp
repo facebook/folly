@@ -85,7 +85,16 @@ constexpr size_t kMaxExpectedStackFrameSize //
 
 #if FOLLY_HAVE_LIBUNWIND
 
-inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
+struct FrameInfo {
+  /// The instruction pointer (ip) of the frame.
+  uintptr_t ip;
+  bool isSignalFrame;
+};
+
+/// Gets the `FrameInfo` from libunwind and stores it in the out ref parameter.
+///
+/// @return true on success and false on error.
+inline bool getFrameInfo(unw_cursor_t* cursor, FrameInfo& frameInfo) {
   unw_word_t uip;
   if (unw_get_reg(cursor, UNW_REG_IP, &uip) < 0) {
     return false;
@@ -98,7 +107,10 @@ inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
   // Use previous instruction in normal (call) frames (because the
   // return address might not be in the same function for noreturn functions)
   // but not in signal frames.
-  ip = uip - !isSignalFrame;
+  uintptr_t ip = uip - !isSignalFrame;
+
+  frameInfo = FrameInfo{ip, isSignalFrame};
+
   return true;
 }
 
@@ -121,9 +133,11 @@ ssize_t getStackTraceInPlace(
   if (unw_init_local(&cursor, &context) < 0) {
     return -1;
   }
-  if (!getFrameInfo(&cursor, *addresses)) {
+  FrameInfo frameInfo;
+  if (!getFrameInfo(&cursor, frameInfo)) {
     return -1;
   }
+  *addresses = frameInfo.ip;
   ++addresses;
   size_t count = 1;
   for (; count != maxAddresses; ++count, ++addresses) {
@@ -134,9 +148,10 @@ ssize_t getStackTraceInPlace(
     if (r == 0) {
       break;
     }
-    if (!getFrameInfo(&cursor, *addresses)) {
+    if (!getFrameInfo(&cursor, frameInfo)) {
       return -1;
     }
+    *addresses = frameInfo.ip;
   }
   return count;
 }
