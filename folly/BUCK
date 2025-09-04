@@ -932,14 +932,11 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    export_header_unit = "include",
-    export_header_unit_filter = ["folly/Conv.h"],
     fbobjc_complete_nullability = True,
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Conv.h",
     ],
-    raw_headers_as_headers_mode = "enabled",
     deps = [
         "fbsource//third-party/fast_float:fast_float",
         "//xplat/folly/lang:safe_assert",
