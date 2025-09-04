@@ -21,7 +21,7 @@
 
 /// For functions-of-coros, like `timeout()` or `collectAll()`, we want the
 /// outer coro to be able to pass through these attributes of the inner coro:
-///  - `must_await_immediately_v`
+///  - `folly::ext::must_use_immediately_v`
 ///  - `noexcept_awaitable_v`
 ///  - `strict_safe_alias_of_v` / `lenient_safe_alias_of_v`
 ///
@@ -60,7 +60,7 @@ struct identity_metafunction {
   using apply = T;
 };
 
-template <safe_alias, bool /*must await immediately (now)*/>
+template <safe_alias, bool /*must use immediately (now)*/>
 struct pick_task_wrapper_impl;
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
@@ -93,7 +93,7 @@ struct pick_task_wrapper_impl<Safety, AwaitNow> {
 
 template <safe_alias Safety>
   requires(Safety >= safe_alias::closure_min_arg_safety)
-// Future: There is no principled reason we can't have must-await-immediately
+// Future: There is no principled reason we can't have must-use-immediately
 // `safe_task`s with these higher safety levels, but supporting that cleanly
 // would require reorganizing the `folly/coro` task-wrapper implementations. Two
 // possible approaches are:
@@ -131,21 +131,21 @@ struct as_noexcept_with_cancel_cfg {
 template <
     typename T,
     safe_alias Safety,
-    bool MustAwaitImmediately,
+    bool MustUseImmediately,
     typename AddWrapperMetaFn = identity_metafunction>
 using pick_task_wrapper = typename AddWrapperMetaFn::template apply<
-    typename pick_task_wrapper_impl<Safety, MustAwaitImmediately>::
-        template Task<T>>;
+    typename pick_task_wrapper_impl<Safety, MustUseImmediately>::template Task<
+        T>>;
 
 template <
     typename T,
     safe_alias Safety,
-    bool MustAwaitImmediately,
+    bool MustUseImmediately,
     typename AddWrapperMetaFn = identity_metafunction>
 using pick_task_with_executor_wrapper =
     typename AddWrapperMetaFn::template apply<typename pick_task_wrapper_impl<
         Safety,
-        MustAwaitImmediately>::template TaskWithExecutor<T>>;
+        MustUseImmediately>::template TaskWithExecutor<T>>;
 
 } // namespace detail
 } // namespace folly::coro

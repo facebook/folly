@@ -158,7 +158,7 @@ template <
 Ret collectAllImpl(
     tag_t<Ret, SemiAwaitables...>,
     std::index_sequence<Indices...>,
-    // `semiFns()` is the immovable, must-await-immediately `SemiAwaitable`
+    // `semiFns()` is the immovable, must-use-immediately `SemiAwaitable`
     SemiFns... semiFns) {
   if constexpr (sizeof...(SemiAwaitables) == 0) {
     co_return std::tuple<>{};
@@ -407,7 +407,7 @@ auto collectAll(SemiAwaitables... awaitables)
   return detail::collectAllImpl(
       tag<detail::CollectAllTask<SemiAwaitables...>, SemiAwaitables...>,
       std::make_index_sequence<sizeof...(SemiAwaitables)>{},
-      mustAwaitImmediatelyUnsafeMover(
+      folly::ext::must_use_immediately_unsafe_mover(
           static_cast<SemiAwaitables&&>(awaitables))...);
 }
 
@@ -417,7 +417,7 @@ auto collectAllTry(SemiAwaitables... awaitables)
   return detail::collectAllTryImpl(
       tag<detail::CollectAllTryTask<SemiAwaitables...>, SemiAwaitables...>,
       std::make_index_sequence<sizeof...(SemiAwaitables)>{},
-      mustAwaitImmediatelyUnsafeMover(
+      folly::ext::must_use_immediately_unsafe_mover(
           static_cast<SemiAwaitables&&>(awaitables))...);
 }
 

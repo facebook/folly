@@ -658,7 +658,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
     if constexpr (NoexceptWrap::as_noexcept_wrapped) {
       return NoexceptWrap::unwrapTask(std::move(t));
     } else {
-      return mustAwaitImmediatelyUnsafeMover(std::move(t))();
+      return ::folly::ext::must_use_immediately_unsafe_mover(std::move(t))();
     }
   }(std::move(raw_inner_coro));
 
@@ -693,10 +693,11 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
       //   OuterSafety >= closure_min_arg_safety
       constexpr auto newSafety =
           std::max(OuterSafety, safe_alias::closure_min_arg_safety);
-      return mustAwaitImmediatelyUnsafeMover(
+      return ::folly::ext::must_use_immediately_unsafe_mover(
           std::move(unwrapped_inner).template withNewSafety<newSafety>());
     } else { // The "new safety" rewrite doesn't apply to unsafe tasks!
-      return mustAwaitImmediatelyUnsafeMover(std::move(unwrapped_inner));
+      return ::folly::ext::must_use_immediately_unsafe_mover(
+          std::move(unwrapped_inner));
     }
   }();
 
@@ -722,7 +723,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
           "Cannot `co_return *after_cleanup()` without a cleanup arg");
       return std::move(inner_mover);
     } else {
-      return mustAwaitImmediatelyUnsafeMover(
+      return ::folly::ext::must_use_immediately_unsafe_mover(
           async_closure_make_outer_coro<
               /*cancelTok*/ true,
               ResultT,

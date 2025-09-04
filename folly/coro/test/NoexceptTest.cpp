@@ -27,7 +27,8 @@ namespace folly::coro {
 template <typename Awaitable>
 auto co_fatalOnThrow(Awaitable awaitable) {
   return detail::NoexceptAwaitable<Awaitable, terminateOnCancel>(
-      mustAwaitImmediatelyUnsafeMover(std::move(awaitable))());
+      // NOLINTNEXTLINE(facebook-folly-coro-temporary-by-ref)
+      folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))());
 }
 
 // Check `await_result_t` for `NoexceptAwaitable`-wrapped awaitables.

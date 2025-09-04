@@ -203,7 +203,8 @@ struct as_noexcept_with_executor_cfg {
     // Assert can be removed, I was concerned if we accidentally double-wrap
     static_assert(!noexcept_awaitable_v<Awaitable>);
     return detail::NoexceptAwaitable<Awaitable, CancelCfg>{
-        mustAwaitImmediatelyUnsafeMover(static_cast<Awaitable&&>(awaitable))()};
+        folly::ext::must_use_immediately_unsafe_mover(
+            static_cast<Awaitable&&>(awaitable))()};
   }
 };
 template <typename Inner, auto CancelCfg>

@@ -77,7 +77,7 @@ struct now_task_with_executor_cfg : DoesNotWrapAwaitable {
 };
 template <typename T>
 using now_task_with_executor_base =
-    AddMustAwaitImmediately<TaskWithExecutorWrapperCrtp<
+    ext::wrap_must_use_immediately_t<TaskWithExecutorWrapperCrtp<
         now_task_with_executor<T>,
         detail::now_task_with_executor_cfg<T>>>;
 } // namespace detail
@@ -104,7 +104,7 @@ struct now_task_cfg : DoesNotWrapAwaitable {
   using PromiseT = now_task_promise<T>;
 };
 template <typename T>
-using now_task_base = AddMustAwaitImmediately<
+using now_task_base = ext::wrap_must_use_immediately_t<
     TaskWrapperCrtp<now_task<T>, detail::now_task_cfg<T>>>;
 } // namespace detail
 

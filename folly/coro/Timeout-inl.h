@@ -132,7 +132,7 @@ template <typename SemiAwaitable, typename Duration, typename TimekeeperPtr>
 typename detail::TimeoutTask<SemiAwaitable, TimekeeperPtr> timeout(
     SemiAwaitable semiAwaitable, Duration timeoutDuration, TimekeeperPtr tk) {
   return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/true>(
-      mustAwaitImmediatelyUnsafeMover(std::move(semiAwaitable)),
+      folly::ext::must_use_immediately_unsafe_mover(std::move(semiAwaitable)),
       timeoutDuration,
       std::move(tk));
 }
@@ -141,7 +141,7 @@ template <typename SemiAwaitable, typename Duration, typename TimekeeperPtr>
 typename detail::TimeoutTask<SemiAwaitable, TimekeeperPtr> timeoutNoDiscard(
     SemiAwaitable semiAwaitable, Duration timeoutDuration, TimekeeperPtr tk) {
   return detail::timeoutImpl<SemiAwaitable, Duration, /*discard=*/false>(
-      mustAwaitImmediatelyUnsafeMover(std::move(semiAwaitable)),
+      folly::ext::must_use_immediately_unsafe_mover(std::move(semiAwaitable)),
       timeoutDuration,
       std::move(tk));
 }

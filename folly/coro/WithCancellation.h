@@ -17,9 +17,9 @@
 #pragma once
 
 #include <folly/CancellationToken.h>
-#include <folly/coro/AwaitImmediately.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/lang/CustomizationPoint.h>
+#include <folly/lang/MustUseImmediately.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -41,23 +41,23 @@ namespace adl {
 /// Types must opt-in to hooking cancellation by customising this function.
 template <
     typename Awaitable,
-    std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
 Awaitable&& co_withCancellation(
     const folly::CancellationToken&, Awaitable&& awaitable) noexcept {
   return static_cast<Awaitable&&>(awaitable);
 }
 template <
     typename Awaitable,
-    std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
 Awaitable co_withCancellation(
     const folly::CancellationToken&, Awaitable awaitable) noexcept {
-  return mustAwaitImmediatelyUnsafeMover(std::move(awaitable))();
+  return folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))();
 }
 
 struct WithCancellationFunction {
   template <
       typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto operator()(
       const folly::CancellationToken& cancelToken, Awaitable&& awaitable) const
       noexcept(noexcept(co_withCancellation(
@@ -69,21 +69,24 @@ struct WithCancellationFunction {
   }
   template <
       typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto operator()(
       const folly::CancellationToken& cancelToken, Awaitable awaitable) const
       noexcept(noexcept(co_withCancellation(
           cancelToken,
-          mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())))
+          folly::ext::must_use_immediately_unsafe_mover(
+              std::move(awaitable))())))
           -> decltype(co_withCancellation(
               cancelToken,
-              mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())) {
+              folly::ext::must_use_immediately_unsafe_mover(
+                  std::move(awaitable))())) {
     return co_withCancellation(
-        cancelToken, mustAwaitImmediatelyUnsafeMover(std::move(awaitable))());
+        cancelToken,
+        folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))());
   }
   template <
       typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto operator()(folly::CancellationToken&& cancelToken, Awaitable&& awaitable)
       const noexcept(noexcept(co_withCancellation(
           std::move(cancelToken), static_cast<Awaitable&&>(awaitable))))
@@ -94,17 +97,19 @@ struct WithCancellationFunction {
   }
   template <
       typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto operator()(folly::CancellationToken&& cancelToken, Awaitable awaitable)
       const noexcept(noexcept(co_withCancellation(
           std::move(cancelToken),
-          mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())))
+          folly::ext::must_use_immediately_unsafe_mover(
+              std::move(awaitable))())))
           -> decltype(co_withCancellation(
               std::move(cancelToken),
-              mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())) {
+              folly::ext::must_use_immediately_unsafe_mover(
+                  std::move(awaitable))())) {
     return co_withCancellation(
         std::move(cancelToken),
-        mustAwaitImmediatelyUnsafeMover(std::move(awaitable))());
+        folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))());
   }
 };
 } // namespace adl

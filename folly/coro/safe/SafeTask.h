@@ -334,7 +334,7 @@ struct safe_task_with_executor_base_traits<ArgSafety, T> {
 template <safe_alias ArgSafety, typename T>
   requires(ArgSafety < safe_alias::closure_min_arg_safety)
 struct safe_task_with_executor_base_traits<ArgSafety, T> {
-  using type = AddMustAwaitImmediately<TaskWithExecutorWrapperCrtp<
+  using type = ext::wrap_must_use_immediately_t<TaskWithExecutorWrapperCrtp<
       safe_task_with_executor<ArgSafety, T>,
       safe_task_with_executor_cfg<ArgSafety, T>>>;
 };
@@ -361,7 +361,7 @@ struct safe_task_base_traits {
 template <safe_alias ArgSafety, typename T>
   requires(ArgSafety < safe_alias::closure_min_arg_safety)
 struct safe_task_base_traits<ArgSafety, T> {
-  using type = AddMustAwaitImmediately<
+  using type = ext::wrap_must_use_immediately_t<
       TaskWrapperCrtp<safe_task<ArgSafety, T>, safe_task_cfg<ArgSafety, T>>>;
 };
 

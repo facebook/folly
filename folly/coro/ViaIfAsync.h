@@ -20,7 +20,6 @@
 
 #include <folly/Executor.h>
 #include <folly/Traits.h>
-#include <folly/coro/AwaitImmediately.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Traits.h>
 #include <folly/coro/WithAsyncStack.h>
@@ -28,6 +27,7 @@
 #include <folly/coro/detail/Malloc.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/CustomizationPoint.h>
+#include <folly/lang/MustUseImmediately.h>
 #include <folly/lang/SafeAlias-fwd.h>
 #include <folly/tracing/AsyncStack.h>
 
@@ -517,7 +517,7 @@ template <
     std::enable_if_t<
         is_awaitable_v<Awaitable> && !HasViaIfAsyncMethod<Awaitable>::value,
         int> = 0,
-    std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
 auto co_viaIfAsync(folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
     -> ViaIfAsyncAwaitable<Awaitable> {
   return ViaIfAsyncAwaitable<Awaitable>{
@@ -528,7 +528,7 @@ template <
     std::enable_if_t<
         is_awaitable_v<Awaitable> && !HasViaIfAsyncMethod<Awaitable>::value,
         int> = 0,
-    std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
 auto co_viaIfAsync(folly::Executor::KeepAlive<> executor, Awaitable awaitable)
     -> ViaIfAsyncAwaitable<Awaitable> {
   return ViaIfAsyncAwaitable<Awaitable>{
@@ -538,7 +538,7 @@ auto co_viaIfAsync(folly::Executor::KeepAlive<> executor, Awaitable awaitable)
 struct ViaIfAsyncFunction {
   template <
       typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto operator()(folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
       const noexcept(noexcept(co_viaIfAsync(
           std::move(executor), static_cast<Awaitable&&>(awaitable))))
@@ -549,17 +549,19 @@ struct ViaIfAsyncFunction {
   }
   template <
       typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto operator()(folly::Executor::KeepAlive<> executor, Awaitable awaitable)
       const noexcept(noexcept(co_viaIfAsync(
           std::move(executor),
-          mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())))
+          folly::ext::must_use_immediately_unsafe_mover(
+              std::move(awaitable))())))
           -> decltype(co_viaIfAsync(
               std::move(executor),
-              mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())) {
+              folly::ext::must_use_immediately_unsafe_mover(
+                  std::move(awaitable))())) {
     return co_viaIfAsync(
         std::move(executor),
-        mustAwaitImmediatelyUnsafeMover(std::move(awaitable))());
+        folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))());
   }
 };
 
@@ -682,17 +684,17 @@ class CommutativeWrapperAwaitable {
  public:
   template <
       typename T2,
-      std::enable_if_t<!must_await_immediately_v<T2>, int> = 0>
+      std::enable_if_t<!folly::ext::must_use_immediately_v<T2>, int> = 0>
   explicit CommutativeWrapperAwaitable(T2&& awaitable) noexcept(
       std::is_nothrow_constructible_v<T, T2>)
       : inner_(static_cast<T2&&>(awaitable)) {}
   template <
       typename T2,
-      std::enable_if_t<must_await_immediately_v<T2>, int> = 0>
-  explicit CommutativeWrapperAwaitable(T2 awaitable)
-      // `mustAwaitImmediatelyUnsafeMover` has more `noexcept` assertions.
-      noexcept(noexcept(T{FOLLY_DECLVAL(T2)}))
-      : inner_(mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()) {}
+      std::enable_if_t<folly::ext::must_use_immediately_v<T2>, int> = 0>
+  explicit CommutativeWrapperAwaitable(T2 awaitable) noexcept(noexcept(T{
+      FOLLY_DECLVAL(T2)}))
+      : inner_(folly::ext::must_use_immediately_unsafe_mover(
+            std::move(awaitable))()) {}
 
   template <typename Factory>
   explicit CommutativeWrapperAwaitable(std::in_place_t, Factory&& factory)
@@ -746,7 +748,7 @@ class CommutativeWrapperAwaitable {
 
   template <
       typename T2 = T,
-      std::enable_if_t<!must_await_immediately_v<T2>, int> = 0,
+      std::enable_if_t<!folly::ext::must_use_immediately_v<T2>, int> = 0,
       typename Result = semi_await_awaitable_t<T2>>
   friend Derived<Result> co_viaIfAsync(
       folly::Executor::KeepAlive<> executor,
@@ -761,7 +763,7 @@ class CommutativeWrapperAwaitable {
   }
   template <
       typename T2 = T,
-      std::enable_if_t<must_await_immediately_v<T2>, int> = 0,
+      std::enable_if_t<folly::ext::must_use_immediately_v<T2>, int> = 0,
       typename Result = semi_await_awaitable_t<T2>>
   friend Derived<Result> co_viaIfAsync(
       folly::Executor::KeepAlive<> executor,
@@ -772,32 +774,61 @@ class CommutativeWrapperAwaitable {
         std::in_place, [&]() {
           return folly::coro::co_viaIfAsync(
               std::move(executor),
-              mustAwaitImmediatelyUnsafeMover(std::move(awaitable.inner_))());
+              folly::ext::must_use_immediately_unsafe_mover(
+                  std::move(awaitable.inner_))());
         }};
-  }
-
-  template <
-      typename T2 = T,
-      typename = decltype(FOLLY_DECLVAL(T2&&).getUnsafeMover(
-          FOLLY_DECLVAL(ForMustAwaitImmediately)))>
-  auto getUnsafeMover(ForMustAwaitImmediately p) && noexcept {
-    // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
-    static_assert(sizeof(Derived<T>) == sizeof(T));
-    static_assert( // More `noexcept` tests in `MustAwaitImmediatelyUnsafeMover`
-        noexcept(std::move(inner_).getUnsafeMover(p)));
-    return MustAwaitImmediatelyUnsafeMover{
-        (Derived<T>*)nullptr, std::move(inner_).getUnsafeMover(p)};
   }
 
   // IMPORTANT: If a commutative wrapper changes safety, immediate- or
   // noexcept-awaitability, it must remember to override these:
-  using folly_private_must_await_immediately_t = must_await_immediately_t<T>;
+  using folly_must_use_immediately_t = ext::must_use_immediately_t<T>;
   using folly_private_noexcept_awaitable_t = noexcept_awaitable_t<T>;
   template <safe_alias Default>
   using folly_private_safe_alias_t = safe_alias_of<T, Default>;
 
  protected:
   T inner_;
+
+ private:
+  template <typename U>
+  using my_curried_mover = folly::ext::curried_unsafe_mover_t<
+      U,
+      decltype(folly::ext::must_use_immediately_unsafe_mover(
+          FOLLY_DECLVAL(T)))>;
+
+ public:
+  template <
+      typename Me, // not a forwarding ref, see SFINAE
+      typename T2 = T,
+      std::enable_if_t<
+          // This check guards against misuse (+ fails on lvalue refs)
+          // See `wrap_must_use_immediately_t::unsafe_mover` for more context
+          std::is_base_of_v<CommutativeWrapperAwaitable, Me> &&
+              // Without this check we might instantiate this for things like
+              // `TryAwaitable<coro::Future<...>&&>`, erroring with:
+              //   "cannot form a pointer-to-member to member of reference type"
+              folly::ext::must_use_immediately_v<T2>,
+          int> = 0>
+  static my_curried_mover<Me> unsafe_mover(
+      folly::ext::must_use_immediately_private_t, Me&& me) noexcept {
+    return folly::ext::curried_unsafe_mover_from_bases_and_members<
+        CommutativeWrapperAwaitable>(
+        folly::tag</*no bases*/>,
+        folly::vtag<&CommutativeWrapperAwaitable::inner_>,
+        static_cast<Me&&>(me));
+  }
+  template <
+      typename DerivedFromMe,
+      // Matches the SFINAE logic in our `unsafe_mover`
+      std::enable_if_t<
+          std::is_base_of_v<CommutativeWrapperAwaitable, DerivedFromMe>,
+          int> = 0>
+  explicit CommutativeWrapperAwaitable(
+      folly::ext::curried_unsafe_mover_private_t,
+      my_curried_mover<DerivedFromMe>&& mover)
+      // `must_use_immediately_unsafe_mover` has more `noexcept` assertions
+      noexcept(noexcept(T{std::move(mover.template get<0>())()}))
+      : inner_{std::move(mover.template get<0>())()} {}
 };
 
 template <typename T>
@@ -825,7 +856,7 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] TryAwaitable
 
 template <
     typename Awaitable,
-    std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
 detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable&& awaitable) {
   return detail::TryAwaitable<remove_cvref_t<Awaitable>>{
@@ -833,11 +864,11 @@ detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
 }
 template <
     typename Awaitable,
-    std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
 detail::TryAwaitable<Awaitable> co_awaitTry(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {
   return detail::TryAwaitable<Awaitable>{
-      mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()};
+      folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))()};
 }
 
 template <typename T>
@@ -860,7 +891,7 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable
 
 template <
     typename Awaitable,
-    std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
 detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable&& awaitable) {
   return detail::NothrowAwaitable<remove_cvref_t<Awaitable>>{
@@ -868,11 +899,11 @@ detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
 }
 template <
     typename Awaitable,
-    std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
 detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {
   return detail::NothrowAwaitable<remove_cvref_t<Awaitable>>{
-      mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()};
+      folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))()};
 }
 
 } // namespace folly::coro

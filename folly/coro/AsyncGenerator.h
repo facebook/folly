@@ -714,7 +714,7 @@ class AsyncGeneratorPromise final
 
   template <
       typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -728,7 +728,7 @@ class AsyncGeneratorPromise final
   }
   template <
       typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -739,14 +739,15 @@ class AsyncGeneratorPromise final
         executor_.get_alias(),
         folly::coro::co_withCancellation(
             cancelToken_,
-            mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())));
+            folly::ext::must_use_immediately_unsafe_mover(
+                std::move(awaitable))())));
   }
 
   template <typename Awaitable>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
     return await_transform(
-        mustAwaitImmediatelyUnsafeMover(awaitable.unwrap())());
+        folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());
   }
 
   auto await_transform(folly::coro::co_current_executor_t) noexcept {

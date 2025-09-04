@@ -93,14 +93,14 @@ using CollectAllTask = pick_task_wrapper<
     std::tuple<collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>,
     std::min(
         {safe_alias::maybe_value, lenient_safe_alias_of_v<SemiAwaitables>...}),
-    (must_await_immediately_v<SemiAwaitables> || ...)>;
+    (folly::ext::must_use_immediately_v<SemiAwaitables> || ...)>;
 
 template <typename... SemiAwaitables>
 using CollectAllTryTask = pick_task_wrapper<
     std::tuple<collect_all_try_component_t<remove_cvref_t<SemiAwaitables>>...>,
     std::min(
         {safe_alias::maybe_value, lenient_safe_alias_of_v<SemiAwaitables>...}),
-    (must_await_immediately_v<SemiAwaitables> || ...)>;
+    (folly::ext::must_use_immediately_v<SemiAwaitables> || ...)>;
 
 } // namespace detail
 

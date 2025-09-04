@@ -40,7 +40,7 @@ using TimeoutTask = pick_task_wrapper<
     std::min(
         lenient_safe_alias_of_v<TimekeeperPtr>,
         lenient_safe_alias_of_v<SemiAwaitable>),
-    must_await_immediately_v<SemiAwaitable>>;
+    folly::ext::must_use_immediately_v<SemiAwaitable>>;
 } // namespace detail
 
 /// Returns a Task that, when started, starts a timer of duration

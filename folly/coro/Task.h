@@ -33,7 +33,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
-#include <folly/coro/AwaitImmediately.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/CurrentExecutor.h>
 #include <folly/coro/Invoke.h>
@@ -49,6 +48,7 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/MustUseImmediately.h>
 #include <folly/lang/SafeAlias-fwd.h>
 #include <folly/result/result.h>
 #include <folly/result/try.h>
@@ -147,7 +147,7 @@ class TaskPromiseBase {
 
   template <
       typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -161,7 +161,7 @@ class TaskPromiseBase {
   }
   template <
       typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -172,14 +172,15 @@ class TaskPromiseBase {
         executor_.get_alias(),
         folly::coro::co_withCancellation(
             cancelToken_,
-            mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())));
+            folly::ext::must_use_immediately_unsafe_mover(
+                std::move(awaitable))())));
   }
 
   template <typename Awaitable>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
     return await_transform(
-        mustAwaitImmediatelyUnsafeMover(awaitable.unwrap())());
+        folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());
   }
 
   auto await_transform(co_current_executor_t) noexcept {
@@ -354,14 +355,17 @@ void co_withExecutor();
 // This CPO deliberately does NOT use `tag_invoke`, but rather reuses the
 // `co_withExecutor` name as the ADL implementation, just like `co_viaIfAsync`.
 // The reason is that `tag_invoke()` would plumb through `Awaitable&&` instead
-// of `Awaitable`, but `must_await_immediately_v` types require by-value.
+// of `Awaitable`, but `folly::ext::must_use_immediately_v` types require
+// by-value.
 struct WithExecutorFunction {
   template <typename Awaitable>
   // Pass `awaitable` by-value, since `&&` would break immediate types
   auto operator()(Executor::KeepAlive<> executor, Awaitable awaitable) const
       FOLLY_DETAIL_FORWARD_BODY(co_withExecutor(
           std::move(executor),
-          mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()))
+          // NOLINTNEXTLINE(facebook-folly-coro-temporary-by-ref)
+          folly::ext::must_use_immediately_unsafe_mover(
+              std::move(awaitable))()))
 };
 } // namespace adl
 
@@ -708,11 +712,6 @@ class FOLLY_NODISCARD TaskWithExecutor {
     return std::move(task);
   }
 
-  NoOpMover<TaskWithExecutor> getUnsafeMover(
-      ForMustAwaitImmediately) && noexcept {
-    return NoOpMover{std::move(*this)}; // Asserts `this` is nothrow-movable
-  }
-
   using folly_private_task_without_executor_t = Task<T>;
   // See comment in `Task`, or use `safe_task_with_executor` instead.
   template <safe_alias>
@@ -869,10 +868,6 @@ class FOLLY_CORO_TASK_ATTRS Task {
       tag_t<co_invoke_fn>, tag_t<Task, F, A...>, F_ f, A_... a) {
     co_yield co_result(co_await co_awaitTry(
         invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
-  }
-
-  NoOpMover<Task> getUnsafeMover(ForMustAwaitImmediately) && noexcept {
-    return NoOpMover{std::move(*this)}; // Asserts `this` is nothrow-movable
   }
 
   using PrivateAwaiterTypeForTests = Awaiter;

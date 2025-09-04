@@ -150,7 +150,7 @@ template <typename Awaitable>
 detail::ResultAwaitable<Awaitable> co_await_result(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {
   return detail::ResultAwaitable<Awaitable>{
-      mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()};
+      folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))()};
 }
 
 } // namespace folly::coro
