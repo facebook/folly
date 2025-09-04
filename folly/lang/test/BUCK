@@ -136,7 +136,7 @@ non_fbcode_target(
     name = "must_use_immediately_test",
     srcs = ["MustUseImmediatelyTest.cpp"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/lang:must_use_immediately",
     ],
 )
