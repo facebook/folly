@@ -1506,6 +1506,7 @@ TEST(IoUringBackend, ProvidedBuffers) {
   auto* bufferProvider = backend->bufferProvider();
   ASSERT_NE(bufferProvider, nullptr);
 
+  EXPECT_EQ(bufferProvider, backend->bufferProvider());
   EXPECT_EQ(2, bufferProvider->count());
 
   struct Reader : folly::IoSqeBase {
@@ -1573,6 +1574,36 @@ TEST(IoUringBackend, ProvidedBuffers) {
   ASSERT_EQ(1, cqes.size());
   EXPECT_EQ(2, cqes[0].first);
   EXPECT_EQ("56", toString(bufferProvider->getIoBuf(cqes[0].second >> 16, 2)));
+}
+
+TEST(IoUringBackend, ProvidedBufferRingsPow2) {
+  folly::IoUringBackend::Options options;
+  EXPECT_THROW(options.setProvidedBufRings(3), std::runtime_error);
+}
+
+TEST(IoUringBackend, ProvidedBufferRingMultiple) {
+  auto evbPtr = getEventBase();
+  std::unique_ptr<folly::IoUringBackend> backend;
+  try {
+    backend = std::make_unique<folly::IoUringBackend>(
+        folly::IoUringBackend::Options{}
+            .setInitialProvidedBuffers(2, 2)
+            .setProvidedBufRings(2));
+  } catch (folly::IoUringBackend::NotAvailable const&) {
+  }
+  SKIP_IF(!backend) << "Backend not available";
+
+  auto* bp1 = backend->bufferProvider();
+  ASSERT_NE(bp1, nullptr);
+
+  auto* bp2 = backend->bufferProvider();
+  ASSERT_NE(bp2, nullptr);
+
+  auto* bp3 = backend->bufferProvider();
+  ASSERT_NE(bp3, nullptr);
+
+  EXPECT_NE(bp1, bp2);
+  EXPECT_EQ(bp1, bp3);
 }
 
 TEST(IoUringBackend, ProvidedBufferRing) {

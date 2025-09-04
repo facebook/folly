@@ -99,7 +99,7 @@ AsyncIoUringSocket::AsyncIoUringSocket(EventBase* evb, Options&& options)
     : evb_(evb), options_(std::move(options)) {
   backend_ = getBackendFromEventBase(evb);
 
-  if (!backend_->bufferProvider()) {
+  if (!backend_->hasBufferProvider()) {
     throw std::runtime_error("require a IoUringBackend with a buffer provider");
   }
   readSqe_ = ReadSqe::UniquePtr(new ReadSqe(this));
@@ -202,7 +202,7 @@ bool AsyncIoUringSocket::supports(EventBase* eb) {
   if (!io) {
     io = IoUringEventBaseLocal::try_get(eb);
   }
-  return io && io->bufferProvider() != nullptr;
+  return io && io->hasBufferProvider();
 }
 
 bool AsyncIoUringSocket::supportsZcRx(EventBase* eb) {
