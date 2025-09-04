@@ -934,6 +934,19 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_benchmark,
+    name = "std_bitset_benchmark",
+    srcs = ["StdBitsetBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/container:std_bitset",
+        "//folly/init:init",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "std_bitset_test",
     srcs = ["StdBitsetTest.cpp"],
