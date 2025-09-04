@@ -329,6 +329,11 @@ folly::StringPiece ElfFile::getSectionBody(
   return folly::StringPiece(file_ + section.sh_offset, section.sh_size);
 }
 
+folly::StringPiece ElfFile::getSegmentBody(
+    const ElfPhdr& segment) const noexcept {
+  return folly::StringPiece(file_ + segment.p_offset, segment.p_filesz);
+}
+
 void ElfFile::validateStringTable(const ElfShdr& stringTable) const noexcept {
   FOLLY_SAFE_CHECK(
       stringTable.sh_type == SHT_STRTAB, "invalid type for string table");

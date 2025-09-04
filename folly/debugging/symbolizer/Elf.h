@@ -159,6 +159,8 @@ class ElfFile {
   /** Get the actual section body */
   folly::StringPiece getSectionBody(const ElfShdr& section) const noexcept;
 
+  folly::StringPiece getSegmentBody(const ElfPhdr& segment) const noexcept;
+
   /** Retrieve a string from a string table section */
   const char* getString(
       const ElfShdr& stringTable, size_t offset) const noexcept;

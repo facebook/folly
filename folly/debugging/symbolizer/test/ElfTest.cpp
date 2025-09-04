@@ -142,6 +142,8 @@ TEST_F(ElfTest, iterateProgramHeaders) {
   });
   EXPECT_NE(nullptr, phdr);
   EXPECT_GE(phdr->p_filesz, 0);
+  auto body = elfFile_.getSegmentBody(*phdr);
+  EXPECT_EQ(body.size(), phdr->p_filesz);
 }
 
 TEST_F(ElfTest, TinyNonElfFile) {
