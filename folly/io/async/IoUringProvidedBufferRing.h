@@ -19,6 +19,7 @@
 #include <folly/io/async/IoUringBase.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/portability/SysMman.h>
+#include <folly/synchronization/DistributedMutex.h>
 
 #if FOLLY_HAS_LIBURING
 
@@ -45,7 +46,8 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
     bool useHugePages{false};
   };
 
-  IoUringProvidedBufferRing(io_uring* ioRingPtr, Options options);
+  static IoUringBufferProviderBase::UniquePtr create(
+      io_uring* ioRingPtr, Options options);
 
   void enobuf() noexcept override;
   void unusedBuf(uint16_t i) noexcept override;
@@ -58,9 +60,11 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
   }
 
  private:
+  explicit IoUringProvidedBufferRing(io_uring* ioRingPtr, Options options);
+
   void initialRegister();
-  void returnBufferInShutdown() noexcept;
   void returnBuffer(uint16_t i) noexcept;
+  void delayedDestroy(uint64_t refs) noexcept;
 
   std::atomic<uint16_t>* sharedTail() {
     return reinterpret_cast<std::atomic<uint16_t>*>(&buffer_.ring()->tail);
@@ -124,11 +128,11 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
   std::vector<IoUringProvidedBufferRing*> ioBufCallbacks_;
 
   uint64_t gottenBuffers_{0};
-  std::atomic<uint64_t> returnedBuffers_{0};
+  uint64_t returnedBuffers_{0};
 
+  folly::DistributedMutex mutex_;
   std::atomic<bool> wantsShutdown_{false};
-  std::atomic<uint32_t> shutdownReferences_;
-  std::mutex shutdownMutex_;
+  uint64_t shutdownReferences_{0};
 };
 
 } // namespace folly

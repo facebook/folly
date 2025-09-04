@@ -327,8 +327,7 @@ static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
 
 template <class... Args>
 IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&... args) {
-  return IoUringProvidedBufferRing::UniquePtr(
-      new IoUringProvidedBufferRing(std::forward<Args>(args)...));
+  return IoUringProvidedBufferRing::create(std::forward<Args>(args)...);
 }
 
 #else

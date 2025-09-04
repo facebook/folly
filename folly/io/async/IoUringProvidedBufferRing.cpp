@@ -24,6 +24,12 @@
 
 namespace folly {
 
+IoUringBufferProviderBase::UniquePtr IoUringProvidedBufferRing::create(
+    io_uring* ioRingPtr, Options options) {
+  return IoUringProvidedBufferRing::UniquePtr(
+      new IoUringProvidedBufferRing(ioRingPtr, options));
+}
+
 IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
     size_t count, int bufferShift, int ringCountShift, bool huge_pages)
     : bufferShift_(bufferShift), bufferCount_(count) {
@@ -130,27 +136,14 @@ void IoUringProvidedBufferRing::unusedBuf(uint16_t i) noexcept {
 }
 
 void IoUringProvidedBufferRing::destroy() noexcept {
+  std::unique_lock lock{mutex_};
   ::io_uring_unregister_buf_ring(ioRingPtr_, gid());
-  shutdownReferences_ = 1;
-  auto returned = returnedBuffers_.load();
-  {
-    std::lock_guard guard(shutdownMutex_);
-    wantsShutdown_ = true;
-    // add references for every missing one
-    // we can assume that there will be no more from the kernel side.
-    // there is a race condition here between reading wantsShutdown_ and
-    // a return incrementing the number of returned references, but it is very
-    // unlikely to trigger as everything is shutting down, so there should not
-    // actually be any buffer returns. Worse case this will leak, but since
-    // everything is shutting down anyway it should not be a problem.
-    uint64_t const gotten = gottenBuffers_;
-    DCHECK(gottenBuffers_ >= returned);
-    uint32_t outstanding = (gotten - returned);
-    shutdownReferences_ += outstanding;
-  }
-  if (shutdownReferences_.fetch_sub(1) == 1) {
-    delete this;
-  }
+  DCHECK(gottenBuffers_ >= returnedBuffers_);
+  auto remaining = gottenBuffers_ - returnedBuffers_;
+  shutdownReferences_ = remaining;
+  wantsShutdown_ = true;
+  lock.unlock();
+  delayedDestroy(remaining);
 }
 
 std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
@@ -174,6 +167,7 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
       length,
       free_fn,
       (void*)(((size_t)ioBufCallbacks_.data()) + i));
+  ret->markExternallySharedOne();
   gottenBuffers_++;
   return ret;
 }
@@ -206,21 +200,25 @@ void IoUringProvidedBufferRing::initialRegister() {
   }
 }
 
-void IoUringProvidedBufferRing::returnBufferInShutdown() noexcept {
-  { std::lock_guard guard(shutdownMutex_); }
-  if (shutdownReferences_.fetch_sub(1) == 1) {
+void IoUringProvidedBufferRing::delayedDestroy(uint64_t refs) noexcept {
+  if (refs == 0) {
     delete this;
   }
 }
 
 void IoUringProvidedBufferRing::returnBuffer(uint16_t i) noexcept {
+  std::unique_lock lock{mutex_};
   if (FOLLY_UNLIKELY(wantsShutdown_)) {
-    returnBufferInShutdown();
+    auto refs = --shutdownReferences_;
+    lock.unlock();
+    delayedDestroy(refs);
     return;
   }
+
   uint16_t this_idx = static_cast<uint16_t>(returnedBuffers_++);
-  __u64 addr = (__u64)buffer_.buffer(i);
   uint16_t next_tail = this_idx + 1;
+
+  __u64 addr = (__u64)buffer_.buffer(i);
   auto* r = buffer_.ringBuf(this_idx);
   r->addr = addr;
   r->len = buffer_.sizePerBuffer();

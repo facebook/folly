@@ -948,6 +948,7 @@ fb_dirsync_cpp_library(
         "//folly/io/async:delayed_destruction",
         "//folly/io/async:liburing",
         "//folly/portability:sys_mman",
+        "//folly/synchronization:distributed_mutex",
     ],
     exported_external_deps = [
         "boost",
