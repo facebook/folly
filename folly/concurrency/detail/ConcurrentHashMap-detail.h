@@ -27,7 +27,7 @@
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/Hazptr.h>
 
-#ifdef __aarch64__
+#if FOLLY_AARCH64 && FOLLY_F14_CRC_INTRINSIC_AVAILABLE
 #include <arm_acle.h>
 #include <arm_neon.h>
 #elif FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
@@ -830,7 +830,9 @@ class alignas(64) BucketTable {
 
 } // namespace bucket
 
-#if (FOLLY_SSE_PREREQ(4, 2) || FOLLY_AARCH64) && \
+#if (                                                        \
+    FOLLY_SSE_PREREQ(4, 2) ||                                \
+    (FOLLY_AARCH64 && FOLLY_F14_CRC_INTRINSIC_AVAILABLE)) && \
     FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 namespace simd {

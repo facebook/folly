@@ -838,7 +838,9 @@ using ConcurrentHashMapSIMD = ConcurrentHashMap<
     ShardBits,
     Atom,
     Mutex,
-#if (FOLLY_SSE_PREREQ(4, 2) || FOLLY_AARCH64) && \
+#if (                                                        \
+    FOLLY_SSE_PREREQ(4, 2) ||                                \
+    (FOLLY_AARCH64 && FOLLY_F14_CRC_INTRINSIC_AVAILABLE)) && \
     FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
     detail::concurrenthashmap::simd::SIMDTable
 #else
