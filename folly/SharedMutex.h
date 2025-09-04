@@ -63,9 +63,9 @@
 // reader-writer locks in use at Facebook for almost all use cases,
 // sometimes by a wide margin.  (If it is rare that there are actually
 // concurrent readers then RWSpinLock can be a few nanoseconds faster.)
-// I compared it to folly::RWSpinLock, folly::RWTicketSpinLock64,
-// boost::shared_mutex, pthread_rwlock_t, and a RWLock that internally uses
-// spinlocks to guard state and pthread_mutex_t+pthread_cond_t to block.
+// I compared it to folly::RWSpinLock, boost::shared_mutex,
+// pthread_rwlock_t, and a RWLock that internally uses spinlocks to guard
+// state and pthread_mutex_t+pthread_cond_t to block.
 // (Thrift's ReadWriteMutex is based underneath on pthread_rwlock_t.)
 // It is generally as good or better than the rest when evaluating size,
 // speed, scalability, or latency outliers.  In the corner cases where
