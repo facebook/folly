@@ -166,55 +166,6 @@ class SettingWrapper {
   SettingCore<T, Tag>& core_;
   friend class folly::settings::Snapshot;
 };
-
-/**
- * Optimization: fast-path on top of the Meyers singleton. Each
- * translation unit gets this code inlined, while the slow path
- * initialization code is not.  We check the global pointer which
- * should only be initialized after the Meyers singleton. It's ok for
- * multiple calls to attempt to update the global pointer, as they
- * would be serialized on the Meyer's singleton initialization lock
- * anyway.
- *
- * Both FOLLY_SETTING_DECLARE and FOLLY_SETTING_DEFINE will provide
- * a copy of this function and we work around ODR by using different
- * overload types.
- *
- * Requires a trailing semicolon.
- */
-#define FOLLY_DETAIL_SETTINGS_DEFINE_LOCAL_FUNC__(                             \
-    _project, _name, _Type, _overloadType)                                     \
-  struct FOLLY_SETTINGS_TAG__##_project##_##_name;                             \
-  extern ::std::atomic<::folly::settings::detail::SettingCore<                 \
-      _Type,                                                                   \
-      FOLLY_SETTINGS_TAG__##_project##_##_name>*>                              \
-      FOLLY_SETTINGS_CACHE__##_project##_##_name;                              \
-  extern ::std::atomic<uint64_t> FOLLY_SETTINGS_TRIVIAL__##_project##_##_name; \
-  ::folly::settings::detail::                                                  \
-      SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>&            \
-          FOLLY_SETTINGS_FUNC__##_project##_##_name();                         \
-  FOLLY_ALWAYS_INLINE auto FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(    \
-      _overloadType) {                                                         \
-    auto* folly_detail_settings_value =                                        \
-        FOLLY_SETTINGS_CACHE__##_project##_##_name.load(                       \
-            ::std::memory_order_acquire);                                      \
-    if (FOLLY_UNLIKELY(!folly_detail_settings_value)) {                        \
-      folly_detail_settings_value =                                            \
-          &FOLLY_SETTINGS_FUNC__##_project##_##_name();                        \
-      FOLLY_SETTINGS_CACHE__##_project##_##_name.store(                        \
-          folly_detail_settings_value, ::std::memory_order_release);           \
-    }                                                                          \
-    return ::folly::settings::detail::SettingWrapper<                          \
-        _Type,                                                                 \
-        &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name,                         \
-        FOLLY_SETTINGS_TAG__##_project##_##_name>(                             \
-        *folly_detail_settings_value);                                         \
-  }                                                                            \
-  /* This is here just to force a semicolon */                                 \
-  ::folly::settings::detail::                                                  \
-      SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>&            \
-          FOLLY_SETTINGS_FUNC__##_project##_##_name()
-
 } // namespace detail
 
 /**
@@ -282,13 +233,56 @@ class SettingWrapper {
   /* Ensure the setting is registered even if not used in program */          \
   auto& FOLLY_SETTINGS_INIT__##_project##_##_name =                           \
       FOLLY_SETTINGS_FUNC__##_project##_##_name();                            \
-  FOLLY_DETAIL_SETTINGS_DEFINE_LOCAL_FUNC__(_project, _name, _Type, char)
+  /**                                                                         \
+   * Optimization: fast-path on top of the Meyers singleton. We check the     \
+   * global pointer which should only be initialized after the Meyers         \
+   * singleton. It's ok for multiple calls to attempt to update the global    \
+   * pointer, as they would be serialized on the Meyer's singleton            \
+   * initialization lock anyway.                                              \
+   */                                                                         \
+  ::folly::settings::detail::SettingWrapper<                                  \
+      _Type,                                                                  \
+      &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name,                          \
+      FOLLY_SETTINGS_TAG__##_project##_##_name>                               \
+      FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name() {                     \
+    auto* folly_detail_settings_value =                                       \
+        FOLLY_SETTINGS_CACHE__##_project##_##_name.load(                      \
+            ::std::memory_order_acquire);                                     \
+    if (FOLLY_UNLIKELY(!folly_detail_settings_value)) {                       \
+      folly_detail_settings_value =                                           \
+          &FOLLY_SETTINGS_FUNC__##_project##_##_name();                       \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name.store(                       \
+          folly_detail_settings_value, ::std::memory_order_release);          \
+    }                                                                         \
+    return ::folly::settings::detail::SettingWrapper<                         \
+        _Type,                                                                \
+        &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name,                        \
+        FOLLY_SETTINGS_TAG__##_project##_##_name>(                            \
+        *folly_detail_settings_value);                                        \
+  }                                                                           \
+  /* This is here just to force a semicolon */                                \
+  ::folly::settings::detail::                                                 \
+      SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>&           \
+          FOLLY_SETTINGS_FUNC__##_project##_##_name()
 
 /**
  * Declares a setting that's defined elsewhere.
  */
-#define FOLLY_SETTING_DECLARE(_project, _name, _Type) \
-  FOLLY_DETAIL_SETTINGS_DEFINE_LOCAL_FUNC__(_project, _name, _Type, int)
+#define FOLLY_SETTING_DECLARE(_project, _name, _Type)                          \
+  struct FOLLY_SETTINGS_TAG__##_project##_##_name;                             \
+  extern ::std::atomic<::folly::settings::detail::SettingCore<                 \
+      _Type,                                                                   \
+      FOLLY_SETTINGS_TAG__##_project##_##_name>*>                              \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name;                              \
+  extern ::std::atomic<uint64_t> FOLLY_SETTINGS_TRIVIAL__##_project##_##_name; \
+  ::folly::settings::detail::                                                  \
+      SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>&            \
+          FOLLY_SETTINGS_FUNC__##_project##_##_name();                         \
+  ::folly::settings::detail::SettingWrapper<                                   \
+      _Type,                                                                   \
+      &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name,                           \
+      FOLLY_SETTINGS_TAG__##_project##_##_name>                                \
+      FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name()
 
 /**
  * Accesses a defined setting.
@@ -300,7 +294,7 @@ class SettingWrapper {
  *     the setting itself.
  */
 #define FOLLY_SETTING(_project, _name) \
-  FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(0)
+  FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name()
 
 /**
  * @return If the setting exists, returns the current settings metadata.
