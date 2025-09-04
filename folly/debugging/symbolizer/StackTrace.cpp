@@ -18,6 +18,7 @@
 #include <folly/tracing/AsyncStack.h>
 
 #include <memory>
+#include <optional>
 
 #include <folly/Portability.h>
 #include <folly/portability/Config.h>
@@ -90,11 +91,24 @@ struct FrameInfo {
   uintptr_t uip;
   bool isSignalFrame;
 
-  inline uintptr_t getAdjustedInstructionPointer() const {
-    // Use previous instruction in normal (call) frames (because the
-    // return address might not be in the same function for noreturn
-    // functions) but not in signal frames.
-    return this->uip - !this->isSignalFrame;
+  inline uintptr_t getAdjustedInstructionPointer(
+      std::optional<FrameInfo> frameInfoPrev) const {
+    bool adjustment;
+
+    if constexpr (folly::kIsArchAArch64) {
+      // This ip adjustment logic matches `unw_backtrace`.
+      // https://github.com/libunwind/libunwind/blob/v1.8.2/src/aarch64/Gtrace.c#L554-L555
+      // The ip is adjusted if there wasn't a previous frame,
+      // or if the previous frame was NOT a signal frame.
+      adjustment = !frameInfoPrev || !frameInfoPrev->isSignalFrame;
+    } else {
+      // Use previous instruction in normal (call) frames (because the
+      // return address might not be in the same function for noreturn
+      // functions) but not in signal frames.
+      adjustment = !this->isSignalFrame;
+    }
+
+    return this->uip - adjustment;
   }
 };
 
@@ -140,7 +154,9 @@ ssize_t getStackTraceInPlace(
   if (!getFrameInfo(&cursor, frameInfo)) {
     return -1;
   }
-  *addresses = frameInfo.getAdjustedInstructionPointer();
+
+  std::optional<FrameInfo> frameInfoPrev; // no previous frame, yet.
+  *addresses = frameInfo.getAdjustedInstructionPointer(frameInfoPrev);
   ++addresses;
   size_t count = 1;
   for (; count != maxAddresses; ++count, ++addresses) {
@@ -151,10 +167,11 @@ ssize_t getStackTraceInPlace(
     if (r == 0) {
       break;
     }
+    frameInfoPrev = frameInfo;
     if (!getFrameInfo(&cursor, frameInfo)) {
       return -1;
     }
-    *addresses = frameInfo.getAdjustedInstructionPointer();
+    *addresses = frameInfo.getAdjustedInstructionPointer(frameInfoPrev);
   }
   return count;
 }
