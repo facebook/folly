@@ -87,8 +87,15 @@ constexpr size_t kMaxExpectedStackFrameSize //
 
 struct FrameInfo {
   /// The instruction pointer (ip) of the frame.
-  uintptr_t ip;
+  uintptr_t uip;
   bool isSignalFrame;
+
+  inline uintptr_t getAdjustedInstructionPointer() const {
+    // Use previous instruction in normal (call) frames (because the
+    // return address might not be in the same function for noreturn
+    // functions) but not in signal frames.
+    return this->uip - !this->isSignalFrame;
+  }
 };
 
 /// Gets the `FrameInfo` from libunwind and stores it in the out ref parameter.
@@ -104,12 +111,8 @@ inline bool getFrameInfo(unw_cursor_t* cursor, FrameInfo& frameInfo) {
     return false;
   }
   bool isSignalFrame = r > 0;
-  // Use previous instruction in normal (call) frames (because the
-  // return address might not be in the same function for noreturn functions)
-  // but not in signal frames.
-  uintptr_t ip = uip - !isSignalFrame;
 
-  frameInfo = FrameInfo{ip, isSignalFrame};
+  frameInfo = FrameInfo{uip, isSignalFrame};
 
   return true;
 }
@@ -137,7 +140,7 @@ ssize_t getStackTraceInPlace(
   if (!getFrameInfo(&cursor, frameInfo)) {
     return -1;
   }
-  *addresses = frameInfo.ip;
+  *addresses = frameInfo.getAdjustedInstructionPointer();
   ++addresses;
   size_t count = 1;
   for (; count != maxAddresses; ++count, ++addresses) {
@@ -151,7 +154,7 @@ ssize_t getStackTraceInPlace(
     if (!getFrameInfo(&cursor, frameInfo)) {
       return -1;
     }
-    *addresses = frameInfo.ip;
+    *addresses = frameInfo.getAdjustedInstructionPointer();
   }
   return count;
 }
