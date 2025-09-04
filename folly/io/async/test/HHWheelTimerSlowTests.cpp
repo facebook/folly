@@ -27,7 +27,7 @@
 using namespace folly;
 using std::chrono::milliseconds;
 
-typedef UndelayedDestruction<HHWheelTimer> StackWheelTimer;
+using StackWheelTimer = UndelayedDestruction<HHWheelTimer>;
 
 class TestTimeout : public HHWheelTimer::Callback {
  public:

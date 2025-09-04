@@ -33,7 +33,7 @@ class TestTimeoutMs : public HHWheelTimer::Callback {
   void callbackCanceled() noexcept override {}
 };
 
-typedef UndelayedDestruction<HHWheelTimer> StackWheelTimerMs;
+using StackWheelTimerMs = UndelayedDestruction<HHWheelTimer>;
 
 class TestTimeoutUs : public HHWheelTimerHighRes::Callback {
  public:
@@ -45,7 +45,7 @@ class TestTimeoutUs : public HHWheelTimerHighRes::Callback {
   void callbackCanceled() noexcept override {}
 };
 
-typedef UndelayedDestruction<HHWheelTimerHighRes> StackWheelTimerUs;
+using StackWheelTimerUs = UndelayedDestruction<HHWheelTimerHighRes>;
 
 class TestTimeoutDirectUs : public TimerFDTimeoutManager::Callback {
  public:

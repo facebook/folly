@@ -2261,7 +2261,7 @@ TEST(AsyncSocketTest, ClosePendingWritesWhileClosing) {
   // Schedule pending writes, until several write attempts have blocked
   char buf[128];
   memset(buf, 'a', sizeof(buf));
-  typedef vector<std::shared_ptr<WriteCallback>> WriteCallbackVector;
+  using WriteCallbackVector = vector<std::shared_ptr<WriteCallback>>;
   WriteCallbackVector writeCallbacks;
 
   writeCallbacks.reserve(5);

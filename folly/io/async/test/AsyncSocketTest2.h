@@ -156,7 +156,7 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
     folly::SocketAddress address; // valid for TYPE_ACCEPT
     std::string errorMsg; // valid for TYPE_ERROR
   };
-  typedef std::deque<EventInfo> EventList;
+  using EventList = std::deque<EventInfo>;
 
   TestAcceptCallback()
       : connectionAcceptedFn_(),
