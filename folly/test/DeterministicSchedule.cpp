@@ -470,7 +470,7 @@ bool DeterministicSchedule::tryWait(Sem* sem) {
   }
 
   bool acquired = sem->try_wait();
-  bool acquired_s = acquired ? "true" : "false";
+  const char* acquired_s = acquired ? "true" : "false";
   FOLLY_TEST_DSCHED_VLOG(
       "sem->try_wait() [sem=" << sem << "] -> " << acquired_s);
   if (acquired) {
