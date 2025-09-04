@@ -349,7 +349,6 @@ fbcode_target(
     ],
     deps = [
         ":elf",
-        ":line_reader",
         "//folly:file_util",
         "//folly:memory",
         "//folly:scope_guard",

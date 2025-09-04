@@ -26,7 +26,6 @@
 #include <folly/debugging/symbolizer/Dwarf.h>
 #include <folly/debugging/symbolizer/Elf.h>
 #include <folly/debugging/symbolizer/ElfCache.h>
-#include <folly/debugging/symbolizer/LineReader.h>
 #include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/lang/ToAscii.h>
