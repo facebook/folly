@@ -42,6 +42,7 @@ libgpiod
 systemd
 range-v3
 tabulate
+gcc12
 
 [shipit.pathmap]
 fbcode/fboss/github = .
