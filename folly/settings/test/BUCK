@@ -10,6 +10,7 @@ fbcode_target(
     name = "settings_bench",
     srcs = ["SettingsBenchmarks.cpp"],
     deps = [
+        ":a",
         "//folly:benchmark",
         "//folly:c_portability",
         "//folly/init:init",
