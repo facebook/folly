@@ -13,8 +13,8 @@ non_fbcode_target(
     link_whole = True,
     deps = ["//xplat/folly:dynamic"],
     exported_deps = [
+        "fbsource//xplat/folly/experimental/io:fs_util",
         "//third-party/boost:boost_filesystem",
-        "//xplat/folly:experimental_io_fs_util",
         "//xplat/folly:json",
         "//xplat/folly/ext:test_ext",
     ],
