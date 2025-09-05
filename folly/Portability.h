@@ -376,6 +376,19 @@ constexpr auto kHasWeakSymbols = false;
 #define FOLLY_SSE_PREREQ(major, minor) \
   (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
 
+#ifndef FOLLY_RVV
+#if defined(__riscv_v)
+  #define FOLLY_RVV       (__riscv_v / 1000000)
+  #define FOLLY_RVV_MINOR ((__riscv_v / 1000) % 1000)
+#else
+  #define FOLLY_RVV 0
+  #define FOLLY_RVV_MINOR 0
+#endif
+#endif
+
+#define FOLLY_RVV_PREREQ(major, minor) \
+  (FOLLY_RVV > major || (FOLLY_RVV == major && FOLLY_RVV_MINOR >= minor))
+
 #ifndef FOLLY_NEON
 #if (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__CUDACC__)
 #define FOLLY_NEON 1
