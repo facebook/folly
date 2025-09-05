@@ -546,8 +546,8 @@ class alignas(64) BucketTable {
             concurrenthashmap::HazptrTableDeleter> {
     using BucketRoot = hazptr_root<Node, Atom>;
 
-    Buckets() {}
-    ~Buckets() {}
+    Buckets() = default;
+    ~Buckets() = default;
 
    public:
     static Buckets* create(size_t count, hazptr_obj_cohort<Atom>* cohort) {
@@ -1085,8 +1085,8 @@ class alignas(64) SIMDTable {
   };
 
   class Chunks : public hazptr_obj_base<Chunks, Atom, HazptrTableDeleter> {
-    Chunks() {}
-    ~Chunks() {}
+    Chunks() = default;
+    ~Chunks() = default;
 
    public:
     static Chunks* create(size_t count, hazptr_obj_cohort<Atom>* cohort) {
