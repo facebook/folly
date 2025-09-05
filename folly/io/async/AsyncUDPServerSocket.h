@@ -362,7 +362,7 @@ class AsyncUDPServerSocket
   std::shared_ptr<AsyncUDPSocket> socket_;
 
   // List of listener to distribute packets among
-  typedef std::pair<EventBase*, Callback*> Listener;
+  using Listener = std::pair<EventBase*, Callback*>;
   std::vector<Listener> listeners_;
 
   DispatchMechanism dispatchMechanism_;

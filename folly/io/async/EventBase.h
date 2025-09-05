@@ -170,9 +170,8 @@ class EventBase
     bool isLoopCallbackScheduled() const { return is_linked(); }
 
    private:
-    typedef boost::intrusive::
-        list<LoopCallback, boost::intrusive::constant_time_size<false>>
-            List;
+    using List = boost::intrusive::
+        list<LoopCallback, boost::intrusive::constant_time_size<false>>;
 
     // EventBase needs access to LoopCallbackList (and therefore to hook_)
     friend class EventBase;
@@ -1029,7 +1028,7 @@ class EventBase
    */
   bool nothingHandledYet() const noexcept;
 
-  typedef LoopCallback::List LoopCallbackList;
+  using LoopCallbackList = LoopCallback::List;
 
   bool isSuccess(LoopStatus status);
 

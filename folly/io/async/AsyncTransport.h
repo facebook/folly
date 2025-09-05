@@ -440,7 +440,7 @@ class AsyncTransport
       public AsyncReader,
       public AsyncWriter {
  public:
-  typedef std::unique_ptr<AsyncTransport, Destructor> UniquePtr;
+  using UniquePtr = std::unique_ptr<AsyncTransport, Destructor>;
 
   /**
    * Close the transport.
