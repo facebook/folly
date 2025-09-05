@@ -73,7 +73,7 @@ namespace folly {
  */
 class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
  public:
-  typedef std::unique_ptr<AsyncServerSocket, Destructor> UniquePtr;
+  using UniquePtr = std::unique_ptr<AsyncServerSocket, Destructor>;
   using CallbackAssignFunction =
       std::function<int(AsyncServerSocket*, NetworkSocket)>;
   // Disallow copy, move, and default construction.

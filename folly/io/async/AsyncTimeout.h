@@ -33,7 +33,7 @@ class EventBase;
  */
 class AsyncTimeout {
  public:
-  typedef TimeoutManager::InternalEnum InternalEnum;
+  using InternalEnum = TimeoutManager::InternalEnum;
 
   /**
    * Create a new AsyncTimeout object, driven by the specified TimeoutManager.
