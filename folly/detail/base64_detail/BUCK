@@ -42,7 +42,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Base64Scalar.h"],
     deps = [
-        "//xplat/folly:portability_constexpr",
+        "fbsource//xplat/folly/portability:constexpr",
         "//xplat/folly:utility",
         "//xplat/folly/detail/base64_detail:base64_common",
         "//xplat/folly/detail/base64_detail:base64_constants",
