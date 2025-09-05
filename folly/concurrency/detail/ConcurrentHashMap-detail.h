@@ -537,8 +537,6 @@ class alignas(64) BucketTable {
   Iterator cend() { return Iterator(nullptr); }
 
  private:
-  // Could be optimized to avoid an extra pointer dereference by
-  // allocating buckets_ at the same time.
   class Buckets
       : public hazptr_obj_base<
             Buckets,
