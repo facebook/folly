@@ -39,9 +39,9 @@ non_fbcode_target(
         "ExceptionTracer.h",
     ],
     deps = [
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         "//third-party/glog:glog",
         "//xplat/folly:cpp_attributes",
-        "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:portability",
         "//xplat/folly:string",
         "//xplat/folly/debugging/exception_tracer:exception_abi",
@@ -75,8 +75,8 @@ non_fbcode_target(
         "SmartExceptionTracer.h",
     ],
     deps = [
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         "//xplat/folly:exception_wrapper",
-        "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:map_util",
         "//xplat/folly:scope_guard",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
@@ -114,9 +114,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         ":exception_tracer_callbacks",
         ":smart_exception_tracer_singleton",
-        "//xplat/folly:experimental_symbolizer_symbolizer",
     ],
 )
 
@@ -133,11 +133,11 @@ non_fbcode_target(
         "ExceptionCounterLib.h",
     ],
     deps = [
-        "//xplat/folly:experimental_symbolizer_symbolizer",
-        "//xplat/folly:hash_spooky_hash_v2",
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
+        "fbsource//xplat/folly/hash:spooky_hash_v2",
+        "fbsource//xplat/folly/synchronization:rw_spin_lock",
         "//xplat/folly:range",
         "//xplat/folly:singleton_thread_local",
-        "//xplat/folly:synchronization_rw_spin_lock",
         "//xplat/folly:synchronized",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
@@ -155,7 +155,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
-        "//xplat/folly:experimental_symbolizer_symbolizer",
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         "//xplat/folly:utility",
         "//xplat/folly/debugging/exception_tracer:exception_abi",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
@@ -176,7 +176,7 @@ non_fbcode_target(
         "StackTrace.h",
     ],
     deps = [
-        "//xplat/folly:experimental_symbolizer_stack_trace",
+        "fbsource//xplat/folly/experimental/symbolizer:stack_trace",
         "//xplat/folly:portability",
     ],
 )
