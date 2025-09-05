@@ -191,6 +191,7 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "test_set_executor_cpplib",
+    enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["test_set_executor.h"],
     exported_deps = [

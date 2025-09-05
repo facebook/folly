@@ -22,7 +22,10 @@
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/io/async/NotificationQueue.h>
+#include <folly/portability/GFlags.h>
 #include <folly/python/Weak.h>
+
+FOLLY_GFLAGS_DECLARE_uint32(folly_asyncio_executor_drive_time_slice_ms);
 
 namespace folly {
 namespace python {
@@ -101,11 +104,9 @@ class NotificationQueueAsyncioExecutor
  public:
   using Func = folly::Func;
   using Clock = folly::chrono::coarse_steady_clock;
-  // Make it GFLAG configurable in next commit
-  constexpr static std::chrono::milliseconds kDefaultTimeSlice{5};
 
   NotificationQueueAsyncioExecutor() noexcept
-      : driveTimeSlice_(kDefaultTimeSlice) {}
+      : driveTimeSlice_(getDefaultTimeSlice()) {}
   explicit NotificationQueueAsyncioExecutor(
       std::chrono::milliseconds driveTimeSlice) noexcept
       : driveTimeSlice_(driveTimeSlice) {}
@@ -159,6 +160,7 @@ class NotificationQueueAsyncioExecutor
   folly::NotificationQueue<Func> queue_;
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
 
+  static std::chrono::milliseconds getDefaultTimeSlice();
   std::chrono::milliseconds driveTimeSlice_{0};
 
   Stats stats_;

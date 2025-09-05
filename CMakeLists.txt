@@ -185,6 +185,7 @@ if (${FOLLY_NO_EXCEPTION_TRACER})
 endif()
 
 list(REMOVE_ITEM files
+  ${FOLLY_DIR}/python/AsyncioExecutor.cpp
   ${FOLLY_DIR}/python/error.cpp
   ${FOLLY_DIR}/python/executor.cpp
   ${FOLLY_DIR}/python/fibers.cpp
