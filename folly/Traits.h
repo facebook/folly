@@ -112,7 +112,9 @@ namespace detail {
 
 template <typename Void, typename T>
 struct require_sizeof_ {
-  static_assert(always_false<T>, "T must be a complete type");
+  static_assert(
+      always_false<T>,
+      "application of sizeof fails substitution - most commonly, the type is incomplete");
 };
 template <typename T>
 struct require_sizeof_<decltype(void(sizeof(T))), T> {
@@ -128,6 +130,11 @@ struct require_sizeof_<decltype(void(sizeof(T))), T> {
 ///
 /// Equivalent to sizeof, but with a static_assert enforcing that application of
 /// sizeof would not fail substitution.
+///
+/// Application of sizeof fails on the following kinds of types:
+/// * function types.
+/// * incomplete types, including possibly-cv-qualified void
+/// * references to types to which application of sizeof would fail
 template <typename T>
 constexpr std::size_t require_sizeof = detail::require_sizeof_<void, T>::size;
 
