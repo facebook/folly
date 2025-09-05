@@ -49,5 +49,8 @@ fbcode/fboss/github = .
 fbcode/fboss/common = common
 fbcode/fboss = fboss
 
+[shipit.strip]
+^fbcode/fboss/github/docs/.*
+
 [sandcastle]
 run_tests = off
