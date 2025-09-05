@@ -525,6 +525,12 @@ constexpr auto kIsWindows = true;
 constexpr auto kIsWindows = false;
 #endif
 
+#if defined(__ANDROID__)
+constexpr auto kIsAndroid = true;
+#else
+constexpr auto kIsAndroid = false;
+#endif
+
 #if defined(__APPLE__)
 constexpr auto kIsApple = true;
 #else
