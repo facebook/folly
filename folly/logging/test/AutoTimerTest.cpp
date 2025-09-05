@@ -30,7 +30,7 @@ struct StubLogger {
   static double t;
 };
 
-std::string StubLogger::m = "";
+std::string StubLogger::m;
 double StubLogger::t = 0;
 
 struct StubClock {
