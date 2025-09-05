@@ -28,7 +28,12 @@ namespace coro {
 
 // Wrapper around folly::UnboundedQueue with async wait
 
-template <typename T, bool SingleProducer = false, bool SingleConsumer = false>
+template <
+    typename T,
+    bool SingleProducer = false,
+    bool SingleConsumer = false,
+    bool MayBlock = false,
+    size_t LgSegmentSize = 8>
 class UnboundedQueue {
  public:
   template <typename U = T>
@@ -87,7 +92,13 @@ class UnboundedQueue {
   size_t size() const { return queue_.size(); }
 
  private:
-  folly::UnboundedQueue<T, SingleProducer, SingleConsumer, false> queue_;
+  folly::UnboundedQueue< //
+      T,
+      SingleProducer,
+      SingleConsumer,
+      MayBlock,
+      LgSegmentSize>
+      queue_;
   folly::fibers::Semaphore sem_{0};
 };
 
