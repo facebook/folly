@@ -54,6 +54,22 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_binary,
+    name = "compression_context_pool_benchmark",
+    srcs = ["CompressionContextPoolBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/compression:compression_context_pool",
+        "//folly/compression:compression_context_pool_singletons",
+        "//folly/lang:keep",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_binary,
     name = "quotient_multiset_benchmark",
     srcs = [
         "QuotientMultiSetBenchmark.cpp",
