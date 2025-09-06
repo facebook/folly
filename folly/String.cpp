@@ -504,7 +504,7 @@ std::string errnoStr(int err) {
 
   // https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/strerror_r.3.html
   // http://www.kernel.org/doc/man-pages/online/pages/man3/strerror.3.html
-#if defined(_WIN32) && (defined(__MINGW32__) || defined(_MSC_VER))
+#if defined(_WIN32)
   // mingw64 has no strerror_r, but Windows has strerror_s, which C11 added
   // as well. So maybe we should use this across all platforms (together
   // with strerrorlen_s). Note strerror_r and _s have swapped args.

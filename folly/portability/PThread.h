@@ -18,7 +18,7 @@
 
 #include <folly/portability/Config.h>
 
-#if !defined(_WIN32)
+#if FOLLY_HAVE_PTHREAD && !defined(_MSC_VER)
 
 #include <pthread.h>
 
