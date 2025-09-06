@@ -561,6 +561,13 @@ typename DetectRes::type must_use_immediately_unsafe_mover(T&& t) noexcept {
   if constexpr (DetectRes::value_t::value) {
     must_use_immediately_private_t priv;
     static_assert(noexcept(T::unsafe_mover(priv, static_cast<T&&>(t))));
+    static_assert(
+        std::is_same_v<
+            T,
+            decltype(T::unsafe_mover(priv, static_cast<T&&>(t))())>,
+        "The result of unsafely moving a T must be exactly T to ensure that we "
+        "satisfy the preconditions for mandatory copy elision, which eliminates "
+        "the possibility of exceptions during conversion");
     return T::unsafe_mover(priv, static_cast<T&&>(t));
   } else {
     static_assert(
