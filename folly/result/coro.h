@@ -103,6 +103,109 @@ class TaskPromisePrivate;
 
 namespace detail {
 
+template <typename>
+struct result_promise_base;
+
+template <typename T>
+struct result_promise_return {
+  result<T> storage_{expected_detail::EmptyTag{}};
+  result<T>*& pointer_;
+
+  /* implicit */ result_promise_return(result_promise_base<T>& p) noexcept
+      : pointer_{p.value_} {
+    pointer_ = &storage_;
+  }
+  result_promise_return(result_promise_return const&) = delete;
+  void operator=(result_promise_return const&) = delete;
+  result_promise_return(result_promise_return&&) = delete;
+  void operator=(result_promise_return&&) = delete;
+  // Remove this once clang 15 is well-forgotten. From D42260201:
+  // letting dtor be trivial makes the coroutine crash
+  ~result_promise_return() {}
+
+  /* implicit */ operator result<T>() {
+    // Simplify this once clang 15 is well-forgotten, and remove the dep on
+    // `Coroutine.h`.  From D42260201: handle both deferred and eager
+    // return-object conversion behaviors see docs for
+    // detect_promise_return_object_eager_conversion
+    if (coro::detect_promise_return_object_eager_conversion()) {
+      assert(storage_.is_expected_empty());
+      return result<T>{expected_detail::EmptyTag{}, pointer_}; // eager
+    } else {
+      assert(!storage_.is_expected_empty());
+      return std::move(storage_); // deferred
+    }
+  }
+};
+
+template <typename T>
+struct result_promise_base {
+  result<T>* value_ = nullptr;
+
+  result_promise_base() = default;
+  result_promise_base(result_promise_base const&) = delete;
+  void operator=(result_promise_base const&) = delete;
+  result_promise_base(result_promise_base&&) = delete;
+  void operator=(result_promise_base&&) = delete;
+  ~result_promise_base() = default;
+
+  FOLLY_NODISCARD std::suspend_never initial_suspend() const noexcept {
+    return {};
+  }
+  FOLLY_NODISCARD std::suspend_never final_suspend() const noexcept {
+    return {};
+  }
+  void unhandled_exception() noexcept {
+    *value_ = non_value_result::from_current_exception();
+  }
+
+  result_promise_return<T> get_return_object() noexcept { return *this; }
+};
+
+template <typename T>
+struct result_promise<T, typename std::enable_if<!std::is_void_v<T>>::type>
+    : public result_promise_base<T> {
+  // For reference types, this deliberately requires users to `co_return`
+  // one of `std::ref`, `std::cref`, or `folly::rref`.
+  //
+  // The default for `U` is tested in `returnImplicitCtor`.
+  template <typename U = T>
+  void return_value(U&& u) {
+    auto& v = *this->value_;
+    expected_detail::ExpectedHelper::assume_empty(v.exp_);
+    v = static_cast<U&&>(u);
+  }
+};
+
+template <typename T>
+struct result_promise<T, typename std::enable_if<std::is_void_v<T>>::type>
+    : public result_promise_base<T> {
+  // You can fail via `co_await err` since void coros only allow `co_return;`.
+  void return_void() { this->value_->exp_.emplace(unit); }
+};
+
+template <typename T> // Need an alias since nested types cannot be deduced.
+using result_promise_handle = std::coroutine_handle<result_promise<T>>;
+
+// This is separate to let future https://fburl.com/result-generator-impl reuse
+// the awaitables below.
+struct result_await_suspender {
+  // Future: check if all these `FOLLY_ALWAYS_INLINE`s aren't a pessimization.
+  template <typename T, typename U>
+  FOLLY_ALWAYS_INLINE void operator()(T&& t, result_promise_handle<U> handle) {
+    auto& v = *handle.promise().value_;
+    expected_detail::ExpectedHelper::assume_empty(v.exp_);
+    // `T` can be `non_value_result&&`, or one of a few `result<T>` refs.
+    if constexpr (std::is_same_v<non_value_result, std::remove_cvref_t<T>>) {
+      v.exp_ = Unexpected{std::forward<T>(t)};
+    } else {
+      v.exp_ = Unexpected{std::forward<T>(t).non_value()};
+    }
+    // Abort the rest of the coroutine. resume() is not going to be called
+    handle.destroy();
+  }
+};
+
 template <typename Derived, typename ResultRef>
 class or_unwind_crtp
     : public ext::must_use_immediately_crtp<
@@ -204,10 +307,42 @@ class or_unwind_crtp
 template <typename ResultRef>
 using or_unwind_base = or_unwind_crtp<or_unwind<ResultRef>, ResultRef>;
 
+// There's no `result` in the name as a hint to lift this to a shared header as
+// soon as another usecase arises.
+template <typename AwaitSuspender>
+struct non_value_awaitable {
+  non_value_result non_value_;
+
+  constexpr std::false_type await_ready() const noexcept { return {}; }
+  [[noreturn]] void await_resume() {
+    compiler_may_unsafely_assume_unreachable();
+  }
+  FOLLY_ALWAYS_INLINE void await_suspend(auto h) {
+    AwaitSuspender()(std::move(non_value_), h);
+  }
+};
+
 } // namespace detail
+
+// co_await stopped_result
+inline auto /* implicit */ operator co_await(stopped_result_t s) {
+  return detail::non_value_awaitable<detail::result_await_suspender>{
+      .non_value_ = non_value_result{s}};
+}
+
+// co_await non_value_result{SomeError{...}}
+// co_await std::move(res).non_value()
+//
+// Pass-by-&& to discourage accidental copies of `std::exception_ptr`, if you
+// get a compile error, use `res.copy()`.
+inline auto /* implicit */ operator co_await(non_value_result && nvr) {
+  return detail::non_value_awaitable<detail::result_await_suspender>{
+      .non_value_ = std::move(nvr)};
+}
 
 // Making these `final` makes `unsafe_mover` simpler due to no slicing risk.
 
+// co_await or_unwind(resFn())
 template <typename T>
 class or_unwind<result<T>&&> final
     : public detail::or_unwind_base<result<T>&&> {
@@ -216,6 +351,7 @@ class or_unwind<result<T>&&> final
 template <typename T>
 or_unwind(result<T>&&) -> or_unwind<result<T>&&>;
 
+// co_await or_unwind(res)
 template <typename T>
 class or_unwind<result<T>&> final : public detail::or_unwind_base<result<T>&> {
   using detail::or_unwind_base<result<T>&>::or_unwind_base;
@@ -223,6 +359,7 @@ class or_unwind<result<T>&> final : public detail::or_unwind_base<result<T>&> {
 template <typename T>
 or_unwind(result<T>&) -> or_unwind<result<T>&>;
 
+// co_await or_unwind(std::as_const(res))
 template <typename T>
 class or_unwind<const result<T>&> final
     : public detail::or_unwind_base<const result<T>&> {
@@ -231,6 +368,9 @@ class or_unwind<const result<T>&> final
 template <typename T>
 or_unwind(const result<T>&) -> or_unwind<const result<T>&>;
 
+// This short-circuiting coroutine implementation was modeled on
+// `folly/Expected.h`. Please try to port any compiler fixes or
+// optimizations across both.
 } // namespace folly
 
 #endif // FOLLY_HAS_RESULT

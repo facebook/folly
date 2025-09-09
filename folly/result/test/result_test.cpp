@@ -764,7 +764,6 @@ TEST(Result, isExceptionBoundary) {
   EXPECT_EQ(std::string("catch me"), get_exception<MyError>(r)->what());
 }
 
-// `result_owning_awaitable` propagating a value
 RESULT_CO_TEST(Result, awaitValue) {
   auto returnsValue = []() -> result<uint8_t> { return 129; };
   // Test both EXPECT and CO_ASSERT
@@ -772,7 +771,6 @@ RESULT_CO_TEST(Result, awaitValue) {
   CO_ASSERT_EQ(129, co_await or_unwind(returnsValue()));
 }
 
-// `result_ref_awaitable` propagating a value
 RESULT_CO_TEST(Result, awaitRef) {
   // Use a non-copiable type to show that `co_await` doesn't copy.
   result<std::unique_ptr<int>> var = std::make_unique<int>(17);
@@ -796,9 +794,7 @@ RESULT_CO_TEST(Result, awaitRef) {
 
 TEST(Result, awaitError) {
   for (auto& r :
-       {// `error_awaitable`
-        []() -> result<> { co_await non_value_result{MyError{"eep"}}; }(),
-        // `result_owning_awaitable` propagating an error
+       {[]() -> result<> { co_await non_value_result{MyError{"eep"}}; }(),
         []() -> result<> {
           co_await or_unwind(result<int>{non_value_result{MyError{"eep"}}});
         }()}) {
@@ -809,7 +805,6 @@ TEST(Result, awaitError) {
 TEST(Result, awaitRefError) {
   auto resultErrFn = []() -> result<> {
     result<std::unique_ptr<int>> resultErr{non_value_result{MyError{"e"}}};
-    // `result_ref_awaitable` propagating error
     co_await or_unwind(std::as_const(resultErr));
   };
   auto res = resultErrFn();

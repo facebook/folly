@@ -409,7 +409,6 @@ TEST(ValueOnlyResult, accessRvalueRef) {
   */
 }
 
-// `result_owning_awaitable` propagating a value
 RESULT_CO_TEST(ValueOnlyResult, awaitValue) {
   auto returnsValue = []() -> value_only_result<uint8_t> { return 129; };
   // Test both EXPECT and CO_ASSERT
@@ -417,7 +416,6 @@ RESULT_CO_TEST(ValueOnlyResult, awaitValue) {
   CO_ASSERT_EQ(129, co_await or_unwind(returnsValue()));
 }
 
-// `result_ref_awaitable` propagating a value
 RESULT_CO_TEST(ValueOnlyResult, awaitRef) {
   // Use a non-copiable type to show that `co_await` doesn't copy.
   value_only_result<std::unique_ptr<int>> var = std::make_unique<int>(17);
