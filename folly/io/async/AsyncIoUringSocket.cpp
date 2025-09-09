@@ -278,7 +278,7 @@ void AsyncIoUringSocket::connect(
     // on only the local tuple. This limits the range of available ephemeral
     // ports.  Using the IP_BIND_ADDRESS_NO_PORT delays assigning a port until
     // connect expanding the available port range.
-    if (bindAddr.getPort() == 0) {
+    if (bindAddr.getPort() == 0 && bindAddressNoPort_) {
       if (setSockOpt(IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, &one, sizeof(one))) {
         auto errnoCopy = errno;
         callback->connectErr(AsyncSocketException(

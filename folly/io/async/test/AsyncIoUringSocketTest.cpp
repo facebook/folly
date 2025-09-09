@@ -31,6 +31,8 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/IoUringBackend.h>
 #include <folly/io/async/IoUringEvent.h>
+#include <folly/io/async/test/AsyncSocketTest.h>
+#include <folly/io/async/test/AsyncSocketTest2.h>
 #include <folly/portability/GTest.h>
 #include <folly/system/Shell.h>
 #include <folly/test/SocketAddressTestHelper.h>
@@ -652,6 +654,27 @@ TEST_P(AsyncIoUringSocketTest, FastOpen) {
       EXPECT_TRUE(conn.client->transport->getTFOSucceded());
     }
   }
+}
+
+TEST_P(AsyncIoUringSocketTest, BindAddressNoPort) {
+  EventBase eventBase;
+  test::TestServer server(true);
+
+  // When setBindAddressNoPort is disabled, verifies that a port is assigned
+  // before the connect call
+  AsyncIoUringSocket::UniquePtr socket(new AsyncIoUringSocket(base.get()));
+  socket->setBindAddressNoPort(false);
+  SocketAddress bindAddr("127.0.0.1", 0);
+  test::TestPortAssignmentCallback callback;
+  socket->connect(
+      &callback,
+      server.getAddress(),
+      std::chrono::milliseconds(30),
+      emptySocketOptionMap,
+      bindAddr);
+  eventBase.loop();
+  EXPECT_NE(callback.assignedPort, 0);
+  socket->close();
 }
 
 class AsyncIoUringSocketTestAll : public AsyncIoUringSocketTest {};

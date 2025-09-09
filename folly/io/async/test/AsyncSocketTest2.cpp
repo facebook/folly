@@ -10803,3 +10803,20 @@ TEST_F(AsyncSocketWriteCallbackTest, WriteStartingTests_WriteOnceFail) {
   ASSERT_EQ(writeCallback1_.state, STATE_FAILED);
   EXPECT_EQ(writeCallback1_.writeStartingInvocations, 1);
 }
+
+TEST(AsyncSocketTest, BindAddressNoPort) {
+  EventBase eventBase;
+  TestServer server(true);
+
+  // When setBindAddressNoPort is disabled, verifies that a port is assigned
+  // before the connect call
+  auto socket = AsyncSocket::newSocket(&eventBase);
+  socket->setBindAddressNoPort(false);
+  SocketAddress bindAddr("127.0.0.1", 0);
+  TestPortAssignmentCallback callback;
+  socket->connect(
+      &callback, server.getAddress(), 30, emptySocketOptionMap, bindAddr);
+  eventBase.loop();
+  EXPECT_NE(callback.assignedPort, 0);
+  socket->close();
+}

@@ -1918,6 +1918,7 @@ fbcode_target(
     labels = ["heavyweight"],
     supports_static_listing = False,
     deps = [
+        ":async_socket_test_lib",
         "//folly:file_util",
         "//folly:subprocess",
         "//folly/executors:global_executor",
