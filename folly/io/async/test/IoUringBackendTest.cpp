@@ -1625,7 +1625,6 @@ TEST(IoUringBackend, ProvidedBufferRing) {
     for (int i = 0; i < 16; i++) {
       bufferProvider->getIoBuf(i % kBuffs, 1);
     }
-    bufferProvider->unusedBuf(0);
     for (int i = 0; i < keep; i++) {
       bufs.push_back(bufferProvider->getIoBuf(i % kBuffs, 1));
     }

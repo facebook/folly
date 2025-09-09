@@ -50,7 +50,6 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
       io_uring* ioRingPtr, Options options);
 
   void enobuf() noexcept override;
-  void unusedBuf(uint16_t i) noexcept override;
   void destroy() noexcept override;
   std::unique_ptr<IOBuf> getIoBuf(uint16_t i, size_t length) noexcept override;
 

@@ -613,13 +613,10 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
           << " has_buffer=" << !!(flags & IORING_CQE_F_BUFFER)
           << " bytes_received=" << bytesReceived_;
   DestructorGuard dg(this);
-  auto buffer_guard = makeGuard([&, bp = lastUsedBufferProvider_] {
-    if (flags & IORING_CQE_F_BUFFER) {
-      DCHECK(bp);
-      if (bp) {
-        bp->unusedBuf(flags >> 16);
-      }
-    }
+  auto buffer_guard = makeGuard([&] {
+    CHECK(!(flags & IORING_CQE_F_BUFFER))
+        << "Buffer guard invoked but IORING_CQE_F_BUFFER is set! " << "flags=0x"
+        << std::hex << flags << " res=" << std::dec << res;
   });
   if (!readCallback_) {
     if (res == -ENOBUFS || res == -ECANCELED) {

@@ -130,11 +130,6 @@ void IoUringProvidedBufferRing::enobuf() noexcept {
   VLOG_EVERY_N(1, 500) << "enobuf";
 }
 
-void IoUringProvidedBufferRing::unusedBuf(uint16_t i) noexcept {
-  gottenBuffers_++;
-  returnBuffer(i);
-}
-
 void IoUringProvidedBufferRing::destroy() noexcept {
   std::unique_lock lock{mutex_};
   ::io_uring_unregister_buf_ring(ioRingPtr_, gid());
