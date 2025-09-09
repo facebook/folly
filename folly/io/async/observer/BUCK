@@ -1,42 +1,15 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "async_socket_observer_interface",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "AsyncSocketObserverInterface.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:glog",
-        "//xplat/folly:optional",
-        "//xplat/folly/io/async:write_flags",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "async_socket_observer_container",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["AsyncSocketObserverContainer.h"],
-    exported_deps = [
-        ":async_socket_observer_interface",
-        "//xplat/folly:observer_container",
-    ],
-)
-
-# !!!! fbcode/folly/io/async/observer/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_socket_observer_interface",
     headers = ["AsyncSocketObserverInterface.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cpp_attributes",
         "//folly:glog",
@@ -45,10 +18,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_socket_observer_container",
     headers = ["AsyncSocketObserverContainer.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":async_socket_observer_interface",
         "//folly:observer_container",
