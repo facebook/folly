@@ -66,7 +66,7 @@ TEST_F(ErrorTest, testNullError) {
         PyErr_SetObject(PyExc_RuntimeError, nullptr);
         handlePythonError("fail: ");
       },
-      "fail: Exception of type: <class 'RuntimeError'>");
+      "fail: RuntimeError()");
 }
 
 TEST_F(ErrorTest, testStringError) {
@@ -75,7 +75,7 @@ TEST_F(ErrorTest, testStringError) {
         PyErr_SetString(PyExc_RuntimeError, "test error");
         handlePythonError("fail: ");
       },
-      "fail: 'test error'");
+      "fail: RuntimeError('test error')");
 }
 
 TEST_F(ErrorTest, testException) {
