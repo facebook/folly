@@ -4,7 +4,6 @@ load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "IOS",
     "MACOSX",
-    "WATCHOS",
 )
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
@@ -20,7 +19,7 @@ non_fbcode_target(
     name = "compatibility",
     srcs = [
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Compatibility.h",
@@ -33,7 +32,7 @@ non_fbcode_target(
     srcs = [
         "ExceptionTracer.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionTracer.h",
@@ -68,7 +67,7 @@ non_fbcode_target(
     srcs = [
         "SmartExceptionTracer.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
@@ -92,7 +91,7 @@ non_fbcode_target(
     srcs = [
         "SmartExceptionTracerSingleton.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SmartExceptionTracerSingleton.h",
@@ -110,7 +109,7 @@ non_fbcode_target(
     srcs = [
         "SmartExceptionStackTraceHooks.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
@@ -126,7 +125,7 @@ non_fbcode_target(
     srcs = [
         "ExceptionCounterLib.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
@@ -151,7 +150,7 @@ non_fbcode_target(
     srcs = [
         "ExceptionStackTraceLib.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
@@ -170,7 +169,7 @@ non_fbcode_target(
     srcs = [
         "StackTrace.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "StackTrace.h",
