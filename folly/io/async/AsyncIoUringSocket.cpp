@@ -613,11 +613,13 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
           << " has_buffer=" << !!(flags & IORING_CQE_F_BUFFER)
           << " bytes_received=" << bytesReceived_;
   DestructorGuard dg(this);
+  bool hasMore = (flags & IORING_CQE_F_BUF_MORE) != 0;
   auto buffer_guard = makeGuard([&] {
     CHECK(!(flags & IORING_CQE_F_BUFFER))
         << "Buffer guard invoked but IORING_CQE_F_BUFFER is set! " << "flags=0x"
         << std::hex << flags << " res=" << std::dec << res;
   });
+
   if (!readCallback_) {
     if (res == -ENOBUFS || res == -ECANCELED) {
       // ignore
@@ -629,7 +631,7 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
     } else if (res > 0 && lastUsedBufferProvider_) {
       // must take the buffer
       appendReadData(
-          lastUsedBufferProvider_->getIoBuf(flags >> 16, res),
+          lastUsedBufferProvider_->getIoBuf(flags >> 16, res, hasMore),
           queuedReceivedData_);
       buffer_guard.dismiss();
     }
@@ -684,9 +686,13 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
         const io_uring_zcrx_cqe* rcqe = (io_uring_zcrx_cqe*)(cqe + 1);
         auto pool = parent_->backend_->zcBufferPool();
         sendReadBuf(pool->getIoBuf(cqe, rcqe), queuedReceivedData_);
+        buffer_guard.dismiss();
       } else if (lastUsedBufferProvider_) {
+        auto bufId = flags >> 16;
+        VLOG(9) << "Processing buffer completion: bufId=" << bufId
+                << " res=" << res << " hasMore=" << hasMore;
         sendReadBuf(
-            lastUsedBufferProvider_->getIoBuf(flags >> 16, res),
+            lastUsedBufferProvider_->getIoBuf(bufId, res, hasMore),
             queuedReceivedData_);
         buffer_guard.dismiss();
       } else {

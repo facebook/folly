@@ -1120,6 +1120,7 @@ void IoUringBackend::initSubmissionLinked() {
           .bufferShift = sizeShift,
           .ringSizeShift = ringShift,
           .useHugePages = false,
+          .useIncrementalBuffers = options_.enableIncrementalBuffers,
       };
       for (size_t i = 0; i < options_.providedBufRings; i++) {
         bufferProviders_.push_back(

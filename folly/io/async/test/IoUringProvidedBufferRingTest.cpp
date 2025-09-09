@@ -79,8 +79,8 @@ TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
       .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
-  auto buf1 = bufRing->getIoBuf(0, 1024);
-  auto buf2 = bufRing->getIoBuf(1, 1024);
+  auto buf1 = bufRing->getIoBuf(0, 1024, false);
+  auto buf2 = bufRing->getIoBuf(1, 1024, false);
   buf1.reset();
   bufRing.reset();
   buf2.reset();

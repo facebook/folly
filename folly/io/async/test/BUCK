@@ -2017,6 +2017,7 @@ fbcode_target(
         "//folly/io/async:async_udp_server_socket",
         "//folly/io/async:async_udp_socket",
         "//folly/io/async:io_uring_backend",
+        "//folly/io/async:io_uring_provided_buffer_ring",
         "//folly/io/async/test:async_signal_handler_test_lib",
         "//folly/io/async/test:event_base_test_lib",
         "//folly/portability:gtest",

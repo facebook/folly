@@ -108,7 +108,7 @@ class IoUringBufferProviderBase {
 
   virtual uint32_t count() const noexcept = 0;
   virtual std::unique_ptr<IOBuf> getIoBuf(
-      uint16_t i, size_t length) noexcept = 0;
+      uint16_t i, size_t length, bool hasMore) noexcept = 0;
   virtual void enobuf() noexcept = 0;
   virtual bool available() const noexcept = 0;
   virtual void destroy() noexcept = 0;

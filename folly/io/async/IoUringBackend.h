@@ -251,6 +251,11 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setEnableIncrementalBuffers(bool v) {
+      enableIncrementalBuffers = v;
+
+      return *this;
+    }
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -292,6 +297,9 @@ class IoUringBackend : public EventBaseBackendBase {
     ResolveNapiIdCallback resolveNapiId;
     int zcRxNumPages{-1};
     int zcRxRefillEntries{-1};
+
+    // Incremental Buffers
+    bool enableIncrementalBuffers{false};
   };
 
   explicit IoUringBackend(Options options);
@@ -696,7 +704,8 @@ class IoUringBackend : public EventBaseBackendBase {
             std::unique_ptr<IOBuf> buf;
             if (flags & IORING_CQE_F_BUFFER) {
               if (IoUringBufferProviderBase* bp = backend->bufferProvider()) {
-                buf = bp->getIoBuf(flags >> 16, res);
+                auto hasMore = (flags & IORING_CQE_F_BUF_MORE) != 0;
+                buf = bp->getIoBuf(flags >> 16, res, hasMore);
               }
             }
             hdr_->cbFunc_(hdr_, res, std::move(buf));
