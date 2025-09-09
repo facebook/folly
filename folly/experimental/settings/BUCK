@@ -18,7 +18,7 @@ non_fbcode_target(
         "detail/SettingsImpl.h",
     ],
     deps = [
-        "//xplat/folly/settings:settings_settings",
+        "//xplat/folly/settings:settings",
     ],
 )
 
