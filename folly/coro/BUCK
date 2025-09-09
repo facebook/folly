@@ -1105,23 +1105,6 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "ready",
-    headers = ["Ready.h"],
-    exported_deps = [":error"],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "ready",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["Ready.h"],
-    exported_deps = [":error"],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
     name = "result",
     headers = ["Result.h"],
     exported_deps = [

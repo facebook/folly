@@ -22,7 +22,6 @@
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Invoke.h>
 #include <folly/coro/Mutex.h>
-#include <folly/coro/Ready.h>
 #include <folly/coro/SharedMutex.h>
 #include <folly/coro/Task.h>
 #include <folly/coro/detail/InlineTask.h>
@@ -31,6 +30,7 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
+#include <folly/result/coro.h>
 
 #include <stdexcept>
 #include <type_traits>
@@ -415,7 +415,7 @@ TEST_F(TaskTest, TaskOfLvalueReferenceAsResult) {
     auto&& res = co_await co_await_result(returnIntRef(value));
     CHECK(res.has_value());
     CHECK_EQ(&value, &res.value_or_throw());
-    CHECK_EQ(&value, &(co_await folly::coro::co_ready(std::move(res))));
+    CHECK_EQ(&value, &(co_await folly::or_unwind(std::move(res))));
 
     int& valueRef = co_await returnIntRef(value);
     CHECK_EQ(&value, &valueRef);

@@ -186,7 +186,6 @@ fbcode_target(
         "//folly/coro:merge",
         "//folly/coro:mutex",
         "//folly/coro:promise",
-        "//folly/coro:ready",
         "//folly/coro:result",
         "//folly/coro:shared_mutex",
         "//folly/coro:sleep",
@@ -212,6 +211,7 @@ fbcode_target(
         "//folly/io/async:scoped_event_base_thread",
         "//folly/lang:assume",
         "//folly/portability:gtest",
+        "//folly/result:coro",
     ],
 )
 
@@ -297,18 +297,6 @@ fbcode_target(
         "//folly/coro:promise",
         "//folly/coro:task",
         "//folly/futures:core",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "ready_test",
-    srcs = ["ReadyTest.cpp"],
-    deps = [
-        "//folly/coro:await_result",
-        "//folly/coro:gtest_helpers",
-        "//folly/coro:ready",
-        "//folly/coro/safe:now_task",
     ],
 )
 
