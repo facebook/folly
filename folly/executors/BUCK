@@ -873,7 +873,6 @@ fbcode_target(
         ":serialized_executor",
         "//folly:exception_string",
         "//folly:scope_guard",
-        "//folly/concurrency:unbounded_queue",
         "//folly/io/async:request_context",
         "//folly/synchronization:distributed_mutex",
         "//folly/synchronization:relaxed_atomic",

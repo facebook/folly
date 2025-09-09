@@ -20,7 +20,6 @@
 #include <memory>
 #include <mutex>
 
-#include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/SerializedExecutor.h>
 #include <folly/io/async/Request.h>
@@ -137,46 +136,24 @@ class SerialExecutorImpl : public SerializedExecutor {
   Queue<Task> queue_;
 };
 
-template <int LgQueueSegmentSize = 8>
-struct SerialExecutorWithUnboundedQueue {
-  // The consumer should only dequeue when the queue is non-empty, so we don't
-  // need blocking.
-  template <typename Task>
-  using queue =
-      folly::UMPSCQueue<Task, /* MayBlock */ false, LgQueueSegmentSize>;
-  using type = SerialExecutorImpl<queue>;
-};
-
 class NoopMutex;
 
 template <class Task, class Mutex = folly::DistributedMutex>
 class SerialExecutorMPSCQueue;
 
 template <typename Task>
-using SmallSerialExecutorQueue = SerialExecutorMPSCQueue<Task>;
+using SerialExecutorQueue = SerialExecutorMPSCQueue<Task>;
 
 template <typename Task>
 using SPSerialExecutorQueue = SerialExecutorMPSCQueue<Task, NoopMutex>;
 
 } // namespace detail
 
-using SerialExecutor =
-    typename detail::SerialExecutorWithUnboundedQueue<>::type;
+using SerialExecutor = detail::SerialExecutorImpl<detail::SerialExecutorQueue>;
 
-template <int LgQueueSegmentSize>
-using SerialExecutorWithLgSegmentSize =
-    typename detail::SerialExecutorWithUnboundedQueue<LgQueueSegmentSize>::type;
-
-/**
- * SerialExecutor implementation that uses a mutex-protected queue. This uses
- * significantly less memory than SerialExecutor, at the expense of being more
- * susceptible to contention on add(). This is intended for use cases where
- * granular SerialExecutors are required, for example one per request. In these
- * scenarios, there are not many concurrent submitters, so contention is not an
- * issue, while memory overhead is.
- */
-using SmallSerialExecutor =
-    detail::SerialExecutorImpl<detail::SmallSerialExecutorQueue>;
+// Typedef for legacy name, can be removed once all references are switched to
+// SerialExecutor.
+using SmallSerialExecutor = SerialExecutor;
 
 /**
  * Single-producer version of SmallExecutor. It is the responsibility of the
