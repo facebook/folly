@@ -19,7 +19,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Expected.h>
 #include <folly/OperationCancelled.h>
-#include <folly/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h> // delete with clang-15 support
 #include <folly/lang/Align.h> // for `hardware_constructive_interference_size`
 #include <folly/lang/RValueReferenceWrapper.h>
 #include <folly/portability/GTestProd.h>
@@ -43,6 +43,7 @@
 ///   - Can store & and && references.  Think of them as syntax sugar for
 ///     `std::reference_wrapper` and `folly::rvalue_reference_wrapper`.
 ///
+///        #include <folly/result/coro.h>
 ///        struct FancyIntMap {
 ///          int n;
 ///          result<int&> at(int i) {
@@ -51,9 +52,11 @@
 ///          }
 ///        };
 ///        FancyIntMap m{.n = 12};
-///        int& n1 = co_await m.at(30); // points at 12
+///        int& n1 = co_await or_unwind(m.at(30)); // points at 12
 ///        result<int&> rn2 = m.at(20); // has error
-///        co_return n1 + co_await std::move(rn2); // propagates error
+///        // On error, copies and propagates `exception_ptr` to the parent.
+///        // When errors are hot, `std::move()` is appropriate.
+///        co_return n1 + co_await or_unwind(rn2);
 ///
 ///     Key things to remember:
 ///       - `result<V&&>` is "use-once" -- and it must be r-value qualified to
@@ -65,15 +68,19 @@
 ///     that cancellation is NOT an error, see https://wg21.link/P1677 & P2300.
 ///
 ///   - Easy short-circuiting of "error" / "stopped" status to the caller:
+///     * In both `result<T>` coroutines and `folly::coro` coroutines:
+///       - `co_await or_unwind(resultFn())` returns `T&&` from a `result<T>`,
+///         or propagates error/stopped to the parent. Same for:
+///           * `co_await or_unwind(std::move(res))`
+///           * `co_await or_unwind(res.copy())`
+///           * `co_await or_unwind(folly::copy(res))`
+///       - `co_await or_unwind(res) -> T&`. Copies `exception_ptr` on error.
+///       - `co_await or_unwind(std::as_const(res)) -> const T&`
+///       - `co_await stopped_result` or `non_value_result{YourErr{}}` to
+///         end the coroutine with an error without throwing.
 ///     * In `folly::coro` coroutines:
 ///       - `co_await co_await_result(x())` makes `result<X>`, does not throw.
-///       - `co_await co_ready(syncResultFn())` extracts `T` from a
-///          `result<T>`, or propagates error/stopped.
-///       - `co_yield co_result(std::move(res))` returns a `result<T>`.
-///     * In synchronous `result<T>` coroutines,
-///       - `co_await std::move(res)` and `folly::copy(res)` give you `T`,
-///       - `co_await std::ref(res)` gives you `T&` -- ditto for `std::cref`
-///         and `folly::cref`.
+///       - `co_yield co_result(std::move(res))` completes with a `result<T>`.
 ///     * While you should strongly prefer to write `result<T>` coroutines,
 ///       propagation in non-coroutine `result<T>` functions is also easy:
 ///         if (!res.has_value()) {
@@ -99,6 +106,10 @@
 ///     representation to potentially mean something else in the future.
 
 #if FOLLY_HAS_RESULT
+
+// One must never conditionally-include folly headers, but this is required to
+// be gated, since `result.h` may get included in C++17 contexts.
+#include <coroutine>
 
 namespace folly {
 
@@ -296,6 +307,9 @@ using result_ref_wrap = conditional_t< // Reused by `result_generator`
         std::reference_wrapper<std::remove_reference_t<T>>,
         T>>;
 
+template <typename, typename>
+class or_unwind_crtp;
+
 // Shared implementation for `T` non-`void` and `void`
 template <typename Derived, typename T>
 class result_crtp {
@@ -316,9 +330,11 @@ class result_crtp {
   template <typename>
   friend class folly::result; // The simple conversion ctor uses `exp_`
 
-  friend struct detail::result_promise<T>;
-  friend struct detail::result_promise_return<T>;
-  friend struct detail::result_await_suspender;
+  friend struct result_promise<T>;
+  friend struct result_promise_return<T>;
+  friend struct result_await_suspender;
+  template <typename, typename>
+  friend class or_unwind_crtp; // `await_suspend` uses `exp_`
 
   friend inline bool operator==(const result_crtp& a, const result_crtp& b) {
     // FIXME: This logic is meant to follow `std::expected`, so once that's in
@@ -442,10 +458,9 @@ class result_crtp {
   /// Normally, you would:
   ///   - `folly::get_exception<Ex>(res)` to test for a specific error.
   ///   - `res.has_stopped()` to test for cancellation.
-  ///   - `co_await std::move(res)` to propagate unhandled error/cancellation
-  ///     in a `result` sync coroutine.
-  ///   - `co_await co_ready(std::move(res))` to propagate unhandled states in
-  ///     a `folly::coro` async coroutine.
+  ///   - `co_await or_unwind(std::move(res))` to propagate unhandled
+  ///     error/cancellation in `result` sync coroutines, or in `folly::coro`
+  ///     async task coroutines.
   ///
   /// Design notes:
   ///
@@ -577,14 +592,14 @@ class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result final
   /// These are a special case because such copies are cheap*, and because
   /// good alternatives for populating trivially copiable data are few:
   ///   - Copy-construct the value into the `result`.
-  ///   - Less efficient: Default-initialize the `result` and assign a
-  ///     `folly::copy()`, or use a mutable value reference to populate it.
+  ///   - Less efficient: Default-initialize the `result` and assign
+  ///     `folly::copy(T)`, or use a mutable value reference to populate it.
   ///   - Future: Implement in-place construction, to handle very hot code.
   ///
   /// This constructor is deliberately restricted to objects that fit in a
   /// cache-line.  This is a heuristic to require larger copies to be explicit
-  /// via `folly::copy()`.  If it proves fragile across different
-  /// architectures, it can be relaxed later.
+  /// via folly::copy()`.  If it proves fragile across different architectures,
+  /// it can be relaxed later.
   ///
   /// Notes:
   ///   - For now, we omitted the analogous ctor to copy `result<V&>`, for the
@@ -602,7 +617,7 @@ class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result final
       : base{std::in_place, t} {}
 
   /// No copy assignment.  When appropriate, use a mutable `value_or_throw()`
-  /// reference, or assign `folly::copy(rhs)` to be explicit.
+  /// reference, or assign `rhs.copy()` to be explicit.
 
   /// Simple copy/move conversion; `result_crtp` also has a fallible conversion.
   ///
@@ -725,9 +740,10 @@ struct result_promise_return {
   ~result_promise_return() {}
 
   /* implicit */ operator result<T>() {
-    // Simplify this once clang 15 is well-forgotten. From D42260201:
-    // handle both deferred and eager return-object conversion
-    // behaviors see docs for detect_promise_return_object_eager_conversion
+    // Simplify this once clang 15 is well-forgotten, and remove the dep on
+    // `Coroutine.h`.  From D42260201: handle both deferred and eager
+    // return-object conversion behaviors see docs for
+    // detect_promise_return_object_eager_conversion
     if (coro::detect_promise_return_object_eager_conversion()) {
       assert(storage_.is_expected_empty());
       return result<T>{expected_detail::EmptyTag{}, pointer_}; // eager
@@ -749,10 +765,10 @@ struct result_promise_base {
   void operator=(result_promise_base&&) = delete;
   ~result_promise_base() = default;
 
-  FOLLY_NODISCARD folly::coro::suspend_never initial_suspend() const noexcept {
+  FOLLY_NODISCARD std::suspend_never initial_suspend() const noexcept {
     return {};
   }
-  FOLLY_NODISCARD folly::coro::suspend_never final_suspend() const noexcept {
+  FOLLY_NODISCARD std::suspend_never final_suspend() const noexcept {
     return {};
   }
   void unhandled_exception() noexcept {
@@ -780,12 +796,12 @@ struct result_promise<T, typename std::enable_if<!std::is_void_v<T>>::type>
 template <typename T>
 struct result_promise<T, typename std::enable_if<std::is_void_v<T>>::type>
     : public result_promise_base<T> {
-  // When the coroutine uses `return;` you can fail via `co_await err`.
+  // You can fail via `co_await err` since void coros only allow `co_return;`.
   void return_void() { this->value_->exp_.emplace(unit); }
 };
 
-template <typename T>
-using result_promise_handle = folly::coro::coroutine_handle<result_promise<T>>;
+template <typename T> // Need an alias since nested types cannot be deduced.
+using result_promise_handle = std::coroutine_handle<result_promise<T>>;
 
 // This is separate to let future https://fburl.com/result-generator-impl reuse
 // the awaitables below.
@@ -882,20 +898,19 @@ inline auto /* implicit */ operator co_await(stopped_result_t s) {
       .non_value_ = non_value_result{s}};
 }
 
+// co_await non_value_result{SomeError{...}}
 // co_await std::move(res).non_value()
 //
-// Pass-by-&& to discourage accidental copies of `std::exception_ptr`.
+// Pass-by-&& to discourage accidental copies of `std::exception_ptr`, if you
+// get a compile error, use `res.copy()`.
 inline auto /* implicit */ operator co_await(non_value_result && nvr) {
   return detail::non_value_awaitable<detail::result_await_suspender>{
       .non_value_ = std::move(nvr)};
 }
 
 // co_await resultFunc()
-//
-// DO NOT add a copyable overload for small, trivially copyable types,
-// since this is (a) rare, (b) will make the error path slower.  See the
-// discussion of `co_await std::{move,ref,cref}` in `result.md`.
 template <typename T>
+[[deprecated("Being removed, use `co_await or_unwind(resFn())`.")]]
 auto /* implicit */ operator co_await(result<T>&& r) {
   return detail::result_owning_awaitable<T, detail::result_await_suspender>{
       .storage_ = std::move(r)};
@@ -903,6 +918,7 @@ auto /* implicit */ operator co_await(result<T>&& r) {
 
 // co_await std::ref(resultVal)
 template <typename T>
+[[deprecated("Being removed, use `co_await or_unwind(r)`.")]]
 auto /* implicit */ operator co_await(std::reference_wrapper<result<T>> rr) {
   return detail::result_ref_awaitable<
       T,
@@ -912,6 +928,7 @@ auto /* implicit */ operator co_await(std::reference_wrapper<result<T>> rr) {
 
 // co_await std::cref(resultVal)
 template <typename T>
+[[deprecated("Being removed, use `co_await or_unwind(std::as_const(r))`.")]]
 auto /* implicit */ operator co_await(
     std::reference_wrapper<const result<T>> cr) {
   return detail::result_ref_awaitable< //
@@ -925,9 +942,9 @@ auto /* implicit */ operator co_await(
 ///
 ///   return result_catch_all([&](){ return riskyWork(); });
 ///
-/// Useful when you need a subroutine **definitely** not to throw. In contrast:
-///   - `result<>` coroutines catch unhandled exceptions, but can throw due to
-///     argument copy/move ctors, or due to `bad_alloc`.
+/// Note:
+///   - `result<>` coroutines catch unhandled exceptions, but can additionally
+///     throw `bad_alloc` for coro frame allocations (but see LLVM PR 152623).
 ///   - Like all functions, `result<>` non-coroutines let exceptions fly.
 template <typename F, typename RetF = decltype(FOLLY_DECLVAL(F&&)())>
 // Wrap the return type of `fn` with `result` unless it already is `result`.

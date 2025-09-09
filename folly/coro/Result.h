@@ -21,7 +21,7 @@
 
 #include <folly/Try.h>
 #include <folly/coro/Error.h> // compat: used to be the same header
-#include <folly/result/result.h>
+#include <folly/result/try.h>
 
 namespace folly::coro {
 

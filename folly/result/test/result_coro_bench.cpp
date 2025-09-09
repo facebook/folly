@@ -22,13 +22,13 @@
 
 #if FOLLY_HAS_RESULT
 
-#include <folly/result/result.h>
+#include <folly/result/coro.h>
 
 namespace folly {
 
 // Simple result coroutine that adds 1 to the input
 result<int> result_coro(result<int>&& r) {
-  co_return co_await std::move(r) + 1;
+  co_return co_await or_unwind(std::move(r)) + 1;
 }
 
 // Non-coroutine equivalent using value_or_throw()

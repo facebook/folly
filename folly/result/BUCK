@@ -13,7 +13,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["gtest_helpers.h"],
     exported_deps = [
-        ":result",
+        ":coro",
         "//xplat/folly/coro:gtest_helpers",
     ],
 )
@@ -23,8 +23,35 @@ fbcode_target(
     name = "gtest_helpers",
     headers = ["gtest_helpers.h"],
     exported_deps = [
-        ":result",
+        ":coro",
         "//folly/coro:gtest_helpers",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "coro",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["coro.h"],
+    exported_deps = [
+        ":result",
+        "//xplat/folly/coro:coroutine",
+        "//xplat/folly/coro:error",
+        "//xplat/folly/lang:must_use_immediately",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "coro",
+    headers = ["coro.h"],
+    exported_deps = [
+        ":result",
+        "//folly/coro:coroutine",
+        "//folly/coro:error",
+        "//folly/lang:must_use_immediately",
     ],
 )
 
@@ -37,12 +64,11 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["result.h"],
     deps = [
+        "//third-party/glog:glog",
         "//xplat/folly:indestructible",
     ],
     exported_deps = [
         "fbsource//xplat/folly/portability:gtest_prod",
-        "//third-party/glog:glog",
-        "//third-party/googletest:gtest_headers",
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:expected",
         "//xplat/folly:operation_cancelled",
@@ -103,13 +129,19 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "value_only_result",
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["value_only_result.h"],
-    exported_deps = ["//xplat/folly/result:result"],
+    raw_headers = [
+        "value_only_result.h",
+        "value_only_result_coro.h",
+    ],
+    exported_deps = ["//xplat/folly/result:coro"],
 )
 
 fbcode_target(
     _kind = cpp_library,
     name = "value_only_result",
-    headers = ["value_only_result.h"],
-    exported_deps = ["//folly/result:result"],
+    headers = [
+        "value_only_result.h",
+        "value_only_result_coro.h",
+    ],
+    exported_deps = ["//folly/result:coro"],
 )

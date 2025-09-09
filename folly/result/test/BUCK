@@ -6,10 +6,23 @@ oncall("fbcode_entropy_wardens_folly")
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "await_result_from_task_test",
+    srcs = ["await_result_from_task_test.cpp"],
+    deps = [
+        "//folly/coro:await_result",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro/safe:now_task",
+        "//folly/result:coro",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "result_test",
     srcs = ["result_test.cpp"],
     deps = [
         "fbsource//third-party/googletest:gtest",
+        "//folly/coro:traits",
         "//folly/result:gtest_helpers",
     ],
 )
@@ -32,7 +45,7 @@ fbcode_target(
         "//folly:benchmark",
         "//folly:portability",
         "//folly/lang:keep",
-        "//folly/result:result",
+        "//folly/result:coro",
     ],
 )
 

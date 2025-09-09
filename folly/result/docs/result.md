@@ -12,7 +12,7 @@ or Niall Douglas's C++ [`boost::outcome`
 
 Folly veterans can think of `result` as an improved `Try`, with a smooth enough
 user experience to use as your main error-handling pattern in synchronous code.
-For async `folly::coro` code, `co_await_result(fn())` / `co_ready(result)` /
+For async `folly::coro` code, `co_await_result(fn())` / `or_unwind(result)` /
 `co_result(result)` supersede `co_awaitTry(fn())` and `co_result(Try)`.
 
 The intent of `result` is most similar to `boost::outcome`, and indeed its
@@ -21,8 +21,8 @@ The intent of `result` is most similar to `boost::outcome`, and indeed its
 C++11 `boost::outcome`, `folly::result` is a C++20 design, making it simpler &
 more usable:
 
-  - `result` coroutines support easy error propagation via `co_await`, and
-    provide automatic exception boundaries. Credit: The original [C++
+  - `result` coroutines allow easy error propagation via `co_await or_unwind`,
+    and provide automatic exception boundaries.  Credit: The original [C++
     short-circuiting coroutine](
     https://github.com/toby-allsopp/coroutine_monad), later reimplemented in
     [`folly::Expected`](
@@ -69,8 +69,9 @@ than thrown exceptions, and more flexible than error codes:
     interoperability with thrown exceptions and `folly::Try`.
   - You cannot forget to handle returned errors -- `result<T>` is nodiscard,
     and does not implicitly convert to `T`.  You **have** to unpack it.
-  - The standard pattern for unpacking the value is `co_await myResult`, which
-    also **visibly** propagates unhandled exceptions to the caller.
+  - The standard pattern for accessing the value is `co_await
+    or_unwind(resultFn())`, which also **visibly and efficiently** propagates
+    unhandled exceptions (and cancellation) to the caller.
   - Handling specific exceptions via `if (auto* ex = get_exception<Ex>(res))` is
     as clear as `try-catch`, and lacks the many gotchas of the
     exception-unwinding context.
@@ -87,31 +88,34 @@ than thrown exceptions, and more flexible than error codes:
 This `result` coroutine showcases some common error-handling patterns:
 
 ```cpp
+#include <folly/result/coro.h>
+
 result<size_t> countGrapefruitSeeds() {
   // If `getFruitBox()` returns an "error" or a "stopped" state, then
-  // `co_await` immediately propagates that result to the caller!
-  auto box = co_await getFruitBox();
+  // `co_await or_unwind` immediately propagates that result to the caller!
+  auto box = co_await or_unwind(getFruitBox());
   auto boxRes = box.findFruit(FruitTypes::GRAPEFRUIT);
   if (auto* ex = get_exception<RottenFruit>(boxRes)) {
     logDiscardedGrapefruit(ex);
     return 0;
   }
-  const auto& grapefruit = co_await std::cref(boxRes);
+  const auto& grapefruit = co_await or_unwind(boxRes);
   size_t numSeeds = 0;
   // `fetchSegments()` does **not** return `result<>` as a demo -- any
   // exceptions it throws are caught and captured in our return value.
   auto segments = grapefruit.fetchSegments();
   for (auto& segment : segments) {
-    numSeeds += (co_await segment.seeds()).size();
+    numSeeds += (co_await or_unwind(segment.seeds())).size();
   }
   co_return numSeeds;
 }
 ```
 
-`result` coroutines also interoperate with async `folly::coro` coroutines:
+Code returning `result` cleanly interoperates with async `folly::coro`
+coroutines -- the syntax is exactly the same:
 
 ```cpp
-auto val = co_await coro::co_ready(someResult());
+auto val = co_await or_unwind(someResult());
 ```
 
 Before diving in, you might review the `result` contract, best practices, and
@@ -139,8 +143,8 @@ result<int> intRes = co_await coro::co_await_result(taskReturningInt());
 if (auto* ex = get_exception<MyError>(intRes)) {
   /* handle ex */
 } else {
-  // Efficiently propagates unhandled errors
-  sum += co_await coro::co_ready(std::move(intRes));
+  // `std::move()` is optional, makes error propagation cheaper
+  sum += co_await or_unwind(std::move(intRes));
 }
 ```
 
@@ -178,17 +182,21 @@ In bullets, `result<T>`:
     plumbing tax stays low, avoiding both user data copies, and
     `std::exception_ptr` atomic ops.
       * For usability, copy conversion from cheap types (like `int`) is allowed.
-      * Explicit `result::copy()` is rarely needed, since `return` and
-        `co_return` are "implicit move contexts".
-      * With named `result<T> r`, you will need to explicitly `co_await` one of
-        `std::move(r)` / `std::cref(r)` / `std::ref(r)` / `folly::rref(r)`.
+      * Explicit `res.copy()` is rarely needed, since `return` and `co_return`
+        are "implicit move contexts".
+      * WARNING: `co_await or_unwind(resOfV)` returns `V&` and so makes it easy
+        to accidentally copy `V` (or the `exception_ptr`).  While unfortunate,
+        this is the behavior of least surprise for C++ programmers.  Luckily,
+        it is most common to await `co_await or_unwind(resFn())`, which avoids
+        copies
 
-  - Is `[[nodiscard]]`, meaning that in common usage you cannot forget to handle
-    an error.  A line with just `resultFoo()` will not compile, you need
-    `co_await resultFoo()`.
+  - Is `[[nodiscard]]`, meaning that in common usage you cannot forget to
+    handle an error.  A line with just `resultFoo()` will not compile, you need
+    `co_await or_unwind(resultFoo())`.
 
-  - Integrates with `coro::Task` (or safer `NowTask` / `value_task`) via
-      * `v = co_await co_ready(res)` -- get `res`'s value, propagating errors.
+  - Integrates with `now_task`, `value_task` (or the legacy `Task`) via
+      * `const auto& v = co_await or_unwind(res)` -- get `res`'s value.
+        Use `std::move(res)` if the error path profiles hot.
       * `r = co_await co_await_result(someCoro())` -- await without throwing,
         though if you won't handle *any* errors, keep using `co_nothrow`.
       * `co_yield co_result(res)` propagate a value or error to your awaiter.
@@ -237,11 +245,11 @@ propagation. Instead, read "how to interoperate with `Task`" below.
 This recommendation is *primarily* about consistency of expectations -- `result`
 coroutines are more likely to follow a policy like "not letting exceptions fly",
 since each one is an exception boundary. Secondarily, propagating errors via
-`co_await subResultFn()` is just easier & cleaner. Compare:
+`co_await or_unwind(subResultFn())` is just easier & cleaner. Compare:
 
 ```cpp
 // coroutine
-result<int> addFive1() { co_return 5 + co_await childFn(); }
+result<int> addFive1() { co_return 5 + co_await or_unwind(childFn()); }
 
 // non-coroutine
 result<int> addFive2() {
@@ -259,8 +267,8 @@ The recommended pattern for `result`-returning code is to **explicitly** return
 errors, so the "throw" part is discouraged. It is also bad for performance and
 readability:
   - In `result` coroutines, `res.value_or_throw()` is an inefficient & ugly way
-    of writing `co_await res`.
-  - In `folly::coro` async coroutines, `auto v = co_await co_ready(resultFn())`
+    of writing `co_await or_unwind(res)`.
+  - In `folly::coro` async coroutines, `auto v = co_await or_unwind(resultFn())`
     and `co_yield co_error(ew)` are much cheaper than throwing.
 
 `value_or_throw()` **can** be useful when you're writing non-coroutine `result`
@@ -292,7 +300,7 @@ result<> handlesErrors() {
   if (auto* ex = get_exception<MyErr>(r)) {
     // handle `ex`
   } else {
-    auto v = co_await std::move(r); // propagate unhandled error & stopped
+    auto v = co_await or_unwind(std::move(r)); // propagates error or stopped
   }
 }
 ```
@@ -305,7 +313,7 @@ multi-type dispatch.
 
 The semantics of `result<Value>` are straightforward:
   - You can implicitly move values in & out -- `result r{fn()}`, then
-    `co_await std::move(r)`.
+    `co_await or_unwind(std::move(r))`.
   - You can explicitly copy `result` via `r.copy()`.
   - To copy `Value v` into a `result`, use `result r{folly::copy(v)}`. Small
     trivially copyable `Value`s (like `int`) can be copied in implicitly.
@@ -317,17 +325,22 @@ The semantics of `result<Value>` are straightforward:
 ### Store references in a `result`
 
 `result` of a reference type is just syntax sugar for a ref wrapper:
-  - `result<V&>` stores `std::reference_wrapper<V>`
-  - `result<V&&>` stores `folly::rvalue_reference_wrapper<V>`.
+  - `result<V&>` internally stores `std::reference_wrapper<V>`
+  - `result<V&&>` internally stores `folly::rvalue_reference_wrapper<V>`.
 
     **WATCH OUT**: This opinionated wrapper enforces "use-once" behavior --
     use-after-move literally becomes a segfault.
 
 Reference support enables "fallible getters": `result<Value&> at(const Key&)`.
-  - For this to make sense, `co_await m.at(k)` must return `Value&`, even though
-    the `result<Value&>` being accessed is an rvalue.
+  - For this to make sense, `co_await or_unwind(m.at(k))` must return `Value&`,
+    even though the `result<Value&>` being accessed is an rvalue.
   - `const result<V&>` does not make the reference `const`. This is consistent
-    with `result<V*>` and `std::reference_wrapper<V>`.
+    with `result<V*>` and `std::reference_wrapper<V>`. Even if we did return
+    `const V&` from the `co_await or_unwind()` and `value_or_throw()` in these
+    scenarios, users could still (accidentally) copy-construct `result<V&>`
+    and lose the "deep const" behavior.  **Important:** This is one of the
+    several reasons we must never add `result::operator->` -- types
+    supporting `->` are generally expected to be propagate `const`.
 
 For explicitness, you must use the corresponding wrapper type to construct
 reference `result`s.
@@ -339,38 +352,39 @@ result<const int&> clv = std::cref(n);
 result<int&&> rv = folly::rref(std::move(n));
 ```
 
-### `co_await` by-value and by-reference
+### `co_await or_unwind()` and value categories
 
-Most of the time, you will await a prvalue result, i.e. `co_await resultFunc()`.
-This moves the underlying value, or exposes the returned reference.
+Most of the time, you will await a prvalue, i.e. `co_await or_unwind(resFn())`.
+For `result<Val>`, you get `Val&&`, and for `result<Ref>` you get `Ref`.
 
-However, if you have `result<V> r`, then `co_await r` will not compile -- that
-would have to copy `V` or `std::exception_ptr`, and the `result` API tries to
-make copies explicit.
+This default is good for hot error paths -- when the thing in `or_unwind()` is
+an rvalue, `exception_ptr`s are propagated by move (~1ns), not by copy (~25ns).
 
-Instead, you have to choose from:
-  - By-value: `co_await std::move(m)`: Returns a moved-out `V`. Error
-    propagation is fast.
-  - By-reference: `co_await std::cref(m)` / `std::ref(m)`: Returns `const V&` /
-    `V&`.  Propagates `std::exception_ptr` by copying (~25ns).
+With value `result<Val> res`, you can:
+  - `co_await or_unwind(std::move(res))`: Returns `Val&&`, or moves to
+    propagate the `exception_ptr` (or "stopped" state).
+  - `co_await or_unwind(res)`: Returns `Val&`, or copies the `exception_ptr`.
+  - `co_await or_unwind(std::as_const(res))`: Ditto, but `const Val&`.
 
-For some `V`, `co_await`ing by-reference can speed up value access, at the
-expense of the error path.
+With an lvalue ref `result<T&> res`, you can only:
+  - `co_await or_unwind(res)`: Returns `T&`, or copies the `exception_ptr`.
 
-On the hot path, choose by profiling.  Off the hot path, those finer points of
-performance are negligible, so choose readability:
-  - Prefer `co_await std::cref(r)` for read-only access.
-  - `co_await std::move(r)` if you need an r-value right away.
-  - `co_await std::ref(r)` if you need to mutate the value, or plan to move it
-    after using it.
+With an rvalue ref `result<Val&&> res`, you can only:
+  - `co_await or_unwind(std::move(res))`: Returns `Val&&`, or moves the
+    `exception_ptr`.
 
-### Interoperate with `coro::Task` (or safer `NowTask` / `value_task`)
+In hot code, choose your approach via profiling or benchmarks.  Off the hot
+path, those finer points of performance are negligible, so choose readability:
+  - Prefer `[const] auto& v = co_await or_unwind(r)` for in-place access.
+    This copies `exception_ptr` on error paths, but that's usually fine.
+  - `co_await or_unwind(std::move(r))` if you need an r-value right away.
+
+### Interoperate with `coro::now_task`, `value_task` (or legacy `Task`)
 
   - To pass all errors to the parent, use `co_await co_nothrow(childTask())`.
   - Get a task's `result` via `res = co_await co_await_result(childTask())`.
-  - Get the value from a `result` via `v = co_await co_ready(std::move(res))` --
-    error & stopped states are propagated to the parent. Future: add
-    by-reference support via `std::ref` and `std::cref`.
+  - Get the value from a `result` via `co_await or_unwind` just as in `result`
+    coros; error & stopped states propagate to the parent task.
   - In any `Task-like<T>`, `co_yield co_result(res)` cheaply forwards the
     value/error/stopped state of `result<T>` to the caller.
 
@@ -384,19 +398,24 @@ To interact with existing `Try` code, use the shims `result_to_try()` and
 `UsingUninitializedTry` errors, though you can customize this by passing
 `empty_try_with(fn)` as the second argument.
 
-### Eliminate "no coro frame overhead"
+### Eliminating "coro frame overhead"
 
 Before you read further, profile to ascertain that you **have** a coro frame
-allocation problem. `result` coroutines are designed to be HALO-friendly, so
-they should be able to run on-stack. If you're seeing heap allocations, it
-likely means we missed a clang "elidable" attribute somewhere.
+allocation problem. The heap allocations may not matter for your usage!
 
-If you have a compelling reason to avoid coroutines (an old compiler?), you can
+`result` coroutines are designed to be HALO-friendly, so they should be able to
+compile to plain stack functions.  In some case, the existing "clang coro
+elidable" attributes may help.  Also see LLVM PR 152623 for a more robust
+solution.
+
+If you have a compelling reason to avoid coroutines (old compiler?), you can
 write plain functions that return `result<T>`, and the caller won't know the
 difference, **as long as you follow the "mostly non-throwing" contract** of
 `result` coros. This demonstrates non-coroutine error-handling patterns:
 
 ```cpp
+#include <folly/result/result.h>
+
 result<int> plantSeeds(int n) {
   return result_catch_all([&]() -> result<int> {
     if (n < 0) {

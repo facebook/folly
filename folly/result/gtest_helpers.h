@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/coro/GtestHelpers.h>
-#include <folly/result/result.h>
+#include <folly/result/coro.h>
 
 namespace folly {
 

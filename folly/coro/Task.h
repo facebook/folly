@@ -208,6 +208,8 @@ class TaskPromiseBase {
   // `TaskPromise`s, and not just `TaskPromiseBase` descendants.  We use a
   // private tag to let `TaskWrapper` call them without becoming a `friend`.
   auto& scopeExitRef(TaskPromisePrivate) { return scopeExit_; }
+  // FIXME: `result/coro.h` checks if this overload is callable to decide when
+  // something is a task-promise.  A second use-case would merit a concept.
   auto& continuationRef(TaskPromisePrivate) { return continuation_; }
   // Unlike `getExecutor()`, does not copy an atomic.
   auto& executorRef(TaskPromisePrivate) { return executor_; }

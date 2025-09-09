@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-#include <folly/result/result.h>
-
 #pragma once
 
+// Can make lighter: only shares `result_ref_wrap`, `Align.h`
+#include <folly/result/result.h>
+
 /// See `result.h` for detailed API docs.
+///
+/// See `value_only_result_coro.h` if you need to await-unwrap these from
+/// inside `result` or task coros.
 ///
 /// This API is a partial mirror of `result<T>`, so comments here are minimal
 /// to reduce copy-pasta. The main differences are:
@@ -33,15 +37,14 @@
 ///     non-throwing inputs.
 ///   - It is easy to specify that an adaptor or sink expects errors to be
 ///     swallowed before it is reached.
-/// It similarlyalso enables other generic code to handle both fallible and
+/// It similarly also enables other generic code to handle both fallible and
 /// infallible inputs.
 ///
 /// ## Potential extensions
 ///
-/// Features are added as-needed ...  and some should never be needed.
-/// However, these are definitely fine to add if you need them:
-///   - `co_yield co_result()`
-///   - `co_await co_ready()`
+/// Features are added as-needed ...  and some should never be needed.  If you
+/// need it, it is definitely fine to support `co_yield co_result(valOnlyRes)`
+/// from async tasks.
 ///
 /// It's a good idea to add a linter that errors whenever a function returning
 /// `value_only_result` is not `noexcept`.
@@ -284,78 +287,6 @@ class FOLLY_NODISCARD
   void value_or_throw() const noexcept {}
   void value_only() const noexcept {}
 };
-
-namespace detail {
-
-template <typename VOR>
-struct value_only_result_owning_awaitable {
-  VOR storage_;
-  bool await_ready() const noexcept { return true; }
-  typename VOR::value_type await_resume() {
-    return std::move(storage_).value_only();
-  }
-  template <typename U>
-  void await_suspend(result_promise_handle<U>) {}
-};
-
-// As with `result<>`, no `folly::rvalue_reference_wrapper` counterpart because
-// `value_only_result_owning_awaitable` awaits rvalues.
-template <typename T, template <typename> class ConstWrapper>
-struct value_only_result_ref_awaitable {
-  using VOR = ConstWrapper<value_only_result<T>>;
-  constexpr static bool kIsConstRef =
-      !std::is_same_v<VOR, value_only_result<T>>;
-
-  std::reference_wrapper<VOR> storage_;
-
-  bool await_ready() const noexcept { return true; }
-
-  // Awaiting a ref to `value_only_result<Value>` returns a ref to the value.
-  T& await_resume()
-    requires(!std::is_reference_v<T> && !kIsConstRef)
-  {
-    return storage_.get().value_only();
-  }
-  const T& await_resume()
-    requires(!std::is_reference_v<T> && kIsConstRef)
-  {
-    return storage_.get().value_only();
-  }
-  // Awaiting a ref to `value_only_result<Reference>` returns the reference
-  // itself.
-  T await_resume()
-    requires std::is_reference_v<T>
-  {
-    return storage_.get().value_only();
-  }
-
-  template <typename U>
-  void await_suspend(result_promise_handle<U>) {}
-};
-
-} // namespace detail
-
-// Like `result<>`, `value_only_result<>` is awaitable by `result<>` coros.
-//
-// co_await std::move(valueOnlyResult)
-template <typename T>
-auto /* implicit */ operator co_await(value_only_result<T>&& r) {
-  return detail::value_only_result_owning_awaitable{.storage_ = std::move(r)};
-}
-// co_await std::ref(valueOnlyResult)
-template <typename T>
-auto /* implicit */ operator co_await(
-    std::reference_wrapper<value_only_result<T>> rr) {
-  return detail::value_only_result_ref_awaitable<T, std::type_identity_t>{
-      .storage_ = std::move(rr)};
-}
-// co_await std::cref(valueOnlyResult)
-template <typename T>
-auto /* implicit */ operator co_await(
-    std::reference_wrapper<const value_only_result<T>> cr) {
-  return detail::value_only_result_ref_awaitable<T, std::add_const_t>{
-      .storage_ = std::move(cr)};
-}
 
 } // namespace folly
 

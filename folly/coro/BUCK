@@ -1127,7 +1127,7 @@ fbcode_target(
     exported_deps = [
         ":error",
         "//folly:try",
-        "//folly/result:result",
+        "//folly/result:try",
     ],
 )
 
@@ -1139,7 +1139,7 @@ non_fbcode_target(
     exported_deps = [
         ":error",
         "//xplat/folly:try",
-        "//xplat/folly/result:result",
+        "//xplat/folly/result:try",
     ],
 )
 

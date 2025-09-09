@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/result/gtest_helpers.h>
-#include <folly/result/value_only_result.h>
+#include <folly/result/value_only_result_coro.h>
 
 #if FOLLY_HAS_RESULT
 
@@ -52,7 +52,7 @@ TEST(ValueOnlyResult, ofVoid) {
 RESULT_CO_TEST(ValueOnlyResult, CTAD) {
   value_only_result ri = 42;
   static_assert(std::is_same_v<value_only_result<int>, decltype(ri)>);
-  EXPECT_EQ(42, co_await std::move(ri));
+  EXPECT_EQ(42, co_await or_unwind(std::move(ri)));
 
   value_only_result rsp = std::make_unique<std::string>("foo");
   static_assert(
@@ -100,18 +100,12 @@ TEST(ValueOnlyResult, copyMethod) {
 // detailed discussion.
 template <typename T>
 void checkAwaitResumeTypeForRefResult() {
-  // 'co_await' cannot be used in an unevaluated context
-  auto fakeCoAwait = [](auto&& r) -> decltype(auto) {
-    return operator co_await(static_cast<decltype(r)&&>(r)).await_resume();
-  };
-
   // `result`s with r-value refs must be r-value qualified for access, since
   // `folly::rref` models a "use-once" / "destructive-access" reference.
-  static_assert( // `co_await`
-      std::is_same_v<
-          T&&,
-          decltype(fakeCoAwait(
-              std::move(FOLLY_DECLVAL(value_only_result<T&&>&&))))>);
+  using AwRR =
+      decltype(or_unwind(std::move(FOLLY_DECLVAL(value_only_result<T&&>&&))));
+  static_assert( // co_await or_unwind(resFn())
+      std::is_same_v<T&&, coro::await_result_t<AwRR>>);
   static_assert( // `value_or_throw` follows `co_await`
       std::is_same_v<
           T&&,
@@ -122,20 +116,19 @@ void checkAwaitResumeTypeForRefResult() {
           decltype(FOLLY_DECLVAL(value_only_result<T&&>&&).value_only())>);
 
   // `co_await`ing a `result` with an l-value ref always returns the ref
-  static_assert( // `co_await std::ref(r)`
-      std::is_same_v<
-          T&,
-          decltype(fakeCoAwait(
-              std::ref(FOLLY_DECLVAL(value_only_result<T&>&))))>);
-  static_assert( // `co_await std::cref(r)`
-      std::is_same_v<
-          T&,
-          decltype(fakeCoAwait(
-              std::cref(FOLLY_DECLVAL(value_only_result<T&>&))))>);
-  static_assert( // `co_await std::move(r)`
-      std::is_same_v<
-          T&,
-          decltype(fakeCoAwait(FOLLY_DECLVAL(value_only_result<T&>&&)))>);
+
+  // `co_await or_unwind(r)`
+  using AwLL = decltype(or_unwind(FOLLY_DECLVAL(value_only_result<T&>&)));
+  static_assert(std::is_same_v<T&, coro::await_result_t<AwLL>>);
+
+  // `co_await or_unwind(std::as_const(r))`
+  using AwCLL =
+      decltype(or_unwind(FOLLY_DECLVAL(const value_only_result<T&>&)));
+  static_assert(std::is_same_v<T&, coro::await_result_t<AwCLL>>);
+
+  // `co_await or_unwind(std::move(r))`
+  using AwLR = decltype(or_unwind(FOLLY_DECLVAL(value_only_result<T&>&&)));
+  static_assert(std::is_same_v<T&, coro::await_result_t<AwLR>>);
 
   // `value_or_throw()` behaves like `co_await` for l-value ref `result`s
   static_assert(
@@ -183,27 +176,28 @@ RESULT_CO_TEST(ValueOnlyResult, fromRefWrapperAndRefAccess) {
   T t2 = std::make_unique<int>(567);
   {
     value_only_result<T&> rLref = std::ref(t1);
-    EXPECT_EQ(321, *(co_await rLref.copy()));
+    EXPECT_EQ(321, *(co_await or_unwind(rLref.copy())));
     EXPECT_EQ(321, *rLref.value_or_throw());
     EXPECT_EQ(321, *rLref.value_only());
-    *(co_await std::ref(rLref)) += 1;
+    *(co_await or_unwind(rLref)) += 1;
     EXPECT_EQ(322, *t1);
-    (co_await std::move(rLref)) = std::move(t2);
+    (co_await or_unwind(std::move(rLref))) = std::move(t2);
     EXPECT_EQ(567, *t1);
   }
 
   {
     value_only_result<const T&> rCref = std::cref(t1);
-    EXPECT_EQ(567, *(co_await rCref.copy()));
+    EXPECT_EQ(567, *(co_await or_unwind(rCref.copy())));
     EXPECT_EQ(567, *rCref.value_or_throw());
     EXPECT_EQ(567, *rCref.value_only());
-    *(co_await std::cref(rCref)) += 1; // can change the int, not the unique_ptr
+    // can change the int, not the unique_ptr --
+    *(co_await or_unwind(std::as_const(rCref))) += 1;
     EXPECT_EQ(568, *t1);
 
     EXPECT_TRUE(t2 == nullptr); // was moved out above
     t2 = std::make_unique<int>(42);
     rCref = std::cref(t2); // assignment uses the implict ctor
-    EXPECT_EQ(42, *(co_await rCref.copy()));
+    EXPECT_EQ(42, *(co_await or_unwind(rCref.copy())));
   }
 
   {
@@ -232,7 +226,7 @@ RESULT_CO_TEST(ValueOnlyResult, movableContexts) {
     auto fivePtr = std::make_unique<int>(5);
     return fivePtr;
   };
-  EXPECT_EQ(5, *(co_await fn()));
+  EXPECT_EQ(5, *(co_await or_unwind(fn())));
 }
 
 RESULT_CO_TEST(ValueOnlyResult, copySmallTrivialUnderlying) {
@@ -247,9 +241,9 @@ RESULT_CO_TEST(ValueOnlyResult, copySmallTrivialUnderlying) {
   };
   Smol s{13, 21};
   value_only_result<Smol> m{s};
-  EXPECT_EQ(s, co_await std::ref(m));
-  EXPECT_EQ(s, co_await std::move(m));
-  EXPECT_EQ(s, co_await value_only_result<Smol>{s});
+  EXPECT_EQ(s, co_await or_unwind(m));
+  EXPECT_EQ(s, co_await or_unwind(std::move(m)));
+  EXPECT_EQ(s, co_await or_unwind(value_only_result<Smol>{s}));
 }
 
 RESULT_CO_TEST(ValueOnlyResult, simpleConversion) {
@@ -268,65 +262,71 @@ RESULT_CO_TEST(ValueOnlyResult, simpleConversion) {
       // magic for string literals, but that's not the main point of this test.
       return value_only_result<const char*>{"resFn"};
     };
-    EXPECT_EQ(std::string("resFn"), co_await resFn());
+    EXPECT_EQ(std::string("resFn"), co_await or_unwind(resFn()));
   }
 
   // Copying conversion with `&` binding
   {
     value_only_result<int> rn{rCrefN1}; // ctor converts from ref wrapper
     value_only_result<float> rf{rn}; // ctor converts from value
-    EXPECT_EQ(1000, co_await std::move(rn));
-    EXPECT_EQ(1000, co_await std::move(rf));
+    EXPECT_EQ(1000, co_await or_unwind(std::move(rn)));
+    EXPECT_EQ(1000, co_await or_unwind(std::move(rf)));
 
     rn = rCrefN2; // assignment converts from ref wrapper
     rf = rn; // assignment converts from value
-    EXPECT_EQ(2000, co_await std::move(rn));
-    EXPECT_EQ(2000, co_await std::move(rf));
+    EXPECT_EQ(2000, co_await or_unwind(std::move(rn)));
+    EXPECT_EQ(2000, co_await or_unwind(std::move(rf)));
   }
 
   // Copying conversion with `const &` binding
   {
     value_only_result<int> rn{
         std::as_const(rCrefN1)}; // ctor converts from ref wrapper
-    EXPECT_EQ(1000, co_await std::ref(rn));
+    EXPECT_EQ(1000, co_await or_unwind(rn));
 
     value_only_result<float> rf{std::as_const(rn)}; // ctor converts from value
-    EXPECT_EQ(1000, co_await std::ref(rf));
+    EXPECT_EQ(1000, co_await or_unwind(rf));
 
     rn = std::as_const(rCrefN2); // assignment converts from ref wrapper
-    EXPECT_EQ(2000, co_await std::ref(rn));
+    EXPECT_EQ(2000, co_await or_unwind(rn));
 
     rf = std::as_const(rn); // assignment converts from value
-    EXPECT_EQ(2000, co_await std::ref(rf));
+    EXPECT_EQ(2000, co_await or_unwind(rf));
   }
 
   // (Possibly) move conversion with `&&` binding
   {
     value_only_result<int> rn{
         std::move(rCrefN1)}; // ctor converts from ref wrapper
-    EXPECT_EQ(1000, co_await std::cref(rn));
+    EXPECT_EQ(1000, co_await or_unwind(std::as_const(rn)));
 
     value_only_result<float> rf{std::move(rn)}; // ctor converts from value
-    EXPECT_EQ(1000, co_await std::cref(rf));
+    EXPECT_EQ(1000, co_await or_unwind(std::as_const(rf)));
 
     rn = std::move(rCrefN2); // assignment converts from ref wrapper
-    EXPECT_EQ(2000, co_await std::cref(rn));
+    EXPECT_EQ(2000, co_await or_unwind(std::as_const(rn)));
 
     rf = std::move(rn); // assignment converts from value
-    EXPECT_EQ(2000, co_await std::cref(rf));
+    EXPECT_EQ(2000, co_await or_unwind(std::as_const(rf)));
   }
 }
 
 TEST(ValueOnlyResult, accessValue) {
+  {
+    value_only_result<int> r{555};
+    EXPECT_TRUE(r.has_value());
+
+    EXPECT_EQ(555, r.value_only());
+    EXPECT_EQ(555, std::as_const(r).value_only());
+    EXPECT_EQ(555, std::move(r).value_only());
+  }
+
   value_only_result<int> r{555};
   EXPECT_TRUE(r.has_value());
 
   EXPECT_EQ(555, r.value_or_throw());
   EXPECT_EQ(555, std::as_const(r).value_or_throw());
   EXPECT_EQ(555, std::move(r).value_or_throw());
-  EXPECT_EQ(555, r.value_only());
-  EXPECT_EQ(555, std::as_const(r).value_only());
-  EXPECT_EQ(555, std::move(r).value_only());
 
   // `r` is moved out, so let's store a new value.
   // NOLINTNEXTLINE(bugprone-use-after-move)
@@ -347,6 +347,16 @@ TEST(ValueOnlyResult, accessValue) {
 }
 
 TEST(ValueOnlyResult, accessLvalueRef) {
+  {
+    const int n1 = 555;
+    value_only_result<const int&> r{std::ref(n1)};
+    EXPECT_TRUE(r.has_value());
+
+    EXPECT_EQ(555, r.value_only());
+    EXPECT_EQ(555, std::as_const(r).value_only());
+    EXPECT_EQ(555, std::move(r).value_only());
+  }
+
   const int n1 = 555;
   value_only_result<const int&> r{std::ref(n1)};
   EXPECT_TRUE(r.has_value());
@@ -354,9 +364,6 @@ TEST(ValueOnlyResult, accessLvalueRef) {
   EXPECT_EQ(555, r.value_or_throw());
   EXPECT_EQ(555, std::as_const(r).value_or_throw());
   EXPECT_EQ(555, std::move(r).value_or_throw());
-  EXPECT_EQ(555, r.value_only());
-  EXPECT_EQ(555, std::as_const(r).value_only());
-  EXPECT_EQ(555, std::move(r).value_only());
 
   // `r` is moved out, so let's store a new value.
   const int n2 = 7;
@@ -406,22 +413,30 @@ TEST(ValueOnlyResult, accessRvalueRef) {
 RESULT_CO_TEST(ValueOnlyResult, awaitValue) {
   auto returnsValue = []() -> value_only_result<uint8_t> { return 129; };
   // Test both EXPECT and CO_ASSERT
-  EXPECT_EQ(129, co_await returnsValue());
-  CO_ASSERT_EQ(129, co_await returnsValue());
+  EXPECT_EQ(129, co_await or_unwind(returnsValue()));
+  CO_ASSERT_EQ(129, co_await or_unwind(returnsValue()));
 }
 
 // `result_ref_awaitable` propagating a value
 RESULT_CO_TEST(ValueOnlyResult, awaitRef) {
   // Use a non-copiable type to show that `co_await` doesn't copy.
   value_only_result<std::unique_ptr<int>> var = std::make_unique<int>(17);
-  auto& varRef = *(co_await std::ref(var));
+  auto& varRef = *(co_await or_unwind(var));
   EXPECT_EQ(17, varRef);
   varRef = 42;
-  EXPECT_EQ(42, *(co_await std::cref(var)));
-  EXPECT_EQ(42, *(co_await std::move(var)));
-  // Test that `var` is now in the moved-out state
+  EXPECT_EQ(42, *(co_await or_unwind(std::as_const(var))));
+
+  EXPECT_EQ(42, *(co_await or_unwind(std::move(var))));
+  // `var` is not moved out yet! We just took a reference above.
   // NOLINTNEXTLINE(bugprone-use-after-move)
-  EXPECT_FALSE(co_await std::cref(var));
+  EXPECT_EQ(42, *(co_await or_unwind(var)));
+
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  auto ptr = co_await or_unwind(std::move(var));
+  EXPECT_EQ(42, *ptr);
+  // Now, `var` is moved out & null.
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_FALSE(co_await or_unwind(std::as_const(var)));
 }
 
 TEST(ValueOnlyResult, containsRValueRef) {
