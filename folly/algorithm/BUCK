@@ -1,5 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../defs.bzl",
     "folly_xplat_library",
@@ -7,19 +6,11 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "binary_heap",
-    raw_headers = ["BinaryHeap.h"],
-    exported_deps = [
-        "//xplat/folly/lang:builtin",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "binary_heap",
     headers = ["BinaryHeap.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/lang:builtin",
     ],
