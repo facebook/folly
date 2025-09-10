@@ -107,11 +107,18 @@ void subtractHelper(ValueType& a, const ValueType& b) {
 template <
     typename ReturnType = double,
     typename Duration = std::chrono::seconds,
-    typename Interval = Duration>
+    typename Interval = Duration,
+    typename = std::enable_if_t<std::is_constructible_v<Duration, Interval>>>
 ReturnType rateHelper(ReturnType count, Duration elapsed) {
   if (elapsed == Duration(0)) {
     return 0;
   }
+
+  // elapsed is non-zero, and we increase elapsed to at least Interval{1}
+  // for rate calculation to smooth out rate calculation at the beginning for
+  // a timeseries' lifecycle, when elapsed is very short compared to the overall
+  // timeseries duration.
+  elapsed = std::max(elapsed, Duration(Interval{1}));
 
   // Use std::chrono::duration_cast to convert between the native
   // duration and the desired interval.  However, convert the rates,

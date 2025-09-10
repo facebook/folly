@@ -327,8 +327,20 @@ TEST(BucketedTimeSeries, elapsed) {
 TEST(BucketedTimeSeries, rate) {
   BucketedTimeSeries<int64_t> ts(60, seconds(600));
 
+  ts.addValue(seconds(0), 200, 3);
+  // At the beginning of a timeseries' lifecycle, we make any non-zero interval
+  // to be at least Interval{1} to smooth out the rate calculation. After adding
+  // value at time 0, the total elapsed time for the timeseries is Duration{1},
+  // which is one second. Since the elapsed time is much smaller than
+  // Interval{1}, which is one minute, without the smoothing, the rate
+  // calculation can be volatile at the beginning, especially for rare events.
+  EXPECT_EQ(600.0, (ts.rate<double, std::chrono::minutes>()));
+  EXPECT_EQ(600.0, (ts.rate<double>()));
+  EXPECT_EQ(3.0, (ts.countRate<double, std::chrono::minutes>()));
+  EXPECT_EQ(3.0, (ts.countRate<double>()));
+
   // Add 3 values every 2 seconds, until fill up the buckets
-  for (size_t n = 0; n < 600; n += 2) {
+  for (size_t n = 2; n < 600; n += 2) {
     ts.addValue(seconds(n), 200, 3);
   }
 
