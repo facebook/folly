@@ -239,24 +239,49 @@ class FOLLY_NODISCARD
 
   /// Retrieve reference `T` -- `value_or_throw` is a synonym of `value_only`
   ///
-  /// NB Unlike the value-type versions, these can't mutate the reference
-  /// wrapper inside `this`.  Assign a ref-wrapper to `res` to do that.
-  ///
-  /// L-value refs follow `std::reference_wrapper`, exposing the underlying ref
-  /// type regardless of the instance's qualification.  We never add `const`
-  /// for reasons sketched in the test `checkAwaitResumeTypeForRefResult`.
-  T value_or_throw() const& noexcept
+  /// NB Unlike the value-type versions, accesors cannot mutate the reference
+  /// wrapper inside `this`.  Assign a ref-wrapper to the `result` to do that.
+
+  /// Lvalue result-ref propagate `const`: `const result<T&>` -> `const T&`.
+  /// See a discussion of the trade-offs in `docs/result.md`.
+
+  like_t<const int&, T> value_or_throw() const& noexcept
+    requires std::is_lvalue_reference_v<T>
+  {
+    return std::as_const(this->value_.get());
+  }
+  like_t<const int&, T> value_only() const& noexcept
+    requires std::is_lvalue_reference_v<T>
+  {
+    return std::as_const(this->value_.get());
+  }
+
+  T value_or_throw() & noexcept
     requires std::is_lvalue_reference_v<T>
   {
     return this->value_.get();
   }
-  T value_only() const& noexcept
+
+  T value_only() & noexcept
     requires std::is_lvalue_reference_v<T>
   {
     return this->value_.get();
   }
+
+  T value_only() && noexcept
+    requires std::is_lvalue_reference_v<T>
+  {
+    return this->value_.get();
+  }
+  T value_or_throw() && noexcept
+    requires std::is_lvalue_reference_v<T>
+  {
+    return this->value_.get();
+  }
+
   // R-value refs follow `folly::rvalue_reference_wrapper`.  They model
   // single-use references, and thus require `&&` qualification.
+
   T value_or_throw() && noexcept
     requires std::is_rvalue_reference_v<T>
   {

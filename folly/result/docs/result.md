@@ -324,32 +324,66 @@ The semantics of `result<Value>` are straightforward:
 
 ### Store references in a `result`
 
-`result` of a reference type is just syntax sugar for a ref wrapper:
-  - `result<V&>` internally stores `std::reference_wrapper<V>`
-  - `result<V&&>` internally stores `folly::rvalue_reference_wrapper<V>`.
-
-    **WATCH OUT**: This opinionated wrapper enforces "use-once" behavior --
-    use-after-move literally becomes a segfault.
-
-Reference support enables "fallible getters": `result<Value&> at(const Key&)`.
-  - For this to make sense, `co_await or_unwind(m.at(k))` must return `Value&`,
-    even though the `result<Value&>` being accessed is an rvalue.
-  - `const result<V&>` does not make the reference `const`. This is consistent
-    with `result<V*>` and `std::reference_wrapper<V>`. Even if we did return
-    `const V&` from the `co_await or_unwind()` and `value_or_throw()` in these
-    scenarios, users could still (accidentally) copy-construct `result<V&>`
-    and lose the "deep const" behavior.  **Important:** This is one of the
-    several reasons we must never add `result::operator->` -- types
-    supporting `->` are generally expected to be propagate `const`.
-
-For explicitness, you must use the corresponding wrapper type to construct
-reference `result`s.
+`result` may store a reference type.  For explicitness, you must construct it
+via the corresponding reference wrapper:
 
 ```cpp
-int n = 5;
-result<int&> lv = std::ref(n);
-result<const int&> clv = std::cref(n);
-result<int&&> rv = folly::rref(std::move(n));
+V v{...};
+result<V&> lres = std::ref(v);
+result<const V&> clres = std::cref(v);
+result<V&&> rres = folly::rref(v);
+```
+
+You must explicitly specify the template parameter.  That's because CTAD will
+currently elect to store the ref-wrapper otherwise:
+
+```cpp
+result lres = std::ref(v); // `result<std::reference_wrapper<V>>`
+result rres = folly::rref(v); // `result<folly::rvalue_reference_wrapper<V>>`
+```
+
+**WATCH OUT**: Both `rvalue_reference_wrapper<V>` and `result<V&&>` are
+opinionated wrappers that strictly enforce "use-once" behavior --
+use-after-move literally becomes a null pointer dereference.
+
+Reference support allows "fallible accessors".  For example, a map may provide:
+
+```cpp
+result<Value&> at(const Key&);
+```
+
+For this use-case to make sense, `co_await or_unwind(m.at(k))` must return
+`Value&`, even though the `result<Value&>` being accessed is an rvalue.
+
+Note that `const result<V&>` only lets you access the value as `const V&`.
+
+```cpp
+std::as_const(rn).value_or_throw() -> const int&
+co_await or_unwind(std::as_const(rn)) -> const int&
+```
+
+This doesn't affect the reference-accessor use-case, but it results in safer
+behavior when you write code like this:
+
+```cpp
+void logResult(const auto& res);
+
+logResult(result<V&>{std::ref(v)});
+```
+
+If `const` didn't propagate inside `result<T&>`, then `logResult` could
+accidentally mutate `v`, even though the signature looks like it shouldn't.
+
+In rare scenarios, `const`-propagation may not be what you want.  Your
+work-around is to store `result<V*>` or `result<std::reference_wrapper<V>>`. 
+One example is a read-locked map that references thread-safe values:
+
+```cpp
+Synchronized<map<K, result<std::reference_wrapper<std::atomic_int>>>> syncMap;
+co_await or_unwind(syncMap.with_rlock([](auto& m) -> result<> {
+  // Wouldn't compile with `result<std::atomic_int&>` due to `const` propagation
+  (co_await or_unwind(m.at(key))).get().fetch_add(1);
+}));
 ```
 
 ### `co_await or_unwind()` and value categories

@@ -124,7 +124,7 @@ void checkAwaitResumeTypeForRefResult() {
   // `co_await or_unwind(std::as_const(r))`
   using AwCLL =
       decltype(or_unwind(FOLLY_DECLVAL(const value_only_result<T&>&)));
-  static_assert(std::is_same_v<T&, coro::await_result_t<AwCLL>>);
+  static_assert(std::is_same_v<const T&, coro::await_result_t<AwCLL>>);
 
   // `co_await or_unwind(std::move(r))`
   using AwLR = decltype(or_unwind(FOLLY_DECLVAL(value_only_result<T&>&&)));
@@ -137,7 +137,7 @@ void checkAwaitResumeTypeForRefResult() {
           decltype(FOLLY_DECLVAL(value_only_result<T&>&).value_or_throw())>);
   static_assert(
       std::is_same_v< // `std::as_const(r).value_or_throw()`
-          T&, // fn docblock explains why this is NOT `const`
+          const T&,
           decltype(FOLLY_DECLVAL(const value_only_result<T&>&)
                        .value_or_throw())>);
   static_assert(
@@ -156,7 +156,7 @@ void checkAwaitResumeTypeForRefResult() {
           decltype(FOLLY_DECLVAL(value_only_result<T&>&).value_only())>);
   static_assert(
       std::is_same_v< // `std::as_const(r).value_only()`
-          T&, // fn docblock explains why this is NOT `const`
+          const T&,
           decltype(FOLLY_DECLVAL(const value_only_result<T&>&).value_only())>);
   static_assert(
       std::is_same_v< // `std::move(r).value_only()`

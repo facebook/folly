@@ -60,8 +60,9 @@
 ///     Key things to remember:
 ///       - `result<V&&>` is "use-once" -- and it must be r-value qualified to
 ///         access the reference inside.
-///       - `const result<V&>` gives non-`const` access to `V&`, just as `const
-///         result<V*>` would.
+///       - `const result<V&>` only gives `const V&` access to the contents.
+///         It should be rare that you need the opposite behavior.  If you do,
+///         use `result<std::reference_wrapper<V>>` or `vector<result<V*>>`.
 ///
 ///   - `has_stopped()` & `stopped_result` to nudge `folly` to the C++26 idea
 ///     that cancellation is NOT an error, see https://wg21.link/P1677 & P2300.
@@ -662,18 +663,30 @@ class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result final
 
   /// Retrieve reference `T`.
   ///
-  /// NB Unlike the value-type versions, these can't mutate the reference
-  /// wrapper inside `this`.  Assign a ref-wrapper to `res` to do that.
-  ///
-  /// L-value refs follow `std::reference_wrapper`, exposing the underlying ref
-  /// type regardless of the instance's qualification.  We never add `const`
-  /// for reasons sketched in the test `checkAwaitResumeTypeForRefResult`.
-  T value_or_throw() const&
+  /// NB Unlike the value-type versions, accesors cannot mutate the reference
+  /// wrapper inside `this`.  Assign a ref-wrapper to the `result` to do that.
+
+  /// Lvalue result-ref propagate `const`: `const result<T&>` -> `const T&`.
+  /// See a discussion of the trade-offs in `docs/result.md`.
+  like_t<const int&, T> value_or_throw() const&
+    requires std::is_lvalue_reference_v<T>
+  {
+    this->throw_if_no_value();
+    return std::as_const(this->exp_->get());
+  }
+  T value_or_throw() &
     requires std::is_lvalue_reference_v<T>
   {
     this->throw_if_no_value();
     return this->exp_->get();
   }
+  T value_or_throw() &&
+    requires std::is_lvalue_reference_v<T>
+  {
+    this->throw_if_no_value();
+    return this->exp_->get();
+  }
+
   // R-value refs follow `folly::rvalue_reference_wrapper`.  They model
   // single-use references, and thus require `&&` qualification.
   T value_or_throw() &&

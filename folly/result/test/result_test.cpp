@@ -217,6 +217,42 @@ TEST(Result, fromNonValue) {
   }
 }
 
+RESULT_CO_TEST(Result, ofLvalueReferenceWrapper) {
+  int n = 3;
+  // Yes, you can declare `result<reference_wrapper<V>>`.  This is one way to
+  // mutate values through `const result<Ref>` (the other being `result<V*>`).
+  {
+    result r = std::ref(n);
+    static_assert(
+        std::is_same_v<result<std::reference_wrapper<int>>, decltype(r)>);
+    // The `.get()` is here to show that a ref-wrapper is being returned.
+    EXPECT_EQ(3, (co_await or_unwind(std::move(r))).get());
+  }
+  // To store `result<V&>` you must declare the type -- no CTAD.
+  {
+    result<int&> r = std::ref(n);
+    EXPECT_EQ(3, co_await or_unwind(std::move(r)));
+  }
+}
+
+RESULT_CO_TEST(Result, ofRvalueReferenceWrapper) {
+  // Yes, you can declare `result<rvalue_reference_wrapper<V>>`.
+  {
+    int n = 3;
+    result r = rref(std::move(n));
+    static_assert(
+        std::is_same_v<result<rvalue_reference_wrapper<int>>, decltype(r)>);
+    // The `.get()` is here to show that a ref-wrapper is being returned.
+    EXPECT_EQ(3, (co_await or_unwind(std::move(r))).get());
+  }
+  // To store `result<V&&>` you must declare the type -- no CTAD.
+  {
+    int n = 3;
+    result<int&&> r = rref(std::move(n));
+    EXPECT_EQ(3, co_await or_unwind(std::move(r)));
+  }
+}
+
 // Check `?.value_or_throw()` and `co_await ?` return types for various ways of
 // accessing `result<V&>` and `result<V&&>`.
 //
@@ -232,17 +268,10 @@ TEST(Result, fromNonValue) {
 //   co_await or_unwind(rn) -> int&
 //   co_await or_unwind(std::move(rn)) -> int&&
 //
-// However, both of the following COULD potentially return `const int&`.
+//   !! `result.md` explains why these return ref-to-const !!
 //
-//   std::as_const(rn).value_or_throw() -> int& OR const int&
-//   co_await or_unwind(std::as_const(rn)) -> int& OR const int&
-//
-// We chose NOT to add `const` for two reasons:
-//   - A `const` instance of `std::reference_wrapper` gives non-const access to
-//     the underlying reference, and we advertise `result` reference support as
-//     "syntax sugar for reference wrappers".
-//   - `result<int&>` is like a non-null `result<int*>`.  Adding `const` to the
-//     latter does not, and definitely should not, make the pointer `const`.
+//   std::as_const(rn).value_or_throw() -> const int&
+//   co_await or_unwind(std::as_const(rn)) -> const int&
 template <typename T>
 void checkAwaitResumeTypeForRefResult() {
   // `result`s with r-value refs must be r-value qualified for access, since
@@ -263,7 +292,7 @@ void checkAwaitResumeTypeForRefResult() {
 
   // `co_await or_unwind(std::as_const(r))`
   using AwCLL = decltype(or_unwind(FOLLY_DECLVAL(const result<T&>&)));
-  static_assert(std::is_same_v<T&, coro::await_result_t<AwCLL>>);
+  static_assert(std::is_same_v<const T&, coro::await_result_t<AwCLL>>);
 
   // `co_await or_unwind(std::move(r))`
   using AwLR = decltype(or_unwind(FOLLY_DECLVAL(result<T&>&&)));
@@ -276,7 +305,7 @@ void checkAwaitResumeTypeForRefResult() {
           decltype(FOLLY_DECLVAL(result<T&>&).value_or_throw())>);
   static_assert(
       std::is_same_v< // `std::as_const(r).value_or_throw()`
-          T&, // fn docblock explains why this is NOT `const`
+          const T&,
           decltype(FOLLY_DECLVAL(const result<T&>&).value_or_throw())>);
   static_assert(
       std::is_same_v< // `std::move(r).value_or_throw()`
