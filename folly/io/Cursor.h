@@ -1454,8 +1454,8 @@ class RWCursor
   bool maybeShared_;
 };
 
-typedef RWCursor<CursorAccess::PRIVATE> RWPrivateCursor;
-typedef RWCursor<CursorAccess::UNSHARE> RWUnshareCursor;
+using RWPrivateCursor = RWCursor<CursorAccess::PRIVATE>;
+using RWUnshareCursor = RWCursor<CursorAccess::UNSHARE>;
 
 /**
  * Append to the end of a buffer chain, growing the chain (by allocating new

@@ -402,8 +402,8 @@ class NotificationQueue {
    */
   template <typename InputIteratorT>
   void putMessages(InputIteratorT first, InputIteratorT last) {
-    typedef typename std::iterator_traits<InputIteratorT>::iterator_category
-        IterCategory;
+    using IterCategory =
+        typename std::iterator_traits<InputIteratorT>::iterator_category;
     putMessagesImpl(first, last, IterCategory());
   }
 

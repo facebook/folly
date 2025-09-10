@@ -204,9 +204,8 @@ class HHWheelTimerBase
     std::chrono::steady_clock::time_point expiration_{};
     int bucket_{-1};
 
-    typedef boost::intrusive::
-        list<Callback, boost::intrusive::constant_time_size<false>>
-            List;
+    using List = boost::intrusive::
+        list<Callback, boost::intrusive::constant_time_size<false>>;
 
     std::shared_ptr<RequestContext> requestContext_;
 
@@ -334,7 +333,7 @@ class HHWheelTimerBase
   static constexpr unsigned int WHEEL_MASK = (WHEEL_SIZE - 1);
   static constexpr uint32_t LARGEST_SLOT = 0xffffffffUL;
 
-  typedef typename Callback::List CallbackList;
+  using CallbackList = typename Callback::List;
   CallbackList buckets_[WHEEL_BUCKETS][WHEEL_SIZE];
   std::array<std::size_t, (WHEEL_SIZE / sizeof(std::size_t)) / 8> bitmap_;
 

@@ -56,7 +56,7 @@ inline bool operator==(const HugePageSize& a, const HugePageSize& b) {
  * mount_point might be empty if no hugetlbfs file system is mounted for
  * that size.
  */
-typedef std::vector<HugePageSize> HugePageSizeVec;
+using HugePageSizeVec = std::vector<HugePageSize>;
 
 /**
  * Get list of supported huge page sizes and their mount points, if
