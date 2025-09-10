@@ -306,7 +306,7 @@ static void atomicIncrBaseline(
 
   std::vector<std::thread> threads;
   while (threads.size() < numThreads) {
-    threads.push_back(std::thread([&]() {
+    threads.emplace_back([&]() {
       while (!go.load()) {
         std::this_thread::yield();
       }
@@ -319,7 +319,7 @@ static void atomicIncrBaseline(
           folly::doNotOptimizeAway(x);
         }
       }
-    }));
+    });
   }
 
   braces.dismiss();
