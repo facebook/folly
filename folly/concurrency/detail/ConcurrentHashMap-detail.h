@@ -18,12 +18,14 @@
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <new>
 
 #include <folly/ScopeGuard.h>
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Mask.h>
+#include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/Hazptr.h>
 
@@ -39,6 +41,44 @@ namespace folly {
 namespace detail {
 
 namespace concurrenthashmap {
+
+template <typename Class, typename ValueType, typename Allocator>
+class alignas(alignof(ValueType)) AlignedStorage {
+  struct alignas(alignof(Class)) Dummy {};
+
+  using DummyAllocator =
+      typename std::allocator_traits<Allocator>::template rebind_alloc<Dummy>;
+  using DummyAllocTraits = std::allocator_traits<DummyAllocator>;
+
+  static size_t calculateNeededDummyCount(size_t count) {
+    const size_t sz = sizeof(Class) + sizeof(ValueType) * count;
+    static_assert(alignof(Dummy) % alignof(ValueType) == 0);
+    static_assert(alignof(Dummy) % alignof(Class) == 0);
+    const size_t aligned_sz = align_ceil(sz, alignof(Dummy));
+    return aligned_sz / sizeof(Dummy);
+  }
+
+ public:
+  ValueType* array() noexcept {
+    return reinterpret_cast<ValueType*>(static_cast<Class*>(this) + 1);
+  }
+
+ protected:
+  static Class* allocate(size_t count) {
+    auto allocator = DummyAllocator();
+    auto* buf =
+        DummyAllocTraits::allocate(allocator, calculateNeededDummyCount(count));
+    return reinterpret_cast<Class*>(buf);
+  }
+
+  void deallocate(size_t count) {
+    auto allocator = DummyAllocator();
+    DummyAllocTraits::deallocate(
+        allocator,
+        reinterpret_cast<Dummy*>(static_cast<Class*>(this)),
+        calculateNeededDummyCount(count));
+  }
+};
 
 enum class InsertType {
   DOES_NOT_EXIST, // insert/emplace operations.  If key exists, return false.
@@ -380,7 +420,7 @@ class alignas(64) BucketTable {
     load_factor_nodes_ =
         to_integral(static_cast<float>(bucket_count) * load_factor_);
     for (size_t i = 0; i < oldcount; i++) {
-      auto bucket = &buckets->buckets_[i]();
+      auto bucket = &buckets->array()[i]();
       auto node = bucket->load(std::memory_order_relaxed);
       if (!node) {
         continue;
@@ -404,14 +444,14 @@ class alignas(64) BucketTable {
       }
       // Set longest last run in new bucket, incrementing the refcount.
       lastrun->acquire_link(); // defined in hazptr_obj_base_linked
-      newbuckets->buckets_[lastidx]().store(lastrun, std::memory_order_relaxed);
+      newbuckets->array()[lastidx]().store(lastrun, std::memory_order_relaxed);
       // Clone remaining nodes
       for (; node != lastrun;
            node = node->next_.load(std::memory_order_relaxed)) {
         auto newnode = (Node*)Allocator().allocate(sizeof(Node));
         new (newnode) Node(cohort, node);
         auto k = getIdx(bucket_count, HashFn()(node->getItem().first));
-        auto prevhead = &newbuckets->buckets_[k]();
+        auto prevhead = &newbuckets->array()[k]();
         newnode->next_.store(prevhead->load(std::memory_order_relaxed));
         prevhead->store(newnode, std::memory_order_relaxed);
       }
@@ -435,7 +475,7 @@ class alignas(64) BucketTable {
     getBucketsAndCount(bcount, buckets, res.hazptrs_[0]);
 
     auto idx = getIdx(bcount, h);
-    auto prev = &buckets->buckets_[idx]();
+    auto prev = &buckets->array()[idx]();
     auto node = hazcurr.protect(*prev);
     while (node) {
       if (KeyEqual()(k, node->getItem().first)) {
@@ -458,7 +498,7 @@ class alignas(64) BucketTable {
       auto buckets = buckets_.load(std::memory_order_relaxed);
       DCHECK(buckets); // Use-after-destruction by user.
       auto idx = getIdx(bcount, h);
-      auto head = &buckets->buckets_[idx]();
+      auto head = &buckets->array()[idx]();
       node = head->load(std::memory_order_relaxed);
       Node* prev = nullptr;
       while (node) {
@@ -537,43 +577,41 @@ class alignas(64) BucketTable {
   Iterator cend() { return Iterator(nullptr); }
 
  private:
+  using BucketRoot = hazptr_root<Node, Atom>;
   class Buckets
       : public hazptr_obj_base<
             Buckets,
             Atom,
-            concurrenthashmap::HazptrTableDeleter> {
-    using BucketRoot = hazptr_root<Node, Atom>;
-
+            concurrenthashmap::HazptrTableDeleter>,
+        public AlignedStorage<Buckets, BucketRoot, Allocator> {
     Buckets() = default;
     ~Buckets() = default;
 
    public:
     static Buckets* create(size_t count, hazptr_obj_cohort<Atom>* cohort) {
-      auto buf =
-          Allocator().allocate(sizeof(Buckets) + sizeof(BucketRoot) * count);
-      auto buckets = new (buf) Buckets();
+      auto* buf = Buckets::allocate(count);
+      auto* buckets = new (buf) Buckets();
       DCHECK(cohort);
       buckets->set_cohort_tag(cohort); // defined in hazptr_obj
       for (size_t i = 0; i < count; i++) {
-        new (&buckets->buckets_[i]) BucketRoot;
+        new (&buckets->array()[i]) BucketRoot;
       }
       return buckets;
     }
 
     void destroy(size_t count) {
       for (size_t i = 0; i < count; i++) {
-        buckets_[i].~BucketRoot();
+        Buckets::array()[i].~BucketRoot();
       }
       this->~Buckets();
-      Allocator().deallocate(
-          (uint8_t*)this, sizeof(BucketRoot) * count + sizeof(*this));
+      Buckets::deallocate(count);
     }
 
     void unlink_and_reclaim_nodes(size_t count) {
       for (size_t i = 0; i < count; i++) {
-        auto node = buckets_[i]().load(std::memory_order_relaxed);
+        auto node = Buckets::array()[i]().load(std::memory_order_relaxed);
         if (node) {
-          buckets_[i]().store(nullptr, std::memory_order_relaxed);
+          Buckets::array()[i]().store(nullptr, std::memory_order_relaxed);
           while (node) {
             auto next = node->next_.load(std::memory_order_relaxed);
             if (next) {
@@ -585,8 +623,6 @@ class alignas(64) BucketTable {
         }
       }
     }
-
-    BucketRoot buckets_[0];
   };
 
  public:
@@ -632,7 +668,7 @@ class alignas(64) BucketTable {
           break;
         }
         DCHECK(buckets_);
-        node_ = hazptrs_[1].protect(buckets_->buckets_[idx_]());
+        node_ = hazptrs_[1].protect(buckets_->array()[idx_]());
         if (node_) {
           break;
         }
@@ -725,7 +761,7 @@ class alignas(64) BucketTable {
 
     DCHECK(buckets) << "Use-after-destruction by user.";
     auto idx = getIdx(bcount, h);
-    auto head = &buckets->buckets_[idx]();
+    auto head = &buckets->array()[idx]();
     auto node = head->load(std::memory_order_relaxed);
     auto headnode = node;
     auto prev = head;
@@ -792,7 +828,7 @@ class alignas(64) BucketTable {
       bcount <<= 1;
       hazbuckets.reset_protection(buckets);
       idx = getIdx(bcount, h);
-      head = &buckets->buckets_[idx]();
+      head = &buckets->array()[idx]();
       headnode = head->load(std::memory_order_relaxed);
     }
 
@@ -1082,35 +1118,36 @@ class alignas(64) SIMDTable {
     }
   };
 
-  class Chunks : public hazptr_obj_base<Chunks, Atom, HazptrTableDeleter> {
+  class Chunks
+      : public hazptr_obj_base<Chunks, Atom, HazptrTableDeleter>,
+        public AlignedStorage<Chunks, Chunk, Allocator> {
     Chunks() = default;
     ~Chunks() = default;
 
    public:
     static Chunks* create(size_t count, hazptr_obj_cohort<Atom>* cohort) {
-      auto buf = Allocator().allocate(sizeof(Chunks) + sizeof(Chunk) * count);
-      auto chunks = new (buf) Chunks();
+      auto* buf = Chunks::allocate(count);
+      auto* chunks = new (buf) Chunks();
       DCHECK(cohort);
       chunks->set_cohort_tag(cohort); // defined in hazptr_obj
       for (size_t i = 0; i < count; i++) {
-        new (&chunks->chunks_[i]) Chunk;
-        chunks->chunks_[i].clear();
+        new (&chunks->array()[i]) Chunk;
+        chunks->array()[i].clear();
       }
       return chunks;
     }
 
     void destroy(size_t count) {
       for (size_t i = 0; i < count; i++) {
-        chunks_[i].~Chunk();
+        Chunks::array()[i].~Chunk();
       }
       this->~Chunks();
-      Allocator().deallocate(
-          (uint8_t*)this, sizeof(Chunk) * count + sizeof(*this));
+      Chunks::deallocate(count);
     }
 
     void reclaim_nodes(size_t count) {
       for (size_t i = 0; i < count; i++) {
-        Chunk& chunk = chunks_[i];
+        Chunk& chunk = Chunks::array()[i];
         auto occupied = chunk.occupiedIter();
         while (occupied.hasNext()) {
           auto idx = occupied.next();
@@ -1126,11 +1163,8 @@ class alignas(64) SIMDTable {
 
     Chunk* getChunk(size_t index, size_t ccount) {
       DCHECK(isPowTwo(ccount));
-      return &chunks_[index & (ccount - 1)];
+      return &Chunks::array()[index & (ccount - 1)];
     }
-
-   private:
-    Chunk chunks_[0];
   };
 
  public:
