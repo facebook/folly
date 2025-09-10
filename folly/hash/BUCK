@@ -55,6 +55,7 @@ non_fbcode_target(
     ],
     deps = [
         ":fnv_hash",
+        ":hsieh_hash",
         ":murmur_hash",
         ":spooky_hash_v1",
         ":spooky_hash_v2",
@@ -173,6 +174,7 @@ fbcode_target(
     headers = ["Hash.h"],
     exported_deps = [
         ":fnv_hash",
+        ":hsieh_hash",
         ":murmur_hash",
         ":spooky_hash_v1",
         ":spooky_hash_v2",
@@ -240,4 +242,17 @@ fb_dirsync_cpp_library(
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
+)
+
+fb_dirsync_cpp_library(
+    name = "hsieh_hash",
+    headers = [
+        "HsiehHash.h",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        "//folly/lang:bits",
+    ],
 )

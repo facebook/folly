@@ -41,23 +41,6 @@ TEST(Hash, Test128To64) {
       commutative_hash_128_to_64(lower, upper));
 }
 
-TEST(Hash, Hsieh32) {
-  const char* s1 = "hello, world!";
-  const uint32_t s1_res = 2918802987ul;
-  EXPECT_EQ(hsieh_hash32(s1), s1_res);
-  EXPECT_EQ(hsieh_hash32(s1), hsieh_hash32_buf(s1, strlen(s1)));
-
-  const char* s2 = "monkeys! m0nk3yz! ev3ry \\/\\/here~~~~";
-  const uint32_t s2_res = 47373213ul;
-  EXPECT_EQ(hsieh_hash32(s2), s2_res);
-  EXPECT_EQ(hsieh_hash32(s2), hsieh_hash32_buf(s2, strlen(s2)));
-
-  const char* s3 = "";
-  const uint32_t s3_res = 0;
-  EXPECT_EQ(hsieh_hash32(s3), s3_res);
-  EXPECT_EQ(hsieh_hash32(s3), hsieh_hash32_buf(s3, strlen(s3)));
-}
-
 TEST(Hash, TWangMix64) {
   uint64_t i1 = 0x78a87873e2d31dafULL;
   uint64_t i1_res = 3389151152926383528ULL;

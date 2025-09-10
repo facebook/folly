@@ -174,3 +174,14 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "hsieh_hash_test",
+    srcs = ["HsiehHashTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:hsieh_hash",
+        "//folly/portability:gtest",
+    ],
+)
