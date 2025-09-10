@@ -379,9 +379,9 @@ TEST(HeapVectorTypes, MapBadHints) {
 TEST(HeapVectorTypes, FromVector) {
   {
     folly::heap_vector_map<int, float>::container_type vec;
-    vec.push_back(std::make_pair(3, 3.0f));
-    vec.push_back(std::make_pair(1, 1.0f));
-    vec.push_back(std::make_pair(2, 2.0f));
+    vec.emplace_back(3, 3.0f);
+    vec.emplace_back(1, 1.0f);
+    vec.emplace_back(2, 2.0f);
 
     heap_vector_map<int, float> m(std::move(vec));
 
