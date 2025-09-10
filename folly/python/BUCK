@@ -23,7 +23,7 @@ non_fbcode_target(
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["GILAwareManualExecutor.h"],
     deps = [
-        "fbsource//third-party/python:python",
+        ":weak",
         "//xplat/folly:scope_guard",
         "//xplat/folly/executors:drivable_executor",
         "//xplat/folly/executors:sequenced_executor",
@@ -492,7 +492,7 @@ fbcode_target(
     srcs = ["GILAwareManualExecutor.cpp"],
     headers = ["GILAwareManualExecutor.h"],
     deps = [
-        "fbsource//third-party/python:python",
+        ":weak",
         "//folly:scope_guard",
     ],
     exported_deps = [
