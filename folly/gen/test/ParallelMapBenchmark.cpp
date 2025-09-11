@@ -64,7 +64,7 @@ BENCHMARK_RELATIVE(FibSumThreads, n) {
     folly::doNotOptimizeAway(result);
   };
   for (size_t i = 0; i < kNumThreads; i++) {
-    workers.push_back(std::thread(fn));
+    workers.emplace_back(fn);
   }
   for (auto& w : workers) {
     w.join();
