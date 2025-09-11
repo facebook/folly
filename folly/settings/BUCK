@@ -8,25 +8,24 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
+# !!!! fbcode/folly/settings/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "settings",
     srcs = [
-        "Immutables.cpp",
         "Settings.cpp",
-        "Types.cpp",
     ],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
-        "Immutables.h",
         "Settings.h",
-        "Types.h",
         "detail/SettingsImpl.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//xplat/folly/synchronization:relaxed_atomic",
         "//xplat/folly:conv",
+        "//xplat/folly:cpp_attributes",
         "//xplat/folly:function",
         "//xplat/folly:likely",
         "//xplat/folly:optional",
@@ -37,11 +36,12 @@ non_fbcode_target(
         "//xplat/folly:utility",
         "//xplat/folly/concurrency:singleton_relaxed_counter",
         "//xplat/folly/container:f14_hash",
+        "//xplat/folly/container:map_util",
         "//xplat/folly/lang:aligned",
+        "//xplat/folly/settings:immutables",
+        "//xplat/folly/settings:types",
     ],
 )
-
-# !!!! fbcode/folly/settings/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
     _kind = cpp_library,
@@ -74,6 +74,70 @@ fbcode_target(
         "//folly/container:map_util",
         "//folly/lang:aligned",
         "//folly/synchronization:relaxed_atomic",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "types",
+    srcs = [
+        "Types.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Types.h",
+    ],
+    deps = [
+        "//xplat/folly:conv",
+        "//xplat/folly:expected",
+        "//xplat/folly:unit",
+        "//xplat/folly:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "types",
+    srcs = [
+        "Types.cpp",
+    ],
+    exported_deps = [
+        "//folly:conv",
+        "//folly:expected",
+        "//folly:unit",
+        "//folly:utility",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "immutables",
+    srcs = [
+        "Immutables.cpp",
+    ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "Immutables.h",
+    ],
+    deps = [
+        "//xplat/folly:indestructible",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/container:f14_hash",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "immutables",
+    srcs = [
+        "Immutables.cpp",
+    ],
+    deps = [
+        "//folly:indestructible",
+        "//folly:synchronized",
+    ],
+    exported_deps = [
+        "//folly/container:f14_hash",
     ],
 )
 
@@ -123,34 +187,5 @@ fbcode_target(
         ":settings",
         "//folly/observer:observer",
         "//folly/observer:simple_observable",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "types",
-    srcs = [
-        "Types.cpp",
-    ],
-    exported_deps = [
-        "//folly:conv",
-        "//folly:expected",
-        "//folly:unit",
-        "//folly:utility",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "immutables",
-    srcs = [
-        "Immutables.cpp",
-    ],
-    deps = [
-        "//folly:indestructible",
-        "//folly:synchronized",
-    ],
-    exported_deps = [
-        "//folly/container:f14_hash",
     ],
 )
