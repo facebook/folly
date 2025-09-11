@@ -40,7 +40,6 @@ using sa_family_t = ADDRESS_FAMILY;
 #define SOL_UDP 0x0
 #define UDP_SEGMENT 0x0
 #define IP_BIND_ADDRESS_NO_PORT 0
-#define TCP_ZEROCOPY_RECEIVE 0
 
 // We don't actually support either of these flags
 // currently.

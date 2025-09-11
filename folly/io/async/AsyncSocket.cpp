@@ -57,7 +57,7 @@ class ZeroCopyMMapMemStoreFallback : public ZeroCopyMemStore {
   void put(ZeroCopyMemStore::Entry* /*entry*/) override {}
 };
 
-#if TCP_ZEROCOPY_RECEIVE
+#if defined(TCP_ZEROCOPY_RECEIVE)
 std::unique_ptr<folly::IOBuf> getRXZeroCopyIOBuf(
     ZeroCopyMemStore::EntryPtr&& ptr) {
   auto* entry = ptr.release();
@@ -3082,7 +3082,7 @@ void AsyncSocket::splitIovecArray(
 }
 
 AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
-#if TCP_ZEROCOPY_RECEIVE
+#if defined(TCP_ZEROCOPY_RECEIVE)
   if (zerocopyReadDisabled_) {
     return ReadCode::READ_NOT_SUPPORTED;
   }
