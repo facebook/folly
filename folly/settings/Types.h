@@ -113,7 +113,7 @@ struct SettingValueAndMetadata {
 template <typename T>
 Expected<Unit, ExpectedErrorType<decltype(tryTo<T>(StringPiece{}))>> convertTo(
     const SettingValueAndMetadata& src, T& out) {
-  auto result = tryTo<T>(src.value);
+  auto result = tryTo<T>(StringPiece(src.value));
   if (result.hasError()) {
     return makeUnexpected(std::move(result).error());
   }
