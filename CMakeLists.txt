@@ -709,6 +709,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST container_fbvector_test SOURCES FBVectorTest.cpp
       BENCHMARK container_foreach_benchmark SOURCES ForeachBenchmark.cpp
       TEST container_foreach_test SOURCES ForeachTest.cpp
+      BENCHMARK container_hash_maps_bench SOURCES HashMapsBench.cpp
       TEST container_heap_vector_types_test SOURCES heap_vector_types_test.cpp
       TEST container_map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
       TEST container_merge_test SOURCES MergeTest.cpp
@@ -915,6 +916,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
 
     DIRECTORY io/test/
       TEST io_fs_util_test SOURCES FsUtilTest.cpp
+      BENCHMARK io_iobuf_benchmark WINDOWS_DISABLED SOURCES IOBufBenchmark.cpp
       TEST io_iobuf_test WINDOWS_DISABLED SOURCES IOBufTest.cpp
       TEST io_iobuf_cursor_test SOURCES IOBufCursorTest.cpp
       TEST io_iobuf_queue_test SOURCES IOBufQueueTest.cpp
@@ -955,6 +957,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES DelayedDestructionBaseTest.cpp
       TEST io_async_destructor_check_test SOURCES DestructorCheckTest.cpp
       # Fails with gtest macro error
+      BENCHMARK io_async_event_base_benchmark SOURCES EventBaseBenchmark.cpp
       TEST io_async_event_base_test BROKEN SOURCES EventBaseTest.cpp
       TEST io_async_event_base_local_test WINDOWS_DISABLED
         SOURCES EventBaseLocalTest.cpp
@@ -1060,6 +1063,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST synchronization_rw_spin_lock_test SOURCES RWSpinLockTest.cpp
       TEST synchronization_semaphore_test WINDOWS_DISABLED
         SOURCES SemaphoreTest.cpp
+      BENCHMARK synchronization_small_locks_benchmark
+        SOURCES SmallLocksBenchmark.cpp
       TEST synchronization_small_locks_test SOURCES SmallLocksTest.cpp
 
     DIRECTORY synchronization/detail/test/
@@ -1168,6 +1173,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST producer_consumer_queue_test SLOW
         SOURCES ProducerConsumerQueueTest.cpp
       BENCHMARK range_find_benchmark SOURCES RangeFindBenchmark.cpp
+      BENCHMARK random_benchmark SOURCES RandomBenchmark.cpp
       TEST random_test SOURCES RandomTest.cpp
       TEST range_test SOURCES RangeTest.cpp
       TEST replaceable_test WINDOWS_DISABLED SOURCES ReplaceableTest.cpp
@@ -1205,6 +1211,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST utility_test SOURCES UtilityTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
 
+    DIRECTORY test/function_benchmark/
+      BENCHMARK function_benchmark
+        SOURCES main.cpp benchmark_impl.cpp test_functions.cpp
+
     DIRECTORY testing/test/
       TEST testing_test_util_test SOURCES TestUtilTest.cpp
 
@@ -1230,6 +1240,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     folly_define_tests(
       DIRECTORY crypto/test/
         TEST crypto_blake2xb_test SOURCES Blake2xbTest.cpp
+        BENCHMARK crypto_lt_hash_benchmark SOURCES LtHashBenchmark.cpp
         TEST crypto_lt_hash_test SOURCES LtHashTest.cpp
     )
   endif()
