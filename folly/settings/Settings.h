@@ -191,6 +191,19 @@ struct Accessor {
 };
 } // namespace detail
 
+#if defined(_MSC_VER)
+// MSVC does not support section attributes
+#define FOLLY_SETTINGS_DETAIL_SECTION_ATTRIBUTE /* nothing */
+#elif defined(__APPLE__)
+// Mach-O: section attribute needs segment,section
+#define FOLLY_SETTINGS_DETAIL_SECTION_ATTRIBUTE \
+  gnu::section("__DATA,.folly.settings")
+#else
+// ELF: section attribute just needs section name
+#define FOLLY_SETTINGS_DETAIL_SECTION_ATTRIBUTE \
+  gnu::section(".folly.settings.cache")
+#endif
+
 /**
  * Defines a setting.
  *
@@ -222,15 +235,14 @@ struct Accessor {
   /* Fastpath optimization, see notes in FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__.  \
      Aggregate all off these together in a single section for better TLB      \
      and cache locality. */                                                   \
-  __attribute__((__section__(".folly.settings.cache"))) ::std::atomic<        \
+  [[FOLLY_SETTINGS_DETAIL_SECTION_ATTRIBUTE]] ::std::atomic<                  \
       ::folly::settings::detail::                                             \
           SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>*>      \
       FOLLY_SETTINGS_CACHE__##_project##_##_name;                             \
   /* Location for the small value cache (if _Type is small and trivial).      \
      Intentionally located right after the pointer cache above to take        \
      advantage of the prefetching */                                          \
-  __attribute__((                                                             \
-      __section__(".folly.settings.cache"))) ::std::atomic<uint64_t>          \
+  [[FOLLY_SETTINGS_DETAIL_SECTION_ATTRIBUTE]] ::std::atomic<uint64_t>         \
       FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                           \
   /* Meyers singleton to avoid SIOF */                                        \
   FOLLY_NOINLINE ::folly::settings::detail::                                  \
