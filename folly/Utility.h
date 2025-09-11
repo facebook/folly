@@ -435,7 +435,7 @@ using moveonly_::NonCopyableNonMovable;
 /// May be invoked with any arguments. Returns void.
 struct variadic_noop_fn {
   template <typename... A>
-  constexpr void operator()(A&&...) const noexcept {}
+  constexpr void operator()(A&&... /*unused*/) const noexcept {}
 };
 inline constexpr variadic_noop_fn variadic_noop;
 
@@ -450,7 +450,7 @@ struct variadic_constant_of_fn {
   using value_type = decltype(Value);
   static inline constexpr value_type value = Value;
   template <typename... A>
-  constexpr value_type operator()(A&&...) const noexcept {
+  constexpr value_type operator()(A&&... /*unused*/) const noexcept {
     return value;
   }
 };
