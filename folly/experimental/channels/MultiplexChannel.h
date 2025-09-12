@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/MultiplexChannel.h>
+#include <folly/channels/MultiplexChannel.h> // @shim

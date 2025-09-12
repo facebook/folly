@@ -44,7 +44,6 @@ using sa_family_t = ADDRESS_FAMILY;
 #define SOL_UDP 0x0
 #define UDP_SEGMENT 0x0
 #define IP_BIND_ADDRESS_NO_PORT 0
-#define TCP_ZEROCOPY_RECEIVE 0
 
 // We don't actually support either of these flags
 // currently.
@@ -120,6 +119,10 @@ struct sockaddr_un {
 /* for struct sock_extended_err*/
 #include <linux/errqueue.h>
 #endif
+#endif
+
+#ifndef FOLLY_HAVE_SO_TIMESTAMPING
+#define FOLLY_HAVE_SO_TIMESTAMPING 0
 #endif
 
 #ifndef SO_EE_ORIGIN_ZEROCOPY

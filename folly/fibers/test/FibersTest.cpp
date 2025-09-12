@@ -44,6 +44,7 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Lock.h>
 #include <folly/tracing/AsyncStack.h>
 
 using namespace folly::fibers;
@@ -2706,6 +2707,74 @@ TEST(TimedMutex, ThreadFiberDeadlockRace) {
 
   evb.loopOnce();
   EXPECT_EQ(0, fm.hasTasks());
+}
+
+namespace {
+
+template <class Mutex>
+void testTimedRWMutex() {
+  constexpr size_t kNumReadTasks = 1000;
+  constexpr size_t kNumReadIters = 10;
+  constexpr size_t kNumWriteTasks = 100;
+  constexpr size_t kNumThreads = 4;
+
+  std::atomic<size_t> numReadSections = 0;
+  std::atomic<bool> writeLocked = false;
+  size_t numWriteSections = 0;
+
+  Mutex mutex;
+  std::vector<std::unique_ptr<folly::EventBase>> evbs{kNumThreads};
+  for (auto& evb : evbs) {
+    evb = std::make_unique<folly::EventBase>();
+    auto& fm = getFiberManager(*evb);
+
+    for (size_t i = 0; i < kNumReadTasks; ++i) {
+      fm.addTask([&] {
+        for (size_t j = 0; j < kNumReadIters; ++j) {
+          std::shared_lock lock(mutex);
+          ASSERT_FALSE(writeLocked.load());
+          ++numReadSections;
+          Baton b;
+          b.try_wait_for(std::chrono::milliseconds(1));
+        }
+      });
+    }
+
+    for (size_t i = 0; i < kNumWriteTasks; ++i) {
+      fm.addTask([&, i] {
+        std::unique_lock lock(mutex);
+        ASSERT_FALSE(writeLocked.exchange(true));
+        ++numWriteSections;
+        ASSERT_TRUE(writeLocked.exchange(false));
+        if (i % 10 == 0) {
+          auto rlock = folly::transition_lock<std::shared_lock>(lock);
+        }
+      });
+    }
+  }
+
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    threads.emplace_back([&evbs, i] { evbs[i]->loop(); });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  EXPECT_EQ(
+      numReadSections.load(), kNumThreads * kNumReadTasks * kNumReadIters);
+  EXPECT_EQ(numWriteSections, kNumThreads * kNumWriteTasks);
+}
+
+} // namespace
+
+TEST(TimedRWMutex, MultipleThreadsReadPriority) {
+  testTimedRWMutex<TimedRWMutexReadPriority<Baton>>();
+}
+
+TEST(TimedRWMutex, MultipleThreadsWritePriority) {
+  testTimedRWMutex<TimedRWMutexWritePriority<Baton>>();
 }
 
 namespace {

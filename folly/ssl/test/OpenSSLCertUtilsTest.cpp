@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
 
 #include <folly/Format.h>
@@ -193,7 +194,7 @@ static void validateTestCertBundle(
   for (auto i : folly::enumerate(certs)) {
     auto cn = folly::ssl::OpenSSLCertUtils::getCommonName(**i);
     EXPECT_TRUE(cn);
-    EXPECT_EQ(*cn, folly::sformat("test cert {}", i.index + 1));
+    EXPECT_EQ(*cn, fmt::format("test cert {}", i.index + 1));
   }
 }
 

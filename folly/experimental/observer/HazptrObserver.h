@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/observer/HazptrObserver.h>
+#include <folly/observer/HazptrObserver.h> // @shim

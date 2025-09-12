@@ -63,7 +63,7 @@ class Core : public std::enable_shared_from_this<Core> {
     static CreatorContext create(const F& creator) {
       CreatorContext context;
       context.typeInfo = &typeid(F);
-      context.invokeResultTypeInfo = &typeid(std::invoke_result_t<F>);
+      context.invokeResultTypeInfo = &typeid(decltype(FOLLY_DECLVAL(F&&)()));
       if constexpr (Has_getNameT_v<F>) {
         context.name = creator.getName();
       }

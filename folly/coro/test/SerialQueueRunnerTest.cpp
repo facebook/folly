@@ -29,7 +29,8 @@ CO_TEST_F(QueueRunnerTest, example) {
   folly::coro::SerialQueueRunner queue;
 
   // fork the runner
-  scope.add(queue.run().scheduleOn(co_await folly::coro::co_current_executor));
+  scope.add(
+      co_withExecutor(co_await folly::coro::co_current_executor, queue.run()));
 
   // launch work items in the runner's queue
   std::vector<size_t> nums;

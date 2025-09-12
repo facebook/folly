@@ -21,11 +21,7 @@
 
 #include <folly/Conv.h>
 #include <folly/GLog.h>
-#include <folly/Likely.h>
 #include <folly/Range.h>
-#include <folly/SharedMutex.h>
-#include <folly/lang/Align.h>
-#include <folly/stats/DigestBuilder.h>
 
 namespace folly {
 
@@ -84,7 +80,7 @@ class PredefinedQuantiles {
 };
 
 template <class Q = PredefinedQuantiles::Default>
-class QuantileHistogram {
+class [[deprecated("Use TDigest")]] QuantileHistogram {
  public:
   QuantileHistogram() = default;
   explicit QuantileHistogram(size_t) : QuantileHistogram() {}
@@ -132,42 +128,6 @@ class QuantileHistogram {
       double value, const decltype(Q::kQuantiles)& oldLocations);
 
   void dcheckSane() const;
-};
-
-// The CPUShardedQuantileHistogram class behaves similarly to QuantileHistogram
-// except that it is thread-safe. Adding values is heavily optimized while any
-// kind of inference will incur a heavy cost because all cpu-local shards must
-// be merged.
-template <class Q = PredefinedQuantiles::Default>
-class CPUShardedQuantileHistogram {
- public:
-  CPUShardedQuantileHistogram()
-      : histBuilder_(
-            /*bufferSize=*/hardware_destructive_interference_size /
-                sizeof(double),
-            /*digestSize=*/0) {}
-
-  static constexpr decltype(Q::kQuantiles) quantiles() { return Q::kQuantiles; }
-
-  void addValue(double value);
-
-  double estimateQuantile(double q);
-
-  uint64_t count();
-
-  double min();
-
-  double max();
-
-  std::string debugString();
-
- private:
-  mutable SharedMutex mtx_;
-  QuantileHistogram<Q> mergedHist_;
-  DigestBuilder<QuantileHistogram<Q>> histBuilder_;
-
-  // Assumes mtx is held.
-  void flush();
 };
 
 } // namespace folly

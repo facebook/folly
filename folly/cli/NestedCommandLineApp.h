@@ -121,7 +121,9 @@ class NestedCommandLineApp {
    * Return the commands map, so you can see the registered commands and get
    * access to their respective options descriptions.
    */
-  const std::map<std::string, CommandInfo>& commands() { return commands_; }
+  const std::map<std::string, CommandInfo>& commands() const {
+    return commands_;
+  }
 
   /**
    * Add a command.

@@ -144,7 +144,7 @@ TEST_F(IndestructibleTest, conversion) {
   folly::Indestructible<I> map{I{{"foo", "bar"}}};
   DeferredDtor s{map};
   I& r = map;
-  EXPECT_EQ(1, r.count("foo"));
+  EXPECT_TRUE(r.contains("foo"));
   I const& cr = std::as_const(map);
   EXPECT_EQ(1, cr.count("foo"));
 }

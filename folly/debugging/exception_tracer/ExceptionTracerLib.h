@@ -37,6 +37,11 @@ void registerCxaBeginCatchCallback(CxaBeginCatchSig& callback);
 void registerCxaRethrowCallback(CxaRethrowSig& callback);
 void registerCxaEndCatchCallback(CxaEndCatchSig& callback);
 void registerRethrowExceptionCallback(RethrowExceptionSig& callback);
+void unregisterCxaThrowCallback(CxaThrowSig& callback);
+void unregisterCxaBeginCatchCallback(CxaBeginCatchSig& callback);
+void unregisterCxaRethrowCallback(CxaRethrowSig& callback);
+void unregisterCxaEndCatchCallback(CxaEndCatchSig& callback);
+void unregisterRethrowExceptionCallback(RethrowExceptionSig& callback);
 
 } // namespace exception_tracer
 } // namespace folly

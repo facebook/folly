@@ -29,7 +29,7 @@ namespace folly {
 // means that not every deadline is guaranteed to be met.
 class SoftRealTimeExecutor : public virtual Executor {
  public:
-  void add(Func) override = 0;
+  using Executor::add;
 
   // Add a task with an assigned abstract deadline.
   //
@@ -40,11 +40,7 @@ class SoftRealTimeExecutor : public virtual Executor {
   // rate-monotonic scheduling that prioritizes small tasks. It also enables,
   // for example, tiered scheduling (strictly prioritizing a category of tasks)
   // by assigning the high-bit of the deadline.
-  void add(Func func, uint64_t deadline) {
-    add(std::move(func), /* total */ 1, deadline);
-  }
-
-  virtual void add(Func, std::size_t total, uint64_t deadline) = 0;
+  virtual void add(Func func, uint64_t deadline) = 0;
   virtual void add(std::vector<Func>, uint64_t deadline) = 0;
 
   folly::Executor::KeepAlive<> deadlineExecutor(uint64_t deadline);

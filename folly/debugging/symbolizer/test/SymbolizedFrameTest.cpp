@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/debugging/symbolizer/SymbolizedFrame.h>
 
 #include <glog/logging.h>
 

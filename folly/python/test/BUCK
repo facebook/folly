@@ -5,8 +5,8 @@ load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//tools/target_determinator/macros:fbcode_ci_helpers.bzl", "fbcode_ci")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../../defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -50,7 +50,7 @@ non_fbcode_target(
     srcs = ["simplebridge.pyx"],
     headers = ["simple.h"],
     cpp_deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
     ],
     deps = [
         "//xplat/folly/python:fibers",
@@ -89,8 +89,11 @@ non_fbcode_target(
     srcs = ["simplebridgecoro.pyx"],
     headers = ["simplecoro.h"],
     cpp_deps = [
-        "//xplat/folly/experimental/coro:baton",
-        "//xplat/folly/experimental/coro:task",
+        "//xplat/folly/coro:baton",
+        "//xplat/folly/coro:task",
+        "//xplat/folly/futures:core",
+        "//xplat/folly/python:asyncio_executor",
+        "//xplat/folly/python:executor_lib",
         "//xplat/folly:cancellation_token",
     ],
     deps = [
@@ -130,7 +133,7 @@ non_fbcode_target(
     ],
     supports_static_listing = False,
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/experimental/coro:blocking_wait",
         "//xplat/folly/experimental/coro:task",
         "//xplat/folly/python:async_generator_lib",
@@ -146,7 +149,7 @@ non_fbcode_target(
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/python:python",  # Python.h
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:scope_guard",
         "//xplat/folly/python:error",
     ],
@@ -188,6 +191,7 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "test_set_executor_cpplib",
+    enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["test_set_executor.h"],
     exported_deps = [
@@ -287,6 +291,8 @@ fbcode_target(
         "//folly/coro:baton",
         "//folly/coro:task",
         "//folly/futures:core",
+        "//folly/python:asyncio_executor",
+        "//folly/python:executor_lib",
         "//folly:cancellation_token",
     ],
     deps = [
@@ -416,8 +422,9 @@ cpp_unittest(
         "python": "3.12",
     },
     deps = [
-        "fbcode//folly/python:weak",
+        "fbcode//folly/python:weak",  # @manual
         # Pull in libpython so we are linked against it
+        "fbsource//third-party/googletest:gtest",  # @manual
         "fbsource//third-party/python:python-for-embedding",  # @manual
     ],
 )
@@ -437,6 +444,7 @@ cpp_unittest(
         "python": "3.12",
     },
     deps = [
-        "fbcode//folly/python:weak",
+        "fbcode//folly/python:weak",  # @manual
+        "fbsource//third-party/googletest:gtest",  # @manual
     ],
 )

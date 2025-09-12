@@ -28,7 +28,6 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/range/concepts.hpp>
 
-#include <folly/CppAttributes.h>
 #include <folly/Memory.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -1464,8 +1463,8 @@ TEST(ReplaceAll, BadArg) {
 
 TEST(Range, Constructors) {
   vector<int> c = {1, 2, 3};
-  typedef Range<vector<int>::iterator> RangeType;
-  typedef Range<vector<int>::const_iterator> ConstRangeType;
+  using RangeType = Range<vector<int>::iterator>;
+  using ConstRangeType = Range<vector<int>::const_iterator>;
   RangeType cr(c.begin(), c.end());
   auto subpiece1 = ConstRangeType(cr, 1, 5);
   auto subpiece2 = ConstRangeType(cr, 1);
@@ -1696,6 +1695,32 @@ TEST(Range, InitializerList) {
   static constexpr auto ilist = {1, 2, 3};
   check(range(ilist));
   check(crange(ilist));
+}
+
+TEST(Range, NoexceptSwap) {
+  StringPiece a;
+  StringPiece b;
+  static_assert(noexcept(a.swap(b)));
+  static_assert(noexcept(swap(a, b)));
+
+  SUCCEED();
+}
+
+struct ThrowingSwapIter
+    : public std::iterator<std::input_iterator_tag, int, int, const int*, int> {
+};
+
+// @lint-ignore CLANGTIDY facebook-hte-MissingSwapNoExceptDeclaration
+void swap(ThrowingSwapIter& a, ThrowingSwapIter& b);
+
+TEST(Range, ThrowingSwap) {
+  Range<ThrowingSwapIter> x;
+  Range<ThrowingSwapIter> y;
+
+  static_assert(!noexcept(x.swap(y)));
+  static_assert(!noexcept(swap(x, y)));
+
+  SUCCEED();
 }
 
 namespace {

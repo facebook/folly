@@ -619,8 +619,9 @@ void* execInSitu(Op op, Data* from, void* to) {
 }
 
 inline void* noopExec(Op op, Data*, void*) {
-  if (op == Op::eAddr)
+  if (op == Op::eAddr) {
     throw_exception<BadPolyAccess>();
+  }
   return const_cast<void*>(static_cast<void const*>(&typeid(void)));
 }
 

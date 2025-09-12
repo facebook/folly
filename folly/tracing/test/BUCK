@@ -1,11 +1,13 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "WINDOWS")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:glob_defs.bzl", "subdir_glob")
-load("@fbsource//xplat/folly:defs.bzl", "DEFAULT_APPLE_SDKS")
+load("../../defs.bzl", "DEFAULT_APPLE_SDKS")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -47,6 +49,7 @@ fbcode_target(
     srcs = ["StaticTracepointTest.cpp"],
     labels = ["oss-broken"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         ":static_tracepoint_test_module",
         "//folly:conv",
         "//folly:format",
@@ -82,8 +85,8 @@ fb_native.filegroup(
 )
 
 fbcode_target(
-    _kind = cpp_unittest,
-    name = "static_tracepoint_section_test",
+    _kind = cpp_binary,
+    name = "static_tracepoint_section_test_bin",
     srcs = ["StaticTracepointSectionTest.cpp"],
     headers = [],
     linker_flags = [
@@ -96,4 +99,11 @@ fbcode_target(
         "//folly/debugging/symbolizer:elf",
         "//folly/tracing:static_tracepoint",
     ],
+)
+
+fbcode_target(
+    _kind = custom_unittest,
+    name = "static_tracepoint_section_test",
+    command = ["$(location :static_tracepoint_section_test_bin)"],
+    type = "simple",
 )

@@ -482,9 +482,9 @@ class FiberManager : public ::folly::Executor {
 
   size_t recordStackPosition(size_t position);
 
-  typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
-  typedef folly::IntrusiveList<Fiber, &Fiber::globalListHook_>
-      GlobalFiberTailQueue;
+  using FiberTailQueue = folly::IntrusiveList<Fiber, &Fiber::listHook_>;
+  using GlobalFiberTailQueue =
+      folly::IntrusiveList<Fiber, &Fiber::globalListHook_>;
 
   Fiber* activeFiber_{nullptr}; /**< active fiber, nullptr on main context */
   /**

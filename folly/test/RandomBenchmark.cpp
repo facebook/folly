@@ -22,13 +22,11 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
-#include <folly/container/Foreach.h>
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
 #endif
 
 #if FOLLY_X64
-#include <immintrin.h>
 #endif
 
 using namespace folly;

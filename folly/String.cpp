@@ -722,7 +722,7 @@ size_t hexDumpLine(
 
 std::string stripLeftMargin(std::string s) {
   std::vector<StringPiece> pieces;
-  split("\n", s, pieces);
+  split('\n', s, pieces);
   auto piecer = range(pieces);
 
   auto piece = (piecer.end() - 1);

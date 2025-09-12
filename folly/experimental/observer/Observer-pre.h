@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/observer/Observer-pre.h>
+#include <folly/observer/Observer-pre.h> // @shim

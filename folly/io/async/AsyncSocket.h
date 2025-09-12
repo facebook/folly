@@ -92,6 +92,8 @@ class AsyncSocket : public AsyncSocketTransport {
   using Observer = AsyncSocketObserverContainer::Observer;
   using ManagedObserver = AsyncSocketObserverContainer::ManagedObserver;
 
+  static inline constexpr size_t kMaxAttemptsEnableByteEvents = 10;
+
   class EvbChangeCallback {
    public:
     virtual ~EvbChangeCallback() = default;
@@ -1148,6 +1150,12 @@ class AsyncSocket : public AsyncSocketTransport {
    */
   void setTosOrTrafficClass(int tosOrTrafficClass);
 
+  /**
+   * This flag controls whether or not IP_BIND_ADDRESS_NO_PORT is enabled for
+   * AsyncSocket sockets. This is enabled by default.
+   */
+  void setBindAddressNoPort(bool flag) { bindAddressNoPort_ = flag; }
+
   void disableTransparentTls() override { noTransparentTls_ = true; }
 
   void disableTSocks() { noTSocks_ = true; }
@@ -1996,6 +2004,7 @@ class AsyncSocket : public AsyncSocketTransport {
   };
 
   TCPFastOpenInfo tfoInfo_;
+  bool bindAddressNoPort_{true};
   bool noTransparentTls_{false};
   bool noTSocks_{false};
   // Whether to track EOR or not.

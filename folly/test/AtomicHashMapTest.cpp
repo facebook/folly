@@ -51,7 +51,7 @@ static uint64_t nowInUsec() {
 }
 
 TEST(Ahm, BasicStrings) {
-  typedef AtomicHashMap<uint64_t, string> AHM;
+  using AHM = AtomicHashMap<uint64_t, string>;
   AHM myMap(1024);
   EXPECT_TRUE(myMap.begin() == myMap.end());
 
@@ -72,7 +72,7 @@ TEST(Ahm, BasicStrings) {
 }
 
 TEST(Ahm, BasicNoncopyable) {
-  typedef AtomicHashMap<uint64_t, std::unique_ptr<size_t>> AHM;
+  using AHM = AtomicHashMap<uint64_t, std::unique_ptr<size_t>>;
   AHM myMap(1024);
   EXPECT_TRUE(myMap.begin() == myMap.end());
 
@@ -99,14 +99,14 @@ TEST(Ahm, BasicNoncopyable) {
   }
 }
 
-typedef uint32_t KeyT;
-typedef uint32_t ValueT;
+using KeyT = uint32_t;
+using ValueT = uint32_t;
 
-typedef AtomicHashMap<KeyT, ValueT> AHMapT;
-typedef AHMapT::value_type RecordT;
-typedef AtomicHashArray<KeyT, ValueT> AHArrayT;
+using AHMapT = AtomicHashMap<KeyT, ValueT>;
+using RecordT = AHMapT::value_type;
+using AHArrayT = AtomicHashArray<KeyT, ValueT>;
 AHArrayT::Config config;
-typedef folly::QuadraticProbingAtomicHashMap<KeyT, ValueT> QPAHMapT;
+using QPAHMapT = folly::QuadraticProbingAtomicHashMap<KeyT, ValueT>;
 QPAHMapT::Config qpConfig;
 static AHArrayT::SmartPtr globalAHA(nullptr);
 static std::unique_ptr<AHMapT> globalAHM;
@@ -150,7 +150,7 @@ struct HashTraits {
   }
 };
 
-typedef AtomicHashMap<const char*, uint64_t, HashTraits, EqTraits> AHMCstrInt;
+using AHMCstrInt = AtomicHashMap<const char*, uint64_t, HashTraits, EqTraits>;
 AHMCstrInt::Config cstrIntCfg;
 
 static bool legalKey(const char* a) {
@@ -351,7 +351,7 @@ class Integer {
 };
 
 TEST(Ahm, mapExceptionSafety) {
-  typedef AtomicHashMap<KeyT, Integer> MyMapT;
+  using MyMapT = AtomicHashMap<KeyT, Integer>;
 
   size_t numEntries = 10000;
   float sizeFactor = 0.46f;
@@ -675,7 +675,7 @@ TEST(Ahm, threadEraseInsertRace) {
 }
 
 // Repro for T#483734: Duplicate AHM inserts due to incorrect AHA return value.
-typedef AtomicHashArray<uint32_t, uint32_t> AHA;
+using AHA = AtomicHashArray<uint32_t, uint32_t>;
 AHA::Config configRace;
 auto atomicHashArrayInsertRaceArray = AHA::create(2, configRace);
 void* atomicHashArrayInsertRaceThread(void* /* j */) {

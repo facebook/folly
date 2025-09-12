@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <vector>
+#include <glog/logging.h>
 
 #include <folly/stats/detail/Bucket.h>
 
@@ -440,6 +441,8 @@ class BucketedTimeSeries {
  private:
   template <typename ReturnType = double, typename Interval = Duration>
   ReturnType rateHelper(ReturnType numerator, Duration elapsedTime) const {
+    DCHECK(isAllTime() || (Interval{1} <= duration_))
+        << "The timeseries cannot provide a good rate calculation when the interval is larger than the entire duration of the timeseries";
     return detail::rateHelper<ReturnType, Duration, Interval>(
         numerator, elapsedTime);
   }

@@ -15,7 +15,6 @@
  */
 
 #include <iostream>
-#include <stdexcept>
 
 #include <glog/logging.h>
 

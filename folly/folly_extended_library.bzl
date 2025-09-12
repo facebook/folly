@@ -1,5 +1,5 @@
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "WINDOWS")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load(":defs.bzl", "folly_xplat_library")
 
 def folly_extended_xplat_library(name, **kwargs):
     folly_xplat_library(

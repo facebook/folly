@@ -218,7 +218,7 @@ class PreinstalledNopFetcher(SystemPackageFetcher):
 class GitFetcher(Fetcher):
     DEFAULT_DEPTH = 1
 
-    def __init__(self, build_options, manifest, repo_url, rev, depth) -> None:
+    def __init__(self, build_options, manifest, repo_url, rev, depth, branch) -> None:
         # Extract the host/path portions of the URL and generate a flattened
         # directory name.  eg:
         # github.com/facebook/folly.git -> github.com-facebook-folly.git
@@ -249,10 +249,11 @@ class GitFetcher(Fetcher):
                         "Using pinned rev %s for %s" % (rev, repo_url), file=sys.stderr
                     )
 
-        self.rev = rev or "main"
+        self.rev = rev or branch or "main"
         self.origin_repo = repo_url
         self.manifest = manifest
         self.depth = depth if depth else GitFetcher.DEFAULT_DEPTH
+        self.branch = branch
 
     def _update(self) -> ChangeStatus:
         current_hash = (
@@ -295,17 +296,19 @@ class GitFetcher(Fetcher):
         # eg: this python process is native win32, but the git.exe is cygwin
         # or msys and doesn't like the absolute windows path that we'd otherwise
         # pass to it.  Careful use of cwd helps avoid headaches with cygpath.
-        run_cmd(
-            [
-                "git",
-                "clone",
-                "--depth=" + str(self.depth),
-                "--",
-                self.origin_repo,
-                os.path.basename(self.repo_dir),
-            ],
-            cwd=os.path.dirname(self.repo_dir),
-        )
+        cmd = [
+            "git",
+            "clone",
+            "--depth=" + str(self.depth),
+        ]
+        if self.branch:
+            cmd.append("--branch=" + self.branch)
+        cmd += [
+            "--",
+            self.origin_repo,
+            os.path.basename(self.repo_dir),
+        ]
+        run_cmd(cmd, cwd=os.path.dirname(self.repo_dir))
         self._update()
 
     def clean(self) -> None:
@@ -646,9 +649,10 @@ class ShipitTransformerFetcher(Fetcher):
             fbcode_path = []
         return www_path + fbcode_path
 
-    def __init__(self, build_options, project_name) -> None:
+    def __init__(self, build_options, project_name, external_branch) -> None:
         self.build_options = build_options
         self.project_name = project_name
+        self.external_branch = external_branch
         self.repo_dir = os.path.join(build_options.scratch_dir, "shipit", project_name)
         self.shipit = None
         for path in ShipitTransformerFetcher._shipit_paths(build_options):
@@ -679,24 +683,27 @@ class ShipitTransformerFetcher(Fetcher):
             if os.path.exists(tmp_path):
                 shutil.rmtree(tmp_path)
             os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+            cmd = [
+                self.shipit,
+                "shipit",
+                "--project=" + self.project_name,
+                "--create-new-repo",
+                "--source-repo-dir=" + self.build_options.fbsource_dir,
+                "--source-branch=.",
+                "--skip-source-init",
+                "--skip-source-pull",
+                "--skip-source-clean",
+                "--skip-push",
+                "--destination-use-anonymous-https",
+                "--create-new-repo-output-path=" + tmp_path,
+            ]
+            if self.external_branch:
+                cmd += [
+                    f"--external-branch={self.external_branch}",
+                ]
 
             # Run shipit
-            run_cmd(
-                [
-                    self.shipit,
-                    "shipit",
-                    "--project=" + self.project_name,
-                    "--create-new-repo",
-                    "--source-repo-dir=" + self.build_options.fbsource_dir,
-                    "--source-branch=.",
-                    "--skip-source-init",
-                    "--skip-source-pull",
-                    "--skip-source-clean",
-                    "--skip-push",
-                    "--destination-use-anonymous-https",
-                    "--create-new-repo-output-path=" + tmp_path,
-                ]
-            )
+            run_cmd(cmd)
 
             # Remove the .git directory from the repository it generated.
             # There is no need to commit this.
@@ -913,6 +920,15 @@ class ArchiveFetcher(Fetcher):
             # a non-ascii path to ascii and throws.
             src = str(src)
             t.extractall(src)
+
+        if is_windows():
+            subdir = self.manifest.get("build", "subdir")
+            checkdir = src
+            if subdir:
+                checkdir = src + "\\" + subdir
+            if os.path.exists(checkdir):
+                children = os.listdir(checkdir)
+                print(f"Extracted to {checkdir} contents: {children}")
 
         with open(self.hash_file, "w") as f:
             f.write(self.sha256)

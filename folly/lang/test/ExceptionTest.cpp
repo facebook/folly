@@ -518,7 +518,7 @@ TEST_F(ExceptionTest, get_exception_from_std_exception_ptr) {
 TEST_F(ExceptionTest, exception_shared_string) {
   constexpr auto c = "hello, world!";
 
-  auto s0 = folly::exception_shared_string(c);
+  auto s0 = folly::exception_shared_string(c, strlen(c));
   auto s1 = s0;
   auto s2 = s1;
   EXPECT_STREQ(c, s2.what());
@@ -529,30 +529,32 @@ TEST_F(ExceptionTest, exception_shared_string) {
 
 #if FOLLY_CPLUSPLUS >= 202002
 
-using namespace folly::string_literals;
+TEST_F(ExceptionTest, exception_shared_string_literal_consteval) {
+  constexpr const char* c = "hello, world!";
 
-TEST_F(ExceptionTest, exception_shared_string_literal) {
-  auto s0 = folly::exception_shared_string("hello, world!"_litv);
-  auto s1 = s0;
-  auto s2 = s1;
+  {
+    folly::exception_shared_string s0{c};
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s1 = s0;
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s2 = s1;
+    EXPECT_STREQ(c, s2.what());
+  }
 
-  const char* expected = "hello, world!";
-  EXPECT_STREQ(expected, s2.what());
-}
-
-TEST_F(ExceptionTest, exception_shared_string_literal_constant) {
-  constexpr auto s0 = folly::exception_shared_string("hello, world!"_litv);
-
-  const char* expected = "hello, world!";
-  EXPECT_STREQ(expected, s0.what());
-
-  // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-  auto s1 = s0;
-  EXPECT_EQ(s0.what(), s1.what());
-  EXPECT_STREQ(expected, s1.what());
+  // Same, but `constexpr`.  Future: need C++20 `std::is_constant_evaluated` to
+  // make the copy ctor `constexpr` as well.
+  {
+    constexpr folly::exception_shared_string s0{c};
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s1 = s0;
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s2 = s1;
+    EXPECT_STREQ(c, s2.what());
+  }
 }
 
 #endif
+
 // example of how to do the in-place formatting efficiently
 struct format_param_fn {
   template <typename A>

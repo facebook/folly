@@ -60,7 +60,7 @@ TEST(Random, Simple) {
 TEST(Random, FixedSeed) {
   // clang-format off
   struct ConstantRNG {
-    typedef uint32_t result_type;
+    using result_type = uint32_t;
     result_type operator()() {
       return 4; // chosen by fair dice roll.
                 // guaranteed to be random.

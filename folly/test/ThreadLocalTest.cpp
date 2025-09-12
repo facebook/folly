@@ -580,7 +580,7 @@ static void tlpIntCustomDeleter(int* p, TLPDestructionMode /*unused*/) {
 }
 
 template <typename Op, typename Check>
-void StresAccessTest(Op op, Check check) {
+void StressAccessTest(Op op, Check check) {
   static constexpr size_t kNumThreads = 16;
   static constexpr size_t kNumLoops = 10000;
 
@@ -624,19 +624,19 @@ void StresAccessTest(Op op, Check check) {
 }
 
 TEST(ThreadLocal, StressAccessReset) {
-  StresAccessTest(
+  StressAccessTest(
       [](TLPInt& ptr) { ptr.reset(new int(1)); },
       [](size_t sum, size_t numThreads) { EXPECT_EQ(sum, numThreads); });
 }
 
 TEST(ThreadLocal, StressAccessResetDeleter) {
-  StresAccessTest(
+  StressAccessTest(
       [](TLPInt& ptr) { ptr.reset(new int(1), tlpIntCustomDeleter); },
       [](size_t sum, size_t numThreads) { EXPECT_EQ(sum, numThreads); });
 }
 
 TEST(ThreadLocal, StressAccessRelease) {
-  StresAccessTest(
+  StressAccessTest(
       [](TLPInt& ptr) {
         auto* p = ptr.release();
         delete p;
@@ -794,7 +794,7 @@ TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
   ASSERT_NE(nullptr, handle)
       << "unable to load " << lib.string() << ": " << dlerror();
 
-  typedef void (*useA_t)();
+  using useA_t = void (*)();
   dlerror();
   useA_t useA = (useA_t)dlsym(handle, "useA");
 

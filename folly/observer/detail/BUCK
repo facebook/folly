@@ -1,10 +1,10 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../../defs.bzl",
     "folly_xplat_library",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -22,19 +22,20 @@ non_fbcode_target(
         "ObserverManager.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/synchronization:sanitize_thread",
         "//third-party/glog:glog",
         "//xplat/folly:exception_string",
         "//xplat/folly:format",
         "//xplat/folly:function",
-        "//xplat/folly:futures_core",
-        "//xplat/folly:portability_gflags",
         "//xplat/folly:range",
         "//xplat/folly:singleton",
-        "//xplat/folly:synchronization_sanitize_thread",
         "//xplat/folly:synchronized",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/concurrency:unbounded_queue",
         "//xplat/folly/experimental/observer/detail:graph_cycle_detector",
+        "//xplat/folly/system:thread_name",
     ],
     exported_deps = [
         "//xplat/folly/fibers:core_manager",
@@ -76,6 +77,7 @@ fbcode_target(
         "ObserverManager.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:exception_string",
         "//folly:format",
         "//folly:range",

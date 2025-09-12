@@ -1,7 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -13,7 +13,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["gtest_helpers.h"],
     exported_deps = [
-        ":result",
+        ":coro",
         "//xplat/folly/coro:gtest_helpers",
     ],
 )
@@ -23,8 +23,35 @@ fbcode_target(
     name = "gtest_helpers",
     headers = ["gtest_helpers.h"],
     exported_deps = [
-        ":result",
+        ":coro",
         "//folly/coro:gtest_helpers",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "coro",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["coro.h"],
+    exported_deps = [
+        ":result",
+        "//xplat/folly/coro:coroutine",
+        "//xplat/folly/coro:error",
+        "//xplat/folly/lang:must_use_immediately",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "coro",
+    headers = ["coro.h"],
+    exported_deps = [
+        ":result",
+        "//folly/coro:coroutine",
+        "//folly/coro:error",
+        "//folly/lang:must_use_immediately",
     ],
 )
 
@@ -37,15 +64,15 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["result.h"],
     deps = [
+        "//third-party/glog:glog",
         "//xplat/folly:indestructible",
     ],
     exported_deps = [
-        "//third-party/glog:glog",
-        "//third-party/googletest:gtest_headers",
+        "fbsource//xplat/folly/portability:gtest_prod",
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:expected",
         "//xplat/folly:operation_cancelled",
-        "//xplat/folly:portability_gtest_prod",
+        "//xplat/folly/coro:coroutine",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:rvalue_reference_wrapper",
     ],
@@ -63,6 +90,7 @@ fbcode_target(
         "//folly:exception_wrapper",
         "//folly:expected",
         "//folly:operation_cancelled",
+        "//folly/coro:coroutine",
         "//folly/lang:align",
         "//folly/lang:rvalue_reference_wrapper",
         "//folly/portability:gtest_prod",
@@ -93,4 +121,27 @@ fbcode_target(
         ":result",
         "//folly:try",
     ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "value_only_result",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "value_only_result.h",
+        "value_only_result_coro.h",
+    ],
+    exported_deps = ["//xplat/folly/result:coro"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "value_only_result",
+    headers = [
+        "value_only_result.h",
+        "value_only_result_coro.h",
+    ],
+    exported_deps = ["//folly/result:coro"],
 )

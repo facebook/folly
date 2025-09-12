@@ -115,7 +115,7 @@
 namespace folly {
 namespace detail {
 
-#if FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 
 static __m128i crc32MulAdd(__m128i x, __m128i a, __m128i multiplier) {
   /*

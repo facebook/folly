@@ -162,7 +162,7 @@ struct Counts {
 
 inline std::ostream& operator<<(std::ostream& xo, Counts const& counts) {
   xo << "[";
-  std::string glue = "";
+  std::string glue;
   if (counts.copyConstruct > 0) {
     xo << glue << counts.copyConstruct << " copy";
     glue = ", ";

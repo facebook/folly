@@ -23,7 +23,7 @@ using namespace folly;
 using std::string;
 
 using std::unique_ptr;
-typedef FutureException eggs_t;
+using eggs_t = FutureException;
 static eggs_t eggs("eggs");
 
 TEST(Promise, makeEmpty) {

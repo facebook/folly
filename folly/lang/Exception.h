@@ -862,9 +862,8 @@ inline constexpr make_exception_ptr_with_fn make_exception_ptr_with{};
 //  constructible and mostly do not need to optimize moves, and this affects how
 //  exception messages are best stored.
 //
-//  May be constructed with a literal string in a very particular form. If so
-//  constructed, (a literal copy of) the literal string will be held with no
-//  refcount required.
+//  May be constructed with a string literal pointer, which will be stored with
+//  no refcount required.
 class exception_shared_string {
  private:
   using format_sig_ = void(void*, char*, std::size_t);
@@ -872,23 +871,6 @@ class exception_shared_string {
   template <typename F>
   using test_format_ =
       decltype(FOLLY_DECLVAL(F)(static_cast<char*>(nullptr), std::size_t(0)));
-
-  struct literal_state_base {
-    unsigned char pad{0};
-  };
-
-  //  a structure with a compile-time string buffer having an odd address
-  template <std::size_t N>
-  struct alignas(2) literal_state : literal_state_base {
-    using lit = literal_string<char, N>;
-    lit what; // address is offset +1 from alignment 2
-
-    literal_state() = delete;
-    explicit constexpr literal_state(lit const str) noexcept : what{str} {}
-  };
-
-  template <auto V>
-  static inline constexpr auto literal_state_instance = literal_state{V};
 
   static void test_params_(char const*, std::size_t);
   template <typename F>
@@ -898,25 +880,67 @@ class exception_shared_string {
 
   struct state; // alignment is alignof(void*)
 
-  //  what_ encodes where the string lives
-  //  - low bit 0: in an allocated state
-  //  - low bit 1: in a literal_state
-  char const* const what_{};
+  struct tagged_what_t {
+    static inline constexpr uintptr_t non_literal_mask = uintptr_t(1)
+        << (sizeof(const char*) * 8 - 1);
+
+    //  The top bit of p_ encodes where the string lives:
+    //  - top bit == 0: in an immortal literal
+    //  - top bit == 1: in an refcounted allocated state
+    //  The top bit of a userspace pointer is zero on all supported platforms.
+    const char* p_;
+
+    void assert_top_bit_is_zero(const char* p) {
+      // Debug-only on 64-bit platforms because all known ones leave the top
+      // bit free.  Userspace pointers MAY use the top bit on unsupported
+      // 32-bit platforms -- abort in opt builds, instead of corrupting memory.
+      //
+      // Limitations of constexpr force a gap in assertion coverage -- if a
+      // literal const char* sets the top bit (seems very unlikely!), and it is
+      // only used in a constexpr exception_shared_string, then invalid memory
+      // access would be triggered by what(), and the copy constructor.
+      if constexpr (sizeof(void*) != 8 || kIsDebug) {
+        FOLLY_SAFE_CHECK(!(uintptr_t(p) & non_literal_mask));
+      }
+    }
+
+#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
+    constexpr tagged_what_t(vtag_t<true> /*literal*/, const char* p) : p_{p} {
+      if (!std::is_constant_evaluated()) {
+        assert_top_bit_is_zero(p);
+      }
+    }
+#endif
+    tagged_what_t(vtag_t<false> /*allocated*/, const char* p)
+        : p_{reinterpret_cast<const char*>(
+              non_literal_mask | reinterpret_cast<uintptr_t>(p))} {
+      assert_top_bit_is_zero(p);
+    }
+
+    bool is_literal() const noexcept {
+      return !(non_literal_mask & reinterpret_cast<uintptr_t>(p_));
+    }
+    const char* what() const noexcept {
+      return reinterpret_cast<const char*>(
+          ~non_literal_mask & reinterpret_cast<uintptr_t>(p_));
+    }
+  };
+  static_assert(sizeof(tagged_what_t) == sizeof(void*));
+
+  const tagged_what_t tagged_what_;
 
   exception_shared_string(std::size_t, format_sig_&, void*);
 
   static char const* from_state(state const* state) noexcept;
-  static state* to_state(char const* what) noexcept;
+  static state* to_state(const tagged_what_t&) noexcept;
   void ruin_state() noexcept;
 
  public:
 #if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
-  template <std::size_t N, literal_string<char, N> Str>
-  constexpr explicit exception_shared_string(vtag_t<Str>) noexcept
-      : what_{literal_state_instance<Str>.what.c_str()} {}
+  constexpr explicit exception_shared_string(literal_c_str p) noexcept
+      : tagged_what_{vtag<true>, p.ptr} {}
 #endif
 
-  explicit exception_shared_string(char const*);
   exception_shared_string(char const*, std::size_t);
 
   template <
@@ -946,7 +970,7 @@ class exception_shared_string {
 
   void operator=(exception_shared_string const&) = delete;
 
-  char const* what() const noexcept { return what_; }
+  char const* what() const noexcept { return tagged_what_.what(); }
 };
 
 } // namespace folly

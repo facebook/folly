@@ -242,7 +242,7 @@ class BoundedAsyncPipe {
     auto parentToken = co_await co_current_cancellation_token;
 
     auto waitResult = co_await co_awaitTry(co_withCancellation(
-        folly::CancellationToken::merge(
+        folly::cancellation_token_merge(
             std::move(parentToken), cancellationToken_),
         semaphore_->co_wait()));
     if (cancellationToken_.isCancellationRequested()) {

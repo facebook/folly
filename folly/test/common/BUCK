@@ -20,11 +20,11 @@ non_fbcode_target(
     platforms = (ANDROID, APPLE, CXX, FBCODE, WINDOWS),
     visibility = ["PUBLIC"],
     deps = [
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/glog:glog",
-        "//xplat/folly:init_init",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_gflags",
-        "//xplat/folly:portability_gtest",
     ],
 )
 

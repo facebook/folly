@@ -21,7 +21,6 @@
 #include <signal.h>
 #include <sys/types.h>
 
-#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <ctime>
@@ -31,7 +30,7 @@
 #include <glog/logging.h>
 
 #include <folly/ScopeGuard.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/lang/ToAscii.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>

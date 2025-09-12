@@ -3,7 +3,7 @@
 #include <cstdint>
 
 #include <folly/Portability.h>
-#if defined(FOLLY_X64) && FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 #define FOLLY_ENABLE_SSE42_CRC32C_V8S3X3 1
 #endif
 

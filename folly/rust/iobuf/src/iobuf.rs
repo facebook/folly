@@ -163,7 +163,6 @@ pub unsafe trait BytesToIOBufSharedExt: std::ops::Deref<Target = [u8]> {}
 
 unsafe impl BytesToIOBufSharedExt for bytes::Bytes {}
 unsafe impl BytesToIOBufSharedExt for memmap2::Mmap {}
-unsafe impl BytesToIOBufSharedExt for minibytes::Bytes {}
 
 /// Convert a `Bytes` into an `IOBufShared`.
 impl<T> From<T> for IOBufShared
@@ -174,6 +173,20 @@ where
     // with `iobuf_take_ownership`. We box it up so that we can pass it to
     // a freeing function, called by C++ when it wants to release the memory.
     fn from(bytes: T) -> Self {
+        // safety: `T` satisfies the contract of `from_owner` because the `BytesToIOBufSharedExt`
+        // trait bound.
+        unsafe { Self::from_owner(bytes) }
+    }
+}
+
+impl IOBufShared {
+    /// This takes the Bytes, boxes it up, and passes ownership to the IOBuf
+    /// with `iobuf_take_ownership`. We box it up so that we can pass it to
+    /// a freeing function, called by C++ when it wants to release the memory.
+    ///
+    /// SAFETY: Similar to `BytesToIOBufSharedExt`, `T` must ensure that its
+    /// deref's slice is valid for the lifetime of `T`.
+    pub unsafe fn from_owner<T: std::ops::Deref<Target = [u8]>>(bytes: T) -> Self {
         let len = bytes.len();
         let b = Box::new(bytes);
 
@@ -244,7 +257,8 @@ impl Clone for IOBufShared {
 impl Eq for IOBufShared {}
 impl PartialEq for IOBufShared {
     fn eq(&self, other: &Self) -> bool {
-        self.0.as_ref() == other.0.as_ref()
+        let foo = self.0.as_ref();
+        foo == other.0.as_ref()
     }
 }
 

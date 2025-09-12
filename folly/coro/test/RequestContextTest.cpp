@@ -187,7 +187,7 @@ TEST(RequestContextTest, Main) {
   {
     folly::RequestContextScopeGuard rg;
     setTag(1);
-    f = task().scheduleOn(&exec).start();
+    f = co_withExecutor(&exec, task()).start();
   }
   exec.drain();
   EXPECT_FALSE(f.isReady());

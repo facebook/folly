@@ -19,7 +19,6 @@
 #include <csignal>
 
 #include <cassert>
-#include <stdexcept>
 
 #include <glog/logging.h>
 

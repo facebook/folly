@@ -37,7 +37,7 @@ Producer<TValue>::KeepAlive::~KeepAlive() {
           delete ptr;
           co_return;
         });
-    std::move(deleteTask).scheduleOn(ptr_->getExecutor()).start();
+    co_withExecutor(ptr_->getExecutor(), std::move(deleteTask)).start();
   }
 }
 
@@ -102,7 +102,7 @@ typename Producer<TValue>::KeepAlive Producer<TValue>::getKeepAlive() {
 
 template <typename TValue>
 void Producer<TValue>::consume(detail::ChannelBridgeBase*) {
-  onClosed().scheduleOn(getExecutor()).start([=, this](auto) {
+  co_withExecutor(getExecutor(), onClosed()).start([=, this](auto) {
     // Decrement ref count
     KeepAlive(this);
   });

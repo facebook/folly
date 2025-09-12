@@ -706,7 +706,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
       "T must be relocatable or have a noexcept move constructor");
 
  public:
-  typedef T value_type;
+  using value_type = T;
 
   using Slot = detail::SingleElementQueue<T, Atom>;
 

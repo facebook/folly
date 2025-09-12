@@ -113,4 +113,4 @@ toolset=clang
 cxxflags="-DBOOST_UNORDERED_HAVE_PIECEWISE_CONSTRUCT=0"
 
 [b2.args.all(os=windows,fb=on)]
-toolset=msvc-14.2
+toolset=msvc-14.3

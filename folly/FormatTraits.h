@@ -24,7 +24,7 @@ namespace detail {
 
 // Shortcut, so we don't have to use enable_if everywhere
 struct FormatTraitsBase {
-  typedef void enabled;
+  using enabled = void;
 };
 
 // Traits that define enabled, value_type, and at() for anything
@@ -36,8 +36,8 @@ struct IndexableTraits;
 // Base class for sequences (vectors, deques)
 template <class C>
 struct IndexableTraitsSeq : public FormatTraitsBase {
-  typedef C container_type;
-  typedef typename C::value_type value_type;
+  using container_type = C;
+  using value_type = typename C::value_type;
 
   static const value_type& at(const C& c, int idx) { return c.at(idx); }
 
@@ -49,7 +49,7 @@ struct IndexableTraitsSeq : public FormatTraitsBase {
 // Base class for associative types (maps)
 template <class C>
 struct IndexableTraitsAssoc : public FormatTraitsBase {
-  typedef typename C::value_type::second_type value_type;
+  using value_type = typename C::value_type::second_type;
 
   static const value_type& at(const C& c, int idx) {
     return c.at(static_cast<typename C::key_type>(idx));

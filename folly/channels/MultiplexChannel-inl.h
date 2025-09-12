@@ -436,28 +436,32 @@ class MultiplexChannelProcessor : public IChannelCallback {
       rateLimiter->executeWhenReady(
           [this, func = std::move(func), executor = multiplexer_.getExecutor()](
               std::unique_ptr<RateLimiter::Token> token) mutable {
-            folly::coro::co_invoke(
-                [this,
-                 token = std::move(token),
-                 func = std::move(func)]() mutable -> folly::coro::Task<void> {
-                  auto lock = co_await mutex_.co_scoped_lock();
-                  co_await func();
-                  pendingAsyncCalls_--;
-                  maybeDelete(lock);
-                })
-                .scheduleOn(executor)
+            co_withExecutor(
+                executor,
+                folly::coro::co_invoke(
+                    [this,
+                     token = std::move(token),
+                     func =
+                         std::move(func)]() mutable -> folly::coro::Task<void> {
+                      auto lock = co_await mutex_.co_scoped_lock();
+                      co_await func();
+                      pendingAsyncCalls_--;
+                      maybeDelete(lock);
+                    }))
                 .start();
           },
           multiplexer_.getExecutor());
     } else {
-      folly::coro::co_invoke(
-          [this, func = std::move(func)]() mutable -> folly::coro::Task<void> {
-            auto lock = co_await mutex_.co_scoped_lock();
-            co_await func();
-            pendingAsyncCalls_--;
-            maybeDelete(lock);
-          })
-          .scheduleOn(multiplexer_.getExecutor())
+      co_withExecutor(
+          multiplexer_.getExecutor(),
+          folly::coro::co_invoke(
+              [this,
+               func = std::move(func)]() mutable -> folly::coro::Task<void> {
+                auto lock = co_await mutex_.co_scoped_lock();
+                co_await func();
+                pendingAsyncCalls_--;
+                maybeDelete(lock);
+              }))
           .start();
     }
   }

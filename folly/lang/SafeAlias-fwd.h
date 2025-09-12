@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <type_traits>
 
-/// See `folly/coro/safe/SafeAlias.h` for the high-level docs & definitions.
+/// See `folly/lang/SafeAlias.h` for the high-level docs & definitions.
 ///
 /// This is a MINIMAL header to let types declare their `safe_alias` level.
 ///
@@ -47,16 +47,16 @@ enum class safe_alias {
   // Definitely has aliasing, we know nothing of the lifetime.
   unsafe,
   // Implementation detail of `async_closure`, used for creating
-  // `ClosureTask`, a restricted-usage `SafeTask`.  Other code should treat
-  // this as `unsafe`.  `SafeTask.h` & `Captures.h` explain the rationale.
+  // `closure_task`, a restricted-usage `safe_task`.  Other code should treat
+  // this as `unsafe`.  `safe_task.h` & `Captures.h` explain the rationale.
   unsafe_closure_internal,
   // Implementation detail of `async_closure`, used for creating
-  // `MemberTask`, a restricted-usage `SafeTask`.  Other code should treat
+  // `member_task`, a restricted-usage `safe_task`.  Other code should treat
   // this as `unsafe`.  Closure-related code that distinguishes this from
   // `unsafe_closure_internal` expects this value to be higher.
   unsafe_member_internal,
   // Used only in `async_closure*()` -- the minimum level it considers safe
-  // for arguments, and the minimum level of `SafeTask` it will emit.
+  // for arguments, and the minimum level of `safe_task` it will emit.
   //   - Represents an arg that can schedule a cleanup callback on an
   //     ancestor's cleanup arg `A`.  This safety level cannot be stronger
   //     than `after_cleanup_ref` because otherwise such a ref could be
@@ -99,19 +99,79 @@ enum class safe_alias {
 template <safe_alias Safety>
 using safe_alias_constant = std::integral_constant<safe_alias, Safety>;
 
-template <typename>
+// IMPORTANT:
+//
+// (1) Do NOT move the primary template in here!
+//
+//     The reason is that we REQUIRE the extra specializations in `SafeAlias.h`
+//     before allowing `lenient_safe_alias_v` to conclude that something is
+//     safe.  It would be very bad if a user forgot to include `SafeAlias.h`,
+//     and was told that a type was safe, when it isn't.
+//
+// (2) Keep this SMALL -- pretty much everything in `folly/coro` includes this.
+//
+//     Please only put universally-applicable specializations here.  A good
+//     check is: if you have to add an `#include`, it goes in `SafeAlias.h`.
+//
+// Future: Replace the SFINAE arg with `requires` once on C++20.
+template <typename T, safe_alias /*default*/, typename /*SFINAE*/ = void>
 struct safe_alias_of;
 
-template <typename T>
-inline constexpr safe_alias safe_alias_of_v = safe_alias_of<T>::value;
+// `const` and `volatile` qualifiers don't affect the `safe_alias` measurement.
+template <typename T, safe_alias Default>
+struct safe_alias_of<const T, Default> : safe_alias_of<T, Default> {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<volatile T, Default> : safe_alias_of<T, Default> {};
 
-namespace detail {
-// Helper: Inspects its own template args for aliasing.
-template <typename... Ts>
+// Raw references & pointers are `unsafe`.
+template <typename T, safe_alias Default>
+struct safe_alias_of<T*, Default> : safe_alias_constant<safe_alias::unsafe> {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<T&, Default> : safe_alias_constant<safe_alias::unsafe> {};
+template <typename T, safe_alias Default>
+struct safe_alias_of<T&&, Default> : safe_alias_constant<safe_alias::unsafe> {};
+
+// `void` is incomplete and would fail the primary template
+template <safe_alias Default>
+struct safe_alias_of<void, Default>
+    : safe_alias_constant<safe_alias::maybe_value> {};
+
+// Most `folly` types annotate their safety via a member type alias. We do
+// this not just because it's shorter, but also because member classes, like
+// AsyncGenerator<>::NextAwaitable, are non-deducible, and thus cannot be
+// targeted by specializations.
+//
+// This is in `SafeAlias-fwd.h`, since that allows the various task wrappers
+// NOT to include the larger `SafeAlias.h`.
+template <typename T, safe_alias Default>
+struct safe_alias_of<
+    T,
+    Default,
+    std::void_t<typename T::template folly_private_safe_alias_t<Default>>>
+    : T::template folly_private_safe_alias_t<Default> {};
+
+// Use this in APIs that take callable objects, since lambda captures present a
+// particularly high risk for aliasing bugs. If you have a compile error:
+//   - For regular lambdas with captures, use `safe_closure()`.
+//   - For custom callables, the best solution is to add the correct
+//     `folly_private_safe_alias_t` to your type.
+//   - For async coroutines, use `async_closure()` or `safe_task.h`.
+//   - For one-offs, `SafeAlias.h`  includes some `manual_safe_*` workarounds.
+//     You MUST include a comment that proves your usage is safe.
+template <typename T>
+inline constexpr safe_alias strict_safe_alias_of_v =
+    safe_alias_of<T, safe_alias::unsafe>::value;
+// For low-risk APIs, where "vanilla C++ usability" outweighs safety.
+template <typename T>
+inline constexpr safe_alias lenient_safe_alias_of_v =
+    safe_alias_of<T, safe_alias::maybe_value>::value;
+
+// Utility for computing the `safe_alias_of` a composite type.
+// Returns the lowest `safe_alias` level of all the supplied `Ts`.
+template <safe_alias Default, typename... Ts>
 struct safe_alias_of_pack {
   static constexpr auto value =
-      std::min({safe_alias::maybe_value, safe_alias_of_v<Ts>...});
+      std::min({safe_alias::maybe_value, safe_alias_of<Ts, Default>::value...});
 };
-} // namespace detail
 
 } // namespace folly

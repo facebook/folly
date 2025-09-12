@@ -17,14 +17,14 @@
 #include <folly/compression/QuotientMultiSet.h>
 
 #include <boost/sort/spreadsort/integer_sort.hpp>
+#include <fmt/format.h>
+
 #include <folly/Benchmark.h>
-#include <folly/Format.h>
 #include <folly/Random.h>
 #include <folly/String.h>
 #include <folly/compression/elias_fano/EliasFanoCoding.h>
 #include <folly/container/Enumerate.h>
 #include <folly/container/F14Set.h>
-#include <folly/container/Foreach.h>
 #include <folly/experimental/test/CodingTestUtils.h>
 #include <folly/init/Init.h>
 
@@ -98,7 +98,7 @@ const folly::F14FastSet<uint64_t>& getF14Baseline() {
   folly::BenchmarkSuspender guard;
   static const auto set = [] {
     folly::F14FastSet<uint64_t> ret(uniform.begin(), uniform.end());
-    LOG(INFO) << folly::sformat(
+    LOG(INFO) << fmt::format(
         "Built F14FastSet, size: {}, space: {}",
         ret.size(),
         folly::prettyPrint(
@@ -115,7 +115,7 @@ const folly::compression::MutableEliasFanoCompressedList& getEFBaseline() {
   folly::BenchmarkSuspender guard;
   static auto list = [] {
     auto ret = EFEncoder::encode(uniform.begin(), uniform.end());
-    LOG(INFO) << folly::sformat(
+    LOG(INFO) << fmt::format(
         "Built Elias-Fano list, space: {}",
         folly::prettyPrint(
             ret.data.size(), folly::PrettyType::PRETTY_BYTES_IEC));
@@ -210,7 +210,7 @@ void benchmarkSetup() {
   boost::sort::spreadsort::integer_sort(uniform.begin(), uniform.end());
   buildQuotientMultiSet(uniform);
 
-  LOG(INFO) << folly::sformat(
+  LOG(INFO) << fmt::format(
       "Built QuotientMultiSet, space: {}",
       folly::prettyPrint(qmsData.size(), folly::PrettyType::PRETTY_BYTES_IEC));
 }

@@ -124,7 +124,7 @@ template <size_t I, typename T>
 struct entry {
   using entry_type = T;
   [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] T entry_value;
-  constexpr auto operator<=>(const entry&) const = default;
+  auto operator<=>(const entry&) const = default;
 };
 
 template <typename Seq, typename...>
@@ -133,14 +133,14 @@ struct tuple_base;
 template <size_t... Is, typename... Ts>
 struct tuple_base<std::index_sequence<Is...>, Ts...> : entry<Is, Ts>... {
   using tuple_base_list = tag_t<entry<Is, Ts>...>;
-  constexpr auto operator<=>(const tuple_base&) const = default;
+  auto operator<=>(const tuple_base&) const = default;
 };
 
 } // namespace detail
 
 template <typename... Ts>
 struct tuple : detail::tuple_base<std::index_sequence_for<Ts...>, Ts...> {
-  constexpr auto operator<=>(const tuple&) const = default;
+  auto operator<=>(const tuple&) const = default;
 };
 template <typename... Ts>
 tuple(Ts...) -> tuple<Ts...>;
@@ -267,9 +267,9 @@ FOLLY_ALWAYS_INLINE constexpr auto tuple_cat(Tups&&... tups) {
 } // namespace folly::detail::lite_tuple
 
 namespace folly {
-template <typename... As>
-struct safe_alias_of<::folly::detail::lite_tuple::tuple<As...>>
-    : detail::safe_alias_of_pack<As...> {};
+template <typename... As, safe_alias Default>
+struct safe_alias_of<::folly::detail::lite_tuple::tuple<As...>, Default>
+    : safe_alias_of_pack<Default, As...> {};
 } // namespace folly
 
 namespace std {

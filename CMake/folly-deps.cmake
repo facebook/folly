@@ -151,7 +151,7 @@ list(APPEND FOLLY_LINK_LIBRARIES ${CMAKE_DL_LIBS})
 list(APPEND CMAKE_REQUIRED_LIBRARIES ${CMAKE_DL_LIBS})
 
 if (PYTHON_EXTENSIONS)
-  find_package(PythonInterp 3.6 REQUIRED)
+  find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
   find_package(Cython 0.26 REQUIRED)
 endif ()
 

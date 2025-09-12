@@ -20,19 +20,25 @@
 #define _GNU_SOURCE 1 // for RTLD_NOLOAD
 #include <dlfcn.h>
 #endif
+#include <string.h>
+
+#include <filesystem>
 #include <fstream>
 #include <mutex>
 #include <numeric>
 #include <optional>
+#include <unordered_map>
 
 #include <fmt/core.h>
 #include <glog/logging.h>
 #include <folly/Indestructible.h>
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
-#include <folly/detail/StaticSingletonManager.h>
+#include <folly/container/Reserve.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Exception.h>
+#include <folly/portability/Fcntl.h>
+#include <folly/portability/FmtCompile.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
 
@@ -41,16 +47,19 @@ namespace folly {
 ///////////// CacheLocality
 
 /// Returns the CacheLocality information best for this machine
-static CacheLocality getSystemLocalityInfo() {
+CacheLocality CacheLocality::readSystemLocalityInfo() {
   if (kIsLinux) {
-    // First try to parse /proc/cpuinfo.
-    // If that fails, then try to parse /sys/devices/.
-    // The latter is slower but more accurate.
-    try {
-      return CacheLocality::readFromProcCpuinfo();
-    } catch (...) {
-      // /proc/cpuinfo might be non-standard
-      // lets try with sysfs /sys/devices/cpu
+    if (kIsArchAmd64 || kIsArchX86) {
+      // First try to parse /proc/cpuinfo.
+      // But only on arch's where the file has cpu topology hints.
+      // If that fails, then try to parse /sys/devices/.
+      // The latter is slower but more accurate.
+      try {
+        return CacheLocality::readFromProcCpuinfo();
+      } catch (...) {
+        // /proc/cpuinfo might be non-standard
+        // lets try with sysfs /sys/devices/cpu
+      }
     }
 
     try {
@@ -82,7 +91,7 @@ const CacheLocality& CacheLocality::system<std::atomic>() {
   if (value != nullptr) {
     return *value;
   }
-  auto next = new CacheLocality(getSystemLocalityInfo());
+  auto next = new CacheLocality(readSystemLocalityInfo());
   if (cache.compare_exchange_strong(value, next, std::memory_order_acq_rel)) {
     return *next;
   }
@@ -171,20 +180,76 @@ static size_t parseLeadingNumber(const std::string& line) {
   return val;
 }
 
-CacheLocality CacheLocality::readFromSysfsTree(
-    const std::function<std::string(std::string const&)>& mapping) {
+CacheLocality CacheLocality::readFromSysfsTree(std::string_view root) {
+#if defined(_WIN32)
+  // windows does not have openat and open flag constants
+  return CacheLocality::uniform(0);
+#else
+
   // the list of cache equivalence classes, where equivalence classes
   // are named by the smallest cpu in the class
   std::vector<std::vector<size_t>> equivClassesByCpu;
 
+  auto checkNoEnt = [](std::string_view name) {
+    auto err = errno;
+    if (err != ENOENT) {
+      throw std::runtime_error(fmt::format(
+          "unexpected error while opening {}: {}", name, strerror(err)));
+    }
+  };
+
+  // Reads the first 64 bytes of the file.
+  auto rdfile64 = [&](int dirfd, const std::string& name) {
+    const auto fd = ::openat(dirfd, name.c_str(), O_CLOEXEC, O_RDONLY);
+    if (fd < 0) {
+      checkNoEnt(name);
+      return std::string(); // stop condition for the inner loop below
+    }
+    SCOPE_EXIT {
+      ::close(fd);
+    };
+
+    alignas(64) char buf[64];
+    int ret = 0;
+    do {
+      ret = ::pread(fd, buf, sizeof(buf), 0);
+    } while (ret < 0 && errno == EINTR);
+    if (ret < 0) {
+      return std::string();
+    }
+    return std::string(buf, to_unsigned(ret));
+  };
+
+  auto subroot = std::filesystem::path(root) / "sys/devices/system/cpu";
+  const int allfd = ::open(subroot.c_str(), O_DIRECTORY | O_CLOEXEC, O_RDONLY);
+  if (allfd < 0) {
+    auto err = errno;
+    throw std::runtime_error(
+        fmt::format("unable to open sysfs: {}", strerror(err)));
+  }
+  SCOPE_EXIT {
+    ::close(allfd);
+  };
+
+  size_t maxindex = 0;
   for (size_t cpu = 0;; ++cpu) {
+    auto cpuroot = fmt::format(FMT_COMPILE("cpu{}/cache"), cpu);
+    const int cpufd =
+        ::openat(allfd, cpuroot.c_str(), O_DIRECTORY | O_CLOEXEC, O_RDONLY);
+    if (cpufd < 0) {
+      checkNoEnt(cpuroot);
+      break;
+    }
+    SCOPE_EXIT {
+      ::close(cpufd);
+    };
+
     std::vector<size_t> levels;
+    grow_capacity_by(levels, maxindex);
     for (size_t index = 0;; ++index) {
-      auto dir = fmt::format(
-          "/sys/devices/system/cpu/cpu{}/cache/index{}/", cpu, index);
-      auto cacheType = mapping(dir + "type");
-      auto equivStr = mapping(dir + "shared_cpu_list");
-      if (cacheType.empty() || equivStr.empty()) {
+      auto dir = fmt::format(FMT_COMPILE("index{}/"), index);
+      auto cacheType = rdfile64(cpufd, dir + "type");
+      if (cacheType.empty()) {
         // no more caches
         break;
       }
@@ -192,9 +257,16 @@ CacheLocality CacheLocality::readFromSysfsTree(
         // cacheType in { "Data", "Instruction", "Unified" }. skip icache
         continue;
       }
+      // only try to read the second file once we know we will need it
+      auto equivStr = rdfile64(cpufd, dir + "shared_cpu_list");
+      if (equivStr.empty()) {
+        // no more caches
+        break;
+      }
       auto equiv = parseLeadingNumber(equivStr);
       levels.push_back(equiv);
     }
+    maxindex = std::max(maxindex, levels.size());
 
     if (levels.empty()) {
       // no levels at all for this cpu, we must be done
@@ -208,15 +280,12 @@ CacheLocality CacheLocality::readFromSysfsTree(
   }
 
   return CacheLocality{std::move(equivClassesByCpu)};
+
+#endif
 }
 
 CacheLocality CacheLocality::readFromSysfs() {
-  return readFromSysfsTree([](std::string const& name) {
-    std::ifstream xi(name.c_str());
-    std::string rv;
-    std::getline(xi, rv);
-    return rv;
-  });
+  return readFromSysfsTree();
 }
 
 namespace {
@@ -432,6 +501,74 @@ bool AccessSpreaderBase::initialize(
 }
 
 } // namespace detail
+
+/* static */ LLCAccessSpreader& LLCAccessSpreader::get() {
+  static folly::Indestructible<LLCAccessSpreader> instance(PrivateTag{});
+  return *instance;
+}
+
+LLCAccessSpreader::LLCAccessSpreader(PrivateTag) {
+#ifdef __linux__
+  auto getcpu = Getcpu::resolveVdsoFunc();
+  getcpu_ = getcpu ? getcpu : &FallbackGetcpuType::getcpu;
+
+  // /proc/cpuinfo does not have accurate LLC info, we need to force a read
+  // from sysfs.
+  auto cl = CacheLocality::readFromSysfs();
+  stripeByCpu_.resize(cl.numCpus);
+
+  // Only have stripes for LLCs that are accessible from the current process,
+  // and number them sequentially as we discover them.
+  std::unordered_map<size_t, size_t> cacheIdx;
+  cpu_set_t cpuset;
+  PCHECK(sched_getaffinity(0, sizeof(cpuset), &cpuset) == 0);
+  for (size_t cpu = 0; cpu < cl.numCpus; ++cpu) {
+    if (!CPU_ISSET(cpu, &cpuset)) {
+      continue;
+    }
+
+    auto llcEquiv = cl.equivClassesByCpu[cpu].back();
+    auto [it, _] = cacheIdx.try_emplace(llcEquiv, cacheIdx.size());
+    stripeByCpu_[cpu] = it->second;
+  }
+
+  numStripes_ = cacheIdx.size();
+#else
+  numStripes_ = 1;
+  (void)getcpu_;
+  (void)stripeByCpu_;
+#endif // __linux__
+}
+
+size_t LLCAccessSpreader::current() const {
+#ifdef __linux__
+  struct ThreadCache {
+    size_t usesLeft = 0;
+    size_t value;
+  };
+
+  // We expect that a thread doesn't migrate LLC often, so reuse the value a
+  // few times before refreshing it.
+  // TODO(ott): Re-evaluate once we can use rseq to get the current CPU.
+  thread_local ThreadCache tc;
+  if (tc.usesLeft-- == 0) {
+    tc.usesLeft = 16; // A small number is enough to amortize.
+    unsigned cpu;
+    getcpu_(&cpu, nullptr, nullptr);
+    // If the set of active CPUs can change at runtime just return the 0
+    // stripe. This should not happen in normal operations.
+    tc.value = cpu < stripeByCpu_.size() ? stripeByCpu_[cpu] : 0;
+  }
+
+  return tc.value;
+#else
+  return 0;
+#endif // __linux__
+}
+
+size_t LLCAccessSpreader::numStripes() const {
+  return numStripes_;
+}
 
 namespace {
 

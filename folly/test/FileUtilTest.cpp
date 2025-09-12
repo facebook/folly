@@ -209,32 +209,26 @@ class IovecBuffers {
 IovecBuffers::IovecBuffers(std::initializer_list<size_t> sizes) {
   iov_.reserve(sizes.size());
   for (auto& s : sizes) {
-    buffers_.push_back(std::string(s, '\0'));
+    buffers_.emplace_back(s, '\0');
   }
   for (auto& b : buffers_) {
-    iovec iov;
-    iov.iov_base = &b[0];
-    iov.iov_len = b.size();
-    iov_.push_back(iov);
+    iov_.push_back({.iov_base = &b[0], .iov_len = b.size()});
   }
 }
 
 IovecBuffers::IovecBuffers(std::vector<size_t> sizes) {
   iov_.reserve(sizes.size());
   for (auto s : sizes) {
-    buffers_.push_back(std::string(s, '\0'));
+    buffers_.emplace_back(s, '\0');
   }
   for (auto& b : buffers_) {
-    iovec iov;
-    iov.iov_base = &b[0];
-    iov.iov_len = b.size();
-    iov_.push_back(iov);
+    iov_.push_back({.iov_base = &b[0], .iov_len = b.size()});
   }
 }
 
 size_t IovecBuffers::size() const {
   size_t s = 0;
-  for (auto& b : buffers_) {
+  for (const auto& b : buffers_) {
     s += b.size();
   }
   return s;

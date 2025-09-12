@@ -55,6 +55,7 @@ using ElfSym = FOLLY_ELF_ELFW(Sym);
 using ElfRel = FOLLY_ELF_ELFW(Rel);
 using ElfRela = FOLLY_ELF_ELFW(Rela);
 using ElfDyn = FOLLY_ELF_ELFW(Dyn);
+using ElfNhdr = FOLLY_ELF_ELFW(Nhdr);
 
 // ElfFileId is supposed to uniquely identify any instance of an ELF binary.
 // It does that by using the file's inode, dev ID, size and modification time
@@ -158,6 +159,8 @@ class ElfFile {
   /** Get the actual section body */
   folly::StringPiece getSectionBody(const ElfShdr& section) const noexcept;
 
+  folly::StringPiece getSegmentBody(const ElfPhdr& segment) const noexcept;
+
   /** Retrieve a string from a string table section */
   const char* getString(
       const ElfShdr& stringTable, size_t offset) const noexcept;
@@ -244,7 +247,7 @@ class ElfFile {
    *
    * Returns {nullptr, nullptr} if not found.
    */
-  typedef std::pair<const ElfShdr*, const ElfSym*> Symbol;
+  using Symbol = std::pair<const ElfShdr*, const ElfSym*>;
   Symbol getDefinitionByAddress(uintptr_t address) const noexcept;
 
   /**
@@ -361,13 +364,13 @@ class ElfFile {
   const ElfFileId& getFileId() const { return fileId_; }
 
   /**
-   * Announce an intention to access file data in a specific pattern in the
-   * future. https://man7.org/linux/man-pages/man2/posix_fadvise.2.html
+   * Retrieve the UUID from the .note.gnu.build-id if available.
+   * @return
+   *     Returns a range pointing to the bitstring of the .gnu.buildid note
+   *     which can vary depending on the build mode, see man ld build-id for
+   *     more information
    */
-  std::pair<const int, char const*> posixFadvise(
-      off_t offset, off_t len, int const advice) const noexcept;
-  std::pair<const int, char const*> posixFadvise(
-      int const advice) const noexcept;
+  folly::Expected<folly::StringPiece, std::string> getUUID() const noexcept;
 
  private:
   OpenResult init() noexcept;

@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/OnClosedException.h>
+#include <folly/channels/OnClosedException.h> // @shim

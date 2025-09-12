@@ -334,7 +334,7 @@ TEST(ImplicitlyWeightedEvictingCacheMap, PruneHook) {
   ImplicitlyWeightedEvictingCacheMap<size_t, ValueAndWeight, GetWeight> map{10};
   std::vector<std::pair<size_t, ValueAndWeight>> prunedValues;
   map.setPruneHook([&](const size_t& key, ValueAndWeight&& value) {
-    prunedValues.push_back(std::make_pair(key, std::move(value)));
+    prunedValues.emplace_back(key, std::move(value));
   });
   map.set(1, ValueAndWeight{2, 3});
   map.set(4, ValueAndWeight{5, 6});
@@ -784,7 +784,7 @@ TEST(WeightedEvictingCacheMap, PruneHook) {
   WeightedEvictingCacheMap<size_t, size_t> map{10};
   std::vector<std::tuple<size_t, size_t, size_t>> prunedValues;
   map.setPruneHook([&](const size_t& key, size_t&& value, size_t weight) {
-    prunedValues.push_back(std::make_tuple(key, value, weight));
+    prunedValues.emplace_back(key, value, weight);
   });
   map.set(1, 2, 3);
   map.set(4, 5, 6);

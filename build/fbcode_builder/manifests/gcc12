@@ -1,0 +1,5 @@
+[manifest]
+name = gcc12
+
+[rpms.all(distro=centos_stream,distro_vers=9)]
+gcc-toolset-12

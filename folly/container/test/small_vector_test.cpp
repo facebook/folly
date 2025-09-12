@@ -629,10 +629,11 @@ void testGrowShrinkGrow() {
   auto cap = vec.capacity();
   vec.resize(4);
   vec.shrink_to_fit();
-  if (N > 4)
+  if (N > 4) {
     EXPECT_EQ(vec.capacity(), N); // in situ size
-  else
+  } else {
     EXPECT_LT(vec.capacity(), cap); // on heap
+  }
 }
 
 TEST(smallVector, GrowShrinkGrow) {
@@ -732,8 +733,8 @@ TEST(smallVector, MoveConstructor) {
 }
 
 TEST(smallVector, NoHeap) {
-  typedef folly::small_vector<std::string, 10, policy_in_situ_only<true>>
-      Vector;
+  using Vector =
+      folly::small_vector<std::string, 10, policy_in_situ_only<true>>;
 
   Vector v;
   static_assert(v.max_size() == 10, "max_size is incorrect");
@@ -801,7 +802,7 @@ TEST(smallVector, AllHeap) {
 }
 template <int N>
 void testBasic() {
-  typedef folly::small_vector<int, N, policy_size_type<uint32_t>> Vector;
+  using Vector = folly::small_vector<int, N, policy_size_type<uint32_t>>;
 
   Vector a;
 
@@ -1595,4 +1596,43 @@ TEST(smallVector, comparisons) {
   EXPECT_EQ(vec1 <=> vec2, std::strong_ordering::less);
   EXPECT_EQ(vec2 <=> vec1, std::strong_ordering::greater);
 #endif
+}
+
+struct NontrivialImmovable {
+  NontrivialImmovable() {}
+  NontrivialImmovable(const NontrivialImmovable&) = default;
+  NontrivialImmovable(NontrivialImmovable&&) = delete;
+  ~NontrivialImmovable() = default;
+
+  // Make it non trivial to copy
+  NontrivialImmovable& operator=(const NontrivialImmovable&) { return *this; }
+};
+
+static_assert(!std::is_trivially_copyable_v<NontrivialImmovable>);
+
+struct TrivialImmovable {
+  TrivialImmovable() {}
+  TrivialImmovable(const TrivialImmovable&) = default;
+  TrivialImmovable(TrivialImmovable&&) = delete;
+};
+
+static_assert(std::is_trivially_copyable_v<TrivialImmovable>);
+
+struct TrivialNonCopyableNorMovable {
+  TrivialNonCopyableNorMovable() {}
+  TrivialNonCopyableNorMovable(const TrivialNonCopyableNorMovable&) = delete;
+  TrivialNonCopyableNorMovable(TrivialNonCopyableNorMovable&&) = delete;
+};
+
+static_assert(std::is_trivially_copyable_v<TrivialNonCopyableNorMovable>);
+
+TEST(smallVector, ImmovableTypes) {
+  // Immovable types can be used to create small_vectors as long as no use to
+  // resizing operations is present. We need to make sure that creation of the
+  // small_vector with the sized constructor works whether or not they are
+  // trivially copyable.
+  { folly::small_vector<NontrivialImmovable> sv{10}; }
+  { folly::small_vector<TrivialImmovable> sv{10}; }
+  { folly::small_vector<TrivialNonCopyableNorMovable> sv{10}; }
+  SUCCEED();
 }

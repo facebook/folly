@@ -1057,7 +1057,7 @@ void swmr_test() {
 template <template <typename> class Atom = std::atomic>
 void wide_cas_test() {
   HazptrWideCAS<std::string, Atom> s;
-  std::string u = "";
+  std::string u;
   std::string v = "11112222";
   auto ret = s.cas(u, v);
   ASSERT_TRUE(ret);
@@ -1342,8 +1342,9 @@ TEST(HazptrTest, reclamationWithoutCallingCleanup) {
   for (auto& t : thr) {
     t.join();
   }
-  while (c_.dtors() == 0)
+  while (c_.dtors() == 0) {
     /* Wait for asynchronous reclamation. */;
+  }
   ASSERT_GT(c_.dtors(), 0);
 }
 

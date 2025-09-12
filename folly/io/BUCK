@@ -1,6 +1,6 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -19,13 +19,6 @@ fb_dirsync_cpp_library(
         "IOBufIovecBuilder.h",
         "IOBufQueue.h",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
@@ -92,8 +85,6 @@ fb_dirsync_cpp_library(
         "//folly:exception",
         "//folly:file_util",
         "//folly:memory",
-        "//folly:portability",
-        "//folly:scope_guard",
         "//folly:string",
         "//folly/portability:unistd",
     ],
@@ -161,23 +152,16 @@ fb_dirsync_cpp_library(
     name = "huge_pages",
     srcs = ["HugePages.cpp"],
     headers = ["HugePages.h"],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
         "//folly:conv",
-        "//folly:cpp_attributes",
         "//folly:format",
         "//folly:string",
         "//folly/gen:base",
         "//folly/gen:file",
         "//folly/gen:string",
+        "//folly/portability:windows",
     ],
     exported_deps = [
         "//folly:range",
@@ -196,13 +180,6 @@ fb_dirsync_cpp_library(
     name = "fs_util",
     srcs = ["FsUtil.cpp"],
     headers = ["FsUtil.h"],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [

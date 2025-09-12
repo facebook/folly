@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/observer/CoreCachedObserver.h>
+#include <folly/observer/CoreCachedObserver.h> // @shim

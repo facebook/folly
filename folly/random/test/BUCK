@@ -8,7 +8,7 @@ load(
     "WINDOWS",
 )
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../../defs.bzl",
     "FBANDROID_CXXFLAGS",
     "FBOBJC_CXXFLAGS",
     "folly_xplat_cxx_test",
@@ -16,30 +16,55 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-# Test for xoshiro256pp random number generator
+# xplat build rules
+
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
-    name = "xoshiro256pp-test",
-    srcs = [
-        "Xoshiro256ppTest.cpp",
-    ],
+    name = "hash_test",
+    srcs = ["hash_test.cpp"],
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
     fbobjc_compiler_flags = FBOBJC_CXXFLAGS,
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
     deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly:portability_gtest",
+        "//xplat/folly/container:span",
+        "//xplat/folly/portability:gtest",
+        "//xplat/folly/random:hash",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "xoshiro256pp_test",
+    srcs = ["Xoshiro256ppTest.cpp"],
+    fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
+    fbobjc_compiler_flags = FBOBJC_CXXFLAGS,
+    platforms = (ANDROID, APPLE, CXX, WINDOWS),
+    deps = [
+        "//xplat/folly/lang:keep",
+        "//xplat/folly/portability:gtest",
         "//xplat/folly/random:xoshiro256pp",
     ],
 )
 
-# !!!! fbcode/folly/random/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+# fbcode build rules
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "hash_test",
+    srcs = ["hash_test.cpp"],
+    deps = [
+        "//folly/container:span",
+        "//folly/portability:gtest",
+        "//folly/random:hash",
+    ],
+)
 
 fbcode_target(
     _kind = cpp_unittest,
     name = "xoshiro256pp_test",
     srcs = ["Xoshiro256ppTest.cpp"],
     deps = [
+        "//folly/lang:keep",
         "//folly/portability:gtest",
         "//folly/random:xoshiro256pp",
     ],

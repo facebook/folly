@@ -232,7 +232,7 @@ void addGFlag<bool>(
   // clang-format on
 }
 
-typedef void (*FlagAdder)(
+using FlagAdder = void (*)(
     folly::gflags::CommandLineFlagInfo&&,
     po::options_description&,
     ProgramOptionsStyle);

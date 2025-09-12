@@ -20,11 +20,9 @@
 #include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/SharedMutex.h>
-#include <folly/SpinLock.h>
 #include <folly/ssl/OpenSSLTicketHandler.h>
 #include <folly/ssl/PasswordCollector.h>
 #include <folly/ssl/SSLSessionManager.h>
-#include <folly/system/ThreadId.h>
 
 // ---------------------------------------------------------------------
 // SSLContext implementation

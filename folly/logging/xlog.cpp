@@ -19,7 +19,6 @@
 #include <type_traits>
 #include <unordered_map>
 
-#include <folly/Synchronized.h>
 #include <folly/portability/PThread.h>
 
 namespace folly {

@@ -1,7 +1,59 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load(
+    "@fbsource//xplat/folly:defs.bzl",
+    "folly_xplat_library",
+)
+load(
+    "@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl",
+    "triage_InfrastructureSupermoduleOptou",
+)
 
 oncall("fbcode_entropy_wardens_folly")
+
+# xplat build rules
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "checksum_detail",
+    srcs = [
+        "ChecksumDetail.cpp",
+        "Crc32CombineDetail.cpp",
+        "Crc32cDetail.cpp",
+    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:android-x86_64": ["-mpclmul"],
+    }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "ChecksumDetail.h",
+    ],
+    deps = [
+        "//third-party/boost:boost_preprocessor",
+        "//xplat/folly:bits",
+        "//xplat/folly:cpp_attributes",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly/external/nvidia/hash:checksum",  # @manual
+        "//xplat/folly/external/nvidia/hash/detail:crc32c_detail",  # @manual
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "random_seed",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = [
+        "RandomSeed.h",
+    ],
+    exported_deps = [
+        "//xplat/folly:portability",
+    ],
+)
+
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
@@ -24,5 +76,16 @@ fbcode_target(
     ],
     external_deps = [
         ("boost", None, "boost_preprocessor"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "random_seed",
+    headers = [
+        "RandomSeed.h",
+    ],
+    exported_deps = [
+        "//folly:portability",
     ],
 )

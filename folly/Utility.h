@@ -253,6 +253,19 @@ struct identity_fn {
 using Identity = identity_fn;
 inline constexpr identity_fn identity{};
 
+#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
+
+/// literal_c_str
+///
+/// This can only wrap literal strings, since the constructor is marked
+/// consteval.  Like with fmt::format_string.
+struct literal_c_str {
+  const char* const ptr;
+  /* implicit */ consteval literal_c_str(const char* p) : ptr(p) {}
+};
+
+#endif
+
 /// literal_string
 ///
 /// A structural type representing a literal string. A structural type may be
@@ -422,7 +435,7 @@ using moveonly_::NonCopyableNonMovable;
 /// May be invoked with any arguments. Returns void.
 struct variadic_noop_fn {
   template <typename... A>
-  constexpr void operator()(A&&...) const noexcept {}
+  constexpr void operator()(A&&... /*unused*/) const noexcept {}
 };
 inline constexpr variadic_noop_fn variadic_noop;
 
@@ -437,7 +450,7 @@ struct variadic_constant_of_fn {
   using value_type = decltype(Value);
   static inline constexpr value_type value = Value;
   template <typename... A>
-  constexpr value_type operator()(A&&...) const noexcept {
+  constexpr value_type operator()(A&&... /*unused*/) const noexcept {
     return value;
   }
 };

@@ -4,14 +4,13 @@ load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "IOS",
     "MACOSX",
-    "WATCHOS",
 )
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../../defs.bzl",
     "folly_xplat_library",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -20,7 +19,7 @@ non_fbcode_target(
     name = "compatibility",
     srcs = [
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Compatibility.h",
@@ -33,15 +32,15 @@ non_fbcode_target(
     srcs = [
         "ExceptionTracer.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionTracer.h",
     ],
     deps = [
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         "//third-party/glog:glog",
         "//xplat/folly:cpp_attributes",
-        "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:portability",
         "//xplat/folly:string",
         "//xplat/folly/debugging/exception_tracer:exception_abi",
@@ -68,15 +67,15 @@ non_fbcode_target(
     srcs = [
         "SmartExceptionTracer.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
         "SmartExceptionTracer.h",
     ],
     deps = [
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         "//xplat/folly:exception_wrapper",
-        "//xplat/folly:experimental_symbolizer_symbolizer",
         "//xplat/folly:map_util",
         "//xplat/folly:scope_guard",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
@@ -92,7 +91,7 @@ non_fbcode_target(
     srcs = [
         "SmartExceptionTracerSingleton.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SmartExceptionTracerSingleton.h",
@@ -110,13 +109,13 @@ non_fbcode_target(
     srcs = [
         "SmartExceptionStackTraceHooks.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         ":exception_tracer_callbacks",
         ":smart_exception_tracer_singleton",
-        "//xplat/folly:experimental_symbolizer_symbolizer",
     ],
 )
 
@@ -126,18 +125,18 @@ non_fbcode_target(
     srcs = [
         "ExceptionCounterLib.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
         "ExceptionCounterLib.h",
     ],
     deps = [
-        "//xplat/folly:experimental_symbolizer_symbolizer",
-        "//xplat/folly:hash_spooky_hash_v2",
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
+        "fbsource//xplat/folly/hash:spooky_hash_v2",
+        "fbsource//xplat/folly/synchronization:rw_spin_lock",
         "//xplat/folly:range",
         "//xplat/folly:singleton_thread_local",
-        "//xplat/folly:synchronization_rw_spin_lock",
         "//xplat/folly:synchronized",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
@@ -151,11 +150,11 @@ non_fbcode_target(
     srcs = [
         "ExceptionStackTraceLib.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
-        "//xplat/folly:experimental_symbolizer_symbolizer",
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         "//xplat/folly:utility",
         "//xplat/folly/debugging/exception_tracer:exception_abi",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
@@ -170,13 +169,13 @@ non_fbcode_target(
     srcs = [
         "StackTrace.cpp",
     ],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = (IOS, MACOSX),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "StackTrace.h",
     ],
     deps = [
-        "//xplat/folly:experimental_symbolizer_stack_trace",
+        "fbsource//xplat/folly/experimental/symbolizer:stack_trace",
         "//xplat/folly:portability",
     ],
 )
@@ -270,7 +269,6 @@ fbcode_target(
     name = "exception_counter",
     srcs = ["ExceptionCounterLib.cpp"],
     headers = ["ExceptionCounterLib.h"],
-    link_whole = True,
     deps = [
         ":exception_tracer_callbacks",
         ":stacktrace",
@@ -290,6 +288,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "exception_counter_static_registration",
+    srcs = ["ExceptionCounterLibStaticRegistration.cpp"],
+    link_whole = True,
+    deps = [
+        ":exception_counter",
+        ":exception_tracer_callbacks",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
     name = "exception_tracer",
     srcs = ["ExceptionStackTraceLib.cpp"],
     headers = [],
@@ -300,7 +309,6 @@ fbcode_target(
         ":exception_tracer_callbacks",
         ":stacktrace",
         "//folly:utility",
-        "//folly/experimental/symbolizer:symbolizer",
     ],
     exported_deps = [
         ":exception_tracer_callbacks",
@@ -318,7 +326,6 @@ fbcode_target(
     deps = [
         ":exception_abi",
         ":stacktrace",
-        "//folly:cpp_attributes",
         "//folly:portability",
         "//folly:string",
         "//folly/experimental/symbolizer:symbolizer",
@@ -431,7 +438,6 @@ fbcode_target(
         "//folly:scope_guard",
         "//folly:synchronized",
         "//folly/container:f14_hash",
-        "//folly/experimental/symbolizer:symbolizer",
         "//folly/lang:exception",
     ],
     exported_deps = [

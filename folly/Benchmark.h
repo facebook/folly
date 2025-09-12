@@ -33,8 +33,10 @@
 #include <limits>
 #include <mutex>
 #include <set>
+#include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <variant>
 
 #include <boost/function_types/function_arity.hpp>
 #include <glog/logging.h>
@@ -63,13 +65,19 @@ inline bool runBenchmarksOnFlag() {
 class UserMetric {
  public:
   enum class Type { CUSTOM, TIME, METRIC };
-
-  int64_t value{};
+  std::variant<int64_t, double> value;
   Type type{Type::CUSTOM};
 
   UserMetric() = default;
   /* implicit */ UserMetric(int64_t val, Type typ = Type::CUSTOM)
       : value(val), type(typ) {}
+
+  // Allow users to provide precision values
+  template <
+      typename T,
+      typename = std::enable_if_t<std::is_floating_point_v<T>>>
+  explicit UserMetric(T precision_val, Type typ = Type::CUSTOM)
+      : value(convert_helper(precision_val)), type(typ) {}
 
   friend bool operator==(const UserMetric& x, const UserMetric& y) {
     return x.value == y.value && x.type == y.type;
@@ -77,6 +85,9 @@ class UserMetric {
   friend bool operator!=(const UserMetric& x, const UserMetric& y) {
     return !(x == y);
   }
+
+ private:
+  double convert_helper(double val) { return val; }
 };
 
 using UserCounters = std::unordered_map<std::string, UserMetric>;
@@ -205,7 +216,7 @@ class BenchmarkingStateBase {
   bool useCounters() const;
 
   void addBenchmarkImpl(
-      const char* file, StringPiece name, BenchmarkFun, bool useCounter);
+      std::string file, std::string name, BenchmarkFun, bool useCounter);
 
   std::vector<std::string> getBenchmarkList();
 
@@ -228,7 +239,7 @@ class BenchmarkingState : public BenchmarkingStateBase {
  public:
   template <typename Lambda>
   typename std::enable_if<folly::is_invocable_v<Lambda, unsigned>>::type
-  addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
+  addBenchmark(std::string file, std::string name, Lambda&& lambda) {
     auto execute = [=](unsigned int times) {
       BenchmarkSuspender<Clock>::timeSpent = {};
       unsigned int niter;
@@ -244,13 +255,14 @@ class BenchmarkingState : public BenchmarkingStateBase {
           UserCounters{}};
     };
 
-    this->addBenchmarkImpl(file, name, detail::BenchmarkFun(execute), false);
+    this->addBenchmarkImpl(
+        std::move(file), std::move(name), detail::BenchmarkFun(execute), false);
   }
 
   template <typename Lambda>
   typename std::enable_if<folly::is_invocable_v<Lambda>>::type addBenchmark(
-      const char* file, StringPiece name, Lambda&& lambda) {
-    addBenchmark(file, name, [=](unsigned int times) {
+      std::string file, std::string name, Lambda&& lambda) {
+    addBenchmark(std::move(file), std::move(name), [=](unsigned int times) {
       unsigned int niter = 0;
       while (times-- > 0) {
         niter += lambda();
@@ -262,7 +274,7 @@ class BenchmarkingState : public BenchmarkingStateBase {
   template <typename Lambda>
   typename std::enable_if<
       folly::is_invocable_v<Lambda, UserCounters&, unsigned>>::type
-  addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
+  addBenchmark(std::string file, std::string name, Lambda&& lambda) {
     auto execute = [=](unsigned int times) {
       BenchmarkSuspender<Clock>::timeSpent = {};
       unsigned int niter;
@@ -280,22 +292,25 @@ class BenchmarkingState : public BenchmarkingStateBase {
     };
 
     this->addBenchmarkImpl(
-        file,
-        name,
+        std::move(file),
+        std::move(name),
         std::function<detail::TimeIterData(unsigned int)>(execute),
         true);
   }
 
   template <typename Lambda>
   typename std::enable_if<folly::is_invocable_v<Lambda, UserCounters&>>::type
-  addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
-    addBenchmark(file, name, [=](UserCounters& counters, unsigned int times) {
-      unsigned int niter = 0;
-      while (times-- > 0) {
-        niter += lambda(counters);
-      }
-      return niter;
-    });
+  addBenchmark(std::string file, std::string name, Lambda&& lambda) {
+    addBenchmark(
+        std::move(file),
+        std::move(name),
+        [=](UserCounters& counters, unsigned int times) {
+          unsigned int niter = 0;
+          while (times-- > 0) {
+            niter += lambda(counters);
+          }
+          return niter;
+        });
   }
 };
 
@@ -313,8 +328,9 @@ std::vector<BenchmarkResult> runBenchmarksWithResults();
  * is not.
  */
 inline void addBenchmarkImpl(
-    const char* file, StringPiece name, BenchmarkFun f, bool useCounter) {
-  globalBenchmarkState().addBenchmarkImpl(file, name, std::move(f), useCounter);
+    std::string file, std::string name, BenchmarkFun f, bool useCounter) {
+  globalBenchmarkState().addBenchmarkImpl(
+      std::move(file), std::move(name), std::move(f), useCounter);
 }
 
 } // namespace detail
@@ -340,8 +356,9 @@ struct BenchmarkSuspender
  *    as their first parameter.
  */
 template <typename Lambda>
-void addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
-  detail::globalBenchmarkState().addBenchmark(file, name, lambda);
+void addBenchmark(std::string file, std::string name, Lambda&& lambda) {
+  detail::globalBenchmarkState().addBenchmark(
+      std::move(file), std::move(name), lambda);
 }
 
 struct dynamic;

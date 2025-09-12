@@ -309,7 +309,7 @@ class TimeseriesHistogram {
   }
 
  private:
-  typedef ContainerType Bucket;
+  using Bucket = ContainerType;
   struct CountFromLevel {
     explicit CountFromLevel(size_t level) : level_(level) {}
 

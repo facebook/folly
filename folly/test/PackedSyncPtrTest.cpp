@@ -16,7 +16,6 @@
 
 #include <folly/PackedSyncPtr.h>
 
-#include <cinttypes>
 #include <thread>
 #include <unordered_map>
 #include <utility>
@@ -87,8 +86,8 @@ struct SyncVec {
   T* begin() const { return base.get(); }
   T* end() const { return base.get() + base.extra(); }
 };
-typedef SyncVec<intptr_t> VecT;
-typedef std::unordered_map<int64_t, VecT> Map;
+using VecT = SyncVec<intptr_t>;
+using Map = std::unordered_map<int64_t, VecT>;
 const int mapCap = 1317;
 const int nthrs = 297;
 static Map map(mapCap);

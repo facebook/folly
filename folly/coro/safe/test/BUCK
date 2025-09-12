@@ -9,7 +9,7 @@ fbcode_target(
     srcs = ["CapturesTest.cpp"],
     deps = [
         "//folly/coro/safe:captures",
-        "//folly/lang:bindings",
+        "//folly/lang/bind:bind",
         "//folly/portability:gtest",
     ],
 )
@@ -36,17 +36,6 @@ fbcode_target(
         "//folly/coro:blocking_wait",
         "//folly/coro:gtest_helpers",
         "//folly/coro/safe:now_task",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "safe_alias_test",
-    srcs = ["SafeAliasTest.cpp"],
-    deps = [
-        "//folly/coro/safe:safe_alias",
-        "//folly/detail:tuple",
-        "//folly/portability:gtest",
     ],
 )
 

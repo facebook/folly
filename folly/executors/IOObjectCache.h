@@ -43,7 +43,7 @@ namespace folly {
 template <class T>
 class IOObjectCache {
  public:
-  typedef std::function<std::shared_ptr<T>(folly::EventBase*)> TFactory;
+  using TFactory = std::function<std::shared_ptr<T>(folly::EventBase*)>;
 
   IOObjectCache() = default;
   explicit IOObjectCache(TFactory factory) : factory_(std::move(factory)) {}

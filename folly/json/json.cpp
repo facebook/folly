@@ -792,7 +792,7 @@ size_t firstEscapableInWord(T s, const serialization_opts& opts) {
   auto isLow = isLess(s, 0x20); // <= 0x1f
   auto needsEscape = isHigh | isLow | isChar('\\') | isChar('"');
 
-  if /* constexpr */ (EnableExtraAsciiEscapes) {
+  if constexpr (EnableExtraAsciiEscapes) {
     // Deal with optional bitmap for unicode escapes. Escapes can optionally be
     // set for ascii characters 32 - 127, so the inner loop may run up to 96
     // times. However, for the case where 0 or a handful of bits are set,
@@ -893,7 +893,7 @@ void escapeStringImpl(
     }
 
     auto encodeUnicode = opts.encode_non_ascii && (*p & 0x80);
-    if /* constexpr */ (EnableExtraAsciiEscapes) {
+    if constexpr (EnableExtraAsciiEscapes) {
       encodeUnicode = encodeUnicode ||
           (*p >= 0x20 && *p < 0x80 &&
            (opts.extra_ascii_to_escape_bitmap[*p / 64] &

@@ -21,6 +21,7 @@
 #include <folly/CPortability.h>
 #include <folly/init/Init.h>
 #include <folly/settings/Settings.h>
+#include <folly/settings/test/a.h>
 #include <folly/synchronization/test/Barrier.h>
 
 /*
@@ -65,6 +66,12 @@ FOLLY_SETTING_DEFINE(
 BENCHMARK(trivial_access, iters) {
   for (unsigned int i = 0; i < iters; ++i) {
     folly::doNotOptimizeAway(*FOLLY_SETTING(follytest, trivial));
+  }
+}
+
+BENCHMARK(trivial_from_another_translation_unit, iters) {
+  for (unsigned int i = 0; i < iters; ++i) {
+    folly::doNotOptimizeAway(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a));
   }
 }
 

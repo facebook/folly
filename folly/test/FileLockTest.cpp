@@ -35,8 +35,8 @@ DEFINE_bool(s, false, "get shared lock");
 DEFINE_bool(x, false, "get exclusive lock");
 
 TEST(File, Locks) {
-  typedef std::unique_lock<File> Lock;
-  typedef boost::shared_lock<File> SharedLock;
+  using Lock = std::unique_lock<File>;
+  using SharedLock = boost::shared_lock<File>;
 
   // Find out where we are.
   static constexpr size_t pathLength = 2048;

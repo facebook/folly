@@ -34,6 +34,36 @@
 #include <folly/portability/GFlags.h>
 
 extern "C" FOLLY_KEEP uint64_t
+check_folly_hash_128_to_64(uint64_t upper, uint64_t lower) {
+  return folly::hash::hash_128_to_64(upper, lower);
+}
+
+extern "C" FOLLY_KEEP uint64_t
+check_folly_commutative_hash_128_to_64(uint64_t upper, uint64_t lower) {
+  return folly::hash::commutative_hash_128_to_64(upper, lower);
+}
+
+extern "C" FOLLY_KEEP uint64_t check_folly_twang_mix64(uint64_t key) {
+  return folly::hash::twang_mix64(key);
+}
+
+extern "C" FOLLY_KEEP uint64_t check_folly_twang_unmix64(uint64_t key) {
+  return folly::hash::twang_unmix64(key);
+}
+
+extern "C" FOLLY_KEEP uint32_t check_folly_twang_32from64(uint64_t key) {
+  return folly::hash::twang_32from64(key);
+}
+
+extern "C" FOLLY_KEEP uint32_t check_folly_jenkins_rev_mix32(uint32_t key) {
+  return folly::hash::jenkins_rev_mix32(key);
+}
+
+extern "C" FOLLY_KEEP uint32_t check_folly_jenkins_rev_unmix32(uint32_t key) {
+  return folly::hash::jenkins_rev_unmix32(key);
+}
+
+extern "C" FOLLY_KEEP uint64_t
 check_folly_spooky_hash_v2_hash_32(void const* data, size_t size) {
   return folly::hash::SpookyHashV2::Hash32(data, size, 0);
 }
@@ -67,12 +97,10 @@ void bmHasher(Hasher hasher, size_t k, size_t iters) {
 }
 
 template <class Hasher>
-void addHashBenchmark(const std::string& name) {
-  static std::deque<std::string> names;
-
+void addHashBenchmark(const std::string& hasherName) {
   for (size_t k = 1; k < 16; ++k) {
-    names.emplace_back(fmt::format("{}: k={}", name, k));
-    folly::addBenchmark(__FILE__, names.back().c_str(), [=](unsigned iters) {
+    std::string name = fmt::format("{}: k={}", hasherName, k);
+    folly::addBenchmark(__FILE__, name, [=](unsigned iters) {
       Hasher hasher;
       bmHasher(hasher, k, iters);
       return iters;
@@ -81,8 +109,8 @@ void addHashBenchmark(const std::string& name) {
 
   for (size_t i = 0; i < 21; ++i) {
     auto k = size_t(1) << i;
-    names.emplace_back(fmt::format("{}: k=2^{}", name, i));
-    folly::addBenchmark(__FILE__, names.back().c_str(), [=](unsigned iters) {
+    std::string name = fmt::format("{}: k=2^{}", hasherName, i);
+    folly::addBenchmark(__FILE__, name, [=](unsigned iters) {
       Hasher hasher;
       bmHasher(hasher, k, iters);
       return iters;

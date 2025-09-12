@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/json/JsonTestUtil.h>
+#include <folly/json/JsonTestUtil.h> // @shim

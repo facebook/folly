@@ -25,7 +25,11 @@
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Task.h>
 #include <folly/coro/ViaIfAsync.h>
+#include <folly/coro/detail/PickTaskWrapper.h>
 #include <folly/coro/detail/Traits.h>
+// `collectAll(coroFutureInt())` makes a `safe_task`
+#include <folly/coro/safe/SafeTask.h>
+// `collectAll(memberTask())` makes a `now_task`
 #include <folly/coro/safe/NowTask.h>
 
 #include <functional>
@@ -81,11 +85,22 @@ class MoveRange {
   Container& container_;
 };
 
+// Future: Apply `as_noexcept` to the task if the entire collection process is
+// noexcept-awaitable.  This would require reworking the implementation a bit,
+// since e.g. `cancellation_token_merge` can throw `bad_alloc`.
 template <typename... SemiAwaitables>
-using CollectAllTask =
-    typename detail::best_fit_task_wrapper<void, SemiAwaitables...>::
-        template task_type<std::tuple<detail::collect_all_component_t<
-            remove_cvref_t<SemiAwaitables>>...>>;
+using CollectAllTask = pick_task_wrapper<
+    std::tuple<collect_all_component_t<remove_cvref_t<SemiAwaitables>>...>,
+    std::min(
+        {safe_alias::maybe_value, lenient_safe_alias_of_v<SemiAwaitables>...}),
+    (folly::ext::must_use_immediately_v<SemiAwaitables> || ...)>;
+
+template <typename... SemiAwaitables>
+using CollectAllTryTask = pick_task_wrapper<
+    std::tuple<collect_all_try_component_t<remove_cvref_t<SemiAwaitables>>...>,
+    std::min(
+        {safe_alias::maybe_value, lenient_safe_alias_of_v<SemiAwaitables>...}),
+    (folly::ext::must_use_immediately_v<SemiAwaitables> || ...)>;
 
 } // namespace detail
 
@@ -129,7 +144,7 @@ using CollectAllTask =
 //       co_await folly::coro::collectAll(doSomething(), doSomethingElse());
 //
 template <typename... SemiAwaitables>
-// Do NOT take awaitables by-reference, that would break `NowTask` safety.
+// Do NOT take awaitables by-reference, that would break `now_task` safety.
 auto collectAll(SemiAwaitables... awaitables)
     -> detail::CollectAllTask<SemiAwaitables...>;
 
@@ -171,9 +186,8 @@ auto collectAll(SemiAwaitables... awaitables)
 //    }
 //
 template <typename... SemiAwaitables>
-auto collectAllTry(SemiAwaitables&&... awaitables)
-    -> folly::coro::Task<std::tuple<detail::collect_all_try_component_t<
-        remove_cvref_t<SemiAwaitables>>...>>;
+auto collectAllTry(SemiAwaitables... awaitables)
+    -> detail::CollectAllTryTask<SemiAwaitables...>;
 
 ////////////////////////////////////////////////////////////////////////
 // collectAllRange(RangeOf<SemiAwaitable<T>>&&)
@@ -363,7 +377,7 @@ auto makeUnorderedTryAsyncGenerator(
 // If any of the input awaitables fail with an exception then requests
 // cancellation of any incomplete operations and fails the whole
 // operation with an exception. If multiple input awaitables fail with
-// an exception then the exeception from the first task to fail (in time)
+// an exception then the exception from the first task to fail (in time)
 // will be rethrown and the rest of the results will be discarded.
 //
 // If there is an exception thrown while iterating over the input-range then

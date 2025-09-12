@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/ScopeExit.h>
+#include <folly/coro/ScopeExit.h> // @shim

@@ -201,31 +201,143 @@ inline void TimedMutex::unlock() {
 //
 
 template <bool ReaderPriority, typename BatonType>
-bool TimedRWMutexImpl<ReaderPriority, BatonType>::shouldReadersWait() const {
-  return state_ == State::WRITE_LOCKED ||
-      (!ReaderPriority && !write_waiters_.empty());
+class TimedRWMutexImpl<ReaderPriority, BatonType>::StateLock {
+ public:
+  // Spin until the state is not locked to apply mutation. The callback can
+  // abort at any time.
+  template <class Mutation>
+  FOLLY_ALWAYS_INLINE static bool tryMutate(
+      std::atomic<uint64_t>& stateRef, Mutation mutation) {
+    folly::detail::Sleeper sleeper;
+    auto curState = stateRef.load(std::memory_order_relaxed);
+    while (true) {
+      while (FOLLY_UNLIKELY(curState & kStateLocked)) {
+        sleeper.wait();
+        curState = stateRef.load(std::memory_order_relaxed);
+      }
+      auto newState = curState;
+      if (!mutation(newState)) {
+        return false;
+      }
+      if (stateRef.compare_exchange_strong(
+              curState,
+              newState,
+              std::memory_order_acq_rel,
+              std::memory_order_relaxed)) {
+        return true;
+      }
+    }
+  }
+
+  explicit StateLock(std::atomic<uint64_t>& stateRef) : stateRef_(stateRef) {
+    tryMutate(stateRef_, [&](uint64_t& state) {
+      state_ = (state |= kStateLocked);
+#ifndef NDEBUG
+      initialState_ = state_;
+#endif
+      return true;
+    });
+  }
+
+  ~StateLock() {
+    if (locked_) {
+      unlock();
+    }
+  }
+
+  uint64_t& state() {
+    assert(locked_);
+    return state_;
+  }
+
+  void unlock() {
+    // All state modifications while locked should be done through state().
+    assert(stateRef_.load(std::memory_order_relaxed) == initialState_);
+    // Verify reader/writer exclusion.
+    assert(!(state_ & kWriteLocked) || (state_ >> kReadersShift) == 0);
+    stateRef_.store(state_ & ~kStateLocked, std::memory_order_release);
+    locked_ = false;
+  }
+
+  StateLock(const StateLock&) = delete;
+  StateLock(StateLock&&) = delete;
+  StateLock& operator=(const StateLock&) = delete;
+  StateLock& operator=(StateLock&&) = delete;
+
+ private:
+  std::atomic<uint64_t>& stateRef_;
+  uint64_t state_;
+#ifndef NDEBUG
+  uint64_t initialState_;
+#endif
+  bool locked_ = true;
+};
+
+// invariants that must hold when the lock is not held by anyone
+template <bool ReaderPriority, typename BatonType>
+void TimedRWMutexImpl<ReaderPriority, BatonType>::verify_unlocked_properties(
+    [[maybe_unused]] StateLock& slock) const {
+  assert(slock.state() == kStateLocked); // Only bit set is the state lock.
+  assert(read_waiters_.empty());
+  assert(write_waiters_.empty());
+}
+
+template <bool ReaderPriority, typename BatonType>
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::shouldReadersWait(
+    StateLock& slock) const {
+  assert(!(slock.state() & kHasWriteWaiters) == write_waiters_.empty());
+  return shouldReadersWait(slock.state());
+}
+
+template <bool ReaderPriority, typename BatonType>
+/* static */ bool
+TimedRWMutexImpl<ReaderPriority, BatonType>::shouldReadersWait(uint64_t state) {
+  return (state & kWriteLocked) ||
+      (!ReaderPriority && (state & kHasWriteWaiters));
+}
+
+template <bool ReaderPriority, typename BatonType>
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_fast() {
+  return StateLock::tryMutate(state_, [](uint64_t& state) {
+    if (FOLLY_UNLIKELY(shouldReadersWait(state))) {
+      return false;
+    }
+    state += kReadersInc;
+    return true;
+  });
+}
+
+template <bool ReaderPriority, typename BatonType>
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_unlock_shared_fast() {
+  return StateLock::tryMutate(state_, [](uint64_t& state) {
+    auto numReaders = state >> kReadersShift;
+    assert(!(state & kWriteLocked) && numReaders > 0);
+    if (FOLLY_UNLIKELY(numReaders == 1 && (state & kHasWriteWaiters))) {
+      return false; // We may need to wake up a writer.
+    }
+    state -= kReadersInc;
+    return true;
+  });
 }
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::lock_shared() {
-  std::unique_lock ulock{lock_};
-  if (shouldReadersWait()) {
-    MutexWaiter waiter;
-    read_waiters_.push_back(waiter);
-    ulock.unlock();
-    waiter.wait();
-    if (folly::kIsDebug) {
-      std::unique_lock assertLock{lock_};
-      assert(state_ == State::READ_LOCKED);
-    }
+  if (try_lock_shared_fast()) {
     return;
   }
-  assert(
-      (state_ == State::UNLOCKED && readers_ == 0) ||
-      (state_ == State::READ_LOCKED && readers_ > 0));
-  assert(read_waiters_.empty());
-  state_ = State::READ_LOCKED;
-  readers_ += 1;
+
+  StateLock slock{state_};
+  assert(!(slock.state() & kHasWriteWaiters) == write_waiters_.empty());
+  if (shouldReadersWait(slock)) {
+    MutexWaiter waiter;
+    read_waiters_.push_back(waiter);
+    slock.unlock();
+    waiter.wait();
+    assert((state_.load(std::memory_order_relaxed) >> kReadersShift) > 0);
+    return;
+  }
+  assert(!(slock.state() & kWriteLocked));
+  slock.state() += kReadersInc;
 }
 
 template <bool ReaderPriority, typename BatonType>
@@ -239,11 +351,14 @@ template <bool ReaderPriority, typename BatonType>
 template <typename Clock, typename Duration>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
     const std::chrono::time_point<Clock, Duration>& deadline) {
-  std::unique_lock ulock{lock_};
-  if (shouldReadersWait()) {
+  if (try_lock_shared_fast()) {
+    return true;
+  }
+  StateLock slock{state_};
+  if (shouldReadersWait(slock)) {
     MutexWaiter waiter;
     read_waiters_.push_back(waiter);
-    ulock.unlock();
+    slock.unlock();
 
     if (!waiter.try_wait_until(deadline)) {
       // We timed out. Two cases:
@@ -251,60 +366,67 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
       // 2. We're not in the waiter list anymore. This could happen if the baton
       //    times out but the mutex is unlocked before we reach this code. In
       //    this case we'll pretend we got the lock on time.
-      std::unique_lock guard{lock_};
+      StateLock slock2{state_};
       if (waiter.hook.is_linked()) {
         read_waiters_.erase(read_waiters_.iterator_to(waiter));
-        guard.unlock();
+        slock2.unlock();
         waiter.wake(); // Ensure that destruction doesn't block.
         return false;
       }
     }
     return true;
   }
-  assert(
-      (state_ == State::UNLOCKED && readers_ == 0) ||
-      (state_ == State::READ_LOCKED && readers_ > 0));
-  assert(read_waiters_.empty());
-  state_ = State::READ_LOCKED;
-  readers_ += 1;
+  assert(!(slock.state() & kWriteLocked));
+  slock.state() += kReadersInc;
   return true;
 }
 
 template <bool ReaderPriority, typename BatonType>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared() {
-  std::unique_lock guard{lock_};
-  if (!shouldReadersWait()) {
-    assert(
-        (state_ == State::UNLOCKED && readers_ == 0) ||
-        (state_ == State::READ_LOCKED && readers_ > 0));
-    assert(read_waiters_.empty());
-    state_ = State::READ_LOCKED;
-    readers_ += 1;
+  if (try_lock_shared_fast()) {
+    return true;
+  }
+
+  StateLock slock{state_};
+  if (shouldReadersWait(slock)) {
+    return false;
+  }
+  assert(!(slock.state() & kWriteLocked));
+  slock.state() += kReadersInc;
+  return true;
+}
+
+template <bool ReaderPriority, typename BatonType>
+void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_shared() {
+  if (try_unlock_shared_fast()) {
+    return;
+  }
+
+  assert((state_.load(std::memory_order_relaxed) >> kReadersShift) > 0);
+  unlock_();
+}
+
+template <bool ReaderPriority, typename BatonType>
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_(StateLock& slock) {
+  if (!(slock.state() & kWriteLocked) &&
+      ((slock.state() >> kReadersShift) == 0)) {
+    verify_unlocked_properties(slock);
+    slock.state() |= kWriteLocked;
     return true;
   }
   return false;
 }
 
 template <bool ReaderPriority, typename BatonType>
-void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_shared() {
-  if (kIsDebug) {
-    std::unique_lock ulock{lock_};
-    assert(state_ == State::READ_LOCKED);
-  }
-  unlock_();
-}
-
-template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::lock() {
-  std::unique_lock ulock{lock_};
-  if (state_ == State::UNLOCKED) {
-    verify_unlocked_properties();
-    state_ = State::WRITE_LOCKED;
+  StateLock slock{state_};
+  if (try_lock_(slock)) {
     return;
   }
   MutexWaiter waiter;
   write_waiters_.push_back(waiter);
-  ulock.unlock();
+  slock.state() |= kHasWriteWaiters;
+  slock.unlock();
   waiter.wait();
 }
 
@@ -319,15 +441,16 @@ template <bool ReaderPriority, typename BatonType>
 template <typename Clock, typename Duration>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
     const std::chrono::time_point<Clock, Duration>& deadline) {
-  std::unique_lock ulock{lock_};
-  if (state_ == State::UNLOCKED) {
-    verify_unlocked_properties();
-    state_ = State::WRITE_LOCKED;
+  StateLock slock{state_};
+  if (try_lock_(slock)) {
     return true;
   }
   MutexWaiter waiter;
-  write_waiters_.push_back(waiter);
-  ulock.unlock();
+  {
+    write_waiters_.push_back(waiter);
+    slock.state() |= kHasWriteWaiters;
+    slock.unlock();
+  }
 
   if (!waiter.try_wait_until(deadline)) {
     // We timed out. Two cases:
@@ -335,58 +458,54 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
     // 2. We're not in the waiter list anymore. This could happen if the baton
     //    times out but the mutex is unlocked before we reach this code. In
     //    this case we'll pretend we got the lock on time.
-    std::unique_lock guard{lock_};
+    StateLock slock2{state_};
     if (waiter.hook.is_linked()) {
       write_waiters_.erase(write_waiters_.iterator_to(waiter));
-      guard.unlock();
+      if (write_waiters_.empty() && (slock2.state() & kHasWriteWaiters)) {
+        slock2.state() &= ~kHasWriteWaiters;
+      }
+      slock2.unlock();
       waiter.wake(); // Ensure that destruction doesn't block.
       return false;
     }
   }
-  assert(state_ == State::WRITE_LOCKED);
+  assert(state_.load(std::memory_order_relaxed) & kWriteLocked);
   return true;
 }
 
 template <bool ReaderPriority, typename BatonType>
 bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock() {
-  std::lock_guard guard{lock_};
-  if (state_ == State::UNLOCKED) {
-    verify_unlocked_properties();
-    state_ = State::WRITE_LOCKED;
-    return true;
-  }
-  return false;
+  StateLock slock{state_};
+  return try_lock_(slock);
 }
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock() {
-  if (kIsDebug) {
-    std::unique_lock ulock{lock_};
-    assert(state_ == State::WRITE_LOCKED);
-  }
+  assert(state_.load(std::memory_order_relaxed) & kWriteLocked);
   unlock_();
 }
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
-  std::unique_lock guard{lock_};
-  assert(state_ != State::UNLOCKED);
+  StateLock slock{state_};
   assert(
-      (state_ == State::READ_LOCKED && readers_ > 0) ||
-      (state_ == State::WRITE_LOCKED && readers_ == 0));
-  if (state_ == State::READ_LOCKED) {
-    readers_ -= 1;
+      (slock.state() & kWriteLocked) ||
+      (!(slock.state() & kWriteLocked) &&
+       ((slock.state() >> kReadersShift) > 0)));
+  if ((slock.state() >> kReadersShift) > 0) {
+    slock.state() -= kReadersInc;
   }
 
   if (!read_waiters_.empty() && (ReaderPriority || write_waiters_.empty())) {
     assert(
-        state_ == State::WRITE_LOCKED && readers_ == 0 &&
+        (slock.state() & kWriteLocked) &&
+        ((slock.state() >> kReadersShift) == 0) &&
         "read waiters can only accumulate while write locked");
-    state_ = State::READ_LOCKED;
-    readers_ = read_waiters_.size();
+    slock.state() &= ~kWriteLocked;
+    slock.state() += read_waiters_.size() * kReadersInc;
 
     MutexWaiterList waiters_to_wake = std::move(read_waiters_);
-    guard.unlock();
+    slock.unlock();
 
     while (!waiters_to_wake.empty()) {
       MutexWaiter& to_wake = waiters_to_wake.front();
@@ -397,39 +516,45 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
     return;
   }
 
-  if (readers_ == 0) {
+  if ((slock.state() >> kReadersShift) == 0) {
     if (!write_waiters_.empty()) {
       assert(read_waiters_.empty() || !ReaderPriority);
-      state_ = State::WRITE_LOCKED;
+      assert(slock.state() & kHasWriteWaiters);
+      slock.state() |= kWriteLocked;
 
       // Wake a single writer (after releasing the spin lock)
       MutexWaiter& to_wake = write_waiters_.front();
       write_waiters_.pop_front();
-      guard.unlock();
+      if (write_waiters_.empty()) {
+        slock.state() &= ~kHasWriteWaiters;
+      }
+      slock.unlock();
       to_wake.wake();
       return;
     }
 
-    verify_unlocked_properties();
-    state_ = State::UNLOCKED;
+    slock.state() &= ~kWriteLocked;
+    verify_unlocked_properties(slock);
     return;
   }
 
-  assert(state_ == State::READ_LOCKED);
+  assert((slock.state() >> kReadersShift) > 0);
 }
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
-  std::unique_lock guard{lock_};
-  assert(state_ == State::WRITE_LOCKED && readers_ == 0);
-  state_ = State::READ_LOCKED;
-  readers_ += 1;
+  StateLock slock{state_};
+  assert(
+      (slock.state() & kWriteLocked) &&
+      ((slock.state() >> kReadersShift) == 0));
+  slock.state() &= ~kWriteLocked;
+  slock.state() += kReadersInc;
 
   if (!read_waiters_.empty()) {
-    readers_ += read_waiters_.size();
+    slock.state() += read_waiters_.size() * kReadersInc;
 
     MutexWaiterList waiters_to_wake = std::move(read_waiters_);
-    guard.unlock();
+    slock.unlock();
 
     while (!waiters_to_wake.empty()) {
       MutexWaiter& to_wake = waiters_to_wake.front();

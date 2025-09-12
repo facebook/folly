@@ -33,7 +33,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
-#include <folly/coro/AwaitImmediately.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/CurrentExecutor.h>
 #include <folly/coro/Invoke.h>
@@ -49,6 +48,7 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/MustUseImmediately.h>
 #include <folly/lang/SafeAlias-fwd.h>
 #include <folly/result/result.h>
 #include <folly/result/try.h>
@@ -56,8 +56,7 @@
 
 #if FOLLY_HAS_COROUTINES
 
-namespace folly {
-namespace coro {
+namespace folly::coro {
 
 template <typename T = void>
 class Task;
@@ -148,7 +147,7 @@ class TaskPromiseBase {
 
   template <
       typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -162,7 +161,7 @@ class TaskPromiseBase {
   }
   template <
       typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable awaitable) {
     bypassExceptionThrowing_ =
         bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
@@ -173,14 +172,15 @@ class TaskPromiseBase {
         executor_.get_alias(),
         folly::coro::co_withCancellation(
             cancelToken_,
-            mustAwaitImmediatelyUnsafeMover(std::move(awaitable))())));
+            folly::ext::must_use_immediately_unsafe_mover(
+                std::move(awaitable))())));
   }
 
   template <typename Awaitable>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
     return await_transform(
-        mustAwaitImmediatelyUnsafeMover(awaitable.unwrap())());
+        folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());
   }
 
   auto await_transform(co_current_executor_t) noexcept {
@@ -208,6 +208,8 @@ class TaskPromiseBase {
   // `TaskPromise`s, and not just `TaskPromiseBase` descendants.  We use a
   // private tag to let `TaskWrapper` call them without becoming a `friend`.
   auto& scopeExitRef(TaskPromisePrivate) { return scopeExit_; }
+  // FIXME: `result/coro.h` checks if this overload is callable to decide when
+  // something is a task-promise.  A second use-case would merit a concept.
   auto& continuationRef(TaskPromisePrivate) { return continuation_; }
   // Unlike `getExecutor()`, does not copy an atomic.
   auto& executorRef(TaskPromisePrivate) { return executor_; }
@@ -355,14 +357,17 @@ void co_withExecutor();
 // This CPO deliberately does NOT use `tag_invoke`, but rather reuses the
 // `co_withExecutor` name as the ADL implementation, just like `co_viaIfAsync`.
 // The reason is that `tag_invoke()` would plumb through `Awaitable&&` instead
-// of `Awaitable`, but `must_await_immediately_v` types require by-value.
+// of `Awaitable`, but `folly::ext::must_use_immediately_v` types require
+// by-value.
 struct WithExecutorFunction {
   template <typename Awaitable>
   // Pass `awaitable` by-value, since `&&` would break immediate types
   auto operator()(Executor::KeepAlive<> executor, Awaitable awaitable) const
       FOLLY_DETAIL_FORWARD_BODY(co_withExecutor(
           std::move(executor),
-          mustAwaitImmediatelyUnsafeMover(std::move(awaitable))()))
+          // NOLINTNEXTLINE(facebook-folly-coro-temporary-by-ref)
+          folly::ext::must_use_immediately_unsafe_mover(
+              std::move(awaitable))()))
 };
 } // namespace adl
 
@@ -370,9 +375,6 @@ struct WithExecutorFunction {
 
 // Semi-awaitables like `Task` should use this CPO to attach executors:
 //   auto taskWithExec = co_withExecutor(std::move(exec), std::move(task));
-//
-// Prefer this over the legacy `scheduleOn()` method, because it's safe for
-// both immediately-awaitable (`NowTask`) and movable (`Task`) tasks.
 FOLLY_DEFINE_CPO(detail::adl::WithExecutorFunction, co_withExecutor)
 
 /// Represents an allocated but not yet started coroutine that has already
@@ -435,7 +437,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   /// This starts execution of the Task on the bound executor, and call the
   /// passed callback upon completion. The callback takes a Try<T> which
   /// represents either th value returned by the Task on success or an
-  /// exeception thrown by the Task
+  /// exception thrown by the Task
   /// @param tryCallback a function that takes in a Try<T>
   /// @param cancelToken a CancelationToken object
   template <typename F>
@@ -695,10 +697,9 @@ class FOLLY_NODISCARD TaskWithExecutor {
     auto [task, taskExecutor] = std::move(taskWithExecutor).unwrap();
     return ViaIfAsyncAwaitable<TaskWithExecutor>(
         std::move(executor),
-        [](Task<T> t) -> Task<T> {
+        co_withExecutor(std::move(taskExecutor), [](Task<T> t) -> Task<T> {
           co_yield co_result(co_await co_awaitTry(std::move(t)));
-        }(std::move(task))
-                             .scheduleOn(std::move(taskExecutor)));
+        }(std::move(task))));
   }
 
   friend TaskWithExecutor co_withCancellation(
@@ -713,11 +714,10 @@ class FOLLY_NODISCARD TaskWithExecutor {
     return std::move(task);
   }
 
-  NoOpMover<TaskWithExecutor> getUnsafeMover(ForMustAwaitImmediately) && {
-    return NoOpMover{std::move(*this)};
-  }
-
   using folly_private_task_without_executor_t = Task<T>;
+  // See comment in `Task`, or use `safe_task_with_executor` instead.
+  template <safe_alias>
+  using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
  private:
   friend class Task<T>;
@@ -738,11 +738,11 @@ class FOLLY_NODISCARD TaskWithExecutor {
 /// You can only co_await a Task from within another Task, in which case it
 /// is implicitly bound to the same executor as the parent Task.
 ///
-/// Alternatively, you can explicitly provide an executor by calling the
-/// task.scheduleOn(executor) method, which will return a new not-yet-started
-/// TaskWithExecutor that can be co_awaited anywhere and that will automatically
-/// schedule the coroutine to start executing on the bound executor when it
-/// is co_awaited.
+/// Alternatively, you can explicitly provide an executor by calling
+/// `co_withExecutor(executor, task())`, which will return a not-yet-started
+/// `TaskWithExecutor` that can be `co_await`ed anywhere and that will
+/// automatically schedule the coroutine to start executing on the bound
+/// executor when it is `co_await`ed.
 ///
 /// Within the body of a Task's coroutine, executor binding to the parent
 /// executor is maintained by implicitly transforming all 'co_await expr'
@@ -775,6 +775,15 @@ class FOLLY_CORO_TASK_ATTRS Task {
     coro_.promise().executor_ = std::move(e);
   }
 
+  // `co_withExecutor` implementation detail -- this works around the fact that
+  // not all compilers consider the hidden friend `co_withExecutor` to be a
+  // friend of `TaskWithExecutor`, and I found no uniform way to add the
+  // friendship without making it non-hidden.  Try folding back into
+  // `co_withExecutor` in 2027 or so, to see if the old compiler issue is gone.
+  TaskWithExecutor<T> asTaskWithExecutor() && {
+    return TaskWithExecutor<T>{std::exchange(coro_, {})};
+  }
+
  public:
   Task(const Task& t) = delete;
 
@@ -804,14 +813,13 @@ class FOLLY_CORO_TASK_ATTRS Task {
   /// bound to an executor
   friend TaskWithExecutor<T> co_withExecutor(
       Executor::KeepAlive<> executor, Task task) noexcept {
-    return std::move(task).scheduleOn(std::move(executor));
+    task.setExecutor(std::move(executor));
+    DCHECK(task.coro_);
+    return std::move(task).asTaskWithExecutor();
   }
-  [[deprecated(
-      "Legacy form, prefer `co_withExecutor(exec, std::move(task))`.")]]
+  [[deprecated("Legacy form, prefer `co_withExecutor(exec, yourTask())`.")]]
   TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
-    setExecutor(std::move(executor));
-    DCHECK(coro_);
-    return TaskWithExecutor<T>{std::exchange(coro_, {})};
+    return co_withExecutor(std::move(executor), std::move(*this));
   }
 
   /// Converts a Task into a SemiFuture object.
@@ -830,12 +838,13 @@ class FOLLY_CORO_TASK_ATTRS Task {
 
           auto sf = p.getSemiFuture();
 
-          std::move(task).scheduleOn(executor).startInlineImpl(
-              [promise = std::move(p)](Try<StorageType>&& result) mutable {
-                promise.setTry(std::move(result));
-              },
-              folly::CancellationToken{},
-              returnAddress);
+          co_withExecutor(executor, std::move(task))
+              .startInlineImpl(
+                  [promise = std::move(p)](Try<StorageType>&& result) mutable {
+                    promise.setTry(std::move(result));
+                  },
+                  folly::CancellationToken{},
+                  returnAddress);
 
           return sf;
         });
@@ -863,11 +872,15 @@ class FOLLY_CORO_TASK_ATTRS Task {
         invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
   }
 
-  NoOpMover<Task> getUnsafeMover(ForMustAwaitImmediately) && {
-    return NoOpMover{std::move(*this)};
-  }
-
   using PrivateAwaiterTypeForTests = Awaiter;
+  // Use `safe_task` instead of `Task` to move tasks into other safe coro APIs.
+  //
+  // User-facing stuff from `Task.h` can trivially include unsafe aliasing, the
+  // `folly::coro` docs include hundreds of words of pitfalls.  The intent here
+  // is to catch people accidentally passing `Task`s into safer primitives, and
+  // breaking their memory-safety guarantees.
+  template <safe_alias>
+  using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
  private:
   friend class detail::TaskPromiseBase;
@@ -981,7 +994,7 @@ Task<T> makeErrorTask(exception_wrapper ew) {
 /// Make a Task out of a Try.
 /// @tparam T the type of the value wrapped by the Try
 /// @param t the Try to convert into a Task
-/// @returns a Task that will yield the Try's value or exeception.
+/// @returns a Task that will yield the Try's value or exception.
 template <class T>
 Task<drop_unit_t<T>> makeResultTask(Try<T> t) {
   co_yield co_result(std::move(t));
@@ -994,21 +1007,6 @@ detail::TaskPromiseCrtpBase<Promise, T>::get_return_object() noexcept {
       coroutine_handle<Promise>::from_promise(*static_cast<Promise*>(this))};
 }
 
-} // namespace coro
-
-// Use `SafeTask` instead of `Task` to move tasks into other safe coro APIs.
-//
-// User-facing stuff from `Task.h` can trivially include unsafe aliasing,
-// the `folly::coro` docs include hundreds of words of pitfalls.  The intent
-// here is to catch people accidentally passing `Task`s into safer
-// primitives, and breaking their memory-safety guarantees.
-template <typename T>
-struct safe_alias_of<::folly::coro::TaskWithExecutor<T>>
-    : safe_alias_constant<safe_alias::unsafe> {};
-template <typename T>
-struct safe_alias_of<::folly::coro::Task<T>>
-    : safe_alias_constant<safe_alias::unsafe> {};
-
-} // namespace folly
+} // namespace folly::coro
 
 #endif // FOLLY_HAS_COROUTINES

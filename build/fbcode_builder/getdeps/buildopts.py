@@ -21,6 +21,9 @@ from .manifest import ContextGenerator
 from .platform import get_available_ram, HostType, is_windows
 
 
+CYGWIN_TMP = "c:\\cygwin\\tmp"
+
+
 def detect_project(path):
     repo_type, repo_root = containing_repo_type(path)
     if repo_type is None:
@@ -144,25 +147,43 @@ class BuildOptions(object):
             # On Windows, the compiler is not available in the PATH by
             # default so we need to run the vcvarsall script to populate the
             # environment. We use a glob to find some version of this script
-            # as deployed with Visual Studio 2017.  This logic can also
-            # locate Visual Studio 2019 but note that at the time of writing
-            # the version of boost in our manifest cannot be built with
-            # VS 2019, so we're effectively tied to VS 2017 until we upgrade
-            # the boost dependency.
-            for year in ["2017", "2019"]:
-                vcvarsall += glob.glob(
-                    os.path.join(
-                        os.environ["ProgramFiles(x86)"],
-                        "Microsoft Visual Studio",
-                        year,
-                        "*",
-                        "VC",
-                        "Auxiliary",
-                        "Build",
-                        "vcvarsall.bat",
+            # as deployed with Visual Studio.
+            if len(vcvarsall) == 0:
+                # check the 64 bit installs
+                for year in ["2022"]:
+                    vcvarsall += glob.glob(
+                        os.path.join(
+                            os.environ.get("ProgramFiles", "C:\\Program Files"),
+                            "Microsoft Visual Studio",
+                            year,
+                            "*",
+                            "VC",
+                            "Auxiliary",
+                            "Build",
+                            "vcvarsall.bat",
+                        )
                     )
+
+                # then the 32 bit ones
+                for year in ["2019", "2017"]:
+                    vcvarsall += glob.glob(
+                        os.path.join(
+                            os.environ["ProgramFiles(x86)"],
+                            "Microsoft Visual Studio",
+                            year,
+                            "*",
+                            "VC",
+                            "Auxiliary",
+                            "Build",
+                            "vcvarsall.bat",
+                        )
+                    )
+            if len(vcvarsall) == 0:
+                raise Exception(
+                    "Could not find vcvarsall.bat. Please install Visual Studio."
                 )
             vcvars_path = vcvarsall[0]
+            print(f"Using vcvarsall.bat from {vcvars_path}", file=sys.stderr)
 
         self.vcvars_path = vcvars_path
 
@@ -582,9 +603,18 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
                         "so that I can store build products somewhere sane"
                     )
                 )
-            scratch_dir = os.path.join(
-                os.environ["DISK_TEMP"], "fbcode_builder_getdeps"
-            )
+
+            disk_temp = os.environ["DISK_TEMP"]
+            if is_windows() and os.path.exists(CYGWIN_TMP):
+                # prefer the cygwin tmp dir, as its less likely to have a tmp cleaner
+                # that removes extracted prior dated source files
+                print(
+                    f"Using {CYGWIN_TMP} instead of DISK_TEMP {disk_temp} for scratch dir",
+                    file=sys.stderr,
+                )
+                disk_temp = CYGWIN_TMP
+
+            scratch_dir = os.path.join(disk_temp, "fbcode_builder_getdeps")
         if not scratch_dir:
             try:
                 scratch_dir = (

@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Transform-inl.h>
+#include <folly/coro/Transform-inl.h> // @shim

@@ -62,8 +62,8 @@
 #cmakedefine HAVE_VSNPRINTF_ERRORS 1
 
 #cmakedefine FOLLY_HAVE_LIBUNWIND 1
-#cmakedefine FOLLY_HAVE_DWARF 1
-#cmakedefine FOLLY_HAVE_ELF 1
+#cmakedefine01 FOLLY_HAVE_DWARF
+#cmakedefine01 FOLLY_HAVE_ELF
 #cmakedefine FOLLY_HAVE_SWAPCONTEXT 1
 #cmakedefine FOLLY_HAVE_BACKTRACE 1
 #cmakedefine FOLLY_USE_SYMBOLIZER 1
@@ -71,12 +71,12 @@
 
 #cmakedefine FOLLY_HAVE_SHADOW_LOCAL_WARNINGS 1
 
-#cmakedefine FOLLY_HAVE_LIBLZ4 1
-#cmakedefine FOLLY_HAVE_LIBLZMA 1
-#cmakedefine FOLLY_HAVE_LIBSNAPPY 1
-#cmakedefine FOLLY_HAVE_LIBZ 1
-#cmakedefine FOLLY_HAVE_LIBZSTD 1
-#cmakedefine FOLLY_HAVE_LIBBZ2 1
+#cmakedefine01 FOLLY_HAVE_LIBLZ4
+#cmakedefine01 FOLLY_HAVE_LIBLZMA
+#cmakedefine01 FOLLY_HAVE_LIBSNAPPY
+#cmakedefine01 FOLLY_HAVE_LIBZ
+#cmakedefine01 FOLLY_HAVE_LIBZSTD
+#cmakedefine01 FOLLY_HAVE_LIBBZ2
 
 #cmakedefine01 FOLLY_LIBRARY_SANITIZE_ADDRESS
 

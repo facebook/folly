@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/observer/detail/ObserverManager.h>
+#include <folly/observer/detail/ObserverManager.h> // @shim

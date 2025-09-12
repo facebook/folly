@@ -27,7 +27,7 @@ namespace folly {
 class EventBaseManager;
 template <class Iter>
 class Range;
-typedef Range<const char*> StringPiece;
+using StringPiece = Range<const char*>;
 
 /**
  * ScopedEventBaseThread is a helper class that starts a new std::thread running

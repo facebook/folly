@@ -357,7 +357,6 @@ fbcode_target(
     deps = [
         "//folly:benchmark",
         "//folly:conv",
-        "//folly:cpp_attributes",
         "//folly/container:foreach",
         "//folly/lang:to_ascii",
     ],
@@ -763,6 +762,7 @@ fbcode_target(
     name = "fmt_utility_test",
     srcs = ["FmtUtilityTest.cpp"],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly:fmt_utility",
     ],
 )
@@ -1165,7 +1165,6 @@ fbcode_target(
         "//folly:memory",
         "//folly:string",
         "//folly/lang:keep",
-        "//folly/memory:arena",
         "//folly/portability:asm",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -1233,6 +1232,7 @@ fbcode_target(
     headers = [],
     labels = ["heavyweight"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         ":deterministic_schedule",
         "//folly:format",
         "//folly:memory",
@@ -1423,7 +1423,6 @@ fbcode_target(
         "//folly:benchmark",
         "//folly:portability",
         "//folly:random",
-        "//folly/container:foreach",
     ],
     external_deps = [
         "glog",
@@ -1468,7 +1467,6 @@ fbcode_target(
     },
     deps = [
         "fbsource//third-party/range-v3:range-v3",
-        "//folly:cpp_attributes",
         "//folly:memory",
         "//folly:range",
         "//folly/container:span",
@@ -1989,7 +1987,6 @@ fbcode_target(
     headers = [],
     default_strip_mode = "full",
     deps = [
-        "//folly:cpp_attributes",
         "//folly:scope_guard",
         "//folly:traits",
         "//folly/portability:gtest",

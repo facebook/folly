@@ -16,12 +16,16 @@
 
 #pragma once
 
+#include <folly/Chrono.h>
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/io/async/NotificationQueue.h>
+#include <folly/portability/GFlags.h>
 #include <folly/python/Weak.h>
+
+FOLLY_GFLAGS_DECLARE_uint32(folly_asyncio_executor_drive_time_slice_ms);
 
 namespace folly {
 namespace python {
@@ -99,20 +103,67 @@ class NotificationQueueAsyncioExecutor
       public SequencedExecutor {
  public:
   using Func = folly::Func;
+  using Clock = folly::chrono::coarse_steady_clock;
+
+  NotificationQueueAsyncioExecutor() noexcept
+      : driveTimeSlice_(getDefaultTimeSlice()) {}
+  explicit NotificationQueueAsyncioExecutor(
+      std::chrono::milliseconds driveTimeSlice) noexcept
+      : driveTimeSlice_(driveTimeSlice) {}
+
+  struct Stats {
+    size_t driveCount{0};
+  };
 
   void add(Func func) override { queue_.putMessage(std::move(func)); }
 
   int fileno() const { return consumer_.getFd(); }
 
+  /**
+   * Drive does work while messages remain in the queue
+   * for time slice duration.
+   *
+   * This ensures a healthy compromise between spending too many resources
+   * going back and forth between Python EventLoop & AsyncioExecutor,
+   * while still ensuring that we are properly interleaving Native & Python
+   * work.
+   *
+   * This is inspired from the same logic in EventBase
+   * (see setLoopCallbacksTimeslice)
+   */
   void drive() noexcept override {
-    consumer_.consume([&](Func&& func) {
-      invokeCatchingExns(
-          "NotificationQueueExecutor: task", std::exchange(func, {}));
-    });
+    ++stats_.driveCount;
+
+    // Reset current context on scope exit
+    RequestContextSaverScopeGuard ctxGuard;
+    auto deadline = Clock::now() + driveTimeSlice_;
+    // Do-while so we process at least 1 task to make forward progress
+    // (even if time_slice is set to 0).
+    do {
+      // Defined in scope, to ensure it's destroyed immediatly,
+      // while in the right request context
+      Func func;
+      // Note: tryConsume calls RequestContext::setContext().
+      // Doing this under a RequestContextSaverScopeGuard instead of a
+      // per-callback RequestContextScopeGuard to avoid switching context back
+      // and forth when consecutive callbacks have the same context.
+      if (!queue_.tryConsume(func)) {
+        break;
+      }
+      invokeCatchingExns("NotificationQueueExecutor: task", std::move(func));
+    } while (Clock::now() <= deadline);
   }
 
+  const Stats& stats() const { return stats_; }
+
+ private:
   folly::NotificationQueue<Func> queue_;
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
+
+  static std::chrono::milliseconds getDefaultTimeSlice();
+  std::chrono::milliseconds driveTimeSlice_{0};
+
+  Stats stats_;
 }; // NotificationQueueAsyncioExecutor
 
 } // namespace python

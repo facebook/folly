@@ -44,7 +44,7 @@ struct TestTraits<std::string> {
 
 template <class QueueType, size_t Size, bool Pop = false>
 struct PerfTest {
-  typedef typename QueueType::value_type T;
+  using T = typename QueueType::value_type;
 
   explicit PerfTest() : queue_(Size), done_(false) {}
 
@@ -75,7 +75,7 @@ struct PerfTest {
   }
 
   void consumer() {
-    if /* constexpr */ (Pop) {
+    if constexpr (Pop) {
       while (!done_) {
         if (queue_.frontPtr()) {
           queue_.popFront();
@@ -112,7 +112,7 @@ void perfTestType(const char* type) {
 
 template <class QueueType, size_t Size, bool Pop>
 struct CorrectnessTest {
-  typedef typename QueueType::value_type T;
+  using T = typename QueueType::value_type;
 
   explicit CorrectnessTest() : queue_(Size), done_(false) {
     const size_t testSize = traits_.limit();

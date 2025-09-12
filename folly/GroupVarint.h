@@ -442,8 +442,8 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
   static const uint64_t kMask[];
 };
 
-typedef GroupVarint<uint32_t> GroupVarint32;
-typedef GroupVarint<uint64_t> GroupVarint64;
+using GroupVarint32 = GroupVarint<uint32_t>;
+using GroupVarint64 = GroupVarint<uint64_t>;
 
 /**
  * Simplify use of GroupVarint* for the case where data is available one
@@ -456,8 +456,8 @@ typedef GroupVarint<uint64_t> GroupVarint64;
 template <class T, class Output>
 class GroupVarintEncoder {
  public:
-  typedef GroupVarint<T> Base;
-  typedef T type;
+  using Base = GroupVarint<T>;
+  using type = T;
 
   explicit GroupVarintEncoder(Output out) : out_(out), count_(0) {}
 
@@ -521,8 +521,8 @@ class GroupVarintEncoder {
 template <typename T>
 class GroupVarintDecoder {
  public:
-  typedef GroupVarint<T> Base;
-  typedef T type;
+  using Base = GroupVarint<T>;
+  using type = T;
 
   GroupVarintDecoder() = default;
 
@@ -622,8 +622,8 @@ class GroupVarintDecoder {
   size_t remaining_;
 };
 
-typedef GroupVarintDecoder<uint32_t> GroupVarint32Decoder;
-typedef GroupVarintDecoder<uint64_t> GroupVarint64Decoder;
+using GroupVarint32Decoder = GroupVarintDecoder<uint32_t>;
+using GroupVarint64Decoder = GroupVarintDecoder<uint64_t>;
 
 } // namespace folly
 

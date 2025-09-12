@@ -18,8 +18,8 @@ folly::coro::Task<int> taskSlow43() {
 
 int main() {
   ...
-  CHECK_EQ(43, folly::coro::blockingWait(taskSlow43().scheduleOn(
-                   folly::getGlobalCPUExecutor().get())));
+  CHECK_EQ(43, folly::coro::blockingWait(co_withExecutor(
+      folly::getGlobalCPUExecutor(), taskSlow43(), taskSlow43())));
   ...
 }
 ```
@@ -75,7 +75,7 @@ folly::coro::Task<int> task43() {
 ## Starting a coroutine
 Calling a `folly::coro::Task`-coroutine function captures the arguments, but doesn't start executing the coroutine immediately. Instead the coroutine is lazily started when you `co_await` the task.
 
-Alternatively, you can start executing a coroutine from a normal function by attaching a `folly::Executor` with `scheduleOn()` and either calling `start()` or using `folly::coro::blockingWait()`.
+Alternatively, you can start executing a coroutine from a normal function by attaching a `folly::Executor` via `co_withExecutor()` and either calling `start()` or using `folly::coro::blockingWait()`.
 ```c++
 folly::coro::Task<void> checkArg(int arg42) {
   CHECK_EQ(42, arg42);
@@ -87,12 +87,13 @@ void runCoroutine1() {
   // coroutine arguments are captured here, not when we start the coroutine
   auto task = checkArg(arg42);
   arg42 = 43;
-  folly::coro::blockingWait(std::move(task).scheduleOn(folly::getCPUExecutor().get()));
+  folly::coro::blockingWait(co_withExecutor(
+      folly::getCPUExecutor(), std::move(task)));
 }
 
 void runCoroutine2() {
-  folly::SemiFuture<folly::Unit> f =
-    checkArg(42).scheduleOn(folly::getCPUExecutor().get()).start();
+  folly::SemiFuture<folly::Unit> f = co_withExecutor(
+      folly::getCPUExecutor(), checkArg(42)).start();
 }
 ```
 
@@ -111,7 +112,7 @@ folly::coro::Task<int> task42Slow() {
 }
 ```
 
-By default, when a `folly::coro::Task` is awaited within the context of another `Task` it inherits the executor from the awaiting coroutine. If you want to run a child coroutine on a different executor then you can call `.scheduleOn()` to explicitly specify an alternative executor.
+By default, when a `folly::coro::Task` is awaited within the context of another `Task` it inherits the executor from the awaiting coroutine. If you want to run a child coroutine on a different executor then you can call `co_withExecutor()` to explicitly specify an alternative executor.
 ```c++
 folly::coro::Task<void> foo() {
   co_await folly::futures::sleep(std::chrono::seconds{1});
@@ -124,7 +125,7 @@ folly::coro::Task<void> bar(folly::CPUThreadPoolExecutor* otherExecutor) {
 
   // Launches foo() on 'otherExecutor' and when it's done resumes this
   // coroutine on whatever executor bar() was launched on.
-  co_await foo().scheduleOn(otherExecutor);
+  co_await co_withExecutor(otherExecutor, foo());
 }
 ```
 

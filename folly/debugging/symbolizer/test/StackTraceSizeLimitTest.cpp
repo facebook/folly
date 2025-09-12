@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/StackTrace.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/debugging/symbolizer/StackTrace.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/SimpleLoopController.h>
 #include <folly/init/Init.h>
@@ -80,10 +80,16 @@ TEST(StackTraceSizeLimitTest, FiberLimit) {
       t(fBaseline, 0);
       t(fStack, 0);
       t(fHeap, 0);
+    } else if (folly::kIsSanitizeThread) {
+      t(fBaseline, 3700);
+      t(fStack, 10000);
+      // "Typical memory overhead introduced by ThreadSanitizer is about
+      // 5x-10x." - LLVM ThreadSanitizer Documentation
+      t(fHeap, 5'632);
     } else {
       t(fBaseline, 3700);
       t(fStack, 10000);
-      t(fHeap, 5000);
+      t(fHeap, 3'840);
     }
   } else {
     if (folly::kIsSanitizeThread) {

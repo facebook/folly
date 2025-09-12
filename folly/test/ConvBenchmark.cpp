@@ -23,7 +23,6 @@
 #include <boost/lexical_cast.hpp>
 
 #include <folly/Benchmark.h>
-#include <folly/CppAttributes.h>
 #include <folly/container/Foreach.h>
 #include <folly/lang/ToAscii.h>
 

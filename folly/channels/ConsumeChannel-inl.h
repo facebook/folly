@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <folly/Executor.h>
 #include <folly/Format.h>
 #include <folly/IntrusiveList.h>
@@ -43,8 +44,10 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
         cancelSource_(folly::CancellationSource::invalid()) {}
 
   void start(std::optional<detail::ReceiverQueue<TValue>> buffer) {
-    runCoroutineWithCancellation(processAllAvailableValues(std::move(buffer)))
-        .scheduleOn(executor_)
+    co_withExecutor(
+        executor_,
+        runCoroutineWithCancellation(
+            processAllAvailableValues(std::move(buffer))))
         .start();
   }
 
@@ -60,8 +63,8 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
    * Called when the channel we are listening to has an update.
    */
   void consume(ChannelBridgeBase*) override {
-    runCoroutineWithCancellation(processAllAvailableValues())
-        .scheduleOn(executor_)
+    co_withExecutor(
+        executor_, runCoroutineWithCancellation(processAllAvailableValues()))
         .start();
   }
 
@@ -70,9 +73,10 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
    * is destroyed).
    */
   void canceled(ChannelBridgeBase*) override {
-    runCoroutineWithCancellation(
-        processReceiverCancelled(true /* fromHandleDestruction */))
-        .scheduleOn(executor_)
+    co_withExecutor(
+        executor_,
+        runCoroutineWithCancellation(
+            processReceiverCancelled(true /* fromHandleDestruction */)))
         .start();
   }
 
@@ -180,7 +184,7 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
     if (retVal.template hasException<folly::OperationCancelled>()) {
       co_return false;
     } else if (retVal.hasException()) {
-      LOG(FATAL) << folly::sformat(
+      LOG(FATAL) << fmt::format(
           "Encountered exception from callback when consuming channel of "
           "type {}: {}",
           typeid(TValue).name(),

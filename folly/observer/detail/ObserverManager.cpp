@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/observer/detail/ObserverManager.h>
 
 #include <future>
@@ -64,7 +65,7 @@ class ObserverManager::UpdatesManager::CurrentQueueProcessor {
     for (int32_t i = 0; i < FLAGS_observer_manager_pool_size; ++i) {
       threads_.emplace_back([this, i]() {
         folly::setThreadName(
-            folly::sformat("{}{}", kObserverManagerThreadNamePrefix, i));
+            fmt::format("{}{}", kObserverManagerThreadNamePrefix, i));
         ObserverManager::inManagerThread_ = true;
 
         while (true) {
@@ -108,7 +109,7 @@ class ObserverManager::UpdatesManager::NextQueueProcessor {
       auto& manager = getInstance();
 
       folly::setThreadName(
-          folly::sformat("{}NQ", kObserverManagerThreadNamePrefix));
+          fmt::format("{}NQ", kObserverManagerThreadNamePrefix));
 
       Function<Core::Ptr()> queueCoreFunc;
 

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#define FOLLY_PYTHON_EXECUTOR_DETAIL_DEFS
 #include <folly/python/executor.h>
 #include <folly/python/import.h>
 
@@ -21,8 +22,17 @@ namespace folly {
 namespace python {
 
 namespace executor_detail {
-folly::Function<AsyncioExecutor*(bool)> get_running_executor;
-folly::Function<int(PyObject*, AsyncioExecutor*)> set_executor_for_loop;
+
+AsyncioExecutor* (*get_running_executor)(int) = nullptr;
+int (*set_executor_for_loop)(PyObject*, AsyncioExecutor*) = nullptr;
+
+void FOLLY_PYTHON_EXECUTOR_API assign_funcs(
+    AsyncioExecutor* (*_get_running_executor)(int),
+    int (*_set_executor_for_loop)(PyObject*, AsyncioExecutor*)) {
+  get_running_executor = _get_running_executor;
+  set_executor_for_loop = _set_executor_for_loop;
+}
+
 } // namespace executor_detail
 
 int import_folly_executor_impl() {
@@ -40,7 +50,7 @@ int import_folly_executor_impl() {
 FOLLY_CONSTINIT static import_cache import_folly_executor{
     import_folly_executor_impl, "folly.executor"};
 
-folly::Executor* getExecutor() {
+FOLLY_PYTHON_EXECUTOR_API folly::Executor* getExecutor() {
   if (!isLinked()) {
     // Python isn't even linked
     return nullptr;
@@ -51,7 +61,8 @@ folly::Executor* getExecutor() {
       false); // TODO: fried set this to true
 }
 
-int setExecutorForLoop(PyObject* loop, AsyncioExecutor* executor) {
+FOLLY_PYTHON_EXECUTOR_API int setExecutorForLoop(
+    PyObject* loop, AsyncioExecutor* executor) {
   if (!isLinked()) {
     // Python isn't even linked
     return -2;

@@ -94,7 +94,7 @@ TEST(ArenaSmartPtr, uniquePtrSysarena) {
 
 template <typename Allocator>
 void shared_ptr_test(Allocator& allocator) {
-  typedef std::shared_ptr<Foo> ptr_type;
+  using ptr_type = std::shared_ptr<Foo>;
 
   global_counter counter;
   EXPECT_EQ(counter.count(), 0);

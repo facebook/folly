@@ -39,11 +39,14 @@ void sleepMs(uint64_t ms) {
 template <typename T>
 class SerialExecutorTest : public testing::Test {};
 
-using SerialExecutorTypes = ::testing::Types<
-    folly::SerialExecutor,
-    folly::SerialExecutorWithLgSegmentSize<5>,
-    folly::SmallSerialExecutor>;
+using SerialExecutorTypes = ::testing::Types<folly::SerialExecutor>;
 TYPED_TEST_SUITE(SerialExecutorTest, SerialExecutorTypes);
+
+TYPED_TEST(SerialExecutorTest, Accessors) {
+  folly::CPUThreadPoolExecutor parent{1};
+  auto executor = TypeParam::create(&parent);
+  EXPECT_EQ(&parent, executor->parent().get());
+}
 
 template <class SerialExecutorType>
 void simpleTest(folly::Executor& parent) {

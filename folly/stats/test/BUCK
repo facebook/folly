@@ -17,9 +17,9 @@ non_fbcode_target(
     # ],
     deps = [
         "fbsource//xplat/folly:benchmark",
-        "fbsource//xplat/folly:portability_gflags",
-        "fbsource//xplat/folly:stats_digest_builder",
-        "fbsource//xplat/folly:stats_tdigest",
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/stats:digest_builder",
+        "fbsource//xplat/folly/stats:tdigest",
     ],
 )
 

@@ -35,7 +35,7 @@ class ProducerFixture : public Test {
     return consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
-        [=](Try<int> resultTry) -> folly::coro::Task<bool> {
+        [=, this](Try<int> resultTry) -> folly::coro::Task<bool> {
           onNext_(std::move(resultTry));
           co_return true;
         });
@@ -99,10 +99,11 @@ TEST_F(ProducerFixture, KeepAliveExists_DelaysDestruction) {
         bool& destructed)
         : Producer<int>(std::move(sender), std::move(executor)),
           destructed_(destructed) {
-      folly::coro::co_invoke(
-          [keepAlive = getKeepAlive(), future = std::move(future)]() mutable
-          -> folly::coro::Task<void> { co_await std::move(future); })
-          .scheduleOn(getExecutor())
+      co_withExecutor(
+          getExecutor(),
+          folly::coro::co_invoke(
+              [keepAlive = getKeepAlive(), future = std::move(future)]() mutable
+              -> folly::coro::Task<void> { co_await std::move(future); }))
           .start();
     }
 

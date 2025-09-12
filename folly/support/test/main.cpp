@@ -92,7 +92,7 @@ int main() {
   F14VectorSet<std::string> s_vec = {"foo", "bar", "baz"};
   F14FastSet<std::string> s_fvec = {"foo", "bar", "baz"};
   F14FastSet<int> s_fval = {42, 43, 44};
-  typedef F14FastSet<int> F14FastSetTypedef;
+  using F14FastSetTypedef = F14FastSet<int>;
   F14FastSetTypedef s_fval_typedef = {45, 46, 47};
 
   const F14FastSet<int>& const_ref = s_fval;

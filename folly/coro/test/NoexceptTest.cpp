@@ -18,6 +18,7 @@
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Noexcept.h>
 #include <folly/coro/safe/NowTask.h>
+#include <folly/coro/safe/SafeTask.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -26,7 +27,8 @@ namespace folly::coro {
 template <typename Awaitable>
 auto co_fatalOnThrow(Awaitable awaitable) {
   return detail::NoexceptAwaitable<Awaitable, terminateOnCancel>(
-      mustAwaitImmediatelyUnsafeMover(std::move(awaitable))());
+      // NOLINTNEXTLINE(facebook-folly-coro-temporary-by-ref)
+      folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))());
 }
 
 // Check `await_result_t` for `NoexceptAwaitable`-wrapped awaitables.
@@ -39,7 +41,7 @@ static_assert(
 static_assert(std::is_same_v<
               int,
               await_result_t<decltype(co_fatalOnThrow(
-                  FOLLY_DECLVAL(NowTaskWithExecutor<int>)))>>);
+                  FOLLY_DECLVAL(now_task_with_executor<int>)))>>);
 
 // Check whether `semi_await_result_t` is available for various value
 // categories.  This is part of verifying that `NoexceptAwaitable` correctly
@@ -55,15 +57,15 @@ static_assert(test_semi_await_result_v<Task<int>&&>);
 
 using co_fatalOnThrow_of_Task =
     decltype(co_fatalOnThrow(FOLLY_DECLVAL(Task<int>)));
-using co_fatalOnThrow_of_NowTask =
-    decltype(co_fatalOnThrow(FOLLY_DECLVAL(NowTask<int>)));
+using co_fatalOnThrow_of_now_task =
+    decltype(co_fatalOnThrow(FOLLY_DECLVAL(now_task<int>)));
 
 static_assert(test_semi_await_result_v<co_fatalOnThrow_of_Task, int>);
 static_assert(!test_semi_await_result_v<co_fatalOnThrow_of_Task&, int>);
 static_assert(test_semi_await_result_v<co_fatalOnThrow_of_Task&&, int>);
-static_assert(test_semi_await_result_v<co_fatalOnThrow_of_NowTask, int>);
-static_assert(!test_semi_await_result_v<co_fatalOnThrow_of_NowTask&, int>);
-static_assert(!test_semi_await_result_v<co_fatalOnThrow_of_NowTask&&, int>);
+static_assert(test_semi_await_result_v<co_fatalOnThrow_of_now_task, int>);
+static_assert(!test_semi_await_result_v<co_fatalOnThrow_of_now_task&, int>);
+static_assert(!test_semi_await_result_v<co_fatalOnThrow_of_now_task&&, int>);
 
 // Check that `noexcept_awaitable_v` is set as expected (via `co_awaitTry` and
 // `NoexceptAwaitable`), and propagates even when wrapped.
@@ -78,7 +80,7 @@ static_assert(
 struct MyErr : std::exception {};
 
 template <typename TaskT>
-NowTask<void> checkFatalOnThrow() {
+now_task<void> checkFatalOnThrow() {
   auto coThrow = []() -> TaskT {
     throw MyErr{};
     co_return;
@@ -93,13 +95,14 @@ NowTask<void> checkFatalOnThrow() {
   // exception would fatal before getting to the `co_awaitTry`, and it shouldn't
   // compile since `NoexceptAwaiter` lacks `await_resume_try`.
   //
-  // NB: If your metaprogramming task requires this for uniformity, you can of
-  // course make it work, and adjust the test to be `EXPECT_DEATH`.
-  static_assert(detail::is_awaitable_try<decltype(co_viaIfAsync(
-                    FOLLY_DECLVAL(Executor::KeepAlive<>), coThrow()))>);
-  static_assert(
-      !detail::is_awaitable_try<decltype(co_viaIfAsync(
-          FOLLY_DECLVAL(Executor::KeepAlive<>), co_fatalOnThrow(coThrow())))>);
+  // NB: If your metaprogramming task requires this for uniformity, the good
+  // path forward would be to ignore legacy `Try` and to instead add
+  // `await_resume_result` returning `value_only_result`.  This way, you get
+  // uniform UX without paying for the error path.  If implementing this, might
+  // as well add an `EXPECT_DEATH` test too.
+  static_assert(detail::is_awaitable_try<semi_await_awaitable_t<TaskT>>);
+  static_assert(!detail::is_awaitable_try<
+                semi_await_awaitable_t<decltype(co_fatalOnThrow(coThrow()))>>);
   // (2) The opposite order "just works", no exception is thrown.
   auto ew = (co_await co_fatalOnThrow(co_awaitTry(coThrow()))).exception();
   EXPECT_NE(nullptr, ew.template get_exception<MyErr>());
@@ -127,7 +130,7 @@ NowTask<void> checkFatalOnThrow() {
       !test_semi_await_result_v<decltype(co_nothrow(coThrow())), void>);
   static_assert(!is_awaitable_v<decltype(co_nothrow(coThrow()))>);
   // (2) The other order isn't terribly useful, but it compiles, and works.
-  auto awaitNothrowNoexcept = [&]() -> NowTask<void> {
+  auto awaitNothrowNoexcept = [&]() -> now_task<void> {
     co_await co_nothrow(co_fatalOnThrow(coThrow()));
   };
   EXPECT_DEATH({ blockingWait(awaitNothrowNoexcept()); }, "MyErr");
@@ -138,30 +141,30 @@ CO_TEST(NoexceptTest, Task) {
 }
 
 CO_TEST(NoexceptTest, NowTask) {
-  co_await checkFatalOnThrow<NowTask<void>>();
+  co_await checkFatalOnThrow<now_task<void>>();
 }
 
-// Test that `NowTask` remains immovable when wrapped in `co_fatalOnThrow`.
+// Test that `now_task` remains immovable when wrapped in `co_fatalOnThrow`.
 
 template <typename T>
 using co_fatalOnThrow_result_t = decltype(co_fatalOnThrow(FOLLY_DECLVAL(T)));
 // SFINAE check for whether `T` can be `co_fatalOnThrow`-wrapped.
-// For `NowTask` we expect: prvalue -- yes, ref -- no.
+// For `now_task` we expect: prvalue -- yes, ref -- no.
 template <typename T>
 inline constexpr bool test_make_co_fatalOnThrow_v = std::is_same_v<
     detected_t<co_fatalOnThrow_result_t, T>,
     detail::NoexceptAwaitable<std::remove_reference_t<T>, terminateOnCancel>>;
 
 CO_TEST(NoexceptTest, NowTaskIsImmediate) {
-  auto myNowTask = []() -> NowTask<int> { co_return 5; };
+  auto myNowTask = []() -> now_task<int> { co_return 5; };
   EXPECT_EQ(5, co_await co_fatalOnThrow(myNowTask()));
 
   static_assert(test_make_co_fatalOnThrow_v<Task<int>>);
   static_assert(!test_make_co_fatalOnThrow_v<Task<int>&>);
   static_assert(test_make_co_fatalOnThrow_v<Task<int>&&>);
-  static_assert(test_make_co_fatalOnThrow_v<NowTask<int>>);
-  static_assert(!test_make_co_fatalOnThrow_v<NowTask<int>&>);
-  static_assert(!test_make_co_fatalOnThrow_v<NowTask<int>&&>);
+  static_assert(test_make_co_fatalOnThrow_v<now_task<int>>);
+  static_assert(!test_make_co_fatalOnThrow_v<now_task<int>&>);
+  static_assert(!test_make_co_fatalOnThrow_v<now_task<int>&&>);
 #if 0 // The above asserts approximate this manual test
   auto t = myNowTask();
   co_fatalOnThrow(std::move(t));
@@ -181,75 +184,78 @@ CO_TEST(NoexceptTest, NowTaskIsImmediate) {
 #endif
 }
 
-// Check `awaiter_type_t` and `await_result_t` for `AsNoexceptWithExecutor`
+// Check `awaiter_type_t` and `await_result_t` for `as_noexcept_with_executor`
 
 static_assert(
     std::is_same_v<
         detail::NoexceptAwaiter<TaskWithExecutor<void>, terminateOnCancel>,
-        awaiter_type_t<AsNoexceptWithExecutor<
+        awaiter_type_t<as_noexcept_with_executor<
             TaskWithExecutor<void>,
             terminateOnCancel>>>);
 static_assert(
     std::is_same_v<
-        detail::NoexceptAwaiter<NowTaskWithExecutor<void>, terminateOnCancel>,
-        awaiter_type_t<AsNoexceptWithExecutor<
-            NowTaskWithExecutor<void>,
+        detail::
+            NoexceptAwaiter<now_task_with_executor<void>, terminateOnCancel>,
+        awaiter_type_t<as_noexcept_with_executor<
+            now_task_with_executor<void>,
             terminateOnCancel>>>);
 
 static_assert(
     std::is_same_v<
         float,
-        await_result_t<AsNoexceptWithExecutor<
+        await_result_t<as_noexcept_with_executor<
             TaskWithExecutor<float>,
             terminateOnCancel>>>);
 static_assert(
     std::is_same_v<
         float,
-        await_result_t<AsNoexceptWithExecutor<
-            NowTaskWithExecutor<float>,
+        await_result_t<as_noexcept_with_executor<
+            now_task_with_executor<float>,
             terminateOnCancel>>>);
 
 // Check whether `semi_await_result_t` is available for various value
-// categories.  This is part of verifying that wrapping with `AsNoexcept<>`
+// categories.  This is part of verifying that wrapping with `as_noexcept<>`
 // correctly preserves the immediately-awaitable property.
 
 static_assert(
-    test_semi_await_result_v<AsNoexcept<Task<int>, terminateOnCancel>, int>);
+    test_semi_await_result_v<as_noexcept<Task<int>, terminateOnCancel>, int>);
 static_assert(
-    !test_semi_await_result_v<AsNoexcept<Task<int>, terminateOnCancel>&, int>);
+    !test_semi_await_result_v<as_noexcept<Task<int>, terminateOnCancel>&, int>);
 static_assert(
-    test_semi_await_result_v<AsNoexcept<Task<int>, terminateOnCancel>&&, int>);
-static_assert(
-    test_semi_await_result_v<AsNoexcept<NowTask<int>, terminateOnCancel>, int>);
-static_assert(!test_semi_await_result_v<
-              AsNoexcept<NowTask<int>, terminateOnCancel>&,
+    test_semi_await_result_v<as_noexcept<Task<int>, terminateOnCancel>&&, int>);
+static_assert(test_semi_await_result_v<
+              as_noexcept<now_task<int>, terminateOnCancel>,
               int>);
 static_assert(!test_semi_await_result_v<
-              AsNoexcept<NowTask<int>, terminateOnCancel>&&,
+              as_noexcept<now_task<int>, terminateOnCancel>&,
+              int>);
+static_assert(!test_semi_await_result_v<
+              as_noexcept<now_task<int>, terminateOnCancel>&&,
               int>);
 
-// Check the `noexcept_awaitable_v` trait is applied correctly by `AsNoexcept`
+// Check the `noexcept_awaitable_v` trait is applied correctly by `as_noexcept`
 
 static_assert(!noexcept_awaitable_v<Task<int>>);
-static_assert(noexcept_awaitable_v<AsNoexcept<Task<int>, terminateOnCancel>>);
+static_assert(noexcept_awaitable_v<as_noexcept<Task<int>, terminateOnCancel>>);
 
-static_assert(!noexcept_awaitable_v<NowTask<int>>);
+static_assert(!noexcept_awaitable_v<now_task<int>>);
 static_assert(
-    noexcept_awaitable_v<AsNoexcept<NowTask<int>, terminateOnCancel>>);
+    noexcept_awaitable_v<as_noexcept<now_task<int>, terminateOnCancel>>);
 
 static_assert(!noexcept_awaitable_v<TaskWithExecutor<int>>);
 static_assert(
     noexcept_awaitable_v<
-        AsNoexceptWithExecutor<TaskWithExecutor<int>, terminateOnCancel>>);
+        as_noexcept_with_executor<TaskWithExecutor<int>, terminateOnCancel>>);
 
-static_assert(!noexcept_awaitable_v<NowTaskWithExecutor<int>>);
+static_assert(!noexcept_awaitable_v<now_task_with_executor<int>>);
 static_assert(
-    noexcept_awaitable_v<
-        AsNoexceptWithExecutor<NowTaskWithExecutor<int>, terminateOnCancel>>);
+    noexcept_awaitable_v<as_noexcept_with_executor<
+        now_task_with_executor<int>,
+        terminateOnCancel>>);
 
 template <typename TaskT>
-NowTask<void> checkAsNoexcept() {
-  auto coFatalThrow = []() -> AsNoexcept<TaskT, terminateOnCancel> {
+now_task<void> checkAsNoexcept() {
+  auto coFatalThrow = []() -> as_noexcept<TaskT, terminateOnCancel> {
     throw MyErr{};
     co_return;
   };
@@ -264,14 +270,14 @@ NowTask<void> checkAsNoexcept() {
 CO_TEST(NoexceptTest, AsNoexceptTask) {
   co_await checkAsNoexcept<Task<void>>();
 
-  // We want to check `AsNoexcept` for an `AsyncScope` task because
+  // We want to check `as_noexcept` for an `AsyncScope` task because
   // this uses a different code path to prepare the awaitable, specifically:
   //   co_withAsyncStack(yourTaskWithExecutor)
-  auto coThrowFromScopeTask = []() -> NowTask<void> {
+  auto coThrowFromScopeTask = []() -> now_task<> {
     AsyncScope scope{/*throwOnJoin*/ true};
     scope.add(co_withExecutor(
         co_await co_current_executor,
-        []() -> AsNoexcept<Task<void>, terminateOnCancel> {
+        []() -> as_noexcept<Task<>, terminateOnCancel> {
           throw MyErr{};
           co_return;
         }()));
@@ -281,12 +287,12 @@ CO_TEST(NoexceptTest, AsNoexceptTask) {
 }
 
 CO_TEST(NoexceptTest, AsNoexceptNowTask) {
-  co_await checkAsNoexcept<NowTask<void>>();
+  co_await checkAsNoexcept<now_task<>>();
 }
 
 CO_TEST(NoexceptTest, AsNoexceptOnCancelVoid) {
   bool ran = false;
-  auto coCancelSuccess = [&]() -> AsNoexcept<Task<>> {
+  auto coCancelSuccess = [&]() -> as_noexcept<Task<>> {
     ran = true;
     throw OperationCancelled{}; // pretend to be cancelled
     LOG(FATAL) << "not reached";
@@ -297,13 +303,38 @@ CO_TEST(NoexceptTest, AsNoexceptOnCancelVoid) {
 }
 
 CO_TEST(NoexceptTest, AsNoexceptOnCancelInt) {
-  auto coCancelSuccess = [&]() -> AsNoexcept<Task<int>, OnCancel(42)> {
+  auto coCancelSuccess = [&]() -> as_noexcept<Task<int>, OnCancel(42)> {
     throw OperationCancelled{}; // pretend to be cancelled
     LOG(FATAL) << "not reached";
     co_return -1;
   };
   EXPECT_EQ(42, co_await coCancelSuccess());
 }
+
+// Spot-check the relevant `safe_alias_of` specializations
+static_assert(
+    safe_alias::unsafe_closure_internal ==
+    lenient_safe_alias_of_v<detail::NoexceptAwaitable<
+        safe_task<safe_alias::unsafe_closure_internal>,
+        OnCancel<void>{}>>);
+static_assert(
+    safe_alias::maybe_value ==
+    strict_safe_alias_of_v<detail::NoexceptAwaitable<
+        safe_task<safe_alias::maybe_value>,
+        OnCancel<void>{}>>);
+static_assert(
+    safe_alias::maybe_value ==
+    lenient_safe_alias_of_v<detail::NoexceptAwaitable<
+        safe_task<safe_alias::maybe_value>,
+        OnCancel<void>{}>>);
+static_assert(
+    safe_alias::unsafe_member_internal ==
+    lenient_safe_alias_of_v<
+        as_noexcept<safe_task<safe_alias::unsafe_member_internal>>>);
+static_assert(
+    safe_alias::unsafe_member_internal ==
+    lenient_safe_alias_of_v<as_noexcept_with_executor<
+        safe_task_with_executor<safe_alias::unsafe_member_internal>>>);
 
 } // namespace folly::coro
 

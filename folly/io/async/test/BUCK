@@ -1,13 +1,11 @@
-# @fb-only[end= ]: load("@fbcode//folly/io/async/test/certs:defs.bzl", "alias_pem")
-load("@shim//folly/io/async/test/certs:defs.bzl", "alias_pem") # @oss-only
-
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../../../defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
+load("../../../io/async/test/certs/defs.bzl", "alias_pem")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -31,21 +29,21 @@ non_fbcode_target(
         "certs/tests-key.pem": "//xplat/folly/io/async/test/certs:tests-key.pem",
     },
     deps = [
-        "//xplat/folly:portability_openssl",
+        "fbsource//xplat/folly/portability:openssl",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:sockets",
+        "fbsource//xplat/folly/portability:unistd",
         ":callback_state_enum",
-        "//xplat/folly:experimental_test_util",
         "//xplat/folly:network_address",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_sockets",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_socket",
         "//xplat/folly/io/async:async_ssl_socket",
         "//xplat/folly/io/async:async_transport",
         "//xplat/folly/io/async:server_socket",
         "//xplat/folly/io/async/ssl:ssl_errors",
+        "//xplat/folly/testing:test_util",
     ],
 )
 
@@ -72,8 +70,8 @@ non_fbcode_target(
         "AsyncSignalHandlerTestLib.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":util",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_signal_handler",
     ],
@@ -86,8 +84,8 @@ non_fbcode_target(
     raw_headers = [],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_pipe",
         "//xplat/folly/io/async:async_socket",
@@ -103,16 +101,15 @@ non_fbcode_target(
     ],
     exported_deps = [
         "fbsource//xplat/folly/io:socket_option_map",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:pthread",
+        "fbsource//xplat/folly/portability:sockets",
+        "fbsource//xplat/folly/portability:string",
+        "fbsource//xplat/folly/portability:unistd",
         ":test_ssl_server",
         "//xplat/folly:exception_wrapper",
-        "//xplat/folly:experimental_test_util",
         "//xplat/folly:network_address",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_pthread",
-        "//xplat/folly:portability_sockets",
-        "//xplat/folly:portability_string",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly/fibers:fiber_manager_map",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_socket",
@@ -121,6 +118,7 @@ non_fbcode_target(
         "//xplat/folly/io/async:server_socket",
         "//xplat/folly/io/async/ssl:ssl_errors",
         "//xplat/folly/net:network_socket",
+        "//xplat/folly/testing:test_util",
     ],
 )
 
@@ -141,23 +139,23 @@ non_fbcode_target(
         "certs/tests-key.pem": "//xplat/folly/io/async/test/certs:tests-key.pem",
     },
     deps = [
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/init:init",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/io:socket_option_map",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:openssl",
+        "fbsource//xplat/folly/portability:pthread",
+        "fbsource//xplat/folly/portability:sockets",
+        "fbsource//xplat/folly/portability:string",
+        "fbsource//xplat/folly/portability:unistd",
         ":async_ssl_socket_test_lib",
         ":blocking_socket",
         ":mocks",
         ":test_ssl_server",
         ":tfo_util",
         "//xplat/folly:exception_wrapper",
-        "//xplat/folly:futures_core",
-        "//xplat/folly:init_init",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_openssl",
-        "//xplat/folly:portability_pthread",
-        "//xplat/folly:portability_sockets",
-        "//xplat/folly:portability_string",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:string",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_pipe",
@@ -189,8 +187,8 @@ non_fbcode_target(
     contacts = ["oncall+secure_pipes@xmail.facebook.com"],
     deps = [
         "fbsource//xplat/folly/io:iobuf",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_socket",
         "//xplat/folly/io/async:async_ssl_socket",
@@ -205,9 +203,9 @@ non_fbcode_target(
     ],
     contacts = ["oncall+secure_pipes@xmail.facebook.com"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:openssl",
         "//xplat/folly:conv",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_openssl",
         "//xplat/folly/io/async:async_socket_exception",
         "//xplat/folly/io/async:ssl_context",
         "//xplat/folly/io/async/ssl:ssl_errors",
@@ -221,10 +219,10 @@ non_fbcode_target(
         "AsyncSocketObserverTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":async_socket_test_lib",
         ":mocks",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
     ],
 )
 
@@ -237,11 +235,11 @@ non_fbcode_target(
         "AsyncSocketTest2.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:sockets",
+        "fbsource//xplat/folly/synchronization:rw_spin_lock",
         ":blocking_socket",
         ":callback_state_enum",
         ":conn_callback",
-        "//xplat/folly:portability_sockets",
-        "//xplat/folly:synchronization_rw_spin_lock",
         "//xplat/folly/io/async:async_socket",
         "//xplat/folly/io/async:server_socket",
         "//xplat/folly/net:net_ops",
@@ -260,6 +258,12 @@ non_fbcode_target(
     deps = [
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/io:socket_option_map",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:sockets",
+        "fbsource//xplat/folly/portability:unistd",
+        "fbsource//xplat/folly/synchronization:baton",
+        "fbsource//xplat/folly/synchronization:rw_spin_lock",
         ":async_socket_test_lib",
         ":blocking_socket",
         ":conn_callback",
@@ -267,15 +271,8 @@ non_fbcode_target(
         ":tfo_util",
         ":util",
         "//xplat/folly:exception_wrapper",
-        "//xplat/folly:experimental_test_util",
         "//xplat/folly:network_address",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_sockets",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:random",
-        "//xplat/folly:synchronization_baton",
-        "//xplat/folly:synchronization_rw_spin_lock",
         "//xplat/folly:test_socket_address_test_helper",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_socket",
@@ -285,6 +282,7 @@ non_fbcode_target(
         "//xplat/folly/net:network_socket",
         "//xplat/folly/net/test:mock_net_ops_dispatcher",
         "//xplat/folly/net/test:mock_tcpinfo_dispatcher",
+        "//xplat/folly/testing:test_util",
     ],
 )
 
@@ -295,8 +293,8 @@ non_fbcode_target(
         "AsyncTransportTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:async_socket",
         "//xplat/folly/io/async:async_transport",
     ],
@@ -309,10 +307,10 @@ non_fbcode_target(
         "EventHandlerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:sockets",
         "//xplat/folly:mpmc_queue",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_sockets",
         "//xplat/folly:scope_guard",
         "//xplat/folly/io/async:async_base",
     ],
@@ -325,7 +323,7 @@ non_fbcode_target(
     contacts = ["oncall+thrift@xmail.facebook.com"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/io/async:async_base",
     ],
 )
@@ -341,16 +339,16 @@ non_fbcode_target(
     deps = [
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/io:socket_option_map",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:sockets",
         "//xplat/folly:conv",
-        "//xplat/folly:experimental_test_util",
         "//xplat/folly:network_address",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_sockets",
         "//xplat/folly:string",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_udp_server_socket",
         "//xplat/folly/io/async:async_udp_socket",
+        "//xplat/folly/testing:test_util",
     ],
 )
 
@@ -364,10 +362,10 @@ non_fbcode_target(
     raw_headers = [],
     deps = [
         "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:conv",
         "//xplat/folly:network_address",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_udp_server_socket",
         "//xplat/folly/io/async:async_udp_socket",
@@ -382,10 +380,10 @@ non_fbcode_target(
     raw_headers = [],
     deps = [
         "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:conv",
         "//xplat/folly:network_address",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_udp_server_socket",
         "//xplat/folly/io/async:async_udp_socket",
@@ -431,7 +429,7 @@ non_fbcode_target(
     contacts = ["oncall+thrift@xmail.facebook.com"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/io/async:delayed_destruction",
     ],
 )
@@ -443,8 +441,8 @@ non_fbcode_target(
     contacts = ["oncall+thrift@xmail.facebook.com"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:delayed_destruction",
     ],
 )
@@ -456,8 +454,8 @@ non_fbcode_target(
     contacts = ["oncall+thrift@xmail.facebook.com"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:destructor_check",
     ],
 )
@@ -469,8 +467,8 @@ non_fbcode_target(
     allocator = "malloc",
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gflags",
         "//xplat/folly:benchmark",
-        "//xplat/folly:portability_gflags",
         "//xplat/folly/io/async:async_base",
     ],
 )
@@ -483,16 +481,17 @@ non_fbcode_target(
         "EventBaseTestLib.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:stdlib",
+        "fbsource//xplat/folly/portability:unistd",
+        "fbsource//xplat/folly/synchronization:baton",
         ":util",
-        "//xplat/folly:futures_core",
+        "//xplat/folly:math",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_stdlib",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:scope_guard",
-        "//xplat/folly:synchronization_baton",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/io/async:async_base",
+        "//xplat/folly/system:thread_name",
     ],
 )
 
@@ -505,10 +504,10 @@ non_fbcode_target(
     raw_headers = [],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/portability:gtest",
         ":async_signal_handler_test_lib",
         ":event_base_test_lib",
-        "//xplat/folly:init_init",
-        "//xplat/folly:portability_gtest",
     ],
 )
 
@@ -520,8 +519,8 @@ non_fbcode_target(
     contacts = ["oncall+thrift@xmail.facebook.com"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:synchronization_baton",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly/io/async:async_base",
     ],
 )
@@ -532,11 +531,11 @@ non_fbcode_target(
     srcs = ["EventBaseThreadTest.cpp"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:synchronization_baton",
-        "//xplat/folly:system_thread_name",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly/io/async:event_base_manager",
         "//xplat/folly/io/async:event_base_thread",
+        "//xplat/folly/system:thread_name",
     ],
 )
 
@@ -564,8 +563,8 @@ non_fbcode_target(
     contacts = ["oncall+thrift@xmail.facebook.com"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":util",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:async_base",
     ],
 )
@@ -585,8 +584,8 @@ non_fbcode_target(
     ],
     deps = ["//xplat/folly/io/async:async_socket_exception"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gmock",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_gmock",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:async_socket",
         "//xplat/folly/io/async:async_ssl_socket",
@@ -601,7 +600,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MockAsyncServerSocket.h"],
     exported_deps = [
-        "//xplat/folly:portability_gmock",
+        "fbsource//xplat/folly/portability:gmock",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:server_socket",
     ],
@@ -613,8 +612,8 @@ non_fbcode_target(
     srcs = ["NotificationQueueTest.cpp"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:synchronization_baton",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly/io/async:async_base",
         "//xplat/folly/io/async:scoped_event_base_thread",
     ],
@@ -626,7 +625,7 @@ non_fbcode_target(
     srcs = ["AtomicNotificationQueueTest.cpp"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/io/async:async_base",
     ],
 )
@@ -637,8 +636,8 @@ non_fbcode_target(
     srcs = ["NotificationQueueBenchmark.cpp"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly:benchmark",
-        "//xplat/folly:synchronization_baton",
         "//xplat/folly/io/async:async_base",
     ],
 )
@@ -649,11 +648,11 @@ non_fbcode_target(
     srcs = ["RequestContextTest.cpp"],
     raw_headers = ["RequestContextHelper.h"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//third-party/boost:boost_thread",
         "//xplat/folly:memory",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/io/async:async_base",
+        "//xplat/folly/system:thread_name",
     ],
     exported_deps = ["//xplat/folly/io/async:request_context"],
 )
@@ -677,13 +676,13 @@ non_fbcode_target(
     name = "scoped_event_base_thread_test",
     srcs = ["ScopedEventBaseThreadTest.cpp"],
     deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly:optional",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:synchronization_baton",
-        "//xplat/folly:system_thread_name",
         "//xplat/folly/io/async:event_base_manager",
         "//xplat/folly/io/async:scoped_event_base_thread",
+        "//xplat/folly/system:thread_name",
     ],
 )
 
@@ -693,9 +692,9 @@ non_fbcode_target(
     srcs = ["SocketClient.cpp"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gflags",
         ":blocking_socket",
         "//xplat/folly:exception_wrapper",
-        "//xplat/folly:portability_gflags",
     ],
 )
 
@@ -713,10 +712,10 @@ non_fbcode_target(
         "certs/tests-key.pem": "//xplat/folly/io/async/test/certs:tests-key.pem",
     },
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:openssl",
+        "fbsource//xplat/folly/portability:sockets",
         ":async_ssl_socket_test_lib",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_openssl",
-        "//xplat/folly:portability_sockets",
         "//xplat/folly/net:net_ops",
         "//xplat/folly/net:network_socket",
         "//xplat/folly/ssl:ssl_session",
@@ -729,10 +728,10 @@ non_fbcode_target(
     name = "time_util_test",
     srcs = ["TimeUtilTest.cpp"],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:unistd",
         ":util",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_unistd",
     ],
 )
 
@@ -752,15 +751,15 @@ non_fbcode_target(
         "certs/tests-key.pem": "//xplat/folly/io/async/test/certs:tests-key.pem",
     },
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:openssl",
         ":ssl_util",
-        "//xplat/folly:experimental_test_util",
         "//xplat/folly:file_util",
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_openssl",
         "//xplat/folly/io/async:ssl_context",
         "//xplat/folly/ssl:openssl_cert_utils",
         "//xplat/folly/ssl:openssl_key_utils",
         "//xplat/folly/ssl:openssl_ptr_types",
+        "//xplat/folly/testing:test_util",
     ],
 )
 
@@ -771,8 +770,8 @@ non_fbcode_target(
     contacts = ["oncall+secure_pipes@xmail.facebook.com"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":ssl_util",
-        "//xplat/folly:portability_gtest",
         "//xplat/folly/io/async:ssl_context",
         "//xplat/folly/io/async:ssl_options",
         "//xplat/folly/ssl:openssl_ptr_types",
@@ -805,20 +804,20 @@ non_fbcode_target(
         "Util.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:fcntl",
+        "fbsource//xplat/folly/portability:sockets",
+        "fbsource//xplat/folly/portability:unistd",
         "//third-party/glog:glog",
         "//xplat/folly:conv",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_fcntl",
-        "//xplat/folly:portability_sockets",
-        "//xplat/folly:portability_unistd",
         "//xplat/folly:scope_guard",
         "//xplat/folly:string",
-        "//xplat/folly:system_thread_id",
         "//xplat/folly/net:net_ops",
+        "//xplat/folly/system:thread_id",
     ],
     exported_deps = [
-        "//xplat/folly:portability_gtest",
-        "//xplat/folly:portability_sys_types",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:sys_types",
         "//xplat/folly:test_test_utils",
         "//xplat/folly/net:network_socket",
     ],
@@ -830,8 +829,8 @@ non_fbcode_target(
     srcs = ["WriteChainAsyncTransportWrapperTest.cpp"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/io/async:async_transport",
         "//xplat/folly/io/async:decorated_async_transport_wrapper",
     ],
@@ -843,7 +842,7 @@ non_fbcode_target(
     srcs = ["WriteFlagsTest.cpp"],
     raw_headers = [],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/io/async:async_transport",
     ],
 )
@@ -870,8 +869,8 @@ non_fbcode_target(
     srcs = ["ZeroCopyTest.cpp"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":zero_copy_lib",
-        "//xplat/folly:portability_gtest",
     ],
 )
 
@@ -881,9 +880,9 @@ non_fbcode_target(
     srcs = ["ZeroCopyBenchmark.cpp"],
     raw_headers = [],
     deps = [
+        "fbsource//xplat/folly/portability:gflags",
         ":zero_copy_lib",
         "//xplat/folly:benchmark",
-        "//xplat/folly:portability_gflags",
     ],
 )
 
@@ -977,7 +976,6 @@ fbcode_target(
     emails = ["oncall+secure_pipes@xmail.facebook.com"],
     supports_static_listing = False,
     deps = [
-        "//folly:memory",
         "//folly/io/async:async_base",
         "//folly/io/async:async_pipe",
         "//folly/portability:gtest",
@@ -1073,7 +1071,6 @@ fbcode_target(
     ],
     external_deps = [
         ("glibc", None, "dl"),
-        ("openssl", None, "crypto"),
     ],
 )
 
@@ -1921,6 +1918,7 @@ fbcode_target(
     labels = ["heavyweight"],
     supports_static_listing = False,
     deps = [
+        ":async_socket_test_lib",
         "//folly:file_util",
         "//folly:subprocess",
         "//folly/executors:global_executor",
@@ -2020,6 +2018,7 @@ fbcode_target(
         "//folly/io/async:async_udp_server_socket",
         "//folly/io/async:async_udp_socket",
         "//folly/io/async:io_uring_backend",
+        "//folly/io/async:io_uring_provided_buffer_ring",
         "//folly/io/async/test:async_signal_handler_test_lib",
         "//folly/io/async/test:event_base_test_lib",
         "//folly/portability:gtest",

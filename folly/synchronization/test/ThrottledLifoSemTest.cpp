@@ -152,6 +152,61 @@ TEST(ThrottledLifoSem, MultipleWaiters) {
   }
 }
 
+TEST(ThrottledLifoSem, TryPost) {
+  constexpr size_t kNumWaiters = 64;
+  folly::ThrottledLifoSem sem;
+
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumWaiters; ++i) {
+    threads.emplace_back([&] { sem.wait(); });
+  }
+
+  folly::ThrottledLifoSemTestHelper::spinUntilWaiters(
+      sem, kNumWaiters, /* assertExact */ true);
+
+  constexpr size_t kLastBatchSize = 5;
+  for (size_t i = 0; i < kNumWaiters - kLastBatchSize; ++i) {
+    EXPECT_TRUE(sem.try_post());
+  }
+
+  // Do the last posts as a batch.
+  EXPECT_TRUE(sem.try_post(kLastBatchSize));
+
+  // No more waiters.
+  EXPECT_FALSE(sem.try_post());
+
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  // The failed try_post() did not increment the value.
+  EXPECT_EQ(sem.valueGuess(), 0);
+}
+
+TEST(ThrottledLifoSem, ExcessValueGuess) {
+  constexpr size_t kNumWaiters = 64;
+  // Use a large wakeUpInterval so that waiters do not wake up immediately.
+  folly::ThrottledLifoSem sem({.wakeUpInterval = std::chrono::milliseconds(1)});
+
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumWaiters; ++i) {
+    threads.emplace_back([&] { sem.wait(); });
+  }
+
+  folly::ThrottledLifoSemTestHelper::spinUntilWaiters(
+      sem, kNumWaiters, /* assertExact */ true);
+
+  EXPECT_EQ(sem.excessValueGuess(), -static_cast<int64_t>(kNumWaiters));
+  sem.post(kNumWaiters + 1);
+  EXPECT_EQ(sem.excessValueGuess(), 1);
+  // This should be > 1 but it is time-dependent so we cannot assert it.
+  LOG(INFO) << "Value: " << sem.valueGuess();
+
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
 TEST(ThrottledLifoSem, MPMCStress) {
   // Same number of producers and consumers.
   constexpr size_t kNumThreads = 16;

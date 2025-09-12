@@ -34,10 +34,20 @@ using folly::experimental::EnvironmentState;
 using folly::experimental::MalformedEnvironment;
 using folly::test::EnvVarSaver;
 
-DEFINE_string(
-    env_util_subprocess_binary,
-    "./env_util_subprocess",
-    "Location of the `env_util_subprocess` test helper program");
+static std::map<std::string, std::string> parseEnvVars(std::string_view text) {
+  std::map<std::string, std::string> ret;
+  std::vector<std::string_view> lines;
+  split('\n', text, lines);
+  for (auto line : lines) {
+    if (line.empty()) {
+      continue;
+    }
+    std::vector<std::string> pieces;
+    split('=', line, pieces);
+    ret[std::move(pieces.at(0))] = std::move(pieces.at(1));
+  }
+  return ret;
+}
 
 TEST(EnvVarSaverTest, ExampleNew) {
   auto key = "hahahahaha";
@@ -88,6 +98,9 @@ TEST(EnvironmentStateTest, FailOnEmptyString) {
   PCHECK(0 == putenv(test));
   auto okState = EnvironmentState::fromCurrentEnvironment();
   test[0] = 0;
+  SCOPE_EXIT {
+    test[0] = 'A';
+  };
   EXPECT_THROW(
       EnvironmentState::fromCurrentEnvironment(), MalformedEnvironment);
 }
@@ -118,6 +131,9 @@ TEST(EnvironmentStateTest, FailOnDuplicate) {
   PCHECK(0 == putenv(test));
   auto okState = EnvironmentState::fromCurrentEnvironment();
   test[3] = 'H';
+  SCOPE_EXIT {
+    test[3] = 'G';
+  };
   EXPECT_THROW(
       EnvironmentState::fromCurrentEnvironment(), MalformedEnvironment);
 }
@@ -151,12 +167,13 @@ TEST(EnvironmentStateTest, forSubprocess) {
   std::vector<std::string> expected = {"spork=foon"};
   auto vec = env.toVector();
   EXPECT_EQ(expected, vec);
-  Subprocess subProcess{
-      {fLS::FLAGS_env_util_subprocess_binary},
-      {},
-      fLS::FLAGS_env_util_subprocess_binary.c_str(),
-      &vec};
-  EXPECT_EQ(0, subProcess.wait().exitStatus());
+  auto args = std::vector<std::string>{"/usr/bin/env"};
+  auto opts = Subprocess::Options().pipeStdout();
+  Subprocess subProcess{args, opts, args[0].c_str(), &vec};
+  std::string out;
+  ASSERT_TRUE(readFile(subProcess.stdoutFd(), out));
+  ASSERT_EQ(0, subProcess.wait().exitStatus());
+  EXPECT_EQ("foon", parseEnvVars(out).at("spork"));
 }
 
 TEST(EnvironmentStateTest, forC) {
@@ -164,21 +181,34 @@ TEST(EnvironmentStateTest, forC) {
   (*env)["spork"] = "foon";
   EXPECT_STREQ("spork=foon", env.toPointerArray().get()[0]);
   EXPECT_EQ(nullptr, env.toPointerArray().get()[1]);
-  char* program = &fLS::FLAGS_env_util_subprocess_binary[0];
   pid_t pid;
+  char program[] = "/usr/bin/env";
   auto argV = folly::make_array(program, nullptr);
+  int pipefd[2];
+  pipe(pipefd);
+  posix_spawn_file_actions_t file_actions;
+  posix_spawn_file_actions_init(&file_actions);
+  posix_spawn_file_actions_adddup2(&file_actions, pipefd[1], STDOUT_FILENO);
+  posix_spawn_file_actions_addclose(&file_actions, pipefd[0]);
+  posix_spawn_file_actions_addclose(&file_actions, pipefd[1]);
   PCHECK(
       0 ==
       posix_spawn(
           &pid,
           program,
-          nullptr,
+          &file_actions,
           nullptr,
           argV.data(),
           env.toPointerArray().get()));
+  posix_spawn_file_actions_destroy(&file_actions);
+  close(pipefd[1]);
+  std::string out;
+  ASSERT_TRUE(readFile(pipefd[0], out));
   int result;
   PCHECK(pid == waitpid(pid, &result, 0));
+  close(pipefd[0]);
   EXPECT_EQ(0, result);
+  EXPECT_EQ("foon", parseEnvVars(out).at("spork"));
 }
 
 TEST(EnvVarSaverTest, ExampleDeleting) {

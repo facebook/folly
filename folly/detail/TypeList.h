@@ -177,7 +177,8 @@ class MetaDefer {
 
  public:
   template <class... Us>
-  using apply = _t<If<sizeof(try_<C>(0)) - 1 || sizeof...(Us), Empty, Result>>;
+  using apply =
+      _t<If<sizeof(try_<C>(0)) - 1 || !!sizeof...(Us), Empty, Result>>;
 };
 
 /**

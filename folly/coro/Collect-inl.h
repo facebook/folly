@@ -70,36 +70,41 @@ std::vector<RTask> collectMakeInnerTaskVec(InputRange& awaitables, Make& make) {
   return tasks;
 }
 
-template <typename SemiAwaitable, typename Result>
+template <typename SemiAwaitableMover, typename Result>
 BarrierTask makeCollectAllTryTask(
     Executor::KeepAlive<> executor,
     const CancellationToken& cancelToken,
-    SemiAwaitable&& awaitable,
+    SemiAwaitableMover&& mover,
     Try<Result>& result) {
   try {
     if constexpr (std::is_void_v<Result>) {
       co_await co_viaIfAsync(
           std::move(executor),
           co_withCancellation(
-              cancelToken, static_cast<SemiAwaitable&&>(awaitable)));
+              cancelToken, static_cast<SemiAwaitableMover&&>(mover)()));
       result.emplace();
     } else {
       result.emplace(co_await co_viaIfAsync(
           std::move(executor),
           co_withCancellation(
-              cancelToken, static_cast<SemiAwaitable&&>(awaitable))));
+              cancelToken, static_cast<SemiAwaitableMover&&>(mover)())));
     }
   } catch (...) {
     result.emplaceException(current_exception());
   }
 }
 
-template <typename... SemiAwaitables, size_t... Indices>
-auto collectAllTryImpl(
-    std::index_sequence<Indices...>, SemiAwaitables... awaitables)
-    -> folly::coro::Task<
-        std::tuple<collect_all_try_component_t<SemiAwaitables>...>> {
+template <
+    typename Ret,
+    typename... SemiAwaitables,
+    size_t... Indices,
+    typename... SemiAwaitablesMovers>
+Ret collectAllTryImpl(
+    tag_t<Ret, SemiAwaitables...>,
+    std::index_sequence<Indices...>,
+    SemiAwaitablesMovers... movers) {
   static_assert(sizeof...(Indices) == sizeof...(SemiAwaitables));
+  static_assert(sizeof...(Indices) == sizeof...(SemiAwaitablesMovers));
   if constexpr (sizeof...(SemiAwaitables) == 0) {
     co_return std::tuple<>{};
   } else {
@@ -113,7 +118,7 @@ auto collectAllTryImpl(
         makeCollectAllTryTask(
             executor.get_alias(),
             cancelToken,
-            static_cast<SemiAwaitables&&>(awaitables),
+            static_cast<SemiAwaitablesMovers&&>(movers),
             std::get<Indices>(results))...,
     };
 
@@ -153,7 +158,7 @@ template <
 Ret collectAllImpl(
     tag_t<Ret, SemiAwaitables...>,
     std::index_sequence<Indices...>,
-    // `semiFns()` is the immovable, must-await-immediately `SemiAwaitable`
+    // `semiFns()` is the immovable, must-use-immediately `SemiAwaitable`
     SemiFns... semiFns) {
   if constexpr (sizeof...(SemiAwaitables) == 0) {
     co_return std::tuple<>{};
@@ -164,7 +169,7 @@ Ret collectAllImpl(
 
     const CancellationSource cancelSource;
     const CancellationToken cancelToken =
-        CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+        cancellation_token_merge(parentCancelToken, cancelSource.getToken());
 
     exception_wrapper firstException;
 
@@ -269,11 +274,11 @@ auto makeUnorderedAsyncGeneratorImpl(
         state->pipe.write(std::move(result));
       }(static_cast<decltype(semiAwaitable)&&>(semiAwaitable), sharedState);
       if constexpr (std::is_same_v<AsyncScope, folly::coro::AsyncScope>) {
-        scopeParam.add(
-            co_withCancellation(cancelToken, std::move(task)).scheduleOn(ex));
+        scopeParam.add(co_withExecutor(
+            ex, co_withCancellation(cancelToken, std::move(task))));
       } else {
         static_assert(std::is_same_v<AsyncScope, CancellableAsyncScope>);
-        scopeParam.add(std::move(task).scheduleOn(ex), cancelToken);
+        scopeParam.add(co_withExecutor(ex, std::move(task)), cancelToken);
       }
       ++expected;
       RequestContext::setContext(context);
@@ -319,7 +324,7 @@ auto collectAnyImpl(
       co_await co_current_cancellation_token;
   const CancellationSource cancelSource;
   const CancellationToken cancelToken =
-      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+      cancellation_token_merge(parentCancelToken, cancelSource.getToken());
 
   std::pair<std::size_t, folly::Try<collect_any_component_t<SemiAwaitables...>>>
       firstCompletion;
@@ -351,7 +356,7 @@ auto collectAnyWithoutExceptionImpl(
       co_await co_current_cancellation_token;
   const CancellationSource cancelSource;
   const CancellationToken cancelToken =
-      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+      cancellation_token_merge(parentCancelToken, cancelSource.getToken());
 
   constexpr std::size_t nAwaitables = sizeof...(SemiAwaitables);
   std::atomic<std::size_t> nAwaited = 1;
@@ -379,7 +384,7 @@ auto collectAnyNoDiscardImpl(
     -> folly::coro::Task<
         std::tuple<collect_all_try_component_t<SemiAwaitables>...>> {
   const CancellationSource cancelSource;
-  const CancellationToken cancelToken = CancellationToken::merge(
+  const CancellationToken cancelToken = cancellation_token_merge(
       co_await co_current_cancellation_token, cancelSource.getToken());
 
   std::tuple<collect_all_try_component_t<SemiAwaitables>...> results;
@@ -402,17 +407,18 @@ auto collectAll(SemiAwaitables... awaitables)
   return detail::collectAllImpl(
       tag<detail::CollectAllTask<SemiAwaitables...>, SemiAwaitables...>,
       std::make_index_sequence<sizeof...(SemiAwaitables)>{},
-      mustAwaitImmediatelyUnsafeMover(
+      folly::ext::must_use_immediately_unsafe_mover(
           static_cast<SemiAwaitables&&>(awaitables))...);
 }
 
 template <typename... SemiAwaitables>
-auto collectAllTry(SemiAwaitables&&... awaitables)
-    -> folly::coro::Task<std::tuple<detail::collect_all_try_component_t<
-        remove_cvref_t<SemiAwaitables>>...>> {
+auto collectAllTry(SemiAwaitables... awaitables)
+    -> detail::CollectAllTryTask<SemiAwaitables...> {
   return detail::collectAllTryImpl(
+      tag<detail::CollectAllTryTask<SemiAwaitables...>, SemiAwaitables...>,
       std::make_index_sequence<sizeof...(SemiAwaitables)>{},
-      static_cast<SemiAwaitables&&>(awaitables)...);
+      folly::ext::must_use_immediately_unsafe_mover(
+          static_cast<SemiAwaitables&&>(awaitables))...);
 }
 
 template <
@@ -426,7 +432,7 @@ auto collectAllRange(InputRange awaitables)
         detail::range_reference_t<InputRange>>>> {
   const folly::Executor::KeepAlive<> executor = co_await co_current_executor;
   const CancellationSource cancelSource;
-  const CancellationToken cancelToken = CancellationToken::merge(
+  const CancellationToken cancelToken = cancellation_token_merge(
       co_await co_current_cancellation_token, cancelSource.getToken());
 
   std::vector<detail::collect_all_try_range_component_t<
@@ -498,7 +504,7 @@ template <
 auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
   const folly::Executor::KeepAlive<> executor = co_await co_current_executor;
   const CancellationSource cancelSource;
-  const CancellationToken cancelToken = CancellationToken::merge(
+  const CancellationToken cancelToken = cancellation_token_merge(
       co_await co_current_cancellation_token, cancelSource.getToken());
 
   exception_wrapper firstException;
@@ -618,7 +624,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   const folly::Executor::KeepAlive<> executor = co_await co_current_executor;
   const CancellationSource cancelSource;
-  const CancellationToken cancelToken = CancellationToken::merge(
+  const CancellationToken cancelToken = cancellation_token_merge(
       co_await co_current_cancellation_token, cancelSource.getToken());
 
   exception_wrapper firstException;
@@ -735,7 +741,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       co_await co_current_cancellation_token;
   const CancellationSource cancelSource;
   const CancellationToken cancelToken =
-      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+      cancellation_token_merge(parentCancelToken, cancelSource.getToken());
 
   exception_wrapper firstException;
 
@@ -1072,7 +1078,7 @@ auto collectAnyRange(InputRange awaitables)
       co_await co_current_cancellation_token;
   const CancellationSource cancelSource;
   const CancellationToken cancelToken =
-      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+      cancellation_token_merge(parentCancelToken, cancelSource.getToken());
 
   std::pair<
       size_t,
@@ -1110,7 +1116,7 @@ auto collectAnyWithoutExceptionRange(InputRange awaitables)
       co_await co_current_cancellation_token;
   const CancellationSource cancelSource;
   const CancellationToken cancelToken =
-      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+      cancellation_token_merge(parentCancelToken, cancelSource.getToken());
 
   size_t nAwaitables;
   std::atomic<std::size_t> nAwaited = 1;
@@ -1149,7 +1155,7 @@ auto collectAnyNoDiscardRange(InputRange awaitables)
       co_await co_current_cancellation_token;
   const CancellationSource cancelSource;
   const CancellationToken cancelToken =
-      CancellationToken::merge(parentCancelToken, cancelSource.getToken());
+      cancellation_token_merge(parentCancelToken, cancelSource.getToken());
 
   std::vector<detail::collect_all_try_range_component_t<
       detail::range_reference_t<InputRange>>>

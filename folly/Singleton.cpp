@@ -43,6 +43,8 @@
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__ANDROID__)
 #define FOLLY_SINGLETON_HAVE_DLSYM 1
+#else
+#define FOLLY_SINGLETON_HAVE_DLSYM 0
 #endif
 
 namespace folly {

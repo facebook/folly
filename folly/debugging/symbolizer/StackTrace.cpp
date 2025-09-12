@@ -18,11 +18,10 @@
 #include <folly/tracing/AsyncStack.h>
 
 #include <memory>
+#include <optional>
 
-#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/portability/Config.h>
-#include <folly/tracing/AsyncStack.h>
 
 #if FOLLY_HAVE_LIBUNWIND
 // Must be first to ensure that UNW_LOCAL_ONLY is defined
@@ -31,7 +30,7 @@
 #endif
 
 #if FOLLY_HAVE_BACKTRACE
-#include <execinfo.h>
+#include <execinfo.h> // @donotremove
 #endif
 
 namespace folly {
@@ -87,7 +86,36 @@ constexpr size_t kMaxExpectedStackFrameSize //
 
 #if FOLLY_HAVE_LIBUNWIND
 
-inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
+struct FrameInfo {
+  /// The instruction pointer (ip) of the frame.
+  uintptr_t uip;
+  bool isSignalFrame;
+
+  inline uintptr_t getAdjustedInstructionPointer(
+      std::optional<FrameInfo> frameInfoPrev) const {
+    bool adjustment;
+
+    if constexpr (folly::kIsArchAArch64) {
+      // This ip adjustment logic matches `unw_backtrace`.
+      // https://github.com/libunwind/libunwind/blob/v1.8.2/src/aarch64/Gtrace.c#L554-L555
+      // The ip is adjusted if there wasn't a previous frame,
+      // or if the previous frame was NOT a signal frame.
+      adjustment = !frameInfoPrev || !frameInfoPrev->isSignalFrame;
+    } else {
+      // Use previous instruction in normal (call) frames (because the
+      // return address might not be in the same function for noreturn
+      // functions) but not in signal frames.
+      adjustment = !this->isSignalFrame;
+    }
+
+    return this->uip - adjustment;
+  }
+};
+
+/// Gets the `FrameInfo` from libunwind and stores it in the out ref parameter.
+///
+/// @return true on success and false on error.
+inline bool getFrameInfo(unw_cursor_t* cursor, FrameInfo& frameInfo) {
   unw_word_t uip;
   if (unw_get_reg(cursor, UNW_REG_IP, &uip) < 0) {
     return false;
@@ -96,10 +124,10 @@ inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
   if (r < 0) {
     return false;
   }
-  // Use previous instruction in normal (call) frames (because the
-  // return address might not be in the same function for noreturn functions)
-  // but not in signal frames.
-  ip = uip - (r == 0);
+  bool isSignalFrame = r > 0;
+
+  frameInfo = FrameInfo{uip, isSignalFrame};
+
   return true;
 }
 
@@ -122,9 +150,13 @@ ssize_t getStackTraceInPlace(
   if (unw_init_local(&cursor, &context) < 0) {
     return -1;
   }
-  if (!getFrameInfo(&cursor, *addresses)) {
+  FrameInfo frameInfo;
+  if (!getFrameInfo(&cursor, frameInfo)) {
     return -1;
   }
+
+  std::optional<FrameInfo> frameInfoPrev; // no previous frame, yet.
+  *addresses = frameInfo.getAdjustedInstructionPointer(frameInfoPrev);
   ++addresses;
   size_t count = 1;
   for (; count != maxAddresses; ++count, ++addresses) {
@@ -135,9 +167,11 @@ ssize_t getStackTraceInPlace(
     if (r == 0) {
       break;
     }
-    if (!getFrameInfo(&cursor, *addresses)) {
+    frameInfoPrev = frameInfo;
+    if (!getFrameInfo(&cursor, frameInfo)) {
       return -1;
     }
+    *addresses = frameInfo.getAdjustedInstructionPointer(frameInfoPrev);
   }
   return count;
 }

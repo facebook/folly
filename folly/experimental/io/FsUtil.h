@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/io/FsUtil.h>
+#include <folly/io/FsUtil.h> // @shim

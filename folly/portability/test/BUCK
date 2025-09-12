@@ -22,6 +22,7 @@ fbcode_target(
         ci.windows(ci.mode("fbcode//mode/win")),
     ),
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly/portability:fcntl",
         "//folly/portability:unistd",
     ],
@@ -87,6 +88,7 @@ fbcode_target(
         ci.windows(ci.mode("fbcode//mode/win")),
     ),
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly/portability:unistd",
     ],
 )

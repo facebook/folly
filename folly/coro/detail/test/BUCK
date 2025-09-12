@@ -1,0 +1,20 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "pick_task_wrapper_test",
+    srcs = [
+        "PickTaskWrapperTest.cpp",
+    ],
+    deps = [
+        "//folly:portability",
+        "//folly/coro:noexcept",
+        "//folly/coro/detail:pick_task_wrapper",
+        "//folly/coro/safe:now_task",
+        "//folly/coro/safe:safe_task",
+        "//folly/portability:gtest",
+    ],
+)

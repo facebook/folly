@@ -24,6 +24,7 @@
 #include <folly/Traits.h>
 #include <folly/container/HeterogeneousAccess-fwd.h>
 #include <folly/hash/Hash.h>
+#include <folly/hash/detail/RandomSeed.h>
 #include <folly/hash/rapidhash.h>
 
 namespace folly {
@@ -48,6 +49,10 @@ namespace folly {
 // Additional specializations of HeterogeneousAccess*<T> should go in
 // the header that declares T.  Don't forget to typedef is_transparent to
 // void and folly_is_avalanching to std::true_type in the specializations.
+//
+// Hash values of folly::HeterogeneousAccessHash are not guaranteed to be
+// stable across different program runs, so do not persist hash values
+// anywhere.
 
 template <typename T, typename Enable>
 struct HeterogeneousAccessEqualTo : std::equal_to<T> {};
@@ -119,8 +124,8 @@ struct TransparentRangeHash<char> {
   template <typename U>
   std::size_t operator()(U const& stringish) const {
     auto sp = StringPiece{stringish};
-    return static_cast<std::size_t>(
-        folly::hash::rapidhashNano(sp.data(), sp.size()));
+    return static_cast<std::size_t>(folly::hash::rapidhashNano_with_seed(
+        sp.data(), sp.size(), hash::detail::RandomSeed::seed()));
   }
 };
 

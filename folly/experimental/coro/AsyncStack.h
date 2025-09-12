@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/AsyncStack.h>
+#include <folly/coro/AsyncStack.h> // @shim

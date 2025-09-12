@@ -75,7 +75,7 @@ class AsyncSSLSocketConnector;
  */
 class AsyncSSLSocket : public AsyncSocket {
  public:
-  typedef std::unique_ptr<AsyncSSLSocket, Destructor> UniquePtr;
+  using UniquePtr = std::unique_ptr<AsyncSSLSocket, Destructor>;
   using X509_deleter = folly::static_function_deleter<X509, &X509_free>;
 
   class HandshakeCB {

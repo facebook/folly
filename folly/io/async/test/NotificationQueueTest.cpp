@@ -33,7 +33,7 @@
 using namespace std;
 using namespace folly;
 
-typedef NotificationQueue<int> IntQueue;
+using IntQueue = NotificationQueue<int>;
 
 class QueueConsumer : public IntQueue::Consumer {
  public:

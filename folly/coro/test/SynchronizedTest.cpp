@@ -80,7 +80,7 @@ TEST_F(SynchronizedTest, ConcurrentReads) {
           activeReaders--;
           co_return folly::unit;
         });
-    std::move(readTask).scheduleOn(&executor).start();
+    co_withExecutor(&executor, std::move(readTask)).start();
   }
   executor.drain();
   EXPECT_EQ(activeReaders, kNumReaders);
@@ -93,7 +93,7 @@ TEST_F(SynchronizedTest, ConcurrentReads) {
         writeComplete = true;
         co_return folly::unit;
       });
-  std::move(writeTask).scheduleOn(&executor).start();
+  co_withExecutor(&executor, std::move(writeTask)).start();
 
   // Readers have the lock. Writing doesn't run.
   executor.drain();
@@ -126,7 +126,7 @@ TEST_F(SynchronizedTest, ConcurrentReadsWithUnlock) {
           activeReaders--;
           co_return folly::unit;
         });
-    std::move(readTask).scheduleOn(&executor).start();
+    co_withExecutor(&executor, std::move(readTask)).start();
   }
   executor.drain();
   EXPECT_EQ(activeReaders, kNumReaders);
@@ -138,7 +138,7 @@ TEST_F(SynchronizedTest, ConcurrentReadsWithUnlock) {
         writeComplete = true;
         co_return folly::unit;
       });
-  std::move(writeTask).scheduleOn(&executor).start();
+  co_withExecutor(&executor, std::move(writeTask)).start();
 
   // Readers have the lock. Writing doesn't run.
   executor.drain();
@@ -170,9 +170,9 @@ TEST_F(SynchronizedTest, ThreadSafety) {
     }
   };
 
-  auto f1 = makeTask().scheduleOn(&threadPool).start();
-  auto f2 = makeTask().scheduleOn(&threadPool).start();
-  auto f3 = makeTask().scheduleOn(&threadPool).start();
+  auto f1 = co_withExecutor(&threadPool, makeTask()).start();
+  auto f2 = co_withExecutor(&threadPool, makeTask()).start();
+  auto f3 = co_withExecutor(&threadPool, makeTask()).start();
 
   std::move(f1).get();
   std::move(f2).get();

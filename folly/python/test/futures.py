@@ -15,7 +15,6 @@
 
 # pyre-unsafe
 
-import asyncio
 import unittest
 from sys import platform
 
@@ -23,27 +22,23 @@ from sys import platform
 from folly.python.test import simplebridge
 
 
-class Futures(unittest.TestCase):
-    def test_bridge(self):
+class Futures(unittest.IsolatedAsyncioTestCase):
+    async def test_bridge(self):
         val = 1337
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(simplebridge.get_value_x5(val))
+        res = await simplebridge.get_value_x5(val)
         self.assertEqual(val * 5, res)
 
-    def test_bridge_semifuture(self):
+    async def test_bridge_semifuture(self):
         val = 1337
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(simplebridge.get_value_x5_semifuture(val))
+        res = await simplebridge.get_value_x5_semifuture(val)
         self.assertEqual(val * 5, res)
 
-    def test_bridge_exception(self):
-        loop = asyncio.get_event_loop()
+    async def test_bridge_exception(self):
         with self.assertRaises(ValueError, msg="0 is not allowed"):
-            loop.run_until_complete(simplebridge.get_value_x5(0))
+            await simplebridge.get_value_x5(0)
 
     @unittest.skipIf(platform.startswith("win"), "Broken on Windows.")
-    def test_bridge_fibers(self):
+    async def test_bridge_fibers(self):
         val = 1337
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(simplebridge.get_value_x5_fibers(val))
+        res = await simplebridge.get_value_x5_fibers(val)
         self.assertEqual(val * 5, res)

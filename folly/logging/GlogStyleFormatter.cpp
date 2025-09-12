@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/logging/GlogStyleFormatter.h>
 
 #include <folly/Format.h>
@@ -61,7 +62,7 @@ std::string GlogStyleFormatter::formatMessage(
 
   auto basename = message.getFileBaseName();
   auto header = log_thread_name_
-      ? folly::sformat(
+      ? fmt::format(
             "{}{:02d}{:02d} {:02d}:{:02d}:{:02d}.{:06d} {:5d} [{}] {}:{}{}] ",
             getGlogLevelName(message.getLevel())[0],
             ltime.tm_mon + 1,
@@ -75,7 +76,7 @@ std::string GlogStyleFormatter::formatMessage(
             basename,
             message.getLineNumber(),
             message.getContextString())
-      : folly::sformat(
+      : fmt::format(
             "{}{:02d}{:02d} {:02d}:{:02d}:{:02d}.{:06d} {:5d} {}:{}{}] ",
             getGlogLevelName(message.getLevel())[0],
             ltime.tm_mon + 1,

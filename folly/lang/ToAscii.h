@@ -209,11 +209,8 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
   //  log2 is approx log<2>(v)
   size_t const vlog2 = 64 - static_cast<size_t>(__builtin_clzll(v));
 
-  //  work around msvc warning C4127 (conditional expression is constant)
-  bool false_ = false;
-
   //  handle directly when Base is power-of-two
-  if (false_ || !(Base & (Base - 1))) {
+  if constexpr (!(Base & (Base - 1))) {
     constexpr auto const blog2 = constexpr_log2(Base);
     return vlog2 / blog2 + size_t(vlog2 % blog2 != 0);
   }

@@ -23,6 +23,8 @@
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 
+FOLLY_GFLAGS_DECLARE_int32(folly_iothreadpoolexecutor_max_read_at_once);
+
 namespace folly {
 
 FOLLY_PUSH_WARNING
@@ -81,7 +83,14 @@ class IOThreadPoolExecutorBase
 class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
  public:
   struct Options {
-    Options() : waitForAll(false), enableThreadIdCollection(false) {}
+    Options()
+        : waitForAll(false),
+          enableThreadIdCollection(false),
+          maxReadAtOnce(
+              FLAGS_folly_iothreadpoolexecutor_max_read_at_once < 0
+                  ? decltype(maxReadAtOnce){}
+                  : decltype(maxReadAtOnce){
+                        FLAGS_folly_iothreadpoolexecutor_max_read_at_once}) {}
 
     Options& setWaitForAll(bool b) {
       this->waitForAll = b;
@@ -91,9 +100,14 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
       this->enableThreadIdCollection = b;
       return *this;
     }
+    Options& setMaxReadAtOnce(uint32_t w) {
+      this->maxReadAtOnce = w;
+      return *this;
+    }
 
     bool waitForAll;
     bool enableThreadIdCollection;
+    std::optional<uint32_t> maxReadAtOnce;
   };
 
   explicit IOThreadPoolExecutor(
@@ -159,6 +173,7 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   folly::EventBaseManager* eventBaseManager_;
   std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_;
+  const std::optional<uint32_t> maxReadAtOnce_;
 };
 
 FOLLY_POP_WARNING

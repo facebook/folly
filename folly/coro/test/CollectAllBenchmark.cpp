@@ -52,13 +52,14 @@ folly::coro::Task<void> co_doWork() {
 
 void collectAllCoro(size_t batchSize) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    co_await folly::coro::collectAllRange(
-        [&]() -> folly::coro::Generator<folly::coro::Task<void>&&> {
-          for (size_t i = 0; i < batchSize; ++i) {
-            co_yield co_doWork();
-          }
-        }())
-        .scheduleOn(&executor);
+    co_await co_withExecutor(
+        &executor,
+        folly::coro::collectAllRange(
+            [&]() -> folly::coro::Generator<folly::coro::Task<void>&&> {
+              for (size_t i = 0; i < batchSize; ++i) {
+                co_yield co_doWork();
+              }
+            }()));
   }());
 }
 

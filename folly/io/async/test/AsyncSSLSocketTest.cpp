@@ -18,11 +18,7 @@
 
 #include <fcntl.h>
 #include <signal.h>
-#include <sys/types.h>
 
-#include <openssl/async.h>
-
-#include <fstream>
 #include <iostream>
 #include <list>
 #include <set>
@@ -2796,7 +2792,8 @@ TEST(AsyncSSLSocketTest, TTLSDisabled) {
       std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open();
 
-  EXPECT_EQ(1, globalStatic.ttlsDisabledSet.count(socket->getNetworkSocket()));
+  EXPECT_TRUE(
+      globalStatic.ttlsDisabledSet.contains(socket->getNetworkSocket()));
 
   // write()
   std::array<uint8_t, 128> buf;
@@ -2853,7 +2850,8 @@ TEST(AsyncSSLSocketTest, TTLSDisabledWithTFO) {
   socket->enableTFO();
   socket->open();
 
-  EXPECT_EQ(1, globalStatic.ttlsDisabledSet.count(socket->getNetworkSocket()));
+  EXPECT_TRUE(
+      globalStatic.ttlsDisabledSet.contains(socket->getNetworkSocket()));
 
   // write()
   std::array<uint8_t, 128> buf;

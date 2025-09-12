@@ -31,6 +31,7 @@
 #include <boost/noncopyable.hpp>
 #include <glog/logging.h>
 #include <folly/Portability.h>
+#include <folly/lang/Builtin.h>
 
 namespace folly {
 
@@ -229,7 +230,7 @@ class IntrusiveHeap {
     }
     do {
       Node* grandparent = parent;
-      if (compare(a, b)) {
+      if (FOLLY_BUILTIN_UNPREDICTABLE(compare(a, b))) {
         parent = b;
       } else {
         parent = a;

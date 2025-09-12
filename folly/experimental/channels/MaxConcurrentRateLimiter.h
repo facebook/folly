@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/MaxConcurrentRateLimiter.h>
+#include <folly/channels/MaxConcurrentRateLimiter.h> // @shim

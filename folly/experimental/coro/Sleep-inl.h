@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Sleep-inl.h>
+#include <folly/coro/Sleep-inl.h> // @shim

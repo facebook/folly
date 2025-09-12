@@ -85,33 +85,15 @@ class ThrottledLifoSem {
     DCHECK_EQ(waiters_.size(), 0);
   }
 
-  // Returns true if there are enough waiters to consume the updated value, even
-  // though they may not be awoken immediately. Silently saturates if value is
-  // already 2^32-1.
-  bool post(uint32_t n = 1) {
-    uint32_t newValue;
-    uint64_t oldState = state_.load(std::memory_order_relaxed);
-    uint64_t newState;
-    while (true) {
-      uint64_t oldValue = oldState & kValueMask;
-      newValue = static_cast<uint32_t>(std::min<uint64_t>(
-          oldValue + n, std::numeric_limits<uint32_t>::max()));
-      newState = (oldState & ~kValueMask) | newValue;
-      if (casState(oldState, newState)) {
-        break;
-      }
-    }
+  // If there are enough waiters to consume the updated value (even though they
+  // may not be awoken immediately), updates the value and returns true,
+  // otherwise does nothing. Silently saturates if value is already 2^32-1.
+  bool try_post(uint32_t n = 1) { return postImpl</* kTry */ true>(n); }
 
-    // Avoid trying to wake up a waiter if there is nothing to wake up, or if
-    // there is already an active waking chain. The waking thread will never
-    // release the bit unless the value is 0 (or there is nothing to wake up).
-    const auto numWaiters = newState >> kNumWaitersShift;
-    if (numWaiters > 0 && !(newState & kWakingBit)) {
-      maybeStartWakingChain();
-    }
-
-    return newValue <= numWaiters;
-  }
+  // Always updates the value. Returns true if there are enough waiters to
+  // consume the updated value, even though they may not be awoken
+  // immediately. Silently saturates if value is already 2^32-1.
+  bool post(uint32_t n = 1) { return postImpl</* kTry */ false>(n); }
 
   bool try_wait() { return tryWaitImpl<DecrNumWaiters::Never>(); }
 
@@ -157,6 +139,15 @@ class ThrottledLifoSem {
     return static_cast<uint32_t>(state_.load() & kValueMask);
   }
 
+  // Returns the number of posts that are not assigned yet to existing
+  // waiters. This can be negative if there are more waiters than posts.
+  int64_t excessValueGuess() const {
+    uint64_t state = state_.load(std::memory_order_relaxed);
+    uint64_t value = state & kValueMask;
+    uint64_t numWaiters = state >> kNumWaitersShift;
+    return static_cast<int64_t>(value) - static_cast<int64_t>(numWaiters);
+  }
+
  private:
   friend class ThrottledLifoSemTestHelper;
 
@@ -171,6 +162,36 @@ class ThrottledLifoSem {
         newState,
         std::memory_order_seq_cst,
         std::memory_order_relaxed);
+  }
+
+  template <bool kTry>
+  bool postImpl(uint32_t n) {
+    uint32_t newValue;
+    uint64_t oldState = state_.load(std::memory_order_relaxed);
+    uint64_t newState;
+    uint64_t numWaiters;
+    while (true) {
+      uint64_t oldValue = oldState & kValueMask;
+      newValue = static_cast<uint32_t>(std::min<uint64_t>(
+          oldValue + n, std::numeric_limits<uint32_t>::max()));
+      newState = (oldState & ~kValueMask) | newValue;
+      numWaiters = newState >> kNumWaitersShift;
+      if (kTry && numWaiters < newValue) {
+        return false;
+      }
+      if (casState(oldState, newState)) {
+        break;
+      }
+    }
+
+    // Avoid trying to wake up a waiter if there is nothing to wake up, or if
+    // there is already an active waking chain. The waking thread will never
+    // release the bit unless the value is 0 (or there is nothing to wake up).
+    if (numWaiters > 0 && !(newState & kWakingBit)) {
+      maybeStartWakingChain();
+    }
+
+    return newValue <= numWaiters;
   }
 
   enum DecrNumWaiters { Never, OnSuccess, Always };

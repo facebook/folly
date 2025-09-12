@@ -62,9 +62,9 @@ timed_wait(Awaitable awaitable, Duration duration) {
              awaitable)]() mutable -> Task<semi_await_result_t<Awaitable>> {
           co_return co_await std::move(awaitable);
         });
-    std::move(t).scheduleOn(executor).start(
-        [posted, &baton, &result, sleepFuture = std::move(sleepFuture)](
-            auto&& r) mutable {
+    co_withExecutor(executor, std::move(t))
+        .start([posted, &baton, &result, sleepFuture = std::move(sleepFuture)](
+                   auto&& r) mutable {
           if (!posted->exchange(true, std::memory_order_acq_rel)) {
             result = std::move(r);
             baton.post();

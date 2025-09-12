@@ -16,7 +16,6 @@
 
 #include <folly/functional/protocol.h>
 
-#include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 
 struct ProtocolTest : testing::Test {

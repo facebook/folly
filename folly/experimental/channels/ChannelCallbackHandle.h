@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/ChannelCallbackHandle.h>
+#include <folly/channels/ChannelCallbackHandle.h> // @shim

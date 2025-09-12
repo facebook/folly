@@ -20,8 +20,6 @@
 #include <folly/synchronization/test/FlatCombiningTestHelpers.h>
 #include <folly/system/HardwareConcurrency.h>
 
-#include <glog/logging.h>
-
 using namespace folly::test;
 
 // use option --benchmark to run folly::Benchmark

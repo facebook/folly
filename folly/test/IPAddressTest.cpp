@@ -34,7 +34,7 @@ using namespace folly;
 using namespace std;
 using namespace testing;
 
-typedef std::vector<uint8_t> ByteVector;
+using ByteVector = std::vector<uint8_t>;
 
 struct AddressData {
   std::string address;

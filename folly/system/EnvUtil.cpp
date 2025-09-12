@@ -37,7 +37,7 @@ EnvironmentState EnvironmentState::fromCurrentEnvironment() {
     }
     key = entry.subpiece(0, equalsPosition).toString();
     value = entry.subpiece(equalsPosition + 1).toString();
-    if (data.count(key)) {
+    if (data.contains(key)) {
       throw MalformedEnvironment{to<std::string>(
           "Environment contains duplicate value for \"", key, "\"")};
     }

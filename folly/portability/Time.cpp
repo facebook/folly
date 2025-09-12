@@ -156,17 +156,6 @@ static unsigned_nanos filetimeToUnsignedNanos(FILETIME ft) {
 
   // FILETIMEs are in units of 100ns.
   return unsigned_nanos(i.QuadPart * 100);
-};
-
-static LARGE_INTEGER performanceFrequency() {
-  static auto result = [] {
-    LARGE_INTEGER freq;
-    // On Windows XP or later, this will never fail.
-    BOOL res = QueryPerformanceFrequency(&freq);
-    assert(res);
-    return freq;
-  }();
-  return result;
 }
 
 extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {

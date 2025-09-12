@@ -54,7 +54,7 @@ void testFFS() {
 
 template <class INT>
 void testFLS() {
-  typedef typename std::make_unsigned<INT>::type UINT_T;
+  using UINT_T = typename std::make_unsigned<INT>::type;
   EXPECT_EQ(0, findLastSet(static_cast<INT>(0)));
   size_t bits = std::numeric_limits<UINT_T>::digits;
   for (size_t i = 0; i < bits; i++) {

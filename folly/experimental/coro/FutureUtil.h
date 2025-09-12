@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/FutureUtil.h>
+#include <folly/coro/FutureUtil.h> // @shim

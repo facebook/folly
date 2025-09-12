@@ -26,7 +26,20 @@
 #include <type_traits>
 #include <vector>
 
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+
+extern "C" FOLLY_KEEP uint64_t
+check_folly_xoshiro256pp_64(folly::xoshiro256pp_64& rng) {
+  return rng();
+}
+
+extern "C" FOLLY_KEEP void check_folly_xoshiro256pp_64_fill(
+    folly::xoshiro256pp_64& rng, std::uint64_t* out, size_t len) {
+  while (len--) {
+    *out++ = rng();
+  }
+}
 
 namespace folly {
 namespace {

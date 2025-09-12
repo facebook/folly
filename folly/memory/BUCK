@@ -1,11 +1,11 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../defs.bzl",
     "folly_xplat_library",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -400,7 +400,6 @@ fbcode_target(
     deps = [
         "//folly:conv",
         "//folly:string",
-        "//folly/memory:malloc",
     ],
     exported_deps = [
         "//folly:c_portability",
@@ -439,9 +438,8 @@ fbcode_target(
     allocator = "jemalloc",
     labels = ["oss-broken"],
     deps = [
+        ":jemalloc_huge_page_allocator",
         "//folly/container:f14_hash",
-        "//folly/memory:jemalloc_huge_page_allocator",
-        "//folly/memory:malloc",
         "//folly/portability:gtest",
     ],
 )
@@ -453,9 +451,8 @@ fbcode_target(
     headers = [],
     allocator = "jemalloc",
     deps = [
+        ":jemalloc_nodump_allocator",
         "//folly/io:iobuf",
-        "//folly/memory:jemalloc_nodump_allocator",
-        "//folly/memory:malloc",
         "//folly/portability:gtest",
     ],
 )

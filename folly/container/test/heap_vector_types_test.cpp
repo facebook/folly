@@ -28,7 +28,6 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/small_vector.h>
-#include <folly/sorted_vector_types.h>
 
 using folly::heap_vector_map;
 using folly::heap_vector_set;
@@ -380,9 +379,9 @@ TEST(HeapVectorTypes, MapBadHints) {
 TEST(HeapVectorTypes, FromVector) {
   {
     folly::heap_vector_map<int, float>::container_type vec;
-    vec.push_back(std::make_pair(3, 3.0f));
-    vec.push_back(std::make_pair(1, 1.0f));
-    vec.push_back(std::make_pair(2, 2.0f));
+    vec.emplace_back(3, 3.0f);
+    vec.emplace_back(1, 1.0f);
+    vec.emplace_back(2, 2.0f);
 
     heap_vector_map<int, float> m(std::move(vec));
 
@@ -1252,8 +1251,9 @@ TEST(HeapVectorTypes, TestMapCreationFromVector) {
 
   // test very large vector
   std::vector<std::pair<int, int>> vec2;
-  for (int i = 0; i < 100000; i++)
+  for (int i = 0; i < 100000; i++) {
     vec2.emplace_back(i, i);
+  }
   heap_vector_map<int, int> vmap2(std::move(vec2));
   check_invariant(vmap2);
 }

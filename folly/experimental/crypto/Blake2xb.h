@@ -16,4 +16,4 @@
 
 #pragma once
 
-#include <folly/crypto/Blake2xb.h>
+#include <folly/crypto/Blake2xb.h> // @shim

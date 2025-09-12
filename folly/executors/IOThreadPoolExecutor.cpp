@@ -26,6 +26,11 @@ FOLLY_GFLAGS_DEFINE_bool(
     true,
     "IOThreadPoolExecutor will dynamically create threads");
 
+FOLLY_GFLAGS_DEFINE_int32(
+    folly_iothreadpoolexecutor_max_read_at_once,
+    -1,
+    "IOThreadPoolExecutor will use this value as default for maxReadAtOnce in its event bases, valid values are [0, inf)");
+
 namespace folly {
 
 namespace {
@@ -117,7 +122,8 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
           maxThreads, minThreads, std::move(threadFactory)),
       isWaitForAll_(options.waitForAll),
       nextThread_(0),
-      eventBaseManager_(ebm) {
+      eventBaseManager_(ebm),
+      maxReadAtOnce_(options.maxReadAtOnce) {
   setNumThreads(maxThreads);
   registerThreadPoolExecutor(this);
   if (options.enableThreadIdCollection) {
@@ -217,6 +223,9 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   const auto& ioThread = *thisThread_ =
       std::static_pointer_cast<IOThread>(thread);
   ioThread->eventBase = eventBaseManager_->getEventBase();
+  if (maxReadAtOnce_) {
+    ioThread->eventBase->setMaxReadAtOnce(*maxReadAtOnce_);
+  }
 
   auto tid = folly::getOSThreadID();
   if (threadIdCollector_) {

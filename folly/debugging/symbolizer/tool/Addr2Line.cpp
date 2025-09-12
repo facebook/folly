@@ -26,10 +26,10 @@
 #include <iostream>
 
 #include <folly/Range.h>
-#include <folly/experimental/symbolizer/Dwarf.h>
-#include <folly/experimental/symbolizer/Elf.h>
-#include <folly/experimental/symbolizer/SymbolizedFrame.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/debugging/symbolizer/Dwarf.h>
+#include <folly/debugging/symbolizer/Elf.h>
+#include <folly/debugging/symbolizer/SymbolizedFrame.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/init/Init.h>
 #include <folly/portability/GFlags.h>
 

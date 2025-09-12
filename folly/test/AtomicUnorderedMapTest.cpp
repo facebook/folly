@@ -254,8 +254,8 @@ void contendedRW(
     size_t capacity,
     size_t numThreads,
     size_t readsPerWrite) {
-  typedef std::pair<uint64_t, uint64_t> Key;
-  typedef AtomicUnorderedInsertMap<Key, MutableAtom<uint32_t>, PairHash> Map;
+  using Key = std::pair<uint64_t, uint64_t>;
+  using Map = AtomicUnorderedInsertMap<Key, MutableAtom<uint32_t>, PairHash>;
 
   std::unique_ptr<Map> ptr = {};
   std::atomic<bool> go{false};

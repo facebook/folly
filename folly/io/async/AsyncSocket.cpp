@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/io/async/AsyncSocket.h>
 
 #include <sys/types.h>
@@ -24,7 +25,6 @@
 #include <boost/preprocessor/control/if.hpp>
 
 #include <folly/Exception.h>
-#include <folly/Format.h>
 #include <folly/Portability.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
@@ -57,7 +57,7 @@ class ZeroCopyMMapMemStoreFallback : public ZeroCopyMemStore {
   void put(ZeroCopyMemStore::Entry* /*entry*/) override {}
 };
 
-#if TCP_ZEROCOPY_RECEIVE
+#if defined(TCP_ZEROCOPY_RECEIVE)
 std::unique_ptr<folly::IOBuf> getRXZeroCopyIOBuf(
     ZeroCopyMemStore::EntryPtr&& ptr) {
   auto* entry = ptr.release();
@@ -992,8 +992,9 @@ void AsyncSocket::connect(
       // IP_BIND_ADDRESS_NO_PORT forces the OS to find a unique port relying
       // on only the local tuple. This limits the range of available ephemeral
       // ports.  Using the IP_BIND_ADDRESS_NO_PORT delays assigning a port until
-      // connect expanding the available port range.
-      if (bindAddr.getPort() == 0) {
+      // connect expanding the available port range, unless
+      // enablePortAssignmentOnZero() is called.
+      if (bindAddr.getPort() == 0 && bindAddressNoPort_) {
         if (netops_->setsockopt(
                 fd_, IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, &one, sizeof(one))) {
           auto errnoCopy = errno;
@@ -1696,7 +1697,7 @@ void AsyncSocket::enableByteEvents() {
     // [1]
     // https://github.com/torvalds/linux/commit/b534dc46c8ae0165b1b2509be24dbea4fa9c4011
 
-    while (byteEventsEnabledMaxAttempts++ < SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS) {
+    while (byteEventsEnabledMaxAttempts++ < kMaxAttemptsEnableByteEvents) {
       folly::TcpInfo::LookupOptions options = {};
       options.getMemInfo = true;
       const auto expectTInfoBefore = getTcpInfo(options);
@@ -1756,7 +1757,7 @@ void AsyncSocket::enableByteEvents() {
       }
     }
 
-    if (byteEventsEnabledMaxAttempts > SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS) {
+    if (byteEventsEnabledMaxAttempts > kMaxAttemptsEnableByteEvents) {
       throw AsyncSocketException(
           AsyncSocketException::INTERNAL_ERROR,
           withAddr(
@@ -3081,7 +3082,7 @@ void AsyncSocket::splitIovecArray(
 }
 
 AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
-#if TCP_ZEROCOPY_RECEIVE
+#if defined(TCP_ZEROCOPY_RECEIVE)
   if (zerocopyReadDisabled_) {
     return ReadCode::READ_NOT_SUPPORTED;
   }
@@ -3696,8 +3697,7 @@ void AsyncSocket::timeoutExpired() noexcept {
     if (connectCallback_) {
       AsyncSocketException ex(
           AsyncSocketException::TIMED_OUT,
-          folly::sformat(
-              "connect timed out after {}ms", connectTimeout_.count()));
+          fmt::format("connect timed out after {}ms", connectTimeout_.count()));
       failConnect(__func__, ex);
     } else {
       // we faced a connect error without a connect callback, which could
@@ -3710,7 +3710,7 @@ void AsyncSocket::timeoutExpired() noexcept {
     // a normal write operation timed out
     AsyncSocketException ex(
         AsyncSocketException::TIMED_OUT,
-        folly::sformat("write timed out after {}ms", sendTimeout_));
+        fmt::format("write timed out after {}ms", sendTimeout_));
     failWrite(__func__, ex);
   }
 }

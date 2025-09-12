@@ -21,7 +21,6 @@
 #include <folly/logging/LogConfig.h>
 #include <folly/logging/LogConfigParser.h>
 #include <folly/logging/LoggerDB.h>
-#include <folly/logging/StreamHandlerFactory.h>
 
 namespace folly {
 

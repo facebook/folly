@@ -33,7 +33,7 @@ class ProxyChannelFixture : public Test {
     return consumeChannelWithCallback(
         std::move(receiver),
         &executor_,
-        [=](folly::Try<int> resultTry) -> folly::coro::Task<bool> {
+        [=, this](folly::Try<int> resultTry) -> folly::coro::Task<bool> {
           onNext_(std::move(resultTry));
           co_return true;
         });

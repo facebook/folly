@@ -62,7 +62,7 @@ TEST_F(BatonTest, AwaitBaton) {
   CHECK(!reachedAfterAwait);
 
   ManualExecutor executor;
-  auto f = std::move(t).scheduleOn(&executor).start();
+  auto f = co_withExecutor(&executor, std::move(t)).start();
   executor.drain();
 
   CHECK(reachedBeforeAwait);
@@ -99,8 +99,8 @@ TEST_F(BatonTest, MultiAwaitBaton) {
   coro::Task<void> t2 = makeTask2();
 
   ManualExecutor executor;
-  auto f1 = std::move(t1).scheduleOn(&executor).start();
-  auto f2 = std::move(t2).scheduleOn(&executor).start();
+  auto f1 = co_withExecutor(&executor, std::move(t1)).start();
+  auto f2 = co_withExecutor(&executor, std::move(t2)).start();
   executor.drain();
 
   CHECK(reachedBeforeAwait1);

@@ -410,15 +410,15 @@ jobs:
        path: ${{ steps.paths.outputs.xz_INSTALL }}
        key: ${{ steps.paths.outputs.xz_CACHE_KEY }}-install
     - name: Build folly
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. folly  --project-install-prefix folly:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. folly --project-install-prefix folly:/usr/local
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. folly _artifacts/mac  --project-install-prefix folly:/usr/local --final-install-prefix /usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. folly _artifacts/mac --project-install-prefix folly:/usr/local --final-install-prefix /usr/local
     - uses: actions/upload-artifact@v4
       with:
         name: folly
         path: _artifacts
     - name: Test folly
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. folly  --project-install-prefix folly:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. folly --project-install-prefix folly:/usr/local
     - name: Show disk space at end
       if: always()
       run: df -h

@@ -1,6 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_test")
+load("../../../../defs.bzl", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -10,8 +10,8 @@ non_fbcode_target(
     srcs = ["AsyncFdSocketTest.cpp"],
     contacts = ["oncall+thrift@xmail.facebook.com"],
     deps = [
-        "//xplat/folly:portability_gmock",
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/io/async/fdsock:async_fd_socket",
         "//xplat/folly/io/async/test:async_socket_test_lib",
     ],

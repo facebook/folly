@@ -15,15 +15,18 @@
 import asyncio
 from folly.coro cimport cFollyCoroTask, bridgeCoroTask, bridgeCoroTaskWithCancellation, cFollyCancellationSource
 from folly cimport cFollyTry
-from folly.executor cimport get_executor
+from folly.executor cimport get_executor, cNotificationQueueAsyncioExecutor, cStats
 from libc.stdint cimport uint32_t, uint64_t
 from cpython.ref cimport PyObject
 from cython.operator cimport dereference as deref
+from libcpp.memory cimport unique_ptr, make_unique
 
 cdef extern from "folly/python/test/simplecoro.h" namespace "folly::python::test":
     cdef cFollyCoroTask[uint64_t] coro_getValueX5(uint64_t val)
     cdef cFollyCoroTask[uint64_t] coro_returnFiveAfterCancelled()
     cdef cFollyCoroTask[uint64_t] coro_sleepThenEcho(uint32_t sleep_ms, uint64_t echo_val)
+    cdef cFollyCoroTask[uint64_t] coro_blockingTask(uint32_t block_ms, uint64_t echo_val)
+    cdef cNotificationQueueAsyncioExecutor* getNotificationQueueAsyncioExecutor()
 
 
 def get_value_x5_coro(int val):
@@ -63,6 +66,37 @@ def sleep_then_echo(int sleep_ms, int echo_val):
         <PyObject *>fut
     )
     return fut
+
+
+cdef class ExecutorStats:
+    """Python wrapper for NotificationQueueAsyncioExecutor::Stats."""
+    cdef unique_ptr[cStats] _inner
+
+    @property
+    def drive_count(self):
+        """Number of times the executor's drive() method has been called."""
+        return deref(self._inner).driveCount
+
+
+def blocking_task(int block_ms, int echo_val):
+    loop = asyncio.get_event_loop()
+    fut = loop.create_future()
+    bridgeCoroTask[uint64_t](
+        coro_blockingTask(block_ms, echo_val),
+        handle_uint64_t,
+        <PyObject *>fut
+    )
+    return fut
+
+
+def get_executor_stats():
+    """Get the stats from the current executor."""
+    cdef cNotificationQueueAsyncioExecutor* nq_executor = getNotificationQueueAsyncioExecutor()
+    if nq_executor is NULL:
+        return None
+    stats = ExecutorStats()
+    stats._inner = make_unique[cStats](nq_executor.stats())
+    return stats
 
 
 cdef void handle_uint64_t(cFollyTry[uint64_t]&& res, PyObject* userData):

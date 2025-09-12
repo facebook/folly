@@ -24,6 +24,7 @@
 
 #include <boost/intrusive_ptr.hpp>
 #include <boost/thread/barrier.hpp>
+#include <fmt/format.h>
 
 #include <folly/Format.h>
 #include <folly/Memory.h>
@@ -46,7 +47,7 @@ using std::chrono::milliseconds;
 using std::chrono::seconds;
 using std::chrono::steady_clock;
 
-typedef DeterministicSchedule DSched;
+using DSched = DeterministicSchedule;
 
 template <template <typename> class Atom>
 void run_mt_sequencer_thread(
@@ -402,7 +403,7 @@ struct TryWriteUntilCaller : public WriteMethodCaller<Q> {
     return q.tryWriteUntil(then, i);
   }
   string methodName() override {
-    return folly::sformat(
+    return fmt::format(
         "tryWriteUntil({}ms)",
         std::chrono::duration_cast<milliseconds>(duration_).count());
   }
@@ -474,7 +475,7 @@ string producerConsumerBench(
   uint64_t failures = failed;
   size_t allocated = q.allocatedCapacity();
 
-  return folly::sformat(
+  return fmt::format(
       "{}, {} {} producers, {} consumers => {} nanos/handoff, {} csw / {} "
       "handoff, {} failures, {} allocated",
       qName,
@@ -923,7 +924,7 @@ static void lc_step(int lineno, int what = NOTHING, int what2 = NOTHING) {
 
 template <typename R>
 struct Lifecycle {
-  typedef R IsRelocatable;
+  using IsRelocatable = R;
 
   bool constructed;
 

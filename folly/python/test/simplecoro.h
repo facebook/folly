@@ -18,24 +18,27 @@
 
 #include <chrono>
 #include <cstdint>
+#include <thread>
 
 #include <folly/CancellationToken.h>
 #include <folly/coro/Baton.h>
 #include <folly/coro/Task.h>
 #include <folly/futures/Future.h>
+#include <folly/python/AsyncioExecutor.h>
+#include <folly/python/executor.h>
 
 namespace folly {
 namespace python {
 namespace test {
 
-folly::coro::Task<uint64_t> coro_getValueX5(uint64_t val) {
+inline folly::coro::Task<uint64_t> coro_getValueX5(uint64_t val) {
   if (val == 0) {
     throw std::invalid_argument("0 is not allowed");
   }
   co_return val * 5;
 }
 
-folly::coro::Task<uint64_t> coro_returnFiveAfterCancelled() {
+inline folly::coro::Task<uint64_t> coro_returnFiveAfterCancelled() {
   folly::coro::Baton baton;
   const folly::CancellationToken& ct =
       co_await folly::coro::co_current_cancellation_token;
@@ -44,8 +47,23 @@ folly::coro::Task<uint64_t> coro_returnFiveAfterCancelled() {
   co_return 5;
 }
 
-coro::Task<uint64_t> coro_sleepThenEcho(uint32_t sleepMs, uint64_t echoVal) {
+inline coro::Task<uint64_t> coro_sleepThenEcho(
+    uint32_t sleepMs, uint64_t echoVal) {
   co_await folly::futures::sleep(std::chrono::milliseconds{sleepMs});
+  co_return echoVal;
+}
+
+inline NotificationQueueAsyncioExecutor* getNotificationQueueAsyncioExecutor() {
+  auto* executor = getExecutor();
+  return dynamic_cast<NotificationQueueAsyncioExecutor*>(executor);
+}
+
+inline coro::Task<uint64_t> coro_blockingTask(
+    uint32_t blockMs, uint64_t echoVal) {
+  co_await coro::co_reschedule_on_current_executor;
+  // Block the thread with sleep to simulate blocking work
+  // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
+  std::this_thread::sleep_for(std::chrono::milliseconds{blockMs});
   co_return echoVal;
 }
 

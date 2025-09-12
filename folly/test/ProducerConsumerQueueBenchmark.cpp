@@ -31,11 +31,11 @@ namespace {
 
 using namespace folly;
 
-typedef unsigned int ThroughputType;
-typedef ProducerConsumerQueue<ThroughputType> ThroughputQueueType;
+using ThroughputType = unsigned int;
+using ThroughputQueueType = ProducerConsumerQueue<ThroughputType>;
 
-typedef unsigned long LatencyType;
-typedef ProducerConsumerQueue<LatencyType> LatencyQueueType;
+using LatencyType = unsigned long;
+using LatencyQueueType = ProducerConsumerQueue<LatencyType>;
 
 template <class QueueType>
 struct ThroughputTest {

@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/ProxyChannel-inl.h>
+#include <folly/channels/ProxyChannel-inl.h> // @shim

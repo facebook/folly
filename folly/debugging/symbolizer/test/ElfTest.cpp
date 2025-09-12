@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/Elf.h>
+#include <folly/debugging/symbolizer/Elf.h>
 
+#include <gmock/gmock.h>
 #include <folly/CppAttributes.h>
 #include <folly/FileUtil.h>
+#include <folly/String.h>
 #include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/portability/GTest.h>
 #include <folly/testing/TestUtil.h>
@@ -140,6 +142,8 @@ TEST_F(ElfTest, iterateProgramHeaders) {
   });
   EXPECT_NE(nullptr, phdr);
   EXPECT_GE(phdr->p_filesz, 0);
+  auto body = elfFile_.getSegmentBody(*phdr);
+  EXPECT_EQ(body.size(), phdr->p_filesz);
 }
 
 TEST_F(ElfTest, TinyNonElfFile) {
@@ -179,44 +183,21 @@ TEST_F(ElfTest, FailToOpenLargeFilename) {
   EXPECT_EQ(ElfFile::kSuccess, elfFile->openNoThrow(kDefaultElf));
 }
 
-TEST_F(ElfTest, PosixFadvise) {
-  auto res = elfFile_.posixFadvise(POSIX_FADV_DONTNEED);
-  EXPECT_EQ(0, res.first);
-  EXPECT_STREQ("", res.second);
-}
+TEST(TestUUID, SimpleElf) {
+  auto const file =
+      folly::test::find_resource("folly/debugging/symbolizer/test/simple_elf");
+  EXPECT_TRUE(std::filesystem::exists(file.c_str())) << file.c_str();
+  ElfFile elfFile = ElfFile(file.c_str());
+  auto uuidMaybe = elfFile.getUUID();
+  EXPECT_TRUE(([&]() {
+    return uuidMaybe.hasError()
+        ? testing::AssertionFailure() << uuidMaybe.error()
+        : testing::AssertionSuccess();
+  })());
 
-TEST_F(ElfTest, PosixFadviseOffSetAndLen) {
-  auto posixFadviseCalled = false;
-  elfFile_.iterateSections(
-      [&](const folly::symbolizer::ElfShdr& section) -> bool {
-        if (section.sh_type == SHT_SYMTAB) {
-          posixFadviseCalled = true;
-          auto res = elfFile_.posixFadvise(
-              section.sh_offset, section.sh_size, POSIX_FADV_DONTNEED);
-          EXPECT_EQ(0, res.first);
-          EXPECT_STREQ("", res.second);
-        }
-        return false;
-      });
-  EXPECT_TRUE(posixFadviseCalled);
-}
-
-TEST_F(ElfTest, PosixFadviseNotOpen) {
-  folly::test::TemporaryFile tmpFile;
-  const static folly::StringPiece contents = "!";
-  folly::writeFull(tmpFile.fd(), contents.data(), contents.size());
-
-  ElfFile elfFile;
-  elfFile.openNoThrow(tmpFile.path().c_str());
-  auto res = elfFile.posixFadvise(POSIX_FADV_DONTNEED);
-  EXPECT_EQ(1, res.first);
-  EXPECT_STREQ("file not open", res.second);
-}
-
-TEST_F(ElfTest, PosixFadviseBadAdvice) {
-  auto res = elfFile_.posixFadvise(10000);
-  EXPECT_NE(0, res.first);
-  EXPECT_STREQ("posix_fadvise failed for file", res.second);
+  auto& uuid = uuidMaybe.value();
+  EXPECT_EQ(4, uuid.size());
+  EXPECT_THAT(uuid, ::testing::ElementsAreArray({0xDE, 0xAD, 0xBE, 0xEF}));
 }
 
 #endif

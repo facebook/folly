@@ -1,7 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -33,10 +33,10 @@ non_fbcode_target(
     ],
     deps = [
         "fbsource//third-party/lz4:lz4",
+        "fbsource//xplat/folly/portability:windows",
         ":compression_context_pool_singletons",
         "//third-party/glog:glog",
         "//xplat/folly:conv",
-        "//xplat/folly:portability_windows",
         "//xplat/folly:random",
         "//xplat/folly:scope_guard",
         "//xplat/folly:stop_watch",
@@ -98,8 +98,8 @@ non_fbcode_target(
     raw_headers = ["CompressionContextPoolSingletons.h"],
     deps = ["//xplat/folly:portability"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:config",
         ":compression_context_pool",
-        "//xplat/folly:portability_config",
         "//xplat/folly/memory:malloc",
         "//xplat/third-party/zstd:zstd",
     ],
@@ -139,10 +139,10 @@ non_fbcode_target(
         "Instructions.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:builtins",
         "//third-party/glog:glog",
         "//xplat/folly:cpu_id",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_builtins",
         "//xplat/folly/lang:assume",
     ],
 )
@@ -193,12 +193,12 @@ fbcode_target(
         "//folly:conv",
         "//folly:random",
         "//folly:scope_guard",
-        "//folly:stop_watch",
         "//folly:utility",
         "//folly:varint",
         "//folly/portability:windows",
     ],
     exported_deps = [
+        "fbsource//third-party/zlib:z",
         "fbsource//third-party/zstd:zstd",
         "//folly:memory",
         "//folly:optional",
@@ -212,9 +212,6 @@ fbcode_target(
         "snappy",
         ("bzip2", None, "bz2"),
         ("xz", None, "lzma"),
-    ],
-    exported_external_deps = [
-        ("zlib", None, "z"),
     ],
 )
 

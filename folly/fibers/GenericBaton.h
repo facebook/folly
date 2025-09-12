@@ -23,6 +23,6 @@
 namespace folly {
 namespace fibers {
 
-typedef Baton GenericBaton;
+using GenericBaton = Baton;
 } // namespace fibers
 } // namespace folly

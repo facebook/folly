@@ -1,0 +1,14 @@
+[manifest]
+name = tabulate
+
+[download]
+url = https://github.com/p-ranav/tabulate/archive/refs/tags/v1.5.tar.gz
+sha256 = 16b289f46306283544bb593f4601e80d6ea51248fde52e910cc569ef08eba3fb
+
+[build]
+builder = cmake
+subdir = tabulate-1.5
+
+[cmake.defines]
+tabulate_BUILD_TESTS = OFF
+tabulate_BUILD_SAMPLES = OFF

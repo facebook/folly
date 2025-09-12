@@ -165,25 +165,30 @@ class DiscriminatedPtr {
    *   return the same type (or a static_assert will fire).
    */
   template <typename V>
-  typename dptr_detail::VisitorResult<V, Types...>::type apply(V&& visitor) {
+  _t<dptr_detail::VisitorResult<V, Types...>> apply(V&& visitor) {
     size_t n = index();
     if (n == 0) {
       throw std::invalid_argument("Empty DiscriminatedPtr");
     }
-    return dptr_detail::ApplyVisitor<V, Types...>()(
-        n, std::forward<V>(visitor), ptr());
+    constexpr dptr_detail::ApplyVisitor<Types...> call;
+    return call(n, visitor, ptr());
   }
 
   template <typename V>
-  typename dptr_detail::ConstVisitorResult<V, Types...>::type apply(
-      V&& visitor) const {
+  _t<dptr_detail::ConstVisitorResult<V, Types...>> apply(V&& visitor) const {
     size_t n = index();
     if (n == 0) {
       throw std::invalid_argument("Empty DiscriminatedPtr");
     }
-    return dptr_detail::ApplyConstVisitor<V, Types...>()(
-        n, std::forward<V>(visitor), ptr());
+    constexpr dptr_detail::ApplyConstVisitor<Types...> call;
+    return call(n, visitor, ptr());
   }
+
+  /**
+   * Get the 1-based type index of the type currently stored in this pointer.
+   * Returns 0 if the pointer is empty.
+   */
+  size_t index() const { return data_ >> 48; }
 
  private:
   /**
@@ -191,10 +196,10 @@ class DiscriminatedPtr {
    */
   template <typename T>
   uint16_t typeIndex() const {
-    return uint16_t(dptr_detail::GetTypeIndex<T, Types...>::value);
+    constexpr auto idx = type_pack_find_v<T, Types...>;
+    static_assert(idx < sizeof...(Types));
+    return uint16_t(idx + 1);
   }
-
-  uint16_t index() const { return data_ >> 48; }
   void* ptr() const {
     return reinterpret_cast<void*>(data_ & ((1ULL << 48) - 1));
   }

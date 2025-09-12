@@ -45,7 +45,7 @@ struct ViaFixture : public testing::Test {
         eastExecutor(new ManualExecutor),
         waiter(new ManualWaiter(westExecutor)),
         done(false) {
-    th = std::thread([=] {
+    th = std::thread([=, this] {
       ManualWaiter eastWaiter(eastExecutor);
       while (!done) {
         eastWaiter.drive();
@@ -138,7 +138,7 @@ TEST_F(ViaFixture, chainVias) {
             EXPECT_NE(std::this_thread::get_id(), westThreadId);
             return 1;
           })
-          .thenValue([=](int val) {
+          .thenValue([=, this](int val) {
             return makeFuture(val)
                 .via(westExecutor.get())
                 .thenValue([=](int v) mutable {

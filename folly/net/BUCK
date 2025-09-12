@@ -1,10 +1,10 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../defs.bzl",
     "folly_xplat_library",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -31,7 +31,7 @@ non_fbcode_target(
         "NetworkSocket.h",
     ],
     deps = [
-        "//xplat/folly:portability_windows",
+        "fbsource//xplat/folly/portability:windows",
         "//xplat/folly/net/detail:socket_file_descriptor_map",
     ],
 )
@@ -42,13 +42,6 @@ non_fbcode_target(
     srcs = [
         "NetOps.cpp",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//build_mode:whatsapp": [
-            "-fexceptions",
-            "-frtti",
-        ],
-    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "NetOps.h",
@@ -59,11 +52,11 @@ non_fbcode_target(
         "//xplat/folly/net/detail:socket_file_descriptor_map",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:iovec",
+        "fbsource//xplat/folly/portability:sys_types",
+        "fbsource//xplat/folly/portability:time",
+        "fbsource//xplat/folly/portability:windows",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_iovec",
-        "//xplat/folly:portability_sys_types",
-        "//xplat/folly:portability_time",
-        "//xplat/folly:portability_windows",
         "//xplat/folly/net:network_socket",
     ],
 )
@@ -97,8 +90,8 @@ non_fbcode_target(
         "TcpInfoTypes.h",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:sockets",
         "//third-party/glog:glog",
-        "//xplat/folly:portability_sockets",
     ],
     exported_deps = [
         "//xplat/folly:expected",

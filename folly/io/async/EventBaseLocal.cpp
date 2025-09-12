@@ -19,7 +19,6 @@
 #include <atomic>
 #include <thread>
 
-#include <folly/MapUtil.h>
 #include <folly/Memory.h>
 
 namespace folly {

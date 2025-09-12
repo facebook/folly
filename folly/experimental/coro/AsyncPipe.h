@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/AsyncPipe.h>
+#include <folly/coro/AsyncPipe.h> // @shim

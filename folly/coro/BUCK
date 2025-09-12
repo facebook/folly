@@ -1,7 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -160,9 +160,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AsyncScope.h"],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/portability:source_location",
         "//third-party/glog:glog",
-        "//xplat/folly:futures_core",
-        "//xplat/folly:portability_source_location",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:current_executor",
         "//xplat/folly/experimental/coro:detail_barrier",
@@ -258,27 +258,6 @@ non_fbcode_target(
 
 ### this line is a hint for source control merge
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "await_immediately",
-    headers = ["AwaitImmediately.h"],
-    exported_deps = [
-        "//folly:utility",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "await_immediately",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["AwaitImmediately.h"],
-    exported_deps = [
-        "//xplat/folly:utility",
-    ],
-)
-
-### this line is a hint for source control merge
-
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "await_result",
@@ -323,8 +302,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Baton.h"],
     deps = [
+        "fbsource//xplat/folly/synchronization:atomic_util",
         "//xplat/folly:portability",
-        "//xplat/folly:synchronization_atomic_util",
         "//xplat/folly:try",
         "//xplat/folly/experimental/coro:coroutine",
     ],
@@ -337,7 +316,6 @@ fbcode_target(
     name = "blocking_wait",
     headers = ["BlockingWait.h"],
     exported_deps = [
-        ":await_immediately",
         "//folly:try",
         "//folly/coro:coroutine",
         "//folly/coro:detail_malloc",
@@ -348,6 +326,7 @@ fbcode_target(
         "//folly/coro:with_async_stack",
         "//folly/executors:manual_executor",
         "//folly/fibers:core",
+        "//folly/lang:must_use_immediately",
         "//folly/synchronization:baton",
         "//folly/tracing:async_stack",
     ],
@@ -359,8 +338,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["BlockingWait.h"],
     exported_deps = [
-        ":await_immediately",
-        "//xplat/folly:synchronization_baton",
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly:try",
         "//xplat/folly/executors:manual_executor",
         "//xplat/folly/experimental/coro:coroutine",
@@ -371,6 +349,7 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:via_if_async",
         "//xplat/folly/experimental/coro:with_async_stack",
         "//xplat/folly/fibers:core",
+        "//xplat/folly/lang:must_use_immediately",
         "//xplat/folly/tracing:async_stack",
     ],
 )
@@ -396,7 +375,7 @@ non_fbcode_target(
         "Cleanup.h",
     ],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -428,7 +407,9 @@ fbcode_target(
         "//folly/coro:mutex",
         "//folly/coro:task",
         "//folly/coro:via_if_async",
+        "//folly/coro/detail:pick_task_wrapper",
         "//folly/coro/safe:now_task",
+        "//folly/coro/safe:safe_task",
     ],
 )
 
@@ -447,7 +428,9 @@ non_fbcode_target(
         "//xplat/folly:unit",
         "//xplat/folly/container:access",
         "//xplat/folly/container:iterator",
+        "//xplat/folly/coro/detail:pick_task_wrapper",
         "//xplat/folly/coro/safe:now_task",
+        "//xplat/folly/coro/safe:safe_task",
         "//xplat/folly/experimental/coro:async_generator",
         "//xplat/folly/experimental/coro:async_pipe",
         "//xplat/folly/experimental/coro:async_scope",
@@ -758,6 +741,29 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "error",
+    headers = ["Error.h"],
+    exported_deps = [
+        "//folly:exception_wrapper",
+        "//folly:operation_cancelled",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "error",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Error.h"],
+    exported_deps = [
+        "//xplat/folly:exception_wrapper",
+        "//xplat/folly:operation_cancelled",
+    ],
+)
+
+### this line is a hint for source control merge
+
+fbcode_target(
+    _kind = cpp_library,
     name = "filter",
     headers = [
         "Filter.h",
@@ -807,8 +813,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["FutureUtil.h"],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:cancellation_token",
-        "//xplat/folly:futures_core",
         "//xplat/folly/experimental/coro:baton",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:current_executor",
@@ -864,7 +870,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["GmockHelpers.h"],
     exported_deps = [
-        "//xplat/folly:portability_gmock",
+        "fbsource//xplat/folly/portability:gmock",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:gtest_helpers",
         "//xplat/folly/experimental/coro:result",
@@ -894,7 +900,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["GtestHelpers.h"],
     deps = [
-        "//xplat/folly:portability_gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",  # @manual
         "//xplat/folly/debugging/exception_tracer:smart_exception_tracer",
         "//xplat/folly/experimental/coro:blocking_wait",
@@ -954,7 +960,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Invoke.h"],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:customization_point",
     ],
 )
@@ -1075,6 +1081,7 @@ fbcode_target(
         "//folly/coro:baton",
         "//folly/coro:coroutine",
         "//folly/futures:core",
+        "//folly/lang:safe_alias_fwd",
         "//folly/synchronization:relaxed_atomic",
     ],
 )
@@ -1085,8 +1092,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Promise.h"],
     deps = [
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:cancellation_token",
-        "//xplat/folly:futures_core",
         "//xplat/folly:try",
         "//xplat/folly/experimental/coro:baton",
         "//xplat/folly/experimental/coro:coroutine",
@@ -1097,38 +1104,12 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "ready",
-    headers = ["Ready.h"],
-    exported_deps = [
-        ":result",
-        ":with_async_stack",
-        "//folly:executor",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "ready",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["Ready.h"],
-    exported_deps = [
-        ":result",
-        ":with_async_stack",
-        "//xplat/folly:executor",
-    ],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
     name = "result",
     headers = ["Result.h"],
     exported_deps = [
-        "//folly:exception_wrapper",
-        "//folly:operation_cancelled",
+        ":error",
         "//folly:try",
-        "//folly/result:result",
+        "//folly/result:try",
     ],
 )
 
@@ -1138,10 +1119,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Result.h"],
     exported_deps = [
-        "//xplat/folly:exception_wrapper",
-        "//xplat/folly:operation_cancelled",
+        ":error",
         "//xplat/folly:try",
-        "//xplat/folly/result:result",
+        "//xplat/folly/result:try",
     ],
 )
 
@@ -1229,11 +1209,11 @@ non_fbcode_target(
     exported_deps = [
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:executor",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:scope_guard",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:traits",
         "//xplat/folly/experimental/coro:via_if_async",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:customization_point",
         "//xplat/folly/tracing:async_stack",
@@ -1288,9 +1268,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SharedLock.h"],
     exported_deps = [
+        "fbsource//xplat/folly/synchronization:lock",
         "//third-party/glog:glog",
         "//xplat/folly:portability",
-        "//xplat/folly:synchronization_lock",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:task",
     ],
@@ -1354,8 +1334,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SharedPromise.h"],
     deps = [
+        "fbsource//xplat/folly/futures:core",
         ":promise",
-        "//xplat/folly:futures_core",
         "//xplat/folly:likely",
         "//xplat/folly:small_vector",
         "//xplat/folly:synchronized",
@@ -1389,7 +1369,7 @@ non_fbcode_target(
         "Sleep-inl.h",
     ],
     exported_deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:future_util",
         "//xplat/folly/experimental/coro:task",
@@ -1464,7 +1444,6 @@ fbcode_target(
     name = "task",
     headers = ["Task.h"],
     exported_deps = [
-        ":await_immediately",
         "//folly:cancellation_token",
         "//folly:default_keep_alive_executor",
         "//folly:executor",
@@ -1488,6 +1467,7 @@ fbcode_target(
         "//folly/futures:core",
         "//folly/io/async:request_context",
         "//folly/lang:assume",
+        "//folly/lang:must_use_immediately",
         "//folly/lang:safe_alias_fwd",
         "//folly/result:result",
         "//folly/result:try",
@@ -1504,12 +1484,11 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Task.h"],
     exported_deps = [
-        ":await_immediately",
+        "fbsource//xplat/folly/futures:core",
         "//third-party/glog:glog",
         "//xplat/folly:cancellation_token",
         "//xplat/folly:default_keep_alive_executor",
         "//xplat/folly:executor",
-        "//xplat/folly:futures_core",
         "//xplat/folly:glog",
         "//xplat/folly:portability",
         "//xplat/folly:scope_guard",
@@ -1529,6 +1508,7 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:with_cancellation",
         "//xplat/folly/io/async:request_context",
         "//xplat/folly/lang:assume",
+        "//xplat/folly/lang:must_use_immediately",
         "//xplat/folly/lang:safe_alias_fwd",
         "//xplat/folly/result:result",
         "//xplat/folly/result:try",
@@ -1543,8 +1523,8 @@ fbcode_target(
     name = "task_wrapper",
     headers = ["TaskWrapper.h"],
     exported_deps = [
-        ":await_immediately",
         ":task",
+        "//folly/lang:must_use_immediately",
     ],
 )
 
@@ -1554,8 +1534,8 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["TaskWrapper.h"],
     exported_deps = [
-        ":await_immediately",
         ":task",
+        "//xplat/folly/lang:must_use_immediately",
     ],
 )
 
@@ -1583,7 +1563,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["TimedWait.h"],
     exported_deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:optional",
         "//xplat/folly/experimental/coro:baton",
         "//xplat/folly/experimental/coro:coroutine",
@@ -1610,7 +1590,9 @@ fbcode_target(
         "//folly/coro:task",
         "//folly/coro:traits",
         "//folly/coro:with_cancellation",
+        "//folly/coro/detail:pick_task_wrapper",
         "//folly/coro/safe:now_task",
+        "//folly/coro/safe:safe_task",
         "//folly/futures:core",
     ],
 )
@@ -1624,9 +1606,11 @@ non_fbcode_target(
         "Timeout-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:cancellation_token",
-        "//xplat/folly:futures_core",
+        "//xplat/folly/coro/detail:pick_task_wrapper",
         "//xplat/folly/coro/safe:now_task",
+        "//xplat/folly/coro/safe:safe_task",
         "//xplat/folly/experimental/coro:baton",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:task",
@@ -1754,7 +1738,6 @@ fbcode_target(
     name = "via_if_async",
     headers = ["ViaIfAsync.h"],
     exported_deps = [
-        ":await_immediately",
         "//folly:executor",
         "//folly:traits",
         "//folly/coro:coroutine",
@@ -1764,6 +1747,7 @@ fbcode_target(
         "//folly/coro:with_cancellation",
         "//folly/io/async:request_context",
         "//folly/lang:customization_point",
+        "//folly/lang:must_use_immediately",
         "//folly/lang:safe_alias_fwd",
         "//folly/tracing:async_stack",
     ],
@@ -1778,7 +1762,6 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ViaIfAsync.h"],
     exported_deps = [
-        ":await_immediately",
         "//third-party/glog:glog",
         "//xplat/folly:executor",
         "//xplat/folly:traits",
@@ -1789,6 +1772,7 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:with_cancellation",
         "//xplat/folly/io/async:request_context",
         "//xplat/folly/lang:customization_point",
+        "//xplat/folly/lang:must_use_immediately",
         "//xplat/folly/lang:safe_alias_fwd",
         "//xplat/folly/tracing:async_stack",
     ],
@@ -1816,9 +1800,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["WithAsyncStack.h"],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:traits",
+        "//xplat/folly/functional:invoke",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:customization_point",
         "//xplat/folly/tracing:async_stack",
@@ -1832,10 +1816,10 @@ fbcode_target(
     name = "with_cancellation",
     headers = ["WithCancellation.h"],
     exported_deps = [
-        ":await_immediately",
         "//folly:cancellation_token",
         "//folly/coro:coroutine",
         "//folly/lang:customization_point",
+        "//folly/lang:must_use_immediately",
     ],
 )
 
@@ -1845,9 +1829,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["WithCancellation.h"],
     exported_deps = [
-        ":await_immediately",
         "//xplat/folly:cancellation_token",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/lang:customization_point",
+        "//xplat/folly/lang:must_use_immediately",
     ],
 )

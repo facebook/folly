@@ -63,7 +63,7 @@ class CargoBuilder(BuilderBase):
             "--workspace",
             "-j%s" % self.num_jobs,
         ] + args
-        self._run_cmd(cmd, cwd=self.workspace_dir(), env=env)
+        self._check_cmd(cmd, cwd=self.workspace_dir(), env=env)
 
     def build_source_dir(self):
         return os.path.join(self.build_dir, "source")

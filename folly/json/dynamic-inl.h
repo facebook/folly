@@ -130,15 +130,6 @@ struct FOLLY_EXPORT TypeError : std::runtime_error {
 
 namespace detail {
 
-// This helper is used in destroy() to be able to run destructors on
-// types like "int64_t" without a compiler error.
-struct Destroy {
-  template <class T>
-  static void destroy(T* t) {
-    t->~T();
-  }
-};
-
 /*
  * Helper for implementing numeric conversions in operators on
  * numbers.  Just promotes to double when one of the arguments is
@@ -831,11 +822,36 @@ inline dynamic::item_iterator dynamic::find(StringPiece key) {
 template <typename K>
 dynamic::IfIsNonStringDynamicConvertible<K, std::size_t> dynamic::count(
     K&& key) const {
+  if (const auto* as_array = get_nothrow<Array>()) {
+    return std::count(as_array->begin(), as_array->end(), std::forward<K>(key));
+  }
   return find(std::forward<K>(key)) != items().end() ? 1u : 0u;
 }
 
 inline std::size_t dynamic::count(StringPiece key) const {
+  if (const auto* as_array = get_nothrow<Array>()) {
+    return std::count(as_array->begin(), as_array->end(), key);
+  }
   return find(key) != items().end() ? 1u : 0u;
+}
+
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, bool> dynamic::contains(
+    K&& key) const {
+  if (const auto* as_array = get_nothrow<Array>()) {
+    return std::find(
+               as_array->begin(), as_array->end(), std::forward<K>(key)) !=
+        as_array->end();
+  }
+  return find(std::forward<K>(key)) != items().end();
+}
+
+inline bool dynamic::contains(StringPiece key) const {
+  if (const auto* as_array = get_nothrow<Array>()) {
+    return std::find(as_array->begin(), as_array->end(), key) !=
+        as_array->end();
+  }
+  return find(key) != items().end();
 }
 
 template <class K, class V>
@@ -1215,7 +1231,7 @@ template <typename Key>
 inline dynamic::IfIsNonStringDynamicConvertible<Key, dynamic const*>
 const_dynamic_view::descend_unchecked_(Key const& key) const noexcept {
   if (auto* parray = d_->get_nothrow<dynamic::Array>()) {
-    if /* constexpr */ (!std::is_integral<Key>::value) {
+    if constexpr (!std::is_integral<Key>::value) {
       return nullptr;
     }
     if (key < 0 || folly::to_unsigned(key) >= parray->size()) {

@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/io/HugePages.h>
+#include <folly/io/HugePages.h> // @shim

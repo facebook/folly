@@ -108,6 +108,12 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     return connectEndTime_ - connectStartTime_;
   }
 
+  /*
+   * This flag controls whether or not IP_BIND_ADDRESS_NO_PORT is enabled for
+   * AsyncSocket sockets. This is enabled by default.
+   */
+  void setBindAddressNoPort(bool flag) { bindAddressNoPort_ = flag; }
+
   // AsyncSocketBase
   EventBase* getEventBase() const override { return evb_; }
 
@@ -322,6 +328,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
     detachEventBase();
 
+    void setUseZeroCopyRx(bool val) { useZeroCopyRx_ = val; }
+
    private:
     ~ReadSqe() override = default;
     void appendReadData(
@@ -347,6 +355,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     bool supportsMultishotRecv_ =
         false; // todo: this can be per process instead of per socket
     bool supportsZeroCopyRx_ = false;
+    bool useZeroCopyRx_ = false;
 
     folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
         oldEventBaseRead_;
@@ -497,6 +506,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   std::chrono::milliseconds connectTimeout_{0};
   std::chrono::steady_clock::time_point connectStartTime_;
   std::chrono::steady_clock::time_point connectEndTime_;
+  bool bindAddressNoPort_{true};
 
   // stopTLS helpers:
   std::string securityProtocol_;

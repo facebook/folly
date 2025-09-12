@@ -42,6 +42,13 @@ def _print_env_diff(env, log_fn) -> None:
             log_fn("+ %s=%s \\\n" % (k, shellquote(env[k])))
 
 
+def check_cmd(cmd, **kwargs) -> None:
+    """Run the command and abort on failure"""
+    rc = run_cmd(cmd, **kwargs)
+    if rc != 0:
+        raise RuntimeError(f"Failure exit code {rc} for command {cmd}")
+
+
 def run_cmd(cmd, env=None, cwd=None, allow_fail: bool = False, log_file=None) -> int:
     def log_to_stdout(msg):
         sys.stdout.buffer.write(msg.encode(errors="surrogateescape"))

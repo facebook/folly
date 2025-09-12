@@ -34,6 +34,12 @@
 #include <folly/settings/test/a.h>
 #include <folly/settings/test/b.h>
 
+namespace a_ns {
+// Forward declare this flag even though it's already declared in a.h to test
+// that settings can be declared in multiple places
+FOLLY_SETTING_DECLARE(follytest, public_flag_to_a, int);
+} // namespace a_ns
+
 namespace some_ns {
 FOLLY_SETTING_DEFINE(
     follytest,
@@ -119,7 +125,7 @@ folly::Expected<folly::Unit, UserErrorCode> convertTo(
     return folly::makeUnexpected(UserErrorCode::Error);
   }
   out.value_ =
-      folly::sformat("{}_{}->{}", src.meta.project, src.meta.name, src.value);
+      fmt::format("{}_{}->{}", src.meta.project, src.meta.name, src.value);
   return folly::unit;
 }
 template <class String>
@@ -391,7 +397,7 @@ TEST(Settings, basic) {
       }
       auto [value, reason] = setting.valueAndReason();
       EXPECT_EQ(reason, setting.updateReason());
-      allFlags += folly::sformat(
+      allFlags += fmt::format(
           "{}/{}/{}/{}/{}/{}/{}\n",
           meta.project,
           meta.name,

@@ -175,6 +175,11 @@ AtomicNotificationQueue<Task>::~AtomicNotificationQueue() {
 }
 
 template <typename Task>
+uint32_t AtomicNotificationQueue<Task>::getMaxReadAtOnce() const {
+  return maxReadAtOnce_;
+}
+
+template <typename Task>
 void AtomicNotificationQueue<Task>::setMaxReadAtOnce(uint32_t maxAtOnce) {
   maxReadAtOnce_ = maxAtOnce;
 }

@@ -42,31 +42,18 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
-#include <folly/functional/ApplyTuple.h>
 #include <folly/hash/MurmurHash.h>
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/lang/Bits.h>
 
+// This includes are here for backward compatibility as these algorithms were
+// kept in this header.
+#include <folly/hash/FnvHash.h>
+#include <folly/hash/HsiehHash.h>
+
 namespace folly {
 namespace hash {
-
-namespace detail {
-
-namespace {
-
-template <typename T>
-constexpr bool is_hashable_byte_v = false;
-template <>
-constexpr bool is_hashable_byte_v<char> = true;
-template <>
-constexpr bool is_hashable_byte_v<signed char> = true;
-template <>
-constexpr bool is_hashable_byte_v<unsigned char> = true;
-
-} // namespace
-
-} // namespace detail
 
 /**
  * Reduce two 64-bit hashes into one.
@@ -86,6 +73,38 @@ constexpr uint64_t hash_128_to_64(
   b *= kMul;
   return b;
 }
+
+namespace detail {
+
+template <typename H>
+constexpr uint64_t hash_sequence(const H&) noexcept {
+  return 0;
+}
+
+template <typename H, typename T>
+constexpr uint64_t hash_sequence(const H& h, const T& v) noexcept(
+    noexcept(h(v))) {
+  return h(v);
+}
+
+template <typename H, typename T, typename... Ts>
+constexpr uint64_t hash_sequence(
+    const H& h, const T& v, const Ts&... ts) noexcept(noexcept(h(v))) {
+  return hash::hash_128_to_64(h(v), hash_sequence(h, ts...));
+}
+
+template <typename H, typename Tuple, size_t... Is>
+uint64_t hash_tuple_sequence(
+    const H& h, const Tuple& t, std::index_sequence<Is...>) {
+  return hash_sequence(h, std::get<Is>(t)...);
+}
+
+template <typename H, typename... Ts>
+constexpr uint64_t hash_tuple(const H& h, const std::tuple<Ts...>& t) {
+  return hash_tuple_sequence(h, t, std::make_index_sequence<sizeof...(Ts)>());
+}
+
+} // namespace detail
 
 /**
  * Order-independent reduction of two 64-bit hashes into one.
@@ -195,618 +214,6 @@ constexpr uint32_t jenkins_rev_unmix32(uint32_t key) noexcept {
   return key;
 }
 
-//  fnv
-//
-//  Fowler / Noll / Vo (FNV) Hash
-//    http://www.isthe.com/chongo/tech/comp/fnv/
-//
-//  Discouraged for poor performance in the smhasher suite.
-
-constexpr uint32_t fnv32_hash_start = 2166136261UL;
-constexpr uint32_t fnva32_hash_start = 2166136261UL;
-constexpr uint64_t fnv64_hash_start = 14695981039346656037ULL;
-constexpr uint64_t fnva64_hash_start = 14695981039346656037ULL;
-
-/**
- * Append byte to FNV hash.
- *
- * @see fnv32
- * @methodset fnv
- */
-constexpr uint32_t fnv32_append_byte_BROKEN(uint32_t hash, uint8_t c) noexcept {
-  hash = hash //
-      + (hash << 1) //
-      + (hash << 4) //
-      + (hash << 7) //
-      + (hash << 8) //
-      + (hash << 24);
-  // forcing signed char, since other platforms can use unsigned
-  hash ^= static_cast<int8_t>(c);
-  return hash;
-}
-
-/**
- * FNV hash of a byte-range.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint32_t fnv32_buf_BROKEN(
-    const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
-  for (size_t i = 0; i < n; ++i) {
-    hash = fnv32_append_byte_BROKEN(hash, static_cast<uint8_t>(buf[i]));
-  }
-  return hash;
-}
-inline uint32_t fnv32_buf_BROKEN(
-    const void* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_buf_BROKEN(reinterpret_cast<const uint8_t*>(buf), n, hash);
-}
-
-/**
- * FNV hash of a c-str.
- *
- * Continues hashing until a null byte is reached.
- *
- * @param hash  The initial hash seed.
- *
- * @methodset fnv
- */
-constexpr uint32_t fnv32_BROKEN(
-    const char* buf, uint32_t hash = fnv32_hash_start) noexcept {
-  for (; *buf; ++buf) {
-    hash = fnv32_append_byte_BROKEN(hash, static_cast<uint8_t>(*buf));
-  }
-  return hash;
-}
-
-/**
- * @overloadbrief FNV hash of a string.
- *
- * FNV is the Fowler / Noll / Vo Hash:
- * http://www.isthe.com/chongo/tech/comp/fnv/
- *
- * Discouraged for poor performance in the smhasher suite.
- *
- * @param hash  The initial hash seed.
- *
- * @methodset fnv
- */
-inline uint32_t fnv32_BROKEN(
-    const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_buf_BROKEN(str.data(), str.size(), hash);
-}
-
-/**
- * Append byte to FNV hash.
- *
- * @see fnv32
- * @methodset fnv
- */
-constexpr uint32_t fnv32_append_byte_FIXED(uint32_t hash, uint8_t c) noexcept {
-  hash = hash //
-      + (hash << 1) //
-      + (hash << 4) //
-      + (hash << 7) //
-      + (hash << 8) //
-      + (hash << 24);
-  // forcing unsigned char
-  hash ^= static_cast<uint8_t>(c);
-  return hash;
-}
-
-/**
- * FNV hash of a byte-range.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint32_t fnv32_buf_FIXED(
-    const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
-  for (size_t i = 0; i < n; ++i) {
-    hash = fnv32_append_byte_FIXED(hash, static_cast<uint8_t>(buf[i]));
-  }
-  return hash;
-}
-inline uint32_t fnv32_buf_FIXED(
-    const void* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_buf_FIXED(reinterpret_cast<const uint8_t*>(buf), n, hash);
-}
-
-/**
- * FNV hash of a c-str.
- *
- * Continues hashing until a null byte is reached.
- *
- * @param hash  The initial hash seed.
- *
- * @methodset fnv
- */
-constexpr uint32_t fnv32_FIXED(
-    const char* buf, uint32_t hash = fnv32_hash_start) noexcept {
-  for (; *buf; ++buf) {
-    hash = fnv32_append_byte_FIXED(hash, static_cast<uint8_t>(*buf));
-  }
-  return hash;
-}
-
-/**
- * @overloadbrief FNV hash of a string.
- *
- * FNV is the Fowler / Noll / Vo Hash:
- * http://www.isthe.com/chongo/tech/comp/fnv/
- *
- * Discouraged for poor performance in the smhasher suite.
- *
- * @param hash  The initial hash seed.
- *
- * @methodset fnv
- */
-inline uint32_t fnv32_FIXED(
-    const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_buf_FIXED(str.data(), str.size(), hash);
-}
-
-/**
- * Append a byte to FNVA hash.
- *
- * @see fnv32
- * @methodset fnv
- */
-constexpr uint32_t fnva32_append_byte(uint32_t hash, uint8_t c) noexcept {
-  hash ^= c;
-  hash = hash //
-      + (hash << 1) //
-      + (hash << 4) //
-      + (hash << 7) //
-      + (hash << 8) //
-      + (hash << 24);
-  return hash;
-}
-
-/**
- * FNVA hash of a byte-range.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint32_t fnva32_buf(
-    const C* buf, size_t n, uint32_t hash = fnva32_hash_start) noexcept {
-  for (size_t i = 0; i < n; ++i) {
-    hash = fnva32_append_byte(hash, static_cast<uint8_t>(buf[i]));
-  }
-  return hash;
-}
-inline uint32_t fnva32_buf(
-    const void* buf, size_t n, uint32_t hash = fnva32_hash_start) noexcept {
-  return fnva32_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
-}
-
-/**
- * FNVA hash of a string.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-inline uint32_t fnva32(
-    const std::string& str, uint32_t hash = fnva32_hash_start) noexcept {
-  return fnva32_buf(str.data(), str.size(), hash);
-}
-
-/**
- * Append a byte to FNV hash.
- *
- * @see fnv32
- * @methodset fnv
- */
-constexpr uint64_t fnv64_append_byte_FIXED(uint64_t hash, uint8_t c) {
-  hash = hash //
-      + (hash << 1) //
-      + (hash << 4) //
-      + (hash << 5) //
-      + (hash << 7) //
-      + (hash << 8) //
-      + (hash << 40);
-  // forcing unsigned char
-  hash ^= static_cast<uint8_t>(c);
-  return hash;
-}
-
-/**
- * FNV hash of a byte-range.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint64_t fnv64_buf_FIXED(
-    const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
-  for (size_t i = 0; i < n; ++i) {
-    hash = fnv64_append_byte_FIXED(hash, static_cast<uint8_t>(buf[i]));
-  }
-  return hash;
-}
-inline uint64_t fnv64_buf_FIXED(
-    const void* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_buf_FIXED(reinterpret_cast<const uint8_t*>(buf), n, hash);
-}
-
-/**
- * FNV hash of a c-str.
- *
- * Continues hashing until a null byte is reached.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-constexpr uint64_t fnv64_FIXED(
-    const char* buf, uint64_t hash = fnv64_hash_start) noexcept {
-  for (; *buf; ++buf) {
-    hash = fnv64_append_byte_FIXED(hash, static_cast<uint8_t>(*buf));
-  }
-  return hash;
-}
-
-/**
- * @overloadbrief FNV hash of a string.
- *
- * FNV is the Fowler / Noll / Vo Hash:
- * http://www.isthe.com/chongo/tech/comp/fnv/
- *
- * Discouraged for poor performance in the smhasher suite.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-inline uint64_t fnv64_FIXED(
-    std::string_view str, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_buf_FIXED(str.data(), str.size(), hash);
-}
-
-/**
- * Append a byte to FNV hash.
- *
- * @see fnv32
- * @methodset fnv
- */
-constexpr uint64_t fnv64_append_byte_BROKEN(uint64_t hash, uint8_t c) {
-  hash = hash //
-      + (hash << 1) //
-      + (hash << 4) //
-      + (hash << 5) //
-      + (hash << 7) //
-      + (hash << 8) //
-      + (hash << 40);
-  // forcing signed char, since other platforms can use unsigned
-  hash ^= static_cast<int8_t>(c);
-  return hash;
-}
-
-/**
- * FNV hash of a byte-range.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint64_t fnv64_buf_BROKEN(
-    const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
-  for (size_t i = 0; i < n; ++i) {
-    hash = fnv64_append_byte_BROKEN(hash, static_cast<uint8_t>(buf[i]));
-  }
-  return hash;
-}
-inline uint64_t fnv64_buf_BROKEN(
-    const void* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_buf_BROKEN(reinterpret_cast<const uint8_t*>(buf), n, hash);
-}
-
-/**
- * FNV hash of a c-str.
- *
- * Continues hashing until a null byte is reached.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-constexpr uint64_t fnv64_BROKEN(
-    const char* buf, uint64_t hash = fnv64_hash_start) noexcept {
-  for (; *buf; ++buf) {
-    hash = fnv64_append_byte_BROKEN(hash, static_cast<uint8_t>(*buf));
-  }
-  return hash;
-}
-
-/**
- * @overloadbrief FNV hash of a string.
- *
- * FNV is the Fowler / Noll / Vo Hash:
- * http://www.isthe.com/chongo/tech/comp/fnv/
- *
- * Discouraged for poor performance in the smhasher suite.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-inline uint64_t fnv64_BROKEN(
-    std::string_view str, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_buf_BROKEN(str.data(), str.size(), hash);
-}
-
-/**
- * Alias for fnv32_append_byte_BROKEN.
- *
- * @see fnv32_BROKEN
- * @methodset fnv
- */
-constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) noexcept {
-  return fnv32_append_byte_BROKEN(hash, c);
-}
-
-/**
- * Alias for fnv32_buf_BROKEN.
- *
- * @see fnv32_BROKEN
- * @methodset fnv
- */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint32_t fnv32_buf(
-    const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_buf_BROKEN(buf, n, hash);
-}
-inline uint32_t fnv32_buf(
-    const void* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_buf_BROKEN(buf, n, hash);
-}
-
-/**
- * Alias for fnv32_BROKEN.
- *
- * @methodset fnv
- */
-constexpr uint32_t fnv32(
-    const char* buf, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_BROKEN(buf, hash);
-}
-
-/**
- * Alias for fnv32_BROKEN.
- *
- * @methodset fnv
- */
-inline uint32_t fnv32(
-    const std::string& str, uint32_t hash = fnv32_hash_start) noexcept {
-  return fnv32_BROKEN(str, hash);
-}
-
-/**
- * Alias for fnv64_append_byte_BROKEN.
- *
- * @see fnv32_BROKEN
- * @methodset fnv
- */
-constexpr uint64_t fnv64_append_byte(uint64_t hash, uint8_t c) {
-  return fnv64_append_byte_BROKEN(hash, c);
-}
-
-/**
- * Alias for fnv64_buf_BROKEN.
- *
- * @see fnv32_BROKEN
- * @methodset fnv
- */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint64_t fnv64_buf(
-    const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_buf_BROKEN(buf, n, hash);
-}
-inline uint64_t fnv64_buf(
-    const void* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_buf_BROKEN(buf, n, hash);
-}
-
-/**
- * Alias for fnv64_BROKEN.
- *
- * @see fnv32_BROKEN
- * @methodset fnv
- */
-constexpr uint64_t fnv64(
-    const char* buf, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_BROKEN(buf, hash);
-}
-
-/**
- * Alias for fnv64_BROKEN.
- *
- * @see fnv32_BROKEN
- * @methodset fnv
- */
-inline uint64_t fnv64(
-    std::string_view str, uint64_t hash = fnv64_hash_start) noexcept {
-  return fnv64_BROKEN(str, hash);
-}
-
-/**
- * Append a byte to FNVA hash.
- *
- * @see fnv32
- * @methodset fnv
- */
-constexpr uint64_t fnva64_append_byte(uint64_t hash, uint8_t c) {
-  hash ^= c;
-  hash = hash //
-      + (hash << 1) //
-      + (hash << 4) //
-      + (hash << 5) //
-      + (hash << 7) //
-      + (hash << 8) //
-      + (hash << 40);
-  return hash;
-}
-
-/**
- * FNVA hash of a byte-range.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
-constexpr uint64_t fnva64_buf(
-    const C* buf, size_t n, uint64_t hash = fnva64_hash_start) noexcept {
-  for (size_t i = 0; i < n; ++i) {
-    hash = fnva64_append_byte(hash, static_cast<uint8_t>(buf[i]));
-  }
-  return hash;
-}
-inline uint64_t fnva64_buf(
-    const void* buf, size_t n, uint64_t hash = fnva64_hash_start) noexcept {
-  return fnva64_buf(reinterpret_cast<const uint8_t*>(buf), n, hash);
-}
-
-/**
- * FNVA hash of a string.
- *
- * @param hash  The initial hash seed.
- *
- * @see fnv32
- * @methodset fnv
- */
-inline uint64_t fnva64(
-    const std::string& str, uint64_t hash = fnva64_hash_start) noexcept {
-  return fnva64_buf(str.data(), str.size(), hash);
-}
-
-//  hsieh
-//
-//  Paul Hsieh: http://www.azillionmonkeys.com/qed/hash.html
-
-#define get16bits(d) folly::loadUnaligned<uint16_t>(d)
-
-/**
- * hsieh hash a byte-range.
- *
- * @see hsieh_hash32_str
- * @methodset hsieh
- */
-inline constexpr uint32_t hsieh_hash32_buf_constexpr(
-    const unsigned char* buf, size_t len) noexcept {
-  // forcing signed char, since other platforms can use unsigned
-  const unsigned char* s = buf;
-  uint32_t hash = static_cast<uint32_t>(len);
-  uint32_t tmp = 0;
-  size_t rem = 0;
-
-  if (len <= 0 || buf == nullptr) {
-    return 0;
-  }
-
-  rem = len & 3;
-  len >>= 2;
-
-  /* Main loop */
-  for (; len > 0; len--) {
-    hash += get16bits(s);
-    tmp = (get16bits(s + 2) << 11) ^ hash;
-    hash = (hash << 16) ^ tmp;
-    s += 2 * sizeof(uint16_t);
-    hash += hash >> 11;
-  }
-
-  /* Handle end cases */
-  switch (rem) {
-    case 3:
-      hash += get16bits(s);
-      hash ^= hash << 16;
-      hash ^= s[sizeof(uint16_t)] << 18;
-      hash += hash >> 11;
-      break;
-    case 2:
-      hash += get16bits(s);
-      hash ^= hash << 11;
-      hash += hash >> 17;
-      break;
-    case 1:
-      hash += *s;
-      hash ^= hash << 10;
-      hash += hash >> 1;
-      break;
-    default:
-      break;
-  }
-
-  /* Force "avalanching" of final 127 bits */
-  hash ^= hash << 3;
-  hash += hash >> 5;
-  hash ^= hash << 4;
-  hash += hash >> 17;
-  hash ^= hash << 25;
-  hash += hash >> 6;
-
-  return hash;
-}
-
-#undef get16bits
-
-/**
- * hsieh hash a void* byte-range.
- *
- * @see hsieh_hash32_str
- * @methodset hsieh
- */
-inline uint32_t hsieh_hash32_buf(const void* buf, size_t len) noexcept {
-  return hsieh_hash32_buf_constexpr(
-      reinterpret_cast<const unsigned char*>(buf), len);
-}
-
-/**
- * hsieh hash a c-str.
- *
- * Computes the strlen of the input, then byte-range hashes it.
- *
- * @see hsieh_hash32_str
- * @methodset hsieh
- */
-inline uint32_t hsieh_hash32(const char* s) noexcept {
-  return hsieh_hash32_buf(s, std::strlen(s));
-}
-
-/**
- * hsieh hash a string.
- *
- * Paul Hsieh: http://www.azillionmonkeys.com/qed/hash.html
- *
- * @methodset hsieh
- */
-inline uint32_t hsieh_hash32_str(const std::string& str) noexcept {
-  return hsieh_hash32_buf(str.data(), str.size());
-}
-
 } // namespace hash
 
 namespace detail {
@@ -818,11 +225,11 @@ struct integral_hasher {
 
   constexpr size_t operator()(Int const& i) const noexcept {
     static_assert(sizeof(Int) <= 16, "Input type is too wide");
-    /* constexpr */ if (sizeof(Int) <= 4) {
+    if constexpr (sizeof(Int) <= 4) {
       auto const i32 = static_cast<int32_t>(i); // impl accident: sign-extends
       auto const u32 = static_cast<uint32_t>(i32);
       return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
-    } else if (sizeof(Int) <= 8) {
+    } else if constexpr (sizeof(Int) <= 8) {
       auto const u64 = static_cast<uint64_t>(i);
       return static_cast<size_t>(hash::twang_mix64(u64));
     } else {
@@ -863,12 +270,14 @@ struct Hash {
     return hasher<T>()(v);
   }
 
-  template <class T, class... Ts>
-  constexpr size_t operator()(const T& t, const Ts&... ts) const {
-    return hash::hash_128_to_64((*this)(t), (*this)(ts...));
+  template <class... Ts>
+  constexpr size_t operator()(const Ts&... ts) const {
+    return static_cast<size_t>(hash::detail::hash_sequence(*this, ts...));
   }
 
-  constexpr size_t operator()() const noexcept { return 0; }
+  constexpr size_t operator()() const noexcept {
+    return static_cast<size_t>(hash::detail::hash_sequence(*this));
+  }
 };
 
 // IsAvalanchingHasher<H, K> extends std::integral_constant<bool, V>.
@@ -1020,7 +429,10 @@ struct IsAvalanchingHasher<hasher<std::string_view>, K> : std::true_type {};
 
 template <typename T>
 struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {
-  size_t operator()(T key) const noexcept { return Hash()(to_underlying(key)); }
+  size_t operator()(T key) const noexcept {
+    auto u = to_underlying(key);
+    return hasher<decltype(u)>{}(u);
+  }
 };
 
 template <typename T, typename K>
@@ -1028,19 +440,31 @@ struct IsAvalanchingHasher<
     hasher<T, std::enable_if_t<std::is_enum<T>::value>>,
     K> : IsAvalanchingHasher<hasher<std::underlying_type_t<T>>, K> {};
 
+namespace detail {
+struct hash_one_fn {
+  template <typename T>
+  constexpr size_t operator()(T const& v) const
+      noexcept(noexcept(hasher<T>{}(v))) {
+    return hasher<T>{}(v);
+  }
+};
+
+inline constexpr hash_one_fn hash_one{};
+} // namespace detail
+
 template <typename T1, typename T2>
 struct hasher<std::pair<T1, T2>> {
   using folly_is_avalanching = std::true_type;
 
   size_t operator()(const std::pair<T1, T2>& key) const {
-    return Hash()(key.first, key.second);
+    return hash::detail::hash_sequence(detail::hash_one, key.first, key.second);
   }
 };
 
 template <typename... Ts>
 struct hasher<std::tuple<Ts...>> {
   size_t operator()(const std::tuple<Ts...>& key) const {
-    return apply(Hash(), key);
+    return hash::detail::hash_tuple(detail::hash_one, key);
   }
 };
 
@@ -1049,7 +473,8 @@ struct hasher<T*> {
   using folly_is_avalanching = hasher<std::uintptr_t>::folly_is_avalanching;
 
   size_t operator()(T* key) const {
-    return Hash()(folly::bit_cast<std::uintptr_t>(key));
+    auto val = folly::bit_cast<std::uintptr_t>(key);
+    return hasher<decltype(val)>{}(val);
   }
 };
 
@@ -1058,7 +483,7 @@ struct hasher<std::unique_ptr<T>> {
   using folly_is_avalanching = typename hasher<T*>::folly_is_avalanching;
 
   size_t operator()(const std::unique_ptr<T>& key) const {
-    return Hash()(key.get());
+    return hasher<T*>{}(key.get());
   }
 };
 
@@ -1067,7 +492,7 @@ struct hasher<std::shared_ptr<T>> {
   using folly_is_avalanching = typename hasher<T*>::folly_is_avalanching;
 
   size_t operator()(const std::shared_ptr<T>& key) const {
-    return Hash()(key.get());
+    return hasher<T*>{}(key.get());
   }
 };
 
@@ -1224,7 +649,7 @@ hash_combine_generic(const Hasher& h, const T& t, const Ts&... ts) noexcept(
     return seed;
   }
   size_t remainder = hash_combine_generic(h, ts...);
-  if /* constexpr */ (sizeof(size_t) == sizeof(uint32_t)) {
+  if constexpr (sizeof(size_t) == sizeof(uint32_t)) {
     return twang_32from64((uint64_t(seed) << 32) | remainder);
   } else {
     return static_cast<size_t>(hash_128_to_64(seed, remainder));
@@ -1241,10 +666,7 @@ hash_combine_generic(const Hasher& h, const T& t, const Ts&... ts) noexcept(
 template <typename Hash, typename... Value>
 uint64_t commutative_hash_combine_generic(
     uint64_t seed, Hash const& hasher, Value const&... value) {
-  // variadic foreach:
-  uint64_t _[] = {
-      0, seed = commutative_hash_combine_value_generic(seed, hasher, value)...};
-  (void)_;
+  ((seed = commutative_hash_combine_value_generic(seed, hasher, value)), ...);
   return seed;
 }
 
@@ -1332,10 +754,13 @@ namespace folly {
 // std::hash for float and double on libstdc++-v3 are avalanching,
 // but they are not on libc++.  std::hash for integral types is not
 // avalanching for libstdc++-v3 or libc++.  We're conservative here and
-// just mark std::string as avalanching.  std::string_view will also be
-// so, once it exists.
+// just mark std::string and std::string_view as avalanching.
 template <typename... Args, typename K>
 struct IsAvalanchingHasher<std::hash<std::basic_string<Args...>>, K>
+    : std::true_type {};
+
+template <typename... Args, typename K>
+struct IsAvalanchingHasher<std::hash<std::basic_string_view<Args...>>, K>
     : std::true_type {};
 
 } // namespace folly

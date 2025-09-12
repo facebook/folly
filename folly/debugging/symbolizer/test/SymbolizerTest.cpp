@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 
 #include <signal.h>
 #include <array>
@@ -24,11 +24,9 @@
 #include <folly/Demangle.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
-#include <folly/String.h>
-#include <folly/debugging/symbolizer/detail/Debug.h>
+#include <folly/debugging/symbolizer/ElfCache.h>
+#include <folly/debugging/symbolizer/SymbolizedFrame.h>
 #include <folly/debugging/symbolizer/test/SymbolizerTestUtils.h>
-#include <folly/experimental/symbolizer/ElfCache.h>
-#include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/lang/Cast.h>
 #include <folly/portability/Filesystem.h>
 #include <folly/portability/GTest.h>

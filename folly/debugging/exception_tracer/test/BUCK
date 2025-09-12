@@ -12,6 +12,7 @@ fbcode_target(
     srcs = ["ExceptionCounterTest.cpp"],
     deps = [
         "//folly/debugging/exception_tracer:exception_counter",
+        "//folly/debugging/exception_tracer:exception_counter_static_registration",
         "//folly/portability:gtest",
     ],
 )

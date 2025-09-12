@@ -30,11 +30,11 @@ struct StubLogger {
   static double t;
 };
 
-std::string StubLogger::m = "";
+std::string StubLogger::m;
 double StubLogger::t = 0;
 
 struct StubClock {
-  typedef std::chrono::seconds duration;
+  using duration = std::chrono::seconds;
 
   static std::chrono::time_point<StubClock> now() {
     return std::chrono::time_point<StubClock>(std::chrono::duration<int>(t));

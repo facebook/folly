@@ -104,18 +104,18 @@ class AtomicHashArray {
       "keys, or a different container class.");
 
  public:
-  typedef KeyT key_type;
-  typedef ValueT mapped_type;
-  typedef HashFcn hasher;
-  typedef EqualFcn key_equal;
-  typedef KeyConvertFcn key_convert;
-  typedef std::pair<const KeyT, ValueT> value_type;
-  typedef std::size_t size_type;
-  typedef std::ptrdiff_t difference_type;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
-  typedef value_type* pointer;
-  typedef const value_type* const_pointer;
+  using key_type = KeyT;
+  using mapped_type = ValueT;
+  using hasher = HashFcn;
+  using key_equal = EqualFcn;
+  using key_convert = KeyConvertFcn;
+  using value_type = std::pair<const KeyT, ValueT>;
+  using size_type = std::size_t;
+  using difference_type = std::ptrdiff_t;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using pointer = value_type*;
+  using const_pointer = const value_type*;
 
   const size_t capacity_;
   const size_t maxEntries_;
@@ -126,8 +126,8 @@ class AtomicHashArray {
   template <class ContT, class IterVal>
   struct aha_iterator;
 
-  typedef aha_iterator<const AtomicHashArray, const value_type> const_iterator;
-  typedef aha_iterator<AtomicHashArray, value_type> iterator;
+  using const_iterator = aha_iterator<const AtomicHashArray, const value_type>;
+  using iterator = aha_iterator<AtomicHashArray, value_type>;
 
   // You really shouldn't need this if you use the SmartPtr provided by create,
   // but if you really want to do something crazy like stick the released
@@ -143,7 +143,7 @@ class AtomicHashArray {
   };
 
  public:
-  typedef std::unique_ptr<AtomicHashArray, Deleter> SmartPtr;
+  using SmartPtr = std::unique_ptr<AtomicHashArray, Deleter>;
 
   /*
    * create --

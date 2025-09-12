@@ -57,9 +57,6 @@ fbcode_target(
         "//folly/experimental/io:fs_util",
         "//folly/portability:gtest",
     ],
-    external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(

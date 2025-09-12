@@ -5,12 +5,12 @@ oncall("fbcode_entropy_wardens_folly")
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "async_closure_bindings_test",
-    srcs = ["AsyncClosureBindingsTest.cpp"],
+    name = "bind_async_closure_test",
+    srcs = ["BindAsyncClosureTest.cpp"],
     deps = [
         "//folly/coro:noexcept",
         "//folly/coro:task",
-        "//folly/coro/safe/detail:async_closure_bindings",
+        "//folly/coro/safe/detail:bind_async_closure",
         "//folly/portability:gtest",
     ],
 )

@@ -65,7 +65,7 @@ class PackedSyncPtr {
   // This just allows using this class even with T=void.  Attempting
   // to use the operator* or operator[] on a PackedSyncPtr<void> will
   // still properly result in a compile error.
-  typedef typename std::add_lvalue_reference<T>::type reference;
+  using reference = typename std::add_lvalue_reference<T>::type;
 
  public:
   /*

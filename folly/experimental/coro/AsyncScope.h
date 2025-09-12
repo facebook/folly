@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/AsyncScope.h>
+#include <folly/coro/AsyncScope.h> // @shim

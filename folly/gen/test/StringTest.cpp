@@ -281,7 +281,7 @@ void checkResplitMaxLength(
   auto splitter = streamSplitter(
       delim,
       [&pieces](StringPiece s) {
-        pieces.push_back(string(s.begin(), s.end()));
+        pieces.emplace_back(s.begin(), s.end());
         return true;
       },
       maxLength);

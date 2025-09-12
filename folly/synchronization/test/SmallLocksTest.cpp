@@ -19,7 +19,6 @@
 #include <atomic>
 #include <cassert>
 #include <condition_variable>
-#include <cstdio>
 #include <cstdlib>
 #include <mutex>
 #include <string>
@@ -165,7 +164,7 @@ TEST(SmallLocks, PicoSpinCorrectness) {
 }
 
 TEST(SmallLocks, PicoSpinSigned) {
-  typedef PicoSpinLock<int16_t, 0> Lock;
+  using Lock = PicoSpinLock<int16_t, 0>;
   Lock val;
   val.init(-4);
   EXPECT_EQ(val.getData(), -4);

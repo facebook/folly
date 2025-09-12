@@ -6,11 +6,11 @@ load(
     "IOS",
     "MACOSX",
 )
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../defs.bzl",
     "folly_xplat_library",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -23,7 +23,7 @@ non_fbcode_target(
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["GILAwareManualExecutor.h"],
     deps = [
-        "fbsource//third-party/python:python",
+        ":weak",
         "//xplat/folly:scope_guard",
         "//xplat/folly/executors:drivable_executor",
         "//xplat/folly/executors:sequenced_executor",
@@ -111,11 +111,11 @@ non_fbcode_target(
         "futures.h",
     ],
     deps = [
+        "fbsource//xplat/folly/futures:core",
         ":asyncio_executor",
         ":executor_lib",
         ":weak",
         "//xplat/folly:executor",
-        "//xplat/folly:futures_core",
     ],
 )
 
@@ -134,7 +134,6 @@ non_fbcode_target(
         ":import",
         ":weak",
         "//xplat/folly:executor",
-        "//xplat/folly:function",
     ],
 )
 
@@ -158,17 +157,23 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "asyncio_executor",
+    srcs = [
+        "AsyncioExecutor.cpp",
+    ],
+    enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AsyncioExecutor.h",
     ],
     deps = [
         ":weak",
+        "//xplat/folly:chrono",
         "//xplat/folly:exception_string",
         "//xplat/folly:function",
         "//xplat/folly/executors:drivable_executor",
         "//xplat/folly/executors:sequenced_executor",
         "//xplat/folly/io/async:async_base",
+        "//xplat/folly/portability:gflags",
     ],
 )
 
@@ -177,7 +182,7 @@ non_fbcode_target(
     name = "folly",
     headers = {"__init__.pxd": "__init__.pxd"},
     cpp_deps = [
-        "//xplat/folly:futures_core",
+        "fbsource//xplat/folly/futures:core",
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:executor",
         "//xplat/folly:try",
@@ -281,6 +286,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["iobuf_ext.h"],
+    deps = [
+        ":weak",
+    ],
     exported_deps = [
         "fbsource//third-party/python:python",
         "fbsource//xplat/folly/io:iobuf",
@@ -319,8 +327,8 @@ non_fbcode_target(
     cpp_deps = [
         "fbsource//xplat/folly/io:iobuf",
         "//xplat/folly:executor",
-        "//xplat/folly/python:iobuf_ext",
-        "//xplat/folly/python:iobuf_lib",
+        ":iobuf_ext",
+        ":iobuf_lib",
     ],
     package = "folly",
     tests = [
@@ -329,8 +337,9 @@ non_fbcode_target(
     types = ["iobuf.pyi"],
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:folly",
-        "//xplat/folly/python:futures",
+        ":executor",
+        ":folly",
+        ":futures",
     ],
 )
 
@@ -365,7 +374,6 @@ non_fbcode_target(
     deps = [
         ":import",
         ":weak",
-        "//xplat/folly:function",
         "//xplat/folly/fibers:core",
     ],
 )
@@ -459,17 +467,22 @@ non_fbcode_target(
 fbcode_target(
     _kind = cpp_library,
     name = "asyncio_executor",
+    srcs = [
+        "AsyncioExecutor.cpp",
+    ],
     headers = [
         "AsyncioExecutor.h",
     ],
     modular_headers = False,
     exported_deps = [
         ":weak",
+        "//folly:chrono",
         "//folly:exception_string",
         "//folly:function",
         "//folly/executors:drivable_executor",
         "//folly/executors:sequenced_executor",
         "//folly/io/async:async_base",
+        "//folly/portability:gflags",
     ],
 )
 
@@ -479,7 +492,7 @@ fbcode_target(
     srcs = ["GILAwareManualExecutor.cpp"],
     headers = ["GILAwareManualExecutor.h"],
     deps = [
-        "fbsource//third-party/python:python",
+        ":weak",
         "//folly:scope_guard",
     ],
     exported_deps = [
@@ -512,6 +525,16 @@ fbcode_target(
     headers = [
         "executor.h",
     ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "-DFOLLY_PYTHON_WIN_SHAREDLIB",
+        ],
+    }),
+    preferred_linkage = select({
+        "DEFAULT": None,
+        "ovr_config//os:windows": "shared",
+    }),
     deps = [
         ":import",
     ],
@@ -519,7 +542,6 @@ fbcode_target(
         ":asyncio_executor",
         ":weak",
         "//folly:executor",
-        "//folly:function",
     ],
 )
 
@@ -642,13 +664,22 @@ fbcode_target(
     name = "fibers_lib",
     srcs = ["fibers.cpp"],
     headers = ["fibers.h"],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "-DFOLLY_PYTHON_WIN_SHAREDLIB",
+        ],
+    }),
+    preferred_linkage = select({
+        "DEFAULT": None,
+        "ovr_config//os:windows": "shared",
+    }),
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
     exported_deps = [
         ":weak",
-        "//folly:function",
         "//folly/fibers:core",
     ],
 )
@@ -693,6 +724,9 @@ fbcode_target(
     name = "iobuf_ext",
     srcs = ["iobuf_ext.cpp"],
     headers = ["iobuf_ext.h"],
+    deps = [
+        ":weak",
+    ],
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         "//folly:executor",
@@ -741,6 +775,7 @@ fbcode_target(
         "iobuf.pyi",
     ],
     deps = [
+        ":executor",
         ":folly",
         ":futures",
     ],

@@ -95,8 +95,9 @@ struct SimdForEachMainLoop {
   FOLLY_ALWAYS_INLINE bool operator()(
       int cardinal, T*& f, T* l, Delegate& delegate, index_constant<1>) const {
     while (f != l) {
-      if (delegate.step(f, ignore_none{}, index_constant<0>{}))
+      if (delegate.step(f, ignore_none{}, index_constant<0>{})) {
         return true;
+      }
       f += cardinal;
     }
 
@@ -113,8 +114,9 @@ struct SimdForEachMainLoop {
 
     template <std::size_t i>
     FOLLY_ALWAYS_INLINE bool operator()(index_constant<i> unrollI) {
-      if (f == l)
+      if (f == l) {
         return true;
+      }
 
       shouldBreak = delegate.step(f, ignore_none{}, unrollI);
       f += cardinal;

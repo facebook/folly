@@ -45,12 +45,13 @@ void bridgeCoroTask(
   // to make sure it isn't removed by python in that time.
   Py_IncRef(userData);
   auto guard = folly::makeGuard([=] { Py_DecRef(userData); });
-  std::move(coroFrom).scheduleOn(executor).start(
-      [callback = std::move(callback), userData, guard = std::move(guard)](
-          folly::Try<T>&& result) mutable {
-        callback(std::move(result), userData);
-      },
-      std::move(cancellationToken));
+  co_withExecutor(executor, std::move(coroFrom))
+      .start(
+          [callback = std::move(callback), userData, guard = std::move(guard)](
+              folly::Try<T>&& result) mutable {
+            callback(std::move(result), userData);
+          },
+          std::move(cancellationToken));
 }
 
 template <typename T>

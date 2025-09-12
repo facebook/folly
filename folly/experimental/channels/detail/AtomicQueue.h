@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/detail/AtomicQueue.h>
+#include <folly/channels/detail/AtomicQueue.h> // @shim

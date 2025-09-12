@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/settings/Immutables.h>
+#include <folly/settings/Immutables.h> // @shim

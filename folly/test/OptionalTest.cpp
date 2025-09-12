@@ -844,6 +844,30 @@ TEST(Optional, StdOptionalConversions) {
   EXPECT_EQ(s, f.toStdOptional());
   EXPECT_TRUE(f);
 
+  folly::Optional<int> f_empty;
+  std::optional<int> s_empty = static_cast<std::optional<int>>(f_empty);
+  EXPECT_FALSE(s_empty.has_value());
+
+  folly::Optional<bool> bf = false;
+  std::optional<bool> bs = bf.toStdOptional();
+  EXPECT_EQ(bs.has_value(), true);
+  EXPECT_EQ(bs.value(), false);
+
+  folly::Optional<bool> bf_empty;
+  std::optional<bool> bs_empty = bf_empty.toStdOptional();
+  EXPECT_FALSE(bs_empty.has_value());
+
+  folly::Optional<bool> mbf = false;
+  auto mbs = std::move(mbf).toStdOptional();
+  EXPECT_TRUE(mbs.has_value());
+  EXPECT_FALSE(mbs.value());
+  EXPECT_FALSE(mbf.has_value());
+
+  folly::Optional<bool> mbf_empty;
+  auto mbs_empty = std::move(mbf_empty).toStdOptional();
+  EXPECT_FALSE(mbs_empty.has_value());
+  EXPECT_FALSE(mbf_empty.has_value());
+
   f = static_cast<folly::Optional<int>>(s);
   EXPECT_EQ(*f, 42);
   EXPECT_TRUE(s);

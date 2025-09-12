@@ -327,8 +327,7 @@ static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
 
 template <class... Args>
 IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&... args) {
-  return IoUringProvidedBufferRing::UniquePtr(
-      new IoUringProvidedBufferRing(std::forward<Args>(args)...));
+  return IoUringProvidedBufferRing::create(std::forward<Args>(args)...);
 }
 
 #else
@@ -1121,8 +1120,13 @@ void IoUringBackend::initSubmissionLinked() {
           .bufferShift = sizeShift,
           .ringSizeShift = ringShift,
           .useHugePages = false,
+          .useIncrementalBuffers = options_.enableIncrementalBuffers,
       };
-      bufferProvider_ = makeProvidedBufferRing(this->ioRingPtr(), options);
+      for (size_t i = 0; i < options_.providedBufRings; i++) {
+        bufferProviders_.push_back(
+            makeProvidedBufferRing(this->ioRingPtr(), options));
+        options.gid = nextBufferProviderGid();
+      }
     } catch (const IoUringProvidedBufferRing::LibUringCallError& ex) {
       LOG(ERROR) << folly::to<std::string>(
           "failed to make provided buffer ring, buffer count: ",
@@ -1167,6 +1171,10 @@ void IoUringBackend::delayedInit() {
         << "Unexpectedly usingDeferTaskrun_=true, but liburing does not support it?";
 #endif
     initSubmissionLinked();
+  }
+
+  if (useReqBatching()) {
+    ::io_uring_set_iowait(&ioRing_, false);
   }
 
   if (options_.registerRingFd) {

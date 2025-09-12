@@ -1,19 +1,22 @@
-## Simple guide to `as_capture()`, `capture<T>` and friends
+## Simple guide to `bind::capture()`, `capture<T>` and friends
 
-If you are just reading some code with `as_capture()` arguments -- think of
-these as smart pointers, each owned by the `async_closure` taking the arg.
+If you are just reading some code with `bind::capture()` arguments -- think of
+these as zero-cost (compile-time) smart pointers, each owned by the
+`async_closure` taking the arg.
 
 For example, `n` below is a `capture<int>`.  It is an **owned capture**, a
 wrapper around `int` whose lifetime is tightly bound to the closure.
 
 ```cpp
+namespace bind = folly::bind; // Can add to `.cpp` files and project namespaces
+
 assert(15 == co_await async_closure(
-    // NB: Could omit this `bound_args`, since the 1 arg is `like_bound_args`
-    bound_args{as_capture(5)},
-    [](auto n) -> ClosureTask<int> {
+    // NB: Can omit the outer `args` -- its sole arg is `bind::ext::like_args`
+    bind::args{bind::capture(5)},
+    [](auto n) -> closure_task<int> {
       co_await async_closure(
-        bound_args{n},
-        [](auto nRef) -> ClosureTask<void> {
+        bind::args{n},
+        [](auto nRef) -> closure_task<void> {
           *nRef += 10;
           co_return;
         });
@@ -26,10 +29,10 @@ that was implicitly made from `n`.  Per `LifetimeSafetyDesign.md`, there are
 various compile-time checks that make it harder to construct invalid capture
 references.
 
-### When & how to use `as_capture()`
+### When & how to use `bind::capture()`
 
  1. If type `T` requires async RAII (`co_cleanup`), you will need
-    `capture_in_place<T>()`.  For a working example, see `BackgroundTask.h` or
+    `bind::capture_in_place<T>()`.  For a working example, see `BackgroundTask.h` or
     `SafeAsyncScope.h`.
 
  1. Suppose you passed a `co_cleanup` type `T` into an async closure (example:
@@ -48,7 +51,7 @@ references.
     `capture`s are our mechanism for making lifetime-safe references.  In order
     to make `c.someMethod(v)` work, you will need to make `v` itself a capture,
     by having your closure take `auto v`, and make it either:
-      - `as_capture()` for an owned capture, **OR**
+      - `bind::capture()` for an owned capture, **OR**
       - `parentA` to make a capture reference from a parent's capture.
 
 ### Accessing `capture<T>`s
@@ -76,10 +79,15 @@ If your function takes a capture, here is all you need to know:
         V dst = *std::move(srcCap);
         ```
       * `capture<V&>` is copyable & movable.
-      * `capture<V&&> rcap` is move-only, but can **explicitly** convert to `capture<V&>`.
+      * `capture<V&&>` is move-only, can *explicitly* convert to `capture<V&>`
 
         *Caveat*: To reduce use-after-move errors, dereferencing requires rvalues.
         That is, `*rcap` won't work -- you must `*std::move(rcap)`.
+  - *Power users:* It is a limitation of C++ that `operator->` loses value
+    category by returning a pointer.  In special cases where this is critical
+    for a good UX, it is technically possible to address that returning a
+    pointer to a specially crafted rvalue proxy for `rval_ptr` queries.  In
+    regular metaprogramming, you should use `(*cap).member` for deref.
 
 ### `safe_alias` warning: the "composition hole" & lambda captures
 
@@ -100,7 +108,7 @@ To access `capture<shared_ptr<int>> capSharedN`, you need to dereference twice:
 **capSharedN += 10;
 ```
 
-Writing `as_capture_indirect()` gives you `capture_indirect<shared_ptr<int>>`,
+Writing `bind::capture_indirect()` gives you `capture_indirect<shared_ptr<int>>`,
 which needs just one dereference, and can still access the `shared_ptr` via
 `get_underlying_unsafe()` -- but see its docblock for **RISKS**.
 
@@ -109,19 +117,18 @@ This is important, since, the underlying type is typically nullable!
 
 ### Escape hatch: Capture-by-reference
 
-Use via `capture_const_ref{}`, `as_capture{const_ref{}}`, `capture_mut_ref{}`,
-etc in your closure's `bound_args{}` list.
-
+Use via `bind::capture_const_ref{}`, `bind::capture{bind::const_ref{}}`,
+`bind::capture_mut_ref{}`, etc in your closure's `bind::args{}` list.
 
 This mechanism solves problems similar to `AfterCleanup.h`, but after-cleanup
 is strictly safer, so you should prefer it when applicable.
 
 Capture-by-ref is a way of turning a reference from a parent scope into a
 `capture<T&>` or `<T&&>` inside a child `async_now_closure`.  While the
-`NowTask` restriction aids lifetime safety, the user must still be careful to
+`now_task` restriction aids lifetime safety, the user must still be careful to
 avoid giving the child the ability to store short-lived child refs in the
 parent's scope.  To fix a concrete instance of this problem, the
-`AsyncClosureBindings.h` implementation blocks the capture-by-ref mechanism
+`BindAsyncClosure.h` implementation blocks the capture-by-ref mechanism
 from passing `co_cleanup` refs & `captures`.
 
 #### Design notes for capture-by-reference
@@ -132,7 +139,7 @@ would come with both new footguns, and new complexity, so I'm currently
 thinking of them as "rejected designs" rather than future work.
 
 **Note 1:** It would be within the spirit of regular RAII to defer awaiting the
-closure to a later point in the current scope.  That is, the `SafeTask` taking
+closure to a later point in the current scope.  That is, the `safe_task` taking
 these `capture_ref()` args would be marked down to `<= lexical_scope_ref`
 safety.  This could be a new safety level with:
 
@@ -140,7 +147,7 @@ safety.  This could be a new safety level with:
 after_cleanup_ref >= lexical_scope_ref >= shared_cleanup
 ```
 
-The valid lifetime for this body-only `SafeTask` is clearly shorter than
+The valid lifetime for this body-only `safe_task` is clearly shorter than
 `after_cleanup_ref` -- it's invalid whenever the captured refs are destroyed,
 which (under typical RAII) is a bit longer than the lexical lifetime of the
 task.  In the `lexical_scope_ref` scenario, the user can, of course, invalidate
@@ -149,10 +156,10 @@ be covered if the [P1179R1 lifetime safety profile](https://wg21.link/P1179R1)
 is standardized.  For example:
 
 ```cpp
-std::optional<SafeTask<safe_alias::lexical_scope_ref, void>> t;
+std::optional<safe_task<safe_alias::lexical_scope_ref, void>> t;
 {
   int i = 5;
-  t = async_closure([](auto i) -> ClosureTask<void> {
+  t = async_closure([](auto i) -> closure_task<void> {
     std::cout << *i << std::endl;
     co_return;
   }, capture_ref(i));
@@ -162,7 +169,7 @@ std::optional<SafeTask<safe_alias::lexical_scope_ref, void>> t;
 co_await std::move(*t);
 ```
 
-**Note 2:** The way that `async_closure(...  capture_const_ref(...) ...)`
+**Note 2:** The way that `async_closure(...  bind::capture_const_ref(...) ...)`
 behaves, it seems like we could just universally allow creating
 `lexical_scope_capture<T&>` from `T&` -- even outside `async_closure`
 invocations.  `Captures.h` would need to support auto-upgrade of
@@ -170,11 +177,11 @@ invocations.  `Captures.h` would need to support auto-upgrade of
 `shared_cleanup` status.  This "universal" implementation would be more
 complex, but without `async_closure()`'s capture-upgrade semantics, there's not
 a lot of value in obtaining a `lexical_scope_capture<Ref>` -- for example, you
-can't use it to schedule work on a nested `SafeAsyncScope`.
+can't use it to schedule work on a nested `safe_async_scope`.
 
 ### Debugging lifetime safety compile errors
 
-If you're working with captures, and get a compile error about `SafeTask`,
+If you're working with captures, and get a compile error about `safe_task`,
 `safe_alias_of`, or similar, there is a good chance that you triggered a
 lifetime safety check. Read `LifetimeSafetyDebugging.md` for what to do next --
 it also covers the lifetime safety design of `Captures.h`.
@@ -198,7 +205,7 @@ it also covers the lifetime safety design of `Captures.h`.
 such a thing, you end up needing to store two kinds of values that live strictly
 longer than the coroutine function scope itself. Specifically:
   - Values with `co_cleanup` (details in `CoCleanupAsyncRAII.md`). The
-    archetypal type is `SafeAsyncScope`, which is immovable to allow an
+    archetypal type is `safe_async_scope`, which is immovable to allow an
     efficient implementation -- so the storage mechanism also needs to support
     in-place construction.
   - Values that outlive the cleanup, so they can be safely referenced by the
@@ -239,12 +246,12 @@ give a short-lived reference to a longer-lived task on that scope:
 ```cpp
 co_await async_closure(
     safeAsyncScope<CancelViaParent>(),
-    [](auto scope) -> ClosureTask<void> {
+    [](auto scope) -> closure_task<void> {
       co_await async_closure(
-          bound_args{scope, as_capture(5)},
-          [](auto outerScope, auto n1) -> ClosureTask<void> {
+          bind::args{scope, bind::capture(5)},
+          [](auto outerScope, auto n1) -> closure_task<void> {
               outerScope->with(co_await co_current_executor).schedule(
-                  [](capture<int&> n2) -> CoCleanupSafeTask<void> {
+                  [](capture<int&> n2) -> co_cleanup_safe_task<void> {
                     assert(*n2 == 5); // Invalid memory access!
                     co_return;
                   }(n1));
@@ -262,14 +269,14 @@ no known conversion from 'after_cleanup_capture<int>' to 'capture<int &>'
 ```
 Changing the inner lambda to `after_cleanup_capture` still won't compile:
 ```
-Bad SafeTask: check for unsafe aliasing in arguments or return type
+Bad safe_task: check for unsafe aliasing in arguments or return type
 ```
-Relaxing the inner task to `SafeTask<safe_alias::after_cleanup_ref, void>` also
+Relaxing the inner task to `safe_task<safe_alias::after_cleanup_ref, void>` also
 won't let the bug through, since `schedule()` won't take a less-safe task.
 ```
 constraints not satisfied ... schedule( ...
 is_void_safe_task<
-    SafeTask<safe_alias::after_cleanup_ref, void>,
+    safe_task<safe_alias::after_cleanup_ref, void>,
     safe_alias::co_cleanup_safe_ref>' evaluated to false
 ```
 
@@ -278,7 +285,7 @@ To understand the solution, let's reformulate this bug more abstractly:
   - Any closure taking `co_cleanup_capture<T&>` is vulnerable to the problem,
     **unless** the API of `T` specifically ensures that it only takes inputs of
     safety `maybe_value`.  In this section, we focus on `co_cleanup` types that
-    must be able to take references, like `SafeAsyncScope`.
+    must be able to take references, like `safe_async_scope`.
 
     NB: Types with value-only APIs should expose `capture_restricted_proxy()`.
 
@@ -326,10 +333,10 @@ normal `capture`-passing rules in two ways:
     of type `after_cleanup_capture<int>`. Whereas, in the absence of `outerScope`,
     the type would be `capture<int>`.
   - **Parent `capture`s are not upgraded:** Suppose the example scheduled a
-    closure: `.schedule(async_closure(bound_args{n1}, ...))`.  Then, **inside
+    closure: `.schedule(async_closure(bind::args{n1}, ...))`.  Then, **inside
     that closure** `n1` would be visible as `capture<int&>` because it can't be
     exfiltrated to `outerScope`.  That's the upgrade behavior[†].  But, when
-    passing `bound_args{outerScope, n1}`, the `shared_cleanup` argument blocks
+    passing `bind::args{outerScope, n1}`, the `shared_cleanup` argument blocks
     the upgrade, and the closure would still see `after_cleanup_capture<int&>`.
 
     > [†] Note that when a closure upgrades its refs, e.g. from
@@ -356,7 +363,7 @@ search the code for "restricted".
 In some scenarios -- e.g. passing around a fire-and-forget logger -- it is
 important to avoid the safety downgrade.  For example, a closure taking a
 `co_cleanup_capture<Logger&>` would be unable to pass any of its own captures to
-a `co_cleanup_capture<SafeAsyncScope&>` that it owns.
+a `co_cleanup_capture<safe_async_scope&>` that it owns.
 
 To avoid downgrades, pass `restricted_co_cleanup_capture<Logger&>` to the child
 closure.  This `capture` uses ADL customization point
@@ -394,20 +401,20 @@ a second coro frame, the one that awaits cleanup. But, when `async_closure` sees
 that it owns no `co_cleanup_capture`s, it will:
   - Omit the outer coro frame (which would now be no-op)
   - Move in its own captures into the inner coro.
-  - For owned captures that are `make_in_place`, automatically use the
+  - For owned captures that are `bind::in_place`, automatically use the
     `capture_heap` variation.
 
 From most perspectives, a no-cleanup closure quacks just like its
 outer-coro-awaits-inner-coro cousin. However, its own capture args' signatures
 will differ:
   - `capture<Value>` is passed instead of `capture<Value&>`.
-  - `make_in_place` captures use the `capture_heap` template.
+  - `bind::in_place` captures use the `capture_heap` template.
 
 By design, reference and value, plain and `_heap` captures have identical
 interfaces, letting `async_closure` freely pick the storage for those typical
 inner coros that take all captures by `auto`.
 
-In the unlikely event of a no-cleanup closure taking lots of `make_in_place`
+In the unlikely event of a no-cleanup closure taking lots of `bind::in_place`
 captures, you can try `async_closure::force_outer_coro` to coalesce allocations.
 
 ### Integrating your own `co_cleanup` type
@@ -438,12 +445,12 @@ A properly implemented `co_cleanup` type `T` should:
     may be useful when accessing members of `T`.  The proxy type should be
     `NonCopyableNonMovable` with a constructor restricted to your class.
 
-  - For public APIs, require `safe_alias_of_v` of at least `co_cleanup_safe_ref`
-    for any input that may be stored until cleanup time.
+  - For public APIs, require `lenient_safe_alias_of_v` of at least
+    `co_cleanup_safe_ref` for any input that may be stored until cleanup time.
 
   - If `restricted_co_cleanup_capture<T&>` support is desired, ADL-customize
     `capture_restricted_proxy()` as above, and enforce that all API inputs have
-    `safe_alias_of_v` of `maybe_value`.
+    `lenient_safe_alias_of_v` of `maybe_value`.
 
 ### How many templates are in this type zoo? Can't you type-erase?
 
@@ -468,7 +475,7 @@ Morally, they are either values or references, and the "pointer-like" UX hurts
 ergonomics.
 
 Let's consider the "no wrapper" alternative.  It would be possible for
-`as_capture()` args to `async_closure` to just pass a reference to the
+`bind::capture()` args to `async_closure` to just pass a reference to the
 underlying type into the inner coro.  This comes with many downsides:
   - Bug farm: The inner coro has to remember to write `auto&` / `ActualType&` --
     **except** when you have the no-cleanup closure optimization. Pass-by-value

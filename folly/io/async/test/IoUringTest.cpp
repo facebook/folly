@@ -56,8 +56,9 @@ TEST(IoUringTest, RegisteredBuffers) {
 
   auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
-  if (fd == -1)
+  if (fd == -1) {
     fd = ::open(tempFile.path().c_str(), O_RDWR);
+  }
   SKIP_IF(fd == -1) << "Tempfile can't be opened: " << folly::errnoStr(errno);
   SCOPE_EXIT {
     fileops::close(fd);

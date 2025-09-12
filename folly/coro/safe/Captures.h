@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/coro/safe/AsyncClosure-fwd.h>
@@ -23,12 +24,12 @@
 // `#undef`ed at end-of-file not to leak this macro.
 #include <folly/coro/safe/detail/DefineMovableDeepConstLrefCopyable.h>
 #include <folly/detail/tuple.h>
-#include <folly/lang/Assume.h>
-#include <folly/lang/Bindings.h>
-#include <folly/lang/named/Bindings.h>
 
 ///
 /// Please read the user- and developer-facing docs in `Capture.md`.
+///
+/// Callers typically only include `BindCaptures.h`, while callees need to
+/// include `Captures.h`.  Both are provided by `AsyncClosure.h`.
 ///
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
@@ -40,13 +41,10 @@ class exception_wrapper;
 
 namespace folly::coro {
 
-// Re-export `bound_args` since it's required to use async closures & objects.
-using ::folly::bindings::bound_args;
-
 class AsyncObjectTag;
 
 template <safe_alias, typename>
-class SafeTask;
+class safe_task;
 
 namespace detail {
 
@@ -96,125 +94,10 @@ concept immovable_async_closure_co_cleanup =
     !std::is_copy_assignable_v<T> && !std::is_move_constructible_v<T> &&
     !std::is_move_assignable_v<T> && !std::swappable<T>;
 
-// Any binding with this key is meant to be owned by the async closure
-enum class capture_kind {
-  plain = 0,
-  // Syntax sugar: Passing `as_capture_indirect()` with a pointer-like (e.g.
-  // `unique_ptr<T>`), this emits a `capture_indirect<>`, giving access to
-  // the underlying `T` with just one dereference `*` / `->`, instead of 2.
-  indirect,
-};
-
-struct capture_bind_info_t : folly::bindings::ext::bind_info_t {
-  capture_kind captureKind_;
-
-  constexpr explicit capture_bind_info_t(
-      // Using a constraint prevents object slicing
-      std::same_as<folly::bindings::ext::bind_info_t> auto bi,
-      capture_kind ap)
-      : folly::bindings::ext::bind_info_t(std::move(bi)), captureKind_(ap) {}
-};
-
-template <capture_kind Kind, typename UpdateBI = std::identity>
-struct as_capture_bind_info {
-  // Using `auto` prevents object slicing
-  constexpr auto operator()(auto bi) {
-    return capture_bind_info_t{UpdateBI{}(std::move(bi)), Kind};
-  }
-};
-
 template <typename, template <typename> class, typename>
 class capture_crtp_base;
 
 } // namespace detail
-
-///
-/// `as_capture()` and `as_capture_indirect()` work much like other
-/// `folly::bindings` modifiers.  However, since they're primarily intended
-/// for `async_closure` arguments, you will practically only use them:
-///   - alone, for non-`co_cleanup` arguments;
-///   - with `make_in_place()` or `make_in_place_with()`, for `co_cleanup`
-///     arguments;
-///   - with `constant()`, for either.
-///
-/// `capture_in_place<T>()` is short for `as_capture(make_in_place<T>())`.
-///
-/// See `Captures.md` and `folly/lang/Bindings.md`.
-///
-
-template <typename... Ts>
-struct as_capture
-    : ::folly::bindings::ext::merge_update_bound_args<
-          detail::as_capture_bind_info<detail::capture_kind::plain>,
-          Ts...> {
-  using ::folly::bindings::ext::merge_update_bound_args<
-      detail::as_capture_bind_info<detail::capture_kind::plain>,
-      Ts...>::merge_update_bound_args;
-};
-template <typename... Ts>
-as_capture(Ts&&...)
-    -> as_capture<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
-
-template <typename... Ts>
-struct as_capture_indirect
-    : ::folly::bindings::ext::merge_update_bound_args<
-          detail::as_capture_bind_info<detail::capture_kind::indirect>,
-          Ts...> {
-  using ::folly::bindings::ext::merge_update_bound_args<
-      detail::as_capture_bind_info<detail::capture_kind::indirect>,
-      Ts...>::merge_update_bound_args;
-};
-template <typename... Ts>
-as_capture_indirect(Ts&&...)
-    -> as_capture_indirect<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
-
-// Sugar for `as_capture{const_ref{...}}`
-template <typename... Ts>
-struct capture_const_ref
-    : ::folly::bindings::ext::merge_update_bound_args<
-          detail::as_capture_bind_info<
-              detail::capture_kind::plain,
-              ::folly::bindings::detail::const_ref_bind_info>,
-          Ts...> {
-  using ::folly::bindings::ext::merge_update_bound_args<
-      detail::as_capture_bind_info<
-          detail::capture_kind::plain,
-          ::folly::bindings::detail::const_ref_bind_info>,
-      Ts...>::merge_update_bound_args;
-};
-template <typename... Ts>
-capture_const_ref(Ts&&...)
-    -> capture_const_ref<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
-// Sugar for `as_capture{mut_ref{...}}`
-template <typename... Ts>
-struct capture_mut_ref
-    : ::folly::bindings::ext::merge_update_bound_args<
-          detail::as_capture_bind_info<
-              detail::capture_kind::plain,
-              ::folly::bindings::detail::mut_ref_bind_info>,
-          Ts...> {
-  using ::folly::bindings::ext::merge_update_bound_args<
-      detail::as_capture_bind_info<
-          detail::capture_kind::plain,
-          ::folly::bindings::detail::mut_ref_bind_info>,
-      Ts...>::merge_update_bound_args;
-};
-template <typename... Ts>
-capture_mut_ref(Ts&&...)
-    -> capture_mut_ref<folly::bindings::ext::deduce_bound_args_t<Ts>...>;
-
-// Sugar for `as_capture{make_in_place<T>(...)}`
-template <typename T>
-auto capture_in_place(auto&&... as [[clang::lifetimebound]]) {
-  return as_capture(
-      ::folly::bindings::make_in_place<T>(static_cast<decltype(as)>(as)...));
-}
-// Sugar for `as_capture{make_in_place_with(fn, ...)}`
-auto capture_in_place_with(
-    auto make_fn, auto&&... as [[clang::lifetimebound]]) {
-  return as_capture(::folly::bindings::make_in_place_with(
-      std::move(make_fn), static_cast<decltype(as)>(as)...));
-}
 
 template <typename T>
   requires(!detail::has_async_closure_co_cleanup<T>)
@@ -272,17 +155,12 @@ concept const_or_not = (std::same_as<T, U> || std::same_as<T, const U>);
 
 namespace detail {
 
-class capture_private_t {
- protected:
-  friend struct CapturesTest;
-  template <typename, template <typename> class, typename>
-  friend class capture_crtp_base;
-  template <typename, auto, size_t>
-  friend class capture_binding_helper;
-  template <auto>
-  friend auto bind_captures_to_closure(auto&&, auto);
-  friend constexpr capture_private_t coro_safe_detail_bindings_test_private();
-  friend class ::folly::coro::AsyncObjectTag;
+// DANGER: Using this passkey makes it easy to break the lifetime-safety
+// guarantees of `folly/coro/safe`, so before adding a new callsite, get
+// familiar with the lifetime-safety docs, and get a careful review.  This used
+// to have a private-with-friends constructor, but the friend list grew
+// unmanageably large as the number of lifetime-safe utilities increased.
+struct capture_private_t {
   explicit capture_private_t() = default;
 };
 
@@ -329,7 +207,7 @@ class capture_crtp_base {
     return fn();
   }
 
-  // Object intended for use with `capture`  (like `SafeAsyncScope`) may
+  // Object intended for use with `capture`  (like `safe_async_scope`) may
   // provide overloads of the helper function `capture_proxy` to provide
   // proxy types for `capture` operators `*` and `->`.
   //
@@ -345,7 +223,7 @@ class capture_crtp_base {
   //     `co_cleanup_capture<...AsyncScope...>` that was originally NOT
   //     restricted -- so, "restricted" is a property of the reference, not
   //     of the underlying scope object.
-  //   - Therefore, the public API of `SafeAsyncScope` must sit in a
+  //   - Therefore, the public API of `safe_async_scope` must sit in a
   //     "reference" object that knows if it's restricted, not in the storage
   //     object (which does not).
   //   - It would break encapsulation to put `AsyncScope`-specific logic like
@@ -372,7 +250,13 @@ class capture_crtp_base {
     } else if constexpr (Kind == ext::capture_proxy_kind::lval_ref) {
       return lref; // Unproxied l-value reference
     } else if constexpr (Kind == ext::capture_proxy_kind::rval_ref) {
-      return std::move(lref); // Unproxied r-value reference
+      // Implement regular forwarding-ref semantics:
+      //   (V&)&& -> V&, (V)&& -> V&&, (V&&)&& -> V&&
+      if constexpr (std::is_lvalue_reference_v<T>) {
+        return lref;
+      } else {
+        return std::move(lref);
+      }
     } else if constexpr (
         Kind == ext::capture_proxy_kind::lval_ptr ||
         Kind == ext::capture_proxy_kind::rval_ptr) {
@@ -517,7 +401,7 @@ class capture_crtp_base {
   // of your closure.  That deliberately has stricter single-use semantics
   // than `V&&` in vanilla C++ -- for example, without single-use, an rref
   // could be used to move out a value that is still referenced in
-  // SafeAsyncScope task.  Having the explicit && -> & conversion permits
+  // safe_async_scope task.  Having the explicit && -> & conversion permits
   // the child change its mind about moving out the value.
   //
   // Future ideas & implementation notes:
@@ -701,7 +585,7 @@ class capture_heap_storage : public capture_crtp_base<Derived, RefArgT, T> {
 // dereference operations into one for better UX.  There is no need for a
 // `capture_heap_indirect_storage`, since this "indirect" syntax sugar only
 // applies to pointer types, which are always cheaply movable, and thus
-// don't benefit from `make_in_place`.
+// don't benefit from `bind::in_place`.
 //
 // Similarly, no support for `co_cleanup()` captures since those generally
 // aren't pointer-like, and won't suffer from double-dereferences.
@@ -769,6 +653,41 @@ class capture_indirect_storage : public capture_storage<Derived, RefArgT, T> {
   }
 };
 
+// `capture_safety_impl_v` is separate for `AsyncObject.h` to specialize
+template <typename T, safe_alias Default>
+inline constexpr auto capture_safety_impl_v = safe_alias_of<T, Default>::value;
+
+// ALL "capture" types must have `folly_private_safe_alias_t` markings.
+//
+// `capture` refs are only valid as long as their on-closure storage.  They can
+// be copied/moved, so their `safe_alias` marking is the only thing preventing
+// the use of invalid references.  The docs in `enum class safe_alias` discuss
+// how safety levels are assigned for closure `capture`s.  `async_closure`
+// invokes `to_capture_ref()` to emit refs with the appropriate safety.
+//
+// If the underlying type is `<= shared_cleanup`, that leaks through to
+// all `capture`s containing it.  See e.g. `AsyncObjectPtr`.
+//   * Note: A `shared_cleanup` type `T` gives a closure a way of passing refs
+//     onto parent `safe_async_scope`s (generically: cleanup phases), so
+//     `capture<T>` must never be safer than `T` (unless we're dealing with a
+//     restricted capture ref),
+//
+// Otherwise, the safety measurement of `T` is "outer" to the current
+// closure, and is one of `after_cleanup_ref`, `co_cleanup_safe_ref`, or
+// `maybe_value`.  Those should all behave the same inside the closure,
+// so `MaxRefSafety` is all that matters.
+//   * Note: `capture<V>` is convertible to `capture<V&>` etc, so the ref
+//     version should never be safer.
+template <typename T, safe_alias MaxRefSafety, safe_alias Default>
+struct capture_safety
+    : safe_alias_constant<
+          (capture_safety_impl_v<std::remove_reference_t<T>, Default> <=
+           safe_alias::shared_cleanup)
+              ? std::min(
+                    MaxRefSafety,
+                    capture_safety_impl_v<std::remove_reference_t<T>, Default>)
+              : MaxRefSafety> {};
+
 } // namespace detail
 
 // Please read the file docblock.
@@ -794,6 +713,9 @@ class capture : public detail::capture_storage<capture<T>, capture, T> {
  public:
   FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE(capture, T);
   using detail::capture_storage<capture<T>, capture, T>::capture_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::co_cleanup_safe_ref, Default>;
 };
 template <typename T> // may be a value or reference
   requires(!detail::has_async_closure_co_cleanup<T>)
@@ -806,14 +728,17 @@ class after_cleanup_capture
       after_cleanup_capture<T>,
       after_cleanup_capture,
       T>::capture_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::after_cleanup_ref, Default>;
 };
 
 // The use-case for `capture_heap` is to allow a closure without cleanup
 // args to avoid an inner/outer task split, while still taking
-// `make_in_place` arguments.  This is meant to be an implementation detail
+// `bind::in_place` arguments.  This is meant to be an implementation detail
 // that's almost fully API-compatible with `capture`.  At a future
 // point we *could* remove this:
-//  - Then, any use of `make_in_place` would auto-create an outer task.
+//  - Then, any use of `bind::in_place` would auto-create an outer task.
 //  - Any user code that explicitly specifies `capture_heap` in signatures
 //    would need to be updated to `capture`.
 //  - Any places that rely on moving `capture_heap<V>` would need to migrate
@@ -826,6 +751,9 @@ class capture_heap
  public:
   using detail::capture_heap_storage<capture_heap<T>, capture, T>::
       capture_heap_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::co_cleanup_safe_ref, Default>;
 };
 template <typename T>
 class after_cleanup_capture_heap
@@ -838,6 +766,9 @@ class after_cleanup_capture_heap
       after_cleanup_capture_heap<T>,
       after_cleanup_capture,
       T>::capture_heap_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::after_cleanup_ref, Default>;
 };
 
 // `capture_indirect<SomePtr<T>>` is like `capture<SomePtr<T>>` with syntax
@@ -852,6 +783,9 @@ class capture_indirect
       capture_indirect<T>,
       capture_indirect,
       T>::capture_indirect_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::co_cleanup_safe_ref, Default>;
 };
 template <typename T>
 class after_cleanup_capture_indirect
@@ -864,6 +798,9 @@ class after_cleanup_capture_indirect
       after_cleanup_capture_indirect<T>,
       after_cleanup_capture_indirect,
       T>::capture_indirect_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::after_cleanup_ref, Default>;
 };
 
 // A closure that takes a cleanup arg is required to mark its directly-owned
@@ -887,6 +824,9 @@ class co_cleanup_capture
   FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE(co_cleanup_capture, T);
   using detail::capture_storage<co_cleanup_capture<T>, co_cleanup_capture, T>::
       capture_storage;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::shared_cleanup, Default>;
 };
 
 // What this accomplishes, in brief -- details in `Captures.md`:
@@ -916,6 +856,12 @@ class restricted_co_cleanup_capture
       restricted_co_cleanup_capture<T>,
       restricted_co_cleanup_capture,
       T>::capture_storage;
+  // FIXME: `capture_safety` will still measure this as `shared_cleanup` due
+  // to `T` being that safety.  So, when implementing restricted refs, we'll
+  // have to add a new case to `capture_safety` to handle this.
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      detail::capture_safety<T, safe_alias::after_cleanup_ref, Default>;
 };
 
 namespace detail {
@@ -940,99 +886,22 @@ template <typename T>
 concept is_any_capture_val =
     is_any_capture<T> && !std::is_reference_v<typename T::capture_type>;
 
-// `capture_safety_impl_v` is separate for `AsyncObject.h` to specialize
-template <typename T>
-inline constexpr auto capture_safety_impl_v = safe_alias_of_v<T>;
-// If the underlying type is `<= shared_cleanup`, that leaks through to
-// all `capture`s containing it.  See e.g. `AsyncObjectPtr`.
-//   * Note: A `shared_cleanup` type `T` gives a closure a way of passing refs
-//     onto parent `SafeAsyncScope`s (generically: cleanup phases), so
-//     `capture<T>` must never be safer than `T` (unless we're dealing with a
-//     restricted capture ref),
-//
-// Otherwise, the safety measurement of `T` is "outer" to the current
-// closure, and is one of `after_cleanup_ref`, `co_cleanup_safe_ref`, or
-// `maybe_value`.  Those should all behave the same inside the closure,
-// so `MaxRefSafety` is all that matters.
-//   * Note: `capture<V>` is convertible to `capture<V&>` etc, so the ref
-//     version should never be safer.
-template <typename T, safe_alias MaxRefSafety>
-struct capture_safety
-    : safe_alias_constant<
-          (capture_safety_impl_v<std::remove_reference_t<T>> <=
-           safe_alias::shared_cleanup)
-              ? std::min(
-                    MaxRefSafety,
-                    capture_safety_impl_v<std::remove_reference_t<T>>)
-              : MaxRefSafety> {};
-
 } // namespace detail
 
 } // namespace folly::coro
 
-namespace folly {
-
-// Set `safe_alias` values for all the `capture` types.
-//
-// `capture` refs are only valid as long as their on-closure storage.  They
-// can be copied/moved, so their `safe_alias` marking is the only thing
-// preventing the use of invalid references.  The docs in `enum class
-// safe_alias` discuss how safety levels are assigned for closure
-// `capture`s.  `async_closure` invokes `to_capture_ref()` to emit refs with
-// the appropriate safety.
-
-template <typename T>
-struct safe_alias_of<::folly::coro::capture<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
+// Customize `safe_closure` to store `capture<V>` as `capture<V&>`.
+namespace folly::detail {
+template <typename ST>
+struct safe_closure_arg_storage_helper;
+template <coro::detail::is_any_capture_val ST>
+struct safe_closure_arg_storage_helper<ST> {
+  // We should never move `capture<Val>`s, so `safe_closure` will fail to
+  // implicitly convert from `capture<Val>&&` to `capture<V&>` since the
+  // `&&`-qualified conversions are `explicit` above.
+  using type = coro::capture_ref_conversion_t<ST&>;
 };
-template <typename T>
-struct safe_alias_of<::folly::coro::capture_heap<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
-};
-template <typename T>
-struct safe_alias_of<::folly::coro::capture_indirect<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::co_cleanup_safe_ref> {
-};
-
-template <typename T>
-struct safe_alias_of<::folly::coro::after_cleanup_capture<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
-template <typename T>
-struct safe_alias_of<::folly::coro::after_cleanup_capture_heap<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
-template <typename T>
-struct safe_alias_of<::folly::coro::after_cleanup_capture_indirect<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
-
-template <typename T>
-struct safe_alias_of<::folly::coro::co_cleanup_capture<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::shared_cleanup> {};
-// FIXME: `capture_safety` will still measure this as `shared_cleanup` due
-// to `T` being that safety.  So, when implementing restricted refs, we'll
-// have to add a new case to `capture_safety` to handle this.
-template <typename T>
-struct safe_alias_of<::folly::coro::restricted_co_cleanup_capture<T>>
-    : folly::coro::detail::capture_safety<T, safe_alias::after_cleanup_ref> {};
-
-} // namespace folly
-
-// We extended `folly::bindings` with `capture_kind`, so we must explicitly
-// specialize `binding_policy`.  We reuse the standard rules.  Custom
-// `capture` binding logic is in `async_closure_bindings()`.
-namespace folly::bindings::ext {
-template <auto BI, typename BindingType>
-  requires std::same_as< // Written as a constraint to prevent object slicing
-      decltype(BI),
-      ::folly::coro::detail::capture_bind_info_t>
-class binding_policy<ext::binding_t<BI, BindingType>> {
- private:
-  using standard = binding_policy<ext::binding_t<bind_info_t{BI}, BindingType>>;
-
- public:
-  using storage_type = typename standard::storage_type;
-  using signature_type = typename standard::signature_type;
-};
-} // namespace folly::bindings::ext
+} // namespace folly::detail
 
 #endif
 

@@ -357,8 +357,9 @@ class hazptr_domain {
     int rcount = check_count_threshold();
     if (rcount == 0) {
       rcount = check_due_time();
-      if (rcount == 0)
+      if (rcount == 0) {
         return;
+      }
     }
     inc_num_bulk_reclaims();
     if (!invoke_reclamation_in_executor(rcount)) {
@@ -385,8 +386,9 @@ class hazptr_domain {
             std::chrono::steady_clock::now().time_since_epoch())
             .count();
     auto due = load_due_time();
-    if (time < due || !cas_due_time(due, time + kSyncTimePeriod))
+    if (time < due || !cas_due_time(due, time + kSyncTimePeriod)) {
       return 0;
+    }
     int rcount = exchange_count(0);
     if (rcount < 0) {
       add_count(rcount);
@@ -410,8 +412,9 @@ class hazptr_domain {
   /** tagged_empty */
   bool tagged_empty() {
     for (int s = 0; s < kNumShards; ++s) {
-      if (!tagged_[s].empty())
+      if (!tagged_[s].empty()) {
         return false;
+      }
     }
     return true;
   }
@@ -419,8 +422,9 @@ class hazptr_domain {
   /** untagged_empty */
   bool untagged_empty() {
     for (int s = 0; s < kNumShards; ++s) {
-      if (!untagged_[s].empty())
+      if (!untagged_[s].empty()) {
         return false;
+      }
     }
     return true;
   }
@@ -532,8 +536,9 @@ class hazptr_domain {
         add_count(rcount);
       }
       rcount = check_count_threshold();
-      if (rcount == 0 && done)
+      if (rcount == 0 && done) {
         break;
+      }
     }
     dec_num_bulk_reclaims();
   }

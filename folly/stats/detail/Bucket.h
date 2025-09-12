@@ -107,11 +107,18 @@ void subtractHelper(ValueType& a, const ValueType& b) {
 template <
     typename ReturnType = double,
     typename Duration = std::chrono::seconds,
-    typename Interval = Duration>
+    typename Interval = Duration,
+    typename = std::enable_if_t<std::is_constructible_v<Duration, Interval>>>
 ReturnType rateHelper(ReturnType count, Duration elapsed) {
   if (elapsed == Duration(0)) {
     return 0;
   }
+
+  // elapsed is non-zero, and we increase elapsed to at least Interval{1}
+  // for rate calculation to smooth out rate calculation at the beginning for
+  // a timeseries' lifecycle, when elapsed is very short compared to the overall
+  // timeseries duration.
+  elapsed = std::max(elapsed, Duration(Interval{1}));
 
   // Use std::chrono::duration_cast to convert between the native
   // duration and the desired interval.  However, convert the rates,
@@ -119,24 +126,23 @@ ReturnType rateHelper(ReturnType count, Duration elapsed) {
   // elapsed time first may collapse it down to 0 if the elapsed interval
   // is less than the desired interval, which will incorrectly result in
   // an infinite rate.
-  typedef std::chrono::duration<
-      ReturnType,
-      std::ratio<Duration::period::den, Duration::period::num>>
-      NativeRate;
-  typedef std::chrono::duration<
-      ReturnType,
-      std::ratio<Interval::period::den, Interval::period::num>>
-      DesiredRate;
+  using NativeRate = std::chrono::duration<
+      double,
+      std::ratio<Duration::period::den, Duration::period::num>>;
+  using DesiredRate = std::chrono::duration<
+      double,
+      std::ratio<Interval::period::den, Interval::period::num>>;
 
-  NativeRate native(count / elapsed.count());
+  // We use Rep=double to avoid rouding down too much here.
+  NativeRate native((double)count / elapsed.count());
   DesiredRate desired = std::chrono::duration_cast<DesiredRate>(native);
-  return desired.count();
+  return static_cast<ReturnType>(desired.count());
 }
 
 template <typename T>
 struct Bucket {
  public:
-  typedef T ValueType;
+  using ValueType = T;
 
   Bucket() : sum(ValueType()), count(0) {}
 

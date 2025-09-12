@@ -98,8 +98,8 @@ folly::Future<
     lift_unit_t<semi_await_result_t<remove_reference_wrapper_t<SemiAwaitable>>>>
 toFuture(SemiAwaitable&& a, Executor::KeepAlive<> ex) {
   auto excopy = ex;
-  return toTask(std::forward<SemiAwaitable>(a))
-      .scheduleOn(std::move(excopy))
+  return co_withExecutor(
+             std::move(excopy), toTask(std::forward<SemiAwaitable>(a)))
       .start()
       .via(std::move(ex));
 }

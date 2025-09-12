@@ -146,9 +146,9 @@ template <
             UsableAsKey<remove_cvref_t<Arg1>>::value,
         int> = 0>
 auto callWithExtractedKey(
-    Alloc&,
+    Alloc& /*unused*/,
     Func&& f,
-    std::piecewise_construct_t,
+    std::piecewise_construct_t /*unused*/,
     std::tuple<Arg1>&& first_args,
     std::tuple<Args2...>&& second_args) {
   // we found a usable key in the args :)
@@ -171,7 +171,7 @@ template <
 auto callWithExtractedKey(
     Alloc& a,
     Func&& f,
-    std::piecewise_construct_t,
+    std::piecewise_construct_t /*unused*/,
     std::tuple<Args1...>&& first_args,
     std::tuple<Args2...>&& second_args) {
   // we will need to materialize a temporary key :(
@@ -266,7 +266,7 @@ template <
         std::is_same<remove_cvref_t<Arg>, KeyType>::value ||
             UsableAsKey<remove_cvref_t<Arg>>::value,
         int> = 0>
-auto callWithConstructedKey(Alloc&, Func&& f, Arg&& arg) {
+auto callWithConstructedKey(Alloc& /*unused*/, Func&& f, Arg&& arg) {
   // we found a usable key in the args :)
   auto const& key = arg;
   return f(key, std::forward<Arg>(arg));

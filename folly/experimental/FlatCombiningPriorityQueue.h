@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/concurrency/container/FlatCombiningPriorityQueue.h>
+#include <folly/concurrency/container/FlatCombiningPriorityQueue.h> // @shim

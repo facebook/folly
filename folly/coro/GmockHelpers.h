@@ -115,7 +115,7 @@ auto makeCoAction(Fn&& fn) {
       std::is_copy_constructible_v<remove_cvref_t<Fn>>,
       "Fn should be copyable to allow calling mocked call multiple times.");
 
-  using Ret = std::invoke_result_t<remove_cvref_t<Fn>&&>;
+  using Ret = invoke_result_t<remove_cvref_t<Fn>&&>;
   return ::testing::InvokeWithoutArgs(
       [fn = std::forward<Fn>(fn)]() mutable -> Ret { return co_invoke(fn); });
 }

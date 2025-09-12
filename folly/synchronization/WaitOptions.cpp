@@ -16,8 +16,6 @@
 
 #include <folly/synchronization/WaitOptions.h>
 
-#include <folly/Portability.h>
-
 namespace folly {
 
 //

@@ -83,7 +83,7 @@ struct QuotientMultiSet<Instructions>::Metadata {
   uint8_t remainderBits;
 
   std::string debugString() const {
-    return sformat(
+    return fmt::format(
         "Number of blocks: {}\n"
         "Number of elements: {}\n"
         "Divisor: {}\n"

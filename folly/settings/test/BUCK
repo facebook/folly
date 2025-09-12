@@ -10,6 +10,7 @@ fbcode_target(
     name = "settings_bench",
     srcs = ["SettingsBenchmarks.cpp"],
     deps = [
+        ":a",
         "//folly:benchmark",
         "//folly:c_portability",
         "//folly/init:init",
@@ -50,6 +51,7 @@ fbcode_target(
     labels = ["case-isolation-failure"],
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "fbsource//third-party/googletest:gtest",
         "//folly:conv",
         "//folly:string",
         "//folly/container:array",

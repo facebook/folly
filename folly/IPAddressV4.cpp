@@ -146,7 +146,7 @@ IPAddressV4 IPAddressV4::fromInverseArpaName(const std::string& arpaname) {
         fmt::format("input does not end with '.in-addr.arpa': '{}'", arpaname));
   }
   std::vector<StringPiece> pieces;
-  split(".", piece, pieces);
+  split('.', piece, pieces);
   if (pieces.size() != 4) {
     throw IPAddressFormatException(fmt::format("Invalid input. Got {}", piece));
   }

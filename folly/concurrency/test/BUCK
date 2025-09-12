@@ -5,7 +5,7 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "WINDOWS")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:glob_defs.bzl", "subdir_glob")
-load("@fbsource//xplat/folly:defs.bzl", "DEFAULT_APPLE_SDKS")
+load("../../defs.bzl", "DEFAULT_APPLE_SDKS")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -43,6 +43,15 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_binary,
+    name = "cache_locality_init_main",
+    srcs = ["CacheLocalityInitMain.cpp"],
+    deps = [
+        "//folly/concurrency:cache_locality",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "cache_locality_test",
     srcs = ["CacheLocalityTest.cpp"],
@@ -54,6 +63,7 @@ fbcode_target(
         "//folly/portability:sys_resource",
         "//folly/portability:unistd",
         "//folly/test:test_utils",
+        "//folly/testing:test_util",
     ],
     external_deps = [
         "glog",

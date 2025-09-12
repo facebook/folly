@@ -35,6 +35,13 @@ struct ExceptionStats {
 };
 
 /**
+ * Throw handler that intercepts exception throwing and accumulates stats.
+ * Use with registerCxaThrowCallback/unregisterCxaThrowCallback.
+ */
+void exceptionStatsThrowHandler(
+    void*, std::type_info* exType, void (**)(void*)) noexcept;
+
+/**
  * This function accumulates exception throwing statistics across all threads.
  * Please note, that during call to this function, other threads might block
  * on exception throws, so it should be called seldomly.

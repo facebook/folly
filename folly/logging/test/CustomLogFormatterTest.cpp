@@ -90,7 +90,7 @@ TEST(CustomLogFormatter, log) {
   auto tid = getOSThreadID();
 
   // Test a very simple single-line log message
-  auto expected = folly::sformat(
+  auto expected = fmt::format(
       "W0417 13:45:56.123456 {:5d} myfile.cpp:1234] hello world\n", tid);
   EXPECT_EQ(
       expected,
@@ -107,7 +107,7 @@ TEST(CustomLogFormatter, filename) {
   auto tid = getOSThreadID();
 
   // Make sure only the file basename gets logged
-  auto expected = folly::sformat(
+  auto expected = fmt::format(
       "W0417 13:45:56.123456 {:5d} myfile.cpp:1234] hello world\n", tid);
   EXPECT_EQ(
       expected,
@@ -120,7 +120,7 @@ TEST(CustomLogFormatter, filename) {
           1234));
 
   // Log a message with a very long file name.
-  expected = folly::sformat(
+  expected = fmt::format(
       "W0417 13:45:56.123456 {:5d} "
       "this_is_a_really_long_file_name_that_will_probably_exceed_"
       "our_buffer_allocation_guess.cpp:123456789] oh noes\n",
@@ -141,7 +141,7 @@ TEST(CustomLogFormatter, functionName) {
   auto tid = getOSThreadID();
 
   // Make sure the function name gets logged
-  auto expected = folly::sformat(
+  auto expected = fmt::format(
       "W0417 13:45:56.123456 {:5d} myfile.cpp:1234 testFunction()] "
       "hello world\n",
       tid);
@@ -362,7 +362,7 @@ TEST(CustomLogFormatter, unprintableChars) {
   auto tid = getOSThreadID();
 
   // Unprintable characters should be backslash escaped, as should backslashes.
-  auto expected = folly::sformat(
+  auto expected = fmt::format(
       "E0417 13:45:56.123456 {:5d} escapes.cpp:97] foo\\x07bar\\x1btest\n",
       tid);
   EXPECT_EQ(
@@ -374,7 +374,7 @@ TEST(CustomLogFormatter, unprintableChars) {
           "escapes.cpp",
           "testFunction",
           97));
-  expected = folly::sformat(
+  expected = fmt::format(
       "I0417 13:45:56.123456 {:5d} escapes.cpp:98] foo\\\\bar\"test\n", tid);
   EXPECT_EQ(
       expected,
@@ -385,7 +385,7 @@ TEST(CustomLogFormatter, unprintableChars) {
           "escapes.cpp",
           "testFunction",
           98));
-  expected = folly::sformat(
+  expected = fmt::format(
       "C0417 13:45:56.123456 {:5d} escapes.cpp:99] nul\\x00byte\n", tid);
   EXPECT_EQ(
       expected,

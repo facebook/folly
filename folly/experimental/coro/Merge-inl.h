@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Merge-inl.h>
+#include <folly/coro/Merge-inl.h> // @shim

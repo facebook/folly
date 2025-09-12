@@ -311,6 +311,36 @@ TEST(ForEach, FetchTestPreferIterator) {
   EXPECT_EQ(folly::fetch(range, 0), 2);
 }
 
+template <typename...>
+struct LargeTuple {};
+template <size_t I, typename... T>
+type_pack_element_t<I, T...>& get(LargeTuple<T...>&) {
+  static type_pack_element_t<I, T...> elem;
+  return elem;
+}
+namespace std {
+template <typename... T>
+struct tuple_size<LargeTuple<T...>>
+    : std::integral_constant<size_t, sizeof...(T)> {};
+} // namespace std
+
+template <typename>
+struct LargeTupleTestHelper;
+template <size_t... I>
+struct LargeTupleTestHelper<std::index_sequence<I...>> {
+  template <size_t J>
+  using type_ = int;
+  using type = LargeTuple<type_<I>...>;
+};
+
+TEST(ForEach, LargeTuple) {
+  using tup = LargeTupleTestHelper<std::make_index_sequence<1024>>::type;
+  tup arr{};
+  int s = 0;
+  folly::for_each(arr, [&](auto i) { s += i; });
+  EXPECT_EQ(0, s);
+}
+
 TEST(Foreach, ForEachRvalue) {
   const char* const hello = "hello";
   int n = 0;

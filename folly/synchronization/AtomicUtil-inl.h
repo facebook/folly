@@ -191,10 +191,10 @@ inline bool atomic_fetch_set_native(
   static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer));
   assert(atomic.is_lock_free());
 
-  if /* constexpr */ (sizeof(Integer) == 4) {
+  if constexpr (sizeof(Integer) == 4) {
     return _interlockedbittestandset(
         reinterpret_cast<volatile long*>(&atomic), static_cast<long>(bit));
-  } else if /* constexpr */ (sizeof(Integer) == 8) {
+  } else if constexpr (sizeof(Integer) == 8) {
     return _interlockedbittestandset64(
         reinterpret_cast<volatile long long*>(&atomic),
         static_cast<long long>(bit));
@@ -219,10 +219,10 @@ inline bool atomic_fetch_reset_native(
   static_assert(sizeof(std::atomic<Integer>) == sizeof(Integer));
   assert(atomic.is_lock_free());
 
-  if /* constexpr */ (sizeof(Integer) == 4) {
+  if constexpr (sizeof(Integer) == 4) {
     return _interlockedbittestandreset(
         reinterpret_cast<volatile long*>(&atomic), static_cast<long>(bit));
-  } else if /* constexpr */ (sizeof(Integer) == 8) {
+  } else if constexpr (sizeof(Integer) == 8) {
     return _interlockedbittestandreset64(
         reinterpret_cast<volatile long long*>(&atomic),
         static_cast<long long>(bit));

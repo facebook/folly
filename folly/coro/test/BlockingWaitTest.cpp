@@ -63,7 +63,7 @@ class BlockingWaitTest : public testing::Test {};
 
 TEST_F(BlockingWaitTest, AwaitNowTask) {
   bool ran = false;
-  folly::coro::blockingWait([&]() -> folly::coro::NowTask<> {
+  folly::coro::blockingWait([&]() -> folly::coro::now_task<> {
     ran = true;
     co_return;
   }());
@@ -73,7 +73,7 @@ TEST_F(BlockingWaitTest, AwaitNowTask) {
 TEST_F(BlockingWaitTest, AwaitNowTaskWithExecutor) {
   bool ran = false;
   folly::coro::blockingWait(co_withExecutor(
-      folly::getGlobalCPUExecutor(), [&]() -> folly::coro::NowTask<> {
+      folly::getGlobalCPUExecutor(), [&]() -> folly::coro::now_task<> {
         ran = true;
         co_return;
       }()));

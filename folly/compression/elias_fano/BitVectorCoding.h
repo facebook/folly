@@ -65,8 +65,8 @@ struct BitVectorCompressedListBase {
   Pointer forwardPointers = nullptr;
 };
 
-typedef BitVectorCompressedListBase<const uint8_t*> BitVectorCompressedList;
-typedef BitVectorCompressedListBase<uint8_t*> MutableBitVectorCompressedList;
+using BitVectorCompressedList = BitVectorCompressedListBase<const uint8_t*>;
+using MutableBitVectorCompressedList = BitVectorCompressedListBase<uint8_t*>;
 
 template <
     class Value,
@@ -78,11 +78,11 @@ struct BitVectorEncoder {
       std::is_integral<Value>::value && std::is_unsigned<Value>::value,
       "Value should be unsigned integral");
 
-  typedef BitVectorCompressedList CompressedList;
-  typedef MutableBitVectorCompressedList MutableCompressedList;
+  using CompressedList = BitVectorCompressedList;
+  using MutableCompressedList = MutableBitVectorCompressedList;
 
-  typedef Value ValueType;
-  typedef SkipValue SkipValueType;
+  using ValueType = Value;
+  using SkipValueType = SkipValue;
   struct Layout;
 
   static constexpr size_t skipQuantum = kSkipQuantum;
@@ -242,11 +242,11 @@ class BitVectorReader
     : detail::ForwardPointers<Encoder::forwardQuantum>,
       detail::SkipPointers<Encoder::skipQuantum> {
  public:
-  typedef Encoder EncoderType;
-  typedef typename Encoder::ValueType ValueType;
+  using EncoderType = Encoder;
+  using ValueType = typename Encoder::ValueType;
   // A bitvector can only be as large as its largest value.
-  typedef typename Encoder::ValueType SizeType;
-  typedef typename Encoder::SkipValueType SkipValueType;
+  using SizeType = typename Encoder::ValueType;
+  using SkipValueType = typename Encoder::SkipValueType;
 
   explicit BitVectorReader(const typename Encoder::CompressedList& list)
       : detail::ForwardPointers<Encoder::forwardQuantum>(list.forwardPointers),

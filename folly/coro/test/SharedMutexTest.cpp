@@ -169,11 +169,11 @@ TEST_F(SharedMutexTest, ManualLockAsync) {
     coro::Baton b4;
     coro::Baton b5;
 
-    auto r1 = makeReaderTask(b1).scheduleOn(&executor).start();
-    auto r2 = makeReaderTask(b2).scheduleOn(&executor).start();
-    auto w1 = makeWriterTask(b3).scheduleOn(&executor).start();
-    auto w2 = makeWriterTask(b4).scheduleOn(&executor).start();
-    auto r3 = makeReaderTask(b5).scheduleOn(&executor).start();
+    auto r1 = co_withExecutor(&executor, makeReaderTask(b1)).start();
+    auto r2 = co_withExecutor(&executor, makeReaderTask(b2)).start();
+    auto w1 = co_withExecutor(&executor, makeWriterTask(b3)).start();
+    auto w2 = co_withExecutor(&executor, makeWriterTask(b4)).start();
+    auto r3 = co_withExecutor(&executor, makeReaderTask(b5)).start();
     executor.drain();
 
     b1.post();
@@ -700,13 +700,13 @@ void testAllStateTransitions(
     init(m);
     std::optional<folly::SemiFuture<folly::Unit>> waiterSemi;
     if (waiterSetup) {
-      waiterSemi = (*waiterSetup)(m).scheduleOn(&executor).start();
+      waiterSemi = co_withExecutor(&executor, (*waiterSetup)(m)).start();
     }
     executor.drain();
     if (waiterSemi) {
       ASSERT_FALSE(waiterSemi->isReady()); // the waiter is supposed to wait
     }
-    auto semi = action(m).scheduleOn(&executor).start();
+    auto semi = co_withExecutor(&executor, action(m)).start();
     executor.drain();
     ASSERT_EQ(semi.isReady(), expectDone);
     if (expectDone) {
@@ -773,11 +773,11 @@ TEST_F(SharedMutexTest, ScopedLockAsync) {
     coro::Baton b4;
     coro::Baton b5;
 
-    auto r1 = makeReaderTask(b1).scheduleOn(&executor).start();
-    auto r2 = makeReaderTask(b2).scheduleOn(&executor).start();
-    auto w1 = makeWriterTask(b3).scheduleOn(&executor).start();
-    auto w2 = makeWriterTask(b4).scheduleOn(&executor).start();
-    auto r3 = makeReaderTask(b5).scheduleOn(&executor).start();
+    auto r1 = co_withExecutor(&executor, makeReaderTask(b1)).start();
+    auto r2 = co_withExecutor(&executor, makeReaderTask(b2)).start();
+    auto w1 = co_withExecutor(&executor, makeWriterTask(b3)).start();
+    auto w2 = co_withExecutor(&executor, makeWriterTask(b4)).start();
+    auto r3 = co_withExecutor(&executor, makeReaderTask(b5)).start();
 
     b1.post();
     executor.drain();
@@ -817,12 +817,12 @@ TEST_F(SharedMutexTest, MultipleWaiters) {
     ASSERT_TRUE(mutex.try_lock());
     // U1 S1 U2 S2 W S3
     // expect U1 S1 S2 to be unblocked on unlock
-    auto u1 = upgrader().scheduleOn(&executor).start();
-    auto s1 = reader().scheduleOn(&executor).start();
-    auto u2 = upgrader().scheduleOn(&executor).start();
-    auto s2 = reader().scheduleOn(&executor).start();
-    auto w = writer().scheduleOn(&executor).start();
-    auto s3 = reader().scheduleOn(&executor).start();
+    auto u1 = co_withExecutor(&executor, upgrader()).start();
+    auto s1 = co_withExecutor(&executor, reader()).start();
+    auto u2 = co_withExecutor(&executor, upgrader()).start();
+    auto s2 = co_withExecutor(&executor, reader()).start();
+    auto w = co_withExecutor(&executor, writer()).start();
+    auto s3 = co_withExecutor(&executor, reader()).start();
     executor.drain();
     EXPECT_FALSE(u1.isReady());
     EXPECT_FALSE(s1.isReady());
@@ -862,9 +862,9 @@ TEST_F(SharedMutexTest, MultipleWaiters) {
     ManualExecutor executor;
     ASSERT_TRUE(mutex.try_lock());
     // U1 U2 S
-    auto u1 = upgrader().scheduleOn(&executor).start();
-    auto u2 = upgrader().scheduleOn(&executor).start();
-    auto s = reader().scheduleOn(&executor).start();
+    auto u1 = co_withExecutor(&executor, upgrader()).start();
+    auto u2 = co_withExecutor(&executor, upgrader()).start();
+    auto s = co_withExecutor(&executor, reader()).start();
     executor.drain();
     EXPECT_FALSE(u1.isReady());
     EXPECT_FALSE(u2.isReady());
@@ -876,7 +876,7 @@ TEST_F(SharedMutexTest, MultipleWaiters) {
     EXPECT_FALSE(u2.isReady());
 
     // u3 should be enqueued behind u2 which is the new tail
-    auto u3 = upgrader().scheduleOn(&executor).start();
+    auto u3 = co_withExecutor(&executor, upgrader()).start();
     executor.drain();
     EXPECT_FALSE(u3.isReady());
 
@@ -933,8 +933,8 @@ TEST_F(SharedMutexTest, AsyncLockTransition) {
   {
     ManualExecutor executor;
     value = 0;
-    auto w = conditionalWrite().scheduleOn(&executor).start();
-    auto r = read().scheduleOn(&executor).start();
+    auto w = co_withExecutor(&executor, conditionalWrite()).start();
+    auto r = co_withExecutor(&executor, read()).start();
     executor.drain();
     EXPECT_EQ(std::move(r).get(), 1);
   }
@@ -942,9 +942,9 @@ TEST_F(SharedMutexTest, AsyncLockTransition) {
   {
     ManualExecutor executor;
     value = 0;
-    auto r1 = read().scheduleOn(&executor).start();
-    auto w = conditionalWrite().scheduleOn(&executor).start();
-    auto r2 = read().scheduleOn(&executor).start();
+    auto r1 = co_withExecutor(&executor, read()).start();
+    auto w = co_withExecutor(&executor, conditionalWrite()).start();
+    auto r2 = co_withExecutor(&executor, read()).start();
     executor.drain();
     EXPECT_EQ(std::move(r1).get(), 0);
     EXPECT_EQ(std::move(r2).get(), 1);
@@ -953,10 +953,10 @@ TEST_F(SharedMutexTest, AsyncLockTransition) {
   {
     ManualExecutor executor;
     value = 0;
-    auto r1 = read().scheduleOn(&executor).start();
-    auto w1 = conditionalWrite().scheduleOn(&executor).start();
-    auto w2 = conditionalWrite().scheduleOn(&executor).start();
-    auto r2 = read().scheduleOn(&executor).start();
+    auto r1 = co_withExecutor(&executor, read()).start();
+    auto w1 = co_withExecutor(&executor, conditionalWrite()).start();
+    auto w2 = co_withExecutor(&executor, conditionalWrite()).start();
+    auto r2 = co_withExecutor(&executor, read()).start();
     executor.drain();
     EXPECT_EQ(std::move(r1).get(), 0);
     EXPECT_EQ(std::move(r2).get(), 1);
@@ -992,12 +992,12 @@ TEST_F(SharedMutexTest, ThreadSafety) {
     }
   };
 
-  auto w1 = makeWriterTask().scheduleOn(&threadPool).start();
-  auto w2 = makeWriterTask().scheduleOn(&threadPool).start();
-  auto r1 = makeReaderTask().scheduleOn(&threadPool).start();
-  auto r2 = makeReaderTask().scheduleOn(&threadPool).start();
-  auto r3 = makeReaderTask().scheduleOn(&threadPool).start();
-  auto r4 = makeReaderTask().scheduleOn(&threadPool).start();
+  auto w1 = co_withExecutor(&threadPool, makeWriterTask()).start();
+  auto w2 = co_withExecutor(&threadPool, makeWriterTask()).start();
+  auto r1 = co_withExecutor(&threadPool, makeReaderTask()).start();
+  auto r2 = co_withExecutor(&threadPool, makeReaderTask()).start();
+  auto r3 = co_withExecutor(&threadPool, makeReaderTask()).start();
+  auto r4 = co_withExecutor(&threadPool, makeReaderTask()).start();
 
   std::move(w1).get();
   std::move(w2).get();
@@ -1075,16 +1075,17 @@ TEST_F(SharedMutexTest, StressTest) {
   folly::coro::AsyncScope scope;
   while (!reachedTarget.load()) {
     writeTaskCnt += 2;
-    scope.add(check().scheduleOn(&executor));
-    scope.add(incrementIfOdd().scheduleOn(&executor));
-    scope.add(check().scheduleOn(&executor));
-    scope.add(incrementIfEven().scheduleOn(&executor));
-    scope.add(check().scheduleOn(&executor));
+    scope.add(co_withExecutor(&executor, check()));
+    scope.add(co_withExecutor(&executor, incrementIfOdd()));
+    scope.add(co_withExecutor(&executor, check()));
+    scope.add(co_withExecutor(&executor, incrementIfEven()));
+    scope.add(co_withExecutor(&executor, check()));
   }
-  folly::coro::blockingWait(scope.joinAsync().scheduleOn(&executor));
+  folly::coro::blockingWait(co_withExecutor(&executor, scope.joinAsync()));
 
   // final read
-  int finalValue = folly::coro::blockingWait(read().scheduleOn(&executor));
+  int finalValue =
+      folly::coro::blockingWait(co_withExecutor(&executor, read()));
 
   EXPECT_GE(finalValue, target);
   EXPECT_EQ(writeTaskCnt, finalValue + earlyExists);

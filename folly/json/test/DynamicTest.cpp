@@ -414,6 +414,26 @@ TEST(Dynamic, ObjectHeterogeneousAccess) {
   EXPECT_EQ(obj.count(StringPiece{b}), 0);
   EXPECT_EQ(obj.count(StaticStrings::kBar), 0);
 
+  // contains()
+  EXPECT_TRUE(obj.contains(empty));
+  EXPECT_TRUE(obj.contains(nullptr));
+  EXPECT_TRUE(obj.contains(foo));
+
+  EXPECT_TRUE(obj.contains(a));
+  EXPECT_TRUE(obj.contains(StaticStrings::kA));
+  EXPECT_TRUE(obj.contains("a"));
+
+  EXPECT_TRUE(obj.contains(sp));
+  EXPECT_TRUE(obj.contains(StringPiece{"a"}));
+  EXPECT_TRUE(obj.contains(StaticStrings::kFoo));
+
+  EXPECT_TRUE(obj.contains(std::string{"a"}));
+  EXPECT_TRUE(obj.contains(str));
+
+  EXPECT_FALSE(obj.contains(b));
+  EXPECT_FALSE(obj.contains(StringPiece{b}));
+  EXPECT_FALSE(obj.contains(StaticStrings::kBar));
+
   // operator[]
   EXPECT_EQ(obj[empty], 456);
   EXPECT_EQ(obj[nullptr], 456);
@@ -1641,6 +1661,40 @@ TEST(Dynamic, EqualNestedValues) {
   dynamic obj1 = buildNestedValues(kDepth);
   dynamic obj2 = obj1;
   EXPECT_EQ(obj1, obj2);
+}
+
+TEST(Dynamic, ArrayCountContains) {
+  // .count() and .contains() should also work on arrays
+  dynamic arr = dynamic::array(
+      1, 3, 1, "a", 1, nullptr, nullptr, 1, dynamic::array(666), 1);
+
+  EXPECT_EQ(arr.count(1), 5);
+  EXPECT_TRUE(arr.contains(1));
+
+  EXPECT_EQ(arr.count(3), 1);
+  EXPECT_TRUE(arr.contains(3));
+
+  EXPECT_EQ(arr.count("a"), 1);
+  EXPECT_TRUE(arr.contains("a"));
+
+  std::string a = "a";
+  StringPiece spa(a);
+  EXPECT_EQ(arr.count(spa), 1);
+  EXPECT_TRUE(arr.contains(spa));
+
+  EXPECT_EQ(arr.count(nullptr), 2);
+  EXPECT_TRUE(arr.contains(nullptr));
+
+  EXPECT_EQ(arr.count(dynamic::array(666)), 1);
+  EXPECT_TRUE(arr.contains(dynamic::array(666)));
+
+  EXPECT_EQ(arr.count("not in the array"), 0);
+  EXPECT_FALSE(arr.contains("not in the array"));
+
+  // Quick check that count and contains don't work for all other types
+  dynamic a_bool = true;
+  EXPECT_THROW(a_bool.contains(true), TypeError);
+  EXPECT_THROW(a_bool.count(true), TypeError);
 }
 
 } // namespace test

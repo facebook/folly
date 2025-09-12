@@ -23,6 +23,7 @@
 #include <folly/coro/Baton.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/futures/Promise.h>
+#include <folly/lang/SafeAlias-fwd.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -266,6 +267,9 @@ class Future {
     }
     return std::move(future);
   }
+
+  template <safe_alias Default>
+  using folly_private_safe_alias_t = safe_alias_of<T, Default>;
 
  private:
   Future(CancellationSource cs, detail::PromiseState<T>& state)

@@ -166,13 +166,13 @@ class ConcurrentHashMap {
  public:
   class ConstIterator;
 
-  typedef KeyType key_type;
-  typedef ValueType mapped_type;
-  typedef std::pair<const KeyType, ValueType> value_type;
-  typedef std::size_t size_type;
-  typedef HashFn hasher;
-  typedef KeyEqual key_equal;
-  typedef ConstIterator const_iterator;
+  using key_type = KeyType;
+  using mapped_type = ValueType;
+  using value_type = std::pair<const KeyType, ValueType>;
+  using size_type = std::size_t;
+  using hasher = HashFn;
+  using key_equal = KeyEqual;
+  using const_iterator = ConstIterator;
 
  private:
   template <typename K, typename T>
@@ -553,8 +553,9 @@ class ConcurrentHashMap {
 
   void reserve(size_t count) {
     count = count >> ShardBits;
-    if (!count)
+    if (!count) {
       return;
+    }
     uint64_t begin = beginSeg_.load(std::memory_order_acquire);
     uint64_t end = endSeg_.load(std::memory_order_acquire);
     for (uint64_t i = begin; i < end; ++i) {
@@ -837,7 +838,9 @@ using ConcurrentHashMapSIMD = ConcurrentHashMap<
     ShardBits,
     Atom,
     Mutex,
-#if (FOLLY_SSE_PREREQ(4, 2) || FOLLY_AARCH64) && \
+#if (                                                        \
+    FOLLY_SSE_PREREQ(4, 2) ||                                \
+    (FOLLY_AARCH64 && FOLLY_F14_CRC_INTRINSIC_AVAILABLE)) && \
     FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
     detail::concurrenthashmap::simd::SIMDTable
 #else

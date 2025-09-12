@@ -32,6 +32,7 @@ class EDFThreadPoolSemaphore {
   virtual ~EDFThreadPoolSemaphore() = default;
   virtual void post(uint32_t value) = 0;
   virtual void wait() = 0;
+  virtual uint32_t valueGuess() const = 0;
 };
 
 template <class Semaphore>
@@ -43,6 +44,7 @@ class EDFThreadPoolSemaphoreImpl : public EDFThreadPoolSemaphore {
 
   void post(uint32_t value) override { sem_.post(value); }
   void wait() override { sem_.wait(); }
+  uint32_t valueGuess() const override { return sem_.valueGuess(); }
 
  private:
   Semaphore sem_;
@@ -78,11 +80,10 @@ class EDFThreadPoolExecutor
 
   ~EDFThreadPoolExecutor() override;
 
-  using SoftRealTimeExecutor::add;
   using ThreadPoolExecutor::add;
 
   void add(Func f) override;
-  void add(Func f, std::size_t total, uint64_t deadline) override;
+  void add(Func f, uint64_t deadline) override;
   void add(std::vector<Func> fs, uint64_t deadline) override;
 
   size_t getTaskQueueSize() const;
@@ -93,8 +94,7 @@ class EDFThreadPoolExecutor
   std::size_t getPendingTaskCountImpl() const override final;
 
  private:
-  bool shouldStop();
-  std::shared_ptr<Task> take();
+  bool tryStopThread(const ThreadPtr& thread, bool isPoison);
 
   void fillTaskInfo(const Task& task, TaskInfo& info);
   void registerTaskEnqueue(const Task& task);
@@ -102,12 +102,6 @@ class EDFThreadPoolExecutor
   std::unique_ptr<TaskQueue> taskQueue_;
   std::unique_ptr<EDFThreadPoolSemaphore> sem_;
   std::atomic<int> threadsToStop_{0};
-
-  // All operations performed on `numIdleThreads_` explicitly specify memory
-  // ordering of `std::memory_order_seq_cst`. This is due to `numIdleThreads_`
-  // performing Dekker's algorithm with `numItems` prior to consumer threads
-  // (workers) wait on `sem_`.
-  std::atomic<std::size_t> numIdleThreads_{0};
 };
 
 } // namespace folly

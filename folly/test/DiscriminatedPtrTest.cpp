@@ -23,11 +23,12 @@ using namespace folly;
 TEST(DiscriminatedPtr, Basic) {
   struct Foo {};
   struct Bar {};
-  typedef DiscriminatedPtr<void, int, Foo, Bar> Ptr;
+  using Ptr = DiscriminatedPtr<void, int, Foo, Bar>;
 
   int a = 10;
   Ptr p;
   EXPECT_TRUE(p.empty());
+  EXPECT_EQ(0, p.index());
   EXPECT_FALSE(p.hasType<void>());
   EXPECT_FALSE(p.hasType<int>());
   EXPECT_FALSE(p.hasType<Foo>());
@@ -37,6 +38,7 @@ TEST(DiscriminatedPtr, Basic) {
   EXPECT_FALSE(p.empty());
   EXPECT_FALSE(p.hasType<void>());
   EXPECT_TRUE(p.hasType<int>());
+  EXPECT_EQ(2, p.index());
   EXPECT_FALSE(p.hasType<Foo>());
   EXPECT_FALSE(p.hasType<Bar>());
 
@@ -53,6 +55,7 @@ TEST(DiscriminatedPtr, Basic) {
   EXPECT_FALSE(p.hasType<void>());
   EXPECT_FALSE(p.hasType<int>());
   EXPECT_TRUE(p.hasType<Foo>());
+  EXPECT_EQ(3, p.index());
   EXPECT_FALSE(p.hasType<Bar>());
 
   EXPECT_EQ(static_cast<int*>(nullptr), p.get_nothrow<int>());
@@ -74,7 +77,7 @@ TEST(DiscriminatedPtr, Apply) {
     std::string operator()(const Foo* /* ptr */) { return "const Foo"; }
   };
 
-  typedef DiscriminatedPtr<int, Foo> Ptr;
+  using Ptr = DiscriminatedPtr<int, Foo>;
   Ptr p;
 
   int a = 0;
@@ -105,7 +108,7 @@ TEST(DiscriminatedPtr, ApplyVoid) {
     std::string result;
   };
 
-  typedef DiscriminatedPtr<int, Foo> Ptr;
+  using Ptr = DiscriminatedPtr<int, Foo>;
   Ptr p;
   Visitor v;
 

@@ -90,9 +90,11 @@ class ChannelConsumerBase {
   virtual void onNext(Try<TValue> result) = 0;
 
   void startConsuming(Receiver<TValue> receiver) {
-    folly::coro::co_withCancellation(
-        cancellationSource_.getToken(), processValuesCoro(std::move(receiver)))
-        .scheduleOn(getExecutor())
+    co_withExecutor(
+        getExecutor(),
+        folly::coro::co_withCancellation(
+            cancellationSource_.getToken(),
+            processValuesCoro(std::move(receiver))))
         .start();
   }
 
@@ -238,7 +240,7 @@ class StressTestProducer {
           }
           co_return;
         });
-    std::move(produceTask).scheduleOn(executor_.get()).start();
+    co_withExecutor(executor_.get(), std::move(produceTask)).start();
   }
 
   void stopProducing() { stopped_.store(true); }

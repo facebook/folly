@@ -248,10 +248,12 @@ typename Container::difference_type distance(
   end++;
   std::function<bool(size_type, size_type)> calculateDistance =
       [&](size_type offset, size_type lb) {
-        if (offset > size)
+        if (offset > size) {
           return false;
-        for (; offset <= size; offset <<= 1)
+        }
+        for (; offset <= size; offset <<= 1) {
           ;
+        }
         offset >>= 1;
         for (; offset > lb; offset >>= 1) {
           if (offset == start) {
@@ -835,8 +837,9 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
       assert(cont_ == rawIterator.cont_);
       size_type offset0 = ptr_ - cont_->begin();
       size_type offset1 = rawIterator.ptr_ - cont_->begin();
-      if (offset1 == offset0)
+      if (offset1 == offset0) {
         return 0;
+      }
       return heap_vector_detail::distance(*cont_, offset1, offset0);
     }
 
@@ -844,8 +847,9 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
       assert(cont_ == rawIterator.cont_);
       size_type offset0 = ptr_ - cont_->begin();
       size_type offset1 = rawIterator.ptr_ - cont_->begin();
-      if (offset1 == offset0)
+      if (offset1 == offset0) {
         return 0;
+      }
       return heap_vector_detail::distance(*cont_, offset1, offset0);
     }
 
@@ -1692,8 +1696,9 @@ class small_heap_vector_map
         return offset - 1;
       }
       offset = 2 * offset + lt;
-      if (offset > size)
+      if (offset > size) {
         return size;
+      }
       cur_k = self.m_.getKey(cont[offset - 1]);
     }
     return size;

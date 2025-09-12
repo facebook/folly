@@ -51,12 +51,12 @@ class MacAddress;
 /**
  * Pair of IPAddressV6, netmask
  */
-typedef std::pair<IPAddressV6, uint8_t> CIDRNetworkV6;
+using CIDRNetworkV6 = std::pair<IPAddressV6, uint8_t>;
 
 /**
  * Specialization for `std::array` for IPv6 addresses
  */
-typedef std::array<uint8_t, 16> ByteArray16;
+using ByteArray16 = std::array<uint8_t, 16>;
 
 class IPAddressV6 {
  public:
@@ -81,7 +81,7 @@ class IPAddressV6 {
   /**
    * Alias std::runtime_error, to be thrown when a type assertion fails
    */
-  typedef std::runtime_error TypeError;
+  using TypeError = std::runtime_error;
 
   /**
    * The binary prefix for Teredo networks

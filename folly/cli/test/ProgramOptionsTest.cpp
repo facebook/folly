@@ -22,7 +22,6 @@
 #include <folly/portability/GTest.h>
 
 #include <cstdlib>
-#include <glog/logging.h>
 
 namespace folly {
 namespace test {

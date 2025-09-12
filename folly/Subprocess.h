@@ -544,7 +544,7 @@ class Subprocess {
       int* errout{erroutLifetime_.get()};
     };
 
-    typedef boost::container::flat_map<int, int> FdMap;
+    using FdMap = boost::container::flat_map<int, int>;
     FdMap fdActions_;
     bool closeOtherFds_{false};
     bool usePath_{false};
@@ -862,7 +862,7 @@ class Subprocess {
       Callback& cb_;
       int fd_;
     };
-    typedef gen::StreamSplitter<StreamSplitterCallback> LineSplitter;
+    using LineSplitter = gen::StreamSplitter<StreamSplitterCallback>;
 
    public:
     explicit ReadLinesCallback(

@@ -41,9 +41,8 @@ class ExecutionObserver
   };
   // Constant time size = false to support auto_unlink behavior, options are
   // mutually exclusive
-  typedef boost::intrusive::
-      list<ExecutionObserver, boost::intrusive::constant_time_size<false>>
-          List;
+  using List = boost::intrusive::
+      list<ExecutionObserver, boost::intrusive::constant_time_size<false>>;
 
   virtual ~ExecutionObserver() = default;
 

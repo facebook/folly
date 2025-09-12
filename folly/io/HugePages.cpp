@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/portability/Windows.h>
+
 #include <folly/io/HugePages.h>
 
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -30,7 +31,6 @@
 #include <boost/regex.hpp>
 
 #include <folly/Conv.h>
-#include <folly/CppAttributes.h>
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/String.h>
@@ -147,7 +147,7 @@ HugePageSizeVec readHugePageSizes() {
   gen::byLine("/proc/mounts") | gen::eachAs<StringPiece>() |
       [&](StringPiece line) {
         parts.clear();
-        split(" ", line, parts);
+        split(' ', line, parts);
         // device path fstype options uid gid
         if (parts.size() != 6) {
           throw std::runtime_error("Invalid /proc/mounts line");
@@ -157,7 +157,7 @@ HugePageSizeVec readHugePageSizes() {
         }
 
         options.clear();
-        split(",", parts[3], options);
+        split(',', parts[3], options);
         size_t pageSize = defaultHugePageSize;
         // Search for the "pagesize" option, which must have a value
         for (auto& option : options) {

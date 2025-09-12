@@ -28,8 +28,8 @@ class Baton;
 template <typename T, typename BatonT = Baton>
 class Promise {
  public:
-  typedef T value_type;
-  typedef BatonT baton_type;
+  using value_type = T;
+  using baton_type = BatonT;
 
   ~Promise();
 

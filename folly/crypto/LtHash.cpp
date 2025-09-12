@@ -18,13 +18,6 @@
 
 #include <folly/CpuId.h>
 
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
-#ifdef __AVX2__
-#include <immintrin.h>
-#endif
-
 #include <folly/Memory.h>
 
 namespace folly {

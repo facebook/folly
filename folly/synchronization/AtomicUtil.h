@@ -182,7 +182,7 @@ struct atomic_fetch_modify_fn {
   atomic_value_type_t<Atomic> operator()(
       Atomic& atomic,
       Op op,
-      std::memory_order = std::memory_order_seq_cst) const;
+      std::memory_order mo = std::memory_order_seq_cst) const;
 };
 inline constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
 

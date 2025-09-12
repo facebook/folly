@@ -14,33 +14,31 @@
  * limitations under the License.
  */
 
-#include <folly/CPortability.h>
-#include <folly/DefaultKeepAliveExecutor.h>
-#include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/executors/ThreadPoolExecutor.h>
-#include <folly/lang/Keep.h>
-#include <folly/synchronization/Latch.h>
-
 #include <atomic>
 #include <memory>
 #include <thread>
 
 #include <boost/thread.hpp>
-
+#include <folly/CPortability.h>
+#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Exception.h>
 #include <folly/container/F14Map.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/EDFThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
+#include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/executors/VirtualExecutor.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/executors/thread_factory/InitThreadFactory.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysResource.h>
+#include <folly/synchronization/Latch.h>
 #include <folly/synchronization/detail/Spin.h>
 #include <folly/system/ThreadId.h>
 
@@ -275,6 +273,10 @@ static void poolStats() {
 
 TEST(ThreadPoolExecutorTest, CPUPoolStats) {
   poolStats<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, EDFPoolStats) {
+  poolStats<EDFThreadPoolExecutor>();
 }
 
 TEST(ThreadPoolExecutorTest, IOPoolStats) {
@@ -624,6 +626,29 @@ TEST(ThreadPoolExecutorTest, BlockingQueue) {
   cpuExe.join();
 
   EXPECT_EQ(5, c);
+}
+
+TEST(ThreadPoolExecutorTest, NoThreadPriorityInheritance) {
+  constexpr size_t kNumThreads = 16;
+  const auto initialPriority = getpriority(PRIO_PROCESS, 0);
+
+  // If minThreads == maxThreads, no threads should be created on add(), and
+  // thus they should not inherit the parent thread's priority. Instead, all
+  // threads should inherit the priority at the time of construction.
+  CPUThreadPoolExecutor exe{std::make_pair(kNumThreads, kNumThreads)};
+
+  // Nice the current thread.
+  setpriority(PRIO_PROCESS, 0, 19);
+
+  Latch ready{kNumThreads + 1};
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    exe.add([&] {
+      EXPECT_EQ(getpriority(PRIO_PROCESS, 0), initialPriority);
+      ready.arrive_and_wait();
+    });
+  }
+  ready.arrive_and_wait();
+  exe.join();
 }
 
 TEST(PriorityThreadFactoryTest, ThreadPriority) {
@@ -1022,11 +1047,8 @@ TEST(ThreadPoolExecutorTest, DynamicThreadAddRemoveRace) {
 }
 
 TEST(ThreadPoolExecutorTest, AddPerf) {
-  auto queue = std::make_unique<
-      UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>>();
   CPUThreadPoolExecutor e(
       kIsSanitizeThread ? 25 : 1000,
-      std::move(queue),
       std::make_shared<NamedThreadFactory>("CPUThreadPool"));
   e.setThreadDeathTimeout(std::chrono::milliseconds(1));
   for (int i = 0; i < 10000; i++) {

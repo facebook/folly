@@ -867,8 +867,10 @@ class RelaxedConcurrentPriorityQueue {
     int num = std::min(rsize, (uint32_t)PopBatch);
     for (int i = num - 1; i >= 0; i--) {
       // wait until this block is empty
-      while (shared_buffer_[i].pnode.load(std::memory_order_relaxed) != nullptr)
+      while (
+          shared_buffer_[i].pnode.load(std::memory_order_relaxed) != nullptr) {
         ;
+      }
       shared_buffer_[i].pnode.store(head, std::memory_order_relaxed);
       head = head->next;
     }
@@ -1078,7 +1080,7 @@ class RelaxedConcurrentPriorityQueue {
       const size_t& curticket,
       const std::chrono::time_point<Clock, Duration>& deadline,
       const folly::WaitOptions& opt = wait_options()) {
-    return folly::detail::spin_pause_until(deadline, opt, [=] {
+    return folly::detail::spin_pause_until(deadline, opt, [=, this] {
              return futexIsReady(curticket);
            }) == folly::detail::spin_result::success;
   }
@@ -1143,7 +1145,7 @@ class RelaxedConcurrentPriorityQueue {
       const std::chrono::time_point<Clock, Duration>& deadline,
       const folly::WaitOptions& opt = wait_options()) {
     // Fast path, by quick check the status
-    switch (folly::detail::spin_pause_until(deadline, opt, [=] {
+    switch (folly::detail::spin_pause_until(deadline, opt, [=, this] {
       return !isEmpty();
     })) {
       case folly::detail::spin_result::success:
@@ -1156,7 +1158,7 @@ class RelaxedConcurrentPriorityQueue {
 
     // Spinning strategy
     while (true) {
-      auto res = folly::detail::spin_yield_until(deadline, [=] {
+      auto res = folly::detail::spin_yield_until(deadline, [=, this] {
         return !isEmpty();
       });
       if (res == folly::detail::spin_result::success) {

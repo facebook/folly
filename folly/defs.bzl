@@ -172,13 +172,10 @@ def folly_xplat_library(
             "DEFAULT": [],
             "ovr_config//os:windows-cl": WINDOWS_MSVC_CXXFLAGS,
             "ovr_config//os:windows-gcc-or-clang": WINDOWS_CLANG_CXX_FLAGS,
-        }) + select({
-            "DEFAULT": [],
-            "wa_android//tools/buck/build_defs/monorepo:bloks_sync_live_deps": [
-                "-fexceptions",
-                "-frtti",
-            ],
-        }),
+        }) + [
+            "-fexceptions",
+            "-frtti",
+        ],
         fbobjc_compiler_flags = kwargs.pop("fbobjc_compiler_flags", []) +
                                 FBOBJC_CXXFLAGS,
         fbcode_compiler_flags_override = kwargs.pop("fbcode_compiler_flags", []),

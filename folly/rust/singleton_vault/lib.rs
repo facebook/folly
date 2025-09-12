@@ -35,6 +35,8 @@ mod ffi {
         fn registrationComplete() -> Result<()>;
 
         fn doEagerInit() -> Result<()>;
+
+        fn destroyInstances() -> Result<()>;
     }
 }
 
@@ -63,4 +65,15 @@ pub fn registration_complete() -> anyhow::Result<()> {
 /// WARNING: DO NOT USE THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
 pub fn do_eager_init() -> anyhow::Result<()> {
     Ok(ffi::doEagerInit()?)
+}
+
+/// Destroys all singletons managed by the global SingletonVault.
+///
+/// This is typically used before fork() to prevent child processes from
+/// attempting to destroy singletons that were created in the parent process,
+/// which can cause SIGABRT crashes.
+///
+/// WARNING: DO NOT USE THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
+pub fn destroy_instances() -> anyhow::Result<()> {
+    Ok(ffi::destroyInstances()?)
 }

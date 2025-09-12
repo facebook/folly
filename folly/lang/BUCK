@@ -6,13 +6,15 @@ load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "tri
 
 oncall("fbcode_entropy_wardens_folly")
 
+# xplat build rules
+
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "access",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Access.h"],
     exported_deps = [
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -60,26 +62,15 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
-    name = "bindings",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["Bindings.h"],
-    exported_deps = [
-        "//xplat/folly:utility",
-        "//xplat/folly/detail:tuple",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
     name = "bits",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Bits.h"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:builtins",
         ":assume",
         ":c_string",
         "//xplat/folly:constexpr_math",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_builtins",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
     ],
@@ -124,7 +115,7 @@ non_fbcode_target(
     raw_headers = ["CString.h"],
     deps = [
         "//xplat/folly:cpp_attributes",
-        "//xplat/folly:functional_invoke",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -233,13 +224,24 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "must_use_immediately",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["MustUseImmediately.h"],
+    exported_deps = [
+        "//xplat/folly:utility",
+        "//xplat/folly/detail:tuple",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "new",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["New.h"],
     exported_deps = [
         "//xplat/folly:cpp_attributes",
-        "//xplat/folly:functional_invoke",
         "//xplat/folly:portability",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -284,7 +286,18 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
-    name = "safe_alias_fwd",
+    name = "safe_alias",  # Use this only when checking *_safe_alias_of_v
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeAlias.h"],
+    exported_deps = [
+        ":safe_alias_fwd",
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "safe_alias_fwd",  # Use this to label types with safe_alias
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeAlias-fwd.h"],
 )
@@ -296,9 +309,9 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeAssert.h"],
     deps = [
+        "fbsource//xplat/folly/portability:sys_types",
+        "fbsource//xplat/folly/portability:windows",
         ":to_ascii",
-        "//xplat/folly:portability_sys_types",
-        "//xplat/folly:portability_windows",
         "//xplat/folly/detail:file_util_detail",
     ],
     exported_deps = [
@@ -306,6 +319,20 @@ non_fbcode_target(
         "//xplat/folly:cpp_attributes",
         "//xplat/folly:portability",
         "//xplat/folly:preprocessor",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "safe_closure",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["SafeClosure.h"],
+    exported_deps = [
+        ":safe_alias",
+        "//xplat/folly/detail:tuple",
+        "//xplat/folly/lang/bind:as_argument",
+        "//xplat/folly/lang/bind:bind",
+        "//xplat/folly/lang/bind:to_storage",
     ],
 )
 
@@ -347,10 +374,10 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ToAscii.h"],
     exported_deps = [
+        "fbsource//xplat/folly/portability:builtins",
         "//xplat/folly:constexpr_math",
         "//xplat/folly:likely",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_builtins",
         "//xplat/folly:utility",
         "//xplat/folly/lang:align",
         "//xplat/folly/lang:c_array",
@@ -385,7 +412,7 @@ non_fbcode_target(
     raw_headers = ["VectorTraits.h"],
 )
 
-# !!!! fbcode/folly/lang/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+# fbcode build rules
 
 fbcode_target(
     _kind = cpp_library,
@@ -432,16 +459,6 @@ fbcode_target(
     headers = ["Badge.h"],
     exported_deps = [
         "//folly:traits",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "bindings",
-    headers = ["Bindings.h"],
-    exported_deps = [
-        "//folly:utility",
-        "//folly/detail:tuple",
     ],
 )
 
@@ -593,6 +610,16 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "must_use_immediately",
+    headers = ["MustUseImmediately.h"],
+    exported_deps = [
+        "//folly:utility",
+        "//folly/detail:tuple",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
     name = "new",
     headers = ["New.h"],
     exported_deps = [
@@ -639,7 +666,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "safe_alias_fwd",
+    name = "safe_alias",  # Use this only when checking *_safe_alias_of_v
+    headers = ["SafeAlias.h"],
+    exported_deps = [
+        ":safe_alias_fwd",
+        "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "safe_alias_fwd",  # Use this to label types with safe_alias
     headers = ["SafeAlias-fwd.h"],
 )
 
@@ -659,6 +696,19 @@ fbcode_target(
         "//folly:cpp_attributes",
         "//folly:portability",
         "//folly:preprocessor",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "safe_closure",
+    headers = ["SafeClosure.h"],
+    exported_deps = [
+        ":safe_alias",
+        "//folly/detail:tuple",
+        "//folly/lang/bind:as_argument",
+        "//folly/lang/bind:bind",
+        "//folly/lang/bind:to_storage",
     ],
 )
 

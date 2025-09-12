@@ -156,7 +156,7 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
     folly::SocketAddress address; // valid for TYPE_ACCEPT
     std::string errorMsg; // valid for TYPE_ERROR
   };
-  typedef std::deque<EventInfo> EventList;
+  using EventList = std::deque<EventInfo>;
 
   TestAcceptCallback()
       : connectionAcceptedFn_(),
@@ -231,6 +231,24 @@ class TestConnectCallback : public AsyncSocket::ConnectCallback {
   }
   void connectSuccess() noexcept override {}
   void connectErr(const AsyncSocketException& /*ex*/) noexcept override {}
+};
+
+class TestPortAssignmentCallback : public AsyncSocket::ConnectCallback {
+ public:
+  void preConnect(NetworkSocket fd) noexcept override {
+    // Get the local address after binding but before connecting
+    SocketAddress localAddr;
+    sockaddr_storage storage{};
+    socklen_t addrLen = sizeof(storage);
+    if (netops::getsockname(
+            fd, reinterpret_cast<sockaddr*>(&storage), &addrLen) == 0) {
+      localAddr.setFromSockaddr(reinterpret_cast<sockaddr*>(&storage), addrLen);
+      assignedPort = localAddr.getPort();
+    }
+  }
+  void connectSuccess() noexcept override {}
+  void connectErr(const AsyncSocketException& /*ex*/) noexcept override {}
+  uint16_t assignedPort = 0;
 };
 
 } // namespace test

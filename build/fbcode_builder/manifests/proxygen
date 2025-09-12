@@ -28,6 +28,7 @@ folly
 fizz
 wangle
 mvfst
+c-ares
 
 [dependencies.test=on]
 googletest

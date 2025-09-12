@@ -25,7 +25,7 @@
 
 using namespace folly;
 
-typedef FutureException eggs_t;
+using eggs_t = FutureException;
 static eggs_t eggs("eggs");
 
 TEST(Window, basic) {

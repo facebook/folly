@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/DetachOnCancel.h>
+#include <folly/coro/DetachOnCancel.h> // @shim

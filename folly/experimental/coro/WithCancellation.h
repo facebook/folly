@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/WithCancellation.h>
+#include <folly/coro/WithCancellation.h> // @shim

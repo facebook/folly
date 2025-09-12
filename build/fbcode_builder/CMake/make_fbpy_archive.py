@@ -7,6 +7,7 @@ import collections
 import errno
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import zipapp
@@ -121,6 +122,36 @@ def populate_install_tree(inst_dir, path_map):
         init_path = os.path.join(inst_dir, dir_path, "__init__.py")
         with open(init_path, "w"):
             pass
+
+
+def build_pex(args, path_map):
+    """Create a self executing python binary using the PEX tool
+
+    This type of Python binary is more complex as it requires a third-party tool,
+    but it does support native language extensions (.so/.dll files).
+    """
+    dest_dir = os.path.dirname(args.output)
+    with tempfile.TemporaryDirectory(prefix="make_fbpy.", dir=dest_dir) as tmpdir:
+        inst_dir = os.path.join(tmpdir, "tree")
+        populate_install_tree(inst_dir, path_map)
+
+        if os.path.exists(os.path.join(inst_dir, "__main__.py")):
+            os.rename(
+                os.path.join(inst_dir, "__main__.py"),
+                os.path.join(inst_dir, "main.py"),
+            )
+            args.main = "main"
+
+        tmp_output = os.path.abspath(os.path.join(tmpdir, "output.exe"))
+        subprocess.check_call(
+            ["pex"]
+            + ["--output-file", tmp_output]
+            + ["--python", args.python]
+            + ["--sources-directory", inst_dir]
+            + ["-e", args.main]
+        )
+
+        os.replace(tmp_output, args.output)
 
 
 def build_zipapp(args, path_map):
@@ -262,6 +293,7 @@ def check_main_module(args, path_map):
 
 
 BUILD_TYPES = {
+    "pex": build_pex,
     "zipapp": build_zipapp,
     "dir": build_install_dir,
     "lib-install": install_library,

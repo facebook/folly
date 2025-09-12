@@ -18,9 +18,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <cstring>
-#include <string>
 
 #include <glog/logging.h>
 
@@ -96,7 +94,11 @@ ElfFile::OpenResult ElfFile::openNoThrow(
   }
 
   uint64_t mtime_ns = st.st_mtim.tv_sec * 1000'000'000LL + st.st_mtim.tv_nsec;
-  fileId_ = ElfFileId{st.st_dev, st.st_ino, st.st_size, mtime_ns};
+  fileId_ = ElfFileId{
+      to_narrow(st.st_dev),
+      to_narrow(st.st_ino),
+      to_narrow(st.st_size),
+      mtime_ns};
 
   length_ = st.st_size;
   int prot = PROT_READ;
@@ -327,6 +329,11 @@ folly::StringPiece ElfFile::getSectionBody(
   return folly::StringPiece(file_ + section.sh_offset, section.sh_size);
 }
 
+folly::StringPiece ElfFile::getSegmentBody(
+    const ElfPhdr& segment) const noexcept {
+  return folly::StringPiece(file_ + segment.p_offset, segment.p_filesz);
+}
+
 void ElfFile::validateStringTable(const ElfShdr& stringTable) const noexcept {
   FOLLY_SAFE_CHECK(
       stringTable.sh_type == SHT_STRTAB, "invalid type for string table");
@@ -480,21 +487,37 @@ const char* ElfFile::getSymbolName(const Symbol& symbol) const noexcept {
   return getString(*linkSection, symbol.second->st_name);
 }
 
-std::pair<const int, char const*> ElfFile::posixFadvise(
-    off_t offset, off_t len, int const advice) const noexcept {
-  if (fd_ == -1) {
-    return {1, "file not open"};
+folly::Expected<folly::StringPiece, std::string> ElfFile::getUUID()
+    const noexcept {
+  auto section = getSectionByName(".note.gnu.build-id");
+  if (!section) {
+    return folly::makeUnexpected("no .note.gnu.build-id section.");
   }
-  int res = posix_fadvise(fd_, offset, len, advice);
-  if (res != 0) {
-    return {res, "posix_fadvise failed for file"};
-  }
-  return {res, ""};
-}
 
-std::pair<const int, char const*> ElfFile::posixFadvise(
-    int const advice) const noexcept {
-  return posixFadvise(0, 0, advice);
+  auto body = getSectionBody(*section);
+  if (body.size() < sizeof(ElfNhdr)) {
+    return folly::makeUnexpected(
+        ".note.gnu.build-id section smaller than Note header.");
+  }
+
+  // The section starts with a header, then
+  auto header = reinterpret_cast<const ElfNhdr*>(body.begin());
+  if (header->n_type != NT_GNU_BUILD_ID) {
+    return folly::makeUnexpected(
+        ".note.gnu.build-id section type does not match NT_GNU_BUILD_ID.");
+  }
+
+  if (body.size() < sizeof(ElfNhdr) + header->n_namesz + header->n_descsz) {
+    return folly::makeUnexpected(
+        ".note.gnu.build-id is malformed, section size is smaller than the specificed note size.");
+  }
+
+  // Namesz and Descz can themselves be padded to be 4 byte aligned. It's
+  // unlikely this will ever be incorrect but per the man page we still need to
+  // do it.
+  const char* desc =
+      body.begin() + sizeof(ElfNhdr) + folly::align_ceil(header->n_namesz, 4);
+  return folly::StringPiece(desc, header->n_descsz);
 }
 
 } // namespace symbolizer

@@ -212,7 +212,7 @@ IPAddressV6 IPAddressV6::fromInverseArpaName(const std::string& arpaname) {
         "Invalid input. Should end with 'ip6.arpa'. Got '{}'", arpaname));
   }
   std::vector<StringPiece> pieces;
-  split(".", piece, pieces);
+  split('.', piece, pieces);
   if (pieces.size() != 32) {
     throw IPAddressFormatException(
         fmt::format("Invalid input. Got '{}'", piece));

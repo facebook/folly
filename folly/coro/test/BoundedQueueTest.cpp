@@ -72,7 +72,7 @@ CO_TEST(BoundedQueueTest, DequeueWhileBlocking) {
   folly::coro::BoundedQueue<int> queue(5);
   folly::ManualExecutor ex;
 
-  auto fut = queue.dequeue().scheduleOn(&ex).start();
+  auto fut = co_withExecutor(&ex, queue.dequeue()).start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
   co_await queue.enqueue(0);

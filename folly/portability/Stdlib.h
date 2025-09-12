@@ -57,7 +57,7 @@ extern char** environ;
 namespace folly {
 namespace portability {
 namespace stdlib {
-#if !__linux__ && !__FreeBSD__ && !FOLLY_MOBILE
+#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__wasm32__)
 int clearenv();
 #endif
 
@@ -74,7 +74,7 @@ int unsetenv(const char* name);
 } // namespace portability
 } // namespace folly
 
-#if defined(_WIN32) || (!__linux__ && !FOLLY_MOBILE)
+#if defined(_WIN32) || (!defined(__linux__) && !FOLLY_MOBILE)
 FOLLY_PUSH_WARNING
 FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
 /* using override */ using namespace folly::portability::stdlib;

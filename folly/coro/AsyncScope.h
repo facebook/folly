@@ -29,6 +29,7 @@
 #include <folly/coro/detail/BarrierTask.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/SourceLocation.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 #include <glog/logging.h>
 
@@ -63,9 +64,9 @@ namespace coro {
 //    }
 //
 //    folly::coro::AsyncScope scope;
-//    scope.add(processEvent(ev1).scheduleOn(folly::getGlobalCPUExecutor()));
-//    scope.add(processEvent(ev2).scheduleOn(folly::getGlobalCPUExecutor()));
-//    scope.add(processEvent(ev3).scheduleOn(folly::getGlobalCPUExecutor()));
+//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), process(ev1)));
+//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), process(ev2)));
+//    scope.add(co_withExecutor(folly::getGlobalCPUExecutor(), process(ev3)));
 //    co_await scope.joinAsync();
 //
 class AsyncScope {
@@ -116,7 +117,7 @@ class AsyncScope {
    * Passing folly::coro::Task
    * -------------------------
    * NOTE: You cannot pass a folly::coro::Task to this method.
-   * You must first call .scheduleOn() to specify which executor the task
+   * You must first call co_withExecutor() to specify which executor the task
    * should run on.
    */
   // returnAddress customize entry point to async stack (useful if this is
@@ -196,9 +197,9 @@ class AsyncScope {
   }
 
   detail::Barrier barrier_{1};
-  std::atomic<bool> anyTasksStarted_{false};
-  std::atomic<bool> joinStarted_{false};
-  bool joined_{false};
+  relaxed_atomic<bool> anyTasksStarted_{false};
+  relaxed_atomic<bool> joinStarted_{false};
+  relaxed_atomic<bool> joined_{false};
   bool throwOnJoin_{false};
   folly::exception_wrapper maybeException_;
   std::atomic<bool> exceptionRaised_{false};
@@ -210,24 +211,21 @@ inline AsyncScope::AsyncScope(bool throwOnJoin) noexcept
     : throwOnJoin_(throwOnJoin) {}
 
 inline AsyncScope::~AsyncScope() {
-  CHECK(!anyTasksStarted_.load(std::memory_order_relaxed) || joined_)
+  CHECK(!anyTasksStarted_ || joined_)
       << "AsyncScope::cleanup() not yet complete";
 }
 
 inline std::size_t AsyncScope::remaining() const noexcept {
   const std::size_t count = barrier_.remaining();
-  return joinStarted_.load(std::memory_order_relaxed)
-      ? count
-      : (count > 1 ? count - 1 : 0);
+  return joinStarted_ ? count : (count > 1 ? count - 1 : 0);
 }
 
 template <typename Awaitable>
 FOLLY_NOINLINE inline void AsyncScope::add(
     Awaitable&& awaitable, void* returnAddress) {
-  assert(
-      !joined_ &&
-      "It is invalid to add() more work after work has been joined");
-  anyTasksStarted_.store(true, std::memory_order_relaxed);
+  CHECK(!joined_)
+      << "It is invalid to add() more work after work has been joined";
+  anyTasksStarted_ = true;
   addImpl(
       static_cast<Awaitable&&>(awaitable),
       throwOnJoin_,
@@ -244,10 +242,9 @@ FOLLY_NOINLINE inline void AsyncScope::addWithSourceLoc(
     Awaitable&& awaitable,
     void* returnAddress,
     source_location sourceLocation) {
-  assert(
-      !joined_ &&
-      "It is invalid to add() more work after work has been joined");
-  anyTasksStarted_.store(true, std::memory_order_relaxed);
+  CHECK(!joined_)
+      << "It is invalid to add() more work after work has been joined";
+  anyTasksStarted_ = true;
   addImpl(
       static_cast<Awaitable&&>(awaitable),
       throwOnJoin_,
@@ -260,10 +257,8 @@ FOLLY_NOINLINE inline void AsyncScope::addWithSourceLoc(
 }
 
 inline Task<void> AsyncScope::joinAsync() noexcept {
-  assert(
-      !joinStarted_.load(std::memory_order_relaxed) &&
-      "It is invalid to join a scope multiple times");
-  joinStarted_.store(true, std::memory_order_relaxed);
+  assert(!joinStarted_ && "It is invalid to join a scope multiple times");
+  joinStarted_ = true;
   co_await barrier_.arriveAndWait();
   joined_ = true;
   if (maybeException_) {
@@ -299,10 +294,10 @@ class CancellableAsyncScope {
       : cancellationToken_(cancellationSource_.getToken()),
         scope_(throwOnJoin) {}
   explicit CancellableAsyncScope(CancellationToken&& token)
-      : cancellationToken_(CancellationToken::merge(
+      : cancellationToken_(cancellation_token_merge(
             cancellationSource_.getToken(), std::move(token))) {}
   CancellableAsyncScope(CancellationToken&& token, bool throwOnJoin)
-      : cancellationToken_(CancellationToken::merge(
+      : cancellationToken_(cancellation_token_merge(
             cancellationSource_.getToken(), std::move(token))),
         scope_(throwOnJoin) {}
 
@@ -331,7 +326,7 @@ class CancellableAsyncScope {
       void* returnAddress = nullptr) {
     scope_.add(
         co_withCancellation(
-            token ? CancellationToken::merge(*token, cancellationToken_)
+            token ? cancellation_token_merge(*token, cancellationToken_)
                   : cancellationToken_,
             static_cast<Awaitable&&>(awaitable)),
         returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS());
@@ -345,7 +340,7 @@ class CancellableAsyncScope {
       source_location sourceLocation = source_location::current()) {
     scope_.addWithSourceLoc(
         co_withCancellation(
-            token ? CancellationToken::merge(*token, cancellationToken_)
+            token ? cancellation_token_merge(*token, cancellationToken_)
                   : cancellationToken_,
             static_cast<Awaitable&&>(awaitable)),
         returnAddress ? returnAddress : FOLLY_ASYNC_STACK_RETURN_ADDRESS(),
@@ -368,13 +363,18 @@ class CancellableAsyncScope {
    * AsyncScope. The task will be provided a cancellation token to respond to
    * cancelAndJoinAsync() in the future.
    *
+   * An additional cancellation token may be passed in to apply to the
+   * awaitable; it will be merged with the internal token.
+   *
    * Note that cancellation is cooperative, your task must handle cancellation
    * in order to have any effect.
    */
   template <class T>
-  folly::coro::Task<void> co_schedule(folly::coro::Task<T>&& task) {
-    add(std::move(task).scheduleOn(co_await co_current_executor));
-    co_return;
+  folly::coro::Task<void> co_schedule(
+      folly::coro::Task<T>&& task,
+      std::optional<CancellationToken> token = std::nullopt) {
+    add(co_withExecutor(co_await co_current_executor, std::move(task)),
+        std::move(token));
   }
 
   /**

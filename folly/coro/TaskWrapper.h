@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/coro/AwaitImmediately.h>
 #include <folly/coro/Task.h>
+#include <folly/lang/MustUseImmediately.h>
 
 /// `TaskWrapper.h` provides base classes for wrapping `folly::coro::Task` with
 /// custom functionality.  These work by composition, which avoids the pitfalls
@@ -44,30 +44,31 @@
 ///
 /// ### WARNING: Do not blindly forward more APIs in `TaskWrapper.h`!
 ///
-/// Several existing wrappers are immediately-awaitable (`AwaitImmediately.h`).
-/// For those tasks (e.g. `NowTask`), API forwarding is risky:
-///   - Do NOT forward `semi()`, `scheduleOn()`, `start*()`, `unwrap()`, or
-///     other destructive methods, or CPOs that take the awaitable
-///     by-reference.  All of those make it trivial to accidentally break the
-///     immediately-awaitable invariant, and cause lifetime bugs.
+/// Several existing wrappers are immediately-awaitable (see
+/// `MustUseImmediately.h`).  For those tasks (e.g. `now_task`), API
+/// forwarding is risky:
+///   - Do NOT forward `semi()`, `start*()`, `unwrap()`, or other methods, or
+///     CPOs that take the awaitable by-reference.  All of those make it
+///     trivial to accidentally break the immediately-awaitable invariant, and
+///     cause lifetime bugs.
 ///   - When forwarding an API, use either a static method or CPO.  Then,
 ///     either ONLY take the awaitable by-value, or bifurcate the API on
-///     `must_await_immediately_v<Awaitable>`, grep for examples.
+///     `folly::ext::must_use_immediately_v<Awaitable>`, grep for examples.
 ///
 /// If you **have** to forward an unsafe API, here are some suggestions:
 ///   - Only add them in your wrapper.
 ///   - Add them via `UnsafeTaskWrapperCrtp` deriving from `TaskWrapperCrtp`.
 ///   - Add boolean flags to the configuration struct, and gate the methods via
 ///     `enable_if`.  NB: You probably cannot gate these on `Derived` **not**
-///     being `MustAwaitImmediately`, since CRTP bases see an incomplete type.
+///     being must-use-immediately, since CRTP bases see an incomplete type.
 ///
 /// ### WARNING: Beware of object slicing in "unwrapping" APIs
 ///
-/// Start by reading "A note on object slicing" in `AwaitImmediately.h`.
+/// Start by reading "A note on object slicing" in `MustUseImmediately.h`.
 ///
 /// If your wrapper is adding new members, or customizing object lifecycle
 /// (dtor / copy / move / assignment), then you must:
-///   - Write a custom `getUnsafeMover()`.
+///   - Write a custom `unsafe_mover()` as per `lang/MustUseImmediately.h`.
 ///   - Overload the protected `unsafeTask()` and `unsafeTaskWithExecutor()` to
 ///     reduce slicing risk.
 ///   - Take care not to slice down to the `Crtp` bases.
@@ -153,16 +154,16 @@ class TaskPromiseWrapperBase {
 
   template <
       typename Awaitable,
-      std::enable_if_t<!must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& what) {
     return promise_.await_transform(std::forward<Awaitable>(what));
   }
   template <
       typename Awaitable,
-      std::enable_if_t<must_await_immediately_v<Awaitable>, int> = 0>
+      std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable what) {
     return promise_.await_transform(
-        mustAwaitImmediatelyUnsafeMover(std::move(what))());
+        folly::ext::must_use_immediately_unsafe_mover(std::move(what))());
   }
 
   auto yield_value(auto&& v)
@@ -230,9 +231,6 @@ class TaskWrapperCrtp {
  public:
   using promise_type = typename Cfg::PromiseT;
 
-  // For `NowTask` & `SafeTask` API-compatibility, DO NOT add `scheduleOn()`.
-  // Use `co_withExecutor(ex, task())` instead of `task().scheduleOn(ex)`,
-  //
   // Pass `tw` by-value, since `&&` would break immediately-awaitable types
   friend typename Cfg::TaskWithExecutorT co_withExecutor(
       Executor::KeepAlive<> executor, Derived tw) noexcept {
@@ -253,24 +251,23 @@ class TaskWrapperCrtp {
       Executor::KeepAlive<> executor, Derived tw) noexcept {
     return Cfg::wrapAwaitable(co_viaIfAsync(
         std::move(executor),
-        mustAwaitImmediatelyUnsafeMover(std::move(tw).unwrapTask())()));
+        folly::ext::must_use_immediately_unsafe_mover(
+            std::move(tw).unwrapTask())()));
   }
 
   // No `cpo_t<co_withAsyncStack>` since a "Task" is not an awaitable.
 
-  auto getUnsafeMover(ForMustAwaitImmediately p) && {
-    // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
-    static_assert(sizeof(Derived) == sizeof(typename Cfg::InnerTaskT));
-    return MustAwaitImmediatelyUnsafeMover{
-        (Derived*)nullptr, std::move(*this).unwrapTask().getUnsafeMover(p)};
-  }
-
-  using folly_private_must_await_immediately_t =
-      must_await_immediately_t<typename Cfg::InnerTaskT>;
-  using folly_private_noexcept_awaitable_t =
-      noexcept_awaitable_t<typename Cfg::InnerTaskT>;
   using folly_private_task_wrapper_inner_t = typename Cfg::InnerTaskT;
   using folly_private_task_wrapper_crtp_base = TaskWrapperCrtp;
+
+  // Wrappers can override these as-needed
+  using folly_must_use_immediately_t =
+      ext::must_use_immediately_t<typename Cfg::InnerTaskT>;
+  using folly_private_noexcept_awaitable_t =
+      noexcept_awaitable_t<typename Cfg::InnerTaskT>;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t =
+      safe_alias_of<folly_private_task_wrapper_inner_t, Default>;
 
  private:
   using Inner = folly_private_task_wrapper_inner_t;
@@ -278,29 +275,61 @@ class TaskWrapperCrtp {
       detail::is_task_or_wrapper_v<Inner, typename Cfg::ValueT>,
       "*TaskWrapper must wrap a sequence of wrappers ending in Task<T>");
 
-  Inner task_;
+  Inner inner_;
 
  protected:
   template <typename, typename, typename> // can construct
   friend class ::folly::coro::detail::TaskPromiseWrapperBase;
-  friend class MustAwaitImmediatelyUnsafeMover< // can construct
-      Derived,
-      detail::unsafe_mover_for_must_await_immediately_t<Inner>>;
 
-  explicit TaskWrapperCrtp(Inner t)
-      : task_(mustAwaitImmediatelyUnsafeMover(std::move(t))()) {
+  explicit TaskWrapperCrtp(Inner t) noexcept
+      // NOLINTNEXTLINE(facebook-folly-coro-temporary-by-ref)
+      : inner_(folly::ext::must_use_immediately_unsafe_mover(std::move(t))()) {
     static_assert(
-        must_await_immediately_v<Derived> ||
-            !must_await_immediately_v<typename Cfg::TaskWithExecutorT>,
-        "`TaskWithExecutorT` must `AddMustAwaitImmediately` because the inner "
+        folly::ext::must_use_immediately_v<Derived> ||
+            !folly::ext::must_use_immediately_v<
+                typename Cfg::TaskWithExecutorT>,
+        "`TaskWithExecutorT` must `ext::wrap_must_use_immediately_t` because the inner "
         "task did");
   }
 
-  // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
-  Inner unwrapTask() && {
+  // See "A note on object slicing" in `MustUseImmediately.h`
+  Inner unwrapTask() && noexcept {
     static_assert(sizeof(Inner) == sizeof(Derived));
-    return mustAwaitImmediatelyUnsafeMover(std::move(task_))();
+    return folly::ext::must_use_immediately_unsafe_mover(std::move(inner_))();
   }
+
+ private:
+  template <typename T>
+  using my_curried_mover = folly::ext::curried_unsafe_mover_t<
+      T,
+      decltype(folly::ext::must_use_immediately_unsafe_mover(
+          FOLLY_DECLVAL(Inner)))>;
+
+ public:
+  template <
+      typename Me, // not a forwarding ref, see SFINAE
+      // This check guards against misuse (+ fails on lvalue refs)
+      // See `wrap_must_use_immediately_t::unsafe_mover` for more context
+      std::enable_if_t<std::is_base_of_v<TaskWrapperCrtp, Me>, int> = 0>
+  static my_curried_mover<Me> unsafe_mover(
+      folly::ext::must_use_immediately_private_t, Me&& me) noexcept {
+    return folly::ext::curried_unsafe_mover_from_bases_and_members<
+        TaskWrapperCrtp>(
+        folly::tag</*no bases*/>,
+        folly::vtag<&TaskWrapperCrtp::inner_>,
+        static_cast<Me&&>(me));
+  }
+  template <
+      typename DerivedFromMe,
+      // Matches the SFINAE logic in our `unsafe_mover`
+      std::enable_if_t<std::is_base_of_v<TaskWrapperCrtp, DerivedFromMe>, int> =
+          0>
+  explicit TaskWrapperCrtp(
+      folly::ext::curried_unsafe_mover_private_t,
+      my_curried_mover<DerivedFromMe>&& mover)
+      // `must_use_immediately_unsafe_mover` has more `noexcept` assertions
+      noexcept(noexcept(Inner{std::move(mover.template get<0>())()}))
+      : inner_{std::move(mover.template get<0>())()} {}
 };
 
 // IMPORTANT: Read "Do not blindly forward more APIs" in the file docblock.  In
@@ -313,21 +342,18 @@ class TaskWithExecutorWrapperCrtp {
   Inner inner_;
 
  protected:
-  friend class MustAwaitImmediatelyUnsafeMover< // can construct
-      Derived,
-      detail::unsafe_mover_for_must_await_immediately_t<Inner>>;
-
-  // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
-  Inner unwrapTaskWithExecutor() && {
+  // See "A note on object slicing" in `MustUseImmediately.h`
+  Inner unwrapTaskWithExecutor() && noexcept {
     static_assert(sizeof(Inner) == sizeof(Derived));
-    return std::move(inner_);
+    return folly::ext::must_use_immediately_unsafe_mover(std::move(inner_))();
   }
 
   // Our task can construct us, and that logic lives in the CRTP base
   friend typename Cfg::WrapperTaskT::folly_private_task_wrapper_crtp_base;
 
-  explicit TaskWithExecutorWrapperCrtp(Inner t)
-      : inner_(mustAwaitImmediatelyUnsafeMover(std::move(t))()) {}
+  explicit TaskWithExecutorWrapperCrtp(Inner t) noexcept(noexcept(Inner{
+      FOLLY_DECLVAL(Inner)}))
+      : inner_(folly::ext::must_use_immediately_unsafe_mover(std::move(t))()) {}
 
  public:
   // This is a **deliberately undefined** declaration. It is provided so that
@@ -352,21 +378,23 @@ class TaskWithExecutorWrapperCrtp {
   auto operator co_await() && noexcept
       -> decltype(Cfg::wrapAwaitable(std::move(inner_)).operator co_await());
 
-  // Pass `te` by-value, since `&&` would break immediately-awaitable types
+  // Pass `twe` by-value, since `&&` would break immediately-awaitable types
   friend Derived co_withCancellation(
-      CancellationToken cancelToken, Derived te) noexcept {
+      CancellationToken cancelToken, Derived twe) noexcept {
     return Derived{co_withCancellation(
         std::move(cancelToken),
-        mustAwaitImmediatelyUnsafeMover(std::move(te.inner_))())};
+        folly::ext::must_use_immediately_unsafe_mover(
+            std::move(twe.inner_))())};
   }
 
-  // Pass `te` by-value, since `&&` would break immediately-awaitable types
+  // Pass `twe` by-value, since `&&` would break immediately-awaitable types
   // Has copy-pasta above in `TaskWrapperCrtp`.
   friend auto co_viaIfAsync(
-      Executor::KeepAlive<> executor, Derived te) noexcept {
+      Executor::KeepAlive<> executor, Derived twe) noexcept {
     return Cfg::wrapAwaitable(co_viaIfAsync(
         std::move(executor),
-        mustAwaitImmediatelyUnsafeMover(std::move(te.inner_))()));
+        folly::ext::must_use_immediately_unsafe_mover(
+            std::move(twe.inner_))()));
   }
 
   // `AsyncScope` requires an awaitable with an executor already attached, and
@@ -374,13 +402,13 @@ class TaskWithExecutorWrapperCrtp {
   // we still need to wrap the awaitable on that code path.
   //
   // NB: Passing by-&& here looks like it could compromise the safety of
-  // immediately-awaitable coros (`NowTask`, `NowTaskWithExecutor`).  With
+  // immediately-awaitable coros (`now_task`, `now_task_with_executor`).  With
   // by-value, `BlockingWaitTest.AwaitNowTaskWithExecutor` would not build.
   //
   // Supporting pass-by-value would require fixing a LOT of plumbing.
   //   - `WithAsyncStack.h` calls `is_tag_invocable_v`, which would fail on
-  //     `NowTaskWithExecutor` if this is by-value, since the implementation of
-  //     `is_tag_invocable_v` presents all args by-&&.
+  //     `now_task_with_executor` if this is by-value, since the implementation
+  //     of `is_tag_invocable_v` presents all args by-&&.
   //   - `CommutativeWrapperAwaitable` and `StackAwareViaIfAsyncAwaiter`,
   //     among others, also assume that `co_withAsyncStack` takes by-ref.
   //
@@ -389,21 +417,51 @@ class TaskWithExecutorWrapperCrtp {
   // never be called in user code.  Internal usage in `folly/coro` looks
   // overall immediately-awaitable-safe -- and the best safeguard for any
   // particular scenario is to test, see e.g. `NowTaskTest.blockingWait`.
-  friend auto tag_invoke(cpo_t<co_withAsyncStack>, Derived&& te) noexcept(
+  friend auto tag_invoke(cpo_t<co_withAsyncStack>, Derived&& twe) noexcept(
       noexcept(co_withAsyncStack(FOLLY_DECLVAL(Inner)))) {
-    return Cfg::wrapAwaitable(co_withAsyncStack(std::move(te.inner_)));
+    return Cfg::wrapAwaitable(co_withAsyncStack(std::move(twe.inner_)));
   }
 
-  auto getUnsafeMover(ForMustAwaitImmediately p) && {
-    // See "A note on object slicing" above `mustAwaitImmediatelyUnsafeMover`
-    static_assert(sizeof(Derived) == sizeof(Inner));
-    return MustAwaitImmediatelyUnsafeMover{
-        (Derived*)nullptr, std::move(inner_).getUnsafeMover(p)};
-  }
-
-  using folly_private_must_await_immediately_t =
-      must_await_immediately_t<Inner>;
+  using folly_must_use_immediately_t = ext::must_use_immediately_t<Inner>;
   using folly_private_task_without_executor_t = typename Cfg::WrapperTaskT;
+  template <safe_alias Default>
+  using folly_private_safe_alias_t = safe_alias_of<Inner, Default>;
+
+ private:
+  template <typename T>
+  using my_curried_mover = folly::ext::curried_unsafe_mover_t<
+      T,
+      decltype(folly::ext::must_use_immediately_unsafe_mover(
+          FOLLY_DECLVAL(Inner)))>;
+
+ public:
+  template <
+      typename Me, // not a forwarding ref, see SFINAE
+      // This check guards against misuse (+ fails on lvalue refs)
+      // See `wrap_must_use_immediately_t::unsafe_mover` for more context
+      std::enable_if_t<
+          std::is_base_of_v<TaskWithExecutorWrapperCrtp, Me>,
+          int> = 0>
+  static my_curried_mover<Me> unsafe_mover(
+      folly::ext::must_use_immediately_private_t, Me&& me) noexcept {
+    return folly::ext::curried_unsafe_mover_from_bases_and_members<
+        TaskWithExecutorWrapperCrtp>(
+        folly::tag</*no bases*/>,
+        folly::vtag<&TaskWithExecutorWrapperCrtp::inner_>,
+        static_cast<Me&&>(me));
+  }
+  template <
+      typename DerivedFromMe,
+      // Matches the SFINAE logic in our `unsafe_mover`
+      std::enable_if_t<
+          std::is_base_of_v<TaskWithExecutorWrapperCrtp, DerivedFromMe>,
+          int> = 0>
+  explicit TaskWithExecutorWrapperCrtp(
+      folly::ext::curried_unsafe_mover_private_t,
+      my_curried_mover<DerivedFromMe>&& mover)
+      // `must_use_immediately_unsafe_mover` has more `noexcept` assertions
+      noexcept(noexcept(Inner{std::move(mover.template get<0>())()}))
+      : inner_{std::move(mover.template get<0>())()} {}
 };
 
 } // namespace folly::coro

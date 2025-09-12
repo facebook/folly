@@ -17,13 +17,18 @@
 #include <folly/io/async/IoUringProvidedBufferRing.h>
 
 #include <folly/Conv.h>
-#include <folly/ExceptionString.h>
 #include <folly/String.h>
 #include <folly/lang/Align.h>
 
 #if FOLLY_HAS_LIBURING
 
 namespace folly {
+
+IoUringBufferProviderBase::UniquePtr IoUringProvidedBufferRing::create(
+    io_uring* ioRingPtr, Options options) {
+  return IoUringProvidedBufferRing::UniquePtr(
+      new IoUringProvidedBufferRing(ioRingPtr, options));
+}
 
 IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
     size_t count, int bufferShift, int ringCountShift, bool huge_pages)
@@ -92,7 +97,8 @@ IoUringProvidedBufferRing::IoUringProvidedBufferRing(
           options.count,
           options.bufferShift,
           options.ringSizeShift,
-          options.useHugePages) {
+          options.useHugePages),
+      useIncremental_(options.useIncrementalBuffers) {
   if (options.count > std::numeric_limits<uint16_t>::max()) {
     throw std::runtime_error("too many buffers");
   }
@@ -100,12 +106,15 @@ IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     throw std::runtime_error("not enough buffers");
   }
 
-  ioBufCallbacks_.assign(
-      (options.count + (sizeof(void*) - 1)) / sizeof(void*), this);
-
   initialRegister();
 
-  gottenBuffers_ += options.count;
+  bufferStates_ = std::make_unique<BufferState[]>(options.count);
+  for (uint16_t i = 0; i < options.count; i++) {
+    bufferStates_[i].bufId = i;
+    bufferStates_[i].parent = this;
+    bufferStates_[i].offset = 0;
+  }
+
   for (size_t i = 0; i < options.count; i++) {
     returnBuffer(i);
   }
@@ -125,57 +134,77 @@ void IoUringProvidedBufferRing::enobuf() noexcept {
   VLOG_EVERY_N(1, 500) << "enobuf";
 }
 
-void IoUringProvidedBufferRing::unusedBuf(uint16_t i) noexcept {
-  gottenBuffers_++;
-  returnBuffer(i);
+void IoUringProvidedBufferRing::destroy() noexcept {
+  std::unique_lock lock{mutex_};
+  ::io_uring_unregister_buf_ring(ioRingPtr_, gid());
+  DCHECK(gottenBuffers_ >= returnedBuffers_);
+  auto remaining = gottenBuffers_ - returnedBuffers_;
+  shutdownReferences_ = remaining;
+  wantsShutdown_ = true;
+  lock.unlock();
+  delayedDestroy(remaining);
 }
 
-void IoUringProvidedBufferRing::destroy() noexcept {
-  ::io_uring_unregister_buf_ring(ioRingPtr_, gid());
-  shutdownReferences_ = 1;
-  auto returned = returnedBuffers_.load();
-  {
-    std::lock_guard guard(shutdownMutex_);
-    wantsShutdown_ = true;
-    // add references for every missing one
-    // we can assume that there will be no more from the kernel side.
-    // there is a race condition here between reading wantsShutdown_ and
-    // a return incrementing the number of returned references, but it is very
-    // unlikely to trigger as everything is shutting down, so there should not
-    // actually be any buffer returns. Worse case this will leak, but since
-    // everything is shutting down anyway it should not be a problem.
-    uint64_t const gotten = gottenBuffers_;
-    DCHECK(gottenBuffers_ >= returned);
-    uint32_t outstanding = (gotten - returned);
-    shutdownReferences_ += outstanding;
+void IoUringProvidedBufferRing::returnBuffer(uint16_t i) noexcept {
+  std::unique_lock lock{mutex_};
+  if (FOLLY_UNLIKELY(wantsShutdown_)) {
+    auto refs = --shutdownReferences_;
+    lock.unlock();
+    delayedDestroy(refs);
+    return;
   }
-  if (shutdownReferences_.fetch_sub(1) == 1) {
-    delete this;
+
+  if (useIncremental_) {
+    bufferStates_[i].offset = 0;
+    bufferStates_[i].refCount.store(1);
   }
+
+  uint16_t this_idx = static_cast<uint16_t>(ringReturnedBuffers_++);
+  uint16_t next_tail = this_idx + 1;
+
+  __u64 addr = (__u64)buffer_.buffer(i);
+  auto* r = buffer_.ringBuf(this_idx);
+  r->addr = addr;
+  r->len = buffer_.sizePerBuffer();
+  r->bid = i;
+
+  if (tryPublish(this_idx, next_tail)) {
+    enobuf_.store(false, std::memory_order_relaxed);
+  }
+  VLOG(9) << "returnBuffer(" << i << ")@" << this_idx;
 }
 
 std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
-    uint16_t i, size_t length) noexcept {
+    uint16_t i, size_t length, bool hasMore) noexcept {
   std::unique_ptr<IOBuf> ret;
   DCHECK(!wantsShutdown_);
+  DCHECK_LT(i, buffer_.bufferCount())
+      << "Buffer index " << i << " exceeds buffer count "
+      << buffer_.bufferCount();
 
-  // use a weird convention: userData = ioBufCallbacks_.data() + i
-  // ioBufCallbacks_ is just a list of the same pointer, to this
-  // so we don't need to malloc anything
   auto free_fn = [](void*, void* userData) {
-    size_t pprov = (size_t)userData & ~((size_t)(sizeof(void*) - 1));
-    IoUringProvidedBufferRing* prov = *(IoUringProvidedBufferRing**)pprov;
-    uint16_t idx = (size_t)userData - (size_t)prov->ioBufCallbacks_.data();
-    prov->returnBuffer(idx);
+    auto* bufferState = static_cast<BufferState*>(userData);
+    IoUringProvidedBufferRing* parent = bufferState->parent;
+    uint16_t bufId = bufferState->bufId;
+
+    parent->decBufferState(bufId);
   };
 
-  ret = IOBuf::takeOwnership(
-      (void*)getData(i),
-      sizePerBuffer_,
-      length,
-      free_fn,
-      (void*)(((size_t)ioBufCallbacks_.data()) + i));
-  gottenBuffers_++;
+  if (useIncremental_) {
+    auto* bufferStart = getData(i);
+    unsigned int currentOffset = bufferStates_[i].offset;
+    auto* dataPtr = bufferStart + currentOffset;
+    BufferState* info = &bufferStates_[i];
+    ret = IOBuf::takeOwnership((void*)dataPtr, length, length, free_fn, info);
+  } else {
+    BufferState* info = &bufferStates_[i];
+    ret = IOBuf::takeOwnership(
+        (void*)getData(i), sizePerBuffer_, length, free_fn, info);
+  }
+
+  ret->markExternallySharedOne();
+  incBufferState(i, hasMore, length);
+
   return ret;
 }
 
@@ -186,7 +215,12 @@ void IoUringProvidedBufferRing::initialRegister() {
   reg.ring_entries = buffer_.ringCount();
   reg.bgid = gid();
 
-  int ret = ::io_uring_register_buf_ring(ioRingPtr_, &reg, 0);
+  int flags = 0;
+  if (useIncremental_) {
+    flags |= IOU_PBUF_RING_INC;
+  }
+
+  int ret = ::io_uring_register_buf_ring(ioRingPtr_, &reg, flags);
 
   if (ret) {
     LOG(ERROR) << folly::to<std::string>(
@@ -207,30 +241,41 @@ void IoUringProvidedBufferRing::initialRegister() {
   }
 }
 
-void IoUringProvidedBufferRing::returnBufferInShutdown() noexcept {
-  { std::lock_guard guard(shutdownMutex_); }
-  if (shutdownReferences_.fetch_sub(1) == 1) {
+void IoUringProvidedBufferRing::delayedDestroy(uint64_t refs) noexcept {
+  if (refs == 0) {
     delete this;
   }
 }
 
-void IoUringProvidedBufferRing::returnBuffer(uint16_t i) noexcept {
-  if (FOLLY_UNLIKELY(wantsShutdown_)) {
-    returnBufferInShutdown();
+void IoUringProvidedBufferRing::incBufferState(
+    uint16_t bufId, bool hasMore, unsigned int bytesConsumed) noexcept {
+  gottenBuffers_++;
+
+  if (useIncremental_ && hasMore) {
+    uint16_t oldRefCount = bufferStates_[bufId].refCount.fetch_add(1);
+    bufferStates_[bufId].offset += bytesConsumed;
+
+    VLOG(9) << "Buffer " << bufId << " refcount=" << oldRefCount + 1
+            << " offset=" << bufferStates_[bufId].offset
+            << " hasMore=" << hasMore << " bytesConsumed=" << bytesConsumed;
+  }
+
+  // No need to handle regular buffers, since it is never really incremented
+  // beyond the original assingment of 1 instead of 0.
+}
+
+void IoUringProvidedBufferRing::decBufferState(uint16_t bufId) noexcept {
+  returnedBuffers_++;
+  if (!useIncremental_ || wantsShutdown_) {
+    returnBuffer(bufId);
     return;
   }
-  uint16_t this_idx = static_cast<uint16_t>(returnedBuffers_++);
-  __u64 addr = (__u64)buffer_.buffer(i);
-  uint16_t next_tail = this_idx + 1;
-  auto* r = buffer_.ringBuf(this_idx);
-  r->addr = addr;
-  r->len = buffer_.sizePerBuffer();
-  r->bid = i;
-
-  if (tryPublish(this_idx, next_tail)) {
-    enobuf_.store(false, std::memory_order_relaxed);
+  uint16_t oldRefCount = bufferStates_[bufId].refCount.fetch_sub(1);
+  VLOG(9) << "Buffer " << bufId << " refcount=" << oldRefCount - 1
+          << " (decremented)";
+  if (oldRefCount == 1) {
+    returnBuffer(bufId);
   }
-  VLOG(9) << "returnBuffer(" << i << ")@" << this_idx;
 }
 
 } // namespace folly

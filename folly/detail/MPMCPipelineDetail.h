@@ -26,7 +26,7 @@ class MPMCPipeline;
 template <class T, size_t Amp>
 class MPMCPipelineStage {
  public:
-  typedef T value_type;
+  using value_type = T;
   static constexpr size_t kAmplification = Amp;
 };
 
@@ -39,13 +39,13 @@ namespace detail {
 template <class T>
 struct PipelineStageInfo {
   static constexpr size_t kAmplification = 1;
-  typedef T value_type;
+  using value_type = T;
 };
 
 template <class T, size_t Amp>
 struct PipelineStageInfo<MPMCPipelineStage<T, Amp>> {
   static constexpr size_t kAmplification = Amp;
-  typedef T value_type;
+  using value_type = T;
 };
 
 /**
@@ -54,7 +54,7 @@ struct PipelineStageInfo<MPMCPipelineStage<T, Amp>> {
 template <class T>
 class MPMCPipelineStageImpl {
  public:
-  typedef T value_type;
+  using value_type = T;
   template <class U, class... Stages>
   friend class MPMCPipeline;
 

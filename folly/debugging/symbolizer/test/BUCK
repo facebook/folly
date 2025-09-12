@@ -18,7 +18,7 @@ fbcode_target(
         ],
     },
     deps = [
-        "//folly/experimental/symbolizer:signal_handler",
+        "//folly/debugging/symbolizer:signal_handler",
     ],
 )
 
@@ -33,12 +33,12 @@ fbcode_target(
     },
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
-        ":symbolizer_test_utils_dwarf4_dwarf32_noaaranges",
+        ":symbolizer_test_utils_dwarf5_dwarf64_single_inlining_aaranges",
         "//folly:benchmark",
         "//folly:range",
-        "//folly/experimental/symbolizer:dwarf",
-        "//folly/experimental/symbolizer:symbolized_frame",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:dwarf",
+        "//folly/debugging/symbolizer:symbolized_frame",
+        "//folly/debugging/symbolizer:symbolizer",
         "//folly/lang:cast",
         "//folly/portability:gflags",
     ],
@@ -54,7 +54,7 @@ fbcode_target(
         ],
     },
     deps = [
-        "//folly/experimental/symbolizer:signal_handler",
+        "//folly/debugging/symbolizer:signal_handler",
     ],
 )
 
@@ -63,7 +63,7 @@ fbcode_target(
     name = "symbolized_frame_test",
     srcs = ["SymbolizedFrameTest.cpp"],
     deps = [
-        "//folly/experimental/symbolizer:symbolized_frame",
+        "//folly/debugging/symbolizer:symbolized_frame",
         "//folly/portability:gtest",
     ],
     external_deps = [
@@ -72,14 +72,31 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_binary,
+    name = "simple_elf",
+    srcs = ["SimpleElf.cpp"],
+    linker_flags = [
+        "--build-id=0xdeadbeef",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "elf_test",
     srcs = ["ElfTest.cpp"],
+    # Do NOT move segments to a seperate helper .so lib because
+    # this test expect to find its symbols in /proc/self/exe.
+    extract_helper_lib = False,
+    resources = [
+        ":simple_elf",
+    ],
     deps = [
+        "fbsource//third-party/googletest:gmock",
         "//folly:cpp_attributes",
         "//folly:file_util",
+        "//folly:string",
+        "//folly/debugging/symbolizer:elf",
         "//folly/debugging/symbolizer/detail:debug",
-        "//folly/experimental/symbolizer:elf",
         "//folly/portability:gtest",
         "//folly/testing:test_util",
     ],
@@ -124,7 +141,7 @@ fbcode_target(
     srcs = ["LineReaderTest.cpp"],
     deps = [
         "//folly:file_util",
-        "//folly/experimental/symbolizer:line_reader",
+        "//folly/debugging/symbolizer:line_reader",
         "//folly/portability:gtest",
         "//folly/testing:test_util",
     ],
@@ -145,8 +162,8 @@ fbcode_target(
         "//folly:range",
         "//folly/coro:blocking_wait",
         "//folly/coro:task",
+        "//folly/debugging/symbolizer:signal_handler",
         "//folly/executors:io_thread_pool_executor",
-        "//folly/experimental/symbolizer:signal_handler",
         "//folly/portability:gtest",
     ],
     external_deps = [
@@ -160,7 +177,7 @@ fbcode_target(
     srcs = ["StackTraceBenchmark.cpp"],
     deps = [
         "//folly:benchmark",
-        "//folly/experimental/symbolizer:stack_trace",
+        "//folly/debugging/symbolizer:stack_trace",
         "//folly/init:init",
     ],
 )
@@ -171,8 +188,8 @@ fbcode_target(
     srcs = ["StackTraceSizeLimitTest.cpp"],
     labels = ["oss-broken"],
     deps = [
-        "//folly/experimental/symbolizer:stack_trace",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:stack_trace",
+        "//folly/debugging/symbolizer:symbolizer",
         "//folly/fibers:core_manager",
         "//folly/fibers:simple_loop_controller",
         "//folly/init:init",
@@ -188,8 +205,8 @@ fbcode_target(
     deps = [
         "//folly/coro:blocking_wait",
         "//folly/coro:task",
-        "//folly/experimental/symbolizer:stack_trace",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:stack_trace",
+        "//folly/debugging/symbolizer:symbolizer",
         "//folly/lang:hint",
         "//folly/portability:gtest",
         "//folly/test:test_utils",

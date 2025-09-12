@@ -23,7 +23,7 @@
 namespace folly {
 namespace test {
 
-typedef DeterministicSchedule DSched;
+using DSched = DeterministicSchedule;
 
 template <bool MayBlock, template <typename> class Atom>
 void run_basic_test() {

@@ -54,6 +54,11 @@ impl<'a> StringPiece<'a> {
         }
     }
 
+    pub fn as_str(&self) -> Result<&'a str, std::str::Utf8Error> {
+        let slice = self.as_slice();
+        std::str::from_utf8(slice)
+    }
+
     /// Wrap a raw `folly_StringPiece`
     ///
     /// Since `folly_StringPiece` does not know the lifetime of the data it refers to, the caller

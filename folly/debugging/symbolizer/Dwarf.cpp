@@ -27,7 +27,7 @@
 
 #if FOLLY_HAVE_DWARF && FOLLY_HAVE_ELF
 
-#include <dwarf.h> // @manual=fbsource//third-party/libdwarf:dwarf
+#include <dwarf.h> // @manual
 
 namespace folly {
 namespace symbolizer {

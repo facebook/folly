@@ -384,12 +384,14 @@ TEST_F(MockTransportTest, readSuccessCanceled) {
     EXPECT_CALL(*mockTransport, setReadCB(nullptr)).Times(2);
     folly::CancellationSource cancellationSource;
     auto readFut =
-        co_withCancellation(
-            cancellationSource.getToken(),
-            cs.read(
-                MutableByteRange(rcvBuf.data(), rcvBuf.data() + rcvBuf.size()),
-                100ms))
-            .scheduleOn(&evb)
+        co_withExecutor(
+            &evb,
+            co_withCancellation(
+                cancellationSource.getToken(),
+                cs.read(
+                    MutableByteRange(
+                        rcvBuf.data(), rcvBuf.data() + rcvBuf.size()),
+                    100ms)))
             .start();
     // Let the read coro start and get the EOF
     co_await co_reschedule_on_current_executor;

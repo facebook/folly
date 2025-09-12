@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/channels/ConsumeChannel.h>
+#include <folly/channels/ConsumeChannel.h> // @shim

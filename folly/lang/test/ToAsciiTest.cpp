@@ -240,7 +240,6 @@ struct inputs<10> {
       -1ull,
   };
 };
-constexpr uint64_t const inputs<10>::data[22];
 
 template <uint64_t Base, typename F>
 static void to_ascii_compare(F _) {

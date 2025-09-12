@@ -41,8 +41,8 @@ class shared_ptr_internals {
   static std::shared_ptr<T> make_ptr(Args&&... args) {
     return std::make_shared<T>(std::forward<Args...>(args...));
   }
-  typedef std::__shared_count<std::_S_atomic> shared_count;
-  typedef std::_Sp_counted_base<std::_S_atomic> counted_base;
+  using shared_count = std::__shared_count<std::_S_atomic>;
+  using counted_base = std::_Sp_counted_base<std::_S_atomic>;
   template <typename T>
   using CountedPtr = std::shared_ptr<T>;
 
@@ -67,38 +67,38 @@ class shared_ptr_internals {
  private:
   /* Accessors for private members using explicit template instantiation */
   struct access_shared_ptr {
-    typedef shared_count std::__shared_ptr<const void, std::_S_atomic>::*type;
+    using type = shared_count std::__shared_ptr<const void, std::_S_atomic>::*;
     friend type fieldPtr(access_shared_ptr);
   };
 
   struct access_base {
-    typedef counted_base* shared_count::*type;
+    using type = counted_base* shared_count::*;
     friend type fieldPtr(access_base);
   };
 
   struct access_use_count {
-    typedef _Atomic_word counted_base::*type;
+    using type = _Atomic_word counted_base::*;
     friend type fieldPtr(access_use_count);
   };
 
   struct access_weak_count {
-    typedef _Atomic_word counted_base::*type;
+    using type = _Atomic_word counted_base::*;
     friend type fieldPtr(access_weak_count);
   };
 
   struct access_counted_ptr_ptr {
-    typedef const void* std::_Sp_counted_ptr<const void*, std::_S_atomic>::*
-        type;
+    using type =
+        const void* std::_Sp_counted_ptr<const void*, std::_S_atomic>::*;
     friend type fieldPtr(access_counted_ptr_ptr);
   };
 
   struct access_shared_ptr_ptr {
-    typedef const void* std::__shared_ptr<const void, std::_S_atomic>::*type;
+    using type = const void* std::__shared_ptr<const void, std::_S_atomic>::*;
     friend type fieldPtr(access_shared_ptr_ptr);
   };
 
   struct access_refcount {
-    typedef shared_count std::__shared_ptr<const void, std::_S_atomic>::*type;
+    using type = shared_count std::__shared_ptr<const void, std::_S_atomic>::*;
     friend type fieldPtr(access_refcount);
   };
 

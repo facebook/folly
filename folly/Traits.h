@@ -112,7 +112,9 @@ namespace detail {
 
 template <typename Void, typename T>
 struct require_sizeof_ {
-  static_assert(always_false<T>, "application of sizeof fails substitution");
+  static_assert(
+      always_false<T>,
+      "application of sizeof fails substitution - most commonly, the type is incomplete");
 };
 template <typename T>
 struct require_sizeof_<decltype(void(sizeof(T))), T> {
@@ -128,8 +130,26 @@ struct require_sizeof_<decltype(void(sizeof(T))), T> {
 ///
 /// Equivalent to sizeof, but with a static_assert enforcing that application of
 /// sizeof would not fail substitution.
+///
+/// Application of sizeof fails on the following kinds of types:
+/// * function types.
+/// * incomplete types, including possibly-cv-qualified void
+/// * references to types to which application of sizeof would fail
 template <typename T>
 constexpr std::size_t require_sizeof = detail::require_sizeof_<void, T>::size;
+
+/// is_complete
+/// is_complete_v
+///
+/// It is tempting to define is_complete and is_complete_v, but ultimately these
+/// would be a bad idea. These traits are defined here to witness that these are
+/// intentionally excluded and not merely a missing feature.
+template <typename T>
+struct is_complete {
+  static_assert(always_false<T>, "is_complete would break ODR");
+};
+template <typename T>
+constexpr auto is_complete_v = is_complete<T>::value;
 
 /// is_unbounded_array_v
 /// is_unbounded_array
@@ -923,6 +943,9 @@ struct IsRelocatable<std::pair<T, U>>
 // Is T one of T1, T2, ..., Tn?
 template <typename T, typename... Ts>
 using IsOneOf = StrictDisjunction<std::is_same<T, Ts>...>;
+
+template <typename T, typename... Ts>
+inline constexpr bool is_one_of_v = IsOneOf<T, Ts...>::value;
 
 /*
  * Complementary type traits for integral comparisons.

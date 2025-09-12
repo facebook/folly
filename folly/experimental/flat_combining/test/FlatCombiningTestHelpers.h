@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/synchronization/test/FlatCombiningTestHelpers.h>
+#include <folly/synchronization/test/FlatCombiningTestHelpers.h> // @shim

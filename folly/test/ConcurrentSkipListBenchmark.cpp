@@ -44,10 +44,10 @@ namespace {
 
 using namespace folly;
 
-typedef int ValueType;
-typedef ConcurrentSkipList<ValueType> SkipListType;
-typedef SkipListType::Accessor SkipListAccessor;
-typedef std::set<ValueType> SetType;
+using ValueType = int;
+using SkipListType = ConcurrentSkipList<ValueType>;
+using SkipListAccessor = SkipListType::Accessor;
+using SetType = std::set<ValueType>;
 
 static std::vector<ValueType> gData;
 static void initData() {

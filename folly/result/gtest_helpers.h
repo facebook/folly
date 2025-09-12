@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/coro/GtestHelpers.h>
-#include <folly/result/result.h>
+#include <folly/result/coro.h>
 
 namespace folly {
 
@@ -45,7 +45,7 @@ For assertions, use either standard `EXPECT_*` macros, or `CO_ASSERT_*` from
       test_name,                                  \
       ::testing::Test,                            \
       ::testing::internal::GetTestTypeId(),       \
-      result<>,                                   \
+      ::folly::result<>,                          \
       RESULT_CO_UNWRAP_BODY)
 
 /*
@@ -60,7 +60,7 @@ For assertions, use either standard `EXPECT_*` macros, or `CO_ASSERT_*` from
       test_name,                                      \
       test_fixture,                                   \
       ::testing::internal::GetTypeId<test_fixture>(), \
-      result<>,                                       \
+      ::folly::result<>,                              \
       RESULT_CO_UNWRAP_BODY)
 
 } // namespace folly

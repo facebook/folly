@@ -18,7 +18,7 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 #include <immintrin.h>
 #endif
 
@@ -99,7 +99,7 @@ uint32_t crc32c_sw(
 uint32_t crc32_hw(
     const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
-#if FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 uint32_t crc32_hw_aligned(
     uint32_t remainder, const __m128i* p, size_t vec_count);
 #endif

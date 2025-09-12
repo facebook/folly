@@ -104,6 +104,13 @@ BENCHMARK(CachedAccessSpreaderUse, iters) {
   }
 }
 
+BENCHMARK(LLCAccessSpreaderUse, iters) {
+  for (unsigned long i = 0; i < iters; ++i) {
+    auto x = LLCAccessSpreader::get().current();
+    folly::doNotOptimizeAway(x);
+  }
+}
+
 BENCHMARK(StateCachedAccessSpreaderUse, iters) {
   auto& state = AccessSpreader<>::state();
   for (unsigned long i = 0; i < iters; ++i) {
@@ -299,7 +306,7 @@ static void atomicIncrBaseline(
 
   std::vector<std::thread> threads;
   while (threads.size() < numThreads) {
-    threads.push_back(std::thread([&]() {
+    threads.emplace_back([&]() {
       while (!go.load()) {
         std::this_thread::yield();
       }
@@ -312,7 +319,7 @@ static void atomicIncrBaseline(
           folly::doNotOptimizeAway(x);
         }
       }
-    }));
+    });
   }
 
   braces.dismiss();
@@ -384,6 +391,35 @@ BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 8_stripe_1000_work, 8, 1000)
 BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 16_stripe_1000_work, 16, 1000)
 BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 32_stripe_1000_work, 32, 1000)
 BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_1000_work, 1000)
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(readSystemLocalityInfo, iters) {
+  while (iters--) {
+    auto cl = folly::CacheLocality::readSystemLocalityInfo();
+    folly::compiler_must_not_elide(cl);
+  }
+}
+
+BENCHMARK(readFromProcCpuinfo, iters) {
+  while (iters--) {
+    try {
+      auto cl = folly::CacheLocality::readFromProcCpuinfo();
+      folly::compiler_must_not_elide(cl);
+    } catch (...) {
+    }
+  }
+}
+
+BENCHMARK(readFromSysfs, iters) {
+  while (iters--) {
+    try {
+      auto cl = folly::CacheLocality::readFromSysfs();
+      folly::compiler_must_not_elide(cl);
+    } catch (...) {
+    }
+  }
+}
 
 int main(int argc, char** argv) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);

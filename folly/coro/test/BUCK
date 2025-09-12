@@ -185,7 +185,7 @@ fbcode_target(
         "//folly/coro:invoke",
         "//folly/coro:merge",
         "//folly/coro:mutex",
-        "//folly/coro:ready",
+        "//folly/coro:promise",
         "//folly/coro:result",
         "//folly/coro:shared_mutex",
         "//folly/coro:sleep",
@@ -197,6 +197,7 @@ fbcode_target(
         "//folly/coro:transform",
         "//folly/coro:unbounded_queue",
         "//folly/coro:with_cancellation",
+        "//folly/coro/safe:captures",
         "//folly/coro/safe:now_task",
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:global_executor",
@@ -210,6 +211,7 @@ fbcode_target(
         "//folly/io/async:scoped_event_base_thread",
         "//folly/lang:assume",
         "//folly/portability:gtest",
+        "//folly/result:coro",
     ],
 )
 
@@ -244,6 +246,7 @@ fbcode_target(
         "GmockHelpersTest.cpp",
     ],
     deps = [
+        "fbsource//third-party/googletest:gtest",
         "//folly:portability",
         "//folly/coro:blocking_wait",
         "//folly/coro:gmock_helpers",
@@ -276,6 +279,7 @@ fbcode_target(
         "//folly/coro:gtest_helpers",
         "//folly/coro:noexcept",
         "//folly/coro/safe:now_task",
+        "//folly/coro/safe:safe_task",
     ],
 )
 
@@ -293,18 +297,6 @@ fbcode_target(
         "//folly/coro:promise",
         "//folly/coro:task",
         "//folly/futures:core",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "ready_test",
-    srcs = ["ReadyTest.cpp"],
-    deps = [
-        "//folly/coro:await_result",
-        "//folly/coro:gtest_helpers",
-        "//folly/coro:ready",
-        "//folly/coro/safe:now_task",
     ],
 )
 

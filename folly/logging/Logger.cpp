@@ -16,10 +16,6 @@
 
 #include <folly/logging/Logger.h>
 
-#include <ostream>
-
-#include <folly/Conv.h>
-#include <folly/logging/LogMessage.h>
 #include <folly/logging/LoggerDB.h>
 
 namespace folly {

@@ -15,7 +15,7 @@
 import asyncio
 import sys
 
-from folly.executor_detail cimport get_running_executor as ptr_get_running_executor, set_executor_for_loop as ptr_set_executor_for_loop
+from folly.executor_detail cimport assign_funcs
 from libcpp.memory cimport make_unique, unique_ptr
 from cython.operator cimport dereference as deref
 from weakref import WeakKeyDictionary
@@ -106,16 +106,12 @@ cdef class IocpQueue(dict):
 # get_executor() should always be run from a running eventloop in a single
 # diff. But ultimately we will want to remove this function and
 # go back to just get_executor() that only binds to a running loop.
-cdef cAsyncioExecutor* get_running_executor(bint running):
+cdef cAsyncioExecutor* get_running_executor(bint running) noexcept:
     return get_running_executor_drive(running, False)
 
 
-# Install the Cython function into the C++ function pointer
-ptr_get_running_executor = get_running_executor
-
-
 cdef cAsyncioExecutor* get_running_executor_drive(
-    bint running, bint driveBeforeDealloc):
+    bint running, bint driveBeforeDealloc) noexcept:
     try:
         if running:
             loop = asyncio.get_running_loop()
@@ -137,7 +133,7 @@ cdef cAsyncioExecutor* get_running_executor_drive(
     return executor._executor
 
 
-cdef int set_executor_for_loop(loop, cAsyncioExecutor* c_executor):
+cdef int set_executor_for_loop(object loop, cAsyncioExecutor* c_executor) noexcept:
     if c_executor == NULL:
         del loop_to_q[loop]
         return 0
@@ -151,10 +147,8 @@ cdef int set_executor_for_loop(loop, cAsyncioExecutor* c_executor):
 
     return 0
 
-
 # Install the Cython function into the C++ function pointer
-ptr_set_executor_for_loop = set_executor_for_loop
+assign_funcs(get_running_executor, set_executor_for_loop)
 
-
-cdef cAsyncioExecutor* get_executor():
+cdef cAsyncioExecutor* get_executor() noexcept:
     return get_running_executor(False)

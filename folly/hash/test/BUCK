@@ -163,3 +163,25 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "fnv_hash_test",
+    srcs = ["FnvHashTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:fnv_hash",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "hsieh_hash_test",
+    srcs = ["HsiehHashTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/hash:hsieh_hash",
+        "//folly/portability:gtest",
+    ],
+)

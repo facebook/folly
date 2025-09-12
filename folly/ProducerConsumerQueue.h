@@ -34,7 +34,7 @@ namespace folly {
  */
 template <class T>
 struct ProducerConsumerQueue {
-  typedef T value_type;
+  using value_type = T;
 
   ProducerConsumerQueue(const ProducerConsumerQueue&) = delete;
   ProducerConsumerQueue& operator=(const ProducerConsumerQueue&) = delete;

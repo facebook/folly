@@ -19,6 +19,7 @@
 #include <folly/io/async/IoUringBase.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/portability/SysMman.h>
+#include <folly/synchronization/DistributedMutex.h>
 
 #if FOLLY_HAS_LIBURING
 
@@ -43,14 +44,17 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
     int bufferShift{0};
     int ringSizeShift{0};
     bool useHugePages{false};
+    bool useIncrementalBuffers{false};
   };
 
-  IoUringProvidedBufferRing(io_uring* ioRingPtr, Options options);
+  static IoUringBufferProviderBase::UniquePtr create(
+      io_uring* ioRingPtr, Options options);
 
   void enobuf() noexcept override;
-  void unusedBuf(uint16_t i) noexcept override;
   void destroy() noexcept override;
-  std::unique_ptr<IOBuf> getIoBuf(uint16_t i, size_t length) noexcept override;
+
+  std::unique_ptr<IOBuf> getIoBuf(
+      uint16_t i, size_t length, bool hasMore) noexcept override;
 
   uint32_t count() const noexcept override { return buffer_.bufferCount(); }
   bool available() const noexcept override {
@@ -58,9 +62,14 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
   }
 
  private:
+  explicit IoUringProvidedBufferRing(io_uring* ioRingPtr, Options options);
+
   void initialRegister();
-  void returnBufferInShutdown() noexcept;
   void returnBuffer(uint16_t i) noexcept;
+  void delayedDestroy(uint64_t refs) noexcept;
+  void incBufferState(
+      uint16_t bufId, bool hasMore, unsigned int bytesConsumed) noexcept;
+  void decBufferState(uint16_t bufId) noexcept;
 
   std::atomic<uint16_t>* sharedTail() {
     return reinterpret_cast<std::atomic<uint16_t>*>(&buffer_.ring()->tail);
@@ -118,17 +127,30 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
     static constexpr size_t kBufferAlignBytes = 32;
   };
 
+  struct BufferState {
+    uint16_t bufId{0};
+    // Starting with a refCount of 1, to account for moreData incoming
+    // in the incremental buffer case.
+    std::atomic<uint32_t> refCount{1};
+    unsigned int offset{0};
+    IoUringProvidedBufferRing* parent{nullptr};
+  };
   io_uring* ioRingPtr_;
   ProvidedBuffersBuffer buffer_;
   std::atomic<bool> enobuf_{false};
-  std::vector<IoUringProvidedBufferRing*> ioBufCallbacks_;
+  bool useIncremental_;
 
+  // For tracking how many IOBufs were created
   uint64_t gottenBuffers_{0};
-  std::atomic<uint64_t> returnedBuffers_{0};
+  // For tracking how many IOBufs were destroyed.
+  uint64_t returnedBuffers_{0};
+  // For returning the buffer to the ring.
+  uint64_t ringReturnedBuffers_{0};
+  std::unique_ptr<BufferState[]> bufferStates_;
 
+  folly::DistributedMutex mutex_;
   std::atomic<bool> wantsShutdown_{false};
-  std::atomic<uint32_t> shutdownReferences_;
-  std::mutex shutdownMutex_;
+  uint64_t shutdownReferences_{0};
 };
 
 } // namespace folly

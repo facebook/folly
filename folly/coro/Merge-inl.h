@@ -329,8 +329,7 @@ AsyncGenerator<Reference, Value> mergeImpl(
   };
 
   // Start a task that consumes the stream of input streams.
-  makeConsumerTask(state, std::move(sources))
-      .scheduleOn(executor)
+  co_withExecutor(executor, makeConsumerTask(state, std::move(sources)))
       .start(
           [state](auto&&) { state->allTasksCompleted.post(); },
           state->cancelSource.getToken());

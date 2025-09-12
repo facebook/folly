@@ -17,7 +17,6 @@
 #include <folly/hash/Checksum.h>
 
 #include <algorithm>
-#include <stdexcept>
 
 #include <boost/crc.hpp>
 
@@ -30,9 +29,8 @@
 #include <folly/external/fast-crc32/sse_crc32c_v8s3x3.h> // @manual
 #include <folly/hash/detail/ChecksumDetail.h>
 
-#if FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 #include <emmintrin.h>
-#include <nmmintrin.h>
 #endif
 
 namespace folly {
@@ -41,7 +39,7 @@ namespace detail {
 
 uint32_t crc32c_sw(
     const uint8_t* data, size_t nbytes, uint32_t startingChecksum);
-#if FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 
 uint32_t crc32_sw(
     const uint8_t* data, size_t nbytes, uint32_t startingChecksum);

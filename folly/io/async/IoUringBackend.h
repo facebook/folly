@@ -164,6 +164,19 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    constexpr bool isPow2(uint64_t n) noexcept {
+      return n > 0 && !((n - 1) & n);
+    }
+
+    Options& setProvidedBufRings(size_t v) {
+      if (!isPow2(v)) {
+        throw std::runtime_error(folly::to<std::string>(
+            "number of provided buffer rings must be a power of 2"));
+      }
+      providedBufRings = v;
+      return *this;
+    }
+
     Options& setRegisterRingFd(bool v) {
       registerRingFd = v;
 
@@ -238,6 +251,11 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setEnableIncrementalBuffers(bool v) {
+      enableIncrementalBuffers = v;
+
+      return *this;
+    }
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -248,6 +266,7 @@ class IoUringBackend : public EventBaseBackendBase {
     size_t sqGroupNumThreads{1};
     size_t initialProvidedBuffersCount{0};
     size_t initialProvidedBuffersEachSize{0};
+    size_t providedBufRings{1};
 
     uint32_t flags{0};
 
@@ -278,6 +297,9 @@ class IoUringBackend : public EventBaseBackendBase {
     ResolveNapiIdCallback resolveNapiId;
     int zcRxNumPages{-1};
     int zcRxRefillEntries{-1};
+
+    // Incremental Buffers
+    bool enableIncrementalBuffers{false};
   };
 
   explicit IoUringBackend(Options options);
@@ -419,7 +441,12 @@ class IoUringBackend : public EventBaseBackendBase {
   void cancel(IoSqeBase* sqe);
 
   // built in buffer provider
-  IoUringBufferProviderBase* bufferProvider() { return bufferProvider_.get(); }
+  IoUringBufferProviderBase* bufferProvider() {
+    return bufferProviders_
+        [bufferProviderIdx_++ & (bufferProviders_.size() - 1)]
+            .get();
+  }
+  bool hasBufferProvider() { return bufferProviders_.size() > 0; }
   uint16_t nextBufferProviderGid() { return bufferProviderGidNext_++; }
   IoUringZeroCopyBufferPool* zcBufferPool() { return zcBufferPool_.get(); }
 
@@ -677,7 +704,8 @@ class IoUringBackend : public EventBaseBackendBase {
             std::unique_ptr<IOBuf> buf;
             if (flags & IORING_CQE_F_BUFFER) {
               if (IoUringBufferProviderBase* bp = backend->bufferProvider()) {
-                buf = bp->getIoBuf(flags >> 16, res);
+                auto hasMore = (flags & IORING_CQE_F_BUF_MORE) != 0;
+                buf = bp->getIoBuf(flags >> 16, res, hasMore);
               }
             }
             hdr_->cbFunc_(hdr_, res, std::move(buf));
@@ -1150,7 +1178,8 @@ class IoUringBackend : public EventBaseBackendBase {
   // submit
   IoSqeBaseList submitList_;
   uint16_t bufferProviderGidNext_{0};
-  IoUringBufferProviderBase::UniquePtr bufferProvider_;
+  std::vector<IoUringBufferProviderBase::UniquePtr> bufferProviders_;
+  uint64_t bufferProviderIdx_{0};
   IoUringZeroCopyBufferPool::UniquePtr zcBufferPool_;
 
   // loop related

@@ -1,10 +1,10 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
-    "@fbsource//xplat/folly:defs.bzl",
+    "../defs.bzl",
     "folly_xplat_library",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -58,12 +58,12 @@ non_fbcode_target(
         "ReadMostlyTLObserver.h",
     ],
     deps = [
-        "//xplat/folly:functional_invoke",
+        "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly:shared_mutex",
-        "//xplat/folly:synchronization_baton",
         "//xplat/folly:thread_local",
         "//xplat/folly/concurrency:core_cached_shared_ptr",
         "//xplat/folly/experimental/observer/detail:observer_manager",
+        "//xplat/folly/functional:invoke",
     ],
 )
 
@@ -76,8 +76,8 @@ non_fbcode_target(
         "SimpleObservable-inl.h",
     ],
     deps = [
+        "fbsource//xplat/folly/synchronization:delayed_init",
         "//xplat/folly:function",
-        "//xplat/folly:synchronization_delayed_init",
         "//xplat/folly:synchronized",
         "//xplat/folly/experimental/observer:observable",
         "//xplat/folly/experimental/observer:observer",

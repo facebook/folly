@@ -831,26 +831,28 @@ struct exception_shared_string::state {
 char const* exception_shared_string::from_state(state const* self) noexcept {
   return !self ? nullptr : reinterpret_cast<char const*>(self + 1u);
 }
-auto exception_shared_string::to_state(char const* what) noexcept -> state* {
-  auto const addr = const_cast<char*>(what);
-  return uintptr_t(addr) & 1 ? nullptr : reinterpret_cast<state*>(addr) - 1u;
+auto exception_shared_string::to_state(const tagged_what_t& w) noexcept
+    -> state* {
+  if (w.is_literal()) {
+    return nullptr;
+  }
+  return reinterpret_cast<state*>(const_cast<char*>(w.what())) - 1u;
 }
 
 exception_shared_string::exception_shared_string(
     std::size_t const len, format_sig_& ffun, void* const fobj)
-    : what_{from_state(state::make(len, ffun, fobj))} {}
+    : tagged_what_{vtag<false>, from_state(state::make(len, ffun, fobj))} {}
 
-exception_shared_string::exception_shared_string(char const* const str)
-    : exception_shared_string{str, std::strlen(str)} {}
 exception_shared_string::exception_shared_string(
     char const* const str, std::size_t const len)
-    : what_{from_state(state::make(str, len))} {}
+    : tagged_what_{vtag<false>, from_state(state::make(str, len))} {}
 exception_shared_string::exception_shared_string(
     exception_shared_string const& that) noexcept
-    : what_{(state::copy(to_state(that.what_)), that.what_)} {}
+    : tagged_what_{
+          (state::copy(to_state(that.tagged_what_)), that.tagged_what_)} {}
 
 void exception_shared_string::ruin_state() noexcept {
-  state::ruin(to_state(what_));
+  state::ruin(to_state(tagged_what_));
 }
 
 } // namespace folly

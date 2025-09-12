@@ -1,13 +1,13 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:native_rules.bzl", "alias")
-load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+load("@fbsource//tools/build_defs:rust_library.bzl", "rust_library")
 
 oncall("rust_libraries")
 
 fbcode_target(
     _kind = alias,
     name = "iobuf",
-    actual = "//folly/rust/iobuf:iobuf",
+    actual = "fbsource//xplat/folly/rust/iobuf:iobuf",
 )
 
 fbcode_target(
@@ -44,6 +44,12 @@ fbcode_target(
     _kind = alias,
     name = "request_context_future",
     actual = "//folly/rust/request_context:request_context_future",
+)
+
+fbcode_target(
+    _kind = alias,
+    name = "folly_dynamic",
+    actual = "//folly/rust/dynamic:folly_dynamic",
 )
 
 fbcode_target(

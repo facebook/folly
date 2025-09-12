@@ -16,12 +16,19 @@
 
 #include <folly/python/GILAwareManualExecutor.h>
 
-#include <Python.h>
+#include <folly/python/Weak.h>
 
 #include <folly/ScopeGuard.h>
 
 namespace folly {
 namespace python {
+
+GILAwareManualExecutor::~GILAwareManualExecutor() {
+  while (keepAliveCount_.load(std::memory_order_relaxed)) {
+    drive();
+  }
+  driveImpl();
+}
 
 void GILAwareManualExecutor::add(Func callback) {
   {
@@ -61,6 +68,7 @@ void GILAwareManualExecutor::driveImpl() {
       funcs_.pop();
     }
     func();
+    func = nullptr;
   }
 }
 

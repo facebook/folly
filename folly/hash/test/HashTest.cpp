@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include <random>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -38,157 +39,6 @@ TEST(Hash, Test128To64) {
   EXPECT_EQ(
       commutative_hash_128_to_64(upper, lower),
       commutative_hash_128_to_64(lower, upper));
-}
-
-TEST(Hash, Fnv32_BROKEN) {
-  const char* s1 = "hello, world!";
-  const uint32_t s1_res = 3605494790UL;
-  EXPECT_EQ(fnv32_BROKEN(s1), s1_res);
-  EXPECT_EQ(fnv32_BROKEN(s1), fnv32_buf_BROKEN(s1, strlen(s1)));
-
-  const char* s2 = "monkeys! m0nk3yz! ev3ry \\/\\/here~~~~";
-  const uint32_t s2_res = 1270448334UL;
-  EXPECT_EQ(fnv32_BROKEN(s2), s2_res);
-  EXPECT_EQ(fnv32_BROKEN(s2), fnv32_buf_BROKEN(s2, strlen(s2)));
-
-  const char* s3 = "";
-  const uint32_t s3_res = 2166136261UL;
-  EXPECT_EQ(fnv32_BROKEN(s3), s3_res);
-  EXPECT_EQ(fnv32_BROKEN(s3), fnv32_buf_BROKEN(s3, strlen(s3)));
-
-  const uint8_t s4_data[] = {0xFF, 0xFF, 0xFF, 0x00};
-  const char* s4 = reinterpret_cast<const char*>(s4_data);
-  const uint32_t s4_res = 2420936562UL;
-  EXPECT_EQ(fnv32_BROKEN(s4), s4_res);
-  EXPECT_EQ(fnv32_BROKEN(s4), fnv32_buf_BROKEN(s4, strlen(s4)));
-}
-
-TEST(Hash, Fnv64_BROKEN) {
-  const char* s1 = "hello, world!";
-  const uint64_t s1_res = 13991426986746681734ULL;
-  EXPECT_EQ(fnv64_BROKEN(s1), s1_res);
-  EXPECT_EQ(fnv64_BROKEN(s1), fnv64_buf_BROKEN(s1, strlen(s1)));
-
-  const char* s2 = "monkeys! m0nk3yz! ev3ry \\/\\/here~~~~";
-  const uint64_t s2_res = 6091394665637302478ULL;
-  EXPECT_EQ(fnv64_BROKEN(s2), s2_res);
-  EXPECT_EQ(fnv64_BROKEN(s2), fnv64_buf_BROKEN(s2, strlen(s2)));
-
-  const char* s3 = "";
-  const uint64_t s3_res = 14695981039346656037ULL;
-  EXPECT_EQ(fnv64_BROKEN(s3), s3_res);
-  EXPECT_EQ(fnv64_BROKEN(s3), fnv64_buf_BROKEN(s3, strlen(s3)));
-
-  const uint8_t s4_data[] = {0xFF, 0xFF, 0xFF, 0x00};
-  const char* s4 = reinterpret_cast<const char*>(s4_data);
-  const uint64_t s4_res = 2787597222566293202ULL;
-  EXPECT_EQ(fnv64_BROKEN(s4), s4_res);
-  EXPECT_EQ(fnv64_BROKEN(s4), fnv64_buf_BROKEN(s4, strlen(s4)));
-
-  // note: Use fnv64_buf to make a single hash value from multiple
-  // fields/datatypes.
-  const char* t4_a = "E Pluribus";
-  int64_t t4_b = 0xF1E2D3C4B5A69788;
-  int32_t t4_c = 0xAB12CD34;
-  const char* t4_d = "Unum";
-  uint64_t t4_res = 15571330457339273965ULL;
-  uint64_t t4_hash1 = fnv64_buf_BROKEN(t4_a, strlen(t4_a));
-  uint64_t t4_hash2 = fnv64_buf_BROKEN(
-      reinterpret_cast<void*>(&t4_b), sizeof(int64_t), t4_hash1);
-  uint64_t t4_hash3 = fnv64_buf_BROKEN(
-      reinterpret_cast<void*>(&t4_c), sizeof(int32_t), t4_hash2);
-  uint64_t t4_hash4 = fnv64_buf_BROKEN(t4_d, strlen(t4_d), t4_hash3);
-  EXPECT_EQ(t4_hash4, t4_res);
-  // note: These are probabalistic, not determinate, but c'mon.
-  // These hash values should be different, or something's not
-  // working.
-  EXPECT_NE(t4_hash1, t4_hash4);
-  EXPECT_NE(t4_hash2, t4_hash4);
-  EXPECT_NE(t4_hash3, t4_hash4);
-}
-
-TEST(Hash, Fnv32_FIXED) {
-  const char* s1 = "hello, world!";
-  const uint32_t s1_res = 3605494790U;
-  EXPECT_EQ(fnv32_FIXED(s1), s1_res);
-  EXPECT_EQ(fnv32_FIXED(s1), fnv32_buf_FIXED(s1, strlen(s1)));
-
-  const char* s2 = "monkeys! m0nk3yz! ev3ry \\/\\/here~~~~";
-  const uint32_t s2_res = 1270448334U;
-  EXPECT_EQ(fnv32_FIXED(s2), s2_res);
-  EXPECT_EQ(fnv32_FIXED(s2), fnv32_buf_FIXED(s2, strlen(s2)));
-
-  const char* s3 = "";
-  const uint32_t s3_res = 2166136261U;
-  EXPECT_EQ(fnv32_FIXED(s3), s3_res);
-  EXPECT_EQ(fnv32_FIXED(s3), fnv32_buf_FIXED(s3, strlen(s3)));
-
-  const uint8_t s4_data[] = {0xFF, 0xFF, 0xFF, 0x00};
-  const char* s4 = reinterpret_cast<const char*>(s4_data);
-  const uint32_t s4_res = 2978929266U;
-  EXPECT_EQ(fnv32_FIXED(s4), s4_res);
-  EXPECT_EQ(fnv32_FIXED(s4), fnv32_buf_FIXED(s4, strlen(s4)));
-}
-
-TEST(Hash, Fnv64_FIXED) {
-  const char* s1 = "hello, world!";
-  const uint64_t s1_res = 13991426986746681734ULL;
-  EXPECT_EQ(fnv64_FIXED(s1), s1_res);
-  EXPECT_EQ(fnv64_FIXED(s1), fnv64_buf_FIXED(s1, strlen(s1)));
-
-  const char* s2 = "monkeys! m0nk3yz! ev3ry \\/\\/here~~~~";
-  const uint64_t s2_res = 6091394665637302478ULL;
-  EXPECT_EQ(fnv64_FIXED(s2), s2_res);
-  EXPECT_EQ(fnv64_FIXED(s2), fnv64_buf_FIXED(s2, strlen(s2)));
-
-  const char* s3 = "";
-  const uint64_t s3_res = 14695981039346656037ULL;
-  EXPECT_EQ(fnv64_FIXED(s3), s3_res);
-  EXPECT_EQ(fnv64_FIXED(s3), fnv64_buf_FIXED(s3, strlen(s3)));
-
-  const uint8_t s4_data[] = {0xFF, 0xFF, 0xFF, 0x00};
-  const char* s4 = reinterpret_cast<const char*>(s4_data);
-  const uint64_t s4_res = 15475554797547429842ULL;
-  EXPECT_EQ(fnv64_FIXED(s4), s4_res);
-  EXPECT_EQ(fnv64_FIXED(s4), fnv64_buf_FIXED(s4, strlen(s4)));
-
-  // note: Use fnv64_buf to make a single hash value from multiple
-  // fields/datatypes.
-  const char* t4_a = "E Pluribus";
-  int64_t t4_b = 0xF1E2D3C4B5A69788;
-  int32_t t4_c = 0xAB12CD34;
-  const char* t4_d = "Unum";
-  uint64_t t4_res = 14526396152295369453ULL;
-  uint64_t t4_hash1 = fnv64_buf_FIXED(t4_a, strlen(t4_a));
-  uint64_t t4_hash2 = fnv64_buf_FIXED(
-      reinterpret_cast<void*>(&t4_b), sizeof(int64_t), t4_hash1);
-  uint64_t t4_hash3 = fnv64_buf_FIXED(
-      reinterpret_cast<void*>(&t4_c), sizeof(int32_t), t4_hash2);
-  uint64_t t4_hash4 = fnv64_buf_FIXED(t4_d, strlen(t4_d), t4_hash3);
-  EXPECT_EQ(t4_hash4, t4_res);
-  // note: These are probabalistic, not determinate, but c'mon.
-  // These hash values should be different, or something's not
-  // working.
-  EXPECT_NE(t4_hash1, t4_hash4);
-  EXPECT_NE(t4_hash2, t4_hash4);
-  EXPECT_NE(t4_hash3, t4_hash4);
-}
-
-TEST(Hash, Hsieh32) {
-  const char* s1 = "hello, world!";
-  const uint32_t s1_res = 2918802987ul;
-  EXPECT_EQ(hsieh_hash32(s1), s1_res);
-  EXPECT_EQ(hsieh_hash32(s1), hsieh_hash32_buf(s1, strlen(s1)));
-
-  const char* s2 = "monkeys! m0nk3yz! ev3ry \\/\\/here~~~~";
-  const uint32_t s2_res = 47373213ul;
-  EXPECT_EQ(hsieh_hash32(s2), s2_res);
-  EXPECT_EQ(hsieh_hash32(s2), hsieh_hash32_buf(s2, strlen(s2)));
-
-  const char* s3 = "";
-  const uint32_t s3_res = 0;
-  EXPECT_EQ(hsieh_hash32(s3), s3_res);
-  EXPECT_EQ(hsieh_hash32(s3), hsieh_hash32_buf(s3, strlen(s3)));
 }
 
 TEST(Hash, TWangMix64) {
@@ -560,7 +410,7 @@ TEST(Hash, hashBool10) {
 }
 
 TEST(Hash, stdTuple) {
-  typedef std::tuple<int64_t, std::string, int32_t> tuple3;
+  using tuple3 = std::tuple<int64_t, std::string, int32_t>;
   tuple3 t(42, "foo", 1);
 
   std::unordered_map<tuple3, std::string> m;
@@ -600,7 +450,7 @@ TEST(Hash, enumType) {
 }
 
 TEST(Hash, pairFollyHash) {
-  typedef std::pair<int64_t, int32_t> pair2;
+  using pair2 = std::pair<int64_t, int32_t>;
   pair2 p(42, 1);
 
   std::unordered_map<pair2, std::string, folly::Hash> m;
@@ -609,7 +459,7 @@ TEST(Hash, pairFollyHash) {
 }
 
 TEST(Hash, tupleFollyHash) {
-  typedef std::tuple<int64_t, int32_t, int32_t> tuple3;
+  using tuple3 = std::tuple<int64_t, int32_t, int32_t>;
   tuple3 t(42, 1, 1);
 
   std::unordered_map<tuple3, std::string, folly::Hash> m;
@@ -661,7 +511,7 @@ TEST(Hash, commutativeHashCombine) {
 }
 
 TEST(Hash, stdTupleDifferentHash) {
-  typedef std::tuple<int64_t, std::string, int32_t> tuple3;
+  using tuple3 = std::tuple<int64_t, std::string, int32_t>;
   tuple3 t1(42, "foo", 1);
   tuple3 t2(9, "bar", 3);
   tuple3 t3(42, "foo", 3);
@@ -859,6 +709,9 @@ static_assert(
     !folly::IsAvalanchingHasher<std::hash<long double>, long double>::value);
 static_assert(
     folly::IsAvalanchingHasher<std::hash<std::string>, std::string>::value);
+static_assert(
+    folly::IsAvalanchingHasher<std::hash<std::string_view>, std::string_view>::
+        value);
 static_assert(
     !folly::IsAvalanchingHasher<std::hash<TestEnum>, TestEnum>::value);
 static_assert(
@@ -1061,6 +914,18 @@ TEST(Traits, stdHashStringAvalances) {
       });
 }
 
+TEST(Traits, stdHashStringViewAvalances) {
+  verifyAvalanching<std::hash<std::string_view>, std::string>(
+      "00000000000000000000000000000", [](std::string& str) {
+        std::size_t i = 0;
+        while (str[i] == '1') {
+          str[i] = '0';
+          ++i;
+        }
+        str[i] = '1';
+      });
+}
+
 TEST(Traits, follyHashUint64Avalances) {
   verifyAvalanching<folly::Hash>(uint64_t{0}, [](uint64_t& v) { v++; });
 }
@@ -1077,4 +942,50 @@ TEST(Traits, follyHasherFloatAvalanches) {
 
 TEST(Traits, follyHasherDoubleAvalanches) {
   verifyAvalanching<folly::hasher<double>>(0.0, [](double& v) { v += 1; });
+}
+
+TEST(HashSequence, Fold) {
+  EXPECT_EQ(folly::hash::detail::hash_sequence(folly::hasher<int>{}), 0);
+  EXPECT_EQ(
+      folly::hash::detail::hash_sequence(folly::hasher<int>{}, 1),
+      folly::hasher<int>{}(1));
+  EXPECT_EQ(
+      folly::hash::detail::hash_sequence(folly::hasher<int>{}, 1, 2),
+      folly::hash::hash_128_to_64(
+          folly::hasher<int>{}(1), folly::hasher<int>{}(2)));
+  EXPECT_EQ(
+      folly::hash::detail::hash_sequence(folly::hasher<int>{}, 1, 2, 3),
+      folly::hash::hash_128_to_64(
+          folly::hasher<int>{}(1),
+          folly::hash::hash_128_to_64(
+              folly::hasher<int>{}(2), folly::hasher<int>{}(3))));
+}
+
+TEST(HashSequence, TypeMix) {
+  EXPECT_EQ(
+      folly::hash::detail::hash_sequence(
+          folly::detail::hash_one, 1, 1.0, std::string_view{"hello"}),
+      folly::hash::hash_128_to_64(
+          folly::hasher<int>{}(1),
+          folly::hash::hash_128_to_64(
+              folly::hasher<double>{}(1.0),
+              folly::hasher<std::string_view>{}("hello"))));
+}
+
+TEST(HashTuple, Empty) {
+  auto empty = std::make_tuple<>();
+  EXPECT_EQ(
+      folly::hash::detail::hash_tuple(folly::hasher<decltype(empty)>{}, empty),
+      0);
+}
+
+TEST(HashTuple, Basic) {
+  auto basic = std::make_tuple<int, double, std::string>(1, 1.0, "hello");
+  EXPECT_EQ(
+      folly::hash::detail::hash_tuple(folly::detail::hash_one, basic),
+      folly::hash::hash_128_to_64(
+          folly::hasher<int>{}(1),
+          folly::hash::hash_128_to_64(
+              folly::hasher<double>{}(1.0),
+              folly::hasher<std::string>{}("hello"))));
 }

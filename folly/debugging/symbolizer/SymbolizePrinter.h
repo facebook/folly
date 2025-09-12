@@ -20,7 +20,7 @@
 
 #include <folly/FBString.h>
 #include <folly/Range.h>
-#include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/debugging/symbolizer/SymbolizedFrame.h>
 
 namespace folly {
 class IOBuf;

@@ -116,6 +116,10 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
       length,
       freeFn,
       &buffers_[i]);
+  // The underlying buffers are shared between userspace and kernel. The IOBufs
+  // only 'wrap' the data and is read-only. Mark as shared such that downstream
+  // users of this IOBuf do not try to destructively modify the data.
+  ret->markExternallySharedOne();
   // This method is only called from an EVB so there is no synchronization.
   bufDispensed_++;
   return ret;
@@ -170,8 +174,10 @@ void IoUringZeroCopyBufferPool::initialRegister(
   auto ret = io_uring_register_ifq(ring_, &ifqReg);
   if (ret) {
     ::munmap(bufArea_, bufAreaSize_ + rqRingAreaSize_);
-    throw std::runtime_error(
-        "IoUringZeroCopyBufferPool failed io_uring_register_ifq");
+    throw std::runtime_error(fmt::format(
+        "IoUringZeroCopyBufferPool failed io_uring_register_ifq: {} {}",
+        ret,
+        ::strerror(ret)));
   }
 
   rqRing_.khead = reinterpret_cast<uint32_t*>(

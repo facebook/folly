@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/AsyncGenerator.h>
+#include <folly/coro/AsyncGenerator.h> // @shim

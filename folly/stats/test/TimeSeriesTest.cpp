@@ -327,8 +327,20 @@ TEST(BucketedTimeSeries, elapsed) {
 TEST(BucketedTimeSeries, rate) {
   BucketedTimeSeries<int64_t> ts(60, seconds(600));
 
+  ts.addValue(seconds(0), 200, 3);
+  // At the beginning of a timeseries' lifecycle, we make any non-zero interval
+  // to be at least Interval{1} to smooth out the rate calculation. After adding
+  // value at time 0, the total elapsed time for the timeseries is Duration{1},
+  // which is one second. Since the elapsed time is much smaller than
+  // Interval{1}, which is one minute, without the smoothing, the rate
+  // calculation can be volatile at the beginning, especially for rare events.
+  EXPECT_EQ(600.0, (ts.rate<double, std::chrono::minutes>()));
+  EXPECT_EQ(600.0, (ts.rate<double>()));
+  EXPECT_EQ(3.0, (ts.countRate<double, std::chrono::minutes>()));
+  EXPECT_EQ(3.0, (ts.countRate<double>()));
+
   // Add 3 values every 2 seconds, until fill up the buckets
-  for (size_t n = 0; n < 600; n += 2) {
+  for (size_t n = 2; n < 600; n += 2) {
     ts.addValue(seconds(n), 200, 3);
   }
 
@@ -339,14 +351,18 @@ TEST(BucketedTimeSeries, rate) {
   // Really we only entered 599 seconds worth of data: [0, 598] (inclusive)
   EXPECT_EQ(599, ts.elapsed().count());
   EXPECT_NEAR(300.5, ts.rate(), 0.005);
+  EXPECT_NEAR(18030.05, (ts.rate<double, std::chrono::minutes>()), 0.005);
   EXPECT_NEAR(1.5, ts.countRate(), 0.005);
+  EXPECT_NEAR(90.15, (ts.countRate<double, std::chrono::minutes>()), 0.005);
 
   // If we add 1 more second, now we will have 600 seconds worth of data
   ts.update(seconds(599));
   EXPECT_EQ(600, ts.elapsed().count());
   EXPECT_NEAR(300, ts.rate(), 0.005);
   EXPECT_EQ(300, ts.rate<int>());
+  EXPECT_EQ(18000, (ts.rate<int, std::chrono::minutes>()));
   EXPECT_NEAR(1.5, ts.countRate(), 0.005);
+  EXPECT_EQ(90, (ts.countRate<int, std::chrono::minutes>()));
 
   // However, 1 more second after that and we will have filled up all the
   // buckets, and have to drop one.
@@ -497,7 +513,7 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
 }
 
 TEST(BucketedTimeSeries, forEachBucket) {
-  typedef BucketedTimeSeries<int64_t>::Bucket BucketSeries;
+  using BucketSeries = BucketedTimeSeries<int64_t>::Bucket;
   struct BucketInfo {
     BucketInfo(const BucketSeries* b, TimePoint s, TimePoint ns)
         : bucket(b), start(s), nextStart(ns) {}

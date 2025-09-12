@@ -22,7 +22,6 @@
 #include <folly/debugging/exception_tracer/ExceptionTracer.h>
 #include <folly/debugging/exception_tracer/ExceptionTracerLib.h>
 #include <folly/debugging/exception_tracer/StackTrace.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
@@ -47,12 +46,45 @@ static_assert(folly::is_constexpr_default_constructible_v<StackTraceStack>);
 } // namespace
 
 // These functions are exported and may be found via dlsym(RTLD_NEXT, ...)
-extern "C" const StackTraceStack* getUncaughtExceptionStackTraceStack() {
+extern "C" const StackTraceStack*
+folly_exception_tracer_get_uncaught_exceptions_stack_trace_stack() {
   return invalid ? nullptr : &uncaughtExceptions;
 }
-extern "C" const StackTraceStack* getCaughtExceptionStackTraceStack() {
+extern "C" const StackTraceStack*
+folly_exception_tracer_get_caught_exceptions_stack_trace_stack() {
   return invalid ? nullptr : &caughtExceptions;
 }
+
+namespace folly {
+
+namespace detail {
+/// access_cxxabi
+///
+/// When building folly with thread sanitizer but using a prebuilt libstdc++ or
+/// libc++, folly's accesses here are instrumented while the standard library's
+/// accesses are not. This can cause false positive data-race reports. This
+/// namespace is here as an easy way to set up thread-sanitizer suppressions.
+///
+/// One scenario is when the __cxa_end_catch folly hook does an access, then the
+/// last std::exception_ptr to the same exception is released. The exception_ptr
+/// tor does an uninstrumented access and then calls free, which like malloc is
+/// instrumented. The thread-sanitizer runtime observes only an access in folly
+/// in one thread followed by a call to free in another thread, but does not
+/// observe the synchronizing refcount-decrement in between.
+///
+/// Aside from suppressions, there are two other solutions:
+/// * Never access cxxabi data directly.
+/// * Use an instrumented build of the standard library when building folly or
+///   the application with instrumentation.
+namespace access_cxxabi {
+
+static auto get_caught_exceptions_handler_count() {
+  return __cxxabiv1::__cxa_get_globals_fast()->caughtExceptions->handlerCount;
+}
+
+} // namespace access_cxxabi
+
+} // namespace detail
 
 namespace {
 
@@ -98,8 +130,8 @@ struct Initializer {
         return;
       }
 
-      __cxxabiv1::__cxa_exception* top =
-          __cxxabiv1::__cxa_get_globals_fast()->caughtExceptions;
+      auto topHandlerCount =
+          detail::access_cxxabi::get_caught_exceptions_handler_count();
       // This is gcc specific and not specified in the ABI:
       // abs(handlerCount) is the number of active handlers, it's negative
       // for rethrown exceptions and positive (always 1) for regular
@@ -107,7 +139,7 @@ struct Initializer {
       // In the rethrow case, we've already popped the exception off the
       // caught stack, so we don't do anything here.
       // For Lua interop, we see the handlerCount = 0
-      if ((top->handlerCount == 1) || (top->handlerCount == 0)) {
+      if ((topHandlerCount == 1) || (topHandlerCount == 0)) {
         if (!caughtExceptions.pop()) {
           uncaughtExceptions.clear();
           invalid = true;
@@ -129,6 +161,8 @@ struct Initializer {
 Initializer initializer;
 
 } // namespace
+
+} // namespace folly
 
 #endif //  FOLLY_HAS_EXCEPTION_TRACER
 

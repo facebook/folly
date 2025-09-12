@@ -57,8 +57,7 @@ Task<semi_await_result_t<Awaitable>> detachOnCancel(Awaitable awaitable) {
              awaitable)]() mutable -> Task<semi_await_result_t<Awaitable>> {
           co_return co_await std::move(awaitable_2);
         });
-    std::move(t)
-        .scheduleOn(co_await co_current_executor)
+    co_withExecutor(co_await co_current_executor, std::move(t))
         .startInlineUnsafe(
             [postedPtr = posted.get(), &baton, &result](auto&& r) {
               std::unique_ptr<std::atomic<bool>> p(postedPtr);

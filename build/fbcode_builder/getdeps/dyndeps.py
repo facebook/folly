@@ -177,6 +177,12 @@ class WinDeps(DepBase):
         # The registry option to find the install dir doesn't work anymore.
         globs = [
             (
+                "C:/Program Files/"
+                "Microsoft Visual Studio/"
+                "*/*/VC/Tools/"
+                "MSVC/*/bin/Hostx64/x64/dumpbin.exe"
+            ),
+            (
                 "C:/Program Files (x86)/"
                 "Microsoft Visual Studio/"
                 "*/*/VC/Tools/"

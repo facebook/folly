@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Coroutine.h>
+#include <folly/coro/Coroutine.h> // @shim
