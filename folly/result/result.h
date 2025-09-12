@@ -400,9 +400,29 @@ class result_crtp {
   ///   - Copying `T` is almost always a performance bug in this setting, but
   ///     see the below carve-out for "cheap-to-copy `T`".
   ///   - Copying `std::exception_ptr` also has atomic costs (~25ns).
-  Derived copy() const {
+  ///
+  /// ## Copies are restricted when `T` is a reference
+  ///
+  /// `const result<V&>` only gives access to `const V&`, for reasons discussed
+  /// in `result.md` under "Store references...".  Standard copy semantics
+  /// allows creating a new `result<V&>` from `const result<V&>&`.  But, this
+  /// would present a const-safety problem -- since `result<V&>` gives access
+  /// to a mutable `V&`. To fix this, copying `result<V&> is ONLY allowed:
+  ///   - from `result<V&>&`, since you already have mutable access
+  ///   - from `const result<const V&>&`, since the inner `const` is not
+  ///     lost during the copy.
+  Derived copy() {
     return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
   }
+  Derived copy() const
+    requires(
+        !std::is_reference_v<T> || std::is_const_v<std::remove_reference_t<T>>)
+  {
+    return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
+  }
+  // IMPORTANT: If you need to relax this, emulate the "restricted copy"
+  // behavior of `DefineMovableDeepConstLrefCopyable.h` when `T` is a ref.
+  // Note that this HAS to go on the leaf classes, not in the CRTP.
   result_crtp(const result_crtp&) = delete;
   result_crtp& operator=(const result_crtp&) = delete;
 
@@ -750,3 +770,5 @@ result_catch_all(F&& fn) noexcept {
 } // namespace folly
 
 #endif // FOLLY_HAS_RESULT
+
+#undef FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE

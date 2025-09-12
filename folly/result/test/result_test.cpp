@@ -253,6 +253,33 @@ RESULT_CO_TEST(Result, ofRvalueReferenceWrapper) {
   }
 }
 
+RESULT_CO_TEST(Result, forbidUnsafeCopyOfResultRef) {
+  int n = 42;
+
+  result<const int&> rc = std::cref(n);
+  { // Safe copies of ref -- `rc` has `const` inside, cannot be discarded
+    result rc2 = rc.copy();
+    EXPECT_EQ(42, (co_await or_unwind(rc2)));
+    result rc3 = std::as_const(rc).copy();
+    EXPECT_EQ(42, (co_await or_unwind(rc3)));
+  }
+  static_assert(requires { rc.copy(); });
+  static_assert(requires { std::as_const(rc).copy(); });
+
+  result<int&> r = std::ref(n);
+  { // Safe copy of ref -- `r` has no `const` to discard
+    result r2 = r.copy();
+    EXPECT_EQ(42, (co_await or_unwind(r2)));
+  }
+  // Unsafe: copying `const result<int&>` would discard the outer `const`
+  //   result r3 = std::as_const(r).copy();
+  static_assert(requires { r.copy(); });
+  [](const auto& cr) {
+    // This `requires` won't even compile outside a template context.
+    static_assert(!requires { cr.copy(); });
+  }(r);
+}
+
 // Check `?.value_or_throw()` and `co_await ?` return types for various ways of
 // accessing `result<V&>` and `result<V&&>`.
 //
