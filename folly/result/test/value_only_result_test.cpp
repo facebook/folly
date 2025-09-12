@@ -77,7 +77,11 @@ TEST(ValueOnlyResult, movable) {
 
 TEST(ValueOnlyResult, refCopiable) {
   auto intPtr = std::make_unique<int>(1337);
-  value_only_result<std::unique_ptr<int>&> mIntPtrRef1 = std::ref(intPtr);
+  value_only_result mIntPtrRef1 = std::ref(intPtr);
+  static_assert(
+      std::is_same_v<
+          value_only_result<std::unique_ptr<int>&>,
+          decltype(mIntPtrRef1)>);
   auto mIntPtrRef2 = mIntPtrRef1.copy();
   *(mIntPtrRef2.value_or_throw()) += 1;
   *(mIntPtrRef2.value_only()) += 10;
@@ -93,10 +97,46 @@ TEST(ValueOnlyResult, copyMethod) {
   EXPECT_TRUE(r == rToo);
 }
 
+RESULT_CO_TEST(ValueOnlyResult, ofLvalueReferenceWrapper) {
+  int n = 3;
+  // `value_only_result<reference_wrapper<V>>` is one way to mutate values
+  // through `const value_only_result` (the other being
+  // `value_only_result<V*>`).
+  {
+    value_only_result<std::reference_wrapper<int>> r = std::ref(n);
+    // The `.get()` is here to show that a ref-wrapper is being returned.
+    EXPECT_EQ(3, (co_await or_unwind(std::move(r))).get());
+  }
+  // To store `value_only_result<V&>`, you can use CTAD
+  {
+    value_only_result r = std::ref(n);
+    static_assert(std::is_same_v<value_only_result<int&>, decltype(r)>);
+    EXPECT_EQ(3, co_await or_unwind(std::move(r)));
+  }
+}
+
+RESULT_CO_TEST(ValueOnlyResult, ofRvalueReferenceWrapper) {
+  // You can declare `value_only_result<rvalue_reference_wrapper<V>>`.
+  {
+    int n = 3;
+    value_only_result<rvalue_reference_wrapper<int>> r = rref(std::move(n));
+    // The `.get()` is here to show that a ref-wrapper is being returned.
+    EXPECT_EQ(3, (co_await or_unwind(std::move(r))).get());
+  }
+  // To store `value_only_result<V&&>`, you can use CTAD
+  {
+    int n = 3;
+    value_only_result r = rref(std::move(n));
+    static_assert(std::is_same_v<value_only_result<int&&>, decltype(r)>);
+    EXPECT_EQ(3, co_await or_unwind(std::move(r)));
+  }
+}
+
 RESULT_CO_TEST(Result, forbidUnsafeCopyOfResultRef) {
   int n = 42;
 
-  value_only_result<const int&> rc = std::cref(n);
+  value_only_result rc = std::cref(n);
+  static_assert(std::is_same_v<value_only_result<const int&>, decltype(rc)>);
   { // Safe copies of ref -- `rc` has `const` inside, cannot be discarded
     value_only_result rc2 = rc.copy();
     EXPECT_EQ(42, (co_await or_unwind(rc2)));

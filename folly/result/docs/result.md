@@ -90,6 +90,9 @@ This `result` coroutine showcases some common error-handling patterns:
 ```cpp
 #include <folly/result/coro.h>
 
+// This "result coro" works like a regular synchronous function returning
+// `result`. But, on exception it acts as if its body is surrounded with:
+//    try {} catch(...) { return non_value_result::from_current_exception(); }
 result<size_t> countGrapefruitSeeds() {
   // If `getFruitBox()` returns an "error" or a "stopped" state, then
   // `co_await or_unwind` immediately propagates that result to the caller!
@@ -324,22 +327,31 @@ The semantics of `result<Value>` are straightforward:
 
 ### Store references in a `result`
 
-`result` may store a reference type.  For explicitness, you must construct it
-via the corresponding reference wrapper:
+`result` may store a reference type.  You must construct it via the
+corresponding reference wrapper:
 
 ```cpp
 V v{...};
-result<V&> lres = std::ref(v);
-result<const V&> clres = std::cref(v);
-result<V&&> rres = folly::rref(v);
+result lres = std::ref(v); // result<V&>
+result clres = std::cref(v); // <const V&>
+result rres = folly::rref(v); // <V&&>
 ```
 
-You must explicitly specify the template parameter.  That's because CTAD will
-currently elect to store the ref-wrapper otherwise:
+This API was chosen for two reasons:
+  - It allows `result` to deduce the reference type name, reducing repetition.
+  - It makes it obvious that a reference is being taken at the site that
+    is returning or passing a reference, to help avoid aliasing bugs.
+
+Future: We may later add support for `result<V&> lres = v`, if it we see that
+it would significantly improve readability.
+
+Note that it is **also** possible to construct result-of-reference wrapper, via
+an explicit template parameter.  These types have worse ergonomics.  Also, you
+will learn below that they don't propagate const, while `result<V&> does.
 
 ```cpp
-result lres = std::ref(v); // `result<std::reference_wrapper<V>>`
-result rres = folly::rref(v); // `result<folly::rvalue_reference_wrapper<V>>`
+result<std::reference_wrapper<V>> lres = std::ref(v);
+result<folly::rvalue_reference_wrapper<V>> rres = folly::rref(std::move(v));
 ```
 
 **WATCH OUT**: Both `rvalue_reference_wrapper<V>` and `result<V&&>` are

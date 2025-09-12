@@ -62,7 +62,7 @@
 ///         access the reference inside.
 ///       - `const result<V&>` only gives `const V&` access to the contents.
 ///         It should be rare that you need the opposite behavior.  If you do,
-///         use `result<std::reference_wrapper<V>>` or `vector<result<V*>>`.
+///         use `result<std::reference_wrapper<V>>` or `result<V*>`.
 ///
 ///   - `has_stopped()` & `stopped_result` to nudge `folly` to the C++26 idea
 ///     that cancellation is NOT an error, see https://wg21.link/P1677 & P2300.
@@ -716,6 +716,12 @@ class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result final
     return std::move(*std::move(this->exp_)).get();
   }
 };
+
+template <typename T>
+result(std::reference_wrapper<T>) -> result<T&>;
+
+template <typename T>
+result(rvalue_reference_wrapper<T>) -> result<T&&>;
 
 // Specialization for `T = void` aka `result<>`.
 template <>

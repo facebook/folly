@@ -302,6 +302,12 @@ class FOLLY_NODISCARD
   }
 };
 
+template <typename T>
+value_only_result(std::reference_wrapper<T>) -> value_only_result<T&>;
+
+template <typename T>
+value_only_result(rvalue_reference_wrapper<T>) -> value_only_result<T&&>;
+
 // Specialization for `T = void` aka `value_only_result<>`.
 template <>
 class FOLLY_NODISCARD
