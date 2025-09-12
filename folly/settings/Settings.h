@@ -242,7 +242,7 @@ struct Accessor {
   /* Location for the small value cache (if _Type is small and trivial).      \
      Intentionally located right after the pointer cache above to take        \
      advantage of the prefetching */                                          \
-  [[FOLLY_SETTINGS_DETAIL_SECTION_ATTRIBUTE]] ::std::atomic<uint64_t>         \
+  [[FOLLY_SETTINGS_DETAIL_SECTION_ATTRIBUTE]] ::std::atomic<::std::uint64_t>  \
       FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                           \
   /* Meyers singleton to avoid SIOF */                                        \
   FOLLY_NOINLINE ::folly::settings::detail::                                  \
@@ -279,22 +279,23 @@ struct Accessor {
 /**
  * Declares a setting that's defined elsewhere.
  */
-#define FOLLY_SETTING_DECLARE(_project, _name, _Type)                          \
-  struct FOLLY_SETTINGS_TAG__##_project##_##_name;                             \
-  extern ::std::atomic<::folly::settings::detail::SettingCore<                 \
-      _Type,                                                                   \
-      FOLLY_SETTINGS_TAG__##_project##_##_name>*>                              \
-      FOLLY_SETTINGS_CACHE__##_project##_##_name;                              \
-  extern ::std::atomic<uint64_t> FOLLY_SETTINGS_TRIVIAL__##_project##_##_name; \
-  ::folly::settings::detail::                                                  \
-      SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>&            \
-          FOLLY_SETTINGS_FUNC__##_project##_##_name();                         \
-  extern ::folly::settings::detail::Accessor<                                  \
-      _Type,                                                                   \
-      &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name,                           \
-      FOLLY_SETTINGS_TAG__##_project##_##_name,                                \
-      FOLLY_SETTINGS_CACHE__##_project##_##_name,                              \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name>                               \
+#define FOLLY_SETTING_DECLARE(_project, _name, _Type)               \
+  struct FOLLY_SETTINGS_TAG__##_project##_##_name;                  \
+  extern ::std::atomic<::folly::settings::detail::SettingCore<      \
+      _Type,                                                        \
+      FOLLY_SETTINGS_TAG__##_project##_##_name>*>                   \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name;                   \
+  extern ::std::atomic<::std::uint64_t>                             \
+      FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                 \
+  ::folly::settings::detail::                                       \
+      SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>& \
+          FOLLY_SETTINGS_FUNC__##_project##_##_name();              \
+  extern ::folly::settings::detail::Accessor<                       \
+      _Type,                                                        \
+      &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name,                \
+      FOLLY_SETTINGS_TAG__##_project##_##_name,                     \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name,                   \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name>                    \
       FOLLY_SETTINGS_ACCESSOR__##_project##_##_name
 
 /**
