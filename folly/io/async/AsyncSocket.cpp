@@ -993,9 +993,10 @@ void AsyncSocket::connect(
       // on only the local tuple. This limits the range of available ephemeral
       // ports.  Using the IP_BIND_ADDRESS_NO_PORT delays assigning a port until
       // connect expanding the available port range, unless
-      // enablePortAssignmentOnZero() is called.
-      if (bindAddr.getPort() == 0 && bindAddressNoPort_) {
-        if (netops_->setsockopt(
+      // setBindAddressNoPort() is called.
+      if (bindAddr.getPort() == 0) {
+        if (bindAddressNoPort_ &&
+            netops_->setsockopt(
                 fd_, IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, &one, sizeof(one))) {
           auto errnoCopy = errno;
           doClose();
