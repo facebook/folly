@@ -17,9 +17,7 @@
 #pragma once
 
 #include <cassert>
-#include <climits>
 #include <cstdint>
-#include <utility>
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>

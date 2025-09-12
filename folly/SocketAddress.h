@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <cassert>
 #include <cstddef>
 #include <iosfwd>
 #include <string>
