@@ -35,11 +35,24 @@ class GILAwareManualExecutor
     : public DrivableExecutor,
       public SequencedExecutor {
  public:
+  ~GILAwareManualExecutor() override;
+
   void add(Func) override;
 
   void drive() override {
     waitBeforeDrive();
     driveImpl();
+  }
+
+  bool keepAliveAcquire() noexcept override {
+    keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    return true;
+  }
+
+  void keepAliveRelease() noexcept override {
+    if (keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+      add([] {});
+    }
   }
 
  private:
@@ -49,6 +62,8 @@ class GILAwareManualExecutor
   std::mutex lock_;
   std::queue<Func> funcs_;
   std::condition_variable cv_;
+
+  std::atomic<size_t> keepAliveCount_{0};
 };
 
 } // namespace python

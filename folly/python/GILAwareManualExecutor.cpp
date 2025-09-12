@@ -23,6 +23,13 @@
 namespace folly {
 namespace python {
 
+GILAwareManualExecutor::~GILAwareManualExecutor() {
+  while (keepAliveCount_.load(std::memory_order_relaxed)) {
+    drive();
+  }
+  driveImpl();
+}
+
 void GILAwareManualExecutor::add(Func callback) {
   {
     std::lock_guard lock(lock_);
@@ -61,6 +68,7 @@ void GILAwareManualExecutor::driveImpl() {
       funcs_.pop();
     }
     func();
+    func = nullptr;
   }
 }
 
