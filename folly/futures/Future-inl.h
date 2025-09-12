@@ -609,10 +609,9 @@ SemiFuture<T> makeSemiFuture(exception_wrapper ew) {
 }
 
 template <class T, class E>
-typename std::
-    enable_if<std::is_base_of<std::exception, E>::value, SemiFuture<T>>::type
-    makeSemiFuture(E const& e) {
-  return makeSemiFuture(Try<T>(make_exception_wrapper<E>(e)));
+std::enable_if_t<std::is_base_of_v<std::exception, decay_t<E>>, SemiFuture<T>>
+makeSemiFuture(E&& e) {
+  return makeSemiFuture(Try<T>(make_exception_wrapper<E>(std::forward<E>(e))));
 }
 
 template <class T>
@@ -1370,10 +1369,9 @@ Future<T> makeFuture(exception_wrapper ew) {
 }
 
 template <class T, class E>
-typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::
-    type
-    makeFuture(E const& e) {
-  return makeFuture(Try<T>(make_exception_wrapper<E>(e)));
+std::enable_if_t<std::is_base_of_v<std::exception, decay_t<E>>, Future<T>>
+makeFuture(E&& e) {
+  return makeFuture(Try<T>(make_exception_wrapper<E>(std::forward<E>(e))));
 }
 
 template <class T>

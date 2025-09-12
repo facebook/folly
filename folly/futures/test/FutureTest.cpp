@@ -30,6 +30,7 @@
 #include <folly/Unit.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/json/dynamic.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -106,6 +107,29 @@ TEST(Future, getRequiresOnlyMoveCtor) {
     auto v = std::move(f).get(std::chrono::milliseconds(10));
     EXPECT_EQ(v.id_, 42);
   }
+}
+
+TEST(Future, makeFutureFromMoveOnlyException) {
+  using ::testing::StrEq;
+  using ::testing::ThrowsMessage;
+
+  struct MoveOnlyException : std::runtime_error {
+    using std::runtime_error::runtime_error;
+    [[noreturn]] MoveOnlyException(const MoveOnlyException& other)
+        : std::runtime_error(other) {
+      throw std::logic_error("Copy constructor is called");
+    }
+    MoveOnlyException(MoveOnlyException&&) = default;
+    MoveOnlyException& operator=(MoveOnlyException const&) {
+      throw std::logic_error("Copy assignment operator is called");
+    }
+    MoveOnlyException& operator=(MoveOnlyException&&) = default;
+  };
+
+  std::string msg = "exception message";
+
+  auto f = makeFuture<int>(MoveOnlyException(msg));
+  EXPECT_THAT([&] { f.value(); }, ThrowsMessage<MoveOnlyException>(StrEq(msg)));
 }
 
 namespace {

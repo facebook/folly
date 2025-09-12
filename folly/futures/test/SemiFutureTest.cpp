@@ -30,6 +30,7 @@
 #include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/json/dynamic.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -1317,4 +1318,27 @@ TEST(SemiFuture, deferredExecutorInlineTest) {
   EXPECT_TRUE(b);
   de->addFrom(manualExec1KA.copy(), [&](auto&&) { c = true; });
   EXPECT_TRUE(c);
+}
+
+TEST(Future, makeSemiFutureFromMoveOnlyException) {
+  using ::testing::StrEq;
+  using ::testing::ThrowsMessage;
+
+  struct MoveOnlyException : std::runtime_error {
+    using std::runtime_error::runtime_error;
+    [[noreturn]] MoveOnlyException(const MoveOnlyException& other)
+        : std::runtime_error(other) {
+      throw std::logic_error("Copy constructor is called");
+    }
+    MoveOnlyException(MoveOnlyException&&) = default;
+    MoveOnlyException& operator=(MoveOnlyException const&) {
+      throw std::logic_error("Copy assignment operator is called");
+    }
+    MoveOnlyException& operator=(MoveOnlyException&&) = default;
+  };
+
+  std::string msg = "exception message";
+
+  auto f = makeSemiFuture<int>(MoveOnlyException(msg));
+  EXPECT_THAT([&] { f.value(); }, ThrowsMessage<MoveOnlyException>(StrEq(msg)));
 }
