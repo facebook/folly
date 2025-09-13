@@ -75,6 +75,7 @@ class PerfScoped::PerfScopedImpl {
     proc_.wait();
 
     if (output_) {
+      fdatasync(outputFile_.fd());
       readFile(outputFile_.fd(), *output_);
     }
   }
