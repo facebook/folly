@@ -314,8 +314,8 @@ TEST(ForEach, FetchTestPreferIterator) {
 template <typename...>
 struct LargeTuple {};
 template <size_t I, typename... T>
-type_pack_element_t<I, T...>& get(LargeTuple<T...>&) {
-  static type_pack_element_t<I, T...> elem;
+std::tuple_element_t<I, std::tuple<T...>>& get(LargeTuple<T...>&) {
+  static std::tuple_element_t<I, std::tuple<T...>> elem;
   return elem;
 }
 namespace std {
