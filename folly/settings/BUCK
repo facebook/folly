@@ -8,8 +8,6 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-# !!!! fbcode/folly/settings/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "settings",
