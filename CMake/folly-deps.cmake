@@ -25,7 +25,7 @@ set(
 )
 if("${BOOST_LINK_STATIC}" STREQUAL "auto")
   # Default to linking boost statically on Windows with MSVC
-  if(MSVC)
+  if(WIN32)
     set(FOLLY_BOOST_LINK_STATIC ON)
   else()
     set(FOLLY_BOOST_LINK_STATIC OFF)

@@ -146,7 +146,7 @@ ChangeToTempDir::~ChangeToTempDir() {
 namespace detail {
 
 SavedState disableInvalidParameters() {
-#ifdef _WIN32
+#ifdef _MSC_VER
   SavedState ret;
   ret.previousThreadLocalHandler = _set_thread_local_invalid_parameter_handler(
       [](const wchar_t*,
@@ -161,7 +161,7 @@ SavedState disableInvalidParameters() {
 #endif
 }
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 void enableInvalidParameters(SavedState state) {
   _set_thread_local_invalid_parameter_handler(
       (_invalid_parameter_handler)state.previousThreadLocalHandler);
