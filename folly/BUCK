@@ -288,6 +288,7 @@ non_fbcode_target(
         "//xplat/folly/lang:exception",
         "//xplat/folly/memory:reentrant_allocator",
         "//xplat/folly/memory:sanitize_leak",
+        "//xplat/folly/system:at_fork",
     ] + select({
         "DEFAULT": [],
         "ovr_config//os:linux": ["//xplat/folly:experimental_symbolizer_symbolizer"],
