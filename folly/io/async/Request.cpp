@@ -718,4 +718,10 @@ RequestContext::setShallowCopyContext() {
   return nullptr;
 }
 
+#ifndef NDEBUG
+DCheckRequestContextRestoredGuard::~DCheckRequestContextRestoredGuard() {
+  CHECK_EQ(prev_.get(), RequestContext::try_get());
+}
+#endif
+
 } // namespace folly

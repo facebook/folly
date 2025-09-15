@@ -305,6 +305,8 @@ EventBase::EventBase(Options options)
 }
 
 EventBase::~EventBase() {
+  DCheckRequestContextRestoredGuard dcheckRctxGuard;
+
   // Relax strict mode to allow callbacks to run in the destructor outside of
   // the main loop. Note that any methods (including driving the loop) must be
   // called before the destructor starts, so it is safe to modify the variable.
@@ -318,6 +320,7 @@ EventBase::~EventBase() {
     while (!callbacks.empty()) {
       auto& callback = callbacks.front();
       callbacks.pop_front();
+      RequestContextSaverScopeGuard rctxGuard;
       callback.runCallback();
     }
   }
@@ -346,6 +349,7 @@ EventBase::~EventBase() {
     while (!callbacks.empty()) {
       auto& callback = callbacks.front();
       callbacks.pop_front();
+      RequestContextSaverScopeGuard rctxGuard;
       callback.runCallback();
     }
   }
@@ -583,6 +587,8 @@ void EventBase::loopMainSetup() {
 }
 
 EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
+  DCheckRequestContextRestoredGuard dcheckRctxGuard;
+
   int res = 0;
   bool blocking = !(flags & EVLOOP_NONBLOCK);
   bool once = (flags & EVLOOP_ONCE);
@@ -668,6 +674,7 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
       maxLatencyLoopTime_.addSample(loop_time, busy);
 
       if (observer_) {
+        RequestContextSaverScopeGuard rctxGuard;
         if (++observerSampleCount_ >= observer_->getSampleRate()) {
           observerSampleCount_ = 0;
           observer_->loopSample(busy.count(), idle.count());
@@ -966,6 +973,7 @@ void EventBase::runInEventBaseThreadAndWait(Func fn) noexcept {
 
 void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept {
   if (isInEventBaseThread()) {
+    RequestContextSaverScopeGuard rctxGuard;
     fn();
   } else {
     runInEventBaseThreadAndWait(std::move(fn));
@@ -974,6 +982,7 @@ void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept {
 
 void EventBase::runImmediatelyOrRunInEventBaseThread(Func fn) noexcept {
   if (isInEventBaseThread()) {
+    RequestContextSaverScopeGuard rctxGuard;
     fn();
   } else {
     runInEventBaseThreadAlwaysEnqueue(std::move(fn));

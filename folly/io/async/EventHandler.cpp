@@ -151,6 +151,7 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   // this can't possibly fire if handler->eventBase_ is nullptr
   handler->eventBase_->bumpHandlingTime();
 
+  RequestContextSaverScopeGuard rctxGuard;
   ExecutionObserverScopeGuard guard(
       &handler->eventBase_->getExecutionObserverList(),
       &handler->eventBase_,

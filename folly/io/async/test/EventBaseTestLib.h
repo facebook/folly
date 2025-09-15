@@ -2504,6 +2504,101 @@ TYPED_TEST_P(EventBaseTest, RequestContextTest) {
   EXPECT_EQ(defaultCtx, RequestContext::get());
 }
 
+namespace {
+
+void leakRC() {
+  RequestContext::setContext(std::make_shared<RequestContext>());
+}
+
+} // namespace
+
+TYPED_TEST_P(EventBaseTest, NoRequestContextLeaks) {
+  struct LeakyHandler : EventHandler {
+    explicit LeakyHandler(EventBase& evb) {
+      initHandler(&evb, folly::NetworkSocket::fromFd(sp[0]));
+      registerHandler(EventHandler::READ);
+      writeUntilFull(sp[1]);
+    }
+
+    void handlerReady(uint16_t /* events */) noexcept override {
+      ran = true;
+      leakRC();
+    }
+
+    SocketPair sp;
+    bool ran = false;
+  };
+
+  struct LeakyEventBaseObserver : EventBaseObserver {
+    uint32_t getSampleRate() const override {
+      leakRC();
+      return 1;
+    }
+    void loopSample(int64_t /* busyTime */, int64_t /* idleTime */) override {
+      leakRC();
+    }
+  };
+
+  struct LeakyExecutionObserver : ExecutionObserver {
+    void starting(
+        uintptr_t /* id */,
+        folly::ExecutionObserver::CallbackType /* callbackType */) noexcept
+        override {
+      leakRC();
+    }
+
+    void stopped(
+        uintptr_t /* id */,
+        folly::ExecutionObserver::CallbackType /* callbackType */) noexcept
+        override {
+      leakRC();
+    }
+  };
+
+  RequestContextScopeGuard rctx;
+  const auto* expectedCtx = RequestContext::try_get();
+  {
+    auto evbPtr = this->makeEventBase();
+
+    // Try very hard to leak a request context.
+    LeakyHandler handler{*evbPtr};
+    evbPtr->setObserver(std::make_shared<LeakyEventBaseObserver>());
+    evbPtr->runInEventBaseThread([&] { leakRC(); });
+    evbPtr->runInEventBaseThread([&] {
+      evbPtr->runInEventBaseThread(leakRC);
+      EXPECT_EQ(expectedCtx, RequestContext::try_get());
+      evbPtr->runImmediatelyOrRunInEventBaseThread(leakRC);
+      EXPECT_EQ(expectedCtx, RequestContext::try_get());
+      evbPtr->runImmediatelyOrRunInEventBaseThreadAndWait(leakRC);
+      EXPECT_EQ(expectedCtx, RequestContext::try_get());
+    });
+    evbPtr->runOnDestructionStart(leakRC);
+    evbPtr->runOnDestruction(leakRC);
+    evbPtr->runBeforeLoop(new EventBase::FunctionLoopCallback{leakRC});
+    evbPtr->runAfterLoop(new EventBase::FunctionLoopCallback{leakRC});
+
+    evbPtr->loop();
+    EXPECT_TRUE(handler.ran);
+    EXPECT_EQ(expectedCtx, RequestContext::try_get());
+  }
+
+  {
+    // Need separate run for LeakyExecutionObserver because it contaminates the
+    // callbacks.
+    LeakyExecutionObserver leakyExecutionObserver;
+    auto evbPtr = this->makeEventBase();
+    evbPtr->addExecutionObserver(&leakyExecutionObserver);
+    LeakyHandler handler{*evbPtr};
+    evbPtr->runInEventBaseThread([&] { leakRC(); });
+    evbPtr->runInEventBaseThread([&] { evbPtr->runInEventBaseThread(leakRC); });
+    evbPtr->loop();
+    EXPECT_EQ(expectedCtx, RequestContext::try_get());
+  }
+
+  // Also check no leaks in destruction.
+  EXPECT_EQ(expectedCtx, RequestContext::try_get());
+}
+
 TYPED_TEST_P(EventBaseTest, CancelLoopCallbackRequestContextTest) {
   auto evbPtr = this->makeEventBase();
   CountedLoopCallback c(evbPtr.get(), 1);
@@ -2891,6 +2986,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     DrivableExecutorTest,
     IOExecutorTest,
     RequestContextTest,
+    NoRequestContextLeaks,
     CancelLoopCallbackRequestContextTest,
     TestStarvation,
     RunOnDestructionBasic,

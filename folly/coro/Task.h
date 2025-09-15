@@ -503,7 +503,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     // it will not have a chance to restore the previous context before we
     // return, so we need to ensure it is restored. This simulates starting the
     // coroutine in an actual executor, which would wrap the task with a guard.
-    RequestContextScopeGuard contextScope{RequestContext::saveContext()};
+    RequestContextSaverScopeGuard contextScope;
     startInlineImpl(std::move(*this), static_cast<F&&>(tryCallback))
         .start(returnAddress);
   }
