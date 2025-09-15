@@ -31,6 +31,7 @@
 #include <folly/Portability.h>
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
+#include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/concurrency/SingletonRelaxedCounter.h>
 #include <folly/container/F14Set.h>
@@ -659,10 +660,15 @@ class SettingCore : public TypedSettingCore<T> {
     // Create a wrapped observer to capture the callback handle and keep it
     // alive as long as the observer is alive
     auto& meta = this->meta();
-    return observer::makeObserver(NamedObserverCreator(
+    NamedObserverCreator creator(
         fmt::format("FOLLY_SETTING_{}_{}", meta.project, meta.name),
         [callbackHandle = std::move(callbackHandle),
-         observer = std::move(observer)]() { return **observer; }));
+         observer = std::move(observer)]() { return **observer; });
+    if constexpr (IsEqualityComparable<T>::value) {
+      return observer::makeValueObserver(std::move(creator));
+    } else {
+      return observer::makeObserver(std::move(creator));
+    }
   }
 };
 

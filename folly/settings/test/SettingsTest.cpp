@@ -679,22 +679,32 @@ TEST(SettingsTest, observers) {
   auto observer = folly::settings::getObserver(
       some_ns::FOLLY_SETTING(follytest, some_flag));
   EXPECT_EQ(observer.getCreatorName(), "FOLLY_SETTING_follytest_some_flag");
+  size_t callbackCount = 0;
   std::string updatedFromCallback;
   auto callbackHandle = observer.addCallback([&](auto snapshot) {
+    ++callbackCount;
     updatedFromCallback = *snapshot;
   });
   EXPECT_EQ(**observer, "default");
   EXPECT_EQ(updatedFromCallback, "default");
-
+  EXPECT_EQ(callbackCount, 1);
   some_ns::FOLLY_SETTING(follytest, some_flag).set("new value");
   folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(**observer, "new value");
   EXPECT_EQ(updatedFromCallback, "new value");
+  EXPECT_EQ(callbackCount, 2);
+  // Check that the callback is not invoked if set to the same value
+  some_ns::FOLLY_SETTING(follytest, some_flag).set("new value");
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(callbackCount, 2);
 
   folly::settings::Snapshot snapshot;
   snapshot.forEachSetting([](const auto& s) {
     EXPECT_EQ(s.hasHadCallbacks(), s.fullName() == "follytest_some_flag");
   });
+  // Check we can create an observer for a custom setting type that doesn't
+  // implement operator==
+  some_ns::FOLLY_SETTING(follytest, user_defined_with_meta).observer();
 }
 
 TEST(SettingsTest, accessWithObserver) {
