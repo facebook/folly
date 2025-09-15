@@ -311,6 +311,14 @@ class RequestContext {
   explicit RequestContext(intptr_t rootId);
 
   struct StaticContext {
+    StaticContext() = default;
+    ~StaticContext();
+
+    StaticContext(const StaticContext&) = delete;
+    StaticContext(StaticContext&&) = delete;
+    StaticContext& operator=(const StaticContext&) = delete;
+    StaticContext& operator=(StaticContext&&) = delete;
+
     std::shared_ptr<RequestContext> requestContext;
     std::atomic<intptr_t> rootId{0};
   };
