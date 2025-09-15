@@ -84,6 +84,18 @@ class SettingWrapper {
   std::conditional_t<IsSmallPOD<T>, T, const T&> value() const {
     return operator*();
   }
+  /**
+   * Same as value() but registers this setting as an observer dependency. If
+   * this setting is used to compute an observer, subsequent setting updates
+   * will trigger the recomputation of that observer.
+   */
+  std::conditional_t<IsSmallPOD<T>, T, const T&>
+  valueRegisterObserverDependency() {
+    if (FOLLY_UNLIKELY(observer_detail::ObserverManager::inManagerThread())) {
+      registerObserverDependency();
+    }
+    return operator*();
+  }
 
   /**
    * Returns the setting's value from snapshot. Following two forms are
@@ -94,6 +106,11 @@ class SettingWrapper {
    */
   std::conditional_t<IsSmallPOD<T>, T, const T&> value(
       const Snapshot& snapshot) const;
+
+  /**
+   * Returns an Observer<T> that's updated whenever this setting is updated.
+   */
+  const folly::observer::Observer<T>& observer() { return core_.observer(); }
 
   /**
    * Atomically updates the setting's current value. The next call to
@@ -163,6 +180,8 @@ class SettingWrapper {
   explicit SettingWrapper(SettingCore<T, Tag>& core) : core_(core) {}
 
  private:
+  FOLLY_NOINLINE void registerObserverDependency() { observer().getSnapshot(); }
+
   SettingCore<T, Tag>& core_;
   friend class folly::settings::Snapshot;
 };

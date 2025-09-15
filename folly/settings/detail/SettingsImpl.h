@@ -33,8 +33,11 @@
 #include <folly/concurrency/SingletonRelaxedCounter.h>
 #include <folly/container/F14Set.h>
 #include <folly/lang/Aligned.h>
+#include <folly/observer/Observer.h>
+#include <folly/observer/SimpleObservable.h>
 #include <folly/settings/Immutables.h>
 #include <folly/settings/Types.h>
+#include <folly/synchronization/DelayedInit.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
@@ -553,6 +556,13 @@ class SettingCore : public TypedSettingCore<T> {
     return CallbackHandle(std::move(callbackPtr), *this);
   }
 
+  /**
+   * Returns an Observer<T> that's updated whenever this setting is updated.
+   */
+  const observer::Observer<T>& observer() {
+    return observer_.try_emplace_with([this]() { return createObserver(); });
+  }
+
   SettingCore(
       SettingMetadata meta,
       T defaultValue,
@@ -568,6 +578,7 @@ class SettingCore : public TypedSettingCore<T> {
 
   F14FastSet<std::shared_ptr<UpdateCallback>> callbacks_;
   std::atomic<bool> hasHadCallbacks_{false};
+  DelayedInit<observer::Observer<T>> observer_;
 
   void setImpl(
       const T& t, std::string_view reason, SnapshotBase* snapshot) override {
@@ -614,6 +625,26 @@ class SettingCore : public TypedSettingCore<T> {
       auto& callback = *callbackPtr;
       callback(contents);
     }
+  }
+  /**
+   * Creates a folly::observer::Observer<T> for this setting that's updated
+   * whenever this setting is updated.
+   */
+  observer::Observer<T> createObserver() {
+    // Make observable a unique_ptr so it can be moved and captured in the
+    // setting update callback
+    auto setting = this->getWithHint(this->trivialStorage_);
+    auto observable = std::make_unique<observer::SimpleObservable<T>>(setting);
+    auto observer = observable->getObserver();
+    auto callbackHandle = addCallback(
+        [observable = std::move(observable)](const auto& newContents) {
+          observable->setValue(newContents.value);
+        });
+    // Create a wrapped observer to capture the callback handle and keep it
+    // alive as long as the observer is alive
+    return observer::makeObserver(
+        [callbackHandle = std::move(callbackHandle),
+         observer = std::move(observer)]() { return **observer; });
   }
 };
 

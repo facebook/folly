@@ -696,6 +696,22 @@ TEST(SettingsTest, observers) {
   });
 }
 
+TEST(SettingsTest, accessWithObserver) {
+  auto observer1 = folly::observer::makeObserver([]() {
+    return *some_ns::FOLLY_SETTING(follytest, some_flag);
+  });
+  auto observer2 = folly::observer::makeObserver([]() {
+    return some_ns::FOLLY_SETTING(follytest, some_flag)
+        .valueRegisterObserverDependency();
+  });
+  ASSERT_EQ(**observer1, "default");
+  ASSERT_EQ(**observer2, "default");
+  some_ns::FOLLY_SETTING(follytest, some_flag).set("new value");
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(**observer1, "default");
+  EXPECT_EQ(**observer2, "new value");
+}
+
 TEST(Settings, immutables) {
   EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, immutable_setting)->value_, 100);
   EXPECT_EQ(*some_ns::FOLLY_SETTING(otherproj, some_flag), "default");

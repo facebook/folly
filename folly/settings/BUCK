@@ -21,7 +21,6 @@ non_fbcode_target(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "fbsource//xplat/folly/synchronization:relaxed_atomic",
         "//xplat/folly:conv",
         "//xplat/folly:cpp_attributes",
         "//xplat/folly:function",
@@ -36,8 +35,12 @@ non_fbcode_target(
         "//xplat/folly/container:f14_hash",
         "//xplat/folly/container:map_util",
         "//xplat/folly/lang:aligned",
+        "//xplat/folly/observer:observer",
+        "//xplat/folly/observer:simple_observable",
         "//xplat/folly/settings:immutables",
         "//xplat/folly/settings:types",
+        "//xplat/folly/synchronization:delayed_init",
+        "//xplat/folly/synchronization:relaxed_atomic",
     ],
 )
 
@@ -71,6 +74,9 @@ fbcode_target(
         "//folly/container:f14_hash",
         "//folly/container:map_util",
         "//folly/lang:aligned",
+        "//folly/observer:observer",
+        "//folly/observer:simple_observable",
+        "//folly/synchronization:delayed_init",
         "//folly/synchronization:relaxed_atomic",
     ],
 )

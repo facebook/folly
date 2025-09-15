@@ -29,20 +29,22 @@ buck run @mode/opt folly/settings/test:settings_bench -- --bm_min_iters=10000000
 ============================================================================
 [...]/settings/test/SettingsBenchmarks.cpp     relative  time/iter   iters/s
 ============================================================================
-trivial_access                                            290.59ps     3.44G
-non_trivial_access                                          1.27ns   787.19M
+trivial_access                                            340.54ps     2.94G
+trivial_access_with_observer                              438.07ps     2.28G
+trivial_from_another_translation_unit                     286.65ps     3.49G
+non_trivial_access                                          1.24ns   808.93M
 ----------------------------------------------------------------------------
-trival_access_parallel(1thr)                              482.59ps     2.07G
-trival_access_parallel(8thr)                              530.65ps     1.88G
-trival_access_parallel(24thr)                             816.65ps     1.22G
-trival_access_parallel(48thr)                               1.10ns   911.76M
-trival_access_parallel(72thr)                               1.32ns   756.95M
+trival_access_parallel(1thr)                              475.86ps     2.10G
+trival_access_parallel(8thr)                              519.45ps     1.93G
+trival_access_parallel(24thr)                               1.25ns   800.23M
+trival_access_parallel(48thr)                               1.27ns   790.17M
+trival_access_parallel(72thr)                               1.32ns   756.09M
 ----------------------------------------------------------------------------
-non_trival_access_parallel(1thr)                            1.53ns   651.83M
-non_trival_access_parallel(8thr)                            1.60ns   623.54M
-non_trival_access_parallel(24thr)                           2.36ns   423.37M
-non_trival_access_parallel(48thr)                           3.09ns   323.19M
-non_trival_access_parallel(72thr)                           3.77ns   265.19M
+non_trival_access_parallel(1thr)                            1.53ns   654.97M
+non_trival_access_parallel(8thr)                            1.56ns   639.60M
+non_trival_access_parallel(24thr)                           3.48ns   287.66M
+non_trival_access_parallel(48thr)                           3.50ns   285.47M
+non_trival_access_parallel(72thr)                           3.44ns   290.68M
 */
 
 FOLLY_SETTING_DEFINE(
@@ -68,7 +70,12 @@ BENCHMARK(trivial_access, iters) {
     folly::doNotOptimizeAway(*FOLLY_SETTING(follytest, trivial));
   }
 }
-
+BENCHMARK(trivial_access_with_observer, iters) {
+  for (unsigned int i = 0; i < iters; ++i) {
+    folly::doNotOptimizeAway(
+        FOLLY_SETTING(follytest, trivial).valueRegisterObserverDependency());
+  }
+}
 BENCHMARK(trivial_from_another_translation_unit, iters) {
   for (unsigned int i = 0; i < iters; ++i) {
     folly::doNotOptimizeAway(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a));

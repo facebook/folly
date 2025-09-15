@@ -36,19 +36,6 @@ namespace folly::settings {
 template <typename T, std::atomic<uint64_t>* Ptr, typename Tag>
 observer::Observer<T> getObserver(
     settings::detail::SettingWrapper<T, Ptr, Tag> setting) {
-  // Make observable a unique_ptr so it can be moved and captured in the setting
-  // update callback
-  auto observable = std::make_unique<observer::SimpleObservable<T>>(*setting);
-  auto observer = observable->getObserver();
-
-  auto callbackHandle = setting.addCallback(
-      [observable = std::move(observable)](const auto& newContents) {
-        observable->setValue(newContents.value);
-      });
-  // Create a wrapped observer to capture the callback handle and keep it alive
-  // as long as the observer is alive
-  return observer::makeObserver(
-      [callbackHandle = std::move(callbackHandle),
-       observer = std::move(observer)]() { return **observer; });
+  return setting.observer();
 }
 } // namespace folly::settings
