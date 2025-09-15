@@ -489,6 +489,7 @@ non_fbcode_target(
         "PerfScoped.h",
     ],
     deps = [
+        "//third-party/boost:boost_regex",
         "//xplat/folly:conv",
         "//xplat/folly/system:pid",
         "//xplat/folly/testing:test_util",
@@ -737,6 +738,9 @@ fbcode_target(
         "//folly:conv",
         "//folly/system:pid",
         "//folly/testing:test_util",
+    ],
+    external_deps = [
+        ("boost", None, "boost_regex"),
     ],
 )
 

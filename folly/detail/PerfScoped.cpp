@@ -24,7 +24,11 @@
 #include <folly/testing/TestUtil.h>
 #endif
 
+#include <filesystem>
 #include <stdexcept>
+#include <thread>
+
+#include <boost/regex.hpp>
 
 namespace folly {
 namespace detail {
@@ -71,16 +75,33 @@ class PerfScoped::PerfScopedImpl {
   PerfScopedImpl& operator=(PerfScopedImpl&&) = delete;
 
   ~PerfScopedImpl() noexcept {
+    waitUntilAttached();
+
     proc_.sendSignal(SIGINT);
     proc_.wait();
 
     if (output_) {
-      fdatasync(outputFile_.fd());
       readFile(outputFile_.fd(), *output_);
     }
   }
 
  private:
+  void waitUntilAttached() {
+    const boost::regex regex{R"(anon_inode:\[perf_event(:\w+)?\])"};
+    const auto slashproc = std::filesystem::path("/proc");
+    const auto fddir = slashproc / folly::to<std::string>(proc_.pid()) / "fd";
+    while (true) {
+      for (const auto& entry : std::filesystem::directory_iterator(fddir)) {
+        std::error_code ec;
+        const auto target = std::filesystem::read_symlink(entry.path(), ec);
+        if (boost::regex_match(target.string(), regex)) {
+          return;
+        }
+      }
+      std::this_thread::yield();
+    }
+  }
+
   test::TemporaryFile outputFile_;
   Subprocess proc_;
   std::string* output_;
