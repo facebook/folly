@@ -23,6 +23,8 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include <fmt/format.h>
+
 #include <folly/Conv.h>
 #include <folly/Function.h>
 #include <folly/Optional.h>
@@ -513,6 +515,20 @@ std::string_view TypedSettingCore<T>::getUpdateReason(
   return contents.updateReason;
 }
 
+template <typename F>
+struct NamedObserverCreator {
+  NamedObserverCreator(std::string name, F&& creator)
+      : name_(std::move(name)), creator_(std::forward<F>(creator)) {}
+
+  auto operator()() { return creator_(); }
+
+  const std::string& getName() const { return name_; }
+
+ private:
+  std::string name_;
+  F creator_;
+};
+
 template <class T, typename Tag>
 class SettingCore : public TypedSettingCore<T> {
  public:
@@ -642,9 +658,11 @@ class SettingCore : public TypedSettingCore<T> {
         });
     // Create a wrapped observer to capture the callback handle and keep it
     // alive as long as the observer is alive
-    return observer::makeObserver(
+    auto& meta = this->meta();
+    return observer::makeObserver(NamedObserverCreator(
+        fmt::format("FOLLY_SETTING_{}_{}", meta.project, meta.name),
         [callbackHandle = std::move(callbackHandle),
-         observer = std::move(observer)]() { return **observer; });
+         observer = std::move(observer)]() { return **observer; }));
   }
 };
 

@@ -55,10 +55,10 @@ fbcode_target(
         "detail/SettingsImpl.h",
     ],
     deps = [
-        "fbsource//third-party/fmt:fmt",
         "//folly:synchronized",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         ":immutables",
         ":types",
         "//folly:conv",

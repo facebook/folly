@@ -678,6 +678,7 @@ TEST(SettingsTest, callback) {
 TEST(SettingsTest, observers) {
   auto observer = folly::settings::getObserver(
       some_ns::FOLLY_SETTING(follytest, some_flag));
+  EXPECT_EQ(observer.getCreatorName(), "FOLLY_SETTING_follytest_some_flag");
   std::string updatedFromCallback;
   auto callbackHandle = observer.addCallback([&](auto snapshot) {
     updatedFromCallback = *snapshot;

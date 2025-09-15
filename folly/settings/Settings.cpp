@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include <fmt/format.h>
 #include <folly/settings/Settings.h>
 
-#include <map>
+#include <unordered_map>
 
 #include <folly/Synchronized.h>
 
