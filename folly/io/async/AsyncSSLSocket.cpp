@@ -2044,6 +2044,10 @@ void AsyncSSLSocket::enableByteEvents() {
   if (getSSLVersion() == SSL3_VERSION || getSSLVersion() == TLS1_VERSION) {
     // Socket timestamping can cause us to split up TLS records in a way that
     // breaks some old Android (<= 3.0) clients.
+
+    if (!byteEventHelper_) {
+      byteEventHelper_ = std::make_unique<ByteEventHelper>();
+    }
     return failByteEvents(AsyncSocketException(
         AsyncSocketException::NOT_SUPPORTED,
         withAddr("failed to enable byte events: "
