@@ -516,9 +516,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "wait_options",
-    srcs = [
-        "WaitOptions.cpp",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "WaitOptions.h",
@@ -908,7 +905,6 @@ fbcode_target(
 fbcode_target(
     _kind = cpp_library,
     name = "wait_options",
-    srcs = ["WaitOptions.cpp"],
     headers = ["WaitOptions.h"],
     exported_deps = [
         "//folly:c_portability",
