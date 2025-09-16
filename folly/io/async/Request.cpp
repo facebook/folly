@@ -726,23 +726,6 @@ RequestContext::setShallowCopyContext() {
   return nullptr;
 }
 
-void RequestContextSaverScopeGuard::setContext(
-    std::shared_ptr<RequestContext>&& ctx) {
-  if (RequestContext::try_get() == ctx.get()) {
-    return; // Nothing to replace.
-  }
-  // Destruction of the current context happens under prev_ context.
-  std::ignore = RequestContext::setContext(std::move(prev_));
-  prev_ = RequestContext::setContext(std::move(ctx));
-}
-
-void RequestContextSaverScopeGuard::restoreContext() {
-  if (RequestContext::try_get() == prev_.get()) {
-    return; // Avoid a shared_ptr copy if there is nothing to do.
-  }
-  std::ignore = RequestContext::setContext(prev_);
-}
-
 #ifndef NDEBUG
 DCheckRequestContextRestoredGuard::~DCheckRequestContextRestoredGuard() {
   CHECK_EQ(prev_.get(), RequestContext::try_get());

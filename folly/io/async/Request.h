@@ -281,12 +281,12 @@ class RequestContext {
   void onUnset();
 
   // The following API is used to pass the context through queues / threads.
-  // saveContext() is called to get a shared_ptr to the context, and
-  // setContext() is used to reset it on the other side of the queue.
+  // saveContext is called to get a shared_ptr to the context, and
+  // setContext is used to reset it on the other side of the queue.
   //
-  // NOTE: Whenever possible, prefer RequestContextScopeGuard or
-  // RequestContextSaverScopeGuard instead of setContext() to make sure that
-  // RequestContext is reset to the original value when we exit the scope.
+  // Whenever possible, prefer RequestContextScopeGuard instead of setContext to
+  // make sure that RequestContext is reset to the original value when we exit
+  // the scope.
   //
   // A shared_ptr is used, because many request may fan out across
   // multiple threads, or do post-send processing, etc.
@@ -388,12 +388,8 @@ class RequestContext {
   // All methods are private to encourage proper use
   friend struct ShallowCopyRequestContextScopeGuard;
 
-  // This sets a shallow copy of the current context as current, then return the
-  // previous context (so it can be reset later).
-  //
-  // NOTE: Whenever possible, prefer ShallowCopyRequestContextScopeGuard instead
-  // of setShallowCopyContext() to make sure that RequestContext is reset to the
-  // original value when we exit the scope.
+  // This sets a shallow copy of the current context as current,
+  // then return the previous context (so it can be reset later).
   static std::shared_ptr<RequestContext> setShallowCopyContext();
 
   // For functions with a parameter safe, if safe is true then the
@@ -508,10 +504,9 @@ static_assert(sizeof(RequestContext) <= 64, "unexpected size");
  * context is restored on guard destruction.
  *
  * The constructor saves the current context but does not replace it; instead,
- * the setContext() method should be called to replace the current context. The
- * original context will be restored on guard destruction, and any time
- * restoreContext() is called. This is different from RequestContextScopeGuard
- * which replaces the current context in construction.
+ * RequestContext::setContext() should be called directly. The original context
+ * will be restored on guard destruction. This is different from
+ * RequestContextScopeGuard which replaces the current context in construction.
  *
  * This enables taking advantage of the optimization in setContext() which skips
  * invoking the RequestData callbacks if the new context is the the same as the
@@ -520,12 +515,8 @@ static_assert(sizeof(RequestContext) <= 64, "unexpected size");
  */
 class RequestContextSaverScopeGuard {
  public:
-  [[nodiscard]] RequestContextSaverScopeGuard()
+  RequestContextSaverScopeGuard()
       : RequestContextSaverScopeGuard(RequestContext::saveContext()) {}
-
-  ~RequestContextSaverScopeGuard() {
-    RequestContext::setContext(std::move(prev_));
-  }
 
   RequestContextSaverScopeGuard(const RequestContextSaverScopeGuard&) = delete;
   RequestContextSaverScopeGuard& operator=(
@@ -534,8 +525,9 @@ class RequestContextSaverScopeGuard {
   RequestContextSaverScopeGuard& operator=(RequestContextSaverScopeGuard&&) =
       delete;
 
-  void setContext(std::shared_ptr<RequestContext>&& ctx);
-  void restoreContext();
+  ~RequestContextSaverScopeGuard() {
+    RequestContext::setContext(std::move(prev_));
+  }
 
  protected:
   explicit RequestContextSaverScopeGuard(std::shared_ptr<RequestContext>&& ctx)
@@ -553,16 +545,14 @@ class RequestContextScopeGuard : private RequestContextSaverScopeGuard {
  public:
   // Create a new RequestContext and reset to the original value when
   // this goes out of scope.
-  [[nodiscard]] RequestContextScopeGuard()
+  RequestContextScopeGuard()
       : RequestContextSaverScopeGuard(RequestContext::create()) {}
 
   // Set a RequestContext that was previously captured by saveContext(). It will
   // be automatically reset to the original value when this goes out of scope.
-  [[nodiscard]] explicit RequestContextScopeGuard(
-      std::shared_ptr<RequestContext> const& ctx)
+  explicit RequestContextScopeGuard(std::shared_ptr<RequestContext> const& ctx)
       : RequestContextSaverScopeGuard(RequestContext::setContext(ctx)) {}
-  [[nodiscard]] explicit RequestContextScopeGuard(
-      std::shared_ptr<RequestContext>&& ctx)
+  explicit RequestContextScopeGuard(std::shared_ptr<RequestContext>&& ctx)
       : RequestContextSaverScopeGuard(
             RequestContext::setContext(std::move(ctx))) {}
 };
@@ -575,7 +565,7 @@ class RequestContextScopeGuard : private RequestContextSaverScopeGuard {
  * Only modified pointers will have their set/onset methods called
  */
 struct ShallowCopyRequestContextScopeGuard {
-  [[nodiscard]] ShallowCopyRequestContextScopeGuard()
+  ShallowCopyRequestContextScopeGuard()
       : prev_(RequestContext::setShallowCopyContext()) {}
 
   /**
@@ -584,12 +574,12 @@ struct ShallowCopyRequestContextScopeGuard {
    * Helper constructor which is a more efficient equivalent to
    * "clearRequestData" then "setRequestData" after the guard.
    */
-  [[nodiscard]] ShallowCopyRequestContextScopeGuard(
+  ShallowCopyRequestContextScopeGuard(
       const RequestToken& token, std::unique_ptr<RequestData> data)
       : ShallowCopyRequestContextScopeGuard() {
     RequestContext::get()->overwriteContextData(token, std::move(data), true);
   }
-  [[nodiscard]] ShallowCopyRequestContextScopeGuard(
+  ShallowCopyRequestContextScopeGuard(
       const std::string& val, std::unique_ptr<RequestData> data)
       : ShallowCopyRequestContextScopeGuard() {
     RequestContext::get()->overwriteContextData(val, std::move(data), true);
@@ -603,7 +593,7 @@ struct ShallowCopyRequestContextScopeGuard {
    * pointer> pairs
    */
   template <typename... Item>
-  [[nodiscard]] explicit ShallowCopyRequestContextScopeGuard(
+  explicit ShallowCopyRequestContextScopeGuard(
       RequestDataItem&& first, Item&&... rest)
       : ShallowCopyRequestContextScopeGuard(MultiTag{}, first, rest...) {}
 
