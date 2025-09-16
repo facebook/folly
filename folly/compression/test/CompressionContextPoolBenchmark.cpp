@@ -38,15 +38,15 @@ class alignas(folly::hardware_destructive_interference_size) Foo {
 };
 
 struct FooCreator {
-  Foo* operator()() { return new Foo(); }
+  Foo* operator()() const { return new Foo(); }
 };
 
 struct FooDeleter {
-  void operator()(Foo* f) { delete f; }
+  void operator()(Foo* f) const { delete f; }
 };
 
 struct FooResetter {
-  void operator()(Foo* f) { f->reset(); }
+  void operator()(Foo* f) const { f->reset(); }
 };
 
 using FooStackPool = folly::compression::

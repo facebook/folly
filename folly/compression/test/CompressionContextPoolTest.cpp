@@ -44,28 +44,28 @@ class Foo {
 };
 
 struct FooCreator {
-  Foo* operator()() {
+  Foo* operator()() const {
     numFoos++;
     return new Foo();
   }
 };
 
 struct BadFooCreator {
-  Foo* operator()() {
+  Foo* operator()() const {
     numFoos++;
     return nullptr;
   }
 };
 
 struct FooDeleter {
-  void operator()(Foo* f) {
+  void operator()(Foo* f) const {
     numDeleted++;
     delete f;
   }
 };
 
 struct FooResetter {
-  void operator()(Foo* f) { f->reset(); }
+  void operator()(Foo* f) const { f->reset(); }
 };
 
 using Pool = CompressionContextPool<Foo, FooCreator, FooDeleter, FooResetter>;

@@ -49,9 +49,7 @@ class CompressionCoreLocalContextPool {
    */
   class alignas(folly::hardware_destructive_interference_size) Storage {
    public:
-    Storage() : ptr(nullptr) {}
-
-    std::atomic<T*> ptr;
+    std::atomic<T*> ptr{nullptr};
   };
 
   class ReturnToPoolDeleter {
@@ -78,7 +76,7 @@ class CompressionCoreLocalContextPool {
   using Object = T;
   using Ref = std::unique_ptr<T, ReturnToPoolDeleter>;
 
-  explicit CompressionCoreLocalContextPool(
+  constexpr explicit CompressionCoreLocalContextPool(
       Creator creator = Creator(),
       Deleter deleter = Deleter(),
       Resetter resetter = Resetter())
@@ -136,7 +134,7 @@ class CompressionCoreLocalContextPool {
   }
 
   BackingPool pool_;
-  std::array<Storage, NumStripes> caches_{};
+  std::array<Storage, NumStripes> caches_;
 };
 } // namespace compression
 } // namespace folly

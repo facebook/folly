@@ -46,9 +46,11 @@ namespace contexts {
 
 #if FOLLY_HAVE_LIBZSTD
 namespace {
-// These objects have no static dependencies and therefore no SIOF issues.
-ZSTD_CCtx_Pool zstd_cctx_pool_singleton;
-ZSTD_DCtx_Pool zstd_dctx_pool_singleton;
+
+// These objects must be constinit in order to be SIOF-safe, since they are
+// accessed during the static initialization of other translation units.
+FOLLY_CONSTINIT ZSTD_CCtx_Pool zstd_cctx_pool_singleton;
+FOLLY_CONSTINIT ZSTD_DCtx_Pool zstd_dctx_pool_singleton;
 
 #if FOLLY_COMPRESSION_USE_HUGEPAGES
 constexpr bool use_huge_pages = kIsArchAmd64;
