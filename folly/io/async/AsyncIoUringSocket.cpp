@@ -1284,7 +1284,7 @@ void AsyncIoUringSocket::processWriteQueue() noexcept {
     shutdownWriteNow();
     return;
   }
-  if (state_ != State::Established) {
+  if (state_ != State::Established && !connecting()) {
     failAllWrites();
     return;
   }
