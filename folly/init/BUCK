@@ -21,16 +21,16 @@ non_fbcode_target(
         "Init.h",
     ],
     deps = [
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/portability:config",
+        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/folly/portability:sys_syscall",
+        "fbsource//xplat/folly/synchronization:hazptr_thread_pool_executor",
         ":phase",
         "//third-party/glog:glog",
-        "//xplat/folly:experimental_symbolizer_symbolizer",
-        "//xplat/folly:logging_init",
         "//xplat/folly:portability",
-        "//xplat/folly:portability_config",
-        "//xplat/folly:portability_gflags",
-        "//xplat/folly:portability_sys_syscall",
         "//xplat/folly:singleton",
-        "//xplat/folly:synchronization_hazptr_thread_pool_executor",
     ],
 )
 
