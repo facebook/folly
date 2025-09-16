@@ -50,7 +50,9 @@ TEST_F(SynchronizedTest, MoveLockingPtr) {
   auto readPtr2 = std::move(readPtr);
   assumeInitialized(readPtr);
   EXPECT_FALSE(readPtr);
-  EXPECT_DEATH({ (void)*readPtr; }, "");
+  if (folly::kIsDebug) {
+    EXPECT_DEATH({ (void)*readPtr; }, "");
+  }
   ASSERT_TRUE(readPtr2);
   EXPECT_EQ(*readPtr2, 5);
 
@@ -59,7 +61,9 @@ TEST_F(SynchronizedTest, MoveLockingPtr) {
   readPtr3 = std::move(readPtr2);
   assumeInitialized(readPtr2);
   EXPECT_FALSE(readPtr2);
-  EXPECT_DEATH({ (void)*readPtr2; }, "");
+  if (folly::kIsDebug) {
+    EXPECT_DEATH({ (void)*readPtr2; }, "");
+  }
   ASSERT_TRUE(readPtr3);
   EXPECT_EQ(*readPtr3, 5);
 }
@@ -212,7 +216,9 @@ TEST_F(SynchronizedTest, TryLock) {
     // Exclusive lock cannot be acquired
     auto writeLock = sync.tryWLock();
     EXPECT_FALSE(writeLock);
-    EXPECT_DEATH({ (void)*writeLock; }, "");
+    if (folly::kIsDebug) {
+      EXPECT_DEATH({ (void)*writeLock; }, "");
+    }
 
     lock.unlock();
 
@@ -227,12 +233,16 @@ TEST_F(SynchronizedTest, TryLock) {
     // Another exclusive lock cannot be acquired
     auto writeLock = sync.tryWLock();
     EXPECT_FALSE(writeLock);
-    EXPECT_DEATH({ (void)*writeLock; }, "");
+    if (folly::kIsDebug) {
+      EXPECT_DEATH({ (void)*writeLock; }, "");
+    }
 
     // A read lock cannot be acquired
     auto readLock = sync.tryRLock();
     EXPECT_FALSE(readLock);
-    EXPECT_DEATH({ (void)*readLock; }, "");
+    if (folly::kIsDebug) {
+      EXPECT_DEATH({ (void)*readLock; }, "");
+    }
 
     lock.unlock();
 
