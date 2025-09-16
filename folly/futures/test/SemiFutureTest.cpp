@@ -1342,3 +1342,14 @@ TEST(Future, makeSemiFutureFromMoveOnlyException) {
   auto f = makeSemiFuture<int>(MoveOnlyException(msg));
   EXPECT_THAT([&] { f.value(); }, ThrowsMessage<MoveOnlyException>(StrEq(msg)));
 }
+
+TEST(Future, makeSemiFutureFromExceptionSpecifyingBothTemplateParams) {
+  using ::testing::StrEq;
+  using ::testing::ThrowsMessage;
+
+  std::string msg = "exception message";
+
+  auto f = makeSemiFuture<int, std::runtime_error>(std::runtime_error(msg));
+  EXPECT_THAT(
+      [&] { f.value(); }, ThrowsMessage<std::runtime_error>(StrEq(msg)));
+}

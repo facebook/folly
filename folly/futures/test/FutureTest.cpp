@@ -132,6 +132,17 @@ TEST(Future, makeFutureFromMoveOnlyException) {
   EXPECT_THAT([&] { f.value(); }, ThrowsMessage<MoveOnlyException>(StrEq(msg)));
 }
 
+TEST(Future, makeFutureFromExceptionSpecifyingBothTemplateParams) {
+  using ::testing::StrEq;
+  using ::testing::ThrowsMessage;
+
+  std::string msg = "exception message";
+
+  auto f = makeFuture<int, std::runtime_error>(std::runtime_error(msg));
+  EXPECT_THAT(
+      [&] { f.value(); }, ThrowsMessage<std::runtime_error>(StrEq(msg)));
+}
+
 namespace {
 auto makeValid() {
   auto valid = makeFuture<int>(42);
