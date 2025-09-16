@@ -462,7 +462,59 @@ non_fbcode_target(
     ],
 )
 
+non_fbcode_target(
+    _kind = cython_library,
+    name = "request_context",
+    srcs = ["request_context.pyx"],
+    headers = [
+        "request_context.h",
+        "request_context.pxd",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+        "ovr_config//os:macos",
+        "ovr_config//os:windows",
+    ],
+    cpp_compiler_flags = select({
+        "DEFAULT": ["-DFOLLY_PYTHON_META_BUILD"],
+        # Conda is not Meta Python
+        "ovr_config//distro:conda": [],
+    }),
+    cpp_deps = ["//xplat/folly/io/async:request_context"],
+    package = "folly",
+    types = ["request_context.pyi"],
+    deps = [
+        ":folly",
+    ],
+)
+
 # !!!! fbcode/folly/python/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = cython_library,
+    name = "request_context",
+    srcs = ["request_context.pyx"],
+    headers = [
+        "request_context.h",
+        "request_context.pxd",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+        "ovr_config//os:macos",
+        "ovr_config//os:windows",
+    ],
+    cpp_compiler_flags = select({
+        "DEFAULT": ["-DFOLLY_PYTHON_META_BUILD"],
+        # Conda is not Meta Python
+        "ovr_config//distro:conda": [],
+    }),
+    cpp_deps = ["//folly/io/async:request_context"],
+    package = "folly",
+    types = ["request_context.pyi"],
+    deps = [
+        ":folly",
+    ],
+)
 
 fbcode_target(
     _kind = cpp_library,

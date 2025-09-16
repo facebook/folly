@@ -199,7 +199,27 @@ non_fbcode_target(
     ],
 )
 
+non_fbcode_target(
+    _kind = python_unittest,
+    name = "request_context",
+    srcs = ["request_context.py"],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    deps = ["//xplat/folly/python:request_context"],
+)
+
 # !!!! fbcode/folly/python/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
+
+fbcode_target(
+    _kind = python_unittest,
+    name = "request_context",
+    srcs = ["request_context.py"],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    deps = ["//folly/python:request_context"],
+)
 
 fbcode_target(
     _kind = python_unittest,
