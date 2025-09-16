@@ -272,18 +272,20 @@ AsyncGenerator<Reference, Value> mergeImpl(
 
     auto& asyncFrame = co_await detail::co_current_async_stack_frame;
 
+    // Save the initial context and restore it after starting each task
+    // as the task may have modified the context before suspending and we
+    // want to make sure the next task is started with the same initial
+    // context.
+    const auto context = RequestContext::saveContext();
+
     exception_wrapper ex;
     try {
-      // Save the initial context and restore it after starting each task as the
-      // task may have modified the context before suspending and we want to
-      // make sure the next task is started with the same initial context.
-      RequestContextSaverScopeGuard ctxGuard;
       while (auto item = co_await sources_.next()) {
         if (state->cancelSource.isCancellationRequested()) {
           break;
         }
         makeWorkerTask(state, *std::move(item)).start(&barrier, asyncFrame);
-        ctxGuard.restoreContext();
+        RequestContext::setContext(context);
       }
     } catch (...) {
       ex = exception_wrapper{current_exception()};

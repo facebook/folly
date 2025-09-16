@@ -120,8 +120,7 @@ inline void FiberManager::deactivateFiber(Fiber* fiber) {
   fiber->fiberImpl_.deactivate();
 }
 
-inline void FiberManager::runReadyFiber(
-    Fiber* fiber, RequestContextSaverScopeGuard& ctxGuard) {
+inline void FiberManager::runReadyFiber(Fiber* fiber) {
   SCOPE_EXIT {
     assert(currentFiber_ == nullptr);
     assert(activeFiber_ == nullptr);
@@ -131,7 +130,8 @@ inline void FiberManager::runReadyFiber(
       fiber->state_ == Fiber::NOT_STARTED ||
       fiber->state_ == Fiber::READY_TO_RUN);
   currentFiber_ = fiber;
-  ctxGuard.setContext(std::move(fiber->rcontext_));
+  // Note: resetting the context is handled by the loop
+  RequestContext::setContext(std::move(fiber->rcontext_));
 
   (void)folly::exchangeCurrentAsyncStackRoot(
       std::exchange(fiber->asyncRoot_, nullptr));
@@ -234,9 +234,10 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
   numUncaughtExceptions_ = uncaught_exceptions();
   currentException_ = current_exception();
 
-  // Save current context, and reset it after executing all fibers. This can
-  // avoid a lot of context swapping, if the Fibers share the same context
-  RequestContextSaverScopeGuard ctxGuard;
+  // Save current context, and reset it after executing all fibers.
+  // This can avoid a lot of context swapping,
+  // if the Fibers share the same context
+  auto curCtx = RequestContext::saveContext();
 
   auto* curAsyncRoot = folly::exchangeCurrentAsyncStackRoot(nullptr);
 
@@ -251,6 +252,7 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
 
     yieldedFibers_ = prevYieldedFibers;
     readyFibers_.splice(readyFibers_.end(), yieldedFibers);
+    RequestContext::setContext(std::move(curCtx));
     if (!readyFibers_.empty()) {
       ensureLoopScheduled();
     }
@@ -258,7 +260,7 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
     CHECK_EQ(this, originalFiberManager);
   };
 
-  loopFunc(ctxGuard);
+  loopFunc();
 }
 
 inline size_t FiberManager::recordStackPosition(size_t position) {
@@ -268,7 +270,7 @@ inline size_t FiberManager::recordStackPosition(size_t position) {
 }
 
 inline void FiberManager::loopUntilNoReadyImpl() {
-  runFibersHelper([&](RequestContextSaverScopeGuard& ctxGuard) {
+  runFibersHelper([&] {
     SCOPE_EXIT {
       isLoopScheduled_ = false;
     };
@@ -278,18 +280,19 @@ inline void FiberManager::loopUntilNoReadyImpl() {
       while (!readyFibers_.empty()) {
         auto& fiber = readyFibers_.front();
         readyFibers_.pop_front();
-        runReadyFiber(&fiber, ctxGuard);
+        runReadyFiber(&fiber);
       }
 
-      auto hadRemoteFiber = remoteReadyQueue_.sweepOnce(
-          [this, &ctxGuard](Fiber* fiber) { runReadyFiber(fiber, ctxGuard); });
+      auto hadRemoteFiber = remoteReadyQueue_.sweepOnce([this](Fiber* fiber) {
+        runReadyFiber(fiber);
+      });
 
       if (hadRemoteFiber) {
         ++remoteCount_;
       }
 
       auto hadRemoteTask =
-          remoteTaskQueue_.sweepOnce([this, &ctxGuard](RemoteTask* taskPtr) {
+          remoteTaskQueue_.sweepOnce([this](RemoteTask* taskPtr) {
             std::unique_ptr<RemoteTask> task(taskPtr);
             auto fiber = getFiber();
             if (task->localData) {
@@ -298,7 +301,7 @@ inline void FiberManager::loopUntilNoReadyImpl() {
             fiber->rcontext_ = std::move(task->rcontext);
 
             fiber->setFunction(std::move(task->func), TaskOptions());
-            runReadyFiber(fiber, ctxGuard);
+            runReadyFiber(fiber);
           });
 
       if (hadRemoteTask) {
@@ -320,9 +323,7 @@ inline void FiberManager::runEagerFiberImpl(Fiber* fiber) {
     SCOPE_EXIT {
       currentFiber_ = prevCurrentFiber;
     };
-    runFibersHelper([&](RequestContextSaverScopeGuard& ctxGuard) {
-      runReadyFiber(fiber, ctxGuard);
-    });
+    runFibersHelper([&] { runReadyFiber(fiber); });
   });
 }
 
