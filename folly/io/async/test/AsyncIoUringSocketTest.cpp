@@ -677,6 +677,51 @@ TEST_P(AsyncIoUringSocketTest, BindAddressNoPort) {
   socket->close();
 }
 
+TEST_P(AsyncIoUringSocketTest, ReadCallbackSetDuringConnect) {
+  MAYBE_SKIP();
+
+  struct ReadCB : public AsyncReader::ReadCallback {
+    void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
+      *bufReturn = buff;
+      *lenReturn = sizeof(buff);
+    }
+
+    void readDataAvailable(size_t len) noexcept override {
+      received.append(buff, len);
+      prom.setValue(std::string{buff, len});
+    }
+
+    void readEOF() noexcept override {}
+    void readErr(const AsyncSocketException& ex) noexcept override {
+      prom.setException(ex);
+    }
+
+    bool isBufferMovable() noexcept override { return false; }
+
+    Promise<std::string> prom;
+    std::string received;
+    char buff[1024];
+  };
+
+  ReadCB readCB;
+  AsyncIoUringSocket::UniquePtr socket(
+      new AsyncIoUringSocket(base.get(), ioUringSocketOptions()));
+
+  socket->connect(this, serverAddress);
+  socket->setReadCB(&readCB);
+  auto fd =
+      fdPromise.getFuture().within(kTimeout).via(base.get()).getVia(base.get());
+  fdPromise = {};
+  auto server = AsyncSocket::newSocket(base.get(), fd);
+  server->write(&nullWriteCallback, "hello", 5);
+  auto result =
+      readCB.prom.getSemiFuture()
+          .within(kTimeout)
+          .via(base.get())
+          .getVia(base.get());
+  EXPECT_EQ("hello", result);
+}
+
 class AsyncIoUringSocketTestAll : public AsyncIoUringSocketTest {};
 
 TEST_P(AsyncIoUringSocketTestAll, WriteChain2) {

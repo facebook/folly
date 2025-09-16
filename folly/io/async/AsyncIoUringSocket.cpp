@@ -542,9 +542,8 @@ void AsyncIoUringSocket::ReadSqe::setReadCallback(
       << " inflight=" << inFlight() << " good_=" << parent_->good()
       << " submitNow=" << submitNow;
 
-  if (callback == readCallback_) {
-    // copied from AsyncSocket
-    VLOG(9) << "cb the same";
+  if (callback == readCallback_ && (!submitNow || inFlight())) {
+    VLOG(9) << "cb the same, skipping";
     return;
   }
   setReadCbCount_++;
