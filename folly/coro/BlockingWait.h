@@ -25,6 +25,7 @@
 #include <folly/coro/detail/Malloc.h>
 #include <folly/coro/detail/Traits.h>
 #include <folly/executors/ManualExecutor.h>
+#include <folly/executors/SequencedExecutor.h>
 #include <folly/fibers/Baton.h>
 #include <folly/lang/MustUseImmediately.h>
 #include <folly/synchronization/Baton.h>
@@ -271,7 +272,9 @@ auto makeRefBlockingWaitTask(Awaitable&& awaitable)
   co_yield co_await static_cast<Awaitable&&>(awaitable);
 }
 
-class BlockingWaitExecutor final : public folly::DrivableExecutor {
+class BlockingWaitExecutor final
+    : public folly::DrivableExecutor,
+      public SequencedExecutor {
  public:
   ~BlockingWaitExecutor() override {
     while (keepAliveCount_.load() > 0) {
