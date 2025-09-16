@@ -108,7 +108,7 @@ void StrandContext::executeNext(
     RequestContextSaverScopeGuard ctxGuard;
     for (std::size_t i = 0; i < maxItemsToProcessSynchronously; ++i) {
       QueueItem item = thisPtr->queue_.dequeue();
-      RequestContext::setContext(std::move(item.requestCtx));
+      ctxGuard.setContext(std::move(item.requestCtx));
       Executor::invokeCatchingExns(
           "StrandExecutor: func", std::exchange(item.func, {}));
 
