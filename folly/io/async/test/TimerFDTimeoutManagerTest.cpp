@@ -20,6 +20,7 @@
 
 using namespace folly;
 using std::chrono::microseconds;
+using std::chrono::milliseconds;
 
 class TestTimeout : public TimerFDTimeoutManager::Callback {
  public:
@@ -127,22 +128,22 @@ TEST_F(TimerFDTimeoutManagerTest, TestSchedulingWithinCallback) {
 TEST_F(TimerFDTimeoutManagerTest, CancelTimeout) {
   TimerFDTimeoutManager& t = timeoutMgr;
 
-  // Create several timeouts that will all fire in 5microseconds
-  TestTimeout t5_1(&t, microseconds(50));
-  TestTimeout t5_2(&t, microseconds(50));
-  TestTimeout t5_3(&t, microseconds(50));
-  TestTimeout t5_4(&t, microseconds(50));
-  TestTimeout t5_5(&t, microseconds(50));
+  // Create several timeouts that will all fire in 5 ms
+  TestTimeout t5_1(&t, milliseconds(5));
+  TestTimeout t5_2(&t, milliseconds(5));
+  TestTimeout t5_3(&t, milliseconds(5));
+  TestTimeout t5_4(&t, milliseconds(5));
+  TestTimeout t5_5(&t, milliseconds(5));
 
-  // Also create a few timeouts to fire in 10microseconds
-  TestTimeout t10_1(&t, microseconds(100));
-  TestTimeout t10_2(&t, microseconds(100));
-  TestTimeout t10_3(&t, microseconds(100));
+  // Also create a few timeouts to fire in 10 ms
+  TestTimeout t10_1(&t, milliseconds(10));
+  TestTimeout t10_2(&t, milliseconds(10));
+  TestTimeout t10_3(&t, milliseconds(10));
 
-  TestTimeout t20_1(&t, microseconds(200));
-  TestTimeout t20_2(&t, microseconds(200));
+  TestTimeout t20_1(&t, milliseconds(20));
+  TestTimeout t20_2(&t, milliseconds(20));
 
-  TestTimeout et(&t, microseconds(1000));
+  TestTimeout et(&t, milliseconds(100));
   et.fn = [&] { evb.terminateLoopSoon(); };
 
   // Have t5_1 cancel t5_2 and t5_4.
@@ -165,7 +166,7 @@ TEST_F(TimerFDTimeoutManagerTest, CancelTimeout) {
     // Reset our function so we won't continually reschedule ourself
     std::function<void()> fnDtorGuard;
     t5_3.fn.swap(fnDtorGuard);
-    t.scheduleTimeout(&t5_3, microseconds(500));
+    t.scheduleTimeout(&t5_3, milliseconds(50));
 
     // Also test cancelling timeouts in another timeset that isn't ready to
     // fire yet.
@@ -182,16 +183,16 @@ TEST_F(TimerFDTimeoutManagerTest, CancelTimeout) {
   TimePoint end;
 
   ASSERT_EQ(t5_1.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t5_1.timestamps[0], microseconds(500));
+  T_CHECK_TIMEOUT(start, t5_1.timestamps[0], milliseconds(5));
 
   ASSERT_EQ(t5_3.timestamps.size(), 2);
-  T_CHECK_TIMEOUT(start, t5_3.timestamps[0], microseconds(500));
-  T_CHECK_TIMEOUT(t5_3.timestamps[0], t5_3.timestamps[1], microseconds(500));
+  T_CHECK_TIMEOUT(start, t5_3.timestamps[0], milliseconds(5));
+  T_CHECK_TIMEOUT(t5_3.timestamps[0], t5_3.timestamps[1], milliseconds(50));
 
   ASSERT_EQ(t10_1.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t10_1.timestamps[0], microseconds(10));
+  T_CHECK_TIMEOUT(start, t10_1.timestamps[0], milliseconds(10));
   ASSERT_EQ(t10_3.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t10_3.timestamps[0], microseconds(10));
+  T_CHECK_TIMEOUT(start, t10_3.timestamps[0], milliseconds(10));
 
   // Cancelled timeouts
   ASSERT_EQ(t5_2.timestamps.size(), 0);
@@ -201,7 +202,7 @@ TEST_F(TimerFDTimeoutManagerTest, CancelTimeout) {
   ASSERT_EQ(t20_1.timestamps.size(), 0);
   ASSERT_EQ(t20_2.timestamps.size(), 0);
 
-  T_CHECK_TIMEOUT(start, end, microseconds(10));
+  T_CHECK_TIMEOUT(start, end, milliseconds(100));
 }
 
 /*
