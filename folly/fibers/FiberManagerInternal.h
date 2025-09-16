@@ -611,7 +611,7 @@ class FiberManager : public ::folly::Executor {
    */
   std::type_index localType_;
 
-  void runReadyFiber(Fiber* fiber);
+  void runReadyFiber(Fiber* fiber, RequestContextSaverScopeGuard& ctxGuard);
   void remoteReadyInsert(Fiber* fiber);
 
   // These methods notify ASAN when a fiber is entered/exited so that ASAN can

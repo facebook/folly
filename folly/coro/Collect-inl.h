@@ -129,16 +129,16 @@ Ret collectAllTryImpl(
     // Use std::initializer_list to ensure that the sub-tasks are launched
     // in the order they appear in the parameter pack.
 
-    // Save the initial context and restore it after starting each task
-    // as the task may have modified the context before suspending and we
-    // want to make sure the next task is started with the same initial
-    // context.
-    const auto context = RequestContext::saveContext();
-    (void)std::initializer_list<int>{(
-        tasks[Indices].start(&barrier, asyncFrame),
-        RequestContext::setContext(context),
-        0)...};
-
+    {
+      // Save the initial context and restore it after starting each task as the
+      // task may have modified the context before suspending and we want to
+      // make sure the next task is started with the same initial context.
+      RequestContextSaverScopeGuard ctxGuard;
+      (void)std::initializer_list<int>{(
+          tasks[Indices].start(&barrier, asyncFrame),
+          ctxGuard.restoreContext(),
+          0)...};
+    }
     // Wait for all of the sub-tasks to finish execution.
     // Should be safe to avoid an executor transition here even if the
     // operation completes asynchronously since all of the child tasks
@@ -216,10 +216,13 @@ Ret collectAllImpl(
 
     // Use std::initializer_list to ensure that the sub-tasks are launched
     // in the order they appear in the parameter pack.
-    (void)std::initializer_list<int>{(
-        tasks[Indices].start(&barrier, asyncFrame),
-        RequestContext::setContext(context),
-        0)...};
+    {
+      RequestContextSaverScopeGuard ctxGuard;
+      (void)std::initializer_list<int>{(
+          tasks[Indices].start(&barrier, asyncFrame),
+          ctxGuard.restoreContext(),
+          0)...};
+    }
 
     // Wait for all of the sub-tasks to finish execution.
     // Should be safe to avoid an executor transition here even if the
@@ -259,11 +262,10 @@ auto makeUnorderedAsyncGeneratorImpl(
     });
     auto ex = co_await co_current_executor;
     size_t expected = 0;
-    // Save the initial context and restore it after starting each task
-    // as the task may have modified the context before suspending and we
-    // want to make sure the next task is started with the same initial
-    // context.
-    const auto context = RequestContext::saveContext();
+    // Save the initial context and restore it after starting each task as the
+    // task may have modified the context before suspending and we want to make
+    // sure the next task is started with the same initial context.
+    RequestContextSaverScopeGuard ctxGuard;
 
     for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitablesParam)) {
       auto task = [](auto semiAwaitableParam, auto state) -> Task<void> {
@@ -281,7 +283,7 @@ auto makeUnorderedAsyncGeneratorImpl(
         scopeParam.add(co_withExecutor(ex, std::move(task)), cancelToken);
       }
       ++expected;
-      RequestContext::setContext(context);
+      ctxGuard.restoreContext();
     }
 
     while (expected > 0) {
@@ -461,20 +463,18 @@ auto collectAllRange(InputRange awaitables)
 
   tryResults.resize(tasks.size());
 
-  // Save the initial context and restore it after starting each task
-  // as the task may have modified the context before suspending and we
-  // want to make sure the next task is started with the same initial
-  // context.
-  const auto context = RequestContext::saveContext();
-
   auto& asyncFrame = co_await detail::co_current_async_stack_frame;
 
   // Launch the tasks and wait for them all to finish.
   {
+    // Save the initial context and restore it after starting each task as the
+    // task may have modified the context before suspending and we want to make
+    // sure the next task is started with the same initial context.
+    RequestContextSaverScopeGuard ctxGuard;
     detail::Barrier barrier{tasks.size() + 1};
     for (auto&& task : tasks) {
       task.start(&barrier, asyncFrame);
-      RequestContext::setContext(context);
+      ctxGuard.restoreContext();
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
   }
@@ -525,20 +525,18 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
 
   auto tasks = detail::collectMakeInnerTaskVec(awaitables, makeTask);
 
-  // Save the initial context and restore it after starting each task
-  // as the task may have modified the context before suspending and we
-  // want to make sure the next task is started with the same initial
-  // context.
-  const auto context = RequestContext::saveContext();
-
   auto& asyncFrame = co_await detail::co_current_async_stack_frame;
 
   // Launch the tasks and wait for them all to finish.
   {
+    // Save the initial context and restore it after starting each task as the
+    // task may have modified the context before suspending and we want to make
+    // sure the next task is started with the same initial context.
+    RequestContextSaverScopeGuard ctxGuard;
     detail::Barrier barrier{tasks.size() + 1};
     for (auto&& task : tasks) {
       task.start(&barrier, asyncFrame);
-      RequestContext::setContext(context);
+      ctxGuard.restoreContext();
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
   }
@@ -591,20 +589,18 @@ auto collectAllTryRange(InputRange awaitables)
   // executing the tasks.
   results.resize(tasks.size());
 
-  // Save the initial context and restore it after starting each task
-  // as the task may have modified the context before suspending and we
-  // want to make sure the next task is started with the same initial
-  // context.
-  const auto context = RequestContext::saveContext();
-
   auto& asyncFrame = co_await detail::co_current_async_stack_frame;
 
   // Launch the tasks and wait for them all to finish.
   {
+    // Save the initial context and restore it after starting each task as the
+    // task may have modified the context before suspending and we want to make
+    // sure the next task is started with the same initial context.
+    RequestContextSaverScopeGuard ctxGuard;
     detail::Barrier barrier{tasks.size() + 1};
     for (auto&& task : tasks) {
       task.start(&barrier, asyncFrame);
-      RequestContext::setContext(context);
+      ctxGuard.restoreContext();
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
   }
@@ -683,17 +679,15 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   detail::Barrier barrier{1};
 
-  // Save the initial context and restore it after starting each task
-  // as the task may have modified the context before suspending and we
-  // want to make sure the next task is started with the same initial
-  // context.
-  const auto context = RequestContext::saveContext();
-
   auto& asyncFrame = co_await detail::co_current_async_stack_frame;
 
   try {
     auto lock = co_await mutex.co_scoped_lock();
 
+    // Save the initial context and restore it after starting each task as the
+    // task may have modified the context before suspending and we want to
+    // make sure the next task is started with the same initial context.
+    RequestContextSaverScopeGuard ctxGuard;
     while (!iterationException && iter != iterEnd &&
            workerTasks.size() < maxConcurrency) {
       // Unlock the mutex before starting the worker so that
@@ -707,7 +701,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       barrier.add(1);
       workerTasks.back().start(&barrier, asyncFrame);
 
-      RequestContext::setContext(context);
+      ctxGuard.restoreContext();
 
       lock = co_await mutex.co_scoped_lock();
     }
@@ -818,17 +812,15 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   exception_wrapper workerCreationException;
 
-  // Save the initial context and restore it after starting each task
-  // as the task may have modified the context before suspending and we
-  // want to make sure the next task is started with the same initial
-  // context.
-  const auto context = RequestContext::saveContext();
-
   auto& asyncFrame = co_await detail::co_current_async_stack_frame;
 
   try {
     auto lock = co_await mutex.co_scoped_lock();
 
+    // Save the initial context and restore it after starting each task as the
+    // task may have modified the context before suspending and we want to
+    // make sure the next task is started with the same initial context.
+    RequestContextSaverScopeGuard ctxGuard;
     while (!iterationException && iter != iterEnd &&
            workerTasks.size() < maxConcurrency) {
       // Unlock the mutex before starting the worker so that
@@ -842,7 +834,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       barrier.add(1);
       workerTasks.back().start(&barrier, asyncFrame);
 
-      RequestContext::setContext(context);
+      ctxGuard.restoreContext();
 
       lock = co_await mutex.co_scoped_lock();
     }
@@ -953,16 +945,15 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   detail::Barrier barrier{1};
 
-  // Save the initial context and restore it after starting each task
-  // as the task may have modified the context before suspending and we
-  // want to make sure the next task is started with the same initial
-  // context.
-  const auto context = RequestContext::saveContext();
-
   auto& asyncFrame = co_await detail::co_current_async_stack_frame;
 
   try {
     auto lock = co_await mutex.co_scoped_lock();
+
+    // Save the initial context and restore it after starting each task as the
+    // task may have modified the context before suspending and we want to
+    // make sure the next task is started with the same initial context.
+    RequestContextSaverScopeGuard ctxGuard;
     while (!iterationException && iter != iterEnd &&
            workerTasks.size() < maxConcurrency) {
       // Unlock the mutex before starting the child operation so that
@@ -976,7 +967,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
       barrier.add(1);
       workerTasks.back().start(&barrier, asyncFrame);
 
-      RequestContext::setContext(context);
+      ctxGuard.restoreContext();
 
       lock = co_await mutex.co_scoped_lock();
     }
