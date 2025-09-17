@@ -151,7 +151,7 @@ class NotificationQueueAsyncioExecutor
         break;
       }
       invokeCatchingExns("NotificationQueueExecutor: task", std::move(func));
-    } while (Clock::now() <= deadline);
+    } while (Clock::now() < deadline);
   }
 
   const Stats& stats() const { return stats_; }
