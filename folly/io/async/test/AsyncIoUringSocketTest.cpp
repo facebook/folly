@@ -687,7 +687,6 @@ TEST_P(AsyncIoUringSocketTest, ReadCallbackSetDuringConnect) {
     }
 
     void readDataAvailable(size_t len) noexcept override {
-      received.append(buff, len);
       prom.setValue(std::string{buff, len});
     }
 
@@ -699,7 +698,6 @@ TEST_P(AsyncIoUringSocketTest, ReadCallbackSetDuringConnect) {
     bool isBufferMovable() noexcept override { return false; }
 
     Promise<std::string> prom;
-    std::string received;
     char buff[1024];
   };
 
