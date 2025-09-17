@@ -54,15 +54,15 @@
  *
  * When you switch on the value of a concretely defined enum with a very large
  * set of values, and only need to address a sane subset of the values, you
- * write a flexible switch. Additionally, when you switch on the a non-enum
- * value (like an int), you write a flexible switch.
+ * write a non-exhaustive switch.  Additionally, when you switch on the a
+ * non-enum value (like an int), you write a non-exhaustive switch.
  *
  *    enum class Color {
  *      // every color in a 64 color palette named as an enum value
  *    };
  *
  *    bool isRedColor(Color c) {
- *      FOLLY_FLEXIBLE_SWITCH({
+ *      FOLLY_NON_EXHAUSTIVE_SWITCH({
  *        switch (c) {
  *          case Color::Red:
  *          case Color::LightRed:
@@ -89,7 +89,7 @@
   FOLLY_POP_WARNING                                \
   static_assert(true, "Add a semicolon after this line for formatting")
 
-#define FOLLY_FLEXIBLE_SWITCH(...)              \
+#define FOLLY_NON_EXHAUSTIVE_SWITCH(...)        \
   FOLLY_PUSH_WARNING                            \
   FOLLY_GNU_DISABLE_WARNING("-Wswitch-enum")    \
   FOLLY_GNU_ENABLE_COVERED_SWITCH_DEFAULT_ERROR \

@@ -58,9 +58,9 @@ TEST_F(SwitchTest, Exhaustive) {
   EXPECT_EQ(lambda(static_cast<E>(3)), -1);
 }
 
-TEST_F(SwitchTest, Flexible) {
+TEST_F(SwitchTest, NonExhaustive) {
   auto lambda = [](E e) -> std::int64_t {
-    FOLLY_FLEXIBLE_SWITCH({
+    FOLLY_NON_EXHAUSTIVE_SWITCH({
       switch (e) {
         case E::ZERO:
           return 0;

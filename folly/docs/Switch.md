@@ -11,8 +11,8 @@ disabled, but we want to enable them in the appropriate combinations for our
 codebases.
 
 This `README` goes into detail, but as a brief overview, we want to enable
-*exhaustive* `switch` statements by default, and afford having *flexible*
-`switch` statements. And we would like to do this such that the switch
+*exhaustive* `switch` statements by default, and afford having *non-exhaustive*
+`switch` statements.  And we would like to do this such that the switch
 statements are always compiled with the appropriate diagnostics (providing true
 exhaustiveness, or flexibility if needed), regardless of the user's compiler
 flags.
@@ -25,13 +25,13 @@ flags.
 User code can explicitely opt-in to exhaustive switch behavior with
 `FOLLY_EXHAUSTIVE_SWITCH()`.
 
-**Flexible**:
+**Non-exhaustive**:
   - `switch-enum`: ignored
   - `switch-default`: error
   - `covered-switch-default`: error
 
-User code can explicitely opt-in to flexible switch behavior with
-`FOLLY_FLEXIBLE_SWITCH()`.
+User code can explicitely opt-in to non-exhaustive switch behavior with
+`FOLLY_NON_EXHAUSTIVE_SWITCH()`.
 
 Examples:
 ```
@@ -58,11 +58,11 @@ void exhaustive(E e) {
   })
 }
 
-void flexible(E e) {
+void non_exhaustive(E e) {
   // The compiler will not force you to exhaust all cases regardless of the
   // user's compiler settings. Accidentally exhausting all cases will result in
   // an error, as it's now an exhaustive switch.
-  FOLLY_FLEXIBLE_SWITCH(switch(e) {
+  FOLLY_NON_EXHAUSTIVE_SWITCH(switch(e) {
     case E::ONE:
       // handle case
     default:
@@ -104,8 +104,8 @@ void handle(logposition_t logpos) {
 
 Though there are innumerable ways to write a `switch` statement, there are two
 recommended ways to write a `switch` statement: exhaustive switches and
-flexible switches (all others are discouraged). Exhaustive switches should be
-the default go-to pattern for switch statements.
+non-exhaustive switches (all others are discouraged).  Exhaustive switches
+should be the default go-to pattern for switch statements.
 
 The basis of what cases can be listed in a `switch` statement is the type of
 the value being switched on. If the value being switched on is an enum, then
@@ -116,11 +116,12 @@ variable. If the value being switched on is not an enum (i.e. it's an integer
 type), then the cases can be any value of the integer type, and though integer
 types are not infinite, they are expansive enough that it is impractical
 `switch` statement cannot reasonably have a case for every possible value of
-the switched integer variable; i.e. a `switch` statement must be *flexible*
-and only have cases for specific values of the expansive possibilities.
+the switched integer variable; i.e.  a `switch` statement must be
+*non-exhaustive* and only have cases for specific values of the expansive
+possibilities.
 
 When compiling, if `switch` argument is not an enum, it will *always* be a
-*flexible* statement (since there's no enum to exhaust). The `switch-enum`
+*non-exhaustive* statement (since there's no enum to exhaust). The `switch-enum`
 diagnostic and the `covered-switch-default` diagnostic will be ignored. The
 `switch-default` diagnostic will still be enforced though (which is good).
 
@@ -156,9 +157,9 @@ void cacheData(std::int64_t key, E e) {
 
 So, reiterating cogently:
 
-  * `switch` statements on non-enum values are always *flexible* and always need a `default` case
+  * `switch` statements on non-enum values are always *non-exhaustive* and always need a `default` case
   * `switch` statements on enum values must always handle non-enumerator values with a `default` case
-  * `switch` statements on enum values can be *exhaustive* or *flexible*, and we should default to *exhaustive*
+  * `switch` statements on enum values can be *exhaustive* or *non-exhaustive*, and we should default to *exhaustive*
   * `switch` statements without a `default` case risk SEVs from **unexpected behavior** (and is why *Clang 18* has implemented `switch-default`)
   * We want to have the compiler help us keep our `switch` statements explicit and safe. Regardless of the compiler flags used by the user's build.
 
@@ -174,25 +175,25 @@ https://releases.llvm.org/18.1.6/tools/clang/docs/ReleaseNotes.html
 
 - **`covered-switch-default`**
 Warn when a `default` case is present but all enum values are listed as cases
-(most useful for scoping a *flexible* `switch` statement and detecting when it
+(most useful for scoping a *non-exhaustive* `switch` statement and detecting when it
 has become *exhaustive* to either convert to an *exhaustive* `switch` statement
 or fix whatever expectation has been violated).
 
 Though technically feasible, it is a bad pattern to write a `switch` statement
-that is flexible for an enum (i.e. one that does not exhaust the enum). This
-is because if the enum should expand in the future, the `switch` statement can
-neglect these new enum values, and there will be nothing to indicate the need
-for the `switch` statement to be updated. To combat this, we can use
+that is non-exhaustive for an enum (i.e. one that does not exhaust the enum).
+This is because if the enum should expand in the future, the `switch` statement
+can neglect these new enum values, and there will be nothing to indicate the
+need for the `switch` statement to be updated.  To combat this, we can use
 `switch-enum` to enforce that enums are exhausted in a `switch` statement.
 
 Though technically feasible, it is a bad pattern to write a `switch` statement
-that is meant to be flexible, but actually exhausts all possible cases. This
+that is meant to be non-exhaustive, but actually exhausts all possible cases. This
 leads to confusion in the expectation for what the `default` is handling. It
-would appear that a flexible `switch` statement with a `default` case is
+would appear that a non-exhaustive `switch` statement with a `default` case is
 covering some enumerators, but it is not actually covering any enumerators. To
 combat this, we can use `covered-switch-default` to highlight that we have an
-*exhaustive* switch despite being meant to be *flexible*, where we can then
-convert the `switch` statement to be exhaustive instead of flexible.
+*exhaustive* switch despite being meant to be *non-exhaustive*, where we can
+then convert the `switch` statement to instead be exhaustive.
 
 Though technically feasible, it is a bad pattern to write a `switch` statement
 that exhausts all possible cases, but does not have a `default` case. The
@@ -206,20 +207,20 @@ even undefined) behavior.
 
 Thus... with these three compiler diagnostics, we can defined diagnostics to
 scope a `switch` statement in one of the 2 legitimate ways: either *exhaustive*
-or *flexible*.
+or *non-exhaustive*.
 
 **Exhaustive**:
   - `switch-enum`: error
   - `switch-default`: error
   - `covered-switch-default`: ignored
 
-**Flexible**:
+**Non-exhaustive**:
   - `switch-enum`: ignored
   - `switch-default`: error
   - `covered-switch-default`: error
 
 Keep in mind that when you `switch` on a non-enum value, it is always
-*flexible*, so only `switch-default` will have an effect.
+*non-exhaustive*, so only `switch-default` will have an effect.
 
 ## Exhaustive switches
 
@@ -268,12 +269,12 @@ take time to get there. In the meantime, we can use the
 `FOLLY_EXHAUSTIVE_SWITCH()` macro to explicitely opt-in to the exhaustive switch
 behavior.
 
-## Flexible switches
+## Non-exhaustive switches
 
 When you `switch` on the value of a concretely defined enum with a very large
 set of values, and only need to address a sane subset of the values, you write
-a flexible switch. Additionally, when you `switch` on the a non-enum value
-(like an `int`), you write a flexible switch.
+a non-exhaustive switch.  Additionally, when you `switch` on the a non-enum
+value (like an `int`), you write a non-exhaustive switch.
 
 For example (big enum):
 
@@ -322,12 +323,12 @@ cases with a sane default behavior.
 
 This is the less common use case for `switch` statements.
 
-To gain compiler support for flexible switches, we can leverage the three
+To gain compiler support for non-exhaustive switches, we can leverage the three
 `switch` behavior compiler diagnostics:
 
-For the flexible `switch` use case, we want to `covered-switch-default` and
-`switch-default`, and disable `switch-enum`. This way, if the code does
+For the non-exhaustive `switch` use case, we want to `covered-switch-default`
+and `switch-default`, and disable `switch-enum`.  This way, if the code does
 exhaust all the enum values, the compiler will warn us so that we can flip over
 to the exhaustive switch behavior.
 
-For convenience, you can use the `FOLLY_FLEXIBLE_SWITCH()` macro.
+For convenience, you can use the `FOLLY_NON_EXHAUSTIVE_SWITCH()` macro.
