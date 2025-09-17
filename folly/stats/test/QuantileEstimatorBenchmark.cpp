@@ -36,7 +36,7 @@ void addValueMultithreaded(unsigned int iters, size_t nThreads) {
 
     valuesPerThread.reserve(nThreads);
     for (size_t threadIndex = 0; threadIndex < nThreads; threadIndex++) {
-      valuesPerThread.push_back(std::vector<double>{});
+      valuesPerThread.emplace_back();
       auto& values = valuesPerThread.back();
       values.reserve(kNumValues);
       for (size_t i = 0; i < kNumValues; i++) {

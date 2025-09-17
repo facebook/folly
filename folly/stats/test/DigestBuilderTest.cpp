@@ -73,11 +73,11 @@ TEST(DigestBuilder, MultipleThreads) {
   DigestBuilder<SimpleDigest<1000>> builder(1000, 100);
   std::vector<std::thread> threads;
   for (int i = 0; i < 10; ++i) {
-    threads.push_back(std::thread([i, &builder]() {
+    threads.emplace_back([i, &builder]() {
       for (int j = 0; j < 100; ++j) {
         builder.append(i * 100 + j);
       }
-    }));
+    });
   }
   for (auto& thread : threads) {
     thread.join();
