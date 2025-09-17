@@ -44,7 +44,7 @@ TEST_F(ThreadLocalDetailTest, Basic) {
   const int32_t count = 16;
   helper.elements.reserve(count);
   for (int32_t i = 0; i < count; ++i) {
-    helper.elements.push_back({});
+    helper.elements.emplace_back();
   }
 
   // TL wrapper obejcts created but no thread has accessed its
@@ -73,7 +73,7 @@ TEST_F(ThreadLocalDetailTest, MultiThreadedTest) {
   const int32_t count = 1000;
   helper.elements.reserve(count);
   for (int32_t i = 0; i < count; ++i) {
-    helper.elements.push_back({});
+    helper.elements.emplace_back();
   }
   ASSERT_EQ(meta.totalElementWrappers_.load(), 0);
 
@@ -88,12 +88,12 @@ TEST_F(ThreadLocalDetailTest, MultiThreadedTest) {
 
   for (int32_t i = 0; i < count; ++i) {
     threadBarriers[i] = std::make_unique<test::Barrier>(2);
-    threads.push_back(std::thread([&, index = i]() {
+    threads.emplace_back([&, index = i]() {
       // This thread's vector will sized to have index elements at least.
       *helper.elements[index] = index;
       allThreadsBarriers.wait();
       threadBarriers[index]->wait();
-    }));
+    });
   }
 
   // Wait for all threads to start.
@@ -131,7 +131,7 @@ TEST_F(ThreadLocalDetailTest, TLObjectsChurn) {
   const int32_t count = 1000;
   helper.wlock()->elements.reserve(count);
   for (int32_t i = 0; i < count; ++i) {
-    helper.wlock()->elements.push_back({});
+    helper.wlock()->elements.emplace_back();
   }
   ASSERT_EQ(meta.totalElementWrappers_.load(), 0);
 
@@ -146,7 +146,7 @@ TEST_F(ThreadLocalDetailTest, TLObjectsChurn) {
 
   for (int32_t i = 0; i < count; ++i) {
     threadBarriers.push_back(std::make_unique<test::Barrier>(2));
-    threads.push_back(std::thread([&, index = i]() {
+    threads.emplace_back([&, index = i]() {
       *helper.wlock()->elements[index] = index;
       allThreadsBarriers.wait();
 
@@ -157,7 +157,7 @@ TEST_F(ThreadLocalDetailTest, TLObjectsChurn) {
       *helper.wlock()->elements[index] = index;
       // Wait to exit.
       allThreadsBarriers.wait();
-    }));
+    });
   }
 
   // Wait for all threads to start.

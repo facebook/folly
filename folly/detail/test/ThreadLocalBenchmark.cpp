@@ -45,11 +45,11 @@ void measureAccessAllThreads(
   BENCHMARK_SUSPEND {
     helper.elements.reserve(tlCount);
     for (uint32_t i = 0; i < tlCount; ++i) {
-      helper.elements.push_back({});
+      helper.elements.emplace_back();
     }
     for (uint32_t i = 0; i < totalThreads; ++i) {
       threadBarriers.push_back(std::make_unique<test::Barrier>(2));
-      threads.push_back(std::thread([&, index = i]() {
+      threads.emplace_back([&, index = i]() {
         for (uint32_t tlIdx = 0; tlIdx < tlCount; ++tlIdx) {
           uint32_t startIndex = tlIdx % totalThreads;
           uint32_t endIndex = (tlIdx + spreadPerTL) % totalThreads;
@@ -65,7 +65,7 @@ void measureAccessAllThreads(
         }
         allThreadsBarriers.wait();
         threadBarriers[index]->wait();
-      }));
+      });
     }
 
     // Wait for all threads to start.

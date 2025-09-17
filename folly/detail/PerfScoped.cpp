@@ -44,10 +44,10 @@ std::vector<std::string> prependCommonArgs(
   std::vector<std::string> res{std::string(kPerfBinaryPath)};
   res.insert(res.end(), passed.begin(), passed.end());
 
-  res.push_back("-p");
+  res.emplace_back("-p");
   res.push_back(folly::to<std::string>(get_cached_pid()));
   if (output) {
-    res.push_back("--output");
+    res.emplace_back("--output");
     res.push_back(output->path().string());
   }
   return res;
