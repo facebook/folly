@@ -69,7 +69,7 @@ TEST_F(ReentrantAllocatorTest, large) {
   folly::reentrant_allocator<void> alloc{opts};
   std::vector<type, folly::reentrant_allocator<type>> vec{alloc};
   for (auto i = 0u; i < (1u << 16); ++i) {
-    vec.push_back({i});
+    vec.emplace_back(i);
   }
   for (auto i = 0u; i < (1u << 16); ++i) {
     EXPECT_EQ(i, std::get<0>(vec.at(i)));
