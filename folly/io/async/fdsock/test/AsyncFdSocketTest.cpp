@@ -145,7 +145,7 @@ TEST_F(AsyncFdSocketTest, FailNoData) {
 TEST_F(AsyncFdSocketTest, FailSendReceivedFds) {
   char data = 'a'; // Need >= 1 data byte to send ancillary data.
   SocketFds::Received receivedFds;
-  receivedFds.emplace_back(folly::File{0, /*owns*/ false});
+  receivedFds.emplace_back(0, /*owns*/ false);
   SocketFds fds{std::move(receivedFds)};
   sendSock_.writeChainWithFds(
       &wcb_, IOBuf::wrapBuffer(&data, sizeof(data)), std::move(fds));
@@ -291,8 +291,8 @@ TEST_P(AsyncFdSocketSequenceRoundtripTest, WithDataSize) {
     sendSock_.writeChainWithFds(
         &wcb_, IOBuf::wrapBuffer(data.data(), data.size()), std::move(fds));
 
-    sentQueue.push(
-        {msgFirstByte, std::move(data), std::move(sendFds), sendSeqNum});
+    sentQueue.emplace(
+        msgFirstByte, std::move(data), std::move(sendFds), sendSeqNum);
   }
 
   // Read from the socket, and check that any batches of FDs arrive with the

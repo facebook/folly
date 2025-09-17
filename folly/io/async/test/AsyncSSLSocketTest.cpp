@@ -828,7 +828,7 @@ TEST(AsyncSSLSocketTest, SetSupportedApplicationProtocols) {
       new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   std::vector<std::string> protocols;
-  protocols.push_back("rs");
+  protocols.emplace_back("rs");
 
   clientSock->setSupportedApplicationProtocols(protocols);
   serverSock->setSupportedApplicationProtocols(protocols);

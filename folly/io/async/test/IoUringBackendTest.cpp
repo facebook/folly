@@ -566,12 +566,12 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds, bool multishot = false) {
       auto cb_m = std::make_unique<EventRecvmsgMultishotCallback>(
           data, clientSock->address(), kNumBytes, total, evbPtr.get());
       serverSock->setRecvmsgMultishotCallback(cb_m.get());
-      cbVec.push_back([c = std::move(cb_m)]() { return c->getAsyncNum(); });
+      cbVec.emplace_back([c = std::move(cb_m)]() { return c->getAsyncNum(); });
     } else {
       auto cb = std::make_unique<EventRecvmsgCallback>(
           data, clientSock->address(), kNumBytes, total, evbPtr.get());
       serverSock->setEventCallback(cb.get());
-      cbVec.push_back([c = std::move(cb)]() { return c->getAsyncNum(); });
+      cbVec.emplace_back([c = std::move(cb)]() { return c->getAsyncNum(); });
     }
     // bind
     serverSock->bind(folly::SocketAddress("::1", 0));
