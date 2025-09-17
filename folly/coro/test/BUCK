@@ -301,6 +301,21 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_benchmark,
+    name = "shared_mutex_benchmark",
+    srcs = ["SharedMutexBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/coro:async_scope",
+        "//folly/coro:shared_mutex",
+        "//folly/coro:task",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/init:init",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "request_context_test",
     srcs = ["RequestContextTest.cpp"],
