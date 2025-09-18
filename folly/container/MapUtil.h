@@ -125,6 +125,20 @@ Optional<typename Map::mapped_type> get_optional(
 }
 
 /**
+ * Given a map and a key, return a OptionalValue if the key exists and None if
+ * the key does not exist in the map.
+ */
+template <class OptionalValue, class Map, typename Key = typename Map::key_type>
+OptionalValue get_optional(const Map& map, const Key& key) {
+  auto pos = map.find(key);
+  if (pos != map.end()) {
+    return OptionalValue(pos->second);
+  } else {
+    return {};
+  }
+}
+
+/**
  * Given a map and a key, return a reference to the value corresponding to the
  * key in the map, or the given default reference if the key doesn't exist in
  * the map.

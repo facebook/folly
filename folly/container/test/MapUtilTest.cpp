@@ -72,6 +72,14 @@ TEST(MapUtil, getOptional) {
   EXPECT_FALSE(get_optional(m, 2).has_value());
 }
 
+TEST(MapUtil, getOptionalView) {
+  std::map<int, std::string> m;
+  m[1] = "2";
+  EXPECT_TRUE(get_optional<std::optional<std::string_view>>(m, 1).has_value());
+  EXPECT_EQ("2", get_optional<std::optional<std::string_view>>(m, 1).value());
+  EXPECT_FALSE(get_optional<std::optional<std::string_view>>(m, 2).has_value());
+}
+
 TEST(MapUtil, getOptionalPathSimple) {
   using std::map;
   map<int, map<int, map<int, map<int, int>>>> m{{1, {{2, {{3, {{4, 5}}}}}}}};
