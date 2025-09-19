@@ -1,10 +1,8 @@
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "WINDOWS")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
-load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_rust_library.bzl", "fb_xplat_rust_library")
 load("@fbsource//tools/build_defs:fb_xplat_suffixed_aliases.bzl", "create_forwarding_aliases")
 load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_fbcode_compatible", "is_fbcode_mode_mac", "is_fbcode_mode_win", "is_xplat")
-load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
 
 oncall("rust_libraries")
 
@@ -15,12 +13,12 @@ create_forwarding_aliases(
     name = "iobuf",
     actual_name = select({
         "DEFAULT": "fbsource//xplat/folly/rust/iobuf:_iobuf",
-        "ovr_config//os:linux": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_compatible() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
-        "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
-        "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
-    }),
-    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
-    visibility = ["PUBLIC"],
+    "ovr_config//os:linux": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_compatible() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+    "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+    "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+}),
+platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+visibility = ["PUBLIC"],
 ) if is_xplat() else None
 
 create_forwarding_aliases(
@@ -80,11 +78,10 @@ fb_xplat_cxx_library(
         "fbsource//xplat/folly/io:iobuf" if is_xplat() else "fbcode//folly/io:iobuf",
     ],
 )
-
+ 
 fb_xplat_rust_library(
     name = "_iobuf",
     srcs = glob(["src/*.rs"]),
-    cpp_deps = [":_iobuf-ffi"],
     crate = "iobuf",
     crate_root = "src/lib.rs",
     cxx_bridge = "src/lib.rs",
@@ -103,7 +100,8 @@ fb_xplat_rust_library(
         "fbsource//third-party/rust:cxx",
         "fbsource//third-party/rust:memmap2",
         "fbsource//xplat/thrift/lib/rust:fbthrift",
-        ":iobuf-sys",
+        "//folly/rust/iobuf-sys:iobuf-sys",
+        "//thrift/lib/rust:fbthrift",
     ],
 )
 
