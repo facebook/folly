@@ -151,10 +151,6 @@ using SPSerialExecutorQueue = SerialExecutorMPSCQueue<Task, NoopMutex>;
 
 using SerialExecutor = detail::SerialExecutorImpl<detail::SerialExecutorQueue>;
 
-// Typedef for legacy name, can be removed once all references are switched to
-// SerialExecutor.
-using SmallSerialExecutor = SerialExecutor;
-
 /**
  * Single-producer version of SmallExecutor. It is the responsibility of the
  * caller to guarantee that calls to add() are externally serialized, but it can
