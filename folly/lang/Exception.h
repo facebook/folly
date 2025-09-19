@@ -539,7 +539,7 @@ T* exception_ptr_get_object(std::exception_ptr const& ptr) noexcept {
 /// or false.
 template <typename T, typename... S>
 T* exception_ptr_try_get_object_exact_fast(
-    std::exception_ptr const& ptr, tag_t<S...>) noexcept {
+    std::exception_ptr const& ptr, tag_t<S...> /*unused*/) noexcept {
   static_assert((std::is_convertible_v<S*, T*> && ...));
   if (!kHasRtti || !ptr || !exception_ptr_access()) {
     return nullptr;
@@ -742,7 +742,8 @@ struct make_exception_ptr_with_arg_ {
   }
 
   template <typename F, typename E = decltype(FOLLY_DECLVAL(F&)())>
-  FOLLY_ERASE explicit constexpr make_exception_ptr_with_arg_(tag_t<F>) noexcept
+  FOLLY_ERASE explicit constexpr make_exception_ptr_with_arg_(
+      tag_t<F> /*unused*/) noexcept
       : size{sizeof(E)},
         type{FOLLY_TYPE_INFO_OF(E)},
         ctor{make<F, E>},
@@ -834,12 +835,12 @@ struct make_exception_ptr_with_fn {
   }
   template <typename E, typename... A>
   FOLLY_ERASE std::exception_ptr operator()(
-      std::in_place_type_t<E>, A&&... a) const noexcept {
+      std::in_place_type_t<E> /*unused*/, A&&... a) const noexcept {
     return operator()(make<E, make_arg_t<A&&>...>(static_cast<A&&>(a)...));
   }
   template <typename E>
   FOLLY_ERASE std::exception_ptr operator()(
-      std::in_place_t, E&& e) const noexcept {
+      std::in_place_t /*unused*/, E&& e) const noexcept {
     constexpr auto tag = std::in_place_type<remove_cvref_t<E>>;
     check_(FOLLY_TYPE_INFO_OF(std::decay_t<E>), FOLLY_TYPE_INFO_OF(e));
     return operator()(tag, static_cast<E&&>(e));
