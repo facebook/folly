@@ -1,5 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
@@ -8,91 +7,13 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "contains",
-    srcs = ["Contains.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["Contains.h"],
-    deps = [
-        "//xplat/folly/algorithm/simd/detail:simd_contains_impl",
-    ],
-    exported_deps = [
-        "//xplat/folly/algorithm/simd/detail:traits",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "find_first_of",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["find_first_of.h"],
-    deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly:utility",
-        "//xplat/folly/algorithm/simd:movemask",
-        "//xplat/folly/container:span",
-        "//xplat/folly/container:sparse_byte_set",
-        "//xplat/folly/lang:align",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:hint",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "find_first_of_extra",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["find_first_of_extra.h"],
-    deps = [
-        "//xplat/folly:range",
-        "//xplat/folly/container:span",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "find_fixed",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["FindFixed.h"],
-    deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly/algorithm/simd:movemask",
-        "//xplat/folly/algorithm/simd/detail:traits",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "ignore",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["Ignore.h"],
-    deps = [
-        "//xplat/folly:portability",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "movemask",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["Movemask.h"],
-    deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly/algorithm/simd:ignore",
-    ],
-)
-
-# !!!! fbcode/folly/algorithm/simd/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-######################################################################
-# Libraries
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "contains",
     srcs = ["Contains.cpp"],
     headers = ["Contains.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/algorithm/simd/detail:simd_contains_impl",
     ],
@@ -102,10 +23,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "find_first_of",
     headers = ["find_first_of.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":movemask",
         "//folly:portability",
@@ -118,10 +41,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "find_first_of_extra",
     headers = ["find_first_of_extra.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:range",
         "//folly/container:span",
@@ -131,10 +56,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "find_fixed",
     headers = ["FindFixed.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":movemask",
         "//folly:portability",
@@ -142,19 +69,23 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "ignore",
     headers = ["Ignore.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/lang:bits",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "movemask",
     headers = ["Movemask.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":ignore",
         "//folly:portability",
