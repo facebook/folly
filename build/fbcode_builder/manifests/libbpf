@@ -2,8 +2,8 @@
 name = libbpf
 
 [download]
-url = https://github.com/libbpf/libbpf/archive/refs/tags/v0.7.0.tar.gz
-sha256 = 5083588ce5a3a620e395ee1e596af77b4ec5771ffc71cff2af49dfee38c06361
+url = https://github.com/libbpf/libbpf/archive/refs/tags/v1.6.2.tar.gz
+sha256 = 16f31349c70764cba8e0fad3725cc9f52f6cf952554326aa0229daaa21ef4fbd
 
 # BPF only builds on linux, so make it a NOP on other platforms
 [build.not(os=linux)]
@@ -11,7 +11,7 @@ builder = nop
 
 [build.os=linux]
 builder = make
-subdir = libbpf-0.7.0/src
+subdir = libbpf-1.6.2/src
 
 [make.build_args]
 BUILD_STATIC_ONLY=y
