@@ -58,23 +58,23 @@ String Uri::toString() const {
   if (hasAuthority_) {
     toAppend(scheme_, "://", &str);
     if (!password_.empty()) {
-      toAppend(username_, ":", password_, "@", &str);
+      toAppend(username_, ':', password_, '@', &str);
     } else if (!username_.empty()) {
-      toAppend(username_, "@", &str);
+      toAppend(username_, '@', &str);
     }
     toAppend(host_, &str);
     if (port_ != 0) {
-      toAppend(":", port_, &str);
+      toAppend(':', port_, &str);
     }
   } else {
-    toAppend(scheme_, ":", &str);
+    toAppend(scheme_, ':', &str);
   }
   toAppend(path_, &str);
   if (!query_.empty()) {
-    toAppend("?", query_, &str);
+    toAppend('?', query_, &str);
   }
   if (!fragment_.empty()) {
-    toAppend("#", fragment_, &str);
+    toAppend('#', fragment_, &str);
   }
   return str;
 }
