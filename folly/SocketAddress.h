@@ -363,6 +363,34 @@ class SocketAddress {
   }
 
   /**
+   * Construct a SocketAddress from a local port number.
+   * see setFromLocalPort for more details.
+   *
+   * Raises std::invalid_argument on error.
+   *
+   * @param port The local port number (in host byte order)
+   */
+  static SocketAddress makeFromLocalPort(uint16_t port) {
+    SocketAddress addr;
+    addr.setFromLocalPort(port);
+    return addr;
+  }
+
+  /**
+   * Similar to makeFromLocalPort(uint16_t port), but accepts the port as
+   * a std::string.
+   *
+   * Raises std::invalid_argument on error.
+   *
+   * @param port The local port number
+   */
+  static SocketAddress makeFromLocalPort(const char* port) {
+    SocketAddress addr;
+    addr.setFromLocalPort(port);
+    return addr;
+  }
+
+  /**
    * Initialize this SocketAddress from a socket's peer address.
    *
    * Raises std::system_error on error.

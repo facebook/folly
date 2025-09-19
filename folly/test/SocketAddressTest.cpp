@@ -194,6 +194,19 @@ TEST(SocketAddress, SetFromStrings) {
   EXPECT_THROW(addr.setFromIpPort("[::]"), std::system_error);
 }
 
+TEST(SocketAddress, NamedConstructor) {
+  constexpr auto port = 1234;
+  SocketAddress addr = SocketAddress::makeFromLocalPort(port);
+  EXPECT_EQ(addr.getPort(), port);
+
+  addr = SocketAddress::makeFromLocalPort(folly::to<std::string>(port).c_str());
+  EXPECT_EQ(addr.getPort(), port);
+
+  SocketAddress otheraddr;
+  otheraddr.setFromLocalPort(port);
+  EXPECT_EQ(addr, otheraddr);
+}
+
 TEST(SocketAddress, EqualityAndHash) {
   SocketAddress empty1;
   SocketAddress empty2;
