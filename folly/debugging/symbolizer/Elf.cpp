@@ -224,12 +224,12 @@ ElfFile::OpenResult ElfFile::init() noexcept {
     return {kInvalidElfFile, "not an ELF file (too short)"};
   }
 
-  std::array<char, 5> elfMagBuf = {{0, 0, 0, 0, 0}};
+  std::array<char, SELFMAG> elfMagBuf = {{0, 0, 0, 0}};
   if (::lseek(fd_, 0, SEEK_SET) != 0 ||
-      fileops::read(fd_, elfMagBuf.data(), 4) != 4) {
+      fileops::read(fd_, elfMagBuf.data(), SELFMAG) != SELFMAG) {
     return {kInvalidElfFile, "unable to read ELF file for magic number"};
   }
-  if (std::strncmp(elfMagBuf.data(), ELFMAG, sizeof(ELFMAG)) != 0) {
+  if (std::strncmp(elfMagBuf.data(), ELFMAG, SELFMAG) != 0) {
     return {kInvalidElfFile, "invalid ELF magic"};
   }
   char c;
