@@ -17,9 +17,18 @@ from contextlib import contextmanager
 from libcpp.memory cimport make_shared
 from cpython.object cimport PyObject
 from cpython.contextvars cimport get_value, PyContextVar_Set, PyContextVar_Reset, PyContextVar_New, PyContext_CheckExact
+from cpython.pycapsule cimport PyCapsule_CheckExact
 
 
 _RequestContext = PyContextVar_New("_RequestContext", NULL)
+
+
+cdef object set_PyContext(shared_ptr[RequestContext]& ptr):
+    return PyContextVar_Set(_RequestContext, RequestContextToPyCapsule(ptr))
+
+
+cdef int reset_PyContext(object token) except -1:
+    return PyContextVar_Reset(_RequestContext, token)
 
 
 @cython.auto_pickle(False)
@@ -33,19 +42,8 @@ cdef class Context:
     def __repr__(self):
         return f"<{self.__class__!r}: {<unsigned long>self._ptr.get()}>"
 
-
-cpdef Context create() noexcept:
-    """ Create a new context """
-    cdef Context ctx = Context.__new__(Context)
-    ctx._ptr = make_shared[RequestContext]()
-    return ctx
-
-
-cpdef Context set(Context ctx) noexcept:
-    """ Set the current context, Return the previous context """
-    cdef Context prev = Context.__new__(Context)
-    prev._ptr = RequestContext.setContext(ctx._ptr)
-    return prev
+    def __bool__(self):
+        return self._ptr.get() != NULL
 
 
 cpdef Context save() noexcept:
@@ -57,21 +55,27 @@ cpdef Context save() noexcept:
 
 cpdef Context get_from_contextvar() noexcept:
     """ Return the current context from the contextvar """
-    return get_value(_RequestContext)
+    cdef Context ctx = Context.__new__(Context)
+
+    ctx_var = get_value(_RequestContext)
+    if ctx_var is not None and PyCapsule_CheckExact(ctx_var):
+        ctx._ptr = PyCapsuleToRequestContext(ctx_var)
+    return ctx
 
 
 @contextmanager
 def active():
     """ Create a Context and shove it into the python contextvar """
-    ctx = create()
-    prev = set(ctx)
-    token = PyContextVar_Set(_RequestContext, ctx)
+    cdef shared_ptr[RequestContext] rctx = make_shared[RequestContext]()
+    prev_rctx = RequestContext.setContext(rctx)
+    token = set_PyContext(rctx)
+    cdef Context ctx = Context.__new__(Context)
+    ctx._ptr = rctx
     try:
         yield ctx
     finally:
-        existing = set(prev)
-        assert existing == ctx
-        PyContextVar_Reset(_RequestContext, token)
+        assert RequestContext.setContext(prev_rctx) == rctx
+        reset_PyContext(token)
 
 
 cdef extern from "folly/python/request_context.h":
@@ -87,9 +91,13 @@ cdef int _watcher(PyContextEvent event, PyObject* pycontext):
     if pycontext is NULL or not PyContext_CheckExact(<object>pycontext) or event != PyContextEvent.Py_CONTEXT_SWITCHED:
         return 0
 
+    cdef shared_ptr[RequestContext] empty_ctx
     ctx = get_value(_RequestContext)
-    if ctx is not None:
-        set(ctx)
+    if PyCapsule_CheckExact(ctx):
+        RequestContext.setContext(PyCapsuleToRequestContext(ctx))
+    else:
+        # If we don't set something here, then the RequestContext will leak to the next PyContext
+        set_PyContext(empty_ctx)
 
     return 0
 

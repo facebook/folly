@@ -20,11 +20,18 @@ cdef extern from "folly/io/async/Request.h" namespace "folly":
         shared_ptr[RequestContext] setContext(shared_ptr[RequestContext])
         @staticmethod
         shared_ptr[RequestContext] saveContext()
+        @staticmethod
+        RequestContext* try_get()
+
+cdef extern from "folly/python/request_context_capsule.h" namespace "folly::python":
+    cdef object RequestContextToPyCapsule(shared_ptr[RequestContext] ptr)
+    cdef shared_ptr[RequestContext] PyCapsuleToRequestContext(object ptr)
 
 cdef class Context:
     cdef shared_ptr[RequestContext] _ptr
 
-cpdef Context create() noexcept
-cpdef Context set(Context ctx) noexcept
+cdef object set_PyContext(shared_ptr[RequestContext]& ptr)
+cdef int reset_PyContext(object token) except -1
+
 cpdef Context save() noexcept
 cpdef Context get_from_contextvar() noexcept
