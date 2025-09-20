@@ -32,6 +32,7 @@
 #include <folly/tracing/AsyncStack.h>
 
 #include <cassert>
+#include <deque>
 #include <exception>
 #include <type_traits>
 #include <utility>
@@ -300,7 +301,7 @@ class BlockingWaitExecutor final
     baton_.reset();
 
     folly::fibers::runInMainContext([&]() {
-      std::vector<BlockingWaitTaskInfo> infos;
+      std::deque<BlockingWaitTaskInfo> infos;
       queue_.swap(infos);
       RequestContextSaverScopeGuard guard;
       for (auto& info : infos) {
@@ -344,7 +345,7 @@ class BlockingWaitExecutor final
         : func(std::move(f)), rctx(std::move(r)) {}
   };
 
-  folly::Synchronized<std::vector<BlockingWaitTaskInfo>> queue_;
+  folly::Synchronized<std::deque<BlockingWaitTaskInfo>> queue_;
   fibers::Baton baton_;
 
   std::atomic<ssize_t> keepAliveCount_{0};

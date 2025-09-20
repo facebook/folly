@@ -20,6 +20,7 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <deque>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -539,7 +540,7 @@ class WaitExecutor final : public folly::Executor {
   }
 
   struct Queue {
-    std::vector<Func> funcs;
+    std::deque<Func> funcs;
     bool detached{false};
   };
 
