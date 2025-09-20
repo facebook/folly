@@ -463,7 +463,9 @@ class hazptr_domain {
     Set hs;
     auto hprec = hazptrs_.load(std::memory_order_acquire);
     for (; hprec; hprec = hprec->next()) {
-      hs.insert(hprec->hazptr());
+      if (auto ptr = hprec->hazptr()) {
+        hs.insert(ptr);
+      }
     }
     return hs;
   }
