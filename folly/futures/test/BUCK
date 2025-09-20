@@ -2,10 +2,8 @@ load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "no
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "WINDOWS")
-load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
-load("@fbsource//tools/build_defs:glob_defs.bzl", "subdir_glob")
-load("../../defs.bzl", "CXXFLAGS", "DEFAULT_APPLE_SDKS", "FBANDROID_CPPFLAGS", "FBANDROID_CXXFLAGS", "FBOBJC_CXXFLAGS", "folly_xplat_cxx_test")
+load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "WINDOWS")
+load("../../defs.bzl", "CXXFLAGS", "FBANDROID_CPPFLAGS", "FBANDROID_CXXFLAGS", "FBOBJC_CXXFLAGS", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -63,16 +61,17 @@ non_fbcode_target(
         "WindowTest.cpp",
     ],
     include_directories = [
-        "..",
+        "../..",
     ],
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
     preprocessor_flags = select({
         "DEFAULT": [],
         "ovr_config//os:linux": FBANDROID_CPPFLAGS,
     }),
-    raw_headers = glob([
+    raw_headers = [
+        "TestExecutor.h",
         "ThenCompileTest.h",
-    ]),
+    ],
     use_instrumentation_test = True,
     deps = [
         "fbsource//third-party/boost:boost",
@@ -314,22 +313,6 @@ non_fbcode_target(
         "//xplat/folly/system:thread_name",
         "//xplat/folly/test/common:test_main",
     ],
-)
-
-non_fbcode_target(
-    _kind = fb_xplat_cxx_library,
-    name = "test-headers",
-    header_namespace = "",
-    exported_headers = subdir_glob(
-        [
-            ("", "**/*.h"),
-        ],
-        prefix = "folly/concurrency/test",
-    ),
-    apple_sdks = DEFAULT_APPLE_SDKS,
-    force_static = True,
-    platforms = (ANDROID, APPLE, CXX, FBCODE, WINDOWS),
-    visibility = ["PUBLIC"],
 )
 
 # fbcode build rules

@@ -3104,7 +3104,6 @@ non_fbcode_target(
         "//xplat/folly/concurrency/test:test-headers",
         "//xplat/folly/container/test:test-headers",
         "//xplat/folly/experimental/flat_combining/test:test-headers",
-        "//xplat/folly/futures/test:test-headers",
         "//xplat/folly/tracing/test:test-headers",
     ],
 )
