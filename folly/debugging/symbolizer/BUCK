@@ -65,6 +65,7 @@ non_fbcode_target(
         "//xplat/folly/lang:safe_assert",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/container:span",
         "fbsource//xplat/folly/portability:config",
     ],
 )
@@ -242,6 +243,7 @@ fbcode_target(
         "//folly:conv",
         "//folly:likely",
         "//folly:range",
+        "//folly/container:span",
         "//folly/lang:safe_assert",
         "//folly/portability:config",
     ],

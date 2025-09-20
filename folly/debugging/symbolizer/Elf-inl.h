@@ -138,5 +138,92 @@ const ElfSym* ElfFile::iterateSymbolsWithTypes(
   });
 }
 
+template <class Fn>
+folly::Expected<ElfFile::Note, ElfFile::FindNoteError>
+ElfFile::iterateNotesInBodyHelper(folly::StringPiece body, Fn& fn) const
+    noexcept(is_nothrow_invocable_v<Fn, const Note&>) {
+  static_assert(alignof(ElfNhdr) >= 4);
+  if (uintptr_t(body.data()) % alignof(ElfNhdr) != 0) {
+    return Unexpected(FindNoteError(FindNoteFailureCode::NoteUnaligned));
+  }
+
+  while (body.size() > 0) {
+    folly::span<const uint8_t> noteBody =
+        span(reinterpret_cast<const uint8_t*>(body.data()), body.size());
+    auto noteMaybe = Note::parse(noteBody);
+    if (!noteMaybe) {
+      return noteMaybe;
+    }
+
+    auto note = *noteMaybe;
+
+    if (fn(note)) {
+      return note;
+    }
+
+    body.advance(note.alignedSize());
+  }
+
+  return Unexpected(FindNoteError(FindNoteFailureCode::NoteNotFound));
+}
+
+template <class Fn>
+folly::Expected<ElfFile::Note, ElfFile::FindNoteError>
+ElfFile::iterateNotesInSections(const ElfShdr* section, Fn fn) const
+    noexcept(is_nothrow_invocable_v<Fn, const Note&>) {
+  if (section != nullptr) {
+    return iterateNotesInBodyHelper(getSectionBody(*section), fn);
+  }
+
+  folly::Expected<Note, FindNoteError> noteMaybe =
+      Unexpected(FindNoteError(FindNoteFailureCode::NoteNotFound));
+  iterateSectionsWithType(SHT_NOTE, [&](const ElfShdr& sh) {
+    noteMaybe = iterateNotesInBodyHelper(getSectionBody(sh), fn);
+    // Check if we got a good result, if so return it
+    if (noteMaybe) {
+      return STOP;
+    }
+
+    // Check if we got a data corruption error, stop and return that.
+    if (noteMaybe.error().isDataCorruptionError()) {
+      return STOP;
+    }
+    return CONTINUE;
+  });
+
+  return noteMaybe;
+}
+
+template <class Fn>
+folly::Expected<ElfFile::Note, ElfFile::FindNoteError>
+ElfFile::iterateNotesInSegments(const ElfPhdr* segment, Fn fn) const
+    noexcept(is_nothrow_invocable_v<Fn, const Note&>) {
+  if (segment != nullptr) {
+    return iterateNotesInBodyHelper(getSegmentBody(*segment), fn);
+  }
+
+  folly::Expected<Note, FindNoteError> noteMaybe =
+      Unexpected(FindNoteError(FindNoteFailureCode::NoteNotFound));
+  iterateProgramHeaders([&](const ElfPhdr& ph) {
+    if (ph.p_type != PT_NOTE) {
+      return CONTINUE;
+    }
+
+    noteMaybe = iterateNotesInBodyHelper(getSegmentBody(ph), fn);
+    // Check if we got a good result, if so return it
+    if (noteMaybe) {
+      return STOP;
+    }
+
+    // Check if we got a data corruption error, stop and return that.
+    if (noteMaybe.error().isDataCorruptionError()) {
+      return STOP;
+    }
+    return CONTINUE;
+  });
+
+  return noteMaybe;
+}
+
 } // namespace symbolizer
 } // namespace folly
