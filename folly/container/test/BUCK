@@ -1192,3 +1192,14 @@ fbcode_target(
         "//folly/json:dynamic",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "irange_test",
+    srcs = ["IRangeTest.cpp"],
+    headers = [],
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "//folly/container:irange",
+    ],
+)

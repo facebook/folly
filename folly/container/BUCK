@@ -883,3 +883,11 @@ fbcode_target(
     name = "collection_util",
     headers = ["CollectionUtil.h"],
 )
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "irange",
+    headers = ["irange.h"],
+    deps = [],
+    exported_deps = [],
+)
