@@ -24,6 +24,7 @@
 #include <folly/coro/Baton.h>
 #include <folly/coro/Task.h>
 #include <folly/futures/Future.h>
+#include <folly/portability/GFlags.h>
 #include <folly/python/AsyncioExecutor.h>
 #include <folly/python/executor.h>
 
@@ -65,6 +66,10 @@ inline coro::Task<uint64_t> coro_blockingTask(
   // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
   std::this_thread::sleep_for(std::chrono::milliseconds{blockMs});
   co_return echoVal;
+}
+
+inline void setAsyncioExecutorDriveTimeSliceMs(uint32_t timeSliceMs) {
+  FLAGS_folly_asyncio_executor_drive_time_slice_ms = timeSliceMs;
 }
 
 } // namespace test

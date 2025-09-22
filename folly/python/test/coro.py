@@ -57,7 +57,6 @@ class Futures(unittest.TestCase):
         results = await asyncio.gather(*tasks)
         self.assertEqual(results, expected)
 
-        # Today drive only process 1 task at a time
         final_stats = simplebridgecoro.get_executor_stats()
         self.assertEqual(final_stats.drive_count, initial_count + drive_count)
 
@@ -68,6 +67,18 @@ class Futures(unittest.TestCase):
         block_ms = 1
         # Drive called once
         drive_count = 1
+        loop.run_until_complete(
+            self._test_executor_stats(task_count, block_ms, drive_count)
+        )
+
+    def test_executor_stats_timeslice_0(self):
+        simplebridgecoro.set_drive_time_slice_ms(0)
+        loop = asyncio.get_event_loop()
+        task_count = 4
+        # Irrelevant, no time slice
+        block_ms = 1
+        # Drive called twice per task (schedule, process result)
+        drive_count = 8
         loop.run_until_complete(
             self._test_executor_stats(task_count, block_ms, drive_count)
         )
