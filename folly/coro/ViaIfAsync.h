@@ -113,7 +113,7 @@ class ViaCoroutine {
  public:
   class promise_type final
       : public ViaCoroutinePromiseBase,
-        public ExtendedCoroutinePromise {
+        public ExtendedCoroutinePromiseCrtp<promise_type> {
     struct FinalAwaiter {
       bool await_ready() noexcept { return false; }
 
@@ -154,14 +154,14 @@ class ViaCoroutine {
 
     folly::AsyncStackFrame& getLeafFrame() noexcept { return leafFrame_; }
 
-    std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-        exception_wrapper& ex) final {
-      auto [handle, frame] = continuation_.getErrorHandle(ex);
-      setContinuation(handle);
+    static ExtendedCoroutineHandle::ErrorHandle getErrorHandle(
+        promise_type& me, exception_wrapper& ex) {
+      auto [handle, frame] = me.continuation_.getErrorHandle(ex);
+      me.setContinuation(handle);
       if (frame && IsStackAware) {
-        leafFrame_.setParentFrame(*frame);
+        me.leafFrame_.setParentFrame(*frame);
       }
-      return {coroutine_handle<promise_type>::from_promise(*this), nullptr};
+      return {coroutine_handle<promise_type>::from_promise(me), nullptr};
     }
   };
 

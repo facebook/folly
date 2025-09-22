@@ -295,25 +295,33 @@ inline bool detect_promise_return_object_eager_conversion() {
   return t ? true : f ? false : coro::go().eager;
 }
 
-class ExtendedCoroutineHandle;
-
-// Extended promise interface folly::coro types are expected to implement
-class ExtendedCoroutinePromise {
- public:
-  // Types may provide a more efficient resumption path when they know they will
-  // be receiving an error result from the awaitee.
-  // If they do, they might also update the active stack frame.
-  virtual std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-      exception_wrapper&) = 0;
-
- protected:
-  ~ExtendedCoroutinePromise() = default;
-};
+template <typename>
+class ExtendedCoroutinePromiseCrtp;
 
 // Extended version of coroutine_handle<void>
 // Assumes (and enforces) assumption that coroutine_handle is a pointer
 class ExtendedCoroutineHandle {
  public:
+  using ErrorHandle = std::pair<ExtendedCoroutineHandle, AsyncStackFrame*>;
+
+  class PromiseBase {
+   private:
+    friend class ExtendedCoroutineHandle;
+    template <typename>
+    friend class ExtendedCoroutinePromiseCrtp;
+
+    using Fn = ErrorHandle(PromiseBase*, exception_wrapper& ex);
+
+    explicit PromiseBase(Fn* fn) : getErrorHandlePtr_(fn) {}
+    ~PromiseBase() = default;
+
+    // A manual vtable with 1 function.  The benefit over virtual inheritance
+    // is that derived classes like `TaskPromise` don't have to be `final` in
+    // order to for the compiler to treat them as non-polymorphic.
+    // Specifically, this enables `SafeTask`, a more type-safe `Task`.
+    Fn* getErrorHandlePtr_;
+  };
+
   template <typename Promise>
   /*implicit*/ ExtendedCoroutineHandle(
       coroutine_handle<Promise> handle) noexcept
@@ -324,11 +332,10 @@ class ExtendedCoroutineHandle {
 
   template <
       typename Promise,
-      std::enable_if_t<
-          std::is_base_of_v<ExtendedCoroutinePromise, Promise>,
-          int> = 0>
-  /*implicit*/ ExtendedCoroutineHandle(Promise* p) noexcept
-      : basic_(coroutine_handle<Promise>::from_promise(*p)), extended_(p) {}
+      std::enable_if_t<std::is_base_of_v<PromiseBase, Promise>, int> = 0>
+  /*implicit*/ ExtendedCoroutineHandle(Promise* promise) noexcept
+      : basic_(coroutine_handle<Promise>::from_promise(*promise)),
+        extended_(static_cast<PromiseBase*>(promise)) {}
 
   ExtendedCoroutineHandle() noexcept = default;
 
@@ -338,10 +345,9 @@ class ExtendedCoroutineHandle {
 
   coroutine_handle<> getHandle() const noexcept { return basic_; }
 
-  std::pair<ExtendedCoroutineHandle, AsyncStackFrame*> getErrorHandle(
-      exception_wrapper& ex) {
+  ErrorHandle getErrorHandle(exception_wrapper& ex) {
     if (extended_) {
-      return extended_->getErrorHandle(ex);
+      return extended_->getErrorHandlePtr_(extended_, ex);
     }
     return {basic_, nullptr};
   }
@@ -351,15 +357,37 @@ class ExtendedCoroutineHandle {
  private:
   template <typename Promise>
   static auto fromBasic(coroutine_handle<Promise> handle) noexcept {
-    if constexpr (std::is_convertible_v<Promise*, ExtendedCoroutinePromise*>) {
-      return static_cast<ExtendedCoroutinePromise*>(&handle.promise());
+    if constexpr (std::is_convertible_v<Promise*, PromiseBase*>) {
+      return static_cast<PromiseBase*>(&handle.promise());
     } else {
       return nullptr;
     }
   }
 
   coroutine_handle<> basic_;
-  ExtendedCoroutinePromise* extended_{nullptr};
+  PromiseBase* extended_{nullptr};
+};
+
+// folly::coro types are expected to implement this extended promise interface:
+//   (1) Publicly inherit from `ExtendedCoroutinePromiseCrtp<YourPromise>`,
+//   (2) Implement this static method on `YourPromise`:
+//
+//  static ExtendedCoroutineHandle::ErrorHandle getErrorHandle(
+//      YourPromise&, exception_wrapper&)
+//
+// Rationale: Types may provide a more efficient resumption path when they
+// know they will be receiving an error result from the awaitee.  If they
+// do, they might also update the active stack frame.
+template <typename Promise>
+class ExtendedCoroutinePromiseCrtp
+    : public ExtendedCoroutineHandle::PromiseBase {
+ protected:
+  using PromiseBase = typename ExtendedCoroutineHandle::PromiseBase;
+  ExtendedCoroutinePromiseCrtp()
+      : PromiseBase(+[](PromiseBase* promise, exception_wrapper& ex) {
+          return Promise::getErrorHandle(*static_cast<Promise*>(promise), ex);
+        }) {}
+  ~ExtendedCoroutinePromiseCrtp() = default;
 };
 
 } // namespace folly::coro
