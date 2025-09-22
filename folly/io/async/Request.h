@@ -297,9 +297,7 @@ class RequestContext {
   static std::shared_ptr<RequestContext> setContext(
       std::shared_ptr<RequestContext>&& newCtx_);
 
-  static std::shared_ptr<RequestContext> saveContext() {
-    return getStaticContext().requestContext;
-  }
+  static std::shared_ptr<RequestContext> saveContext();
 
  private:
   struct Tag {};

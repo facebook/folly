@@ -588,7 +588,7 @@ TEST_F(RequestContextTest, AccessAllThreadsDestructionGuard) {
   for (auto& thread : threads) {
     thread = std::thread([&] {
       // Force creation of thread local
-      RequestContext::get();
+      RequestContext::setContext(nullptr);
       ++count;
       // Wait for all other threads to do the same
       barrier.wait();

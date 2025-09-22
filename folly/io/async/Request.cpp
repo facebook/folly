@@ -658,6 +658,11 @@ void RequestContext::clearContextData(const RequestToken& val) {
   return prevCtx;
 }
 
+/* static */ std::shared_ptr<RequestContext> RequestContext::saveContext() {
+  auto* staticContext = tryGetStaticContext();
+  return staticContext ? staticContext->requestContext : nullptr;
+}
+
 RequestContext::StaticContext::~StaticContext() {
   // If there is an active request context, reset requestContext before
   // destroying it, as RequestData destructors (or onClear()) could try to
@@ -666,18 +671,13 @@ RequestContext::StaticContext::~StaticContext() {
   std::ignore = std::exchange(requestContext, {});
 }
 
-namespace {
-thread_local bool getStaticContextCalled = false;
-}
-
 /* static */ RequestContext::StaticContext& RequestContext::getStaticContext() {
-  getStaticContextCalled = true;
   return StaticContextThreadLocal::get();
 }
 
 /* static */ RequestContext::StaticContext*
 RequestContext::tryGetStaticContext() {
-  return getStaticContextCalled ? &StaticContextThreadLocal::get() : nullptr;
+  return StaticContextThreadLocal::try_get();
 }
 
 /* static */ RequestContext::StaticContextAccessor
@@ -711,12 +711,14 @@ RequestContext::setShallowCopyContext() {
 }
 
 /* static */ RequestContext* RequestContext::get() {
-  auto& context = getStaticContext().requestContext;
-  if (!context) {
-    static RequestContext defaultContext(0);
-    return std::addressof(defaultContext);
+  if (auto* staticContext = tryGetStaticContext()) {
+    if (auto& context = staticContext->requestContext) {
+      return context.get();
+    }
   }
-  return context.get();
+
+  static RequestContext defaultContext(0);
+  return std::addressof(defaultContext);
 }
 
 /* static */ RequestContext* RequestContext::try_get() {

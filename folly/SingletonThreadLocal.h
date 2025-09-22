@@ -146,17 +146,31 @@ class SingletonThreadLocal {
     return wrapper;
   }
 
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static LocalCache& getLocalCache() {
+    static thread_local LocalCache cache;
+    return cache;
+  }
+
  public:
-  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& get() {
+  FOLLY_ALWAYS_INLINE static T& get() {
     if (kIsMobile) {
       return getWrapper();
     }
-    static thread_local LocalCache cache;
+    auto& cache = getLocalCache();
     auto* object = static_cast<Object*>(cache.object);
     return FOLLY_LIKELY(!!object) ? *object : getSlow(cache).object;
   }
 
   static T* try_get() {
+    if (!kIsMobile) {
+      auto& cache = getLocalCache();
+      if (auto* object = static_cast<Object*>(cache.object)) {
+        return object;
+      }
+    }
+    if (threadlocal_detail::StaticMetaBase::dying()) {
+      return nullptr;
+    }
     auto* wrapper = getWrapperTL().get_existing();
     return wrapper ? &static_cast<T&>(*wrapper) : nullptr;
   }
