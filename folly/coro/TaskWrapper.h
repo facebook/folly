@@ -122,6 +122,36 @@ inline constexpr bool is_task_promise_or_wrapper_v =
 
 template <typename T, typename WrapperTask, typename Promise>
 class TaskPromiseWrapperBase {
+ private:
+  // Detail of `is_promise_type_punning_safe`. Implementation notes:
+  //  - This needs a body because GCC doesn't want `d` referenced in a `->` type
+  //    signature.
+  //  - To use this with the cheaper-to-compile `FOLLY_DECLVAL`, which is
+  //    `nullptr`, this must be in an unevaluated context, since patently-null
+  //    static casts are special in that they discard offsets.  So, the below
+  //    equality would always be true during constant evaluation.
+  template <typename Me>
+  static FOLLY_CONSTEVAL auto promise_at_offset0(Me me) {
+    return std::bool_constant<
+        static_cast<const void*>(&me) ==
+        static_cast<const void*>(&me.promise_)>{};
+  }
+
+  // CRITICAL SAFETY CHECK: `&promise_` must be the same as `this`, and both
+  // objects must have the same size.  This is required since some promise
+  // operations (notably `get_return_object()` need to obtain a
+  // `coroutine_handle<Promise>` to allow the wrapped coro not to know about
+  // the wrapper.  At the same time, the actual promise is
+  // `TaskPromiseWrapperBase`.  Punning promises & handles in this way is
+  // technically UB, but it's practically safe so long as the layouts of
+  // `Promise` and `TaskPromiseWrapperBase` are identical, which is what we
+  // verify here.
+  static FOLLY_CONSTEVAL bool is_promise_type_punning_safe() {
+    return require_sizeof<Promise> == require_sizeof<TaskPromiseWrapperBase> &&
+        decltype(promise_at_offset0(
+            FOLLY_DECLVAL(TaskPromiseWrapperBase)))::value;
+  }
+
  protected:
   static_assert(
       is_task_or_wrapper_v<WrapperTask, T>,
@@ -139,6 +169,9 @@ class TaskPromiseWrapperBase {
   using TaskWrapperInnerPromise = Promise;
 
   WrapperTask get_return_object() noexcept {
+    // NB: See the function doc.  It'd be nice to have the `static_assert` at
+    // class scope, but the type is still incomplete at that point.
+    static_assert(is_promise_type_punning_safe());
     return WrapperTask{promise_.get_return_object()};
   }
 
