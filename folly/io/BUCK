@@ -49,6 +49,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_uio",
         "//folly/synchronization:micro_spin_lock",
     ],
+    external_deps = ["glog"],
     exported_external_deps = [
         "glog",
     ],
@@ -170,6 +171,7 @@ fb_dirsync_cpp_library(
     ],
     external_deps = [
         ("boost", None, "boost_regex"),
+        "boost",
     ],
     exported_external_deps = [
         "boost",
@@ -186,6 +188,7 @@ fb_dirsync_cpp_library(
         "//folly:exception",
         "//folly/portability:windows",
     ],
+    external_deps = [("boost", None, "boost_filesystem")],
     exported_external_deps = [
         ("boost", None, "boost_filesystem"),
     ],
