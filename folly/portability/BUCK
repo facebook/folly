@@ -127,9 +127,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "extended",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
     feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         ":builtins",

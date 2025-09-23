@@ -1,24 +1,22 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
-load("@fbsource//tools/build_defs:glob_defs.bzl", "subdir_glob")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "ANDROID",
     "APPLE",
     "CXX",
-    "FBCODE",
     "WINDOWS",
 )
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
-    "DEFAULT_APPLE_SDKS",
     "FBANDROID_CXXFLAGS",
     "FBOBJC_CXXFLAGS",
     "folly_xplat_cxx_test",
+    "folly_xplat_library",
 )
 
 oncall("fbcode_entropy_wardens_folly")
@@ -39,10 +37,6 @@ non_fbcode_target(
         "..",
     ],
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
-    raw_headers = [
-        "F14TestUtil.h",
-        "TrackingTypes.h",
-    ],
     use_instrumentation_test = True,
     deps = [
         "fbsource//third-party/boost:boost",
@@ -212,6 +206,8 @@ non_fbcode_target(
         "fbsource//xplat/third-party/linker_lib:atomic",
         "fbsource//xplat/third-party/openssl:crypto",
         "fbsource//xplat/third-party/openssl:ssl",
+        ":f14_test_util",
+        ":tracking_types",
         "//xplat/folly:benchmark",
         "//xplat/folly:conv",
         "//xplat/folly:fbstring",
@@ -247,10 +243,6 @@ non_fbcode_target(
         "..",
     ],
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
-    raw_headers = [
-        "F14TestUtil.h",
-        "TrackingTypes.h",
-    ],
     use_instrumentation_test = True,
     deps = [
         "fbsource//third-party/boost:boost",
@@ -420,6 +412,8 @@ non_fbcode_target(
         "fbsource//xplat/third-party/linker_lib:atomic",
         "fbsource//xplat/third-party/openssl:crypto",
         "fbsource//xplat/third-party/openssl:ssl",
+        ":f14_test_util",
+        ":tracking_types",
         "//xplat/folly:benchmark",
         "//xplat/folly:conv",
         "//xplat/folly:fbstring",
@@ -496,22 +490,6 @@ non_fbcode_target(
         "fbsource//xplat/folly/portability:gtest",
         "//xplat/folly/container:std_bitset",
     ],
-)
-
-non_fbcode_target(
-    _kind = fb_xplat_cxx_library,
-    name = "test-headers",
-    header_namespace = "",
-    exported_headers = subdir_glob(
-        [
-            ("", "**/*.h"),
-        ],
-        prefix = "folly/container/test",
-    ),
-    apple_sdks = DEFAULT_APPLE_SDKS,
-    force_static = True,
-    platforms = (ANDROID, APPLE, CXX, FBCODE, WINDOWS),
-    visibility = ["PUBLIC"],
 )
 
 non_fbcode_target(
@@ -625,12 +603,13 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "f14_test_util",
     headers = [
         "F14TestUtil.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container/detail:f14_hash_detail",
     ],
@@ -967,12 +946,13 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "tracking_types",
     headers = [
         "TrackingTypes.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:function",
         "//folly/hash:hash",

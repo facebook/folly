@@ -123,7 +123,7 @@ non_fbcode_target(
     srcs = [
         "Benchmark.cpp",
     ],
-    enable_static_variant = False,
+    enable_static_variant = True,
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Benchmark.h",
@@ -3101,9 +3101,11 @@ non_fbcode_target(
     visibility = ["PUBLIC"],
     deps = [
         ":memory",
-        "//xplat/folly/container/test:test-headers",
-        "//xplat/folly/experimental/flat_combining/test:test-headers",
-        "//xplat/folly/tracing/test:test-headers",
+        "//xplat/folly/container/test:f14_test_util",
+        "//xplat/folly/container/test:tracking_types",
+        "//xplat/folly/experimental/flat_combining/test:flat_combining_examples",
+        "//xplat/folly/experimental/flat_combining/test:flat_combining_test_helpers",
+        "//xplat/folly/tracing/test:static_tracepoint_test_module",
     ],
 )
 
