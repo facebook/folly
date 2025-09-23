@@ -647,7 +647,9 @@ void disableTransparentFunctions(
   if (noTransparentTls) {
     // Ignore return value, errors are ok
     VLOG(5) << "Disabling TTLS for fd " << fd;
-    netops::setsockopt(fd, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);
+    __u8 optval = FOLLY_SO_TTLS_TRUSTED_VAL_ENCRYPTED;
+    netops::setsockopt(
+        fd, SOL_SOCKET, FOLLY_SO_TTLS_TRUSTED, &optval, sizeof(optval));
   }
   if (noTSocks) {
     VLOG(5) << "Disabling TSOCKS for fd " << fd;

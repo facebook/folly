@@ -287,7 +287,9 @@ void AsyncServerSocket::useExistingSockets(
 #if defined(__linux__)
     if (noTransparentTls_) {
       // Ignore return value, errors are ok
-      netops::setsockopt(fd, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);
+      __u8 optval = FOLLY_SO_TTLS_TRUSTED_VAL_ENCRYPTED;
+      netops::setsockopt(
+          fd, SOL_SOCKET, FOLLY_SO_TTLS_TRUSTED, &optval, sizeof(optval));
     }
 #endif
 
@@ -341,7 +343,9 @@ void AsyncServerSocket::bindSocket(
 #if defined(__linux__)
   if (noTransparentTls_) {
     // Ignore return value, errors are ok
-    netops::setsockopt(fd, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);
+    __u8 optval = FOLLY_SO_TTLS_TRUSTED_VAL_ENCRYPTED;
+    netops::setsockopt(
+        fd, SOL_SOCKET, FOLLY_SO_TTLS_TRUSTED, &optval, sizeof(optval));
   }
 #endif
 
@@ -507,7 +511,9 @@ void AsyncServerSocket::bind(uint16_t port) {
 #if defined(__linux__)
     if (noTransparentTls_) {
       // Ignore return value, errors are ok
-      netops::setsockopt(s, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);
+      __u8 optval = FOLLY_SO_TTLS_TRUSTED_VAL_ENCRYPTED;
+      netops::setsockopt(
+          s, SOL_SOCKET, FOLLY_SO_TTLS_TRUSTED, &optval, sizeof(optval));
     }
 #endif
 

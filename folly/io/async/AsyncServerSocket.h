@@ -47,8 +47,12 @@
 #define SO_REUSEPORT 15
 #endif
 
-#if defined __linux__ && !defined SO_NO_TRANSPARENT_TLS
-#define SO_NO_TRANSPARENT_TLS 200
+#if defined __linux__ && !defined FOLLY_SO_TTLS_TRUSTED
+#define FOLLY_SO_TTLS_TRUSTED 206
+#endif
+
+#if defined __linux__ && !defined FOLLY_SO_TTLS_TRUSTED_VAL_ENCRYPTED
+#define FOLLY_SO_TTLS_TRUSTED_VAL_ENCRYPTED 1
 #endif
 
 namespace folly {
