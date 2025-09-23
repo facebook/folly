@@ -108,6 +108,14 @@ void DigestBuilder<DigestT>::append(double value) {
     g = std::unique_lock(cpuLocalBuf->mutex);
   }
 
+  // CAUTION: This looks like a good opportunity to preallocate the vector. But
+  // the vector is per-quantile per-core, meaning there can be quite a lot of
+  // these vectors, and it is expected that only the hottest of them will ever
+  // actually get full. For those buffers which do actually get full, we already
+  // take care to avoid deallocating below or to preallocate the max in build().
+  // For all other vectors, we need to be conscious of memory usage. So do not
+  // preallocate here.
+
   cpuLocalBuf->buffer.push_back(value);
   if (FOLLY_UNLIKELY(cpuLocalBuf->buffer.size() == bufferSize_)) {
     if (!cpuLocalBuf->digest) {
