@@ -877,11 +877,29 @@ using semi_await_try_result_t = await_result_t<semi_await_awaitable_t<
 
 namespace detail {
 
+template <typename T, std::enable_if_t<!noexcept_awaitable_v<T>, int> = 0>
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable;
+
+// Workaround for bug in LLVM <= 17, where `CommutativeWrapperAwaitable` is sad
+// that `NothrowAwaitable` has 2 template params, even though 1 is defaulted.
 template <typename T>
+using NothrowAwaitableWorkaround = NothrowAwaitable<T>;
+
+// The `!noexcept_awaitable_v` constraint stops `co_nothrow()` from wrapping
+// `co_await_result`, `co_awaitTry`, `AsNoexcept`, etc.
+//
+// Rationale: Instead, we could do:
+//   - (not very useful) Nothing -- modeling the behavior that the exception
+//     was already captured by the inner type.
+//   - (highly unexpected / buggy) Prevent the inner type from capturing the
+//     exception, and force its propagation up-stack.
+// This was banned because real-world users didn't uniformly expect one of the
+// behaviors over the other, and nobody really **needs** this to work.
+template <typename T, std::enable_if_t<!noexcept_awaitable_v<T>, int>>
 class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable
-    : public CommutativeWrapperAwaitable<NothrowAwaitable, T> {
+    : public CommutativeWrapperAwaitable<NothrowAwaitableWorkaround, T> {
  public:
-  using CommutativeWrapperAwaitable<NothrowAwaitable, T>::
+  using CommutativeWrapperAwaitable<NothrowAwaitableWorkaround, T>::
       CommutativeWrapperAwaitable;
 
   T&& unwrap() { return std::move(this->inner_); }
@@ -891,7 +909,10 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable
 
 template <
     typename Awaitable,
-    std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<
+        !noexcept_awaitable_v<Awaitable> && // Comment on `NothrowAwaitable`
+            !folly::ext::must_use_immediately_v<Awaitable>,
+        int> = 0>
 detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable&& awaitable) {
   return detail::NothrowAwaitable<remove_cvref_t<Awaitable>>{
@@ -899,7 +920,10 @@ detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
 }
 template <
     typename Awaitable,
-    std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
+    std::enable_if_t<
+        !noexcept_awaitable_v<Awaitable> && // Comment on `NothrowAwaitable`
+            folly::ext::must_use_immediately_v<Awaitable>,
+        int> = 0>
 detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {
   return detail::NothrowAwaitable<remove_cvref_t<Awaitable>>{

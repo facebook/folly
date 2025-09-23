@@ -74,8 +74,10 @@ static_assert(!noexcept_awaitable_v<Task<int>>);
 static_assert(noexcept_awaitable_v<detail::TryAwaitable<Task<int>>>);
 static_assert(noexcept_awaitable_v<co_fatalOnThrow_of_Task>);
 static_assert(!noexcept_awaitable_v<detail::NothrowAwaitable<Task<int>>>);
-static_assert(
-    noexcept_awaitable_v<detail::NothrowAwaitable<co_fatalOnThrow_of_Task>>);
+// See doc of `NothrowAwaitable`
+template <typename T>
+using detect_NothrowAwaitable = detail::NothrowAwaitable<T>;
+static_assert(!is_detected_v<detect_NothrowAwaitable, co_fatalOnThrow_of_Task>);
 
 struct MyErr : std::exception {};
 
@@ -129,11 +131,17 @@ now_task<void> checkFatalOnThrow() {
   static_assert(
       !test_semi_await_result_v<decltype(co_nothrow(coThrow())), void>);
   static_assert(!is_awaitable_v<decltype(co_nothrow(coThrow()))>);
-  // (2) The other order isn't terribly useful, but it compiles, and works.
-  auto awaitNothrowNoexcept = [&]() -> now_task<void> {
-    co_await co_nothrow(co_fatalOnThrow(coThrow()));
-  };
-  EXPECT_DEATH({ blockingWait(awaitNothrowNoexcept()); }, "MyErr");
+  // (2) The reverse order is banned for reasons `NothrowAwaitable` describes
+  bool ran = [&]<typename T>(T) { // `requires` doesa SFINAE inside templates
+    (void)co_nothrow(coThrow()); // compile
+    (void)co_fatalOnThrow(coThrow()); // compiles
+    static_assert(!requires { co_nothrow(co_fatalOnThrow(coThrow())); });
+#if 0 // manual test equivalent of above `static_assert`
+    (void)co_nothrow(co_fatalOnThrow(coThrow())); // constraint failure
+#endif
+    return true;
+  }(5);
+  EXPECT_TRUE(ran); // it's easy to forget to call the lambda
 }
 
 CO_TEST(NoexceptTest, Task) {

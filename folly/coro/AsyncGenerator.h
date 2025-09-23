@@ -746,6 +746,7 @@ class AsyncGeneratorPromise final
 
   template <typename Awaitable>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
+    static_assert(!noexcept_awaitable_v<Awaitable>); // Doc on NothrowAwaitable
     bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
     return await_transform(
         folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());

@@ -101,6 +101,22 @@ CO_TEST(AwaitResultTest, co_await_result_stopped) {
   }
 }
 
+TEST(AwaitResultTest, co_nothrow_co_await_result) {
+  bool ran = []<typename T>(T) { // `requires` does SFINAE inside templates
+    auto errorTask = [&]() -> now_task<> {
+      co_yield co_error(std::runtime_error("foo"));
+    };
+    (void)co_nothrow(errorTask()); // compile
+    (void)co_await_result(errorTask()); // compiles
+    static_assert(!requires { co_nothrow(co_await_result(errorTask())); });
+#if 0 // manual test equivalent of above `static_assert`
+    (void)co_nothrow(co_await_result(errorTask())); // constraint failure
+#endif
+    return true;
+  }(5);
+  EXPECT_TRUE(ran); // it's easy to forget to call the lambda
+}
+
 struct ThrowingMove {
   ThrowingMove(const ThrowingMove&) = default;
   ThrowingMove& operator=(const ThrowingMove&) = default;
