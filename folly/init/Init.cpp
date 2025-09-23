@@ -112,11 +112,11 @@ Init::~Init() {
   SingletonVault::singleton()->destroyInstancesFinal();
 }
 
-void init(int* argc, char*** argv, bool removeFlags) {
+void unsafe_unscoped_init(int* argc, char*** argv, bool removeFlags) {
   initImpl(argc, argv, InitOptions{}.removeFlags(removeFlags));
 }
 
-void init(int* argc, char*** argv, InitOptions options) {
+void unsafe_unscoped_init(int* argc, char*** argv, InitOptions options) {
   initImpl(argc, argv, options);
 }
 

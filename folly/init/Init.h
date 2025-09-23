@@ -96,9 +96,16 @@ class FOLLY_NODISCARD Init {
   Init& operator=(Init&&) = delete;
 };
 
-[[deprecated("Use the RAII version Init")]] void init(
-    int* argc, char*** argv, bool removeFlags = true);
-[[deprecated("Use the RAII version Init")]] void init(
-    int* argc, char*** argv, InitOptions options);
+void unsafe_unscoped_init(int* argc, char*** argv, bool removeFlags = true);
+void unsafe_unscoped_init(int* argc, char*** argv, InitOptions options);
+
+[[deprecated("Use the RAII version Init")]] inline void init(
+    int* argc, char*** argv, bool removeFlags = true) {
+  unsafe_unscoped_init(argc, argv, removeFlags);
+}
+[[deprecated("Use the RAII version Init")]] inline void init(
+    int* argc, char*** argv, InitOptions options) {
+  unsafe_unscoped_init(argc, argv, std::move(options));
+}
 
 } // namespace folly
