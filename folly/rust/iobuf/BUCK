@@ -1,4 +1,4 @@
-load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "WINDOWS")
+load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "IOS", "MACOSX", "WINDOWS")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_rust_library.bzl", "fb_xplat_rust_library")
@@ -20,6 +20,7 @@ create_forwarding_aliases(
         "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
     }),
     platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    sdks = (IOS, MACOSX),
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
 
@@ -32,6 +33,7 @@ create_forwarding_aliases(
         "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf-ffi" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
     }),
     platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    sdks = (IOS, MACOSX),
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
 
