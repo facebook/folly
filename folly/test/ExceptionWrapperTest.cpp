@@ -510,9 +510,28 @@ TEST(ExceptionWrapper, nonStdExceptionTest) {
   }
 }
 
-TEST(ExceptionWrapper, exceptionStr) {
+TEST(ExceptionWrapper, formatNoException) {
+  exception_wrapper ew;
+  auto expected = "";
+  EXPECT_EQ(expected, ew.what());
+  EXPECT_EQ(expected, exceptionStr(ew));
+  EXPECT_EQ(expected, fmt::format("{}", ew));
+}
+
+TEST(ExceptionWrapper, formatStdException) {
   auto ew = make_exception_wrapper<std::runtime_error>("argh");
-  EXPECT_EQ(kRuntimeErrorClassName + ": argh", exceptionStr(ew));
+  auto expected = kRuntimeErrorClassName + ": argh";
+  EXPECT_EQ(expected, ew.what());
+  EXPECT_EQ(expected, exceptionStr(ew));
+  EXPECT_EQ(expected, fmt::format("{}", ew));
+}
+
+TEST(ExceptionWrapper, formatNonStdException) {
+  int inner = 17;
+  auto ew = exception_wrapper{std::make_exception_ptr(inner)};
+  EXPECT_EQ(kIntClassName, ew.what());
+  EXPECT_EQ(kIntClassName, exceptionStr(ew));
+  EXPECT_EQ(kIntClassName, fmt::format("{}", ew));
 }
 
 TEST(ExceptionWrapper, throwExceptionNoexception) {
