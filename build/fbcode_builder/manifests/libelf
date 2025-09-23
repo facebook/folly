@@ -11,8 +11,8 @@ libelf-dev
 libelf
 
 [download]
-url = https://ftp.osuosl.org/pub/blfs/conglomeration/libelf/libelf-0.8.13.tar.gz
-sha256 = 591a9b4ec81c1f2042a97aa60564e0cb79d041c52faa7416acb38bc95bd2c76d
+url = https://sourceware.org/elfutils/ftp/0.193/elfutils-0.193.tar.bz2
+sha256 = 7857f44b624f4d8d421df851aaae7b1402cfe6bcdd2d8049f15fc07d3dde7635
 
 # libelf only makes sense on linux, so make it a NOP on other platforms
 [build.not(os=linux)]
@@ -20,4 +20,4 @@ builder = nop
 
 [build.os=linux]
 builder = autoconf
-subdir = libelf-0.8.13
+subdir = elfutils-0.193
