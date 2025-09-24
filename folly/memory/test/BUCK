@@ -34,7 +34,6 @@ fbcode_target(
     deps = [
         "fbsource//third-party/jemalloc:headers",
         "//folly:c_portability",
-        "//folly/init:init",
         "//folly/memory:mallctl_helper",
         "//folly/memory:malloc",
         "//folly/portability:gtest",
