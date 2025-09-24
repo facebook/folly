@@ -18,6 +18,8 @@
 
 #include <folly/settings/Settings.h>
 
+FOLLY_SETTING_DECLARE(follytest, some_unused_flag, std::string);
+
 namespace a_ns {
 
 FOLLY_SETTING_DECLARE(follytest, public_flag_to_a, int);

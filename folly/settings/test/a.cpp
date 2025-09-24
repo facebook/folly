@@ -18,6 +18,15 @@
 
 #include <folly/settings/Settings.h>
 
+FOLLY_SETTING_REGISTER(
+    follytest,
+    some_unused_flag,
+    std::string,
+    "default",
+    folly::settings::Mutability::Mutable,
+    folly::settings::CommandLine::AcceptOverrides,
+    "Description");
+
 namespace a_ns {
 FOLLY_SETTING_DEFINE(
     follytest,

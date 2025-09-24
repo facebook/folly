@@ -415,6 +415,7 @@ TEST(Settings, basic) {
       follytest/public_flag_to_a/int/456/Public flag to a/300/from_string
       follytest/public_flag_to_b/std::string/"basdf"/Public flag to b/basdf/default
       follytest/some_flag/std::string/"default"/Description/default/default
+      follytest/some_unused_flag/std::string/"default"/Description/default/default
       follytest/trivial_user_defined/TrivialUserDefinedType/TrivialUserDefinedType{123}/Trivial user defined type/123/default
       follytest/unused/std::string/"unused_default"/Not used, but should still be in the list/unused_default/default
       follytest/user_defined/UserDefinedType/"b"/User defined type constructed from string/b_out/default
