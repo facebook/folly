@@ -221,6 +221,16 @@ class TaskPromiseWrapperBase {
   auto& executorRef(TaskPromisePrivate tag) {
     return promise_.executorRef(tag);
   }
+
+  // These next two definitions forward `getErrorHandle` behavior to the
+  // innermost promise object.  See `ExtendedCoroutineHandle` for docs.
+
+  using use_extended_handle_concept = ExtendedCoroutineHandle::PrivateTag;
+
+  static ExtendedCoroutineHandle::PromiseBase* getPromiseBase(
+      ExtendedCoroutineHandle::PrivateTag priv, TaskPromiseWrapperBase* me) {
+    return Promise::getPromiseBase(priv, &me->promise_);
+  }
 };
 
 template <typename T, typename WrapperTask, typename Promise>

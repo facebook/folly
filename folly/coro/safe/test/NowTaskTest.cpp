@@ -208,6 +208,18 @@ CO_TEST(NowTaskTest, nothrow) {
   auto t = co_nothrow(demoNowTask(37));
   co_await std::move(t);
 #endif
+
+  // Check that the "nothrow" functionality still works
+  struct MyErr : std::exception {};
+  auto errTask = []() -> now_task<> { co_yield co_error{MyErr{}}; };
+  auto outerTask = [&]() -> now_task<> {
+    try {
+      co_await co_nothrow(errTask());
+    } catch (...) {
+      ADD_FAILURE() << "Not reached";
+    }
+  };
+  EXPECT_THROW(co_await outerTask(), MyErr);
 }
 
 // `TryAwaitable` has a custom `operator co_await`, unlike `simple` and
