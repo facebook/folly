@@ -154,14 +154,14 @@ class ViaCoroutine {
 
     folly::AsyncStackFrame& getLeafFrame() noexcept { return leafFrame_; }
 
-    static ExtendedCoroutineHandle::ErrorHandle getErrorHandle(
-        promise_type& me, exception_wrapper& ex) {
+    static std::optional<ExtendedCoroutineHandle::ErrorHandle>
+    getErrorHandleImpl(promise_type& me, exception_wrapper& ex) {
       auto [handle, frame] = me.continuation_.getErrorHandle(ex);
       me.setContinuation(handle);
       if (frame && IsStackAware) {
         me.leafFrame_.setParentFrame(*frame);
       }
-      return {coroutine_handle<promise_type>::from_promise(me), nullptr};
+      return std::nullopt;
     }
   };
 

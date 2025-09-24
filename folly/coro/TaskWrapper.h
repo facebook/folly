@@ -169,8 +169,10 @@ class TaskPromiseWrapperBase {
   using TaskWrapperInnerPromise = Promise;
 
   WrapperTask get_return_object() noexcept {
-    // NB: See the function doc.  It'd be nice to have the `static_assert` at
-    // class scope, but the type is still incomplete at that point.
+    // CRITICAL: This assert justifies why it is practically safe to rely on
+    // the `from_promise` UB in `TaskPromiseCrtpBase::get_return_object`.
+    //
+    // PS The assert isn't at class scope, since the type would be incomplete.
     static_assert(is_promise_type_punning_safe());
     return WrapperTask{promise_.get_return_object()};
   }
@@ -231,6 +233,9 @@ class TaskPromiseWrapper
  public:
   template <typename U = T> // see "`co_return` with implicit ctor" test
   auto return_value(U&& value) {
+    static_assert( // See `is_promise_type_punning_safe` for rationale
+        require_sizeof<TaskPromiseWrapper> ==
+        require_sizeof<TaskPromiseWrapperBase<T, WrapperTask, Promise>>);
     return this->promise_.return_value(std::forward<U>(value));
   }
 };
@@ -243,7 +248,12 @@ class TaskPromiseWrapper<void, WrapperTask, Promise>
   ~TaskPromiseWrapper() = default;
 
  public:
-  void return_void() noexcept { this->promise_.return_void(); }
+  void return_void() noexcept {
+    static_assert( // See `is_promise_type_punning_safe` for rationale
+        require_sizeof<TaskPromiseWrapper> ==
+        require_sizeof<TaskPromiseWrapperBase<void, WrapperTask, Promise>>);
+    this->promise_.return_void();
+  }
 };
 
 // Mixin for TaskWrapper.h configs for `Task` & `TaskWithExecutor` types
