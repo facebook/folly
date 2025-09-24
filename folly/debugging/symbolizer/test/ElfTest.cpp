@@ -184,21 +184,22 @@ TEST_F(ElfTest, FailToOpenLargeFilename) {
   EXPECT_EQ(ElfFile::kSuccess, elfFile->openNoThrow(kDefaultElf));
 }
 
-TEST(TestUUID, SimpleElf) {
+TEST(TestGetNoteGnuBuildId, SimpleElf) {
   auto const file =
       folly::test::find_resource("folly/debugging/symbolizer/test/simple_elf");
-  EXPECT_TRUE(std::filesystem::exists(file.c_str())) << file.c_str();
+  ASSERT_TRUE(std::filesystem::exists(file.c_str())) << file.c_str();
   ElfFile elfFile = ElfFile(file.c_str());
-  auto uuidMaybe = elfFile.getUUID();
-  EXPECT_TRUE(([&]() {
-    return uuidMaybe.hasError()
-        ? testing::AssertionFailure() << uuidMaybe.error()
+  auto noteMaybe = elfFile.getNoteGnuBuildId();
+  ASSERT_TRUE(([&]() {
+    return noteMaybe.hasError()
+        ? testing::AssertionFailure()
+            << ElfFile::FindNoteError::getErrorMessage(noteMaybe.error())
         : testing::AssertionSuccess();
   })());
 
-  auto& uuid = uuidMaybe.value();
-  EXPECT_EQ(4, uuid.size());
-  EXPECT_THAT(uuid, ::testing::ElementsAreArray({0xDE, 0xAD, 0xBE, 0xEF}));
+  auto note = noteMaybe.value();
+  EXPECT_EQ(4, note.size());
+  EXPECT_THAT(note, ::testing::ElementsAreArray({0xDE, 0xAD, 0xBE, 0xEF}));
 }
 
 TEST(TestNoteSectionIteration, SimpleElf) {

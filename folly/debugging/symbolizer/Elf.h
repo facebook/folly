@@ -50,6 +50,7 @@ namespace symbolizer {
 using ElfAddr = FOLLY_ELF_ELFW(Addr);
 using ElfEhdr = FOLLY_ELF_ELFW(Ehdr);
 using ElfOff = FOLLY_ELF_ELFW(Off);
+using ElfWord = FOLLY_ELF_ELFW(Word);
 using ElfPhdr = FOLLY_ELF_ELFW(Phdr);
 using ElfShdr = FOLLY_ELF_ELFW(Shdr);
 using ElfSym = FOLLY_ELF_ELFW(Sym);
@@ -380,7 +381,8 @@ class ElfFile {
     static inline constexpr std::string_view GetNoteErrorString[] = {
         "Note not found",
         "Note body undersized (smaller than specified in the note header)",
-        "Note underaligned (aligned less than the note header)"};
+        "Note underaligned (aligned less than the note header)",
+    };
 
     static constexpr std::string_view getErrorMessage(
         FindNoteError& err) noexcept {
@@ -411,6 +413,13 @@ class ElfFile {
 
     folly::span<const uint8_t> body() const {
       return note.subspan(sizeof(*header()));
+    }
+
+    ElfWord getType() const {
+      if (!header()) {
+        return {};
+      }
+      return header()->n_type;
     }
 
     std::string_view getName() const {
@@ -494,13 +503,10 @@ class ElfFile {
       noexcept(is_nothrow_invocable_v<Fn, const Note&>);
 
   /**
-   * Retrieve the UUID from the .note.gnu.build-id if available.
-   * @return
-   *     Returns a range pointing to the bitstring of the .gnu.buildid note
-   *     which can vary depending on the build mode, see man ld build-id for
-   *     more information
+   * Retrieve the content of .note.gnu.build-id, if available.
    */
-  folly::Expected<folly::StringPiece, std::string> getUUID() const noexcept;
+  folly::Expected<span<const uint8_t>, FindNoteError> getNoteGnuBuildId()
+      const noexcept;
 
  private:
   OpenResult init() noexcept;
