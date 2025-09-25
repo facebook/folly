@@ -185,6 +185,10 @@ TEST(SharedMutex, basicHolders) {
   runBasicHoldersTest<SharedMutexTracked>();
 }
 
+#if !FOLLY_SANITIZE_THREAD
+// Thse tests fail in an assertion in the TSAN library because there are too
+// many mutexes
+
 template <typename Lock>
 void runManyReadLocksTestWithTokens() {
   Lock lock;
@@ -204,9 +208,6 @@ void runManyReadLocksTestWithTokens() {
 }
 
 TEST(SharedMutex, manyReadLocksWithTokens) {
-  // This test fails in an assertion in the TSAN library because there are too
-  // many mutexes
-  SKIP_IF(folly::kIsSanitizeThread);
   runManyReadLocksTestWithTokens<SharedMutexReadPriority>();
   runManyReadLocksTestWithTokens<SharedMutexWritePriority>();
   runManyReadLocksTestWithTokens<SharedMutexSuppressTSAN>();
@@ -232,12 +233,13 @@ void runManyReadLocksTestWithoutTokens() {
 TEST(SharedMutex, manyReadLocksWithoutTokens) {
   // This test fails in an assertion in the TSAN library because there are too
   // many mutexes
-  SKIP_IF(folly::kIsSanitizeThread);
   runManyReadLocksTestWithoutTokens<SharedMutexReadPriority>();
   runManyReadLocksTestWithoutTokens<SharedMutexWritePriority>();
   runManyReadLocksTestWithoutTokens<SharedMutexSuppressTSAN>();
   runManyReadLocksTestWithoutTokens<SharedMutexTracked>();
 }
+
+#endif
 
 template <typename Lock>
 void runTimeoutInPastTest() {
@@ -1164,14 +1166,17 @@ TEST(SharedMutex, deterministicAllOpsReadPrio) {
   }
 }
 
+#if !FOLLY_SANITIZE_THREAD
+// This test fails in TSAN because of noisy lock ordering inversions.
+
 TEST(SharedMutex, deterministicAllOpsWritePrio) {
-  // This test fails in TSAN because of noisy lock ordering inversions.
-  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 5; ++pass) {
     DSched sched(DSched::uniform(pass));
     runAllAndValidate<DSharedMutexWritePriority, DeterministicAtomic>(1000, 8);
   }
 }
+
+#endif
 
 TEST(SharedMutex, allOpsReadPrio) {
   for (int pass = 0; pass < 5; ++pass) {
@@ -1179,13 +1184,16 @@ TEST(SharedMutex, allOpsReadPrio) {
   }
 }
 
+#if !FOLLY_SANITIZE_THREAD
+// This test fails in TSAN because of noisy lock ordering inversions.
+
 TEST(SharedMutex, allOpsWritePrio) {
-  // This test fails in TSAN because of noisy lock ordering inversions.
-  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 5; ++pass) {
     runAllAndValidate<SharedMutexWritePriority, atomic>(100000, 32);
   }
 }
+
+#endif
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE(std::optional<std::optional<SharedMutexToken>>)
 
@@ -1300,16 +1308,19 @@ static void runRemoteUnlock(
   }
 }
 
+#if !FOLLY_SANITIZE_THREAD
+// This test fails in an assertion in the TSAN library because there are too
+// many mutexes
+
 TEST(SharedMutex, deterministicRemoteWritePrio) {
-  // This test fails in an assertion in the TSAN library because there are too
-  // many mutexes
-  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 1; ++pass) {
     DSched sched(DSched::uniform(pass));
     runRemoteUnlock<DSharedMutexWritePriority, DeterministicAtomic>(
         500, 0.1, 0.1, 5, 5);
   }
 }
+
+#endif
 
 TEST(SharedMutex, deterministicRemoteReadPrio) {
   for (int pass = 0; pass < 1; ++pass) {
@@ -1319,23 +1330,23 @@ TEST(SharedMutex, deterministicRemoteReadPrio) {
   }
 }
 
+#if !FOLLY_SANITIZE_THREAD
+// Thse tests fail in an assertion in the TSAN library because there are too
+// many mutexes
+
 TEST(SharedMutex, remoteWritePrio) {
-  // This test fails in an assertion in the TSAN library because there are too
-  // many mutexes
-  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 10; ++pass) {
     runRemoteUnlock<SharedMutexWritePriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }
 
 TEST(SharedMutex, remoteReadPrio) {
-  // This test fails in an assertion in the TSAN library because there are too
-  // many mutexes
-  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 100); ++pass) {
     runRemoteUnlock<SharedMutexReadPriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }
+
+#endif
 
 static void burn(size_t n) {
   for (size_t i = 0; i < n; ++i) {
@@ -1440,15 +1451,18 @@ static void timed_rd_pri_ping_pong(size_t n, size_t scale, size_t burnCount) {
       n / scale, burnCount);
 }
 
+#if !FOLLY_SANITIZE_THREAD
+// This test fails in TSAN because some mutexes are lock_shared() in one
+// thread and unlock_shared() in a different thread.
+
 TEST(SharedMutex, deterministicPingPongWritePrio) {
-  // This test fails in TSAN because some mutexes are lock_shared() in one
-  // thread and unlock_shared() in a different thread.
-  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 1; ++pass) {
     DSched sched(DSched::uniform(pass));
     runPingPong<DSharedMutexWritePriority, DeterministicAtomic>(500, 0);
   }
 }
+
+#endif
 
 TEST(SharedMutex, deterministicPingPongReadPrio) {
   for (int pass = 0; pass < 1; ++pass) {
@@ -1457,14 +1471,17 @@ TEST(SharedMutex, deterministicPingPongReadPrio) {
   }
 }
 
+#if !FOLLY_SANITIZE_THREAD
+// This test fails in TSAN because some mutexes are lock_shared() in one
+// thread and unlock_shared() in a different thread.
+
 TEST(SharedMutex, pingPongWritePrio) {
-  // This test fails in TSAN because some mutexes are lock_shared() in one
-  // thread and unlock_shared() in a different thread.
-  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 1; ++pass) {
     runPingPong<SharedMutexWritePriority, atomic>(50000, 0);
   }
 }
+
+#endif
 
 TEST(SharedMutex, pingPongReadPrio) {
   for (int pass = 0; pass < 1; ++pass) {
