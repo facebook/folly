@@ -225,6 +225,11 @@
 //    However, even when using the default deleter, an object having a
 //    user-defined destructor that acquires locks held across the corresponding
 //    call to rcu_retire can still deadlock.
+//  - Within the same domain, it is possible to deadlock if thread A is calling
+//    rcu_retire() within a read critical section while thread B is calling
+//    rcu_synchronize(). This is an edge case we plan to fix in the future. It's
+//    hence for now recommended to avoid calling rcu_synchronize() before
+//    program shutdown or to use a custom domain if needed.
 //  - rcu_domain destruction:
 //    Destruction of a domain assumes previous synchronization: all remaining
 //    call and retire calls are immediately added to the executor.
