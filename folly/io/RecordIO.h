@@ -91,11 +91,11 @@ class RecordIOReader {
    * Note that the position includes the header, that is, it can be passed back
    * to seek().
    */
-  typedef Iterator iterator;
-  typedef Iterator const_iterator;
-  typedef std::pair<ByteRange, off_t> value_type;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
+  using iterator = Iterator;
+  using const_iterator = Iterator;
+  using value_type = std::pair<ByteRange, off_t>;
+  using reference = value_type&;
+  using const_reference = const value_type&;
 
   /**
    * A record reader with a fileId of 0 will return all records.

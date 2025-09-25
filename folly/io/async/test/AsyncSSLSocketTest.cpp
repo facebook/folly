@@ -64,7 +64,7 @@ namespace {
 
 #if defined __linux__
 // to store libc's original setsockopt()
-typedef int (*setsockopt_ptr)(int, int, int, const void*, socklen_t);
+using setsockopt_ptr = int (*)(int, int, int, const void*, socklen_t);
 setsockopt_ptr real_setsockopt_ = nullptr;
 
 // global struct to initialize before main runs. we can init within a test,

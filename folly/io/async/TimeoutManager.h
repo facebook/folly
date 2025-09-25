@@ -33,8 +33,8 @@ class AsyncTimeout;
  */
 class TimeoutManager {
  public:
-  typedef std::chrono::milliseconds timeout_type;
-  typedef std::chrono::microseconds timeout_type_high_res;
+  using timeout_type = std::chrono::milliseconds;
+  using timeout_type_high_res = std::chrono::microseconds;
 
   using Func = folly::Function<void()>;
 

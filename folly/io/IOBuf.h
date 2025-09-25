@@ -301,9 +301,9 @@ class IOBuf {
 
   enum class CombinedOption { DEFAULT, COMBINED, SEPARATE };
 
-  typedef ByteRange value_type;
-  typedef Iterator iterator;
-  typedef Iterator const_iterator;
+  using value_type = ByteRange;
+  using iterator = Iterator;
+  using const_iterator = Iterator;
 
   using FreeFunction = void (*)(void* buf, void* userData);
 
@@ -2238,8 +2238,8 @@ class IOBuf {
 
   template <class UniquePtr>
   struct UniquePtrDeleter : public DeleterBase {
-    typedef typename UniquePtr::pointer Pointer;
-    typedef typename UniquePtr::deleter_type Deleter;
+    using Pointer = typename UniquePtr::pointer;
+    using Deleter = typename UniquePtr::deleter_type;
 
     explicit UniquePtrDeleter(Deleter deleter) : deleter_(std::move(deleter)) {}
     void dispose(void* p) noexcept override {

@@ -126,9 +126,8 @@ class TimerFDTimeoutManager : public TimerFD {
   // we want to reschedule the timers once we're done with the processing
   bool processingExpired_{false};
 
-  typedef boost::intrusive::
-      list<Callback, boost::intrusive::constant_time_size<false>>
-          CallbackList;
+  using CallbackList = boost::intrusive::
+      list<Callback, boost::intrusive::constant_time_size<false>>;
   std::map<std::chrono::microseconds, CallbackList> callbacks_;
   CallbackList inProgressList_;
 };

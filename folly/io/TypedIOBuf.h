@@ -40,12 +40,12 @@ class TypedIOBuf {
   static_assert(std::is_standard_layout<T>::value, "must be standard layout");
 
  public:
-  typedef T value_type;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
-  typedef uint32_t size_type;
-  typedef value_type* iterator;
-  typedef const value_type* const_iterator;
+  using value_type = T;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using size_type = uint32_t;
+  using iterator = value_type*;
+  using const_iterator = const value_type*;
 
   explicit TypedIOBuf(IOBuf* buf) : buf_(buf) {}
 
