@@ -178,13 +178,12 @@ void setSymbolizedFrame(
   frame.found = true;
   frame.addr = address;
   frame.file = file;
-  frame.name = file->getSymbolName(file->getDefinitionByAddress(address));
 #ifdef __roar__
-  if (!frame.name &&
-      setROARSymbolizedFrame(frame, address, mode, extraInlineFrames)) {
+  if (setROARSymbolizedFrame(frame, address, mode, extraInlineFrames)) {
     return;
   }
 #endif
+  frame.name = file->getSymbolName(file->getDefinitionByAddress(address));
 
   Dwarf(elfCache, file.get())
       .findAddress(address, mode, frame, extraInlineFrames);
