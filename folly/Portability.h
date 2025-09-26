@@ -507,11 +507,13 @@ constexpr auto kIsMobile = true;
 constexpr auto kIsMobile = false;
 #endif
 
-#if defined(__linux__) && !FOLLY_MOBILE
-constexpr auto kIsLinux = true;
+#if defined(__linux__)
+constexpr auto kIsLinuxActual = true;
 #else
-constexpr auto kIsLinux = false;
+constexpr auto kIsLinuxActual = false;
 #endif
+
+constexpr auto kIsLinux = kIsLinuxActual && !kIsMobile;
 
 #if defined(__FreeBSD__)
 constexpr auto kIsFreeBSD = true;
