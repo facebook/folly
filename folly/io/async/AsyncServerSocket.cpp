@@ -54,6 +54,8 @@ static constexpr bool msgErrQueueSupported =
     false;
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 
+static constexpr bool kSupportReflectTos = kIsLinuxActual;
+
 AsyncServerSocket::AcceptCallback::~AcceptCallback() = default;
 
 const uint32_t AsyncServerSocket::kDefaultMaxAcceptAtOnce;
@@ -843,7 +845,7 @@ NetworkSocket AsyncServerSocket::createSocket(int family) {
  * TOS derived from the client's connect request
  */
 void AsyncServerSocket::setTosReflect(bool enable) {
-  if (!kIsLinux || !enable) {
+  if (!kSupportReflectTos || !enable) {
     tosReflect_ = false;
     return;
   }
@@ -867,7 +869,7 @@ void AsyncServerSocket::setTosReflect(bool enable) {
 }
 
 void AsyncServerSocket::setListenerTos(uint32_t tos) {
-  if (!kIsLinux || tos == 0) {
+  if (!kSupportReflectTos || tos == 0) {
     listenerTos_ = 0;
     return;
   }
@@ -1046,7 +1048,7 @@ void AsyncServerSocket::handlerReady(
 
     // Connection accepted, get the SYN packet from the client if
     // TOS reflect is enabled
-    if (kIsLinux && clientSocket != NetworkSocket() && tosReflect_) {
+    if (kSupportReflectTos && clientSocket != NetworkSocket() && tosReflect_) {
       std::array<uint32_t, 64> buffer;
       socklen_t len = sizeof(buffer);
       int ret = netops::getsockopt(
