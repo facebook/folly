@@ -63,6 +63,11 @@ sapling
 # for internal builds that use getdeps
 fbcode/fb303 = fb303
 fbcode/common/rust/shed = common/rust/shed
+fbcode/thrift/lib/cpp = thrift/lib/cpp
+fbcode/thrift/lib/cpp2 = thrift/lib/cpp2
+fbcode/thrift/lib/java = thrift/lib/java
+fbcode/thrift/lib/py = thrift/lib/py
+fbcode/thrift/lib/python = thrift/lib/python
 fbcode/thrift/lib/rust = thrift/lib/rust
 
 [shipit.pathmap]
