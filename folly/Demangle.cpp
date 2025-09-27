@@ -124,10 +124,12 @@ static constexpr auto liberty_demangle_options = 0;
 
 namespace folly {
 
-bool const demangle_build_has_cxxabi = cxxabi_demangle;
-bool const demangle_build_has_liberty = //
-    to_bool(liberty_cplus_demangle) && //
-    to_bool(liberty_rust_demangle);
+bool demangle_build_has_cxxabi() noexcept {
+  return to_bool(cxxabi_demangle);
+}
+bool demangle_build_has_liberty() noexcept {
+  return to_bool(liberty_cplus_demangle) && to_bool(liberty_rust_demangle);
+}
 
 namespace {
 void demangleStringCallback(const char* str, size_t size, void* p) {
@@ -154,7 +156,7 @@ fbstring demangle(const char* name) {
     }
   }
 
-  if (folly::demangle_build_has_liberty) {
+  if (folly::demangle_build_has_liberty()) {
     liberty_demangle_t* funcs[] = {
         liberty_rust_demangle,
         liberty_cplus_demangle,
@@ -222,7 +224,7 @@ size_t demangle(const char* name, char* out, size_t outSize) {
     }
   }
 
-  if (folly::demangle_build_has_liberty) {
+  if (folly::demangle_build_has_liberty()) {
     liberty_demangle_t* funcs[] = {
         liberty_rust_demangle,
         liberty_cplus_demangle,

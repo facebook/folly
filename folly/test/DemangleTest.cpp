@@ -34,14 +34,15 @@ class DemangleTest : public testing::Test {};
 TEST_F(DemangleTest, demangle_return_string) {
   using type = folly_test::ThisIsAVeryLongStructureName;
   auto const raw = typeid(type).name();
-  auto const expected = demangle_build_has_cxxabi ? pretty_name<type>() : raw;
+  auto const expected = demangle_build_has_cxxabi() ? pretty_name<type>() : raw;
   EXPECT_EQ(expected, demangle(typeid(type)));
 }
 
 TEST_F(DemangleTest, demangle_to_buffer) {
   using type = folly_test::ThisIsAVeryLongStructureName;
   auto const raw = typeid(type).name();
-  auto const expected = demangle_build_has_liberty ? pretty_name<type>() : raw;
+  auto const expected =
+      demangle_build_has_liberty() ? pretty_name<type>() : raw;
 
   {
     std::vector<char> buf;
@@ -68,7 +69,7 @@ TEST_F(DemangleTest, demangle_long_symbol) {
 
   EXPECT_EQ(std::string(choice), demangle(raw).toStdString());
 
-  auto const expected = demangle_build_has_liberty ? choice : raw;
+  auto const expected = demangle_build_has_liberty() ? choice : raw;
   constexpr size_t size = 15;
   std::vector<char> buf;
   buf.resize(1 + size);

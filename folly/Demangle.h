@@ -28,8 +28,8 @@ inline constexpr size_t demangle_max_symbol_size =
     0;
 #endif
 
-extern bool const demangle_build_has_cxxabi;
-extern bool const demangle_build_has_liberty;
+bool demangle_build_has_cxxabi() noexcept;
+bool demangle_build_has_liberty() noexcept;
 
 /**
  * Return the demangled (prettified) version of a C++ type.
