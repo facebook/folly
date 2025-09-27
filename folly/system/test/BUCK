@@ -107,6 +107,16 @@ non_fbcode_target(
     ],
 )
 
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "hardware_concurrency_test",
+    srcs = ["HardwareConcurrencyTest.cpp"],
+    deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "//xplat/folly/system:hardware_concurrency",
+    ],
+)
+
 # fbcode test rules
 
 fbcode_target(
@@ -222,5 +232,16 @@ fbcode_target(
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
         "//folly/system:thread_name",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "hardware_concurrency_test",
+    srcs = ["HardwareConcurrencyTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/system:hardware_concurrency",
     ],
 )
