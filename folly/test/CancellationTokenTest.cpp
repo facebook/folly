@@ -16,12 +16,14 @@
 
 #include <folly/CancellationToken.h>
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
 #include <folly/Optional.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 using namespace folly;
 using namespace std::literals::chrono_literals;
@@ -193,7 +195,7 @@ TEST(CancellationTokenTest, ManyCallbacks) {
   // memory leaks when it's all eventually destroyed.
   CancellationSource src;
   auto addLotsOfCallbacksAndWait = [t = src.getToken()] {
-    int counter = 0;
+    folly::relaxed_atomic<int> counter = 0;
     std::vector<std::unique_ptr<CancellationCallback>> callbacks;
     for (int i = 0; i < 100; ++i) {
       callbacks.push_back(std::make_unique<CancellationCallback>(t, [&] {

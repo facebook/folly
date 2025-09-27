@@ -218,6 +218,7 @@ fbcode_target(
         "//folly:optional",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
+        "//folly/synchronization:relaxed_atomic",
     ],
 )
 
