@@ -105,8 +105,6 @@ class StripedPriorityUnboundedBlockingQueue : public BlockingQueue<T> {
 
   size_t size() override { return sem_.valueGuess(); }
 
-  size_t sizeGuess() const { return sem_.valueGuess(); }
-
  private:
   size_t translatePriority(int8_t const priority) {
     int8_t const hi = (numPriorities_ + 1) / 2 - 1;

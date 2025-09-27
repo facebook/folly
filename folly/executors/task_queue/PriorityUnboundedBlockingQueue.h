@@ -66,9 +66,7 @@ class PriorityUnboundedBlockingQueue : public BlockingQueue<T> {
     return dequeue();
   }
 
-  size_t size() override { return queue_.size(); }
-
-  size_t sizeGuess() const { return queue_.size(); }
+  size_t size() override { return sem_.valueGuess(); }
 
  private:
   size_t translatePriority(int8_t const priority) {

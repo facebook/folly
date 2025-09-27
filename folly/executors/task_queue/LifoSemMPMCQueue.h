@@ -49,26 +49,26 @@ class LifoSemMPMCQueue : public BlockingQueue<T> {
   }
 
   T take() override {
+    sem_.wait();
     T item;
     while (!queue_.readIfNotEmpty(item)) {
-      sem_.wait();
     }
     return item;
   }
 
   folly::Optional<T> try_take_for(std::chrono::milliseconds time) override {
+    if (!sem_.try_wait_for(time)) {
+      return folly::none;
+    }
     T item;
     while (!queue_.readIfNotEmpty(item)) {
-      if (!sem_.try_wait_for(time)) {
-        return folly::none;
-      }
     }
     return item;
   }
 
   size_t capacity() { return queue_.capacity(); }
 
-  size_t size() override { return queue_.size(); }
+  size_t size() override { return sem_.valueGuess(); }
 
  private:
   Semaphore sem_;

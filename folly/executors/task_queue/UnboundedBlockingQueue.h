@@ -46,7 +46,7 @@ class UnboundedBlockingQueue : public BlockingQueue<T> {
     return queue_.dequeue();
   }
 
-  size_t size() override { return queue_.size(); }
+  size_t size() override { return sem_.valueGuess(); }
 
  private:
   Semaphore sem_;
