@@ -78,5 +78,16 @@ EvpPkeyUniquePtr OpenSSLKeyUtils::readPrivateKeyFromBuffer(
   }
   return pkey;
 }
+
+std::string OpenSSLKeyUtils::encodePrivateKeyAsPEM(EVP_PKEY* pkey) {
+  ssl::BioUniquePtr bio(BIO_new(BIO_s_mem()));
+  if (!PEM_write_bio_PrivateKey(
+          bio.get(), pkey, nullptr, nullptr, 0, nullptr, nullptr)) {
+    throw std::runtime_error("Failed to encode privatekey");
+  }
+  BUF_MEM* bptr = nullptr;
+  BIO_get_mem_ptr(bio.get(), &bptr);
+  return {bptr->data, bptr->length};
+}
 } // namespace ssl
 } // namespace folly

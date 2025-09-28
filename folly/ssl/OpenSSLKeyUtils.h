@@ -51,6 +51,14 @@ class OpenSSLKeyUtils {
    */
   static EvpPkeyUniquePtr readPrivateKeyFromBuffer(
       ByteRange range, const PasswordCollector* pwCollector);
+
+  /**
+   * Takes a EVP_PKEY pointer and returns a PEM encoded representation of
+   * that key
+   * @param pkey A EVP_PKEY pointer.
+   * @return PEM encoded string representation of the key.
+   */
+  static std::string encodePrivateKeyAsPEM(EVP_PKEY* pkey);
 };
 } // namespace ssl
 } // namespace folly

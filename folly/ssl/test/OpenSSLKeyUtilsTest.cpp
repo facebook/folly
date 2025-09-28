@@ -47,17 +47,6 @@ dz4QCr6hc3RydcFlRXZtompluo03RlaImN5HNYcZyeLz5gxuAcvi4Dw8v+UlZiQ=
 constexpr std::string_view kTestKeyPassword = "test"sv;
 
 namespace {
-std::string encodePrivateKey(const ssl::EvpPkeyUniquePtr& pkey) {
-  ssl::BioUniquePtr bio(BIO_new(BIO_s_mem()));
-  if (!PEM_write_bio_PrivateKey(
-          bio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr)) {
-    throw std::runtime_error("Failed to encode privatekey");
-  }
-  BUF_MEM* bptr = nullptr;
-  BIO_get_mem_ptr(bio.get(), &bptr);
-  return {bptr->data, bptr->length};
-}
-
 class TestPasswordCollector : public PasswordCollector {
  public:
   explicit TestPasswordCollector(std::string_view password)
@@ -77,21 +66,21 @@ TEST(OpenSSLKeyUtils, TestReadPrivateKeyFromBuffer) {
   {
     SCOPED_TRACE("Read key without password");
     auto key = OpenSSLKeyUtils::readPrivateKeyFromBuffer(ByteRange(kTestKey));
-    EXPECT_EQ(kTestKey, encodePrivateKey(key));
+    EXPECT_EQ(kTestKey, OpenSSLKeyUtils::encodePrivateKeyAsPEM(key.get()));
   }
 
   {
     SCOPED_TRACE("Read key with empty password");
     auto key =
         OpenSSLKeyUtils::readPrivateKeyFromBuffer(ByteRange(kTestKey), "");
-    EXPECT_EQ(kTestKey, encodePrivateKey(key));
+    EXPECT_EQ(kTestKey, OpenSSLKeyUtils::encodePrivateKeyAsPEM(key.get()));
   }
 
   {
     SCOPED_TRACE("Read key with NULL password collector");
     auto key =
         OpenSSLKeyUtils::readPrivateKeyFromBuffer(ByteRange(kTestKey), nullptr);
-    EXPECT_EQ(kTestKey, encodePrivateKey(key));
+    EXPECT_EQ(kTestKey, OpenSSLKeyUtils::encodePrivateKeyAsPEM(key.get()));
   }
 
   {
@@ -100,14 +89,14 @@ TEST(OpenSSLKeyUtils, TestReadPrivateKeyFromBuffer) {
     TestPasswordCollector pwCollector({});
     auto key = OpenSSLKeyUtils::readPrivateKeyFromBuffer(
         ByteRange(kTestKey), &pwCollector);
-    EXPECT_EQ(kTestKey, encodePrivateKey(key));
+    EXPECT_EQ(kTestKey, OpenSSLKeyUtils::encodePrivateKeyAsPEM(key.get()));
   }
 
   {
     SCOPED_TRACE("Read encrypted key with password");
     auto key = OpenSSLKeyUtils::readPrivateKeyFromBuffer(
         ByteRange(kEncryptedTestKey), kTestKeyPassword);
-    EXPECT_EQ(kTestKey, encodePrivateKey(key));
+    EXPECT_EQ(kTestKey, OpenSSLKeyUtils::encodePrivateKeyAsPEM(key.get()));
   }
 
   {
@@ -115,7 +104,7 @@ TEST(OpenSSLKeyUtils, TestReadPrivateKeyFromBuffer) {
     TestPasswordCollector pwCollector(kTestKeyPassword);
     auto key = OpenSSLKeyUtils::readPrivateKeyFromBuffer(
         ByteRange(kEncryptedTestKey), &pwCollector);
-    EXPECT_EQ(kTestKey, encodePrivateKey(key));
+    EXPECT_EQ(kTestKey, OpenSSLKeyUtils::encodePrivateKeyAsPEM(key.get()));
   }
 
   {
