@@ -297,6 +297,59 @@ class RequestContext {
   static std::shared_ptr<RequestContext> setContext(
       std::shared_ptr<RequestContext>&& newCtx_);
 
+  // Theses Watcher functions will be called after a setContext with the prev
+  // and current context
+  using SetContextWatcherSig = void(
+      const std::shared_ptr<RequestContext>& prev,
+      const std::shared_ptr<RequestContext>& ctx);
+  static void addSetContextWatcher(SetContextWatcherSig& func);
+
+ private:
+  struct SetContextWatcherRegistry {
+    using Sig = SetContextWatcherSig;
+
+    struct Watcher {
+      Sig* func;
+      Watcher* next_{nullptr};
+
+      explicit Watcher(Sig& func) : func(&func) {}
+    };
+
+    std::atomic<Watcher*> watchers_{nullptr};
+
+    void addWatcher(Sig& func) {
+      auto watcherPtr = new Watcher(func);
+      auto* head = watchers_.load(std::memory_order_relaxed);
+      do {
+        watcherPtr->next_ = head;
+      } while (!watchers_.compare_exchange_weak(
+          head,
+          watcherPtr,
+          std::memory_order_acq_rel,
+          std::memory_order_relaxed));
+    }
+
+    void invokeWatchers(
+        const std::shared_ptr<RequestContext>& prev,
+        const std::shared_ptr<RequestContext>& ctx) {
+      auto* watcher = watchers_.load(std::memory_order_acquire);
+      while (watcher != nullptr) {
+        watcher->func(prev, ctx);
+        watcher = watcher->next_;
+      }
+    }
+
+    ~SetContextWatcherRegistry() {
+      auto* watcher = watchers_.exchange(nullptr, std::memory_order_acquire);
+      while (watcher != nullptr) {
+        delete std::exchange(watcher, watcher->next_);
+      }
+    }
+  };
+
+  static SetContextWatcherRegistry& getWatcherRegistry();
+
+ public:
   static std::shared_ptr<RequestContext> saveContext();
 
  private:

@@ -733,3 +733,70 @@ TEST(ImmutableRequestTest, typeTraits) {
   auto c2 = std::is_constructible<IRDI, int, int>::value;
   EXPECT_FALSE(c2);
 }
+
+// Static variables for test watchers
+namespace {
+int g_callCount = 0;
+std::shared_ptr<RequestContext> g_lastPrev;
+std::shared_ptr<RequestContext> g_lastCurrent;
+
+void testWatcher(
+    const std::shared_ptr<RequestContext>& prev,
+    const std::shared_ptr<RequestContext>& ctx) {
+  g_callCount++;
+  g_lastPrev = prev;
+  g_lastCurrent = ctx;
+}
+
+} // namespace
+
+TEST_F(RequestContextTest, AddSetContextWatcher) {
+  // Reset state for clean test
+  g_callCount = 0;
+  g_lastPrev.reset();
+  g_lastCurrent.reset();
+
+  // Add the watcher
+  RequestContext::addSetContextWatcher(testWatcher);
+
+  // Initially no calls
+  EXPECT_EQ(0, g_callCount);
+
+  // Create initial context
+  RequestContext::create();
+  auto ctx1 = RequestContext::saveContext();
+  EXPECT_EQ(1, g_callCount);
+  EXPECT_EQ(nullptr, g_lastPrev);
+  EXPECT_EQ(ctx1, g_lastCurrent);
+
+  // Reset call count for next test
+  g_callCount = 0;
+
+  // Create and set a new context
+  auto ctx2 = std::make_shared<RequestContext>();
+  RequestContext::setContext(ctx2);
+
+  EXPECT_EQ(1, g_callCount);
+  EXPECT_EQ(ctx1, g_lastPrev);
+  EXPECT_EQ(ctx2, g_lastCurrent);
+
+  // Reset call count for next test
+  g_callCount = 0;
+
+  // Set context to nullptr (should trigger watcher)
+  RequestContext::setContext(nullptr);
+
+  EXPECT_EQ(1, g_callCount);
+  EXPECT_EQ(ctx2, g_lastPrev);
+  EXPECT_EQ(nullptr, g_lastCurrent);
+
+  // Reset call count for next test
+  g_callCount = 0;
+
+  // Setting the same context will not trigger the watcher
+  RequestContext::setContext(nullptr);
+
+  EXPECT_EQ(0, g_callCount);
+  EXPECT_EQ(ctx2, g_lastPrev);
+  EXPECT_EQ(nullptr, g_lastCurrent);
+}

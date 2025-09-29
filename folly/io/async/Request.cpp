@@ -655,7 +655,21 @@ void RequestContext::clearContextData(const RequestToken& val) {
       staticCtx.rootId.store(0, std::memory_order_relaxed);
     }
   }
+  // Notify the Watchers via the registry
+  getWatcherRegistry().invokeWatchers(prevCtx, staticCtx.requestContext);
   return prevCtx;
+}
+
+/* static */ RequestContext::SetContextWatcherRegistry&
+RequestContext::getWatcherRegistry() {
+  static SetContextWatcherRegistry registry;
+
+  return registry;
+}
+
+/* static */ void RequestContext::addSetContextWatcher(
+    RequestContext::SetContextWatcherSig& func) {
+  getWatcherRegistry().addWatcher(func);
 }
 
 /* static */ std::shared_ptr<RequestContext> RequestContext::saveContext() {
@@ -707,6 +721,7 @@ RequestContext::setShallowCopyContext() {
   // Do not use setContext to avoid global set/unset
   // Also rootId does not change so do not bother setting it.
   std::swap(child, parent);
+  getWatcherRegistry().invokeWatchers(child, parent);
   return child;
 }
 
