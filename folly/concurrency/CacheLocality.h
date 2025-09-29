@@ -186,7 +186,7 @@ using FallbackGetcpuType = FallbackGetcpu<
 namespace detail {
 
 class AccessSpreaderBase {
- protected:
+ public:
   /// If there are more cpus than this nothing will crash, but there
   /// might be unnecessary sharing
   enum {
@@ -194,6 +194,7 @@ class AccessSpreaderBase {
     kMaxCpus = kIsMobile ? 16 : 256,
   };
 
+ protected:
   using CompactStripe = uint8_t;
 
   static_assert(
