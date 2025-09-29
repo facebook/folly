@@ -206,7 +206,23 @@ non_fbcode_target(
     compatible_with = [
         "ovr_config//os:linux",
     ],
-    deps = ["//xplat/folly/python:request_context"],
+    deps = [
+        ":request_context_helper",
+        "//xplat/folly/python:request_context",
+    ],
+)
+
+non_fbcode_target(
+    _kind = cython_library,
+    name = "request_context_helper",
+    srcs = ["request_context_helper.pyx"],
+    cpp_deps = [
+        "//xplat/folly/io/async:request_context",
+    ],
+    types = ["request_context_helper.pyi"],
+    deps = [
+        "//xplat/folly/python:request_context",
+    ],
 )
 
 # !!!! fbcode/folly/python/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
@@ -218,7 +234,23 @@ fbcode_target(
     compatible_with = [
         "ovr_config//os:linux",
     ],
-    deps = ["//folly/python:request_context"],
+    deps = [
+        ":request_context_helper",
+        "//folly/python:request_context",
+    ],
+)
+
+fbcode_target(
+    _kind = cython_library,
+    name = "request_context_helper",
+    srcs = ["request_context_helper.pyx"],
+    cpp_deps = [
+        "//folly/io/async:request_context",
+    ],
+    types = ["request_context_helper.pyi"],
+    deps = [
+        "//folly/python:request_context",
+    ],
 )
 
 fbcode_target(

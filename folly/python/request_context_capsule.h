@@ -29,11 +29,12 @@ inline void rc_capsule_destructor(PyObject* capsule) {
 }
 } // namespace
 
-inline PyObject* RequestContextToPyCapsule(
-    std::shared_ptr<RequestContext>& rc) {
+inline PyObject* RequestContextToPyCapsule(std::shared_ptr<RequestContext> rc) {
   // Trun a RequestContext into a PyObject* we can pass around python runtime.
   return PyCapsule_New(
-      new std::shared_ptr<RequestContext>(rc), NULL, rc_capsule_destructor);
+      new std::shared_ptr<RequestContext>(std::move(rc)),
+      NULL,
+      rc_capsule_destructor);
 }
 
 inline std::shared_ptr<RequestContext> PyCapsuleToRequestContext(

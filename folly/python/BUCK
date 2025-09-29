@@ -481,7 +481,10 @@ non_fbcode_target(
         # Conda is not Meta Python
         "ovr_config//distro:conda": [],
     }),
-    cpp_deps = ["//xplat/folly/io/async:request_context"],
+    cpp_deps = [
+        "//xplat/folly/io/async:request_context",
+        ":weak",
+    ],
     package = "folly",
     types = ["request_context.pyi"],
     deps = [
@@ -510,7 +513,10 @@ fbcode_target(
         # Conda is not Meta Python
         "ovr_config//distro:conda": [],
     }),
-    cpp_deps = ["//folly/io/async:request_context"],
+    cpp_deps = [
+        "//folly/io/async:request_context",
+        ":weak",
+    ],
     package = "folly",
     types = ["request_context.pyi"],
     deps = [

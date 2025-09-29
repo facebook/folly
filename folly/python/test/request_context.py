@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import asyncio
+import itertools
 from contextvars import copy_context
 from functools import partial
 from unittest import IsolatedAsyncioTestCase
+
+import folly.python.test.request_context_helper as frc_helper
 
 from folly import request_context
 
@@ -59,6 +62,11 @@ class RequestContextTest(IsolatedAsyncioTestCase):
         # Insure that the NULL ctx is not in any of the saved RequestContexts
         self.assertNotIn(request_context.get_from_contextvar(), [ctx1, ctx2, ctx3])
         self.assertEqual(await task4, request_context.get_from_contextvar())
+        # Insure that all the ctx are not actually the same ctx in disguise
+        for ctxa, ctxb in itertools.permutations(
+            (ctx1, ctx2, ctx3, request_context.get_from_contextvar()), 2
+        ):
+            self.assertNotEqual(ctxa, ctxb)
 
     async def test_callbacks(self) -> None:
         fut1 = asyncio.Future()
@@ -93,3 +101,48 @@ class RequestContextTest(IsolatedAsyncioTestCase):
         self.assertEqual(await fut1, ctx1)
         self.assertEqual(await fut2, ctx)
         self.assertEqual(await fut3, ctx1)
+
+    def test_fRC_setContext_is_observed(self) -> None:
+        # This is simulating some code setting the context in C++ land
+        frc_helper.setContext()
+        # Lets get a Context wrapper object to represent this var
+        set_ctx = request_context.save()
+
+        # Without observing setContext calls we can't automatically update the contextvar
+        expected = request_context.get_from_contextvar()
+        self.assertEqual(expected, set_ctx)
+
+        touched = 0
+
+        async def test_context():
+            await asyncio.sleep(0)
+            nonlocal touched
+            ctx = request_context.save()
+            self.assertEqual(ctx, set_ctx)
+            touched += 1
+
+        async def set_context():
+            nonlocal touched
+            frc_helper.setContext()
+            # Moved this to the most problematic spot if something was going to change it during task switching
+            await asyncio.sleep(0)
+            ctx = request_context.save()
+            self.assertNotEqual(ctx, set_ctx)
+            touched += 1
+
+        loop = asyncio.new_event_loop()
+        # We never set the PyContext explicitly, only the SetContextwatcher can make sure its set
+        # its expected that it will inherit set_ctx
+        task1 = loop.create_task(test_context())
+        task2 = loop.create_task(set_context())
+        task3 = loop.create_task(test_context())
+        task4 = loop.create_task(set_context())
+
+        loop.run_until_complete(asyncio.wait((task1, task2, task3, task4)))
+        loop.close()
+
+        self.assertEqual(touched, 4)
+
+        # Even though one of the tasks set the context, it should revert to set_ctx
+        self.assertEqual(request_context.get_from_contextvar(), set_ctx)
+        self.assertEqual(request_context.save(), set_ctx)
