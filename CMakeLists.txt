@@ -22,6 +22,13 @@ if (POLICY CMP0057)
   cmake_policy(SET CMP0057 NEW)
 endif()
 
+# Support: HHVM OSS
+# HHVM needs to supply overrides for some module search paths
+# to use vendored equivalents of system dependencies.
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
 # CMP0075 Include file check macros honor CMAKE_REQUIRED_LIBRARIES
 if(POLICY CMP0075)
   cmake_policy(SET CMP0075 NEW)
