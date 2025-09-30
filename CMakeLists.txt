@@ -107,6 +107,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   endif()
 endif()
 
+if(NOT DEFINED FOLLY_HAVE_INT128_T)
+  include(CheckTypeSize)
+  check_type_size("__int128_t" FOLLY_INT128_T_SIZE)
+  if(HAVE_FOLLY_INT128_T_SIZE)
+    set(FOLLY_HAVE_INT128_T TRUE)
+  endif()
+endif()
+
 set(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
 set(
