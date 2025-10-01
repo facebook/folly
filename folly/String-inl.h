@@ -289,6 +289,14 @@ template <class OutStringT, class DelimT, class OutputIterator>
 void internalSplit(
     DelimT delim, StringPiece sp, OutputIterator out, bool ignoreEmpty);
 
+/*
+ * Count the number of tokens that would be produced by splitting
+ * the given StringPiece with the given delimiter.
+ * This is used for pre-allocation optimization in split().
+ */
+size_t delimCountTokens(char delim, StringPiece sp, bool ignoreEmpty);
+size_t delimCountTokens(StringPiece delim, StringPiece sp, bool ignoreEmpty);
+
 template <class OutStringT, class Container>
 std::enable_if_t<
     IsSplitSupportedContainer<Container>::value &&
@@ -498,6 +506,35 @@ split(
       StringPiece(input),
       std::back_inserter(out),
       ignoreEmpty);
+}
+
+template <class Delim, class String, class OutputType>
+std::enable_if_t<detail::IsSplitSupportedContainer<OutputType>::value> split(
+    const Delim& delimiter,
+    const String& input,
+    OutputType& out,
+    const SplitOptions& options) {
+  size_t predicted_count = 0;
+  if (options.preallocate()) {
+    // First pass: count the expected number of tokens
+    StringPiece sp(input);
+    auto delim_prepared = detail::prepareDelim(delimiter);
+    predicted_count =
+        detail::delimCountTokens(delim_prepared, sp, options.ignore_empty());
+    grow_capacity_by(out, predicted_count);
+  }
+
+  size_t initial_size = out.size();
+  detail::internalSplit<typename OutputType::value_type>(
+      detail::prepareDelim(delimiter),
+      StringPiece(input),
+      std::back_inserter(out),
+      options.ignore_empty());
+
+  if (options.preallocate()) {
+    [[maybe_unused]] size_t actual_count = out.size() - initial_size;
+    assert(predicted_count == actual_count);
+  }
 }
 
 template <
