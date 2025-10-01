@@ -96,7 +96,7 @@ class AsyncSocketTransport : public AsyncTransport {
   }
 
   virtual NetworkSocket getNetworkSocket() const = 0;
-  virtual bool getTFOSucceded() const = 0;
+  virtual bool getTFOSucceeded() const = 0;
   virtual void enableTFO() = 0;
   virtual void disableTransparentTls() {}
 

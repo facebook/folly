@@ -643,7 +643,7 @@ TEST_P(AsyncIoUringSocketTest, FastOpen) {
     EXPECT_EQ(
         "hello", conn.callback->waitFor(5).via(base.get()).getVia(base.get()));
     if (!had_fastopen) {
-      EXPECT_FALSE(conn.client->transport->getTFOSucceded());
+      EXPECT_FALSE(conn.client->transport->getTFOSucceeded());
     }
   }
   {
@@ -651,7 +651,7 @@ TEST_P(AsyncIoUringSocketTest, FastOpen) {
     EXPECT_EQ(
         "hello", conn.callback->waitFor(5).via(base.get()).getVia(base.get()));
     if (can_fastopen) {
-      EXPECT_TRUE(conn.client->transport->getTFOSucceded());
+      EXPECT_TRUE(conn.client->transport->getTFOSucceeded());
     }
   }
 }

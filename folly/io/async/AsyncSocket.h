@@ -983,7 +983,7 @@ class AsyncSocket : public AsyncSocketTransport {
    * data is read from the socket when the caller knows that
    * the SYN has been ACKed by the server.
    */
-  bool getTFOSucceded() const override;
+  bool getTFOSucceeded() const override;
 
   // Methods controlling socket options
 

@@ -2432,7 +2432,7 @@ void AsyncSocket::getPeerAddress(folly::SocketAddress* address) const {
   *address = addr_;
 }
 
-bool AsyncSocket::getTFOSucceded() const {
+bool AsyncSocket::getTFOSucceeded() const {
   return detail::tfo_succeeded(fd_);
 }
 
@@ -3932,7 +3932,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     if (totalWritten >= 0) {
       tfoInfo_.finished = true;
       state_ = StateEnum::ESTABLISHED;
-      // We schedule this asynchrously so that we don't end up
+      // We schedule this asynchronously so that we don't end up
       // invoking initial read or write while a write is in progress.
       scheduleInitialReadWrite();
     } else if (errno == EINPROGRESS) {

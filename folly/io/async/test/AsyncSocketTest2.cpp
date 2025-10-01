@@ -3491,7 +3491,7 @@ TEST(AsyncSocketTest, ConnectTFO) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
-  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
+  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceeded());
 }
 
 TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
@@ -3545,7 +3545,7 @@ TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
-  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
+  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceeded());
 }
 
 /**
@@ -3576,7 +3576,7 @@ TEST(AsyncSocketTest, ConnectRefusedImmediatelyTFO) {
     EXPECT_EQ(STATE_FAILED, write1.state);
   } else {
     EXPECT_EQ(STATE_SUCCEEDED, write1.state);
-    EXPECT_FALSE(socket->getTFOSucceded());
+    EXPECT_FALSE(socket->getTFOSucceeded());
   }
 
   EXPECT_EQ(STATE_FAILED, write2.state);
@@ -3701,7 +3701,7 @@ TEST(AsyncSocketTest, TestTFOUnsupported) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
-  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
+  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceeded());
 }
 
 TEST(AsyncSocketTest, ConnectRefusedDelayedTFO) {
@@ -3741,7 +3741,7 @@ TEST(AsyncSocketTest, ConnectRefusedDelayedTFO) {
 
   EXPECT_EQ(STATE_FAILED, write1.state);
   EXPECT_EQ(STATE_FAILED, write2.state);
-  EXPECT_FALSE(socket->getTFOSucceded());
+  EXPECT_FALSE(socket->getTFOSucceeded());
 
   EXPECT_EQ(STATE_SUCCEEDED, cb.state);
   EXPECT_LE(0, socket->getConnectTime().count());
@@ -3957,7 +3957,7 @@ TEST(AsyncSocketTest, ConnectTFOWithBigData) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
-  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
+  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceeded());
 }
 
 #endif // FOLLY_ALLOW_TFO
