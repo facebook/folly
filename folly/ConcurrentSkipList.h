@@ -779,7 +779,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
     return succs_[0]->data();
   }
 
-  value_type* operator->() {
+  value_type* operator->() const {
     DCHECK(succs_[0] != nullptr);
     return &succs_[0]->data();
   }
