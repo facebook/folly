@@ -409,7 +409,7 @@ class AsyncSocket : public AsyncSocketTransport {
      *         Otherwise, returns an empty optional.
      *
      *         If the helper has previously thrown a ByteEventHelper::Exception,
-     *         it will not process further Cmsg and will continiously return an
+     *         it will not process further Cmsg and will continuously return an
      *         empty optional.
      *
      * @throw  If the helper receives a sequence of Cmsg that violate its
@@ -702,7 +702,7 @@ class AsyncSocket : public AsyncSocketTransport {
    * receiving notifications for messages posted to the error queue
    * associated with the socket.
    * ErrMessageCallback is implemented only for platforms with
-   * per-socket error message queus support (recvmsg() system call must
+   * per-socket error message queues support (recvmsg() system call must
    * )
    *
    */
@@ -940,7 +940,7 @@ class AsyncSocket : public AsyncSocketTransport {
   }
 
   /**
-   * Returns when connect() finished (either successsfully or failed).
+   * Returns when connect() finished (either successfully or failed).
    */
   std::chrono::steady_clock::time_point getConnectEndTime() const {
     return connectEndTime_;
@@ -972,7 +972,7 @@ class AsyncSocket : public AsyncSocketTransport {
   bool getTFOFinished() const { return tfoInfo_.finished; }
 
   /**
-   * Returns whether or not TFO attempt succeded on this
+   * Returns whether or not TFO attempt succeeded on this
    * connection.
    * For servers this is pretty straightforward API and can
    * be invoked right after the connection is accepted. This API
@@ -1395,7 +1395,7 @@ class AsyncSocket : public AsyncSocketTransport {
     /**
      * Constructor for observer.
      *
-     * @param config      Config, defaults to auxilary instrumentaton disabled.
+     * @param config      Config, defaults to auxilary instrumentation disabled.
      */
     explicit LegacyLifecycleObserver(const Config& observerConfig)
         : observerConfig_(observerConfig) {}

@@ -702,7 +702,7 @@ TEST_P(AsyncSocketConnectTest, ConnectNullCallback) {
 
   socket->connect(nullptr, server.getAddress(), 30);
 
-  // write some data, just so we have some way of verifing
+  // write some data, just so we have some way of verifying
   // that the socket works correctly after connecting
   char buf[128];
   memset(buf, 'a', sizeof(buf));

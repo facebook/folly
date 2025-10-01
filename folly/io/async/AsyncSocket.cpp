@@ -3295,7 +3295,7 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
       }
       // `ancillaryData()` is expected to check and error on this, since
       // it's probably incorrect to process truncated ancillary data.  If
-      // some bizarro callback wants to treat this as recoverable, it can
+      // some bizarre callback wants to treat this as recoverable, it can
       // clear `MSG_CTRUNC` on `msg_flags` before returning.
       //
       // Don't move this: `performReadMsg` doesn't guarantee that `msg_flags`
@@ -3575,7 +3575,7 @@ void AsyncSocket::handleInitialReadWrite() noexcept {
   DestructorGuard dg(this);
   // If we have a readCallback_, make sure we enable read events.  We
   // may already be registered for reads if connectSuccess() set
-  // the read calback.
+  // the read callback.
   if (readCallback_ && !(eventFlags_ & EventHandler::READ)) {
     assert(state_ == StateEnum::ESTABLISHED);
     assert((shutdownFlags_ & SHUT_READ) == 0);
