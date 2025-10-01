@@ -112,7 +112,7 @@ template <safe_alias, typename>
 class safe_task;
 
 template <safe_alias S, typename U>
-auto to_now_task(safe_task<S, U>);
+auto to_now_task(safe_task<S, U> t);
 
 template <typename T>
 class FOLLY_CORO_TASK_ATTRS now_task final : public detail::now_task_base<T> {
@@ -152,7 +152,7 @@ inline now_task<> make_now_task() {
   co_return;
 }
 /// Same as make_now_task(). See Unit
-inline now_task<> make_now_task(Unit) {
+inline now_task<> make_now_task(Unit /*unused*/) {
   co_return;
 }
 

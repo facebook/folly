@@ -365,7 +365,7 @@ class TaskWrapperCrtp {
       // See `wrap_must_use_immediately_t::unsafe_mover` for more context
       std::enable_if_t<std::is_base_of_v<TaskWrapperCrtp, Me>, int> = 0>
   static my_curried_mover<Me> unsafe_mover(
-      folly::ext::must_use_immediately_private_t, Me&& me) noexcept {
+      folly::ext::must_use_immediately_private_t /*unused*/, Me&& me) noexcept {
     return folly::ext::curried_unsafe_mover_from_bases_and_members<
         TaskWrapperCrtp>(
         folly::tag</*no bases*/>,
@@ -378,7 +378,7 @@ class TaskWrapperCrtp {
       std::enable_if_t<std::is_base_of_v<TaskWrapperCrtp, DerivedFromMe>, int> =
           0>
   explicit TaskWrapperCrtp(
-      folly::ext::curried_unsafe_mover_private_t,
+      folly::ext::curried_unsafe_mover_private_t /*unused*/,
       my_curried_mover<DerivedFromMe>&& mover)
       // `must_use_immediately_unsafe_mover` has more `noexcept` assertions
       noexcept(noexcept(Inner{std::move(mover.template get<0>())()}))
@@ -470,7 +470,8 @@ class TaskWithExecutorWrapperCrtp {
   // never be called in user code.  Internal usage in `folly/coro` looks
   // overall immediately-awaitable-safe -- and the best safeguard for any
   // particular scenario is to test, see e.g. `NowTaskTest.blockingWait`.
-  friend auto tag_invoke(cpo_t<co_withAsyncStack>, Derived&& twe) noexcept(
+  friend auto
+  tag_invoke(cpo_t<co_withAsyncStack> /*unused*/, Derived&& twe) noexcept(
       noexcept(co_withAsyncStack(FOLLY_DECLVAL(Inner)))) {
     return Cfg::wrapAwaitable(co_withAsyncStack(std::move(twe.inner_)));
   }
@@ -496,7 +497,7 @@ class TaskWithExecutorWrapperCrtp {
           std::is_base_of_v<TaskWithExecutorWrapperCrtp, Me>,
           int> = 0>
   static my_curried_mover<Me> unsafe_mover(
-      folly::ext::must_use_immediately_private_t, Me&& me) noexcept {
+      folly::ext::must_use_immediately_private_t /*unused*/, Me&& me) noexcept {
     return folly::ext::curried_unsafe_mover_from_bases_and_members<
         TaskWithExecutorWrapperCrtp>(
         folly::tag</*no bases*/>,
@@ -510,7 +511,7 @@ class TaskWithExecutorWrapperCrtp {
           std::is_base_of_v<TaskWithExecutorWrapperCrtp, DerivedFromMe>,
           int> = 0>
   explicit TaskWithExecutorWrapperCrtp(
-      folly::ext::curried_unsafe_mover_private_t,
+      folly::ext::curried_unsafe_mover_private_t /*unused*/,
       my_curried_mover<DerivedFromMe>&& mover)
       // `must_use_immediately_unsafe_mover` has more `noexcept` assertions
       noexcept(noexcept(Inner{std::move(mover.template get<0>())()}))
