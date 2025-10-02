@@ -22,7 +22,7 @@
 #include <string>
 
 #if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
-#include <gflags/gflags.h>
+#include <gflags/gflags.h> // IWYU pragma: export
 #endif
 
 #define FOLLY_GFLAGS_DECLARE_FALLBACK_(_type, _shortType, _name) \
