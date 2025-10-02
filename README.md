@@ -257,3 +257,13 @@ Download and install folly with the parameters listed below:
   make
   sudo make install
 ```
+
+## Linux, Windows and MacOS (Conan)
+
+You also can download and install Folly using the [Conan](https://conan.io/) package manager:
+
+    conan install -r conancenter --requires="folly/[*]" --build=missing
+
+The Folly package in Conan Center is kept up to date by
+[ConanCenterIndex](https://github.com/conan-io/conan-center-index) contributors.
+If the version is out of date, please create an issue or pull request on the Conan Center Index repository.
