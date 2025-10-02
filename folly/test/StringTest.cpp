@@ -1151,7 +1151,7 @@ TEST(Split, SplitOptionsBuilderPattern) {
 }
 
 TEST(Split, SplitOptionsBasicFunctionality) {
-  std::vector<std::string_view> result;
+  std::vector<std::string> result;
   std::string_view input = "a:b:c:d:e";
 
   // Test with default options
@@ -1165,7 +1165,7 @@ TEST(Split, SplitOptionsBasicFunctionality) {
 }
 
 TEST(Split, SplitOptionsIgnoreEmpty) {
-  std::vector<std::string_view> result;
+  std::vector<std::string> result;
   std::string_view input = "a::b:::c::d:";
 
   // Test with ignore_empty = false (default)
@@ -1181,7 +1181,7 @@ TEST(Split, SplitOptionsIgnoreEmpty) {
 }
 
 TEST(Split, SplitOptionsCombinedFeatures) {
-  std::vector<std::string_view> result;
+  std::vector<std::string> result;
   std::string_view input = "apple::banana:::cherry::date:";
 
   // Test with both preallocate and ignore_empty enabled
@@ -1193,7 +1193,7 @@ TEST(Split, SplitOptionsCombinedFeatures) {
 }
 
 TEST(Split, SplitOptionsMultiCharDelimiter) {
-  std::vector<std::string_view> result;
+  std::vector<std::string> result;
   std::string_view input = "one::two::::three::four";
 
   // Test with multi-character delimiter and preallocation
@@ -1209,7 +1209,7 @@ TEST(Split, SplitOptionsMultiCharDelimiter) {
 }
 
 TEST(Split, SplitOptionsEmptyString) {
-  std::vector<std::string_view> result;
+  std::vector<std::string> result;
 
   // Test empty string with default options
   folly::split(':', "", result, SplitOptions{});
@@ -1227,7 +1227,7 @@ TEST(Split, SplitOptionsEmptyString) {
 }
 
 TEST(Split, SplitOptionsSingleToken) {
-  std::vector<std::string_view> result;
+  std::vector<std::string> result;
   const std::string input = "single";
 
   // Test single token with preallocation
@@ -1241,7 +1241,7 @@ TEST(Split, SplitOptionsSingleToken) {
 }
 
 TEST(Split, SplitOptionsLargeInput) {
-  std::vector<std::string_view> result;
+  std::vector<std::string> result;
 
   // Create a larger input string to test preallocation benefits
   std::string input;
@@ -1259,7 +1259,7 @@ TEST(Split, SplitOptionsLargeInput) {
   EXPECT_THAT(result, testing::ElementsAreArray(expected));
 
   // Test without preallocation for comparison
-  std::vector<std::string_view> result2;
+  std::vector<std::string> result2;
   folly::split(':', input, result2, SplitOptions{});
   EXPECT_THAT(result2, testing::ElementsAreArray(expected));
 }
