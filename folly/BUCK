@@ -5365,10 +5365,6 @@ fbcode_target(
     name = "demangle",
     srcs = ["Demangle.cpp"],
     headers = ["Demangle.h"],
-    os_deps = [(
-        "linux",
-        ["third-party//binutils:iberty"],
-    )],
     deps = [
         ":c_portability",
         ":utility",
@@ -5378,7 +5374,10 @@ fbcode_target(
     exported_deps = [
         ":fbstring",
         "//folly/portability:config",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": ["third-party//binutils:iberty"],
+    }),
 )
 
 fbcode_target(
@@ -6272,12 +6271,6 @@ fbcode_target(
         "Random.h",
         "Random-inl.h",
     ],
-    os_deps = [(
-        "windows",
-        [
-            "fbsource//third-party/toolchains/win:advapi32.lib",
-        ],
-    )],
     deps = [
         ":cpp_attributes",
         ":singleton_thread_local",
@@ -6294,7 +6287,10 @@ fbcode_target(
         "//folly/functional:invoke",
         "//folly/lang:bits",
         "//folly/random:xoshiro256pp",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": ["fbsource//third-party/toolchains/win:advapi32.lib"],
+    }),
     external_deps = [
         "glog",
     ],
