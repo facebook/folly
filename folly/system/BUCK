@@ -52,9 +52,6 @@ fb_dirsync_cpp_library(
         "//folly:memory",
     ],
     external_deps = ["glog"],
-    exported_external_deps = [
-        "glog",
-    ],
 )
 
 fb_dirsync_cpp_library(
@@ -90,9 +87,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:unistd",
     ],
     external_deps = ["glog"],
-    exported_external_deps = [
-        "glog",
-    ],
 )
 
 fb_dirsync_cpp_library(
@@ -110,9 +104,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_types",
     ],
     external_deps = ["glog"],
-    exported_external_deps = [
-        "glog",
-    ],
 )
 
 fb_dirsync_cpp_library(
