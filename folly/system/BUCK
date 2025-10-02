@@ -62,6 +62,8 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
+        "//folly:utility",
+        "//folly/lang:safe_assert",
         "//folly/portability:sched",
     ],
 )
