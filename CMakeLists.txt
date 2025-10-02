@@ -27,6 +27,11 @@ if(POLICY CMP0075)
   cmake_policy(SET CMP0075 NEW)
 endif()
 
+# CMP0167 The FindBoost module is removed
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
 # includes
 set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/CMake"
