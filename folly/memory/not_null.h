@@ -86,12 +86,24 @@ class guaranteed_not_null_provider {
   struct guaranteed_not_null {};
 };
 
+class default_null_handler {
+ public:
+  // Handle termination when the invariant of the pointer being null is
+  // violated, such as when doing debug checking after moving from a not_null
+  // smart pointer.
+  [[noreturn]] static inline void handle_terminate(const char* msg);
+
+  // Handle when code attempts to construct or assign a not_null object from a
+  // null pointer.
+  [[noreturn]] static inline void handle_throw(const char* msg);
+};
+
 /**
  * not_null_base, the common interface for all not_null subclasses.
  *  - Implicitly constructs and casts just like a PtrT.
  *  - Has unwrap() function to access the underlying PtrT.
  */
-template <typename PtrT>
+template <typename PtrT, typename NullHandlerT>
 class not_null_base : protected guaranteed_not_null_provider {
   template <bool>
   struct implicit_tag {};
@@ -110,7 +122,11 @@ class not_null_base : protected guaranteed_not_null_provider {
    */
   not_null_base() = delete;
   /* implicit */ not_null_base(std::nullptr_t) = delete;
+  ~not_null_base() = default;
 
+  // Copy and move constructors from other not_null_base types doesn't do any
+  // null checking and thus will only throw if the underlying type's constructor
+  // throws.
   not_null_base(const not_null_base& nn) = default;
   not_null_base(not_null_base&& nn) = default;
 
@@ -215,12 +231,12 @@ class not_null_base : protected guaranteed_not_null_provider {
  *
  * Default implementation is not_null_base.
  */
-template <typename PtrT>
-class not_null : public not_null_base<PtrT> {
+template <typename PtrT, typename NullHandlerT = default_null_handler>
+class not_null : public not_null_base<PtrT, NullHandlerT> {
  public:
-  using pointer = typename not_null_base<PtrT>::pointer;
-  using element_type = typename not_null_base<PtrT>::element_type;
-  using not_null_base<PtrT>::not_null_base;
+  using pointer = typename not_null_base<PtrT, NullHandlerT>::pointer;
+  using element_type = typename not_null_base<PtrT, NullHandlerT>::element_type;
+  using not_null_base<PtrT, NullHandlerT>::not_null_base;
 };
 
 /**
@@ -238,18 +254,19 @@ class not_null : public not_null_base<PtrT> {
  * Notes:
  *  - Has make_not_null_unique, equivalent to std::make_unique
  */
-template <typename T, typename Deleter>
-class not_null<std::unique_ptr<T, Deleter>>
-    : public not_null_base<std::unique_ptr<T, Deleter>> {
+template <typename T, typename Deleter, typename NullHandlerT>
+class not_null<std::unique_ptr<T, Deleter>, NullHandlerT>
+    : public not_null_base<std::unique_ptr<T, Deleter>, NullHandlerT> {
  public:
-  using pointer = not_null<typename std::unique_ptr<T, Deleter>::pointer>;
+  using pointer =
+      not_null<typename std::unique_ptr<T, Deleter>::pointer, NullHandlerT>;
   using element_type = typename std::unique_ptr<T, Deleter>::element_type;
   using deleter_type = typename std::unique_ptr<T, Deleter>::deleter_type;
 
   /**
    * Constructors. Most are inherited from not_null_base.
    */
-  using not_null_base<std::unique_ptr<T, Deleter>>::not_null_base;
+  using not_null_base<std::unique_ptr<T, Deleter>, NullHandlerT>::not_null_base;
 
   not_null(pointer p, const Deleter& d);
   not_null(pointer p, Deleter&& d);
@@ -282,8 +299,11 @@ class not_null<std::unique_ptr<T, Deleter>>
   const Deleter& get_deleter() const noexcept;
 };
 
-template <typename T, typename Deleter = std::default_delete<T>>
-using not_null_unique_ptr = not_null<std::unique_ptr<T, Deleter>>;
+template <
+    typename T,
+    typename Deleter = std::default_delete<T>,
+    typename NullHandlerT = default_null_handler>
+using not_null_unique_ptr = not_null<std::unique_ptr<T, Deleter>, NullHandlerT>;
 
 template <typename T, typename... Args>
 not_null_unique_ptr<T> make_not_null_unique(Args&&... args);
@@ -303,41 +323,50 @@ not_null_unique_ptr<T> make_not_null_unique(Args&&... args);
  * Notes:
  *  - Has make_not_null_shared, equivalent to std::make_shared.
  */
-template <typename T>
-class not_null<std::shared_ptr<T>> : public not_null_base<std::shared_ptr<T>> {
+template <typename T, typename NullHandlerT>
+class not_null<std::shared_ptr<T>, NullHandlerT>
+    : public not_null_base<std::shared_ptr<T>, NullHandlerT> {
  public:
   using element_type = typename std::shared_ptr<T>::element_type;
-  using pointer = not_null<element_type*>;
+  using pointer = not_null<element_type*, NullHandlerT>;
   using weak_type = typename std::shared_ptr<T>::weak_type;
 
   /**
    * Constructors. Most are inherited from not_null_base.
    */
-  using not_null_base<std::shared_ptr<T>>::not_null_base;
+  using not_null_base<std::shared_ptr<T>, NullHandlerT>::not_null_base;
 
   template <typename U, typename Deleter>
   not_null(U* ptr, Deleter d);
-  template <typename U, typename Deleter>
-  not_null(not_null<U*> ptr, Deleter d);
+  template <typename U, typename Deleter, typename UNullHandlerT>
+  not_null(not_null<U*, UNullHandlerT> ptr, Deleter d);
 
   /**
    * Aliasing constructors.
    *
-   * Note:
+   * Notes:
    *  - The aliased shared_ptr argument, @r, is allowed to be null. The
    *    constructed object is not null iff @ptr is.
+   *  - Don't template on the null handler of raw value not_null ptr wrappers
+   *    so that we get automatic implicit conversion to the null handler of this
+   *    destination type when aliasing raw pointer values.
    */
   template <typename U>
-  not_null(const std::shared_ptr<U>& r, not_null<element_type*> ptr) noexcept;
+  not_null(
+      const std::shared_ptr<U>& r,
+      not_null<element_type*, NullHandlerT> ptr) noexcept;
+  template <typename U, typename UNullHandlerT>
+  not_null(
+      const not_null<std::shared_ptr<U>, UNullHandlerT>& r,
+      not_null<element_type*, NullHandlerT> ptr) noexcept;
   template <typename U>
   not_null(
-      const not_null<std::shared_ptr<U>>& r,
-      not_null<element_type*> ptr) noexcept;
-  template <typename U>
-  not_null(std::shared_ptr<U>&& r, not_null<element_type*> ptr) noexcept;
-  template <typename U>
+      std::shared_ptr<U>&& r,
+      not_null<element_type*, NullHandlerT> ptr) noexcept;
+  template <typename U, typename UNullHandlerT>
   not_null(
-      not_null<std::shared_ptr<U>>&& r, not_null<element_type*> ptr) noexcept;
+      not_null<std::shared_ptr<U>, UNullHandlerT>&& r,
+      not_null<element_type*, NullHandlerT> ptr) noexcept;
 
   /**
    * not_null_shared_ptr can only be reset to a non-null pointer.
@@ -345,12 +374,12 @@ class not_null<std::shared_ptr<T>> : public not_null_base<std::shared_ptr<T>> {
   void reset() = delete;
   template <typename U>
   void reset(U* ptr);
-  template <typename U>
-  void reset(not_null<U*> ptr) noexcept;
+  template <typename U, typename UNullHandlerT>
+  void reset(not_null<U*, UNullHandlerT> ptr) noexcept;
   template <typename U, typename Deleter>
   void reset(U* ptr, Deleter d);
-  template <typename U, typename Deleter>
-  void reset(not_null<U*> ptr, Deleter d);
+  template <typename U, typename Deleter, typename UNullHandlerT>
+  void reset(not_null<U*, UNullHandlerT> ptr, Deleter d);
 
   /**
    * get() returns a not_null.
@@ -376,12 +405,13 @@ class not_null<std::shared_ptr<T>> : public not_null_base<std::shared_ptr<T>> {
   long use_count() const noexcept;
   template <typename U>
   bool owner_before(const std::shared_ptr<U>& other) const noexcept;
-  template <typename U>
-  bool owner_before(const not_null<std::shared_ptr<U>>& other) const noexcept;
+  template <typename U, typename UNullHandlerT>
+  bool owner_before(
+      const not_null<std::shared_ptr<U>, UNullHandlerT>& other) const noexcept;
 };
 
-template <typename T>
-using not_null_shared_ptr = not_null<std::shared_ptr<T>>;
+template <typename T, typename NullHandlerT = default_null_handler>
+using not_null_shared_ptr = not_null<std::shared_ptr<T>, NullHandlerT>;
 
 template <typename T, typename... Args>
 not_null_shared_ptr<T> make_not_null_shared(Args&&... args);
@@ -396,14 +426,15 @@ not_null_shared_ptr<T> allocate_not_null_shared(
  *  - Works when one of the operands is not not_null.
  *  - Works when one of the operands is nullptr.
  */
-#define FB_NOT_NULL_MK_OP(op)                                      \
-  template <typename PtrT, typename T>                             \
-  bool operator op(const not_null<PtrT>& lhs, const T& rhs);       \
-  template <                                                       \
-      typename PtrT,                                               \
-      typename T,                                                  \
-      typename = std::enable_if_t<!detail::is_not_null<T>::value>> \
-  bool operator op(const T& lhs, const not_null<PtrT>& rhs);
+#define FB_NOT_NULL_MK_OP(op)                                                 \
+  template <typename PtrT, typename T, typename LhsNullHandlerT>              \
+  bool operator op(const not_null<PtrT, LhsNullHandlerT>& lhs, const T& rhs); \
+  template <                                                                  \
+      typename PtrT,                                                          \
+      typename T,                                                             \
+      typename RhsNullHandlerT,                                               \
+      typename = std::enable_if_t<!detail::is_not_null<T>::value>>            \
+  bool operator op(const T& lhs, const not_null<PtrT, RhsNullHandlerT>& rhs);
 FB_NOT_NULL_MK_OP(==)
 FB_NOT_NULL_MK_OP(!=)
 FB_NOT_NULL_MK_OP(<)
@@ -416,9 +447,9 @@ FB_NOT_NULL_MK_OP(>=)
  * Output:
  *  - Forwards to underlying PtrT.
  */
-template <typename U, typename V, typename PtrT>
+template <typename U, typename V, typename PtrT, typename NullHandlerT>
 std::basic_ostream<U, V>& operator<<(
-    std::basic_ostream<U, V>& os, const not_null<PtrT>& ptr);
+    std::basic_ostream<U, V>& os, const not_null<PtrT, NullHandlerT>& ptr);
 
 /**
  * Swap
@@ -429,29 +460,60 @@ void swap(not_null<PtrT>& lhs, not_null<PtrT>& rhs) noexcept;
 /**
  * Getters
  */
-template <typename Deleter, typename T>
-Deleter* get_deleter(const not_null_shared_ptr<T>& ptr);
+template <typename Deleter, typename T, typename NullHandlerT>
+Deleter* get_deleter(const not_null_shared_ptr<T, NullHandlerT>& ptr);
 
 /**
  * Casting
  */
-template <typename T, typename U>
-not_null_shared_ptr<T> static_pointer_cast(const not_null_shared_ptr<U>& r);
-template <typename T, typename U>
-not_null_shared_ptr<T> static_pointer_cast(not_null_shared_ptr<U>&& r);
-template <typename T, typename U>
-std::shared_ptr<T> dynamic_pointer_cast(const not_null_shared_ptr<U>& r);
-template <typename T, typename U>
-std::shared_ptr<T> dynamic_pointer_cast(not_null_shared_ptr<U>&& r);
-template <typename T, typename U>
-not_null_shared_ptr<T> const_pointer_cast(const not_null_shared_ptr<U>& r);
-template <typename T, typename U>
-not_null_shared_ptr<T> const_pointer_cast(not_null_shared_ptr<U>&& r);
-template <typename T, typename U>
-not_null_shared_ptr<T> reinterpret_pointer_cast(
-    const not_null_shared_ptr<U>& r);
-template <typename T, typename U>
-not_null_shared_ptr<T> reinterpret_pointer_cast(not_null_shared_ptr<U>&& r);
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT = default_null_handler,
+    typename UNullHandlerT = default_null_handler>
+not_null_shared_ptr<T, TNullHandlerT> static_pointer_cast(
+    const not_null_shared_ptr<U, UNullHandlerT>& r);
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT = default_null_handler,
+    typename UNullHandlerT = default_null_handler>
+not_null_shared_ptr<T, TNullHandlerT> static_pointer_cast(
+    not_null_shared_ptr<U, UNullHandlerT>&& r);
+template <typename T, typename U, typename UNullHandlerT = default_null_handler>
+std::shared_ptr<T> dynamic_pointer_cast(
+    const not_null_shared_ptr<U, UNullHandlerT>& r);
+template <typename T, typename U, typename UNullHandlerT = default_null_handler>
+std::shared_ptr<T> dynamic_pointer_cast(
+    not_null_shared_ptr<U, UNullHandlerT>&& r);
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT = default_null_handler,
+    typename UNullHandlerT = default_null_handler>
+not_null_shared_ptr<T, TNullHandlerT> const_pointer_cast(
+    const not_null_shared_ptr<U, UNullHandlerT>& r);
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT = default_null_handler,
+    typename UNullHandlerT = default_null_handler>
+not_null_shared_ptr<T, TNullHandlerT> const_pointer_cast(
+    not_null_shared_ptr<U, UNullHandlerT>&& r);
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT = default_null_handler,
+    typename UNullHandlerT = default_null_handler>
+not_null_shared_ptr<T, TNullHandlerT> reinterpret_pointer_cast(
+    const not_null_shared_ptr<U, UNullHandlerT>& r);
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT = default_null_handler,
+    typename UNullHandlerT = default_null_handler>
+not_null_shared_ptr<T, TNullHandlerT> reinterpret_pointer_cast(
+    not_null_shared_ptr<U, UNullHandlerT>&& r);
 
 template <typename PtrT>
 not_null(PtrT&&) -> not_null<std::remove_cv_t<std::remove_reference_t<PtrT>>>;
@@ -463,8 +525,8 @@ namespace std {
  * Hashing:
  *  - Forwards to underlying PtrT.
  */
-template <typename PtrT>
-struct hash<::folly::not_null<PtrT>> : hash<PtrT> {};
+template <typename PtrT, typename NullHandlerT>
+struct hash<::folly::not_null<PtrT, NullHandlerT>> : hash<PtrT> {};
 } // namespace std
 
 #include <folly/memory/not_null-inl.h>
