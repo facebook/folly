@@ -35,3 +35,4 @@ cdef class Context:
 
 cpdef Context save() noexcept
 cpdef Context get_from_contextvar() noexcept
+cdef object get_PyContext(object context) except *

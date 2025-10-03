@@ -27,6 +27,16 @@ _RequestContext = PyContextVar_New("_RequestContext", NULL)
 cdef object set_PyContext(shared_ptr[RequestContext] ptr) except *:
     return PyContextVar_Set(_RequestContext, RequestContextToPyCapsule(move(ptr)))
 
+cdef object get_PyContext(object context) except *:
+    """Return the PyCapsule from the ContextVar"""
+    if context is None:
+        return get_value(_RequestContext)
+
+    if not PyContext_CheckExact(context):
+        raise TypeError(f"{context!r} is not a PyContext object!")
+
+    return context.get(_RequestContext)
+
 
 @cython.auto_pickle(False)
 cdef class Context:
