@@ -66,7 +66,7 @@ cpu_set_state::~cpu_set_state() {
 #endif
 
 unsigned int hardware_concurrency() noexcept {
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
   cpu_set_t stackset;
   return to_narrow(cpu_set_state::ask(&stackset).cpu_count());
 #endif
