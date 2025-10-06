@@ -21,7 +21,8 @@ from cpython.pycapsule cimport PyCapsule_CheckExact
 from cpython.pystate cimport PyThreadState
 from libcpp.utility cimport move
 
-_RequestContext = PyContextVar_New("_RequestContext", NULL)
+# Don't store in module dict, limits control surfaces for how it can be set to this module alone.
+cdef object _RequestContext = PyContextVar_New("_RequestContext", NULL)
 
 
 cdef object set_PyContext(shared_ptr[RequestContext] ptr) except *:
