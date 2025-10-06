@@ -128,7 +128,11 @@ bool demangle_build_has_cxxabi() noexcept {
   return to_bool(cxxabi_demangle);
 }
 bool demangle_build_has_liberty() noexcept {
-  return to_bool(liberty_cplus_demangle) && to_bool(liberty_rust_demangle);
+  bool vals[] = {
+      to_bool(liberty_cplus_demangle),
+      to_bool(liberty_rust_demangle),
+  };
+  return std::all_of(std::begin(vals), std::end(vals), folly::identity);
 }
 
 namespace {

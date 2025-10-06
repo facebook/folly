@@ -129,7 +129,7 @@ def folly_xplat_library(
         enable_static_variant = True,
         labels = (),
         **kwargs):
-    """Translate a simpler declartion into the more complete library target"""
+    """Translate a simpler declaration into the more complete library target"""
 
     # Set default platform settings. `()` means empty, whereas None
     # means default

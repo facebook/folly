@@ -769,6 +769,58 @@ bool SubstringConversionCode::operator==(
   return this->code == other.code && this->substring == other.substring;
 }
 
+namespace detail {
+
+// Template implementation that both concrete overloads delegate to
+template <class DelimT>
+size_t delimCountTokensImpl(DelimT delim, StringPiece sp, bool ignoreEmpty) {
+  assert(sp.empty() || sp.start() != nullptr);
+
+  const char* s = sp.start();
+  const size_t strSize = sp.size();
+  const size_t dSize = delimSize(delim);
+
+  if (dSize > strSize || dSize == 0) {
+    return (!ignoreEmpty || strSize > 0) ? 1 : 0;
+  }
+
+  size_t tokenCount = 0;
+  size_t tokenStartPos = 0;
+  size_t tokenSize = 0;
+
+  for (size_t i = 0; i <= strSize - dSize; ++i) {
+    if (atDelim(&s[i], delim)) {
+      if (!ignoreEmpty || tokenSize > 0) {
+        ++tokenCount;
+      }
+      tokenStartPos = i + dSize;
+      tokenSize = 0;
+      i += dSize - 1;
+    } else {
+      ++tokenSize;
+    }
+  }
+
+  // Count the final token
+  tokenSize = strSize - tokenStartPos;
+  if (!ignoreEmpty || tokenSize > 0) {
+    ++tokenCount;
+  }
+
+  return tokenCount;
+}
+
+// Concrete overloads that delegate to the template implementation
+size_t delimCountTokens(char delim, StringPiece sp, bool ignoreEmpty) {
+  return delimCountTokensImpl(delim, sp, ignoreEmpty);
+}
+
+size_t delimCountTokens(StringPiece delim, StringPiece sp, bool ignoreEmpty) {
+  return delimCountTokensImpl(delim, sp, ignoreEmpty);
+}
+
+} // namespace detail
+
 } // namespace folly
 
 #ifdef FOLLY_DEFINED_DMGL

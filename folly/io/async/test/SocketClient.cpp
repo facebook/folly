@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "TFO attempted: " << sockAddr->getTFOAttempted();
   LOG(INFO) << "TFO finished: " << sockAddr->getTFOFinished();
-  LOG(INFO) << "TFO success: " << sockAddr->getTFOSucceded();
+  LOG(INFO) << "TFO success: " << sockAddr->getTFOSucceeded();
 
   std::array<char, 1024> buf;
   int32_t bytesRead = 0;

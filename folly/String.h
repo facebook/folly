@@ -47,6 +47,45 @@
 
 namespace folly {
 
+/// SplitOptions
+///
+/// Options for controlling split() behavior. This class uses a builder pattern
+/// to allow for easy configuration and method chaining.
+class SplitOptions {
+ public:
+  struct Defaults {
+    /// preallocate
+    ///
+    /// If true, split will count the expected number of tokens first
+    /// and pre-allocate container capacity using grow_capacity_by.
+    /// This can improve performance when splitting large strings with
+    /// many tokens, but may add overhead for small strings.
+    static constexpr bool preallocate = false;
+
+    /// ignoreEmpty
+    ///
+    /// If true, adjacent delimiters are treated as one single separator
+    /// (ignoring empty tokens), otherwise empty tokens are generated.
+    static constexpr bool ignore_empty = false;
+  };
+
+  constexpr bool preallocate() const { return preallocate_; }
+  constexpr SplitOptions& preallocate(bool enable) {
+    preallocate_ = enable;
+    return *this;
+  }
+
+  constexpr bool ignore_empty() const { return ignore_empty_; }
+  constexpr SplitOptions& ignore_empty(bool enable) {
+    ignore_empty_ = enable;
+    return *this;
+  }
+
+ private:
+  bool preallocate_ = Defaults::preallocate;
+  bool ignore_empty_ = Defaults::ignore_empty;
+};
+
 /**
  * @overloadbrief C-escape a string.
  *
@@ -525,6 +564,20 @@ split(
     const String& input,
     OutputType& out,
     const bool ignoreEmpty = false);
+
+/**
+ * Split a string into a list of tokens by delimiter with options.
+ *
+ * Same as split() above but with additional options to control behavior.
+ * The SplitOptions allow enabling preallocation which can improve performance
+ * when splitting large strings with many expected tokens.
+ */
+template <class Delim, class String, class OutputType>
+std::enable_if_t<detail::IsSplitSupportedContainer<OutputType>::value> split(
+    const Delim& delimiter,
+    const String& input,
+    OutputType& out,
+    const SplitOptions& options);
 
 /**
  * split, to an output iterator

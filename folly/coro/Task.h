@@ -188,11 +188,11 @@ class TaskPromiseBase {
         folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());
   }
 
-  auto await_transform(co_current_executor_t) noexcept {
+  auto await_transform(co_current_executor_t /*unused*/) noexcept {
     return ready_awaitable<folly::Executor*>{executor_.get()};
   }
 
-  auto await_transform(co_current_cancellation_token_t) noexcept {
+  auto await_transform(co_current_cancellation_token_t /*unused*/) noexcept {
     return ready_awaitable<const folly::CancellationToken&>{cancelToken_};
   }
 
@@ -212,12 +212,12 @@ class TaskPromiseBase {
   // These getters exist so that `FinalAwaiter` can interact with wrapped
   // `TaskPromise`s, and not just `TaskPromiseBase` descendants.  We use a
   // private tag to let `TaskWrapper` call them without becoming a `friend`.
-  auto& scopeExitRef(TaskPromisePrivate) { return scopeExit_; }
+  auto& scopeExitRef(TaskPromisePrivate /*unused*/) { return scopeExit_; }
   // FIXME: `result/coro.h` checks if this overload is callable to decide when
   // something is a task-promise.  A second use-case would merit a concept.
-  auto& continuationRef(TaskPromisePrivate) { return continuation_; }
+  auto& continuationRef(TaskPromisePrivate /*unused*/) { return continuation_; }
   // Unlike `getExecutor()`, does not copy an atomic.
-  auto& executorRef(TaskPromisePrivate) { return executor_; }
+  auto& executorRef(TaskPromisePrivate /*unused*/) { return executor_; }
 
  private:
   template <typename>
@@ -227,7 +227,7 @@ class TaskPromiseBase {
   friend class folly::coro::Task;
 
   friend coroutine_handle<ScopeExitTaskPromiseBase> tag_invoke(
-      cpo_t<co_attachScopeExit>,
+      cpo_t<co_attachScopeExit> /*unused*/,
       TaskPromiseBase& p,
       coroutine_handle<ScopeExitTaskPromiseBase> scopeExit) noexcept {
     return std::exchange(p.scopeExit_, scopeExit);
@@ -276,7 +276,7 @@ class TaskPromiseCrtpBase
 
   using TaskPromiseBase::await_transform;
 
-  auto await_transform(co_safe_point_t) noexcept {
+  auto await_transform(co_safe_point_t /*unused*/) noexcept {
     return do_safe_point(*this);
   }
 
@@ -675,7 +675,8 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
    private:
     friend InlineTryAwaitable tag_invoke(
-        cpo_t<co_withAsyncStack>, InlineTryAwaitable&& awaitable) noexcept {
+        cpo_t<co_withAsyncStack> /*unused*/,
+        InlineTryAwaitable&& awaitable) noexcept {
       return std::move(awaitable);
     }
 
@@ -713,7 +714,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   }
 
   friend TaskWithExecutor tag_invoke(
-      cpo_t<co_withAsyncStack>, TaskWithExecutor&& task) noexcept {
+      cpo_t<co_withAsyncStack> /*unused*/, TaskWithExecutor&& task) noexcept {
     return std::move(task);
   }
 
@@ -870,7 +871,10 @@ class FOLLY_CORO_TASK_ATTRS Task {
 
   template <typename F, typename... A, typename F_, typename... A_>
   friend Task tag_invoke(
-      tag_t<co_invoke_fn>, tag_t<Task, F, A...>, F_ f, A_... a) {
+      tag_t<co_invoke_fn> /*unused*/,
+      tag_t<Task, F, A...> /*unused*/,
+      F_ f,
+      A_... a) {
     co_yield co_result(co_await co_awaitTry(
         invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
   }
@@ -959,7 +963,7 @@ class FOLLY_CORO_TASK_ATTRS Task {
     // This overload needed as Awaiter is returned from co_viaIfAsync() which is
     // then passed into co_withAsyncStack().
     friend Awaiter tag_invoke(
-        cpo_t<co_withAsyncStack>, Awaiter&& awaiter) noexcept {
+        cpo_t<co_withAsyncStack> /*unused*/, Awaiter&& awaiter) noexcept {
       return std::move(awaiter);
     }
 
@@ -983,7 +987,7 @@ inline Task<void> makeTask() {
   co_return;
 }
 /// Same as makeTask(). See Unit
-inline Task<void> makeTask(Unit) {
+inline Task<void> makeTask(Unit /*unused*/) {
   co_return;
 }
 

@@ -419,6 +419,12 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "source_location",
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:macos": [
+            "-Wno-nonportable-include-path",
+        ],
+    }),
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SourceLocation.h",

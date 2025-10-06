@@ -35,12 +35,12 @@ template <
 auto maybeUnwrap(T&& t) {
   return std::forward<T>(t);
 }
-template <typename T>
-auto maybeUnwrap(const not_null_base<T>& t) {
+template <typename T, typename NullHandlerT>
+auto maybeUnwrap(const not_null_base<T, NullHandlerT>& t) {
   return t.unwrap();
 }
-template <typename T>
-auto maybeUnwrap(not_null_base<T>&& t) {
+template <typename T, typename NullHandlerT>
+auto maybeUnwrap(not_null_base<T, NullHandlerT>&& t) {
   return std::move(t).unwrap();
 }
 
@@ -60,8 +60,8 @@ template <typename T>
 struct maybe_unwrap_not_null<T&&> {
   using type = typename maybe_unwrap_not_null<T>::type&&;
 };
-template <typename PtrT>
-struct maybe_unwrap_not_null<not_null<PtrT>> {
+template <typename PtrT, typename NullHandlerT>
+struct maybe_unwrap_not_null<not_null<PtrT, NullHandlerT>> {
   using type = PtrT;
 };
 
@@ -93,13 +93,21 @@ struct is_not_null_castable
     : std::integral_constant<
           bool,
           std::is_convertible_v<const FromPtrT&, ToT> &&
-              !std::is_convertible_v<const not_null<FromPtrT>&, ToT>> {};
+              !std::is_convertible_v<
+                  // No need to specialize based on null handler as it doesn't
+                  // affect the result.
+                  const not_null<FromPtrT, default_null_handler>&,
+                  ToT>> {};
 template <typename FromPtrT, typename ToT>
 struct is_not_null_move_castable
     : std::integral_constant<
           bool,
           std::is_convertible_v<FromPtrT&&, ToT> &&
-              !std::is_convertible_v<not_null<FromPtrT>&&, ToT>> {};
+              !std::is_convertible_v<
+                  // No need to specialize based on null handler as it doesn't
+                  // affect the result.
+                  not_null<FromPtrT, default_null_handler>&&,
+                  ToT>> {};
 
 template <typename T, typename = decltype(*std::declval<T*>() == nullptr)>
 inline std::true_type is_comparable_to_nullptr_fn(const T&) {
@@ -113,56 +121,68 @@ constexpr bool is_comparable_to_nullptr_v =
     decltype(is_comparable_to_nullptr_fn(*std::declval<T*>()))::value;
 } // namespace detail
 
-template <typename PtrT>
+[[noreturn]] /*static*/ inline void default_null_handler::handle_terminate(
+    const char* const msg) {
+  folly::terminate_with<std::runtime_error>(msg);
+}
+
+[[noreturn]] /*static*/ inline void default_null_handler::handle_throw(
+    const char* const msg) {
+  folly::throw_exception<std::invalid_argument>(msg);
+}
+
+template <typename PtrT, typename NullHandlerT>
 template <typename U>
-not_null_base<PtrT>::not_null_base(U&& u, private_tag)
+not_null_base<PtrT, NullHandlerT>::not_null_base(U&& u, private_tag)
     : ptr_(detail::maybeUnwrap(std::forward<U>(u))) {
   if constexpr (!detail::is_not_null_v<remove_cvref_t<U>>) {
     throw_if_null();
   }
 }
 
-template <typename PtrT>
-not_null_base<PtrT>::not_null_base(
+template <typename PtrT, typename NullHandlerT>
+not_null_base<PtrT, NullHandlerT>::not_null_base(
     PtrT&& ptr, guaranteed_not_null_provider::guaranteed_not_null) noexcept
     : ptr_(std::move(ptr)) {}
 
-template <typename PtrT>
+template <typename PtrT, typename NullHandlerT>
 template <typename U, typename>
-not_null_base<PtrT>::not_null_base(U&& u, implicit_tag<true>) noexcept(
-    detail::is_not_null_nothrow_constructible<U&&, PtrT>::value)
+not_null_base<PtrT, NullHandlerT>::
+    not_null_base(U&& u, implicit_tag<true>) noexcept(
+        detail::is_not_null_nothrow_constructible<U&&, PtrT>::value)
     : not_null_base(std::forward<U>(u), private_tag{}) {}
 
-template <typename PtrT>
+template <typename PtrT, typename NullHandlerT>
 template <typename U, typename>
-not_null_base<PtrT>::not_null_base(U&& u, implicit_tag<false>) noexcept(
-    detail::is_not_null_nothrow_constructible<U&&, PtrT>::value)
+not_null_base<PtrT, NullHandlerT>::
+    not_null_base(U&& u, implicit_tag<false>) noexcept(
+        detail::is_not_null_nothrow_constructible<U&&, PtrT>::value)
     : not_null_base(std::forward<U>(u), private_tag{}) {}
 
-template <typename PtrT>
-typename not_null_base<PtrT>::element_type& not_null_base<PtrT>::operator*()
-    const noexcept {
+template <typename PtrT, typename NullHandlerT>
+typename not_null_base<PtrT, NullHandlerT>::element_type&
+not_null_base<PtrT, NullHandlerT>::operator*() const noexcept {
   return *unwrap();
 }
 
-template <typename PtrT>
-const PtrT& not_null_base<PtrT>::operator->() const noexcept {
+template <typename PtrT, typename NullHandlerT>
+const PtrT& not_null_base<PtrT, NullHandlerT>::operator->() const noexcept {
   return unwrap();
 }
 
-template <typename PtrT>
-not_null_base<PtrT>::operator const PtrT&() const& noexcept {
+template <typename PtrT, typename NullHandlerT>
+not_null_base<PtrT, NullHandlerT>::operator const PtrT&() const& noexcept {
   return unwrap();
 }
 
-template <typename PtrT>
-not_null_base<PtrT>::operator PtrT&&() && noexcept {
+template <typename PtrT, typename NullHandlerT>
+not_null_base<PtrT, NullHandlerT>::operator PtrT&&() && noexcept {
   return std::move(*this).unwrap();
 }
 
-template <typename PtrT>
+template <typename PtrT, typename NullHandlerT>
 template <typename U, typename>
-not_null_base<PtrT>::operator U() const& noexcept(
+not_null_base<PtrT, NullHandlerT>::operator U() const& noexcept(
     std::is_nothrow_constructible_v<U, const PtrT&>) {
   if constexpr (detail::is_not_null_v<U>) {
     return U(*this);
@@ -170,9 +190,9 @@ not_null_base<PtrT>::operator U() const& noexcept(
   return U(unwrap());
 }
 
-template <typename PtrT>
+template <typename PtrT, typename NullHandlerT>
 template <typename U, typename>
-not_null_base<PtrT>::operator U() && noexcept(
+not_null_base<PtrT, NullHandlerT>::operator U() && noexcept(
     std::is_nothrow_constructible_v<U, PtrT&&>) {
   if constexpr (detail::is_not_null_v<U>) {
     return U(std::move(*this));
@@ -180,61 +200,60 @@ not_null_base<PtrT>::operator U() && noexcept(
   return U(std::move(*this).unwrap());
 }
 
-template <typename PtrT>
-void not_null_base<PtrT>::swap(not_null_base& other) noexcept {
+template <typename PtrT, typename NullHandlerT>
+void not_null_base<PtrT, NullHandlerT>::swap(not_null_base& other) noexcept {
   mutable_unwrap().swap(other.mutable_unwrap());
 }
 
-template <typename PtrT>
-const PtrT& not_null_base<PtrT>::unwrap() const& noexcept {
+template <typename PtrT, typename NullHandlerT>
+const PtrT& not_null_base<PtrT, NullHandlerT>::unwrap() const& noexcept {
   if constexpr (folly::kIsDebug) {
     terminate_if_null(ptr_);
   }
   return ptr_;
 }
 
-template <typename PtrT>
-PtrT&& not_null_base<PtrT>::unwrap() && noexcept {
+template <typename PtrT, typename NullHandlerT>
+PtrT&& not_null_base<PtrT, NullHandlerT>::unwrap() && noexcept {
   if constexpr (folly::kIsDebug) {
     terminate_if_null(ptr_);
   }
   return std::move(ptr_);
 }
 
-template <typename PtrT>
-PtrT& not_null_base<PtrT>::mutable_unwrap() noexcept {
+template <typename PtrT, typename NullHandlerT>
+PtrT& not_null_base<PtrT, NullHandlerT>::mutable_unwrap() noexcept {
   return const_cast<PtrT&>(const_cast<const not_null_base&>(*this).unwrap());
 }
 
-template <typename PtrT>
-void not_null_base<PtrT>::throw_if_null() const {
+template <typename PtrT, typename NullHandlerT>
+void not_null_base<PtrT, NullHandlerT>::throw_if_null() const {
   throw_if_null(ptr_);
 }
 
-template <typename PtrT>
+template <typename PtrT, typename NullHandlerT>
 template <typename T>
-void not_null_base<PtrT>::throw_if_null(const T& ptr) {
+void not_null_base<PtrT, NullHandlerT>::throw_if_null(const T& ptr) {
   if (ptr == nullptr) {
-    folly::throw_exception<std::invalid_argument>("non_null<PtrT> is null");
+    NullHandlerT::handle_throw("non_null<PtrT> is null");
   }
 }
 
-template <typename PtrT>
+template <typename PtrT, typename NullHandlerT>
 template <typename T>
-void not_null_base<PtrT>::terminate_if_null(const T& ptr) {
+void not_null_base<PtrT, NullHandlerT>::terminate_if_null(const T& ptr) {
   if (ptr == nullptr) {
-    folly::terminate_with<std::runtime_error>(
-        "not_null internal pointer is null");
+    NullHandlerT::handle_terminate("not_null internal pointer is null");
   }
 }
 
-template <typename PtrT>
+template <typename PtrT, typename NullHandlerT>
 template <typename Deleter>
-Deleter&& not_null_base<PtrT>::forward_or_throw_if_null(Deleter&& deleter) {
+Deleter&& not_null_base<PtrT, NullHandlerT>::forward_or_throw_if_null(
+    Deleter&& deleter) {
   if constexpr (detail::is_comparable_to_nullptr_v<Deleter>) {
     if (deleter == nullptr) {
-      folly::throw_exception<std::invalid_argument>(
-          "non_null<PtrT> deleter is null");
+      NullHandlerT::handle_throw("non_null<PtrT> deleter is null");
     }
   }
   return std::forward<Deleter>(deleter);
@@ -243,41 +262,46 @@ Deleter&& not_null_base<PtrT>::forward_or_throw_if_null(Deleter&& deleter) {
 /**
  * not_null<std::unique_ptr<>> specialization.
  */
-template <typename T, typename Deleter>
-not_null<std::unique_ptr<T, Deleter>>::not_null(pointer p, const Deleter& d)
-    : not_null_base<std::unique_ptr<T, Deleter>>(
+template <typename T, typename Deleter, typename NullHandlerT>
+not_null<std::unique_ptr<T, Deleter>, NullHandlerT>::not_null(
+    pointer p, const Deleter& d)
+    : not_null_base<std::unique_ptr<T, Deleter>, NullHandlerT>(
           std::unique_ptr<T, Deleter>(
               std::move(p).unwrap(), this->forward_or_throw_if_null(d)),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
-template <typename T, typename Deleter>
-not_null<std::unique_ptr<T, Deleter>>::not_null(pointer p, Deleter&& d)
-    : not_null_base<std::unique_ptr<T, Deleter>>(
+template <typename T, typename Deleter, typename NullHandlerT>
+not_null<std::unique_ptr<T, Deleter>, NullHandlerT>::not_null(
+    pointer p, Deleter&& d)
+    : not_null_base<std::unique_ptr<T, Deleter>, NullHandlerT>(
           std::unique_ptr<T, Deleter>(
               std::move(p).unwrap(),
               this->forward_or_throw_if_null(std::move(d))),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
-template <typename T, typename Deleter>
-void not_null<std::unique_ptr<T, Deleter>>::reset(pointer ptr) noexcept {
+template <typename T, typename Deleter, typename NullHandlerT>
+void not_null<std::unique_ptr<T, Deleter>, NullHandlerT>::reset(
+    pointer ptr) noexcept {
   this->mutable_unwrap().reset(ptr.unwrap());
 }
 
-template <typename T, typename Deleter>
-typename not_null<std::unique_ptr<T, Deleter>>::pointer
-not_null<std::unique_ptr<T, Deleter>>::get() const noexcept {
+template <typename T, typename Deleter, typename NullHandlerT>
+typename not_null<std::unique_ptr<T, Deleter>, NullHandlerT>::pointer
+not_null<std::unique_ptr<T, Deleter>, NullHandlerT>::get() const noexcept {
   return pointer(
       this->unwrap().get(),
       guaranteed_not_null_provider::guaranteed_not_null());
 }
 
-template <typename T, typename Deleter>
-Deleter& not_null<std::unique_ptr<T, Deleter>>::get_deleter() noexcept {
+template <typename T, typename Deleter, typename NullHandlerT>
+Deleter&
+not_null<std::unique_ptr<T, Deleter>, NullHandlerT>::get_deleter() noexcept {
   return this->mutable_unwrap().get_deleter();
 }
 
-template <typename T, typename Deleter>
-const Deleter& not_null<std::unique_ptr<T, Deleter>>::get_deleter()
+template <typename T, typename Deleter, typename NullHandlerT>
+const Deleter&
+not_null<std::unique_ptr<T, Deleter>, NullHandlerT>::get_deleter()
     const noexcept {
   return this->unwrap().get_deleter();
 }
@@ -292,104 +316,110 @@ not_null_unique_ptr<T> make_not_null_unique(Args&&... args) {
 /**
  * not_null<std::shared_ptr<>> specialization.
  */
-template <typename T>
+template <typename T, typename NullHandlerT>
 template <typename U, typename Deleter>
-not_null<std::shared_ptr<T>>::not_null(U* ptr, Deleter d)
-    : not_null_base<std::shared_ptr<T>>(std::shared_ptr<T>(
+not_null<std::shared_ptr<T>, NullHandlerT>::not_null(U* ptr, Deleter d)
+    : not_null_base<std::shared_ptr<T>, NullHandlerT>(std::shared_ptr<T>(
           ptr, this->forward_or_throw_if_null(std::move(d)))) {}
 
-template <typename T>
-template <typename U, typename Deleter>
-not_null<std::shared_ptr<T>>::not_null(not_null<U*> ptr, Deleter d)
-    : not_null_base<std::shared_ptr<T>>(
+template <typename T, typename NullHandlerT>
+template <typename U, typename Deleter, typename UNullHandlerT>
+not_null<std::shared_ptr<T>, NullHandlerT>::not_null(
+    not_null<U*, UNullHandlerT> ptr, Deleter d)
+    : not_null_base<std::shared_ptr<T>, NullHandlerT>(
           std::shared_ptr<T>(
               ptr.unwrap(), this->forward_or_throw_if_null(std::move(d))),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
-template <typename T>
+template <typename T, typename NullHandlerT>
 template <typename U>
-not_null<std::shared_ptr<T>>::not_null(
-    const std::shared_ptr<U>& r, not_null<element_type*> ptr) noexcept
-    : not_null_base<std::shared_ptr<T>>(
+not_null<std::shared_ptr<T>, NullHandlerT>::not_null(
+    const std::shared_ptr<U>& r,
+    not_null<element_type*, NullHandlerT> ptr) noexcept
+    : not_null_base<std::shared_ptr<T>, NullHandlerT>(
           std::shared_ptr<T>(r, ptr.unwrap()),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
-template <typename T>
-template <typename U>
-not_null<std::shared_ptr<T>>::not_null(
-    const not_null<std::shared_ptr<U>>& r, not_null<element_type*> ptr) noexcept
-    : not_null_base<std::shared_ptr<T>>(
+template <typename T, typename NullHandlerT>
+template <typename U, typename UNullHandlerT>
+not_null<std::shared_ptr<T>, NullHandlerT>::not_null(
+    const not_null<std::shared_ptr<U>, UNullHandlerT>& r,
+    not_null<element_type*, NullHandlerT> ptr) noexcept
+    : not_null_base<std::shared_ptr<T>, NullHandlerT>(
           std::shared_ptr<T>(r.unwrap(), ptr.unwrap()),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
-template <typename T>
+template <typename T, typename NullHandlerT>
 template <typename U>
-not_null<std::shared_ptr<T>>::not_null(
-    std::shared_ptr<U>&& r, not_null<element_type*> ptr) noexcept
-    : not_null_base<std::shared_ptr<T>>(
+not_null<std::shared_ptr<T>, NullHandlerT>::not_null(
+    std::shared_ptr<U>&& r, not_null<element_type*, NullHandlerT> ptr) noexcept
+    : not_null_base<std::shared_ptr<T>, NullHandlerT>(
           std::shared_ptr<T>(std::move(r), ptr.unwrap()),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
-template <typename T>
-template <typename U>
-not_null<std::shared_ptr<T>>::not_null(
-    not_null<std::shared_ptr<U>>&& r, not_null<element_type*> ptr) noexcept
-    : not_null_base<std::shared_ptr<T>>(
+template <typename T, typename NullHandlerT>
+template <typename U, typename UNullHandlerT>
+not_null<std::shared_ptr<T>, NullHandlerT>::not_null(
+    not_null<std::shared_ptr<U>, UNullHandlerT>&& r,
+    not_null<element_type*, NullHandlerT> ptr) noexcept
+    : not_null_base<std::shared_ptr<T>, NullHandlerT>(
           std::shared_ptr<T>(std::move(r).unwrap(), ptr.unwrap()),
           guaranteed_not_null_provider::guaranteed_not_null()) {}
 
-template <typename T>
+template <typename T, typename NullHandlerT>
 template <typename U>
-void not_null<std::shared_ptr<T>>::reset(U* ptr) {
+void not_null<std::shared_ptr<T>, NullHandlerT>::reset(U* ptr) {
   this->throw_if_null(ptr);
   this->mutable_unwrap().reset(ptr);
 }
 
-template <typename T>
-template <typename U>
-void not_null<std::shared_ptr<T>>::reset(not_null<U*> ptr) noexcept {
+template <typename T, typename NullHandlerT>
+template <typename U, typename UNullHandlerT>
+void not_null<std::shared_ptr<T>, NullHandlerT>::reset(
+    not_null<U*, UNullHandlerT> ptr) noexcept {
   this->mutable_unwrap().reset(ptr.unwrap());
 }
 
-template <typename T>
+template <typename T, typename NullHandlerT>
 template <typename U, typename Deleter>
-void not_null<std::shared_ptr<T>>::reset(U* ptr, Deleter d) {
+void not_null<std::shared_ptr<T>, NullHandlerT>::reset(U* ptr, Deleter d) {
   this->throw_if_null(ptr);
   this->mutable_unwrap().reset(
       ptr, this->forward_or_throw_if_null(std::move(d)));
 }
 
-template <typename T>
-template <typename U, typename Deleter>
-void not_null<std::shared_ptr<T>>::reset(not_null<U*> ptr, Deleter d) {
+template <typename T, typename NullHandlerT>
+template <typename U, typename Deleter, typename UNullHandlerT>
+void not_null<std::shared_ptr<T>, NullHandlerT>::reset(
+    not_null<U*, UNullHandlerT> ptr, Deleter d) {
   this->mutable_unwrap().reset(
       ptr.unwrap(), this->forward_or_throw_if_null(std::move(d)));
 }
 
-template <typename T>
-typename not_null<std::shared_ptr<T>>::pointer
-not_null<std::shared_ptr<T>>::get() const noexcept {
+template <typename T, typename NullHandlerT>
+typename not_null<std::shared_ptr<T>, NullHandlerT>::pointer
+not_null<std::shared_ptr<T>, NullHandlerT>::get() const noexcept {
   return pointer(
       this->unwrap().get(),
       guaranteed_not_null_provider::guaranteed_not_null());
 }
 
-template <typename T>
-long not_null<std::shared_ptr<T>>::use_count() const noexcept {
+template <typename T, typename NullHandlerT>
+long not_null<std::shared_ptr<T>, NullHandlerT>::use_count() const noexcept {
   return this->unwrap().use_count();
 }
 
-template <typename T>
+template <typename T, typename NullHandlerT>
 template <typename U>
-bool not_null<std::shared_ptr<T>>::owner_before(
+bool not_null<std::shared_ptr<T>, NullHandlerT>::owner_before(
     const std::shared_ptr<U>& other) const noexcept {
   return this->unwrap().owner_before(other);
 }
 
-template <typename T>
-template <typename U>
-bool not_null<std::shared_ptr<T>>::owner_before(
-    const not_null<std::shared_ptr<U>>& other) const noexcept {
+template <typename T, typename NullHandlerT>
+template <typename U, typename UNullHandlerT>
+bool not_null<std::shared_ptr<T>, NullHandlerT>::owner_before(
+    const not_null<std::shared_ptr<U>, UNullHandlerT>& other) const noexcept {
   return this->unwrap().owner_before(other.unwrap());
 }
 
@@ -404,22 +434,21 @@ template <typename T, typename Alloc, typename... Args>
 not_null_shared_ptr<T> allocate_not_null_shared(
     const Alloc& alloc, Args&&... args) {
   return not_null_shared_ptr<T>(
-      std::allocate_shared<T, Alloc, Args...>(
-          alloc, std::forward<Args>(args)...),
+      std::allocate_shared<T, Alloc>(alloc, std::forward<Args>(args)...),
       detail::secret_guaranteed_not_null::get());
 }
 
 /**
  * Comparators.
  */
-#define FB_NOT_NULL_MK_OP(op)                                 \
-  template <typename PtrT, typename T>                        \
-  bool operator op(const not_null<PtrT>& lhs, const T& rhs) { \
-    return lhs.unwrap() op rhs;                               \
-  }                                                           \
-  template <typename PtrT, typename T, typename>              \
-  bool operator op(const T& lhs, const not_null<PtrT>& rhs) { \
-    return lhs op rhs.unwrap();                               \
+#define FB_NOT_NULL_MK_OP(op)                                                  \
+  template <typename PtrT, typename T, typename LhsNullHandlerT>               \
+  bool operator op(const not_null<PtrT, LhsNullHandlerT>& lhs, const T& rhs) { \
+    return lhs.unwrap() op rhs;                                                \
+  }                                                                            \
+  template <typename PtrT, typename T, typename RhsNullHandlerT, typename>     \
+  bool operator op(const T& lhs, const not_null<PtrT, RhsNullHandlerT>& rhs) { \
+    return lhs op rhs.unwrap();                                                \
   }
 
 FB_NOT_NULL_MK_OP(==)
@@ -433,9 +462,9 @@ FB_NOT_NULL_MK_OP(>=)
 /**
  * Output.
  */
-template <typename U, typename V, typename PtrT>
+template <typename U, typename V, typename PtrT, typename NullHandlerT>
 std::basic_ostream<U, V>& operator<<(
-    std::basic_ostream<U, V>& os, const not_null<PtrT>& ptr) {
+    std::basic_ostream<U, V>& os, const not_null<PtrT, NullHandlerT>& ptr) {
   return os << ptr.unwrap();
 }
 
@@ -450,57 +479,88 @@ void swap(not_null<PtrT>& lhs, not_null<PtrT>& rhs) noexcept {
 /**
  * Getters
  */
-template <typename Deleter, typename T>
-Deleter* get_deleter(const not_null_shared_ptr<T>& ptr) {
+template <typename Deleter, typename T, typename NullHandlerT>
+Deleter* get_deleter(const not_null_shared_ptr<T, NullHandlerT>& ptr) {
   return std::get_deleter<Deleter>(ptr.unwrap());
 }
 
 /**
  * Casting
  */
-template <typename T, typename U>
-not_null_shared_ptr<T> static_pointer_cast(const not_null_shared_ptr<U>& r) {
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT,
+    typename UNullHandlerT>
+not_null_shared_ptr<T, TNullHandlerT> static_pointer_cast(
+    const not_null_shared_ptr<U, UNullHandlerT>& r) {
   auto p = std::static_pointer_cast<T, U>(r.unwrap());
-  return not_null_shared_ptr<T>(
+  return not_null_shared_ptr<T, TNullHandlerT>(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
-template <typename T, typename U>
-not_null_shared_ptr<T> static_pointer_cast(not_null_shared_ptr<U>&& r) {
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT,
+    typename UNullHandlerT>
+not_null_shared_ptr<T, TNullHandlerT> static_pointer_cast(
+    not_null_shared_ptr<U, UNullHandlerT>&& r) {
   auto p = std::static_pointer_cast<T, U>(std::move(r).unwrap());
-  return not_null_shared_ptr<T>(
+  return not_null_shared_ptr<T, TNullHandlerT>(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
-template <typename T, typename U>
-std::shared_ptr<T> dynamic_pointer_cast(const not_null_shared_ptr<U>& r) {
+template <typename T, typename U, typename UNullHandlerT>
+std::shared_ptr<T> dynamic_pointer_cast(
+    const not_null_shared_ptr<U, UNullHandlerT>& r) {
   return std::dynamic_pointer_cast<T, U>(r.unwrap());
 }
-template <typename T, typename U>
-std::shared_ptr<T> dynamic_pointer_cast(not_null_shared_ptr<U>&& r) {
+template <typename T, typename U, typename UNullHandlerT>
+std::shared_ptr<T> dynamic_pointer_cast(
+    not_null_shared_ptr<U, UNullHandlerT>&& r) {
   return std::dynamic_pointer_cast<T, U>(std::move(r).unwrap());
 }
-template <typename T, typename U>
-not_null_shared_ptr<T> const_pointer_cast(const not_null_shared_ptr<U>& r) {
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT,
+    typename UNullHandlerT>
+not_null_shared_ptr<T, TNullHandlerT> const_pointer_cast(
+    const not_null_shared_ptr<U, UNullHandlerT>& r) {
   auto p = std::const_pointer_cast<T, U>(r.unwrap());
-  return not_null_shared_ptr<T>(
+  return not_null_shared_ptr<T, TNullHandlerT>(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
-template <typename T, typename U>
-not_null_shared_ptr<T> const_pointer_cast(not_null_shared_ptr<U>&& r) {
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT,
+    typename UNullHandlerT>
+not_null_shared_ptr<T, TNullHandlerT> const_pointer_cast(
+    not_null_shared_ptr<U, UNullHandlerT>&& r) {
   auto p = std::const_pointer_cast<T, U>(std::move(r).unwrap());
-  return not_null_shared_ptr<T>(
+  return not_null_shared_ptr<T, TNullHandlerT>(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
-template <typename T, typename U>
-not_null_shared_ptr<T> reinterpret_pointer_cast(
-    const not_null_shared_ptr<U>& r) {
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT,
+    typename UNullHandlerT>
+not_null_shared_ptr<T, TNullHandlerT> reinterpret_pointer_cast(
+    const not_null_shared_ptr<U, UNullHandlerT>& r) {
   auto p = std::reinterpret_pointer_cast<T, U>(r.unwrap());
-  return not_null_shared_ptr<T>(
+  return not_null_shared_ptr<T, TNullHandlerT>(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
-template <typename T, typename U>
-not_null_shared_ptr<T> reinterpret_pointer_cast(not_null_shared_ptr<U>&& r) {
+template <
+    typename T,
+    typename U,
+    typename TNullHandlerT,
+    typename UNullHandlerT>
+not_null_shared_ptr<T, TNullHandlerT> reinterpret_pointer_cast(
+    not_null_shared_ptr<U, UNullHandlerT>&& r) {
   auto p = std::reinterpret_pointer_cast<T, U>(std::move(r).unwrap());
-  return not_null_shared_ptr<T>(
+  return not_null_shared_ptr<T, TNullHandlerT>(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
 

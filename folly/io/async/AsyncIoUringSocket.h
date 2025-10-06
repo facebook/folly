@@ -232,7 +232,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
   void asyncDetachFd(AsyncDetachFdCallback* callback);
   bool readSqeInFlight() const { return readSqe_->inFlight(); }
-  bool getTFOSucceded() const override;
+  bool getTFOSucceeded() const override;
   void enableTFO() override {
     // No-op if folly does not allow tfo
 #if FOLLY_ALLOW_TFO

@@ -150,7 +150,7 @@ AsyncIoUringSocket::ReadSqe::ReadSqe(AsyncIoUringSocket* parent)
 AsyncIoUringSocket::~AsyncIoUringSocket() {
   VLOG(3) << "~AsyncIoUringSocket() " << this;
 
-  // this is a bit unnecesary if we are already closed, but proper state
+  // this is a bit unnecessary if we are already closed, but proper state
   // tracking is coming later and will be easier to handle then
   closeNow();
 
@@ -653,7 +653,7 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
       }
     } else if (res < 0) {
       // assume ECANCELED is not an unrecoverable error state, but we do still
-      // have to propogate to the callback as they presumably called the cancel.
+      // have to propagate to the callback as they presumably called the cancel.
       auto callback = readCallback_;
       if (parent_ && res != -ECANCELED) {
         readCallback_ = nullptr;
@@ -1803,7 +1803,7 @@ int AsyncIoUringSocket::setSockOpt(
   return ::setsockopt(fd_.toFd(), level, optname, optval, optsize);
 }
 
-bool AsyncIoUringSocket::getTFOSucceded() const {
+bool AsyncIoUringSocket::getTFOSucceeded() const {
   return detail::tfo_succeeded(fd_);
 }
 

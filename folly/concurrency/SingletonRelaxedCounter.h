@@ -80,9 +80,10 @@ class SingletonRelaxedCounterBase {
   using GetLifetime = LocalLifetime&();
 
   struct Arg {
-    GetGlobal& global;
-    GetLocal& local;
-    GetLifetime& lifetime;
+    //  To be constexpr, MSVC requires these to be pointers.
+    GetGlobal* global;
+    GetLocal* local;
+    GetLifetime* lifetime;
   };
 
   //  LocalLifetime
@@ -245,7 +246,7 @@ class SingletonRelaxedCounter
   //  ensure this invariant.
 
   FOLLY_ERASE_NOINLINE static void mutate_slow(Signed v) noexcept {
-    static constexpr Arg arg{global, local, lifetime};
+    static constexpr Arg arg{&global, &local, &lifetime};
     mutate_slow(v, arg);
   }
 

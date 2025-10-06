@@ -2432,7 +2432,7 @@ void AsyncSocket::getPeerAddress(folly::SocketAddress* address) const {
   *address = addr_;
 }
 
-bool AsyncSocket::getTFOSucceded() const {
+bool AsyncSocket::getTFOSucceeded() const {
   return detail::tfo_succeeded(fd_);
 }
 
@@ -3295,7 +3295,7 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
       }
       // `ancillaryData()` is expected to check and error on this, since
       // it's probably incorrect to process truncated ancillary data.  If
-      // some bizarro callback wants to treat this as recoverable, it can
+      // some bizarre callback wants to treat this as recoverable, it can
       // clear `MSG_CTRUNC` on `msg_flags` before returning.
       //
       // Don't move this: `performReadMsg` doesn't guarantee that `msg_flags`
@@ -3575,7 +3575,7 @@ void AsyncSocket::handleInitialReadWrite() noexcept {
   DestructorGuard dg(this);
   // If we have a readCallback_, make sure we enable read events.  We
   // may already be registered for reads if connectSuccess() set
-  // the read calback.
+  // the read callback.
   if (readCallback_ && !(eventFlags_ & EventHandler::READ)) {
     assert(state_ == StateEnum::ESTABLISHED);
     assert((shutdownFlags_ & SHUT_READ) == 0);
@@ -3932,7 +3932,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     if (totalWritten >= 0) {
       tfoInfo_.finished = true;
       state_ = StateEnum::ESTABLISHED;
-      // We schedule this asynchrously so that we don't end up
+      // We schedule this asynchronously so that we don't end up
       // invoking initial read or write while a write is in progress.
       scheduleInitialReadWrite();
     } else if (errno == EINPROGRESS) {
