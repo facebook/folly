@@ -254,6 +254,7 @@ non_fbcode_target(
     ],
     deps = [
         "fbsource//xplat/folly/portability:fmt_compile",
+        "fbsource//xplat/folly/system:at_fork",
     ],
     exported_deps = [
         "fbsource//xplat/folly/hash:hash",
@@ -6307,6 +6308,7 @@ fbcode_target(
         "//folly/lang:safe_assert",
         "//folly/portability:config",
         "//folly/portability:fmt_compile",
+        "//folly/system:at_fork",
     ],
     exported_deps = [
         ":cancellation_token",

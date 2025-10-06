@@ -36,6 +36,7 @@
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/FmtCompile.h>
+#include <folly/system/AtFork.h>
 // Before registrationComplete() we cannot assume that glog has been
 // initialized, so we need to use RAW_LOG for any message that may be logged
 // before that.
