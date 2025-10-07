@@ -65,6 +65,12 @@ struct B {};
 
 } // namespace
 
+TEST(Traits, index_iterals) {
+  using namespace folly::literals;
+  constexpr std::integral_constant val = 17_uzic;
+  EXPECT_EQ(17, val);
+}
+
 namespace folly {
 template <>
 struct IsRelocatable<T1> : std::true_type {};

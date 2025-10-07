@@ -72,6 +72,39 @@ inline constexpr vtag_t<V...> vtag{};
 template <std::size_t I>
 using index_constant = std::integral_constant<std::size_t, I>;
 
+namespace detail {
+
+template <typename Int>
+constexpr Int parse_uic(char const* str) noexcept {
+  Int result = 0;
+  while (*str) {
+    auto const c = *str++;
+    if (c >= '0' && c <= '9') {
+      result = result * 10 + (c - '0');
+    }
+  }
+  return result;
+}
+
+} // namespace detail
+
+inline namespace literals {
+inline namespace integral_constant_literals {
+
+/// operator""_uzic
+///
+/// Evaluates {XYZ}_uzic as index_constant<{XYZ}>.
+///
+/// mimic: operator""_uzic, p2725r0
+template <char... Digits>
+constexpr auto operator""_uzic() noexcept {
+  constexpr char digits[] = {Digits..., '\0'};
+  return index_constant<detail::parse_uic<size_t>(digits)>{};
+}
+
+} // namespace integral_constant_literals
+} // namespace literals
+
 /// always_false
 ///
 /// A variable template that is always false but requires template arguments to
