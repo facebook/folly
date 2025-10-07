@@ -18,7 +18,8 @@ BOOST_ROOT_1_83_0
 libboost-all-dev
 
 [homebrew]
-boost
+# Brew currently provides boost 1.89 which breaks the build https://github.com/facebook/folly/issues/2489
+# boost
 # Boost cmake detection on homebrew adds this as requirement: https://github.com/Homebrew/homebrew-core/issues/67427#issuecomment-754187345
 icu4c
 
