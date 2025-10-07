@@ -1,11 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS", "cython_library")
-load(
-    "@fbsource//tools/build_defs:platform_defs.bzl",
-    "IOS",
-    "MACOSX",
-)
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
@@ -49,9 +44,10 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "async_generator_lib",
-    apple_sdks = (IOS, MACOSX),
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = [
         "async_generator.h",
     ],
@@ -105,8 +101,10 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "futures_lib",
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = [
         "futures.h",
     ],
@@ -125,7 +123,10 @@ non_fbcode_target(
     srcs = [
         "executor.cpp",
     ],
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     enable_static_variant = False,
+    feature = triage_InfrastructureSupermoduleOptou,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = [
         "executor.h",
     ],
@@ -160,8 +161,10 @@ non_fbcode_target(
     srcs = [
         "AsyncioExecutor.cpp",
     ],
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = [
         "AsyncioExecutor.h",
     ],
@@ -305,6 +308,7 @@ non_fbcode_target(
         "iobuf.h": "iobuf.h",
     },
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    feature = triage_InfrastructureSupermoduleOptou,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     deps = [
         ":import",
@@ -346,9 +350,10 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "coro_lib",
-    apple_sdks = (IOS, MACOSX),
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = [
         "coro.h",
     ],
@@ -1006,6 +1011,7 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "weak",
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     exported_linker_flags = select({
         "DEFAULT": [],
         # These make it so linking libpython is optional
@@ -1016,6 +1022,8 @@ non_fbcode_target(
             "dynamic_lookup",
         ],
     }),
+    feature = triage_InfrastructureSupermoduleOptou,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = [
         "Weak.h",
     ],

@@ -1,7 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
+load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS", "cython_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//tools/target_determinator/macros:fbcode_ci_helpers.bzl", "fbcode_ci")
@@ -191,8 +191,10 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "test_set_executor_cpplib",
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     enable_static_variant = False,
     feature = triage_InfrastructureSupermoduleOptou,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["test_set_executor.h"],
     exported_deps = [
         "//xplat/folly/python:asyncio_executor",
