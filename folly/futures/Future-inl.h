@@ -1126,9 +1126,9 @@ Future<T>::thenErrorImpl(
       [state = futures::detail::makeCoreCallbackState(
            std::move(p), static_cast<F&&>(func)),
        allowInline](Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
-        if (auto ex = t.template tryGetExceptionObject<
-                      std::remove_reference_t<ExceptionType>>()) {
-          auto tf2 = state.tryInvoke(std::move(*ex));
+        if (const auto* ex = t.template tryGetExceptionObject<
+                             std::remove_reference_t<ExceptionType>>()) {
+          auto tf2 = state.tryInvoke(*ex);
           if (tf2.hasException()) {
             state.setException(std::move(ka), std::move(tf2.exception()));
           } else {
@@ -1177,11 +1177,10 @@ Future<T>::thenErrorImpl(
       [state = futures::detail::makeCoreCallbackState(
            std::move(p), static_cast<F&&>(func))](
           Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
-        if (auto ex = t.template tryGetExceptionObject<
-                      std::remove_reference_t<ExceptionType>>()) {
+        if (const auto* ex = t.template tryGetExceptionObject<
+                             std::remove_reference_t<ExceptionType>>()) {
           state.setTry(
-              std::move(ka),
-              makeTryWith([&] { return state.invoke(std::move(*ex)); }));
+              std::move(ka), makeTryWith([&] { return state.invoke(*ex); }));
         } else {
           state.setTry(std::move(ka), std::move(t));
         }

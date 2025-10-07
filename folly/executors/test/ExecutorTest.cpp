@@ -299,7 +299,7 @@ TEST(Executor, CrappyExecutor) {
   CrappyExecutor x;
   bool flag = false;
   auto f = folly::via(&x).thenError(
-      folly::tag_t<std::runtime_error>{}, [&](std::runtime_error&& e) {
+      folly::tag_t<std::runtime_error>{}, [&](const std::runtime_error& e) {
         EXPECT_STREQ("bad", e.what());
         flag = true;
       });

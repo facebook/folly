@@ -349,10 +349,10 @@ TEST(Future, hasPostconditionInvalid) {
 }
 
 namespace {
-Future<int> thenErrorHelperEggs(eggs_t&&) {
+Future<int> thenErrorHelperEggs(const eggs_t&) {
   return makeFuture(10);
 }
-Future<int> thenErrorHelperGeneric(std::exception&&) {
+Future<int> thenErrorHelperGeneric(const std::exception&) {
   return makeFuture(20);
 }
 Future<int> thenErrorHelperWrapper(folly::exception_wrapper&&) {
