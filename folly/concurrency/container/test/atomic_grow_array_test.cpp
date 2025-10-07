@@ -81,11 +81,16 @@ static_assert( //
         folly::atomic_grow_array<int>::const_view,
         folly::atomic_grow_array<int>::view const&>);
 
-struct AtomicGrowArrayTest : testing::Test {};
+struct AtomicGrowArrayTest : testing::Test {
+  struct policy_base {
+    template <typename V>
+    using atom = std::atomic<V>;
+  };
+};
 
 TEST_F(AtomicGrowArrayTest, example) {
   static constexpr size_t max_size = 36;
-  struct policy_t {
+  struct policy_t : policy_base {
     mutable size_t size_counter{0};
     mutable int item_counter{0};
     size_t grow(size_t /* curr */, size_t /* index */) const {
@@ -97,8 +102,7 @@ TEST_F(AtomicGrowArrayTest, example) {
     int make() const { return item_counter++; }
   };
 
-  policy_t policy{0};
-  folly::atomic_grow_array<int, policy_t> array{policy};
+  folly::atomic_grow_array<int, policy_t> array{};
   EXPECT_EQ(0, array.size());
 
   for (size_t i = 0; i < max_size; ++i) {

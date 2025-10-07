@@ -35,8 +35,11 @@ namespace folly {
 /// atomic_grow_array_policy_default
 ///
 /// A default or example policy for use with atomic_grow_array.
-template <typename Item>
+template <typename Item, template <typename> class Atom = std::atomic>
 struct atomic_grow_array_policy_default {
+  template <typename V>
+  using atom = Atom<V>;
+
   std::size_t grow(
       std::size_t /* const curr */, std::size_t const index) const noexcept {
     return nextPowTwo(index + 1);
@@ -582,8 +585,8 @@ class atomic_grow_array : private Policy {
     }
   }
 
-  std::atomic<size_type> size_{0};
-  std::atomic<array*> array_{nullptr};
+  typename Policy::template atom<size_type> size_{0};
+  typename Policy::template atom<array*> array_{nullptr};
 };
 
 } // namespace folly
