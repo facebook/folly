@@ -94,10 +94,18 @@ cdef extern from "folly/python/request_context.h":
     )
 
 cdef int _watcher(PyContextEvent event, PyObject* pycontext):
-    if pycontext is NULL or not PyContext_CheckExact(<object>pycontext) or event != PyContextEvent.Py_CONTEXT_SWITCHED:
+    cdef shared_ptr[RequestContext] ctx
+
+    if pycontext is NULL or event != PyContextEvent.Py_CONTEXT_SWITCHED:
         return 0
 
-    cdef shared_ptr[RequestContext] ctx
+    # The context is None lets unset the fRC
+    if (<object>pycontext) is None:
+        RequestContext.setContext(ctx)
+
+    if not PyContext_CheckExact(<object>pycontext):
+        return 0
+
     py_ctx = get_value(_RequestContext)
     if py_ctx is not None and PyCapsule_CheckExact(py_ctx):
         ctx = PyCapsuleToRequestContext(py_ctx)
