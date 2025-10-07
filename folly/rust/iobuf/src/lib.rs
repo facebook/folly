@@ -106,8 +106,16 @@ pub mod bridge {
 
         type IOBuf = crate::IOBuf;
 
+        // Bytes of first chunk.
+        fn data(self: &IOBuf) -> *const u8;
+        // Length of first chunk.
+        fn length(self: &IOBuf) -> usize;
+        // Number of chunks.
         fn countChainElements(self: &IOBuf) -> usize;
+        // Total bytes across all chunks.
         fn computeChainDataLength(self: &IOBuf) -> usize;
+        fn isChained(self: &IOBuf) -> bool;
+        fn isSharedOne(self: &IOBuf) -> bool;
         fn unshare(self: Pin<&mut IOBuf>);
         // Name is used for uniformity with C++
         #[allow(clippy::should_implement_trait)]

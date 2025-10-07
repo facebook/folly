@@ -15,6 +15,7 @@
  */
 
 use std::os::raw::c_void;
+use std::slice;
 
 use bytes::Buf;
 use bytes::Bytes;
@@ -235,7 +236,26 @@ impl From<IOBufShared> for Vec<u8> {
 
 impl From<IOBufShared> for Bytes {
     fn from(iob: IOBufShared) -> Self {
-        Bytes::from(Vec::from(iob))
+        struct ContiguousUnshared(IOBufShared);
+
+        impl AsRef<[u8]> for ContiguousUnshared {
+            fn as_ref(&self) -> &[u8] {
+                unsafe { slice::from_raw_parts(self.0.0.data(), self.0.0.length()) }
+            }
+        }
+
+        if iob.0.isChained() || iob.0.isSharedOne() {
+            // If there is more than one buffer in the chain, coalesce their
+            // contents into a Vec. If there is only one buffer but our IOBuf is
+            // not the unique owner, also copy to Vec.
+            //
+            // The conversion from Vec<u8> to Bytes does not allocate.
+            Bytes::from(Vec::from(iob))
+        } else {
+            // Fast path: do not copy buffer contents. This makes one small
+            // (3-word) allocation only.
+            Bytes::from_owner(ContiguousUnshared(iob))
+        }
     }
 }
 
