@@ -525,7 +525,8 @@ class atomic_grow_array : private Policy {
     assert(size > base);
     array* curr = static_cast<array*>(
         operator_new(array_size(size, base), std::align_val_t{array_align()}));
-    auto rollback = folly::makeGuard([&] { del_array(curr); });
+    auto rollback =
+        folly::makeGuard(std::bind(&atomic_grow_array::del_array, this, curr));
     curr->size = size;
     curr->next = next;
     auto const slab = array_slab(curr);
