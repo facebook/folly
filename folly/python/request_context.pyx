@@ -115,7 +115,7 @@ cdef int _watcher(PyContextEvent event, PyObject* pycontext):
     return 0
 
 
-if sys.version_info >= (3, 14) or "+meta" in sys.version:
+if sys.version_info >= (3, 14) or "+meta" in sys.version or "+fb" in sys.version or "+cinder" in sys.version:
     FOLLY_PYTHON_PyContext_AddWatcher(_watcher)
 
 
