@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 cimport cython
 from contextlib import contextmanager
 from libcpp.memory cimport make_shared
@@ -106,7 +107,8 @@ cdef int _watcher(PyContextEvent event, PyObject* pycontext):
     return 0
 
 
-FOLLY_PYTHON_PyContext_AddWatcher(_watcher)
+if sys.version_info >= (3, 14) or "+meta" in sys.version:
+    FOLLY_PYTHON_PyContext_AddWatcher(_watcher)
 
 
 cdef extern from "folly/python/Weak.h":
