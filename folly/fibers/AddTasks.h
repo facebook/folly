@@ -61,6 +61,8 @@ class TaskIterator {
   TaskIterator(TaskIterator&& other) noexcept;
   TaskIterator& operator=(TaskIterator&& other) = delete;
 
+  ~TaskIterator() = default;
+
   /**
    * Add one more task to the TaskIterator.
    *
