@@ -1,5 +1,4 @@
 """Provides helper functions for the folly library
-
 [folly]
     have_libgflags_override = {True|[False]}
 """
@@ -121,6 +120,7 @@ def folly_xplat_library(
         header_namespace = "",
         exported_headers = (),
         raw_headers = (),
+        raw_headers_as_headers_mode = "enabled",
         deps = (),
         exported_deps = (),
         force_static = True,
@@ -154,6 +154,7 @@ def folly_xplat_library(
         header_namespace = header_namespace,
         exported_headers = exported_headers,
         raw_headers = raw_headers,
+        raw_headers_as_headers_mode = raw_headers_as_headers_mode,
         public_include_directories = _compute_include_directories(),
         deps = deps,
         exported_deps = exported_deps,

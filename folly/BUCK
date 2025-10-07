@@ -940,7 +940,6 @@ non_fbcode_target(
     raw_headers = [
         "Conv.h",
     ],
-    raw_headers_as_headers_mode = "enabled",
     deps = [
         "fbsource//third-party/fast_float:fast_float",
         "//xplat/folly/lang:safe_assert",
@@ -980,7 +979,6 @@ non_fbcode_target(
         "dynamic-inl.h",
         "json.h",
     ],
-    raw_headers_as_headers_mode = "enabled",
     deps = [
         "//xplat/folly:utility",
     ],
