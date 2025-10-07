@@ -23,6 +23,12 @@
 #include <folly/FollyMemcpy.h>
 #include <folly/portability/Unistd.h>
 
+#if defined(__aarch64__)
+#include <arm_neon.h>
+#elif defined(__x86_64__)
+#include <x86intrin.h>
+#endif
+
 void bench(
     uint32_t iters,
     void*(memcpy_func)(void*, const void*, size_t),
@@ -138,108 +144,467 @@ BENCH_BOTH(32, 256, false, COLD)
 BENCH_BOTH(256, 1024, false, COLD)
 BENCH_BOTH(1024, 8192, false, COLD)
 
+static void* align_up_to(void* p, size_t alignment) {
+  uintptr_t addr = reinterpret_cast<uintptr_t>(p);
+  uintptr_t aligned = (addr + alignment - 1) & ~(uintptr_t)(alignment - 1);
+  return reinterpret_cast<void*>(aligned);
+}
+
+static void* ptr_arith(volatile void* p, ptrdiff_t diff) {
+  uintptr_t addr = reinterpret_cast<uintptr_t>(p);
+  uintptr_t new_addr = addr + diff;
+  return reinterpret_cast<void*>(new_addr);
+}
+
+// Base unit: expand once
+#define REPEAT1(x) x
+
+// Build up by doubling
+#define REPEAT2(x) REPEAT1(x) REPEAT1(x)
+#define REPEAT4(x) REPEAT2(x) REPEAT2(x)
+#define REPEAT8(x) REPEAT4(x) REPEAT4(x)
+
+void scalar_memops(
+    uint32_t iters,
+    uint32_t alignment,
+    bool aligned,
+    bool read_only,
+    bool stlf) { // Store-To-Load Forwarding
+  std::vector<uintptr_t> raw_buffer;
+  volatile uintptr_t* ptr = nullptr;
+  volatile uint16_t* write_ptr = nullptr;
+  uintptr_t value;
+
+  BENCHMARK_SUSPEND {
+    raw_buffer.resize(sysconf(_SC_PAGE_SIZE) * 3);
+    ptr = static_cast<volatile uintptr_t*>(
+        align_up_to(raw_buffer.data(), sysconf(_SC_PAGE_SIZE)));
+
+    ptr = static_cast<volatile uintptr_t*>(
+        ptr_arith(const_cast<uintptr_t*>(ptr), alignment));
+
+    if (!aligned) {
+      ptr = reinterpret_cast<uintptr_t*>(ptr_arith(ptr, -1));
+    }
+
+    *ptr = reinterpret_cast<uintptr_t>(ptr);
+  }
+
+  // Use pointer-chasing to make sure each mem_op depends on the
+  // previou mem_op.
+  if (read_only) {
+    for (unsigned int i = 0; i < iters; i++) {
+      REPEAT8(value = *ptr; ptr = reinterpret_cast<uintptr_t*>(value);)
+    }
+  } else {
+    if (stlf) {
+      for (unsigned int i = 0; i < iters; i++) {
+        REPEAT8(value = *ptr; ptr = reinterpret_cast<uintptr_t*>(value);
+                *ptr = value;)
+      }
+    } else {
+      // STLF is usually not enabled if the write is less than half of
+      // memory size than the read.
+      static_assert(sizeof(uint16_t) < sizeof(uintptr_t) / 2);
+      for (unsigned int i = 0; i < iters; i++) {
+        REPEAT8(value = *ptr; ptr = reinterpret_cast<uintptr_t*>(value);
+                write_ptr = reinterpret_cast<volatile uint16_t*>(ptr);
+                *write_ptr = static_cast<uint16_t>(value);)
+      }
+    }
+  }
+}
+
 BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM(
-    bench,
-    64k_to_1024k_unaligned_cold_glibc,
-    /*memcpy_func=*/memcpy,
-    /*min=*/65536,
-    /*max=*/1048576,
-    /*align=*/1,
-    /*hot=*/false)
-BENCHMARK_RELATIVE_NAMED_PARAM(
-    bench,
-    64k_to_1024k_unaligned_cold_folly,
-    /*memcpy_func=*/folly::__folly_memcpy,
-    /*min=*/65536,
-    /*max=*/1048576,
-    /*align=*/1,
-    /*hot=*/false)
+    scalar_memops, aligned_reads, sysconf(_SC_PAGE_SIZE), true, true, false)
+BENCHMARK_NAMED_PARAM(
+    scalar_memops,
+    cache_unaligned_reads,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    true,
+    false)
+BENCHMARK_NAMED_PARAM(
+    scalar_memops,
+    page_unaligned_reads,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    true,
+    false)
+BENCHMARK_NAMED_PARAM(
+    scalar_memops,
+    aligned_reads_writes,
+    sysconf(_SC_PAGE_SIZE),
+    true,
+    false,
+    false)
+BENCHMARK_NAMED_PARAM(
+    scalar_memops,
+    cache_unaligned_reads_writes,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    false,
+    false)
+BENCHMARK_NAMED_PARAM(
+    scalar_memops,
+    page_unaligned_reads_writes,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    false,
+    false)
+BENCHMARK_NAMED_PARAM(
+    scalar_memops,
+    aligned_reads_writes_stlf,
+    sysconf(_SC_PAGE_SIZE),
+    true,
+    false,
+    true)
+BENCHMARK_NAMED_PARAM(
+    scalar_memops,
+    cache_unaligned_reads_writes_stlf,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    false,
+    true)
+BENCHMARK_NAMED_PARAM(
+    scalar_memops,
+    page_unaligned_reads_writes_stlf,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    false,
+    true)
+
+#if defined(__aarch64__)
+
+void neon_memops(
+    uint32_t iters,
+    size_t alignment,
+    bool aligned,
+    bool read_only,
+    bool stlf) { // Store-To-Load Forwarding
+  std::vector<uint64x2_t> raw_buffer;
+  uint64_t* ptr = nullptr;
+  uint32_t* write_ptr = nullptr;
+  uint64x2_t value;
+
+  BENCHMARK_SUSPEND {
+    raw_buffer.resize(sysconf(_SC_PAGE_SIZE) * 3);
+    ptr = static_cast<uint64_t*>(
+        align_up_to(raw_buffer.data(), sysconf(_SC_PAGE_SIZE)));
+
+    ptr = static_cast<uint64_t*>(ptr_arith(ptr, alignment));
+
+    if (!aligned) {
+      ptr = reinterpret_cast<uint64_t*>(ptr_arith(ptr, -1));
+    }
+    value = vcombine_u64(
+        vcreate_u64(reinterpret_cast<uint64_t>(ptr)),
+        vcreate_u64(reinterpret_cast<uint64_t>(ptr)));
+    vst1q_u64(ptr, value);
+  }
+
+  // Use pointer-chasing to make sure each read depends on the
+  // previou read/write.
+  if (read_only) {
+    for (unsigned int i = 0; i < iters; i++) {
+      REPEAT8(folly::doNotOptimizeAway(value = vld1q_u64(ptr));
+              ptr = reinterpret_cast<uint64_t*>(vgetq_lane_u64(value, 0));)
+    }
+  } else {
+    if (stlf) {
+      for (unsigned int i = 0; i < iters; i++) {
+        REPEAT8(folly::doNotOptimizeAway(value = vld1q_u64(ptr));
+                ptr = reinterpret_cast<uint64_t*>(vgetq_lane_u64(value, 0));
+                vst1q_u64(ptr, value);)
+      }
+    } else {
+      // STLF is usually not enabled if the write is less than half of
+      // memory size than the read.
+      for (unsigned int i = 0; i < iters; i++) {
+        REPEAT8(
+            folly::doNotOptimizeAway(value = vld1q_u64(ptr));
+            ptr = reinterpret_cast<uint64_t*>(vgetq_lane_u64(value, 0));
+            write_ptr = reinterpret_cast<uint32_t*>(ptr);
+            vst1q_lane_u32(write_ptr, value, 0);)
+      }
+    }
+  }
+}
+
+BENCHMARK_DRAW_LINE();
+BENCHMARK_NAMED_PARAM(
+    neon_memops, aligned_reads, sysconf(_SC_PAGE_SIZE), true, true, false)
+BENCHMARK_NAMED_PARAM(
+    neon_memops,
+    cache_unaligned_reads,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    true,
+    false)
+BENCHMARK_NAMED_PARAM(
+    neon_memops,
+    page_unaligned_reads,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    true,
+    false)
+BENCHMARK_NAMED_PARAM(
+    neon_memops,
+    aligned_reads_writes,
+    sysconf(_SC_PAGE_SIZE),
+    true,
+    false,
+    false)
+BENCHMARK_NAMED_PARAM(
+    neon_memops,
+    cache_unaligned_reads_writes,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    false,
+    false)
+BENCHMARK_NAMED_PARAM(
+    neon_memops,
+    page_unaligned_reads_writes,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    false,
+    false)
 
 BENCHMARK_NAMED_PARAM(
-    bench,
-    64k_to_1024k_aligned_cold_glibc,
-    /*memcpy_func=*/memcpy,
-    /*min=*/65536,
-    /*max=*/1048576,
-    /*align=*/32,
-    /*hot=*/false)
-BENCHMARK_RELATIVE_NAMED_PARAM(
-    bench,
-    64k_to_1024k_aligned_cold_folly,
-    /*memcpy_func=*/folly::__folly_memcpy,
-    /*min=*/65536,
-    /*max=*/1048576,
-    /*align=*/32,
-    /*hot=*/false)
+    neon_memops,
+    aligned_reads_writes_stlf,
+    sysconf(_SC_PAGE_SIZE),
+    true,
+    false,
+    true)
+BENCHMARK_NAMED_PARAM(
+    neon_memops,
+    cache_unaligned_reads_writes_stlf,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    false,
+    true)
+BENCHMARK_NAMED_PARAM(
+    neon_memops,
+    page_unaligned_reads_writes_stlf,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    false,
+    true)
 
-// Benchmark results (Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz, Linux x86_64)
-// Buck build mode: @mode/opt-lto
+#elif defined(__x86_64__) && defined(__AVX2__)
+
+static inline uint64_t get_low64(__m256i v) {
+  __m128i low128 = _mm256_castsi256_si128(v);
+  return _mm_cvtsi128_si64(low128); // extracts the lowest 64 bits
+}
+
+void avx2_memops(
+    uint32_t iters,
+    uint32_t alignment,
+    bool aligned,
+    bool read_only,
+    bool stlf) { // Store-To-Load Forwarding
+  std::vector<__m256i> raw_buffer;
+  __m256i* ptr = nullptr;
+  __m128i* write_ptr = nullptr;
+  __m256i value;
+
+  BENCHMARK_SUSPEND {
+    raw_buffer.resize(sysconf(_SC_PAGE_SIZE) * 3);
+    ptr = static_cast<__m256i*>(
+        align_up_to(raw_buffer.data(), sysconf(_SC_PAGE_SIZE)));
+
+    ptr = static_cast<__m256i*>(ptr_arith(ptr, alignment));
+
+    if (!aligned) {
+      ptr = reinterpret_cast<__m256i*>(ptr_arith(ptr, -(sizeof(uint64_t) + 1)));
+    }
+
+    static_assert(sizeof(uintptr_t) * 4 == sizeof(__m256i));
+    value = _mm256_set_epi64x(
+        reinterpret_cast<uintptr_t>(ptr),
+        reinterpret_cast<uintptr_t>(ptr),
+        reinterpret_cast<uintptr_t>(ptr),
+        reinterpret_cast<uintptr_t>(ptr));
+
+    _mm256_storeu_si256(ptr, value);
+  }
+
+  // Use pointer-chasing to make sure each mem_op depends on the
+  // previou one.
+  if (read_only) {
+    for (unsigned int i = 0; i < iters; i++) {
+      REPEAT8(folly::doNotOptimizeAway(value = _mm256_loadu_si256(ptr));
+              ptr = reinterpret_cast<__m256i*>(get_low64(value));)
+    }
+  } else {
+    if (stlf) {
+      for (unsigned int i = 0; i < iters; i++) {
+        REPEAT8(folly::doNotOptimizeAway(value = _mm256_loadu_si256(ptr));
+                ptr = reinterpret_cast<__m256i*>(get_low64(value));
+                _mm256_storeu_si256(ptr, value);)
+      }
+    } else {
+      for (unsigned int i = 0; i < iters; i++) {
+        REPEAT8(
+            folly::doNotOptimizeAway(value = _mm256_loadu_si256(ptr));
+            write_ptr = reinterpret_cast<__m128i*>(get_low64(value));
+            write_ptr = reinterpret_cast<__m128i*>(
+                ptr_arith(write_ptr, sizeof(uint64_t)));
+            _mm_storeu_si128(write_ptr, _mm256_castsi256_si128(value));)
+      }
+    }
+  }
+}
+
+BENCHMARK_DRAW_LINE();
+BENCHMARK_NAMED_PARAM(
+    avx2_memops, aligned_reads, sysconf(_SC_PAGE_SIZE), true, true, false)
+BENCHMARK_NAMED_PARAM(
+    avx2_memops,
+    cache_unaligned_reads,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    true,
+    false)
+BENCHMARK_NAMED_PARAM(
+    avx2_memops,
+    page_unaligned_reads,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    true,
+    false)
+
+BENCHMARK_NAMED_PARAM(
+    avx2_memops,
+    aligned_reads_writes,
+    sysconf(_SC_PAGE_SIZE),
+    true,
+    false,
+    false)
+BENCHMARK_NAMED_PARAM(
+    avx2_memops,
+    cache_unaligned_reads_writes,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    false,
+    false)
+BENCHMARK_NAMED_PARAM(
+    avx2_memops,
+    page_unaligned_reads_writes,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    false,
+    false)
+
+BENCHMARK_NAMED_PARAM(
+    avx2_memops,
+    aligned_reads_writes_stlf,
+    sysconf(_SC_PAGE_SIZE),
+    true,
+    false,
+    true)
+BENCHMARK_NAMED_PARAM(
+    avx2_memops,
+    cache_unaligned_reads_writes_stlf,
+    sysconf(_SC_LEVEL1_DCACHE_LINESIZE),
+    false,
+    false,
+    true)
+BENCHMARK_NAMED_PARAM(
+    avx2_memops,
+    page_unaligned_reads_writes_stlf,
+    sysconf(_SC_PAGE_SIZE),
+    false,
+    false,
+    true)
+
+#endif
+
+// Benchmark results (Arm Neoverse V2, Linux Arm64, 3.4GHz)
+// Buck build mode: @mode/opt
 // ============================================================================
-// folly/test/MemcpyBenchmark.cpp                  relative  time/iter  iters/s
+// fbcode/folly/test/MemcpyBenchmark.cpp     relative  time/iter   iters/s
 // ============================================================================
-// bench(0_to_7_HOT_glibc)                                      9.51ns  105.19M
-// bench(0_to_7_HOT_folly)                          142.33%     6.68ns  149.72M
-// bench(0_to_16_HOT_glibc)                                     8.98ns  111.30M
-// bench(0_to_16_HOT_folly)                         153.23%     5.86ns  170.55M
-// bench(0_to_32_HOT_glibc)                                     9.08ns  110.08M
-// bench(0_to_32_HOT_folly)                         166.79%     5.45ns  183.61M
-// bench(0_to_64_HOT_glibc)                                     8.35ns  119.79M
-// bench(0_to_64_HOT_folly)                         124.48%     6.71ns  149.11M
-// bench(0_to_128_HOT_glibc)                                    8.20ns  122.00M
-// bench(0_to_128_HOT_folly)                        121.55%     6.74ns  148.29M
-// bench(0_to_256_HOT_glibc)                                    8.64ns  115.68M
-// bench(0_to_256_HOT_folly)                         95.85%     9.02ns  110.88M
-// bench(0_to_512_HOT_glibc)                                   13.05ns   76.61M
-// bench(0_to_512_HOT_folly)                        110.04%    11.86ns   84.31M
-// bench(0_to_1024_HOT_glibc)                                  16.00ns   62.50M
-// bench(0_to_1024_HOT_folly)                       100.53%    15.91ns   62.83M
-// bench(0_to_32768_HOT_glibc)                                658.76ns    1.52M
-// bench(0_to_32768_HOT_folly)                      112.30%   586.62ns    1.70M
-// bench(8_to_16_HOT_glibc)                                     5.18ns  193.08M
-// bench(8_to_16_HOT_folly)                         162.18%     3.19ns  313.13M
-// bench(16_to_32_HOT_glibc)                                    4.55ns  219.65M
-// bench(16_to_32_HOT_folly)                        117.18%     3.89ns  257.39M
-// bench(32_to_256_HOT_glibc)                                   8.70ns  114.98M
-// bench(32_to_256_HOT_folly)                        95.64%     9.09ns  109.97M
-// bench(256_to_1024_HOT_glibc)                                16.59ns   60.28M
-// bench(256_to_1024_HOT_folly)                      96.15%    17.25ns   57.96M
-// bench(1024_to_8192_HOT_glibc)                              111.93ns    8.93M
-// bench(1024_to_8192_HOT_folly)                    135.92%    82.35ns   12.14M
+// bench(0_to_7_HOT_glibc)                                     2.21ns   452.91M
+// bench(0_to_7_HOT_folly)                         101.21%     2.18ns   458.38M
+// bench(0_to_16_HOT_glibc)                                    2.26ns   442.25M
+// bench(0_to_16_HOT_folly)                        99.207%     2.28ns   438.74M
+// bench(0_to_32_HOT_glibc)                                    2.42ns   413.08M
+// bench(0_to_32_HOT_folly)                        99.140%     2.44ns   409.53M
+// bench(0_to_64_HOT_glibc)                                    2.96ns   337.84M
+// bench(0_to_64_HOT_folly)                        98.762%     3.00ns   333.66M
+// bench(0_to_128_HOT_glibc)                                   3.67ns   272.49M
+// bench(0_to_128_HOT_folly)                       98.843%     3.71ns   269.33M
+// bench(0_to_256_HOT_glibc)                                   5.77ns   173.26M
+// bench(0_to_256_HOT_folly)                       99.561%     5.80ns   172.50M
+// bench(0_to_512_HOT_glibc)                                   8.13ns   123.06M
+// bench(0_to_512_HOT_folly)                       99.095%     8.20ns   121.95M
+// bench(0_to_1024_HOT_glibc)                                 11.34ns    88.19M
+// bench(0_to_1024_HOT_folly)                      99.640%    11.38ns    87.87M
+// bench(0_to_32768_HOT_glibc)                               173.08ns     5.78M
+// bench(0_to_32768_HOT_folly)                     99.928%   173.20ns     5.77M
+// bench(8_to_16_HOT_glibc)                                    2.32ns   430.99M
+// bench(8_to_16_HOT_folly)                        98.794%     2.35ns   425.79M
+// bench(16_to_32_HOT_glibc)                                   2.55ns   392.04M
+// bench(16_to_32_HOT_folly)                       99.618%     2.56ns   390.55M
+// bench(32_to_256_HOT_glibc)                                  5.80ns   172.42M
+// bench(32_to_256_HOT_folly)                      100.00%     5.80ns   172.42M
+// bench(256_to_1024_HOT_glibc)                               12.82ns    77.99M
+// bench(256_to_1024_HOT_folly)                    99.665%    12.86ns    77.73M
+// bench(1024_to_8192_HOT_glibc)                              53.06ns    18.85M
+// bench(1024_to_8192_HOT_folly)                   99.941%    53.09ns    18.84M
 // ----------------------------------------------------------------------------
-// bench(0_to_7_COLD_glibc)                                   101.72ns    9.83M
-// bench(0_to_7_COLD_folly)                         242.15%    42.01ns   23.81M
-// bench(0_to_16_COLD_glibc)                                  105.14ns    9.51M
-// bench(0_to_16_COLD_folly)                        244.61%    42.98ns   23.26M
-// bench(0_to_32_COLD_glibc)                                  108.45ns    9.22M
-// bench(0_to_32_COLD_folly)                        238.48%    45.48ns   21.99M
-// bench(0_to_64_COLD_glibc)                                  102.38ns    9.77M
-// bench(0_to_64_COLD_folly)                        192.08%    53.30ns   18.76M
-// bench(0_to_128_COLD_glibc)                                 122.86ns    8.14M
-// bench(0_to_128_COLD_folly)                       198.17%    62.00ns   16.13M
-// bench(0_to_256_COLD_glibc)                                 125.43ns    7.97M
-// bench(0_to_256_COLD_folly)                       154.93%    80.96ns   12.35M
-// bench(0_to_512_COLD_glibc)                                 161.50ns    6.19M
-// bench(0_to_512_COLD_folly)                       149.92%   107.72ns    9.28M
-// bench(0_to_1024_COLD_glibc)                                229.68ns    4.35M
-// bench(0_to_1024_COLD_folly)                      141.36%   162.48ns    6.15M
-// bench(0_to_32768_COLD_glibc)                                 2.91us  343.90K
-// bench(0_to_32768_COLD_folly)                     138.83%     2.09us  477.42K
-// bench(8_to_16_COLD_glibc)                                  115.47ns    8.66M
-// bench(8_to_16_COLD_folly)                        242.11%    47.69ns   20.97M
-// bench(16_to_32_COLD_glibc)                                 103.71ns    9.64M
-// bench(16_to_32_COLD_folly)                       207.16%    50.06ns   19.98M
-// bench(32_to_256_COLD_glibc)                                141.85ns    7.05M
-// bench(32_to_256_COLD_folly)                      179.79%    78.90ns   12.67M
-// bench(256_to_1024_COLD_glibc)                              236.81ns    4.22M
-// bench(256_to_1024_COLD_folly)                    110.72%   213.88ns    4.68M
-// bench(1024_to_8192_COLD_glibc)                             911.56ns    1.10M
-// bench(1024_to_8192_COLD_folly)                   120.27%   757.90ns    1.32M
+// bench(0_to_7_COLD_glibc)                                    3.74ns   267.71M
+// bench(0_to_7_COLD_folly)                        104.42%     3.58ns   279.55M
+// bench(0_to_16_COLD_glibc)                                   3.97ns   251.91M
+// bench(0_to_16_COLD_folly)                       94.755%     4.19ns   238.69M
+// bench(0_to_32_COLD_glibc)                                   4.41ns   226.95M
+// bench(0_to_32_COLD_folly)                       119.84%     3.68ns   271.98M
+// bench(0_to_64_COLD_glibc)                                   6.88ns   145.39M
+// bench(0_to_64_COLD_folly)                       115.40%     5.96ns   167.78M
+// bench(0_to_128_COLD_glibc)                                 13.51ns    74.04M
+// bench(0_to_128_COLD_folly)                      93.560%    14.44ns    69.28M
+// bench(0_to_256_COLD_glibc)                                 31.71ns    31.54M
+// bench(0_to_256_COLD_folly)                      92.840%    34.15ns    29.28M
+// bench(0_to_512_COLD_glibc)                                 54.56ns    18.33M
+// bench(0_to_512_COLD_folly)                      102.43%    53.26ns    18.78M
+// bench(0_to_1024_COLD_glibc)                                94.15ns    10.62M
+// bench(0_to_1024_COLD_folly)                     105.42%    89.31ns    11.20M
+// bench(0_to_32768_COLD_glibc)                              401.09ns     2.49M
+// bench(0_to_32768_COLD_folly)                    99.907%   401.47ns     2.49M
+// bench(8_to_16_COLD_glibc)                                   4.04ns   247.70M
+// bench(8_to_16_COLD_folly)                       103.82%     3.89ns   257.16M
+// bench(16_to_32_COLD_glibc)                                  4.43ns   225.55M
+// bench(16_to_32_COLD_folly)                      69.386%     6.39ns   156.50M
+// bench(32_to_256_COLD_glibc)                                36.54ns    27.37M
+// bench(32_to_256_COLD_folly)                     104.05%    35.12ns    28.47M
+// bench(256_to_1024_COLD_glibc)                              98.92ns    10.11M
+// bench(256_to_1024_COLD_folly)                   98.507%   100.42ns     9.96M
+// bench(1024_to_8192_COLD_glibc)                            219.71ns     4.55M
+// bench(1024_to_8192_COLD_folly)                  100.31%   219.02ns     4.57M
 // ----------------------------------------------------------------------------
-// bench(64k_to_1024k_unaligned_cold_glibc)                    70.17us   14.25K
-// bench(64k_to_1024k_unaligned_cold_folly)         129.15%    54.34us   18.40K
-// bench(64k_to_1024k_aligned_cold_glibc)                      69.28us   14.43K
-// bench(64k_to_1024k_aligned_cold_folly)           246.52%    28.10us   35.58K
+// scalar_memops(aligned_reads)                                9.44ns   105.97M
+// scalar_memops(cache_unaligned_reads)                       11.87ns    84.24M
+// scalar_memops(page_unaligned_reads)                        11.87ns    84.23M
+// scalar_memops(aligned_reads_writes)                        31.26ns    31.99M
+// scalar_memops(cache_unaligned_reads_writes)                41.64ns    24.01M
+// scalar_memops(page_unaligned_reads_writes)                 54.48ns    18.36M
+// scalar_memops(aligned_reads_writes_stlf)                   18.37ns    54.43M
+// scalar_memops(cache_unaligned_reads_writes_stlf            22.31ns    44.82M
+// scalar_memops(page_unaligned_reads_writes_stlf)            54.32ns    18.41M
+// ----------------------------------------------------------------------------
+// neon_memops(aligned_reads)                                 23.79ns    42.03M
+// neon_memops(cache_unaligned_reads)                         26.21ns    38.15M
+// neon_memops(page_unaligned_reads)                          26.37ns    37.92M
+// neon_memops(aligned_reads_writes)                          58.67ns    17.05M
+// neon_memops(cache_unaligned_reads_writes)                  68.89ns    14.52M
+// neon_memops(page_unaligned_reads_writes)                   70.03ns    14.28M
+// neon_memops(aligned_reads_writes_stlf)                     16.17ns    61.85M
+// neon_memops(cache_unaligned_reads_writes_stlf)             16.25ns    61.55M
+// neon_memops(page_unaligned_reads_writes_stlf)              27.78ns    36.00M
 // ============================================================================
 
 int main(int argc, char** argv) {
