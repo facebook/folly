@@ -44,6 +44,8 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
   template <uint8_t M, template <typename> class A>
   friend hazptr_array<M, A> make_hazard_pointer_array();
 
+  explicit hazptr_rec(hazptr_domain<Atom>* domain) noexcept : domain_{domain} {}
+
   const void* hazptr() const noexcept {
     return hazptr_.load(std::memory_order_acquire);
   }
@@ -65,7 +67,6 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
 
   FOLLY_ALWAYS_INLINE hazptr_domain<Atom>* domain() { return domain_; }
 
-  void set_domain(hazptr_domain<Atom>* dom) { domain_ = dom; }
 }; // hazptr_rec
 
 } // namespace folly

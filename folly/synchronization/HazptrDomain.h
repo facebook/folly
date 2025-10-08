@@ -708,8 +708,7 @@ class hazptr_domain {
 
   Rec* create_new_hprec() {
     auto rec = hazptr_rec_alloc{}.allocate(1);
-    new (rec) Rec();
-    rec->set_domain(this);
+    new (rec) Rec(this);
     while (true) {
       auto h = head();
       rec->set_next(h);
