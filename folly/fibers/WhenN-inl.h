@@ -32,9 +32,8 @@ typename std::enable_if<
         invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>>>>::type
 collectN(InputIterator first, InputIterator last, size_t n) {
-  typedef invoke_result_t<
-      typename std::iterator_traits<InputIterator>::value_type>
-      Result;
+  using Result =
+      invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>;
   assert(n > 0);
   assert(std::distance(first, last) >= 0);
   assert(n <= static_cast<size_t>(std::distance(first, last)));
@@ -145,9 +144,8 @@ typename std::vector<
         invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>>::
         type> inline collectAll(InputIterator first, InputIterator last) {
-  typedef invoke_result_t<
-      typename std::iterator_traits<InputIterator>::value_type>
-      Result;
+  using Result =
+      invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>;
   size_t n = size_t(std::distance(first, last));
   std::vector<Result> results;
   std::vector<size_t> order(n);

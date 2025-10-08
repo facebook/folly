@@ -43,7 +43,7 @@ inline void forEach(InputIterator first, InputIterator last, F&& f) {
     return;
   }
 
-  typedef typename std::iterator_traits<InputIterator>::value_type FuncType;
+  using FuncType = typename std::iterator_traits<InputIterator>::value_type;
 
   size_t tasksTodo = 1;
   std::exception_ptr e;
