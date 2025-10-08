@@ -436,8 +436,7 @@ struct VirtualImpl : VirtualBase {
   ~VirtualImpl() override {}
 };
 
-#ifndef __clang__
-__attribute__((noinline, noclone)) VirtualBase* makeVirtual() {
+FOLLY_NOINLINE [[FOLLY_ATTR_GNU_NOCLONE]] VirtualBase* makeVirtual() {
   return new VirtualImpl();
 }
 
@@ -448,7 +447,6 @@ BENCHMARK(VirtualFunctionCall, iters) {
   }
   delete vb;
 }
-#endif
 
 BENCHMARK_DRAW_LINE();
 
