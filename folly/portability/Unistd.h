@@ -49,6 +49,7 @@ ssize_t pread64(int fd, void* buf, size_t count, off64_t offset);
 #define _SC_PAGE_SIZE _SC_PAGESIZE
 #define _SC_NPROCESSORS_ONLN 2
 #define _SC_NPROCESSORS_CONF 2
+#define _SC_LEVEL1_DCACHE_LINESIZE 3
 
 // Windows doesn't define these, but these are the correct values
 // for Windows.
