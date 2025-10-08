@@ -681,39 +681,42 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "format",
     srcs = [
         "Format.cpp",
+    ],
+    headers = [
+        "Format.h",
+        "Format-inl.h",
+        "FormatArg.h",
     ],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Format.h",
-        "Format-inl.h",
-        "FormatArg.h",
+    xplat_impl = folly_xplat_library,
+    deps = [
+        ":constexpr_math",
+        "//folly/container:array",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/portability:windows",
-        "//third-party/double-conversion:double-conversion",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:conv",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:exception",
-        "//xplat/folly:format_traits",
-        "//xplat/folly:likely",
-        "//xplat/folly:map_util",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:string",
-        "//xplat/folly:traits",
-        "//xplat/folly/container:array",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:to_ascii",
+        ":c_portability",
+        ":conv",
+        ":exception",
+        ":format_traits",
+        ":likely",
+        ":map_util",
+        ":portability",
+        ":range",
+        ":string",
+        ":traits",
+        "//folly/lang:exception",
+        "//folly/lang:to_ascii",
+        "//folly/portability:windows",
+    ],
+    external_deps = [
+        "double_conversion",
     ],
 )
 
@@ -1240,25 +1243,21 @@ non_fbcode_target(
     exported_deps = ["//xplat/folly/portability:sys_types"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "likely",
+    headers = ["Likely.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Likely.h",
-    ],
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly/lang:builtin",
+        "//folly/lang:builtin",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "unit",
+    headers = ["Unit.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Unit.h",
-    ],
+    xplat_impl = folly_xplat_library,
 )
 
 non_fbcode_target(
@@ -1311,25 +1310,21 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "traits",
+    headers = ["Traits.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Traits.h",
-    ],
-    exported_deps = [
-        ":portability",
-    ],
+    xplat_impl = folly_xplat_library,
+    exported_deps = [":portability"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "utility",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
+    headers = [
         "Utility.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
         ":portability",
@@ -1464,21 +1459,20 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "exception",
+    headers = ["Exception.h"],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Exception.h",
-    ],
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly:conv",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
+        ":conv",
+        ":fbstring",
+        ":likely",
+        ":portability",
+        "//folly/portability:sys_types",
     ],
 )
 
@@ -2194,13 +2188,11 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "varint",
+    headers = ["Varint.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Varint.h",
-    ],
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":conv",
         ":expected",
@@ -5397,19 +5389,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "exception",
-    headers = ["Exception.h"],
-    exported_deps = [
-        ":conv",
-        ":fbstring",
-        ":likely",
-        ":portability",
-        "//folly/portability:sys_types",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "exception_string",
     srcs = ["ExceptionString.cpp"],
     headers = ["ExceptionString.h"],
@@ -5621,41 +5600,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "format",
-    srcs = [
-        "Format.cpp",
-    ],
-    headers = [
-        "Format.h",
-        "Format-inl.h",
-        "FormatArg.h",
-    ],
-    deps = [
-        ":constexpr_math",
-        "//folly/container:array",
-    ],
-    exported_deps = [
-        ":c_portability",
-        ":conv",
-        ":exception",
-        ":format_traits",
-        ":likely",
-        ":map_util",
-        ":portability",
-        ":range",
-        ":string",
-        ":traits",
-        "//folly/lang:exception",
-        "//folly/lang:to_ascii",
-        "//folly/portability:windows",
-    ],
-    external_deps = [
-        "double_conversion",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "format_traits",
     headers = ["FormatTraits.h"],
 )
@@ -5780,15 +5724,6 @@ fbcode_target(
     exported_deps = [
         ":optional",
         "//folly/functional:invoke",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "likely",
-    headers = ["Likely.h"],
-    exported_deps = [
-        "//folly/lang:builtin",
     ],
 )
 
@@ -6544,13 +6479,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "traits",
-    headers = ["Traits.h"],
-    exported_deps = [":portability"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "try",
     srcs = [
         "Try.cpp",
@@ -6582,12 +6510,6 @@ fbcode_target(
     exported_deps = [
         "//folly/lang:exception",
     ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "unit",
-    headers = ["Unit.h"],
 )
 
 fbcode_target(
@@ -6626,31 +6548,6 @@ fbcode_target(
 )
 
 # For things that would go in c++ stdlib <utility>:
-fbcode_target(
-    _kind = cpp_library,
-    name = "utility",
-    headers = [
-        "Utility.h",
-    ],
-    exported_deps = [
-        ":c_portability",
-        ":portability",
-        ":traits",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "varint",
-    headers = ["Varint.h"],
-    exported_deps = [
-        ":conv",
-        ":expected",
-        ":likely",
-        ":portability",
-        ":range",
-    ],
-)
 
 fbcode_target(
     _kind = cpp_library,
