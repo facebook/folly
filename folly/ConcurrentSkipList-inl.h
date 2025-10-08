@@ -48,7 +48,7 @@ class SkipListNode {
   };
 
  public:
-  typedef T value_type;
+  using value_type = T;
 
   SkipListNode(const SkipListNode&) = delete;
   SkipListNode& operator=(const SkipListNode&) = delete;
