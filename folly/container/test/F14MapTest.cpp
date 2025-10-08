@@ -2264,6 +2264,27 @@ TEST(F14Map, containsHashedKey) {
 }
 
 template <template <class...> class TMap>
+void testContainsHeterogeneousHashedKey() {
+  TMap<std::string, int> m{};
+  std::string key{"hello"};
+  m.insert({key, 1});
+
+  F14HashedKey<std::string_view> hashedKey{key};
+  EXPECT_TRUE(m.contains(hashedKey));
+
+  std::string otherKey{"folly"};
+  F14HashedKey<std::string_view> hashedKeyNotFound{otherKey};
+  EXPECT_FALSE(m.contains(hashedKeyNotFound));
+}
+
+TEST(F14Map, containsHeterogeneousHashedKey) {
+  testContainsHeterogeneousHashedKey<F14ValueMap>();
+  testContainsHeterogeneousHashedKey<F14VectorMap>();
+  testContainsHeterogeneousHashedKey<F14NodeMap>();
+  testContainsHeterogeneousHashedKey<F14FastMap>();
+}
+
+template <template <class...> class TMap>
 void testInsertOrAssignHashedKey() {
   TMap<std::string, int> m{};
   std::string key{"hello"};

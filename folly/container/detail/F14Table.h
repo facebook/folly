@@ -1742,8 +1742,8 @@ class F14Table : public Policy {
   template <typename HKKey, typename HKHasher, typename HKEqual>
   HashPair computeHash(
       F14HashedKey<HKKey, HKHasher, HKEqual> const& hashedKey) const {
-    static_assert(std::is_same_v<HKHasher, Hasher>);
-    static_assert(std::is_same_v<HKEqual, KeyEqual>);
+    static_assert(HeterogeneousPreHashCompatible<Hasher, HKHasher>::value);
+    static_assert(HeterogeneousPreHashCompatible<HKEqual, KeyEqual>::value);
     return static_cast<HashPair>(hashedKey.getHashToken());
   }
 
