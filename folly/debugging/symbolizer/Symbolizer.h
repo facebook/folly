@@ -274,8 +274,10 @@ class SafeStackTracePrinter {
  * Empty string indicates stack trace functionality is not available.
  *
  * NOT async-signal-safe.
+ * @param showFullInfo If true, include file names and line numbers (when
+ * available).
  */
-std::string getStackTraceStr();
+std::string getStackTraceStr(bool showFullInfo = false);
 
 /**
  * Gets the async stack trace for the current thread and returns a string
@@ -299,7 +301,7 @@ std::vector<std::string> getSuspendedStackTraces();
 // Define these in the header, as headers are always available, but not all
 // platforms can link against the symbolizer library cpp sources.
 
-inline std::string getStackTraceStr() {
+inline std::string getStackTraceStr(bool showFullInfo = false) {
   return "";
 }
 
