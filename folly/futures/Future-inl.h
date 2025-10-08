@@ -830,7 +830,7 @@ template <class ExceptionType, class F>
 SemiFuture<T> SemiFuture<T>::deferError(tag_t<ExceptionType>, F&& func) && {
   return std::move(*this).defer(
       [func_2 = static_cast<F&&>(func)](Try<T>&& t) mutable {
-        if (auto e = t.template tryGetExceptionObject<ExceptionType>()) {
+        if (const auto* e = t.template tryGetExceptionObject<ExceptionType>()) {
           return makeSemiFutureWith([&]() mutable {
             return static_cast<F&&>(func_2)(*e);
           });
