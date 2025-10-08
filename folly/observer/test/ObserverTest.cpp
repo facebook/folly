@@ -40,7 +40,10 @@ using ::testing::StartsWith;
 namespace {
 
 template <typename T>
-struct AltAtomic : std::atomic<T> {};
+struct AltAtomic : std::atomic<T> {
+  using std::atomic<T>::atomic;
+  using std::atomic<T>::operator=;
+};
 
 template <typename F>
 struct NamedCreator {
