@@ -543,31 +543,46 @@ namespace {
 constexpr size_t kMaxStackTraceDepth = 100;
 
 template <size_t N, typename StackTraceFunc>
-std::string getStackTraceStrImpl(StackTraceFunc func) {
+std::string getStackTraceStrImpl(StackTraceFunc func, size_t skip = 0) {
   FrameArray<N> addresses;
 
   if (!func(addresses)) {
     return "";
   } else {
-    ElfCache elfCache;
-    Symbolizer symbolizer(&elfCache);
-    symbolizer.symbolize(addresses);
-
-    StringSymbolizePrinter printer;
-    printer.println(addresses);
-    return printer.str();
+    return detail::getStackTraceStr(
+        addresses.addresses, addresses.frames, addresses.frameCount, skip);
   }
 }
 } // namespace
 
-std::string getStackTraceStr() {
+namespace detail {
+std::string getStackTraceStr(
+    const uintptr_t* addresses,
+    SymbolizedFrame* frames,
+    size_t frameCount,
+    size_t skip) {
+  if (frameCount == 0 || skip >= frameCount) {
+    return {};
+  }
+
+  ElfCache elfCache;
+  Symbolizer symbolizer(&elfCache);
+  symbolizer.symbolize(addresses, frames, frameCount);
+
+  StringSymbolizePrinter printer;
+  printer.println(frames + skip, frameCount - skip);
+  return printer.str();
+}
+} // namespace detail
+
+std::string getStackTraceStr(size_t skip) {
   return getStackTraceStrImpl<kMaxStackTraceDepth>(
-      getStackTrace<kMaxStackTraceDepth>);
+      getStackTrace<kMaxStackTraceDepth>, skip);
 }
 
-std::string getAsyncStackTraceStr() {
+std::string getAsyncStackTraceStr(size_t skip) {
   return getStackTraceStrImpl<kMaxStackTraceDepth>(
-      getAsyncStackTraceSafe<kMaxStackTraceDepth>);
+      getAsyncStackTraceSafe<kMaxStackTraceDepth>, skip);
 }
 
 std::vector<std::string> getSuspendedStackTraces() {
