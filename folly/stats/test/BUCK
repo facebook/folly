@@ -126,6 +126,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_benchmark,
+    name = "multi_level_time_series_benchmark",
+    srcs = ["MultiLevelTimeSeriesBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/init:init",
+        "//folly/stats:multi_level_time_series",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
     name = "quantile_estimator_benchmark",
     srcs = ["QuantileEstimatorBenchmark.cpp"],
     headers = [],
