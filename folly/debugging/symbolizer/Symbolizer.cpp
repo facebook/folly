@@ -543,14 +543,17 @@ namespace {
 constexpr size_t kMaxStackTraceDepth = 100;
 
 template <size_t N, typename StackTraceFunc>
-std::string getStackTraceStrImpl(StackTraceFunc func) {
+std::string getStackTraceStrImpl(
+    StackTraceFunc func, bool showFullInfo = false) {
   FrameArray<N> addresses;
 
   if (!func(addresses)) {
     return "";
   } else {
     ElfCache elfCache;
-    Symbolizer symbolizer(&elfCache);
+    LocationInfoMode mode =
+        showFullInfo ? LocationInfoMode::FULL : LocationInfoMode::FAST;
+    Symbolizer symbolizer(&elfCache, mode);
     symbolizer.symbolize(addresses);
 
     StringSymbolizePrinter printer;
@@ -560,9 +563,9 @@ std::string getStackTraceStrImpl(StackTraceFunc func) {
 }
 } // namespace
 
-std::string getStackTraceStr() {
+std::string getStackTraceStr(bool showFullInfo) {
   return getStackTraceStrImpl<kMaxStackTraceDepth>(
-      getStackTrace<kMaxStackTraceDepth>);
+      getStackTrace<kMaxStackTraceDepth>, showFullInfo);
 }
 
 std::string getAsyncStackTraceStr() {
