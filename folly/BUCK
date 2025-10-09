@@ -1,4 +1,3 @@
-load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
@@ -1409,14 +1408,20 @@ fb_dirsync_cpp_library(
     name = "demangle",
     srcs = ["Demangle.cpp"],
     headers = ["Demangle.h"],
-    compiler_flags = selects.with_or({
-        (
-            "ovr_config//os:android"
-        ): [
+    compiler_flags = select({
+        "DEFAULT": ["-fno-omit-frame-pointer"],
+        "ovr_config//os:android": [
             "-Wno-error=deprecated-dynamic-exception-spec",
             "-fno-omit-frame-pointer",
         ],
-        "DEFAULT": ["-fno-omit-frame-pointer"],
+        "ovr_config//os:linux": select({
+            "DEFAULT": ["-fno-omit-frame-pointer"],
+            "antlir//antlir/distro:build-for-distro": [],
+            "ovr_config//distro:conda": [],
+            "ovr_config//runtime:arista": [],
+            "ovr_config//runtime:fbcode": [],
+            "ovr_config//runtime:sgx": [],
+        }),
     }),
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
@@ -1429,9 +1434,15 @@ fb_dirsync_cpp_library(
     ] + select({
         "DEFAULT": [],
         "fbsource//xplat/folly:folly_demangle_macos_disable_iberty_config": [],
-        "ovr_config//os:linux": ["fbsource//third-party/binutils:iberty-demangle"],
+        "ovr_config//os:linux": select({
+            "DEFAULT": ["fbsource//third-party/binutils:iberty-demangle"],
+            "antlir//antlir/distro:build-for-distro": ["third-party//binutils:iberty"],
+            "ovr_config//distro:conda": ["third-party//binutils:iberty"],
+            "ovr_config//runtime:arista": ["third-party//binutils:iberty"],
+            "ovr_config//runtime:fbcode": ["third-party//binutils:iberty"],
+            "ovr_config//runtime:sgx": ["third-party//binutils:iberty"],
+        }),
         "ovr_config//os:macos": ["fbsource//third-party/binutils:iberty-demangle"],
-        "ovr_config//runtime:fbcode": ["third-party//binutils:iberty"],
     }),
     exported_deps = [
         ":fbstring",
