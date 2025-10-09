@@ -301,7 +301,7 @@ std::vector<std::string> getSuspendedStackTraces();
 // Define these in the header, as headers are always available, but not all
 // platforms can link against the symbolizer library cpp sources.
 
-inline std::string getStackTraceStr(bool showFullInfo = false) {
+inline std::string getStackTraceStr(bool /*showFullInfo*/ = false) {
   return "";
 }
 
