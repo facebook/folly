@@ -479,9 +479,7 @@ struct StaticMetaBase {
       ThreadEntry* threadEntry, uint32_t idval, size_t& newCapacity);
 
   span<SynchronizedThreadEntrySet* const> getThreadEntrySetsPtrSpan() {
-    const auto sets = allId2ThreadEntrySets_.as_view().as_ptr_span();
-    const size_t nextId = nextId_.load();
-    return sets.subspan(0, std::min(sets.size(), nextId));
+    return allId2ThreadEntrySets_.as_view().as_ptr_span(nextId_.load());
   }
 
   relaxed_atomic_uint32_t nextId_;

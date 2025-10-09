@@ -245,6 +245,15 @@ class atomic_grow_array : private Policy {
       using type = span<const_pointer const>;
       return array_ ? type{array_->list, array_->size} : type{};
     }
+
+    span<pointer const> as_ptr_span(size_type const sz) noexcept {
+      auto ptrs = as_ptr_span();
+      return ptrs.subspan(0, std::min(ptrs.size(), sz));
+    }
+    span<const_pointer const> as_ptr_span(size_type const sz) const noexcept {
+      auto ptrs = as_ptr_span();
+      return ptrs.subspan(0, std::min(ptrs.size(), sz));
+    }
   };
 
  public:
@@ -451,6 +460,12 @@ class atomic_grow_array : private Policy {
   pointer_span as_ptr_span() noexcept { return as_view().as_ptr_span(); }
   const_pointer_span as_ptr_span() const noexcept {
     return as_view().as_ptr_span();
+  }
+  pointer_span as_ptr_span(size_type const sz) noexcept {
+    return as_view().as_ptr_span(sz);
+  }
+  const_pointer_span as_ptr_span(size_type const sz) const noexcept {
+    return as_view().as_ptr_span(sz);
   }
 
  private:
