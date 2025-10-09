@@ -1140,6 +1140,7 @@ fbcode_target(
     deps = [
         "//folly:benchmark",
         "//folly:memcpy",
+        "//folly/lang:align",
         "//folly/portability:unistd",
     ],
 )
