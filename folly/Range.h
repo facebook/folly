@@ -152,6 +152,19 @@ struct IsCharPointer<const char*> {
   using type = int;
 };
 
+#if defined(__cpp_char8_t) && __cpp_char8_t >= 201811L
+template <>
+struct IsCharPointer<char8_t*> {
+  using type = int;
+};
+
+template <>
+struct IsCharPointer<const char8_t*> {
+  using const_type = int;
+  using type = int;
+};
+#endif
+
 template <class T>
 struct IsUnsignedCharPointer {};
 
