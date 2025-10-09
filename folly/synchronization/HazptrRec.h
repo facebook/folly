@@ -50,10 +50,7 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
     return hazptr_.load(std::memory_order_acquire);
   }
 
-  FOLLY_ALWAYS_INLINE void reset_hazptr(std::nullptr_t p = nullptr) noexcept {
-    hazptr_.store(p, std::memory_order_relaxed);
-  }
-  FOLLY_ALWAYS_INLINE void reset_hazptr(const void* p) noexcept {
+  FOLLY_ALWAYS_INLINE void reset_hazptr(const void* p = nullptr) noexcept {
     hazptr_.store(p, std::memory_order_release);
   }
 
