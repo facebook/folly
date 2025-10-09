@@ -137,6 +137,43 @@ FatalSignalInfo kFatalSignals[] = {
     {0, nullptr, {}},
 };
 
+template <typename...>
+bool try_async_reraise(int signum, siginfo_t* info) {
+  using folly::detail::linux_syscall;
+#if defined(__linux__) && defined(SYS_pidfd_send_signal) && \
+    defined(SYS_pidfd_open)
+  constexpr long nr_pidfd_send_signal = SYS_pidfd_send_signal;
+  constexpr long nr_pidfd_open = SYS_pidfd_open;
+#else
+  constexpr long nr_pidfd_send_signal = -1;
+  constexpr long nr_pidfd_open = -1;
+#endif
+  if constexpr (kIsLinux && nr_pidfd_send_signal >= 0 && nr_pidfd_open >= 0) {
+    constexpr auto kPIdfdSelf = -10000;
+    // PIDFD_SELF handling introduced in linux-6.15 (released 2025-05-25)
+    if (0 == linux_syscall(nr_pidfd_send_signal, kPIdfdSelf, signum, info, 0)) {
+      return true;
+    }
+    // fallback using a real pidfd
+    // TODO: remove fallback once minimum is linux-6.15
+    if (errno != EBADF) { // EBADF here means PIDFD_SELF is not yet supported
+      return false;
+    }
+    auto const tid = linux_syscall(FOLLY_SYS_gettid);
+    // pidfd_open introduced in linux-5.3 (released 2019-09-15)
+    int const fd = to_narrow(linux_syscall(nr_pidfd_open, tid, 0));
+    if (-1 == fd) {
+      return false;
+    }
+    SCOPE_EXIT {
+      close(fd); // probably not necessary
+    };
+    // pidfd_send_signal introduced in linux-5.1 (released 2019-05-05)
+    return 0 == linux_syscall(nr_pidfd_send_signal, fd, signum, info, 0);
+  }
+  return false;
+}
+
 void signalHandler(int signum, siginfo_t* info, void* uctx);
 
 [[maybe_unused]] void callPreviousSignalHandler(int signum, siginfo_t* info) {
@@ -144,35 +181,32 @@ void signalHandler(int signum, siginfo_t* info, void* uctx);
   // signal. The signal will remain blocked until the current call to the signal
   // handler returns.
   //
-  // For signals which arise from a faulting instruction, just restore the old
-  // disposition and return from the signal handler, returning control to the
-  // faulting instruction.
+  // On Linux, use pidfd_send_signal to re-raise the original signal with the
+  // original siginfo structure. Otherwise, just re-raise the original signal.
+  // Re-raising the original signal with the original siginfo enables the Linux
+  // kernel to record the true cause of the signal into the coredump. Otherwise,
+  // the kernel would see the explicit call to raise() as the cause and would
+  // record that in the coredump.
   //
-  // Otherwise, restore the old disposition and explicitly re-raise the signal
-  // without returning to the faulting instruction.
-  //
-  // For these signals, we can approximately assume that when control returns to
-  // the faulting instruction, that instruction would fault again in the same
-  // way and generate the same signal again, triggering the default disposition
-  // for the signal. For example, an instruction which faulted, generating any
-  // of SIGSEGV, SIGILL, SIGFPE, or SIGBUS, can approximately be assumed to
-  // fault and generate the same signal again for the same reason.
-  //
-  // As a risk, it is possible that another thread or signal handler would
-  // resolve the fault concurrently with the current signal handling and before
-  // control returns to the faulting instruction, in which case the program
-  // continues without our signal handler registered for this signal anymore.
-  //
-  // But, when it works, this technique preserves the true signal cause and
-  // makes that cause available to the debugger.
-  const bool fault = info->si_code > 0;
+  // For a signal arising from a faulting instruction, there is an alternative
+  // technique. After restoring disposition, the signal handler would simply
+  // return. Then the faulting instruction would execute again and be expected
+  // to trigger the same signal again. The second time, there would be no signal
+  // handler to handle the signal, so the kernel would see this second execution
+  // of the instruction as the true cause of the signal and would record that in
+  // the coredump. However, this technique is subject to the race where another
+  // thread might resolve the fault, causing the instruction's second execution
+  // to resume without fault. This can be a problem since we do want the process
+  // to terminate immediately with a coredump, and since the process resumes but
+  // without the corresponding signal handler anymore so the next time the same
+  // fault type happens there is no signal handler to report it.
   for (auto p = kFatalSignals; p->name; ++p) {
     if (p->number == signum) {
       sigaction(signum, &p->oldAction, nullptr);
-      if (!fault) {
-        raise(signum);
+      if (try_async_reraise(signum, info)) {
+        return;
       }
-      return;
+      raise(signum);
     }
   }
 
@@ -181,6 +215,9 @@ void signalHandler(int signum, siginfo_t* info, void* uctx);
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = SIG_DFL;
   sigaction(signum, &sa, nullptr);
+  if (try_async_reraise(signum, info)) {
+    return;
+  }
   raise(signum);
 }
 
