@@ -969,6 +969,7 @@ void cohort_safe_list_children_test() {
 }
 
 void fork_test() {
+#ifndef _WIN32
   folly::enable_hazptr_thread_pool_executor();
   auto trigger_reclamation = [] {
     hazptr_obj_cohort b;
@@ -999,6 +1000,7 @@ void fork_test() {
   } else {
     PLOG(FATAL) << "Failed to fork()";
   }
+#endif
 }
 
 template <template <typename> class Atom = std::atomic>

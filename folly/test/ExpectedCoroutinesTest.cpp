@@ -137,7 +137,7 @@ TEST(Expected, CoroutineReturnsVoidThrows) {
     throws();
     co_return;
   };
-  ASSERT_THROW(({ fnThrows(); }), Exn);
+  ASSERT_THROW(fnThrows(), Exn);
 }
 
 TEST(Expected, CoroutineReturnsVoidError) {

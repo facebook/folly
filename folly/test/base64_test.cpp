@@ -63,7 +63,7 @@ constexpr auto base64URLDecodeToArray(std::string_view s) {
 template <std::size_t ResSize>
 struct PHPRes {
   std::array<char, ResSize> res;
-  long result_size;
+  std::ptrdiff_t result_size;
 };
 
 template <std::size_t ResSize>
