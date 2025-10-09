@@ -880,30 +880,23 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "bits",
+    headers = ["Bits.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Bits.h",
-    ],
-    exported_deps = [
-        "//xplat/folly/lang:bits",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = ["//folly/lang:bits"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "hash",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
+    headers = ["Hash.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Hash.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
+        "//folly/hash:hash",
     ],
 )
 
@@ -923,42 +916,49 @@ non_fbcode_target(
     exported_deps = ["//xplat/folly/hash:checksum"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "conv",
-    srcs = [
-        "Conv.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
+    srcs = ["Conv.cpp"],
+    headers = ["Conv.h"],
+    compiler_flags = select({
+        "DEFAULT": [
+            "-fno-omit-frame-pointer",
+        ],
+        "ovr_config//runtime:fbcode": [],
+    }),
     export_header_unit = "include",
-    export_header_unit_filter = ["folly/Conv.h"],
+    export_header_unit_filter = select({
+        "DEFAULT": ["folly/Conv.h"],
+        "ovr_config//runtime:fbcode": [],
+    }),
     fbobjc_complete_nullability = True,
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Conv.h",
-    ],
+    raw_headers_as_headers_mode = "enabled",
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/fast_float:fast_float",
-        "//xplat/folly/lang:safe_assert",
+        "//folly/lang:safe_assert",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/portability:math",
-        "//third-party/double-conversion:double-conversion",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:demangle",
-        "//xplat/folly:expected",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:traits",
-        "//xplat/folly:unit",
-        "//xplat/folly:utility",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:pretty",
-        "//xplat/folly/lang:to_ascii",
+        ":c_portability",
+        ":demangle",
+        ":expected",
+        ":fbstring",
+        ":likely",
+        ":portability",
+        ":range",
+        ":traits",
+        ":unit",
+        ":utility",
+        "//folly/lang:exception",
+        "//folly/lang:pretty",
+        "//folly/lang:to_ascii",
+        "//folly/portability:math",
+    ],
+    exported_external_deps = [
+        "double_conversion",
     ],
 )
 
@@ -1382,17 +1382,16 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "chrono",
+    headers = ["Chrono.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Chrono.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
-        ":portability_time",
-        "//xplat/folly/lang:exception",
+        "//folly/lang:exception",
+        "//folly/portability:time",
     ],
 )
 
@@ -5125,13 +5124,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "bits",
-    headers = ["Bits.h"],
-    exported_deps = ["//folly/lang:bits"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "c_portability",
     headers = ["CPortability.h"],
     exported_deps = [
@@ -5161,17 +5153,6 @@ fbcode_target(
     ],
     exported_external_deps = [
         "glog",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "chrono",
-    headers = ["Chrono.h"],
-    exported_deps = [
-        ":portability",
-        "//folly/lang:exception",
-        "//folly/portability:time",
     ],
 )
 
@@ -5265,37 +5246,6 @@ fbcode_target(
         ":function",
         ":shared_mutex",
         "//folly/detail:static_singleton_manager",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "conv",
-    srcs = ["Conv.cpp"],
-    headers = ["Conv.h"],
-    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
-    deps = [
-        "fbsource//third-party/fast_float:fast_float",
-        "//folly/lang:safe_assert",
-    ],
-    exported_deps = [
-        ":c_portability",
-        ":demangle",
-        ":expected",
-        ":fbstring",
-        ":likely",
-        ":portability",
-        ":range",
-        ":traits",
-        ":unit",
-        ":utility",
-        "//folly/lang:exception",
-        "//folly/lang:pretty",
-        "//folly/lang:to_ascii",
-        "//folly/portability:math",
-    ],
-    exported_external_deps = [
-        "double_conversion",
     ],
 )
 
@@ -5583,15 +5533,6 @@ fbcode_target(
     ],
     exported_external_deps = [
         "glog",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "hash",
-    headers = ["Hash.h"],
-    exported_deps = [
-        "//folly/hash:hash",
     ],
 )
 
