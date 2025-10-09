@@ -153,22 +153,19 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "scope_guard",
-    srcs = [
-        "ScopeGuard.cpp",
-    ],
+    srcs = ["ScopeGuard.cpp"],
+    headers = ["ScopeGuard.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "ScopeGuard.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly:preprocessor",
-        "//xplat/folly:utility",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:uncaught_exceptions",
+        ":portability",
+        ":preprocessor",
+        ":utility",
+        "//folly/lang:exception",
+        "//folly/lang:uncaught_exceptions",
     ],
 )
 
@@ -716,25 +713,23 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "string",
     srcs = [
         "String.cpp",
+    ],
+    headers = [
+        "String.h",
+        "String-inl.h",
     ],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "String.h",
-        "String-inl.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly/container:array",
-        "//xplat/folly/detail:simple_simd_string_utils",
-        "//xplat/folly/detail:split_string_simd",
+        "//folly/container:array",
     ],
     exported_deps = [
         ":conv",
@@ -746,7 +741,12 @@ non_fbcode_target(
         ":scope_guard",
         ":traits",
         ":unit",
-        "//xplat/folly/container:reserve",
+        "//folly/container:reserve",
+        "//folly/detail:simple_simd_string_utils",
+        "//folly/detail:split_string_simd",
+    ],
+    external_deps = [
+        "glog",
     ],
 )
 
@@ -1125,17 +1125,14 @@ fb_dirsync_cpp_library(
     exported_deps = [":portability"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "cpp_attributes",
+    headers = ["CppAttributes.h"],
     apple_sdks = (IOS, MACOSX, WATCHOS),
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "CppAttributes.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:portability",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [":portability"],
 )
 
 non_fbcode_target(
@@ -1284,19 +1281,17 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "portability",
+    headers = ["Portability.h"],
     apple_sdks = (IOS, MACOSX, WATCHOS),
     fbobjc_complete_nullability = True,
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Portability.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
-        ":portability_config",
-        ":portability_sys_types",
+        "//folly/portability:config",
     ],
 )
 
@@ -1322,22 +1317,21 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "function",
+    headers = ["Function.h"],
     fbobjc_complete_nullability = True,
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Function.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":cpp_attributes",
         ":portability",
         ":traits",
-        "//xplat/folly/functional:invoke",
-        "//xplat/folly/lang:align",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:new",
+        "//folly/functional:invoke",
+        "//folly/lang:align",
+        "//folly/lang:exception",
+        "//folly/lang:new",
     ],
 )
 
@@ -5238,13 +5232,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "cpp_attributes",
-    headers = ["CppAttributes.h"],
-    exported_deps = [":portability"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "default_keep_alive_executor",
     headers = [
         "DefaultKeepAliveExecutor.h",
@@ -5464,21 +5451,6 @@ fbcode_target(
     _kind = cpp_library,
     name = "format_traits",
     headers = ["FormatTraits.h"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "function",
-    headers = ["Function.h"],
-    exported_deps = [
-        ":cpp_attributes",
-        ":portability",
-        ":traits",
-        "//folly/functional:invoke",
-        "//folly/lang:align",
-        "//folly/lang:exception",
-        "//folly/lang:new",
-    ],
 )
 
 fbcode_target(
@@ -5922,16 +5894,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "portability",
-    headers = ["Portability.h"],
-    exported_deps = [
-        ":c_portability",
-        "//folly/portability:config",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "poly",
     headers = [
         "Poly.h",
@@ -6006,20 +5968,6 @@ fbcode_target(
     name = "rw_spin_lock",
     headers = ["RWSpinLock.h"],
     exported_deps = ["//folly/synchronization:rw_spin_lock"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "scope_guard",
-    srcs = ["ScopeGuard.cpp"],
-    headers = ["ScopeGuard.h"],
-    exported_deps = [
-        ":portability",
-        ":preprocessor",
-        ":utility",
-        "//folly/lang:exception",
-        "//folly/lang:uncaught_exceptions",
-    ],
 )
 
 fbcode_target(
@@ -6150,38 +6098,6 @@ fbcode_target(
         ":chrono",
         ":utility",
         "//folly/portability:time",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "string",
-    srcs = [
-        "String.cpp",
-    ],
-    headers = [
-        "String.h",
-        "String-inl.h",
-    ],
-    deps = [
-        "//folly/container:array",
-    ],
-    exported_deps = [
-        ":conv",
-        ":cpp_attributes",
-        ":exception_string",
-        ":optional",
-        ":portability",
-        ":range",
-        ":scope_guard",
-        ":traits",
-        ":unit",
-        "//folly/container:reserve",
-        "//folly/detail:simple_simd_string_utils",
-        "//folly/detail:split_string_simd",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
