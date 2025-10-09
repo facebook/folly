@@ -1261,26 +1261,24 @@ non_fbcode_target(
     exported_deps = ["//xplat/folly/portability:config"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "c_portability",
+    headers = ["CPortability.h"],
     apple_sdks = (IOS, MACOSX, WATCHOS),
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "CPortability.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        ":portability_config",
+        "//folly/portability:config",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "preprocessor",
+    headers = ["Preprocessor.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Preprocessor.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
     ],
@@ -1413,12 +1411,10 @@ fb_native.config_setting(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "demangle",
-    srcs = [
-        "Demangle.cpp",
-    ],
+    srcs = ["Demangle.cpp"],
+    headers = ["Demangle.h"],
     compiler_flags = selects.with_or({
         (
             "ovr_config//os:android"
@@ -1429,24 +1425,23 @@ non_fbcode_target(
         "DEFAULT": ["-fno-omit-frame-pointer"],
     }),
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "Demangle.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:utility",
-        "//xplat/folly/functional:invoke",
-        "//xplat/folly/lang:c_string",
+        ":c_portability",
+        ":utility",
+        "//folly/functional:invoke",
+        "//folly/lang:c_string",
     ] + select({
-        "//xplat/folly:folly_demangle_macos_disable_iberty_config": [],
         "DEFAULT": [],
-        "ovr_config//os:linux": ["//third-party/binutils:iberty-demangle"],
-        "ovr_config//os:macos": ["//third-party/binutils:iberty-demangle"],
+        "fbsource//xplat/folly:folly_demangle_macos_disable_iberty_config": [],
+        "ovr_config//os:linux": ["fbsource//third-party/binutils:iberty-demangle"],
+        "ovr_config//os:macos": ["fbsource//third-party/binutils:iberty-demangle"],
+        "ovr_config//runtime:fbcode": ["third-party//binutils:iberty"],
     }),
     exported_deps = [
-        "fbsource//xplat/folly/portability:config",
-        "//xplat/folly:fbstring",
+        ":fbstring",
+        "//folly/portability:config",
     ],
 )
 
@@ -5125,15 +5120,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "c_portability",
-    headers = ["CPortability.h"],
-    exported_deps = [
-        "//folly/portability:config",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "cancellation_token",
     srcs = ["CancellationToken.cpp"],
     headers = [
@@ -5271,26 +5257,6 @@ fbcode_target(
     exported_external_deps = [
         "glog",
     ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "demangle",
-    srcs = ["Demangle.cpp"],
-    headers = ["Demangle.h"],
-    deps = [
-        ":c_portability",
-        ":utility",
-        "//folly/functional:invoke",
-        "//folly/lang:c_string",
-    ],
-    exported_deps = [
-        ":fbstring",
-        "//folly/portability:config",
-    ] + select({
-        "DEFAULT": [],
-        "ovr_config//os:linux": ["third-party//binutils:iberty"],
-    }),
 )
 
 fbcode_target(
@@ -5961,15 +5927,6 @@ fbcode_target(
     exported_deps = [
         ":c_portability",
         "//folly/portability:config",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "preprocessor",
-    headers = ["Preprocessor.h"],
-    exported_deps = [
-        ":c_portability",
     ],
 )
 
