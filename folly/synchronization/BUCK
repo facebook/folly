@@ -167,15 +167,15 @@ fb_dirsync_cpp_library(
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
-        "//folly:indestructible",
+        "//folly:exception_string",
         "//folly:scope_guard",
-        "//folly/executors:inline_executor",
+        "//folly/lang:exception",
         "//folly/portability:gflags",
     ],
     exported_deps = [
         ":asymmetric_thread_fence",
         "//folly:c_portability",
-        "//folly:executor",
+        "//folly:function",
         "//folly:memory",
         "//folly:portability",
         "//folly:singleton_thread_local",

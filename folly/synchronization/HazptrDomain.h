@@ -18,7 +18,7 @@
 
 #include <atomic>
 
-#include <folly/Executor.h>
+#include <folly/Function.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/container/F14Set.h>
@@ -34,8 +34,6 @@
 
 namespace folly {
 
-class Executor;
-
 namespace detail {
 
 /** Threshold for the number of retired objects to trigger
@@ -44,7 +42,7 @@ constexpr int hazptr_domain_rcount_threshold() {
   return 1000;
 }
 
-folly::Executor::KeepAlive<> hazptr_get_default_executor();
+void hazptr_inline_executor_add(folly::Function<void()> func);
 
 } // namespace detail
 
@@ -104,7 +102,8 @@ class hazptr_domain {
   using ObjList = hazptr_obj_list<Atom>;
   using RetiredList = hazptr_detail::shared_head_only_list<Obj, Atom>;
   using Set = folly::F14FastSet<const void*>;
-  using ExecFn = folly::Executor::KeepAlive<> (*)();
+  using Func = folly::Function<void()>;
+  using ExecutorFn = bool (*)(Func&&);
 
   static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
   static constexpr int kMultiplier = 2;
@@ -132,7 +131,7 @@ class hazptr_domain {
   RetiredList tagged_[kNumShards];
   Atom<int> count_{0};
   Atom<uint64_t> due_time_{0};
-  Atom<ExecFn> exec_fn_{nullptr};
+  Atom<ExecutorFn> exec_fn_{&no_executor};
   Atom<int> exec_backlog_{0};
 
  public:
@@ -156,11 +155,13 @@ class hazptr_domain {
   hazptr_domain& operator=(const hazptr_domain&) = delete;
   hazptr_domain& operator=(hazptr_domain&&) = delete;
 
-  void set_executor(ExecFn exfn) {
+  void set_executor(ExecutorFn exfn) {
     exec_fn_.store(exfn, std::memory_order_release);
   }
 
-  void clear_executor() { exec_fn_.store(nullptr, std::memory_order_release); }
+  void clear_executor() {
+    exec_fn_.store(&no_executor, std::memory_order_release);
+  }
 
   /** retire - nonintrusive - allocates memory */
   template <typename T, typename D = std::default_delete<T>>
@@ -242,6 +243,8 @@ class hazptr_domain {
 #if FOLLY_HAZPTR_THR_LOCAL
   friend class hazptr_tc<Atom>;
 #endif
+
+  static bool no_executor(Func&&) { return false; }
 
   int load_count() { return count_.load(std::memory_order_acquire); }
 
@@ -362,9 +365,7 @@ class hazptr_domain {
       }
     }
     inc_num_bulk_reclaims();
-    if (!invoke_reclamation_in_executor(rcount)) {
-      do_reclamation(rcount);
-    }
+    schedule_reclamation(rcount);
   }
 
   /** calc_shard */
@@ -721,44 +722,37 @@ class hazptr_domain {
     return rec;
   }
 
-  bool invoke_reclamation_in_executor(int rcount) {
-    if (!std::is_same<Atom<int>, std::atomic<int>>{} ||
-        this != &default_hazptr_domain<Atom>() || !hazptr_use_executor()) {
-      return false;
-    }
-    auto fn = exec_fn_.load(std::memory_order_acquire);
-    folly::Executor::KeepAlive<> ex =
-        fn ? fn() : detail::hazptr_get_default_executor();
-    if (!ex) {
-      return false;
-    }
+  void schedule_reclamation(int rcount) {
     auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
-    auto recl_fn = [this, rcount, ka = ex] {
-      exec_backlog_.store(0, std::memory_order_relaxed);
-      do_reclamation(rcount);
-    };
-    if (ex.get() == detail::hazptr_get_default_executor().get()) {
-      invoke_reclamation_may_deadlock(ex, recl_fn);
-    } else {
-      ex->add(recl_fn);
-    }
     if (backlog >= 10) {
       hazptr_warning_executor_backlog(backlog);
     }
-    return true;
+
+    Func recl_fn = [this, rcount] {
+      exec_backlog_.store(0, std::memory_order_relaxed);
+      do_reclamation(rcount);
+    };
+
+    bool canUseExecutor = std::is_same<Atom<int>, std::atomic<int>>{} &&
+        this == &default_hazptr_domain<Atom>() && hazptr_use_executor();
+    if (canUseExecutor) {
+      auto fn = exec_fn_.load(std::memory_order_acquire);
+      if (canUseExecutor && fn(std::move(recl_fn))) {
+        return;
+      }
+    }
+
+    invoke_reclamation_may_deadlock(std::move(recl_fn));
   }
 
-  template <typename Func>
-  void invoke_reclamation_may_deadlock(
-      folly::Executor::KeepAlive<> ex, Func recl_fn) {
-    ex->add(recl_fn);
-    // This program is using the default executor, which is an
-    // inline executor. This is not necessarily a problem. But if this
-    // program encounters deadlock, then this may be the cause. Most
-    // likely this program did not call
-    // folly::enable_hazptr_thread_pool_executor (which is normally
-    // called by folly::init). If this is a problem check if your
-    // program is missing a call to folly::init or an alternative.
+  void invoke_reclamation_may_deadlock(Func recl_fn) {
+    // Reclamation is not being delegated to an executor, and being executed
+    // inline instead. This is not necessarily a problem. But if this program
+    // encounters deadlock, then this may be the cause. Most likely this program
+    // did not call folly::enable_hazptr_thread_pool_executor (which is normally
+    // called by folly::init). If this is a problem check if your program is
+    // missing a call to folly::init or an alternative.
+    detail::hazptr_inline_executor_add(std::move(recl_fn));
   }
 
   FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_list_too_large(

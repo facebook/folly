@@ -28,9 +28,12 @@ folly::Singleton<folly::CPUThreadPoolExecutor, HazptrTPETag> hazptr_tpe_([] {
       std::make_shared<folly::NamedThreadFactory>("hazptr-tpe-"));
 });
 
-folly::Executor::KeepAlive<> get_hazptr_tpe() {
-  auto ex = hazptr_tpe_.try_get();
-  return ex ? ex.get() : nullptr;
+bool schedule_fn(folly::Function<void()>&& fn) {
+  if (auto ex = hazptr_tpe_.try_get()) {
+    ex->add(std::move(fn));
+    return true;
+  }
+  return false;
 }
 
 } // namespace
@@ -39,7 +42,7 @@ namespace folly {
 
 void enable_hazptr_thread_pool_executor() {
   if (hazptr_use_executor()) {
-    default_hazptr_domain().set_executor(&get_hazptr_tpe);
+    default_hazptr_domain().set_executor(&schedule_fn);
   }
 }
 

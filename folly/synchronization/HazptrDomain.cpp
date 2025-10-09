@@ -17,52 +17,40 @@
 #include <folly/synchronization/HazptrDomain.h>
 
 #include <cstddef>
-#include <functional>
 #include <queue>
 #include <type_traits>
 
-#include <folly/Executor.h>
-#include <folly/Indestructible.h>
+#include <glog/logging.h>
+#include <folly/ExceptionString.h>
+#include <folly/Function.h>
 #include <folly/ScopeGuard.h>
-#include <folly/executors/InlineExecutor.h>
+#include <folly/lang/Exception.h>
 
 namespace folly::detail {
 
-namespace {
+void hazptr_inline_executor_add(folly::Function<void()> func) {
+  using Queue = std::queue<folly::Function<void()>>;
+  thread_local Queue* current = nullptr;
 
-/// HazptrDefaultExecutor
-///
-/// Like QueuedImmediateExecutor, but:
-/// * Only a singleton and not otherwise instantiated.
-/// * Using keyword thread_local v.s. class ThreadLocal.
-struct HazptrDefaultExecutor final : InlineLikeExecutor {
-  void add(Func func) override {
-    using Queue = std::queue<Func>;
-    thread_local Queue* current = nullptr;
-
-    if (current != nullptr) {
-      current->push(std::move(func));
-      return;
-    }
-
-    Queue queue;
-    current = &queue;
-    auto cleanup = makeGuard([&] { current = nullptr; });
-
-    invokeCatchingExns("HazptrDefaultExecutor", std::exchange(func, {}));
-
-    while (!queue.empty()) {
-      invokeCatchingExns("HazptrDefaultExecutor", std::ref(queue.front()));
-      queue.pop();
-    }
+  if (current != nullptr) {
+    current->push(std::move(func));
+    return;
   }
-};
 
-} // namespace
+  Queue queue;
+  current = &queue;
+  auto cleanup = makeGuard([&] { current = nullptr; });
+  auto logException = []() noexcept {
+    LOG(ERROR) << "HazptrDomain threw unhandled "
+               << exceptionStr(current_exception());
+  };
 
-folly::Executor::KeepAlive<> hazptr_get_default_executor() {
-  static Indestructible<HazptrDefaultExecutor> instance;
-  return &*instance;
+  catch_exception(std::exchange(func, {}), logException);
+
+  while (!queue.empty()) {
+    catch_exception(std::ref(queue.front()), logException);
+    queue.pop();
+  }
 }
 
 } // namespace folly::detail
