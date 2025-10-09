@@ -479,6 +479,11 @@ class FOLLY_NODISCARD CoreAllocatorGuard {
   CoreAllocatorGuard(size_t numStripes, size_t stripe);
   ~CoreAllocatorGuard();
 
+  CoreAllocatorGuard(const CoreAllocatorGuard&) = delete;
+  CoreAllocatorGuard& operator=(const CoreAllocatorGuard&) = delete;
+  CoreAllocatorGuard(CoreAllocatorGuard&&) = delete;
+  CoreAllocatorGuard& operator=(CoreAllocatorGuard&&) = delete;
+
  private:
   friend void* detail::coreMallocFromGuard(size_t size);
 

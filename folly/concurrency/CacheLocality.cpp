@@ -589,6 +589,11 @@ class SimpleAllocator {
     }
   }
 
+  SimpleAllocator(const SimpleAllocator&) = delete;
+  SimpleAllocator& operator=(const SimpleAllocator&) = delete;
+  SimpleAllocator(SimpleAllocator&&) = delete;
+  SimpleAllocator& operator=(SimpleAllocator&&) = delete;
+
   void* allocate() {
     std::lock_guard g(m_);
     // Freelist allocation.
