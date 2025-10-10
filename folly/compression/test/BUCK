@@ -29,7 +29,6 @@ fbcode_target(
         "//folly:random",
         "//folly:varint",
         "//folly/compression:compression",
-        "//folly/hash:hash",
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],

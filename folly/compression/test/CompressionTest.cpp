@@ -27,7 +27,6 @@
 
 #include <folly/Random.h>
 #include <folly/Varint.h>
-#include <folly/hash/Hash.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/portability/GTest.h>
 
