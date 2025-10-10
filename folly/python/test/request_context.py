@@ -30,7 +30,12 @@ async def get_Context(pass_ctx) -> request_context.Context | None:
     assert pass_ctx == ctx, f"Expected {pass_ctx} but got {ctx}"
     for _ in range(25):
         await asyncio.sleep(0)
-        assert ctx == request_context.get_from_contextvar()
+        assert (
+            ctx
+            == request_context.get_from_contextvar()
+            == pass_ctx
+            == request_context.save()
+        )
     return request_context.get_from_contextvar()
 
 

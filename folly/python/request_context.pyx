@@ -24,6 +24,30 @@ from libcpp.utility cimport move
 # Don't store in module dict, limits control surfaces for how it can be set to this module alone.
 cdef object _RequestContext = PyContextVar_New("_RequestContext", NULL)
 
+cdef extern from * namespace "folly::python::request_context" nogil:
+    """
+       namespace folly::python::request_context {
+           thread_local unsigned long _last_set_context;
+           thread_local bool _last_context_set = false;
+           inline unsigned long get_last_set_context() {
+               return _last_set_context;
+           }
+           inline void set_last_set_context(unsigned long value) {
+               _last_set_context = value;
+               _last_context_set = true;
+           }
+           inline bool is_last_context_set() {
+               return _last_context_set;
+           }
+           inline void reset_last_context_set() {
+               _last_context_set = false;
+           }
+       }
+    """
+    cdef unsigned long get_last_set_context()
+    cdef void set_last_set_context(unsigned long value)
+    cdef bint is_last_context_set()
+    cdef void reset_last_context_set()
 
 cdef object set_PyContext(shared_ptr[RequestContext] ptr) except *:
     return PyContextVar_Set(_RequestContext, RequestContextToPyCapsule(move(ptr)))
@@ -113,6 +137,7 @@ cdef extern from "folly/python/request_context.h":
         int(*PyContext_WatchCallback)(PyContextEvent, PyObject* pycontext)
     )
 
+
 cdef int _watcher(PyContextEvent event, PyObject* pycontext):
     cdef shared_ptr[RequestContext] ctx
 
@@ -121,9 +146,11 @@ cdef int _watcher(PyContextEvent event, PyObject* pycontext):
 
     # The context is None lets unset the fRC
     if (<object>pycontext) is None:
+        set_last_set_context(0)
         RequestContext.setContext(ctx)
 
     if not PyContext_CheckExact(<object>pycontext):
+        reset_last_context_set()
         return 0
 
     py_ctx = get_value(_RequestContext)
@@ -131,6 +158,7 @@ cdef int _watcher(PyContextEvent event, PyObject* pycontext):
         ctx = PyCapsuleToRequestContext(py_ctx)
 
     # This is always called so we don't leak RC between PyContext switches.
+    set_last_set_context(<unsigned long>ctx.get())
     RequestContext.setContext(move(ctx))
     return 0
 
@@ -148,23 +176,18 @@ cdef extern from "folly/python/Weak.h":
 
 # Setup a Watcher to set our contextvar any time the folly RequestContext changes
 cdef void _setContextWatcher(const shared_ptr[RequestContext]& prev_ctx, const shared_ptr[RequestContext]& curr_ctx) noexcept:
+
+    if is_last_context_set() and get_last_set_context() == <unsigned long>curr_ctx.get():
+        # We already set the contextvar, so we don't need to do anything
+        return
+
     # Be the most conservative possible here
     if not Py_IsInitialized() or Py_IsFinalizing() or PyGILState_GetThisThreadState() is NULL or not PyGILState_Check():
         # If we don't already have the GIL, we don't bother setting the contextvar
         # Not all calls represent python threads
         return
 
-    py_ctx = get_value(_RequestContext)
-
-    if py_ctx is None and curr_ctx.get() is NULL:
-        # We don't have a contextvar set and we don't have a context, so we don't need to do anything
-        return
-
-    if isinstance(py_ctx, Context):
-        if PyCapsuleToRequestContext(py_ctx).get() == curr_ctx.get():
-            # We triggered this change in our context watcher, so we don't need to do anything
-            return
-
+    set_last_set_context(<unsigned long>curr_ctx.get())
     if curr_ctx.get() is NULL:
         # This should be marginally faster than creating a new capsule
         PyContextVar_Set(_RequestContext, None)
