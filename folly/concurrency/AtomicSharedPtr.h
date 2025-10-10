@@ -33,6 +33,8 @@
 #define FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED 0
 #endif
 
+namespace folly {
+
 #if FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED
 
 /*
@@ -77,7 +79,6 @@
 
 // A note on noexcept: If the pointer is an aliased pointer,
 // store() will allocate.  Otherwise is noexcept.
-namespace folly {
 
 template <
     typename T,
@@ -393,11 +394,7 @@ class atomic_shared_ptr {
   mutable AtomicStruct<PackedPtr, Atom> ptr_;
 };
 
-} // namespace folly
-
 #else
-
-namespace folly {
 
 template <typename T>
 class atomic_shared_ptr {
@@ -479,6 +476,9 @@ class atomic_shared_ptr {
   }
 };
 
-} // namespace folly
-
 #endif // FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED
+
+template <typename T>
+atomic_shared_ptr(std::shared_ptr<T>) -> atomic_shared_ptr<T>;
+
+} // namespace folly
