@@ -14,7 +14,8 @@
 
 from folly.request_context cimport RequestContext
 from libcpp.memory cimport make_shared, shared_ptr
+from libcpp.utility cimport move
 
 def setContext():
     cdef shared_ptr[RequestContext] ptr = make_shared[RequestContext]()
-    RequestContext.setContext(ptr)
+    RequestContext.setContext(move(ptr))

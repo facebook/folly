@@ -474,7 +474,6 @@ non_fbcode_target(
     headers = [
         "request_context.h",
         "request_context.pxd",
-        "request_context_capsule.h",
     ],
     compatible_with = [
         "ovr_config//os:linux",
@@ -506,7 +505,6 @@ fbcode_target(
     headers = [
         "request_context.h",
         "request_context.pxd",
-        "request_context_capsule.h",
     ],
     compatible_with = [
         "ovr_config//os:linux",

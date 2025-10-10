@@ -18,7 +18,6 @@ from contextlib import contextmanager
 from libcpp.memory cimport make_shared
 from cpython.object cimport PyObject
 from cpython.contextvars cimport get_value_no_default as get_value, PyContextVar_Set, PyContextVar_Reset, PyContextVar_New, PyContext_CheckExact
-from cpython.pycapsule cimport PyCapsule_CheckExact
 from cpython.pystate cimport PyThreadState
 from libcpp.utility cimport move
 
@@ -29,7 +28,7 @@ cdef object _RequestContext = PyContextVar_New("_RequestContext", NULL)
 cdef object set_PyContext(shared_ptr[RequestContext] ptr) except *:
     return PyContextVar_Set(_RequestContext, RequestContextToPyCapsule(move(ptr)))
 
-cdef object get_PyContext(object context) except *:
+cdef object get_PyContext(object context = None) except *:
     """Return the PyCapsule from the ContextVar"""
     if context is None:
         return get_value(_RequestContext)
@@ -42,6 +41,10 @@ cdef object get_PyContext(object context) except *:
 
 @cython.auto_pickle(False)
 cdef class Context:
+    """ Python Wrapper around shared_ptr[folly::RequestContext] """
+    # This is opague to other cython files
+    cdef shared_ptr[RequestContext] _ptr
+
     def __eq__(self, Context other):
         return self._ptr.get() == other._ptr.get()
 
@@ -49,26 +52,42 @@ cdef class Context:
         return <unsigned long>(self._ptr.get())
 
     def __repr__(self):
-        return f"<{self.__class__!r}: {<unsigned long>self._ptr.get()}>"
+        return f"<Python Capsule shared_ptr<folly::RequestContext>: {<unsigned long>self._ptr.get()}>"
 
     def __bool__(self):
         return self._ptr.get() != NULL
 
+    def use_count(self):
+        return self._ptr.use_count()
 
-cpdef Context save() noexcept:
+
+cdef object RequestContextToPyCapsule(shared_ptr[RequestContext] ptr) noexcept:
+    cdef Context holder = Context.__new__(Context)
+    holder._ptr = move(ptr)
+    return holder
+
+cdef shared_ptr[RequestContext] PyCapsuleToRequestContext(object capsule) noexcept:
+    cdef Context holder = <Context>capsule
+    return holder._ptr
+
+cdef bint isRequestContextPyCapsule(object capsule) noexcept:
+    return isinstance(capsule, Context)
+
+
+cpdef object save() noexcept:
     """ Return the current setcontext """
     cdef Context ctx = Context.__new__(Context)
-    ctx._ptr = RequestContext.saveContext()
+    ctx._ptr = move(RequestContext.saveContext())
     return ctx
 
 
-cpdef Context get_from_contextvar() noexcept:
+cpdef object get_from_contextvar() noexcept:
     """ Return the current context from the contextvar """
     cdef Context ctx = Context.__new__(Context)
 
     ctx_var = get_value(_RequestContext)
-    if ctx_var is not None and PyCapsule_CheckExact(ctx_var):
-        ctx._ptr = PyCapsuleToRequestContext(ctx_var)
+    if isinstance(ctx_var, Context):
+        return ctx_var
     return ctx
 
 
@@ -77,12 +96,13 @@ def active():
     """ Create a Context and shove it into the python contextvar """
     cdef shared_ptr[RequestContext] rctx = make_shared[RequestContext]()
     prev_rctx = RequestContext.setContext(rctx)
-    cdef Context ctx = Context.__new__(Context)
-    ctx._ptr = rctx
+    cdef Context ctx = get_from_contextvar()
+    assert ctx._ptr == rctx
+    rctx.reset() # So we have correct use_count for tests
     try:
         yield ctx
     finally:
-        assert RequestContext.setContext(prev_rctx) == rctx
+        assert RequestContext.setContext(move(prev_rctx)) == ctx._ptr
 
 
 cdef extern from "folly/python/request_context.h":
@@ -107,11 +127,11 @@ cdef int _watcher(PyContextEvent event, PyObject* pycontext):
         return 0
 
     py_ctx = get_value(_RequestContext)
-    if py_ctx is not None and PyCapsule_CheckExact(py_ctx):
+    if isinstance(py_ctx, Context):
         ctx = PyCapsuleToRequestContext(py_ctx)
 
     # This is always called so we don't leak RC between PyContext switches.
-    RequestContext.setContext(ctx)
+    RequestContext.setContext(move(ctx))
     return 0
 
 
@@ -140,7 +160,7 @@ cdef void _setContextWatcher(const shared_ptr[RequestContext]& prev_ctx, const s
         # We don't have a contextvar set and we don't have a context, so we don't need to do anything
         return
 
-    if py_ctx is not None and PyCapsule_CheckExact(py_ctx):
+    if isinstance(py_ctx, Context):
         if PyCapsuleToRequestContext(py_ctx).get() == curr_ctx.get():
             # We triggered this change in our context watcher, so we don't need to do anything
             return

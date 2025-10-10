@@ -26,13 +26,11 @@ cdef extern from "folly/io/async/Request.h" namespace "folly":
         )
 
 
-cdef extern from "folly/python/request_context_capsule.h" namespace "folly::python":
-    cdef object RequestContextToPyCapsule(shared_ptr[RequestContext] ptr)
-    cdef shared_ptr[RequestContext] PyCapsuleToRequestContext(object ptr)
+cdef object RequestContextToPyCapsule(shared_ptr[RequestContext] ptr) noexcept
+cdef shared_ptr[RequestContext] PyCapsuleToRequestContext(object capsule) noexcept
+cdef bint isRequestContextPyCapsule(object capsule) noexcept
 
-cdef class Context:
-    cdef shared_ptr[RequestContext] _ptr
 
-cpdef Context save() noexcept
-cpdef Context get_from_contextvar() noexcept
-cdef object get_PyContext(object context) except *
+cpdef object save() noexcept
+cpdef object get_from_contextvar() noexcept
+cdef object get_PyContext(object context = ?) except *

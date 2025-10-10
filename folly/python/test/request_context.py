@@ -14,6 +14,8 @@
 
 import asyncio
 import itertools
+import random
+
 from contextvars import copy_context
 from functools import partial
 from unittest import IsolatedAsyncioTestCase
@@ -33,6 +35,79 @@ async def get_Context(pass_ctx) -> request_context.Context | None:
 
 
 class RequestContextTest(IsolatedAsyncioTestCase):
+    def test_use_count(self) -> None:
+        ctx = request_context.Context()
+        # ctx is a nullptr capsule, its use count is 0
+        self.assertEqual(ctx.use_count(), 0)
+        self.assertFalse(ctx)
+        del ctx
+        # Set the frc to something.
+        frc_helper.setContext()
+        # Fetch that ctx, from the PyContext
+        ctx = request_context.get_from_contextvar()
+        # ctx, and folly threadlocal
+        self.assertEqual(ctx.use_count(), 2)
+        new_ctx = request_context.save()
+        self.assertEqual(ctx.use_count(), 3)
+        del new_ctx
+        self.assertEqual(ctx.use_count(), 2)
+        # Set the frc to something else
+        frc_helper.setContext()
+        # Just ctx still exists.
+        self.assertEqual(ctx.use_count(), 1)
+
+    async def test_memory_leaks(self) -> None:
+        with request_context.active() as ctx:
+            # Owners
+            # 1. ctx ( also the same as the PyContext capsule )
+            # 2. folly::RequestContext:: threadlocal
+            self.assertEqual(ctx.use_count(), 2)
+            self.assertEqual(await get_Context(ctx), ctx)
+            self.assertEqual(ctx.use_count(), 2)
+            # Copy_context shouldn't leak
+            context = copy_context()
+            # Still only one capsule.
+            self.assertEqual(ctx.use_count(), 2)
+        # Owner 2 goes away because the FRC is not set
+        self.assertEqual(ctx.use_count(), 1)
+        del context
+        self.assertEqual(ctx.use_count(), 1)
+
+    async def test_multiple_ctx_copies_memory_leak(self) -> None:
+        tasks = []
+        with request_context.active() as ctx1:
+            for _ in range(20):
+                tasks.append(asyncio.create_task(get_Context(ctx1)))
+
+        with request_context.active() as ctx2:
+            for _ in range(28):
+                tasks.append(asyncio.create_task(get_Context(ctx2)))
+        # Single PyCapsule and ctx object
+        self.assertEqual(ctx1.use_count(), 1)
+        self.assertEqual(ctx2.use_count(), 1)
+
+        # Now there are 20 PyContext objects
+
+        async def test() -> None:
+            await asyncio.sleep(0)
+            self.assertEqual(ctx1.use_count(), 1)
+            await asyncio.sleep(0)
+            self.assertEqual(ctx2.use_count(), 1)
+
+        tasks.append(asyncio.create_task(test()))
+
+        random.shuffle(tasks)
+
+        await asyncio.gather(*tasks)
+
+        self.assertEqual(ctx1.use_count(), 1)
+        self.assertEqual(ctx2.use_count(), 1)
+
+        del tasks
+
+        self.assertEqual(ctx1.use_count(), 1)
+        self.assertEqual(ctx2.use_count(), 1)
+
     async def test_request_context(self) -> None:
         with request_context.active() as ctx1:
             # Create task used copy_context() during its creation
@@ -44,6 +119,7 @@ class RequestContextTest(IsolatedAsyncioTestCase):
                 request_context.get_from_contextvar(), request_context.save()
             )
             task1 = asyncio.create_task(get_Context(ctx1))
+            self.assertEqual(ctx1.use_count(), 2)  # New Context but same PyCapsule
 
         with request_context.active() as ctx2:
             task2 = asyncio.create_task(get_Context(ctx2))
