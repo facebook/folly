@@ -117,13 +117,18 @@ class NestedCommandLineApp {
     return globalOptions_;
   }
 
-  /*
+  /**
    * Return the commands map, so you can see the registered commands and get
    * access to their respective options descriptions.
    */
   const std::map<std::string, CommandInfo>& commands() const {
     return commands_;
   }
+
+  /**
+   * Return the aliases map, so you can see the registered aliases.
+   */
+  const std::map<std::string, std::string>& aliases() const { return aliases_; }
 
   /**
    * Add a command.
