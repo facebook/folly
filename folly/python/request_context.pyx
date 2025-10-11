@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 cimport cython
 from contextlib import contextmanager
@@ -20,6 +21,9 @@ from cpython.object cimport PyObject
 from cpython.contextvars cimport get_value_no_default as get_value, PyContextVar_Set, PyContextVar_Reset, PyContextVar_New, PyContext_CheckExact
 from cpython.pystate cimport PyThreadState
 from libcpp.utility cimport move
+
+# There is at least 1 platform that doesn't have a recent enough build of meta python, this is the escape hatch for segfaults.
+DISABLE_MODULE = os.environ.get("DISABLE_FOLLY_PYTHON_REQUEST_CONTEXT", False)
 
 # Don't store in module dict, limits control surfaces for how it can be set to this module alone.
 cdef object _RequestContext = PyContextVar_New("_RequestContext", NULL)
@@ -164,7 +168,8 @@ cdef int _watcher(PyContextEvent event, PyObject* pycontext):
 
 
 if sys.version_info >= (3, 14) or "+meta" in sys.version or "+fb" in sys.version or "+cinder" in sys.version:
-    FOLLY_PYTHON_PyContext_AddWatcher(_watcher)
+    if not DISABLE_MODULE:
+        FOLLY_PYTHON_PyContext_AddWatcher(_watcher)
 
 
 cdef extern from "folly/python/Weak.h":
@@ -194,5 +199,5 @@ cdef void _setContextWatcher(const shared_ptr[RequestContext]& prev_ctx, const s
     else:
         set_PyContext(RequestContext.saveContext())
 
-
-RequestContext.addSetContextWatcher(_setContextWatcher)
+if not DISABLE_MODULE:
+    RequestContext.addSetContextWatcher(_setContextWatcher)
