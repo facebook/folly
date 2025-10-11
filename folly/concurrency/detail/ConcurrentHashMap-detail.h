@@ -564,7 +564,7 @@ class alignas(64) BucketTable {
         bucket_count_.load(std::memory_order_relaxed) * load_factor_;
   }
 
-  Iterator cbegin() {
+  FOLLY_ALWAYS_INLINE Iterator cbegin() {
     Iterator res;
     size_t bcount;
     Buckets* buckets;
@@ -682,7 +682,7 @@ class alignas(64) BucketTable {
 
     Iterator& operator=(const Iterator& o) = delete;
 
-    Iterator& operator=(Iterator&& o) noexcept {
+    FOLLY_ALWAYS_INLINE Iterator& operator=(Iterator&& o) noexcept {
       if (this != &o) {
         hazptrs_ = std::move(o.hazptrs_);
         node_ = std::exchange(o.node_, nullptr);
@@ -2054,7 +2054,7 @@ class alignas(64) ConcurrentHashMapSegment {
 
   void max_load_factor(float factor) { impl_.max_load_factor(factor); }
 
-  Iterator cbegin() { return impl_.cbegin(); }
+  FOLLY_ALWAYS_INLINE Iterator cbegin() { return impl_.cbegin(); }
 
   Iterator cend() { return impl_.cend(); }
 

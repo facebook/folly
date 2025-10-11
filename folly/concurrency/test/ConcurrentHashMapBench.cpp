@@ -23,6 +23,7 @@
 #include <folly/BenchmarkUtil.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/test/Barrier.h>
+#include <folly/BenchmarkUtil.h>
 
 DEFINE_int32(reps, 10, "number of reps");
 DEFINE_int32(ops, 1000 * 1000, "number of operations per rep");
