@@ -34,56 +34,49 @@ namespace {
   throw std::runtime_error("benchmark exception");
 }
 
-FOLLY_NOINLINE void recurse(int n) {
+FOLLY_NOINLINE ExceptionInfo recurse(int n) {
   if (n == 0) {
     throwRuntimeError();
   }
-  recurse(n - 1);
+  return recurse(n - 1);
 }
 
-folly::exception_tracer::ExceptionInfo makeExceptionWithStackDepthMeasureThrow(
-    int n) {
+ExceptionInfo makeExceptionWithStackDepthMeasureThrow(int n) {
   try {
-    recurse(n);
+    return recurse(n);
   } catch (...) {
     folly::BenchmarkSuspender s;
     return getTrace(std::current_exception());
   }
-  return {};
 }
 
-folly::exception_tracer::ExceptionInfo
-makeExceptionPtrWithStackDepthMeasureRetrieve(int n) {
+ExceptionInfo makeExceptionRefWithStackDepthMeasureRetrieve(int n) {
+  folly::BenchmarkSuspender s;
   try {
-    folly::BenchmarkSuspender s;
-    recurse(n);
-  } catch (...) {
-    return getTrace(std::current_exception());
-  }
-  return {};
-}
-
-folly::exception_tracer::ExceptionInfo
-makeExceptionRefWithStackDepthMeasureRetrieve(int n) {
-  try {
-    folly::BenchmarkSuspender s;
-    recurse(n);
+    return recurse(n);
   } catch (const std::exception& e) {
-    return getTrace(e);
+    return s.dismissing([&] { return getTrace(e); });
   }
-  return {};
 }
 
-folly::exception_tracer::ExceptionInfo
-makeExceptionWrapperWithStackDepthMeasureRetrieve(int n) {
+ExceptionInfo makeExceptionPtrWithStackDepthMeasureRetrieve(int n) {
+  folly::BenchmarkSuspender s;
   try {
-    folly::BenchmarkSuspender s;
-    recurse(n);
+    return recurse(n);
   } catch (...) {
-    auto wrapper = folly::exception_wrapper(std::current_exception());
-    return getTrace(wrapper);
+    const auto ep = std::current_exception();
+    return s.dismissing([&] { return getTrace(ep); });
   }
-  return {};
+}
+
+ExceptionInfo makeExceptionWrapperWithStackDepthMeasureRetrieve(int n) {
+  folly::BenchmarkSuspender s;
+  try {
+    return recurse(n);
+  } catch (...) {
+    const auto ew = folly::exception_wrapper(std::current_exception());
+    return s.dismissing([&] { return getTrace(ew); });
+  }
 }
 
 } // namespace
@@ -91,32 +84,28 @@ makeExceptionWrapperWithStackDepthMeasureRetrieve(int n) {
 void captureException(int iterations, int stackDepth) {
   for (int i = 0; i < iterations; i++) {
     auto info = makeExceptionWithStackDepthMeasureThrow(stackDepth);
-    folly::BenchmarkSuspender s;
-    folly::assume(info.frames.size() > 0);
+    folly::compiler_must_not_elide(info);
   }
 }
 
 void retrieveStackTracePtr(int iterations, int stackDepth) {
   for (int i = 0; i < iterations; i++) {
     auto info = makeExceptionPtrWithStackDepthMeasureRetrieve(stackDepth);
-    folly::BenchmarkSuspender s;
-    folly::assume(info.frames.size() > 0);
+    folly::compiler_must_not_elide(info);
   }
 }
 
 void retrieveStackTraceRef(int iterations, int stackDepth) {
   for (int i = 0; i < iterations; i++) {
     auto info = makeExceptionRefWithStackDepthMeasureRetrieve(stackDepth);
-    folly::BenchmarkSuspender s;
-    folly::assume(info.frames.size() > 0);
+    folly::compiler_must_not_elide(info);
   }
 }
 
 void retrieveStackTraceWrapper(int iterations, int stackDepth) {
   for (int i = 0; i < iterations; i++) {
     auto info = makeExceptionWrapperWithStackDepthMeasureRetrieve(stackDepth);
-    folly::BenchmarkSuspender s;
-    folly::assume(info.frames.size() > 0);
+    folly::compiler_must_not_elide(info);
   }
 }
 
