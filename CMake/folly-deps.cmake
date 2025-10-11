@@ -35,13 +35,15 @@ else()
 endif()
 set(Boost_USE_STATIC_LIBS "${FOLLY_BOOST_LINK_STATIC}")
 
-find_package(Boost 1.51.0 REQUIRED
+find_package(Boost 1.51.0 MODULE
   COMPONENTS
     context
     filesystem
     program_options
     regex
     thread
+    system
+  REQUIRED
 )
 list(APPEND FOLLY_LINK_LIBRARIES ${Boost_LIBRARIES})
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIRS})
