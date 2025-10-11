@@ -12,7 +12,7 @@ binutils-dev
 binutils-x86-64-linux-gnu
 
 [download]
-url = https://ftp.gnu.org/gnu/binutils/binutils-2.43.tar.xz
+url = https://ftpmirror.gnu.org/gnu/binutils/binutils-2.43.tar.xz
 sha256 = b53606f443ac8f01d1d5fc9c39497f2af322d99e14cea5c0b4b124d630379365
 
 [dependencies]
