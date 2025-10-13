@@ -312,40 +312,6 @@ unsigned int sleep(unsigned int seconds) {
   return 0;
 }
 
-// Most x86 and Arm64 CPUs have a 64-byte cache line, so
-// if we can't find the cache line size, assume 64.
-static const DWORD default_cacheline_size = 64;
-
-static DWORD get_L1D_cacheline_size(void) {
-  DWORD len = 0;
-  DWORD cache_line_size = default_cacheline_size;
-
-  if (!GetLogicalProcessorInformation(nullptr, &len) &&
-      GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-    return cache_line_size;
-  }
-
-  std::unique_ptr<char[]> buffer(new char[len]);
-  auto info =
-      reinterpret_cast<SYSTEM_LOGICAL_PROCESSOR_INFORMATION*>(buffer.get());
-
-  if (!GetLogicalProcessorInformation(info, &len)) {
-    return cache_line_size;
-  }
-
-  DWORD count = len / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
-  for (DWORD i = 0; i < count; i++) {
-    if (info[i].Relationship == RelationCache) {
-      const auto& cache = info[i].Cache;
-      if (cache.Level == 1 && cache.Type == CacheData) {
-        return cache.LineSize;
-      }
-    }
-  }
-
-  return cache_line_size;
-}
-
 long sysconf(int tp) {
   switch (tp) {
     case _SC_PAGESIZE: {
@@ -357,9 +323,6 @@ long sysconf(int tp) {
       SYSTEM_INFO inf;
       GetSystemInfo(&inf);
       return (long)inf.dwNumberOfProcessors;
-    }
-    case _SC_LEVEL1_DCACHE_LINESIZE: {
-      return (long)get_L1D_cacheline_size();
     }
     default:
       return -1L;

@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include <chrono>
+#include <cstdint>
 #include <random>
 
 #include <folly/Benchmark.h>
@@ -31,7 +32,10 @@
 #endif
 
 static auto page_size = sysconf(_SC_PAGE_SIZE);
-static auto cache_line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+// We don't need fully accurate cache line size here, and a multiple of
+// true cache line size is fine, so for simplicity we can use
+// hardware_destructive_interference_size.
+static auto cache_line_size = folly::hardware_destructive_interference_size;
 
 void bench(
     uint32_t iters,
