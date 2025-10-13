@@ -1064,6 +1064,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST synchronization_baton_test SOURCES BatonTest.cpp
       TEST synchronization_call_once_test SOURCES CallOnceTest.cpp
       TEST synchronization_event_count_test SOURCES EventCountTest.cpp
+      BENCHMARK synchronization_hazptr_bench SOURCES HazptrBench.cpp
       TEST synchronization_hazptr_test SOURCES HazptrTest.cpp
       TEST synchronization_lifo_sem_test WINDOWS_DISABLED
         SOURCES LifoSemTests.cpp

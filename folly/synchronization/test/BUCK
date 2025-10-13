@@ -210,6 +210,18 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_benchmark,
+    name = "hazptr_bench",
+    srcs = ["HazptrBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/concurrency:atomic_shared_ptr",
+        "//folly/portability:gflags",
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "latch_test",
     srcs = ["LatchTest.cpp"],
