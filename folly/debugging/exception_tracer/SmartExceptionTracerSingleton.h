@@ -30,10 +30,11 @@ struct ExceptionMeta {
   StackTrace traceAsync;
 };
 
-using SynchronizedExceptionMeta = folly::Synchronized<ExceptionMeta>;
-
+// using a vector-map so that all the values are laid out contiguously in an
+// array, specifically to make debugging easier - no need to learn the structure
+// of the f14-chunk-array when debugging the exception hooks
 using ExceptionMetaMap =
-    folly::F14VectorMap<void*, std::unique_ptr<SynchronizedExceptionMeta>>;
+    folly::F14VectorMap<void const*, std::shared_ptr<ExceptionMeta const>>;
 
 Synchronized<ExceptionMetaMap>& getMetaMap();
 
