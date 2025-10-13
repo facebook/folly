@@ -6,6 +6,7 @@ zstd
 
 # 18.04 zstd is too old
 [debs.not(all(distro=ubuntu,distro_vers="18.04"))]
+libclang-dev
 libzstd-dev
 zstd
 

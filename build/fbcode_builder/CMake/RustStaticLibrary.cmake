@@ -124,9 +124,9 @@ function(rust_static_library TARGET)
   set(rust_staticlib "${CMAKE_CURRENT_BINARY_DIR}/${target_dir}/${staticlib_name}")
 
   if(DEFINED ARG_FEATURES)
-    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES})
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES} --config fbcode_build=false)
   else()
-    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --config fbcode_build=false)
   endif()
   if(USE_CARGO_VENDOR)
     set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
@@ -515,9 +515,12 @@ function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
       "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
     COMMAND
       ${cxxbridge} ${rust_source_path}
-        --header --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+        --cfg fbcode_build=false
+        --header
+        --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
     COMMAND
       ${cxxbridge} ${rust_source_path}
+        --cfg fbcode_build=false
         --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
         --include "${cxx_header}"
     DEPENDS "cxxbridge_v${cxx_required_version}" "${rust_source_path}"

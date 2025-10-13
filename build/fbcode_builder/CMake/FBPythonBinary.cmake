@@ -235,7 +235,6 @@ function(add_fb_python_unittest TARGET)
   set(multi_value_args SOURCES DEPENDS ENV PROPERTIES)
   set(
     one_value_args
-    WORKING_DIRECTORY BASE_DIR NAMESPACE TEST_LIST DISCOVERY_TIMEOUT
     WORKING_DIRECTORY BASE_DIR NAMESPACE TEST_LIST DISCOVERY_TIMEOUT TYPE
   )
   fb_cmake_parse_args(
