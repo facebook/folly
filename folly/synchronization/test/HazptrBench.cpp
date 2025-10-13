@@ -245,6 +245,63 @@ BENCHMARK(hazptr_retire_default, iters) {
   do_hazptr_retire(braces, domain, iters);
 }
 
+BENCHMARK_DRAW_LINE();
+
+/// fragment the memory and scatter hprec allocations across cachelines with no
+/// consistent stride, if hprecs are allocated separately and linked together
+template <template <typename> class Atom>
+FOLLY_NOINLINE static void grow_scattered_hprec_list(
+    hazptr_domain<Atom>& domain, size_t hprec_count) {
+  using hprec_layout = aligned_storage_for_t<hazptr_rec<std::atomic>>;
+
+  std::vector<hazptr_holder<Atom>> holders;
+  std::vector<std::unique_ptr<hprec_layout>> memory_fragmenters;
+  holders.reserve(hprec_count);
+  memory_fragmenters.reserve(hprec_count * 4); // bounded over-allocation
+  std::mt19937_64 rng;
+
+  /// create scattered hprec allocations by interleaving with memory
+  /// fragmentation
+  for (size_t i = 0; i < hprec_count; ++i) {
+    std::uniform_int_distribution<size_t> dist(0, 3);
+    size_t mem_fragments = dist(rng);
+    for (size_t j = 0; j < mem_fragments; ++j) {
+      memory_fragmenters.push_back(std::make_unique<hprec_layout>());
+    }
+
+    /// create hazard pointer, which possibly allocates its hprec
+    holders.emplace_back(make_hazard_pointer(domain));
+  }
+}
+
+/// benchmark hazptr domain cleanup with various hprec-sequence sizes
+void hazptr_cleanup_empty_with_hprec_seq(size_t iters, size_t hprec_count) {
+  BenchmarkSuspender braces;
+
+  hazptr_domain<> domain;
+  grow_scattered_hprec_list(domain, hprec_count);
+
+  braces.dismissing([&] {
+    while (iters--) {
+      auto* obj = new TestObj(iters);
+      obj->retire(domain);
+      domain.cleanup(); // calls load_hazptr_vals on possibly-scattered hprecs
+    }
+  });
+}
+
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 1)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 4)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 16)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 64)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 256)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 1024)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 4096)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 16384)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 65536)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 262144)
+BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 1048576)
+
 int main(int argc, char* argv[]) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   runBenchmarks();
