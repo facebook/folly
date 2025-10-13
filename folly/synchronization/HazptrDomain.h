@@ -737,7 +737,7 @@ class hazptr_domain {
         this == &default_hazptr_domain<Atom>() && hazptr_use_executor();
     if (canUseExecutor) {
       auto fn = exec_fn_.load(std::memory_order_acquire);
-      if (canUseExecutor && fn(std::move(recl_fn))) {
+      if (fn(std::move(recl_fn))) {
         return;
       }
     }
