@@ -17,6 +17,7 @@
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Task.h>
 #include <folly/debugging/exception_tracer/SmartExceptionTracer.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
@@ -67,7 +68,7 @@ TEST(SmartExceptionTracer, EmptyExceptionWrapper) {
       ss.str().find("Exception type: (unknown type)") != std::string::npos);
 }
 
-TEST(SmartExceptionTracer, InvalidException) {
+TEST(SmartExceptionTracer, NonStdException) {
   try {
     throw 10;
   } catch (...) {
@@ -75,8 +76,7 @@ TEST(SmartExceptionTracer, InvalidException) {
 
     std::ostringstream ss;
     ss << info;
-    ASSERT_TRUE(
-        ss.str().find("Exception type: (unknown type)") != std::string::npos);
+    ASSERT_THAT(ss.str(), testing::HasSubstr("Exception type: int"));
   }
 }
 
@@ -140,6 +140,53 @@ TEST(SmartExceptionTracer, AsyncStackTrace) {
     for (size_t i = 0; i < positions.size() - 1; ++i) {
       ASSERT_LT(positions[i], positions[i + 1]);
     }
+  }
+}
+
+class ExceptionE : virtual public std::runtime_error {
+ public:
+  ExceptionE() : std::runtime_error("ExceptionA") {}
+};
+
+class ExceptionF : virtual public std::runtime_error {
+ public:
+  ExceptionF() : std::runtime_error("ExceptionB") {}
+};
+
+class ExceptionG : virtual public ExceptionE, virtual public ExceptionF {
+ public:
+  ExceptionG() : std::runtime_error("ExceptionC"), ExceptionE(), ExceptionF() {}
+};
+
+[[noreturn]] FOLLY_NOINLINE void throwDiamond() {
+  throw ExceptionG();
+}
+
+TEST(SmartExceptionTracer, diamondExceptionPointer) {
+  try {
+    throwDiamond();
+  } catch (...) {
+    ASSERT_NE(
+        folly::exception_ptr_get_object<std::exception>(
+            std::current_exception()),
+        nullptr);
+    auto info = getTrace(std::current_exception());
+    auto infoStr = std::stringstream{} << info;
+
+    EXPECT_THAT(info.frames, testing::SizeIs(testing::Gt(0)));
+    EXPECT_THAT(infoStr.str(), testing::HasSubstr("throwDiamond"));
+  }
+}
+
+TEST(SmartExceptionTracer, diamondStdException) {
+  try {
+    throwDiamond();
+  } catch (const std::exception& e) {
+    auto info = getTrace(e);
+    auto infoStr = std::stringstream{} << info;
+
+    EXPECT_THAT(info.frames, testing::SizeIs(testing::Gt(0)));
+    EXPECT_THAT(infoStr.str(), testing::HasSubstr("throwDiamond"));
   }
 }
 

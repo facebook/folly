@@ -41,7 +41,7 @@ std::atomic_bool loggedMessage{false};
 // the stack frames to use.
 template <typename ExceptionMetaFunc>
 ExceptionInfo getTraceWithFunc(
-    const std::exception& ex, ExceptionMetaFunc func) {
+    void* ex, const std::type_info* typeInfo, ExceptionMetaFunc func) {
   if (!detail::isSmartExceptionTracerHookEnabled() &&
       !loggedMessage.load(std::memory_order_relaxed)) {
     LOG(WARNING)
@@ -50,9 +50,9 @@ ExceptionInfo getTraceWithFunc(
   }
 
   ExceptionInfo info;
-  info.type = &typeid(ex);
+  info.type = typeInfo;
 
-  if (auto meta = get_default(*detail::getMetaMap().rlock(), &ex)) {
+  if (auto meta = get_default(*detail::getMetaMap().rlock(), ex)) {
     auto [traceBeginIt, traceEndIt] = func(*meta);
     info.frames.assign(traceBeginIt, traceEndIt);
   }
@@ -63,10 +63,20 @@ ExceptionInfo getTraceWithFunc(
 template <typename ExceptionMetaFunc>
 ExceptionInfo getTraceWithFunc(
     const std::exception_ptr& ptr, ExceptionMetaFunc func) {
-  if (auto* ex = folly::exception_ptr_get_object<std::exception>(ptr)) {
-    return getTraceWithFunc(*ex, std::move(func));
+  if (auto ex = folly::exception_ptr_get_object(ptr, nullptr)) {
+    return getTraceWithFunc(
+        ex, folly::exception_ptr_get_type(ptr), std::move(func));
   }
   return ExceptionInfo();
+}
+
+template <typename ExceptionMetaFunc>
+ExceptionInfo getTraceWithFunc(
+    const std::exception& e, ExceptionMetaFunc func) {
+  return getTraceWithFunc(
+      const_cast<void*>(dynamic_cast<const void*>(&e)),
+      &typeid(e),
+      std::move(func));
 }
 
 template <typename ExceptionMetaFunc>
