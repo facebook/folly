@@ -320,9 +320,6 @@ class Try
    * @returns a pointer to the `std::exception` held by `*this`, if one is held;
    *          otherwise, returns `nullptr`.
    */
-  std::exception* tryGetExceptionObject() noexcept {
-    return hasException() ? this->e_.get_exception() : nullptr;
-  }
   std::exception const* tryGetExceptionObject() const noexcept {
     return hasException() ? this->e_.get_exception() : nullptr;
   }
@@ -332,10 +329,6 @@ class Try
    *          type `From` permits `std::is_convertible<From*, Ex*>`; otherwise,
    *          returns `nullptr`.
    */
-  template <class Ex>
-  Ex* tryGetExceptionObject() noexcept {
-    return hasException() ? this->e_.template get_exception<Ex>() : nullptr;
-  }
   template <class Ex>
   Ex const* tryGetExceptionObject() const noexcept {
     return hasException() ? this->e_.template get_exception<Ex>() : nullptr;
@@ -525,9 +518,6 @@ class Try<void> {
    * @returns a pointer to the `std::exception` held by `*this`, if one is held;
    *          otherwise, returns `nullptr`.
    */
-  std::exception* tryGetExceptionObject() noexcept {
-    return hasException() ? e_.get_exception() : nullptr;
-  }
   std::exception const* tryGetExceptionObject() const noexcept {
     return hasException() ? e_.get_exception() : nullptr;
   }
@@ -537,10 +527,6 @@ class Try<void> {
    *          type `From` permits `std::is_convertible<From*, Ex*>`; otherwise,
    *          returns `nullptr`.
    */
-  template <class E>
-  E* tryGetExceptionObject() noexcept {
-    return hasException() ? e_.get_exception<E>() : nullptr;
-  }
   template <class E>
   E const* tryGetExceptionObject() const noexcept {
     return hasException() ? e_.get_exception<E>() : nullptr;
