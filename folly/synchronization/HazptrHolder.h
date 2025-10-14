@@ -148,12 +148,14 @@ class hazptr_holder {
   template <typename T>
   FOLLY_ALWAYS_INLINE void reset_protection(const T* ptr) noexcept {
     auto p = static_cast<hazptr_obj<Atom>*>(const_cast<T*>(ptr));
-    DCHECK(hprec_); // UB if *this is empty
+    // UB if *this is empty
+    DCHECK(hprec_) << "initialize hazptr_holder with make_hazard_pointer()";
     hprec_->reset_hazptr(p);
   }
 
   FOLLY_ALWAYS_INLINE void reset_protection(std::nullptr_t = nullptr) noexcept {
-    DCHECK(hprec_); // UB if *this is empty
+    // UB if *this is empty
+    DCHECK(hprec_) << "initialize hazptr_holder with make_hazard_pointer()";
     hprec_->reset_hazptr();
   }
 
