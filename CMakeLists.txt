@@ -1162,10 +1162,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lazy_test SOURCES LazyTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
+      BENCHMARK memcpy_benchmark SOURCES MemcpyBenchmark.cpp
       TEST memcpy_test SOURCES MemcpyTest.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
       TEST memory_test WINDOWS_DISABLED
         SOURCES MemoryTest.cpp
+      BENCHMARK memset_benchmark SOURCES MemsetBenchmark.cpp
       TEST move_wrapper_test SOURCES MoveWrapperTest.cpp
       TEST mpmc_pipeline_test SOURCES MPMCPipelineTest.cpp
       TEST mpmc_queue_test SLOW
