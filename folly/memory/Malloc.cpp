@@ -16,9 +16,6 @@
 
 #include <folly/memory/Malloc.h>
 
-#if defined(FOLLY_CONSTANT_USING_JE_MALLOC) && \
-    FOLLY_CONSTANT_USING_JE_MALLOC == 0
-
 bool folly::detail::UsingJEMallocInitializer::operator()() const noexcept {
   // Checking for rallocx != nullptr is not sufficient; we may be in a
   // dlopen()ed module that depends on libjemalloc, so rallocx is resolved,
@@ -69,5 +66,3 @@ bool folly::detail::UsingJEMallocInitializer::operator()() const noexcept {
 
   return (origAllocated != *counter);
 }
-
-#endif

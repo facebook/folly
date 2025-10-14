@@ -111,6 +111,10 @@ class FastStaticBool {
 };
 #endif
 
+struct UsingJEMallocInitializer {
+  bool operator()() const noexcept;
+};
+
 } // namespace detail
 
 #if defined(__GNUC__)
@@ -141,12 +145,6 @@ inline bool usingJEMalloc() noexcept {
 }
 #else
 #define FOLLY_CONSTANT_USING_JE_MALLOC 0
-namespace detail {
-struct UsingJEMallocInitializer {
-  bool operator()() const noexcept;
-};
-} // namespace detail
-
 FOLLY_EXPORT inline bool usingJEMalloc() noexcept {
   using Initializer = detail::UsingJEMallocInitializer;
   return detail::FastStaticBool<Initializer>::get(std::memory_order_relaxed);
