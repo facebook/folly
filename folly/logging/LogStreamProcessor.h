@@ -85,7 +85,7 @@ class LogStreamProcessor {
       folly::StringPiece filename,
       unsigned int lineNumber,
       folly::StringPiece functionName,
-      AppendType,
+      AppendType /*unused*/,
       Args&&... args) noexcept
       : LogStreamProcessor(
             category,
@@ -112,7 +112,7 @@ class LogStreamProcessor {
       folly::StringPiece filename,
       unsigned int lineNumber,
       folly::StringPiece functionName,
-      FormatType,
+      FormatType /*unused*/,
       folly::StringPiece fmt,
       Args&&... args) noexcept
       : LogStreamProcessor(
@@ -151,7 +151,7 @@ class LogStreamProcessor {
       folly::StringPiece filename,
       unsigned int lineNumber,
       folly::StringPiece functionName,
-      AppendType,
+      AppendType /*unused*/,
       Args&&... args) noexcept
       : LogStreamProcessor(
             categoryInfo,
@@ -172,7 +172,7 @@ class LogStreamProcessor {
       folly::StringPiece filename,
       unsigned int lineNumber,
       folly::StringPiece functionName,
-      FormatType,
+      FormatType /*unused*/,
       folly::StringPiece fmt,
       Args&&... args) noexcept
       : LogStreamProcessor(
@@ -211,7 +211,7 @@ class LogStreamProcessor {
       folly::StringPiece filename,
       unsigned int lineNumber,
       folly::StringPiece functionName,
-      AppendType) noexcept
+      AppendType /*unused*/) noexcept
       : LogStreamProcessor(
             fileScopeInfo, level, filename, lineNumber, functionName, APPEND) {}
   template <typename... Args>
@@ -223,7 +223,7 @@ class LogStreamProcessor {
       folly::StringPiece filename,
       unsigned int lineNumber,
       folly::StringPiece functionName,
-      AppendType,
+      AppendType /*unused*/,
       Args&&... args) noexcept
       : LogStreamProcessor(
             fileScopeInfo,
@@ -242,7 +242,7 @@ class LogStreamProcessor {
       folly::StringPiece filename,
       unsigned int lineNumber,
       folly::StringPiece functionName,
-      FormatType,
+      FormatType /*unused*/,
       folly::StringPiece fmt,
       Args&&... args) noexcept
       : LogStreamProcessor(
@@ -424,7 +424,7 @@ class LogStreamVoidify {
    * eliminated by the compiler, leaving only the LogStreamProcessor destructor
    * invocation, which cannot be eliminated.
    */
-  void operator&(std::ostream&) noexcept {}
+  void operator&(std::ostream& /*unused*/) noexcept {}
 };
 
 template <>
@@ -461,7 +461,7 @@ class LogStreamVoidify<true> {
  * out how to format it.
  */
 // clang-format off
-inline void logDisabledHelper(std::false_type) noexcept {}
+inline void logDisabledHelper(std::false_type /*unused*/) noexcept {}
 [[noreturn]] void logDisabledHelper(std::true_type) noexcept;
 // clang-format on
 } // namespace folly
