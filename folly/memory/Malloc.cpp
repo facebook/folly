@@ -66,3 +66,28 @@ bool folly::detail::UsingJEMallocInitializer::operator()() const noexcept {
 
   return (origAllocated != *counter);
 }
+
+bool folly::detail::UsingTCMallocInitializer::operator()() const noexcept {
+  // See comment in usingJEMalloc().
+  if (MallocExtension_Internal_GetNumericProperty == nullptr ||
+      sdallocx == nullptr || nallocx == nullptr) {
+    return false;
+  }
+  static const char kAllocBytes[] = "generic.current_allocated_bytes";
+
+  size_t before_bytes = 0;
+  getTCMallocNumericProperty(kAllocBytes, &before_bytes);
+
+  static void* volatile ptr = malloc(1);
+  if (!ptr) {
+    // wtf, failing to allocate 1 byte
+    return false;
+  }
+
+  size_t after_bytes = 0;
+  getTCMallocNumericProperty(kAllocBytes, &after_bytes);
+
+  free(ptr);
+
+  return (before_bytes != after_bytes);
+}

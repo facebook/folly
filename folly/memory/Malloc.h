@@ -115,6 +115,10 @@ struct UsingJEMallocInitializer {
   bool operator()() const noexcept;
 };
 
+struct UsingTCMallocInitializer {
+  bool operator()() const noexcept;
+};
+
 } // namespace detail
 
 #if defined(__GNUC__)
@@ -183,32 +187,7 @@ inline bool usingTCMalloc() noexcept {
 #else
 #define FOLLY_CONSTANT_USING_TC_MALLOC 0
 FOLLY_EXPORT inline bool usingTCMalloc() noexcept {
-  struct Initializer {
-    bool operator()() const {
-      // See comment in usingJEMalloc().
-      if (MallocExtension_Internal_GetNumericProperty == nullptr ||
-          sdallocx == nullptr || nallocx == nullptr) {
-        return false;
-      }
-      static const char kAllocBytes[] = "generic.current_allocated_bytes";
-
-      size_t before_bytes = 0;
-      getTCMallocNumericProperty(kAllocBytes, &before_bytes);
-
-      static void* volatile ptr = malloc(1);
-      if (!ptr) {
-        // wtf, failing to allocate 1 byte
-        return false;
-      }
-
-      size_t after_bytes = 0;
-      getTCMallocNumericProperty(kAllocBytes, &after_bytes);
-
-      free(ptr);
-
-      return (before_bytes != after_bytes);
-    }
-  };
+  using Initializer = detail::UsingTCMallocInitializer;
   return detail::FastStaticBool<Initializer>::get(std::memory_order_relaxed);
 }
 #endif
