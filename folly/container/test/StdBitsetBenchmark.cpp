@@ -18,7 +18,6 @@
 #include <random>
 
 #include <folly/Benchmark.h>
-#include <folly/Random.h>
 #include <folly/container/StdBitset.h>
 #include <folly/init/Init.h>
 
