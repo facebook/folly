@@ -112,7 +112,11 @@ inline bool isLinked() {
   return (Py_IncRef != nullptr) && (Py_DecRef != nullptr) &&
       (Py_GetVersion != nullptr);
 #else
+#if defined(_WIN32)
   return true;
+#else
+  return false;
+#endif
 #endif
 }
 
