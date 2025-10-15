@@ -51,6 +51,7 @@
 // kept in this header.
 #include <folly/hash/FnvHash.h>
 #include <folly/hash/HsiehHash.h>
+#include <folly/lang/cstring_view.h>
 
 namespace folly {
 namespace hash {
@@ -426,6 +427,11 @@ struct hasher<std::string_view> {
 };
 template <typename K>
 struct IsAvalanchingHasher<hasher<std::string_view>, K> : std::true_type {};
+
+template <>
+struct hasher<cstring_view> : hasher<std::string_view> {};
+template <typename K>
+struct IsAvalanchingHasher<hasher<cstring_view>, K> : std::true_type {};
 
 template <typename T>
 struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {

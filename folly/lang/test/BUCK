@@ -242,6 +242,16 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
+    name = "cstring_view_test",
+    srcs = ["cstring_view_test.cpp"],
+    deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "//xplat/folly/lang:cstring_view",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
     name = "thunk_test",
     srcs = ["ThunkTest.cpp"],
     deps = [
@@ -567,6 +577,16 @@ fbcode_target(
     srcs = ["SwitchTest.cpp"],
     deps = [
         "//folly/lang:switch",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "cstring_view_test",
+    srcs = ["cstring_view_test.cpp"],
+    deps = [
+        "//folly/lang:cstring_view",
+        "//folly/portability:gtest",
     ],
 )
 

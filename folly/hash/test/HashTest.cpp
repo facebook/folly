@@ -28,6 +28,7 @@
 #include <folly/MapUtil.h>
 #include <folly/Random.h>
 #include <folly/Range.h>
+#include <folly/lang/cstring_view.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::hash;
@@ -988,4 +989,55 @@ TEST(HashTuple, Basic) {
           folly::hash::hash_128_to_64(
               folly::hasher<double>{}(1.0),
               folly::hasher<std::string>{}("hello"))));
+}
+
+TEST(Hash, cstring_view_hasher_basic) {
+  folly::cstring_view svz("hello");
+  std::string_view sv("hello");
+
+  folly::hasher<folly::cstring_view> hasher_csv;
+  folly::hasher<std::string_view> hasher_sv;
+
+  EXPECT_EQ(hasher_csv(svz), hasher_sv(sv));
+}
+
+TEST(Hash, cstring_view_hasher_different_strings) {
+  folly::cstring_view svz1("hello");
+  folly::cstring_view svz2("world");
+
+  folly::hasher<folly::cstring_view> hasher;
+
+  EXPECT_NE(hasher(svz1), hasher(svz2));
+}
+
+TEST(Hash, cstring_view_hasher_empty_string) {
+  folly::cstring_view svz("");
+  std::string_view sv("");
+
+  folly::hasher<folly::cstring_view> hasher_csv;
+  folly::hasher<std::string_view> hasher_sv;
+
+  EXPECT_EQ(hasher_csv(svz), hasher_sv(sv));
+}
+
+TEST(Hash, cstring_view_hasher_after_remove_prefix) {
+  folly::cstring_view svz("hello world");
+  svz.remove_prefix(6);
+
+  std::string_view sv("world");
+
+  folly::hasher<folly::cstring_view> hasher_csv;
+  folly::hasher<std::string_view> hasher_sv;
+
+  EXPECT_EQ(hasher_csv(svz), hasher_sv(sv));
+}
+
+TEST(Hash, cstring_view_hasher_consistency) {
+  folly::cstring_view svz("test");
+  folly::hasher<folly::cstring_view> hasher;
+
+  size_t hash1 = hasher(svz);
+  size_t hash2 = hasher(svz);
+
+  EXPECT_EQ(hash1, hash2);
 }

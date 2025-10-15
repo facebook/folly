@@ -64,6 +64,7 @@ non_fbcode_target(
         "//xplat/folly:utility",
         "//xplat/folly/functional:apply_tuple",
         "//xplat/folly/lang:bits",
+        "//xplat/folly/lang:cstring_view",
     ],
 )
 
@@ -183,6 +184,7 @@ fbcode_target(
         "//folly:traits",
         "//folly:utility",
         "//folly/lang:bits",
+        "//folly/lang:cstring_view",
     ],
 )
 

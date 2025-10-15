@@ -86,6 +86,7 @@ fbcode_target(
         "//folly:random",
         "//folly:range",
         "//folly/hash:hash",
+        "//folly/lang:cstring_view",
         "//folly/portability:gtest",
     ],
 )
