@@ -4963,6 +4963,7 @@ non_fbcode_target(
         "FollyMemcpy.cpp",
         "memcpy.S",
     ],
+    fbcode_compiler_flags_override = [],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["FollyMemcpy.h"],
 )

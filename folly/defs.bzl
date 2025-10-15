@@ -179,7 +179,6 @@ def folly_xplat_library(
         ],
         fbobjc_compiler_flags = kwargs.pop("fbobjc_compiler_flags", []) +
                                 FBOBJC_CXXFLAGS,
-        fbcode_compiler_flags_override = kwargs.pop("fbcode_compiler_flags", []),
         windows_preferred_linkage = "static",
         visibility = kwargs.pop("visibility", ["PUBLIC"]),
         **kwargs
