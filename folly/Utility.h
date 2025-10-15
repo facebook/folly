@@ -497,6 +497,8 @@ struct unsafe_default_initialized_cv {
   FOLLY_MSVC_DISABLE_WARNING(4701)
   // Potentially uninitialized local pointer variable 'uninit' used
   FOLLY_MSVC_DISABLE_WARNING(4703)
+  // Using uninitialized memory `uninit`
+  FOLLY_MSVC_DISABLE_WARNING(6001)
   FOLLY_GNU_DISABLE_WARNING("-Wuninitialized")
   // Clang doesn't implement -Wmaybe-uninitialized and warns about it
   FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
