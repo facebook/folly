@@ -19,17 +19,15 @@
 #include <folly/stats/MultiLevelTimeSeries.h>
 
 template <typename CT>
-void addValueEveryMillisecond(int iters) {
+void addValueEveryMillisecond(
+    int iters, std::initializer_list<typename CT::duration> durations) {
   folly::BenchmarkSuspender suspend;
-  folly::MultiLevelTimeSeries<int64_t, CT> mlts(
-      60 /* numBuckets */,
-      {std::chrono::seconds(60),
-       std::chrono::seconds(600),
-       std::chrono::seconds(3600)} /* durations */);
+  folly::MultiLevelTimeSeries<int64_t, CT> mlts(60 /* numBuckets */, durations);
   std::chrono::seconds start(0);
   suspend.dismiss();
 
   for (int i = 0; i < iters; ++i) {
+    folly::doNotOptimizeAway(mlts);
     mlts.addValue(
         std::chrono::duration_cast<typename CT::duration>(
             start + std::chrono::milliseconds(i)) /* now */,
@@ -39,12 +37,28 @@ void addValueEveryMillisecond(int iters) {
 
 BENCHMARK(add_value_seconds, iters) {
   addValueEveryMillisecond<folly::LegacyStatsClock<std::chrono::seconds>>(
-      iters);
+      iters,
+      {std::chrono::seconds(60),
+       std::chrono::seconds(600),
+       std::chrono::seconds(3600)});
+}
+
+BENCHMARK(add_value_seconds_all_time_only, iters) {
+  addValueEveryMillisecond<folly::LegacyStatsClock<std::chrono::seconds>>(
+      iters, {std::chrono::seconds{0}});
 }
 
 BENCHMARK(add_value_milliseconds, iters) {
   addValueEveryMillisecond<folly::LegacyStatsClock<std::chrono::milliseconds>>(
-      iters);
+      iters,
+      {std::chrono::seconds(60),
+       std::chrono::seconds(600),
+       std::chrono::seconds(3600)});
+}
+
+BENCHMARK(add_value_milliseconds_all_time_only, iters) {
+  addValueEveryMillisecond<folly::LegacyStatsClock<std::chrono::milliseconds>>(
+      iters, {std::chrono::seconds{0}});
 }
 
 int main(int argc, char* argv[]) {
@@ -59,6 +73,8 @@ buck run @mode/opt fbcode//folly/stats/test:multi_level_time_series_benchmark --
 ============================================================================
 [...]est/MultiLevelTimeSeriesBenchmark.cpp     relative  time/iter   iters/s
 ============================================================================
-add_value_seconds                                           1.91ns   522.20M
-add_value_milliseconds                                     48.13ns    20.78M
+add_value_seconds                                           1.67ns   598.50M
+add_value_seconds_all_time_only                             1.71ns   586.32M
+add_value_milliseconds                                     44.53ns    22.46M
+add_value_milliseconds_all_time_only                        4.47ns   223.87M
 #endif
