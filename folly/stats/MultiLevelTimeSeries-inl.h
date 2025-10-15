@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <numeric>
 #include <glog/logging.h>
 
 #include <folly/ConstexprMath.h>
@@ -41,6 +42,45 @@ MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
     prev = dur;
     i++;
   }
+
+  cacheDuration_ = computeMaxCacheDuration();
+}
+
+/*
+ * This is an optimization that allows MultiLevelTimeSeries to cache values
+ * longer on the write path before flushing them to the underlying
+ * BucketedTimeSeries. It preserves all existing semantics of the
+ * timeseries and produces no observable changes to any user if one
+ * follows the API contract correctly (e.g. always call `update()` before
+ * reading the timeseries to get the latest data).
+ * Specifically, if time point T belongs to bucket B, values added at T should
+ * be reflected in bucket B. If readers are calling update() correctly, it
+ * follows that reading of an entire level (BucketedTimeSeries) or an interval
+ * of a level will observe exactly the same value as if every write is flushed
+ * immediately with no caching.
+ */
+template <typename VT, typename CT>
+typename MultiLevelTimeSeries<VT, CT>::Duration
+MultiLevelTimeSeries<VT, CT>::computeMaxCacheDuration() {
+  // Every integer divides 0, so we don't need to special case the first gcd
+  // calculation. We also use it to indicate caching forever.
+  size_t cacheTickCount = 0;
+  for (const auto& level : levels_) {
+    if (level.isAllTime()) {
+      continue;
+    }
+    size_t actualBucketCnt = level.numBuckets();
+    size_t durationTickCnt = level.duration().count();
+    if (durationTickCnt % actualBucketCnt != 0) {
+      // only cache one tick worth of updates when bucket size is a fraction
+      // since the cache duration is counted by the number of ticks
+      return Duration{1};
+    }
+    // gcd is associative
+    cacheTickCount =
+        std::gcd(cacheTickCount, durationTickCnt / actualBucketCnt);
+  }
+  return Duration{cacheTickCount};
 }
 
 template <typename VT, typename CT>
@@ -58,10 +98,30 @@ void MultiLevelTimeSeries<VT, CT>::addValue(
 template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValueAggregated(
     TimePoint now, const ValueType& total, uint64_t nsamples) {
-  if (cachedTime_ != now) {
+  // if the only level we have is an all-time BucketedTimeseries (have
+  // cacheDuration_ be 0), we will just cache the value forever, and only flush
+  // on read (essentially when update() is called)
+  if (cacheDuration_ != Duration{0} &&
+      (now < cachedTime_ || now >= cachedTime_ + cacheDuration_)) {
     flush();
-    cachedTime_ = now;
+    // cachedTime_ represents the time point of the next flush for all the
+    // cached values. All time points within the cache duration, should belong
+    // to the same bucket as cachedTime_ to preserve the current semantics. This
+    // is achieved by rounding _down_ `now` to align with cacheDuration_
+    // boundaries, so from the BucketedTimeSeries's point of view, clock jumps
+    // forward in multiples of cacheDuration_.
+    cachedTime_ = TimePoint(Duration{
+        (now.time_since_epoch().count() / cacheDuration_.count()) *
+        cacheDuration_.count()});
   }
+
+  for (size_t i = 0; i < levels_.size(); ++i) {
+    if (!levels_[i].isAllTime()) {
+      DCHECK_EQ(
+          levels_[i].getBucketIdx(now), levels_[i].getBucketIdx(cachedTime_));
+    }
+  }
+
   // We have no control over how many different values get added to a time
   // series.
   // We also have no control over their value. We also want to keep some partial

@@ -73,8 +73,8 @@ buck run @mode/opt fbcode//folly/stats/test:multi_level_time_series_benchmark --
 ============================================================================
 [...]est/MultiLevelTimeSeriesBenchmark.cpp     relative  time/iter   iters/s
 ============================================================================
-add_value_seconds                                           1.67ns   598.50M
-add_value_seconds_all_time_only                             1.71ns   586.32M
-add_value_milliseconds                                     44.53ns    22.46M
-add_value_milliseconds_all_time_only                        4.47ns   223.87M
+add_value_seconds                                           1.92ns   520.87M
+add_value_seconds_all_time_only                             1.71ns   583.62M
+add_value_milliseconds                                      1.84ns   544.45M
+add_value_milliseconds_all_time_only                        1.78ns   562.22M
 #endif

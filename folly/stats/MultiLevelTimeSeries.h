@@ -426,6 +426,8 @@ class MultiLevelTimeSeries {
   }
 
  private:
+  Duration computeMaxCacheDuration();
+
   std::vector<Level> levels_;
 
   // Updates within the same time interval are cached
@@ -434,6 +436,7 @@ class MultiLevelTimeSeries {
   TimePoint cachedTime_;
   ValueType cachedSum_;
   uint64_t cachedCount_;
+  Duration cacheDuration_;
 };
 
 } // namespace folly
