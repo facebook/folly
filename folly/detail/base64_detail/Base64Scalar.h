@@ -32,9 +32,9 @@ constexpr std::uint8_t atAsU8(const char* f, int offset) {
 
 constexpr std::array<std::uint8_t, 3> base64DecodePack4To3(
     std::uint8_t aaa, std::uint8_t bbb, std::uint8_t ccc, std::uint8_t ddd) {
-  std::uint8_t aaab = (aaa << 2) | (bbb >> 4);
-  std::uint8_t bbcc = (bbb << 4) | (ccc >> 2);
-  std::uint8_t cddd = (ccc << 6) | ddd;
+  std::uint8_t aaab = static_cast<std::uint8_t>((aaa << 2) | (bbb >> 4));
+  std::uint8_t bbcc = static_cast<std::uint8_t>((bbb << 4) | (ccc >> 2));
+  std::uint8_t cddd = static_cast<std::uint8_t>((ccc << 6) | ddd);
 
   return {{aaab, bbcc, cddd}};
 }
@@ -143,7 +143,7 @@ constexpr char* base64DecodeTailScalar(
   std::uint8_t aaa = constants::kBase64DecodeTable[atAsU8(f, 0)];
   std::uint8_t bbb = constants::kBase64DecodeTable[atAsU8(f, 1)];
 
-  *o++ = (aaa << 2) | (bbb >> 4);
+  *o++ = static_cast<std::uint8_t>((aaa << 2) | (bbb >> 4));
   errorAccumulator |= aaa | bbb;
 
   if (f[2] == '=' && f[3] == '=') {
@@ -213,7 +213,7 @@ constexpr char* base64URLDecodeScalarLast4Bytes(
   std::uint8_t aaa = constants::kBase64URLDecodeTable[atAsU8(f, 0)];
   std::uint8_t bbb = constants::kBase64URLDecodeTable[atAsU8(f, 1)];
 
-  *o++ = (aaa << 2) | (bbb >> 4);
+  *o++ = static_cast<std::uint8_t>((aaa << 2) | (bbb >> 4));
   errorAccumulator |= aaa | bbb; // This will detect incorrect padding as well
 
   f += 2;
