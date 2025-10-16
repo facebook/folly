@@ -16,6 +16,7 @@
 
 #include <folly/system/HardwareConcurrency.h>
 
+#include <atomic>
 #include <thread>
 
 #include <folly/Utility.h>
