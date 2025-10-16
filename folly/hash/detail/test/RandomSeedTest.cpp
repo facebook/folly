@@ -20,16 +20,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
-TEST(RandomSeedTest, DebugSeed) {
-  SKIP_IF(!folly::kIsDebug);
-
+TEST(RandomSeedTest, Seed) {
   const uint64_t seed = folly::hash::detail::RandomSeed::seed();
-  EXPECT_NE(seed, 0LL);
-}
-
-TEST(RandomSeedTest, OptSeed) {
-  SKIP_IF(folly::kIsDebug);
-
-  const uint64_t seed = folly::hash::detail::RandomSeed::seed();
-  EXPECT_EQ(seed, 0LL);
+  EXPECT_EQ(folly::kIsDebug, seed != 0);
 }
