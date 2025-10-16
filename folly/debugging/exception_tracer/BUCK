@@ -185,52 +185,70 @@ FBCODE_LIBSTDCXX_SELECTOR = selects.and_(
     selects.cond("ovr_config//cpp:libstdc++"),
 )
 
+FBCODE_LIBCXX_SELECTOR = selects.and_(
+    selects.cond("ovr_config//runtime/constraints:fbcode"),
+    selects.cond("ovr_config//cpp:libc++"),
+)
+
+FOLLY_SHOULD_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS = selects.or_(
+    selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
+    selects.and_(
+        FBCODE_LIBSTDCXX_SELECTOR,
+        selects.or_(
+            selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
+            selects.cond("ovr_config//third-party/libgcc:11.x"),
+        ),
+    ),
+)
+
+FOLLY_SHOULD_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER = selects.or_(
+    selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
+    selects.and_(
+        FBCODE_LIBSTDCXX_SELECTOR,
+        selects.or_(
+            selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
+            selects.cond("ovr_config//third-party/libgcc:11.x"),
+        ),
+    ),
+    FBCODE_LIBCXX_SELECTOR,
+)
+
+EXCEPTION_TRACER_LIB_COMPILER_FLAGS = selects.if_(
+    FOLLY_SHOULD_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS,
+    ["-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1"],
+    [],
+) + selects.if_(
+    FOLLY_SHOULD_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER,
+    ["-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1"],
+    [],
+)
+
+EXCEPTION_TRACER_LIB_EXPORTED_LINKER_FLAGS = selects.if_(
+    FOLLY_SHOULD_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS,
+    [
+        # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
+        # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
+        # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
+        # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
+    ],
+    [],
+) + selects.if_(
+    FOLLY_SHOULD_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER,
+    select({
+        "DEFAULT": ["-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr"],
+        "ovr_config//cpp:libstdc++": ["-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"],
+    }),
+    [],
+)
+
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "exception_tracer_callbacks",
     srcs = [
         "ExceptionTracerLib.cpp",
     ],
-    compiler_flags = selects.if_(
-        selects.or_(
-            selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
-            selects.and_(
-                FBCODE_LIBSTDCXX_SELECTOR,
-                selects.or_(
-                    selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
-                    selects.cond("ovr_config//third-party/libgcc:11.x"),
-                ),
-            ),
-        ),
-        ["-DFOLLY_STATIC_LIBSTDCXX=1"],
-        [],
-    ),
-    exported_linker_flags = selects.if_(
-        selects.and_(
-            FBCODE_LIBSTDCXX_SELECTOR,
-            selects.or_(
-                selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
-                selects.cond("ovr_config//third-party/libgcc:11.x"),
-            ),
-        ),
-        [
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
-            # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
-        ],
-        select({
-            "DEFAULT": [],
-            "fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type": [
-                # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
-                # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
-                # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
-                # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
-                # @fb-only[end= ]: "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
-            ],
-        }),
-    ),
+    compiler_flags = EXCEPTION_TRACER_LIB_COMPILER_FLAGS,
+    exported_linker_flags = EXCEPTION_TRACER_LIB_EXPORTED_LINKER_FLAGS,
     feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
@@ -344,25 +362,43 @@ LIBSTDCXX_BUCKIFIED_SELECTOR = selects.and_(
     selects.cond("ovr_config//third-party/libgcc:11.x"),
 )
 
+STATIC_CXX_STDLIB_SELECTOR = selects.or_(
+    LIBSTDCXX_BUCKIFIED_SELECTOR,
+    selects.cond("ovr_config//cpp:libc++"),
+)
+
 fbcode_target(
     _kind = cpp_library,
     name = "exception_tracer_callbacks",
     srcs = ["ExceptionTracerLib.cpp"],
     headers = ["ExceptionTracerLib.h"],
     compiler_flags = selects.if_(
-        LIBSTDCXX_BUCKIFIED_SELECTOR,
-        ["-DFOLLY_STATIC_LIBSTDCXX=1"],
+        STATIC_CXX_STDLIB_SELECTOR,
+        select({
+            "DEFAULT": [],
+            "ovr_config//cpp:libc++": ["-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1"],
+            "ovr_config//cpp:libstdc++": [
+                "-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1",
+                "-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1",
+            ],
+        }),
         [],
     ),
     exported_linker_flags = selects.if_(
-        LIBSTDCXX_BUCKIFIED_SELECTOR,
-        [
-            "-Wl,--wrap=__cxa_throw",
-            "-Wl,--wrap=__cxa_rethrow",
-            "-Wl,--wrap=__cxa_begin_catch",
-            "-Wl,--wrap=__cxa_end_catch",
-            "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
-        ],
+        STATIC_CXX_STDLIB_SELECTOR,
+        select({
+            "DEFAULT": [],
+            "ovr_config//cpp:libc++": [
+                "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
+            ],
+            "ovr_config//cpp:libstdc++": [
+                "-Wl,--wrap=__cxa_throw",
+                "-Wl,--wrap=__cxa_rethrow",
+                "-Wl,--wrap=__cxa_begin_catch",
+                "-Wl,--wrap=__cxa_end_catch",
+                "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
+            ],
+        }),
         [],
     ),
     labels = ["EXCLUDED_FROM_LINK_GROUPS"],

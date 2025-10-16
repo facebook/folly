@@ -32,7 +32,7 @@
 namespace __cxxabiv1 {
 
 extern "C" {
-#ifdef FOLLY_STATIC_LIBSTDCXX
+#ifdef FOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS
 [[noreturn]] void __real___cxa_throw(
     void* thrownException, std::type_info* type, void (*destructor)(void*));
 void* __real___cxa_begin_catch(void* excObj) noexcept;
@@ -49,7 +49,7 @@ void __cxa_end_catch(void);
 
 } // namespace __cxxabiv1
 
-#ifdef FOLLY_STATIC_LIBSTDCXX
+#ifdef FOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER
 extern "C" {
 #if __GLIBCXX__
 [[noreturn]] void
@@ -121,7 +121,7 @@ FOLLY_EXNTRACE_DECLARE_CALLBACK(RethrowException)
 
 namespace __cxxabiv1 {
 
-#ifdef FOLLY_STATIC_LIBSTDCXX
+#ifdef FOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS
 extern "C" {
 
 [[noreturn]] void __wrap___cxa_throw(
@@ -197,7 +197,7 @@ void __cxa_end_catch() {
 
 } // namespace __cxxabiv1
 
-#ifdef FOLLY_STATIC_LIBSTDCXX
+#ifdef FOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER
 // Mangled name for std::rethrow_exception
 // TODO(tudorb): Dicey, as it relies on the fact that std::exception_ptr
 // is typedef'ed to a type in namespace __exception_ptr
