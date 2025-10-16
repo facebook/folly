@@ -580,3 +580,34 @@ TEST_F(ExceptionTest, exception_shared_string_format) {
       format_param("a number {} and a string {}", 217, "flobber"s));
   EXPECT_STREQ("a number 217 and a string flobber", s.what());
 }
+
+TEST_F(ExceptionTest, exception_ptr_use_count_empty) {
+  auto ptr = std::exception_ptr();
+  EXPECT_EQ(0, folly::exception_ptr_use_count(ptr));
+  EXPECT_FALSE(folly::exception_ptr_unique(ptr));
+}
+
+TEST_F(ExceptionTest, exception_ptr_use_count_single) {
+  auto ptr = std::make_exception_ptr(42);
+  EXPECT_EQ(1, folly::exception_ptr_use_count(ptr));
+  EXPECT_TRUE(folly::exception_ptr_unique(ptr));
+}
+
+TEST_F(ExceptionTest, exception_ptr_use_count_copied) {
+  auto ptr1 = std::make_exception_ptr(42);
+  auto ptr2 = ptr1;
+  EXPECT_EQ(2, folly::exception_ptr_use_count(ptr1));
+  EXPECT_EQ(2, folly::exception_ptr_use_count(ptr2));
+  EXPECT_FALSE(folly::exception_ptr_unique(ptr1));
+  EXPECT_FALSE(folly::exception_ptr_unique(ptr2));
+}
+
+TEST_F(ExceptionTest, exception_ptr_use_count_after_reset) {
+  auto ptr1 = std::make_exception_ptr(42);
+  auto ptr2 = ptr1;
+  EXPECT_EQ(2, folly::exception_ptr_use_count(ptr1));
+  ptr2 = std::exception_ptr();
+  EXPECT_EQ(1, folly::exception_ptr_use_count(ptr1));
+  EXPECT_TRUE(folly::exception_ptr_unique(ptr1));
+  EXPECT_EQ(0, folly::exception_ptr_use_count(ptr2));
+}

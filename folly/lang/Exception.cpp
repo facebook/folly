@@ -373,6 +373,15 @@ void* exception_ptr_get_object_(
   return !target || target->__do_catch(type, &object, 1) ? object : nullptr;
 }
 
+std::size_t exception_ptr_use_count_(std::exception_ptr const& ptr) noexcept {
+  if (!ptr) {
+    return 0;
+  }
+  auto object = reinterpret_cast<void* const&>(ptr);
+  auto exception = static_cast<abi::__cxa_refcounted_exception*>(object) - 1;
+  return __atomic_load_n(&exception->referenceCount, __ATOMIC_RELAXED);
+}
+
 #endif // defined(__GLIBCXX__)
 
 #if defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
@@ -477,6 +486,16 @@ void* exception_ptr_get_object_(
   return !target || starget->can_catch(type, object) ? object : nullptr;
 }
 
+std::size_t exception_ptr_use_count_(std::exception_ptr const& ptr) noexcept {
+  if (!ptr) {
+    return 0;
+  }
+  auto object = cxxabi_get_object(ptr);
+  return cxxabi_with_cxa_exception(object, [](auto exception) -> long {
+    return __atomic_load_n(&exception->referenceCount, __ATOMIC_RELAXED);
+  });
+}
+
 #endif // defined(_LIBCPP_VERSION) && !defined(__FreeBSD__)
 
 #if defined(__FreeBSD__)
@@ -515,6 +534,15 @@ void* exception_ptr_get_object_(
   return !target || starget->__do_catch(type, &object, 1) ? object : nullptr;
 }
 
+std::size_t exception_ptr_use_count_(std::exception_ptr const& ptr) noexcept {
+  if (!ptr) {
+    return 0;
+  }
+  auto object = reinterpret_cast<void* const&>(ptr);
+  auto exception = static_cast<abi::__cxa_exception*>(object) - 1;
+  return __atomic_load_n(&exception->referenceCount, __ATOMIC_RELAXED);
+}
+
 #endif // defined(__FreeBSD__)
 
 #if defined(_WIN32)
@@ -525,9 +553,14 @@ static T* win32_decode_pointer(T* ptr) {
       DecodePointer(const_cast<void*>(static_cast<void const*>(ptr))));
 }
 
+static std::shared_ptr<EHExceptionRecord> const& win32_get_record_sptr(
+    std::exception_ptr const& ptr) noexcept {
+  return reinterpret_cast<std::shared_ptr<EHExceptionRecord> const&>(ptr);
+}
+
 static EHExceptionRecord* win32_get_record(
     std::exception_ptr const& ptr) noexcept {
-  return reinterpret_cast<std::shared_ptr<EHExceptionRecord> const&>(ptr).get();
+  return win32_get_record_sptr(ptr).get();
 }
 
 static bool win32_eptr_throw_info_ptr_is_encoded() {
@@ -631,6 +664,10 @@ void* exception_ptr_get_object_(
   return nullptr;
 }
 
+std::size_t exception_ptr_use_count_(std::exception_ptr const& ptr) noexcept {
+  return win32_get_record_sptr(ptr).use_count();
+}
+
 #endif // defined(_WIN32)
 
 } // namespace detail
@@ -690,6 +727,14 @@ std::exception_ptr current_exception() noexcept {
       return std::exception_ptr();
   }
 #endif
+}
+
+std::size_t exception_ptr_use_count(std::exception_ptr const& ptr) noexcept {
+  return detail::exception_ptr_use_count_(ptr);
+}
+
+bool exception_ptr_unique(std::exception_ptr const& ptr) noexcept {
+  return exception_ptr_use_count(ptr) == 1;
 }
 
 namespace detail {

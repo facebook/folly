@@ -528,6 +528,26 @@ T* exception_ptr_get_object(std::exception_ptr const& ptr) noexcept {
   return static_cast<T*>(object);
 }
 
+//  exception_ptr_use_count
+//
+//  Returns the reference count of the stored exception.
+//
+//  Returns 0 for an empty exception_ptr. Otherwise, returns the number of
+//  exception_ptr instances that refer to the same stored exception object.
+//
+//  Analogous to std::shared_ptr::use_count.
+std::size_t exception_ptr_use_count(std::exception_ptr const& ptr) noexcept;
+
+//  exception_ptr_unique
+//
+//  Returns whether the stored exception is uniquely referenced.
+//
+//  Returns false for an empty exception_ptr. Otherwise, returns true if this
+//  is the only exception_ptr instance referring to the stored exception object.
+//
+//  Analogous to std::shared_ptr::unique.
+bool exception_ptr_unique(std::exception_ptr const& ptr) noexcept;
+
 /// exception_ptr_try_get_object_exact_fast
 ///
 /// Returns the address of the stored exception as if it were upcast to the
