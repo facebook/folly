@@ -46,12 +46,21 @@ cdef extern from * namespace "folly::python::request_context" nogil:
            inline void reset_last_context_set() {
                _last_context_set = false;
            }
+           thread_local PyObject* _curr_PyContext = nullptr;
+           inline void set_curr_PyContext(PyObject* pycontext) {
+                _curr_PyContext = pycontext;
+           }
        }
     """
     cdef unsigned long get_last_set_context()
     cdef void set_last_set_context(unsigned long value)
     cdef bint is_last_context_set()
     cdef void reset_last_context_set()
+    cdef PyObject* _curr_PyContext
+    cdef void set_curr_PyContext(PyObject* pycontext)
+
+# There is a PyContext active we just don't know what it is yet.
+set_curr_PyContext(<PyObject*>None)
 
 cdef object set_PyContext(shared_ptr[RequestContext] ptr) except *:
     return PyContextVar_Set(_RequestContext, RequestContextToPyCapsule(move(ptr)))
@@ -146,17 +155,17 @@ cdef int _watcher(PyContextEvent event, PyObject* pycontext):
     cdef shared_ptr[RequestContext] ctx
 
     if pycontext is NULL or event != PyContextEvent.Py_CONTEXT_SWITCHED:
+        # unlikely, but if a new event shows up this guards against weird behavior
         return 0
 
-    # The context is None lets unset the fRC
     if (<object>pycontext) is None:
+        # This happens on a thread shutting down other than main
         set_last_set_context(0)
+        set_curr_PyContext(NULL)
         RequestContext.setContext(ctx)
-
-    if not PyContext_CheckExact(<object>pycontext):
-        reset_last_context_set()
         return 0
 
+    set_curr_PyContext(pycontext)
     py_ctx = get_value(_RequestContext)
     if isinstance(py_ctx, Context):
         ctx = PyCapsuleToRequestContext(py_ctx)
@@ -180,24 +189,28 @@ cdef extern from "folly/python/Weak.h":
 
 
 # Setup a Watcher to set our contextvar any time the folly RequestContext changes
-cdef void _setContextWatcher(const shared_ptr[RequestContext]& prev_ctx, const shared_ptr[RequestContext]& curr_ctx) noexcept:
+cdef void _setContextWatcher(const shared_ptr[RequestContext]& prev_ctx, const shared_ptr[RequestContext]& curr_ctx) noexcept nogil:
+    if _curr_PyContext is NULL:
+        # This is only ever not NULL on a thread that has already called _PyContextWatcher
+        # Or imported this module.   Every other thread we can ignore.
+        return
 
     if is_last_context_set() and get_last_set_context() == <unsigned long>curr_ctx.get():
         # We already set the contextvar, so we don't need to do anything
         return
 
-    # Be the most conservative possible here
-    if not Py_IsInitialized() or Py_IsFinalizing() or PyGILState_GetThisThreadState() is NULL or not PyGILState_Check():
-        # If we don't already have the GIL, we don't bother setting the contextvar
-        # Not all calls represent python threads
+    if not Py_IsInitialized() or Py_IsFinalizing():
+        # The python runtime is either not initialized after a finalize, or its currently finalizing
         return
 
     set_last_set_context(<unsigned long>curr_ctx.get())
-    if curr_ctx.get() is NULL:
-        # This should be marginally faster than creating a new capsule
-        PyContextVar_Set(_RequestContext, None)
-    else:
-        set_PyContext(RequestContext.saveContext())
+    with gil:
+        if curr_ctx.get() is NULL:
+            # This should be marginally faster than creating a new capsule
+            PyContextVar_Set(_RequestContext, None)
+        else:
+            set_PyContext(RequestContext.saveContext())
+
 
 if not DISABLE_MODULE:
     RequestContext.addSetContextWatcher(_setContextWatcher)
