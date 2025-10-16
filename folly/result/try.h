@@ -41,7 +41,9 @@ Try<T> result_to_try(result<T> r) noexcept(
       return Try<T>{std::move(r).value_or_throw()};
     }
   } else {
-    return Try<T>{std::move(r).non_value().get_legacy_error_or_cancellation()};
+    return Try<T>{
+        std::move(r).non_value().get_legacy_error_or_cancellation_slow(
+            detail::result_private_t{})};
   }
 }
 
@@ -78,8 +80,8 @@ result<T> try_to_result(Try<T> t, IfEmpty if_empty) noexcept(
       return {std::move(t).value()};
     }
   } else if (t.hasException()) {
-    return {non_value_result::make_legacy_error_or_cancellation(
-        std::move(t).exception())};
+    return {non_value_result::make_legacy_error_or_cancellation_slow(
+        detail::result_private_t{}, std::move(t).exception())};
   } else {
     return std::move(if_empty).template on_empty_try<T>();
   }

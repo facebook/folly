@@ -37,11 +37,11 @@ const non_value_result& dfatal_get_bad_result_access_error() {
   return *r;
 }
 
-void fatal_if_exception_wrapper_invalid(const exception_wrapper& ew) {
-  if (!ew.has_exception_ptr()) {
+void fatal_if_exception_ptr_invalid(const std::exception_ptr& eptr) {
+  if (!eptr) {
     LOG(FATAL) << "`result` may not contain an empty `std::exception_ptr`";
   }
-  if (folly::get_exception<folly::OperationCancelled>(ew)) {
+  if (folly::get_exception<folly::OperationCancelled>(eptr)) {
     LOG(FATAL)
         << "Do not store `OperationCancelled` in `result`. If you got this "
         << "error while extracting an `exception_wrapper`, `exception_ptr`, "

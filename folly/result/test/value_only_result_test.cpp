@@ -153,11 +153,12 @@ RESULT_CO_TEST(Result, forbidUnsafeCopyOfResultRef) {
   }
   // Unsafe: copying `const value_only_result<int&>` would discard the `const`
   //   result r3 = std::as_const(r).copy();
-  static_assert(requires { r.copy(); });
-  [](const auto& cr) {
-    // This `requires` won't even compile outside a template context.
-    static_assert(!requires { cr.copy(); });
-  }(r);
+  // The next assert shows the above `.copy()` is SFINAE-deleted.
+  //
+  // NB: This `requires` won't compile without using a dependent type.
+  static_assert(![](const auto& r2) { return requires { r2.copy(); }; }(r));
+  // Copy-from-mutable still works
+  static_assert([](auto& r2) { return requires { r2.copy(); }; }(r));
 }
 
 // Check `co_await` / `.value_or_throw()` / `.value_only()` for various ways of

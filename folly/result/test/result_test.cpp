@@ -93,14 +93,12 @@ TEST(Result, noEmptyError) {
   if (kIsDebug) {
     EXPECT_DEATH(
         {
-          (void)non_value_result::from_exception_wrapper(exception_wrapper{});
+          (void)non_value_result::from_exception_ptr_slow(std::exception_ptr{});
         },
         "`result` may not contain an empty `std::exception_ptr`");
   } else {
-    EXPECT_FALSE(
-        non_value_result::from_exception_wrapper(exception_wrapper{})
-            .to_exception_wrapper()
-            .has_exception_ptr());
+    EXPECT_FALSE(non_value_result::from_exception_ptr_slow(std::exception_ptr{})
+                     .to_exception_ptr_slow());
   }
 }
 
@@ -115,27 +113,32 @@ TEST(Result, storeAndGetStoppedResult) {
     // Using `exception_ptr`-like accessors when `has_stopped()` is debug-fatal
     if (kIsDebug) {
       EXPECT_DEATH(
-          { std::move(r).non_value().to_exception_wrapper(); }, deathRe);
+          { std::move(r).non_value().to_exception_ptr_slow(); }, deathRe);
     } else {
-      auto ew = std::move(r).non_value().to_exception_wrapper();
+      auto ew = std::move(r).non_value().to_exception_ptr_slow();
       EXPECT_TRUE(get_exception<OperationCancelled>(ew));
     }
   };
   check(tag<void>, stopped_result);
   check(tag<int>, stopped_result);
   auto ocEw = make_exception_wrapper<OperationCancelled>();
-  auto stoppedNvr = non_value_result::make_legacy_error_or_cancellation(ocEw);
+  auto stoppedNvr = non_value_result::make_legacy_error_or_cancellation_slow(
+      detail::result_private_t{}, ocEw);
   check(tag<void>, stoppedNvr);
   check(tag<int>, stoppedNvr);
   // Constructing with `OperationCancelled` without the legacy path
   // is debug-fatal.
   if (kIsDebug) {
     EXPECT_DEATH(
-        { (void)non_value_result::from_exception_wrapper(ocEw); }, deathRe);
+        {
+          (void)non_value_result::from_exception_ptr_slow(ocEw.exception_ptr());
+        },
+        deathRe);
   } else {
-    auto ew =
-        non_value_result::from_exception_wrapper(ocEw).to_exception_wrapper();
-    EXPECT_TRUE(get_exception<OperationCancelled>(ew));
+    auto eptr =
+        non_value_result::from_exception_ptr_slow(ocEw.exception_ptr())
+            .to_exception_ptr_slow();
+    EXPECT_TRUE(get_exception<OperationCancelled>(eptr));
   }
 }
 
@@ -274,11 +277,12 @@ RESULT_CO_TEST(Result, forbidUnsafeCopyOfResultRef) {
   }
   // Unsafe: copying `const result<int&>` would discard the outer `const`
   //   result r3 = std::as_const(r).copy();
-  static_assert(requires { r.copy(); });
-  [](const auto& cr) {
-    // This `requires` won't even compile outside a template context.
-    static_assert(!requires { cr.copy(); });
-  }(r);
+  // The next assert shows the above `.copy()` is SFINAE-deleted.
+  //
+  // NB: This `requires` won't compile without using a dependent type.
+  static_assert(![](const auto& r2) { return requires { r2.copy(); }; }(r));
+  // Copy-from-mutable still works
+  static_assert([](auto& r2) { return requires { r2.copy(); }; }(r));
 }
 
 // Check `?.value_or_throw()` and `co_await ?` return types for various ways of
@@ -777,8 +781,8 @@ TEST(Result, accessError) {
   EXPECT_FALSE(r != r);
 
   result<int> rSame1{r.non_value()};
-  result<int> rSame2 = non_value_result::from_exception_wrapper(
-      r.copy().non_value().to_exception_wrapper());
+  result<int> rSame2 = non_value_result::from_exception_ptr_slow(
+      r.copy().non_value().to_exception_ptr_slow());
   result<int> rDiff{non_value_result{MyError{"farewell"}}};
   EXPECT_TRUE(r == rSame1);
   EXPECT_TRUE(r == rSame2);

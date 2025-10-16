@@ -112,6 +112,7 @@ namespace folly {
 struct OperationCancelled;
 
 namespace detail {
+
 // In order to give `result` a stronger contract, debug builds prevent `result`
 // and `non_value_result` from ingesting empty `std::exception_ptr`s, and ones
 // with `OperationCancelled`.
@@ -125,14 +126,17 @@ namespace detail {
 //     erroneously (see `coro/Retry.h`).  So, even as we work to reduce
 //     reliance on this in anticipation of C++26 "stopped" semantics, for
 //     the foreseeable future it will "sort of work".
-void fatal_if_exception_wrapper_invalid(const exception_wrapper&);
-inline void dfatal_if_exception_wrapper_invalid(const exception_wrapper& ew) {
+void fatal_if_exception_ptr_invalid(const std::exception_ptr&);
+inline void dfatal_if_exception_ptr_invalid(const std::exception_ptr& eptr) {
   // This code path could be hot in production code, so there's no branch or
   // logging in opt builds.
   if constexpr (kIsDebug) {
-    fatal_if_exception_wrapper_invalid(ew);
+    fatal_if_exception_ptr_invalid(eptr);
   }
 }
+
+// Do NOT use outside of `folly`, the APIs this gates WILL change.
+struct result_private_t {};
 } // namespace detail
 
 // Place this into `result` or `non_value_result` to signal that a work-tree
@@ -201,24 +205,24 @@ class FOLLY_NODISCARD non_value_result {
   }
 
   // AVOID. Throw-catch costs upwards of 1usec.
-  [[noreturn]] exception_wrapper throw_exception() const {
-    detail::dfatal_if_exception_wrapper_invalid(ew_);
+  [[noreturn]] void throw_exception() const {
+    detail::dfatal_if_exception_ptr_invalid(ew_.exception_ptr());
     ew_.throw_exception();
   }
 
   /// AVOID.  Use `non_value_result(YourException{...})` if at all possible.
   /// Add a `std::in_place_type_t<Ex>` constructor if needed.
   ///
-  /// Provided for compatibility with existing `exception_wrapper` code.  It
-  /// has several downsides for `result`-first code:
-  ///   - It is a debug-fatal invariant violation to pass in an
-  ///     `exception_wrapper` that is empty or has `OperationCancelled`.
-  ///     See the `dfatal_if_exception_wrapper_invalid` doc.
+  /// Provided for compatibility with existing code.  It has several downsides
+  /// for `result`-first code:
+  ///   - It is a debug-fatal invariant violation to pass in an `exception_ptr`
+  ///     that is empty or has `OperationCancelled`.
+  ///     See the `dfatal_if_exception_ptr_invalid` doc.
   ///   - Not knowing the static exception type blocks optimizations that can
   ///     otherwise help avoid RTTI on error paths.
-  static non_value_result from_exception_wrapper(exception_wrapper ew) {
-    detail::dfatal_if_exception_wrapper_invalid(ew);
-    return non_value_result{std::in_place, std::move(ew)};
+  static non_value_result from_exception_ptr_slow(std::exception_ptr eptr) {
+    detail::dfatal_if_exception_ptr_invalid(eptr);
+    return non_value_result{std::in_place, exception_wrapper{std::move(eptr)}};
   }
 
   /// AVOID. Use `folly::get_exception<Ex>(r)` to check for specific exceptions.
@@ -227,10 +231,10 @@ class FOLLY_NODISCARD non_value_result {
   ///
   /// INVARIANT: Ensure `!has_stopped()`, or you will see a debug-fatal.
   ///
-  /// See `from_exception_wrapper` for the downsides and the rationale.
-  exception_wrapper to_exception_wrapper() && {
-    detail::dfatal_if_exception_wrapper_invalid(ew_);
-    return std::move(ew_);
+  /// See `from_exception_ptr_slow` for the downsides and the rationale.
+  std::exception_ptr to_exception_ptr_slow() && {
+    detail::dfatal_if_exception_ptr_invalid(ew_.exception_ptr());
+    return std::move(ew_).exception_ptr();
   }
 
   /// AVOID.  Most code should use `result` coros, which catch most exceptions
@@ -238,8 +242,8 @@ class FOLLY_NODISCARD non_value_result {
   static non_value_result from_current_exception() {
     // Something was already thrown, and the user likely wants a result, so
     // it's appropriate to accept even `OperationCancelled` here.
-    return non_value_result::make_legacy_error_or_cancellation(
-        exception_wrapper{current_exception()});
+    return non_value_result::make_legacy_error_or_cancellation_slow(
+        detail::result_private_t{}, exception_wrapper{current_exception()});
   }
 
   friend inline bool operator==(
@@ -250,7 +254,7 @@ class FOLLY_NODISCARD non_value_result {
   // DO NOT USE these "legacy" functions outside of `folly` internals. Instead:
   //   - `non_value_result(YourException{...})` whenever you statically know
   //     the exception type (feel free to add `std::in_place_type_t` support).
-  //   - `non_value_result::from_exception_wrapper()` only when you MUST pay
+  //   - `non_value_result::from_exception_ptr_slow()` only when you MUST pay
   //     for RTTI, such as "thrown exceptions".
   //
   // See `OperationCancelled.h` for how to handle cancellation.  In short: use
@@ -260,11 +264,12 @@ class FOLLY_NODISCARD non_value_result {
   // `std::exception_ptr`s containing `OperationCancelled` made via
   // `folly::coro::co_cancelled`, without incurring the 20-80ns+ cost of
   // eagerly eagerly testing whether it contains `OperationCancelled`.
-  static non_value_result make_legacy_error_or_cancellation(
-      exception_wrapper ew) {
+  static non_value_result make_legacy_error_or_cancellation_slow(
+      detail::result_private_t, exception_wrapper ew) {
     return {std::in_place, std::move(ew)};
   }
-  exception_wrapper get_legacy_error_or_cancellation() && {
+  exception_wrapper get_legacy_error_or_cancellation_slow(
+      detail::result_private_t) && {
     return std::move(ew_);
   }
 };
