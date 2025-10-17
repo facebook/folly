@@ -1410,6 +1410,12 @@ fb_dirsync_cpp_library(
             "-fno-omit-frame-pointer",
         ],
         "DEFAULT": ["-fno-omit-frame-pointer"],
+    }) + select({
+        "DEFAULT": [],
+        # x86_64-conda-linux-gnu-c++ (conda-forge gcc 11.4.0-13) 11.4.0
+        # fails to compile Demangle.cpp because of unused static functions despite
+        # using [[maybe_unused]] attribute.
+        "ovr_config//distro/constraints:conda": ["-Wno-unused-function"],
     }),
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
