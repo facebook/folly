@@ -180,37 +180,33 @@ non_fbcode_target(
     ],
 )
 
-FBCODE_LIBSTDCXX_SELECTOR = selects.and_(
+FBCODE_STATIC_LIBSTDCXX_SELECTOR = selects.and_(
     selects.cond("ovr_config//runtime/constraints:fbcode"),
     selects.cond("ovr_config//cpp:libstdc++"),
+    selects.or_(
+        selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
+        selects.cond("ovr_config//third-party/libgcc:11.x"),
+    ),
 )
 
-FBCODE_LIBCXX_SELECTOR = selects.and_(
+FBCODE_STATIC_LIBCXX_SELECTOR = selects.and_(
     selects.cond("ovr_config//runtime/constraints:fbcode"),
     selects.cond("ovr_config//cpp:libc++"),
+    selects.or_(
+        selects.cond("ovr_config//build_mode/constraints:static"),
+        selects.cond("ovr_config//build_mode/constraints:static_pic"),
+    ),
 )
 
 FOLLY_SHOULD_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS = selects.or_(
     selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
-    selects.and_(
-        FBCODE_LIBSTDCXX_SELECTOR,
-        selects.or_(
-            selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
-            selects.cond("ovr_config//third-party/libgcc:11.x"),
-        ),
-    ),
+    FBCODE_STATIC_LIBSTDCXX_SELECTOR,
 )
 
 FOLLY_SHOULD_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER = selects.or_(
     selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
-    selects.and_(
-        FBCODE_LIBSTDCXX_SELECTOR,
-        selects.or_(
-            selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
-            selects.cond("ovr_config//third-party/libgcc:11.x"),
-        ),
-    ),
-    FBCODE_LIBCXX_SELECTOR,
+    FBCODE_STATIC_LIBSTDCXX_SELECTOR,
+    FBCODE_STATIC_LIBCXX_SELECTOR,
 )
 
 EXCEPTION_TRACER_LIB_COMPILER_FLAGS = selects.if_(
@@ -362,9 +358,17 @@ LIBSTDCXX_BUCKIFIED_SELECTOR = selects.and_(
     selects.cond("ovr_config//third-party/libgcc:11.x"),
 )
 
+LIBCXX_STATIC_SELECTOR = selects.and_(
+    selects.cond("ovr_config//cpp:libc++"),
+    selects.or_(
+        selects.cond("ovr_config//build_mode/constraints:static"),
+        selects.cond("ovr_config//build_mode/constraints:static_pic"),
+    ),
+)
+
 STATIC_CXX_STDLIB_SELECTOR = selects.or_(
     LIBSTDCXX_BUCKIFIED_SELECTOR,
-    selects.cond("ovr_config//cpp:libc++"),
+    LIBCXX_STATIC_SELECTOR,
 )
 
 fbcode_target(
