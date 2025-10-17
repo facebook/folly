@@ -484,3 +484,76 @@ TEST_F(InvokeTest, TagInvokeCustomisationPoint) {
   EXPECT_EQ(10, testCustomisationPoint(a, 5));
   EXPECT_EQ(false, testCustomisationPoint(a, true));
 }
+
+namespace {
+
+namespace accessor {
+
+FOLLY_CREATE_MEMBER_ACCESSOR_SUITE(value);
+FOLLY_CREATE_MEMBER_ACCESSOR_SUITE(data);
+FOLLY_CREATE_MEMBER_ACCESSOR_SUITE(name);
+
+} // namespace accessor
+
+struct DataHolder {
+  int value = 42;
+  std::string data = "hello";
+  const char* name = "test";
+};
+
+struct ConstDataHolder {
+  const int value = 99;
+  const std::string data = "world";
+};
+
+} // namespace
+
+TEST_F(InvokeTest, member_accessor_basic) {
+  DataHolder obj;
+
+  EXPECT_EQ(42, accessor::value(obj));
+  EXPECT_EQ("hello", accessor::data(obj));
+  EXPECT_STREQ("test", accessor::name(obj));
+
+  accessor::value(obj) = 100;
+  EXPECT_EQ(100, obj.value);
+
+  accessor::data(obj) = "modified";
+  EXPECT_EQ("modified", obj.data);
+}
+
+TEST_F(InvokeTest, member_accessor_forwarding) {
+  DataHolder obj;
+
+  {
+    decltype(auto) ref = accessor::value(obj);
+    static_assert(std::is_same<decltype(ref), int&>::value);
+    EXPECT_EQ(&obj.value, &ref);
+  }
+
+  {
+    decltype(auto) ref = accessor::value(std::as_const(obj));
+    static_assert(std::is_same<decltype(ref), const int&>::value);
+    EXPECT_EQ(&obj.value, &ref);
+  }
+
+  {
+    decltype(auto) ref = accessor::value(std::move(obj));
+    static_assert(std::is_same<decltype(ref), int&&>::value);
+    EXPECT_EQ(&obj.value, &ref);
+  }
+
+  {
+    decltype(auto) ref = accessor::value(std::move(std::as_const(obj)));
+    static_assert(std::is_same<decltype(ref), int const&&>::value);
+    EXPECT_EQ(&obj.value, &ref);
+  }
+}
+
+TEST_F(InvokeTest, member_accessor_noexcept) {
+  DataHolder obj;
+
+  EXPECT_TRUE(noexcept(accessor::value(obj)));
+  EXPECT_TRUE(noexcept(accessor::data(obj)));
+  EXPECT_TRUE(noexcept(accessor::name(obj)));
+}

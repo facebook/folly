@@ -761,6 +761,33 @@ invoke_member_wrapper_fn(F) -> invoke_member_wrapper_fn<F>;
   template <typename T>                                            \
   [[maybe_unused]] inline constexpr membername##_fn<T> membername {}
 
+/***
+ *  FOLLY_CREATE_MEMBER_ACCESSOR
+ *
+ *  Used to create an accessor type bound to a specific data-member name,
+ *  providing access to that data-member.
+ */
+#define FOLLY_CREATE_MEMBER_ACCESSOR(classname, membername)            \
+  struct classname {                                                   \
+    template <typename T>                                              \
+    [[maybe_unused]] FOLLY_ERASE_HACK_GCC constexpr auto&& operator()( \
+        T&& val) const noexcept {                                      \
+      return static_cast<T&&>(val).membername;                         \
+    }                                                                  \
+  }
+
+/***
+ *  FOLLY_CREATE_MEMBER_ACCESSOR_SUITE
+ *
+ *  Used to create an accessor type and associated variable bound to a specific
+ *  data-member name, providing access to that data-member. The accessor
+ *  variable is named like the member name and the accessor type is named with a
+ *  suffix of _fn.
+ */
+#define FOLLY_CREATE_MEMBER_ACCESSOR_SUITE(membername)       \
+  FOLLY_CREATE_MEMBER_ACCESSOR(membername##_fn, membername); \
+  [[maybe_unused]] inline constexpr membername##_fn membername {}
+
 namespace folly {
 
 namespace detail_tag_invoke_fn {
