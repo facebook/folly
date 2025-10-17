@@ -302,6 +302,28 @@ std::unique_ptr<IOBuf> OpenSSLCertUtils::derEncode(X509& x509) {
   return buf;
 }
 
+X509UniquePtr OpenSSLCertUtils::pemDecode(ByteRange range) {
+  BioUniquePtr bio(BIO_new_mem_buf(range.data(), range.size()));
+  if (!bio) {
+    throw std::runtime_error("failed to create BIO");
+  }
+  X509UniquePtr x509(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  if (!x509) {
+    throw std::runtime_error("failed to read cert");
+  }
+  return x509;
+}
+
+std::string OpenSSLCertUtils::pemEncode(X509& x509) {
+  BioUniquePtr bio(BIO_new(BIO_s_mem()));
+  if (!PEM_write_bio_X509(bio.get(), &x509)) {
+    throw std::runtime_error("Failed to encode X509");
+  }
+  BUF_MEM* bptr = nullptr;
+  BIO_get_mem_ptr(bio.get(), &bptr);
+  return {bptr->data, bptr->length};
+}
+
 std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
     ByteRange range) {
   BioUniquePtr b(

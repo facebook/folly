@@ -322,6 +322,20 @@ TEST_P(OpenSSLCertUtilsTest, TestDerEncodeDecode) {
       folly::ssl::OpenSSLCertUtils::toString(*decoded));
 }
 
+TEST_P(OpenSSLCertUtilsTest, TestPemEncodeDecode) {
+  auto x509 = readCertFromData(kTestCertWithSan);
+  EXPECT_NE(x509, nullptr);
+
+  auto pem = folly::ssl::OpenSSLCertUtils::pemEncode(*x509);
+  auto decoded =
+      folly::ssl::OpenSSLCertUtils::pemDecode(folly::StringPiece(pem));
+
+  EXPECT_EQ(
+      folly::ssl::OpenSSLCertUtils::toString(*x509),
+      folly::ssl::OpenSSLCertUtils::toString(*decoded));
+  EXPECT_EQ(pem, kTestCertWithSan);
+}
+
 TEST_P(OpenSSLCertUtilsTest, TestDerDecodeJunkData) {
   StringPiece junk{"MyFakeCertificate"};
   EXPECT_THROW(

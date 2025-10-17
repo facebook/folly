@@ -103,6 +103,20 @@ class OpenSSLCertUtils {
   static std::unique_ptr<IOBuf> derEncode(X509&);
 
   /**
+   * Decode the PEM representation of an X509 certificate.
+   *
+   * Throws on error (if a valid certificate can't be decoded).
+   */
+  static X509UniquePtr pemDecode(ByteRange);
+
+  /**
+   * Encode an X509 certificate in PEM format.
+   *
+   * Throws on error.
+   */
+  static std::string pemEncode(X509&);
+
+  /**
    * Read certificates from memory and returns them as a vector of X509
    * pointers. Throw if there is any malformed cert or memory allocation
    * problem.
