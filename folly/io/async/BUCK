@@ -673,9 +673,15 @@ fb_dirsync_cpp_library(
     ],
 )
 
+# @fb-only[end= ]: _LIBURING_CONDA_SELECT_DICT = {}
+
+# @fb-only[end= ]: _LIBURING_CONDA_SELECT_DICT["DEFAULT"] = []
+
+# @fb-only[end= ]: _LIBURING_CONDA_SELECT_DICT["ovr_config//conda:xlformers_llama4_mtia_conda"] = ["fbsource//third-party/liburing:uring"]
+
 liburing_deps = select({
     "DEFAULT": [],
-    # @fb-only[end= ]: "ovr_config//distro/constraints:conda": [],
+    # @fb-only[end= ]: "ovr_config//distro/constraints:conda": select(_LIBURING_CONDA_SELECT_DICT),
     # @fb-only[end= ]: "ovr_config//os:linux-sgx": [],
     "ovr_config//runtime:fbcode": ["fbsource//third-party/liburing:uring"],
 })
