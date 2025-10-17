@@ -146,9 +146,13 @@ class OpenSSLHash {
     hash.hash_update(data);
     hash.hash_final(out);
   }
+  [[deprecated(
+      "sha1 should never be used. It is slow and insecure. See https://www.internalfb.com/wiki/What_Hash_Should_I_Use")]]
   static void sha1(MutableByteRange out, ByteRange data) {
     hash(out, EVP_sha1(), data);
   }
+  [[deprecated(
+      "sha1 should never be used. It is slow and insecure. See https://www.internalfb.com/wiki/What_Hash_Should_I_Use")]]
   static void sha1(MutableByteRange out, const IOBuf& data) {
     hash(out, EVP_sha1(), data);
   }
@@ -290,9 +294,13 @@ class OpenSSLHash {
     hmac.hash_update(data);
     hmac.hash_final(out);
   }
+  [[deprecated(
+      "sha1 should never be used. It is slow and insecure. See https://www.internalfb.com/wiki/What_Hash_Should_I_Use")]]
   static void hmac_sha1(MutableByteRange out, ByteRange key, ByteRange data) {
     hmac(out, EVP_sha1(), key, data);
   }
+  [[deprecated(
+      "sha1 should never be used. It is slow and insecure. See https://www.internalfb.com/wiki/What_Hash_Should_I_Use")]]
   static void hmac_sha1(
       MutableByteRange out, ByteRange key, const IOBuf& data) {
     hmac(out, EVP_sha1(), key, data);
