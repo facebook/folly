@@ -49,7 +49,7 @@ class basic_cstring_view {
 
   static constexpr Char const* check_string(
       Char const* str, [[maybe_unused]] size_t len) noexcept {
-    assert(!str && !len || Traits::length(str) == len);
+    assert((!str && !len) || Traits::length(str) == len);
     return str;
   }
   template <typename String>
