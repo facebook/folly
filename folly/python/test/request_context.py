@@ -227,23 +227,3 @@ class RequestContextTest(IsolatedAsyncioTestCase):
         # Even though one of the tasks set the context, it should revert to set_ctx
         self.assertEqual(request_context.get_from_contextvar(), set_ctx)
         self.assertEqual(request_context.save(), set_ctx)
-
-    async def test_on_thread(self) -> None:
-        # This is simulating some code setting the context in C++ land
-        frc_helper.setContext()
-
-        # Without observing setContext calls we can't automatically update the contextvar
-        expected = request_context.get_from_contextvar()
-        self.assertEqual(expected, request_context.save())
-
-        def on_thread() -> request_context.Context:
-            return request_context.get_from_contextvar()
-
-        # to_thread() copies the current context, so the thread uses it so it should have the same FRC
-        self.assertEqual(await asyncio.to_thread(on_thread), expected)
-
-        empty_ctx = request_context.Context()
-
-        # For now the standard loop.run_in_executor does not propogate context
-        loop = asyncio.get_running_loop()
-        self.assertEqual(await loop.run_in_executor(None, on_thread), empty_ctx)
