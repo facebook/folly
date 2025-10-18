@@ -921,4 +921,67 @@ struct tag_invoke_result
           detail_tag_invoke_fn::defer<tag_invoke_result_t, Tag, Args...>,
           detail_tag_invoke_fn::empty> {};
 
+#if defined(__cpp_concepts)
+
+/// passable_to
+///
+/// Useful for enabling n^k overloads all at once. Example below shows cases of
+/// n=5 with k=1 and k=2.
+///
+/// Useful for transparent hash and key-equal functions for a set which needs
+/// heterogeneous lookup.
+///
+/// Law:
+///   passable_to<Arg, Fun> = invocable<Fun, Arg>
+///
+/// Discussion:
+/// Q:  Why require a one-param function type and not support a multi-param
+///     function type?
+/// A:  Too much arbitrary choice. Interface would be confusing.
+///     To provide an interface like:
+///         passable_to<Slog, Fun, Arg...>
+///     Then `Arg...` would need exactly one "hole", which would be represented
+///     by perhaps `void` or perhaps `std::placeholder::_1` or another sentinel.
+///     Alternatively:
+///         passable_to<Slog, Fun, tag_t<ArgFront...>, tag_t<ArgBack...>>
+///     Now the usage gets convoluted.
+///     But, in the end, this can be worked around by passing a function type
+///     that is the result of std::bind_front (C++20) or std::bind_back (C++23).
+///
+/// Example:
+///
+///     struct to_key_fn {
+///       string_view operator()(string_view val) const noexcept { return val; }
+///       string_view operator()(object const&) const noexcept;
+///       string_view operator()(object const*) const noexcept;
+///       string_view operator()(unique_ptr<object> const&) const noexcept;
+///       string_view operator()(shared_ptr<object> const&) const noexcept;
+///     };
+///     static constexpr to_key_fn to_key{};
+///
+///     struct obj_hash : hash<string_view> {
+///       using is_transparent = void;
+///       size_t operator()(passable_to<to_key_fn> auto const& val) noexcept {
+///         return hash<string_view>::operator()(to_key(val));
+///       }
+///     };
+///     struct obj_key_equal : equal_to<string_view> {
+///       using is_transparent = void;
+///       bool operator()(
+///           passable_to<to_key_fn> auto const& lhs,
+///           passable_to<to_key_fn> auto const& rhs) noexcept {
+///         return equal_to<string_view>::operator()(to_key(lhs), to_key(rhs));
+///       }
+///     };
+///
+///     using object_set = std::unordered_set<
+///         std::shared_ptr<object>,
+///         obj_hash,
+///         obj_key_equal>;
+///     object_set objs;
+template <typename Arg, typename Fun>
+concept passable_to = is_invocable_v<Fun, Arg>;
+
+#endif
+
 } // namespace folly
