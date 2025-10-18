@@ -57,8 +57,6 @@ template <bool containerMode, class... Args>
 class Formatter;
 template <class... Args>
 Formatter<false, Args...> format(StringPiece fmt, Args&&... args);
-template <class C>
-std::string svformat(StringPiece fmt, C&& container) = delete;
 template <class T, class Enable = void>
 class FormatValue;
 
@@ -249,8 +247,6 @@ class Formatter
       Str* out, StringPiece fmt, A&&... args);
   template <class... A>
   friend std::string sformat(StringPiece fmt, A&&... arg);
-  template <class C>
-  friend std::string svformat(StringPiece fmt, C&& container);
 };
 
 namespace detail {
