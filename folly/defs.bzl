@@ -40,10 +40,7 @@ def cpp_flags():
 
     else:
         flags += select({
-            "DEFAULT": select({
-                "DEFAULT": ["-DFOLLY_MOBILE=1"],
-                "ovr_config//os:windows": [],
-            }),
+            "DEFAULT": ["-DFOLLY_MOBILE=1"],
             "ovr_config//build_mode:arvr_mode": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
                 "ovr_config//os:linux": [],
