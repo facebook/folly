@@ -61,12 +61,14 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   struct Options {
     Options()
         : allocateNoBufferPoolBuffer(defaultAllocateNoBufferPoolBuffer),
-          multishotRecv(true) {}
+          multishotRecv(true),
+          useBundles(false) {}
 
     static std::unique_ptr<IOBuf> defaultAllocateNoBufferPoolBuffer();
     folly::Function<std::unique_ptr<IOBuf>()> allocateNoBufferPoolBuffer;
     folly::Optional<AsyncWriter::ZeroCopyEnableFunc> zeroCopyEnable;
     bool multishotRecv;
+    bool useBundles;
   };
 
   using UniquePtr = std::unique_ptr<AsyncIoUringSocket, Destructor>;
@@ -356,6 +358,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
         false; // todo: this can be per process instead of per socket
     bool supportsZeroCopyRx_ = false;
     bool useZeroCopyRx_ = false;
+    bool useBundles_ = false;
 
     folly::Optional<folly::SemiFuture<std::unique_ptr<IOBuf>>>
         oldEventBaseRead_;

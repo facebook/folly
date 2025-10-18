@@ -256,6 +256,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
       return *this;
     }
+
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -705,7 +706,11 @@ class IoUringBackend : public EventBaseBackendBase {
             if (flags & IORING_CQE_F_BUFFER) {
               if (IoUringBufferProviderBase* bp = backend->bufferProvider()) {
                 auto hasMore = (flags & IORING_CQE_F_BUF_MORE) != 0;
-                buf = bp->getIoBuf(flags >> 16, res, hasMore);
+                uint16_t bufId = flags >> IORING_CQE_BUFFER_SHIFT;
+                VLOG(5) << "bufId=" << bufId << " bp=" << (void*)bp
+                        << " sizePerBuffer=" << bp->sizePerBuffer()
+                        << " startBuf=" << bufId;
+                buf = bp->getIoBuf(bufId, res, hasMore);
               }
             }
             hdr_->cbFunc_(hdr_, res, std::move(buf));

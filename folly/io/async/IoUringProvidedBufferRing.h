@@ -54,7 +54,7 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
   void destroy() noexcept override;
 
   std::unique_ptr<IOBuf> getIoBuf(
-      uint16_t i, size_t length, bool hasMore) noexcept override;
+      uint16_t startBufId, size_t totalLength, bool hasMore) noexcept override;
 
   uint32_t count() const noexcept override { return buffer_.bufferCount(); }
   bool available() const noexcept override {
@@ -70,6 +70,8 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
   void incBufferState(
       uint16_t bufId, bool hasMore, unsigned int bytesConsumed) noexcept;
   void decBufferState(uint16_t bufId) noexcept;
+  std::unique_ptr<IOBuf> getIoBufSingle(
+      uint16_t i, size_t length, bool hasMore) noexcept;
 
   std::atomic<uint16_t>* sharedTail() {
     return reinterpret_cast<std::atomic<uint16_t>*>(&buffer_.ring()->tail);

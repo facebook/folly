@@ -1907,6 +1907,164 @@ TEST(IoUringBackend, IncrementalBuffers) {
   iob7.reset();
 }
 
+TEST(IoUringBackend, ReceiveBundleTest) {
+  constexpr size_t TEST_SIZE = 32 * 1024;
+  constexpr size_t MSG_SIZE = 1024;
+
+  auto evbPtr = getEventBase();
+  std::unique_ptr<folly::IoUringBackend> backend;
+  try {
+    backend = std::make_unique<folly::IoUringBackend>(
+        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(
+            MSG_SIZE, 64));
+  } catch (folly::IoUringBackend::NotAvailable const&) {
+  }
+  SKIP_IF(!backend) << "Backend not available";
+
+  auto* bufferProvider = backend->bufferProvider();
+  ASSERT_NE(bufferProvider, nullptr);
+
+  std::string expected(TEST_SIZE, 'A');
+  for (size_t i = 0; i < TEST_SIZE; ++i) {
+    expected[i] = 'A' + (i % 26); // A-Z pattern
+  }
+
+  int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+  ASSERT_GE(server_fd, 0);
+
+  int opt = 1;
+  ASSERT_EQ(
+      0, setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)));
+
+  struct sockaddr_in server_addr {};
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_addr.s_addr = INADDR_ANY;
+  server_addr.sin_port = htons(0);
+
+  ASSERT_EQ(
+      0, bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)));
+  ASSERT_EQ(0, listen(server_fd, 1));
+
+  socklen_t addr_len = sizeof(server_addr);
+  ASSERT_EQ(
+      0, getsockname(server_fd, (struct sockaddr*)&server_addr, &addr_len));
+  int server_port = ntohs(server_addr.sin_port);
+
+  SCOPE_EXIT {
+    if (server_fd >= 0) {
+      close(server_fd);
+    }
+  };
+
+  int client_fd = socket(AF_INET, SOCK_STREAM, 0);
+  ASSERT_GE(client_fd, 0);
+
+  struct sockaddr_in client_addr {};
+  memset(&client_addr, 0, sizeof(client_addr));
+  client_addr.sin_family = AF_INET;
+  client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  client_addr.sin_port = htons(server_port);
+
+  ASSERT_EQ(
+      0,
+      connect(client_fd, (struct sockaddr*)&client_addr, sizeof(client_addr)));
+
+  int accepted_fd = accept(server_fd, nullptr, nullptr);
+  ASSERT_GE(accepted_fd, 0);
+
+  SCOPE_EXIT {
+    if (client_fd >= 0) {
+      close(client_fd);
+    }
+
+    if (accepted_fd >= 0) {
+      close(accepted_fd);
+    }
+  };
+
+  std::string received;
+  bool gotBundle = false;
+  bool eofReceived = false;
+
+  struct SimpleReader : folly::IoSqeBase {
+    SimpleReader(
+        int fd,
+        uint16_t bgid,
+        folly::IoUringBufferProviderBase* bufProvider,
+        std::string* received,
+        bool* gotBundle,
+        bool* eofReceived)
+        : fd_(fd),
+          bgid_(bgid),
+          bufProvider_(bufProvider),
+          received_(received),
+          gotBundle_(gotBundle),
+          eofReceived_(eofReceived) {}
+
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      io_uring_prep_recv_multishot(sqe, fd_, nullptr, 0, 0);
+      sqe->ioprio |= IORING_RECVSEND_BUNDLE;
+      sqe->flags |= IOSQE_BUFFER_SELECT;
+      sqe->buf_group = bgid_;
+    }
+
+    void callback(const io_uring_cqe* cqe) noexcept override {
+      if (cqe->res == 0) {
+        *eofReceived_ = true;
+        LOG(INFO) << "EOF received";
+        return;
+      }
+
+      if (cqe->res > 1024) {
+        *gotBundle_ = true;
+      }
+
+      uint16_t bufId = cqe->flags >> IORING_CQE_BUFFER_SHIFT;
+      bool hasMore = cqe->flags & IORING_CQE_F_BUF_MORE;
+      auto buf = bufProvider_->getIoBuf(bufId, cqe->res, hasMore);
+
+      if (buf) {
+        buf->coalesce();
+        received_->append(
+            reinterpret_cast<const char*>(buf->data()), buf->length());
+      }
+    }
+
+    void callbackCancelled(const io_uring_cqe*) noexcept override {}
+
+   private:
+    int fd_;
+    uint16_t bgid_;
+    folly::IoUringBufferProviderBase* bufProvider_;
+    std::string* received_;
+    bool* gotBundle_;
+    bool* eofReceived_;
+  };
+
+  auto reader = std::make_unique<SimpleReader>(
+      accepted_fd,
+      bufferProvider->gid(),
+      bufferProvider,
+      &received,
+      &gotBundle,
+      &eofReceived);
+  backend->submit(*reader);
+
+  ssize_t sent = send(client_fd, expected.data(), expected.size(), 0);
+  ASSERT_EQ(sent, expected.size()) << "Failed to send all data";
+
+  close(client_fd);
+  client_fd = -1;
+
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  EXPECT_EQ(received.size(), expected.size()) << "Should receive all data";
+  EXPECT_EQ(received, expected) << "Data should match exactly";
+  EXPECT_TRUE(gotBundle) << "Should detect at least one bundle";
+  EXPECT_TRUE(eofReceived) << "Should receive EOF";
+}
+
 TEST(IoUringBackend, DeferTaskRun) {
   if (!folly::IoUringBackend::kernelSupportsDeferTaskrun()) {
     return;

@@ -141,6 +141,7 @@ AsyncIoUringSocket::ReadSqe::ReadSqe(AsyncIoUringSocket* parent)
     : IoSqeBase(IoSqeBase::Type::Read), parent_(parent) {
   supportsMultishotRecv_ = parent->options_.multishotRecv &&
       parent->backend_->kernelSupportsRecvmsgMultishot();
+  useBundles_ = parent->options_.useBundles;
   // If the backend for this socket has an IoUringZeroCopyBufferPool, then zero
   // copy is enabled implicitly.
   supportsZeroCopyRx_ = parent->backend_->zcBufferPool() != nullptr;
@@ -631,8 +632,9 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
       }
     } else if (res > 0 && lastUsedBufferProvider_) {
       // must take the buffer
+      uint16_t bufId = flags >> IORING_CQE_BUFFER_SHIFT;
       appendReadData(
-          lastUsedBufferProvider_->getIoBuf(flags >> 16, res, hasMore),
+          lastUsedBufferProvider_->getIoBuf(bufId, res, hasMore),
           queuedReceivedData_);
       buffer_guard.dismiss();
     }
@@ -690,11 +692,10 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
         buffer_guard.dismiss();
       } else if (lastUsedBufferProvider_) {
         auto bufId = flags >> 16;
-        VLOG(9) << "Processing buffer completion: bufId=" << bufId
-                << " res=" << res << " hasMore=" << hasMore;
         sendReadBuf(
             lastUsedBufferProvider_->getIoBuf(bufId, res, hasMore),
             queuedReceivedData_);
+
         buffer_guard.dismiss();
       } else {
         // slow path as must have run out of buffers
@@ -771,6 +772,10 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
         } else {
           ioprio_flags = 0;
           used_len = maxSize_;
+        }
+
+        if (useBundles_) {
+          ioprio_flags |= IORING_RECVSEND_BUNDLE;
         }
 
         ::io_uring_prep_recv(sqe, fd, nullptr, used_len, 0);

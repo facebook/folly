@@ -174,7 +174,7 @@ void IoUringProvidedBufferRing::returnBuffer(uint16_t i) noexcept {
   VLOG(9) << "returnBuffer(" << i << ")@" << this_idx;
 }
 
-std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
+std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBufSingle(
     uint16_t i, size_t length, bool hasMore) noexcept {
   std::unique_ptr<IOBuf> ret;
   DCHECK(!wantsShutdown_);
@@ -182,11 +182,18 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
       << "Buffer index " << i << " exceeds buffer count "
       << buffer_.bufferCount();
 
+  VLOG(5)
+      << "Creating IoBuf single: bufId=" << i << " length=" << length
+      << " hasMore=" << hasMore << " useIncremental=" << useIncremental_
+      << (useIncremental_
+              ? (" offset=" + folly::to<std::string>(bufferStates_[i].offset))
+              : "")
+      << " dataPtr=" << (void*)getData(i);
+
   auto free_fn = [](void*, void* userData) {
     auto* bufferState = static_cast<BufferState*>(userData);
     IoUringProvidedBufferRing* parent = bufferState->parent;
     uint16_t bufId = bufferState->bufId;
-
     parent->decBufferState(bufId);
   };
 
@@ -206,6 +213,85 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
   incBufferState(i, hasMore, length);
 
   return ret;
+}
+
+std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
+    uint16_t startBufId, size_t totalLength, bool hasMore) noexcept {
+  if (totalLength <= sizePerBuffer_) {
+    return getIoBufSingle(startBufId, totalLength, hasMore);
+  }
+
+  size_t numBuffersInBundle =
+      (totalLength + sizePerBuffer_ - 1) / sizePerBuffer_;
+
+  VLOG(5)
+      << "Creating IoBuf bundle: startBufId=" << startBufId
+      << " totalLength=" << totalLength << " sizePerBuffer=" << sizePerBuffer_
+      << " Bundle will span " << numBuffersInBundle << " buffers: "
+      << startBufId << " to " << (startBufId + numBuffersInBundle - 1);
+
+  auto free_fn = [](void*, void* userData) {
+    auto* bufferState = static_cast<BufferState*>(userData);
+    IoUringProvidedBufferRing* parent = bufferState->parent;
+    uint16_t bufId = bufferState->bufId;
+    VLOG(9) << "Regular buffer deleter called for bufId=" << bufId;
+    parent->decBufferState(bufId);
+  };
+
+  std::unique_ptr<IOBuf> head;
+  size_t remainingLength = totalLength;
+  uint16_t currentBufId = startBufId;
+  size_t bufferIndex = 0;
+
+  while (remainingLength > 0) {
+    DCHECK_LT(currentBufId, buffer_.bufferCount())
+        << "Buffer index " << currentBufId << " exceeds buffer count "
+        << buffer_.bufferCount();
+
+    BufferState* bufferState = &bufferStates_[currentBufId];
+    const char* bufferStart = getData(currentBufId);
+    unsigned int currentOffset = 0;
+    size_t availableInBuffer = sizePerBuffer_;
+
+    if (useIncremental_) {
+      currentOffset = bufferState->offset;
+      availableInBuffer = sizePerBuffer_ - currentOffset;
+      VLOG(9) << "Incremental buffer[" << bufferIndex
+              << "]: bufId=" << currentBufId << " offset=" << currentOffset
+              << " availableInBuffer=" << availableInBuffer;
+    }
+
+    const char* dataPtr = bufferStart + currentOffset;
+    size_t currentChunkSize = std::min(remainingLength, availableInBuffer);
+    bool isLastChunk = (remainingLength <= availableInBuffer);
+
+    VLOG(9) << "Bundle buffer[" << bufferIndex << "]: bufId=" << currentBufId
+            << " chunkSize=" << currentChunkSize << " remaining="
+            << remainingLength << " isLastChunk=" << isLastChunk
+            << " dataPtr=" << (void*)dataPtr << " offset=" << currentOffset;
+
+    std::unique_ptr<IOBuf> chunk;
+    chunk = IOBuf::takeOwnership(
+        (void*)dataPtr,
+        useIncremental_ ? currentChunkSize : sizePerBuffer_,
+        currentChunkSize,
+        free_fn,
+        bufferState);
+
+    chunk->markExternallySharedOne();
+    if (!head) {
+      head = std::move(chunk);
+    } else {
+      head->appendToChain(std::move(chunk));
+    }
+
+    incBufferState(currentBufId, hasMore && isLastChunk, currentChunkSize);
+    remainingLength -= currentChunkSize;
+    currentBufId = (currentBufId + 1) & (buffer_.bufferCount() - 1);
+    bufferIndex++;
+  }
+
+  return head;
 }
 
 void IoUringProvidedBufferRing::initialRegister() {
@@ -260,19 +346,22 @@ void IoUringProvidedBufferRing::incBufferState(
             << " hasMore=" << hasMore << " bytesConsumed=" << bytesConsumed;
   }
 
-  // No need to handle regular buffers, since it is never really incremented
-  // beyond the original assingment of 1 instead of 0.
+  // No need to handle regular buffers, since it is never really
+  // incremented beyond the original assingment of 1 instead of 0.
 }
 
 void IoUringProvidedBufferRing::decBufferState(uint16_t bufId) noexcept {
+  VLOG(9) << "DEC BUFFER STATE: bufId=" << bufId << " useIncremental_="
+          << useIncremental_ << " wantsShutdown_=" << wantsShutdown_;
+
   returnedBuffers_++;
+
   if (!useIncremental_ || wantsShutdown_) {
     returnBuffer(bufId);
     return;
   }
+
   uint16_t oldRefCount = bufferStates_[bufId].refCount.fetch_sub(1);
-  VLOG(9) << "Buffer " << bufId << " refcount=" << oldRefCount - 1
-          << " (decremented)";
   if (oldRefCount == 1) {
     returnBuffer(bufId);
   }
