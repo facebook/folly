@@ -22,6 +22,8 @@
 
 #include <folly/Benchmark.h>
 #include <folly/concurrency/AtomicSharedPtr.h>
+#include <folly/container/Enumerate.h>
+#include <folly/container/F14Set.h>
 #include <folly/portability/GFlags.h>
 
 using namespace folly;
@@ -250,8 +252,8 @@ BENCHMARK_DRAW_LINE();
 /// fragment the memory and scatter hprec allocations across cachelines with no
 /// consistent stride, if hprecs are allocated separately and linked together
 template <template <typename> class Atom>
-FOLLY_NOINLINE static void grow_scattered_hprec_list(
-    hazptr_domain<Atom>& domain, size_t hprec_count) {
+FOLLY_NOINLINE static std::vector<hazptr_holder<Atom>>
+grow_scattered_hprec_list(hazptr_domain<Atom>& domain, size_t hprec_count) {
   using hprec_layout = aligned_storage_for_t<hazptr_rec<std::atomic>>;
 
   std::vector<hazptr_holder<Atom>> holders;
@@ -272,10 +274,13 @@ FOLLY_NOINLINE static void grow_scattered_hprec_list(
     /// create hazard pointer, which possibly allocates its hprec
     holders.emplace_back(make_hazard_pointer(domain));
   }
+
+  return holders;
 }
 
 /// benchmark hazptr domain cleanup with various hprec-sequence sizes
-void hazptr_cleanup_empty_with_hprec_seq(size_t iters, size_t hprec_count) {
+static void hazptr_cleanup_empty_with_hprec_seq(
+    size_t iters, size_t hprec_count) {
   BenchmarkSuspender braces;
 
   hazptr_domain<> domain;
@@ -301,6 +306,62 @@ BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 16384)
 BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 65536)
 BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 262144)
 BENCHMARK_PARAM(hazptr_cleanup_empty_with_hprec_seq, 1048576)
+
+BENCHMARK_DRAW_LINE();
+
+/// benchmark hazptr domain cleanup with sqrt(N) protected pointers
+/// selected uniformly at random from N hprecs
+static void hazptr_cleanup_sqrt_with_hprec_seq(
+    size_t iters, size_t hprec_count) {
+  BenchmarkSuspender braces;
+
+  size_t protected_count = static_cast<size_t>(std::sqrt(hprec_count));
+
+  /// create sqrt(N) objects to protect
+  std::vector<std::unique_ptr<TestObj>> protected_objects;
+  protected_objects.reserve(protected_count);
+  for (size_t i = 0; i < protected_count; ++i) {
+    protected_objects.push_back(std::make_unique<TestObj>(i));
+  }
+
+  /// select sqrt(N) holders uniformly at random to protect objects
+  std::mt19937_64 rng;
+  std::uniform_int_distribution<size_t> dist(0, hprec_count - 1);
+  folly::F14FastSet<size_t> protected_indices;
+  protected_indices.reserve(protected_count);
+  while (protected_indices.size() < protected_count) {
+    protected_indices.insert(dist(rng));
+  }
+
+  hazptr_domain<> domain;
+  auto holders = grow_scattered_hprec_list(domain, hprec_count);
+
+  /// protect the objects using the randomly selected holders
+  for (auto [objidx, hpidx] : enumerate(protected_indices)) {
+    std::atomic<TestObj*> ptr{protected_objects[objidx].get()};
+    holders[hpidx].protect(ptr);
+  }
+
+  braces.dismissing([&] {
+    while (iters--) {
+      auto* obj = new TestObj(iters);
+      obj->retire(domain);
+      domain.cleanup(); // calls load_hazptr_vals on possibly-scattered hprecs
+    }
+  });
+}
+
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 1)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 4)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 16)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 64)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 256)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 1024)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 4096)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 16384)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 65536)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 262144)
+BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 1048576)
 
 int main(int argc, char* argv[]) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);

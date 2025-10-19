@@ -216,6 +216,8 @@ fbcode_target(
     deps = [
         "//folly:benchmark",
         "//folly/concurrency:atomic_shared_ptr",
+        "//folly/container:enumerate",
+        "//folly/container:f14_hash",
         "//folly/portability:gflags",
         "//folly/synchronization:hazptr",
     ],
