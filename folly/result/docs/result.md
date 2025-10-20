@@ -12,8 +12,9 @@ or Niall Douglas's C++ [`boost::outcome`
 
 Folly veterans can think of `result` as an improved `Try`, with a smooth enough
 user experience to use as your main error-handling pattern in synchronous code.
-For async `folly::coro` code, `co_await_result(fn())` / `or_unwind(result)` /
-`co_result(result)` supersede `co_awaitTry(fn())` and `co_result(Try)`.
+For async `folly::coro` code, `value_or_error_or_stopped(fn())` /
+`or_unwind(result)` / `co_result(result)` supersede `co_awaitTry(fn())` and
+`co_result(Try)`.
 
 The intent of `result` is most similar to `boost::outcome`, and indeed its
 [introduction](https://www.boost.org/doc/libs/1_87_0/libs/outcome/doc/html/index.html
@@ -142,7 +143,8 @@ Where handling exceptions is required, `result` can replace `Try`, with
 slightly better ergonomics:
 
 ```cpp
-result<int> intRes = co_await coro::co_await_result(taskReturningInt());
+result<int> intRes = co_await coro::value_or_error_or_stopped(
+    taskReturningInt());
 if (auto* ex = get_exception<MyError>(intRes)) {
   /* handle ex */
 } else {
@@ -200,8 +202,9 @@ In bullets, `result<T>`:
   - Integrates with `now_task`, `value_task` (or the legacy `Task`) via
       * `const auto& v = co_await or_unwind(res)` -- get `res`'s value.
         Use `std::move(res)` if the error path profiles hot.
-      * `r = co_await co_await_result(someCoro())` -- await without throwing,
-        though if you won't handle *any* errors, keep using `co_nothrow`.
+      * `r = co_await value_or_error_or_stopped(someCoro())` -- await without
+        throwing, though if you won't handle *any* errors, keep using
+        `co_nothrow`.
       * `co_yield co_result(res)` propagate a value or error to your awaiter.
 
   - Supports migration from `Try` via `try_to_result` and `result_to_try`.
@@ -428,7 +431,8 @@ path, those finer points of performance are negligible, so choose readability:
 ### Interoperate with `coro::now_task`, `value_task` (or legacy `Task`)
 
   - To pass all errors to the parent, use `co_await co_nothrow(childTask())`.
-  - Get a task's `result` via `res = co_await co_await_result(childTask())`.
+  - Get a task's `result` via `res = co_await
+    value_or_error_or_stopped(childTask())`.
   - Get the value from a `result` via `co_await or_unwind` just as in `result`
     coros; error & stopped states propagate to the parent task.
   - In any `Task-like<T>`, `co_yield co_result(res)` cheaply forwards the

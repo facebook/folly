@@ -17,13 +17,13 @@
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 
-#include <folly/coro/AwaitResult.h>
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Invoke.h>
 #include <folly/coro/Mutex.h>
 #include <folly/coro/SharedMutex.h>
 #include <folly/coro/Task.h>
+#include <folly/coro/ValueOrError.h>
 #include <folly/coro/detail/InlineTask.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
@@ -437,7 +437,7 @@ TEST_F(TaskTest, TaskOfLvalueReferenceAsResult) {
     };
 
     int value = 123;
-    auto&& res = co_await co_await_result(returnIntRef(value));
+    auto&& res = co_await value_or_error_or_stopped(returnIntRef(value));
     CHECK(res.has_value());
     CHECK_EQ(&value, &res.value_or_throw());
     CHECK_EQ(&value, &(co_await folly::or_unwind(std::move(res))));

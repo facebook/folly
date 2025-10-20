@@ -105,12 +105,12 @@ class Receiver<TValue>::Waiter : public detail::IChannelCallback {
     return std::move(result.value());
   }
 
-  // FIXME: The default implementation of `co_await_result` will convert the
-  // `getResult()` branch below that returns an empty `Try` into an error
-  // state.  That's because the normal `folly::coro` contract does not allow
-  // producing an empty `Try`.  Therefore, any future `await_resume_result()`
-  // implementation should investigate the intended semantics of this
-  // `getResult()` logic, and provide better handling:
+  // FIXME: The default implementation of `value_or_error_or_stopped` will
+  // convert the `getResult()` branch below that returns an empty `Try` into an
+  // error state.  That's because the normal `folly::coro` contract does not
+  // allow producing an empty `Try`.  Therefore, any future
+  // `await_resume_result()` implementation should investigate the intended
+  // semantics of this `getResult()` logic, and provide better handling:
   //
   //   if (!state.receiver) {
   //     return Try<TValue>();

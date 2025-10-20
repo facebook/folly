@@ -261,29 +261,6 @@ non_fbcode_target(
 
 ### this line is a hint for source control merge
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "await_result",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = ["AwaitResult.h"],
-    exported_deps = [
-        ":via_if_async",
-        "//xplat/folly/result:try",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "await_result",
-    headers = ["AwaitResult.h"],
-    exported_deps = [
-        ":via_if_async",
-        "//folly/result:try",
-    ],
-)
-
-### this line is a hint for source control merge
-
 fbcode_target(
     _kind = cpp_library,
     name = "base_promise",
@@ -1783,6 +1760,29 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:task",
         "//xplat/folly/fibers:semaphore",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "value_or_error",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["ValueOrError.h"],
+    exported_deps = [
+        ":via_if_async",
+        "//xplat/folly/result:try",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "value_or_error",
+    headers = ["ValueOrError.h"],
+    exported_deps = [
+        ":via_if_async",
+        "//folly/result:try",
     ],
 )
 

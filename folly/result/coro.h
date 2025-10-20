@@ -43,13 +43,15 @@
 ///
 ///   auto v = co_await co_nothrow(asyncMayError()); // best practice
 ///   // equivalent, but too long
-///   auto v = co_await or_unwind(co_await co_await_result(asyncMayError()));
+///   auto v = co_await or_unwind(
+///       co_await value_or_error_or_stopped(asyncMayError()));
 ///
 /// However, when you are calling synchronous `result` functions, or need to
 /// efficiently handle **some** async errors, `or_unwind` is your friend:
 ///
-///   auto res = syncResultFn(); // or `co_await co_await_result(asyncFn())`
-///   if (auto* ex = get_exception<MyError>(res)) {
+///   // Or: `res = co_await value_or_error_or_stopped(asyncFn());`
+///   auto res = syncResultFn();
+///    if (auto* ex = get_exception<MyError>(res)) {
 ///     /* handle ex */
 ///   } else {
 ///     auto v = co_await or_unwind(std::move(res)); // propagate unhandled

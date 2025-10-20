@@ -79,7 +79,8 @@
 ///       - `co_await stopped_result` or `non_value_result{YourErr{}}` to
 ///         end the coroutine with an error without throwing.
 ///     * In `folly::coro` coroutines:
-///       - `co_await co_await_result(x())` makes `result<X>`, does not throw.
+///       - `co_await value_or_error_or_stopped(x())` makes `result<X>`, does
+///         not throw.
 ///       - `co_yield co_result(std::move(res))` completes with a `result<T>`.
 ///     * While you should strongly prefer to write `result<T>` coroutines,
 ///       propagation in non-coroutine `result<T>` functions is also easy:

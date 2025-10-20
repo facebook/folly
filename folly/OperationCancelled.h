@@ -40,7 +40,8 @@ namespace folly {
 ///   - To avoid depending on `OperationCancelled` in code that would do
 ///     `try-catch` in `folly::coro` coroutines, do this instead:
 ///
-///       auto res = co_await coro::co_await_result(mightGetCancelled());
+///       auto res = co_await coro::value_or_error_or_stopped(
+///           mightGetCancelled());
 ///       if (auto* ex = get_exception<MyErr>(res)) {
 ///         // HANDLE ERROR HERE
 ///       } else if (res.has_stopped()) {

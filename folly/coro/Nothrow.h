@@ -30,7 +30,7 @@ template <typename T>
 class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable;
 
 // The `!noexcept_awaitable_v` constraint stops `co_nothrow()` from wrapping
-// `co_await_result`, `co_awaitTry`, `AsNoexcept`, etc.
+// `value_or_error_or_stopped`, `co_awaitTry`, `AsNoexcept`, etc.
 //
 // Rationale: Instead, we could do:
 //   - (not very useful) Nothing -- modeling the behavior that the exception

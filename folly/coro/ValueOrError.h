@@ -23,11 +23,12 @@
 
 namespace folly::coro {
 
-/// `co_await_result` is the `result<T>` analog of the older `co_awaitTry`.
+/// `value_or_error_or_stopped` is the `result<T>` analog of the older
+/// `co_awaitTry`.
 ///
-/// In a `folly::coro` async coroutine, use `co_await_result` like so:
+/// In a `folly::coro` async coroutine, use `value_or_error_or_stopped` like so:
 ///
-///   result<int> res = co_await co_await_result(taskReturningInt());
+///   result<int> res = co_await value_or_error_or_stopped(taskReturningInt());
 ///   if (auto* ex = get_exception<MyError>(res)) {
 ///     /* handle ex */
 ///   } else {
@@ -40,8 +41,9 @@ namespace folly::coro {
 ///  - `auto& v = co_await co_ready(r)` from `Ready.h` -- given a `result<T>`,
 ///    unpack the value, or propagate any error to our awaiter.
 ///
-/// The purpose of `co_await_result` is to handle errors from a child task via
-/// `result<T>`, rather than through `try {} catch {}`.  Some reasons to do so:
+/// The purpose of `value_or_error_or_stopped` is to handle errors from a child
+/// task via `result<T>`, rather than through `try {} catch {}`.  Some reasons
+/// to do so:
 ///   - Your error-handling APIs (logging, retry, etc) use `result<T>`.
 ///   - You wish to avoid the ~microsecond cost of thrown exceptions,
 ///     applicable only when your error path is hot, and the child uses
@@ -93,19 +95,11 @@ class ResultAwaiter {
   explicit ResultAwaiter(Awaitable&& awaiter)
       : awaiter_(get_awaiter(static_cast<Awaitable&&>(awaiter))) {}
 
-  // clang-format off
-  auto await_ready() FOLLY_DETAIL_FORWARD_BODY(awaiter_.await_ready())
-
-  template <typename Promise>
-  auto await_suspend(coroutine_handle<Promise> coro)
-      FOLLY_DETAIL_FORWARD_BODY(awaiter_.await_suspend(coro))
-      // clang-format on
-
-      template <
-          typename Awaiter2 = Awaiter,
-          typename Result =
-              decltype(FOLLY_DECLVAL(Awaiter2&).await_resume_result())>
-      Result await_resume() noexcept(noexcept(awaiter_.await_resume_result())) {
+  template <
+      typename Awaiter2 = Awaiter,
+      typename Result =
+          decltype(FOLLY_DECLVAL(Awaiter2&).await_resume_result())>
+  Result await_resume() noexcept(noexcept(awaiter_.await_resume_result())) {
     return awaiter_.await_resume_result();
   }
 
@@ -119,19 +113,27 @@ class ResultAwaiter {
   {
     return try_to_result(awaiter_.await_resume_try());
   }
+
+  // clang-format off
+  auto await_ready() FOLLY_DETAIL_FORWARD_BODY(awaiter_.await_ready())
+
+  template <typename Promise>
+  auto await_suspend(coroutine_handle<Promise> coro)
+      FOLLY_DETAIL_FORWARD_BODY(awaiter_.await_suspend(coro))
+  // clang-format on
 };
 
 template <typename T>
-class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ResultAwaitable
-    : public CommutativeWrapperAwaitable<ResultAwaitable, T> {
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorOrStopped
+    : public CommutativeWrapperAwaitable<ValueOrErrorOrStopped, T> {
  public:
-  using CommutativeWrapperAwaitable<ResultAwaitable, T>::
+  using CommutativeWrapperAwaitable<ValueOrErrorOrStopped, T>::
       CommutativeWrapperAwaitable;
 
   template <
       typename Self,
       std::enable_if_t<
-          std::is_same_v<remove_cvref_t<Self>, ResultAwaitable>,
+          std::is_same_v<remove_cvref_t<Self>, ValueOrErrorOrStopped>,
           int> = 0,
       typename T2 = like_t<Self, T>,
       std::enable_if_t<is_awaitable_v<T2>, int> = 0>
@@ -147,9 +149,9 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ResultAwaitable
 // IMPORTANT: If you need an `Awaitable&&` overload, you must bifurcate this
 // API on `must_await_immediately_v`, see `co_awaitTry` for an example.
 template <typename Awaitable>
-detail::ResultAwaitable<Awaitable> co_await_result(
+detail::ValueOrErrorOrStopped<Awaitable> value_or_error_or_stopped(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {
-  return detail::ResultAwaitable<Awaitable>{
+  return detail::ValueOrErrorOrStopped<Awaitable>{
       folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))()};
 }
 

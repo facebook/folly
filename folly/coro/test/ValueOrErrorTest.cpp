@@ -14,68 +14,68 @@
  * limitations under the License.
  */
 
-#include <folly/coro/AwaitResult.h>
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Result.h>
+#include <folly/coro/ValueOrError.h>
 #include <folly/coro/safe/NowTask.h>
 
-/// Besides `co_await_result`, this test also covers the `folly::result<T>`
-/// integration with `coro::co_result` from `coro/Result.h`.
+/// Besides `value_or_error_or_stopped`, this test also covers the
+/// `folly::result<T>` integration with `coro::co_result` from `coro/Result.h`.
 
 #if FOLLY_HAS_RESULT
 
 namespace folly::coro {
 
-CO_TEST(AwaitResultTest, co_await_result_of_error) {
+CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_error) {
   auto voidErrorTask = []() -> now_task<void> {
     co_yield co_error(std::runtime_error("foo"));
   };
   { // Capture the error
-    auto res = co_await co_await_result(voidErrorTask());
+    auto res = co_await value_or_error_or_stopped(voidErrorTask());
     EXPECT_STREQ("foo", get_exception<std::runtime_error>(res)->what());
   }
   { // Also test `coro::co_result` integration
-    auto res = co_await co_await_result([&]() -> now_task<void> {
-      co_yield co_result(co_await co_await_result(voidErrorTask()));
+    auto res = co_await value_or_error_or_stopped([&]() -> now_task<void> {
+      co_yield co_result(co_await value_or_error_or_stopped(voidErrorTask()));
     }());
     EXPECT_STREQ("foo", get_exception<std::runtime_error>(res)->what());
   }
 }
 
-CO_TEST(AwaitResultTest, co_await_result_of_value) {
+CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_value) {
   // Return a move-only thing to make sure we don't copy
   auto valueTask = []() -> now_task<std::unique_ptr<int>> {
     co_return std::make_unique<int>(1337);
   };
   { // Capture the value
-    auto res = co_await co_await_result(valueTask());
+    auto res = co_await value_or_error_or_stopped(valueTask());
     // Real code should use `co_await co_ready(res)` to unpack!
     EXPECT_EQ(1337, *res.value_or_throw());
   }
   { // Also test `coro::co_result` integration
-    auto res =
-        co_await co_await_result([&]() -> now_task<std::unique_ptr<int>> {
-          co_yield co_result(co_await co_await_result(valueTask()));
+    auto res = co_await value_or_error_or_stopped(
+        [&]() -> now_task<std::unique_ptr<int>> {
+          co_yield co_result(co_await value_or_error_or_stopped(valueTask()));
         }());
     EXPECT_EQ(1337, *res.value_or_throw());
   }
 }
 
-CO_TEST(AwaitResultTest, co_await_result_of_void) {
+CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_void) {
   int numAwaited = 0;
   auto voidTask = [&]() -> now_task<void> {
     ++numAwaited;
     co_return;
   };
   { // Capturing a "value" completion
-    auto res = co_await co_await_result(voidTask());
+    auto res = co_await value_or_error_or_stopped(voidTask());
     static_assert(std::is_same_v<decltype(res), result<>>);
     EXPECT_TRUE(res.has_value());
     EXPECT_EQ(1, numAwaited);
   }
   { // Also test `coro::co_result` integration
-    auto res = co_await co_await_result([&]() -> now_task<void> {
-      co_yield co_result(co_await co_await_result(voidTask()));
+    auto res = co_await value_or_error_or_stopped([&]() -> now_task<void> {
+      co_yield co_result(co_await value_or_error_or_stopped(voidTask()));
     }());
     static_assert(std::is_same_v<decltype(res), result<>>);
     EXPECT_TRUE(res.has_value());
@@ -83,34 +83,36 @@ CO_TEST(AwaitResultTest, co_await_result_of_void) {
   }
 }
 
-CO_TEST(AwaitResultTest, co_await_result_stopped) {
+CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_stopped) {
   auto stoppedTask = [&]() -> now_task<void> {
     co_yield co_cancelled;
     LOG(FATAL) << "not reached";
   };
   { // Capturing a "stopped" completion
-    auto res = co_await co_await_result(stoppedTask());
+    auto res = co_await value_or_error_or_stopped(stoppedTask());
     EXPECT_TRUE(res.has_stopped());
   }
   { // Also test `coro::co_result` integration
-    auto res = co_await co_await_result([&]() -> now_task<void> {
-      co_yield co_result(co_await co_await_result(stoppedTask()));
+    auto res = co_await value_or_error_or_stopped([&]() -> now_task<void> {
+      co_yield co_result(co_await value_or_error_or_stopped(stoppedTask()));
       LOG(FATAL) << "not reached";
     }());
     EXPECT_TRUE(res.has_stopped());
   }
 }
 
-TEST(AwaitResultTest, co_nothrow_co_await_result) {
+TEST(ValueOrErrorTest, co_nothrow_value_or_error_or_stopped) {
   bool ran = []<typename T>(T) { // `requires` does SFINAE inside templates
     auto errorTask = [&]() -> now_task<> {
       co_yield co_error(std::runtime_error("foo"));
     };
     (void)co_nothrow(errorTask()); // compile
-    (void)co_await_result(errorTask()); // compiles
-    static_assert(!requires { co_nothrow(co_await_result(errorTask())); });
+    (void)value_or_error_or_stopped(errorTask()); // compiles
+    static_assert(!requires {
+      co_nothrow(value_or_error_or_stopped(errorTask()));
+    });
 #if 0 // manual test equivalent of above `static_assert`
-    (void)co_nothrow(co_await_result(errorTask())); // constraint failure
+    (void)co_nothrow(value_or_error_or_stopped(errorTask())); // constraint failure
 #endif
     return true;
   }(5);

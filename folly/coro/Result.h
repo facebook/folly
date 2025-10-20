@@ -35,7 +35,7 @@ class co_result final {
   }
 
 #if FOLLY_HAS_RESULT
-  // Covered in `AwaitResultTest.cpp`, unlike the rest of this file, which is
+  // Covered in `ValueOrErrorTest.cpp`, unlike the rest of this file, which is
   // covered in `TaskTest.cpp`.
   template <std::same_as<folly::result<T>> U> // no implicit ctors for `result`
   explicit co_result(U result) noexcept(

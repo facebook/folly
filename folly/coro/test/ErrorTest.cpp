@@ -16,9 +16,9 @@
 
 #include <folly/Portability.h>
 
-#include <folly/coro/AwaitResult.h>
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Result.h>
+#include <folly/coro/ValueOrError.h>
 #include <folly/coro/safe/NowTask.h>
 
 #include <type_traits>
@@ -48,8 +48,9 @@ TEST(CoErrorTest, constructible) {
 CO_TEST(CoCancellationTest, propagateOperationCancelled) {
   auto cancelledTask = []() -> now_task<> { co_yield co_cancelled; };
 
-  // `co_await_result` & `co_awaitTry` interrupt cancellation
-  EXPECT_TRUE((co_await co_await_result(cancelledTask())).has_stopped());
+  // `value_or_error_or_stopped` & `co_awaitTry` interrupt cancellation
+  EXPECT_TRUE(
+      (co_await value_or_error_or_stopped(cancelledTask())).has_stopped());
   EXPECT_TRUE(
       // Prefer `has_stopped()` in coro code.  Outside of coro code, catching
       // `OperationCancelled` is OK.

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/coro/AwaitResult.h>
 #include <folly/coro/GtestHelpers.h>
+#include <folly/coro/ValueOrError.h>
 #include <folly/coro/safe/NowTask.h>
 #include <folly/result/coro.h>
 
@@ -33,15 +33,16 @@ CO_TEST(ReadyTest, orUnwindOfErrorResult) {
   };
   result<> r1 = non_value_result{std::runtime_error{"foo"}};
   { // pass lvalue
-    auto r2 = co_await co_await_result(errorTaskFn(r1));
+    auto r2 = co_await value_or_error_or_stopped(errorTaskFn(r1));
     EXPECT_STREQ("foo", get_exception<std::runtime_error>(r2)->what());
   }
   { // pass const lvalue
-    auto r2 = co_await co_await_result(errorTaskFn(std::as_const(r1)));
+    auto r2 =
+        co_await value_or_error_or_stopped(errorTaskFn(std::as_const(r1)));
     EXPECT_STREQ("foo", get_exception<std::runtime_error>(r2)->what());
   }
   { // pass rvalue
-    auto r2 = co_await co_await_result(errorTaskFn(std::move(r1)));
+    auto r2 = co_await value_or_error_or_stopped(errorTaskFn(std::move(r1)));
     EXPECT_STREQ("foo", get_exception<std::runtime_error>(r2)->what());
   }
 }
@@ -92,10 +93,11 @@ CO_TEST(ReadyTest, orUnwindStopped) {
     co_return 42;
   };
   result<> res = stopped_result;
-  EXPECT_TRUE((co_await co_await_result(taskFn(res))).has_stopped());
-  EXPECT_TRUE(
-      (co_await co_await_result(taskFn(std::as_const(res)))).has_stopped());
-  EXPECT_TRUE((co_await co_await_result(taskFn(std::move(res)))).has_stopped());
+  EXPECT_TRUE((co_await value_or_error_or_stopped(taskFn(res))).has_stopped());
+  EXPECT_TRUE((co_await value_or_error_or_stopped(taskFn(std::as_const(res))))
+                  .has_stopped());
+  EXPECT_TRUE((co_await value_or_error_or_stopped(taskFn(std::move(res))))
+                  .has_stopped());
 }
 
 } // namespace folly::coro
