@@ -20,6 +20,7 @@
 #include <folly/coro/CurrentExecutor.h>
 #include <folly/coro/Error.h>
 #include <folly/coro/Nothrow.h>
+#include <folly/coro/ValueOrError.h>
 
 /// Coroutine promise implementation shared between tasks and async generators.
 /// Only the `await_transform` signatures here are of interest to end-users.
@@ -110,6 +111,12 @@ class BasePromise {
     bypassThrowing_.requestDueToNothrow<Awaitable>();
     return await_transform(
         folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());
+  }
+
+  template <typename Awaitable>
+  auto await_transform(ValueOrError<Awaitable> awaitable) {
+    bypassThrowing_.requestDueToValueOrError();
+    return await_transform(std::move(awaitable).toValueOrErrorImpl());
   }
 
   auto await_transform(co_current_executor_t) noexcept {

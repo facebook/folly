@@ -144,10 +144,91 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorOrStopped
   using folly_private_noexcept_awaitable_t = std::true_type;
 };
 
+// The awaitable backing `ValueOrError`, see that doc for why it's separate.
+//
+// NB: Besides `folly_private_noexcept_awaitable_t`, this is identical to
+// `ValueOrErrorOrStopped`, but the way the `CommutativeWrapperAwaitable`
+// template is set up, it's a lot of code to parameterize it.
+//
+// IMPORTANT: this will never return "stopped" since `BasePromise` sets up
+// `OperationCancelled` to unwind directly to the parent.
+template <typename T>
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorImpl
+    : public CommutativeWrapperAwaitable<ValueOrErrorImpl, T> {
+ public:
+  using CommutativeWrapperAwaitable<ValueOrErrorImpl, T>::
+      CommutativeWrapperAwaitable;
+
+  template <
+      typename Self,
+      std::enable_if_t<
+          std::is_same_v<remove_cvref_t<Self>, ValueOrErrorImpl>,
+          int> = 0,
+      typename T2 = like_t<Self, T>,
+      std::enable_if_t<is_awaitable_v<T2>, int> = 0>
+  friend ResultAwaiter<T2> operator co_await(Self && self) {
+    return ResultAwaiter<T2>{static_cast<Self&&>(self).inner_};
+  }
+
+  // Future: Cannot mark `folly_private_noexcept_awaitable_t` since it
+  // completes with "stopped" which may throw in contexts like `blocking_wait`.
+  // Once the `awaitable_completions_v` refactor is complete, this should
+  // remove the "error" completion from the underlying awaitable.
+};
+
+// Similarly to NothrowAwaitable, this deliberately omits `co_await` and relies
+// on `BasePromise::await_transform`.  The goal is to prevent its use in
+// contexts that cannot provide nothrow-propagation semantics for stopped
+// coros.  Gating on `BasePromise` provides a tightly controlled allowlist of
+// where this can be awaited, and how.
+//
+// For a specific example, consider `blocking_wait(value_or_error(...))` --
+// this should either not compile, or throw on `OperationCancelled`.  The
+// latter "sometimes throwing" semantics would be a surprising footgun, so we
+// instead require the obvious contract of `value_or_error_or_stopped()` here.
+template <typename T>
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrError
+    : public CommutativeWrapperAwaitable<ValueOrError, T> {
+ public:
+  using CommutativeWrapperAwaitable<ValueOrError, T>::
+      CommutativeWrapperAwaitable;
+
+ protected:
+  template <typename>
+  friend class BasePromise;
+  ValueOrErrorImpl<T> toValueOrErrorImpl() && {
+    return ValueOrErrorImpl<T>{folly::ext::must_use_immediately_unsafe_mover(
+        std::move(this->inner_))()};
+  }
+
+  // Future: See `ValueOrErrorImpl` regarding
+  // `folly_private_noexcept_awaitable_t` and `awaitable_completions_v`.
+};
+
 } // namespace detail
 
-// IMPORTANT: If you need an `Awaitable&&` overload, you must bifurcate this
-// API on `must_await_immediately_v`, see `co_awaitTry` for an example.
+// BEFORE CHANGING: If you need an `Awaitable&&` overload, you must bifurcate
+// these APIs on `must_await_immediately_v`, see `co_awaitTry` for an example.
+
+/// When awaited, returns a `result<T>` in a value or an error state, but never
+/// `has_stopped()` (aka `OperationCancelled`).  If `awaitable` reports as
+/// "stopped", the awaiting coroutine will be promptly torn down, **without
+/// throwing**, and its parent will in turn receive a "stopped" completion.
+///
+/// BE CAREFUL -- This is `co_nothrow` semantics, but **only** for
+/// cancellation.  -- if your coro requires async cleanup, such as awaiting an
+/// async scope or other background work, then you **must** use a safe async
+/// RAII pattern, such `async_closure` if applicable (or `co_scope_exit`, but
+/// beware of its lifetime risks).
+template <typename Awaitable>
+detail::ValueOrError<Awaitable> value_or_error(
+    [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {
+  return detail::ValueOrError<Awaitable>{
+      folly::ext::must_use_immediately_unsafe_mover(std::move(awaitable))()};
+}
+
+/// When awaited, returns `result<T>` just like `value_or_error()`, but also
+/// captures "stopped" completions, so you **must** test for `has_stopped()`.
 template <typename Awaitable>
 detail::ValueOrErrorOrStopped<Awaitable> value_or_error_or_stopped(
     [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT]] Awaitable awaitable) {

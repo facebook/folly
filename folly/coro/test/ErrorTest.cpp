@@ -46,7 +46,10 @@ TEST(CoErrorTest, constructible) {
 // coro, the handling is so intertwined that we test it here.
 
 CO_TEST(CoCancellationTest, propagateOperationCancelled) {
-  auto cancelledTask = []() -> now_task<> { co_yield co_cancelled; };
+  auto cancelledTask = []() -> now_task<> {
+    co_yield co_cancelled;
+    ADD_FAILURE() << "Not reached";
+  };
 
   // `value_or_error_or_stopped` & `co_awaitTry` interrupt cancellation
   EXPECT_TRUE(
@@ -60,6 +63,15 @@ CO_TEST(CoCancellationTest, propagateOperationCancelled) {
   // Throws if awaited directly in coro or non-coro code
   EXPECT_THROW((co_await cancelledTask()), OperationCancelled);
   EXPECT_THROW(blocking_wait(cancelledTask()), OperationCancelled);
+
+  // `value_or_error` does not interrupt cancellation
+  auto outerTask = [&]() -> now_task<> {
+    [[maybe_unused]] result<> r = co_await value_or_error(cancelledTask());
+    ADD_FAILURE() << "Not reached";
+  };
+  EXPECT_TRUE((co_await value_or_error_or_stopped(outerTask())).has_stopped());
+  EXPECT_THROW((co_await outerTask()), OperationCancelled);
+  EXPECT_THROW(blocking_wait(outerTask()), OperationCancelled);
 }
 
 #endif

@@ -51,12 +51,21 @@ namespace folly {
 ///         auto v = co_await coro::co_ready(std::move(res));
 ///       }
 ///
+///     OR: If you want to transparently propagate cancellation to the parent
+///     coro, use `value_or_error()` instead.  Then, a "cancellation" /
+///     "stopped" completion will promptly end the current coro WITHOUT
+///     throwing, and its parent will see a "stopped" completion as well.  As
+///     with `co_nothrow`, ask for help in Coroutines@ if your current scope
+///     requires async cleanup / async RAII (such as "async scope" usage or
+///     other background work).
+///
 /// Rationale / purpose: For now, `folly` uses the `OperationCancelled`
 /// exception to signal "this work was stopped".  However, as of C++26 (see
-/// P2300, plus arguments in P1677), standard C++ differentiates between
-/// "value", "error", and "stopped" completions.  Therefore, we ask end-user
-/// code to use the above cancellation-specific constructs, WITHOUT assuming
-/// that cancellation / stopping is implemented as an exception.
+/// https://wg21.link/P2300, per the arguments in https://wg21.link/P1677),
+/// standard C++ differentiates between "value", "error", and "stopped"
+/// completions.  Therefore, we ask end-user code to use the above
+/// cancellation-specific constructs, WITHOUT assuming that cancellation /
+/// stopping is implemented as an exception.
 struct OperationCancelled final : public std::exception {
   const char* what() const noexcept override {
     return "coroutine operation cancelled";

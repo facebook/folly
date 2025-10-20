@@ -269,6 +269,7 @@ fbcode_target(
         ":current_executor",
         ":error",
         ":nothrow",
+        ":value_or_error",
         "//folly:portability",
     ],
 )
@@ -282,6 +283,7 @@ non_fbcode_target(
         ":current_executor",
         ":error",
         ":nothrow",
+        ":value_or_error",
         "//xplat/folly:portability",
     ],
 )
@@ -1086,6 +1088,7 @@ fbcode_target(
         ":via_if_async",
         "//folly:exception_wrapper",
     ],
+    exported_external_deps = ["glog"],
 )
 
 non_fbcode_target(
@@ -1095,6 +1098,7 @@ non_fbcode_target(
     raw_headers = ["Nothrow.h"],
     exported_deps = [
         ":via_if_async",
+        "//third-party/glog:glog",
         "//xplat/folly:exception_wrapper",
     ],
 )

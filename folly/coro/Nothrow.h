@@ -20,6 +20,9 @@
 #include <folly/Portability.h> // FOLLY_HAS_COROUTINES
 #include <folly/coro/ViaIfAsync.h>
 
+// For DCHECK, `ViaIfAsync.h` depends on it already.
+#include <glog/logging.h>
+
 #if FOLLY_HAS_COROUTINES
 
 namespace folly::coro {
@@ -54,6 +57,11 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable
   }
 };
 
+template <typename>
+class ValueOrError;
+template <typename>
+class ValueOrErrorImpl;
+
 // Mixin supporting `co_nothrow()` and `value_or_error()` for tasks & generators
 class BypassExceptionThrowing {
  private:
@@ -67,6 +75,9 @@ class BypassExceptionThrowing {
     ACTIVE,
     // State before `await_transform` with a `co_nothrow` awaitable.
     REQUESTED,
+    // State for `value_or_error()` only allowing for nothrow-propagation of
+    // `OperationCancelled` to the parent.
+    ONLY_WHEN_OPERATION_CANCELLED,
   } bypassMode_{BypassMode::INACTIVE};
 
  protected:
@@ -77,11 +88,17 @@ class BypassExceptionThrowing {
 
   template <typename Awaitable>
   void maybeActivate() {
-    // Awaitable should've been unwrapped before getting here.
-    static_assert(!is_instantiation_of_v<NothrowAwaitable, Awaitable>);
-    bypassMode_ = bypassMode_ == BypassMode::REQUESTED
-        ? BypassMode::ACTIVE
-        : BypassMode::INACTIVE;
+    if (is_instantiation_of_v<ValueOrErrorImpl, Awaitable>) {
+      DCHECK(bypassMode_ == BypassMode::ONLY_WHEN_OPERATION_CANCELLED);
+    } else {
+      // Awaitable should've been unwrapped before getting here.
+      static_assert(
+          !is_instantiation_of_v<NothrowAwaitable, Awaitable> &&
+          !is_instantiation_of_v<ValueOrError, Awaitable>);
+      bypassMode_ = bypassMode_ == BypassMode::REQUESTED
+          ? BypassMode::ACTIVE
+          : BypassMode::INACTIVE;
+    }
   }
 
   // Implements `co_nothrow` -- this gets called only from the matching
@@ -94,9 +111,17 @@ class BypassExceptionThrowing {
     bypassMode_ = BypassMode::REQUESTED;
   }
 
+  void requestDueToValueOrError() {
+    bypassMode_ = BypassMode::ONLY_WHEN_OPERATION_CANCELLED;
+  }
+
  public: // Otherwise we'd also need to friend `AsyncGenerator`, etc
-  bool shouldBypassFor(exception_wrapper&) {
-    return bypassMode_ == BypassMode::ACTIVE;
+  bool shouldBypassFor(exception_wrapper& ex) {
+    return (bypassMode_ == BypassMode::ACTIVE) ||
+        (bypassMode_ == BypassMode::ONLY_WHEN_OPERATION_CANCELLED &&
+         // Today, this incurs RTTI cost, but once we migrate coros to use
+         // `rich_exception_ptr`, this will often be RTTI-free.
+         ex.get_exception<folly::OperationCancelled>());
   }
 };
 
