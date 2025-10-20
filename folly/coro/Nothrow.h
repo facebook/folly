@@ -26,9 +26,6 @@ namespace folly::coro {
 
 namespace detail {
 
-template <typename Reference, typename Value, bool RequiresCleanup = false>
-class AsyncGeneratorPromise;
-
 template <typename T>
 class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable;
 
@@ -73,14 +70,10 @@ class BypassExceptionThrowing {
   } bypassMode_{BypassMode::INACTIVE};
 
  protected:
-  // The write interface of this is protected to alert future authors -- this
-  // is a TIGHTLY COUPLED DETAIL of task & async generator, not an easily
-  // reusable component.  For example, it relies on correctly specified
-  // `await_transform` behavior, a correct definition of the `getErrorHandle`
-  // protocol, and its correct usage in `await_suspend`.
-  friend class TaskPromiseBase;
-  template <typename, typename, bool>
-  friend class AsyncGeneratorPromise;
+  // This write interface is protected to alert future authors -- this is a
+  // TIGHTLY COUPLED DETAIL.  See the analogous note in `BasePromise`.
+  template <typename>
+  friend class BasePromise;
 
   template <typename Awaitable>
   void maybeActivate() {

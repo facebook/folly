@@ -49,12 +49,12 @@ fbcode_target(
         "//folly:traits",
         "//folly:try",
         "//folly/coro:auto_cleanup_fwd",
+        "//folly/coro:base_promise",
         "//folly/coro:coroutine",
         "//folly/coro:current_executor",
         "//folly/coro:detail_malloc",
         "//folly/coro:detail_manual_lifetime",
         "//folly/coro:invoke",
-        "//folly/coro:nothrow",
         "//folly/coro:result",
         "//folly/coro:scope_exit",
         "//folly/coro:via_if_async",
@@ -80,7 +80,7 @@ non_fbcode_target(
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:traits",
         "//xplat/folly:try",
-        "//xplat/folly/coro:nothrow",
+        "//xplat/folly/coro:base_promise",
         "//xplat/folly/experimental/coro:auto_cleanup_fwd",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:current_executor",
@@ -279,6 +279,33 @@ fbcode_target(
     exported_deps = [
         ":via_if_async",
         "//folly/result:try",
+    ],
+)
+
+### this line is a hint for source control merge
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "base_promise",
+    headers = ["BasePromise.h"],
+    exported_deps = [
+        ":current_executor",
+        ":error",
+        ":nothrow",
+        "//folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "base_promise",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["BasePromise.h"],
+    exported_deps = [
+        ":current_executor",
+        ":error",
+        ":nothrow",
+        "//xplat/folly:portability",
     ],
 )
 
@@ -1478,13 +1505,13 @@ fbcode_target(
         "//folly:scope_guard",
         "//folly:traits",
         "//folly:try",
+        "//folly/coro:base_promise",
         "//folly/coro:coroutine",
         "//folly/coro:current_executor",
         "//folly/coro:detail_malloc",
         "//folly/coro:detail_traits",
         "//folly/coro:inline_task",
         "//folly/coro:invoke",
-        "//folly/coro:nothrow",
         "//folly/coro:result",
         "//folly/coro:scope_exit",
         "//folly/coro:traits",
@@ -1521,7 +1548,7 @@ non_fbcode_target(
         "//xplat/folly:scope_guard",
         "//xplat/folly:traits",
         "//xplat/folly:try",
-        "//xplat/folly/coro:nothrow",
+        "//xplat/folly/coro:base_promise",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:current_executor",
         "//xplat/folly/experimental/coro:detail_malloc",

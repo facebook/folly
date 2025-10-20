@@ -33,10 +33,9 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
+#include <folly/coro/BasePromise.h>
 #include <folly/coro/Coroutine.h>
-#include <folly/coro/CurrentExecutor.h>
 #include <folly/coro/Invoke.h>
-#include <folly/coro/Nothrow.h>
 #include <folly/coro/Result.h>
 #include <folly/coro/ScopeExit.h>
 #include <folly/coro/Traits.h>
@@ -75,9 +74,10 @@ class TaskPromisePrivate {
   TaskPromisePrivate() = default;
 };
 
-class TaskPromiseBase {
+class TaskPromiseBase : public BasePromise<> {
   static TaskPromisePrivate privateTag() { return TaskPromisePrivate{}; }
 
+ protected:
   class FinalAwaiter {
    public:
     bool await_ready() noexcept { return false; }
@@ -122,34 +122,8 @@ class TaskPromiseBase {
     [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
   };
 
-  friend class FinalAwaiter;
-
- protected:
   TaskPromiseBase() noexcept = default;
   ~TaskPromiseBase() = default;
-
-  template <typename Promise>
-  variant_awaitable<FinalAwaiter, ready_awaitable<>> do_safe_point(
-      Promise& promise) noexcept {
-    if (cancelToken_.isCancellationRequested()) {
-      return promise.yield_value(co_cancelled);
-    }
-    return ready_awaitable<>{};
-  }
-
-  template <typename Promise>
-  static std::optional<ExtendedCoroutineHandle::ErrorHandle>
-  getErrorHandleUncheckedImpl(Promise& me, exception_wrapper& ex) {
-    if (me.bypassThrowing_.shouldBypassFor(ex)) {
-      auto finalAwaiter = me.yield_value(co_error(std::move(ex)));
-      DCHECK(!finalAwaiter.await_ready());
-      return ExtendedCoroutineHandle::ErrorHandle{
-          finalAwaiter.await_suspend_promise(me),
-          // finalAwaiter.await_suspend pops a frame
-          me.getAsyncFrame().getParentFrame()};
-    }
-    return std::nullopt;
-  }
 
  public:
   static void* operator new(std::size_t size) {
@@ -163,53 +137,6 @@ class TaskPromiseBase {
   suspend_always initial_suspend() noexcept { return {}; }
 
   FinalAwaiter final_suspend() noexcept { return {}; }
-
-  template <
-      typename Awaitable,
-      std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
-  auto await_transform(Awaitable&& awaitable) {
-    bypassThrowing_.maybeActivate<Awaitable>();
-    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
-        executor_.get_alias(),
-        folly::coro::co_withCancellation(
-            cancelToken_, static_cast<Awaitable&&>(awaitable))));
-  }
-  template <
-      typename Awaitable,
-      std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
-  auto await_transform(Awaitable awaitable) {
-    bypassThrowing_.maybeActivate<Awaitable>();
-    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
-        executor_.get_alias(),
-        folly::coro::co_withCancellation(
-            cancelToken_,
-            folly::ext::must_use_immediately_unsafe_mover(
-                std::move(awaitable))())));
-  }
-
-  template <typename Awaitable>
-  auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
-    bypassThrowing_.requestDueToNothrow<Awaitable>();
-    return await_transform(
-        folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());
-  }
-
-  auto await_transform(co_current_executor_t /*unused*/) noexcept {
-    return ready_awaitable<folly::Executor*>{executor_.get()};
-  }
-
-  auto await_transform(co_current_cancellation_token_t /*unused*/) noexcept {
-    return ready_awaitable<const folly::CancellationToken&>{cancelToken_};
-  }
-
-  void setCancelToken(folly::CancellationToken&& cancelToken) noexcept {
-    if (!hasCancelTokenOverride_) {
-      cancelToken_ = std::move(cancelToken);
-      hasCancelTokenOverride_ = true;
-    }
-  }
-
-  folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
 
   folly::Executor::KeepAlive<> getExecutor() const noexcept {
     return executor_;
@@ -239,13 +166,9 @@ class TaskPromiseBase {
     return std::exchange(p.scopeExit_, scopeExit);
   }
 
-  ExtendedCoroutineHandle continuation_;
-  folly::AsyncStackFrame asyncFrame_;
-  folly::Executor::KeepAlive<> executor_;
-  folly::CancellationToken cancelToken_;
+  // From the base: continuation_, asyncFrame_, executor_, cancelToken_,
+  // hasCancelTokenOverride_
   coroutine_handle<ScopeExitTaskPromiseBase> scopeExit_;
-  bool hasCancelTokenOverride_ = false;
-  BypassExceptionThrowing bypassThrowing_;
 };
 
 // Separate from `TaskPromiseBase` so the compiler has less to specialize.
@@ -274,10 +197,10 @@ class TaskPromiseCrtpBase
     return final_suspend();
   }
 
-  using TaskPromiseBase::await_transform;
+  using BasePromise<>::await_transform;
 
   auto await_transform(co_safe_point_t /*unused*/) noexcept {
-    return do_safe_point(*this);
+    return do_safe_point<FinalAwaiter>(*this);
   }
 
   // Unlike `getErrorHandleUncheckedImpl`, checks the type of `me`.
@@ -484,7 +407,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
       F&& tryCallback,
       folly::CancellationToken cancelToken,
       void* returnAddress) && {
-    coro_.promise().setCancelToken(std::move(cancelToken));
+    coro_.promise().setCancellationToken(std::move(cancelToken));
     startImpl(std::move(*this), static_cast<F&&>(tryCallback))
         .start(returnAddress);
   }
@@ -494,7 +417,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
       F&& tryCallback,
       folly::CancellationToken cancelToken,
       void* returnAddress) && {
-    coro_.promise().setCancelToken(std::move(cancelToken));
+    coro_.promise().setCancellationToken(std::move(cancelToken));
     // If the task replaces the request context and reaches a suspension point,
     // it will not have a chance to restore the previous context before we
     // return, so we need to ensure it is restored. This simulates starting the
@@ -702,7 +625,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   friend TaskWithExecutor co_withCancellation(
       folly::CancellationToken cancelToken, TaskWithExecutor&& task) noexcept {
     DCHECK(task.coro_);
-    task.coro_.promise().setCancelToken(std::move(cancelToken));
+    task.coro_.promise().setCancellationToken(std::move(cancelToken));
     return std::move(task);
   }
 
@@ -858,7 +781,7 @@ class FOLLY_CORO_TASK_ATTRS Task {
   friend Task co_withCancellation(
       folly::CancellationToken cancelToken, Task&& task) noexcept {
     DCHECK(task.coro_);
-    task.coro_.promise().setCancelToken(std::move(cancelToken));
+    task.coro_.promise().setCancellationToken(std::move(cancelToken));
     return std::move(task);
   }
 
