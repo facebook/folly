@@ -16,7 +16,10 @@
 
 #include <folly/Portability.h>
 
+#include <folly/coro/AwaitResult.h>
+#include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Result.h>
+#include <folly/coro/safe/NowTask.h>
 
 #include <type_traits>
 
@@ -25,12 +28,10 @@
 
 #if FOLLY_HAS_COROUTINES
 
-class CoErrorTest : public testing::Test {};
+using namespace folly;
+using namespace folly::coro;
 
-TEST_F(CoErrorTest, constructible) {
-  using namespace folly;
-  using namespace folly::coro;
-
+TEST(CoErrorTest, constructible) {
   EXPECT_TRUE((std::is_constructible_v<co_error, exception_wrapper>));
   EXPECT_TRUE((std::is_constructible_v<co_error, std::runtime_error>));
   EXPECT_TRUE(
@@ -39,6 +40,25 @@ TEST_F(CoErrorTest, constructible) {
           std::in_place_type_t<std::runtime_error>,
           std::string>));
   EXPECT_FALSE((std::is_constructible_v<co_error, int>));
+}
+
+// NB: Cancellation is not an error (https://wg21.link/p1677), but in current
+// coro, the handling is so intertwined that we test it here.
+
+CO_TEST(CoCancellationTest, propagateOperationCancelled) {
+  auto cancelledTask = []() -> now_task<> { co_yield co_cancelled; };
+
+  // `co_await_result` & `co_awaitTry` interrupt cancellation
+  EXPECT_TRUE((co_await co_await_result(cancelledTask())).has_stopped());
+  EXPECT_TRUE(
+      // Prefer `has_stopped()` in coro code.  Outside of coro code, catching
+      // `OperationCancelled` is OK.
+      (co_await co_awaitTry(cancelledTask()))
+          .hasException<OperationCancelled>());
+
+  // Throws if awaited directly in coro or non-coro code
+  EXPECT_THROW((co_await cancelledTask()), OperationCancelled);
+  EXPECT_THROW(blocking_wait(cancelledTask()), OperationCancelled);
 }
 
 #endif

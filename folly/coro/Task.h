@@ -36,6 +36,7 @@
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/CurrentExecutor.h>
 #include <folly/coro/Invoke.h>
+#include <folly/coro/Nothrow.h>
 #include <folly/coro/Result.h>
 #include <folly/coro/ScopeExit.h>
 #include <folly/coro/Traits.h>
@@ -136,6 +137,20 @@ class TaskPromiseBase {
     return ready_awaitable<>{};
   }
 
+  template <typename Promise>
+  static std::optional<ExtendedCoroutineHandle::ErrorHandle>
+  getErrorHandleUncheckedImpl(Promise& me, exception_wrapper& ex) {
+    if (me.bypassThrowing_.shouldBypassFor(ex)) {
+      auto finalAwaiter = me.yield_value(co_error(std::move(ex)));
+      DCHECK(!finalAwaiter.await_ready());
+      return ExtendedCoroutineHandle::ErrorHandle{
+          finalAwaiter.await_suspend_promise(me),
+          // finalAwaiter.await_suspend pops a frame
+          me.getAsyncFrame().getParentFrame()};
+    }
+    return std::nullopt;
+  }
+
  public:
   static void* operator new(std::size_t size) {
     return ::folly_coro_async_malloc(size);
@@ -153,11 +168,7 @@ class TaskPromiseBase {
       typename Awaitable,
       std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& awaitable) {
-    bypassExceptionThrowing_ =
-        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
-        ? BypassExceptionThrowing::ACTIVE
-        : BypassExceptionThrowing::INACTIVE;
-
+    bypassThrowing_.maybeActivate<Awaitable>();
     return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
@@ -167,11 +178,7 @@ class TaskPromiseBase {
       typename Awaitable,
       std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable awaitable) {
-    bypassExceptionThrowing_ =
-        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
-        ? BypassExceptionThrowing::ACTIVE
-        : BypassExceptionThrowing::INACTIVE;
-
+    bypassThrowing_.maybeActivate<Awaitable>();
     return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
@@ -182,8 +189,7 @@ class TaskPromiseBase {
 
   template <typename Awaitable>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
-    static_assert(!noexcept_awaitable_v<Awaitable>); // Doc on NothrowAwaitable
-    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
+    bypassThrowing_.requestDueToNothrow<Awaitable>();
     return await_transform(
         folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());
   }
@@ -239,13 +245,7 @@ class TaskPromiseBase {
   folly::CancellationToken cancelToken_;
   coroutine_handle<ScopeExitTaskPromiseBase> scopeExit_;
   bool hasCancelTokenOverride_ = false;
-
- protected:
-  enum class BypassExceptionThrowing : uint8_t {
-    INACTIVE,
-    ACTIVE,
-    REQUESTED,
-  } bypassExceptionThrowing_{BypassExceptionThrowing::INACTIVE};
+  BypassExceptionThrowing bypassThrowing_;
 };
 
 // Separate from `TaskPromiseBase` so the compiler has less to specialize.
@@ -280,17 +280,10 @@ class TaskPromiseCrtpBase
     return do_safe_point(*this);
   }
 
+  // Unlike `getErrorHandleUncheckedImpl`, checks the type of `me`.
   static std::optional<ExtendedCoroutineHandle::ErrorHandle> getErrorHandleImpl(
       Promise& me, exception_wrapper& ex) {
-    if (me.bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
-      auto finalAwaiter = me.yield_value(co_error(std::move(ex)));
-      DCHECK(!finalAwaiter.await_ready());
-      return ExtendedCoroutineHandle::ErrorHandle{
-          finalAwaiter.await_suspend_promise(me),
-          // finalAwaiter.await_suspend pops a frame
-          me.getAsyncFrame().getParentFrame()};
-    }
-    return std::nullopt;
+    return getErrorHandleUncheckedImpl(me, ex);
   }
 
  protected:

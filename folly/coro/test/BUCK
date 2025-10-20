@@ -139,7 +139,6 @@ fbcode_target(
         "ConcatTest.cpp",
         "CoroTest.cpp",
         "CurrentExecutorTest.cpp",
-        "ErrorTest.cpp",
         "FilterTest.cpp",
         "FutureUtilTest.cpp",
         "InlineTaskTest.cpp",
@@ -159,7 +158,6 @@ fbcode_target(
         "//folly:cancellation_token",
         "//folly:chrono",
         "//folly:conv",
-        "//folly:exception_wrapper",
         "//folly:optional",
         "//folly:portability",
         "//folly:scope_guard",
@@ -186,7 +184,6 @@ fbcode_target(
         "//folly/coro:merge",
         "//folly/coro:mutex",
         "//folly/coro:promise",
-        "//folly/coro:result",
         "//folly/coro:shared_mutex",
         "//folly/coro:sleep",
         "//folly/coro:small_unbounded_queue",
@@ -222,6 +219,23 @@ fbcode_target(
     deps = [
         "//folly/coro:coroutine",
         "//folly/lang:keep",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "error_test",
+    srcs = [
+        "ErrorTest.cpp",
+    ],
+    deps = [
+        "//folly:exception_wrapper",
+        "//folly:portability",
+        "//folly/coro:await_result",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:result",
+        "//folly/coro/safe:now_task",
         "//folly/portability:gtest",
     ],
 )

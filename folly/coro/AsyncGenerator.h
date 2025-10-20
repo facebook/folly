@@ -28,6 +28,7 @@
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/CurrentExecutor.h>
 #include <folly/coro/Invoke.h>
+#include <folly/coro/Nothrow.h>
 #include <folly/coro/Result.h>
 #include <folly/coro/ScopeExit.h>
 #include <folly/coro/ViaIfAsync.h>
@@ -557,7 +558,10 @@ struct BaseAsyncGeneratorPromise<true> {
   coroutine_handle<ScopeExitTaskPromiseBase> scopeExit_;
 };
 
-template <typename Reference, typename Value, bool RequiresCleanup = false>
+template <
+    typename Reference,
+    typename Value,
+    bool RequiresCleanup /* = false, in Nothrow.h */>
 class AsyncGeneratorPromise final
     : public ExtendedCoroutinePromiseCrtp<
           AsyncGeneratorPromise<Reference, Value, RequiresCleanup>>,
@@ -720,11 +724,7 @@ class AsyncGeneratorPromise final
       typename Awaitable,
       std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& awaitable) {
-    bypassExceptionThrowing_ =
-        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
-        ? BypassExceptionThrowing::ACTIVE
-        : BypassExceptionThrowing::INACTIVE;
-
+    bypassThrowing_.maybeActivate<Awaitable>();
     return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
@@ -734,11 +734,7 @@ class AsyncGeneratorPromise final
       typename Awaitable,
       std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable awaitable) {
-    bypassExceptionThrowing_ =
-        bypassExceptionThrowing_ == BypassExceptionThrowing::REQUESTED
-        ? BypassExceptionThrowing::ACTIVE
-        : BypassExceptionThrowing::INACTIVE;
-
+    bypassThrowing_.maybeActivate<Awaitable>();
     return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
@@ -749,8 +745,7 @@ class AsyncGeneratorPromise final
 
   template <typename Awaitable>
   auto await_transform(NothrowAwaitable<Awaitable> awaitable) {
-    static_assert(!noexcept_awaitable_v<Awaitable>); // Doc on NothrowAwaitable
-    bypassExceptionThrowing_ = BypassExceptionThrowing::REQUESTED;
+    bypassThrowing_.requestDueToNothrow<Awaitable>();
     return await_transform(
         folly::ext::must_use_immediately_unsafe_mover(awaitable.unwrap())());
   }
@@ -820,7 +815,7 @@ class AsyncGeneratorPromise final
 
   static std::optional<ExtendedCoroutineHandle::ErrorHandle> getErrorHandleImpl(
       AsyncGeneratorPromise& me, exception_wrapper& ex) {
-    if (me.bypassExceptionThrowing_ == BypassExceptionThrowing::ACTIVE) {
+    if (me.bypassThrowing_.shouldBypassFor(ex)) {
       auto yieldAwaiter = me.yield_value(co_error(std::move(ex)));
       DCHECK(!yieldAwaiter.await_ready());
       return ExtendedCoroutineHandle::ErrorHandle{
@@ -869,12 +864,7 @@ class AsyncGeneratorPromise final
   };
   State state_ = State::INVALID;
   bool hasCancelTokenOverride_ = false;
-
-  enum class BypassExceptionThrowing : uint8_t {
-    INACTIVE,
-    ACTIVE,
-    REQUESTED,
-  } bypassExceptionThrowing_{BypassExceptionThrowing::INACTIVE};
+  BypassExceptionThrowing bypassThrowing_;
 };
 
 } // namespace detail

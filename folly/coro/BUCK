@@ -54,6 +54,7 @@ fbcode_target(
         "//folly/coro:detail_malloc",
         "//folly/coro:detail_manual_lifetime",
         "//folly/coro:invoke",
+        "//folly/coro:nothrow",
         "//folly/coro:result",
         "//folly/coro:scope_exit",
         "//folly/coro:via_if_async",
@@ -79,6 +80,7 @@ non_fbcode_target(
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:traits",
         "//xplat/folly:try",
+        "//xplat/folly/coro:nothrow",
         "//xplat/folly/experimental/coro:auto_cleanup_fwd",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:current_executor",
@@ -1074,6 +1076,29 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "nothrow",
+    headers = ["Nothrow.h"],
+    exported_deps = [
+        ":via_if_async",
+        "//folly:exception_wrapper",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "nothrow",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Nothrow.h"],
+    exported_deps = [
+        ":via_if_async",
+        "//xplat/folly:exception_wrapper",
+    ],
+)
+
+### this line is a hint for source control merge
+
+fbcode_target(
+    _kind = cpp_library,
     name = "promise",
     headers = ["Promise.h"],
     exported_deps = [
@@ -1459,6 +1484,7 @@ fbcode_target(
         "//folly/coro:detail_traits",
         "//folly/coro:inline_task",
         "//folly/coro:invoke",
+        "//folly/coro:nothrow",
         "//folly/coro:result",
         "//folly/coro:scope_exit",
         "//folly/coro:traits",
@@ -1495,6 +1521,7 @@ non_fbcode_target(
         "//xplat/folly:scope_guard",
         "//xplat/folly:traits",
         "//xplat/folly:try",
+        "//xplat/folly/coro:nothrow",
         "//xplat/folly/experimental/coro:coroutine",
         "//xplat/folly/experimental/coro:current_executor",
         "//xplat/folly/experimental/coro:detail_malloc",

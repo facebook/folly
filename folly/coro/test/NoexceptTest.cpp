@@ -74,10 +74,6 @@ static_assert(!noexcept_awaitable_v<Task<int>>);
 static_assert(noexcept_awaitable_v<detail::TryAwaitable<Task<int>>>);
 static_assert(noexcept_awaitable_v<co_fatalOnThrow_of_Task>);
 static_assert(!noexcept_awaitable_v<detail::NothrowAwaitable<Task<int>>>);
-// See doc of `NothrowAwaitable`
-template <typename T>
-using detect_NothrowAwaitable = detail::NothrowAwaitable<T>;
-static_assert(!is_detected_v<detect_NothrowAwaitable, co_fatalOnThrow_of_Task>);
 
 struct MyErr : std::exception {};
 
@@ -135,6 +131,7 @@ now_task<void> checkFatalOnThrow() {
   bool ran = [&]<typename T>(T) { // `requires` doesa SFINAE inside templates
     (void)co_nothrow(coThrow()); // compile
     (void)co_fatalOnThrow(coThrow()); // compiles
+    static_assert(requires { co_nothrow(coThrow()); }); // same as prior line
     static_assert(!requires { co_nothrow(co_fatalOnThrow(coThrow())); });
 #if 0 // manual test equivalent of above `static_assert`
     (void)co_nothrow(co_fatalOnThrow(coThrow())); // constraint failure
