@@ -47,7 +47,7 @@ BENCHMARK(shared_ptr_copy, iters) {
   braces.dismissing([&] {
     while (iters--) {
       auto copy = obj;
-      folly::compiler_must_not_predict(copy);
+      folly::compiler_must_not_predict(*copy);
       sum += *copy;
     }
   });
@@ -64,7 +64,7 @@ BENCHMARK(folly_shared_mutex_shared_ptr_copy, iters) {
   braces.dismissing([&] {
     while (iters--) {
       auto copy = obj.copy();
-      folly::compiler_must_not_predict(copy);
+      folly::compiler_must_not_predict(*copy);
       sum += *copy;
     }
   });
@@ -81,7 +81,7 @@ BENCHMARK(folly_atomic_shared_ptr_copy, iters) {
   braces.dismissing([&] {
     while (iters--) {
       auto copy = obj.load(std::memory_order_relaxed);
-      folly::compiler_must_not_predict(copy);
+      folly::compiler_must_not_predict(*copy);
       sum += *copy;
     }
   });
@@ -98,7 +98,7 @@ BENCHMARK(std_atomic_shared_ptr_copy, iters) {
   braces.dismissing([&] {
     while (iters--) {
       auto copy = std::atomic_load_explicit(&obj, std::memory_order_relaxed);
-      folly::compiler_must_not_predict(copy);
+      folly::compiler_must_not_predict(*copy);
       sum += *copy;
     }
   });
@@ -119,7 +119,7 @@ static void do_hazptr_protect(
     auto h = make_hazard_pointer(domain);
     while (iters--) {
       auto* obj = h.protect(ptr);
-      folly::compiler_must_not_predict(obj);
+      folly::compiler_must_not_predict(obj->value);
       sum += obj->value;
     }
   });
@@ -196,7 +196,7 @@ static void do_hazptr_make_protect(
     while (iters--) {
       auto h = make_hazard_pointer(domain);
       auto* obj = h.protect(ptr);
-      folly::compiler_must_not_predict(obj);
+      folly::compiler_must_not_predict(obj->value);
       sum += obj->value;
     }
   });
