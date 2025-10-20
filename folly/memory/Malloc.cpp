@@ -16,78 +16,110 @@
 
 #include <folly/memory/Malloc.h>
 
-bool folly::detail::UsingJEMallocInitializer::operator()() const noexcept {
-  // Checking for rallocx != nullptr is not sufficient; we may be in a
-  // dlopen()ed module that depends on libjemalloc, so rallocx is resolved,
-  // but the main program might be using a different memory allocator. How
-  // do we determine that we're using jemalloc? In the hackiest way
-  // possible. We allocate memory using malloc() and see if the per-thread
-  // counter of allocated memory increases. This makes me feel dirty inside.
-  // Also note that this requires jemalloc to have been compiled with
-  // --enable-stats.
+namespace folly {
 
-  // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
-  // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
-  // (!!). http://goo.gl/xpmctm
-  if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr ||
-      sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr ||
-      nallocx == nullptr || mallctl == nullptr || mallctlnametomib == nullptr ||
-      mallctlbymib == nullptr) {
-    return false;
+namespace detail {
+
+namespace {
+
+struct DoUsingJEMallocInitializer {
+  bool operator()() const noexcept {
+    // Checking for rallocx != nullptr is not sufficient; we may be in a
+    // dlopen()ed module that depends on libjemalloc, so rallocx is resolved,
+    // but the main program might be using a different memory allocator. How
+    // do we determine that we're using jemalloc? In the hackiest way
+    // possible. We allocate memory using malloc() and see if the per-thread
+    // counter of allocated memory increases. This makes me feel dirty inside.
+    // Also note that this requires jemalloc to have been compiled with
+    // --enable-stats.
+
+    // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
+    // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
+    // (!!). http://goo.gl/xpmctm
+    if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr ||
+        sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr ||
+        nallocx == nullptr || mallctl == nullptr ||
+        mallctlnametomib == nullptr || mallctlbymib == nullptr) {
+      return false;
+    }
+
+    // "volatile" because gcc optimizes out the reads from *counter, because
+    // it "knows" malloc doesn't modify global state...
+    /* nolint */ volatile uint64_t* counter;
+    size_t counterLen = sizeof(uint64_t*);
+
+    if (mallctl(
+            "thread.allocatedp",
+            static_cast<void*>(&counter),
+            &counterLen,
+            nullptr,
+            0) != 0) {
+      return false;
+    }
+
+    if (counterLen != sizeof(uint64_t*)) {
+      return false;
+    }
+
+    uint64_t origAllocated = *counter;
+
+    static void* volatile ptr = malloc(1);
+    if (!ptr) {
+      // wtf, failing to allocate 1 byte
+      return false;
+    }
+
+    free(ptr);
+
+    return (origAllocated != *counter);
   }
+};
 
-  // "volatile" because gcc optimizes out the reads from *counter, because
-  // it "knows" malloc doesn't modify global state...
-  /* nolint */ volatile uint64_t* counter;
-  size_t counterLen = sizeof(uint64_t*);
+} // namespace
 
-  if (mallctl(
-          "thread.allocatedp",
-          static_cast<void*>(&counter),
-          &counterLen,
-          nullptr,
-          0) != 0) {
-    return false;
-  }
-
-  if (counterLen != sizeof(uint64_t*)) {
-    return false;
-  }
-
-  uint64_t origAllocated = *counter;
-
-  static void* volatile ptr = malloc(1);
-  if (!ptr) {
-    // wtf, failing to allocate 1 byte
-    return false;
-  }
-
-  free(ptr);
-
-  return (origAllocated != *counter);
+bool UsingJEMallocInitializer::operator()() const noexcept {
+  // Absolutely wild, but this apparently needs to be cached within this TU.
+  using Initializer = DoUsingJEMallocInitializer;
+  return detail::FastStaticBool<Initializer>::get(std::memory_order_relaxed);
 }
 
-bool folly::detail::UsingTCMallocInitializer::operator()() const noexcept {
-  // See comment in usingJEMalloc().
-  if (MallocExtension_Internal_GetNumericProperty == nullptr ||
-      sdallocx == nullptr || nallocx == nullptr) {
-    return false;
+namespace {
+
+struct DoUsingTCMallocInitializer {
+  bool operator()() const noexcept {
+    // See comment in usingJEMalloc().
+    if (MallocExtension_Internal_GetNumericProperty == nullptr ||
+        sdallocx == nullptr || nallocx == nullptr) {
+      return false;
+    }
+    static const char kAllocBytes[] = "generic.current_allocated_bytes";
+
+    size_t before_bytes = 0;
+    getTCMallocNumericProperty(kAllocBytes, &before_bytes);
+
+    static void* volatile ptr = malloc(1);
+    if (!ptr) {
+      // wtf, failing to allocate 1 byte
+      return false;
+    }
+
+    size_t after_bytes = 0;
+    getTCMallocNumericProperty(kAllocBytes, &after_bytes);
+
+    free(ptr);
+
+    return (before_bytes != after_bytes);
   }
-  static const char kAllocBytes[] = "generic.current_allocated_bytes";
+};
 
-  size_t before_bytes = 0;
-  getTCMallocNumericProperty(kAllocBytes, &before_bytes);
+} // namespace
 
-  static void* volatile ptr = malloc(1);
-  if (!ptr) {
-    // wtf, failing to allocate 1 byte
-    return false;
-  }
-
-  size_t after_bytes = 0;
-  getTCMallocNumericProperty(kAllocBytes, &after_bytes);
-
-  free(ptr);
-
-  return (before_bytes != after_bytes);
+bool UsingTCMallocInitializer::operator()() const noexcept {
+  // Absolutely wild, but this apparently needs to be cached within this TU.
+  using Initializer = DoUsingTCMallocInitializer;
+  return detail::FastStaticBool<Initializer>::get(std::memory_order_relaxed);
 }
+
+} // namespace detail
+
+} // namespace folly
