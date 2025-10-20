@@ -39,6 +39,30 @@
 
 #if FOLLY_HAS_COROUTINES
 
+constexpr bool check_for_size_regressions() {
+  using namespace folly::coro;
+  namespace detail = folly::coro::detail;
+
+  static_assert(sizeof(AsyncGenerator<int&>) == sizeof(void*));
+
+  // Prevent size regressions due to member or base ordering
+  constexpr size_t promiseSize =
+      // From AsyncGeneratorPromise:
+      sizeof(ExtendedCoroutineHandle) + sizeof(folly::AsyncStackFrame) +
+      sizeof(folly::Executor::KeepAlive<>) + sizeof(folly::CancellationToken) +
+      // The value/error union
+      sizeof(folly::exception_wrapper) +
+      // state_, hasCancelTokenOverride_ and bypassExceptionThrowing_ together:
+      sizeof(void*) +
+      // From ExtendedCoroutinePromiseCrtp:
+      sizeof(ExtendedCoroutineHandle::PromiseBase);
+  static_assert(
+      sizeof(detail::AsyncGeneratorPromise<int&, int>) == promiseSize);
+
+  return true;
+}
+static_assert(check_for_size_regressions());
+
 class AsyncGeneratorTest : public testing::Test {};
 
 TEST_F(AsyncGeneratorTest, DefaultConstructedGeneratorIsEmpty) {

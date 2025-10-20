@@ -39,6 +39,31 @@
 
 using namespace folly;
 
+constexpr bool check_for_size_regressions() {
+  namespace detail = folly::coro::detail;
+
+  static_assert(sizeof(coro::Task<>) == sizeof(void*));
+  static_assert(sizeof(coro::Task<int>) == sizeof(void*));
+
+  // Prevent size regressions due to member or base ordering
+  constexpr size_t promiseSize =
+      // From TaskPromiseBase:
+      sizeof(coro::ExtendedCoroutineHandle) + sizeof(folly::AsyncStackFrame) +
+      sizeof(folly::Executor::KeepAlive<>) + sizeof(folly::CancellationToken) +
+      sizeof(coro::coroutine_handle<detail::ScopeExitTaskPromiseBase>) +
+      // hasCancelTokenOverride_ and bypassExceptionThrowing_ should pack into
+      sizeof(void*) +
+      // From TaskPromiseCrtpBase:
+      sizeof(Try<int>) +
+      // From ExtendedCoroutinePromiseCrtp:
+      sizeof(coro::ExtendedCoroutineHandle::PromiseBase);
+  static_assert(sizeof(detail::TaskPromise<void>) == promiseSize);
+  static_assert(sizeof(detail::TaskPromise<int>) == promiseSize);
+
+  return true;
+}
+static_assert(check_for_size_regressions());
+
 static_assert( //
     std::is_same<
         folly::coro::semi_await_result_t<folly::coro::Task<void>>,
