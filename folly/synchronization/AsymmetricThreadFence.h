@@ -24,6 +24,16 @@ namespace folly {
 
 //  asymmetric_thread_fence_light
 //
+//  A lightweight fence interacts with a heavyweight fence as if both fences
+//  were normal std::atomic_thread_fence fences.
+//
+//  A lightweight fence does not interact with another lightweight fence, with a
+//  normal fence, with a signal fence, or directly with an atomic operation in
+//  another thread.
+//
+//  https://en.cppreference.com/w/cpp/atomic/atomic_thread_fence.html
+//  https://en.cppreference.com/w/cpp/atomic/atomic_signal_fence.html
+//
 //  mimic: std::experimental::asymmetric_thread_fence_light, p1202r4
 //  http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1202r4.pdf
 struct asymmetric_thread_fence_light_fn {
@@ -39,6 +49,16 @@ inline constexpr asymmetric_thread_fence_light_fn
     asymmetric_thread_fence_light{};
 
 //  asymmetric_thread_fence_heavy
+//
+//  A heavyweight fence interacts with a heavyweight, lightweight, or normal
+//  fence as if both fences were normal std::atomic_thread_fence fences, and
+//  interacts directly with an atomic operation as if it were a normal fence.
+//
+//  A heavyweight fence interacts with a signal fence as if both fences were
+//  signal fences, just as a normal fence would do.
+//
+//  https://en.cppreference.com/w/cpp/atomic/atomic_thread_fence.html
+//  https://en.cppreference.com/w/cpp/atomic/atomic_signal_fence.html
 //
 //  mimic: std::experimental::asymmetric_thread_fence_heavy, p1202r4
 //  http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1202r4.pdf
