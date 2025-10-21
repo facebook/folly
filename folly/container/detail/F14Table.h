@@ -1872,13 +1872,15 @@ class F14Table : public Policy {
 
   template <typename... Args>
   void insertAtBlank(ItemIter pos, HashPair hp, Args&&... args) {
-    try {
-      auto dst = pos.itemAddr();
-      this->constructValueAtItem(*this, dst, std::forward<Args>(args)...);
-    } catch (...) {
-      eraseBlank(pos, hp);
-      throw;
-    }
+    catch_exception(
+        [&] {
+          auto dst = pos.itemAddr();
+          this->constructValueAtItem(*this, dst, std::forward<Args>(args)...);
+        },
+        [=, this]() {
+          eraseBlank(pos, hp);
+          rethrow_current_exception();
+        });
     adjustSizeAndBeginAfterInsert(pos);
   }
 
