@@ -275,6 +275,7 @@ BENCHMARK(splitOnSingleChar, iters) {
   for (size_t i = 0; i < iters << 4; ++i) {
     std::vector<StringPiece> pieces;
     folly::split(':', line, pieces);
+    folly::compiler_must_not_elide(pieces);
   }
 }
 
@@ -283,6 +284,7 @@ BENCHMARK(splitOnSingleCharFixed, iters) {
   for (size_t i = 0; i < iters << 4; ++i) {
     StringPiece a, b, c, d;
     folly::split(':', line, a, b, c, d);
+    folly::compiler_must_not_elide(std::array{a, b, c, d});
   }
 }
 
@@ -291,6 +293,7 @@ BENCHMARK(splitOnSingleCharFixedAllowExtra, iters) {
   for (size_t i = 0; i < iters << 4; ++i) {
     StringPiece a, b, c, d;
     folly::split<false>(':', line, a, b, c, d);
+    folly::compiler_must_not_elide(std::array{a, b, c, d});
   }
 }
 
@@ -299,6 +302,7 @@ BENCHMARK(splitStr, iters) {
   for (size_t i = 0; i < iters << 4; ++i) {
     std::vector<StringPiece> pieces;
     folly::split("-*-", line, pieces);
+    folly::compiler_must_not_elide(pieces);
   }
 }
 
@@ -307,6 +311,7 @@ BENCHMARK(splitStrFixed, iters) {
   for (size_t i = 0; i < iters << 4; ++i) {
     StringPiece a, b, c, d;
     folly::split("-*-", line, a, b, c, d);
+    folly::compiler_must_not_elide(std::array{a, b, c, d});
   }
 }
 
@@ -316,6 +321,7 @@ BENCHMARK(boost_splitOnSingleChar, iters) {
   for (size_t i = 0; i < iters << 4; ++i) {
     std::vector<boost::iterator_range<std::string::const_iterator>> pieces;
     boost::split(pieces, line, pred);
+    folly::compiler_must_not_elide(pieces);
   }
 }
 
