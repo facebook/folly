@@ -1877,7 +1877,7 @@ class F14Table : public Policy {
           auto dst = pos.itemAddr();
           this->constructValueAtItem(*this, dst, std::forward<Args>(args)...);
         },
-        [=, this]() {
+        [this, pos, hp]() {
           eraseBlank(pos, hp);
           rethrow_current_exception();
         });
