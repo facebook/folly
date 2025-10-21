@@ -51,6 +51,30 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
   }
 
   FOLLY_ALWAYS_INLINE void reset_hazptr(const void* p = nullptr) noexcept {
+    //  A call to this function with a null value always ends a reader critical
+    //  section. A call with a not-null value always begins a reader critical
+    //  section and, if the call occurs in a previous reader critical section,
+    //  also ends it.
+    //
+    //  In the reclamation path, the domain:
+    //  - Extracts the list of retired pointers.
+    //  - Walks the recs and collects the set of protected pointers.
+    //  - Calculates the list of retired unprotected pointers.
+    //  - Reclaims the retired unprotected pointers.
+    //
+    //  When beginning a reader critical section, the pointer is not-null and no
+    //  memory order is needed. The store-release does not synchronize-with any
+    //  load-acquire.
+    //
+    //  When ending a reader critical section, the pointer may be either null or
+    //  not-null and a memory order is needed. The store-release synchronizes-
+    //  with the load-acquire on this same rec in subsequent reclamation path
+    //  rec walks. When that load-acquire reads-from this store-release, the
+    //  object which was previously protected by this rec and is now unprotected
+    //  by this store-release becomes eligible for reclamation, by not being
+    //  removed from the list of retired pointers. From this synchronization,
+    //  all modifications to that object during the critical section in the
+    //  reader thread happen-before reclamation in the reclaimer thread.
     hazptr_.store(p, std::memory_order_release);
   }
 
