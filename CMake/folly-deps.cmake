@@ -35,7 +35,7 @@ else()
 endif()
 set(Boost_USE_STATIC_LIBS "${FOLLY_BOOST_LINK_STATIC}")
 
-find_package(Boost 1.51.0 REQUIRED
+find_package(Boost 1.69.0 REQUIRED
   COMPONENTS
     context
     filesystem
