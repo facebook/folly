@@ -27,6 +27,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Rcu.h>
 #include <folly/synchronization/RelaxedAtomic.h>
+#include <folly/synchronization/test/Barrier.h>
 
 using namespace folly;
 using rcu_domain = folly::rcu_domain;
@@ -329,4 +330,30 @@ TEST(RcuTest, DeeplyNestedReaders) {
   // Clean up to avoid ASAN complaining about a leak.
   rcu_synchronize();
   delete int_ptr.exchange(nullptr, std::memory_order_acq_rel);
+}
+
+TEST(RcuTest, DeadLock) {
+  // The test tries to reproduce the potential deadlock caused by 2 threads.
+  // T1 does rcu_read_lock(), T2 starts synchronization_rcu(), T1 tries to
+  // call_rcu(). Which made deadlock happens.
+
+  static folly::Indestructible<folly::rcu_domain> domain;
+
+  folly::test::Barrier ready(2);
+  char* to_retire = new char[50];
+  std::thread t1([&] {
+    std::scoped_lock<folly::rcu_domain> guard(domain);
+    ready.wait();
+    strcpy(to_retire, "Spend some time to guarantee deadlock situation.");
+    std::cout << to_retire << std::endl;
+    folly::rcu_retire(to_retire, std::default_delete<char[]>(), domain);
+  });
+  std::thread t2([&] {
+    ready.wait();
+    folly::rcu_synchronize(domain);
+  });
+
+  t1.join();
+  t2.join();
+  folly::rcu_synchronize(domain);
 }

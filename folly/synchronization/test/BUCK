@@ -323,6 +323,7 @@ fbcode_target(
     name = "rcu_test",
     srcs = ["RcuTest.cpp"],
     deps = [
+        ":barrier",
         "//folly:benchmark",
         "//folly:random",
         "//folly/portability:gflags",

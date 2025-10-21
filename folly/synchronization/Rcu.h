@@ -225,11 +225,6 @@
 //    However, even when using the default deleter, an object having a
 //    user-defined destructor that acquires locks held across the corresponding
 //    call to rcu_retire can still deadlock.
-//  - Within the same domain, it is possible to deadlock if thread A is calling
-//    rcu_retire() within a read critical section while thread B is calling
-//    rcu_synchronize(). This is an edge case we plan to fix in the future. It's
-//    hence for now recommended to avoid calling rcu_synchronize() before
-//    program shutdown or to use a custom domain if needed.
 //  - rcu_domain destruction:
 //    Destruction of a domain assumes previous synchronization: all remaining
 //    call and retire calls are immediately added to the executor.
@@ -387,15 +382,15 @@ class rcu_domain {
     if (time > syncTime + syncTimePeriod_ &&
         syncTime_.compare_exchange_strong(
             syncTime, time, std::memory_order_relaxed)) {
-      list_head finished;
-      {
-        std::lock_guard g(syncMutex_);
+      std::unique_lock g(syncMutex_, std::try_to_lock);
+      if (g.owns_lock()) {
+        list_head finished;
         half_sync(false, finished);
+        // callbacks are called outside of syncMutex_
+        finished.forEach([&](list_node* item) {
+          executor_->add(std::move(item->cb_));
+        });
       }
-      // callbacks are called outside of syncMutex_
-      finished.forEach([&](list_node* item) {
-        executor_->add(std::move(item->cb_));
-      });
     }
   }
 
