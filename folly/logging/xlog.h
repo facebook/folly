@@ -459,6 +459,22 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
       ##__VA_ARGS__)
 
 /**
+ * Similar to XLOGF(...) except only log a message the first n times, exactly.
+ *
+ * The internal counter is process-global and threadsafe and exchanges are
+ * atomic.
+ */
+#define XLOGF_FIRST_N(level, n, fmt, ...)                                      \
+  XLOGF_IF(                                                                    \
+      level,                                                                   \
+      [&] {                                                                    \
+        struct folly_detail_xlog_tag {};                                       \
+        return ::folly::detail::xlogFirstNExactImpl<folly_detail_xlog_tag>(n); \
+      }(),                                                                     \
+      fmt,                                                                     \
+      ##__VA_ARGS__)
+
+/**
  * FOLLY_XLOG_STRIP_PREFIXES can be defined to a string containing a
  * colon-separated list of directory prefixes to strip off from the filename
  * before using it to compute the log category name.

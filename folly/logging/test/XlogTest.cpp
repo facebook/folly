@@ -564,6 +564,20 @@ TEST_F(XlogTest, rateLimiting) {
           "bah 3",
       }));
   handler->clearMessages();
+
+  // Test XLOGF_FIRST_N
+  for (size_t n = 0; n < 10; ++n) {
+    XLOGF_FIRST_N(DBG1, 4, "bah {}", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAreArray({
+          "bah 0",
+          "bah 1",
+          "bah 2",
+          "bah 3",
+      }));
+  handler->clearMessages();
 }
 
 TEST_F(XlogTest, rateLimitingEndOfThread) {
