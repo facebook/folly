@@ -49,6 +49,11 @@ non_fbcode_target(
             "//xplat/third-party/snappy:snappy",
             "//xplat/third-party/xz:lzma",
         ],
+        "ovr_config//os:windows": [
+            "//third-party/bzip2:bzlib2",
+            "//xplat/third-party/snappy:snappy",
+            "//xplat/third-party/xz:lzma",
+        ],
     }),
     exported_deps = [
         "fbsource//xplat/folly/io:iobuf",
