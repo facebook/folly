@@ -460,7 +460,6 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
         shouldRunInner = false;
         auto elementsCapacity = tmp->getElementsCapacity();
         FOR_EACH_RANGE (i, 0, elementsCapacity) {
-          CHECK(!tmp->elements[i].ptr);
           if (tmp->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
             tmp->elements[i].cleanup();
             shouldRunInner = true;
