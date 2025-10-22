@@ -30,26 +30,27 @@ namespace folly {
 /**
  * A Thread pool for CPU bound tasks.
  *
- * @note A single queue backed by folly/LifoSem and folly/MPMC queue.
- * Because of this contention can be quite high,
- * since all the worker threads and all the producer threads hit
- * the same queue. MPMC queue excels in this situation but dictates a max queue
- * size.
+ * @note A single queue backed by:
+ * - An efficient semaphore, such as:
+ *   - folly::LifoSem
+ *   - folly::ThrottledlifoSem
+ * * An efficient unbounded concurrent queue, such as:
+ *   - folly::UMPMCQueue
+ * Therefore, this thread pool scales to very high levels of concurrent access.
  *
- * @note If a blocking queue (folly::QueueBehaviorIfFull::BLOCK) is used, and
+ * @note If a bounded queue (folly::QueueBehaviorIfFull::BLOCK) is used, and
  * tasks executing on a given thread pool schedule more tasks, deadlock is
- * possible if the queue becomes full.  Deadlock is also possible if there is
+ * possible if the queue becomes full. Deadlock is also possible if there is
  * a circular dependency among multiple thread pools with blocking queues.
- * To avoid this situation, use non-blocking queue(s), or schedule tasks only
- * from threads not belonging to the given thread pool(s), or use
- * folly::IOThreadPoolExecutor.
+ * To avoid this situation, either use non-blocking queue(s) only (default and
+ * recommended), or schedule tasks only from threads not belonging to the given
+ * thread pool(s).
  *
- * @note LifoSem wakes up threads in Lifo order - i.e. there are only few
- * threads as necessary running, and we always try to reuse the same few threads
- * for better cache locality.
- * All Folly BlockingQueue implementations use either LifoSem or
- * ThrottledLifoSem, which madvise away the stack of threads that are inactive
- * for a long time.
+ * @note LifoSem and ThrottledLifoSem wake up threads in LIFO order - i.e. there
+ * are only ever as few threads as necessary actually running, and we always try
+ * to reuse the same few threads for better cache locality. The other threads
+ * are be suspended continuously until they are needed to handle spikes in work,
+ * and their stacks would be madvised away while the threads are suspended.
  *
  * @note Supports priorities - priorities are implemented as multiple queues -
  * each worker thread checks the highest priority queue first. Threads
