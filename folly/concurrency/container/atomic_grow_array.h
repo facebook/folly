@@ -76,6 +76,33 @@ struct atomic_grow_array_policy_default {
 ///   capacity * sizeof(value_type) <--- array-segment elements slab
 /// Modulo allocator size-classes, of which this container makes no attempt to
 /// take advantage, and value-type alignment.
+///
+/// This is a concurrent array. These are the available operations. They are all
+/// safely concurrent with each other and they all provide the required memory
+/// orderings for safe concurrent use:
+///   operator[]
+///   size
+///   empty
+///   as_view
+///   as_ptr_span
+///
+/// The container has reference and iterator stability. The references, views,
+/// and pointer-spans returned by operator[], as_view, and as_ptr_span are valid
+/// for the lifetime of the container and will never become dangling.
+///
+/// The results of empty and size are monotonic: callers in happens-before order
+/// will only ever see nondecreasing values returned by empty or by size. These
+/// values serve as lower bounds valid for the lifetime of the container.
+///
+/// Example:
+///
+///   relaxed_atomic<size_t> count{0};
+///   atomic_grow_array<object> array;
+///
+///   object& next() { return array[count++]; }
+///
+///   template <typename func>
+///   void for_each(func f) { for (auto p : array.as_ptr_span(count)) f(*p); }
 template <
     typename Item,
     typename Policy = atomic_grow_array_policy_default<Item>>
