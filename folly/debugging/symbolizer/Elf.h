@@ -508,6 +508,36 @@ class ElfFile {
   folly::Expected<span<const uint8_t>, FindNoteError> getNoteGnuBuildId()
       const noexcept;
 
+  /**
+   * Find a note by name in either a section or segment. If multiple
+   * notes share the same name, the first match will be returned. An error will
+   * be returned if the note is not found, or if there is underlying file
+   * corruption.
+   *
+   * Empty is a valid input, and will return when notes with an empty name are
+   * found. This can happen in ELF Cores, or other notes when the namespace
+   * unknown. Read more at https://man7.org/linux/man-pages/man5/elf.5.html
+   *
+   * Note that notes are not unique, and notes in sections may also be in
+   * segments. For this reason this method does not differentiate between
+   * segments and sections.
+   */
+  folly::Expected<Note, FindNoteError> findNoteByName(
+      std::string_view name) const noexcept;
+
+  /**
+   * Find a note by type in either a section or segment. If multiple
+   * notes share the same type, the first match will be returned. An error will
+   * be returned if the note is not found, or if there is underlying file
+   * corruption.
+   *
+   * Note that notes are not unique, and notes in sections may also be in
+   * segments. For this reason this method does not differentiate between
+   * segments and sections.
+   */
+  folly::Expected<Note, FindNoteError> findNoteByType(
+      size_t type) const noexcept;
+
  private:
   OpenResult init() noexcept;
   void reset() noexcept;

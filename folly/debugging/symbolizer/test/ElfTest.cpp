@@ -325,4 +325,65 @@ TEST(TestNoteParsing, SimpleElf) {
   EXPECT_EQ(err.failureCode, ElfFile::FindNoteFailureCode::NoteUndersized);
 }
 
+TEST(TestFindNote, SimpleElf) {
+  auto const file =
+      folly::test::find_resource("folly/debugging/symbolizer/test/simple_elf");
+
+  EXPECT_TRUE(std::filesystem::exists(file.c_str())) << file.c_str();
+  ElfFile elfFile = ElfFile(file.c_str());
+  const auto* shdr = elfFile.getSectionByName(".note.gnu.build-id");
+  EXPECT_NE(nullptr, shdr);
+
+  // There are multiple notes whose names are "GNU"
+  // to avoid flakiness we just check the name. But below when we iterate
+  // by type, we check the type and the name.
+  std::string noteName = "GNU";
+  {
+    auto noteMaybe = elfFile.findNoteByName(noteName);
+    ASSERT_TRUE(([&]() {
+      return noteMaybe.hasError()
+          ? testing::AssertionFailure()
+              << ElfFile::FindNoteError::getErrorMessage(noteMaybe.error())
+          : testing::AssertionSuccess();
+    })());
+
+    EXPECT_EQ(noteName, noteMaybe->getName());
+  }
+  {
+    auto noteMaybe = elfFile.findNoteByType(NT_GNU_BUILD_ID);
+    ASSERT_TRUE(([&]() {
+      return noteMaybe.hasError()
+          ? testing::AssertionFailure()
+              << ElfFile::FindNoteError::getErrorMessage(noteMaybe.error())
+          : testing::AssertionSuccess();
+    })());
+
+    EXPECT_EQ(noteName, noteMaybe->getName());
+    EXPECT_EQ(NT_GNU_BUILD_ID, noteMaybe->header()->n_type);
+  }
+  {
+    auto noteMaybe = elfFile.findNoteByType(NT_PRSTATUS);
+    ASSERT_TRUE(([&]() {
+      return noteMaybe.hasError()
+          ? testing::AssertionFailure()
+              << ElfFile::FindNoteError::getErrorMessage(noteMaybe.error())
+          : testing::AssertionSuccess();
+    })());
+
+    EXPECT_EQ(noteName, noteMaybe->getName());
+    EXPECT_EQ(NT_PRSTATUS, noteMaybe->header()->n_type);
+  }
+  {
+    auto noteMaybe =
+        elfFile.findNoteByType(std::numeric_limits<uint32_t>::max());
+    EXPECT_TRUE(noteMaybe.hasError());
+    EXPECT_FALSE(noteMaybe.error().isDataCorruptionError());
+  }
+  {
+    auto noteMaybe = elfFile.findNoteByName("NOT_A_NOTE");
+    EXPECT_TRUE(noteMaybe.hasError());
+    EXPECT_FALSE(noteMaybe.error().isDataCorruptionError());
+  }
+}
+
 #endif

@@ -497,6 +497,37 @@ ElfFile::getNoteGnuBuildId() const noexcept {
   return iterateNotesInSections(section, filter).then(desc);
 }
 
+folly::Expected<ElfFile::Note, ElfFile::FindNoteError> ElfFile::findNoteByName(
+    std::string_view name) const noexcept {
+  auto filter = [name](const Note& note) { return note.getName() == name; };
+
+  // If we get a success, or a data corruption error, return it.
+  // otherwise iterate segments.
+  auto foundMaybe = iterateNotesInSections(nullptr, filter);
+  if (foundMaybe || foundMaybe.error().isDataCorruptionError()) {
+    return foundMaybe;
+  }
+
+  foundMaybe = iterateNotesInSegments(nullptr, filter);
+  return foundMaybe;
+}
+
+folly::Expected<ElfFile::Note, ElfFile::FindNoteError> ElfFile::findNoteByType(
+    size_t type) const noexcept {
+  auto filter = [type](const Note& note) {
+    return note.header()->n_type == type;
+  };
+
+  // If we get a success, or a data corruption error, return it.
+  // otherwise iterate segments.
+  auto foundMaybe = iterateNotesInSections(nullptr, filter);
+  if (foundMaybe || foundMaybe.error().isDataCorruptionError()) {
+    return foundMaybe;
+  }
+
+  foundMaybe = iterateNotesInSegments(nullptr, filter);
+  return foundMaybe;
+}
 } // namespace symbolizer
 } // namespace folly
 
