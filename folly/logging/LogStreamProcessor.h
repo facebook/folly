@@ -330,7 +330,7 @@ class LogStreamProcessor {
         });
   }
 
-  FOLLY_NOINLINE std::string vformatLogString(
+  static FOLLY_NOINLINE std::string vformatLogString(
       folly::StringPiece fmt, fmt::format_args args, bool& failed) noexcept {
     return folly::catch_exception<const std::exception&>(
         [&] {
