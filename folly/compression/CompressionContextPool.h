@@ -99,28 +99,25 @@ class CompressionContextPool {
   }
 
   Ref get() {
-    auto lock = stack_.wlock();
+    {
+      auto lock = stack_.wlock();
 #if !FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
-    if (!*lock) {
-      lock->emplace();
-    }
-#endif
-    auto& stack = **lock;
-    if (stack.empty()) {
-      T* t = creator_();
-      if (t == nullptr) {
-        throw_exception<std::bad_alloc>();
+      if (!*lock) {
+        lock->emplace();
       }
-      created_++;
-      return Ref(t, get_deleter());
+#endif
+      auto& stack = **lock;
+      if (!stack.empty()) {
+        auto ptr = std::move(stack.back());
+        stack.pop_back();
+        if (!ptr) {
+          throw_exception<std::logic_error>(
+              "A nullptr snuck into our context pool!?!?");
+        }
+        return Ref(ptr.release(), get_deleter());
+      }
     }
-    auto ptr = std::move(stack.back());
-    stack.pop_back();
-    if (!ptr) {
-      throw_exception<std::logic_error>(
-          "A nullptr snuck into our context pool!?!?");
-    }
-    return Ref(ptr.release(), get_deleter());
+    return create();
   }
 
   size_t created_count() const { return created_.load(); }
@@ -165,6 +162,15 @@ class CompressionContextPool {
     // must already have been initialized. So we don't need to check.
     auto& stack = **lock;
     stack.push_back(std::move(ptr));
+  }
+
+  Ref create() {
+    T* t = creator_();
+    if (t == nullptr) {
+      throw_exception<std::bad_alloc>();
+    }
+    created_++;
+    return Ref(t, get_deleter());
   }
 
   const Creator creator_;
