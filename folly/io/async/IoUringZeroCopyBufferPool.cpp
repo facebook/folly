@@ -191,6 +191,7 @@ void IoUringZeroCopyBufferPool::initialRegister(
 
   rqAreaToken_ = areaReg.rq_area_token;
   rqMask_ = ifqReg.rq_entries - 1;
+  id_ = ifqReg.zcrx_id;
 }
 
 void IoUringZeroCopyBufferPool::returnBuffer(Buffer* buffer) noexcept {

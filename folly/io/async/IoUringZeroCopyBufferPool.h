@@ -93,6 +93,7 @@ class IoUringZeroCopyBufferPool {
   uint64_t rqAreaToken_{0};
   uint64_t rqTail_{0};
   unsigned rqMask_{0};
+  uint32_t id_{0};
   uint64_t bufDispensed_{0};
 
   folly::DistributedMutex mutex_;
