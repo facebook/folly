@@ -36,7 +36,7 @@ DEFINE_int32(
 BENCHMARK(get_exception, iters) {
   folly::BenchmarkSuspender benchSuspender;
   folly::exception_wrapper ew{std::runtime_error("test")};
-  std::exception* ep = nullptr;
+  std::exception const* ep = nullptr;
   benchSuspender.dismissing([&] {
     while (iters--) {
       ep = ew.get_exception();

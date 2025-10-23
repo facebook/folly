@@ -205,8 +205,7 @@ class exception_wrapper final {
 
   //! \return a pointer to the `std::exception` held by `*this`, if it holds
   //!     one; otherwise, returns `nullptr`.
-  std::exception* get_exception() noexcept;
-  //! \overload
+  std::exception* get_mutable_exception() const noexcept;
   std::exception const* get_exception() const noexcept;
 
   //! \returns a pointer to the `Ex` held by `*this`, if it holds an object
@@ -218,9 +217,9 @@ class exception_wrapper final {
   //!
   //! This is most efficient when `Ex` matches the exact stored type, or when
   //! the type alias `Ex::folly_get_exception_hint_types` has a good hint.
-  template <typename Ex>
-  Ex* get_exception() noexcept;
   //! \overload
+  template <typename Ex>
+  Ex* get_mutable_exception() const noexcept;
   template <typename Ex>
   Ex const* get_exception() const noexcept;
 
@@ -351,8 +350,8 @@ class exception_wrapper final {
     return get_exception<Ex>();
   }
   template <typename Ex>
-  Ex* get_mutable_exception(get_exception_tag_t) noexcept {
-    return get_exception<Ex>();
+  Ex* get_mutable_exception(get_exception_tag_t) const noexcept {
+    return get_mutable_exception<Ex>();
   }
 };
 

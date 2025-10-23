@@ -449,13 +449,6 @@ TEST(ExceptionWrapper, get_exception_from_exception_wrapper) {
           decltype(get_mutable_exception<std::runtime_error>(ew))>);
 }
 
-TEST(ExceptionWrapper, withExceptionDeduction) {
-  auto ew = make_exception_wrapper<std::runtime_error>("hi");
-  EXPECT_TRUE(ew.with_exception([](std::runtime_error&) {}));
-  EXPECT_TRUE(ew.with_exception([](std::exception&) {}));
-  EXPECT_FALSE(ew.with_exception([](std::logic_error&) {}));
-}
-
 TEST(ExceptionWrapper, withExceptionDeductionExnConst) {
   auto ew = make_exception_wrapper<std::runtime_error>("hi");
   EXPECT_TRUE(ew.with_exception([](const std::runtime_error&) {}));
@@ -472,9 +465,11 @@ TEST(ExceptionWrapper, withExceptionDeductionWrapConstExnConst) {
 
 TEST(ExceptionWrapper, withExceptionDeductionReturning) {
   auto ew = make_exception_wrapper<std::runtime_error>("hi");
-  EXPECT_TRUE(ew.with_exception([](std::runtime_error&) { return 3; }));
-  EXPECT_TRUE(ew.with_exception([](std::exception&) { return "hello"; }));
-  EXPECT_FALSE(ew.with_exception([](std::logic_error&) { return nullptr; }));
+  EXPECT_TRUE(ew.with_exception([](const std::runtime_error&) { return 3; }));
+  EXPECT_TRUE(ew.with_exception([](const std::exception&) { return "hello"; }));
+  EXPECT_FALSE(ew.with_exception([](const std::logic_error&) {
+    return nullptr;
+  }));
 }
 
 namespace {
@@ -486,9 +481,9 @@ T& r_to_l(T v) {
 
 TEST(ExceptionWrapper, withExceptionDeductionFunctorLvalue) {
   auto ew = make_exception_wrapper<std::runtime_error>("hi");
-  EXPECT_TRUE(ew.with_exception(r_to_l([](std::runtime_error&) {})));
-  EXPECT_TRUE(ew.with_exception(r_to_l([](std::exception&) {})));
-  EXPECT_FALSE(ew.with_exception(r_to_l([](std::logic_error&) {})));
+  EXPECT_TRUE(ew.with_exception(r_to_l([](const std::runtime_error&) {})));
+  EXPECT_TRUE(ew.with_exception(r_to_l([](const std::exception&) {})));
+  EXPECT_FALSE(ew.with_exception(r_to_l([](const std::logic_error&) {})));
 }
 
 TEST(ExceptionWrapper, nonStdExceptionTest) {

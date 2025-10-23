@@ -430,7 +430,7 @@ class ResumableTransformProcessor
         // user's initialization function and resume the resumableTransform.
         auto* reinitializeEx =
             closeResult.exception
-                ->get_exception<ReinitializeException<InitializeArg>>();
+                ->get_mutable_exception<ReinitializeException<InitializeArg>>();
         co_await initializeImpl(std::move(reinitializeEx->initializeArg));
         co_return;
       }

@@ -131,7 +131,8 @@ inline bool exception_wrapper::has_exception_ptr() const noexcept {
   return !!ptr_;
 }
 
-inline std::exception* exception_wrapper::get_exception() noexcept {
+inline std::exception* exception_wrapper::get_mutable_exception()
+    const noexcept {
   return exception_ptr_get_object<std::exception>(ptr_);
 }
 inline std::exception const* exception_wrapper::get_exception() const noexcept {
@@ -139,7 +140,7 @@ inline std::exception const* exception_wrapper::get_exception() const noexcept {
 }
 
 template <typename Ex>
-inline Ex* exception_wrapper::get_exception() noexcept {
+inline Ex* exception_wrapper::get_mutable_exception() const noexcept {
   return exception_ptr_get_object_hint<Ex>(ptr_);
 }
 
@@ -209,8 +210,13 @@ inline bool exception_wrapper::with_exception_(This&, Fn fn_, tag_t<void>) {
 
 template <class This, class Fn, typename Ex>
 inline bool exception_wrapper::with_exception_(This& this_, Fn fn_, tag_t<Ex>) {
-  auto ptr = this_.template get_exception<remove_cvref_t<Ex>>();
-  return ptr && (void(fn_(static_cast<Ex&>(*ptr))), true);
+  if constexpr (std::is_const_v<Ex>) {
+    auto ptr = this_.template get_exception<remove_cvref_t<Ex>>();
+    return ptr && (void(fn_(static_cast<Ex&>(*ptr))), true);
+  } else {
+    auto ptr = this_.template get_mutable_exception<remove_cvref_t<Ex>>();
+    return ptr && (void(fn_(static_cast<Ex&>(*ptr))), true);
+  }
 }
 
 template <class Ex, class This, class Fn>
