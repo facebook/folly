@@ -621,3 +621,31 @@ TEST(allocateOverAligned, defaultOverCustomAlloc) {
   folly::deallocateOverAligned(a, p, 1);
   EXPECT_EQ(folly::allocationBytesForOverAligned<decltype(a)>(1), 128);
 }
+
+TEST(sharedPointerMap, testMappingFunction) {
+  struct Foo {
+    int i;
+  };
+
+  auto owner = std::make_shared<Foo>();
+  owner->i = 42;
+
+  {
+    auto subfield = folly::fmap_shared_ptr_aliasing(owner, [](const auto* foo) {
+      return &foo->i;
+    });
+    EXPECT_EQ(subfield.use_count(), 2);
+    EXPECT_EQ(*subfield, 42);
+  }
+
+  EXPECT_EQ(owner.use_count(), 1);
+
+  {
+    auto subfield = folly::fmap_shared_ptr_aliasing(
+        owner, [](const auto* /* foo */) -> const int* { return nullptr; });
+    EXPECT_FALSE(subfield);
+    EXPECT_EQ(owner.use_count(), 1);
+  }
+
+  EXPECT_EQ(owner.use_count(), 1);
+}
