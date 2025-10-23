@@ -35,7 +35,13 @@ class MaybeManagedPtr {
  public:
   /* implicit */ MaybeManagedPtr(T* t)
       : t_(std::shared_ptr<T>(std::shared_ptr<void>(), t)) {}
-  /* implicit */ MaybeManagedPtr(std::shared_ptr<T> t) : t_(t) {}
+  /* implicit */ MaybeManagedPtr(std::shared_ptr<T> t) : t_(std::move(t)) {}
+
+  /**
+   * Construction from shared_ptr<X>, where X is derived from T.
+   */
+  template <typename Q, typename = std::enable_if_t<std::is_base_of_v<T, Q>>>
+  /* implicit */ MaybeManagedPtr(std::shared_ptr<Q> q) : t_(std::move(q)) {}
 
   /**
    * Get pointer to the element contained in MaybeManagedPtr.
