@@ -292,19 +292,18 @@ non_fbcode_target(
     }),
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "thread_local",
+    headers = ["ThreadLocal.h"],
     feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "ThreadLocal.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:shared_mutex",
-        "//xplat/folly/detail:thread_local_detail",
+        ":likely",
+        ":portability",
+        ":scope_guard",
+        ":shared_mutex",
+        "//folly/detail:thread_local_detail",
     ],
 )
 
@@ -6211,19 +6210,6 @@ fbcode_target(
     exported_deps = [
         ":likely",
         ":thread_local",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "thread_local",
-    headers = ["ThreadLocal.h"],
-    exported_deps = [
-        ":likely",
-        ":portability",
-        ":scope_guard",
-        ":shared_mutex",
-        "//folly/detail:thread_local_detail",
     ],
 )
 
