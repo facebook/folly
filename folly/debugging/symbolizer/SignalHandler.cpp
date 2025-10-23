@@ -206,6 +206,12 @@ void signalHandler(int signum, siginfo_t* info, void* uctx);
       if (try_async_reraise(signum, info)) {
         return;
       }
+      // Unblock the signal before raising it. Since our handler doesn't use
+      // SA_NODEFER, the signal is currently blocked.
+      sigset_t mask;
+      sigemptyset(&mask);
+      sigaddset(&mask, signum);
+      pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
       raise(signum);
     }
   }
