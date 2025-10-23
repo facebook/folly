@@ -59,14 +59,19 @@ namespace compression {
  * CompressionCoreLocalContextPool instead, which, behind the fast cache slots,
  * is backed by this implementation.
  */
-template <typename T, typename Creator, typename Deleter, typename Resetter>
+template <
+    typename T,
+    typename Creator,
+    typename Deleter,
+    typename Resetter,
+    typename Sizeof>
 class CompressionContextPool {
  private:
   using InternalRef = std::unique_ptr<T, Deleter>;
 
   class ReturnToPoolDeleter {
    public:
-    using Pool = CompressionContextPool<T, Creator, Deleter, Resetter>;
+    using Pool = CompressionContextPool<T, Creator, Deleter, Resetter, Sizeof>;
 
     explicit ReturnToPoolDeleter(Pool* pool) : pool_(pool) { DCHECK(pool); }
 
@@ -86,10 +91,12 @@ class CompressionContextPool {
   constexpr explicit CompressionContextPool(
       Creator creator = Creator(),
       Deleter deleter = Deleter(),
-      Resetter resetter = Resetter())
+      Resetter resetter = Resetter(),
+      Sizeof size_of = Sizeof())
       : creator_(std::move(creator)),
         deleter_(std::move(deleter)),
         resetter_(std::move(resetter)),
+        size_of_(std::move(size_of)),
 #if FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
         stack_(std::in_place, std::vector<InternalRef>{}),
 #else
@@ -176,6 +183,7 @@ class CompressionContextPool {
   const Creator creator_;
   const Deleter deleter_;
   const Resetter resetter_;
+  const Sizeof size_of_;
 
   folly::Synchronized<std::optional<std::vector<InternalRef>>> stack_;
 

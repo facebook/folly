@@ -60,17 +60,27 @@ struct ZSTD_DCtx_Resetter {
   void operator()(ZSTD_DCtx* ctx) const noexcept;
 };
 
+struct ZSTD_CCtx_Sizeof {
+  size_t operator()(const ZSTD_CCtx* ctx) const noexcept;
+};
+
+struct ZSTD_DCtx_Sizeof {
+  size_t operator()(const ZSTD_DCtx* ctx) const noexcept;
+};
+
 using ZSTD_CCtx_Pool = CompressionCoreLocalContextPool<
     ZSTD_CCtx,
     ZSTD_CCtx_Creator,
     ZSTD_CCtx_Deleter,
     ZSTD_CCtx_Resetter,
+    ZSTD_CCtx_Sizeof,
     4>;
 using ZSTD_DCtx_Pool = CompressionCoreLocalContextPool<
     ZSTD_DCtx,
     ZSTD_DCtx_Creator,
     ZSTD_DCtx_Deleter,
     ZSTD_DCtx_Resetter,
+    ZSTD_DCtx_Sizeof,
     16>;
 
 /**

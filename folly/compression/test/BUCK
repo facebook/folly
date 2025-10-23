@@ -60,7 +60,6 @@ fbcode_target(
         "//folly:benchmark",
         "//folly/compression:compression_context_pool",
         "//folly/compression:compression_context_pool_singletons",
-        "//folly/lang:keep",
     ],
     external_deps = [
         "glog",

@@ -68,9 +68,18 @@ struct FooResetter {
   void operator()(Foo* f) const { f->reset(); }
 };
 
-using Pool = CompressionContextPool<Foo, FooCreator, FooDeleter, FooResetter>;
-using BadPool =
-    CompressionContextPool<Foo, BadFooCreator, FooDeleter, FooResetter>;
+struct FooSizeof {
+  size_t operator()(const Foo* f) const { return sizeof(*f); }
+};
+
+using Pool =
+    CompressionContextPool<Foo, FooCreator, FooDeleter, FooResetter, FooSizeof>;
+using BadPool = CompressionContextPool<
+    Foo,
+    BadFooCreator,
+    FooDeleter,
+    FooResetter,
+    FooSizeof>;
 
 } // anonymous namespace
 
@@ -225,6 +234,7 @@ class CompressionCoreLocalContextPoolTest : public testing::Test {
       FooCreator,
       FooDeleter,
       FooResetter,
+      FooSizeof,
       8>;
 
   void SetUp() override { pool_ = std::make_unique<Pool>(); }

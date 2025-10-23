@@ -76,11 +76,11 @@ void huge_page_free(void*, void* address) {
   }
 }
 
-ZSTD_customMem huge_page_custom_mem = (use_huge_pages && usingJEMalloc())
+const ZSTD_customMem huge_page_custom_mem = (use_huge_pages && usingJEMalloc())
     ? (ZSTD_customMem){huge_page_alloc, huge_page_free, nullptr}
     : ZSTD_defaultCMem;
 #else
-ZSTD_customMem huge_page_custom_mem = ZSTD_defaultCMem;
+const ZSTD_customMem huge_page_custom_mem = ZSTD_defaultCMem;
 #endif
 
 } // anonymous namespace
@@ -111,6 +111,14 @@ void ZSTD_DCtx_Resetter::operator()(ZSTD_DCtx* ctx) const noexcept {
   size_t const err = ZSTD_DCtx_reset(ctx, ZSTD_reset_session_and_parameters);
   assert(!ZSTD_isError(err)); // This function doesn't actually fail
   (void)err;
+}
+
+size_t ZSTD_CCtx_Sizeof::operator()(const ZSTD_CCtx* ctx) const noexcept {
+  return ZSTD_sizeof_CCtx(ctx);
+}
+
+size_t ZSTD_DCtx_Sizeof::operator()(const ZSTD_DCtx* ctx) const noexcept {
+  return ZSTD_sizeof_DCtx(ctx);
 }
 
 ZSTD_CCtx_Pool::Ref getZSTD_CCtx() {

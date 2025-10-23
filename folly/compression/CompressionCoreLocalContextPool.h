@@ -41,6 +41,7 @@ template <
     typename Creator,
     typename Deleter,
     typename Resetter,
+    typename Sizeof,
     size_t NumStripes = 8>
 class CompressionCoreLocalContextPool {
  private:
@@ -59,6 +60,7 @@ class CompressionCoreLocalContextPool {
         Creator,
         Deleter,
         Resetter,
+        Sizeof,
         NumStripes>;
 
     explicit ReturnToPoolDeleter(Pool* pool) : pool_(pool) { DCHECK(pool_); }
@@ -69,7 +71,8 @@ class CompressionCoreLocalContextPool {
     Pool* pool_;
   };
 
-  using BackingPool = CompressionContextPool<T, Creator, Deleter, Resetter>;
+  using BackingPool =
+      CompressionContextPool<T, Creator, Deleter, Resetter, Sizeof>;
   using BackingPoolRef = typename BackingPool::Ref;
 
  public:
@@ -79,8 +82,13 @@ class CompressionCoreLocalContextPool {
   constexpr explicit CompressionCoreLocalContextPool(
       Creator creator = Creator(),
       Deleter deleter = Deleter(),
-      Resetter resetter = Resetter())
-      : pool_(std::move(creator), std::move(deleter), std::move(resetter)),
+      Resetter resetter = Resetter(),
+      Sizeof size_of = Sizeof())
+      : pool_(
+            std::move(creator),
+            std::move(deleter),
+            std::move(resetter),
+            std::move(size_of)),
         caches_() {}
 
   ~CompressionCoreLocalContextPool() { flush_shallow(); }

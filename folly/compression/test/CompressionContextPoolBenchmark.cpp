@@ -49,8 +49,12 @@ struct FooResetter {
   void operator()(Foo* f) const { f->reset(); }
 };
 
+struct FooSizeof {
+  size_t operator()(const Foo* f) const { return sizeof(*f); }
+};
+
 using FooStackPool = folly::compression::
-    CompressionContextPool<Foo, FooCreator, FooDeleter, FooResetter>;
+    CompressionContextPool<Foo, FooCreator, FooDeleter, FooResetter, FooSizeof>;
 
 template <int NumStripes>
 using FooCoreLocalPool = folly::compression::CompressionCoreLocalContextPool<
@@ -58,6 +62,7 @@ using FooCoreLocalPool = folly::compression::CompressionCoreLocalContextPool<
     FooCreator,
     FooDeleter,
     FooResetter,
+    FooSizeof,
     NumStripes>;
 
 template <typename Pool>
