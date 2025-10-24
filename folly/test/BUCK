@@ -27,6 +27,9 @@ fbcode_target(
     deps = [
         "//folly:range",
         "//folly:unicode",
+        "//folly/container:span",
+        "//folly/lang:keep",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
 )

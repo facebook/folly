@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -75,13 +76,19 @@ inline char32_t unicode_code_point_from_utf16_surrogate_pair(
 
 //////////////////////////////////////////////////////////////////////
 
+struct unicode_code_point_utf8 {
+  uint32_t size;
+  uint8_t data[4];
+};
+unicode_code_point_utf8 unicode_code_point_to_utf8(char32_t cp);
+
 /*
  * Encode a single Unicode code point into a UTF-8 byte sequence.
  *
  * Result is undefined if `cp' is an invalid code point.
  */
-std::string codePointToUtf8(char32_t cp);
 void appendCodePointToUtf8(char32_t cp, std::string& out);
+std::string codePointToUtf8(char32_t cp);
 
 /*
  * Decode a single Unicode code point from UTF-8 byte sequence.

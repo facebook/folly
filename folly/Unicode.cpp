@@ -22,51 +22,51 @@
 
 namespace folly {
 
-namespace {
-
-template <class F>
-void codePointToUtf8Impl(char32_t cp, F&& f) {
+unicode_code_point_utf8 unicode_code_point_to_utf8(char32_t const cp) {
   // Based on description from http://en.wikipedia.org/wiki/UTF-8.
 
+  auto const ret = [](std::initializer_list<char> const ilist) {
+    unicode_code_point_utf8 val{to_narrow(ilist.size()), {}};
+    std::memcpy(val.data, ilist.begin(), ilist.size());
+    return val;
+  };
+
   if (cp <= 0x7f) {
-    f({
+    return ret({
         static_cast<char>(cp),
     });
   } else if (cp <= 0x7FF) {
-    f({
+    return ret({
         static_cast<char>(0xC0 | (cp >> 6)),
         static_cast<char>(0x80 | (0x3f & cp)),
     });
   } else if (cp <= 0xFFFF) {
-    f({
+    return ret({
         static_cast<char>(0xE0 | (cp >> 12)),
         static_cast<char>(0x80 | (0x3f & (cp >> 6))),
         static_cast<char>(0x80 | (0x3f & cp)),
     });
   } else if (cp <= 0x10FFFF) {
-    f({
+    return ret({
         static_cast<char>(0xF0 | (cp >> 18)),
         static_cast<char>(0x80 | (0x3f & (cp >> 12))),
         static_cast<char>(0x80 | (0x3f & (cp >> 6))),
         static_cast<char>(0x80 | (0x3f & cp)),
     });
+  } else {
+    return {0, {}};
   }
 }
 
-} // namespace
-
-std::string codePointToUtf8(char32_t cp) {
-  std::string result;
-  codePointToUtf8Impl(cp, [&](std::initializer_list<char> data) {
-    result.assign(data.begin(), data.end());
-  });
-  return result;
+void appendCodePointToUtf8(char32_t const cp, std::string& out) {
+  auto const utf8 = unicode_code_point_to_utf8(cp);
+  out.append(reinterpret_cast<char const*>(utf8.data), utf8.size);
 }
 
-void appendCodePointToUtf8(char32_t cp, std::string& out) {
-  codePointToUtf8Impl(cp, [&](std::initializer_list<char> data) {
-    out.append(data.begin(), data.end());
-  });
+std::string codePointToUtf8(char32_t const cp) {
+  std::string result;
+  appendCodePointToUtf8(cp, result);
+  return result;
 }
 
 char32_t utf8ToCodePoint(

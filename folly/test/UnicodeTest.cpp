@@ -20,9 +20,17 @@
 #include <stdexcept>
 
 #include <folly/Range.h>
+#include <folly/container/span.h>
+#include <folly/lang/Keep.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
+
+extern "C" FOLLY_KEEP unicode_code_point_utf8
+check_folly_unicode_code_point_to_utf8(char32_t cp) {
+  return unicode_code_point_to_utf8(cp);
+}
 
 class UnicodeTest : public testing::Test {};
 
@@ -60,6 +68,57 @@ TEST_F(UnicodeTest, utf16_code_unit_is_low_surrogate) {
   EXPECT_TRUE(utf16_code_unit_is_low_surrogate(0xdfff));
   EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0xe000));
   EXPECT_FALSE(utf16_code_unit_is_low_surrogate(0xffff));
+}
+
+TEST_F(UnicodeTest, unicode_code_point_to_utf8) {
+  // Test vector for char32_t to UTF-8 conversion
+  // Format: {code point, expected UTF-8 bytes (as hex)}
+  struct TestCase {
+    char32_t codepoint;
+    std::vector<uint8_t> utf8;
+  };
+  std::vector<TestCase> test_vector = {
+      // 1-byte UTF-8 sequences (ASCII range: U+0000 to U+007F)
+      {U'\u0000', {0x00}}, // NULL
+      {U'\u0024', {0x24}}, // DOLLAR SIGN
+      {U'\u007F', {0x7F}}, // DELETE
+
+      // 2-byte UTF-8 sequences (U+0080 to U+07FF)
+      {U'\u0080', {0xC2, 0x80}}, // PADDING CHARACTER
+      {U'\u00A9', {0xC2, 0xA9}}, // COPYRIGHT SIGN
+      {U'\u0394', {0xCE, 0x94}}, // GREEK CAPITAL LETTER DELTA
+      {U'\u07FF', {0xDF, 0xBF}}, // Maximum 2-byte sequence
+
+      // 3-byte UTF-8 sequences (U+0800 to U+FFFF)
+      {U'\u0800', {0xE0, 0xA0, 0x80}}, // Minimum 3-byte sequence
+      {U'\u20AC', {0xE2, 0x82, 0xAC}}, // EURO SIGN
+      {U'\u3042', {0xE3, 0x81, 0x82}}, // HIRAGANA LETTER A
+      {U'\uD7FF', {0xED, 0x9F, 0xBF}}, // Last code point before surrogate range
+      {U'\uE000', {0xEE, 0x80, 0x80}}, // First code point after surrogate range
+      {U'\uFFFF', {0xEF, 0xBF, 0xBF}}, // Maximum 3-byte sequence
+
+      // 4-byte UTF-8 sequences (U+10000 to U+10FFFF)
+      {U'\U00010000', {0xF0, 0x90, 0x80, 0x80}}, // Minimum 4-byte sequence
+      {U'\U0001F600', {0xF0, 0x9F, 0x98, 0x80}}, // GRINNING FACE emoji
+      {U'\U0001F64F',
+       {0xF0, 0x9F, 0x99, 0x8F}}, // PERSON WITH FOLDED HANDS emoji
+      {U'\U0010FFFF',
+       {0xF4, 0x8F, 0xBF, 0xBF}}, // Maximum valid Unicode code point
+
+      // Edge cases and special considerations
+      {U'\u0000', {0x00}}, // NULL (already included, but important)
+      {U'\u002F', {0x2F}}, // SOLIDUS (slash)
+      {U'\u005C', {0x5C}}, // REVERSE SOLIDUS (backslash)
+      {U'\u0085', {0xC2, 0x85}}, // NEXT LINE
+      {U'\u2028', {0xE2, 0x80, 0xA8}}, // LINE SEPARATOR
+      {U'\u2029', {0xE2, 0x80, 0xA9}}, // PARAGRAPH SEPARATOR
+      {U'\uFEFF', {0xEF, 0xBB, 0xBF}} // ZERO WIDTH NO-BREAK SPACE (BOM)
+  };
+  for (auto const& [cp, expected] : test_vector) {
+    auto const result = unicode_code_point_to_utf8(cp);
+    auto const actual = span(result.data, result.size);
+    EXPECT_THAT(actual, testing::ElementsAreArray(expected));
+  }
 }
 
 TEST_F(UnicodeTest, codePointCombineUtf16SurrogatePair) {
