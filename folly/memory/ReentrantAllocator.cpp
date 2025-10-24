@@ -16,7 +16,6 @@
 
 #include <folly/memory/ReentrantAllocator.h>
 
-#include <new>
 #include <utility>
 
 #include <folly/lang/Bits.h>
