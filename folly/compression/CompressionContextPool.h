@@ -53,6 +53,12 @@
 namespace folly {
 namespace compression {
 
+struct CompressionContextPoolDefaultCallback {
+  void operator()() const {}
+};
+
+constexpr size_t COMPRESSION_CONTEXT_POOL_CALLBACK_INTERVAL = 1024;
+
 /**
  * This implementation is slow under contention. Except under uncontended
  * scenarios, you shouldn't use it directly. You likely want to use the
@@ -64,14 +70,16 @@ template <
     typename Creator,
     typename Deleter,
     typename Resetter,
-    typename Sizeof>
+    typename Sizeof,
+    typename Callback = CompressionContextPoolDefaultCallback>
 class CompressionContextPool {
  private:
   using InternalRef = std::unique_ptr<T, Deleter>;
 
   class ReturnToPoolDeleter {
    public:
-    using Pool = CompressionContextPool<T, Creator, Deleter, Resetter, Sizeof>;
+    using Pool =
+        CompressionContextPool<T, Creator, Deleter, Resetter, Sizeof, Callback>;
 
     explicit ReturnToPoolDeleter(Pool* pool) : pool_(pool) { DCHECK(pool); }
 
@@ -92,51 +100,58 @@ class CompressionContextPool {
       Creator creator = Creator(),
       Deleter deleter = Deleter(),
       Resetter resetter = Resetter(),
-      Sizeof size_of = Sizeof())
+      Sizeof size_of = Sizeof(),
+      Callback callback = Callback())
       : creator_(std::move(creator)),
         deleter_(std::move(deleter)),
         resetter_(std::move(resetter)),
         size_of_(std::move(size_of)),
-#if FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
-        stack_(std::in_place, std::vector<InternalRef>{}),
-#else
-        stack_(),
-#endif
-        created_(0) {
-  }
+        callback_(std::move(callback)),
+        state_(),
+        created_(0) {}
 
   Ref get() {
+    bool do_cb = false;
+    Ref ref{nullptr, get_deleter()};
     {
-      auto lock = stack_.wlock();
+      auto lock = state_.wlock();
 #if !FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
-      if (!*lock) {
-        lock->emplace();
+      if (!lock->stack_) {
+        lock->stack_.emplace();
       }
 #endif
-      auto& stack = **lock;
+      auto& stack = *lock->stack_;
       if (!stack.empty()) {
         auto ptr = std::move(stack.back());
         stack.pop_back();
+        do_cb = (lock->callback_counter_++ %
+                 COMPRESSION_CONTEXT_POOL_CALLBACK_INTERVAL) == 0;
         if (!ptr) {
           throw_exception<std::logic_error>(
               "A nullptr snuck into our context pool!?!?");
         }
-        return Ref(ptr.release(), get_deleter());
+        ref = Ref(ptr.release(), get_deleter());
       }
     }
-    return create();
+    if (do_cb) {
+      callback_();
+    }
+    if (!ref) {
+      ref = create();
+    }
+    return ref;
   }
 
   size_t created_count() const { return created_.load(); }
 
   size_t size() {
-    auto lock = stack_.rlock();
+    auto lock = state_.rlock();
 #if !FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
-    if (!*lock) {
+    if (!lock->stack_) {
       return 0;
     }
 #endif
-    auto& stack = **lock;
+    auto& stack = *lock->stack_;
     return stack.size();
   }
 
@@ -150,13 +165,13 @@ class CompressionContextPool {
   }
 
   void flush_shallow() {
-    auto lock = stack_.wlock();
+    auto lock = state_.wlock();
 #if !FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
-    if (!*lock) {
+    if (!lock->stack_) {
       return;
     }
 #endif
-    auto& stack = **lock;
+    auto& stack = *lock->stack_;
     stack.resize(0);
   }
 
@@ -164,10 +179,10 @@ class CompressionContextPool {
   void add(InternalRef ptr) {
     DCHECK(ptr);
     resetter_(ptr.get());
-    auto lock = stack_.wlock();
-    // add() can only be called when we get a ref we created back, so the stack
-    // must already have been initialized. So we don't need to check.
-    auto& stack = **lock;
+    auto lock = state_.wlock();
+    // add() can only be called when we get a ref we created back, so the
+    // stack must already have been initialized. So we don't need to check.
+    auto& stack = *lock->stack_;
     stack.push_back(std::move(ptr));
   }
 
@@ -184,8 +199,24 @@ class CompressionContextPool {
   const Deleter deleter_;
   const Resetter resetter_;
   const Sizeof size_of_;
+  const Callback callback_;
 
-  folly::Synchronized<std::optional<std::vector<InternalRef>>> stack_;
+  struct SyncState {
+    explicit constexpr SyncState()
+        :
+#if FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
+          stack_(std::in_place, std::vector<InternalRef>{}),
+#else
+          stack_(),
+#endif
+          callback_counter_(0) {
+    }
+
+    std::optional<std::vector<InternalRef>> stack_;
+    size_t callback_counter_;
+  };
+
+  folly::Synchronized<SyncState> state_;
 
   std::atomic<size_t> created_;
 };

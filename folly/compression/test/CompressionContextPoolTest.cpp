@@ -72,14 +72,24 @@ struct FooSizeof {
   size_t operator()(const Foo* f) const { return sizeof(*f); }
 };
 
-using Pool =
-    CompressionContextPool<Foo, FooCreator, FooDeleter, FooResetter, FooSizeof>;
+struct FooCallback {
+  void operator()() const {}
+};
+
+using Pool = CompressionContextPool<
+    Foo,
+    FooCreator,
+    FooDeleter,
+    FooResetter,
+    FooSizeof,
+    FooCallback>;
 using BadPool = CompressionContextPool<
     Foo,
     BadFooCreator,
     FooDeleter,
     FooResetter,
-    FooSizeof>;
+    FooSizeof,
+    FooCallback>;
 
 } // anonymous namespace
 
@@ -227,6 +237,30 @@ TEST_F(CompressionContextPoolTest, testFlush) {
   EXPECT_EQ(pool_->created_count(), 2);
 }
 
+struct FooIncrementCallback {
+  void operator()() const { ++count; }
+
+  static size_t count;
+};
+
+size_t FooIncrementCallback::count = 0;
+
+using TestCallbackPool = CompressionContextPool<
+    Foo,
+    FooCreator,
+    FooDeleter,
+    FooResetter,
+    FooSizeof,
+    FooIncrementCallback>;
+
+TEST_F(CompressionContextPoolTest, testCallback) {
+  auto pool = std::make_unique<TestCallbackPool>();
+  for (size_t i = 0; i < COMPRESSION_CONTEXT_POOL_CALLBACK_INTERVAL; ++i) {
+    pool->get();
+  }
+  EXPECT_EQ(FooIncrementCallback::count, 1);
+}
+
 class CompressionCoreLocalContextPoolTest : public testing::Test {
  protected:
   using Pool = CompressionCoreLocalContextPool<
@@ -235,7 +269,8 @@ class CompressionCoreLocalContextPoolTest : public testing::Test {
       FooDeleter,
       FooResetter,
       FooSizeof,
-      8>;
+      8,
+      FooCallback>;
 
   void SetUp() override { pool_ = std::make_unique<Pool>(); }
 
