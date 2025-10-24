@@ -1,5 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
@@ -10,52 +9,28 @@ oncall("fbcode_entropy_wardens_folly")
 
 # xplat build rules
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "hash",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "hash.h",
-    ],
-    deps = [
-        "//xplat/folly:utility",
-        "//xplat/folly/functional:invoke",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "xoshiro256pp",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "xoshiro256pp.h",
-    ],
-    deps = [
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "hash",
     headers = [
         "hash.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:utility",
         "//folly/functional:invoke",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "xoshiro256pp",
     headers = [
         "xoshiro256pp.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:likely",
         "//folly:portability",
