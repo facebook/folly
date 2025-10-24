@@ -21,6 +21,7 @@
 #include <folly/Function.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
+#include <folly/concurrency/container/atomic_grow_array.h>
 #include <folly/container/F14Set.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/Hazptr-fwd.h>
@@ -105,6 +106,11 @@ class hazptr_domain {
   using Func = folly::Function<void()>;
   using ExecutorFn = bool (*)(Func&&);
 
+  using HazptrIterArrayPolicy =
+      atomic_grow_array_policy_default<Atom<const Rec*>, Atom>;
+  using HazptrIterArray =
+      atomic_grow_array<Atom<const Rec*>, HazptrIterArrayPolicy>;
+
   static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
   static constexpr int kMultiplier = 2;
   static constexpr int kListTooLarge = 100000;
@@ -125,6 +131,7 @@ class hazptr_domain {
      Using signed int for all integer variables that may be involved in
      calculations related to the value of rcount_. */
   Atom<int> hcount_{0};
+  std::atomic<HazptrIterArray*> harray_{};
   Atom<uint16_t> num_bulk_reclaims_{0};
   bool shutdown_{false};
   RetiredList untagged_[kNumShards];
@@ -201,6 +208,7 @@ class hazptr_domain {
     }
     hazptrs_.store(nullptr);
     hcount_.store(0);
+    delete harray_.exchange(nullptr, std::memory_order_acquire);
     avail_.store(reinterpret_cast<uintptr_t>(nullptr));
   }
 
@@ -462,10 +470,17 @@ class hazptr_domain {
   /** load_hazptr_vals */
   Set load_hazptr_vals() {
     Set hs;
-    auto hprec = hazptrs_.load(std::memory_order_acquire);
-    for (; hprec; hprec = hprec->next()) {
-      if (auto ptr = hprec->hazptr()) {
-        hs.insert(ptr);
+    // synchronizes-with store-release on hcount_ in create_new_hprec
+    auto sz = std::max(0, hcount_.load(std::memory_order_acquire));
+    if (auto* harray = harray_.load(std::memory_order_acquire)) {
+      for (auto hprecp : harray->as_ptr_span(size_t(sz))) {
+        // if hprec is not null, then *hprec is already made visible here by
+        // the load-acquire on hcount_ just above; see create_new_hprec
+        if (auto hprec = hprecp->load(std::memory_order_relaxed)) {
+          if (auto ptr = hprec->hazptr()) {
+            hs.insert(ptr);
+          }
+        }
       }
     }
     return hs;
@@ -609,6 +624,7 @@ class hazptr_domain {
     if (this == &default_hazptr_domain<Atom>()) {
       return;
     }
+    delete harray_.load(std::memory_order_acquire);
     auto rec = head();
     while (rec) {
       auto next = rec->next();
@@ -707,6 +723,24 @@ class hazptr_domain {
     DCHECK(connected);
   }
 
+  HazptrIterArray& get_or_create_harray() {
+    HazptrIterArray* array = harray_.load(std::memory_order_acquire);
+    return FOLLY_LIKELY(!!array) ? *array : get_or_create_harray_slow();
+  }
+  HazptrIterArray& get_or_create_harray_slow() {
+    auto* instance = new HazptrIterArray();
+    HazptrIterArray* expected = nullptr;
+
+    if (!harray_.compare_exchange_strong(
+            expected,
+            instance,
+            std::memory_order_release,
+            std::memory_order_acquire)) {
+      delete std::exchange(instance, expected);
+    }
+    return *instance;
+  }
+
   Rec* create_new_hprec() {
     auto rec = hazptr_rec_alloc{}.allocate(1);
     new (rec) Rec(this);
@@ -718,7 +752,12 @@ class hazptr_domain {
         break;
       }
     }
-    hcount_.fetch_add(1);
+    // synchronizes-with load-acquire on hcount_ in load_hazptr_vals
+    auto idx = hcount_.fetch_add(1, std::memory_order_release);
+    auto& harray = get_or_create_harray();
+    // store-relaxed here because we already have the store-release on hcount_
+    // just above, which already makes *rec visible; see load_hazptr_vals
+    harray[idx].store(rec, std::memory_order_relaxed);
     return rec;
   }
 
