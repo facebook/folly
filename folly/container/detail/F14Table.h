@@ -2124,17 +2124,19 @@ class F14Table : public Policy {
     }
     rehashImpl(0, 1, 0, ccas.first, ccas.second);
 
-    try {
-      if (chunkShift() == src.chunkShift()) {
-        directBuildFrom(std::forward<T>(src));
-      } else {
-        rehashBuildFrom(std::forward<T>(src));
-      }
-    } catch (...) {
-      reset();
-      F14LinkCheck<getF14IntrinsicsMode()>::check();
-      throw;
-    }
+    catch_exception(
+        [&]() {
+          if (chunkShift() == src.chunkShift()) {
+            directBuildFrom(std::forward<T>(src));
+          } else {
+            rehashBuildFrom(std::forward<T>(src));
+          }
+        },
+        [this]() {
+          reset();
+          F14LinkCheck<getF14IntrinsicsMode()>::check();
+          rethrow_current_exception();
+        });
   }
 
   void maybeRehash(std::size_t desiredCapacity, bool attemptExact) {
