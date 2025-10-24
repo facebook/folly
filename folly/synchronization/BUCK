@@ -176,7 +176,6 @@ fb_dirsync_cpp_library(
         ":asymmetric_thread_fence",
         "//folly:c_portability",
         "//folly:function",
-        "//folly:memory",
         "//folly:portability",
         "//folly:singleton_thread_local",
         "//folly:traits",
