@@ -309,10 +309,10 @@ class RequestContext {
     using Sig = SetContextWatcherSig;
 
     struct Watcher {
-      Sig* func;
+      Sig* func_;
       Watcher* next_{nullptr};
 
-      explicit Watcher(Sig& func) : func(&func) {}
+      explicit Watcher(Sig& func) : func_(&func) {}
     };
 
     std::atomic<Watcher*> watchers_{nullptr};
@@ -334,7 +334,7 @@ class RequestContext {
         const std::shared_ptr<RequestContext>& ctx) {
       auto* watcher = watchers_.load(std::memory_order_acquire);
       while (watcher != nullptr) {
-        watcher->func(prev, ctx);
+        watcher->func_(prev, ctx);
         watcher = watcher->next_;
       }
     }
