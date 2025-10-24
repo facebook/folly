@@ -2229,7 +2229,9 @@ class F14Table : public Policy {
     std::size_t newChunkCount;
     std::size_t newCapacityScale;
     std::tie(newChunkCount, newCapacityScale) = computeChunkCountAndScale(
-        desiredCapacity, /*attemptExact=*/true, kContinuousCapacity);
+        desiredCapacity,
+        /*continuousSingleChunkCapacity=*/true,
+        kContinuousCapacity);
     auto newCapacity = computeCapacity(newChunkCount, newCapacityScale);
     auto newAllocSize = chunkAllocSize(newChunkCount, newCapacityScale);
 
@@ -2627,11 +2629,11 @@ class F14Table : public Policy {
       // force recycling of heap memory
       auto bc = bucket_count();
       reset();
-      try {
-        reserveImpl(bc);
-      } catch (std::bad_alloc const&) {
-        // ASAN mode only, keep going
-      }
+      catch_exception<std::bad_alloc const&>(
+          [this, bc]() { reserveImpl(bc); },
+          [](auto&&) {
+            // ASAN mode only, keep going
+          });
     } else {
       clearImpl<false>();
     }
