@@ -18,10 +18,13 @@
 
 #include <folly/Subprocess.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 #include <cstdlib>
 #include <glog/logging.h>
+
+using namespace ::testing;
 
 namespace folly {
 namespace test {
@@ -254,6 +257,22 @@ TEST(ProgramOptionsTest, ParseCallbacks) {
 
   ASSERT_TRUE(invoked);
   ASSERT_EQ((std::vector<std::string>{"1", "2"}), callbacks);
+}
+
+TEST(ProgramOptionsTest, ParseMissingRequiredOption) {
+  NestedCommandLineApp app;
+  auto& cmd = app.addCommand("test", "", "", "", [&](auto&, auto&) {});
+  cmd.add_options()(
+      "foo", boost::program_options::value<std::string>()->required(), "");
+  std::vector<std::string> args{"test"};
+  testing::internal::CaptureStderr();
+  auto status = app.run(args);
+  auto err = testing::internal::GetCapturedStderr();
+  EXPECT_THAT(
+      err,
+      testing::HasSubstr(
+          "Missing required option: '--foo'. Run 'nested_command_line_app_test test --help' for help"));
+  ASSERT_EQ(1, status);
 }
 
 TEST(ProgramOptionsTest, ConflictingFlags) {

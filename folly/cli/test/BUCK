@@ -18,6 +18,7 @@ fbcode_target(
         "//folly:subprocess",
         "//folly/cli:program_options",
         "//folly/experimental/io:fs_util",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
     external_deps = [
