@@ -518,20 +518,16 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "split_string_simd",
-    srcs = ["SplitStringSimd.cpp"],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SplitStringSimd.h",
         "SplitStringSimdImpl.h",
     ],
-    deps = [
-        "//xplat/folly:fbstring",
-        "//xplat/folly:fbvector",
-        "//xplat/folly:small_vector",
-    ],
     exported_deps = [
         "//xplat/folly:portability",
         "//xplat/folly:range",
+        "//xplat/folly/algorithm/simd:ignore",
+        "//xplat/folly/algorithm/simd:movemask",
         "//xplat/folly/algorithm/simd/detail:simd_for_each",
         "//xplat/folly/algorithm/simd/detail:simd_platform",
         "//xplat/folly/lang:bits",
@@ -863,15 +859,9 @@ fbcode_target(
 fbcode_target(
     _kind = cpp_library,
     name = "split_string_simd",
-    srcs = ["SplitStringSimd.cpp"],
     headers = [
         "SplitStringSimd.h",
         "SplitStringSimdImpl.h",
-    ],
-    deps = [
-        "//folly:fbstring",
-        "//folly:fbvector",
-        "//folly:small_vector",
     ],
     exported_deps = [
         "//folly:portability",

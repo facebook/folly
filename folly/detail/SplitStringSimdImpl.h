@@ -32,12 +32,6 @@
 #include <arm_neon.h>
 #endif
 
-// This file is not supposed to be included by users.
-// It should be included in CPP file which exposes apis.
-// It is a header file to test different platforms.
-
-// All funcitons are force inline because they are merged into big hiddend
-// noinline functions
 namespace folly {
 namespace detail {
 
@@ -85,8 +79,7 @@ struct PlatformSimdSplitByChar {
       std::pair<Uint, BitsPerElement> mmask,
       const std::uint8_t* pos,
       const std::uint8_t*& prev,
-      Container& res) const { // reserve was not beneficial on benchmarks.
-
+      Container& res) const {
     Uint mmaskBits = mmask.first;
     while (mmaskBits) {
       auto counted = folly::findFirstSet(mmaskBits) - 1;

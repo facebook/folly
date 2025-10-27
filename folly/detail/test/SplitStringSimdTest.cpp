@@ -43,8 +43,8 @@ TEST(SplitStringSimdTest, ByCharScalarKeepEmpty) {
   ASSERT_EQ(run(",a"), (pieces{"", "a"}));
   ASSERT_EQ(run("a,aa"), (pieces{"a", "aa"}));
   ASSERT_EQ(run("a,,aa"), (pieces{"a", "", "aa"}));
-  ASSERT_EQ(run("aaaa,aaa,aa,a"), (pieces{"aaaa", "aaa", "aa", "a"}));
   ASSERT_EQ(run("aaaa,aaa,aa,a,"), (pieces{"aaaa", "aaa", "aa", "a", ""}));
+  ASSERT_EQ(run(",,,"), (pieces{"", "", "", ""}));
 }
 
 TEST(SplitStringSimdTest, ByCharScalarIgnoreEmpty) {
@@ -93,9 +93,6 @@ void testAllContainersOfSVs(
   testContainerSV<ie, folly::small_vector<folly::StringPiece, 6>>(s, expected);
   testContainerSV<ie, folly::small_vector<folly::StringPiece, 7>>(s, expected);
   testContainerSV<ie, folly::small_vector<folly::StringPiece, 8>>(s, expected);
-  static_assert( //
-      !SimdSplitByCharIsDefinedFor<
-          folly::small_vector<folly::StringPiece, 9>>::value);
 
   testContainerSV<ie, folly::small_vector<std::string_view, 1>>(s, expected);
   testContainerSV<ie, folly::small_vector<std::string_view, 2>>(s, expected);
@@ -104,9 +101,6 @@ void testAllContainersOfSVs(
   testContainerSV<ie, folly::small_vector<std::string_view, 6>>(s, expected);
   testContainerSV<ie, folly::small_vector<std::string_view, 7>>(s, expected);
   testContainerSV<ie, folly::small_vector<std::string_view, 8>>(s, expected);
-  static_assert( //
-      !SimdSplitByCharIsDefinedFor<
-          folly::small_vector<std::string_view, 9>>::value);
 }
 
 template <bool ignoreEmpty, typename Container>
