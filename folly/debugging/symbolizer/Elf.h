@@ -31,6 +31,7 @@
 #include <folly/Range.h>
 #include <folly/container/span.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/lang/cstring_view.h>
 #include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_ELF
@@ -422,13 +423,13 @@ class ElfFile {
       return header()->n_type;
     }
 
-    std::string_view getName() const {
+    cstring_view getName() const {
       if (!header()) {
         return {};
       }
 
       // Subtract 1 to remove the trailing null character.
-      return std::string_view(
+      return cstring_view(
           reinterpret_cast<const char*>(body().data()), header()->n_namesz - 1);
     }
 
