@@ -246,6 +246,7 @@ non_fbcode_target(
     srcs = ["cstring_view_test.cpp"],
     deps = [
         "fbsource//xplat/folly/portability:gtest",
+        "//xplat/folly:range",
         "//xplat/folly/lang:cstring_view",
     ],
 )
@@ -584,7 +585,10 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "cstring_view_test",
     srcs = ["cstring_view_test.cpp"],
+    supports_static_listing = False,
     deps = [
+        "//folly:fbstring",
+        "//folly:range",
         "//folly/lang:cstring_view",
         "//folly/portability:gtest",
     ],

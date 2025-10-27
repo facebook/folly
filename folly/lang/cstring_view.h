@@ -83,7 +83,7 @@ class basic_cstring_view {
   constexpr basic_cstring_view(std::nullptr_t) = delete;
 
   /* implicit */ constexpr basic_cstring_view(Char const* str) noexcept
-      : view_(str) {}
+      : view_(!str ? view_type{} : view_type{str}) {}
 
   /// Diverges from p3655r3 in that we allow construction from a null pointer.
   /// Members data() and c_str() will return nullptr. Mimics std::string_view
@@ -316,143 +316,28 @@ class basic_cstring_view {
   constexpr basic_cstring_view substr(size_type pos, size_type len) const =
       delete;
   constexpr void remove_suffix(size_type n) = delete;
+
+  friend bool operator==(self lhs, self rhs) noexcept {
+    return view_type(lhs) == view_type(rhs);
+  }
+  friend bool operator!=(self lhs, self rhs) noexcept {
+    return view_type(lhs) != view_type(rhs);
+  }
+  friend bool operator<(self lhs, self rhs) noexcept {
+    return view_type(lhs) < view_type(rhs);
+  }
+  friend bool operator<=(self lhs, self rhs) noexcept {
+    return view_type(lhs) <= view_type(rhs);
+  }
+  friend bool operator>(self lhs, self rhs) noexcept {
+    return view_type(lhs) > view_type(rhs);
+  }
+  friend bool operator>=(self lhs, self rhs) noexcept {
+    return view_type(lhs) >= view_type(rhs);
+  }
 };
 
 using cstring_view = basic_cstring_view<char>;
-
-// Comparison operators
-template <typename Char, typename Traits>
-constexpr bool operator==(
-    basic_cstring_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) ==
-      std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator!=(
-    basic_cstring_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) !=
-      std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator<(
-    basic_cstring_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) <
-      std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator<=(
-    basic_cstring_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) <=
-      std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator>(
-    basic_cstring_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) >
-      std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator>=(
-    basic_cstring_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) >=
-      std::basic_string_view<Char, Traits>(rhs);
-}
-
-// Comparison with string_view
-template <typename Char, typename Traits>
-constexpr bool operator==(
-    basic_cstring_view<Char, Traits> lhs,
-    std::basic_string_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) == rhs;
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator==(
-    std::basic_string_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return lhs == std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator!=(
-    basic_cstring_view<Char, Traits> lhs,
-    std::basic_string_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) != rhs;
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator!=(
-    std::basic_string_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return lhs != std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator<(
-    basic_cstring_view<Char, Traits> lhs,
-    std::basic_string_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) < rhs;
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator<(
-    std::basic_string_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return lhs < std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator<=(
-    basic_cstring_view<Char, Traits> lhs,
-    std::basic_string_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) <= rhs;
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator<=(
-    std::basic_string_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return lhs <= std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator>(
-    basic_cstring_view<Char, Traits> lhs,
-    std::basic_string_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) > rhs;
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator>(
-    std::basic_string_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return lhs > std::basic_string_view<Char, Traits>(rhs);
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator>=(
-    basic_cstring_view<Char, Traits> lhs,
-    std::basic_string_view<Char, Traits> rhs) noexcept {
-  return std::basic_string_view<Char, Traits>(lhs) >= rhs;
-}
-
-template <typename Char, typename Traits>
-constexpr bool operator>=(
-    std::basic_string_view<Char, Traits> lhs,
-    basic_cstring_view<Char, Traits> rhs) noexcept {
-  return lhs >= std::basic_string_view<Char, Traits>(rhs);
-}
 
 template <typename Char, typename Traits>
 std::basic_ostream<Char, Traits>& operator<<(

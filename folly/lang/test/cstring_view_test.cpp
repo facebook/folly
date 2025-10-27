@@ -21,11 +21,19 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <folly/portability/GTest.h>
-
 #include <fmt/format.h>
 
-using namespace folly;
+#include <folly/FBString.h>
+#include <folly/Range.h>
+#include <folly/portability/GTest.h>
+
+using folly::cstring_view;
+using folly::fbstring;
+using folly::StringPiece;
+using folly::tag;
+using folly::tag_t;
+using std::string;
+using std::string_view;
 
 class CStringViewTest : public testing::Test {};
 
@@ -535,142 +543,124 @@ TEST_F(CStringViewTest, ContainsAfterRemovePrefix) {
 #endif
 
 // Comparison operator tests
-TEST_F(CStringViewTest, EqualityOperatorWithSelf) {
-  cstring_view sv1("hello");
-  cstring_view sv2("hello");
-  cstring_view sv3("world");
+template <typename TypeParam>
+struct CStringViewCmpTest : testing::TestWithParam<TypeParam> {
+  using str_t = TypeParam;
+  static constexpr char const* nullstr = nullptr;
+  static constexpr inline std::array data{
+      nullstr,
+      "",
+      "aloha",
+      "hell",
+      "hello",
+      "hello!",
+      "world",
+  };
 
-  EXPECT_TRUE(sv1 == sv2);
-  EXPECT_FALSE(sv1 == sv3);
+  static auto make_data() {
+    std::vector<std::tuple<cstring_view, cstring_view, str_t, str_t>> ret;
+    for (char const* const lhs : data) {
+      for (char const* const rhs : data) {
+        auto lhs_str = !lhs ? str_t{} : str_t{lhs};
+        auto rhs_str = !rhs ? str_t{} : str_t{rhs};
+        ret.emplace_back(lhs, rhs, std::move(lhs_str), std::move(rhs_str));
+      }
+    }
+    return ret;
+  }
+};
+TYPED_TEST_SUITE_P(CStringViewCmpTest);
+
+#define FOLLY_DETAIL_DEFN_OP(op)                                 \
+  [](auto const& lhs, auto const& rhs) {                         \
+    if constexpr (                                               \
+        std::is_pointer_v<std::remove_cvref_t<decltype(lhs)>> && \
+        std::is_pointer_v<std::remove_cvref_t<decltype(rhs)>>) { \
+      return strcmp(lhs ? lhs : "", rhs ? rhs : "") op 0;        \
+    }                                                            \
+    return lhs op rhs;                                           \
+  }
+
+TYPED_TEST_P(CStringViewCmpTest, EQ) {
+  constexpr auto cmp = FOLLY_DETAIL_DEFN_OP(==);
+  for (auto const& [lhs_csv, rhs_csv, lhs_str, rhs_str] : this->make_data()) {
+    auto const expected = cmp(lhs_str, rhs_str);
+    EXPECT_EQ(expected, cmp(lhs_csv, rhs_str));
+    EXPECT_EQ(expected, cmp(lhs_str, rhs_csv));
+  }
 }
 
-TEST_F(CStringViewTest, InequalityOperatorWithSelf) {
-  cstring_view sv1("hello");
-  cstring_view sv2("hello");
-  cstring_view sv3("world");
-
-  EXPECT_FALSE(sv1 != sv2);
-  EXPECT_TRUE(sv1 != sv3);
+TYPED_TEST_P(CStringViewCmpTest, NE) {
+  constexpr auto cmp = FOLLY_DETAIL_DEFN_OP(!=);
+  for (auto const& [lhs_csv, rhs_csv, lhs_str, rhs_str] : this->make_data()) {
+    auto const expected = cmp(lhs_str, rhs_str);
+    EXPECT_EQ(expected, cmp(lhs_csv, rhs_str));
+    EXPECT_EQ(expected, cmp(lhs_str, rhs_csv));
+  }
 }
 
-TEST_F(CStringViewTest, LessThanOperatorWithSelf) {
-  cstring_view sv1("abc");
-  cstring_view sv2("def");
-  cstring_view sv3("abc");
-
-  EXPECT_TRUE(sv1 < sv2);
-  EXPECT_FALSE(sv2 < sv1);
-  EXPECT_FALSE(sv1 < sv3);
+TYPED_TEST_P(CStringViewCmpTest, LT) {
+  constexpr auto cmp = FOLLY_DETAIL_DEFN_OP(<);
+  for (auto const& [lhs_csv, rhs_csv, lhs_str, rhs_str] : this->make_data()) {
+    auto const expected = cmp(lhs_str, rhs_str);
+    EXPECT_EQ(expected, cmp(lhs_csv, rhs_str));
+    EXPECT_EQ(expected, cmp(lhs_str, rhs_csv));
+  }
 }
 
-TEST_F(CStringViewTest, LessThanOrEqualOperatorWithSelf) {
-  cstring_view sv1("abc");
-  cstring_view sv2("def");
-  cstring_view sv3("abc");
-
-  EXPECT_TRUE(sv1 <= sv2);
-  EXPECT_FALSE(sv2 <= sv1);
-  EXPECT_TRUE(sv1 <= sv3);
+TYPED_TEST_P(CStringViewCmpTest, LE) {
+  constexpr auto cmp = FOLLY_DETAIL_DEFN_OP(<=);
+  for (auto const& [lhs_csv, rhs_csv, lhs_str, rhs_str] : this->make_data()) {
+    auto const expected = cmp(lhs_str, rhs_str);
+    EXPECT_EQ(expected, cmp(lhs_csv, rhs_str));
+    EXPECT_EQ(expected, cmp(lhs_str, rhs_csv));
+  }
 }
 
-TEST_F(CStringViewTest, GreaterThanOperatorWithSelf) {
-  cstring_view sv1("def");
-  cstring_view sv2("abc");
-  cstring_view sv3("def");
-
-  EXPECT_TRUE(sv1 > sv2);
-  EXPECT_FALSE(sv2 > sv1);
-  EXPECT_FALSE(sv1 > sv3);
+TYPED_TEST_P(CStringViewCmpTest, GT) {
+  constexpr auto cmp = FOLLY_DETAIL_DEFN_OP(>);
+  for (auto const& [lhs_csv, rhs_csv, lhs_str, rhs_str] : this->make_data()) {
+    auto const expected = cmp(lhs_str, rhs_str);
+    EXPECT_EQ(expected, cmp(lhs_csv, rhs_str));
+    EXPECT_EQ(expected, cmp(lhs_str, rhs_csv));
+  }
 }
 
-TEST_F(CStringViewTest, GreaterThanOrEqualOperatorWithSelf) {
-  cstring_view sv1("def");
-  cstring_view sv2("abc");
-  cstring_view sv3("def");
-
-  EXPECT_TRUE(sv1 >= sv2);
-  EXPECT_FALSE(sv2 >= sv1);
-  EXPECT_TRUE(sv1 >= sv3);
+TYPED_TEST_P(CStringViewCmpTest, GE) {
+  constexpr auto cmp = FOLLY_DETAIL_DEFN_OP(>=);
+  for (auto const& [lhs_csv, rhs_csv, lhs_str, rhs_str] : this->make_data()) {
+    auto const expected = cmp(lhs_str, rhs_str);
+    EXPECT_EQ(expected, cmp(lhs_csv, rhs_str));
+    EXPECT_EQ(expected, cmp(lhs_str, rhs_csv));
+  }
 }
 
-TEST_F(CStringViewTest, EqualityOperatorWithStringView) {
-  cstring_view svz("hello");
-  std::string_view sv1("hello");
-  std::string_view sv2("world");
+REGISTER_TYPED_TEST_SUITE_P(CStringViewCmpTest, EQ, NE, LT, LE, GT, GE);
 
-  EXPECT_TRUE(svz == sv1);
-  EXPECT_TRUE(sv1 == svz);
-  EXPECT_FALSE(svz == sv2);
-  EXPECT_FALSE(sv2 == svz);
-}
-
-TEST_F(CStringViewTest, InequalityOperatorWithStringView) {
-  cstring_view svz("hello");
-  std::string_view sv1("hello");
-  std::string_view sv2("world");
-
-  EXPECT_FALSE(svz != sv1);
-  EXPECT_FALSE(sv1 != svz);
-  EXPECT_TRUE(svz != sv2);
-  EXPECT_TRUE(sv2 != svz);
-}
-
-TEST_F(CStringViewTest, LessThanOperatorWithStringView) {
-  cstring_view svz("abc");
-  std::string_view sv1("def");
-  std::string_view sv2("aaa");
-
-  EXPECT_TRUE(svz < sv1);
-  EXPECT_TRUE(sv2 < svz);
-  EXPECT_FALSE(svz < sv2);
-  EXPECT_FALSE(sv1 < svz);
-}
-
-TEST_F(CStringViewTest, LessThanOrEqualOperatorWithStringView) {
-  cstring_view svz("abc");
-  std::string_view sv1("def");
-  std::string_view sv2("abc");
-
-  EXPECT_TRUE(svz <= sv1);
-  EXPECT_TRUE(svz <= sv2);
-  EXPECT_TRUE(sv2 <= svz);
-  EXPECT_FALSE(sv1 <= svz);
-}
-
-TEST_F(CStringViewTest, GreaterThanOperatorWithStringView) {
-  cstring_view svz("def");
-  std::string_view sv1("abc");
-  std::string_view sv2("xyz");
-
-  EXPECT_TRUE(svz > sv1);
-  EXPECT_TRUE(sv2 > svz);
-  EXPECT_FALSE(svz > sv2);
-  EXPECT_FALSE(sv1 > svz);
-}
-
-TEST_F(CStringViewTest, GreaterThanOrEqualOperatorWithStringView) {
-  cstring_view svz("def");
-  std::string_view sv1("abc");
-  std::string_view sv2("def");
-
-  EXPECT_TRUE(svz >= sv1);
-  EXPECT_TRUE(svz >= sv2);
-  EXPECT_TRUE(sv2 >= svz);
-  EXPECT_FALSE(sv1 >= svz);
-}
-
-TEST_F(CStringViewTest, ComparisonOperatorsWithEmptyStrings) {
-  cstring_view empty1("");
-  cstring_view empty2("");
-  cstring_view non_empty("hello");
-
-  EXPECT_TRUE(empty1 == empty2);
-  EXPECT_FALSE(empty1 != empty2);
-  EXPECT_FALSE(empty1 < empty2);
-  EXPECT_TRUE(empty1 <= empty2);
-  EXPECT_TRUE(empty1 < non_empty);
-  EXPECT_TRUE(non_empty > empty1);
-}
+INSTANTIATE_TYPED_TEST_SUITE_P( //
+    folly_cstring_view,
+    CStringViewCmpTest,
+    cstring_view);
+INSTANTIATE_TYPED_TEST_SUITE_P( //
+    std_string_view,
+    CStringViewCmpTest,
+    string_view);
+INSTANTIATE_TYPED_TEST_SUITE_P( //
+    folly_string_piece,
+    CStringViewCmpTest,
+    StringPiece);
+INSTANTIATE_TYPED_TEST_SUITE_P( //
+    std_string,
+    CStringViewCmpTest,
+    string);
+INSTANTIATE_TYPED_TEST_SUITE_P( //
+    folly_fbstring,
+    CStringViewCmpTest,
+    fbstring);
+INSTANTIATE_TYPED_TEST_SUITE_P( //
+    c_string,
+    CStringViewCmpTest,
+    char const*);
 
 // std::hash tests
 TEST_F(CStringViewTest, StdHashBasic) {
