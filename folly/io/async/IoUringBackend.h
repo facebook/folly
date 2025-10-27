@@ -170,8 +170,9 @@ class IoUringBackend : public EventBaseBackendBase {
 
     Options& setProvidedBufRings(size_t v) {
       if (!isPow2(v)) {
-        throw std::runtime_error(folly::to<std::string>(
-            "number of provided buffer rings must be a power of 2"));
+        throw std::runtime_error(
+            folly::to<std::string>(
+                "number of provided buffer rings must be a power of 2"));
       }
       providedBufRings = v;
       return *this;
@@ -217,11 +218,12 @@ class IoUringBackend : public EventBaseBackendBase {
       zcRxIfname = std::move(v);
       zcRxIfindex = ::if_nametoindex(zcRxIfname.c_str());
       if (zcRxIfindex == 0) {
-        throw std::runtime_error(folly::to<std::string>(
-            "invalid network interface name: ",
-            zcRxIfname,
-            ", errno: ",
-            errno));
+        throw std::runtime_error(
+            folly::to<std::string>(
+                "invalid network interface name: ",
+                zcRxIfname,
+                ", errno: ",
+                errno));
       }
 
       return *this;

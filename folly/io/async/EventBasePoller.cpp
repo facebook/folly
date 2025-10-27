@@ -651,9 +651,10 @@ EventBasePoller::~EventBasePoller() = default;
       return std::make_unique<EventBasePollerIoUring>();
     }
 #endif
-    throw std::invalid_argument(fmt::format(
-        "Unsupported EventBasePoller backend: {}",
-        FLAGS_folly_event_base_poller_backend));
+    throw std::invalid_argument(
+        fmt::format(
+            "Unsupported EventBasePoller backend: {}",
+            FLAGS_folly_event_base_poller_backend));
   }();
   return *instance;
 }

@@ -54,8 +54,9 @@ int getTicksWithinRange(int n, int min, int max) {
   return n;
 }
 void delay(float n) {
-  microseconds usec(static_cast<microseconds::rep>(
-      duration_cast<microseconds>(timeFactor).count() * n));
+  microseconds usec(
+      static_cast<microseconds::rep>(
+          duration_cast<microseconds>(timeFactor).count() * n));
   usleep(usec.count());
 }
 

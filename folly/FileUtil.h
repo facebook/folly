@@ -147,8 +147,10 @@ bool readFile(
   // should attempt to read stuff. If not zero, we'll attempt to read
   // one extra byte.
   constexpr size_t initialAlloc = 1024 * 4;
-  out.resize(std::min(
-      buf.st_size > 0 ? (size_t(buf.st_size) + 1) : initialAlloc, num_bytes));
+  out.resize(
+      std::min(
+          buf.st_size > 0 ? (size_t(buf.st_size) + 1) : initialAlloc,
+          num_bytes));
 
   while (soFar < out.size()) {
     const auto actual = readFull(fd, &out[soFar], out.size() - soFar);

@@ -81,8 +81,8 @@ TEST(RetryN, EventualSuccess) {
 TEST(RetryN, NeverRetry) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int runCount = 0;
-    folly::Try<void> result =
-        co_await folly::coro::co_awaitTry(folly::coro::retryN(
+    folly::Try<void> result = co_await folly::coro::co_awaitTry(
+        folly::coro::retryN(
             3,
             [&]() -> folly::coro::Task<void> {
               ++runCount;

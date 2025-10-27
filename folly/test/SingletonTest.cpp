@@ -1221,9 +1221,10 @@ namespace {
 class CancelOnDestructionSingleton {
  public:
   ~CancelOnDestructionSingleton() {
-    CHECK(SingletonVault::singleton()
-              ->getDestructionCancellationToken()
-              .isCancellationRequested());
+    CHECK(
+        SingletonVault::singleton()
+            ->getDestructionCancellationToken()
+            .isCancellationRequested());
   }
 };
 

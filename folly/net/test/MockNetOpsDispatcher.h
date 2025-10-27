@@ -35,40 +35,46 @@ class MockDispatcher : public Dispatcher {
     ON_CALL(
         *this,
         getsockopt(testing::_, testing::_, testing::_, testing::_, testing::_))
-        .WillByDefault(testing::Invoke(
-            [this](
-                NetworkSocket s,
-                int level,
-                int optname,
-                void* optval,
-                socklen_t* optlen) {
-              return Dispatcher::getsockopt(s, level, optname, optval, optlen);
-            }));
+        .WillByDefault(
+            testing::Invoke(
+                [this](
+                    NetworkSocket s,
+                    int level,
+                    int optname,
+                    void* optval,
+                    socklen_t* optlen) {
+                  return Dispatcher::getsockopt(
+                      s, level, optname, optval, optlen);
+                }));
 
     ON_CALL(*this, sendmsg(testing::_, testing::_, testing::_))
-        .WillByDefault(testing::Invoke(
-            [this](NetworkSocket s, const msghdr* message, int flags) {
-              return Dispatcher::sendmsg(s, message, flags);
-            }));
+        .WillByDefault(
+            testing::Invoke(
+                [this](NetworkSocket s, const msghdr* message, int flags) {
+                  return Dispatcher::sendmsg(s, message, flags);
+                }));
 
     ON_CALL(*this, recvmsg(testing::_, testing::_, testing::_))
-        .WillByDefault(testing::Invoke(
-            [this](NetworkSocket s, msghdr* message, int flags) {
-              return Dispatcher::recvmsg(s, message, flags);
-            }));
+        .WillByDefault(
+            testing::Invoke(
+                [this](NetworkSocket s, msghdr* message, int flags) {
+                  return Dispatcher::recvmsg(s, message, flags);
+                }));
 
     ON_CALL(
         *this,
         setsockopt(testing::_, testing::_, testing::_, testing::_, testing::_))
-        .WillByDefault(testing::Invoke(
-            [this](
-                NetworkSocket s,
-                int level,
-                int optname,
-                const void* optval,
-                socklen_t optlen) {
-              return Dispatcher::setsockopt(s, level, optname, optval, optlen);
-            }));
+        .WillByDefault(
+            testing::Invoke(
+                [this](
+                    NetworkSocket s,
+                    int level,
+                    int optname,
+                    const void* optval,
+                    socklen_t optlen) {
+                  return Dispatcher::setsockopt(
+                      s, level, optname, optval, optlen);
+                }));
   }
 
   MOCK_METHOD(

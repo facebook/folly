@@ -134,9 +134,10 @@ void IoUringZeroCopyBufferPool::mapMemory() {
       -1,
       0);
   if (bufArea_ == MAP_FAILED) {
-    throw std::runtime_error(folly::to<std::string>(
-        "IoUringZeroCopyBufferPool failed to mmap size ",
-        bufAreaSize_ + rqRingAreaSize_));
+    throw std::runtime_error(
+        folly::to<std::string>(
+            "IoUringZeroCopyBufferPool failed to mmap size ",
+            bufAreaSize_ + rqRingAreaSize_));
   }
 
   rqRingArea_ = static_cast<char*>(bufArea_) + bufAreaSize_;
@@ -174,10 +175,11 @@ void IoUringZeroCopyBufferPool::initialRegister(
   auto ret = io_uring_register_ifq(ring_, &ifqReg);
   if (ret) {
     ::munmap(bufArea_, bufAreaSize_ + rqRingAreaSize_);
-    throw std::runtime_error(fmt::format(
-        "IoUringZeroCopyBufferPool failed io_uring_register_ifq: {} {}",
-        ret,
-        ::strerror(ret)));
+    throw std::runtime_error(
+        fmt::format(
+            "IoUringZeroCopyBufferPool failed io_uring_register_ifq: {} {}",
+            ret,
+            ::strerror(ret)));
   }
 
   rqRing_.khead = reinterpret_cast<uint32_t*>(

@@ -93,8 +93,9 @@ LogLevel stringToLogLevel(StringPiece name) {
         static_cast<unsigned int>(level) >
             (static_cast<uint32_t>(info.max) -
              static_cast<uint32_t>(info.min))) {
-      throw std::range_error(to<string>(
-          "invalid ", info.lowerPrefix, " logger level: ", name.str()));
+      throw std::range_error(
+          to<string>(
+              "invalid ", info.lowerPrefix, " logger level: ", name.str()));
     }
     return info.max - level;
   }

@@ -27,26 +27,28 @@
 using namespace std::literals::chrono_literals;
 
 CO_TEST(CodeExamples, demoDetachOnCancel) {
-  co_await folly::coro::co_awaitTry(folly::coro::timeout(
-      folly::coro::co_invoke([]() -> folly::coro::Task<> {
-        auto&& promiseFuture = folly::coro::makePromiseContract<void>();
+  co_await folly::coro::co_awaitTry(
+      folly::coro::timeout(
+          folly::coro::co_invoke([]() -> folly::coro::Task<> {
+            auto&& promiseFuture = folly::coro::makePromiseContract<void>();
 
-        std::thread longTask(
-            [promise = std::move(promiseFuture.first)]() mutable {
-              // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
-              std::this_thread::sleep_for(1s);
-              LOG(INFO) << "Long running task finishes";
-              promise.setValue();
-            });
+            std::thread longTask(
+                [promise = std::move(promiseFuture.first)]() mutable {
+                  // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
+                  std::this_thread::sleep_for(1s);
+                  LOG(INFO) << "Long running task finishes";
+                  promise.setValue();
+                });
 
-        try {
-          co_await folly::coro::detachOnCancel(std::move(promiseFuture.second));
-          LOG(INFO) << "DONE";
-        } catch (folly::OperationCancelled&) {
-          LOG(INFO) << "cancelled";
-        }
-        longTask.join();
-      }),
-      1s));
+            try {
+              co_await folly::coro::detachOnCancel(
+                  std::move(promiseFuture.second));
+              LOG(INFO) << "DONE";
+            } catch (folly::OperationCancelled&) {
+              LOG(INFO) << "cancelled";
+            }
+            longTask.join();
+          }),
+          1s));
   co_return;
 }

@@ -85,8 +85,7 @@ using enable_hasher_helper_impl = T;
  */
 template <
     typename T,
-    template <typename U>
-    typename Hasher,
+    template <typename U> typename Hasher,
     typename... Dependencies>
 using enable_hasher_helper = detail::enable_hasher_helper_impl<
     T,

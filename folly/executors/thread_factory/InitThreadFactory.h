@@ -31,8 +31,9 @@ class InitThreadFactory : public ThreadFactory {
       Func&& threadInitializer,
       Func&& threadFinializer = [] {})
       : threadFactory_(std::move(threadFactory)),
-        threadInitFini_(std::make_shared<ThreadInitFini>(
-            std::move(threadInitializer), std::move(threadFinializer))) {}
+        threadInitFini_(
+            std::make_shared<ThreadInitFini>(
+                std::move(threadInitializer), std::move(threadFinializer))) {}
 
   std::thread newThread(Func&& func) override {
     return threadFactory_->newThread(

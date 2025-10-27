@@ -110,8 +110,9 @@ NetworkSocket accept(NetworkSocket s, sockaddr* addr, socklen_t* addrlen) {
 #if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
-  return NetworkSocket(wrapSocketFunction<NetworkSocket::native_handle_type>(
-      ::accept, s, addr, addrlen));
+  return NetworkSocket(
+      wrapSocketFunction<NetworkSocket::native_handle_type>(
+          ::accept, s, addr, addrlen));
 #endif
 }
 

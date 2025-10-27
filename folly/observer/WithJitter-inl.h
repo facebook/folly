@@ -50,8 +50,9 @@ Observer<T> withJitter(
         std::chrono::milliseconds lag,
         std::chrono::milliseconds jitter)
         : observer_(std::move(observer)),
-          state_(std::make_shared<Synchronized<State, std::mutex>>(
-              State(observer_.getSnapshot().getShared()))),
+          state_(
+              std::make_shared<Synchronized<State, std::mutex>>(
+                  State(observer_.getSnapshot().getShared()))),
           lag_(lag),
           jitter_(jitter) {}
 

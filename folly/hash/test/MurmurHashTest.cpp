@@ -58,9 +58,9 @@ constexpr std::uint64_t murmurHash64(std::string_view input) {
 
 } // namespace
 
-TEST(MurmurHash, Runtime){
+TEST(MurmurHash, Runtime) {
 #define X(s, expected) EXPECT_EQ(murmurHash64(s), expected);
-    TEST_CASES(X)
+  TEST_CASES(X)
 #undef X
 }
 

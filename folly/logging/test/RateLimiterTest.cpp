@@ -31,11 +31,12 @@ using namespace std::literals::chrono_literals;
 using irl_clock = IntervalRateLimiter::clock;
 
 void intervalTest(uint64_t eventsPerInterval, irl_clock::duration interval) {
-  SCOPED_TRACE(folly::to<std::string>(
-      eventsPerInterval,
-      " events every ",
-      duration_cast<std::chrono::milliseconds>(interval).count(),
-      "ms"));
+  SCOPED_TRACE(
+      folly::to<std::string>(
+          eventsPerInterval,
+          " events every ",
+          duration_cast<std::chrono::milliseconds>(interval).count(),
+          "ms"));
   IntervalRateLimiter limiter{eventsPerInterval, interval};
   for (int iter = 0; iter < 4; ++iter) {
     if (iter != 0) {

@@ -205,8 +205,7 @@ void benchmarkFilledMapByKey(
 }
 
 template <
-    template <class, class>
-    class Map,
+    template <class, class> class Map,
     class K,
     class V,
     class... Args,

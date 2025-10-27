@@ -94,9 +94,11 @@ class StackCache {
     auto p = freeList_.back().first;
     if (!freeList_.back().second) {
       PCHECK(0 == ::mprotect(p, pagesize() * guardPagesPerStack_, PROT_NONE));
-      protectedRanges().wlock()->insert(std::make_pair(
-          reinterpret_cast<intptr_t>(p),
-          reinterpret_cast<intptr_t>(p + pagesize() * guardPagesPerStack_)));
+      protectedRanges().wlock()->insert(
+          std::make_pair(
+              reinterpret_cast<intptr_t>(p),
+              reinterpret_cast<intptr_t>(
+                  p + pagesize() * guardPagesPerStack_)));
     }
     freeList_.pop_back();
 
@@ -139,10 +141,11 @@ class StackCache {
     assert(storage_);
     protectedRanges().withWLock([&](auto& ranges) {
       for (const auto& item : freeList_) {
-        ranges.erase(std::make_pair(
-            reinterpret_cast<intptr_t>(item.first),
-            reinterpret_cast<intptr_t>(
-                item.first + pagesize() * guardPagesPerStack_)));
+        ranges.erase(
+            std::make_pair(
+                reinterpret_cast<intptr_t>(item.first),
+                reinterpret_cast<intptr_t>(
+                    item.first + pagesize() * guardPagesPerStack_)));
       }
     });
     PCHECK(0 == ::munmap(storage_, allocSize_ * kNumGuarded));

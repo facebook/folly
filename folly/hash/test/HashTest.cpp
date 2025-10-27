@@ -259,8 +259,9 @@ std::vector<size_t> getStats(size_t iter) {
   M m;
   ret.push_back(A::getAllocatedMemorySize());
   for (size_t i = 1; i < iter; ++i) {
-    m.insert(std::make_pair(
-        folly::to<typename M::key_type>(i), typename M::mapped_type{}));
+    m.insert(
+        std::make_pair(
+            folly::to<typename M::key_type>(i), typename M::mapped_type{}));
     ret.push_back(A::getAllocatedMemorySize());
   }
   return ret;

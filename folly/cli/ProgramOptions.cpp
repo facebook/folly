@@ -238,8 +238,7 @@ using FlagAdder = void (*)(
     ProgramOptionsStyle);
 
 const std::unordered_map<std::string, FlagAdder> gFlagAdders = {
-#define X(NAME, TYPE) \
-  { NAME, addGFlag<TYPE> }
+#define X(NAME, TYPE) {NAME, addGFlag<TYPE>}
     X("bool", bool),
     X("int32", int32_t),
     X("int64", int64_t),

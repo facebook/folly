@@ -1147,8 +1147,7 @@ DistributedMutex<Atomic, TimePublishing>::try_lock() {
 }
 
 template <
-    template <typename>
-    class Atomic,
+    template <typename> class Atomic,
     bool TimePublishing,
     typename State,
     typename Request>

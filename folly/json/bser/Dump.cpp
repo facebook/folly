@@ -207,8 +207,11 @@ std::unique_ptr<folly::IOBuf> toBserIOBuf(
   // compute the length
   auto len = q.chainLength();
   if (len > uint64_t(std::numeric_limits<int64_t>::max())) {
-    throw std::range_error(folly::to<std::string>(
-        "serialized data size ", len, " is too large to represent as BSER"));
+    throw std::range_error(
+        folly::to<std::string>(
+            "serialized data size ",
+            len,
+            " is too large to represent as BSER"));
   }
 
   // This is a bit verbose, but it computes a header that is appropriate

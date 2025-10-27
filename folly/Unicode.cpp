@@ -143,8 +143,9 @@ char32_t utf8ToCodePoint(
       if (skipOnError) {
         return skip();
       }
-      throw std::runtime_error(to<std::string>(
-          "folly::utf8ToCodePoint i=", i, " tmp=", (uint32_t)tmp));
+      throw std::runtime_error(
+          to<std::string>(
+              "folly::utf8ToCodePoint i=", i, " tmp=", (uint32_t)tmp));
     }
 
     // gradually fill a 32 bit integer d with non control bits in tmp

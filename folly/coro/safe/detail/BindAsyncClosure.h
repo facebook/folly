@@ -708,8 +708,9 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
         using Binding = type_list_element_t<Is, Bindings>;
         using T = std::tuple_element_t<Is, decltype(tup)>;
         return capture_binding_helper<Binding, HelperCfg, Is>::
-            transform_binding(bind_wrapper_t<T>{
-                .t_ = static_cast<T&&>(lite_tuple::get<Is>(tup))});
+            transform_binding(
+                bind_wrapper_t<T>{
+                    .t_ = static_cast<T&&>(lite_tuple::get<Is>(tup))});
       }()...};
     }(std::make_index_sequence<type_list_size_v<Bindings>>{});
   };
@@ -780,14 +781,16 @@ constexpr auto async_closure_safeties_and_bindings(BoundArgs&& bargs) {
   //     dependencies on each other's owned captures.
   async_closure_arg_safety<
       // parent_view=
-      vtag_least_safe_alias(vtag_safety_of_async_closure_args<
-                            /*ParentViewOfSafety*/ true,
-                            shared_cleanup_transformed_binding_types>()),
+      vtag_least_safe_alias(
+          vtag_safety_of_async_closure_args<
+              /*ParentViewOfSafety*/ true,
+              shared_cleanup_transformed_binding_types>()),
       // args_force_shared_cleanup=
       (safe_alias::shared_cleanup >=
-       vtag_least_safe_alias(vtag_safety_of_async_closure_args<
-                             /*ParentViewOfSafety*/ false,
-                             shared_cleanup_transformed_binding_types>()))>
+       vtag_least_safe_alias(
+           vtag_safety_of_async_closure_args<
+               /*ParentViewOfSafety*/ false,
+               shared_cleanup_transformed_binding_types>()))>
       arg_min_safety;
 
   // How this async-closure will store and/or bind its arguments depends on

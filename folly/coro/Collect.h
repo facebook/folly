@@ -561,11 +561,10 @@ auto collectAnyNoDiscard(SemiAwaitables&&... awaitables)
 //       ranges::views::move);
 //
 template <typename InputRange>
-auto collectAnyRange(InputRange awaitables)
-    -> folly::coro::Task<std::pair<
-        size_t,
-        folly::Try<detail::collect_all_range_component_t<
-            detail::range_reference_t<InputRange>>>>>;
+auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
+    size_t,
+    folly::Try<detail::collect_all_range_component_t<
+        detail::range_reference_t<InputRange>>>>>;
 
 ///////////////////////////////////////////////////////////////////////////
 // collectAnyWithoutExceptionRange(RangeOf<SemiAwaitable<T>>&&)

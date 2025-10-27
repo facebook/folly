@@ -301,8 +301,9 @@ TEST(TestNoteParsing, SimpleElf) {
   header.n_namesz = 8;
   header.n_descsz = 4;
   memcpy(&headerOnly, &header, sizeof(ElfNhdr));
-  auto noteMaybe = ElfFile::Note::parse(folly::span<const uint8_t>(
-      reinterpret_cast<const uint8_t*>(&headerOnly), sizeof(ElfNhdr)));
+  auto noteMaybe = ElfFile::Note::parse(
+      folly::span<const uint8_t>(
+          reinterpret_cast<const uint8_t*>(&headerOnly), sizeof(ElfNhdr)));
   EXPECT_TRUE(([&]() {
     return noteMaybe.hasError()
         ? testing::AssertionSuccess()
@@ -313,8 +314,9 @@ TEST(TestNoteParsing, SimpleElf) {
   EXPECT_EQ(err.failureCode, ElfFile::FindNoteFailureCode::NoteUndersized);
 
   uint8_t smallerThanHeader[6];
-  noteMaybe = ElfFile::Note::parse(folly::span<const uint8_t>(
-      reinterpret_cast<const uint8_t*>(&smallerThanHeader), 6));
+  noteMaybe = ElfFile::Note::parse(
+      folly::span<const uint8_t>(
+          reinterpret_cast<const uint8_t*>(&smallerThanHeader), 6));
   EXPECT_TRUE(([&]() {
     return noteMaybe.hasError()
         ? testing::AssertionSuccess()

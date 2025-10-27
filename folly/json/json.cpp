@@ -45,12 +45,13 @@ parse_error make_parse_error(
     unsigned int line,
     std::string const& context,
     std::string const& expected) {
-  return parse_error(to<std::string>(
-      "json parse error on line ",
-      line,
-      !context.empty() ? to<std::string>(" near `", context, '\'') : "",
-      ": ",
-      expected));
+  return parse_error(
+      to<std::string>(
+          "json parse error on line ",
+          line,
+          !context.empty() ? to<std::string>(" near `", context, '\'') : "",
+          ": ",
+          expected));
 }
 
 struct Printer {
@@ -162,10 +163,11 @@ struct Printer {
     if (opts_.convert_int_keys && p.first.isInt()) {
       auto strKey = p.first.asString();
       if (o.count(strKey)) {
-        throw json::print_error(folly::to<std::string>(
-            "folly::toJson: Source object has integer and string keys "
-            "representing the same value: ",
-            p.first.asInt()));
+        throw json::print_error(
+            folly::to<std::string>(
+                "folly::toJson: Source object has integer and string keys "
+                "representing the same value: ",
+                p.first.asInt()));
       }
       (*this)(p.first.asString(), Context(context, p.first, true));
     } else if (!opts_.allow_non_string_keys && !p.first.isString()) {
@@ -925,8 +927,9 @@ void escapeStringImpl(
         // To escape a code point that is not in the Basic Multilingual Plane,
         // the character may be represented as a twelve-character sequence,
         // encoding the UTF-16 surrogate pair corresponding to the code point.
-        writeHex(static_cast<char16_t>(
-            0xd800u + (((cp - 0x10000u) >> 10) & 0x3ffu)));
+        writeHex(
+            static_cast<char16_t>(
+                0xd800u + (((cp - 0x10000u) >> 10) & 0x3ffu)));
         writeHex(static_cast<char16_t>(0xdc00u + ((cp - 0x10000u) & 0x3ffu)));
       }
     } else if (*p == '\\' || *p == '\"') {

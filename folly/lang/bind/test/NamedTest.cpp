@@ -95,7 +95,7 @@ constexpr auto check_flatten_bindings() {
               binding_t<named_bi<"b">, int&>,
               binding_t<named_bi<"c">, char&&>,
               binding_t<named_bi<"d">, int&>,
-              binding_t<named_bi<"e">, const char(&)[4]>>>);
+              binding_t<named_bi<"e">, const char (&)[4]>>>);
   return true;
 }
 

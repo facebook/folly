@@ -152,11 +152,10 @@ class safe_closure<Fn, tag_t<vtag_t<ArgBIs...>, ArgsTup>> {
 };
 
 template <typename BindArgs, typename Fn>
-safe_closure(BindArgs, Fn)
-    -> safe_closure<
-        Fn,
-        decltype(detail::deduce_safe_closure_params(
-            typename BindArgs::binding_list_t{}))>;
+safe_closure(BindArgs, Fn) -> safe_closure<
+    Fn,
+    decltype(detail::deduce_safe_closure_params(
+        typename BindArgs::binding_list_t{}))>;
 
 } // namespace folly
 

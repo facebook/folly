@@ -2646,8 +2646,9 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
   int cb2Count = 0;
   cb1.setConnectionAcceptedFn(
       [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
-        std::shared_ptr<AsyncSocket> sock2(AsyncSocket::newSocket(
-            &eventBase, serverAddress)); // cb2: -cb3 -cb5
+        std::shared_ptr<AsyncSocket> sock2(
+            AsyncSocket::newSocket(
+                &eventBase, serverAddress)); // cb2: -cb3 -cb5
       });
   cb3.setConnectionAcceptedFn(
       [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {});
@@ -4536,7 +4537,7 @@ class AsyncSocketByteEventTest : public ::testing::Test {
      */
     void netOpsExpectSendmsgWithAncillaryTsFlags(WriteFlags writeFlags) {
       auto getMsgAncillaryTsFlags = std::bind(
-          (WriteFlags(*)(const struct msghdr* msg)) & ::getMsgAncillaryTsFlags,
+          (WriteFlags (*)(const struct msghdr* msg)) & ::getMsgAncillaryTsFlags,
           std::placeholders::_1);
       EXPECT_CALL(
           *netOpsDispatcher_,
@@ -4551,12 +4552,13 @@ class AsyncSocketByteEventTest : public ::testing::Test {
      */
     void netOpsOnSendmsgRecordIovecsAndFlagsAndFwd() {
       ON_CALL(*netOpsDispatcher_, sendmsg(_, _, _))
-          .WillByDefault(::testing::Invoke(
-              [this](NetworkSocket s, const msghdr* message, int flags) {
-                recordSendmsgInvocation(s, message, flags);
-                return netops::Dispatcher::getDefaultInstance()->sendmsg(
-                    s, message, flags);
-              }));
+          .WillByDefault(
+              ::testing::Invoke(
+                  [this](NetworkSocket s, const msghdr* message, int flags) {
+                    recordSendmsgInvocation(s, message, flags);
+                    return netops::Dispatcher::getDefaultInstance()->sendmsg(
+                        s, message, flags);
+                  }));
     }
 
     /**
@@ -4567,13 +4569,14 @@ class AsyncSocketByteEventTest : public ::testing::Test {
      */
     void netOpsOnRecvmsg() {
       ON_CALL(*netOpsDispatcher_, recvmsg(_, _, _))
-          .WillByDefault(::testing::Invoke(
-              [this](NetworkSocket s, msghdr* message, int flags) {
-                int ret = netops::Dispatcher::getDefaultInstance()->recvmsg(
-                    s, message, flags);
-                recordRecvmsgInvocation(s, message, flags, ret);
-                return ret;
-              }));
+          .WillByDefault(
+              ::testing::Invoke(
+                  [this](NetworkSocket s, msghdr* message, int flags) {
+                    int ret = netops::Dispatcher::getDefaultInstance()->recvmsg(
+                        s, message, flags);
+                    recordRecvmsgInvocation(s, message, flags, ret);
+                    return ret;
+                  }));
     }
 
     void netOpsVerifyAndClearExpectations() {
@@ -6816,23 +6819,24 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserver) {
   const auto flags = WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK |
       WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_WRITE;
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset == 0) {
-              request.maybeOffsetToSplitWrite = 0;
-            } else if (state.startOffset <= 50) {
-              request.maybeOffsetToSplitWrite = 50;
-            } else if (state.startOffset <= 98) {
-              request.maybeOffsetToSplitWrite = 98;
-            }
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset == 0) {
+                  request.maybeOffsetToSplitWrite = 0;
+                } else if (state.startOffset <= 50) {
+                  request.maybeOffsetToSplitWrite = 50;
+                } else if (state.startOffset <= 98) {
+                  request.maybeOffsetToSplitWrite = 98;
+                }
 
-            request.writeFlagsToAddAtOffset = flags;
-            container.addRequest(request);
-          }));
+                request.writeFlagsToAddAtOffset = flags;
+                container.addRequest(request);
+              }));
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
       kOneHundredCharacterVec, WriteFlags::NONE);
 
@@ -6885,18 +6889,19 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverCorkIfSplitMiddle) {
   const auto flags = WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK |
       WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_WRITE;
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset <= 50) {
-              request.maybeOffsetToSplitWrite = 50;
-            }
-            request.writeFlagsToAddAtOffset = flags;
-            container.addRequest(request);
-          }));
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset <= 50) {
+                  request.maybeOffsetToSplitWrite = 50;
+                }
+                request.writeFlagsToAddAtOffset = flags;
+                container.addRequest(request);
+              }));
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
       kOneHundredCharacterVec, WriteFlags::NONE);
 
@@ -6936,18 +6941,19 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverNoCorkIfSplitAtEnd) {
   const auto flags = WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK |
       WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_WRITE;
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset <= 99) {
-              request.maybeOffsetToSplitWrite = 99;
-            }
-            request.writeFlagsToAddAtOffset = flags;
-            container.addRequest(request);
-          }));
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset <= 99) {
+                  request.maybeOffsetToSplitWrite = 99;
+                }
+                request.writeFlagsToAddAtOffset = flags;
+                container.addRequest(request);
+              }));
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
       kOneHundredCharacterVec, WriteFlags::NONE);
 
@@ -6982,15 +6988,16 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverNoSplitFlagsIfNoSplit) {
   const auto flags = WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK |
       WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_WRITE;
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& /* state */,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            request.writeFlagsToAddAtOffset = flags;
-            container.addRequest(request);
-          }));
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& /* state */,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                request.writeFlagsToAddAtOffset = flags;
+                container.addRequest(request);
+              }));
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
       kOneHundredCharacterVec, WriteFlags::NONE);
 
@@ -7016,34 +7023,37 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverFlagsOnAll) {
 
   clientConn.netOpsOnSendmsgRecordIovecsAndFlagsAndFwd();
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset == 0) {
-              request.maybeOffsetToSplitWrite = 0;
-              request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_WRITE;
-            } else if (state.startOffset <= 10) {
-              request.maybeOffsetToSplitWrite = 10;
-              request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_SCHED;
-            } else if (state.startOffset <= 20) {
-              request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_TX;
-              request.maybeOffsetToSplitWrite = 20;
-            } else if (state.startOffset <= 30) {
-              request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_ACK;
-              request.maybeOffsetToSplitWrite = 30;
-            } else if (state.startOffset <= 40) {
-              request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_TX;
-              request.writeFlagsToAdd |= WriteFlags::TIMESTAMP_WRITE;
-              request.maybeOffsetToSplitWrite = 40;
-            } else {
-              request.writeFlagsToAdd |= WriteFlags::TIMESTAMP_WRITE;
-            }
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset == 0) {
+                  request.maybeOffsetToSplitWrite = 0;
+                  request.writeFlagsToAddAtOffset |=
+                      WriteFlags::TIMESTAMP_WRITE;
+                } else if (state.startOffset <= 10) {
+                  request.maybeOffsetToSplitWrite = 10;
+                  request.writeFlagsToAddAtOffset |=
+                      WriteFlags::TIMESTAMP_SCHED;
+                } else if (state.startOffset <= 20) {
+                  request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_TX;
+                  request.maybeOffsetToSplitWrite = 20;
+                } else if (state.startOffset <= 30) {
+                  request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_ACK;
+                  request.maybeOffsetToSplitWrite = 30;
+                } else if (state.startOffset <= 40) {
+                  request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_TX;
+                  request.writeFlagsToAdd |= WriteFlags::TIMESTAMP_WRITE;
+                  request.maybeOffsetToSplitWrite = 40;
+                } else {
+                  request.writeFlagsToAdd |= WriteFlags::TIMESTAMP_WRITE;
+                }
 
-            container.addRequest(request);
-          }));
+                container.addRequest(request);
+              }));
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
       kOneHundredCharacterVec, WriteFlags::NONE);
 
@@ -7101,20 +7111,21 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverFlagsOnWrite) {
 
   // first byte, observer adds TX and WRITE, onwards, it just adds WRITE
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset == 0) {
-              request.maybeOffsetToSplitWrite = 0;
-              request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_TX;
-            }
-            request.writeFlagsToAdd |= WriteFlags::TIMESTAMP_WRITE;
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset == 0) {
+                  request.maybeOffsetToSplitWrite = 0;
+                  request.writeFlagsToAddAtOffset |= WriteFlags::TIMESTAMP_TX;
+                }
+                request.writeFlagsToAdd |= WriteFlags::TIMESTAMP_WRITE;
 
-            container.addRequest(request);
-          }));
+                container.addRequest(request);
+              }));
 
   // application does a write with ACK and CORK set
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
@@ -7161,16 +7172,17 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverInvalidOffset) {
   clientConn.netOpsOnSendmsgRecordIovecsAndFlagsAndFwd();
 
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            EXPECT_GT(200, state.endOffset);
-            request.maybeOffsetToSplitWrite = 200; // invalid
-            container.addRequest(request);
-          }));
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                EXPECT_GT(200, state.endOffset);
+                request.maybeOffsetToSplitWrite = 200; // invalid
+                container.addRequest(request);
+              }));
 
   // check will fail due to invalid offset
   EXPECT_DEATH(
@@ -7213,23 +7225,24 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverTwoIovec) {
   const auto flags = WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK |
       WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_WRITE;
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset == 0) {
-              request.maybeOffsetToSplitWrite = 0;
-            } else if (state.startOffset <= 49) {
-              request.maybeOffsetToSplitWrite = 49;
-            } else if (state.startOffset <= 99) {
-              request.maybeOffsetToSplitWrite = 99;
-            }
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset == 0) {
+                  request.maybeOffsetToSplitWrite = 0;
+                } else if (state.startOffset <= 49) {
+                  request.maybeOffsetToSplitWrite = 49;
+                } else if (state.startOffset <= 99) {
+                  request.maybeOffsetToSplitWrite = 99;
+                }
 
-            request.writeFlagsToAddAtOffset = flags;
-            container.addRequest(request);
-          }));
+                request.writeFlagsToAddAtOffset = flags;
+                container.addRequest(request);
+              }));
 
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
       iovs.data(), iovs.size(), WriteFlags::NONE);
@@ -7290,23 +7303,24 @@ TEST_F(AsyncSocketByteEventTest, PrewriteSingleObserverManyIovec) {
   const auto flags = WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK |
       WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_WRITE;
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset == 0) {
-              request.maybeOffsetToSplitWrite = 0;
-            } else if (state.startOffset <= 1000) {
-              request.maybeOffsetToSplitWrite = 1000;
-            } else if (state.startOffset <= 5000) {
-              request.maybeOffsetToSplitWrite = 5000;
-            }
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset == 0) {
+                  request.maybeOffsetToSplitWrite = 0;
+                } else if (state.startOffset <= 1000) {
+                  request.maybeOffsetToSplitWrite = 1000;
+                } else if (state.startOffset <= 5000) {
+                  request.maybeOffsetToSplitWrite = 5000;
+                }
 
-            request.writeFlagsToAddAtOffset = flags;
-            container.addRequest(request);
-          }));
+                request.writeFlagsToAddAtOffset = flags;
+                container.addRequest(request);
+              }));
 
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
       tenThousandIovec.data(), tenThousandIovec.size(), WriteFlags::NONE);
@@ -7368,64 +7382,68 @@ TEST_F(AsyncSocketByteEventTest, PrewriteMultipleObservers) {
 
   // observer 1 wants TX timestamps at 25, 50, 75
   ON_CALL(*observer1, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset <= 25) {
-              request.maybeOffsetToSplitWrite = 25;
-            } else if (state.startOffset <= 50) {
-              request.maybeOffsetToSplitWrite = 50;
-            } else if (state.startOffset <= 75) {
-              request.maybeOffsetToSplitWrite = 75;
-            }
-            request.writeFlagsToAddAtOffset = WriteFlags::TIMESTAMP_TX;
-            container.addRequest(request);
-          }));
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset <= 25) {
+                  request.maybeOffsetToSplitWrite = 25;
+                } else if (state.startOffset <= 50) {
+                  request.maybeOffsetToSplitWrite = 50;
+                } else if (state.startOffset <= 75) {
+                  request.maybeOffsetToSplitWrite = 75;
+                }
+                request.writeFlagsToAddAtOffset = WriteFlags::TIMESTAMP_TX;
+                container.addRequest(request);
+              }));
 
   // observer 2 wants ACK timestamps at 35, 65, 75
   ON_CALL(*observer2, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset <= 35) {
-              request.maybeOffsetToSplitWrite = 35;
-            } else if (state.startOffset <= 65) {
-              request.maybeOffsetToSplitWrite = 65;
-            } else if (state.startOffset <= 75) {
-              request.maybeOffsetToSplitWrite = 75;
-            }
-            request.writeFlagsToAddAtOffset = WriteFlags::TIMESTAMP_ACK;
-            container.addRequest(request);
-          }));
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset <= 35) {
+                  request.maybeOffsetToSplitWrite = 35;
+                } else if (state.startOffset <= 65) {
+                  request.maybeOffsetToSplitWrite = 65;
+                } else if (state.startOffset <= 75) {
+                  request.maybeOffsetToSplitWrite = 75;
+                }
+                request.writeFlagsToAddAtOffset = WriteFlags::TIMESTAMP_ACK;
+                container.addRequest(request);
+              }));
 
   // observer 3 wants WRITE and SCHED flag on every write that occurs
   ON_CALL(*observer3, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& /* state */,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            request.writeFlagsToAdd =
-                WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED;
-            container.addRequest(request);
-          }));
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& /* state */,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                request.writeFlagsToAdd =
+                    WriteFlags::TIMESTAMP_WRITE | WriteFlags::TIMESTAMP_SCHED;
+                container.addRequest(request);
+              }));
 
   // observer 4 has prewrite but makes no requests
   ON_CALL(*observer4, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& /* state */,
-             AsyncSocketObserverInterface::
-                 PrewriteRequestContainer& /* container */) {
-            return; // do nothing
-          }));
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& /* state */,
+                 AsyncSocketObserverInterface::
+                     PrewriteRequestContainer& /* container */) {
+                return; // do nothing
+              }));
 
   // no calls for observer 5 or observer 6
   EXPECT_CALL(*observer5, prewriteMock(_, _, _)).Times(0);
@@ -7508,23 +7526,24 @@ TEST_F(AsyncSocketByteEventTest, PrewriteTimestampedByteEvents) {
   const auto flags = WriteFlags::TIMESTAMP_TX | WriteFlags::TIMESTAMP_ACK |
       WriteFlags::TIMESTAMP_SCHED | WriteFlags::TIMESTAMP_WRITE;
   ON_CALL(*observer, prewriteMock(_, _, _))
-      .WillByDefault(testing::Invoke(
-          [](AsyncTransport*,
-             const AsyncSocketObserverInterface::PrewriteState& state,
-             AsyncSocketObserverInterface::PrewriteRequestContainer&
-                 container) {
-            AsyncSocketObserverInterface::PrewriteRequest request;
-            if (state.startOffset == 0) {
-              request.maybeOffsetToSplitWrite = 0;
-            } else if (state.startOffset <= 500000) {
-              request.maybeOffsetToSplitWrite = 500000;
-            } else {
-              request.maybeOffsetToSplitWrite = 999999;
-            }
+      .WillByDefault(
+          testing::Invoke(
+              [](AsyncTransport*,
+                 const AsyncSocketObserverInterface::PrewriteState& state,
+                 AsyncSocketObserverInterface::PrewriteRequestContainer&
+                     container) {
+                AsyncSocketObserverInterface::PrewriteRequest request;
+                if (state.startOffset == 0) {
+                  request.maybeOffsetToSplitWrite = 0;
+                } else if (state.startOffset <= 500000) {
+                  request.maybeOffsetToSplitWrite = 500000;
+                } else {
+                  request.maybeOffsetToSplitWrite = 999999;
+                }
 
-            request.writeFlagsToAdd = flags;
-            container.addRequest(request);
-          }));
+                request.writeFlagsToAdd = flags;
+                container.addRequest(request);
+              }));
 
   clientConn.writeAtClientReadAtServerReflectReadAtClient(
       hundredKBVec, WriteFlags::NONE);
@@ -7613,15 +7632,17 @@ TEST_F(AsyncSocketByteEventTest, PrewriteRawBytesWrittenAndTriedToWrite) {
     // prewrite will be called, we request all events
     EXPECT_CALL(*observer, prewriteMock(_, _, _))
         .Times(expectedSendmsgInvocations.size())
-        .WillRepeatedly(testing::Invoke(
-            [](AsyncTransport*,
-               const AsyncSocketObserverInterface::PrewriteState& /* state */,
-               AsyncSocketObserverInterface::PrewriteRequestContainer&
-                   container) {
-              AsyncSocketObserverInterface::PrewriteRequest request = {};
-              request.writeFlagsToAdd = flags;
-              container.addRequest(request);
-            }));
+        .WillRepeatedly(
+            testing::Invoke(
+                [](AsyncTransport*,
+                   const AsyncSocketObserverInterface::
+                       PrewriteState& /* state */,
+                   AsyncSocketObserverInterface::PrewriteRequestContainer&
+                       container) {
+                  AsyncSocketObserverInterface::PrewriteRequest request = {};
+                  request.writeFlagsToAdd = flags;
+                  container.addRequest(request);
+                }));
 
     // sendmsg will be called, we return # of bytes written
     {
@@ -7725,18 +7746,19 @@ TEST_F(AsyncSocketByteEventTest, PrewriteRawBytesWrittenAndTriedToWrite) {
     // prewrite will be called, split at 50th byte (offset = 49)
     EXPECT_CALL(*observer, prewriteMock(_, _, _))
         .Times(expectedSendmsgInvocations.size())
-        .WillRepeatedly(testing::Invoke(
-            [](AsyncTransport*,
-               const AsyncSocketObserverInterface::PrewriteState& state,
-               AsyncSocketObserverInterface::PrewriteRequestContainer&
-                   container) {
-              AsyncSocketObserverInterface::PrewriteRequest request;
-              if (state.startOffset <= 149) {
-                request.maybeOffsetToSplitWrite = 149; // start offset = 100
-              }
-              request.writeFlagsToAdd = flags;
-              container.addRequest(request);
-            }));
+        .WillRepeatedly(
+            testing::Invoke(
+                [](AsyncTransport*,
+                   const AsyncSocketObserverInterface::PrewriteState& state,
+                   AsyncSocketObserverInterface::PrewriteRequestContainer&
+                       container) {
+                  AsyncSocketObserverInterface::PrewriteRequest request;
+                  if (state.startOffset <= 149) {
+                    request.maybeOffsetToSplitWrite = 149; // start offset = 100
+                  }
+                  request.writeFlagsToAdd = flags;
+                  container.addRequest(request);
+                }));
 
     // sendmsg will be called, we return # of bytes written
     {
@@ -8497,7 +8519,7 @@ class AsyncSocketByteEventHelperTest : public ::testing::Test {
    public:
     explicit WrappedCMsg(std::vector<char>&& data) : data_(std::move(data)) {}
 
-    operator const struct cmsghdr &() {
+    operator const struct cmsghdr&() {
       return *reinterpret_cast<struct cmsghdr*>(data_.data());
     }
 
@@ -9851,8 +9873,11 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
       magicString.length(),
       folly::fileops::read(
           fd, transferredMagicString.data(), transferredMagicString.size()));
-  ASSERT_TRUE(std::equal(
-      magicString.begin(), magicString.end(), transferredMagicString.begin()));
+  ASSERT_TRUE(
+      std::equal(
+          magicString.begin(),
+          magicString.end(),
+          transferredMagicString.begin()));
 }
 
 namespace {
@@ -10544,44 +10569,47 @@ class AsyncSocketWriteCallbackTest : public ::testing::Test {
 
   void netOpsOnSendmsg() {
     ON_CALL(*netOpsDispatcher_, sendmsg(_, _, _))
-        .WillByDefault(::testing::Invoke(
-            [this](NetworkSocket s, const msghdr* message, int flags) {
-              sendMsgInvocations_++;
-              return netops::Dispatcher::getDefaultInstance()->sendmsg(
-                  s, message, flags);
-            }));
+        .WillByDefault(
+            ::testing::Invoke(
+                [this](NetworkSocket s, const msghdr* message, int flags) {
+                  sendMsgInvocations_++;
+                  return netops::Dispatcher::getDefaultInstance()->sendmsg(
+                      s, message, flags);
+                }));
   }
 
   // simulate spliting a write into two parts by returning less than the amount
   // of bytes that was written if this is the first invocation of sendMsg
   void netOpsOnSendmsgPartial() {
     ON_CALL(*netOpsDispatcher_, sendmsg(_, _, _))
-        .WillByDefault(::testing::Invoke(
-            [this](NetworkSocket s, const msghdr* message, int flags) {
-              sendMsgInvocations_++;
-              auto totalWritten =
-                  netops::Dispatcher::getDefaultInstance()->sendmsg(
-                      s, message, flags);
-              if (splitNextWrite_) {
-                splitNextWrite_ = false;
-                return totalWritten - 1;
-              } else {
-                splitNextWrite_ = true;
-                return totalWritten;
-              }
-            }));
+        .WillByDefault(
+            ::testing::Invoke(
+                [this](NetworkSocket s, const msghdr* message, int flags) {
+                  sendMsgInvocations_++;
+                  auto totalWritten =
+                      netops::Dispatcher::getDefaultInstance()->sendmsg(
+                          s, message, flags);
+                  if (splitNextWrite_) {
+                    splitNextWrite_ = false;
+                    return totalWritten - 1;
+                  } else {
+                    splitNextWrite_ = true;
+                    return totalWritten;
+                  }
+                }));
   }
 
   // simulate a failed write by returning -1 on sendMsg
   void netOpsOnSendmsgFail() {
     ON_CALL(*netOpsDispatcher_, sendmsg(_, _, _))
-        .WillByDefault(::testing::Invoke(
-            [this](NetworkSocket s, const msghdr* message, int flags) {
-              sendMsgInvocations_++;
-              netops::Dispatcher::getDefaultInstance()->sendmsg(
-                  s, message, flags);
-              return -1;
-            }));
+        .WillByDefault(
+            ::testing::Invoke(
+                [this](NetworkSocket s, const msghdr* message, int flags) {
+                  sendMsgInvocations_++;
+                  netops::Dispatcher::getDefaultInstance()->sendmsg(
+                      s, message, flags);
+                  return -1;
+                }));
   }
 
   WriteCallback writeCallback1_;

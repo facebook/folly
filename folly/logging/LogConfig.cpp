@@ -45,10 +45,11 @@ void LogConfig::update(const LogConfig& other) {
       // completely replacing it.
       auto iter = handlerConfigs_.find(entry.first);
       if (iter == handlerConfigs_.end()) {
-        throw std::invalid_argument(to<std::string>(
-            "cannot update configuration for unknown log handler \"",
-            entry.first,
-            "\""));
+        throw std::invalid_argument(
+            to<std::string>(
+                "cannot update configuration for unknown log handler \"",
+                entry.first,
+                "\""));
       }
       iter->second.update(entry.second);
     }

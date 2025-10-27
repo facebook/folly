@@ -31,9 +31,10 @@ Synchronized<SettingsMap>& settingsMap() {
 void registerSetting(SettingCoreBase& core) {
   if (core.meta().project.empty() ||
       core.meta().project.find('_') != std::string::npos) {
-    throw std::logic_error(fmt::format(
-        "Setting project must be nonempty and cannot contain underscores: {}",
-        core.meta().project));
+    throw std::logic_error(
+        fmt::format(
+            "Setting project must be nonempty and cannot contain underscores: {}",
+            core.meta().project));
   }
 
   auto fullname = fmt::format("{}_{}", core.meta().project, core.meta().name);

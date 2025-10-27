@@ -309,8 +309,9 @@ void testInvalidFd(size_t numTotal, size_t numValid, size_t numInvalid) {
 
   for (size_t i = 0; i < numTotal; i++) {
     bool valid = (i % (numValid + numInvalid)) < numValid;
-    eventsVec.emplace_back(std::make_unique<EventFD>(
-        valid, 1, total, false /*persist*/, evbPtr.get()));
+    eventsVec.emplace_back(
+        std::make_unique<EventFD>(
+            valid, 1, total, false /*persist*/, evbPtr.get()));
   }
 
   evbPtr->loop();
@@ -459,8 +460,9 @@ class EventRecvmsgMultishotCallback
     folly::EventRecvmsgMultishotCallback::ParsedRecvMsgMultishot p;
     ASSERT_GE(res, 0);
     EXPECT_EQ(res, io->coalesce().size());
-    ASSERT_TRUE(folly::EventRecvmsgMultishotCallback::parseRecvmsgMultishot(
-        io->coalesce(), msgHdr->data_, p));
+    ASSERT_TRUE(
+        folly::EventRecvmsgMultishotCallback::parseRecvmsgMultishot(
+            io->coalesce(), msgHdr->data_, p));
 
     EXPECT_EQ(p.payload.size(), static_cast<int>(numBytes_));
 
@@ -1202,13 +1204,11 @@ TEST(IoUringBackend, FileReadvWritev) {
     readIov.reserve(kNumIov);
     writeIov.reserve(kNumIov);
     for (size_t j = 0; j < kNumIov; j++) {
-      struct iovec riov {
-        readDataVecVec[i][j].data(), readDataVecVec[i][j].size()
-      };
+      struct iovec riov{
+          readDataVecVec[i][j].data(), readDataVecVec[i][j].size()};
       readIov.push_back(riov);
-      struct iovec wiov {
-        writeDataVecVec[i][j].data(), writeDataVecVec[i][j].size()
-      };
+      struct iovec wiov{
+          writeDataVecVec[i][j].data(), writeDataVecVec[i][j].size()};
       writeIov.push_back(wiov);
       len += riov.iov_len;
     }
@@ -1540,10 +1540,11 @@ TEST(IoUringBackend, ProvidedBuffers) {
   std::vector<std::unique_ptr<Reader>> readers;
   auto addReaders = [&](int n) {
     for (int i = 0; i < n; i++) {
-      readers.push_back(std::make_unique<Reader>(
-          fds[0], bufferProvider->gid(), [&](int r, uint32_t f) {
-            cqes.emplace_back(r, f);
-          }));
+      readers.push_back(
+          std::make_unique<Reader>(
+              fds[0], bufferProvider->gid(), [&](int r, uint32_t f) {
+                cqes.emplace_back(r, f);
+              }));
       backend->submit(*readers.back());
     }
   };
@@ -1708,10 +1709,11 @@ TEST(IoUringBackend, IncrementalBuffers) {
 
   auto addReaders = [&](int n) {
     for (int i = 0; i < n; i++) {
-      readers.push_back(std::make_unique<Reader>(
-          fds[0], bufferProvider->gid(), [&](int r, uint32_t f) {
-            cqes.emplace_back(r, f);
-          }));
+      readers.push_back(
+          std::make_unique<Reader>(
+              fds[0], bufferProvider->gid(), [&](int r, uint32_t f) {
+                cqes.emplace_back(r, f);
+              }));
       backend->submit(*readers.back());
     }
   };
@@ -1936,7 +1938,7 @@ TEST(IoUringBackend, ReceiveBundleTest) {
   ASSERT_EQ(
       0, setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)));
 
-  struct sockaddr_in server_addr {};
+  struct sockaddr_in server_addr{};
   memset(&server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -1960,7 +1962,7 @@ TEST(IoUringBackend, ReceiveBundleTest) {
   int client_fd = socket(AF_INET, SOCK_STREAM, 0);
   ASSERT_GE(client_fd, 0);
 
-  struct sockaddr_in client_addr {};
+  struct sockaddr_in client_addr{};
   memset(&client_addr, 0, sizeof(client_addr));
   client_addr.sin_family = AF_INET;
   client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");

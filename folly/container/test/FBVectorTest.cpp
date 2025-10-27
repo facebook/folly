@@ -316,7 +316,7 @@ TEST(FBVector, zeroInit) {
     int i_;
   };
   struct S3 {
-    int S1::*mp_;
+    int S1::* mp_;
   };
   folly::fbvector<S3> vec(4);
   vec.resize(10);

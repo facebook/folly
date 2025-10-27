@@ -84,10 +84,11 @@ BarrierTask makeCollectAllTryTask(
               cancelToken, static_cast<SemiAwaitableMover&&>(mover)()));
       result.emplace();
     } else {
-      result.emplace(co_await co_viaIfAsync(
-          std::move(executor),
-          co_withCancellation(
-              cancelToken, static_cast<SemiAwaitableMover&&>(mover)())));
+      result.emplace(
+          co_await co_viaIfAsync(
+              std::move(executor),
+              co_withCancellation(
+                  cancelToken, static_cast<SemiAwaitableMover&&>(mover)())));
     }
   } catch (...) {
     result.emplaceException(current_exception());
@@ -184,10 +185,11 @@ Ret collectAllImpl(
                   cancelToken, static_cast<decltype(fn)>(fn)()));
           result.emplace();
         } else {
-          result.emplace(co_await co_viaIfAsync(
-              executor.get_alias(),
-              co_withCancellation(
-                  cancelToken, static_cast<decltype(fn)>(fn)())));
+          result.emplace(
+              co_await co_viaIfAsync(
+                  executor.get_alias(),
+                  co_withCancellation(
+                      cancelToken, static_cast<decltype(fn)>(fn)())));
         }
       } catch (...) {
         if (!cancelSource.requestCancellation()) {
@@ -329,19 +331,20 @@ auto collectAnyImpl(
   std::pair<std::size_t, folly::Try<collect_any_component_t<SemiAwaitables...>>>
       firstCompletion;
   firstCompletion.first = size_t(-1);
-  co_await folly::coro::collectAll(folly::coro::co_withCancellation(
-      cancelToken,
-      folly::coro::co_invoke(
-          [&, aw = static_cast<SemiAwaitables&&>(awaitables)]() mutable
-          -> folly::coro::Task<void> {
-            auto result = co_await folly::coro::co_awaitTry(
-                static_cast<SemiAwaitables&&>(aw));
-            if (!cancelSource.requestCancellation()) {
-              // This is first entity to request cancellation.
-              firstCompletion.first = Indices;
-              firstCompletion.second = std::move(result);
-            }
-          }))...);
+  co_await folly::coro::collectAll(
+      folly::coro::co_withCancellation(
+          cancelToken,
+          folly::coro::co_invoke(
+              [&, aw = static_cast<SemiAwaitables&&>(awaitables)]() mutable
+                  -> folly::coro::Task<void> {
+                auto result = co_await folly::coro::co_awaitTry(
+                    static_cast<SemiAwaitables&&>(aw));
+                if (!cancelSource.requestCancellation()) {
+                  // This is first entity to request cancellation.
+                  firstCompletion.first = Indices;
+                  firstCompletion.second = std::move(result);
+                }
+              }))...);
 
   co_return firstCompletion;
 }
@@ -363,17 +366,19 @@ auto collectAnyWithoutExceptionImpl(
   std::pair<std::size_t, folly::Try<collect_any_component_t<SemiAwaitables...>>>
       firstValueOrLastException;
   firstValueOrLastException.first = std::numeric_limits<size_t>::max();
-  co_await folly::coro::collectAll(folly::coro::co_withCancellation(
-      cancelToken, [&]() -> folly::coro::Task<void> {
-        auto result = co_await folly::coro::co_awaitTry(
-            std::forward<SemiAwaitables>(awaitables));
-        if ((result.hasValue() ||
-             nAwaited.fetch_add(1, std::memory_order_relaxed) == nAwaitables) &&
-            !cancelSource.requestCancellation()) {
-          firstValueOrLastException.first = Indices;
-          firstValueOrLastException.second = std::move(result);
-        }
-      }())...);
+  co_await folly::coro::collectAll(
+      folly::coro::co_withCancellation(
+          cancelToken, [&]() -> folly::coro::Task<void> {
+            auto result = co_await folly::coro::co_awaitTry(
+                std::forward<SemiAwaitables>(awaitables));
+            if ((result.hasValue() ||
+                 nAwaited.fetch_add(1, std::memory_order_relaxed) ==
+                     nAwaitables) &&
+                !cancelSource.requestCancellation()) {
+              firstValueOrLastException.first = Indices;
+              firstValueOrLastException.second = std::move(result);
+            }
+          }())...);
 
   co_return firstValueOrLastException;
 }
@@ -388,13 +393,14 @@ auto collectAnyNoDiscardImpl(
       co_await co_current_cancellation_token, cancelSource.getToken());
 
   std::tuple<collect_all_try_component_t<SemiAwaitables>...> results;
-  co_await folly::coro::collectAll(folly::coro::co_withCancellation(
-      cancelToken, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-        auto result = co_await folly::coro::co_awaitTry(
-            std::forward<SemiAwaitables>(awaitables));
-        cancelSource.requestCancellation();
-        std::get<Indices>(results) = std::move(result);
-      }))...);
+  co_await folly::coro::collectAll(
+      folly::coro::co_withCancellation(
+          cancelToken, folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+            auto result = co_await folly::coro::co_awaitTry(
+                std::forward<SemiAwaitables>(awaitables));
+            cancelSource.requestCancellation();
+            std::get<Indices>(results) = std::move(result);
+          }))...);
 
   co_return results;
 }
@@ -447,9 +453,10 @@ auto collectAllRange(InputRange awaitables)
     assert(index < tryResults.size());
 
     try {
-      tryResults[index].emplace(co_await co_viaIfAsync(
-          executor.get_alias(),
-          co_withCancellation(cancelToken, std::move(semiAwaitable))));
+      tryResults[index].emplace(
+          co_await co_viaIfAsync(
+              executor.get_alias(),
+              co_withCancellation(cancelToken, std::move(semiAwaitable))));
     } catch (...) {
       if (!cancelSource.requestCancellation()) {
         firstException = exception_wrapper{current_exception()};
@@ -575,9 +582,10 @@ auto collectAllTryRange(InputRange awaitables)
             co_withCancellation(cancelToken, std::move(semiAwaitable)));
         result.emplace();
       } else {
-        result.emplace(co_await co_viaIfAsync(
-            executor.get_alias(),
-            co_withCancellation(cancelToken, std::move(semiAwaitable))));
+        result.emplace(
+            co_await co_viaIfAsync(
+                executor.get_alias(),
+                co_withCancellation(cancelToken, std::move(semiAwaitable))));
       }
     } catch (...) {
       result.emplaceException(current_exception());
@@ -793,10 +801,11 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
           tryResult;
 
       try {
-        tryResult.emplace(co_await co_viaIfAsync(
-            executor.get_alias(),
-            co_withCancellation(
-                cancelToken, static_cast<awaitable_t&&>(*awaitable))));
+        tryResult.emplace(
+            co_await co_viaIfAsync(
+                executor.get_alias(),
+                co_withCancellation(
+                    cancelToken, static_cast<awaitable_t&&>(*awaitable))));
       } catch (...) {
         trySetFirstException(exception_wrapper{current_exception()});
       }
@@ -930,9 +939,10 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
               co_withCancellation(cancelToken, std::move(*awaitable)));
           result.emplace();
         } else {
-          result.emplace(co_await co_viaIfAsync(
-              executor.get_alias(),
-              co_withCancellation(cancelToken, std::move(*awaitable))));
+          result.emplace(
+              co_await co_viaIfAsync(
+                  executor.get_alias(),
+                  co_withCancellation(cancelToken, std::move(*awaitable))));
         }
       } catch (...) {
         result.emplaceException(current_exception());
@@ -1069,11 +1079,10 @@ auto collectAnyNoDiscard(SemiAwaitables&&... awaitables)
 }
 
 template <typename InputRange>
-auto collectAnyRange(InputRange awaitables)
-    -> folly::coro::Task<std::pair<
-        size_t,
-        folly::Try<detail::collect_all_range_component_t<
-            detail::range_reference_t<InputRange>>>>> {
+auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
+    size_t,
+    folly::Try<detail::collect_all_range_component_t<
+        detail::range_reference_t<InputRange>>>>> {
   const CancellationToken& parentCancelToken =
       co_await co_current_cancellation_token;
   const CancellationSource cancelSource;

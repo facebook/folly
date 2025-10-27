@@ -57,32 +57,22 @@ class Partial {
 
   template <typename... CArgs>
   auto operator()(CArgs&&... cargs) & -> decltype(invokeForward(
-                                          std::declval<Partial&>(),
-                                          Indexes{},
-                                          std::declval<CArgs>()...)) {
+      std::declval<Partial&>(), Indexes{}, std::declval<CArgs>()...)) {
     return invokeForward(*this, Indexes{}, std::forward<CArgs>(cargs)...);
   }
   template <typename... CArgs>
-  auto operator()(CArgs&&... cargs)
-      const& -> decltype(invokeForward(
-                 std::declval<const Partial&>(),
-                 Indexes{},
-                 std::declval<CArgs>()...)) {
+  auto operator()(CArgs&&... cargs) const& -> decltype(invokeForward(
+      std::declval<const Partial&>(), Indexes{}, std::declval<CArgs>()...)) {
     return invokeForward(*this, Indexes{}, std::forward<CArgs>(cargs)...);
   }
   template <typename... As>
   auto operator()(As&&... a) && -> decltype(invokeForward(
-                                    std::declval<Partial&&>(),
-                                    Indexes{},
-                                    std::declval<As>()...)) {
+      std::declval<Partial&&>(), Indexes{}, std::declval<As>()...)) {
     return invokeForward(std::move(*this), Indexes{}, std::forward<As>(a)...);
   }
   template <typename... As>
-  auto operator()(As&&... as)
-      const&& -> decltype(invokeForward(
-                  std::declval<const Partial&&>(),
-                  Indexes{},
-                  std::declval<As>()...)) {
+  auto operator()(As&&... as) const&& -> decltype(invokeForward(
+      std::declval<const Partial&&>(), Indexes{}, std::declval<As>()...)) {
     return invokeForward(std::move(*this), Indexes{}, std::forward<As>(as)...);
   }
 

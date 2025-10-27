@@ -490,14 +490,17 @@ CancellationToken cancellation_token_merge_fn::operator()(
       }
       return *copyToks[0];
     } else if constexpr (NCopy == N) {
-      return CancellationToken(detail::MergingCancellationState::createCopy(
-          copyIdx, copyToks.data()));
+      return CancellationToken(
+          detail::MergingCancellationState::createCopy(
+              copyIdx, copyToks.data()));
     } else if constexpr (NCopy == 0) {
-      return CancellationToken(detail::MergingCancellationState::createMove(
-          moveIdx, moveToks.data()));
+      return CancellationToken(
+          detail::MergingCancellationState::createMove(
+              moveIdx, moveToks.data()));
     } else {
-      return CancellationToken(detail::MergingCancellationState::createCopyMove(
-          copyIdx, copyToks.data(), moveIdx, moveToks.data()));
+      return CancellationToken(
+          detail::MergingCancellationState::createCopyMove(
+              copyIdx, copyToks.data(), moveIdx, moveToks.data()));
     }
   }
 }

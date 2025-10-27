@@ -113,8 +113,7 @@ TEST(F14Set, customSwap) {
 
 namespace {
 template <
-    template <typename, typename, typename, typename>
-    class TSet,
+    template <typename, typename, typename, typename> class TSet,
     typename K>
 void runAllocatedMemorySizeTest() {
   using A = SwapTrackingAlloc<K>;
@@ -1518,8 +1517,7 @@ struct CharArrayHasher {
 };
 
 template <
-    template <typename, typename, typename, typename>
-    class S,
+    template <typename, typename, typename, typename> class S,
     std::size_t N>
 struct RunAllValueSizeTests {
   void operator()() const {

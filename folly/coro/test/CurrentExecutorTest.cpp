@@ -30,23 +30,24 @@ class CoRescheduleOnCurrentExecutorTest : public testing::Test {};
 
 TEST_F(CoRescheduleOnCurrentExecutorTest, example) {
   std::vector<int> results;
-  folly::coro::blockingWait(folly::coro::collectAll(
-      folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-        for (int i = 0; i <= 10; i += 2) {
-          if (i == 6) {
-            co_await folly::coro::co_reschedule_on_current_executor;
-          }
-          results.push_back(i);
-        }
-      }),
-      folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
-        for (int i = 1; i < 10; i += 2) {
-          if (i == 7) {
-            co_await folly::coro::co_reschedule_on_current_executor;
-          }
-          results.push_back(i);
-        }
-      })));
+  folly::coro::blockingWait(
+      folly::coro::collectAll(
+          folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+            for (int i = 0; i <= 10; i += 2) {
+              if (i == 6) {
+                co_await folly::coro::co_reschedule_on_current_executor;
+              }
+              results.push_back(i);
+            }
+          }),
+          folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+            for (int i = 1; i < 10; i += 2) {
+              if (i == 7) {
+                co_await folly::coro::co_reschedule_on_current_executor;
+              }
+              results.push_back(i);
+            }
+          })));
 
   CHECK_EQ(11, results.size());
   const int expected[11] = {0, 2, 4, 1, 3, 5, 6, 8, 10, 7, 9};

@@ -61,7 +61,7 @@ using IntrusiveListHook = boost::intrusive::list_member_hook<
  * The elements stored in the list must contain an IntrusiveListHook member
  * variable.
  */
-template <typename T, IntrusiveListHook T::*PtrToMember>
+template <typename T, IntrusiveListHook T::* PtrToMember>
 using IntrusiveList = boost::intrusive::list<
     T,
     boost::intrusive::member_hook<T, IntrusiveListHook, PtrToMember>,
@@ -80,7 +80,7 @@ using SafeIntrusiveListHook = boost::intrusive::list_member_hook<
  * that the hook is initialised to an unlinked state on construction and reset
  * an unlinked state upon removing it from a list.
  */
-template <typename T, SafeIntrusiveListHook T::*PtrToMember>
+template <typename T, SafeIntrusiveListHook T::* PtrToMember>
 using SafeIntrusiveList = boost::intrusive::list<
     T,
     boost::intrusive::member_hook<T, SafeIntrusiveListHook, PtrToMember>,
@@ -122,7 +122,7 @@ using SafeIntrusiveList = boost::intrusive::list<
  * The elements stored in the list must contain an SafeIntrusiveListHook member
  * variable.
  */
-template <typename T, SafeIntrusiveListHook T::*PtrToMember>
+template <typename T, SafeIntrusiveListHook T::* PtrToMember>
 using CountedIntrusiveList = boost::intrusive::list<
     T,
     boost::intrusive::member_hook<T, SafeIntrusiveListHook, PtrToMember>,

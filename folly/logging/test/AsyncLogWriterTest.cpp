@@ -54,7 +54,9 @@ TEST(AsyncLogWriterDeathTest, cleanupWarning) {
         { NoCleanUpLogWriter{}; },
         "cleanup\\(\\) is not called before destroying");
   } else {
-    { NoCleanUpLogWriter{}; }
+    {
+      NoCleanUpLogWriter{};
+    }
     EXPECT_TRUE(flag);
   }
 }

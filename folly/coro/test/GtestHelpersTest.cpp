@@ -45,12 +45,13 @@ CO_TEST_P(GtestHelpersMultiplicationTest, BasicTest) {
 INSTANTIATE_TEST_SUITE_P(
     GtestHelpersMultiplicationTest,
     GtestHelpersMultiplicationTest,
-    ValuesIn(std::vector<GtestHelpersMultiplicationTestParam>{
-        {1, 1, 1},
-        {1, 2, 2},
-        {2, 2, 4},
-        {-1, -6, 6},
-    }));
+    ValuesIn(
+        std::vector<GtestHelpersMultiplicationTestParam>{
+            {1, 1, 1},
+            {1, 2, 2},
+            {2, 2, 4},
+            {-1, -6, 6},
+        }));
 
 namespace {
 

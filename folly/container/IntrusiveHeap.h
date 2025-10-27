@@ -75,7 +75,7 @@ struct DerivedNodeTraits {
   static T* asT(IntrusiveHeapNode<Tag>* n) { return static_cast<T*>(n); }
 };
 
-template <class T, class Tag, IntrusiveHeapNode<Tag> T::*PtrToMember>
+template <class T, class Tag, IntrusiveHeapNode<Tag> T::* PtrToMember>
 struct MemberNodeTraits {
   static IntrusiveHeapNode<Tag>* asNode(T* x) { return &(x->*PtrToMember); }
   static T* asT(IntrusiveHeapNode<Tag>* n) {

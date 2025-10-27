@@ -63,8 +63,9 @@ void AsyncSignalHandler::registerSignalHandler(int signum) {
   try {
     ev->eb_signal_set(signum, libeventCallback, this);
     if (ev->eb_event_base_set(eventBase_) != 0) {
-      throw std::runtime_error(folly::to<string>(
-          "error initializing event handler for signal ", signum));
+      throw std::runtime_error(
+          folly::to<string>(
+              "error initializing event handler for signal ", signum));
     }
 
     if (ev->eb_event_add(nullptr) != 0) {
@@ -80,10 +81,11 @@ void AsyncSignalHandler::registerSignalHandler(int signum) {
 void AsyncSignalHandler::unregisterSignalHandler(int signum) {
   auto it = signalEvents_.find(signum);
   if (it == signalEvents_.end()) {
-    throw std::runtime_error(folly::to<string>(
-        "unable to unregister handler for signal ",
-        signum,
-        ": signal not registered"));
+    throw std::runtime_error(
+        folly::to<string>(
+            "unable to unregister handler for signal ",
+            signum,
+            ": signal not registered"));
   }
 
   it->second->eb_event_del();

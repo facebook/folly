@@ -40,10 +40,11 @@ class GlogFormatterFactory
       if (expectedLogThreadName.hasValue()) {
         log_thread_name_ = expectedLogThreadName.value();
       } else {
-        throw std::invalid_argument(to<string>(
-            "unknown log_thread_name type \"",
-            value,
-            "\". Needs to be true/false or 1/0"));
+        throw std::invalid_argument(
+            to<string>(
+                "unknown log_thread_name type \"",
+                value,
+                "\". Needs to be true/false or 1/0"));
       }
       return true;
     }
@@ -75,10 +76,11 @@ class CustomLogFormatterFactory
       } else if (value == "never") {
         colored_ = NEVER;
       } else {
-        throw std::invalid_argument(to<string>(
-            "unknown colored type \"",
-            value,
-            "\". Needs to be always/never/auto"));
+        throw std::invalid_argument(
+            to<string>(
+                "unknown colored type \"",
+                value,
+                "\". Needs to be always/never/auto"));
       }
       return true;
     }
@@ -144,8 +146,9 @@ std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
       handled |= formatterFactory->processOption(entry.first, entry.second);
       handled |= writerFactory->processOption(entry.first, entry.second);
     } catch (const std::exception& ex) {
-      errors.push_back(to<string>(
-          "error processing option \"", entry.first, "\": ", ex.what()));
+      errors.push_back(
+          to<string>(
+              "error processing option \"", entry.first, "\": ", ex.what()));
       continue;
     }
 
@@ -156,11 +159,12 @@ std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
       try {
         logLevel = stringToLogLevel(entry.second);
       } catch (const std::exception& ex) {
-        errors.push_back(to<string>(
-            "unable to parse value for option \"",
-            entry.first,
-            "\": ",
-            ex.what()));
+        errors.push_back(
+            to<string>(
+                "unable to parse value for option \"",
+                entry.first,
+                "\": ",
+                ex.what()));
       }
       handled = true;
     } else if (entry.first == "sync_level") {
@@ -168,11 +172,12 @@ std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
       try {
         syncLevel = stringToLogLevel(entry.second);
       } catch (const std::exception& ex) {
-        errors.push_back(to<string>(
-            "unable to parse value for option \"",
-            entry.first,
-            "\": ",
-            ex.what()));
+        errors.push_back(
+            to<string>(
+                "unable to parse value for option \"",
+                entry.first,
+                "\": ",
+                ex.what()));
       }
       handled = true;
     }

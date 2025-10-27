@@ -94,8 +94,9 @@ BENCHMARK_COUNTERS(CoroFutureSuspend, counters, iters) {
       co_return;
     }(std::move(this_promise));
 
-    folly::coro::blockingWait(folly::coro::collectAll(
-        co_awaitTry(std::move(waiter)), std::move(fulfiller)));
+    folly::coro::blockingWait(
+        folly::coro::collectAll(
+            co_awaitTry(std::move(waiter)), std::move(fulfiller)));
   }
 
   setMallocStats(counters);
@@ -114,8 +115,9 @@ BENCHMARK_COUNTERS(FuturesFutureSuspend, counters, iters) {
       co_return;
     }(std::move(this_promise));
 
-    folly::coro::blockingWait(folly::coro::collectAll(
-        co_awaitTry(std::move(waiter)), std::move(fulfiller)));
+    folly::coro::blockingWait(
+        folly::coro::collectAll(
+            co_awaitTry(std::move(waiter)), std::move(fulfiller)));
   }
 
   setMallocStats(counters);

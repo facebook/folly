@@ -157,10 +157,8 @@ struct CapturesTest : testing::Test {
   }
 
   template <
-      template <typename>
-      class RefFromAfterCleanup,
-      template <typename>
-      class IndirectRefFromAfterCleanup>
+      template <typename> class RefFromAfterCleanup,
+      template <typename> class IndirectRefFromAfterCleanup>
   void check_to_capture_ref(auto make_ref_fn) {
     check_ref_from_mutable(5, make<capture<int>>(5), make_ref_fn);
     check_ref_from_mutable(5, make<capture_heap<int>>(5), make_ref_fn);

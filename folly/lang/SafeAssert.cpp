@@ -53,8 +53,7 @@ namespace {
 //    echo "#endif"
 //  done
 
-#define FOLLY_DETAIL_ERROR(name) \
-  { name, #name }
+#define FOLLY_DETAIL_ERROR(name) {name, #name}
 constexpr std::pair<int, const char*> errors[] = {
 #if defined(E2BIG)
     FOLLY_DETAIL_ERROR(E2BIG),

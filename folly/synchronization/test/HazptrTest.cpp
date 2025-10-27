@@ -330,9 +330,15 @@ void copy_and_move_test() {
 
 template <template <typename> class Atom = std::atomic>
 void basic_holders_test() {
-  { hazptr_holder<Atom> h = make_hazard_pointer<Atom>(); }
-  { hazptr_array<2, Atom> h = make_hazard_pointer_array<2, Atom>(); }
-  { hazptr_local<2, Atom> h; }
+  {
+    hazptr_holder<Atom> h = make_hazard_pointer<Atom>();
+  }
+  {
+    hazptr_array<2, Atom> h = make_hazard_pointer_array<2, Atom>();
+  }
+  {
+    hazptr_local<2, Atom> h;
+  }
 }
 
 template <template <typename> class Atom = std::atomic>
@@ -771,7 +777,9 @@ void cleanup_test() {
   }
   { // Cleanup after using array
     c_.clear();
-    { hazptr_array<2, Atom> h = make_hazard_pointer_array<2, Atom>(); }
+    {
+      hazptr_array<2, Atom> h = make_hazard_pointer_array<2, Atom>();
+    }
     {
       hazptr_array<2, Atom> h = make_hazard_pointer_array<2, Atom>();
       auto p0 = new Node<Atom>;
@@ -787,7 +795,9 @@ void cleanup_test() {
   }
   { // Cleanup after using local
     c_.clear();
-    { hazptr_local<2, Atom> h; }
+    {
+      hazptr_local<2, Atom> h;
+    }
     {
       hazptr_local<2, Atom> h;
       auto p0 = new Node<Atom>;

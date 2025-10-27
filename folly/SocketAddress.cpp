@@ -295,10 +295,11 @@ void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
     return;
 #endif
   } else {
-    throw std::invalid_argument(fmt::format(
-        "SocketAddress::setFromSockaddr() called "
-        "with unsupported address type {}",
-        address->sa_family));
+    throw std::invalid_argument(
+        fmt::format(
+            "SocketAddress::setFromSockaddr() called "
+            "with unsupported address type {}",
+            address->sa_family));
   }
 
   // For IP addresses, use the IPAddress constructor

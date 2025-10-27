@@ -49,8 +49,7 @@ __attribute__((noreturn))
 #else
 [[noreturn]]
 #endif
-static void
-wrapped_abort() {
+static void wrapped_abort() {
   abort();
 }
 #endif

@@ -418,13 +418,16 @@ TEST_F(SimpleTransformFixture, MultipleTransformsWithRateLimiter) {
 class TransformFixtureStress : public Test {
  protected:
   TransformFixtureStress()
-      : producer_(std::make_unique<StressTestProducer<int>>(
-            [value = 0]() mutable { return value++; })),
-        consumer_(std::make_unique<StressTestConsumer<std::string>>(
-            ConsumptionMode::CallbackWithHandle,
-            [lastReceived = -1](std::string value) mutable {
-              EXPECT_EQ(folly::to<int>(value), ++lastReceived);
-            })) {}
+      : producer_(
+            std::make_unique<StressTestProducer<int>>([value = 0]() mutable {
+              return value++;
+            })),
+        consumer_(
+            std::make_unique<StressTestConsumer<std::string>>(
+                ConsumptionMode::CallbackWithHandle,
+                [lastReceived = -1](std::string value) mutable {
+                  EXPECT_EQ(folly::to<int>(value), ++lastReceived);
+                })) {}
 
   static constexpr std::chrono::milliseconds kTestTimeout =
       std::chrono::milliseconds{5000};
@@ -524,7 +527,8 @@ TEST_F(
       toVector("abc"s, "def"s),
       [receiver = std::move(untransformedReceiver)](
           std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
@@ -562,7 +566,8 @@ TEST_F(
       toVector("abc"s, "def"s),
       [receiver = std::move(untransformedReceiver)](
           std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
@@ -600,7 +605,8 @@ TEST_F(
       toVector("abc"s, "def"s),
       [receiver = std::move(untransformedReceiver)](
           std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
@@ -633,11 +639,12 @@ TEST_F(
       toVector("abc1"s),
       [&receiver = untransformedReceiver](
           std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [numReinitializations = 0](Try<int> result) mutable
-      -> folly::coro::AsyncGenerator<std::string&&> {
+          -> folly::coro::AsyncGenerator<std::string&&> {
         try {
           co_yield folly::to<std::string>(result.value());
         } catch (const OnClosedException&) {
@@ -684,7 +691,8 @@ TEST_F(
       toVector("abc"s),
       [alreadyInitialized = false, receiver = std::move(untransformedReceiver)](
           std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         CHECK(!alreadyInitialized);
         alreadyInitialized = true;
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
@@ -717,7 +725,8 @@ TEST_F(
       toVector("abc1"s),
       [&receiver = untransformedReceiver](
           std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
       },
       [](Try<int> result) -> folly::coro::AsyncGenerator<std::string&&> {
@@ -763,7 +772,8 @@ TEST_F(ResumableTransformFixture, TransformThrows_NoReinitialization_Rethrows) {
       toVector("abc"s),
       [alreadyInitialized = false, &receiver = untransformedReceiver](
           std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         CHECK(!alreadyInitialized);
         alreadyInitialized = true;
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
@@ -804,7 +814,8 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
        receiver = std::move(untransformedReceiver1),
        &controlReceiver1_2 =
            controlReceiver1](std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         transform1Executions++;
         co_await controlReceiver1_2.next();
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
@@ -827,7 +838,8 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
        receiver = std::move(untransformedReceiver2),
        &controlReceiver2_2 =
            controlReceiver2](std::vector<std::string> initializeArg) mutable
-      -> folly::coro::Task<std::pair<std::vector<std::string>, Receiver<int>>> {
+          -> folly::coro::Task<
+              std::pair<std::vector<std::string>, Receiver<int>>> {
         transform2Executions++;
         co_await controlReceiver2_2.next();
         co_return std::make_pair(std::move(initializeArg), std::move(receiver));
@@ -900,15 +912,16 @@ TEST_F(ResumableTransformFixture, MultipleResumableTransformsWithRateLimiter) {
 class ResumableTransformFixtureStress : public Test {
  protected:
   ResumableTransformFixtureStress()
-      : consumer_(std::make_unique<StressTestConsumer<std::string>>(
-            ConsumptionMode::CallbackWithHandle,
-            [lastReceived = -1](std::string value) mutable {
-              if (value == "start") {
-                lastReceived = -1;
-              } else {
-                EXPECT_EQ(folly::to<int>(value), ++lastReceived);
-              }
-            })) {}
+      : consumer_(
+            std::make_unique<StressTestConsumer<std::string>>(
+                ConsumptionMode::CallbackWithHandle,
+                [lastReceived = -1](std::string value) mutable {
+                  if (value == "start") {
+                    lastReceived = -1;
+                  } else {
+                    EXPECT_EQ(folly::to<int>(value), ++lastReceived);
+                  }
+                })) {}
 
   std::unique_ptr<StressTestProducer<int>> makeProducer() {
     return std::make_unique<StressTestProducer<int>>([value = 0]() mutable {

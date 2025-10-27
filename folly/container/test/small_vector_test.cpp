@@ -1631,8 +1631,14 @@ TEST(smallVector, ImmovableTypes) {
   // resizing operations is present. We need to make sure that creation of the
   // small_vector with the sized constructor works whether or not they are
   // trivially copyable.
-  { folly::small_vector<NontrivialImmovable> sv{10}; }
-  { folly::small_vector<TrivialImmovable> sv{10}; }
-  { folly::small_vector<TrivialNonCopyableNorMovable> sv{10}; }
+  {
+    folly::small_vector<NontrivialImmovable> sv{10};
+  }
+  {
+    folly::small_vector<TrivialImmovable> sv{10};
+  }
+  {
+    folly::small_vector<TrivialNonCopyableNorMovable> sv{10};
+  }
   SUCCEED();
 }

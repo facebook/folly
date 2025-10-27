@@ -823,8 +823,8 @@ runBenchmarksWithPrinterImpl(
   auto const globalSuspenderBaseline =
       runBenchmarkGetNSPerIteration(toRun.suspenderBaseline->func, 0);
 
-  BenchmarkSuspender::suspenderOverhead =
-      chrono::nanoseconds(static_cast<chrono::high_resolution_clock::rep>(
+  BenchmarkSuspender::suspenderOverhead = chrono::nanoseconds(
+      static_cast<chrono::high_resolution_clock::rep>(
           globalSuspenderBaseline.first));
 
   std::set<std::string> counterNames;

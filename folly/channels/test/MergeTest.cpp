@@ -224,7 +224,9 @@ TEST_F(MergeFixture, CancelledBeforeStart) {
 
   EXPECT_CALL(onNext_, onValue(_)).Times(0);
 
-  { auto toDestroy = std::move(mergedReceiver); }
+  {
+    auto toDestroy = std::move(mergedReceiver);
+  }
 
   sender1.write(1);
   sender2.write(2);

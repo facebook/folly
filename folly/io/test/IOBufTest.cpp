@@ -124,8 +124,9 @@ TEST(IOBuf, TakeOwnership) {
   uint32_t size3 = 3456;
   uint8_t* buf3 = new uint8_t[size3];
   uint32_t length3 = 48;
-  unique_ptr<IOBuf> iobuf3(IOBuf::takeOwnership(
-      buf3, size3, length3, deleteArrayBuffer, &deleteCount));
+  unique_ptr<IOBuf> iobuf3(
+      IOBuf::takeOwnership(
+          buf3, size3, length3, deleteArrayBuffer, &deleteCount));
   EXPECT_EQ(buf3, iobuf3->data());
   EXPECT_EQ(length3, iobuf3->length());
   EXPECT_EQ(buf3, iobuf3->buffer());
@@ -173,8 +174,9 @@ TEST(IOBuf, TakeOwnership) {
   uint8_t* buf6 = new uint8_t[size6];
   uint32_t offset6 = 48;
   uint32_t length6 = 48;
-  unique_ptr<IOBuf> iobuf6(IOBuf::takeOwnership(
-      buf6, size6, offset6, length6, deleteArrayBuffer, &deleteCount));
+  unique_ptr<IOBuf> iobuf6(
+      IOBuf::takeOwnership(
+          buf6, size6, offset6, length6, deleteArrayBuffer, &deleteCount));
   EXPECT_EQ(buf6 + offset6, iobuf6->data());
   EXPECT_EQ(length6, iobuf6->length());
   EXPECT_EQ(buf6, iobuf6->buffer());
@@ -218,14 +220,15 @@ TEST(IOBuf, GetUserData) {
     size_t val = 0;
     uint32_t size = 4321;
     uint8_t* data = static_cast<uint8_t*>(malloc(size));
-    unique_ptr<IOBuf> buf2(IOBuf::takeOwnership(
-        data,
-        size,
-        [](void* buf, void* userData) {
-          EXPECT_EQ(*static_cast<size_t*>(userData), 400);
-          free(buf);
-        },
-        &val));
+    unique_ptr<IOBuf> buf2(
+        IOBuf::takeOwnership(
+            data,
+            size,
+            [](void* buf, void* userData) {
+              EXPECT_EQ(*static_cast<size_t*>(userData), 400);
+              free(buf);
+            },
+            &val));
     EXPECT_EQ(buf2->getUserData(), &val);
     val = 200;
     EXPECT_EQ(*static_cast<size_t*>(buf2->getUserData()), 200);
@@ -441,8 +444,9 @@ TEST(IOBuf, Chaining) {
   uint8_t* arrayBuf = new uint8_t[arrayBufSize];
   fillBuf(arrayBuf, arrayBufSize, gen);
   uint32_t arrayBufFreeCount = 0;
-  unique_ptr<IOBuf> iob5(IOBuf::takeOwnership(
-      arrayBuf, arrayBufSize, deleteArrayBuffer, &arrayBufFreeCount));
+  unique_ptr<IOBuf> iob5(
+      IOBuf::takeOwnership(
+          arrayBuf, arrayBufSize, deleteArrayBuffer, &arrayBufFreeCount));
 
   EXPECT_FALSE(iob1->isChained());
   EXPECT_FALSE(iob2->isChained());
@@ -863,11 +867,15 @@ void customDeleteArray(OwnershipTestClass* p) {
 
 TEST(IOBuf, takeOwnershipUniquePtr) {
   destructorCount = 0;
-  { std::unique_ptr<OwnershipTestClass> p(new OwnershipTestClass()); }
+  {
+    std::unique_ptr<OwnershipTestClass> p(new OwnershipTestClass());
+  }
   EXPECT_EQ(1, destructorCount);
 
   destructorCount = 0;
-  { std::unique_ptr<OwnershipTestClass[]> p(new OwnershipTestClass[2]); }
+  {
+    std::unique_ptr<OwnershipTestClass[]> p(new OwnershipTestClass[2]);
+  }
   EXPECT_EQ(2, destructorCount);
 
   destructorCount = 0;
@@ -1716,7 +1724,9 @@ TEST(IOBuf, FreeFn) {
       [&freeVal]() { freeVal += 1; }, [&releaseVal]() { releaseVal += 1; });
 
   // no observers
-  { unique_ptr<IOBuf> iobuf(IOBuf::create(64)); }
+  {
+    unique_ptr<IOBuf> iobuf(IOBuf::create(64));
+  }
 
   // one observer
   {

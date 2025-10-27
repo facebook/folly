@@ -265,11 +265,13 @@ class or_unwind_crtp
     // model cancellation as an exception, (2) to use `co_cancelled` here we'd
     // have to check `resultRef_` for `OperationCancelled` which can cost
     // 50-100ns+.
-    auto awaiter = awaitingCoro.promise().yield_value(coro::co_error(
-        // This `copy` is here because `get_legacy_error_or_cancellation_slow`
-        // lacks a `const`-qualified overload.
-        ::folly::copy(static_cast<ResultRef&&>(resultRef_).non_value())
-            .get_legacy_error_or_cancellation_slow(result_private_t{})));
+    auto awaiter = awaitingCoro.promise().yield_value(
+        coro::co_error(
+            // This `copy` is here because
+            // `get_legacy_error_or_cancellation_slow` lacks a `const`-qualified
+            // overload.
+            ::folly::copy(static_cast<ResultRef&&>(resultRef_).non_value())
+                .get_legacy_error_or_cancellation_slow(result_private_t{})));
     return awaiter.await_suspend(awaitingCoro);
   }
 
@@ -337,7 +339,7 @@ inline auto /* implicit */ operator co_await(stopped_result_t s) {
 //
 // Pass-by-&& to discourage accidental copies of `std::exception_ptr`, if you
 // get a compile error, use `res.copy()`.
-inline auto /* implicit */ operator co_await(non_value_result && nvr) {
+inline auto /* implicit */ operator co_await(non_value_result&& nvr) {
   return detail::non_value_awaitable<detail::result_await_suspender>{
       .non_value_ = std::move(nvr)};
 }

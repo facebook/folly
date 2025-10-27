@@ -126,10 +126,11 @@ void MuxIOThreadPoolExecutor::add(
 
 void MuxIOThreadPoolExecutor::validateNumThreads(size_t numThreads) {
   if (numThreads == 0 || numThreads > numEventBases_) {
-    throw std::invalid_argument(fmt::format(
-        "Unsupported number of threads: {} (with {} EventBases)",
-        numThreads,
-        numEventBases_));
+    throw std::invalid_argument(
+        fmt::format(
+            "Unsupported number of threads: {} (with {} EventBases)",
+            numThreads,
+            numEventBases_));
   }
 }
 

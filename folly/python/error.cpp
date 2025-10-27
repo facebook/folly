@@ -79,8 +79,9 @@ void handlePythonError(StringPiece errPrefix) {
   }
 
   if (pvalue == nullptr) {
-    throw std::runtime_error(to<std::string>(
-        errPrefix, "Exception of type: ", pyObjectToString(ptype)));
+    throw std::runtime_error(
+        to<std::string>(
+            errPrefix, "Exception of type: ", pyObjectToString(ptype)));
   }
 
   throw std::runtime_error(

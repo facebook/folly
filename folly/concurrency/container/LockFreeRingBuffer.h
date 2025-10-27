@@ -34,10 +34,8 @@ namespace detail {
 
 template <
     typename T,
-    template <typename>
-    class Atom,
-    template <typename>
-    class Storage>
+    template <typename> class Atom,
+    template <typename> class Storage>
 class RingBufferSlot;
 template <typename T>
 class RingBufferTrivialStorage;
@@ -201,10 +199,8 @@ class LockFreeRingBuffer {
 namespace detail {
 template <
     typename T,
-    template <typename>
-    class Atom,
-    template <typename>
-    class Storage>
+    template <typename> class Atom,
+    template <typename> class Storage>
 class RingBufferSlot {
  public:
   explicit RingBufferSlot() noexcept {}

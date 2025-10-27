@@ -129,10 +129,8 @@ static_assert(is_semi_awaitable_v<TinyMovableTask<int>>);
 ///////////////////
 
 template <
-    template <typename>
-    class TaskT,
-    template <typename>
-    class TaskWithExecutorT>
+    template <typename> class TaskT,
+    template <typename> class TaskWithExecutorT>
 struct TaskWrapperTest : testing::Test {
   static TaskT<int> intFunc(int x) { co_return x; }
   static TaskT<int> intPtrFunc(auto x) { co_return *x; }

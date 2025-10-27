@@ -616,8 +616,8 @@ TEST_F(CoroTest, FutureTry) {
     }
 
     {
-      auto result =
-          co_await folly::coro::co_awaitTry(taskException().semi().via(
+      auto result = co_await folly::coro::co_awaitTry(
+          taskException().semi().via(
               co_await folly::coro::co_current_executor));
       EXPECT_TRUE(result.hasException());
     }

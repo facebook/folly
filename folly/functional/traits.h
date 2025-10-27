@@ -140,7 +140,7 @@ struct function_traits<R(A...) const volatile>
       detail::function_traits_cvref_<int const volatile> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A...)&> //
+struct function_traits<R(A...) &> //
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
       detail::function_traits_var_<false>,
@@ -224,7 +224,7 @@ struct function_traits<R(A..., ...) const volatile>
       detail::function_traits_cvref_<int const volatile> {};
 
 template <typename R, typename... A>
-struct function_traits<R(A..., ...)&> //
+struct function_traits<R(A..., ...) &> //
     : detail::function_traits_base_<R(A...)>,
       detail::function_traits_nx_<false>,
       detail::function_traits_var_<true>,

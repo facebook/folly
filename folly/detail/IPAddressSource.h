@@ -75,10 +75,11 @@ struct Bytes {
         0xff // /8
     }};
     if (oneMask > kBitCount || twoMask > kBitCount) {
-      throw std::invalid_argument(fmt::format(
-          "Invalid mask length: {}. Mask length must be <= {}",
-          std::max(oneMask, twoMask),
-          kBitCount));
+      throw std::invalid_argument(
+          fmt::format(
+              "Invalid mask length: {}. Mask length must be <= {}",
+              std::max(oneMask, twoMask),
+              kBitCount));
     }
 
     auto mask = std::min(oneMask, twoMask);

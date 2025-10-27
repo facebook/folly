@@ -141,8 +141,9 @@ class ScopeExitTaskPromiseBase {
 
   template <typename Awaitable>
   auto await_transform(Awaitable&& awaitable) {
-    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
-        executor_.get_alias(), static_cast<Awaitable&&>(awaitable)));
+    return folly::coro::co_withAsyncStack(
+        folly::coro::co_viaIfAsync(
+            executor_.get_alias(), static_cast<Awaitable&&>(awaitable)));
   }
 
   folly::AsyncStackFrame& getAsyncFrame() noexcept {

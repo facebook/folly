@@ -146,7 +146,9 @@ TEST(AsyncPipeTest, PublishConsumeWithMoves) {
 TEST(AsyncPipeTest, BrokenPipe) {
   auto pipe = folly::coro::AsyncPipe<int>::create();
   EXPECT_TRUE(pipe.second.write(0));
-  { auto gen = std::move(pipe.first); }
+  {
+    auto gen = std::move(pipe.first);
+  }
   EXPECT_FALSE(pipe.second.write(0));
   std::move(pipe.second).close();
 }
@@ -154,7 +156,9 @@ TEST(AsyncPipeTest, BrokenPipe) {
 TEST(AsyncPipeTest, IsClosed) {
   auto pipe = folly::coro::AsyncPipe<int>::create();
   EXPECT_FALSE(pipe.second.isClosed());
-  { auto gen = std::move(pipe.first); }
+  {
+    auto gen = std::move(pipe.first);
+  }
   EXPECT_TRUE(pipe.second.isClosed());
   std::move(pipe.second).close();
 }
@@ -219,7 +223,9 @@ TEST(AsyncPipeTest, DestroyWhileBlocking) {
   ex.drain();
   EXPECT_FALSE(fut.isReady());
 
-  { auto pipe_ = std::move(pipe.second); }
+  {
+    auto pipe_ = std::move(pipe.second);
+  }
   ex.drain();
   EXPECT_TRUE(fut.isReady());
   EXPECT_FALSE(std::move(fut).get());
@@ -240,8 +246,10 @@ TEST(AsyncPipeTest, OnClosedCallbackCalledWhenGeneratorDestroyed) {
               cancellationSource.getToken(),
               folly::coro::co_invoke(
                   [gen = std::move(pipe.first)]() mutable
-                  -> folly::coro::Task<folly::coro::AsyncGenerator<
-                      int&&>::NextResult> { co_return co_await gen.next(); })))
+                      -> folly::coro::Task<
+                          folly::coro::AsyncGenerator<int&&>::NextResult> {
+                    co_return co_await gen.next();
+                  })))
           .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());
@@ -298,8 +306,10 @@ TEST(
               cancellationSource.getToken(),
               folly::coro::co_invoke(
                   [gen = std::move(pipe.first)]() mutable
-                  -> folly::coro::Task<folly::coro::AsyncGenerator<
-                      int&&>::NextResult> { co_return co_await gen.next(); })))
+                      -> folly::coro::Task<
+                          folly::coro::AsyncGenerator<int&&>::NextResult> {
+                    co_return co_await gen.next();
+                  })))
           .start();
   ex.drain();
   EXPECT_FALSE(fut.isReady());

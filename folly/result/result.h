@@ -547,8 +547,8 @@ class result_crtp {
 
 // The default specialization is non-`void` (but `result<>` defaults to `void`)
 template <typename T>
-class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result final
-    : public detail::result_crtp<result<T>, T> {
+class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+result final : public detail::result_crtp<result<T>, T> {
  private:
   template <typename, typename>
   friend class detail::result_crtp; // `ResultT::expected_t` in `requires`

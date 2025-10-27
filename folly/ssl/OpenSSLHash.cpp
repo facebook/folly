@@ -24,8 +24,9 @@ namespace ssl {
 
 [[noreturn]] void OpenSSLHash::check_out_size_throw(
     size_t size, MutableByteRange out) {
-  throw std::invalid_argument(fmt::format(
-      "expected out of size {} but was of size {}", size, out.size()));
+  throw std::invalid_argument(
+      fmt::format(
+          "expected out of size {} but was of size {}", size, out.size()));
 }
 
 } // namespace ssl

@@ -29,34 +29,34 @@ static constexpr size_t atomic_fetch_bit_op_lo_size = 2;
 
 #define FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_VAR(op, width)                       \
   extern "C" FOLLY_KEEP void                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_var_drop_fallback(          \
-          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+  check_folly_atomic_fetch_##op##_u##width##_var_drop_fallback(              \
+      std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {          \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     folly::detail::atomic_fetch_##op##_fallback(                             \
         atomic, bit, std::memory_order_relaxed);                             \
   }                                                                          \
   extern "C" FOLLY_KEEP void                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_var_drop_native(            \
-          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+  check_folly_atomic_fetch_##op##_u##width##_var_drop_native(                \
+      std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {          \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed);        \
   }                                                                          \
   extern "C" FOLLY_KEEP bool                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_var_keep_fallback(          \
-          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+  check_folly_atomic_fetch_##op##_u##width##_var_keep_fallback(              \
+      std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {          \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     return folly::detail::atomic_fetch_##op##_fallback(                      \
         atomic, bit, std::memory_order_relaxed);                             \
   }                                                                          \
   extern "C" FOLLY_KEEP bool                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_var_keep_native(            \
-          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+  check_folly_atomic_fetch_##op##_u##width##_var_keep_native(                \
+      std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {          \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     return folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed); \
   }                                                                          \
   extern "C" FOLLY_KEEP void                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_var_cond_fallback(          \
-          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+  check_folly_atomic_fetch_##op##_u##width##_var_cond_fallback(              \
+      std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {          \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     if (folly::detail::atomic_fetch_##op##_fallback(                         \
             atomic, bit, std::memory_order_relaxed)) {                       \
@@ -64,8 +64,8 @@ static constexpr size_t atomic_fetch_bit_op_lo_size = 2;
     }                                                                        \
   }                                                                          \
   extern "C" FOLLY_KEEP void                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_var_cond_native(            \
-          std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {      \
+  check_folly_atomic_fetch_##op##_u##width##_var_cond_native(                \
+      std::atomic<std::uint##width##_t>& atomic, std::size_t bit) {          \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     if (folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed)) {  \
       folly::detail::keep_sink_nx();                                         \
@@ -74,34 +74,34 @@ static constexpr size_t atomic_fetch_bit_op_lo_size = 2;
 
 #define FOLLY_ATOMIC_FETCH_BIT_OP_CHECK_FIX(op, width, bit)                  \
   extern "C" FOLLY_KEEP void                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_drop_fallback(  \
-          std::atomic<std::uint##width##_t>& atomic) {                       \
+  check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_drop_fallback(      \
+      std::atomic<std::uint##width##_t>& atomic) {                           \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     folly::detail::atomic_fetch_##op##_fallback(                             \
         atomic, bit, std::memory_order_relaxed);                             \
   }                                                                          \
   extern "C" FOLLY_KEEP void                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_drop_native(    \
-          std::atomic<std::uint##width##_t>& atomic) {                       \
+  check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_drop_native(        \
+      std::atomic<std::uint##width##_t>& atomic) {                           \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed);        \
   }                                                                          \
   extern "C" FOLLY_KEEP bool                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_keep_fallback(  \
-          std::atomic<std::uint##width##_t>& atomic) {                       \
+  check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_keep_fallback(      \
+      std::atomic<std::uint##width##_t>& atomic) {                           \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     return folly::detail::atomic_fetch_##op##_fallback(                      \
         atomic, bit, std::memory_order_relaxed);                             \
   }                                                                          \
   extern "C" FOLLY_KEEP bool                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_keep_native(    \
-          std::atomic<std::uint##width##_t>& atomic) {                       \
+  check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_keep_native(        \
+      std::atomic<std::uint##width##_t>& atomic) {                           \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     return folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed); \
   }                                                                          \
   extern "C" FOLLY_KEEP void                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_cond_fallback(  \
-          std::atomic<std::uint##width##_t>& atomic) {                       \
+  check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_cond_fallback(      \
+      std::atomic<std::uint##width##_t>& atomic) {                           \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     if (folly::detail::atomic_fetch_##op##_fallback(                         \
             atomic, bit, std::memory_order_relaxed)) {                       \
@@ -109,8 +109,8 @@ static constexpr size_t atomic_fetch_bit_op_lo_size = 2;
     }                                                                        \
   }                                                                          \
   extern "C" FOLLY_KEEP void                                                 \
-      check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_cond_native(    \
-          std::atomic<std::uint##width##_t>& atomic) {                       \
+  check_folly_atomic_fetch_##op##_u##width##_fix_##bit##_cond_native(        \
+      std::atomic<std::uint##width##_t>& atomic) {                           \
     folly::assume(uintptr_t(&atomic) % atomic_fetch_bit_op_lo_size == 0);    \
     if (folly::atomic_fetch_##op(atomic, bit, std::memory_order_relaxed)) {  \
       folly::detail::keep_sink_nx();                                         \

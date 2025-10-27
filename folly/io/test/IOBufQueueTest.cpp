@@ -599,10 +599,11 @@ TEST(IOBufQueue, ReuseTail) {
   enum class AppendType { Ptr = 0, ConstRef = 1, RRef = 2 };
 
   const auto test = [](AppendType appendType, bool withEmptyHead) {
-    SCOPED_TRACE(fmt::format(
-        "appendType={}, withEmptyHead={}",
-        static_cast<int>(appendType),
-        withEmptyHead));
+    SCOPED_TRACE(
+        fmt::format(
+            "appendType={}, withEmptyHead={}",
+            static_cast<int>(appendType),
+            withEmptyHead));
 
     IOBufQueue queue;
     IOBufQueue::WritableRangeCache cache(&queue);

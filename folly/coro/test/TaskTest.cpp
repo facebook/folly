@@ -375,17 +375,19 @@ TEST_F(TaskTest, FutureTailCall) {
 
 TEST_F(TaskTest, FutureRoundtrip) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
-    co_yield folly::coro::co_result(co_await folly::coro::co_awaitTry(
-        []() -> folly::coro::Task<void> { co_return; }().semi()));
+    co_yield folly::coro::co_result(
+        co_await folly::coro::co_awaitTry(
+            []() -> folly::coro::Task<void> { co_return; }().semi()));
   }());
 
   EXPECT_THROW(
       folly::coro::blockingWait([]() -> folly::coro::Task<void> {
-        co_yield folly::coro::co_result(co_await folly::coro::co_awaitTry(
-            []() -> folly::coro::Task<void> {
-              co_yield folly::coro::co_error(std::runtime_error(""));
-            }()
-                        .semi()));
+        co_yield folly::coro::co_result(
+            co_await folly::coro::co_awaitTry(
+                []() -> folly::coro::Task<void> {
+                  co_yield folly::coro::co_error(std::runtime_error(""));
+                }()
+                            .semi()));
       }()),
       std::runtime_error);
 }
@@ -475,8 +477,8 @@ TEST_F(TaskTest, CancellationPropagation) {
 
 TEST_F(TaskTest, CancellationPropagatesThroughCoAwaitTry) {
   folly::CancellationSource source;
-  folly::Try<int> result =
-      folly::coro::blockingWait(folly::coro::co_withCancellation(
+  folly::Try<int> result = folly::coro::blockingWait(
+      folly::coro::co_withCancellation(
           source.getToken(),
           folly::coro::co_awaitTry([&]() -> folly::coro::Task<int> {
             auto cancelToken =
@@ -588,17 +590,21 @@ TEST_F(TaskTest, MakeTask) {
     co_await folly::coro::makeTask();
     co_await folly::coro::makeTask(folly::unit);
 
-    auto err = co_await co_awaitTry(folly::coro::makeErrorTask<int>(
-        folly::make_exception_wrapper<std::runtime_error>("")));
+    auto err = co_await co_awaitTry(
+        folly::coro::makeErrorTask<int>(
+            folly::make_exception_wrapper<std::runtime_error>("")));
     EXPECT_TRUE(err.hasException());
 
-    err = co_await co_awaitTry(folly::coro::makeResultTask(folly::Try<int>(
-        folly::make_exception_wrapper<std::runtime_error>(""))));
+    err = co_await co_awaitTry(
+        folly::coro::makeResultTask(
+            folly::Try<int>(
+                folly::make_exception_wrapper<std::runtime_error>(""))));
     EXPECT_TRUE(err.hasException());
 
     auto try1 = co_await co_awaitTry(
-        folly::coro::makeResultTask(folly::Try<folly::Unit>(
-            folly::make_exception_wrapper<std::runtime_error>(""))));
+        folly::coro::makeResultTask(
+            folly::Try<folly::Unit>(
+                folly::make_exception_wrapper<std::runtime_error>(""))));
     EXPECT_TRUE(try1.hasException());
     try1 = co_await co_awaitTry(
         folly::coro::makeResultTask(folly::Try<folly::Unit>(folly::unit)));
@@ -668,8 +674,8 @@ TEST_F(TaskTest, CoAwaitTryWithScheduleOnAndCancellation) {
     cancelSrc = {};
 
     {
-      folly::Try<int> result =
-          co_await folly::coro::co_awaitTry(folly::coro::co_withCancellation(
+      folly::Try<int> result = co_await folly::coro::co_awaitTry(
+          folly::coro::co_withCancellation(
               cancelSrc.getToken(),
               co_withExecutor(folly::getGlobalCPUExecutor(), makeTask())));
       EXPECT_EQ(42, result.value());

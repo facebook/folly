@@ -302,8 +302,9 @@ TEST(ConfigUpdate, updateConfig) {
       "bar=INFO:h2, test.abc=DBG3; "
       "h2=handlerB: abc=xyz"));
   EXPECT_EQ(
-      parseLogConfig(".:=INFO:, bar=INFO:h2, test.abc=DBG3:; "
-                     "h2=handlerB: abc=xyz"),
+      parseLogConfig(
+          ".:=INFO:, bar=INFO:h2, test.abc=DBG3:; "
+          "h2=handlerB: abc=xyz"),
       db.getConfig());
 }
 
@@ -322,8 +323,9 @@ TEST(ConfigUpdate, getConfigAnonymousHandlers) {
   db.setLevel("x.y.z", LogLevel::DBG2);
   db.getCategory("x.y.z")->addHandler(handlerFoo);
   EXPECT_EQ(
-      parseLogConfig(".:=INFO:, x.y.z=DBG2:anonymousHandler1; "
-                     "anonymousHandler1=foo:abc=xyz"),
+      parseLogConfig(
+          ".:=INFO:, x.y.z=DBG2:anonymousHandler1; "
+          "anonymousHandler1=foo:abc=xyz"),
       db.getConfig());
 
   // If we attach the same handler to another category it should still only be

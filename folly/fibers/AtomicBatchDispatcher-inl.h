@@ -91,9 +91,10 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
       // and make sure that we have the expected number of results returned
       auto results = dispatchFunction_(std::move(inputs));
       if (results.size() != expectedCount_) {
-        return setExceptionResults(make_exception_wrapper<ABDUsageException>(
-            detail::createUnexpectedNumResultsABDUsageExMsg(
-                expectedCount_, results.size())));
+        return setExceptionResults(
+            make_exception_wrapper<ABDUsageException>(
+                detail::createUnexpectedNumResultsABDUsageExMsg(
+                    expectedCount_, results.size())));
       }
 
       // Fulfill the promises with the results from the batch dispatch

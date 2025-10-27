@@ -307,8 +307,9 @@ TEST(ConcurrentSkipList, ConcurrentAdd) {
   vector<SetType> verifiers(numThreads);
   try {
     for (int i = 0; i < numThreads; ++i) {
-      threads.push_back(std::thread(
-          &randomAdding, 1000000, skipList, &verifiers[i], kMaxValue));
+      threads.push_back(
+          std::thread(
+              &randomAdding, 1000000, skipList, &verifiers[i], kMaxValue));
     }
   } catch (const std::system_error& e) {
     LOG(WARNING) << "Caught " << exceptionStr(e) << ": could only create "
@@ -387,12 +388,22 @@ static void testConcurrentAccess(
     switch (i % 8) {
       case 0:
       case 1:
-        threads.push_back(std::thread(
-            randomAdding, numInsertions, skipList, &verifiers[i], maxValue));
+        threads.push_back(
+            std::thread(
+                randomAdding,
+                numInsertions,
+                skipList,
+                &verifiers[i],
+                maxValue));
         break;
       case 2:
-        threads.push_back(std::thread(
-            randomRemoval, numDeletions, skipList, &verifiers[i], maxValue));
+        threads.push_back(
+            std::thread(
+                randomRemoval,
+                numDeletions,
+                skipList,
+                &verifiers[i],
+                maxValue));
         break;
       case 3:
         threads.push_back(

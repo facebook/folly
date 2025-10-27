@@ -558,8 +558,9 @@ struct DispatchSmall {
   static std::size_t exec(Op o, Data* src, Data* dst) noexcept {
     switch (o) {
       case Op::MOVE:
-        ::new (static_cast<void*>(&dst->tiny)) Fun(static_cast<Fun&&>(
-            *static_cast<Fun*>(static_cast<void*>(&src->tiny))));
+        ::new (static_cast<void*>(&dst->tiny))
+            Fun(static_cast<Fun&&>(
+                *static_cast<Fun*>(static_cast<void*>(&src->tiny))));
         [[fallthrough]];
       case Op::NUKE:
         static_cast<Fun*>(static_cast<void*>(&src->tiny))->~Fun();
@@ -788,7 +789,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       // Prevent this overload from being selected when `ptr` is not a
       // compatible member function pointer.
       typename = decltype(Function(std::mem_fn((Member Class::*)0)))>
-  /* implicit */ Function(Member Class::*ptr) noexcept {
+  /* implicit */ Function(Member Class::* ptr) noexcept {
     if (ptr) {
       *this = std::mem_fn(ptr);
     }
@@ -876,7 +877,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * operator is equivalent to `*this = std::mem_fn(ptr)`.
    */
   template <typename Member, typename Class>
-  auto operator=(Member Class::*ptr) noexcept
+  auto operator=(Member Class::* ptr) noexcept
       // Prevent this overload from being selected when `ptr` is not a
       // compatible member function pointer.
       -> decltype(operator=(std::mem_fn(ptr))) {

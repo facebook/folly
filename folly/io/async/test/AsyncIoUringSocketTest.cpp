@@ -942,8 +942,8 @@ TEST_P(AsyncIoUringSocketTakeoverTest, PreRead) {
   AsyncSocket::UniquePtr sock(
       dynamic_cast<AsyncSocket*>(conn.server.release()));
   ASSERT_NE(sock, nullptr);
-  AsyncIoUringSocket::UniquePtr io_uring(
-      new AsyncIoUringSocket(AsyncSocket::UniquePtr(
+  AsyncIoUringSocket::UniquePtr io_uring(new AsyncIoUringSocket(
+      AsyncSocket::UniquePtr(
           new AsyncSocketWithPreRead(std::move(sock), "hello"))));
   io_uring->setReadCB(conn.callback.get());
   io_uring->write(&nullWriteCallback, "there", 5);

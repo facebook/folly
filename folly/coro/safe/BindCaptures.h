@@ -149,8 +149,9 @@ auto capture_in_place(auto&&... as [[clang::lifetimebound]]) {
 // Sugar for `capture{in_place_with(fn, ...)}`
 auto capture_in_place_with(
     auto make_fn, auto&&... as [[clang::lifetimebound]]) {
-  return capture(bind::in_place_with(
-      std::move(make_fn), static_cast<decltype(as)>(as)...));
+  return capture(
+      bind::in_place_with(
+          std::move(make_fn), static_cast<decltype(as)>(as)...));
 }
 
 } // namespace folly::bind

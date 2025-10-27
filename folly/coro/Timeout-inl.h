@@ -79,8 +79,8 @@ typename detail::TimeoutTask<SemiAwaitable, TimekeeperPtr> timeoutImpl(
 
   exception_wrapper error;
   try {
-    auto resultTry =
-        co_await folly::coro::co_awaitTry(folly::coro::co_withCancellation(
+    auto resultTry = co_await folly::coro::co_awaitTry(
+        folly::coro::co_withCancellation(
             cancelSource.getToken(), std::move(semiFn)()));
 
     cancelCallback.reset();

@@ -184,14 +184,15 @@ TEST(TimeoutNoDiscard, ResultOnTimeout) {
     EXPECT_EQ(42, result);
 
     struct sentinel : public std::exception {};
-    auto tryResult = co_await coro::co_awaitTry(coro::timeoutNoDiscard(
-        [&]() -> coro::Task<int> {
-          co_await coro::sleepReturnEarlyOnCancel(10s);
-          EXPECT_TRUE((co_await coro::co_current_cancellation_token)
-                          .isCancellationRequested());
-          throw sentinel{};
-        }(),
-        1ms));
+    auto tryResult = co_await coro::co_awaitTry(
+        coro::timeoutNoDiscard(
+            [&]() -> coro::Task<int> {
+              co_await coro::sleepReturnEarlyOnCancel(10s);
+              EXPECT_TRUE((co_await coro::co_current_cancellation_token)
+                              .isCancellationRequested());
+              throw sentinel{};
+            }(),
+            1ms));
     EXPECT_TRUE(tryResult.template hasException<sentinel>());
   }());
 }

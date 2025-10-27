@@ -43,8 +43,8 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable;
 // This was banned because real-world users didn't uniformly expect one of the
 // behaviors over the other, and nobody really **needs** this to work.
 template <typename T>
-class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable
-    : public CommutativeWrapperAwaitable<NothrowAwaitable, T> {
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+NothrowAwaitable : public CommutativeWrapperAwaitable<NothrowAwaitable, T> {
  public:
   using CommutativeWrapperAwaitable<NothrowAwaitable, T>::
       CommutativeWrapperAwaitable;

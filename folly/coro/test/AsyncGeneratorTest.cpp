@@ -419,7 +419,7 @@ TEST_F(AsyncGeneratorTest, InvokeLambda) {
     auto ptr = std::make_unique<int>(123);
     auto gen = folly::coro::co_invoke(
         [p = std::move(ptr), str = std::string("test")]() mutable
-        -> folly::coro::AsyncGenerator<std::unique_ptr<int>&&> {
+            -> folly::coro::AsyncGenerator<std::unique_ptr<int>&&> {
           SCOPE_EXIT {
             CHECK_EQ(str, "test");
           };
@@ -439,7 +439,7 @@ TEST_F(AsyncGeneratorTest, InvokeLambdaRequiresCleanup) {
     auto ptr = std::make_unique<int>(123);
     auto gen = folly::coro::co_invoke(
         [p = std::move(ptr), str = std::string("test")]() mutable
-        -> folly::coro::CleanableAsyncGenerator<std::unique_ptr<int>&&> {
+            -> folly::coro::CleanableAsyncGenerator<std::unique_ptr<int>&&> {
           SCOPE_EXIT {
             CHECK_EQ(str, "test");
           };

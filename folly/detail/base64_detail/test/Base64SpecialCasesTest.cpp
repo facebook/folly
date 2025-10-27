@@ -445,17 +445,19 @@ TEST(Base64, ConstexprTests) {
 }
 
 TEST(Base64, SpecialCases) {
-  ASSERT_TRUE(runEncodeTests(SimdTester{
-      base64EncodeScalar,
-      base64URLEncodeScalar,
-      base64DecodeSWAR,
-      base64URLDecodeSWAR}));
+  ASSERT_TRUE(runEncodeTests(
+      SimdTester{
+          base64EncodeScalar,
+          base64URLEncodeScalar,
+          base64DecodeSWAR,
+          base64URLDecodeSWAR}));
 #if FOLLY_SSE_PREREQ(4, 2)
-  ASSERT_TRUE(runEncodeTests(SimdTester{
-      base64Encode_SSE4_2,
-      base64URLEncode_SSE4_2,
-      base64Decode_SSE4_2,
-      base64URLDecodeSWAR}));
+  ASSERT_TRUE(runEncodeTests(
+      SimdTester{
+          base64Encode_SSE4_2,
+          base64URLEncode_SSE4_2,
+          base64Decode_SSE4_2,
+          base64URLDecodeSWAR}));
 #endif
 }
 
@@ -651,20 +653,25 @@ TEST(Base64, DecodingErrorDetection) {
       base64DecodeScalar));
   static_assert(decodingErrorDetectionTest<DecoderType::URLDecoder>(
       base64URLDecodeScalar));
-  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::RegularDecoder>(
-      base64DecodeScalar));
-  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::URLDecoder>(
-      base64URLDecodeScalar));
-  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::RegularDecoder>(
-      base64DecodeSWAR));
+  ASSERT_TRUE(
+      decodingErrorDetectionTest<DecoderType::RegularDecoder>(
+          base64DecodeScalar));
+  ASSERT_TRUE(
+      decodingErrorDetectionTest<DecoderType::URLDecoder>(
+          base64URLDecodeScalar));
+  ASSERT_TRUE(
+      decodingErrorDetectionTest<DecoderType::RegularDecoder>(
+          base64DecodeSWAR));
   ASSERT_TRUE(
       decodingErrorDetectionTest<DecoderType::URLDecoder>(base64URLDecodeSWAR));
 #if FOLLY_SSE_PREREQ(4, 2)
-  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::RegularDecoder>(
-      base64Decode_SSE4_2));
+  ASSERT_TRUE(
+      decodingErrorDetectionTest<DecoderType::RegularDecoder>(
+          base64Decode_SSE4_2));
 #endif
-  ASSERT_TRUE(decodingErrorDetectionTest<DecoderType::PHPStrictDecoder>(
-      base64PHPStrictDecode));
+  ASSERT_TRUE(
+      decodingErrorDetectionTest<DecoderType::PHPStrictDecoder>(
+          base64PHPStrictDecode));
 }
 
 } // namespace

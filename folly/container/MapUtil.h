@@ -341,9 +341,8 @@ auto get_ptr(
     Map* FOLLY_NULLABLE map,
     const Key1& key1,
     const Key2& key2,
-    const Keys&... keys) ->
-    typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::
-        type* FOLLY_NULLABLE {
+    const Keys&... keys) -> typename detail::
+    NestedMapType<Map, 2 + sizeof...(Keys)>::type* FOLLY_NULLABLE {
   return map ? get_ptr(*map, key1, key2, keys...) : nullptr;
 }
 

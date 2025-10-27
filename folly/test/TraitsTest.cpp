@@ -119,7 +119,7 @@ TEST(Traits, zeroInit) {
     int i_ = 42;
   };
   struct S3 {
-    int S1::*mp_;
+    int S1::* mp_;
   };
 
   EXPECT_TRUE(IsZeroInitializable<int>::value);

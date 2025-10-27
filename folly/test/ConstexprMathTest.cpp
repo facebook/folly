@@ -46,12 +46,24 @@ TEST_F(ConstexprMathTest, constexpr_iterated_squares_desc_scaling_array) {
   EXPECT_EQ(7, isq.size);
   auto apowers = get(isq.scaling, [](auto _) { return _.power; });
   constexpr size_t epowers[] = {
-      64, 32, 16, 8, 4, 2, 1, //
+      64,
+      32,
+      16,
+      8,
+      4,
+      2,
+      1, //
   };
   EXPECT_THAT(apowers, testing::ElementsAreArray(epowers));
   auto ascales = get(isq.scaling, [](auto _) { return _.scale; });
   constexpr float escales[] = {
-      0x1p64, 0x1p32, 0x1p16, 0x1p8, 0x1p4, 0x1p2, 0x1p1, //
+      0x1p64,
+      0x1p32,
+      0x1p16,
+      0x1p8,
+      0x1p4,
+      0x1p2,
+      0x1p1, //
   };
   EXPECT_THAT(ascales, testing::ElementsAreArray(escales));
   EXPECT_GT(isq.scaling[0].scale, lim::max() / isq.scaling[0].scale);

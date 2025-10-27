@@ -2050,8 +2050,9 @@ void AsyncSSLSocket::enableByteEvents() {
     }
     return failByteEvents(AsyncSocketException(
         AsyncSocketException::NOT_SUPPORTED,
-        withAddr("failed to enable byte events: "
-                 "not supported for SSLv3 or TLSv1")));
+        withAddr(
+            "failed to enable byte events: "
+            "not supported for SSLv3 or TLSv1")));
   }
   AsyncSocket::enableByteEvents();
 }
@@ -2295,8 +2296,9 @@ std::string AsyncSSLSocket::getSSLClientSigAlgs() const {
     sigAlgs.append(
         folly::to<std::string>(clientHelloInfo_->clientHelloSigAlgs_[i].first));
     sigAlgs.push_back(',');
-    sigAlgs.append(folly::to<std::string>(
-        clientHelloInfo_->clientHelloSigAlgs_[i].second));
+    sigAlgs.append(
+        folly::to<std::string>(
+            clientHelloInfo_->clientHelloSigAlgs_[i].second));
   }
 
   return sigAlgs;

@@ -1069,10 +1069,8 @@ template <
     int X,
     int S,
     int U,
-    template <typename>
-    class FromL,
-    template <typename>
-    class ToL>
+    template <typename> class FromL,
+    template <typename> class ToL>
 struct XLockTestParam {
   using unique_lock_state = std::conditional_t<X, UniqueLockState, void>;
   using shared_lock_state = std::conditional_t<S, SharedLockState, void>;

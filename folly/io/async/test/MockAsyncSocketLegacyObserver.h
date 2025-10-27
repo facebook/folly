@@ -109,9 +109,10 @@ class MockAsyncSocketLegacyLifecycleObserverForByteEvents
       : MockAsyncSocketLegacyLifecycleObserver(observerConfig),
         socket_(socket) {
     ON_CALL(*this, byteEventMock(testing::_, testing::_))
-        .WillByDefault(testing::Invoke(
-            [this](
-                AsyncSocket* socketport, const AsyncSocket::ByteEvent& event) {
+        .WillByDefault(
+            testing::Invoke([this](
+                                AsyncSocket* socketport,
+                                const AsyncSocket::ByteEvent& event) {
               CHECK_EQ(this->socket_, socketport);
               byteEvents_.emplace_back(event);
             }));
@@ -122,12 +123,14 @@ class MockAsyncSocketLegacyLifecycleObserverForByteEvents
         }));
 
     ON_CALL(*this, byteEventsUnavailableMock(testing::_, testing::_))
-        .WillByDefault(testing::Invoke(
-            [this](AsyncSocket* socketport, const AsyncSocketException& ex) {
-              CHECK_EQ(this->socket_, socketport);
-              byteEventsUnavailableCalled_++;
-              byteEventsUnavailableCalledEx_.emplace(ex);
-            }));
+        .WillByDefault(
+            testing::Invoke(
+                [this](
+                    AsyncSocket* socketport, const AsyncSocketException& ex) {
+                  CHECK_EQ(this->socket_, socketport);
+                  byteEventsUnavailableCalled_++;
+                  byteEventsUnavailableCalledEx_.emplace(ex);
+                }));
     socket_->addLifecycleObserver(this);
   }
 

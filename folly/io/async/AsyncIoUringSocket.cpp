@@ -1192,16 +1192,17 @@ void AsyncIoUringSocket::detachEventBase() {
     auto res = drc->prom.getSemiFuture();
     if (previous) {
       VLOG(4) << "Setting promise from previous and this one";
-      readSqe_->setOldEventBaseRead(std::move(*previous).deferValue(
-          [r = std::move(res)](
-              std::unique_ptr<folly::IOBuf>&& prevRes) mutable {
-            return std::move(r).deferValue(
-                [p = std::move(prevRes)](
-                    std::unique_ptr<folly::IOBuf>&& nextRes) mutable {
-                  p->appendToChain(std::move(nextRes));
-                  return std::move(p);
-                });
-          }));
+      readSqe_->setOldEventBaseRead(
+          std::move(*previous).deferValue(
+              [r = std::move(res)](
+                  std::unique_ptr<folly::IOBuf>&& prevRes) mutable {
+                return std::move(r).deferValue(
+                    [p = std::move(prevRes)](
+                        std::unique_ptr<folly::IOBuf>&& nextRes) mutable {
+                      p->appendToChain(std::move(nextRes));
+                      return std::move(p);
+                    });
+              }));
     } else {
       VLOG(4) << "Setting promise from this one";
       readSqe_->setOldEventBaseRead(std::move(res));

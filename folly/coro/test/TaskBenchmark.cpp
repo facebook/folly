@@ -142,12 +142,13 @@ BENCHMARK(NestedCalls10, iters) {
 
 static void benchNestedCallsWithCancellation(size_t depth, size_t iters) {
   folly::CancellationSource cancelSource;
-  folly::coro::blockingWait(folly::coro::co_withCancellation(
-      cancelSource.getToken(), [depth, iters]() -> folly::coro::Task<void> {
-        for (size_t i = 0; i < iters; ++i) {
-          co_await nestedCalls(depth);
-        }
-      }()));
+  folly::coro::blockingWait(
+      folly::coro::co_withCancellation(
+          cancelSource.getToken(), [depth, iters]() -> folly::coro::Task<void> {
+            for (size_t i = 0; i < iters; ++i) {
+              co_await nestedCalls(depth);
+            }
+          }()));
 }
 
 BENCHMARK(NestedCallsWithCancellation3, iters) {

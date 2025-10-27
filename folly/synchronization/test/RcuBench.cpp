@@ -23,7 +23,9 @@ using rcu_domain = folly::rcu_domain;
 BENCHMARK(RcuReader, iters) {
   BenchmarkSuspender susp;
 
-  { std::scoped_lock<rcu_domain> g(rcu_default_domain()); }
+  {
+    std::scoped_lock<rcu_domain> g(rcu_default_domain());
+  }
   susp.dismiss();
 
   // run the test loop
@@ -35,7 +37,9 @@ BENCHMARK(RcuReader, iters) {
 BENCHMARK(RcuReaderNested, iters) {
   BenchmarkSuspender susp;
 
-  { std::scoped_lock<rcu_domain> g(rcu_default_domain()); }
+  {
+    std::scoped_lock<rcu_domain> g(rcu_default_domain());
+  }
   susp.dismiss();
 
   // run the test loop

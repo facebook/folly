@@ -164,15 +164,16 @@ void benchMergeNDistinct(size_t iters) {
   }
   susp.dismissing([&]() {
     for (size_t i = 0; i < iters; i++) {
-      folly::doNotOptimizeAway(std::apply(
-          [&](const auto&... ts) {
-            if constexpr (RVal) {
-              return cancellation_token_merge(copy(ts)...);
-            } else {
-              return cancellation_token_merge(ts...);
-            }
-          },
-          toks));
+      folly::doNotOptimizeAway(
+          std::apply(
+              [&](const auto&... ts) {
+                if constexpr (RVal) {
+                  return cancellation_token_merge(copy(ts)...);
+                } else {
+                  return cancellation_token_merge(ts...);
+                }
+              },
+              toks));
     }
   });
 }

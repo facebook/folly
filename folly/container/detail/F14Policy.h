@@ -1487,8 +1487,13 @@ class VectorContainerPolicy
 };
 
 template <
-    template <typename, typename, typename, typename, typename, typename...>
-    class Policy,
+    template <
+        typename,
+        typename,
+        typename,
+        typename,
+        typename,
+        typename...> class Policy,
     typename Key,
     typename Mapped,
     typename Hasher,
@@ -1504,8 +1509,13 @@ using MapPolicyWithDefaults = Policy<
     Args...>;
 
 template <
-    template <typename, typename, typename, typename, typename, typename...>
-    class Policy,
+    template <
+        typename,
+        typename,
+        typename,
+        typename,
+        typename,
+        typename...> class Policy,
     typename Key,
     typename Hasher,
     typename KeyEqual,

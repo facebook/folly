@@ -136,7 +136,9 @@ TEST(SemiFuture, lacksPreconditionValid) {
 #define DOIT(STMT)         \
   do {                     \
     auto f = makeValid();  \
-    { STMT; }              \
+    {                      \
+      STMT;                \
+    }                      \
     copy(std::move(f));    \
     EXPECT_NO_THROW(STMT); \
   } while (false)

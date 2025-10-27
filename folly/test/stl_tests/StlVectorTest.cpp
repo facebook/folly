@@ -870,7 +870,7 @@ uint64_t ReadTSC() {
     {                                                             \
       SCOPED_TRACE("datatype: " + ptype);                         \
       {                                                           \
-        test_##name##3 < type > ();                               \
+        test_##name##3 < type>();                                 \
         if (::testing::Test::HasFatalFailure())                   \
           return;                                                 \
       }                                                           \
@@ -878,9 +878,9 @@ uint64_t ReadTSC() {
   }
 #define GEN_TYPE_TEST(r, name, type) \
   if (0)                             \
-    test_I_##name##3 < type > ();
+    test_I_##name##3 < type>();
 #define GEN_RUNNABLE_TEST(r, name, type) \
-  one = test_I_##name##3 < type > () || one;
+  one = test_I_##name##3 < type>() || one;
 
 #define GEN_LOOPER(r, d, arg) BOOST_PP_CAT(LOOPER_, arg)
 #define GEN_VMAKER(r, d, arg) \

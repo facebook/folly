@@ -38,11 +38,12 @@ File::File(int fd, bool ownsFd) noexcept : fd_(fd), ownsFd_(ownsFd) {
 File::File(const char* name, int flags, mode_t mode)
     : fd_(fileops::open(name, flags, mode)), ownsFd_(false) {
   if (fd_ == -1) {
-    throwSystemError(fmt::format(
-        FOLLY_FMT_COMPILE("open(\"{}\", {:#o}, 0{:#o}) failed"),
-        name,
-        flags,
-        mode));
+    throwSystemError(
+        fmt::format(
+            FOLLY_FMT_COMPILE("open(\"{}\", {:#o}, 0{:#o}) failed"),
+            name,
+            flags,
+            mode));
   }
   ownsFd_ = true;
 }

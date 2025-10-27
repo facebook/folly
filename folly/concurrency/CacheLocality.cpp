@@ -193,8 +193,9 @@ CacheLocality CacheLocality::readFromSysfsTree(std::string_view root) {
   auto checkNoEnt = [](std::string_view name) {
     auto err = errno;
     if (err != ENOENT) {
-      throw std::runtime_error(fmt::format(
-          "unexpected error while opening {}: {}", name, strerror(err)));
+      throw std::runtime_error(
+          fmt::format(
+              "unexpected error while opening {}: {}", name, strerror(err)));
     }
   };
 

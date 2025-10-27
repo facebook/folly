@@ -246,8 +246,9 @@ class MPMCPipeline {
   /**
    * Pop an element from (the final stage of) the pipeline. Blocking.
    */
-  void blockingRead(typename std::tuple_element<sizeof...(Stages), StageTuple>::
-                        type::value_type& elem) {
+  void blockingRead(
+      typename std::tuple_element<sizeof...(Stages), StageTuple>::type::
+          value_type& elem) {
     std::get<sizeof...(Stages)>(stages_).blockingRead(elem);
   }
 
@@ -255,8 +256,9 @@ class MPMCPipeline {
    * Try to pop an element from (the final stage of) the pipeline.
    * Non-blocking.
    */
-  bool read(typename std::tuple_element<sizeof...(Stages), StageTuple>::type::
-                value_type& elem) {
+  bool read(
+      typename std::tuple_element<sizeof...(Stages), StageTuple>::type::
+          value_type& elem) {
     return std::get<sizeof...(Stages)>(stages_).read(elem);
   }
 

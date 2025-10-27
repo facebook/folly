@@ -220,8 +220,9 @@ bool StreamCodec::doNeedsDataLength() const {
 
 void StreamCodec::assertStateIs(State expected) const {
   if (state_ != expected) {
-    throw std::logic_error(folly::to<std::string>(
-        "Codec: state is ", state_, "; expected state ", expected));
+    throw std::logic_error(
+        folly::to<std::string>(
+            "Codec: state is ", state_, "; expected state ", expected));
   }
 }
 
@@ -1187,8 +1188,9 @@ void LZMA2StreamCodec::resetCStream() {
   lzma_ret const rc =
       lzma_easy_encoder(cstream_.get_pointer(), level_, LZMA_CHECK_NONE);
   if (rc != LZMA_OK) {
-    throw std::runtime_error(folly::to<std::string>(
-        "LZMA2StreamCodec: lzma_easy_encoder error: ", rc));
+    throw std::runtime_error(
+        folly::to<std::string>(
+            "LZMA2StreamCodec: lzma_easy_encoder error: ", rc));
   }
 }
 
@@ -1199,8 +1201,9 @@ void LZMA2StreamCodec::resetDStream() {
   lzma_ret const rc = lzma_auto_decoder(
       dstream_.get_pointer(), std::numeric_limits<uint64_t>::max(), 0);
   if (rc != LZMA_OK) {
-    throw std::runtime_error(folly::to<std::string>(
-        "LZMA2StreamCodec: lzma_auto_decoder error: ", rc));
+    throw std::runtime_error(
+        folly::to<std::string>(
+            "LZMA2StreamCodec: lzma_auto_decoder error: ", rc));
   }
 }
 
@@ -1813,21 +1816,25 @@ AutomaticCodec::AutomaticCodec(
   }
 
   // Check that none of the codecs are null
-  DCHECK(std::none_of(
-      codecs_.begin(), codecs_.end(), [](std::unique_ptr<Codec> const& codec) {
-        return codec == nullptr;
-      }));
+  DCHECK(
+      std::none_of(
+          codecs_.begin(),
+          codecs_.end(),
+          [](std::unique_ptr<Codec> const& codec) {
+            return codec == nullptr;
+          }));
 
   // Check that the terminal codec's type is not duplicated (with the exception
   // of USER_DEFINED).
   if (terminalCodec_) {
-    DCHECK(std::none_of(
-        codecs_.begin(),
-        codecs_.end(),
-        [&](std::unique_ptr<Codec> const& codec) {
-          return codec->type() != CodecType::USER_DEFINED &&
-              codec->type() == terminalCodec_->type();
-        }));
+    DCHECK(
+        std::none_of(
+            codecs_.begin(),
+            codecs_.end(),
+            [&](std::unique_ptr<Codec> const& codec) {
+              return codec->type() != CodecType::USER_DEFINED &&
+                  codec->type() == terminalCodec_->type();
+            }));
   }
 
   bool const terminalNeedsUncompressedLength =

@@ -250,7 +250,9 @@ CO_TEST(PromiseTest, SuspendCancel) {
 
 CO_TEST(PromiseTest, ImmediateBreakPromise) {
   auto [promise, future] = coro::makePromiseContract<int>();
-  { auto p2 = std::move(promise); }
+  {
+    auto p2 = std::move(promise);
+  }
   // @lint-ignore CLANGTIDY
   EXPECT_FALSE(promise.valid());
   auto res = co_await co_awaitTry(std::move(future));

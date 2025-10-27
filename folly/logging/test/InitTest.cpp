@@ -48,8 +48,9 @@ TEST(Init, checkConfig) {
   auto initialConfig = folly::LoggerDB::get().getConfig();
   EXPECT_EQ(0, getBaseLoggingConfigCalled);
   EXPECT_EQ(
-      parseLogConfig(".:=INFO:default; "
-                     "default=stream:stream=stderr,async=false"),
+      parseLogConfig(
+          ".:=INFO:default; "
+          "default=stream:stream=stderr,async=false"),
       LoggerDB::get().getConfig());
 
   // Call initLogging()
@@ -58,8 +59,9 @@ TEST(Init, checkConfig) {
   initLogging(".=ERROR,folly.logging=DBG7");
   EXPECT_EQ(1, getBaseLoggingConfigCalled);
   EXPECT_EQ(
-      parseLogConfig(".:=ERROR:default,folly=INFO:,folly.logging=DBG7:; "
-                     "default=stream:stream=stdout,async=false"),
+      parseLogConfig(
+          ".:=ERROR:default,folly=INFO:,folly.logging=DBG7:; "
+          "default=stream:stream=stdout,async=false"),
       LoggerDB::get().getConfig());
 
   // Test calling initLogging() with bad configuration strings, and

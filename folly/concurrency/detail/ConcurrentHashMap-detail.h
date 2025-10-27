@@ -95,8 +95,7 @@ template <
     typename KeyType,
     typename ValueType,
     typename Allocator,
-    template <typename>
-    class Atom,
+    template <typename> class Atom,
     typename Enabled = void>
 class ValueHolder {
  public:
@@ -123,8 +122,7 @@ template <
     typename KeyType,
     typename ValueType,
     typename Allocator,
-    template <typename>
-    class Atom>
+    template <typename> class Atom>
 class ValueHolder<
     KeyType,
     ValueType,
@@ -1807,10 +1805,8 @@ template <
         typename,
         typename,
         typename,
-        template <typename>
-        class,
-        class>
-    class Impl = concurrenthashmap::bucket::BucketTable>
+        template <typename> class,
+        class> class Impl = concurrenthashmap::bucket::BucketTable>
 class alignas(64) ConcurrentHashMapSegment {
   using ImplT = Impl<
       KeyType,

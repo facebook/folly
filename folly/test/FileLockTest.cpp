@@ -76,9 +76,13 @@ TEST(File, Locks) {
   };
 
   // Make sure nothing breaks and things compile.
-  { Lock lock(f); }
+  {
+    Lock lock(f);
+  }
 
-  { SharedLock lock(f); }
+  {
+    SharedLock lock(f);
+  }
 
   {
     Lock lock(f, std::defer_lock);

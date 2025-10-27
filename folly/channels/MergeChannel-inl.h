@@ -196,16 +196,18 @@ class MergeChannelProcessor
       auto keyToRemove = existingReceiverIt->first;
       state->receivers[existingReceiverIt->second] = nullptr;
       state->receiversByKey.erase(existingReceiverIt);
-      state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
-          keyToRemove, MergeChannelReceiverRemoved{}});
+      state->sender->senderPush(
+          MergeChannelEvent<KeyType, ValueType>{
+              keyToRemove, MergeChannelReceiverRemoved{}});
     }
     auto [it, _] = state->receiversByKey.insert(
         std::make_pair(key, unbufferedReceiver.get()));
     auto* receiverPtr = unbufferedReceiver.get();
     state->receivers.insert(
         std::make_pair(unbufferedReceiver.release(), &it->first));
-    state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
-        key, MergeChannelReceiverAdded{}});
+    state->sender->senderPush(
+        MergeChannelEvent<KeyType, ValueType>{
+            key, MergeChannelReceiverAdded{}});
     processAllAvailableValues(state, receiverPtr, std::move(buffer));
   }
 
@@ -228,8 +230,9 @@ class MergeChannelProcessor
     auto keyToRemove = receiverIt->first;
     state->receivers[receiverIt->second] = nullptr;
     state->receiversByKey.erase(receiverIt);
-    state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
-        keyToRemove, MergeChannelReceiverRemoved{}});
+    state->sender->senderPush(
+        MergeChannelEvent<KeyType, ValueType>{
+            keyToRemove, MergeChannelReceiverRemoved{}});
   }
 
   folly::F14FastSet<KeyType> getReceiverKeys() {
@@ -349,8 +352,9 @@ class MergeChannelProcessor
       if (inputResult.hasValue()) {
         // We have received a normal value from an input receiver. Write it to
         // the output receiver.
-        state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
-            *key, std::move(inputResult.value())});
+        state->sender->senderPush(
+            MergeChannelEvent<KeyType, ValueType>{
+                *key, std::move(inputResult.value())});
       } else {
         // The input receiver was closed.
         return inputResult.hasException()
@@ -374,12 +378,13 @@ class MergeChannelProcessor
       auto keyToRemove = *key;
       CHECK_EQ(state->receiversByKey.erase(keyToRemove), 1);
       if (state->getSenderState() == ChannelState::Active) {
-        state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
-            keyToRemove,
-            MergeChannelReceiverClosed{
-                closeResult.exception.has_value()
-                    ? std::move(closeResult.exception.value())
-                    : exception_wrapper()}});
+        state->sender->senderPush(
+            MergeChannelEvent<KeyType, ValueType>{
+                keyToRemove,
+                MergeChannelReceiverClosed{
+                    closeResult.exception.has_value()
+                        ? std::move(closeResult.exception.value())
+                        : exception_wrapper()}});
       }
     }
     state->receivers.erase(receiver);
@@ -414,8 +419,9 @@ class MergeChannelProcessor
     if (state->getSenderState() == ChannelState::Active) {
       for (auto [key, receiver] : state->receiversByKey) {
         state->receivers[receiver] = nullptr;
-        state->sender->senderPush(MergeChannelEvent<KeyType, ValueType>{
-            key, MergeChannelReceiverRemoved{}});
+        state->sender->senderPush(
+            MergeChannelEvent<KeyType, ValueType>{
+                key, MergeChannelReceiverRemoved{}});
       }
       if (closeResult.exception.has_value()) {
         state->sender->senderClose(std::move(closeResult.exception.value()));

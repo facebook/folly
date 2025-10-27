@@ -51,7 +51,9 @@ class des {
 TEST(RcuTest, Guard) {
   bool del = false;
   auto foo = new des(&del);
-  { std::scoped_lock<rcu_domain> g(rcu_default_domain()); }
+  {
+    std::scoped_lock<rcu_domain> g(rcu_default_domain());
+  }
   rcu_retire(foo);
   rcu_synchronize();
   EXPECT_TRUE(del);
@@ -173,7 +175,9 @@ TEST(RcuTest, NewDomainGuardTest) {
   rcu_domain newdomain(nullptr);
   bool del = false;
   auto foo = new des(&del);
-  { std::scoped_lock<rcu_domain> g(newdomain); }
+  {
+    std::scoped_lock<rcu_domain> g(newdomain);
+  }
   rcu_retire(foo, {}, newdomain);
   rcu_synchronize(newdomain);
   EXPECT_TRUE(del);

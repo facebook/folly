@@ -622,7 +622,7 @@ template <
     class FieldType,
     class Field = Field<Class, FieldType>,
     class Map = detail::Map<Field>>
-Map field(FieldType Class::*field) {
+Map field(FieldType Class::* field) {
   return Map(Field(field));
 }
 

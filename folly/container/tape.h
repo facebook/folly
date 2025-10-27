@@ -231,10 +231,9 @@ class tape {
   }
 
   template <typename R>
-  auto push_back(R&& r)
-      -> std::enable_if_t<
-          range_of_scalars<R> &&
-          !std::is_convertible_v<R, const_reference>> // handle \0 separately
+  auto push_back(R&& r) -> std::enable_if_t<
+      range_of_scalars<R> &&
+      !std::is_convertible_v<R, const_reference>> // handle \0 separately
   {
     push_back(std::begin(r), std::end(r));
   }
@@ -265,10 +264,9 @@ class tape {
   }
 
   template <typename R>
-  auto push_back_unsafe(R&& r)
-      -> std::enable_if_t<
-          range_of_scalars<R> &&
-          !std::is_convertible_v<R, const_reference>> // handle \0 separately
+  auto push_back_unsafe(R&& r) -> std::enable_if_t<
+      range_of_scalars<R> &&
+      !std::is_convertible_v<R, const_reference>> // handle \0 separately
   {
     push_back_unsafe(std::begin(r), std::end(r));
   }
@@ -294,10 +292,9 @@ class tape {
       -> std::enable_if_t<iterator_of_scalars<I>, iterator>;
 
   template <typename R>
-  auto insert(const_iterator pos, R&& r)
-      -> std::enable_if_t<
-          range_of_scalars<R> && !std::is_convertible_v<R, const_reference>,
-          iterator> {
+  auto insert(const_iterator pos, R&& r) -> std::enable_if_t<
+      range_of_scalars<R> && !std::is_convertible_v<R, const_reference>,
+      iterator> {
     return insert(pos, std::begin(r), std::end(r));
   }
 

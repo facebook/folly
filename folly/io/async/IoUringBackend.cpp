@@ -78,7 +78,7 @@ int ioUringEnableRings([[maybe_unused]] struct io_uring* ring) {
 
 struct SignalRegistry {
   struct SigInfo {
-    struct sigaction sa_ {};
+    struct sigaction sa_{};
     size_t refs_{0};
   };
   using SignalMap = std::map<int, SigInfo>;
@@ -1772,9 +1772,7 @@ size_t IoUringBackend::prepList(IoSqeBaseList& ioSqes) {
 
 void IoUringBackend::queueRead(
     int fd, void* buf, unsigned int nbytes, off_t offset, FileOpCallback&& cb) {
-  struct iovec iov {
-    buf, nbytes
-  };
+  struct iovec iov{buf, nbytes};
   auto* ioSqe = new ReadIoSqe(this, fd, &iov, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 
@@ -1787,9 +1785,7 @@ void IoUringBackend::queueWrite(
     unsigned int nbytes,
     off_t offset,
     FileOpCallback&& cb) {
-  struct iovec iov {
-    const_cast<void*>(buf), nbytes
-  };
+  struct iovec iov{const_cast<void*>(buf), nbytes};
   auto* ioSqe = new WriteIoSqe(this, fd, &iov, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 

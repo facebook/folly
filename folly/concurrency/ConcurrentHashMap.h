@@ -137,10 +137,8 @@ template <
         typename,
         typename,
         typename,
-        template <typename>
-        class,
-        class>
-    class Impl = detail::concurrenthashmap::bucket::BucketTable>
+        template <typename> class,
+        class> class Impl = detail::concurrenthashmap::bucket::BucketTable>
 class ConcurrentHashMap {
   using SegmentT = detail::ConcurrentHashMapSegment<
       KeyType,

@@ -60,20 +60,22 @@ std::shared_ptr<StrandContext> StrandContext::create() {
 }
 
 void StrandContext::add(Func func, Executor::KeepAlive<> executor) {
-  addImpl(QueueItem{
-      std::move(func),
-      std::move(executor),
-      folly::none,
-      RequestContext::saveContext()});
+  addImpl(
+      QueueItem{
+          std::move(func),
+          std::move(executor),
+          folly::none,
+          RequestContext::saveContext()});
 }
 
 void StrandContext::addWithPriority(
     Func func, Executor::KeepAlive<> executor, int8_t priority) {
-  addImpl(QueueItem{
-      std::move(func),
-      std::move(executor),
-      priority,
-      RequestContext::saveContext()});
+  addImpl(
+      QueueItem{
+          std::move(func),
+          std::move(executor),
+          priority,
+          RequestContext::saveContext()});
 }
 
 void StrandContext::addImpl(QueueItem&& item) {

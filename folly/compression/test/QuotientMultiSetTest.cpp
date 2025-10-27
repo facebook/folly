@@ -183,8 +183,12 @@ TEST_F(QuotientMultiSetTest, Uniform) {
 
   for (const auto& testCase : testCases) {
     const auto& [keyBits, size, loadFactor] = testCase;
-    SCOPED_TRACE(fmt::format(
-        "Key bits: {} Size: {} Load factor: {}", keyBits, size, loadFactor));
+    SCOPED_TRACE(
+        fmt::format(
+            "Key bits: {} Size: {} Load factor: {}",
+            keyBits,
+            size,
+            loadFactor));
     std::vector<uint64_t> keys;
     for (uint64_t idx = 0; idx < size; idx++) {
       keys.emplace_back(

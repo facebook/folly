@@ -612,18 +612,18 @@ class capture_indirect_storage : public capture_storage<Derived, RefArgT, T> {
         std::move(*this).capture_storage<Derived, RefArgT, T>::operator*());
   }
   [[nodiscard]] constexpr decltype(auto) operator->() & noexcept {
-    return (capture_storage<Derived, RefArgT, T>::operator->())->operator->();
+    return (capture_storage<Derived, RefArgT, T>::operator->()) -> operator->();
   }
   [[nodiscard]] constexpr decltype(auto) operator->() const& noexcept {
-    return (capture_storage<Derived, RefArgT, T>::operator->())->operator->();
+    return (capture_storage<Derived, RefArgT, T>::operator->()) -> operator->();
   }
   [[nodiscard]] constexpr decltype(auto) operator->() && noexcept {
     return (std::move(*this).capture_storage<Derived, RefArgT, T>::operator->())
-        ->operator->();
+        -> operator->();
   }
   [[nodiscard]] constexpr decltype(auto) operator->() const&& noexcept {
     return (std::move(*this).capture_storage<Derived, RefArgT, T>::operator->())
-        ->operator->();
+        -> operator->();
   }
 
   // Unlike other captures, `capture_indirect` is nullable since the

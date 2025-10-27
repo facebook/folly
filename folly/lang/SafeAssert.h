@@ -131,7 +131,7 @@ inline constexpr safe_assert_msg_types_one_fn
 
 template <typename... A>
 safe_assert_msg_type_s<decltype(safe_assert_msg_types_one((A)A{}))::value...>
-safe_assert_msg_types_seq_of(A...); // only used in unevaluated contexts
+    safe_assert_msg_types_seq_of(A...); // only used in unevaluated contexts
 
 template <typename>
 struct safe_assert_msg_types;

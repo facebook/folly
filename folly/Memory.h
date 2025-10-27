@@ -369,7 +369,7 @@ std::weak_ptr<T> to_weak_ptr(const std::shared_ptr<T>& ptr) {
 namespace detail {
 void weak_ptr_set_stored_ptr(std::weak_ptr<void>& w, void* ptr);
 
-template <typename Tag, void* std::__weak_ptr<void>::*WeakPtr_Ptr_Field>
+template <typename Tag, void* std::__weak_ptr<void>::* WeakPtr_Ptr_Field>
 struct GenerateWeakPtrInternalsAccessor {
   friend void weak_ptr_set_stored_ptr(std::weak_ptr<void>& w, void* ptr) {
     w.*WeakPtr_Ptr_Field = ptr;

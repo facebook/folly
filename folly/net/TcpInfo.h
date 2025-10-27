@@ -217,7 +217,7 @@ struct TcpInfo {
    */
   template <typename T1, typename T2>
   static const T1* getFieldAsPtr(
-      const T2& tgtStruct, const int tgtBytesRead, T1 T2::*field) {
+      const T2& tgtStruct, const int tgtBytesRead, T1 T2::* field) {
     if (field != nullptr && tgtBytesRead > 0 &&
         getTcpInfoFieldOffset(field) + sizeof(tgtStruct.*field) <=
             (unsigned long)tgtBytesRead) {
@@ -236,7 +236,7 @@ struct TcpInfo {
    *    https://gist.github.com/graphitemaster/494f21190bb2c63c5516
    */
   template <typename T1, typename T2>
-  static size_t constexpr getTcpInfoFieldOffset(T1 T2::*field) {
+  static size_t constexpr getTcpInfoFieldOffset(T1 T2::* field) {
     static_assert(
         std::is_standard_layout<T1>() && std::is_trivial<T1>(),
         "Object type is not standard layout or trivial");
@@ -293,7 +293,7 @@ struct TcpInfo {
    * use accessors, such as bytesSent().
    */
   template <typename T1>
-  const T1* getFieldAsPtr(T1 tcp_info::*field) const {
+  const T1* getFieldAsPtr(T1 tcp_info::* field) const {
     return getFieldAsPtr(tcpInfo, tcpInfoBytesRead, field);
   }
 
@@ -307,7 +307,7 @@ struct TcpInfo {
    * use accessors such as bytesSent().
    */
   template <typename T1>
-  folly::Optional<uint64_t> getFieldAsOptUInt64(T1 tcp_info::*field) const {
+  folly::Optional<uint64_t> getFieldAsOptUInt64(T1 tcp_info::* field) const {
     if (auto ptr = getFieldAsPtr(field)) {
       return *ptr;
     }
@@ -342,7 +342,8 @@ struct TcpInfo {
    * specifics, use accessors such as bbrBwBitsPerSecond().
    */
   template <typename T1>
-  folly::Optional<uint64_t> getFieldAsOptUInt64(T1 tcp_bbr_info::*field) const {
+  folly::Optional<uint64_t> getFieldAsOptUInt64(
+      T1 tcp_bbr_info::* field) const {
     if (maybeCcInfo.has_value() && ccNameEnum() == CongestionControlName::BBR) {
       return getFieldAsOptUInt64(maybeCcInfo.value().bbr, field);
     }
@@ -357,7 +358,7 @@ struct TcpInfo {
    */
   template <typename T1>
   folly::Optional<uint64_t> getFieldAsOptUInt64(
-      T1 tcpvegas_info::*field) const {
+      T1 tcpvegas_info::* field) const {
     if (maybeCcInfo.hasValue() &&
         ccNameEnum() == CongestionControlName::VEGAS) {
       return getFieldAsOptUInt64(maybeCcInfo.value().vegas, field);
@@ -373,7 +374,7 @@ struct TcpInfo {
    */
   template <typename T1>
   const folly::Optional<uint64_t> getFieldAsOptUInt64(
-      T1 tcp_dctcp_info::*field) const {
+      T1 tcp_dctcp_info::* field) const {
     if (maybeCcInfo.has_value() &&
         (ccNameEnum() == CongestionControlName::DCTCP ||
          ccNameEnum() == CongestionControlName::DCTCP_CUBIC ||
@@ -395,7 +396,7 @@ struct TcpInfo {
    */
   template <typename T1, typename T2>
   folly::Optional<uint64_t> getFieldAsOptUInt64(
-      const T2& tgtStruct, T1 T2::*field) const {
+      const T2& tgtStruct, T1 T2::* field) const {
     if (field != nullptr && tcpCcInfoBytesRead > 0 &&
         getTcpInfoFieldOffset(field) + sizeof(tgtStruct.*field) <=
             (unsigned long)tcpCcInfoBytesRead) {

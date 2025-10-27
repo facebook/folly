@@ -120,8 +120,9 @@ class Zip : public Operator<Zip<Container>> {
         if (iter == container_->end()) {
           return false;
         }
-        if (!handler(std::make_tuple(
-                std::forward<Value>(value), std::move(*iter)))) {
+        if (!handler(
+                std::make_tuple(
+                    std::forward<Value>(value), std::move(*iter)))) {
           return false;
         }
         ++iter;
@@ -164,9 +165,8 @@ auto add_to_tuple(Type1&& t1, std::tuple<Types2...> t2)
 }
 
 template <class Type1, class Type2>
-auto add_to_tuple(Type1&& t1, Type2&& t2)
-    -> decltype(std::make_tuple(
-        std::forward<Type1>(t1), std::forward<Type2>(t2))) {
+auto add_to_tuple(Type1&& t1, Type2&& t2) -> decltype(std::make_tuple(
+    std::forward<Type1>(t1), std::forward<Type2>(t2))) {
   return std::make_tuple(std::forward<Type1>(t1), std::forward<Type2>(t2));
 }
 
@@ -174,10 +174,9 @@ auto add_to_tuple(Type1&& t1, Type2&& t2)
 class MergeTuples {
  public:
   template <class Tuple>
-  auto operator()(Tuple&& value) const
-      -> decltype(add_to_tuple(
-          std::get<0>(std::forward<Tuple>(value)),
-          std::get<1>(std::forward<Tuple>(value)))) {
+  auto operator()(Tuple&& value) const -> decltype(add_to_tuple(
+      std::get<0>(std::forward<Tuple>(value)),
+      std::get<1>(std::forward<Tuple>(value)))) {
     static_assert(
         std::tuple_size<typename std::remove_reference<Tuple>::type>::value ==
             2,

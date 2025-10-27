@@ -277,9 +277,10 @@ TEST(MidpointTest, MidpointTest) {
           std::numeric_limits<double>::max(),
           std::numeric_limits<double>::max()),
       std::numeric_limits<double>::max());
-  EXPECT_TRUE(std::isnan(midpoint(
-      -std::numeric_limits<double>::infinity(),
-      std::numeric_limits<double>::infinity())));
+  EXPECT_TRUE(
+      std::isnan(midpoint(
+          -std::numeric_limits<double>::infinity(),
+          std::numeric_limits<double>::infinity())));
 
   // Float
   EXPECT_EQ(midpoint(2.0f, 4.0f), 3.0f);
@@ -290,9 +291,10 @@ TEST(MidpointTest, MidpointTest) {
       midpoint(
           std::numeric_limits<float>::max(), std::numeric_limits<float>::max()),
       std::numeric_limits<float>::max());
-  EXPECT_TRUE(std::isnan(midpoint(
-      -std::numeric_limits<float>::infinity(),
-      std::numeric_limits<float>::infinity())));
+  EXPECT_TRUE(
+      std::isnan(midpoint(
+          -std::numeric_limits<float>::infinity(),
+          std::numeric_limits<float>::infinity())));
 
   // Long double
   EXPECT_EQ(midpoint(2.0l, 4.0l), 3.0l);
@@ -304,9 +306,10 @@ TEST(MidpointTest, MidpointTest) {
           std::numeric_limits<long double>::max(),
           std::numeric_limits<long double>::max()),
       std::numeric_limits<long double>::max());
-  EXPECT_TRUE(std::isnan(midpoint(
-      -std::numeric_limits<long double>::infinity(),
-      std::numeric_limits<long double>::infinity())));
+  EXPECT_TRUE(
+      std::isnan(midpoint(
+          -std::numeric_limits<long double>::infinity(),
+          std::numeric_limits<long double>::infinity())));
 
   EXPECT_TRUE(noexcept(midpoint(1, 2)));
 

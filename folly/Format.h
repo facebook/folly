@@ -283,8 +283,7 @@ template <class... Args>
 [[deprecated(
     "Use fmt::format instead of folly::format for better performance, build "
     "times and compatibility with std::format")]] //
-Formatter<false, Args...>
-format(StringPiece fmt, Args&&... args) {
+Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
   return Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...);
 }
 

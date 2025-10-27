@@ -66,9 +66,11 @@ class MemoryIdlerTimeout : public AsyncTimeout, public EventBase::LoopCallback {
 
         idleTimeout = MemoryIdler::getVariationTimeout(idleTimeout);
 
-        scheduleTimeout(static_cast<uint32_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(idleTimeout)
-                .count()));
+        scheduleTimeout(
+            static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    idleTimeout)
+                    .count()));
       } else {
         num_++;
       }

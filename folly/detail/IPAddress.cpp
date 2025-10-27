@@ -28,10 +28,11 @@ std::string familyNameStrDefault(sa_family_t family) {
 }
 
 [[noreturn]] void getNthMSBitImplThrow(size_t bitCount, sa_family_t family) {
-  throw std::invalid_argument(fmt::format(
-      FOLLY_FMT_COMPILE("Bit index must be < {} for addresses of type: {}"),
-      bitCount,
-      familyNameStr(family)));
+  throw std::invalid_argument(
+      fmt::format(
+          FOLLY_FMT_COMPILE("Bit index must be < {} for addresses of type: {}"),
+          bitCount,
+          familyNameStr(family)));
 }
 } // namespace detail
 } // namespace folly

@@ -25,7 +25,7 @@ TEST(PThreadTest, pthreadCreateAndJoin) {
   static std::atomic<int32_t> argPassedIn{0};
   auto mainFunc = [](void* arg) -> void* {
     hasRun = true;
-    argPassedIn = (int32_t) reinterpret_cast<uintptr_t>(arg);
+    argPassedIn = (int32_t)reinterpret_cast<uintptr_t>(arg);
     return nullptr;
   };
 

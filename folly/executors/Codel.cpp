@@ -31,9 +31,10 @@ using namespace std::chrono;
 namespace folly {
 
 Codel::Codel()
-    : Codel(Codel::Options()
-                .setInterval(milliseconds(FLAGS_codel_interval))
-                .setTargetDelay(milliseconds(FLAGS_codel_target_delay))) {}
+    : Codel(
+          Codel::Options()
+              .setInterval(milliseconds(FLAGS_codel_interval))
+              .setTargetDelay(milliseconds(FLAGS_codel_target_delay))) {}
 
 Codel::Codel(const Options& options)
     : codelMinDelayNs_(0),

@@ -110,9 +110,10 @@ void MultiLevelTimeSeries<VT, CT>::addValueAggregated(
     // is achieved by rounding _down_ `now` to align with cacheDuration_
     // boundaries, so from the BucketedTimeSeries's point of view, clock jumps
     // forward in multiples of cacheDuration_.
-    cachedTime_ = TimePoint(Duration{
-        (now.time_since_epoch().count() / cacheDuration_.count()) *
-        cacheDuration_.count()});
+    cachedTime_ = TimePoint(
+        Duration{
+            (now.time_since_epoch().count() / cacheDuration_.count()) *
+            cacheDuration_.count()});
   }
 
   for (size_t i = 0; i < levels_.size(); ++i) {

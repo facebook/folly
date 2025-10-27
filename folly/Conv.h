@@ -1256,9 +1256,9 @@ str_to_integral<unsigned __int128>(StringPiece* src) noexcept;
 #endif
 
 template <typename T>
-typename std::
-    enable_if<std::is_same<T, bool>::value, Expected<T, ConversionCode>>::type
-    convertTo(StringPiece* src) noexcept {
+typename std::enable_if<
+    std::is_same<T, bool>::value,
+    Expected<T, ConversionCode>>::type convertTo(StringPiece* src) noexcept {
   return str_to_bool(src);
 }
 

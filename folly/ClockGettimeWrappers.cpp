@@ -68,7 +68,7 @@ struct VdsoInitializer {
     }
     p = dlsym(m_handle, "__vdso_clock_gettime_ns");
     if (p) {
-      folly::chrono::clock_gettime_ns = (int64_t(*)(clockid_t))p;
+      folly::chrono::clock_gettime_ns = (int64_t (*)(clockid_t))p;
     }
   }
 

@@ -313,12 +313,15 @@ TEST_F(SynchronizedLockTest, TestCopyConstructibleValues) {
     NonCopyConstructible& operator=(const NonCopyConstructible&) = delete;
   };
   struct CopyConstructible {};
-  EXPECT_FALSE(std::is_copy_constructible<
-               folly::Synchronized<NonCopyConstructible>>::value);
-  EXPECT_FALSE(std::is_copy_assignable<
-               folly::Synchronized<NonCopyConstructible>>::value);
-  EXPECT_TRUE(std::is_copy_constructible<
-              folly::Synchronized<CopyConstructible>>::value);
+  EXPECT_FALSE(
+      std::is_copy_constructible<
+          folly::Synchronized<NonCopyConstructible>>::value);
+  EXPECT_FALSE(
+      std::is_copy_assignable<
+          folly::Synchronized<NonCopyConstructible>>::value);
+  EXPECT_TRUE(
+      std::is_copy_constructible<
+          folly::Synchronized<CopyConstructible>>::value);
   EXPECT_TRUE(
       std::is_copy_assignable<folly::Synchronized<CopyConstructible>>::value);
 }

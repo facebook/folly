@@ -200,8 +200,8 @@ class ExponentialBackoffWithJitter {
         ? std::exp(dist{0., relativeJitterStdDev_}(randomGen_))
         : 1.;
     // TODO T186551522 Calculate backoff in microseconds.
-    const auto backoffNominal =
-        Duration(folly::constexpr_clamp_cast<Duration::rep>(
+    const auto backoffNominal = Duration(
+        folly::constexpr_clamp_cast<Duration::rep>(
             jitter * minBackoff_.count() * std::pow(2, retryCount_ - 1u)));
 
     const Duration backoff = std::clamp(

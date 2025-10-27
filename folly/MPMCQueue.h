@@ -682,15 +682,13 @@ namespace detail {
 template <
     template <
         typename T,
-        template <typename>
-        class Atom,
+        template <typename> class Atom,
         bool Dynamic,
         class Allocator>
 
     class Derived,
     typename T,
-    template <typename>
-    class Atom,
+    template <typename> class Atom,
     bool Dynamic,
     class Allocator>
 class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {

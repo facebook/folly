@@ -38,8 +38,9 @@ namespace folly {
 namespace python {
 
 namespace fibers_detail {
-FOLLY_PYTHON_FIBERS_API void assign_func(folly::fibers::FiberManager* (
-    *_get_fiber_manager)(const folly::fibers::FiberManager::Options&));
+FOLLY_PYTHON_FIBERS_API void assign_func(
+    folly::fibers::FiberManager* (*_get_fiber_manager)(
+        const folly::fibers::FiberManager::Options&));
 } // namespace fibers_detail
 
 // Must be called from main context

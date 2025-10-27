@@ -1491,8 +1491,8 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierReturns) {
       *verifier,
       verifyLeaf(Property(
           &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
-      .WillOnce(
-          Return(ByMove(std::make_unique<folly::ssl::BasicTransportCertificate>(
+      .WillOnce(Return(ByMove(
+          std::make_unique<folly::ssl::BasicTransportCertificate>(
               "Asox Company", readCertFromFile(kTestCert)))));
 
   AsyncSSLSocket::Options opts;
@@ -1699,8 +1699,8 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierSucceedsOnServer) {
       *clientVerifier,
       verifyLeaf(Property(
           &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
-      .WillOnce(
-          Return(ByMove(std::make_unique<folly::ssl::BasicTransportCertificate>(
+      .WillOnce(Return(ByMove(
+          std::make_unique<folly::ssl::BasicTransportCertificate>(
               "Asox Company", readCertFromFile(kTestCert)))));
   std::shared_ptr<StrictMock<MockCertificateIdentityVerifier>> serverVerifier =
       std::make_shared<StrictMock<MockCertificateIdentityVerifier>>();
@@ -1708,8 +1708,8 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierSucceedsOnServer) {
       *serverVerifier,
       verifyLeaf(Property(
           &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
-      .WillOnce(
-          Return(ByMove(std::make_unique<folly::ssl::BasicTransportCertificate>(
+      .WillOnce(Return(ByMove(
+          std::make_unique<folly::ssl::BasicTransportCertificate>(
               "Asox Company", readCertFromFile(kTestCert)))));
 
   AsyncSSLSocket::Options clientOpts;

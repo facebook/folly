@@ -74,15 +74,16 @@ void run_mt_sequencer_test(int numThreads, int numOps, uint32_t init) {
   int prev = -1;
   vector<std::thread> threads(numThreads);
   for (int i = 0; i < numThreads; ++i) {
-    threads[i] = DSched::thread(std::bind(
-        run_mt_sequencer_thread<Atom>,
-        numThreads,
-        numOps,
-        init,
-        std::ref(seq),
-        std::ref(spinThreshold),
-        std::ref(prev),
-        i));
+    threads[i] = DSched::thread(
+        std::bind(
+            run_mt_sequencer_thread<Atom>,
+            numThreads,
+            numOps,
+            init,
+            std::ref(seq),
+            std::ref(spinThreshold),
+            std::ref(prev),
+            i));
   }
 
   for (auto& thr : threads) {
@@ -278,13 +279,14 @@ void runTryEnqDeqTest(int numThreads, int numOps) {
   vector<std::thread> threads(numThreads);
   std::atomic<uint64_t> sum(0);
   for (int t = 0; t < numThreads; ++t) {
-    threads[t] = DSched::thread(std::bind(
-        runTryEnqDeqThread<Atom, Dynamic>,
-        numThreads,
-        n,
-        std::ref(cq),
-        std::ref(sum),
-        t));
+    threads[t] = DSched::thread(
+        std::bind(
+            runTryEnqDeqThread<Atom, Dynamic>,
+            numThreads,
+            n,
+            std::ref(cq),
+            std::ref(sum),
+            t));
   }
   for (auto& t : threads) {
     DSched::join(t);
@@ -734,13 +736,14 @@ uint64_t runNeverFailTest(int numThreads, int numOps) {
   vector<std::thread> threads(numThreads);
   std::atomic<uint64_t> sum(0);
   for (int t = 0; t < numThreads; ++t) {
-    threads[t] = DSched::thread(std::bind(
-        runNeverFailThread<Atom, Dynamic>,
-        numThreads,
-        n,
-        std::ref(cq),
-        std::ref(sum),
-        t));
+    threads[t] = DSched::thread(
+        std::bind(
+            runNeverFailThread<Atom, Dynamic>,
+            numThreads,
+            n,
+            std::ref(cq),
+            std::ref(sum),
+            t));
   }
   for (auto& t : threads) {
     DSched::join(t);
@@ -831,13 +834,14 @@ uint64_t runNeverFailTest(int numThreads, int numOps) {
   vector<std::thread> threads(numThreads);
   std::atomic<uint64_t> sum(0);
   for (int t = 0; t < numThreads; ++t) {
-    threads[t] = DSched::thread(std::bind(
-        runNeverFailUntilThread<Clock, Atom, Dynamic>,
-        numThreads,
-        n,
-        std::ref(cq),
-        std::ref(sum),
-        t));
+    threads[t] = DSched::thread(
+        std::bind(
+            runNeverFailUntilThread<Clock, Atom, Dynamic>,
+            numThreads,
+            n,
+            std::ref(cq),
+            std::ref(sum),
+            t));
   }
   for (auto& t : threads) {
     DSched::join(t);

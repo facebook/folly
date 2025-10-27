@@ -99,8 +99,11 @@ TEST(Foreach, ForEachFunctionBasic) {
 
   folly::for_each(range, [&](auto ele) { result_range.push_back(ele); });
 
-  EXPECT_TRUE(std::equal(
-      result_range.begin(), result_range.end(), correct_result_range.begin()));
+  EXPECT_TRUE(
+      std::equal(
+          result_range.begin(),
+          result_range.end(),
+          correct_result_range.begin()));
 }
 
 TEST(Foreach, ForEachFunctionBasicRuntimeOneArg) {

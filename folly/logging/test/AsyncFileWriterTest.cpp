@@ -369,8 +369,9 @@ class ReadStats {
   }
 
   void messageReceived(StringPiece msg) {
-    if (msg.endsWith(" log messages discarded: "
-                     "logging faster than we can write")) {
+    if (msg.endsWith(
+            " log messages discarded: "
+            "logging faster than we can write")) {
       auto discardCount = folly::to<size_t>(msg.subpiece(0, msg.find(' ')));
       XLOG(DBG3, "received discard notification: ", discardCount);
       numDiscarded_ += discardCount;
@@ -768,8 +769,9 @@ TEST(AsyncFileWriter, crazyForks) {
       while (!stop) {
         // Create an AsyncFileWriter, write a message to it, then destroy it.
         AsyncFileWriter writer{folly::File{tmpFile.fd(), false}};
-        writer.writeMessage(folly::to<std::string>(
-            "async thread ", folly::getOSThreadID(), "\n"));
+        writer.writeMessage(
+            folly::to<std::string>(
+                "async thread ", folly::getOSThreadID(), "\n"));
       }
     });
   }

@@ -222,8 +222,9 @@ void LoggerDB::startConfigUpdate(
     } else {
       // This configuration is intended to update an existing LogHandler
       if (!oldHandler) {
-        throw std::invalid_argument(to<std::string>(
-            "cannot update unknown log handler \"", entry.first, "\""));
+        throw std::invalid_argument(
+            to<std::string>(
+                "cannot update unknown log handler \"", entry.first, "\""));
       }
 
       updatedConfig = oldHandler->getConfig();
@@ -231,10 +232,11 @@ void LoggerDB::startConfigUpdate(
         // This normally should not happen unless someone improperly manually
         // constructed a LogHandler object.  All existing LogHandler objects
         // should indicate their type.
-        throw std::invalid_argument(to<std::string>(
-            "existing log handler \"",
-            entry.first,
-            "\" is missing type information"));
+        throw std::invalid_argument(
+            to<std::string>(
+                "existing log handler \"",
+                entry.first,
+                "\" is missing type information"));
       }
       updatedConfig.update(entry.second);
       handlerConfig = &updatedConfig;
@@ -243,8 +245,11 @@ void LoggerDB::startConfigUpdate(
     // Look up the LogHandlerFactory
     auto factoryIter = handlerInfo->factories.find(handlerConfig->type.value());
     if (factoryIter == handlerInfo->factories.end()) {
-      throw std::invalid_argument(to<std::string>(
-          "unknown log handler type \"", handlerConfig->type.value(), "\""));
+      throw std::invalid_argument(
+          to<std::string>(
+              "unknown log handler type \"",
+              handlerConfig->type.value(),
+              "\""));
     }
 
     // Create the new log handler
@@ -264,13 +269,14 @@ void LoggerDB::startConfigUpdate(
       // bad configuration options.  It is useful to update the exception
       // message to include the name of the log handler we were trying to
       // update or create.
-      throw std::invalid_argument(to<string>(
-          "error ",
-          oldHandler ? "updating" : "creating",
-          " log handler \"",
-          entry.first,
-          "\": ",
-          exceptionStr(ex)));
+      throw std::invalid_argument(
+          to<string>(
+              "error ",
+              oldHandler ? "updating" : "creating",
+              " log handler \"",
+              entry.first,
+              "\": ",
+              exceptionStr(ex)));
     }
     handlerInfo->handlers[entry.first] = handler;
     (*handlers)[entry.first] = handler;
@@ -285,12 +291,13 @@ void LoggerDB::startConfigUpdate(
     for (const auto& handlerName : entry.second.handlers.value()) {
       auto iter = handlers->find(handlerName);
       if (iter == handlers->end()) {
-        throw std::invalid_argument(to<std::string>(
-            "unknown log handler \"",
-            handlerName,
-            "\" configured for log category \"",
-            entry.first,
-            "\""));
+        throw std::invalid_argument(
+            to<std::string>(
+                "unknown log handler \"",
+                handlerName,
+                "\" configured for log category \"",
+                entry.first,
+                "\""));
       }
     }
   }
@@ -335,12 +342,13 @@ std::vector<std::shared_ptr<LogHandler>> LoggerDB::buildCategoryHandlerList(
     if (iter == handlerMap.end()) {
       // This really shouldn't be possible; the checks in startConfigUpdate()
       // should have already bailed out if there was an unknown handler.
-      throw std::invalid_argument(to<std::string>(
-          "bug: unknown log handler \"",
-          handlerName,
-          "\" configured for log category \"",
-          categoryName,
-          "\""));
+      throw std::invalid_argument(
+          to<std::string>(
+              "bug: unknown log handler \"",
+              handlerName,
+              "\" configured for log category \"",
+              categoryName,
+              "\""));
     }
     catHandlers.push_back(iter->second);
   }
@@ -535,8 +543,11 @@ void LoggerDB::registerHandlerFactory(
   } else {
     auto ret = handlerInfo->factories.emplace(type.str(), std::move(factory));
     if (!ret.second) {
-      throw std::range_error(to<std::string>(
-          "a LogHandlerFactory for the type \"", type, "\" already exists"));
+      throw std::range_error(
+          to<std::string>(
+              "a LogHandlerFactory for the type \"",
+              type,
+              "\" already exists"));
     }
   }
 }
@@ -621,8 +632,9 @@ class LoggerDB::ContextCallbackList::CallbacksObj {
   void push(ContextCallback callback) {
     auto end = end_.load(std::memory_order_relaxed);
     if (end == block_.end()) {
-      folly::throw_exception(std::length_error(
-          "Exceeding limit for the number of pushed context callbacks."));
+      folly::throw_exception(
+          std::length_error(
+              "Exceeding limit for the number of pushed context callbacks."));
     }
     *end = std::move(callback);
     end_.store(std::next(end), std::memory_order_release);

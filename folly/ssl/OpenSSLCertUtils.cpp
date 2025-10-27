@@ -346,11 +346,12 @@ std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
       // Reach end of buffer.
       break;
     }
-    throw std::runtime_error(folly::to<std::string>(
-        "Unable to parse cert ",
-        certs.size(),
-        ": ",
-        getOpenSSLErrorString(err)));
+    throw std::runtime_error(
+        folly::to<std::string>(
+            "Unable to parse cert ",
+            certs.size(),
+            ": ",
+            getOpenSSLErrorString(err)));
   }
   return certs;
 }
@@ -397,9 +398,10 @@ X509StoreUniquePtr OpenSSLCertUtils::readStoreFromBuffer(ByteRange certRange) {
       auto err = ERR_get_error();
       if (ERR_GET_LIB(err) != ERR_LIB_X509 ||
           ERR_GET_REASON(err) != X509_R_CERT_ALREADY_IN_HASH_TABLE) {
-        throw std::runtime_error(folly::to<std::string>(
-            "Could not insert CA certificate into store: ",
-            getOpenSSLErrorString(err)));
+        throw std::runtime_error(
+            folly::to<std::string>(
+                "Could not insert CA certificate into store: ",
+                getOpenSSLErrorString(err)));
       }
     }
   }

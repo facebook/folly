@@ -1322,23 +1322,18 @@ template <template <typename...> class Out>
 inline constexpr type_identity<Out<>> type_list_concat_<Out>;
 
 template <
-    template <typename...>
-    class Out,
-    template <typename...>
-    class In,
+    template <typename...> class Out,
+    template <typename...> class In,
     typename... T>
 inline constexpr auto type_list_concat_<Out, In<T...>> =
     type_identity<Out<T...>>{};
 
 template <
-    template <typename...>
-    class Out,
+    template <typename...> class Out,
     // Allow input lists to come from heterogeneous templates.
-    template <typename...>
-    class InA,
+    template <typename...> class InA,
     typename... A,
-    template <typename...>
-    class InB,
+    template <typename...> class InB,
     typename... B,
     typename... Tail>
 inline constexpr auto type_list_concat_<Out, InA<A...>, InB<B...>, Tail...> =
@@ -1459,14 +1454,11 @@ inline constexpr auto value_list_concat_<Out, In<V...>> =
     type_identity<Out<V...>>{};
 
 template <
-    template <auto...>
-    class Out,
+    template <auto...> class Out,
     // Allow input lists to come from heterogeneous templates.
-    template <auto...>
-    class InA,
+    template <auto...> class InA,
     auto... A,
-    template <auto...>
-    class InB,
+    template <auto...> class InB,
     auto... B,
     typename... Tail>
 inline constexpr auto value_list_concat_<Out, InA<A...>, InB<B...>, Tail...> =

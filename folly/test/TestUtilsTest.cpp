@@ -139,8 +139,9 @@ TEST(ExpectThrowRegex, FailureCases) {
       recordFailure);
   EXPECT_THAT(
       failureMsg,
-      MatchesRegex("Expected:.* throws a std::runtime_error with message "
-                   "matching \"xest\".*Actual: message is: test"));
+      MatchesRegex(
+          "Expected:.* throws a std::runtime_error with message "
+          "matching \"xest\".*Actual: message is: test"));
 
   failureMsg = "";
   TEST_THROW_RE_(
@@ -150,6 +151,7 @@ TEST(ExpectThrowRegex, FailureCases) {
       recordFailure);
   EXPECT_THAT(
       failureMsg,
-      MatchesRegex("Expected:.* throws a std::runtime_error with message "
-                   "matching \"xyz\".*Actual: message is: abc"));
+      MatchesRegex(
+          "Expected:.* throws a std::runtime_error with message "
+          "matching \"xyz\".*Actual: message is: abc"));
 }

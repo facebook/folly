@@ -164,7 +164,7 @@ TEST_F(ProtocolTest, match_safely_invocable_as_protocol) {
     EXPECT_FALSE((safely_invocable_v<fun, void() const>));
     EXPECT_FALSE((safely_invocable_v<fun, void() volatile>));
     EXPECT_FALSE((safely_invocable_v<fun, void() const volatile>));
-    EXPECT_FALSE((safely_invocable_v<fun, void()&>));
+    EXPECT_FALSE((safely_invocable_v<fun, void() &>));
     EXPECT_FALSE((safely_invocable_v<fun, void() const&>));
     EXPECT_FALSE((safely_invocable_v<fun, void() volatile&>));
     EXPECT_FALSE((safely_invocable_v<fun, void() const volatile&>));

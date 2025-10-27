@@ -61,14 +61,18 @@ Server::Server() : acceptSocket_(), port_(0), stop_(NO_STOP) {
   addr.sin_family = AF_INET;
   addr.sin_port = 0;
   addr.sin_addr.s_addr = INADDR_ANY;
-  CHECK_ERR(netops::bind(
-      acceptSocket_, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)));
+  CHECK_ERR(
+      netops::bind(
+          acceptSocket_,
+          reinterpret_cast<const sockaddr*>(&addr),
+          sizeof(addr)));
 
   CHECK_ERR(netops::listen(acceptSocket_, 10));
 
   socklen_t addrLen = sizeof(addr);
-  CHECK_ERR(netops::getsockname(
-      acceptSocket_, reinterpret_cast<sockaddr*>(&addr), &addrLen));
+  CHECK_ERR(
+      netops::getsockname(
+          acceptSocket_, reinterpret_cast<sockaddr*>(&addr), &addrLen));
 
   port_ = ntohs(addr.sin_port);
 
@@ -135,8 +139,9 @@ NetworkSocket createConnectedSocket(int port) {
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   addr.sin_addr.s_addr = htonl((127 << 24) | 1); // XXX
-  CHECK_ERR(netops::connect(
-      sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)));
+  CHECK_ERR(
+      netops::connect(
+          sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)));
   return sock;
 }
 

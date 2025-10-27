@@ -97,9 +97,10 @@ CIDRNetwork IPAddress::createNetwork(
   }
 
   if (ret.error() == CIDRNetworkError::INVALID_IP_SLASH_CIDR) {
-    throw IPAddressFormatException(fmt::format(
-        "Invalid ipSlashCidr specified. Expected IP/CIDR format, got '{}'",
-        ipSlashCidr));
+    throw IPAddressFormatException(
+        fmt::format(
+            "Invalid ipSlashCidr specified. Expected IP/CIDR format, got '{}'",
+            ipSlashCidr));
   }
 
   // Handler the remaining error cases. We re-parse the ip/mask pair
@@ -120,10 +121,11 @@ CIDRNetwork IPAddress::createNetwork(
       auto cidr = static_cast<uint8_t>(
           (defaultCidr > -1) ? defaultCidr : (subnet.isV4() ? 32 : 128));
 
-      throw IPAddressFormatException(fmt::format(
-          "CIDR value '{}' is > network bit count '{}'",
-          vec.size() == 2 ? vec.at(1) : to<string>(cidr),
-          subnet.bitCount()));
+      throw IPAddressFormatException(
+          fmt::format(
+              "CIDR value '{}' is > network bit count '{}'",
+              vec.size() == 2 ? vec.at(1) : to<string>(cidr),
+              subnet.bitCount()));
     }
     case CIDRNetworkError::INVALID_DEFAULT_CIDR:
     case CIDRNetworkError::INVALID_IP_SLASH_CIDR:
@@ -376,10 +378,11 @@ bool IPAddress::inSubnetWithMask(
 uint8_t IPAddress::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {
-    throw std::invalid_argument(fmt::format(
-        "Byte index must be <= {} for addresses of type: {}",
-        highestIndex,
-        detail::familyNameStr(family())));
+    throw std::invalid_argument(
+        fmt::format(
+            "Byte index must be <= {} for addresses of type: {}",
+            highestIndex,
+            detail::familyNameStr(family())));
   }
   if (isV4()) {
     return asV4().bytes()[byteIndex];
@@ -452,11 +455,12 @@ bool operator<(const IPAddress& addr1, const IPAddress& addr2) {
 CIDRNetwork IPAddress::longestCommonPrefix(
     const CIDRNetwork& one, const CIDRNetwork& two) {
   if (one.first.family() != two.first.family()) {
-    throw std::invalid_argument(fmt::format(
-        "Can't compute longest common prefix between addresses of different"
-        "families. Passed: {} and {}",
-        detail::familyNameStr(one.first.family()),
-        detail::familyNameStr(two.first.family())));
+    throw std::invalid_argument(
+        fmt::format(
+            "Can't compute longest common prefix between addresses of different"
+            "families. Passed: {} and {}",
+            detail::familyNameStr(one.first.family()),
+            detail::familyNameStr(two.first.family())));
   }
   if (one.first.isV4()) {
     auto prefix = IPAddressV4::longestCommonPrefix(

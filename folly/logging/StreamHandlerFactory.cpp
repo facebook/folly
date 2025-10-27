@@ -42,8 +42,11 @@ std::shared_ptr<LogWriter> StreamHandlerFactory::WriterFactory::createWriter() {
   } else if (stream_ == "stdout") {
     outputFile = File{STDOUT_FILENO, /* ownsFd */ false};
   } else {
-    throw std::invalid_argument(to<std::string>(
-        "unknown stream \"", stream_, "\": expected one of stdout or stderr"));
+    throw std::invalid_argument(
+        to<std::string>(
+            "unknown stream \"",
+            stream_,
+            "\": expected one of stdout or stderr"));
   }
 
   return fileWriterFactory_.createWriter(std::move(outputFile));

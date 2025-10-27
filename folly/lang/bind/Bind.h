@@ -151,8 +151,9 @@ class merge_update_args : public like_args {
       }(type_list_concat_t<tag_t, typename args<Ts>::binding_list_t...>{}));
 
   explicit constexpr merge_update_args(args<Ts>... ts) noexcept
-      : tup_(detail::lite_tuple::tuple_cat(
-            std::move(ts).unsafe_tuple_to_bind()...)) {}
+      : tup_(
+            detail::lite_tuple::tuple_cat(
+                std::move(ts).unsafe_tuple_to_bind()...)) {}
 
   // `lifetimebound` documented in `in_place_args_crtp_base`
   constexpr auto unsafe_tuple_to_bind() && noexcept [[clang::lifetimebound]] {

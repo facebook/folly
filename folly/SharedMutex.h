@@ -1437,8 +1437,7 @@ extern template class SharedMutexImpl<false>;
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename>
-    class Atom,
+    template <typename> class Atom,
     typename Policy>
 alignas(hardware_destructive_interference_size)
     typename SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::
@@ -1450,8 +1449,7 @@ alignas(hardware_destructive_interference_size)
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename>
-    class Atom,
+    template <typename> class Atom,
     typename Policy>
 bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::
     tryUnlockTokenlessSharedDeferred() {
@@ -1475,8 +1473,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename>
-    class Atom,
+    template <typename> class Atom,
     typename Policy>
 template <class WaitContext>
 bool SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>::lockSharedImpl(
@@ -1619,8 +1616,7 @@ namespace std {
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename>
-    class Atom,
+    template <typename> class Atom,
     typename Policy>
 class shared_lock<
     ::folly::SharedMutexImpl<ReaderPriority, Tag_, Atom, Policy>> {

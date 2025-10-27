@@ -54,8 +54,8 @@ void runSanityChecks(T const& t) {
 #endif
 }
 
-template <template <typename, typename, typename, typename, typename>
-          class TMap>
+template <
+    template <typename, typename, typename, typename, typename> class TMap>
 void testCustomSwap() {
   using std::swap;
 
@@ -80,8 +80,7 @@ TEST(F14Map, customSwap) {
 }
 
 template <
-    template <typename, typename, typename, typename, typename>
-    class TMap,
+    template <typename, typename, typename, typename, typename> class TMap,
     typename K,
     typename V>
 void runAllocatedMemorySizeTest() {

@@ -245,13 +245,19 @@ void FunctionScheduler::addFunctionToHeapChecked(
   auto it = functionsMap_.find(nameID);
   // check if the nameID is unique
   if (it != functionsMap_.end()) {
-    throw std::invalid_argument(to<std::string>(
-        "FunctionScheduler: a function named \"", nameID, "\" already exists"));
+    throw std::invalid_argument(
+        to<std::string>(
+            "FunctionScheduler: a function named \"",
+            nameID,
+            "\" already exists"));
   }
 
   if (currentFunction_ && currentFunction_->name == nameID) {
-    throw std::invalid_argument(to<std::string>(
-        "FunctionScheduler: a function named \"", nameID, "\" already exists"));
+    throw std::invalid_argument(
+        to<std::string>(
+            "FunctionScheduler: a function named \"",
+            nameID,
+            "\" already exists"));
   }
 
   addFunctionToHeap(

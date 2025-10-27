@@ -153,8 +153,9 @@ class MultiLevelTimeSeries {
         return level;
       }
     }
-    throw std::out_of_range(folly::to<std::string>(
-        "No level of duration ", duration.count(), " found"));
+    throw std::out_of_range(
+        folly::to<std::string>(
+            "No level of duration ", duration.count(), " found"));
   }
 
   /*

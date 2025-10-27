@@ -30,26 +30,26 @@ namespace folly {
 #define FOLLY_LIBEVENT_COMPAT_PLUCK2(name) \
   ev_evcallback.evcb_cb_union.evcb_##name
 #endif
-#define FOLLY_LIBEVENT_DEF_ACCESSORS(name)                           \
-  inline auto event_ref_##name(struct event* ev)                     \
-      ->decltype(std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name))) {  \
-    return std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name));          \
-  }                                                                  \
-  inline auto event_ref_##name(struct event const* ev)               \
-      ->decltype(std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name))) { \
-    return std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name));         \
-  }                                                                  \
-  //
-
-#define FOLLY_LIBEVENT_DEF_ACCESSORS2(name)                           \
+#define FOLLY_LIBEVENT_DEF_ACCESSORS(name)                            \
   inline auto event_ref_##name(struct event* ev)                      \
-      ->decltype(std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK2(name))) {  \
-    return std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK2(name));          \
+      -> decltype(std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name))) {  \
+    return std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name));           \
   }                                                                   \
   inline auto event_ref_##name(struct event const* ev)                \
-      ->decltype(std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK2(name))) { \
-    return std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK2(name));         \
+      -> decltype(std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name))) { \
+    return std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name));          \
   }                                                                   \
+  //
+
+#define FOLLY_LIBEVENT_DEF_ACCESSORS2(name)                            \
+  inline auto event_ref_##name(struct event* ev)                       \
+      -> decltype(std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK2(name))) {  \
+    return std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK2(name));           \
+  }                                                                    \
+  inline auto event_ref_##name(struct event const* ev)                 \
+      -> decltype(std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK2(name))) { \
+    return std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK2(name));          \
+  }                                                                    \
   //
 
 FOLLY_LIBEVENT_DEF_ACCESSORS(arg)

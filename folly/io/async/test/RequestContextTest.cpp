@@ -178,15 +178,17 @@ TEST_F(RequestContextTest, setIfAbsentTest) {
   EXPECT_TRUE(RequestContext::get() != nullptr);
 
   RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
-  EXPECT_FALSE(RequestContext::get()->setContextDataIfAbsent(
-      "test", std::make_unique<TestData>(20)));
+  EXPECT_FALSE(
+      RequestContext::get()->setContextDataIfAbsent(
+          "test", std::make_unique<TestData>(20)));
   EXPECT_EQ(
       10,
       dynamic_cast<TestData*>(RequestContext::get()->getContextData(testtoken))
           ->data_);
 
-  EXPECT_TRUE(RequestContext::get()->setContextDataIfAbsent(
-      "test2", std::make_unique<TestData>(20)));
+  EXPECT_TRUE(
+      RequestContext::get()->setContextDataIfAbsent(
+          "test2", std::make_unique<TestData>(20)));
   EXPECT_EQ(
       20,
       dynamic_cast<TestData*>(RequestContext::get()->getContextData("test2"))

@@ -137,7 +137,7 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorOrStopped
           int> = 0,
       typename T2 = like_t<Self, T>,
       std::enable_if_t<is_awaitable_v<T2>, int> = 0>
-  friend ResultAwaiter<T2> operator co_await(Self && self) {
+  friend ResultAwaiter<T2> operator co_await(Self&& self) {
     return ResultAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
 
@@ -153,8 +153,8 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorOrStopped
 // IMPORTANT: this will never return "stopped" since `BasePromise` sets up
 // `OperationCancelled` to unwind directly to the parent.
 template <typename T>
-class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorImpl
-    : public CommutativeWrapperAwaitable<ValueOrErrorImpl, T> {
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+ValueOrErrorImpl : public CommutativeWrapperAwaitable<ValueOrErrorImpl, T> {
  public:
   using CommutativeWrapperAwaitable<ValueOrErrorImpl, T>::
       CommutativeWrapperAwaitable;
@@ -166,7 +166,7 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorImpl
           int> = 0,
       typename T2 = like_t<Self, T>,
       std::enable_if_t<is_awaitable_v<T2>, int> = 0>
-  friend ResultAwaiter<T2> operator co_await(Self && self) {
+  friend ResultAwaiter<T2> operator co_await(Self&& self) {
     return ResultAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
 
@@ -187,8 +187,8 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorImpl
 // latter "sometimes throwing" semantics would be a surprising footgun, so we
 // instead require the obvious contract of `value_or_error_or_stopped()` here.
 template <typename T>
-class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrError
-    : public CommutativeWrapperAwaitable<ValueOrError, T> {
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+ValueOrError : public CommutativeWrapperAwaitable<ValueOrError, T> {
  public:
   using CommutativeWrapperAwaitable<ValueOrError, T>::
       CommutativeWrapperAwaitable;

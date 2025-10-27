@@ -240,8 +240,9 @@ class StackAwareViaIfAsyncAwaiter {
   explicit StackAwareViaIfAsyncAwaiter(
       folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
       : viaCoroutine_(CoroutineType::create(std::move(executor))),
-        awaitable_(folly::coro::co_withAsyncStack(
-            static_cast<Awaitable&&>(awaitable))),
+        awaitable_(
+            folly::coro::co_withAsyncStack(
+                static_cast<Awaitable&&>(awaitable))),
         awaiter_(
             get_awaiter(static_cast<WithAsyncStackAwaitable&&>(awaitable_))) {}
 
@@ -693,8 +694,9 @@ class CommutativeWrapperAwaitable {
       std::enable_if_t<folly::ext::must_use_immediately_v<T2>, int> = 0>
   explicit CommutativeWrapperAwaitable(T2 awaitable) noexcept(noexcept(T{
       FOLLY_DECLVAL(T2)}))
-      : inner_(folly::ext::must_use_immediately_unsafe_mover(
-            std::move(awaitable))()) {}
+      : inner_(
+            folly::ext::must_use_immediately_unsafe_mover(
+                std::move(awaitable))()) {}
 
   template <typename Factory>
   explicit CommutativeWrapperAwaitable(std::in_place_t, Factory&& factory)
@@ -832,8 +834,8 @@ class CommutativeWrapperAwaitable {
 };
 
 template <typename T>
-class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] TryAwaitable
-    : public CommutativeWrapperAwaitable<TryAwaitable, T> {
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+TryAwaitable : public CommutativeWrapperAwaitable<TryAwaitable, T> {
  public:
   using CommutativeWrapperAwaitable<TryAwaitable, T>::
       CommutativeWrapperAwaitable;
@@ -845,7 +847,7 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] TryAwaitable
           int> = 0,
       typename T2 = like_t<Self, T>,
       std::enable_if_t<is_awaitable_v<T2>, int> = 0>
-  friend TryAwaiter<T2> operator co_await(Self && self) {
+  friend TryAwaiter<T2> operator co_await(Self&& self) {
     return TryAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
 

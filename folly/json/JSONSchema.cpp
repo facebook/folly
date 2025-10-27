@@ -41,16 +41,18 @@ struct FOLLY_EXPORT SchemaError : std::runtime_error {
   SchemaError(const SchemaError&) = default;
 
   SchemaError(folly::StringPiece expected, const dynamic& value)
-      : std::runtime_error(to<std::string>(
-            "Expected to get ", expected, " for value ", toJson(value))) {}
+      : std::runtime_error(
+            to<std::string>(
+                "Expected to get ", expected, " for value ", toJson(value))) {}
   SchemaError(
       folly::StringPiece expected, const dynamic& schema, const dynamic& value)
-      : std::runtime_error(to<std::string>(
-            "Expected to get ",
-            expected,
-            toJson(schema),
-            " for value ",
-            toJson(value))) {}
+      : std::runtime_error(
+            to<std::string>(
+                "Expected to get ",
+                expected,
+                toJson(schema),
+                " for value ",
+                toJson(value))) {}
 };
 
 template <class... Args>
@@ -721,16 +723,18 @@ void SchemaValidator::loadSchema(
     validators_.emplace_back(std::make_unique<MultipleOfValidator>(*p));
   }
   if (const auto* p = schema.get_ptr("maximum")) {
-    validators_.emplace_back(std::make_unique<ComparisonValidator>(
-        *p,
-        schema.get_ptr("exclusiveMaximum"),
-        ComparisonValidator::Type::MAX));
+    validators_.emplace_back(
+        std::make_unique<ComparisonValidator>(
+            *p,
+            schema.get_ptr("exclusiveMaximum"),
+            ComparisonValidator::Type::MAX));
   }
   if (const auto* p = schema.get_ptr("minimum")) {
-    validators_.emplace_back(std::make_unique<ComparisonValidator>(
-        *p,
-        schema.get_ptr("exclusiveMinimum"),
-        ComparisonValidator::Type::MIN));
+    validators_.emplace_back(
+        std::make_unique<ComparisonValidator>(
+            *p,
+            schema.get_ptr("exclusiveMinimum"),
+            ComparisonValidator::Type::MIN));
   }
 
   // String validators
@@ -774,8 +778,9 @@ void SchemaValidator::loadSchema(
   const auto* patternProperties = schema.get_ptr("patternProperties");
   const auto* additionalProperties = schema.get_ptr("additionalProperties");
   if (properties || patternProperties || additionalProperties) {
-    validators_.emplace_back(std::make_unique<PropertiesValidator>(
-        context, properties, patternProperties, additionalProperties));
+    validators_.emplace_back(
+        std::make_unique<PropertiesValidator>(
+            context, properties, patternProperties, additionalProperties));
   }
   if (const auto* p = schema.get_ptr("maxProperties")) {
     validators_.emplace_back(
@@ -806,12 +811,14 @@ void SchemaValidator::loadSchema(
     validators_.emplace_back(std::make_unique<AllOfValidator>(context, *p));
   }
   if (const auto* p = schema.get_ptr("anyOf")) {
-    validators_.emplace_back(std::make_unique<AnyOfValidator>(
-        context, *p, AnyOfValidator::Type::ONE_OR_MORE));
+    validators_.emplace_back(
+        std::make_unique<AnyOfValidator>(
+            context, *p, AnyOfValidator::Type::ONE_OR_MORE));
   }
   if (const auto* p = schema.get_ptr("oneOf")) {
-    validators_.emplace_back(std::make_unique<AnyOfValidator>(
-        context, *p, AnyOfValidator::Type::EXACTLY_ONE));
+    validators_.emplace_back(
+        std::make_unique<AnyOfValidator>(
+            context, *p, AnyOfValidator::Type::EXACTLY_ONE));
   }
   if (const auto* p = schema.get_ptr("not")) {
     validators_.emplace_back(std::make_unique<NotValidator>(context, *p));

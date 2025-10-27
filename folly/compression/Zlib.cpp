@@ -226,16 +226,20 @@ ZlibStreamCodec::ZlibStreamCodec(Options options, int level)
   // is also not supported for gzip and raw deflation.
   // Hence, the codec supports only 9..15.
   if (!inBounds(options_.windowSize, 9, 15)) {
-    throw std::invalid_argument(to<std::string>(
-        "ZlibStreamCodec: invalid windowSize option: ", options.windowSize));
+    throw std::invalid_argument(
+        to<std::string>(
+            "ZlibStreamCodec: invalid windowSize option: ",
+            options.windowSize));
   }
   if (!inBounds(options_.memLevel, 1, 9)) {
-    throw std::invalid_argument(to<std::string>(
-        "ZlibStreamCodec: invalid memLevel option: ", options.memLevel));
+    throw std::invalid_argument(
+        to<std::string>(
+            "ZlibStreamCodec: invalid memLevel option: ", options.memLevel));
   }
   if (!isValidStrategy(options_.strategy)) {
-    throw std::invalid_argument(to<std::string>(
-        "ZlibStreamCodec: invalid strategy: ", options.strategy));
+    throw std::invalid_argument(
+        to<std::string>(
+            "ZlibStreamCodec: invalid strategy: ", options.strategy));
   }
 }
 

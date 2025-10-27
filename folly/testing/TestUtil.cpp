@@ -117,8 +117,9 @@ TemporaryFile::~TemporaryFile() {
 TemporaryDirectory::TemporaryDirectory(
     StringPiece namePrefix, fs::path dir, Scope scope)
     : scope_(scope),
-      path_(std::make_unique<fs::path>(
-          generateUniquePath(std::move(dir), namePrefix))) {
+      path_(
+          std::make_unique<fs::path>(
+              generateUniquePath(std::move(dir), namePrefix))) {
   fs::create_directory(path());
 }
 

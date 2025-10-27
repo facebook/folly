@@ -1110,8 +1110,16 @@ TEST(Split, trySplitTo) {
   EXPECT_EQ(f64, 2);
 
   // std::ignore is supported.
-  EXPECT_TRUE(folly::trySplitTo(
-      "a:15:ab:cd:ef:16.7", ':', std::ignore, i32, sp1, sp2, std::ignore, f64));
+  EXPECT_TRUE(
+      folly::trySplitTo(
+          "a:15:ab:cd:ef:16.7",
+          ':',
+          std::ignore,
+          i32,
+          sp1,
+          sp2,
+          std::ignore,
+          f64));
   EXPECT_EQ(i32, 15);
   EXPECT_EQ(sp1, "ab");
   EXPECT_EQ(sp2, "cd");
@@ -1380,8 +1388,9 @@ TEST(String, humanify) {
   // 20% printable, and the printable portion isn't the prefix; hexify!
   EXPECT_EQ(
       "0xff61ffffff",
-      humanify(string("\xff"
-                      "a\xff\xff\xff")));
+      humanify(string(
+          "\xff"
+          "a\xff\xff\xff")));
 
   // Same as previous, except swap first two chars; prefix is
   // printable and within the threshold, so backslashify.

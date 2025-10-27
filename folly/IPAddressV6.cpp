@@ -177,9 +177,10 @@ Optional<MacAddress> IPAddressV6::getMacAddressFromEUI64() const {
 IPAddressV6 IPAddressV6::fromBinary(ByteRange bytes) {
   auto maybeIp = tryFromBinary(bytes);
   if (maybeIp.hasError()) {
-    throw IPAddressFormatException(to<std::string>(
-        "Invalid IPv6 binary data: length must be 16 bytes, got ",
-        bytes.size()));
+    throw IPAddressFormatException(
+        to<std::string>(
+            "Invalid IPv6 binary data: length must be 16 bytes, got ",
+            bytes.size()));
   }
   return maybeIp.value();
 }
@@ -208,8 +209,9 @@ Expected<Unit, IPAddressFormatError> IPAddressV6::trySetFromBinary(
 IPAddressV6 IPAddressV6::fromInverseArpaName(const std::string& arpaname) {
   auto piece = StringPiece(arpaname);
   if (!piece.removeSuffix(".ip6.arpa")) {
-    throw IPAddressFormatException(fmt::format(
-        "Invalid input. Should end with 'ip6.arpa'. Got '{}'", arpaname));
+    throw IPAddressFormatException(
+        fmt::format(
+            "Invalid input. Should end with 'ip6.arpa'. Got '{}'", arpaname));
   }
   std::vector<StringPiece> pieces;
   split('.', piece, pieces);
@@ -446,10 +448,11 @@ string IPAddressV6::str() const {
   char buffer[INET6_ADDRSTRLEN + IFNAMSIZ + 1];
 
   if (!inet_ntop(AF_INET6, toAddr().s6_addr, buffer, INET6_ADDRSTRLEN)) {
-    throw IPAddressFormatException(fmt::format(
-        "Invalid address with hex '{}' with error {}",
-        detail::Bytes::toHex(bytes(), 16),
-        errnoStr(errno)));
+    throw IPAddressFormatException(
+        fmt::format(
+            "Invalid address with hex '{}' with error {}",
+            detail::Bytes::toHex(bytes(), 16),
+            errnoStr(errno)));
   }
 
   auto scopeId = getScopeId();
@@ -496,10 +499,11 @@ string IPAddressV6::toInverseArpaName() const {
 uint8_t IPAddressV6::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {
-    throw std::invalid_argument(fmt::format(
-        "Byte index must be <= {} for addresses of type: {}",
-        highestIndex,
-        detail::familyNameStr(AF_INET6)));
+    throw std::invalid_argument(
+        fmt::format(
+            "Byte index must be <= {} for addresses of type: {}",
+            highestIndex,
+            detail::familyNameStr(AF_INET6)));
   }
   return bytes()[byteIndex];
 }

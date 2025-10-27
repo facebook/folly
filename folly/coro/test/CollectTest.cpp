@@ -1622,8 +1622,8 @@ TEST_F(CollectAllWindowedTest, VectorOfValueTask) {
 
 TEST_F(CollectAllWindowedTest, MultipleFailuresPropagatesFirstError) {
   try {
-    [[maybe_unused]] auto results =
-        folly::coro::blockingWait(folly::coro::collectAllWindowed(
+    [[maybe_unused]] auto results = folly::coro::blockingWait(
+        folly::coro::collectAllWindowed(
             []() -> folly::coro::Generator<folly::coro::Task<int>&&> {
               for (int i = 0; i < 10; ++i) {
                 co_yield [](int idx) -> folly::coro::Task<int> {
@@ -1816,24 +1816,25 @@ TEST_F(CollectAllWindowedTest, VectorOfTaskWithExecutorUsage) {
 class CollectAllTryWindowedTest : public testing::Test {};
 
 TEST_F(CollectAllTryWindowedTest, PartialFailure) {
-  auto results = folly::coro::blockingWait(folly::coro::collectAllTryWindowed(
-      []() -> folly::coro::Generator<folly::coro::Task<int>&&> {
-        for (int i = 0; i < 10; ++i) {
-          co_yield [](int idx) -> folly::coro::Task<int> {
-            using namespace std::literals::chrono_literals;
-            if (idx == 3) {
-              co_await folly::coro::co_reschedule_on_current_executor;
-              co_await folly::coro::co_reschedule_on_current_executor;
-              throw ErrorA{};
-            } else if (idx == 7) {
-              co_await folly::coro::co_reschedule_on_current_executor;
-              throw ErrorB{};
+  auto results = folly::coro::blockingWait(
+      folly::coro::collectAllTryWindowed(
+          []() -> folly::coro::Generator<folly::coro::Task<int>&&> {
+            for (int i = 0; i < 10; ++i) {
+              co_yield [](int idx) -> folly::coro::Task<int> {
+                using namespace std::literals::chrono_literals;
+                if (idx == 3) {
+                  co_await folly::coro::co_reschedule_on_current_executor;
+                  co_await folly::coro::co_reschedule_on_current_executor;
+                  throw ErrorA{};
+                } else if (idx == 7) {
+                  co_await folly::coro::co_reschedule_on_current_executor;
+                  throw ErrorB{};
+                }
+                co_return idx;
+              }(i);
             }
-            co_return idx;
-          }(i);
-        }
-      }(),
-      5));
+          }(),
+          5));
   EXPECT_EQ(10, results.size());
 
   for (int i = 0; i < 10; ++i) {

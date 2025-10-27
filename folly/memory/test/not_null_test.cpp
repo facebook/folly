@@ -144,8 +144,9 @@ TYPED_TEST_P(NotNullTest, ctor_exception) {
 
   // Copy/move constructor never throws
   EXPECT_FALSE(TypeParam::template ctor_throws<Derived*>(nnd));
-  EXPECT_FALSE(TypeParam::template ctor_throws<Derived*>(
-      const_cast<const not_null_derived&>(nnd)));
+  EXPECT_FALSE(
+      TypeParam::template ctor_throws<Derived*>(
+          const_cast<const not_null_derived&>(nnd)));
 
   // Converting constructor fails in debug mode
   if constexpr (folly::kIsDebug) {

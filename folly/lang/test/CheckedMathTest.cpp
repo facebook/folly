@@ -81,8 +81,9 @@ TEST(CheckedMath, checkedAddOverflow) {
 TEST(CheckedMath, checkedAddUint64TOverflow) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::checked_add<uint64_t>(
-      &a, std::numeric_limits<uint64_t>::max() - 7, 9));
+  EXPECT_FALSE(
+      folly::checked_add<uint64_t>(
+          &a, std::numeric_limits<uint64_t>::max() - 7, 9));
   EXPECT_EQ(a, {});
 }
 
@@ -96,16 +97,18 @@ TEST(CheckedMath, checkedAdd3NoOverflow) {
 TEST(CheckedMath, checkedAdd3Overflow) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::checked_add<uint64_t>(
-      &a, 5, std::numeric_limits<uint64_t>::max() - 7, 9));
+  EXPECT_FALSE(
+      folly::checked_add<uint64_t>(
+          &a, 5, std::numeric_limits<uint64_t>::max() - 7, 9));
   EXPECT_EQ(a, {});
 }
 
 TEST(CheckedMath, checkedAdd3Overflow2) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::checked_add<uint64_t>(
-      &a, 5, 7, std::numeric_limits<uint64_t>::max() - 7));
+  EXPECT_FALSE(
+      folly::checked_add<uint64_t>(
+          &a, 5, 7, std::numeric_limits<uint64_t>::max() - 7));
   EXPECT_EQ(a, {});
 }
 
@@ -119,24 +122,27 @@ TEST(CheckedMath, checkedAdd4NoOverflow) {
 TEST(CheckedMath, checkedAdd4Overflow) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::checked_add<uint64_t>(
-      &a, 5, std::numeric_limits<uint64_t>::max() - 7, 9, 11));
+  EXPECT_FALSE(
+      folly::checked_add<uint64_t>(
+          &a, 5, std::numeric_limits<uint64_t>::max() - 7, 9, 11));
   EXPECT_EQ(a, {});
 }
 
 TEST(CheckedMath, checkedAdd4Overflow2) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::checked_add<uint64_t>(
-      &a, 5, 7, std::numeric_limits<uint64_t>::max() - 7, 11));
+  EXPECT_FALSE(
+      folly::checked_add<uint64_t>(
+          &a, 5, 7, std::numeric_limits<uint64_t>::max() - 7, 11));
   EXPECT_EQ(a, {});
 }
 
 TEST(CheckedMath, checkedAdd4Overflow3) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::checked_add<uint64_t>(
-      &a, 5, 7, 9, std::numeric_limits<uint64_t>::max() - 7));
+  EXPECT_FALSE(
+      folly::checked_add<uint64_t>(
+          &a, 5, 7, 9, std::numeric_limits<uint64_t>::max() - 7));
   EXPECT_EQ(a, {});
 }
 
@@ -150,16 +156,18 @@ TEST(CheckedMath, genericCheckedAddSignedNoOverflow) {
 TEST(CheckedMath, genericCheckedAddSignedOverflow) {
   int a;
 
-  EXPECT_FALSE(folly::detail::generic_checked_add(
-      &a, std::numeric_limits<int>::max(), 4));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_add(
+          &a, std::numeric_limits<int>::max(), 4));
   EXPECT_EQ(a, {});
 }
 
 TEST(CheckedMath, genericCheckedAddSignedUnderflow) {
   int a;
 
-  EXPECT_FALSE(folly::detail::generic_checked_add(
-      &a, std::numeric_limits<int>::min(), -3));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_add(
+          &a, std::numeric_limits<int>::min(), -3));
   EXPECT_EQ(a, {});
 }
 
@@ -173,24 +181,27 @@ TEST(CheckedMath, genericCheckedAddNoOverflow) {
 TEST(CheckedMath, genericCheckedAddOverflow) {
   unsigned int a;
 
-  EXPECT_FALSE(folly::detail::generic_checked_add(
-      &a, std::numeric_limits<unsigned int>::max(), 4u));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_add(
+          &a, std::numeric_limits<unsigned int>::max(), 4u));
   EXPECT_EQ(a, {});
 }
 
 TEST(CheckedMath, genericCheckedAddLimit) {
   unsigned int a;
 
-  EXPECT_TRUE(folly::detail::generic_checked_add(
-      &a, std::numeric_limits<unsigned int>::max() - 7u, 7u));
+  EXPECT_TRUE(
+      folly::detail::generic_checked_add(
+          &a, std::numeric_limits<unsigned int>::max() - 7u, 7u));
   EXPECT_EQ(a, std::numeric_limits<unsigned int>::max());
 }
 
 TEST(CheckedMath, genericCheckedAddUint64TOverflow) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::detail::generic_checked_add<uint64_t>(
-      &a, std::numeric_limits<uint64_t>::max() - 7, 9));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_add<uint64_t>(
+          &a, std::numeric_limits<uint64_t>::max() - 7, 9));
   EXPECT_EQ(a, {});
 }
 
@@ -240,8 +251,9 @@ TEST(CheckedMath, checkedMulOverflow) {
 TEST(CheckedMath, checkedMulUint64TOverflow) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::checked_mul<uint64_t>(
-      &a, std::numeric_limits<uint64_t>::max() - 7, 9));
+  EXPECT_FALSE(
+      folly::checked_mul<uint64_t>(
+          &a, std::numeric_limits<uint64_t>::max() - 7, 9));
   EXPECT_EQ(a, {});
 }
 
@@ -255,16 +267,18 @@ TEST(CheckedMath, genericCheckedMulNoOverflow) {
 TEST(CheckedMath, genericCheckedMulOverflow) {
   unsigned int a;
 
-  EXPECT_FALSE(folly::detail::generic_checked_mul(
-      &a, std::numeric_limits<unsigned int>::max(), 4u));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_mul(
+          &a, std::numeric_limits<unsigned int>::max(), 4u));
   EXPECT_EQ(a, {});
 }
 
 TEST(CheckedMath, genericCheckedMulUint64TOverflow) {
   uint64_t a;
 
-  EXPECT_FALSE(folly::detail::generic_checked_mul<uint64_t>(
-      &a, std::numeric_limits<uint64_t>::max() - 7, 9));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_mul<uint64_t>(
+          &a, std::numeric_limits<uint64_t>::max() - 7, 9));
   EXPECT_EQ(a, {});
 }
 
@@ -272,8 +286,9 @@ TEST(CheckedMath, genericCheckedMulUint64TOverflow1) {
   uint64_t a;
 
   // lhs_high != 0 && rhs_high != 0
-  EXPECT_FALSE(folly::detail::generic_checked_mul<uint64_t>(
-      &a, 0x1'0000'0000, 0x1'0000'0000));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_mul<uint64_t>(
+          &a, 0x1'0000'0000, 0x1'0000'0000));
   EXPECT_EQ(a, {});
 }
 
@@ -281,8 +296,9 @@ TEST(CheckedMath, genericCheckedMulUint64TOverflow2) {
   uint64_t a;
 
   // lhs_low * rhs_high overflows
-  EXPECT_FALSE(folly::detail::generic_checked_mul<uint64_t>(
-      &a, 0xFFFF'FFFF, 0xF'0000'0000));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_mul<uint64_t>(
+          &a, 0xFFFF'FFFF, 0xF'0000'0000));
   EXPECT_EQ(a, {});
 }
 
@@ -290,8 +306,9 @@ TEST(CheckedMath, genericCheckedMulUint64TOverflow3) {
   uint64_t a;
 
   // lhs_high * rhs_low overflows
-  EXPECT_FALSE(folly::detail::generic_checked_mul<uint64_t>(
-      &a, 0xF'0000'0000, 0xFFFF'FFFF));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_mul<uint64_t>(
+          &a, 0xF'0000'0000, 0xFFFF'FFFF));
   EXPECT_EQ(a, {});
 }
 
@@ -299,8 +316,9 @@ TEST(CheckedMath, genericCheckedMulUint64TOverflow4) {
   uint64_t a;
 
   // mid_bits1 + mid_bits2 overflows
-  EXPECT_FALSE(folly::detail::generic_checked_mul<uint64_t>(
-      &a, 0x2'7FFF'FFFF, 0x2'7FFF'FFFF));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_mul<uint64_t>(
+          &a, 0x2'7FFF'FFFF, 0x2'7FFF'FFFF));
   EXPECT_EQ(a, {});
 }
 
@@ -308,8 +326,9 @@ TEST(CheckedMath, genericCheckedMulUint64TOverflow5) {
   uint64_t a;
 
   // (lhs_low * rhs_low) + (mid_bits << 32) overflows
-  EXPECT_FALSE(folly::detail::generic_checked_mul<uint64_t>(
-      &a, 0x2'0000'0203, 0x7FFF'FFFF));
+  EXPECT_FALSE(
+      folly::detail::generic_checked_mul<uint64_t>(
+          &a, 0x2'0000'0203, 0x7FFF'FFFF));
   EXPECT_EQ(a, {});
 }
 
@@ -363,16 +382,18 @@ TEST(CheckedMath, checkedMuladdNoOverflow) {
 TEST(CheckedMath, checkedMuladdOverflow) {
   unsigned int a;
 
-  EXPECT_FALSE(folly::checked_muladd(
-      &a, 5u, std::numeric_limits<unsigned int>::max(), 1u));
+  EXPECT_FALSE(
+      folly::checked_muladd(
+          &a, 5u, std::numeric_limits<unsigned int>::max(), 1u));
   EXPECT_EQ(a, {});
 }
 
 TEST(CheckedMath, checkedMuladdOverflow2) {
   unsigned int a;
 
-  EXPECT_FALSE(folly::checked_muladd(
-      &a, 5u, 4u, std::numeric_limits<unsigned int>::max()));
+  EXPECT_FALSE(
+      folly::checked_muladd(
+          &a, 5u, 4u, std::numeric_limits<unsigned int>::max()));
   EXPECT_EQ(a, {});
 }
 
@@ -388,7 +409,8 @@ TEST(CheckedMath, checkedPtrAddOverflow) {
   unsigned int buf[4];
   unsigned int* a{nullptr};
 
-  EXPECT_FALSE(folly::checked_add(
-      &a, &buf[0], std::numeric_limits<uint64_t>::max() - 7));
+  EXPECT_FALSE(
+      folly::checked_add(
+          &a, &buf[0], std::numeric_limits<uint64_t>::max() - 7));
   EXPECT_EQ(a, nullptr);
 }

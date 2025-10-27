@@ -35,8 +35,9 @@ ZeroCopyTest::ZeroCopyTest(
   clients_.reserve(numClients_);
 
   for (size_t i = 0; i < numClients_; i++) {
-    clients_.emplace_back(std::make_unique<ZeroCopyTestAsyncSocket>(
-        &counter_, &evb_, numLoops_, bufferSize_, zeroCopy, config));
+    clients_.emplace_back(
+        std::make_unique<ZeroCopyTestAsyncSocket>(
+            &counter_, &evb_, numLoops_, bufferSize_, zeroCopy, config));
   }
   if (listenSock_) {
     server_.addCallbackToServerSocket(*listenSock_);

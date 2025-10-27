@@ -369,8 +369,9 @@ class UDPNotifyClient : public UDPClient {
     ssize_t ret = sock.recvmsg(&msg, 0);
     if (ret < 0) {
       if (errno != EAGAIN || errno != EWOULDBLOCK) {
-        onReadError(folly::AsyncSocketException(
-            folly::AsyncSocketException::NETWORK_ERROR, "error"));
+        onReadError(
+            folly::AsyncSocketException(
+                folly::AsyncSocketException::NETWORK_ERROR, "error"));
       }
     } else {
       // Datagram sockets in various domains (e.g., the UNIX and Internet
@@ -413,8 +414,9 @@ class UDPNotifyClient : public UDPClient {
         msgs.data(), numMsgs_, 0x10000 /* MSG_WAITFORONE */, nullptr);
     if (ret < 0) {
       if (errno != EAGAIN || errno != EWOULDBLOCK) {
-        onReadError(folly::AsyncSocketException(
-            folly::AsyncSocketException::NETWORK_ERROR, "error"));
+        onReadError(
+            folly::AsyncSocketException(
+                folly::AsyncSocketException::NETWORK_ERROR, "error"));
       }
       return;
     }
@@ -1012,8 +1014,9 @@ MATCHER_P(HasNontrivialCmsgs, cmsgs, "") {
        cmsg = CMSG_NXTHDR(msg, cmsg)) {
     if (cmsg->cmsg_level == SOL_SOCKET) {
       if (cmsg->cmsg_type == SO_LINGER) {
-        struct linger sl {
-          .l_onoff = 0, .l_linger = 0,
+        struct linger sl{
+            .l_onoff = 0,
+            .l_linger = 0,
         };
 
         memcpy(
@@ -1398,8 +1401,9 @@ TEST_F(AsyncUDPSocketTest, TestApplyStringOptionsPostBind) {
   ASSERT_GT(localAddr.getPort(), 0);
 
   folly::SocketOptionMap options = folly::emptySocketOptionMap;
-  struct linger sl {
-    .l_onoff = 1, .l_linger = 123,
+  struct linger sl{
+      .l_onoff = 1,
+      .l_linger = 123,
   };
 
   options.insert(
@@ -1436,8 +1440,9 @@ TEST_F(AsyncUDPSocketTest, TestWritemNontrivialCmsgs) {
   {
     folly::SocketCmsgMap expectedCmsgs;
     folly::SocketNontrivialCmsgMap expectedNontrivialCmsgs;
-    struct linger sl {
-      .l_onoff = 1, .l_linger = 123,
+    struct linger sl{
+        .l_onoff = 1,
+        .l_linger = 123,
     };
     expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 456;
     expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
@@ -1459,8 +1464,9 @@ TEST_F(AsyncUDPSocketTest, TestWritemNontrivialCmsgs) {
   {
     folly::SocketCmsgMap expectedCmsgs;
     folly::SocketNontrivialCmsgMap expectedNontrivialCmsgs;
-    struct linger sl {
-      .l_onoff = 1, .l_linger = 123,
+    struct linger sl{
+        .l_onoff = 1,
+        .l_linger = 123,
     };
     expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 456;
     expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;

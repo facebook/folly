@@ -67,13 +67,14 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
 
   if (buffer_ == MAP_FAILED) {
     auto errnoCopy = errno;
-    throw std::runtime_error(folly::to<std::string>(
-        "unable to allocate pages of size ",
-        allSize_,
-        " pages=",
-        pages,
-        ": ",
-        folly::errnoStr(errnoCopy)));
+    throw std::runtime_error(
+        folly::to<std::string>(
+            "unable to allocate pages of size ",
+            allSize_,
+            " pages=",
+            pages,
+            ": ",
+            folly::errnoStr(errnoCopy)));
   }
 
   bufferBuffer_ = ((char*)buffer_) + ringMemSize_;

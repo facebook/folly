@@ -52,9 +52,10 @@ std::shared_ptr<LogWriter> FileWriterFactory::createWriter(File file) {
     return asyncWriter;
   } else {
     if (maxBufferSize_.has_value()) {
-      throw std::invalid_argument(to<string>(
-          "the \"max_buffer_size\" option is only valid for async file "
-          "handlers"));
+      throw std::invalid_argument(
+          to<string>(
+              "the \"max_buffer_size\" option is only valid for async file "
+              "handlers"));
     }
     return make_shared<ImmediateFileWriter>(std::move(file));
   }

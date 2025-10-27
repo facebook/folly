@@ -73,9 +73,10 @@ inline exception_wrapper::exception_wrapper(std::exception_ptr&& ptr) noexcept
 template <
     class Ex,
     class Ex_,
-    FOLLY_REQUIRES_DEF(Conjunction<
-                       exception_wrapper::IsStdException<Ex_>,
-                       exception_wrapper::IsRegularExceptionType<Ex_>>::value)>
+    FOLLY_REQUIRES_DEF(
+        Conjunction<
+            exception_wrapper::IsStdException<Ex_>,
+            exception_wrapper::IsRegularExceptionType<Ex_>>::value)>
 inline exception_wrapper::exception_wrapper(Ex&& ex)
     : ptr_{make_exception_ptr_with(std::in_place, std::forward<Ex>(ex))} {}
 

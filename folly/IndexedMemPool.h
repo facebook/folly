@@ -181,9 +181,10 @@ struct IndexedMemPool {
   static constexpr uint32_t maxIndexForCapacity(uint32_t capacity) {
     // index of std::numeric_limits<uint32_t>::max() is reserved for isAllocated
     // tracking
-    return uint32_t(std::min(
-        uint64_t(capacity) + (NumLocalLists - 1) * LocalListLimit,
-        uint64_t(std::numeric_limits<uint32_t>::max() - 1)));
+    return uint32_t(
+        std::min(
+            uint64_t(capacity) + (NumLocalLists - 1) * LocalListLimit,
+            uint64_t(std::numeric_limits<uint32_t>::max() - 1)));
   }
 
   static constexpr uint32_t capacityForMaxIndex(uint32_t maxIndex) {

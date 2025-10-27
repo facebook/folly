@@ -73,8 +73,9 @@ static NetworkSocket at(size_t p) {
 
 ShutdownSocketSet::ShutdownSocketSet(size_t capacity)
     : capacity_(cap(capacity)),
-      data_(static_cast<relaxed_atomic<uint8_t>*>(
-          folly::checkedCalloc(capacity_, sizeof(relaxed_atomic<uint8_t>)))),
+      data_(
+          static_cast<relaxed_atomic<uint8_t>*>(folly::checkedCalloc(
+              capacity_, sizeof(relaxed_atomic<uint8_t>)))),
       nullFile_("/dev/null", O_RDWR) {}
 
 void ShutdownSocketSet::add(NetworkSocket fd) {

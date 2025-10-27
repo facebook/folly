@@ -146,8 +146,9 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
     CHECK_EQ(getReceiverState(), ChannelState::CancellationTriggered);
     receiver_ = nullptr;
     if (fromHandleDestruction) {
-      co_await callCallback(Try<TValue>(
-          folly::make_exception_wrapper<folly::OperationCancelled>()));
+      co_await callCallback(
+          Try<TValue>(
+              folly::make_exception_wrapper<folly::OperationCancelled>()));
     }
     maybeDelete();
   }

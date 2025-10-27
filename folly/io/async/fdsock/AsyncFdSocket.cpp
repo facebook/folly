@@ -114,10 +114,11 @@ void AsyncFdSocket::writeChainWithFds(
       DestructorGuard dg(this);
       AsyncSocketException ex(
           AsyncSocketException::BAD_ARGS,
-          withAddr(fmt::format(
-              "SeqNum of FDs did not match that of socket: {} vs {}",
-              fdsSeqNum,
-              sentFdsSeqNum_)));
+          withAddr(
+              fmt::format(
+                  "SeqNum of FDs did not match that of socket: {} vs {}",
+                  fdsSeqNum,
+                  sentFdsSeqNum_)));
       return failWrite(__func__, callback, 0, ex);
     }
     sentFdsSeqNum_ = detail::addSocketFdsSeqNum(sentFdsSeqNum_, fds.size());

@@ -246,10 +246,11 @@ void DynamicParser::required(const folly::dynamic& key, Fn fn) {
   wrapError(&key, [&]() {
     auto vp = value().get_ptr(key);
     if (!vp) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Couldn't find key ",
-          detail::toPseudoJson(key),
-          " in dynamic object"));
+      throw std::runtime_error(
+          folly::to<std::string>(
+              "Couldn't find key ",
+              detail::toPseudoJson(key),
+              " in dynamic object"));
     }
     parse(key, *vp, fn);
   });

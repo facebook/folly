@@ -58,13 +58,14 @@ class TcpInfoTestUtil {
     EXPECT_CALL(
         mockDispatcher,
         getsockopt(s, IPPROTO_TCP, TCP_INFO, testing::_, testing::_))
-        .WillOnce(testing::WithArgs<3, 4>(
-            testing::Invoke([tInfo](void* optval, socklen_t* optlen) {
-              auto copied = std::min((unsigned int)sizeof tInfo, *optlen);
-              std::memcpy(optval, (void*)&tInfo, copied);
-              *optlen = copied;
-              return 0;
-            })));
+        .WillOnce(
+            testing::WithArgs<3, 4>(
+                testing::Invoke([tInfo](void* optval, socklen_t* optlen) {
+                  auto copied = std::min((unsigned int)sizeof tInfo, *optlen);
+                  std::memcpy(optval, (void*)&tInfo, copied);
+                  *optlen = copied;
+                  return 0;
+                })));
   }
 
   static void setupExpectCallCcName(
@@ -79,20 +80,22 @@ class TcpInfoTestUtil {
             TCP_CONGESTION,
             testing::NotNull(),
             testing::Pointee(testing::Eq(folly::TcpInfo::kLinuxTcpCaNameMax))))
-        .WillOnce(testing::WithArgs<3, 4>(
-            testing::Invoke([ccName](void* optval, socklen_t* optlen) {
-              EXPECT_THAT(optlen, testing::Pointee(testing::Ge(ccName.size())));
-              std::copy(
-                  ccName.begin(),
-                  ccName.end(),
-                  ((std::array<
-                       char,
-                       (unsigned int)folly::TcpInfo::kLinuxTcpCaNameMax>*)
-                       optval)
-                      ->data());
-              *optlen = std::min<socklen_t>(ccName.size(), *optlen);
-              return 0;
-            })));
+        .WillOnce(
+            testing::WithArgs<3, 4>(
+                testing::Invoke([ccName](void* optval, socklen_t* optlen) {
+                  EXPECT_THAT(
+                      optlen, testing::Pointee(testing::Ge(ccName.size())));
+                  std::copy(
+                      ccName.begin(),
+                      ccName.end(),
+                      ((std::array<
+                           char,
+                           (unsigned int)folly::TcpInfo::kLinuxTcpCaNameMax>*)
+                           optval)
+                          ->data());
+                  *optlen = std::min<socklen_t>(ccName.size(), *optlen);
+                  return 0;
+                })));
   }
 
   static void setupExpectCallCcInfo(
@@ -107,13 +110,14 @@ class TcpInfoTestUtil {
             TCP_CC_INFO,
             testing::NotNull(),
             testing::Pointee(testing::Eq(sizeof(folly::TcpInfo::tcp_cc_info)))))
-        .WillOnce(testing::WithArgs<3, 4>(
-            testing::Invoke([ccInfo](void* optval, socklen_t* optlen) {
-              auto copied = std::min((unsigned int)sizeof ccInfo, *optlen);
-              std::memcpy(optval, (void*)&(ccInfo), copied);
-              *optlen = copied;
-              return 0;
-            })));
+        .WillOnce(
+            testing::WithArgs<3, 4>(
+                testing::Invoke([ccInfo](void* optval, socklen_t* optlen) {
+                  auto copied = std::min((unsigned int)sizeof ccInfo, *optlen);
+                  std::memcpy(optval, (void*)&(ccInfo), copied);
+                  *optlen = copied;
+                  return 0;
+                })));
   }
 };
 

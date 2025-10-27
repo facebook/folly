@@ -103,7 +103,7 @@ TEST_F(ProducerFixture, KeepAliveExists_DelaysDestruction) {
           getExecutor(),
           folly::coro::co_invoke(
               [keepAlive = getKeepAlive(), future = std::move(future)]() mutable
-              -> folly::coro::Task<void> { co_await std::move(future); }))
+                  -> folly::coro::Task<void> { co_await std::move(future); }))
           .start();
     }
 

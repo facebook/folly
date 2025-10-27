@@ -284,8 +284,7 @@ template <
     typename T,
     typename PriorityQueue,
     typename Mutex,
-    template <typename>
-    class Atom>
+    template <typename> class Atom>
 template <typename Clock, typename Duration>
 inline bool
 FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_push_impl(
@@ -341,8 +340,7 @@ template <
     typename T,
     typename PriorityQueue,
     typename Mutex,
-    template <typename>
-    class Atom>
+    template <typename> class Atom>
 template <typename Clock, typename Duration>
 inline bool
 FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_pop_impl(
@@ -387,8 +385,7 @@ template <
     typename T,
     typename PriorityQueue,
     typename Mutex,
-    template <typename>
-    class Atom>
+    template <typename> class Atom>
 template <typename Clock, typename Duration>
 inline bool
 FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_peek_impl(

@@ -146,9 +146,10 @@ Async<std::vector<
         !std::is_same<ResultType, Async<void>>::value,
         async_inner_type_t<ResultType>>::
         type>> inline collectAll(InputIterator first, InputIterator last) {
-  return Async(folly::fibers::collectAll(
-      detail::await_iterator<InputIterator>(first),
-      detail::await_iterator<InputIterator>(last)));
+  return Async(
+      folly::fibers::collectAll(
+          detail::await_iterator<InputIterator>(first),
+          detail::await_iterator<InputIterator>(last)));
 }
 
 template <class InputIterator, typename FuncType, typename ResultType>

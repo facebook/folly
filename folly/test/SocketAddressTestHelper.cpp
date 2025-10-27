@@ -29,7 +29,7 @@ bool SocketAddressTestHelper::isIPv6Enabled() {
 }
 
 bool SocketAddressTestHelper::isFamilyOfAddrEnabled(const char* addr) {
-  struct addrinfo hints {};
+  struct addrinfo hints{};
   hints.ai_flags = AI_ADDRCONFIG;
 
   struct addrinfo* resultsp = nullptr;

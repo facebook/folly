@@ -84,13 +84,14 @@ class PointerVariant {
  private:
   void ensureCorrectType(bool secondType) const {
     if (secondType != !!(storage_ & kTypeMask)) {
-      throw std::runtime_error(fmt::format(
-          "Incorrect type specified. Given: {}, Stored: {}",
-          secondType ? folly::demangle(typeid(SecondType).name())
-                     : folly::demangle(typeid(FirstType).name()),
-          storage_ & kTypeMask
-              ? folly::demangle(typeid(SecondType).name())
-              : folly::demangle(typeid(FirstType).name())));
+      throw std::runtime_error(
+          fmt::format(
+              "Incorrect type specified. Given: {}, Stored: {}",
+              secondType ? folly::demangle(typeid(SecondType).name())
+                         : folly::demangle(typeid(FirstType).name()),
+              storage_ & kTypeMask
+                  ? folly::demangle(typeid(SecondType).name())
+                  : folly::demangle(typeid(FirstType).name())));
     }
   }
 

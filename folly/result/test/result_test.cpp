@@ -97,8 +97,9 @@ TEST(Result, noEmptyError) {
         },
         "`result` may not contain an empty `std::exception_ptr`");
   } else {
-    EXPECT_FALSE(non_value_result::from_exception_ptr_slow(std::exception_ptr{})
-                     .to_exception_ptr_slow());
+    EXPECT_FALSE(
+        non_value_result::from_exception_ptr_slow(std::exception_ptr{})
+            .to_exception_ptr_slow());
   }
 }
 

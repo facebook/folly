@@ -113,11 +113,12 @@ BENCHMARK_RELATIVE(cloneCoalescedBenchmark, iters) {
 BENCHMARK(takeOwnershipBenchmark, iters) {
   size_t data = 0;
   while (iters--) {
-    std::unique_ptr<IOBuf> buf(IOBuf::takeOwnership(
-        &data,
-        sizeof(data),
-        [](void* /*unused*/, void* /*unused*/) {},
-        nullptr));
+    std::unique_ptr<IOBuf> buf(
+        IOBuf::takeOwnership(
+            &data,
+            sizeof(data),
+            [](void* /*unused*/, void* /*unused*/) {},
+            nullptr));
   }
 }
 

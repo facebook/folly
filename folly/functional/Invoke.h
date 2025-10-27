@@ -63,7 +63,7 @@ struct invoke_fn {
     return static_cast<F&&>(f)(static_cast<A&&>(a)...);
   }
   template <typename M, typename C, typename... A>
-  FOLLY_ERASE constexpr auto operator()(M C::*f, A&&... a) const
+  FOLLY_ERASE constexpr auto operator()(M C::* f, A&&... a) const
       noexcept(noexcept(std::mem_fn(f)(static_cast<A&&>(a)...)))
           -> decltype(std::mem_fn(f)(static_cast<A&&>(a)...)) {
     return std::mem_fn(f)(static_cast<A&&>(a)...);
@@ -85,12 +85,13 @@ namespace invoke_detail {
 //  Substitutes as void if that holds; otherwise fails a static-assert.
 struct ok_one_ {
   template <typename T>
-  static constexpr bool pass_v = ( //
-      std::is_void_v<T> || //
-      std::is_reference_v<T> || //
-      std::is_function_v<T> || //
-      is_unbounded_array_v<T> || //
-      false);
+  static constexpr bool pass_v =
+      ( //
+          std::is_void_v<T> || //
+          std::is_reference_v<T> || //
+          std::is_function_v<T> || //
+          is_unbounded_array_v<T> || //
+          false);
 
   // note: void return type with no function body to enforce that, in the
   // typical case of complete non-function types, to minimize the quantity of
@@ -161,15 +162,15 @@ struct traits_member_ptr {
 template <typename M, typename C>
 struct traits<M C::*> : traits_member_ptr<M C::*> {};
 template <typename M, typename C>
-struct traits<M C::*const> : traits_member_ptr<M C::*> {};
+struct traits<M C::* const> : traits_member_ptr<M C::*> {};
 template <typename M, typename C>
 struct traits<M C::*&> : traits_member_ptr<M C::*> {};
 template <typename M, typename C>
-struct traits<M C::*const&> : traits_member_ptr<M C::*> {};
+struct traits<M C::* const&> : traits_member_ptr<M C::*> {};
 template <typename M, typename C>
 struct traits<M C::*&&> : traits_member_ptr<M C::*> {};
 template <typename M, typename C>
-struct traits<M C::*const&&> : traits_member_ptr<M C::*> {};
+struct traits<M C::* const&&> : traits_member_ptr<M C::*> {};
 
 #if defined(_MSC_VER) && defined(__NVCC__)
 template <typename P, typename... A>

@@ -47,8 +47,9 @@ void Promise<T, BatonT>::throwIfFulfilled() const {
 template <class T, class BatonT>
 Promise<T, BatonT>::~Promise() {
   if (value_) {
-    setException(folly::make_exception_wrapper<std::logic_error>(
-        "promise not fulfilled"));
+    setException(
+        folly::make_exception_wrapper<std::logic_error>(
+            "promise not fulfilled"));
   }
 }
 

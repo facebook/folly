@@ -95,10 +95,11 @@ inline constexpr match_empty_function_protocol_fn
 //  * std::hash
 //  * std::default_delete
 template <typename F>
-static constexpr bool match_static_lambda_protocol_v = ( //
-    std::is_empty<F>::value && //
-    std::is_trivially_copyable_v<F> && //
-    true);
+static constexpr bool match_static_lambda_protocol_v =
+    ( //
+        std::is_empty<F>::value && //
+        std::is_trivially_copyable_v<F> && //
+        true);
 
 //  ----
 

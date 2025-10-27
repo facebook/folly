@@ -186,8 +186,9 @@ class DirectMutationGuard {
 
   ~DirectMutationGuard() noexcept(false) {
     if (isSortedUnique_) {
-      assert(detail::is_sorted_unique(
-          container_.begin(), container_.end(), comp_));
+      assert(
+          detail::is_sorted_unique(
+              container_.begin(), container_.end(), comp_));
       return;
     }
     as_sorted_unique(container_, comp_);
@@ -395,8 +396,9 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
                                       const Compare&,
                                       Container&&>::value)
       : m_(comp, std::move(container)) {
-    assert(detail::is_sorted_unique(
-        m_.cont_.begin(), m_.cont_.end(), value_comp()));
+    assert(
+        detail::is_sorted_unique(
+            m_.cont_.begin(), m_.cont_.end(), value_comp()));
   }
 
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
@@ -444,8 +446,9 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     swap(m_.cont_, newContainer);
   }
   void swap_container(sorted_unique_t, Container& newContainer) {
-    assert(detail::is_sorted_unique(
-        newContainer.begin(), newContainer.end(), value_comp()));
+    assert(
+        detail::is_sorted_unique(
+            newContainer.begin(), newContainer.end(), value_comp()));
     using std::swap;
     swap(m_.cont_, newContainer);
   }
@@ -1083,8 +1086,9 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
                                       value_compare,
                                       Container&&>::value)
       : m_(value_compare(comp), std::move(container)) {
-    assert(detail::is_sorted_unique(
-        m_.cont_.begin(), m_.cont_.end(), value_comp()));
+    assert(
+        detail::is_sorted_unique(
+            m_.cont_.begin(), m_.cont_.end(), value_comp()));
   }
 
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
@@ -1132,8 +1136,9 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     swap(m_.cont_, newContainer);
   }
   void swap_container(sorted_unique_t, Container& newContainer) {
-    assert(detail::is_sorted_unique(
-        newContainer.begin(), newContainer.end(), value_comp()));
+    assert(
+        detail::is_sorted_unique(
+            newContainer.begin(), newContainer.end(), value_comp()));
     using std::swap;
     swap(m_.cont_, newContainer);
   }

@@ -365,8 +365,9 @@ class FutureBase {
   /// See `raise(exception_wrapper)` for details.
   template <class E>
   void raise(E&& exception) {
-    raise(make_exception_wrapper<typename std::remove_reference<E>::type>(
-        static_cast<E&&>(exception)));
+    raise(
+        make_exception_wrapper<typename std::remove_reference<E>::type>(
+            static_cast<E&&>(exception)));
   }
 
   /// Raises a FutureCancellation interrupt.
@@ -2571,12 +2572,8 @@ Future<T> reduce(It first, It last, T&& initial, F&& func);
 
 /// Sugar for the most common case
 template <class Collection, class T, class F>
-auto reduce(Collection&& c, T&& initial, F&& func)
-    -> decltype(folly::reduce(
-        c.begin(),
-        c.end(),
-        static_cast<T&&>(initial),
-        static_cast<F&&>(func))) {
+auto reduce(Collection&& c, T&& initial, F&& func) -> decltype(folly::reduce(
+    c.begin(), c.end(), static_cast<T&&>(initial), static_cast<F&&>(func))) {
   return folly::reduce(
       c.begin(), c.end(), static_cast<T&&>(initial), static_cast<F&&>(func));
 }

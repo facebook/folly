@@ -216,8 +216,9 @@ void expectFrameEq(
       << shortName << " or fullName=" << fullName << " address: " << frame.addr
       << " hex(address): " << std::hex << frame.addr;
   // Use endsWith in case the build system adds extra paths in front.
-  EXPECT_TRUE(folly::StringPiece(normalizePath(frame.location.file.toString()))
-                  .endsWith(normalizePath(file)))
+  EXPECT_TRUE(
+      folly::StringPiece(normalizePath(frame.location.file.toString()))
+          .endsWith(normalizePath(file)))
       << ' ' << fullName << " address: " << frame.addr
       << " hex(address): " << std::hex << frame.addr
       << " frame.location.file.toString(): " << frame.location.file.toString()

@@ -290,10 +290,11 @@ TEST(Overload, ReturnType) {
           [](const std::monostate&) -> R { return std::nullopt; },
           [](const One&) -> R { return 1; }));
 
-  EXPECT_FALSE(variant_match<R>(
-      null,
-      [](const std::monostate&) { return std::nullopt; },
-      [](const One&) { return 1; }));
+  EXPECT_FALSE(
+      variant_match<R>(
+          null,
+          [](const std::monostate&) { return std::nullopt; },
+          [](const One&) { return 1; }));
   EXPECT_EQ(
       1,
       variant_match<R>(
@@ -327,10 +328,11 @@ TEST(Overload, ReturnType) {
       });
   EXPECT_EQ(1, one_result);
 
-  EXPECT_FALSE(variant_match<R>(
-      std::move(null),
-      [](std::monostate&&) { return std::nullopt; },
-      [](One&&) { return 1; }));
+  EXPECT_FALSE(
+      variant_match<R>(
+          std::move(null),
+          [](std::monostate&&) { return std::nullopt; },
+          [](One&&) { return 1; }));
 }
 
 } // namespace

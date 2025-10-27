@@ -2492,9 +2492,11 @@ TEST_F(ObserverContainerTest, ObserverAttachedEventsUseBuilder) {
 
   // observer 4 is subscribed to all events via enableAllEvents()
   {
-    observers.emplace_back(std::make_unique<
-                           StrictMock<MockTestSubjectObserver>>(
-        MockTestSubjectObserver::EventSetBuilder().enableAllEvents().build()));
+    observers.emplace_back(
+        std::make_unique<StrictMock<MockTestSubjectObserver>>(
+            MockTestSubjectObserver::EventSetBuilder()
+                .enableAllEvents()
+                .build()));
   }
 
   // observer 5 is subscribed to just SpecialEvent

@@ -373,11 +373,12 @@ TEST(RetryingTest, largeRetries) {
 
   vector<SemiFuture<LargeReturn>> futures;
   for (auto idx = 0; idx < 40; ++idx) {
-    futures.emplace_back(futures::retrying(
-        [&executor](size_t, const exception_wrapper&) {
-          return via(&executor).thenValue([](auto&&) { return true; });
-        },
-        func));
+    futures.emplace_back(
+        futures::retrying(
+            [&executor](size_t, const exception_wrapper&) {
+              return via(&executor).thenValue([](auto&&) { return true; });
+            },
+            func));
   }
 
   // 40 * 10,000 * 16,000B > 1GB; we should avoid OOM

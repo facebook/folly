@@ -608,10 +608,8 @@ auto transition_lock_0_(From& lock, Transition transition, A const&... a) {
   }
 }
 template <
-    template <typename>
-    class To,
-    template <typename>
-    class From,
+    template <typename> class To,
+    template <typename> class From,
     typename Mutex,
     typename Transition,
     typename... A>
@@ -668,11 +666,9 @@ struct transition_lock_policy<upgrade_lock<Mutex>, shared_lock<Mutex>> {
 //  Represents an atomic transition from the from-lock to the to-lock. Waits
 //  unboundedly for the transition to become available.
 template <
-    template <typename>
-    class ToLock,
+    template <typename> class ToLock,
     typename Mutex,
-    template <typename>
-    class FromLock>
+    template <typename> class FromLock>
 ToLock<Mutex> transition_lock(FromLock<Mutex>& lock) {
   using policy = detail::transition_lock_policy<FromLock<Mutex>, ToLock<Mutex>>;
   auto _ = typename policy::transition_fn{};
@@ -684,11 +680,9 @@ ToLock<Mutex> transition_lock(FromLock<Mutex>& lock) {
 //  Represents an atomic transition attempt from the from-lock to the to-lock.
 //  Does not wait if the transition is not immediately available.
 template <
-    template <typename>
-    class ToLock,
+    template <typename> class ToLock,
     typename Mutex,
-    template <typename>
-    class FromLock>
+    template <typename> class FromLock>
 ToLock<Mutex> try_transition_lock(FromLock<Mutex>& lock) {
   using policy = detail::transition_lock_policy<FromLock<Mutex>, ToLock<Mutex>>;
   auto _ = typename policy::try_transition_fn{};
@@ -701,11 +695,9 @@ ToLock<Mutex> try_transition_lock(FromLock<Mutex>& lock) {
 //  bounded by a timeout. Waits up to the timeout for the transition to become
 //  available.
 template <
-    template <typename>
-    class ToLock,
+    template <typename> class ToLock,
     typename Mutex,
-    template <typename>
-    class FromLock,
+    template <typename> class FromLock,
     typename Rep,
     typename Period>
 ToLock<Mutex> try_transition_lock_for(
@@ -721,11 +713,9 @@ ToLock<Mutex> try_transition_lock_for(
 //  bounded by a deadline. Waits up to the deadline for the transition to become
 //  available.
 template <
-    template <typename>
-    class ToLock,
+    template <typename> class ToLock,
     typename Mutex,
-    template <typename>
-    class FromLock,
+    template <typename> class FromLock,
     typename Clock,
     typename Duration>
 ToLock<Mutex> try_transition_lock_until(

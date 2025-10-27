@@ -358,8 +358,9 @@ TEST_F(MeteredExecutorTest, UnderlyingExecutor) {
   createAdapter(1);
   EXPECT_FALSE(
       coro::blockingWait(co_withExecutor(getKeepAlive(1), co_isOnCPUExc())));
-  EXPECT_TRUE(coro::blockingWait(co_withExecutor(
-      getKeepAlive(0), co_run(getKeepAlive(0), co_isOnCPUExc()))));
+  EXPECT_TRUE(
+      coro::blockingWait(co_withExecutor(
+          getKeepAlive(0), co_run(getKeepAlive(0), co_isOnCPUExc()))));
 }
 
 TEST_F(MeteredExecutorTest, PauseResume) {

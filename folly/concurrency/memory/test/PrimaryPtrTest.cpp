@@ -139,8 +139,10 @@ TEST(PrimaryPtrTest, Errors) {
 
   auto primaryPtr = std::make_unique<folly::PrimaryPtr<Primed>>(std::move(ptr));
 
-  primaryPtr->lock()->addCleanup(folly::makeSemiFuture().deferValue(
-      [](folly::Unit) { EXPECT_TRUE(false); }));
+  primaryPtr->lock()->addCleanup(
+      folly::makeSemiFuture().deferValue([](folly::Unit) {
+        EXPECT_TRUE(false);
+      }));
 
   primaryPtr->lock()->addCleanup(
       folly::makeSemiFuture<folly::Unit>(std::runtime_error("failed cleanup")));
@@ -191,8 +193,10 @@ TEST(PrimaryPtrTest, Invariants) {
   folly::PrimaryPtr<Primed> primaryPtr(std::move(ptr));
 
   auto ranCleanup = false;
-  primaryPtr.lock()->addCleanup(folly::makeSemiFuture().deferValue(
-      [&](folly::Unit) { ranCleanup = true; }));
+  primaryPtr.lock()->addCleanup(
+      folly::makeSemiFuture().deferValue([&](folly::Unit) {
+        ranCleanup = true;
+      }));
 
   EXPECT_FALSE(ranCleanup);
 

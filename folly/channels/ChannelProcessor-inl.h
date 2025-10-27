@@ -37,8 +37,9 @@ class ChannelProcessorImpl {
       std::shared_ptr<folly::channels::RateLimiter> rateLimiter,
       MergeChannel<KeyType, Unit> mergeChannel,
       Receiver<MergeChannelEvent<KeyType, Unit>> mergeChannelReceiver)
-      : implState_(make_intrusive<ImplState>(
-            std::move(executors), std::move(rateLimiter))),
+      : implState_(
+            make_intrusive<ImplState>(
+                std::move(executors), std::move(rateLimiter))),
         channels_(std::move(mergeChannel)),
         handle_(consumeChannelWithCallback(
             std::move(mergeChannelReceiver),

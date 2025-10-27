@@ -88,22 +88,24 @@ class BasePromise {
       std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable&& awaitable) {
     bypassThrowing_.maybeActivate<Awaitable>();
-    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
-        executor_.get_alias(),
-        folly::coro::co_withCancellation(
-            cancelToken_, static_cast<Awaitable&&>(awaitable))));
+    return folly::coro::co_withAsyncStack(
+        folly::coro::co_viaIfAsync(
+            executor_.get_alias(),
+            folly::coro::co_withCancellation(
+                cancelToken_, static_cast<Awaitable&&>(awaitable))));
   }
   template <
       typename Awaitable,
       std::enable_if_t<folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
   auto await_transform(Awaitable awaitable) {
     bypassThrowing_.maybeActivate<Awaitable>();
-    return folly::coro::co_withAsyncStack(folly::coro::co_viaIfAsync(
-        executor_.get_alias(),
-        folly::coro::co_withCancellation(
-            cancelToken_,
-            folly::ext::must_use_immediately_unsafe_mover(
-                std::move(awaitable))())));
+    return folly::coro::co_withAsyncStack(
+        folly::coro::co_viaIfAsync(
+            executor_.get_alias(),
+            folly::coro::co_withCancellation(
+                cancelToken_,
+                folly::ext::must_use_immediately_unsafe_mover(
+                    std::move(awaitable))())));
   }
 
   template <typename Awaitable>

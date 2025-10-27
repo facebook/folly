@@ -157,8 +157,9 @@ struct dtor_mixin<T, true, false> {
   dtor_mixin& operator=(dtor_mixin&&) = default;
   dtor_mixin& operator=(dtor_mixin const&) = default;
   ~dtor_mixin() noexcept(std::is_nothrow_destructible<T>::value) {
-    T* destruct_ptr = std::launder(reinterpret_cast<T*>(
-        reinterpret_cast<Replaceable<T>*>(this)->storage_));
+    T* destruct_ptr = std::launder(
+        reinterpret_cast<T*>(
+            reinterpret_cast<Replaceable<T>*>(this)->storage_));
     destruct_ptr->~T();
   }
 };
@@ -282,8 +283,9 @@ struct move_assignment_mixin<T, true> {
   operator=(move_assignment_mixin&& other) noexcept(
       std::is_nothrow_destructible<T>::value &&
       std::is_nothrow_move_constructible<T>::value) {
-    T* destruct_ptr = std::launder(reinterpret_cast<T*>(
-        reinterpret_cast<Replaceable<T>*>(this)->storage_));
+    T* destruct_ptr = std::launder(
+        reinterpret_cast<T*>(
+            reinterpret_cast<Replaceable<T>*>(this)->storage_));
     destruct_ptr->~T();
     ::new (reinterpret_cast<Replaceable<T>*>(this)->storage_)
         T(*std::move(reinterpret_cast<Replaceable<T>&>(other)));
@@ -346,8 +348,9 @@ struct copy_assignment_mixin<T, true> {
   operator=(copy_assignment_mixin const& other) noexcept(
       std::is_nothrow_destructible<T>::value &&
       std::is_nothrow_copy_constructible<T>::value) {
-    T* destruct_ptr = std::launder(reinterpret_cast<T*>(
-        reinterpret_cast<Replaceable<T>*>(this)->storage_));
+    T* destruct_ptr = std::launder(
+        reinterpret_cast<T*>(
+            reinterpret_cast<Replaceable<T>*>(this)->storage_));
     destruct_ptr->~T();
     ::new (reinterpret_cast<Replaceable<T>*>(this)->storage_)
         T(*reinterpret_cast<Replaceable<T> const&>(other));

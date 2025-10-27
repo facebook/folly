@@ -791,8 +791,9 @@ class FOLLY_CORO_TASK_ATTRS Task {
       tag_t<Task, F, A...> /*unused*/,
       F_ f,
       A_... a) {
-    co_yield co_result(co_await co_awaitTry(
-        invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
+    co_yield co_result(
+        co_await co_awaitTry(
+            invoke(static_cast<F&&>(f), static_cast<A&&>(a)...)));
   }
 
   using PrivateAwaiterTypeForTests = Awaiter;

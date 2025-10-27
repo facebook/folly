@@ -91,14 +91,14 @@ void multiProducerMultiConsumer(
   // during warm up producers produce kProducerWarmup tasks each and consumers
   // try to consume as much as possible
   for (size_t i = 0; i < numProducers; ++i) {
-    producerThreads.emplace_back(std::thread(
-        [numProducers,
-         &warmUpBaton,
-         &queue,
-         &producersWarmedUp,
-         &itemsToProcess,
-         &stop_producing,
-         &finishedBaton]() mutable {
+    producerThreads.emplace_back(
+        std::thread([numProducers,
+                     &warmUpBaton,
+                     &queue,
+                     &producersWarmedUp,
+                     &itemsToProcess,
+                     &stop_producing,
+                     &finishedBaton]() mutable {
           size_t num_produced{0};
           while (!stop_producing.load(std::memory_order_relaxed)) {
             burn(kBusyLoopSize);

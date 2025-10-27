@@ -191,10 +191,11 @@ void stringAppendfImpl(std::string& output, const char* format, va_list args) {
   int bytes_used = stringAppendfImplHelper(
       inline_buffer.data(), inline_buffer.size(), format, args);
   if (bytes_used < 0) {
-    throw std::runtime_error(to<std::string>(
-        "Invalid format string; snprintf returned negative "
-        "with format string: ",
-        format));
+    throw std::runtime_error(
+        to<std::string>(
+            "Invalid format string; snprintf returned negative "
+            "with format string: ",
+            format));
   }
 
   if (static_cast<size_t>(bytes_used) < inline_buffer.size()) {
@@ -436,8 +437,9 @@ double prettyToDouble(
     }
   }
   if (bestPrefixId == -1) { // No valid suffix rule found
-    throw std::invalid_argument(folly::to<std::string>(
-        "Unable to parse suffix \"", *prettyString, "\""));
+    throw std::invalid_argument(
+        folly::to<std::string>(
+            "Unable to parse suffix \"", *prettyString, "\""));
   }
   prettyString->advance(size_t(longestPrefixLen));
   return suffixes[bestPrefixId].val != 0.

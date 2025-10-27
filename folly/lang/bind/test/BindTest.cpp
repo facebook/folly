@@ -116,7 +116,7 @@ constexpr auto check_nested_args() {
   static_assert(
       std::is_same_v<
           FlatT,
-          args<double&&, args<int&, char&&>, int&, args<>, const char(&)[4]>>);
+          args<double&&, args<int&, char&&>, int&, args<>, const char (&)[4]>>);
   constexpr auto BI = bind_info_t{};
   static_assert(
       std::is_same_v<
@@ -126,7 +126,7 @@ constexpr auto check_nested_args() {
               binding_t<BI, int&>,
               binding_t<BI, char&&>,
               binding_t<BI, int&>,
-              binding_t<BI, const char(&)[4]>>>);
+              binding_t<BI, const char (&)[4]>>>);
   return true;
 }
 

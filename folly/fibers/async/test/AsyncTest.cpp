@@ -332,16 +332,18 @@ TEST(AsyncTest, collect) {
 
     {
       std::array<bool, 3> cs{{false, false, false}};
-      async::await(async::collectAll(
-          makeVoidTask(cs[0]), makeVoidTask(cs[1]), makeVoidTask(cs[2])));
+      async::await(
+          async::collectAll(
+              makeVoidTask(cs[0]), makeVoidTask(cs[1]), makeVoidTask(cs[2])));
       EXPECT_THAT(cs, ElementsAre(true, true, true));
     }
 
     {
       EXPECT_EQ(
           std::make_tuple(1, 2, 3),
-          async::await(async::collectAll(
-              makeRetTask(1), makeRetTask(2), makeRetTask(3))));
+          async::await(
+              async::collectAll(
+                  makeRetTask(1), makeRetTask(2), makeRetTask(3))));
     }
 
     return {};

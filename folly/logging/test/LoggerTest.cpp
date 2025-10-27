@@ -186,8 +186,9 @@ TEST_F(LoggerTest, toStringError) {
   ASSERT_EQ(1, messages.size());
   EXPECT_THAT(
       messages[0].first.getMessage(),
-      MatchesRegex("error constructing log message: .*"
-                   "error converting ToStringFailure object to a string"));
+      MatchesRegex(
+          "error constructing log message: .*"
+          "error converting ToStringFailure object to a string"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::DBG1, messages[0].first.getLevel());
@@ -343,8 +344,9 @@ TEST_F(LoggerTest, logMacros) {
   ASSERT_EQ(1, messages.size());
   EXPECT_THAT(
       messages[0].first.getMessage(),
-      MatchesRegex(R"(error formatting log message: .*format_error.*; )"
-                   R"(format string: "whoops: \{\}, \{\}", arguments: 5)"));
+      MatchesRegex(
+          R"(error formatting log message: .*format_error.*; )"
+          R"(format string: "whoops: \{\}, \{\}", arguments: 5)"));
   messages.clear();
 }
 

@@ -699,9 +699,10 @@ TEST(IPaddress, fromInverseArpaName) {
       IPAddressV4::fromInverseArpaName("1.0.0.10.in-addr.arpa"));
   EXPECT_EQ(
       IPAddressV6("2620:0000:1cfe:face:b00c:0000:0000:0003"),
-      IPAddressV6::fromInverseArpaName(fmt::format(
-          "{}.ip6.arpa",
-          "3.0.0.0.0.0.0.0.0.0.0.0.c.0.0.b.e.c.a.f.e.f.c.1.0.0.0.0.0.2.6.2")));
+      IPAddressV6::fromInverseArpaName(
+          fmt::format(
+              "{}.ip6.arpa",
+              "3.0.0.0.0.0.0.0.0.0.0.0.c.0.0.b.e.c.a.f.e.f.c.1.0.0.0.0.0.2.6.2")));
 }
 
 // Test that invalid string values are killed

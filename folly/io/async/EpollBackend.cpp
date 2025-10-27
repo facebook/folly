@@ -53,7 +53,7 @@ using EventInfoList = folly::IntrusiveList<EventInfo, &EventInfo::listHook>;
 
 struct SignalRegistry {
   struct SigInfo {
-    struct sigaction sa_ {};
+    struct sigaction sa_{};
     size_t refs_{0};
   };
   using SignalMap = std::map<int, SigInfo>;

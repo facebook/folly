@@ -903,10 +903,10 @@ TEST(IndexIterator, UseProxyReferences) {
   static_assert(std::is_same<it_ref_t, std::pair<int, int&>>::value);
   static_assert(std::is_same<it_cref_t, std::pair<int, const int&>>::value);
 
-  static_assert(std::is_same<decltype(it {} -> first), int>::value);
-  static_assert(std::is_same<decltype(it {} -> second), int&>::value);
-  static_assert(std::is_same<decltype(cit {} -> first), int>::value);
-  static_assert(std::is_same<decltype(cit {} -> second), const int&>::value);
+  static_assert(std::is_same<decltype(it{}->first), int>::value);
+  static_assert(std::is_same<decltype(it{}->second), int&>::value);
+  static_assert(std::is_same<decltype(cit{}->first), int>::value);
+  static_assert(std::is_same<decltype(cit{}->second), const int&>::value);
 
   ASSERT_EQ(4, (std::count_if(civ.begin(), civ.end(), [](auto&& pair) {
               return pair.first == pair.second;

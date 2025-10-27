@@ -2829,8 +2829,9 @@ namespace f14 {
 namespace test {
 inline void disableInsertOrderRandomization() {
   if constexpr (kIsLibrarySanitizeAddress || kIsDebug) {
-    detail::tlsPendingSafeInserts(static_cast<std::ptrdiff_t>(
-        (std::numeric_limits<std::size_t>::max)() / 2));
+    detail::tlsPendingSafeInserts(
+        static_cast<std::ptrdiff_t>(
+            (std::numeric_limits<std::size_t>::max)() / 2));
   }
 }
 } // namespace test

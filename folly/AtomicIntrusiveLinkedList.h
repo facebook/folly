@@ -40,7 +40,7 @@ struct AtomicIntrusiveLinkedListHook {
   T* next{nullptr};
 };
 
-template <class T, AtomicIntrusiveLinkedListHook<T> T::*HookMember>
+template <class T, AtomicIntrusiveLinkedListHook<T> T::* HookMember>
 class AtomicIntrusiveLinkedList {
  public:
   AtomicIntrusiveLinkedList() {}

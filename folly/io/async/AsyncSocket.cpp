@@ -1596,8 +1596,9 @@ void AsyncSocket::enableByteEvents() {
     if (NetworkSocket() == fd_ || !good()) {
       throw AsyncSocketException(
           AsyncSocketException::INVALID_STATE,
-          withAddr("failed to enable byte events: "
-                   "socket is not open or not in a good state"));
+          withAddr(
+              "failed to enable byte events: "
+              "socket is not open or not in a good state"));
     }
     folly::SocketAddress addr = {};
     try {
@@ -1607,8 +1608,9 @@ void AsyncSocket::enableByteEvents() {
     } catch (const std::system_error&) {
       throw AsyncSocketException(
           AsyncSocketException::INVALID_STATE,
-          withAddr("failed to enable byte events: "
-                   "socket is not open or not in a good state"));
+          withAddr(
+              "failed to enable byte events: "
+              "socket is not open or not in a good state"));
     }
     const auto family = addr.getFamily();
     if (family != AF_INET && family != AF_INET6) {
@@ -1627,16 +1629,18 @@ void AsyncSocket::enableByteEvents() {
       if (0 != ret) {
         throw AsyncSocketException(
             AsyncSocketException::INTERNAL_ERROR,
-            withAddr("failed to enable byte events: "
-                     "timestamps may not be supported for this socket type "
-                     "or socket be closed"),
+            withAddr(
+                "failed to enable byte events: "
+                "timestamps may not be supported for this socket type "
+                "or socket be closed"),
             getSockOptErrno);
       }
       if (0 != flags) {
         throw AsyncSocketException(
             AsyncSocketException::INTERNAL_ERROR,
-            withAddr("failed to enable byte events: "
-                     "timestamps may have already been enabled"),
+            withAddr(
+                "failed to enable byte events: "
+                "timestamps may have already been enabled"),
             getSockOptErrno);
       }
     }
@@ -2932,24 +2936,27 @@ size_t AsyncSocket::handleErrMessages() noexcept {
           AsyncSocketException ex(
               AsyncSocketException::INTERNAL_ERROR,
               withAddr(
-                  string("AsyncSocket::handleErrMessages(), "
-                         "internal exception during ByteEvent processing: ") +
+                  string(
+                      "AsyncSocket::handleErrMessages(), "
+                      "internal exception during ByteEvent processing: ") +
                   behEx.what()));
           failByteEvents(ex);
         } catch (const std::exception& ex) {
           AsyncSocketException tex(
               AsyncSocketException::UNKNOWN,
-              string("AsyncSocket::handleErrMessages(), "
-                     "unhandled exception during ByteEvent processing, "
-                     "threw exception: ") +
+              string(
+                  "AsyncSocket::handleErrMessages(), "
+                  "unhandled exception during ByteEvent processing, "
+                  "threw exception: ") +
                   ex.what());
           failByteEvents(tex);
         } catch (...) {
           AsyncSocketException tex(
               AsyncSocketException::UNKNOWN,
-              string("AsyncSocket::handleErrMessages(), "
-                     "unhandled exception during ByteEvent processing, "
-                     "threw non-exception type"));
+              string(
+                  "AsyncSocket::handleErrMessages(), "
+                  "unhandled exception during ByteEvent processing, "
+                  "threw non-exception type"));
           failByteEvents(tex);
         }
       }
@@ -3230,8 +3237,9 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
   } catch (const std::exception& ex) {
     AsyncSocketException tex(
         AsyncSocketException::BAD_ARGS,
-        string("ReadCallback::getReadBuffer() "
-               "threw exception: ") +
+        string(
+            "ReadCallback::getReadBuffer() "
+            "threw exception: ") +
             ex.what());
     return failRead(__func__, tex);
   } catch (...) {
@@ -3255,7 +3263,7 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
   // `performReadMsg` go through `recvmsg` (e.g., "pre-received data" and
   // "recv" are possibilities).  For those that do not, we want at a minimum
   // `msg_controllen` and `msg_flags` to be zero.
-  struct ::msghdr msg {};
+  struct ::msghdr msg{};
   // Dest address info
   msg.msg_name = nullptr;
   msg.msg_namelen = 0;

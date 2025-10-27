@@ -998,8 +998,8 @@ struct Synchronized
  */
 template <class T, class Mutex = SharedMutex>
 struct [[deprecated(
-    "use Synchronized and explicit lock(), wlock(), or rlock() instead")]] ImplicitSynchronized
-    : Synchronized<T, Mutex> {
+    "use Synchronized and explicit lock(), wlock(), or rlock() instead")]]
+ImplicitSynchronized : Synchronized<T, Mutex> {
  private:
   using Base = Synchronized<T, Mutex>;
 
@@ -1756,9 +1756,8 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
 #define SYNCHRONIZED_VAR(var) FB_CONCATENATE(SYNCHRONIZED_##var##_, __LINE__)
 
 namespace detail {
-struct [[deprecated(
-    "use explicit lock(), wlock(), or rlock() instead")]] SYNCHRONIZED_macro_is_deprecated {
-};
+struct [[deprecated("use explicit lock(), wlock(), or rlock() instead")]]
+SYNCHRONIZED_macro_is_deprecated {};
 } // namespace detail
 
 /**

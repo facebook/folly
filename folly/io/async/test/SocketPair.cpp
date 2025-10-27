@@ -29,22 +29,25 @@ namespace folly {
 
 SocketPair::SocketPair(Mode mode) {
   if (netops::socketpair(PF_UNIX, SOCK_STREAM, 0, fds_) != 0) {
-    throw std::runtime_error(folly::to<std::string>(
-        "test::SocketPair: failed create socket pair", errno));
+    throw std::runtime_error(
+        folly::to<std::string>(
+            "test::SocketPair: failed create socket pair", errno));
   }
 
   if (mode == NONBLOCKING) {
     if (netops::set_socket_non_blocking(fds_[0]) != 0) {
-      throw std::runtime_error(folly::to<std::string>(
-          "test::SocketPair: failed to set non-blocking "
-          "read mode",
-          errno));
+      throw std::runtime_error(
+          folly::to<std::string>(
+              "test::SocketPair: failed to set non-blocking "
+              "read mode",
+              errno));
     }
     if (netops::set_socket_non_blocking(fds_[1]) != 0) {
-      throw std::runtime_error(folly::to<std::string>(
-          "test::SocketPair: failed to set non-blocking "
-          "write mode",
-          errno));
+      throw std::runtime_error(
+          folly::to<std::string>(
+              "test::SocketPair: failed to set non-blocking "
+              "write mode",
+              errno));
     }
   }
 }

@@ -26,8 +26,9 @@ namespace fibers_detail {
 folly::fibers::FiberManager* (*get_fiber_manager)(
     const folly::fibers::FiberManager::Options&);
 
-FOLLY_PYTHON_FIBERS_API void assign_func(folly::fibers::FiberManager* (
-    *_get_fiber_manager)(const folly::fibers::FiberManager::Options&)) {
+FOLLY_PYTHON_FIBERS_API void assign_func(
+    folly::fibers::FiberManager* (*_get_fiber_manager)(
+        const folly::fibers::FiberManager::Options&)) {
   get_fiber_manager = _get_fiber_manager;
 }
 } // namespace fibers_detail

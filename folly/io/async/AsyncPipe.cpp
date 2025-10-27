@@ -91,24 +91,27 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
       } catch (const std::exception& ex) {
         AsyncSocketException aex(
             AsyncSocketException::BAD_ARGS,
-            string("ReadCallback::getReadBuffer() "
-                   "threw exception: ") +
+            string(
+                "ReadCallback::getReadBuffer() "
+                "threw exception: ") +
                 ex.what());
         failRead(aex);
         return;
       } catch (...) {
         AsyncSocketException aex(
             AsyncSocketException::BAD_ARGS,
-            string("ReadCallback::getReadBuffer() "
-                   "threw non-exception type"));
+            string(
+                "ReadCallback::getReadBuffer() "
+                "threw non-exception type"));
         failRead(aex);
         return;
       }
       if (buf == nullptr || buflen == 0) {
         AsyncSocketException aex(
             AsyncSocketException::INVALID_STATE,
-            string("ReadCallback::getReadBuffer() "
-                   "returned empty buffer"));
+            string(
+                "ReadCallback::getReadBuffer() "
+                "returned empty buffer"));
         failRead(aex);
         return;
       }

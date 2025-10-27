@@ -2196,8 +2196,9 @@ SemiFuture<T> SemiFuture<T>::within(
       tk->after(dur).defer(futures::detail::WithinAfterFutureCallback{ctx});
 
   // Properly propagate interrupt values through futures chained after within()
-  ctx->promise.setInterruptHandler(futures::detail::WithinInterruptHandler{
-      to_weak_ptr_aliasing(ctx, ctx->thisFuture.core_)});
+  ctx->promise.setInterruptHandler(
+      futures::detail::WithinInterruptHandler{
+          to_weak_ptr_aliasing(ctx, ctx->thisFuture.core_)});
 
   // Construct the future to return, create a fresh DeferredExecutor and
   // nest the other two inside it, in case they already carry nested executors.

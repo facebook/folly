@@ -114,7 +114,9 @@ TEST(Promise, lacksPreconditionValid) {
 #define DOIT(STMT)         \
   do {                     \
     auto p = makeValid();  \
-    { STMT; }              \
+    {                      \
+      STMT;                \
+    }                      \
     copy(std::move(p));    \
     EXPECT_NO_THROW(STMT); \
   } while (false)

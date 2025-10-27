@@ -245,7 +245,7 @@ struct Accessor {
   /* Meyers singleton to avoid SIOF */                                        \
   FOLLY_NOINLINE ::folly::settings::detail::                                  \
       SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>&           \
-          FOLLY_SETTINGS_FUNC__##_project##_##_name() {                       \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name() {                           \
     static ::folly::Indestructible<::folly::settings::detail::SettingCore<    \
         _Type,                                                                \
         FOLLY_SETTINGS_TAG__##_project##_##_name>>                            \
@@ -315,7 +315,7 @@ struct Accessor {
       FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                 \
   ::folly::settings::detail::                                       \
       SettingCore<_Type, FOLLY_SETTINGS_TAG__##_project##_##_name>& \
-          FOLLY_SETTINGS_FUNC__##_project##_##_name();              \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name();                  \
   extern ::folly::settings::detail::Accessor<                       \
       _Type,                                                        \
       &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name,                \

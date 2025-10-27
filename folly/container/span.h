@@ -262,7 +262,7 @@ span(const std::array<T, N>&) -> span<const T, N>;
 
 template <typename R>
 span(R&&) -> span<std::remove_reference_t<
-              iterator_reference_t<decltype(std::begin(std::declval<R&>()))>>>;
+    iterator_reference_t<decltype(std::begin(std::declval<R&>()))>>>;
 
 } // namespace fallback_span
 
@@ -284,8 +284,7 @@ namespace detail {
 
 struct span_cast_impl_fn {
   template <
-      template <typename, std::size_t>
-      class Span,
+      template <typename, std::size_t> class Span,
       typename U,
       typename T,
       std::size_t Extent>
