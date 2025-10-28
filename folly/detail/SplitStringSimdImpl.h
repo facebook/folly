@@ -36,7 +36,8 @@ namespace folly {
 namespace detail {
 
 template <bool ignoreEmpty, typename Container>
-void splitByCharScalar(char sep, folly::StringPiece what, Container& res) {
+FOLLY_NOINLINE void splitByCharScalar(
+    char sep, folly::StringPiece what, Container& res) {
   const char* prev = what.data();
   const char* f = prev;
   const char* l = what.data() + what.size();
@@ -66,8 +67,8 @@ struct PlatformSimdSplitByChar {
   using reg_t = typename Platform::reg_t;
 
   template <typename Container>
-  FOLLY_ALWAYS_INLINE void emplaceBack(
-      Container& res, const std::uint8_t* f, const std::uint8_t* l) const {
+  FOLLY_ALWAYS_INLINE static void emplaceBack(
+      Container& res, const std::uint8_t* f, const std::uint8_t* l) {
     if (ignoreEmpty && f == l) {
       return;
     }
@@ -75,11 +76,11 @@ struct PlatformSimdSplitByChar {
   }
 
   template <typename Uint, typename BitsPerElement, typename Container>
-  FOLLY_ALWAYS_INLINE void outputStringsFoMmask(
+  FOLLY_ALWAYS_INLINE static void outputStringsFoMmask(
       std::pair<Uint, BitsPerElement> mmask,
       const std::uint8_t* pos,
       const std::uint8_t*& prev,
-      Container& res) const {
+      Container& res) {
     Uint mmaskBits = mmask.first;
     while (mmaskBits) {
       auto counted = folly::findFirstSet(mmaskBits) - 1;
@@ -96,7 +97,6 @@ struct PlatformSimdSplitByChar {
 
   template <typename Container>
   struct ForEachDelegate {
-    const PlatformSimdSplitByChar& self;
     std::uint8_t sep;
     const std::uint8_t*& prev;
     Container& res;
@@ -107,14 +107,14 @@ struct PlatformSimdSplitByChar {
       reg_t loaded = Platform::loada(ptr, ignore);
       auto mmask =
           simd::movemask<std::uint8_t>(Platform::equal(loaded, sep), ignore);
-      self.outputStringsFoMmask(mmask, ptr, prev, res);
+      outputStringsFoMmask(mmask, ptr, prev, res);
       return false;
     }
   };
 
   template <typename Container>
-  FOLLY_ALWAYS_INLINE void operator()(
-      char sep, folly::StringPiece what, Container& res) const {
+  FOLLY_NOINLINE static void simdSplitByChar(
+      char sep, folly::StringPiece what, Container& res) {
     const std::uint8_t* what_f =
         reinterpret_cast<const std::uint8_t*>(what.data());
     const std::uint8_t* what_l = what_f + what.size();
@@ -122,10 +122,16 @@ struct PlatformSimdSplitByChar {
     const std::uint8_t* prev = what_f;
 
     ForEachDelegate<Container> delegate{
-        *this, static_cast<std::uint8_t>(sep), prev, res};
+        static_cast<std::uint8_t>(sep), prev, res};
     simd::detail::simdForEachAligning</*unrolling*/ 1>(
         Platform::kCardinal, what_f, what_l, delegate);
     emplaceBack(res, prev, what_l);
+  }
+
+  template <typename Container>
+  FOLLY_ALWAYS_INLINE void operator()(
+      char sep, folly::StringPiece what, Container& res) const {
+    return simdSplitByChar(sep, what, res);
   }
 };
 
