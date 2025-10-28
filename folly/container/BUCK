@@ -459,6 +459,7 @@ non_fbcode_target(
         "//xplat/folly/lang:checked_math",
         "//xplat/folly/lang:exception",
         "//xplat/folly/memory:malloc",
+        "//xplat/folly/memory:sanitize_leak",
     ],
 )
 
