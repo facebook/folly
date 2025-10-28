@@ -43,6 +43,7 @@ TEST(SplitStringSimdTest, ByCharScalarKeepEmpty) {
   ASSERT_EQ(run(",a"), (pieces{"", "a"}));
   ASSERT_EQ(run("a,aa"), (pieces{"a", "aa"}));
   ASSERT_EQ(run("a,,aa"), (pieces{"a", "", "aa"}));
+  ASSERT_EQ(run("aaaa,aaa,aa,a"), (pieces{"aaaa", "aaa", "aa", "a"}));
   ASSERT_EQ(run("aaaa,aaa,aa,a,"), (pieces{"aaaa", "aaa", "aa", "a", ""}));
   ASSERT_EQ(run(",,,"), (pieces{"", "", "", ""}));
 }
