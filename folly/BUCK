@@ -2274,20 +2274,6 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "external_rapidhash",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "external/rapidhash/rapidhash.h",
-    ],
-    exported_deps = [
-        ":c_portability",
-        ":portability_constexpr",
-        "//xplat/folly/lang:bits",
-    ],
-)
-
 # A basic pieces of folly
 #   Should only require glog and boost
 non_fbcode_target(

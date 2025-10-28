@@ -90,7 +90,7 @@ non_fbcode_target(
         "rapidhash.h",
     ],
     deps = [
-        "//xplat/folly:external_rapidhash",
+        "//xplat/folly/external/rapidhash:rapidhash",
     ],
 )
 
