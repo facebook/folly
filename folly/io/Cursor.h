@@ -1734,16 +1734,15 @@ class QueueAppender : public Writable<QueueAppender> {
    *
    * @methodset Writing
    */
-  void insert(std::unique_ptr<folly::IOBuf> buf) {
+  void insert(std::unique_ptr<folly::IOBuf> buf, bool pack = true) {
     if (buf) {
       queueCache_.queue()->append(
-          std::move(buf), /* pack */ true, /* allowTailReuse */ true);
+          std::move(buf), pack, /* allowTailReuse */ true);
     }
   }
 
-  void insert(const folly::IOBuf& buf) {
-    queueCache_.queue()->append(
-        buf, /* pack */ true, /* allowTailReuse */ true);
+  void insert(const folly::IOBuf& buf, bool pack = true) {
+    queueCache_.queue()->append(buf, pack, /* allowTailReuse */ true);
   }
 
   /**
