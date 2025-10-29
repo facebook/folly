@@ -343,4 +343,14 @@ TEST(SharedPromiseTest, Exchange) {
   SharedPromise<void> p2 = exchange(p1, {});
 }
 
+TEST(SharedPromiseTest, Poll) {
+  SharedPromise<std::string> promise;
+  EXPECT_FALSE(promise.poll().has_value());
+  const std::string value = "ynwa";
+  promise.setValue(value);
+  const auto result = promise.poll();
+  ASSERT_TRUE(result.has_value() && result->hasValue());
+  EXPECT_EQ(value, result->value());
+}
+
 #endif

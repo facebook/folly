@@ -72,6 +72,13 @@ class SharedPromise {
    */
   bool isFulfilled() const;
 
+  /*
+   * Returns either an optional holding the result or an empty optional
+   * depending on whether or not (respectively) the promise has been
+   * fulfilled (i.e., `isFulfilled() == true`).
+   */
+  std::optional<TryType> poll() const;
+
   /**
    * Sets an exception in the promise.
    */
@@ -148,6 +155,13 @@ std::size_t SharedPromise<T>::size() const {
 template <typename T>
 bool SharedPromise<T>::isFulfilled() const {
   return state_.withRLock([](auto& state) { return isFulfilled(state); });
+}
+
+template <typename T>
+auto SharedPromise<T>::poll() const -> std::optional<TryType> {
+  return state_.withRLock([](const auto& state) {
+    return isFulfilled(state) ? std::make_optional(state.result) : std::nullopt;
+  });
 }
 
 template <typename T>
