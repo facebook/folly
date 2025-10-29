@@ -53,6 +53,9 @@ fbcode/fboss = fboss
 [shipit.strip]
 ^fbcode/fboss/github/docs/.*
 ^fbcode/fboss/oss/.*
+^fbcode/fboss/github/.github/.*
+^fbcode/fboss/github/.pre-commit-config.yaml
+^fbcode/fboss/github/requirements-dev.txt
 
 [sandcastle]
 run_tests = off
