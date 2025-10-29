@@ -131,8 +131,13 @@ void IoUringProvidedBufferRing::enobuf() noexcept {
     // but if we are processing a batch it doesn't really work
     // because we'll likely get an ENOBUF straight after
     enobuf_.store(true, std::memory_order_relaxed);
+    enobufCount_.fetch_add(1, std::memory_order_relaxed);
   }
   VLOG_EVERY_N(1, 500) << "enobuf";
+}
+
+uint64_t IoUringProvidedBufferRing::getAndResetEnobufCount() noexcept {
+  return enobufCount_.exchange(0, std::memory_order_relaxed);
 }
 
 void IoUringProvidedBufferRing::destroy() noexcept {

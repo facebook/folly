@@ -51,6 +51,7 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
       io_uring* ioRingPtr, Options options);
 
   void enobuf() noexcept override;
+  uint64_t getAndResetEnobufCount() noexcept;
   void destroy() noexcept override;
 
   std::unique_ptr<IOBuf> getIoBuf(
@@ -140,6 +141,7 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
   io_uring* ioRingPtr_;
   ProvidedBuffersBuffer buffer_;
   std::atomic<bool> enobuf_{false};
+  std::atomic<uint64_t> enobufCount_{0};
   bool useIncremental_;
 
   // For tracking how many IOBufs were created
