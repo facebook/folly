@@ -43,6 +43,7 @@ systemd
 range-v3
 tabulate
 gcc12
+python-pyyaml
 
 [shipit.pathmap]
 fbcode/fboss/github = .
