@@ -395,6 +395,14 @@ exception_wrapper try_and_catch(F&& fn) noexcept {
   auto x = [&] { return void(static_cast<F&&>(fn)()), std::exception_ptr{}; };
   return exception_wrapper{catch_exception(x, current_exception)};
 }
+
+/**
+ * A convenience shorthand for `exception_wrapper(current_exception())`.
+ */
+inline exception_wrapper current_exception_wrapper() noexcept {
+  return exception_wrapper{current_exception()};
+}
+
 } // namespace folly
 
 template <>
