@@ -23,6 +23,7 @@
 #include <folly/BenchmarkUtil.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/test/Barrier.h>
+#include <folly/system/HardwareConcurrency.h>
 
 DEFINE_int32(reps, 10, "number of reps");
 DEFINE_int32(ops, 1000 * 1000, "number of operations per rep");
@@ -214,7 +215,8 @@ void benches() {
             << std::endl;
   std::cout << "Test name                         Max time  Avg time  Min time"
             << std::endl;
-  for (int nthr : {1, 10}) {
+  const int maxThreads = folly::hardware_concurrency();
+  for (int nthr = 1; nthr <= maxThreads;) {
     std::cout << "========================= " << std::setw(2) << nthr
               << " threads" << " =========================" << std::endl;
     bench_ctor_dtor(nthr, 0, "CHM ctor/dtor -- empty          ");
@@ -252,6 +254,12 @@ void benches() {
     bench_size(nthr, 100000, "CHM size() -- 100K items        ");
     bench_size(nthr, 1000000, "CHM size() -- 1M items          ");
     bench_size(nthr, 10000000, "CHM size() -- 10M items         ");
+
+    if (nthr == maxThreads) {
+      break;
+    }
+    int nextNthr = nthr * 4;
+    nthr = (nextNthr > maxThreads) ? maxThreads : nextNthr;
   }
   std::cout << "=============================================================="
             << std::endl;

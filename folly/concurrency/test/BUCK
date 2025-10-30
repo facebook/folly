@@ -105,6 +105,7 @@ fbcode_target(
         "//folly/concurrency:concurrent_hash_map",
         "//folly/portability:gflags",
         "//folly/synchronization/test:barrier",
+        "//folly/system:hardware_concurrency",
     ],
 )
 
