@@ -42,6 +42,8 @@ CO_TEST(PromiseTest, ImmediateValue) {
   auto [promise, future] = coro::makePromiseContract<int>();
   EXPECT_TRUE(promise.valid());
   EXPECT_FALSE(promise.isFulfilled());
+  EXPECT_TRUE(future.valid());
+  EXPECT_TRUE(static_cast<bool>(future));
   EXPECT_TRUE(promise.trySetValue(42));
   EXPECT_TRUE(promise.valid());
   EXPECT_TRUE(promise.isFulfilled());
@@ -333,16 +335,22 @@ TEST(PromiseTest, IsReady) {
 
 CO_TEST(PromiseTest, MakeFuture) {
   auto future = coro::makeFuture(42);
+  EXPECT_TRUE(future.valid());
+  EXPECT_TRUE(static_cast<bool>(future));
   EXPECT_TRUE(future.isReady());
   auto val = co_await std::move(future);
   EXPECT_EQ(val, 42);
 
   auto future2 = coro::makeFuture<int>(std::runtime_error(""));
+  EXPECT_TRUE(future2.valid());
+  EXPECT_TRUE(static_cast<bool>(future2));
   EXPECT_TRUE(future2.isReady());
   auto res = co_await co_awaitTry(std::move(future2));
   EXPECT_TRUE(res.hasException<std::runtime_error>());
 
   auto future3 = coro::makeFuture();
+  EXPECT_TRUE(future3.valid());
+  EXPECT_TRUE(static_cast<bool>(future3));
   EXPECT_TRUE(future3.isReady());
   auto res3 = co_await co_awaitTry(std::move(future3));
   EXPECT_TRUE(res3.hasValue());
@@ -351,9 +359,29 @@ CO_TEST(PromiseTest, MakeFuture) {
 CO_TEST(PromiseTest, MoveAssign) {
   coro::Promise<void> promise;
   coro::Future<void> future;
+  // Test default-constructed future is invalid
+  EXPECT_FALSE(promise.valid());
+  EXPECT_FALSE(future.valid());
+  EXPECT_FALSE(static_cast<bool>(future));
+
   std::tie(promise, future) = coro::makePromiseContract<void>();
+  EXPECT_TRUE(promise.valid());
+  EXPECT_TRUE(future.valid());
+  EXPECT_TRUE(static_cast<bool>(future));
+
+  // Test move invalidates source
+  auto movedFuture = std::move(future);
+  EXPECT_FALSE(future.valid());
+  EXPECT_FALSE(static_cast<bool>(future));
+  EXPECT_TRUE(movedFuture.valid());
+  EXPECT_TRUE(static_cast<bool>(movedFuture));
+
   EXPECT_TRUE(promise.trySetValue());
-  co_await std::move(future);
+  co_await std::move(movedFuture);
+
+  // After awaiting and moving, the future should be invalid
+  EXPECT_FALSE(movedFuture.valid());
+  EXPECT_FALSE(static_cast<bool>(movedFuture));
 }
 
 #endif

@@ -222,8 +222,24 @@ class Future {
    */
   Future() = default;
 
-  Future(Future&&) noexcept = default;
-  Future& operator=(Future&&) noexcept = default;
+  Future(Future&& other) noexcept
+      : cs_(std::move(other.cs_)),
+        state_(std::exchange(other.state_, nullptr)),
+        ct_(std::move(other.ct_)),
+        hasCancelTokenOverride_(
+            std::exchange(other.hasCancelTokenOverride_, false)) {}
+
+  Future& operator=(Future&& other) noexcept {
+    if (this != &other) {
+      cs_ = std::move(other.cs_);
+      state_ = std::exchange(other.state_, nullptr);
+      ct_ = std::move(other.ct_);
+      hasCancelTokenOverride_ =
+          std::exchange(other.hasCancelTokenOverride_, false);
+    }
+    return *this;
+  }
+
   Future(const Future&) = delete;
   Future& operator=(const Future&) = delete;
 
@@ -257,6 +273,10 @@ class Future {
   [[nodiscard]] WaitOperation operator co_await() && noexcept {
     return WaitOperation{*this};
   }
+
+  bool valid() const noexcept { return state_ != nullptr; }
+
+  explicit operator bool() const noexcept { return valid(); }
 
   bool isReady() const noexcept { return state_->ready.ready(); }
 
