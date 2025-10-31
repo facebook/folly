@@ -343,7 +343,8 @@ using cstring_view = basic_cstring_view<char>;
 
 template <typename Char, typename Traits>
 std::basic_ostream<Char, Traits>& operator<<(
-    std::basic_ostream<Char, Traits>& out, cstring_view str) {
+    std::basic_ostream<Char, Traits>& out,
+    basic_cstring_view<Char, Traits> str) {
   return out << std::basic_string_view<Char, Traits>(str);
 }
 
@@ -364,25 +365,12 @@ constexpr cstring_view operator""_csv(
 // std::hash specialization
 namespace std {
 template <typename Char, typename Traits>
-struct hash<folly::basic_cstring_view<Char, Traits>> {
-  size_t operator()(
-      folly::basic_cstring_view<Char, Traits> const& svz) const noexcept {
-    return std::hash<std::basic_string_view<Char, Traits>>{}(
-        std::basic_string_view<Char, Traits>(svz));
-  }
-};
+struct hash<folly::basic_cstring_view<Char, Traits>>
+    : hash<std::basic_string_view<Char, Traits>> {};
 } // namespace std
 
 namespace fmt {
 template <typename Char, typename Traits>
 struct formatter<folly::basic_cstring_view<Char, Traits>, Char>
-    : formatter<std::basic_string_view<Char, Traits>, Char> {
-  template <typename FormatContext>
-  auto format(
-      folly::basic_cstring_view<Char, Traits> const& svz,
-      FormatContext& ctx) const {
-    return formatter<std::basic_string_view<Char, Traits>, Char>::format(
-        std::basic_string_view<Char, Traits>(svz), ctx);
-  }
-};
+    : formatter<std::basic_string_view<Char, Traits>, Char> {};
 } // namespace fmt
