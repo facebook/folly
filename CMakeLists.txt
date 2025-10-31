@@ -1071,6 +1071,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST synchronization_event_count_test SOURCES EventCountTest.cpp
       BENCHMARK synchronization_hazptr_bench SOURCES HazptrBench.cpp
       TEST synchronization_hazptr_test SOURCES HazptrTest.cpp
+      BENCHMARK synchronization_lifo_sem_bench WINDOWS_DISABLED
+        SOURCES LifoSemBench.cpp
       TEST synchronization_lifo_sem_test WINDOWS_DISABLED
         SOURCES LifoSemTests.cpp
       TEST synchronization_relaxed_atomic_test WINDOWS_DISABLED
