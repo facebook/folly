@@ -39,6 +39,8 @@ namespace folly {
 /// the null-termination guarantee is maintained.
 ///
 /// mimic: std::cstring_view, p3655r3
+///
+/// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3655r3.html
 template <typename Char, typename Traits = std::char_traits<Char>>
 class basic_cstring_view {
   using self = basic_cstring_view;
