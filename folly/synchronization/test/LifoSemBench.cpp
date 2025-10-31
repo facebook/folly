@@ -180,6 +180,6 @@ BENCHMARK_NAMED_PARAM(contendedUse, 32_to_1000, 32, 1000)
 
 int main(int argc, char** argv) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
-  folly::runBenchmarksOnFlag();
+  folly::runBenchmarks();
   return 0;
 }
