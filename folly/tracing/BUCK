@@ -1,84 +1,34 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "static_tracepoint",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "StaticTracepoint.h",
-        "StaticTracepoint-ELF.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:c_portability",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "scoped_trace_section",
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "ScopedTraceSection.h",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "async_stack",
-    srcs = [
-        "AsyncStack.cpp",
-    ],
-    feature = triage_InfrastructureSupermoduleOptou,
-    raw_headers = [
-        "AsyncStack.h",
-        "AsyncStack-inl.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/portability:pthread",
-        "//third-party/glog:glog",
-        "//xplat/folly:indestructible",
-        "//xplat/folly:likely",
-        "//xplat/folly:synchronized",
-        "//xplat/folly/lang:hint",
-    ],
-    exported_deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:function",
-        "//xplat/folly:portability",
-        "//xplat/folly/experimental/coro:coroutine",
-    ],
-)
-
-# !!!! fbcode/folly/tracing/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "static_tracepoint",
     headers = [
         "StaticTracepoint.h",
         "StaticTracepoint-ELF.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "scoped_trace_section",
     headers = [
         "ScopedTraceSection.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_stack",
     srcs = [
         "AsyncStack.cpp",
@@ -87,6 +37,9 @@ fbcode_target(
         "AsyncStack.h",
         "AsyncStack-inl.h",
     ],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:indestructible",
         "//folly:likely",
