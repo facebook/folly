@@ -17,7 +17,7 @@
 #include <folly/hash/Checksum.h>
 
 #include <algorithm>
-#include <stdexcept>
+#include <stdexcept> // IWYU pragma: keep
 
 #include <boost/crc.hpp>
 
