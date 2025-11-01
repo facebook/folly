@@ -259,6 +259,12 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setUseHugePages(bool v) {
+      useHugePages = v;
+
+      return *this;
+    }
+
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -303,6 +309,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
     // Incremental Buffers
     bool enableIncrementalBuffers{false};
+    bool useHugePages{false};
   };
 
   explicit IoUringBackend(Options options);

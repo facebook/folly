@@ -1119,7 +1119,7 @@ void IoUringBackend::initSubmissionLinked() {
           .count = options_.initialProvidedBuffersCount,
           .bufferShift = sizeShift,
           .ringSizeShift = ringShift,
-          .useHugePages = false,
+          .useHugePages = options_.useHugePages,
           .useIncrementalBuffers = options_.enableIncrementalBuffers,
       };
       for (size_t i = 0; i < options_.providedBufRings; i++) {
