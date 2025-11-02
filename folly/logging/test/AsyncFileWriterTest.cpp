@@ -629,14 +629,16 @@ TEST(AsyncFileWriter, discard) {
   AsyncFileWriter::setDiscardCallback(nullptr);
 }
 
-#ifndef _WIN32
+#if !defined(_WIN32) && FOLLY_HAVE_PTHREAD_ATFORK && !FOLLY_SANITIZE_THREAD
+
 /**
  * Test that AsyncFileWriter operates correctly after a fork() in both the
  * parent and child processes.
+ *
+ * Requires pthread_atfork. Not supported for TSAN.
  */
 TEST(AsyncFileWriter, fork) {
-#if FOLLY_HAVE_PTHREAD_ATFORK
-  SKIP_IF(folly::kIsSanitizeThread) << "Not supported for TSAN";
+  static_assert(!kIsWindows && !kIsSanitizeThread);
 
   TemporaryFile tmpFile{"logging_test"};
 
@@ -737,9 +739,6 @@ TEST(AsyncFileWriter, fork) {
     EXPECT_THAT(data, HasSubstr(folly::to<std::string>("parent", n, "\n")));
     EXPECT_THAT(data, HasSubstr(folly::to<std::string>("child", n, "\n")));
   }
-#else
-  SKIP() << "pthread_atfork() is not supported on this platform";
-#endif // FOLLY_HAVE_PTHREAD_ATFORK
 }
 
 /**
@@ -748,10 +747,11 @@ TEST(AsyncFileWriter, fork) {
  *
  * This exercises the synchronization around registration of the AtFork
  * handlers and the creation/destruction of the AsyncFileWriter I/O thread.
+ *
+ * Requires pthread_atfork. Not supported for TSAN.
  */
 TEST(AsyncFileWriter, crazyForks) {
-#if FOLLY_HAVE_PTHREAD_ATFORK
-  SKIP_IF(folly::kIsSanitizeThread) << "Not supported for TSAN";
+  static_assert(!kIsWindows && !kIsSanitizeThread);
 
   constexpr size_t numAsyncWriterThreads = 10;
   constexpr size_t numForkThreads = 5;
@@ -827,8 +827,7 @@ TEST(AsyncFileWriter, crazyForks) {
   for (auto& t : asyncWriterThreads) {
     t.join();
   }
-#else
-  SKIP() << "pthread_atfork() is not supported on this platform";
-#endif // FOLLY_HAVE_PTHREAD_ATFORK
 }
-#endif // !_WIN32
+
+#endif // !defined(_WIN32) && FOLLY_HAVE_PTHREAD_ATFORK &&
+       // !FOLLY_SANITIZE_THREAD
