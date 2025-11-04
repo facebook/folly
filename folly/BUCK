@@ -5960,9 +5960,9 @@ fbcode_target(
     exported_deps = [],
 )
 
-fb_native.export_file(
-    name = "src-tree",
-    src = ".",
-    mode = "reference",
-    visibility = ["PUBLIC"],
-)
+# @fb-only: fb_native.export_file(
+# @fb-only:     name = "src-tree",
+# @fb-only:     src = ".",
+# @fb-only:     mode = "reference",
+# @fb-only:     visibility = ["PUBLIC"],
+# @fb-only: )
