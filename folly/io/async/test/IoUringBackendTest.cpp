@@ -2277,6 +2277,101 @@ TEST(IoUringBackend, ReceiveBundleTest) {
   EXPECT_TRUE(eofReceived) << "Should receive EOF";
 }
 
+TEST(IoUringBackend, ProvidedBufferUtilization) {
+  auto evbPtr = getEventBase();
+  std::unique_ptr<folly::IoUringBackend> backend;
+  try {
+    backend = std::make_unique<folly::IoUringBackend>(
+        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(100, 5));
+  } catch (folly::IoUringBackend::NotAvailable const&) {
+  }
+  SKIP_IF(!backend) << "Backend not available";
+
+  auto* bufferProvider = backend->bufferProvider();
+  ASSERT_NE(bufferProvider, nullptr);
+  EXPECT_EQ(bufferProvider, backend->bufferProvider());
+  EXPECT_EQ(5, bufferProvider->count());
+
+  struct Reader : folly::IoSqeBase {
+    Reader(int fd, uint16_t bgid, std::function<void(int, uint32_t)> oncqe)
+        : fd_(fd), bgid_(bgid), oncqe_(oncqe) {}
+
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      io_uring_prep_read(sqe, fd_, nullptr, 100 /* max read 100 per go */, 0);
+      sqe->flags |= IOSQE_BUFFER_SELECT;
+      sqe->buf_group = bgid_;
+    }
+
+    void callback(const io_uring_cqe* cqe) noexcept override {
+      oncqe_(cqe->res, cqe->flags);
+    }
+
+    void callbackCancelled(const io_uring_cqe*) noexcept override { FAIL(); }
+
+    int fd_;
+    uint16_t bgid_;
+    std::function<void(int, uint32_t)> oncqe_;
+  };
+
+  int fds[2];
+  ASSERT_EQ(0, folly::fileops::pipe(fds));
+  SCOPE_EXIT {
+    folly::fileops::close(fds[0]);
+    folly::fileops::close(fds[1]);
+  };
+
+  std::vector<std::pair<int, uint32_t>> cqes;
+  std::vector<std::unique_ptr<Reader>> readers;
+  auto addReaders = [&](int n) {
+    for (int i = 0; i < n; i++) {
+      readers.push_back(
+          std::make_unique<Reader>(
+              fds[0], bufferProvider->gid(), [&](int r, uint32_t f) {
+                cqes.emplace_back(r, f);
+              }));
+      backend->submit(*readers.back());
+    }
+  };
+
+  addReaders(5);
+  ASSERT_EQ(
+      500, folly::fileops::write(fds[1], std::string(500, 'A').c_str(), 500));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+  ASSERT_EQ(5, cqes.size()) << "expect 5 completions";
+
+  ASSERT_EQ(100, cqes[0].first);
+  ASSERT_EQ(100, cqes[1].first);
+  auto iobuf0 = bufferProvider->getIoBuf(cqes[0].second >> 16, 100, false);
+  auto iobuf1 = bufferProvider->getIoBuf(cqes[1].second >> 16, 100, false);
+  auto iobuf2 = bufferProvider->getIoBuf(cqes[2].second >> 16, 100, false);
+  auto iobuf3 = bufferProvider->getIoBuf(cqes[3].second >> 16, 100, false);
+  auto iobuf4 = bufferProvider->getIoBuf(cqes[4].second >> 16, 100, false);
+
+  auto* providedBufferRing =
+      dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
+  ASSERT_NE(providedBufferRing, nullptr);
+
+  int utilization = providedBufferRing->getUtilPct();
+  EXPECT_EQ(100, utilization)
+      << "All 5 buffers in use, expected 100% utilization";
+
+  iobuf3.reset();
+  iobuf4.reset();
+
+  utilization = providedBufferRing->getUtilPct();
+  EXPECT_EQ(60, utilization)
+      << "3 out of 5 buffers in use, expected 60% utilization";
+
+  iobuf0.reset();
+  iobuf1.reset();
+  iobuf2.reset();
+
+  utilization = providedBufferRing->getUtilPct();
+  EXPECT_EQ(0, utilization) << "No buffers in use, expected 0% utilization";
+
+  readers.clear();
+}
+
 TEST(IoUringBackend, DeferTaskRun) {
   if (!folly::IoUringBackend::kernelSupportsDeferTaskrun()) {
     return;

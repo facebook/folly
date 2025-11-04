@@ -62,6 +62,9 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
     return !enobuf_.load(std::memory_order_relaxed);
   }
 
+  // Returns the buffer utilization as an integer percentage (0-100).
+  int getUtilPct() const noexcept;
+
  private:
   explicit IoUringProvidedBufferRing(io_uring* ioRingPtr, Options options);
 

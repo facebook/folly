@@ -373,6 +373,27 @@ void IoUringProvidedBufferRing::decBufferState(uint16_t bufId) noexcept {
   }
 }
 
+int IoUringProvidedBufferRing::getUtilPct() const noexcept {
+  uint64_t totalBuffers = buffer_.bufferCount();
+  uint16_t head = 0;
+  int ret = ::io_uring_buf_ring_head(ioRingPtr_, gid(), &head);
+  if (ret != 0) {
+    VLOG(5) << "io_uring_buf_ring_head failed with ret=" << ret;
+    return ret;
+  }
+  uint16_t tail = buffer_.ring()->tail;
+  uint32_t ringMask = buffer_.ringCount() - 1;
+  // Use ring mask to extract ring position from wrapped uint16_t counters
+  // Ring size is power of 2, mask handles wrap-around explicitly
+  uint32_t available = (tail - head) & ringMask;
+  if (available > totalBuffers) {
+    available = totalBuffers;
+  }
+
+  uint64_t inUse = totalBuffers - available;
+  return (100 * inUse) / totalBuffers;
+}
+
 } // namespace folly
 
 #endif
