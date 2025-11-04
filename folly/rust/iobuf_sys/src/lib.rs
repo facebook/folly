@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-// Extra definitions for the `iobuf_sys` crate, generated via `bindgen`.
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+// Extra definitions for the `iobuf_sys` crate, generated via `bindgen`.
 use crate::root::folly::IOBuf;
 
 // IOBuf isn't movable but can be transferred across thread boundaries if appropriately pinned
