@@ -187,9 +187,7 @@ def create_main_module(args, inst_dir, path_map):
 if __name__ == "__main__":
     import {main_module}
     {main_module}.{main_fn}()
-""".format(
-        python=args.python, main_module=main_module, main_fn=main_fn
-    )
+""".format(python=args.python, main_module=main_module, main_fn=main_fn)
     with open(dest_path, "w") as f:
         f.write(main_contents)
     os.chmod(dest_path, 0o755)

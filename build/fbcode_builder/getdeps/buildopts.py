@@ -131,7 +131,6 @@ class BuildOptions(object):
         self.lib_path = lib_path
 
         if vcvars_path is None and is_windows():
-
             try:
                 # Allow a site-specific vcvarsall path.
                 from .facebook.vcvarsall import build_default_vcvarsall
