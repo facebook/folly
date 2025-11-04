@@ -1350,7 +1350,7 @@ fb_dirsync_cpp_library(
     ] + select({
         "DEFAULT": [],
         "antlir//antlir/distro:build-for-distro": ["third-party//binutils:iberty"],
-        "fbsource//xplat/folly:folly_demangle_macos_disable_iberty_config": [],
+        ":folly_demangle_macos_disable_iberty_config": [],
         "ovr_config//os:linux": ["fbsource//third-party/binutils:iberty-demangle"],
         "ovr_config//os:macos": ["fbsource//third-party/binutils:iberty-demangle"],
         "ovr_config//runtime:fbcode": ["third-party//binutils:iberty"],
