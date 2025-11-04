@@ -803,6 +803,134 @@ TEST(IoUringBackend, RenameSrcDoesntExist) {
   evbPtr->loopForever();
 }
 
+TEST(IoUringBackend, Unlink) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto fileName = folly::fs::unique_path();
+  auto filePath = dirPath / fileName;
+
+  int fd = folly::fileops::open(
+      filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  CHECK_GE(fd, 0);
+  folly::fileops::close(fd);
+
+  SCOPE_EXIT {
+    ::unlink(filePath.string().c_str());
+  };
+
+  EXPECT_TRUE(folly::fs::exists(filePath));
+
+  folly::IoUringBackend::FileOpCallback unlinkCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+    EXPECT_FALSE(folly::fs::exists(filePath));
+  };
+
+  backendPtr->queueUnlink(filePath.string().c_str(), std::move(unlinkCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, UnlinkDoesntExist) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto fileName = folly::fs::unique_path();
+  auto filePath = dirPath / fileName;
+
+  EXPECT_FALSE(folly::fs::exists(filePath));
+
+  folly::IoUringBackend::FileOpCallback unlinkCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_LT(res, 0);
+    EXPECT_FALSE(folly::fs::exists(filePath));
+  };
+
+  backendPtr->queueUnlink(filePath.string().c_str(), std::move(unlinkCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, Unlinkat) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto dirPath = folly::fs::temp_directory_path();
+  auto fileName = folly::fs::unique_path();
+  auto filePath = dirPath / fileName;
+
+  int fd = folly::fileops::open(
+      filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  CHECK_GE(fd, 0);
+  folly::fileops::close(fd);
+
+  int dirfd = folly::fileops::open(dirPath.string().c_str(), O_DIRECTORY);
+  CHECK_GE(dirfd, 0);
+
+  SCOPE_EXIT {
+    folly::fileops::close(dirfd);
+    ::unlink(filePath.string().c_str());
+  };
+
+  EXPECT_TRUE(folly::fs::exists(filePath));
+
+  folly::IoUringBackend::FileOpCallback unlinkCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+    EXPECT_FALSE(folly::fs::exists(filePath));
+  };
+
+  backendPtr->queueUnlinkat(
+      dirfd, fileName.string().c_str(), 0, std::move(unlinkCb));
+
+  evbPtr->loopForever();
+}
+
+TEST(IoUringBackend, UnlinkatRemoveDir) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
+  CHECK(!!backendPtr);
+
+  auto parentPath = folly::fs::temp_directory_path();
+  auto dirName = folly::fs::unique_path();
+  auto dirPath = parentPath / dirName;
+
+  folly::fs::create_directory(dirPath);
+
+  SCOPE_EXIT {
+    folly::fs::remove(dirPath);
+  };
+
+  EXPECT_TRUE(folly::fs::exists(dirPath));
+  EXPECT_TRUE(folly::fs::is_directory(dirPath));
+
+  folly::IoUringBackend::FileOpCallback unlinkCb = [&](int res) {
+    evbPtr->terminateLoopSoon();
+    CHECK_GE(res, 0);
+    EXPECT_FALSE(folly::fs::exists(dirPath));
+  };
+
+  // AT_REMOVEDIR flag allows removing directories
+  backendPtr->queueUnlinkat(
+      AT_FDCWD, dirPath.string().c_str(), AT_REMOVEDIR, std::move(unlinkCb));
+
+  evbPtr->loopForever();
+}
+
 TEST(IoUringBackend, Statx) {
   auto evbPtr = getEventBase();
   SKIP_IF(!evbPtr) << "Backend not available";

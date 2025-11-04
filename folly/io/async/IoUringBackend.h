@@ -427,6 +427,11 @@ class IoUringBackend : public EventBaseBackendBase {
   void queueRename(
       const char* oldPath, const char* newPath, FileOpCallback&& cb);
 
+  void queueUnlinkat(
+      int dirfd, const char* path, int flags, FileOpCallback&& cb);
+
+  void queueUnlink(const char* path, FileOpCallback&& cb);
+
   void queueFallocate(
       int fd, int mode, off_t offset, off_t len, FileOpCallback&& cb);
 
@@ -1052,6 +1057,26 @@ class IoUringBackend : public EventBaseBackendBase {
 
     const char* oldPath_;
     const char* newPath_;
+    int flags_;
+  };
+
+  struct FUnlinkIoSqe : public FileOpIoSqe {
+    FUnlinkIoSqe(
+        IoUringBackend* backend,
+        int dirfd,
+        const char* path,
+        int flags,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, dirfd, std::move(cb)),
+          path_(path),
+          flags_(flags) {}
+
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      ::io_uring_prep_unlinkat(sqe, fd_, path_, flags_);
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    const char* path_;
     int flags_;
   };
 
