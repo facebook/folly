@@ -144,7 +144,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["detail/Barrier.h"],
     exported_deps = [
-        "//xplat/folly/coro:detail_barrier",
+        "//xplat/folly/coro/detail:barrier",
     ],
 )
 
@@ -154,7 +154,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["detail/BarrierTask.h"],
     exported_deps = [
-        "//xplat/folly/coro:detail_barrier_task",
+        "//xplat/folly/coro/detail:barrier_task",
     ],
 )
 
@@ -164,7 +164,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["detail/CurrentAsyncFrame.h"],
     exported_deps = [
-        "//xplat/folly/coro:detail_current_async_frame",
+        "//xplat/folly/coro/detail:current_async_frame",
     ],
 )
 
@@ -174,7 +174,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["detail/Helpers.h"],
     exported_deps = [
-        "//xplat/folly/coro:detail_helpers",
+        "//xplat/folly/coro/detail:helpers",
     ],
 )
 
@@ -184,7 +184,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["detail/Malloc.h"],
     exported_deps = [
-        "//xplat/folly/coro:detail_malloc",
+        "//xplat/folly/coro/detail:malloc",
     ],
 )
 
@@ -194,7 +194,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["detail/ManualLifetime.h"],
     exported_deps = [
-        "//xplat/folly/coro:detail_manual_lifetime",
+        "//xplat/folly/coro/detail:manual_lifetime",
     ],
 )
 
@@ -204,7 +204,7 @@ non_fbcode_target(
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["detail/Traits.h"],
     exported_deps = [
-        "//xplat/folly/coro:detail_traits",
+        "//xplat/folly/coro/detail:traits",
     ],
 )
 
@@ -671,7 +671,7 @@ fbcode_target(
         "detail/Barrier.h",
     ],
     exported_deps = [
-        "//folly/coro:detail_barrier",
+        "//folly/coro/detail:barrier",
     ],
 )
 
@@ -682,7 +682,7 @@ fbcode_target(
         "detail/BarrierTask.h",
     ],
     exported_deps = [
-        "//folly/coro:detail_barrier_task",
+        "//folly/coro/detail:barrier_task",
     ],
 )
 
@@ -693,7 +693,7 @@ fbcode_target(
         "detail/CurrentAsyncFrame.h",
     ],
     exported_deps = [
-        "//folly/coro:detail_current_async_frame",
+        "//folly/coro/detail:current_async_frame",
     ],
 )
 
@@ -704,7 +704,7 @@ fbcode_target(
         "detail/Helpers.h",
     ],
     exported_deps = [
-        "//folly/coro:detail_helpers",
+        "//folly/coro/detail:helpers",
     ],
 )
 
@@ -715,7 +715,7 @@ fbcode_target(
         "detail/Malloc.h",
     ],
     exported_deps = [
-        "//folly/coro:detail_malloc",
+        "//folly/coro/detail:malloc",
     ],
 )
 
@@ -726,7 +726,7 @@ fbcode_target(
         "detail/ManualLifetime.h",
     ],
     exported_deps = [
-        "//folly/coro:detail_manual_lifetime",
+        "//folly/coro/detail:manual_lifetime",
     ],
 )
 
@@ -737,7 +737,7 @@ fbcode_target(
         "detail/Traits.h",
     ],
     exported_deps = [
-        "//folly/coro:detail_traits",
+        "//folly/coro/detail:traits",
     ],
 )
 

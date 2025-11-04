@@ -182,10 +182,10 @@ non_fbcode_target(
 
 FBCODE_STATIC_LIBSTDCXX_SELECTOR = selects.and_(
     selects.cond("ovr_config//runtime/constraints:fbcode"),
-    selects.cond("ovr_config//cpp:libstdc++"),
+    # selects.cond("ovr_config//cpp:libstdc++"),
     selects.or_(
         selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
-        selects.cond("ovr_config//third-party/libgcc:11.x"),
+        # selects.cond("ovr_config//third-party/libgcc:11.x"),
     ),
 )
 
@@ -354,12 +354,13 @@ fbcode_target(
 )
 
 LIBSTDCXX_BUCKIFIED_SELECTOR = selects.and_(
-    selects.cond("ovr_config//cpp:libstdc++"),
-    selects.cond("ovr_config//third-party/libgcc:11.x"),
+    # selects.cond("ovr_config//cpp:libstdc++"),
+    # selects.cond("ovr_config//third-party/libgcc:11.x"),
+    True,
 )
 
 LIBCXX_STATIC_SELECTOR = selects.and_(
-    selects.cond("ovr_config//cpp:libc++"),
+    # selects.cond("ovr_config//cpp:libc++"),
     selects.or_(
         selects.cond("ovr_config//build_mode/constraints:static"),
         selects.cond("ovr_config//build_mode/constraints:static_pic"),
@@ -380,11 +381,11 @@ fbcode_target(
         STATIC_CXX_STDLIB_SELECTOR,
         select({
             "DEFAULT": [],
-            "ovr_config//cpp:libc++": ["-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1"],
-            "ovr_config//cpp:libstdc++": [
-                "-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1",
-                "-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1",
-            ],
+            # "ovr_config//cpp:libc++": ["-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1"],
+            # "ovr_config//cpp:libstdc++": [
+            #     "-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1",
+            #     "-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1",
+            # ],
         }),
         [],
     ),
@@ -392,16 +393,16 @@ fbcode_target(
         STATIC_CXX_STDLIB_SELECTOR,
         select({
             "DEFAULT": [],
-            "ovr_config//cpp:libc++": [
-                "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
-            ],
-            "ovr_config//cpp:libstdc++": [
-                "-Wl,--wrap=__cxa_throw",
-                "-Wl,--wrap=__cxa_rethrow",
-                "-Wl,--wrap=__cxa_begin_catch",
-                "-Wl,--wrap=__cxa_end_catch",
-                "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
-            ],
+            # "ovr_config//cpp:libc++": [
+            #     "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
+            # ],
+            # "ovr_config//cpp:libstdc++": [
+            #     "-Wl,--wrap=__cxa_throw",
+            #     "-Wl,--wrap=__cxa_rethrow",
+            #     "-Wl,--wrap=__cxa_begin_catch",
+            #     "-Wl,--wrap=__cxa_end_catch",
+            #     "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
+            # ],
         }),
         [],
     ),
