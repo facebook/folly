@@ -22,7 +22,7 @@ import unittest
 from folly.python.test import simplebridgecoro
 
 
-class Futures(unittest.TestCase):
+class FuturesTest(unittest.TestCase):
     def test_bridge_coro(self):
         val = 1337
         loop = asyncio.get_event_loop()
