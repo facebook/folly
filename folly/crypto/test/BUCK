@@ -103,7 +103,7 @@ fbcode_target(
     deps = [
         "//folly:random",
         "//folly:string",
-        "//folly/crypto:lt_hash_sse2",
+        "//folly/crypto:lt_hash",
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],
@@ -119,6 +119,7 @@ fbcode_target(
     deps = [
         "//folly:random",
         "//folly:string",
+        "//folly/crypto:lt_hash",
         "//folly/crypto:lt_hash_sse2",  # @manual
         "//folly/io:iobuf",
         "//folly/portability:gtest",
@@ -135,8 +136,8 @@ fbcode_target(
     deps = [
         "//folly:random",
         "//folly:string",
+        "//folly/crypto:lt_hash",
         "//folly/crypto:lt_hash_avx2",  # @manual
-        "//folly/crypto:lt_hash_sse2",
         "//folly/io:iobuf",
         "//folly/portability:gtest",
     ],

@@ -146,6 +146,7 @@ TYPED_TEST(LtHashTest, checksumEquals) {
   EXPECT_TRUE(h0.checksumEquals({checksum->data(), checksum->length()}));
   // compare against moved-out LtHash, should return false
   TypeParam h1 = std::move(h0);
+  // NOLINTNEXTLINE(bugprone-use-after-move)
   EXPECT_FALSE(h0.checksumEquals({checksum->data(), checksum->length()}));
 }
 
