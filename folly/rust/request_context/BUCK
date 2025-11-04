@@ -36,7 +36,9 @@ fbcode_target(
         ":request_context@header",
     ],
     exported_deps = [
-        "fbsource//third-party/rust:cxx-core",
+        "fbsource//third-party/rust:cxx",
+        # FIXME: The below should replace the above once cxx-core is OSSed
+        # "fbsource//third-party/rust:cxx-core",
         "//folly/io/async:request_context",
     ],
 )

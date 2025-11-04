@@ -19,7 +19,9 @@ fbcode_target(
         "//folly/memory:mallctl_helper",
     ],
     exported_deps = [
-        "fbsource//third-party/rust:cxx-core",
+        "fbsource//third-party/rust:cxx",
+        # FIXME: The below should replace the above once cxx-core is OSSed
+        # "fbsource//third-party/rust:cxx-core",
         "//folly/memory:malloc",
     ],
 )
