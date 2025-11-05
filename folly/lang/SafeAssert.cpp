@@ -497,7 +497,7 @@ constexpr int stderr_fileno = STDERR_FILENO;
 
 #endif
 
-#if !defined(_WIN32) && !defined(_POSIX_FSYNC)
+#if !defined(_WIN32) && !defined(_POSIX_FSYNC) || defined(__XTENSA__)
 
 int fsync(int fh) {
   return 0;
