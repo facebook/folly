@@ -273,11 +273,47 @@ TEST(BucketedTimeSeries, elapsed) {
   // With exactly 1 data point, elapsed() should report 1 second of data
   seconds start(239218);
   ts.addValue(start + seconds(0), 200);
+  EXPECT_EQ(1, ts.count());
   EXPECT_EQ(1, ts.elapsed().count());
+
+  // Adding a data point 1 second in the past, should still be tracked.
+  ts.addValue(start - seconds(1), 200);
+  EXPECT_EQ(2, ts.count());
+  EXPECT_EQ(2, ts.elapsed().count());
+  EXPECT_EQ(TimePoint(start - seconds(1)), ts.firstTime());
+
+  // Calling update() with time in the past would also update firstTime_.
+  ts.update(start - seconds(2));
+  EXPECT_EQ(2, ts.count());
+  EXPECT_EQ(3, ts.elapsed().count());
+  EXPECT_EQ(TimePoint(start - seconds(2)), ts.firstTime());
+
   // Adding a data point 10 seconds later should result in an elapsed time of
-  // 11 seconds (the time range is [0, 10], inclusive).
+  // 13 seconds (the time range is [-1, 10], inclusive).
   ts.addValue(start + seconds(10), 200);
-  EXPECT_EQ(11, ts.elapsed().count());
+  EXPECT_EQ(13, ts.elapsed().count());
+  EXPECT_EQ(3, ts.count());
+
+  // If the valud added falls out of the tracked window, elapsed is capped by
+  // the earliest trackable time.
+  ts.addValue(start - seconds(600), 200);
+  EXPECT_EQ(3, ts.count());
+  EXPECT_EQ(599, ts.elapsed().count());
+  // firstTime_ should still be updated
+  EXPECT_EQ(TimePoint(start - seconds(600)), ts.firstTime());
+
+  ts.addValue(start - seconds(1200), 200);
+  EXPECT_EQ(3, ts.count());
+  EXPECT_EQ(599, ts.elapsed().count());
+  EXPECT_EQ(TimePoint(start - seconds(1200)), ts.firstTime());
+
+  // If the update() falls out of the tracked window, elapsed is capped by
+  // the earliest trackable time.
+  ts.update(start - seconds(1800));
+  EXPECT_EQ(3, ts.count());
+  EXPECT_EQ(599, ts.elapsed().count());
+  // firstTime_ should still be updated
+  EXPECT_EQ(TimePoint(start - seconds(1800)), ts.firstTime());
 
   // elapsed() returns to 0 after clear()
   ts.clear();

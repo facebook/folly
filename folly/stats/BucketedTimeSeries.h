@@ -145,10 +145,8 @@ class BucketedTimeSeries {
   void clear();
 
   /*
-   * Get the latest time that has ever been passed to update() or addValue().
-   *
-   * If no data has ever been added to this timeseries, 0 will be returned.
-   */
+   * See latestTime()
+   **/
   TimePoint getLatestTime() const { return latestTime_; }
 
   /*
@@ -198,14 +196,16 @@ class BucketedTimeSeries {
   }
 
   /*
-   * Returns time of first update() since clear()/constructor.
-   * Note that the returned value is only meaningful when empty() is false.
+   * Returns the oldest time observed either by adding value or calling
+   * update() since clear()/constructor. Note that the returned value is only
+   * meaningful when empty() is false.
    */
   TimePoint firstTime() const { return firstTime_; }
 
   /*
-   * Returns time of last update().
-   * Note that the returned value is only meaningful when empty() is false.
+   * Returns the latest time observed either by adding value or calling
+   * update() since clear()/constructor. Note that the returned value is only
+   * meaningful when empty() is false.
    */
   TimePoint latestTime() const { return latestTime_; }
 

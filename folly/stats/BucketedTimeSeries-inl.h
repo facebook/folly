@@ -119,6 +119,7 @@ bool BucketedTimeSeries<VT, CT>::addValueAggregated(
     // Current time.
     bucketIdx = getBucketIdx(now);
   } else {
+    firstTime_ = std::min(firstTime_, now);
     // An earlier time in the past.  We need to check if this time still falls
     // within our window.
     if (now < getEarliestTimeNonEmpty()) {
@@ -137,6 +138,8 @@ size_t BucketedTimeSeries<VT, CT>::update(TimePoint now) {
   if (empty()) {
     // This is the first data point.
     firstTime_ = now;
+  } else {
+    firstTime_ = std::min(firstTime_, now);
   }
 
   // For all-time data, all we need to do is update latestTime_
