@@ -438,6 +438,13 @@ class BucketedTimeSeries {
   }
   size_t update(Duration now) { return update(TimePoint(now)); }
 
+  /*
+   * For a non-all-time timeseries, return the earliest time that _could be_
+   * tracked by the timeseries with the provided latest time. It can return a
+   * time point that is earlier than firstTime_.
+   */
+  TimePoint getEarliestTrackableTimeBy(TimePoint latestTime) const;
+
  private:
   template <typename ReturnType = double, typename Interval = Duration>
   ReturnType rateHelper(ReturnType numerator, Duration elapsedTime) const {
@@ -447,7 +454,6 @@ class BucketedTimeSeries {
         numerator, elapsedTime);
   }
 
-  TimePoint getEarliestTimeNonEmpty() const;
   size_t updateBuckets(TimePoint now);
 
   template <typename ReturnType>
