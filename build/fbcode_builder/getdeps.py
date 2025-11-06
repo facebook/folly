@@ -22,6 +22,7 @@ from getdeps.dyndeps import create_dyn_dep_munger
 from getdeps.errors import TransientFailure
 from getdeps.fetcher import (
     file_name_is_cmake_file,
+    is_public_commit,
     list_files_under_dir_newer_than_timestamp,
     SystemPackageFetcher,
 )
@@ -732,12 +733,13 @@ class BuildCmd(ProjectCmdBase):
 
                     # Only populate the cache from continuous build runs, and
                     # only if we have a built_marker.
-                    if (
-                        not args.skip_upload
-                        and args.schedule_type == "continuous"
-                        and has_built_marker
-                    ):
-                        cached_project.upload()
+                    if not args.skip_upload and has_built_marker:
+                        if args.schedule_type == "continuous":
+                            cached_project.upload()
+                        elif args.schedule_type == "base_retry":
+                            # Check if on public commit before uploading
+                            if is_public_commit(loader.build_opts):
+                                cached_project.upload()
                 elif args.verbose:
                     print("found good %s" % built_marker)
 
@@ -857,9 +859,6 @@ class BuildCmd(ProjectCmdBase):
             help="Do not attempt to use the build cache.",
         )
         parser.add_argument(
-            "--schedule-type", help="Indicates how the build was activated"
-        )
-        parser.add_argument(
             "--cmake-target",
             help=("Target for cmake build."),
             default="install",
@@ -944,9 +943,6 @@ class TestCmd(ProjectCmdBase):
         )
 
     def setup_project_cmd_parser(self, parser):
-        parser.add_argument(
-            "--schedule-type", help="Indicates how the build was activated"
-        )
         parser.add_argument("--test-owner", help="Owner for testpilot")
         parser.add_argument("--filter", help="Only run the tests matching the regex")
         parser.add_argument(
@@ -1553,6 +1549,11 @@ def parse_args():
             "in cases where the upstream project has uploaded a new "
             "version of the archive with a different hash"
         ),
+    )
+    add_common_arg(
+        "--schedule-type",
+        nargs="?",
+        help="Indicates how the build was activated",
     )
 
     ap = argparse.ArgumentParser(

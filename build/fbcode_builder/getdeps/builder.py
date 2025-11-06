@@ -703,6 +703,7 @@ if __name__ == "__main__":
         self.loader = loader
         if build_opts.shared_libs:
             self.defines["BUILD_SHARED_LIBS"] = "ON"
+            self.defines["BOOST_LINK_STATIC"] = "OFF"
 
     def _invalidate_cache(self) -> None:
         for name in [

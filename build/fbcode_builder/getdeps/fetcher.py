@@ -564,6 +564,97 @@ def get_fbsource_repo_data(build_options) -> FbsourceRepoData:
     return cached_data
 
 
+def is_public_commit(build_options) -> bool:  # noqa: C901
+    """Check if the current commit is public (shipped/will be shipped to remote).
+
+    Works across git, sapling (sl), and hg repositories:
+    - For hg/sapling: Uses 'phase' command to check if commit is public
+    - For git: Checks if commit exists in remote branches
+
+    Returns True if public, False if draft/local-only or on error (conservative).
+    """
+    # Use fbsource_dir if available (Meta internal), otherwise fall back to repo_root
+    repo_dir = build_options.fbsource_dir or build_options.repo_root
+    if not repo_dir:
+        # No repository detected, be conservative
+        return False
+
+    env = Env()
+    env.set("HGPLAIN", "1")
+    env_dict = dict(env.items())
+
+    try:
+        # Try hg/sapling phase command first (works for both hg and sl)
+        # Try 'sl' first as it's the preferred tool at Meta
+        for cmd in [["sl", "phase", "-r", "."], ["hg", "phase", "-r", "."]]:
+            try:
+                output = (
+                    subprocess.check_output(
+                        cmd, cwd=repo_dir, env=env_dict, stderr=subprocess.DEVNULL
+                    )
+                    .decode("ascii")
+                    .strip()
+                )
+                # Output format: "hash: public" or "hash: draft"
+                return "public" in output
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
+
+        # Try git if hg/sl didn't work
+        try:
+            # Detect the default branch for origin remote
+            default_branch = None
+            try:
+                # Get the symbolic ref for origin/HEAD to find default branch
+                output = (
+                    subprocess.check_output(
+                        ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+                        cwd=repo_dir,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    .decode("ascii")
+                    .strip()
+                )
+                # Output format: "refs/remotes/origin/main"
+                if output.startswith("refs/remotes/"):
+                    default_branch = output
+            except subprocess.CalledProcessError:
+                # If symbolic-ref fails, fall back to common names
+                pass
+
+            # Build list of branches to check
+            branches_to_check = []
+            if default_branch:
+                branches_to_check.append(default_branch)
+            # Also try common defaults as fallback
+            branches_to_check.extend(["origin/main", "origin/master"])
+
+            # Check if HEAD is an ancestor of any of these branches
+            for branch in branches_to_check:
+                try:
+                    subprocess.check_output(
+                        ["git", "merge-base", "--is-ancestor", "HEAD", branch],
+                        cwd=repo_dir,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    # If command succeeds (exit 0), HEAD is an ancestor of the branch
+                    return True
+                except subprocess.CalledProcessError:
+                    # Not an ancestor of this branch, try next
+                    continue
+            # HEAD is not in any default branch
+            return False
+        except FileNotFoundError:
+            pass
+
+        # If all VCS commands failed, be conservative and don't upload
+        return False
+
+    except Exception:
+        # On any unexpected error, be conservative and don't upload
+        return False
+
+
 class SimpleShipitTransformerFetcher(Fetcher):
     def __init__(self, build_options, manifest, ctx) -> None:
         self.build_options = build_options
