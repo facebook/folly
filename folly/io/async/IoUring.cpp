@@ -20,7 +20,6 @@
 #include <ostream>
 #include <string>
 
-#include <boost/intrusive/parent_from_member.hpp>
 #include <fmt/ostream.h>
 #include <glog/logging.h>
 
