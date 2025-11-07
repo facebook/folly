@@ -1,0 +1,8 @@
+[manifest]
+name = libibverbs
+
+[debs]
+libibverbs-dev
+
+[rpms]
+libibverbs
