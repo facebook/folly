@@ -349,7 +349,6 @@ class IoUringBackend : public EventBaseBackendBase {
   // returns true if the current Linux kernel version
   // supports the io_uring backend
   static bool isAvailable();
-  bool kernelHasNonBlockWriteFixes() const;
   static bool kernelSupportsRecvmsgMultishot();
   static bool kernelSupportsDeferTaskrun();
   static bool kernelSupportsSendZC();

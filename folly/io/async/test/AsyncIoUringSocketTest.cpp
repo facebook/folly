@@ -966,4 +966,49 @@ INSTANTIATE_TEST_SUITE_P(
       return info.param.testName();
     });
 
+TEST(AsyncIoUringSocketTest, RemoveNonBlockFlag) {
+  Promise<NetworkSocket> fdPromise;
+  test::TestAcceptCallback acceptCallback;
+  acceptCallback.setConnectionAcceptedFn(
+      [&fdPromise](NetworkSocket fd, const folly::SocketAddress& /*addr*/) {
+        fdPromise.setValue(fd);
+      });
+
+  auto options =
+      IoUringBackend::Options{}
+          .setUseRegisteredFds(64)
+          .setInitialProvidedBuffers(64, 8)
+          .setDeferTaskRun(true);
+  EventBase evb{EventBase::Options{}.setBackendFactory(
+      [&options]() -> std::unique_ptr<EventBaseBackendBase> {
+        return std::make_unique<IoUringBackend>(options);
+      })};
+
+  std::shared_ptr<AsyncServerSocket> serverSocket(
+      AsyncServerSocket::newSocket(&evb));
+  serverSocket->bind(0);
+  serverSocket->listen(1024);
+  folly::SocketAddress serverAddress;
+  serverSocket->getAddress(&serverAddress);
+  serverSocket->addAcceptCallback(&acceptCallback, &evb);
+  serverSocket->startAccepting();
+
+  AsyncSocket::UniquePtr clientSocket(AsyncSocket::newSocket(&evb));
+  clientSocket->connect(nullptr, serverAddress);
+
+  auto fd = fdPromise.getFuture().within(kTimeout).via(&evb).getVia(&evb);
+  AsyncSocket::UniquePtr acceptedSocket(AsyncSocket::newSocket(&evb, fd));
+
+  int flags = fcntl(fd.toFd(), F_GETFL, 0);
+  ASSERT_GE(flags, 0);
+  EXPECT_EQ(flags & O_NONBLOCK, O_NONBLOCK);
+
+  AsyncIoUringSocket::UniquePtr ioUringSocket(
+      new AsyncIoUringSocket(std::move(acceptedSocket)));
+
+  int newFlags = fcntl(fd.toFd(), F_GETFL, 0);
+  ASSERT_GE(newFlags, 0);
+  EXPECT_EQ(newFlags & O_NONBLOCK, 0);
+}
+
 } // namespace folly

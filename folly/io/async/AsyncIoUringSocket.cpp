@@ -1836,15 +1836,10 @@ void AsyncIoUringSocket::registerFd() {
 void AsyncIoUringSocket::setFd(NetworkSocket ns) {
   fd_ = ns;
   try {
-    if (!backend_->kernelHasNonBlockWriteFixes()) {
-      // If the kernel doesnt have the fixes we have to disable the nonblock
-      // flag It will still be NONBLOCK as long as it goes through io_uring, but
-      // if we leave the flag then IO_URING will spin on some ops.
-      int flags =
-          ensureSocketReturnCode(fcntl(ns.toFd(), F_GETFL, 0), "get flags");
-      flags = flags & ~O_NONBLOCK;
-      ensureSocketReturnCode(fcntl(ns.toFd(), F_SETFL, flags), "set flags");
-    }
+    int flags =
+        ensureSocketReturnCode(fcntl(ns.toFd(), F_GETFL, 0), "get flags");
+    flags = flags & ~O_NONBLOCK;
+    ensureSocketReturnCode(fcntl(ns.toFd(), F_SETFL, flags), "set flags");
     registerFd();
   } catch (std::exception const& e) {
     LOG(ERROR) << "unable to setFd " << ns.toFd() << " : " << e.what();

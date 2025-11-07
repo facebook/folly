@@ -1958,18 +1958,6 @@ void IoUringBackend::processRecvZc(
   ioSqe->offset_ += cqe->res;
 }
 
-bool IoUringBackend::kernelHasNonBlockWriteFixes() const {
-#if FOLLY_IO_URING_UP_TO_DATE
-  // this was fixed in 5.18, which introduced linked file
-  // fixed in "io_uring: only wake when the correct events are set"
-  return params_.features & IORING_FEAT_LINKED_FILE;
-#else
-  // this indicates that sockets have to manually remove O_NONBLOCK
-  // which is a bit slower but shouldnt cause any functional changes
-  return false;
-#endif
-}
-
 namespace {
 
 static bool doKernelSupportsRecvmsgMultishot() {
