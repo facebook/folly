@@ -111,7 +111,7 @@ TEST(Conv, timespecToStdChrono) {
       duration_cast<hours>(seconds{ts.tv_sec} + nanoseconds{ts.tv_nsec})
           .count());
 
-  // Test converions to floating point durations
+  // Test conversions to floating point durations
   ts.tv_sec = 1;
   ts.tv_nsec = 500000000;
   EXPECT_EQ(1.5, to<duration<double>>(ts).count());
