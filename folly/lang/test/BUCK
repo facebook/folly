@@ -232,6 +232,17 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
+    name = "strong_test",
+    srcs = ["StrongTest.cpp"],
+    deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "//xplat/folly/hash:traits",
+        "//xplat/folly/lang:strong",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
     name = "switch_test",
     srcs = ["SwitchTest.cpp"],
     deps = [
@@ -568,6 +579,17 @@ fbcode_target(
     deps = [
         "//folly/coro/safe:captures",
         "//folly/lang:safe_closure",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "strong_test",
+    srcs = ["StrongTest.cpp"],
+    deps = [
+        "//folly/hash:traits",
+        "//folly/lang:strong",
         "//folly/portability:gtest",
     ],
 )

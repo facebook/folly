@@ -348,6 +348,17 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "strong",
+    feature = triage_InfrastructureSupermoduleOptou,
+    raw_headers = ["Strong.h"],
+    exported_deps = [
+        "//third-party/fmt:fmt",
+        "//xplat/folly:traits",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "cstring_view",
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["cstring_view.h"],
@@ -730,6 +741,16 @@ fbcode_target(
     headers = ["StaticConst.h"],
     exported_deps = [
         "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "strong",
+    headers = ["Strong.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:traits",
     ],
 )
 
