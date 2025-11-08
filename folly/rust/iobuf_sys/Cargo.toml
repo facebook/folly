@@ -1,0 +1,13 @@
+[package]
+name = "iobuf_sys"
+version = "0.1.0"
+edition = "2024"
+
+# [lib]
+
+[dependencies]
+cxx = "1.0"
+
+[build-dependencies]
+bindgen = "0.72"
+pkg-config = "0.3"
