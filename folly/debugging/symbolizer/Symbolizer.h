@@ -56,6 +56,13 @@ bool fixFrameArray(FrameArray<N>& fa, ssize_t n) {
     return false;
   }
 }
+
+std::string getStackTraceStr(
+    const uintptr_t* addresses,
+    SymbolizedFrame* frames,
+    size_t frameCount,
+    bool showFullInfo,
+    size_t skip = 0);
 } // namespace detail
 
 // Always inline these functions; they don't do much, and unittests rely
@@ -269,24 +276,27 @@ class SafeStackTracePrinter {
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 /**
- * Gets the stack trace for the current thread and returns a string
- * representation. Convenience function meant for debugging and logging.
- * Empty string indicates stack trace functionality is not available.
+ * Gets the stack trace for the current thread, skipping the top `skip` frames,
+ * and returns a string representation. Convenience function meant for
+ * debugging and logging. Empty string indicates stack trace functionality
+ * is not available.
  *
  * NOT async-signal-safe.
  * @param showFullInfo If true, include file names and line numbers (when
  * available).
+ * @param skip Skip the top `skip` frames.
  */
-std::string getStackTraceStr(bool showFullInfo = false);
+std::string getStackTraceStr(bool showFullInfo = false, size_t skip = 0);
 
 /**
- * Gets the async stack trace for the current thread and returns a string
- * representation. Convenience function meant for debugging and logging.
- * Empty string indicates stack trace functionality is not available.
+ * Gets the async stack trace for the current thread, skipping the top `skip`
+ * frames, and returns a string representation. Convenience function meant for
+ * debugging and logging. Empty string indicates stack trace functionality
+ * is not available.
  *
  * NOT async-signal-safe.
  */
-std::string getAsyncStackTraceStr();
+std::string getAsyncStackTraceStr(size_t skip = 0);
 
 /**
  * Get the async stack traces (string representation) for suspended
@@ -301,18 +311,45 @@ std::vector<std::string> getSuspendedStackTraces();
 // Define these in the header, as headers are always available, but not all
 // platforms can link against the symbolizer library cpp sources.
 
-inline std::string getStackTraceStr(bool /*showFullInfo*/ = false) {
+inline std::string getStackTraceStr(
+    bool /*showFullInfo*/ = false, size_t /*skip*/ = 0) {
   return "";
 }
 
-inline std::string getAsyncStackTraceStr() {
+inline std::string getAsyncStackTraceStr(size_t /*skip*/ = 0) {
   return "";
 }
 
 inline std::vector<std::string> getSuspendedStackTraces() {
   return {};
 }
+
+namespace detail {
+inline std::string getStackTraceStr(
+    const uintptr_t* /*addresses*/,
+    SymbolizedFrame* /*frames*/,
+    size_t /*frameCount*/,
+    bool /*showFullInfo*/,
+    size_t /*skip*/) {
+  return "";
+}
+} // namespace detail
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
+/**
+ * Convert FrameArray to string representation.
+ * Convenience function for debugging and logging.
+ */
+template <size_t N>
+FOLLY_ALWAYS_INLINE std::string getStackTraceStr(
+    FrameArray<N>& fa, bool showFullInfo = false, size_t skip = 0);
+
+template <size_t N>
+inline std::string getStackTraceStr(
+    FrameArray<N>& fa, bool showFullInfo, size_t skip) {
+  return detail::getStackTraceStr(
+      fa.addresses, fa.frames, fa.frameCount, showFullInfo, skip);
+}
 
 #if FOLLY_HAVE_SWAPCONTEXT
 

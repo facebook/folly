@@ -544,33 +544,53 @@ constexpr size_t kMaxStackTraceDepth = 100;
 
 template <size_t N, typename StackTraceFunc>
 std::string getStackTraceStrImpl(
-    StackTraceFunc func, bool showFullInfo = false) {
+    StackTraceFunc func, bool showFullInfo = false, size_t skip = 0) {
   FrameArray<N> addresses;
 
   if (!func(addresses)) {
     return "";
   } else {
-    ElfCache elfCache;
-    LocationInfoMode mode =
-        showFullInfo ? LocationInfoMode::FULL : LocationInfoMode::FAST;
-    Symbolizer symbolizer(&elfCache, mode);
-    symbolizer.symbolize(addresses);
-
-    StringSymbolizePrinter printer;
-    printer.println(addresses);
-    return printer.str();
+    return detail::getStackTraceStr(
+        addresses.addresses,
+        addresses.frames,
+        addresses.frameCount,
+        showFullInfo,
+        skip);
   }
 }
 } // namespace
 
-std::string getStackTraceStr(bool showFullInfo) {
+namespace detail {
+std::string getStackTraceStr(
+    const uintptr_t* addresses,
+    SymbolizedFrame* frames,
+    size_t frameCount,
+    bool showFullInfo,
+    size_t skip) {
+  if (frameCount == 0 || skip >= frameCount) {
+    return {};
+  }
+
+  ElfCache elfCache;
+  LocationInfoMode mode =
+      showFullInfo ? LocationInfoMode::FULL : LocationInfoMode::FAST;
+  Symbolizer symbolizer(&elfCache, mode);
+  symbolizer.symbolize(addresses, frames, frameCount);
+
+  StringSymbolizePrinter printer;
+  printer.println(frames + skip, frameCount - skip);
+  return printer.str();
+}
+} // namespace detail
+
+std::string getStackTraceStr(bool showFullInfo, size_t skip) {
   return getStackTraceStrImpl<kMaxStackTraceDepth>(
-      getStackTrace<kMaxStackTraceDepth>, showFullInfo);
+      getStackTrace<kMaxStackTraceDepth>, showFullInfo, skip);
 }
 
-std::string getAsyncStackTraceStr() {
+std::string getAsyncStackTraceStr(size_t skip) {
   return getStackTraceStrImpl<kMaxStackTraceDepth>(
-      getAsyncStackTraceSafe<kMaxStackTraceDepth>);
+      getAsyncStackTraceSafe<kMaxStackTraceDepth>, skip);
 }
 
 std::vector<std::string> getSuspendedStackTraces() {
