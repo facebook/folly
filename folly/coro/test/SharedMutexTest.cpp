@@ -1057,7 +1057,7 @@ TEST_F(SharedMutexTest, StressTest) {
   };
   auto read = [&]() -> coro::Task<int> {
     auto rLock = co_await mutex.co_scoped_lock_shared();
-    EXPECT_EQ(value1, value1);
+    EXPECT_EQ(value1, value2);
     co_return value1;
   };
   auto check = [&]() -> coro::Task<void> {
@@ -1065,7 +1065,7 @@ TEST_F(SharedMutexTest, StressTest) {
     if (value1 >= target) {
       reachedTarget = true;
     }
-    EXPECT_EQ(value1, value1);
+    EXPECT_EQ(value1, value2);
   };
 
   CPUThreadPoolExecutor executor{
