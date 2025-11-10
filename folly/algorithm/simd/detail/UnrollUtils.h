@@ -77,7 +77,7 @@ struct UnrollUtils {
  private:
   template <typename T, std::size_t N, typename Op, std::size_t... i>
   FOLLY_ALWAYS_INLINE static constexpr auto arrayMapImpl(
-      const std::array<T, N>& x, Op op, std::index_sequence<i...>) {
+      const std::array<T, N>& x, Op op, std::index_sequence<i...> /*unused*/) {
     using U = decltype(op(std::declval<const T&>()));
 
     FOLLY_PUSH_WARNING
@@ -97,7 +97,7 @@ struct UnrollUtils {
       std::size_t N,
       typename Op>
   FOLLY_ALWAYS_INLINE static constexpr std::enable_if_t<l - f == 1, T>
-  arrayReduceImpl(std::array<T, N> const& x, Op) {
+  arrayReduceImpl(std::array<T, N> const& x, Op /*unused*/) {
     return x[f];
   }
 
@@ -117,7 +117,7 @@ struct UnrollUtils {
 
   template <typename Op, std::size_t... i>
   FOLLY_ALWAYS_INLINE static constexpr bool unrollUntilImpl(
-      Op op, std::index_sequence<i...>) {
+      Op op, std::index_sequence<i...> /*unused*/) {
     return (... || op(index_constant<i>{}));
   }
 };
