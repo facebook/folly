@@ -21,7 +21,7 @@ from typing import Optional
 from .copytree import simple_copytree
 from .dyndeps import create_dyn_dep_munger
 from .envfuncs import add_path_entry, Env, path_search
-from .fetcher import copy_if_different
+from .fetcher import copy_if_different, is_public_commit
 from .runcmd import run_cmd
 
 if typing.TYPE_CHECKING:
@@ -1013,7 +1013,13 @@ if __name__ == "__main__":
                 )
             return tests
 
-        if schedule_type == "continuous" or schedule_type == "testwarden":
+        discover_like_continuous = False
+        if schedule_type == "continuous" or (
+            schedule_type == "base_retry" and is_public_commit(self.build_opts)
+        ):
+            discover_like_continuous = True
+
+        if discover_like_continuous or schedule_type == "testwarden":
             # for continuous and testwarden runs, disabling retry can give up
             # better signals for flaky tests.
             retry = 0
@@ -1065,7 +1071,7 @@ if __name__ == "__main__":
 
                 if schedule_type == "diff":
                     runs.append(["--collection", "oss-diff", "--purpose", "diff"])
-                elif schedule_type == "continuous":
+                elif discover_like_continuous:
                     runs.append(
                         [
                             "--tag-new-tests",
