@@ -9,3 +9,21 @@ diff --git a/boost/serialization/strong_typedef.hpp b/boost/serialization/strong
      bool operator<(const D& rhs) const {return t < rhs.t;}                                                       \
  };
  
+diff --git a/tools/build/src/tools/msvc.jam b/tools/build/src/tools/msvc.jam
+--- a/tools/build/src/tools/msvc.jam
++++ b/tools/build/src/tools/msvc.jam
+@@ -1137,6 +1137,14 @@
+         }
+         else
+         {
++            if [ MATCH "(14.4)" : $(version) ]
++            {
++                if $(.debug-configuration)
++                {
++                    ECHO "notice: [generate-setup-cmd] $(version) is 14.4x" ;
++                }
++                parent = [ path.native [ path.join  $(parent) "..\\..\\..\\..\\..\\Auxiliary\\Build" ] ] ;
++            }
+             if [ MATCH "(14.3)" : $(version) ]
+             {
+                 if $(.debug-configuration)

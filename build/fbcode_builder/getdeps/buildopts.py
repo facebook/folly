@@ -165,7 +165,7 @@ class BuildOptions(object):
                     )
 
                 # then the 32 bit ones
-                for year in ["2019", "2017"]:
+                for year in ["2022", "2019", "2017"]:
                     vcvarsall += glob.glob(
                         os.path.join(
                             os.environ["ProgramFiles(x86)"],
