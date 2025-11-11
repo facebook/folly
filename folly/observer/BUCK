@@ -57,7 +57,7 @@ non_fbcode_target(
         "Observer-pre.h",
         "ReadMostlyTLObserver.h",
     ],
-    deps = [
+    exported_deps = [
         "fbsource//xplat/folly/synchronization:baton",
         "//xplat/folly:shared_mutex",
         "//xplat/folly:thread_local",
