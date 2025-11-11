@@ -226,6 +226,13 @@ TEST(Traits, relational) {
   EXPECT_TRUE((folly::greater_than<int64_t, -1, uint64_t>(0)));
 }
 
+TEST(Traits, is_non_bool_integral) {
+  EXPECT_TRUE((folly::is_non_bool_integral_v<int>));
+  EXPECT_TRUE((folly::is_non_bool_integral_v<int const volatile>));
+  EXPECT_FALSE((folly::is_non_bool_integral_v<bool>));
+  EXPECT_FALSE((folly::is_non_bool_integral_v<bool const volatile>));
+}
+
 #if FOLLY_HAVE_INT128_T
 
 TEST(Traits, int128) {

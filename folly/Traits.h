@@ -1076,6 +1076,17 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::shared_ptr)
 
 namespace folly {
 
+/// is_non_bool_integral_v
+///
+/// A common need.
+template <typename Int>
+inline constexpr bool is_non_bool_integral_v =
+    !std::is_same_v<bool, std::remove_cv_t<Int>> && std::is_integral_v<Int>;
+
+template <typename Int>
+struct is_non_bool_integral //
+    : std::bool_constant<is_non_bool_integral_v<Int>> {};
+
 //  Some compilers have signed __int128 and unsigned __int128 types, and some
 //  libraries with some compilers have traits for those types. It's a mess.
 //  Import things into folly and then fill in whatever is missing.
