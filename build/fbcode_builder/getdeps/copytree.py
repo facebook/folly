@@ -7,6 +7,7 @@
 
 import os
 import shutil
+import stat
 import subprocess
 
 from .platform import is_windows
@@ -97,3 +98,31 @@ def simple_copytree(src_dir, dest_dir, symlinks=False):
         return dest_dir
     else:
         return shutil.copytree(src_dir, dest_dir, symlinks=symlinks)
+
+
+def _remove_readonly_and_try_again(func, path, exc_info):
+    """
+    Error handler for shutil.rmtree.
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries the operation.
+    Any other failure propagates.
+    """
+    # exc_info is a tuple (exc_type, exc_value, traceback)
+    exc_type = exc_info[0]
+    if exc_type is PermissionError:
+        os.chmod(path, stat.S_IWRITE)
+        # Retry the original function (os.remove or os.rmdir)
+        try:
+            func(path)
+        except Exception:
+            # If it still fails, the original exception from func() will propagate
+            raise
+    else:
+        # If the error is not a PermissionError, re-raise the original exception
+        raise exc_info[1]
+
+
+def rmtree_more(path):
+    """Wrapper around shutil.rmtree() that makes it remove readonly files as well.
+    Useful when git on windows decides to make some files readonly on checkout"""
+    shutil.rmtree(path, onerror=_remove_readonly_and_try_again)

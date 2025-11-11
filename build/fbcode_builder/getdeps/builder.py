@@ -18,7 +18,7 @@ import typing
 from shlex import quote as shellquote
 from typing import Optional
 
-from .copytree import simple_copytree
+from .copytree import rmtree_more, simple_copytree
 from .dyndeps import create_dyn_dep_munger
 from .envfuncs import add_path_entry, Env, path_search
 from .fetcher import copy_if_different, is_public_commit
@@ -203,7 +203,7 @@ class BuilderBase(object):
                 if os.path.islink(self.build_dir):
                     os.remove(self.build_dir)
                 else:
-                    shutil.rmtree(self.build_dir)
+                    rmtree_more(self.build_dir)
         elif self.build_opts.is_windows():
             # On Windows, emit a wrapper script that can be used to run build artifacts
             # directly from the build directory, without installing them.  On Windows $PATH
