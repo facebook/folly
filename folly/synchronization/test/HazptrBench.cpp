@@ -25,6 +25,7 @@
 #include <folly/container/Enumerate.h>
 #include <folly/container/F14Set.h>
 #include <folly/portability/GFlags.h>
+#include <folly/synchronization/Rcu.h>
 
 using namespace folly;
 
@@ -107,12 +108,37 @@ BENCHMARK(std_atomic_shared_ptr_copy, iters) {
 
 BENCHMARK_DRAW_LINE();
 
+static void do_rcu_lock_unlock(
+    BenchmarkSuspender& braces, rcu_domain& domain, size_t iters) {
+  braces.dismissing([&] {
+    while (iters--) {
+      domain.lock();
+      domain.unlock();
+    }
+  });
+}
+
+BENCHMARK(rcu_lock_unlock, iters) {
+  BenchmarkSuspender braces;
+  auto&& domain = rcu_domain();
+  do_rcu_lock_unlock(braces, domain, iters);
+}
+
+BENCHMARK(rcu_lock_unlock_default, iters) {
+  BenchmarkSuspender braces;
+  auto&& domain = rcu_default_domain();
+  do_rcu_lock_unlock(braces, domain, iters);
+}
+
+BENCHMARK_DRAW_LINE();
+
 /// benchmark hazptr-protecting a pointer, including protection and unprotection
-template <template <typename> class Atom>
+template <bool Combine, template <typename> class Atom>
 static void do_hazptr_protect(
     BenchmarkSuspender& braces, hazptr_domain<Atom>& domain, size_t iters) {
   auto own = std::make_unique<TestObj>(42);
   Atom<TestObj*> ptr{own.get()};
+  folly::compiler_must_not_predict(ptr);
 
   int sum = 0;
   braces.dismissing([&] {
@@ -121,21 +147,36 @@ static void do_hazptr_protect(
       auto* obj = h.protect(ptr);
       folly::compiler_must_not_predict(obj->value);
       sum += obj->value;
+      if (!Combine) {
+        h.reset_protection();
+      }
     }
   });
   folly::compiler_must_not_elide(sum);
 }
 
-BENCHMARK(hazptr_protect, iters) {
+BENCHMARK(hazptr_protect_separate, iters) {
   BenchmarkSuspender braces;
   auto&& domain = hazptr_domain{};
-  do_hazptr_protect(braces, domain, iters);
+  do_hazptr_protect<false>(braces, domain, iters);
 }
 
-BENCHMARK(hazptr_protect_default, iters) {
+BENCHMARK(hazptr_protect_separate_default, iters) {
   BenchmarkSuspender braces;
   auto&& domain = default_hazptr_domain();
-  do_hazptr_protect(braces, domain, iters);
+  do_hazptr_protect<false>(braces, domain, iters);
+}
+
+BENCHMARK(hazptr_protect_combined, iters) {
+  BenchmarkSuspender braces;
+  auto&& domain = hazptr_domain{};
+  do_hazptr_protect<true>(braces, domain, iters);
+}
+
+BENCHMARK(hazptr_protect_combined_default, iters) {
+  BenchmarkSuspender braces;
+  auto&& domain = default_hazptr_domain();
+  do_hazptr_protect<true>(braces, domain, iters);
 }
 
 BENCHMARK_DRAW_LINE();
@@ -166,6 +207,55 @@ BENCHMARK(hazptr_make_default, iters) {
 
 BENCHMARK_DRAW_LINE();
 
+/// benchmark creating a local hazard pointer (aka a hazptr-local) without using
+/// it, including ctor and dtor
+template <template <typename> class Atom>
+static void do_hazptr_make_local_default(
+    BenchmarkSuspender& braces, size_t iters) {
+  braces.dismissing([&] {
+    while (iters--) {
+      hazptr_local<1, Atom> local;
+      folly::compiler_must_not_predict(local[0]);
+    }
+  });
+}
+
+BENCHMARK(hazptr_make_local_default, iters) {
+  BenchmarkSuspender braces;
+  do_hazptr_make_local_default<std::atomic>(braces, iters);
+}
+
+BENCHMARK_DRAW_LINE();
+
+/// benchmark creating a local hazard pointer (aka a hazptr-local) and using to
+/// protect and unprotect a shared object
+template <template <typename> class Atom>
+static void do_hazptr_make_local_protect_default(
+    BenchmarkSuspender& braces, size_t iters) {
+  auto own = std::make_unique<TestObj>(42);
+  std::atomic<TestObj*> ptr{own.get()};
+  folly::compiler_must_not_predict(ptr);
+
+  int sum = 0;
+  braces.dismissing([&] {
+    while (iters--) {
+      hazptr_local<1, Atom> local;
+      auto& h = local[0];
+      auto* obj = h.protect(ptr);
+      folly::compiler_must_not_predict(obj->value);
+      sum += obj->value;
+    }
+  });
+  folly::compiler_must_not_elide(sum);
+}
+
+BENCHMARK(hazptr_make_local_protect_default, iters) {
+  BenchmarkSuspender braces;
+  do_hazptr_make_local_protect_default<std::atomic>(braces, iters);
+}
+
+BENCHMARK_DRAW_LINE();
+
 /// benchmark creating a hazard pointer array (aka a hazptr-array) without using
 /// it, including ctor and dtor
 template <size_t ArraySize>
@@ -190,6 +280,7 @@ static void do_hazptr_make_protect(
     BenchmarkSuspender& braces, hazptr_domain<Atom>& domain, size_t iters) {
   auto own = std::make_unique<TestObj>(42);
   std::atomic<TestObj*> ptr{own.get()};
+  folly::compiler_must_not_predict(ptr);
 
   int sum = 0;
   braces.dismissing([&] {

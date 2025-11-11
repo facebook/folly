@@ -220,6 +220,7 @@ fbcode_target(
         "//folly/container:f14_hash",
         "//folly/portability:gflags",
         "//folly/synchronization:hazptr",
+        "//folly/synchronization:rcu",
     ],
 )
 
