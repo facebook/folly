@@ -35,20 +35,23 @@ namespace folly {
 /// rely on this convention, so if you see failures in those, check your tag.
 /// You can customize the output per-type, see `CustomOutput` in the test.
 ///
-/// Usually, it is OK to allow implicit construction from the underlying type:
+/// It is often OK to allow implicit construction from the underlying type.
+/// We strongly recommend using concepts to limit undesired conversions:
 ///
-///   struct UserId : public strong<std::string, UserId> {
-///     using strong<std::string, UserId>::strong;
-///     /* implicit */ UserId(std::string s) : strong{std::move(s)} {}
+///   struct UserId : public strong<uint64_t, UserId> {
+///     using strong<uint64_t, UserId>::strong;
+///     // Prohibit risky signed-unsigned & float-int conversions.
+///     // Callers will want to suffix integer literals with `u`.
+///     /* implicit */ UserId(std::unsigned_integral auto n) : strong{n} {}
 ///   };
 ///
-///   UserId uid{"user123"};
-///   std::string s{uid}; // Explicit conversion OK
-///   std::string s = uid; // Compile error -- no implicit conversion
+///   UserId uid{123u}; // OK, explicit construction
+///   UserId uid = 123u; // OK, implicit conversion
+///   UserId uid{123}; // Warning: narrowing conversion
+///   UserId uid = 123; // Error: no viable conversion
 ///
-/// If you want a stricter type, omit the implicit constructor. For ease of use,
-/// even without the implicit constructor, your strong type will be comparable
-/// with the underlying type.
+/// For ease of use, even without an implicit constructor, your strong type
+/// will be comparable with the underlying type.
 template <typename T, typename /* your derived class */>
 class strong {
  private:
