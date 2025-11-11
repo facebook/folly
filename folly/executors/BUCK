@@ -449,6 +449,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/portability:pthread",
         "fbsource//xplat/folly/synchronization:atomic_struct",
         "fbsource//xplat/folly/synchronization:baton",
+        "fbsource//xplat/folly/synchronization:relaxed_atomic",
         "//third-party/glog:glog",
         "//xplat/folly:default_keep_alive_executor",
         "//xplat/folly:memory",
@@ -942,6 +943,7 @@ fbcode_target(
         "//folly/portability:gflags",
         "//folly/synchronization:atomic_struct",
         "//folly/synchronization:baton",
+        "//folly/synchronization:relaxed_atomic",
     ],
     exported_external_deps = [
         "glog",

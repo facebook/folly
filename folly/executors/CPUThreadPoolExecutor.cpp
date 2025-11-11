@@ -318,6 +318,8 @@ void CPUThreadPoolExecutor::stopThread(const ThreadPtr& thread) {
   for (auto& o : observers_) {
     o->threadStopped(thread.get());
   }
+  stoppedThreadProcessedTasks_ += thread->processedTasks;
+  thread->processedTasks = 0;
   threadList_.remove(thread);
   stoppedThreads_.add(thread);
 }

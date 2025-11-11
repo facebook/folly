@@ -32,6 +32,7 @@
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 namespace folly {
 
@@ -122,9 +123,10 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
           activeThreadCount(0),
           pendingTaskCount(0),
           totalTaskCount(0),
+          processedTaskCount(0),
           maxIdleTime(0) {}
     size_t threadCount, idleThreadCount, activeThreadCount;
-    uint64_t pendingTaskCount, totalTaskCount;
+    uint64_t pendingTaskCount, totalTaskCount, processedTaskCount;
     std::chrono::nanoseconds maxIdleTime;
   };
 
@@ -237,6 +239,11 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
     static std::atomic<uint64_t> nextId;
     uint64_t id;
+
+    // Number of tasks processed by this worker.  Reset to zero when
+    // the thread stops.
+    folly::relaxed_atomic<uint64_t> processedTasks;
+
     std::thread handle;
     std::atomic<bool> idle;
     folly::AtomicStruct<std::chrono::steady_clock::time_point> lastActiveTime;
@@ -397,6 +404,11 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   std::atomic<size_t> threadsToJoin_{0};
   std::atomic<std::chrono::milliseconds> threadTimeout_;
+
+  // Number of tasks processed by stopped or joined threads.  Updated
+  // when a thread stops, which preceeds joining.  Requires holding
+  // the threadListLock_.
+  uint64_t stoppedThreadProcessedTasks_{0};
 
   bool joinKeepAliveOnce() {
     if (!std::exchange(keepAliveJoined_, true)) {

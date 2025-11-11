@@ -1295,3 +1295,47 @@ TYPED_TEST(ThreadPoolExecutorTypedTest, CurrentThreadExecutor) {
   currentThreadTest<TypeParam>("ExecutorName");
   currentThreadTestDisabled<TypeParam>("ExecutorName");
 }
+
+TYPED_TEST(ThreadPoolExecutorTypedTest, ProcessedTasksCountStartsAtZero) {
+  TypeParam e(4);
+  EXPECT_EQ(0, e.getPoolStats().processedTaskCount);
+  e.join();
+  EXPECT_EQ(0, e.getPoolStats().processedTaskCount);
+}
+
+TYPED_TEST(
+    ThreadPoolExecutorTypedTest, ProcessedTasksIncrementsAfterCompletion) {
+  TypeParam e(1);
+  EXPECT_EQ(0, e.getPoolStats().processedTaskCount);
+
+  folly::Baton<> task1;
+
+  e.add([&]() { // 1
+    EXPECT_EQ(0, e.getPoolStats().processedTaskCount);
+    task1.post();
+  });
+
+  task1.wait();
+
+  folly::Baton<> task2;
+
+  e.add([&]() { // 2
+    EXPECT_EQ(1, e.getPoolStats().processedTaskCount);
+    task2.post();
+  });
+
+  task2.wait();
+
+  folly::Baton<> task3;
+
+  e.add([&]() { // 3
+    EXPECT_EQ(2, e.getPoolStats().processedTaskCount);
+    task3.post();
+  });
+
+  task3.wait();
+
+  e.join();
+
+  EXPECT_EQ(3, e.getPoolStats().processedTaskCount);
+}

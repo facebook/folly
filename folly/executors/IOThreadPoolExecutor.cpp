@@ -288,6 +288,8 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
     }
   }
   for (const auto& thread : stoppedThreads) {
+    stoppedThreadProcessedTasks_ += thread->processedTasks;
+    thread->processedTasks = 0;
     stoppedThreads_.add(thread);
     threadList_.remove(thread);
   }

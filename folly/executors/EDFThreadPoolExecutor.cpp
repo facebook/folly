@@ -327,6 +327,8 @@ bool EDFThreadPoolExecutor::tryStopThread(
   for (auto& o : observers_) {
     o->threadStopped(thread.get());
   }
+  stoppedThreadProcessedTasks_ += thread->processedTasks;
+  thread->processedTasks = 0;
   threadList_.remove(thread);
   stoppedThreads_.add(thread);
   return true;
@@ -392,6 +394,8 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
     forEachTaskObserver([&](auto& observer) {
       observer.taskProcessed(taskInfo);
     });
+
+    thread->processedTasks = thread->processedTasks + 1;
 
     thread->idle.store(true, std::memory_order_relaxed);
     thread->lastActiveTime.store(

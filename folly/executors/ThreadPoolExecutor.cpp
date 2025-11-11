@@ -168,6 +168,8 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
     observer.taskProcessed(taskInfo);
   });
 
+  thread->processedTasks = thread->processedTasks + 1;
+
   thread->idle.store(true, std::memory_order_relaxed);
   thread->lastActiveTime.store(
       std::chrono::steady_clock::now(), std::memory_order_relaxed);
@@ -318,6 +320,7 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
   ThreadPoolExecutor::PoolStats stats;
   size_t activeTasks = 0;
   size_t idleAlive = 0;
+  uint64_t processedTasks = stoppedThreadProcessedTasks_;
   for (const auto& thread : threadList_.get()) {
     if (thread->idle.load(std::memory_order_relaxed)) {
       const std::chrono::nanoseconds idleTime =
@@ -327,9 +330,11 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
     } else {
       activeTasks++;
     }
+    processedTasks += thread->processedTasks;
   }
   stats.pendingTaskCount = getPendingTaskCountImpl();
   stats.totalTaskCount = stats.pendingTaskCount + activeTasks;
+  stats.processedTaskCount = processedTasks;
 
   stats.threadCount = maxThreads_.load(std::memory_order_relaxed);
   stats.activeThreadCount =
