@@ -21,6 +21,14 @@
 #include <folly/tracing/StaticTracepoint.h>
 
 namespace folly {
+// Thread-local cache of raw RequestContext.
+// Updated by setContext() and setShallowCopyContext() to avoid calling
+// SingletonThreadLocal::get() in locations requiring async-signal-safe access.
+thread_local RequestContext* gAsyncSignalSafeRequestContextCache = nullptr;
+
+RequestContext* getCachedRequestContext() {
+  return gAsyncSignalSafeRequestContextCache;
+}
 
 RequestToken::RequestToken(const std::string& str) {
   auto& cache = getCache();
@@ -655,6 +663,7 @@ void RequestContext::clearContextData(const RequestToken& val) {
       staticCtx.rootId.store(0, std::memory_order_relaxed);
     }
   }
+  gAsyncSignalSafeRequestContextCache = staticCtx.requestContext.get();
   // Notify the Watchers via the registry
   getWatcherRegistry().invokeWatchers(prevCtx, staticCtx.requestContext);
   return prevCtx;
@@ -721,6 +730,7 @@ RequestContext::setShallowCopyContext() {
   // Do not use setContext to avoid global set/unset
   // Also rootId does not change so do not bother setting it.
   std::swap(child, parent);
+  gAsyncSignalSafeRequestContextCache = parent.get();
   getWatcherRegistry().invokeWatchers(child, parent);
   return child;
 }
