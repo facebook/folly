@@ -18,7 +18,7 @@ fbcode_target(
         "facebook::rust::.*",
     ],
     cpp_deps = [":tdigest-ffi"],
-    cxx_bridge = "tdigest.rs",
+    cxx_bridge = "lib.rs",
     cxx_namespaces = True,
     generate = ("types", "vars", "functions"),
     header = "tdigest.h",
@@ -26,7 +26,7 @@ fbcode_target(
         "std::.*",
     ],
     rustc_flags = ["-Aunused-crate-dependencies"],  # because of fbsource//third-party/rust:rand which is only used in tests and test_deps not defined in rust_bindgen_library
-    src_includes = ["tdigest.rs"],
+    src_includes = ["lib.rs"],
     deps = [
         "fbsource//third-party/rust:cxx",
         "fbsource//third-party/rust:rand",
