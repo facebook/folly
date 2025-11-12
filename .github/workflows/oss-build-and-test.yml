@@ -8,6 +8,10 @@ jobs:
         with:
           submodules: 'true'
       - uses: facebook/install-dotslash@latest
+      - name: Set PATH for dotslash
+        run: |
+          echo "PATH=$PATH:/tmp/install-dotslash/bin" >> $GITHUB_ENV
+        shell: bash
       - name: get_buck_graph
         run: |
           BUCK_GRAPH=$(./buck2 cquery ... --output-attribute '^buck.type$|^name$')
