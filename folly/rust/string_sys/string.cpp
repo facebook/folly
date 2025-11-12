@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/rust/string/string.h>
+#include <folly/rust/string_sys/string.h>
 
 namespace facebook {
 namespace rust {
