@@ -373,6 +373,17 @@ class BucketedTimeSeries {
   }
 
   /*
+   * Return the total (sum and count) of the tracked buckets that overlap
+   * with [getEarliestTrackableTimeBy(now), now]. `now` must be greater than or
+   * equal to `latestTime_`. If isAllTime() is true, the overall total will be
+   * returned.
+   *
+   * The user does NOT need to call `update(now)` separately. This is for
+   * providing a way for reading the timeseries without mutating it.
+   */
+  Bucket totalBy(TimePoint now) const;
+
+  /*
    * Invoke a function for each bucket.
    *
    * The function will take as arguments the bucket index,

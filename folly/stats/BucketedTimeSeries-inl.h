@@ -337,6 +337,50 @@ ReturnType BucketedTimeSeries<VT, CT>::avg(
   return detail::avgHelper<ReturnType>(total, sample_count);
 }
 
+template <typename VT, typename CT>
+typename BucketedTimeSeries<VT, CT>::Bucket BucketedTimeSeries<VT, CT>::totalBy(
+    TimePoint now) const {
+  DCHECK(now >= latestTime_);
+  if (count() == 0) {
+    // fast-path when there is no samples in the timeseries at all
+    return Bucket{};
+  }
+
+  // Can't be empty if the count is non-zero.
+  DCHECK(!empty());
+
+  if (isAllTime() || now == latestTime_) {
+    return total_;
+  }
+
+  size_t currentBucket;
+  TimePoint currentBucketStart;
+  TimePoint nextBucketStart;
+  getBucketInfo(
+      latestTime_, &currentBucket, &currentBucketStart, &nextBucketStart);
+
+  if (now < nextBucketStart) {
+    // `now` falls in the latest bucket
+    return total_;
+  } else if (now >= currentBucketStart + duration_) {
+    // We do not need to go through the buckets when all of them have expired.
+    return Bucket{};
+  } else {
+    // There is a partial overlap. Subtract tail bucket values from the total.
+    Bucket ret = total_;
+    size_t newBucket = getBucketIdx(now);
+    size_t idx = currentBucket;
+    while (idx != newBucket) {
+      ++idx;
+      if (idx >= buckets_.size()) {
+        idx = 0;
+      }
+      ret -= buckets_[idx];
+    }
+    return ret;
+  }
+}
+
 /*
  * A note about some of the bucket index calculations below:
  *

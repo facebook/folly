@@ -233,6 +233,7 @@ fbcode_target(
     srcs = ["TimeSeriesTest.cpp"],
     headers = [],
     deps = [
+        "//folly:random",
         "//folly/container:foreach",
         "//folly/portability:gtest",
         "//folly/stats:bucketed_time_series",
