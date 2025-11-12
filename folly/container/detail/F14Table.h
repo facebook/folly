@@ -1856,6 +1856,10 @@ class F14Table : public Policy {
     }
   }
 
+  [[FOLLY_ATTR_GNU_COLD]] void eraseBlankCold(ItemIter iter, HashPair hp) {
+    eraseBlank(iter, hp);
+  }
+
   void adjustSizeAndBeginBeforeErase(ItemIter iter) {
     sizeAndChunkShiftAndPackedBegin_.decrementSize();
     if constexpr (kEnableItemIteration) {
@@ -1872,15 +1876,11 @@ class F14Table : public Policy {
 
   template <typename... Args>
   void insertAtBlank(ItemIter pos, HashPair hp, Args&&... args) {
-    catch_exception(
-        [&] {
-          auto dst = pos.itemAddr();
-          this->constructValueAtItem(*this, dst, std::forward<Args>(args)...);
-        },
-        [this, pos, hp]() {
-          eraseBlank(pos, hp);
-          rethrow_current_exception();
-        });
+    auto rollback =
+        folly::makeGuard(std::bind(&F14Table::eraseBlankCold, this, pos, hp));
+    auto dst = pos.itemAddr();
+    this->constructValueAtItem(*this, dst, std::forward<Args>(args)...);
+    rollback.dismiss();
     adjustSizeAndBeginAfterInsert(pos);
   }
 
@@ -2104,6 +2104,11 @@ class F14Table : public Policy {
     success = true;
   }
 
+  [[FOLLY_ATTR_GNU_COLD]] void buildFromF14TableCatchCold() {
+    reset();
+    F14LinkCheck<getF14IntrinsicsMode()>::check();
+  }
+
   template <typename T>
   FOLLY_NOINLINE void buildFromF14Table(T&& src) {
     FOLLY_SAFE_DCHECK(bucket_count() == 0, "");
@@ -2124,19 +2129,14 @@ class F14Table : public Policy {
     }
     rehashImpl(0, 1, 0, ccas.first, ccas.second);
 
-    catch_exception(
-        [&]() {
-          if (chunkShift() == src.chunkShift()) {
-            directBuildFrom(std::forward<T>(src));
-          } else {
-            rehashBuildFrom(std::forward<T>(src));
-          }
-        },
-        [this]() {
-          reset();
-          F14LinkCheck<getF14IntrinsicsMode()>::check();
-          rethrow_current_exception();
-        });
+    auto rollback = folly::makeGuard(
+        std::bind(&F14Table::buildFromF14TableCatchCold, this));
+    if (chunkShift() == src.chunkShift()) {
+      directBuildFrom(std::forward<T>(src));
+    } else {
+      rehashBuildFrom(std::forward<T>(src));
+    }
+    rollback.dismiss();
   }
 
   void maybeRehash(std::size_t desiredCapacity, bool attemptExact) {
@@ -2632,10 +2632,7 @@ class F14Table : public Policy {
       auto bc = bucket_count();
       reset();
       catch_exception<std::bad_alloc const&>(
-          [this, bc]() { reserveImpl(bc); },
-          [](auto&&) {
-            // ASAN mode only, keep going
-          });
+          [this, bc]() { reserveImpl(bc); }, variadic_noop);
     } else {
       clearImpl<false>();
     }
