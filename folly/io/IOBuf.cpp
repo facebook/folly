@@ -1421,23 +1421,16 @@ void IOBuf::appendToIov(folly::fbvector<struct iovec>* iov) const {
 }
 
 unique_ptr<IOBuf> IOBuf::wrapIov(const iovec* vec, size_t count) {
-  unique_ptr<IOBuf> result = nullptr;
+  IOBuf result{};
   for (size_t i = 0; i < count; ++i) {
     size_t len = vec[i].iov_len;
     void* data = vec[i].iov_base;
     if (len > 0) {
       auto buf = wrapBuffer(data, len);
-      if (!result) {
-        result = std::move(buf);
-      } else {
-        result->appendToChain(std::move(buf));
-      }
+      result.appendToChain(std::move(buf));
     }
   }
-  if (FOLLY_UNLIKELY(result == nullptr)) {
-    return create(0);
-  }
-  return result;
+  return result.isChained() ? result.pop() : create(0);
 }
 
 std::unique_ptr<IOBuf> IOBuf::takeOwnershipIov(
