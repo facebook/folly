@@ -10,7 +10,7 @@ buck_genrule(
            ])} |
            {"CMakeLists.txt": "CMakeListsForBuck2.txt"},
     out = "folly-config.h",
-    cmd = "cmake . && mv folly/folly-config.h $OUT",
+    cmd = "cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS='-stdlib=libc++' . && mv folly/folly-config.h $OUT",
     default_target_platform = "prelude//platforms:default",
     labels = [
         "third-party:fedora:cmake",
