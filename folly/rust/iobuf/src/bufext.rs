@@ -145,15 +145,6 @@ impl From<&Bytes> for DeserializeSource<Cursor<Bytes>> {
     }
 }
 
-/// Helper type alias to get encoding buffer type
-pub type FramingEncoded<F> = <F as Framing>::EncBuf;
-
-/// Helper type alias to get the type of the finalized encoded buffer
-pub type FramingEncodedFinal<F> = <<F as Framing>::EncBuf as BufMutExt>::Final;
-
-/// Helper type alias to get the buffer to use as input to decoding
-pub type FramingDecoded<F> = <F as Framing>::DecBuf;
-
 /// Trait describing the in-memory frames the transport uses for Protocol messages.
 pub trait Framing {
     /// Buffer type we encode into
