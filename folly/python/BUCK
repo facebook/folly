@@ -724,7 +724,6 @@ fbcode_target(
         "DEFAULT": None,
         "ovr_config//os:windows": "shared",
     }),
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
@@ -794,7 +793,6 @@ fbcode_target(
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
