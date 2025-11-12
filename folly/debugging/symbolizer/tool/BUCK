@@ -69,7 +69,6 @@ fbcode_target(
             }),
         ),
     ],
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:range",
         "//folly/debugging/symbolizer:signal_handler",
