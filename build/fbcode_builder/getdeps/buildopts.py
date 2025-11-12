@@ -21,7 +21,7 @@ from .manifest import ContextGenerator
 from .platform import get_available_ram, HostType, is_windows
 
 
-CYGWIN_TMP = "c:\\cygwin\\tmp"
+GITBASH_TMP = "c:\\tools\\fb.gitbash\\tmp"
 
 
 def detect_project(path):
@@ -605,14 +605,15 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
                 )
 
             disk_temp = os.environ["DISK_TEMP"]
-            if is_windows() and os.path.exists(CYGWIN_TMP):
-                # prefer the cygwin tmp dir, as its less likely to have a tmp cleaner
+            if is_windows():
+                # force use gitbash tmp dir for windows, as its less likely to have a tmp cleaner
                 # that removes extracted prior dated source files
+                os.makedirs(GITBASH_TMP, exist_ok=True)
                 print(
-                    f"Using {CYGWIN_TMP} instead of DISK_TEMP {disk_temp} for scratch dir",
+                    f"Using {GITBASH_TMP} instead of DISK_TEMP {disk_temp} for scratch dir",
                     file=sys.stderr,
                 )
-                disk_temp = CYGWIN_TMP
+                disk_temp = GITBASH_TMP
 
             scratch_dir = os.path.join(disk_temp, "fbcode_builder_getdeps")
         if not scratch_dir:
