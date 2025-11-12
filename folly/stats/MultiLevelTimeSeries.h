@@ -168,18 +168,6 @@ class MultiLevelTimeSeries {
   ValueType sum(size_t level) const { return getLevel(level).sum(); }
 
   /*
-   * Return the sum of all the data points currently tracked by this
-   * level, as if `update(now)` is called first. The user
-   * does NOT need to call `update(now)` separately.
-   *
-   * This is for providing a way for reading the timeseries without mutation.
-   */
-  ValueType sumBy(size_t level, TimePoint now) const {
-    auto [total, includeCache] = totalBy(level, now);
-    return total.sum + (includeCache ? cachedSum_ : 0);
-  }
-
-  /*
    * Return the average (sum / count) of all the data points currently tracked
    * at this level.
    *
@@ -196,21 +184,6 @@ class MultiLevelTimeSeries {
   }
 
   /*
-   * Return the average (sum/count) of all the data points currently tracked by
-   * this level, as if `update(now)` is called first. The user does NOT need to
-   * call `update(now)` separately.
-   *
-   * This is for providing a way for reading the timeseries without mutation.
-   */
-  template <typename ReturnType = double>
-  ReturnType avgBy(size_t level, TimePoint now) const {
-    auto [total, includeCache] = totalBy(level, now);
-    return folly::detail::avgHelper<ReturnType>(
-        total.sum + (includeCache ? cachedSum_ : 0),
-        total.count + (includeCache ? cachedCount_ : 0));
-  }
-
-  /*
    * Return the rate (sum divided by elaspsed time) of the all data points
    * currently tracked at this level.
    *
@@ -224,20 +197,6 @@ class MultiLevelTimeSeries {
   }
 
   /*
-   * Return the rate (sum divided by elapsed time) of all the data points
-   * currently tracked by this level, as if `update(now)` is called first. The
-   * user does NOT need to call `update(now)` separately.
-   *
-   * This is for providing a way for reading the timeseries without mutation.
-   */
-  template <typename ReturnType = double, typename Interval = Duration>
-  ReturnType rateBy(size_t level, TimePoint now) const {
-    const auto& timeseries = getLevel(level);
-    return timeseries.template rateHelper<ReturnType, Interval>(
-        sumBy(level, now), elapsedBy(level, now));
-  }
-
-  /*
    * Return the number of data points currently tracked at this level.
    *
    * Note: you should generally call update() or flush() before accessing the
@@ -245,18 +204,6 @@ class MultiLevelTimeSeries {
    * not been called recently.
    */
   uint64_t count(size_t level) const { return getLevel(level).count(); }
-
-  /*
-   * Return the count of all the data points currently tracked by this
-   * level, as if `update(now)` is called first. The user
-   * does NOT need to call `update(now)` separately.
-   *
-   * This is for providing a way for reading the timeseries without mutation.
-   */
-  uint64_t countBy(size_t level, TimePoint now) const {
-    auto [total, includeCache] = totalBy(level, now);
-    return total.count + (includeCache ? cachedCount_ : 0);
-  }
 
   /*
    * Return the count divided by the elapsed time tracked at this level.
@@ -268,20 +215,6 @@ class MultiLevelTimeSeries {
   template <typename ReturnType = double, typename Interval = Duration>
   ReturnType countRate(size_t level) const {
     return getLevel(level).template countRate<ReturnType, Interval>();
-  }
-
-  /*
-   * Return the count divided by elapsed time of all the data points currently
-   * tracked by this level, as if `update(now)` is called first. The user does
-   * NOT need to call `update(now)` separately.
-   *
-   * This is for providing a way for reading the timeseries without mutation.
-   */
-  template <typename ReturnType = double, typename Interval = Duration>
-  ReturnType countRateBy(size_t level, TimePoint now) const {
-    const auto& timeseries = getLevel(level);
-    return timeseries.template rateHelper<ReturnType, Interval>(
-        countBy(level, now), elapsedBy(level, now));
   }
 
   /*
@@ -495,53 +428,6 @@ class MultiLevelTimeSeries {
 
  private:
   Duration computeMaxCacheDuration();
-
-  Duration elapsedBy(size_t level, TimePoint now) const {
-    const auto& timeseries = getLevel(level);
-    TimePoint firstTime = now;
-    if (cachedCount_ != 0) {
-      firstTime = std::min(firstTime, cachedTime_);
-    }
-    if (!timeseries.empty()) {
-      firstTime = std::min(firstTime, timeseries.firstTime());
-    }
-    auto latestTime = std::max({now, cachedTime_, timeseries.getLatestTime()});
-    if (timeseries.isAllTime()) {
-      return latestTime - firstTime + Duration(1);
-    } else {
-      return latestTime -
-          std::max(
-                 firstTime, timeseries.getEarliestTrackableTimeBy(latestTime)) +
-          Duration(1);
-    }
-  }
-
-  std::pair<typename Level::Bucket, bool> totalBy(
-      size_t level, TimePoint now) const {
-    const auto& timeseries = getLevel(level);
-    if (cachedCount_ == 0) {
-      return {
-          timeseries.totalBy(std::max(now, timeseries.getLatestTime())), false};
-    }
-
-    // Regardless if cache value is still captured or not, we still need to
-    // rotate the buckets to the max timestamps.
-    auto latestTime = std::max({timeseries.getLatestTime(), now, cachedTime_});
-    if (timeseries.isAllTime()) {
-      return {timeseries.totalBy(latestTime), true};
-    }
-
-    // In order to decide if we should include cached value in the result or
-    // not, all we need to know is if cachedTime_ is still within the trackable
-    // window.
-    auto earliestTime = timeseries.getEarliestTrackableTimeBy(latestTime);
-    if (cachedTime_ < earliestTime) {
-      // Cached value is too old, and not tracked by the timeseries any more.
-      return {timeseries.totalBy(latestTime), false};
-    } else {
-      return {timeseries.totalBy(latestTime), true};
-    }
-  }
 
   std::vector<Level> levels_;
 
