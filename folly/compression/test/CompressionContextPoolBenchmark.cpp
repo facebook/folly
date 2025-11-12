@@ -69,24 +69,20 @@ using FooStackPool = folly::compression::CompressionContextPool<
     FooSizeof,
     FooCallback>;
 
-template <int NumStripes>
 using FooCoreLocalPool = folly::compression::CompressionCoreLocalContextPool<
     Foo,
     FooCreator,
     FooDeleter,
     FooResetter,
     FooSizeof,
-    NumStripes,
     FooCallback>;
 
 template <typename Pool>
-size_t multithreadedBench(size_t iters, size_t numThreads) {
+size_t multithreadedBench(size_t iters, size_t numThreads, Pool& pool) {
   folly::BenchmarkSuspender startup_suspender;
 
   iters *= 1024;
   const size_t iters_per_thread = iters;
-
-  Pool pool;
 
   std::atomic<size_t> ready{0};
   std::atomic<size_t> finished{0};
@@ -184,19 +180,27 @@ size_t multithreadedBench(size_t iters, size_t numThreads) {
   return total.load() / numThreads;
 }
 
-#define POOL_BENCHMARK(Name, Pool, NumThreads)      \
-  BENCHMARK_MULTI(Name, n) {                        \
-    return multithreadedBench<Pool>(n, NumThreads); \
+#define POOL_BENCHMARK(Name, Pool, NumThreads)            \
+  BENCHMARK_MULTI(Name, n) {                              \
+    Pool pool;                                            \
+    return multithreadedBench<Pool>(n, NumThreads, pool); \
   }
 
 #define REGULAR_POOL_BENCHMARK(NumThreads) \
   POOL_BENCHMARK(StackPool_##NumThreads##_threads, FooStackPool, NumThreads)
 
+#define STRIPED_POOL_BENCHMARK(Name, Pool, NumThreads, NumSlots) \
+  BENCHMARK_MULTI(Name, n) {                                     \
+    Pool pool(NumSlots);                                         \
+    return multithreadedBench<Pool>(n, NumThreads, pool);        \
+  }
+
 #define CORE_LOCAL_POOL_BENCHMARK(NumSlots, NumThreads) \
-  POOL_BENCHMARK(                                       \
+  STRIPED_POOL_BENCHMARK(                               \
       CLPool_##NumSlots##_slots_##NumThreads##_threads, \
-      FooCoreLocalPool<NumSlots>,                       \
-      NumThreads)
+      FooCoreLocalPool,                                 \
+      NumThreads,                                       \
+      NumSlots)
 
 REGULAR_POOL_BENCHMARK(1)
 REGULAR_POOL_BENCHMARK(2)

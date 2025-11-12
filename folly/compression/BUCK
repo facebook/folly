@@ -101,9 +101,13 @@ non_fbcode_target(
     ],
     feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["CompressionContextPoolSingletons.h"],
-    deps = ["//xplat/folly:portability"],
+    deps = [
+        "//xplat/folly:portability",
+        "//xplat/folly/system:hardware_concurrency",
+    ],
     exported_deps = [
         "fbsource//xplat/folly/portability:config",
+        "fbsource//xplat/folly/portability:gflags",
         ":compression_context_pool",
         "//xplat/folly/memory:malloc",
         "//xplat/third-party/zstd:zstd",
@@ -244,11 +248,13 @@ fbcode_target(
         "//folly:portability",
         "//folly/memory:jemalloc_huge_page_allocator",
         "//folly/memory:malloc",
+        "//folly/system:hardware_concurrency",
     ],
     exported_deps = [
         "fbsource//third-party/zstd:zstd",
         ":compression_context_pool",
         "//folly/portability:config",
+        "//folly/portability:gflags",
     ],
 )
 

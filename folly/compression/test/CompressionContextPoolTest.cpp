@@ -269,7 +269,6 @@ class CompressionCoreLocalContextPoolTest : public testing::Test {
       FooDeleter,
       FooResetter,
       FooSizeof,
-      8,
       FooCallback>;
 
   void SetUp() override { pool_ = std::make_unique<Pool>(); }
@@ -374,6 +373,19 @@ TEST_F(CompressionCoreLocalContextPoolTest, testReset) {
     EXPECT_EQ(ptr1.get(), tmp1);
     EXPECT_EQ(ptr2.get(), tmp2);
   }
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testSetSize) {
+  size_t numStripes = 6;
+  pool_->setSize(numStripes);
+  EXPECT_EQ(pool_->cacheSize(), numStripes);
+}
+
+// To be safe from SIOF, pools should be functional with 0 stripes.
+TEST_F(CompressionCoreLocalContextPoolTest, testGetZeroStripes) {
+  Pool pool(0);
+  auto ptr = pool.get();
+  EXPECT_NE(ptr, nullptr);
 }
 
 #ifdef FOLLY_COMPRESSION_HAS_ZSTD_CONTEXT_POOL_SINGLETONS

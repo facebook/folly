@@ -23,9 +23,17 @@
 #endif
 
 #include <folly/compression/CompressionCoreLocalContextPool.h>
+#include <folly/portability/GFlags.h>
 
 // When this header is present, folly/compression/Compression.h defines
 // FOLLY_COMPRESSION_HAS_CONTEXT_POOL_SINGLETONS.
+
+// These flags allow for tuning the number of stripes in the singleton
+// context pool. This is expressed as a multiplier of CPU hardware
+// concurrency, e.g. a setting of 0.1 on a machine with 50 cores results
+// in 5 stripes in the context pool singleton.
+FOLLY_GFLAGS_DECLARE_double(folly_zstd_cctx_pool_stripes_cpu_multiplier);
+FOLLY_GFLAGS_DECLARE_double(folly_zstd_dctx_pool_stripes_cpu_multiplier);
 
 namespace folly {
 namespace compression {
@@ -68,20 +76,44 @@ struct ZSTD_DCtx_Sizeof {
   size_t operator()(const ZSTD_DCtx* ctx) const noexcept;
 };
 
+class ZSTD_CCtx_Pool_Callback {
+ public:
+  explicit constexpr ZSTD_CCtx_Pool_Callback(
+      CompressionCoreLocalContextPoolBase* pool)
+      : pool_(pool) {}
+
+  void operator()() const;
+
+ private:
+  CompressionCoreLocalContextPoolBase* pool_;
+};
+
+struct ZSTD_DCtx_Pool_Callback {
+ public:
+  explicit constexpr ZSTD_DCtx_Pool_Callback(
+      CompressionCoreLocalContextPoolBase* pool)
+      : pool_(pool) {}
+
+  void operator()() const;
+
+ private:
+  CompressionCoreLocalContextPoolBase* pool_;
+};
+
 using ZSTD_CCtx_Pool = CompressionCoreLocalContextPool<
     ZSTD_CCtx,
     ZSTD_CCtx_Creator,
     ZSTD_CCtx_Deleter,
     ZSTD_CCtx_Resetter,
     ZSTD_CCtx_Sizeof,
-    4>;
+    ZSTD_CCtx_Pool_Callback>;
 using ZSTD_DCtx_Pool = CompressionCoreLocalContextPool<
     ZSTD_DCtx,
     ZSTD_DCtx_Creator,
     ZSTD_DCtx_Deleter,
     ZSTD_DCtx_Resetter,
     ZSTD_DCtx_Sizeof,
-    16>;
+    ZSTD_DCtx_Pool_Callback>;
 
 /**
  * Returns a clean ZSTD_CCtx.

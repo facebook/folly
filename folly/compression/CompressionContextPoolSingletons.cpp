@@ -20,6 +20,7 @@
 
 #include <folly/Portability.h>
 #include <folly/memory/Malloc.h>
+#include <folly/system/HardwareConcurrency.h>
 
 #ifndef FOLLY_COMPRESSION_USE_HUGEPAGES
 #if defined(__linux__) && !defined(__ANDROID__)
@@ -40,6 +41,31 @@
 #include <zstd.h> // @donotremove
 #endif
 
+#if FOLLY_HAVE_WEAK_SYMBOLS
+FOLLY_ATTR_WEAK double
+folly_zstd_cctx_pool_stripes_cpu_multiplier_default() noexcept;
+FOLLY_ATTR_WEAK double
+folly_zstd_dctx_pool_stripes_cpu_multiplier_default() noexcept;
+#else
+static double (
+    *folly_zstd_cctx_pool_stripes_cpu_multiplier_default)() noexcept = nullptr;
+static double (
+    *folly_zstd_dctx_pool_stripes_cpu_multiplier_default)() noexcept = nullptr;
+#endif
+
+FOLLY_GFLAGS_DEFINE_double(
+    folly_zstd_cctx_pool_stripes_cpu_multiplier,
+    folly_zstd_cctx_pool_stripes_cpu_multiplier_default
+        ? folly_zstd_cctx_pool_stripes_cpu_multiplier_default()
+        : 0.0,
+    "Number of stripes for compression context pool specified as a multiplier of hardware concurrency.");
+FOLLY_GFLAGS_DEFINE_double(
+    folly_zstd_dctx_pool_stripes_cpu_multiplier,
+    folly_zstd_dctx_pool_stripes_cpu_multiplier_default
+        ? folly_zstd_dctx_pool_stripes_cpu_multiplier_default()
+        : 0.0,
+    "Number of stripes for decompression context pool specified as a multiplier of hardware concurrency.");
+
 namespace folly {
 namespace compression {
 namespace contexts {
@@ -49,8 +75,17 @@ namespace {
 
 // These objects must be constinit in order to be SIOF-safe, since they are
 // accessed during the static initialization of other translation units.
-FOLLY_CONSTINIT ZSTD_CCtx_Pool zstd_cctx_pool_singleton;
-FOLLY_CONSTINIT ZSTD_DCtx_Pool zstd_dctx_pool_singleton;
+struct ZSTD_cctx_pool_singleton : ZSTD_CCtx_Pool {
+  constexpr ZSTD_cctx_pool_singleton()
+      : ZSTD_CCtx_Pool{8, {}, {}, {}, {}, ZSTD_CCtx_Pool_Callback{this}} {}
+};
+struct ZSTD_dctx_pool_singleton : ZSTD_DCtx_Pool {
+  constexpr ZSTD_dctx_pool_singleton()
+      : ZSTD_DCtx_Pool{8, {}, {}, {}, {}, ZSTD_DCtx_Pool_Callback{this}} {}
+};
+
+FOLLY_CONSTINIT ZSTD_cctx_pool_singleton zstd_cctx_pool_singleton;
+FOLLY_CONSTINIT ZSTD_dctx_pool_singleton zstd_dctx_pool_singleton;
 
 #if FOLLY_COMPRESSION_USE_HUGEPAGES
 constexpr bool use_huge_pages = kIsArchAmd64;
@@ -119,6 +154,32 @@ size_t ZSTD_CCtx_Sizeof::operator()(const ZSTD_CCtx* ctx) const noexcept {
 
 size_t ZSTD_DCtx_Sizeof::operator()(const ZSTD_DCtx* ctx) const noexcept {
   return ZSTD_sizeof_DCtx(ctx);
+}
+
+void ZSTD_CCtx_Pool_Callback::operator()() const {
+  if (pool_) {
+    if (auto multiplier = FLAGS_folly_zstd_cctx_pool_stripes_cpu_multiplier;
+        multiplier > 0.0) {
+      static const size_t num_cores = folly::hardware_concurrency();
+      const size_t num_stripes = std::min(
+          static_cast<size_t>(std::ceil(multiplier * num_cores)),
+          ZSTD_CCtx_Pool::kMaxNumStripes);
+      pool_->setSize(num_stripes);
+    }
+  }
+}
+
+void ZSTD_DCtx_Pool_Callback::operator()() const {
+  if (pool_) {
+    if (auto multiplier = FLAGS_folly_zstd_dctx_pool_stripes_cpu_multiplier;
+        multiplier > 0.0) {
+      static const size_t num_cores = folly::hardware_concurrency();
+      const size_t num_stripes = std::min(
+          static_cast<size_t>(std::ceil(multiplier * num_cores)),
+          ZSTD_DCtx_Pool::kMaxNumStripes);
+      pool_->setSize(num_stripes);
+    }
+  }
 }
 
 ZSTD_CCtx_Pool::Ref getZSTD_CCtx() {
