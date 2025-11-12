@@ -65,25 +65,80 @@ jobs:
         - run: sudo apt-get update
           shell: bash
         - uses: facebook/install-dotslash@latest
-        - name: Install Rust toolchain
-          if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
-          uses: dtolnay/rust-toolchain@stable
+
         - name: Install C++ toolchain
           if: needs.get-toolchains-to-install.outputs.uses_cxx == 'true'
           run: |
-            sudo apt-get install cmake llvm cppcheck python3-pip
-            sudo pip3 install conan==1.*
+            sudo apt-get install -y \
+              clang \
+              cmake \
+              cppcheck \
+              cython3 \
+              git \
+              lld \
+              llvm \
+              pkg-config
           shell: bash
+
         - name: Install OCaml toolchain
           if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
           uses: ocaml/setup-ocaml@v2
           with:
             ocaml-compiler: "5.1"
         - name: Install Python toolchain
-          if: needs.get-toolchains-to-install.outputs.uses_python == 'true'
+          if: needs.get-toolchains-to-install.outputs.uses_python == 'true' || needs.get-toolchains-to-install.outputs.uses_cxx == 'true'
           uses: actions/setup-python@v5
           with:
             python-version: '3.10'
+        - name: Install Rust toolchain
+          uses: dtolnay/rust-toolchain@nightly
+
+        - name: Install Conan (C/C++ package manager)
+          if: needs.get-toolchains-to-install.outputs.uses_cxx == 'true'
+          uses: conan-io/setup-conan@v1
+          with:
+            version: "2.23"
+        - name: Install dependencies via Conan
+          if: needs.get-toolchains-to-install.outputs.uses_cxx == 'true'
+          run: |
+            case $(uname -m) in
+              x86_64) CONAN_ARCH="x86_64" ;;
+              aarch64) CONAN_ARCH="armv8" ;;
+              *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
+            esac
+            conan install . \
+                --build=missing \
+                --output-folder=conan-build \
+                --profile=conan-profile-linux-clang \
+                -s arch=$CONAN_ARCH \
+                -c tools.system.package_manager:mode=install \
+                -c tools.system.package_manager:sudo=True
+
+            # Required by Conan's CMakeDeps-generated config files
+            echo "CMAKE_BUILD_TYPE=Release" >> $GITHUB_ENV
+            CONAN_INCLUDE_DIRS=$(
+              for pc in $PWD/conan-build/*.pc; do
+                pkg-config --variable=includedir "$pc" 2>/dev/null
+              done | sort -u | tr '\n' ':' | sed 's/:$//'
+            )
+            if [ -n "$CONAN_INCLUDE_DIRS" ]; then
+              echo "CMAKE_INCLUDE_PATH=$CONAN_INCLUDE_DIRS" >> $GITHUB_ENV
+            fi
+            echo "CMAKE_PREFIX_PATH=$PWD/conan-build:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+
+            echo "PKG_CONFIG_PATH=$PWD/conan-build:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          shell: bash
+
+        - name: Install cxx bridge tools
+          run: cargo install cxxbridge-cmd
+          shell: bash
+        - name: Install cxx headers
+          run: |
+            sudo mkdir -p /usr/local/include/rust
+            cxxbridge --header > /tmp/cxx.h
+            sudo mv /tmp/cxx.h /usr/local/include/rust/cxx.h
+          shell: bash
+
         - name: buck2 build and test
           run: bash ./.github/scripts/buck_build_and_test.sh
   windows-os-buck-build-and-test:
