@@ -106,7 +106,7 @@ class MultiLevelTimeSeries {
    * not been called recently.
    */
   const Level& getLevel(size_t level) const {
-    CHECK_LT(level, levels_.size());
+    DCHECK_LT(level, levels_.size());
     return levels_[level];
   }
 
