@@ -456,7 +456,6 @@ class BucketedTimeSeries {
    */
   TimePoint getEarliestTrackableTimeBy(TimePoint latestTime) const;
 
- private:
   template <typename ReturnType = double, typename Interval = Duration>
   ReturnType rateHelper(ReturnType numerator, Duration elapsedTime) const {
     DCHECK(isAllTime() || (Interval{1} <= duration_))
@@ -465,6 +464,7 @@ class BucketedTimeSeries {
         numerator, elapsedTime);
   }
 
+ private:
   size_t updateBuckets(TimePoint now);
 
   template <typename ReturnType>
