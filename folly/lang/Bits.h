@@ -145,7 +145,7 @@ inline constexpr unsigned int findFirstSet(T const v) {
 /// Return the 1-based index of the most significant bit which is set.
 /// For x > 0, findLastSet(x) == 1 + floor(log2(x)).
 template <typename T>
-inline constexpr unsigned int findLastSet(T const v) {
+FOLLY_ALWAYS_INLINE constexpr unsigned int findLastSet(T const v) {
   using U0 = unsigned int;
   using U1 = unsigned long int;
   using U2 = unsigned long long int;
@@ -201,7 +201,7 @@ inline constexpr unsigned int popcount(T const v) {
 }
 
 template <class T>
-inline constexpr T nextPowTwo(T const v) {
+FOLLY_ALWAYS_INLINE constexpr T nextPowTwo(T const v) {
   static_assert(std::is_unsigned<T>::value, "signed type");
   return v ? (T(1) << findLastSet(v - 1)) : T(1);
 }
