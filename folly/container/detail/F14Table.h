@@ -161,18 +161,11 @@ struct StdNodeReplica {
   V value;
 };
 
-#else
+#elif defined(__GLIBCXX__)
 
-template <typename H>
-struct StdIsFastHash : std::true_type {};
-template <>
-struct StdIsFastHash<std::hash<long double>> : std::false_type {};
-template <typename... Args>
-struct StdIsFastHash<std::hash<std::basic_string<Args...>>> : std::false_type {
-};
-template <typename... Args>
-struct StdIsFastHash<std::hash<std::basic_string_view<Args...>>>
-    : std::false_type {};
+template <typename K, typename H>
+constexpr bool kStdNodeContainsHash =
+    !std::__is_fast_hash<H>::value || !is_nothrow_invocable_v<H, K const&>;
 
 // mimic internal node of unordered containers in STL to estimate the size
 template <typename K, typename V, typename H, typename Enable = void>
@@ -181,15 +174,18 @@ struct StdNodeReplica {
   V value;
 };
 template <typename K, typename V, typename H>
-struct StdNodeReplica<
-    K,
-    V,
-    H,
-    std::enable_if_t<
-        !StdIsFastHash<H>::value || !is_nothrow_invocable_v<H, K>>> {
+struct StdNodeReplica<K, V, H, std::enable_if_t<kStdNodeContainsHash<K, H>>> {
   void* next;
   V value;
   std::size_t hash;
+};
+
+#else
+
+template <typename K, typename V, typename H>
+struct StdNodeReplica {
+  void* next;
+  V value;
 };
 
 #endif
