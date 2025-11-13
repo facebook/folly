@@ -978,8 +978,20 @@ class exception_shared_string {
             size, ffun_<F>, &reinterpret_cast<unsigned char&>(func)) {}
 
   exception_shared_string(exception_shared_string const&) noexcept;
+  exception_shared_string& operator=(exception_shared_string const&) noexcept;
+
+  // It would be extra effort to implement move support in C++17, but there is
+  // currently no demand for it.
+#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
+  exception_shared_string(exception_shared_string&&) noexcept;
+  exception_shared_string& operator=(exception_shared_string&&) noexcept;
+#else
+  exception_shared_string(exception_shared_string&&) = delete;
+  exception_shared_string& operator=(exception_shared_string&&) = delete;
+#endif
 
 #if FOLLY_CPLUSPLUS >= 202002 && defined(__cpp_lib_is_constant_evaluated)
+
   constexpr ~exception_shared_string() {
     if (!std::is_constant_evaluated()) {
       ruin_state();
@@ -988,8 +1000,6 @@ class exception_shared_string {
 #else
   ~exception_shared_string() { ruin_state(); }
 #endif
-
-  void operator=(exception_shared_string const&) = delete;
 
   char const* what() const noexcept { return tagged_what_.what(); }
 };

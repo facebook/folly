@@ -891,10 +891,43 @@ exception_shared_string::exception_shared_string(
 exception_shared_string::exception_shared_string(
     char const* const str, std::size_t const len)
     : tagged_what_{vtag<false>, from_state(state::make(str, len))} {}
+
 exception_shared_string::exception_shared_string(
     exception_shared_string const& that) noexcept
     : tagged_what_{
           (state::copy(to_state(that.tagged_what_)), that.tagged_what_)} {}
+
+exception_shared_string& exception_shared_string::operator=(
+    exception_shared_string const& that) noexcept {
+  if (this != &that) {
+    ruin_state();
+    state::copy(to_state(that.tagged_what_));
+    const_cast<tagged_what_t&>(tagged_what_) = that.tagged_what_;
+  }
+  return *this;
+}
+
+#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
+
+exception_shared_string::exception_shared_string(
+    exception_shared_string&& that) noexcept
+    : tagged_what_{that.tagged_what_} {
+  const_cast<tagged_what_t&>(that.tagged_what_) =
+      tagged_what_t{vtag<true>, ""}; // safe-to-read moved-out state
+}
+
+exception_shared_string& exception_shared_string::operator=(
+    exception_shared_string&& that) noexcept {
+  if (this != &that) {
+    ruin_state();
+    const_cast<tagged_what_t&>(tagged_what_) = that.tagged_what_;
+    const_cast<tagged_what_t&>(that.tagged_what_) =
+        tagged_what_t{vtag<true>, ""}; // safe-to-read moved-out state
+  }
+  return *this;
+}
+
+#endif
 
 void exception_shared_string::ruin_state() noexcept {
   state::ruin(to_state(tagged_what_));

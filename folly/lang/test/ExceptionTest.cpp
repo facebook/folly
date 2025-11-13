@@ -515,23 +515,89 @@ TEST_F(ExceptionTest, get_exception_from_std_exception_ptr) {
           decltype(get_mutable_exception<std::runtime_error>(eptr))>);
 }
 
-TEST_F(ExceptionTest, exception_shared_string) {
-  constexpr auto c = "hello, world!";
+template <typename String>
+void test_exception_shared_string_construct(const char* c, String s0) {
+  EXPECT_STREQ(c, s0.what());
+  {
+    static_assert(std::is_copy_constructible_v<String>);
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s1 = s0;
+    EXPECT_STREQ(c, s1.what());
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+    auto s2 = s1;
+    EXPECT_STREQ(c, s2.what());
+  }
+#if FOLLY_CPLUSPLUS >= 202002
+  {
+    static_assert(std::is_move_constructible_v<String>);
+    auto s1 = std::move(s0);
+    EXPECT_STREQ(c, s1.what());
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_STREQ("", s0.what());
+  }
+#endif
+}
 
-  auto s0 = folly::exception_shared_string(c, strlen(c));
-  auto s1 = s0;
-  auto s2 = s1;
-  EXPECT_STREQ(c, s2.what());
+template <typename String>
+void test_exception_shared_string_assign(const char* c, String s0) {
+  {
+    static_assert(std::is_copy_assignable_v<String>);
+    String s1{"original", 8};
+    s1 = s0;
+    EXPECT_STREQ(c, s1.what());
+    s1 = std::as_const(std::as_const(s1));
+    EXPECT_STREQ(c, s1.what());
+  }
+#if FOLLY_CPLUSPLUS >= 202002
+  {
+    static_assert(std::is_move_assignable_v<String>);
 
-  EXPECT_STREQ(c, folly::exception_shared_string(std::string_view(c)).what());
-  EXPECT_STREQ(c, folly::exception_shared_string(std::string(c)).what());
+    String s1{"original", 8};
+    s1 = std::move(s0);
+    EXPECT_STREQ(c, s1.what());
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_STREQ("", s0.what());
+
+    s1 = std::move(s1);
+    EXPECT_STREQ(c, s1.what());
+  }
+#endif
+}
+
+TEST_F(ExceptionTest, exception_shared_string_construct_cstr) {
+  test_exception_shared_string_construct(
+      "msg", folly::exception_shared_string("msg", strlen("msg")));
+}
+
+TEST_F(ExceptionTest, exception_shared_string_assign_cstr) {
+  test_exception_shared_string_assign(
+      "msg", folly::exception_shared_string("msg", strlen("msg")));
+}
+
+TEST_F(ExceptionTest, exception_shared_string_construct_string_view) {
+  test_exception_shared_string_construct(
+      "msg", folly::exception_shared_string(std::string_view("msg")));
+}
+
+TEST_F(ExceptionTest, exception_shared_string_assign_string_view) {
+  test_exception_shared_string_assign(
+      "msg", folly::exception_shared_string(std::string_view("msg")));
+}
+
+TEST_F(ExceptionTest, exception_shared_string_construct_string) {
+  test_exception_shared_string_construct(
+      "msg", folly::exception_shared_string(std::string("msg")));
+}
+
+TEST_F(ExceptionTest, exception_shared_string_assign_string) {
+  test_exception_shared_string_assign(
+      "msg", folly::exception_shared_string(std::string("msg")));
 }
 
 #if FOLLY_CPLUSPLUS >= 202002
 
 TEST_F(ExceptionTest, exception_shared_string_literal_consteval) {
   constexpr const char* c = "hello, world!";
-
   {
     folly::exception_shared_string s0{c};
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
@@ -540,7 +606,6 @@ TEST_F(ExceptionTest, exception_shared_string_literal_consteval) {
     auto s2 = s1;
     EXPECT_STREQ(c, s2.what());
   }
-
   // Same, but `constexpr`.  Future: need C++20 `std::is_constant_evaluated` to
   // make the copy ctor `constexpr` as well.
   {
@@ -553,7 +618,7 @@ TEST_F(ExceptionTest, exception_shared_string_literal_consteval) {
   }
 }
 
-#endif
+#endif // FOLLY_CPLUSPLUS >= 202002
 
 // example of how to do the in-place formatting efficiently
 struct format_param_fn {
