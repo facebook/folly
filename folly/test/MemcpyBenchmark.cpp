@@ -306,7 +306,7 @@ void neon_memops(
         folly::doNotOptimizeAway(value = vld1q_u64(ptr));
         ptr = reinterpret_cast<uint64_t*>(vgetq_lane_u64(value, 0));
         write_ptr = reinterpret_cast<uint32_t*>(ptr);
-        vst1q_lane_u32(write_ptr, value, 0);
+        vst1q_lane_u32(write_ptr, vreinterpretq_u32_u64(value), 0);
       }
     }
   }
