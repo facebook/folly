@@ -213,3 +213,8 @@ cdef void _setContextWatcher(const shared_ptr[RequestContext]& prev_ctx, const s
 
 if not DISABLE_MODULE:
     RequestContext.addSetContextWatcher(_setContextWatcher)
+
+
+def ensure():
+    """ Ensure the module is loaded and lazy imports haven't prevented the callbacks from being installed """
+    pass

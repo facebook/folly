@@ -40,6 +40,11 @@ async def get_Context(pass_ctx) -> request_context.Context | None:
 
 
 class RequestContextTest(IsolatedAsyncioTestCase):
+    def test_ensure(self) -> None:
+        # Even though this does nothing its a more nature way to ensure that
+        # the module is loaded, its not empty
+        self.assertIsNone(request_context.ensure())
+
     def test_use_count(self) -> None:
         ctx = request_context.Context()
         # ctx is a nullptr capsule, its use count is 0
