@@ -50,6 +50,7 @@ Py_Weak(PyObject*) PyObject_Repr(PyObject*);
 Py_Weak(char*) PyBytes_AsString(PyObject*);
 Py_Weak(PyObject*)
     PyUnicode_AsEncodedString(PyObject*, const char*, const char*);
+
 Py_Weak(const char*) PyUnicode_AsUTF8(PyObject*);
 
 // Basic GIL Handling
@@ -67,6 +68,9 @@ Py_Weak(int) PyFrame_GetLineNumber(PyFrameObject*);
 Py_Weak(void) _Py_DumpTraceback(int, PyThreadState*);
 Py_Weak(PyCodeObject*) PyFrame_GetCode(PyFrameObject*);
 Py_Weak(PyFrameObject*) PyFrame_GetBack(PyFrameObject*);
+
+Py_Weak(PyObject*) PyLong_FromVoidPtr(void*);
+
 #if PY_VERSION_HEX >= 0x030b0000 // >= 3.11
 Py_Weak(int) PyFrame_GetLasti(PyFrameObject*);
 #endif
@@ -81,6 +85,7 @@ Py_Weak(int) _Py_IsFinalizing(void);
 
 // Python Types
 Py_Weak(PyTypeObject) PyFrame_Type;
+Py_Weak(PyTypeObject) PyFunction_Type;
 
 #undef Py_Weak
 #endif // NOT_WINDOWS
