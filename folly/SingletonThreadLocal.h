@@ -100,7 +100,7 @@ struct SingletonThreadLocalState {
 template <
     typename T,
     typename Tag = detail::DefaultTag,
-    typename Make = detail::DefaultMake<T>,
+    typename Make = void,
     typename TLTag = std::
         conditional_t<std::is_same<Tag, detail::DefaultTag>::value, void, Tag>>
 class SingletonThreadLocal {
@@ -110,12 +110,14 @@ class SingletonThreadLocal {
   using State = detail::SingletonThreadLocalState;
   using LocalCache = State::LocalCache;
 
-  using Object = invoke_result_t<Make>;
+  using MakeFn =
+      std::conditional_t<std::is_void_v<Make>, detail::DefaultMake<T>, Make>;
+  using Object = invoke_result_t<MakeFn>;
   static_assert(std::is_convertible<Object&, T&>::value, "inconvertible");
 
   struct ObjectWrapper {
     // keep as first field in first base, to save 1 instr in the fast path
-    Object object{Make{}()};
+    Object object{MakeFn{}()};
   };
   struct Wrapper : ObjectWrapper, State::Tracking {
     /* implicit */ operator T&() { return ObjectWrapper::object; }
