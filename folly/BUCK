@@ -6312,3 +6312,10 @@ fbcode_target(
     deps = [],
     exported_deps = [],
 )
+
+fb_native.export_file(
+    name = "src-tree",
+    src = ".",
+    mode = "reference",
+    visibility = ["PUBLIC"],
+)
