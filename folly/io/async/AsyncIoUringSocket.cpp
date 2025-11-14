@@ -1179,6 +1179,9 @@ void AsyncIoUringSocket::detachEventBase() {
   readSqe_ = ReadSqe::UniquePtr(new ReadSqe(this));
   readSqe_->setReadCallback(oldReadCallback, false);
   readSqe_->setEventBase(nullptr);
+  SocketAddress remoteAddr;
+  getPeerAddress(&remoteAddr);
+  readSqe_->setUseZeroCopyRx(!remoteAddr.isLoopbackAddress());
 
   unregisterFd();
   if (!drc) {
