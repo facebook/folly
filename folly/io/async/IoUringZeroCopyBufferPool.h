@@ -33,6 +33,8 @@ namespace folly {
 
 class IoUringZeroCopyBufferPool {
  public:
+  friend class IoUringZeroCopyBufferPoolTestHelper;
+
   struct Deleter {
     void operator()(IoUringZeroCopyBufferPool* base);
   };
@@ -59,6 +61,9 @@ class IoUringZeroCopyBufferPool {
 
  private:
   explicit IoUringZeroCopyBufferPool(Params params);
+
+  struct TestTag {};
+  explicit IoUringZeroCopyBufferPool(Params params, TestTag);
 
   IoUringZeroCopyBufferPool(IoUringZeroCopyBufferPool&&) = delete;
   IoUringZeroCopyBufferPool(IoUringZeroCopyBufferPool const&) = delete;
@@ -92,7 +97,7 @@ class IoUringZeroCopyBufferPool {
   size_t rqRingAreaSize_{0};
   // Ring buffer shared between kernel and userspace
   // Constructed in initialRegister()
-  io_uring_zcrx_rq rqRing_;
+  io_uring_zcrx_rq rqRing_{};
   uint64_t rqAreaToken_{0};
   uint32_t rqTail_{0};
   unsigned rqMask_{0};

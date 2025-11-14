@@ -20,6 +20,18 @@
 
 using namespace ::testing;
 using namespace ::std;
+
+namespace folly {
+class IoUringZeroCopyBufferPoolTestHelper {
+ public:
+  static IoUringZeroCopyBufferPool::UniquePtr create(
+      IoUringZeroCopyBufferPool::Params params) {
+    return IoUringZeroCopyBufferPool::UniquePtr(new IoUringZeroCopyBufferPool(
+        params, IoUringZeroCopyBufferPool::TestTag{}));
+  }
+};
+} // namespace folly
+
 using namespace ::folly;
 
 TEST(IoUringZeroCopyBufferPoolTest, GetBuf) {
@@ -31,7 +43,7 @@ TEST(IoUringZeroCopyBufferPoolTest, GetBuf) {
       .ifindex = 0,
       .queueId = 0,
   };
-  auto pool = IoUringZeroCopyBufferPool::create(params);
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
   io_uring_cqe cqe;
   cqe.res = 2048;
   io_uring_zcrx_cqe zcqe;
@@ -50,7 +62,7 @@ TEST(IoUringZeroCopyBufferPoolTest, DelayedDestruction) {
       .ifindex = 0,
       .queueId = 0,
   };
-  auto pool = IoUringZeroCopyBufferPool::create(params);
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
   io_uring_cqe cqe;
   cqe.res = 2048;
   io_uring_zcrx_cqe zcqe;

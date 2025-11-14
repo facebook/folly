@@ -27,6 +27,10 @@
 namespace folly {
 
 namespace {
+struct io_uring {
+  uint32_t head;
+  uint32_t tail;
+};
 
 size_t getRefillRingSize(size_t rqEntries) {
   size_t size = rqEntries * sizeof(io_uring_zcrx_rqe);
@@ -63,21 +67,30 @@ IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params)
   for (auto& buf : buffers_) {
     buf.pool = this;
   }
-  if (ring_ != nullptr) {
-    initialRegister(params.ifindex, params.queueId);
-  } else {
-    // rqRing_ is set up using information that the kernel fills in via
-    // io_uring_register_ifq(). Unit tests do not do this, so fake the rqRing_,
-    // specifically ktail and rqes array
-    mapMemory();
-    rqRing_.khead = nullptr;
-    rqRing_.ktail = reinterpret_cast<uint32_t*>(
-        static_cast<char*>(rqRingArea_) +
-        (rqEntries_ * sizeof(io_uring_zcrx_rqe)));
-    rqRing_.rqes = static_cast<io_uring_zcrx_rqe*>(rqRingArea_);
-    rqRing_.rq_tail = 0;
-    rqRing_.ring_entries = rqEntries_;
+  initialRegister(params.ifindex, params.queueId);
+}
+
+IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params, TestTag)
+    : ring_(params.ring),
+      pageSize_(params.pageSize),
+      rqEntries_(params.rqEntries),
+      bufAreaSize_(params.numPages * params.pageSize),
+      buffers_(params.numPages),
+      rqRingAreaSize_(getRefillRingSize(params.rqEntries)) {
+  for (auto& buf : buffers_) {
+    buf.pool = this;
   }
+  // rqRing_ is normally set up using information that the kernel fills in via
+  // io_uring_register_ifq(). Unit tests do not do this, so fake it.
+  mapMemory();
+  rqRing_.khead = reinterpret_cast<uint32_t*>(
+      (static_cast<char*>(rqRingArea_) + offsetof(struct io_uring, head)));
+  rqRing_.ktail = reinterpret_cast<uint32_t*>(
+      (static_cast<char*>(rqRingArea_) + offsetof(struct io_uring, tail)));
+  rqRing_.rqes = reinterpret_cast<io_uring_zcrx_rqe*>(
+      static_cast<char*>(rqRingArea_) + sizeof(struct io_uring));
+  rqRing_.rq_tail = 0;
+  rqRing_.ring_entries = rqEntries_;
 }
 
 void IoUringZeroCopyBufferPool::destroy() noexcept {
@@ -197,15 +210,7 @@ void IoUringZeroCopyBufferPool::initialRegister(
 }
 
 uint32_t IoUringZeroCopyBufferPool::getRingQueuedCount() const noexcept {
-  // In unit test mode, it generates rqRing_.head as nullptr.
-  // This was crashing the tests since rqTail - nullptr was leading
-  // to segfault.
-  if (rqRing_.khead == nullptr) {
-    return 0;
-  }
-
-  uint32_t head = io_uring_smp_load_acquire(rqRing_.khead);
-  return rqTail_ - head;
+  return rqTail_ - io_uring_smp_load_acquire(rqRing_.khead);
 }
 
 void IoUringZeroCopyBufferPool::writeBufferToRing(Buffer* buffer) noexcept {
