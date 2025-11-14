@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <queue>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/synchronization/DistributedMutex.h>
@@ -77,6 +78,8 @@ class IoUringZeroCopyBufferPool {
   void returnBuffer(Buffer* buf) noexcept;
 
   void delayedDestroy(uint32_t refs) noexcept;
+  uint32_t getRingQueuedCount() const noexcept;
+  void writeBufferToRing(Buffer* buffer) noexcept;
 
   io_uring* ring_{nullptr};
   size_t pageSize_{0};
@@ -99,6 +102,7 @@ class IoUringZeroCopyBufferPool {
   folly::DistributedMutex mutex_;
   std::atomic<bool> wantsShutdown_{false};
   uint32_t shutdownReferences_{0};
+  std::queue<Buffer*> pendingBuffers_;
 };
 
 } // namespace folly

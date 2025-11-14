@@ -145,7 +145,6 @@ fb_dirsync_cpp_library(
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
-    deps = [],
     exported_deps = [
         ":async_socket_exception",
         ":async_transport",

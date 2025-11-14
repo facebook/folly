@@ -196,6 +196,26 @@ void IoUringZeroCopyBufferPool::initialRegister(
   id_ = ifqReg.zcrx_id;
 }
 
+uint32_t IoUringZeroCopyBufferPool::getRingQueuedCount() const noexcept {
+  // In unit test mode, it generates rqRing_.head as nullptr.
+  // This was crashing the tests since rqTail - nullptr was leading
+  // to segfault.
+  if (rqRing_.khead == nullptr) {
+    return 0;
+  }
+
+  uint32_t head = io_uring_smp_load_acquire(rqRing_.khead);
+  return rqTail_ - head;
+}
+
+void IoUringZeroCopyBufferPool::writeBufferToRing(Buffer* buffer) noexcept {
+  uint32_t myTail = static_cast<uint32_t>(rqTail_++);
+
+  io_uring_zcrx_rqe* rqe = &rqRing_.rqes[myTail & rqMask_];
+  rqe->off = (buffer->off & ~IORING_ZCRX_AREA_MASK) | rqAreaToken_;
+  rqe->len = buffer->len;
+}
+
 void IoUringZeroCopyBufferPool::returnBuffer(Buffer* buffer) noexcept {
   std::unique_lock lock{mutex_};
   if (FOLLY_UNLIKELY(wantsShutdown_)) {
@@ -205,16 +225,25 @@ void IoUringZeroCopyBufferPool::returnBuffer(Buffer* buffer) noexcept {
     return;
   }
 
-  uint32_t myTail = static_cast<uint32_t>(rqTail_++);
-  uint32_t nextTail = myTail + 1;
+  auto startTail = rqTail_;
+  uint32_t queueLength = getRingQueuedCount();
+  uint32_t slots = rqRing_.ring_entries - queueLength;
+  uint32_t numToProcess =
+      std::min(static_cast<uint32_t>(pendingBuffers_.size()), slots);
+  for (uint32_t i = 0; i < numToProcess; i++) {
+    writeBufferToRing(pendingBuffers_.front());
+    pendingBuffers_.pop();
+  }
 
-  io_uring_zcrx_rqe* rqe;
-  rqe = &rqRing_.rqes[myTail & rqMask_];
-  rqe->off = (buffer->off & ~IORING_ZCRX_AREA_MASK) | rqAreaToken_;
-  rqe->len = buffer->len;
+  if (numToProcess < slots) {
+    writeBufferToRing(buffer);
+  } else {
+    pendingBuffers_.push(buffer);
+  }
 
-  // Update the tail and make visible to kernel
-  io_uring_smp_store_release(rqRing_.ktail, nextTail);
+  if (rqTail_ != startTail) {
+    io_uring_smp_store_release(rqRing_.ktail, static_cast<uint32_t>(rqTail_));
+  }
 }
 
 void IoUringZeroCopyBufferPool::delayedDestroy(uint32_t refs) noexcept {
