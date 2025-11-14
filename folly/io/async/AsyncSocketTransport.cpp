@@ -24,4 +24,16 @@ const SocketAddress& AsyncSocketTransport::anyAddress() {
   return anyAddress;
 }
 
+int AsyncSocketTransport::getNapiId() const {
+#if defined(__linux__)
+  int id = -1;
+  socklen_t len = sizeof(id);
+  auto ret = ::getsockopt(
+      getNetworkSocket().toFd(), SOL_SOCKET, SO_INCOMING_NAPI_ID, &id, &len);
+  return ret < 0 || id < 1 ? -1 : id;
+#else
+  return -1;
+#endif
+}
+
 } // namespace folly

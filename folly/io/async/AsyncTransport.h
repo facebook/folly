@@ -797,6 +797,16 @@ class AsyncTransport
     }
   }
 
+  /**
+   * Return SO_INCOMING_NAPI_ID for this transport. For socket transports, this
+   * is associated with the NAPI instance/receive queue. For other transports,
+   * it is not defined.
+   *
+   * Returns -1 for error or invalid NAPI ID, or a positive integer for a valid
+   * NAPI ID.
+   */
+  virtual int getNapiId() const { return -1; }
+
  public:
   /**
    * AsyncTransports may wrap other AsyncTransport. This returns the
