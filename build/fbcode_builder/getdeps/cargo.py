@@ -203,7 +203,9 @@ incremental = false
             build_source_dir, os.path.join(self.inst_dir, "source")
         )
 
-    def run_tests(self, schedule_type, owner, test_filter, retry, no_testpilot) -> None:
+    def run_tests(
+        self, schedule_type, owner, test_filter, retry, no_testpilot, timeout=None
+    ) -> None:
         if test_filter:
             args = ["--", test_filter]
         else:
