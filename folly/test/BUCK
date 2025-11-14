@@ -354,7 +354,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "conv_benchmark",
     srcs = ["ConvBenchmark.cpp"],
     headers = [],
@@ -624,8 +624,8 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_algorithm"),
+        "glog",
     ],
 )
 
@@ -716,7 +716,6 @@ fbcode_target(
     ],
     external_deps = [
         "glog",
-        ("glibc", None, "dl"),
     ],
 )
 
@@ -995,7 +994,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "glog_benchmark",
     srcs = ["GLogBenchmark.cpp"],
     headers = [],
@@ -1028,7 +1027,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "math_benchmark",
     srcs = ["MathBenchmark.cpp"],
     headers = [],
@@ -1136,7 +1135,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "memcpy_benchmark",
     srcs = ["MemcpyBenchmark.cpp"],
     headers = [],
@@ -1180,7 +1179,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "memory_idler_benchmark",
     srcs = ["MemoryIdlerBenchmark.cpp"],
     headers = [],
@@ -1249,8 +1248,8 @@ fbcode_target(
         "//folly/portability:unistd",
     ],
     external_deps = [
-        "boost",
         ("boost", None, "boost_thread"),
+        "boost",
     ],
 )
 
@@ -1420,7 +1419,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "random_benchmark",
     srcs = ["RandomBenchmark.cpp"],
     headers = [],
@@ -1560,8 +1559,8 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_thread"),
+        "glog",
     ],
 )
 
@@ -1624,7 +1623,6 @@ fbcode_target(
     ],
     external_deps = [
         ("boost", None, "boost_thread"),
-        ("glibc", None, "dl"),
     ],
 )
 
@@ -1688,7 +1686,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "string_to_float_benchmark",
     srcs = ["StringToFloatBenchmark.cpp"],
     headers = [],
@@ -1762,8 +1760,8 @@ fbcode_target(
         "//folly/testing:test_util",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_container"),
+        "glog",
     ],
 )
 
@@ -1880,7 +1878,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "thread_local_benchmark",
     srcs = ["ThreadLocalBenchmark.cpp"],
     headers = [],
@@ -1892,13 +1890,13 @@ fbcode_target(
         "//folly/synchronization:latch",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_thread"),
+        "glog",
     ],
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "thread_local_access_benchmark",
     srcs = ["ThreadLocalAccessBenchmark.cpp"],
     headers = [],
@@ -1909,7 +1907,7 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_binary,
+    _kind = cpp_benchmark,
     name = "thread_local_destroy_benchmark",
     srcs = ["ThreadLocalDestroyBenchmark.cpp"],
     headers = [],
@@ -1952,9 +1950,8 @@ fbcode_target(
         "//folly/testing:test_util",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_thread"),
-        ("glibc", None, "dl"),
+        "glog",
     ],
 )
 
@@ -2047,8 +2044,8 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_algorithm"),
+        "glog",
     ],
 )
 
