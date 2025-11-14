@@ -209,7 +209,7 @@ uint32_t IoUringZeroCopyBufferPool::getRingQueuedCount() const noexcept {
 }
 
 void IoUringZeroCopyBufferPool::writeBufferToRing(Buffer* buffer) noexcept {
-  uint32_t myTail = static_cast<uint32_t>(rqTail_++);
+  uint32_t myTail = rqTail_++;
 
   io_uring_zcrx_rqe* rqe = &rqRing_.rqes[myTail & rqMask_];
   rqe->off = (buffer->off & ~IORING_ZCRX_AREA_MASK) | rqAreaToken_;
@@ -225,12 +225,12 @@ void IoUringZeroCopyBufferPool::returnBuffer(Buffer* buffer) noexcept {
     return;
   }
 
-  auto startTail = rqTail_;
+  uint32_t startTail = rqTail_;
   uint32_t queueLength = getRingQueuedCount();
   uint32_t slots = rqRing_.ring_entries - queueLength;
-  uint32_t numToProcess =
-      std::min(static_cast<uint32_t>(pendingBuffers_.size()), slots);
-  for (uint32_t i = 0; i < numToProcess; i++) {
+  auto numToProcess =
+      std::min(pendingBuffers_.size(), static_cast<size_t>(slots));
+  for (size_t i = 0; i < numToProcess; i++) {
     writeBufferToRing(pendingBuffers_.front());
     pendingBuffers_.pop();
   }
@@ -242,7 +242,7 @@ void IoUringZeroCopyBufferPool::returnBuffer(Buffer* buffer) noexcept {
   }
 
   if (rqTail_ != startTail) {
-    io_uring_smp_store_release(rqRing_.ktail, static_cast<uint32_t>(rqTail_));
+    io_uring_smp_store_release(rqRing_.ktail, rqTail_);
   }
 }
 

@@ -94,10 +94,10 @@ class IoUringZeroCopyBufferPool {
   // Constructed in initialRegister()
   io_uring_zcrx_rq rqRing_;
   uint64_t rqAreaToken_{0};
-  uint64_t rqTail_{0};
+  uint32_t rqTail_{0};
   unsigned rqMask_{0};
   uint32_t id_{0};
-  uint64_t bufDispensed_{0};
+  uint32_t bufDispensed_{0};
 
   folly::DistributedMutex mutex_;
   std::atomic<bool> wantsShutdown_{false};
