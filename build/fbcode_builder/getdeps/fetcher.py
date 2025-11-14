@@ -223,7 +223,7 @@ class GitFetcher(Fetcher):
         # directory name.  eg:
         # github.com/facebook/folly.git -> github.com-facebook-folly.git
         url = urlparse(repo_url)
-        directory = "%s%s" % (url.netloc, url.path)
+        directory = "%s%s%s" % (url.netloc, url.path, branch if branch else "")
         for s in ["/", "\\", ":"]:
             directory = directory.replace(s, "-")
 
