@@ -134,3 +134,43 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillTest) {
   EXPECT_EQ(helper.getRingFreeCount(), 0);
   EXPECT_EQ(helper.getPendingBuffersSize(), 0);
 }
+
+TEST(IoUringZeroCopyBufferPoolTest, RefillMoreThanCapacity) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numPages = 8,
+      .pageSize = 4096,
+      .rqEntries = 2,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+  EXPECT_EQ(helper.getRingUsedCount(), 0);
+  EXPECT_EQ(helper.getRingFreeCount(), 2);
+
+  io_uring_cqe cqe{};
+  io_uring_zcrx_cqe zcqe{};
+
+  cqe.res = 2048;
+  zcqe.off = 0;
+  for (int i = 0; i < 8; i++) {
+    auto buf = pool->getIoBuf(&cqe, &zcqe);
+    zcqe.off += 4096;
+  }
+
+  EXPECT_EQ(helper.getRingUsedCount(), 2);
+  EXPECT_EQ(helper.getRingFreeCount(), 0);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 6);
+
+  *helper.getHead() += 2;
+  zcqe.off = 0;
+  for (int i = 0; i < 2; i++) {
+    auto buf = pool->getIoBuf(&cqe, &zcqe);
+    zcqe.off += 4096;
+  }
+  EXPECT_EQ(helper.getRingUsedCount(), 2);
+  EXPECT_EQ(helper.getRingFreeCount(), 0);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 6);
+  pool.reset();
+}

@@ -97,6 +97,8 @@ void IoUringZeroCopyBufferPool::destroy() noexcept {
   std::unique_lock lock{mutex_};
   DCHECK(bufDispensed_ >= rqTail_);
   auto remaining = bufDispensed_ - rqTail_;
+  // Drain refs in overflow queue
+  remaining -= pendingBuffers_.size();
   shutdownReferences_ = remaining;
   wantsShutdown_ = true;
   lock.unlock();
