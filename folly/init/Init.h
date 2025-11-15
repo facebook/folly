@@ -81,7 +81,7 @@ class InitOptions {
  *                     gflags passed on the command line
  * @param options      options
  */
-class FOLLY_NODISCARD Init {
+class [[nodiscard]] Init {
  public:
   // Force ctor & dtor out of line for better stack traces even with LTO.
   FOLLY_NOINLINE Init(int* argc, char*** argv, bool removeFlags = true);

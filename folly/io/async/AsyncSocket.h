@@ -1469,7 +1469,7 @@ class AsyncSocket : public AsyncSocketTransport {
    *
    * @return             Vector with installed observers.
    */
-  FOLLY_NODISCARD virtual std::vector<LegacyLifecycleObserver*>
+  [[nodiscard]] virtual std::vector<LegacyLifecycleObserver*>
   getLifecycleObservers() const;
 
   /**

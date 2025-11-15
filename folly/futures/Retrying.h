@@ -76,7 +76,7 @@ template <class Policy, class FF>
 Future<typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
 retryingUnsafe(Policy&& p, FF&& ff);
 template <class Policy, class FF>
-FOLLY_NODISCARD SemiFuture<
+[[nodiscard]] SemiFuture<
     typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
 retrying(Policy&& p, FF&& ff);
 

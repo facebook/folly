@@ -392,11 +392,11 @@ class AsyncWriter {
     size_t mapSize{0};
   };
 
-  FOLLY_NODISCARD virtual bool setRXZeroCopy(RXZerocopyParams /*params*/) {
+  [[nodiscard]] virtual bool setRXZeroCopy(RXZerocopyParams /*params*/) {
     return false;
   }
 
-  FOLLY_NODISCARD virtual bool getRXZeroCopy() const { return false; }
+  [[nodiscard]] virtual bool getRXZeroCopy() const { return false; }
 
   using ZeroCopyEnableFunc =
       std::function<bool(const std::unique_ptr<folly::IOBuf>& buf)>;
