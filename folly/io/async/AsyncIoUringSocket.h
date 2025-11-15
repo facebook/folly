@@ -51,9 +51,10 @@ class AsyncDetachFdCallback {
 } // namespace folly
 
 #if FOLLY_HAS_LIBURING
-class IoUringBackend;
 
 namespace folly {
+class IoUringBackend;
+class IoUringProvidedBufferRing;
 
 class AsyncIoUringSocket : public AsyncSocketTransport {
  public:
@@ -256,14 +257,14 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   void unregisterFd();
   void readProcessSubmit(
       struct io_uring_sqe* sqe,
-      IoUringBufferProviderBase* bufferProvider,
+      IoUringProvidedBufferRing* bufferProvider,
       size_t* maxSize,
-      IoUringBufferProviderBase* usedBufferProvider) noexcept;
+      IoUringProvidedBufferRing* usedBufferProvider) noexcept;
   void readCallback(
       int res,
       uint32_t flags,
       size_t maxSize,
-      IoUringBufferProviderBase* bufferProvider) noexcept;
+      IoUringProvidedBufferRing* bufferProvider) noexcept;
   void allowReads();
   void previousReadDone();
   void processWriteQueue() noexcept;
@@ -344,7 +345,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
     bool isEOF(const io_uring_cqe* cqe) noexcept;
 
-    IoUringBufferProviderBase* lastUsedBufferProvider_;
+    IoUringProvidedBufferRing* lastUsedBufferProvider_;
     ReadCallback* readCallback_ = nullptr;
     AsyncIoUringSocket* parent_;
     size_t maxSize_;

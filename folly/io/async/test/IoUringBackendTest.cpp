@@ -2331,7 +2331,7 @@ TEST(IoUringBackend, ReceiveBundleTest) {
     SimpleReader(
         int fd,
         uint16_t bgid,
-        folly::IoUringBufferProviderBase* bufProvider,
+        folly::IoUringProvidedBufferRing* bufProvider,
         std::string* received,
         bool* gotBundle,
         bool* eofReceived)
@@ -2376,7 +2376,7 @@ TEST(IoUringBackend, ReceiveBundleTest) {
    private:
     int fd_;
     uint16_t bgid_;
-    folly::IoUringBufferProviderBase* bufProvider_;
+    folly::IoUringProvidedBufferRing* bufProvider_;
     std::string* received_;
     bool* gotBundle_;
     bool* eofReceived_;

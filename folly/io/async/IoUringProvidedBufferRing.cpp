@@ -19,15 +19,20 @@
 #include <folly/Conv.h>
 #include <folly/String.h>
 #include <folly/lang/Align.h>
+#include <folly/portability/SysMman.h>
 
 #if FOLLY_HAS_LIBURING
 
 namespace folly {
 
-IoUringBufferProviderBase::UniquePtr IoUringProvidedBufferRing::create(
+IoUringProvidedBufferRing::UniquePtr IoUringProvidedBufferRing::create(
     io_uring* ioRingPtr, Options options) {
   return IoUringProvidedBufferRing::UniquePtr(
       new IoUringProvidedBufferRing(ioRingPtr, options));
+}
+
+IoUringProvidedBufferRing::ProvidedBuffersBuffer::~ProvidedBuffersBuffer() {
+  ::munmap(buffer_, allSize_);
 }
 
 IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
@@ -90,8 +95,8 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
 
 IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     io_uring* ioRingPtr, Options options)
-    : IoUringBufferProviderBase(
-          options.gid,
+    : gid_(options.gid),
+      sizePerBuffer_(
           ProvidedBuffersBuffer::calcBufferSize(options.bufferShift)),
       ioRingPtr_(ioRingPtr),
       buffer_(

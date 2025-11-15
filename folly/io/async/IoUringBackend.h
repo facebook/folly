@@ -39,6 +39,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/IoUringBase.h>
+#include <folly/io/async/IoUringProvidedBufferRing.h>
 #include <folly/io/async/IoUringZeroCopyBufferPool.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/portability/Asm.h>
@@ -455,7 +456,7 @@ class IoUringBackend : public EventBaseBackendBase {
   void cancel(IoSqeBase* sqe);
 
   // built in buffer provider
-  IoUringBufferProviderBase* bufferProvider() {
+  IoUringProvidedBufferRing* bufferProvider() {
     return bufferProviders_
         [bufferProviderIdx_++ & (bufferProviders_.size() - 1)]
             .get();
@@ -717,7 +718,7 @@ class IoUringBackend : public EventBaseBackendBase {
             ret = true;
             std::unique_ptr<IOBuf> buf;
             if (flags & IORING_CQE_F_BUFFER) {
-              if (IoUringBufferProviderBase* bp = backend->bufferProvider()) {
+              if (IoUringProvidedBufferRing* bp = backend->bufferProvider()) {
                 auto hasMore = (flags & IORING_CQE_F_BUF_MORE) != 0;
                 uint16_t bufId = flags >> IORING_CQE_BUFFER_SHIFT;
                 VLOG(5) << "bufId=" << bufId << " bp=" << (void*)bp
@@ -842,7 +843,7 @@ class IoUringBackend : public EventBaseBackendBase {
         struct io_uring_sqe* sqe, int fd, struct msghdr* msg) noexcept {
       CHECK(sqe);
       ::io_uring_prep_recvmsg_multishot(sqe, fd, msg, MSG_TRUNC);
-      if (IoUringBufferProviderBase* bp = backend_->bufferProvider()) {
+      if (IoUringProvidedBufferRing* bp = backend_->bufferProvider()) {
         sqe->buf_group = bp->gid();
         sqe->flags |= IOSQE_BUFFER_SELECT;
       }
@@ -1216,7 +1217,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // submit
   IoSqeBaseList submitList_;
   uint16_t bufferProviderGidNext_{0};
-  std::vector<IoUringBufferProviderBase::UniquePtr> bufferProviders_;
+  std::vector<IoUringProvidedBufferRing::UniquePtr> bufferProviders_;
   uint64_t bufferProviderIdx_{0};
   IoUringZeroCopyBufferPool::UniquePtr zcBufferPool_;
 

@@ -78,42 +78,6 @@ struct IoSqeBase
   Type type_;
 };
 
-class IoUringBufferProviderBase {
- protected:
-  uint16_t const gid_;
-  size_t const sizePerBuffer_;
-
- public:
-  struct Deleter {
-    void operator()(IoUringBufferProviderBase* base) {
-      if (base) {
-        base->destroy();
-      }
-    }
-  };
-
-  using UniquePtr = std::unique_ptr<IoUringBufferProviderBase, Deleter>;
-  explicit IoUringBufferProviderBase(uint16_t gid, size_t sizePerBuffer)
-      : gid_(gid), sizePerBuffer_(sizePerBuffer) {}
-  virtual ~IoUringBufferProviderBase() = default;
-
-  IoUringBufferProviderBase(IoUringBufferProviderBase&&) = delete;
-  IoUringBufferProviderBase(IoUringBufferProviderBase const&) = delete;
-  IoUringBufferProviderBase& operator=(IoUringBufferProviderBase&&) = delete;
-  IoUringBufferProviderBase& operator=(IoUringBufferProviderBase const&) =
-      delete;
-
-  size_t sizePerBuffer() const { return sizePerBuffer_; }
-  uint16_t gid() const { return gid_; }
-
-  virtual uint32_t count() const noexcept = 0;
-  virtual std::unique_ptr<IOBuf> getIoBuf(
-      uint16_t startBufId, size_t totalLength, bool hasMore) noexcept = 0;
-  virtual void enobuf() noexcept = 0;
-  virtual bool available() const noexcept = 0;
-  virtual void destroy() noexcept = 0;
-};
-
 struct IoUringFdRegistrationRecord
     : public boost::intrusive::slist_base_hook<
           boost::intrusive::cache_last<false>> {

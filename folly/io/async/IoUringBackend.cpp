@@ -333,7 +333,7 @@ IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&... args) {
 #else
 
 template <class... Args>
-IoUringBufferProviderBase::UniquePtr makeProvidedBufferRing(Args&&...) {
+IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&...) {
   throw IoUringBackend::NotAvailable(
       "Provided buffer rings not compiled into this binary");
 }
@@ -1963,7 +1963,7 @@ namespace {
 static bool doKernelSupportsRecvmsgMultishot() {
   try {
     struct S : IoSqeBase {
-      explicit S(IoUringBufferProviderBase* bp) : bp_(bp) {
+      explicit S(IoUringProvidedBufferRing* bp) : bp_(bp) {
         fd = fileops::open("/dev/null", O_RDONLY);
         memset(&msg, 0, sizeof(msg));
       }
@@ -1987,7 +1987,7 @@ static bool doKernelSupportsRecvmsgMultishot() {
         delete this;
       }
 
-      IoUringBufferProviderBase* bp_;
+      IoUringProvidedBufferRing* bp_;
       bool supported = false;
       struct msghdr msg;
       int fd = -1;

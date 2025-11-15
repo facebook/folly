@@ -18,7 +18,6 @@
 
 #include <folly/io/async/IoUringBase.h>
 #include <folly/io/async/Liburing.h>
-#include <folly/portability/SysMman.h>
 #include <folly/synchronization/DistributedMutex.h>
 
 #if FOLLY_HAS_LIBURING
@@ -31,12 +30,22 @@ FOLLY_POP_WARNING
 
 namespace folly {
 
-class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
+class IoUringProvidedBufferRing {
  public:
   class LibUringCallError : public std::runtime_error {
    public:
     using std::runtime_error::runtime_error;
   };
+
+  struct Deleter {
+    void operator()(IoUringProvidedBufferRing* ring) {
+      if (ring) {
+        ring->destroy();
+      }
+    }
+  };
+
+  using UniquePtr = std::unique_ptr<IoUringProvidedBufferRing, Deleter>;
 
   struct Options {
     uint16_t gid{0};
@@ -47,20 +56,22 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
     bool useIncrementalBuffers{false};
   };
 
-  static IoUringBufferProviderBase::UniquePtr create(
-      io_uring* ioRingPtr, Options options);
+  static UniquePtr create(io_uring* ioRingPtr, Options options);
 
-  void enobuf() noexcept override;
+  void enobuf() noexcept;
   uint64_t getAndResetEnobufCount() noexcept;
-  void destroy() noexcept override;
+  void destroy() noexcept;
 
   std::unique_ptr<IOBuf> getIoBuf(
-      uint16_t startBufId, size_t totalLength, bool hasMore) noexcept override;
+      uint16_t startBufId, size_t totalLength, bool hasMore) noexcept;
 
-  uint32_t count() const noexcept override { return buffer_.bufferCount(); }
-  bool available() const noexcept override {
+  uint32_t count() const noexcept { return buffer_.bufferCount(); }
+  bool available() const noexcept {
     return !enobuf_.load(std::memory_order_relaxed);
   }
+
+  size_t sizePerBuffer() const noexcept { return sizePerBuffer_; }
+  uint16_t gid() const noexcept { return gid_; }
 
   // Returns the buffer utilization as an integer percentage (0-100).
   int getUtilPct() const noexcept;
@@ -92,7 +103,7 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
    public:
     ProvidedBuffersBuffer(
         size_t count, int bufferShift, int ringCountShift, bool huge_pages);
-    ~ProvidedBuffersBuffer() { ::munmap(buffer_, allSize_); }
+    ~ProvidedBuffersBuffer();
 
     static size_t calcBufferSize(int bufferShift) {
       return 1LLU << std::max<int>(5, bufferShift);
@@ -141,6 +152,9 @@ class IoUringProvidedBufferRing : public IoUringBufferProviderBase {
     unsigned int offset{0};
     IoUringProvidedBufferRing* parent{nullptr};
   };
+
+  uint16_t const gid_;
+  size_t const sizePerBuffer_;
   io_uring* ioRingPtr_;
   ProvidedBuffersBuffer buffer_;
   std::atomic<bool> enobuf_{false};
