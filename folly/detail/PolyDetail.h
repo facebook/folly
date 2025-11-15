@@ -311,7 +311,7 @@ struct Data {
   Data& operator=(Data const&) { return *this; }
   union {
     void* pobj_ = nullptr;
-    std::aligned_storage_t<sizeof(double[2])> buff_;
+    folly::aligned_storage<sizeof(double[2]), alignof(double[2])>::type buff_;
   };
 };
 
