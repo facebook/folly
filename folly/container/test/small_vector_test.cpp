@@ -642,6 +642,21 @@ TEST(smallVector, GrowShrinkGrow) {
   testGrowShrinkGrow<0>();
 }
 
+TEST(smallVector, ShrinkToFitMoveOnly) {
+  folly::small_vector<std::unique_ptr<int>> vec;
+  vec.reserve(100);
+  for (int i = 0; i < 3; ++i) {
+    vec.push_back(std::make_unique<int>(i));
+  }
+  vec.shrink_to_fit();
+  EXPECT_LT(vec.capacity(), 100);
+  ASSERT_EQ(vec.size(), 3);
+  for (int i = 0; i < 3; ++i) {
+    ASSERT_NE(vec[i], nullptr);
+    EXPECT_EQ(*vec[i], i);
+  }
+}
+
 TEST(smallVector, Iteration) {
   folly::small_vector<std::string, 3> vec = {"foo", "bar"};
   vec.push_back("blah");

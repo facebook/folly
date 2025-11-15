@@ -880,12 +880,13 @@ class small_vector
   }
 
   void shrink_to_fit() {
-    if (!this->isExtern()) {
+    if (!this->isExtern() || size() == capacity()) {
       return;
     }
 
-    small_vector tmp(begin(), end());
-    tmp.swap(*this);
+    small_vector old = std::exchange(*this, {});
+    reserve(old.size());
+    std::move(old.begin(), old.end(), std::back_inserter(*this));
   }
 
   template <class... Args>
