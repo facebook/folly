@@ -38,7 +38,7 @@ static constexpr ssize_t kDefaultMlockChunkSize = !folly::kMscVer
     // Linux implementations of unmap/mlock/munlock take a kernel
     // semaphore and block other threads from doing other memory
     // operations. Split the operations in chunks.
-    ? (1 << 20) // 1MB
+    ? (2 << 20) // 2MiB - match x86 PMD size for THP compatibility.
     // MSVC doesn't have this problem, and calling munmap many times
     // with the same address is a bad idea with the windows implementation.
     : (-1);
