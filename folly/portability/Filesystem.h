@@ -16,13 +16,7 @@
 
 #pragma once
 
-#if __has_include(<filesystem>)
 #include <filesystem>
-#elif __has_include(<experimental/filesystem>)
-#include <experimental/filesystem>
-#else
-#error require filesystem
-#endif
 
 namespace folly::fs {
 
@@ -31,19 +25,8 @@ enum class which_enum {
   std_experimental = 2,
 };
 
-#if __cpp_lib_filesystem >= 201703
-
 namespace std_fs = std::filesystem;
 inline constexpr which_enum which = which_enum::std;
-
-#elif __cpp_lib_experimental_filesystem >= 201406
-
-namespace std_fs = std::experimental::filesystem;
-inline constexpr which_enum which = which_enum::std_experimental;
-
-#else
-#error require filesystem
-#endif
 
 //  imports
 
@@ -97,14 +80,10 @@ using std_fs::symlink_status;
 using std_fs::temp_directory_path;
 using std_fs::u8path;
 
-#if __cpp_lib_filesystem >= 201703
-
 using std_fs::perm_options;
 using std_fs::proximate;
 using std_fs::relative;
 using std_fs::weakly_canonical;
-
-#endif
 
 struct lexically_normal_fn {
   path operator()(path const& p) const;
