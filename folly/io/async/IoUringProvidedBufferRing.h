@@ -51,8 +51,8 @@ class IoUringProvidedBufferRing {
 
   struct Options {
     uint16_t gid{0};
-    size_t bufferCount{0};
-    size_t bufferSize{0};
+    uint32_t bufferCount{0};
+    uint32_t bufferSize{0};
     bool useHugePages{false};
     bool useIncrementalBuffers{false};
   };
@@ -94,7 +94,7 @@ class IoUringProvidedBufferRing {
 
   void delayedDestroy(uint32_t refs) noexcept;
   void incBufferState(
-      uint16_t bufId, bool hasMore, unsigned int bytesConsumed) noexcept;
+      uint16_t bufId, bool hasMore, size_t bytesConsumed) noexcept;
   void decBufferState(uint16_t bufId) noexcept;
   std::unique_ptr<IOBuf> getIoBufSingle(
       uint16_t i, size_t length, bool hasMore) noexcept;
@@ -126,36 +126,34 @@ class IoUringProvidedBufferRing {
     IoUringProvidedBufferRing* parent{nullptr};
   };
 
-  uint16_t const gid_;
-  size_t const sizePerBuffer_;
-  io_uring* ioRingPtr_;
-
-  // Buffer memory management
-  void* buffer_{nullptr};
-  size_t allSize_{0};
-  size_t ringMemSize_{0};
-  struct io_uring_buf_ring* ringPtr_{nullptr};
-  int ringMask_{0};
-  uint32_t ringCount_{0};
-  size_t bufferSize_{0};
-  char* bufferBuffer_{nullptr};
-  uint32_t bufferCount_{0};
-
-  std::atomic<bool> enobuf_{false};
-  std::atomic<uint32_t> enobufCount_{0};
-  bool useIncremental_;
-
-  // For tracking how many IOBufs were created
-  uint32_t gottenBuffers_{0};
-  // For tracking how many IOBufs were destroyed.
-  uint32_t returnedBuffers_{0};
-  // For returning the buffer to the ring.
-  uint32_t ringReturnedBuffers_{0};
+  // Cacheline 1: Hot
   std::unique_ptr<BufferState[]> bufferStates_;
-
+  struct io_uring_buf_ring* ringPtr_{nullptr};
+  char* bufferBuffer_{nullptr};
   folly::DistributedMutex mutex_;
+  uint32_t sizePerBuffer_;
+  int ringMask_{0};
+  uint32_t gottenBuffers_{0};
+  uint32_t ringReturnedBuffers_{0};
+  uint32_t returnedBuffers_{0};
+  uint32_t bufferCount_;
+  bool useIncremental_;
+  std::atomic<bool> enobuf_{false};
   std::atomic<bool> wantsShutdown_{false};
+  // 1 byte padding
+  std::atomic<uint32_t> enobufCount_{0};
+
+  // Cacheline 2: Warm
+  io_uring* ioRingPtr_;
   uint32_t shutdownReferences_{0};
+  uint16_t const gid_;
+  // 2 bytes padding
+  // Cold
+  uint32_t ringCount_{0};
+  uint32_t allSize_{0};
+  void* buffer_{nullptr};
+  uint32_t ringMemSize_{0};
+  uint32_t bufferSize_{0};
 };
 
 } // namespace folly

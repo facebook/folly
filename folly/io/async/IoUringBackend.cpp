@@ -1103,8 +1103,10 @@ void IoUringBackend::initSubmissionLinked() {
     try {
       IoUringProvidedBufferRing::Options options = {
           .gid = nextBufferProviderGid(),
-          .bufferCount = options_.initialProvidedBuffersCount,
-          .bufferSize = options_.initialProvidedBuffersEachSize,
+          .bufferCount =
+              static_cast<uint32_t>(options_.initialProvidedBuffersCount),
+          .bufferSize =
+              static_cast<uint32_t>(options_.initialProvidedBuffersEachSize),
           .useHugePages = options_.useHugePages,
           .useIncrementalBuffers = options_.enableIncrementalBuffers,
       };

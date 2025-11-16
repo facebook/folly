@@ -24,10 +24,10 @@
 #if FOLLY_HAS_LIBURING
 
 namespace {
-constexpr size_t kMinBufferSize = 32;
-constexpr size_t kHugePageSizeBytes = 1024 * 1024 * 2;
-constexpr size_t kPageSizeBytes = 4096;
-constexpr size_t kBufferAlignBytes = 32;
+constexpr uint32_t kMinBufferSize = 32;
+constexpr uint32_t kHugePageSizeBytes = 1024 * 1024 * 2;
+constexpr uint32_t kPageSizeBytes = 4096;
+constexpr uint32_t kBufferAlignBytes = 32;
 } // namespace
 
 namespace folly {
@@ -45,20 +45,22 @@ void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
   if (bufferCount_ != (1ULL << ringShift)) {
     ringShift++;
   }
-  ringCount_ = 1ULL << std::max<int>(ringShift, 1);
+  ringCount_ = 1U << std::max<int>(ringShift, 1);
   ringMask_ = ringCount_ - 1;
   ringMemSize_ = sizeof(struct io_uring_buf) * ringCount_;
-  ringMemSize_ = folly::align_ceil(ringMemSize_, kBufferAlignBytes);
+  ringMemSize_ =
+      folly::to_narrow(folly::align_ceil(ringMemSize_, kBufferAlignBytes));
 
   bufferSize_ = sizePerBuffer_ * bufferCount_;
   allSize_ = ringMemSize_ + bufferSize_;
 
   int pages;
   if (useHugePages) {
-    allSize_ = folly::align_ceil(allSize_, kHugePageSizeBytes);
+    allSize_ =
+        folly::to_narrow(folly::align_ceil(allSize_, kHugePageSizeBytes));
     pages = allSize_ / kHugePageSizeBytes;
   } else {
-    allSize_ = folly::align_ceil(allSize_, kPageSizeBytes);
+    allSize_ = folly::to_narrow(folly::align_ceil(allSize_, kPageSizeBytes));
     pages = allSize_ / kPageSizeBytes;
   }
 
@@ -95,11 +97,12 @@ void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
 
 IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     io_uring* ioRingPtr, Options options)
-    : gid_(options.gid),
+    : bufferStates_(),
       sizePerBuffer_(std::max(options.bufferSize, kMinBufferSize)),
-      ioRingPtr_(ioRingPtr),
       bufferCount_(options.bufferCount),
-      useIncremental_(options.useIncrementalBuffers) {
+      useIncremental_(options.useIncrementalBuffers),
+      ioRingPtr_(ioRingPtr),
+      gid_(options.gid) {
   if (bufferCount_ > std::numeric_limits<uint16_t>::max()) {
     throw std::runtime_error("bufferCount cannot be larger than 65,535");
   }
@@ -271,7 +274,7 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
 }
 
 void IoUringProvidedBufferRing::initialRegister() {
-  struct io_uring_buf_reg reg;
+  struct io_uring_buf_reg reg{};
   memset(&reg, 0, sizeof(reg));
   reg.ring_addr = reinterpret_cast<__u64>(ringPtr_);
   reg.ring_entries = ringCount_;
@@ -307,7 +310,7 @@ void IoUringProvidedBufferRing::delayedDestroy(uint32_t refs) noexcept {
 }
 
 void IoUringProvidedBufferRing::incBufferState(
-    uint16_t bufId, bool hasMore, unsigned int bytesConsumed) noexcept {
+    uint16_t bufId, bool hasMore, size_t bytesConsumed) noexcept {
   gottenBuffers_++;
 
   if (useIncremental_ && hasMore) {
