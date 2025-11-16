@@ -32,7 +32,7 @@ struct MergingCancellationStateTag {};
 // Internal cancellation state object.
 class CancellationState {
  public:
-  FOLLY_NODISCARD static CancellationStateSourcePtr create();
+  [[nodiscard]] static CancellationStateSourcePtr create();
 
  protected:
   // Constructed initially with a CancellationSource reference count of 1.
@@ -49,9 +49,9 @@ class CancellationState {
   void removeSourceReference() noexcept;
 
  public:
-  FOLLY_NODISCARD CancellationStateTokenPtr addTokenReference() noexcept;
+  [[nodiscard]] CancellationStateTokenPtr addTokenReference() noexcept;
 
-  FOLLY_NODISCARD CancellationStateSourcePtr addSourceReference() noexcept;
+  [[nodiscard]] CancellationStateSourcePtr addSourceReference() noexcept;
 
   bool tryAddCallback(
       CancellationCallback* callback,
@@ -112,7 +112,7 @@ class CancellationStateWithData : public CancellationState {
 
  public:
   template <typename... Args>
-  FOLLY_NODISCARD static std::
+  [[nodiscard]] static std::
       pair<CancellationStateSourcePtr, std::tuple<Data...>*>
       create(Args&&... data);
 
