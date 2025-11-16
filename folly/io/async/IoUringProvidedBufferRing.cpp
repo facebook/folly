@@ -82,8 +82,8 @@ void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
             folly::errnoStr(errnoCopy)));
   }
 
-  ringPtr_ = (struct io_uring_buf_ring*)buffer_;
-  bufferBuffer_ = ((char*)buffer_) + ringMemSize_;
+  ringPtr_ = static_cast<struct io_uring_buf_ring*>(buffer_);
+  bufferBuffer_ = static_cast<char*>(buffer_) + ringMemSize_;
 
   if (useHugePages) {
     int ret = ::madvise(buffer_, allSize_, MADV_HUGEPAGE);
@@ -170,7 +170,7 @@ void IoUringProvidedBufferRing::returnBuffer(uint16_t i) noexcept {
   uint16_t next_tail = this_idx + 1;
 
   auto* r = ringBuf(this_idx);
-  r->addr = (__u64)getData(i);
+  r->addr = reinterpret_cast<__u64>(getData(i));
   r->len = sizePerBuffer_;
   r->bid = i;
 
@@ -193,7 +193,7 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBufSingle(
       << (useIncremental_
               ? (" offset=" + folly::to<std::string>(bufferStates_[i].offset))
               : "")
-      << " dataPtr=" << (void*)getData(i);
+      << " dataPtr=" << static_cast<void*>(getData(i));
 
   auto free_fn = [](void*, void* userData) {
     auto* bufferState = static_cast<BufferState*>(userData);
@@ -207,11 +207,12 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBufSingle(
     unsigned int currentOffset = bufferStates_[i].offset;
     auto* dataPtr = bufferStart + currentOffset;
     BufferState* info = &bufferStates_[i];
-    ret = IOBuf::takeOwnership((void*)dataPtr, length, length, free_fn, info);
+    ret = IOBuf::takeOwnership(
+        static_cast<void*>(dataPtr), length, length, free_fn, info);
   } else {
     BufferState* info = &bufferStates_[i];
     ret = IOBuf::takeOwnership(
-        (void*)getData(i), sizePerBuffer_, length, free_fn, info);
+        static_cast<void*>(getData(i)), sizePerBuffer_, length, free_fn, info);
   }
 
   ret->markExternallySharedOne();
@@ -254,7 +255,7 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
         << bufferCount_;
 
     BufferState* bufferState = &bufferStates_[currentBufId];
-    const char* bufferStart = getData(currentBufId);
+    char* bufferStart = getData(currentBufId);
     unsigned int currentOffset = 0;
     size_t availableInBuffer = sizePerBuffer_;
 
@@ -266,18 +267,18 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
               << " availableInBuffer=" << availableInBuffer;
     }
 
-    const char* dataPtr = bufferStart + currentOffset;
+    char* dataPtr = bufferStart + currentOffset;
     size_t currentChunkSize = std::min(remainingLength, availableInBuffer);
     bool isLastChunk = (remainingLength <= availableInBuffer);
 
     VLOG(9) << "Bundle buffer[" << bufferIndex << "]: bufId=" << currentBufId
             << " chunkSize=" << currentChunkSize << " remaining="
-            << remainingLength << " isLastChunk=" << isLastChunk
-            << " dataPtr=" << (void*)dataPtr << " offset=" << currentOffset;
+            << remainingLength << " isLastChunk=" << isLastChunk << " dataPtr="
+            << static_cast<void*>(dataPtr) << " offset=" << currentOffset;
 
     std::unique_ptr<IOBuf> chunk;
     chunk = IOBuf::takeOwnership(
-        (void*)dataPtr,
+        static_cast<void*>(dataPtr),
         useIncremental_ ? currentChunkSize : sizePerBuffer_,
         currentChunkSize,
         free_fn,
@@ -302,7 +303,7 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
 void IoUringProvidedBufferRing::initialRegister() {
   struct io_uring_buf_reg reg;
   memset(&reg, 0, sizeof(reg));
-  reg.ring_addr = (__u64)ringPtr_;
+  reg.ring_addr = reinterpret_cast<__u64>(ringPtr_);
   reg.ring_entries = ringCount_;
   reg.bgid = gid_;
 
