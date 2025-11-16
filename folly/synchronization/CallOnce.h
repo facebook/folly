@@ -84,7 +84,7 @@ FOLLY_ALWAYS_INLINE void call_once(OnceFlag& flag, F&& f, Args&&... args) {
  * Note: This has no parallel in the std::once_flag interface.
  */
 template <typename OnceFlag, typename F, typename... Args>
-FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool try_call_once(
+[[nodiscard]] FOLLY_ALWAYS_INLINE bool try_call_once(
     OnceFlag& flag, F&& f, Args&&... args) noexcept {
   static_assert(is_nothrow_invocable_v<F, Args...>, "must be noexcept");
   if (FOLLY_LIKELY(flag.test_once())) {

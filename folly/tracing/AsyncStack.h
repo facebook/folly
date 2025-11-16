@@ -178,12 +178,12 @@ class ScopedAsyncStackRoot;
 // Get access to the current thread's top-most AsyncStackRoot.
 //
 // Returns nullptr if there is no active AsyncStackRoot.
-FOLLY_NODISCARD AsyncStackRoot* tryGetCurrentAsyncStackRoot() noexcept;
+[[nodiscard]] AsyncStackRoot* tryGetCurrentAsyncStackRoot() noexcept;
 
 // Get access to the current thread's top-most AsyncStackRoot.
 //
 // Assumes that there is a current AsyncStackRoot.
-FOLLY_NODISCARD AsyncStackRoot& getCurrentAsyncStackRoot() noexcept;
+[[nodiscard]] AsyncStackRoot& getCurrentAsyncStackRoot() noexcept;
 
 // Exchange the current thread's active AsyncStackRoot with the
 // specified AsyncStackRoot pointer, returning the old AsyncStackRoot
@@ -191,7 +191,7 @@ FOLLY_NODISCARD AsyncStackRoot& getCurrentAsyncStackRoot() noexcept;
 //
 // This is intended to be used to update the thread-local pointer
 // when context-switching fiber stacks.
-FOLLY_NODISCARD AsyncStackRoot* exchangeCurrentAsyncStackRoot(
+[[nodiscard]] AsyncStackRoot* exchangeCurrentAsyncStackRoot(
     AsyncStackRoot* newRoot) noexcept;
 
 // Perform some consistency checks on the specified AsyncStackFrame,
