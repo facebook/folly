@@ -32,6 +32,8 @@ namespace folly {
 
 class IoUringProvidedBufferRing {
  public:
+  friend class IoUringProvidedBufferRingTestHelper;
+
   class LibUringCallError : public std::runtime_error {
    public:
     using std::runtime_error::runtime_error;
@@ -49,9 +51,8 @@ class IoUringProvidedBufferRing {
 
   struct Options {
     uint16_t gid{0};
-    size_t count{0};
-    int bufferShift{0};
-    int ringSizeShift{0};
+    size_t bufferCount{0};
+    size_t bufferSize{0};
     bool useHugePages{false};
     bool useIncrementalBuffers{false};
   };
@@ -102,12 +103,8 @@ class IoUringProvidedBufferRing {
   class ProvidedBuffersBuffer {
    public:
     ProvidedBuffersBuffer(
-        size_t count, int bufferShift, int ringCountShift, bool huge_pages);
+        size_t bufferCount, size_t bufferSize, bool useHugePages);
     ~ProvidedBuffersBuffer();
-
-    static size_t calcBufferSize(int bufferShift) {
-      return 1LLU << std::max<int>(5, bufferShift);
-    }
 
     struct io_uring_buf_ring* ring() const noexcept { return ringPtr_; }
 
@@ -119,7 +116,7 @@ class IoUringProvidedBufferRing {
     uint32_t ringCount() const noexcept { return 1 + ringMask_; }
 
     char* buffer(uint16_t idx) {
-      size_t offset = (size_t)idx << bufferShift_;
+      size_t offset = (size_t)idx * sizePerBuffer_;
       return bufferBuffer_ + offset;
     }
 
@@ -134,14 +131,9 @@ class IoUringProvidedBufferRing {
     int ringMask_;
 
     size_t bufferSize_;
-    size_t bufferShift_;
     size_t sizePerBuffer_;
     char* bufferBuffer_;
     uint32_t bufferCount_;
-
-    static constexpr size_t kHugePageSizeBytes = 1024 * 1024 * 2;
-    static constexpr size_t kPageSizeBytes = 4096;
-    static constexpr size_t kBufferAlignBytes = 32;
   };
 
   struct BufferState {

@@ -23,6 +23,13 @@
 
 #if FOLLY_HAS_LIBURING
 
+namespace {
+constexpr size_t kMinBufferSize = 32;
+constexpr size_t kHugePageSizeBytes = 1024 * 1024 * 2;
+constexpr size_t kPageSizeBytes = 4096;
+constexpr size_t kBufferAlignBytes = 32;
+} // namespace
+
 namespace folly {
 
 IoUringProvidedBufferRing::UniquePtr IoUringProvidedBufferRing::create(
@@ -36,25 +43,32 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::~ProvidedBuffersBuffer() {
 }
 
 IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
-    size_t count, int bufferShift, int ringCountShift, bool huge_pages)
-    : bufferShift_(bufferShift), bufferCount_(count) {
-  // space for the ring
-  int ringCount = 1 << ringCountShift;
-  ringMask_ = ringCount - 1;
-  ringMemSize_ = sizeof(struct io_uring_buf) * ringCount;
-
-  ringMemSize_ = align_ceil(ringMemSize_, kBufferAlignBytes);
-
-  if (bufferShift_ < 5) {
-    bufferShift_ = 5; // for alignment
+    size_t bufferCount, size_t bufferSize, bool useHugePages)
+    : bufferCount_(bufferCount) {
+  if (bufferCount > std::numeric_limits<uint16_t>::max()) {
+    throw std::runtime_error("too many buffers");
+  }
+  if (bufferCount == 0) {
+    throw std::runtime_error("not enough buffers");
   }
 
-  sizePerBuffer_ = calcBufferSize(bufferShift_);
-  bufferSize_ = sizePerBuffer_ * count;
+  // Find next power of 2 size larger than bufferCount for the provided buffer
+  // ring count.
+  int shift = findLastSet(bufferCount) - 1;
+  if (bufferCount != (1ULL << shift)) {
+    shift++;
+  }
+  size_t ringCount = 1ULL << std::max<int>(shift, 1);
+  ringMask_ = ringCount - 1;
+  ringMemSize_ = sizeof(struct io_uring_buf) * ringCount;
+  ringMemSize_ = align_ceil(ringMemSize_, kBufferAlignBytes);
+
+  sizePerBuffer_ = std::max(bufferSize, kMinBufferSize);
+  bufferSize_ = sizePerBuffer_ * bufferCount;
   allSize_ = ringMemSize_ + bufferSize_;
 
   int pages;
-  if (huge_pages) {
+  if (useHugePages) {
     allSize_ = align_ceil(allSize_, kHugePageSizeBytes);
     pages = allSize_ / kHugePageSizeBytes;
   } else {
@@ -85,7 +99,7 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
   bufferBuffer_ = ((char*)buffer_) + ringMemSize_;
   ringPtr_ = (struct io_uring_buf_ring*)buffer_;
 
-  if (huge_pages) {
+  if (useHugePages) {
     int ret = ::madvise(buffer_, allSize_, MADV_HUGEPAGE);
     PLOG_IF(ERROR, ret) << "cannot enable huge pages";
   } else {
@@ -96,32 +110,20 @@ IoUringProvidedBufferRing::ProvidedBuffersBuffer::ProvidedBuffersBuffer(
 IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     io_uring* ioRingPtr, Options options)
     : gid_(options.gid),
-      sizePerBuffer_(
-          ProvidedBuffersBuffer::calcBufferSize(options.bufferShift)),
+      sizePerBuffer_(options.bufferSize),
       ioRingPtr_(ioRingPtr),
-      buffer_(
-          options.count,
-          options.bufferShift,
-          options.ringSizeShift,
-          options.useHugePages),
+      buffer_(options.bufferCount, options.bufferSize, options.useHugePages),
       useIncremental_(options.useIncrementalBuffers) {
-  if (options.count > std::numeric_limits<uint16_t>::max()) {
-    throw std::runtime_error("too many buffers");
-  }
-  if (options.count == 0) {
-    throw std::runtime_error("not enough buffers");
-  }
-
   initialRegister();
 
-  bufferStates_ = std::make_unique<BufferState[]>(options.count);
-  for (uint16_t i = 0; i < options.count; i++) {
+  bufferStates_ = std::make_unique<BufferState[]>(options.bufferCount);
+  for (uint16_t i = 0; i < options.bufferCount; i++) {
     bufferStates_[i].bufId = i;
     bufferStates_[i].parent = this;
     bufferStates_[i].offset = 0;
   }
 
-  for (size_t i = 0; i < options.count; i++) {
+  for (size_t i = 0; i < options.bufferCount; i++) {
     returnBuffer(i);
   }
 }

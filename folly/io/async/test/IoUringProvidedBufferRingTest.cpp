@@ -24,58 +24,80 @@ using namespace ::testing;
 using namespace ::std;
 using namespace ::folly;
 
-int get_shift(int x) {
-  int shift = findLastSet(x) - 1;
-  if (x != (1 << shift)) {
-    shift++;
-  }
-  return shift;
-}
-
 struct IoUringProvidedBufferRingTest : testing::Test {};
+
+namespace folly {
+class IoUringProvidedBufferRingTestHelper {
+ public:
+  explicit IoUringProvidedBufferRingTestHelper(IoUringProvidedBufferRing& ring)
+      : ring(ring) {}
+
+  uint32_t getRingCount() { return ring.buffer_.ringCount(); }
+  size_t getSizePerBuffer() { return ring.buffer_.sizePerBuffer(); }
+
+  IoUringProvidedBufferRing& ring;
+};
+} // namespace folly
 
 TEST_F(IoUringProvidedBufferRingTest, Create) {
   io_uring ring{};
   io_uring_queue_init(512, &ring, 0);
-  int sizeShift = std::max<int>(get_shift(4096), 5);
-  int ringShift = std::max<int>(get_shift(1000), 1);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
-      .count = 1000,
-      .bufferShift = sizeShift,
-      .ringSizeShift = ringShift,
+      .bufferCount = 1000,
+      .bufferSize = 4096,
       .useHugePages = true,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   EXPECT_EQ(bufRing->count(), 1000);
+  EXPECT_TRUE(bufRing->available());
+  EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
+  IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  EXPECT_EQ(helper.getRingCount(), 1024);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
   io_uring ring{};
   io_uring_queue_init(512, &ring, 0);
-  int sizeShift = std::max<int>(get_shift(4096), 5);
-  int ringShift = std::max<int>(get_shift(1000), 1);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
-      .count = 1000,
-      .bufferShift = sizeShift,
-      .ringSizeShift = ringShift,
+      .bufferCount = 2000,
+      .bufferSize = 4096,
       .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
-  EXPECT_EQ(bufRing->count(), 1000);
+  EXPECT_EQ(bufRing->count(), 2000);
+  EXPECT_TRUE(bufRing->available());
+  EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
+  IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  EXPECT_EQ(helper.getRingCount(), 2048);
+}
+
+TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 10,
+      .bufferSize = 8,
+      .useHugePages = false,
+  };
+  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+  EXPECT_EQ(bufRing->count(), 10);
+  EXPECT_TRUE(bufRing->available());
+  IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  EXPECT_EQ(helper.getRingCount(), 16);
+  // constexpr size_t kMinBufferSize = 32;
+  EXPECT_EQ(helper.getSizePerBuffer(), 32);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
   io_uring ring{};
   io_uring_queue_init(512, &ring, 0);
-  int sizeShift = std::max<int>(get_shift(4096), 5);
-  int ringShift = std::max<int>(get_shift(1000), 1);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
-      .count = 1000,
-      .bufferShift = sizeShift,
-      .ringSizeShift = ringShift,
+      .bufferCount = 1000,
+      .bufferSize = 4096,
       .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);

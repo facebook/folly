@@ -1100,25 +1100,11 @@ void IoUringBackend::initSubmissionLinked() {
   }
 
   if (options_.initialProvidedBuffersCount) {
-    auto get_shift = [](int x) -> int {
-      int shift = findLastSet(x) - 1;
-      if (x != (1 << shift)) {
-        shift++;
-      }
-      return shift;
-    };
-
-    int sizeShift =
-        std::max<int>(get_shift(options_.initialProvidedBuffersEachSize), 5);
-    int ringShift =
-        std::max<int>(get_shift(options_.initialProvidedBuffersCount), 1);
-
     try {
       IoUringProvidedBufferRing::Options options = {
           .gid = nextBufferProviderGid(),
-          .count = options_.initialProvidedBuffersCount,
-          .bufferShift = sizeShift,
-          .ringSizeShift = ringShift,
+          .bufferCount = options_.initialProvidedBuffersCount,
+          .bufferSize = options_.initialProvidedBuffersEachSize,
           .useHugePages = options_.useHugePages,
           .useIncrementalBuffers = options_.enableIncrementalBuffers,
       };
