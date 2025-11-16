@@ -137,7 +137,7 @@ void IoUringProvidedBufferRing::enobuf() noexcept {
   VLOG_EVERY_N(1, 500) << "enobuf";
 }
 
-uint64_t IoUringProvidedBufferRing::getAndResetEnobufCount() noexcept {
+uint32_t IoUringProvidedBufferRing::getAndResetEnobufCount() noexcept {
   return enobufCount_.exchange(0, std::memory_order_relaxed);
 }
 
@@ -328,7 +328,7 @@ void IoUringProvidedBufferRing::initialRegister() {
   }
 }
 
-void IoUringProvidedBufferRing::delayedDestroy(uint64_t refs) noexcept {
+void IoUringProvidedBufferRing::delayedDestroy(uint32_t refs) noexcept {
   if (refs == 0) {
     ::munmap(buffer_, allSize_);
     delete this;
@@ -382,7 +382,7 @@ int IoUringProvidedBufferRing::getUtilPct() const noexcept {
   uint32_t available = (ringPtr_->tail - head) & ringMask_;
   available = std::min(available, totalBuffers);
 
-  uint64_t inUse = totalBuffers - available;
+  uint32_t inUse = totalBuffers - available;
   return (100 * inUse) / totalBuffers;
 }
 

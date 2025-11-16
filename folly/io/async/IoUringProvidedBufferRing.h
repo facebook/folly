@@ -62,7 +62,7 @@ class IoUringProvidedBufferRing {
   ~IoUringProvidedBufferRing() = default;
 
   void enobuf() noexcept;
-  uint64_t getAndResetEnobufCount() noexcept;
+  uint32_t getAndResetEnobufCount() noexcept;
   void destroy() noexcept;
 
   std::unique_ptr<IOBuf> getIoBuf(
@@ -92,7 +92,7 @@ class IoUringProvidedBufferRing {
 
   void returnBuffer(uint16_t i) noexcept;
 
-  void delayedDestroy(uint64_t refs) noexcept;
+  void delayedDestroy(uint32_t refs) noexcept;
   void incBufferState(
       uint16_t bufId, bool hasMore, unsigned int bytesConsumed) noexcept;
   void decBufferState(uint16_t bufId) noexcept;
@@ -142,20 +142,20 @@ class IoUringProvidedBufferRing {
   uint32_t bufferCount_{0};
 
   std::atomic<bool> enobuf_{false};
-  std::atomic<uint64_t> enobufCount_{0};
+  std::atomic<uint32_t> enobufCount_{0};
   bool useIncremental_;
 
   // For tracking how many IOBufs were created
-  uint64_t gottenBuffers_{0};
+  uint32_t gottenBuffers_{0};
   // For tracking how many IOBufs were destroyed.
-  uint64_t returnedBuffers_{0};
+  uint32_t returnedBuffers_{0};
   // For returning the buffer to the ring.
-  uint64_t ringReturnedBuffers_{0};
+  uint32_t ringReturnedBuffers_{0};
   std::unique_ptr<BufferState[]> bufferStates_;
 
   folly::DistributedMutex mutex_;
   std::atomic<bool> wantsShutdown_{false};
-  uint64_t shutdownReferences_{0};
+  uint32_t shutdownReferences_{0};
 };
 
 } // namespace folly
