@@ -59,6 +59,8 @@ class IoUringProvidedBufferRing {
 
   static UniquePtr create(io_uring* ioRingPtr, Options options);
 
+  ~IoUringProvidedBufferRing() = default;
+
   void enobuf() noexcept;
   uint64_t getAndResetEnobufCount() noexcept;
   void destroy() noexcept;
@@ -79,6 +81,12 @@ class IoUringProvidedBufferRing {
 
  private:
   explicit IoUringProvidedBufferRing(io_uring* ioRingPtr, Options options);
+
+  IoUringProvidedBufferRing(IoUringProvidedBufferRing&&) = delete;
+  IoUringProvidedBufferRing(IoUringProvidedBufferRing const&) = delete;
+  IoUringProvidedBufferRing& operator=(IoUringProvidedBufferRing&&) = delete;
+  IoUringProvidedBufferRing& operator=(IoUringProvidedBufferRing const&) =
+      delete;
 
   void initialRegister();
   void returnBuffer(uint16_t i) noexcept;
