@@ -67,6 +67,7 @@ IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params)
   for (auto& buf : buffers_) {
     buf.pool = this;
   }
+  mapMemory();
   initialRegister(params.ifindex, params.queueId);
 }
 
@@ -163,8 +164,6 @@ FOLLY_GNU_DISABLE_WARNING("-Wmissing-designated-field-initializers")
 
 void IoUringZeroCopyBufferPool::initialRegister(
     uint32_t ifindex, uint16_t queueId) {
-  mapMemory();
-
   io_uring_region_desc regionReg = {
       .user_addr = reinterpret_cast<uint64_t>(rqRingArea_),
       .size = rqRingAreaSize_,

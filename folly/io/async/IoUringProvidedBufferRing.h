@@ -68,11 +68,10 @@ class IoUringProvidedBufferRing {
   std::unique_ptr<IOBuf> getIoBuf(
       uint16_t startBufId, size_t totalLength, bool hasMore) noexcept;
 
-  uint32_t count() const noexcept { return buffer_.bufferCount(); }
+  uint32_t count() const noexcept { return bufferCount_; }
   bool available() const noexcept {
     return !enobuf_.load(std::memory_order_relaxed);
   }
-
   size_t sizePerBuffer() const noexcept { return sizePerBuffer_; }
   uint16_t gid() const noexcept { return gid_; }
 
@@ -88,8 +87,11 @@ class IoUringProvidedBufferRing {
   IoUringProvidedBufferRing& operator=(IoUringProvidedBufferRing const&) =
       delete;
 
+  void mapMemory(bool useHugePages);
   void initialRegister();
+
   void returnBuffer(uint16_t i) noexcept;
+
   void delayedDestroy(uint64_t refs) noexcept;
   void incBufferState(
       uint16_t bufId, bool hasMore, unsigned int bytesConsumed) noexcept;
@@ -98,7 +100,7 @@ class IoUringProvidedBufferRing {
       uint16_t i, size_t length, bool hasMore) noexcept;
 
   std::atomic<uint16_t>* sharedTail() {
-    return reinterpret_cast<std::atomic<uint16_t>*>(&buffer_.ring()->tail);
+    return reinterpret_cast<std::atomic<uint16_t>*>(&ringPtr_->tail);
   }
 
   bool tryPublish(uint16_t expected, uint16_t value) noexcept {
@@ -106,43 +108,14 @@ class IoUringProvidedBufferRing {
         expected, value, std::memory_order_release);
   }
 
-  char const* getData(uint16_t i) { return buffer_.buffer(i); }
+  char* getData(uint16_t i) {
+    auto offset = static_cast<size_t>(i) * sizePerBuffer_;
+    return bufferBuffer_ + offset;
+  }
 
-  class ProvidedBuffersBuffer {
-   public:
-    ProvidedBuffersBuffer(
-        size_t bufferCount, size_t bufferSize, bool useHugePages);
-    ~ProvidedBuffersBuffer();
-
-    struct io_uring_buf_ring* ring() const noexcept { return ringPtr_; }
-
-    struct io_uring_buf* ringBuf(int idx) const noexcept {
-      return &ringPtr_->bufs[idx & ringMask_];
-    }
-
-    uint32_t bufferCount() const noexcept { return bufferCount_; }
-    uint32_t ringCount() const noexcept { return 1 + ringMask_; }
-
-    char* buffer(uint16_t idx) {
-      size_t offset = (size_t)idx * sizePerBuffer_;
-      return bufferBuffer_ + offset;
-    }
-
-    size_t sizePerBuffer() const { return sizePerBuffer_; }
-
-   private:
-    void* buffer_;
-    size_t allSize_;
-
-    size_t ringMemSize_;
-    struct io_uring_buf_ring* ringPtr_;
-    int ringMask_;
-
-    size_t bufferSize_;
-    size_t sizePerBuffer_;
-    char* bufferBuffer_;
-    uint32_t bufferCount_;
-  };
+  struct io_uring_buf* ringBuf(int idx) const noexcept {
+    return &ringPtr_->bufs[idx & ringMask_];
+  }
 
   struct BufferState {
     uint16_t bufId{0};
@@ -156,7 +129,18 @@ class IoUringProvidedBufferRing {
   uint16_t const gid_;
   size_t const sizePerBuffer_;
   io_uring* ioRingPtr_;
-  ProvidedBuffersBuffer buffer_;
+
+  // Buffer memory management
+  void* buffer_{nullptr};
+  size_t allSize_{0};
+  size_t ringMemSize_{0};
+  struct io_uring_buf_ring* ringPtr_{nullptr};
+  int ringMask_{0};
+  uint32_t ringCount_{0};
+  size_t bufferSize_{0};
+  char* bufferBuffer_{nullptr};
+  uint32_t bufferCount_{0};
+
   std::atomic<bool> enobuf_{false};
   std::atomic<uint64_t> enobufCount_{0};
   bool useIncremental_;

@@ -32,8 +32,7 @@ class IoUringProvidedBufferRingTestHelper {
   explicit IoUringProvidedBufferRingTestHelper(IoUringProvidedBufferRing& ring)
       : ring(ring) {}
 
-  uint32_t getRingCount() { return ring.buffer_.ringCount(); }
-  size_t getSizePerBuffer() { return ring.buffer_.sizePerBuffer(); }
+  uint32_t getRingCount() { return ring.ringCount_; }
 
   IoUringProvidedBufferRing& ring;
 };
@@ -85,10 +84,10 @@ TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   EXPECT_EQ(bufRing->count(), 10);
   EXPECT_TRUE(bufRing->available());
+  // constexpr size_t kMinBufferSize = 32;
+  EXPECT_EQ(bufRing->sizePerBuffer(), 32);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
   EXPECT_EQ(helper.getRingCount(), 16);
-  // constexpr size_t kMinBufferSize = 32;
-  EXPECT_EQ(helper.getSizePerBuffer(), 32);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
