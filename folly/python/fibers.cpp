@@ -45,7 +45,7 @@ int import_folly_fiber_manager_impl() {
   return ret;
 }
 
-FOLLY_CONSTINIT static import_cache import_folly_fiber_manager{
+constinit static import_cache import_folly_fiber_manager{
     import_folly_fiber_manager_impl, "folly.fiber_manager"};
 
 FOLLY_PYTHON_FIBERS_API folly::fibers::FiberManager* getFiberManager(

@@ -21,7 +21,7 @@
 
 namespace folly::python {
 
-FOLLY_CONSTINIT static python::import_cache import_folly__iobuf_{
+constinit static python::import_cache import_folly__iobuf_{
     import_folly__iobuf, "import_folly__iobuf"};
 
 folly::IOBuf iobuf_from_python_iobuf(PyObject* iobuf) {

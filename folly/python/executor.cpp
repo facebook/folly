@@ -47,7 +47,7 @@ int import_folly_executor_impl() {
   return ret;
 }
 
-FOLLY_CONSTINIT static import_cache import_folly_executor{
+constinit static import_cache import_folly_executor{
     import_folly_executor_impl, "folly.executor"};
 
 FOLLY_PYTHON_EXECUTOR_API folly::Executor* getExecutor() {

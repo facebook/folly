@@ -1012,9 +1012,9 @@ class TestStruct {
 
 TEST(Synchronized, ConstexprConstructor) {
   // Make sure the folly::Synchronized constructor can be constexpr
-  static FOLLY_CONSTINIT folly::Synchronized<int> i{std::in_place, 5};
-  static FOLLY_CONSTINIT folly::Synchronized<TestStruct> ts1;
-  static FOLLY_CONSTINIT folly::Synchronized<TestStruct> ts2{std::in_place, 1};
+  static constinit folly::Synchronized<int> i{std::in_place, 5};
+  static constinit folly::Synchronized<TestStruct> ts1;
+  static constinit folly::Synchronized<TestStruct> ts2{std::in_place, 1};
 
   // Not constinit, since the int value will be uninitialized
   static folly::Synchronized<int> i2;
