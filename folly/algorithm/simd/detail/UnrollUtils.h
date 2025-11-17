@@ -42,7 +42,7 @@ struct UnrollUtils {
    * return an array of results.
    */
   template <typename T, std::size_t N, typename Op>
-  FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static constexpr auto arrayMap(
+  [[nodiscard]] FOLLY_ALWAYS_INLINE static constexpr auto arrayMap(
       const std::array<T, N>& x, Op op) {
     return arrayMapImpl(x, op, std::make_index_sequence<N>());
   }
@@ -56,7 +56,7 @@ struct UnrollUtils {
    * (a + b) + (c + d)
    */
   template <typename T, std::size_t N, typename Op>
-  FOLLY_NODISCARD FOLLY_ALWAYS_INLINE static constexpr T arrayReduce(
+  [[nodiscard]] FOLLY_ALWAYS_INLINE static constexpr T arrayReduce(
       const std::array<T, N>& x, Op op) {
     return arrayReduceImpl<0, N>(x, op);
   }

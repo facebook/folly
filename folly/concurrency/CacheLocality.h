@@ -474,7 +474,7 @@ class CoreAllocator : private std::allocator<T> {
   };
 };
 
-class FOLLY_NODISCARD CoreAllocatorGuard {
+class [[nodiscard]] CoreAllocatorGuard {
  public:
   CoreAllocatorGuard(size_t numStripes, size_t stripe);
   ~CoreAllocatorGuard();

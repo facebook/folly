@@ -214,7 +214,7 @@ using as_noexcept_with_executor_base = TaskWithExecutorWrapperCrtp<
 } // namespace detail
 
 template <typename Inner, auto CancelCfg = OnCancel<void>{}>
-class FOLLY_NODISCARD as_noexcept_with_executor final
+class [[nodiscard]] as_noexcept_with_executor final
     : public detail::as_noexcept_with_executor_base<Inner, CancelCfg> {
  protected:
   using detail::as_noexcept_with_executor_base<Inner, CancelCfg>::

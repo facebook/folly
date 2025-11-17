@@ -211,7 +211,7 @@ template <
     typename Reference,
     typename Value = remove_cvref_t<Reference>,
     bool RequiresCleanup = false>
-class FOLLY_NODISCARD AsyncGenerator {
+class [[nodiscard]] AsyncGenerator {
   static_assert(
       std::is_constructible<Value, Reference>::value,
       "AsyncGenerator 'value_type' must be constructible from a 'reference'.");
@@ -253,7 +253,7 @@ class FOLLY_NODISCARD AsyncGenerator {
 
   class CleanupSemiAwaitable;
 
-  class FOLLY_NODISCARD CleanupAwaitable {
+  class [[nodiscard]] CleanupAwaitable {
    public:
     bool await_ready() noexcept { return !scopeExit_; }
 
@@ -292,7 +292,7 @@ class FOLLY_NODISCARD AsyncGenerator {
     folly::Executor::KeepAlive<> executor_;
   };
 
-  class FOLLY_NODISCARD CleanupSemiAwaitable {
+  class [[nodiscard]] CleanupSemiAwaitable {
    public:
     CleanupAwaitable viaIfAsync(Executor::KeepAlive<> executor) noexcept {
       return CleanupAwaitable{scopeExit_, std::move(executor)};

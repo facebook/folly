@@ -36,7 +36,7 @@ namespace coro {
 namespace detail {
 
 template <typename Mutex, typename Policy>
-class FOLLY_NODISCARD LockBase {
+class [[nodiscard]] LockBase {
  public:
   static_assert(std::is_same_v<
                 bool,
