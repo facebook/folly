@@ -1053,28 +1053,11 @@ fbcode_target(
     ],
 )
 
-# Test MaybeManagedPtr with default settings and on c++17 and c++20.
-# We test c++17 and c++20 explicitly since c++20 can synthesize `operator!=` whereas c++17 cannot.
 fbcode_target(
     _kind = cpp_unittest,
     name = "maybe_managed_ptr_test",
     srcs = ["MaybeManagedPtrTest.cpp"],
     headers = [],
-    deps = [
-        "//folly:maybe_managed_ptr",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "maybe_managed_ptr_test_c++17",
-    srcs = ["MaybeManagedPtrTest.cpp"],
-    headers = [],
-    compiler_flags = [
-        "-std=c++17",
-    ],
     deps = [
         "//folly:maybe_managed_ptr",
         "//folly/portability:gmock",
