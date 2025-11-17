@@ -814,19 +814,19 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 #endif
 
   DenseMaskIter occupiedIter() const {
-    return DenseMaskIter{&tags_[0], occupiedMask()};
+    return DenseMaskIter{&tags_[0], this->occupiedMask()};
   }
 
   MaskRangeIter occupiedRangeIter() const {
-    return MaskRangeIter{occupiedMask()};
+    return MaskRangeIter{this->occupiedMask()};
   }
 
   LastOccupiedInMask lastOccupied() const {
-    return LastOccupiedInMask{occupiedMask()};
+    return LastOccupiedInMask{this->occupiedMask()};
   }
 
   FirstEmptyInMask firstEmpty() const {
-    return FirstEmptyInMask{occupiedMask() ^ kFullMask};
+    return FirstEmptyInMask{this->occupiedMask() ^ kFullMask};
   }
 
   bool occupied(std::size_t index) const {
