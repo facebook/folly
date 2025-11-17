@@ -151,7 +151,7 @@ inline constexpr stopped_result_t stopped_result;
 //   - Common usage involves only rvalues, so the risk of perf bugs is low.
 //   - `folly::Expected` assumes that the error type is copyable, and it's
 //     too convenient an implementation not to use.
-class FOLLY_NODISCARD non_value_result {
+class [[nodiscard]] non_value_result {
  private:
   exception_wrapper ew_;
 
@@ -547,7 +547,7 @@ class result_crtp {
 
 // The default specialization is non-`void` (but `result<>` defaults to `void`)
 template <typename T>
-class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+class [[nodiscard]] [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
 result final : public detail::result_crtp<result<T>, T> {
  private:
   template <typename, typename>
@@ -731,8 +731,8 @@ result(rvalue_reference_wrapper<T>) -> result<T&&>;
 
 // Specialization for `T = void` aka `result<>`.
 template <>
-class FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result<void>
-    final : public detail::result_crtp<result<void>, void> {
+class [[nodiscard]] [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result<void> final
+    : public detail::result_crtp<result<void>, void> {
  private:
   using base = detail::result_crtp<result<void>, void>;
 

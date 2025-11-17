@@ -135,9 +135,9 @@ class value_only_result_crtp {
 // The default specialization is non-`void`, but `value_only_result<>` defaults
 // to `void`.
 template <typename T>
-class FOLLY_NODISCARD
-    // Not a coroutine, but any reasonable implementation would be elidable.
-    [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] value_only_result final
+class [[nodiscard]]
+// Not a coroutine, but any reasonable implementation would be elidable.
+[[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] value_only_result final
     : public detail::value_only_result_crtp<value_only_result<T>, T> {
  private:
   using base = detail::value_only_result_crtp<value_only_result<T>, T>;
@@ -310,10 +310,10 @@ value_only_result(rvalue_reference_wrapper<T>) -> value_only_result<T&&>;
 
 // Specialization for `T = void` aka `value_only_result<>`.
 template <>
-class FOLLY_NODISCARD
-    // Not yet a coroutine, but if we make it one, it SHOULD be elidable.
-    [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] value_only_result<void>
-        final
+class [[nodiscard]]
+// Not yet a coroutine, but if we make it one, it SHOULD be elidable.
+[[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] value_only_result<void>
+    final
     : public detail::value_only_result_crtp<value_only_result<void>, void> {
  private:
   using base = detail::value_only_result_crtp<value_only_result<void>, void>;

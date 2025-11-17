@@ -71,23 +71,23 @@ FOLLY_ERASE void do_op_del_sized_(
 
 //  operator_new
 struct operator_new_fn {
-  FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
+  [[nodiscard]] FOLLY_ERASE void* operator()( //
       std::size_t const s) const //
       noexcept(noexcept(::operator new(0))) {
     return detail::op_new_<true>(s);
   }
-  FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
+  [[nodiscard]] FOLLY_ERASE void* operator()( //
       std::size_t const s,
       std::nothrow_t const& nt) const noexcept {
     return detail::op_new_<true>(s, nt);
   }
-  FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
+  [[nodiscard]] FOLLY_ERASE void* operator()( //
       std::size_t const s,
       std::align_val_t const a) const //
       noexcept(noexcept(::operator new(0))) {
     return detail::op_new_<detail::cpp_aligned_new_>(s, a);
   }
-  FOLLY_NODISCARD FOLLY_ERASE void* operator()( //
+  [[nodiscard]] FOLLY_ERASE void* operator()( //
       std::size_t const s,
       std::align_val_t const a,
       std::nothrow_t const& nt) const noexcept {

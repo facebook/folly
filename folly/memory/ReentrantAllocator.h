@@ -205,7 +205,7 @@ class reentrant_allocator : private detail::reentrant_allocator_base {
 
   //  allocate
   template <typename..., typename S = T, if_is_not_void<S> = 0>
-  FOLLY_NODISCARD FOLLY_ERASE T* allocate(std::size_t n) {
+  [[nodiscard]] FOLLY_ERASE T* allocate(std::size_t n) {
     return static_cast<T*>(base::allocate(n * sizeof(T), alignof(T)));
   }
 
