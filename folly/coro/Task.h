@@ -305,7 +305,7 @@ FOLLY_DEFINE_CPO(detail::adl::WithExecutorFunction, co_withExecutor)
 ///
 /// More information on how to use this is available at folly::coro::Task.
 template <typename T>
-class FOLLY_NODISCARD TaskWithExecutor {
+class [[nodiscard]] TaskWithExecutor {
   using handle_t = coroutine_handle<detail::TaskPromise<T>>;
   using StorageType = typename detail::TaskPromise<T>::StorageType;
 
@@ -650,7 +650,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 // This macro makes it easier for `TaskWrapper.h` users to apply the correct
 // attributes for the wrapped `Task`s.
 #define FOLLY_CORO_TASK_ATTRS \
-  FOLLY_NODISCARD [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
+  [[nodiscard]] [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
 
 /// Represents an allocated, but not-started coroutine, which is not yet
 /// been bound to an executor.

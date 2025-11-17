@@ -81,7 +81,7 @@
 ///   - In most cases, you'll need to both implement a task, and customize its
 ///     `TaskWithExecutorT`.  If you leave that as `coro::TaskWithExecutor`,
 ///     some users will accidentally avoid your wrapper's effects.
-///   - Tag `YourTaskWithExecutor` with `FOLLY_NODISCARD`.
+///   - Tag `YourTaskWithExecutor` with `[[nodiscard]]`.
 ///   - Tag `YourTask` with the `FOLLY_CORO_TASK_ATTRS` attribute.  Caveat:
 ///     This assumes that the coro's caller will outlive it.  That is true for
 ///     `Task`, and almost certainly true of all sensible wrapper types.

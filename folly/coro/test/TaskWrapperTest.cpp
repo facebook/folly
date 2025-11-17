@@ -42,7 +42,7 @@ using tiny_now_task_with_executor_base =
 } // namespace detail
 
 template <typename T>
-class FOLLY_NODISCARD tiny_now_task_with_executor final
+class [[nodiscard]] tiny_now_task_with_executor final
     : public detail::tiny_now_task_with_executor_base<T> {
  protected:
   using detail::tiny_now_task_with_executor_base<
@@ -94,7 +94,7 @@ using TinyMovableTaskWithExecutorBase = TaskWithExecutorWrapperCrtp<
 } // namespace detail
 
 template <typename T>
-class FOLLY_NODISCARD TinyMovableTaskWithExecutor final
+class [[nodiscard]] TinyMovableTaskWithExecutor final
     : public detail::TinyMovableTaskWithExecutorBase<T> {
  protected:
   using detail::TinyMovableTaskWithExecutorBase<

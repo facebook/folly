@@ -83,8 +83,8 @@ using now_task_with_executor_base =
 } // namespace detail
 
 template <typename T>
-class FOLLY_NODISCARD now_task_with_executor final
-    : public detail::now_task_with_executor_base<T> {
+class [[nodiscard]]
+now_task_with_executor final : public detail::now_task_with_executor_base<T> {
  protected:
   using detail::now_task_with_executor_base<T>::now_task_with_executor_base;
 

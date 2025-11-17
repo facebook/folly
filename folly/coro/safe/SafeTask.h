@@ -374,7 +374,7 @@ class BackgroundTask;
 // outlive the references they took, defeating the purpose of `safe_task`.
 // See `BackgroundTask` instead.
 template <safe_alias ArgSafety, typename T>
-class FOLLY_NODISCARD safe_task_with_executor final
+class [[nodiscard]] safe_task_with_executor final
     : public detail::safe_task_with_executor_base_traits<ArgSafety, T>::type {
  protected:
   using detail::safe_task_with_executor_base_traits<ArgSafety, T>::type::type;
