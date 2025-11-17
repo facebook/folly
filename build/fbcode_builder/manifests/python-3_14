@@ -1,0 +1,11 @@
+# This is primarily to support CinderX's CI, so it's not heavily configured.
+
+[manifest]
+name = python-3_14
+
+[git]
+repo_url = https://github.com/python/cpython.git
+branch = 3.14
+
+[build]
+builder = autoconf
