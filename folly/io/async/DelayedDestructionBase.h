@@ -62,7 +62,7 @@ class DelayedDestructionBase {
    * object, causing problems when the callback function returns and the
    * guarded object's method resumes execution.
    */
-  class FOLLY_NODISCARD DestructorGuard {
+  class [[nodiscard]] DestructorGuard {
    public:
     explicit DestructorGuard(DelayedDestructionBase* dd) : dd_(dd) {
       if (dd_ != nullptr) {

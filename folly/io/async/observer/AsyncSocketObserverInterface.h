@@ -144,7 +144,7 @@ class AsyncSocketObserverInterface {
      *   and ACK flags, and the other requesting just the SCHED flag, then we
      *   will add the TX, ACK, and SCHED flags to the request.
      */
-    FOLLY_NODISCARD const PrewriteRequest& getMergedRequest() const {
+    [[nodiscard]] const PrewriteRequest& getMergedRequest() const {
       return mergedRequest_;
     }
 
@@ -197,7 +197,7 @@ class AsyncSocketObserverInterface {
     /**
      * For WRITE events, returns if SCHED timestamp requested.
      */
-    FOLLY_NODISCARD bool schedTimestampRequestedOnWrite() const {
+    [[nodiscard]] bool schedTimestampRequestedOnWrite() const {
       CHECK_EQ(Type::WRITE, type);
       CHECK(maybeWriteFlags.has_value());
       return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_SCHED);
@@ -206,7 +206,7 @@ class AsyncSocketObserverInterface {
     /**
      * For WRITE events, returns if TX timestamp requested.
      */
-    FOLLY_NODISCARD bool txTimestampRequestedOnWrite() const {
+    [[nodiscard]] bool txTimestampRequestedOnWrite() const {
       CHECK_EQ(Type::WRITE, type);
       CHECK(maybeWriteFlags.has_value());
       return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_TX);
@@ -215,7 +215,7 @@ class AsyncSocketObserverInterface {
     /**
      * For WRITE events, returns if ACK timestamp requested.
      */
-    FOLLY_NODISCARD bool ackTimestampRequestedOnWrite() const {
+    [[nodiscard]] bool ackTimestampRequestedOnWrite() const {
       CHECK_EQ(Type::WRITE, type);
       CHECK(maybeWriteFlags.has_value());
       return isSet(*maybeWriteFlags, WriteFlags::TIMESTAMP_ACK);

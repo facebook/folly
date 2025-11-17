@@ -92,7 +92,7 @@ class EventBaseAtomicNotificationQueue
    * Returns true iff the task was queued.
    * Can be called from any thread.
    */
-  FOLLY_NODISCARD bool tryPutMessage(Task&& task, uint32_t maxSize);
+  [[nodiscard]] bool tryPutMessage(Task&& task, uint32_t maxSize);
 
   /*
    * Detaches the queue from an EventBase.

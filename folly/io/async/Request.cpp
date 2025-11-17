@@ -235,7 +235,7 @@ RequestContext::State::~State() {
   }
 }
 
-class FOLLY_NODISCARD RequestContext::State::LockGuard {
+class [[nodiscard]] RequestContext::State::LockGuard {
  public:
   explicit LockGuard(RequestContext::State& state)
       : state_(state), lock_(state.mutex_) {}
