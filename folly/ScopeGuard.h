@@ -209,7 +209,7 @@ using ScopeGuardImplDecay = ScopeGuardImpl<std::decay_t<F>, INE>;
  * @refcode folly/docs/examples/folly/ScopeGuard2.cpp
  */
 template <typename F>
-FOLLY_NODISCARD detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
+[[nodiscard]] detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
     noexcept(detail::ScopeGuardImplDecay<F, true>(static_cast<F&&>(f)))) {
   return detail::ScopeGuardImplDecay<F, true>(static_cast<F&&>(f));
 }
@@ -223,7 +223,7 @@ FOLLY_NODISCARD detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
  * @refcode folly/docs/examples/folly/ScopeGuard2.cpp
  */
 template <typename F>
-FOLLY_NODISCARD detail::ScopeGuardImplDecay<F, true>
+[[nodiscard]] detail::ScopeGuardImplDecay<F, true>
 makeDismissedGuard(F&& f) noexcept(
     noexcept(detail::ScopeGuardImplDecay<F, true>(
         static_cast<F&&>(f), detail::ScopeGuardDismissed{}))) {

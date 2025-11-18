@@ -65,7 +65,7 @@ struct ExpectedHelper;
  * Expected objects in the error state.
  */
 template <class Error>
-class FOLLY_NODISCARD Unexpected final {
+class [[nodiscard]] Unexpected final {
   template <class E>
   friend class Unexpected;
   template <class V, class E>
@@ -193,7 +193,7 @@ template <class Value, class Error>
 class Expected;
 
 template <class Error, class Value>
-FOLLY_NODISCARD constexpr Expected<typename std::decay<Value>::type, Error>
+[[nodiscard]] constexpr Expected<typename std::decay<Value>::type, Error>
 makeExpected(Value&&);
 
 /**
@@ -1550,7 +1550,7 @@ Value* get_pointer(Expected<Value, Error>& ex) noexcept {
  * }
  */
 template <class Error, class Value>
-FOLLY_NODISCARD constexpr Expected<typename std::decay<Value>::type, Error>
+[[nodiscard]] constexpr Expected<typename std::decay<Value>::type, Error>
 makeExpected(Value&& val) {
   return Expected<typename std::decay<Value>::type, Error>{
       std::in_place, static_cast<Value&&>(val)};

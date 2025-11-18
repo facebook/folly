@@ -1310,7 +1310,7 @@ to(const char* b, const char* e) {
  * Parsing strings to numeric types.
  */
 template <typename Tgt>
-FOLLY_NODISCARD inline typename std::enable_if< //
+[[nodiscard]] inline typename std::enable_if< //
     is_arithmetic_v<Tgt>,
     Expected<StringPiece, ConversionCode>>::type
 parseTo(StringPiece src, Tgt& out) {
@@ -1513,7 +1513,7 @@ typename std::enable_if<detail::IsArithToArith<Tgt, Src>::value, Tgt>::type to(
  * }
  */
 template <class T>
-FOLLY_NODISCARD typename std::enable_if<
+[[nodiscard]] typename std::enable_if<
     std::is_enum<T>::value,
     Expected<StringPiece, ConversionCode>>::type
 parseTo(StringPiece in, T& out) noexcept {
@@ -1523,7 +1523,7 @@ parseTo(StringPiece in, T& out) noexcept {
   return restOrError;
 }
 
-FOLLY_NODISCARD
+[[nodiscard]]
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in, StringPiece& out) noexcept {
   out = in;
@@ -1542,27 +1542,27 @@ FOLLY_ERASE Expected<StringPiece, ConversionCode> parseToStr(
 
 } // namespace detail
 
-FOLLY_NODISCARD
+[[nodiscard]]
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in, std::string& out) {
   return detail::parseToStr(in, out);
 }
 
-FOLLY_NODISCARD
+[[nodiscard]]
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in, std::string_view& out) {
   out = std::string_view(in.data(), in.size());
   return StringPiece{in.end(), in.end()};
 }
 
-FOLLY_NODISCARD
+[[nodiscard]]
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in, fbstring& out) {
   return detail::parseToStr(in, out);
 }
 
 template <class Str>
-FOLLY_NODISCARD inline typename std::enable_if<
+[[nodiscard]] inline typename std::enable_if<
     IsSomeString<Str>::value,
     Expected<StringPiece, ConversionCode>>::type
 parseTo(StringPiece in, Str& out) {
