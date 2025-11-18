@@ -103,8 +103,6 @@ path executable_path() {
   return L"0123456789abcdef";
 }
 
-#if __cpp_lib_filesystem >= 201703
-
 std_fs::path unique_path_fn::operator()(std_fs::path const& model) const {
   constexpr auto pin = std_fs::path::value_type('%');
   constexpr auto hex = hex_(pin);
@@ -122,8 +120,6 @@ std_fs::path unique_path_fn::operator()(std_fs::path const& model) const {
   }
   return std::move(result);
 }
-
-#endif
 
 } // namespace fs
 } // namespace folly
