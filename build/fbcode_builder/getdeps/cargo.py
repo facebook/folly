@@ -254,7 +254,7 @@ incremental = false
 
             new_content = manifest_content
             if "[package]" not in manifest_content:
-                # A fake manifest has to be crated to change the virtual
+                # A fake manifest has to be created to change the virtual
                 # manifest into a non-virtual. The virtual manifests are limited
                 # in many ways and the inability to define patches on them is
                 # one. Check https://github.com/rust-lang/cargo/issues/4934 to
