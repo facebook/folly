@@ -19,16 +19,6 @@ use std::collections::BTreeMap;
 
 use bytes::Buf;
 use bytes::BufMut;
-use fbthrift::BinaryProtocol;
-use fbthrift::binary_protocol;
-use fbthrift::deserialize::Deserialize;
-use fbthrift::protocol::Protocol;
-use fbthrift_test_if::En;
-use fbthrift_test_if::MainStruct;
-use fbthrift_test_if::Small;
-use fbthrift_test_if::SubStruct;
-use fbthrift_test_if::Un;
-use fbthrift_test_if::UnOne;
 use quickcheck::TestResult;
 use quickcheck::quickcheck;
 
@@ -426,60 +416,76 @@ fn test_send() {
     _assert_send::<IOBufShared>();
 }
 
-#[test]
-fn test_thrift_framing_roundtrip() {
-    // Build the big struct
-    let mut m = BTreeMap::new();
-    m.insert("m1".to_string(), 1);
-    m.insert("m2".to_string(), 2);
+#[cfg(fbcode_build)]
+mod fbthrift_test {
+    use fbthrift::BinaryProtocol;
+    use fbthrift::binary_protocol;
+    use fbthrift::deserialize::Deserialize;
+    use fbthrift::protocol::Protocol;
+    use fbthrift_test_if::En;
+    use fbthrift_test_if::MainStruct;
+    use fbthrift_test_if::Small;
+    use fbthrift_test_if::SubStruct;
+    use fbthrift_test_if::Un;
+    use fbthrift_test_if::UnOne;
 
-    let sub = SubStruct {
-        ..Default::default()
-    };
+    use super::*;
 
-    let u = Un::un1(UnOne {
-        one: 1,
-        ..Default::default()
-    });
-    let e = En::TWO;
+    #[test]
+    fn test_thrift_framing_roundtrip() {
+        // Build the big struct
+        let mut m = BTreeMap::new();
+        m.insert("m1".to_string(), 1);
+        m.insert("m2".to_string(), 2);
 
-    let mut int_keys = BTreeMap::new();
-    int_keys.insert(42, 43);
-    int_keys.insert(44, 45);
+        let sub = SubStruct {
+            ..Default::default()
+        };
 
-    let r = MainStruct {
-        foo: "foo".to_string(),
-        m,
-        bar: "test".to_string(),
-        s: sub,
-        l: vec![
-            Small {
-                num: 1,
-                two: 2,
-                ..Default::default()
-            },
-            Small {
-                num: 2,
-                two: 3,
-                ..Default::default()
-            },
-        ],
-        u,
-        e,
-        int_keys,
-        opt: None,
-        ..Default::default()
-    };
+        let u = Un::un1(UnOne {
+            one: 1,
+            ..Default::default()
+        });
+        let e = En::TWO;
 
-    // Serialize the struct and put it into an IOBuf
-    let response = binary_protocol::serialize(r.clone());
-    let as_iobuf = IOBufShared::from(response).cursor();
+        let mut int_keys = BTreeMap::new();
+        int_keys.insert(42, 43);
+        int_keys.insert(44, 45);
 
-    // Deserialize the struct back out
-    let mut de = BinaryProtocol::<IOBufShared>::deserializer(as_iobuf.into());
-    let deserialized =
-        MainStruct::rs_thrift_read(&mut de).expect("Failed to deserialize MainStruct");
-    assert_eq!(r, deserialized);
+        let r = MainStruct {
+            foo: "foo".to_string(),
+            m,
+            bar: "test".to_string(),
+            s: sub,
+            l: vec![
+                Small {
+                    num: 1,
+                    two: 2,
+                    ..Default::default()
+                },
+                Small {
+                    num: 2,
+                    two: 3,
+                    ..Default::default()
+                },
+            ],
+            u,
+            e,
+            int_keys,
+            opt: None,
+            ..Default::default()
+        };
+
+        // Serialize the struct and put it into an IOBuf
+        let response = binary_protocol::serialize(r.clone());
+        let as_iobuf = IOBufShared::from(response).cursor();
+
+        // Deserialize the struct back out
+        let mut de = BinaryProtocol::<IOBufShared>::deserializer(as_iobuf.into());
+        let deserialized =
+            MainStruct::rs_thrift_read(&mut de).expect("Failed to deserialize MainStruct");
+        assert_eq!(r, deserialized);
+    }
 }
 
 #[test]

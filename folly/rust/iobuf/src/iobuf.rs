@@ -20,6 +20,7 @@ use std::slice;
 use bytes::Buf;
 use bytes::Bytes;
 use cxx::UniquePtr;
+#[cfg(fbcode_build)]
 use fbthrift::BufExt;
 use iobuf_sys::root::facebook::rust::*;
 use iobuf_sys::root::folly::IOBuf as IOBufSys;
@@ -88,6 +89,10 @@ impl IOBufShared {
         IOBufCursor::from(self)
     }
 
+    // This is internal-only to avoid external folly depending on fbthrift,
+    // that complicates build. A potentially long-term fix might be moving
+    // BufExt to a small, shared, and published crate.
+    #[cfg(fbcode_build)]
     /// Converts a `BufExt` into a potentially chained `IOBufShared`. Whether
     /// this conversion copies is dependent on whether
     /// `BufExt::copy_or_reuse_bytes` copies.
@@ -282,8 +287,9 @@ impl PartialEq for IOBufShared {
     }
 }
 
+#[cfg(fbcode_build)]
 #[cfg(test)]
-mod test {
+mod bufext_test {
     use super::*;
 
     /// An iobuf created from an empty buffer should also be empty.
