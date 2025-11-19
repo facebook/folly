@@ -485,7 +485,7 @@ class Optional {
     };
     bool hasValue;
 
-    FOLLY_CXX20_CONSTEXPR StorageNonTriviallyDestructible() : hasValue{false} {}
+    constexpr StorageNonTriviallyDestructible() : hasValue{false} {}
     ~StorageNonTriviallyDestructible() { clear(); }
 
     void clear() {

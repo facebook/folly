@@ -636,16 +636,6 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR constexpr
 #endif
 
-//  FOLLY_CXX20_CONSTEXPR
-//
-//  C++20 permits more cases to be marked constexpr, including constructors that
-//  leave members uninitialized and virtual functions.
-#if FOLLY_CPLUSPLUS >= 202002L
-#define FOLLY_CXX20_CONSTEXPR constexpr
-#else
-#define FOLLY_CXX20_CONSTEXPR
-#endif
-
 //  FOLLY_CXX23_CONSTEXPR
 //
 //  C++23 permits more cases to be marked constexpr, including definitions of
