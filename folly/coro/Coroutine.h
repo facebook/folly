@@ -18,10 +18,7 @@
 
 #include <optional>
 #include <type_traits>
-
-#if __has_include(<variant>)
 #include <variant>
-#endif
 
 #include <folly/Portability.h>
 #include <folly/Utility.h>
