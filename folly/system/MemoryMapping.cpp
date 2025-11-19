@@ -306,9 +306,14 @@ bool MemoryMapping::mlock(LockMode mode, LockFlags flags) {
   size_t amountSucceeded = 0;
   locked_ = memOpInChunks(
       [flags](void* addr, size_t len) -> int {
+        if (flags.tryCollapseToTHP && len >= kDefaultMlockChunkSize) {
+          if (madvise(addr, len, MADV_POPULATE_READ) == 0) {
+            madvise(addr, len, MADV_COLLAPSE);
+          }
+        }
         // If no flags are set, mlock2() behaves exactly the same as
         // mlock(). Prefer the portable variant.
-        return flags == LockFlags{}
+        return !flags.lockOnFault
             ? ::mlock(addr, len)
             : mlock2wrapper(addr, len, flags);
       },
@@ -464,9 +469,4 @@ void mmapFileCopy(const char* src, const char* dest, mode_t mode) {
       srcMap.range().data(),
       srcMap.range().size());
 }
-
-bool MemoryMapping::LockFlags::operator==(const LockFlags& other) const {
-  return lockOnFault == other.lockOnFault;
-}
-
 } // namespace folly

@@ -42,8 +42,6 @@ class MemoryMapping {
   struct LockFlags {
     LockFlags() {}
 
-    bool operator==(const LockFlags& other) const;
-
     /**
      * Instead of locking all the pages in the mapping before the call returns,
      * only lock those that are currently resident and mark the others to be
@@ -52,6 +50,17 @@ class MemoryMapping {
      * Uses mlock2(flags=MLOCK_ONFAULT). Requires Linux >= 4.4.
      */
     bool lockOnFault = false;
+
+    /**
+     * Call madvise(MADV_POPULATE_READ) + madvise(MADV_COLLAPSE) before mlock().
+     * See man 7 mmap for MADV_COLLAPSE details: it will synchronously allocate
+     * a THP 2MB page, fault in the existing 4KB pages and copy them into the
+     * THP page all in a best effort manner. Per the man page, at least one
+     * consituent 4KB page needs to be present but using a prior
+     * MADV_POPULATE_READ gives better chances of this collapse. On error
+     * proceeds to mlock/mlock2. Requires Linux >= 6.1.
+     */
+    bool tryCollapseToTHP = false;
   };
 
   /**

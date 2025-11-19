@@ -26,8 +26,15 @@
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 #endif
+// New flags, may not be available yet in all libc implementations.
+#ifndef MADV_POPULATE_READ
+#define MADV_POPULATE_READ 22
+#endif // MADV_POPULATE_READ
+#ifndef MADV_COLLAPSE
+#define MADV_COLLAPSE 25
+#endif // MADV_COLLAPSE
 
-#else
+#else //_WIN32
 
 #include <cstdint>
 
@@ -53,6 +60,8 @@ using off64_t = int64_t;
 #define MADV_NORMAL 0
 #define MADV_DONTNEED 0
 #define MADV_SEQUENTIAL 0
+#define MADV_POPULATE_READ 0
+#define MADV_COLLAPSE 0
 
 extern "C" {
 int madvise(const void* addr, size_t len, int advise);
