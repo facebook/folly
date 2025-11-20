@@ -976,11 +976,11 @@ fb_dirsync_cpp_library(
         "//folly:conv",
         "//folly/lang:align",
         "//folly/portability:sys_mman",
+        "//folly/synchronization:distributed_mutex",
     ],
     exported_deps = [
         ":liburing",
         "//folly/io:iobuf",
-        "//folly/synchronization:distributed_mutex",
     ],
 )
 

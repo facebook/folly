@@ -17,17 +17,96 @@
 #include <folly/io/async/IoUringZeroCopyBufferPool.h>
 
 #include <mutex>
+#include <queue>
 
 #include <folly/Conv.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/SysMman.h>
+#include <folly/synchronization/DistributedMutex.h>
 
 #if FOLLY_HAS_LIBURING
 
 namespace folly {
 
+class IoUringZeroCopyBufferPoolImpl {
+ public:
+  friend class IoUringZeroCopyBufferPool;
+
+  struct Buffer {
+    uint64_t off;
+    uint32_t len;
+    IoUringZeroCopyBufferPoolImpl* pool;
+  };
+
+  explicit IoUringZeroCopyBufferPoolImpl(
+      IoUringZeroCopyBufferPool::Params params, bool test);
+
+  ~IoUringZeroCopyBufferPoolImpl();
+
+  IoUringZeroCopyBufferPoolImpl(IoUringZeroCopyBufferPoolImpl&&) = delete;
+  IoUringZeroCopyBufferPoolImpl(IoUringZeroCopyBufferPoolImpl const&) = delete;
+  IoUringZeroCopyBufferPoolImpl& operator=(IoUringZeroCopyBufferPoolImpl&&) =
+      delete;
+  IoUringZeroCopyBufferPoolImpl& operator=(
+      IoUringZeroCopyBufferPoolImpl const&) = delete;
+
+  void destroy() noexcept;
+
+  std::unique_ptr<IOBuf> getIoBuf(
+      const io_uring_cqe* cqe, const io_uring_zcrx_cqe* rcqe) noexcept;
+  void returnBuffer(Buffer* buf) noexcept;
+
+  // For testing
+  uint32_t* getHead() const noexcept { return rqRing_.khead; }
+  uint32_t getRingUsedCount() const noexcept {
+    return rqTail_ - io_uring_smp_load_acquire(rqRing_.khead);
+  }
+  uint32_t getRingFreeCount() const noexcept {
+    return rqEntries_ - getRingUsedCount();
+  }
+  size_t getPendingBuffersSize() const noexcept {
+    return pendingBuffers_.size();
+  }
+
+ private:
+  void mapMemory();
+  void initialRegister(uint32_t ifindex, uint16_t queueId);
+  void delayedDestroy(uint32_t refs) noexcept;
+  uint32_t getRingQueuedCount() const noexcept;
+  void writeBufferToRing(Buffer* buffer) noexcept;
+
+  io_uring* ring_{nullptr};
+  size_t pageSize_{0};
+  uint32_t rqEntries_{0};
+
+  void* bufArea_{nullptr};
+  size_t bufAreaSize_{0};
+  std::vector<Buffer> buffers_;
+  void* rqRingArea_{nullptr};
+  size_t rqRingAreaSize_{0};
+  io_uring_zcrx_rq rqRing_{};
+  uint64_t rqAreaToken_{0};
+  uint32_t rqTail_{0};
+  unsigned rqMask_{0};
+  uint32_t id_{0};
+  std::atomic<uint32_t> bufDispensed_{0};
+
+  folly::DistributedMutex mutex_;
+  std::atomic<bool> wantsShutdown_{false};
+  uint32_t shutdownReferences_{0};
+  std::queue<Buffer*> pendingBuffers_;
+};
+
+struct ImplDeleter {
+  void operator()(IoUringZeroCopyBufferPoolImpl* impl) const noexcept {
+    if (impl) {
+      impl->destroy();
+    }
+  }
+};
+
 namespace {
-struct io_uring {
+struct RingQueue {
   uint32_t head;
   uint32_t tail;
 };
@@ -44,20 +123,8 @@ constexpr uint64_t kBufferMask = (1ULL << IORING_ZCRX_AREA_SHIFT) - 1;
 
 } // namespace
 
-void IoUringZeroCopyBufferPool::Deleter::operator()(
-    IoUringZeroCopyBufferPool* base) {
-  if (base) {
-    base->destroy();
-  }
-}
-
-IoUringZeroCopyBufferPool::UniquePtr IoUringZeroCopyBufferPool::create(
-    Params params) {
-  return IoUringZeroCopyBufferPool::UniquePtr(
-      new IoUringZeroCopyBufferPool(params));
-}
-
-IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params)
+IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
+    IoUringZeroCopyBufferPool::Params params, bool test)
     : ring_(params.ring),
       pageSize_(params.pageSize),
       rqEntries_(params.rqEntries),
@@ -68,36 +135,30 @@ IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params)
     buf.pool = this;
   }
   mapMemory();
-  initialRegister(params.ifindex, params.queueId);
-}
-
-IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params, TestTag)
-    : ring_(params.ring),
-      pageSize_(params.pageSize),
-      rqEntries_(params.rqEntries),
-      bufAreaSize_(params.numPages * params.pageSize),
-      buffers_(params.numPages),
-      rqRingAreaSize_(getRefillRingSize(params.rqEntries)) {
-  for (auto& buf : buffers_) {
-    buf.pool = this;
+  if (!test) {
+    initialRegister(params.ifindex, params.queueId);
+  } else {
+    // rqRing_ is normally set up using information that the kernel fills in via
+    // io_uring_register_ifq(). Unit tests do not do this, so fake it.
+    rqRing_.khead = reinterpret_cast<uint32_t*>(
+        (static_cast<char*>(rqRingArea_) + offsetof(RingQueue, head)));
+    rqRing_.ktail = reinterpret_cast<uint32_t*>(
+        (static_cast<char*>(rqRingArea_) + offsetof(RingQueue, tail)));
+    rqRing_.rqes = reinterpret_cast<io_uring_zcrx_rqe*>(
+        static_cast<char*>(rqRingArea_) + sizeof(RingQueue));
+    rqRing_.rq_tail = 0;
+    rqRing_.ring_entries = rqEntries_;
   }
-  // rqRing_ is normally set up using information that the kernel fills in via
-  // io_uring_register_ifq(). Unit tests do not do this, so fake it.
-  mapMemory();
-  rqRing_.khead = reinterpret_cast<uint32_t*>(
-      (static_cast<char*>(rqRingArea_) + offsetof(struct io_uring, head)));
-  rqRing_.ktail = reinterpret_cast<uint32_t*>(
-      (static_cast<char*>(rqRingArea_) + offsetof(struct io_uring, tail)));
-  rqRing_.rqes = reinterpret_cast<io_uring_zcrx_rqe*>(
-      static_cast<char*>(rqRingArea_) + sizeof(struct io_uring));
-  rqRing_.rq_tail = 0;
-  rqRing_.ring_entries = rqEntries_;
 }
 
-void IoUringZeroCopyBufferPool::destroy() noexcept {
+IoUringZeroCopyBufferPoolImpl::~IoUringZeroCopyBufferPoolImpl() {
+  ::munmap(bufArea_, bufAreaSize_ + rqRingAreaSize_);
+}
+
+void IoUringZeroCopyBufferPoolImpl::destroy() noexcept {
   std::unique_lock lock{mutex_};
   DCHECK(bufDispensed_ >= rqTail_);
-  auto remaining = bufDispensed_ - rqTail_;
+  auto remaining = bufDispensed_.load(std::memory_order_relaxed) - rqTail_;
   // Drain refs in overflow queue
   remaining -= pendingBuffers_.size();
   shutdownReferences_ = remaining;
@@ -106,7 +167,7 @@ void IoUringZeroCopyBufferPool::destroy() noexcept {
   delayedDestroy(remaining);
 }
 
-std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
+std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
     const io_uring_cqe* cqe, const io_uring_zcrx_cqe* rcqe) noexcept {
   // By the time the pool is being destroyed, IoUringBackend has already drained
   // all requests so there won't be any more calls to getIoBuf().
@@ -116,7 +177,7 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
 
   auto freeFn = [](void*, void* userData) {
     auto buffer =
-        reinterpret_cast<IoUringZeroCopyBufferPool::Buffer*>(userData);
+        reinterpret_cast<IoUringZeroCopyBufferPoolImpl::Buffer*>(userData);
     DCHECK(buffer->pool);
     buffer->pool->returnBuffer(buffer);
   };
@@ -136,12 +197,11 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
   // only 'wrap' the data and is read-only. Mark as shared such that downstream
   // users of this IOBuf do not try to destructively modify the data.
   ret->markExternallySharedOne();
-  // This method is only called from an EVB so there is no synchronization.
-  bufDispensed_++;
+  bufDispensed_.fetch_add(1, std::memory_order_relaxed);
   return ret;
 }
 
-void IoUringZeroCopyBufferPool::mapMemory() {
+void IoUringZeroCopyBufferPoolImpl::mapMemory() {
   bufArea_ = ::mmap(
       nullptr,
       bufAreaSize_ + rqRingAreaSize_,
@@ -162,7 +222,7 @@ void IoUringZeroCopyBufferPool::mapMemory() {
 FOLLY_PUSH_WARNING
 FOLLY_GNU_DISABLE_WARNING("-Wmissing-designated-field-initializers")
 
-void IoUringZeroCopyBufferPool::initialRegister(
+void IoUringZeroCopyBufferPoolImpl::initialRegister(
     uint32_t ifindex, uint16_t queueId) {
   io_uring_region_desc regionReg = {
       .user_addr = reinterpret_cast<uint64_t>(rqRingArea_),
@@ -210,11 +270,11 @@ void IoUringZeroCopyBufferPool::initialRegister(
   id_ = ifqReg.zcrx_id;
 }
 
-uint32_t IoUringZeroCopyBufferPool::getRingQueuedCount() const noexcept {
+uint32_t IoUringZeroCopyBufferPoolImpl::getRingQueuedCount() const noexcept {
   return rqTail_ - io_uring_smp_load_acquire(rqRing_.khead);
 }
 
-void IoUringZeroCopyBufferPool::writeBufferToRing(Buffer* buffer) noexcept {
+void IoUringZeroCopyBufferPoolImpl::writeBufferToRing(Buffer* buffer) noexcept {
   uint32_t myTail = rqTail_++;
 
   io_uring_zcrx_rqe* rqe = &rqRing_.rqes[myTail & rqMask_];
@@ -222,7 +282,7 @@ void IoUringZeroCopyBufferPool::writeBufferToRing(Buffer* buffer) noexcept {
   rqe->len = buffer->len;
 }
 
-void IoUringZeroCopyBufferPool::returnBuffer(Buffer* buffer) noexcept {
+void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
   std::unique_lock lock{mutex_};
   if (FOLLY_UNLIKELY(wantsShutdown_)) {
     auto refs = --shutdownReferences_;
@@ -252,11 +312,60 @@ void IoUringZeroCopyBufferPool::returnBuffer(Buffer* buffer) noexcept {
   }
 }
 
-void IoUringZeroCopyBufferPool::delayedDestroy(uint32_t refs) noexcept {
+void IoUringZeroCopyBufferPoolImpl::delayedDestroy(uint32_t refs) noexcept {
   if (refs == 0) {
-    ::munmap(bufArea_, bufAreaSize_ + rqRingAreaSize_);
     delete this;
   }
+}
+
+/*static*/ IoUringZeroCopyBufferPool::UniquePtr
+IoUringZeroCopyBufferPool::create(Params params) {
+  return IoUringZeroCopyBufferPool::UniquePtr(
+      new IoUringZeroCopyBufferPool(params));
+}
+
+/*static*/ IoUringZeroCopyBufferPool::UniquePtr
+IoUringZeroCopyBufferPool::importHandle(
+    ExportHandle /*handle*/, io_uring* /*ring*/) {
+  LOG(FATAL) << "Not Yet Implemented";
+}
+
+IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params)
+    : ring_(params.ring),
+      impl_(new IoUringZeroCopyBufferPoolImpl(params, false), ImplDeleter{}) {}
+
+IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params, TestTag)
+    : ring_(params.ring),
+      impl_(new IoUringZeroCopyBufferPoolImpl(params, true), ImplDeleter{}) {}
+
+IoUringZeroCopyBufferPool::ExportHandle
+IoUringZeroCopyBufferPool::exportHandle() const {
+  if (impl_->ring_ != ring_) {
+    throw std::runtime_error(
+        "Cannot export a handle from a non-owning IoUringZeroCopyBufferPool");
+  }
+  return ExportHandle(impl_);
+}
+
+std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
+    const io_uring_cqe* cqe, const io_uring_zcrx_cqe* rcqe) noexcept {
+  return impl_->getIoBuf(cqe, rcqe);
+}
+
+uint32_t* IoUringZeroCopyBufferPool::getHead() const noexcept {
+  return impl_->getHead();
+}
+
+uint32_t IoUringZeroCopyBufferPool::getRingUsedCount() const noexcept {
+  return impl_->getRingUsedCount();
+}
+
+uint32_t IoUringZeroCopyBufferPool::getRingFreeCount() const noexcept {
+  return impl_->getRingFreeCount();
+}
+
+size_t IoUringZeroCopyBufferPool::getPendingBuffersSize() const noexcept {
+  return impl_->getPendingBuffersSize();
 }
 
 } // namespace folly

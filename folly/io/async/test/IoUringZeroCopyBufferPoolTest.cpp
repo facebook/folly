@@ -33,12 +33,10 @@ class IoUringZeroCopyBufferPoolTestHelper {
   explicit IoUringZeroCopyBufferPoolTestHelper(IoUringZeroCopyBufferPool& pool)
       : pool(pool) {}
 
-  uint32_t* getHead() { return pool.rqRing_.khead; }
-  uint32_t getRingUsedCount() { return pool.rqTail_ - *getHead(); }
-  uint32_t getRingFreeCount() {
-    return pool.rqEntries_ - (pool.rqTail_ - *getHead());
-  }
-  size_t getPendingBuffersSize() { return pool.pendingBuffers_.size(); }
+  uint32_t* getHead() { return pool.getHead(); }
+  uint32_t getRingUsedCount() { return pool.getRingUsedCount(); }
+  uint32_t getRingFreeCount() { return pool.getRingFreeCount(); }
+  size_t getPendingBuffersSize() { return pool.getPendingBuffersSize(); }
 
   IoUringZeroCopyBufferPool& pool;
 };
