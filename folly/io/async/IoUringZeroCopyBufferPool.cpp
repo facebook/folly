@@ -221,32 +221,23 @@ void IoUringZeroCopyBufferPoolImpl::mapMemory() {
   rqRingArea_ = static_cast<char*>(bufArea_) + bufAreaSize_;
 }
 
-FOLLY_PUSH_WARNING
-FOLLY_GNU_DISABLE_WARNING("-Wmissing-designated-field-initializers")
-
 void IoUringZeroCopyBufferPoolImpl::initialRegister(
     uint32_t ifindex, uint16_t queueId) {
-  struct io_uring_region_desc regionReg = {
-      .user_addr = reinterpret_cast<uint64_t>(rqRingArea_),
-      .size = rqRingAreaSize_,
-      .flags = IORING_MEM_REGION_TYPE_USER,
-  };
+  struct io_uring_region_desc regionReg{};
+  regionReg.user_addr = reinterpret_cast<uint64_t>(rqRingArea_);
+  regionReg.size = rqRingAreaSize_;
+  regionReg.flags = IORING_MEM_REGION_TYPE_USER;
 
-  struct io_uring_zcrx_area_reg areaReg = {
-      .addr = reinterpret_cast<uint64_t>(bufArea_),
-      .len = bufAreaSize_,
-      .flags = 0,
-  };
+  struct io_uring_zcrx_area_reg areaReg{};
+  areaReg.addr = reinterpret_cast<uint64_t>(bufArea_);
+  areaReg.len = bufAreaSize_;
 
-  struct io_uring_zcrx_ifq_reg ifqReg = {
-      .if_idx = ifindex,
-      .if_rxq = queueId,
-      .rq_entries = rqEntries_,
-      .area_ptr = reinterpret_cast<uint64_t>(&areaReg),
-      .region_ptr = reinterpret_cast<uint64_t>(&regionReg),
-  };
-
-  FOLLY_POP_WARNING
+  struct io_uring_zcrx_ifq_reg ifqReg{};
+  ifqReg.if_idx = ifindex;
+  ifqReg.if_rxq = queueId;
+  ifqReg.rq_entries = rqEntries_;
+  ifqReg.area_ptr = reinterpret_cast<uint64_t>(&areaReg);
+  ifqReg.region_ptr = reinterpret_cast<uint64_t>(&regionReg);
 
   auto ret = io_uring_register_ifq(ring_, &ifqReg);
   if (ret) {
