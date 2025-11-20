@@ -26,6 +26,41 @@
 
 #if FOLLY_HAS_LIBURING
 
+// TODO(davidhwei): Remove once liburing catches up and gets synced with
+// fbsource.
+#define IORING_REGISTER_ZCRX_CTRL 36
+
+enum zcrx_reg_flags {
+  ZCRX_REG_IMPORT = 1,
+};
+
+enum zcrx_ctrl_op {
+  ZCRX_CTRL_FLUSH_RQ,
+  ZCRX_CTRL_EXPORT,
+
+  __ZCRX_CTRL_LAST,
+};
+
+struct zcrx_ctrl_flush_rq {
+  __u64 __resv[6];
+};
+
+struct zcrx_ctrl_export {
+  __u32 zcrx_fd;
+  __u32 __resv1[11];
+};
+
+struct zcrx_ctrl {
+  __u32 zcrx_id;
+  __u32 op; /* see enum zcrx_ctrl_op */
+  __u64 __resv[2];
+
+  union {
+    struct zcrx_ctrl_export zc_export;
+    struct zcrx_ctrl_flush_rq zc_flush;
+  };
+};
+
 namespace folly {
 
 class IoUringZeroCopyBufferPoolImpl {
@@ -319,17 +354,47 @@ IoUringZeroCopyBufferPool::create(Params params) {
 
 /*static*/ IoUringZeroCopyBufferPool::UniquePtr
 IoUringZeroCopyBufferPool::importHandle(
-    ExportHandle /*handle*/, struct io_uring* /*ring*/) {
-  LOG(FATAL) << "Not Yet Implemented";
+    ExportHandle handle, struct io_uring* ring) {
+  return IoUringZeroCopyBufferPool::UniquePtr(
+      new IoUringZeroCopyBufferPool(std::move(handle), ring));
 }
 
 IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params)
     : ring_(params.ring),
-      impl_(new IoUringZeroCopyBufferPoolImpl(params, false), ImplDeleter{}) {}
+      impl_(new IoUringZeroCopyBufferPoolImpl(params, false), ImplDeleter{}) {
+  zcrxId_ = impl_->id_;
+}
 
 IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params, TestTag)
     : ring_(params.ring),
       impl_(new IoUringZeroCopyBufferPoolImpl(params, true), ImplDeleter{}) {}
+
+IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(
+    ExportHandle handle, struct io_uring* ring)
+    : ring_(ring) {
+  struct io_uring_zcrx_ifq_reg ifqReg{};
+  ifqReg.if_idx = static_cast<uint32_t>(handle.zcrxFd_);
+  ifqReg.flags = ZCRX_REG_IMPORT;
+
+  auto ret = io_uring_register_ifq(ring_, &ifqReg);
+  if (ret) {
+    throw std::runtime_error(
+        fmt::format(
+            "IoUringZeroCopyBufferPool failed io_uring_register_ifq: {} {}",
+            ret,
+            ::strerror(ret)));
+  }
+
+  zcrxId_ = ifqReg.zcrx_id;
+  zcrxFd_ = handle.zcrxFd_;
+  impl_ = std::move(handle.impl_);
+}
+
+IoUringZeroCopyBufferPool::~IoUringZeroCopyBufferPool() {
+  if (zcrxFd_ >= 0) {
+    close(zcrxFd_);
+  }
+}
 
 IoUringZeroCopyBufferPool::ExportHandle
 IoUringZeroCopyBufferPool::exportHandle() const {
@@ -337,7 +402,14 @@ IoUringZeroCopyBufferPool::exportHandle() const {
     throw std::runtime_error(
         "Cannot export a handle from a non-owning IoUringZeroCopyBufferPool");
   }
-  return ExportHandle(impl_);
+
+  struct zcrx_ctrl ctrl{};
+  ctrl.zcrx_id = impl_->id_;
+  ctrl.op = ZCRX_CTRL_EXPORT;
+  auto zcrxFd =
+      io_uring_register(ring_->ring_fd, IORING_REGISTER_ZCRX_CTRL, &ctrl, 0);
+
+  return ExportHandle(zcrxFd, impl_);
 }
 
 std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(

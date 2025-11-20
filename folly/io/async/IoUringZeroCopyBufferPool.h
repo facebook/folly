@@ -29,8 +29,6 @@ class IoUringZeroCopyBufferPoolImpl;
 
 class IoUringZeroCopyBufferPool {
  public:
-  friend class IoUringZeroCopyBufferPoolTestHelper;
-
   struct Params {
     struct io_uring* ring;
     size_t numPages;
@@ -41,8 +39,9 @@ class IoUringZeroCopyBufferPool {
   };
 
   struct ExportHandle {
-    explicit ExportHandle(std::shared_ptr<IoUringZeroCopyBufferPoolImpl> impl)
-        : impl_(std::move(impl)) {}
+    explicit ExportHandle(
+        int zcrxFd, std::shared_ptr<IoUringZeroCopyBufferPoolImpl> impl)
+        : zcrxFd_(zcrxFd), impl_(std::move(impl)) {}
 
     ~ExportHandle() = default;
 
@@ -52,6 +51,9 @@ class IoUringZeroCopyBufferPool {
     ExportHandle& operator=(const ExportHandle&) = delete;
 
    private:
+    friend class IoUringZeroCopyBufferPool;
+
+    int zcrxFd_;
     std::shared_ptr<IoUringZeroCopyBufferPoolImpl> impl_;
   };
 
@@ -61,7 +63,7 @@ class IoUringZeroCopyBufferPool {
 
   ExportHandle exportHandle() const;
 
-  ~IoUringZeroCopyBufferPool() = default;
+  ~IoUringZeroCopyBufferPool();
 
   std::unique_ptr<IOBuf> getIoBuf(
       const struct io_uring_cqe* cqe,
@@ -73,6 +75,9 @@ class IoUringZeroCopyBufferPool {
   struct TestTag {};
   explicit IoUringZeroCopyBufferPool(Params params, TestTag);
 
+  explicit IoUringZeroCopyBufferPool(
+      ExportHandle handle, struct io_uring* ring);
+
   IoUringZeroCopyBufferPool(IoUringZeroCopyBufferPool&&) = delete;
   IoUringZeroCopyBufferPool(IoUringZeroCopyBufferPool const&) = delete;
   IoUringZeroCopyBufferPool& operator=(IoUringZeroCopyBufferPool&&) = delete;
@@ -80,6 +85,7 @@ class IoUringZeroCopyBufferPool {
       delete;
 
   // For testing
+  friend class IoUringZeroCopyBufferPoolTestHelper;
   uint32_t* getHead() const noexcept;
   uint32_t getRingUsedCount() const noexcept;
   uint32_t getRingFreeCount() const noexcept;
@@ -87,6 +93,8 @@ class IoUringZeroCopyBufferPool {
 
   struct io_uring* ring_{nullptr};
   std::shared_ptr<IoUringZeroCopyBufferPoolImpl> impl_;
+  int zcrxId_{-1};
+  int zcrxFd_{-1};
 };
 
 } // namespace folly
