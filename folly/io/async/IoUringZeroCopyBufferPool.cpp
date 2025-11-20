@@ -53,7 +53,8 @@ class IoUringZeroCopyBufferPoolImpl {
   void destroy() noexcept;
 
   std::unique_ptr<IOBuf> getIoBuf(
-      const io_uring_cqe* cqe, const io_uring_zcrx_cqe* rcqe) noexcept;
+      const struct io_uring_cqe* cqe,
+      const struct io_uring_zcrx_cqe* rcqe) noexcept;
   void returnBuffer(Buffer* buf) noexcept;
 
   // For testing
@@ -75,7 +76,7 @@ class IoUringZeroCopyBufferPoolImpl {
   uint32_t getRingQueuedCount() const noexcept;
   void writeBufferToRing(Buffer* buffer) noexcept;
 
-  io_uring* ring_{nullptr};
+  struct io_uring* ring_{nullptr};
   size_t pageSize_{0};
   uint32_t rqEntries_{0};
 
@@ -84,7 +85,7 @@ class IoUringZeroCopyBufferPoolImpl {
   std::vector<Buffer> buffers_;
   void* rqRingArea_{nullptr};
   size_t rqRingAreaSize_{0};
-  io_uring_zcrx_rq rqRing_{};
+  struct io_uring_zcrx_rq rqRing_{};
   uint64_t rqAreaToken_{0};
   uint32_t rqTail_{0};
   unsigned rqMask_{0};
@@ -112,7 +113,7 @@ struct RingQueue {
 };
 
 size_t getRefillRingSize(size_t rqEntries) {
-  size_t size = rqEntries * sizeof(io_uring_zcrx_rqe);
+  size_t size = rqEntries * sizeof(struct io_uring_zcrx_rqe);
   // Include space for the header (head/tail/etc.)
   size_t pageSize = sysconf(_SC_PAGESIZE);
   size += pageSize;
@@ -144,7 +145,7 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
         (static_cast<char*>(rqRingArea_) + offsetof(RingQueue, head)));
     rqRing_.ktail = reinterpret_cast<uint32_t*>(
         (static_cast<char*>(rqRingArea_) + offsetof(RingQueue, tail)));
-    rqRing_.rqes = reinterpret_cast<io_uring_zcrx_rqe*>(
+    rqRing_.rqes = reinterpret_cast<struct io_uring_zcrx_rqe*>(
         static_cast<char*>(rqRingArea_) + sizeof(RingQueue));
     rqRing_.rq_tail = 0;
     rqRing_.ring_entries = rqEntries_;
@@ -168,7 +169,8 @@ void IoUringZeroCopyBufferPoolImpl::destroy() noexcept {
 }
 
 std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
-    const io_uring_cqe* cqe, const io_uring_zcrx_cqe* rcqe) noexcept {
+    const struct io_uring_cqe* cqe,
+    const struct io_uring_zcrx_cqe* rcqe) noexcept {
   // By the time the pool is being destroyed, IoUringBackend has already drained
   // all requests so there won't be any more calls to getIoBuf().
   DCHECK(!wantsShutdown_);
@@ -224,19 +226,19 @@ FOLLY_GNU_DISABLE_WARNING("-Wmissing-designated-field-initializers")
 
 void IoUringZeroCopyBufferPoolImpl::initialRegister(
     uint32_t ifindex, uint16_t queueId) {
-  io_uring_region_desc regionReg = {
+  struct io_uring_region_desc regionReg = {
       .user_addr = reinterpret_cast<uint64_t>(rqRingArea_),
       .size = rqRingAreaSize_,
       .flags = IORING_MEM_REGION_TYPE_USER,
   };
 
-  io_uring_zcrx_area_reg areaReg = {
+  struct io_uring_zcrx_area_reg areaReg = {
       .addr = reinterpret_cast<uint64_t>(bufArea_),
       .len = bufAreaSize_,
       .flags = 0,
   };
 
-  io_uring_zcrx_ifq_reg ifqReg = {
+  struct io_uring_zcrx_ifq_reg ifqReg = {
       .if_idx = ifindex,
       .if_rxq = queueId,
       .rq_entries = rqEntries_,
@@ -260,7 +262,7 @@ void IoUringZeroCopyBufferPoolImpl::initialRegister(
       (static_cast<char*>(rqRingArea_) + ifqReg.offsets.head));
   rqRing_.ktail = reinterpret_cast<uint32_t*>(
       (static_cast<char*>(rqRingArea_) + ifqReg.offsets.tail));
-  rqRing_.rqes = reinterpret_cast<io_uring_zcrx_rqe*>(
+  rqRing_.rqes = reinterpret_cast<struct io_uring_zcrx_rqe*>(
       static_cast<char*>(rqRingArea_) + ifqReg.offsets.rqes);
   rqRing_.rq_tail = 0;
   rqRing_.ring_entries = ifqReg.rq_entries;
@@ -277,7 +279,7 @@ uint32_t IoUringZeroCopyBufferPoolImpl::getRingQueuedCount() const noexcept {
 void IoUringZeroCopyBufferPoolImpl::writeBufferToRing(Buffer* buffer) noexcept {
   uint32_t myTail = rqTail_++;
 
-  io_uring_zcrx_rqe* rqe = &rqRing_.rqes[myTail & rqMask_];
+  struct io_uring_zcrx_rqe* rqe = &rqRing_.rqes[myTail & rqMask_];
   rqe->off = (buffer->off & ~IORING_ZCRX_AREA_MASK) | rqAreaToken_;
   rqe->len = buffer->len;
 }
@@ -326,7 +328,7 @@ IoUringZeroCopyBufferPool::create(Params params) {
 
 /*static*/ IoUringZeroCopyBufferPool::UniquePtr
 IoUringZeroCopyBufferPool::importHandle(
-    ExportHandle /*handle*/, io_uring* /*ring*/) {
+    ExportHandle /*handle*/, struct io_uring* /*ring*/) {
   LOG(FATAL) << "Not Yet Implemented";
 }
 
@@ -348,7 +350,8 @@ IoUringZeroCopyBufferPool::exportHandle() const {
 }
 
 std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
-    const io_uring_cqe* cqe, const io_uring_zcrx_cqe* rcqe) noexcept {
+    const struct io_uring_cqe* cqe,
+    const struct io_uring_zcrx_cqe* rcqe) noexcept {
   return impl_->getIoBuf(cqe, rcqe);
 }
 

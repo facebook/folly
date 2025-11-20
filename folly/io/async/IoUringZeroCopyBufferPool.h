@@ -37,7 +37,7 @@ class IoUringZeroCopyBufferPool {
   friend class IoUringZeroCopyBufferPoolTestHelper;
 
   struct Params {
-    io_uring* ring;
+    struct io_uring* ring;
     size_t numPages;
     size_t pageSize;
     uint32_t rqEntries;
@@ -62,14 +62,15 @@ class IoUringZeroCopyBufferPool {
 
   using UniquePtr = std::unique_ptr<IoUringZeroCopyBufferPool>;
   static UniquePtr create(Params params);
-  static UniquePtr importHandle(ExportHandle handle, io_uring* ring);
+  static UniquePtr importHandle(ExportHandle handle, struct io_uring* ring);
 
   ExportHandle exportHandle() const;
 
   ~IoUringZeroCopyBufferPool() = default;
 
   std::unique_ptr<IOBuf> getIoBuf(
-      const io_uring_cqe* cqe, const io_uring_zcrx_cqe* rcqe) noexcept;
+      const struct io_uring_cqe* cqe,
+      const struct io_uring_zcrx_cqe* rcqe) noexcept;
 
  private:
   explicit IoUringZeroCopyBufferPool(Params params);
@@ -89,7 +90,7 @@ class IoUringZeroCopyBufferPool {
   uint32_t getRingFreeCount() const noexcept;
   size_t getPendingBuffersSize() const noexcept;
 
-  io_uring* ring_{nullptr};
+  struct io_uring* ring_{nullptr};
   std::shared_ptr<IoUringZeroCopyBufferPoolImpl> impl_;
 };
 
