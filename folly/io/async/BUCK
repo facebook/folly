@@ -974,6 +974,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:conv",
+        "//folly:string",
         "//folly/lang:align",
         "//folly/portability:sys_mman",
         "//folly/synchronization:distributed_mutex",

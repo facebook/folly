@@ -20,6 +20,7 @@
 #include <queue>
 
 #include <folly/Conv.h>
+#include <folly/String.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/SysMman.h>
 #include <folly/synchronization/DistributedMutex.h>
@@ -281,7 +282,7 @@ void IoUringZeroCopyBufferPoolImpl::initialRegister(
         fmt::format(
             "IoUringZeroCopyBufferPool failed io_uring_register_ifq: {} {}",
             ret,
-            ::strerror(ret)));
+            folly::errnoStr(ret)));
   }
 
   rqRing_.khead = reinterpret_cast<uint32_t*>(
@@ -382,7 +383,7 @@ IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(
         fmt::format(
             "IoUringZeroCopyBufferPool failed io_uring_register_ifq: {} {}",
             ret,
-            ::strerror(ret)));
+            folly::errnoStr(ret)));
   }
 
   zcrxId_ = ifqReg.zcrx_id;
