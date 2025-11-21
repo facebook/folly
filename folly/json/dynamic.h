@@ -1179,6 +1179,24 @@ struct dynamic {
   } u_;
 };
 
+/**
+ * Like erase(vector), since C++20.
+ */
+template <typename Val>
+size_t erase(folly::dynamic& dyn, Val const& val);
+
+/**
+ * Like erase_if(vector), erase_if(unordered_map), since C++20.
+ *
+ * If the predicate `pred` is formally invocable with `dynamic const&` then it
+ * must type-check when so invoked. If the predicate is formally invocable with
+ * `std::pair<dynamic const, dynamic> const&` then it must type-check when so
+ * invoked. A lambda taking `const auto&` may be at risk of violating this rule,
+ * so consider a lambda taking one of the two types explicitly, sans deduction.
+ */
+template <typename Pred>
+size_t erase_if(folly::dynamic& dyn, Pred pred);
+
 //////////////////////////////////////////////////////////////////////
 
 /**

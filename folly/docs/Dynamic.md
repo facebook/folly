@@ -155,6 +155,19 @@ which returns an iterator compatible with `items()`:
     // pos == obj.items().end()
 ```
 
+### Erasure
+
+You can erase elements from dynamic arrays by calling member `dynamic::erase`,
+which works like and has overloads like `std::vector::erase`, and from dynamic
+objects by calling member `dynamic::erase`, which works like and has overloads
+like `std::unordered_map::erase`. You can also find and erase elements from
+dynamic arrays by calling free function `erase`, and from dynamic arrays or
+objects by calling  free function `erase_if`, which work and have overloads
+like `erase(std::vector)`, `erase_if(std::vector)`, and
+`erase_if(std::unordered_map)`.
+
+https://en.cppreference.com/w/cpp/container/vector/erase2
+https://en.cppreference.com/w/cpp/container/unordered_map/erase_if.html
 
 ### Use for JSON
 ***

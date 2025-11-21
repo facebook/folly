@@ -48,6 +48,7 @@ fb_dirsync_cpp_unittest(
         "//folly:range",
         "//folly/hash:hash",
         "//folly/json:dynamic",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/test:comparison_operator_test_util",
     ],

@@ -1183,6 +1183,40 @@ inline std::ostream& operator<<(std::ostream& out, dynamic const& d) {
   return out;
 }
 
+template <typename Val>
+size_t erase(folly::dynamic& dyn, Val const& val) {
+  return erase_if(dyn, [&](dynamic const& d) { return d == val; });
+}
+
+template <typename Pred>
+size_t erase_if(dynamic& dyn, Pred pred) {
+  if (dyn.isArray()) {
+    using item_type = dynamic;
+    if constexpr (std::is_invocable_v<Pred&, item_type const&>) {
+      auto b = dyn.begin();
+      auto e = dyn.end();
+      auto f = std::remove_if(b, e, std::ref(pred));
+      auto c = e - f;
+      dyn.erase(f, e);
+      return c;
+    }
+  }
+  if (dyn.isObject()) {
+    using item_type = std::pair<dynamic const, dynamic>;
+    if constexpr (std::is_invocable_v<Pred&, item_type const&>) {
+      size_t c = 0;
+      auto view = dyn.items();
+      auto b = view.begin();
+      auto e = view.end();
+      while (b != e) {
+        b = pred(std::as_const(*b)) ? (++c, dyn.erase(b)) : std::next(b);
+      }
+      return c;
+    }
+  }
+  throw_exception<TypeError>("container", dyn.type());
+}
+
 //////////////////////////////////////////////////////////////////////
 
 inline const_dynamic_view::const_dynamic_view(dynamic const& d) noexcept

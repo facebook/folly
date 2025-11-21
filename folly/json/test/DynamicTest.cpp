@@ -24,6 +24,7 @@
 #include <folly/Range.h>
 #include <folly/hash/Hash.h>
 #include <folly/json/json.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/ComparisonOperatorTestUtil.h>
 
@@ -1286,6 +1287,76 @@ TEST(Dynamic, ObjectIteratorInterop) {
   // Assign from non-const to const, preserve equality
   decltype(cit) cit2 = it2;
   EXPECT_EQ(cit, cit2);
+}
+
+TEST(Dynamic, EraseArray) {
+  dynamic d = dynamic::array(3, 4, 6, 5, 6, 7);
+  EXPECT_EQ(6, d.size());
+  EXPECT_EQ(2, erase(d, 6));
+  EXPECT_EQ(4, d.size());
+  EXPECT_EQ(0, erase(d, "hello"));
+}
+
+TEST(Dynamic, EraseObject) {
+  dynamic d = dynamic::object(3, false);
+  EXPECT_EQ(1, d.size());
+  EXPECT_THROW(erase(d, 3), TypeError);
+  EXPECT_EQ(1, d.size());
+}
+
+TEST(Dynamic, EraseBadType) {
+  dynamic d = "hello";
+  EXPECT_THROW(erase(d, 3), TypeError);
+  EXPECT_EQ("hello", d);
+}
+
+TEST(Dynamic, EraseIfArray) {
+  dynamic d = dynamic::array(3, 4, 5, 6, 7);
+  EXPECT_EQ(3, erase_if(d, [](dynamic const& v) { return v.asInt() % 2; }));
+  EXPECT_EQ(d, dynamic::array(4, 6));
+}
+
+TEST(Dynamic, EraseIfArrayBadPred) {
+  using item = std::pair<dynamic const, dynamic>;
+  dynamic d = dynamic::array(3, 4, 5, 6, 7);
+  EXPECT_EQ(0, erase_if(d, [](dynamic const&) { return false; }));
+  EXPECT_EQ(5, d.size());
+  EXPECT_THROW(erase_if(d, [](item const&) { return false; }), TypeError);
+  EXPECT_EQ(5, d.size());
+}
+
+TEST(Dynamic, EraseIfObject) {
+  using item = std::pair<dynamic const, dynamic>;
+  dynamic d = dynamic::object //
+      (3, false) //
+      (4, true) //
+      (5, false) //
+      (6, true) //
+      (7, false) //
+      ;
+  EXPECT_EQ(2, erase_if(d, [](item const& v) { return v.second.asBool(); }));
+  EXPECT_THAT(d.keys(), testing::UnorderedElementsAreArray({3, 5, 7}));
+}
+
+TEST(Dynamic, EraseIfObjectBadPred) {
+  using item = std::pair<dynamic const, dynamic>;
+  dynamic d = dynamic::object //
+      (3, false) //
+      (4, true) //
+      (5, false) //
+      (6, true) //
+      (7, false) //
+      ;
+  EXPECT_EQ(0, erase_if(d, [](item const&) { return false; }));
+  EXPECT_EQ(5, d.size());
+  EXPECT_THROW(erase_if(d, [](dynamic const&) { return false; }), TypeError);
+  EXPECT_EQ(5, d.size());
+}
+
+TEST(Dynamic, EraseIfBadType) {
+  dynamic d = "hello";
+  EXPECT_THROW(erase_if(d, [](auto const&) { return false; }), TypeError);
+  EXPECT_EQ("hello", d);
 }
 
 TEST(Dynamic, MergePatchWithNonObject) {
