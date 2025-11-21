@@ -364,6 +364,11 @@ TEST_F(UtilityTest, invocable_to_basic) {
   EXPECT_EQ(17, f.value);
 }
 
+TEST_F(UtilityTest, invocable_to_make_unique) {
+  std::unique_ptr<int> x = folly::invocable_to(std::make_unique<int>);
+  EXPECT_EQ(*x, 0);
+}
+
 namespace folly::detail::invocable_to_test {
 
 template <typename T, bool C, bool R, bool X>

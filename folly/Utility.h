@@ -355,26 +355,30 @@ struct inheritable_contain_ {
   }
 };
 
+template <typename T>
+constexpr bool is_inheritable_v_ = //
+    (std::is_class_v<T> || std::is_union_v<T>) &&
+    !(std::is_abstract_v<T> || std::is_final_v<T>);
+
 template <bool>
 struct inheritable_;
 template <>
 struct inheritable_<false> {
   template <typename T>
-  using apply = inheritable_inherit_<T>;
+  using apply = inheritable_contain_<T>;
 };
 template <>
 struct inheritable_<true> {
   template <typename T>
-  using apply = inheritable_contain_<T>;
+  using apply = inheritable_inherit_<T>;
 };
 
 //  inheritable
 //
 //  A class wrapping an arbitrary type T which is always inheritable, and which
 //  enables empty-base-optimization when possible.
-template <typename T>
-using inheritable =
-    typename inheritable_<std::is_final<T>::value>::template apply<T>;
+template <typename T, bool C = is_inheritable_v_<T>>
+using inheritable = typename inheritable_<C>::template apply<T>;
 
 } // namespace detail
 
@@ -753,6 +757,8 @@ class invocable_to_convertible : private inheritable<F> {
  private:
   static_assert(std::is_same<F, decay_t<F>>::value, "mismatch");
 
+  using base = inheritable<F>;
+
   template <typename R>
   using result_t = detected_t<invocable_to_detect, R>;
   template <typename R>
@@ -773,6 +779,11 @@ class invocable_to_convertible : private inheritable<F> {
   static_assert(std::is_same<TMR, result_t<FMR>>::value, "mismatch");
   static_assert(std::is_same<TCR, result_t<FCR>>::value, "mismatch");
 
+  using BML = base&;
+  using BCL = base const&;
+  using BMR = base&&;
+  using BCR = base const&&;
+
  public:
   template <typename G, std::enable_if_t<constructible_v<G&&>, int> = 0>
   FOLLY_ERASE explicit constexpr invocable_to_convertible(G&& g) noexcept(
@@ -781,19 +792,19 @@ class invocable_to_convertible : private inheritable<F> {
 
   template <typename..., typename R = FML, if_invocable_as_v<R> = 0>
   FOLLY_ERASE constexpr operator TML() & noexcept(nx_v<R>) {
-    return static_cast<FML>(*this)();
+    return static_cast<FML>(static_cast<BML>(*this))();
   }
   template <typename..., typename R = FCL, if_invocable_as_v<R> = 0>
   FOLLY_ERASE constexpr operator TCL() const& noexcept(nx_v<R>) {
-    return static_cast<FCL>(*this)();
+    return static_cast<FCL>(static_cast<BCL>(*this))();
   }
   template <typename..., typename R = FMR, if_invocable_as_v<R> = 0>
   FOLLY_ERASE constexpr operator TMR() && noexcept(nx_v<R>) {
-    return static_cast<FMR>(*this)();
+    return static_cast<FMR>(static_cast<BMR>(*this))();
   }
   template <typename..., typename R = FCR, if_invocable_as_v<R> = 0>
   FOLLY_ERASE constexpr operator TCR() const&& noexcept(nx_v<R>) {
-    return static_cast<FCR>(*this)();
+    return static_cast<FCR>(static_cast<BCR>(*this))();
   }
 };
 } // namespace detail
