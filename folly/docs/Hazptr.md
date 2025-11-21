@@ -262,6 +262,17 @@ and Hazard Pointers, this is not possible. Instead, there is another system, the
 it is safe to destroy shared objects - very much like the garbage collector in
 many programming languages, but explicit and opt-in.
 
+The basic tradeoff with these mechanisms is:
+* Observervation is extremely fast, scales linearly with core count, and neither
+  waits nor causes any other operations to wait (modulo synchronization within
+  the allocator and when initializing global variables).
+* Publication is pessimized compared with typical techniques.
+* Reclamation is deferred rather than deterministic and is extremely pessimized.
+  It is batched so that the overhead may be amortized over many publications.
+  Because it is deferred, memory usage can be unexpectedly large.
+* These mechanisms can seem like black magic - they have a reputation for being
+  complex, unintuitive, and dangerous.
+
 # RCU Shared Object
 
 A typical implementation of a `shared_object` type that is similar to the prior
@@ -291,7 +302,8 @@ public:
     protected_ptr(
         rcu_domain& domain,
         std::atomic<object*>& atom) noexcept
-        : prot_{domain}, obj_{atom.load(std::memory_order_acquire)} {}
+        : prot_{domain}, // init'd first to protect the load below
+          obj_{atom.load(std::memory_order_acquire)} {}
 
     protected_ptr(protected_ptr&&) = delete;
     protected_ptr(protected_ptr const&) = delete;
@@ -349,7 +361,7 @@ public:
     protected_ptr(
         hazptr_domain& domain,
         std::atomic<object*>& atom) noexcept
-        : prot_{make_hazard_pointer(domain)},
+        : prot_{make_hazard_pointer(domain)}, // init'd first for use below
           obj_{prot_.protect(atom)} {}
 
     protected_ptr(protected_ptr&&) = delete;
@@ -514,6 +526,7 @@ void multi_writer_monotonic() {
       return;
     }
     delete next;
+    // this loop omits a single load-relaxed v.s. hazptr.protect(atom):
     while (!hazptr.try_protect(curr, atom)) {} // load-acquire on atom
   }
 }
