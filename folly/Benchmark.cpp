@@ -712,7 +712,7 @@ void addSeparator(BenchmarksToRun& res) {
     return;
   }
   if (res.separatorsAfter.empty() ||
-      res.separatorsAfter.back() != separatorAfter) {
+      res.separatorsAfter.back() != (separatorAfter - 1)) {
     res.separatorsAfter.push_back(res.benchmarks.size() - 1);
   }
 }
