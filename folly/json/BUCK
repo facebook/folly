@@ -45,8 +45,8 @@ fb_dirsync_cpp_library(
         "//folly/lang:exception",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_algorithm"),
+        "glog",
     ],
     exported_external_deps = [
         "boost",
@@ -127,10 +127,9 @@ fb_dirsync_cpp_library(
         "//folly:optional",
     ],
     exported_deps = [
+        ":dynamic",
         "//folly:c_portability",
         "//folly:conv",
-        "//folly/json:dynamic",
-        # for toPseudoJson(), since print_as_pseudo_json() is in json.cpp
         "//folly:json",  # @manual
         "//folly:scope_guard",
         "//folly:traits",
