@@ -160,7 +160,7 @@ There are two key aspects to which to pay attention:
 * Synchronization, via the shared mutex:
   * Synchronization between two producers publishing.
   * Synchronization between two consumers observing.
-  * synchronization between a producer publishing and a consumer observing.
+  * Synchronization between a producer publishing and a consumer observing.
 
 As we look at more techniques, the exact mechanisms for lifetime protection and
 synchronization will change, but these will still be the problems being solved.
@@ -196,26 +196,9 @@ This version swaps out a mutex and in an atomic. With the caveat that the easy
 implementation of the atomic-shared-ptr is in terms of a shared-mutex! So YMMV.
 
 There are alternative implementations of atomic-shared-ptr. Folly has one, for
-example:
-
-``` cpp
-template <typename object>
-struct shared_object {
-private:
-  folly::atomic_shared_ptr<object> atom_; // v.s. atomic<shared_ptr<>>
-
-public:
-  /// release operation
-  void publish(std::shared_ptr<object> obj) noexcept {
-    atom_.store(obj, std::memory_order_release);
-  }
-
-  /// acquire operation
-  std::shared_ptr<object> observe() const noexcept {
-    return atom_.load(std::memory_order_acquire);
-  }
-};
-```
+example. A version using `folly::atomic_shared_ptr<object>` would look exactly
+like the version using `std::atomic<std::shared_ptr<object>>` with just the one
+substitution, but may perform better.
 
 These prototypical publish/observe lifetime-protection mechanisms are sufficient
 for most use-cases. But not for all. The trouble with them in some cases is that
@@ -231,6 +214,15 @@ are involved - atomic read-modify-write operations scale extremely poorly with
 core count. So we need a technique which amortizes or minimizes use of atomic
 read-modify-write operations in the observation path and which scales very well
 with core count.
+
+Folly offers some exotic solutions here. `folly::ReadMostlySharedPtr`is a
+version of of shared-ptr accelerated with thread-local caches and thread-local
+refcount operations. `folly::CoreCachedSharedPtr` is a version of shared-ptr
+accelerated with a fixed-size slab of copies to ensure that refcount operations
+be relatively uncontended, but can be subject to exotic race conditions. And
+`folly::AtomicCoreCachedSharedPtr` is a version of that where the operations are
+transactional and not subject to those exocit races. These facilities do help
+with scaling over many cores, but are still costly.
 
 There are two publish/observe lifetime-protection mechanisms for shared objects
 which are designed for these hot asymmetric cases: RCU and Hazard Pointers.
@@ -296,6 +288,7 @@ public:
   private:
     friend shared_object;
 
+    // curiously, the API is scoped_lock<rcu_domain>
     std::scoped_lock<rcu_domain> prot_; // protects obj_ during prot_'s lifetime
     object* obj_; // access is valid while prot_ remains alive
 
@@ -622,6 +615,19 @@ Writers must typically mutually-exclude themselves somehow.
 The writer must only retire an object after having removed all pointers to it
 from all atomic variables which might be the object of hazptr-protection, such
 as with the `store`, `exchange`, or `compare_exchange` patterns noted above.
+
+For both RCU and Hazard Pointers, there are two possible ways that a deferred
+reclamation pass happens:
+* Out-of-line in a special deferred-reclamation thread, if the domain has been
+  configured with a reclamation thread pool.
+* In-line during some arbitrary retirement, when the domain decides to perform
+  a batch reclamation pass. For example, if there are sufficiently many objects
+  marked as retired. A domain configured with a reclamation thread pool will not
+  perform in-line reclamation during retirement.
+
+In either case, the constraints are:
+* Only retired objects are subject to reclamation.
+* Currently-protected objects are not subject to reclamation, even if retired.
 
 # For More Info
 
