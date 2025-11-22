@@ -474,6 +474,13 @@ static_assert(is_nx_conv_v<of<int, 1, 1, 1> const&&, int>);
 
 } // namespace folly::detail::invocable_to_test
 
+TEST_F(UtilityTest, object_from_member_example) {
+  using type = std::pair<int, float>;
+  constexpr auto ptr = &type::second;
+  type foo{1, 3.0};
+  EXPECT_EQ(&foo, folly::object_from_member(ptr, &foo.second));
+}
+
 namespace folly::detail::method_overload_delegation_test {
 
 class MethodOverloadDelegation {

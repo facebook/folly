@@ -871,6 +871,59 @@ struct invocable_to_fn {
 };
 inline constexpr invocable_to_fn invocable_to{};
 
+/// object_from_member
+/// object_from_member_fn
+///
+/// Returns the object containing the given field.
+///
+/// Similar to container_of (linux kernel).
+///
+/// Example:
+///
+///   using obj_t = std::pair<int, float>;
+///   obj_t obj = {1, 3.0};
+///   assert(&obj == object_from_member(obj_t::second, &obj.second);
+struct object_from_member_fn {
+ private:
+  template <typename M, typename O>
+  using ptr_t = M O::*;
+
+  template <typename M, typename O>
+  static std::ptrdiff_t off(ptr_t<M, O> const p) noexcept {
+    O* o = nullptr;
+    M* m = &(o->*p);
+    return reinterpret_cast<char*>(m) - reinterpret_cast<char*>(o);
+  }
+
+ public:
+  template <typename M, typename O>
+  O* operator()(ptr_t<M, O> const p, M* m) const noexcept {
+    return reinterpret_cast<O*>(reinterpret_cast<char*>(m) - off(p));
+  }
+  template <typename M, typename O>
+  O const* operator()(ptr_t<M, O> const p, M const* m) const noexcept {
+    return reinterpret_cast<O*>(reinterpret_cast<char const*>(m) - off(p));
+  }
+
+  template <typename M, typename O>
+  O& operator()(ptr_t<M, O> const p, M& m) const noexcept {
+    return *operator()(p, &m);
+  }
+  template <typename M, typename O>
+  O const& operator()(ptr_t<M, O> const p, M const& m) const noexcept {
+    return *operator()(p, &m);
+  }
+  template <typename M, typename O>
+  O&& operator()(ptr_t<M, O> const p, M&& m) const noexcept {
+    return static_cast<O&&>(*operator()(p, &m));
+  }
+  template <typename M, typename O>
+  O const&& operator()(ptr_t<M, O> const p, M const& m) const noexcept {
+    return static_cast<O const&&>(*operator()(p, &m));
+  }
+};
+inline constexpr object_from_member_fn object_from_member{};
+
 #define FOLLY_DETAIL_FORWARD_BODY(...)                     \
   noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) { \
     return __VA_ARGS__;                                    \
