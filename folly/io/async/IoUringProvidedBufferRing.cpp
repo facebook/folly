@@ -32,6 +32,21 @@ constexpr uint32_t kBufferAlignBytes = 32;
 
 namespace folly {
 
+void IoUringProvidedBufferRing::checkInvariants() {
+  // This object is carefully packed into two 64 byte cache lines. The first
+  // cache line contains all of the fields accessed during hot code, i.e.
+  // getIoBuf() and returnBuffer(). The second cache line contains all the warm
+  // and cold fields that are rarely accessed.
+  static_assert(
+      sizeof(IoUringProvidedBufferRing) >= 112 &&
+          sizeof(IoUringProvidedBufferRing) <= 128,
+      "Size must be between 112 (libc++) and 128 (libstdc++) bytes");
+
+  static_assert(
+      sizeof(folly::DistributedMutex) == 8,
+      "folly::DistributedMutex size changed from 8 bytes");
+}
+
 IoUringProvidedBufferRing::UniquePtr IoUringProvidedBufferRing::create(
     io_uring* ioRingPtr, Options options) {
   return IoUringProvidedBufferRing::UniquePtr(

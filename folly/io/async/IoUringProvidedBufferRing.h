@@ -126,29 +126,29 @@ class IoUringProvidedBufferRing {
     IoUringProvidedBufferRing* parent{nullptr};
   };
 
-  // Cacheline 1: Hot
-  std::unique_ptr<BufferState[]> bufferStates_;
+  static void checkInvariants();
+
+  // Hot fields
+  alignas(folly::hardware_constructive_interference_size)
+      std::unique_ptr<BufferState[]> bufferStates_;
   struct io_uring_buf_ring* ringPtr_{nullptr};
   char* bufferBuffer_{nullptr};
   folly::DistributedMutex mutex_;
-  uint32_t sizePerBuffer_;
+  uint32_t sizePerBuffer_{0};
   int ringMask_{0};
   uint32_t gottenBuffers_{0};
   uint32_t ringReturnedBuffers_{0};
   uint32_t returnedBuffers_{0};
-  uint32_t bufferCount_;
-  bool useIncremental_;
+  uint32_t bufferCount_{0};
+  bool useIncremental_{false};
   std::atomic<bool> enobuf_{false};
   std::atomic<bool> wantsShutdown_{false};
-  // 1 byte padding
   std::atomic<uint32_t> enobufCount_{0};
 
-  // Cacheline 2: Warm
-  io_uring* ioRingPtr_;
+  // Cold fields
+  alignas(folly::hardware_constructive_interference_size) io_uring* ioRingPtr_;
   uint32_t shutdownReferences_{0};
-  uint16_t const gid_;
-  // 2 bytes padding
-  // Cold
+  uint16_t const gid_{0};
   uint32_t ringCount_{0};
   uint32_t allSize_{0};
   void* buffer_{nullptr};
