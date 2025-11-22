@@ -167,6 +167,20 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "unique_hash_key_test",
+    srcs = ["UniqueHashKeyTest.cpp"],
+    headers = [],
+    supports_static_listing = False,
+    deps = [
+        "//folly/container:f14_hash",
+        "//folly/container:map_util",
+        "//folly/hash:unique_hash_key",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "fnv_hash_test",
     srcs = ["FnvHashTest.cpp"],
     headers = [],

@@ -258,3 +258,21 @@ fb_dirsync_cpp_library(
         "//folly/lang:bits",
     ],
 )
+
+fb_dirsync_cpp_library(
+    name = "unique_hash_key",
+    srcs = ["UniqueHashKey.cpp"],
+    headers = ["UniqueHashKey.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    deps = [
+        "//folly/portability:openssl",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        "fbsource//third-party/blake3:blake3",  # @manual
+        "fbsource//third-party/xxHash:xxhash",  # @manual
+        "//folly/container:span",
+    ],
+)

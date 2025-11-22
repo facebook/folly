@@ -32,7 +32,7 @@
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/container/Reserve.h>
-#include <folly/container/span.h>
+#include <folly/hash/UniqueHashKey.h>
 #include <folly/lang/Bits.h>
 
 namespace folly {
@@ -373,6 +373,8 @@ class RegexMatchCacheIndexedVector {
   folly::F14FastMap<size_t, Value> reverse_;
 };
 
+using RegexMatchCacheKeyBase = unique_hash_key_strong_sha256<32>;
+
 /// RegexMatchCacheKey
 ///
 /// A key derived from a string. Used with RegexMatchCache.
@@ -380,47 +382,10 @@ class RegexMatchCacheIndexedVector {
 /// Intended for use only with RegexMatchCache.
 ///
 /// Incomplete as a generic facility.
-class RegexMatchCacheKey {
- private:
-  using self = RegexMatchCacheKey;
-
-  static inline constexpr size_t data_size = 32;
-  static inline constexpr size_t data_align = alignof(size_t);
-
-  using data_type = std::array<unsigned char, data_size>;
-
-  alignas(data_align) data_type const data_;
-
-  static data_type init(std::string_view regex) noexcept;
-
-  template <typename T, size_t E, typename V = std::remove_cv_t<T>>
-  static constexpr bool is_span_compatible_v = //
-      !std::is_volatile_v<T> && //
-      std::is_integral_v<V> && //
-      std::is_unsigned_v<V> && //
-      !std::is_same_v<bool, V> && //
-      !std::is_same_v<char, V> && //
-      alignof(V) <= data_align && //
-      (E == data_size / sizeof(T) || E == dynamic_extent);
-
+class RegexMatchCacheKey : public RegexMatchCacheKeyBase {
  public:
   explicit RegexMatchCacheKey(std::string_view regex) noexcept
-      : data_{init(regex)} {}
-
-  template <
-      typename T,
-      std::size_t E,
-      std::enable_if_t<is_span_compatible_v<T, E>, int> = 0>
-  explicit operator span<T const, E>() const noexcept {
-    return {reinterpret_cast<T const*>(data_.data()), E};
-  }
-
-  friend auto operator==(self const& a, self const& b) noexcept {
-    return a.data_ == b.data_;
-  }
-  friend auto operator!=(self const& a, self const& b) noexcept {
-    return a.data_ != b.data_;
-  }
+      : RegexMatchCacheKeyBase{std::tuple(regex)} {}
 };
 
 } // namespace folly
@@ -428,13 +393,8 @@ class RegexMatchCacheKey {
 namespace std {
 
 template <>
-struct hash<::folly::RegexMatchCacheKey> {
-  using folly_is_avalanching = std::true_type;
-
-  size_t operator()(::folly::RegexMatchCacheKey const& key) const noexcept {
-    return ::folly::span<size_t const>{key}[0];
-  }
-};
+struct hash<::folly::RegexMatchCacheKey>
+    : hash<::folly::RegexMatchCacheKeyBase> {};
 
 } // namespace std
 

@@ -926,6 +926,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST hash_spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp
       TEST hash_spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
       TEST hash_traits_test SOURCES traits_test.cpp
+      TEST hash_unique_hash_key_test SOURCES UniqueHashKeyTest.cpp
 
     DIRECTORY io/test/
       TEST io_fs_util_test SOURCES FsUtilTest.cpp

@@ -27,20 +27,12 @@
 #include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/container/Reserve.h>
-#include <folly/ssl/OpenSSLHash.h>
 #include <folly/synchronization/AtomicUtil.h>
 
 namespace folly {
 
 static std::string quote(std::string_view const s) {
   return fmt::format("\"{}\"", cEscape<std::string>(s));
-}
-
-RegexMatchCacheKey::data_type RegexMatchCacheKey::init(
-    std::string_view const regex) noexcept {
-  data_type data;
-  folly::ssl::OpenSSLHash::sha256(range(data), StringPiece(regex));
-  return data;
 }
 
 class RegexMatchCache::RegexObject {
