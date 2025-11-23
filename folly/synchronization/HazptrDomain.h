@@ -300,10 +300,7 @@ class hazptr_domain {
   /** acquire_hprecs */
   Rec* acquire_hprecs(uint8_t num) {
     DCHECK_GE(num, 1);
-    // C++17: auto [n, head] = try_pop_available_hprecs(num);
-    uint8_t n;
-    Rec* head;
-    std::tie(n, head) = try_pop_available_hprecs(num);
+    auto [n, head] = try_pop_available_hprecs(num);
     for (; n < num; ++n) {
       Rec* rec = create_new_hprec();
       DCHECK(rec->next_avail() == nullptr);
