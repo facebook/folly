@@ -23,7 +23,7 @@
 #include <sys/auxv.h>
 #endif
 
-#if __has_include(<blake3.h>)
+#if __has_include(<blake3.h>) && !defined(_WIN32)
 #include <blake3.h>
 #endif
 
@@ -84,7 +84,7 @@ unique_hash_key_algo_strong_sha256_init() {
   return object;
 }
 
-#if __has_include(<blake3.h>)
+#if __has_include(<blake3.h>) && !defined(_WIN32)
 
 /// unique_hash_key_init_process_key_blake3
 ///
@@ -218,7 +218,7 @@ template std::array<uint8_t, 32> //
 unique_hash_key_algo_strong_sha256_fn<32>::operator()(
     span<detail::unique_hash_key_item const> in) const noexcept;
 
-#if __has_include(<blake3.h>)
+#if __has_include(<blake3.h>) && !defined(_WIN32)
 
 template <size_t Size>
 std::array<uint8_t, Size>
