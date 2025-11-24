@@ -170,7 +170,7 @@ struct unique_hash_key_algo_fast_xxh3_ops<16> {
 #endif // __has_include(<blake3.h>)
 
 template <typename Hash, typename Update>
-FOLLY_ERASE static void unique_hash_key_hash_items(
+FOLLY_ALWAYS_INLINE static void unique_hash_key_hash_items(
     Update const update,
     Hash* const h,
     span<detail::unique_hash_key_item const> const in) noexcept {
