@@ -41,7 +41,10 @@ class SSLException : public folly::AsyncSocketException {
 
   SSLError getSSLError() const { return sslError; }
 
+  unsigned long getInternalSSLError() const { return sslInternalErrorCode; }
+
  private:
   SSLError sslError;
+  unsigned long sslInternalErrorCode;
 };
 } // namespace folly

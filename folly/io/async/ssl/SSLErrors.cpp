@@ -120,10 +120,13 @@ SSLException::SSLException(
     // Conservatively assume that this is an SSL error
     sslError = SSLError::SSL_ERROR;
   }
+
+  sslInternalErrorCode = errError;
 }
 
 SSLException::SSLException(SSLError error)
     : AsyncSocketException(
           exTypefromSSLErr(error), getSSLErrorString(error).str(), 0),
-      sslError(error) {}
+      sslError(error),
+      sslInternalErrorCode(0) {}
 } // namespace folly
