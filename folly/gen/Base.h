@@ -496,6 +496,8 @@ Yield generator(Source&& source) {
  */
 #define GENERATOR(TYPE) \
   ::folly::gen::detail::GeneratorBuilder<TYPE>() + [=](auto&& yield)
+#define GENERATOR_WITH_THIS(TYPE) \
+  ::folly::gen::detail::GeneratorBuilder<TYPE>() + [ =, this ](auto&& yield)
 #define GENERATOR_REF(TYPE) \
   ::folly::gen::detail::GeneratorBuilder<TYPE>() + [&](auto&& yield)
 
