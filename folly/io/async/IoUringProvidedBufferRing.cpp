@@ -38,9 +38,12 @@ void IoUringProvidedBufferRing::checkInvariants() {
   // getIoBuf() and returnBuffer(). The second cache line contains all the warm
   // and cold fields that are rarely accessed.
   static_assert(
-      sizeof(IoUringProvidedBufferRing) >= 112 &&
-          sizeof(IoUringProvidedBufferRing) <= 128,
-      "Size must be between 112 (libc++) and 128 (libstdc++) bytes");
+      sizeof(IoUringProvidedBufferRing) ==
+      2 * folly::hardware_constructive_interference_size);
+
+  static_assert(
+      alignof(IoUringProvidedBufferRing) ==
+      folly::hardware_constructive_interference_size);
 
   static_assert(
       sizeof(folly::DistributedMutex) == 8,
