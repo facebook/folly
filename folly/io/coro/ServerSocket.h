@@ -42,6 +42,7 @@ class ServerSocket {
 
   ServerSocket(ServerSocket&&) = default;
   ServerSocket& operator=(ServerSocket&&) = default;
+  ~ServerSocket() = default;
 
   Task<std::unique_ptr<Transport>> accept();
 
