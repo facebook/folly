@@ -300,8 +300,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":async_transport_certificate",
-        "//folly:try",
-        "//folly:unit",
+        "//folly/portability:openssl",
     ],
 )
 

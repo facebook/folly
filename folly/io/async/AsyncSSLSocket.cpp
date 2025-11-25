@@ -1996,24 +1996,36 @@ int AsyncSSLSocket::sslVerifyCallback(
 
   if (self->handshakeCallback_) {
     int callbackOk =
-        (self->handshakeCallback_->handshakeVer(self, preverifyOk, x509Ctx))
+        self->handshakeCallback_->handshakeVer(self, preverifyOk, x509Ctx)
         ? 1
         : 0;
 
     if (preverifyOk != callbackOk) {
       // HandshakeCB overwrites result from OpenSSL. One way or another, do not
-      // call CertificateIdentityVerifier.
+      // call verifyLeaf.
       return callbackOk;
     }
   }
 
+  // verifyContext can override the OpenSSL verification result. Unlike
+  // handshakeVer, it doesn't return early - allowing verifyLeaf to be called
+  // for the leaf certificate even if verifyContext changes the result.
+  if (self->certificateIdentityVerifier_) {
+    preverifyOk =
+        self->certificateIdentityVerifier_->verifyContext(preverifyOk, *x509Ctx)
+        ? 1
+        : 0;
+  }
+
   if (!preverifyOk) {
-    // OpenSSL verification failure, no need to call CertificateIdentityVerifier
+    // Verification failed (either OpenSSL or verifyContext), no need to call
+    // verifyLeaf.
     return 0;
   }
 
-  // only invoke the CertificateIdentityVerifier for the leaf certificate and
-  // only if OpenSSL's preverify and the HandshakeCB's handshakeVer succeeded
+  // only invoke the verifyLeaf callback for the leaf certificate and
+  // only if all previous verification steps succeeded (OpenSSL, handshakeVer,
+  // and verifyContext)
 
   int currentDepth = X509_STORE_CTX_get_error_depth(x509Ctx);
   if (currentDepth != 0 || self->certificateIdentityVerifier_ == nullptr) {

@@ -198,10 +198,12 @@ class AsyncSSLSocket : public AsyncSocket {
    * Struct to consolidate constructor arguments.
    */
   struct Options {
-    // If this verifier is set, it's used during the TLS handshake. It will be
-    // invoked to verify the peer's end-entity leaf certificate after OpenSSL's
-    // chain validation and after calling the HandshakeCB's handshakeVer() and
-    // only if these are successful.
+    // If this verifier is set, it's used during the TLS handshake. First,
+    // verifyContext() is called during OpenSSL's certificate verification
+    // callback for each certificate in the chain, after HandshakeCB's
+    // handshakeVer() if set. Then, verifyLeaf() is invoked to verify the
+    // peer's end-entity leaf certificate, but only if OpenSSL's chain
+    // validation, handshakeVer(), and verifyContext() all succeeded.
     std::shared_ptr<CertificateIdentityVerifier> verifier;
     bool deferSecurityNegotiation{};
     bool isServer{};

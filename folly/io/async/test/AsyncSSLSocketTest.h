@@ -496,10 +496,15 @@ class EmptyReadCallback : public ReadCallback {
 class MockCertificateIdentityVerifier : public CertificateIdentityVerifier {
  public:
   MOCK_METHOD(
+      bool,
+      verifyContext,
+      (bool, X509_STORE_CTX&),
+      (const, noexcept, override));
+  MOCK_METHOD(
       std::unique_ptr<AsyncTransportCertificate>,
       verifyLeaf,
       (const AsyncTransportCertificate&),
-      (const));
+      (const, override));
 };
 
 class MockHandshakeCB : public AsyncSSLSocket::HandshakeCB {
