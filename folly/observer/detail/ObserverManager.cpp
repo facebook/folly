@@ -87,6 +87,11 @@ class ObserverManager::UpdatesManager::CurrentQueueProcessor {
     }
   }
 
+  CurrentQueueProcessor(const CurrentQueueProcessor&) = delete;
+  CurrentQueueProcessor& operator=(const CurrentQueueProcessor&) = delete;
+  CurrentQueueProcessor(CurrentQueueProcessor&&) = delete;
+  CurrentQueueProcessor& operator=(CurrentQueueProcessor&&) = delete;
+
   ~CurrentQueueProcessor() {
     for (size_t i = 0; i < threads_.size(); ++i) {
       queue_.enqueue(nullptr);
@@ -156,6 +161,11 @@ class ObserverManager::UpdatesManager::NextQueueProcessor {
       }
     });
   }
+
+  NextQueueProcessor(const NextQueueProcessor&) = delete;
+  NextQueueProcessor& operator=(const NextQueueProcessor&) = delete;
+  NextQueueProcessor(NextQueueProcessor&&) = delete;
+  NextQueueProcessor& operator=(NextQueueProcessor&&) = delete;
 
   ~NextQueueProcessor() {
     stop_ = true;
