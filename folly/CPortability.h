@@ -47,6 +47,14 @@
 #endif
 #endif
 
+/// FOLLY_GLIBC_PREREQ
+#if !defined(__GLIBC__)
+#define FOLLY_GLIBC_PREREQ(maj, min) 0
+#else
+#define FOLLY_GLIBC_PREREQ(maj, min) \
+  (__GLIBC__ > (maj)) || (__GLIBC__ == (maj) && __GLIBC_MINOR__ >= (min))
+#endif
+
 #if defined(__has_builtin)
 #define FOLLY_HAS_BUILTIN(...) __has_builtin(__VA_ARGS__)
 #else
