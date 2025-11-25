@@ -54,6 +54,8 @@ class ProxyChannel {
 
  public:
   explicit ProxyChannel(detail::ProxyChannelProcessor<ValueType>* processor);
+  ProxyChannel(const ProxyChannel&) = delete;
+  ProxyChannel& operator=(const ProxyChannel&) = delete;
   ProxyChannel(ProxyChannel&& other) noexcept;
   ProxyChannel& operator=(ProxyChannel&& other) noexcept;
   ~ProxyChannel();
