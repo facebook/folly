@@ -119,6 +119,10 @@ bool ThreadEntrySet::contains(ThreadEntry* entry) const {
 
 bool ThreadEntrySet::insert(ThreadEntry* entry) {
   DCHECK(basicSanity());
+  if (entry == nullptr) {
+    LOG(ERROR) << "Attempt to insert null ThreadEntry into ThreadEntrySet";
+    return false;
+  }
   auto iter = entryToVectorSlot.find(entry);
   if (iter != entryToVectorSlot.end()) {
     // Entry already present. Sanity check and exit.
@@ -133,6 +137,10 @@ bool ThreadEntrySet::insert(ThreadEntry* entry) {
 
 bool ThreadEntrySet::insert(const Element& element) {
   DCHECK(basicSanity());
+  if (element.threadEntry == nullptr) {
+    LOG(ERROR) << "Attempt to insert Element with null ThreadEntry into ThreadEntrySet";
+    return false;
+  }
   auto iter = entryToVectorSlot.find(element.threadEntry);
   if (iter != entryToVectorSlot.end()) {
     // Entry already present. Skip copying over element. Caller
@@ -148,6 +156,10 @@ bool ThreadEntrySet::insert(const Element& element) {
 
 ThreadEntrySet::Element ThreadEntrySet::erase(ThreadEntry* entry) {
   DCHECK(basicSanity());
+  if (entry == nullptr) {
+    LOG(ERROR) << "Attempt to erase null ThreadEntry from ThreadEntrySet";
+    return Element{nullptr};
+  }
   auto iter = entryToVectorSlot.find(entry);
   if (iter == entryToVectorSlot.end()) {
     // Entry not present.
@@ -210,7 +222,12 @@ void ThreadEntrySet::compress() {
   EntryIndex newIndex;
   newIndex.reserve(entryToVectorSlot.size());
   while (!entryToVectorSlot.empty()) {
-    newIndex.insert(entryToVectorSlot.extract(entryToVectorSlot.begin()));
+    auto node = entryToVectorSlot.extract(entryToVectorSlot.begin());
+    if (node.key() != nullptr) {
+      newIndex.insert(std::move(node));
+    } else {
+      LOG(ERROR) << "Found null ThreadEntry in ThreadEntrySet during compress";
+    }
   }
   entryToVectorSlot = std::move(newIndex);
 }
@@ -767,6 +784,16 @@ void ThreadEntry::cleanupElement(uint32_t id) {
 
 void ThreadEntry::resetElementImplAfterSet(
     const ElementWrapper& element, uint32_t id) {
+  // 动态边界检查与自动扩容
+  if (id >= getElementsCapacity()) {
+    size_t newCapacity = 0;
+    ElementWrapper* newElements = meta->reallocate(this, id, newCapacity);
+    if (newElements != nullptr) {
+      elements = newElements;
+    }
+    setElementsCapacity(newCapacity);
+  }
+
   auto& set = meta->allId2ThreadEntrySets_[id];
   auto rlock = set.rlock();
   cleanupElement(id);

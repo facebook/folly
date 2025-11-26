@@ -139,7 +139,12 @@ class TaskPromiseBase : public BasePromise<> {
   FinalAwaiter final_suspend() noexcept { return {}; }
 
   folly::Executor::KeepAlive<> getExecutor() const noexcept {
-    return executor_;
+    auto executor = executor_.load(std::memory_order_acquire);
+    if (executor == nullptr) {
+      LOG(WARNING) << "Task executor is null, returning DefaultKeepAliveExecutor";
+      return folly::getGlobalCPUExecutor()->getKeepAliveToken();
+    }
+    return executor;
   }
 
   // These getters exist so that `FinalAwaiter` can interact with wrapped
@@ -150,7 +155,13 @@ class TaskPromiseBase : public BasePromise<> {
   // something is a task-promise.  A second use-case would merit a concept.
   auto& continuationRef(TaskPromisePrivate /*unused*/) { return continuation_; }
   // Unlike `getExecutor()`, does not copy an atomic.
-  auto& executorRef(TaskPromisePrivate /*unused*/) { return executor_; }
+  auto& executorRef(TaskPromisePrivate /*unused*/) { 
+    auto executor = executor_.load(std::memory_order_acquire);
+    if (executor == nullptr) {
+      LOG(WARNING) << "Task executor is null, will use DefaultKeepAliveExecutor";
+    }
+    return executor_; 
+  }
 
  private:
   template <typename>
@@ -182,18 +193,48 @@ class TaskPromiseCrtpBase
   Task<T> get_return_object() noexcept;
 
   void unhandled_exception() noexcept {
-    result_.emplaceException(exception_wrapper{current_exception()});
+    try {
+      result_.emplaceException(exception_wrapper{current_exception()});
+    } catch (...) {
+      // 如果emplaceException失败，尝试用一个新的异常包装器
+      try {
+        result_.emplaceException(exception_wrapper{std::make_exception_ptr(std::runtime_error("Failed to emplace exception in Task result"))});
+      } catch (...) {
+        // 如果还是失败，至少记录日志
+        LOG(ERROR) << "Failed to emplace exception in Task result, even with fallback";
+      }
+    }
   }
 
   Try<StorageType>& result() { return result_; }
 
   auto yield_value(co_error ex) {
-    result_.emplaceException(std::move(ex.exception()));
+    try {
+      result_.emplaceException(std::move(ex.exception()));
+    } catch (...) {
+      // 如果emplaceException失败，尝试用一个新的异常包装器
+      try {
+        result_.emplaceException(exception_wrapper{std::make_exception_ptr(std::runtime_error("Failed to emplace exception in Task result from co_error"))});
+      } catch (...) {
+        // 如果还是失败，至少记录日志
+        LOG(ERROR) << "Failed to emplace exception in Task result from co_error, even with fallback";
+      }
+    }
     return final_suspend();
   }
 
   auto yield_value(co_result<StorageType>&& result) {
-    result_ = std::move(result.result());
+    try {
+      result_ = std::move(result.result());
+    } catch (...) {
+      // 如果赋值失败，尝试用一个新的异常包装器
+      try {
+        result_.emplaceException(exception_wrapper{std::current_exception()});
+      } catch (...) {
+        // 如果还是失败，至少记录日志
+        LOG(ERROR) << "Failed to set Task result from co_result, even with fallback exception";
+      }
+    }
     return final_suspend();
   }
 
@@ -517,7 +558,19 @@ class FOLLY_NODISCARD TaskWithExecutor {
       SCOPE_EXIT {
         std::exchange(coro_, {}).destroy();
       };
-      return std::move(coro_.promise().result()).value();
+      try {
+        auto& result = coro_.promise().result();
+        if (result.hasException()) {
+          LOG(ERROR) << "Task await_resume encountered exception: " << result.exception().what();
+        }
+        return std::move(result).value();
+      } catch (const std::exception& e) {
+        LOG(ERROR) << "Exception in Task await_resume: " << e.what();
+        throw;
+      } catch (...) {
+        LOG(ERROR) << "Unknown exception in Task await_resume";
+        throw;
+      }
     }
 
     folly::Try<StorageType> await_resume_try() noexcept(

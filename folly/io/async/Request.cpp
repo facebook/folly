@@ -62,26 +62,44 @@ Synchronized<F14FastMap<std::string, uint32_t>>& RequestToken::getCache() {
 
 FOLLY_ALWAYS_INLINE
 void RequestData::acquireRef() {
-  auto rc = keepAliveCounter_.fetch_add(
-      kClearCount + kDeleteCount, std::memory_order_relaxed);
+  int rc;
+  do {
+    rc = keepAliveCounter_.load(std::memory_order_relaxed);
+    // 检查是否即将溢出
+    if (rc > INT_MAX - (kClearCount + kDeleteCount)) {
+      LOG(FATAL) << "RequestData reference count overflow detected";
+      return;
+    }
+  } while (!keepAliveCounter_.compare_exchange_weak(
+      rc, rc + kClearCount + kDeleteCount, std::memory_order_relaxed));
   DCHECK_GE(rc, 0);
 }
 
 void RequestData::releaseRefClearOnly() {
-  auto rc =
-      keepAliveCounter_.fetch_sub(kClearCount, std::memory_order_acq_rel) -
-      kClearCount;
-  DCHECK_GT(rc, 0);
+  int rc;
+  do {
+    rc = keepAliveCounter_.load(std::memory_order_acquire);
+    DCHECK_GT(rc, 0);
+    DCHECK_GE(rc, kClearCount); // 确保有足够的计数可以减去
+  } while (!keepAliveCounter_.compare_exchange_weak(
+      rc, rc - kClearCount, std::memory_order_acq_rel));
+  
+  rc -= kClearCount;
   if (rc < kClearCount) {
     this->onClear();
   }
 }
 
 void RequestData::releaseRefDeleteOnly() {
-  auto rc =
-      keepAliveCounter_.fetch_sub(kDeleteCount, std::memory_order_acq_rel) -
-      kDeleteCount;
-  DCHECK_GE(rc, 0);
+  int rc;
+  do {
+    rc = keepAliveCounter_.load(std::memory_order_acquire);
+    DCHECK_GE(rc, 0);
+    DCHECK_GE(rc, kDeleteCount); // 确保有足够的计数可以减去
+  } while (!keepAliveCounter_.compare_exchange_weak(
+      rc, rc - kDeleteCount, std::memory_order_acq_rel));
+  
+  rc -= kDeleteCount;
   if (rc == 0) {
     delete this;
   }
@@ -551,18 +569,62 @@ RequestContext::RequestContext(const RequestContext& ctx, Tag)
 
 void RequestContext::setContextData(
     const RequestToken& token, std::unique_ptr<RequestData> data) {
-  state_.doSetContextData(token, data, DoSetBehaviour::SET, false);
+  try {
+    if (!data) {
+      LOG(ERROR) << "Attempt to set null RequestData for token: " << token.get();
+      return;
+    }
+    state_.doSetContextData(token, data, DoSetBehaviour::SET, false);
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Exception in RequestContext::setContextData for token " << token.get() << ": " << e.what();
+    // Ensure we don't leak the data if an exception occurs
+    data.reset();
+  } catch (...) {
+    LOG(ERROR) << "Unknown exception in RequestContext::setContextData for token " << token.get();
+    // Ensure we don't leak the data if an exception occurs
+    data.reset();
+  }
 }
 
 bool RequestContext::setContextDataIfAbsent(
     const RequestToken& token, std::unique_ptr<RequestData> data) {
-  return state_.doSetContextData(
-      token, data, DoSetBehaviour::SET_IF_ABSENT, false);
+  try {
+    if (!data) {
+      LOG(ERROR) << "Attempt to set null RequestData for token: " << token.get();
+      return false;
+    }
+    return state_.doSetContextData(
+        token, data, DoSetBehaviour::SET_IF_ABSENT, false);
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Exception in RequestContext::setContextDataIfAbsent for token " << token.get() << ": " << e.what();
+    // Ensure we don't leak the data if an exception occurs
+    data.reset();
+    return false;
+  } catch (...) {
+    LOG(ERROR) << "Unknown exception in RequestContext::setContextDataIfAbsent for token " << token.get();
+    // Ensure we don't leak the data if an exception occurs
+    data.reset();
+    return false;
+  }
 }
 
 void RequestContext::overwriteContextData(
     const RequestToken& token, std::unique_ptr<RequestData> data, bool safe) {
-  state_.doSetContextData(token, data, DoSetBehaviour::OVERWRITE, safe);
+  try {
+    if (!data) {
+      LOG(ERROR) << "Attempt to set null RequestData for token: " << token.get();
+      return;
+    }
+    state_.doSetContextData(token, data, DoSetBehaviour::OVERWRITE, safe);
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Exception in RequestContext::overwriteContextData for token " << token.get() << ": " << e.what();
+    // Ensure we don't leak the data if an exception occurs
+    data.reset();
+  } catch (...) {
+    LOG(ERROR) << "Unknown exception in RequestContext::overwriteContextData for token " << token.get();
+    // Ensure we don't leak the data if an exception occurs
+    data.reset();
+  }
 }
 
 bool RequestContext::hasContextData(const RequestToken& val) const {
@@ -588,7 +650,13 @@ void RequestContext::onUnset() {
 }
 
 void RequestContext::clearContextData(const RequestToken& val) {
-  state_.clearContextData(val);
+  try {
+    state_.clearContextData(val);
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Exception in RequestContext::clearContextData for token " << val.get() << ": " << e.what();
+  } catch (...) {
+    LOG(ERROR) << "Unknown exception in RequestContext::clearContextData for token " << val.get();
+  }
 }
 
 /* static */ std::shared_ptr<RequestContext> RequestContext::setContext(

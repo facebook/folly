@@ -120,17 +120,27 @@ struct ElementWrapper {
 
     DCHECK_NE(0, deleter);
     auto const deleter_masked = deleter & ~deleter_all_mask;
-    if (deleter & deleter_obj_mask) {
-      auto& obj = *reinterpret_cast<DeleterObjType*>(deleter_masked);
-      obj(ptr, mode);
-    } else {
-      auto& fun = *reinterpret_cast<DeleterFunType*>(deleter_masked);
-      fun(ptr, mode);
+    try {
+      if (deleter & deleter_obj_mask) {
+        auto& obj = *reinterpret_cast<DeleterObjType*>(deleter_masked);
+        if (ptr != nullptr) {
+          obj(ptr, mode);
+        }
+      } else {
+        auto& fun = *reinterpret_cast<DeleterFunType*>(deleter_masked);
+        if (ptr != nullptr) {
+          fun(ptr, mode);
+        }
+      }
+    } catch (const std::exception& e) {
+      LOG(ERROR) << "Exception in ThreadLocal dispose: " << e.what();
+    } catch (...) {
+      LOG(ERROR) << "Unknown exception in ThreadLocal dispose";
     }
     return true;
   }
 
-  void* release() {
+  void* release() noexcept { 
     auto retPtr = ptr;
 
     if (ptr != nullptr) {
@@ -141,23 +151,34 @@ struct ElementWrapper {
   }
 
   template <class Ptr>
-  void set(Ptr p) {
-    DCHECK_EQ(static_cast<void*>(nullptr), ptr);
-    DCHECK_EQ(0, deleter);
+  void set(Ptr p) noexcept {
+    if (ptr != nullptr || deleter != 0) {
+      LOG(ERROR) << "ElementWrapper::set called on non-empty wrapper";
+      return;
+    }
 
     if (!p) {
       return;
     }
-    auto const fun = +[](void* pt, TLPDestructionMode) {
-      delete static_cast<Ptr>(pt);
-    };
-    auto const raw = castForgetAlign(fun);
-    if (raw & deleter_all_mask) {
-      return set(p, std::ref(*fun));
+    try {
+      auto const fun = +[](void* pt, TLPDestructionMode) {
+        delete static_cast<Ptr>(pt);
+      };
+      auto const raw = castForgetAlign(fun);
+      if (raw & deleter_all_mask) {
+        set(p, std::ref(*fun));
+      } else {
+        DCHECK_EQ(0, raw & deleter_all_mask);
+        deleter = raw;
+        ptr = p;
+      }
+    } catch (const std::exception& e) {
+      LOG(ERROR) << "Exception in ElementWrapper::set: " << e.what();
+      delete p;
+    } catch (...) {
+      LOG(ERROR) << "Unknown exception in ElementWrapper::set";
+      delete p;
     }
-    DCHECK_EQ(0, raw & deleter_all_mask);
-    deleter = raw;
-    ptr = p;
   }
 
   template <typename Ptr, typename Deleter>
@@ -173,28 +194,58 @@ struct ElementWrapper {
   }
 
   template <class Ptr, class Deleter>
-  void set(Ptr p, const Deleter& d) {
-    DCHECK_EQ(static_cast<void*>(nullptr), ptr);
-    DCHECK_EQ(0, deleter);
+  void set(Ptr p, const Deleter& d) noexcept {
+    if (ptr != nullptr || deleter != 0) {
+      LOG(ERROR) << "ElementWrapper::set called on non-empty wrapper";
+      return;
+    }
 
     if (!p) {
       return;
     }
 
-    auto guard = makeGuard([&] { d(p, TLPDestructionMode::THIS_THREAD); });
-    auto const obj = new DeleterObjType(makeDeleter<Ptr>(d));
-    guard.dismiss();
-    auto const raw = reinterpret_cast<uintptr_t>(obj);
-    DCHECK_EQ(0, raw & deleter_all_mask);
-    deleter = raw | deleter_obj_mask;
-    ptr = p;
+    try {
+      auto guard = makeGuard([&] { 
+        try {
+          d(p, TLPDestructionMode::THIS_THREAD); 
+        } catch (...) {
+          LOG(ERROR) << "Exception in ElementWrapper::set deleter during cleanup";
+        }
+      });
+      auto const obj = new DeleterObjType(makeDeleter<Ptr>(d));
+      guard.dismiss();
+      auto const raw = reinterpret_cast<uintptr_t>(obj);
+      DCHECK_EQ(0, raw & deleter_all_mask);
+      deleter = raw | deleter_obj_mask;
+      ptr = p;
+    } catch (const std::exception& e) {
+      LOG(ERROR) << "Exception in ElementWrapper::set: " << e.what();
+      try {
+        d(p, TLPDestructionMode::THIS_THREAD);
+      } catch (...) {
+        LOG(ERROR) << "Exception in ElementWrapper::set deleter during exception cleanup";
+      }
+    } catch (...) {
+      LOG(ERROR) << "Unknown exception in ElementWrapper::set";
+      try {
+        d(p, TLPDestructionMode::THIS_THREAD);
+      } catch (...) {
+        LOG(ERROR) << "Unknown exception in ElementWrapper::set deleter during exception cleanup";
+      }
+    }
   }
 
   void cleanup() noexcept {
     if (deleter & deleter_obj_mask) {
       auto const deleter_masked = deleter & ~deleter_all_mask;
       auto const obj = reinterpret_cast<DeleterObjType*>(deleter_masked);
-      delete obj;
+      try {
+        delete obj;
+      } catch (const std::exception& e) {
+        LOG(ERROR) << "Exception in ThreadLocal cleanup: " << e.what();
+      } catch (...) {
+        LOG(ERROR) << "Unknown exception in ThreadLocal cleanup";
+      }
     }
     ptr = nullptr;
     deleter = 0;
