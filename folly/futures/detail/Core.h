@@ -634,11 +634,11 @@ class Core final : private ResultHolder<T>, public CoreBase {
       std::shared_ptr<folly::RequestContext>&& context,
       futures::detail::InlineContinuation allowInline) {
     Callback callback =
-        [func = static_cast<F&&>(func)](
+        [func_2 = static_cast<F&&>(func)](
             CoreBase& coreBase,
             Executor::KeepAlive<>&& ka,
             exception_wrapper* ew) mutable {
-          func(std::move(ka), setCallbackGetResult(coreBase, ew));
+          func_2(std::move(ka), setCallbackGetResult(coreBase, ew));
         };
 
     setCallback_(std::move(callback), std::move(context), allowInline);

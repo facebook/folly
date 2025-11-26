@@ -80,11 +80,11 @@ struct WTCallback : public TBase::Callback {
     }
 
     auto state = std::exchange(*wState, {});
-    auto* base = state->base;
-    base->runInEventBaseThreadAlwaysEnqueue(
-        [self, state = std::move(state), ew = std::move(ew)]() mutable {
+    auto* base_2 = state->base;
+    base_2->runInEventBaseThreadAlwaysEnqueue(
+        [self, state_2 = std::move(state), ew_2 = std::move(ew)]() mutable {
           self->cancelTimeout();
-          state->promise.setException(std::move(ew));
+          state_2->promise.setException(std::move(ew_2));
         });
   }
 };

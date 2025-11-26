@@ -2283,9 +2283,9 @@ void waitImpl(FutureType& f, HighResDuration dur) {
   Promise<T> promise;
   auto ret = convertFuture(promise.getSemiFuture(), f);
   auto baton = std::make_shared<FutureBatonType>();
-  f.setCallback_([baton, promise = std::move(promise)](
+  f.setCallback_([baton, promise_2 = std::move(promise)](
                      Executor::KeepAlive<>&&, Try<T>&& t) mutable {
-    promise.setTry(std::move(t));
+    promise_2.setTry(std::move(t));
     baton->post();
   });
   f = std::move(ret);
@@ -2580,9 +2580,10 @@ typename std::
   if (predicate()) {
     auto future = thunk();
     return std::move(future).deferExValue(
-        [predicate = static_cast<P&&>(predicate),
-         thunk = static_cast<F&&>(thunk)](auto&& ex, auto&&) mutable {
-          return whileDo(static_cast<P&&>(predicate), static_cast<F&&>(thunk))
+        [predicate_2 = static_cast<P&&>(predicate),
+         thunk_2 = static_cast<F&&>(thunk)](auto&& ex, auto&&) mutable {
+          return whileDo(
+                     static_cast<P&&>(predicate_2), static_cast<F&&>(thunk_2))
               .via(std::move(ex));
         });
   }
@@ -2595,9 +2596,10 @@ whileDo(P&& predicate, F&& thunk) {
   if (predicate()) {
     auto future = thunk();
     return std::move(future).thenValue(
-        [predicate = static_cast<P&&>(predicate),
-         thunk = static_cast<F&&>(thunk)](auto&&) mutable {
-          return whileDo(static_cast<P&&>(predicate), static_cast<F&&>(thunk));
+        [predicate_2 = static_cast<P&&>(predicate),
+         thunk_2 = static_cast<F&&>(thunk)](auto&&) mutable {
+          return whileDo(
+              static_cast<P&&>(predicate_2), static_cast<F&&>(thunk_2));
         });
   }
   return makeFuture();
@@ -2658,11 +2660,12 @@ std::vector<Future<Result>> mapTry(
 template <typename F, class Ensure>
 auto ensure(F&& f, Ensure&& ensure) {
   return makeSemiFuture()
-      .deferValue([f = static_cast<F&&>(f)](auto) mutable { return f(); })
-      .defer([ensure = static_cast<Ensure&&>(ensure)](auto resultTry) mutable {
-        ensure();
-        return std::move(resultTry).value();
-      });
+      .deferValue([f_2 = static_cast<F&&>(f)](auto) mutable { return f_2(); })
+      .defer(
+          [ensure_2 = static_cast<Ensure&&>(ensure)](auto resultTry) mutable {
+            ensure_2();
+            return std::move(resultTry).value();
+          });
 }
 
 template <class T>
@@ -2678,11 +2681,12 @@ void detachOnGlobalCPUExecutor(folly::SemiFuture<T>&& fut) {
 template <class T>
 void maybeDetachOnGlobalExecutorAfter(
     HighResDuration dur, folly::SemiFuture<T>&& fut) {
-  sleep(dur).toUnsafeFuture().thenValue([fut = std::move(fut)](auto&&) mutable {
-    if (auto ptr = folly::detail::tryGetImmutableCPUPtr()) {
-      detachOn(folly::getKeepAliveToken(ptr.get()), std::move(fut));
-    }
-  });
+  sleep(dur).toUnsafeFuture().thenValue(
+      [fut_2 = std::move(fut)](auto&&) mutable {
+        if (auto ptr = folly::detail::tryGetImmutableCPUPtr()) {
+          detachOn(folly::getKeepAliveToken(ptr.get()), std::move(fut_2));
+        }
+      });
 }
 
 template <class T>
