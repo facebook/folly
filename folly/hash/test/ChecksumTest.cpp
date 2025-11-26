@@ -415,6 +415,26 @@ TEST(Checksum, crc32cCombine) {
   }
 }
 
+TEST(Checksum, crc32cCombineSeed_explicit_starting_checksum) {
+  auto random32 = folly::Random::rand32();
+  std::vector<uint32_t> startingChecksums = {0U, ~0U, random32};
+
+  for (auto startingChecksum : startingChecksums) {
+    for (size_t totlen = 1024; totlen < BUFFER_SIZE;
+         totlen += BUFFER_SIZE / 8) {
+      auto mid = folly::Random::rand64(0, totlen);
+      auto crc1 = folly::crc32c(&buffer[0], mid, startingChecksum);
+      auto crc2 = folly::crc32c(&buffer[mid], totlen - mid, startingChecksum);
+      auto crcfull = folly::crc32c(&buffer[0], totlen, startingChecksum);
+      auto combined = folly::crc32c_combine_seed(
+          crc1, crc2, totlen - mid, startingChecksum);
+      EXPECT_EQ(combined, crcfull)
+          << "Failed for startingChecksum=" << startingChecksum
+          << " totlen=" << totlen << " mid=" << mid;
+    }
+  }
+}
+
 void benchmarkHardwareCRC32C(unsigned long iters, size_t blockSize) {
   if (folly::detail::crc32c_hw_supported()) {
     uint32_t checksum;

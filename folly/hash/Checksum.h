@@ -91,4 +91,21 @@ uint32_t crc32_combine(uint32_t crc1, uint32_t crc2, size_t crc2len);
    polynomial */
 uint32_t crc32c_combine(uint32_t crc1, uint32_t crc2, size_t crc2len);
 
+/**
+ * crc32c_combine_seed is the same as crc32c_combine. Unlike crc32c_combine that
+ * only works for crc32c computed using a starting checksum 0U, this method
+ * works for any starting checksum that is an uint32_t.
+ *
+ * @param crc1 First CRC checksum
+ * @param crc2 Second CRC checksum
+ * @param crc2len Length of the second buffer (in bytes)
+ * @param startingChecksum The initial checksum value used when computing BOTH
+ *                         crc1 and crc2. Both checksums must have been computed
+ *                         with the same starting value. Use ~0U for the
+ *                         standard CRC32C default.
+ * @return Combined CRC32C checksum
+ */
+uint32_t crc32c_combine_seed(
+    uint32_t crc1, uint32_t crc2, size_t crc2len, uint32_t startingChecksum);
+
 } // namespace folly
