@@ -267,7 +267,7 @@ void partiallyUninitializedCopy(
 
 template <class SizeType, bool ShouldUseHeap, bool AlwaysUseHeap>
 struct IntegralSizePolicyBase {
-  typedef SizeType InternalSizeType;
+  using InternalSizeType = SizeType;
 
   IntegralSizePolicyBase() : size_(0) {}
 
@@ -460,21 +460,19 @@ struct small_vector_base {
   /*
    * Make the real policy base classes.
    */
-  typedef IntegralSizePolicy<
+  using ActualSizePolicy = IntegralSizePolicy<
       typename Policy::size_type,
       !Policy::in_situ_only::value,
-      RequestedMaxInline == 0>
-      ActualSizePolicy;
+      RequestedMaxInline == 0>;
 
   /*
    * Now inherit from them all.  This is done in such a convoluted
    * way to make sure we get the empty base optimization on all these
    * types to keep sizeof(small_vector<>) minimal.
    */
-  typedef boost::totally_ordered1<
+  using type = boost::totally_ordered1<
       small_vector<Value, RequestedMaxInline, InPolicy>,
-      ActualSizePolicy>
-      type;
+      ActualSizePolicy>;
 };
 
 namespace small_vector_detail {
@@ -501,9 +499,9 @@ template <class Value, std::size_t RequestedMaxInline = 1, class Policy = void>
 class small_vector
     : public detail::small_vector_base<Value, RequestedMaxInline, Policy>::
           type {
-  typedef typename detail::
-      small_vector_base<Value, RequestedMaxInline, Policy>::type BaseType;
-  typedef typename BaseType::InternalSizeType InternalSizeType;
+  using BaseType = typename detail::
+      small_vector_base<Value, RequestedMaxInline, Policy>::type;
+  using InternalSizeType = typename BaseType::InternalSizeType;
 
   /*
    * Figure out the max number of elements we should inline.  (If
@@ -518,19 +516,19 @@ class small_vector
           : constexpr_max(kSizeOfValuePtr / kSizeOfValue, RequestedMaxInline)};
 
  public:
-  typedef std::size_t size_type;
-  typedef Value value_type;
-  typedef std::allocator<Value> allocator_type;
-  typedef value_type& reference;
-  typedef value_type const& const_reference;
-  typedef value_type* iterator;
-  typedef value_type* pointer;
-  typedef value_type const* const_iterator;
-  typedef value_type const* const_pointer;
-  typedef std::ptrdiff_t difference_type;
+  using size_type = std::size_t;
+  using value_type = Value;
+  using allocator_type = std::allocator<Value>;
+  using reference = value_type&;
+  using const_reference = value_type const&;
+  using iterator = value_type*;
+  using pointer = value_type*;
+  using const_iterator = value_type const*;
+  using const_pointer = value_type const*;
+  using difference_type = std::ptrdiff_t;
 
-  typedef std::reverse_iterator<iterator> reverse_iterator;
-  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   small_vector() = default;
   // Allocator is unused here. It is taken in for compatibility with std::vector
@@ -1169,7 +1167,7 @@ class small_vector
   // constructor).
   template <class It>
   void constructImpl(It first, It last, std::false_type) {
-    typedef typename std::iterator_traits<It>::iterator_category categ;
+    using categ = typename std::iterator_traits<It>::iterator_category;
     if (std::is_same<categ, std::input_iterator_tag>::value) {
       // With iterators that only allow a single pass, we can't really
       // do anything sane here.
@@ -1392,13 +1390,13 @@ class small_vector
   FOLLY_SV_PACK_POP
 
   static constexpr size_t kMaxInlineNonZero = MaxInline ? MaxInline : 1u;
-  typedef aligned_storage_for_t<value_type[kMaxInlineNonZero]>
-      InlineStorageDataType;
+  using InlineStorageDataType =
+      aligned_storage_for_t<value_type[kMaxInlineNonZero]>;
 
-  typedef typename std::conditional<
+  using InlineStorageType = typename std::conditional<
       sizeof(value_type) * MaxInline != 0,
       InlineStorageDataType,
-      char>::type InlineStorageType;
+      char>::type;
 
   // If the storage is small enough, it is usually faster to copy it entirely,
   // instead of just size() values, to make the loop fixed-size and
@@ -1443,9 +1441,8 @@ class small_vector
   static bool constexpr kAlwaysHasCapacity =
       kHasInlineCapacity || kMustTrackHeapifiedCapacity;
 
-  typedef typename std::
-      conditional<kHasInlineCapacity, HeapPtrWithCapacity, HeapPtr>::type
-          PointerType;
+  using PointerType = typename std::
+      conditional<kHasInlineCapacity, HeapPtrWithCapacity, HeapPtr>::type;
 
   bool hasCapacity() const {
     return kAlwaysHasCapacity || !kHeapifyCapacityThreshold ||
