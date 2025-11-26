@@ -1768,6 +1768,20 @@ class F14Table : public Policy {
 
   template <typename K>
   FOLLY_ALWAYS_INLINE ItemIter find(K const& key) const {
+    const auto sz = size();
+    if (sz == 0) {
+      return ItemIter{};
+    }
+    // There is no easy way to obtain a begin iterator with the current policy
+    // design.
+    // As a result, F14Vector* containers (kEnableItemIteration == false) do
+    // not benefit from this optimization yet.
+    if constexpr (kEnableItemIteration) {
+      if (sz == 1) {
+        ItemIter beg = begin();
+        return this->keyMatchesItem(key, beg.citem()) ? beg : ItemIter{};
+      }
+    }
     auto hp = computeHash(key);
     return findImpl(hp, key, Prefetch::ENABLED);
   }
