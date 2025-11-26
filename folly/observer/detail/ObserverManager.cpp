@@ -62,6 +62,7 @@ class ObserverManager::UpdatesManager::CurrentQueueProcessor {
       LOG(ERROR) << "--observer_manager_pool_size should be >= 1";
       FLAGS_observer_manager_pool_size = 1;
     }
+    threads_.reserve(FLAGS_observer_manager_pool_size);
     for (int32_t i = 0; i < FLAGS_observer_manager_pool_size; ++i) {
       threads_.emplace_back([this, i]() {
         folly::setThreadName(
