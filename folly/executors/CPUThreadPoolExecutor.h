@@ -189,12 +189,8 @@ class CPUThreadPoolExecutor
   bool shouldStopThread(bool isPoison);
   void stopThread(const ThreadPtr& thread);
 
-  template <bool withPriority>
-  void addImpl(
-      Func func,
-      int8_t priority,
-      std::chrono::milliseconds expiration,
-      Func expireCallback);
+  template <typename EnqueueTask>
+  void addImpl(EnqueueTask&& enqueueTask, CPUTask&& task);
 
   std::unique_ptr<folly::QueueObserverFactory> createQueueObserverFactory();
   QueueObserver* FOLLY_NULLABLE getQueueObserver(int8_t pri);

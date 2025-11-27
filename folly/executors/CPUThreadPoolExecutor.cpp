@@ -46,9 +46,7 @@ CPUThreadPoolExecutor::CPUTask::CPUTask(
     std::chrono::milliseconds expiration,
     Func&& expireCallback,
     int8_t pri)
-    : Task(std::move(f), expiration, std::move(expireCallback), pri) {
-  DCHECK(func_); // Empty func reserved as poison.
-}
+    : Task(std::move(f), expiration, std::move(expireCallback), pri) {}
 
 CPUThreadPoolExecutor::CPUTask::CPUTask()
     : Task(nullptr, std::chrono::milliseconds(0), nullptr) {}
@@ -221,7 +219,10 @@ void CPUThreadPoolExecutor::add(Func func) {
 
 void CPUThreadPoolExecutor::add(
     Func func, std::chrono::milliseconds expiration, Func expireCallback) {
-  addImpl<false>(std::move(func), 0, expiration, std::move(expireCallback));
+  CPUTask task(std::move(func), expiration, std::move(expireCallback), 0);
+  addImpl(
+      [this](auto&& task) { return taskQueue_->add(std::move(task)); },
+      std::move(task));
 }
 
 void CPUThreadPoolExecutor::addWithPriority(Func func, int8_t priority) {
@@ -233,29 +234,26 @@ void CPUThreadPoolExecutor::add(
     int8_t priority,
     std::chrono::milliseconds expiration,
     Func expireCallback) {
-  addImpl<true>(
-      std::move(func), priority, expiration, std::move(expireCallback));
+  CHECK_GT(getNumPriorities(), 0);
+  CPUTask task(
+      std::move(func), expiration, std::move(expireCallback), priority);
+  addImpl(
+      [this](auto&& task) {
+        auto pri = task.priority();
+        return taskQueue_->addWithPriority(std::move(task), pri);
+      },
+      std::move(task));
 }
 
-template <bool withPriority>
-void CPUThreadPoolExecutor::addImpl(
-    Func func,
-    int8_t priority,
-    std::chrono::milliseconds expiration,
-    Func expireCallback) {
-  if (!func) {
+template <typename EnqueueTask>
+void CPUThreadPoolExecutor::addImpl(EnqueueTask&& enqueueTask, CPUTask&& task) {
+  if (!task.func_) {
     // Reserve empty funcs as poison by logging the error inline.
-    invokeCatchingExns("ThreadPoolExecutor: func", std::move(func));
+    invokeCatchingExns("ThreadPoolExecutor: func", std::move(task.func_));
     return;
   }
 
-  if (withPriority) {
-    CHECK_GT(getNumPriorities(), 0);
-  }
-
-  CPUTask task(
-      std::move(func), expiration, std::move(expireCallback), priority);
-  if (auto queueObserver = getQueueObserver(priority)) {
+  if (auto queueObserver = getQueueObserver(task.priority())) {
     task.queueObserverPayload_ = queueObserver->onEnqueued(task.context_.get());
   }
   registerTaskEnqueue(task);
@@ -272,9 +270,7 @@ void CPUThreadPoolExecutor::addImpl(
       ? getKeepAliveToken(this)
       : folly::Executor::KeepAlive<>{};
 
-  auto result = withPriority
-      ? taskQueue_->addWithPriority(std::move(task), priority)
-      : taskQueue_->add(std::move(task));
+  auto result = enqueueTask(std::move(task));
 
   if (mayNeedToAddThreads && !result.reusedThread) {
     ensureActiveThreads();
