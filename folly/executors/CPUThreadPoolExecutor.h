@@ -178,6 +178,9 @@ class CPUThreadPoolExecutor
 
  protected:
   BlockingQueue<CPUTask>* FOLLY_NONNULL getTaskQueue();
+  template <typename EnqueueTask>
+  void addImpl(EnqueueTask&& enqueueTask, CPUTask&& task);
+
   std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_{
       std::make_unique<ThreadIdWorkerProvider>()};
 
@@ -188,9 +191,6 @@ class CPUThreadPoolExecutor
 
   bool shouldStopThread(bool isPoison);
   void stopThread(const ThreadPtr& thread);
-
-  template <typename EnqueueTask>
-  void addImpl(EnqueueTask&& enqueueTask, CPUTask&& task);
 
   std::unique_ptr<folly::QueueObserverFactory> createQueueObserverFactory();
   QueueObserver* FOLLY_NULLABLE getQueueObserver(int8_t pri);
@@ -203,5 +203,37 @@ class CPUThreadPoolExecutor
   std::atomic<size_t> threadsToStop_{0};
   Options::Blocking prohibitBlockingOnThreadPools_ = Options::Blocking::allow;
 };
+
+template <typename EnqueueTask>
+void CPUThreadPoolExecutor::addImpl(EnqueueTask&& enqueueTask, CPUTask&& task) {
+  if (!task.func_) {
+    // Reserve empty funcs as poison by logging the error inline.
+    invokeCatchingExns("ThreadPoolExecutor: func", std::move(task.func_));
+    return;
+  }
+
+  if (auto queueObserver = getQueueObserver(task.priority())) {
+    task.queueObserverPayload_ = queueObserver->onEnqueued(task.context_.get());
+  }
+  registerTaskEnqueue(task);
+
+  // It's not safe to expect that the executor is alive after a task is added to
+  // the queue (this task could be holding the last KeepAlive and when finished
+  // - it may unblock the executor shutdown).
+  // If we need executor to be alive after adding into the queue, we have to
+  // acquire a KeepAlive.
+  bool mayNeedToAddThreads = minThreads_.load(std::memory_order_relaxed) == 0 ||
+      activeThreads_.load(std::memory_order_relaxed) <
+          maxThreads_.load(std::memory_order_relaxed);
+  folly::Executor::KeepAlive<> ka = mayNeedToAddThreads
+      ? getKeepAliveToken(this)
+      : folly::Executor::KeepAlive<>{};
+
+  auto result = enqueueTask(std::move(task));
+
+  if (mayNeedToAddThreads && !result.reusedThread) {
+    ensureActiveThreads();
+  }
+}
 
 } // namespace folly

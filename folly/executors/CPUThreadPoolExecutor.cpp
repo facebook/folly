@@ -245,38 +245,6 @@ void CPUThreadPoolExecutor::add(
       std::move(task));
 }
 
-template <typename EnqueueTask>
-void CPUThreadPoolExecutor::addImpl(EnqueueTask&& enqueueTask, CPUTask&& task) {
-  if (!task.func_) {
-    // Reserve empty funcs as poison by logging the error inline.
-    invokeCatchingExns("ThreadPoolExecutor: func", std::move(task.func_));
-    return;
-  }
-
-  if (auto queueObserver = getQueueObserver(task.priority())) {
-    task.queueObserverPayload_ = queueObserver->onEnqueued(task.context_.get());
-  }
-  registerTaskEnqueue(task);
-
-  // It's not safe to expect that the executor is alive after a task is added to
-  // the queue (this task could be holding the last KeepAlive and when finished
-  // - it may unblock the executor shutdown).
-  // If we need executor to be alive after adding into the queue, we have to
-  // acquire a KeepAlive.
-  bool mayNeedToAddThreads = minThreads_.load(std::memory_order_relaxed) == 0 ||
-      activeThreads_.load(std::memory_order_relaxed) <
-          maxThreads_.load(std::memory_order_relaxed);
-  folly::Executor::KeepAlive<> ka = mayNeedToAddThreads
-      ? getKeepAliveToken(this)
-      : folly::Executor::KeepAlive<>{};
-
-  auto result = enqueueTask(std::move(task));
-
-  if (mayNeedToAddThreads && !result.reusedThread) {
-    ensureActiveThreads();
-  }
-}
-
 uint8_t CPUThreadPoolExecutor::getNumPriorities() const {
   return taskQueue_->getNumPriorities();
 }
