@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
@@ -1132,5 +1133,29 @@ fbcode_target(
     ],
     exported_external_deps = [
         "boost",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "striped_edf_thread_pool_executor",
+    srcs = [
+        "StripedEDFThreadPoolExecutor.cpp",
+    ],
+    headers = [
+        "StripedEDFThreadPoolExecutor.h",
+    ],
+    deps = [
+        "//folly/concurrency:cache_locality",
+        "//folly/container:intrusive_heap",
+        "//folly/synchronization:distributed_mutex",
+        "//folly/synchronization:striped_throttled_lifo_sem",
+    ],
+    exported_deps = [
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/executors:soft_real_time_executor",
+        "//folly/synchronization:throttled_lifo_sem",
+    ],
+    external_deps = [
+        "glog",
     ],
 )

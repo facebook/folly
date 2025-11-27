@@ -349,3 +349,18 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "striped_edf_thread_pool_executor_test",
+    srcs = [
+        "StripedEDFThreadPoolExecutorTest.cpp",
+    ],
+    deps = [
+        "//folly:random",
+        "//folly/executors:striped_edf_thread_pool_executor",
+        "//folly/portability:gtest",
+        "//folly/portability:sched",
+        "//folly/portability:unistd",
+    ],
+)
