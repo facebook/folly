@@ -226,6 +226,6 @@ TEST(SingletonThreadLocalDeathTest, Overload) {
       folly::SingletonThreadLocal<int, DeathTag, folly::detail::DefaultMake<int>, TLTag1>
       folly::SingletonThreadLocal<int, DeathTag, folly::detail::DefaultMake<int>, TLTag2>
   )MESSAGE");
-  EXPECT_DEATH(dlopen(lib.string().c_str(), RTLD_LAZY), message);
+  EXPECT_DEATH(dlopen(lib.string().c_str(), RTLD_LAZY), message) << dlerror();
 }
 #endif
