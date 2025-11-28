@@ -185,7 +185,7 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     o->threadStopped(thread.get());
   }
   threadList_.remove(thread);
-  stoppedThreads_.add(thread);
+  stoppedThreads_.add(std::move(thread));
 }
 
 MuxIOThreadPoolExecutor::EvbState& MuxIOThreadPoolExecutor::pickEvbState() {

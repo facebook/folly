@@ -401,7 +401,7 @@ void ThreadPoolExecutor::addTaskObserver(
 }
 
 BlockingQueueAddResult ThreadPoolExecutor::StoppedThreadQueue::add(
-    ThreadPoolExecutor::ThreadPtr item) {
+    ThreadPoolExecutor::ThreadPtr&& item) {
   std::lock_guard guard(mutex_);
   queue_.push(std::move(item));
   return sem_.post();

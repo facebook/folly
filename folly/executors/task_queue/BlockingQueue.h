@@ -50,9 +50,9 @@ class BlockingQueue {
   // Returns true if an existing thread was able to work on it (used
   // for dynamically sizing thread pools), false otherwise.  Return false
   // if this feature is not supported.
-  virtual BlockingQueueAddResult add(T item) = 0;
+  virtual BlockingQueueAddResult add(T&& item) = 0;
   virtual BlockingQueueAddResult addWithPriority(
-      T item, int8_t /* priority */) {
+      T&& item, int8_t /* priority */) {
     return add(std::move(item));
   }
   virtual uint8_t getNumPriorities() { return 1; }

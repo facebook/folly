@@ -75,7 +75,8 @@ class EDFPriorityQueue {
 template <class T>
 class BlockingQueueWithDeadline : public BlockingQueue<T> {
  public:
-  virtual BlockingQueueAddResult addWithDeadline(T item, uint64_t deadline) = 0;
+  virtual BlockingQueueAddResult addWithDeadline(
+      T&& item, uint64_t deadline) = 0;
 };
 
 template <class T>
@@ -92,13 +93,13 @@ class StripedEDFPriorityBlockingQueue final
     StripedThrottledLifoSemBalancer::unsubscribe(sem_);
   }
 
-  BlockingQueueAddResult addWithDeadline(T item, uint64_t deadline) override {
+  BlockingQueueAddResult addWithDeadline(T&& item, uint64_t deadline) override {
     const auto stripeIdx = getStripeIdx();
     sem_.payload(stripeIdx).enqueue(std::move(item), deadline);
     return sem_.post(stripeIdx);
   }
 
-  BlockingQueueAddResult add(T item) override {
+  BlockingQueueAddResult add(T&& item) override {
     return addWithDeadline(
         std::move(item), StripedEDFThreadPoolExecutor::kLatestDeadline);
   }
@@ -133,12 +134,12 @@ class EDFPriorityBlockingQueue final : public BlockingQueueWithDeadline<T> {
   explicit EDFPriorityBlockingQueue(const ThrottledLifoSem::Options& options)
       : sem_(options) {}
 
-  BlockingQueueAddResult addWithDeadline(T item, uint64_t deadline) override {
+  BlockingQueueAddResult addWithDeadline(T&& item, uint64_t deadline) override {
     pq_.enqueue(std::move(item), deadline);
     return sem_.post();
   }
 
-  BlockingQueueAddResult add(T item) override {
+  BlockingQueueAddResult add(T&& item) override {
     return addWithDeadline(
         std::move(item), StripedEDFThreadPoolExecutor::kLatestDeadline);
   }

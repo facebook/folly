@@ -29,7 +29,7 @@ class UnboundedBlockingQueue : public BlockingQueue<T> {
       const typename Semaphore::Options& semaphoreOptions = {})
       : sem_(semaphoreOptions) {}
 
-  BlockingQueueAddResult add(T item) override {
+  BlockingQueueAddResult add(T&& item) override {
     queue_.enqueue(std::move(item));
     return sem_.post();
   }

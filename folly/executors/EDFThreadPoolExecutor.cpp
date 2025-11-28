@@ -330,7 +330,7 @@ bool EDFThreadPoolExecutor::tryStopThread(
   stoppedThreadProcessedTasks_ += thread->processedTasks;
   thread->processedTasks = 0;
   threadList_.remove(thread);
-  stoppedThreads_.add(thread);
+  stoppedThreads_.add(folly::copy(thread));
   return true;
 }
 

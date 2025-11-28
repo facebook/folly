@@ -63,11 +63,11 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
   uint8_t getNumPriorities() override { return queues_.size(); }
 
   // Add at medium priority by default
-  BlockingQueueAddResult add(T item) override {
+  BlockingQueueAddResult add(T&& item) override {
     return addWithPriority(std::move(item), folly::Executor::MID_PRI);
   }
 
-  BlockingQueueAddResult addWithPriority(T item, int8_t priority) override {
+  BlockingQueueAddResult addWithPriority(T&& item, int8_t priority) override {
     int mid = getNumPriorities() / 2;
     size_t queue = priority < 0
         ? std::max(0, mid + priority)

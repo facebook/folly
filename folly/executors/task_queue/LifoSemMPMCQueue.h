@@ -34,7 +34,7 @@ class LifoSemMPMCQueue : public BlockingQueue<T> {
       const typename Semaphore::Options& semaphoreOptions = {})
       : sem_(semaphoreOptions), queue_(max_capacity) {}
 
-  BlockingQueueAddResult add(T item) override {
+  BlockingQueueAddResult add(T&& item) override {
     switch (kBehavior) { // static
       case QueueBehaviorIfFull::THROW:
         if (!queue_.writeIfNotFull(std::move(item))) {

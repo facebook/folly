@@ -285,7 +285,7 @@ void CPUThreadPoolExecutor::stopThread(const ThreadPtr& thread) {
   stoppedThreadProcessedTasks_ += thread->processedTasks;
   thread->processedTasks = 0;
   threadList_.remove(thread);
-  stoppedThreads_.add(thread);
+  stoppedThreads_.add(folly::copy(thread));
 }
 
 void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
