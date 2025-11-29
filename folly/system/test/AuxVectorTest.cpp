@@ -24,32 +24,24 @@
 
 using namespace folly;
 
+#if defined(__linux__) && !FOLLY_MOBILE
+
 TEST(ElfHwCaps, Simple) {
   ElfHwCaps caps;
-#if defined(__linux__)
   // All aarch64 CPUs should support floating point
   EXPECT_EQ(kIsArchAArch64, caps.aarch64_fp());
-#else
-  GTEST_SKIP();
-#endif
 }
 
 TEST(ElfHwCaps, SimpleStatic) {
   static ElfHwCaps caps;
-#if defined(__linux__)
   // All aarch64 CPUs should support floating point
   EXPECT_EQ(kIsArchAArch64, caps.aarch64_fp());
-#else
-  GTEST_SKIP();
-#endif
 }
 
 TEST(ElfHwCaps, SimpleStaticWithArgs) {
-#if defined(__linux__)
   static ElfHwCaps caps{getauxval(AT_HWCAP), getauxval(AT_HWCAP2)};
   // All aarch64 CPUs should support floating point
   EXPECT_EQ(kIsArchAArch64, caps.aarch64_fp());
-#else
-  GTEST_SKIP();
-#endif
 }
+
+#endif
