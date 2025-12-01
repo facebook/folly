@@ -22,6 +22,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/concurrency/AtomicSharedPtr.h>
+#include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/concurrency/memory/AtomicReadMostlyMainPtr.h>
 #include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/container/Enumerate.h>
@@ -131,6 +132,36 @@ BENCHMARK(folly_atomic_read_mostly_shared_ptr_copy, iters) {
   braces.dismissing([&] {
     while (iters--) {
       auto copy = obj.load();
+      folly::compiler_must_not_predict(*copy);
+      sum += *copy;
+    }
+  });
+  folly::compiler_must_not_elide(sum);
+}
+
+BENCHMARK(folly_core_cached_shared_ptr_copy, iters) {
+  BenchmarkSuspender braces;
+  auto obj = folly::CoreCachedSharedPtr(copy_to_shared_ptr(0));
+
+  int sum = 0;
+  braces.dismissing([&] {
+    while (iters--) {
+      auto copy = obj.get();
+      folly::compiler_must_not_predict(*copy);
+      sum += *copy;
+    }
+  });
+  folly::compiler_must_not_elide(sum);
+}
+
+BENCHMARK(folly_atomic_core_cached_shared_ptr_copy, iters) {
+  BenchmarkSuspender braces;
+  auto obj = folly::AtomicCoreCachedSharedPtr(copy_to_shared_ptr(0));
+
+  int sum = 0;
+  braces.dismissing([&] {
+    while (iters--) {
+      auto copy = obj.get();
       folly::compiler_must_not_predict(*copy);
       sum += *copy;
     }
