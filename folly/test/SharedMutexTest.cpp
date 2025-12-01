@@ -561,7 +561,7 @@ struct PosixMutex {
 template <template <typename> class Atom, typename Lock, typename Locker>
 static void runContendedReaders(
     size_t numOps, size_t numThreads, bool useSeparateLocks) {
-  struct alignas(hardware_destructive_interference_size)
+  struct alignas(folly::hardware_destructive_interference_size)
       GlobalLockAndProtectedValue {
     Lock globalLock;
     int valueProtectedByLock = 10;
@@ -663,7 +663,7 @@ static void runMixed(
     size_t numThreads,
     double writeFraction,
     bool useSeparateLocks) {
-  struct alignas(hardware_destructive_interference_size)
+  struct alignas(folly::hardware_destructive_interference_size)
       GlobalLockAndProtectedValue {
     Lock globalLock;
     int valueProtectedByLock = 0;
@@ -1358,7 +1358,7 @@ static void burn(size_t n) {
 // in turn with reader/writer conflict
 template <typename Lock, template <typename> class Atom = atomic>
 static void runPingPong(size_t numRounds, size_t burnCount) {
-  struct alignas(hardware_destructive_interference_size) PaddedLock {
+  struct alignas(folly::hardware_destructive_interference_size) PaddedLock {
     Lock lock_;
   };
   array<PaddedLock, 3> paddedLocks;
