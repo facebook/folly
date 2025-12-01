@@ -158,7 +158,7 @@ void IOBufQueue::append(
 void IOBufQueue::append(
     const folly::IOBuf& buf, bool pack, bool allowTailReuse) {
   if (!head_ || !pack) {
-    append(buf.clone(), pack);
+    append(buf.clone(), pack, allowTailReuse);
     return;
   }
 

@@ -595,87 +595,125 @@ TEST(IOBufQueue, Gather) {
   EXPECT_EQ("hello world", s);
 }
 
-TEST(IOBufQueue, ReuseTail) {
-  enum class AppendType { Ptr = 0, ConstRef = 1, RRef = 2 };
+namespace {
+enum class AppendType { Ptr, ConstRef, RRef };
+enum class EmptyHead { No, Yes };
+enum class Pack { No, Yes };
 
-  const auto test = [](AppendType appendType, bool withEmptyHead) {
-    SCOPED_TRACE(
-        fmt::format(
-            "appendType={}, withEmptyHead={}",
-            static_cast<int>(appendType),
-            withEmptyHead));
-
-    IOBufQueue queue;
-    IOBufQueue::WritableRangeCache cache(&queue);
-
-    constexpr size_t kInitialCapacity = 1024;
-    queue.preallocate(kInitialCapacity, kInitialCapacity);
-    size_t expectedCapacity = queue.front()->capacity();
-
-    const auto makeUnpackable = [] {
-      auto unpackable = IOBuf::create(IOBufQueue::kMaxPackCopy + 1);
-      unpackable->append(IOBufQueue::kMaxPackCopy + 1);
-      return unpackable;
-    };
-
-    auto unpackable = makeUnpackable();
-    expectedCapacity += unpackable->capacity();
-
-    std::unique_ptr<IOBuf> buf;
-    size_t packableLength = 0;
-    if (withEmptyHead) {
-      // In this case, the unpackable buffer should just shift the empty head
-      // buffer forward.
-      buf = std::move(unpackable);
-    } else {
-      queue.append("hello ");
-      buf = stringToIOBuf(SCL("world"));
-      packableLength = buf->length();
-      buf->insertAfterThisOne(std::move(unpackable));
-    }
-
-    const auto oldTail = reinterpret_cast<uint8_t*>(queue.writableTail());
-    const auto oldTailroom = queue.tailroom();
-
-    // Append two buffers in a row to verify that the reused tail gets pushed
-    // forward without wrapping.
-    for (size_t i = 0; i < 2; ++i) {
-      SCOPED_TRACE(fmt::format("i={}", i));
-
-      switch (appendType) {
+struct IOBufQueueAppendTest
+    : testing::TestWithParam<std::tuple<AppendType, EmptyHead, Pack>> {};
+INSTANTIATE_TEST_CASE_P(
+    IOBufQueueAppendTest,
+    IOBufQueueAppendTest,
+    testing::Combine(
+        ::testing::Values(
+            AppendType::Ptr, AppendType::ConstRef, AppendType::RRef),
+        ::testing::Values(EmptyHead::No, EmptyHead::Yes),
+        ::testing::Values(Pack::No, Pack::Yes)),
+    [](const testing::TestParamInfo<std::tuple<AppendType, EmptyHead, Pack>>&
+           info) {
+      std::string name;
+      switch (std::get<AppendType>(info.param)) {
         case AppendType::Ptr:
-          queue.append(
-              std::move(buf), /* pack */ true, /* allowTailReuse */ true);
+          name = "AppendPtr";
           break;
         case AppendType::ConstRef:
-          queue.append(*buf, /* pack */ true, /* allowTailReuse */ true);
+          name = "AppendConstRef";
           break;
         case AppendType::RRef:
-          queue.append(
-              std::move(*buf), /* pack */ true, /* allowTailReuse */ true);
+          name = "AppendRRef";
           break;
       }
-
-      // We should be able to avoid allocating new memory because we still had
-      // room in the old tail, even after packing the first IOBuf.
-      EXPECT_EQ(queue.writableTail(), oldTail + packableLength);
-      EXPECT_EQ(queue.tailroom(), oldTailroom - packableLength);
-      EXPECT_EQ(queue.front()->computeChainCapacity(), expectedCapacity);
-      EXPECT_EQ(
-          queue.front()->countChainElements(), i + (withEmptyHead ? 2 : 3));
-
-      if (i == 0) {
-        buf = makeUnpackable();
-        expectedCapacity += buf->capacity();
+      switch (std::get<EmptyHead>(info.param)) {
+        case EmptyHead::No:
+          name += "NoEmptyHead";
+          break;
+        case EmptyHead::Yes:
+          name += "EmptyHead";
+          break;
       }
-    }
+      switch (std::get<Pack>(info.param)) {
+        case Pack::No:
+          name += "NoPack";
+          break;
+        case Pack::Yes:
+          name += "Pack";
+          break;
+      }
+      return name;
+    });
+} // namespace
+
+TEST_P(IOBufQueueAppendTest, ReuseTail) {
+  const AppendType appendType = std::get<AppendType>(GetParam());
+  const bool withEmptyHead = std::get<EmptyHead>(GetParam()) == EmptyHead::Yes;
+  const bool pack = std::get<Pack>(GetParam()) == Pack::Yes;
+  IOBufQueue queue;
+  IOBufQueue::WritableRangeCache cache(&queue);
+
+  constexpr size_t kInitialCapacity = 1024;
+  queue.preallocate(kInitialCapacity, kInitialCapacity);
+  size_t expectedCapacity = queue.front()->capacity();
+
+  const auto makeUnpackable = [] {
+    auto unpackable = IOBuf::create(IOBufQueue::kMaxPackCopy + 1);
+    unpackable->append(IOBufQueue::kMaxPackCopy + 1);
+    return unpackable;
   };
 
-  // Test all overloads, and check that an empty head is handled correctly.
-  for (auto appendType :
-       {AppendType::Ptr, AppendType::ConstRef, AppendType::RRef}) {
-    for (bool withEmptyHead : {false, true}) {
-      test(appendType, withEmptyHead);
+  auto unpackable = makeUnpackable();
+  expectedCapacity += unpackable->capacity();
+
+  std::unique_ptr<IOBuf> buf;
+  size_t packableLength = 0;
+  if (withEmptyHead) {
+    // In this case, the unpackable buffer should just shift the empty head
+    // buffer forward.
+    buf = std::move(unpackable);
+  } else {
+    queue.append("hello ");
+    buf = stringToIOBuf(SCL("world"));
+    packableLength = buf->length();
+    if (!pack) {
+      expectedCapacity += buf->computeChainCapacity();
+    }
+    buf->insertAfterThisOne(std::move(unpackable));
+  }
+
+  const auto oldTail = reinterpret_cast<uint8_t*>(queue.writableTail());
+  const auto oldTailroom = queue.tailroom();
+
+  // Append two buffers in a row to verify that the reused tail gets pushed
+  // forward without wrapping.
+  for (size_t i = 0; i < 2; ++i) {
+    SCOPED_TRACE(fmt::format("i={}", i));
+
+    switch (appendType) {
+      case AppendType::Ptr:
+        queue.append(std::move(buf), pack, /* allowTailReuse */ true);
+        break;
+      case AppendType::ConstRef:
+        queue.append(*buf, pack, /* allowTailReuse */ true);
+        break;
+      case AppendType::RRef:
+        queue.append(std::move(*buf), pack, /* allowTailReuse */ true);
+        break;
+    }
+
+    // We should be able to avoid allocating new memory because we still had
+    // room in the old tail, even after packing the first IOBuf.
+    EXPECT_EQ(queue.writableTail(), oldTail + (pack ? packableLength : 0));
+    EXPECT_EQ(queue.tailroom(), oldTailroom - (pack ? packableLength : 0));
+    EXPECT_EQ(queue.front()->computeChainCapacity(), expectedCapacity);
+    // if pack is not set, one extra chain element is present in the case of a
+    // non-empty head (the first element appended)
+    EXPECT_EQ(
+        queue.front()->countChainElements(),
+        i + (withEmptyHead ? 2 : (pack ? 0 : 1) + 3));
+
+    if (i == 0) {
+      buf = makeUnpackable();
+      expectedCapacity += buf->capacity();
     }
   }
 }
