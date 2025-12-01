@@ -78,6 +78,8 @@ constexpr int kChildFailure = 126;
 
 namespace folly {
 
+using detail::linux_syscall;
+
 namespace detail {
 
 SubprocessFdActionsList::SubprocessFdActionsList(
@@ -916,29 +918,51 @@ int Subprocess::prepareChild(SpawnRawArgs const& args) {
 #endif
 
   // Change effective/real group/user, if requested
-  if (auto& ptr = args.egid; ptr && 0 != ::setegid(ptr->value)) {
-    if (auto out = ptr->errout) {
+  // Call the raw syscall directly for linux, as glibc set*id() is not
+  // safe after vfork() - Linux is the only kernel where libc set*id is not just
+  // a call to syscall set*id
+  // The risk is that some vfork child is terminated within set*id() with
+  // a lock held, deadlocking the next vfork child
+  auto idval = [](auto id) { return id ? &id->value : nullptr; };
+#if defined(__linux__)
+  constexpr auto k_sys_setresgid = SYS_setresgid;
+  constexpr auto k_sys_setresuid = SYS_setresuid;
+#else
+  // Unused
+  constexpr auto k_sys_setresgid = -1;
+  constexpr auto k_sys_setresuid = -1;
+#endif
+  if (auto p = idval(args.egid); kIsLinux
+          ? p && 0 != linux_syscall(k_sys_setresgid, -1, *p, -1)
+          : p && 0 != ::setegid(*p)) {
+    if (auto out = args.egid->errout) {
       *out = errno;
     } else {
       return errno;
     }
   }
-  if (auto& ptr = args.gid; ptr && 0 != ::setgid(ptr->value)) {
-    if (auto out = ptr->errout) {
+  if (auto p = idval(args.gid); kIsLinux
+          ? p && 0 != linux_syscall(SYS_setgid, *p)
+          : p && 0 != ::setgid(*p)) {
+    if (auto out = args.gid->errout) {
       *out = errno;
     } else {
       return errno;
     }
   }
-  if (auto& ptr = args.euid; ptr && 0 != ::seteuid(ptr->value)) {
-    if (auto out = ptr->errout) {
+  if (auto p = idval(args.euid); kIsLinux
+          ? p && 0 != linux_syscall(k_sys_setresuid, -1, *p, -1)
+          : p && 0 != ::seteuid(*p)) {
+    if (auto out = args.euid->errout) {
       *out = errno;
     } else {
       return errno;
     }
   }
-  if (auto& ptr = args.uid; ptr && 0 != ::setuid(ptr->value)) {
-    if (auto out = ptr->errout) {
+  if (auto p = idval(args.uid); kIsLinux
+          ? p && 0 != linux_syscall(SYS_setuid, *p)
+          : p && 0 != ::setuid(*p)) {
+    if (auto out = args.uid->errout) {
       *out = errno;
     } else {
       return errno;
