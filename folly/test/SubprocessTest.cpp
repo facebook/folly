@@ -930,7 +930,7 @@ TEST(KeepFileOpenSubprocessTest, KeepsFileOpen) {
           .fd(f1.fd(), Subprocess::NO_CLOEXEC)
           .fd(f2.fd(), f2.fd());
   Subprocess proc(
-      std::vector<std::string>{"/bin/ls", "/proc/self/fd"}, options);
+      std::vector<std::string>{"/bin/ls", "-v", "/proc/self/fd"}, options);
   auto p = proc.communicate();
   proc.wait();
   int fds[] = {0, 1, 2, 3, f1.fd(), f2.fd()};
