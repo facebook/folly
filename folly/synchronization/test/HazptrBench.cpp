@@ -22,6 +22,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/concurrency/AtomicSharedPtr.h>
+#include <folly/concurrency/memory/AtomicReadMostlyMainPtr.h>
 #include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/container/Enumerate.h>
 #include <folly/container/F14Set.h>
@@ -115,6 +116,21 @@ BENCHMARK(folly_read_mostly_shared_ptr_construct, iters) {
   braces.dismissing([&] {
     while (iters--) {
       auto copy = obj.getShared();
+      folly::compiler_must_not_predict(*copy);
+      sum += *copy;
+    }
+  });
+  folly::compiler_must_not_elide(sum);
+}
+
+BENCHMARK(folly_atomic_read_mostly_shared_ptr_copy, iters) {
+  BenchmarkSuspender braces;
+  auto obj = folly::AtomicReadMostlyMainPtr(copy_to_shared_ptr(0));
+
+  int sum = 0;
+  braces.dismissing([&] {
+    while (iters--) {
+      auto copy = obj.load();
       folly::compiler_must_not_predict(*copy);
       sum += *copy;
     }
