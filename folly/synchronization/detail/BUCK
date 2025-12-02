@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -10,7 +9,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "atomic_utils",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicUtils.h",
     ],
@@ -25,7 +23,6 @@ non_fbcode_target(
     compiler_flags = [
         "-mrtm",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Hardware.h",
     ],
@@ -41,7 +38,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "hazptr_utils",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "HazptrUtils.h",
     ],
@@ -55,7 +51,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "inline_function_ref",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "InlineFunctionRef.h",
     ],
@@ -70,7 +65,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "rcu-detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ThreadCachedLists.h",
         "ThreadCachedReaders.h",
@@ -92,7 +86,6 @@ non_fbcode_target(
     srcs = [
         "Sleeper.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Sleeper.h",
     ],
@@ -106,7 +99,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "spin",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Spin.h",
     ],

@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -8,13 +7,11 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl",
-    feature = triage_InfrastructureSupermoduleOptou,
 )
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "basic_transport_certificate",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["BasicTransportCertificate.h"],
     exported_deps = [
         "//xplat/folly/io/async:async_transport_certificate",
@@ -25,7 +22,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl_transport_certificate",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLTransportCertificate.h"],
     deps = ["//xplat/folly/io/async:async_transport_certificate"],
     exported_deps = [
@@ -38,7 +34,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl_utils",
     srcs = ["OpenSSLUtils.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLUtils.h"],
     deps = [
         "fbsource//xplat/folly/portability:unistd",
@@ -61,7 +56,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "ssl_errors",
     srcs = ["SSLErrors.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SSLErrors.h"],
     deps = [
         "fbsource//xplat/folly/portability:openssl",
@@ -73,7 +67,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "tls_definitions",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["TLSDefinitions.h"],
     exported_deps = ["fbsource//xplat/folly/io:iobuf"],
 )

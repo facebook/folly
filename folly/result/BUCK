@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -10,7 +9,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "gtest_helpers",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["gtest_helpers.h"],
     exported_deps = [
         ":coro",
@@ -33,7 +31,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "coro",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["coro.h"],
     exported_deps = [
         ":result",
@@ -61,7 +58,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "result",
     srcs = ["result.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["result.h"],
     deps = [
         "//third-party/glog:glog",
@@ -105,7 +101,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "try",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["try.h"],
     exported_deps = [
         ":result",
@@ -128,7 +123,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "value_only_result",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "value_only_result.h",
         "value_only_result_coro.h",

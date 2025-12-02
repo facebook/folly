@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -24,7 +23,6 @@ non_fbcode_target(
         ("bzip2", None, "bz2"),
         ("xz", None, "lzma"),
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Compression.h",
         "Utils.h",
@@ -71,7 +69,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "compression_context_pool",
     srcs = [],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "CompressionContextPool.h",
         "CompressionCoreLocalContextPool.h",
@@ -99,7 +96,6 @@ non_fbcode_target(
     fbcode_deps = [
         "//xplat/folly/memory:jemalloc_huge_page_allocator",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["CompressionContextPoolSingletons.h"],
     deps = [
         "//xplat/folly:portability",
@@ -120,7 +116,6 @@ non_fbcode_target(
     srcs = [
         "QuotientMultiSet.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "QuotientMultiSet.h",
         "QuotientMultiSet-inl.h",
@@ -143,7 +138,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "instructions",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Instructions.h",
     ],
@@ -162,7 +156,6 @@ non_fbcode_target(
     srcs = [
         "Select64.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Select64.h",
     ],

@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
     "folly_xplat_library",
@@ -14,7 +13,6 @@ non_fbcode_target(
     srcs = [
         "NetOpsDispatcher.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "NetOpsDispatcher.h",
     ],
@@ -26,7 +24,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "network_socket",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "NetworkSocket.h",
     ],
@@ -42,7 +39,6 @@ non_fbcode_target(
     srcs = [
         "NetOps.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "NetOps.h",
     ],
@@ -67,7 +63,6 @@ non_fbcode_target(
     srcs = [
         "TcpInfoDispatcher.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TcpInfoDispatcher.h",
     ],
@@ -84,7 +79,6 @@ non_fbcode_target(
     srcs = [
         "TcpInfo.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TcpInfo.h",
         "TcpInfoTypes.h",

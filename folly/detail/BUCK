@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
     "CXXFLAGS",
@@ -12,7 +11,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "singleton",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Singleton.h",
     ],
@@ -27,7 +25,6 @@ non_fbcode_target(
     srcs = [
         "SocketFastOpen.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SocketFastOpen.h",
     ],
@@ -40,7 +37,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "atomic_unordered_map_utils",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicUnorderedMapUtils.h",
     ],
@@ -54,7 +50,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "slow_fingerprint",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SlowFingerprint.h",
     ],
@@ -68,7 +63,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "mpmc_pipeline_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MPMCPipelineDetail.h",
     ],
@@ -83,7 +77,6 @@ non_fbcode_target(
     srcs = [
         "ThreadLocalDetail.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ThreadLocalDetail.h",
     ],
@@ -121,7 +114,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "thread_local_globals",
     srcs = ["thread_local_globals.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["thread_local_globals.h"],
     deps = [
         "fbsource//xplat/folly/portability:pthread",
@@ -136,7 +128,6 @@ non_fbcode_target(
     srcs = [
         "MemoryIdler.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MemoryIdler.h",
     ],
@@ -167,7 +158,6 @@ non_fbcode_target(
     srcs = [
         "FileUtilDetail.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FileUtilDetail.h",
     ],
@@ -182,7 +172,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "poly_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "PolyDetail.h",
     ],
@@ -204,7 +193,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Iterators.h",
     ],
@@ -216,7 +204,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "typelist",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TypeList.h",
     ],
@@ -232,7 +219,6 @@ non_fbcode_target(
     srcs = [
         "RangeCommon.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "RangeCommon.h",
     ],
@@ -248,7 +234,6 @@ non_fbcode_target(
     srcs = [
         "IPAddress.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IPAddress.h",
     ],
@@ -264,7 +249,6 @@ non_fbcode_target(
     srcs = [
         "UniqueInstance.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "UniqueInstance.h",
     ],
@@ -282,7 +266,6 @@ non_fbcode_target(
     srcs = [
         "Sse.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Sse.h",
     ],
@@ -294,7 +277,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "atomic_hash_utils",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicHashUtils.h",
     ],
@@ -306,7 +288,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "ip_address_source",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IPAddressSource.h",
     ],
@@ -320,7 +301,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "fingerprint_polynomial",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FingerprintPolynomial.h",
     ],
@@ -335,7 +315,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Futex.h",
         "Futex-inl.h",
@@ -352,7 +331,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "turn_sequencer",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TurnSequencer.h",
     ],
@@ -372,7 +350,6 @@ non_fbcode_target(
     srcs = [
         "AsyncTrace.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AsyncTrace.h",
     ],
@@ -385,7 +362,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "file_util_vector_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FileUtilVectorDetail.h",
     ],
@@ -402,7 +378,6 @@ non_fbcode_target(
     srcs = [
         "StaticSingletonManager.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = bool(select({
         "DEFAULT": False,
         "ovr_config//os:macos": True,
@@ -428,7 +403,6 @@ non_fbcode_target(
     srcs = [
         "RangeSse42.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "RangeSse42.h",
     ],
@@ -446,7 +420,6 @@ non_fbcode_target(
     srcs = [
         "RangeSimd.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "RangeSimd.h",
     ],
@@ -462,7 +435,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "group_varint_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "GroupVarintDetail.h",
     ],
@@ -471,7 +443,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "discriminated_ptr_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "DiscriminatedPtrDetail.h",
     ],
@@ -484,7 +455,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "perf_scoped",
     srcs = ["PerfScoped.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "PerfScoped.h",
     ],
@@ -503,7 +473,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "simple_simd_string_utils",
     srcs = ["SimpleSimdStringUtils.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SimpleSimdStringUtils.h",
         "SimpleSimdStringUtilsImpl.h",
@@ -518,7 +487,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "split_string_simd",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SplitStringSimd.h",
         "SplitStringSimdImpl.h",
@@ -546,7 +514,6 @@ non_fbcode_target(
             "-mavx512vl",
         ],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["TrapOnAvx512.h"],
     deps = [
         "//xplat/folly:portability",
@@ -556,7 +523,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "tuple",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["tuple.h"],
     deps = [
         "//xplat/folly:cpp_attributes",

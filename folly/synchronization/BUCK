@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -8,7 +7,6 @@ fb_dirsync_cpp_library(
     name = "asymmetric_thread_fence",
     srcs = ["AsymmetricThreadFence.cpp"],
     headers = ["AsymmetricThreadFence.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         ":relaxed_atomic",
@@ -25,7 +23,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "atomic_ref",
     headers = ["AtomicRef.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:traits",
@@ -39,7 +36,6 @@ fb_dirsync_cpp_library(
         "AtomicUtil.h",
         "AtomicUtil-inl.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:constexpr_math",
@@ -58,7 +54,6 @@ fb_dirsync_cpp_library(
         "AtomicNotification.h",
         "AtomicNotification-inl.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":parking_lot",
@@ -70,7 +65,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "atomic_struct",
     headers = ["AtomicStruct.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:constexpr_math",
@@ -82,7 +76,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "baton",
     headers = ["Baton.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":atomic_util",
@@ -100,7 +93,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "call_once",
     headers = ["CallOnce.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:likely",
@@ -120,7 +112,6 @@ fb_dirsync_cpp_library(
         "DistributedMutex.h",
         "DistributedMutex-inl.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":atomic_notification",
@@ -164,7 +155,6 @@ fb_dirsync_cpp_library(
         "HazptrRec.h",
         "HazptrThrLocal.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:exception_string",
@@ -197,7 +187,6 @@ fb_dirsync_cpp_library(
     headers = [
         "HazptrThreadPoolExecutor.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:singleton",
@@ -211,7 +200,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "latch",
     headers = ["Latch.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,  # Needed for Windows builds, otherwise we see a 64-bit -> 32-bit conversion error
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
@@ -225,7 +213,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "lifo_sem",
     headers = ["LifoSem.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":atomic_struct",
@@ -244,7 +231,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "lock",
     headers = ["Lock.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:portability",
@@ -258,7 +244,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "micro_spin_lock",
     headers = ["MicroSpinLock.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":sanitize_thread",
@@ -271,7 +256,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "native_semaphore",
     headers = ["NativeSemaphore.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:utility",
@@ -283,7 +267,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "pico_spin_lock",
     headers = ["PicoSpinLock.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":atomic_ref",
@@ -301,7 +284,6 @@ fb_dirsync_cpp_library(
         "ParkingLot.cpp",
     ],
     headers = ["ParkingLot.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:hash",
@@ -320,7 +302,6 @@ fb_dirsync_cpp_library(
     headers = [
         "Rcu.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/detail:static_singleton_manager",
@@ -338,7 +319,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "rw_spin_lock",
     headers = ["RWSpinLock.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":lock",
@@ -351,7 +331,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "relaxed_atomic",
     headers = ["RelaxedAtomic.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
 )
 
@@ -361,7 +340,6 @@ fb_dirsync_cpp_library(
         "SanitizeThread.cpp",
     ],
     headers = ["SanitizeThread.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/lang:extern",
@@ -374,7 +352,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "saturating_semaphore",
     headers = ["SaturatingSemaphore.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":atomic_util",
@@ -395,7 +372,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "small_locks",
     headers = ["SmallLocks.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":micro_spin_lock",
@@ -408,7 +384,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "wait_options",
     headers = ["WaitOptions.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:c_portability",
@@ -418,7 +393,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "delayed_init",
     headers = ["DelayedInit.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":call_once",
@@ -431,7 +405,6 @@ fb_dirsync_cpp_library(
     headers = [
         "ThrottledLifoSem.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":distributed_mutex",
@@ -448,7 +421,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "flat_combining",
     headers = ["FlatCombining.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:function",
@@ -463,7 +435,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "event_count",
     headers = ["EventCount.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:likely",
@@ -486,7 +457,6 @@ fb_dirsync_cpp_library(
     headers = [
         "StripedThrottledLifoSem.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/portability:gflags",

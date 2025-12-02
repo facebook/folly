@@ -6,7 +6,6 @@ load(
     "MACOSX",
 )
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
     "folly_xplat_library",
@@ -20,7 +19,6 @@ non_fbcode_target(
     srcs = [
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Compatibility.h",
     ],
@@ -33,7 +31,6 @@ non_fbcode_target(
         "ExceptionTracer.cpp",
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionTracer.h",
     ],
@@ -52,7 +49,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "exception_abi",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionAbi.h",
     ],
@@ -68,7 +64,6 @@ non_fbcode_target(
         "SmartExceptionTracer.cpp",
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
         "SmartExceptionTracer.h",
@@ -92,7 +87,6 @@ non_fbcode_target(
         "SmartExceptionTracerSingleton.cpp",
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SmartExceptionTracerSingleton.h",
     ],
@@ -110,7 +104,6 @@ non_fbcode_target(
         "SmartExceptionStackTraceHooks.cpp",
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
         "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
@@ -126,7 +119,6 @@ non_fbcode_target(
         "ExceptionCounterLib.cpp",
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
         "ExceptionCounterLib.h",
@@ -151,7 +143,6 @@ non_fbcode_target(
         "ExceptionStackTraceLib.cpp",
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
         "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
@@ -170,7 +161,6 @@ non_fbcode_target(
         "StackTrace.cpp",
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "StackTrace.h",
     ],
@@ -235,7 +225,6 @@ non_fbcode_target(
     ],
     compiler_flags = EXCEPTION_TRACER_LIB_COMPILER_FLAGS,
     exported_linker_flags = EXCEPTION_TRACER_LIB_EXPORTED_LINKER_FLAGS,
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
         "ExceptionTracerLib.h",

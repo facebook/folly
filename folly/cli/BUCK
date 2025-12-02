@@ -11,7 +11,6 @@ load(
     "WINDOWS",
 )
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -28,7 +27,6 @@ non_fbcode_target(
     fbandroid_deps = [
         "//third-party/gflags:gflags",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     platforms = (ANDROID, APPLE, CXX, FBCODE, WINDOWS),
     raw_headers = [
         "NestedCommandLineApp.h",

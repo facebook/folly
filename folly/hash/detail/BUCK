@@ -4,10 +4,6 @@ load(
     "@fbsource//xplat/folly:defs.bzl",
     "folly_xplat_library",
 )
-load(
-    "@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl",
-    "triage_InfrastructureSupermoduleOptou",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -25,7 +21,6 @@ non_fbcode_target(
         "DEFAULT": [],
         "ovr_config//os:android-x86_64": ["-mpclmul"],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ChecksumDetail.h",
     ],
@@ -44,7 +39,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "random_seed",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "RandomSeed.h",
     ],

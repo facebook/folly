@@ -2,7 +2,6 @@ load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -11,7 +10,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "access",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Access.h"],
     exported_deps = [
         "//xplat/folly/functional:invoke",
@@ -21,7 +19,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "align",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Align.h"],
     exported_deps = [
         "//xplat/folly:portability",
@@ -32,7 +29,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "aligned",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Aligned.h"],
     exported_deps = [
         ":align",
@@ -43,7 +39,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "assume",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Assume.h"],
     exported_deps = [
         ":hint",
@@ -54,7 +49,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "badge",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Badge.h",
     ],
@@ -63,7 +57,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "bits",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Bits.h"],
     exported_deps = [
         "fbsource//xplat/folly/portability:builtins",
@@ -79,7 +72,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "bits_class",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BitsClass.h",
     ],
@@ -103,7 +95,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "c_array",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["CArray.h"],
 )
 
@@ -111,7 +102,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "c_string",
     srcs = ["CString.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["CString.h"],
     deps = [
         "//xplat/folly:cpp_attributes",
@@ -122,7 +112,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "cast",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Cast.h"],
     exported_deps = [
         ":safe_assert",
@@ -134,7 +123,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "checked_math",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["CheckedMath.h"],
     exported_deps = [
         "//xplat/folly:c_portability",
@@ -145,7 +133,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "customization_point",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["CustomizationPoint.h"],
     exported_deps = [
         ":static_const",
@@ -172,7 +159,6 @@ non_fbcode_target(
         ): ["-lc++abi"],
         "DEFAULT": [],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Exception.h"],
     deps = [
         ":align",
@@ -196,14 +182,12 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "extern",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Extern.h"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "hint",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Hint.h",
         "Hint-inl.h",
@@ -218,14 +202,12 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "keep",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Keep.h"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "must_use_immediately",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MustUseImmediately.h"],
     exported_deps = [
         "//xplat/folly:utility",
@@ -236,7 +218,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "new",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["New.h"],
     exported_deps = [
         "//xplat/folly:cpp_attributes",
@@ -248,7 +229,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "ordering",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Ordering.h"],
     exported_deps = [
         ":exception",
@@ -258,7 +238,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "pretty",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Pretty.h"],
     exported_deps = [
         ":c_array",
@@ -269,7 +248,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "propagate_const",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["PropagateConst.h"],
     exported_deps = [
         "//xplat/folly:traits",
@@ -280,14 +258,12 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "rvalue_reference_wrapper",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["RValueReferenceWrapper.h"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "safe_alias",  # Use this only when checking *_safe_alias_of_v
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeAlias.h"],
     exported_deps = [
         ":safe_alias_fwd",
@@ -298,7 +274,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "safe_alias_fwd",  # Use this to label types with safe_alias
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeAlias-fwd.h"],
 )
 
@@ -306,7 +281,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "safe_assert",
     srcs = ["SafeAssert.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeAssert.h"],
     deps = [
         "fbsource//xplat/folly/portability:sys_types",
@@ -325,7 +299,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "safe_closure",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeClosure.h"],
     exported_deps = [
         ":safe_alias",
@@ -339,7 +312,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "static_const",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["StaticConst.h"],
     exported_deps = [
         "//xplat/folly:portability",
@@ -349,7 +321,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "strong",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Strong.h"],
     exported_deps = [
         "//third-party/fmt:fmt",
@@ -360,7 +331,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "cstring_view",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["cstring_view.h"],
     exported_deps = [
         "//third-party/fmt:fmt",
@@ -372,7 +342,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "switch",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Switch.h"],
     exported_deps = [
         "//xplat/folly:c_portability",
@@ -382,7 +351,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "thunk",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Thunk.h"],
     deps = [
         "//xplat/folly:utility",
@@ -394,7 +362,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "to_ascii",
     srcs = ["ToAscii.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ToAscii.h"],
     exported_deps = [
         "fbsource//xplat/folly/portability:builtins",
@@ -410,7 +377,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "type_info",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["TypeInfo.h"],
     exported_deps = [
         "//xplat/folly:cpp_attributes",
@@ -422,7 +388,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "uncaught_exceptions",
     srcs = ["UncaughtExceptions.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["UncaughtExceptions.h"],
     exported_deps = [
         ":exception",

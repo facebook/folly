@@ -10,7 +10,6 @@ load(
     "WINDOWS",
 )
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
     "FBANDROID_CXXFLAGS",
@@ -608,7 +607,6 @@ fb_dirsync_cpp_library(
     headers = [
         "F14TestUtil.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container/detail:f14_hash_detail",
@@ -951,7 +949,6 @@ fb_dirsync_cpp_library(
     headers = [
         "TrackingTypes.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:function",

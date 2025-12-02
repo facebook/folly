@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -17,7 +16,6 @@ non_fbcode_target(
     fbcode_deps = [
         "fbcode//folly/experimental/symbolizer:signal_handler",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Init.h",
     ],
@@ -64,6 +62,5 @@ fb_dirsync_cpp_library(
     name = "phase",
     srcs = ["Phase.cpp"],
     headers = ["Phase.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
 )

@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -8,7 +7,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "atomic_grow_array",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "atomic_grow_array.h",
     ],
@@ -27,7 +25,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "flat_combining_priority_queue",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FlatCombiningPriorityQueue.h",
     ],
@@ -42,7 +39,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "lock_free_ring_buffer",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "LockFreeRingBuffer.h",
     ],
@@ -57,7 +53,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "relaxed_concurrent_priority_queue",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "RelaxedConcurrentPriorityQueue.h",
     ],
@@ -76,7 +71,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "single_writer_fixed_hash_map",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SingleWriterFixedHashMap.h",
     ],

@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -9,7 +8,6 @@ fb_dirsync_cpp_library(
     headers = [
         "AsyncBase.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:async_base_class",
@@ -21,7 +19,6 @@ fb_dirsync_cpp_library(
     headers = [
         "AsyncIO.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:async_io",
@@ -33,7 +30,6 @@ fb_dirsync_cpp_library(
     headers = [
         "Liburing.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:liburing",
@@ -46,7 +42,6 @@ fb_dirsync_cpp_library(
         "AsyncIoUringSocket.h",
         "AsyncIoUringSocketFactory.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:async_io_uring_socket",
@@ -58,7 +53,6 @@ fb_dirsync_cpp_library(
     headers = [
         "SimpleAsyncIO.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:simple_async_io",
@@ -70,7 +64,6 @@ fb_dirsync_cpp_library(
     headers = [
         "Epoll.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:epoll",
@@ -84,7 +77,6 @@ fb_dirsync_cpp_library(
         "Epoll.h",
         "EpollBackend.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:epoll_backend",
@@ -96,7 +88,6 @@ fb_dirsync_cpp_library(
     headers = [
         "EventBasePoller.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:event_base_poller",
@@ -108,7 +99,6 @@ fb_dirsync_cpp_library(
     headers = [
         "MuxIOThreadPoolExecutor.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:mux_io_thread_pool_executor",
@@ -120,7 +110,6 @@ fb_dirsync_cpp_library(
     headers = [
         "IoUring.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring",
@@ -133,7 +122,6 @@ fb_dirsync_cpp_library(
         "IoUringBackend.h",
         "IoUringBase.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_backend",
@@ -148,7 +136,6 @@ fb_dirsync_cpp_library(
         "IoUringBase.h",
         "IoUringProvidedBufferRing.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_provided_buffer_ring",
@@ -160,7 +147,6 @@ fb_dirsync_cpp_library(
     headers = [
         "IoUringEvent.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_event",
@@ -172,7 +158,6 @@ fb_dirsync_cpp_library(
     headers = [
         "IoUringEventBaseLocal.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:io_uring_event_base_local",
@@ -184,7 +169,6 @@ fb_dirsync_cpp_library(
     headers = [
         "FsUtil.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io:fs_util",
@@ -196,7 +180,6 @@ fb_dirsync_cpp_library(
     headers = [
         "HugePages.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io:huge_pages",

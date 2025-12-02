@@ -4,7 +4,6 @@ load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -501,7 +500,6 @@ fbcode_target(
 fb_dirsync_cpp_library(
     name = "flat_combining_examples",
     headers = ["FlatCombiningExamples.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/synchronization:baton",
@@ -512,7 +510,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "flat_combining_test_helpers",
     headers = ["FlatCombiningTestHelpers.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:benchmark",

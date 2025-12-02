@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
     "folly_xplat_library",
@@ -13,7 +12,6 @@ fb_dirsync_cpp_library(
         "Nullable.h",
         "Regular.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [

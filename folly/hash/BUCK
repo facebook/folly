@@ -2,7 +2,6 @@ load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "no
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library", "folly_xplat_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -17,7 +16,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Checksum.h",
     ],
@@ -37,7 +35,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "farm_hash",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FarmHash.h",
     ],
@@ -49,7 +46,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "hash",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Hash.h",
     ],
@@ -71,7 +67,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "murmur_hash",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MurmurHash.h",
     ],
@@ -85,7 +80,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "rapidhash",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "rapidhash.h",
     ],
@@ -100,7 +94,6 @@ non_fbcode_target(
     srcs = [
         "SpookyHashV1.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SpookyHashV1.h",
     ],
@@ -115,7 +108,6 @@ non_fbcode_target(
     srcs = [
         "SpookyHashV2.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SpookyHashV2.h",
     ],
@@ -129,7 +121,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "traits",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "traits.h",
     ],
@@ -241,7 +232,6 @@ fb_dirsync_cpp_library(
     headers = [
         "FnvHash.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
 )
@@ -251,7 +241,6 @@ fb_dirsync_cpp_library(
     headers = [
         "HsiehHash.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
@@ -263,7 +252,6 @@ fb_dirsync_cpp_library(
     name = "unique_hash_key",
     srcs = ["UniqueHashKey.cpp"],
     headers = ["UniqueHashKey.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     deps = [

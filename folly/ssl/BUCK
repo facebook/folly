@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -8,7 +7,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl_ptr_types",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLPtrTypes.h"],
     exported_deps = [
         "fbsource//xplat/folly/portability:openssl",
@@ -21,7 +19,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl_hash",
     srcs = ["OpenSSLHash.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLHash.h"],
     deps = ["//xplat/folly:format"],
     exported_deps = [
@@ -37,7 +34,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl_cert_utils",
     srcs = ["OpenSSLCertUtils.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLCertUtils.h"],
     deps = [
         "//xplat/folly:file_util",
@@ -55,7 +51,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl_version_finder",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLVersionFinder.h"],
     exported_deps = [
         "fbsource//xplat/folly/portability:openssl",
@@ -65,7 +60,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl_ticket_handler",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLTicketHandler.h"],
     deps = [
         "fbsource//xplat/folly/portability:openssl",
@@ -75,7 +69,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "ssl_session",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SSLSession.h"],
 )
 
@@ -83,7 +76,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "ssl_session_manager",
     srcs = ["SSLSessionManager.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SSLSessionManager.h"],
     deps = [
         "//xplat/folly:overload",
@@ -101,7 +93,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "password_collector",
     srcs = ["PasswordCollector.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["PasswordCollector.h"],
 )
 
@@ -109,7 +100,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "openssl_key_utils",
     srcs = ["OpenSSLKeyUtils.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["OpenSSLKeyUtils.h"],
     deps = [
         "fbsource//xplat/folly/portability:openssl",

@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
     "folly_xplat_library",
@@ -14,7 +13,6 @@ non_fbcode_target(
     srcs = [
         "Settings.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Settings.h",
         "detail/SettingsImpl.h",
@@ -89,7 +87,6 @@ non_fbcode_target(
     srcs = [
         "Types.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Types.h",
     ],
@@ -121,7 +118,6 @@ non_fbcode_target(
     srcs = [
         "Immutables.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Immutables.h",
     ],

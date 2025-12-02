@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -8,7 +7,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "async_closure_fwd",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AsyncClosure-fwd.h"],
 )
 
@@ -23,7 +21,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "bind_captures",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["BindCaptures.h"],
     exported_deps = ["//xplat/folly/lang/bind:bind"],
 )
@@ -40,7 +37,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "captures",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["Captures.h"],
     exported_deps = [
         ":async_closure_fwd",
@@ -93,7 +89,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "now_task",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["NowTask.h"],
     exported_deps = [
         "//xplat/folly/coro:task_wrapper",
@@ -116,7 +111,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "safe_task",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SafeTask.h"],
     exported_deps = [
         ":now_task",

@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -10,7 +9,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "bucketed_time_series",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BucketedTimeSeries.h",
         "BucketedTimeSeries-inl.h",
@@ -25,7 +23,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "digest_builder",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "DigestBuilder.h",
         "DigestBuilder-inl.h",
@@ -44,7 +41,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "histogram",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Histogram.h",
         "Histogram-inl.h",
@@ -62,7 +58,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "multi_level_time_series",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MultiLevelTimeSeries.h",
         "MultiLevelTimeSeries-inl.h",
@@ -81,7 +76,6 @@ non_fbcode_target(
     srcs = [
         "QuantileEstimator.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "QuantileEstimator.h",
         "QuantileEstimator-inl.h",
@@ -95,7 +89,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "quantile_histogram",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "QuantileHistogram.h",
         "QuantileHistogram-inl.h",
@@ -111,7 +104,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "streaming_stats",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "StreamingStats.h",
     ],
@@ -123,7 +115,6 @@ non_fbcode_target(
     srcs = [
         "TDigest.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TDigest.h",
     ],
@@ -141,7 +132,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "timeseries_histogram",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TimeseriesHistogram.h",
         "TimeseriesHistogram-inl.h",

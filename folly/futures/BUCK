@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -13,7 +12,6 @@ non_fbcode_target(
     srcs = [
         "Barrier.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = False,
     raw_headers = [
         "Barrier.h",
@@ -29,7 +27,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "cleanup",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Cleanup.h",
     ],
@@ -48,7 +45,6 @@ non_fbcode_target(
         "Promise.cpp",
         "ThreadWheelTimekeeper.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = False,
     labels = [
         # This library should be used via :futures. Depslint
@@ -112,7 +108,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "future_splitter",
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = False,
     raw_headers = [
         "FutureSplitter.h",
@@ -127,7 +122,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "futures",
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         ":barrier",
         ":core",
@@ -146,7 +140,6 @@ non_fbcode_target(
     srcs = [
         "ManualTimekeeper.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ManualTimekeeper.h",
     ],
@@ -159,7 +152,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "portability",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Portability.h",
     ],
@@ -174,7 +166,6 @@ non_fbcode_target(
     srcs = [
         "SharedPromise.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = False,
     raw_headers = [
         "SharedPromise.h",

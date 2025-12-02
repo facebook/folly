@@ -3,7 +3,6 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../../defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 load("../../../io/async/test/certs/defs.bzl", "alias_pem")
 
@@ -15,7 +14,6 @@ non_fbcode_target(
     srcs = [
         "TestSSLServer.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TestSSLServer.h",
     ],
@@ -53,7 +51,6 @@ non_fbcode_target(
     srcs = [
         "TFOUtil.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TFOUtil.h",
     ],
@@ -65,7 +62,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "async_signal_handler_test_lib",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AsyncSignalHandlerTestLib.h",
     ],
@@ -95,7 +91,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "async_ssl_socket_test_lib",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AsyncSSLSocketTest.h",
     ],
@@ -229,7 +224,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "async_socket_test_lib",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AsyncSocketTest.h",
         "AsyncSocketTest2.h",
@@ -393,7 +387,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "blocking_socket",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["BlockingSocket.h"],
     exported_deps = [
         "//xplat/folly:optional",
@@ -407,14 +400,12 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "callback_state_enum",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["CallbackStateEnum.h"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "conn_callback",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ConnCallback.h"],
     exported_deps = [
         ":callback_state_enum",
@@ -476,7 +467,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "event_base_test_lib",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "EventBaseTestLib.h",
     ],
@@ -572,7 +562,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "mocks",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MockAsyncSSLSocket.h",
         "MockAsyncSocket.h",
@@ -597,7 +586,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "mock_server_socket",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MockAsyncServerSocket.h"],
     exported_deps = [
         "fbsource//xplat/folly/portability:gmock",
@@ -661,7 +649,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "scoped_bound_port",
     srcs = ["ScopedBoundPort.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ScopedBoundPort.h"],
     deps = [
         "//xplat/folly:memory",
@@ -782,7 +769,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "ssl_util",
     srcs = ["SSLUtil.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SSLUtil.h",
     ],
@@ -796,7 +782,6 @@ non_fbcode_target(
         "SocketPair.cpp",
         "TimeUtil.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SocketPair.h",
         "TimeUtil.h",
@@ -851,7 +836,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "zero_copy_lib",
     srcs = ["ZeroCopy.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ZeroCopy.h"],
     exported_deps = [
         "fbsource//xplat/folly/io:iobuf",

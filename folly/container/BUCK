@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
     "FBANDROID_CPPFLAGS",
@@ -13,7 +12,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "f14_hash",
     fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "F14Map.h",
         "F14Set.h",
@@ -32,7 +30,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "heterogeneous_access",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "HeterogeneousAccess.h",
     ],
@@ -50,7 +47,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "heterogeneous_access_fwd",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "HeterogeneousAccess-fwd.h",
     ],
@@ -59,7 +55,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "enumerate",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Enumerate.h",
     ],
@@ -75,7 +70,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SparseByteSet.h",
     ],
@@ -84,7 +78,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "merge",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Merge.h",
     ],
@@ -96,7 +89,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "EvictingCacheMap.h",
     ],
@@ -111,7 +103,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "weighted_evicting_cache_map",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "WeightedEvictingCacheMap.h",
     ],
@@ -123,7 +114,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "view",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "View.h",
     ],
@@ -137,7 +127,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "foreach",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Foreach.h",
         "Foreach-inl.h",
@@ -155,7 +144,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "f14_hash_fwd",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "F14Map-fwd.h",
         "F14Set-fwd.h",
@@ -172,7 +160,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Iterator.h",
     ],
@@ -188,7 +175,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "bit_iterator",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BitIterator.h",
     ],
@@ -206,7 +192,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Array.h",
     ],
@@ -223,7 +208,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "heap_vector_types.h",
     ],
@@ -243,7 +227,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "access",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Access.h",
     ],
@@ -255,7 +238,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "intrusive_heap",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IntrusiveHeap.h",
     ],
@@ -280,7 +262,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "regex_match_cache",
     srcs = ["RegexMatchCache.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["RegexMatchCache.h"],
     deps = [
         "fbsource//xplat/folly/portability:windows",
@@ -305,7 +286,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "span",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["span.h"],
     exported_deps = [
         "fbsource//xplat/folly/portability:constexpr",
@@ -322,7 +302,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "tape",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "tape.h",
     ],
@@ -338,7 +317,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "reserve",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Reserve.h",
     ],
@@ -356,7 +334,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["sorted_vector_types.h"],
     exported_deps = [
         "//xplat/folly:scope_guard",
@@ -372,7 +349,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "std_bitset",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["StdBitset.h"],
     exported_deps = [
         "//xplat/folly:c_portability",
@@ -386,7 +362,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FBVector.h",
     ],
@@ -408,7 +383,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IntrusiveList.h",
     ],
@@ -420,7 +394,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "map_util",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MapUtil.h",
     ],
@@ -438,7 +411,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "small_vector.h",
     ],
@@ -465,7 +437,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "vector_bool",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "vector_bool.h",
     ],

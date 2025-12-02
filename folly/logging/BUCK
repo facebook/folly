@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -10,7 +9,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "auto_timer",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AutoTimer.h",
     ],
@@ -29,7 +27,6 @@ non_fbcode_target(
     srcs = [
         "FileHandlerFactory.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FileHandlerFactory.h",
     ],
@@ -45,7 +42,6 @@ non_fbcode_target(
     srcs = [
         "BridgeFromGoogleLogging.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BridgeFromGoogleLogging.h",
     ],
@@ -63,7 +59,6 @@ non_fbcode_target(
         "Init.cpp",
         "LogConfigParser.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Init.h",
         "LogConfigParser.h",
@@ -88,7 +83,6 @@ non_fbcode_target(
     srcs = [
         "InitWeak.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//xplat/folly:c_portability",
     ],
@@ -118,7 +112,6 @@ non_fbcode_target(
         "StreamHandlerFactory.cpp",
         "xlog.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = False,
     raw_headers = [
         "AsyncFileWriter.h",
@@ -187,7 +180,6 @@ non_fbcode_target(
     srcs = [
         "LogHandlerConfig.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "LogHandler.h",
         "LogHandlerConfig.h",
@@ -208,7 +200,6 @@ non_fbcode_target(
     srcs = [
         "LogLevel.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "LogLevel.h",
     ],
@@ -225,7 +216,6 @@ non_fbcode_target(
     srcs = [
         "LogName.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "LogName.h",
     ],
@@ -240,7 +230,6 @@ non_fbcode_target(
     srcs = [
         "RateLimiter.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "RateLimiter.h",
     ],

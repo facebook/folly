@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -16,7 +15,6 @@ fb_dirsync_cpp_library(
         "dynamic-inl.h",
         "json.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
         "//folly:unicode",
@@ -57,7 +55,6 @@ fb_dirsync_cpp_library(
     name = "json_pointer",
     srcs = ["json_pointer.cpp"],
     headers = ["json_pointer.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
         "//folly:string",
@@ -72,7 +69,6 @@ fb_dirsync_cpp_library(
     name = "json_patch",
     srcs = ["json_patch.cpp"],
     headers = ["json_patch.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
         "//folly/container:enumerate",
@@ -92,7 +88,6 @@ fb_dirsync_cpp_library(
     name = "json_schema",
     srcs = ["JSONSchema.cpp"],
     headers = ["JSONSchema.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
         "//folly:c_portability",
@@ -121,7 +116,6 @@ fb_dirsync_cpp_library(
         "DynamicParser.h",
         "DynamicParser-inl.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
         "//folly:optional",

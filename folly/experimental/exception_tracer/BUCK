@@ -5,7 +5,6 @@ load(
     "IOS",
     "MACOSX",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
     "folly_xplat_library",
@@ -17,7 +16,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "exception_tracer_base",
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionTracer.h",
     ],
@@ -29,7 +27,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "exception_abi",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionAbi.h",
     ],
@@ -42,7 +39,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "smart_exception_tracer",
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
         "SmartExceptionTracer.h",
@@ -56,7 +52,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "smart_exception_tracer_singleton",
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SmartExceptionTracerSingleton.h",
     ],
@@ -69,7 +64,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "smart_exception_stack_trace_hooks",
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
         "//xplat/folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",
@@ -80,7 +74,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "exception_counter",
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
         "ExceptionCounterLib.h",
@@ -94,7 +87,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "exception_tracer",
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     deps = [
         "//xplat/folly/debugging/exception_tracer:exception_tracer",
@@ -105,7 +97,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "stacktrace",
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "StackTrace.h",
     ],
@@ -117,7 +108,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "exception_tracer_callbacks",
-    feature = triage_InfrastructureSupermoduleOptou,
     link_whole = True,
     raw_headers = [
         "ExceptionTracerLib.h",

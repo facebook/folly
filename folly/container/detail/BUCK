@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
     "FBANDROID_CPPFLAGS",
@@ -12,7 +11,6 @@ oncall("ios_app_infra")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "bit_iterator_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BitIteratorDetail.h",
     ],
@@ -31,7 +29,6 @@ non_fbcode_target(
         ],
         "DEFAULT": [],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "F14IntrinsicsAvailability.h",
     ],
@@ -46,7 +43,6 @@ non_fbcode_target(
     srcs = [
         "F14Table.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "F14MapFallback.h",
         "F14Policy.h",
@@ -86,7 +82,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "util",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Util.h",
     ],
@@ -101,7 +96,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "f14_mask",
     fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "F14Mask.h",
     ],
@@ -118,7 +112,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "f14_defaults",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "F14Defaults.h",
     ],
@@ -130,7 +123,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "tape_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "tape_detail.h",
     ],
@@ -147,7 +139,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "bool_wrapper",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BoolWrapper.h",
     ],

@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -9,7 +8,6 @@ fb_dirsync_cpp_library(
     headers = [
         "FlatCombiningExamples.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/synchronization/test:flat_combining_examples",
@@ -21,7 +19,6 @@ fb_dirsync_cpp_library(
     headers = [
         "FlatCombiningTestHelpers.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/synchronization/test:flat_combining_test_helpers",

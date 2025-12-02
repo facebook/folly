@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -11,7 +10,6 @@ non_fbcode_target(
     srcs = [
         "AtomicReadMostlyMainPtr.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicReadMostlyMainPtr.h",
     ],
@@ -29,7 +27,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ReadMostlySharedPtr.h",
     ],
@@ -41,7 +38,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "primary_ptr",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["PrimaryPtr.h"],
     deps = [
         "fbsource//xplat/folly/futures:cleanup",
@@ -58,7 +54,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TLRefCount.h",
     ],

@@ -8,7 +8,6 @@ load(
     "MACOSX",
     "WINDOWS",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
     "folly_xplat_library",
@@ -24,7 +23,6 @@ non_fbcode_target(
         "Load.cpp",
     ],
     apple_sdks = (MACOSX,),
-    feature = triage_InfrastructureSupermoduleOptou,
     platforms = (CXX, FBCODE, WINDOWS, APPLE),
     raw_headers = [
         "Bser.h",

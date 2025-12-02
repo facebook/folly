@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -7,7 +6,6 @@ oncall("fbcode_entropy_wardens_folly")
 fb_dirsync_cpp_library(
     name = "async_socket_observer_interface",
     headers = ["AsyncSocketObserverInterface.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
@@ -21,7 +19,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "async_socket_observer_container",
     headers = ["AsyncSocketObserverContainer.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [

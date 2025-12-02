@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -9,7 +8,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "for_each",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ForEach.h",
         "ForEach-inl.h",
@@ -23,7 +21,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "add_tasks",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AddTasks.h",
         "AddTasks-inl.h",
@@ -41,7 +38,6 @@ non_fbcode_target(
     srcs = [
         "GuardPageAllocator.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "GuardPageAllocator.h",
     ],
@@ -59,7 +55,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "generic_baton",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "GenericBaton.h",
     ],
@@ -77,7 +72,6 @@ non_fbcode_target(
         "Fiber.cpp",
         "FiberManager.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Baton.h",
         "Baton-inl.h",
@@ -130,7 +124,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "atomic_batch_dispatcher",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicBatchDispatcher.h",
         "AtomicBatchDispatcher-inl.h",
@@ -147,7 +140,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "traits",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "traits.h",
     ],
@@ -156,7 +148,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "boost_context_compatibility",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BoostContextCompatibility.h",
     ],
@@ -174,7 +165,6 @@ non_fbcode_target(
     srcs = [
         "Semaphore.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Semaphore.h",
     ],
@@ -194,7 +184,6 @@ non_fbcode_target(
     srcs = [
         "SemaphoreBase.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SemaphoreBase.h",
     ],
@@ -210,7 +199,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "loop_controller",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "LoopController.h",
     ],
@@ -222,7 +210,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "executor_based_loop_controller",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExecutorBasedLoopController.h",
     ],
@@ -235,7 +222,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "batch_dispatcher",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BatchDispatcher.h",
     ],
@@ -248,7 +234,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "event_base_loop_controller",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "EventBaseLoopController.h",
         "EventBaseLoopController-inl.h",
@@ -266,7 +251,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "timed_mutex",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "CallOnce.h",
         "TimedMutex.h",
@@ -284,7 +268,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "fibers",
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//xplat/folly/fibers:add_tasks",
         "//xplat/folly/fibers:atomic_batch_dispatcher",
@@ -314,7 +297,6 @@ non_fbcode_target(
     srcs = [
         "BatchSemaphore.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BatchSemaphore.h",
     ],
@@ -329,7 +311,6 @@ non_fbcode_target(
     srcs = [
         "SimpleLoopController.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SimpleLoopController.h",
     ],
@@ -345,7 +326,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "executor_loop_controller",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExecutorLoopController.h",
         "ExecutorLoopController-inl.h",
@@ -362,7 +342,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "core_manager",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FiberManager.h",
         "FiberManager-inl.h",
@@ -377,7 +356,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "fiber_manager_map",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FiberManagerMap.h",
         "FiberManagerMap-inl.h",
@@ -397,7 +375,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "when_n",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "WhenN.h",
         "WhenN-inl.h",

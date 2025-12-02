@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -9,7 +8,6 @@ fb_dirsync_cpp_library(
     headers = [
         "TransportCallbackBase.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
@@ -25,7 +23,6 @@ fb_dirsync_cpp_library(
     headers = [
         "TransportCallbacks.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         ":transport_callback_base",
@@ -48,7 +45,6 @@ fb_dirsync_cpp_library(
         "ServerSocket.h",
         "Transport.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
         ":transport_callbacks",

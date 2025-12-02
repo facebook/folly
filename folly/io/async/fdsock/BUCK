@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -26,7 +25,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "async_fd_socket",
     srcs = ["AsyncFdSocket.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AsyncFdSocket.h"],
     exported_deps = [
         "fbsource//xplat/folly/portability:gtest_prod",
@@ -41,7 +39,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "socket_fds",
     srcs = ["SocketFds.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["SocketFds.h"],
     exported_deps = [
         "//third-party/glog:glog",

@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -8,7 +7,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "bit_vector_coding",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "BitVectorCoding.h",
     ],
@@ -28,7 +26,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "coding_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "CodingDetail.h",
     ],
@@ -37,7 +34,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "elias_fano_coding",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "EliasFanoCoding.h",
     ],

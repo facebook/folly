@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -8,7 +7,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "async_closure",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["AsyncClosure.h"],
     exported_deps = [
         ":bind_async_closure",
@@ -35,7 +33,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "bind_async_closure",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["BindAsyncClosure.h"],
     exported_deps = [
         "//xplat/folly/coro/safe:bind_captures",
@@ -64,7 +61,6 @@ fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "define_movable_deep_const_lref_copyable",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["DefineMovableDeepConstLrefCopyable.h"],
 )
 

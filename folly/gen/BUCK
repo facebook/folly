@@ -5,7 +5,6 @@ load(
     "DEFAULT_APPLE_SDKS",
     "folly_xplat_library",
 )
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -15,7 +14,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "base",
     apple_sdks = DEFAULT_APPLE_SDKS,
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Base.h",
         "Base-inl.h",
@@ -37,7 +35,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "combine",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Combine.h",
         "Combine-inl.h",
@@ -50,7 +47,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "core",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Core.h",
         "Core-inl.h",
@@ -63,7 +59,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "file",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "File.h",
         "File-inl.h",
@@ -80,7 +75,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "istream",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IStream.h",
     ],
@@ -92,7 +86,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "parallel",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Parallel.h",
         "Parallel-inl.h",
@@ -108,7 +101,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "parallel_map",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ParallelMap.h",
         "ParallelMap-inl.h",
@@ -125,7 +117,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "string",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "String.h",
         "String-inl.h",

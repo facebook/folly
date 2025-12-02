@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -8,7 +7,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "core_cached_shared_ptr",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "CoreCachedSharedPtr.h",
     ],
@@ -23,7 +21,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "dynamic_bounded_queue",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "DynamicBoundedQueue.h",
     ],
@@ -39,7 +36,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "unbounded_queue",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "UnboundedQueue.h",
     ],
@@ -66,7 +62,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ConcurrentHashMap.h",
         "detail/ConcurrentHashMap-detail.h",
@@ -88,7 +83,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["DeadlockDetector.h"],
     exported_deps = [
         "//xplat/folly:executor",
@@ -111,7 +105,6 @@ non_fbcode_target(
     fbandroid_deps = [
         "//xplat/third-party/linker_lib:dl",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "CacheLocality.h",
     ],
@@ -142,7 +135,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "thread_cached_synchronized",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ThreadCachedSynchronized.h",
     ],
@@ -159,7 +151,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "atomic_shared_ptr",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicSharedPtr.h",
         "detail/AtomicSharedPtr-detail.h",
@@ -176,7 +167,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "priority_unbounded_queue_set",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "PriorityUnboundedQueueSet.h",
     ],
@@ -192,7 +182,6 @@ non_fbcode_target(
     srcs = [
         "ProcessLocalUniqueId.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ProcessLocalUniqueId.h"],
     deps = [
         "fbsource//xplat/folly/synchronization:relaxed_atomic",
@@ -203,7 +192,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "singleton_relaxed_counter",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SingletonRelaxedCounter.h",
     ],

@@ -1,13 +1,11 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_library(
     name = "apply_tuple",
     headers = ["ApplyTuple.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -20,7 +18,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "invoke",
     headers = ["Invoke.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -39,7 +36,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "partial",
     headers = ["Partial.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -51,7 +47,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "protocol",
     headers = ["protocol.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -65,7 +60,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "traits",
     headers = ["traits.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [

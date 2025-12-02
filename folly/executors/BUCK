@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../defs.bzl",
     "folly_xplat_library",
@@ -15,7 +14,6 @@ non_fbcode_target(
     srcs = [
         "GlobalThreadPoolList.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "GlobalThreadPoolList.h",
     ],
@@ -30,7 +28,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "async",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Async.h",
     ],
@@ -46,7 +43,6 @@ non_fbcode_target(
     srcs = [
         "ThreadedExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ThreadedExecutor.h",
     ],
@@ -68,7 +64,6 @@ non_fbcode_target(
     srcs = [
         "FunctionScheduler.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FunctionScheduler.h",
     ],
@@ -89,7 +84,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "future_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FutureExecutor.h",
     ],
@@ -103,7 +97,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "io_thread_pool_deadlock_detector_observer",
     srcs = ["IOThreadPoolDeadlockDetectorObserver.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["IOThreadPoolDeadlockDetectorObserver.h"],
     deps = [
         "//xplat/folly/system:thread_id",
@@ -122,7 +115,6 @@ non_fbcode_target(
     srcs = [
         "TimekeeperScheduledExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TimekeeperScheduledExecutor.h",
     ],
@@ -139,7 +131,6 @@ non_fbcode_target(
     srcs = [
         "TimedDrivableExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TimedDrivableExecutor.h",
     ],
@@ -155,7 +146,6 @@ non_fbcode_target(
     srcs = [
         "InlineExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "InlineExecutor.h",
     ],
@@ -173,7 +163,6 @@ non_fbcode_target(
     srcs = [
         "ManualExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ManualExecutor.h",
     ],
@@ -191,7 +180,6 @@ non_fbcode_target(
     srcs = [
         "QueueObserver.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "QueueObserver.h",
     ],
@@ -205,7 +193,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "soft_real_time_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SoftRealTimeExecutor.h",
     ],
@@ -217,7 +204,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "sequenced_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SequencedExecutor.h",
     ],
@@ -229,7 +215,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "serialized_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SerializedExecutor.h",
     ],
@@ -244,7 +229,6 @@ non_fbcode_target(
     srcs = [
         "GlobalExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = False,
     raw_headers = [
         "GlobalExecutor.h",
@@ -270,7 +254,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "serial_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SerialExecutor.h",
         "SerialExecutor-inl.h",
@@ -293,7 +276,6 @@ non_fbcode_target(
     srcs = [
         "StrandExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "StrandExecutor.h",
     ],
@@ -311,7 +293,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "drivable_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "DrivableExecutor.h",
     ],
@@ -326,7 +307,6 @@ non_fbcode_target(
     srcs = [
         "ExecutorWithPriority.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExecutorWithPriority.h",
         "ExecutorWithPriority-inl.h",
@@ -340,7 +320,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "fiber_io_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FiberIOExecutor.h",
     ],
@@ -356,7 +335,6 @@ non_fbcode_target(
     srcs = [
         "QueuedImmediateExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "QueuedImmediateExecutor.h",
     ],
@@ -378,7 +356,6 @@ non_fbcode_target(
     srcs = [
         "Codel.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Codel.h",
     ],
@@ -393,7 +370,6 @@ non_fbcode_target(
     srcs = [
         "EDFThreadPoolExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "EDFThreadPoolExecutor.h",
     ],
@@ -415,7 +391,6 @@ non_fbcode_target(
     srcs = [
         "CPUThreadPoolExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "CPUThreadPoolExecutor.h",
     ],
@@ -437,7 +412,6 @@ non_fbcode_target(
     srcs = [
         "ThreadPoolExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ThreadPoolExecutor.h",
     ],
@@ -466,7 +440,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "scheduled_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ScheduledExecutor.h",
     ],
@@ -479,7 +452,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "io_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IOExecutor.h",
     ],
@@ -491,7 +463,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "executors",
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//xplat/folly/executors:async",
         "//xplat/folly/executors:cpu_thread_pool_executor",
@@ -517,7 +488,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "io_object_cache",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IOObjectCache.h",
     ],
@@ -534,7 +504,6 @@ non_fbcode_target(
     srcs = [
         "IOThreadPoolExecutor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IOThreadPoolExecutor.h",
     ],
@@ -556,7 +525,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "metered_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MeteredExecutor.h",
         "MeteredExecutor-inl.h",
@@ -572,7 +540,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "virtual_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "VirtualExecutor.h",
     ],
@@ -587,7 +554,6 @@ non_fbcode_target(
     srcs = [
         "ThreadedRepeatingFunctionRunner.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ThreadedRepeatingFunctionRunner.h",
     ],
@@ -604,7 +570,6 @@ non_fbcode_target(
     srcs = [
         "ExecutionObserver.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExecutionObserver.h",
     ],

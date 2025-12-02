@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -9,7 +8,6 @@ oncall("fbcode_entropy_wardens_folly")
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "mock_net_ops_dispatcher",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MockNetOpsDispatcher.h"],
     deps = [
         "fbsource//xplat/folly/portability:gmock",
@@ -20,7 +18,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "mock_tcpinfo_dispatcher",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MockTcpInfoDispatcher.h"],
     deps = [
         "fbsource//xplat/folly/portability:gmock",

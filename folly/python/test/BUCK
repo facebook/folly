@@ -5,7 +5,6 @@ load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//tools/target_determinator/macros:fbcode_ci_helpers.bzl", "fbcode_ci")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load("../../defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -193,7 +192,6 @@ non_fbcode_target(
     name = "test_set_executor_cpplib",
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     enable_static_variant = False,
-    feature = triage_InfrastructureSupermoduleOptou,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["test_set_executor.h"],
     exported_deps = [

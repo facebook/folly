@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -17,7 +16,6 @@ non_fbcode_target(
         "DwarfSection.cpp",
         "DwarfUtil.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Dwarf.h",
         "DwarfImpl.h",
@@ -47,7 +45,6 @@ non_fbcode_target(
     srcs = [
         "Elf.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Elf.h",
         "Elf-inl.h",
@@ -74,7 +71,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "elf_cache",
     srcs = ["ElfCache.cpp"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ElfCache.h",
     ],
@@ -96,7 +92,6 @@ non_fbcode_target(
     srcs = [
         "LineReader.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "LineReader.h",
     ],
@@ -112,7 +107,6 @@ non_fbcode_target(
     srcs = [
         "StackTrace.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "StackTrace.h",
     ],
@@ -134,7 +128,6 @@ non_fbcode_target(
     srcs = [
         "SymbolizedFrame.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SymbolizedFrame.h",
     ],
@@ -152,7 +145,6 @@ non_fbcode_target(
         "SymbolizePrinter.cpp",
         "Symbolizer.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SignalHandler.h",
         "SymbolizePrinter.h",
