@@ -43,7 +43,7 @@ struct TestObj : public hazptr_obj_base<TestObj> {
 } // namespace
 
 /// benchmark copying a std::shared_ptr, including copy and dtor
-BENCHMARK(shared_ptr_copy, iters) {
+BENCHMARK(sptr_copy, iters) {
   BenchmarkSuspender braces;
   auto obj = copy_to_shared_ptr(0);
 
@@ -60,7 +60,7 @@ BENCHMARK(shared_ptr_copy, iters) {
 
 /// benchmark copying a std::shared_ptr, including copy and dtor, under a shared
 /// lock
-BENCHMARK(folly_shared_mutex_shared_ptr_copy, iters) {
+BENCHMARK(sptr_copy_folly_shared_mutex, iters) {
   BenchmarkSuspender braces;
   folly::Synchronized obj{copy_to_shared_ptr(0)};
 
@@ -77,7 +77,7 @@ BENCHMARK(folly_shared_mutex_shared_ptr_copy, iters) {
 
 /// benchmark copying a std::shared_ptr, including copy and dtor, from a
 /// folly::atomic_shared_ptr
-BENCHMARK(folly_atomic_shared_ptr_copy, iters) {
+BENCHMARK(sptr_copy_folly_atomic_shared_ptr, iters) {
   BenchmarkSuspender braces;
   folly::atomic_shared_ptr obj{copy_to_shared_ptr(0)};
 
@@ -94,7 +94,7 @@ BENCHMARK(folly_atomic_shared_ptr_copy, iters) {
 
 /// benchmark copying a std::shared_ptr, including copy and dtor, using
 /// std::atomic_load (precursor to std::atomic_shared_ptr)
-BENCHMARK(std_atomic_shared_ptr_copy, iters) {
+BENCHMARK(sptr_copy_std_atomic_shared_ptr, iters) {
   BenchmarkSuspender braces;
   auto obj = copy_to_shared_ptr(0);
 
@@ -109,7 +109,7 @@ BENCHMARK(std_atomic_shared_ptr_copy, iters) {
   folly::compiler_must_not_elide(sum);
 }
 
-BENCHMARK(folly_read_mostly_shared_ptr_construct, iters) {
+BENCHMARK(sptr_copy_folly_read_mostly_main_ptr, iters) {
   BenchmarkSuspender braces;
   auto obj = folly::ReadMostlyMainPtr(copy_to_shared_ptr(0));
 
@@ -124,7 +124,7 @@ BENCHMARK(folly_read_mostly_shared_ptr_construct, iters) {
   folly::compiler_must_not_elide(sum);
 }
 
-BENCHMARK(folly_atomic_read_mostly_shared_ptr_copy, iters) {
+BENCHMARK(sptr_copy_folly_atomic_read_mostly_main_ptr, iters) {
   BenchmarkSuspender braces;
   auto obj = folly::AtomicReadMostlyMainPtr(copy_to_shared_ptr(0));
 
@@ -139,7 +139,7 @@ BENCHMARK(folly_atomic_read_mostly_shared_ptr_copy, iters) {
   folly::compiler_must_not_elide(sum);
 }
 
-BENCHMARK(folly_core_cached_shared_ptr_copy, iters) {
+BENCHMARK(sptr_copy_folly_core_cached_shared_ptr, iters) {
   BenchmarkSuspender braces;
   auto obj = folly::CoreCachedSharedPtr(copy_to_shared_ptr(0));
 
@@ -154,7 +154,7 @@ BENCHMARK(folly_core_cached_shared_ptr_copy, iters) {
   folly::compiler_must_not_elide(sum);
 }
 
-BENCHMARK(folly_atomic_core_cached_shared_ptr_copy, iters) {
+BENCHMARK(sptr_copy_folly_atomic_core_cached_shared_ptr, iters) {
   BenchmarkSuspender braces;
   auto obj = folly::AtomicCoreCachedSharedPtr(copy_to_shared_ptr(0));
 
