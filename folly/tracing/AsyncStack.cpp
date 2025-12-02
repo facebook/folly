@@ -112,7 +112,8 @@ struct AsyncStackRootHolder {
   }
 
   void set(AsyncStackRoot* root) noexcept {
-    value.store(root, std::memory_order_release);
+    std::atomic_signal_fence(std::memory_order_release);
+    value.store(root, std::memory_order_relaxed);
   }
 
   void set_relaxed(AsyncStackRoot* root) noexcept {
