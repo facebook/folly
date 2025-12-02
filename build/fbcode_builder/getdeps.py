@@ -106,7 +106,7 @@ class ProjectCmdBase(SubCmd):
 
         manifest = loader.load_manifest(args.project)
 
-        self.run_project_cmd(args, loader, manifest)
+        return self.run_project_cmd(args, loader, manifest)
 
     def process_project_dir_arguments(self, args, loader):
         def parse_project_arg(arg, arg_type):
@@ -934,7 +934,7 @@ class TestCmd(ProjectCmdBase):
         if not self.check_built(loader, manifest):
             print("project %s has not been built" % manifest.name)
             return 1
-        self.create_builder(loader, manifest).run_tests(
+        return self.create_builder(loader, manifest).run_tests(
             schedule_type=args.schedule_type,
             owner=args.test_owner,
             test_filter=args.filter,
