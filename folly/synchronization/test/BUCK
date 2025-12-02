@@ -214,6 +214,7 @@ fbcode_target(
     srcs = ["HazptrBench.cpp"],
     deps = [
         "//folly:benchmark",
+        "//folly:spin_lock",
         "//folly/concurrency:atomic_shared_ptr",
         "//folly/concurrency:core_cached_shared_ptr",
         "//folly/concurrency/memory:atomic_read_mostly_main_ptr",
@@ -223,6 +224,7 @@ fbcode_target(
         "//folly/portability:gflags",
         "//folly/synchronization:hazptr",
         "//folly/synchronization:rcu",
+        "//folly/synchronization:rw_spin_lock",
     ],
 )
 

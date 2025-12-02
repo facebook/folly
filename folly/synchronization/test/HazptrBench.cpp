@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <folly/Benchmark.h>
+#include <folly/SpinLock.h>
 #include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/concurrency/memory/AtomicReadMostlyMainPtr.h>
@@ -28,6 +29,7 @@
 #include <folly/container/Enumerate.h>
 #include <folly/container/F14Set.h>
 #include <folly/portability/GFlags.h>
+#include <folly/synchronization/RWSpinLock.h>
 #include <folly/synchronization/Rcu.h>
 
 using namespace folly;
@@ -67,6 +69,16 @@ BENCHMARK(sptr_copy, iters) {
 
 BENCHMARK(sptr_copy_folly_shared_mutex, iters) {
   using Obj = folly::Synchronized<std::shared_ptr<int>>;
+  do_shared_ptr_copy<Obj>(iters, [](auto& obj) { return obj.copy(); });
+}
+
+BENCHMARK(sptr_copy_folly_spin_lock, iters) {
+  using Obj = folly::Synchronized<std::shared_ptr<int>, folly::SpinLock>;
+  do_shared_ptr_copy<Obj>(iters, [](auto& obj) { return obj.copy(); });
+}
+
+BENCHMARK(sptr_copy_folly_rw_spin_lock, iters) {
+  using Obj = folly::Synchronized<std::shared_ptr<int>, folly::RWSpinLock>;
   do_shared_ptr_copy<Obj>(iters, [](auto& obj) { return obj.copy(); });
 }
 
