@@ -115,6 +115,7 @@ fbcode_target(
     srcs = ["ConcurrentHashMapStressTest.cpp"],
     labels = [
         "heavyweight",
+        "long_running",
         "slow",
     ],
     supports_static_listing = False,
@@ -149,6 +150,7 @@ fbcode_target(
     srcs = ["ConcurrentHashMapStressTest.cpp"],
     labels = [
         "heavyweight",
+        "long_running",
         "slow",
     ],
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
