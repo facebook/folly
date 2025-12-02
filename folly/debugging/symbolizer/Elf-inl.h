@@ -19,7 +19,7 @@ namespace symbolizer {
 
 template <class Fn>
 const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, ElfPhdr const&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, ElfPhdr const&>) {
   // there exist ELF binaries which execute correctly, but have invalid internal
   // offset(s) to program/section headers; most probably due to invalid
   // stripping of symbols
@@ -38,7 +38,7 @@ const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const
 
 template <class Fn>
 const ElfShdr* ElfFile::iterateSections(Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, ElfShdr const&>) {
   // there exist ELF binaries which execute correctly, but have invalid internal
   // offset(s) to program/section headers; most probably due to invalid
   // stripping of symbols
@@ -57,7 +57,7 @@ const ElfShdr* ElfFile::iterateSections(Fn fn) const
 
 template <class Fn>
 const ElfShdr* ElfFile::iterateSectionsWithType(uint32_t type, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, ElfShdr const&>) {
   return iterateSections([&](const ElfShdr& sh) {
     return sh.sh_type == type && fn(sh);
   });
@@ -66,7 +66,7 @@ const ElfShdr* ElfFile::iterateSectionsWithType(uint32_t type, Fn fn) const
 template <class Fn>
 const ElfShdr* ElfFile::iterateSectionsWithTypes(
     std::initializer_list<uint32_t> types, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, ElfShdr const&>) {
   return iterateSections([&](const ElfShdr& sh) {
     auto const it = std::find(types.begin(), types.end(), sh.sh_type);
     return it != types.end() && fn(sh);
@@ -75,7 +75,7 @@ const ElfShdr* ElfFile::iterateSectionsWithTypes(
 
 template <class Fn>
 const char* ElfFile::iterateStrings(const ElfShdr& stringTable, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, const char*>) {
+    noexcept(is_nothrow_invocable_v<Fn&, const char*>) {
   validateStringTable(stringTable);
 
   const char* start = file_ + stringTable.sh_offset;
@@ -112,14 +112,14 @@ const E* ElfFile::iterateSectionEntries(const ElfShdr& section, Fn&& fn) const
 
 template <class Fn>
 const ElfSym* ElfFile::iterateSymbols(const ElfShdr& section, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>) {
   return iterateSectionEntries<ElfSym>(section, fn);
 }
 
 template <class Fn>
 const ElfSym* ElfFile::iterateSymbolsWithType(
     const ElfShdr& section, uint32_t type, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>) {
   // N.B. st_info has the same representation on 32- and 64-bit platforms
   return iterateSymbols(section, [&](const ElfSym& sym) -> bool {
     return ELF32_ST_TYPE(sym.st_info) == type && fn(sym);
@@ -129,7 +129,7 @@ const ElfSym* ElfFile::iterateSymbolsWithType(
 template <class Fn>
 const ElfSym* ElfFile::iterateSymbolsWithTypes(
     const ElfShdr& section, std::initializer_list<uint32_t> types, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>) {
   // N.B. st_info has the same representation on 32- and 64-bit platforms
   return iterateSymbols(section, [&](const ElfSym& sym) -> bool {
     auto const elfType = ELF32_ST_TYPE(sym.st_info);
@@ -141,7 +141,7 @@ const ElfSym* ElfFile::iterateSymbolsWithTypes(
 template <class Fn>
 folly::Expected<ElfFile::Note, ElfFile::FindNoteError>
 ElfFile::iterateNotesInBodyHelper(folly::StringPiece body, Fn& fn) const
-    noexcept(is_nothrow_invocable_v<Fn, const Note&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, const Note&>) {
   static_assert(alignof(ElfNhdr) >= 4);
   if (uintptr_t(body.data()) % alignof(ElfNhdr) != 0) {
     return Unexpected(FindNoteError(FindNoteFailureCode::NoteUnaligned));
@@ -170,7 +170,7 @@ ElfFile::iterateNotesInBodyHelper(folly::StringPiece body, Fn& fn) const
 template <class Fn>
 folly::Expected<ElfFile::Note, ElfFile::FindNoteError>
 ElfFile::iterateNotesInSections(const ElfShdr* section, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, const Note&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, const Note&>) {
   if (section != nullptr) {
     return iterateNotesInBodyHelper(getSectionBody(*section), fn);
   }
@@ -197,7 +197,7 @@ ElfFile::iterateNotesInSections(const ElfShdr* section, Fn fn) const
 template <class Fn>
 folly::Expected<ElfFile::Note, ElfFile::FindNoteError>
 ElfFile::iterateNotesInSegments(const ElfPhdr* segment, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn, const Note&>) {
+    noexcept(is_nothrow_invocable_v<Fn&, const Note&>) {
   if (segment != nullptr) {
     return iterateNotesInBodyHelper(getSegmentBody(*segment), fn);
   }

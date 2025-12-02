@@ -176,7 +176,7 @@ class ElfFile {
    */
   template <class Fn>
   const char* iterateStrings(const ElfShdr& stringTable, Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, const char*>);
+      noexcept(is_nothrow_invocable_v<Fn&, const char*>);
 
   /**
    * Iterate over program headers as long as fn(section) returns false.
@@ -185,7 +185,7 @@ class ElfFile {
    */
   template <class Fn>
   const ElfPhdr* iterateProgramHeaders(Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, ElfPhdr const&>);
+      noexcept(is_nothrow_invocable_v<Fn&, ElfPhdr const&>);
 
   /**
    * Iterate over all sections for as long as fn(section) returns false.
@@ -194,7 +194,7 @@ class ElfFile {
    */
   template <class Fn>
   const ElfShdr* iterateSections(Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>);
+      noexcept(is_nothrow_invocable_v<Fn&, ElfShdr const&>);
 
   /**
    * Iterate over all sections with a given type. Similar to
@@ -202,7 +202,7 @@ class ElfFile {
    */
   template <class Fn>
   const ElfShdr* iterateSectionsWithType(uint32_t type, Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>);
+      noexcept(is_nothrow_invocable_v<Fn&, ElfShdr const&>);
 
   /**
    * Iterate over all sections with a given types. Similar to
@@ -211,7 +211,7 @@ class ElfFile {
   template <class Fn>
   const ElfShdr* iterateSectionsWithTypes(
       std::initializer_list<uint32_t> types, Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>);
+      noexcept(is_nothrow_invocable_v<Fn&, ElfShdr const&>);
 
   /**
    * Iterate over all symbols within a given section.
@@ -221,16 +221,16 @@ class ElfFile {
    */
   template <class Fn>
   const ElfSym* iterateSymbols(const ElfShdr& section, Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>);
+      noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>);
   template <class Fn>
   const ElfSym* iterateSymbolsWithType(
       const ElfShdr& section, uint32_t type, Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>);
+      noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>);
   template <class Fn>
   const ElfSym* iterateSymbolsWithTypes(
       const ElfShdr& section,
       std::initializer_list<uint32_t> types,
-      Fn fn) const noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>);
+      Fn fn) const noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>);
 
   /**
    * Iterate over entries within a given section.
@@ -488,7 +488,7 @@ class ElfFile {
   template <class Fn>
   folly::Expected<Note, FindNoteError> iterateNotesInSections(
       const ElfShdr* section, Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, const Note&>);
+      noexcept(is_nothrow_invocable_v<Fn&, const Note&>);
 
   /**
    * Iterate over notes in a given segment, or all segments if segment is null.
@@ -501,7 +501,7 @@ class ElfFile {
   template <class Fn>
   folly::Expected<Note, FindNoteError> iterateNotesInSegments(
       const ElfPhdr* segment, Fn fn) const
-      noexcept(is_nothrow_invocable_v<Fn, const Note&>);
+      noexcept(is_nothrow_invocable_v<Fn&, const Note&>);
 
   /**
    * Retrieve the content of .note.gnu.build-id, if available.
@@ -607,7 +607,7 @@ class ElfFile {
   template <class Fn>
   folly::Expected<Note, FindNoteError> iterateNotesInBodyHelper(
       folly::StringPiece body, Fn& fn) const
-      noexcept(is_nothrow_invocable_v<Fn, const Note&>);
+      noexcept(is_nothrow_invocable_v<Fn&, const Note&>);
 
   static constexpr size_t kFilepathMaxLen = 512;
   char filepath_[kFilepathMaxLen] = {};
