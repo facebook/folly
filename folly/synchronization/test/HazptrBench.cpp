@@ -42,131 +42,66 @@ struct TestObj : public hazptr_obj_base<TestObj> {
 
 } // namespace
 
-/// benchmark copying a std::shared_ptr, including copy and dtor
+/// benchmark copying a std::shared_ptr, including copy and dtor, plus any
+/// extras around it for sharing between threads and avoiding false sharing
+template <typename Obj, typename Copy>
+static void do_shared_ptr_copy(size_t iters, Copy copy) {
+  BenchmarkSuspender braces;
+  auto obj = Obj(copy_to_shared_ptr(0));
+
+  int sum = 0;
+  braces.dismissing([&] {
+    while (iters--) {
+      auto ptr = copy(obj);
+      compiler_must_not_predict(*ptr);
+      sum += *ptr;
+    }
+  });
+  compiler_must_not_elide(sum);
+}
+
 BENCHMARK(sptr_copy, iters) {
-  BenchmarkSuspender braces;
-  auto obj = copy_to_shared_ptr(0);
-
-  int sum = 0;
-  braces.dismissing([&] {
-    while (iters--) {
-      auto copy = obj;
-      folly::compiler_must_not_predict(*copy);
-      sum += *copy;
-    }
-  });
-  folly::compiler_must_not_elide(sum);
+  using Obj = std::shared_ptr<int>;
+  do_shared_ptr_copy<Obj>(iters, [](auto& obj) { return obj; });
 }
 
-/// benchmark copying a std::shared_ptr, including copy and dtor, under a shared
-/// lock
 BENCHMARK(sptr_copy_folly_shared_mutex, iters) {
-  BenchmarkSuspender braces;
-  folly::Synchronized obj{copy_to_shared_ptr(0)};
-
-  int sum = 0;
-  braces.dismissing([&] {
-    while (iters--) {
-      auto copy = obj.copy();
-      folly::compiler_must_not_predict(*copy);
-      sum += *copy;
-    }
-  });
-  folly::compiler_must_not_elide(sum);
+  using Obj = folly::Synchronized<std::shared_ptr<int>>;
+  do_shared_ptr_copy<Obj>(iters, [](auto& obj) { return obj.copy(); });
 }
 
-/// benchmark copying a std::shared_ptr, including copy and dtor, from a
-/// folly::atomic_shared_ptr
 BENCHMARK(sptr_copy_folly_atomic_shared_ptr, iters) {
-  BenchmarkSuspender braces;
-  folly::atomic_shared_ptr obj{copy_to_shared_ptr(0)};
-
-  int sum = 0;
-  braces.dismissing([&] {
-    while (iters--) {
-      auto copy = obj.load(std::memory_order_relaxed);
-      folly::compiler_must_not_predict(*copy);
-      sum += *copy;
-    }
+  using Obj = folly::atomic_shared_ptr<int>;
+  do_shared_ptr_copy<Obj>(iters, [](auto& obj) {
+    return obj.load(std::memory_order_acquire);
   });
-  folly::compiler_must_not_elide(sum);
 }
 
-/// benchmark copying a std::shared_ptr, including copy and dtor, using
-/// std::atomic_load (precursor to std::atomic_shared_ptr)
 BENCHMARK(sptr_copy_std_atomic_shared_ptr, iters) {
-  BenchmarkSuspender braces;
-  auto obj = copy_to_shared_ptr(0);
-
-  int sum = 0;
-  braces.dismissing([&] {
-    while (iters--) {
-      auto copy = std::atomic_load_explicit(&obj, std::memory_order_relaxed);
-      folly::compiler_must_not_predict(*copy);
-      sum += *copy;
-    }
+  using Obj = std::shared_ptr<int>;
+  do_shared_ptr_copy<Obj>(iters, [=](auto& obj) {
+    return std::atomic_load_explicit(&obj, std::memory_order_acquire);
   });
-  folly::compiler_must_not_elide(sum);
 }
 
 BENCHMARK(sptr_copy_folly_read_mostly_main_ptr, iters) {
-  BenchmarkSuspender braces;
-  auto obj = folly::ReadMostlyMainPtr(copy_to_shared_ptr(0));
-
-  int sum = 0;
-  braces.dismissing([&] {
-    while (iters--) {
-      auto copy = obj.getShared();
-      folly::compiler_must_not_predict(*copy);
-      sum += *copy;
-    }
-  });
-  folly::compiler_must_not_elide(sum);
+  using Obj = folly::ReadMostlyMainPtr<int>;
+  do_shared_ptr_copy<Obj>(iters, [=](auto& obj) { return obj.getShared(); });
 }
 
 BENCHMARK(sptr_copy_folly_atomic_read_mostly_main_ptr, iters) {
-  BenchmarkSuspender braces;
-  auto obj = folly::AtomicReadMostlyMainPtr(copy_to_shared_ptr(0));
-
-  int sum = 0;
-  braces.dismissing([&] {
-    while (iters--) {
-      auto copy = obj.load();
-      folly::compiler_must_not_predict(*copy);
-      sum += *copy;
-    }
-  });
-  folly::compiler_must_not_elide(sum);
+  using Obj = folly::AtomicReadMostlyMainPtr<int>;
+  do_shared_ptr_copy<Obj>(iters, [=](auto& obj) { return obj.load(); });
 }
 
 BENCHMARK(sptr_copy_folly_core_cached_shared_ptr, iters) {
-  BenchmarkSuspender braces;
-  auto obj = folly::CoreCachedSharedPtr(copy_to_shared_ptr(0));
-
-  int sum = 0;
-  braces.dismissing([&] {
-    while (iters--) {
-      auto copy = obj.get();
-      folly::compiler_must_not_predict(*copy);
-      sum += *copy;
-    }
-  });
-  folly::compiler_must_not_elide(sum);
+  using Obj = folly::CoreCachedSharedPtr<int>;
+  do_shared_ptr_copy<Obj>(iters, [=](auto& obj) { return obj.get(); });
 }
 
 BENCHMARK(sptr_copy_folly_atomic_core_cached_shared_ptr, iters) {
-  BenchmarkSuspender braces;
-  auto obj = folly::AtomicCoreCachedSharedPtr(copy_to_shared_ptr(0));
-
-  int sum = 0;
-  braces.dismissing([&] {
-    while (iters--) {
-      auto copy = obj.get();
-      folly::compiler_must_not_predict(*copy);
-      sum += *copy;
-    }
-  });
-  folly::compiler_must_not_elide(sum);
+  using Obj = folly::AtomicCoreCachedSharedPtr<int>;
+  do_shared_ptr_copy<Obj>(iters, [=](auto& obj) { return obj.get(); });
 }
 
 BENCHMARK_DRAW_LINE();
