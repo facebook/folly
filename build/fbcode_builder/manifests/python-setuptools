@@ -11,6 +11,10 @@ builder = python-wheel
 [rpms]
 python3-setuptools
 
+# Centos Stream 9 default python is 3.9, sapling needs 3.10+
+[rpms.all(distro=centos_stream,distro_vers=9)]
+python3.12-setuptools
+
 [homebrew]
 python-setuptools
 
