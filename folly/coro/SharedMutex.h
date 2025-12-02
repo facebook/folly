@@ -551,7 +551,13 @@ class SharedMutexFair : private folly::NonCopyableNonMovable {
   static constexpr std::size_t kUpgradeLockFlag = 2;
   static constexpr std::size_t kSharedLockCountIncrement = 4;
 
-  folly::Synchronized<State, folly::SpinLock> state_;
+  struct ExclusiveMutex {
+    std::unique_ptr<std::mutex> impl_{std::make_unique<std::mutex>()};
+    void lock() { return impl_->lock(); }
+    void unlock() { return impl_->unlock(); }
+  };
+  using Mutex = std::conditional_t<kIsSanitizeThread, ExclusiveMutex, SpinLock>;
+  folly::Synchronized<State, Mutex> state_;
 };
 
 inline SharedMutexFair::LockOperation<SharedMutexFair::LockAwaiter>
