@@ -35,6 +35,7 @@
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
 #include <folly/lang/CustomizationPoint.h>
+#include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/detail/AtomicUtils.h>
@@ -555,6 +556,13 @@ template <>
 struct atomic_thread_fence_traits<test::DeterministicAtomic> {
   static inline constexpr auto fence =
       test::DeterministicSchedule::atomic_thread_fence;
+};
+
+template <>
+struct asymmetric_thread_fence_traits<test::DeterministicAtomic> {
+  using traits = atomic_thread_fence_traits<test::DeterministicAtomic>;
+  static inline constexpr auto light = traits::fence;
+  static inline constexpr auto heavy = traits::fence;
 };
 
 namespace test {

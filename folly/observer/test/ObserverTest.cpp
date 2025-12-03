@@ -32,6 +32,7 @@
 #include <folly/observer/WithJitter.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/Baton.h>
 
@@ -63,6 +64,10 @@ struct NamedCreator {
 template <>
 struct folly::atomic_thread_fence_traits<AltAtomic>
     : folly::atomic_thread_fence_traits<std::atomic> {};
+
+template <>
+struct folly::asymmetric_thread_fence_traits<AltAtomic>
+    : folly::asymmetric_thread_fence_traits<std::atomic> {};
 
 namespace folly {
 namespace observer {

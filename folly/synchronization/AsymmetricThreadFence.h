@@ -77,4 +77,13 @@ struct asymmetric_thread_fence_heavy_fn {
 inline constexpr asymmetric_thread_fence_heavy_fn
     asymmetric_thread_fence_heavy{};
 
+template <template <typename> class Atom>
+struct asymmetric_thread_fence_traits;
+
+template <>
+struct asymmetric_thread_fence_traits<std::atomic> {
+  static inline constexpr asymmetric_thread_fence_light_fn light{};
+  static inline constexpr asymmetric_thread_fence_heavy_fn heavy{};
+};
+
 } // namespace folly

@@ -23,6 +23,7 @@ fbcode_target(
         "//folly/observer:with_jitter",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/synchronization:asymmetric_thread_fence",
         "//folly/synchronization:atomic_util",
         "//folly/synchronization:baton",
     ],
