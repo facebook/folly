@@ -120,7 +120,7 @@ namespace folly {
  * interfaces.
  */
 class RWSpinLock {
-  enum : int32_t { READER = 4, UPGRADED = 2, WRITER = 1 };
+  enum : int32_t { SHARED = 4, UPGRADE = 2, EXCLUSIVE = 1 };
 
  public:
   constexpr RWSpinLock() : bits_(0) {}
@@ -138,10 +138,10 @@ class RWSpinLock {
     }
   }
 
-  // Writer is responsible for clearing up both the UPGRADED and WRITER bits.
+  // Writer is responsible for clearing up both the UPGRADE and EXCLUSIVE bits.
   void unlock() {
-    static_assert(READER > WRITER + UPGRADED, "wrong bits!");
-    bits_.fetch_and(~(WRITER | UPGRADED), std::memory_order_release);
+    static_assert(SHARED > EXCLUSIVE + UPGRADE, "wrong bits!");
+    bits_.fetch_and(~(EXCLUSIVE | UPGRADE), std::memory_order_release);
   }
 
   // SharedLockable Concept
@@ -154,11 +154,11 @@ class RWSpinLock {
     }
   }
 
-  void unlock_shared() { bits_.fetch_add(-READER, std::memory_order_release); }
+  void unlock_shared() { bits_.fetch_add(-SHARED, std::memory_order_release); }
 
   // Downgrade the lock from writer status to reader status.
   void unlock_and_lock_shared() {
-    bits_.fetch_add(READER, std::memory_order_acquire);
+    bits_.fetch_add(SHARED, std::memory_order_acquire);
     unlock();
   }
 
@@ -173,7 +173,7 @@ class RWSpinLock {
   }
 
   void unlock_upgrade() {
-    bits_.fetch_add(-UPGRADED, std::memory_order_acq_rel);
+    bits_.fetch_add(-UPGRADE, std::memory_order_acq_rel);
   }
 
   // unlock upgrade and try to acquire write lock
@@ -188,36 +188,36 @@ class RWSpinLock {
 
   // unlock upgrade and read lock atomically
   void unlock_upgrade_and_lock_shared() {
-    bits_.fetch_add(READER - UPGRADED, std::memory_order_acq_rel);
+    bits_.fetch_add(SHARED - UPGRADE, std::memory_order_acq_rel);
   }
 
   // write unlock and upgrade lock atomically
   void unlock_and_lock_upgrade() {
-    // need to do it in two steps here -- as the UPGRADED bit might be OR-ed at
+    // need to do it in two steps here -- as the UPGRADE bit might be OR-ed at
     // the same time when other threads are trying do try_lock_upgrade().
-    bits_.fetch_or(UPGRADED, std::memory_order_acquire);
-    bits_.fetch_add(-WRITER, std::memory_order_release);
+    bits_.fetch_or(UPGRADE, std::memory_order_acquire);
+    bits_.fetch_add(-EXCLUSIVE, std::memory_order_release);
   }
 
   // Attempt to acquire writer permission. Return false if we didn't get it.
   bool try_lock() {
     int32_t expect = 0;
     return bits_.compare_exchange_strong(
-        expect, WRITER, std::memory_order_acq_rel);
+        expect, EXCLUSIVE, std::memory_order_acq_rel);
   }
 
   // Try to get reader permission on the lock. This can fail if we
   // find out someone is a writer or upgrader.
-  // Setting the UPGRADED bit would allow a writer-to-be to indicate
+  // Setting the UPGRADE bit would allow a writer-to-be to indicate
   // its intention to write and block any new readers while waiting
   // for existing readers to finish and release their read locks. This
   // helps avoid starving writers (promoted from upgraders).
   bool try_lock_shared() {
     // fetch_add is considerably (100%) faster than compare_exchange,
     // so here we are optimizing for the common (lock success) case.
-    int32_t value = bits_.fetch_add(READER, std::memory_order_acquire);
-    if (FOLLY_UNLIKELY(value & (WRITER | UPGRADED))) {
-      bits_.fetch_add(-READER, std::memory_order_release);
+    int32_t value = bits_.fetch_add(SHARED, std::memory_order_acquire);
+    if (FOLLY_UNLIKELY(value & (EXCLUSIVE | UPGRADE))) {
+      bits_.fetch_add(-SHARED, std::memory_order_release);
       return false;
     }
     return true;
@@ -225,20 +225,20 @@ class RWSpinLock {
 
   // try to unlock upgrade and write lock atomically
   bool try_unlock_upgrade_and_lock() {
-    int32_t expect = UPGRADED;
+    int32_t expect = UPGRADE;
     return bits_.compare_exchange_strong(
-        expect, WRITER, std::memory_order_acq_rel);
+        expect, EXCLUSIVE, std::memory_order_acq_rel);
   }
 
   // try to acquire an upgradable lock.
   bool try_lock_upgrade() {
-    int32_t value = bits_.fetch_or(UPGRADED, std::memory_order_acquire);
+    int32_t value = bits_.fetch_or(UPGRADE, std::memory_order_acquire);
 
-    // Note: when failed, we cannot flip the UPGRADED bit back,
+    // Note: when failed, we cannot flip the UPGRADE bit back,
     // as in this case there is either another upgrade lock or a write lock.
     // If it's a write lock, the bit will get cleared up when that lock's done
     // with unlock().
-    return ((value & (UPGRADED | WRITER)) == 0);
+    return ((value & (UPGRADE | EXCLUSIVE)) == 0);
   }
 
   // mainly for debugging purposes.
