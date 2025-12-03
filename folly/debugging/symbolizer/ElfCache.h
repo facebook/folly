@@ -40,7 +40,12 @@ namespace symbolizer {
 class ElfCacheBase {
  public:
   virtual std::shared_ptr<ElfFile> getFile(StringPiece path) = 0;
-  virtual ~ElfCacheBase() {}
+  virtual ~ElfCacheBase() = default;
+  ElfCacheBase() = default;
+  ElfCacheBase(const ElfCacheBase&) = delete;
+  ElfCacheBase& operator=(const ElfCacheBase&) = delete;
+  ElfCacheBase(ElfCacheBase&&) = delete;
+  ElfCacheBase& operator=(ElfCacheBase&&) = delete;
 };
 
 /**
@@ -69,9 +74,12 @@ class SignalSafeElfCache : public ElfCacheBase {
         char const* data,
         std::size_t size,
         reentrant_allocator<char> const& alloc) noexcept;
+    ~Path() = default;
     Path() = delete;
     Path(Path const&) = delete;
     void operator=(Path const&) = delete;
+    Path(Path&&) = delete;
+    Path& operator=(Path&&) = delete;
 
     /* implicit */ operator StringPiece() const noexcept { return data_; }
 
@@ -93,8 +101,11 @@ class SignalSafeElfCache : public ElfCacheBase {
     explicit Entry(StringPiece p, reentrant_allocator<char> alloc) noexcept
         : path{p.data(), p.size(), alloc},
           file{std::allocate_shared<ElfFile>(alloc)} {}
+    ~Entry() = default;
     Entry(Entry const&) = delete;
     Entry& operator=(Entry const& that) = delete;
+    Entry(Entry&&) = delete;
+    Entry& operator=(Entry&&) = delete;
 
     friend bool operator<(Entry const& a, Entry const& b) noexcept {
       return a.path < b.path;
