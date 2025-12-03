@@ -186,6 +186,14 @@ struct atomic_fetch_modify_fn {
 };
 inline constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
 
+template <template <typename> class Atom>
+struct atomic_thread_fence_traits;
+
+template <>
+struct atomic_thread_fence_traits<std::atomic> {
+  static inline constexpr auto fence = std::atomic_thread_fence;
+};
+
 } // namespace folly
 
 #include <folly/synchronization/AtomicUtil-inl.h>

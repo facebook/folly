@@ -36,6 +36,7 @@
 #include <folly/detail/Futex.h>
 #include <folly/lang/CustomizationPoint.h>
 #include <folly/synchronization/AtomicNotification.h>
+#include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/detail/AtomicUtils.h>
 #include <folly/synchronization/test/Semaphore.h>
 
@@ -547,6 +548,16 @@ struct DeterministicAtomicImpl {
 
 template <typename T>
 using DeterministicAtomic = DeterministicAtomicImpl<T, DeterministicSchedule>;
+
+} // namespace test
+
+template <>
+struct atomic_thread_fence_traits<test::DeterministicAtomic> {
+  static inline constexpr auto fence =
+      test::DeterministicSchedule::atomic_thread_fence;
+};
+
+namespace test {
 
 /* Futex extensions for DeterministicSchedule based Futexes */
 int futexWakeImpl(

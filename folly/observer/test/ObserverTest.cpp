@@ -32,6 +32,7 @@
 #include <folly/observer/WithJitter.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/Baton.h>
 
 using namespace std::literals;
@@ -58,6 +59,10 @@ struct NamedCreator {
   auto operator()() const { return creator(); }
 };
 } // namespace
+
+template <>
+struct folly::atomic_thread_fence_traits<AltAtomic>
+    : folly::atomic_thread_fence_traits<std::atomic> {};
 
 namespace folly {
 namespace observer {

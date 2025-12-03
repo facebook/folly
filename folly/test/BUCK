@@ -430,6 +430,7 @@ fbcode_target(
         "//folly/detail:futex",
         "//folly/lang:customization_point",
         "//folly/synchronization:atomic_notification",
+        "//folly/synchronization:atomic_util",
         "//folly/synchronization/detail:atomic_utils",
         "//folly/synchronization/test:semaphore",
     ],
