@@ -95,7 +95,7 @@ class CargoBuilder(BuilderBase):
         if self.cargo_config_file_subdir:
             return os.path.join(build_source_dir, self.cargo_config_file_subdir)
         else:
-            return os.path.join(build_source_dir, ".cargo", "config")
+            return os.path.join(build_source_dir, ".cargo", "config.toml")
 
     def _create_cargo_config(self):
         cargo_config_file = self.cargo_config_file()
@@ -122,8 +122,12 @@ target-dir = '''{}'''
 [profile.dev]
 debug = false
 incremental = false
+
+[profile.release]
+opt-level = "{}"
 """.format(
-                self.build_dir.replace("\\", "\\\\")
+                self.build_dir.replace("\\", "\\\\"),
+                "z" if self.build_opts.build_type == "MinSizeRel" else "s",
             )
 
         # Point to vendored sources from getdeps manifests
@@ -173,7 +177,7 @@ incremental = false
         build_source_dir = self.build_source_dir()
 
         build_args = [
-            "--out-dir",
+            "--artifact-dir",
             os.path.join(self.inst_dir, "bin"),
             "-Zunstable-options",
         ]
@@ -206,20 +210,26 @@ incremental = false
     def run_tests(
         self, schedule_type, owner, test_filter, retry, no_testpilot, timeout=None
     ) -> None:
+        build_args = []
+        if self.build_opts.build_type != "Debug":
+            build_args.append("--release")
+
         if test_filter:
-            args = ["--", test_filter]
+            filter_args = ["--", test_filter]
         else:
-            args = []
+            filter_args = []
 
         if self.manifests_to_build is None:
-            self.run_cargo(self.install_dirs, "test", args)
-            if self.build_doc:
+            self.run_cargo(self.install_dirs, "test", build_args + filter_args)
+            if self.build_doc and not filter_args:
                 self.run_cargo(self.install_dirs, "doc", ["--no-deps"])
         else:
             for manifest in self.manifests_to_build:
                 margs = ["--manifest-path", self.manifest_dir(manifest)]
-                self.run_cargo(self.install_dirs, "test", args + margs)
-                if self.build_doc:
+                self.run_cargo(
+                    self.install_dirs, "test", build_args + filter_args + margs
+                )
+                if self.build_doc and not filter_args:
                     self.run_cargo(self.install_dirs, "doc", ["--no-deps"] + margs)
 
     def _patchup_workspace(self, dep_to_git) -> None:

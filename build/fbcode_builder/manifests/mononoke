@@ -18,6 +18,10 @@ builder = nop
 build_doc = true
 workspace_dir = eden/mononoke
 
+[github.actions]
+rust_version = 1.91
+build_type = MinSizeRel
+
 [shipit.pathmap]
 fbcode/configerator/structs/scm/hg = configerator/structs/scm/hg
 fbcode/configerator/structs/scm/hg/public_autocargo = configerator/structs/scm/hg

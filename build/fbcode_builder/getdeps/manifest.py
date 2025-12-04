@@ -98,6 +98,8 @@ SCHEMA = {
         "fields": {
             "run_tests": OPTIONAL,
             "required_locales": OPTIONAL,
+            "rust_version": OPTIONAL,
+            "build_type": OPTIONAL,
         },
     },
     "crate.pathmap": {"optional_section": True},
