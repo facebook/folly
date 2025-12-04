@@ -15,9 +15,9 @@
  */
 
 #include <folly/executors/task_queue/StripedPriorityUnboundedBlockingQueue.h>
+#include <folly/system/HardwareConcurrency.h>
 
 #include <atomic>
-#include <thread>
 
 #include <folly/Random.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
@@ -40,7 +40,7 @@ struct RandomStripe {
 } // namespace
 
 TEST(StripedPriorityUnboundedBlockingQueue, SmokeTest) {
-  const size_t kNumThreads = std::thread::hardware_concurrency();
+  const size_t kNumThreads = folly::hardware_concurrency();
   const size_t kNumTasksPerThread = 1024;
 
   folly::CPUThreadPoolExecutor consumers(
