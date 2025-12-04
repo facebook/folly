@@ -20,9 +20,10 @@ non_fbcode_target(
     srcs = [
         "Hardware.cpp",
     ],
-    compiler_flags = [
-        "-mrtm",
-    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:android-x86_64": ["-mrtm"],
+    }),
     raw_headers = [
         "Hardware.h",
     ],
