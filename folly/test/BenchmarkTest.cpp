@@ -195,6 +195,7 @@ TEST_F(BenchmarkingStateTest, DiscardLines) {
   EXPECT_EQ(expected, state.runBenchmarksWithResults());
 }
 
+#if FOLLY_PERF_IS_SUPPORTED
 TEST_F(BenchmarkingStateTest, PerfBasic) {
   int setUpPerfCalled = 0;
   std::vector<std::string> expectedArgs;
@@ -245,7 +246,6 @@ TEST_F(BenchmarkingStateTest, PerfSkipsAnIteration) {
   EXPECT_TRUE(perfIsCalled);
 }
 
-#if FOLLY_PERF_IS_SUPPORTED
 TEST_F(BenchmarkingStateTest, PerfIntegration) {
   SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
   std::vector<int> in(1000, 0);
