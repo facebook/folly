@@ -3128,6 +3128,8 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
 
   zc.address = reinterpret_cast<uint64_t>(ptr->data);
   zc.length = ptr->capacity;
+  assert(uintptr_t(zc.address) % sysconf(_SC_PAGESIZE) == 0);
+  assert(zc.length % sysconf(_SC_PAGESIZE) == 0);
   auto zc_length = zc.length;
 
   zc.copybuf_address = reinterpret_cast<__u64>(copybuf);
@@ -3145,6 +3147,8 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
     if (zc.err) {
       zerocopyReadErr_ = zc.err;
     }
+
+    assert(zc.length % sysconf(_SC_PAGESIZE) == 0);
 
     auto len = zc.length + zc.copybuf_len;
 

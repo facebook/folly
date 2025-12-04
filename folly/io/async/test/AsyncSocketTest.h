@@ -556,7 +556,8 @@ class TestServer {
     }
     if (enableTFO) {
 #if FOLLY_ALLOW_TFO
-      folly::detail::tfo_enable(fd_, 100);
+      auto ret = folly::detail::tfo_enable(fd_, 100);
+      PCHECK(ret == 0);
 #endif
     }
 

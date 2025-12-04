@@ -1028,11 +1028,14 @@ TEST_P(AsyncSocketConnectTest, ConnectAndZeroCopyRead) {
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
 
-  static constexpr size_t kBuffSize = 4096;
-  static constexpr size_t kDataSize = 32 * 1024;
+  static const size_t kBuffSize = sysconf(_SC_PAGESIZE);
+  static const size_t kPageMult = kBuffSize / 4096;
+  static const size_t kDataSize = kPageMult * 8 * 1024;
+  assert(kDataSize > kBuffSize);
+  assert(kDataSize % kBuffSize == 0);
 
-  static constexpr size_t kNumEntries = 1024;
-  static constexpr size_t kEntrySize = 128 * 1024;
+  static const size_t kNumEntries = 1024;
+  static const size_t kEntrySize = kPageMult * 32 * 1024;
 
   auto memStore =
       AsyncSocket::createDefaultZeroCopyMemStore(kNumEntries, kEntrySize);
