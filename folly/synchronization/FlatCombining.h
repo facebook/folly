@@ -239,6 +239,11 @@ class FlatCombining {
     }
   }
 
+  FlatCombining(const FlatCombining&) = delete;
+  FlatCombining& operator=(const FlatCombining&) = delete;
+  FlatCombining(FlatCombining&&) = delete;
+  FlatCombining& operator=(FlatCombining&&) = delete;
+
   // Wait for all pending operations to complete. Useful primarily
   // when there are asynchronous operations without a dedicated
   // combiner.
