@@ -31,7 +31,7 @@ static void run(
     EventBaseManager* ebm,
     EventBase* eb,
     folly::Baton<>* stop,
-    const StringPiece& name) {
+    const StringPiece name) {
   if (!name.empty()) {
     folly::setThreadName(name);
   }
