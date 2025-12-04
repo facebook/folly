@@ -113,7 +113,7 @@ class CompressionCoreLocalContextPool
             std::move(callback)),
         caches_() {}
 
-  ~CompressionCoreLocalContextPool() { flush_shallow(); }
+  ~CompressionCoreLocalContextPool() override { flush_shallow(); }
 
   Ref get() {
     auto ptr = local().ptr.exchange(nullptr);
