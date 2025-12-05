@@ -148,7 +148,7 @@ void RegexMatchCache::consistency(
   auto const q = [](std::string_view const s) { return quote(s); };
   auto const h = report;
 
-  auto const r = [&](regex_key const r) { return keys.lookup(r); };
+  auto const k = [&](regex_key const r) { return keys.lookup(r); };
 
   if (cacheRegexToMatch_.empty() || cacheMatchToRegex_.empty()) {
     if (!stringQueueForward_.empty()) {
@@ -163,7 +163,7 @@ void RegexMatchCache::consistency(
   //  check that caches are bidi-consistent
   //  check that missing cache entries are found in string-queues
   for (auto const& [regex, rtmentry] : cacheRegexToMatch_) {
-    auto const regexs = r(regex);
+    auto const regexs = k(regex);
     auto const regexi = regexVector_.index_of_value(&regex);
     for (auto const& [match, mtrentry] : cacheMatchToRegex_) {
       auto const rtmcontains = rtmentry.matches.contains(match);
@@ -235,11 +235,11 @@ void RegexMatchCache::consistency(
       if (!sqrptr) {
         h(fmt::format( //
             "string-queue-reverse none regex[{}]",
-            q(r(*regex))));
+            q(k(*regex))));
       } else if (!sqrptr->strings.contains(string)) {
         h(fmt::format( //
             "string-queue-reverse[{}] none string[{}]",
-            q(r(*regex)),
+            q(k(*regex)),
             q(*string)));
       }
       auto const mtrhas = mtrptr && mtrptr->regexes.get_value(regexi);
@@ -249,7 +249,7 @@ void RegexMatchCache::consistency(
         h(fmt::format( //
             "string-queue-forward[{}] has regex[{}]",
             q(*string),
-            q(r(*regex))));
+            q(k(*regex))));
       }
     }
   }
@@ -266,7 +266,7 @@ void RegexMatchCache::consistency(
         h(fmt::format( //
             "string-queue-forward[{}] none regex[{}]",
             q(*string),
-            q(r(*regex))));
+            q(k(*regex))));
       }
       auto const mtrptr = get_ptr(cacheMatchToRegex_, string);
       auto const mtrhas = mtrptr && mtrptr->regexes.get_value(regexi);
@@ -274,7 +274,7 @@ void RegexMatchCache::consistency(
       if (mtrhas || rtmhas) {
         h(fmt::format( //
             "string-queue-reverse[{}] has string[{}]",
-            q(r(*regex)),
+            q(k(*regex)),
             q(*string)));
       }
     }
