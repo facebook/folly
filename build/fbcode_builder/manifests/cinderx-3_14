@@ -22,3 +22,7 @@ fbcode/cinderx/oss_toplevel = .
 
 [setup-py.test]
 python_script = cinderx/PythonLib/test_cinderx/test_oss_quick.py
+
+[setup-py.env]
+CINDERX_ENABLE_PGO=1
+CINDERX_ENABLE_LTO=1

@@ -1415,6 +1415,10 @@ class SetupPyBuilder(BuilderBase):
     def _build(self, reconfigure) -> None:
         env = self._compute_env()
 
+        setup_env = self.manifest.get_section_as_dict("setup-py.env", self.ctx)
+        for key, value in setup_env.items():
+            env[key] = value
+
         setup_py_path = os.path.join(self.src_dir, "setup.py")
 
         if not os.path.exists(setup_py_path):
