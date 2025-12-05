@@ -114,8 +114,11 @@ fbcode_target(
     name = "concurrent_hash_map_stress_test",
     srcs = ["ConcurrentHashMapStressTest.cpp"],
     labels = [
+        # each test runs 2^16 threads, which is very slow and very heavyweight,
+        # and which interacts very poorly with any parallelism between tests
+        "glacial",
         "heavyweight",
-        "long_running",
+        "serialize",
         "slow",
     ],
     supports_static_listing = False,
@@ -149,8 +152,11 @@ fbcode_target(
     name = "concurrent_hash_map_stress_test_no_simd",
     srcs = ["ConcurrentHashMapStressTest.cpp"],
     labels = [
+        # each test runs 2^16 threads, which is very slow and very heavyweight,
+        # and which interacts very poorly with any parallelism between tests
+        "glacial",
         "heavyweight",
-        "long_running",
+        "serialize",
         "slow",
     ],
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
