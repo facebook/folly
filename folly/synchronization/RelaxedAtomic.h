@@ -43,6 +43,8 @@ struct relaxed_atomic_base : protected std::atomic<T> {
   using value_type = T;
 
   using atomic::atomic;
+  using atomic::is_always_lock_free;
+  using atomic::is_lock_free;
 
   T operator=(T desired) noexcept {
     store(desired);
@@ -52,9 +54,6 @@ struct relaxed_atomic_base : protected std::atomic<T> {
     store(desired);
     return desired;
   }
-
-  bool is_lock_free() const noexcept { return atomic::is_lock_free(); }
-  bool is_lock_free() const volatile noexcept { return atomic::is_lock_free(); }
 
   void store(T desired) noexcept {
     atomic::store(desired, std::memory_order_relaxed);
