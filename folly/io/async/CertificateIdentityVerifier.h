@@ -88,7 +88,7 @@ class CertificateIdentityVerifier {
    * @return true if the certificate context is valid, false otherwise
    */
   virtual bool verifyContext(
-      bool preverifyOk, [[maybe_unused]] X509_STORE_CTX& ctx) const noexcept {
+      bool preverifyOk, [[maybe_unused]] X509_STORE_CTX* ctx) const noexcept {
     return preverifyOk;
   }
 

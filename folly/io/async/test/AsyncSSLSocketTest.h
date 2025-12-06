@@ -498,7 +498,7 @@ class MockCertificateIdentityVerifier : public CertificateIdentityVerifier {
   MOCK_METHOD(
       bool,
       verifyContext,
-      (bool, X509_STORE_CTX&),
+      (bool, X509_STORE_CTX*),
       (const, noexcept, override));
   MOCK_METHOD(
       std::unique_ptr<AsyncTransportCertificate>,

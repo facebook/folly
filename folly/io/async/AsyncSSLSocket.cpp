@@ -2012,7 +2012,7 @@ int AsyncSSLSocket::sslVerifyCallback(
   // for the leaf certificate even if verifyContext changes the result.
   if (self->certificateIdentityVerifier_) {
     preverifyOk =
-        self->certificateIdentityVerifier_->verifyContext(preverifyOk, *x509Ctx)
+        self->certificateIdentityVerifier_->verifyContext(preverifyOk, x509Ctx)
         ? 1
         : 0;
   }

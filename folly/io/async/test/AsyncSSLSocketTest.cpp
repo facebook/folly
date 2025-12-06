@@ -1648,13 +1648,13 @@ TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierContextInspectsChain) {
   auto&& verifyContext =
       EXPECT_CALL(*verifier, verifyContext(true, _))
           .Times(AtLeast(1))
-          .WillRepeatedly(WithArg<1>([](X509_STORE_CTX& ctx) {
+          .WillRepeatedly(WithArg<1>([](X509_STORE_CTX* ctx) {
             // Verify we can access the cert chain
-            X509* cert = X509_STORE_CTX_get_current_cert(&ctx);
+            X509* cert = X509_STORE_CTX_get_current_cert(ctx);
             EXPECT_NE(cert, nullptr);
 
             // Verify we can get the chain depth
-            int depth = X509_STORE_CTX_get_error_depth(&ctx);
+            int depth = X509_STORE_CTX_get_error_depth(ctx);
             EXPECT_GE(depth, 0);
 
             return true;
